@@ -1,9 +1,11 @@
 # SOOT_STORAGE_REFORM
 ## The soot map becomes the source of truth — plan, 2026-08-27
 
-**Status:** 🟢 **SS-0, SS-1 and SS-2 DONE — THE STORE IS THE SOURCE OF TRUTH.**
-The repaint still derives (SS-5 removes that); what changed is who answers. Gate
-results in §5.1 and §5.2. ⚠️ §5.1 carries a CORRECTION to a number SS-1 reported.
+**Status:** 🟢 **SS-0 … SS-3 DONE — THE STORE IS THE SOURCE OF TRUTH AND THE
+COMMIT IS ITS SEAM.** The repaint still derives (SS-5 removes that). Gates in
+§5.1–§5.3. ⚠️ §5.1 carries a CORRECTION to a number SS-1 reported, and **§5.3 is
+an open DESIGN question for the Director** that SS-3 surfaced: the store now keeps
+scorch for voxels the fire consumed.
 ⚠️ **SS-0 demoted this plan's own headline motivation** — PERF-P3 already killed the §9.11a flicker, and the §9.11b guard is inert by default. Measured, not reasoned: §1.1b. The reform still stands, on the Director's design ask, on §1.2's structural wins, and on §3.4.
 **Both open questions were answered the same day (§6), and one of them changed
 the plan:** rotation was disabled for **performance**, not because the game is
@@ -434,7 +436,7 @@ before it owns the picture, and nothing is deleted until the picture is proven.*
 | ✅ **SS-0** | **Arm the instrument first.** The §9.11b two-fire watcher (`INFILTRAITOR_CAPTURE_ACTION=two_fires`, `INFILTRAITOR_TWO_FIRES_GUS`, `[TWO-FIRES-WATCH]`). | ✅ **DONE, and the red lever is NOT the one this row specified.** Reverting the guard proves nothing, because the guard is **inert by default** (§1.1b). The lever that works is `INFILTRAITOR_P3=0`: red **175 flickering / 175 skipped**, green **0 / 0**, two instruments agreeing to the cell. The instrument is validated — and the run demoted §1.1 from motivation to history. |
 | ✅ **SS-1** | **The store, in shadow.** `Room._soot_map` + `scorch_cell()` / `absorb_scorch()`, base-keyed with the §2.1b five-direction format, produced in parallel by `BlastCalculator`'s `out_full` and **read by nothing but the gate**. | ✅ **PASSES on both real paths — see §5.1.** `INFILTRAITOR_SOOT_STORE_GATE=1`: **0 DERIVED-ONLY, 0 LIGHTER** on an agent shot and on two real fires; 4 new selftests prove the round-trip over 180 direction cases. ⚠️ The gate proves the format is LOSSLESS, not §2.1b — it projects back into the perspective it wrote in, so the two extra directions are never read. SS-6 is the other half. |
 | ✅ **SS-2** | **Flip the read.** `_build_soot_snapshot()` returns `soot_store_projection()`; the derivation still runs and still feeds the store (SS-5 removes it). Also: the format grew a **sixth** direction, and the shot pre-cook stopped writing speculative scorch — §5.2. | ✅ **CONTROL 0 px, GATE 0 px** on a real concrete detonation at the 400-frame settle. No stash needed: `INFILTRAITOR_SOOT_STORE_READ=0` gives the old answer from the same binary. |
-| **SS-3** | **The commit seam.** Scorch leaves the prediction as a proposal; `delta.commit()` writes it; `bump_world_revision()`. | The two-fire capture: fire 1's region **0 flickered, 0 changed** across the whole of fire 2. Plus `run_selftests.py` clean, including the leak gate. |
+| ✅ **SS-3** | **The commit seam.** `WorldDelta.scorch_writes` carries the blast's scorch as data; `commit(room)` writes it through `absorb_scorch()`; the existing post-commit `bump_world_revision()` covers it. | ✅ **Fire 1's region: 0 changed, and 0 flicker in its own block** (gu 29–32); total flicker **106 → 24**, all of it in fire 2's neighbourhood. Selftests **40 clean / 0 failed** including the leak gate, and `blast_purity_selftest` now asserts the proposal is a proposal: **692 cell(s) on the Delta, 0 in the store** before commit. ⚠️ It also surfaced §5.3. |
 | **SS-4** | **Checkpoint persistence** (§3.3). `SaveState` v2, `crater_floor_soot` absorbed, `_soot_map` added to `clear_run_state()`. | `save_state_selftest` round-trips a sooted board; a restore reproduces it pixel-identically; and **a cleared run state leaves zero scorch** — the "acabou a fase" half, which is the one that fails silently. |
 | **SS-5** | **Subtraction.** Retire the repaint-side re-derivation and whatever §3.5's grep proves dead. | Repo-wide grep and a named caller list **pasted into the commit**, not summarised. 0-px gate again after. |
 | **SS-6** | **Prove it under rotation** (§3.4, §2.1b). ⚠️ **Needs a capture action that rotates the view, and none exists** — `SOOT_MASTER_PLAN` §7.2 recorded that gap as moot when rotation was believed dropped, and the 2026-08-27 correction un-moots it. Build it here. | **Rebuild D24's own instrument** — the SE/SW histogram, before and after a rotation to E (§2.1b). The two horizontal faces hidden at emit time must present the ring the emitter actually measured, not the `faint` placeholder. This is the only gate that can catch §2.1b being wrong, and a histogram beats a pixel diff of a rotated board. |
@@ -570,6 +572,57 @@ here proves §2.1b.
 
 ---
 
+### 5.3 ⚠️ SS-3 SURFACED SOMETHING NOBODY ASKED ABOUT: the store keeps scorch for voxels that no longer exist
+
+Routing the blast's plan-time scorch through the commit changed a number nobody
+was watching. Same two-fire capture, same build, SS-2 versus SS-3:
+
+```
+SS-2   absorbs 2 · store 5 731 vs derived 5 731 —     0 store-only
+SS-3   absorbs 4 · store 7 771 vs derived 5 731 — 2 040 store-only
+```
+
+`0 DERIVED-ONLY, 0 LIGHTER` throughout, so nothing is being lost — the store is
+keeping **more**. Two different things are in that number and only one of them was
+predicted:
+
+**1. The revealed crater floor — legitimate, and it closes an old open question.**
+On a plain concrete detonation the store-only cells are `240`, and the level
+histogram is decisive: **224 of them on level 79**, one single level, matching the
+census's `FLOOR/concrete destroyed 224` exactly. That is
+`_scorch_revealed_fixed_cells()`'s output — scorch the detonation writes for cells
+with no Voxel behind them, which the repaint path **cannot re-derive**, because it
+only replays `_crater_floor_soot` and nothing populates that outside the rotation
+replay.
+
+This is `SOOT_MASTER_PLAN` §1.2's asymmetry, which that plan recorded as an
+*"unverified prediction"* and then called MOOT because S-DEEP removed the cause
+rather than testing the symptom. **It was not moot.** It is real, it is measured
+here, and it runs the opposite way to the prediction: the crater floor is SOOTED
+at blast time and the derivation loses it. The store keeps it, which is the reform
+doing something the derivation structurally cannot.
+
+**2. Scorch belonging to voxels the FIRE consumed — an open question, not a
+finding.** The rest of the 2 040 are spread across wall levels 80–97. The blast's
+scorch is computed against the world before the burn, the final repaint derives
+against the world after it, and a destroyed voxel takes no soot — so the store
+holds marks for surfaces that are gone.
+
+⚠️ **This is a DESIGN question and it is not mine to answer.** Should a wall's
+scorch outlive the wall? There is a case for yes (permanence is the whole ruling,
+and the deep layer revealed behind it was genuinely in the fire) and a case for no
+(the mark was on a surface that no longer exists). It also has a cost: 2 040 dead
+cells after two fires, in a store whose lifetime is one level run.
+
+**What is NOT known, and is not claimed:** whether any of this reaches the screen.
+The 0-px gate in §5.2 is a detonation, and it stayed at 0 — the blast's own wave
+paints those cells and no repaint in that run overwrote them. **A fire has not been
+pixel-diffed under `READ=0` vs `READ=1`**, and a burn capture is not obviously
+deterministic enough to try without earning a control first. Recorded as open
+rather than reasoned into a conclusion.
+
+---
+
 **Standing gate for every task** (`SOOT_MASTER_PLAN` §5's, unchanged): a real
 detonation pixel-diffed before and after; the only acceptable differences are the
 ones a task is explicitly for. ⚠️ And `weapon_fire` is **not** a deterministic
@@ -587,7 +640,13 @@ gated by the store-vs-derived comparison of SS-1, not by pixels.
 2. ~~**Does scorch survive a reload?**~~ **Yes, within a level run** — it is
    checkpoint state on the Sonic-post model, discarded when the level ends or is
    left (§3.3). Player progression is a separate store this reform never touches.
-3. **Nothing else.** The look, the tones, the fade and its timing are ratified
+3. ⚠️ **NEW, from SS-3 (§5.3): should a wall's scorch outlive the wall?** The
+   store now holds marks for surfaces the fire consumed — 2 040 cells after two
+   fires. Permanence argues yes and the deep layer revealed behind them really was
+   in the fire; "the mark was on a surface that no longer exists" argues no. It is
+   also memory, in a store that lives one level run. **Not decided, not
+   implemented either way.**
+4. **Nothing else.** The look, the tones, the fade and its timing are ratified
    and out of scope by design.
 
 **Nothing blocks SS-0.**

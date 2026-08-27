@@ -3941,16 +3941,25 @@ func _soot_store_gate_check(derived_faces: Dictionary) -> void:
 				lighter += 1
 				if sample == "" or not sample.begins_with("LIGHTER"):
 					sample = "LIGHTER L%d %s store %s vs derived %s" % [level, cell, p, d]
+	## Store-only cells, histogrammed BY LEVEL. The count alone cannot say whether
+	## the store is keeping something legitimate or hoarding something wrong, and
+	## the level is what tells them apart at a glance: the revealed crater floor
+	## sits on one deep level, while a scatter across wall levels would mean
+	## something else entirely.
+	var store_only_by_level: Dictionary = {}
 	for level in projected:
 		var d_level: Dictionary = derived_faces.get(level, {})
 		for cell in projected[level]:
 			if not d_level.has(cell):
 				store_only += 1
+				store_only_by_level[level] = int(store_only_by_level.get(level, 0)) + 1
 	print("[SS-1-GATE] absorbs %d · store %d cell(s) vs derived %d — %d store-only (expected: permanence), %d darker (expected), %d DERIVED-ONLY, %d LIGHTER  %s"
 		% [_soot_store_absorbs, _soot_store_cell_count(),
 		_derived_cell_count(derived_faces),
 		store_only, darker, derived_only, lighter,
 		("· e.g. " + sample) if sample != "" else ""])
+	if store_only > 0:
+		print("[SS-1-GATE]   store-only by level: %s" % [store_only_by_level])
 	if derived_only > 0 or lighter > 0:
 		push_warning("[SS-1-GATE] %d derived-only + %d lighter — the store did NOT record something the producer handed it (SOOT_STORAGE_REFORM SS-1)"
 			% [derived_only, lighter])

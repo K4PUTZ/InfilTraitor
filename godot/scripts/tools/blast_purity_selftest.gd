@@ -70,6 +70,11 @@ class MinimalRoom extends Node:
 	var _voxel_renderer
 	@warning_ignore("unused_private_class_variable")
 	var _wall_height_edges
+	## SS-3 — a MIRRORED FIELD, not a reimplementation. `test_8` needs somewhere to
+	## observe that `build_plan()` wrote nothing; giving this stub a real
+	## `absorb_scorch()` would be a second soot producer, the exact drift
+	## `SOOT_MASTER_PLAN` §1.2 documents.
+	var _soot_map: Dictionary = {}
 	var map_id: String = "TEST"
 
 
@@ -108,6 +113,9 @@ func _init() -> void:
 			test_6_cancellation_leaves_nothing_behind(
 				bomb_def, source_gu, ctx, edge_registry, slab_registry)
 			test_7_cursor_sweep_and_invalidation(bomb_def, ctx, _sweep_gus(built))
+			## SS-3 — before the commit, because its whole subject is what has NOT
+			## happened yet.
+			test_8_scorch_is_a_proposal_until_commit(delta_a, built["room"])
 			## Mutating — must be last. Everything above assumes an untouched world.
 			test_4_commit_realises_the_delta(delta_a, edge_registry, slab_registry)
 
@@ -263,6 +271,14 @@ func test_4_commit_realises_the_delta(wd: WorldDelta, edge_registry, slab_regist
 		if e["voxel"].damage_state == e["state"]:
 			no_ops += 1
 
+	## ⚠️ SS-3 — COMMITTED WITHOUT A ROOM, ON PURPOSE. `commit(room)`'s scorch half
+	## could be exercised here by giving `MinimalRoom` an `absorb_scorch()`, and
+	## that would prove only that the STUB works: the fixture would be built with
+	## the data that works, which is precisely the failure CLAUDE.md's floor-dent
+	## story records (69 dents on a synthetic patch, zero on the real map). The
+	## scorch half is proven on the REAL map instead, by the SS-1 store gate on a
+	## real detonation. `test_8` below carries the half a fixture CAN prove — that
+	## the plan is a proposal and the store is untouched until commit.
 	wd.commit()
 
 	var wrong: int = 0
@@ -635,3 +651,34 @@ func _pass(msg: String) -> void:
 func _fail(msg: String) -> void:
 	print("  ✗ %s" % msg)
 	failed += 1
+
+
+## SS-3 (`SOOT_STORAGE_REFORM` §3.1) — SOOT JOINED THE MUTATION INVENTORY, AND
+## THIS IS THE LINE THAT SAYS IT DID NOT JOIN `build_plan()`.
+##
+## The reform gives up `PREDICTION_MASTER_PLAN` §2.2's finding that the soot layer
+## is pure — deliberately, on the Director's ruling. The purity that must SURVIVE
+## is this plan's own: `build_plan()` writes nothing, `commit()` is the only
+## writer. So a built plan must CARRY its scorch and the store must still be
+## untouched.
+##
+## This is not a hypothetical. SS-1 shipped exactly the opposite — the shot
+## pre-cook absorbed PREDICTED scorch into the store, for damage the world never
+## produced — and it went unnoticed because nothing read the store yet. This test
+## is the standing version of the check that caught it.
+func test_8_scorch_is_a_proposal_until_commit(wd: WorldDelta, room) -> void:
+	print("[8] SS-3: the blast's scorch is a PROPOSAL until commit()\n")
+	var proposed: int = 0
+	for level in wd.scorch_writes:
+		proposed += (wd.scorch_writes[level] as Dictionary).size()
+	if proposed == 0:
+		_fail("build_plan() produced no scorch proposal at all — the seam is not wired")
+		return
+	var stored: int = 0
+	for level in room._soot_map:
+		stored += (room._soot_map[level] as Dictionary).size()
+	if stored == 0:
+		_pass("%d cell(s) proposed on the Delta, 0 written to the store" % proposed)
+	else:
+		_fail("the store holds %d cell(s) before any commit — build_plan() is not pure"
+			% stored)

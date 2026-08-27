@@ -98,6 +98,20 @@ var touched_voxels: Array = []
 ## producer; the budget in §4.4 is measured against it.
 var cost_ms: float = 0.0
 
+## SS-3 (`SOOT_STORAGE_REFORM` §3.1) — THE SCORCH THIS BLAST PROPOSES, as data.
+##
+## `level -> {view_cell: PackedInt32Array}`, the six-direction record
+## `BlastCalculator.build_soot_field()`'s `out_full` produces. Filled by
+## `DetonationPlanBuilder._phase_soot()` while the plan is still PURE, and written
+## to `Room._soot_map` by `commit()` and nowhere else.
+##
+## ⚠️ **NOT `waves["soot"]`, AND THE TWO MUST NEVER BE MERGED.** That one is a
+## VISUAL bucket — the ordered list of cells the choreographer will paint, with
+## its alt, its ring and its radius — and it is thrown away once the animation has
+## played. This is STATE. The names were kept deliberately far apart because the
+## plan predicted that the first person to see both would try to unify them.
+var scorch_writes: Dictionary = {}
+
 ## Voxel -> projected tuple. Only voxels this Delta actually changes appear.
 var _by_voxel: Dictionary = {}
 
@@ -203,8 +217,19 @@ func project_voxel(voxel) -> Voxel:
 ## Makes this Delta real. The only state-changing call in the class, and the
 ## only one a caller has to think about — everything above is read-only by
 ## construction.
-func commit() -> void:
+## SS-3 — `room` is optional so the purity selftest and any caller with nothing to
+## scorch keep working unchanged. When it is supplied, the proposed scorch lands
+## through `Room.scorch_cell()`'s min-wins, which is the store's ONLY writer.
+##
+## ⚠️ The world revision does NOT get bumped here. `TestZoneController` already
+## calls `room.bump_world_revision()` after this returns, and adding a second bump
+## inside would be a silent extra invalidation of every cached prediction on a
+## path where performance is the standing priority. The requirement is that a
+## committed mutation is followed by a bump, not that it performs one.
+func commit(room = null) -> void:
 	BlastCalculatorClass.commit_damage(damage)
+	if room != null and not scorch_writes.is_empty():
+		room.absorb_scorch(scorch_writes)
 
 
 func is_empty() -> bool:

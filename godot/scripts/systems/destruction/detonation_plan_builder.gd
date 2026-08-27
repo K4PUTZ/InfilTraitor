@@ -736,13 +736,22 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 ## also calls. Measured, named and deliberately not done — §8.8.
 ##
 ## `sub` is the cursor: 0 = blast rings, 1 = weapon rings, 2 = merge + self-soot.
+## SS-3 (`SOOT_STORAGE_REFORM` §3.1) — this phase now also produces the blast's
+## scorch as a PROPOSAL on the Delta (`delta.scorch_writes`), which `commit()`
+## writes to the store. Nothing here mutates: the phase stays as pure as it has
+## always been, which is the whole reason the soot layer was chosen as *"a model
+## to copy"* by `PREDICTION_MASTER_PLAN` §2.2. What changes is that the proposal
+## now has somewhere to go other than the animation.
 static func _phase_soot(s: Dictionary, deadline: int) -> void:
 	var ctx: Dictionary = s["ctx"]
+	var delta = s["delta"]
 	BlastCalculatorClass.build_soot_field(
 		s["cell_to_voxel"], s["blast_cells"], s["weapon_cells"], s["damaged_voxels"],
 		ctx.get("blast_soot_rings", 4), ctx.get("weapon_soot_rings", 3),
-		s["soot_snapshot"], s["soot_faces"], _cells_this_blast_reveals(s))
-	_scorch_revealed_fixed_cells(s, s["soot_snapshot"], s["soot_faces"])
+		s["soot_snapshot"], s["soot_faces"], _cells_this_blast_reveals(s), [],
+		delta.scorch_writes)
+	_scorch_revealed_fixed_cells(s, s["soot_snapshot"], s["soot_faces"],
+		delta.scorch_writes)
 	_enter_phase(s, PHASE_LIGHT)
 
 
@@ -773,7 +782,7 @@ static func _cells_this_blast_reveals(s: Dictionary) -> Dictionary:
 ## the same crater reading clean right after the blast and sooted after a
 ## rotation. Both sides now write the same constant through the same helper.
 static func _scorch_revealed_fixed_cells(s: Dictionary, out_snapshot: Dictionary,
-		out_faces: Dictionary) -> void:
+		out_faces: Dictionary, out_full: Dictionary = {}) -> void:
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
 	for ring_key in s["exposed_by_ring"].keys():
 		for e in s["exposed_by_ring"][ring_key]:
@@ -782,7 +791,7 @@ static func _scorch_revealed_fixed_cells(s: Dictionary, out_snapshot: Dictionary
 			if cell_to_voxel.has(Vector3i(pos.x, pos.y, level)):
 				continue   ## a real Voxel — the BFS already owns it
 			BlastCalculatorClass.scorch_floor_cell(out_snapshot, out_faces,
-				level, pos, BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING)
+				level, pos, BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING, out_full)
 
 
 ## --- Phase 6: ATOMIC. The single map-wide light-field query (§2). ----------

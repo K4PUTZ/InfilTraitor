@@ -1269,7 +1269,11 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 
 	## The commit, and everything that reads real Voxel state after it.
 	var commit_t0: int = Time.get_ticks_usec()
-	job.delta.commit()
+	## SS-3 — `room` is passed so the Delta's `scorch_writes` land in the same call
+	## that writes the damage. The blast's scorch stops reaching the store
+	## second-hand, through a later repaint's own re-derivation, and becomes part
+	## of the commit like every other thing this blast did.
+	job.delta.commit(room)
 	_prof("COMMIT — %.1f ms, %d voxel(s) written" % [
 		float(Time.get_ticks_usec() - commit_t0) / 1000.0, job.delta.touched_voxels.size()])
 	DetonationPlanBuilderClass.print_census(job.delta, gu)

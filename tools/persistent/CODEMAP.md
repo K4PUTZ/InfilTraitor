@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**223 scripts · 71507 lines total** (under `godot/scripts/`)
+**223 scripts · 71601 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1956,7 +1956,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1684 lines
+`class_name DetonationPlanBuilder` · 1693 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2502,7 +2502,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 211 lines
+`class_name WorldDelta` · extends `RefCounted` · 236 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2524,6 +2524,7 @@ extends `Node2D` · 43 lines
 - `var touched: Array[Vector3i] = []`
 - `var touched_voxels: Array = []`
 - `var cost_ms: float = 0.0`
+- `var scorch_writes: Dictionary = {}`
 
 **Public API**
 - `func add_damage(entries: Array) -> void:`
@@ -2533,7 +2534,7 @@ extends `Node2D` · 43 lines
 - `func visible_of(voxel) -> bool:`
 - `func is_blast_of(voxel) -> bool:`
 - `func project_voxel(voxel) -> Voxel:`
-- `func commit() -> void:`
+- `func commit(room = null) -> void:`
 - `func is_empty() -> bool:`
 
 ---
@@ -3008,7 +3009,7 @@ extends `SceneTree` · 2592 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 637 lines
+extends `SceneTree` · 684 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
@@ -4644,7 +4645,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1474 lines
+`class_name TestZoneController` · 1478 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4918,7 +4919,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9222 lines
+extends `Node2D` · 9231 lines
 
 `godot/scripts/world/room.gd`
 

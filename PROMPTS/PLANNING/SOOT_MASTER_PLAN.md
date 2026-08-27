@@ -344,6 +344,17 @@ below and §5's task table both describe A as the shipped answer and B as
 unnecessary, and under this ruling both need rewriting rather than patching.
 Session: `PROMPTS/RESUMO_SESSAO_2026-08-27_PACING_AND_ORDER.md` §5.
 
+➡️ **THAT PLAN NOW EXISTS: [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md)**
+(2026-08-27, still 🟡 not started). Read it before building any of this. Its
+opening finding changes the shape of the work: **the store already exists twice**
+— `VoxelRenderer._soot_images` (RG8, R = the per-face code, one texel per cell)
+and `room._crater_floor_soot` (stored, min-wins, permanent, already persisted by
+`SaveState`, i.e. the ruled B shipped in miniature for the one cell class that
+could not be derived). So the reform is a change of AUTHORITY, not of data
+structure: an emitter writes scorch once, and the repaint stops writing scorch at
+all. That file carries the staging (SS-0…SS-6), the gates, the rotation-keying
+question, and the list of what must NOT be built.
+
 ### 3.3 Recommendation — ⚠️ SUPERSEDED BY §3.2b (2026-08-27)
 
 Kept because the reasoning is the record of why A shipped first, and A's wins

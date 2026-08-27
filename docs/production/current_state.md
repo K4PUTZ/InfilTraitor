@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-08-26 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-08-27 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -82,6 +82,7 @@
 - RESUMO_SESSAO_2026-08-23_FIRE_PERF_AND_P3.md
 - RESUMO_SESSAO_2026-08-24_STALL_AND_LEVEL_RENUMBER.md
 - RESUMO_SESSAO_2026-08-26_PERF_WAVE_AND_CONSEQUENCE.md
+- RESUMO_SESSAO_2026-08-27_PACING_AND_ORDER.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

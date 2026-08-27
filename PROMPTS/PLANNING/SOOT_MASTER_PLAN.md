@@ -8,7 +8,8 @@ filmstrip, `--fixed-fps 60`, grenade 2): the ring spreads across frames 28-32
 outside the smoke plume, no glitch/pop between rungs. What is left is not
 code: the repaint path still has no trustworthy pixel gate (§7's `weapon_fire`
 non-determinism), and §6 Q2/Q3 are now both answered (rotation dropped,
-accumulation not needed).
+accumulation not needed). **2026-08-27: a SECOND phase now exists** — the Director
+ruled that the soot map becomes the source of truth (§3.2b). Ruled, not started.
 Written first as a study, on the Director's request: *"Da uma estudada no jeito
 mais eficiente que nos permita ter fuligem realista sem comprometer a
 performance."*
@@ -18,6 +19,15 @@ that section's authored ring-tone stamp is deleted, not merely disabled
 (§2.0.1, S-KILL-STAMP). `PREDICTION_MASTER_PLAN` §2.2's purity finding still
 holds and was deliberately preserved — soot is still a pure derived field, which
 is exactly why Option B (§3.2) was NOT taken.
+
+⚠️ **THAT LAST CLAUSE IS OVERTAKEN BY A DIRECTOR RULING, 2026-08-27 — see §3.2b.**
+The soot map becomes the source of truth, so soot stops being pure and Option B's
+STORAGE half is now the target. Purity was a means, not the goal, and the ruling
+is about a defect purity cannot fix (§9.11a). **Not started**: everything in this
+file that describes A as the shipped answer and B as unnecessary — §3.3, §5's task
+table, §6 Q3's last sentence — is annotated in place rather than rewritten,
+because the reform wants its own plan first. Read §3.2b before building any of it,
+and note especially that the ruled B is permanent but **NOT** accumulating.
 
 ---
 
@@ -292,7 +302,54 @@ built on "the soot layer is pure" needs re-checking. It also must persist beside
 `room._base_damage`. Memory is not the obstacle (~100 000 voxels × one packed
 int ≈ 0.8 MB); the architectural review is.
 
-### 3.3 Recommendation
+### 3.2b ⛔ DIRECTOR'S RULING, 2026-08-27 — **B IS NOW THE TARGET**, and it is a
+### DIFFERENT B from the one §3.2 above describes
+
+Asked to disambiguate *"vamos terminar de reformar isso e aplicar a fuligem na
+área afetada de forma permanente, no mapa de fuligem, conforme já planejamos"*,
+the Director chose **stop re-deriving; the soot map becomes the source of truth.**
+
+⚠️ **READ THIS BEFORE BUILDING §3.2 AS WRITTEN.** §3.2 bundles two properties that
+are separable, and the ruling takes one and not the other:
+
+| property | §3.2's B | the ruled B |
+|---|---|---|
+| stored per-cell, never re-derived | ✅ yes | ✅ **yes — this is the ask** |
+| accumulates (two blasts get dirtier) | ✅ yes | ❌ **no — §6 Q3 still stands** |
+
+**Permanence and accumulation are different things.** Permanence is a blast's
+scorch never being recomputed or disturbed by a later blast. Accumulation is it
+getting darker each time. §6 Q3 (Director, 2026-08-13: *"Não precisa sujar mais,
+não vamos ter tantas explosões assim"*) answered ACCUMULATION and is **not
+reversed** — an emitter writing into an already-scorched cell still resolves
+min-wins to the same tone it would have produced on a clean one.
+
+So §3.2's bullet *"naturally cumulative: two blasts on one spot get dirtier"* is
+the one part of it that must NOT be built.
+
+**What the ruling is actually solving** is §9.11a's shape: the soot wave is
+rebuilt from a whole-map snapshot on every blast, so a cell in an OLD crater on
+the far side of the map can re-enter the wave because its light bucket moved, and
+be lightened and walked back — a flash of exactly the kind the fade mechanism was
+chosen to avoid. Stored soot cannot express that failure, because nothing
+recomputes an untouched cell.
+
+**Everything §3.2 lists under "Cost, stated plainly" still applies in full** and
+is the reason this has not been started: soot stops being pure, joins
+`WorldDelta.commit()`, grows `PREDICTION_MASTER_PLAN` §2.1's mutation inventory,
+and must persist beside `room._base_damage`.
+
+**Status: ruled, NOT started (2026-08-27).** It wants its own plan first — §3.3
+below and §5's task table both describe A as the shipped answer and B as
+unnecessary, and under this ruling both need rewriting rather than patching.
+Session: `PROMPTS/RESUMO_SESSAO_2026-08-27_PACING_AND_ORDER.md` §5.
+
+### 3.3 Recommendation — ⚠️ SUPERSEDED BY §3.2b (2026-08-27)
+
+Kept because the reasoning is the record of why A shipped first, and A's wins
+are all still real and all still in place. The conclusion — "revisit B when
+segments land" — is what the ruling overtakes: B is now the target, ahead of the
+segment layer rather than behind it.
 
 **A first, B only when the segment persistence layer lands.**
 
@@ -453,9 +510,18 @@ acceptable differences are the ones a task is explicitly for.
    nothing here is a request to remove it.
 3. **Accumulation — ✅ ANSWERED 2026-08-13: no.** Director: "Não precisa sujar
    mais, não vamos ter tantas explosões assim." Two blasts on one spot do not
-   need to leave a dirtier mark than one. Option A (derived, non-accumulating
-   soot) stays as the shipped design; Option B (stored per-voxel state, needing
-   the segment persistence layer) is not needed.
+   need to leave a dirtier mark than one.
+
+   ⚠️ **The last sentence of this answer is SUPERSEDED — see §3.2b (2026-08-27).**
+   It used to read: *"Option A (derived, non-accumulating soot) stays as the
+   shipped design; Option B (stored per-voxel state, needing the segment
+   persistence layer) is not needed."* The Director has since ruled that the soot
+   map becomes the source of truth, which is Option B's STORAGE half.
+
+   **The accumulation answer itself is untouched and still governs.** Permanence
+   and accumulation are separable, and only the first was asked for: stored soot
+   that resolves min-wins is permanent and NON-accumulating. Do not read the
+   ruling as reversing this row.
 
 ---
 

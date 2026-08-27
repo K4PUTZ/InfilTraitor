@@ -1977,8 +1977,11 @@ Director does** — deliberately deferred at 0.9.94's close (*"a gente só vai
 conseguir fazer o fine tuning da fluidez quando todo o mecanismo estiver bem
 estabelecido"*), so the mechanism landed first and the look is untouched. The
 surface, updated for what this session changed:
-`bombs/frag_grenade.json`'s ring weights · `front_frames` / `band_voxels` /
-`front_jitter` / `KIND_RADIUS_BIAS` in `detonation_choreographer.gd`
+`bombs/frag_grenade.json`'s ring weights · `front_frames` (**24** since
+2026-08-27 — it is the blast's DURATION knob and it is denominated in frames, so
+re-check it after any change to frame cost; see `PREDICTION_MASTER_PLAN` Q2) /
+`band_voxels` / `front_jitter` / `KIND_RADIUS_BIAS` in
+`detonation_choreographer.gd`
 (`sequence_ms` is GONE — P-PLAY deleted the wall-clock pacing) · `blast_burst_*`
 in `room.gd` · `burst_lead_frames`, `SHAKE_SECONDS`, `predict_budget_ms` and
 `cook_budget_ms` in `test_zone_controller.gd` · the flash overlay's
@@ -2526,6 +2529,31 @@ Two refinements keep it from reading as machinery: `KIND_RADIUS_BIAS` gives each
 effect a sub-voxel offset so a hole still leads its own scorch at the same
 radius, and `front_jitter` (±0.9 voxel, deterministic FNV-1a per cell) keeps the
 front ragged instead of a perfect expanding ring.
+
+⚠️ **"PER CELL" ONLY BECAME TRUE ON 2026-08-27 (`E-ORDER`, `a68552ab`).** The roll
+was salted per **(KIND, cell)** until then, so each effect on one cell drew an
+INDEPENDENT ±0.45 wobble against biases only 0.05–0.10 apart — and the wobble, not
+the table, decided the order. Measured on the real PLAYGROUND plan:
+
+```
+cracked -> destroy     48 pair(s),  40 inverted  (83.3%)
+destroy -> expose     242 pair(s), 120 inverted  (49.6%)
+dented  -> cracked     92 pair(s),  24 inverted  (26.1%)
+```
+
+The hole opened before its own crack on five cells out of six. This is why
+`E-CLEAN`'s bias correction did not close the Director's *"não podem ser uma
+segunda wave que entra depois"* — E-CLEAN fixed the table, and the table was not
+what was deciding. Per cell, every effect on a cell shares one wobble, so the
+order within a cell is exactly `KIND_RADIUS_BIAS` (0% inversion across all 15 pair
+kinds) and the raggedness survives, because raggedness is a property of WHERE a
+cell is and never of which effect.
+
+**`smoke` was the one played kind carrying no `cell`**, so `_sort_key()`'s
+`Vector2i.ZERO` fallback gave every puff in a blast the SAME roll: a machined
+smoke ring, and a separation from the destruction that was one random constant per
+blast rather than an average. Both smoke construction sites in
+`DetonationPlanBuilder` now carry it.
 
 **2. The authored fireball is gone** (Director: "tirar as animações autoradas por
 enquanto"). Three rounds of tuning an imported sprite — 2× scale, additive blend,

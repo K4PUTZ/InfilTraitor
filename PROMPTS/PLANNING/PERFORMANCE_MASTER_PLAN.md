@@ -3043,3 +3043,96 @@ the refusal path `push_error`s by design (B6) and `run_selftests.py` reads any
 `push_error` as a suite failure — a test of the refusal would have reported the
 suite broken while proving it worked. And a selftest's banner must contain the
 literal `PASS`; *"all checks passed"* is not it.
+
+---
+
+# 14. ⚠️ WHAT §12 COST THE LOOK — the bill arrived the next day (2026-08-27)
+
+**This section exists because §12 and §13 both shipped green and both broke
+something no gate in this plan could see.** Neither was a regression in the
+ordinary sense: the code did what it said, the measurements were honest, the
+selftests passed. What changed was the meaning of numbers written down elsewhere.
+
+## 14.1 The rule: frame cost is a unit, and this plan changes it
+
+`DetonationChoreographer.front_frames` is the blast's duration knob and it is
+denominated in FRAMES. §12 cut the cost of a blast frame from 86.1 ms to 17.6 ms.
+The front's wall clock fell by the same factor and nobody re-tuned it.
+
+```
+ratified 2026-08-09:   5 frames x 86.1 ms  =  430 ms
+after §12 shipped:     5 frames x 17.6 ms  =   88 ms   <- 4.9x shorter, silently
+restoring the ratio:   430 / 17.6          =   24 frames
+```
+
+Measured on the real thing: the entire destruction front — decals, holes, expose,
+debris, embers, smoke — occupied **5 frames / 83 ms** of a 60 fps filmstrip,
+immediately behind a 5-frame strobe covering **99.4% of the screen**. The
+Director's report was that the ordering of the effects could not be read; at 83 ms
+there was no ordering to read. Fixed in `037ea0e5`.
+
+**The instruction this leaves for anyone working in this plan: a change that
+alters frame cost silently retunes every frame-denominated look value in the
+project.** Before closing a performance block, grep for look values counted in
+frames and re-derive them from the seconds they were ratified in.
+`front_frames` was one. `soot_fade_frames_per_step` and the light ramp's
+`frames_per_step` are the others, and both are already computed from seconds
+(`consequence_soot_seconds`, `consequence_light_seconds`) — which is the pattern
+to copy, not the exception.
+
+## 14.2 §13's light beat ran for 2 s and painted almost nothing
+
+`play_consequence_light()` skipped every cell whose origin bucket was
+`BUCKET_UNWRITTEN`, on the reasoning that a sentinel is not a value to lerp out
+of. True of the integer, false of the picture: `voxel_face_shading.gdshader`
+**clamps 255 down to 11**, so such a cell is already drawn at full light.
+
+```
+of 661 changed: 640 UNWRITTEN (skipped the ramp), 21 rampable
+```
+
+⚠️ **And the skipped cells did not "arrive at the end" — they arrived at the
+START.** `_repaint_voxel_light_buckets()` applies the real light to everything;
+the rewind that follows is what puts the ramp's cells back. A skipped cell is
+never rewound, so it keeps the repaint's value — and there is no `await` between
+the two, so that change is presented inside the repaint's own frame, folded into
+the last step of the soot ladder. **96.8% of the ratified beat was not a beat.**
+
+```
+ramp steps that paint:   3  ->  10
+final frame vs control:  0 differing px
+```
+
+Fixed in `037ea0e5`. The destination is provably untouched — a control run with
+only that fix reverted produced a pixel-identical final frame.
+
+## 14.3 ⚠️ `INFILTRAITOR_HIDE_VOXELS` DOES NOT WORK, and §12 used it
+
+It sets `layer.visible = false` inside `VoxelRenderer._build_voxel_layer_node()`.
+In a real PLAYGROUND capture with `INFILTRAITOR_HIDE_VOXELS=1`, **the walls,
+crates and floor are all still drawn.** Verified visually 2026-08-27, not
+investigated further.
+
+The instrument is listed in §12's kept-instruments block and was used to price
+the voxel layers ("hiding all 32 moves the frame by nothing — P3 had already paid
+it", §12.4). **That conclusion rests on an instrument that does not do what its
+own note claims and should be re-measured before it is cited again.**
+
+## 14.4 The measurement discipline that failed three times in one session
+
+All three were numbers reported before they were checked. Recorded here because
+this plan is the one that keeps producing them.
+
+- **"21 572 px of light land in one frame."** ONE boot. Did not reproduce on any
+  later boot of the identical build. §12.7 already states why — the cook is
+  budgeted in milliseconds so the blast lands on a different frame index every
+  run — and the rule was written in this plan and then broken by its own author.
+- **"The fire never goes out — 26 933 px frozen for 8 s."** The mask was counting
+  static scenery (wooden crates, a light cone). The real figure was 2 839 px, and
+  it was not fire: it was the scene background showing through a floor whose two
+  voxel layers had both been destroyed. Not a defect at all.
+- **"It is an overlay, not voxels."** Rested on §14.3's broken instrument.
+
+**The cheap guard for all three: diff each frame against the settled END state
+rather than thresholding on colour.** Static scenery cancels for free, no mask
+tuning, and it needs no change to the map.

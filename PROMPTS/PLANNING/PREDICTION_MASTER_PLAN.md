@@ -615,7 +615,7 @@ longer one beat with a fade running under it:
 |---|---|---|
 | 1 · FIRE | burst + camera shake, alone | `burst_lead_frames` = 3 frames |
 | 2 · STROBE | white → negative → white → negative, fire still burning under it | 4 held frames |
-| 3 · DESTRUCTION | the radial front, with no flash over it at all | `front_frames` = 5 frames |
+| 3 · DESTRUCTION | the radial front, with no flash over it at all | `front_frames` = **24** frames (was 5 — see Q2) |
 
 **The timed fade is deleted, not shortened** — `flash()`, `_process()`,
 `flash_fade_seconds`, `flash_fade_power`, `flash_peak_alpha` and
@@ -1322,7 +1322,32 @@ trailing ripple is therefore **not built**, and if it is ever wanted it needs
 its own decision about what the second wave carries, since destruction can only
 happen once per voxel.
 
-### Q2 — ✅ ANSWERED 2026-08-09, then RE-ANSWERED the same day on the real thing. 5 frames.
+### Q2 — ✅ ANSWERED 2026-08-09 (5 frames), and RE-OPENED BY THE PERFORMANCE WAVE. **24 frames since 2026-08-27.**
+
+⚠️ **READ THIS BEFORE TRUSTING ANY FRAME COUNT BELOW.** The 2026-08-09 answer was
+about DURATION — the Director asked for "1/5 dessa duração" — and 5 frames is what
+bought it *at the frame cost of the day*. `PERFORMANCE_MASTER_PLAN` §12 then cut
+the cost of a blast frame, and because this knob is denominated in FRAMES the
+duration fell with it, unwatched:
+
+```
+ratified 2026-08-09:   5 frames x 86.1 ms  =  430 ms
+measured 2026-08-26:   5 frames x 17.6 ms  =   88 ms
+restoring 430 ms:      430 / 17.6          =   24 frames
+```
+
+Measured before the correction: the entire front occupied **5 frames / 83 ms** of
+a 60 fps filmstrip, right behind a 5-frame strobe covering 99.4% of the screen —
+the Director could not read the ordering because there was no ordering left to
+read. `front_frames` is **24** as of `037ea0e5`; the number landing back on its
+pre-2026-08-09 value is arithmetic, not a revert.
+
+**The generalisable rule, and the reason this is worth a banner:** a performance
+change that alters frame cost silently retunes every frame-denominated look value
+in the project. Session: `PROMPTS/RESUMO_SESSAO_2026-08-27_PACING_AND_ORDER.md` §1.
+
+<details><summary>The 2026-08-09 answer, kept because its reasoning is still correct</summary>
+
 
 First answer was 24 frames, reasoned from 60 fps (≈0.4 s). The Director ran it
 and rejected it: *"ficou ótima a explosão, mas está muito lenta, tem que ter
@@ -1344,6 +1369,8 @@ the same cloud sooner without shortening it.
 **Surfaced by the change, and NOT decided here — see Q5.** At 5 frames the
 entire destruction completes inside the negative flash's own 0.32 s fade, so
 the expanding front is hidden under it.
+
+</details>
 
 ### Q5 — ✅ ANSWERED 2026-08-09. Shorten it, and separate the three beats. See §8.2.
 

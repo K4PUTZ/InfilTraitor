@@ -3446,6 +3446,27 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 			BlastCalculator.scorch_floor_cell(snapshot, out_faces, level, cell,
 					int(_crater_floor_soot[level][cell]), out_full)
 
+	## ⚠️ **A PREDICTION MUST NEITHER WRITE THE STORE NOR READ IT.** Found while
+	## building SS-2, and it was a real defect shipped by SS-1: `_shot_precook()`
+	## calls this with `predict_destroyed` / `predict_damaged` to mint the
+	## alternatives a shot WILL need, and that shot may miss, may be cancelled, and
+	## has certainly not been committed. SS-1 absorbed it anyway — harmless only
+	## because nothing read the store yet, and the exact class of bug SS-3's commit
+	## seam exists to make impossible.
+	##
+	## The READ half matters just as much and in the opposite direction: the warm
+	## has to see the world as it WILL be, so a prediction keeps deriving. Handing
+	## it the committed store would warm the wrong world, which the two-worlds note
+	## in `_shot_precook()` already explains at length.
+	##
+	## The test is the one this function's own cache-reuse guard already uses —
+	## non-empty predict arguments mean "speculative" — rather than a second notion
+	## of the same thing.
+	var is_prediction: bool = not (predict_weapon_cells.is_empty()
+		and predict_damaged.is_empty())
+	if is_prediction:
+		return snapshot
+
 	absorb_scorch(out_full)
 	## SS-1 — THE GATE RUNS AFTER THE ABSORB. See `_soot_store_gate_check()`; the
 	## first version of this ran BEFORE, on the reasoning that comparing the store
@@ -3453,7 +3474,23 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	## two-fire capture showed that ordering measures the wrong thing entirely.
 	if OS.get_environment("INFILTRAITOR_SOOT_STORE_GATE") == "1":
 		_soot_store_gate_check(out_faces)
-	return snapshot
+
+	## SS-2 — **THE FLIP. The store is the answer from here.**
+	##
+	## The derivation above still runs, and still feeds the store — removing it
+	## from the repaint path is SS-5's subtraction, deliberately a separate step so
+	## that this one changes exactly one thing: WHO ANSWERS. That is the whole
+	## ruling (*"o mapa de fuligem passa a ser a fonte da verdade"*); the cost
+	## follows later.
+	##
+	## `INFILTRAITOR_SOOT_STORE_READ=0` returns the derivation instead, so the
+	## before/after pixel diff runs off ONE binary rather than a stash — the same
+	## idiom `INFILTRAITOR_P3` uses, and a strictly better instrument than
+	## rebuilding to compare.
+	if OS.get_environment("INFILTRAITOR_SOOT_STORE_READ") == "0":
+		return snapshot
+	out_faces.clear()
+	return soot_store_projection(out_faces)
 
 
 ## §13.2 — THE INCREMENTAL SOOT INDEX.
@@ -3679,6 +3716,10 @@ const SOOT_BASE_XP: int = 1
 const SOOT_BASE_XN: int = 2
 const SOOT_BASE_YP: int = 3
 const SOOT_BASE_YN: int = 4
+## Down. Vertical, so rotation-invariant exactly like TOP, and it maps straight
+## through. It exists because the ISOTROPIC ring depends on it — see
+## `BlastCalculator.full_faces_to_ring()`.
+const SOOT_BASE_ZN: int = 5
 
 
 ## view slot -> base slot for the perspective the room is in NOW, built once and
@@ -3703,7 +3744,13 @@ func _soot_dir_map_current() -> Dictionary:
 		BlastCalculator.FULL_YP: Vector2i(0, 1),
 		BlastCalculator.FULL_YN: Vector2i(0, -1),
 	}
-	var out := {BlastCalculator.FULL_TOP: SOOT_BASE_TOP}
+	## The two VERTICAL directions map straight through: up is up and down is down
+	## in every perspective, which is the same reason `carved_side_to_base_dir()`
+	## returns TOP/BOTTOM without consulting the mapper at all.
+	var out := {
+		BlastCalculator.FULL_TOP: SOOT_BASE_TOP,
+		BlastCalculator.FULL_ZN: SOOT_BASE_ZN,
+	}
 	for view_slot in slots:
 		var d: Vector2i = PerspectiveMapperClass.cell_to_base(
 			probe + slots[view_slot], _active_perspective, base_size) - origin
@@ -3793,18 +3840,44 @@ func absorb_scorch(full: Dictionary) -> void:
 ## `VoxelLightField.build()` in place of a fresh derivation; today only the gate
 ## calls it.
 func soot_store_view_faces() -> Dictionary:
-	var out: Dictionary = {}
+	var faces: Dictionary = {}
+	soot_store_projection(faces)
+	return faces
+
+
+## SS-2 — THE STORE, ANSWERING BOTH SHAPES THE PIPELINE ASKS FOR.
+##
+## Fills `out_faces` with `level -> {view_cell: Vector3i(top, SE, SW)}` and
+## returns the isotropic `level -> {view_cell: ring}` snapshot: exactly the pair
+## `_build_soot_snapshot()` has always produced, because from SS-2 on this is what
+## produces it.
+##
+## ⚠️ **THE TWO ARE NOT DERIVED FROM EACH OTHER.** The triple is three of the six
+## stored components; the ring is the minimum over all six, which is a different
+## quantity whenever the hole that scorched a cell turns no drawable face toward
+## the camera (`BlastCalculator.full_faces_to_ring()` carries the argument, and
+## the −Z component exists for exactly this). Recovering one from the other is the
+## bug this function is shaped to avoid.
+func soot_store_projection(out_faces: Dictionary) -> Dictionary:
+	var snapshot: Dictionary = {}
 	var base_size := _base_voxel_size()
 	for level in _soot_map:
-		var level_out: Dictionary = {}
+		var level_faces: Dictionary = {}
+		var level_rings: Dictionary = {}
 		for base_xy in _soot_map[level]:
 			var view_cell := PerspectiveMapperClass.cell_from_base(
 				base_xy, _active_perspective, base_size)
-			level_out[view_cell] = BlastCalculator.full_faces_to_view(
-				_base_full_to_view(BlastCalculator.decode_full_faces(
-					int(_soot_map[level][base_xy]))))
-		out[int(level)] = level_out
-	return out
+			var stored := BlastCalculator.decode_full_faces(
+				int(_soot_map[level][base_xy]))
+			level_faces[view_cell] = BlastCalculator.full_faces_to_view(
+				_base_full_to_view(stored))
+			## The ring is direction-agnostic, so it comes off the STORED record
+			## with no base→view step — one less place for the mapping to be
+			## applied twice, or applied to something that does not rotate.
+			level_rings[view_cell] = BlastCalculator.full_faces_to_ring(stored)
+		out_faces[int(level)] = level_faces
+		snapshot[int(level)] = level_rings
+	return snapshot
 
 
 ## SS-1's GATE — `INFILTRAITOR_SOOT_STORE_GATE=1`.

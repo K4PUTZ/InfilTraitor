@@ -1,8 +1,9 @@
 # SOOT_STORAGE_REFORM
 ## The soot map becomes the source of truth — plan, 2026-08-27
 
-**Status:** 🟡 **SS-0 and SS-1 DONE. The store exists and runs in SHADOW —
-nothing reads it for rendering yet; SS-2 is the flip.** Gate results in §5.1.
+**Status:** 🟢 **SS-0, SS-1 and SS-2 DONE — THE STORE IS THE SOURCE OF TRUTH.**
+The repaint still derives (SS-5 removes that); what changed is who answers. Gate
+results in §5.1 and §5.2. ⚠️ §5.1 carries a CORRECTION to a number SS-1 reported.
 ⚠️ **SS-0 demoted this plan's own headline motivation** — PERF-P3 already killed the §9.11a flicker, and the §9.11b guard is inert by default. Measured, not reasoned: §1.1b. The reform still stands, on the Director's design ask, on §1.2's structural wins, and on §3.4.
 **Both open questions were answered the same day (§6), and one of them changed
 the plan:** rotation was disabled for **performance**, not because the game is
@@ -432,7 +433,7 @@ before it owns the picture, and nothing is deleted until the picture is proven.*
 |---|---|---|
 | ✅ **SS-0** | **Arm the instrument first.** The §9.11b two-fire watcher (`INFILTRAITOR_CAPTURE_ACTION=two_fires`, `INFILTRAITOR_TWO_FIRES_GUS`, `[TWO-FIRES-WATCH]`). | ✅ **DONE, and the red lever is NOT the one this row specified.** Reverting the guard proves nothing, because the guard is **inert by default** (§1.1b). The lever that works is `INFILTRAITOR_P3=0`: red **175 flickering / 175 skipped**, green **0 / 0**, two instruments agreeing to the cell. The instrument is validated — and the run demoted §1.1 from motivation to history. |
 | ✅ **SS-1** | **The store, in shadow.** `Room._soot_map` + `scorch_cell()` / `absorb_scorch()`, base-keyed with the §2.1b five-direction format, produced in parallel by `BlastCalculator`'s `out_full` and **read by nothing but the gate**. | ✅ **PASSES on both real paths — see §5.1.** `INFILTRAITOR_SOOT_STORE_GATE=1`: **0 DERIVED-ONLY, 0 LIGHTER** on an agent shot and on two real fires; 4 new selftests prove the round-trip over 180 direction cases. ⚠️ The gate proves the format is LOSSLESS, not §2.1b — it projects back into the perspective it wrote in, so the two extra directions are never read. SS-6 is the other half. |
-| **SS-2** | **Flip the read.** `_build_soot_snapshot()` returns the store. | **Pixel-diff, `INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES=400`, 0 differing px.** A first blast on a clean board cannot look different — permanence changes nothing about it. ⚠️ Capture the "before" side by stashing the change and re-running, same binary, same map. |
+| ✅ **SS-2** | **Flip the read.** `_build_soot_snapshot()` returns `soot_store_projection()`; the derivation still runs and still feeds the store (SS-5 removes it). Also: the format grew a **sixth** direction, and the shot pre-cook stopped writing speculative scorch — §5.2. | ✅ **CONTROL 0 px, GATE 0 px** on a real concrete detonation at the 400-frame settle. No stash needed: `INFILTRAITOR_SOOT_STORE_READ=0` gives the old answer from the same binary. |
 | **SS-3** | **The commit seam.** Scorch leaves the prediction as a proposal; `delta.commit()` writes it; `bump_world_revision()`. | The two-fire capture: fire 1's region **0 flickered, 0 changed** across the whole of fire 2. Plus `run_selftests.py` clean, including the leak gate. |
 | **SS-4** | **Checkpoint persistence** (§3.3). `SaveState` v2, `crater_floor_soot` absorbed, `_soot_map` added to `clear_run_state()`. | `save_state_selftest` round-trips a sooted board; a restore reproduces it pixel-identically; and **a cleared run state leaves zero scorch** — the "acabou a fase" half, which is the one that fails silently. |
 | **SS-5** | **Subtraction.** Retire the repaint-side re-derivation and whatever §3.5's grep proves dead. | Repo-wide grep and a named caller list **pasted into the commit**, not summarised. 0-px gate again after. |
@@ -464,9 +465,32 @@ five-direction record projects to today's triple across **180 (ring × direction
 n_rings × falloff) cases**, it keeps the two directions the triple discards, the
 base-5 pack round-trips inside 0..3124, and merging is min per direction.
 
-⚠️ **The `2 store-only` on the shot is not noise — it is the reform, visible.**
-Between two repaints of ONE shot the derivation lost two cells the store kept.
-That is §1.3's family arriving on its own, without a second event.
+⛔ **CORRECTION, SS-2: the `2 store-only` on the shot was NOT the reform — it
+was a defect SS-1 shipped.** It was reported here, and to the Director, as
+*"between two repaints of ONE shot the derivation lost two cells the store kept
+— §1.3's family arriving on its own"*. It was not. `_shot_precook()` calls
+`_build_soot_snapshot()` with `predict_destroyed` / `predict_damaged` to mint the
+alternatives a shot WILL need, and SS-1 absorbed that **speculative** scorch into
+the store. The two extra cells were damage the shot predicted and the world never
+produced.
+
+Harmless while nothing read the store, and fatal the moment SS-2 made it the
+answer. The fix is an early return on the same "non-empty predict arguments mean
+speculative" test this function's own cache-reuse guard already uses; a
+prediction now neither writes the store nor reads it, the second half mattering
+just as much, because the warm has to see the world as it WILL be.
+
+Measured, same capture, with the fix:
+
+```
+before   absorbs 2 · store 86 vs derived 84 — 2 store-only
+after    absorbs 1 · store 84 vs derived 84 — 0 store-only
+```
+
+**The genuine permanence signal in these runs is the two fires' `1 darker`,**
+which is unchanged by the fix — a cell the store holds darker than the fresh
+derivation would now paint it. One cell is not much of a headline, and saying so
+is better than keeping a bigger number that turned out to be a bug.
 
 **And the gate was wrong the first time, in a way worth recording.** It ran BEFORE
 the absorb, on the argument that comparing the store against the dictionary that
@@ -493,6 +517,56 @@ from"*, and under the checkpoint model (§3.3) forgetting is the half that fails
 silently — a store left behind is last level's crater. The selftest asserts it,
 and adding the field turned that suite red first (`RoomStub` had no `_soot_map`),
 which is the red-before-green for the clear being wired at all.
+
+---
+
+### 5.2 SS-2 as built — the flip, and the gate that had to be earned first
+
+**The store answers now.** `_build_soot_snapshot()` still derives (removing that
+is SS-5's subtraction, deliberately separate so this step changes exactly one
+thing: **who answers**), feeds the store, and then returns
+`soot_store_projection()`. `INFILTRAITOR_SOOT_STORE_READ=0` returns the
+derivation instead — the `INFILTRAITOR_P3` idiom — so the before/after diff runs
+off ONE binary rather than a stash, which is a strictly better instrument than
+rebuilding to compare.
+
+⚠️ **The format grew a sixth component here, and the reason is worth reading.**
+§2.1b specified five, on the argument that −Z is never drawn from any perspective
+so storing it could not change a picture. True, and beside the point: SS-2 makes
+the store answer the **isotropic** snapshot too, and `derive_soot_rings()` writes
+`capped` there for a voxel reached from BELOW while every drawable face correctly
+falls to `faint`. Over five components that case is unrecoverable, and the only
+symptom would have been `soot_factor()` — and through it `_compute_bucket()`'s
+jitter exemption — quietly reading lighter on cells scorched from underneath.
+Found by working out the projection, not by a test going red. 5⁶ = 15 625, still
+one int.
+
+**The pixel gate, concrete gu (2,2), grenade cell 3,5, 400-frame settle:**
+
+```
+CONTROL  (READ=0 vs READ=0):  0 differing px
+GATE     (READ=0 vs READ=1):  0 differing px
+```
+
+The control is not a formality and is not optional: a 0-px claim from a harness
+that has not been shown deterministic is noise wearing a number. It was run
+first, and it earned the second line.
+
+**The real paths, with the flip active and the SS-1 gate still armed:**
+
+```
+agent shot   absorbs 1 · store    84 vs derived    84 — 0 DERIVED-ONLY, 0 LIGHTER
+two fires    absorbs 1 · store 2 782 vs derived 2 782 — 0 DERIVED-ONLY, 0 LIGHTER
+             absorbs 2 · store 5 731 vs derived 5 731 — 0/0, 1 darker
+```
+
+Selftests 93 PASS / 0 FAIL: the sixth component recovers the isotropic ring from
+all six directions across 180 cases, and the from-below case is asserted on its
+own so a reader sees WHY rather than only THAT.
+
+**Still true and still SS-6's:** this gate projects the store back into the
+perspective it wrote in, so the three extra directions are never read. Nothing
+here proves §2.1b.
 
 ---
 

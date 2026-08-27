@@ -111,6 +111,7 @@ func _init() -> void:
 	test_full_faces_keep_what_the_view_triple_discards()
 	test_full_faces_pack_round_trips()
 	test_full_faces_merge_is_min_per_direction()
+	test_full_faces_recover_the_isotropic_ring()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -2509,11 +2510,11 @@ func test_full_faces_pack_round_trips() -> void:
 			n += 1
 			if BlastCalculatorClass.decode_full_faces(code) != faces:
 				bad += 1
-			## The layout must also fit the space the plan claims: 5^5 = 3125.
-			if code < 0 or code >= 3125:
+			## The layout must also fit the space the plan claims: 5^6 = 15625.
+			if code < 0 or code >= 15625:
 				bad += 1
 	if bad == 0:
-		_pass("%d packs round-trip, every code inside 0..3124" % n)
+		_pass("%d packs round-trip, every code inside 0..15624" % n)
 	else:
 		_fail("%d of %d packs failed to round-trip or left the 3125 space" % [bad, n])
 
@@ -2542,3 +2543,50 @@ func test_full_faces_merge_is_min_per_direction() -> void:
 		_pass("min-wins per direction: 2 beat 3, 0 beat 1, an unseen direction landed, TOP stayed clean")
 	else:
 		_fail("merge produced %s" % [got])
+
+
+## SS-2 — THE SIXTH COMPONENT EARNS ITS PLACE HERE, AND NOWHERE ELSE.
+##
+## `derive_soot_rings()` writes `capped` into the ISOTROPIC snapshot for every
+## direction it reaches a voxel through — including BELOW, where all three
+## drawable faces correctly fall to `faint`. SS-2 makes the store answer that
+## snapshot too, so the ring has to be recoverable from the record. Over five
+## components it is not: the −Z case loses it silently, and the only symptom would
+## be `soot_factor()` (and through it `_compute_bucket()`'s jitter exemption)
+## quietly reading a lighter value on cells scorched from underneath.
+func test_full_faces_recover_the_isotropic_ring() -> void:
+	print("\n[SS-2] the isotropic ring is recoverable from the record, from every direction")
+	var dirs: Array = [
+		Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+		Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+		Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+	]
+	var bad: int = 0
+	var checked: int = 0
+	var below_ok: bool = false
+	for n_rings: int in [1, 2, 3, 4]:
+		for falloff: int in [0, 1, 2]:
+			for ring: int in range(n_rings):
+				for d: Vector3i in dirs:
+					var full := BlastCalculatorClass._full_faces_for(ring, d, n_rings, falloff)
+					var got := BlastCalculatorClass.full_faces_to_ring(full)
+					checked += 1
+					if got != ring:
+						bad += 1
+						if bad <= 3:
+							print("      ring %d toward %s n=%d fall=%d : recovered %d"
+								% [ring, d, n_rings, falloff, got])
+	## And the case that forced the sixth component, stated on its own so a future
+	## reader sees WHY rather than only THAT: from below, every drawable face is
+	## faint and the ring is still 0.
+	var below := BlastCalculatorClass._full_faces_for(0, Vector3i(0, 0, -1), 3, 1)
+	var view := BlastCalculatorClass.full_faces_to_view(below)
+	below_ok = (BlastCalculatorClass.full_faces_to_ring(below) == 0
+		and view.x == 1 and view.y == 1 and view.z == 1)
+	if bad == 0 and below_ok:
+		_pass("%d cases recover their ring; from BELOW the ring is 0 while all three drawn faces read faint" % checked)
+	elif bad > 0:
+		_fail("%d of %d cases lost the isotropic ring" % [bad, checked])
+	else:
+		_fail("the from-below case did not behave as specified: ring %d, view %s"
+			% [BlastCalculatorClass.full_faces_to_ring(below), view])

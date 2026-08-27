@@ -1449,10 +1449,19 @@ static func _write_face_rings(out_faces: Dictionary, level: int, cell: Vector2i,
 ## perspective rotation, two faces that were never written become visible, and the
 ## value they present was a placeholder for "not drawn", not a measurement.
 ##
-## So the reform's store keeps FIVE components instead of three — the top plus all
-## four horizontal directions — and the extra two carry the rings the BFS already
-## measured and used to discard. Bottom (−Z) is never drawn from any perspective
-## and is deliberately absent; five, not six.
+## So the reform's store keeps SIX components instead of three — every neighbour
+## the BFS can reach a voxel through — and the extra three carry the rings the
+## triple discards.
+##
+## ⚠️ **SIX, NOT FIVE, AND THE SIXTH IS BOTTOM.** This started as five on the
+## reasoning that −Z is never drawn from any perspective, so storing it could not
+## change a picture. True, and beside the point: the ISOTROPIC ring
+## (`out_snapshot`, what `VoxelLightField.soot_factor()` and `_stale_cells()`
+## read) is `capped` for a voxel reached from BELOW, while every drawable face
+## falls to `faint`. Without a −Z component, `min` over the record loses that
+## case and the isotropic map could not be recovered from the store at all —
+## which SS-2 needs, because SS-2 makes the store answer BOTH shapes. Found by
+## working out SS-2's projection, not by a test failing.
 ##
 ## ⚠️ **THESE ARE STILL VIEW-SPACE DIRECTIONS.** The BFS has no business knowing
 ## about perspectives, and `carved_side_to_base_dir()`'s note is explicit that
@@ -1464,12 +1473,15 @@ static func _write_face_rings(out_faces: Dictionary, level: int, cell: Vector2i,
 ## NOT fit the RG8 soot plane's one byte and does not need to: the plane keeps the
 ## unchanged 125-code view triple, and this format only ever lives in a plain int
 ## in the store.
-const FULL_FACE_COUNT: int = 5
+const FULL_FACE_COUNT: int = 6
 const FULL_TOP: int = 0   ## +Z, rotation-invariant
 const FULL_XP:  int = 1   ## view +X — the SE face in this perspective
 const FULL_XN:  int = 2   ## view −X — never drawn in this perspective
 const FULL_YP:  int = 3   ## view +Y — the SW face in this perspective
 const FULL_YN:  int = 4   ## view −Y — never drawn in this perspective
+## −Z. Never drawn from ANY perspective, and stored anyway: it is the only way
+## the isotropic ring survives the round trip — see `full_faces_to_ring()`.
+const FULL_ZN:  int = 5
 
 
 static func full_faces_clean() -> PackedInt32Array:
@@ -1514,6 +1526,25 @@ static func full_faces_to_view(faces: PackedInt32Array) -> Vector3i:
 	return Vector3i(faces[FULL_TOP], faces[FULL_XP], faces[FULL_YP])
 
 
+## The ISOTROPIC ring — `out_snapshot`'s value, which is a different quantity from
+## `min` of the three drawable faces and must not be confused with it.
+##
+## `derive_soot_rings()` writes `capped` into the snapshot for EVERY direction it
+## reaches a voxel through, including the two horizontals that turn no face toward
+## the camera and including BELOW, where all three drawable faces fall to `faint`.
+## Taken over all six components the minimum is exactly that `capped`, because the
+## reached direction holds `ring` and every other holds `faint >= ring`.
+##
+## Min also commutes with the per-component merge, so an accumulated record yields
+## the same ring the snapshot's own "a nearer hole already claimed this" rule
+## produces.
+static func full_faces_to_ring(faces: PackedInt32Array) -> int:
+	var lo: int = faces[0]
+	for i: int in range(1, FULL_FACE_COUNT):
+		lo = mini(lo, faces[i])
+	return lo
+
+
 ## The five-direction counterpart of `_face_rings_for()`, and deliberately written
 ## beside it rather than derived from it: the two are checked against each other,
 ## so one expressing the other would make the check tautological (B3's rule).
@@ -1535,9 +1566,12 @@ static func _full_faces_for(ring: int, toward: Vector3i, n_rings: int,
 		out[FULL_YP] = ring
 	elif toward == Vector3i(0, -1, 0):
 		out[FULL_YN] = ring
-	## toward == (0,0,-1) — the hole is BELOW. No drawable face turns toward it
-	## from any perspective, so nothing is claimed; every component stays faint,
-	## which is what `_face_rings_for()` produces for this case too.
+	elif toward == Vector3i(0, 0, -1):
+		## The hole is BELOW. No drawable face turns toward it from any
+		## perspective — `_face_rings_for()` correctly leaves every visible face
+		## on `faint`, and `full_faces_to_view()` reproduces that — but the
+		## ISOTROPIC ring is still `ring`, and this component is what carries it.
+		out[FULL_ZN] = ring
 	return out
 
 

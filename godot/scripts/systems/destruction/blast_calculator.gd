@@ -1337,7 +1337,7 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 		n_rings: int, out_snapshot: Dictionary, out_faces: Dictionary = {},
 		face_soot_falloff: int = 1, intensity_rings: int = 0,
-		also_visible: Dictionary = {}) -> void:
+		also_visible: Dictionary = {}, out_full: Dictionary = {}) -> void:
 	if destroyed_cells.is_empty() or n_rings <= 0:
 		return
 	var intensity: int = intensity_rings if intensity_rings > 0 else n_rings
@@ -1380,14 +1380,22 @@ static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 				if existing >= 0 and existing < capped:
 					continue
 				var faces := _face_rings_for(capped, -d, intensity, face_soot_falloff)
+				## SS-1 — the same tag in the five-direction format, written in
+				## PARALLEL and read by nothing yet. The two are produced from the
+				## identical `(capped, -d, intensity, falloff)` so a divergence
+				## between them can only be a bug in one of the two functions,
+				## which is exactly what the SS-1 gate looks for.
+				var full := _full_faces_for(capped, -d, intensity, face_soot_falloff)
 				if existing < 0:
 					level_map[voxel.grid_pos] = capped
 					_write_face_rings(out_faces, voxel.level, voxel.grid_pos, faces, false)
+					_write_full_faces(out_full, voxel.level, voxel.grid_pos, full, false)
 					next_frontier.append(ncell)
 				else:
 					## Same ring, another direction: merge (min per face) so a corner
 					## voxel scorches on every side that actually saw a hole.
 					_write_face_rings(out_faces, voxel.level, voxel.grid_pos, faces, true)
+					_write_full_faces(out_full, voxel.level, voxel.grid_pos, full, true)
 		frontier = next_frontier
 		if frontier.is_empty():
 			break
@@ -1427,6 +1435,128 @@ static func _write_face_rings(out_faces: Dictionary, level: int, cell: Vector2i,
 		var prev: Vector3i = level_faces[cell]
 		level_faces[cell] = Vector3i(
 			mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
+		return
+	level_faces[cell] = faces
+
+
+## SS-1 / `SOOT_STORAGE_REFORM` §2.1b — THE FIVE-DIRECTION SCORCH RECORD.
+##
+## `Vector3i(top, SE, SW)` above is a VIEW-space triple: `_face_rings_for()`'s own
+## header says so — *"+Z is the top diamond, +X the SE face, +Y the SW face"* — and
+## a direction that is not one of those three leaves every component on the
+## isotropic `faint` fallback, because it cannot be drawn. Derived per view that is
+## exactly right and costs nothing. **Stored, it is a hole in the record:** after a
+## perspective rotation, two faces that were never written become visible, and the
+## value they present was a placeholder for "not drawn", not a measurement.
+##
+## So the reform's store keeps FIVE components instead of three — the top plus all
+## four horizontal directions — and the extra two carry the rings the BFS already
+## measured and used to discard. Bottom (−Z) is never drawn from any perspective
+## and is deliberately absent; five, not six.
+##
+## ⚠️ **THESE ARE STILL VIEW-SPACE DIRECTIONS.** The BFS has no business knowing
+## about perspectives, and `carved_side_to_base_dir()`'s note is explicit that
+## there must be no second rotation formula in this file. `Room.scorch_cell()`
+## converts view → base on the way into the store, exactly where
+## `record_voxel_damage_to_base()` already does it for damage.
+##
+## The layout is base-`FACE_SOOT_BASE` (5) over 5 digits = 3 125 values, which does
+## NOT fit the RG8 soot plane's one byte and does not need to: the plane keeps the
+## unchanged 125-code view triple, and this format only ever lives in a plain int
+## in the store.
+const FULL_FACE_COUNT: int = 5
+const FULL_TOP: int = 0   ## +Z, rotation-invariant
+const FULL_XP:  int = 1   ## view +X — the SE face in this perspective
+const FULL_XN:  int = 2   ## view −X — never drawn in this perspective
+const FULL_YP:  int = 3   ## view +Y — the SW face in this perspective
+const FULL_YN:  int = 4   ## view −Y — never drawn in this perspective
+
+
+static func full_faces_clean() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(FULL_FACE_COUNT)
+	out.fill(FACE_SOOT_CLEAN)
+	return out
+
+
+## Base-5 pack, most-significant digit first, mirroring
+## `VoxelLightField.encode_face_soot()`'s layout so the two read the same way.
+static func encode_full_faces(faces: PackedInt32Array) -> int:
+	var base: int = FACE_SOOT_CLEAN + 1
+	var code: int = 0
+	for i: int in range(FULL_FACE_COUNT):
+		var v: int = clampi(faces[i] if i < faces.size() else FACE_SOOT_CLEAN,
+			0, FACE_SOOT_CLEAN)
+		code = code * base + v
+	return code
+
+
+static func decode_full_faces(code: int) -> PackedInt32Array:
+	var base: int = FACE_SOOT_CLEAN + 1
+	var out := PackedInt32Array()
+	out.resize(FULL_FACE_COUNT)
+	var c: int = maxi(code, 0)
+	for i: int in range(FULL_FACE_COUNT - 1, -1, -1):
+		out[i] = c % base
+		@warning_ignore("integer_division")
+		c = c / base
+	return out
+
+
+## The five-direction record, seen from the perspective it was written in — the
+## exact `Vector3i(top, SE, SW)` the rest of the pipeline speaks.
+##
+## ⚠️ **THIS IS THE ROUND-TRIP SS-1 GATES.** For every direction the BFS can reach
+## a voxel from, `full_faces_to_view(_full_faces_for(...))` must equal
+## `_face_rings_for(...)` component for component, or the store is not a superset
+## of what ships today. Proven per case in `blast_calculator_selftest.gd`.
+static func full_faces_to_view(faces: PackedInt32Array) -> Vector3i:
+	return Vector3i(faces[FULL_TOP], faces[FULL_XP], faces[FULL_YP])
+
+
+## The five-direction counterpart of `_face_rings_for()`, and deliberately written
+## beside it rather than derived from it: the two are checked against each other,
+## so one expressing the other would make the check tautological (B3's rule).
+static func _full_faces_for(ring: int, toward: Vector3i, n_rings: int,
+		falloff: int) -> PackedInt32Array:
+	var faint: int = ring + maxi(falloff, 0)
+	if faint >= n_rings:
+		faint = FACE_SOOT_CLEAN
+	var out := PackedInt32Array()
+	out.resize(FULL_FACE_COUNT)
+	out.fill(faint)
+	if toward == Vector3i(0, 0, 1):
+		out[FULL_TOP] = ring
+	elif toward == Vector3i(1, 0, 0):
+		out[FULL_XP] = ring
+	elif toward == Vector3i(-1, 0, 0):
+		out[FULL_XN] = ring
+	elif toward == Vector3i(0, 1, 0):
+		out[FULL_YP] = ring
+	elif toward == Vector3i(0, -1, 0):
+		out[FULL_YN] = ring
+	## toward == (0,0,-1) — the hole is BELOW. No drawable face turns toward it
+	## from any perspective, so nothing is claimed; every component stays faint,
+	## which is what `_face_rings_for()` produces for this case too.
+	return out
+
+
+## Min-wins per component, the same rule and the same signature shape as
+## `_write_face_rings()`. `merge = false` still merges when an entry exists —
+## `derive_soot_rings()` calls it that way only on the write that also seeds the
+## snapshot, where no entry can exist yet.
+static func _write_full_faces(out_full: Dictionary, level: int, cell: Vector2i,
+		faces: PackedInt32Array, merge: bool) -> void:
+	if not out_full.has(level):
+		out_full[level] = {}
+	var level_faces: Dictionary = out_full[level]
+	if merge and level_faces.has(cell):
+		var prev: PackedInt32Array = level_faces[cell]
+		var merged := PackedInt32Array()
+		merged.resize(FULL_FACE_COUNT)
+		for i: int in range(FULL_FACE_COUNT):
+			merged[i] = mini(prev[i], faces[i])
+		level_faces[cell] = merged
 		return
 	level_faces[cell] = faces
 
@@ -1484,20 +1614,25 @@ static func build_soot_field(cell_to_voxel: Dictionary, blast_cells: Array,
 		weapon_cells: Array, damaged_voxels: Array,
 		blast_rings: int, weapon_rings: int,
 		out_snapshot: Dictionary, out_faces: Dictionary,
-		also_visible: Dictionary = {}, predicted_damaged: Array = []) -> void:
+		also_visible: Dictionary = {}, predicted_damaged: Array = [],
+		out_full: Dictionary = {}) -> void:
 	var blast_snapshot: Dictionary = {}
 	var blast_faces: Dictionary = {}
+	var blast_full: Dictionary = {}
 	derive_soot_rings(cell_to_voxel, blast_cells, blast_rings,
-		blast_snapshot, blast_faces, 1, FACE_SOOT_CLEAN, also_visible)
+		blast_snapshot, blast_faces, 1, FACE_SOOT_CLEAN, also_visible, blast_full)
 	var weapon_snapshot: Dictionary = {}
 	var weapon_faces: Dictionary = {}
+	var weapon_full: Dictionary = {}
 	derive_soot_rings(cell_to_voxel, weapon_cells, weapon_rings,
-		weapon_snapshot, weapon_faces)
-	merge_soot_field(out_snapshot, out_faces, blast_snapshot, blast_faces)
-	merge_soot_field(out_snapshot, out_faces, weapon_snapshot, weapon_faces)
-	apply_self_soot(damaged_voxels, out_snapshot, out_faces)
+		weapon_snapshot, weapon_faces, 1, 0, {}, weapon_full)
+	merge_soot_field(out_snapshot, out_faces, blast_snapshot, blast_faces,
+		out_full, blast_full)
+	merge_soot_field(out_snapshot, out_faces, weapon_snapshot, weapon_faces,
+		out_full, weapon_full)
+	apply_self_soot(damaged_voxels, out_snapshot, out_faces, out_full)
 	## W-PRECOOK-02: damage the caller knows is coming but has not written yet.
-	apply_self_soot_predicted(predicted_damaged, out_snapshot, out_faces)
+	apply_self_soot_predicted(predicted_damaged, out_snapshot, out_faces, out_full)
 
 
 ## Merges one scratch soot pass into a snapshot/face pair, min-wins per cell and
@@ -1508,7 +1643,16 @@ static func build_soot_field(cell_to_voxel: Dictionary, blast_cells: Array,
 ## byte-identical 23-line copies of each other (verified line by line before
 ## either was deleted).
 static func merge_soot_field(out_snapshot: Dictionary, out_faces: Dictionary,
-		src_snapshot: Dictionary, src_faces: Dictionary) -> void:
+		src_snapshot: Dictionary, src_faces: Dictionary,
+		out_full: Dictionary = {}, src_full: Dictionary = {}) -> void:
+	## SS-1 — the five-direction record merges by the SAME min-wins rule, and it
+	## must: `min` commutes with the view projection (`full_faces_to_view()` picks
+	## three components out of five, and a per-component minimum of a projection is
+	## the projection of the per-component minimum), which is the only reason the
+	## two representations can be merged independently and still agree.
+	for level in src_full:
+		for cell in src_full[level]:
+			_write_full_faces(out_full, level, cell, src_full[level][cell], true)
 	for level in src_snapshot:
 		if not out_snapshot.has(level):
 			out_snapshot[level] = {}
@@ -1537,7 +1681,7 @@ static func merge_soot_field(out_snapshot: Dictionary, out_faces: Dictionary,
 ## Voxel behind them: the detonation's revealed FIXED earth level, and room's
 ## persistent `_crater_floor_soot` replay.
 static func scorch_floor_cell(out_snapshot: Dictionary, out_faces: Dictionary,
-		level: int, cell: Vector2i, ring: int) -> void:
+		level: int, cell: Vector2i, ring: int, out_full: Dictionary = {}) -> void:
 	if not out_snapshot.has(level):
 		out_snapshot[level] = {}
 	var level_map: Dictionary = out_snapshot[level]
@@ -1545,6 +1689,12 @@ static func scorch_floor_cell(out_snapshot: Dictionary, out_faces: Dictionary,
 		level_map[cell] = ring
 	_write_face_rings(out_faces, level, cell,
 		Vector3i(ring, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN), true)
+	## SS-1 — a floor cell has exactly one visible face and it is the TOP, which is
+	## the one direction that is rotation-invariant. This entry is therefore
+	## complete rather than partial: there is nothing a rotation could reveal.
+	var full := full_faces_clean()
+	full[FULL_TOP] = ring
+	_write_full_faces(out_full, level, cell, full, true)
 
 
 ## D33-SOOT-01 (Director, 2026-08-03): "algumas armas... deixam tudo limpo.
@@ -1629,10 +1779,11 @@ static func _self_soot_faces(damage_state: int, blast_sourced: bool, carved_side
 ## derive_soot_rings() populates them: out_faces per-face (render-facing),
 ## out_snapshot the isotropic min-of-faces ring (soot_factor()/probes/tests).
 ## Call AFTER derive_soot_rings() so a stronger nearby-hole ring always wins.
-static func apply_self_soot(voxels: Array, out_snapshot: Dictionary, out_faces: Dictionary) -> void:
+static func apply_self_soot(voxels: Array, out_snapshot: Dictionary,
+		out_faces: Dictionary, out_full: Dictionary = {}) -> void:
 	for v in voxels:
 		_write_self_soot(v.level, v.grid_pos, v.damage_state, v.damage_is_blast,
-			v.damage_carved_side, out_snapshot, out_faces)
+			v.damage_carved_side, out_snapshot, out_faces, out_full)
 
 
 ## W-PRECOOK-02 (2026-08-19) — the same thing for damage that has NOT HAPPENED
@@ -1646,11 +1797,11 @@ static func apply_self_soot(voxels: Array, out_snapshot: Dictionary, out_faces: 
 ## being fed live Voxels and contributed exactly nothing for that reason, which
 ## is why the soot pass still minted 19 alternatives of its own.
 static func apply_self_soot_predicted(entries: Array, out_snapshot: Dictionary,
-		out_faces: Dictionary) -> void:
+		out_faces: Dictionary, out_full: Dictionary = {}) -> void:
 	for e in entries:
 		var v: Voxel = e["voxel"]
 		_write_self_soot(v.level, v.grid_pos, int(e["state"]), bool(e["is_blast"]),
-			int(e["carved_side"]), out_snapshot, out_faces)
+			int(e["carved_side"]), out_snapshot, out_faces, out_full)
 
 
 ## One damaged voxel's faint own-face soot, merged into the pair of out-params
@@ -1658,11 +1809,27 @@ static func apply_self_soot_predicted(entries: Array, out_snapshot: Dictionary,
 ## can only ever scorch a mark the same way.
 static func _write_self_soot(level: int, grid_pos: Vector2i, damage_state: int,
 		blast_sourced: bool, carved_side: int,
-		out_snapshot: Dictionary, out_faces: Dictionary) -> void:
+		out_snapshot: Dictionary, out_faces: Dictionary,
+		out_full: Dictionary = {}) -> void:
 	var faces := _self_soot_faces(damage_state, blast_sourced, carved_side)
 	if faces == Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN):
 		return
 	_write_face_rings(out_faces, level, grid_pos, faces, true)
+	## SS-1 — self-soot is genuinely ONE-SIDED: it marks the face a bullet or a
+	## carve actually struck, and `_self_soot_faces()` models exactly the three
+	## drawable ones. The two view-space directions it never speaks about stay
+	## CLEAN rather than being filled with a guess, and CLEAN is the identity for
+	## min-wins, so a later BFS write into the same cell decides them instead.
+	##
+	## ⚠️ Whether a ROTATED view should show a bullet's scorch on the far side of
+	## the voxel is a look question this task deliberately does not answer — SS-6
+	## is where it gets asked with a rotated capture in hand. Recording it as an
+	## open semantic rather than inventing a value is the point.
+	var full := full_faces_clean()
+	full[FULL_TOP] = faces.x
+	full[FULL_XP] = faces.y
+	full[FULL_YP] = faces.z
+	_write_full_faces(out_full, level, grid_pos, full, true)
 	var ring: int = mini(faces.x, mini(faces.y, faces.z))
 	if not out_snapshot.has(level):
 		out_snapshot[level] = {}

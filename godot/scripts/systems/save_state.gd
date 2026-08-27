@@ -149,4 +149,12 @@ static func load_from_file(room, path: String = "user://save_01.json") -> bool:
 static func clear_run_state(room) -> void:
 	room._base_damage.clear()
 	room._crater_floor_soot.clear()
+	## SS-1 (`SOOT_STORAGE_REFORM`) — the scorch store is registered for forgetting
+	## the moment it exists, not when it is first SAVED (that is SS-4). This
+	## function's whole reason for being is *"so a new persisted field has exactly
+	## one place to be forgotten from"*, and the Director's save model makes the
+	## omission the dangerous half: scenario state dies with the level (*"acabou a
+	## fase, acabou o save"*), so a store left behind reappears as the previous
+	## level's crater — silently, and only on the second level anyone plays.
+	room._soot_map.clear()
 	room.invalidate_soot_index("run state cleared")

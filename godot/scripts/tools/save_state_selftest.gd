@@ -15,6 +15,12 @@ class RoomStub extends RefCounted:
 	var map_id: String = "TESTMAP"
 	var _base_damage: Dictionary = {}
 	var _crater_floor_soot: Dictionary = {}
+	## SS-1 (SOOT_STORAGE_REFORM) — the scorch store. Present here from the moment
+	## the field exists, not from the moment it is SAVED (that is SS-4), because
+	## `clear_run_state()` already has to forget it: the Director's save model
+	## discards scenario state with the level, so a store left behind comes back as
+	## the previous level's crater.
+	var _soot_map: Dictionary = {}
 	var invalidated: int = 0
 	func invalidate_soot_index(_reason: String = "") -> void:
 		invalidated += 1
@@ -110,7 +116,11 @@ func _test_clear() -> void:
 	var r := RoomStub.new()
 	r._base_damage[Vector3i(0, 0, 0)] = [1, 0, 0, 0, 0, 0, 0]
 	r._crater_floor_soot[79] = {Vector2i(0, 0): 1}
+	r._soot_map[79] = {Vector2i(0, 0): 1234}
 	SaveState.clear_run_state(r)
 	_check(r._base_damage.is_empty(), "clear_run_state empties base_damage")
 	_check(r._crater_floor_soot.is_empty(), "clear_run_state empties crater soot")
+	## SS-1 — the silent half. Nothing on screen would report a store that
+	## survived a level change; it would simply be last level's scorch.
+	_check(r._soot_map.is_empty(), "clear_run_state empties the SS-1 scorch store")
 	_check(r.invalidated == 1, "clear_run_state invalidates the soot index")

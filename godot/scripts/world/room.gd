@@ -185,6 +185,35 @@ var _voxel_light_field: VoxelLightField = null
 ## (render_fixed_earth_level places cells directly). Cleared on map load.
 var _crater_floor_soot: Dictionary = {}
 
+## SS-1 (`SOOT_STORAGE_REFORM`) — THE STORE, RUNNING IN SHADOW. Nothing reads it
+## for rendering; `_soot_store_gate_check()` is its only consumer today.
+##
+## `level -> { base_cell: packed five-direction code }`. **Sparse:** only scorched
+## cells appear, and absent means clean — which is also what the RG8 soot plane
+## fills with (`FACE_SOOT_CODE_CLEAN`), so the two agree by default rather than by
+## a conversion.
+##
+## ⚠️ **BASE coords and BASE directions, for the same reason `_base_damage` is**
+## (§3.4): rotation was disabled for PERFORMANCE and is meant to return, so a
+## store keyed to the current view would be scorch that a rotation silently loses.
+## The five components are `BlastCalculator.FULL_*` re-expressed against base
+## axes — see `_view_full_to_base()` for the one conversion, which reuses
+## `PerspectiveMapper` exactly the way `record_voxel_damage_to_base()` does.
+var _soot_map: Dictionary = {}
+## The view→base direction map for `_active_perspective`, built once per
+## perspective rather than per cell: the conversion is a difference of two
+## rotated points, so the affine offsets cancel and it does not depend on WHICH
+## cell (the same argument `_carved_side_to_base_dir()`'s note makes).
+var _soot_dir_map_perspective: String = ""
+var _soot_dir_map: Dictionary = {}
+## How many events the store has absorbed. The SS-1 gate needs it to tell the
+## FIRST population ("the store is empty because nothing has written it yet")
+## apart from a real loss ("the store was written and does not have this cell").
+## Measured on a real agent shot: without this the very first snapshot reports
+## every derived cell as missing, which is noise that would train the reader to
+## ignore the one line that matters.
+var _soot_store_absorbs: int = 0
+
 ## VL-PERSIST: authoritative destruction state in BASE (N-frame) voxel coords, so
 ## it survives a perspective rotation (which rebuilds every Voxel from the
 ## MapSpec, dropping damage_state). Keyed Vector3i(base_vx, base_vy,
@@ -858,6 +887,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_exit_cells = _room_builder.get_exit_cells()
 	_current_light_sources = _room_builder.get_light_sources()
 	_crater_floor_soot.clear()  ## VL-D2: fresh map, no crater floor scorch yet
+	_soot_map.clear()           ## SS-1: the scorch store dies with the board too
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	if _ember_overlay != null:
@@ -2097,6 +2127,7 @@ func _reset_room_state() -> void:
 	## for the same reason.
 	invalidate_soot_index("room reset")
 	_crater_floor_soot.clear()
+	_soot_map.clear()   ## SS-1 — same reason: the scorch describes damage a reset undid
 	## Zero the global alert
 	_alert_meter = 0
 
@@ -3376,9 +3407,14 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	## nothing to promise about the future.
 	var _ss1: int = Time.get_ticks_usec()
 	var snapshot: Dictionary = {}
+	## SS-1 — `out_full` is the five-direction record, produced in parallel and
+	## consumed only by the store below. A caller that does not want it passes
+	## nothing and the default dict is discarded, the same idiom `out_faces`
+	## already uses.
+	var out_full: Dictionary = {}
 	BlastCalculator.build_soot_field(cell_to_voxel, blast_cells, weapon_cells,
 			damaged_voxels, blast_soot_rings + blast_soot_feather_rings,
-			weapon_soot_rings, snapshot, out_faces, {}, predict_damaged)
+			weapon_soot_rings, snapshot, out_faces, {}, predict_damaged, out_full)
 
 	## VL-D2: the revealed crater-floor soot (non-Voxel cells), through the same
 	## helper the detonation path uses for the same kind of cell.
@@ -3408,7 +3444,15 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	for level in _crater_floor_soot.keys():
 		for cell in _crater_floor_soot[level].keys():
 			BlastCalculator.scorch_floor_cell(snapshot, out_faces, level, cell,
-					int(_crater_floor_soot[level][cell]))
+					int(_crater_floor_soot[level][cell]), out_full)
+
+	absorb_scorch(out_full)
+	## SS-1 — THE GATE RUNS AFTER THE ABSORB. See `_soot_store_gate_check()`; the
+	## first version of this ran BEFORE, on the reasoning that comparing the store
+	## against the dictionary that just filled it would be a tautology, and a real
+	## two-fire capture showed that ordering measures the wrong thing entirely.
+	if OS.get_environment("INFILTRAITOR_SOOT_STORE_GATE") == "1":
+		_soot_store_gate_check(out_faces)
 	return snapshot
 
 
@@ -3618,6 +3662,239 @@ func add_crater_floor_soot(level: int, cell: Vector2i, ring: int) -> void:
 	var existing = _crater_floor_soot[level].get(cell, 99)
 	if ring < existing:
 		_crater_floor_soot[level][cell] = ring
+
+
+## --- SS-1: the soot store, in shadow -------------------------------------
+##
+## `SOOT_STORAGE_REFORM` §2.1/§2.1b. Read the plan before changing any of this;
+## the short version is that the store is BASE-keyed with BASE-space directions
+## so a returning perspective rotation does not silently lose scorch, and that
+## the five-direction format exists because `Vector3i(top, SE, SW)` is a
+## VIEW-space triple that drops the two faces turned away from the camera.
+
+## Base-direction slots. `BlastCalculator.FULL_TOP` is shared (up is up in every
+## perspective); the four horizontals are re-expressed against base axes here.
+const SOOT_BASE_TOP: int = 0
+const SOOT_BASE_XP: int = 1
+const SOOT_BASE_XN: int = 2
+const SOOT_BASE_YP: int = 3
+const SOOT_BASE_YN: int = 4
+
+
+## view slot -> base slot for the perspective the room is in NOW, built once and
+## reused until the perspective changes.
+##
+## The conversion is `cell_to_base(cell + delta) - cell_to_base(cell)`, which is
+## the identical technique `BlastCalculator.carved_side_to_base_dir()` uses, for
+## the identical reason its note gives: taking the difference of two rotated
+## points keeps the affine offsets cancelling, so **there is no second rotation
+## formula here to drift out of sync with PerspectiveMapper.**
+func _soot_dir_map_current() -> Dictionary:
+	if _soot_dir_map_perspective == _active_perspective and not _soot_dir_map.is_empty():
+		return _soot_dir_map
+	var base_size := _base_voxel_size()
+	## Any cell will do — the mapping does not depend on which, which is exactly
+	## what makes caching it per perspective legitimate rather than a shortcut.
+	var probe := Vector2i(0, 0)
+	var origin := PerspectiveMapperClass.cell_to_base(probe, _active_perspective, base_size)
+	var slots := {
+		BlastCalculator.FULL_XP: Vector2i(1, 0),
+		BlastCalculator.FULL_XN: Vector2i(-1, 0),
+		BlastCalculator.FULL_YP: Vector2i(0, 1),
+		BlastCalculator.FULL_YN: Vector2i(0, -1),
+	}
+	var out := {BlastCalculator.FULL_TOP: SOOT_BASE_TOP}
+	for view_slot in slots:
+		var d: Vector2i = PerspectiveMapperClass.cell_to_base(
+			probe + slots[view_slot], _active_perspective, base_size) - origin
+		var base_slot: int = -1
+		if d == Vector2i(1, 0):
+			base_slot = SOOT_BASE_XP
+		elif d == Vector2i(-1, 0):
+			base_slot = SOOT_BASE_XN
+		elif d == Vector2i(0, 1):
+			base_slot = SOOT_BASE_YP
+		elif d == Vector2i(0, -1):
+			base_slot = SOOT_BASE_YN
+		if base_slot < 0:
+			## B6 — a unit step in view space that does not land on a unit step in
+			## base space means the projection is not what this code assumes, and
+			## every scorch written afterwards would be attributed to the wrong
+			## face. Refuse rather than store a guess.
+			push_error("[SS-1] view step %s under perspective %s maps to base delta %s — not a unit direction; the soot store cannot be keyed"
+				% [slots[view_slot], _active_perspective, d])
+			_soot_dir_map = {}
+			_soot_dir_map_perspective = ""
+			return {}
+		out[view_slot] = base_slot
+	_soot_dir_map = out
+	_soot_dir_map_perspective = _active_perspective
+	return out
+
+
+## One cell's five-direction record, view space -> base space.
+func _view_full_to_base(view_full: PackedInt32Array) -> PackedInt32Array:
+	var dir_map := _soot_dir_map_current()
+	var out := BlastCalculator.full_faces_clean()
+	if dir_map.is_empty():
+		return out
+	for view_slot in dir_map:
+		out[int(dir_map[view_slot])] = view_full[int(view_slot)]
+	return out
+
+
+## ...and back, for the perspective the room is in NOW. The inverse of the map
+## above rather than a second table, so the two cannot disagree.
+func _base_full_to_view(base_full: PackedInt32Array) -> PackedInt32Array:
+	var dir_map := _soot_dir_map_current()
+	var out := BlastCalculator.full_faces_clean()
+	if dir_map.is_empty():
+		return out
+	for view_slot in dir_map:
+		out[int(view_slot)] = base_full[int(dir_map[view_slot])]
+	return out
+
+
+## The single writer (§2.2). Min-wins per direction, so writing into an
+## already-scorched cell resolves to the tone it would have produced on a clean
+## one — **permanent but NOT accumulating**, which is `SOOT_MASTER_PLAN` §6 Q3's
+## answer and is the half of Option B the Director's ruling did NOT take.
+func scorch_cell(level: int, view_cell: Vector2i, view_full: PackedInt32Array) -> void:
+	var base_xy := PerspectiveMapperClass.cell_to_base(
+		view_cell, _active_perspective, _base_voxel_size())
+	var incoming := _view_full_to_base(view_full)
+	if not _soot_map.has(level):
+		_soot_map[level] = {}
+	var level_map: Dictionary = _soot_map[level]
+	var prev_code = level_map.get(base_xy)
+	if prev_code == null:
+		level_map[base_xy] = BlastCalculator.encode_full_faces(incoming)
+		return
+	var prev := BlastCalculator.decode_full_faces(int(prev_code))
+	var merged := BlastCalculator.full_faces_clean()
+	for i: int in range(BlastCalculator.FULL_FACE_COUNT):
+		merged[i] = mini(prev[i], incoming[i])
+	level_map[base_xy] = BlastCalculator.encode_full_faces(merged)
+
+
+## Bulk write of one event's proposal — `level -> {view_cell: PackedInt32Array}`,
+## the shape `BlastCalculator.build_soot_field()`'s `out_full` produces.
+func absorb_scorch(full: Dictionary) -> void:
+	if full.is_empty():
+		return
+	_soot_store_absorbs += 1
+	for level in full:
+		for cell in full[level]:
+			scorch_cell(int(level), cell, full[level][cell])
+
+
+## The store projected back into the `level -> {view_cell: Vector3i(top, SE, SW)}`
+## shape the rest of the pipeline speaks. This is what SS-2 will hand to
+## `VoxelLightField.build()` in place of a fresh derivation; today only the gate
+## calls it.
+func soot_store_view_faces() -> Dictionary:
+	var out: Dictionary = {}
+	var base_size := _base_voxel_size()
+	for level in _soot_map:
+		var level_out: Dictionary = {}
+		for base_xy in _soot_map[level]:
+			var view_cell := PerspectiveMapperClass.cell_from_base(
+				base_xy, _active_perspective, base_size)
+			level_out[view_cell] = BlastCalculator.full_faces_to_view(
+				_base_full_to_view(BlastCalculator.decode_full_faces(
+					int(_soot_map[level][base_xy]))))
+		out[int(level)] = level_out
+	return out
+
+
+## SS-1's GATE — `INFILTRAITOR_SOOT_STORE_GATE=1`.
+##
+## ⚠️ **THE FIRST VERSION OF THIS RAN BEFORE THE ABSORB AND MEASURED THE WRONG
+## THING. Recorded because the reasoning was plausible and wrong.** The argument
+## was that comparing the store against the dictionary that had just filled it
+## would be a self-comparison of the kind B3 forbids, so the gate should ask what
+## EARLIER events left behind. A real two-fire capture killed it:
+##
+##     absorbs 1 · store 2 782 vs derived 5 731 — 2 949 DERIVED-ONLY, 20 LIGHTER
+##
+## Not one of those was a loss. The 2 949 were fire 2's own new scorch, which the
+## gate was reading *before* fire 2 was absorbed; the 20 lighter were cells fire 2
+## had just darkened by adding holes near them, compared against a store that
+## still held fire 1's honest answer. **The before-absorb ordering cannot tell "the
+## store lost this" from "the store has not been shown this yet"**, which is the
+## only distinction the gate exists to make.
+##
+## After the absorb the comparison is still not a tautology, and this is the part
+## worth being precise about: `out_faces` is compared against
+## `full_faces_to_view(base→view(decode(encode(view→base(out_full)))))`. Every
+## step of the store's format — the five-direction record, the base-5 pack, and
+## the view↔base direction mapping — sits between the two sides. Equality proves
+## the format is LOSSLESS, which is exactly SS-1's claim.
+##
+## So, after the absorb:
+##   · `DERIVED-ONLY` and `LIGHTER` must be **ZERO**. Either means the store failed
+##     to record something the producer handed it one line earlier — a bug in the
+##     format or the plumbing.
+##   · `store-only` and `darker` are INFORMATIONAL and are the reform working:
+##     scorch an older event recorded that this derivation has since lost (§1.3's
+##     deep layer) or would now paint lighter. Under permanence the store is right.
+##
+## ⚠️ What this gate CANNOT prove is §2.1b — the store is projected back into the
+## perspective it was written in, so the two extra directions are never read.
+## That is SS-6's job and it needs a rotated capture.
+func _soot_store_gate_check(derived_faces: Dictionary) -> void:
+	var projected := soot_store_view_faces()
+	var store_only: int = 0
+	var derived_only: int = 0
+	var darker: int = 0
+	var lighter: int = 0
+	var sample: String = ""
+	for level in derived_faces:
+		var d_level: Dictionary = derived_faces[level]
+		var p_level: Dictionary = projected.get(level, {})
+		for cell in d_level:
+			if not p_level.has(cell):
+				derived_only += 1
+				if sample == "":
+					sample = "derived-only L%d %s = %s" % [level, cell, d_level[cell]]
+				continue
+			var d: Vector3i = d_level[cell]
+			var p: Vector3i = p_level[cell]
+			if p == d:
+				continue
+			if p.x <= d.x and p.y <= d.y and p.z <= d.z:
+				darker += 1
+			else:
+				lighter += 1
+				if sample == "" or not sample.begins_with("LIGHTER"):
+					sample = "LIGHTER L%d %s store %s vs derived %s" % [level, cell, p, d]
+	for level in projected:
+		var d_level: Dictionary = derived_faces.get(level, {})
+		for cell in projected[level]:
+			if not d_level.has(cell):
+				store_only += 1
+	print("[SS-1-GATE] absorbs %d · store %d cell(s) vs derived %d — %d store-only (expected: permanence), %d darker (expected), %d DERIVED-ONLY, %d LIGHTER  %s"
+		% [_soot_store_absorbs, _soot_store_cell_count(),
+		_derived_cell_count(derived_faces),
+		store_only, darker, derived_only, lighter,
+		("· e.g. " + sample) if sample != "" else ""])
+	if derived_only > 0 or lighter > 0:
+		push_warning("[SS-1-GATE] %d derived-only + %d lighter — the store did NOT record something the producer handed it (SOOT_STORAGE_REFORM SS-1)"
+			% [derived_only, lighter])
+
+
+func _soot_store_cell_count() -> int:
+	var n: int = 0
+	for level in _soot_map:
+		n += (_soot_map[level] as Dictionary).size()
+	return n
+
+
+func _derived_cell_count(faces: Dictionary) -> int:
+	var n: int = 0
+	for level in faces:
+		n += (faces[level] as Dictionary).size()
+	return n
 
 
 func _update_alert_label() -> void:

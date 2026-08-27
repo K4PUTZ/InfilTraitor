@@ -106,6 +106,11 @@ func _init() -> void:
 	test_crater_crack_follows_crack_factor_and_respects_d32_6()
 	## MAT-SOFT-01 (Director, 2026-08-21) — the soft materials' tier rule.
 	test_soft_materials_never_take_a_mark()
+	## SS-1 (SOOT_STORAGE_REFORM §2.1b) — the five-direction store format.
+	test_full_faces_project_to_the_shipped_view_triple()
+	test_full_faces_keep_what_the_view_triple_discards()
+	test_full_faces_pack_round_trips()
+	test_full_faces_merge_is_min_per_direction()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -2420,3 +2425,120 @@ func test_soft_materials_never_take_a_mark() -> void:
 	else:
 		_fail("control: concrete at punch 0.50 returned %d, not DENTED — the hard ladder moved" % control)
 	print("")
+
+
+## --- SS-1 / SOOT_STORAGE_REFORM §2.1b -------------------------------------
+
+## ⚠️ THE LOAD-BEARING TEST OF THE WHOLE STORE FORMAT.
+##
+## The five-direction record is only allowed to exist if it is a strict SUPERSET
+## of the `Vector3i(top, SE, SW)` triple that ships today: projected back into the
+## perspective it was written in, it must reproduce `_face_rings_for()` component
+## for component, for EVERY direction a BFS can reach a voxel from — including the
+## three that reach no drawable face at all.
+##
+## The two functions are written independently and deliberately (neither is
+## expressed in terms of the other), so this comparison is a real check rather
+## than the tautology B3 exists to forbid.
+func test_full_faces_project_to_the_shipped_view_triple() -> void:
+	print("\n[SS-1] the five-direction record projects to today's view triple")
+	var dirs: Array = [
+		Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+		Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+		Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+	]
+	var mismatches: int = 0
+	var checked: int = 0
+	for n_rings: int in [1, 2, 3, 4]:
+		for falloff: int in [0, 1, 2]:
+			for ring: int in range(n_rings):
+				for d: Vector3i in dirs:
+					var view := BlastCalculatorClass._face_rings_for(ring, d, n_rings, falloff)
+					var full := BlastCalculatorClass._full_faces_for(ring, d, n_rings, falloff)
+					var projected := BlastCalculatorClass.full_faces_to_view(full)
+					checked += 1
+					if projected != view:
+						mismatches += 1
+						if mismatches <= 3:
+							print("      ring %d toward %s n=%d fall=%d : view %s vs projected %s"
+								% [ring, d, n_rings, falloff, view, projected])
+	if mismatches == 0:
+		_pass("%d (ring x direction x n_rings x falloff) cases project exactly" % checked)
+	else:
+		_fail("%d of %d cases diverge from _face_rings_for()" % [mismatches, checked])
+
+
+## The reason the format exists at all: a hole to view −X or −Y is information the
+## triple THROWS AWAY (every component falls to the isotropic faint), and the
+## store must keep it — otherwise a rotation that turns that face toward the
+## camera presents a placeholder instead of a measurement.
+func test_full_faces_keep_what_the_view_triple_discards() -> void:
+	print("\n[SS-1] the record keeps the two directions the triple discards")
+	var kept: int = 0
+	for d: Vector3i in [Vector3i(-1, 0, 0), Vector3i(0, -1, 0)]:
+		var view := BlastCalculatorClass._face_rings_for(0, d, 3, 1)
+		var full := BlastCalculatorClass._full_faces_for(0, d, 3, 1)
+		var slot: int = BlastCalculatorClass.FULL_XN if d.x < 0 else BlastCalculatorClass.FULL_YN
+		## Today's triple: every component on the faint fallback, ring 0 nowhere.
+		if view.x == 0 or view.y == 0 or view.z == 0:
+			_fail("the view triple was expected to discard direction %s, but it kept ring 0: %s" % [d, view])
+			return
+		if full[slot] == 0:
+			kept += 1
+		else:
+			_fail("direction %s : the record should hold ring 0 in slot %d, holds %d" % [d, slot, full[slot]])
+			return
+	if kept == 2:
+		_pass("both view-negative directions keep their measured ring where the triple has only faint")
+
+
+func test_full_faces_pack_round_trips() -> void:
+	print("\n[SS-1] the base-5 pack round-trips over the whole space")
+	var bad: int = 0
+	var n: int = 0
+	var clean: int = BlastCalculatorClass.FACE_SOOT_CLEAN
+	for a: int in range(clean + 1):
+		for b: int in range(clean + 1):
+			var faces := BlastCalculatorClass.full_faces_clean()
+			faces[BlastCalculatorClass.FULL_TOP] = a
+			faces[BlastCalculatorClass.FULL_XP] = b
+			faces[BlastCalculatorClass.FULL_XN] = clean - a
+			faces[BlastCalculatorClass.FULL_YP] = (a + b) % (clean + 1)
+			faces[BlastCalculatorClass.FULL_YN] = b
+			var code := BlastCalculatorClass.encode_full_faces(faces)
+			n += 1
+			if BlastCalculatorClass.decode_full_faces(code) != faces:
+				bad += 1
+			## The layout must also fit the space the plan claims: 5^5 = 3125.
+			if code < 0 or code >= 3125:
+				bad += 1
+	if bad == 0:
+		_pass("%d packs round-trip, every code inside 0..3124" % n)
+	else:
+		_fail("%d of %d packs failed to round-trip or left the 3125 space" % [bad, n])
+
+
+## Min-wins per direction is what makes the store PERMANENT but NOT ACCUMULATING
+## (SOOT_MASTER_PLAN §6 Q3): writing into an already-scorched cell resolves to the
+## tone a clean cell would have produced, never a darker one.
+func test_full_faces_merge_is_min_per_direction() -> void:
+	print("\n[SS-1] merging is min per direction, so a second write cannot deepen")
+	var out: Dictionary = {}
+	var a := BlastCalculatorClass.full_faces_clean()
+	a[BlastCalculatorClass.FULL_XP] = 2
+	a[BlastCalculatorClass.FULL_YP] = 1
+	BlastCalculatorClass._write_full_faces(out, 0, Vector2i(5, 5), a, false)
+	var b := BlastCalculatorClass.full_faces_clean()
+	b[BlastCalculatorClass.FULL_XP] = 3     ## lighter — must lose
+	b[BlastCalculatorClass.FULL_YP] = 0     ## darker  — must win
+	b[BlastCalculatorClass.FULL_XN] = 1     ## new direction — must land
+	BlastCalculatorClass._write_full_faces(out, 0, Vector2i(5, 5), b, true)
+	var got: PackedInt32Array = out[0][Vector2i(5, 5)]
+	var ok: bool = (got[BlastCalculatorClass.FULL_XP] == 2
+		and got[BlastCalculatorClass.FULL_YP] == 0
+		and got[BlastCalculatorClass.FULL_XN] == 1
+		and got[BlastCalculatorClass.FULL_TOP] == BlastCalculatorClass.FACE_SOOT_CLEAN)
+	if ok:
+		_pass("min-wins per direction: 2 beat 3, 0 beat 1, an unseen direction landed, TOP stayed clean")
+	else:
+		_fail("merge produced %s" % [got])

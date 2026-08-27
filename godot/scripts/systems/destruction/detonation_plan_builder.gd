@@ -1009,7 +1009,11 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 			"world_pos": voxel_renderer.voxel_world_position(
 				gu_center, BlastCalculatorClass.GRENADE_LEVEL),
 			"duration": weight, "scale": weight, "alpha": weight, "blobs": 0,
-			"r": _radius_of(gu_center, epicenter)})
+			"r": _radius_of(gu_center, epicenter),
+			## E-ORDER-01 — see `_append_voxel_smoke()`. This is the GU-level
+			## remainder, so its cell is the GU's centre voxel, which is already the
+			## point its radius is measured from.
+			"cell": gu_center})
 		if _out_of_time(deadline):
 			break
 	s["cursor"] = i
@@ -1581,6 +1585,17 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 		"blobs": SMOKE_BLOBS_PER_VOXEL,
 		"material": material,
 		"r": _radius_of(voxel.grid_pos, epicenter),
+		## E-ORDER-01 — smoke was the ONE played kind with no `cell`, and
+		## `DetonationChoreographer._sort_key()` falls back to Vector2i.ZERO, so
+		## every puff in the blast drew the SAME jitter roll. Two consequences, both
+		## visible: the smoke front was a machined circle while everything else was
+		## ragged, and its separation from the destruction was a single random
+		## constant per blast (+/-0.45 voxels on top of its 0.70 bias) rather than an
+		## average — so on some blasts the smoke effectively led the decals.
+		## The puff already knows its voxel; handing it over costs nothing and puts
+		## it on the same footing as every other kind. Consumers read `world_pos`,
+		## never this — see `_apply_entry()`'s "smoke" branch.
+		"cell": voxel.grid_pos,
 	})
 
 

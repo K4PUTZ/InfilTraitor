@@ -462,11 +462,37 @@ static func _sort_key(kind: String, entry: Dictionary) -> float:
 	var r: float = float(entry.get("r", 0.0))
 	var bias: float = float(KIND_RADIUS_BIAS.get(kind, 0.0))
 	var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
-	## Salted per kind as well as per cell: two different effects on the SAME
-	## voxel should not receive the identical wobble, or their bias separation
-	## would be all that ever distinguishes them.
+	## ⚠️ E-ORDER-01 (2026-08-26) — THE SALT NO LONGER CARRIES `kind`, AND THE
+	## PARAGRAPH IT REPLACES HAD THE ARGUMENT EXACTLY BACKWARDS.
+	##
+	## It read: *"Salted per kind as well as per cell: two different effects on the
+	## SAME voxel should not receive the identical wobble, or their bias separation
+	## would be all that ever distinguishes them."* The bias separation is SUPPOSED
+	## to be all that distinguishes them — that separation is the ordering, and
+	## KIND_RADIUS_BIAS exists to state it. Salting per kind gave each effect on one
+	## cell an INDEPENDENT +/-0.45 wobble against neighbours only 0.05-0.10 apart in
+	## bias, so the wobble decided the order and the table did not.
+	##
+	## Measured on the real PLAYGROUND plan (grenade 2, stone), per-cell pairs the
+	## table says are ordered, counting how many the queue delivered INVERTED:
+	##
+	##     cracked -> destroy     48 pair(s),  40 inverted  (83.3%)
+	##     destroy -> expose     242 pair(s), 120 inverted  (49.6%)
+	##     cracked -> expose      32 pair(s),  10 inverted  (31.2%)
+	##     dented  -> cracked     92 pair(s),  24 inverted  (26.1%)
+	##
+	## So the hole opened before its own crack on five cells out of six, which is
+	## the Director's *"não podem ser uma segunda wave que entra depois"* surviving
+	## the E-CLEAN bias fix that was supposed to close it: E-CLEAN corrected the
+	## table, and the table was not what was deciding.
+	##
+	## Per CELL, the wobble is shared by every effect on that cell, so:
+	##   - the ordering within a cell is EXACTLY KIND_RADIUS_BIAS, always; and
+	##   - the front stays ragged, because the wobble still varies cell to cell.
+	## The raggedness was never a per-kind property — it is what stops the front
+	## reading as a machined ring, and that is a property of WHERE a cell is.
 	var roll: float = float(FacadeSampler._fnv1a_hash(
-		"FRONT:%s:%d,%d" % [kind, cell.x, cell.y]) % 10000) / 10000.0
+		"FRONT:%d,%d" % [cell.x, cell.y]) % 10000) / 10000.0
 	return r + bias + (roll - 0.5) * front_jitter
 
 

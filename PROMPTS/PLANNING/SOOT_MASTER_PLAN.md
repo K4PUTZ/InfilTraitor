@@ -519,6 +519,22 @@ acceptable differences are the ones a task is explicitly for.
    capture gap below: there's no rotation to prove the repaint path against
    while this stands. "For now," so `room.gd`'s rotation/repaint code stays;
    nothing here is a request to remove it.
+
+   ⚠️ **THE REASON IS CORRECTED, 2026-08-27, AND THE REASON IS THE PART THAT
+   MATTERED.** Director: *"a gente desativou a rotação porque estava dando
+   problemas de performance. O ideal era manter ela funcionando."* Rotation was
+   turned off as a **performance** measure, not because the game is
+   single-sided — so it is suspended, not designed away, and the §7.2 capture
+   gap this row retired is **un-retired**.
+
+   Consequences, and they are not confined to this file: anything that leans on
+   this row to call the repaint path *"a debug-path cost, not a gameplay one"*
+   (§3.1's Option A bullet does, verbatim) is resting on a premise that no
+   longer holds. And for the storage reform it is decisive — stored soot must be
+   keyed in BASE space, **and must store base-space FACES**, because the
+   `Vector3i(top, SE, SW)` format is view-space and loses the two faces turned
+   away from the camera. Full account:
+   [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md) §2.1b and §3.4.
 3. **Accumulation — ✅ ANSWERED 2026-08-13: no.** Director: "Não precisa sujar
    mais, não vamos ter tantas explosões assim." Two blasts on one spot do not
    need to leave a dirtier mark than one.

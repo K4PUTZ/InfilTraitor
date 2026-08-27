@@ -4812,9 +4812,52 @@ func play_consequence_light() -> void:
 			moved[k] = true
 	for k in _voxel_renderer._externally_written.keys():
 		moved[k] = true
+	## E-PACE-02 (2026-08-26) — ⚠️ THE RAMP'S START IS WHAT IS ON SCREEN, AND FOR
+	## A CRATER CELL THAT IS 11, NOT THE SENTINEL.
+	##
+	## `BUCKET_UNWRITTEN` (255) means "no bucket was ever written here", and the
+	## loop below used to SKIP those cells on the grounds that a sentinel is not a
+	## value to lerp out of. That reasoning is right about the integer and wrong
+	## about the picture: `voxel_face_shading.gdshader` CLAMPS 255 down to 11, so
+	## an unwritten cell is already being drawn at full light. There is a start
+	## value; it just is not the byte in the plane.
+	##
+	## Measured on the real thing before the fix (grenade 2, PLAYGROUND stone):
+	##     of 661 changed: 640 UNWRITTEN (skipped the ramp), 21 rampable
+	##
+	## ⚠️ AND THE SKIPPED CELLS DID NOT "ARRIVE AT THE END" — they arrived at the
+	## START, which is worse and is why this was invisible. `_repaint_voxel_light_
+	## buckets()` above applies the real light to every cell; the rewind that
+	## follows it (step 0, t=0) is what puts them back so the ramp can walk them
+	## across. A skipped cell is never rewound, so it simply KEEPS the value the
+	## repaint just gave it — and since there is no `await` between the two, that
+	## change is presented inside the repaint's own frame, folded into the last
+	## step of the soot ladder. 96.8% of the light beat was not a beat at all.
+	##
+	## On a 60 fps filmstrip, ramp steps that actually paint:
+	##     before:  3 steps,   194 / 742 / 200 px      (~1 100 px total)
+	##     after:  10 steps,   167 .. 1 497 px         (~5 500 px total)
+	## and the final frame is pixel-identical to a control run with this fix
+	## reverted — 0 differing px — so the destination is untouched and only the
+	## path changed.
+	##
+	## ⚠️ A capture of ONE boot is not evidence here. An earlier reading of this
+	## same defect reported "21 572 px landing in one frame at the end"; it did not
+	## reproduce on any later boot of the identical build. The prediction cook is
+	## budgeted in milliseconds, so the blast lands on a different frame index
+	## every run — see PERFORMANCE_MASTER_PLAN §12.7. Only counts that survive a
+	## re-run belong in this comment.
+	##
+	## Normalised HERE rather than inside the step loop so `changed` counts cells
+	## whose DISPLAYED value moves, which is what the beat is about: a crater cell
+	## that renders at 11 and whose real bucket is also 11 changes nothing, and
+	## should not be reported as moving.
 	var from_bucket: Dictionary = {}
 	for k in moved.keys():
-		from_bucket[k] = _voxel_renderer.cell_bucket_at(k.z, Vector2i(k.x, k.y))
+		var b0: int = _voxel_renderer.cell_bucket_at(k.z, Vector2i(k.x, k.y))
+		if b0 == VoxelRenderer.BUCKET_UNWRITTEN:
+			b0 = VoxelRenderer.LIGHT_BUCKET_COUNT - 1
+		from_bucket[k] = b0
 
 	var t0: int = Time.get_ticks_usec()
 	_repaint_voxel_light_buckets(true, true)
@@ -4846,12 +4889,10 @@ func play_consequence_light() -> void:
 			var to: int = int(to_bucket[k])
 			if f == to:
 				continue
-			## BUCKET_UNWRITTEN means the cell had no bucket to come FROM — a
-			## crater floor the blast just revealed. Ramping out of a sentinel
-			## would walk it through the whole ladder from a value that never
-			## described anything, so it simply arrives.
-			if f == VoxelRenderer.BUCKET_UNWRITTEN:
-				continue
+			## E-PACE-02 — the BUCKET_UNWRITTEN skip that used to sit here is gone;
+			## `from_bucket` is normalised to the shader's own clamp (11) where it
+			## is built, so a crater cell ramps down from the full light it is
+			## already being drawn at instead of arriving in one frame.
 			_voxel_renderer._write_cell_bucket(k.z, Vector2i(k.x, k.y),
 				int(round(lerpf(float(f), float(to), t))))
 		_voxel_renderer.flush_cell_soot()

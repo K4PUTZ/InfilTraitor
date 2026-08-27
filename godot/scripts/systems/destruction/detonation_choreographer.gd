@@ -137,7 +137,37 @@ extends RefCounted
 ## já está boa"): puffs are emitted as queue steps but each one's lifetime is
 ## its own, set in DetonationPlanBuilder, so a faster front emits the same cloud
 ## sooner without shortening it.
-var front_frames: int = 5
+##
+## ============================================================================
+## E-PACE-01 (2026-08-26) — ⚠️ 5 → 24, AND THE PARAGRAPH ABOVE IS WHY.
+##
+## "If the duration needs to track real time, the honest lever is this number"
+## was written as advice for a hypothetical. It became due the moment §12 landed:
+## the performance wave cut the cost of a blast frame, and because this knob is
+## denominated in FRAMES, the front's wall-clock duration fell with it. Nobody
+## re-tuned it, so the choreography shortened ~5x in silence.
+##
+##     ratified 2026-08-09:   5 frames x 86.1 ms  =  430 ms
+##     measured 2026-08-26:   5 frames x 17.6 ms  =   88 ms
+##     restoring 430 ms:      430 / 17.6          =   24 frames
+##
+## 86.1 ms and 17.6 ms are the mean-frame before/after of §12's own shipping
+## table. The Director's "1/5 dessa duração" was a request about DURATION, and
+## 430 ms is what it bought at the time — so this returns the duration, not the
+## number, and the number landing back on its pre-2026-08-09 value is arithmetic
+## rather than a revert.
+##
+## Measured before the change, on the real thing (grenade 2, PLAYGROUND stone):
+## the whole front — decals, holes, expose, debris, embers, smoke — occupied
+## frames 43-47 of a 60 fps filmstrip, i.e. 83 ms, immediately after a 5-frame
+## strobe that covered 99.4% of the screen. The Director's report was that the
+## ordering could not be read; at 83 ms there was no ordering to read.
+##
+## The trade the block above names still holds and is now load-bearing rather
+## than theoretical: this tracks frame rate, so a machine rendering at 30 fps
+## gets a 0.8 s front. That remains correct for a purely visual sequence.
+## ============================================================================
+var front_frames: int = 24
 
 ## Width of one visible band of the expanding front, in voxels. The front's
 ## radius is snapped DOWN to a multiple of this, so the wave advances in

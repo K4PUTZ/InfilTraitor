@@ -1,7 +1,8 @@
 # SOOT_STORAGE_REFORM
 ## The soot map becomes the source of truth — plan, 2026-08-27
 
-**Status:** 🟡 **PLAN. NOT STARTED.** No code has been written for this.
+**Status:** 🟡 **PLAN. SS-0 DONE (measurement only), no code written.**
+⚠️ **SS-0 demoted this plan's own headline motivation** — PERF-P3 already killed the §9.11a flicker, and the §9.11b guard is inert by default. Measured, not reasoned: §1.1b. The reform still stands, on the Director's design ask, on §1.2's structural wins, and on §3.4.
 **Both open questions were answered the same day (§6), and one of them changed
 the plan:** rotation was disabled for **performance**, not because the game is
 single-sided, so the store is keyed in base space — and that forced out §2.1b,
@@ -50,7 +51,13 @@ is what makes it stageable behind a gate instead of a rewrite — see §5.
 
 ## 1. What this closes, and what it does not
 
-### 1.1 The defect it is for (`PERFORMANCE_MASTER_PLAN` §9.11a/§9.11b)
+⚠️ **READ §1.1b BEFORE §1.1.** §1.1 was written as this reform's motivation and
+**SS-0 measured it dead** — PERF-P3 removed the defect, by a route that had
+nothing to do with soot. §1.1 is kept as the record of why the ruling was framed
+the way it was; §1.2, §3.4 and the Director's design ask are what carry the work
+now.
+
+### 1.1 The defect it WAS for (`PERFORMANCE_MASTER_PLAN` §9.11a/§9.11b)
 
 The Director's report was *"a segunda explosão influencia na fuligem da
 primeira"*, and the measurement is the sharpest evidence in the whole soot
@@ -71,6 +78,65 @@ lightens it and walks it back.
 **That guard is correct and stays.** But it is a predicate defending against a
 recomputation that should not be happening. **Stored soot cannot express the
 failure at all, because nothing recomputes an untouched cell.**
+
+### 1.1b ⛔ MEASURED AT SS-0, AND IT DEMOTES §1.1: PERF-P3 ALREADY KILLED THIS DEFECT
+
+SS-0 set out to arm the instrument and instead answered a question nobody had
+asked. **The §9.11a defect does not fire in the shipped build**, and the §9.11b
+guard is **inert** — it skips zero cells.
+
+The cause is `PERF-P3`, which shipped default-ON in the perf wave two days after
+§9.11b was measured. Under `P3_CELL_BUCKET` (`voxel_renderer.gd:637`, default ON
+— the env var must say `0` to disable it) `encode_light_alt()` returns
+`alt_for_flip()`: **the light bucket does not travel in the alternative id at
+all.** §9.11a's mechanism was *"that cell enters the wave on the **alt** half of
+that OR, with its soot completely unchanged"* — and the alt now carries only the
+flip, which a light change cannot move. The only remaining way into the wave is
+the soot half, which is the correct half.
+
+**Measured, the Director's own repro** (fabric gu (31,3), then plywood gu (35,3),
+`INFILTRAITOR_CAPTURE_ACTION=two_fires`), two runs of one build differing only in
+`INFILTRAITOR_P3`:
+
+```
+                  guard skipped (fire 2)   flicker in fire 1's block   in fire 2's own block
+                                            gu 29-32                    gu 33-34
+P3 ON (default)      0 of 1 985                    0                        106
+P3 OFF             175 of 2 160                  175                         84
+```
+
+**175 skipped and 175 flickering, by two instruments that share no machinery** —
+the same double count §9.11b got at 180/180. Every flickering GU in fire 1's
+block reports `0 permanent here`: they flicker and come back, the §9.11a
+signature exactly. The 106/84 in gu 33–34 are fire 2's own block (hundreds of
+permanent changes each) and are its destruction, not fire 1's soot.
+
+**Consequences, stated plainly rather than buried:**
+
+1. **§1.1 is no longer this reform's motivation.** The headline defect is already
+   dead in the shipped build, by a route that had nothing to do with soot. A plan
+   that kept citing it would be justifying itself with a fixed bug.
+2. **What actually carries the reform is unchanged and is enough:** the
+   Director's ruling is a DESIGN ask (permanence — *"de forma permanente, no mapa
+   de fuligem"*), not a bug report; §1.2's two structural wins stand on their own;
+   and the rotation correction (§3.4) makes the map-wide repaint a **gameplay**
+   cost again, which is a stronger performance argument than §1.1 ever was.
+3. **The guard stays.** `INFILTRAITOR_P3=0` is a live diagnostic path, and the
+   defect is real whenever it is taken. Inert-by-default is not dead.
+4. ⚠️ **The instrument's headline VERDICT line cannot be trusted for this
+   question.** It printed *"fire 1's region IS disturbed mid-flight"* in BOTH
+   runs, because at `TF_WATCH_GU = 3` the watch set reaches gu 34 — fire 2's own
+   block. The code's own comment already says this. **Read the per-GU histogram,
+   never the verdict.**
+
+⚠️ **AND THE CAPTURE ACTION OVERWRITES CITED EVIDENCE.** `two_fires` writes
+`Screenshots/history/twofires_after_1.png` / `_2` — the hand-named, tracked
+captures §9.11b cites as its proof, deliberately named so the 50-file `auto_`
+rotation could not reach them. Both SS-0 runs clobbered them; both were restored
+from git before committing, and the finding above lives in numbers rather than in
+those frames. **Anyone running `two_fires` again must expect to overwrite them and
+must restore them** — or the capture that proves 2026-08-24's finding becomes a
+picture of a later run that says something else.
 
 ### 1.2 Two more defects it closes structurally rather than by discipline
 
@@ -363,7 +429,7 @@ before it owns the picture, and nothing is deleted until the picture is proven.*
 
 | id | task | gate |
 |---|---|---|
-| **SS-0** | **Arm the instrument first.** The §9.11b two-fire watcher already exists (`INFILTRAITOR_CAPTURE_ACTION=two_fires`, `INFILTRAITOR_TWO_FIRES_GUS`, `[TWO-FIRES-WATCH]`, sampling fire 1's region every frame). | **Red-before-green on the instrument itself:** with the §9.11b guard temporarily reverted it must report the 180-cell flicker; with it restored, 0. An instrument that cannot see the defect class proves nothing about removing it. |
+| ✅ **SS-0** | **Arm the instrument first.** The §9.11b two-fire watcher (`INFILTRAITOR_CAPTURE_ACTION=two_fires`, `INFILTRAITOR_TWO_FIRES_GUS`, `[TWO-FIRES-WATCH]`). | ✅ **DONE, and the red lever is NOT the one this row specified.** Reverting the guard proves nothing, because the guard is **inert by default** (§1.1b). The lever that works is `INFILTRAITOR_P3=0`: red **175 flickering / 175 skipped**, green **0 / 0**, two instruments agreeing to the cell. The instrument is validated — and the run demoted §1.1 from motivation to history. |
 | **SS-1** | **The store, in shadow.** `_soot_map` + `scorch_cell()`, in the base-space five-face format of §2.1b, written in parallel with the current derivation. **Nothing reads it yet.** | `INFILTRAITOR_SOOT_STORE_GATE=1` compares the store's **view projection** against the derived snapshot every repaint and reports every divergent cell. Zero divergence on a real detonation and a real shot before SS-2 starts. ⚠️ This gate is what proves the §2.1b projection, and it can only prove it in the perspective the capture runs in — SS-6 is the other half. |
 | **SS-2** | **Flip the read.** `_build_soot_snapshot()` returns the store. | **Pixel-diff, `INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES=400`, 0 differing px.** A first blast on a clean board cannot look different — permanence changes nothing about it. ⚠️ Capture the "before" side by stashing the change and re-running, same binary, same map. |
 | **SS-3** | **The commit seam.** Scorch leaves the prediction as a proposal; `delta.commit()` writes it; `bump_world_revision()`. | The two-fire capture: fire 1's region **0 flickered, 0 changed** across the whole of fire 2. Plus `run_selftests.py` clean, including the leak gate. |

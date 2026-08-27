@@ -1941,6 +1941,44 @@ green  [E-FUME] soot fade: 180 of 2 123 entry cell(s) already carry their
 **180 skipped, against 180 measured flickering — the same cells, counted twice by
 two independent instruments.**
 
+### 9.11d ⛔ AND P3 KILLED THE DEFECT OUTRIGHT TWO DAYS LATER — the guard is now INERT (2026-08-27)
+
+Found while arming this same instrument for the soot storage reform's SS-0, and
+recorded here because this is where anyone will come looking.
+
+**§12's `PERF-P3` shipped default-ON on 2026-08-26 and structurally removed
+§9.11a's mechanism.** Under `P3_CELL_BUCKET` (`voxel_renderer.gd:637`, ON unless
+the env var says `0`), `encode_light_alt()` returns `alt_for_flip()` — **the
+light bucket does not travel in the alternative id at all.** §9.11a's route in
+was *"that cell enters the wave on the **alt** half of that OR"*, and a light
+change can no longer move the alt. Only the soot half is left, which is the
+correct half.
+
+Two runs of one build, the Director's own repro (fabric gu (31,3), plywood gu
+(35,3)), differing only in `INFILTRAITOR_P3`:
+
+```
+                  guard skipped (fire 2)   flicker gu 29-32   flicker gu 33-34
+                                            (fire 1's block)   (fire 2's own)
+P3 ON (default)      0 of 1 985                    0                106
+P3 OFF             175 of 2 160                  175                 84
+```
+
+175 and 175, by two instruments sharing no machinery — the same double count this
+section got at 180/180, reproduced on the P3-OFF side and **absent on the default
+one**. Every flickering GU in fire 1's block reports `0 permanent here`.
+
+**The guard is not deleted.** `INFILTRAITOR_P3=0` is a live diagnostic path and
+the defect is real whenever it is taken; inert-by-default is not dead. What
+changes is what may be claimed: **the flicker is no longer a live defect, and no
+plan should cite it as one.** `SOOT_STORAGE_REFORM` §1.1b demotes its own §1.1 on
+this measurement.
+
+⚠️ **And the watcher's headline VERDICT lies for this question.** It printed
+*"fire 1's region IS disturbed mid-flight"* in BOTH runs, because `TF_WATCH_GU =
+3` reaches gu 34 — fire 2's own block. `_tf_watch_union`'s own comment says so.
+**Read the per-GU histogram, never the verdict line.**
+
 ### ⚠️ Two residuals, both found by this and neither fixed
 
 1. **The ALT still flickers.** Post-fix the same cells read `alt 9 -> 7 -> 9` over

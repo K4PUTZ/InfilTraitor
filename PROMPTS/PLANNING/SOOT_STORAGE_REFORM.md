@@ -623,6 +623,55 @@ rather than reasoned into a conclusion.
 
 ---
 
+### 5.4 ⚠️ THE DIRECTOR'S "voxels come back to the wall" IS REAL, MEASURED — and the store already removes 86% of it
+
+Director, 2026-08-27, watching a 3× slow-motion capture of a **fabric** blast
+(gu 31,3, 300 frames at `--fixed-fps 60`): *"a parede volta a se restaurar mais
+pra frente, principalmente na hora que a fuligem é aplicada."*
+
+It is real, and it is **two different defects wearing one description**.
+
+Swept every frame of the blast crop (320×240 at screen 520,200), counting pixels
+that BRIGHTEN against the previous frame, on one build with only
+`INFILTRAITOR_SOOT_STORE_READ` changed:
+
+```
+STORE READ=1 (default)   f124: 4 961 px                      total  4 961
+STORE READ=0 (old path)  f124: 4 961 px  + 12 more events    total 34 936
+                         f156 11 288 · f176 3 569 · f216 3 105 · f256 2 258 · …
+```
+
+Both runs put the same event on the same frame with the **same pixel count**,
+which is what makes the pair comparable at all — the cook is ms-budgeted and
+CLAUDE.md warns a detonation does not usually land on a fixed frame index.
+
+**1. The soot-window brightening — the Director's "voxels entering clean after
+the soot" — is REMOVED by the store.** Twelve separate events, ~30 000 px, spread
+across the soot ladder and the 2 s light beat, all of them on the derivation path
+and **none** on the store path. This is the reform doing exactly what the ruling
+asked for, measured for the first time on screen rather than in a gate.
+
+**2. The `f124` event is NOT the store's, and NOT this reform's.** Identical on
+both paths, so it pre-dates SS-2. It is ~4 961 px in **voxel-shaped patches**
+— hard-edged bars and blocks, not diffuse VFX — landing 8 frames before the soot
+ladder's first step (f132), i.e. on the consequence repaint. The brightened pixels
+sit at ~47 luminance from f100 through f123, jump to **73.8** at f124, and
+**never return**: they darken with the soot to 32 by f299 but stay solid. Visually
+an open, fire-lit gap becomes an occluding wall column and keeps it.
+
+**Permanent restoration of destroyed geometry, on the real map, on video.**
+`PERFORMANCE_MASTER_PLAN` §9.11 carries exactly this as *"a destroyed voxel must
+not be restorable"* with the status **"not reproduced"**. That status is wrong.
+
+⚠️ **What is still NOT proven, and pixels cannot prove it:** whether those cells
+were ERASED and RE-PLACED (geometry restored) or were never erased and only
+re-drawn. Twice today a confident pixel reading of this same capture turned out
+wrong, so the claim stops here. The instrument that settles it is a cell-level
+probe over a detonation — `(source_id, alternative)` per cell per frame, the shape
+`_tf_watch` already has for fires — and it is the next thing to build.
+
+---
+
 **Standing gate for every task** (`SOOT_MASTER_PLAN` §5's, unchanged): a real
 detonation pixel-diffed before and after; the only acceptable differences are the
 ones a task is explicitly for. ⚠️ And `weapon_fire` is **not** a deterministic
@@ -640,12 +689,23 @@ gated by the store-vs-derived comparison of SS-1, not by pixels.
 2. ~~**Does scorch survive a reload?**~~ **Yes, within a level run** — it is
    checkpoint state on the Sonic-post model, discarded when the level ends or is
    left (§3.3). Player progression is a separate store this reform never touches.
-3. ⚠️ **NEW, from SS-3 (§5.3): should a wall's scorch outlive the wall?** The
-   store now holds marks for surfaces the fire consumed — 2 040 cells after two
-   fires. Permanence argues yes and the deep layer revealed behind them really was
-   in the fire; "the mark was on a surface that no longer exists" argues no. It is
-   also memory, in a store that lives one level run. **Not decided, not
-   implemented either way.**
+3. ~~**Should a wall's scorch outlive the wall?**~~ ⛔ **ANSWERED 2026-08-27:
+   YES — and the answer names the architecture, not just the case.** Director:
+   *"A fuligem dos voxels consumidos pelo fogo deve existir, e é justamente por
+   isso que queremos aplicar toda a fuligem só no final, depois que saiu a
+   fumacinha. E não logo no início da destruição quando ainda não sabemos quantos
+   voxels serão efetivamente destruídos."*
+
+   So §5.3's 2 040 cells are **correct**, not hoarding, and the ruling explains
+   why the ordering and the storage are the same decision: soot cannot be applied
+   while destruction is still in flight, because at that moment the set of voxels
+   that will actually be destroyed is not yet known. Applying at the END is not a
+   look preference — it is the only point at which the input is complete.
+
+   ⚠️ **And it re-frames a defect the Director says is still on screen:** decals
+   and other voxels arriving CLEAN after soot has already been laid down. Either
+   soot genuinely enters only at the end, or anything arriving after it must
+   arrive dirty. Being measured now — see §5.4.
 4. **Nothing else.** The look, the tones, the fade and its timing are ratified
    and out of scope by design.
 

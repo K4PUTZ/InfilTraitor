@@ -340,6 +340,20 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
    > rotation for free — which retires the "known limitation" recorded at the end of
    > this very item. Firearm impacts feed the same mechanism as blasts. The original
    > text is kept below as the record of what shipped first.
+   >
+   > ⛔ **AND THE STORAGE HALF IS SUPERSEDED AGAIN, 2026-08-27** — Director's
+   > ruling: **the soot map becomes the source of truth**, so soot stops being
+   > re-derived and becomes stored per-cell state (permanent, and explicitly NOT
+   > accumulating). Plan: [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md).
+   > **Not started** — the description above is still an accurate account of what
+   > the code does today, and only stops being one at that plan's SS-2.
+   >
+   > ⚠️ *"survives rotation for free"* is the clause that costs the most to give
+   > up, and it is why the reform stores in BASE space **and stores base-space
+   > faces**: `Vector3i(top, SE, SW)` is a VIEW-space triple, so a stored copy
+   > would present two faces that were never written (§2.1b there). This very
+   > item's own evidence is what shows the current path gets it right —
+   > *"SE/SW histograms swap correctly on rotation to E"*, recorded under D24.
 
    `Voxel.soot_ring` (rides on the voxel, beside `damage_state`) +
    `BlastCalculator.compute_soot_rings()` — a multi-source BFS out of every

@@ -8,7 +8,11 @@ filmstrip, `--fixed-fps 60`, grenade 2): the ring spreads across frames 28-32
 outside the smoke plume, no glitch/pop between rungs. What is left is not
 code: the repaint path still has no trustworthy pixel gate (§7's `weapon_fire`
 non-determinism), and §6 Q2/Q3 are now both answered (rotation dropped,
-accumulation not needed). **2026-08-27: a SECOND phase now exists** — the Director
+accumulation not needed). ⚠️ **Q2's answer is CORRECTED 2026-08-27 — rotation was
+disabled for PERFORMANCE, not because the game is single-sided, and is meant to
+return**; see the annotation on Q2 itself and the two places that reasoned from
+the old premise (§1.5, §3.1's cost bullet, §7.2's un-mooted gap).
+**2026-08-27: a SECOND phase now exists** — the Director
 ruled that the soot map becomes the source of truth (§3.2b). Ruled, not started.
 Written first as a study, on the Director's request: *"Da uma estudada no jeito
 mais eficiente que nos permita ter fuligem realista sem comprometer a
@@ -158,6 +162,18 @@ persistence.** That is the whole design constraint, and it is the one the
 Director has just put in question — rotation is a debug feature now, and the
 segment back/forward system will need a state layer regardless.
 
+⚠️ **CORRECTED 2026-08-27 — "rotation is a debug feature now" was a reading of a
+ruling that has since been corrected.** Rotation was disabled for **performance**
+and is meant to return (§6 Q2's annotation). That inverts the significance of
+this section rather than retiring it: this design constraint was never
+optional-because-rotation-is-gone, it was **load-bearing all along**, and the
+storage reform has to satisfy it by other means. It does, and the means is
+[`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md) §3.4/§2.1b — store in BASE
+space, and store base-space FACES, because the `Vector3i(top, SE, SW)` triple is
+view-space. The second half is the part §1.5 could not have predicted: this
+section knew soot had to survive rotation, and assumed re-derivation was the only
+way to get it.
+
 ---
 
 ## 2. The unifying idea
@@ -284,6 +300,14 @@ derivation walks *those* voxels instead of all ~100 000.
 **Cost:** soot from a PREVIOUS blast is still re-derived on repaint, so the
 repaint path keeps a map-wide walk. That is a debug-path cost, not a gameplay
 one.
+
+⚠️ **THAT LAST SENTENCE IS NO LONGER TRUE, 2026-08-27.** It rests entirely on §6
+Q2's "rotation is dropped", and the Director has corrected the reason: rotation
+was disabled for **performance** and is meant to return. A rotation that comes
+back makes the repaint path a **gameplay** path, and the map-wide walk this
+bullet dismisses is charged to it. Nothing else about Option A changes — it
+shipped, it works, and its wins are real — but its cost has to be re-read with
+this premise removed.
 
 ### 3.2 Option B — soot becomes accumulated per-voxel state
 
@@ -561,10 +585,17 @@ Red-before-green, in this order:
    because it gated the headline, and it demoted performance from the reason to
    a side effect.
 2. ~~The §1.2 rotation prediction — needs a capture action that rotates the
-   view.~~ **MOOT, 2026-08-13 — §6 Q2: rotation is dropped, for now.** No
-   capture action to build against a feature that isn't shipping. Not deleted
+   view.~~ ~~**MOOT, 2026-08-13 — §6 Q2: rotation is dropped, for now.** No
+   capture action to build against a feature that isn't shipping.~~ Not deleted
    from the record: if rotation returns, this is still the first thing to
    check.
+
+   ⛔ **UN-MOOTED 2026-08-27. Rotation did not go away — it was turned off for
+   performance and is meant to return** (§6 Q2's annotation). The last sentence
+   above is now operative, and this is once again a real gap: **there is still no
+   capture action that rotates the view.** Building one is
+   [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md)'s SS-6, and it is the only
+   gate that can catch a stored per-face format being view-space (§2.1b there).
 3. A pixel diff of one real detonation, before and after, at the 400-frame
    settle CLAUDE.md records as deterministic. Soot is a look; the gate is that
    the look survives the refactor except where §1.3's defect is deliberately

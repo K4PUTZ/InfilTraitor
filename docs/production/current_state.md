@@ -584,6 +584,13 @@ the blast from "the waves fire" to something that reads right. Full record:
   in three measurable ways. Plus a faint directional feather past the graded
   rings, soot on the voxels a blast reveals (they used to come up pristine inside
   a blackened crater), and a four-rung fade-in.
+  - ⛔ **2026-08-27 — the storage model is ruled and the reform is NOT started.**
+    The soot map becomes the source of truth: stored per-cell, permanent, and
+    explicitly **not** accumulating. Plan:
+    `PROMPTS/PLANNING/SOOT_STORAGE_REFORM.md`. Until its SS-2 lands, everything
+    above (and the "persists through perspective rotation" line under Lighting &
+    Visuals) still describes the shipped code — soot survives rotation because it
+    is re-derived from `_base_damage`, not because it is stored.
 - ✅ **Dents and cracks are no longer re-gated by ring** (E-ORGANIC-02):
   `WAVE_TABLE`'s hardcoded pairs were a second gate on what the bomb's JSON
   already decides, and 18 ring-2 dents were planned and silently dropped on every

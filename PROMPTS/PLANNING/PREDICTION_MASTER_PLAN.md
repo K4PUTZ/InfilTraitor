@@ -159,6 +159,26 @@ So phase 3's 66 ms — the single most expensive phase — is already exactly th
 shape this plan wants everything to have: expensive, map-wide, and free of side
 effects. It is a **model to copy, not a problem to solve.**
 
+⛔ **SUPERSEDED IN PART, 2026-08-27 — soot is deliberately giving up this
+purity.** The Director ruled that the soot map becomes the source of truth, so
+scorch becomes stored state and joins §2.1's mutation inventory as one new
+writer. Plan: [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md). **Not
+started** — everything measured above still describes the code as it stands.
+
+⚠️ **The finding is not being reversed, it is being re-scoped, and the
+distinction matters to this plan more than to that one.** Purity was a means. The
+ruling targets a defect purity cannot fix — `PERFORMANCE_MASTER_PLAN` §9.11a/b's
+flicker, where a cell in an OLD crater re-enters the soot wave because its LIGHT
+bucket moved, and is lightened and walked back. A pure map-wide re-derivation is
+precisely what makes that expressible.
+
+**The purity that must survive is this plan's own, and it is not negotiable:**
+`build_plan()` stays PURE and `delta.commit()` stays the only writer. The scorch
+travels in the plan as a proposal and is written at commit. So §2.1's inventory
+grows by one writer, not by seven, and `blast_purity_selftest.gd` keeps meaning
+exactly what it means today. ⚠️ And the new mutation must call
+`room.bump_world_revision()`, or `PredictionCache` serves stale plans.
+
 ### 2.3 Firearms do not share the blast mutators
 
 I flagged this as a risk to the Director before checking it, and **the check

@@ -168,6 +168,19 @@ Net effect: the information the emitter already has (`toward`, the offset back t
 the hole) stops being thrown away at the moment it is projected, which is the
 only reason the current format loses it.
 
+**The current path is measurably RIGHT about this, which is exactly why the risk
+is invisible.** `DESTRUCTION_MASTER_PLAN` D24's FACE-SOOT-01 amendment records a
+real PLAYGROUND measurement: *"SE/SW histograms swap correctly on rotation to
+E."* That is re-derivation getting rotation right by recomputing. A stored
+view-space triple would reproduce the histogram of the perspective it was written
+in and be wrong in every other one — and nothing on screen today would tell you,
+because nothing stores faces long enough to be asked.
+
+**That measurement is also the instrument SS-6 should rebuild**: an SE/SW
+histogram, before and after a rotation to E, is a sharper and cheaper gate than a
+pixel diff of a rotated board, and it has precedent in this repo rather than
+being invented here.
+
 ### 2.2 One writer
 
     Room.scorch_cell(level: int, cell: Vector2i, faces: Vector3i) -> void
@@ -356,7 +369,7 @@ before it owns the picture, and nothing is deleted until the picture is proven.*
 | **SS-3** | **The commit seam.** Scorch leaves the prediction as a proposal; `delta.commit()` writes it; `bump_world_revision()`. | The two-fire capture: fire 1's region **0 flickered, 0 changed** across the whole of fire 2. Plus `run_selftests.py` clean, including the leak gate. |
 | **SS-4** | **Checkpoint persistence** (§3.3). `SaveState` v2, `crater_floor_soot` absorbed, `_soot_map` added to `clear_run_state()`. | `save_state_selftest` round-trips a sooted board; a restore reproduces it pixel-identically; and **a cleared run state leaves zero scorch** — the "acabou a fase" half, which is the one that fails silently. |
 | **SS-5** | **Subtraction.** Retire the repaint-side re-derivation and whatever §3.5's grep proves dead. | Repo-wide grep and a named caller list **pasted into the commit**, not summarised. 0-px gate again after. |
-| **SS-6** | **Prove it under rotation** (§3.4, §2.1b). ⚠️ **Needs a capture action that rotates the view, and none exists** — `SOOT_MASTER_PLAN` §7.2 recorded that gap as moot when rotation was believed dropped, and the 2026-08-27 correction un-moots it. Build it here. | Scorch a board, rotate, and read the faces back: the two horizontal faces that were hidden at emit time must present the ring the emitter actually measured, not the `faint` placeholder. This is the only gate that can catch §2.1b being wrong. |
+| **SS-6** | **Prove it under rotation** (§3.4, §2.1b). ⚠️ **Needs a capture action that rotates the view, and none exists** — `SOOT_MASTER_PLAN` §7.2 recorded that gap as moot when rotation was believed dropped, and the 2026-08-27 correction un-moots it. Build it here. | **Rebuild D24's own instrument** — the SE/SW histogram, before and after a rotation to E (§2.1b). The two horizontal faces hidden at emit time must present the ring the emitter actually measured, not the `faint` placeholder. This is the only gate that can catch §2.1b being wrong, and a histogram beats a pixel diff of a rotated board. |
 
 **Standing gate for every task** (`SOOT_MASTER_PLAN` §5's, unchanged): a real
 detonation pixel-diffed before and after; the only acceptable differences are the

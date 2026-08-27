@@ -42,7 +42,12 @@ placeholder marks, then D23 same day giving blast damage its own irregular
 mark family distinct from a bullet's round one, amended 2026-07-31 for mark
 size/legibility). **S3 closed and shipped as `DESTRUCTION_MASTER_PLAN` D24**:
 soot for both explosions and firearms is now derived fresh every repaint from
-which voxels are absent, never stored. S8 and S9 are explicitly deferred to
+which voxels are absent, never stored. *(⛔ The "never stored" half is superseded
+by the Director's 2026-08-27 ruling — the soot map becomes the source of truth;
+see [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md). **Not started**, so the
+sentence still describes today's code. What does NOT change is the part S3 was
+about: explosions and firearms keep sharing one mechanism, and both write through
+the same single producer.)* S8 and S9 are explicitly deferred to
 the Actor/Combat wave, and two of the four pre-existing §7b questions (1 and
 4) are closed alongside them. **Open going into the next session** (found
 2026-07-31, real capture): damage marks don't yet know which face of a voxel

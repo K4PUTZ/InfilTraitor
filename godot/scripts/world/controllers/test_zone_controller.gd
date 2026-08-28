@@ -27,6 +27,7 @@ const GrenadePropClass = preload("res://godot/scripts/overlays/grenade_prop.gd")
 const AgentProbePropClass = preload("res://godot/scripts/overlays/agent_probe_prop.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
 const DetonationChoreographerClass = preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")
+const DetonationPresenterClass = preload("res://godot/scripts/systems/destruction/detonation_presenter.gd")
 
 var room: Node
 var _grenades: Array[Dictionary] = []
@@ -1420,7 +1421,20 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	_start_waves(waves, job.playback_queue)
 
 
+## D-3 — `INFILTRAITOR_PRESENTER=1` runs the reform; unset runs the choreographer,
+## which stays the default until D-6 removes it. Both from one binary, so a
+## before/after needs no stash — the discipline `INFILTRAITOR_SOOT_STORE_READ` and
+## `INFILTRAITOR_BURN_SCHEDULE` earned.
+##
+## `playback_queue` is ignored by the presenter and that is not an oversight: it is
+## `flatten_plan()`'s radial sort, and there is no front left to order. The rest of
+## the warm-up — the tile alternatives and the composited page upload, which are
+## what actually cost a frame — is untouched and still pays off, because the
+## presenter places exactly the same tiles.
 func _start_waves(waves: Dictionary, playback_queue: Array = []) -> void:
+	if OS.get_environment("INFILTRAITOR_PRESENTER") == "1":
+		_start_presenter(waves)
+		return
 	var choreographer := DetonationChoreographerClass.new()
 	_active_choreographer = choreographer
 	choreographer.finished.connect(func():
@@ -1440,6 +1454,26 @@ func _start_waves(waves: Dictionary, playback_queue: Array = []) -> void:
 		room._debris_overlay, room.blast_debris_palette())
 	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay,
 		room.get_tree(), playback_queue)
+
+
+## D-3's half of the switch above. Deliberately the same shape as the
+## choreographer branch — same VFX targets, same consequence room, same
+## `begin_consequence_beat()`, same `finished` bookkeeping — so a difference
+## between the two paths is a difference in the PRESENTATION and never in what
+## either one was handed.
+func _start_presenter(waves: Dictionary) -> void:
+	var presenter := DetonationPresenterClass.new()
+	_active_choreographer = presenter
+	presenter.finished.connect(func():
+		_prof("WAVES end — the blast is over")
+		room.event_probe_report("detonation")
+		_active_choreographer = null)
+	presenter.consequence_room = room
+	room.begin_consequence_beat()
+	presenter.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints(),
+		room._debris_overlay, room.blast_debris_palette())
+	presenter.start(waves, room._voxel_renderer, room._smoke_spark_overlay,
+		room.get_tree())
 
 
 ## The point the fireball blooms from: the top-centre of the grenade sprite, in

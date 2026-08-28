@@ -1,7 +1,7 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟢 **D-0 AND D-2 BUILT AND MEASURED (§8.1, §8.2). Next: D-1/D-3.**
+**Status:** 🟢 **D-0, D-1, D-2 AND D-3 ALL DONE (§8.1–§8.4). Next: D-4, then D-6.**
 D-0's pacing rehearsal ships as three env overrides — **fabric 4 797 → 2 310 ms;
 hard 2 940 → 878 ms**, single collapsed commit frame **18.55 ms measured**
 against a predicted 20.1. **D-2 made the cook the owner of what the fire
@@ -355,7 +355,7 @@ the board's light is wrong everywhere.
 | ✅ **D-1** | **MEASURED 2026-08-28 (§8.3).** ⛔ It corrects §8.1: the "18.55 ms collapsed frame" was an APPLY LOOP, not a frame. The real collapsed cell frame is **59.2 ms (fabric) / 31.6 ms (hard)**, and the commit frame is another 58.4 / 47.6. | ✅ Met, and the answer is that **the collapse fits** — §4.1's staged fallback is not needed. Instrument built: `INFILTRAITOR_EVENT_FRAMES=1` (`[E-FRAME]`), which keeps every frame of the event rather than bucketing them. ⚠️ The event's real worst frame is the **light derive at 201.9 ms** and neither D-1 nor D-3 touches it (§7.4). |
 | ✅ **D-2** | **BUILT 2026-08-28 (§8.2).** The cook owns what the fire consumes (§6). ⚠️ The passage half changed shape: the bubble does NOT force an opening (§11.1a vetoes §11.1) — what shipped is `PassageQuery`'s criterion, amount instead of shape. | ✅ All three met. `blast_purity_selftest` + 39 others clean. **Cell probe `0 RESTORED · 0 VANISHED`** against a same-binary control that still reports **350 RESTORED**. The passage line is reported by `Room.report_blast_passage()` as `[E-PASSAGE]`, same shape, and both paths agree on the end state (STANDING ×3). |
 | **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, **material tier**) replacing `_select_deterministic()`'s hash ranking, authored in **voxel-local** coordinates (§11.3.4). Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. Plus: the **resistance ladder's selftests still pass** (§11.3.1), and **panels and `JunctionColumn` still take damage** (§11.3.3 — E-JUNCTION-01's exact regression). |
-| **D-3** | **The presenter.** New class behind `INFILTRAITOR_PRESENTER=1`, old path still default. One commit frame; the consequence channel with per-instance `(GU ring, storey)` delay (§4.2, §5). | Cell probe green. `detonation_plan_selftest` + `blast_purity_selftest` untouched and passing — they are the net. Both paths runnable from one binary, so a before/after needs no stash. |
+| ✅ **D-3** | **BUILT 2026-08-28 (§8.4).** `DetonationPresenter` behind `INFILTRAITOR_PRESENTER=1`, choreographer still default. One commit frame at **31.4 ms** (fabric) / 28.3 (hard); the consequence channel with the §4.2 delay. `DetonationEntryWriter` extracted first so both paths share the writing. | ✅ All met, plus D-5's early: cell probe `0 RESTORED · 0 VANISHED`, 40 selftests clean, and the **settled frame is pixel-identical (0 px)** between the two paths. ⚠️ One deliberate look regression: §7.1 removes the soot fade-in the Director asked for on 2026-08-19 — judge on the video before D-6. |
 | **D-4** | **The symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. Purely visual. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
 | **D-5** | **The light lands** (§7). Soot into the commit; the ramp to its D-0 duration. | The final frame is **pixel-identical** to a control with only the pacing reverted — the destination must be untouched and only the path changed (the gate §14.2 earned). |
 | **D-6** | **Remove the old path** (§3.2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after. Lint, 40 selftests, invariants, CODEMAP. |
@@ -547,6 +547,65 @@ and it is now the only thing in the event above 60 ms.
   f41  BEAT 3    its frame  59.2 ms · (the whole queue, 3531/3531)
   f73  LIGHT     its frame 201.9 ms · then 120 f, 2183 ms
 ```
+
+---
+
+### 8.4 ✅ D-3 IS BUILT — 2026-08-28, behind `INFILTRAITOR_PRESENTER=1`
+
+`DetonationPresenter` (211 lines against the choreographer's 933) does §4's three
+beats: **one frame that writes every cell**, then N frames that write none, then
+the light. It contains no `flatten_plan()`, no `_sort_key()`, no
+`KIND_RADIUS_BIAS`, no `front_radius_for()`, no `front_frames` and no
+`_fade_in_soot()` — §3.1's "the ordering problem stops existing" is literal.
+
+**`DetonationEntryWriter` was extracted first**, unchanged in behaviour, and that
+was the enabling move rather than tidying: §3's table says the cell writes and the
+VFX dispatch SURVIVE the reform, two paths now need them, and D-3's own gate
+demands both run from one binary. Copying `_apply_entry()` would have created the
+second place for them to drift and left D-6 reconciling two versions instead of
+deleting one file. The choreographer now delegates to it; the 40 selftests were
+green across that step alone, before anything new existed.
+
+| fabric gu (31,3) | choreographer, default | choreographer, `FRONT_FRAMES=1` | **presenter** |
+|---|---|---|---|
+| worst cell-writing frame | 29.1 ms (x23 frames) | **59.2 ms** | **31.4 ms** |
+| apply inside it | — | 19.8 ms | **9.96 ms**, 3 584 cells |
+| the whole event | 217 f / 4 069 ms | 193 f / 3 686 ms | **173 f / 3 332 ms** |
+| consequence channel | — | — | 1 712 effects / 12 f / 214 ms |
+| hard: commit frame · event | — | 31.6 ms · 190 f | **28.3 ms · 172 f / 3 183 ms** |
+
+⚠️ **THE PRESENTER'S COMMIT FRAME IS HALF THE CHOREOGRAPHER'S COLLAPSED ONE, at a
+slightly HIGHER cell count** (31.4 ms / 3 584 cells against 59.2 ms / 3 531). Two
+causes, and only the first was designed: the presenter writes the real scorch once
+where the choreographer writes clean and then repaints 1 765 cells four more times
+(§7.1), and its apply loop is 9.96 ms against 19.8 — **the same cells written in
+container order instead of radius-interleaved order**. `flatten_plan()`'s radial
+sort was scattering writes across TileMapLayer quadrants. Nobody predicted that
+and it is worth not forgetting: the ordering machinery was not free even inside
+one frame.
+
+**The gates, all three met:**
+- **Cell probe green** — `1 169 erased · 0 RESTORED · 512 appeared · 0 VANISHED`,
+  identical to D-2's numbers on the choreographer.
+- `detonation_plan_selftest` + `blast_purity_selftest` untouched and passing, with
+  the other 38.
+- **And D-5's gate is already met, early: the settled frame is PIXEL-IDENTICAL —
+  0 differing pixels** between the two paths, same map, same boot conditions. That
+  zero is earned: the same comparison on the same two images reported **19 621
+  differing pixels** for D-2's real change, so the instrument is not blind.
+
+⚠️ **ONE LOOK REGRESSION, DELIBERATE AND FOR THE DIRECTOR TO JUDGE.** §7.1 puts
+the scorch in the commit, so **the soot fade-in is gone** — and a fade-in is what
+the Director asked for on 2026-08-19 (*"a fuligem pode ser processada depois do
+fato, desde que apareça com fade in, e não de repente"*). The settled frame is
+identical; what changed is that the scorch now ARRIVES with the crater instead of
+ramping over 32 frames. This is §7.1 doing exactly what it says, but it overrides
+a standing ruling and should be watched on the video before D-6 makes it
+permanent.
+
+⚠️ **The light is now 66% of the event and is untouched:** 202.9 ms in one frame,
+then 120 frames and 2 190 ms. Everything else in a detonation is now under 32 ms.
+§7.4 is no longer one item among several — it is the whole remaining problem.
 
 ---
 

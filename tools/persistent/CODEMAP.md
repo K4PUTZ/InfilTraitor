@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**223 scripts · 72245 lines total** (under `godot/scripts/`)
+**225 scripts · 72535 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,7 +18,7 @@
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, fire_glow_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, burn_scheduler.gd, detonation_choreographer.gd, detonation_plan_builder.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, burn_scheduler.gd, detonation_choreographer.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, burn_scheduler_selftest.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -1946,11 +1946,38 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 957 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 814 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
 > DetonationChoreographer — EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE). Plays back one DetonationPlanBuilder.build_plan() result as the real 15-wave sequence from §1's table, at `wave_interval_ms` (40, per Q5) apart. This is the ONLY class that ever turns a plan entry into a real `layer.set_cell()`/`erase_cell()` call — every value it applies was already fully resolved during Task 4's pre-compute pass, so a wave here is exactly what §2 promises: no compositing, no lookup, no light rebuild, no allocation beyond the trivial per-cell dictionary reads. §6.2 used to read: "Waves are scheduled on absolute elapsed time from the flash, so a slow wave never delays the next" — 15 independent SceneTreeTimers fired from start() at once. **Superseded 2026-08-08 by the Director's own cadence call: "vamos reduzir mais, até no máximo 1 frame por wave."** A timer cannot express that. At 20 ms on a 16.67 ms frame budget the timers did not land one per frame — they clumped (measured: waves 1-8 all inside one 14 ms window, then a 237 ms gap before wave 9), because each fires on the first frame past its own absolute deadline and the process frame rate does not divide 20 ms evenly. Driving the sequence off `process_frame` instead makes "one wave per frame" exactly true, removes the clumping, and makes the whole thing 15 frames long regardless of frame rate. What that trades away, stated plainly: a slow wave DOES now delay the next one, which is precisely what the old absolute-time scheduling existed to prevent. That is acceptable here and only here — the measured worst wave is wave 1 at ~11 ms, and every other wave is under 2 ms (see the `[E-WAVE]` log), so a wave overrunning a frame is a performance bug to fix at the source rather than a case to schedule around. Extends RefCounted, not Node: nothing here needs to be in the scene tree itself — `tree` (the SceneTree) is passed in once, to await its frames. The caller MUST keep its own strong reference to the instance for the whole ~600 ms sequence. Measured, not assumed (2026-08-07, real capture): a bound Callable held only by a SceneTreeTimer's `timeout` connection was NOT enough to keep this RefCounted alive in practice — every one of the 15 scheduled timers printed its own creation line, but not one `timeout` ever fired, because `detonate_active()`'s local `choreographer` var was the sole reference and it went out of scope the instant that function returned. Fixed by TestZoneController holding `_active_choreographer` (cleared via this class's own `finished` signal) — any other caller needs the same explicit ownership, not a shortcut through a local variable.
+
+---
+
+### `detonation_entry_writer.gd`
+
+`class_name DetonationEntryWriter` · extends `RefCounted` · 204 lines
+
+`godot/scripts/systems/destruction/detonation_entry_writer.gd`
+
+> DetonationEntryWriter — ONE plan entry's real work, and the only place in the whole pipeline that calls `layer.set_cell()`/`erase_cell()` or hands a puff to an overlay. Extracted from `DetonationChoreographer._apply_entry()` on 2026-08-28 for D-3 (`DETONATION_PRESENTATION_MASTER_PLAN` §3), unchanged in behaviour. It exists because the reform replaces the choreographer's PACING, not its writing: §3's table says the cell writes "survive as one loop inside the commit" and the VFX dispatch "survives and MOVES". Two paths now need this code and they have to run from one binary (D-3's gate), so copying it would have created exactly the second place for them to drift — and D-6 would then have to reconcile two versions instead of deleting one file. ⚠️ **KIND IS THE ONLY THING THAT DECIDES WHAT HAPPENS HERE — there is no ordering, no pacing and no frame in this class.** That is what makes it shared: everything the reform is removing lives in the caller. The two families are worth naming because the reform separates them: - **cells** (`destroy`, `expose`, `dented`, `cracked`, `soot`) — mutate the board, and after D-3 they all land in ONE frame; - **VFX** (`smoke`, `ember`, `debris`) — write nothing, and are what the consequence channel animates afterwards. `is_cell_kind()` is that split, in code, so a caller cannot get it wrong by listing kinds by hand.
+
+**Constants / tuning**
+- `SMOKE_COLOR` = `Color(0.62, 0.60, 0.57, 0.2)`
+- `DEBRIS_FALLBACK_COLOR` = `Color(0.6, 0.6, 0.6)`
+- `SURFACE_SPARK_SPEED_SCALE` = `1.3`
+- `SURFACE_SPARK_DURATION_SCALE` = `0.6`
+- `CELL_KINDS` = `["destroy", "expose", "dented", "cracked", "soot"]`
+
+**Public vars**
+- `var ember_overlay: EmberOverlay = null`
+- `var debris_overlay: DebrisOverlay = null`
+- `var debris_colors: Dictionary = {}`
+- `var smoke_tints: Dictionary = {}`
+- `var soot_clean: bool = false`
+
+**Public API**
+- `func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> int:`
 
 ---
 
@@ -1973,6 +2000,30 @@ extends `Node2D` · 43 lines
 - `SMOKE_BLOBS_PER_VOXEL` = `1`
 - `PHASE_SETUP` = `0`
 - `PHASE_SLICES` = `1`
+
+---
+
+### `detonation_presenter.gd`
+
+`class_name DetonationPresenter` · extends `RefCounted` · 195 lines
+
+`godot/scripts/systems/destruction/detonation_presenter.gd`
+
+> DetonationPresenter — D-3 of `DETONATION_PRESENTATION_MASTER_PLAN`. **The world changes once, and the EFFECTS are what is animated.** That is the whole inversion (§4). `DetonationChoreographer` animates the WORLD — it spreads 20 ms of cell writes across 24 frames and decorates them — and this replaces it with one frame that writes everything and then N frames that write nothing. Behind `INFILTRAITOR_PRESENTER=1`; the choreographer stays the default until D-6 removes it. Both run from one binary, so a before/after needs no stash. ## What it does NOT contain, which is the point No `flatten_plan()`, no `_sort_key()`, no `KIND_RADIUS_BIAS`, no `front_radius_for()`, no `front_frames`, no `_fade_in_soot()`. Every one of those exists to decide WHEN a cell is written, and there is only one frame that writes cells. §3.1: the ordering problem does not get solved here, it stops existing — `KIND_RADIUS_BIAS` had been re-derived three times. ## The three beats 1. **THE COMMIT — one frame.** Every `destroy`, `expose`, `dented`, `cracked` and `soot` entry, then one flush. From here the board is FINAL. 2. **The consequence channel — N frames, zero cell writes.** `smoke`, `ember` and `debris`, each released at its own time. 3. **The light**, unchanged and still last (§7, the Director's standing ruling: scorch is what the light is about to reveal). ⚠️ **THE SCORCH IS IN THE COMMIT, AND THAT IS WHY `soot_clean` IS FALSE HERE.** §13.4 made the wave write clean geometry because its scorch arrived later in a ramp, and a hole that opened already-scorched then had to be wiped and refilled. With one commit frame there is no later — §7.1 — so the cell writes carry their own soot and `_fade_in_soot()` has nothing left to do. Setting this true would produce a permanently clean crater with no error anywhere.
+
+**Signals**
+- `signal finished()`
+
+**Public vars**
+- `var consequence_room = null`
+- `var ring_step_s: float = 0.055`
+- `var storey_bias_s: float = 0.020`
+- `var jitter_s: float = 0.060`
+- `var consequence_max_seconds: float = 0.75`
+
+**Public API**
+- `func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {}, debris_overlay: DebrisOverlay = null, debris_colors: Dictionary = {}) -> void:`
+- `func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:`
 
 ---
 
@@ -4646,7 +4697,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1515 lines
+`class_name TestZoneController` · 1549 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4659,6 +4710,7 @@ extends `Node2D` · 34 lines
 - `AgentProbePropClass` = `preload("res://godot/scripts/overlays/agent_probe_prop.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 - `DetonationChoreographerClass` = `preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")`
+- `DetonationPresenterClass` = `preload("res://godot/scripts/systems/destruction/detonation_presenter.gd")`
 - `DEFAULT_TARGET_OFFSET` = `Vector2i(3, 0)`
 
 **Public vars**

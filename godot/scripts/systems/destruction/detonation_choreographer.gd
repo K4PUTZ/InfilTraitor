@@ -267,27 +267,11 @@ static func wave_table_for(plan: Dictionary) -> Array:
 ## grey the puffs were dark smoke drawn over an already-sooted crater — measured,
 ## not eyeballed: a real capture mid-sequence differed from the same frame after
 ## the smoke had died on 1.1% of pixels at mean delta 12/255, i.e. present in the
-## overlay and invisible on screen. Ash reads against both the dark crater and
-## the light concrete around it, which is the whole span this smoke covers.
-## The alpha is deliberately LOW. SmokeSparkOverlay draws each blob as a flat
-## `draw_circle`, so at 0.8 the 274 ring-0 puffs read as a heap of hard-edged
-## discs rather than smoke (real capture, 2026-08-08). Per-voxel smoke inverts
-## the economics the old one-puff-per-GU model was tuned for: density now comes
-## from OVERLAP, so each puff has to be faint enough that no single disc is
-## legible on its own. Raising this back up is the wrong lever for "more smoke" —
-## widen SMOKE_JITTER or lift the tier intensities instead.
-const SMOKE_COLOR := Color(0.62, 0.60, 0.57, 0.2)
-
-## E-DEBRIS-01 — used only when a material has no palette row, which means the
-## MaterialRegistry did not know it. Neutral grey, the same fallback
-## Room._vfx_material_base_color() uses for exactly that case.
-const DEBRIS_FALLBACK_COLOR := Color(0.6, 0.6, 0.6)
-
-## E-SPARK-04 — mirrors Room.vfx_surface_spark_*, which the firearm path uses.
-## Const here rather than plumbed through set_vfx_targets(): these describe how a
-## spark behaves when it leaves a surface, which is not per-room configuration.
-const SURFACE_SPARK_SPEED_SCALE: float = 1.3
-const SURFACE_SPARK_DURATION_SCALE: float = 0.6
+## ⚠️ MOVED 2026-08-28 (D-3). `SMOKE_COLOR`, `DEBRIS_FALLBACK_COLOR` and the two
+## `SURFACE_SPARK_*` scales now live on `DetonationEntryWriter` with their full
+## reasoning, because that is where the code reading them went. Not re-declared
+## here as aliases: two names for one tuning value is the drift the extraction
+## exists to prevent, and nothing outside this file ever referenced them.
 
 signal wave_applied(index: int, kind: String, ring: int, cell_count: int)
 signal finished()
@@ -302,23 +286,20 @@ var _waves_done: int = 0
 ## selftest calls directly) would be churn for no expressive gain. Unset, the
 ## ember kind is a silent no-op and smoke keeps the flat SMOKE_COLOR — which is
 ## exactly what the selftests and any non-room caller want.
-var _ember_overlay: EmberOverlay = null
-var _debris_overlay: DebrisOverlay = null
-## `{"<effect>:<material>": Color}` — see Room.blast_debris_palette().
-var _debris_colors: Dictionary = {}
-## `{material_id: Color}`, resolved by whoever owns a MaterialRegistry. See
-## Room.blast_smoke_tints() and DetonationPlanBuilder._append_voxel_smoke().
-var _smoke_tints: Dictionary = {}
+## D-3 — the VFX targets and every `set_cell()` this class used to make now live
+## on the shared writer. Held rather than inherited so `DetonationPresenter` can
+## hold the identical object and the two paths cannot drift.
+var _writer := DetonationEntryWriter.new()
 
 
 ## Wire the two overlay targets that are not on `start()`'s signature. Call
 ## before `start()`; both stay optional.
 func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {},
 		debris_overlay: DebrisOverlay = null, debris_colors: Dictionary = {}) -> void:
-	_ember_overlay = ember_overlay
-	_smoke_tints = smoke_tints
-	_debris_overlay = debris_overlay
-	_debris_colors = debris_colors
+	_writer.ember_overlay = ember_overlay
+	_writer.smoke_tints = smoke_tints
+	_writer.debris_overlay = debris_overlay
+	_writer.debris_colors = debris_colors
 
 
 ## Starts the sequence. `plan` is a real DetonationPlanBuilder.build_plan()
@@ -354,13 +335,6 @@ var consequence_room = null
 var wave_soot_clean: bool = false
 
 
-## The scorch a wave entry should write RIGHT NOW — its own, or clean.
-func _wave_soot(entry: Dictionary) -> int:
-	if wave_soot_clean:
-		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
-	return int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN))
-
-
 func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree,
 		precomputed_queue: Array = []) -> void:
 	_t0_ms = Time.get_ticks_msec()
@@ -368,6 +342,7 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree,
 	## the scorch. Read once, here, so `_apply_entry()` is a member read per cell
 	## rather than a null check per cell.
 	wave_soot_clean = (consequence_room != null and consequence_room.consequence_beat)
+	_writer.soot_clean = wave_soot_clean
 	_waves_done = 0
 	var queue: Array = precomputed_queue if not precomputed_queue.is_empty() \
 		else flatten_plan(plan)
@@ -810,129 +785,13 @@ func _apply_wave(index: int, kind: String, ring: int, plan: Dictionary,
 ## `layer.set_cell()`/`erase_cell()`/`SmokeSparkOverlay.add_smoke()`. Returns how
 ## many cells it actually touched (0 when the target layer does not exist), which
 ## is what both callers above count with.
+## ⚠️ MOVED 2026-08-28 (D-3) — the body of this is now `DetonationEntryWriter`,
+## which the presenter shares. Nothing about what an entry DOES changed; what
+## changed is that two callers need it and only one of them has frames.
+## `wave_soot_clean` is copied into the writer at `start()`, so this stays a pure
+## forward with no state of its own.
 func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> int:
-	match kind:
-		"destroy":
-			var layer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			if layer == null:
-				return 0
-			layer.erase_cell(entry["cell"])
-			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
-			return 1
-		"expose":
-			## §2's exposure fallback (B5). Its own step since E-ORGANIC-01 —
-			## see flatten_plan() for why nesting these was the spike.
-			var elayer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			if elayer == null:
-				return 0
-			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], entry["alt"])
-			elayer.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
-			## PERF-P2b: the alt carries bucket and flip; the scorch travels beside it.
-			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
-				_wave_soot(entry))
-			## PERF-10: this bypassed the light field, so the field's stale set
-			## cannot know the cell moved. Say so, or the next stale-driven apply
-			## walks past a cell only a map-wide walk would have corrected.
-			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
-			return 1
-		"dented", "cracked", "soot":
-			var layer2: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			if layer2 == null:
-				return 0
-			## _ensure_light_alt() mints the (source_id, atlas_coords, alt)
-			## TileData alternative if it doesn't exist yet — the SAME call
-			## VoxelRenderer._apply_light_to_layer() makes right before its own
-			## set_cell(). Cheap/memoized, not a "lookup" in §2's sense (no
-			## resolution decision happens here, the triple already arrived
-			## fully resolved).
-			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], entry["alt"])
-			layer2.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
-			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
-				_wave_soot(entry))
-			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
-			return 1
-		"smoke":
-			if smoke_overlay == null:
-				return 0
-			## E-SMOKE-01: scale and alpha are per-entry, not a flat 1.0 —
-			## DetonationPlanBuilder derives both from the voxel's damage tier,
-			## its ring, and a per-cell hash (see _append_voxel_smoke()).
-			## `blobs` is 0 for the GU-level remainder puffs, which means "use
-			## the overlay's own 2-3 range"; only per-voxel puffs pin to 1.
-			## E-SMOKE-TINT-01 (2026-08-13): the hue comes from the material, the
-			## ALPHA does not. VFX-01's per-material tint (wood reads as dark
-			## smoke, masonry and metal as light) stopped reaching explosions on
-			## 2026-08-05 — the choreographer erases cells directly and never
-			## emits `voxel_destroyed`, so `Room._dispatch_destruction_vfx()` has
-			## only fired for firearms since. Reinstating it by reconnecting that
-			## dispatch would double every puff against the staged smoke waves;
-			## tinting the wave entry is the same look without the double.
-			##
-			## SMOKE_COLOR's own alpha is kept deliberately, and this is the trap:
-			## it is 0.2 because per-voxel smoke gets its density from OVERLAP
-			## (see that constant's note — at VFX-01's alpha the ring-0 puffs read
-			## as a heap of hard-edged discs). VFX-01's `vfx_smoke_alpha` was tuned
-			## for one puff per destroyed voxel through a completely different
-			## path. Taking the tint's alpha along would silently undo that.
-			var puff_color: Color = _smoke_tints.get(entry.get("material", ""), SMOKE_COLOR)
-			puff_color.a = SMOKE_COLOR.a * float(entry.get("alpha", 1.0))
-			smoke_overlay.add_smoke(entry["world_pos"], puff_color,
-				float(entry.get("scale", 1.0)), entry["duration"],
-				int(entry.get("blobs", 0)))
-			return 1
-		"ember":
-			## E-EMBER-01. No duration is passed: the overlay's own 1.5-4.0 roll
-			## plus its height bias is what makes a scorched patch cool unevenly
-			## instead of as a bank of identical dots, and that is the VL-D4 look
-			## the Director asked to keep ("a gente já tinha um visual bom").
-			## `duration_scale` is the material's flammability, 1.0 for wood —
-			## an exact no-op today, and the seam the cardboard/fabric materials
-			## will use later.
-			if _ember_overlay == null:
-				return 0
-			## E-EMBER-02: `delay` is the upward creep's stagger, already rolled
-			## deterministically per cell in the plan — the choreographer only
-			## forwards it. Velocity/drag/rise stay zero: a scorch ember is
-			## PINNED to its voxel (the rising fire is the burst's job, and
-			## E-EMBER-02 raised that one instead precisely so it clears the
-			## crater and stops hiding these).
-			_ember_overlay.add_ember(entry["world_pos"], -1.0, Vector2.ZERO, 0.0, 0.0,
-				float(entry.get("duration_scale", 1.0)), float(entry.get("delay", 0.0)))
-			return 1
-		"debris":
-			## E-DEBRIS-01. The plan already decided WHICH effect this voxel
-			## throws and HOW MANY, hashed per cell — this only dispatches.
-			## Colour comes from the palette rather than the entry for the same
-			## reason smoke's tint does: the builder runs headless, without a
-			## MaterialRegistry to ask.
-			var effect: String = String(entry.get("effect", ""))
-			var color: Color = _debris_colors.get(
-				"%s:%s" % [effect, entry.get("material", "")], DEBRIS_FALLBACK_COLOR)
-			match effect:
-				"dust":
-					if _debris_overlay == null:
-						return 0
-					_debris_overlay.add_dust(entry["world_pos"], entry["floor_pos"], color)
-					return 1
-				"chips":
-					if _debris_overlay == null:
-						return 0
-					_debris_overlay.add_chips(entry["world_pos"], entry["floor_pos"],
-						int(entry.get("count", 1)), color)
-					return 1
-				"sparks":
-					if smoke_overlay == null:
-						return 0
-					## E-SPARK-04: a blast's sparks come off a struck SURFACE, same
-					## as a bullet's, so they take the same faster/shorter profile
-					## — the muzzle's own are the exception and are not routed
-					## through here.
-					smoke_overlay.add_sparks(entry["world_pos"],
-						int(entry.get("count", 1)), color,
-						SURFACE_SPARK_SPEED_SCALE, SURFACE_SPARK_DURATION_SCALE)
-					return 1
-			return 0
-	return 0
+	return _writer.apply(kind, entry, voxel_renderer, smoke_overlay)
 
 
 ## GPU-UPLOAD-01 (2026-08-08): every dented/cracked/soot entry's
@@ -951,7 +810,5 @@ func _apply_entry(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay
 ## contract, fewer calls, and still a cheap no-op when nothing composited
 ## (flush_dirty_pages() checks an empty dirty-page set itself).
 func _flush(voxel_renderer) -> void:
-	voxel_renderer.flush_damage_composite_pages()
-	## PERF-P2b: one soot upload per flushed frame, never one per cell.
-	voxel_renderer.flush_cell_soot()
+	_writer.flush(voxel_renderer)
 

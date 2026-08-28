@@ -51,11 +51,38 @@ static func is_cell_kind(kind: String) -> bool:
 	return CELL_KINDS.has(kind)
 
 
+## D-3b — the cells whose scorch a caller is about to RAMP IN, as {Vector3i: true}.
+##
+## ⚠️ **PER-CELL, NEVER A BLANKET FLAG, AND §9.11a IS WHY.** The choreographer
+## writes clean everywhere (`soot_clean`) because its ramp then repaints
+## everything. The presenter cannot do that: the soot wave admits cells whose
+## LIGHT BUCKET moved with their scorch unchanged — a cell in an OLD crater on the
+## far side of the map — and writing those clean and walking them back is the
+## Director's own 2026-08-23 report (*"a segunda explosão influencia na fuligem da
+## primeira"*), measured at 180 cells flashing to near-clean for five frames and
+## returning to exactly their old value. So only cells that are actually CHANGING
+## are allowed to start clean.
+var soot_ramp_cells: Dictionary = {}
+
+
 ## The scorch an entry should write RIGHT NOW — its own, or clean.
 func _wave_soot(entry: Dictionary) -> int:
 	if soot_clean:
 		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
+	if not soot_ramp_cells.is_empty():
+		var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
+		if soot_ramp_cells.has(Vector3i(cell.x, cell.y, int(entry.get("level", 0)))):
+			return VoxelRenderer.FACE_SOOT_CODE_CLEAN
 	return int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN))
+
+
+## One rung down the ladder: every face `by` tones fainter, clamped at clean.
+## A face already clean stays clean, so a cell only fades on the faces it is
+## actually going to scorch.
+static func lightened(faces: Vector3i, by: int) -> Vector3i:
+	var clean: int = BlastCalculator.FACE_SOOT_CLEAN
+	return Vector3i(
+		mini(faces.x + by, clean), mini(faces.y + by, clean), mini(faces.z + by, clean))
 
 
 func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> int:

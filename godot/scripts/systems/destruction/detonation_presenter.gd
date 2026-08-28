@@ -81,9 +81,12 @@ func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {},
 
 func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:
 	_t0_ms = Time.get_ticks_msec()
-	## §7.1 — the scorch rides in the commit. See the class header.
+	## §7.1 — the scorch rides in the commit. The FADE (below) is what arrives
+	## afterwards, and it is a plane walk, not a second set of cell writes.
 	_writer.soot_clean = false
+	var ramp: Array = _collect_soot_ramp(plan, voxel_renderer)
 	_commit_frame(plan, voxel_renderer)
+	await _fade_soot_plane(ramp, voxel_renderer, tree)
 	await _run_consequence(plan, voxel_renderer, smoke_overlay, tree)
 	if consequence_room != null and consequence_room.consequence_beat:
 		consequence_room.event_probe_beat("LIGHT")
@@ -121,6 +124,95 @@ func _commit_frame(plan: Dictionary, voxel_renderer) -> void:
 	_writer.flush(voxel_renderer)
 	print("[E-PRESENT] commit frame — %d cell(s) in %.3f ms of apply" % [
 		cells, float(Time.get_ticks_usec() - t0) / 1000.0])
+
+
+## D-3b — THE SCORCH FADES IN OVER A HANDFUL OF FRAMES.
+##
+## > Director, 2026-08-28: *"daria pra fazer a fuligem entrar com fade in de 4 ou
+## > 5 frames?"* — restoring what they asked for on 2026-08-19 (*"a fuligem pode
+## > ser processada depois do fato, desde que apareça com fade in, e não de
+## > repente"*), which §7.1 had dropped by putting the scorch in the commit.
+##
+## ⚠️ **THIS IS HALF OF `_fade_in_soot()`, AND THE HALF THAT WAS NEVER THE
+## PROBLEM.** That function did two things: a `set_cell()` block that re-placed
+## tiles using a `source_id` read during the COOK — §9.11e's writer, 350 cells put
+## back on holes the fire had eaten — and then a ladder walk that only writes the
+## SOOT PLANE. §3 killed the function for the first half. The commit frame has
+## already placed every cell correctly, with live data, so only the ladder is
+## needed here and there is no `set_cell()` in it at all.
+##
+## That is also why it is nearly free: a plane write is a pixel write (PERF-P2b —
+## no alternative, no TileSet rebuild, nothing to pre-mint), and one upload per
+## frame. The choreographer's own 32-frame version measured at ~17.8 ms/frame,
+## which is an idle frame.
+##
+## The ladder itself is the ratified LOOK, unchanged: faces are lightened by k and
+## k walks to zero, so a face landing on tone 0 climbs the whole ladder while one
+## landing on tone 3 arrives in a single step — scorch settling rather than a
+## uniform dissolve.
+var soot_fade_frames: int = 5
+
+
+## Which cells will ramp, and what to. Runs BEFORE the commit, because it has to
+## read the scorch each cell carries NOW.
+##
+## ⚠️ §9.11a — a cell whose scorch is ALREADY its target is excluded, and this is
+## not an optimisation. The soot wave admits cells whose light bucket moved with
+## their scorch unchanged; ramping those means writing them clean and walking them
+## back, which is the flash the Director reported on 2026-08-23. Excluding them
+## here is also what keeps them out of `soot_ramp_cells`, so the commit writes them
+## at their real value and they never go clean at all.
+func _collect_soot_ramp(plan: Dictionary, voxel_renderer) -> Array:
+	var out: Array = []
+	var ramp_cells: Dictionary = {}
+	for kind: String in ["dented", "cracked", "soot"]:
+		for ring in plan.get(kind, {}).keys():
+			for entry: Dictionary in plan[kind][ring]:
+				_note_ramp(entry, voxel_renderer, out, ramp_cells)
+	for ring in plan.get("destroy", {}).keys():
+		for entry: Dictionary in plan["destroy"][ring]:
+			for reveal: Dictionary in entry.get("expose", []):
+				_note_ramp(reveal, voxel_renderer, out, ramp_cells)
+	_writer.soot_ramp_cells = ramp_cells
+	return out
+
+
+func _note_ramp(entry: Dictionary, voxel_renderer, out: Array,
+		ramp_cells: Dictionary) -> void:
+	if not entry.has("soot") or not entry.has("level") or not entry.has("cell"):
+		return
+	var level: int = int(entry["level"])
+	var cell: Vector2i = entry["cell"]
+	var target: int = int(entry["soot"])
+	if voxel_renderer.cell_soot_at(level, cell) == target:
+		return
+	ramp_cells[Vector3i(cell.x, cell.y, level)] = true
+	out.append([level, cell, VoxelLightField.decode_face_soot(target)])
+
+
+func _fade_soot_plane(ramp: Array, voxel_renderer, tree: SceneTree) -> void:
+	if ramp.is_empty():
+		return
+	if consequence_room != null:
+		consequence_room.event_probe_beat("SOOT FADE")
+	var steps: int = maxi(soot_fade_frames, 1)
+	var t0: int = Time.get_ticks_usec()
+	## Starts at step 1: step 0 is "fully lightened", which the commit frame has
+	## already written for exactly these cells (`soot_ramp_cells`). Repeating it
+	## would spend a frame drawing what is already on screen.
+	for step: int in range(1, steps):
+		await tree.process_frame
+		if not is_instance_valid(voxel_renderer):
+			return
+		var lighten: int = steps - 1 - step
+		for row: Array in ramp:
+			voxel_renderer._write_cell_soot(int(row[0]), row[1],
+				VoxelLightField.encode_face_soot(
+					DetonationEntryWriter.lightened(row[2], lighten)))
+			voxel_renderer.note_external_write(int(row[0]), row[1])
+		voxel_renderer.flush_cell_soot()
+	print("[E-PRESENT] soot fade — %d cell(s) over %d frame(s), %.2f ms of writes" % [
+		ramp.size(), steps - 1, float(Time.get_ticks_usec() - t0) / 1000.0])
 
 
 ## Beat 3 — the channel. Every VFX entry gets a release time; frames pass; each

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**225 scripts · 72535 lines total** (under `godot/scripts/`)
+**225 scripts · 72649 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1946,7 +1946,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_choreographer.gd`
 
-`class_name DetonationChoreographer` · extends `RefCounted` · 814 lines
+`class_name DetonationChoreographer` · extends `RefCounted` · 809 lines
 
 `godot/scripts/systems/destruction/detonation_choreographer.gd`
 
@@ -1956,7 +1956,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 204 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 231 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -1975,6 +1975,7 @@ extends `Node2D` · 43 lines
 - `var debris_colors: Dictionary = {}`
 - `var smoke_tints: Dictionary = {}`
 - `var soot_clean: bool = false`
+- `var soot_ramp_cells: Dictionary = {}`
 
 **Public API**
 - `func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> int:`
@@ -2005,7 +2006,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 195 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 287 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2020,6 +2021,7 @@ extends `Node2D` · 43 lines
 - `var storey_bias_s: float = 0.020`
 - `var jitter_s: float = 0.060`
 - `var consequence_max_seconds: float = 0.75`
+- `var soot_fade_frames: int = 5`
 
 **Public API**
 - `func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {}, debris_overlay: DebrisOverlay = null, debris_colors: Dictionary = {}) -> void:`

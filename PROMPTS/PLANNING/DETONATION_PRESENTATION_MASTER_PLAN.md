@@ -594,8 +594,8 @@ one frame.
   zero is earned: the same comparison on the same two images reported **19 621
   differing pixels** for D-2's real change, so the instrument is not blind.
 
-⚠️ **ONE LOOK REGRESSION, DELIBERATE AND FOR THE DIRECTOR TO JUDGE.** §7.1 puts
-the scorch in the commit, so **the soot fade-in is gone** — and a fade-in is what
+⚠️ **ONE LOOK REGRESSION — ✅ CLOSED THE SAME DAY BY D-3b (§8.5).** §7.1 puts
+the scorch in the commit, so **the soot fade-in was gone** — and a fade-in is what
 the Director asked for on 2026-08-19 (*"a fuligem pode ser processada depois do
 fato, desde que apareça com fade in, e não de repente"*). The settled frame is
 identical; what changed is that the scorch now ARRIVES with the crater instead of
@@ -606,6 +606,42 @@ permanent.
 ⚠️ **The light is now 66% of the event and is untouched:** 202.9 ms in one frame,
 then 120 frames and 2 190 ms. Everything else in a detonation is now under 32 ms.
 §7.4 is no longer one item among several — it is the whole remaining problem.
+
+---
+
+### 8.5 ✅ D-3b — THE SCORCH FADES IN AGAIN, 2026-08-28
+
+> Director: *"daria pra fazer a fuligem entrar com fade in de 4 ou 5 frames? Ou é
+> muito trabalho pra pouca vantagem?"*
+
+Cheap, and it gives back the 2026-08-19 ruling §7.1 had dropped. **5 steps, 4 drawn
+frames, 2 407 cells, 79 ms of writes total; the event goes 173 → 178 frames
+(3 332 → 3 404 ms).**
+
+⚠️ **IT IS HALF OF `_fade_in_soot()` — the half that was never the problem.** That
+function did two things: a `set_cell()` block re-placing tiles from a cook-time
+`source_id` (§9.11e's writer, 350 cells put back onto holes the fire ate) and a
+ladder walk that only touches the SOOT PLANE. §3 killed the function for the first
+half. The presenter's commit frame has already placed every cell correctly with
+live data, so only the ladder is needed and **there is no `set_cell()` in it at
+all** — the fade comes back without the defect coming back with it.
+
+⚠️ **§9.11a HAD TO BE CARRIED ACROSS, and it is why `soot_ramp_cells` is per-cell
+rather than a flag.** The choreographer writes clean EVERYWHERE (`soot_clean`)
+because its ramp repaints everything after. The presenter cannot: the soot wave
+admits cells whose LIGHT BUCKET moved with their scorch unchanged — a cell in an
+older crater across the map — and writing those clean and walking them back is the
+Director's 2026-08-23 report (*"a segunda explosão influencia na fuligem da
+primeira"*), measured at 180 cells flashing for five frames and returning to
+exactly their old value. Only cells actually changing are allowed to start clean;
+everything else is written at its real value in the commit and never goes clean.
+
+`DetonationEntryWriter.lightened()` (moved off the choreographer) is the same
+ratified ladder: faces lightened by k, k walking to zero, so a face landing on tone
+0 climbs the whole ladder and one landing on tone 3 arrives in a single step.
+
+**Gates re-run with the fade in: cell probe `0 RESTORED · 0 VANISHED`, and the
+settled frame is still 0 px against the choreographer.**
 
 ---
 

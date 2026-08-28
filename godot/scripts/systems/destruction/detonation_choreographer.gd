@@ -689,7 +689,7 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 				continue
 			var entry: Dictionary = entries[i]
 			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
-				VoxelLightField.encode_face_soot(_lightened(faces[i], lighten)))
+				VoxelLightField.encode_face_soot(DetonationEntryWriter.lightened(faces[i], lighten)))
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			painted += 1
 		_flush(voxel_renderer)
@@ -706,14 +706,9 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 	return frame_index
 
 
-## One rung down the ladder: every face `by` tones fainter, clamped at clean.
-## A face already clean stays clean, so a cell only fades on the faces it is
-## actually going to scorch.
-static func _lightened(faces: Vector3i, by: int) -> Vector3i:
-	var clean: int = BlastCalculator.FACE_SOOT_CLEAN
-	return Vector3i(
-		mini(faces.x + by, clean), mini(faces.y + by, clean), mini(faces.z + by, clean))
-
+## ⚠️ MOVED 2026-08-28 (D-3) — `_lightened()` is now
+## `DetonationEntryWriter.lightened()`. Both the choreographer's soot ramp and the
+## presenter's walk it, and it had to stop living on the class D-6 deletes.
 
 ## Where the expanding front stands on a given frame, as a radius in the same
 ## units the queue's `sort` keys are in. Pure and static so the pacing rule is

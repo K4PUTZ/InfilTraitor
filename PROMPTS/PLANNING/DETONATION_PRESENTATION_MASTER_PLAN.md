@@ -1,7 +1,8 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟢 **D-0 BUILT AND MEASURED (§8.1) — and it carried half of D-1 with it.**
+**Status:** 🟢 **D-0 BUILT AND MEASURED (§8.1); §11 carries the Director's
+bubble ruling — the passage is now a CONTRACT, not an emergent count.**
 The pacing rehearsal ships as three env overrides; nothing architectural is
 built and nothing is removed. **Fabric 4 797 → 2 310 ms; hard 2 940 → 878 ms**,
 and the single collapsed commit frame is **18.55 ms measured** against a
@@ -350,7 +351,8 @@ the board's light is wrong everywhere.
 |---|---|---|
 | ✅ **D-0** | **BUILT 2026-08-27 (§8.1) — fabric 4 797 → 2 310 ms, hard 2 940 → 878 ms.** The dress rehearsal — the new pacing on the OLD machinery.** `front_frames`, `consequence_soot_seconds`, `consequence_light_seconds` set to what §4 will produce. No architecture change, fully reversible. | The Director watches a 3× slow-motion video and says whether it is *pa-pum*. **This sets the target durations D-3 and D-5 build to, and it is cheap to be wrong here.** ⚠️ It also shows the crater arriving with no front — the one change in this plan that could read as broken (§9.4). |
 | 🟠 **D-1** | **HALF DONE (§8.1): the cell writes collapse to 18.55 ms (fabric) / 4.21 ms (hard), cheaper than spread.** Price the real commit frame. Collapse the queue to one frame behind the flash, hard material first, nothing else changed. | The real worst frame, against §1.4's predicted ~17 ms (concrete) / ~43 ms (fabric). `INFILTRAITOR_THROW_PROFILE`-style attribution. **If it does not fit, §4.1's staged fallback is where the architecture changes — before anything is built on it.** |
-| **D-2** | **The cook owns what the fire consumes** (§6), and the passage with it (§6, subject to §9.1). | `blast_purity_selftest`: still pure. **Cell probe: `0 RESTORED, 0 VANISHED`** — the gate the current path fails 350 cells deep. `passage over N burnt edge(s)` reported by the new path with the same shape as today's, or explicitly retired by the Director. |
+| **D-2** | **The cook owns what the fire consumes** (§6) **and guarantees the passage from the bubble** (§11.1 — the Director's ruling, no longer an open question). | `blast_purity_selftest`: still pure. **Cell probe: `0 RESTORED, 0 VANISHED`** — the gate the current path fails 350 cells deep. `passage over N burnt edge(s)` reported by the new path with the same shape as today's, or explicitly retired by the Director. |
+| **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, material tier) replacing `_select_deterministic()`'s hash ranking. Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. The resistance ladder's selftests must still pass (§11.3.1). |
 | **D-3** | **The presenter.** New class behind `INFILTRAITOR_PRESENTER=1`, old path still default. One commit frame; the consequence channel with per-instance `(GU ring, storey)` delay (§4.2, §5). | Cell probe green. `detonation_plan_selftest` + `blast_purity_selftest` untouched and passing — they are the net. Both paths runnable from one binary, so a before/after needs no stash. |
 | **D-4** | **The symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. Purely visual. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
 | **D-5** | **The light lands** (§7). Soot into the commit; the ramp to its D-0 duration. | The final frame is **pixel-identical** to a control with only the pacing reverted — the destination must be untouched and only the path changed (the gate §14.2 earned). |
@@ -429,11 +431,10 @@ changes pacing, not architecture; §9.11e is D-2's.
 
 ## 9. OPEN QUESTIONS
 
-1. **The passage — does the new fire owe `BURN_THROUGH`'s openings?** Today's
-   burn opens `{ CROUCH: 1, NONE: 3, STANDING: 2 }` on a fabric blast. It decides
-   whether the cook must GUARANTEE connectivity or merely produce holes and let
-   `PassageQuery` report what happened. **Director's call, and D-2 is blocked on
-   it in substance, not in schedule.**
+1. ~~**The passage — does the new fire owe `BURN_THROUGH`'s openings?**~~
+   ✅ **ANSWERED 2026-08-27 by the Director, and the answer is bigger than the
+   question — see §11. The cook GUARANTEES, and the bubble is what it guarantees
+   from.**
 2. **Does the front's disappearance cost anything the Director wants?** §4 has the
    crater simply present when the flash clears. That is *pa-pum* by construction
    and it is also the removal of a look that was tuned three times. **D-0 answers
@@ -444,6 +445,132 @@ changes pacing, not architecture; §9.11e is D-2's.
 4. **What replaces `flatten_plan()` for W-PRECOOK's warming?** The precook needs
    "which alternatives will this blast need" and currently reads it off the
    playback queue. The delta has the same information; the seam does not exist yet.
+
+---
+
+## 11. THE BUBBLE IS THE CONTRACT — Director, 2026-08-27
+
+> *"A passagem abre quando a área de atuação da granada (bolha da mira) acerta
+> a(s) slice(s) bloqueando a passagem. Podemos fazer a explosão deterministicamente
+> abrir GUs e Slices englobadas na bolha, independente do que o efeito decorativo
+> ou voxels visíveis indicarem. De fato, toda a explosão pode ser baseada em GUs e
+> Slices, usando um algoritmo/animação comum para: destruídas, parcialmente
+> destruídas (decalques), intactas, etc. Dessa forma não precisamos calcular toda
+> a determinística da explosão, mas rodar um mecanismo de destruição
+> pré-fabricado para slices e slabs, conforme a proximidade ao apicentro."*
+
+This is **two proposals that look like one**, and they have different values,
+different risks and different task sizes. Split here so neither is sold on the
+other's argument.
+
+### 11.1 ✅ THE PASSAGE CONTRACT — recommended without reservation
+
+**What the player sees in the bubble is what opens.** Every Slice a bubble GU
+covers that blocks a passage is opened, deterministically, regardless of what the
+voxel rolls or the decorative effect produce.
+
+**Why this is right, in the project's own idiom rather than as a new idea:**
+
+- It is the same separation this engine already ratified twice. `OCCLUSION`'s O1:
+  *"occlusion is VIEW, not STATE."* `LIGHT_MASTER_PLAN`: *"visual brightness ≠
+  tactical visibility."* **Gameplay truth and visual truth are already allowed to
+  differ here** — the passage joins that list rather than breaking a rule.
+- It answers what `MATERIALS_MASTER_PLAN` §3.2a explicitly refused to decide —
+  *"`PassageQuery` and the one policy question it refused to decide."*
+- It removes a real failure mode: today a grenade placed correctly against a wall
+  can fail to open anything because the count landed badly. In a turn-based
+  tactical game where the player commits a turn to the throw, that is a coin flip
+  wearing the costume of a simulation.
+- **The prediction layer already exists to show it.** `build_plan()` is pure and
+  the bubble is drawn from `BombDef`'s own radii, so "what the bubble promises" and
+  "what the cook delivers" can be made the same object rather than two that agree
+  by luck.
+
+⚠️ **The bubble is SMALLER than the blast, and that is the useful shape.**
+`aim_dome_radius_gu = 2.0`, while `frag_grenade.ring_multipliers` is
+`[1.0, 0.6, 0.25, 0.0]` — four rings. So the bubble is the **guaranteed core** and
+the blast fades beyond it. The contract reads: *inside the bubble, promised;
+outside it, consequence.* Nothing has to be re-tuned for that to be true.
+
+### 11.2 ⚠️ THE PRE-FABRICATED PATTERN — recommended, but NOT for the reason given
+
+The stated motivation is *"não precisamos calcular toda a determinística da
+explosão"*. Measured today, real PLAYGROUND, fabric at gu (31,3),
+`INFILTRAITOR_PREDICTION_PROFILE=1`:
+
+```
+[P-SLICE] 48 step(s) · worst step 39.5 ms (phase WALK) · total 399.0 ms
+  WALK      260.3 ms   65%   <- the map-wide voxel index walk
+  SOOT       38.0 ms   10%
+  SLICES     34.9 ms    9%   <- the per-voxel damage decision, walls
+  PACKAGE    18.8 ms    5%
+  SOOTWAVE   18.5 ms    5%
+  FLOORS     12.3 ms    3%   <- the per-voxel damage decision, floors
+  SMOKE       8.2 ms    2%
+  EXPOSE      3.4 · ROOFS 2.5 · SETUP 1.6 · JUNCTIONS 0.1 · LIGHT 0.1
+```
+
+**The whole per-voxel determinism is SLICES + FLOORS + ROOFS + JUNCTIONS = 49.8 ms
+of 399 — 12.5%.** The `WALK` that dominates is the map-wide occupancy/soot index,
+which decides nothing about damage and is untouched by pre-fabrication. **And the
+cook is already 0 frames in real play** (§1.2 — the 36 cooking frames only exist
+because the harness presses Enter instantly; a human choosing a target takes
+longer than the whole cook).
+
+**So pre-fabrication replaces an eighth of a cost that is already hidden. That is
+not a reason to do it.**
+
+**The real reason to do it is the LOOK, and it is a good one.** `_select_deterministic()`
+ranks a ring's voxels by FNV-1a hash and takes the first N. That is a *statistical
+scatter*, and the Director has been fighting how it reads for weeks — E-CONTRAST
+(three attempts), E-CLEAN, E-ORDER, *"os decals têm que estar no lugar do voxel
+destruído imediatamente"*. **An authored mask is a direct lever on exactly that,
+and a scatter is not.** *"Menos é mais"* is expressible as a pattern — few, large,
+legible holes — and is not expressible as a count.
+
+**And it is a much smaller change than "rebuild the explosion".** The ring model,
+the material factors and the per-container grouping all stay; what changes is the
+SELECTION inside one function:
+
+```
+today      _select_deterministic(group, container_id, salt, n, bias) -> Array
+             ranks by hash (or by distance-then-hash), takes the first n
+
+proposed   a pattern per (container class, ring, material tier), authored,
+             looked up instead of ranked
+```
+
+### 11.3 The four risks, stated before anything is built
+
+1. **The resistance ladder must survive.** `destroy_factor` / `dent_factor` /
+   `crack_factor` produce metal > stone > concrete > wood > plywood > cardboard >
+   fabric, it is ratified design, and it has selftests. A pattern table needs a
+   pattern per material TIER (or a pattern plus a per-material threshold), or the
+   ladder collapses into "every material breaks the same shape". **This is the
+   design work of the proposal, not a detail of it.**
+2. **Firearms do not share this path** (`apply_point_impact()`), so explosions and
+   shots would decide damage by two different models. Acceptable — they already
+   differ — but it must be a decision, not a discovery.
+3. **A Slice is not always 128 voxels.** Half-thickness panels (M3-2b) and
+   `JunctionColumn` (one voxel per level, a third container class) are both real
+   containers a pattern table has to handle.
+4. ⚠️ **The pattern must be authored in voxel-local coordinates, never view
+   space.** `SOOT_STORAGE_REFORM` §1.1 lost a day to exactly this: a per-face
+   format that was +Z/+X/+Y in VIEW space could not survive a rotation, and
+   rotation is suspended for performance rather than abandoned.
+
+### 11.4 How this changes the task list
+
+It does **not** replace D-1…D-6. It changes what D-2 computes, and it adds one
+independent task that is judged on the picture.
+
+- **D-2 gains the passage contract** (§11.1) — the cook guarantees openings from
+  the bubble. This is small and it unblocks the task that was waiting on §9's
+  question 1.
+- **New D-2b — the pre-fabricated pattern** (§11.2). Independent of the
+  presentation reform, sequenced after it, and its gate is the Director looking at
+  a crater, not a millisecond.
+
 
 ---
 

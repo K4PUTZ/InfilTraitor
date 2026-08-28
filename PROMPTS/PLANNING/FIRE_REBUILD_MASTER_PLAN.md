@@ -1,7 +1,11 @@
 # FIRE_REBUILD_MASTER_PLAN
-## The fire is rebuilt as a per-voxel state machine — brief, 2026-08-27
+## One commit, then only drawing — the explosion and its fire, 2026-08-27
 
-**Status:** 🟡 **BRIEF CAPTURED. NOTHING BUILT, NOTHING REMOVED.**
+**Status:** 🟡 **BRIEF + ARCHITECTURE. NOTHING BUILT, NOTHING REMOVED.**
+The architecture (§2) is the Director's own proposal, ratified 2026-08-27, and it
+rests on one measurement that inverts the old argument: **a committing frame now
+costs 20 ms against 16.8 ms for one that commits nothing.** The frame budget is
+idle; what is scarce is not time but *writes*.
 **Authority:** the Director, 2026-08-27, after watching two 3× slow-motion
 captures and reading the cell probe: *"Eu proponho que a gente remova esse
 mecanismo atual, e trabalhe na continuação dessa explosão"*, followed by the full
@@ -61,46 +65,117 @@ is no per-voxel flame in it to make smaller.
 
 ---
 
-## 2. ⚠️ THE ARCHITECTURAL TENSION, STATED BEFORE ANY CODE
+## 2. THE ARCHITECTURE — Director-ratified 2026-08-27
 
-**Performance is the standing priority in this project, and §1 asks for exactly
-the shape that was optimised away.**
+*"Em vez de fazer várias waves, podemos simplesmente calcular o estado final da
+cratera, colocar mais efeitos e fumaça por cima e simplesmente exibir o que
+sobra. O fogo nos materiais pode ser só simbólico, mas eu acho que daria pra
+fazer uma animação de brasa em um voxel por exemplo, e replicar ela várias vezes,
+com duração da fumaça diferente."*
 
-`PERFORMANCE_MASTER_PLAN` §12/P7b found that **VFX cost is per-VERTEX submission,
-not per particle**, and collapsed every per-cell circle into ONE MultiMesh —
-taking the fire's worst frame from **42.4 ms to 19.5 ms**. A literal reading of
-§1 (a flame node per burning voxel, a glow per ember, a smoke puff per black
-voxel) rebuilds precisely the cost that collapse removed, and on hundreds of
-voxels at once.
+### 2.1 ⚠️ FIRST, THE NUMBER THIS PLAN WAS ABOUT TO ARGUE FROM IS STALE
 
-**So the rebuild has to be cheap BY CONSTRUCTION, not budgeted.** The proposal,
-to be ratified before anything is built:
+The version of §2 this replaces argued the tension from
+`PERFORMANCE_MASTER_PLAN` §8.15: *"a committing frame that mints costs ~360 ms;
+one that mints NOTHING costs ~126 ms."* **That was true and is no longer.** The
+perf wave shipped on 2026-08-26 and nobody re-read the sentences that rested on
+it. Measured on 2026-08-27, this session's own two-fire run with
+`INFILTRAITOR_BURN_PROFILE=1`:
 
-**Burn state becomes PER-CELL DATA, not per-cell nodes.** This engine already has
-the mechanism and has already paid for it twice: PERF-P2 moved soot into a
-per-level `RG8` image sampled by `voxel_face_shading.gdshader`, and PERF-P3 moved
-the light bucket into the same image's second channel. A cell's burn state
-(FLAME / INCANDESCENT / BLACK plus a phase byte) is the same kind of value, and
-the same trick applies: **N voxels burning cost one texture upload per level per
-frame, exactly like N voxels being sooty do.**
+```
+frames during the fire: 77 · mean 17.1 ms · max 26 ms · total 1 316 ms — 7 committed
+ATTRIB — committing frames:      6 x 20.0 ms =   120 ms
+         NON-committing frames: 71 x 16.8 ms = 1 196 ms
+MINT-SPLIT — committing frames that MINTED: 0 · that minted NOTHING: 6 x 20 ms
+```
 
-What that buys, item by item against §1:
+A committing frame costs **20 ms** against 16.8 ms for one that commits nothing —
+a difference of **3 ms**, and zero mints. So **91% of the fire's wall clock
+(1 196 of 1 316 ms) is frames doing nothing but passing.** The fire is not
+expensive; it is LONG. Duration is schedule, not cost.
 
-| spec item | as per-cell data |
-|---|---|
-| flame vibrating ~0.5 s | a phase byte the shader animates; no node, no particle |
-| incandescent, glow → black over 1 s | a second byte the shader maps to emission |
-| propagation, biased up, decaying | a CPU pass over a small frontier — the BFS shape `derive_soot_rings()` already has |
-| ember transmission destroys the voxel | a real committed mutation, through `WorldDelta.commit()` |
-| smoke upward 1–2 s | **the one thing that stays a particle**, and it is already `add_smoke()` |
+**Which inverts the question.** The frame budget is not the constraint — it is
+sitting almost entirely idle. *"Bonito sem comprometer performance"* is cheap, as
+long as the right thing is the expensive one.
 
-⚠️ **This is a PROPOSAL and it changes what §1 looks like on screen.** A shader
-flame is not a sprite flame; "uma pequena chama que vibra" drawn as a per-cell
-shader effect will read differently from an authored flame sprite. The Director
-should see a real one before the whole system is built on it — which is why §4's
-first task is one voxel, on screen, and nothing else.
+### 2.2 The rule
 
----
+> **A frame that WRITES CELLS is expensive and must be rare — ideally exactly
+> one. A frame that only DRAWS costs ~17 ms and there are dozens spare.**
+
+The structural error in the shipped design is not the number of waves. It is that
+**the waves write cells for 24 frames and the fire keeps writing for 77 more** —
+a second mutation stream running alongside the repaints. That is not a bug inside
+the fire; it is the SHAPE of the fire, and §9.11e's 350 restored cells are what
+the shape produces.
+
+### 2.3 The explosion, as one commit and N cheap frames
+
+| beat | frames | what happens | writes cells? |
+|---|---|---|---|
+| 0 · cook | ~0 (already async and PURE) | `build_plan()` computes the **final crater**, including what the fire would have consumed | no |
+| 1 · flash | 1–2 | the strobe covers the screen | no |
+| 2 · **THE COMMIT** | **1** | destroy, expose, decals, **soot**, light — all of it, behind the flash | **yes, once** |
+| 3..N · consequence | 40–80 | smoke, embers, dust, debris | **no** |
+
+**From beat 2 the board is FINAL.** Everything after it is drawing.
+
+Nothing in beat 0 changes: the 11-phase resumable pure builder, `WorldDelta`, and
+`commit()` are the parts of this system that work and they are what makes the
+whole model possible — the final state is already computed before anything is
+shown.
+
+### 2.4 The fire, symbolic — and it is the cheap version, not the compromise
+
+The cook already knows which voxels burn (the flammable ones edging holes).
+Instead of a schedule that destroys them over seconds, **they are already gone in
+the final state**, and the fire becomes purely visual: **one ember animation,
+instanced per burning voxel, with per-instance phase and per-instance smoke
+duration.**
+
+That is one MultiMesh and one draw. P7b already proved the shape on this exact
+engine — collapsing every per-cell circle into one MultiMesh took the fire's
+worst frame from **42.4 ms to 19.5 ms**. **N embers cost what one costs.**
+
+⚠️ **This retires §2's old proposal (burn state as per-cell data in the shader
+plane) before it was built.** That existed to make a per-voxel flame affordable;
+an instanced ember is affordable already and looks better, so the shader-plane
+route is recorded as available and not planned. The spec's states (§1.1) survive
+as the ANIMATION's own timeline rather than as world state — flame ~0.5 s,
+incandescent fading 1 s, black, smoke 1–2 s, all per instance.
+
+**What stays real state, and must:** which voxels are destroyed (the cook), and
+the soot (the store, `SOOT_STORAGE_REFORM`). Ember transmission that *"destrói o
+voxel e vira cinza"* is decided in the cook, not at play time — that is what
+keeps it out of the second mutation stream.
+
+### 2.5 What this kills by construction
+
+- **§9.11e's 350 restored cells** — there is no second mutation stream left to
+  fight the repaint.
+- **"Voxels entering clean after the soot has landed"** — nothing enters after the
+  commit, and the soot goes in the same commit. Since SS-2 the store is already
+  the source of truth, so this needs no new mechanism.
+- **The fire's map-wide final repaint** — there is no end-of-fire to repaint.
+- **`KIND_RADIUS_BIAS` as a thing to defend.** Ordering stops being a clock
+  problem: decals, holes and dents are simultaneous, and their relationship
+  becomes a property of the drawing.
+
+### 2.6 What it costs, and what must be measured before it is believed
+
+1. **One commit frame becomes the worst frame of the event.** Today the writes are
+   spread over 24 frames; concentrating them means ONE TileSet rebuild instead of
+   up to 24 — and §2.1 measured **zero** mints happening today, so it should fit.
+   *"Should fit"* is not a number. **F-0 measures it.**
+2. ⚠️ **THE PASSAGE.** `[E-BURN] … passage over 6 burnt edge(s): { "CROUCH": 1,
+   "NONE": 3, "STANDING": 2 } · widest base storey 64/64 cells open` — the agent
+   walks through this. Today it EMERGES from the burn. With the burn gone it must
+   be **computed in the cook**, and that is gameplay with its own plan
+   (`BURN_THROUGH_MASTER_PLAN`), not a visual detail to be rediscovered later.
+3. **The crater no longer reveals progressively.** That is the Director's explicit
+   intent (*"simplesmente exibir o que sobra"*), and it means the VFX now carries
+   the whole read of the event. If the flash does not cover the snap, the snap
+   will be visible.
 
 ## 3. WHAT THE REMOVAL ACTUALLY TOUCHES
 
@@ -131,35 +206,35 @@ most likely to be deleted by accident and missed for months.
 
 ---
 
-## 4. TASKS — one voxel before one system
+## 4. TASKS — the measurement before the architecture
 
 | id | task | gate |
 |---|---|---|
-| **F-0** | **The look spike: ONE voxel, on screen.** Flame phase + incandescent fade + black, as per-cell data through the shader. No propagation, no destruction, no removal of anything. | The Director looks at it and says whether a shader flame can be *"uma pequena chama que vibra"*. §2's whole proposal stands or falls here, and it costs one voxel to find out. |
-| **F-1** | **The state machine, CPU side**, with the frontier BFS: all directions but −Z, biased +Z, decaying strength. Still no rendering, no removal. | A selftest over a synthetic wall: propagation reaches up more than sideways, never down, and terminates. Plus the interior-slice rule of §1.3. |
-| **F-2** | **Ember transmission as a committed mutation** — through `WorldDelta`, `commit()`, and `bump_world_revision()`, the seam SS-3 just built for scorch. | The **cell probe** (`INFILTRAITOR_CELL_PROBE=1`): `0 RESTORED, 0 VANISHED`. That is the gate the current fire fails 350 cells deep. |
-| **F-3** | **Wire it to the blast**, soft materials only, alongside the old path behind a flag. | Both fires runnable on one build; the probe green on the new one. |
-| **F-4** | **Remove the old mechanism** (§3), with the passage question answered first, not after. | Repo-wide grep with a named caller list pasted into the commit; `passage over N burnt edge(s)` still reported by the new path or explicitly retired by the Director. |
-| **F-5** | **Smoke**, and the rhythm pass the Director deferred (*"o ritmo ainda precisa melhorar, mas isso a gente faz depois"*). | On video, 3× slow motion — the instrument that found every defect this session. |
+| **F-0** | **Price the single commit frame.** Collapse the wave to one frame behind the flash, on a HARD material, nothing else changed. No fire, no removal. | The number §2.6.1 is missing: what one commit frame costs against today's 24. `INFILTRAITOR_BURN_PROFILE`-style attribution, and the worst frame of the event. **If it does not fit, the architecture changes here, before anything is built on it.** |
+| **F-1** | **The instanced ember.** One MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burning. Purely visual; no state, no mutation. | The Director looks at it. §1's flame/incandescent/black/smoke timeline has to read as a fire at 3× slow motion, and it is one draw call either way. |
+| **F-2** | **The cook owns what the fire consumes** — soft materials start further destroyed (§1.1), and ember transmission's *"vira cinza"* is decided in `build_plan()`, not at play time. | `blast_purity_selftest`: still pure. The **cell probe**: `0 RESTORED, 0 VANISHED` — the gate the current fire fails 350 cells deep. |
+| **F-3** | **The passage, computed** (§2.6.2). | `passage over N burnt edge(s)` reported by the new path, with the same shape as today's, or explicitly retired by the Director. |
+| **F-4** | **Remove the old mechanism** (§3). | Repo-wide grep with a named caller list pasted into the commit. Cell probe green. 3× slow-motion video before and after. |
+| **F-5** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar, mas isso a gente faz depois"*). | On video, 3× slow motion — the instrument that found every defect in this session. |
 
-**Order rationale:** F-0 first because §2's proposal is the load-bearing
-assumption of everything after it and it is cheap to falsify. F-4 last because a
-removal is irreversible and the replacement should be proven before the thing it
-replaces is gone.
+**Order rationale:** F-0 first because the whole architecture rests on one
+unmeasured number, and it is cheap to get. F-1 second because the ember is the
+part the Director has to LOOK at, and it is independent of the commit shape. F-4
+last, because a removal is irreversible and the replacement should be proven
+before the thing it replaces is gone.
 
 ---
 
 ## 5. OPEN QUESTIONS
 
-1. **F-0's verdict** — can a per-cell shader effect carry *"uma pequena chama que
-   vibra"*? If not, §2 needs a different answer and the cost conversation
-   restarts. Nothing else should be built until this is looked at.
-2. **The passage** (§3) — does the new fire owe `BURN_THROUGH`'s openings, or is
-   that feature retired with the old mechanism? A Director call, and it decides
-   whether §1.6's transmission needs to guarantee connectivity or merely produce
-   holes.
-3. **Seconds or frames.** §1's durations are in SECONDS (0.5 / 1 / 1–2). This
+1. **The passage** (§2.6.2) — does the new fire owe `BURN_THROUGH`'s openings, or
+   is that feature retired with the old mechanism? It decides whether the cook has
+   to guarantee connectivity or merely produce holes.
+2. **Seconds or frames.** §1's durations are in SECONDS (0.5 / 1 / 1–2). This
    project has been burned both ways — `front_frames` silently retuned 5× by a
    perf change, and the burn's commit cadence deliberately pinned in seconds.
-   The rule for the new system should be written down once, here, before there
-   are three of them.
+   Under §2.3 the answer is easier than it was: the animation is per-instance and
+   touches no world state, so **seconds** is right for it and there is no cadence
+   left to pin. Written down here so there are not three answers later.
+3. ~~Can a per-cell shader effect carry a small vibrating flame?~~ **Moot** — §2.4
+   retires the shader-plane route in favour of the instanced ember.

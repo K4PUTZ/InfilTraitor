@@ -1839,6 +1839,34 @@ is consistent with the map-wide `_burn_final_repaint()` doing exactly what
 MAT-PERF-02 designed it to do, which would make it correct-but-visible rather than
 a defect — that has not been established either way.
 
+### 8.15b ⚠️ §8.15's HEADLINE NUMBER IS STALE, AND A PLAN ALMOST ARGUED FROM IT (2026-08-27)
+
+§8.15 reads *"a committing frame that mints costs ~360 ms; one that mints NOTHING
+costs ~126 ms. The difference is ONE TileSet rebuild per frame, ~240 ms"*, and it
+is quoted across this file and out of it. **The wave in §12 shipped on 2026-08-26
+and nobody re-read the sentences resting on it.**
+
+Measured 2026-08-27, the two-fire run, `INFILTRAITOR_BURN_PROFILE=1`:
+
+```
+frames during the fire: 77 · mean 17.1 ms · max 26 ms · total 1 316 ms — 7 committed
+ATTRIB — committing frames:      6 x 20.0 ms =   120 ms
+         NON-committing frames: 71 x 16.8 ms = 1 196 ms
+MINT-SPLIT — committing frames that MINTED: 0 · that minted NOTHING: 6 x 20 ms
+```
+
+**20 ms against 16.8 ms — a 3 ms difference, and zero mints.** The 360/126 split
+describes a build that no longer exists.
+
+The consequence is not just bookkeeping: **91% of the fire's wall clock (1 196 of
+1 316 ms) is frames doing nothing but passing.** The fire is not expensive, it is
+LONG, and duration is schedule rather than cost. `FIRE_REBUILD_MASTER_PLAN` §2.1
+was drafted arguing from the old number and had to be rewritten before it shipped.
+
+**The general rule this project keeps re-learning:** a perf wave invalidates every
+sentence that quotes a cost, and those sentences do not announce themselves. The
+same lesson as `front_frames` being silently retuned 5× — see §12's own note.
+
 ### 9.11e ⛔ §9.11 REPRODUCES. "Not reproduced" was wrong, and the cause is THE FIRE (2026-08-27)
 
 Built a cell-level probe (`INFILTRAITOR_CELL_PROBE=1`, sampled from the

@@ -3227,6 +3227,8 @@ var _cell_probe_on: bool = false
 var _cell_probe_state: Dictionary = {}
 var _cell_probe_frames: int = 0
 var _cell_probe_erased: int = 0
+var _cell_probe_appeared: int = 0
+var _cell_probe_vanished: int = 0
 var _cell_probe_events: Array = []
 
 
@@ -3238,17 +3240,49 @@ func cell_probe_arm(gu: Vector2i) -> void:
 	_cell_probe_events.clear()
 	_cell_probe_frames = 0
 	_cell_probe_erased = 0
+	_cell_probe_appeared = 0
+	_cell_probe_vanished = 0
+	## ⚠️ THE FIRST VERSION OF THIS ARMED ONLY ON PLACED CELLS, AND THAT IS A BLIND
+	## SPOT, NOT A SCOPE. It can see `placed -> erased -> placed` and nothing else —
+	## so a cell that APPEARS during the event and then VANISHES is invisible to it,
+	## which is precisely what the Director suspected was also happening. Arming on
+	## the whole RECTANGLE the blast neighbourhood occupies, empty cells included,
+	## is what makes the two directions symmetric.
+	##
+	## The rectangle is derived from the placed cells within the radius rather than
+	## from a GU-to-cell formula, so there is no second coordinate derivation here
+	## to drift out of step with `GeometryCoords`.
+	var lo := Vector2i(1 << 30, 1 << 30)
+	var hi := Vector2i(-(1 << 30), -(1 << 30))
+	var levels: Array = []
 	for level in _voxel_renderer.level_keys():
 		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
 		if layer == null:
 			continue
+		levels.append(level)
 		for cell in layer.get_used_cells():
 			var g := GeometryCoords.voxel_to_gu(cell)
 			if maxi(absi(g.x - gu.x), absi(g.y - gu.y)) > CELL_PROBE_GU:
 				continue
-			_cell_probe_state[Vector3i(cell.x, cell.y, level)] = [true, -1, 0]
-	print("[CELL-PROBE] armed on %d placed cell(s) within %d GU of %s"
-		% [_cell_probe_state.size(), CELL_PROBE_GU, gu])
+			lo = Vector2i(mini(lo.x, cell.x), mini(lo.y, cell.y))
+			hi = Vector2i(maxi(hi.x, cell.x), maxi(hi.y, cell.y))
+	if lo.x > hi.x:
+		push_warning("[CELL-PROBE] nothing placed within %d GU of %s — not armed" % [CELL_PROBE_GU, gu])
+		_cell_probe_on = false
+		return
+	var placed_n: int = 0
+	for level in levels:
+		var layer2: TileMapLayer = _voxel_renderer.get_layer(level)
+		for y in range(lo.y, hi.y + 1):
+			for x in range(lo.x, hi.x + 1):
+				var here: bool = layer2.get_cell_source_id(Vector2i(x, y)) != -1
+				if here:
+					placed_n += 1
+				## [placed_now, erased_at, restores, was_placed_at_arm]
+				_cell_probe_state[Vector3i(x, y, level)] = [here, -1, 0, here]
+	print("[CELL-PROBE] armed on %d cell(s) (%d placed, %d empty) — rect %s..%s x %d level(s), within %d GU of %s"
+		% [_cell_probe_state.size(), placed_n, _cell_probe_state.size() - placed_n,
+		lo, hi, levels.size(), CELL_PROBE_GU, gu])
 
 
 func cell_probe_frame() -> void:
@@ -3264,13 +3298,25 @@ func cell_probe_frame() -> void:
 		if bool(rec[0]) == placed:
 			continue
 		if placed:
-			## ⛔ THE ONE THIS PROBE EXISTS FOR. This cell was placed when the
-			## probe armed, went away, and has come back.
-			rec[2] = int(rec[2]) + 1
-			_cell_probe_events.append([_cell_probe_frames, key, int(rec[1])])
+			if bool(rec[3]):
+				## ⛔ RESTORED — placed when the probe armed, went away, came back.
+				rec[2] = int(rec[2]) + 1
+				_cell_probe_events.append(["RESTORED", _cell_probe_frames, key, int(rec[1])])
+			else:
+				## APPEARED — never placed at arm time. Normally the expose path
+				## revealing a deep layer, and legitimate on its own.
+				_cell_probe_appeared += 1
+				_cell_probe_events.append(["APPEARED", _cell_probe_frames, key, -1])
 		else:
 			rec[1] = _cell_probe_frames
-			_cell_probe_erased += 1
+			if bool(rec[3]):
+				_cell_probe_erased += 1
+			else:
+				## ⛔ VANISHED — this cell was NOT there at arm time, appeared during
+				## the event, and has now gone again. Nothing in the design puts a
+				## revealed surface back to empty.
+				_cell_probe_vanished += 1
+				_cell_probe_events.append(["VANISHED", _cell_probe_frames, key, -1])
 		rec[0] = placed
 
 
@@ -3278,32 +3324,38 @@ func cell_probe_report() -> void:
 	if not _cell_probe_on:
 		return
 	var restored_cells: int = 0
-	var restores: int = 0
 	for key in _cell_probe_state.keys():
-		var n: int = int((_cell_probe_state[key] as Array)[2])
-		if n > 0:
+		if int((_cell_probe_state[key] as Array)[2]) > 0:
 			restored_cells += 1
-			restores += n
-	print("[CELL-PROBE] %d frame(s) · %d cell(s) armed · %d erased · %d RESTORED cell(s) (%d restoration event(s))"
+	print("[CELL-PROBE] %d frame(s) · %d cell(s) armed — %d erased · %d RESTORED (%d cell(s)) · %d appeared · %d VANISHED"
 		% [_cell_probe_frames, _cell_probe_state.size(), _cell_probe_erased,
-		restored_cells, restores])
-	if _cell_probe_events.is_empty():
-		print("[CELL-PROBE] VERDICT: no destroyed cell was ever re-placed — §9.11 holds on this run")
-		return
-	## Which FRAMES the restorations land on. One clustered frame means a single
-	## pass is putting them back and names it; a scatter means something else.
-	var by_frame: Dictionary = {}
-	for e in _cell_probe_events:
-		by_frame[e[0]] = int(by_frame.get(e[0], 0)) + 1
-	var frames: Array = by_frame.keys()
-	frames.sort()
-	var txt: Array = []
-	for f in frames:
-		txt.append("f%d:%d" % [f, by_frame[f]])
-	print("[CELL-PROBE] restorations by frame: %s" % ", ".join(txt))
-	for e in _cell_probe_events.slice(0, mini(6, _cell_probe_events.size())):
-		print("[CELL-PROBE]   cell %s erased on f%d, back on f%d" % [e[1], e[2], e[0]])
-	print("[CELL-PROBE] VERDICT: ⛔ destroyed cells ARE being re-placed — §9.11 REPRODUCES")
+		_cell_probe_events.filter(func(e): return e[0] == "RESTORED").size(),
+		restored_cells, _cell_probe_appeared, _cell_probe_vanished])
+	## Per KIND, per FRAME. One clustered frame means a single pass is responsible
+	## and names it; a scatter across the whole event means something else.
+	for kind in ["RESTORED", "VANISHED", "APPEARED"]:
+		var of_kind: Array = _cell_probe_events.filter(func(e): return e[0] == kind)
+		if of_kind.is_empty():
+			continue
+		var by_frame: Dictionary = {}
+		for e in of_kind:
+			by_frame[e[1]] = int(by_frame.get(e[1], 0)) + 1
+		var frames: Array = by_frame.keys()
+		frames.sort()
+		var txt: Array = []
+		for f in frames:
+			txt.append("f%d:%d" % [f, by_frame[f]])
+		print("[CELL-PROBE]   %s by frame: %s" % [kind, ", ".join(txt)])
+		for e in of_kind.slice(0, mini(4, of_kind.size())):
+			if kind == "RESTORED":
+				print("[CELL-PROBE]     cell %s erased on f%d, back on f%d" % [e[2], e[3], e[1]])
+			else:
+				print("[CELL-PROBE]     cell %s on f%d" % [e[2], e[1]])
+	var bad: int = restored_cells + _cell_probe_vanished
+	if bad == 0:
+		print("[CELL-PROBE] VERDICT: nothing came back and nothing vanished after appearing — the board only ever lost cells")
+	else:
+		print("[CELL-PROBE] VERDICT: ⛔ %d restored + %d vanished-after-appearing" % [restored_cells, _cell_probe_vanished])
 
 
 ## FACE-SOOT-01 diagnostics — env-gated (INFILTRAITOR_FACE_SOOT_DIAG=1). Reports

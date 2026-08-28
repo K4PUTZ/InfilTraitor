@@ -114,7 +114,10 @@ def run_capture(root, godot, frames, grenade):
         return None
     combined = res.stdout + res.stderr
     for line in combined.splitlines():
-        if line.startswith("[P-FILM]") or line.startswith("[E-WAVE]"):
+        # CELL-PROBE and NO-BURN pass through too: a capture run whose probe
+        # output is filtered away is a capture that has to be run twice.
+        if (line.startswith("[P-FILM]") or line.startswith("[E-WAVE]")
+                or line.startswith("[CELL-PROBE]") or line.startswith("[NO-BURN]")):
             print("   " + line.strip())
     return combined
 

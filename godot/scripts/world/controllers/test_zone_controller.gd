@@ -1296,10 +1296,21 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## Hard materials have flammability 0 and never burn anyway; this is what makes
 	## a fabric or plywood blast comparable to a concrete one instead of being a
 	## different event with a fire in it.
+	## ⚠️ D-2 — THE WAVE IS EMPTY BY DEFAULT NOW, AND THAT IS THE POINT.
+	## The cook owns what the fire consumes (`DETONATION_PRESENTATION` §6): every
+	## burnt voxel is a DESTROYED entry on the Delta the line above just committed,
+	## so there is no schedule left to hand over. `INFILTRAITOR_BURN_SCHEDULE=1`
+	## puts it back whole. Guarded on emptiness rather than on the flag so the
+	## legacy path keeps its single entry point, and so a real blast with no fuel
+	## (every hard material) stops paying for a scheduler start it never used.
+	var burn_wave: Dictionary = job.delta.waves.get("burn", {})
 	if OS.get_environment("INFILTRAITOR_NO_BURN") == "1":
-		print("[NO-BURN] burn wave of %d entr(ies) suppressed" % job.delta.waves.get("burn", {}).size())
-	else:
-		room.start_burn(job.delta.waves.get("burn", {}))
+		print("[NO-BURN] burn wave of %d entr(ies) suppressed" % burn_wave.size())
+	elif not burn_wave.is_empty():
+		room.start_burn(burn_wave)
+	## D-2 — the passage, reported off the committed world. It used to ride out on
+	## the fire's own end-of-schedule line, which no longer happens.
+	room.report_blast_passage(job.delta)
 	_prof("CENSUS — print_census done")
 	room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
 	var rec0: int = Time.get_ticks_usec()

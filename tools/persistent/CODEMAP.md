@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**223 scripts · 71805 lines total** (under `godot/scripts/`)
+**223 scripts · 72125 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -753,7 +753,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `passage_query.gd`
 
-`class_name PassageQuery` · 228 lines
+`class_name PassageQuery` · 296 lines
 
 `godot/scripts/geometry/passage_query.gd`
 
@@ -1956,7 +1956,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1693 lines
+`class_name DetonationPlanBuilder` · 1836 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2502,7 +2502,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 236 lines
+`class_name WorldDelta` · extends `RefCounted` · 255 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2525,6 +2525,7 @@ extends `Node2D` · 43 lines
 - `var touched_voxels: Array = []`
 - `var cost_ms: float = 0.0`
 - `var scorch_writes: Dictionary = {}`
+- `var burnt_cells: Dictionary = {}`
 
 **Public API**
 - `func add_damage(entries: Array) -> void:`
@@ -3803,7 +3804,7 @@ extends `SceneTree` · 171 lines
 
 ### `passage_query_selftest.gd`
 
-extends `SceneTree` · 304 lines
+extends `SceneTree` · 334 lines
 
 `godot/scripts/tools/passage_query_selftest.gd`
 
@@ -3823,8 +3824,8 @@ extends `SceneTree` · 304 lines
 - `func test_two_stacked_storeys_is_standing() -> void:`
 - `func test_two_unstacked_storeys_is_only_crouch() -> void:`
 - `func test_incomplete_destruction_still_opens_a_passage() -> void:`
-- `func test_scattered_damage_is_not_a_passage() -> void:`
-- `func test_a_column_is_clear_only_through_its_full_height() -> void:`
+- `func test_the_criterion_is_the_amount_not_the_shape() -> void:`
+- `func test_survivors_inside_the_opening_are_scenery() -> void:`
 - `func test_standing_needs_the_two_runs_to_OVERLAP() -> void:`
 - `func test_half_thickness_edge_opens_on_its_only_face() -> void:`
 - `func test_clear_storeys_reports_where_ascending() -> void:`
@@ -4645,7 +4646,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1487 lines
+`class_name TestZoneController` · 1498 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4919,7 +4920,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9406 lines
+extends `Node2D` · 9455 lines
 
 `godot/scripts/world/room.gd`
 

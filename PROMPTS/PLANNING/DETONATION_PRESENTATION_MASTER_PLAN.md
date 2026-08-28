@@ -1,13 +1,14 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟢 **D-0 BUILT AND MEASURED (§8.1); §11 carries the Director's
-bubble ruling — the passage is now a CONTRACT, not an emergent count — and all
-four of §11.3's risks are ruled on. Next: D-2.**
-The pacing rehearsal ships as three env overrides; nothing architectural is
-built and nothing is removed. **Fabric 4 797 → 2 310 ms; hard 2 940 → 878 ms**,
-and the single collapsed commit frame is **18.55 ms measured** against a
-predicted 20.1.
+**Status:** 🟢 **D-0 AND D-2 BUILT AND MEASURED (§8.1, §8.2). Next: D-1/D-3.**
+D-0's pacing rehearsal ships as three env overrides — **fabric 4 797 → 2 310 ms;
+hard 2 940 → 878 ms**, single collapsed commit frame **18.55 ms measured**
+against a predicted 20.1. **D-2 made the cook the owner of what the fire
+consumes**, which killed §9.11e at its root: the cell probe goes from **350
+RESTORED to 0 RESTORED · 0 VANISHED** against a control run from the same
+binary. ⚠️ **§11.1's forced-opening proposal was VETOED by the Director on
+2026-08-28** — only the passage CRITERION changed; see §11.1a.
 **Authority:** the Director, 2026-08-27, after the timeline below was measured:
 *"O sistema todo de explosão está caro e lento. Queremos algo mais dinâmico,
 mais pa-pum… Menos é mais."* and, on being shown where the time goes: *"A
@@ -352,7 +353,7 @@ the board's light is wrong everywhere.
 |---|---|---|
 | ✅ **D-0** | **BUILT 2026-08-27 (§8.1) — fabric 4 797 → 2 310 ms, hard 2 940 → 878 ms.** The dress rehearsal — the new pacing on the OLD machinery.** `front_frames`, `consequence_soot_seconds`, `consequence_light_seconds` set to what §4 will produce. No architecture change, fully reversible. | The Director watches a 3× slow-motion video and says whether it is *pa-pum*. **This sets the target durations D-3 and D-5 build to, and it is cheap to be wrong here.** ⚠️ It also shows the crater arriving with no front — the one change in this plan that could read as broken (§9.4). |
 | 🟠 **D-1** | **HALF DONE (§8.1): the cell writes collapse to 18.55 ms (fabric) / 4.21 ms (hard), cheaper than spread.** Price the real commit frame. Collapse the queue to one frame behind the flash, hard material first, nothing else changed. | The real worst frame, against §1.4's predicted ~17 ms (concrete) / ~43 ms (fabric). `INFILTRAITOR_THROW_PROFILE`-style attribution. **If it does not fit, §4.1's staged fallback is where the architecture changes — before anything is built on it.** |
-| **D-2** | **The cook owns what the fire consumes** (§6) **and guarantees the passage from the bubble** (§11.1 — the Director's ruling, no longer an open question). | `blast_purity_selftest`: still pure. **Cell probe: `0 RESTORED, 0 VANISHED`** — the gate the current path fails 350 cells deep. `passage over N burnt edge(s)` reported by the new path with the same shape as today's, or explicitly retired by the Director. |
+| ✅ **D-2** | **BUILT 2026-08-28 (§8.2).** The cook owns what the fire consumes (§6). ⚠️ The passage half changed shape: the bubble does NOT force an opening (§11.1a vetoes §11.1) — what shipped is `PassageQuery`'s criterion, amount instead of shape. | ✅ All three met. `blast_purity_selftest` + 39 others clean. **Cell probe `0 RESTORED · 0 VANISHED`** against a same-binary control that still reports **350 RESTORED**. The passage line is reported by `Room.report_blast_passage()` as `[E-PASSAGE]`, same shape, and both paths agree on the end state (STANDING ×3). |
 | **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, **material tier**) replacing `_select_deterministic()`'s hash ranking, authored in **voxel-local** coordinates (§11.3.4). Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. Plus: the **resistance ladder's selftests still pass** (§11.3.1), and **panels and `JunctionColumn` still take damage** (§11.3.3 — E-JUNCTION-01's exact regression). |
 | **D-3** | **The presenter.** New class behind `INFILTRAITOR_PRESENTER=1`, old path still default. One commit frame; the consequence channel with per-instance `(GU ring, storey)` delay (§4.2, §5). | Cell probe green. `detonation_plan_selftest` + `blast_purity_selftest` untouched and passing — they are the net. Both paths runnable from one binary, so a before/after needs no stash. |
 | **D-4** | **The symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. Purely visual. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
@@ -424,7 +425,57 @@ cost ~17 ms and write nothing.
 #### What D-0 deliberately does NOT fix
 
 `[E-FUME-ERASED] 350 of 1914` still fires under the rehearsal, unchanged. D-0
-changes pacing, not architecture; §9.11e is D-2's.
+changes pacing, not architecture; §9.11e is D-2's. ✅ **Closed by D-2 — §8.2.**
+
+### 8.2 ✅ D-2 IS BUILT AND MEASURED — 2026-08-28
+
+`_maybe_burn()`'s rolls are untouched (BURNROLL / BURNLIFE / BURNSHARE), so WHICH
+voxels the fire consumes is bit-identical — 356 of 356 on both paths. What moved
+is WHERE the answer lands: a new **PHASE_BURN between WALK and SOOT**, folding the
+fire into the Delta as DESTROYED damage. It has to sit there and nowhere else,
+which is the finding that made the task bigger than "call `add_damage()` instead":
+`_build_ember_wave()` used to run at the END of PHASE_SMOKE, **behind every
+consumer a burnt voxel needs** — `touched_this_blast` (PACKAGE), the soot BFS
+seeds (SOOT), `occupancy` (WALK, read by LIGHT), and `touched_voxels`
+(VL-PERSIST). So it was reseeded from the Delta's projection instead of from the
+packaged `destroy` wave, which is the same set by construction.
+
+⚠️ **The entries are folded in ONE batch at the end of the phase.**
+`add_damage()` folds immediately, so a burnt voxel folded mid-pass reads DESTROYED
+to the next ember seed and silently stops lighting. That is what keeps the ember
+set identical and makes this a change of ownership rather than of look.
+
+`INFILTRAITOR_BURN_SCHEDULE=1` restores the old path whole, so every row below is
+one binary, one map, two behaviours.
+
+| fabric wall, gu (31,3) | control (legacy schedule) | **D-2** |
+|---|---|---|
+| commit | 951 voxels, 11.4 ms | **1 307 voxels, 12.4 ms** — exactly +356 |
+| the fire | 356 of 356 over 1.37 s, as a schedule | **356 consumed IN THE COMMIT** |
+| **`[E-FUME-ERASED]`** | **350 of 1 914** | **0 of 1 765** |
+| **cell probe** | 1 163 erased · **350 RESTORED** (f127) | 1 169 erased · **0 RESTORED · 0 VANISHED** |
+| passage, end state | STANDING ×3, base storey 64/64 | STANDING ×3, 100% removed — **the same** |
+| flash → blast over | 4 981 ms / 266 f | **4 113 ms / 217 f** |
+| hard wall, `[E-FUME-ERASED]` | 0 of 879 | **0 of 879** — untouched |
+
+**The end state agreeing is the load-bearing row.** Both paths finish with the
+same three STANDING passages over the same wall, which is what makes "the fire
+moved houses" a defensible claim rather than "the fire changed".
+
+**And the picture confirms it independently.** Frame 279 of the same filmstrip,
+control vs D-2: **19 621 differing pixels in ONE bbox**, (536,146)–(712,435) — the
+control has a slab of wall standing back across the top of the opening and D-2
+does not. That is the 350 cells, seen. Both probe runs reproduced across two
+boots (1 169 / 0 twice).
+
+⚠️ **One number is not accounted for: 1 169 erased vs the control's 1 163.** Six
+cells the new path erases and the old one did not, 0.5%, in the direction of MORE
+erased. Named rather than explained — the two gates it could have poisoned
+(RESTORED, VANISHED) are both 0 and the end state matches.
+
+**What D-2 deliberately does NOT do:** remove `BurnScheduler`, `_advance_burn`,
+`BURN_COMMIT_INTERVAL_S` or the burn profiler. They are the control, and a
+removal is D-6's — proven before gone.
 
 ---
 
@@ -433,9 +484,11 @@ changes pacing, not architecture; §9.11e is D-2's.
 ## 9. OPEN QUESTIONS
 
 1. ~~**The passage — does the new fire owe `BURN_THROUGH`'s openings?**~~
-   ✅ **ANSWERED 2026-08-27 by the Director, and the answer is bigger than the
-   question — see §11. The cook GUARANTEES, and the bubble is what it guarantees
-   from.**
+   ✅ **CLOSED, but not the way §11 first said.** The 2026-08-27 answer was *"the
+   cook GUARANTEES, and the bubble is what it guarantees from"*; the Director
+   **vetoed the forced opening on 2026-08-28** (§11.1a). The cook guarantees
+   nothing — the CRITERION changed, and D-2 shipped it. Left visible rather than
+   struck through: this plan asserted the opposite for a day.
 2. **Does the front's disappearance cost anything the Director wants?** §4 has the
    crater simply present when the flash clears. That is *pa-pum* by construction
    and it is also the removal of a look that was tuned three times. **D-0 answers
@@ -492,6 +545,55 @@ voxel rolls or the decorative effect produce.
 `[1.0, 0.6, 0.25, 0.0]` — four rings. So the bubble is the **guaranteed core** and
 the blast fades beyond it. The contract reads: *inside the bubble, promised;
 outside it, consequence.* Nothing has to be re-tuned for that to be true.
+
+### 11.1a ⛔ THE FORCED OPENING IS VETOED — Director, 2026-08-28
+
+§11.1 above proposed that the cook DESTROY whatever it takes to open a
+storey-face the bubble covers. Asked directly whether a grenade at 0 GU from a
+**concrete** wall should therefore open a standing passage on the spot, the
+Director ruled **no — only the criterion changes**:
+
+> *"A granada abre as edges que estiverem de 0 a 1 GU de distância do centro…
+> essas aberturas vão ser normalmente autoradas… vamos ter um frame de uma porta,
+> com uma cortina de pano. Nesse caso a granada vai destruir praticamente todo o
+> pano, a passagem se abre, e o material duro destroi menos, como já funciona.
+> Porém, se o jogador gastar 3 granadas no mesmo lugar com concreto, supostamente
+> abriria uma passagem também."*
+>
+> *"Quantos voxels sobram individualmente não é importante para definir se a
+> passagem está aberta ou não. Podem ficar sobras decorativas, porém precisamos
+> ter mais ou menos uma noção de quantos voxels foram removidos pra aplicar a
+> abertura."*
+
+**So the breach points are AUTHORED, not forced.** A designer puts a fabric
+curtain in a door frame; the grenade takes nearly all of it and the passage opens;
+the concrete around it takes less, as it already does. Everything §11.1 wanted
+still happens — a correctly placed grenade reliably opens a soft wall — but it
+happens because the wall broke, never because the dome covered it.
+
+**What was actually built (D-2):** `PassageQuery`'s predicate. The contiguous-run
+rule is replaced by **`PASSAGE_MIN_REMOVED_FRACTION`, and the bar did not move** —
+the run rule's 4 of 8 positions at full storey height IS 32 of 64 cells, so 0.50
+is the same doorway with the shape requirement taken off it. The OVERLAP rule
+survives (restated per position); contiguity and full-height do not, and their two
+selftests are inverted in place with the ruling quoted.
+
+**Three things this bought that the forced version would not have:**
+
+1. **Accumulation for free.** Voxel damage persists, so *"3 granadas no mesmo
+   lugar com concreto"* adds up to one fraction — no per-edge store, no
+   accumulator, and nothing new that has to be kept base-keyed under rotation
+   (§11.3.4's risk, avoided rather than managed).
+2. **The 60-of-64 defect closed for good.** The run rule's own revision was forced
+   by a wall reading NONE at 60 of 64 cells open; it then failed the same way
+   whenever a survivor landed *inside* an opening and split it. That is now
+   structurally impossible.
+3. **The material stays the difficulty**, measured the same day: fabric **100%
+   removed → STANDING ×3** on one grenade, concrete **3% → NONE ×3**.
+
+⚠️ **`aim_dome_radius_gu` is now decoration for this purpose.** Nothing reads the
+bubble to decide a passage, and no `ctx` plumbing was added for one. If the
+guarantee is ever wanted back, it is a new task, not a dormant hook.
 
 ### 11.2 ⚠️ THE PRE-FABRICATED PATTERN — recommended, but NOT for the reason given
 
@@ -605,9 +707,9 @@ action is its first step.** Rotation is suspended for PERFORMANCE, not abandoned
 It does **not** replace D-1…D-6. It changes what D-2 computes, and it adds one
 independent task that is judged on the picture.
 
-- **D-2 gains the passage contract** (§11.1) — the cook guarantees openings from
-  the bubble. This is small and it unblocks the task that was waiting on §9's
-  question 1.
+- ~~**D-2 gains the passage contract** (§11.1) — the cook guarantees openings from
+  the bubble.~~ ⛔ **Vetoed 2026-08-28 (§11.1a).** D-2 shipped `PassageQuery`'s
+  criterion instead: amount removed, not shape, and nothing forced.
 - **New D-2b — the pre-fabricated pattern** (§11.2). Independent of the
   presentation reform, sequenced after it, and its gate is the Director looking at
   a crater, not a millisecond.

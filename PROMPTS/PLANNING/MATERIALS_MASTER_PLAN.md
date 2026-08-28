@@ -347,6 +347,35 @@ Three rules fall out, each pinned by a test that fails without it:
 | **Full height** | one survivor per column on a diagonal — 56 of 64 cells gone, no column clear through → NONE |
 | **Overlap** | storey 0 open on the left and storey 1 open on the right is two crouch holes → CROUCH, not STANDING |
 
+#### ⛔ SUPERSEDED 2026-08-28 (D-2) — the criterion is the AMOUNT, not the shape
+
+> Director: *"Quantos voxels sobram individualmente não é importante para definir
+> se a passagem está aberta ou não. Podem ficar sobras decorativas, porém
+> precisamos ter mais ou menos uma noção de quantos voxels foram removidos pra
+> aplicar a abertura."*
+
+**Two of the three rules above are gone.** A storey-face is passable when
+`PassageQuery.PASSAGE_MIN_REMOVED_FRACTION` of its cells are gone under the pair
+rule — 0.50, which is *the same doorway*: the run rule's 4 of 8 positions at full
+storey height is 32 of 64 cells. **The bar did not move; the SHAPE requirement
+came off it.** Contiguity and full-height both go, and their two selftests are
+inverted in place with the ruling quoted rather than deleted.
+
+**Overlap SURVIVES**, restated per position: two openings in different PLACES are
+still two windows, and a version of this without the check answered STANDING to
+that exact fixture.
+
+What this buys, beyond the ruling: accumulation for free — three grenades on the
+same concrete wall add up to one fraction, with no per-edge store and nothing to
+keep base-keyed. Measured the same day on PLAYGROUND: fabric **100% removed →
+STANDING** on one grenade, concrete **3% → NONE**, which is the ruling's own
+*"o material duro destroi menos, como já funciona"* in numbers.
+
+⚠️ **AND THE COOK FORCES NOTHING.** The bubble was proposed as a deterministic
+opener (`DETONATION_PRESENTATION` §11.1); the Director ruled against it on
+2026-08-28 — only the criterion changed. A wall opens because enough of it broke,
+never because the aim dome covered it.
+
 **The width is not derived from the sprite, and the reason is stated rather than
 dressed up.** The baked agent measures 104 × 187 px (N facing, standing), but
 converting sprite pixels to face POSITIONS runs through the 30°/45° projection

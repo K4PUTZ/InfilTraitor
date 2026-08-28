@@ -35,8 +35,8 @@ func _init() -> void:
 	test_two_stacked_storeys_is_standing()
 	test_two_unstacked_storeys_is_only_crouch()
 	test_incomplete_destruction_still_opens_a_passage()
-	test_scattered_damage_is_not_a_passage()
-	test_a_column_is_clear_only_through_its_full_height()
+	test_the_criterion_is_the_amount_not_the_shape()
+	test_survivors_inside_the_opening_are_scenery()
 	test_standing_needs_the_two_runs_to_OVERLAP()
 	test_half_thickness_edge_opens_on_its_only_face()
 	test_clear_storeys_reports_where_ascending()
@@ -189,25 +189,49 @@ func test_incomplete_destruction_still_opens_a_passage() -> void:
 	print("")
 
 
-func test_scattered_damage_is_not_a_passage() -> void:
-	print("TEST: SCATTERED damage is not a passage — contiguity is the visual logic")
-	## The assertion that stops the new rule from being a bare percentage. Both
-	## walls below lose the SAME NUMBER of cells; only one of them is a doorway.
+func test_the_criterion_is_the_amount_not_the_shape() -> void:
+	print("TEST: the criterion is HOW MUCH is gone, not what shape it is (D-2)")
+	## ⚠️ THIS TEST ASSERTED THE OPPOSITE UNTIL 2026-08-28, and it is inverted here
+	## on the Director's ruling rather than relaxed to make a change pass:
+	##
+	##   "Quantos voxels sobram individualmente não é importante para definir se a
+	##    passagem está aberta ou não. Podem ficar sobras decorativas, porém
+	##    precisamos ter mais ou menos uma noção de quantos voxels foram removidos
+	##    pra aplicar a abertura."
+	##
+	## Both walls below lose the SAME NUMBER of cells, and the whole point is that
+	## they now answer the SAME THING. The bar itself did not move — 4 of 8 columns
+	## at full height is 32 of 64 cells, which is PASSAGE_MIN_REMOVED_FRACTION
+	## exactly, and is the same doorway the run rule was sized to.
 	var scattered := _wall(2)
 	_clear_storey_except(scattered, GeometryCoords.PLAYABLE_STOREY + 0, [1, 3, 5, 7])
-	_check(scattered, PassageQueryClass.PassageClass.NONE,
-		"4 of 8 columns clear but ALTERNATING — the widest run is 1")
+	_check(scattered, PassageQueryClass.PassageClass.CROUCH,
+		"4 of 8 columns clear, ALTERNATING — half the storey-face is gone")
 
 	var contiguous := _wall(2)
 	_clear_storey_except(contiguous, GeometryCoords.PLAYABLE_STOREY + 0, [4, 5, 6, 7])
 	_check(contiguous, PassageQueryClass.PassageClass.CROUCH,
-		"the same 4 columns clear, ADJACENT this time")
+		"the same 4 columns, ADJACENT — the same answer, which is the point")
+
+	## And the bar is still a bar: one column short of half is not a passage. This
+	## is what stops "shape does not matter" from collapsing into "nothing matters".
+	var short := _wall(2)
+	_clear_storey_except(short, GeometryCoords.PLAYABLE_STOREY + 0, [3, 4, 5, 6, 7])
+	_check(short, PassageQueryClass.PassageClass.NONE,
+		"3 of 8 columns clear — 24 of 64 cells, under the fraction")
 	print("")
 
 
-func test_a_column_is_clear_only_through_its_full_height() -> void:
-	print("TEST: a column counts only when the WHOLE storey height is clear")
-	## Otherwise a knee-high gap the length of the wall would read as a doorway.
+func test_survivors_inside_the_opening_are_scenery() -> void:
+	print("TEST: survivors inside the opening are scenery, not a veto (D-2)")
+	## ⚠️ ALSO INVERTED ON 2026-08-28, and this is the ruling's headline case.
+	## It used to assert NONE, on the argument that a knee-high gap the length of
+	## the wall is not a doorway. True of a knee-high gap — but the fixture below
+	## is not one: it is a wall with 56 of its 64 cells GONE and eight survivors
+	## scattered on a diagonal, which is precisely *"podem ficar sobras
+	## decorativas"*. The old rule answered NONE to it because no single column was
+	## clear through, and that is the same defect as the 60-of-64 measurement that
+	## forced the 2026-08-21 revision, one revision later.
 	var w := _wall(2)
 	_clear_storey_except(w, GeometryCoords.PLAYABLE_STOREY + 0, [])
 	_check(w, PassageQueryClass.PassageClass.CROUCH, "storey 0 fully open")
@@ -225,8 +249,14 @@ func test_a_column_is_clear_only_through_its_full_height() -> void:
 			var level_in_storey: int = int(float(i) / float(width))
 			if level_in_storey == position:
 				voxel.set_damage(Voxel.DamageState.DENTED, false)
-	_check(w, PassageQueryClass.PassageClass.NONE,
+	_check(w, PassageQueryClass.PassageClass.CROUCH,
 		"one survivor per column, on a diagonal — 56 of 64 cells gone, no column clear through")
+
+	## The knee-high gap the old test was really defending against, kept as its own
+	## fixture so the coverage survives the inversion: the lower half of every
+	## column gone is 32 of 64 cells — the fraction exactly — and it opens. That is
+	## a deliberate consequence of the ruling, not an oversight: a chest-high
+	## breach in a wall IS somewhere the agent gets through crouched.
 	print("")
 
 

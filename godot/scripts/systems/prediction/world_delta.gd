@@ -75,6 +75,12 @@ var damage: Array = []
 ## afterwards — {voxel, cell, level, at} — because the whole point of fire is
 ## that it does not all happen in one frame. It rides in `waves` because it is
 ## produced by the same pure pass and has to arrive with the front that lit it.
+##
+## ⚠️ **D-2 (2026-08-28) EMPTIED IT.** The fire is damage on this Delta now
+## (`burnt_cells` below), so `burn` is left empty by default and stays populated
+## only under `INFILTRAITOR_BURN_SCHEDULE=1`, which restores the old path whole
+## for a before/after from one binary. A consumer reading `waves["burn"]` is
+## reading the LEGACY schedule — it is not where the fire lives.
 var waves: Dictionary = {
 	"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {},
 	"debris": {}, "soot": {}, "burn": {},
@@ -111,6 +117,19 @@ var cost_ms: float = 0.0
 ## played. This is STATE. The names were kept deliberately far apart because the
 ## plan predicted that the first person to see both would try to unify them.
 var scorch_writes: Dictionary = {}
+
+## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
+##
+## `{Vector3i: {"at": seconds, "ring": int}}`. Every one of these is also a
+## DESTROYED entry in `damage`, so this changes nothing about what commits; it is
+## the **attribution**, kept because the destruction it describes is now
+## indistinguishable from the blast's own once committed.
+##
+## §6.2: with everything destroyed in one frame, *which voxels wear an ember is
+## what tells the story*. `at` is the pace the schedule used to run at and is what
+## D-4's symbolic fire reads for its per-instance phase. **Nothing may mutate the
+## world off this** — that is the property D-2 exists to establish.
+var burnt_cells: Dictionary = {}
 
 ## Voxel -> projected tuple. Only voxels this Delta actually changes appear.
 var _by_voxel: Dictionary = {}

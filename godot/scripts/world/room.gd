@@ -5286,6 +5286,55 @@ var consequence_light_seconds: float = (
 var consequence_light_steps: int = 12
 
 
+## D-2 — WHAT THIS BLAST OPENED, reported once, right after the commit.
+##
+## Replaces the `passage over N burnt edge(s)` half of `[E-BURN] fire out`, which
+## could only exist while the fire was a schedule with an end to hang a report on.
+## The shape is deliberately the same — a class tally plus the widest base storey
+## — so the two paths can be read side by side under
+## `INFILTRAITOR_BURN_SCHEDULE=1`.
+##
+## Two honest differences from the line it replaces, both widenings:
+##  - it covers **every edge this blast touched**, not only the burnt ones. With
+##    the fire folded into the commit there is no longer a "burnt edge" that is
+##    not simply a blast edge.
+##  - it prints the **removed fraction**, because that is the criterion now
+##    (`PassageQuery.PASSAGE_MIN_REMOVED_FRACTION`) and a wall that did not open is
+##    only readable against how close it came. This is the number that stat is
+##    tuned on.
+func report_blast_passage(delta) -> void:
+	if _edge_registry == null or delta == null:
+		return
+	var edge_ids: Dictionary = {}
+	for voxel in delta.touched_voxels:
+		var cid: int = voxel.container_id()
+		if cid == 0:
+			continue
+		var container = instance_from_id(cid)
+		if container is Slice:
+			edge_ids[container.edge_id] = true
+	if edge_ids.is_empty():
+		return
+	var tally: Dictionary = {}
+	var best_open: int = 0
+	var best_fraction: float = 0.0
+	for edge_id in edge_ids:
+		var e: Edge = _edge_registry.get_edge(edge_id)
+		if e == null:
+			continue
+		var pc: String = PassageQuery.class_name_of(
+			PassageQuery.passage_class(e, _edge_registry))
+		tally[pc] = int(tally.get(pc, 0)) + 1
+		## LEVEL-RENUMBER — the storey the agent walks on is 10, not 0.
+		best_open = maxi(best_open, PassageQuery.clear_cells_in_storey(
+			e, _edge_registry, GeometryCoords.PLAYABLE_STOREY))
+		best_fraction = maxf(best_fraction, PassageQuery.removed_fraction(
+			e, _edge_registry, GeometryCoords.PLAYABLE_STOREY))
+	print_debug("[E-PASSAGE] passage over %d touched edge(s): %s · widest base storey %d/64 cells open (%.0f%% removed, opens at %.0f%%)"
+		% [edge_ids.size(), tally, best_open, best_fraction * 100.0,
+		PassageQuery.PASSAGE_MIN_REMOVED_FRACTION * 100.0])
+
+
 ## Returns when the destruction this blast started has fully settled — the fire
 ## out and its last batch committed. Immediate when nothing caught.
 ##

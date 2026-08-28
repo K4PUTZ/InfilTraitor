@@ -178,16 +178,26 @@ const PHASE_JUNCTIONS: int = 2
 const PHASE_ROOFS: int = 3
 const PHASE_FLOORS: int = 4
 const PHASE_WALK: int = 5
-const PHASE_SOOT: int = 6
-const PHASE_LIGHT: int = 7
-const PHASE_PACKAGE: int = 8
-const PHASE_EXPOSE: int = 9
-const PHASE_SOOTWAVE: int = 10
-const PHASE_SMOKE: int = 11
-const PHASE_DONE: int = 12
+## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6): the fire, decided here and
+## owned by the cook. It sits between WALK and SOOT because that is the only
+## window where both halves of its input exist and both of its consumers are
+## still ahead of it: WALK is what fills `flammable_cells`/`burn_cells` and
+## `cell_to_voxel`, and SOOT/PACKAGE are what a burnt voxel has to reach to
+## scorch, to land in `touched_this_blast`, and to be persisted. Built at the END
+## of PHASE_SMOKE (where `_build_ember_wave()` used to be called) it was behind
+## every one of them, which is exactly why the fire had to be a second mutation
+## stream running under the animation.
+const PHASE_BURN: int = 6
+const PHASE_SOOT: int = 7
+const PHASE_LIGHT: int = 8
+const PHASE_PACKAGE: int = 9
+const PHASE_EXPOSE: int = 10
+const PHASE_SOOTWAVE: int = 11
+const PHASE_SMOKE: int = 12
+const PHASE_DONE: int = 13
 
 const PHASE_NAMES: Array[String] = [
-	"SETUP", "SLICES", "JUNCTIONS", "ROOFS", "FLOORS", "WALK", "SOOT",
+	"SETUP", "SLICES", "JUNCTIONS", "ROOFS", "FLOORS", "WALK", "BURN", "SOOT",
 	"LIGHT", "PACKAGE", "EXPOSE", "SOOTWAVE", "SMOKE", "DONE",
 ]
 
@@ -358,6 +368,8 @@ static func _run_phase(s: Dictionary, deadline: int) -> void:
 			_phase_floors(s, deadline)
 		PHASE_WALK:
 			_phase_walk(s, deadline)
+		PHASE_BURN:
+			_phase_burn(s)
 		PHASE_SOOT:
 			_phase_soot(s, deadline)
 		PHASE_LIGHT:
@@ -423,6 +435,11 @@ static func _phase_setup(s: Dictionary) -> void:
 	## same reason — one table lookup per CONTAINER, a dictionary write only for
 	## the materials that actually burn away.
 	s["burn_cells"] = {}
+	## D-2 — `{Vector3i: {at, ring}}`, the voxels the fire consumes. Filled by
+	## `_maybe_burn()` during PHASE_BURN and folded into the Delta in one batch at
+	## the end of it; see `_commit_burn_to_delta()` for why it cannot be folded as
+	## it is decided.
+	s["burnt"] = {}
 	## E-DEBRIS-01: which materials throw dust/sparks/chips and how often, as
 	## plain data from the caller (`Room.blast_debris_policy()`). It travels in
 	## `ctx` for the same reason `blast_soot_rings` does — the material→effect
@@ -717,7 +734,7 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 		ci += 1
 	s["cursor"] = ci
 	s["sub"] = 0
-	_enter_phase(s, PHASE_SOOT)
+	_enter_phase(s, PHASE_BURN)
 
 
 ## --- Phase 5: ATOMIC. Whole-map soot, derived from holes. ------------------
@@ -1027,7 +1044,6 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= gus.size():
-		_build_ember_wave(s)
 		## §3.4 — the Delta's queryable surface. `touched_voxels` is the object
 		## list VL-PERSIST consumes after the commit; `touched` is the same set as
 		## plain cells, for anything that must outlive those references (a cached
@@ -1063,69 +1079,152 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 ## off somewhere else. A blast's embers belong to that blast.
 ##
 ## Cost is (this blast's holes x 6) dictionary lookups — no BFS, no second walk.
+## --- Phase 6: the fire. -----------------------------------------------------
+##
+## ⚠️ **SEEDED FROM THE DELTA'S PROJECTION, NOT FROM `waves["destroy"]`** — and
+## that is the whole reason this could move. The old call site ran at the END of
+## PHASE_SMOKE and read the packaged destroy wave, which does not exist until
+## PHASE_PACKAGE. The set is identical either way: PACKAGE appends a destroy
+## entry for exactly the `ring_of` keys whose projected state is DESTROYED, which
+## is what the loop below walks. Pre-existing holes inside an affected container
+## are in BOTH (`state_of()` falls through to the real Voxel), so they keep
+## seeding embers exactly as they did.
+##
+## ⚠️ **THE BURN ENTRIES ARE FOLDED IN ONE BATCH AT THE END, NEVER AS THEY ARE
+## DECIDED.** `add_damage()` folds immediately, so a burnt voxel folded mid-pass
+## would read DESTROYED to the next seed/climb test and silently stop lighting.
+## Collecting first and folding once keeps the ember set bit-identical to the
+## scheduled fire's, which is what makes this a change of OWNERSHIP rather than
+## a change of look.
+static func _phase_burn(s: Dictionary) -> void:
+	_build_ember_wave(s)
+	_commit_burn_to_delta(s)
+	_enter_phase(s, PHASE_SOOT)
+
+
+## D-2 — the fire stops being a second mutation stream.
+##
+## `_maybe_burn()` has already decided WHICH voxels the fire consumes, with the
+## same FNV-1a rolls as before. This is where that decision becomes damage on the
+## Delta instead of a schedule the room plays out over 1.38 s afterwards.
+##
+## Four consequences, in the order they matter, and each one is a defect closing:
+##
+##  1. **§9.11e dies at its root.** `touched_this_blast` is built by PHASE_PACKAGE
+##     from the projected state, so a fire-consumed voxel now lands in it and the
+##     soot wave stops replaying a cook-time `source_id` onto a cell the fire has
+##     since erased. Measured before: `[E-FUME-ERASED] 350 of 1914`.
+##  2. **The scorch survives**, which is the Director's §5.3 ruling and the reason
+##     a guard was refused: a burnt cell is appended to `blast_cells`, so the soot
+##     BFS in PHASE_SOOT seeds from it exactly as it does from a blast hole.
+##  3. **The light is right.** `occupancy` was built by PHASE_WALK from the
+##     projection and the fire was not in it yet; the burnt cells are erased from
+##     it here, before PHASE_LIGHT builds the field over it.
+##  4. **Rotation keeps them.** PHASE_PACKAGE puts them in `touched_voxels`, which
+##     is VL-PERSIST's seam — the burn path had to call
+##     `record_voxel_damage_to_base()` by hand for exactly this reason.
+##
+## `ring_of`/`container_of` are filled in for any burnt voxel that has none. The
+## ember pass reaches neighbours through the map-wide `cell_to_voxel`, so the fire
+## can consume a voxel in a container this blast never damaged — and PHASE_PACKAGE
+## walks `ring_of` keys, so without this such a voxel would be destroyed on the
+## Delta and reach no wave, no census and no persistence.
+static func _commit_burn_to_delta(s: Dictionary) -> void:
+	var burnt: Dictionary = s["burnt"]
+	if burnt.is_empty():
+		return
+	var delta: WorldDelta = s["delta"]
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var occupancy: Dictionary = s["occupancy"]
+	var blast_cells: Array = s["blast_cells"]
+	var ring_of: Dictionary = s["ring_of"]
+	var container_of: Dictionary = s["container_of"]
+	var entries: Array = []
+	for key: Vector3i in burnt.keys():
+		var voxel: Voxel = cell_to_voxel.get(key)
+		if voxel == null:
+			continue
+		## from_blast TRUE: the fire is the blast's own consequence, and D24
+		## derives scorch from ABSENT voxels by provenance. This is the same flag
+		## `Room._advance_burn()` passed for the same reason.
+		entries.append(BlastCalculatorClass.damage_entry(
+			voxel, Voxel.DamageState.DESTROYED, true))
+		blast_cells.append(key)
+		var by_level: Dictionary = occupancy.get(voxel.level, {})
+		if not by_level.is_empty():
+			by_level.erase(voxel.grid_pos)
+		if not ring_of.has(key):
+			ring_of[key] = int(burnt[key]["ring"])
+			var cid: int = voxel.container_id()
+			if cid != 0:
+				container_of[key] = instance_from_id(cid)
+	delta.add_damage(entries)
+	delta.burnt_cells = burnt
+
+
 static func _build_ember_wave(s: Dictionary) -> void:
 	var flammable_cells: Dictionary = s["flammable_cells"]
 	if flammable_cells.is_empty():
-		return
-	var waves: Dictionary = s["waves"]
-	var destroy_by_ring: Dictionary = waves["destroy"]
-	if destroy_by_ring.is_empty():
 		return
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
 	var delta: WorldDelta = s["delta"]
 	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
 	var epicenter: Vector2i = s["epicenter"]
+	var waves: Dictionary = s["waves"]
+	var ring_of: Dictionary = s["ring_of"]
 	var seen: Dictionary = {}
-	for ring: int in destroy_by_ring.keys():
-		for hole: Dictionary in destroy_by_ring[ring]:
-			var origin := Vector3i(hole["cell"].x, hole["cell"].y, int(hole["level"]))
-			for d: Vector3i in EMBER_NEIGHBOURS:
-				var ncell: Vector3i = origin + d
-				if seen.has(ncell):
-					continue
-				var flammability: float = float(flammable_cells.get(ncell, 0.0))
-				if flammability <= 0.0:
-					continue
-				var neighbour: Voxel = cell_to_voxel.get(ncell)
-				if neighbour == null:
-					continue
-				## PROJECTED, not live — the same trap phase 4 names for
-				## `damaged_voxels`. The real Voxel still reads INTACT/visible
-				## here (nothing has committed yet), so a voxel this very blast
-				## destroys would light up as if it had survived.
-				var p: Array = delta.projection_of(neighbour)
-				var touched: bool = not p.is_empty()
-				var state: int = int(p[WorldDelta.P_STATE]) if touched else neighbour.damage_state
-				var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else neighbour.visible
-				if not vis or state == Voxel.DamageState.DESTROYED:
-					continue
-				seen[ncell] = true
-				_append(waves["ember"], ring, {
-					"cell": neighbour.grid_pos,
-					"level": neighbour.level,
-					"world_pos": voxel_renderer.voxel_world_position(
-						neighbour.grid_pos, neighbour.level),
-					"duration_scale": flammability,
-					## E-EMBER-02 tuning pass: a small per-cell stagger. Without it
-					## every seed in a crater ignites on the SAME frame at the same
-					## hot end of the ramp, and under ADD blending ~137 of them sum
-					## into one molten sheet the shape of the crater (seen directly
-					## on the first filmstrip). Spread over a fraction of a second
-					## they read as a patch catching, which is also the Director's
-					## own "tudo com duração e velocidades ligeiramente diferentes".
-					"delay": EMBER_SEED_STAGGER_S * _hash_unit(
-						"EMBERSEED", neighbour.grid_pos, neighbour.level),
-					## Rank in the upward creep — 0 is a seed beside a real hole,
-					## >0 is a rung the fire climbed to. Carried explicitly rather
-					## than inferred from `delay`, which stopped being a reliable
-					## discriminator the moment seeds got a stagger of their own.
-					"climb": 0,
-					"r": _radius_of(neighbour.grid_pos, epicenter),
-				})
-				_maybe_burn(s, neighbour, ring, EMBER_SEED_STAGGER_S * _hash_unit(
-					"EMBERSEED", neighbour.grid_pos, neighbour.level), flammability,
-					_radius_of(neighbour.grid_pos, epicenter))
-				_climb_from(ncell, ring, s, seen, waves["ember"])
+	for origin_key: Vector3i in ring_of.keys():
+		var hole_voxel: Voxel = cell_to_voxel.get(origin_key)
+		if hole_voxel == null or delta.state_of(hole_voxel) != Voxel.DamageState.DESTROYED:
+			continue
+		var ring: int = int(ring_of[origin_key])
+		for d: Vector3i in EMBER_NEIGHBOURS:
+			var ncell: Vector3i = origin_key + d
+			if seen.has(ncell):
+				continue
+			var flammability: float = float(flammable_cells.get(ncell, 0.0))
+			if flammability <= 0.0:
+				continue
+			var neighbour: Voxel = cell_to_voxel.get(ncell)
+			if neighbour == null:
+				continue
+			## PROJECTED, not live — the same trap phase 4 names for
+			## `damaged_voxels`. The real Voxel still reads INTACT/visible
+			## here (nothing has committed yet), so a voxel this very blast
+			## destroys would light up as if it had survived.
+			var p: Array = delta.projection_of(neighbour)
+			var touched: bool = not p.is_empty()
+			var state: int = int(p[WorldDelta.P_STATE]) if touched else neighbour.damage_state
+			var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else neighbour.visible
+			if not vis or state == Voxel.DamageState.DESTROYED:
+				continue
+			seen[ncell] = true
+			_append(waves["ember"], ring, {
+				"cell": neighbour.grid_pos,
+				"level": neighbour.level,
+				"world_pos": voxel_renderer.voxel_world_position(
+					neighbour.grid_pos, neighbour.level),
+				"duration_scale": flammability,
+				## E-EMBER-02 tuning pass: a small per-cell stagger. Without it
+				## every seed in a crater ignites on the SAME frame at the same
+				## hot end of the ramp, and under ADD blending ~137 of them sum
+				## into one molten sheet the shape of the crater (seen directly
+				## on the first filmstrip). Spread over a fraction of a second
+				## they read as a patch catching, which is also the Director's
+				## own "tudo com duração e velocidades ligeiramente diferentes".
+				"delay": EMBER_SEED_STAGGER_S * _hash_unit(
+					"EMBERSEED", neighbour.grid_pos, neighbour.level),
+				## Rank in the upward creep — 0 is a seed beside a real hole,
+				## >0 is a rung the fire climbed to. Carried explicitly rather
+				## than inferred from `delay`, which stopped being a reliable
+				## discriminator the moment seeds got a stagger of their own.
+				"climb": 0,
+				"r": _radius_of(neighbour.grid_pos, epicenter),
+			})
+			_maybe_burn(s, neighbour, ring, EMBER_SEED_STAGGER_S * _hash_unit(
+				"EMBERSEED", neighbour.grid_pos, neighbour.level), flammability,
+				_radius_of(neighbour.grid_pos, epicenter))
+			_climb_from(ncell, ring, s, seen, waves["ember"])
 
 
 ## E-EMBER-02 (Director, 2026-08-13): *"os voxels também se propagam para cima,
@@ -1229,6 +1328,21 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 ## build_plan() is pure and its output is cached and replayed.
 static var blast_takes_share: float = 0.70
 
+## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — the fire is the cook's, and
+## the old schedule is one env var away so a before/after runs from ONE binary.
+## That is the discipline `INFILTRAITOR_SOOT_STORE_READ` and D-0's three pacing
+## overrides earned: a comparison that needs a stash compares two builds, not two
+## behaviours.
+##
+## `INFILTRAITOR_BURN_SCHEDULE=1` restores `waves["burn"]`, `BurnScheduler` and
+## the 1.38 s of world mutation running underneath the animation — including
+## §9.11e, which is the defect this exists to be measured against.
+##
+## Read once into a `static var` rather than per call: `build_plan()` is pure and
+## its output is CACHED, so a switch that could change between two cooks of the
+## same world revision would hand back a Delta built under the other rule.
+static var cook_owns_fire: bool = OS.get_environment("INFILTRAITOR_BURN_SCHEDULE") != "1"
+
 
 static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
 		lit_at: float, flammability: float, entry_radius: float = 0.0) -> void:
@@ -1258,6 +1372,24 @@ static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
 	## rolls, so one can be tuned without disturbing the other two.
 	if _hash_unit("BURNSHARE", voxel.grid_pos, voxel.level) < blast_takes_share:
 		life = 0.0
+	## D-2 — THE DECISION IS THE SAME; WHERE IT LANDS IS NOT.
+	##
+	## Every roll above is untouched (BURNROLL picks the voxels, BURNLIFE their
+	## pace, BURNSHARE the split), so which voxels the fire consumes is bit-identical
+	## to the scheduled path. What changes is that the answer goes into a SET the
+	## cook then folds into the Delta (`_commit_burn_to_delta()`) instead of into a
+	## wave the room plays out over 1.38 s afterwards.
+	##
+	## `at` survives as **visual attribution only** — §6.2: everything is destroyed
+	## in the commit frame, and which voxels wear an ember, in what order, is what
+	## tells the story. It is what D-4's symbolic fire reads for its per-instance
+	## phase. Nothing mutates the world off it any more, which is also why
+	## `blast_takes_share` stopped being a performance lever and became a look one.
+	if cook_owns_fire:
+		s["burnt"][Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)] = {
+			"at": lit_at + life, "ring": ring,
+		}
+		return
 	_append(s["waves"]["burn"], ring, {
 		"voxel": voxel,
 		"cell": voxel.grid_pos,
@@ -1475,15 +1607,26 @@ static func print_census(delta: WorldDelta, source_gu: Vector2i) -> void:
 	## M3-3, reported for the same reason and with the same trap in mind: a burn
 	## count of zero on a map that HAS a consuming material is the finding, not
 	## the absence of a print.
-	var burn_total: int = 0
+	## ⚠️ D-2 — READ OFF `burnt_cells`, NOT `waves["burn"]`.
+	## The wave is empty by default now (the fire is damage on the Delta), so a
+	## census still reading it would print `[E-BURN] 0 — nothing this blast lit has
+	## burn_consumption > 0` on every fabric blast in the game and be believed. The
+	## legacy path under `INFILTRAITOR_BURN_SCHEDULE=1` fills the wave and leaves
+	## `burnt_cells` empty, so the fallback below is what reports it.
+	var burn_total: int = delta.burnt_cells.size()
 	var burn_last: float = 0.0
-	for ring in delta.waves.get("burn", {}).keys():
-		for entry in delta.waves["burn"][ring]:
-			burn_total += 1
-			burn_last = maxf(burn_last, float(entry.get("at", 0.0)))
+	var burn_where: String = "consumed IN THE COMMIT"
+	for key in delta.burnt_cells.keys():
+		burn_last = maxf(burn_last, float(delta.burnt_cells[key].get("at", 0.0)))
+	if burn_total == 0:
+		burn_where = "scheduled to burn AWAY"
+		for ring in delta.waves.get("burn", {}).keys():
+			for entry in delta.waves["burn"][ring]:
+				burn_total += 1
+				burn_last = maxf(burn_last, float(entry.get("at", 0.0)))
 	if burn_total > 0:
-		print("[E-BURN] %d voxel(s) scheduled to burn AWAY, last at %.2fs — of %d lit (%.0f%%)"
-			% [burn_total, burn_last, ember_total,
+		print("[E-BURN] %d voxel(s) %s, last ember at %.2fs — of %d lit (%.0f%%)"
+			% [burn_total, burn_where, burn_last, ember_total,
 			100.0 * float(burn_total) / maxf(float(ember_total), 1.0)])
 	else:
 		print("[E-BURN] 0 — nothing this blast lit has burn_consumption > 0")

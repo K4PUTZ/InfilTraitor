@@ -665,6 +665,13 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 	var faces: Array = []
 	var ramped: Array = []
 	var skipped: int = 0
+	## ⚠ §9.11e DIAGNOSTIC — how many of these entries land on a cell that is
+	## EMPTY right now. The entry carries `source_id`/`atlas_coords` read off the
+	## TileMapLayer during the COOK, so a `set_cell()` with them puts a tile back
+	## on a cell something erased in between. Counted, never suppressed: the point
+	## is to name the writer with a number that can be compared against the cell
+	## probe's RESTORED count, not to fix it here.
+	var on_erased: int = 0
 	for entry: Dictionary in entries:
 		var target: int = int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN))
 		faces.append(VoxelLightField.decode_face_soot(target))
@@ -675,12 +682,16 @@ func _fade_in_soot(entries: Array, voxel_renderer, tree: SceneTree,
 		if layer0 == null:
 			continue
 		var alt0: int = int(entry["alt"])
+		if layer0.get_cell_source_id(entry["cell"]) == -1:
+			on_erased += 1
 		if layer0.get_cell_alternative_tile(entry["cell"]) != alt0:
 			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], alt0)
 			layer0.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], alt0)
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 	print("[E-FUME] soot fade: %d of %d entry cell(s) already carry their target scorch and are NOT ramped (§9.11a)"
 		% [skipped, entries.size()])
+	print("[E-FUME-ERASED] %d of %d soot entr(ies) were applied to a cell that is EMPTY now — a cook-time source_id re-placed (§9.11e)"
+		% [on_erased, entries.size()])
 
 	for step: int in range(steps):
 		var painted: int = 0

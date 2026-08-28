@@ -1290,7 +1290,16 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## M3-3: hand the burn schedule to the room. AFTER the commit, because the
 	## scheduler drops any voxel this blast already destroyed and it can only
 	## know that once the Delta has been written.
-	room.start_burn(job.delta.waves.get("burn", {}))
+	## `INFILTRAITOR_NO_BURN=1` — the blast without the fire. Added 2026-08-27 on
+	## the Director's instruction to *"garantir que todas as explosões normais, sem
+	## fogo, estão funcionando em todos os materiais"* before the fire is rebuilt.
+	## Hard materials have flammability 0 and never burn anyway; this is what makes
+	## a fabric or plywood blast comparable to a concrete one instead of being a
+	## different event with a fire in it.
+	if OS.get_environment("INFILTRAITOR_NO_BURN") == "1":
+		print("[NO-BURN] burn wave of %d entr(ies) suppressed" % job.delta.waves.get("burn", {}).size())
+	else:
+		room.start_burn(job.delta.waves.get("burn", {}))
 	_prof("CENSUS — print_census done")
 	room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
 	var rec0: int = Time.get_ticks_usec()

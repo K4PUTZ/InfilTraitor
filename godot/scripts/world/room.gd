@@ -3200,6 +3200,112 @@ func _perf_snapshot_alts() -> Dictionary:
 	return out
 
 
+## --- CELL-PROBE: does a destroyed voxel come back? -----------------------
+##
+## `INFILTRAITOR_CELL_PROBE=1`, sampled from the filmstrip's own frame loop so
+## **probe frame N is image frame N** — the whole point is to name the frame a
+## restoration happens on and then go look at it.
+##
+## WHY IT EXISTS. On 2026-08-27 a 3× slow-motion capture of a fabric blast showed
+## ~4 961 px of voxel-shaped wall reappearing on one frame and staying
+## (`SOOT_STORAGE_REFORM` §5.4). Pixels cannot say whether those cells were ERASED
+## and RE-PLACED or were never erased and only re-drawn, and two confident pixel
+## readings of that same capture were already wrong that day. This reads the
+## TileMapLayer instead, which can only answer one way.
+##
+## `PERFORMANCE_MASTER_PLAN` §9.11 carries the claim this tests — *"a destroyed
+## voxel must not be restorable"* — with the status "not reproduced".
+##
+## Scoped to the cells PLACED near the blast at arm time, and sampled with a
+## direct `get_cell_source_id()` per key rather than by enumerating the board:
+## the map-wide walk is 205 000 cells and this runs every frame. A cell that was
+## never placed and later appears is the EXPOSE path and is legitimate, which is
+## also why the armed set is the right scope rather than a limitation.
+const CELL_PROBE_GU: int = 6
+var _cell_probe_on: bool = false
+## Vector3i -> [placed_now: bool, erased_at: int, restores: int]
+var _cell_probe_state: Dictionary = {}
+var _cell_probe_frames: int = 0
+var _cell_probe_erased: int = 0
+var _cell_probe_events: Array = []
+
+
+func cell_probe_arm(gu: Vector2i) -> void:
+	_cell_probe_on = OS.get_environment("INFILTRAITOR_CELL_PROBE") == "1"
+	if not _cell_probe_on or _voxel_renderer == null:
+		return
+	_cell_probe_state.clear()
+	_cell_probe_events.clear()
+	_cell_probe_frames = 0
+	_cell_probe_erased = 0
+	for level in _voxel_renderer.level_keys():
+		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
+		if layer == null:
+			continue
+		for cell in layer.get_used_cells():
+			var g := GeometryCoords.voxel_to_gu(cell)
+			if maxi(absi(g.x - gu.x), absi(g.y - gu.y)) > CELL_PROBE_GU:
+				continue
+			_cell_probe_state[Vector3i(cell.x, cell.y, level)] = [true, -1, 0]
+	print("[CELL-PROBE] armed on %d placed cell(s) within %d GU of %s"
+		% [_cell_probe_state.size(), CELL_PROBE_GU, gu])
+
+
+func cell_probe_frame() -> void:
+	if not _cell_probe_on or _voxel_renderer == null:
+		return
+	_cell_probe_frames += 1
+	for key in _cell_probe_state.keys():
+		var layer: TileMapLayer = _voxel_renderer.get_layer(key.z)
+		if layer == null:
+			continue
+		var placed: bool = layer.get_cell_source_id(Vector2i(key.x, key.y)) != -1
+		var rec: Array = _cell_probe_state[key]
+		if bool(rec[0]) == placed:
+			continue
+		if placed:
+			## ⛔ THE ONE THIS PROBE EXISTS FOR. This cell was placed when the
+			## probe armed, went away, and has come back.
+			rec[2] = int(rec[2]) + 1
+			_cell_probe_events.append([_cell_probe_frames, key, int(rec[1])])
+		else:
+			rec[1] = _cell_probe_frames
+			_cell_probe_erased += 1
+		rec[0] = placed
+
+
+func cell_probe_report() -> void:
+	if not _cell_probe_on:
+		return
+	var restored_cells: int = 0
+	var restores: int = 0
+	for key in _cell_probe_state.keys():
+		var n: int = int((_cell_probe_state[key] as Array)[2])
+		if n > 0:
+			restored_cells += 1
+			restores += n
+	print("[CELL-PROBE] %d frame(s) · %d cell(s) armed · %d erased · %d RESTORED cell(s) (%d restoration event(s))"
+		% [_cell_probe_frames, _cell_probe_state.size(), _cell_probe_erased,
+		restored_cells, restores])
+	if _cell_probe_events.is_empty():
+		print("[CELL-PROBE] VERDICT: no destroyed cell was ever re-placed — §9.11 holds on this run")
+		return
+	## Which FRAMES the restorations land on. One clustered frame means a single
+	## pass is putting them back and names it; a scatter means something else.
+	var by_frame: Dictionary = {}
+	for e in _cell_probe_events:
+		by_frame[e[0]] = int(by_frame.get(e[0], 0)) + 1
+	var frames: Array = by_frame.keys()
+	frames.sort()
+	var txt: Array = []
+	for f in frames:
+		txt.append("f%d:%d" % [f, by_frame[f]])
+	print("[CELL-PROBE] restorations by frame: %s" % ", ".join(txt))
+	for e in _cell_probe_events.slice(0, mini(6, _cell_probe_events.size())):
+		print("[CELL-PROBE]   cell %s erased on f%d, back on f%d" % [e[1], e[2], e[0]])
+	print("[CELL-PROBE] VERDICT: ⛔ destroyed cells ARE being re-placed — §9.11 REPRODUCES")
+
+
 ## FACE-SOOT-01 diagnostics — env-gated (INFILTRAITOR_FACE_SOOT_DIAG=1). Reports
 ## what the REAL map actually produced, because a selftest on a synthetic patch
 ## cannot catch a feature made inert by real data (the floor-dent lesson,
@@ -7744,6 +7850,9 @@ func _capture_detonation_filmstrip() -> void:
 		_context_menu.close()
 	if _blast_wireframe_overlay != null:
 		_blast_wireframe_overlay.clear()   ## open_menu_for() draws the red preview
+	## CELL-PROBE — armed on the board as it stands one line before the blast, so
+	## every cell it holds is one this detonation is about to act on.
+	cell_probe_arm(gu)
 	_test_zone_controller.detonate_active()
 
 	## `RenderingServer.frame_post_draw`, NOT `SceneTree.process_frame`.
@@ -7781,11 +7890,16 @@ func _capture_detonation_filmstrip() -> void:
 				push_warning("[P-FILM] second grenade index %d out of range (%d placed)" % [
 					second_index, _test_zone_controller._grenades.size()])
 		await RenderingServer.frame_post_draw
+		## CELL-PROBE — sampled HERE and not in the idle pass, so probe frame N is
+		## image frame N. A restoration this reports on f124 is the f124 the
+		## filmstrip saved, which is the whole reason the probe is worth having.
+		cell_probe_frame()
 		var img := get_viewport().get_texture().get_image()
 		if img == null:
 			push_error("[P-FILM] null viewport image at frame %d" % i)
 			continue
 		img.save_png("%s/frame_%03d.png" % [out_dir, i])
+	cell_probe_report()
 	print("[P-FILM] wrote %d frames to %s" % [frame_count, out_dir])
 
 

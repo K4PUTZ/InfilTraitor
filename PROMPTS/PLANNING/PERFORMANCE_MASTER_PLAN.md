@@ -1839,6 +1839,42 @@ is consistent with the map-wide `_burn_final_repaint()` doing exactly what
 MAT-PERF-02 designed it to do, which would make it correct-but-visible rather than
 a defect — that has not been established either way.
 
+### 9.11e ⛔ §9.11 REPRODUCES. "Not reproduced" was wrong, and the cause is THE FIRE (2026-08-27)
+
+Built a cell-level probe (`INFILTRAITOR_CELL_PROBE=1`, sampled from the
+filmstrip's own frame loop so probe frame N is image frame N) after a 3× slow
+capture showed voxel-shaped wall reappearing. It reads the TileMapLayer, which
+can only answer one way.
+
+**Fabric, gu (31,3), one build, the only difference being `INFILTRAITOR_NO_BURN`:**
+
+```
+with fire   27 928 armed · 1 163 erased · 350 RESTORED — all on ONE frame, f125
+without     27 928 armed ·   813 erased ·   0 restored
+```
+
+`1 163 − 813 = 350`, exactly the restored count, and `[E-BURN]` reports **356**
+voxels consumed. **The voxels the FIRE eats are the voxels that come back.** Cells
+erased on f54 are re-placed on f125, and they stay.
+
+**The blast alone is clean.** The no-burn run is not a vacuous green — its log
+carries the whole consequence beat (`soot ramp — 4 step(s) x 8 frame(s)`, all four
+`[E-FUME]` steps, `light ramp — 702 cell(s) moving`), identical to the fire run.
+Same beat, same repaints, no restoration. Only the fire differs.
+
+Where: the restorations land in one frame at the opening of the CONSEQUENCE beat,
+between `[CONSEQUENCE] fire out — the beat owns the ending, burn repaint stands
+down` and `[CONSEQUENCE] soot ramp`.
+
+⚠️ **This is why §9.11a's correction pointed away from the ghost path and the
+trail went cold: the repro needs a FIRE, and every instrument aimed at it since
+has been aimed at two blasts.** §9.11's own claim — *"a destroyed voxel must not
+be restorable"* — is the right claim and it is being violated on every flammable
+detonation.
+
+Director's call, same day: the fire is to be **rebuilt** rather than patched, and
+normal (fireless) explosions are to be verified across every material first.
+
 ### 9.11a ⚠️ THE REPRO, CORRECTED BY THE DIRECTOR — and it is NOT the ghost path
 
 2026-08-23, closing: *"são duas granadas em locais diferentes, por exemplo no bloco

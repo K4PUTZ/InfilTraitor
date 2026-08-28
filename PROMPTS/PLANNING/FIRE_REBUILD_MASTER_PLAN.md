@@ -1,7 +1,28 @@
 # FIRE_REBUILD_MASTER_PLAN
 ## One commit, then only drawing — the explosion and its fire, 2026-08-27
 
-**Status:** 🟡 **BRIEF + ARCHITECTURE. NOTHING BUILT, NOTHING REMOVED.**
+> ## ⬆️ SUPERSEDED 2026-08-27 by [`DETONATION_PRESENTATION_MASTER_PLAN.md`](DETONATION_PRESENTATION_MASTER_PLAN.md)
+>
+> Superseded the same day it was written, and by a Director instruction that
+> WIDENED it rather than by anything here being wrong: *"Faz sentido reformar o
+> coreografo, ele pode ser o nosso grande vilão."* The fire turned out to be one
+> tenant of the presentation layer, and a plan named after the fire is the wrong
+> container for the layer — the same argument `BURN_THROUGH_MASTER_PLAN` was
+> superseded under on 2026-08-21.
+>
+> **Nothing here is retracted.** §1 (the Director's fire spec, verbatim) is
+> carried into the new plan's §5.1, §2's architecture into its §4, §2.6.2's
+> passage warning into its §6, and F-0…F-5 become D-1…D-7.
+>
+> ⚠️ **One number below has been superseded by measurement, not by opinion.**
+> §2.6.1 says *"'should fit' is not a number"* about the single commit frame. It
+> is now arithmetic — ~43 ms on fabric, ~17 ms on concrete — see the new plan's
+> §1.4. And §2.1's *"91% of the fire's wall clock is frames doing nothing"* has
+> been widened: the whole EVENT is 264 frames around 11.3 ms of work.
+>
+> Read this one for the fire's spec; read the new one for what to do next.
+
+**Status:** ⬆️ **SUPERSEDED — brief + architecture, never built.**
 The architecture (§2) is the Director's own proposal, ratified 2026-08-27, and it
 rests on one measurement that inverts the old argument: **a committing frame now
 costs 20 ms against 16.8 ms for one that commits nothing.** The frame budget is

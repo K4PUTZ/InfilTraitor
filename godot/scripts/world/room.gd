@@ -5264,12 +5264,21 @@ func _burn_residue_probe() -> void:
 var consequence_beat: bool = OS.get_environment("INFILTRAITOR_CONSEQUENCE") != "0"
 
 ## 0.5 s, ratified by the Director. A look value (Rule 1) — tuned on a filmstrip.
-var consequence_soot_seconds: float = 0.5
+## D-0 — `INFILTRAITOR_SOOT_SECONDS` overrides it, same seam and same reason as
+## `INFILTRAITOR_FRONT_FRAMES`.
+var consequence_soot_seconds: float = (
+	OS.get_environment("INFILTRAITOR_SOOT_SECONDS").to_float()
+	if OS.get_environment("INFILTRAITOR_SOOT_SECONDS").is_valid_float() else 0.5)
 
 ## §13.4 — *"A atualização da luz que eu coloquei como tempo explícito pode durar
 ## uns 2 segundos, iniciando depois que a fuligem aparecer."* The light does not
 ## snap any more; it arrives. A look value, same rule.
-var consequence_light_seconds: float = 2.0
+## D-0 — `INFILTRAITOR_LIGHT_SECONDS` overrides it. This is the constant §1.2
+## measured as 43% of a fabric event and 70% of a concrete one, so it is the
+## single biggest thing the rehearsal is asking the Director to look at.
+var consequence_light_seconds: float = (
+	OS.get_environment("INFILTRAITOR_LIGHT_SECONDS").to_float()
+	if OS.get_environment("INFILTRAITOR_LIGHT_SECONDS").is_valid_float() else 2.0)
 ## Twelve rungs is the whole bucket ladder, so a cell whose light moves the full
 ## range steps through every value it passes and one that moves a single rung
 ## flips once. Cells still land TOGETHER — the ramp is a lerp toward the target,

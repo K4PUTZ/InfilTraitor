@@ -167,7 +167,16 @@ extends RefCounted
 ## than theoretical: this tracks frame rate, so a machine rendering at 30 fps
 ## gets a 0.8 s front. That remains correct for a purely visual sequence.
 ## ============================================================================
-var front_frames: int = 24
+## D-0 (DETONATION_PRESENTATION_MASTER_PLAN) — `INFILTRAITOR_FRONT_FRAMES`
+## overrides it, so the new pacing can be rehearsed on the OLD machinery from
+## the same binary and a before/after needs no stash.
+##
+## ⚠️ **1 IS THE COLLAPSED COMMIT FRAME, not merely a fast front.**
+## `front_radius_for()` returns INF on the last frame, so at 1 the whole queue
+## drains on frame 1 — which is exactly the cell-writing half of D-1's single
+## commit frame, measurable today without building anything.
+var front_frames: int = (OS.get_environment("INFILTRAITOR_FRONT_FRAMES").to_int()
+	if OS.get_environment("INFILTRAITOR_FRONT_FRAMES").is_valid_int() else 24)
 
 ## Width of one visible band of the expanding front, in voxels. The front's
 ## radius is snapped DOWN to a multiple of this, so the wave advances in

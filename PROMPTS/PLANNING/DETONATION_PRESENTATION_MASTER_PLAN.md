@@ -1,7 +1,11 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟡 **PLAN. NOTHING BUILT, NOTHING REMOVED.**
+**Status:** 🟢 **D-0 BUILT AND MEASURED (§8.1) — and it carried half of D-1 with it.**
+The pacing rehearsal ships as three env overrides; nothing architectural is
+built and nothing is removed. **Fabric 4 797 → 2 310 ms; hard 2 940 → 878 ms**,
+and the single collapsed commit frame is **18.55 ms measured** against a
+predicted 20.1.
 **Authority:** the Director, 2026-08-27, after the timeline below was measured:
 *"O sistema todo de explosão está caro e lento. Queremos algo mais dinâmico,
 mais pa-pum… Menos é mais."* and, on being shown where the time goes: *"A
@@ -94,10 +98,11 @@ TileSet rebuild is charged per FRAME THAT WRITES, not per cell — the
 choreographer's own header measured that and then built the opposite (*"a frame
 costs ~120 ms whether it writes 60 cells or 600"*). One flush replaces 24.
 
-⚠️ **This is a sum of per-frame applies, not a measurement of a collapsed frame.**
-D-1 still has to collapse it and read the real worst frame. What has changed is
-that it is no longer an unknown that could break the architecture — the worst
-credible case is a two-frame hitch behind a five-frame flash.
+⚠️ **This was a sum of per-frame applies, not a measurement of a collapsed
+frame** — and §8.1 has since measured the real thing: **18.55 ms on fabric,
+4.21 ms on hard, both CHEAPER than the sum.** The estimate held. What D-1 still
+owes is the same frame with the fire's consumption folded into it (§6), which
+does not exist yet.
 
 ---
 
@@ -343,8 +348,8 @@ the board's light is wrong everywhere.
 
 | id | task | gate |
 |---|---|---|
-| **D-0** | **The dress rehearsal — the new pacing on the OLD machinery.** `front_frames`, `consequence_soot_seconds`, `consequence_light_seconds` set to what §4 will produce. No architecture change, fully reversible. | The Director watches a 3× slow-motion video and says whether it is *pa-pum*. **This sets the target durations D-3 and D-5 build to, and it is cheap to be wrong here.** ⚠️ It also shows the crater arriving with no front — the one change in this plan that could read as broken (§9.4). |
-| **D-1** | **Price the real commit frame.** Collapse the queue to one frame behind the flash, hard material first, nothing else changed. | The real worst frame, against §1.4's predicted ~17 ms (concrete) / ~43 ms (fabric). `INFILTRAITOR_THROW_PROFILE`-style attribution. **If it does not fit, §4.1's staged fallback is where the architecture changes — before anything is built on it.** |
+| ✅ **D-0** | **BUILT 2026-08-27 (§8.1) — fabric 4 797 → 2 310 ms, hard 2 940 → 878 ms.** The dress rehearsal — the new pacing on the OLD machinery.** `front_frames`, `consequence_soot_seconds`, `consequence_light_seconds` set to what §4 will produce. No architecture change, fully reversible. | The Director watches a 3× slow-motion video and says whether it is *pa-pum*. **This sets the target durations D-3 and D-5 build to, and it is cheap to be wrong here.** ⚠️ It also shows the crater arriving with no front — the one change in this plan that could read as broken (§9.4). |
+| 🟠 **D-1** | **HALF DONE (§8.1): the cell writes collapse to 18.55 ms (fabric) / 4.21 ms (hard), cheaper than spread.** Price the real commit frame. Collapse the queue to one frame behind the flash, hard material first, nothing else changed. | The real worst frame, against §1.4's predicted ~17 ms (concrete) / ~43 ms (fabric). `INFILTRAITOR_THROW_PROFILE`-style attribution. **If it does not fit, §4.1's staged fallback is where the architecture changes — before anything is built on it.** |
 | **D-2** | **The cook owns what the fire consumes** (§6), and the passage with it (§6, subject to §9.1). | `blast_purity_selftest`: still pure. **Cell probe: `0 RESTORED, 0 VANISHED`** — the gate the current path fails 350 cells deep. `passage over N burnt edge(s)` reported by the new path with the same shape as today's, or explicitly retired by the Director. |
 | **D-3** | **The presenter.** New class behind `INFILTRAITOR_PRESENTER=1`, old path still default. One commit frame; the consequence channel with per-instance `(GU ring, storey)` delay (§4.2, §5). | Cell probe green. `detonation_plan_selftest` + `blast_purity_selftest` untouched and passing — they are the net. Both paths runnable from one binary, so a before/after needs no stash. |
 | **D-4** | **The symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. Purely visual. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
@@ -358,6 +363,67 @@ building the machinery is how `front_frames` got retuned three times. D-1 second
 because §4.1's fallback branches there and nowhere else. D-6 last, because a
 removal is irreversible and the replacement should be proven before the thing it
 replaces is gone.
+
+### 8.1 ✅ D-0 IS BUILT AND MEASURED — 2026-08-27
+
+Three env overrides, no architecture: `INFILTRAITOR_FRONT_FRAMES`,
+`INFILTRAITOR_SOOT_SECONDS`, `INFILTRAITOR_LIGHT_SECONDS`. Both pacings now run
+from the same binary, so a before/after needs no stash — the discipline
+`INFILTRAITOR_SOOT_STORE_READ` earned on 2026-08-27.
+
+Rehearsal setting: `FRONT_FRAMES=1 · SOOT_SECONDS=0.15 · LIGHT_SECONDS=0.5`.
+
+| flash → blast over | control | rehearsal |
+|---|---|---|
+| **hard** (concrete, no fire) | ~2 940 ms | **878 ms / 48 frames** |
+| **fabric** (with fire) | 3 891 ms | **2 310 ms / 122 frames** |
+
+#### ⚠️ AND `front_frames = 1` IS D-1's CELL-WRITE HALF, MEASURED RATHER THAN SUMMED
+
+`front_radius_for()` returns `INF` on the last frame, so at 1 the entire queue
+drains on frame 1. That is the collapsed commit frame's cell writes, today:
+
+```
+fabric   [E-WAVE] frame 1 front_r=inf cells=2820/2820 elapsed=31ms apply=18.548ms
+hard     [E-WAVE] frame 1 front_r=inf cells=1559/1559 elapsed=11ms apply= 4.205ms
+```
+
+**18.55 ms against §1.4's predicted 20.13, and 4.21 against 5.68 — collapsed is
+CHEAPER than spread, on both materials.** That is the "per frame that writes, not
+per cell" model confirming itself: 24 flushes became one. So the single commit
+frame lands at:
+
+```
+fabric   11.2 (commit) + 18.5 (cells) + ~12 (the fire's own consumption)  =  ~42 ms
+hard     11.2           +  4.2                                            =  ~16 ms
+```
+
+**§1.4's estimate holds and D-1's risk is retired for the cell half.** What D-1
+still owes is the real thing with the fire's consumption folded in (§6), which
+does not exist yet.
+
+#### The finding that sets the rest of the order
+
+Of the fabric rehearsal's remaining 122 frames, **74 are the fire's schedule**
+(1.38 s at 60 fps). Subtract them and fabric lands on 48 frames — **exactly the
+hard number**. So:
+
+```
+control          4 797 ms
+D-0 (pacing)     2 310 ms   fabric  ·   878 ms  hard
+after D-2        ~ 880 ms   both, projected — the fire stops being a schedule
+```
+
+**D-0 buys half and D-2 buys most of the rest.** The consequence channel (§5) is
+then free to spend as many drawing frames as the Director wants, because they
+cost ~17 ms and write nothing.
+
+#### What D-0 deliberately does NOT fix
+
+`[E-FUME-ERASED] 350 of 1914` still fires under the rehearsal, unchanged. D-0
+changes pacing, not architecture; §9.11e is D-2's.
+
+---
 
 ---
 

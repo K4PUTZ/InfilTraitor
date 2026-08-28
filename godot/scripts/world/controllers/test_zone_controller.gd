@@ -1160,7 +1160,20 @@ func _stop_pumping() -> void:
 
 
 ## One line of the throw timeline. See THROW_PROFILE_ENV.
+##
+## D-1 — it also names the beat the EVENT FRAME PROBE charges the following
+## frames to (`Room.event_probe_beat()`, `INFILTRAITOR_EVENT_FRAMES=1`). Hung off
+## this function rather than added beside each beat because the beats are already
+## exactly here, and a second list of them would drift from this one on the first
+## edit. The two probes stay independent: this prints only under
+## `THROW_PROFILE_ENV`, the beat is named regardless.
+##
+## Only the label's first word survives into the beat name — the labels carry
+## measurements (`"COMMIT — 12.4 ms, 1307 voxel(s) written"`) and a beat whose
+## name changes run to run cannot be summed across runs.
 func _prof(label: String) -> void:
+	if room != null:
+		room.event_probe_beat(label.split(" —")[0].strip_edges())
 	if OS.get_environment(THROW_PROFILE_ENV) != "1":
 		return
 	print("[T-PROF] +%6d ms  f=%3d  %s" % [
@@ -1238,6 +1251,9 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		anchor: Vector2) -> void:
 	## Beat 1 — fire and shake, alone. Unconditionally FIRST, before any
 	## remaining computation: this is the frame the player clicked on.
+	## D-1 — and the frame probe's window opens on exactly that frame, so the boot,
+	## the map load and the seconds the player spent aiming are all outside it.
+	room.event_probe_arm("BEAT 1")
 	_prof("BEAT 1 — fire lit")
 	room.spawn_blast_burst(anchor)
 	if room._camera_controller != null:
@@ -1409,6 +1425,7 @@ func _start_waves(waves: Dictionary, playback_queue: Array = []) -> void:
 	_active_choreographer = choreographer
 	choreographer.finished.connect(func():
 		_prof("WAVES end — the blast is over")
+		room.event_probe_report("detonation")
 		_active_choreographer = null)
 	## E-EMBER-01 / E-SMOKE-TINT-01: the two VFX targets that are not on
 	## `start()`'s signature — the ember overlay VL-D4's per-voxel glow needs, and

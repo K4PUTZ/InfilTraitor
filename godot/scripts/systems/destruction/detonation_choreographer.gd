@@ -586,11 +586,15 @@ func _run_queue(queue: Array, voxel_renderer, smoke_overlay, tree: SceneTree, pl
 			return
 		print("[CONSEQUENCE] soot ramp — %d step(s) x %d frame(s)"
 			% [steps, soot_fade_frames_per_step])
+		## D-1 — the last two beats the throw profiler never named, because they
+		## happen inside this coroutine rather than in the controller.
+		consequence_room.event_probe_beat("SOOT RAMP")
 		frame_index = await _fade_in_soot(soot_entries, voxel_renderer, tree, frame_index)
 		## Soot FIRST, then light — scorch is what the light is about to reveal.
 		## AWAITED: the light now takes ~2 s (§13.4) and `finished` is what clears
 		## `_active_choreographer`, so returning early would drop the only strong
 		## reference to this object while a coroutine of its own is still running.
+		consequence_room.event_probe_beat("LIGHT")
 		await consequence_room.play_consequence_light()
 	else:
 		frame_index = await _fade_in_soot(soot_entries, voxel_renderer, tree, frame_index)

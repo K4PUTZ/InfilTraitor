@@ -4623,6 +4623,8 @@ func _process(_delta: float) -> void:
 			_frame_probe_n = 0
 			_frame_probe_us = 0
 
+	_event_frame_sample()
+
 	# Update temporal lighting effects (flicker, pulse, rotation)
 	## Every step of this function is timed on EVERY frame under the burn
 	## profiler. The burn's own counter only accumulated on frames that COMMIT,
@@ -5284,6 +5286,103 @@ var consequence_light_seconds: float = (
 ## flips once. Cells still land TOGETHER — the ramp is a lerp toward the target,
 ## not a per-cell countdown — which is what keeps it reading as one event.
 var consequence_light_steps: int = 12
+
+
+## --- D-1: THE EVENT FRAME PROBE — `INFILTRAITOR_EVENT_FRAMES=1` -----------
+##
+## D-1 asks for *"the real worst frame"* of a detonation, and until now nothing
+## could answer it. `[T-PROF]` gives beat timestamps, `[E-WAVE]` gives the CPU
+## *inside* the apply loop, and both miss the same thing: a frame costs what it
+## costs whether or not the expensive part is inside a probe. MAT-PERF-04 learned
+## this on the fire — 1 261 ms of measured function against 11 012 ms of wall
+## clock — and the answer there was to measure the GAP BETWEEN FRAMES. This is
+## that instrument, scoped to the blast instead of to the fire.
+##
+## ⚠️ **IT KEEPS EVERY FRAME, IT DOES NOT BUCKET THEM, AND THAT IS THE WHOLE
+## DESIGN.** The first version charged each frame to "the current beat" and was
+## unreadable within one run: seven beats fire inside the commit frame alone, so
+## `BEAT 3` came out with ZERO frames while the frame that wrote 3 531 cells was
+## charged to `SOOT RAMP`. A blast is ~200 frames — small enough to keep whole —
+## so the beats are recorded as MARKS on that timeline and every question is
+## answered by reading the timeline, never by trusting a bucket.
+##
+## What that buys, and what D-1 needs: **"the frame beat X was named in cost Y"**
+## is answerable exactly, even when five other beats were named in the same frame.
+var _event_probe_on: bool = false
+var _event_probe_last_us: int = 0
+## Per-frame gap in microseconds, index 0 = the first frame after arming.
+var _event_probe_gaps: PackedInt32Array = PackedInt32Array()
+## [label, frame_index] in the order the beats were named. A beat named before any
+## frame has elapsed records frame 0.
+var _event_probe_marks: Array = []
+
+
+## Opens the window and names the first beat. Called where the event begins, so a
+## boot, a map load and the seconds the player spends aiming are all outside it.
+func event_probe_arm(beat: String) -> void:
+	_event_probe_on = OS.get_environment("INFILTRAITOR_EVENT_FRAMES") == "1"
+	if not _event_probe_on:
+		return
+	_event_probe_gaps = PackedInt32Array()
+	_event_probe_marks = []
+	_event_probe_last_us = 0
+	event_probe_beat(beat)
+
+
+## Marks the timeline. Cheap enough to call per beat: two array appends.
+func event_probe_beat(beat: String) -> void:
+	if not _event_probe_on:
+		return
+	_event_probe_marks.append([beat, _event_probe_gaps.size()])
+
+
+func _event_frame_sample() -> void:
+	if not _event_probe_on:
+		return
+	var now_us: int = Time.get_ticks_usec()
+	if _event_probe_last_us > 0:
+		_event_probe_gaps.append(now_us - _event_probe_last_us)
+	_event_probe_last_us = now_us
+
+
+## Closes the window and prints the timeline. Silent when the probe is off.
+func event_probe_report(label: String) -> void:
+	if not _event_probe_on:
+		return
+	_event_probe_on = false
+	var n: int = _event_probe_gaps.size()
+	if n == 0:
+		print("[E-FRAME] %s — no frames sampled" % label)
+		return
+	var total: int = 0
+	var worst: int = 0
+	var worst_i: int = 0
+	for i in range(n):
+		total += _event_probe_gaps[i]
+		if _event_probe_gaps[i] > worst:
+			worst = _event_probe_gaps[i]
+			worst_i = i
+	print("[E-FRAME] %s — %d frame(s), %.0f ms wall clock, mean %.1f ms · WORST %.1f ms on frame %d"
+		% [label, n, float(total) / 1000.0, float(total) / 1000.0 / float(n),
+		float(worst) / 1000.0, worst_i])
+	## Per mark: the cost of the frame it was named IN, then the span to the next
+	## mark. Both matter and they answer different questions — the first is "what
+	## did this beat cost when it fired", the second is "how long did it then run".
+	for m in range(_event_probe_marks.size()):
+		var mark: Array = _event_probe_marks[m]
+		var at: int = mini(int(mark[1]), n - 1)
+		var next_at: int = n
+		if m + 1 < _event_probe_marks.size():
+			next_at = mini(int(_event_probe_marks[m + 1][1]), n)
+		var span: int = maxi(next_at - at, 0)
+		var span_us: int = 0
+		var span_max: int = 0
+		for i in range(at, mini(next_at, n)):
+			span_us += _event_probe_gaps[i]
+			span_max = maxi(span_max, _event_probe_gaps[i])
+		print("[E-FRAME]   f%-4d %-24s its frame %6.1f ms · then %3d f, %7.1f ms, max %6.1f ms"
+			% [at, mark[0], float(_event_probe_gaps[at]) / 1000.0, span,
+			float(span_us) / 1000.0, float(span_max) / 1000.0])
 
 
 ## D-2 — WHAT THIS BLAST OPENED, reported once, right after the commit.

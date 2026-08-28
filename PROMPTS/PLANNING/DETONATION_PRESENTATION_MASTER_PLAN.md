@@ -352,7 +352,7 @@ the board's light is wrong everywhere.
 | id | task | gate |
 |---|---|---|
 | ✅ **D-0** | **BUILT 2026-08-27 (§8.1) — fabric 4 797 → 2 310 ms, hard 2 940 → 878 ms.** The dress rehearsal — the new pacing on the OLD machinery.** `front_frames`, `consequence_soot_seconds`, `consequence_light_seconds` set to what §4 will produce. No architecture change, fully reversible. | The Director watches a 3× slow-motion video and says whether it is *pa-pum*. **This sets the target durations D-3 and D-5 build to, and it is cheap to be wrong here.** ⚠️ It also shows the crater arriving with no front — the one change in this plan that could read as broken (§9.4). |
-| 🟠 **D-1** | **HALF DONE (§8.1): the cell writes collapse to 18.55 ms (fabric) / 4.21 ms (hard), cheaper than spread.** Price the real commit frame. Collapse the queue to one frame behind the flash, hard material first, nothing else changed. | The real worst frame, against §1.4's predicted ~17 ms (concrete) / ~43 ms (fabric). `INFILTRAITOR_THROW_PROFILE`-style attribution. **If it does not fit, §4.1's staged fallback is where the architecture changes — before anything is built on it.** |
+| ✅ **D-1** | **MEASURED 2026-08-28 (§8.3).** ⛔ It corrects §8.1: the "18.55 ms collapsed frame" was an APPLY LOOP, not a frame. The real collapsed cell frame is **59.2 ms (fabric) / 31.6 ms (hard)**, and the commit frame is another 58.4 / 47.6. | ✅ Met, and the answer is that **the collapse fits** — §4.1's staged fallback is not needed. Instrument built: `INFILTRAITOR_EVENT_FRAMES=1` (`[E-FRAME]`), which keeps every frame of the event rather than bucketing them. ⚠️ The event's real worst frame is the **light derive at 201.9 ms** and neither D-1 nor D-3 touches it (§7.4). |
 | ✅ **D-2** | **BUILT 2026-08-28 (§8.2).** The cook owns what the fire consumes (§6). ⚠️ The passage half changed shape: the bubble does NOT force an opening (§11.1a vetoes §11.1) — what shipped is `PassageQuery`'s criterion, amount instead of shape. | ✅ All three met. `blast_purity_selftest` + 39 others clean. **Cell probe `0 RESTORED · 0 VANISHED`** against a same-binary control that still reports **350 RESTORED**. The passage line is reported by `Room.report_blast_passage()` as `[E-PASSAGE]`, same shape, and both paths agree on the end state (STANDING ×3). |
 | **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, **material tier**) replacing `_select_deterministic()`'s hash ranking, authored in **voxel-local** coordinates (§11.3.4). Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. Plus: the **resistance ladder's selftests still pass** (§11.3.1), and **panels and `JunctionColumn` still take damage** (§11.3.3 — E-JUNCTION-01's exact regression). |
 | **D-3** | **The presenter.** New class behind `INFILTRAITOR_PRESENTER=1`, old path still default. One commit frame; the consequence channel with per-instance `(GU ring, storey)` delay (§4.2, §5). | Cell probe green. `detonation_plan_selftest` + `blast_purity_selftest` untouched and passing — they are the net. Both paths runnable from one binary, so a before/after needs no stash. |
@@ -391,6 +391,12 @@ drains on frame 1. That is the collapsed commit frame's cell writes, today:
 fabric   [E-WAVE] frame 1 front_r=inf cells=2820/2820 elapsed=31ms apply=18.548ms
 hard     [E-WAVE] frame 1 front_r=inf cells=1559/1559 elapsed=11ms apply= 4.205ms
 ```
+
+⛔ **READ §8.3 BEFORE USING THESE TWO NUMBERS.** They are `apply=` figures — the
+CPU inside the loop — and D-1 measured the FRAMES they sit in at **59.2 ms** and
+**31.6 ms**. The comparison below is still valid (both sides are apply loops) and
+the conclusion still holds; what is wrong is calling either one "the collapsed
+commit frame".
 
 **18.55 ms against §1.4's predicted 20.13, and 4.21 against 5.68 — collapsed is
 CHEAPER than spread, on both materials.** That is the "per frame that writes, not
@@ -478,6 +484,69 @@ erased. Named rather than explained — the two gates it could have poisoned
 removal is D-6's — proven before gone.
 
 ---
+
+---
+
+### 8.3 ✅ D-1 IS MEASURED — 2026-08-28, and it CORRECTS §8.1 and §1.4
+
+Built for it: **`INFILTRAITOR_EVENT_FRAMES=1`**, the `[E-FRAME]` probe
+(`Room.event_probe_arm/beat/report`). It keeps **every frame's gap** for the whole
+event and records the beats as MARKS on that timeline, rather than bucketing
+frames by beat — the first version did bucket them and was unreadable within one
+run, because seven beats fire inside the commit frame alone, so `BEAT 3` came out
+with zero frames while the frame that wrote 3 531 cells was charged to `SOOT RAMP`.
+The beats are named off `TestZoneController._prof()` itself, so there is no second
+list of beats to drift from the first.
+
+Fabric gu (31,3) and the default hard grenade, `INFILTRAITOR_FRONT_FRAMES=1`, D-2
+in force (the fire is inside the commit):
+
+| the frame that… | §1.4 / §8.1 said | **measured FRAME** | the apply loop inside it |
+|---|---|---|---|
+| commits, fabric | ~43 ms | **58.4 ms** | 12.4 ms |
+| writes every cell, fabric | "18.55 ms measured" | **59.2 ms** | 19.8 ms |
+| commits, hard | ~17 ms | **47.6 ms** | 6.5 ms |
+| writes every cell, hard | "4.21 ms measured" | **31.6 ms** | 4.4 ms |
+
+⛔ **§8.1's "the single collapsed commit frame is 18.55 ms measured" IS WRONG, and
+it is this plan's own mistake made on itself.** 18.55 was `[E-WAVE]`'s `apply=`
+figure — the CPU *inside* the loop. The FRAME is 59.2 ms. The missing ~40 ms is
+the TileMapLayer's own work for 3 531 changed cells, charged after the loop
+returns and invisible to any probe inside it. §1.3 is built on exactly this
+distinction and §8.1 still fell for it.
+
+**The model survives, refined.** A writing frame costs roughly
+`baseline + per_cell x K`, with baseline ~17 ms and per-cell ~10–12 µs (of which
+only 3–6 µs is the apply loop):
+
+```
+fabric  3 531 cells   17 + 42 = 59   measured 59.2
+hard    1 559 cells   17 + 15 = 32   measured 31.6
+default pacing, 23 frames: 23x17 + 42 = 433   measured 404
+```
+
+So **collapsing does not make the per-cell work cheaper — it removes 22 baselines**,
+~374 ms, which is the whole of the saving and is exactly what D-0 measured as a
+duration win. "Cost is per frame that WRITES, not per cell" was half right: the
+FIXED part is per frame, and there is a real per-cell part on top of it.
+
+**Verdict: the collapse fits, and §4.1's staged fallback is NOT needed.** 59 ms is
+~3.5 dropped frames on the single densest moment of the game's biggest event,
+against 23 frames and 404 ms of spread. D-3 merging the commit frame into it
+projects to **~85 ms on fabric** (`17 + 42 + the commit's own 12.4 + census +
+persist`), not §1.4's 43 — and that projection is D-3's own gate, not a claim.
+
+⚠️ **AND THE REAL WORST FRAME OF A DETONATION IS NEITHER OF THEM.** It is the
+light derive: **201.9 ms (fabric) / 160.2 ms (hard)**, one frame, and §1.3 named
+it at 176 ms before any of this. Nothing D-1 or D-3 does touches it — it is §7.4,
+and it is now the only thing in the event above 60 ms.
+
+```
+[E-FRAME] detonation — 193 frame(s), 3686 ms, mean 19.1 · WORST 201.9 ms on frame 73
+  f36  COMMIT    its frame  58.4 ms
+  f41  BEAT 3    its frame  59.2 ms · (the whole queue, 3531/3531)
+  f73  LIGHT     its frame 201.9 ms · then 120 f, 2183 ms
+```
 
 ---
 

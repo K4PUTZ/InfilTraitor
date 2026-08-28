@@ -2,7 +2,8 @@
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
 **Status:** 🟢 **D-0 BUILT AND MEASURED (§8.1); §11 carries the Director's
-bubble ruling — the passage is now a CONTRACT, not an emergent count.**
+bubble ruling — the passage is now a CONTRACT, not an emergent count — and all
+four of §11.3's risks are ruled on. Next: D-2.**
 The pacing rehearsal ships as three env overrides; nothing architectural is
 built and nothing is removed. **Fabric 4 797 → 2 310 ms; hard 2 940 → 878 ms**,
 and the single collapsed commit frame is **18.55 ms measured** against a
@@ -352,12 +353,12 @@ the board's light is wrong everywhere.
 | ✅ **D-0** | **BUILT 2026-08-27 (§8.1) — fabric 4 797 → 2 310 ms, hard 2 940 → 878 ms.** The dress rehearsal — the new pacing on the OLD machinery.** `front_frames`, `consequence_soot_seconds`, `consequence_light_seconds` set to what §4 will produce. No architecture change, fully reversible. | The Director watches a 3× slow-motion video and says whether it is *pa-pum*. **This sets the target durations D-3 and D-5 build to, and it is cheap to be wrong here.** ⚠️ It also shows the crater arriving with no front — the one change in this plan that could read as broken (§9.4). |
 | 🟠 **D-1** | **HALF DONE (§8.1): the cell writes collapse to 18.55 ms (fabric) / 4.21 ms (hard), cheaper than spread.** Price the real commit frame. Collapse the queue to one frame behind the flash, hard material first, nothing else changed. | The real worst frame, against §1.4's predicted ~17 ms (concrete) / ~43 ms (fabric). `INFILTRAITOR_THROW_PROFILE`-style attribution. **If it does not fit, §4.1's staged fallback is where the architecture changes — before anything is built on it.** |
 | **D-2** | **The cook owns what the fire consumes** (§6) **and guarantees the passage from the bubble** (§11.1 — the Director's ruling, no longer an open question). | `blast_purity_selftest`: still pure. **Cell probe: `0 RESTORED, 0 VANISHED`** — the gate the current path fails 350 cells deep. `passage over N burnt edge(s)` reported by the new path with the same shape as today's, or explicitly retired by the Director. |
-| **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, material tier) replacing `_select_deterministic()`'s hash ranking. Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. The resistance ladder's selftests must still pass (§11.3.1). |
+| **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, **material tier**) replacing `_select_deterministic()`'s hash ranking, authored in **voxel-local** coordinates (§11.3.4). Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. Plus: the **resistance ladder's selftests still pass** (§11.3.1), and **panels and `JunctionColumn` still take damage** (§11.3.3 — E-JUNCTION-01's exact regression). |
 | **D-3** | **The presenter.** New class behind `INFILTRAITOR_PRESENTER=1`, old path still default. One commit frame; the consequence channel with per-instance `(GU ring, storey)` delay (§4.2, §5). | Cell probe green. `detonation_plan_selftest` + `blast_purity_selftest` untouched and passing — they are the net. Both paths runnable from one binary, so a before/after needs no stash. |
 | **D-4** | **The symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. Purely visual. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
 | **D-5** | **The light lands** (§7). Soot into the commit; the ramp to its D-0 duration. | The final frame is **pixel-identical** to a control with only the pacing reverted — the destination must be untouched and only the path changed (the gate §14.2 earned). |
 | **D-6** | **Remove the old path** (§3.2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after. Lint, 40 selftests, invariants, CODEMAP. |
-| **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*), and §7.4 if it is real. | Video, 3× slow motion — the instrument that found every defect of the last three sessions. |
+| **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*), and §7.4 if it is real. ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last three sessions. |
 
 **Order rationale.** D-0 first because it is one session, fully reversible, and it
 tells us what the rest is building toward — deciding the target durations AFTER
@@ -540,24 +541,64 @@ proposed   a pattern per (container class, ring, material tier), authored,
              looked up instead of ranked
 ```
 
-### 11.3 The four risks, stated before anything is built
+### 11.3 The four risks — ✅ ALL FOUR ANSWERED BY THE DIRECTOR, 2026-08-27
 
-1. **The resistance ladder must survive.** `destroy_factor` / `dent_factor` /
-   `crack_factor` produce metal > stone > concrete > wood > plywood > cardboard >
-   fabric, it is ratified design, and it has selftests. A pattern table needs a
-   pattern per material TIER (or a pattern plus a per-material threshold), or the
-   ladder collapses into "every material breaks the same shape". **This is the
-   design work of the proposal, not a detail of it.**
-2. **Firearms do not share this path** (`apply_point_impact()`), so explosions and
-   shots would decide damage by two different models. Acceptable — they already
-   differ — but it must be a decision, not a discovery.
-3. **A Slice is not always 128 voxels.** Half-thickness panels (M3-2b) and
-   `JunctionColumn` (one voxel per level, a third container class) are both real
-   containers a pattern table has to handle.
-4. ⚠️ **The pattern must be authored in voxel-local coordinates, never view
-   space.** `SOOT_STORAGE_REFORM` §1.1 lost a day to exactly this: a per-face
-   format that was +Z/+X/+Y in VIEW space could not survive a rotation, and
-   rotation is suspended for performance rather than abandoned.
+Raised before anything was built, and ruled on the same day. The rulings are the
+constraints D-2b builds under.
+
+**1. The resistance ladder must survive.** ✅ *"Concordo, a escada deve existir."*
+`destroy_factor` / `dent_factor` / `crack_factor` produce metal > stone >
+concrete > wood > plywood > cardboard > fabric; it is ratified design and it has
+selftests. So a pattern table needs a pattern **per material TIER** (or a pattern
+plus a per-material threshold) — *"every material breaks the same shape"* is a
+failure, not a simplification. **This is the design work of the proposal, not a
+detail of it.**
+
+**2. Firearms decide damage by a different model.** ✅ *"Sem problemas, faz sentido
+que o dano seja diferente e o mecanismo também, mas tentamos preservar o que já
+existe, as armas de fogo estão ok e não geram queima."*
+
+Explosions and shots may diverge; what must not change is the firearm path that
+already works (`apply_point_impact()`, `WEAPON_MASTER_PLAN` §6c). Verified in code
+2026-08-27: **`start_burn()` has exactly one caller**, the grenade path in
+`test_zone_controller.gd`, so no shot lights a fire today.
+
+⚠️ **That is a statement of the CURRENT state, not a prohibition** — the Director's
+own correction. A future incendiary round or molotov is not vetoed by this line;
+it simply is not what firearms do now, so D-2b has nothing to preserve there
+beyond leaving the path alone.
+
+**3. A Slice is not always 128 voxels.** ✅ *"Sim, mas imagino que atender uma
+quantidade menor de voxels seja uma consequência natural do mecanismo."*
+
+Exactly right, and it is what makes the mechanism cheap rather than what
+complicates it: a pattern is applied to **whatever voxels the container actually
+has**, so half-thickness panels (M3-2b) and `JunctionColumn` (one voxel per level,
+a third container class) fall out of the same lookup. **The gate is that they
+still take damage at all** — E-JUNCTION-01 shipped on 2026-08-13 precisely because
+junction columns had been taking none, and nobody noticed until the Director sent
+a screenshot.
+
+**4. Nothing stored may be view-space.** ✅ *"Sim, queremos um mapa de fuligem bem
+planejado, simples e eficiente, que consiga lidar com as rotações."*
+
+Two things fall under this, and they are the same rule twice:
+
+- **The damage pattern** must be authored in voxel-local coordinates.
+  `SOOT_STORAGE_REFORM` §1.1 lost a day to exactly this class of bug: a per-face
+  format that was +Z/+X/+Y in VIEW space gave the two faces turned away from the
+  camera a placeholder, which is a hole in the record the moment it is stored.
+- **The soot map itself** — already built that way. SS-1's store is **base-keyed
+  with a six-direction format** (the sixth is BOTTOM, because the ISOTROPIC ring
+  is otherwise unrecoverable for a voxel scorched from underneath), and SS-2 made
+  it the source of truth at **0 px** against a control that earned it.
+
+⚠️ **So the Director's ruling is already half-built, and the unbuilt half has a
+name and a blocker:** `SOOT_STORAGE_REFORM` **SS-6 — prove it under rotation**,
+which *"needs a capture action that rotates the view, and none exists."* Its gate
+is D24's own SE/SW histogram before and after a rotation to E, not a pixel diff.
+**SS-6 is now explicitly wanted rather than deferred, and building that capture
+action is its first step.** Rotation is suspended for PERFORMANCE, not abandoned.
 
 ### 11.4 How this changes the task list
 

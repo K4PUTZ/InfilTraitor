@@ -1,9 +1,10 @@
-# RESUMO_SESSAO — 2026-08-29 · THE BRASA, THE LIGHT, THE FUSE, AND D-6 (1/2)
+# RESUMO_SESSAO — 2026-08-29 · THE EXPLOSION DESIGN CLOSES
 
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-28_PRESENTER_AND_THE_SMOKE.md`
 **Commits (all pushed):** `334600e2` D-4 brasa · `013ea093` D-4 life_gain trim ·
 `665698aa` D-5 light 2.0→0.5 s · `76b58a5c` fuse/boom pre-pass · `e475284f`
-D-6 (1/2) presenter is the only path.
+D-6 (1/2) presenter is the only path · `4c89b972` `throw_event` capture action ·
+`30e19b35` D-8 defer the light derive until the smoke clears · plus DOCS.
 **Gates at close:** lint ✅ · selftests **40 clean / 0 failed** ✅ · invariants ✅ ·
 CODEMAP ✅ · cell probe `1169 erased · 0 RESTORED · 512 appeared · 0 VANISHED` on
 the DEFAULT path (no env) — identical to every run since D-2.
@@ -13,18 +14,31 @@ the DEFAULT path (no env) — identical to every run since D-2.
 
 ## Read this first if you are resuming
 
-**`DETONATION_PRESENTATION_MASTER_PLAN` D-4 and D-5 are DONE. D-6 is HALF DONE.**
+> **Director, 2026-08-29:** *"isso conclui nosso design da explosão, com exceção
+> do vidro que ainda vamos trabalhar na milestone de materiais. Fica pendente a
+> limpeza e a otimização do código + cook da luz."*
 
-D-6 part 1 shipped (`e475284f`): the presenter is the only path, the
-`INFILTRAITOR_PRESENTER` gate is gone, `is_resolving_action()` is rewired.
-**D-6 part 2 is the irreversible ~1600-line deletion** — the choreographer,
-`BurnScheduler`, `_advance_burn` + the burn profiler + residue probe in
-`room.gd`, `FireGlowOverlay`, the D-0 env vars, `consequence_soot_seconds`. The
-Director's 3 scope answers and the file list are in **§6 below** and in the master
-plan §8.11. The **"before" 3× video is captured** (`d6_BEFORE_choreo.mp4` in the
-session scratchpad — re-shoot if gone). Also do `consequence_light_seconds`
-0.5 → ~1.0 s as part of it (Director wants a ~1 s Diablo-II "Den of Evil" light
-transform with a swiffh SFX; SFX is deferred to audio).
+**THE EXPLOSION DESIGN IS CLOSED.** The event: fuse (grenade intact, sputtering) →
+boom → one commit frame → the consequence channel (smoke, plumes, brasa) → the
+light lands after the smoke clears. All shipped and on the default path.
+
+**Three things remain, all engineering, none design:**
+
+1. **D-6 part 2** — the irreversible ~1600-line deletion: the choreographer,
+   `BurnScheduler`, `_advance_burn` + the burn profiler + residue probe in
+   `room.gd`, `FireGlowOverlay`, the D-0 env vars, `consequence_soot_seconds`;
+   also `consequence_light_seconds` 0.5 → ~1.0 s (Diablo-II "Den of Evil" light
+   transform, swiffh SFX deferred to audio). Scope + the Director's 3 answers +
+   the file list: **§6 below** and master plan §8.11. The **"before" 3× video** is
+   `d6_BEFORE_choreo.mp4` (scratchpad — re-shoot if gone). Selftests 40 → 38.
+2. **§7.4 — the light cook.** Compute the light field in the pure cook so
+   `play_consequence_light()` is a pixel write with no ~202 ms freeze. §8.12/D-8
+   only HIDES that freeze (defers it to a still scene); this removes it. Own task
+   — getting it wrong is wrong everywhere.
+3. **Polish `throw_event`** (§6b) — the capture action's rough edges.
+
+**Glass** — *"tem que quebrar muito mais com a granada"* — is `MATERIALS_MASTER_PLAN`
+M4, end of the materials milestone.
 
 The tree is clean at every commit — the choreographer is dead code, not
 half-wired.

@@ -1,21 +1,39 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟢 **D-0…D-5 DONE (§8.1–§8.9). D-6 IN PROGRESS — part 1 shipped
-(the presenter is the only path, §8.11), part 2 pending (delete ~1600 lines:
-the choreographer, `BurnScheduler`, `_advance_burn` + the burn profiler +
-residue probe in `room.gd`, `FireGlowOverlay`, the D-0 env vars). The
-Director's 3 scope answers and the "before" 3× video are in §8.11.**
-Also shipped: a **fuse/boom pre-pass** (§8.10) — the grenade is now intact
-while it cooks and the fireball moves to the boom.
+**Status:** 🟢 **THE EXPLOSION DESIGN IS CLOSED — Director, 2026-08-29:**
+*"isso conclui nosso design da explosão, com exceção do vidro… Fica pendente a
+limpeza e a otimização do código + cook da luz."*
+
+**DONE and shipped (§8.1–§8.12):** D-0…D-5, the fuse/boom pre-pass (§8.10),
+D-6 part 1 — the presenter is the only path (§8.11) — and the light-lag defer
+(§8.12). The event: fuse (grenade intact) → boom → one commit frame → the
+consequence channel (smoke, plumes, brasa) → the light lands after the smoke
+clears.
+
+**PENDING — engineering, not design:**
+- **D-6 part 2** — the ~1600-line deletion (the choreographer, `BurnScheduler`,
+  `_advance_burn` + the burn profiler + residue probe in `room.gd`,
+  `FireGlowOverlay`, the D-0 env vars, `consequence_soot_seconds`). Scope, the
+  Director's 3 answers and the "before" 3× video are in §8.11. Also:
+  `consequence_light_seconds` → ~1.0 s for the Diablo-II light transform.
+- **§7.4 — the light cook.** Compute the light field in the pure cook so
+  `play_consequence_light()` becomes a pixel write with no ~202 ms freeze. §8.12
+  only HIDES that freeze (defers it to a still scene); this removes it. Its own
+  task — getting it wrong means the board's light is wrong everywhere.
+- **Polish `throw_event`** — the capture action (§8.13).
+
+**Out of scope here — `MATERIALS_MASTER_PLAN` M4:** glass, *"tem que quebrar muito
+mais com a granada"* (the non-local pane break), end of the materials milestone.
+
+---
+
 ⚠️ **D-4's symbolic fire (§5.1) was DOWNSCOPED by the Director on 2026-08-29** —
 *"a gente já chegou num visual bem bom, só falta um pouquinho de brasa nos
 materiais moles… o que a gente conseguir colocar de vermelho brilhando que vira
 preto é lucro. De resto pode deixar assim mesmo."* The per-voxel vibrating
 flame / incandescent voxel / ash-transmission spec is NOT built; what shipped is
-a boosted ember on the cells the fire consumes (§8.8). **Glass — *"tem que quebrar
-muito mais com a granada"* — is deferred to the end of the materials milestone
-(the non-local pane break, `MATERIALS_MASTER_PLAN` M4).**
+a boosted ember on the cells the fire consumes (§8.8).
 D-0's pacing rehearsal ships as three env overrides — **fabric 4 797 → 2 310 ms;
 hard 2 940 → 878 ms**, single collapsed commit frame **18.55 ms measured**
 against a predicted 20.1. **D-2 made the cook the owner of what the fire
@@ -382,8 +400,10 @@ the board's light is wrong everywhere.
 | ✅ **D-3** | **BUILT 2026-08-28 (§8.4).** `DetonationPresenter` behind `INFILTRAITOR_PRESENTER=1`, choreographer still default. One commit frame at **31.4 ms** (fabric) / 28.3 (hard); the consequence channel with the §4.2 delay. `DetonationEntryWriter` extracted first so both paths share the writing. | ✅ All met, plus D-5's early: cell probe `0 RESTORED · 0 VANISHED`, 40 selftests clean, and the **settled frame is pixel-identical (0 px)** between the two paths. ⚠️ One deliberate look regression: §7.1 removes the soot fade-in the Director asked for on 2026-08-19 — judge on the video before D-6. |
 | ✅ **D-4** | **DONE — SMOKE (§8.6, §8.7) + THE BRASA (§8.8).** §8.7's plumes ship, and finding them exposed a P7b defect: `CircleField` had no `custom_aabb`, so every MultiMesh field had been culling its most distant particles since it shipped. Per-material `smoke_chance` and the height axis shipped. §8.8: the symbolic fire was **downscoped by the Director on 2026-08-29** to *"um pouquinho de brasa nos materiais moles"* — `_mark_burnt_embers()` flags the ember on every consumed voxel and the writer routes it through `EmberOverlay`'s boosted profile. No new overlay, no new wave kind. | ✅ The Director looked at the shipped D-4a/b and closed it: *"pode deixar assim mesmo"*. §8.8's brasa judged on the filmstrip. |
 | ✅ **D-5** | **BUILT 2026-08-29 (§8.9).** `consequence_light_seconds` 2.0 → 0.5 — the D-0 rehearsal value. Soot was already in the commit (D-3/D-3b). One `var` default; `INFILTRAITOR_LIGHT_SECONDS` still overrides. | ✅ Met by containment, not by a single 0. Same binary, same `INFILTRAITOR_RNG_SEED`, 0.5 s vs 2.0 s: **every differing pixel is inside the crater bbox — 0 outside** (`>32`: 263 in / **0 out**). The literal "settled final frame" is unreachable because the 2.0 s control ramp outlives the capture's held-camera window; the destination is identical by construction — `play_consequence_light()`'s terminal `_write_cell_bucket(to_bucket[k])` loop is unconditional. |
-| 🟠 **D-6** | **Remove the old path** (§3.2). **Part 1 SHIPPED (§8.11):** everything runs the presenter, the `INFILTRAITOR_PRESENTER` gate is gone, `is_resolving_action()` rewired to a blast-lock the presenter releases when the smoke is up. **Part 2 pending:** delete the choreographer + `BurnScheduler` + `_advance_burn`/profiler/residue-probe + `FireGlowOverlay` + the D-0 env vars; `consequence_light_seconds` → ~1.0 s (§8.11 answer 2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after (the "before" is captured — §8.11). Lint, selftests (drops from 40 → 38 with the two retired), invariants, CODEMAP. |
-| **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*), and §7.4 if it is real. ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last three sessions. |
+| 🟠 **D-6** | **Remove the old path** (§3.2). **Part 1 SHIPPED (§8.11):** everything runs the presenter, the `INFILTRAITOR_PRESENTER` gate is gone, `is_resolving_action()` rewired to a blast-lock the presenter releases when the smoke is up. **Part 2 pending — pure engineering:** delete the choreographer + `BurnScheduler` + `_advance_burn`/profiler/residue-probe + `FireGlowOverlay` + the D-0 env vars + `consequence_soot_seconds`; `consequence_light_seconds` → ~1.0 s (§8.11 answer 2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after (the "before" is captured — §8.11). Lint, selftests (drops from 40 → 38 with the two retired), invariants, CODEMAP. |
+| ✅ **D-8** | **DEFER THE LIGHT DERIVE UNTIL THE SMOKE CLEARS (§8.12).** `DetonationPresenter._wait_for_smoke()` polls `SmokeSparkOverlay.smoke_count()` before `play_consequence_light()`. The Director saw the ~202 ms freeze reading as a stutter over drifting smoke. | ✅ The Director watched the real-time video: the freeze now lands on a still, empty scene (~5.0 s) and does not read. **Not §7.4** — the derive still costs 202 ms. |
+| **§7.4** | **THE LIGHT COOK.** Compute the light field in the pure cook (the WALK phase already does 133 ms of that work and lights a predicted crater right — `PREDICTION_MASTER_PLAN` §8.8) and apply it as a pixel write. Removes the ~202 ms freeze D-8 only hides. | The board's light is pixel-identical to the current derive result, everywhere. Its own task — getting it wrong is wrong everywhere. |
+| **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*). ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last four sessions. |
 
 **Order rationale.** D-0 first because it is one session, fully reversible, and it
 tells us what the rest is building toward — deciding the target durations AFTER
@@ -1000,6 +1020,40 @@ moved cell, unconditionally, and `consequence_light_seconds` feeds only
 ⚠️ **`consequence_soot_seconds` is now dead on the presenter path** (only the
 choreographer's soot ramp reads it) and goes with the choreographer in D-6. §7.3's
 "one number" is D-6's to finish, not D-5's.
+
+---
+
+### 8.12 ✅ D-8 — THE LIGHT LAG, DEFERRED (NOT FIXED), 2026-08-29
+
+> Director, watching the real-time video: *"Consigo claramente ver o lag pela
+> fumaça, quando aparece 'light landed'. A fumaça dá uma pausinha quando entra.
+> Vamos adiar a luz até o fim mesmo — a não ser que a gente consiga colocar a
+> fumaça em uma thread separada que não seja afetada pela luz."*
+
+A separate thread is not viable — Godot overlay `_draw()` and the derive are both
+main-thread. So `DetonationPresenter._wait_for_smoke()`: after the consequence
+channel, poll `SmokeSparkOverlay.smoke_count()` until it drops to
+`light_smoke_slack` (4) or `light_smoke_max_s` (3.5 s) elapses, THEN
+`play_consequence_light()`. The ~202 ms `_repaint_voxel_light_buckets()` still
+costs 202 ms; the freeze now lands on a still, near-empty scene (~5.0 s on the
+fabric filmstrip) instead of over drifting smoke (~3.2 s). Both new values are
+`var` (Rule 1). **This is not §7.4** — see the task table.
+
+### 8.13 ✅ `throw_event` — THE WHOLE EVENT IN ONE BOOT, 2026-08-29
+
+`INFILTRAITOR_CAPTURE_ACTION=throw_event` (`Room._capture_throw_event_filmstrip()`) —
+drives `enter_grenade_mode` → `_set_targeting_target` → wait out the prediction →
+`execute_grenade_throw`, then grabs every frame at `--fixed-fps 60` through the
+arc, the fuse, the boom, the consequence channel and the light. Encode the PNGs
+at 60 fps for real-time playback. Envs:
+`INFILTRAITOR_EVENT_{AGENT_CELL,TARGET_GU,FOCUS_GU,FRAMES_TOTAL,THROW_AT}`.
+
+⚠️ **Rough edges, own follow-up:** the aim dome flashes ~1 frame before the throw
+despite the `dev_vision` disable; `_set_targeting_target`'s throw-range clamp
+mangles a far `TARGET_GU` (the agent's real GU on the reformed PLAYGROUND was
+never worked out — a default throw lands at gu (21,8), concrete floor, dents not a
+crater); the framing pulls in a lot of empty floor. The event IS captured every
+run.
 
 ---
 

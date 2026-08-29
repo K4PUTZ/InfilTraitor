@@ -88,10 +88,28 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	_commit_frame(plan, voxel_renderer)
 	await _fade_soot_plane(ramp, voxel_renderer, tree)
 	await _run_consequence(plan, voxel_renderer, smoke_overlay, tree)
+	## §7 — the light lands LAST, after the smoke has had its say.
+	##
+	## ⚠️ AND IT WAITS FOR THE PLUMES ON PURPOSE — Director, 2026-08-28, on being
+	## shown that they push the event from 3.2 s to 4.3 s: *"Pode deixar a luz ser
+	## atualizada só depois da fumaça mesmo… a mudança de iluminação vai ser
+	## assumida como um evento da rodada. Faz parte da dinâmica de turnos, mostrando
+	## as consequências de uma ação. Pode manter os 240 frames rodando até a fumaça
+	## se dissipar."*
+	##
+	## So the length is RATIFIED, not an oversight, and a future perf pass must not
+	## "fix" it. An attempt to start the light early was built and thrown away here:
+	## besides being unwanted, it hid a real defect —
+	## `Room.play_consequence_light()` is `-> void`, so calling it without `await`
+	## returns `null`, a `if coro != null` guard never closes, and the light was
+	## restarted on EVERY frame. The frame probe caught it at once (a dozen `LIGHT`
+	## marks, frames at 92-100 ms against the usual 18) and the PICTURE never would
+	## have: concurrent light ramps converge on the same final state.
+	##
+	## AWAITED: `finished` is what clears the controller's only strong reference to
+	## this object, and the light runs a coroutine of its own.
 	if consequence_room != null and consequence_room.consequence_beat:
 		consequence_room.event_probe_beat("LIGHT")
-		## AWAITED: `finished` is what clears the controller's only strong
-		## reference to this object, and the light runs a coroutine of its own.
 		await consequence_room.play_consequence_light()
 	finished.emit()
 
@@ -266,6 +284,14 @@ func _run_consequence(plan: Dictionary, voxel_renderer, smoke_overlay,
 ## by the writer: that one is E-EMBER-02's upward creep, an intra-column stagger,
 ## a different axis from this radial one. Adding them is intended.
 func _delay_for(entry: Dictionary) -> float:
+	## D-4b — an explicit release time wins, and is NOT clamped to
+	## `consequence_max_seconds`. The plumes are the one effect whose whole point is
+	## to outlast the blast (*"persistindo pelo menos mais 1 segundo depois da
+	## explosão"*), so the cap that keeps the radial channel snappy would delete
+	## exactly the thing they exist for. The channel's loop runs until everything is
+	## dispatched, so the beat simply lasts as long as the last column.
+	if entry.has("at"):
+		return maxf(float(entry["at"]), 0.0)
 	var r: float = float(entry.get("r", 0.0))
 	var gu_ring: float = r / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	## §4.2's "storey from impact", and the grenade sits on the playable storey.

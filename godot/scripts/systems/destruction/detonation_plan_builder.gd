@@ -482,6 +482,9 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["touched_voxels"] = []
 	s["census"] = {}
 	s["smoked_gus"] = {}
+	## D-4b — `{gu: [world_pos, level]}`, the HIGHEST damaged voxel of each GU the
+	## blast reached. The seed for the rising plumes; see `_append_plumes()`.
+	s["plume_gus"] = {}
 
 	## VL-D3's own contract: "computed from the INTACT geometry right after a
 	## build, before reapply_damage" — a floor voxel newly exposed by THIS blast
@@ -887,7 +890,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				_count(census, "destroy", container, true)
 				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring,
 					smoke_weights, DESTROY_SMOKE_INTENSITY, voxel_renderer, epicenter,
-					_material_name(container))
+					_material_name(container), s["plume_gus"])
 				_append(waves["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 					"r": _radius_of(voxel.grid_pos, epicenter)})
 				_append_voxel_debris(waves["debris"], voxel, ring, _material_name(container),
@@ -898,7 +901,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring, smoke_weights,
 					DENT_SMOKE_INTENSITY if state == Voxel.DamageState.DENTED
 						else CRACK_SMOKE_INTENSITY,
-					voxel_renderer, epicenter, _material_name(container))
+					voxel_renderer, epicenter, _material_name(container), s["plume_gus"])
 				## The resolver takes a whole Voxel and reads five damage fields off
 				## it, so it is handed the Delta's PROJECTED copy. The real Voxel is
 				## what goes into `touched_voxels`, because that list is the commit's
@@ -1070,6 +1073,7 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= gus.size():
+		_append_plumes(s)
 		## §3.4 — the Delta's queryable surface. `touched_voxels` is the object
 		## list VL-PERSIST consumes after the commit; `touched` is the same set as
 		## plain cells, for anything that must outlive those references (a cached
@@ -1739,12 +1743,28 @@ static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:
 static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionary,
 		voxel: Voxel, ring: int, smoke_ring_weights: Array[float], tier_intensity: float,
 		voxel_renderer: VoxelRendererClass, epicenter: Vector2i,
-		material: String = "") -> void:
+		material: String = "", plume_gus: Dictionary = {}) -> void:
 	if ring < 0 or ring >= smoke_ring_weights.size():
 		return
 	var weight: float = smoke_ring_weights[ring]
 	if weight <= 0.0:
 		return
+	## D-4b — the plume seed, recorded for EVERY damaged voxel and therefore
+	## BEFORE the per-material thinning below. `smoked_gus` stopped meaning "GUs
+	## this blast damaged" the moment that roll was added; it means "GUs that got a
+	## puff". The plumes want the first, and reusing the second would have made a
+	## fabric crater emit almost no columns for a reason that has nothing to do
+	## with columns.
+	##
+	## The HIGHEST damaged voxel wins, which is what puts a plume on a WALL rather
+	## than always on the floor under it — the Director's own drawing has two
+	## columns rising off wall faces, not just off the crater.
+	var pgu: Vector2i = GeometryCoords.voxel_to_gu(voxel.grid_pos)
+	var prev: Array = plume_gus.get(pgu, [])
+	if prev.is_empty() or voxel.level > int(prev[1]):
+		plume_gus[pgu] = [
+			voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
+			voxel.level, ring]
 	## D-4 — the per-material thinning, rolled BEFORE `smoked_gus` is marked.
 	##
 	## ⚠️ THE ORDER OF THOSE TWO LINES IS A DESIGN DECISION, not tidiness. Marking
@@ -1812,6 +1832,90 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 ##
 ## Effects roll INDEPENDENTLY, under different salts, because VFX-01 let stone
 ## throw both dust and sparks from one strike and that is worth keeping.
+## --- D-4b: THE PLUMES — what the Director actually asked for. ------------
+##
+## > *"queremos efetivamente que ela seja mais presente e maior, subindo e se
+## > dissipando, persistindo pelo menos mais 1 segundo depois da explosão… As
+## > areas afetadas pela explosão soltam uma fumaça no final."*
+##
+## ⚠️ **THIS IS NOT THE PER-VOXEL SMOKE, AND CONFUSING THE TWO COST A WHOLE PASS.**
+## The Director's second drawing circles the small discs expanding outward from the
+## centre and labels them *"a fumaça da granada que já está funcionando"* — those
+## are `_append_voxel_smoke()`'s puffs, and they are FINE. What was missing is a
+## different effect entirely: a FEW LARGE COLUMNS rising off the affected areas at
+## the END, which is what the first drawing shows. Tuning the per-voxel puffs could
+## never have produced it, however far it was pushed.
+##
+## So: one column per damaged GU, not one puff per damaged voxel. A column is
+## `PLUME_PUFFS` puffs from the same point, staggered over `PLUME_SPAN_S`, each
+## much larger, much longer-lived and rising much harder than a per-voxel puff.
+## Staggering is what makes it read as a continuous plume rather than one balloon.
+##
+## They ride in `waves["smoke"]` rather than in a kind of their own: they ARE
+## smoke entries, they need no new writer branch, no `PLAYED_KINDS` row and no
+## change to the drop-check. `at` is what separates them — see
+## `DetonationPresenter._delay_for()`, which honours an explicit release time and
+## does not clamp it to the consequence channel's own span.
+##
+## Every number is a `var` in SECONDS (Rule 1, §5.2). The persistence the Director
+## asked for is `PLUME_SPAN_S` (when the last puff of a column is released) plus
+## the overlay's own 1.8-3.2 s lifetime scaled by `PLUME_DURATION` — so the smoke
+## is still thinning out well past a second after the blast.
+static var PLUME_PUFFS: int = 4
+static var PLUME_FIRST_S: float = 0.18      ## the lead puff, right after the crater lands
+static var PLUME_SPAN_S: float = 1.05       ## the last one, a second later
+static var PLUME_JITTER_S: float = 0.22     ## per-GU scatter so columns do not pulse together
+static var PLUME_SCALE: float = 5.0         ## against SMOKE_SCALE_BASE 2.3 for a per-voxel puff
+## ⚠️ 3.6 is the CAP, not a taste: the writer clamps a puff at 0.72 and
+## `SMOKE_COLOR.a` is 0.2, so 3.6 is exactly where a plume saturates. Measured at
+## 1.7 the columns were on screen and effectively invisible — the feather spreads a
+## big disc's alpha over a large area, so a plume needs the ceiling where a small
+## per-voxel puff does not.
+static var PLUME_ALPHA: float = 3.6
+static var PLUME_DRIFT: float = 1.7         ## rises harder and further than a puff
+static var PLUME_DURATION: float = 1.5      ## x the overlay's own 1.8-3.2 s
+
+
+static func _append_plumes(s: Dictionary) -> void:
+	var plume_gus: Dictionary = s["plume_gus"]
+	if plume_gus.is_empty():
+		return
+	var waves: Dictionary = s["waves"]
+	var epicenter: Vector2i = s["epicenter"]
+	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
+	var made: int = 0
+	for gu: Vector2i in plume_gus.keys():
+		var seed_row: Array = plume_gus[gu]
+		var origin: Vector2 = seed_row[0]
+		var level: int = int(seed_row[1])
+		var ring: int = int(seed_row[2])
+		var gu_center: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
+		var jitter: float = _hash_unit("PLUMEAT", gu, level)
+		var size_roll: float = _hash_unit("PLUMESIZE", gu, level)
+		for k in range(maxi(PLUME_PUFFS, 1)):
+			var t: float = float(k) / float(maxi(PLUME_PUFFS - 1, 1))
+			_append(waves["smoke"], ring, {
+				"world_pos": origin,
+				"at": PLUME_FIRST_S + (PLUME_SPAN_S - PLUME_FIRST_S) * t
+					+ PLUME_JITTER_S * jitter,
+				"duration": PLUME_DURATION,
+				## The column narrows as it climbs, which is most of what makes it
+				## read as rising rather than as four discs in a stack.
+				"scale": PLUME_SCALE * (1.15 - 0.45 * t) * (0.75 + 0.5 * size_roll),
+				"alpha": PLUME_ALPHA,
+				"drift": PLUME_DRIFT,
+				"blobs": SMOKE_BLOBS_PER_VOXEL,
+				"material": "",
+				"plume": true,
+				"r": _radius_of(gu_center, epicenter),
+				"cell": gu_center,
+				"level": level,
+			})
+			made += 1
+	print("[E-PLUME] %d column(s) over %d damaged GU(s), last released at %.2fs"
+		% [made, plume_gus.size(), PLUME_SPAN_S + PLUME_JITTER_S])
+
+
 static func _append_voxel_debris(debris_by_ring: Dictionary, voxel: Voxel, ring: int,
 		material: String, policy: Dictionary, voxel_renderer: VoxelRendererClass,
 		epicenter: Vector2i) -> void:

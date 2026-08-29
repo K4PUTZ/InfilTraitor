@@ -37,12 +37,16 @@ func _ready() -> void:
 		## the class doc says why — "additive smoke reads as glowing gas, not
 		## soot". `behind` keeps the puffs under the sparks, where `_draw()` put
 		## them.
-		## D-4 — the puffs get a SOFT rim. `INFILTRAITOR_SMOKE_FEATHER` is here for
-		## the bracket render, not for play: the feather is baked into the shared
-		## mesh at attach time, so it cannot be a per-puff value.
-		var feather_env := OS.get_environment("INFILTRAITOR_SMOKE_FEATHER")
-		var feather: float = feather_env.to_float() if feather_env.is_valid_float() else 0.45
-		_puff_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true, feather)
+		## ⛔ D-4 TRIED A SOFT RIM HERE AND IT WAS REVERTED, 2026-08-28. Two
+		## implementations, both unproven and both mine rather than asked for: a
+		## feathered MESH (vertex alpha never reaches the fragment on a MultiMesh2D —
+		## proved with an opaque-red rim and 0 red pixels) and then a UV+shader
+		## version. The second added `ARRAY_TEX_UV` to the SHARED unit circle, which
+		## is used by the plain CanvasItemMaterial path too, and smoke stopped
+		## drawing in BOTH modes. Reverted whole rather than debugged further: the
+		## Director asked for bigger, more present, rising smoke, and none of this
+		## was on the way there.
+		_puff_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true)
 
 
 ## Tuning — all `var` (Rule 1).

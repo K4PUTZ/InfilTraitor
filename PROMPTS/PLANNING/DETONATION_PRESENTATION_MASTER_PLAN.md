@@ -356,7 +356,7 @@ the board's light is wrong everywhere.
 | ✅ **D-2** | **BUILT 2026-08-28 (§8.2).** The cook owns what the fire consumes (§6). ⚠️ The passage half changed shape: the bubble does NOT force an opening (§11.1a vetoes §11.1) — what shipped is `PassageQuery`'s criterion, amount instead of shape. | ✅ All three met. `blast_purity_selftest` + 39 others clean. **Cell probe `0 RESTORED · 0 VANISHED`** against a same-binary control that still reports **350 RESTORED**. The passage line is reported by `Room.report_blast_passage()` as `[E-PASSAGE]`, same shape, and both paths agree on the end state (STANDING ×3). |
 | **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, **material tier**) replacing `_select_deterministic()`'s hash ranking, authored in **voxel-local** coordinates (§11.3.4). Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. Plus: the **resistance ladder's selftests still pass** (§11.3.1), and **panels and `JunctionColumn` still take damage** (§11.3.3 — E-JUNCTION-01's exact regression). |
 | ✅ **D-3** | **BUILT 2026-08-28 (§8.4).** `DetonationPresenter` behind `INFILTRAITOR_PRESENTER=1`, choreographer still default. One commit frame at **31.4 ms** (fabric) / 28.3 (hard); the consequence channel with the §4.2 delay. `DetonationEntryWriter` extracted first so both paths share the writing. | ✅ All met, plus D-5's early: cell probe `0 RESTORED · 0 VANISHED`, 40 selftests clean, and the **settled frame is pixel-identical (0 px)** between the two paths. ⚠️ One deliberate look regression: §7.1 removes the soot fade-in the Director asked for on 2026-08-19 — judge on the video before D-6. |
-| 🟠 **D-4** | **HALF DONE (§8.6): the destruction SMOKE.** Per-material `smoke_chance` and the height axis shipped; the mechanism was never missing, only thinned and varied. ⚠️ §8.6a leaves ONE look question open (may a puff be darker than the surface it leaves?) and it blocks the final tuning, not the mechanism. **Still to build: the symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
+| 🟠 **D-4** | **PART DONE (§8.6, §8.7): the destruction SMOKE.** ⛔ §8.7's PLUMES — the thing the Director actually asked for — are built and in the plan but **do not reach the screen**, unresolved. Per-material `smoke_chance` and the height axis shipped; the mechanism was never missing, only thinned and varied. ⚠️ §8.6a leaves ONE look question open (may a puff be darker than the surface it leaves?) and it blocks the final tuning, not the mechanism. **Still to build: the symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
 | **D-5** | **The light lands** (§7). Soot into the commit; the ramp to its D-0 duration. | The final frame is **pixel-identical** to a control with only the pacing reverted — the destination must be untouched and only the path changed (the gate §14.2 earned). |
 | **D-6** | **Remove the old path** (§3.2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after. Lint, 40 selftests, invariants, CODEMAP. |
 | **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*), and §7.4 if it is real. ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last three sessions. |
@@ -712,6 +712,70 @@ on, and smoke darker than its background reads as a hole, not as smoke.
 That is a design decision, not a defect, and it is the Director's: **should a puff
 ever be allowed to be darker than the surface it leaves?** Everything else is
 tuned in minutes off the bracket knobs once that is answered.
+
+---
+
+### 8.7 🟠 D-4b — THE PLUMES: BUILT, PLANNED, AND NOT ON SCREEN
+
+> Director, 2026-08-28, with two annotated frames: *"queremos efetivamente que ela
+> seja mais presente e maior, subindo e se dissipando, persistindo pelo menos mais
+> 1 segundo depois da explosão… As areas afetadas pela explosão soltam uma fumaça
+> no final. Não confundir com a fumaça da granada que já está funcionando, que são
+> os pequenos círculos se expandindo do centro para fora."*
+
+⚠️ **THAT SENTENCE RECLASSIFIES ALL OF §8.6.** The per-voxel puffs D-4a thinned and
+varied are the ones the Director calls *already working*. What is missing is a
+DIFFERENT effect — a few large columns rising off the affected areas at the end —
+and no amount of tuning the puffs could have produced it. Half a session went into
+the wrong population before the second drawing said so.
+
+**Built, and provably in the plan:** `_append_plumes()` emits one column per damaged
+GU (`PLUME_PUFFS` puffs from one point, staggered over `PLUME_SPAN_S`, each ~2x the
+scale and 1.5x the lifetime of a puff, rising 1.7x harder). Seeded from the HIGHEST
+damaged voxel of each GU, which is what puts a column on a WALL rather than always
+on the floor — the Director's drawing has two of those. They ride in
+`waves["smoke"]` with an explicit `at`, which `_delay_for()` honours and does NOT
+clamp to the channel's span. Measured: **96 columns over 24 damaged GUs, last
+released at 1.27 s**, and the channel now runs 78 frames instead of 14.
+`detonation_plan_selftest` grew a `_check_plumes()` that keeps the two populations
+apart: *8 plumes against 64 puffs, fewer, larger (base 6.89 vs 3.90, mean 4.54 vs
+1.64), out to 1.20 s.*
+
+⛔ **AND THEY DO NOT DRAW. Unresolved, and stated rather than dressed up.** Forced
+to opaque magenta, on a real blast: **95 dispatches, `overlay=true`, positions in
+the same range as the per-voxel puffs (y 756–1348 against 784–1404), scales 5.9–6.8
+— and 0 magenta pixels on screen.** The same probe on the per-voxel puffs, same
+build, same wait, gives 20. So the entries reach `add_smoke()` with valid arguments
+through the identical call and something between there and the raster drops them.
+Ruled out along the way: the feather (reverted, no change), a population cap (there
+is none), the delay field, `smoke_overlay` being null, and the positions.
+
+**Left in the tree deliberately.** The presenter is opt-in
+(`INFILTRAITOR_PRESENTER=1`), so nothing reaches the default path, the plan and its
+selftest are correct, and the next session starts from a built mechanism and a
+named symptom instead of from scratch.
+
+⛔ **AND THE FEATHER FROM §8.6 IS REVERTED — it was mine, never asked for, and
+twice unproven.** First a feathered MESH: vertex alpha never reaches the fragment
+on a `MultiMeshInstance2D` (opaque-red rim, 0 red pixels). Then UV + shader, which
+added `ARRAY_TEX_UV` to the SHARED unit circle used by the plain
+CanvasItemMaterial path too. `circle_field.gd` is back to its pre-D-4 state.
+
+⚠️ **The pacing question it raised is ANSWERED and the length is RATIFIED.** The
+plumes push the event from 3.2 s to 4.3 s because the light waits for them.
+Director: *"Pode deixar a luz ser atualizada só depois da fumaça mesmo… a mudança
+de iluminação vai ser assumida como um evento da rodada. Faz parte da dinâmica de
+turnos, mostrando as consequências de uma ação. Pode manter os 240 frames rodando
+até a fumaça se dissipar. Esse tempo pode ser usado pra adiantar o cálculo da
+iluminação."* So a future perf pass must not "fix" the 240 frames — and §7.4 gains
+a new opening: that second is somewhere the light derive could be hidden.
+
+⚠️ An attempt to start the light early was built and thrown away, and it hid a real
+defect worth remembering: `Room.play_consequence_light()` is `-> void`, so calling
+it without `await` returns `null`, a `if coro != null` guard never closes, and the
+light was **restarted on every frame**. `[E-FRAME]` caught it at once (a dozen
+`LIGHT` marks, frames at 92–100 ms against the usual 18); the PICTURE never would
+have, because concurrent ramps converge on the same final state.
 
 ---
 

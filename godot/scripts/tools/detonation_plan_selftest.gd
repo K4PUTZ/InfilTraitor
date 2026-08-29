@@ -383,6 +383,14 @@ func test_5_smoke_ring_weights_consumed(plan: Dictionary, bomb_def) -> void:
 		var limit: float = scale_envelope.call(ring) + 0.0001
 		var distinct: Dictionary = {}
 		for entry in entries:
+			## D-4b — the PLUMES ride in `waves["smoke"]` and are a different
+			## population with a deliberately different envelope: one column per
+			## damaged GU, ~2x the scale and ~1.5x the lifetime of a per-voxel puff.
+			## Skipped here rather than folded into the envelope, because widening
+			## the envelope to admit them would stop this assertion from catching a
+			## real per-voxel puff that grew. They get their own check below.
+			if bool(entry.get("plume", false)):
+				continue
 			var scale: float = float(entry["scale"])
 			var duration: float = float(entry["duration"])
 			if scale <= 0.0 or scale > limit:
@@ -607,12 +615,18 @@ func test_8_smoke_entries_carry_material(plan: Dictionary) -> void:
 		for entry in plan["smoke"][ring]:
 			if int(entry.get("blobs", 0)) == 0:
 				continue
+			## D-4b — a plume carries no material ON PURPOSE: it is the crater's own
+			## column, not one voxel's puff, so it takes the neutral ash tint rather
+			## than any one material's albedo.
+			if bool(entry.get("plume", false)):
+				continue
 			per_voxel += 1
 			var m: String = String(entry.get("material", ""))
 			if m.is_empty() or m == "?":
 				missing += 1
 			else:
 				materials[m] = int(materials.get(m, 0)) + 1
+	_check_plumes(plan)
 	if per_voxel == 0:
 		_fail("no per-voxel smoke entries at all — cannot prove the material rides along")
 		return
@@ -859,3 +873,60 @@ func test_10_debris_wave(built: Dictionary, bomb_def, ctx: Dictionary) -> void:
 	else:
 		_fail("re-building changed %d of %d debris entries — the rolls are not deterministic"
 			% [mismatch, again_count])
+
+
+## D-4b — the plumes exist, are FEW and LARGE, and carry a release time.
+##
+## Their own assertion rather than a widened smoke envelope: the whole design claim
+## is that they are a different population from the per-voxel puffs (*"não confundir
+## com a fumaça da granada que já está funcionando"* — Director, 2026-08-28), and a
+## test that could not tell them apart would not be testing that claim.
+func _check_plumes(plan: Dictionary) -> void:
+	var plumes: Array = []
+	var puffs: Array = []
+	for ring in plan.get("smoke", {}).keys():
+		for entry in plan["smoke"][ring]:
+			if bool(entry.get("plume", false)):
+				plumes.append(entry)
+			elif int(entry.get("blobs", 0)) > 0:
+				puffs.append(entry)
+	if plumes.is_empty():
+		_fail("no plume entries at all — the crater releases no rising smoke")
+		return
+	## ⚠️ NOT "every plume is bigger than every puff" — the first version of this
+	## asserted that and failed honestly: a column NARROWS as it climbs (that taper
+	## is most of what makes it read as rising), so its top is thinner than the
+	## fattest per-voxel puff. The claim being tested is that the population is
+	## bigger, so the base and the mean are what carry it.
+	var biggest_puff: float = 0.0
+	var puff_sum: float = 0.0
+	for e in puffs:
+		biggest_puff = maxf(biggest_puff, float(e["scale"]))
+		puff_sum += float(e["scale"])
+	var biggest_plume: float = 0.0
+	var plume_sum: float = 0.0
+	var last_at: float = 0.0
+	var no_at: int = 0
+	for e in plumes:
+		biggest_plume = maxf(biggest_plume, float(e["scale"]))
+		plume_sum += float(e["scale"])
+		if e.has("at"):
+			last_at = maxf(last_at, float(e["at"]))
+		else:
+			no_at += 1
+	var puff_mean: float = puff_sum / float(maxi(puffs.size(), 1))
+	var plume_mean: float = plume_sum / float(maxi(plumes.size(), 1))
+	if no_at > 0:
+		_fail("%d plume(s) carry no release time — they would land with the front" % no_at)
+	elif biggest_plume <= biggest_puff or plume_mean <= puff_mean:
+		_fail("plumes are not the larger population: base %.2f vs %.2f, mean %.2f vs %.2f"
+			% [biggest_plume, biggest_puff, plume_mean, puff_mean])
+	elif plumes.size() >= puffs.size():
+		_fail("%d plume(s) against %d per-voxel puff(s) — plumes are meant to be the FEW"
+			% [plumes.size(), puffs.size()])
+	elif last_at < 1.0:
+		_fail("the last plume is released at %.2fs — the Director asked for at least a second" % last_at)
+	else:
+		_pass("%d plume(s) against %d puff(s): fewer, larger (base %.2f vs %.2f, mean %.2f vs %.2f), out to %.2fs"
+			% [plumes.size(), puffs.size(), biggest_plume, biggest_puff,
+			plume_mean, puff_mean, last_at])

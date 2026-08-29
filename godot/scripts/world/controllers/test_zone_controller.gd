@@ -159,8 +159,15 @@ var _prof_f0: int = 0
 ## burning: the player is watching an animation and waiting for the bang, so a
 ## bigger bite is both affordable and desirable, because it shortens the wait.
 ## This is the number to raise if the fuse ever feels long.
+##
+## D-6 pre-pass (Director, 2026-08-29): *"começar o flash mais cedo, com 0,5"* —
+## on the 3× filmstrip the harness enters instantly, so the whole cook (~340 ms of
+## real work) fell before the strobe and the wait read as ~0.6 s of empty scene.
+## 8 → 14 ms brings the cook to ~0.45 s there; `spawn_fuse_sputter()` fills it. In
+## real play the human takes longer than the cook, so `cook_frames` is 0 either
+## way and this changes nothing.
 var predict_budget_ms: float = 4.0
-var cook_budget_ms: float = 8.0
+var cook_budget_ms: float = 14.0
 
 const MENU_GAP_ABOVE_PX: float = 30.0
 
@@ -878,17 +885,17 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	if waited > 0.0:
 		_prof("FUSE STRETCHED — held %.0f ms more waiting on the prediction" % (waited * 1000.0))
 
-	## Same hand-off `detonate_active()` makes: the prop stops existing at the
-	## exact frame the blast starts, which is also E-FRAG's cue to throw debris.
+	## The anchor is read off the sprite while it is still on the ground; the
+	## sprite is hidden at the BOOM (beat 2), not here, so the fuse beat has a
+	## grenade to burn (Director, 2026-08-29).
 	var anchor: Vector2 = _blast_anchor(grenade)
-	sprite.visible = false
 	grenade["detonated"] = true
 	_stop_pumping()
 	var tk0: int = Time.get_ticks_usec()
 	var job: DetonationPrediction = _take_prediction(bomb_def, target_gu)
 	_prof("TAKE — _take_prediction (ctx rebuild + cache lookup) %.2f ms" % [
 		float(Time.get_ticks_usec() - tk0) / 1000.0])
-	_start_detonation_sequence(job, target_gu, anchor)
+	_start_detonation_sequence(job, target_gu, anchor, grenade)
 
 
 ## T-BUBBLE: Check if currently in targeting mode
@@ -933,10 +940,9 @@ func detonate_active() -> void:
 		return
 	var g: Dictionary = _grenades[_active_index]
 	if not g["detonated"]:
+		## The anchor is read while the grenade is still on the ground; the sprite
+		## is hidden at the BOOM (beat 2), so the fuse beat has a grenade to burn.
 		var anchor: Vector2 = _blast_anchor(g)
-		var sprite: Sprite2D = g["sprite"]
-		if sprite != null and is_instance_valid(sprite):
-			sprite.visible = false
 		g["detonated"] = true
 
 		var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
@@ -949,7 +955,7 @@ func detonate_active() -> void:
 			## finished; `_take_prediction()` returns whatever exists, done or
 			## half-built, and never waits. The sequence below cooks if it must.
 			_stop_pumping()
-			_start_detonation_sequence(_take_prediction(bomb_def, gu), gu, anchor)
+			_start_detonation_sequence(_take_prediction(bomb_def, gu), gu, anchor, g)
 
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()
@@ -1194,12 +1200,23 @@ func cancel_preproduction() -> void:
 ## P-STROBE (Director, 2026-08-09) — the detonation is THREE SEPARATE BEATS now,
 ## in the Director's own words: *"separar o fogo, do flash, da destruição."*
 ##
-##   1. FIRE       burst + camera shake, alone, for `burst_lead_frames`
-##   2. STROBE     4 held frames — white, negative, white, negative — with the
-##                 fire still burning underneath ("o fogo se extende mais um
-##                 pouco e permanece acontecendo durante os 4 frames do flash")
+##   1. FUSE       the grenade sits on the ground, INTACT, sputtering
+##                 (`spawn_fuse_sputter()`). Nothing has exploded. This beat is
+##                 the one that stretches to hide the cook. Director, 2026-08-29:
+##                 *"in real life we pull the pin, throw it, and wait for the
+##                 boom. This period of anxiety can be delayed more or less at
+##                 will to buy process time."*
+##   2. BOOM       the grenade becomes shrapnel — `spawn_blast_burst()` blooms,
+##                 the camera shakes, the metal flies, then the strobe (4 held
+##                 frames: white, negative, white, negative).
 ##   3. DESTRUCTION played clean, with no flash over it at all
 ##                 ("frame positivo com a destruição limpa acontecendo")
+##
+## ⚠️ 2026-08-29 MOVED `spawn_blast_burst()` AND THE SHAKE from beat 1 to beat 2.
+## They used to fire the instant the sequence started, so on a long cook the
+## fireball had bloomed and decayed before the strobe and the scene read as empty
+## (the Director's *"a cena fica praticamente vazia aos 1s"*). Now beat 1 is only
+## the fuse and the bang is one event.
 ##
 ## This replaces E-FLASH-01's arrangement, where everything landed on one beat
 ## and the fade ran *underneath* the destruction. What forced the change: once
@@ -1218,17 +1235,14 @@ func cancel_preproduction() -> void:
 ##   aqui para ele finalizar o processamento. A granada fica 'cooking' no chão,
 ##   até soltar a cena."*
 ##
-##   0. COOKING    the fire is already lit and the engine finishes thinking
-##                 underneath it — for as long as it needs, zero frames if the
-##                 pre-production already finished
+##   0. COOKING    the grenade sits on the ground and the engine finishes
+##                 thinking underneath it — for as long as it needs, zero frames
+##                 if the pre-production already finished
 ##
-## **Beat 0 costs nothing when it is not needed, and it needed no new visual.**
-## P-STROBE had already established that the fire burns alone for
-## `burst_lead_frames` before the strobe, so "the grenade sits there burning" was
-## a beat this sequence already had — cooking simply makes its length depend on
-## the engine instead of on a constant. That answers Q4 as "no, it does not need
-## its own animation": the honest visual for *"the engine is still thinking"* was
-## already on screen.
+## Beat 0 costs nothing when it is not needed. It is the same beat as the fuse
+## (beat 1) — cooking simply makes its length depend on the engine instead of on
+## `burst_lead_frames`, and `spawn_fuse_sputter()` is the honest visual for
+## *"the engine is still thinking"*.
 ##
 ## The order matters and is not negotiable: FIRE FIRST, then think. Starting the
 ## burst before pumping is what removes the freeze — the player sees the
@@ -1249,16 +1263,16 @@ func cancel_preproduction() -> void:
 ## stays alive because room holds `_test_zone_controller`, the same explicit
 ## ownership `_active_choreographer` exists for.
 func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
-		anchor: Vector2) -> void:
-	## Beat 1 — fire and shake, alone. Unconditionally FIRST, before any
-	## remaining computation: this is the frame the player clicked on.
-	## D-1 — and the frame probe's window opens on exactly that frame, so the boot,
+		anchor: Vector2, grenade: Dictionary = {}) -> void:
+	## Beat 1 — THE FUSE. The grenade is on the ground, pin pulled, INTACT
+	## (Director, 2026-08-29: *"This is where in real life we pull the pin, throw
+	## it, and wait for the boom."*). Nothing explodes yet — this beat exists to be
+	## stretched at will while the engine finishes thinking. The fireball and the
+	## shrapnel wait for the boom (beat 2).
+	## D-1 — the frame probe's window opens on exactly this frame, so the boot,
 	## the map load and the seconds the player spent aiming are all outside it.
 	room.event_probe_arm("BEAT 1")
-	_prof("BEAT 1 — fire lit")
-	room.spawn_blast_burst(anchor)
-	if room._camera_controller != null:
-		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
+	_prof("BEAT 1 — fuse burning, grenade intact")
 
 	## Beat 0 — COOKING. Usually zero iterations, because pre-production started
 	## when the menu opened. `cook_budget_ms` is the bigger of the two budgets:
@@ -1270,6 +1284,8 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		var ct0: int = Time.get_ticks_usec()
 		job.step(cook_budget_ms)
 		cook_work_us += Time.get_ticks_usec() - ct0
+		## The fuse keeps sputtering while the engine finishes thinking.
+		room.spawn_fuse_sputter(anchor)
 		await room.get_tree().process_frame
 		cook_frames += 1
 	_prof("BEAT 0 — cooking done: %d frame(s), %.1f ms of leftover work at a %.1f ms budget" % [
@@ -1375,11 +1391,23 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## already spent frames here, so a long fuse does not additionally delay the
 	## strobe — `burst_lead_frames` is a MINIMUM, not an extra.
 	for _i in range(maxi(burst_lead_frames - cook_frames, 0)):
+		room.spawn_fuse_sputter(anchor)
 		await room.get_tree().process_frame
-	_prof("BEAT 1 ends — fire-only lead served (%d of %d frame(s) owed)" % [
+	_prof("BEAT 1 ends — fuse served (%d of %d frame(s) owed)" % [
 		maxi(burst_lead_frames - cook_frames, 0), burst_lead_frames])
 
-	## Beat 2 — E-FRAG-02 (Director, 2026-08-26): *"Tem que ser um estouro de
+	## Beat 2 — THE BOOM. Now the grenade becomes shrapnel and the fireball blooms
+	## (Director, 2026-08-29: *"Then, the grenade becomes shrapnels and everything
+	## else happens."*). The sprite is hidden HERE, not before the cook, so the
+	## fuse beat had something on the ground to burn.
+	var g_sprite = grenade.get("sprite")
+	if g_sprite != null and is_instance_valid(g_sprite):
+		g_sprite.visible = false
+	room.spawn_blast_burst(anchor)
+	if room._camera_controller != null:
+		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
+
+	## E-FRAG-02 (Director, 2026-08-26): *"Tem que ser um estouro de
 	## metais voando com o clarão junto mesmo."*
 	##
 	## ⚠️ THE ORDER WAS INVERTED, and that is what the note was about. The metal

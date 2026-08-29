@@ -2470,6 +2470,42 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 			_debris_overlay.add_dust(world_pos, floor_pos, blast_burst_dust_color)
 
 
+## D-6 pre-pass (Director, 2026-08-29): *"colocar mais um foguinho borbulhando ali
+## no meio, onde estava a granada, até o flash acontecer"*, then the model
+## correction — *"the grenade should be intact when cooking. This is where in real
+## life we pull the pin, throw it, and wait for the boom."* So the COOKING beat is
+## the fuse: the grenade sprite stays on the ground and this sputters on top of it
+## for as long as the engine needs to finish thinking. THEN the grenade becomes
+## shrapnel and `spawn_blast_burst()` blooms.
+##
+## A tiny, grenade-sized flicker spawned EVERY frame of the wait so it reads as a
+## fuse burning down, not one puff. Deliberately not `spawn_blast_burst()` scaled
+## down: that one blooms outward and fires once; this stays put and repeats. Same
+## overlay, same vocabulary (E-NATIVE-01), no new node.
+var fuse_sputter_embers_per_frame: int = 2
+var fuse_sputter_life_min: float = 0.14
+var fuse_sputter_life_max: float = 0.32
+var fuse_sputter_radius_scale: float = 0.52   ## a spark on the grenade, not a coal
+var fuse_sputter_jitter_px: float = 3.5       ## how far a flicker strays from the fuse
+var fuse_sputter_rise_px_s: float = 36.0      ## a lazy curl upward
+var fuse_sputter_spark_every: int = 3         ## a couple of sparks every Nth call
+var _fuse_sputter_tick: int = 0
+func spawn_fuse_sputter(world_pos: Vector2) -> void:
+	if _ember_overlay != null:
+		for _i in range(maxi(fuse_sputter_embers_per_frame, 1)):
+			var off := Vector2(
+				randf_range(-fuse_sputter_jitter_px, fuse_sputter_jitter_px),
+				randf_range(-fuse_sputter_jitter_px, fuse_sputter_jitter_px) * BLAST_ISO_GROUND_SQUASH)
+			_ember_overlay.add_ember(world_pos + off,
+				randf_range(fuse_sputter_life_min, fuse_sputter_life_max),
+				Vector2.ZERO, 0.0,
+				fuse_sputter_rise_px_s * randf_range(0.7, 1.3),
+				1.0, 0.0, fuse_sputter_radius_scale)
+	_fuse_sputter_tick += 1
+	if _smoke_spark_overlay != null and _fuse_sputter_tick % maxi(fuse_sputter_spark_every, 1) == 0:
+		_smoke_spark_overlay.add_sparks(world_pos, 2, Color(1.0, 0.85, 0.5, 1.0), 0.5, 0.4)
+
+
 ## E-MUZZLE-01 (Director, 2026-08-13): *"as armas de fogo também precisam de um
 ## clarão e uma fumacinha na ponta quando disparam. Nós ainda precisamos fazer
 ## os sprites com o agente empunhando a arma, mas de qualquer forma já vamos

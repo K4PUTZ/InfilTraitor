@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**225 scripts · 72983 lines total** (under `godot/scripts/`)
+**225 scripts · 73072 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1064,15 +1064,16 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `circle_field.gd`
 
-`class_name CircleField` · extends `RefCounted` · 156 lines
+`class_name CircleField` · extends `RefCounted` · 243 lines
 
 `godot/scripts/overlays/circle_field.gd`
 
 **Constants / tuning**
 - `FLOATS_PER_INSTANCE` = `12`
+- `FEATHER_SHADER_SRC` = `"shader_type canvas_item;\nrender_mode %s;\nuniform float feather : hint_range(0.0, 1.0) = 0.6;\nvarying vec4 inst_color;\nvoid vertex() {\n\tinst_color = COLOR;\n}\nvoid fragment() {\n\tfloat d = length(UV * 2.0 - 1.0);\n\tCOLOR = inst_color;\n\tCOLOR.a *= 1.0 - smoothstep(1.0 - feather, 1.0, d);\n}\n"`
 
 **Public API**
-- `func attach(parent: Node2D, blend: CanvasItemMaterial.BlendMode, behind: bool = false) -> void:`
+- `func attach(parent: Node2D, blend: CanvasItemMaterial.BlendMode, behind: bool = false, feather: float = 0.0) -> void:`
 - `func begin(capacity: int) -> void:`
 - `func push(pos: Vector2, radius: float, color: Color) -> void:`
 - `func flush() -> void:`
@@ -1566,7 +1567,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 330 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 332 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 

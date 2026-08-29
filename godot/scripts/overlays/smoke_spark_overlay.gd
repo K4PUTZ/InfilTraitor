@@ -46,7 +46,9 @@ func _ready() -> void:
 		## drawing in BOTH modes. Reverted whole rather than debugged further: the
 		## Director asked for bigger, more present, rising smoke, and none of this
 		## was on the way there.
-		_puff_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true)
+		var feather_env := OS.get_environment("INFILTRAITOR_SMOKE_FEATHER")
+		var feather: float = feather_env.to_float() if feather_env.is_valid_float() else 0.55
+		_puff_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true, feather)
 
 
 ## Tuning — all `var` (Rule 1).

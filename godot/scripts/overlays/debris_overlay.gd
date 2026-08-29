@@ -176,7 +176,7 @@ func _ready() -> void:
 		## sampled pixels** (noise, on a pre-blast frame) against the smoke's 162.
 		## `dust_speck_radius` is 2.6 px — the big dark discs in a crater were never
 		## dust, they are SMOKE. The feather here is consistency, not a fix.
-		_dust_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true)
+		_dust_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true, 0.55)
 
 
 func _draw() -> void:

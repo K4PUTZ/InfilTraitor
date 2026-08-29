@@ -52,20 +52,46 @@ var _count: int = 0
 ## child CanvasItem, so the blend mode is set here from the same enum rather than
 ## assumed. `z_index` 0 keeps it exactly where the parent's own `_draw()` output
 ## sat in the sibling order.
+## D-4 — `feather` is the fraction of the radius over which alpha falls to zero at
+## the rim. 0.0 is the original hard-edged disc, byte for byte, which is what the
+## ember and P7b's pixel gate keep.
 func attach(parent: Node2D, blend: CanvasItemMaterial.BlendMode,
-		behind: bool = false) -> void:
+		behind: bool = false, feather: float = 0.0) -> void:
 	if _node != null:
 		return
 	_mm = MultiMesh.new()
 	_mm.transform_format = MultiMesh.TRANSFORM_2D
 	_mm.use_colors = true
 	_mm.mesh = _build_unit_circle()
+	## ⛔ **WITHOUT THIS, EVERY INSTANCE FAR FROM THE NODE ORIGIN IS CULLED, AND
+	## P7b HAS BEEN SILENTLY LOSING PARTICLES SINCE IT SHIPPED.**
+	##
+	## Godot derives a MultiMesh's visibility bounds from its BASE MESH, and the
+	## base mesh here is a circle of radius **1**. The per-instance transforms carry
+	## the real positions and radii and are not in that box, so whatever the culler
+	## decides is outside is dropped before it is drawn.
+	##
+	## Found 2026-08-28 chasing D-4b's plumes, which never reached the screen. The
+	## proof is the SPLIT, not the fix: in one frame this field held 96 plume puffs
+	## and ~30 per-voxel puffs, all pushed, and only the per-voxel ones rendered.
+	## They differ in exactly one way — spread. The puffs sat within x -220..-36 of
+	## the origin and survived; the plumes spanned x -492..325 and did not. Setting
+	## this box took them from **0 to 4 055 magenta pixels** on an otherwise
+	## identical capture.
+	##
+	## ⚠️ **AND IT IS WHY P7b's "0 differing pixels" GATE PASSED ANYWAY.** That gate
+	## is a static `circle_gate` scene whose circles all sit near the origin, so
+	## nothing it draws is ever outside the box. A green gate that cannot reach the
+	## failure is not evidence.
+	##
+	## Effectively disables culling for these fields, which is correct: they are
+	## full-map overlays, the map is a few thousand pixels across, and a wrong box
+	## costs whole effects rather than a few off-screen particles.
+	_mm.custom_aabb = AABB(Vector3(-1e6, -1e6, -1.0), Vector3(2e6, 2e6, 2.0))
 	_node = MultiMeshInstance2D.new()
 	_node.name = "CircleFieldMM"
 	_node.multimesh = _mm
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = blend
-	_node.material = mat
+	_node.material = _material_for(blend, feather)
 	## ⚠️ ORDER IS PART OF THE PICTURE under a non-additive blend. A child
 	## CanvasItem draws AFTER its parent's own `_draw()`, so moving one population
 	## into a child would silently lift it above the ones left behind. Under ADD
@@ -73,6 +99,55 @@ func attach(parent: Node2D, blend: CanvasItemMaterial.BlendMode,
 	## does, and `show_behind_parent` is the property that puts it back.
 	_node.show_behind_parent = behind
 	parent.add_child(_node)
+
+
+## D-4 — THE SOFT RIM, AND IT IS A SHADER BECAUSE VERTEX COLOURS DO NOT WORK HERE.
+##
+## Director, 2026-08-28: the destruction smoke *"está faltando"*. Measured the same
+## day, the puff mechanism was complete — per-material chance, varying time,
+## intensity and now height — and still did not read as smoke, because the
+## primitive is a FLAT-COLOURED HARD-EDGED disc under `BLEND_MODE_MIX`: a lighter
+## disc over the dark crater, a darker disc over the light wall, at every alpha and
+## every size. Same complaint the Director already made about the fire, *"basicamente
+## uma elipse com feather nas bordas e alpha"*.
+##
+## ⚠️ **THIS WAS REVERTED ONCE, ON A MISDIAGNOSIS, AND PUT BACK.** The shader was
+## blamed for the plumes not drawing; the real cause was the missing `custom_aabb`
+## above, and the red-rim probe returned only 19 pixels for exactly that reason.
+## The feather never broke anything.
+##
+## ⚠️ **THE FIRST ATTEMPT WAS A FEATHERED MESH WITH VERTEX ALPHA, AND IT DREW
+## NOTHING.** `MultiMesh.use_colors` supplies the per-instance colour and the mesh's
+## own `ARRAY_COLOR` never reaches the fragment. Proved rather than reasoned: the
+## rim was temporarily set to OPAQUE RED and a real capture found **0 reddish
+## pixels** on the whole frame. Two renders had already "looked better" with that
+## build in place, which is exactly why a plausible fix has to be measured before it
+## is kept — the improvement was run-to-run variance (`add_smoke()` rolls offset,
+## velocity, duration and radius with `randf_range`, so two boots never match).
+##
+## So the falloff is computed per FRAGMENT from the mesh's UV. Cost: the same
+## instance count, the same overdraw, one extra `length()` and `smoothstep()` per
+## covered pixel — and P7b's finding stands untouched, because what it measured was
+## CPU SUBMISSION per vertex, which this does not change at all.
+##
+## `render_mode` carries the blend, because a ShaderMaterial replaces the
+## CanvasItemMaterial that used to. Feather 0 keeps the plain CanvasItemMaterial,
+## so the ember and P7b's pixel gate are byte-for-byte untouched.
+const FEATHER_SHADER_SRC := "shader_type canvas_item;\nrender_mode %s;\nuniform float feather : hint_range(0.0, 1.0) = 0.6;\nvarying vec4 inst_color;\nvoid vertex() {\n\tinst_color = COLOR;\n}\nvoid fragment() {\n\tfloat d = length(UV * 2.0 - 1.0);\n\tCOLOR = inst_color;\n\tCOLOR.a *= 1.0 - smoothstep(1.0 - feather, 1.0, d);\n}\n"
+
+
+static func _material_for(blend: CanvasItemMaterial.BlendMode, feather: float) -> Material:
+	if feather <= 0.0:
+		var mat := CanvasItemMaterial.new()
+		mat.blend_mode = blend
+		return mat
+	var mode: String = "blend_add" if blend == CanvasItemMaterial.BLEND_MODE_ADD else "blend_mix"
+	var shader := Shader.new()
+	shader.code = FEATHER_SHADER_SRC % mode
+	var sm := ShaderMaterial.new()
+	sm.shader = shader
+	sm.set_shader_parameter("feather", clampf(feather, 0.0, 1.0))
+	return sm
 
 
 ## A unit circle (radius 1) as a triangle fan, so an instance's scale IS its
@@ -86,17 +161,29 @@ static func _build_unit_circle() -> ArrayMesh:
 	var n: int = maxi(segments, 3)
 	var verts := PackedVector2Array()
 	verts.resize(n * 3)
+	## D-4 — UVs, unconditionally. The soft rim is a SHADER, not geometry (see
+	## `attach()`), and a shader needs somewhere to read "how far out am I" from.
+	## Unit-circle position mapped to [0,1]^2, so `length(UV * 2 - 1)` is the
+	## normalised radius. Harmless when no shader is attached — nothing samples it.
+	var uvs := PackedVector2Array()
+	uvs.resize(n * 3)
 	var i: int = 0
 	for s in range(n):
 		var a0: float = TAU * float(s) / float(n)
 		var a1: float = TAU * float(s + 1) / float(n)
+		var p0 := Vector2(cos(a0), sin(a0))
+		var p1 := Vector2(cos(a1), sin(a1))
 		verts[i] = Vector2.ZERO
-		verts[i + 1] = Vector2(cos(a0), sin(a0))
-		verts[i + 2] = Vector2(cos(a1), sin(a1))
+		verts[i + 1] = p0
+		verts[i + 2] = p1
+		uvs[i] = Vector2(0.5, 0.5)
+		uvs[i + 1] = p0 * 0.5 + Vector2(0.5, 0.5)
+		uvs[i + 2] = p1 * 0.5 + Vector2(0.5, 0.5)
 		i += 3
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh

@@ -1861,7 +1861,7 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 ## asked for is `PLUME_SPAN_S` (when the last puff of a column is released) plus
 ## the overlay's own 1.8-3.2 s lifetime scaled by `PLUME_DURATION` — so the smoke
 ## is still thinning out well past a second after the blast.
-static var PLUME_PUFFS: int = 4
+static var PLUME_PUFFS: int = 3
 static var PLUME_FIRST_S: float = 0.18      ## the lead puff, right after the crater lands
 static var PLUME_SPAN_S: float = 1.05       ## the last one, a second later
 static var PLUME_JITTER_S: float = 0.22     ## per-GU scatter so columns do not pulse together
@@ -1871,7 +1871,7 @@ static var PLUME_SCALE: float = 5.0         ## against SMOKE_SCALE_BASE 2.3 for 
 ## 1.7 the columns were on screen and effectively invisible — the feather spreads a
 ## big disc's alpha over a large area, so a plume needs the ceiling where a small
 ## per-voxel puff does not.
-static var PLUME_ALPHA: float = 3.6
+static var PLUME_ALPHA: float = 1.9
 static var PLUME_DRIFT: float = 1.7         ## rises harder and further than a puff
 static var PLUME_DURATION: float = 1.5      ## x the overlay's own 1.8-3.2 s
 

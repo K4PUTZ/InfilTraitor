@@ -93,7 +93,7 @@ var val_cool_floor: float = 0.35
 ## — the exact "molten sheet" E-EMBER-02 lowered `val_*` to avoid. "Um pouquinho"
 ## is a whisper over the glow that was already there, not a bonfire.
 var burnt_ember_radius_gain: float = 1.18  ## a touch wider than an edge coal
-var burnt_ember_life_gain: float = 1.15    ## lingers slightly longer
+var burnt_ember_life_gain: float = 1.08    ## lingers a hair longer (1.15 read too hot at peak — Director, 2026-08-29)
 var burnt_ember_cool_rate: float = 0.85    ## <1 holds the red a little before charcoal
 
 ## E-EMBER-03 (Director, 2026-08-13): *"a gente conseguiria passar de amarelo

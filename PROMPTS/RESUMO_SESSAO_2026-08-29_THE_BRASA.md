@@ -1,18 +1,33 @@
-# RESUMO_SESSAO — 2026-08-29 · THE BRASA, AND D-4 CLOSES
+# RESUMO_SESSAO — 2026-08-29 · THE BRASA, THE LIGHT, THE FUSE, AND D-6 (1/2)
 
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-28_PRESENTER_AND_THE_SMOKE.md`
+**Commits (all pushed):** `334600e2` D-4 brasa · `013ea093` D-4 life_gain trim ·
+`665698aa` D-5 light 2.0→0.5 s · `76b58a5c` fuse/boom pre-pass · `e475284f`
+D-6 (1/2) presenter is the only path.
 **Gates at close:** lint ✅ · selftests **40 clean / 0 failed** ✅ · invariants ✅ ·
-CODEMAP regenerated ✅ · zero warnings in the 3 `.gd` files touched · cell probe
-`1169 erased · 0 RESTORED · 512 appeared · 0 VANISHED` (identical to D-2/D-3).
+CODEMAP ✅ · cell probe `1169 erased · 0 RESTORED · 512 appeared · 0 VANISHED` on
+the DEFAULT path (no env) — identical to every run since D-2.
 **VERSION:** unchanged at 0.9.107 (no tag requested).
 
 ---
 
 ## Read this first if you are resuming
 
-**`DETONATION_PRESENTATION_MASTER_PLAN` D-4 is DONE.** Next is **D-5** (the light
-lands — §7), then D-6 (remove the choreographer). Nothing is half-built; the tree
-is clean.
+**`DETONATION_PRESENTATION_MASTER_PLAN` D-4 and D-5 are DONE. D-6 is HALF DONE.**
+
+D-6 part 1 shipped (`e475284f`): the presenter is the only path, the
+`INFILTRAITOR_PRESENTER` gate is gone, `is_resolving_action()` is rewired.
+**D-6 part 2 is the irreversible ~1600-line deletion** — the choreographer,
+`BurnScheduler`, `_advance_burn` + the burn profiler + residue probe in
+`room.gd`, `FireGlowOverlay`, the D-0 env vars, `consequence_soot_seconds`. The
+Director's 3 scope answers and the file list are in **§6 below** and in the master
+plan §8.11. The **"before" 3× video is captured** (`d6_BEFORE_choreo.mp4` in the
+session scratchpad — re-shoot if gone). Also do `consequence_light_seconds`
+0.5 → ~1.0 s as part of it (Director wants a ~1 s Diablo-II "Den of Evil" light
+transform with a swiffh SFX; SFX is deferred to audio).
+
+The tree is clean at every commit — the choreographer is dead code, not
+half-wired.
 
 ---
 
@@ -84,17 +99,86 @@ inverse for the flagged ones (every flagged ember on a destroyed cell, carries
 - `test_11`: 235/235 flagged, every flagged ember on a hole and carrying `at`,
   concrete flags 0.
 
-## 4. OPEN — in order (unchanged from the 08-28 record except D-4 done)
+## 4. ✅ D-5 — THE LIGHT RAMP, 2026-08-29 (`665698aa`)
 
-1. **D-5 — the light lands** (§7). Soot into the commit; the ramp to its D-0
-   duration. Gate: the final frame pixel-identical to a pacing-only control.
-2. **§7.4 — the light derive, ~202 ms in one frame.** With D-3 in, it is the
-   whole remaining stall, and ruling 2 of the 08-28 record (the 240-frame event
-   is ratified) says there is now a second of smoke to hide it under.
-3. **D-2b** — the pre-fabricated pattern; now also what makes an authored breach
-   point work.
-4. **D-6** the removal, **D-7**, SS-6 with D-7.
-5. **Glass** — *"tem que quebrar muito mais com a granada"*, deferred to the end
-   of the materials milestone (`MATERIALS_MASTER_PLAN` M4).
-6. Untouched: `SOOT_STORAGE_REFORM` SS-4/SS-5, the glowing edge,
-   `INFILTRAITOR_HIDE_VOXELS`, `update_docs.py`'s silent wipe, audio.
+`consequence_light_seconds` **2.0 → 0.5** (the D-0 rehearsal value). Soot was
+already in the commit (D-3/D-3b). Gate by CONTAINMENT: same binary, same
+`INFILTRAITOR_RNG_SEED`, 0.5 s vs 2.0 s — **every differing pixel is inside the
+crater bbox, 0 outside** (`>32`: 263 in / 0 out). The literal settled-final-frame
+0 is unreachable (the 2.0 s control ramp outlives the capture's held-camera
+window); the destination is identical by construction —
+`play_consequence_light()`'s terminal `_write_cell_bucket(to_bucket[k])` loop is
+unconditional and the var feeds only `frames_per_step`.
+
+⚠️ **The Director then asked for ~1.0 s** (§5 answer 2) — that bump is part of
+D-6 part 2, not done yet.
+
+## 5. ✅ THE FUSE/BOOM PRE-PASS, 2026-08-29 (`76b58a5c`)
+
+Director on the D-6 "before" video: *"the flash negativo está demorando muito
+depois da detonação. A cena fica praticamente vazia aos 1s"* → then the model
+correction: *"the grenade should be intact when cooking… we pull the pin, throw
+it, and wait for the boom. This period of anxiety can be delayed more or less at
+will to buy process time. Then, the grenade becomes shrapnels and everything else
+happens."*
+
+- **`spawn_blast_burst()` + the shake moved from beat 1 → beat 2 (the boom).**
+  They used to fire the instant the sequence started; on a long cook the fireball
+  bloomed and decayed before the strobe.
+- **The grenade sprite stays visible through the cook**, hidden at the boom.
+  `_start_detonation_sequence()` took a `grenade` param; both call sites stopped
+  hiding it early.
+- **`spawn_fuse_sputter()`** (renamed from `spawn_cook_flame`) — a tiny
+  grenade-sized flicker every frame of the wait.
+- **`cook_budget_ms` 8 → 14** — the boom lands ~0.45 s into the 3× filmstrip
+  (0 cook frames in real play, so unchanged there).
+
+## 6. 🟠 D-6 PART 2 — THE DELETION, NOT YET DONE
+
+**Part 1 shipped (`e475284f`):** presenter is the only path;
+`_active_choreographer` → `_active_presenter`; `_warm_prediction` lost
+`playback_queue`; `is_resolving_action()` → `_blast_resolving` flag
+(`begin_blast_lock()` at the fuse, `end_blast_lock()` from the presenter when the
+smoke is up).
+
+**The Director's 3 scope answers:**
+
+1. **`_burn_precook` (P7c):** *"Se a performance está ok… podemos remover. Mas é
+   bom avaliar se o mecanismo ainda pode ser útil pra melhorar o desempenho."* —
+   remove; input empty since D-2, concept alive as W-PRECOOK. The §7.4
+   light-derive precompute is separate.
+2. **`is_resolving_action()`:** *"travar durante o fogo, até as fumaças estarem
+   instanciadas e subindo. A partir daí o mundo continua, inclusive a luz."* —
+   done in part 1. **`consequence_light_seconds` → ~1.0 s** for the ~1 s Diablo-II
+   "Den of Evil" light transform; swiffh SFX deferred to audio; the turn advance
+   (no turn system yet) waits for the light to land.
+3. **`FireGlowOverlay`:** *"Se o glow não está aparecendo pode tirar."* — remove;
+   only washed the `BURN_SUSPEND_REGION_LIGHT` edge.
+
+**Deletes:** `detonation_choreographer.gd` (809) + selftest (441),
+`burn_scheduler.gd` (109) + selftest (217), `fire_glow_overlay.gd`. Selftests
+40 → 38.
+**Rewires `room.gd`** (~700 lines): `_advance_burn`, `start_burn`, `_burn_precook`,
+`_burn_final_repaint`, `_burn_residue_probe`, `await_destruction_settled`, the
+`_burn_prof_*` field wall, `BURN_*` consts, the `_process` call, `_fire_glow_overlay`
+wiring, the `_capture_two_fires` action.
+**Rewires** `detonation_plan_builder.gd` (`cook_owns_fire` always true;
+`_maybe_burn` gains the `INFILTRAITOR_NO_BURN` gate; `waves["burn"]` drops),
+`world_delta.gd` (drop `"burn"`), `vfx_draw_probe.gd` comment, ~5 more comment refs.
+**Env vars removed:** `INFILTRAITOR_PRESENTER / FRONT_FRAMES / SOOT_SECONDS /
+BURN_SCHEDULE / BURN_PROFILE / BURN_PRECOOK`. `consequence_soot_seconds` goes.
+
+**"Before" 3× video:** `d6_BEFORE_choreo.mp4` (scratchpad). Gate: "after" against it.
+
+## 7. OPEN — after D-6 part 2
+
+1. **§7.4 — the light derive, ~202 ms in one frame.** The whole remaining stall.
+   Now has a ~1 s light beat + the ratified smoke second to hide under.
+2. **D-2b** — the pre-fabricated pattern; also what makes an authored breach point
+   work.
+3. **D-7**, SS-6 with D-7.
+4. **Glass** — *"tem que quebrar muito mais com a granada"*, end of the materials
+   milestone (`MATERIALS_MASTER_PLAN` M4).
+5. Untouched: `SOOT_STORAGE_REFORM` SS-4/SS-5, the glowing edge,
+   `INFILTRAITOR_HIDE_VOXELS`, `update_docs.py`'s silent wipe, audio (incl. the
+   swiffh).

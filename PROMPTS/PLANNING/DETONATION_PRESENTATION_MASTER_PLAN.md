@@ -1,7 +1,13 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟢 **D-0…D-5 ALL DONE (§8.1–§8.9). Next: D-6 (remove the old path).**
+**Status:** 🟢 **D-0…D-5 DONE (§8.1–§8.9). D-6 IN PROGRESS — part 1 shipped
+(the presenter is the only path, §8.11), part 2 pending (delete ~1600 lines:
+the choreographer, `BurnScheduler`, `_advance_burn` + the burn profiler +
+residue probe in `room.gd`, `FireGlowOverlay`, the D-0 env vars). The
+Director's 3 scope answers and the "before" 3× video are in §8.11.**
+Also shipped: a **fuse/boom pre-pass** (§8.10) — the grenade is now intact
+while it cooks and the fireball moves to the boom.
 ⚠️ **D-4's symbolic fire (§5.1) was DOWNSCOPED by the Director on 2026-08-29** —
 *"a gente já chegou num visual bem bom, só falta um pouquinho de brasa nos
 materiais moles… o que a gente conseguir colocar de vermelho brilhando que vira
@@ -376,7 +382,7 @@ the board's light is wrong everywhere.
 | ✅ **D-3** | **BUILT 2026-08-28 (§8.4).** `DetonationPresenter` behind `INFILTRAITOR_PRESENTER=1`, choreographer still default. One commit frame at **31.4 ms** (fabric) / 28.3 (hard); the consequence channel with the §4.2 delay. `DetonationEntryWriter` extracted first so both paths share the writing. | ✅ All met, plus D-5's early: cell probe `0 RESTORED · 0 VANISHED`, 40 selftests clean, and the **settled frame is pixel-identical (0 px)** between the two paths. ⚠️ One deliberate look regression: §7.1 removes the soot fade-in the Director asked for on 2026-08-19 — judge on the video before D-6. |
 | ✅ **D-4** | **DONE — SMOKE (§8.6, §8.7) + THE BRASA (§8.8).** §8.7's plumes ship, and finding them exposed a P7b defect: `CircleField` had no `custom_aabb`, so every MultiMesh field had been culling its most distant particles since it shipped. Per-material `smoke_chance` and the height axis shipped. §8.8: the symbolic fire was **downscoped by the Director on 2026-08-29** to *"um pouquinho de brasa nos materiais moles"* — `_mark_burnt_embers()` flags the ember on every consumed voxel and the writer routes it through `EmberOverlay`'s boosted profile. No new overlay, no new wave kind. | ✅ The Director looked at the shipped D-4a/b and closed it: *"pode deixar assim mesmo"*. §8.8's brasa judged on the filmstrip. |
 | ✅ **D-5** | **BUILT 2026-08-29 (§8.9).** `consequence_light_seconds` 2.0 → 0.5 — the D-0 rehearsal value. Soot was already in the commit (D-3/D-3b). One `var` default; `INFILTRAITOR_LIGHT_SECONDS` still overrides. | ✅ Met by containment, not by a single 0. Same binary, same `INFILTRAITOR_RNG_SEED`, 0.5 s vs 2.0 s: **every differing pixel is inside the crater bbox — 0 outside** (`>32`: 263 in / **0 out**). The literal "settled final frame" is unreachable because the 2.0 s control ramp outlives the capture's held-camera window; the destination is identical by construction — `play_consequence_light()`'s terminal `_write_cell_bucket(to_bucket[k])` loop is unconditional. |
-| **D-6** | **Remove the old path** (§3.2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after. Lint, 40 selftests, invariants, CODEMAP. |
+| 🟠 **D-6** | **Remove the old path** (§3.2). **Part 1 SHIPPED (§8.11):** everything runs the presenter, the `INFILTRAITOR_PRESENTER` gate is gone, `is_resolving_action()` rewired to a blast-lock the presenter releases when the smoke is up. **Part 2 pending:** delete the choreographer + `BurnScheduler` + `_advance_burn`/profiler/residue-probe + `FireGlowOverlay` + the D-0 env vars; `consequence_light_seconds` → ~1.0 s (§8.11 answer 2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after (the "before" is captured — §8.11). Lint, selftests (drops from 40 → 38 with the two retired), invariants, CODEMAP. |
 | **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*), and §7.4 if it is real. ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last three sessions. |
 
 **Order rationale.** D-0 first because it is one session, fully reversible, and it
@@ -874,6 +880,88 @@ inverse for the flagged ones (every flagged ember on a destroyed cell, carries
 **Deferred, on the Director's instruction:** glass — *"tem que quebrar muito mais
 com a granada, mas vamos fazer isso no final da milestone de materiais"*
 (`MATERIALS_MASTER_PLAN` M4, the non-local pane break).
+
+---
+
+### 8.10 ✅ THE FUSE/BOOM PRE-PASS, 2026-08-29 (before D-6)
+
+> Director, on the D-6 "before" video: *"the flash negativo está demorando muito
+> depois da detonação. A cena fica praticamente vazia aos 1s"*, then the model
+> correction: *"the grenade should be intact when cooking. This is where in real
+> life we pull the pin, throw it, and wait for the boom. This period of anxiety
+> can be delayed more or less at will to buy process time. Then, the grenade
+> becomes shrapnels and everything else happens."*
+
+- **`spawn_blast_burst()` + the camera shake moved from beat 1 to beat 2** (the
+  boom, with the shrapnel and the strobe). They used to fire the instant the
+  sequence started, so on a long cook the fireball had bloomed and decayed
+  before the strobe.
+- **The grenade sprite stays visible through the cook** and is hidden at the
+  boom — the two call sites stopped hiding it early, and `_start_detonation_sequence()`
+  took a `grenade` param.
+- **`spawn_fuse_sputter()`** (was `spawn_cook_flame`) — a tiny grenade-sized
+  flicker + the odd spark, spawned every frame of the cook and the owed lead
+  frames.
+- **`cook_budget_ms` 8 → 14** — on the 3× filmstrip the harness enters instantly,
+  so the whole ~340 ms cook fell before the strobe; this brings the boom to
+  ~0.45 s there. Real play has 0 cook frames either way.
+
+Shipped `76b58a5c`. Cell probe unchanged; the commit now lands ~10 frames earlier
+(the pre-pass shortened the visible cook).
+
+### 8.11 🟠 D-6 PART 1 — THE PRESENTER IS THE ONLY PATH, 2026-08-29
+
+**Shipped `e475284f`.** `_start_waves()` runs the presenter unconditionally;
+`_start_presenter()`, the `INFILTRAITOR_PRESENTER` env gate and
+`_active_choreographer` are gone (→ `_active_presenter`). `_warm_prediction()`
+dropped `flatten_plan()`/`playback_queue` (the presenter writes in container
+order); `detonation_prediction.gd` lost the field. `_entries_playback_will_drop()`
+checks the new `DetonationPresenter.PLAYED_KINDS`. The controller's burn-wave
+handoff (`start_burn` / `INFILTRAITOR_NO_BURN`) is removed.
+
+**`is_resolving_action()` rewired.** Was `_burn_scheduler.is_burning()`; now a
+`_blast_resolving` flag — `Room.begin_blast_lock()` at the fuse,
+`Room.end_blast_lock()` from the presenter the instant every smoke entry is
+dispatched. Director's answer 2: *"É pra travar durante o fogo mesmo, até o
+momento que todas as fumaças estiverem instanciadas e subindo. A partir daí o
+mundo pode continuar, inclusive a mudança da luz… essa mudança vai durar cerca de
+1 segundo, onde vamos colocar um efeito sonoro pra marcar (swiffhh). De quebra
+ganhamos tempo pra fazer o cálculo sem interferir na explosão."* — the Diablo II
+"Den of Evil" effect. The turn advance (not built — no turn system yet) waits for
+the light to land.
+
+**Cell probe on the default path:** `1169 erased · 0 RESTORED · 512 appeared ·
+0 VANISHED` — identical to every run since D-2.
+
+#### Part 2 — what still has to go, and the Director's 3 answers
+
+1. **`_burn_precook` (P7c):** *"Se a performance está ok, acredito que podemos
+   remover. Mas é bom avaliar se o mecanismo ainda pode ser útil pra melhorar o
+   desempenho."* — remove; its input (`burn_wave`) is empty since D-2, and the
+   "pre-mint ahead of a staged reveal" idea already lives as W-PRECOOK. The
+   *light-derive* precompute (§7.4) is a different mechanism.
+2. **`is_resolving_action()`:** answered above — done in part 1.
+   `consequence_light_seconds` → ~1.0 s (was 0.5) for the ~1 s Diablo-style
+   transform; the swiffh SFX is deferred to the audio pass.
+3. **`FireGlowOverlay`:** *"Se o glow não está aparecendo pode tirar."* — remove
+   it; it only ever washed the edge of the `BURN_SUSPEND_REGION_LIGHT` frozen
+   region, which goes with `_advance_burn`.
+
+**The "before" 3× video is captured** (`d6_BEFORE_choreo.mp4`, the choreographer
+path). Part 2's own gate is the "after" against it.
+
+**Files part 2 deletes:** `detonation_choreographer.gd` (809),
+`detonation_choreographer_selftest.gd` (441), `burn_scheduler.gd` (109),
+`burn_scheduler_selftest.gd` (217), `fire_glow_overlay.gd`. **Rewires:** `room.gd`
+(~700 lines of burn subsystem — `_advance_burn`, `start_burn`, `_burn_precook`,
+`_burn_final_repaint`, `_burn_residue_probe`, `await_destruction_settled`, the
+`_burn_prof_*` field wall, `BURN_*` consts, the `_process` call, the `_capture_two_fires`
+action), `detonation_plan_builder.gd` (`cook_owns_fire` always true; `_maybe_burn`
+gains the `INFILTRAITOR_NO_BURN` gate; `waves["burn"]` drops), `world_delta.gd`
+(drop `"burn"` from the waves dict), plus comment refs in ~6 files. **Env vars
+removed:** `INFILTRAITOR_PRESENTER`, `INFILTRAITOR_FRONT_FRAMES`,
+`INFILTRAITOR_SOOT_SECONDS`, `INFILTRAITOR_BURN_SCHEDULE`, `INFILTRAITOR_BURN_PROFILE`,
+`INFILTRAITOR_BURN_PRECOOK`. **`consequence_soot_seconds`** goes (choreographer-only).
 
 ---
 

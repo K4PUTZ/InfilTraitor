@@ -170,9 +170,26 @@ BURN_SCHEDULE / BURN_PROFILE / BURN_PRECOOK`. `consequence_soot_seconds` goes.
 
 **"Before" 3× video:** `d6_BEFORE_choreo.mp4` (scratchpad). Gate: "after" against it.
 
+## 6b. NEW CAPTURE ACTION — `throw_event` (`4c89b972`)
+
+`INFILTRAITOR_CAPTURE_ACTION=throw_event` — the whole detonation in one boot from
+real actions: `enter_grenade_mode` → `_set_targeting_target` → wait out the
+prediction → `execute_grenade_throw` → grab every frame at `--fixed-fps 60`
+through arc, fuse, boom, consequence, light. Encode PNGs at 60 fps for real-time.
+Envs: `INFILTRAITOR_EVENT_{AGENT_CELL,TARGET_GU,FOCUS_GU,FRAMES_TOTAL,THROW_AT}`.
+
+⚠️ **Rough edges — a follow-up task:** the aim dome flashes ~1 frame before the
+throw despite the `dev_vision` disable; `_set_targeting_target`'s throw-range
+clamp mangles a far `TARGET_GU` (the agent's real GU on the reformed PLAYGROUND
+was never worked out — a default throw lands at gu (21,8)); a concrete default
+throw shows dents, not a crater or fire. The whole event IS captured every run;
+it just needs framing + a soft-material target.
+
 ## 7. OPEN — after D-6 part 2
 
-1. **§7.4 — the light derive, ~202 ms in one frame.** The whole remaining stall.
+1. **Polish `throw_event`** — kill the dome flash, sort the GU/clamp so it can aim
+   a fabric wall, tighten the framing.
+2. **§7.4 — the light derive, ~202 ms in one frame.** The whole remaining stall.
    Now has a ~1 s light beat + the ratified smoke second to hide under.
 2. **D-2b** — the pre-fabricated pattern; also what makes an authored breach point
    work.

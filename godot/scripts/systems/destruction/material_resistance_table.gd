@@ -124,6 +124,33 @@ const DEFAULT_FLAMMABILITY := 0.0
 ## which is why wood is 0.0 — VL-D4's look is ratified and this must not move it.
 const DEFAULT_BURN_CONSUMPTION := 0.0
 
+## D-4 (Director, 2026-08-28): *"voxels destruídos soltam uma fumacinha, com
+## tempo, intensidade e altura ligeiramente variando… Não é necessário que cada
+## voxel destruído produza alguma coisa, vamos estipular uma chance maior ou menor
+## conforme o tipo do material."*
+##
+## 0..1, the probability that a damaged voxel emits a puff at all, rolled FNV-1a
+## per cell inside the pure builder.
+##
+## ⚠️ **IT IS A THINNING, AND THE PUFF HAD TO GROW TO PAY FOR IT.** The old model
+## was one puff per damaged voxel at alpha 0.2, and `SMOKE_COLOR`'s own note
+## explains why it was that faint: density was supposed to come from OVERLAP of
+## ~274 ring-0 puffs, so no single disc could be legible on its own. Thinning the
+## count removes the overlap that argument rests on — which is why this ships
+## together with a fatter, more opaque puff and not on its own. The comment
+## warning that raising the alpha is *"the wrong lever for more smoke"* was right
+## about the old model and does not survive the model changing.
+##
+## The Director's own split decides the ordering: this smoke is *"mais direta, que
+## vai funciona bem com materiais duros"*, and soft materials get FLAMES instead
+## (§5.1). So masonry sits high and cloth sits low — cardboard and fabric are not
+## quiet because they are undramatic, they are quiet because their drama is fire.
+##
+## 1.0 reproduces the pre-D-4 behaviour exactly, which is what the default is for:
+## a material with no row keeps emitting from every voxel rather than silently
+## going quiet.
+const DEFAULT_SMOKE_CHANCE := 1.0
+
 ## Lazily loaded, cached on first access. Non-const by construction (D21) —
 ## a `const` here would be exactly the violation this rewrite closes.
 static var _table: Dictionary = {}
@@ -145,6 +172,22 @@ static func crack_factor(material: String) -> float:
 ## M3-3 — how much of what catches actually burns away. See DEFAULT_BURN_CONSUMPTION.
 static func burn_consumption(material: String) -> float:
 	return clampf(float(_row(material).get("burn_consumption", DEFAULT_BURN_CONSUMPTION)), 0.0, 1.0)
+
+
+## D-4 — the chance a damaged voxel of this material emits a smoke puff.
+## See DEFAULT_SMOKE_CHANCE.
+static func smoke_chance(material: String) -> float:
+	if _smoke_chance_override >= 0.0:
+		return _smoke_chance_override
+	return clampf(float(_row(material).get("smoke_chance", DEFAULT_SMOKE_CHANCE)), 0.0, 1.0)
+
+
+## `INFILTRAITOR_SMOKE_CHANCE` — one number replacing every material row, for a
+## bracket render. Negative means "not set", so 0.0 stays a usable value (no
+## per-voxel smoke at all, which is the honest floor of the bracket).
+static var _smoke_chance_override: float = (
+	OS.get_environment("INFILTRAITOR_SMOKE_CHANCE").to_float()
+	if OS.get_environment("INFILTRAITOR_SMOKE_CHANCE").is_valid_float() else -1.0)
 
 
 ## E-EMBER-01. See DEFAULT_FLAMMABILITY for what the number means.
@@ -210,5 +253,12 @@ static func _scan_dir(dir_path: String) -> void:
 							"crack_factor": float(parsed.get("crack_factor", DEFAULT_CRACK_FACTOR)),
 							"flammability": float(parsed.get("flammability", DEFAULT_FLAMMABILITY)),
 							"burn_consumption": float(parsed.get("burn_consumption", DEFAULT_BURN_CONSUMPTION)),
+							## ⚠️ A KEY MISSING FROM THIS LIST IS NOT A COMPILE ERROR AND NOT
+							## A WARNING — the row simply never carries it and every lookup
+							## silently returns the default. This dictionary is the schema, not
+							## the JSON, and that is exactly CLAUDE.md's floor-dent case
+							## (69 dents on a fixture, ZERO on the real map, because only one
+							## material had the row).
+							"smoke_chance": float(parsed.get("smoke_chance", DEFAULT_SMOKE_CHANCE)),
 						}
 		entry = dir.get_next()

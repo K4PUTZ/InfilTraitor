@@ -10,5 +10,6 @@
     0.26
   ],
   "pattern_algorithm": "flat",
-  "has_facade": true
+  "has_facade": true,
+  "smoke_chance": 0.35
 }

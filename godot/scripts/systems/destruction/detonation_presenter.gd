@@ -221,10 +221,12 @@ func _fade_soot_plane(ramp: Array, voxel_renderer, tree: SceneTree) -> void:
 func _run_consequence(plan: Dictionary, voxel_renderer, smoke_overlay,
 		tree: SceneTree) -> void:
 	var scheduled: Array = []
+	var per_kind: Dictionary = {}
 	for kind: String in ["smoke", "ember", "debris"]:
 		for ring in plan.get(kind, {}).keys():
 			for entry: Dictionary in plan[kind][ring]:
 				scheduled.append([_delay_for(entry), kind, entry])
+				per_kind[kind] = int(per_kind.get(kind, 0)) + 1
 	if scheduled.is_empty():
 		return
 	scheduled.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
@@ -248,8 +250,12 @@ func _run_consequence(plan: Dictionary, voxel_renderer, smoke_overlay,
 			_writer.apply(String(scheduled[next][1]), scheduled[next][2],
 				voxel_renderer, smoke_overlay)
 			next += 1
-	print("[E-PRESENT] consequence — %d effect(s) over %d frame(s), last at %.2fs (elapsed %.2fs, %d ms wall)" % [
-		scheduled.size(), frames, last_delay, elapsed, Time.get_ticks_msec() - _t0_ms])
+	## Per kind, because "N effects" cannot answer the question D-4 is tuned on —
+	## a smoke count that changed and an ember count that did not look identical in
+	## one total, and the per-material thinning moves exactly one of them.
+	print("[E-PRESENT] consequence — %d effect(s) %s over %d frame(s), last at %.2fs (elapsed %.2fs, %d ms wall)" % [
+		scheduled.size(), per_kind, frames, last_delay, elapsed,
+		Time.get_ticks_msec() - _t0_ms])
 
 
 ## §4.2's formula. Every input is already on the entry — `r` is the radius in

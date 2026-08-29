@@ -150,10 +150,17 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			## for one puff per destroyed voxel through a completely different
 			## path. Taking the tint's alpha along would silently undo that.
 			var puff_color: Color = smoke_tints.get(entry.get("material", ""), SMOKE_COLOR)
-			puff_color.a = SMOKE_COLOR.a * float(entry.get("alpha", 1.0))
+			## D-4 — CLAMPED, because `SMOKE_ALPHA_GAIN` can push the entry past 1.0
+			## on purpose (see that constant). The ceiling is what keeps "more
+			## visible" from becoming the heap of hard-edged discs the 0.2 was
+			## chosen to avoid: a puff may be legible, never solid.
+			puff_color.a = minf(SMOKE_COLOR.a * float(entry.get("alpha", 1.0)), 0.72)
+			## D-4 — `drift_scale` is the HEIGHT axis. This argument has existed on
+			## `add_smoke()` since E-SPARK-04 and no blast ever passed it: every puff
+			## in every explosion rose at exactly the same rate.
 			smoke_overlay.add_smoke(entry["world_pos"], puff_color,
 				float(entry.get("scale", 1.0)), entry["duration"],
-				int(entry.get("blobs", 0)))
+				int(entry.get("blobs", 0)), float(entry.get("drift", 1.0)))
 			return 1
 		"ember":
 			## E-EMBER-01. No duration is passed: the overlay's own 1.5-4.0 roll

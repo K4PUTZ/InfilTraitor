@@ -167,7 +167,16 @@ var _dust_field: CircleField = null
 func _ready() -> void:
 	if SmokeSparkOverlay.P7B_MULTIMESH:
 		_dust_field = CircleField.new()
-		_dust_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true)
+		## D-4 — the SAME soft rim the smoke puffs got, on the same primitive.
+		##
+		## ⚠️ An earlier version of this comment claimed the dust was "the most
+		## visually prominent thing in the crater". It is NOT, and the correction is
+		## worth keeping because it cost a probe to get: with dust forced BLUE and
+		## smoke forced GREEN on a real concrete blast, the dust peaked at **11
+		## sampled pixels** (noise, on a pre-blast frame) against the smoke's 162.
+		## `dust_speck_radius` is 2.6 px — the big dark discs in a crater were never
+		## dust, they are SMOKE. The feather here is consistency, not a fix.
+		_dust_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true, 0.6)
 
 
 func _draw() -> void:

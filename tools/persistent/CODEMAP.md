@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**225 scripts · 72649 lines total** (under `godot/scripts/`)
+**225 scripts · 72835 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1064,15 +1064,16 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `circle_field.gd`
 
-`class_name CircleField` · extends `RefCounted` · 156 lines
+`class_name CircleField` · extends `RefCounted` · 213 lines
 
 `godot/scripts/overlays/circle_field.gd`
 
 **Constants / tuning**
 - `FLOATS_PER_INSTANCE` = `12`
+- `FEATHER_SHADER_SRC` = `"shader_type canvas_item;\nrender_mode %s;\nuniform float feather : hint_range(0.0, 1.0) = 0.6;\nvarying vec4 inst_color;\nvoid vertex() {\n\tinst_color = COLOR;\n}\nvoid fragment() {\n\tfloat d = length(UV * 2.0 - 1.0);\n\tCOLOR = inst_color;\n\tCOLOR.a *= 1.0 - smoothstep(1.0 - feather, 1.0, d);\n}\n"`
 
 **Public API**
-- `func attach(parent: Node2D, blend: CanvasItemMaterial.BlendMode, behind: bool = false) -> void:`
+- `func attach(parent: Node2D, blend: CanvasItemMaterial.BlendMode, behind: bool = false, feather: float = 0.0) -> void:`
 - `func begin(capacity: int) -> void:`
 - `func push(pos: Vector2, radius: float, color: Color) -> void:`
 - `func flush() -> void:`
@@ -1082,7 +1083,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 259 lines
+`class_name DebrisOverlay` · extends `Node2D` · 268 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
@@ -1566,7 +1567,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 321 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 326 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -1956,7 +1957,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 231 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 238 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -1984,7 +1985,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1836 lines
+`class_name DetonationPlanBuilder` · 1888 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2006,7 +2007,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 287 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 293 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2031,7 +2032,7 @@ extends `Node2D` · 43 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 214 lines
+`class_name MaterialResistanceTable` · 264 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 

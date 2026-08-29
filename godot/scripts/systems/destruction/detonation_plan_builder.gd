@@ -113,12 +113,38 @@ static var SMOKE_DURATION_FLOOR: float = 0.55
 ## is smaller than the 32x16 voxel it is venting from, which is a large part of
 ## why the first per-voxel pass measured as invisible; this lifts the base so a
 ## puff at least covers its own voxel.
-static var SMOKE_SCALE_BASE: float = 1.7
+static var SMOKE_SCALE_BASE: float = _env_float("INFILTRAITOR_SMOKE_SCALE", 2.3)
 
 ## A per-voxel puff is ONE blob, not the 2-3 cluster VFX-01 gives a lone
 ## destroyed voxel — there are now hundreds of them and each is meant to read as
 ## "um pouquinho de fumaça".
 const SMOKE_BLOBS_PER_VOXEL: int = 1
+
+## D-4 — the per-puff rise, multiplying `SmokeSparkOverlay.smoke_drift_y_*`.
+## A `var` (Rule 1) and a LOOK stat: the spread is what stops a crater's smoke
+## reading as one flat sheet lifting off together.
+static var SMOKE_RISE_MIN: float = 0.65
+static var SMOKE_RISE_MAX: float = 1.55
+
+## D-4 — ⚠️ **THE PRICE OF THE THINNING, AND IT IS NOT A FREE PARAMETER.**
+##
+## `SMOKE_COLOR.a` is 0.2 and its own note explains why: the old model put ONE
+## puff on every damaged voxel and got its density from OVERLAP, so no single disc
+## could be legible on its own — at 0.8, 274 ring-0 puffs read as *"a heap of
+## hard-edged discs"*. That note then warns that raising the alpha is the wrong
+## lever for more smoke.
+##
+## It was right about that model. `smoke_chance` changes the model: at concrete's
+## 0.40 there are 60% fewer puffs and the overlap the 0.2 was chosen for is gone,
+## so keeping it would mean thinning a thing that was already invisible. Fewer,
+## fatter, more opaque wisps IS the Director's *"uma fumacinha"* — one visible
+## puff per surviving voxel rather than a fog nobody can resolve.
+##
+## Overridable for a bracket render: `INFILTRAITOR_SMOKE_ALPHA_GAIN`,
+## `INFILTRAITOR_SMOKE_SCALE`, `INFILTRAITOR_SMOKE_CHANCE` (a global override of
+## every material row). All three exist so the Director picks off a video instead
+## of off a paragraph, and none is read per entry — see `_env_float()`.
+static var SMOKE_ALPHA_GAIN: float = _env_float("INFILTRAITOR_SMOKE_ALPHA_GAIN", 2.4)
 
 
 ## ===========================================================================
@@ -1719,13 +1745,30 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 	var weight: float = smoke_ring_weights[ring]
 	if weight <= 0.0:
 		return
+	## D-4 — the per-material thinning, rolled BEFORE `smoked_gus` is marked.
+	##
+	## ⚠️ THE ORDER OF THOSE TWO LINES IS A DESIGN DECISION, not tidiness. Marking
+	## the GU first would mean a GU whose voxels ALL lose the roll gets no per-voxel
+	## puff and is also skipped by `_phase_smoke()`'s GU-level remainder — a damaged
+	## GU that emits nothing at all. Rolling first leaves that GU unmarked, so the
+	## remainder puff covers it: thinning per voxel, never per GU.
+	if _hash_unit("SMOKEROLL", voxel.grid_pos, voxel.level) \
+			> MaterialResistanceTable.smoke_chance(material):
+		return
 	smoked_gus[GeometryCoords.voxel_to_gu(voxel.grid_pos)] = true
 
 	var size_roll: float = _hash_unit("SMOKESIZE", voxel.grid_pos, voxel.level)
 	var time_roll: float = _hash_unit("SMOKETIME", voxel.grid_pos, voxel.level)
+	## D-4 — the HEIGHT axis the Director asked for (*"tempo, intensidade e altura
+	## ligeiramente variando"*). Time and intensity already varied; height did not,
+	## and `SmokeSparkOverlay.add_smoke()` has taken a `drift_scale` the whole time
+	## that no blast ever passed. Its own hash domain, so tuning the spread cannot
+	## disturb which voxels emit (SMOKEROLL) or how big they are (SMOKESIZE).
+	var rise_roll: float = _hash_unit("SMOKERISE", voxel.grid_pos, voxel.level)
 	var strength: float = tier_intensity * weight
 	var scale: float = maxf(
 		SMOKE_SCALE_BASE * strength * (1.0 - SMOKE_JITTER + 2.0 * SMOKE_JITTER * size_roll), 0.05)
+	var rise: float = SMOKE_RISE_MIN + (SMOKE_RISE_MAX - SMOKE_RISE_MIN) * rise_roll
 	var duration: float = maxf(
 		lerpf(SMOKE_DURATION_FLOOR, 1.0, clampf(strength, 0.0, 1.0))
 		* (1.0 - SMOKE_DURATION_JITTER + 2.0 * SMOKE_DURATION_JITTER * time_roll), 0.05)
@@ -1733,7 +1776,8 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 		"world_pos": voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
 		"duration": duration,
 		"scale": scale,
-		"alpha": clampf(strength * (0.6 + 0.8 * size_roll), 0.05, 1.0),
+		"alpha": clampf(strength * (0.6 + 0.8 * size_roll) * SMOKE_ALPHA_GAIN, 0.05, 4.0),
+		"drift": rise,
 		"blobs": SMOKE_BLOBS_PER_VOXEL,
 		"material": material,
 		"r": _radius_of(voxel.grid_pos, epicenter),
@@ -1832,5 +1876,13 @@ static func _radius_of(cell: Vector2i, epicenter: Vector2i) -> float:
 ## A deterministic value in [0,1) for one cell under one salt — the project's
 ## standard FNV-1a roll (BlastCalculator's own idiom), reused here so smoke
 ## variation survives a re-run of the same capture.
+## Read ONCE into a static var, never per entry: `build_plan()` is pure and its
+## output is cached, so a value that could change between two cooks of the same
+## world revision would hand back a plan built under different rules.
+static func _env_float(name: String, fallback: float) -> float:
+	var raw := OS.get_environment(name)
+	return raw.to_float() if raw.is_valid_float() else fallback
+
+
 static func _hash_unit(salt: String, cell: Vector2i, level: int) -> float:
 	return float(FacadeSampler._fnv1a_hash("%s:%d,%d,%d" % [salt, cell.x, cell.y, level]) % 10000) / 10000.0

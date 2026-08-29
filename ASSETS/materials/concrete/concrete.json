@@ -10,5 +10,6 @@
     0.62
   ],
   "pattern_algorithm": "stone",
-  "has_facade": true
+  "has_facade": true,
+  "smoke_chance": 0.4
 }

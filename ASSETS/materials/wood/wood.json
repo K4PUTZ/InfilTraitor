@@ -11,5 +11,6 @@
   ],
   "pattern_algorithm": "wood",
   "has_facade": true,
-  "burn_consumption": 0.0
+  "burn_consumption": 0.0,
+  "smoke_chance": 0.3
 }

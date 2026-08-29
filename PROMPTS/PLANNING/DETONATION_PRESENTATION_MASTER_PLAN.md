@@ -356,7 +356,7 @@ the board's light is wrong everywhere.
 | ✅ **D-2** | **BUILT 2026-08-28 (§8.2).** The cook owns what the fire consumes (§6). ⚠️ The passage half changed shape: the bubble does NOT force an opening (§11.1a vetoes §11.1) — what shipped is `PassageQuery`'s criterion, amount instead of shape. | ✅ All three met. `blast_purity_selftest` + 39 others clean. **Cell probe `0 RESTORED · 0 VANISHED`** against a same-binary control that still reports **350 RESTORED**. The passage line is reported by `Room.report_blast_passage()` as `[E-PASSAGE]`, same shape, and both paths agree on the end state (STANDING ×3). |
 | **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, **material tier**) replacing `_select_deterministic()`'s hash ranking, authored in **voxel-local** coordinates (§11.3.4). Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. Plus: the **resistance ladder's selftests still pass** (§11.3.1), and **panels and `JunctionColumn` still take damage** (§11.3.3 — E-JUNCTION-01's exact regression). |
 | ✅ **D-3** | **BUILT 2026-08-28 (§8.4).** `DetonationPresenter` behind `INFILTRAITOR_PRESENTER=1`, choreographer still default. One commit frame at **31.4 ms** (fabric) / 28.3 (hard); the consequence channel with the §4.2 delay. `DetonationEntryWriter` extracted first so both paths share the writing. | ✅ All met, plus D-5's early: cell probe `0 RESTORED · 0 VANISHED`, 40 selftests clean, and the **settled frame is pixel-identical (0 px)** between the two paths. ⚠️ One deliberate look regression: §7.1 removes the soot fade-in the Director asked for on 2026-08-19 — judge on the video before D-6. |
-| **D-4** | **The symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. Purely visual. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
+| 🟠 **D-4** | **HALF DONE (§8.6): the destruction SMOKE.** Per-material `smoke_chance` and the height axis shipped; the mechanism was never missing, only thinned and varied. ⚠️ §8.6a leaves ONE look question open (may a puff be darker than the surface it leaves?) and it blocks the final tuning, not the mechanism. **Still to build: the symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
 | **D-5** | **The light lands** (§7). Soot into the commit; the ramp to its D-0 duration. | The final frame is **pixel-identical** to a control with only the pacing reverted — the destination must be untouched and only the path changed (the gate §14.2 earned). |
 | **D-6** | **Remove the old path** (§3.2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after. Lint, 40 selftests, invariants, CODEMAP. |
 | **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*), and §7.4 if it is real. ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last three sessions. |
@@ -642,6 +642,76 @@ ratified ladder: faces lightened by k, k walking to zero, so a face landing on t
 
 **Gates re-run with the fade in: cell probe `0 RESTORED · 0 VANISHED`, and the
 settled frame is still 0 px against the choreographer.**
+
+---
+
+### 8.6 🟠 D-4a — THE DESTRUCTION SMOKE, 2026-08-28
+
+> Director: *"voxels destruídos soltam uma fumacinha, com tempo, intensidade e
+> altura ligeiramente variando (isso esteve presente no código em algum momento)…
+> Não é necessário que cada voxel destruído produza alguma coisa, vamos estipular
+> uma chance maior ou menor conforme o tipo do material."*
+
+**It was never missing.** `_append_voxel_smoke()` → `waves["smoke"]` →
+the presenter → `SmokeSparkOverlay.add_smoke()` → `CircleField` is intact end to
+end and fires on every damaged voxel: **~1 309 puffs on fabric, ~460 on concrete**,
+measured. So *"vamos usar"* rather than rebuild — what shipped is the two axes the
+spec asks for that genuinely did not exist, plus the diagnosis of why it does not
+read.
+
+**Built:**
+- **`MaterialResistanceTable.smoke_chance()`**, a per-material row rolled FNV-1a
+  per cell in the pure builder. Masonry 0.40, wood 0.30, plywood 0.28, glass and
+  metal 0.15, cardboard 0.12, fabric 0.10 — the Director's own split, since this
+  smoke is *"mais direta, que vai funcionar bem com materiais duros"* and soft
+  materials get flames instead. Measured: concrete **460 → 171** puffs.
+  ⚠️ The roll is placed BEFORE `smoked_gus` is marked, so a GU whose voxels all
+  lose the roll still gets `_phase_smoke()`'s GU-level remainder — thinning per
+  voxel, never per GU.
+- **The HEIGHT axis.** `add_smoke()` has taken a `drift_scale` since E-SPARK-04
+  and **no blast ever passed it** — every puff in every explosion rose at exactly
+  the same rate. Now hashed per cell (0.65–1.55) in its own domain.
+- `SMOKE_ALPHA_GAIN` / `SMOKE_SCALE_BASE` / `INFILTRAITOR_SMOKE_CHANCE` /
+  `_FEATHER` — bracket knobs, so the look is picked off a video.
+
+⛔ **THE FIRST FEATHER ATTEMPT DID NOTHING, AND TWO RENDERS "LOOKED BETTER" WITH
+IT IN.** A feathered MESH with vertex alpha draws nothing on a
+`MultiMeshInstance2D`: `MultiMesh.use_colors` supplies the instance colour and the
+mesh's `ARRAY_COLOR` never reaches the fragment. Proved rather than argued — the
+rim was temporarily set to OPAQUE RED and a real capture found **0 reddish pixels
+on every frame**. The apparent improvement was run-to-run variance: `add_smoke()`
+rolls offset, velocity, duration and radius with `randf_range`, so two boots never
+match and no cross-boot screenshot pair can judge a subtle change.
+
+**What works is a fragment shader**, and it needs a `varying` carrying the vertex
+COLOR: a custom `canvas_item` shader initialises `COLOR` from `TEXTURE`, and a
+MultiMeshInstance2D with no texture has nothing there. Same probe, **19 sampled
+red pixels** — non-zero, so the path is real. P7b is untouched: its cost is CPU
+submission per vertex, and this changes neither the vertex count nor the overdraw.
+
+⚠️ **AND I FRAME-INDEXED A DETONATION TWICE WHILE PROBING**, which §14 already
+documents as impossible — the cook is budgeted in ms, so the blast lands on a
+different frame every boot. Both probes read one hardcoded frame, found nothing,
+and had to be re-run scanning EVERY frame. The rule has now cost three sessions.
+
+### 8.6a ⚠️ WHY IT STILL DOES NOT READ AS SMOKE — a LOOK question, for the Director
+
+Isolated by forcing smoke GREEN and dust BLUE on one real concrete blast:
+
+```
+max GREEN (smoke) 162 sampled px      max BLUE (dust) 11   <- noise, pre-blast frame
+```
+
+**The dark discs in a crater are the SMOKE, not the dust** (`dust_speck_radius` is
+2.6 px; they were never dust). And the smoke is dark because
+`_vfx_smoke_color_for_material()` tints each puff with **the material's own
+albedo** — VFX-01's ratified choice, *"wood reads as dark smoke, masonry as
+light"*. On a dark floor material that yields a puff DARKER than the floor it sits
+on, and smoke darker than its background reads as a hole, not as smoke.
+
+That is a design decision, not a defect, and it is the Director's: **should a puff
+ever be allowed to be darker than the surface it leaves?** Everything else is
+tuned in minutes off the bracket knobs once that is answered.
 
 ---
 

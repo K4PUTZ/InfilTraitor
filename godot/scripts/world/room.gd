@@ -9372,8 +9372,22 @@ func _show_screenshot_toast(message: String) -> void:
 ## Scope is deliberately narrow: AGENT ACTIONS only. The camera, the view mode,
 ## pause, screenshots and the debug tools stay live, because locking those would
 ## make a resolving turn feel like a frozen game rather than a busy one.
+##
+## D-6 (Director, 2026-08-29): *"É pra travar durante o fogo mesmo, até o momento
+## que todas as fumaças estiverem instanciadas e subindo. A partir daí o mundo
+## pode continuar, inclusive a mudança da luz."* So the lock spans the fuse, the
+## boom and the consequence channel, and `DetonationPresenter` releases it the
+## instant every smoke/plume entry has been dispatched — the light ramp then runs
+## with the world already live (that second is deliberately usable for the light
+## derive, §7.4). Before D-6 this read `_burn_scheduler.is_burning()`, which the
+## fire no longer uses.
+var _blast_resolving: bool = false
+func begin_blast_lock() -> void:
+	_blast_resolving = true
+func end_blast_lock() -> void:
+	_blast_resolving = false
 func is_resolving_action() -> bool:
-	return _burn_scheduler.is_burning() or not _burn_pending.is_empty()
+	return _blast_resolving
 
 
 func _on_posture_lower_requested() -> void:

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**225 scripts · 73302 lines total** (under `godot/scripts/`)
+**225 scripts · 73282 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2007,7 +2007,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 319 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 333 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2015,6 +2015,9 @@ extends `Node2D` · 43 lines
 
 **Signals**
 - `signal finished()`
+
+**Constants / tuning**
+- `PLAYED_KINDS` = `[ "destroy", "dented", "cracked", "soot", "smoke", "ember", "debris", ]`
 
 **Public vars**
 - `var consequence_room = null`
@@ -2506,7 +2509,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_prediction.gd`
 
-`class_name DetonationPrediction` · extends `RefCounted` · 168 lines
+`class_name DetonationPrediction` · extends `RefCounted` · 164 lines
 
 `godot/scripts/systems/prediction/detonation_prediction.gd`
 
@@ -2521,6 +2524,18 @@ extends `Node2D` · 43 lines
 - `var steps: int = 0`
 - `var worst_step_ms: float = 0.0`
 - `var worst_step_phase: String = ""`
+- `var warmed: bool = false`
+
+**Public API**
+- `func begin(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> void:`
+- `func step(budget_ms: float) -> bool:`
+- `func run(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> WorldDelta:`
+- `func cancel() -> void:`
+- `func is_cancelled() -> bool:`
+- `func is_done() -> bool:`
+- `func progress() -> float:`
+- `func phase_name() -> String:`
+- `func profile_lines() -> Array[String]:`
 
 ---
 
@@ -4700,7 +4715,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1577 lines
+`class_name TestZoneController` · 1533 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4712,7 +4727,6 @@ extends `Node2D` · 34 lines
 - `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
 - `AgentProbePropClass` = `preload("res://godot/scripts/overlays/agent_probe_prop.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
-- `DetonationChoreographerClass` = `preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")`
 - `DetonationPresenterClass` = `preload("res://godot/scripts/systems/destruction/detonation_presenter.gd")`
 - `DEFAULT_TARGET_OFFSET` = `Vector2i(3, 0)`
 
@@ -4975,7 +4989,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9598 lines
+extends `Node2D` · 9612 lines
 
 `godot/scripts/world/room.gd`
 

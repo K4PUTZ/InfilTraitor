@@ -26,7 +26,6 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 const GrenadePropClass = preload("res://godot/scripts/overlays/grenade_prop.gd")
 const AgentProbePropClass = preload("res://godot/scripts/overlays/agent_probe_prop.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
-const DetonationChoreographerClass = preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")
 const DetonationPresenterClass = preload("res://godot/scripts/systems/destruction/detonation_presenter.gd")
 
 var room: Node
@@ -123,14 +122,13 @@ var throw_prediction_timeout_s: float = 1.0
 ## yet — three cells along +x, purely so the preview has something to show.
 const DEFAULT_TARGET_OFFSET := Vector2i(3, 0)
 
-## EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE) — keeps the in-flight
-## DetonationChoreographer (a RefCounted, not a Node) alive for its whole
-## ~600ms wave sequence. `detonate_active()`'s own local variable is not
-## enough on its own to guarantee this across every code path; holding it
-## here ties its lifetime to this controller (the whole room's), the same
-## explicit-ownership pattern _grenades already uses instead of leaning on
-## implicit signal-connection keep-alive semantics.
-var _active_choreographer = null
+## Keeps the in-flight `DetonationPresenter` (a RefCounted, not a Node) alive for
+## its whole consequence sequence. `_start_waves()`'s own local variable is not
+## enough on its own across every code path; holding it here ties its lifetime to
+## this controller (the whole room's), the same explicit-ownership pattern
+## `_grenades` already uses instead of leaning on implicit signal-connection
+## keep-alive semantics.
+var _active_presenter = null
 
 ## P-COOK (PREDICTION_MASTER_PLAN Task 6, 2026-08-09) — whether the
 ## pre-production pump coroutine is running. The prediction itself lives in
@@ -249,7 +247,10 @@ func clear() -> void:
 	## renderer is rebuilt by `load_map()`. Releasing the reference lets the
 	## coroutine's own `is_instance_valid()` guard end it on the next frame
 	## instead of it running on against freed geometry.
-	_active_choreographer = null
+	_active_presenter = null
+	## D-6 — a blast abandoned mid-sequence must not leave agent actions locked.
+	if room != null and room.has_method("end_blast_lock"):
+		room.end_blast_lock()
 
 
 ## Place one placeholder grenade at gu_cell as a baked sprite (ground-contact
@@ -1071,30 +1072,31 @@ func _warm_prediction(job: DetonationPrediction) -> void:
 	var warm_start_us: int = Time.get_ticks_usec()
 	var minted_before: int = room._voxel_renderer.minted_light_alt_count()
 
-	## 1. The playback queue. Pure, so it could live anywhere; it lives here
-	##    because this is the only place with a frame to spare.
-	job.playback_queue = DetonationChoreographerClass.flatten_plan(job.delta.waves)
+	## D-6 — the playback queue is gone with the choreographer. The presenter
+	## writes every cell in one frame in container order (no radial sort), so
+	## there is nothing to pre-flatten. What still pays off is the warm-up below:
+	## the tile alternatives and the composited page upload, which are what
+	## actually cost a frame, and the presenter places exactly the same tiles.
 
-	## 2. Every tile alternative the plan will place. Walks the PLAN rather than
+	## 1. Every tile alternative the plan will place. Walks the PLAN rather than
 	##    the queue, so soot — which E-FUME took out of WAVE_TABLE and applies as
 	##    its own late step — is covered too.
 	for triple: Array in _plan_light_alt_triples(job.delta.waves):
 		room._voxel_renderer._ensure_light_alt(triple[0], triple[1], triple[2])
 
-	## 3. Push the composited damage pages the PACKAGE phase blitted. Whole
+	## 2. Push the composited damage pages the PACKAGE phase blitted. Whole
 	##    2048x2048 pages, so this is a real upload — and it belongs in the same
 	##    frame as the mints, so the sequence pays one penalty and not two.
 	var pages: int = room._voxel_renderer.flush_damage_composite_pages()
 
 	job.warmed = true
-	_prof("WARM done — %d step(s) queued, %d alt(s) minted, %d page(s) uploaded, %.1f ms cpu" % [
-		job.playback_queue.size(),
+	_prof("WARM done — %d alt(s) minted, %d page(s) uploaded, %.1f ms cpu" % [
 		room._voxel_renderer.minted_light_alt_count() - minted_before, pages,
 		float(Time.get_ticks_usec() - warm_start_us) / 1000.0])
 	_prof("WARM carries — %s" % _plan_inventory(job.delta.waves))
 	var dropped: int = _entries_playback_will_drop(job.delta.waves)
 	if dropped > 0:
-		push_warning("[P-WARM] %d plan entr(ies) are in a kind DetonationChoreographer never plays — computed, warmed, and dropped. See _entries_playback_will_drop()." % dropped)
+		push_warning("[P-WARM] %d plan entr(ies) are in a kind the presenter never draws — computed, warmed, and dropped. See _entries_playback_will_drop()." % dropped)
 	## The frame this returns on is the one that pays the rebuild; waiting for it
 	## here keeps the caller's own timing line honest about where it landed.
 	await room.get_tree().process_frame
@@ -1123,23 +1125,22 @@ func _plan_inventory(plan: Dictionary) -> String:
 	return " ".join(parts)
 
 
-## Plan entries in a kind `DetonationChoreographer` never draws — computed by the
-## pipeline, pre-minted by this warm-up, then never read.
+## Plan entries in a kind the presenter never draws — computed by the pipeline,
+## pre-minted by this warm-up, then never read.
 ##
 ## THIS COUNTER EARNED ITS KEEP ON THE DAY IT SHIPPED. It found 18 ring-2 dents
 ## dropped on every PLAYGROUND blast, because the choreographer's `WAVE_TABLE`
 ## re-gated by ring what `frag_grenade.json`'s own `dent_ring_weights` had
-## already decided, and the two had drifted. E-ORGANIC-02 removed that second
-## gate (Director: "vamos liberar eles para serem orgânicos, e não limitados
-## pelos rings"), so rings can no longer be the cause — but the KIND axis still
-## can, and a new plan key nobody wired into playback would be exactly as silent.
+## already decided, and the two had drifted. E-ORGANIC-02 removed that gate, and
+## D-6 removed the choreographer — but the KIND axis survives: a new plan key
+## nobody wired into `DetonationPresenter` would be exactly as silent.
 ##
-## `soot` is deliberately exempt: E-FUME took it out of the played kinds on
-## purpose and `_run_queue()` applies it as its own late step after the front.
+## `burn` is deliberately exempt: D-2 empties it (the cook owns the fire) and it
+## exists only for the retired legacy schedule.
 func _entries_playback_will_drop(plan: Dictionary) -> int:
 	var dropped: int = 0
 	for kind: String in plan.keys():
-		if kind == "soot" or DetonationChoreographerClass.PLAYED_KINDS.has(kind):
+		if kind == "burn" or DetonationPresenterClass.PLAYED_KINDS.has(kind):
 			continue
 		for ring: int in plan[kind].keys():
 			dropped += plan[kind][ring].size()
@@ -1261,7 +1262,7 @@ func cancel_preproduction() -> void:
 ## detonate_active(): the caller's remaining work — clearing the wireframe,
 ## resetting _active_index — belongs to the click, not to the animation. `self`
 ## stays alive because room holds `_test_zone_controller`, the same explicit
-## ownership `_active_choreographer` exists for.
+## ownership `_active_presenter` exists for.
 func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		anchor: Vector2, grenade: Dictionary = {}) -> void:
 	## Beat 1 — THE FUSE. The grenade is on the ground, pin pulled, INTACT
@@ -1273,6 +1274,9 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## the map load and the seconds the player spent aiming are all outside it.
 	room.event_probe_arm("BEAT 1")
 	_prof("BEAT 1 — fuse burning, grenade intact")
+	## D-6 — agent actions lock from here; `DetonationPresenter` releases the lock
+	## once every smoke entry is dispatched (see `Room.is_resolving_action()`).
+	room.begin_blast_lock()
 
 	## Beat 0 — COOKING. Usually zero iterations, because pre-production started
 	## when the menu opened. `cook_budget_ms` is the bigger of the two budgets:
@@ -1320,27 +1324,11 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		for line in job.profile_lines():
 			print("[P-SLICE]   " + line)
 		print(room._prediction_cache.stats_line())
-	## M3-3: hand the burn schedule to the room. AFTER the commit, because the
-	## scheduler drops any voxel this blast already destroyed and it can only
-	## know that once the Delta has been written.
-	## `INFILTRAITOR_NO_BURN=1` — the blast without the fire. Added 2026-08-27 on
-	## the Director's instruction to *"garantir que todas as explosões normais, sem
-	## fogo, estão funcionando em todos os materiais"* before the fire is rebuilt.
-	## Hard materials have flammability 0 and never burn anyway; this is what makes
-	## a fabric or plywood blast comparable to a concrete one instead of being a
-	## different event with a fire in it.
-	## ⚠️ D-2 — THE WAVE IS EMPTY BY DEFAULT NOW, AND THAT IS THE POINT.
-	## The cook owns what the fire consumes (`DETONATION_PRESENTATION` §6): every
-	## burnt voxel is a DESTROYED entry on the Delta the line above just committed,
-	## so there is no schedule left to hand over. `INFILTRAITOR_BURN_SCHEDULE=1`
-	## puts it back whole. Guarded on emptiness rather than on the flag so the
-	## legacy path keeps its single entry point, and so a real blast with no fuel
-	## (every hard material) stops paying for a scheduler start it never used.
-	var burn_wave: Dictionary = job.delta.waves.get("burn", {})
-	if OS.get_environment("INFILTRAITOR_NO_BURN") == "1":
-		print("[NO-BURN] burn wave of %d entr(ies) suppressed" % burn_wave.size())
-	elif not burn_wave.is_empty():
-		room.start_burn(burn_wave)
+	## D-6 — no burn schedule to hand over any more. D-2 folded the fire into the
+	## Delta (`burnt_cells`, committed above); D-6 removed `BurnScheduler` and
+	## `waves["burn"]` entirely. `INFILTRAITOR_NO_BURN=1` still runs a blast with
+	## no fire, now gated in `DetonationPlanBuilder._maybe_burn()` where the fire
+	## actually lives.
 	## D-2 — the passage, reported off the committed world. It used to ride out on
 	## the fire's own end-of-schedule line, which no longer happens.
 	room.report_blast_passage(job.delta)
@@ -1446,58 +1434,26 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	_prof("BEAT 3 — destruction starts%s" % ["" if job.warmed else " (NOT warmed — paying at playback)"])
 
 	## Beat 3 — destruction, clean.
-	_start_waves(waves, job.playback_queue)
+	_start_waves(waves)
 
 
-## D-3 — `INFILTRAITOR_PRESENTER=1` runs the reform; unset runs the choreographer,
-## which stays the default until D-6 removes it. Both from one binary, so a
-## before/after needs no stash — the discipline `INFILTRAITOR_SOOT_STORE_READ` and
-## `INFILTRAITOR_BURN_SCHEDULE` earned.
-##
-## `playback_queue` is ignored by the presenter and that is not an oversight: it is
-## `flatten_plan()`'s radial sort, and there is no front left to order. The rest of
-## the warm-up — the tile alternatives and the composited page upload, which are
-## what actually cost a frame — is untouched and still pays off, because the
-## presenter places exactly the same tiles.
-func _start_waves(waves: Dictionary, playback_queue: Array = []) -> void:
-	if OS.get_environment("INFILTRAITOR_PRESENTER") == "1":
-		_start_presenter(waves)
-		return
-	var choreographer := DetonationChoreographerClass.new()
-	_active_choreographer = choreographer
-	choreographer.finished.connect(func():
-		_prof("WAVES end — the blast is over")
-		room.event_probe_report("detonation")
-		_active_choreographer = null)
-	## E-EMBER-01 / E-SMOKE-TINT-01: the two VFX targets that are not on
-	## `start()`'s signature — the ember overlay VL-D4's per-voxel glow needs, and
-	## the per-material smoke tints only a MaterialRegistry owner can resolve.
-	## §13.3 — hands the choreographer the Room that owns the consequence beat, so
-	## the soot ramp waits for the destruction to settle instead of firing the
-	## instant the front finishes. Null for every other caller, which keeps the
-	## old immediate behaviour for the selftests.
-	choreographer.consequence_room = room
-	room.begin_consequence_beat()
-	choreographer.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints(),
-		room._debris_overlay, room.blast_debris_palette())
-	choreographer.start(waves, room._voxel_renderer, room._smoke_spark_overlay,
-		room.get_tree(), playback_queue)
-
-
-## D-3's half of the switch above. Deliberately the same shape as the
-## choreographer branch — same VFX targets, same consequence room, same
-## `begin_consequence_beat()`, same `finished` bookkeeping — so a difference
-## between the two paths is a difference in the PRESENTATION and never in what
-## either one was handed.
-func _start_presenter(waves: Dictionary) -> void:
+## D-6 (2026-08-29) — `DetonationPresenter` is the only path now. The
+## choreographer is gone (§3.2): its whole job was to spread ~20 ms of cell
+## writes across 24 frames, and `DETONATION_PRESENTATION_MASTER_PLAN` replaced it
+## with one commit frame and a drawing channel. `DetonationEntryWriter` (the cell
+## writes + the VFX dispatch) survived the removal; nothing else did.
+func _start_waves(waves: Dictionary) -> void:
 	var presenter := DetonationPresenterClass.new()
-	_active_choreographer = presenter
+	_active_presenter = presenter
 	presenter.finished.connect(func():
 		_prof("WAVES end — the blast is over")
 		room.event_probe_report("detonation")
-		_active_choreographer = null)
+		_active_presenter = null)
 	presenter.consequence_room = room
 	room.begin_consequence_beat()
+	## E-EMBER-01 / E-SMOKE-TINT-01: the VFX targets not on `start()`'s signature —
+	## the ember overlay VL-D4's per-voxel glow needs, and the per-material smoke
+	## tints only a MaterialRegistry owner can resolve.
 	presenter.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints(),
 		room._debris_overlay, room.blast_debris_palette())
 	presenter.start(waves, room._voxel_renderer, room._smoke_spark_overlay,

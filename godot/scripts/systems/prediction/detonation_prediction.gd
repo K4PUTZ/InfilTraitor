@@ -51,25 +51,22 @@ var worst_step_phase: String = ""
 
 ## P-WARM (2026-08-12) — the playback-side preparation that used to happen at
 ## the instant the grenade went off, carried here so the throw window can pay
-## for it instead.
-##
-## Kept on the job rather than inside the Delta because none of it is part of
-## what `build_plan()` computes: `playback_queue` is DetonationChoreographer's
-## own flattening of `delta.waves` (pure, but the choreographer's business), and
-## `warmed` records that the two IMPURE preparations — minting tile alternatives
-## and pushing composite pages to the GPU — have already been done for this
-## prediction. Both of those mutate the renderer, so they can never move into
-## the pure pipeline; what they can do is happen an entire second earlier.
+## for it instead. `warmed` records that the two IMPURE preparations — minting
+## tile alternatives and pushing composite pages to the GPU — have already been
+## done for this prediction. Both mutate the renderer, so they can never move
+## into the pure pipeline; what they can do is happen an entire second earlier.
 ##
 ## Measured on a real PLAYGROUND throw, the reason this exists at all:
 ##
 ##     without warming   5 wave frames, 753 ms   (~150 ms per frame)
 ##     with warming      5 wave frames,  85 ms   (~17 ms per frame)
 ##
-## Empty/false is always safe: DetonationChoreographer falls back to flattening
-## the plan itself, and `_ensure_light_alt()`/`flush_damage_composite_pages()`
-## are both idempotent, so an unwarmed job simply pays what it always paid.
-var playback_queue: Array = []
+## False is always safe: `_ensure_light_alt()`/`flush_damage_composite_pages()`
+## are idempotent, so an unwarmed job simply pays what it always paid.
+##
+## D-6 dropped `playback_queue` — it was the choreographer's radial flatten of
+## `delta.waves`, and the presenter writes every cell in one frame in container
+## order.
 var warmed: bool = false
 
 var _state: Dictionary = {}
@@ -84,7 +81,6 @@ func begin(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> void:
 	steps = 0
 	worst_step_ms = 0.0
 	worst_step_phase = ""
-	playback_queue = []
 	warmed = false
 
 

@@ -36,6 +36,15 @@ extends RefCounted
 
 signal finished()
 
+## Every wave kind this presenter actually consumes — the commit frame's cell
+## kinds plus the consequence channel's VFX kinds. `expose` rides nested inside
+## `destroy` and is not a top-level key. `TestZoneController._entries_playback_will_drop()`
+## checks a plan against this so a new kind nobody wired in is caught, not silently
+## computed and dropped (it once found 18 dents dropped on every blast).
+const PLAYED_KINDS: Array[String] = [
+	"destroy", "dented", "cracked", "soot", "smoke", "ember", "debris",
+]
+
 ## §13.3 — the Room that owns the consequence beat and the light. Null keeps this
 ## usable headless (no light beat), which is what a selftest wants.
 var consequence_room = null
@@ -88,6 +97,11 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	_commit_frame(plan, voxel_renderer)
 	await _fade_soot_plane(ramp, voxel_renderer, tree)
 	await _run_consequence(plan, voxel_renderer, smoke_overlay, tree)
+	## D-6 — the smoke is all instanced and rising, so the world may resume
+	## (Director, 2026-08-29). The light ramp below runs with the agent already
+	## unlocked; only the turn advance waits for it to land.
+	if consequence_room != null:
+		consequence_room.end_blast_lock()
 	## §7 — the light lands LAST, after the smoke has had its say.
 	##
 	## ⚠️ AND IT WAITS FOR THE PLUMES ON PURPOSE — Director, 2026-08-28, on being

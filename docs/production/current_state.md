@@ -87,6 +87,7 @@
 - RESUMO_SESSAO_2026-08-27_SOOT_STORE_AND_THE_FIRE.md
 - RESUMO_SESSAO_2026-08-28_PRESENTER_AND_THE_SMOKE.md
 - RESUMO_SESSAO_2026-08-28_THE_COOK_OWNS_THE_FIRE.md
+- RESUMO_SESSAO_2026-08-29_D6_PART2_DELETION.md
 - RESUMO_SESSAO_2026-08-29_EXPLOSION_DESIGN_CLOSES.md
 <!-- AUTO:END pending_prompts -->
 
@@ -95,8 +96,8 @@
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 162
-- Test scripts: 48
+- GDScript modules: 159
+- Test scripts: 46
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

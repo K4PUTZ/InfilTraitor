@@ -773,8 +773,23 @@ the plumes not drawing, and the red-rim probe's low count (19 px) was read as "t
 shader barely works" when it was the AABB culling the same instances. The feather
 never broke anything, and with the plumes finally visible it turned out to be
 necessary: at `PLUME_ALPHA` 3.6 they rendered as *"a heap of hard-edged discs"* —
-the exact failure `SMOKE_COLOR`'s own note predicts. Softened to 1.9 with 3 puffs
-per column and a 0.55 feather, they read as smoke.
+the exact failure `SMOKE_COLOR`'s own note predicts.
+
+**Final tuning, Director 2026-08-28** (*"ficou ótimo, mas pode fazer toda a fumaça
+com puffs menorzinhos e mais suaves"*) — applied to BOTH populations, which is what
+"toda a fumaça" asks for:
+
+| | before | shipped |
+|---|---|---|
+| `SMOKE_SCALE_BASE` (per-voxel) | 2.3 | **1.7** |
+| `PLUME_SCALE` (columns) | 5.0 | **3.4** |
+| `PLUME_ALPHA` | 3.6 → 1.9 | **1.7** |
+| `PLUME_PUFFS` per column | 4 | **3** |
+| feather (puffs and dust) | 0.55 | **0.75** |
+
+⚠️ The overlay's own `smoke_start_radius` / `smoke_end_radius` were deliberately
+NOT touched: they are shared with the muzzle flash and the firearm smoke, which the
+Director has separately called correct. Size is changed on the BLAST side only.
 
 ⚠️ **The pacing question it raised is ANSWERED and the length is RATIFIED.** The
 plumes push the event from 3.2 s to 4.3 s because the light waits for them.

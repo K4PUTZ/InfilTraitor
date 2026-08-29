@@ -113,7 +113,7 @@ static var SMOKE_DURATION_FLOOR: float = 0.55
 ## is smaller than the 32x16 voxel it is venting from, which is a large part of
 ## why the first per-voxel pass measured as invisible; this lifts the base so a
 ## puff at least covers its own voxel.
-static var SMOKE_SCALE_BASE: float = _env_float("INFILTRAITOR_SMOKE_SCALE", 2.3)
+static var SMOKE_SCALE_BASE: float = _env_float("INFILTRAITOR_SMOKE_SCALE", 1.7)
 
 ## A per-voxel puff is ONE blob, not the 2-3 cluster VFX-01 gives a lone
 ## destroyed voxel — there are now hundreds of them and each is meant to read as
@@ -1865,13 +1865,13 @@ static var PLUME_PUFFS: int = 3
 static var PLUME_FIRST_S: float = 0.18      ## the lead puff, right after the crater lands
 static var PLUME_SPAN_S: float = 1.05       ## the last one, a second later
 static var PLUME_JITTER_S: float = 0.22     ## per-GU scatter so columns do not pulse together
-static var PLUME_SCALE: float = 5.0         ## against SMOKE_SCALE_BASE 2.3 for a per-voxel puff
+static var PLUME_SCALE: float = 3.4         ## against SMOKE_SCALE_BASE 2.3 for a per-voxel puff
 ## ⚠️ 3.6 is the CAP, not a taste: the writer clamps a puff at 0.72 and
 ## `SMOKE_COLOR.a` is 0.2, so 3.6 is exactly where a plume saturates. Measured at
 ## 1.7 the columns were on screen and effectively invisible — the feather spreads a
 ## big disc's alpha over a large area, so a plume needs the ceiling where a small
 ## per-voxel puff does not.
-static var PLUME_ALPHA: float = 1.9
+static var PLUME_ALPHA: float = 1.7
 static var PLUME_DRIFT: float = 1.7         ## rises harder and further than a puff
 static var PLUME_DURATION: float = 1.5      ## x the overlay's own 1.8-3.2 s
 

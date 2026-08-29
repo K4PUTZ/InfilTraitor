@@ -1129,7 +1129,53 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 static func _phase_burn(s: Dictionary) -> void:
 	_build_ember_wave(s)
 	_commit_burn_to_delta(s)
+	_mark_burnt_embers(s)
 	_enter_phase(s, PHASE_SOOT)
+
+
+## D-4 — A LITTLE MORE BRASA ON THE MATERIALS THAT BURN
+## (`DETONATION_PRESENTATION_MASTER_PLAN` §5.1, downscoped by the Director on
+## 2026-08-29: *"a gente já chegou num visual bem bom, só falta um pouquinho de
+## brasa nos materiais moles… o que a gente conseguir colocar de vermelho
+## brilhando que vira preto é lucro. De resto pode deixar assim mesmo."*).
+##
+## §5.1's full spec — a vibrating flame at each hole edge, an incandescent voxel
+## left behind, transmission that turns a voxel to ash — is NOT built. It does not
+## need to be: `_build_ember_wave()` already queues exactly one ember on every
+## voxel the fire consumes (`_maybe_burn()` is only ever called right after that
+## cell gets its ember, so `burnt` ⊆ the ember wave's cells), and `EmberOverlay`
+## already ramps yellow-hot → deep red → charcoal and hands a puff to the smoke
+## overlay on death. That IS "vermelho que vira preto"; it was just tuned small
+## and dim for a hard-material crater's crowding (E-EMBER-02).
+##
+## So this only FLAGS those embers. The writer routes a flagged one through a
+## boosted profile (`EmberOverlay.burnt_ember_*`) — bigger, longer, and slower to
+## cool — so a soft-material blast reads as "it caught" without touching wood's
+## ratified look, which produces no `burnt` cells and no flag.
+##
+## ⚠️ A flagged ember sits ON the hole the fire opened, which is the exact
+## opposite of `_build_ember_wave()`'s survivor predicate (test_7 pins that for
+## the UNFLAGGED embers). The glow still fades to reveal the scorch under it, the
+## same way an edge ember does — the voxel is simply gone underneath now.
+static func _mark_burnt_embers(s: Dictionary) -> void:
+	var burnt: Dictionary = s["burnt"]
+	if burnt.is_empty():
+		return
+	var ember_by_ring: Dictionary = s["waves"]["ember"]
+	var marked: int = 0
+	for ring in ember_by_ring.keys():
+		for entry: Dictionary in ember_by_ring[ring]:
+			var key := Vector3i(entry["cell"].x, entry["cell"].y, int(entry["level"]))
+			if burnt.has(key):
+				entry["burnt"] = true
+				## The pace the retired burn schedule ran at (`_maybe_burn()`),
+				## kept purely so `DetonationPresenter._delay_for()` can release
+				## these in the order the fire actually spread — §5.1's "which
+				## voxels wear an ember, in what order, is what tells the story".
+				## The choreographer ignores it and paces with the radial front.
+				entry["at"] = float(burnt[key]["at"])
+				marked += 1
+	print("[E-BURNEMBER] %d of %d burnt cell(s) carry a boosted ember" % [marked, burnt.size()])
 
 
 ## D-2 — the fire stops being a second mutation stream.

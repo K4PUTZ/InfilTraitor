@@ -80,6 +80,22 @@ var val_max: float = 0.85
 ## own "cooling is really revealing, not a second darkening pass").
 var val_cool_floor: float = 0.35
 
+## D-4 (Director, 2026-08-29: *"um pouquinho de brasa nos materiais moles… vermelho
+## brilhando que vira preto"*) — the boost a BURNT ember gets over an edge ember.
+## `DetonationPlanBuilder._mark_burnt_embers()` flags the embers that sit on cells
+## the fire consumed; `DetonationEntryWriter` reads these three and passes them to
+## `add_ember()` as `radius_scale`, a `duration_scale` multiplier, and `cool_rate`.
+## An edge ember (unflagged) is byte-for-byte unchanged, so wood's ratified VL-D4
+## look — which produces no burnt cells — never sees this.
+##
+## ⚠️ KEPT SMALL ON PURPOSE. The first cut (1.6× on both radius and life) turned a
+## fabric wall's ~235 consumed voxels into one blown-out yellow fireball under ADD
+## — the exact "molten sheet" E-EMBER-02 lowered `val_*` to avoid. "Um pouquinho"
+## is a whisper over the glow that was already there, not a bonfire.
+var burnt_ember_radius_gain: float = 1.18  ## a touch wider than an edge coal
+var burnt_ember_life_gain: float = 1.15    ## lingers slightly longer
+var burnt_ember_cool_rate: float = 0.85    ## <1 holds the red a little before charcoal
+
 ## E-EMBER-03 (Director, 2026-08-13): *"a gente conseguiria passar de amarelo
 ## pra vermelho vivo mais rápido, antes de apagarem?"*
 ##

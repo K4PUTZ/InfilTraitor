@@ -178,8 +178,18 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			## PINNED to its voxel (the rising fire is the burst's job, and
 			## E-EMBER-02 raised that one instead precisely so it clears the
 			## crater and stops hiding these).
+			## D-4 — `burnt` is `DetonationPlanBuilder._mark_burnt_embers()`'s flag:
+			## this ember sits on a cell the fire ATE, not on a surviving edge, so it
+			## gets `EmberOverlay`'s boosted profile (bigger, longer, slower to cool).
+			## An unflagged edge ember passes 1.0 / 1.0 and is byte-for-byte
+			## unchanged, which is what keeps wood's ratified VL-D4 look untouched.
+			var burnt: bool = bool(entry.get("burnt", false))
+			var life_gain: float = ember_overlay.burnt_ember_life_gain if burnt else 1.0
+			var radius_gain: float = ember_overlay.burnt_ember_radius_gain if burnt else 1.0
+			var cool: float = ember_overlay.burnt_ember_cool_rate if burnt else 1.0
 			ember_overlay.add_ember(entry["world_pos"], -1.0, Vector2.ZERO, 0.0, 0.0,
-				float(entry.get("duration_scale", 1.0)), float(entry.get("delay", 0.0)))
+				float(entry.get("duration_scale", 1.0)) * life_gain,
+				float(entry.get("delay", 0.0)), radius_gain, cool)
 			return 1
 		"debris":
 			## E-DEBRIS-01. The plan already decided WHICH effect this voxel

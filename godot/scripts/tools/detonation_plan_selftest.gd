@@ -101,6 +101,7 @@ func _init() -> void:
 			test_8_smoke_entries_carry_material(plan)
 			test_9_ember_climb_and_cooling_ramp(built, bomb_def, ctx)
 			test_10_debris_wave(built, bomb_def, ctx)
+			test_11_burnt_embers_on_real_fabric(built, bomb_def, ctx)
 		else:
 			_fail("could not load frag_grenade.json — nothing else can run")
 
@@ -873,6 +874,91 @@ func test_10_debris_wave(built: Dictionary, bomb_def, ctx: Dictionary) -> void:
 	else:
 		_fail("re-building changed %d of %d debris entries — the rolls are not deterministic"
 			% [mismatch, again_count])
+
+
+## D-4 (Director, 2026-08-29) — every voxel the fire CONSUMES on a soft material
+## carries a boosted ember (`_mark_burnt_embers()`), and a hard-material blast
+## carries none.
+##
+## Real PLAYGROUND fabric wall, same discipline as test_7: a second pure
+## `build_plan()` against the already-built map, so the gate is on the map's real
+## fabric rather than a fixture built out of the material that works.
+##
+## ⚠️ This is the POSITIVE case for `burnt: true` embers sitting ON a hole —
+## test_7 pins the opposite (an unflagged edge ember never does). The two rules
+## live side by side on purpose.
+func test_11_burnt_embers_on_real_fabric(built: Dictionary, bomb_def, ctx: Dictionary) -> void:
+	print("\n[11] D-4: the fire leaves a boosted ember on every voxel it consumes\n")
+	var edge_registry = built["room"]._edge_registry
+	var fabric_gu := Vector2i(-9999, -9999)
+	for slice in edge_registry.all_slices():
+		if slice.material == "fabric":
+			fabric_gu = slice.gu_cell
+			break
+	if fabric_gu.x == -9999:
+		_fail("PLAYGROUND has no fabric slice — this test cannot prove anything")
+		return
+
+	var delta = DetonationPlanBuilderClass.build_plan(bomb_def, fabric_gu, ctx)
+	var burnt: Dictionary = delta.burnt_cells
+	if burnt.is_empty():
+		_fail("a real blast at the fabric wall (gu=%s) consumed ZERO voxels — the fire is inert on real data" % fabric_gu)
+		return
+	_pass("real fabric blast at gu=%s: the fire consumed %d voxel(s)" % [fabric_gu, burnt.size()])
+
+	## The holes this plan opens — a burnt ember must sit on one (test_7's inverse).
+	var holes: Dictionary = {}
+	for ring in delta.waves.get("destroy", {}).keys():
+		for entry in delta.waves["destroy"][ring]:
+			holes[Vector3i(entry["cell"].x, entry["cell"].y, int(entry["level"]))] = true
+
+	var flagged: Dictionary = {}
+	var flagged_off_hole := 0
+	var flagged_no_at := 0
+	for ring in delta.waves.get("ember", {}).keys():
+		for e in delta.waves["ember"][ring]:
+			if not bool(e.get("burnt", false)):
+				continue
+			var key := Vector3i(e["cell"].x, e["cell"].y, int(e["level"]))
+			flagged[key] = true
+			if not holes.has(key):
+				flagged_off_hole += 1
+			if not e.has("at"):
+				flagged_no_at += 1
+
+	var missing := 0
+	for key in burnt.keys():
+		if not flagged.has(key):
+			missing += 1
+	if missing == 0:
+		_pass("every one of the %d consumed voxels carries a flagged ember" % burnt.size())
+	else:
+		_fail("%d of %d consumed voxels carry no boosted ember — the flag misses cells" % [missing, burnt.size()])
+
+	if flagged_off_hole == 0:
+		_pass("every flagged ember sits on a cell this blast destroys (the fire ate it)")
+	else:
+		_fail("%d flagged ember(s) sit on a surviving cell — the flag leaked onto an edge ember" % flagged_off_hole)
+
+	if flagged_no_at == 0:
+		_pass("every flagged ember carries `at` — the presenter can stagger it by the order the fire spread")
+	else:
+		_fail("%d flagged ember(s) carry no `at`" % flagged_no_at)
+
+	## Negative half: the concrete GU tests 1-6 use burns nothing, so no ember may
+	## be flagged there.
+	var concrete_gu: Vector2i = _pick_source_gu(built)
+	var concrete = DetonationPlanBuilderClass.build_plan(bomb_def, concrete_gu, ctx)
+	var concrete_flagged := 0
+	for ring in concrete.waves.get("ember", {}).keys():
+		for e in concrete.waves["ember"][ring]:
+			if bool(e.get("burnt", false)):
+				concrete_flagged += 1
+	if concrete.burnt_cells.is_empty() and concrete_flagged == 0:
+		_pass("the concrete-wall blast consumes nothing and flags no ember")
+	else:
+		_fail("concrete blast: %d consumed, %d flagged ember(s) — the flag fires without a fire"
+			% [concrete.burnt_cells.size(), concrete_flagged])
 
 
 ## D-4b — the plumes exist, are FEW and LARGE, and carry a release time.

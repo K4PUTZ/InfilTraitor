@@ -1,7 +1,15 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟢 **D-0, D-1, D-2 AND D-3 ALL DONE (§8.1–§8.4). Next: D-4, then D-6.**
+**Status:** 🟢 **D-0…D-4 ALL DONE (§8.1–§8.8). Next: D-5, then D-6.**
+⚠️ **D-4's symbolic fire (§5.1) was DOWNSCOPED by the Director on 2026-08-29** —
+*"a gente já chegou num visual bem bom, só falta um pouquinho de brasa nos
+materiais moles… o que a gente conseguir colocar de vermelho brilhando que vira
+preto é lucro. De resto pode deixar assim mesmo."* The per-voxel vibrating
+flame / incandescent voxel / ash-transmission spec is NOT built; what shipped is
+a boosted ember on the cells the fire consumes (§8.8). **Glass — *"tem que quebrar
+muito mais com a granada"* — is deferred to the end of the materials milestone
+(the non-local pane break, `MATERIALS_MASTER_PLAN` M4).**
 D-0's pacing rehearsal ships as three env overrides — **fabric 4 797 → 2 310 ms;
 hard 2 940 → 878 ms**, single collapsed commit frame **18.55 ms measured**
 against a predicted 20.1. **D-2 made the cook the owner of what the fire
@@ -248,6 +256,16 @@ the only thing alive after beat 2.
 
 ### 5.1 The symbolic fire — §1 of the superseded plan, kept verbatim in intent
 
+> ⚠️ **DOWNSCOPED 2026-08-29 — see §8.8.** Shown the shipped D-4a/b look, the
+> Director closed the fire: *"a gente já chegou num visual bem bom, só falta um
+> pouquinho de brasa nos materiais moles… o que a gente conseguir colocar de
+> vermelho brilhando que vira preto é lucro. De resto pode deixar assim mesmo."*
+> The spec below is NOT built as written. What shipped is a **boosted ember on
+> every voxel the fire consumes** — `EmberOverlay` already ramps hot → red →
+> charcoal, so "vermelho que vira preto" was a flag and two knobs, not a new
+> overlay. The vibrating flame, the incandescent-voxel-left-behind and the
+> visual ash-transmission are deliberately unbuilt.
+
 The Director's spec (2026-08-27): a small flame vibrating ~0.5 s at the edge of
 each hole, leaving an incandescent voxel; the glow darkening to black over ~1 s;
 a puff of smoke upward for 1–2 s; and, before going out, a chance to pass the
@@ -356,7 +374,7 @@ the board's light is wrong everywhere.
 | ✅ **D-2** | **BUILT 2026-08-28 (§8.2).** The cook owns what the fire consumes (§6). ⚠️ The passage half changed shape: the bubble does NOT force an opening (§11.1a vetoes §11.1) — what shipped is `PassageQuery`'s criterion, amount instead of shape. | ✅ All three met. `blast_purity_selftest` + 39 others clean. **Cell probe `0 RESTORED · 0 VANISHED`** against a same-binary control that still reports **350 RESTORED**. The passage line is reported by `Room.report_blast_passage()` as `[E-PASSAGE]`, same shape, and both paths agree on the end state (STANDING ×3). |
 | **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, **material tier**) replacing `_select_deterministic()`'s hash ranking, authored in **voxel-local** coordinates (§11.3.4). Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. Plus: the **resistance ladder's selftests still pass** (§11.3.1), and **panels and `JunctionColumn` still take damage** (§11.3.3 — E-JUNCTION-01's exact regression). |
 | ✅ **D-3** | **BUILT 2026-08-28 (§8.4).** `DetonationPresenter` behind `INFILTRAITOR_PRESENTER=1`, choreographer still default. One commit frame at **31.4 ms** (fabric) / 28.3 (hard); the consequence channel with the §4.2 delay. `DetonationEntryWriter` extracted first so both paths share the writing. | ✅ All met, plus D-5's early: cell probe `0 RESTORED · 0 VANISHED`, 40 selftests clean, and the **settled frame is pixel-identical (0 px)** between the two paths. ⚠️ One deliberate look regression: §7.1 removes the soot fade-in the Director asked for on 2026-08-19 — judge on the video before D-6. |
-| 🟠 **D-4** | **SMOKE DONE (§8.6, §8.7); the symbolic FIRE still to build.** §8.7's plumes ship, and finding them exposed a P7b defect: `CircleField` had no `custom_aabb`, so every MultiMesh field has been culling its most distant particles since it shipped. Per-material `smoke_chance` and the height axis shipped; the mechanism was never missing, only thinned and varied. ⚠️ §8.6a leaves ONE look question open (may a puff be darker than the surface it leaves?) and it blocks the final tuning, not the mechanism. **Still to build: the symbolic fire** (§5.1) — one MultiMesh, per-instance phase and smoke duration, over the voxels the cook marked as burnt. | The Director looks at it. §5.1's flame → incandescent → black → smoke has to read as fire at 3× slow motion, and it is one draw call either way. |
+| ✅ **D-4** | **DONE — SMOKE (§8.6, §8.7) + THE BRASA (§8.8).** §8.7's plumes ship, and finding them exposed a P7b defect: `CircleField` had no `custom_aabb`, so every MultiMesh field had been culling its most distant particles since it shipped. Per-material `smoke_chance` and the height axis shipped. §8.8: the symbolic fire was **downscoped by the Director on 2026-08-29** to *"um pouquinho de brasa nos materiais moles"* — `_mark_burnt_embers()` flags the ember on every consumed voxel and the writer routes it through `EmberOverlay`'s boosted profile. No new overlay, no new wave kind. | ✅ The Director looked at the shipped D-4a/b and closed it: *"pode deixar assim mesmo"*. §8.8's brasa judged on the filmstrip. |
 | **D-5** | **The light lands** (§7). Soot into the commit; the ramp to its D-0 duration. | The final frame is **pixel-identical** to a control with only the pacing reverted — the destination must be untouched and only the path changed (the gate §14.2 earned). |
 | **D-6** | **Remove the old path** (§3.2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after. Lint, 40 selftests, invariants, CODEMAP. |
 | **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*), and §7.4 if it is real. ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last three sessions. |
@@ -806,6 +824,56 @@ it without `await` returns `null`, a `if coro != null` guard never closes, and t
 light was **restarted on every frame**. `[E-FRAME]` caught it at once (a dozen
 `LIGHT` marks, frames at 92–100 ms against the usual 18); the PICTURE never would
 have, because concurrent ramps converge on the same final state.
+
+---
+
+### 8.8 ✅ D-4 — THE BRASA, DOWNSCOPED, 2026-08-29
+
+> Director, shown the shipped D-4a/b look: *"a gente já chegou num visual bem bom,
+> só falta um pouquinho de brasa nos materiais moles, e pronto. Faz como você
+> achar melhor, o que a gente conseguir colocar de vermelho brilhando que vira
+> preto é lucro. De resto pode deixar assim mesmo."*
+
+**§5.1's spec is not built, and it did not need to be.** `_build_ember_wave()`
+already queues **exactly one ember on every voxel the fire consumes** — the proof
+is structural: `_maybe_burn()` is only ever called from `_build_ember_wave()` /
+`_climb_from()`, always immediately after that same cell gets its ember, so
+`burnt ⊆ ember-wave cells`. Measured on the real PLAYGROUND fabric wall: **235 of
+235 consumed voxels carry an ember.** And `EmberOverlay` already ramps yellow-hot
+→ deep red → charcoal and hands a puff to the smoke overlay on death. "Vermelho
+que vira preto" was **already on screen** — it was tuned small and dim for a
+hard-material crater's crowding (E-EMBER-02).
+
+**What shipped is a flag and two knobs:**
+
+- **`DetonationPlanBuilder._mark_burnt_embers()`** — runs in PHASE_BURN right
+  after `_commit_burn_to_delta()`, walks `waves["ember"]`, and sets `burnt: true`
+  (plus `at`, the retired schedule's pace) on every entry whose cell is in
+  `burnt`. `[E-BURNEMBER] 235 of 235`.
+- **`EmberOverlay.burnt_ember_gain` (1.6)** and **`burnt_ember_cool_rate`
+  (0.72)** — the boost a flagged ember gets: bigger radius, longer life, and the
+  red held a touch longer before charcoal. `DetonationEntryWriter` reads them and
+  passes them to `add_ember()` as `radius_scale`, a `duration_scale` multiplier
+  and `cool_rate`.
+- **An unflagged edge ember passes `1.0 / 1.0` and is byte-for-byte unchanged**,
+  which is why **wood's ratified VL-D4 look is untouched** — wood has
+  `burn_consumption == 0`, produces no `burnt` cells, and flags nothing.
+
+**Works on both paths** — the writer is shared (D-3), and `ember` is already in
+the choreographer's `PLAYED_KINDS`. The choreographer ignores `at` and paces the
+flagged embers with its radial front; the presenter releases them by `at`, in the
+order the fire spread. **No new overlay, no new wave kind, no new writer branch** —
+the D-4b plume precedent.
+
+⚠️ **A flagged ember sits ON the hole the fire opened**, which is the exact
+opposite of `_build_ember_wave()`'s survivor predicate. `detonation_plan_selftest`
+`test_7` pins that predicate for the UNFLAGGED embers; the new `test_11` pins the
+inverse for the flagged ones (every flagged ember on a destroyed cell, carries
+`at`; a concrete blast flags none). The two rules live side by side on purpose.
+
+**Deferred, on the Director's instruction:** glass — *"tem que quebrar muito mais
+com a granada, mas vamos fazer isso no final da milestone de materiais"*
+(`MATERIALS_MASTER_PLAN` M4, the non-local pane break).
 
 ---
 

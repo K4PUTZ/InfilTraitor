@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**225 scripts · 73072 lines total** (under `godot/scripts/`)
+**225 scripts · 73230 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1159,7 +1159,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 382 lines
+`class_name EmberOverlay` · extends `Node2D` · 398 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -1957,7 +1957,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 238 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 248 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -1985,7 +1985,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 1992 lines
+`class_name DetonationPlanBuilder` · 2038 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -3322,7 +3322,7 @@ extends `SceneTree` · 441 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 932 lines
+extends `SceneTree` · 1018 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 

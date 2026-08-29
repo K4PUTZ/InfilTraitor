@@ -1367,7 +1367,13 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## blanket clear — a flag set by anything else survives it.
 	for voxel in job.delta.touched_voxels:
 		voxel.clear_dirty()
-	var waves: Dictionary = job.delta.waves
+	## Held in a local from HERE, before the awaits below: `bump_world_revision()`
+	## can evict this job from the prediction cache and null `job.delta` out from
+	## under the beat. The Delta object itself stays alive as long as this ref
+	## does — `waves` alone used to be what carried it through, D-7 needs the whole
+	## Delta for `play_consequence_light()`.
+	var delta: WorldDelta = job.delta
+	var waves: Dictionary = delta.waves
 	## §5.2: the world just moved, so every cached prediction — including this
 	## one — is now stale. AFTER the commit, never before.
 	room.bump_world_revision()
@@ -1431,7 +1437,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	_prof("BEAT 3 — destruction starts%s" % ["" if job.warmed else " (NOT warmed — paying at playback)"])
 
 	## Beat 3 — destruction, clean.
-	_start_waves(waves)
+	_start_waves(delta)
 
 
 ## D-6 (2026-08-29) — `DetonationPresenter` is the only path now. The
@@ -1439,7 +1445,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 ## writes across 24 frames, and `DETONATION_PRESENTATION_MASTER_PLAN` replaced it
 ## with one commit frame and a drawing channel. `DetonationEntryWriter` (the cell
 ## writes + the VFX dispatch) survived the removal; nothing else did.
-func _start_waves(waves: Dictionary) -> void:
+func _start_waves(delta) -> void:
 	var presenter := DetonationPresenterClass.new()
 	_active_presenter = presenter
 	presenter.finished.connect(func():
@@ -1447,12 +1453,16 @@ func _start_waves(waves: Dictionary) -> void:
 		room.event_probe_report("detonation")
 		_active_presenter = null)
 	presenter.consequence_room = room
+	## D-7 (§7.4) — the Delta carries the cook's light field inputs; the presenter
+	## hands them to `Room.play_consequence_light()` so it skips the map-wide
+	## re-derivation.
+	presenter.consequence_delta = delta
 	## E-EMBER-01 / E-SMOKE-TINT-01: the VFX targets not on `start()`'s signature —
 	## the ember overlay VL-D4's per-voxel glow needs, and the per-material smoke
 	## tints only a MaterialRegistry owner can resolve.
 	presenter.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints(),
 		room._debris_overlay, room.blast_debris_palette())
-	presenter.start(waves, room._voxel_renderer, room._smoke_spark_overlay,
+	presenter.start(delta.waves, room._voxel_renderer, room._smoke_spark_overlay,
 		room.get_tree())
 
 

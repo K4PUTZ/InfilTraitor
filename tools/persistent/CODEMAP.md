@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**220 scripts · 70474 lines total** (under `godot/scripts/`)
+**220 scripts · 70606 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1948,7 +1948,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2017 lines
+`class_name DetonationPlanBuilder` · 2056 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -1970,7 +1970,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 368 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 373 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -1984,6 +1984,7 @@ extends `Node2D` · 43 lines
 
 **Public vars**
 - `var consequence_room = null`
+- `var consequence_delta = null`
 - `var ring_step_s: float = 0.055`
 - `var storey_bias_s: float = 0.020`
 - `var jitter_s: float = 0.060`
@@ -2536,7 +2537,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 249 lines
+`class_name WorldDelta` · extends `RefCounted` · 273 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2560,6 +2561,9 @@ extends `Node2D` · 43 lines
 - `var cost_ms: float = 0.0`
 - `var scorch_writes: Dictionary = {}`
 - `var burnt_cells: Dictionary = {}`
+- `var light_field = null`
+- `var light_changed_cells: Dictionary = {}`
+- `var light_field_usable: bool = false`
 
 **Public API**
 - `func add_damage(entries: Array) -> void:`
@@ -4624,7 +4628,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1529 lines
+`class_name TestZoneController` · 1539 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4898,7 +4902,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8484 lines
+extends `Node2D` · 8538 lines
 
 `godot/scripts/world/room.gd`
 

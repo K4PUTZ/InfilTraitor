@@ -125,6 +125,30 @@ var scorch_writes: Dictionary = {}
 ## world off this** — that is the property D-2 exists to establish.
 var burnt_cells: Dictionary = {}
 
+## D-7 (`DETONATION_PRESENTATION_MASTER_PLAN` §7.4) — THE LIGHT COOK.
+##
+## `_phase_light` builds the whole board's final `VoxelLightField` from the
+## post-blast occupancy (`build_occupancy(predict_destroyed)`), and `_phase_soot_wave`
+## then makes it compute the bucket of every cell this blast changes — which it
+## already did, to fill `waves["soot"]`. Both were thrown away once the animation
+## had its alt ids. Kept here so `Room.play_consequence_light()` applies THIS field
+## to `light_changed_cells` in ~18 ms instead of re-deriving occupancy + soot +
+## the field map-wide (the ~158 ms freeze D-8 only hid).
+##
+## `light_field` is only VALID for `light_changed_cells` — its occupancy is
+## map-wide but its bucket cache was only warmed for the blast neighbourhood, and
+## the room does not adopt it (`_voxel_light_field` is untouched; the next full
+## repaint rebuilds that from scratch, as it always has).
+##
+## `light_field_usable` is FALSE when any light feeding the field is TEMPORAL
+## (flicker / pulse / rotation): those change every frame, so a field fixed
+## seconds ago at cook time would freeze that light's contribution at a stale
+## value — "wrong everywhere", the exact risk §7.4 is scoped around. On that path
+## `play_consequence_light()` takes the full re-derivation, unchanged.
+var light_field = null
+var light_changed_cells: Dictionary = {}
+var light_field_usable: bool = false
+
 ## Voxel -> projected tuple. Only voxels this Delta actually changes appear.
 var _by_voxel: Dictionary = {}
 

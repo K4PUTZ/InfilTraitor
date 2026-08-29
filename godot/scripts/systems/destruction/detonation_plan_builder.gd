@@ -846,12 +846,46 @@ static func _scorch_revealed_fixed_cells(s: Dictionary, out_snapshot: Dictionary
 static func _phase_light(s: Dictionary) -> void:
 	var ctx: Dictionary = s["ctx"]
 	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var lights: Array = ctx.get("lights", [])
 	var field := VoxelLightFieldClass.new()
-	field.build(ctx.get("lights", []), ctx.get("shadow_results", []),
+	## D-7 (§7.4) — MAP-WIDE occupancy, not `s["occupancy"]` (which PHASE_WALK only
+	## fills for the affected containers). The soot wave still only QUERIES the
+	## blast neighbourhood, so a scoped occupancy was enough for it; but the room
+	## applies this same field to `light_changed_cells` afterwards, and a cell at
+	## the edge of the scoped set would see phantom holes beyond it. `build()` is
+	## lazy — this is one `get_used_cells()` walk, the buckets are still computed
+	## on first query in the soot wave.
+	var predict_destroyed: Dictionary = {}
+	for k in s["blast_cells"]:
+		predict_destroyed[k] = true
+	for k in s["weapon_cells"]:
+		predict_destroyed[k] = true
+	field.build(lights, ctx.get("shadow_results", []),
 		voxel_renderer.top_wall_level(),
-		s["occupancy"], s["soot_snapshot"], s["under_structure"], s["soot_faces"])
+		voxel_renderer.build_occupancy(predict_destroyed),
+		s["soot_snapshot"], s["under_structure"], s["soot_faces"])
 	s["field"] = field
 	s["ring_keys"] = s["ring_of"].keys()
+	## D-7 (§7.4) — carry the field to the Delta. `_phase_soot_wave` fills
+	## `light_changed_cells` (the set it also emits to `waves["soot"]`); the room
+	## applies the field to exactly those, in ~18 ms, instead of re-deriving.
+	var delta = s["delta"]
+	delta.light_field = field
+	## TEMPORAL LIGHTS DISQUALIFY THE SHORTCUT — a flicker/pulse/rotating light
+	## changes every frame, and this field is fixed seconds ago at cook time.
+	## Applying it forward would freeze that light's contribution at a stale value
+	## until the next full repaint. Detected here, once, off the light list the
+	## field was built from.
+	var temporal: bool = false
+	for light in lights:
+		if light == null:
+			continue
+		var rot: Variant = light.get("rotation_speed")
+		if light.get("flicker_enabled") == true or light.get("pulse_enabled") == true \
+				or (rot != null and absf(float(rot)) > 0.0):
+			temporal = true
+			break
+	delta.light_field_usable = not temporal
 	_enter_phase(s, PHASE_PACKAGE)
 
 
@@ -1021,6 +1055,11 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 							"atlas_coords": layer.get_cell_atlas_coords(cell),
 							"alt": alt, "soot": soot_code,
 							"r": _radius_of(cell, epicenter)})
+						## D-7 (§7.4) — the same set, keyed for `apply_light_field_cells()`.
+						## Every cell whose displayed light or soot this blast moves and
+						## that is not a damaged cell (those carry their alt in the
+						## commit's own destroy/dent/crack entry).
+						s["delta"].light_changed_cells[Vector3i(cell.x, cell.y, level)] = true
 		since_check += 1
 		if since_check >= chunk:
 			since_check = 0

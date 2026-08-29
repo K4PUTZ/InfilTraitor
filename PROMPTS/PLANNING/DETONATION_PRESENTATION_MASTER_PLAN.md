@@ -5,18 +5,16 @@
 *"isso conclui nosso design da explosão, com exceção do vidro… Fica pendente a
 limpeza e a otimização do código + cook da luz."*
 
-**DONE and shipped (§8.1–§8.13):** D-0…D-5, the fuse/boom pre-pass (§8.10),
+**DONE and shipped (§8.1–§8.14):** D-0…D-5, the fuse/boom pre-pass (§8.10),
 D-6 **complete** — the presenter is the only path (part 1, §8.11) and the
 choreographer + `BurnScheduler` + `FireGlowOverlay` + ~3 000 lines of dead burn
-subsystem are deleted (part 2, §8.11) — and the light-lag defer (§8.12). The
-event: fuse (grenade intact) → boom → one commit frame → the consequence channel
-(smoke, plumes, brasa) → the light lands after the smoke clears.
+subsystem are deleted (part 2, §8.11) — the light-lag defer (§8.12), and
+**D-7 — the light cook (§8.14): the freeze is 158 ms → 17.7 ms, gate-proven
+0 of 206 096 cells different from a full re-derivation.** The event: fuse
+(grenade intact) → boom → one commit frame → the consequence channel (smoke,
+plumes, brasa) → the light lands after the smoke clears.
 
 **PENDING — engineering, not design:**
-- **§7.4 — the light cook.** Compute the light field in the pure cook so
-  `play_consequence_light()` becomes a pixel write with no ~202 ms freeze. §8.12
-  only HIDES that freeze (defers it to a still scene); this removes it. Its own
-  task — getting it wrong means the board's light is wrong everywhere.
 - **Polish `throw_event`** — the capture action (§8.13).
 
 **Out of scope here — `MATERIALS_MASTER_PLAN` M4:** glass, *"tem que quebrar muito
@@ -383,6 +381,13 @@ in the cook and applied as a pixel write is an open question, not a claim** — 
 is §9's item 3 and it is scoped as its own task, because getting it wrong means
 the board's light is wrong everywhere.
 
+> ✅ **ANSWERED — D-7, 2026-08-29 (§8.14). It can, but not the way this paragraph
+> guessed.** The cook's WALK builds a BLAST-SCOPED occupancy, and `_phase_light`
+> is 0.1 ms only because `VoxelLightField.build()` is lazy. What shipped:
+> `_phase_light` builds a map-wide field, `_phase_soot_wave` records the changed
+> cells, `play_consequence_light()` applies that field to exactly those.
+> **158 ms → 17.7 ms, 0 of 206 096 cells different from a full re-derivation.**
+
 ---
 
 ## 8. TASKS
@@ -398,7 +403,7 @@ the board's light is wrong everywhere.
 | ✅ **D-5** | **BUILT 2026-08-29 (§8.9).** `consequence_light_seconds` 2.0 → 0.5 — the D-0 rehearsal value. Soot was already in the commit (D-3/D-3b). One `var` default; `INFILTRAITOR_LIGHT_SECONDS` still overrides. | ✅ Met by containment, not by a single 0. Same binary, same `INFILTRAITOR_RNG_SEED`, 0.5 s vs 2.0 s: **every differing pixel is inside the crater bbox — 0 outside** (`>32`: 263 in / **0 out**). The literal "settled final frame" is unreachable because the 2.0 s control ramp outlives the capture's held-camera window; the destination is identical by construction — `play_consequence_light()`'s terminal `_write_cell_bucket(to_bucket[k])` loop is unconditional. |
 | ✅ **D-6** | **Remove the old path** (§3.2). **Part 1 SHIPPED (§8.11):** everything runs the presenter, the `INFILTRAITOR_PRESENTER` gate is gone, `is_resolving_action()` rewired to a blast-lock the presenter releases when the smoke is up. **Part 2 SHIPPED (§8.11):** the choreographer + selftest, `BurnScheduler` + selftest, `FireGlowOverlay`, `_advance_burn`/`start_burn`/`_burn_precook`/`_burn_final_repaint`/`_burn_residue_probe`/`await_destruction_settled` + the whole `_burn_prof_*` wall + `_capture_two_fires` are gone; `waves["burn"]` dropped from `WorldDelta`; `cook_owns_fire` → deleted (always true); `INFILTRAITOR_NO_BURN` gate moved into `_maybe_burn`; `consequence_light_seconds` 0.5 → 1.0. ~3 000 net lines. | ✅ Repo-wide grep clean (only prose/history refs remain). Lint ✅, selftests **38 clean / 0 failed** ✅ (40 → 38), invariants ✅, CODEMAP ✅. 3× video: `d6_BEFORE_choreo.mp4` vs `d6_AFTER_presenter.mp4` — the whole event still plays (fuse → boom → crater → embers → plumes → soot → light). |
 | ✅ **D-8** | **DEFER THE LIGHT DERIVE UNTIL THE SMOKE CLEARS (§8.12).** `DetonationPresenter._wait_for_smoke()` polls `SmokeSparkOverlay.smoke_count()` before `play_consequence_light()`. The Director saw the ~202 ms freeze reading as a stutter over drifting smoke. | ✅ The Director watched the real-time video: the freeze now lands on a still, empty scene (~5.0 s) and does not read. **Not §7.4** — the derive still costs 202 ms. |
-| **§7.4** | **THE LIGHT COOK.** Compute the light field in the pure cook (the WALK phase already does 133 ms of that work and lights a predicted crater right — `PREDICTION_MASTER_PLAN` §8.8) and apply it as a pixel write. Removes the ~202 ms freeze D-8 only hides. | The board's light is pixel-identical to the current derive result, everywhere. Its own task — getting it wrong is wrong everywhere. |
+| ✅ **D-7 (§7.4)** | **THE LIGHT COOK — BUILT 2026-08-29 (§8.14).** ⛔ The premise was wrong: the cook's WALK builds a BLAST-SCOPED occupancy, not map-wide, and its LIGHT phase is 0.1 ms because `VoxelLightField.build()` is LAZY — the buckets are computed later, in `_phase_soot_wave`. So: `_phase_light` now builds a map-wide field (`build_occupancy(predict_destroyed)`, +45 ms one cook step), the soot wave records its changed-cell set as `delta.light_changed_cells`, and `play_consequence_light()` does `apply_light_field_cells()` on exactly those. `_voxel_light_field` is NOT adopted — nothing reads it before the next full repaint (temporal lights excluded by `light_field_usable`). | ✅ `INFILTRAITOR_LIGHT_COOK_GATE=1`: **0 of 206 096 cells differ** from a forced full re-derivation. Freeze **158 ms → 17.7 ms**. Clean A/B baseline corrected D-1's 201.9 ms estimate to 158 ms (occ 42 · soot 31 · field.build 66 · apply 18). Cook total within run-to-run noise; worst step 45 ms during aiming, Director closed on it (fuse is elastic). Fallback: `INFILTRAITOR_NO_LIGHT_COOK=1`. |
 | **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*). ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last four sessions. |
 
 **Order rationale.** D-0 first because it is one session, fully reversible, and it
@@ -1090,6 +1095,65 @@ run.
 
 ---
 
+### 8.14 ✅ D-7 — THE LIGHT COOK, 2026-08-29
+
+**The freeze is 158 ms → 17.7 ms, gate-proven exact.**
+
+**§7.4's premise was wrong, and the measurement is why.** A clean same-binary A/B
+(`INFILTRAITOR_NO_LIGHT_COOK` toggles only the path) put the real freeze at
+**158 ms**, not D-1's 201.9 ms estimate, and broke it down: `occupancy 42 ·
+soot 31 · field.build 66 · apply 18` — four map-wide walks, not one. And the
+cook does NOT already do this work:
+
+- **PHASE_WALK builds a BLAST-SCOPED occupancy** — only the containers the flood
+  reached — because that is all `_phase_soot_wave` needs to query.
+- **`_phase_light` is 0.1 ms because `VoxelLightField.build()` is LAZY.** It
+  stashes inputs and clears caches; the per-cell bucket derivation happens later,
+  on first `bucket_for()` — which is in `_phase_soot_wave`, per soot-ring cell.
+
+**The first attempt was a 12× REGRESSION.** Feeding the cook's scoped occupancy
+into the room's incremental `_stale_cells()` diff made it see the whole rest of
+the map as changed: 158 ms → 1849 ms. The equivalence gate still passed
+(0/206096) — it was correct, just catastrophically slow. Reverted.
+
+**What shipped:**
+
+- **`_phase_light`** builds a **map-wide** field:
+  `voxel_renderer.build_occupancy(predict_destroyed)` where `predict_destroyed`
+  is `s["blast_cells"] + s["weapon_cells"]`. Still lazy, so this is one
+  `get_used_cells()` walk — **+45 ms, one cook step.**
+- **`_phase_soot_wave`** already computed the bucket of every cell this blast
+  changes (to fill `waves["soot"]`); it now also records that set as
+  `delta.light_changed_cells` (`{Vector3i: true}`).
+- **`WorldDelta`** carries `light_field`, `light_changed_cells`,
+  `light_field_usable`. `usable` is false when any input light is temporal
+  (flicker / pulse / rotation) — those change every frame and a field fixed at
+  cook time would freeze that light's contribution stale.
+- **`Room.play_consequence_light(delta)`** on the cooked path:
+  `apply_light_field_cells(delta.light_field, delta.light_changed_cells)` — no
+  `build_occupancy`, no `_build_soot_snapshot`, no `field.build`. The `moved` set
+  for the ramp is `light_changed_cells`. **`_voxel_light_field` is deliberately
+  NOT adopted** — on a no-temporal-light map nothing reads it before the next
+  `lighting_rebuilt`, and that pass rebuilds it from scratch as it always has.
+- Threaded through `DetonationPresenter.consequence_delta`; the controller holds
+  a `WorldDelta` ref from before the beat's awaits (`bump_world_revision()` can
+  null `job.delta`).
+
+**Gate:** `INFILTRAITOR_LIGHT_COOK_GATE=1` — after the cooked apply, force
+`_repaint_voxel_light_buckets(false)` and count differing alt ids. **0 of 206 096.**
+`INFILTRAITOR_NO_LIGHT_COOK=1` forces the full path for an A/B.
+
+**Cost the Director closed on:** the cook's worst single step went 7–9 ms → 45 ms
+(the occupancy walk, atomic). It runs during aiming, once per cook, and the cook
+already overruns the aim window by ~336 ms and eats fuse frames — the fuse is
+elastic by design (§8.10). A base-occupancy cache in `VoxelRenderer` (help every
+repaint, ~48 ms each) is the follow-up if it ever matters.
+
+3× video: `d7_light_cook.mp4` (scratchpad). Selftests 38 clean, invariants,
+lint, CODEMAP.
+
+---
+
 ## 9. OPEN QUESTIONS
 
 1. ~~**The passage — does the new fire owe `BURN_THROUGH`'s openings?**~~
@@ -1102,9 +1166,10 @@ run.
    crater simply present when the flash clears. That is *pa-pum* by construction
    and it is also the removal of a look that was tuned three times. **D-0 answers
    this for the price of three constants.**
-3. **Can the final light field be computed in the cook (§7.4)?** Scoped, not
-   assumed. Getting it wrong means the board's light is wrong everywhere, so it
-   is D-7 and not D-5.
+3. ~~**Can the final light field be computed in the cook (§7.4)?**~~ ✅ **CLOSED —
+   D-7, §8.14.** Yes: `_phase_light` builds it map-wide, `_phase_soot_wave`
+   records the changed cells, `play_consequence_light()` applies it. 158 ms →
+   17.7 ms, 0 of 206 096 cells different from a full re-derivation.
 4. **What replaces `flatten_plan()` for W-PRECOOK's warming?** The precook needs
    "which alternatives will this blast need" and currently reads it off the
    playback queue. The delta has the same information; the seam does not exist yet.

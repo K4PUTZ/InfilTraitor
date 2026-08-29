@@ -4851,9 +4851,21 @@ func report_blast_passage(delta) -> void:
 
 ## The light half, run by the presenter once the consequence channel has played
 ## and the smoke has cleared (D-8). Kept here because the repaint is the Room's.
-func play_consequence_light() -> void:
+##
+## D-7 (§7.4) — `delta` non-null with `light_field_usable` true means the cook
+## built this board's post-blast `VoxelLightField` and, in `_phase_soot_wave`,
+## computed the bucket of every cell this blast changes (`light_changed_cells`).
+## The cooked path applies that field to exactly those cells — no `build_occupancy`,
+## no `_build_soot_snapshot`, no `field.build` — turning the ~158 ms freeze into
+## an ~18 ms apply. Null delta or a temporal light falls back to the full
+## re-derivation, unchanged. Proven cell-for-cell by `INFILTRAITOR_LIGHT_COOK_GATE=1`.
+func play_consequence_light(delta = null) -> void:
 	if not is_instance_valid(_voxel_renderer):
 		return
+	var cooked: bool = (delta != null and delta.light_field_usable
+		and delta.light_field != null
+		and not delta.light_changed_cells.is_empty()
+		and OS.get_environment("INFILTRAITOR_NO_LIGHT_COOK") != "1")
 
 	## §13.4 — THE LIGHT ARRIVES OVER ~2 s, and the trick is to let the existing
 	## repaint compute the answer and then REPLAY the transition.
@@ -4873,7 +4885,13 @@ func play_consequence_light() -> void:
 	## not what the shader reads, so the ramp would be invisible — the code below
 	## detects that and applies instantly rather than pretending.
 	var moved: Dictionary = {}
-	if _voxel_light_field != null and _voxel_light_field.has_stale_subset():
+	if cooked:
+		## D-7 (§7.4) — the cook's own "this blast moved the light here" set, the
+		## one it also emitted to `waves["soot"]`. The authoritative re-derivation
+		## below is replaced by an apply of the cook's field to exactly these.
+		for k in delta.light_changed_cells.keys():
+			moved[k] = true
+	elif _voxel_light_field != null and _voxel_light_field.has_stale_subset():
 		for k in _voxel_light_field.stale_cells().keys():
 			moved[k] = true
 	for k in _voxel_renderer._externally_written.keys():
@@ -4925,9 +4943,44 @@ func play_consequence_light() -> void:
 			b0 = VoxelRenderer.LIGHT_BUCKET_COUNT - 1
 		from_bucket[k] = b0
 
+	## D-7 (§7.4) — THE GATE. After the cooked apply, force the full map-wide
+	## re-derivation and count how many cells disagree. 0 means the cook's field
+	## and its `light_changed_cells` set landed the board exactly where the full
+	## `_repaint_voxel_light_buckets()` would have. Env-gated
+	## (`INFILTRAITOR_LIGHT_COOK_GATE=1`) because it costs the very re-derivation
+	## the cooked path exists to skip.
+	var gate: bool = cooked and OS.get_environment("INFILTRAITOR_LIGHT_COOK_GATE") == "1"
+
 	var t0: int = Time.get_ticks_usec()
-	_repaint_voxel_light_buckets(true, true)
+	if cooked:
+		## The cook's field, applied to exactly the cells it changed. No
+		## `build_occupancy()`, no `_build_soot_snapshot()`, no `field.build()` —
+		## the buckets were computed by `_phase_soot_wave` and cached in the field.
+		## `_voxel_light_field` is deliberately NOT touched: nothing reads it before
+		## the next `lighting_rebuilt` (temporal lights are excluded by
+		## `light_field_usable`), and that pass rebuilds it from scratch anyway.
+		_voxel_renderer.apply_light_field_cells(delta.light_field, delta.light_changed_cells)
+	else:
+		_repaint_voxel_light_buckets(true, true)
 	var derive_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	if gate:
+		var gate_cooked: Dictionary = _perf_snapshot_alts()
+		_repaint_voxel_light_buckets(false)
+		var gate_full: Dictionary = _perf_snapshot_alts()
+		var differ: int = 0
+		var samples: Array = []
+		for k in gate_full:
+			if gate_cooked.get(k, PERF_SNAPSHOT_MISSING) != gate_full[k]:
+				differ += 1
+				if samples.size() < 8:
+					samples.append("%s cooked %s -> full %s" % [k,
+						gate_cooked.get(k, PERF_SNAPSHOT_MISSING), gate_full[k]])
+		for smp in samples:
+			print("[LIGHT-COOK-GATE]   %s" % smp)
+		print("[LIGHT-COOK-GATE] %d of %d cell(s) differ from a full re-derivation · derive %.1f ms · VERDICT: %s"
+			% [differ, gate_full.size(), derive_ms,
+			"PASS — the cook's field landed the board exactly"
+			if differ == 0 else "FAIL — the cook's field/changed-set is not the full one"])
 
 	if not VoxelRenderer.P3_CELL_BUCKET or moved.is_empty():
 		print("[CONSEQUENCE] light restored instantly — %.1f ms (%s)" % [derive_ms,
@@ -4945,8 +4998,9 @@ func play_consequence_light() -> void:
 	var steps: int = maxi(consequence_light_steps, 1)
 	var frames_per_step: int = maxi(
 		int(ceil(consequence_light_seconds * 60.0 / float(steps))), 1)
-	print("[CONSEQUENCE] light ramp — %d cell(s) moving of %d · %d step(s) x %d frame(s) · derive %.1f ms"
-		% [changed, moved.size(), steps, frames_per_step, derive_ms])
+	print("[CONSEQUENCE] light ramp — %d cell(s) moving of %d · %d step(s) x %d frame(s) · derive %.1f ms (%s)"
+		% [changed, moved.size(), steps, frames_per_step, derive_ms,
+		"cook field, §7.4" if cooked else "full re-derivation"])
 
 	for step in range(steps):
 		var t: float = float(step) / float(steps)

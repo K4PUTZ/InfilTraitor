@@ -49,6 +49,11 @@ const PLAYED_KINDS: Array[String] = [
 ## usable headless (no light beat), which is what a selftest wants.
 var consequence_room = null
 
+## D-7 (§7.4) — the WorldDelta, for its cook-computed light field inputs. Passed
+## straight to `Room.play_consequence_light()`; null there means the full
+## re-derivation, so a caller that does not set this loses nothing but speed.
+var consequence_delta = null
+
 ## --- The consequence channel's timing, in SECONDS (§5.2) ------------------
 ##
 ## §4.2, the Director's own axis: *"pensar em um sistema por GU de distância e por
@@ -139,7 +144,7 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	## this object, and the light runs a coroutine of its own.
 	if consequence_room != null and consequence_room.consequence_beat:
 		consequence_room.event_probe_beat("LIGHT")
-		await consequence_room.play_consequence_light()
+		await consequence_room.play_consequence_light(consequence_delta)
 	finished.emit()
 
 

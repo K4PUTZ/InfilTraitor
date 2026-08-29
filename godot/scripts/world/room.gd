@@ -8035,6 +8035,112 @@ func _capture_throw_filmstrip() -> void:
 	print("[THROW-FILM] wrote %d frames to %s" % [shot, out_dir])
 
 
+## THE WHOLE EVENT IN ONE BOOT — the agent throwing, the arc, the fuse, the
+## boom, the destruction, the consequence channel and the light update
+## (Director, 2026-08-29: *"desde o agente arremessando até o update da luz"*).
+##
+## `_capture_throw_filmstrip()` is built for the ~0.5 s ARC only and stops there;
+## this one drives the real player actions and then keeps grabbing frames through
+## the entire detonation. Run under `--fixed-fps 60` and encode the PNGs at 60 fps
+## for real-time playback — the detonation VFX age by `delta`, so without the
+## fixed step the strip lies about the pacing.
+##
+## Envs:
+##   INFILTRAITOR_EVENT_AGENT_CELL="x,y"   move the agent first (default: as placed)
+##   INFILTRAITOR_EVENT_TARGET_GU="x,y"    where to throw (default: agent + (3,0))
+##   INFILTRAITOR_EVENT_FRAMES_TOTAL=N     frames to capture (default 460 ≈ 7.7 s)
+##   INFILTRAITOR_EVENT_THROW_AT=N         frame the throw fires on (default 40)
+##   INFILTRAITOR_SHOT_ZOOM=f              capture zoom (default 0.85)
+func _capture_throw_event_filmstrip() -> void:
+	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip_event"
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var existing := DirAccess.open(out_dir)
+	if existing != null:
+		for f in existing.get_files():
+			if f.begins_with("ev_") and f.ends_with(".png"):
+				existing.remove(f)
+
+	_seed_dev_grenades_if_empty("EVENT-FILM")
+
+	var agent_env := OS.get_environment("INFILTRAITOR_EVENT_AGENT_CELL")
+	if agent_env.contains(",") and agent != null:
+		var ap := agent_env.split(",")
+		if ap.size() == 2 and ap[0].is_valid_int() and ap[1].is_valid_int():
+			agent.set_cell(Vector2i(ap[0].to_int(), ap[1].to_int()))
+
+	var target_gu := Vector2i(-9999, -9999)
+	var target_env := OS.get_environment("INFILTRAITOR_EVENT_TARGET_GU")
+	if target_env.contains(","):
+		var tp := target_env.split(",")
+		if tp.size() == 2 and tp[0].is_valid_int() and tp[1].is_valid_int():
+			target_gu = Vector2i(tp[0].to_int(), tp[1].to_int())
+
+	var total_env := OS.get_environment("INFILTRAITOR_EVENT_FRAMES_TOTAL")
+	var total: int = total_env.to_int() if total_env.is_valid_int() else 460
+	var throw_at_env := OS.get_environment("INFILTRAITOR_EVENT_THROW_AT")
+	var throw_at: int = throw_at_env.to_int() if throw_at_env.is_valid_int() else 40
+	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
+	var zoom: float = zoom_env.to_float() if zoom_env.is_valid_float() else 0.85
+
+	## Dev vision draws the red range perimeter, the aim dome and the ray fan over
+	## the whole throw — none of which the player sees. Off for the capture.
+	if _vision_controller != null and _vision_controller.dev_vision:
+		_vision_controller.dev_vision = false
+		if _vision_controller.has_method("_apply_dev_vision"):
+			_vision_controller._apply_dev_vision()
+
+	## Enter targeting. `_set_targeting_target()` clamps to the throw range, so an
+	## out-of-range GU snaps back along the ray — the actual landing GU is only
+	## known after this. `INFILTRAITOR_EVENT_TARGET_GU` unset = the agent's own
+	## default (`agent.cell + (3,0)`).
+	_test_zone_controller.enter_grenade_mode()
+	if target_gu.x != -9999:
+		_test_zone_controller._set_targeting_target(target_gu)
+	var land_gu: Vector2i = _test_zone_controller._targeting_target_gu
+	print("[EVENT-FILM] throwing to gu %s (asked %s)" % [land_gu,
+		target_gu if target_gu.x != -9999 else Vector2i(-1, -1)])
+
+	## Frame the LANDING GU — that is where the blast is — unless an explicit
+	## focus GU is given.
+	if _camera_controller != null and agent != null:
+		var focus_gu: Vector2i = land_gu
+		var focus_env := OS.get_environment("INFILTRAITOR_EVENT_FOCUS_GU")
+		if focus_env.contains(","):
+			var fp := focus_env.split(",")
+			if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
+				focus_gu = Vector2i(fp[0].to_int(), fp[1].to_int())
+		_camera_controller.set_zoom_for_capture(zoom)
+		_camera_controller.focus_on(
+			(agent._cell_to_world(agent.cell) + agent._cell_to_world(focus_gu)) * 0.5)
+	if _fow_controller != null and agent != null:
+		_fow_controller.reveal_around(land_gu, 16)
+
+	## WAIT FOR THE PREDICTION to finish — the same gap the player fills reading
+	## the board. Without it the cook runs for seconds after the throw and the
+	## fuse looks broken.
+	var warm_guard: int = 0
+	while _prediction_cache != null and _prediction_cache.is_busy() and warm_guard < 600:
+		await get_tree().process_frame
+		warm_guard += 1
+	print("[EVENT-FILM] prediction warm after %d frame(s)" % warm_guard)
+	for _i in range(20):
+		await get_tree().process_frame
+
+	var shot := 0
+	var threw := false
+	for i in range(maxi(total, 1)):
+		if i == maxi(throw_at, 0) and not threw:
+			threw = true
+			_test_zone_controller.execute_grenade_throw()
+		await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		if img != null:
+			img.save_png("%s/ev_%03d.png" % [out_dir, shot])
+			shot += 1
+		await get_tree().process_frame
+	print("[EVENT-FILM] wrote %d frame(s) to %s (throw on frame %d)" % [shot, out_dir, throw_at])
+
+
 func _capture_detonation_filmstrip() -> void:
 	var frames_env := OS.get_environment("INFILTRAITOR_FILMSTRIP_FRAMES")
 	var frame_count: int = frames_env.to_int() if frames_env.is_valid_int() else 24
@@ -8726,6 +8832,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "throw_filmstrip" and _test_zone_controller != null:
 		await _capture_throw_filmstrip()
+		get_tree().quit(0)
+		return
+	elif capture_action == "throw_event" and _test_zone_controller != null:
+		await _capture_throw_event_filmstrip()
 		get_tree().quit(0)
 		return
 	elif capture_action == "agent_shot" and _agent_shot_controller != null:

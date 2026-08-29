@@ -1,7 +1,7 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟢 **D-0…D-4 ALL DONE (§8.1–§8.8). Next: D-5, then D-6.**
+**Status:** 🟢 **D-0…D-5 ALL DONE (§8.1–§8.9). Next: D-6 (remove the old path).**
 ⚠️ **D-4's symbolic fire (§5.1) was DOWNSCOPED by the Director on 2026-08-29** —
 *"a gente já chegou num visual bem bom, só falta um pouquinho de brasa nos
 materiais moles… o que a gente conseguir colocar de vermelho brilhando que vira
@@ -375,7 +375,7 @@ the board's light is wrong everywhere.
 | **D-2b** | **The pre-fabricated damage pattern** (§11.2) — an authored mask per (container class, ring, **material tier**) replacing `_select_deterministic()`'s hash ranking, authored in **voxel-local** coordinates (§11.3.4). Independent of the presentation reform. | **The Director looks at a crater.** ⚠️ Explicitly NOT gated on a millisecond: §11.2 measures the whole per-voxel determinism at 12.5% of a cook that is already 0 frames in real play. Plus: the **resistance ladder's selftests still pass** (§11.3.1), and **panels and `JunctionColumn` still take damage** (§11.3.3 — E-JUNCTION-01's exact regression). |
 | ✅ **D-3** | **BUILT 2026-08-28 (§8.4).** `DetonationPresenter` behind `INFILTRAITOR_PRESENTER=1`, choreographer still default. One commit frame at **31.4 ms** (fabric) / 28.3 (hard); the consequence channel with the §4.2 delay. `DetonationEntryWriter` extracted first so both paths share the writing. | ✅ All met, plus D-5's early: cell probe `0 RESTORED · 0 VANISHED`, 40 selftests clean, and the **settled frame is pixel-identical (0 px)** between the two paths. ⚠️ One deliberate look regression: §7.1 removes the soot fade-in the Director asked for on 2026-08-19 — judge on the video before D-6. |
 | ✅ **D-4** | **DONE — SMOKE (§8.6, §8.7) + THE BRASA (§8.8).** §8.7's plumes ship, and finding them exposed a P7b defect: `CircleField` had no `custom_aabb`, so every MultiMesh field had been culling its most distant particles since it shipped. Per-material `smoke_chance` and the height axis shipped. §8.8: the symbolic fire was **downscoped by the Director on 2026-08-29** to *"um pouquinho de brasa nos materiais moles"* — `_mark_burnt_embers()` flags the ember on every consumed voxel and the writer routes it through `EmberOverlay`'s boosted profile. No new overlay, no new wave kind. | ✅ The Director looked at the shipped D-4a/b and closed it: *"pode deixar assim mesmo"*. §8.8's brasa judged on the filmstrip. |
-| **D-5** | **The light lands** (§7). Soot into the commit; the ramp to its D-0 duration. | The final frame is **pixel-identical** to a control with only the pacing reverted — the destination must be untouched and only the path changed (the gate §14.2 earned). |
+| ✅ **D-5** | **BUILT 2026-08-29 (§8.9).** `consequence_light_seconds` 2.0 → 0.5 — the D-0 rehearsal value. Soot was already in the commit (D-3/D-3b). One `var` default; `INFILTRAITOR_LIGHT_SECONDS` still overrides. | ✅ Met by containment, not by a single 0. Same binary, same `INFILTRAITOR_RNG_SEED`, 0.5 s vs 2.0 s: **every differing pixel is inside the crater bbox — 0 outside** (`>32`: 263 in / **0 out**). The literal "settled final frame" is unreachable because the 2.0 s control ramp outlives the capture's held-camera window; the destination is identical by construction — `play_consequence_light()`'s terminal `_write_cell_bucket(to_bucket[k])` loop is unconditional. |
 | **D-6** | **Remove the old path** (§3.2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after. Lint, 40 selftests, invariants, CODEMAP. |
 | **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*), and §7.4 if it is real. ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last three sessions. |
 
@@ -874,6 +874,44 @@ inverse for the flagged ones (every flagged ember on a destroyed cell, carries
 **Deferred, on the Director's instruction:** glass — *"tem que quebrar muito mais
 com a granada, mas vamos fazer isso no final da milestone de materiais"*
 (`MATERIALS_MASTER_PLAN` M4, the non-local pane break).
+
+---
+
+### 8.9 ✅ D-5 — THE LIGHT RAMP TO ITS D-0 DURATION, 2026-08-29
+
+`consequence_light_seconds` **2.0 → 0.5** — the value the Director watched in D-0's
+pacing rehearsal and ratified. Soot was already in the commit (D-3) and the
+fade-in ladder is D-3b's, so §7's remaining work was this one number. It is a
+`var` (Rule 1) and `INFILTRAITOR_LIGHT_SECONDS` still overrides it, so a control
+is one env var from the same binary.
+
+**§14.2's reasoning holds:** 96.8% of the old 2 s beat was measured as *not a beat*
+— 640 of 661 changed cells arrived at the START. And §8.7's ruling moved the
+event's LENGTH onto the smoke (*"pode manter os 240 frames rodando até a fumaça se
+dissipar"*), so a shorter light ramp does not shorten the event — the presenter
+runs the ramp AFTER the consequence channel, so it lands as the smoke thins (§7.2).
+
+**The gate, met by CONTAINMENT rather than a single 0.** Same binary, same
+`INFILTRAITOR_RNG_SEED=77`, presenter, fabric gu (31,3), 0.5 s vs 2.0 s:
+
+| frame 264 | inside crater bbox (430,0)–(870,400) | outside |
+|---|---|---|
+| pixels differ `>2` | 34 373 | **0** |
+| `>16` | 2 195 | **0** |
+| `>32` | 263 | **0** |
+| `>64` | 2 | **0** |
+
+**Nothing outside the crater moves.** Inside it, the difference is the 2.0 s
+control's ramp still ~20% in progress at that frame — it lands around f280, past
+the capture's held-camera window, which is why the literal "settled final frame,
+0 px" is unreachable here. The destination is identical by construction:
+`play_consequence_light()`'s terminal loop writes `int(to_bucket[k])` for every
+moved cell, unconditionally, and `consequence_light_seconds` feeds only
+`frames_per_step` — an intermediate count, never the endpoint.
+
+⚠️ **`consequence_soot_seconds` is now dead on the presenter path** (only the
+choreographer's soot ramp reads it) and goes with the choreographer in D-6. §7.3's
+"one number" is D-6's to finish, not D-5's.
 
 ---
 

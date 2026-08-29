@@ -5275,12 +5275,20 @@ var consequence_soot_seconds: float = (
 ## §13.4 — *"A atualização da luz que eu coloquei como tempo explícito pode durar
 ## uns 2 segundos, iniciando depois que a fuligem aparecer."* The light does not
 ## snap any more; it arrives. A look value, same rule.
-## D-0 — `INFILTRAITOR_LIGHT_SECONDS` overrides it. This is the constant §1.2
-## measured as 43% of a fabric event and 70% of a concrete one, so it is the
-## single biggest thing the rehearsal is asking the Director to look at.
+##
+## ⚠️ **D-5 (2026-08-29) TOOK THIS 2.0 → 0.5**, the value the Director watched in
+## D-0's pacing rehearsal and ratified. §14.2 measured that 96.8% of the old 2 s
+## beat was not a beat at all (640 of 661 changed cells arrived at the START), so
+## 2.0 was never seen as 2.0 s of movement. The event's LENGTH is now carried by
+## the smoke, not by this ramp — §8.7: *"pode manter os 240 frames rodando até a
+## fumaça se dissipar"*. On the presenter this ramp runs AFTER the consequence
+## channel, so it lands as the smoke thins (§7.2).
+## `INFILTRAITOR_LIGHT_SECONDS` still overrides it, and a control run at
+## `=2.0` is D-5's pixel-identical gate: only the path changed, not the
+## destination.
 var consequence_light_seconds: float = (
 	OS.get_environment("INFILTRAITOR_LIGHT_SECONDS").to_float()
-	if OS.get_environment("INFILTRAITOR_LIGHT_SECONDS").is_valid_float() else 2.0)
+	if OS.get_environment("INFILTRAITOR_LIGHT_SECONDS").is_valid_float() else 0.5)
 ## Twelve rungs is the whole bucket ladder, so a cell whose light moves the full
 ## range steps through every value it passes and one that moves a single rung
 ## flips once. Cells still land TOGETHER — the ramp is a lerp toward the target,

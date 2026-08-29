@@ -170,6 +170,21 @@ BURN_SCHEDULE / BURN_PROFILE / BURN_PRECOOK`. `consequence_soot_seconds` goes.
 
 **"Before" 3× video:** `d6_BEFORE_choreo.mp4` (scratchpad). Gate: "after" against it.
 
+### 6c. THE LIGHT LAG — DEFERRED, NOT FIXED (`30e19b35`)
+
+Director, watching the real-time video: *"Consigo claramente ver o lag pela
+fumaça, quando aparece 'light landed'. A fumaça dá uma pausinha quando entra.
+Vamos adiar a luz até o fim mesmo — a não ser que a gente consiga colocar a
+fumaça em uma thread separada."* (A separate thread is not viable — Godot overlay
+rendering and the derive are both main-thread.)
+
+`DetonationPresenter._wait_for_smoke()` — after the consequence channel, poll
+`SmokeSparkOverlay.smoke_count()` until it drops to `light_smoke_slack` (4) or
+`light_smoke_max_s` (3.5 s) elapses, THEN `play_consequence_light()`. The ~202 ms
+derive still costs 202 ms; the freeze now lands on a still, empty scene (~5.0 s)
+instead of over drifting smoke (~3.2 s). Both values `var`. **The real fix is
+still §7.4** — compute the light field in the cook.
+
 ## 6b. NEW CAPTURE ACTION — `throw_event` (`4c89b972`)
 
 `INFILTRAITOR_CAPTURE_ACTION=throw_event` — the whole detonation in one boot from

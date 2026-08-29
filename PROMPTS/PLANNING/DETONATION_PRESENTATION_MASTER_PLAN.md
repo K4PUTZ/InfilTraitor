@@ -5,18 +5,14 @@
 *"isso conclui nosso design da explosão, com exceção do vidro… Fica pendente a
 limpeza e a otimização do código + cook da luz."*
 
-**DONE and shipped (§8.1–§8.12):** D-0…D-5, the fuse/boom pre-pass (§8.10),
-D-6 part 1 — the presenter is the only path (§8.11) — and the light-lag defer
-(§8.12). The event: fuse (grenade intact) → boom → one commit frame → the
-consequence channel (smoke, plumes, brasa) → the light lands after the smoke
-clears.
+**DONE and shipped (§8.1–§8.13):** D-0…D-5, the fuse/boom pre-pass (§8.10),
+D-6 **complete** — the presenter is the only path (part 1, §8.11) and the
+choreographer + `BurnScheduler` + `FireGlowOverlay` + ~3 000 lines of dead burn
+subsystem are deleted (part 2, §8.11) — and the light-lag defer (§8.12). The
+event: fuse (grenade intact) → boom → one commit frame → the consequence channel
+(smoke, plumes, brasa) → the light lands after the smoke clears.
 
 **PENDING — engineering, not design:**
-- **D-6 part 2** — the ~1600-line deletion (the choreographer, `BurnScheduler`,
-  `_advance_burn` + the burn profiler + residue probe in `room.gd`,
-  `FireGlowOverlay`, the D-0 env vars, `consequence_soot_seconds`). Scope, the
-  Director's 3 answers and the "before" 3× video are in §8.11. Also:
-  `consequence_light_seconds` → ~1.0 s for the Diablo-II light transform.
 - **§7.4 — the light cook.** Compute the light field in the pure cook so
   `play_consequence_light()` becomes a pixel write with no ~202 ms freeze. §8.12
   only HIDES that freeze (defers it to a still scene); this removes it. Its own
@@ -400,7 +396,7 @@ the board's light is wrong everywhere.
 | ✅ **D-3** | **BUILT 2026-08-28 (§8.4).** `DetonationPresenter` behind `INFILTRAITOR_PRESENTER=1`, choreographer still default. One commit frame at **31.4 ms** (fabric) / 28.3 (hard); the consequence channel with the §4.2 delay. `DetonationEntryWriter` extracted first so both paths share the writing. | ✅ All met, plus D-5's early: cell probe `0 RESTORED · 0 VANISHED`, 40 selftests clean, and the **settled frame is pixel-identical (0 px)** between the two paths. ⚠️ One deliberate look regression: §7.1 removes the soot fade-in the Director asked for on 2026-08-19 — judge on the video before D-6. |
 | ✅ **D-4** | **DONE — SMOKE (§8.6, §8.7) + THE BRASA (§8.8).** §8.7's plumes ship, and finding them exposed a P7b defect: `CircleField` had no `custom_aabb`, so every MultiMesh field had been culling its most distant particles since it shipped. Per-material `smoke_chance` and the height axis shipped. §8.8: the symbolic fire was **downscoped by the Director on 2026-08-29** to *"um pouquinho de brasa nos materiais moles"* — `_mark_burnt_embers()` flags the ember on every consumed voxel and the writer routes it through `EmberOverlay`'s boosted profile. No new overlay, no new wave kind. | ✅ The Director looked at the shipped D-4a/b and closed it: *"pode deixar assim mesmo"*. §8.8's brasa judged on the filmstrip. |
 | ✅ **D-5** | **BUILT 2026-08-29 (§8.9).** `consequence_light_seconds` 2.0 → 0.5 — the D-0 rehearsal value. Soot was already in the commit (D-3/D-3b). One `var` default; `INFILTRAITOR_LIGHT_SECONDS` still overrides. | ✅ Met by containment, not by a single 0. Same binary, same `INFILTRAITOR_RNG_SEED`, 0.5 s vs 2.0 s: **every differing pixel is inside the crater bbox — 0 outside** (`>32`: 263 in / **0 out**). The literal "settled final frame" is unreachable because the 2.0 s control ramp outlives the capture's held-camera window; the destination is identical by construction — `play_consequence_light()`'s terminal `_write_cell_bucket(to_bucket[k])` loop is unconditional. |
-| 🟠 **D-6** | **Remove the old path** (§3.2). **Part 1 SHIPPED (§8.11):** everything runs the presenter, the `INFILTRAITOR_PRESENTER` gate is gone, `is_resolving_action()` rewired to a blast-lock the presenter releases when the smoke is up. **Part 2 pending — pure engineering:** delete the choreographer + `BurnScheduler` + `_advance_burn`/profiler/residue-probe + `FireGlowOverlay` + the D-0 env vars + `consequence_soot_seconds`; `consequence_light_seconds` → ~1.0 s (§8.11 answer 2). | Repo-wide grep with the named consumer list pasted into the commit. Cell probe green. 3× slow-motion video before and after (the "before" is captured — §8.11). Lint, selftests (drops from 40 → 38 with the two retired), invariants, CODEMAP. |
+| ✅ **D-6** | **Remove the old path** (§3.2). **Part 1 SHIPPED (§8.11):** everything runs the presenter, the `INFILTRAITOR_PRESENTER` gate is gone, `is_resolving_action()` rewired to a blast-lock the presenter releases when the smoke is up. **Part 2 SHIPPED (§8.11):** the choreographer + selftest, `BurnScheduler` + selftest, `FireGlowOverlay`, `_advance_burn`/`start_burn`/`_burn_precook`/`_burn_final_repaint`/`_burn_residue_probe`/`await_destruction_settled` + the whole `_burn_prof_*` wall + `_capture_two_fires` are gone; `waves["burn"]` dropped from `WorldDelta`; `cook_owns_fire` → deleted (always true); `INFILTRAITOR_NO_BURN` gate moved into `_maybe_burn`; `consequence_light_seconds` 0.5 → 1.0. ~3 000 net lines. | ✅ Repo-wide grep clean (only prose/history refs remain). Lint ✅, selftests **38 clean / 0 failed** ✅ (40 → 38), invariants ✅, CODEMAP ✅. 3× video: `d6_BEFORE_choreo.mp4` vs `d6_AFTER_presenter.mp4` — the whole event still plays (fuse → boom → crater → embers → plumes → soot → light). |
 | ✅ **D-8** | **DEFER THE LIGHT DERIVE UNTIL THE SMOKE CLEARS (§8.12).** `DetonationPresenter._wait_for_smoke()` polls `SmokeSparkOverlay.smoke_count()` before `play_consequence_light()`. The Director saw the ~202 ms freeze reading as a stutter over drifting smoke. | ✅ The Director watched the real-time video: the freeze now lands on a still, empty scene (~5.0 s) and does not read. **Not §7.4** — the derive still costs 202 ms. |
 | **§7.4** | **THE LIGHT COOK.** Compute the light field in the pure cook (the WALK phase already does 133 ms of that work and lights a predicted crater right — `PREDICTION_MASTER_PLAN` §8.8) and apply it as a pixel write. Removes the ~202 ms freeze D-8 only hides. | The board's light is pixel-identical to the current derive result, everywhere. Its own task — getting it wrong is wrong everywhere. |
 | **D-7** | **The rhythm pass** the Director deferred (*"o ritmo ainda precisa melhorar"*). ⚠️ **Carries `SOOT_STORAGE_REFORM` SS-6** — now explicitly wanted (§11.3.4) and blocked on a capture action that rotates the view, which does not exist. | Video, 3× slow motion — the instrument that found every defect of the last four sessions. |
@@ -982,6 +978,43 @@ gains the `INFILTRAITOR_NO_BURN` gate; `waves["burn"]` drops), `world_delta.gd`
 removed:** `INFILTRAITOR_PRESENTER`, `INFILTRAITOR_FRONT_FRAMES`,
 `INFILTRAITOR_SOOT_SECONDS`, `INFILTRAITOR_BURN_SCHEDULE`, `INFILTRAITOR_BURN_PROFILE`,
 `INFILTRAITOR_BURN_PRECOOK`. **`consequence_soot_seconds`** goes (choreographer-only).
+
+#### Part 2 — SHIPPED 2026-08-29
+
+Deleted, all five: `detonation_choreographer.gd` + selftest, `burn_scheduler.gd` +
+selftest, `fire_glow_overlay.gd`. `room.gd` **9 722 → 8 484 lines** — the whole
+burn subsystem (`_advance_burn`, `start_burn`, `_burn_precook`,
+`_burn_final_repaint`, `_burn_residue_probe`, `await_destruction_settled`, the
+`_burn_prof_*` wall, `BURN_SUSPEND_REGION_LIGHT`/`BURN_COMMIT_INTERVAL_S`,
+`_burn_scheduler`/`_burn_pending`/`_burn_touched_edges`/`_burn_soot_gus`, the
+`_capture_two_fires` capture + its `_tf_watch_*` helpers + `_report_two_fires_soot_drift`),
+the `_process` call and its timing wrappers, the `_fire_glow_overlay` field and
+its `add_child` + z-index wiring, and `begin_consequence_beat` /
+`_consequence_pending` / `_consequence_light_done` (write-only once
+`_burn_final_repaint` was gone). `detonation_plan_builder.gd`: `cook_owns_fire`
+deleted (the `s["burnt"]` branch is now unconditional), `no_burn` static var + an
+early return at the top of `_maybe_burn`, the census reads `burnt_cells` only.
+`world_delta.gd`: `"burn"` dropped from `waves`. `detonation_prediction.gd` /
+`test_zone_controller.gd` / `vfx_draw_probe.gd` comment rewires; `VfxDrawProbe.reset()`
+moved from `start_burn()` to `Room.begin_blast_lock()`.
+
+**Env vars removed:** `INFILTRAITOR_PRESENTER`, `INFILTRAITOR_FRONT_FRAMES`,
+`INFILTRAITOR_SOOT_SECONDS`, `INFILTRAITOR_BURN_SCHEDULE`,
+`INFILTRAITOR_BURN_PROFILE`, `INFILTRAITOR_BURN_PRECOOK`, plus the `INFILTRAITOR_BURN_END_GATE` / `_MAPWIDE_END` / `_RESIDUE_PROBE` /
+`_PRECOOK_STAGES` / `TWO_FIRES*` diagnostics that lived inside the deleted funcs.
+(`INFILTRAITOR_BURN_PROBE_*` stays — it belongs to `_capture_light_burn_probe`.)
+`INFILTRAITOR_NO_BURN` survives, now read in `DetonationPlanBuilder`.
+`consequence_light_seconds` **0.5 → 1.0** (§8.11 answer 2, the swiffh SFX still
+deferred to audio).
+
+**Gates:** lint ✅ · selftests **38 clean / 0 failed** ✅ (40 → 38) · invariants ✅ ·
+CODEMAP ✅ (220 scripts). Repo-wide grep for every deleted symbol: only prose /
+history references remain (`"the trap DetonationChoreographer's header warned
+about"` and the like). **3× slow-motion gate:** `d6_AFTER_presenter.mp4`
+(scratchpad, 240 frames @ 20 fps) against `d6_BEFORE_choreo.mp4` — the whole event
+still plays: fuse sputter, boom strobe, orange fireball, crater in the wall,
+embers cooling yellow → red → charcoal, plumes rising and drifting, soot on the
+scorched face, light settling last. Net **~3 000 lines removed**.
 
 ---
 

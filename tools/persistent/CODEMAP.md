@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**225 scripts · 73435 lines total** (under `godot/scripts/`)
+**220 scripts · 70474 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,9 +17,9 @@
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, fire_glow_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, burn_scheduler.gd, detonation_choreographer.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, burn_scheduler_selftest.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_choreographer_selftest.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_test.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_test.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_test.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_test.gd, panel_base_test.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_tests.gd, resolver_hardening_tests.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_test.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -506,7 +506,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `vfx_draw_probe.gd`
 
-`class_name VfxDrawProbe` · extends `RefCounted` · 151 lines
+`class_name VfxDrawProbe` · extends `RefCounted` · 148 lines
 
 `godot/scripts/debug/vfx_draw_probe.gd`
 
@@ -1207,14 +1207,6 @@ extends `Node2D` · 143 lines
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func set_show_labels(show_labels: bool) -> void:`
-
----
-
-### `fire_glow_overlay.gd`
-
-`class_name FireGlowOverlay` · extends `Node2D` · 113 lines
-
-`godot/scripts/overlays/fire_glow_overlay.gd`
 
 ---
 
@@ -1926,35 +1918,6 @@ extends `Node2D` · 43 lines
 
 ---
 
-### `burn_scheduler.gd`
-
-`class_name BurnScheduler` · 109 lines
-
-`godot/scripts/systems/destruction/burn_scheduler.gd`
-
-> BurnScheduler — MATERIALS_MASTER_PLAN M3-3. The clock fire burns on. `DetonationPlanBuilder` decides WHICH voxels burn away and WHEN, inside the pure plan (`waves["burn"]`, entries of `{voxel, cell, level, at}`). This holds that schedule and answers one question per frame: which of them are due now. ⚠️ IT WRITES NOTHING. `advance()` returns the voxels whose time has come and the caller commits them — `BlastCalculator.commit_damage()` stays the single writer (DESTRUCTION_MASTER_PLAN §3), and a scheduler that reached for Voxels itself would be a second one. It also makes the whole class testable headless with no room, no renderer and no registries. §3.3, Director 2026-08-21: the tick is `delta` for v1 — *"o fogo precisa ficar existindo em looping enquanto o jogador pensa, pra não ficar congelado"* — and the turn-based variant stays a live proposal. **That swap is this file's whole design constraint**: every piece of delta arithmetic lives in `advance()`, so moving to per-turn advancement is changing WHO calls it and with what, not rewriting the burn. Nothing else in the codebase should ever add its own `_burn_elapsed`.
-
-**Public API**
-- `func schedule(burn_wave: Dictionary) -> void:`
-- `func advance(delta: float) -> Array:`
-- `func is_burning() -> bool:`
-- `func cancel() -> void:`
-- `func scheduled_count() -> int:`
-- `func consumed_count() -> int:`
-- `func elapsed() -> float:`
-
----
-
-### `detonation_choreographer.gd`
-
-`class_name DetonationChoreographer` · extends `RefCounted` · 809 lines
-
-`godot/scripts/systems/destruction/detonation_choreographer.gd`
-
-> DetonationChoreographer — EXPLOSION_REBUILD_MASTER_PLAN Task 5 (E-WAVE). Plays back one DetonationPlanBuilder.build_plan() result as the real 15-wave sequence from §1's table, at `wave_interval_ms` (40, per Q5) apart. This is the ONLY class that ever turns a plan entry into a real `layer.set_cell()`/`erase_cell()` call — every value it applies was already fully resolved during Task 4's pre-compute pass, so a wave here is exactly what §2 promises: no compositing, no lookup, no light rebuild, no allocation beyond the trivial per-cell dictionary reads. §6.2 used to read: "Waves are scheduled on absolute elapsed time from the flash, so a slow wave never delays the next" — 15 independent SceneTreeTimers fired from start() at once. **Superseded 2026-08-08 by the Director's own cadence call: "vamos reduzir mais, até no máximo 1 frame por wave."** A timer cannot express that. At 20 ms on a 16.67 ms frame budget the timers did not land one per frame — they clumped (measured: waves 1-8 all inside one 14 ms window, then a 237 ms gap before wave 9), because each fires on the first frame past its own absolute deadline and the process frame rate does not divide 20 ms evenly. Driving the sequence off `process_frame` instead makes "one wave per frame" exactly true, removes the clumping, and makes the whole thing 15 frames long regardless of frame rate. What that trades away, stated plainly: a slow wave DOES now delay the next one, which is precisely what the old absolute-time scheduling existed to prevent. That is acceptable here and only here — the measured worst wave is wave 1 at ~11 ms, and every other wave is under 2 ms (see the `[E-WAVE]` log), so a wave overrunning a frame is a performance bug to fix at the source rather than a case to schedule around. Extends RefCounted, not Node: nothing here needs to be in the scene tree itself — `tree` (the SceneTree) is passed in once, to await its frames. The caller MUST keep its own strong reference to the instance for the whole ~600 ms sequence. Measured, not assumed (2026-08-07, real capture): a bound Callable held only by a SceneTreeTimer's `timeout` connection was NOT enough to keep this RefCounted alive in practice — every one of the 15 scheduled timers printed its own creation line, but not one `timeout` ever fired, because `detonate_active()`'s local `choreographer` var was the sole reference and it went out of scope the instant that function returned. Fixed by TestZoneController holding `_active_choreographer` (cleared via this class's own `finished` signal) — any other caller needs the same explicit ownership, not a shortcut through a local variable.
-
----
-
 ### `detonation_entry_writer.gd`
 
 `class_name DetonationEntryWriter` · extends `RefCounted` · 248 lines
@@ -1985,7 +1948,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2038 lines
+`class_name DetonationPlanBuilder` · 2017 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2573,7 +2536,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 255 lines
+`class_name WorldDelta` · extends `RefCounted` · 249 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2590,7 +2553,7 @@ extends `Node2D` · 43 lines
 
 **Public vars**
 - `var damage: Array = []`
-- `var waves: Dictionary = { "destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "debris": {}, "soot": {}, "burn": {}, }`
+- `var waves: Dictionary = { "destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "debris": {}, "soot": {}, }`
 - `var census: Dictionary = {}`
 - `var touched: Array[Vector3i] = []`
 - `var touched_voxels: Array = []`
@@ -3130,31 +3093,6 @@ extends `SceneTree` · 342 lines
 
 ---
 
-### `burn_scheduler_selftest.gd`
-
-extends `SceneTree` · 217 lines
-
-`godot/scripts/tools/burn_scheduler_selftest.gd`
-
-> MATERIALS_MASTER_PLAN M3-3 — BurnScheduler selftest. Rodar: python3 tools/persistent/run_selftests.py --only burn_scheduler The scheduler is the clock fire burns on: `DetonationPlanBuilder` decides which voxels burn away and when (pure, hashed, replayable), and this walks that schedule one `advance()` at a time. What is worth pinning, and why each one would hurt: - **advance() WRITES NOTHING.** It returns the due voxels and the room commits them, so `commit_damage()` stays the single writer. A scheduler that destroyed voxels itself would be a second one, and would also be untestable without a room. - **A hole is not a target.** The blast that lit the fire may already have destroyed a scheduled voxel; re-marking it is the defect W-FIX-01 closed on the shot path, and `set_damage()` still does not clamp on purpose. - **ONE advance call** (§3.3). All the delta arithmetic lives in it, so swapping `_process(delta)` for `player_turn_started` is a call-site edit. A test that advanced by wall-clock or by frame count would quietly bless a second timeline.
-
-**Constants / tuning**
-- `BurnSchedulerClass` = `preload("res://godot/scripts/systems/destruction/burn_scheduler.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_nothing_scheduled_is_never_burning() -> void:`
-- `func test_voxels_come_due_in_time_order() -> void:`
-- `func test_advance_writes_nothing() -> void:`
-- `func test_an_already_destroyed_voxel_is_skipped() -> void:`
-- `func test_ring_grouping_does_not_survive_as_ordering() -> void:`
-- `func test_cancel_drops_the_schedule() -> void:`
-
----
-
 ### `ceiling_carve_seam_selftest.gd`
 
 extends `SceneTree` · 213 lines
@@ -3303,37 +3241,6 @@ extends `SceneTree` · 159 lines
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
 - `MAP_GU_SIZE` = `26`
-
----
-
-### `detonation_choreographer_selftest.gd`
-
-extends `SceneTree` · 441 lines
-
-`godot/scripts/tools/detonation_choreographer_selftest.gd`
-
-> E-WAVE — DetonationChoreographer selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 5, 2026-08-07). Rodar: godot --headless --script res://godot/scripts/tools/detonation_choreographer_selftest.gd Boots the REAL PLAYGROUND map (Task 1b/4's own MinimalRoom scaffold), builds a REAL DetonationPlanBuilder.build_plan() result, then drives DetonationChoreographer._apply_wave() directly in the SAME order WAVE_TABLE fires them — proving the one thing a real-time capture cannot isolate on its own: that each wave's application logic is CORRECT (right cells, right values, right layer), separately from whether Godot's own SceneTimer scheduling fires them at the right real-world moment (that half is what the real windowed capture proves — timer scheduling is engine behavior, not this task's own code, so it is not re-proven here). Every expectation is checked against the REAL TileMapLayer/overlay state after each wave — never read back from the choreographer's own claim.
-
-**Constants / tuning**
-- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
-- `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
-- `DetonationChoreographerClass` = `preload("res://godot/scripts/systems/destruction/detonation_choreographer.gd")`
-- `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
-- `WallEdgeDataClass` = `preload("res://godot/scripts/world/wall_edge_data.gd")`
-- `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
-- `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
-- `SmokeSparkOverlayClass` = `preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_1_waves_apply_in_order(plan: Dictionary, renderer, smoke_overlay) -> void:`
-- `func test_2_work_queue(plan: Dictionary) -> void:`
 
 ---
 
@@ -4717,7 +4624,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1533 lines
+`class_name TestZoneController` · 1529 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -4991,7 +4898,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9722 lines
+extends `Node2D` · 8484 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5024,7 +4931,6 @@ extends `Node2D` · 9722 lines
 - `ShrapnelPreviewOverlayClass` = `preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")`
 - `TargetCursorOverlayClass` = `preload("res://godot/scripts/overlays/target_cursor_overlay.gd")`
 - `EmberOverlayClass` = `preload("res://godot/scripts/overlays/ember_overlay.gd")`
-- `FireGlowOverlayClass` = `preload("res://godot/scripts/overlays/fire_glow_overlay.gd")`
 - `SmokeSparkOverlayClass` = `preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")`
 - `DebrisOverlayClass` = `preload("res://godot/scripts/overlays/debris_overlay.gd")`
 - `ExplosionFlashOverlayClass` = `preload("res://godot/scripts/overlays/explosion_flash_overlay.gd")`

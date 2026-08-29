@@ -1221,8 +1221,8 @@ static func _commit_burn_to_delta(s: Dictionary) -> void:
 		if voxel == null:
 			continue
 		## from_blast TRUE: the fire is the blast's own consequence, and D24
-		## derives scorch from ABSENT voxels by provenance. This is the same flag
-		## `Room._advance_burn()` passed for the same reason.
+		## derives scorch from ABSENT voxels by provenance. A burnt-away voxel that
+		## claimed to be a bullet hole would scorch with the wrong soot.
 		entries.append(BlastCalculatorClass.damage_entry(
 			voxel, Voxel.DamageState.DESTROYED, true))
 		blast_cells.append(key)
@@ -1366,10 +1366,10 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 
 ## M3-3 — a lit voxel that will be CONSUMED, and when.
 ##
-## Appends to `waves["burn"]`, which is a WAVE rather than a damage entry on the
-## Delta on purpose: `delta.commit()` writes the whole blast in one frame, and
-## the whole point of fire is that it does not. The burn is a SCHEDULE the room
-## plays out afterwards, one `advance()` call at a time.
+## Records the cell in `s["burnt"]` — a damage entry on the Delta, destroyed in
+## the commit frame with everything else (D-2). `at` survives as visual
+## attribution only: which voxel wears an ember, and in what order, is what tells
+## the story once the world has already changed.
 ##
 ## The roll is FNV-1a per cell, never randf(), for `_climb_from()`'s own stated
 ## reason — this runs inside build_plan(), whose output the prediction layer
@@ -1404,24 +1404,23 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 ## build_plan() is pure and its output is cached and replayed.
 static var blast_takes_share: float = 0.70
 
-## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — the fire is the cook's, and
-## the old schedule is one env var away so a before/after runs from ONE binary.
-## That is the discipline `INFILTRAITOR_SOOT_STORE_READ` and D-0's three pacing
-## overrides earned: a comparison that needs a stash compares two builds, not two
-## behaviours.
+## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — the fire is the cook's: which
+## voxels it consumes is folded into the Delta (`_commit_burn_to_delta()`) and
+## destroyed in the commit frame, not played out over ~1.4 s by a `BurnScheduler`.
+## D-6 (2026-08-29) deleted the schedule path outright.
 ##
-## `INFILTRAITOR_BURN_SCHEDULE=1` restores `waves["burn"]`, `BurnScheduler` and
-## the 1.38 s of world mutation running underneath the animation — including
-## §9.11e, which is the defect this exists to be measured against.
-##
+## `INFILTRAITOR_NO_BURN=1` runs a blast with the fire suppressed — a control for
+## captures that want the same detonation without anything it lit burning away.
 ## Read once into a `static var` rather than per call: `build_plan()` is pure and
 ## its output is CACHED, so a switch that could change between two cooks of the
 ## same world revision would hand back a Delta built under the other rule.
-static var cook_owns_fire: bool = OS.get_environment("INFILTRAITOR_BURN_SCHEDULE") != "1"
+static var no_burn: bool = OS.get_environment("INFILTRAITOR_NO_BURN") == "1"
 
 
 static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
 		lit_at: float, flammability: float, entry_radius: float = 0.0) -> void:
+	if no_burn:
+		return
 	var burn_cells: Dictionary = s["burn_cells"]
 	var key := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
 	var consumption: float = float(burn_cells.get(key, 0.0))
@@ -1461,19 +1460,9 @@ static func _maybe_burn(s: Dictionary, voxel: Voxel, ring: int,
 	## tells the story. It is what D-4's symbolic fire reads for its per-instance
 	## phase. Nothing mutates the world off it any more, which is also why
 	## `blast_takes_share` stopped being a performance lever and became a look one.
-	if cook_owns_fire:
-		s["burnt"][Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)] = {
-			"at": lit_at + life, "ring": ring,
-		}
-		return
-	_append(s["waves"]["burn"], ring, {
-		"voxel": voxel,
-		"cell": voxel.grid_pos,
-		"level": voxel.level,
-		## Absolute seconds from the moment the schedule starts, so the room can
-		## advance a single clock rather than track per-entry state.
-		"at": lit_at + life,
-	})
+	s["burnt"][Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)] = {
+		"at": lit_at + life, "ring": ring,
+	}
 
 
 ## How far a creep may reach above the voxel that lit it, and how willingly.
@@ -1683,26 +1672,16 @@ static func print_census(delta: WorldDelta, source_gu: Vector2i) -> void:
 	## M3-3, reported for the same reason and with the same trap in mind: a burn
 	## count of zero on a map that HAS a consuming material is the finding, not
 	## the absence of a print.
-	## ⚠️ D-2 — READ OFF `burnt_cells`, NOT `waves["burn"]`.
-	## The wave is empty by default now (the fire is damage on the Delta), so a
-	## census still reading it would print `[E-BURN] 0 — nothing this blast lit has
-	## burn_consumption > 0` on every fabric blast in the game and be believed. The
-	## legacy path under `INFILTRAITOR_BURN_SCHEDULE=1` fills the wave and leaves
-	## `burnt_cells` empty, so the fallback below is what reports it.
+	## ⚠️ D-2 — READ OFF `burnt_cells`. The fire is damage on the Delta, consumed
+	## in the commit frame; a census reading a `waves["burn"]` schedule (deleted in
+	## D-6) would print `[E-BURN] 0` on every fabric blast in the game.
 	var burn_total: int = delta.burnt_cells.size()
 	var burn_last: float = 0.0
-	var burn_where: String = "consumed IN THE COMMIT"
 	for key in delta.burnt_cells.keys():
 		burn_last = maxf(burn_last, float(delta.burnt_cells[key].get("at", 0.0)))
-	if burn_total == 0:
-		burn_where = "scheduled to burn AWAY"
-		for ring in delta.waves.get("burn", {}).keys():
-			for entry in delta.waves["burn"][ring]:
-				burn_total += 1
-				burn_last = maxf(burn_last, float(entry.get("at", 0.0)))
 	if burn_total > 0:
-		print("[E-BURN] %d voxel(s) %s, last ember at %.2fs — of %d lit (%.0f%%)"
-			% [burn_total, burn_where, burn_last, ember_total,
+		print("[E-BURN] %d voxel(s) consumed IN THE COMMIT, last ember at %.2fs — of %d lit (%.0f%%)"
+			% [burn_total, burn_last, ember_total,
 			100.0 * float(burn_total) / maxf(float(ember_total), 1.0)])
 	else:
 		print("[E-BURN] 0 — nothing this blast lit has burn_consumption > 0")

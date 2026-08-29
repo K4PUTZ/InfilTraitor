@@ -1134,13 +1134,10 @@ func _plan_inventory(plan: Dictionary) -> String:
 ## already decided, and the two had drifted. E-ORGANIC-02 removed that gate, and
 ## D-6 removed the choreographer — but the KIND axis survives: a new plan key
 ## nobody wired into `DetonationPresenter` would be exactly as silent.
-##
-## `burn` is deliberately exempt: D-2 empties it (the cook owns the fire) and it
-## exists only for the retired legacy schedule.
 func _entries_playback_will_drop(plan: Dictionary) -> int:
 	var dropped: int = 0
 	for kind: String in plan.keys():
-		if kind == "burn" or DetonationPresenterClass.PLAYED_KINDS.has(kind):
+		if DetonationPresenterClass.PLAYED_KINDS.has(kind):
 			continue
 		for ring: int in plan[kind].keys():
 			dropped += plan[kind][ring].size()
@@ -1450,7 +1447,6 @@ func _start_waves(waves: Dictionary) -> void:
 		room.event_probe_report("detonation")
 		_active_presenter = null)
 	presenter.consequence_room = room
-	room.begin_consequence_beat()
 	## E-EMBER-01 / E-SMOKE-TINT-01: the VFX targets not on `start()`'s signature —
 	## the ember overlay VL-D4's per-voxel glow needs, and the per-material smoke
 	## tints only a MaterialRegistry owner can resolve.

@@ -61,7 +61,7 @@ var damage: Array = []
 ## The playback payload: `{kind: {ring: [entry]}}` for destroy / dented /
 ## cracked / smoke / ember / soot. Unchanged in shape from the Dictionary
 ## `DetonationPlanBuilder` returned before this class existed, which is why
-## `DetonationChoreographer` and both plan selftests consume `delta.waves`
+## `DetonationPresenter` and both plan selftests consume `delta.waves`
 ## and needed no other edit.
 ##
 ## `ember` and `debris` (E-EMBER-01 / E-DEBRIS-01, 2026-08-13) paint nothing on
@@ -69,21 +69,15 @@ var damage: Array = []
 ## `DebrisOverlay`/`SmokeSparkOverlay`, exactly the way `smoke` hands a puff over.
 ## They ride here anyway because both have to arrive WITH the expanding front
 ## that produced them, and the queue is what carries that ordering.
-## M3-3 (2026-08-21): `burn` is the one wave that is NOT playback. Every other
-## kind here paints or spawns something in the frames right after the commit;
-## `burn` is a SCHEDULE of world mutations the room plays out over the seconds
-## afterwards — {voxel, cell, level, at} — because the whole point of fire is
-## that it does not all happen in one frame. It rides in `waves` because it is
-## produced by the same pure pass and has to arrive with the front that lit it.
 ##
-## ⚠️ **D-2 (2026-08-28) EMPTIED IT.** The fire is damage on this Delta now
-## (`burnt_cells` below), so `burn` is left empty by default and stays populated
-## only under `INFILTRAITOR_BURN_SCHEDULE=1`, which restores the old path whole
-## for a before/after from one binary. A consumer reading `waves["burn"]` is
-## reading the LEGACY schedule — it is not where the fire lives.
+## ⚠️ **THE FIRE IS NOT A WAVE.** M3-3 once carried it as a `burn` schedule the
+## room played out over ~1.4 s; D-2 (2026-08-28) folded it into damage on this
+## Delta (`burnt_cells` below) and D-6 (2026-08-29) deleted the schedule path and
+## `BurnScheduler` outright. Which voxels the fire consumes is committed with
+## everything else; `burnt_cells` carries the visual `at` order the embers read.
 var waves: Dictionary = {
 	"destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {},
-	"debris": {}, "soot": {}, "burn": {},
+	"debris": {}, "soot": {},
 }
 
 ## §3.4 — the cheap summary. A consumer that only needs "how much of this cover

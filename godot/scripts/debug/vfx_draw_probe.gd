@@ -35,13 +35,10 @@ class_name VfxDrawProbe
 ## mode A would make A - B include the branch and overstate submission.
 ##
 ## ⚠️ **ONE CONSUMER AT A TIME.** `take_line()` RESETS the counters, so the two
-## call sites in `Room` must not both be live: the FRAME-PROBE reports a rolling
-## 60-frame window, and the BURN-PROF reports the fire exactly. Enabling
-## `INFILTRAITOR_FRAME_PROBE=1` alongside `INFILTRAITOR_BURN_PROFILE=1` would let
-## the rolling window drain the counters the fire is still filling, and the fire's
-## line would report a fraction of its own work. **P7a runs BURN-PROF alone**, so
-## the window is the fire and nothing else; `start_burn()` calls `reset()` so
-## nothing from the boot or the blast leaks into it.
+## call site in `Room` is the FRAME-PROBE, which reports a rolling 60-frame
+## window. `Room.begin_blast_lock()` calls `reset()` so a detonation's window
+## starts at the fuse and nothing from the boot leaks into it. (The fire-scoped
+## BURN-PROF that used to share these counters went with `BurnScheduler` in D-6.)
 ##
 ## The `--disable-vsync` warning that governs every reading here lives on
 ## `Room._frame_probe`.
@@ -139,8 +136,8 @@ static func take_line(frames: int) -> String:
 	return line
 
 
-## Drop everything accumulated so far. Called from `Room.start_burn()` so a
-## fire's window starts at the fire and not at the boot.
+## Drop everything accumulated so far. Called from `Room.begin_blast_lock()` so
+## the window starts at the detonation and not at the boot.
 static func reset() -> void:
 	draw_us = 0
 	particles = 0

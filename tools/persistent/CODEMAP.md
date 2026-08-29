@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**225 scripts · 73392 lines total** (under `godot/scripts/`)
+**225 scripts · 73435 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1567,7 +1567,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 332 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 340 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -2007,7 +2007,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 333 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 368 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2025,6 +2025,8 @@ extends `Node2D` · 43 lines
 - `var storey_bias_s: float = 0.020`
 - `var jitter_s: float = 0.060`
 - `var consequence_max_seconds: float = 0.75`
+- `var light_smoke_slack: int = 4`
+- `var light_smoke_max_s: float = 3.5`
 - `var soot_fade_frames: int = 5`
 
 **Public API**

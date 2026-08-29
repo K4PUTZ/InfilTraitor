@@ -321,6 +321,14 @@ func _draw() -> void:
 		VfxDrawProbe.note(&"SmokeSpark/sparks", probe_us - puff_us, cmds - puff_cmds)
 
 
+## D-6 — `DetonationPresenter` waits on this before running the light derive, so
+## the ~200 ms freeze lands on a still scene instead of over drifting smoke
+## (Director, 2026-08-29: *"a fumaça dá uma pausinha quando a luz entra"*). Puffs
+## only; sparks are too fast and dim to matter and are not counted.
+func smoke_count() -> int:
+	return _smoke.size()
+
+
 ## Discard every in-flight puff/spark (map load/reload) — same reasoning as
 ## EmberOverlay.clear(): nothing here is state a reload needs to restore.
 func clear() -> void:

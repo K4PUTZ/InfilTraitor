@@ -102,6 +102,21 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	## unlocked; only the turn advance waits for it to land.
 	if consequence_room != null:
 		consequence_room.end_blast_lock()
+
+	## D-6 — WAIT FOR THE SMOKE TO CLEAR BEFORE THE LIGHT DERIVE.
+	##
+	## Director, 2026-08-29: *"Consigo claramente ver o lag pela fumaça, quando
+	## aparece 'light landed'. A fumaça dá uma pausinha quando entra. Vamos adiar a
+	## luz até o fim mesmo."* `Room.play_consequence_light()` runs
+	## `_repaint_voxel_light_buckets()` — the ~202 ms map-wide derive (§7.4) — in
+	## one frame, and against drifting smoke that ~12-frame freeze reads as a
+	## stutter. Deferring it until the puffs are gone puts the freeze on a still
+	## scene, where it is nearly invisible.
+	##
+	## Not a fix for §7.4 — the derive still costs 202 ms. The real fix is
+	## computing the light field in the cook. This just hides it where the Director
+	## cannot see it.
+	await _wait_for_smoke(smoke_overlay, tree)
 	## §7 — the light lands LAST, after the smoke has had its say.
 	##
 	## ⚠️ AND IT WAITS FOR THE PLUMES ON PURPOSE — Director, 2026-08-28, on being
@@ -126,6 +141,26 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 		consequence_room.event_probe_beat("LIGHT")
 		await consequence_room.play_consequence_light()
 	finished.emit()
+
+
+## How many stray puffs may still be on screen before the light runs — the last
+## few fading discs are dim enough that the derive freeze does not read on them.
+## `_max_s` is the hard cap: a blast far from material leaves almost no smoke, one
+## clipped by walls leaves a lot, and the light must not wait forever on a
+## straggler. Both `var` (Rule 1) — tuned on a video.
+var light_smoke_slack: int = 4
+var light_smoke_max_s: float = 3.5
+func _wait_for_smoke(smoke_overlay, tree: SceneTree) -> void:
+	if smoke_overlay == null or not smoke_overlay.has_method("smoke_count"):
+		return
+	var waited: float = 0.0
+	while smoke_overlay.smoke_count() > light_smoke_slack and waited < light_smoke_max_s:
+		await tree.process_frame
+		waited += tree.root.get_process_delta_time()
+	if consequence_room != null:
+		consequence_room.event_probe_beat("SMOKE CLEAR")
+	print("[E-PRESENT] smoke cleared after %.2fs (%d puff(s) left)" % [
+		waited, smoke_overlay.smoke_count()])
 
 
 ## Beat 2 — every cell this blast changes, in one frame, then one flush.

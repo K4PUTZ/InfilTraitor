@@ -1,21 +1,20 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
-**Status:** 🟢 **THE EXPLOSION DESIGN IS CLOSED — Director, 2026-08-29:**
-*"isso conclui nosso design da explosão, com exceção do vidro… Fica pendente a
-limpeza e a otimização do código + cook da luz."*
+**Status:** ✅ **FULLY CLOSED — design AND engineering, 2026-08-29.** The Director
+closed the design (*"isso conclui nosso design da explosão, com exceção do
+vidro… Fica pendente a limpeza e a otimização do código + cook da luz"*); the
+limpeza and the cook da luz then shipped. **Nothing is pending in this plan.**
 
-**DONE and shipped (§8.1–§8.14):** D-0…D-5, the fuse/boom pre-pass (§8.10),
+**DONE and shipped (§8.1–§8.16):** D-0…D-5, the fuse/boom pre-pass (§8.10),
 D-6 **complete** — the presenter is the only path (part 1, §8.11) and the
 choreographer + `BurnScheduler` + `FireGlowOverlay` + ~3 000 lines of dead burn
-subsystem are deleted (part 2, §8.11) — the light-lag defer (§8.12), and
-**D-7 — the light cook (§8.14): the freeze is 158 ms → 17.7 ms, gate-proven
-0 of 206 096 cells different from a full re-derivation.** The event: fuse
-(grenade intact) → boom → one commit frame → the consequence channel (smoke,
-plumes, brasa) → the light lands after the smoke clears.
-
-**PENDING — engineering, not design:** *(nothing — the light cook closed §7.4 and
-`throw_event` is polished, §8.13. Whatever comes next is a new plan.)*
+subsystem are deleted (part 2, §8.11) — the light-lag defer (§8.12), **D-7 — the
+light cook (§8.14): the freeze is 158 ms → 17.7 ms, gate-proven 0 of 206 096 cells
+different from a full re-derivation**, **`throw_event` polished (§8.13)** and
+**E-POP — the grenade hops to the blast centre at the boom.** The event: fuse
+(grenade intact) → boom (grenade pops up) → one commit frame → the consequence
+channel (smoke, plumes, brasa) → the light lands after the smoke clears.
 
 **Out of scope here — `MATERIALS_MASTER_PLAN` M4:** glass, *"tem que quebrar muito
 mais com a granada"* (the non-local pane break), end of the materials milestone.
@@ -1170,6 +1169,31 @@ repaint, ~48 ms each) is the follow-up if it ever matters.
 
 3× video: `d7_light_cook.mp4` (scratchpad). Selftests 38 clean, invariants,
 lint, CODEMAP.
+
+### 8.15 ✅ E-POP — THE GRENADE HOPS TO THE BLAST CENTRE, 2026-08-29
+
+> Director, on a screenshot of the settled grenade with the fuse glow floating
+> above it: the explosion point sitting a bit above the ground is right, *"então
+> a granada teria que dar um 'pulinho' de última hora quando acontece a
+> explosão."*
+
+`_start_detonation_sequence` beat 2, before the sprite is hidden: the grenade
+lurches up `blast_pop_height_px` (20) over `blast_pop_frames` (3) with an
+ease-out on a raw screen-Y step (coordinate-space-agnostic), and
+`spawn_blast_burst` / `spawn_shrapnel` fire from `boom_anchor` = the ground
+`anchor` raised by the same amount. The fuse (beat 1) still sputters at ground
+level. Both `var` (Rule 1); frames not seconds — this plays on the same frames
+the synchronous cook finishes on. Director ratified on the slow-motion video.
+
+### 8.16 ✅ `throw_event` POLISHED, 2026-08-29
+
+The §8.13 rough edges, closed: the aim HUD (dome / rays / perimeter / wireframe)
+is cleared before the loop (`INFILTRAITOR_EVENT_KEEP_HUD=1` restores it); the
+default target is the fabric floor zone gu (30, 4) — a real crater and fire, not
+concrete dents; the camera frames the landing GU, not the agent↔landing midpoint;
+`_seed_dev_grenades_if_empty()` is gone so the thrown grenade spawns at the agent
+rather than being one of the row against the far walls; `FRAMES_TOTAL` default
+460 → 620 so the capture reaches `light landed`.
 
 ---
 

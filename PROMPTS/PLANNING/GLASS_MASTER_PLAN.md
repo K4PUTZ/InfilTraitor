@@ -1,6 +1,10 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟡 v1.0 — DESIGN RATIFIED 2026-08-30, UNBUILT
+**Status:** 🟡 v1.1 — DESIGN RATIFIED 2026-08-30, UNBUILT
+**v1.1, same day:** G-D9 added and **§9 rewritten — it reverses its own first
+recommendation** after the count it rested on was actually taken (16 call sites,
+9 of which already hold the voxel; the bake seam already takes a level). The
+reversal is kept visible rather than edited away.
 **Owns:** `MATERIALS_MASTER_PLAN` M4a + M4b, which this document supersedes in
 detail. That plan keeps the milestone row; this one keeps the design.
 **Opened:** 2026-08-30, immediately after `DETONATION_PRESENTATION_MASTER_PLAN`
@@ -31,7 +35,7 @@ art order that all of it needs.
 
 | Deferred | To | Why it is not here |
 |---|---|---|
-| **A real window** (brick sill · glass · brick lintel on one face) | the scenario applications | Needs level bands on a face — a geometry reform. §9 states its full cost so the day it is scheduled nobody re-derives it |
+| **A real window** (brick cap · glass · brick cap over 3 stacked storeys) | the scenario applications | ⚠️ Its enabling capability — **multi-material slices, G-D9** — is now DESIGNED and costed in §9, and the cost is far lower than this row first assumed. What stays deferred is the AUTHORING (how a mapfile spells it), not the feasibility |
 | **Shard noise** | the sound milestone | *"Ainda não implementamos o som, ele vai ser uma parte crucial do jogo, inclusive com interface visual no cenário."* The shard STATE is built here; its gameplay consumer is not |
 | **The agent walking through a broken pane** | the movement milestone | *"Com a janela de verdade vamos poder criar a passagem, e fazer o agente atravessar, na milestone de movimentação"* |
 | **The see-through vision roll** (G-D7) | the scenario applications | It needs two rooms and a window between them to mean anything. Designed here, built there |
@@ -57,6 +61,7 @@ just not the target case.
 | **G-D6** | **Shards are game state, not decoration.** *"Cacos fazem barulho sim, é estado de jogo, e enriquece o gameplay."* They persist, they are saved, and the sound milestone will read them | ✅ Ratified 2026-08-30 |
 | **G-D7** | **Seeing through glass is a ROLL, driven by proximity, pane count and a light differential.** *"o guarda tem uma chance de enxergar através do vidro intacto, caso tanto o guarda quanto o agente estejam próximos do vidro. Mas se forem duas vidraças no caminho a chance cai bastante. […] a sala iluminada é fácil de ver de fora, quando está escuro. Ao passo que quando está claro lá fora é ao contrário: fica bem mais difícil de ver dentro, e vice-versa."* | ✅ Design ratified 2026-08-30 · **build deferred to the applications** |
 | **G-D8** | **A broken pane opens a passage, barely moves the light, and raises detection one step.** *"Com certeza, mas não influencia tanto na luz, apenas aumenta um pouco de intensidade e sobe um grau de detecção no mecanismo stealth."* | ✅ Ratified 2026-08-30 · build deferred (movement milestone) |
+| **G-D9** | **A slice can carry MORE THAN ONE MATERIAL, as a sparse per-level band map — and the Director's diagram wins over §9's first recommendation.** *(2026-08-30, from the Director's half-thickness window diagram.)* The window is **three game storeys stacked inside one code `Slice`**: brick cap · glass · glass · glass · brick cap. ⚠️ **This REVERSES the recommendation this plan shipped with**, on a measurement that contradicted it — see §9 | ✅ Ratified 2026-08-30 |
 
 ---
 
@@ -293,44 +298,116 @@ acceptance gate** — earned before the art, the way M2a was.
 
 ---
 
-## 9. The window — costed here, built elsewhere
+## 9. The window — MULTI-MATERIAL SLICES (G-D9)
 
-Recorded so the day it is scheduled nobody re-derives it. **Measured, not
-assumed:**
+⚠️ **This section was rewritten on 2026-08-30, the day it was written, and it
+REVERSES its own first recommendation.** The first version recommended splitting a
+face into several single-material slices keyed `(gu, face, level_start)`, and
+rejected the multi-material slice on the grounds that it *"turns a field into a
+query in dozens of call sites"*. **That claim was asserted without counting. It is
+false, and the count is below.** Recorded rather than quietly edited, because a
+plan that hides its own reversal teaches nobody anything.
+
+### 9.1 What the Director's diagram specifies
+
+A half-thickness glass window, built bottom-up:
 
 ```
-Edge.id   =  "EDGE_%d_%d_%s"   % [gu.x, gu.y, face]
-Slice.id  =  "SLICE_%d_%d_%s"  % [gu.x, gu.y, face]
+   ┌──────────┐  brick cap          ← storey 2, upper level band
+   │  glass   │                        storey 2, lower level band
+   ├──────────┤
+   │  glass   │  pure glass          ← storey 1, MONO-material
+   ├──────────┤
+   │  glass   │                        storey 0, upper level band
+   └──────────┘  brick cap          ← storey 0, lower level band
 ```
 
-Neither identity carries a storey or a level, and `_slices[slice.id] = slice` is
-a plain dictionary assignment — **a second element on the same face silently
-overwrites the first.** `Slice.material` is one string, taken from
-`edge.material`. So a face hosts exactly one element, of one material, over a
-contiguous storey range. The extractor's *"a pane cannot share a face with a
-wall"* `push_error` is a consequence of that key, not a policy.
+> Director, 2026-08-30: *"São 3 storey do game empilhados (slices), que formam a
+> parede completa."*
 
-A real window is brick sill · glass · brick lintel **on one face inside one
-storey** — levels 2–5 of 8. The `panels` schema is storey-granular and cannot say
-it.
+**The vocabulary, settled — and it settles a collision this project already
+carried.** The `MATERIALS_MASTER_PLAN` records that *"the Director's 'slice' is one
+storey of wall on one GU face; the code's `Slice` class is the whole face across
+every storey."* The diagram resolves it in the code's favour:
 
-**The mechanism, when it is wanted: give the level band to the identity.** A face
-becomes partitioned into level bands; each band is one element with one material;
-the key becomes `(gu, face, level_start)`. It preserves the invariant every
-consumer assumes — **a `Slice` is single-material** — so the bake, the resistance
-table, the punch table and the decals keep reading `slice.material` and keep being
-right. `PassageQuery.clear_storeys()` survives untouched: it already iterates
-`slices_of_edge()` and was written for *"every storey-face this edge ACTUALLY
-has"*.
+| Diagram | Code | Note |
+|---|---|---|
+| one stacked piece ("slice") | a **level band of 8** inside a `Slice` | `LEVELS_PER_STOREY = 8` |
+| the red box ("container / high wall") | the **`Slice`** itself | one face, every storey, `storey_count × 8` levels |
+| — | `HighWallGroup` | ⚠️ **NOT the red box.** It is a bake-time grouping of edges **horizontally**. Reusing that name for the vertical stack would be a second collision |
 
-The alternative (one Slice with a band→material map) turns a field into a query in
-dozens of call sites for no gain. Not recommended.
+**So no new container is needed.** The `Slice` already IS the red box. Only its
+single `material` string has to become a band map.
 
-Touches: `Edge`, `Slice`, `SliceGenerator`, `EdgeRegistry`, `EdgeExtractor`, the
-mapfile schema. It is this milestone's M3-2b — the largest single item, and it is
-not the fire.
+### 9.2 The measurement that reversed the recommendation
 
----
+Counted 2026-08-30 over non-test code, not estimated:
+
+| Reader of a slice's material | Sites | Already holds the `Voxel`? |
+|---|---|---|
+| render — `damage_variant_material()` ×2 | 2 | **yes** |
+| the `voxel_destroyed` signal | 1 | **yes** |
+| the shot path — `agent_shot_controller` ×4, `weapon_bench_controller` ×2 | 6 | **yes** |
+| the cook — `detonation_plan_builder` :1587 | 1 | **yes** |
+| the cook — `detonation_plan_builder` :520 | 1 | no — whole-slice batch, needs per-voxel resolution inside |
+| census / diagnostics — `room.gd` ×3 | 3 | no, and they genuinely want *"what is this wall made of"* |
+| debug gallery | 2 | no |
+| **TOTAL** | **16** | **9 already hold the voxel** |
+
+**Nine of sixteen read the material off the slice only because `Voxel` has no
+material of its own** — not because they want a property of the surface. For them
+`material_at(level)` is a mechanical substitution.
+
+**And the bake seam is already level-aware:**
+
+```gdscript
+func resolve(edge, face, voxel_xy, level: int = 0, column_in_run: int = -1)
+_compute_facade_key(material_id, facade_id, column_in_run, level, dir)
+```
+
+`resolve()` already receives the level, and the facade key is already
+`(material, facade, column, level, dir)` — **two materials on one face produce
+distinct keys with no collision.** It simply asks `edge.material` instead of asking
+per level: `baked_tile_lookup.gd:259` and `:415`.
+
+### 9.3 The data shape
+
+```
+Slice.material                    stays — the BASE / dominant material
+Slice.material_bands: Dictionary  SPARSE override, level → material
+Slice.material_at(level)          the accessor
+```
+
+**Sparse on purpose:** the overwhelming majority of slices are single-material and
+RAM is this project's constraint, not CPU (D42). A normal wall pays **zero bytes**.
+`slice.material` keeps meaning *"what is this wall made of"*, which is exactly what
+the three census sites want — they do not change.
+
+### 9.4 ⚠️ Where the real cost is, and it is NOT the 16 reads
+
+**The bake RUN.** `_group_edges_into_runs()` groups collinear edges sharing
+material+facade **horizontally**, so a facade stays continuous across GUs — that is
+what `column_in_run` is for, and it is why brick does not restart at every GU. A
+multi-material slice cuts **vertically**. The two are orthogonal axes, so a run has
+to become per **material band** rather than per edge;
+`_edges_share_material_and_facade()` compares whole edges today.
+
+This is the work. It is also the nastiest failure mode in the change: a wrong run
+breaks nothing and throws no error — the texture simply restarts in the middle of
+a wall. **It can only be caught by a capture**, which is why §11's rules apply here
+too.
+
+**Second gap, smaller, recorded now so it is not a discovery later:**
+`JunctionResolver` builds a `JunctionColumn` from `edge_a.material` — one material
+for the whole corner column. A multi-material edge would give that column the wrong
+material over part of its height. Probably irrelevant for a window (windows rarely
+reach a corner), but it is a known hole, not an unknown one.
+
+### 9.5 What is still deferred
+
+The **capability** is ratified here. The **authoring** — how a mapfile spells
+"brick cap, glass, brick cap" — belongs with the scenario applications, per the
+Director's scope ruling in §0. Nothing in §10's task order depends on it.
 
 ## 10. Task order
 

@@ -828,6 +828,19 @@ frame.
 
 ## 4. M4 — Glass
 
+> ⬆️ **SUPERSEDED IN DETAIL 2026-08-30 by
+> [`GLASS_MASTER_PLAN.md`](GLASS_MASTER_PLAN.md).** That plan carries the ratified
+> design (G-D1…G-D8), the verified seam table and the task order; M4 keeps its row
+> in this milestone and nothing below is retracted. **Three things below are now
+> ANSWERED there rather than open:** the *"what is a whole window"* question (the
+> grouping is `Slice.edge_id`, plus a `pane_id` derived at extraction), and both
+> carried defects — the far shotgun pellet that CRACKS glass and the empty DENTED
+> band — which **G-D3 converts from accidents into intent by giving glass a CRACKED
+> tier**, amending D22. One consequence worth carrying back here: G-D3 removes the
+> need for `HOLE_ONLY_MATERIALS` **and** the `INTACT` branch that §4.2 said had to
+> land together or not at all.
+
+
 ### 4.1 The rendering problem, in the Director's words
 
 > *"vamos precisar de um blend mode — porque queremos ver a textura dele por
@@ -965,8 +978,8 @@ No task list until the study lands.
 | 🟢 | **M3-5b** — soft materials become props, not walls (§3.6) | PERF §9 F3/F4/F5 |
 | ⚠️ | **M3-6** — lateral propagation through internal slices (§3.6) | PERF §9 |
 | | **M3-7** — the per-material passage table, measured | M3-6 |
-| 8 | **M4a** — glass blend mode (its own layer) | Director: glass LAST |
-| 9 | **M4b** — glass pane break + `HOLE_ONLY_MATERIALS` + the INTACT branch | design |
+| 8 | **M4a** — glass blend mode (its own layer) — ➡️ now `GLASS_MASTER_PLAN` **G1** | Director: glass LAST |
+| 9 | **M4b** — glass pane break — ➡️ now `GLASS_MASTER_PLAN` **G2/G3/G5**. ⚠️ `HOLE_ONLY_MATERIALS` and the INTACT branch are NO LONGER NEEDED (G-D3) | design ✅ ratified 2026-08-30 |
 | 10 | **M5** — voxel prop class | M3, renderer v2 |
 | 11 | **M6** — fluid research | — |
 

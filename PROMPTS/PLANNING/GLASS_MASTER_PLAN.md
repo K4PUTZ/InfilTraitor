@@ -292,6 +292,11 @@ glass needs are not the standard four:
 | `shard_floor` | fallen glass on the ground | floor family, like `earth`'s dent |
 | `frame_remnant` | jagged surviving silhouette | **geometry, not a decal** — a half-voxel substrate (§5.2) |
 
+🔎 **Reference material the Director already collected:**
+`REFERENCES/bullet-hole-transparent-glass-abstract-background-*.zip` (2026-08-02) —
+glass bullet holes, gathered a month before this plan existed. Worth opening before
+the order is written rather than commissioning from scratch.
+
 The order goes out as a standalone `PROMPTS/ART_ORDER_GLASS.md` in the shape of
 `ART_ORDER_BRICK_DECALS.md`, and **`tools/persistent/check_decal.py` is the
 acceptance gate** — earned before the art, the way M2a was.
@@ -310,6 +315,12 @@ plan that hides its own reversal teaches nobody anything.
 
 ### 9.1 What the Director's diagram specifies
 
+**Source: `REFERENCES/WINDOWS.png`** (delivered 2026-08-30, alongside `SLICES.png`
+and the rest of the architecture specs). ⚠️ **`REFERENCES/` is gitignored**
+(`.gitignore:47`) — the diagram will not exist on another machine, which is exactly
+why it is transcribed below rather than merely linked. The transcription is the
+authority in this repo; the PNG is the authority in the Director's hands.
+
 A half-thickness glass window, built bottom-up:
 
 ```
@@ -324,6 +335,20 @@ A half-thickness glass window, built bottom-up:
 
 > Director, 2026-08-30: *"São 3 storey do game empilhados (slices), que formam a
 > parede completa."*
+
+**Read off the diagram at full resolution — two of the three stacked storeys are
+multi-material, one is not:** the top storey is a brick band over glass, the bottom
+storey is glass over a brick band, and **the middle storey is pure glass** (the
+diagram labels it `HALF ESPESSURA (1 SLICE) GLASS`, and the magenta
+`MULTI MATERIAL SLICE` callout points only at the mixed one). So the capability is
+needed for two of three bands, not all of them.
+
+🔎 **An observation, NOT a ratified rule — for the Director to confirm when the
+authoring is designed.** In the finished window the black mullion grid appears to
+fall exactly on the geometry: the horizontal bars sit at the **storey boundaries**
+and the vertical bars at the **GU boundaries**. If that reading is right, a window's
+muntins are not art anyone authors — they are where the slices meet, and they come
+free. If it is wrong, they are a decal family and G-ART owes a fifth entry.
 
 **The vocabulary, settled — and it settles a collision this project already
 carried.** The `MATERIALS_MASTER_PLAN` records that *"the Director's 'slice' is one

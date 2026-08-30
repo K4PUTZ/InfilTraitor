@@ -62,6 +62,7 @@ just not the target case.
 | **G-D7** | **Seeing through glass is a ROLL, driven by proximity, pane count and a light differential.** *"o guarda tem uma chance de enxergar através do vidro intacto, caso tanto o guarda quanto o agente estejam próximos do vidro. Mas se forem duas vidraças no caminho a chance cai bastante. […] a sala iluminada é fácil de ver de fora, quando está escuro. Ao passo que quando está claro lá fora é ao contrário: fica bem mais difícil de ver dentro, e vice-versa."* | ✅ Design ratified 2026-08-30 · **build deferred to the applications** |
 | **G-D8** | **A broken pane opens a passage, barely moves the light, and raises detection one step.** *"Com certeza, mas não influencia tanto na luz, apenas aumenta um pouco de intensidade e sobe um grau de detecção no mecanismo stealth."* | ✅ Ratified 2026-08-30 · build deferred (movement milestone) |
 | **G-D9** | **A slice can carry MORE THAN ONE MATERIAL, as a sparse per-level band map — and the Director's diagram wins over §9's first recommendation.** *(2026-08-30, from the Director's half-thickness window diagram.)* The window is **three game storeys stacked inside one code `Slice`**: brick cap · glass · glass · glass · brick cap. ⚠️ **This REVERSES the recommendation this plan shipped with**, on a measurement that contradicted it — see §9 | ✅ Ratified 2026-08-30 |
+| **G-D10** | **Mullions are free or they do not exist — a continuous pane is fine.** *(Director, 2026-08-30, closing §9.1's open observation.)* If the muntin grid falls out of the geometry — horizontals at storey boundaries, verticals at GU boundaries — take it. If the glass reads as one continuous surface instead, that is equally correct. **Neither outcome is a defect, and G-ART owes NO fifth decal family.** The one thing ruled out is authoring muntins as art | ✅ Ratified 2026-08-30 |
 
 ---
 
@@ -317,9 +318,10 @@ plan that hides its own reversal teaches nobody anything.
 
 **Source: `REFERENCES/WINDOWS.png`** (delivered 2026-08-30, alongside `SLICES.png`
 and the rest of the architecture specs). ⚠️ **`REFERENCES/` is gitignored**
-(`.gitignore:47`) — the diagram will not exist on another machine, which is exactly
-why it is transcribed below rather than merely linked. The transcription is the
-authority in this repo; the PNG is the authority in the Director's hands.
+(`.gitignore:47`), so the diagram is **not versioned with this plan** — it can be
+edited or replaced and this document's history will not show it. That is why it is
+transcribed below rather than merely linked. The transcription is what the plan
+stands on; the PNG stays the Director's own working copy.
 
 A half-thickness glass window, built bottom-up:
 
@@ -343,12 +345,12 @@ diagram labels it `HALF ESPESSURA (1 SLICE) GLASS`, and the magenta
 `MULTI MATERIAL SLICE` callout points only at the mixed one). So the capability is
 needed for two of three bands, not all of them.
 
-🔎 **An observation, NOT a ratified rule — for the Director to confirm when the
-authoring is designed.** In the finished window the black mullion grid appears to
-fall exactly on the geometry: the horizontal bars sit at the **storey boundaries**
-and the vertical bars at the **GU boundaries**. If that reading is right, a window's
-muntins are not art anyone authors — they are where the slices meet, and they come
-free. If it is wrong, they are a decal family and G-ART owes a fifth entry.
+✅ **ANSWERED the same day — G-D10.** The reading was that the black mullion grid
+falls on the geometry: horizontals at **storey boundaries**, verticals at **GU
+boundaries**. The Director's ruling makes the question moot either way —
+*"caixilhos de graça, ou nem precisam existir. Se for contínuo, está ótimo."* Take
+the grid if the geometry produces it; a continuous pane is equally correct.
+**G-ART owes no fifth decal family**, and muntins are never authored as art.
 
 **The vocabulary, settled — and it settles a collision this project already
 carried.** The `MATERIALS_MASTER_PLAN` records that *"the Director's 'slice' is one

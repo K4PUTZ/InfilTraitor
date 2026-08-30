@@ -1,9 +1,10 @@
 # RESUMO_SESSAO — 2026-08-30 · THE GLASS DESIGN
 
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-30_STATE_OF_THE_PROJECT.md`
-**Kind:** design session — **no gameplay code changed.** Two documentation commits.
+**Kind:** design session — **no gameplay code changed.** Five documentation commits.
 **VERSION:** unchanged at 0.9.107.
-**Commits:** `7afb4530` (the plan) · `f4dc2bb7` (G-D9 + the §9 reversal). Both pushed.
+**Commits:** `7afb4530` (the plan) · `f4dc2bb7` (G-D9 + the §9 reversal) · `759146ee`
+(this record + WINDOWS.png) · `d8f59607` (current_state) · plus G-D10. All pushed.
 
 > Director, opening: *"Ok, vamos trabalhar o vidro então, e depois a gente organiza
 > a documentação toda."*
@@ -20,7 +21,7 @@ one explosion follow-up he had named explicitly.
 It owns `MATERIALS_MASTER_PLAN` M4a/M4b in detail; that plan keeps the milestone row
 and now points here.
 
-## 1. Nine decisions, three of which amend earlier canon
+## 1. Ten decisions, four of which amend earlier canon
 
 | # | What | Amends |
 |---|---|---|
@@ -33,6 +34,7 @@ and now points here.
 | G-D7 | Seeing through glass is a **roll** — proximity × pane count × light differential | — |
 | G-D8 | A broken pane opens a passage, barely moves the light, +1 detection step | — |
 | G-D9 | **A slice can be multi-material** (sparse per-level bands) | ⚠️ §9's own first recommendation |
+| G-D10 | **Mullions are free or absent — a continuous pane is fine.** G-ART owes no fifth decal family; muntins are never authored as art | — |
 
 **G-D3 pays for itself.** It converts two defects the milestone was carrying open
 into intent — the far shotgun pellet that already CRACKED glass against D22, and
@@ -116,7 +118,7 @@ The project had a documented ambiguity on the word *slice*. The diagram settles 
 
 ## 5. Scope — what is in the plan and what is not
 
-**IN (nine tasks, §10):** G1 transparency · G2 `pane_id` · G-ART the art order ·
+**IN (nine tasks, §10 — G-D10 removed one G-ART family rather than adding a task):** G1 transparency · G2 `pane_id` · G-ART the art order ·
 G5 the CRACKED tier · G3 the pane cascade · G4 frame remnants · G6 shards ·
 G7 pass-through · G-D4's bullet web.
 
@@ -178,11 +180,11 @@ order, with `check_decal.py` coverage earned **before** the art, the way M2a was
 collected glass bullet-hole reference on 2026-08-02, a month before this plan
 existed.
 
-**One question left open in the plan, for the Director:** in the finished window the
-black mullion grid appears to fall exactly on the geometry — horizontals at storey
-boundaries, verticals at GU boundaries. If that reading is right the muntins come
-free; if not, G-ART owes a fifth decal family. Marked in §9.1 as an observation, not
-a rule.
+**No questions left open.** The mullion observation was answered the same day —
+**G-D10**: *"caixilhos de graça, ou nem precisam existir. Se for contínuo, está
+ótimo."* Take the grid if the geometry gives it, a continuous pane is equally
+correct, and **G-ART owes no fifth decal family**. The only ruled-out option is
+authoring muntins as art.
 
 ## 7. Files changed
 
@@ -197,5 +199,12 @@ on both commits.
 
 **Reference delivered by the Director:** `REFERENCES/WINDOWS.png` + `.psd`
 (2026-08-30). ⚠️ `REFERENCES/` is gitignored (`.gitignore:47`), so the diagram is
-**transcribed into §9.1** rather than only linked — another machine will not have
-the file.
+**not versioned with the plan** — it can be edited or replaced with no trace in this
+document's history. That is why it is transcribed into §9.1 rather than only linked.
+
+⚠️ **A standing assumption was retired this session.** Director: *"Não vamos
+trabalhar em outra máquina."* The second-machine bake workflow — heavy asset
+regeneration handed off as a written order because the bakes are gitignored and the
+order was the only thing that crossed machines — **no longer applies.** Written
+orders remain useful for resuming a long bake; they are no longer a cross-machine
+necessity.

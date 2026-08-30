@@ -1,6 +1,20 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟡 v1.1 — DESIGN RATIFIED 2026-08-30, UNBUILT
+**Status:** 🟢 v1.2 — **G1 (transparency) BUILT 2026-08-30, awaiting the Director's
+blind calibration pick.** The rest (G2–G7, G-D4, G-ART) is design-ratified and
+unbuilt. G1: glass vertical faces render on their own MUL + ADD blend sublayers
+(`godot/shaders/glass_shading.gdshaderinc` + `glass_mul`/`glass_add.gdshader`),
+built lazily per level in `VoxelRenderer`, sampling an in-memory frosted atom from
+`facade_glass.png`. Roofs and glazed floor zones stay opaque for G1 (out of
+scope, and it kept the roof-coverage geometry intact). Intact glass still blocks
+light exactly as before (`build_occupancy()` re-adds the sublayer cells).
+`glass_transparency_selftest` (9 checks) is the routing gate. The MUL-vs-ADD
+strength and the ADD mode are the Director's to set from
+`tools/persistent/glass_calibration.py` — a one-boot blind strip over PLAYGROUND's
+two panes, shuffled, labels hidden, same-boot opaque control
+(`Screenshots/history/glass_transparency_calib_2026-08-30.png`).
+
+Earlier: 🟡 v1.1 — DESIGN RATIFIED 2026-08-30, UNBUILT
 **v1.1, same day:** G-D9 added and **§9 rewritten — it reverses its own first
 recommendation** after the count it rested on was actually taken (16 call sites,
 9 of which already hold the voxel; the bake seam already takes a level). The
@@ -440,7 +454,7 @@ Director's scope ruling in §0. Nothing in §10's task order depends on it.
 
 | Order | Task | Blocked by |
 |---|---|---|
-| 1 | **G1** — glass sublayers (MUL + ADD), lazy per level, shader variant | — |
+| ✅ | **G1** — glass sublayers (MUL + ADD), lazy per level, shader variant. **BUILT 2026-08-30**, awaiting the Director's blind calibration pick (`glass_calibration.py`). Scope note: vertical faces only — roofs / glazed floor zones stay opaque. Both ADD modes (facade-derived · procedural sheen) shipped so the strip compares them | — |
 | 2 | **G2** — `pane_id`: union-find for panels, occupancy flood fill for blocks (§4.2) | — |
 | 3 | **G-ART** — the art order + `check_decal.py` coverage for the four glass families | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |

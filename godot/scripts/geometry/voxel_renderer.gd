@@ -801,6 +801,27 @@ var _wall_base_z_index: int = 10
 ## looked at the right voxel.
 var _layers: Dictionary = {}               ## level:int -> TileMapLayer, sparse
 
+## GLASS G1 (GLASS_MASTER_PLAN §3.2) — glass cells do NOT live in `_layers`. They
+## render on their own MUL + ADD blend sublayers, one pair per level that actually
+## contains glass, drawn immediately above that level's opaque layer. Built lazily
+## by `_ensure_glass_sublayers()`; a map with no glass builds none. Rule 8 holds —
+## the voxels still arrive via `set_cell()`, only the layer's compositing changes.
+var _glass_layers: Dictionary = {}         ## level:int -> {"mul": TileMapLayer, "add": TileMapLayer}
+## Atlas source in `_tileset` for the in-memory frosted-glass atom the sublayers
+## sample (built from facade_glass.png). -1 until `_build_voxel_tileset()` runs.
+var _glass_frosted_source_id: int = -1
+## The five calibration knobs the glass sublayer shaders expose, mirrored here so
+## `set_glass_shader_param()` (the blind-strip capture action) can drive them and
+## every freshly-built sublayer inherits the current value. Defaults match
+## glass_shading.gdshaderinc.
+var _glass_shader_params: Dictionary = {
+	"glass_mul_strength": 0.55,
+	"glass_add_strength": 0.25,
+	"glass_add_threshold": 0.55,
+	"glass_add_mode": 0.0,
+	"glass_tint": Color(0.62, 0.74, 0.78),
+}
+
 ## LEVEL-RENUMBER — the ground plane: the lowest level that counts as WALL rather
 ## than floor/bedrock. Stage A keeps it at 0 so the numbering is untouched; stage B
 ## moves it to GeometryCoords.PLAYABLE_LEVEL and every level with it. Every
@@ -1909,6 +1930,12 @@ func apply_debug_nudge(delta: Vector2) -> void:
 	debug_nudge += delta
 	for layer in _layers.values():
 		layer.position += delta
+	## GLASS G1 — the sublayers register pixel-exact with their opaque siblings;
+	## a nudge that moved one and not the other would split them.
+	for level in _glass_layers:
+		var gsubs: Dictionary = _glass_layers[level]
+		(gsubs["mul"] as TileMapLayer).position += delta
+		(gsubs["add"] as TileMapLayer).position += delta
 
 
 ## Build runtime TileSet with 4 materials
@@ -1966,6 +1993,61 @@ func _build_voxel_tileset() -> void:
 			tile_data.set_custom_data("tile_name", material_name)
 			## VL-03-PERF: light-bucket alts minted lazily on first use — see
 			## _ensure_light_alt (eager minting dominated rotation cost).
+
+	## GLASS G1 — one extra atlas source, the frosted-glass atom the MUL/ADD
+	## sublayers sample. It carries the FROSTED PATTERN (facade_glass.png) rather
+	## than the flat pale-blue cube, because "ver a textura dele por cima do fundo"
+	## needs a pattern to see. Source id sits past the material range.
+	_glass_frosted_source_id = MATERIALS.size()
+	var frosted_atom := _build_glass_frosted_atom()
+	if frosted_atom != null:
+		var glass_source := TileSetAtlasSource.new()
+		glass_source.texture = ImageTexture.create_from_image(frosted_atom)
+		glass_source.texture_region_size = Vector2i(frosted_atom.get_width(), frosted_atom.get_height())
+		glass_source.separation = Vector2i.ZERO
+		glass_source.margins = Vector2i.ZERO
+		glass_source.create_tile(Vector2i.ZERO)
+		_tileset.add_source(glass_source, _glass_frosted_source_id)
+		var gtd: TileData = glass_source.get_tile_data(Vector2i.ZERO, 0)
+		if gtd != null:
+			gtd.texture_origin = GeometryCoords.voxel_texture_origin()
+			gtd.set_custom_data("tile_name", "glass")
+	else:
+		## B6 loud-fail: without the atom the sublayers would place nothing and
+		## glass would silently disappear rather than turn opaque.
+		push_error("[VoxelRenderer] GLASS-G1: frosted-glass atom build failed — glass panes will not render")
+		_glass_frosted_source_id = -1
+
+
+## GLASS G1 — build the 32×36 frosted-glass atom in memory: the grayscale frosted
+## pattern from facade_glass.png in RGB, the cube silhouette from voxel_glass.png
+## in alpha. Consistent with how every voxel atom is already assembled in memory
+## at room load (ASSET_PIPELINE_QUICK_REFERENCE) — no new file on disk.
+func _build_glass_frosted_atom() -> Image:
+	var facade_tex := load(MATERIAL_ASSET_ROOT + "glass/facade_glass.png")
+	var atom_tex := load(MATERIAL_ASSET_ROOT + "glass/voxel_glass.png")
+	if facade_tex == null or atom_tex == null:
+		return null
+	var facade: Image = (facade_tex as Texture2D).get_image()
+	var silhouette: Image = (atom_tex as Texture2D).get_image()
+	if facade == null or silhouette == null:
+		return null
+	var w: int = GeometryCoords.VOXEL_ATOM_W
+	var h: int = GeometryCoords.VOXEL_ATOM_H
+	## A downscale of the whole facade — not a crop — so the frosted blobs vary
+	## ACROSS the atom rather than landing on one flat patch.
+	facade = facade.duplicate()
+	facade.resize(w, h, Image.INTERPOLATE_LANCZOS)
+	if silhouette.get_width() != w or silhouette.get_height() != h:
+		silhouette = silhouette.duplicate()
+		silhouette.resize(w, h, Image.INTERPOLATE_NEAREST)
+	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in range(h):
+		for x in range(w):
+			var lum: float = facade.get_pixel(x, y).get_luminance()
+			var a: float = silhouette.get_pixel(x, y).a
+			out.set_pixel(x, y, Color(lum, lum, lum, a))
+	return out
 
 
 ## Render all slices and junction columns from registry
@@ -2390,6 +2472,28 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 			source_id = 0  # Fallback to concrete
 		atlas_coords = Vector2i.ZERO
 
+	## GLASS G1 — a glass VERTICAL face does not live on the opaque layer. Route it
+	## to this level's MUL/ADD blend sublayers so the background shows through
+	## (G-D1). `damage_variant_material()` returns "glass" for every visible glass
+	## state (D22: no marked tier), so this catches wall slices, panels and the
+	## vertical faces of a glass block. `flat_baked` HORIZONTAL glass — a roof or a
+	## glazed floor zone — stays opaque for G1: a see-through roof is out of scope
+	## and it kept the roof-coverage geometry intact. The sublayers build lazily,
+	## so a map with no vertical glass builds none.
+	if material_name == "glass" and _glass_frosted_source_id >= 0 and not flat_baked:
+		if not apply:
+			return {"source_id": _glass_frosted_source_id,
+				"atlas_coords": Vector2i.ZERO, "alternative_id": 0}
+		_ensure_glass_sublayers(level)
+		var gsubs: Dictionary = _glass_layers[level]
+		(gsubs["mul"] as TileMapLayer).set_cell(grid_pos, _glass_frosted_source_id, Vector2i.ZERO, 0)
+		(gsubs["add"] as TileMapLayer).set_cell(grid_pos, _glass_frosted_source_id, Vector2i.ZERO, 0)
+		## Clear any opaque cell a prior state left here (e.g. the calibration
+		## control preview) — an intact pane must be a true gap.
+		layer.erase_cell(grid_pos)
+		note_external_write(level, grid_pos)
+		return {}
+
 	if not apply:
 		return {"source_id": source_id, "atlas_coords": atlas_coords, "alternative_id": alternative_id}
 	layer.set_cell(grid_pos, source_id, atlas_coords, alternative_id)
@@ -2669,6 +2773,19 @@ func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
 			if not occupancy.has(lvl):
 				occupancy[lvl] = {}
 			occupancy[lvl][cell] = true
+	## GLASS G1 — glass cells left `_layers` for their own blend sublayers, but
+	## intact glass still BLOCKS light exactly as it did before G1: whether an
+	## intact pane should transmit light is a separate decision (G-D8 touches only
+	## the BROKEN pane). Adding the sublayer cells back here keeps the light field
+	## byte-identical to the opaque era.
+	for level in _glass_layers:
+		var gmul := (_glass_layers[level] as Dictionary)["mul"] as TileMapLayer
+		for cell in gmul.get_used_cells():
+			if predict_destroyed.has(Vector3i(cell.x, cell.y, level)):
+				continue
+			if not occupancy.has(level):
+				occupancy[level] = {}
+			occupancy[level][cell] = true
 	return occupancy
 
 
@@ -3193,6 +3310,21 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 		var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
 	else:
+		## GLASS G1 — a destroyed glass voxel is erased from the blend sublayers,
+		## not the opaque layer it never lived on. Same `already_gone` guard and
+		## `voxel_destroyed` contract as the opaque branch below.
+		if slice.material == "glass" and _glass_layers.has(voxel.level):
+			var gsubs: Dictionary = _glass_layers[voxel.level]
+			var gmul := gsubs["mul"] as TileMapLayer
+			var gadd := gsubs["add"] as TileMapLayer
+			var g_gone: bool = gmul.get_cell_source_id(voxel.grid_pos) == -1
+			gmul.erase_cell(voxel.grid_pos)
+			gadd.erase_cell(voxel.grid_pos)
+			note_external_write(voxel.level, voxel.grid_pos)
+			forget_ghost_record(voxel.grid_pos, voxel.level)
+			if not g_gone:
+				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
+			return
 		# Clear cell
 		if _layers.has(voxel.level):
 			## ⚠️ THE SIGNAL MEANS "A VOXEL JUST DISAPPEARED", NOT "WE PROCESSED A
@@ -3319,6 +3451,24 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 					voxel.grid_pos, relative_level(voxel.level))
 			_set_voxel_cell(voxel.grid_pos, voxel.level, earth_material)
 	else:
+		## GLASS G1 — a glass INTERIOR slab voxel (a glazed partition — the only
+		## slab kind G1 routes to the blend sublayers; roofs and glazed floor zones
+		## stay opaque) is erased from the sublayers, mirroring the slice path.
+		var glass_on_sublayer: bool = slab.material == "glass" \
+			and not (slab.role == Slab.Role.CEILING or is_zoned_floor) \
+			and _glass_layers.has(voxel.level)
+		if glass_on_sublayer:
+			var gsubs: Dictionary = _glass_layers[voxel.level]
+			var gmul := gsubs["mul"] as TileMapLayer
+			var gadd := gsubs["add"] as TileMapLayer
+			var g_gone: bool = gmul.get_cell_source_id(voxel.grid_pos) == -1
+			gmul.erase_cell(voxel.grid_pos)
+			gadd.erase_cell(voxel.grid_pos)
+			note_external_write(voxel.level, voxel.grid_pos)
+			forget_ghost_record(voxel.grid_pos, voxel.level)
+			if not g_gone:
+				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
+			return
 		var layer := get_layer(voxel.level)
 		if layer != null:
 			## Same idempotence guard as the slice path — see its note. A floor
@@ -4031,6 +4181,118 @@ func _ensure_layer(level: int) -> void:
 	_layers[level] = _build_voxel_layer_node(level)
 
 
+## GLASS G1 — the frosted / sheen sublayer pair for one level. Idempotent, lazy:
+## called from `_set_voxel_cell()` the first time a glass cell lands on `level`,
+## so a map with no glass builds nothing. The opaque layer for `level` already
+## exists by the time this runs (every render path ensures its wall layers before
+## its voxel loop), so the sublayers are added to the tree AFTER it and — sharing
+## its z_index — composite over it and under everything a level up.
+func _ensure_glass_sublayers(level: int) -> void:
+	if _glass_layers.has(level):
+		return
+	if _glass_frosted_source_id < 0:
+		return
+	_glass_layers[level] = {
+		"mul": _build_glass_sublayer_node(level, "glass_mul"),
+		"add": _build_glass_sublayer_node(level, "glass_add"),
+	}
+
+
+## GLASS G1 — one glass sublayer. `mode` is "glass_mul" or "glass_add"; the two
+## shaders differ only in `render_mode` (blend_mul vs blend_add) and share every
+## uniform through glass_shading.gdshaderinc. Transform and z math are copied
+## verbatim from `_build_voxel_layer_node()` so the sublayer registers pixel-exact
+## with its opaque sibling — the FLOOR_DEPTH_DIM tone step is the one deliberate
+## omission (it is a ground concept and would darken a blend layer's output).
+func _build_glass_sublayer_node(level: int, mode: String) -> TileMapLayer:
+	var layer := TileMapLayer.new()
+	layer.tile_set = _tileset
+	layer.name = "%s_layer_%d" % [mode, level]
+	layer.material = _make_glass_material(mode)
+
+	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
+	layer.position = Vector2(
+		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
+		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y \
+			- GeometryCoords.VOXEL_STEP_PX * float(relative_level(level))
+	)
+
+	var quad_env := OS.get_environment("INFILTRAITOR_QUADRANT")
+	if quad_env.is_valid_int():
+		layer.rendering_quadrant_size = maxi(quad_env.to_int(), 1)
+	if OS.get_environment("INFILTRAITOR_HIDE_VOXELS") == "1":
+		layer.visible = false
+
+	layer.y_sort_origin = 1
+	var rel: int = level - _ground_plane_level
+	layer.z_index = (_wall_base_z_index + rel) if rel >= 0 else (rel + 1)
+
+	add_child(layer)
+	return layer
+
+
+## GLASS G1 — a ShaderMaterial for a glass sublayer, its uniforms seeded from the
+## current `_glass_shader_params` (so a mid-run change via `set_glass_shader_param`
+## survives into any sublayer built afterwards).
+func _make_glass_material(mode: String) -> ShaderMaterial:
+	var shader = load("res://godot/shaders/%s.gdshader" % mode)
+	if shader == null:
+		push_error("[VoxelRenderer] GLASS-G1: %s.gdshader failed to load — glass will render flat" % mode)
+		return null
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	_apply_glass_params_to(mat)
+	return mat
+
+
+func _apply_glass_params_to(mat: ShaderMaterial) -> void:
+	if mat == null:
+		return
+	for key in _glass_shader_params:
+		mat.set_shader_parameter(key, _glass_shader_params[key])
+
+
+## GLASS G1 — the blind-strip capture action drives the calibration knobs through
+## here. Sets the value on every live sublayer AND records it so later sublayers
+## inherit it. `name` is one of the `_glass_shader_params` keys.
+func set_glass_shader_param(name: String, value) -> void:
+	_glass_shader_params[name] = value
+	for level in _glass_layers:
+		var subs: Dictionary = _glass_layers[level]
+		(subs["mul"] as TileMapLayer).material.set_shader_parameter(name, value)
+		(subs["add"] as TileMapLayer).material.set_shader_parameter(name, value)
+
+
+## GLASS G1 — levels that currently hold a glass sublayer pair. Sorted, for the
+## selftest and diagnostics.
+func glass_level_keys() -> Array:
+	var out: Array = _glass_layers.keys()
+	out.sort()
+	return out
+
+
+## GLASS G1 — the blind strip needs a same-boot CONTROL: glass exactly as it
+## rendered before G1, a solid pale-blue cube. Hiding the sublayers alone just
+## leaves a hole (glass no longer writes the opaque layer), so this transiently
+## paints the opaque cube back onto every glass cell and hides the sublayers.
+## `enable=false` undoes both. Capture-only — never called on the play path.
+func set_glass_opaque_preview(enable: bool) -> void:
+	var opaque_glass_id: int = MATERIALS.find("glass")
+	for level in _glass_layers:
+		var subs: Dictionary = _glass_layers[level]
+		var mul := subs["mul"] as TileMapLayer
+		var add := subs["add"] as TileMapLayer
+		var opaque := get_layer(level)
+		for cell in mul.get_used_cells():
+			if enable:
+				if opaque != null and opaque_glass_id >= 0:
+					opaque.set_cell(cell, opaque_glass_id, Vector2i.ZERO, 0)
+			elif opaque != null:
+				opaque.erase_cell(cell)
+		mul.visible = not enable
+		add.visible = not enable
+
+
 ## DESTRUCTION D1/D2/D4 — render one Slab's voxels. Each voxel independently
 ## picks its earth variant via EarthVariantSelector.variant_for(grid_pos,
 ## level) — deterministic, so this is idempotent: calling it again on the
@@ -4243,6 +4505,13 @@ func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 func clear() -> void:
 	for layer in _layers.values():
 		layer.clear()
+	## GLASS G1 — the rotation path is clear()+render(); a glass sublayer keeping
+	## its pre-rotation cells would leave a pane floating where the old view had
+	## one. The nodes stay (like the opaque layers) — only the cells go.
+	for level in _glass_layers:
+		var gsubs: Dictionary = _glass_layers[level]
+		(gsubs["mul"] as TileMapLayer).clear()
+		(gsubs["add"] as TileMapLayer).clear()
 	## OCC-02: the cells those records point at no longer exist. Keeping them would make
 	## the next restore write stale alternatives into freshly-rebuilt geometry — the
 	## rotation path (clear() + render()) goes through here every time.

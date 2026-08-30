@@ -5372,6 +5372,122 @@ func _capture_walk_filmstrip() -> void:
 	print("[P3-WALK] wrote %d frames to %s" % [frame_count, out_dir])
 
 
+## GLASS G1 — the calibration obligation (RESUMO_SESSAO_2026-08-30_GLASS_DESIGN §6):
+## the Director sets MUL vs ADD strength and the ADD mode, from a strip of variants
+## built IN ONE BOOT over PLAYGROUND's glass, with the order shuffled and the labels
+## hidden by the Python driver (glass_calibration.py). This action produces the raw
+## panels: one per (add_mode, mul_strength, add_strength) combo plus one same-boot
+## OPAQUE CONTROL (glass as it rendered before G1). Grid is env-overridable.
+func _capture_glass_calibration() -> void:
+	if _voxel_renderer == null:
+		push_error("[GLASS-CALIB] no voxel renderer")
+		get_tree().quit(1)
+		return
+	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/glass_calib"
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var existing := DirAccess.open(out_dir)
+	if existing != null:
+		for f in existing.get_files():
+			if f.ends_with(".png") or f.ends_with(".txt"):
+				existing.remove(f)
+
+	## Both ADD modes side by side (Director: "testar as opções lado a lado").
+	var modes: Array = _env_float_list("INFILTRAITOR_GLASS_MODES", [0.0, 1.0])
+	var muls: Array = _env_float_list("INFILTRAITOR_GLASS_MUL", [0.30, 0.55, 0.80])
+	var adds: Array = _env_float_list("INFILTRAITOR_GLASS_ADD", [0.12, 0.28, 0.45])
+
+	## Hide the overlays that draw directly ON the glass — the GU grid, the
+	## occlusion wireframe, the selection diamond, the cell labels. The top
+	## toolbar and the top-left dev panel are left alone; glass_calibration.py
+	## crops each panel to a glass-centred region and they fall outside it.
+	for n in [_gu_grid_overlay, _occlusion_wireframe_overlay,
+			get_node_or_null("SelectionOverlay"), get_node_or_null("TileLabelsOverlay"),
+			get_node_or_null("MovementOverlay"), get_node_or_null("PathPreview")]:
+		if n != null:
+			n.visible = false
+
+	## Frame the two half-thickness panels — (25,8) SE and (29,8) SW — the plan's
+	## primary G1 test case. One static shot with the lit floor behind them, so
+	## every panel judges the same "seeing through it" against the same scenery.
+	var focus_cell := Vector2i(27, 9)
+	var focus_env := OS.get_environment("INFILTRAITOR_GLASS_FOCUS_CELL")
+	if focus_env.contains(","):
+		var fp := focus_env.split(",")
+		if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
+			focus_cell = Vector2i(fp[0].to_int(), fp[1].to_int())
+	if _camera_controller != null and agent != null:
+		_camera_controller.focus_on(agent._cell_to_world(focus_cell))
+	var zoom_env := OS.get_environment("INFILTRAITOR_GLASS_ZOOM")
+	var zoom: float = zoom_env.to_float() if zoom_env.is_valid_float() else 0.60
+	if _camera_controller != null:
+		_camera_controller.set_zoom_for_capture(zoom)
+	if _fow_controller != null:
+		_fow_controller.reveal_around(focus_cell, 30)
+	for _s in range(45):
+		await get_tree().process_frame
+
+	var glass_levels: Array = _voxel_renderer.glass_level_keys()
+	print("[GLASS-CALIB] glass sublayers on %d level(s): %s" % [glass_levels.size(), glass_levels])
+	if glass_levels.is_empty():
+		push_warning("[GLASS-CALIB] no glass sublayers built — is this PLAYGROUND, and did glass route through the sublayers?")
+
+	var index_lines: PackedStringArray = []
+	var panel: int = 0
+
+	## The opaque control first (panel 0), so the driver always has it.
+	_voxel_renderer.set_glass_opaque_preview(true)
+	for _c in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	_save_glass_panel(out_dir, panel)
+	index_lines.append("%d\tCONTROL\topaque (pre-G1)" % panel)
+	panel += 1
+	_voxel_renderer.set_glass_opaque_preview(false)
+	for _c in range(4):
+		await get_tree().process_frame
+
+	for mode in modes:
+		_voxel_renderer.set_glass_shader_param("glass_add_mode", mode)
+		for mul in muls:
+			_voxel_renderer.set_glass_shader_param("glass_mul_strength", mul)
+			for add in adds:
+				_voxel_renderer.set_glass_shader_param("glass_add_strength", add)
+				for _c in range(6):
+					await get_tree().process_frame
+				await RenderingServer.frame_post_draw
+				_save_glass_panel(out_dir, panel)
+				index_lines.append("%d\tmode=%s\tmul=%.2f\tadd=%.2f" % [
+					panel, ("facade" if mode < 0.5 else "sheen"), mul, add])
+				panel += 1
+
+	var key := FileAccess.open("%s/index.txt" % out_dir, FileAccess.WRITE)
+	if key != null:
+		for line in index_lines:
+			key.store_line(line)
+		key.close()
+	print("[GLASS-CALIB] wrote %d panels + index.txt to %s" % [panel, out_dir])
+
+
+func _save_glass_panel(out_dir: String, panel: int) -> void:
+	var img := get_viewport().get_texture().get_image()
+	if img == null:
+		push_error("[GLASS-CALIB] null viewport image at panel %d" % panel)
+		return
+	img.save_png("%s/panel_%03d.png" % [out_dir, panel])
+
+
+## Small helper: parse "a,b,c" of floats from an env var, else the fallback.
+func _env_float_list(env_name: String, fallback: Array) -> Array:
+	var raw := OS.get_environment(env_name)
+	if raw == "":
+		return fallback
+	var out: Array = []
+	for part in raw.split(","):
+		if part.is_valid_float():
+			out.append(part.to_float())
+	return out if not out.is_empty() else fallback
+
+
 ## Give the dev-capture actions something to detonate. PLAYGROUND stopped
 ## shipping floor grenades on 2026-08-17 when they were retired (Director:
 ## "vamos fazer os testes com o agente mesmo"), and that silently killed both
@@ -7703,6 +7819,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "walk_filmstrip" and agent != null:
 		await _capture_walk_filmstrip()
+		get_tree().quit(0)
+		return
+	elif capture_action == "glass_calibration":
+		await _capture_glass_calibration()
 		get_tree().quit(0)
 		return
 	elif capture_action == "escape_open_menu":

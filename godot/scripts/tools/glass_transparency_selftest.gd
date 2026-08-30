@@ -109,11 +109,18 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 		_fail("sublayer cell counts wrong: mul=%d add=%d (expected 8/8)" % [mul_cells, add_cells])
 
 	if subs.has("mul"):
-		var src: int = (subs["mul"] as TileMapLayer).get_cell_source_id(Vector2i(24, 24))
+		var mul := subs["mul"] as TileMapLayer
+		var src: int = mul.get_cell_source_id(Vector2i(24, 24))
 		if src == r._glass_frosted_source_id and src >= 0:
-			_pass("the sublayer cell uses the frosted-glass atom source (id %d)" % src)
+			_pass("the sublayer cell uses the glass pane atom source (id %d)" % src)
 		else:
-			_fail("sublayer cell source id %d, expected frosted %d" % [src, r._glass_frosted_source_id])
+			_fail("sublayer cell source id %d, expected %d" % [src, r._glass_frosted_source_id])
+		## The slice is Face.NW → the H-flipped alternative (NW/SE step (−16,+8)).
+		var alt: int = mul.get_cell_alternative_tile(Vector2i(24, 24))
+		if alt == TileSetAtlasSource.TRANSFORM_FLIP_H:
+			_pass("a Face.NW glass cell takes the FLIP_H alternative")
+		else:
+			_fail("Face.NW glass cell alternative is %d, expected FLIP_H" % alt)
 
 	r.queue_free()
 	print("")

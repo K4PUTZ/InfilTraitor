@@ -1997,72 +1997,79 @@ func _build_voxel_tileset() -> void:
 			## VL-03-PERF: light-bucket alts minted lazily on first use — see
 			## _ensure_light_alt (eager minting dominated rotation cost).
 
-	## GLASS G1 — one extra atlas source, the frosted-glass atom the MUL/ADD
-	## sublayers sample. It carries the FROSTED PATTERN (facade_glass.png) rather
-	## than the flat pale-blue cube, because "ver a textura dele por cima do fundo"
-	## needs a pattern to see. Source id sits past the material range.
+	## GLASS G1 — one extra atlas source: the glass PANE atom. Its alpha is the
+	## fundamental domain of the wall-face lattice — a parallelogram one voxel's
+	## share of a flat sheet — so a stack of them tiles seam-to-seam with NO
+	## overlap (a translucent atom over a translucent one DOUBLE-TINTS the overlap,
+	## which is the "serrilhado" the Director flagged) and a clean diagonal edge.
+	## The frosted PATTERN no longer lives in the atom — it is sampled continuously
+	## by world position in the shader, so it does not repeat per voxel (the
+	## "xadrez"). The atom's RGB is white; only its alpha matters.
+	## Alternative 0 = the SW/NE lattice (voxels step screen (+16,+8));
+	## alternative FLIP_H serves NW/SE (they step (−16,+8)).
 	_glass_frosted_source_id = MATERIALS.size()
-	var frosted_atom := _build_glass_frosted_atom()
-	if frosted_atom != null:
+	var pane_atom := _build_glass_pane_atom()
+	if pane_atom != null:
 		var glass_source := TileSetAtlasSource.new()
-		glass_source.texture = ImageTexture.create_from_image(frosted_atom)
-		glass_source.texture_region_size = Vector2i(frosted_atom.get_width(), frosted_atom.get_height())
+		glass_source.texture = ImageTexture.create_from_image(pane_atom)
+		glass_source.texture_region_size = Vector2i(pane_atom.get_width(), pane_atom.get_height())
 		glass_source.separation = Vector2i.ZERO
 		glass_source.margins = Vector2i.ZERO
 		glass_source.create_tile(Vector2i.ZERO)
 		_tileset.add_source(glass_source, _glass_frosted_source_id)
+		## FLIP_H is a transform flag passed straight to set_cell() — the same way
+		## _render_junction_column() mirrors an atom — so no alternative tile is
+		## created; only the base tile's origin is set.
 		var gtd: TileData = glass_source.get_tile_data(Vector2i.ZERO, 0)
 		if gtd != null:
-			gtd.texture_origin = GeometryCoords.voxel_texture_origin()
+			gtd.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
 			gtd.set_custom_data("tile_name", "glass")
 	else:
 		## B6 loud-fail: without the atom the sublayers would place nothing and
 		## glass would silently disappear rather than turn opaque.
-		push_error("[VoxelRenderer] GLASS-G1: frosted-glass atom build failed — glass panes will not render")
+		push_error("[VoxelRenderer] GLASS-G1: glass pane atom build failed — glass panes will not render")
 		_glass_frosted_source_id = -1
 
 
-## GLASS G1 — build the 32×36 frosted-glass atom in memory from facade_glass.png.
-## Consistent with how every voxel atom is already assembled in memory at room
-## load (ASSET_PIPELINE_QUICK_REFERENCE) — no new file on disk. The alpha is NOT
-## the cube silhouette (see the band comment below).
-func _build_glass_frosted_atom() -> Image:
-	var facade_tex := load(MATERIAL_ASSET_ROOT + "glass/facade_glass.png")
-	if facade_tex == null:
-		return null
-	var facade: Image = (facade_tex as Texture2D).get_image()
-	if facade == null:
-		return null
-	var w: int = GeometryCoords.VOXEL_ATOM_W    # 32
-	var h: int = GeometryCoords.VOXEL_ATOM_H    # 36
-	## A downscale of the whole facade — not a crop — so the frosted blobs vary
-	## ACROSS the atom rather than landing on one flat patch.
-	facade = facade.duplicate()
-	facade.resize(w, h, Image.INTERPOLATE_LANCZOS)
+## GLASS G1 — the pane atom's texture_origin, offset from the cube atom's, so the
+## parallelogram sits where the wall face actually is. Calibrated by capture
+## (INFILTRAITOR_GLASS_ATOM_NUDGE="x,y" overrides it during a tuning pass).
+static var _GLASS_ATOM_ORIGIN_NUDGE: Vector2i = _read_glass_atom_nudge()
+static func _read_glass_atom_nudge() -> Vector2i:
+	var raw := OS.get_environment("INFILTRAITOR_GLASS_ATOM_NUDGE")
+	if raw.contains(","):
+		var p := raw.split(",")
+		if p.size() == 2 and p[0].is_valid_int() and p[1].is_valid_int():
+			return Vector2i(p[0].to_int(), p[1].to_int())
+	return Vector2i(0, 4)
 
-	## GLASS G1 — NOT the cube silhouette. A glass pane is a flat sheet, and the
-	## cube atom's top diamond overhangs its cell by VOXEL_STEP_PX − VOXEL_TILE_H
-	## px: a translucent atom drawn over a translucent atom one level up
-	## DOUBLE-TINTS that overlap band, which is the diagonal "serrilhado" the
-	## Director flagged. A band exactly VOXEL_STEP_PX tall, full width, tiles the
-	## vertical stack seam-to-seam with no overlap and no gap — the pane reads as
-	## one plane, like the occlusion quad. The 1-px feathered top/bottom edge
-	## anti-aliases the silhouette (the shader's `cover` term reads it).
-	var step: int = int(GeometryCoords.VOXEL_STEP_PX)   # 20
-	var y0: int = (h - step) / 2                        # 8 — centred in the atom
+
+## GLASS G1 — build the 32×36 glass PANE atom in memory. Alpha only: the
+## parallelogram fundamental domain of the SW/NE wall-face lattice (basis
+## e1 = screen (+16, +8) per face voxel, e2 = screen (0, −VOXEL_STEP_PX) per
+## level). RGB is white — the frosted pattern is sampled by world position in the
+## shader, not carried here. 1-px feathered edges so the silhouette AAs.
+func _build_glass_pane_atom() -> Image:
+	var w: int = GeometryCoords.VOXEL_ATOM_W          # 32
+	var h: int = GeometryCoords.VOXEL_ATOM_H          # 36
+	var step: float = GeometryCoords.VOXEL_STEP_PX    # 20
+	var run: float = float(GeometryCoords.VOXEL_ATOM_W) * 0.5   # 16 — e1.x
+	## The parallelogram, top-left at (0,0): left edge x=0 y∈[0,step], right edge
+	## x=run y∈[step/2, step/2 + step], top edge slope step/(2·run) = 0.25.
+	var slope: float = (step * 0.5) / run
 	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	for y in range(h):
-		var edge_fade: float = 1.0
-		if y < y0 or y >= y0 + step:
-			edge_fade = 0.0
-		elif y == y0 or y == y0 + step - 1:
-			edge_fade = 0.5
 		for x in range(w):
-			var lum: float = facade.get_pixel(x, y).get_luminance()
-			var xf: float = 1.0
-			if x == 0 or x == w - 1:
-				xf = 0.6
-			out.set_pixel(x, y, Color(lum, lum, lum, edge_fade * xf))
+			var fx: float = float(x) + 0.5
+			var fy: float = float(y) + 0.5
+			# signed distance to the four edges (positive = inside)
+			var d_left: float = fx
+			var d_right: float = run - fx
+			var d_top: float = fy - slope * fx
+			var d_bot: float = (slope * fx + step) - fy
+			var dist: float = min(min(d_left, d_right), min(d_top, d_bot))
+			var a: float = clampf(dist + 0.5, 0.0, 1.0)   # 1-px feather
+			out.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	return out
 
 
@@ -2497,13 +2504,18 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	## and it kept the roof-coverage geometry intact. The sublayers build lazily,
 	## so a map with no vertical glass builds none.
 	if material_name == "glass" and _glass_frosted_source_id >= 0 and not flat_baked:
+		## The pane atom is authored for the SW/NE lattice (face voxels step screen
+		## (+16,+8)); NW and SE step (−16,+8), so they take the H-flipped
+		## alternative. Face enum: NW=0, NE=1, SE=2, SW=3.
+		var glass_alt: int = TileSetAtlasSource.TRANSFORM_FLIP_H \
+			if (slice_face == Face.NW or slice_face == Face.SE) else 0
 		if not apply:
 			return {"source_id": _glass_frosted_source_id,
-				"atlas_coords": Vector2i.ZERO, "alternative_id": 0}
+				"atlas_coords": Vector2i.ZERO, "alternative_id": glass_alt}
 		_ensure_glass_sublayers(level)
 		var gsubs: Dictionary = _glass_layers[level]
-		(gsubs["mul"] as TileMapLayer).set_cell(grid_pos, _glass_frosted_source_id, Vector2i.ZERO, 0)
-		(gsubs["add"] as TileMapLayer).set_cell(grid_pos, _glass_frosted_source_id, Vector2i.ZERO, 0)
+		(gsubs["mul"] as TileMapLayer).set_cell(grid_pos, _glass_frosted_source_id, Vector2i.ZERO, glass_alt)
+		(gsubs["add"] as TileMapLayer).set_cell(grid_pos, _glass_frosted_source_id, Vector2i.ZERO, glass_alt)
 		## Clear any opaque cell a prior state left here (e.g. the calibration
 		## control preview) — an intact pane must be a true gap.
 		layer.erase_cell(grid_pos)
@@ -4263,6 +4275,11 @@ func _make_glass_material(mode: String) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	_apply_glass_params_to(mat)
+	## The frosted grain, sampled by world position (see the shader). Bound once
+	## here — it is not a calibration knob.
+	var frost_tex := load(MATERIAL_ASSET_ROOT + "glass/facade_glass.png")
+	if frost_tex != null:
+		mat.set_shader_parameter("glass_frost_tex", frost_tex)
 	return mat
 
 

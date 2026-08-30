@@ -66,6 +66,12 @@ uniform float glass_sheen_sharpness : hint_range(0.0, 1.0) = 0.74;
 // no-op (white) and the ADD side nothing.
 uniform float glass_alpha_floor : hint_range(0.0, 0.5) = 0.004;
 
+// GLASS G1 — the frosted grain, sampled by WORLD position so it flows across the
+// whole pane instead of repeating once per voxel (the "xadrez" the Director saw).
+// VoxelRenderer._make_glass_material() binds this to facade_glass.png.
+uniform sampler2D glass_frost_tex : filter_linear, repeat_enable, hint_default_white;
+uniform float glass_frost_scale = 0.010;
+
 // Canvas-space position of the vertex — MODEL_MATRIX folds in the TileMapLayer
 // quadrant transform, so this is quadrant-independent (the same reason
 // voxel_face_shading.gdshader takes VERTEX this way). Assigned directly in each
@@ -96,11 +102,10 @@ vec4 glass_mul_color(vec4 t, vec2 local) {
 		return vec4(1.0, 1.0, 1.0, 1.0);
 	}
 	float ff = glass_face_factor(local);
-	float pattern = dot(t.rgb, vec3(0.299, 0.587, 0.114));
-	// The frosted grain modulates the tint gently AROUND its mean, so the
-	// background's own texture reads through instead of flattening to one wash
-	// (G-D1) — subtle, because every voxel samples the same atom and a strong
-	// term reads as hard vertical banding across a pane.
+	// The frosted grain, sampled by WORLD position — continuous across the pane,
+	// no per-voxel repeat. Modulates the tint gently around its mean so the
+	// background's texture still reads through (G-D1).
+	float pattern = texture(glass_frost_tex, v_glass_world * glass_frost_scale).r;
 	vec3 tinted = glass_tint * (0.82 + 0.30 * pattern) * ff;
 	// A small floor (0.12) keeps a pane present even against a black background.
 	float k = mix(0.12, 1.0, glass_mul_strength);
@@ -122,7 +127,7 @@ vec4 glass_add_color(vec4 t, vec2 local) {
 	float sheen;
 	if (glass_add_mode < 0.5) {
 		// Mode 0 — the frosted facade's own bright mottling becomes the sheen.
-		float pattern = dot(t.rgb, vec3(0.299, 0.587, 0.114));
+		float pattern = texture(glass_frost_tex, v_glass_world * glass_frost_scale).r;
 		sheen = max(pattern - glass_add_threshold, 0.0)
 				/ max(1.0 - glass_add_threshold, 0.001);
 	} else {

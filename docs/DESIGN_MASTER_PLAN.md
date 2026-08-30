@@ -70,39 +70,60 @@ system to scale, never to cap (§19 Rule 1).
 |---|---|---|
 | **The Agency** | Stability, protecting global order | Reaches stability through surveillance, manipulating governments, suppressing dissent |
 | **The Network** | Transparency, information freedom | Leaks classified data; sometimes endangers innocents with indiscriminate exposure |
+| **The Agent** | The exceptional operative who keeps changing sides for the right reasons | Knows from the beginning that he is serving his own hidden plan; performs the hero for the player as deliberately as he performs it for both factions |
 
-**Neither faction is purely heroic.** The player chooses their complicity.
+**Neither faction is purely heroic, and neither is the final deception.** The
+campaign first invites the player to read the Agency/Network fracture as the
+title's answer. That is the false reveal: the Agent himself is the infiltraitor
+and the traitor, and has known it throughout.
 
 **The name is the narrative:** INFILTRAITOR — the agent is both infiltrator
-and traitor. He discovers he served the wrong side and must dismantle the
-system from within.
+and traitor. He does not discover that he served the wrong side. **He knows
+that he is the villain while the player does not**, and uses the campaign's
+heroic framing to make the player execute his plan under a false conviction.
 
 ### 2.2 Two modes
 
-**Campaign — the prehistory (3 chapters).** Linear, curated, and a complete
-tutorial. Each chapter introduces one enemy faction and a set of new
-mechanics. It has a beginning, middle and end — the traitor arc resolves here.
+**Campaign — the prehistory (3 chapters plus an Elite prologue).** Linear,
+curated, and a complete tutorial. It is the same campaign for free and paying
+players (§16); payment changes progression speed, never access. Each chapter
+introduces one enemy faction and a set of new mechanics. It has a beginning,
+middle and end — the traitor is exposed here.
 
 ```
+ELITE PROLOGUE — The Hero at Full Power
+  A flash-forward: premium armour, exceptional powers, information through
+  walls, thermal imaging, night vision and senior-grade tactical overlays.
+  The mission must still be enjoyable and balanced — a taste of the mature
+  game, not an invulnerable cheat mode.
+  Apparent truth: the Agent prevents a catastrophe.
+  Hidden truth: his heroic operation advances the plan exposed at the finale.
+  Turn: an Agency-scale melodramatic reversal strips clearance, equipment and
+  powers; the main campaign starts from zero.
+
 CHAPTER 1 — The Asset
-  The agent works for the Agency without question.
+  The Agent performs the Agency's exemplary hero; the player believes him.
   Teaches: detection, vision cones, shadows.
-  Turn: a mission covers up civilian casualties. The agent notices.
+  Hidden function: apparently noble objectives can erase evidence, extract a
+  witness or recover one component of the Agent's real plan.
 
 CHAPTER 2 — The Fracture
   First contact with a Network informant.
   Teaches: noise, cover, enemy communication.
-  Turn: the Agency starts to suspect the agent.
+  Turn: the Agency's corruption and the Agent's change of allegiance appear
+  to be the story's main revelation. This is the false resolution.
 
-CHAPTER 3 — The Traitor
-  The Agency burns his cover. The agent goes deep.
+CHAPTER 3 — The Infiltraitor
+  The Agent continues to perform the hero while using the conflict between
+  factions to complete his own objective.
   Teaches: electronics, automated systems, advanced confrontation.
-  Resolution: final choice — destroy the Agency from inside, or go public.
+  Resolution: unfiltered evidence reclassifies the campaign's targets and
+  exposes that the Agent knew he was the villain from the beginning.
   Unlocks: FREELANCE MODE.
 ```
 
 **Freelance — the endless game.** Missions come from a procedural generator
-(LLM-authored narrative, §2.4), content packs and seasonal events, community
+(LLM-authored narrative, §2.5), content packs and seasonal events, community
 contributions, and faction contracts repeated at higher stats (the Diablo
 cycle). The agent keeps growing; enemies grow proportionally; the tenth-shot
 rule (§9.2) still kills. Tension never disappears.
@@ -117,7 +138,36 @@ rule (§9.2) still kills. Tension never disappears.
 - **Dossier** — accumulated intel log between missions, for players who want
   the full narrative.
 
-### 2.4 LLM mission generation (Freelance, future)
+**The mission interface is an unreliable narrator because the Agent controls
+its intelligence.** The player chooses tactics, routes and actions, but the
+Agent supplies the strategic objective and the labels through which it is
+understood. The player is never given access to his private thoughts. Briefings
+may misdirect by omission or technically-true wording; the game may not invent
+an off-screen fact at the finale merely to manufacture surprise.
+
+### 2.4 The fair-reveal contract
+
+The final reveal must **reinterpret evidence the player really saw**, not
+invalidate the campaign with facts withheld arbitrarily. On a first playthrough
+the evidence reads as atmosphere; on a second it reads as confession:
+
+- targets recognise the Agent too early or call him by another codename;
+- apparent communication interference suppresses what witnesses are saying;
+- files carry dates that contradict the official chronology;
+- some "hostiles" flee, protect civilians or guard evidence rather than attack;
+- mission language remains technically true while its moral subject is false;
+- objectives that appear independent form one visible chain when placed in
+  their real order.
+
+The preferred reveal mechanism is the project's own information grammar: an
+outside breach or recovered source removes the Agent's filter and relabels
+`HOSTILE` as `WITNESS`, `WEAPON CACHE` as `EVIDENCE ARCHIVE`, or `EXTRACTION`
+as `ACTIVATION SITE`. **The game has done to the player what the player does to
+guards: controlled behaviour by controlling information.** A post-campaign
+Truth Mode may expose uncensored briefings, communications and dossiers to
+turn the twist into replay value; its exact scope is not yet decided.
+
+### 2.5 LLM mission generation (Freelance, future)
 
 The generator will produce briefings, NPCs with names and motivations,
 varied objectives, tier-appropriate rewards, and organically embedded
@@ -764,6 +814,13 @@ an item · escort or rescue · sabotage a system · survive an ambush.
 
 ## 15. Progression — `DESIGNED`
 
+**The Elite prologue previews the destination before progression begins.** Its
+armour, exceptional powers and senior information overlays are a temporary
+narrative loadout, not inventory the player earned and then lost. After the
+prologue, the Agent starts from zero and every demonstrated capability becomes
+a long-term progression promise. The mature powers must expand tactical
+possibility rather than turn the final game into a solved map.
+
 **Item sources:** chests on the map, NPC vendors, mission rewards, and
 [future] a TF2-style player market.
 
@@ -788,22 +845,42 @@ holds, proportional to the new ceiling.
 
 ## 16. Monetisation — `DESIGNED`
 
-| Type | Implementation |
-|---|---|
-| Pre-level ad | Interstitial, skippable after 5s |
-| Post-level ad | Interstitial, or rewarded for 2× XP/coins |
-| Continue | Rewarded video on mission failure |
-| Gadget restock | Rewarded video between missions |
-| Cosmetics | Agent skins, tile themes, takedown animations — **never pay-to-win** |
-| Ad-free pass | [Future] one-time purchase removing interstitials |
-| Content packs | [Future] DLC missions, factions, equipment |
-| Season passes | [Future] seasonal content and exclusive rewards |
-| Item market | [Future] TF2-style player trading |
+**Company identity: user-friendly before money-friendly.** The free/offline
+game must be enjoyable because of challenge and difficulty, not because an
+artificial barrier is sold back to the player. Revenue may accelerate progress,
+extend a failed run or sell expression. It may not make content permanently
+unavailable to a non-payer, fabricate urgency, punish a missed streak, sell
+random rewards to an all-ages audience, or make an online service necessary to
+enjoy the core game.
 
-**The endless model is the revenue model.** Players who reach Freelance are
-retained players whose value grows over time; content packs and season passes
-work far better against a veteran base than against a game that ends in six
-hours.
+**Access model — free-to-play, not a premium campaign.** The same curated
+campaign and Freelance mode are eventually available to every player. There is
+no premium campaign in the initial model. Paying players skip some progression
+steps and reach senior powers sooner; free players can acquire the same things
+through play. The early/shareware portion is deliberately generous enough that
+the progression difference is barely felt while the player learns the game.
+
+| Type | Ratified implementation |
+|---|---|
+| Permanent progression boost | A low-priced permanent **2× multiplier on every currency captured during gameplay**. The 1× player can earn the same purchases in twice the play; the economy is designed around that transparent proportion. Exact prices and pacing require real progression data. |
+| Continue | Initially **one** explicitly optional rewarded ad after mission death. It exists only after conventional options are exhausted and lets the player play a little longer; number of continues and exact restore point remain tunable. |
+| Offline death | Normal defeat animation and reload wait. The loss carries consequence without requiring connectivity or payment. Exact duration is presentation tuning, not an economy gate. |
+| Advertising boundary | Ads are wanted, but no automatic pre-level/post-level interstitial placement is ratified. An ad is a voluntary extra option, not the price of entering ordinary play. |
+| Cosmetics | A modest initial catalog of shop-exclusive agent cosmetics. Cosmetics express identity/state but never confer the state (`ACTOR_MASTER_PLAN` D36). |
+| Random rewards | **No purchased loot boxes** in the all-ages product. The status of play-earned random reward boxes is separate and not yet decided. |
+| FOMO boundary | No punitive streaks, artificial energy, expiring paid passes, fabricated urgency or content removed merely to force a purchase. |
+| Social surface | Players may eventually meet and talk in a lobby while missions remain short and individual. The communication model is deliberately unresolved pending safety, moderation, parental-control and operational research. No PvP is planned initially. |
+
+**This is paid acceleration, not a claim of zero paid advantage.** A paying
+player reaches powers earlier; a non-paying player reaches the same powers
+later. With no PvP initially, the boost advances one player's own campaign
+rather than defeating another player. Future competitive surfaces must revisit
+that premise explicitly instead of inheriting it by accident.
+
+**The endless model remains the revenue model.** Players who reach Freelance
+are retained players whose value grows over time, but recurring monetisation
+must be earned by a healthy game before stores, seasons or markets are layered
+onto it.
 
 ---
 
@@ -840,8 +917,27 @@ indicator (top), contextual menu (tap), portrait panel (side).
 - ✅ **Items: found or bought?** → **Both** — chests, NPCs, mission rewards.
 - ✅ **Does the game end?** → **No.** The 3-chapter campaign is prehistory;
   Freelance is infinite.
+- ✅ **Who knows the Agent is the villain?** → **The Agent knows from the
+  beginning; the player does not.** He performs the hero throughout the
+  campaign and is exposed at the finale (§2.4).
+- ✅ **Premium campaign or shared campaign?** → **Shared.** Free and paying
+  players can reach the same campaign, Freelance content and powers; payment
+  accelerates progression (§16).
+- ✅ **Purchased loot boxes for an all-ages audience?** → **No.**
 
 **Still open — do not decide these unilaterally:**
+- [ ] The Agent's concrete endgame — control both agencies, destroy them,
+  monopolise global information, or found a third power.
+- [ ] Final player agency after the reveal — embrace the Agent's plan, reject
+  it, choose among endings, or witness one canonical villain victory.
+- [ ] The Agent's moral boundary — selective manipulation/assassination versus
+  willingness to cause civilian casualties or mass catastrophe.
+- [ ] Exact 1× economy pacing and the catalog of paid boosts beyond the
+  permanent gameplay-currency 2×.
+- [ ] Rewarded continue restore point and whether one per mission remains the
+  final limit after playtesting.
+- [ ] Lobby communication model — presence/emotes, predefined phrases, public
+  text, or private communication; requires safety/operations research first.
 - [ ] Psionic protection — reserved for the future, out of the MVP.
 - [ ] Player-to-player item market — future.
 - [ ] Diagonal movement — blocked at the start, possibly a late-game skill

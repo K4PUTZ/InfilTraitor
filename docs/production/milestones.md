@@ -1074,14 +1074,19 @@ two available mistakes; this split avoids both.
   bake **compositor** does not transfer to characters, but that fallback ladder
   is exactly a per-player content-delivery contract)
 - Gifting power-ups between players — *"sem ficar infernizando com lembretes, nem
-  depender disso pra jogar"* (Director), and guarded against the never-pay-to-win
-  erosion D36 names
+  depender disso pra jogar"* (Director), and guarded by D36/§16: acceleration
+  toward freely earnable power, never exclusive power or store-dependent
+  readability
 - Forum / lobby surface where the big 3D display model (D33/D35) is the avatar
 - Item market (`DESIGN_MASTER_PLAN` §16, `[Future]`) — still future, still open
   in §18
 
 **Acceptance Criteria:**
-- **Never pay-to-win holds**, including through the gifting path
+- The full campaign, Freelance and every power have a viable free/offline path;
+  paid boosts only accelerate the same earnable progression
+- Ads remain voluntary extra options after conventional play options, never an
+  automatic toll on ordinary missions
+- No purchased random rewards or FOMO mechanics in the all-ages product
 - Every purchasable state indicator has a non-purchasable fallback (D36 / actor
   plan §7 #24)
 - Economy is tunable from data, per §19 Rule 1

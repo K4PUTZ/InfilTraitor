@@ -85,7 +85,11 @@ Each turn, the agent receives **2 Action Points (AP)**. This constraint forces m
 - **Not a pure stealth game.** Combat is possible (and sometimes necessary) — the choice between stealth and confrontation is player-driven.
 - **Not a puzzle game.** Encounters have multiple valid solutions; there is no single "correct" path.
 - **Not a pure RPG.** Character progression exists but never trivializes tactical decisions.
-- **Not free-to-play predatory.** Monetization is ads + optional cosmetics; never pay-to-win.
+- **Not friction-first free-to-play.** The full campaign, Freelance and every
+  power remain earnable without payment. Monetisation is transparent paid
+  acceleration (initially permanent 2× gameplay currency), a voluntary
+  rewarded continue and optional cosmetics — never an artificial barrier sold
+  back to the player.
 
 ---
 
@@ -143,7 +147,7 @@ The player's agency is *information-driven*: the more you know, the better you p
 | **Mobile playability** | Full experience on 5–6.5" screens without UI clutter |
 | **Difficulty clarity** | New players understand tactics within 5 minutes |
 | **Replay value** | Procedural generation ensures fresh layouts each attempt |
-| **Monetization balance** | Ad-supported with optional cosmetics; zero pay-to-win mechanics |
+| **Monetization balance** | Full free/offline path; paid acceleration reaches the same powers sooner; voluntary ads only after ordinary options; no purchased random rewards or FOMO |
 | **Platform flexibility** | iOS, Android, and HTML5 all supported without compromise |
 
 ---

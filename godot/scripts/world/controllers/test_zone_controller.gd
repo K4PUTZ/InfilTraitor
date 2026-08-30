@@ -224,6 +224,19 @@ const STROBE_SEQUENCE: Array[int] = [
 ## number to move if the strobe should sit earlier or later.
 var burst_lead_frames: int = 3
 
+## E-POP (Director, 2026-08-29): *"o ponto da explosão está um pouco mais alto em
+## relação ao chão... a granada teria que dar um 'pulinho' de última hora quando
+## acontece a explosão."* The fireball blooms `blast_pop_height_px` above the
+## settled grenade's top, and the grenade lurches up to meet it over
+## `blast_pop_frames` frames right before it becomes shrapnel — so it detonates
+## AT the blast centre instead of the explosion floating over it.
+##
+## Frames, not seconds: this plays on the same frames as the synchronous cook
+## finishing, so a seconds value would age entirely inside one stalled frame
+## (the "animate in frames, not seconds" rule).
+var blast_pop_height_px: float = 20.0
+var blast_pop_frames: int = 3
+
 
 func _init(p_room: Node) -> void:
 	room = p_room
@@ -1391,10 +1404,25 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## (Director, 2026-08-29: *"Then, the grenade becomes shrapnels and everything
 	## else happens."*). The sprite is hidden HERE, not before the cook, so the
 	## fuse beat had something on the ground to burn.
+	##
+	## E-POP — the blast centre is `blast_pop_height_px` above the ground `anchor`
+	## (the fuse burned at ground level), and the grenade lurches up to it over the
+	## last few frames so it detonates AT that point. Ease-out on the screen-Y
+	## delta, coordinate-space-agnostic (a raw `position.y` step, not a lerp
+	## between anchor and sprite-local space).
+	var boom_anchor: Vector2 = anchor - Vector2(0.0, blast_pop_height_px)
 	var g_sprite = grenade.get("sprite")
 	if g_sprite != null and is_instance_valid(g_sprite):
+		var pop_frames: int = maxi(blast_pop_frames, 1)
+		var prev_eased: float = 0.0
+		for i in range(pop_frames):
+			var t: float = float(i + 1) / float(pop_frames)
+			var eased: float = 1.0 - (1.0 - t) * (1.0 - t)
+			g_sprite.position.y -= blast_pop_height_px * (eased - prev_eased)
+			prev_eased = eased
+			await room.get_tree().process_frame
 		g_sprite.visible = false
-	room.spawn_blast_burst(anchor)
+	room.spawn_blast_burst(boom_anchor)
 	if room._camera_controller != null:
 		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
 
@@ -1410,7 +1438,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## of ramp later.
 	var frag0: int = Time.get_ticks_usec()
 	if room._shrapnel_overlay != null:
-		room._shrapnel_overlay.spawn_shrapnel(anchor, waves, room._voxel_renderer)
+		room._shrapnel_overlay.spawn_shrapnel(boom_anchor, waves, room._voxel_renderer)
 	_prof("FRAG — spawn_shrapnel %.2f ms (BEFORE the flash now)" % [
 		float(Time.get_ticks_usec() - frag0) / 1000.0])
 

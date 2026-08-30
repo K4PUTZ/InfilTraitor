@@ -208,6 +208,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-08-29_EXPLOSION_DESIGN_CLOSES.md
 - RESUMO_SESSAO_2026-08-29_THROW_EVENT_AND_POP.md
 - RESUMO_SESSAO_2026-08-30_GLASS_DESIGN.md
+- RESUMO_SESSAO_2026-08-30_GLASS_G1.md
 - RESUMO_SESSAO_2026-08-30_STATE_OF_THE_PROJECT.md
 <!-- AUTO:END pending_prompts -->
 
@@ -217,7 +218,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 **Code & Test Inventory**
 
 - GDScript modules: 159
-- Test scripts: 46
+- Test scripts: 47
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

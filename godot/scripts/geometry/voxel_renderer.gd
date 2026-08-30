@@ -815,11 +815,14 @@ var _glass_frosted_source_id: int = -1
 ## every freshly-built sublayer inherits the current value. Defaults match
 ## glass_shading.gdshaderinc.
 var _glass_shader_params: Dictionary = {
-	"glass_mul_strength": 0.55,
-	"glass_add_strength": 0.25,
+	## Defaults track glass_shading.gdshaderinc — the Director's blind pick was
+	## "between panel 14 and 15" (sheen mode, mul 0.45, add 0.25..0.45) with the
+	## tint pulled toward blue.
+	"glass_mul_strength": 0.45,
+	"glass_add_strength": 0.32,
 	"glass_add_threshold": 0.55,
-	"glass_add_mode": 0.0,
-	"glass_tint": Color(0.62, 0.74, 0.78),
+	"glass_add_mode": 1.0,
+	"glass_tint": Color(0.47, 0.63, 0.90),
 }
 
 ## LEVEL-RENUMBER — the ground plane: the lowest level that counts as WALL rather
@@ -2019,34 +2022,47 @@ func _build_voxel_tileset() -> void:
 		_glass_frosted_source_id = -1
 
 
-## GLASS G1 — build the 32×36 frosted-glass atom in memory: the grayscale frosted
-## pattern from facade_glass.png in RGB, the cube silhouette from voxel_glass.png
-## in alpha. Consistent with how every voxel atom is already assembled in memory
-## at room load (ASSET_PIPELINE_QUICK_REFERENCE) — no new file on disk.
+## GLASS G1 — build the 32×36 frosted-glass atom in memory from facade_glass.png.
+## Consistent with how every voxel atom is already assembled in memory at room
+## load (ASSET_PIPELINE_QUICK_REFERENCE) — no new file on disk. The alpha is NOT
+## the cube silhouette (see the band comment below).
 func _build_glass_frosted_atom() -> Image:
 	var facade_tex := load(MATERIAL_ASSET_ROOT + "glass/facade_glass.png")
-	var atom_tex := load(MATERIAL_ASSET_ROOT + "glass/voxel_glass.png")
-	if facade_tex == null or atom_tex == null:
+	if facade_tex == null:
 		return null
 	var facade: Image = (facade_tex as Texture2D).get_image()
-	var silhouette: Image = (atom_tex as Texture2D).get_image()
-	if facade == null or silhouette == null:
+	if facade == null:
 		return null
-	var w: int = GeometryCoords.VOXEL_ATOM_W
-	var h: int = GeometryCoords.VOXEL_ATOM_H
+	var w: int = GeometryCoords.VOXEL_ATOM_W    # 32
+	var h: int = GeometryCoords.VOXEL_ATOM_H    # 36
 	## A downscale of the whole facade — not a crop — so the frosted blobs vary
 	## ACROSS the atom rather than landing on one flat patch.
 	facade = facade.duplicate()
 	facade.resize(w, h, Image.INTERPOLATE_LANCZOS)
-	if silhouette.get_width() != w or silhouette.get_height() != h:
-		silhouette = silhouette.duplicate()
-		silhouette.resize(w, h, Image.INTERPOLATE_NEAREST)
+
+	## GLASS G1 — NOT the cube silhouette. A glass pane is a flat sheet, and the
+	## cube atom's top diamond overhangs its cell by VOXEL_STEP_PX − VOXEL_TILE_H
+	## px: a translucent atom drawn over a translucent atom one level up
+	## DOUBLE-TINTS that overlap band, which is the diagonal "serrilhado" the
+	## Director flagged. A band exactly VOXEL_STEP_PX tall, full width, tiles the
+	## vertical stack seam-to-seam with no overlap and no gap — the pane reads as
+	## one plane, like the occlusion quad. The 1-px feathered top/bottom edge
+	## anti-aliases the silhouette (the shader's `cover` term reads it).
+	var step: int = int(GeometryCoords.VOXEL_STEP_PX)   # 20
+	var y0: int = (h - step) / 2                        # 8 — centred in the atom
 	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	for y in range(h):
+		var edge_fade: float = 1.0
+		if y < y0 or y >= y0 + step:
+			edge_fade = 0.0
+		elif y == y0 or y == y0 + step - 1:
+			edge_fade = 0.5
 		for x in range(w):
 			var lum: float = facade.get_pixel(x, y).get_luminance()
-			var a: float = silhouette.get_pixel(x, y).a
-			out.set_pixel(x, y, Color(lum, lum, lum, a))
+			var xf: float = 1.0
+			if x == 0 or x == w - 1:
+				xf = 0.6
+			out.set_pixel(x, y, Color(lum, lum, lum, edge_fade * xf))
 	return out
 
 
@@ -4209,6 +4225,11 @@ func _build_glass_sublayer_node(level: int, mode: String) -> TileMapLayer:
 	layer.tile_set = _tileset
 	layer.name = "%s_layer_%d" % [mode, level]
 	layer.material = _make_glass_material(mode)
+	## The frosted atom is one tile filling its whole texture region, so there is
+	## no neighbouring tile to bleed from — linear filtering is safe here and it
+	## softens the frosted grain and the band's feathered edges (the opaque voxel
+	## layers stay nearest, this is glass-only).
+	layer.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 
 	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
 	layer.position = Vector2(

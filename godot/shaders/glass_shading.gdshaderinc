@@ -25,18 +25,19 @@
 uniform vec2 atom_size = vec2(32.0, 36.0);
 uniform float top_face_h = 16.0;
 
-// FACE-READ-01 (Director hard rule) — never let the three faces of a voxel read
-// exactly the same. Subtle by design, as in voxel_face_shading.gdshader: what
-// matters is that the three values are DISTINCT, not that they are far apart.
-// These are applied to the glass CONTRIBUTION (the tint on the MUL side, the
-// added light on the ADD side), never to absolute background brightness.
-uniform float face_top : hint_range(0.0, 1.0) = 1.00;
-uniform float face_se : hint_range(0.0, 1.0) = 0.94;
-uniform float face_sw : hint_range(0.0, 1.0) = 0.88;
+// FACE-READ-01 (Director hard rule) — the three faces of a voxel never read
+// EXACTLY the same. On a flat glass PANE, though, a visible spread reads as hard
+// diagonal shelves stepping across the sheet (Director, 2026-08-30: *"mitigar o
+// serrilhado causado pela sobreposição das faces"*). So the glass values are
+// distinct but sub-perceptual — a nod to the rule, not a relief map.
+uniform float face_top : hint_range(0.0, 1.0) = 1.000;
+uniform float face_se : hint_range(0.0, 1.0) = 0.988;
+uniform float face_sw : hint_range(0.0, 1.0) = 0.976;
 
-// The tint glass lays over the background — seeded from glass.json base_color
-// [0.62, 0.74, 0.78] by VoxelRenderer.
-uniform vec3 glass_tint : source_color = vec3(0.62, 0.74, 0.78);
+// The tint glass lays over the background. Pulled toward blue (Director,
+// 2026-08-30: *"puxar a cor do vidro mais pro azul"*) from the [0.62, 0.74, 0.78]
+// base_color; VoxelRenderer seeds the runtime value from `_glass_shader_params`.
+uniform vec3 glass_tint : source_color = vec3(0.47, 0.63, 0.90);
 
 // ---------------------------------------------------------------------------
 // CALIBRATION UNIFORMS — the Director's to set, from the blind strip
@@ -44,17 +45,17 @@ uniform vec3 glass_tint : source_color = vec3(0.62, 0.74, 0.78);
 // ---------------------------------------------------------------------------
 // How strongly the tint modulates the background. 0.0 ⇒ the pane is invisible,
 // 1.0 ⇒ full tint. A small floor is added in glass_mul_color() so a pane never
-// fully vanishes where nothing is behind it.
-uniform float glass_mul_strength : hint_range(0.0, 1.0) = 0.55;
-// How bright the additive highlights are.
-uniform float glass_add_strength : hint_range(0.0, 1.0) = 0.25;
+// fully vanishes where nothing is behind it. Default from the Director's blind
+// pick — "between panel 14 and 15", i.e. sheen mode at mul 0.45.
+uniform float glass_mul_strength : hint_range(0.0, 1.0) = 0.45;
+// How bright the additive highlights are. Panels 14/15 bracket add 0.25..0.45.
+uniform float glass_add_strength : hint_range(0.0, 1.0) = 0.32;
 // Facade luma below this contributes no sheen (ADD mode 0 only).
 uniform float glass_add_threshold : hint_range(0.0, 1.0) = 0.55;
 // 0.0 = highlights derived from the frosted facade's own bright mottling;
-// 1.0 = a procedural diagonal reflection band. Both built so the strip can
-// compare them side by side (Director: "A gente consegue testar as opções lado
-// a lado?").
-uniform float glass_add_mode : hint_range(0.0, 1.0) = 0.0;
+// 1.0 = a procedural diagonal reflection band. The Director picked the sheen
+// (mode 1); mode 0 is kept so the strip can still compare.
+uniform float glass_add_mode : hint_range(0.0, 1.0) = 1.0;
 // Procedural sheen (ADD mode 1) shape, in canvas space so the band sticks to the
 // world rather than the screen.
 uniform float glass_sheen_freq = 0.011;
@@ -103,7 +104,11 @@ vec4 glass_mul_color(vec4 t, vec2 local) {
 	vec3 tinted = glass_tint * (0.82 + 0.30 * pattern) * ff;
 	// A small floor (0.12) keeps a pane present even against a black background.
 	float k = mix(0.12, 1.0, glass_mul_strength);
-	vec3 m = mix(vec3(1.0), tinted, k);
+	// COVER — the atom's alpha is feathered at the silhouette (_build_glass_
+	// frosted_atom), so a partial-alpha edge pixel gets a partial multiply and
+	// the pane edge anti-aliases instead of stair-stepping.
+	float cover = smoothstep(glass_alpha_floor, 0.85, t.a);
+	vec3 m = mix(vec3(1.0), tinted, k * cover);
 	return vec4(clamp(m, vec3(0.0), vec3(1.0)), 1.0);
 }
 
@@ -128,6 +133,10 @@ vec4 glass_add_color(vec4 t, vec2 local) {
 		float lo = mix(0.30, 0.92, glass_sheen_sharpness);
 		sheen = smoothstep(lo, 1.0, band);
 	}
-	vec3 added = glass_tint * sheen * glass_add_strength * ff;
-	return vec4(added, t.a);
+	// A whiter highlight than the tint — a reflection is light, not more glass.
+	vec3 hi = mix(glass_tint, vec3(1.0), 0.5);
+	vec3 added = hi * sheen * glass_add_strength * ff;
+	// blend_add sums COLOR.rgb * COLOR.a, so the feathered silhouette alpha
+	// anti-aliases the sheen edge for free.
+	return vec4(added, clamp(t.a, 0.0, 1.0));
 }

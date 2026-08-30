@@ -14,8 +14,8 @@ subsystem are deleted (part 2, §8.11) — the light-lag defer (§8.12), and
 (grenade intact) → boom → one commit frame → the consequence channel (smoke,
 plumes, brasa) → the light lands after the smoke clears.
 
-**PENDING — engineering, not design:**
-- **Polish `throw_event`** — the capture action (§8.13).
+**PENDING — engineering, not design:** *(nothing — the light cook closed §7.4 and
+`throw_event` is polished, §8.13. Whatever comes next is a new plan.)*
 
 **Out of scope here — `MATERIALS_MASTER_PLAN` M4:** glass, *"tem que quebrar muito
 mais com a granada"* (the non-local pane break), end of the materials milestone.
@@ -1084,14 +1084,33 @@ drives `enter_grenade_mode` → `_set_targeting_target` → wait out the predict
 `execute_grenade_throw`, then grabs every frame at `--fixed-fps 60` through the
 arc, the fuse, the boom, the consequence channel and the light. Encode the PNGs
 at 60 fps for real-time playback. Envs:
-`INFILTRAITOR_EVENT_{AGENT_CELL,TARGET_GU,FOCUS_GU,FRAMES_TOTAL,THROW_AT}`.
+`INFILTRAITOR_EVENT_{AGENT_CELL,TARGET_GU,FOCUS_GU,FRAMES_TOTAL,THROW_AT,KEEP_HUD}`.
 
-⚠️ **Rough edges, own follow-up:** the aim dome flashes ~1 frame before the throw
-despite the `dev_vision` disable; `_set_targeting_target`'s throw-range clamp
-mangles a far `TARGET_GU` (the agent's real GU on the reformed PLAYGROUND was
-never worked out — a default throw lands at gu (21,8), concrete floor, dents not a
-crater); the framing pulls in a lot of empty floor. The event IS captured every
-run.
+**✅ POLISHED 2026-08-29:**
+
+- **The aim HUD is cleared before the loop** — dome, shrapnel rays, range
+  perimeter and wireframe footprint — so the capture opens on the agent cocked to
+  throw, not on a screen full of aiming diagram. The virtual grenade and the arc
+  stay (gameplay, not a readout). `INFILTRAITOR_EVENT_KEEP_HUD=1` restores it.
+- **The default target is the PLAYGROUND fabric floor zone, gu (30, 4)** — a soft
+  material. `agent.cell + (3, 0)` (the gameplay default) landed on bare concrete
+  from the map's `agent_start` (27, 9): dents, no crater, no fire. The fabric
+  target blows through fabric + cardboard into concrete, ~39% passage, **310
+  embers** — the whole event including the brasa.
+- **The camera frames the LANDING GU**, not the agent↔landing midpoint the first
+  version used — with the agent several GU back that put the camera over empty
+  floor and the blast off the frame edge.
+- **`_seed_dev_grenades_if_empty()` is gone from this capture.** It seeds a row of
+  grenades against the far walls (gu ~3, 5) and `enter_grenade_mode()` picked the
+  first of those as the one thrown — the blast landed right but the visible prop
+  arced from across the map. Left empty, `enter_grenade_mode()` spawns one at the
+  agent's own cell.
+- **`FRAMES_TOTAL` default 460 → 620** — 460 ended during the smoke-clear wait,
+  before `play_consequence_light()`. 620 reaches `light landed` (and shows D-7's
+  `derive 13 ms · cook field` on the real throw path).
+
+⚠️ **Still minor:** the grenade in flight is small and easy to miss against the
+floor — the arc is there, just not punchy. Not chased; it is a dev capture.
 
 ---
 

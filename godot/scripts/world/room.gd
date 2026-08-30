@@ -6863,9 +6863,10 @@ func _capture_throw_filmstrip() -> void:
 ##
 ## Envs:
 ##   INFILTRAITOR_EVENT_AGENT_CELL="x,y"   move the agent first (default: as placed)
-##   INFILTRAITOR_EVENT_TARGET_GU="x,y"    where to throw (default: agent + (3,0))
-##   INFILTRAITOR_EVENT_FRAMES_TOTAL=N     frames to capture (default 460 ≈ 7.7 s)
+##   INFILTRAITOR_EVENT_TARGET_GU="x,y"    where to throw (default: fabric zone gu 30,4)
+##   INFILTRAITOR_EVENT_FRAMES_TOTAL=N     frames to capture (default 620 — through the light)
 ##   INFILTRAITOR_EVENT_THROW_AT=N         frame the throw fires on (default 40)
+##   INFILTRAITOR_EVENT_KEEP_HUD=1         leave the aim dome / rays / wireframe up
 ##   INFILTRAITOR_SHOT_ZOOM=f              capture zoom (default 0.85)
 func _capture_throw_event_filmstrip() -> void:
 	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip_event"
@@ -6876,7 +6877,12 @@ func _capture_throw_event_filmstrip() -> void:
 			if f.begins_with("ev_") and f.ends_with(".png"):
 				existing.remove(f)
 
-	_seed_dev_grenades_if_empty("EVENT-FILM")
+	## NO `_seed_dev_grenades_if_empty()` here — the other captures seed a row of
+	## grenades against the walls, and `enter_grenade_mode()` would pick the first
+	## of those (gu ~3,5, across the map) as the one being thrown: the detonation
+	## still lands on the target, but the visible prop arcs from the wrong place.
+	## Left empty, `enter_grenade_mode()` spawns one at the agent's own cell, which
+	## is where a real throw comes from.
 
 	var agent_env := OS.get_environment("INFILTRAITOR_EVENT_AGENT_CELL")
 	if agent_env.contains(",") and agent != null:
@@ -6892,7 +6898,7 @@ func _capture_throw_event_filmstrip() -> void:
 			target_gu = Vector2i(tp[0].to_int(), tp[1].to_int())
 
 	var total_env := OS.get_environment("INFILTRAITOR_EVENT_FRAMES_TOTAL")
-	var total: int = total_env.to_int() if total_env.is_valid_int() else 460
+	var total: int = total_env.to_int() if total_env.is_valid_int() else 620
 	var throw_at_env := OS.get_environment("INFILTRAITOR_EVENT_THROW_AT")
 	var throw_at: int = throw_at_env.to_int() if throw_at_env.is_valid_int() else 40
 	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
@@ -6905,19 +6911,24 @@ func _capture_throw_event_filmstrip() -> void:
 		if _vision_controller.has_method("_apply_dev_vision"):
 			_vision_controller._apply_dev_vision()
 
+	## Default target: the PLAYGROUND fabric floor zone (x=29..31, y=4..6) — a soft
+	## material, so the capture shows a crater, fire and brasa, not concrete dents.
+	## `agent.cell + (3,0)` (the gameplay default) lands on bare floor from the
+	## map's agent_start (27,9). Override with `INFILTRAITOR_EVENT_TARGET_GU`.
+	if target_gu.x == -9999:
+		target_gu = Vector2i(30, 4)
+
 	## Enter targeting. `_set_targeting_target()` clamps to the throw range, so an
 	## out-of-range GU snaps back along the ray — the actual landing GU is only
-	## known after this. `INFILTRAITOR_EVENT_TARGET_GU` unset = the agent's own
-	## default (`agent.cell + (3,0)`).
+	## known after this.
 	_test_zone_controller.enter_grenade_mode()
-	if target_gu.x != -9999:
-		_test_zone_controller._set_targeting_target(target_gu)
+	_test_zone_controller._set_targeting_target(target_gu)
 	var land_gu: Vector2i = _test_zone_controller._targeting_target_gu
-	print("[EVENT-FILM] throwing to gu %s (asked %s)" % [land_gu,
-		target_gu if target_gu.x != -9999 else Vector2i(-1, -1)])
+	print("[EVENT-FILM] throwing to gu %s (asked %s)" % [land_gu, target_gu])
 
-	## Frame the LANDING GU — that is where the blast is — unless an explicit
-	## focus GU is given.
+	## Frame the LANDING GU — that is where the blast is. Not the agent↔landing
+	## midpoint the first version used: with the agent several GU back that put the
+	## camera over empty floor and the blast off the edge of the frame.
 	if _camera_controller != null and agent != null:
 		var focus_gu: Vector2i = land_gu
 		var focus_env := OS.get_environment("INFILTRAITOR_EVENT_FOCUS_GU")
@@ -6926,8 +6937,7 @@ func _capture_throw_event_filmstrip() -> void:
 			if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
 				focus_gu = Vector2i(fp[0].to_int(), fp[1].to_int())
 		_camera_controller.set_zoom_for_capture(zoom)
-		_camera_controller.focus_on(
-			(agent._cell_to_world(agent.cell) + agent._cell_to_world(focus_gu)) * 0.5)
+		_camera_controller.focus_on(agent._cell_to_world(focus_gu))
 	if _fow_controller != null and agent != null:
 		_fow_controller.reveal_around(land_gu, 16)
 
@@ -6941,6 +6951,21 @@ func _capture_throw_event_filmstrip() -> void:
 	print("[EVENT-FILM] prediction warm after %d frame(s)" % warm_guard)
 	for _i in range(20):
 		await get_tree().process_frame
+
+	## The aim HUD — dome, shrapnel rays, range perimeter, wireframe footprint — is
+	## what the player reads WHILE aiming; this capture is about the detonation, so
+	## it opens on the agent already cocked to throw with the HUD gone.
+	## `INFILTRAITOR_EVENT_KEEP_HUD=1` leaves it up. The virtual grenade and the
+	## arc stay either way — they are gameplay, not a readout.
+	if OS.get_environment("INFILTRAITOR_EVENT_KEEP_HUD") != "1":
+		if _aim_bubble_overlay != null:
+			_aim_bubble_overlay.clear()
+		if _shrapnel_preview_overlay != null:
+			_shrapnel_preview_overlay.clear()
+		if _throw_perimeter_overlay != null:
+			_throw_perimeter_overlay.clear()
+		if _blast_wireframe_overlay != null:
+			_blast_wireframe_overlay.clear()
 
 	var shot := 0
 	var threw := false

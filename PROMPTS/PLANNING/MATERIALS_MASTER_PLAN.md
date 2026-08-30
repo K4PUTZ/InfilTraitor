@@ -1,7 +1,17 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
-**Status:** 🟢 **v1.4 — THREE OF SIX PARTS BUILT: M1, M2 and all of M3 AS SCOPED;
+**Status:** 🟢 **v1.5 — 2026-08-30: THE SEQUENCING BLOCK IS GONE.** M3-6 was
+sequenced behind `PERFORMANCE_MASTER_PLAN` P7; **P7b and P7c shipped 2026-08-26**
+(the `MultiMesh` circle field — the fire's worst frame 42.4 → 19.5 ms), so M3-6 is
+UNBLOCKED and M3-7 follows it. **M4 — GLASS — is now the named next item**: it is
+the one explosion follow-up the Director carried out of the detonation track
+(*"tem que quebrar muito mais com a granada"*, the non-local pane break), and
+`DETONATION_PRESENTATION_MASTER_PLAN` closed on 2026-08-29 explicitly *"com
+exceção do vidro"*. M5 (voxel props) is still blocked on renderer v2 — and it is
+also the real resume trigger for `OCCLUSION_MASTER_PLAN` Part 4.
+
+Earlier: 🟢 **v1.4 — THREE OF SIX PARTS BUILT: M1, M2 and all of M3 AS SCOPED;
 M3-6 and M3-7 are now registered (§3.6) after two days of living only in session
 summaries.** ⚠️ M3-6 is sequenced behind `PERFORMANCE_MASTER_PLAN` P7 — §8.5 there
 explains why the fire's frame cost has to come down before its voxel count goes up.

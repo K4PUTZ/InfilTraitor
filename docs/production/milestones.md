@@ -1222,7 +1222,7 @@ ele no final da milestone de combate."* See GAME-01 for the full note.
 
 ---
 
-## Blockers & Risks (updated 2026-07-26)
+## Blockers & Risks (updated 2026-07-26 · ⚠️ **three rows corrected 2026-08-30**, see "Next Steps — superseding update (2026-08-30)" at the end of this file)
 
 | Milestone | Blocker | Status | Mitigation |
 |-----------|---------|--------|-----------|
@@ -1232,10 +1232,10 @@ ele no final da milestone de combate."* See GAME-01 for the full note.
 | GAME-01 (Combat) | AI-03 complete | ⏸ DEFERRED | Do not start before the FSM refactor |
 | Destruction Part 4+ (cover/noise/fire, shot-based destruction) | Lighting (VOXEL_LIGHT) | 🟢 UNBLOCKED 2026-07-26 | Ready to resume; not yet scheduled |
 | Ranged weapon (shotgun) + shot-based wall destruction | ~~New mechanism~~ | 🟢 **BUILT (miss path) 2026-07-30 / 2026-08-02** — row updated 2026-08-13 | CONE (`select_cone_pellet_impacts()`) and LINE (`apply_point_impact()`) both ship and are selftested; a real shot breaks real voxels with material response, bullet marks and face-local soot. **What remains is the HIT half** — there is no actor to shoot at (`WEAPON_MASTER_PLAN` S8), which is the ACTOR track's job, not this row's |
-| **Firearm aim mode** (weapon slots, target cycling, hit %, pre-resolution) | Agent model that holds a weapon | 🟡 **DESIGNED 2026-08-13, unbuilt — scheduled into GAME-01** | Flow + decisions: `WEAPON_MASTER_PLAN` §5c / D31–D36; gameplay statement: `DESIGN_MASTER_PLAN` §8.7. Of the six COMBAT-wave questions (§7c), **Q1 and Q2 were closed by the Director 2026-08-13** (D37/D38); four remain, none blocking the shape of the work |
-| **W-PRECOOK** (firearm pre-production, ~310 ms/shot) | Aim mode built + an agent holding a weapon | ⏸ **DEFERRED 2026-08-13 → last item of GAME-01** | Assigned to M7.0 and pulled forward to the end of the combat milestone the same day. Measurement and both routes unchanged in `WEAPON_MASTER_PLAN` §0 |
+| **Firearm aim mode** (weapon slots, target cycling, hit %, pre-resolution) | ~~Agent model that holds a weapon~~ | ✅ **BUILT 2026-08-19** (`WEAPON_MASTER_PLAN` §6c) — right-click an enemy → *Atirar*, forced through a real D12 roll seam. Row was 🟡 DESIGNED/unbuilt until 2026-08-30 | Flow + decisions: `WEAPON_MASTER_PLAN` §5c / D31–D36; gameplay statement: `DESIGN_MASTER_PLAN` §8.7. Of the six COMBAT-wave questions (§7c), **Q1 and Q2 were closed by the Director 2026-08-13** (D37/D38); four remain, none blocking the shape of the work |
+| **W-PRECOOK** (firearm pre-production, ~310 ms/shot) | ~~Aim mode built + an agent holding a weapon~~ | ✅ **BUILT 2026-08-19/20** (`ed465ac7`, `83e78d11`) — and §0's headline is that the measurement named the wrong cost: the destruction resolves in 1.3 ms, the bill is `create_alternative_tile()`, charged once per FRAME THAT MINTS. **GAME-01's designated last item is done before the milestone opens.** Row was ⏸ DEFERRED until 2026-08-30 | Assigned to M7.0 and pulled forward to the end of the combat milestone the same day. Measurement and both routes unchanged in `WEAPON_MASTER_PLAN` §0 |
 | **Baking System cache + decals** — final verification against the shipping art | Final texture sets | ⏸ **SCHEDULED 2026-08-13 → M7.0** (last optimization stage) | Director runs an informal swap-the-files smoke test himself in the meantime; that is **not** this deliverable and is off the agent's list |
-| **ACTOR living-beings track** (character model, poses, weapon layering) | ~~D18 sequencing deferral~~ | 🟢 **RUNNING.** Designed 2026-08-14 (D32–D45), extended 2026-08-15 (D46–D51). Part 0 CLOSED, Part 1 BUILT | Execution moved to `PROMPTS/PLANNING/CHARACTER_MASTER_PLAN.md` (v2.0); `ACTOR_MASTER_PLAN` keeps the decisions. **Reordered by D48** — the professional showcase model comes first and is the design authority, so Part 2 (and with it firearm aim mode + W-PRECOOK) waits on it |
+| **ACTOR living-beings track** (character model, poses, weapon layering) | ~~D18 sequencing deferral~~ | 🟡 **PARKED SINCE 2026-08-20 — not blocked** (row corrected 2026-08-30; the materials → performance → detonation arc took every session from 2026-08-21). Earlier: 🟢 **RUNNING.** Designed 2026-08-14 (D32–D45), extended 2026-08-15 (D46–D51). Part 0 CLOSED, Part 1 BUILT | Execution moved to `PROMPTS/PLANNING/CHARACTER_MASTER_PLAN.md` (v2.0); `ACTOR_MASTER_PLAN` keeps the decisions. **Reordered by D48** — the professional showcase model comes first and is the design authority, so Part 2 (and with it firearm aim mode + W-PRECOOK) waits on it |
 | ART-01 (Materials & Objects) | Scenario + gameplay complete (Alpha) | ⏸ SCHEDULED (Alpha → Beta) | Specs pre-written in `ASSETS/ART_SPECIFICATIONS.md`; **Director is now asking about character/animation work ahead of this window — see engine assessment for the sequencing question** |
 | M4.0 (Campaign) | Investment | Waiting on investor demo | — |
 | M5.0 (Procedural) | Generation algorithm | At risk | Templates initially |
@@ -1301,3 +1301,59 @@ been answered by events. Read this section, not that one, for what happens next.
    A **separate**, formal verification of cache invalidation + decal
    recompositing against the shipping art is scheduled as the last optimization
    stage — M7.0.
+
+---
+
+## Next Steps — superseding update (2026-08-30)
+
+**Read this section, not the two above.** The 2026-08-13 list has been overtaken
+the same way the 2026-07-26 one was: by events. What changed is that **the
+explosion stopped being the thing everything else waits behind.**
+
+### What closed
+
+- **The detonation track is FULLY CLOSED** (`DETONATION_PRESENTATION_MASTER_PLAN`,
+  2026-08-29 — design *and* engineering). The event is: cook → fuse → boom →
+  **one commit frame** → the consequence channel → the light. From the commit the
+  board is final and everything after it is drawing. D-6 deleted ~3 000 lines of
+  the old machinery; D-7 took the light freeze from 158 ms to 17.7 ms, gate-proven
+  at 0 of 206 096 cells.
+- **Aim mode and W-PRECOOK shipped** (2026-08-19/20). Both were listed above as
+  gated on "an agent that holds a weapon"; the agent exists and holds one.
+  **GAME-01's last item is therefore already done**, ahead of the milestone it
+  belongs to.
+- **Item 2 of the 2026-08-13 list ("character/animation is the active work") is
+  no longer true as status** — it is true as an unfinished track. Nothing has been
+  committed to it since **2026-08-20**; the materials → performance → detonation
+  arc took every session from 2026-08-21 to 2026-08-29.
+
+### What is ready to start, in order of readiness
+
+1. **`MATERIALS_MASTER_PLAN` M4 — glass.** The only follow-up the Director named
+   on the way out of the detonation track: *"tem que quebrar muito mais com a
+   granada"* — the non-local pane break. Ready now.
+2. **M3-6 / M3-7** — lateral fire propagation and the measured per-material
+   passage table. **Unblocked 2026-08-26** (they were sequenced behind PERF P7).
+3. **`SOOT_STORAGE_REFORM` SS-4 → SS-6.** Half-built and paused, not blocked.
+   SS-4 is also what turns `SaveState` from plumbing into a save system.
+4. **The character / movement track** — `CHARACTER_MASTER_PLAN` Part 3+ and
+   `MOVEMENT_MASTER_PLAN`'s five prerequisites. Parked, not blocked.
+5. **GAMEPLAY-01 (the non-combat turn) and GAME-01 (combat).** These are the
+   milestones the whole visual-first sequence exists to serve, and nothing
+   technical is holding them any more.
+
+### Newly unblocked, and unscheduled
+
+- **`TOP_TEXTURE_MASTER_PLAN` Part 3** — its stated blocker was *"the destruction
+  system (no implementation plan exists yet)"*. That plan was written, built and
+  closed.
+- **`OCCLUSION_MASTER_PLAN` Part 4** — still waiting, but the wait now has a name:
+  `MATERIALS` M5 (voxel props), blocked on renderer v2.
+
+### Open Director calls
+
+1. **Which of the five above comes next.** Nothing technical orders them.
+2. **`SOOT_STORAGE_REFORM` §5.3** — should a wall's scorch outlive the wall?
+   2 040 store-only cells after two fires, in a store whose lifetime is one level
+   run. Both answers are defensible.
+3. **AI-02 resume timing** — open since 2026-07-26, never re-raised.

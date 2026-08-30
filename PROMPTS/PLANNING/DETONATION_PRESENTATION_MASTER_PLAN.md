@@ -28,8 +28,10 @@ preto é lucro. De resto pode deixar assim mesmo."* The per-voxel vibrating
 flame / incandescent voxel / ash-transmission spec is NOT built; what shipped is
 a boosted ember on the cells the fire consumes (§8.8).
 D-0's pacing rehearsal ships as three env overrides — **fabric 4 797 → 2 310 ms;
-hard 2 940 → 878 ms**, single collapsed commit frame **18.55 ms measured**
-against a predicted 20.1. **D-2 made the cook the owner of what the fire
+hard 2 940 → 878 ms**. ⛔ The "single collapsed commit frame **18.55 ms**"
+this paragraph used to claim is **this plan's own mistake on itself**, corrected by
+D-1 in §8.3: 18.55 was `[E-WAVE]`'s `apply=` figure, the CPU *inside* the loop. The
+FRAME is **59.2 ms (fabric) / 31.6 ms (hard)**. **D-2 made the cook the owner of what the fire
 consumes**, which killed §9.11e at its root: the cell probe goes from **350
 RESTORED to 0 RESTORED · 0 VANISHED** against a control run from the same
 binary. ⚠️ **§11.1's forced-opening proposal was VETOED by the Director on

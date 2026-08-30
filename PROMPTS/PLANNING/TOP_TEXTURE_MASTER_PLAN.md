@@ -4,9 +4,13 @@
 **Status:** Parts 1 & 2 ✅ CLOSED 2026-07-11 (Director visual ratification,
 "ALPHA TOP TEXTURE" checkpoint). Part 1 was **reopened and re-closed the same
 day** for the junction-column regression — see "Part 1 reopening" below.
-**Part 3 remains explicitly BLOCKED** on the destruction system (no
-implementation plan exists yet) — this master plan stays open at Part 3 only;
-do not archive it. As-built bake canon:
+~~**Part 3 remains explicitly BLOCKED** on the destruction system (no
+implementation plan exists yet)~~ — 🟢 **UNBLOCKED 2026-08-30: that blocker no
+longer exists.** The destruction system was planned, built and closed
+(`DESTRUCTION_MASTER_PLAN` and `EXPLOSION_REBUILD_MASTER_PLAN`, both CLOSED
+2026-08-13; the presentation layer closed 2026-08-29), and a blast now exposes
+interiors on every detonation. Part 3 is **unscheduled, not blocked** — this
+master plan stays open at Part 3 only; do not archive it. As-built bake canon:
 `docs/technical/BAKE_SYSTEM_REFERENCE.md` §OVERLORD-FIX-01/02 and
 §"TOP-JUNCTION-06".
 **Baseline:** tag `verified/v0.5.1` ("Alpha Walls Textured") →
@@ -145,9 +149,13 @@ mirroring the side-face pre-shear architecture exactly:
   fallback (one 4096×144 page, ~2.3 MB, ~150 ms per material).
 - Horizontal slices of the dictionary = prop surfaces (table tops etc.) —
   consumed by the PROP system later; this part delivers the substrate only.
-- **Blocked on:** the destruction system (MAP_MATTRESS §2.3 ladder, future
+- ~~**Blocked on:** the destruction system (MAP_MATTRESS §2.3 ladder, future
   phase). Do not prompt this part until destruction has an implementation
-  plan; it exists here so the interface is designed before either side ships.
+  plan~~ — 🟢 **CONDITION MET 2026-08-30.** Destruction was planned, built and
+  closed; exposed geometry today falls back to the material atlas (bake invariant
+  **B5**), which is exactly the substrate this part would replace. Unscheduled,
+  not blocked. It still exists here so the interface is designed before either
+  side ships.
 
 ### Part 4 — Standing guards
 

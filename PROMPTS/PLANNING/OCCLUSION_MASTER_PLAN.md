@@ -12,7 +12,10 @@ the wireframe went through a full architecture redesign (one independent box
 per structural unit → one unified hidden-face-culled outline, OCC-27) and a
 same-day-reverted split attempt (OCC-28). **Resume trigger:** a real map with
 placed objects/props to occlude against, per the Director — not scheduled,
-not blocking anything else. Current mechanism, for whoever resumes this: read
+not blocking anything else. 🔎 **Named 2026-08-30: that trigger now has an owner
+— `MATERIALS_MASTER_PLAN` M5 (voxel props), itself blocked on renderer v2.** Until
+M5 lands there is still nothing to occlude against, so this plan stays paused for
+a reason rather than by inertia. Current mechanism, for whoever resumes this: read
 `docs/systems/occlusion.md`'s "Visual Occlusion" section first — it is kept
 current; this plan's own Decision Register below stops mid-2026-07-14 for the
 fine-grained blow-by-blow (see the bridging note after O19) and is the

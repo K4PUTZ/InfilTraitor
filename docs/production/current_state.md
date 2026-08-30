@@ -8,6 +8,113 @@
 
 ---
 
+## Where the project stands — 2026-08-30
+
+**The nine days from 2026-08-21 to 2026-08-29 are one continuous arc — materials →
+performance → the detonation's presentation layer — and that arc is CLOSED.**
+Every commit in the window belongs to it. Nothing in the character/movement track
+has been touched since 2026-08-20. This section is the handover from that arc to
+whatever the Director schedules next; the per-domain sections below stay as the
+detailed record.
+
+### 1. The explosion, as built
+
+[`DETONATION_PRESENTATION_MASTER_PLAN`](../../PROMPTS/PLANNING/DETONATION_PRESENTATION_MASTER_PLAN.md)
+is ✅ **FULLY CLOSED — design AND engineering, 2026-08-29.** Director: *"isso
+conclui nosso design da explosão, com exceção do vidro… Fica pendente a limpeza e
+a otimização do código + cook da luz"* — and the limpeza (D-6) and the cook da luz
+(D-7) then shipped. **Nothing is pending in that plan.**
+
+The architecture is the inversion the Director asked for — *"calcular o estado
+final da cratera, colocar mais efeitos e fumaça por cima"*. **The world changes
+once; the EFFECTS are what is animated.**
+
+| beat | what happens | writes cells? |
+|---|---|---|
+| 0 · cook | `build_plan()` → the final `WorldDelta`, **including what the fire consumes**, the passage, and (D-7) the light field | no |
+| 1 · fuse → boom | the grenade burns intact, then hops up `blast_pop_height_px` (E-POP); shrapnel out; negative strobe | no |
+| 2 · **THE COMMIT** | voxel fields · every cell · expose · decals · soot — **one frame** | **yes, once** |
+| 3 · consequence | smoke, plumes, embers, the brasa, debris — one channel, per-instance timing | no |
+| 4 · the light lands | after the smoke clears, from the cooked field | plane writes only |
+
+Measured — each row from the plan section named, not from memory:
+
+| what | before | after | source |
+|---|---|---|---|
+| the whole event, fabric | 4 797 ms | **2 310 ms** | D-0, §8.1 |
+| the whole event, hard materials | 2 940 ms | **878 ms** | D-0, §8.1 |
+| the commit frame (fabric / hard) | — | **59.2 / 31.6 ms** | D-1, §8.3 |
+| `play_consequence_light()`'s freeze | 158 ms | **17.7 ms**, 0 of 206 096 cells different | D-7, §8.14 |
+| dead code removed | — | **~3 000 lines**, `room.gd` 9 722 → 8 484 | D-6 part 2 |
+| the fire's worst frame (P7b) | 42.4 ms | **19.5 ms** | PERF §12.10 |
+| fire 1's worst frame / mean (the perf wave) | 267 / 86.1 ms | **31 / 17.6 ms** | PERF §12.13 |
+
+**Deleted, not merely bypassed:** `DetonationChoreographer`, `BurnScheduler`,
+`FireGlowOverlay`, `_advance_burn`, `BURN_SUSPEND_REGION_LIGHT` and the whole burn
+subsystem. The fire is now committed inside the cook (D-2), which is what took the
+cell probe from **350 RESTORED to 0 RESTORED · 0 VANISHED**.
+
+⚠️ **What is NOT claimed:** no end-to-end wall-clock re-measure of the whole event
+has been taken *since* D-6 and D-7 landed. The totals above are D-0's (2026-08-27);
+everything after it was a deletion or a strict reduction, but nobody has run the
+number. If a total is ever quoted as current, it has to be re-measured first.
+
+### 2. What the explosion was holding — plan by plan
+
+| Plan | What it was waiting on | State, 2026-08-30 |
+|---|---|---|
+| `DETONATION_PRESENTATION` | — | ✅ **FULLY CLOSED 2026-08-29.** Nothing pending |
+| `EXPLOSION_REBUILD` · `DESTRUCTION` | — | ✅ CLOSED 2026-08-13, Director-ratified |
+| `FIRE_REBUILD` · `BURN_THROUGH` | — | ⬆️ Superseded, nothing retracted — read them for the fire spec and the cascade-ceiling arithmetic |
+| `PERFORMANCE` | it *was* the explosion's cost | 🟠 **Its fire block is HISTORY, not status** — D-6 deleted the very subsystem F3–F8 optimized. P3 + P7b/P7c ship and default ON; P4, P6 and §14.3's broken `INFILTRAITOR_HIDE_VOXELS` stay open. **Read §12–§14, not the v2.3 header** |
+| `SOOT_STORAGE_REFORM` | nothing — the presentation reform took the session on 2026-08-27 | 🟡 **PAUSED at SS-3.** SS-4 (checkpoint persistence), SS-5 (subtraction), SS-6 (rotation) open; **§5.3 is an open DESIGN question for the Director** |
+| `MATERIALS` M3-6 (lateral fire propagation) | PERF P7 — *"do not judge a look through a frame time its own voxel count made worse"* | 🟢 **UNBLOCKED** — P7b/P7c shipped 2026-08-26 |
+| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | 🟢 **Ready, and it is the Director's one explicit explosion follow-up** — *"tem que quebrar muito mais com a granada"*, the non-local pane break |
+| `MATERIALS` M5 (voxel props) | renderer v2 | 🔴 Still blocked — the real gate on `OCCLUSION` Part 4 too |
+| `TOP_TEXTURE` Part 3 (textured interiors) | *"the destruction system (no implementation plan exists yet)"* | 🟢 **UNBLOCKED** — that plan was written, shipped and closed. Unscheduled, not blocked |
+| `OCCLUSION` Part 4 (interior cutaway) | Slab/roofs, then *"maps with objects"* | 🟡 Slab landed 2026-07-18; the resume trigger is now M5 props |
+| `CHARACTER` Part 3+ · `MOVEMENT` | nothing | 🟡 **PARKED since 2026-08-20 by sequencing, not blocked.** The last character commit predates the materials milestone |
+| `WEAPON` | aim mode and W-PRECOOK both needed an agent holding a weapon | ✅ **Both BUILT** (§6c 2026-08-19, W-PRECOOK 2026-08-19/20). LINE and D13's cone supersession remain |
+| `PREDICTION` | — | ✅ Built and load-bearing for the cook. The standing rule survives: **any new committed mutation must bump the world revision** |
+| `INTERFACE` Wave 3 (pause menu) | — | 🟡 Not started; never related to the explosion |
+
+### 3. What is genuinely open, ordered by how ready it is
+
+1. **`MATERIALS` M4 — glass.** The one item the Director named on the way out of
+   the detonation track. Ready now.
+2. **`MATERIALS` M3-6 / M3-7** — lateral fire propagation and the measured
+   per-material passage table. Unblocked by P7, never started.
+3. **`SOOT_STORAGE_REFORM` SS-4 → SS-6.** Half-built; SS-4 is checkpoint
+   persistence, which the save model (`SaveState`, plumbing only) needs anyway.
+4. **The character / movement track.** Parked, not blocked — `CHARACTER` Part 3+
+   and `MOVEMENT`'s five prerequisites (§6).
+5. **The gameplay milestones — GAMEPLAY-01 (the non-combat turn) and GAME-01
+   (combat).** These are what the whole visual-first sequence exists to serve, and
+   **nothing technical is holding them any more** — GAME-01's designated last item
+   (W-PRECOOK) is already built.
+6. **Optional, cheap, its own gate:** a base-occupancy cache in `VoxelRenderer`.
+   It removes D-7's 45 ms cook step and speeds up **every** room repaint, not just
+   the detonation's.
+7. **Carried, unowned:** audio (including the `swiffh` SFX D-6 deferred), the
+   "glowing edge" — ⚠️ **downscoped by the Director's D-4 ruling 2026-08-29**
+   (*"o que a gente conseguir colocar de vermelho brilhando que vira preto é
+   lucro. De resto pode deixar assim mesmo"*); what shipped is the brasa on
+   consumed cells, and a voxel that survives *while* glowing still needs a burn
+   state that does not exist — and `update_docs.py`'s silent wipe.
+
+### 4. Decisions that are the Director's, not the agent's
+
+1. **What the next milestone is.** The explosion no longer picks it. The three
+   live candidates are the materials tail (M4 glass), the character/movement
+   track, and the gameplay milestones (GAMEPLAY-01's non-combat turn, then
+   GAME-01). Nothing technical orders them.
+2. **`SOOT_STORAGE_REFORM` §5.3 — should a wall's scorch outlive the wall?**
+   Measured: 2 040 store-only cells after two fires, in a store whose lifetime is
+   one level run. Both answers are defensible; it is a design call.
+3. **AI-02 resume timing** — open since 2026-07-26 and never re-raised.
+
+---
+
 ## Project Status
 
 ### Pending Prompts
@@ -91,6 +198,7 @@
 - RESUMO_SESSAO_2026-08-29_D7_LIGHT_COOK.md
 - RESUMO_SESSAO_2026-08-29_EXPLOSION_DESIGN_CLOSES.md
 - RESUMO_SESSAO_2026-08-29_THROW_EVENT_AND_POP.md
+- RESUMO_SESSAO_2026-08-30_STATE_OF_THE_PROJECT.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -267,12 +375,21 @@ The AI system is **functional but simplified** relative to the design intent.
 | **Detection / Stealth** | Functional (probabilistic with gradation) | Alpha | 70% |
 | **Perception (calculation)** | Functional | Beta | 75% |
 | **Audio (SFX)** | Not started | — | 0% |
-| **Animation (sprites)** | Not started | — | 0% |
+| **Animation (sprites)** | Functional — baked figure, 3 postures × 4 facings, 32-phase walk | Alpha | 45% |
 | **UI/UX** | Prototype | Prototype | 30% |
-| **Narrative** | Not started | — | 0% |
-| **Combat** | Not started | — | 0% |
+| **Narrative** | Designed, unbuilt — campaign arc + the reveal ratified 2026-08-30 | — | 5% |
+| **Combat** | The shooter fires at a real target; no damage model on actors | Alpha | 30% |
 | **Content** | Sparse | Prototype | 15% |
 | **Voxel Rendering System** | Functional — the only wall renderer | Beta | 85% |
+| **Explosive Destruction** | **The detonation track is CLOSED** — one commit frame, then drawing | Beta | 95% |
+| **Materials** | 3 of 6 parts built (M1, M2 decals, M3 fire) | Alpha | 50% |
+| **Performance** | The wave shipped; P3 + P7b default ON | Beta | 80% |
+| **Prediction / pure simulation** | `build_plan()` is pure, cached, resumable | Production | 95% |
+
+⚠️ **Rows corrected 2026-08-30:** Animation was still reading 0% five days after
+the baked agent walked; Combat was reading 0% eleven days after `AgentShotController`
+fired its first shot. Three rows were added for systems that have been the entire
+month's work and had no row at all.
 
 ---
 
@@ -459,49 +576,45 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 
 ---
 
-### Explosive Destruction (85% — Alpha; **both master plans CLOSED 2026-08-13**, Phase A + B built, VFX foundation complete)
+### Explosive Destruction (95% — Beta; **the DETONATION TRACK IS FULLY CLOSED 2026-08-29** — design, engineering, deletion and the light cook)
 
-> **~~NEXT SESSION (Director-scheduled):~~ SUPERSEDED 2026-08-13 — W-PRECOOK
-> DEFERRED, and the character is now the active work.** The banner below was
-> written the morning of 2026-08-13 and overtaken the same day.
+> **STATE, 2026-08-30 — the explosion is done, and it is no longer blocking
+> anything.** The banner that used to sit here scheduled W-PRECOOK and called aim
+> mode "designed and unbuilt"; both shipped on 2026-08-19/20. See
+> [§ Where the project stands](#where-the-project-stands--2026-08-30) at the top of
+> this file for the full handover, and
+> [`DETONATION_PRESENTATION_MASTER_PLAN`](../../PROMPTS/PLANNING/DETONATION_PRESENTATION_MASTER_PLAN.md)
+> for the plan itself.
 >
-> **Firearm pre-production (W-PRECOOK) is deferred to the LAST ITEM OF GAME-01**,
-> the combat milestone (`docs/production/milestones.md`). Nothing about the
-> problem changed — a shot still costs ~310 ms of synchronous CPU for nine
-> voxels — but the window it exists to fill is the *aiming* window, and there is
-> no aim mode, no shooter and no agent holding a weapon to build it against.
-> Director: *"quando o personagem já existir e conseguir empunhar as armas. Pra
-> não ficar testando com mecanismos visuais teóricos"*, then, on the placement:
-> *"pode colocar o W-PRECOOK mais cedo, vamos fazer ele no final da milestone de
-> combate."*
+> **The event, as it plays today:** cook (the whole `WorldDelta`, the fire's
+> consumption and the light field included) → fuse with the grenade intact → boom,
+> the grenade hopping up to the blast centre → **one commit frame** → the
+> consequence channel (smoke, plumes, brasa, debris) → the light landing after the
+> smoke clears. **From the commit frame the board is FINAL; everything after it is
+> drawing.**
 >
-> **In its place, aim mode is DESIGNED and unbuilt** — weapon selection on 1/2/3
-> over an open carried arsenal, `S` to aim, every valid target cyclable with a
-> visible hit percentage, the current target pre-resolved immediately, and a
-> second input to fire. `WEAPON_MASTER_PLAN` §5c + D30–D38;
-> `DESIGN_MASTER_PLAN` §8.7. **`DESIGN_MASTER_PLAN` §10.2's one-weapon-per-
-> mission loadout rule is superseded** (D37) — the agent carries everything for
-> now, and restricting it later is an open design lever.
+> **Deleted, not bypassed (D-6):** `DetonationChoreographer`, `BurnScheduler`,
+> `FireGlowOverlay`, `_advance_burn`, `BURN_SUSPEND_REGION_LIGHT` — ~3 000 lines,
+> `room.gd` 9 722 → 8 484, selftests 40 → 38, no behaviour change on the default
+> path. ⚠️ **Comments across `room.gd`, `voxel_renderer.gd`,
+> `detonation_plan_builder.gd` and others still refer to those classes by name** as
+> historical context. They are prose, not calls; do not read them as live wiring.
 >
-> **The active work is the CHARACTER** — `ACTOR_MASTER_PLAN`'s living-beings
-> track, deferral lifted by the Director 2026-08-13. Design conversation open,
-> plan not yet written.
+> **The one explosion follow-up the Director named:** GLASS —
+> `MATERIALS_MASTER_PLAN` M4, *"tem que quebrar muito mais com a granada"*, the
+> non-local pane break, scheduled at the end of the materials milestone.
 >
-> **Off the agent's list:** the Baking System cache check — the Director runs it
-> himself by swapping texture files in the folders. A separate formal pass
-> (cache invalidation + decal recompositing against the shipping art) is
-> scheduled as the **last optimization stage**, M7.0.
+> ⚠️ **Not re-measured end to end since D-6/D-7.** The last whole-event totals are
+> D-0's (fabric 4 797 → 2 310 ms; hard 2 940 → 878 ms, 2026-08-27). Everything
+> after them was a deletion or a strict reduction — but that is an argument, not a
+> measurement.
 >
-> *Original banner, kept:* firearm pre-production (W-PRECOOK) — a shot's entire
-> cost is `_repaint_voxel_light_buckets()`, ~310 ms of synchronous CPU for nine
-> voxels, against 0.5 ms for a 453-voxel blast that pre-computes during the
-> throw. Full measurement and the two candidate routes: `WEAPON_MASTER_PLAN` §0.
->
-> ⚠️ **That figure is history now (2026-08-24).** A shot's repaint is **75 ms**
-> (`PERFORMANCE_MASTER_PLAN` §10.5), and the same section fixed what the number
-> was hiding: the shot's scoped repaint used to leave **3 144 cells** disagreeing
-> with a full apply, every time. The fire's map-wide ending went 1 024 → 282 ms in
-> §10.4. The term behind all three was never the mint — it was the WALK.
+> *Historical, kept because the numbers are still cited:* a shot's repaint was
+> ~310 ms of synchronous CPU for nine voxels, then **75 ms** after
+> `PERFORMANCE_MASTER_PLAN` §10.5, which also fixed what the number was hiding —
+> the shot's scoped repaint used to leave **3 144 cells** disagreeing with a full
+> apply. The fire's map-wide ending went 1 024 → 282 ms in §10.4. The term behind
+> all three was never the mint — it was the WALK.
 
 ✅ **A grenade detonates as ONE ORGANIC EVENT, and it no longer freezes the
 camera** — right-click "Detonar" on a TEST-ZONE grenade runs the whole pipeline:
@@ -509,6 +622,11 @@ the damage is COMPUTED the moment the target is picked, then a burst built from
 this game's own overlays, camera shake, a 4-frame white/negative strobe, and an
 **expanding front** of per-voxel effects that ends at the widest circle.
 Firearm destruction (above) is untouched and still works exactly as before.
+
+⚠️ **Everything from here down is the HISTORICAL record, newest first.** The
+mechanism it describes was reformed on 2026-08-27→29: the world is committed in
+one frame and the front is now a per-instance `delay` on the consequence channel,
+not a per-frame walk over cells. Read the banner above for what runs today.
 
 ✅ **0.9.94 "Alpha Explosion Flow" (2026-08-09)** — the session that made the
 blast *flow*. Full record:
@@ -1009,7 +1127,7 @@ Deliberately deprioritized. The math noise grid works; real SFX awaits post-demo
 
 ---
 
-### Animation / Sprites (0% — 🟢 ACTIVE as of 2026-08-13)
+### Animation / Sprites (45% — Alpha; 🟢 opened 2026-08-13, **parked since 2026-08-20** by sequencing, not by a blocker)
 Movement tweening works adequately for the demo. ~~Animated sprites await
 post-demo.~~ **The character is now the active work** — the Director lifted
 `ACTOR_MASTER_PLAN` D18's living-beings deferral on 2026-08-13: *"Agora chegou a
@@ -1042,9 +1160,16 @@ weapon in a character's hands (Part 4), and any decision on how a character is
 authored in the first place. Plan: `PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md`
 Parts 1/3/4 + §6; open questions in its §7.
 
-**Two other items are gated on this** — firearm aim mode
+~~**Two other items are gated on this** — firearm aim mode
 (`WEAPON_MASTER_PLAN` §5c) and W-PRECOOK (M7.0) both need an agent that holds a
-weapon.
+weapon.~~ ✅ **BOTH SHIPPED** — the shooter and the aim window landed 2026-08-19
+(`WEAPON_MASTER_PLAN` §6c) and W-PRECOOK on 2026-08-19/20 (`ed465ac7`,
+`83e78d11`). The gate did its job and is history, not status.
+
+⚠️ **Where this track actually stands (2026-08-30):** `CHARACTER_MASTER_PLAN`
+Part 2 is CLOSED and Part 3 (walking, 0.56 s per GU) is in progress; nothing has
+been committed to it since **2026-08-20**, because the materials → performance →
+detonation arc took every session after that. It is parked, not blocked.
 
 ---
 
@@ -1064,8 +1189,18 @@ weapon.
 
 ---
 
-### Narrative (0% — Not Started)
-Intentionally deprioritized. Awaits post-investment.
+### Narrative (5% — Designed, unbuilt)
+Nothing is implemented and nothing should be until the gameplay milestones land.
+**But it is no longer undesigned:** on 2026-08-30 the Director ratified the
+campaign's structure and its reveal — an Elite prologue plus three chapters, the
+Agency/Network fracture as a **false** resolution, and the Agent himself as the
+infiltraitor who knew from the start. With it came the **fair-reveal contract**
+(the twist must reinterpret evidence the player really saw, never invent an
+off-screen fact) and the unreliable-narrator rule for the mission interface.
+`docs/DESIGN_MASTER_PLAN.md` §2.2–§2.5; the monetisation half moved in the same
+pass from *"ads + cosmetics, never pay-to-win"* to **transparent paid
+acceleration over a complete free/offline path** (`docs/vision/game_vision.md`,
+milestones MONET-01).
 
 ---
 
@@ -1085,7 +1220,10 @@ Intentionally deprioritized. Awaits post-investment.
 
 ## Infrastructure & Tooling (50% — Alpha)
 ✅ Godot 4.6, git, structured documentation
-⚠️ No CI/CD, no automated tests, no analytics
+✅ **A real gate stack** — `run_selftests.py` (the arbiter; **38 suites clean / 0
+failed** at the last run, 2026-08-29), `project_lint.py`, `check_invariants.py` and
+`gen_codemap.py --check`, the last three enforced by the pre-commit hook
+⚠️ No CI/CD (the gates run locally, on commit), no analytics
 
 ---
 

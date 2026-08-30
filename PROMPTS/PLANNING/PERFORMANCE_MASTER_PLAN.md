@@ -1,7 +1,46 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
-**Status:** 🟢 **v2.3 — F8 SHIPPED (§9.9): the fire is 6 276 -> 1 885 ms (-70%),
+**Status:** ⛔ **v2.4 — READ THIS BEFORE THE HEADER BELOW (2026-08-30).**
+
+**The fire block (F1→F8, §9) is HISTORY, not status.** On 2026-08-29,
+`DETONATION_PRESENTATION_MASTER_PLAN` D-6 deleted the subsystem it optimized:
+`BurnScheduler`, `_advance_burn`, `FireGlowOverlay`, `BURN_SUSPEND_REGION_LIGHT`,
+`_burn_precook`, `_burn_final_repaint` and the rest — ~3 000 lines, `room.gd`
+9 722 → 8 484. **The fire is committed inside the cook now** (D-2): there is no
+burn playback left to schedule, suspend or re-light. Consequences for anyone
+reading this plan:
+
+- **Do not go looking for the code §9 describes.** Its symbols are gone; only
+  prose references survive. The plan's METHOD and its MEASUREMENTS stand — that is
+  why nothing here is retracted — but its subject does not.
+- **§9.11e's restore writer is closed at the root.** D-2 made the cook the owner
+  of what the fire consumes, and the cell probe went from **350 RESTORED to
+  0 RESTORED · 0 VANISHED** against a same-binary control. The 0.73 s dead board
+  the 2026-08-27 session recorded as a hypothesis named
+  `BURN_SUSPEND_REGION_LIGHT`, which no longer exists — closed by cause, never
+  re-tested after the deletion.
+- **§14.2's light beat (2 s, painting almost nothing) was answered elsewhere:**
+  D-5 took `consequence_light_seconds` 2.0 → 0.5 (D-6 settled it at 1.0, the
+  ~1 s Diablo II light transform) and D-7 cooked the field.
+- **§12.13's "the one thing left is P5" is superseded twice over** — the
+  incremental soot index shipped in §13.2 (final repaint 286 → 149 ms), and D-7
+  then took `play_consequence_light()`'s freeze from 158 ms to **17.7 ms**,
+  gate-proven at 0 of 206 096 cells different.
+- **What is genuinely still open here:** **P4** (retire the alternative-id
+  encoding and the mint cache), **P6** (MAT-PERF-03's 198 stale floor cells), and
+  **§14.3 — `INFILTRAITOR_HIDE_VOXELS` does not work, and §12 used it**, so any
+  conclusion that rested on it needs re-measuring. Optional and cheap: a
+  base-occupancy cache in `VoxelRenderer`, which removes D-7's 45 ms cook step and
+  speeds up every room repaint.
+- **What ships and defaults ON:** P3 (the cell plane, recovery 100.000%) and
+  P7b/P7c (the `MultiMesh` circle field).
+
+Everything below is preserved as written.
+
+---
+
+Earlier: 🟢 **v2.3 — F8 SHIPPED (§9.9): the fire is 6 276 -> 1 885 ms (-70%),
 `_advance_burn` is 11 ms, and the post-fire board is 0 pixels different.** The burn's
 OWN region stops relighting for the burn's OWN duration — not F1's global cadence,
 which the Director rejected — with a one-quad shader wash hiding the boundary. The

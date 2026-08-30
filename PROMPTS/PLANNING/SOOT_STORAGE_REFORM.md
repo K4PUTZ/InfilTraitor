@@ -1,8 +1,15 @@
 # SOOT_STORAGE_REFORM
 ## The soot map becomes the source of truth — plan, 2026-08-27
 
-**Status:** 🟢 **SS-0 … SS-3 DONE — THE STORE IS THE SOURCE OF TRUTH AND THE
-COMMIT IS ITS SEAM.** The repaint still derives (SS-5 removes that). Gates in
+**Status:** 🟡 **PAUSED AT SS-3 SINCE 2026-08-27 — resumable, nothing blocking it.**
+The detonation's presentation reform took every session from 2026-08-27 to
+2026-08-29 and that track is now closed, so SS-4 (checkpoint persistence),
+SS-5 (subtraction) and SS-6 (rotation) are the next work whenever the Director
+schedules them. ⚠️ **SS-4 has a second customer:** `SaveState` shipped as plumbing
+only (SAVE-01, 2026-08-26) and this is the task that gives it the soot store.
+⚠️ **§5.3 is an open DESIGN question and it is the Director's** — should a wall's
+scorch outlive the wall? Earlier: 🟢 **SS-0 … SS-3 DONE — THE STORE IS THE SOURCE
+OF TRUTH AND THE COMMIT IS ITS SEAM.** The repaint still derives (SS-5 removes that). Gates in
 §5.1–§5.3. ⚠️ §5.1 carries a CORRECTION to a number SS-1 reported, and **§5.3 is
 an open DESIGN question for the Director** that SS-3 surfaced: the store now keeps
 scorch for voxels the fire consumed.

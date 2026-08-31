@@ -15,6 +15,11 @@ var voxels: Array[Voxel] = []    ## all voxels in this slice (64 per storey)
 var dirty_count: int = 0         ## sum of child Voxel dirty flags
 var baked: bool = false          ## texture assigned by BakeSystem (VOXEL-08)
 var bake_texture: Texture2D      ## reserved for VOXEL-08
+## GLASS G2 (GLASS_MASTER_PLAN §4) — the whole continuous glass surface this
+## slice belongs to. Blank for every non-glass slice; stamped at map load by
+## `GlassPaneGrouper.assign()`. The cascade (G3) reads it to take a whole pane
+## from one hit.
+var pane_id: String = ""
 
 
 func _init(p_id: String, p_gu_cell: Vector2i, p_face: int, p_edge_id: String,

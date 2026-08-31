@@ -2251,9 +2251,10 @@ func _render_slice(slice: Slice, edge = null) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey_count by LEVELS_PER_STOREY to expand to level-space
 	_ensure_voxel_layers(slice.storey_count * GeometryCoords.LEVELS_PER_STOREY)
 	if slice.material == "glass" and OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
-		print("[GLASS-DIAG] slice %s face=%s gu=%s storeys=%d voxels=%d" % [
+		print("[GLASS-DIAG] slice %s face=%s gu=%s storeys=%d voxels=%d pane=%s" % [
 			slice.id, Face.to_string_name(slice.face), slice.gu_cell,
-			slice.storey_count, slice.voxels.size()])
+			slice.storey_count, slice.voxels.size(),
+			slice.pane_id if slice.pane_id != "" else "<none>"])
 
 	## GLASS G1 GEOMETRY — the top level of a lone pane paints its dim top sliver;
 	## the frontmost column paints its dim side sliver.

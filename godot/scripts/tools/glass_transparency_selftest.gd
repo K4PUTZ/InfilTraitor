@@ -47,6 +47,7 @@ func _init() -> void:
 	test_concrete_is_untouched_by_the_glass_gate()
 	test_destroyed_glass_clears_the_pane()
 	test_intact_glass_still_blocks_light()
+	test_glass_pane_ids_group_the_surface()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -231,6 +232,64 @@ func test_destroyed_glass_clears_the_pane() -> void:
 	else:
 		_fail("expected 7 surviving glass cells, got %d" % remaining)
 	r.queue_free()
+	print("")
+
+
+## GLASS G2 — GlassPaneGrouper.assign() stamps a pane_id on every glass slice:
+## a block is one pane, contiguous coplanar panels union, a lone panel is its own.
+func test_glass_pane_ids_group_the_surface() -> void:
+	print("[6] GlassPaneGrouper: block = one pane, coplanar panels union, lone panel alone\n")
+	var reg := EdgeRegistry.new()
+
+	## Two SW glass panels adjacent along the SW run axis (x) — one pane.
+	var run_a := Slice.new("S_RUN_A", Vector2i(3, 3), Face.SW, "E_RUN_A", 1, "glass")
+	var run_b := Slice.new("S_RUN_B", Vector2i(4, 3), Face.SW, "E_RUN_B", 1, "glass")
+	## An SW glass panel one step away ACROSS the plane (y) — NOT the same pane.
+	var off_plane := Slice.new("S_OFF", Vector2i(3, 4), Face.SW, "E_OFF", 1, "glass")
+	## A lone SE glass panel, far away — its own pane.
+	var lone := Slice.new("S_LONE", Vector2i(20, 20), Face.SE, "E_LONE", 1, "glass")
+	## A concrete slice — must stay blank.
+	var wall := Slice.new("S_WALL", Vector2i(3, 3), Face.NW, "E_WALL", 1, "concrete")
+	## Faces around a glass block authored as THREE adjacent 1×1 declarations —
+	## one pane (flood fill), not three (PLAYGROUND's own convention).
+	var blk_a := Slice.new("S_BLK_A", Vector2i(30, 30), Face.SW, "E_BLK_A", 1, "glass")
+	var blk_b := Slice.new("S_BLK_B", Vector2i(32, 30), Face.NE, "E_BLK_B", 1, "glass")
+	for s in [run_a, run_b, off_plane, lone, wall, blk_a, blk_b]:
+		reg._slices[s.id] = s
+	_fixtures.append_array([run_a, run_b, off_plane, lone, wall, blk_a, blk_b])
+
+	var blocks: Array = [
+		{"gu_cell": Vector2i(30, 30), "size": Vector2i(1, 1), "storeys": 1, "material": "glass"},
+		{"gu_cell": Vector2i(31, 30), "size": Vector2i(1, 1), "storeys": 1, "material": "glass"},
+		{"gu_cell": Vector2i(32, 30), "size": Vector2i(1, 1), "storeys": 1, "material": "glass"},
+	]
+	GlassPaneGrouper.assign(reg, blocks)
+
+	if run_a.pane_id != "" and run_a.pane_id == run_b.pane_id:
+		_pass("the two coplanar-adjacent SW panels share a pane_id (%s)" % run_a.pane_id)
+	else:
+		_fail("coplanar SW panels not unioned: %s vs %s" % [run_a.pane_id, run_b.pane_id])
+
+	if off_plane.pane_id != "" and off_plane.pane_id != run_a.pane_id:
+		_pass("the across-the-plane SW panel is a different pane")
+	else:
+		_fail("across-the-plane panel wrongly joined: %s" % off_plane.pane_id)
+
+	if lone.pane_id != "" and lone.pane_id != run_a.pane_id and lone.pane_id != off_plane.pane_id:
+		_pass("the lone SE panel is its own pane (%s)" % lone.pane_id)
+	else:
+		_fail("lone panel pane_id wrong: %s" % lone.pane_id)
+
+	if wall.pane_id == "":
+		_pass("the concrete slice keeps a blank pane_id")
+	else:
+		_fail("concrete slice got a pane_id: %s" % wall.pane_id)
+
+	if blk_a.pane_id.begins_with("PANE_BLOCK_") and blk_a.pane_id == blk_b.pane_id:
+		_pass("a block spelled as 3 adjacent 1x1 declarations is one pane (%s)" % blk_a.pane_id)
+	else:
+		_fail("glass block faces not one pane: %s vs %s" % [blk_a.pane_id, blk_b.pane_id])
+
 	print("")
 
 

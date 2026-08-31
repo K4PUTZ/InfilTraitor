@@ -407,6 +407,9 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## need this handle, so it is published here rather than re-derived by each.
 		var edge_registry := EdgeRegistry.new()
 		SliceGenerator.generate(extraction["edges"], edge_registry)
+		## GLASS G2 — stamp `pane_id` on every glass slice so a single hit can take
+		## the whole surface (G3). Once, here, never per shot.
+		GlassPaneGrouper.assign(edge_registry, layout.get("solid_block_instances", []))
 		var junction_columns := JunctionResolver.resolve(edge_registry)
 
 		# BAKE-FIX-02: Apply junction overrides from layout (if available)

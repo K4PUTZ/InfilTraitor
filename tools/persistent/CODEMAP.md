@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**221 scripts · 71482 lines total** (under `godot/scripts/`)
+**222 scripts · 71660 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
@@ -700,6 +700,16 @@ extends `ConfirmationDialog` · 64 lines
 
 ---
 
+### `glass_pane_grouper.gd`
+
+`class_name GlassPaneGrouper` · 110 lines
+
+`godot/scripts/geometry/glass_pane_grouper.gd`
+
+> Geometry Module — GlassPaneGrouper (GLASS_MASTER_PLAN §4, G2). Stamps `Slice.pane_id` on every glass slice in an EdgeRegistry so the cascade (G3) can take a whole continuous surface from one hit. Run once at map load, right after SliceGenerator.generate(), never per shot. Two producers, one consumer: · BLOCKS — "um bloco é um bloco" (G-D2). Every glass `solid_block_instance` footprint cell is merged into one set and FLOOD-FILLED into connected components (§4.2); each component is one pane. This is deliberately NOT per-authored-instance: PLAYGROUND spells a 3-wide glass block as three adjacent 1×1 declarations, and those are one block, not three. · PANELS — contiguous coplanar half-thickness faces. Union-find: two glass panel slices are the same pane when they share a face orientation AND their owning GUs are adjacent along that face's RUN axis (perpendicular to Face.delta). A lone panel is its own pane. Every glass slice leaves this pass with a non-empty `pane_id`.
+
+---
+
 ### `half_voxel_compositor.gd`
 
 `class_name HalfVoxelCompositor` · extends `RefCounted` · 309 lines
@@ -818,7 +828,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slice.gd`
 
-`class_name Slice` · 73 lines
+`class_name Slice` · 78 lines
 
 `godot/scripts/geometry/slice.gd`
 
@@ -837,6 +847,7 @@ extends `ConfirmationDialog` · 64 lines
 - `var dirty_count: int = 0`
 - `var baked: bool = false`
 - `var bake_texture: Texture2D`
+- `var pane_id: String = ""`
 
 **Public API**
 - `func get_voxel(index: int) -> Voxel:`
@@ -870,7 +881,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4899 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4900 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -3447,7 +3458,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 252 lines
+extends `SceneTree` · 311 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
@@ -4528,7 +4539,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1245 lines
+`class_name RoomBuilder` · 1248 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

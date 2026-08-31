@@ -1,91 +1,103 @@
-# RESUMO_SESSAO — 2026-08-30 · GLASS G1 (TRANSPARENCY) BUILT
+# RESUMO_SESSAO — 2026-08-30/31 · GLASS G1 (TRANSPARENCY)
 
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-30_GLASS_DESIGN.md`
-**Kind:** implementation — first `.gd` work on the glass track.
+**Kind:** implementation — the first `.gd` work on the glass track.
 **VERSION:** unchanged at 0.9.107.
+**Commits (all pushed):** `41eee478` `3832f952` `aba572c4` `1620561e` `b3c0fd66`
+`8f3e24b0` `c9c4169c`.
 
 > Director, opening: *"Vamos executar o plano do vidro conforme ficou planejado."*
+> Director, closing: *"A aparência está boa, fechamos a questão do design. Mas a
+> geometria ainda não está certa. Vamos ajeitar amanhã."*
 
 ---
 
-## 0. What shipped
+## 0. Status — read this first
 
-**`GLASS_MASTER_PLAN` G1 — transparency — BUILT.** Glass vertical faces no longer
-render as an opaque pale-blue cube; they composite over what is behind them
-(G-D1: a blend, never `opacidade pura`).
+**GLASS_MASTER_PLAN G1 (transparency):**
 
-**Awaiting the Director:** the MUL-vs-ADD strength and the ADD mode are a blind
-calibration pick — `tools/persistent/glass_calibration.py`, one boot, 18 variant
-panels + a same-boot opaque control, shuffled, labels in a separate key file.
-Kept sheet: `Screenshots/history/glass_transparency_calib_2026-08-30.png`.
-
-## 1. The mechanism (as approved in the plan)
-
-| Piece | Where |
+| Half | State |
 |---|---|
-| **Two blend sublayers per glass level** — MUL (tint + frosted pattern) and ADD (highlights). Built lazily; a map with no vertical glass builds none | `VoxelRenderer._ensure_glass_sublayers()` / `_build_glass_sublayer_node()` |
-| **Shared shader body**, two `render_mode` wrappers (`blend_mul` / `blend_add`) | `godot/shaders/glass_shading.gdshaderinc` + `glass_mul.gdshader` + `glass_add.gdshader` |
-| **In-memory frosted atom** — `facade_glass.png` downscaled to the 32×36 atom, silhouette from `voxel_glass.png`. No new file on disk | `VoxelRenderer._build_glass_frosted_atom()`, source id at `MATERIALS.size()` |
-| **Routing** — the one write seam. `material_name == "glass" and not flat_baked` → the sublayers, and the opaque cell is erased | `VoxelRenderer._set_voxel_cell()` |
-| **Erase** — mirrored on both the slice and the INTERIOR-slab dirty paths | `_process_dirty_slice_voxel()` / `_process_dirty_slab_voxel()` |
-| **FACE-READ-01 kept** — the glass contribution still carries the three distinct face factors (Director's hard rule) | the shader's `glass_face_factor()` |
+| **Appearance / design** | ✅ **CLOSED by the Director.** Blue tint calibrated (blind strip → "painel 005": sheen mode, `mul 0.60 / add 0.20`, tint `[0.47, 0.63, 0.90]`), continuous world-sampled frost, dim top/side caps to read the planes, no double-tint. |
+| **Geometry** | ⛔ **NOT right yet — the Director will adjust it.** The perimeter/thickness geometry and the glass-BLOCK issues below are open. |
 
-**Two ADD modes were both built** (Director: *"A gente consegue testar as opções
-lado a lado?"*): mode 0 = the frosted facade's own bright mottling; mode 1 = a
-procedural diagonal reflection band in canvas space. The strip compares them.
+**The pane is the priority.** Full glass blocks are a rare case (benches, an ad
+panel, a vitral, redomas) — their problems are deferred.
 
-## 2. Scope call made during the build
+## 1. What was built
 
-**Roofs and glazed floor zones stay OPAQUE for G1.** They pass `flat_baked=true`;
-routing gates on `not flat_baked`. A see-through roof is out of scope, and — the
-concrete reason — routing the glass block's roof through the sublayers **failed
-`roof_bake_selftest` and `roof_integration_selftest`** (border-coverage geometry
-read off the opaque layer). Gating on `not flat_baked` fixed both. A transparent
-glass roof is a clean follow-up if the Director wants it.
+### The pipeline
+- Glass **vertical faces** leave the opaque `_layers` for **one glass `TileMapLayer`
+  per level**, drawn through a **rasterising container** — a **`BackBufferCopy`**
+  snapshots the scene, every glass fragment reads that snapshot and applies the
+  tint + sheen ONCE (`glass_pane.gdshader` + `glass_shading.gdshaderinc`'s
+  `glass_apply()`), blend_mix at coverage. Overlapping voxel faces read the same
+  snapshot → **no tint²** (the Director's *"container rasterizado"*). ⚠️
+  `CanvasGroup` + a blend `render_mode` was tried first and does NOT composite
+  (draws an opaque white bbox) — `BackBufferCopy` is the way.
+- Routing is the one `_set_voxel_cell()` write seam, gated
+  `material == "glass" and not flat_baked` (roofs / glazed floor zones stay
+  opaque — a see-through roof broke the roof selftests' coverage geometry).
+- `build_occupancy()` re-adds the glass cells: **intact glass still blocks light
+  exactly as before G1** (whether it should transmit is a separate call, G-D8).
 
-## 3. Light is unchanged on purpose
+### The atoms (8 of them: 4 faces × interior / perimeter)
+- **Interior** = the face's **parallelogram** — the fundamental domain of that
+  face's voxel lattice, on that face's own diamond edge. Clean diagonal edge,
+  continuous frost (sampled by world position — no per-voxel "xadrez").
+- **Perimeter** (ends of the face row + top level, `_glass_is_perimeter()`) = the
+  same parallelogram + a **DIM top cap (0.60)** + a **DIM thickness strip (0.78)**
+  (dim in the atom's RED channel). 1-voxel thickness, planes differentiated, and
+  the caps self-hide on interior voxels (a neighbour's bright parallelogram covers
+  them in the container).
+- `glass_min_body` — a faint tinted body so glass over a black void is not a hole.
 
-`build_occupancy()` re-adds the glass sublayer cells, so **intact glass still
-blocks light and shades its neighbours exactly as before G1**. Whether an intact
-pane should *transmit* light is a separate decision — G-D8 only touches the
-*broken* pane. `glass_transparency_selftest` test 5 pins this.
+### Tooling
+- `INFILTRAITOR_CAPTURE_ACTION=glass_calibration` + `tools/persistent/glass_calibration.py`
+  — the one-boot blind strip (shuffled, key in a sidecar). Used it three times.
+- `INFILTRAITOR_GLASS_DIAG=1` — prints the glass slices a render produces.
+- `INFILTRAITOR_GLASS_ATOM_NUDGE="x,y"` — the pane atoms' texture_origin offset
+  (default `0,20`), for a tuning pass.
+- `godot/scripts/tools/glass_transparency_selftest.gd` — 12 checks (glass off the
+  opaque layer, interior→pane atom, perimeter→perimeter atom, container exists,
+  erase, occupancy). **39 selftests clean.**
 
-## 4. Verification
+## 2. NEXT SESSION — the geometry the Director will adjust
 
-- `project_lint.py` — clean (221 files).
-- `run_selftests.py` — **39 clean, 0 failed**, incl. the new
-  `glass_transparency_selftest` (9 checks: glass off the opaque layer, sublayers
-  lazy, concrete untouched, destroyed glass clears both sublayers, occupancy
-  intact) and the two roof suites re-verified green.
-- `check_invariants.py` + `gen_codemap.py --check` — clean.
-- **Real PLAYGROUND boot**, not a fixture: `glass_calibration` capture shows the
-  two panes transparent over the lit floor; sublayers built on exactly 16 levels
-  (the two 2-storey panes, 80–95), zero glass cells on the opaque layer.
+The **appearance is signed off**; what is still wrong is the geometry.
 
-## 5. Files
+1. **The pane's thickness geometry.** The DIM thickness strip currently rides the
+   `base_b → side_b` diamond edge (reads along the pane's base). The Director wants
+   the **top and the LATERAL** (the left/right vertical edges) — position-0 and
+   position-7 of the face row, whose outward faces face the W/S (or N/E) vertex.
+   That is the per-position atom work that was skipped: an end voxel needs a
+   thickness face on its *outer* end, which for one of the two ends does not fit
+   in the 32×36 atom's used half.
+2. **The glass BLOCK, three issues (Director's own list):**
+   - the **roof-slab seam** (*"questão entre as slabs no teto"*) — glass block
+     roofs stay opaque (scope call) but the seam still reads wrong;
+   - the **junction corner columns** (*"as colunas extras de esquina"*) —
+     `_render_junction_column()` writes straight to the opaque `_layers`, never
+     through the glass branch, so a glass block's corner columns render opaque /
+     absent;
+   - **z-index vs walls in front** (*"o z-index com paredes que estão na frente"*)
+     — the glass composite sits at `get_max_voxel_z_index()`, so a wall NEARER in
+     iso depth but at a lower level draws *under* the glass and gets tinted. This
+     is the "isometric depth compositing" limitation the plan flagged; a
+     per-level or per-pane container is the real fix.
 
-**New:** `godot/shaders/glass_shading.gdshaderinc`, `glass_mul.gdshader`,
-`glass_add.gdshader` · `godot/scripts/tools/glass_transparency_selftest.gd` ·
+After the geometry is right: **G2** (`pane_id` — union-find for panels, occupancy
+flood fill for blocks) and **G-ART** (the art order + `check_decal.py`).
+
+## 3. Files
+
+**New:** `godot/shaders/glass_pane.gdshader`, `glass_shading.gdshaderinc` ·
+`godot/scripts/tools/glass_transparency_selftest.gd` ·
 `tools/persistent/glass_calibration.py` ·
 `Screenshots/history/glass_transparency_calib_2026-08-30.png`.
 
-**Changed:** `godot/scripts/geometry/voxel_renderer.gd` (routing, sublayer
-lifecycle, frosted atom, occupancy, clear/nudge hooks) ·
-`godot/scripts/world/room.gd` (`glass_calibration` capture action) ·
-`PROMPTS/PLANNING/GLASS_MASTER_PLAN.md` + `MATERIALS_MASTER_PLAN.md` (status) ·
-`tools/persistent/CODEMAP.md`.
-
-## 6. NEXT SESSION — start here
-
-1. **Director picks a letter from the strip.** `glass_calibration.py` prints a
-   shuffle seed; the letter→params key is `Screenshots/glass_calib/glass_calib_KEY.txt`.
-   Bake the chosen `glass_mul_strength` / `glass_add_strength` / `glass_add_mode`
-   into `glass_shading.gdshaderinc`'s uniform defaults (and/or `glass.json`) in a
-   short `[G1-CAL]` commit.
-2. **Then G2** — `pane_id` (union-find for panels, occupancy flood fill for
-   blocks, §4.2) — and **G-ART** (the art order, `check_decal.py` earned first).
-
-**Known follow-ups, not blockers:** a transparent glass roof (scope call §2);
-`classify_geometry_over_rect()` does not treat glass as an occluder (a prop
-behind a pane is not "covered" — arguably correct); the frosted atom is identical
-per voxel so a large pane shows a faint repeat.
+**Changed:** `godot/scripts/geometry/voxel_renderer.gd` (routing, glass layer +
+`BackBufferCopy` container, 8 pane atoms, occupancy, `_glass_is_perimeter`,
+clear/nudge hooks, `INFILTRAITOR_GLASS_DIAG`) · `godot/scripts/world/room.gd`
+(`glass_calibration` capture action) · `PROMPTS/PLANNING/GLASS_MASTER_PLAN.md` +
+`MATERIALS_MASTER_PLAN.md` (status) · `tools/persistent/CODEMAP.md`.

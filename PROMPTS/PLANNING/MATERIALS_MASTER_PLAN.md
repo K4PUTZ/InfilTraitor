@@ -978,7 +978,7 @@ No task list until the study lands.
 | 🟢 | **M3-5b** — soft materials become props, not walls (§3.6) | PERF §9 F3/F4/F5 |
 | ⚠️ | **M3-6** — lateral propagation through internal slices (§3.6) | PERF §9 |
 | | **M3-7** — the per-material passage table, measured | M3-6 |
-| ✅ | **M4a** — glass blend mode (its own layer) — ➡️ `GLASS_MASTER_PLAN` **G1**, **BUILT 2026-08-30** (MUL + ADD sublayers, blind calibration strip pending the Director's pick) | Director: glass LAST |
+| 🟢 | **M4a** — glass transparency — ➡️ `GLASS_MASTER_PLAN` **G1**. Appearance signed off 2026-08-31 (`BackBufferCopy` container, calibrated); geometry still open (the Director will adjust) | Director: glass LAST |
 | 9 | **M4b** — glass pane break — ➡️ now `GLASS_MASTER_PLAN` **G2/G3/G5**. ⚠️ `HOLE_ONLY_MATERIALS` and the INTACT branch are NO LONGER NEEDED (G-D3) | design ✅ ratified 2026-08-30 |
 | 10 | **M5** — voxel prop class | M3, renderer v2 |
 | 11 | **M6** — fluid research | — |

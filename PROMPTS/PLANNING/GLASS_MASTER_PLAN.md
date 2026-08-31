@@ -1,18 +1,27 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.2 — **G1 (transparency) BUILT 2026-08-30, awaiting the Director's
-blind calibration pick.** The rest (G2–G7, G-D4, G-ART) is design-ratified and
-unbuilt. G1: glass vertical faces render on their own MUL + ADD blend sublayers
-(`godot/shaders/glass_shading.gdshaderinc` + `glass_mul`/`glass_add.gdshader`),
-built lazily per level in `VoxelRenderer`, sampling an in-memory frosted atom from
-`facade_glass.png`. Roofs and glazed floor zones stay opaque for G1 (out of
-scope, and it kept the roof-coverage geometry intact). Intact glass still blocks
-light exactly as before (`build_occupancy()` re-adds the sublayer cells).
-`glass_transparency_selftest` (9 checks) is the routing gate. The MUL-vs-ADD
-strength and the ADD mode are the Director's to set from
-`tools/persistent/glass_calibration.py` — a one-boot blind strip over PLAYGROUND's
-two panes, shuffled, labels hidden, same-boot opaque control
-(`Screenshots/history/glass_transparency_calib_2026-08-30.png`).
+**Status:** 🟢 v1.3 — **G1 (transparency): APPEARANCE signed off 2026-08-31,
+GEOMETRY still open (the Director will adjust it).** The rest (G2–G7, G-D4,
+G-ART) is design-ratified and unbuilt.
+
+**G1 as built** (commits `41eee478`→`c9c4169c`): glass vertical faces leave the
+opaque `_layers` for one glass `TileMapLayer` per level, composited through a
+**`BackBufferCopy` rasterising container** (`glass_pane.gdshader` reads the
+snapshot and applies the tint once — no double-tint; the Director's *"container
+rasterizado"*). Per-face **parallelogram** atoms (the face-lattice fundamental
+domain) for the interior; **perimeter** atoms add a DIM top cap + thickness strip
+(1-voxel thickness). Frost sampled by world position. Calibration = "painel 005"
+(sheen, `mul 0.60 / add 0.20`, blue tint `[0.47, 0.63, 0.90]`). Roofs / glazed
+floor zones stay opaque (kept the roof-coverage geometry intact). Intact glass
+still blocks light (`build_occupancy()` re-adds the cells).
+`glass_transparency_selftest` (12 checks). Tooling:
+`INFILTRAITOR_CAPTURE_ACTION=glass_calibration` + `glass_calibration.py`,
+`INFILTRAITOR_GLASS_DIAG=1`, `INFILTRAITOR_GLASS_ATOM_NUDGE`.
+
+⚠️ **GEOMETRY OPEN** (see `RESUMO_SESSAO_2026-08-30_GLASS_G1.md` §2): the pane
+thickness should be on the LATERAL edges (per-position atom work, skipped); the
+glass BLOCK has a roof-slab seam, opaque junction corner columns, and z-index vs
+walls in front. **The pane is the priority — full glass blocks are rare.**
 
 Earlier: 🟡 v1.1 — DESIGN RATIFIED 2026-08-30, UNBUILT
 **v1.1, same day:** G-D9 added and **§9 rewritten — it reverses its own first
@@ -454,7 +463,7 @@ Director's scope ruling in §0. Nothing in §10's task order depends on it.
 
 | Order | Task | Blocked by |
 |---|---|---|
-| ✅ | **G1** — glass sublayers (MUL + ADD), lazy per level, shader variant. **BUILT 2026-08-30**, awaiting the Director's blind calibration pick (`glass_calibration.py`). Scope note: vertical faces only — roofs / glazed floor zones stay opaque. Both ADD modes (facade-derived · procedural sheen) shipped so the strip compares them | — |
+| 🟢 | **G1** — glass pane transparency via a `BackBufferCopy` container + per-face parallelogram / perimeter atoms. **APPEARANCE signed off 2026-08-31** (calibration "painel 005"); **GEOMETRY still open** — the Director will adjust the lateral-thickness geometry and the glass-block issues (§ RESUMO_2026-08-30_GLASS_G1). Vertical faces only — roofs / glazed floor zones stay opaque | — |
 | 2 | **G2** — `pane_id`: union-find for panels, occupancy flood fill for blocks (§4.2) | — |
 | 3 | **G-ART** — the art order + `check_decal.py` coverage for the four glass families | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |

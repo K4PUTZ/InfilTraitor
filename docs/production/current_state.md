@@ -69,7 +69,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 | `PERFORMANCE` | it *was* the explosion's cost | 🟠 **Its fire block is HISTORY, not status** — D-6 deleted the very subsystem F3–F8 optimized. P3 + P7b/P7c ship and default ON; P4, P6 and §14.3's broken `INFILTRAITOR_HIDE_VOXELS` stay open. **Read §12–§14, not the v2.3 header** |
 | `SOOT_STORAGE_REFORM` | nothing — the presentation reform took the session on 2026-08-27 | 🟡 **PAUSED at SS-3.** SS-4 (checkpoint persistence), SS-5 (subtraction), SS-6 (rotation) open; **§5.3 is an open DESIGN question for the Director** |
 | `MATERIALS` M3-6 (lateral fire propagation) | PERF P7 — *"do not judge a look through a frame time its own voxel count made worse"* | 🟢 **UNBLOCKED** — P7b/P7c shipped 2026-08-26 |
-| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ⚡ **ACTIVE — it became its own plan on 2026-08-30**: `GLASS_MASTER_PLAN` v1.1, design ratified and unbuilt. G-D3 gives glass a CRACKED tier (amending D22) and thereby REMOVES the `HOLE_ONLY_MATERIALS` + `INTACT` work M4b said had to land together or not at all |
+| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ⚡ **ACTIVE — its own plan since 2026-08-30**: `GLASS_MASTER_PLAN` **v1.7. G1 geometry reworked, G2 + G7 + G-MAP BUILT 2026-08-31.** The break design GREW (G-D11…G-D17: per-projectile shatter roll, partial breaks, mandatory remnants, armored/purple glass, terminal-colour classes, a `plastic` screen backing). G3 next, after G-D9 (`panels.bands` multi-material slices) |
 | `MATERIALS` M5 (voxel props) | renderer v2 | 🔴 Still blocked — the real gate on `OCCLUSION` Part 4 too |
 | `TOP_TEXTURE` Part 3 (textured interiors) | *"the destruction system (no implementation plan exists yet)"* | 🟢 **UNBLOCKED** — that plan was written, shipped and closed. Unscheduled, not blocked |
 | `OCCLUSION` Part 4 (interior cutaway) | Slab/roofs, then *"maps with objects"* | 🟡 Slab landed 2026-07-18; the resume trigger is now M5 props |
@@ -80,17 +80,23 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 
 ### 3. What is genuinely open, ordered by how ready it is
 
-1. **GLASS — ⚡ THE ACTIVE TRACK since 2026-08-30.** M4 grew its own plan:
-   [`GLASS_MASTER_PLAN`](../../PROMPTS/PLANNING/GLASS_MASTER_PLAN.md) v1.1,
-   **design ratified (G-D1…G-D9), unbuilt**, nine tasks. **Next action is G1 —
-   transparency** (two sublayers, MUL for the tint + ADD for the highlights),
-   which depends on nothing. Three findings from that session belong to systems
-   OUTSIDE glass and are recorded there: `PassageQuery` is complete and its only
-   two call sites are prints, so **destruction has never opened a passage for any
-   material**; **`NoiseSystem.emit()` has zero call sites**, so nothing in this
-   game has ever made a sound, and its detection bonus is gated backwards on
-   `result.visible`; and vision reuses the movement edge set, which has no
-   material, so **glass blocks sight exactly like concrete today**.
+1. **GLASS — ⚡ THE ACTIVE TRACK.**
+   [`GLASS_MASTER_PLAN`](../../PROMPTS/PLANNING/GLASS_MASTER_PLAN.md) **v1.7.**
+   BUILT 2026-08-31: **G1 geometry** (the pane thickness is a per-voxel
+   exposed-face cull — main always, top on the top row, side on the frontmost
+   column, all dim; the pre-existing +20 `texture_origin` float was the
+   Director's real complaint and is fixed); **G2 `pane_id`** (`GlassPaneGrouper`
+   — union-find for panels, flood fill for blocks, real-map verified);
+   **G7 pass-through** (a round holes the pane and strikes what is behind);
+   **G-MAP** (`maps/GLASS.map.json` — big pane, small pane, WINDOWS.png `bands`
+   wall, glass block, guard behind). **The break design grew** — G-D11…G-D17,
+   all formalised and Director-signed-off. **Next: G-D9** (`panels.bands`
+   multi-material slices, needed by the GLASS map's WINDOWS.png wall), then
+   **G3** (the break: per-projectile `P_shatter` roll, per-weapon hole size,
+   region flood, the G-D13 remnant floor). Three findings still belong to
+   systems OUTSIDE glass: `PassageQuery` has only `print` call sites (**no
+   passage ever opened, any material**); **`NoiseSystem.emit()` has zero call
+   sites**; vision has no material, so **glass blocks sight like concrete**.
 2. **`MATERIALS` M3-6 / M3-7** — lateral fire propagation and the measured
    per-material passage table. Unblocked by P7, never started.
 3. **`SOOT_STORAGE_REFORM` SS-4 → SS-6.** Half-built; SS-4 is checkpoint
@@ -210,6 +216,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-08-30_GLASS_DESIGN.md
 - RESUMO_SESSAO_2026-08-30_GLASS_G1.md
 - RESUMO_SESSAO_2026-08-30_STATE_OF_THE_PROJECT.md
+- RESUMO_SESSAO_2026-08-31_GLASS_G1_G2_G7.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

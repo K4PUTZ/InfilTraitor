@@ -48,6 +48,10 @@ static func _create_slice(edge: Edge, is_side_a: bool, _registry: EdgeRegistry) 
 	
 	var slice_id := "SLICE_%d_%d_%s" % [gu_cell.x, gu_cell.y, Face.to_string_name(face)]
 	var slice := Slice.new(slice_id, gu_cell, face, edge.id, edge.storey_count, edge.material, edge.start_storey)
+	## GLASS G-D9 (§9.6): the multi-material band map is level-indexed and
+	## side-independent — both slices of a mixed edge carry the same override.
+	if edge.has_material_bands():
+		slice.material_bands = edge.material_bands.duplicate()
 	
 	# Generate voxel positions for this slice
 	var voxel_positions := slice_voxel_positions(gu_cell, face)

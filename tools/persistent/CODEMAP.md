@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**222 scripts · 71821 lines total** (under `godot/scripts/`)
+**222 scripts · 72067 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -592,7 +592,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge.gd`
 
-`class_name Edge` · 168 lines
+`class_name Edge` · 187 lines
 
 `godot/scripts/geometry/edge.gd`
 
@@ -609,9 +609,12 @@ extends `ConfirmationDialog` · 64 lines
 - `var material: String`
 - `var slice_a_id: String = ""`
 - `var slice_b_id: String = ""`
+- `var material_bands: Dictionary = {}`
 - `var occupied_sides: int = OccupiedSides.BOTH`
 
 **Public API**
+- `func has_material_bands() -> bool:`
+- `func material_at(rel_level: int) -> String:`
 - `func set_occupied_gu(gu_cell: Vector2i) -> bool:`
 - `func occupied_gu() -> Vector2i:`
 - `func occupies_cell(gu_cell: Vector2i) -> bool:`
@@ -624,7 +627,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 232 lines
+`class_name EdgeExtractor` · 239 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -703,7 +706,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `glass_pane_grouper.gd`
 
-`class_name GlassPaneGrouper` · 110 lines
+`class_name GlassPaneGrouper` · 121 lines
 
 `godot/scripts/geometry/glass_pane_grouper.gd`
 
@@ -829,7 +832,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slice.gd`
 
-`class_name Slice` · 78 lines
+`class_name Slice` · 94 lines
 
 `godot/scripts/geometry/slice.gd`
 
@@ -849,8 +852,11 @@ extends `ConfirmationDialog` · 64 lines
 - `var baked: bool = false`
 - `var bake_texture: Texture2D`
 - `var pane_id: String = ""`
+- `var material_bands: Dictionary = {}`
 
 **Public API**
+- `func has_material_bands() -> bool:`
+- `func material_at(rel_level: int) -> String:`
 - `func get_voxel(index: int) -> Voxel:`
 - `func total_voxel_count() -> int:`
 - `func mark_all_dirty() -> void:`
@@ -862,7 +868,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slice_generator.gd`
 
-`class_name SliceGenerator` · 101 lines
+`class_name SliceGenerator` · 105 lines
 
 `godot/scripts/geometry/slice_generator.gd`
 
@@ -882,7 +888,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4900 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4944 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1798,7 +1804,7 @@ extends `Node2D` · 43 lines
 
 ### `baked_tile_lookup.gd`
 
-`class_name BakedTileLookup` · 471 lines
+`class_name BakedTileLookup` · 484 lines
 
 `godot/scripts/systems/baked_tile_lookup.gd`
 
@@ -1815,7 +1821,7 @@ extends `Node2D` · 43 lines
 - `func set_baked_atlas(atlas) -> void:`
 - `func set_source_ids(source_ids: Dictionary) -> void:`
 - `func register_runs(runs: Array) -> void:`
-- `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:`
+- `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1, material_override: String = "") -> TileLookupResult:`
 
 ---
 
@@ -3460,7 +3466,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 311 lines
+extends `SceneTree` · 381 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
@@ -4541,7 +4547,7 @@ extends `Node2D` · 34 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1248 lines
+`class_name RoomBuilder` · 1270 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -4862,7 +4868,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 379 lines
+`class_name MapCompiler` · extends `RefCounted` · 419 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 

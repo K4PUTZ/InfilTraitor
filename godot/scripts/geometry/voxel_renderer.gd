@@ -2250,30 +2250,63 @@ func _render_slice(slice: Slice, edge = null) -> void:
 	# Ensure we have enough layers
 	# FIX-VOXEL-HEIGHT-01: multiply storey_count by LEVELS_PER_STOREY to expand to level-space
 	_ensure_voxel_layers(slice.storey_count * GeometryCoords.LEVELS_PER_STOREY)
-	if slice.material == "glass" and OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
-		print("[GLASS-DIAG] slice %s face=%s gu=%s storeys=%d voxels=%d pane=%s" % [
+	## GLASS G-D9 — a slice's material is now per-level. `_slice_is_glassy()` is
+	## true when the base OR any band is glass, so the diag and the geometry
+	## still fire for a brick-capped window.
+	if _slice_is_glassy(slice) and OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
+		print("[GLASS-DIAG] slice %s face=%s gu=%s storeys=%d voxels=%d pane=%s bands=%s" % [
 			slice.id, Face.to_string_name(slice.face), slice.gu_cell,
 			slice.storey_count, slice.voxels.size(),
-			slice.pane_id if slice.pane_id != "" else "<none>"])
+			slice.pane_id if slice.pane_id != "" else "<none>",
+			slice.material_bands if slice.has_material_bands() else "{}"])
 
 	## GLASS G1 GEOMETRY — the top level of a lone pane paints its dim top sliver;
-	## the frontmost column paints its dim side sliver.
-	var glass_top_level: int = -99999
-	if slice.material == "glass":
-		glass_top_level = GeometryCoords.storey_level_base(slice.start_storey) \
-			+ slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1
+	## the frontmost column paints its dim side sliver. G-D9: "top" is the highest
+	## level that is actually GLASS, not the slice top (a brick head sits above it).
+	var glass_top_level: int = _slice_top_glass_level(slice)
+	var slice_level_base: int = GeometryCoords.storey_level_base(slice.start_storey)
 
 	# For each voxel in the slice, set_cell at the appropriate layer
 	for voxel in slice.voxels:
 		if voxel.visible:
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-			var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+			var vmat := slice.material_at(voxel.level - slice_level_base)
+			var render_material := damage_variant_material(vmat, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 			var glass_mask: int = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, glass_top_level) \
-				if slice.material == "glass" else 0
+				if vmat == "glass" else 0
 			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge,
 				voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE,
 				true, glass_mask)
+
+
+## GLASS G-D9 — true when this slice renders any glass at all (base material, or
+## any level band). Non-banded glass slices answer via the base check with zero
+## dictionary work.
+func _slice_is_glassy(slice: Slice) -> bool:
+	if slice.material == "glass":
+		return true
+	for m in slice.material_bands.values():
+		if m == "glass":
+			return true
+	return false
+
+
+## GLASS G-D9 — the highest RENDER level of this slice whose material is glass,
+## or a large negative sentinel when the slice has no glass at all. For a plain
+## glass pane this is simply the slice top; for a brick-capped window it is one
+## level below the head band.
+func _slice_top_glass_level(slice: Slice) -> int:
+	if not _slice_is_glassy(slice):
+		return -99999
+	var base: int = GeometryCoords.storey_level_base(slice.start_storey)
+	var span: int = slice.storey_count * GeometryCoords.LEVELS_PER_STOREY
+	if not slice.has_material_bands():
+		return base + span - 1
+	for rel in range(span - 1, -1, -1):
+		if slice.material_at(rel) == "glass":
+			return base + rel
+	return -99999
 
 
 ## GLASS G1 GEOMETRY — the face mask for one glass voxel. Bit 1 = paint the dim
@@ -2455,12 +2488,20 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	if edge == null:
 		_diag_null_edge_cells += 1
 
+	## GLASS G-D9 — on a banded edge the facade key's material component is
+	## per-level, not `edge.material`. Resolve it here in RENDER space (no
+	## `_ground_plane_level` dependency) and hand it to the lookup as an override;
+	## "" for every ordinary edge, which the lookup treats as "ask edge.material".
+	var edge_material_override: String = ""
+	if edge != null and edge is Edge and edge.has_material_bands():
+		edge_material_override = edge.material_at(level - GeometryCoords.storey_level_base(edge.start_storey))
+
 	if not is_impact_mark and _bake_config and _bake_config.enabled and edge != null:
 		## LEVEL-RENUMBER — sheet space, not render space. See `sheet_level()`.
 		## This is the MAIN wall placement path and the last of the four to be
 		## found: the first sweep missed it because it sits inside
 		## `_set_voxel_cell()` rather than beside the other three.
-		var result = _baked_lookup.resolve(edge, slice_face, voxel_xy, relative_level(level))
+		var result = _baked_lookup.resolve(edge, slice_face, voxel_xy, relative_level(level), -1, edge_material_override)
 
 		if result and result.source_id_int >= 0:
 			source_id = result.source_id_int
@@ -3473,26 +3514,29 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 		
 		## Fallback: render via material lookup (original behavior)
 		var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-		var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
+		## GLASS G-D9 — the material is per-level on a banded slice.
+		var vmat := slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
+		var render_material := damage_variant_material(vmat, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 		var glass_mask: int = 0
-		if slice.material == "glass":
-			var top_level: int = GeometryCoords.storey_level_base(slice.start_storey) \
-				+ slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1
-			glass_mask = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, top_level)
+		if vmat == "glass":
+			glass_mask = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, _slice_top_glass_level(slice))
 		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy,
 			slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, true, glass_mask)
 	else:
 		## GLASS G1 — a destroyed glass voxel is erased from the glass pane layer,
 		## not the opaque layer it never lived on. Same `already_gone` guard and
-		## `voxel_destroyed` contract as the opaque branch below.
-		if slice.material == "glass" and _glass_layers.has(voxel.level):
+		## `voxel_destroyed` contract as the opaque branch below. G-D9: gate on the
+		## per-level material, not the slice base — a brick-band voxel takes the
+		## ordinary opaque path below.
+		var vmat_gone := slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
+		if vmat_gone == "glass" and _glass_layers.has(voxel.level):
 			var gpane := _glass_layers[voxel.level] as TileMapLayer
 			var g_gone: bool = gpane.get_cell_source_id(voxel.grid_pos) == -1
 			gpane.erase_cell(voxel.grid_pos)
 			note_external_write(voxel.level, voxel.grid_pos)
 			forget_ghost_record(voxel.grid_pos, voxel.level)
 			if not g_gone:
-				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
+				voxel_destroyed.emit(voxel.grid_pos, voxel.level, vmat_gone)
 			return
 		# Clear cell
 		if _layers.has(voxel.level):

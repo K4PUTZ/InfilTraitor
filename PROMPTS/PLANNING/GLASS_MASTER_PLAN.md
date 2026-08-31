@@ -1,15 +1,18 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.7 — **G1 geometry reworked, G2 + G7 BUILT (2026-08-31).** G1
+**Status:** 🟢 v1.8 — **G1 geometry reworked, G2 + G7 + G-MAP + G-D9 BUILT.** G1
 appearance signed off; G1 geometry awaits a Director tuning verdict on the
-sliver size/dim. **The break design GREW on 2026-08-31** — per-projectile
-shatter roll (G-D11), partial breaks on big panes (G-D12), a mandatory remnant
-floor (G-D13), per-weapon hole size (G-D14), armored/purple glass with a primed
-state (G-D15), terminal-colour glass classes (G-D16 — INDESTRUCTIBLE *stops the
-round*), a black-plastic screen backing (G-D17), a dedicated `GLASS` test map
-(§12), and the `bands` window-authoring format (§9.6, G-D9). **G3 is PAUSED for
-this doc's sign-off** before any code. Next: G-MAP, then G-D9, then G3. G-ART,
-G5, G4, G6, G-D4, G-VARIANT, `plastic` unbuilt.
+sliver size/dim. **G-D9 (multi-material slices) BUILT 2026-08-31** —
+`panels.bands` → `Slice.material_bands` + `material_at()`, the per-band bake page,
+a lookup material override; the GLASS map's WINDOWS.png wall renders a brick sill
++ head over a glass middle (`Screenshots/history/glass_bands_wall_{before,after}_2026-08-31.png`,
+same-boot). **The break design GREW on 2026-08-31** — per-projectile shatter roll
+(G-D11), partial breaks on big panes (G-D12), a mandatory remnant floor (G-D13),
+per-weapon hole size (G-D14), armored/purple glass with a primed state (G-D15),
+terminal-colour glass classes (G-D16 — INDESTRUCTIBLE *stops the round*), a
+black-plastic screen backing (G-D17). **G3 is PAUSED for this doc's sign-off**
+before any code — the Director gave it at the end of the 2026-08-31 session.
+Next: **G3**. G-ART, G5, G4, G6, G-D4, G-VARIANT, `plastic` unbuilt.
 
 **G1 GEOMETRY as reworked** (Director's two diagrams, 2026-08-31): the pane
 thickness is a per-voxel **exposed-face cull**, not per-position atoms. A glass
@@ -87,7 +90,7 @@ art order that all of it needs.
 
 | Deferred | To | Why it is not here |
 |---|---|---|
-| **A real window** (brick cap · glass · brick cap over 3 stacked storeys) | the scenario applications | ⚠️ Its enabling capability — **multi-material slices, G-D9** — is now DESIGNED and costed in §9, and the cost is far lower than this row first assumed. What stays deferred is the AUTHORING (how a mapfile spells it), not the feasibility |
+| **A real window** (brick cap · glass · brick cap over 3 stacked storeys) | the scenario applications | ✅ Its enabling capability — **multi-material slices, G-D9** — is BUILT (2026-08-31); the `panels.bands` authoring (§9.6) spells it and the GLASS map's WINDOWS.png wall renders it. What stays deferred is the full *reveal* geometry (the empty opposite face, the agent crossing it) |
 | **Shard noise** | the sound milestone | *"Ainda não implementamos o som, ele vai ser uma parte crucial do jogo, inclusive com interface visual no cenário."* The shard STATE is built here; its gameplay consumer is not |
 | **The agent walking through a broken pane** | the movement milestone | *"Com a janela de verdade vamos poder criar a passagem, e fazer o agente atravessar, na milestone de movimentação"* |
 | **The see-through vision roll** (G-D7) | the scenario applications | It needs two rooms and a window between them to mean anything. Designed here, built there |
@@ -557,7 +560,7 @@ reach a corner), but it is a known hole, not an unknown one.
 The **capability** is ratified here. The **authoring** — how a mapfile spells
 "brick cap, glass, brick cap" — was deferred to the scenario applications; ⚠️
 **that deferral is PARTIALLY LIFTED 2026-08-31** — the new `GLASS` test map
-(§12) needs the authoring format now. §9.6 formalises it.
+(§12) needs the authoring format now. §9.6 formalises it. ✅ **BUILT 2026-08-31.**
 
 ### 9.6 The authoring format (Director, 2026-08-31 — *"vamos usar o mecanismo do WINDOWS.png para criar as paredes"*)
 
@@ -585,18 +588,20 @@ level→material override on the same half-thickness face:
   `MULTI MATERIAL SLICE` callout: the sill storey is brick over glass, the head
   storey glass over brick.
 
-**Pipeline (this is the G-D9 implementation, now needed):**
+**Pipeline — ✅ BUILT 2026-08-31 (commit pending). What actually landed:**
 
-| Layer | Change |
+| Layer | Change as built |
 |---|---|
-| `map_compiler` | forward `bands` on the panel instance |
-| `edge_extractor._extract_panels` | set `edge.material` (base) + new `edge.material_bands: Dictionary` (level → material) |
-| `Slice` | gains `material_bands: Dictionary` + `material_at(level: int) -> String` (§9.3) |
-| `SliceGenerator` | copy the band map onto the Slice |
-| render / bake / damage / census | the 9 sites of §9.2 that already hold the `Voxel` call `slice.material_at(voxel.level)` instead of `slice.material`; the 2 that do not (`detonation_plan_builder:520` whole-slice batch, `room.gd` census) resolve per-voxel or keep asking "what is this wall mostly made of" |
-| `BakedTileLookup` | `:259` / `:415` ask `edge.material_at(level)` — the facade key is already `(material, facade, column, level, dir)`, no collision (§9.2) |
-| ⚠️ `_group_edges_into_runs` | a run must become per **material band**, not per edge — §9.4's real cost. A wrong run restarts the facade mid-wall with no error; **capture-only** to catch |
-| `GlassPaneGrouper` | a glass BAND on a mixed panel is still a pane — group by the glass levels, not the whole slice |
+| `map_compiler._compile_panel_bands()` | expands the sparse `bands` array into a dense `{rel_level: material}` dict on the panel instance, ONCE. `levels` accepted as `[lo,hi]` OR the `Vector2i` FileMapSource's JSON converter folds a 2-int array into |
+| `edge_extractor._extract_panels` | `edge.material_bands = panel.material_bands.duplicate()` — panels are appended straight to `result["edges"]`, never rebuilt by the third pass, so nothing drops it |
+| `Edge` / `Slice` | `material_bands: Dictionary` + `material_at(rel_level) -> String` + `has_material_bands()`. `rel_level` = `voxel.level − storey_level_base(start_storey)` — 0-based from the panel's own bottom, exactly the authoring space |
+| `SliceGenerator._create_slice` | copies the band map onto the Slice (side-independent) |
+| `voxel_renderer._render_slice` / `_process_dirty_slice_voxel` | per-voxel `vmat = slice.material_at(rel)` drives `damage_variant_material()`, the glass-layer routing gate (`vmat == "glass"`), and the diag. `_slice_top_glass_level()` anchors the G1 top sliver to the top GLASS row, below a brick head. `_slice_is_glassy()` (base OR any band) keeps the diag/geometry firing |
+| `voxel_renderer._set_voxel_cell` | resolves the per-level material in RENDER space (`edge.material_at(level − storey_level_base(edge.start_storey))`) and passes it to the lookup as `material_override` — "" for every ordinary edge |
+| `BakedTileLookup.resolve` / `_resolve_baked_sheet` / `_resolve_generic` | new trailing `material_override: String = ""`; when set it is the facade key's material component. The key was already `(material, facade, column, level, dir)` — two materials on one face, no collision |
+| `room_builder._bake_textures` | one extra `wall_descriptor` per `(banded edge, band material)` so `_extract_unique_combos` / `_extract_combo_usage` see the combo and the compositor bakes the brick facade page. Verified: `[BAKE] Composed sheet brick|facade_brick` appears for the GLASS map (and does NOT on the pre-G-D9 checkout) |
+| `GlassPaneGrouper._is_glass_slice()` | a slice is glass if base OR any band is glass — the GLASS map's 3 banded panels union into one `PANE_SLICE_22_10_SW` |
+| ⚠️ `_group_edges_into_runs` — **NOT changed.** §9.4 anticipated a per-**material-band** run. It was not needed: the banded edges share their BASE material along the run, so they group naturally, and `column_in_run` continuity is exactly what the glass middle wants; the brick sill/head resolve against the (fully-swept) brick page folded through the same `column_in_run`, giving a continuous brick cap. §9.4's failure mode (a wrong run restarting a facade mid-wall) needs a run that spans two *different* base materials — those are already separate runs. If a future map places a banded window mid-run against a plain wall of a different base material and the brick cap misaligns, that is when the run split gets built, with its own capture. |
 
 ## 10. Task order
 
@@ -606,7 +611,7 @@ level→material override on the same half-thickness face:
 | 🟢 | **G2** — `pane_id`: `GlassPaneGrouper.assign()` at map load — union-find for panels (coplanar + adjacent along the face run axis), 4-connected flood fill for glass block cells (NOT per-authored-instance: PLAYGROUND's 3-wide block is three 1×1 declarations = one pane). Real-map verified (PLAYGROUND: 2 panel panes + 1 `PANE_BLOCK_0`). `Slice.pane_id`. **BUILT 2026-08-31** | — |
 | 🟢 | **G7** — the round passes through a pane (G-D5): `EdgeRegistry.glass_edge_keys()`, `_walk_pellet_ray` records the crossing (deduped by pane) and continues, `agent_shot_controller` flattens crossings into picks. Real-map: `glass destroyed=1` AND `concrete dented=1` from one pistol shot. Blocks excluded (their cells are in `blocked_cells`, deferred). **BUILT 2026-08-31** | — |
 | 🟢 | **G-MAP** — `maps/GLASS.map.json` **BUILT 2026-08-31**: big pane (authored gu x 10–15, y 9, SW, 3 storeys) in front of the agent, a WINDOWS.png `bands` wall (gu 19–21 — `bands` ignored until G-D9, renders as plain glass), a small 1-storey pane, a guard behind the big pane, a 3-wide glass block. Auto-registered via `FileMapSource`. `INFILTRAITOR_MAP=GLASS` boots it without touching the persisted cfg. Verified: pane_ids correct (one big pane, one small, one block, one bands wall), and a pistol shot goes `glass destroyed=1` + `concrete dented=1` through the big pane | — |
-| 2c | **G-D9** — multi-material slices: `panels.bands` authoring (§9.6), `Slice.material_bands` + `material_at()`, the per-band bake run. Needed by G-MAP's WINDOWS.png wall | — |
+| 🟢 | **G-D9** — multi-material slices: `panels.bands` authoring (§9.6), `Slice.material_bands` + `material_at()`, the per-band bake page (extra `wall_descriptor`, NOT a run split — see §9.6), a lookup `material_override`. `GlassPaneGrouper` unions a banded panel by base-or-band glass. **BUILT 2026-08-31.** Acceptance: `glass_bands_wall_before/after_2026-08-31.png` (same-boot) — the WINDOWS.png wall gains a brick sill (rel 0-1) + head (rel 22-23) over a glass middle; `[BAKE] Composed sheet brick\|facade_brick` present on the GLASS map and absent pre-G-D9; `glass_transparency_selftest` test [7]; 39 selftests clean | — |
 | 3 | **G-ART** — the art order + `check_decal.py` coverage for the glass families (`crack_web` now needs a tight AND a wide/spaced variant, G-D14) | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |
 | ⏸ | **G3** — the break, per §5.1's REWRITTEN model (G-D11..G-D14): per-projectile shatter roll `P_shatter(glass_punch)`, per-weapon hole size off `blowout`, region flood on a won roll, the G-D13 remnant floor. In `build_plan()` + the shot path, world-revision bump. Real-map bed = the `GLASS` map. **PAUSED 2026-08-31 pending this doc's sign-off** — the design grew (per-projectile roll, partial breaks, armored glass, the plastic backing, the new test map) and the Director asked for it formalised first | G-MAP, G2, §5.1 sign-off |

@@ -24,7 +24,7 @@ class_name GlassPaneGrouper
 static func assign(edge_registry: EdgeRegistry, solid_block_instances: Array) -> void:
 	var glass: Array = []
 	for slice in edge_registry.all_slices():
-		if slice.material == "glass":
+		if _is_glass_slice(slice):
 			glass.append(slice)
 	if glass.is_empty():
 		return
@@ -76,6 +76,17 @@ static func assign(edge_registry: EdgeRegistry, solid_block_instances: Array) ->
 				parent[ra] = rb
 	for s in panels:
 		s.pane_id = "PANE_%s" % _find(parent, s.id)
+
+
+## GLASS G-D9 — a slice is glass if its base material is glass OR any level band
+## is (a mostly-brick wall with a glass strip is still a pane at that strip).
+static func _is_glass_slice(slice) -> bool:
+	if slice.material == "glass":
+		return true
+	for m in slice.material_bands.values():
+		if m == "glass":
+			return true
+	return false
 
 
 ## 4-connected flood fill over a cell set → { cell: "PANE_BLOCK_n" }.

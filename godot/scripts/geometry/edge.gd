@@ -13,6 +13,25 @@ var material: String           ## material type: "concrete", "metal", "stone", "
 var slice_a_id: String = ""    ## backfilled by registry after slice A created
 var slice_b_id: String = ""    ## backfilled by registry after slice B created
 
+## GLASS G-D9 (GLASS_MASTER_PLAN §9) — MULTI-MATERIAL SLICES.
+##
+## A sparse per-level override on `material`: `{rel_level: int -> material: String}`.
+## `rel_level` is 0-based from THIS edge's own bottom (0 … storey_count*8 − 1),
+## exactly as the mapfile `panels.bands` authoring spells it (§9.6). Empty for
+## every ordinary wall — a normal edge pays nothing. `material` stays the BASE
+## (the majority / dominant surface); any level not named here renders as `material`.
+var material_bands: Dictionary = {}
+
+
+func has_material_bands() -> bool:
+	return not material_bands.is_empty()
+
+
+## The material at one panel-relative level. Falls back to the base `material`
+## for any level a band does not cover — so a caller can ask unconditionally.
+func material_at(rel_level: int) -> String:
+	return material_bands.get(rel_level, material)
+
 ## MATERIALS_MASTER_PLAN §3.2b — HALF-THICKNESS ELEMENTS.
 ##
 ## A normal wall is two voxels thick (D16): one storey-face on each of the two

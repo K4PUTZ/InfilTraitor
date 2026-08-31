@@ -21,6 +21,22 @@ var bake_texture: Texture2D      ## reserved for VOXEL-08
 ## from one hit.
 var pane_id: String = ""
 
+## GLASS G-D9 (GLASS_MASTER_PLAN §9) — MULTI-MATERIAL SLICES. A sparse per-level
+## override on `material`, `{rel_level: int -> material: String}`, copied verbatim
+## from the parent Edge at generation time. `rel_level` is 0-based from this
+## slice's own bottom (0 … storey_count*8 − 1). Empty for every ordinary wall.
+var material_bands: Dictionary = {}
+
+
+func has_material_bands() -> bool:
+	return not material_bands.is_empty()
+
+
+## The material at one slice-relative level; falls back to the base `material` for
+## any level no band covers. `rel_level` = voxel.level − storey_level_base(start_storey).
+func material_at(rel_level: int) -> String:
+	return material_bands.get(rel_level, material)
+
 
 func _init(p_id: String, p_gu_cell: Vector2i, p_face: int, p_edge_id: String,
 		   p_storey_count: int, p_material: String = "concrete", p_start_storey: int = 0):

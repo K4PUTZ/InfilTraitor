@@ -262,6 +262,11 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"material": String(panel.get("material", "glass")),
 			"storeys": maxi(1, int(panel.get("storeys", 1))),
 			"start_storey": maxi(0, int(panel.get("start_storey", 0))),
+			## GLASS G-D9 (§9.6): expand the sparse `bands` authoring into a
+			## dense {rel_level: material} override dict here, once. `levels` is
+			## an inclusive [lo, hi] pair — FileMapSource's JSON converter folds a
+			## 2-int array into a Vector2i, so accept either shape.
+			"material_bands": _compile_panel_bands(panel.get("bands", [])),
 		})
 
 	var result: Dictionary = {
@@ -292,6 +297,41 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 
 
 ## --- private helpers --------------------------------------------------------
+
+
+## GLASS G-D9 (§9.6): expand a panel's sparse `bands` array into a dense
+## {rel_level: int -> material: String} override dict. Each band is
+## `{"levels": [lo, hi], "material": "brick"}` with an INCLUSIVE level range,
+## panel-relative (0 … storeys*8 − 1). FileMapSource's JSON converter turns a
+## 2-int `[lo, hi]` into a Vector2i, so both shapes are accepted. A later band
+## wins over an earlier one on an overlapping level. Returns {} for no bands —
+## an ordinary panel is byte-for-byte unchanged.
+static func _compile_panel_bands(bands) -> Dictionary:
+	var out: Dictionary = {}
+	if not (bands is Array):
+		return out
+	for band in bands:
+		if not (band is Dictionary):
+			continue
+		var raw = band.get("levels", null)
+		var lo: int
+		var hi: int
+		if raw is Vector2i:
+			lo = raw.x
+			hi = raw.y
+		elif raw is Array and raw.size() >= 2:
+			lo = int(raw[0])
+			hi = int(raw[1])
+		else:
+			push_error("[MapCompiler] panel band has no valid `levels` [lo, hi]: %s" % [band])
+			continue
+		var mat := String(band.get("material", ""))
+		if mat == "":
+			push_error("[MapCompiler] panel band %s has no `material`" % [band])
+			continue
+		for lvl in range(mini(lo, hi), maxi(lo, hi) + 1):
+			out[lvl] = mat
+	return out
 
 
 ## Shadow height class (1-4) for a prop stack of N sprites. Tunable single source:

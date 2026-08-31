@@ -219,6 +219,13 @@ static func _extract_panels(compiled: Dictionary, edge_groups: Dictionary, resul
 		var material: String = String(panel.get("material", "glass"))
 
 		var edge := Edge.between(gu, neighbour, storeys, material, start_storey)
+		## GLASS G-D9 (§9.6): the sparse per-level material override, already
+		## expanded to {rel_level: material} by MapCompiler. Set on THIS edge —
+		## panels are appended straight to result["edges"] below and never pass
+		## through the third-pass rebuild, so nothing drops it.
+		var bands = panel.get("material_bands", {})
+		if bands is Dictionary and not bands.is_empty():
+			edge.material_bands = bands.duplicate()
 		if edge_groups.has(edge.id):
 			push_error("[EdgeExtractor] panel at %s face %s collides with an existing wall edge (%s) — a pane cannot share a face with a wall. Remove one, or make the wall itself the panel."
 				% [gu, face_name, edge.id])

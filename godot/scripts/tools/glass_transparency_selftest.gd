@@ -48,6 +48,7 @@ func _init() -> void:
 	test_destroyed_glass_clears_the_pane()
 	test_intact_glass_still_blocks_light()
 	test_glass_pane_ids_group_the_surface()
+	test_material_bands_route_per_level()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -290,6 +291,75 @@ func test_glass_pane_ids_group_the_surface() -> void:
 	else:
 		_fail("glass block faces not one pane: %s vs %s" % [blk_a.pane_id, blk_b.pane_id])
 
+	print("")
+
+
+## GLASS G-D9 (GLASS_MASTER_PLAN §9) — a MULTI-MATERIAL SLICE: base glass with a
+## brick sill (rel 0-1) and head (rel 14-15) over 2 storeys. The brick bands must
+## land on the OPAQUE layer and the glass middle on the pane sublayers, from the
+## SAME slice, keyed by `material_at(rel_level)`.
+func test_material_bands_route_per_level() -> void:
+	print("[7] G-D9: a brick-capped glass window routes brick opaque, glass to the pane\n")
+
+	## The accessor itself.
+	var s := Slice.new("S_BANDS", Vector2i(3, 3), Face.SW, "E_BANDS", 2, "glass")
+	s.material_bands = {0: "brick", 1: "brick", 14: "brick", 15: "brick"}
+	var acc_ok := s.material_at(0) == "brick" and s.material_at(1) == "brick" \
+		and s.material_at(7) == "glass" and s.material_at(14) == "brick" and s.material_at(15) == "brick"
+	if acc_ok:
+		_pass("Slice.material_at(): brick at the sill/head levels, glass between")
+	else:
+		_fail("Slice.material_at() wrong: 0=%s 7=%s 15=%s" % [s.material_at(0), s.material_at(7), s.material_at(15)])
+
+	## The real render seam.
+	var r := _fresh_renderer()
+	var base: int = GeometryCoords.PLAYABLE_LEVEL
+	var slice := Slice.new("SLICE_BANDS_RENDER", Vector2i(3, 3), Face.SW, "", 2, "glass")
+	slice.material_bands = {0: "brick", 1: "brick", 14: "brick", 15: "brick"}
+	for lvl_off in range(16):
+		for pos in range(8):
+			slice.voxels.append(Voxel.new(Vector2i(24 + pos, 31), base + lvl_off, slice))
+	_fixtures.append(slice)
+	var registry := EdgeRegistry.new()
+	registry.register_slice(slice)
+	r.render(registry)
+
+	## Brick sill level (rel 0): opaque layer has 8 cells, no glass sublayer.
+	var sill_opaque: TileMapLayer = r.get_layer(base + 0)
+	var sill_n: int = sill_opaque.get_used_cells().size() if sill_opaque != null else -1
+	var sill_glass: TileMapLayer = r._glass_layers.get(base + 0)
+	if sill_n == 8 and sill_glass == null:
+		_pass("the brick sill (rel 0) is 8 opaque cells, no pane sublayer")
+	else:
+		_fail("brick sill wrong: opaque=%d glass_sublayer=%s" % [sill_n, sill_glass])
+
+	## Glass middle (rel 7): pane sublayer has 8 cells, opaque layer empty.
+	var mid_opaque: TileMapLayer = r.get_layer(base + 7)
+	var mid_n: int = mid_opaque.get_used_cells().size() if mid_opaque != null else -1
+	var mid_glass: TileMapLayer = r._glass_layers.get(base + 7)
+	var mid_gn: int = mid_glass.get_used_cells().size() if mid_glass != null else -1
+	if mid_n == 0 and mid_gn == 8:
+		_pass("the glass middle (rel 7) is 8 pane cells, opaque layer empty")
+	else:
+		_fail("glass middle wrong: opaque=%d pane=%d" % [mid_n, mid_gn])
+
+	## Brick head (rel 15): opaque again.
+	var head_opaque: TileMapLayer = r.get_layer(base + 15)
+	var head_n: int = head_opaque.get_used_cells().size() if head_opaque != null else -1
+	var head_glass: TileMapLayer = r._glass_layers.get(base + 15)
+	if head_n == 8 and head_glass == null:
+		_pass("the brick head (rel 15) is 8 opaque cells, no pane sublayer")
+	else:
+		_fail("brick head wrong: opaque=%d glass_sublayer=%s" % [head_n, head_glass])
+
+	## The top glass sliver anchors to the top GLASS level (rel 13), not the slice top.
+	var top_glass: int = r._slice_top_glass_level(slice)
+	if top_glass == base + 13:
+		_pass("_slice_top_glass_level() is the top glass row (rel 13), below the brick head")
+	else:
+		_fail("_slice_top_glass_level() == %d, expected %d" % [top_glass, base + 13])
+
+	r.queue_free()
 	print("")
 
 

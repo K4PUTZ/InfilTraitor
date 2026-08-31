@@ -833,6 +833,28 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 				"run": run,  # Include run reference for strip walking
 			})
 
+	## GLASS G-D9 (GLASS_MASTER_PLAN §9) — MULTI-MATERIAL SLICES. A banded edge
+	## (a brick sill/head on a glass window) is grouped by its BASE material
+	## above, so its band materials' facade pages would never be composed. Emit
+	## one extra descriptor per (edge, band material) so both _extract_unique_combos
+	## and _extract_combo_usage see the combo and the compositor bakes its page.
+	## The lookup then keys the sill rows to the brick page via material_override.
+	for run in runs:
+		for edge in run["edges"]:
+			if not (edge is Edge and edge.has_material_bands()):
+				continue
+			var seen_band_mats: Dictionary = {}
+			for band_mat in edge.material_bands.values():
+				if band_mat == edge.material or seen_band_mats.has(band_mat):
+					continue
+				seen_band_mats[band_mat] = true
+				wall_descriptors.append({
+					"material_id": band_mat,
+					"facade_id": BakePolicyClass.facade_for_material(band_mat),
+					"edge": edge,
+					"run": run,
+				})
+
 	# OVERLORD-FIX-02: junction specs — each junction column's half-faces must
 	# CONTINUE the adjacent legs' facade planes. Project the junction voxel
 	# onto each leg's run axis (falls one past the run's end → mirrored-repeat

@@ -115,7 +115,13 @@ func register_runs(runs: Array) -> void:
 ## Main resolve function: placement calls this once per set_cell()
 ## BAKE-FACADE-PLANE-01: Now 2-D — accepts level and column_in_run for sheet addressing
 ## BAKE-FACADE-PLANE-02-c: MATERIAL_ONLY mode short-circuits to generic (no baking)
-func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1) -> TileLookupResult:
+## GLASS G-D9 (GLASS_MASTER_PLAN §9.2) — `material_override` lets a caller that
+## has already resolved a MULTI-MATERIAL SLICE's per-level material (a brick sill
+## on a glass window) name it here. "" keeps the historical behaviour: the
+## material comes from `edge.material`. The facade key is already
+## `(material, facade, column, level, dir)`, so two materials on one face produce
+## distinct keys with no collision.
+func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1, material_override: String = "") -> TileLookupResult:
 	# If baking is disabled, always use generic material atlas
 	var baking_enabled = false
 	if _bake_config:
@@ -137,19 +143,19 @@ func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run:
 		is_material_only = (_bake_config_ref.blend_mode == _bake_config_ref.BlendMode.MATERIAL_ONLY) if _bake_config_ref else false
 
 	if not baking_enabled or is_material_only:
-		return _resolve_generic(edge, face, voxel_xy)
+		return _resolve_generic(edge, face, voxel_xy, material_override)
 
 	# If column_in_run not provided, compute it from edge and voxel_xy
 	if column_in_run < 0:
 		column_in_run = _compute_column_in_run(edge, voxel_xy)
 
 	# BAKE-FACADE-PLANE-01: Try 2-D baked lookup with level and column_in_run
-	var baked_result = _resolve_baked_sheet(edge, face, voxel_xy, level, column_in_run)
+	var baked_result = _resolve_baked_sheet(edge, face, voxel_xy, level, column_in_run, material_override)
 	if baked_result != null:
 		return baked_result
 
 	# Fallback to generic
-	return _resolve_generic(edge, face, voxel_xy)
+	return _resolve_generic(edge, face, voxel_xy, material_override)
 
 
 ## Mirror an integer index into [0, period) using mirrored-repeat addressing
@@ -235,7 +241,7 @@ func _debug_enabled() -> bool:
 ## BAKE-FACADE-PLANE-01: Resolve using 2-D baked atom sheet
 ## BAKE-FACADE-PLANE-02-b: Pass edge to compute_facade_key for run-axis detection (second-direction fix)
 ## Returns null if baked atlas not available; caller will use fallback
-func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, column_in_run: int) -> TileLookupResult:
+func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, column_in_run: int, material_override: String = "") -> TileLookupResult:
 	# Get the baked atlas and lookup dictionary
 	var baked_atlas = _get_baked_atlas()
 	if baked_atlas == null:
@@ -252,8 +258,12 @@ func _resolve_baked_sheet(edge, _face: int, _voxel_xy: Vector2i, level: int, col
 		return null
 
 	# Get material and facade for this edge
+	# GLASS G-D9: a resolved per-level override (a brick band on a glass window)
+	# wins over the edge's base material.
 	var material_id = "default"
-	if edge.has_method("get_material_id"):
+	if material_override != "":
+		material_id = material_override
+	elif edge.has_method("get_material_id"):
 		material_id = edge.get_material_id()
 	elif "material" in edge:
 		material_id = edge.material
@@ -406,10 +416,13 @@ func _get_edge_position_in_run(edge, run: Dictionary) -> int:
 
 
 ## Fallback: resolve using generic material atlas
-func _resolve_generic(edge, face: int, voxel_xy: Vector2i) -> TileLookupResult:
+func _resolve_generic(edge, face: int, voxel_xy: Vector2i, material_override: String = "") -> TileLookupResult:
 	var material_id = "default"
 
-	if edge.has_method("get_material_id"):
+	# GLASS G-D9: a resolved per-level override wins over the edge's base material.
+	if material_override != "":
+		material_id = material_override
+	elif edge.has_method("get_material_id"):
 		material_id = edge.get_material_id()
 	elif "material" in edge:
 		material_id = edge.material

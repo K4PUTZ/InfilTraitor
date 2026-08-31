@@ -807,19 +807,20 @@ var _layers: Dictionary = {}               ## level:int -> TileMapLayer, sparse
 ## by `_ensure_glass_sublayers()`; a map with no glass builds none. Rule 8 holds —
 ## the voxels still arrive via `set_cell()`, only the layer's compositing changes.
 var _glass_layers: Dictionary = {}         ## level:int -> {"mul": TileMapLayer, "add": TileMapLayer}
-## Atlas source in `_tileset` for the in-memory frosted-glass atom the sublayers
-## sample (built from facade_glass.png). -1 until `_build_voxel_tileset()` runs.
+## Atlas sources in `_tileset` for the four per-face glass pane atoms. Face int →
+## source_id. Empty until `_build_voxel_tileset()` runs.
+var _glass_pane_source: Dictionary = {}
+## Back-compat alias — the SW source id (diagnostics / selftest). -1 until built.
 var _glass_frosted_source_id: int = -1
 ## The five calibration knobs the glass sublayer shaders expose, mirrored here so
 ## `set_glass_shader_param()` (the blind-strip capture action) can drive them and
 ## every freshly-built sublayer inherits the current value. Defaults match
 ## glass_shading.gdshaderinc.
 var _glass_shader_params: Dictionary = {
-	## Defaults track glass_shading.gdshaderinc — the Director's blind pick was
-	## "between panel 14 and 15" (sheen mode, mul 0.45, add 0.25..0.45) with the
-	## tint pulled toward blue.
-	"glass_mul_strength": 0.45,
-	"glass_add_strength": 0.32,
+	## Defaults track glass_shading.gdshaderinc — the Director's pick on the
+	## parallelogram strip was "painel 005": sheen mode, mul 0.60, add 0.20, blue.
+	"glass_mul_strength": 0.60,
+	"glass_add_strength": 0.20,
 	"glass_add_threshold": 0.55,
 	"glass_add_mode": 1.0,
 	"glass_tint": Color(0.47, 0.63, 0.90),
@@ -1997,43 +1998,51 @@ func _build_voxel_tileset() -> void:
 			## VL-03-PERF: light-bucket alts minted lazily on first use — see
 			## _ensure_light_alt (eager minting dominated rotation cost).
 
-	## GLASS G1 — one extra atlas source: the glass PANE atom. Its alpha is the
-	## fundamental domain of the wall-face lattice — a parallelogram one voxel's
-	## share of a flat sheet — so a stack of them tiles seam-to-seam with NO
-	## overlap (a translucent atom over a translucent one DOUBLE-TINTS the overlap,
-	## which is the "serrilhado" the Director flagged) and a clean diagonal edge.
-	## The frosted PATTERN no longer lives in the atom — it is sampled continuously
-	## by world position in the shader, so it does not repeat per voxel (the
-	## "xadrez"). The atom's RGB is white; only its alpha matters.
-	## Alternative 0 = the SW/NE lattice (voxels step screen (+16,+8));
-	## alternative FLIP_H serves NW/SE (they step (−16,+8)).
-	_glass_frosted_source_id = MATERIALS.size()
-	var pane_atom := _build_glass_pane_atom()
-	if pane_atom != null:
-		var glass_source := TileSetAtlasSource.new()
-		glass_source.texture = ImageTexture.create_from_image(pane_atom)
-		glass_source.texture_region_size = Vector2i(pane_atom.get_width(), pane_atom.get_height())
-		glass_source.separation = Vector2i.ZERO
-		glass_source.margins = Vector2i.ZERO
-		glass_source.create_tile(Vector2i.ZERO)
-		_tileset.add_source(glass_source, _glass_frosted_source_id)
-		## FLIP_H is a transform flag passed straight to set_cell() — the same way
-		## _render_junction_column() mirrors an atom — so no alternative tile is
-		## created; only the base tile's origin is set.
-		var gtd: TileData = glass_source.get_tile_data(Vector2i.ZERO, 0)
-		if gtd != null:
-			gtd.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
-			gtd.set_custom_data("tile_name", "glass")
+	## GLASS G1 — FOUR extra atlas sources, one per face (SW/SE/NW/NE). Each atom's
+	## alpha is that face's wall parallelogram — the fundamental domain of the
+	## face's voxel lattice, sitting on the face's own diamond edge — so a stack
+	## tiles seam-to-seam with NO overlap (a translucent atom over a translucent
+	## one DOUBLE-TINTS the overlap, the "serrilhado") and a clean diagonal edge,
+	## AND all four faces of a glass BLOCK land where they belong (the Director's
+	## "bordas invisíveis"). The frosted PATTERN is not in the atom — the shader
+	## samples it by world position (no per-voxel "xadrez"). RGB is white; only
+	## alpha matters.
+	_glass_pane_source.clear()
+	var faces := {Face.SW: "SW", Face.SE: "SE", Face.NW: "NW", Face.NE: "NE"}
+	var ok := true
+	var next_id: int = MATERIALS.size()
+	for face in faces:
+		var atom := _build_glass_pane_atom(face)
+		if atom == null:
+			ok = false
+			break
+		var src := TileSetAtlasSource.new()
+		src.texture = ImageTexture.create_from_image(atom)
+		src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
+		src.separation = Vector2i.ZERO
+		src.margins = Vector2i.ZERO
+		src.create_tile(Vector2i.ZERO)
+		_tileset.add_source(src, next_id)
+		var td: TileData = src.get_tile_data(Vector2i.ZERO, 0)
+		if td != null:
+			td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
+			td.set_custom_data("tile_name", "glass")
+		_glass_pane_source[face] = next_id
+		next_id += 1
+	if ok:
+		## Back-compat alias: the SW source is the "default" glass source id used
+		## by diagnostics and the selftest.
+		_glass_frosted_source_id = _glass_pane_source[Face.SW]
 	else:
-		## B6 loud-fail: without the atom the sublayers would place nothing and
-		## glass would silently disappear rather than turn opaque.
+		## B6 loud-fail: without the atoms glass panes would silently disappear.
 		push_error("[VoxelRenderer] GLASS-G1: glass pane atom build failed — glass panes will not render")
+		_glass_pane_source.clear()
 		_glass_frosted_source_id = -1
 
 
-## GLASS G1 — the pane atom's texture_origin, offset from the cube atom's, so the
-## parallelogram sits where the wall face actually is. Calibrated by capture
-## (INFILTRAITOR_GLASS_ATOM_NUDGE="x,y" overrides it during a tuning pass).
+## GLASS G1 — the pane atoms' texture_origin, offset from the cube atom's so the
+## parallelograms sit on the wall line. `INFILTRAITOR_GLASS_ATOM_NUDGE="x,y"`
+## overrides it during a tuning pass.
 static var _GLASS_ATOM_ORIGIN_NUDGE: Vector2i = _read_glass_atom_nudge()
 static func _read_glass_atom_nudge() -> Vector2i:
 	var raw := OS.get_environment("INFILTRAITOR_GLASS_ATOM_NUDGE")
@@ -2041,36 +2050,64 @@ static func _read_glass_atom_nudge() -> Vector2i:
 		var p := raw.split(",")
 		if p.size() == 2 and p[0].is_valid_int() and p[1].is_valid_int():
 			return Vector2i(p[0].to_int(), p[1].to_int())
-	return Vector2i(0, 4)
+	return Vector2i(0, 20)
 
 
-## GLASS G1 — build the 32×36 glass PANE atom in memory. Alpha only: the
-## parallelogram fundamental domain of the SW/NE wall-face lattice (basis
-## e1 = screen (+16, +8) per face voxel, e2 = screen (0, −VOXEL_STEP_PX) per
-## level). RGB is white — the frosted pattern is sampled by world position in the
-## shader, not carried here. 1-px feathered edges so the silhouette AAs.
-func _build_glass_pane_atom() -> Image:
+## GLASS G1 — build the 32×36 glass pane atom for one face. Alpha only: the
+## parallelogram whose base is the face's diamond edge and which rises
+## VOXEL_STEP_PX per level. All four are shifted DOWN by VOXEL_STEP_PX so they
+## share one texture_origin. 1-px feathered edges so the silhouette AAs.
+func _build_glass_pane_atom(face: int) -> Image:
 	var w: int = GeometryCoords.VOXEL_ATOM_W          # 32
 	var h: int = GeometryCoords.VOXEL_ATOM_H          # 36
 	var step: float = GeometryCoords.VOXEL_STEP_PX    # 20
-	var run: float = float(GeometryCoords.VOXEL_ATOM_W) * 0.5   # 16 — e1.x
-	## The parallelogram, top-left at (0,0): left edge x=0 y∈[0,step], right edge
-	## x=run y∈[step/2, step/2 + step], top edge slope step/(2·run) = 0.25.
-	var slope: float = (step * 0.5) / run
+	## Cube-atom diamond vertices, the reference every voxel atom shares.
+	var vn := Vector2(16.0, 0.0)
+	var ve := Vector2(32.0, 8.0)
+	var vs := Vector2(16.0, 16.0)
+	var vw := Vector2(0.0, 8.0)
+	## The face's ground edge (base_a → base_b), and the parallelogram is that
+	## edge plus the same edge raised by `step`. Everything shifted +step so no
+	## corner goes negative.
+	var lift := Vector2(0.0, -step)
+	var shift := Vector2(0.0, step)
+	var base_a: Vector2
+	var base_b: Vector2
+	match face:
+		Face.SW: base_a = vw; base_b = vs
+		Face.SE: base_a = vs; base_b = ve
+		Face.NW: base_a = vn; base_b = vw
+		Face.NE: base_a = vn; base_b = ve
+		_: return null
+	## quad, in order: base_a, base_b, top_b, top_a
+	var q: PackedVector2Array = [
+		base_a + shift, base_b + shift,
+		base_b + lift + shift, base_a + lift + shift]
 	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	for y in range(h):
 		for x in range(w):
-			var fx: float = float(x) + 0.5
-			var fy: float = float(y) + 0.5
-			# signed distance to the four edges (positive = inside)
-			var d_left: float = fx
-			var d_right: float = run - fx
-			var d_top: float = fy - slope * fx
-			var d_bot: float = (slope * fx + step) - fy
-			var dist: float = min(min(d_left, d_right), min(d_top, d_bot))
-			var a: float = clampf(dist + 0.5, 0.0, 1.0)   # 1-px feather
-			out.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			var a: float = clampf(_signed_dist_in_quad(p, q) + 0.5, 0.0, 1.0)
+			if a > 0.0:
+				out.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	return out
+
+
+## Signed distance from `p` to the boundary of convex quad `q` (CW or CCW):
+## positive inside, negative outside, magnitude ≈ px to the nearest edge.
+func _signed_dist_in_quad(p: Vector2, q: PackedVector2Array) -> float:
+	var centroid := (q[0] + q[1] + q[2] + q[3]) * 0.25
+	var d: float = 1e9
+	for i in range(4):
+		var a := q[i]
+		var b := q[(i + 1) % 4]
+		var edge := b - a
+		var n := Vector2(-edge.y, edge.x).normalized()
+		## Point the normal inward (toward the centroid).
+		if n.dot(centroid - a) < 0.0:
+			n = -n
+		d = min(d, n.dot(p - a))
+	return d
 
 
 ## Render all slices and junction columns from registry
@@ -2145,6 +2182,10 @@ func _render_slice(slice: Slice, edge = null) -> void:
 	# Ensure we have enough layers
 	# FIX-VOXEL-HEIGHT-01: multiply storey_count by LEVELS_PER_STOREY to expand to level-space
 	_ensure_voxel_layers(slice.storey_count * GeometryCoords.LEVELS_PER_STOREY)
+	if slice.material == "glass" and OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
+		print("[GLASS-DIAG] slice %s face=%s gu=%s storeys=%d voxels=%d" % [
+			slice.id, Face.to_string_name(slice.face), slice.gu_cell,
+			slice.storey_count, slice.voxels.size()])
 
 	# For each voxel in the slice, set_cell at the appropriate layer
 	for voxel in slice.voxels:
@@ -2503,19 +2544,17 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	## glazed floor zone — stays opaque for G1: a see-through roof is out of scope
 	## and it kept the roof-coverage geometry intact. The sublayers build lazily,
 	## so a map with no vertical glass builds none.
-	if material_name == "glass" and _glass_frosted_source_id >= 0 and not flat_baked:
-		## The pane atom is authored for the SW/NE lattice (face voxels step screen
-		## (+16,+8)); NW and SE step (−16,+8), so they take the H-flipped
-		## alternative. Face enum: NW=0, NE=1, SE=2, SW=3.
-		var glass_alt: int = TileSetAtlasSource.TRANSFORM_FLIP_H \
-			if (slice_face == Face.NW or slice_face == Face.SE) else 0
+	if material_name == "glass" and not _glass_pane_source.is_empty() and not flat_baked:
+		## Each face has its own pane atom, positioned on that face's diamond edge,
+		## so a glass BLOCK's four faces all land right (not just SW/SE).
+		var glass_src: int = _glass_pane_source.get(slice_face, _glass_frosted_source_id)
 		if not apply:
-			return {"source_id": _glass_frosted_source_id,
-				"atlas_coords": Vector2i.ZERO, "alternative_id": glass_alt}
+			return {"source_id": glass_src,
+				"atlas_coords": Vector2i.ZERO, "alternative_id": 0}
 		_ensure_glass_sublayers(level)
 		var gsubs: Dictionary = _glass_layers[level]
-		(gsubs["mul"] as TileMapLayer).set_cell(grid_pos, _glass_frosted_source_id, Vector2i.ZERO, glass_alt)
-		(gsubs["add"] as TileMapLayer).set_cell(grid_pos, _glass_frosted_source_id, Vector2i.ZERO, glass_alt)
+		(gsubs["mul"] as TileMapLayer).set_cell(grid_pos, glass_src, Vector2i.ZERO, 0)
+		(gsubs["add"] as TileMapLayer).set_cell(grid_pos, glass_src, Vector2i.ZERO, 0)
 		## Clear any opaque cell a prior state left here (e.g. the calibration
 		## control preview) — an intact pane must be a true gap.
 		layer.erase_cell(grid_pos)

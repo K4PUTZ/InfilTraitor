@@ -111,16 +111,20 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 	if subs.has("mul"):
 		var mul := subs["mul"] as TileMapLayer
 		var src: int = mul.get_cell_source_id(Vector2i(24, 24))
-		if src == r._glass_frosted_source_id and src >= 0:
-			_pass("the sublayer cell uses the glass pane atom source (id %d)" % src)
+		## The slice is Face.NW → the NW-specific pane atom source.
+		var want: int = r._glass_pane_source.get(Face.NW, -1)
+		if src == want and src >= 0:
+			_pass("a Face.NW glass cell uses the NW pane atom source (id %d)" % src)
 		else:
-			_fail("sublayer cell source id %d, expected %d" % [src, r._glass_frosted_source_id])
-		## The slice is Face.NW → the H-flipped alternative (NW/SE step (−16,+8)).
-		var alt: int = mul.get_cell_alternative_tile(Vector2i(24, 24))
-		if alt == TileSetAtlasSource.TRANSFORM_FLIP_H:
-			_pass("a Face.NW glass cell takes the FLIP_H alternative")
+			_fail("Face.NW glass cell source id %d, expected NW source %d" % [src, want])
+		## Each face has a distinct source.
+		var ids := {}
+		for f in [Face.SW, Face.SE, Face.NW, Face.NE]:
+			ids[r._glass_pane_source.get(f, -1)] = true
+		if ids.size() == 4 and not ids.has(-1):
+			_pass("all four faces have a distinct pane atom source")
 		else:
-			_fail("Face.NW glass cell alternative is %d, expected FLIP_H" % alt)
+			_fail("face sources not all distinct/present: %s" % [r._glass_pane_source])
 
 	r.queue_free()
 	print("")

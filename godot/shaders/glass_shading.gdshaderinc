@@ -45,11 +45,10 @@ uniform vec3 glass_tint : source_color = vec3(0.47, 0.63, 0.90);
 // ---------------------------------------------------------------------------
 // How strongly the tint modulates the background. 0.0 ⇒ the pane is invisible,
 // 1.0 ⇒ full tint. A small floor is added in glass_mul_color() so a pane never
-// fully vanishes where nothing is behind it. Default from the Director's blind
-// pick — "between panel 14 and 15", i.e. sheen mode at mul 0.45.
-uniform float glass_mul_strength : hint_range(0.0, 1.0) = 0.45;
-// How bright the additive highlights are. Panels 14/15 bracket add 0.25..0.45.
-uniform float glass_add_strength : hint_range(0.0, 1.0) = 0.32;
+// fully vanishes where nothing is behind it. Default from the Director's pick on
+// the parallelogram strip — "painel 005": sheen mode, mul 0.60, add 0.20.
+uniform float glass_mul_strength : hint_range(0.0, 1.0) = 0.60;
+uniform float glass_add_strength : hint_range(0.0, 1.0) = 0.20;
 // Facade luma below this contributes no sheen (ADD mode 0 only).
 uniform float glass_add_threshold : hint_range(0.0, 1.0) = 0.55;
 // 0.0 = highlights derived from the frosted facade's own bright mottling;

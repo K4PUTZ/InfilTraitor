@@ -64,13 +64,13 @@ func _fail(msg: String) -> void:
 	failed += 1
 
 
-## A slice on one face, its 8 face voxels populated at `level`. `storeys` sets
-## how many level-bands `_render_slice()` ensures opaque layers for — the panel
-## path always ensures its own, so a test level above the ground plane needs it.
+## A slice on the SW face (varies in x, matching the fixture's `24 + pos`), its 8
+## face voxels populated at `level`. `storeys` sets how many level-bands
+## `_render_slice()` ensures opaque layers for.
 func _make_slice(id: String, material: String, level: int, storeys: int = 1) -> Slice:
-	var slice := Slice.new(id, Vector2i(3, 3), Face.NW, "", storeys, material)
+	var slice := Slice.new(id, Vector2i(3, 3), Face.SW, "", storeys, material)
 	for pos in range(8):
-		var v := Voxel.new(Vector2i(24 + pos, 24), level, slice)
+		var v := Voxel.new(Vector2i(24 + pos, 31), level, slice)
 		slice.voxels.append(v)
 	_fixtures.append(slice)
 	return slice
@@ -108,13 +108,19 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 		_fail("glass pane layer cell count %d (expected 8)" % pane_cells)
 
 	if gpane != null:
-		var src: int = gpane.get_cell_source_id(Vector2i(24, 24))
-		## The slice is Face.NW → the NW-specific pane atom source.
-		var want: int = r._glass_pane_source.get(Face.NW, -1)
+		## An INTERIOR SW voxel (pos 2) → the SW-specific flat pane atom.
+		var src: int = gpane.get_cell_source_id(Vector2i(26, 31))
+		var want: int = r._glass_pane_source.get(Face.SW, -1)
 		if src == want and src >= 0:
-			_pass("a Face.NW glass cell uses the NW pane atom source (id %d)" % src)
+			_pass("an interior SW glass cell uses the SW pane atom source (id %d)" % src)
 		else:
-			_fail("Face.NW glass cell source id %d, expected NW source %d" % [src, want])
+			_fail("interior SW glass cell source id %d, expected SW source %d" % [src, want])
+		## A PERIMETER SW voxel (pos 0) → the cube atom (1-voxel thickness).
+		var edge_src: int = gpane.get_cell_source_id(Vector2i(24, 31))
+		if edge_src == r._glass_cube_source and edge_src >= 0:
+			_pass("a perimeter glass cell uses the cube atom (id %d)" % edge_src)
+		else:
+			_fail("perimeter glass cell source id %d, expected cube %d" % [edge_src, r._glass_cube_source])
 		var ids := {}
 		for f in [Face.SW, Face.SE, Face.NW, Face.NE]:
 			ids[r._glass_pane_source.get(f, -1)] = true

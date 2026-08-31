@@ -39,6 +39,9 @@ uniform float glass_sheen_phase = 0.6;
 uniform float glass_sheen_sharpness : hint_range(0.0, 1.0) = 0.74;
 
 uniform float glass_alpha_floor : hint_range(0.0, 0.5) = 0.004;
+// A faint self-body so glass against a dark/void background reads as tinted
+// glass, not a black hole.
+uniform float glass_min_body : hint_range(0.0, 0.5) = 0.16;
 
 // The frosted grain, sampled by WORLD position so it flows across the whole pane
 // instead of repeating once per voxel. Bound to facade_glass.png.
@@ -71,7 +74,10 @@ vec3 glass_apply(vec3 behind, vec2 local) {
 	vec3 tinted = glass_tint * (0.82 + 0.30 * frost) * ff;
 	float k = mix(0.12, 1.0, glass_mul_strength);   // a floor so a pane never vanishes
 	vec3 mul = mix(vec3(1.0), tinted, k);
-	vec3 out_rgb = behind * clamp(mul, vec3(0.0), vec3(1.0));
+	// max() with a faint tinted body so glass over a black void is not a black
+	// hole — it still reads as glass.
+	vec3 out_rgb = max(behind * clamp(mul, vec3(0.0), vec3(1.0)),
+			glass_tint * glass_min_body * ff);
 
 	// --- ADD: the highlight ---
 	float sheen;

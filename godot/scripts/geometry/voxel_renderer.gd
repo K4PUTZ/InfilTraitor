@@ -817,6 +817,8 @@ var _glass_composite_z: int = -9999        ## z for the backbuffer + every glass
 ## Atlas sources in `_tileset` for the four per-face glass pane atoms. Face int →
 ## source_id. Empty until `_build_voxel_tileset()` runs.
 var _glass_pane_source: Dictionary = {}
+## The full-cube frosted atom, for a pane's PERIMETER voxels (1-voxel thickness).
+var _glass_cube_source: int = -1
 ## Back-compat alias — the SW source id (diagnostics / selftest). -1 until built.
 var _glass_frosted_source_id: int = -1
 ## The five calibration knobs the glass sublayer shaders expose, mirrored here so
@@ -2034,6 +2036,29 @@ func _build_voxel_tileset() -> void:
 			td.set_custom_data("tile_name", "glass")
 		_glass_pane_source[face] = next_id
 		next_id += 1
+	## GLASS G1 — the PERIMETER atom: the full voxel cube (top + both laterals),
+	## frosted. A pane's edge voxels (position 0/7 of the face, or the top level)
+	## use this instead of the flat parallelogram, so the pane shows its side and
+	## top and gains 1-voxel thickness (Director, 2026-08-30). Interior voxels
+	## stay flat — their tops would only re-introduce the shelved look. The
+	## rasterising container is what lets the perimeter cubes overlap without
+	## double-tint.
+	if ok:
+		var cube := _build_glass_cube_atom()
+		if cube != null:
+			var csrc := TileSetAtlasSource.new()
+			csrc.texture = ImageTexture.create_from_image(cube)
+			csrc.texture_region_size = Vector2i(cube.get_width(), cube.get_height())
+			csrc.separation = Vector2i.ZERO
+			csrc.margins = Vector2i.ZERO
+			csrc.create_tile(Vector2i.ZERO)
+			_tileset.add_source(csrc, next_id)
+			var ctd: TileData = csrc.get_tile_data(Vector2i.ZERO, 0)
+			if ctd != null:
+				ctd.texture_origin = GeometryCoords.voxel_texture_origin()
+				ctd.set_custom_data("tile_name", "glass")
+			_glass_cube_source = next_id
+			next_id += 1
 	if ok:
 		## Back-compat alias: the SW source is the "default" glass source id used
 		## by diagnostics and the selftest.
@@ -2043,6 +2068,7 @@ func _build_voxel_tileset() -> void:
 		push_error("[VoxelRenderer] GLASS-G1: glass pane atom build failed — glass panes will not render")
 		_glass_pane_source.clear()
 		_glass_frosted_source_id = -1
+		_glass_cube_source = -1
 
 
 ## GLASS G1 — the pane atoms' texture_origin, offset from the cube atom's so the
@@ -2093,6 +2119,43 @@ func _build_glass_pane_atom(face: int) -> Image:
 		for x in range(w):
 			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
 			var a: float = clampf(_signed_dist_in_quad(p, q) + 0.5, 0.0, 1.0)
+			if a > 0.0:
+				out.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	return out
+
+
+## GLASS G1 — the 32×36 perimeter atom: the full voxel cube silhouette (from
+## voxel_glass.png), frosted (RGB white, the shader adds the pattern), 1-px
+## feathered. Standard voxel texture_origin, which aligns with the shifted pane
+## parallelograms (both put the S vertex at cell_screen + 6).
+func _build_glass_cube_atom() -> Image:
+	var tex := load(MATERIAL_ASSET_ROOT + "glass/voxel_glass.png")
+	if tex == null:
+		return null
+	var sil: Image = (tex as Texture2D).get_image()
+	if sil == null:
+		return null
+	var w: int = GeometryCoords.VOXEL_ATOM_W
+	var h: int = GeometryCoords.VOXEL_ATOM_H
+	if sil.get_width() != w or sil.get_height() != h:
+		sil = sil.duplicate()
+		sil.resize(w, h, Image.INTERPOLATE_NEAREST)
+	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in range(h):
+		for x in range(w):
+			## Feather: drop to ~0.5 where a fully-opaque texel borders a hole.
+			var a: float = sil.get_pixel(x, y).a
+			if a > 0.5:
+				var edge := false
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var nx: int = x + d.x
+					var ny: int = y + d.y
+					if nx < 0 or ny < 0 or nx >= w or ny >= h or sil.get_pixel(nx, ny).a < 0.5:
+						edge = true
+						break
+				a = 0.55 if edge else 1.0
+			else:
+				a = 0.0
 			if a > 0.0:
 				out.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	return out
@@ -2192,13 +2255,34 @@ func _render_slice(slice: Slice, edge = null) -> void:
 			slice.id, Face.to_string_name(slice.face), slice.gu_cell,
 			slice.storey_count, slice.voxels.size()])
 
+	## GLASS G1 — a glass pane's PERIMETER ring (the two end positions of the face
+	## row, and the top level) shows 1-voxel thickness.
+	var glass_top_level: int = -99999
+	if slice.material == "glass":
+		glass_top_level = GeometryCoords.storey_level_base(slice.start_storey) \
+			+ slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1
+
 	# For each voxel in the slice, set_cell at the appropriate layer
 	for voxel in slice.voxels:
 		if voxel.visible:
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
 			var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
+			var perim: bool = slice.material == "glass" and _glass_is_perimeter(
+				voxel.grid_pos, voxel.level, slice.face, glass_top_level)
+			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge,
+				voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE,
+				true, perim)
+
+
+## GLASS G1 — is this glass voxel on the pane's perimeter (an end of the face
+## row, or the top level)? NW/SE faces vary in the y grid coord, NE/SW in x.
+func _glass_is_perimeter(grid_pos: Vector2i, level: int, face: int, top_level: int) -> bool:
+	if level == top_level:
+		return true
+	var pos: int = posmod(grid_pos.y, 8) if (face == Face.NW or face == Face.SE) \
+		else posmod(grid_pos.x, 8)
+	return pos == 0 or pos == GeometryCoords.VOXELS_PER_UNIT_AXIS - 1
 
 
 ## Render a junction column (BAKE-FIX-02: mirror-at-the-column implementation)
@@ -2329,7 +2413,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      slice_face: int = 0, flat_baked: bool = false,
                      zone_material: String = "",
                      surface_class: int = BakePolicyClass.SurfaceClass.SLICE,
-                     apply: bool = true) -> Dictionary:
+                     apply: bool = true, glass_perimeter: bool = false) -> Dictionary:
 	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
 	# caller must have ensured the layer first (_ensure_voxel_layers() for
 	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
@@ -2550,9 +2634,12 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	## and it kept the roof-coverage geometry intact. The sublayers build lazily,
 	## so a map with no vertical glass builds none.
 	if material_name == "glass" and not _glass_pane_source.is_empty() and not flat_baked:
-		## Each face has its own pane atom, positioned on that face's diamond edge,
-		## so a glass BLOCK's four faces all land right (not just SW/SE).
-		var glass_src: int = _glass_pane_source.get(slice_face, _glass_frosted_source_id)
+		## Interior voxels get the flat per-face parallelogram (positioned on that
+		## face's diamond edge, so a block's four faces all land right); PERIMETER
+		## voxels get the full cube atom for 1-voxel thickness (side + top). The
+		## rasterising container is what lets those cubes overlap without tint².
+		var glass_src: int = _glass_cube_source if (glass_perimeter and _glass_cube_source >= 0) \
+			else int(_glass_pane_source.get(slice_face, _glass_frosted_source_id))
 		if not apply:
 			return {"source_id": glass_src,
 				"atlas_coords": Vector2i.ZERO, "alternative_id": 0}
@@ -3378,7 +3465,13 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 		## Fallback: render via material lookup (original behavior)
 		var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
 		var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy, slice.face)
+		var perim: bool = false
+		if slice.material == "glass":
+			var top_level: int = GeometryCoords.storey_level_base(slice.start_storey) \
+				+ slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1
+			perim = _glass_is_perimeter(voxel.grid_pos, voxel.level, slice.face, top_level)
+		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy,
+			slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, true, perim)
 	else:
 		## GLASS G1 — a destroyed glass voxel is erased from the glass pane layer,
 		## not the opaque layer it never lived on. Same `already_gone` guard and

@@ -19,6 +19,14 @@ exposure to L-walls and glass cubes. 16 atoms (`_glass_atom_source[face][mask]`,
 (0.78), `INFILTRAITOR_GLASS_ATOM_NUDGE`. NW/NE slivers extrude toward the camera
 (back walls) — untested; PLAYGROUND's panels are SW/SE.
 
+**G1 FLOAT FIX** (`4d5da813`, Director 2026-08-31: *"o bloco todo de vidro está
+deslocado pra cima ... flutuando na base"*): the pane atom's `texture_origin`
+carried a leftover `+(0,20)` from the pre-rework `+shift` bookkeeping, lifting
+every pane a level off the ground. `face_q` is now byte-for-byte the material
+atom's own side face (`voxel_concrete.png` alpha rows 8..36), so the nudge
+default is `Vector2i.ZERO` — glass renders exactly where an opaque wall does, and
+matches the occlusion wireframe.
+
 **G1 as built** (commits `41eee478`→`c9c4169c`): glass vertical faces leave the
 opaque `_layers` for one glass `TileMapLayer` per level, composited through a
 **`BackBufferCopy` rasterising container** (`glass_pane.gdshader` reads the

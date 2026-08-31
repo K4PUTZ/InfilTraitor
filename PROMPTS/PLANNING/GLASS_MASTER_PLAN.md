@@ -1,8 +1,23 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.3 — **G1 (transparency): APPEARANCE signed off 2026-08-31,
-GEOMETRY still open (the Director will adjust it).** The rest (G2–G7, G-D4,
-G-ART) is design-ratified and unbuilt.
+**Status:** 🟢 v1.4 — **G1 (transparency): APPEARANCE signed off 2026-08-31;
+GEOMETRY reworked 2026-08-31 to the Director's face-culling rule (below) —
+awaiting a tuning verdict.** The rest (G2–G7, G-D4, G-ART) is design-ratified
+and unbuilt.
+
+**G1 GEOMETRY as reworked** (Director's two diagrams, 2026-08-31): the pane
+thickness is a per-voxel **exposed-face cull**, not per-position atoms. A glass
+voxel paints its MAIN face always; its TOP face only when nothing is above it
+(the top row); its SIDE face only on the frontmost column (camera-nearest end,
+always pos 7 — both screen axes carry a +south component). Top and side render
+DIM and *that* is the thickness read. This kills the "serrilhado" — with
+transparency every hidden face that gets drawn ghosts through. Generalises by
+exposure to L-walls and glass cubes. 16 atoms (`_glass_atom_source[face][mask]`,
+4 faces × 4 masks); `_build_glass_pane_atom(face, want_top, want_side)`;
+`_glass_face_mask()` picks the mask. Tuning knobs: `GLASS_FACE_SLIVER_FRAC`
+(0.55, the pane's half thickness), `GLASS_DIM_TOP` (0.60), `GLASS_DIM_SIDE`
+(0.78), `INFILTRAITOR_GLASS_ATOM_NUDGE`. NW/NE slivers extrude toward the camera
+(back walls) — untested; PLAYGROUND's panels are SW/SE.
 
 **G1 as built** (commits `41eee478`→`c9c4169c`): glass vertical faces leave the
 opaque `_layers` for one glass `TileMapLayer` per level, composited through a
@@ -18,10 +33,10 @@ still blocks light (`build_occupancy()` re-adds the cells).
 `INFILTRAITOR_CAPTURE_ACTION=glass_calibration` + `glass_calibration.py`,
 `INFILTRAITOR_GLASS_DIAG=1`, `INFILTRAITOR_GLASS_ATOM_NUDGE`.
 
-⚠️ **GEOMETRY OPEN** (see `RESUMO_SESSAO_2026-08-30_GLASS_G1.md` §2): the pane
-thickness should be on the LATERAL edges (per-position atom work, skipped); the
-glass BLOCK has a roof-slab seam, opaque junction corner columns, and z-index vs
-walls in front. **The pane is the priority — full glass blocks are rare.**
+⚠️ **GEOMETRY** — the pane half is reworked to the face-culling rule (2026-08-31,
+above); a Director tuning verdict on the sliver size / dim is open. The glass
+BLOCK half is untouched: roof-slab seam, opaque junction corner columns, z-index
+vs walls in front. **The pane is the priority — full glass blocks are rare.**
 
 Earlier: 🟡 v1.1 — DESIGN RATIFIED 2026-08-30, UNBUILT
 **v1.1, same day:** G-D9 added and **§9 rewritten — it reverses its own first
@@ -463,7 +478,7 @@ Director's scope ruling in §0. Nothing in §10's task order depends on it.
 
 | Order | Task | Blocked by |
 |---|---|---|
-| 🟢 | **G1** — glass pane transparency via a `BackBufferCopy` container + per-face parallelogram / perimeter atoms. **APPEARANCE signed off 2026-08-31** (calibration "painel 005"); **GEOMETRY still open** — the Director will adjust the lateral-thickness geometry and the glass-block issues (§ RESUMO_2026-08-30_GLASS_G1). Vertical faces only — roofs / glazed floor zones stay opaque | — |
+| 🟢 | **G1** — glass pane transparency via a `BackBufferCopy` container. **APPEARANCE signed off 2026-08-31** (calibration "painel 005"). **GEOMETRY reworked 2026-08-31** to the face-culling rule (main always / top on the top row / side on the frontmost column, both dim); awaiting a tuning verdict. Glass-block issues untouched. Vertical faces only — roofs / glazed floor zones stay opaque | — |
 | 2 | **G2** — `pane_id`: union-find for panels, occupancy flood fill for blocks (§4.2) | — |
 | 3 | **G-ART** — the art order + `check_decal.py` coverage for the four glass families | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |

@@ -810,16 +810,34 @@ var _glass_layers: Dictionary = {}         ## level:int -> TileMapLayer (one per
 ## GLASS G1 — the rasterising container (Director's "container rasterizado"): a
 ## BackBufferCopy snapshots the scene just before the glass draws, and every glass
 ## fragment reads THAT snapshot and applies the tint once (glass_pane.gdshader).
-## Overlapping voxel faces — a pane's edge voxels carry side + top for 1-voxel
-## thickness — all read the same snapshot, so there is no double-tint. Lazy.
+## Overlapping voxel faces — the top row carries a dim top sliver, the front
+## column a dim side sliver — all read the same snapshot, so there is no
+## double-tint. Lazy.
 var _glass_backbuffer: BackBufferCopy = null
 var _glass_composite_z: int = -9999        ## z for the backbuffer + every glass layer
-## Atlas sources in `_tileset` for the four per-face glass pane atoms. Face int →
-## source_id. Empty until `_build_voxel_tileset()` runs.
-var _glass_pane_source: Dictionary = {}       ## Face int -> interior (flat) atom source
-var _glass_perimeter_source: Dictionary = {}  ## Face int -> perimeter (dim top+side) atom source
-## Back-compat alias — the SW interior source id (diagnostics / selftest).
+## Atlas sources in `_tileset` for the glass pane atoms. GLASS G1 GEOMETRY
+## (Director's diagram, 2026-08-31): a glass voxel paints its MAIN face always,
+## its TOP face only when nothing (no glass) is above it, and its SIDE face only
+## on the frontmost column — the camera-facing end of the pane. Top and side
+## render DIM, and that dimness IS the thickness read (no invented strips, no
+## ground ledge). Painting only the exposed faces is what kills the "serrilhado"
+## — with transparency every hidden face that gets drawn shows through as a
+## doubled ghost. The rule generalises by exposure to L-walls and glass cubes.
+##
+## So four faces × four masks (main / +top / +side / +top+side) = 16 sources.
+## `_glass_atom_source[face][mask]`, mask = (want_top << 1) | want_side.
+var _glass_atom_source: Dictionary = {}       ## Face int -> { mask:int -> source_id:int }
+## Back-compat alias — the SW main-only source id (diagnostics / selftest).
 var _glass_frosted_source_id: int = -1
+## GLASS G1 GEOMETRY — how far the dim top/side slivers recede into the atom, as
+## a fraction of a voxel. A half-thickness pane reads with a thin sliver; tune
+## with the capture, not by reasoning.
+const GLASS_FACE_SLIVER_FRAC: float = 0.55
+## Dimness of the top and side face slivers (rides the atom's RED channel;
+## glass_pane.gdshader multiplies by it). Director: *"diminuir o brilho das
+## faces de topo e de lateral ... para diferenciar esses planos"*.
+const GLASS_DIM_TOP: float = 0.60
+const GLASS_DIM_SIDE: float = 0.78
 ## The five calibration knobs the glass sublayer shaders expose, mirrored here so
 ## `set_glass_shader_param()` (the blind-strip capture action) can drive them and
 ## every freshly-built sublayer inherits the current value. Defaults match
@@ -2004,29 +2022,26 @@ func _build_voxel_tileset() -> void:
 			## VL-03-PERF: light-bucket alts minted lazily on first use — see
 			## _ensure_light_alt (eager minting dominated rotation cost).
 
-	## GLASS G1 — FOUR extra atlas sources, one per face (SW/SE/NW/NE). Each atom's
-	## alpha is that face's wall parallelogram — the fundamental domain of the
-	## face's voxel lattice, sitting on the face's own diamond edge — so a stack
-	## tiles seam-to-seam with NO overlap (a translucent atom over a translucent
-	## one DOUBLE-TINTS the overlap, the "serrilhado") and a clean diagonal edge,
-	## AND all four faces of a glass BLOCK land where they belong (the Director's
-	## "bordas invisíveis"). The frosted PATTERN is not in the atom — the shader
-	## samples it by world position (no per-voxel "xadrez"). RGB is white; only
-	## alpha matters.
-	## The INTERIOR atom is the flat parallelogram (clean diagonal edge). The
-	## PERIMETER atom adds a DIM top cap + a DIM thickness strip on the same clean
-	## parallelogram — so an edge voxel shows the pane's top and side (1-voxel
-	## thickness), those planes read DARKER than the face (Director: *"diminuir o
-	## brilho das faces de topo e de lateral ... para diferenciar esses planos"*),
-	## and the pane's outer silhouette stays the parallelogram's (no step). The
-	## dim rides in the atom's RED channel; glass_pane.gdshader multiplies by it.
-	_glass_pane_source.clear()
-	_glass_perimeter_source.clear()
+	## GLASS G1 GEOMETRY — 16 extra atlas sources: four faces (SW/SE/NW/NE) ×
+	## four face masks (main-only / +top / +side / +top+side). Each atom's alpha
+	## is that face's wall parallelogram (the fundamental domain of the face's
+	## voxel lattice, on its own diamond edge) so a stack tiles seam-to-seam with
+	## NO overlap (a translucent atom over a translucent one DOUBLE-TINTS the
+	## overlap, the "serrilhado"). `+top` adds the dim iso top-face sliver, `+side`
+	## the dim iso side-face sliver — the voxel's OWN faces, not invented shapes;
+	## painting only the exposed ones is what stops the ghosting. The frosted
+	## PATTERN is not in the atom — the shader samples it by world position. RGB
+	## carries the per-face dim (1.0 main, GLASS_DIM_TOP / GLASS_DIM_SIDE for the
+	## slivers); glass_pane.gdshader multiplies by it. Alpha is the silhouette.
+	_glass_atom_source.clear()
 	var ok := true
 	var next_id: int = MATERIALS.size()
 	for face in [Face.SW, Face.SE, Face.NW, Face.NE]:
-		for perimeter in [false, true]:
-			var atom := _build_glass_pane_atom(face, perimeter)
+		_glass_atom_source[face] = {}
+		for mask in range(4):
+			var want_top: bool = (mask & 0b10) != 0
+			var want_side: bool = (mask & 0b01) != 0
+			var atom := _build_glass_pane_atom(face, want_top, want_side)
 			if atom == null:
 				ok = false
 				break
@@ -2041,21 +2056,17 @@ func _build_voxel_tileset() -> void:
 			if td != null:
 				td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
 				td.set_custom_data("tile_name", "glass")
-			if perimeter:
-				_glass_perimeter_source[face] = next_id
-			else:
-				_glass_pane_source[face] = next_id
+			(_glass_atom_source[face] as Dictionary)[mask] = next_id
 			next_id += 1
 		if not ok:
 			break
 	if ok:
-		## Back-compat alias: the SW interior source, used by diagnostics/selftest.
-		_glass_frosted_source_id = _glass_pane_source[Face.SW]
+		## Back-compat alias: the SW main-only source, used by diagnostics/selftest.
+		_glass_frosted_source_id = _glass_atom_source[Face.SW][0]
 	else:
 		## B6 loud-fail: without the atoms glass panes would silently disappear.
 		push_error("[VoxelRenderer] GLASS-G1: glass pane atom build failed — glass panes will not render")
-		_glass_pane_source.clear()
-		_glass_perimeter_source.clear()
+		_glass_atom_source.clear()
 		_glass_frosted_source_id = -1
 
 
@@ -2072,17 +2083,27 @@ static func _read_glass_atom_nudge() -> Vector2i:
 	return Vector2i(0, 20)
 
 
-## GLASS G1 — build the 32×36 glass pane atom for one face. Alpha only: the
-## parallelogram whose base is the face's diamond edge and which rises
-## VOXEL_STEP_PX per level. All four are shifted DOWN by VOXEL_STEP_PX so they
-## share one texture_origin. 1-px feathered edges so the silhouette AAs.
+## GLASS G1 GEOMETRY — build the 32×36 glass pane atom for one face and one
+## face mask. Alpha is the silhouette, RGB carries the per-face dim.
 ##
-## `perimeter` adds a DIM top cap and a DIM thickness strip on the SAME clean
-## parallelogram: an edge voxel then shows the pane's top and side (1-voxel
-## thickness), those planes reading darker than the face. Interior voxels' caps
-## are covered by their neighbours' bright parallelograms in the container, so
-## the caps only show where the pane actually ends.
-func _build_glass_pane_atom(face: int, perimeter: bool = false) -> Image:
+##   MAIN face  — always. The parallelogram on the face's own diamond edge,
+##                extending VOXEL_STEP_PX down. RGB 1.0 (full see-through).
+##   TOP sliver — only when `want_top` (the voxel has no glass above it). The
+##                pane's top edge extruded into the GU by the pane's thickness
+##                (a parallelogram — its back edge stays PARALLEL to its front
+##                edge, so voxel-to-voxel the slivers meet with no sawtooth).
+##                RGB GLASS_DIM_TOP.
+##   SIDE sliver — only when `want_side` (the voxel is the frontmost column).
+##                The frontmost column's outer vertical edge extruded into the
+##                GU by the same thickness vector. RGB GLASS_DIM_SIDE.
+##
+## `d_vec` is the pane's thickness in screen space — a fraction of the depth to
+## the opposite diamond edge (SW/SE recede UP/away from the camera). The main
+## face stays crisp; a sliver fills only where the main face is absent, so
+## nothing double-covers and the container never double-tints. NW/NE slivers are
+## computed but their extrusion comes toward the camera (back walls) — the
+## tested case is SW/SE.
+func _build_glass_pane_atom(face: int, want_top: bool = false, want_side: bool = false) -> Image:
 	var w: int = GeometryCoords.VOXEL_ATOM_W          # 32
 	var h: int = GeometryCoords.VOXEL_ATOM_H          # 36
 	var step: float = GeometryCoords.VOXEL_STEP_PX    # 20
@@ -2091,35 +2112,28 @@ func _build_glass_pane_atom(face: int, perimeter: bool = false) -> Image:
 	var ve := Vector2(32.0, 8.0)
 	var vs := Vector2(16.0, 16.0)
 	var vw := Vector2(0.0, 8.0)
-	var lift := Vector2(0.0, -step)
-	var shift := Vector2(0.0, step)
-	var base_a: Vector2
-	var base_b: Vector2
-	var side_b: Vector2   # the "other" diamond vertex, for the thickness strip
+	var down := Vector2(0.0, step)
+	var f: float = GLASS_FACE_SLIVER_FRAC
+	## `ea`,`eb` — the face's diamond edge, `ea` the far end, `eb` the frontmost
+	## column's end. `d_vec` — the thickness extrusion into the GU (toward the
+	## opposite edge), scaled to the pane's half thickness.
+	var ea: Vector2
+	var eb: Vector2
+	var d_vec: Vector2
 	match face:
-		Face.SW: base_a = vw; base_b = vs; side_b = ve
-		Face.SE: base_a = vs; base_b = ve; side_b = vw
-		Face.NW: base_a = vn; base_b = vw; side_b = ve
-		Face.NE: base_a = vn; base_b = ve; side_b = vw
+		Face.SW: ea = vw; eb = vs; d_vec = (ve - vs) * f
+		Face.SE: ea = ve; eb = vs; d_vec = (vw - vs) * f
+		Face.NW: ea = vn; eb = vw; d_vec = (vs - vw) * f
+		Face.NE: ea = vn; eb = ve; d_vec = (vs - ve) * f
 		_: return null
-	## The pane face parallelogram (base edge, lifted by `step`).
-	var face_q: PackedVector2Array = [
-		base_a + shift, base_b + shift,
-		base_b + lift + shift, base_a + lift + shift]
-	## The thickness strip: the SAME lift over the base_b → side_b edge, but
-	## narrowed toward base_b so it reads as an edge, not a second face.
-	var mid := base_b.lerp(side_b, 0.42)
-	var side_q: PackedVector2Array = [
-		base_b + shift, mid + shift,
-		mid + lift + shift, base_b + lift + shift]
-	## The top cap: a thin band just above the face parallelogram's top edge.
-	var cap_h := Vector2(0.0, -6.0)
-	var top_q: PackedVector2Array = [
-		base_a + lift + shift, base_b + lift + shift,
-		base_b + lift + shift + cap_h, base_a + lift + shift + cap_h]
+	## The main face parallelogram (diamond edge, extending `step` down).
+	var face_q: PackedVector2Array = [ea, eb, eb + down, ea + down]
+	## The top sliver: the top edge extruded into the GU by the thickness.
+	var top_q: PackedVector2Array = [ea, eb, eb + d_vec, ea + d_vec]
+	## The side sliver: the frontmost column's outer vertical edge (at `eb`)
+	## extruded into the GU by the same thickness.
+	var side_q: PackedVector2Array = [eb, eb + d_vec, eb + d_vec + down, eb + down]
 
-	const DIM_TOP: float = 0.60
-	const DIM_SIDE: float = 0.78
 	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	for y in range(h):
 		for x in range(w):
@@ -2127,16 +2141,15 @@ func _build_glass_pane_atom(face: int, perimeter: bool = false) -> Image:
 			var a_face: float = clampf(_signed_dist_in_quad(p, face_q) + 0.5, 0.0, 1.0)
 			var rgb: float = 1.0
 			var a: float = a_face
-			if perimeter:
-				var a_side: float = clampf(_signed_dist_in_quad(p, side_q) + 0.5, 0.0, 1.0)
-				var a_top: float = clampf(_signed_dist_in_quad(p, top_q) + 0.5, 0.0, 1.0)
-				## Face wins where it exists; caps fill the rest, dimmed.
-				if a_face < 0.5 and a_top > a_side and a_top > 0.0:
+			if a_face < 0.5:
+				var a_top: float = clampf(_signed_dist_in_quad(p, top_q) + 0.5, 0.0, 1.0) if want_top else 0.0
+				var a_side: float = clampf(_signed_dist_in_quad(p, side_q) + 0.5, 0.0, 1.0) if want_side else 0.0
+				if a_top >= a_side and a_top > 0.0:
 					a = a_top
-					rgb = DIM_TOP
-				elif a_face < 0.5 and a_side > 0.0:
+					rgb = GLASS_DIM_TOP
+				elif a_side > 0.0:
 					a = a_side
-					rgb = DIM_SIDE
+					rgb = GLASS_DIM_SIDE
 			if a > 0.0:
 				out.set_pixel(x, y, Color(rgb, rgb, rgb, a))
 	return out
@@ -2236,8 +2249,8 @@ func _render_slice(slice: Slice, edge = null) -> void:
 			slice.id, Face.to_string_name(slice.face), slice.gu_cell,
 			slice.storey_count, slice.voxels.size()])
 
-	## GLASS G1 — a glass pane's PERIMETER ring (the two end positions of the face
-	## row, and the top level) shows 1-voxel thickness.
+	## GLASS G1 GEOMETRY — the top level of a lone pane paints its dim top sliver;
+	## the frontmost column paints its dim side sliver.
 	var glass_top_level: int = -99999
 	if slice.material == "glass":
 		glass_top_level = GeometryCoords.storey_level_base(slice.start_storey) \
@@ -2249,21 +2262,27 @@ func _render_slice(slice: Slice, edge = null) -> void:
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
 			var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-			var perim: bool = slice.material == "glass" and _glass_is_perimeter(
-				voxel.grid_pos, voxel.level, slice.face, glass_top_level)
+			var glass_mask: int = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, glass_top_level) \
+				if slice.material == "glass" else 0
 			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge,
 				voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE,
-				true, perim)
+				true, glass_mask)
 
 
-## GLASS G1 — is this glass voxel on the pane's perimeter (an end of the face
-## row, or the top level)? NW/SE faces vary in the y grid coord, NE/SW in x.
-func _glass_is_perimeter(grid_pos: Vector2i, level: int, face: int, top_level: int) -> bool:
+## GLASS G1 GEOMETRY — the face mask for one glass voxel. Bit 1 = paint the dim
+## top sliver: nothing (no glass) above it — for a lone pane, the top level. Bit
+## 0 = paint the dim side sliver: the frontmost column. NW/SE faces vary in the
+## y grid coord, NE/SW in x; both screen axes carry a +south component, so the
+## column nearest the camera is always pos 7 (max coord along the varying axis).
+func _glass_face_mask(grid_pos: Vector2i, level: int, face: int, top_level: int) -> int:
+	var mask: int = 0
 	if level == top_level:
-		return true
+		mask |= 0b10
 	var pos: int = posmod(grid_pos.y, 8) if (face == Face.NW or face == Face.SE) \
 		else posmod(grid_pos.x, 8)
-	return pos == 0 or pos == GeometryCoords.VOXELS_PER_UNIT_AXIS - 1
+	if pos == GeometryCoords.VOXELS_PER_UNIT_AXIS - 1:
+		mask |= 0b01
+	return mask
 
 
 ## Render a junction column (BAKE-FIX-02: mirror-at-the-column implementation)
@@ -2394,7 +2413,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      slice_face: int = 0, flat_baked: bool = false,
                      zone_material: String = "",
                      surface_class: int = BakePolicyClass.SurfaceClass.SLICE,
-                     apply: bool = true, glass_perimeter: bool = false) -> Dictionary:
+                     apply: bool = true, glass_mask: int = 0) -> Dictionary:
 	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
 	# caller must have ensured the layer first (_ensure_voxel_layers() for
 	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
@@ -2614,15 +2633,15 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	## glazed floor zone — stays opaque for G1: a see-through roof is out of scope
 	## and it kept the roof-coverage geometry intact. The sublayers build lazily,
 	## so a map with no vertical glass builds none.
-	if material_name == "glass" and not _glass_pane_source.is_empty() and not flat_baked:
-		## Interior voxels get the flat per-face parallelogram; PERIMETER voxels
-		## get the same parallelogram plus a dim top cap + thickness strip
-		## (1-voxel thickness, those planes darker). The container lets them
-		## overlap without tint².
-		var glass_src: int = int(_glass_perimeter_source.get(slice_face, -1)) if glass_perimeter \
-			else int(_glass_pane_source.get(slice_face, _glass_frosted_source_id))
+	if material_name == "glass" and not _glass_atom_source.is_empty() and not flat_baked:
+		## GLASS G1 GEOMETRY — one of the four per-face masks (main / +top / +side
+		## / +top+side). The main face is always present; the dim slivers are
+		## added only where the voxel's top or camera-facing side is exposed. The
+		## container lets the atoms overlap without tint².
+		var face_atoms: Dictionary = _glass_atom_source.get(slice_face, {})
+		var glass_src: int = int(face_atoms.get(glass_mask, face_atoms.get(0, _glass_frosted_source_id)))
 		if glass_src < 0:
-			glass_src = int(_glass_pane_source.get(slice_face, _glass_frosted_source_id))
+			glass_src = _glass_frosted_source_id
 		if not apply:
 			return {"source_id": glass_src,
 				"atlas_coords": Vector2i.ZERO, "alternative_id": 0}
@@ -3448,13 +3467,13 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 		## Fallback: render via material lookup (original behavior)
 		var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
 		var render_material := damage_variant_material(slice.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-		var perim: bool = false
+		var glass_mask: int = 0
 		if slice.material == "glass":
 			var top_level: int = GeometryCoords.storey_level_base(slice.start_storey) \
 				+ slice.storey_count * GeometryCoords.LEVELS_PER_STOREY - 1
-			perim = _glass_is_perimeter(voxel.grid_pos, voxel.level, slice.face, top_level)
+			glass_mask = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, top_level)
 		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy,
-			slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, true, perim)
+			slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, true, glass_mask)
 	else:
 		## GLASS G1 — a destroyed glass voxel is erased from the glass pane layer,
 		## not the opaque layer it never lived on. Same `already_gone` guard and

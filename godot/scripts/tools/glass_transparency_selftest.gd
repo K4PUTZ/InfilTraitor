@@ -7,6 +7,11 @@
 ## `_set_voxel_cell()` seam every render path funnels through — not a fixture that
 ## only exercises the happy branch.
 ##
+## GLASS G1 GEOMETRY (2026-08-31) — it also pins the face-culling rule: an
+## interior voxel gets the main-only atom (mask 0), the frontmost column gets
+## main+side (mask 1), the top level main+top (mask 2), and `_glass_face_mask()`
+## returns those bits. 16 atom sources (4 faces × 4 masks), all distinct.
+##
 ## What each test catches, worst first:
 ##
 ##   1. A glass voxel that STILL lands on the opaque layer — the pane would be a
@@ -108,27 +113,45 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 		_fail("glass pane layer cell count %d (expected 8)" % pane_cells)
 
 	if gpane != null:
-		## An INTERIOR SW voxel (pos 2) → the SW-specific flat pane atom.
+		## GLASS G1 GEOMETRY — an INTERIOR SW voxel (pos 2, not the front column,
+		## not the top level) → mask 0, the SW main-only atom.
+		var main_src: int = int(r._glass_atom_source.get(Face.SW, {}).get(0, -1))
 		var src: int = gpane.get_cell_source_id(Vector2i(26, 31))
-		var want: int = r._glass_pane_source.get(Face.SW, -1)
-		if src == want and src >= 0:
-			_pass("an interior SW glass cell uses the SW pane atom source (id %d)" % src)
+		if src == main_src and src >= 0:
+			_pass("an interior SW glass cell uses the SW main-only atom (id %d)" % src)
 		else:
-			_fail("interior SW glass cell source id %d, expected SW source %d" % [src, want])
-		## A PERIMETER SW voxel (pos 0) → the SW perimeter atom (1-voxel thickness).
-		var edge_src: int = gpane.get_cell_source_id(Vector2i(24, 31))
-		var want_edge: int = r._glass_perimeter_source.get(Face.SW, -1)
-		if edge_src == want_edge and edge_src >= 0 and edge_src != src:
-			_pass("a perimeter glass cell uses the SW perimeter atom (id %d)" % edge_src)
+			_fail("interior SW glass cell source id %d, expected SW mask-0 %d" % [src, main_src])
+		## The FRONTMOST column (pos 7, x31) → mask 1, the SW main+side atom —
+		## a distinct source that carries the dim side sliver.
+		var side_src: int = int(r._glass_atom_source.get(Face.SW, {}).get(1, -1))
+		var front_src: int = gpane.get_cell_source_id(Vector2i(31, 31))
+		if front_src == side_src and front_src >= 0 and front_src != main_src:
+			_pass("the frontmost SW column uses the SW main+side atom (id %d)" % front_src)
 		else:
-			_fail("perimeter glass cell source id %d, expected SW perimeter %d" % [edge_src, want_edge])
+			_fail("frontmost SW cell source id %d, expected SW mask-1 %d" % [front_src, side_src])
+		## Four faces × four masks, all present and all distinct.
 		var ids := {}
-		for f in [Face.SW, Face.SE, Face.NW, Face.NE]:
-			ids[r._glass_pane_source.get(f, -1)] = true
-		if ids.size() == 4 and not ids.has(-1):
-			_pass("all four faces have a distinct pane atom source")
+		var missing := false
+		for fc in [Face.SW, Face.SE, Face.NW, Face.NE]:
+			for m in range(4):
+				var sid: int = int(r._glass_atom_source.get(fc, {}).get(m, -1))
+				if sid < 0:
+					missing = true
+				ids[sid] = true
+		if ids.size() == 16 and not missing:
+			_pass("all 16 glass atom sources (4 faces × 4 masks) are distinct and present")
 		else:
-			_fail("face sources not all distinct/present: %s" % [r._glass_pane_source])
+			_fail("glass atom sources not all distinct/present: %s" % [r._glass_atom_source])
+		## The face mask itself: top level sets bit 1, frontmost column bit 0.
+		var top_level: int = GeometryCoords.PLAYABLE_LEVEL + 7
+		var m_interior: int = r._glass_face_mask(Vector2i(26, 31), GeometryCoords.PLAYABLE_LEVEL, Face.SW, top_level)
+		var m_front: int = r._glass_face_mask(Vector2i(31, 31), GeometryCoords.PLAYABLE_LEVEL, Face.SW, top_level)
+		var m_top: int = r._glass_face_mask(Vector2i(26, 31), top_level, Face.SW, top_level)
+		var m_corner: int = r._glass_face_mask(Vector2i(31, 31), top_level, Face.SW, top_level)
+		if m_interior == 0 and m_front == 1 and m_top == 2 and m_corner == 3:
+			_pass("_glass_face_mask: interior 0, front column 1, top level 2, corner 3")
+		else:
+			_fail("_glass_face_mask masks wrong: interior %d front %d top %d corner %d" % [m_interior, m_front, m_top, m_corner])
 
 	## The rasterising container: a BackBufferCopy sits over the glass.
 	if r._glass_backbuffer != null and r._glass_backbuffer is BackBufferCopy:

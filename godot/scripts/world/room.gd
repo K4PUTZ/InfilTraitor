@@ -869,13 +869,17 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## which map to boot into. Written only after a load actually succeeds
 	## (past both error-return points above) so a failed load never
 	## overwrites a good last-known value.
-	var current_map_config := ConfigFile.new()
-	current_map_config.set_value("state", "map_id", new_map_id)
-	if new_map_id == "PROCEDURAL":
-		current_map_config.set_value("state", "seed", new_seed)
-	var save_err := current_map_config.save("user://current_map.cfg")
-	if save_err != OK:
-		push_warning("[Room] Could not persist current_map.cfg (error %d) — auto-screenshot will use its fallback map" % save_err)
+	## GLASS G-MAP — `INFILTRAITOR_MAP` is a capture-only override; it must NOT
+	## rewrite the persisted cfg, or a capture run leaves the editor on a
+	## different map on its next boot.
+	if OS.get_environment("INFILTRAITOR_MAP") == "":
+		var current_map_config := ConfigFile.new()
+		current_map_config.set_value("state", "map_id", new_map_id)
+		if new_map_id == "PROCEDURAL":
+			current_map_config.set_value("state", "seed", new_seed)
+		var save_err := current_map_config.save("user://current_map.cfg")
+		if save_err != OK:
+			push_warning("[Room] Could not persist current_map.cfg (error %d) — auto-screenshot will use its fallback map" % save_err)
 
 	## Sync cached data from builder to room state
 	_blocked_cells = _room_builder.get_blocked_cells()
@@ -1296,6 +1300,13 @@ func _ready() -> void:
 		if last_map_id != "":
 			map_id = last_map_id
 			level_seed = int(last_map_config.get_value("state", "seed", level_seed))
+
+	## GLASS G-MAP — a one-shot override for capture tooling: `INFILTRAITOR_MAP=GLASS`
+	## boots straight into that map without touching the persisted cfg, so a
+	## capture run does not leave the editor on a different map afterwards.
+	var env_map := OS.get_environment("INFILTRAITOR_MAP")
+	if env_map != "":
+		map_id = env_map
 
 	load_map(map_id, level_seed)
 

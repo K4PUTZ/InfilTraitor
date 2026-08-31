@@ -104,6 +104,31 @@ func all_slices() -> Array:
 	return _slices.values()
 
 
+## GLASS G7 (GLASS_MASTER_PLAN §7.2) — every glass PANEL edge, keyed the way
+## `blocked_edges` is (`WallEdgeData.edge_key`), value = the edge's `pane_id`.
+## Half-thickness glass panels never populate `blocked_edges`, so the pellet
+## flood needs this separate lookup to know a round is crossing glass — it
+## registers a hole there and keeps going (G-D5). Glass BLOCKS (pane_id
+## `PANE_BLOCK_*`) are excluded: their cells are in `blocked_cells` and their
+## pass-through is deferred with the rest of the block work.
+func glass_edge_keys() -> Dictionary:
+	var out: Dictionary = {}
+	for edge in _edges.values():
+		if edge.material != "glass":
+			continue
+		var pid: String = ""
+		var sa := get_slice(edge.slice_a_id)
+		var sb := get_slice(edge.slice_b_id)
+		if sa != null and sa.pane_id != "":
+			pid = sa.pane_id
+		elif sb != null and sb.pane_id != "":
+			pid = sb.pane_id
+		if pid.begins_with("PANE_BLOCK_"):
+			continue
+		out[WallEdgeData.edge_key(edge.gu_a, edge.gu_b)] = pid
+	return out
+
+
 ## Dirty slices (dirty_count > 0) — TIC entry point
 func dirty_slices() -> Array:
 	var result: Array = []

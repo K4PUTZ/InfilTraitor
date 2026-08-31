@@ -77,6 +77,7 @@ func _init() -> void:
 	test_punch_coefficient_ordering()
 	test_no_shipped_weapon_reaches_the_cascade()
 	test_line_impact_is_straight_and_measures_distance()
+	test_line_passes_through_glass_and_hits_what_is_behind()
 	test_aim_offset_steers_the_shot_off_axis()
 	test_cone_spread_is_a_disc_not_a_line()
 	test_pellet_selection_is_deterministic()
@@ -1813,6 +1814,45 @@ func test_line_impact_is_straight_and_measures_distance() -> void:
 	else:
 		_fail("straight_ok=%s (hit=%s) deterministic_ok=%s miss_ok=%s" %
 			[straight_ok, hit, deterministic_ok, miss_ok])
+	print("")
+
+
+## GLASS G7 (GLASS_MASTER_PLAN §7.2, G-D5) — a round passes THROUGH a glass
+## panel: the pane records the crossing and the round carries on to whatever is
+## behind it. `glass_edges` defaults to `{}`, so a non-glass shot is untouched.
+func test_line_passes_through_glass_and_hits_what_is_behind() -> void:
+	print("TEST: G7 - a LINE round crosses a glass panel and strikes the concrete wall behind it")
+	## Concrete wall between rows 2 and 1, x 0..10. A glass edge between rows 4
+	## and 3 at x=5 — one GU in front of the muzzle's path.
+	var registry := _wide_wall_registry(1, 2, 0, 10, "concrete")
+	var blocked := _wide_wall_blocked(1, 2, 0, 10)
+	var glass_edges := {WallEdgeData.edge_key(Vector2i(5, 4), Vector2i(5, 3)): "PANE_TEST"}
+
+	## Baseline: no glass_edges — the round stops at the concrete, no glass_passed.
+	var plain := BlastCalculatorClass.select_line_impact(Vector2i(5, 5), NE, 40, blocked, {}, 0.0)
+	var plain_ok: bool = not plain.is_empty() and plain["gu"] == Vector2i(5, 2) \
+		and not plain.has("glass_passed")
+
+	## With glass_edges: same terminal hit, plus one recorded crossing.
+	var through := BlastCalculatorClass.select_line_impact(
+		Vector2i(5, 5), NE, 40, blocked, {}, 0.0, glass_edges)
+	var terminal_ok: bool = not through.is_empty() and through["gu"] == Vector2i(5, 2) \
+		and int(through["steps"]) == 3
+	var gp: Array = through.get("glass_passed", [])
+	var crossing_ok: bool = gp.size() == 1 and gp[0]["gu"] == Vector2i(5, 4) \
+		and gp[0]["face"] == Face.NE and String(gp[0]["pane_id"]) == "PANE_TEST"
+
+	## A round that meets ONLY glass and flies on into the void: no terminal `gu`,
+	## but the crossing is still recorded so the pane takes its hole.
+	var void_hit := BlastCalculatorClass.select_line_impact(
+		Vector2i(5, 5), NE, 40, {}, {}, 0.0, glass_edges)
+	var void_ok: bool = not void_hit.has("gu") and void_hit.get("glass_passed", []).size() == 1
+
+	if plain_ok and terminal_ok and crossing_ok and void_ok:
+		_pass("round crosses the glass at (5,4)/NE, hits concrete at (5,2); glass-only shot records the crossing with no terminal hit; default is a no-op")
+	else:
+		_fail("plain_ok=%s terminal_ok=%s crossing_ok=%s void_ok=%s (through=%s)" %
+			[plain_ok, terminal_ok, crossing_ok, void_ok, through])
 	print("")
 
 

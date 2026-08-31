@@ -293,14 +293,16 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 	if is_line:
 		var line_hit := BlastCalculatorClass.select_line_impact(
 			origin_gu, forward, PELLET_FLOOD_MAX_STEPS,
-			_blocked_edges_dict(), room._blocked_cells, offset)
+			_blocked_edges_dict(), room._blocked_cells, offset, _glass_edges_dict())
 		if not line_hit.is_empty():
 			picks.append(line_hit)
 	else:
 		picks = BlastCalculatorClass.select_cone_pellet_impacts(
 			origin_gu, forward, weapon_def.cone_half_angle_deg,
 			PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count,
-			_blocked_edges_dict(), room._blocked_cells, salt, offset)
+			_blocked_edges_dict(), room._blocked_cells, salt, offset, _glass_edges_dict())
+	## GLASS G7 — a hole in every pane the round crossed on the way in.
+	picks = _flatten_glass_passthrough(picks)
 	var destroyed: Dictionary = {}
 	var damaged: Array = []
 	var variant_cells: Array = []
@@ -474,14 +476,17 @@ func fire_at_active() -> void:
 	if weapon_def.delivery == WeaponDef.DELIVERY_LINE:
 		var line_hit := BlastCalculatorClass.select_line_impact(
 			origin_gu, forward, PELLET_FLOOD_MAX_STEPS,
-			_blocked_edges_dict(), room._blocked_cells, aim_offset_deg)
+			_blocked_edges_dict(), room._blocked_cells, aim_offset_deg, _glass_edges_dict())
 		if not line_hit.is_empty():
 			pellet_picks.append(line_hit)
 	else:
 		pellet_picks = BlastCalculatorClass.select_cone_pellet_impacts(
 			origin_gu, forward, weapon_def.cone_half_angle_deg,
 			PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count,
-			_blocked_edges_dict(), room._blocked_cells, salt, aim_offset_deg)
+			_blocked_edges_dict(), room._blocked_cells, salt, aim_offset_deg, _glass_edges_dict())
+	## GLASS G7 (G-D5) — the round passes through glass; every pane it crossed
+	## takes a hole, resolved and applied by the same loop as the terminal hit.
+	pellet_picks = _flatten_glass_passthrough(pellet_picks)
 
 	var cell_to_voxel: Dictionary = {}
 	## W-TUNE-01: the tier tally is only readable PER MATERIAL. A shot walks a
@@ -750,6 +755,10 @@ func _nearest_axis(aim: Vector2) -> Vector2i:
 func _draw_tracer(muzzle_world: Vector2, pick: Dictionary) -> void:
 	if room._tracer_overlay == null:
 		return
+	## GLASS G7 — a pass-through crossing is not where the round stopped; the
+	## tracer runs to the terminal hit only.
+	if pick.has("pane_id"):
+		return
 	var impact_world: Vector2 = _gu_centre_world(pick["gu"])
 	if impact_world == Vector2.ZERO:
 		push_warning("[AgentShotController] tracer skipped — GU %s has no world position" % pick["gu"])
@@ -777,6 +786,28 @@ func _blocked_edges_dict() -> Dictionary:
 	for e in room._current_blocked_edges:
 		blocked[WallEdgeData.edge_key(e["from"], e["to"])] = true
 	return blocked
+
+
+## GLASS G7 — glass PANEL edges the round passes THROUGH (G-D5), keyed like
+## `_blocked_edges_dict()`, value = pane_id. Panels never reach
+## `_current_blocked_edges`, so this comes straight off the edge registry.
+func _glass_edges_dict() -> Dictionary:
+	if room._edge_registry == null:
+		return {}
+	return room._edge_registry.glass_edge_keys()
+
+
+## GLASS G7 — turn each pick's `glass_passed` (the panes a round crossed) into
+## standalone picks, in flight order, so the shot's normal resolve/apply loop
+## puts a hole in every pane on the way to the terminal hit.
+func _flatten_glass_passthrough(picks: Array) -> Array:
+	var out: Array = []
+	for p in picks:
+		for g in p.get("glass_passed", []):
+			out.append(g)
+		if p.has("gu"):
+			out.append(p)
+	return out
 
 
 ## World position of a GU cell's centre at chest height — the same

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**222 scripts · 71660 lines total** (under `godot/scripts/`)
+**222 scripts · 71810 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -638,7 +638,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge_registry.gd`
 
-`class_name EdgeRegistry` · 136 lines
+`class_name EdgeRegistry` · 161 lines
 
 `godot/scripts/geometry/edge_registry.gd`
 
@@ -658,6 +658,7 @@ extends `ConfirmationDialog` · 64 lines
 - `func edges_touching_gu(gu: Vector2i) -> Array:`
 - `func all_edges() -> Array:`
 - `func all_slices() -> Array:`
+- `func glass_edge_keys() -> Dictionary:`
 - `func dirty_slices() -> Array:`
 - `func clear() -> void:`
 - `func is_empty() -> bool:`
@@ -1872,7 +1873,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1873 lines
+`class_name BlastCalculator` · 1927 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2977,7 +2978,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2592 lines
+extends `SceneTree` · 2632 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3041,6 +3042,7 @@ extends `SceneTree` · 2592 lines
 - `func test_cone_spread_is_a_disc_not_a_line() -> void:`
 - `func test_no_shipped_weapon_reaches_the_cascade() -> void:`
 - `func test_line_impact_is_straight_and_measures_distance() -> void:`
+- `func test_line_passes_through_glass_and_hits_what_is_behind() -> void:`
 - `func test_aim_offset_steers_the_shot_off_axis() -> void:`
 - `func test_pellet_selection_is_deterministic() -> void:`
 - `func test_carved_side_faces_the_blast() -> void:`
@@ -4564,7 +4566,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 789 lines
+`class_name AgentShotController` · 820 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 

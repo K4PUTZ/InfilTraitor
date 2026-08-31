@@ -211,10 +211,14 @@ static func flood_gu_cone(source_gu: Vector2i, facing_delta: Vector2i, half_angl
 ## what the cone's own spread is), so an off-axis aim is the same machinery with
 ## a non-zero centre. Default 0.0 leaves every existing caller bit-identical —
 ## and the hash inputs are untouched, so B4 determinism is unaffected.
+## `glass_edges` (GLASS G7, default `{}`) threads to `_walk_pellet_ray()`: a
+## pellet crossing a glass panel records the crossing in `hit["glass_passed"]`
+## and continues. Callers that want glass holes flatten those into their own
+## picks; callers that pass nothing are bit-identical.
 static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector2i,
 		half_angle_deg: float, max_steps: int, projectile_count: int,
 		blocked_edges: Dictionary, blocked_cells: Dictionary, salt: String,
-		aim_offset_deg: float = 0.0) -> Array:
+		aim_offset_deg: float = 0.0, glass_edges: Dictionary = {}) -> Array:
 	var picks: Array = []
 	if facing_delta == Vector2i.ZERO or projectile_count <= 0:
 		return picks
@@ -253,7 +257,7 @@ static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector
 		var rho: float = sqrt(float(FacadeSampler._fnv1a_hash(rho_key) % 10000) / 10000.0)
 		var angle_deg: float = aim_offset_deg + half_angle_deg * rho * cos(theta)
 		var hit := _walk_pellet_ray(source_gu, facing_delta, lateral, deg_to_rad(angle_deg),
-			max_steps, blocked_edges, blocked_cells)
+			max_steps, blocked_edges, blocked_cells, glass_edges)
 		if not hit.is_empty():
 			## Carried so the impact voxel can be placed on the same disc the
 			## lateral angle came from, instead of an unrelated hash.
@@ -272,26 +276,65 @@ static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector
 ## (void, D15). `steps` is how far the pellet actually travelled, which is what
 ## the disc's radius scales with (CONE-DISC-01) and what LINE's distance term
 ## reads.
+## GLASS G7 (GLASS_MASTER_PLAN §7.2) — `glass_edges` (EdgeRegistry.glass_edge_keys(),
+## `edge_key -> pane_id`) makes glass PASSABLE to the flood: the round records a
+## hole on the pane and keeps going to whatever is behind it (G-D5). A terminal
+## solid hit carries `glass_passed` — the panes crossed on the way, deduped by
+## pane_id; a round that only ever met glass returns `{"glass_passed": [...]}`
+## with no `gu`. Default `{}` leaves every non-glass shot bit-identical.
 static func _walk_pellet_ray(source_gu: Vector2i, forward: Vector2i, lateral: Vector2i,
-		angle_rad: float, max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary) -> Dictionary:
+		angle_rad: float, max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary,
+		glass_edges: Dictionary = {}) -> Dictionary:
 	var current := source_gu
 	var lateral_accum := 0.0
 	var tan_angle := tan(angle_rad)
+	var glass_passed: Array = []
+	var seen_panes: Dictionary = {}
 	for step in range(max_steps):
 		lateral_accum += tan_angle
 		if absf(lateral_accum) >= 1.0:
 			var step_sign: int = 1 if lateral_accum > 0.0 else -1
 			var lateral_step: Vector2i = lateral * step_sign
 			var lateral_target: Vector2i = current + lateral_step
-			if WallEdgeData.is_edge_blocked(current, lateral_target, blocked_edges) or blocked_cells.has(lateral_target):
-				return {"gu": current, "face": Face.from_delta(lateral_step), "steps": step}
-			current = lateral_target
-			lateral_accum -= step_sign
+			var lkey := WallEdgeData.edge_key(current, lateral_target)
+			if glass_edges.has(lkey):
+				_note_glass_crossing(glass_passed, seen_panes, current, lateral_step, step, glass_edges[lkey])
+				current = lateral_target
+				lateral_accum -= step_sign
+			elif WallEdgeData.is_edge_blocked(current, lateral_target, blocked_edges) or blocked_cells.has(lateral_target):
+				return _pellet_terminal(current, lateral_step, step, glass_passed)
+			else:
+				current = lateral_target
+				lateral_accum -= step_sign
 		var forward_target: Vector2i = current + forward
-		if WallEdgeData.is_edge_blocked(current, forward_target, blocked_edges) or blocked_cells.has(forward_target):
-			return {"gu": current, "face": Face.from_delta(forward), "steps": step}
-		current = forward_target
-	return {}
+		var fkey := WallEdgeData.edge_key(current, forward_target)
+		if glass_edges.has(fkey):
+			_note_glass_crossing(glass_passed, seen_panes, current, forward, step, glass_edges[fkey])
+			current = forward_target
+		elif WallEdgeData.is_edge_blocked(current, forward_target, blocked_edges) or blocked_cells.has(forward_target):
+			return _pellet_terminal(current, forward, step, glass_passed)
+		else:
+			current = forward_target
+	return {} if glass_passed.is_empty() else {"glass_passed": glass_passed}
+
+
+## GLASS G7 — one glass crossing, deduped by pane_id so a round grazing two
+## slices of the same window makes ONE hole, not a spray (G-D4's distinction).
+static func _note_glass_crossing(glass_passed: Array, seen: Dictionary,
+		gu: Vector2i, step_delta: Vector2i, step: int, pane_id: String) -> void:
+	if pane_id != "":
+		if seen.has(pane_id):
+			return
+		seen[pane_id] = true
+	glass_passed.append({"gu": gu, "face": Face.from_delta(step_delta),
+		"steps": step, "pane_id": pane_id})
+
+
+static func _pellet_terminal(gu: Vector2i, step_delta: Vector2i, step: int, glass_passed: Array) -> Dictionary:
+	var hit := {"gu": gu, "face": Face.from_delta(step_delta), "steps": step}
+	if not glass_passed.is_empty():
+		hit["glass_passed"] = glass_passed
+	return hit
 
 
 ## Resolve one pellet's {"gu","face"} pick (from select_cone_pellet_impacts())
@@ -313,10 +356,17 @@ static func resolve_pellet_voxel(pick: Dictionary, edge_registry: EdgeRegistry, 
 	var target_slice: Slice = null
 	for edge in edge_registry.edges_touching_gu(gu):
 		if edge.gu_a == neighbor or edge.gu_b == neighbor:
-			for slice in edge_registry.slices_of_edge(edge.id):
+			var edge_slices: Array = edge_registry.slices_of_edge(edge.id)
+			for slice in edge_slices:
 				if slice.gu_cell == gu:
 					target_slice = slice
 					break
+			## GLASS G7 — a half-thickness panel has exactly ONE slice, on
+			## whichever GU it was authored against; a round crossing it from the
+			## empty side still hits it. Full walls (two slices) keep the near
+			## one, matched above.
+			if target_slice == null and edge_slices.size() == 1:
+				target_slice = edge_slices[0]
 			break
 	if target_slice == null or target_slice.voxels.is_empty():
 		return {}
@@ -612,14 +662,18 @@ static func select_face_neighbours(slice: Slice, voxel_index: int, count: int,
 ## travelling, it does not stop at a range limit).
 static func select_line_impact(source_gu: Vector2i, facing_delta: Vector2i,
 		max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary,
-		aim_offset_deg: float = 0.0) -> Dictionary:
+		aim_offset_deg: float = 0.0, glass_edges: Dictionary = {}) -> Dictionary:
 	if facing_delta == Vector2i.ZERO:
 		return {}
 	var lateral := Vector2i(-facing_delta.y, facing_delta.x)
 	var hit := _walk_pellet_ray(source_gu, facing_delta, lateral,
-		deg_to_rad(aim_offset_deg), max_steps, blocked_edges, blocked_cells)
+		deg_to_rad(aim_offset_deg), max_steps, blocked_edges, blocked_cells, glass_edges)
 	if hit.is_empty():
 		return {}
+	## GLASS G7 — the round only ever met glass and flew on into the void. The
+	## panes still take their holes; there is no terminal solid hit to measure.
+	if not hit.has("gu"):
+		return hit
 	## Chebyshev distance, and it is EXACT ONLY ON AXIS. A zero-angle walk steps
 	## purely along `facing_delta`, so the GU delta is a multiple of it and the
 	## max-component distance is the real one. An off-axis aim also drifts along

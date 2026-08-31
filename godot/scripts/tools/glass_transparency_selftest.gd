@@ -40,7 +40,7 @@ func _init() -> void:
 	test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer()
 	test_sublayers_are_lazy_only_glass_levels_get_them()
 	test_concrete_is_untouched_by_the_glass_gate()
-	test_destroyed_glass_clears_both_sublayers()
+	test_destroyed_glass_clears_the_pane()
 	test_intact_glass_still_blocks_light()
 
 	print("\n" + "=".repeat(70))
@@ -100,24 +100,21 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 	else:
 		_fail("opaque layer still holds %d glass cell(s) — G1 undone" % opaque_glass_cells)
 
-	var subs: Dictionary = r._glass_layers.get(level, {})
-	var mul_cells: int = (subs["mul"] as TileMapLayer).get_used_cells().size() if subs.has("mul") else -1
-	var add_cells: int = (subs["add"] as TileMapLayer).get_used_cells().size() if subs.has("add") else -1
-	if mul_cells == 8 and add_cells == 8:
-		_pass("both sublayers hold all 8 glass cells")
+	var gpane: TileMapLayer = r._glass_layers.get(level)
+	var pane_cells: int = gpane.get_used_cells().size() if gpane != null else -1
+	if pane_cells == 8:
+		_pass("the glass pane layer holds all 8 glass cells")
 	else:
-		_fail("sublayer cell counts wrong: mul=%d add=%d (expected 8/8)" % [mul_cells, add_cells])
+		_fail("glass pane layer cell count %d (expected 8)" % pane_cells)
 
-	if subs.has("mul"):
-		var mul := subs["mul"] as TileMapLayer
-		var src: int = mul.get_cell_source_id(Vector2i(24, 24))
+	if gpane != null:
+		var src: int = gpane.get_cell_source_id(Vector2i(24, 24))
 		## The slice is Face.NW → the NW-specific pane atom source.
 		var want: int = r._glass_pane_source.get(Face.NW, -1)
 		if src == want and src >= 0:
 			_pass("a Face.NW glass cell uses the NW pane atom source (id %d)" % src)
 		else:
 			_fail("Face.NW glass cell source id %d, expected NW source %d" % [src, want])
-		## Each face has a distinct source.
 		var ids := {}
 		for f in [Face.SW, Face.SE, Face.NW, Face.NE]:
 			ids[r._glass_pane_source.get(f, -1)] = true
@@ -125,6 +122,12 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 			_pass("all four faces have a distinct pane atom source")
 		else:
 			_fail("face sources not all distinct/present: %s" % [r._glass_pane_source])
+
+	## The rasterising container: a BackBufferCopy sits over the glass.
+	if r._glass_backbuffer != null and r._glass_backbuffer is BackBufferCopy:
+		_pass("a BackBufferCopy container was built for the glass")
+	else:
+		_fail("no BackBufferCopy container — the pane would double-tint on overlap")
 
 	r.queue_free()
 	print("")
@@ -141,7 +144,7 @@ func test_sublayers_are_lazy_only_glass_levels_get_them() -> void:
 
 	var keys: Array = r.glass_level_keys()
 	if keys == [glass_level]:
-		_pass("glass_level_keys() == [%d] — one pair, at the glass level only" % glass_level)
+		_pass("glass_level_keys() == [%d] — one pane layer, at the glass level only" % glass_level)
 	else:
 		_fail("glass_level_keys() == %s, expected [%d]" % [keys, glass_level])
 	r.queue_free()
@@ -170,8 +173,8 @@ func test_concrete_is_untouched_by_the_glass_gate() -> void:
 	print("")
 
 
-func test_destroyed_glass_clears_both_sublayers() -> void:
-	print("[4] destroying a glass voxel erases it from BOTH sublayers\n")
+func test_destroyed_glass_clears_the_pane() -> void:
+	print("[4] destroying a glass voxel erases it from the pane layer\n")
 	var r := _fresh_renderer()
 	var level: int = GeometryCoords.PLAYABLE_LEVEL
 	var registry := EdgeRegistry.new()
@@ -185,15 +188,14 @@ func test_destroyed_glass_clears_both_sublayers() -> void:
 	slice.dirty_count = 1
 	r.process_dirty(registry)
 
-	var subs: Dictionary = r._glass_layers.get(level, {})
-	var mul_src: int = (subs["mul"] as TileMapLayer).get_cell_source_id(target.grid_pos) if subs.has("mul") else 999
-	var add_src: int = (subs["add"] as TileMapLayer).get_cell_source_id(target.grid_pos) if subs.has("add") else 999
-	if mul_src == -1 and add_src == -1:
-		_pass("the destroyed cell is gone from both the MUL and the ADD sublayer")
+	var gpane: TileMapLayer = r._glass_layers.get(level)
+	var src: int = gpane.get_cell_source_id(target.grid_pos) if gpane != null else 999
+	if src == -1:
+		_pass("the destroyed cell is gone from the pane layer")
 	else:
-		_fail("destroyed cell still present: mul src=%d add src=%d" % [mul_src, add_src])
+		_fail("destroyed cell still present: src=%d" % src)
 
-	var remaining: int = (subs["mul"] as TileMapLayer).get_used_cells().size() if subs.has("mul") else -1
+	var remaining: int = gpane.get_used_cells().size() if gpane != null else -1
 	if remaining == 7:
 		_pass("the other 7 glass cells are untouched")
 	else:

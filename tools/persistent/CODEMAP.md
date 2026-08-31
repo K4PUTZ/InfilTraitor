@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**221 scripts · 71345 lines total** (under `godot/scripts/`)
+**221 scripts · 71351 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -870,7 +870,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4794 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4798 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -3447,7 +3447,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 220 lines
+extends `SceneTree` · 222 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
@@ -3465,7 +3465,7 @@ extends `SceneTree` · 220 lines
 - `func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:`
 - `func test_sublayers_are_lazy_only_glass_levels_get_them() -> void:`
 - `func test_concrete_is_untouched_by_the_glass_gate() -> void:`
-- `func test_destroyed_glass_clears_both_sublayers() -> void:`
+- `func test_destroyed_glass_clears_the_pane() -> void:`
 - `func test_intact_glass_still_blocks_light() -> void:`
 
 ---

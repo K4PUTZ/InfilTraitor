@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**222 scripts · 72067 lines total** (under `godot/scripts/`)
+**222 scripts · 72151 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2469,11 +2469,11 @@ extends `Node2D` · 43 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 883 lines
+`class_name OcclusionSet` · 906 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
-> Occlusion Module — Computes which geometry occludes the agent POLICY: O1 — Occlusion is VIEW, not STATE - _occluded_cells is owned solely by this module - Never writes Voxel.visible, never uses dirty flag, never persists - NEVER reads _active_perspective (coordinates already rotated when entering) POLICY: O4′ — One view-space formula, no rotation applied The map is rebuilt rotated; we compute in already-rotated coordinates. POLICY: O5 — Depth is (x + y) in view-space, never z_index Isometric diamond layout: screen-y ∝ (x + y). Greater sum = nearer camera.
+> Occlusion Module — Computes which geometry occludes the agent POLICY: O1 — Occlusion is VIEW, not STATE - _occluded_cells is owned solely by this module - Never writes Voxel.visible, never uses dirty flag, never persists - NEVER reads _active_perspective (coordinates already rotated when entering) POLICY: O4′ — One view-space formula, no rotation applied The map is rebuilt rotated; we compute in already-rotated coordinates. POLICY: O5 — Depth is (x + y) in view-space, never z_index Isometric diamond layout: screen-y ∝ (x + y). Greater sum = nearer camera. POLICY: O7 — Glass does not occlude (a see-through pane hides nothing). A slice whose base material is glass is filtered out in _group_slices_by_edge() — see that function's header.
 
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -3466,7 +3466,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 381 lines
+extends `SceneTree` · 442 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 

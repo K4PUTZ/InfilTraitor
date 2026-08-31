@@ -10,6 +10,10 @@
 ##
 ## POLICY: O5 — Depth is (x + y) in view-space, never z_index
 ## Isometric diamond layout: screen-y ∝ (x + y). Greater sum = nearer camera.
+##
+## POLICY: O7 — Glass does not occlude (a see-through pane hides nothing).
+## A slice whose base material is glass is filtered out in _group_slices_by_edge()
+## — see that function's header.
 
 class_name OcclusionSet
 
@@ -471,10 +475,29 @@ func _merge_columns_into_rects(cells: Array) -> Array:
 ## CORE COMPUTATION (pure geometry, no I/O)
 ## ============================================================================
 
+## POLICY: O7 — GLASS DOES NOT OCCLUDE (GLASS_MASTER_PLAN, Director 2026-08-31:
+## *"tem algum problema com a oclusão. Podemos considerar não fazer em materiais
+## de vidro."*).
+##
+## A glass pane is see-through by construction (G-D1) — the agent behind it is
+## already visible, so ghosting it reveals nothing. And glass voxels render on
+## their own `_glass_layers`, which `VoxelRenderer.apply_occlusion()` never
+## touches (it erases `_layers` only); the wireframe would then draw its lines
+## and translucent fills over a pane that is still solid on screen. So a glass
+## slice contributes nothing here: no trigger, no wireframe, no ghost band.
+##
+## A slice is skipped whole when its BASE material is glass — that covers the
+## panes, the glass blocks, and the G-D9 brick-capped window (base glass; its
+## sill/head bands are extremity voxels that never cover the agent's silhouette).
+## A mostly-opaque wall with a small glass viewport (base NOT glass) still
+## occludes, which is correct. Guard-through-glass vision is G-D7, a separate
+## roll, and has nothing to do with render occlusion.
 func _group_slices_by_edge(slices: Array) -> Dictionary:
 	var by_edge: Dictionary = {}
 	for slice in slices:
 		if slice.voxels.is_empty():
+			continue
+		if slice.material == "glass":
 			continue
 		if not by_edge.has(slice.edge_id):
 			by_edge[slice.edge_id] = []

@@ -1,12 +1,15 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.8 — **G1 geometry reworked, G2 + G7 + G-MAP + G-D9 BUILT.** G1
-appearance signed off; G1 geometry awaits a Director tuning verdict on the
-sliver size/dim. **G-D9 (multi-material slices) BUILT 2026-08-31** —
-`panels.bands` → `Slice.material_bands` + `material_at()`, the per-band bake page,
-a lookup material override; the GLASS map's WINDOWS.png wall renders a brick sill
-+ head over a glass middle (`Screenshots/history/glass_bands_wall_{before,after}_2026-08-31.png`,
-same-boot). **The break design GREW on 2026-08-31** — per-projectile shatter roll
+**Status:** 🟢 v1.9 — **G1 geometry reworked, G2 + G7 + G-MAP + G-D9 BUILT; glass
+removed from occlusion (G-D18).** G1 appearance signed off; G1 geometry awaits a
+Director tuning verdict on the sliver size/dim. **G-D9 (multi-material slices)
+BUILT 2026-08-31** — `panels.bands` → `Slice.material_bands` + `material_at()`,
+the per-band bake page, a lookup material override; the GLASS map's WINDOWS.png
+wall renders a brick sill + head over a glass middle
+(`Screenshots/history/glass_bands_wall_{before,after}_2026-08-31.png`, same-boot).
+**G-D18 (2026-08-31):** glass no longer participates in occlusion — a see-through
+pane hides nothing and its wireframe drew over a still-solid pane
+(`glass_occlusion_{before,after}_2026-08-31.png`). **The break design GREW on 2026-08-31** — per-projectile shatter roll
 (G-D11), partial breaks on big panes (G-D12), a mandatory remnant floor (G-D13),
 per-weapon hole size (G-D14), armored/purple glass with a primed state (G-D15),
 terminal-colour glass classes (G-D16 — INDESTRUCTIBLE *stops the round*), a
@@ -125,6 +128,7 @@ just not the target case.
 | **G-D15** | **ARMORED GLASS (`glass_armored`, purple) — resists common shots; when breached, usually shatters entirely at once, leaving many individual shards.** ⚠️ **Special rifle case:** a rifle round may pierce a SINGLE voxel without shattering (treated as a weak hit) — this PRIMES the pane, and the next shot of ANY type auto-shatters the whole thing. `pane_primed` is a per-pane flag, checkpoint-scoped | ✅ Ratified 2026-08-31 · build after this doc is signed off |
 | **G-D16** | **Glass is a family of tinted behaviour classes, not new geometry.** All variants share G1's rendering and differ only in a tint (`base_color`) and a `glass_class`: `glass` (blue, BREAKABLE) · `glass_armored` (purple, ARMORED, G-D15) · `glass_screen_{green,red,amber}` (dark terminal tone) which is **INDESTRUCTIBLE** (control interfaces — takes a crack decal, never breaks, and STOPS the round: *"trinca mas o tiro para"*) or **BREAKABLE** (TVs, circuits, news panels) per placement | ✅ Ratified 2026-08-31 |
 | **G-D17** | **A screen is a glass voxel over a BLACK PLASTIC voxel.** *"O voxel de vidro fica na frente de voxels pretos de PLÁSTICO (a implementar — fura [não atravessa] ou derrete), de forma que nesses voxels pretos vamos pintar as imagens e textos posteriormente, e o vidro vai criar o efeito de brilho por cima."* New material **`plastic`** (black): a round DRILLS it (a hole, but the round does NOT pass through — unlike glass) or fire MELTS it. Images/text painted onto the plastic later; the glass in front adds the G1 sheen. Belongs in `MATERIALS_MASTER_PLAN` | ✅ Ratified 2026-08-31 · `plastic` + the paint layer are deferred |
+| **G-D18** | **Glass does not occlude.** *(Director, 2026-08-31, on the G-D9 capture: "tem algum problema com a oclusão. Podemos considerar não fazer em materiais de vidro.")* A glass pane is see-through by construction (G-D1) — the agent behind it is already visible, so ghosting it reveals nothing, and because glass renders on its own `_glass_layers` (which `apply_occlusion()` never erases) the wireframe drew its lines and ghost-band fill over a still-solid pane. `OcclusionSet` now filters out any slice whose BASE material is glass (policy O7, `_group_slices_by_edge`): no trigger, no ring stop, no wireframe. A mostly-opaque wall with a small glass viewport (base ≠ glass) still occludes. Guard-through-glass vision is G-D7, a separate roll | ✅ **BUILT 2026-08-31** |
 
 ---
 

@@ -83,6 +83,32 @@ this file.
 `docs/README.md` · `docs/production/current_state.md` ·
 `tools/persistent/CODEMAP.md`.
 
+## 5b. Follow-up same session — G-D18: glass does not occlude
+
+Director, on the G-D9 capture: *"tem algum problema com a oclusão. Podemos
+considerar não fazer em materiais de vidro."*
+
+**Cause:** a glass pane is see-through (G-D1), so ghosting it reveals nothing —
+and glass renders on `_glass_layers`, which `VoxelRenderer.apply_occlusion()`
+never erases (it touches `_layers` only). So `OcclusionSet` still put glass
+columns in `_occluded_cells`, `_build_wireframe_geometry()` drew their run-start /
+run-end verticals + far-face dots + a translucent ghost-band fill, and all of it
+landed on top of a pane that was still solid on screen.
+
+**Fix:** `OcclusionSet._group_slices_by_edge()` skips any slice whose BASE
+material is glass (new policy O7, `occlusion_set.gd`). No trigger, no ring stop,
+no wireframe. A mostly-opaque wall with a small glass viewport (base ≠ glass)
+still occludes. `glass_transparency_selftest` test [8] — the SAME occluder cells
+produce 4 occluded cells as concrete and **0** as glass (control run first), and
+a G-D9 base-glass banded window is excluded whole.
+
+**Acceptance:** `Screenshots/history/glass_occlusion_{before,after}_2026-08-31.png`
+— same boot, same agent cell (behind the big pane), `occlusion_set.gd` the only
+variable. Before: the pane wears the occlusion wireframe (two solid verticals, a
+dotted far edge, a faint fill). After: clean transparent glass.
+
+Recorded as **G-D18** in `GLASS_MASTER_PLAN` (v1.8 → v1.9).
+
 ## 6. NEXT SESSION — start here
 
 **G3 — the break** (`GLASS_MASTER_PLAN` §5.1, rewritten). Per-projectile

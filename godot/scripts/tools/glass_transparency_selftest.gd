@@ -49,6 +49,7 @@ func _init() -> void:
 	test_intact_glass_still_blocks_light()
 	test_glass_pane_ids_group_the_surface()
 	test_material_bands_route_per_level()
+	test_glass_does_not_occlude()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -361,6 +362,66 @@ func test_material_bands_route_per_level() -> void:
 
 	r.queue_free()
 	print("")
+
+
+## GLASS — OcclusionSet policy O7 (Director 2026-08-31): a glass slice must
+## contribute NOTHING to occlusion. A glass pane is see-through, so the agent
+## behind it is already visible; and glass renders on `_glass_layers`, which
+## `apply_occlusion()` never touches — the wireframe would draw over a still-solid
+## pane. Control run first: the SAME cells as concrete DO occlude, so an empty
+## glass result is the filter working, not a broken fixture.
+func test_glass_does_not_occlude() -> void:
+	print("[8] O7: a glass slice contributes nothing to OcclusionSet\n")
+	var OcclusionSetMod = preload("res://godot/scripts/systems/occlusion_set.gd")
+	## Agent at gu (5,5) → voxel centre (44,44), depth 88. Occluder cells sit at
+	## depth 92-96 (camera side) and levels PLAYABLE_LEVEL .. +5 (a real wall span).
+	var agent_cell := Vector2i(5, 5)
+	var cells := [Vector2i(46, 46), Vector2i(47, 46), Vector2i(46, 47), Vector2i(48, 48)]
+
+	var occ_c = OcclusionSetMod.new()
+	occ_c.recompute(agent_cell, _occ_slices(cells, "concrete"), Vector2i(100, 100))
+	var n_concrete: int = occ_c.get_occluded_cells().size()
+	if n_concrete > 0:
+		_pass("control: %d concrete cells occlude the agent" % n_concrete)
+	else:
+		_fail("control produced ZERO occlusion — fixture is wrong, the glass result proves nothing")
+
+	var occ_g = OcclusionSetMod.new()
+	occ_g.recompute(agent_cell, _occ_slices(cells, "glass"), Vector2i(100, 100))
+	var n_glass: int = occ_g.get_occluded_cells().size()
+	if n_glass == 0:
+		_pass("the SAME cells as glass produce ZERO occluded cells (O7)")
+	else:
+		_fail("glass still occludes %d cells — the O7 filter is not applied" % n_glass)
+
+	## A G-D9 brick-capped window (base material glass) is excluded whole.
+	var banded := _occ_slices(cells, "glass")
+	for s in banded:
+		s.material_bands = {0: "brick", 5: "brick"}
+	var occ_b = OcclusionSetMod.new()
+	occ_b.recompute(agent_cell, banded, Vector2i(100, 100))
+	if occ_b.get_occluded_cells().size() == 0:
+		_pass("a base-glass banded window (brick sill/head) is excluded too")
+	else:
+		_fail("a base-glass banded window still occludes %d cells" % occ_b.get_occluded_cells().size())
+	print("")
+
+
+## Occluder fixture: one synthetic edge per cell, a real wall level span
+## (PLAYABLE_LEVEL .. +5 — the bottom BASE_VISIBLE_LEVELS never ghost, so it must
+## be taller than that), material configurable.
+func _occ_slices(cells: Array, material: String) -> Array:
+	var out: Array = []
+	for cell: Vector2i in cells:
+		var s := Slice.new(
+			"OCC_S_%d_%d" % [cell.x, cell.y],
+			GeometryCoords.voxel_to_gu(cell), 0,
+			"OCC_E_%d_%d" % [cell.x, cell.y], 1, material)
+		for lvl in range(6):
+			s.voxels.append(Voxel.new(cell, GeometryCoords.PLAYABLE_LEVEL + lvl, s))
+		_fixtures.append(s)
+		out.append(s)
+	return out
 
 
 func test_intact_glass_still_blocks_light() -> void:

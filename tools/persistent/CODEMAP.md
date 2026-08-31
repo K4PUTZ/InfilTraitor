@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**221 scripts · 71471 lines total** (under `godot/scripts/`)
+**221 scripts · 71482 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -870,7 +870,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4893 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4899 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -3447,11 +3447,11 @@ extends `SceneTree` · 234 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 247 lines
+extends `SceneTree` · 252 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
-> GLASS_MASTER_PLAN G1 — glass transparency routing selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_transparency G1 moves glass cells off the opaque `_layers` and onto their own MUL + ADD blend sublayers (glass_shading.gdshaderinc), so the background shows through (G-D1). This suite is the round-trip proof of that routing on the REAL `_set_voxel_cell()` seam every render path funnels through — not a fixture that only exercises the happy branch. What each test catches, worst first: 1. A glass voxel that STILL lands on the opaque layer — the pane would be a solid cube again, G1 undone with no error. 2. A glass sublayer built for a level that has no glass — a wasted layer pair, and a sign the lazy-build guard slipped. 3. A concrete voxel that got routed to the glass sublayers — the one test that proves the `material_name == "glass"` gate is not catching everything. 4. A destroyed glass voxel left drawn on a sublayer — the pane keeps a shard that was shot out. 5. Intact glass dropped from `build_occupancy()` — the light field would stop seeing the pane the moment G1 landed (this suite pins it BLOCKS light exactly as before; whether it should transmit is a later call).
+> GLASS_MASTER_PLAN G1 — glass transparency routing selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_transparency G1 moves glass cells off the opaque `_layers` and onto their own MUL + ADD blend sublayers (glass_shading.gdshaderinc), so the background shows through (G-D1). This suite is the round-trip proof of that routing on the REAL `_set_voxel_cell()` seam every render path funnels through — not a fixture that only exercises the happy branch. GLASS G1 GEOMETRY (2026-08-31) — it also pins the face-culling rule: an interior voxel gets the main-only atom (mask 0), the frontmost column gets main+side (mask 1), the top level main+top (mask 2), and `_glass_face_mask()` returns those bits. 16 atom sources (4 faces × 4 masks), all distinct. What each test catches, worst first: 1. A glass voxel that STILL lands on the opaque layer — the pane would be a solid cube again, G1 undone with no error. 2. A glass sublayer built for a level that has no glass — a wasted layer pair, and a sign the lazy-build guard slipped. 3. A concrete voxel that got routed to the glass sublayers — the one test that proves the `material_name == "glass"` gate is not catching everything. 4. A destroyed glass voxel left drawn on a sublayer — the pane keeps a shard that was shot out. 5. Intact glass dropped from `build_occupancy()` — the light field would stop seeing the pane the moment G1 landed (this suite pins it BLOCKS light exactly as before; whether it should transmit is a later call).
 
 **Constants / tuning**
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`

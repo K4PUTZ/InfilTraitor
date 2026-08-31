@@ -2070,9 +2070,15 @@ func _build_voxel_tileset() -> void:
 		_glass_frosted_source_id = -1
 
 
-## GLASS G1 — the pane atoms' texture_origin, offset from the cube atom's so the
-## parallelograms sit on the wall line. `INFILTRAITOR_GLASS_ATOM_NUDGE="x,y"`
-## overrides it during a tuning pass.
+## GLASS G1 GEOMETRY — extra texture_origin offset for the pane atoms, ON TOP of
+## `voxel_texture_origin()`. It is **0** by design: `_build_glass_pane_atom`'s
+## `face_q` is byte-for-byte the material atom's own side-face parallelogram
+## (verified against `voxel_concrete.png` — alpha rows 8..36, left half), so the
+## glass renders exactly where an opaque wall would. The old default (0,20) was
+## leftover compensation for a `+shift` the atom no longer applies, and it lifted
+## every pane a level off the ground (Director, 2026-08-31: *"o bloco todo de
+## vidro está deslocado pra cima ... flutuando na base"*). `INFILTRAITOR_GLASS_
+## ATOM_NUDGE="x,y"` overrides it for a tuning pass only.
 static var _GLASS_ATOM_ORIGIN_NUDGE: Vector2i = _read_glass_atom_nudge()
 static func _read_glass_atom_nudge() -> Vector2i:
 	var raw := OS.get_environment("INFILTRAITOR_GLASS_ATOM_NUDGE")
@@ -2080,7 +2086,7 @@ static func _read_glass_atom_nudge() -> Vector2i:
 		var p := raw.split(",")
 		if p.size() == 2 and p[0].is_valid_int() and p[1].is_valid_int():
 			return Vector2i(p[0].to_int(), p[1].to_int())
-	return Vector2i(0, 20)
+	return Vector2i.ZERO
 
 
 ## GLASS G1 GEOMETRY — build the 32×36 glass pane atom for one face and one

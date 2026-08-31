@@ -28,7 +28,8 @@ void fragment() {
 	} else {
 		vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);
 		vec3 behind = texture(glass_screen, SCREEN_UV).rgb;
-		vec3 lit = glass_apply(behind, local);
+		// The atom's RED channel is the per-plane DIM (1.0 face, <1 top/side cap).
+		vec3 lit = glass_apply(behind, local, t.r);
 		COLOR = vec4(lit, cover);
 	}
 }

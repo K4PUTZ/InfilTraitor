@@ -115,12 +115,13 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 			_pass("an interior SW glass cell uses the SW pane atom source (id %d)" % src)
 		else:
 			_fail("interior SW glass cell source id %d, expected SW source %d" % [src, want])
-		## A PERIMETER SW voxel (pos 0) → the cube atom (1-voxel thickness).
+		## A PERIMETER SW voxel (pos 0) → the SW perimeter atom (1-voxel thickness).
 		var edge_src: int = gpane.get_cell_source_id(Vector2i(24, 31))
-		if edge_src == r._glass_cube_source and edge_src >= 0:
-			_pass("a perimeter glass cell uses the cube atom (id %d)" % edge_src)
+		var want_edge: int = r._glass_perimeter_source.get(Face.SW, -1)
+		if edge_src == want_edge and edge_src >= 0 and edge_src != src:
+			_pass("a perimeter glass cell uses the SW perimeter atom (id %d)" % edge_src)
 		else:
-			_fail("perimeter glass cell source id %d, expected cube %d" % [edge_src, r._glass_cube_source])
+			_fail("perimeter glass cell source id %d, expected SW perimeter %d" % [edge_src, want_edge])
 		var ids := {}
 		for f in [Face.SW, Face.SE, Face.NW, Face.NE]:
 			ids[r._glass_pane_source.get(f, -1)] = true

@@ -65,9 +65,11 @@ float glass_face_factor(vec2 local) {
 }
 
 // Apply the glass to the colour that is BEHIND this fragment: MULTIPLY tint, then
-// ADD highlight. `local` is the atom-local pixel (for the face factor).
-vec3 glass_apply(vec3 behind, vec2 local) {
-	float ff = glass_face_factor(local);
+// ADD highlight. `local` is the atom-local pixel (for the face factor); `dim` is
+// the per-plane brightness from the atom (1.0 = the pane face, < 1 = a top or
+// side cap, so those planes read darker — Director, 2026-08-30).
+vec3 glass_apply(vec3 behind, vec2 local, float dim) {
+	float ff = glass_face_factor(local) * dim;
 	float frost = texture(glass_frost_tex, v_glass_world * glass_frost_scale).r;
 
 	// --- MULTIPLY: the tint ---

@@ -1,9 +1,9 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.4 — **G1 (transparency): APPEARANCE signed off 2026-08-31;
-GEOMETRY reworked 2026-08-31 to the Director's face-culling rule (below) —
-awaiting a tuning verdict.** The rest (G2–G7, G-D4, G-ART) is design-ratified
-and unbuilt.
+**Status:** 🟢 v1.5 — **G1 geometry reworked, G2 + G7 BUILT (2026-08-31).** G1
+appearance signed off; G1 geometry awaits a Director tuning verdict on the
+sliver size/dim. G3 (the cascade) is PAUSED for the Director to calibrate
+`pane_shatter_punch`. G-ART, G5, G4, G6, G-D4 unbuilt.
 
 **G1 GEOMETRY as reworked** (Director's two diagrams, 2026-08-31): the pane
 thickness is a per-voxel **exposed-face cull**, not per-position atoms. A glass
@@ -487,10 +487,11 @@ Director's scope ruling in §0. Nothing in §10's task order depends on it.
 | Order | Task | Blocked by |
 |---|---|---|
 | 🟢 | **G1** — glass pane transparency via a `BackBufferCopy` container. **APPEARANCE signed off 2026-08-31** (calibration "painel 005"). **GEOMETRY reworked 2026-08-31** to the face-culling rule (main always / top on the top row / side on the frontmost column, both dim); awaiting a tuning verdict. Glass-block issues untouched. Vertical faces only — roofs / glazed floor zones stay opaque | — |
-| 2 | **G2** — `pane_id`: union-find for panels, occupancy flood fill for blocks (§4.2) | — |
+| 🟢 | **G2** — `pane_id`: `GlassPaneGrouper.assign()` at map load — union-find for panels (coplanar + adjacent along the face run axis), 4-connected flood fill for glass block cells (NOT per-authored-instance: PLAYGROUND's 3-wide block is three 1×1 declarations = one pane). Real-map verified (PLAYGROUND: 2 panel panes + 1 `PANE_BLOCK_0`). `Slice.pane_id`. **BUILT 2026-08-31** | — |
+| 🟢 | **G7** — the round passes through a pane (G-D5): `EdgeRegistry.glass_edge_keys()`, `_walk_pellet_ray` records the crossing (deduped by pane) and continues, `agent_shot_controller` flattens crossings into picks. Real-map: `glass destroyed=1` AND `concrete dented=1` from one pistol shot. Blocks excluded (their cells are in `blocked_cells`, deferred). **BUILT 2026-08-31** | — |
 | 3 | **G-ART** — the art order + `check_decal.py` coverage for the four glass families | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |
-| 5 | **G3** — the pane cascade in `build_plan()`, `pane_shatter_punch`, world-revision bump | G2 |
+| ⏸ | **G3** — the pane cascade in `build_plan()` + the shot path, `pane_shatter_punch`, world-revision bump. **PAUSED 2026-08-31 for the Director's calibration** of `pane_shatter_punch` against the arsenal (computed glass punch: smg 1.65, shotgun/pellet 1.80, pistol 2.10, revolver 2.63, rifle 3.75, sniper 5.25 at neutral skill/luck; worst case 8.82) | G2 |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate | G2, G-ART |
 | 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section | G-ART |
 | 8 | **G7** — the projectile passes through (G-D5) | — |

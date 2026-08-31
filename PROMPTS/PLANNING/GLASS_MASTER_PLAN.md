@@ -1,9 +1,14 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.5 — **G1 geometry reworked, G2 + G7 BUILT (2026-08-31).** G1
+**Status:** 🟢 v1.6 — **G1 geometry reworked, G2 + G7 BUILT (2026-08-31).** G1
 appearance signed off; G1 geometry awaits a Director tuning verdict on the
-sliver size/dim. G3 (the cascade) is PAUSED for the Director to calibrate
-`pane_shatter_punch`. G-ART, G5, G4, G6, G-D4 unbuilt.
+sliver size/dim. **The break design GREW on 2026-08-31** — the Director replaced
+the `pane_shatter_punch` threshold with a per-projectile shatter roll (G-D11),
+partial breaks on big panes (G-D12), a mandatory remnant floor (G-D13),
+per-weapon hole size (G-D14), armored/purple glass with a primed state (G-D15),
+terminal-colour glass classes (G-D16), and a black-plastic screen backing
+(G-D17). **G3 is PAUSED for this doc's sign-off** before any code. G-ART, G5,
+G4, G6, G-D4, G-VARIANT, `plastic` unbuilt.
 
 **G1 GEOMETRY as reworked** (Director's two diagrams, 2026-08-31): the pane
 thickness is a per-voxel **exposed-face cull**, not per-position atoms. A glass
@@ -109,6 +114,13 @@ just not the target case.
 | **G-D8** | **A broken pane opens a passage, barely moves the light, and raises detection one step.** *"Com certeza, mas não influencia tanto na luz, apenas aumenta um pouco de intensidade e sobe um grau de detecção no mecanismo stealth."* | ✅ Ratified 2026-08-30 · build deferred (movement milestone) |
 | **G-D9** | **A slice can carry MORE THAN ONE MATERIAL, as a sparse per-level band map — and the Director's diagram wins over §9's first recommendation.** *(2026-08-30, from the Director's half-thickness window diagram.)* The window is **three game storeys stacked inside one code `Slice`**: brick cap · glass · glass · glass · brick cap. ⚠️ **This REVERSES the recommendation this plan shipped with**, on a measurement that contradicted it — see §9 | ✅ Ratified 2026-08-30 |
 | **G-D10** | **Mullions are free or they do not exist — a continuous pane is fine.** *(Director, 2026-08-30, closing §9.1's open observation.)* If the muntin grid falls out of the geometry — horizontals at storey boundaries, verticals at GU boundaries — take it. If the glass reads as one continuous surface instead, that is equally correct. **Neither outcome is a defect, and G-ART owes NO fifth decal family.** The one thing ruled out is authoring muntins as art | ✅ Ratified 2026-08-30 |
+| **G-D11** | **The whole-pane shatter is a PER-PROJECTILE ROLL scaled by power — ⚠️ this replaces §5.1's single `pane_shatter_punch` threshold.** *"Cada pellet ou projetil vai ter sua própria chance de quebrar ou não a janela toda, ou pelo menos uma área maior do que a zona do tiro, de acordo com a potência."* Every pellet/round that hits a pane rolls its OWN chance (B4 FNV-1a on `(salt, projectile index)`) to take the pane — or a region larger than its own hole. The chance rises with the round's glass punch. A shotgun's 24 pellets each roll and the pane's odds compound with the count — and **it is legitimately possible that none shatter it** | ✅ Ratified 2026-08-31, replaces §5.1 |
+| **G-D12** | **A BIG pane breaks PARTIALLY; a SMALL pane is binary.** *"Uma vidraça grande permite que uma parte quebre totalmente, e outra continue resistindo. Em vidros menores é mais binário, quebrou tudo ou não."* A shatter roll takes a REGION — a flood from the hit, radius scaled by the round's power. On a large pane the rest keeps standing (same `pane_id`, still shatterable later); on a small pane the region covers the whole thing | ✅ Ratified 2026-08-31 |
+| **G-D13** | **The cascade NEVER destroys every voxel — remnants on the frame are a HARD INVARIANT.** *"nunca queremos que todos os voxels quebrem, sempre deixamos umas sobrinhas nas molduras."* §5.2's luck-driven border survivors (position 0/7, level 0/7) are now a rule of G3 itself, not an optional G4 flourish. A pane left with zero surviving border voxels is a bug | ✅ Ratified 2026-08-31 |
+| **G-D14** | **Hole size is per-weapon.** *"pistola ou shotgun fazerem um furo de um voxel, com a arte das ondas rachadas em volta, ao passo que armas mais potentes como o fuzil destroem de 2 a 4 voxels, e criam uma arte com ondas maior, e mais espaçada."* Non-shattering hit: pistol / shotgun pellet = 1 voxel + a tight `crack_web`; rifle-class = 2–4 voxels (scaled by power) + a larger, more spaced `crack_web`. Driven by the existing `WeaponDef.blowout` field | ✅ Ratified 2026-08-31 |
+| **G-D15** | **ARMORED GLASS (`glass_armored`, purple) — resists common shots; when breached, usually shatters entirely at once, leaving many individual shards.** ⚠️ **Special rifle case:** a rifle round may pierce a SINGLE voxel without shattering (treated as a weak hit) — this PRIMES the pane, and the next shot of ANY type auto-shatters the whole thing. `pane_primed` is a per-pane flag, checkpoint-scoped | ✅ Ratified 2026-08-31 · build after this doc is signed off |
+| **G-D16** | **Glass is a family of tinted behaviour classes, not new geometry.** All variants share G1's rendering and differ only in a tint (`base_color`) and a `glass_class`: `glass` (blue, BREAKABLE) · `glass_armored` (purple, ARMORED, G-D15) · `glass_screen_{green,red,amber}` (dark terminal tone) which is **INDESTRUCTIBLE** (control interfaces) or **BREAKABLE** (TVs, circuits, news panels) per placement | ✅ Ratified 2026-08-31 |
+| **G-D17** | **A screen is a glass voxel over a BLACK PLASTIC voxel.** *"O voxel de vidro fica na frente de voxels pretos de PLÁSTICO (a implementar — fura [não atravessa] ou derrete), de forma que nesses voxels pretos vamos pintar as imagens e textos posteriormente, e o vidro vai criar o efeito de brilho por cima."* New material **`plastic`** (black): a round DRILLS it (a hole, but the round does NOT pass through — unlike glass) or fire MELTS it. Images/text painted onto the plastic later; the glass in front adds the G1 sheen. Belongs in `MATERIALS_MASTER_PLAN` | ✅ Ratified 2026-08-31 · `plastic` + the paint layer are deferred |
 
 ---
 
@@ -204,23 +216,54 @@ later derivation would be reconstructing a shape from its silhouette.
 
 ## 5. G3/G4 — The break
 
-### 5.1 The cascade
+### 5.1 The break — a per-projectile roll (G-D11, G-D12, G-D14) ⚠️ REWRITTEN 2026-08-31
 
-A hit that crosses the pane's shatter threshold takes **the whole pane**:
-iterate the slices carrying that `pane_id`, mark every voxel DESTROYED. Below the
-threshold, damage stays local — a hole and its neighbours, per the existing
-ladder.
+The single `pane_shatter_punch` threshold this section shipped with is retired.
+The Director's model (2026-08-31): **each pellet or round that lands on a pane
+does three things, in order.**
 
-**One new tuning number:** `pane_shatter_punch`. That is the entire difference
-between the Director's *"buraco grande"* and *"quebra totalmente a vidraça"*, and
-keeping it to one number is deliberate — a second knob would make the two
-outcomes un-diagnosable from the `[SHOT]` line.
+1. **The local hole (G-D14).** The impact voxel is DESTROYED. How many of its
+   neighbours go with it is per-weapon, off `WeaponDef.blowout`:
+   - pistol / shotgun pellet (`blowout` 0.0) → **1 voxel**, tight `crack_web`.
+   - rifle-class (`blowout` ≥ ~0.5) → **2–4 voxels**, scaled by power; wider,
+     more spaced `crack_web`.
+
+2. **The shatter roll (G-D11).** The projectile rolls `P_shatter(glass_punch)`
+   — a curve, not a step. First-pass shape (tuning levers, `var` not `const`,
+   expect a capture to move them):
+
+   ```
+   P_shatter = clampf((glass_punch - SHATTER_ROLL_FLOOR) / SHATTER_ROLL_SPAN,
+                       0.0, SHATTER_ROLL_CEIL)
+   ```
+
+   with `SHATTER_ROLL_FLOOR ≈ 2.0` (below it — smg, a lone weak pellet — a
+   shatter is impossible), `SHATTER_ROLL_SPAN ≈ 4.0`, `SHATTER_ROLL_CEIL ≈ 0.9`
+   (a single common round never *guarantees* a full shatter; only a
+   `pane_primed` armored pane does — §5.3). Reference glass punches at neutral
+   skill/luck: smg 1.65 · pellet 1.80 · pistol 2.10 · revolver 2.63 · rifle
+   3.75 · sniper 5.25. So a rifle shatters roughly 44% of the time, a sniper
+   ~81%, a pistol ~2.5%, a shotgun's *individual* pellet ~0 — but **24 pellets
+   each roll**, and `1 − (1 − p)^24` at p≈0.02 is ~38%, so a shotgun blast to a
+   window usually takes it while still leaving the "none shattered" outcome on
+   the table (G-D11's explicit case).
+
+3. **The region (G-D12).** A won roll floods DESTROYED outward from the hit — a
+   BFS over the pane's own voxels, radius scaled by `glass_punch` (a weak win
+   takes a patch, a sniper takes the lot). On a small pane the radius covers
+   everything → binary. On a large pane the rest survives with its `pane_id`
+   intact and can be shattered by a later hit.
+
+**G-D13 is a hard floor on all of it.** After the hole, the region, *and* any
+later hits, the frame ring (position 0/7, level 0/7) keeps luck-driven survivors
+(§5.2). The cascade may not leave a pane with zero border voxels — pin it with a
+selftest.
 
 **⚠️ This runs in the COOK, never in the presenter.** The whole detonation
 architecture is *the world changes once; the effects are what is animated*. A
-pane break is a plan decision. It belongs in `build_plan()`'s `WorldDelta`, with
-`delta.commit()` as the only writer, and it must
-`room.bump_world_revision()` like every other committed mutation
+pane break is a plan decision. It belongs in `build_plan()`'s `WorldDelta` (and
+the shot path's equivalent), with `delta.commit()` as the only writer, and it
+must `room.bump_world_revision()` like every other committed mutation
 (`PREDICTION_MASTER_PLAN`'s standing rule).
 
 ### 5.2 Remnants on the frame
@@ -236,6 +279,30 @@ Survivors render as **carved half-voxels with a jagged glass silhouette** —
 D32.2's four-substrate machinery, which glass has simply never had its own art
 for. This is the *"geometria apropriada"* half of the Director's brief; the
 decals are the other half.
+
+### 5.3 Armored glass (G-D15)
+
+`glass_armored` (purple tint) is a `glass_class = ARMORED`. Against it the §5.1
+ladder changes:
+
+- **Resistance is high** — a much larger `RESISTANCE["glass_armored"]`, so a
+  common round's `glass_punch` lands near `SHATTER_ROLL_FLOOR` and the local
+  hole is often the whole story.
+- **When it DOES shatter, it goes all at once** — the region radius for an
+  armored win is the whole pane regardless of size, and the survivors read as
+  *many individual shards* rather than a clean edge (G6's shard count is high,
+  the frame remnants sparse).
+- **The rifle pierce-and-prime case.** A rifle round that fails its shatter roll
+  on an intact armored pane may still *pierce a single voxel* (a weak-hit hole,
+  G-D5 pass-through still applies) and set **`pane_primed = true`** on that
+  `pane_id`. A primed pane's next hit of any type has `P_shatter = 1.0` — it
+  auto-shatters. `pane_primed` lives in `SaveState` alongside the shard store
+  (G6), checkpoint-scoped.
+
+An **INDESTRUCTIBLE** `glass_class` (the control-interface screens, G-D16) short
+-circuits §5.1 entirely: the impact voxel takes a `crack_web` decal and nothing
+is ever DESTROYED. It still passes the round through (G-D5) and still reads as
+glass.
 
 ---
 
@@ -489,13 +556,14 @@ Director's scope ruling in §0. Nothing in §10's task order depends on it.
 | 🟢 | **G1** — glass pane transparency via a `BackBufferCopy` container. **APPEARANCE signed off 2026-08-31** (calibration "painel 005"). **GEOMETRY reworked 2026-08-31** to the face-culling rule (main always / top on the top row / side on the frontmost column, both dim); awaiting a tuning verdict. Glass-block issues untouched. Vertical faces only — roofs / glazed floor zones stay opaque | — |
 | 🟢 | **G2** — `pane_id`: `GlassPaneGrouper.assign()` at map load — union-find for panels (coplanar + adjacent along the face run axis), 4-connected flood fill for glass block cells (NOT per-authored-instance: PLAYGROUND's 3-wide block is three 1×1 declarations = one pane). Real-map verified (PLAYGROUND: 2 panel panes + 1 `PANE_BLOCK_0`). `Slice.pane_id`. **BUILT 2026-08-31** | — |
 | 🟢 | **G7** — the round passes through a pane (G-D5): `EdgeRegistry.glass_edge_keys()`, `_walk_pellet_ray` records the crossing (deduped by pane) and continues, `agent_shot_controller` flattens crossings into picks. Real-map: `glass destroyed=1` AND `concrete dented=1` from one pistol shot. Blocks excluded (their cells are in `blocked_cells`, deferred). **BUILT 2026-08-31** | — |
-| 3 | **G-ART** — the art order + `check_decal.py` coverage for the four glass families | — |
+| 3 | **G-ART** — the art order + `check_decal.py` coverage for the glass families (`crack_web` now needs a tight AND a wide/spaced variant, G-D14) | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |
-| ⏸ | **G3** — the pane cascade in `build_plan()` + the shot path, `pane_shatter_punch`, world-revision bump. **PAUSED 2026-08-31 for the Director's calibration** of `pane_shatter_punch` against the arsenal (computed glass punch: smg 1.65, shotgun/pellet 1.80, pistol 2.10, revolver 2.63, rifle 3.75, sniper 5.25 at neutral skill/luck; worst case 8.82) | G2 |
-| 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate | G2, G-ART |
-| 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section | G-ART |
-| 8 | **G7** — the projectile passes through (G-D5) | — |
-| 9 | **G-D4** — the bullet web on shot neighbours | G5, G-ART |
+| ⏸ | **G3** — the break, per §5.1's REWRITTEN model (G-D11..G-D14): per-projectile shatter roll `P_shatter(glass_punch)`, per-weapon hole size off `blowout`, region flood on a won roll, the G-D13 remnant floor. In `build_plan()` + the shot path, world-revision bump. **PAUSED 2026-08-31 pending this doc's sign-off** — the design grew (per-projectile roll, partial breaks, armored glass, the plastic backing) and the Director asked for it formalised first | G2, §5.1 sign-off |
+| 5b | **G-VARIANT** — `glass_class` + tint (G-D16): `glass_armored` (purple, ARMORED + `pane_primed`, G-D15), `glass_screen_{green,red,amber}` (INDESTRUCTIBLE / BREAKABLE). Material roster + `RESISTANCE` rows + a per-placement class tag | G3 |
+| 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
+| 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15) | G-ART |
+| 8 | **G-D4** — the bullet web on shot neighbours | G5, G-ART |
+| ⤴ | **`plastic`** (black backing material for screens, G-D17) + the paint-on-plastic layer + the screen-art pipeline — **`MATERIALS_MASTER_PLAN`, deferred.** A round DRILLS plastic (hole, no pass-through); fire MELTS it | MATERIALS |
 
 **Deferred, with owners:** the window (§9, scenario applications) · shard noise
 (sound milestone) · the see-through roll G-D7 (applications) · the agent crossing

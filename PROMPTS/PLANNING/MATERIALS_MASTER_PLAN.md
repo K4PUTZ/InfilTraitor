@@ -830,15 +830,29 @@ frame.
 
 > ⬆️ **SUPERSEDED IN DETAIL 2026-08-30 by
 > [`GLASS_MASTER_PLAN.md`](GLASS_MASTER_PLAN.md).** That plan carries the ratified
-> design (G-D1…G-D8), the verified seam table and the task order; M4 keeps its row
-> in this milestone and nothing below is retracted. **Three things below are now
+> design (now G-D1…G-D17), the verified seam table and the task order; M4 keeps its
+> row in this milestone and nothing below is retracted. **Three things below are now
 > ANSWERED there rather than open:** the *"what is a whole window"* question (the
-> grouping is `Slice.edge_id`, plus a `pane_id` derived at extraction), and both
-> carried defects — the far shotgun pellet that CRACKS glass and the empty DENTED
-> band — which **G-D3 converts from accidents into intent by giving glass a CRACKED
-> tier**, amending D22. One consequence worth carrying back here: G-D3 removes the
-> need for `HOLE_ONLY_MATERIALS` **and** the `INTACT` branch that §4.2 said had to
-> land together or not at all.
+> grouping is `Slice.edge_id`, plus a `pane_id` derived at extraction — **G2 BUILT
+> 2026-08-31**), and both carried defects — the far shotgun pellet that CRACKS glass
+> and the empty DENTED band — which **G-D3 converts from accidents into intent by
+> giving glass a CRACKED tier**, amending D22. One consequence worth carrying back
+> here: G-D3 removes the need for `HOLE_ONLY_MATERIALS` **and** the `INTACT` branch
+> that §4.2 said had to land together or not at all.
+>
+> ⚠️ **NEW MATERIALS this milestone now owes (GLASS_MASTER_PLAN G-D16/G-D17,
+> Director 2026-08-31):**
+> - **Glass tint/behaviour variants** — `glass_armored` (purple, high `RESISTANCE`,
+>   G-D15's primed state), `glass_screen_{green,red,amber}` (dark terminal tone,
+>   INDESTRUCTIBLE for control interfaces or BREAKABLE for TVs/circuits/news
+>   panels). They share glass's one grayscale facade and G1's rendering — a tint
+>   plus a `glass_class` tag, not new art.
+> - **`plastic`** — a new BLACK material, the backing behind screen glass. A round
+>   **DRILLS** it (a hole, but the round does NOT pass through — the opposite of
+>   glass's G-D5) and fire **MELTS** it. Images/text are painted onto the plastic
+>   later (a decal/composite layer, deferred); the glass in front supplies the
+>   sheen. `RESISTANCE` row + burn behaviour + the paint layer are all M-scope,
+>   not built.
 
 
 ### 4.1 The rendering problem, in the Director's words

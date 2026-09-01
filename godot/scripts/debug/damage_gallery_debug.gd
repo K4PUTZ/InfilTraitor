@@ -89,7 +89,12 @@ static func run(room: Node) -> void:
 	## artifact, because the texture backing that source_id was never
 	## actually uploaded.
 	renderer.flush_damage_composite_pages()
-	print("[DAMAGE-GALLERY] === done — MISS means apply_damage_voxel_swap() found no baked atom (expected for CRACKED where MaterialResistanceTable.crack_factor == 0, e.g. metal/wood) ===")
+	print("[DAMAGE-GALLERY] === done — MISS means apply_damage_voxel_swap() found no baked atom.")
+	print("[DAMAGE-GALLERY]     It is NOT an art gap: this tool calls the swap DIRECTLY, so it never")
+	print("[DAMAGE-GALLERY]     reaches the caller's own D33 fallback line. Expected for CRACKED where")
+	print("[DAMAGE-GALLERY]     MaterialResistanceTable.crack_factor == 0 (metal/wood, D32.6) — that tier")
+	print("[DAMAGE-GALLERY]     is unreachable by data, so there is nothing to bake. The coherence")
+	print("[DAMAGE-GALLERY]     between the factors and the art is gated by voxel_decal_selftest [12].")
 
 
 ## West GU of the material's 3-wide block row goes entirely DENTED, east GU

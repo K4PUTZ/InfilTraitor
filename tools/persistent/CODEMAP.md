@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**224 scripts · 73084 lines total** (under `godot/scripts/`)
+**224 scripts · 73240 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -441,7 +441,7 @@ extends `Node2D` · 316 lines
 
 ### `damage_gallery_debug.gd`
 
-`class_name DamageGalleryDebug` · 247 lines
+`class_name DamageGalleryDebug` · 252 lines
 
 `godot/scripts/debug/damage_gallery_debug.gd`
 
@@ -4155,7 +4155,7 @@ extends `SceneTree` · 303 lines
 
 ### `slice_geometry_selftest.gd`
 
-extends `SceneTree` · 224 lines
+extends `SceneTree` · 257 lines
 
 `godot/scripts/tools/slice_geometry_selftest.gd`
 
@@ -4247,7 +4247,7 @@ extends `SceneTree` · 49 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 541 lines
+extends `SceneTree` · 659 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 

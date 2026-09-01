@@ -42,6 +42,7 @@ func _init() -> void:
 	test_a_blast_never_resolves_to_a_bullet_mark()
 	test_metal_and_wood_do_not_crack()
 	test_hole_only_materials_get_no_decal_family()
+	test_every_data_reachable_tier_has_art()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -539,3 +540,120 @@ class _StubContainer:
 	var id: String = "STUB"
 	func increment_dirty() -> void: pass
 	func decrement_dirty() -> void: pass
+
+
+## MAT-COHERENCE-01 (Director, 2026-09-01: *"tem alguns materiais que não ficam
+## rachados mesmo. Se estiver coisa sendo instanciada sem arte aí sim me avisa."*)
+##
+## Test [10] above answers that question for a HARDCODED pair, metal and wood.
+## This answers it for EVERY material the resistance table actually loads, and it
+## enumerates them the way the table itself does — walking `ASSETS/materials/<id>/
+## <id>.json` rather than a list in this file, so a material added tomorrow is
+## covered the day it lands instead of the day someone remembers this test.
+##
+## The invariant, in one line: **a non-zero factor is a promise the renderer has
+## to be able to keep.** The two directions fail differently and both are silent:
+##   - factor > 0 with no wired family and no art → the tier IS reachable and
+##     resolves to a name nothing can load. That is the silent MATERIALS.find()
+##     miss — flat concrete on the Director's screen, no error anywhere.
+##   - factor == 0 with a family wired → dead art sitting in the Director's
+##     queue, and a decal gate that reports PASS on files nothing will ever load.
+##
+## NOT a bug and deliberately allowed: a material with a non-zero dent_factor and
+## NO wired family. It takes its marks through the material-agnostic GENERIC mark
+## (D33 Part 4b), which is a real mark, not an absence — this asserts that the
+## generic asset it will fall to actually exists, rather than assuming it.
+func test_every_data_reachable_tier_has_art() -> void:
+	print("[12] MAT-COHERENCE-01 — every tier the DATA can reach has art behind it\n")
+
+	var ids: Array[String] = _declared_material_ids()
+	if ids.is_empty():
+		_fail("no material rows found under %s — the table's own scan would be empty too"
+			% MaterialResistanceTable.RES_MATERIALS_DIR)
+		print("")
+		return
+
+	var crack_offenders: Array[String] = []
+	var dead_art: Array[String] = []
+	var dent_offenders: Array[String] = []
+	var cracking: Array[String] = []
+	var generic_dent: Array[String] = []
+
+	for material in ids:
+		var crack: float = MaterialResistanceTable.crack_factor(material)
+		var dent: float = MaterialResistanceTable.dent_factor(material)
+
+		## ── CRACK ────────────────────────────────────────────────────────────
+		if crack > 0.0:
+			cracking.append("%s %.2f" % [material, crack])
+			if not VoxelRendererClass.IMPACT_CRACK_MATERIALS.has(material):
+				crack_offenders.append("%s (factor %.2f, not wired)" % [material, crack])
+			else:
+				for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+					var path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [
+						material, "crack", material, variant]
+					if not FileAccess.file_exists(path):
+						crack_offenders.append(path)
+		elif VoxelRendererClass.IMPACT_CRACK_MATERIALS.has(material):
+			dead_art.append("%s (crack_factor 0.0 but wired to crack)" % material)
+
+		## ── DENT ─────────────────────────────────────────────────────────────
+		if dent <= 0.0:
+			continue
+		var owns_family: bool = VoxelRendererClass.IMPACT_DECAL_MATERIALS.has(material) \
+			or material == VoxelRendererClass.IMPACT_FLOOR_MATERIAL
+		if owns_family:
+			for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+				var path: String = VoxelRendererClass.DECAL_NAME_TEMPLATE % [
+					material, "dent", material, variant]
+				if not FileAccess.file_exists(path):
+					dent_offenders.append(path)
+		else:
+			generic_dent.append("%s %.2f" % [material, dent])
+			for variant in range(VoxelRendererClass.GENERIC_MARK_VARIANT_COUNT):
+				var g: String = VoxelRendererClass.GENERIC_MARK_TEMPLATE % ["blast_dent", variant]
+				if not FileAccess.file_exists(g):
+					dent_offenders.append(g)
+
+	if crack_offenders.is_empty():
+		_pass("%d material(s) can crack and every one is wired with all %d variants on disk: %s" % [
+			cracking.size(), VoxelRendererClass.IMPACT_DECAL_VARIANTS, ", ".join(cracking)])
+	else:
+		_fail("%d crack promise(s) the renderer cannot keep: %s"
+			% [crack_offenders.size(), ", ".join(crack_offenders.slice(0, 5))])
+
+	if dead_art.is_empty():
+		_pass("no material is wired to a tier its own factor says it can never reach")
+	else:
+		_fail("%d dead wiring: %s" % [dead_art.size(), ", ".join(dead_art)])
+
+	if dent_offenders.is_empty():
+		_pass("every denting material resolves to real art — %d own a family, %d fall to the generic mark (%s)" % [
+			ids.size() - generic_dent.size(), generic_dent.size(), ", ".join(generic_dent)])
+	else:
+		_fail("%d dent promise(s) the renderer cannot keep: %s"
+			% [dent_offenders.size(), ", ".join(dent_offenders.slice(0, 5))])
+
+	print("")
+
+
+## The same walk MaterialResistanceTable._scan_dir() does — a directory whose
+## name matches its own <id>.json. Mirrored rather than imported because the
+## table keeps its parsed rows private, and because a test that enumerated from
+## a list in this file would only ever check the materials someone remembered.
+func _declared_material_ids() -> Array[String]:
+	var out: Array[String] = []
+	var dir := DirAccess.open(MaterialResistanceTable.RES_MATERIALS_DIR)
+	if dir == null:
+		return out
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if dir.current_is_dir() and not entry.begins_with("."):
+			var row := MaterialResistanceTable.RES_MATERIALS_DIR.path_join(entry).path_join(entry + ".json")
+			if FileAccess.file_exists(row):
+				out.append(entry)
+		entry = dir.get_next()
+	dir.list_dir_end()
+	out.sort()
+	return out

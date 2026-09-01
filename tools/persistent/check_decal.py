@@ -343,10 +343,39 @@ def check_material(material):
     return all_ok
 
 
+
+def _usage_text():
+    """The `## Usage:` block from this file's own header.
+
+    These tools document themselves in a `##` comment block, not a docstring, so
+    `__doc__` is None and the original `__doc__.strip()` raised AttributeError on
+    the one path it existed for — running the tool with no arguments, which is
+    exactly what someone reaching for the usage does. Read the header back off
+    disk instead of duplicating it here, so the text stays single-sourced.
+    """
+    try:
+        with open(__file__, encoding="utf-8") as fh:
+            header = []
+            for line in fh:
+                if line.startswith("#"):
+                    header.append(line.rstrip("\n"))
+                elif header:
+                    break
+        text = "\n".join(header)
+        if "## Usage:" in text:
+            body = text.split("## Usage:")[1]
+            return "Usage:\n" + "\n".join(
+                l.lstrip("#").rstrip() for l in body.splitlines() if l.strip("# ").strip()
+            )
+    except OSError:
+        pass
+    return "Usage: python3 %s <file.png> [<file.png> ...] | --all" % __file__
+
+
 def main():
     args = sys.argv[1:]
     if not args:
-        print(__doc__.strip().split("## Usage:")[1].strip())
+        print(_usage_text())
         return 2
 
     if args[0] == "--material":

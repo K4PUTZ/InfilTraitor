@@ -985,11 +985,56 @@ containers with a self-consistent origin that never reaches a layer, a slab id
 in a real registry, a bake row, a hash or a screen position — which is the line
 this sweep drew between "residue" and "a local coordinate".
 
-⚠️ Noticed, NOT fixed, no Director call yet: `slice_geometry_selftest.gd`'s
-"Check 1: E1 (layer transform)" computes an expected layer position and only
-`print_debug`s it — it increments `checked` and asserts nothing ("we can't
-instantiate TileMapLayers headless"). A hollow check inflating a pass count, not
-a level-numbering defect.
+### MAT-COHERENCE-01 (2026-09-01) — is anything instantiated without art?
+
+Director, on reading the damage gallery's CEILING row: *"tem alguns materiais que
+não ficam rachados mesmo. Se estiver coisa sendo instanciada sem arte aí sim me
+avisa."* The answer, measured: **no.**
+
+The gallery's `MISS` was mis-read (by me) as an art gap in the OCC-FIX-03c note
+above. It is not one. `apply_damage_voxel_swap()` returns `false` on "no PRE-BAKED
+atom", and every production caller has a D33 live-compositing fallback line right
+after it; the gallery calls the swap directly, so it never reaches that fallback
+and reports a MISS for something the game renders correctly. And for metal/wood
+CRACKED specifically the tier is unreachable in the first place —
+`crack_factor == 0.0` (D32.6, *"metal e madeira não ficam rachados"*), so there is
+nothing to bake and nothing to draw.
+
+Full coherence, read off `ASSETS/materials/<id>/<id>.json`:
+
+| | materials | art |
+|---|---|---|
+| `crack_factor > 0` | brick 0.12, concrete 0.10, stone 0.10 | all three wired in `IMPACT_CRACK_MATERIALS`, 9/9 decals on disk |
+| `crack_factor == 0` | metal, wood, glass, cardboard, fabric, plywood, dirt, earth, grass, gravel, sand | none wired to crack — no dead art |
+| `dent_factor > 0`, own family | brick, concrete, metal, stone, wood, earth | 3/3 dent decals each |
+| `dent_factor > 0`, no family | dirt 0.35, grass 0.35, gravel 0.30, sand 0.40 | the material-agnostic GENERIC mark (D33 Part 4b) — a real mark, not an absence |
+
+**Gated from now on** by `voxel_decal_selftest` **[12]
+`test_every_data_reachable_tier_has_art()`**. It enumerates materials by walking
+`ASSETS/materials/<id>/<id>.json` — the same scan `MaterialResistanceTable`
+itself does — so a material added tomorrow is covered the day it lands rather
+than the day someone remembers this test. Test [10] already asserted the same
+invariant for a hardcoded metal/wood pair; this is that rule for the whole table,
+in both directions (a promise with no art, and art with no promise).
+Red-before-green: `metal.crack_factor` temporarily 0.0 → 0.4 produced
+`✗ 1 crack promise(s) the renderer cannot keep: metal (factor 0.40, not wired)`.
+
+Also checked, and clean: `check_facade.py --all` 10/10 PASS, `check_decal.py
+--all` 54/54 PASS. Both tools' no-argument usage path used to crash with
+`AttributeError: 'NoneType' object has no attribute 'strip'` — their headers are
+`##` comment blocks, not docstrings, so `__doc__` is `None`; fixed by reading the
+`## Usage:` block back off the file rather than duplicating it.
+
+`slice_geometry_selftest.gd`'s "Check 1: E1 (layer transform)" was flagged here
+as hollow and is **fixed** (2026-09-01, Director: *"pode fazer todas as
+correções"*): it computed an expected layer position and only `print_debug`'d it,
+excused by a comment claiming "we can't instantiate TileMapLayers headless" —
+which three other selftests disprove by doing exactly that. Worse, the formula it
+printed omitted `TILE_OFFSET` entirely, the same re-derivation OCC-FIX-02 had to
+undo in `OcclusionOverlay`; a check that asserts nothing cannot notice its own
+canon is wrong. It now builds a real `VoxelRenderer` and asserts each layer's
+`position` against E1 with `relative_level()`. Red-before-green: restoring the
+historical 8 px `TILE_OFFSET` error (112, 56) produces 3 mismatches and exit 1.
 
 ### Capture instruments (env-gated, zero cost when unset)
 

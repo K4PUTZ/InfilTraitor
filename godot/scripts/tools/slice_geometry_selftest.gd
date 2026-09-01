@@ -14,16 +14,49 @@ func _initialize() -> void:
 	var checked:  int = 0
 
 	## ── Check 1: E1 (layer transform) ────────────────────────────────────
+	##
+	## MAT-COHERENCE-01's sibling fix (Director, 2026-09-01: "pode fazer todas as
+	## correções"). This check used to compute an expected position and only
+	## `print_debug` it — three `checked += 1` and not one assertion, excused by a
+	## comment claiming "we can't instantiate TileMapLayers headless". That claim
+	## is false: negative_storey_selftest, fixed_floor_selftest and roof_slab_
+	## selftest all build a real VoxelRenderer headless and read `layer.position`.
+	##
+	## Worse, the formula it was printing was itself WRONG — `VISUAL_GRID_OFFSET -
+	## (0, VOXEL_STEP_PX * level)` omits TILE_OFFSET (112, 64) entirely, which is
+	## the exact re-derivation OCC-FIX-02 had to undo in OcclusionOverlay. A check
+	## that asserts nothing cannot notice that its own canon is wrong, which is the
+	## whole argument against hollow checks.
+	##
+	## LEVEL-RENUMBER: the Y term takes `relative_level()`, never the absolute one
+	## (CLAUDE.md rule 9) — left absolute every layer would sit eighty steps too
+	## high, with a byte-identical cell census.
 	print_debug("[SLICE-00] Check 1: E1 (layer transform)")
 	var VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
-	var VOXEL_STEP_PX := 20.0
-	var test_levels: Array[int] = [0, 1, 7]
-	for level in test_levels:
-		var expected_pos: Vector2 = VISUAL_GRID_OFFSET - Vector2(0, VOXEL_STEP_PX * float(level))
+	const TILE_OFFSET := Vector2(112.0, 64.0)
+	var VoxelRendererClass = load("res://godot/scripts/geometry/voxel_renderer.gd")
+	var e1_renderer = VoxelRendererClass.new()
+	root.add_child(e1_renderer)
+	e1_renderer.setup(VISUAL_GRID_OFFSET)
+	e1_renderer._ensure_voxel_layers(SC.LEVELS_PER_STOREY)
+	for relative in [0, 1, 7]:
+		var level: int = SC.storey_level_base(0) + relative
 		checked += 1
-		# Note: We can't instantiate TileMapLayers headless, so we just verify the formula is correct
-		# The actual runtime verification happens during the smoke test
-		print_debug("  Level %d: expected position = %s" % [level, expected_pos])
+		var layer: TileMapLayer = e1_renderer.get_layer(level)
+		if layer == null:
+			push_error("E1: level %d (relative %d) has no layer" % [level, relative])
+			failures += 1
+			continue
+		var expected_pos: Vector2 = VISUAL_GRID_OFFSET + TILE_OFFSET \
+			- Vector2(0.0, SC.VOXEL_STEP_PX * float(relative))
+		if layer.position.is_equal_approx(expected_pos):
+			print_debug("  ✓ Level %d (relative %d): position %s matches E1" % [
+				level, relative, layer.position])
+		else:
+			push_error("E1 mismatch at level %d (relative %d): layer.position=%s expected=%s" % [
+				level, relative, layer.position, expected_pos])
+			failures += 1
+	e1_renderer.queue_free()
 
 	## ── Check 2: Scale identity (isometric projection) ──────────────────
 	print_debug("[SLICE-00] Check 2: Scale identity (isometric projection)")

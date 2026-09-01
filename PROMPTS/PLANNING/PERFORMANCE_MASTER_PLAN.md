@@ -754,10 +754,20 @@ What the five overlays actually do, per frame, per particle, in GDScript:
 | flash | 2 `draw_rect`, whole-screen | [`explosion_flash_overlay.gd:192`](../../godot/scripts/overlays/explosion_flash_overlay.gd) |
 
 And the population is not a tuning constant — it is the destruction plan.
-[`detonation_choreographer.gd:701`](../../godot/scripts/systems/destruction/detonation_choreographer.gd)
-spawns **one ember per affected voxel** (`return 1` per entry). 354 burning
-voxels is 354 embers is 708 `draw_circle` per frame, each of which builds a
-polygon of tens of vertices as its own canvas command.
+`detonation_choreographer.gd:701` spawned **one ember per affected voxel**
+(`return 1` per entry). 354 burning voxels is 354 embers is 708 `draw_circle`
+per frame, each of which builds a polygon of tens of vertices as its own canvas
+command.
+
+> ⚠️ **The file this cites no longer exists.** D-6 (2026-08-29) deleted
+> `detonation_choreographer.gd` and `BurnScheduler` (~3000 lines) when the
+> explosion track closed and the schedule moved into the cook; the ember
+> population is written by `detonation_entry_writer.gd` / read by
+> `detonation_presenter.gd` now. The paragraph is kept as the DIAGNOSIS it was —
+> the delivery-channel argument below is what outlived the file — but the link
+> was dead and is de-linked rather than pointed somewhere it never described.
+> (Found 2026-09-01 by a sweep of every relative link in the docs: 277 checked,
+> this was the only genuinely dead one.)
 
 **This is the same shape of defect this plan already diagnosed once.** §0's
 sentence is *"the reason a cosmetic effect can cost seconds"* is the DELIVERY

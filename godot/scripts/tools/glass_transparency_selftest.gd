@@ -50,6 +50,7 @@ func _init() -> void:
 	test_glass_pane_ids_group_the_surface()
 	test_material_bands_route_per_level()
 	test_glass_does_not_occlude()
+	test_pane_size_ceiling_is_enforced()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -440,3 +441,80 @@ func test_intact_glass_still_blocks_light() -> void:
 		_fail("build_occupancy() reports %d cells at the glass level, expected 8" % at_level.size())
 	r.queue_free()
 	print("")
+
+
+
+## GLASS G-D23 — A PANE HAS A MAXIMUM SIZE, and something has to hold the map to
+## it. Director, 2026-09-01: *"convencionamos que toda vidraça vai ter um tamanho
+## máximo […] Precisando, usa-se um frame divisório e começa outra vidraça."*
+##
+## The bound is DERIVED, not chosen: the fracture sheet is
+## `_compute_facade_key()`'s own 64-column x 32-row window and G-D23 clamps it at
+## the edge instead of mirroring, so a pane wider than the sheet has a far half
+## that can never crack — silently, which is the failure mode this project keeps
+## paying for. `GlassPaneGrouper` unions panels by coplanar adjacency with no size
+## bound at all, so a long run of `panels` entries becomes ONE pane and nothing
+## says a word.
+##
+## Asserted through `oversize_panes()` rather than by reading stderr: a selftest
+## cannot intercept `push_error`, and a rule observable only in a log is a rule
+## nothing gates.
+func test_pane_size_ceiling_is_enforced() -> void:
+	print("[9] G-D23: a pane larger than the fracture sheet is reported, not accepted\n")
+
+	var limit_gu: int = GlassPaneGrouper.MAX_PANE_RUN_GU
+	var limit_st: int = GlassPaneGrouper.MAX_PANE_STOREYS
+
+	## EXACTLY at the ceiling — must pass. A test that only proves the rejection
+	## half would also pass if the rule rejected everything.
+	var at_limit: Array = _panel_run(0, limit_gu - 1, limit_st, "AT")
+	var at_bad: Array = GlassPaneGrouper.oversize_panes(at_limit)
+	if at_bad.is_empty():
+		_pass("a pane at exactly %d GU x %d storeys is accepted" % [limit_gu, limit_st])
+	else:
+		_fail("the pane at the ceiling was rejected: %s" % [at_bad])
+
+	## One GU too wide.
+	var wide: Array = _panel_run(0, limit_gu, limit_st, "WIDE")
+	var wide_bad: Array = GlassPaneGrouper.oversize_panes(wide)
+	if wide_bad.size() == 1 and int(wide_bad[0]["run_gu"]) == limit_gu + 1:
+		_pass("a %d GU run is reported (run_gu=%d)" % [limit_gu + 1, wide_bad[0]["run_gu"]])
+	else:
+		_fail("expected one oversize pane at %d GU, got %s" % [limit_gu + 1, wide_bad])
+
+	## One storey too tall.
+	var tall: Array = _panel_run(0, limit_gu - 1, limit_st + 1, "TALL")
+	var tall_bad: Array = GlassPaneGrouper.oversize_panes(tall)
+	if tall_bad.size() == 1 and int(tall_bad[0]["storeys"]) == limit_st + 1:
+		_pass("a %d-storey pane is reported (storeys=%d)" % [limit_st + 1, tall_bad[0]["storeys"]])
+	else:
+		_fail("expected one oversize pane at %d storeys, got %s" % [limit_st + 1, tall_bad])
+
+	## THE DIVIDER IS THE FIX, and it has to actually work. ⚠️ A G-D9 `bands` entry
+	## does NOT split a pane — a banded window is still base-glass and the
+	## union-find joins it to its neighbours regardless (found on the real map:
+	## widening GLASS's big pane bridged the gap to the banded window and the two
+	## merged into one 12 GU pane). A real divider is a NON-GLASS panel or a gap,
+	## which is what the two separated runs below model.
+	var left: Array = _panel_run(0, limit_gu - 1, limit_st, "L")
+	var right: Array = _panel_run(20, 20 + limit_gu - 1, limit_st, "R")
+	var split_bad: Array = GlassPaneGrouper.oversize_panes(left + right)
+	if split_bad.is_empty():
+		_pass("two %d GU panes either side of a non-glass divider both pass" % limit_gu)
+	else:
+		_fail("the split pair was rejected: %s" % [split_bad])
+	print("")
+
+
+## A run of SW-face panel slices sharing one pane_id, `gu_lo..gu_hi` along X at
+## y=3, `storeys` tall. Voxels are not needed — `oversize_panes()` measures the
+## pane from `gu_cell`, `start_storey` and `storey_count`, which is what the real
+## grouper has at the moment it runs.
+func _panel_run(gu_lo: int, gu_hi: int, storeys: int, tag: String) -> Array:
+	var out: Array = []
+	for gx in range(gu_lo, gu_hi + 1):
+		var sl := Slice.new("S_%s_%d" % [tag, gx], Vector2i(gx, 3), Face.SW,
+			"E_%s_%d" % [tag, gx], storeys, "glass")
+		sl.pane_id = "PANE_%s" % tag
+		out.append(sl)
+	return out

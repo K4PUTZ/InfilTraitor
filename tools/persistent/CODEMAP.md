@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**226 scripts · 74098 lines total** (under `godot/scripts/`)
+**226 scripts · 74270 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -706,11 +706,15 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `glass_pane_grouper.gd`
 
-`class_name GlassPaneGrouper` · 121 lines
+`class_name GlassPaneGrouper` · 215 lines
 
 `godot/scripts/geometry/glass_pane_grouper.gd`
 
 > Geometry Module — GlassPaneGrouper (GLASS_MASTER_PLAN §4, G2). Stamps `Slice.pane_id` on every glass slice in an EdgeRegistry so the cascade (G3) can take a whole continuous surface from one hit. Run once at map load, right after SliceGenerator.generate(), never per shot. Two producers, one consumer: · BLOCKS — "um bloco é um bloco" (G-D2). Every glass `solid_block_instance` footprint cell is merged into one set and FLOOD-FILLED into connected components (§4.2); each component is one pane. This is deliberately NOT per-authored-instance: PLAYGROUND spells a 3-wide glass block as three adjacent 1×1 declarations, and those are one block, not three. · PANELS — contiguous coplanar half-thickness faces. Union-find: two glass panel slices are the same pane when they share a face orientation AND their owning GUs are adjacent along that face's RUN axis (perpendicular to Face.delta). A lone panel is its own pane. Every glass slice leaves this pass with a non-empty `pane_id`.
+
+**Constants / tuning**
+- `MAX_PANE_RUN_GU` = `8`
+- `MAX_PANE_STOREYS` = `4`
 
 ---
 
@@ -3554,7 +3558,7 @@ extends `SceneTree` · 594 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 442 lines
+extends `SceneTree` · 520 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 

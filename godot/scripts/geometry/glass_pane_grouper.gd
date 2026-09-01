@@ -77,6 +77,100 @@ static func assign(edge_registry: EdgeRegistry, solid_block_instances: Array) ->
 	for s in panels:
 		s.pane_id = "PANE_%s" % _find(parent, s.id)
 
+	_check_pane_size(panels)
+
+
+## GLASS G-D23 — A PANE HAS A MAXIMUM SIZE, and it is derived, not invented.
+##
+## Director, 2026-09-01: *"convencionamos que toda vidraça vai ter um tamanho
+## máximo. Que é o padrão real mesmo, nenhuma janela é infinita. Precisando,
+## usa-se um frame divisório e começa outra vidraça."*
+##
+## The bound comes from the crack sheet, so it is not a taste call. G-D21 anchors
+## the fracture sheet on the impact voxel and G-D23 CLAMPS it at the sheet edge
+## (no mirror — a mirrored fracture is a second, false crack). The sheet is
+## `BakedTileLookup._compute_facade_key()`'s own window, 64 columns x 32 rows, so
+## a pane that fits inside it is a pane a centred hit can crack END TO END. Larger
+## than that and the far half can never crack at all, silently.
+##
+## ⚠️ WHAT COUNTS AS A DIVIDER — measured, not assumed, and NOT what this file
+## first claimed. A G-D9 `bands` entry does not split a pane: a brick-capped
+## window is still BASE glass, so `_is_glass_slice()` keeps it in `panels`, and
+## the union-find above joins by face and adjacency without ever reading
+## `material_bands`. Caught on the real map: widening GLASS's big pane from 6 GU
+## to 9 bridged the gap to the banded window at gu 19..21 and the two merged into
+## ONE 12 GU pane, which is what the error reported. A real divider is a
+## NON-GLASS panel at the middle GU, or a gap — either one breaks the adjacency
+## the union walks.
+##
+## ⚠️ WHY THIS IS A CHECK AND NOT A SPLIT. Cutting an oversized run into
+## conforming panes would invent geometry the author did not write — and it would
+## invent it INVISIBLY, which is how a map ends up with a mullion nobody placed.
+## The map is what is wrong, so the map is what gets told: `push_error` naming the
+## pane, its measured size, the limit, and the fix. Behaviour then degrades
+## gracefully rather than lying — G-D23's clamp means the far end simply never
+## cracks, instead of growing a mirrored fracture.
+##
+## BLOCKS ARE EXCLUDED, and `panels` already contains only panel slices by the
+## time this runs: a `PANE_BLOCK_*` has no run axis, is excluded from the cascade
+## in `plan_pane_shatter()` for exactly that reason, and so has no crack sheet to
+## overrun.
+const MAX_PANE_RUN_GU: int = 8       ## 64 voxels — the sheet's column period
+const MAX_PANE_STOREYS: int = 4      ## 32 levels — the sheet's row period
+
+
+## The DECISION, split from the reporting so it can be asserted directly: a
+## selftest cannot intercept `push_error`, and a rule that can only be observed
+## by reading stderr is a rule nothing gates. Returns one entry per offending
+## pane, `{"pane_id", "run_gu", "storeys"}`, empty when every pane conforms.
+static func oversize_panes(panels: Array) -> Array:
+	## Per pane: the GU span along its own run axis, and the storey span.
+	var by_pane: Dictionary = {}   ## pane_id -> {"run_lo","run_hi","st_lo","st_hi","face"}
+	for s in panels:
+		var fd: Vector2i = Face.delta(s.face)
+		var run: Vector2i = Vector2i(absi(fd.y), absi(fd.x))
+		## The GU coordinate ALONG the run — the other axis is the plane and is
+		## constant for every slice of one pane.
+		var run_gu: int = s.gu_cell.x if run.x != 0 else s.gu_cell.y
+		var st_lo: int = s.start_storey
+		var st_hi: int = s.start_storey + s.storey_count - 1
+		if not by_pane.has(s.pane_id):
+			by_pane[s.pane_id] = {"run_lo": run_gu, "run_hi": run_gu,
+				"st_lo": st_lo, "st_hi": st_hi, "face": s.face}
+			continue
+		var e: Dictionary = by_pane[s.pane_id]
+		e["run_lo"] = mini(int(e["run_lo"]), run_gu)
+		e["run_hi"] = maxi(int(e["run_hi"]), run_gu)
+		e["st_lo"] = mini(int(e["st_lo"]), st_lo)
+		e["st_hi"] = maxi(int(e["st_hi"]), st_hi)
+
+	var out: Array = []
+	for pane_id in by_pane:
+		var e: Dictionary = by_pane[pane_id]
+		var run_gu: int = int(e["run_hi"]) - int(e["run_lo"]) + 1
+		var storeys: int = int(e["st_hi"]) - int(e["st_lo"]) + 1
+		if run_gu <= MAX_PANE_RUN_GU and storeys <= MAX_PANE_STOREYS:
+			continue
+		out.append({"pane_id": pane_id, "run_gu": run_gu, "storeys": storeys})
+	out.sort_custom(func(x, y): return String(x["pane_id"]) < String(y["pane_id"]))
+	return out
+
+
+## The reporting half. Loud, and it names the FIX — an error that only says what
+## is wrong makes the author guess at what to type.
+static func _check_pane_size(panels: Array) -> void:
+	for bad in oversize_panes(panels):
+		push_error(("[GlassPaneGrouper] G-D23: pane %s is %d GU x %d storey(s), over the "
+			+ "maximum of %d x %d. A fracture sheet is %d columns x %d rows and clamps at its "
+			+ "edge, so the far end of this pane can never crack. Split it with a divider: make "
+			+ "the middle GU a NON-GLASS panel, or leave a gap there. ⚠️ A G-D9 `bands` entry "
+			+ "does NOT split a pane — a banded window is still base-glass, so `_is_glass_slice()` "
+			+ "keeps it and the union-find above (which never reads `material_bands`) joins it to "
+			+ "its neighbours anyway.")
+			% [bad["pane_id"], bad["run_gu"], bad["storeys"], MAX_PANE_RUN_GU, MAX_PANE_STOREYS,
+				MAX_PANE_RUN_GU * GeometryCoords.VOXELS_PER_UNIT_AXIS,
+				MAX_PANE_STOREYS * GeometryCoords.LEVELS_PER_STOREY])
+
 
 ## GLASS G-D9 — a slice is glass if its base material is glass OR any level band
 ## is (a mostly-brick wall with a glass strip is still a pane at that strip).

@@ -217,17 +217,23 @@ These must not be broken:
    placement mechanism** (2026-07-15 amendment) — a future Slab renderer
    has no excuse to invent a parallel image-compositing path.
 
-9. **The ground plane is never a literal level number.** `VoxelRenderer._layers`
-   is keyed by ABSOLUTE level and the ground plane is `PLAYABLE_LEVEL` (80), so
-   `get_layer(0)` — and the pre-renumber floor levels `-1` / `-2` — return null
-   on every map. Nothing errors: the caller takes its own null branch and does
-   nothing at all, forever. Ask `renderer.ground_plane_level()` for the anchor
-   layer and `renderer.relative_level(level)` for a per-level offset. Cost when
-   ignored: four live defects found together on 2026-09-01 (OCC-FIX-03) — the
-   occlusion wireframe drawing a wedge to the scene origin, the dev occlusion
-   overlay painted in one pile there, and three props whose `_apply_z_index()`
-   had become a silent no-op. Hook-checked as **L1 `ground-plane-not-zero`**
-   (`voxel_renderer.gd` is exempt — it owns the store).
+9. **A level is derived, never typed.** `VoxelRenderer._layers` is keyed by
+   ABSOLUTE level and the ground plane is `PLAYABLE_LEVEL` (80). Ask
+   `renderer.ground_plane_level()` / `GeometryCoords.storey_level_base(storey)`
+   for an anchor, `GeometryCoords.FLOOR_TOP_LEVEL` / `FLOOR_DEEP_LEVEL` for the
+   ground stack, and `renderer.relative_level(level)` for a per-level offset.
+   A literal is wrong in both directions and neither one raises: `get_layer(0)`
+   (and the pre-renumber floor levels `-1` / `-2`) returns **null**, so the
+   caller takes its own null branch and does nothing at all, forever; a stale
+   positive literal resolves to a REAL layer eighty levels from where it means,
+   so the code runs and quietly describes a different building. Cost when
+   ignored, all found on 2026-09-01 (OCC-FIX-03): the occlusion wireframe drew
+   a wedge to the scene origin, the dev occlusion overlay painted in one pile
+   there, three props' `_apply_z_index()` had become a silent no-op, the damage
+   gallery reported 8 of 8 CEILING probes as "no Slab", and four selftests were
+   passing against fixtures 72–80 levels from the geometry they were named for.
+   Hook-checked as **L1 `level-never-a-literal`** — any integer literal passed
+   to `get_layer()` outside `voxel_renderer.gd`, which owns the store.
 
 **Enforcement:** rules 1–5 and 9 are pre-commit-hook-checked
 (`check_invariants.py`); 6–8 rely on review.

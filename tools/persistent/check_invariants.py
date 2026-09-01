@@ -15,8 +15,8 @@ Checks implemented:
   R5  `_alert_meter` is only *accumulated* inside `_apply_tic_result()`
   B1  Baking: voxel_renderer is the sole caller of set_cell() (branch exclusivity)
   B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
-  L1  LEVEL-RENUMBER: `get_layer(0)` (or any negative literal) is never the
-      ground plane — ask `ground_plane_level()`
+  L1  LEVEL-RENUMBER: `get_layer(<integer literal>)` — a level is always
+      derived (`ground_plane_level()` / `storey_level_base()`), never typed
 
 Not mechanized (documented for honesty):
   R6  mission structure vs narrative — no such code exists yet
@@ -49,17 +49,23 @@ R3_EDGE_KEY = re.compile(r"^\s*(static\s+)?func\s+_edge_key\b")
 R4_STATE_ASSIGN = re.compile(r"^\s+state\s*=(?!=)")
 B1_VOXEL_LAYER_SET_CELL = re.compile(r"_voxel_layers?\[?\s*[.\[]\s*set_cell\s*\(")
 B4_FNV_CONST = re.compile(r"\b(2166136261|16777619)\b")
-# L1: the pre-LEVEL-RENUMBER ground/floor level numbers, still spelled as literals.
-# `_layers` is keyed by ABSOLUTE level and the ground plane moved to PLAYABLE_LEVEL
-# (80) on 2026-08-24, so `get_layer(0)` — and the old floor levels -1 / -2 — return
-# null on every map. Nothing errors: the caller takes its own null branch and does
-# nothing at all, forever. That cost four live defects, found together on 2026-09-01
-# (OCC-FIX-03): a wireframe wedge drawn to the scene origin, a dev overlay painted
-# in one pile there, and three props whose `_apply_z_index()` became a silent no-op.
-# Deliberately narrow — a literal 0 or a negative one, which are exactly the numbers
-# that used to mean "ground" and now mean "nothing". A selftest that builds a fixture
-# at some arbitrary positive level is not making this mistake and is not flagged.
-L1_GROUND_LAYER_LITERAL = re.compile(r"\bget_layer\s*\(\s*(0|-\s*\d+)\s*\)")
+# L1: a level spelled as a literal. `_layers` is keyed by ABSOLUTE level and the
+# ground plane moved to PLAYABLE_LEVEL (80) on 2026-08-24, so `get_layer(0)` — and
+# the old floor levels -1 / -2 — return null on every map. Nothing errors: the
+# caller takes its own null branch and does nothing at all, forever. That cost four
+# live defects, found together on 2026-09-01 (OCC-FIX-03): a wireframe wedge drawn
+# to the scene origin, a dev overlay painted in one pile there, and three props
+# whose `_apply_z_index()` became a silent no-op.
+#
+# WIDENED the same day (Director: "vamos continuar corrigindo tudo que aparecer"),
+# after the narrow 0/-N version let roof_slab_selftest.gd through: it rendered a
+# block at storey 0 (levels 80..87) and then read its "roof" from `get_layer(8)`,
+# seventy-two levels BELOW the block, and passed anyway because it only asserted
+# material. A positive literal is the same mistake wearing a number that still
+# resolves to a layer — so every integer literal is a violation now. A level is
+# always derived: `ground_plane_level()`, `storey_level_base()`, or an expression
+# over one of them.
+L1_GROUND_LAYER_LITERAL = re.compile(r"\bget_layer\s*\(\s*-?\s*\d+\s*\)")
 FUNC_DECL = re.compile(r"^func\s+(\w+)\s*\(")
 
 
@@ -159,7 +165,7 @@ def check_file(path: Path) -> list[Violation]:
                     "_alert_meter may only accumulate inside _apply_tic_result()",
                 ))
 
-        # L1 — the ground plane is ground_plane_level(), never a literal 0 / -N.
+        # L1 — a level is derived, never a literal.
         # voxel_renderer.gd owns the level→layer store, so it is the one file
         # allowed to speak in raw level numbers. Comments are skipped: the fix
         # commits quote the broken call in their own headers.
@@ -167,10 +173,11 @@ def check_file(path: Path) -> list[Violation]:
                 and not line.lstrip().startswith("#")
                 and L1_GROUND_LAYER_LITERAL.search(line)):
             out.append(Violation(
-                "L1 ground-plane-not-zero",
+                "L1 level-never-a-literal",
                 rel, lineno,
-                "get_layer(0)/get_layer(-N) is null since LEVEL-RENUMBER — "
-                "use get_layer(<renderer>.ground_plane_level()) (and relative_level() for offsets)",
+                "get_layer(<literal>) hardcodes a level — the ground plane is "
+                "PLAYABLE_LEVEL (80), not 0. Derive it: ground_plane_level() / "
+                "storey_level_base() (and relative_level() for offsets)",
             ))
 
         # B1 — _voxel_layers (voxel grid) only modified via voxel_renderer._set_voxel_cell()

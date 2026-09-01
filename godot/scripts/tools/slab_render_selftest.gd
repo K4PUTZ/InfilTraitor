@@ -170,8 +170,14 @@ func test_d13_two_layer_floor_independent_containers() -> void:
 
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(4, 4)
-	var top_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, 1, "earth", registry)   # destructible level
-	var bottom_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry) # fixed bedrock level
+	## OCC-FIX-03c (2026-09-01) — LEVEL-RENUMBER RESIDUE, and the two labels had
+	## swapped with it: the DESTRUCTIBLE floor level is FLOOR_TOP_LEVEL and the one
+	## under it is FLOOR_DEEP_LEVEL (GeometryCoords' own ground-stack block). The
+	## literal `1` was the pre-renumber destructible level and now sits 78 levels
+	## below the ground stack; the test passed anyway because all it needs is two
+	## distinct levels at one GU.
+	var top_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry)
+	var bottom_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, "earth", registry)
 
 	if top_slab.id != bottom_slab.id:
 		_pass("Top and bottom Slabs at the same GU have distinct ids (%s vs %s)" % [top_slab.id, bottom_slab.id])
@@ -186,7 +192,7 @@ func test_d13_two_layer_floor_independent_containers() -> void:
 		_fail("Cross-contamination: top.dirty_count=%d, bottom.dirty_count=%d" % [top_slab.dirty_count, bottom_slab.dirty_count])
 
 	if registry.dirty_slabs().size() == 1 and registry.dirty_slabs()[0] == top_slab:
-		_pass("SlabRegistry.dirty_slabs() reports only the top slab, never the fixed bedrock")
+		_pass("SlabRegistry.dirty_slabs() reports only the destructible top slab, never the deep one")
 	else:
 		_fail("dirty_slabs() reported the wrong set: %s" % [registry.dirty_slabs()])
 

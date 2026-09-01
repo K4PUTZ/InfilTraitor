@@ -945,18 +945,51 @@ temporarily enabled so all three ran their real path — one run, both answers:
 and the resting grenade's z_index is now **10** (the ground layer's) rather
 than 34 (`max_voxel_z + 1`).
 
-**Pinned by a new invariant, L1 `ground-plane-not-zero`**
-(`tools/persistent/check_invariants.py`, so it runs in the pre-commit hook): a
-literal `get_layer(0)` or `get_layer(-N)` anywhere outside `voxel_renderer.gd`
-is a violation. Deliberately narrow — 0 and negatives are exactly the numbers
-that used to mean "ground" and now mean "nothing"; a fixture built at some
-arbitrary positive level is not making this mistake. Verified red-before-green.
+**Pinned by a new invariant, L1 `level-never-a-literal`**
+(`tools/persistent/check_invariants.py`, so it runs in the pre-commit hook): any
+integer literal passed to `get_layer()` outside `voxel_renderer.gd` is a
+violation. Verified red-before-green at both widths.
 
 ⚠️ `prop_01_tests.gd` still reports **4/7**, unchanged by this fix: its
 criterion [3] crashes earlier on a `PropDef.footprint_gus` type mismatch, and
 [4]/[6] on `map_compiler.gd:63`, so the corrected lines are not even reached.
 Pre-existing rot in a file the selftest runner already reports as NOT RUN —
 untouched here, and separate from this defect class.
+
+### OCC-FIX-03c (2026-09-01) — the wider renumber sweep
+
+Director: *"vamos continuar corrigindo tudo que aparecer."* L1 had started
+narrow (literal `0` / `-N` only). Widening it to **every** integer literal was
+what surfaced the rest, because a stale POSITIVE literal is the worse half of
+the defect: it resolves to a real layer eighty levels from where it means, so
+nothing is null, nothing warns, and the code quietly describes a different
+building.
+
+| Site | What it had been doing | Evidence |
+|---|---|---|
+| `damage_gallery_debug.gd::_gallery_ceiling()` | Looked for the roof Slab at `BLOCK_STOREYS * LEVELS_PER_STOREY` = 16; `room_builder` registers it at `storey_level_base(storeys)` = 96. **8 of 8 CEILING probes reported MISS "no Slab SLAB_x_y_CEILING_16"** — a false negative from the one tool whose job is answering "is this atom actually baked". | Real PLAYGROUND `damage_gallery` capture, red before / green after |
+| `roof_slab_selftest.gd` | Block rendered at storey 0 (levels 80–87), "roof" placed at levels 8 and 9 — **72 levels below it**. Passed because it only ever asserted material, never the spatial relation in its own name. | Now prints `Block (level 80) and both roof levels (88, 89)`; 15 PASS |
+| `fixed_floor_selftest.gd` | Half-migrated: test [1] already used `FLOOR_TOP_LEVEL - 3`, while [2]/[3]/[4] still spelled `-1`, `-2`, `-6`, `-8` — a D13 ground stack 80 levels under the real one. | Now prints `All 8 levels of the D13 stack (72..79)`; 5 PASS |
+| `slab_render_selftest.gd` | Destructible top at literal `1`, "fixed bedrock" at `FLOOR_TOP_LEVEL` — the two labels had swapped with the renumber. | Now `FLOOR_TOP_LEVEL` / `FLOOR_DEEP_LEVEL`; passes |
+
+**Checked and NOT residue** (recorded so the next sweep does not re-open them):
+`bake_compositor.gd`'s `start_level` and `room_builder`'s junction
+`level_start`/`level_end` are texture space, origin zero, on purpose;
+`BakedTileLookup`'s `level == 0` is a facade sheet row, already relative;
+`blast_calculator.gd`'s `chest_level` adds and subtracts
+`start_storey * LEVELS_PER_STOREY` and cancels exactly;
+`detonation_presenter._delay_for()` and `room.gd`'s `PassageQuery` calls both
+already subtract `PLAYABLE_STOREY`; the `Slab.new(...)/Voxel.new(...)` unit
+fixtures in `blast_calculator_selftest` / `slab_geometry_selftest` are synthetic
+containers with a self-consistent origin that never reaches a layer, a slab id
+in a real registry, a bake row, a hash or a screen position — which is the line
+this sweep drew between "residue" and "a local coordinate".
+
+⚠️ Noticed, NOT fixed, no Director call yet: `slice_geometry_selftest.gd`'s
+"Check 1: E1 (layer transform)" computes an expected layer position and only
+`print_debug`s it — it increments `checked` and asserts nothing ("we can't
+instantiate TileMapLayers headless"). A hollow check inflating a pass count, not
+a level-numbering defect.
 
 ### Capture instruments (env-gated, zero cost when unset)
 

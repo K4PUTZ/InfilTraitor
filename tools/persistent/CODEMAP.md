@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**224 scripts · 73047 lines total** (under `godot/scripts/`)
+**224 scripts · 73084 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -441,7 +441,7 @@ extends `Node2D` · 316 lines
 
 ### `damage_gallery_debug.gd`
 
-`class_name DamageGalleryDebug` · 240 lines
+`class_name DamageGalleryDebug` · 247 lines
 
 `godot/scripts/debug/damage_gallery_debug.gd`
 
@@ -3331,7 +3331,7 @@ extends `SceneTree` · 173 lines
 
 ### `fixed_floor_selftest.gd`
 
-extends `SceneTree` · 174 lines
+extends `SceneTree` · 186 lines
 
 `godot/scripts/tools/fixed_floor_selftest.gd`
 
@@ -4022,7 +4022,7 @@ extends `SceneTree` · 269 lines
 
 ### `roof_slab_selftest.gd`
 
-extends `SceneTree` · 313 lines
+extends `SceneTree` · 325 lines
 
 `godot/scripts/tools/roof_slab_selftest.gd`
 
@@ -4031,6 +4031,7 @@ extends `SceneTree` · 313 lines
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `CEILING_LEVEL` = `GeometryCoordsClass.PLAYABLE_LEVEL + GeometryCoordsClass.LEVELS_PER_STOREY`
 
 **Public vars**
 - `var passed: int = 0`
@@ -4129,7 +4130,7 @@ extends `SceneTree` · 223 lines
 
 ### `slab_render_selftest.gd`
 
-extends `SceneTree` · 297 lines
+extends `SceneTree` · 303 lines
 
 `godot/scripts/tools/slab_render_selftest.gd`
 

@@ -78,9 +78,9 @@ func test_fixed_level_places_correct_cells() -> void:
 			mismatches += 1
 
 	if checked == 64 and mismatches == 0:
-		_pass("64/64 cells on fixed level -4 match an independently re-derived variant")
+		_pass("64/64 cells on the fixed earth level at RELATIVE -4 match an independently re-derived variant")
 	else:
-		_fail("%d/%d cells mismatched on fixed level -4" % [mismatches, checked])
+		_fail("%d/%d cells mismatched on the fixed earth level at RELATIVE -4" % [mismatches, checked])
 
 	renderer.queue_free()
 	print("")
@@ -96,7 +96,7 @@ func test_fixed_level_does_not_touch_slab_registry() -> void:
 	renderer.setup(Vector2.ZERO)
 	var registry := SlabRegistry.new()
 
-	renderer.render_fixed_earth_level(Vector2i(0, 0), -2)
+	renderer.render_fixed_earth_level(Vector2i(0, 0), GeometryCoords.FLOOR_TOP_LEVEL - 1)
 
 	if registry.is_empty():
 		_pass("An independent SlabRegistry stays empty — render_fixed_earth_level() took no registry and created no Slab")
@@ -116,23 +116,25 @@ func test_one_call_builds_only_the_requested_level() -> void:
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 
-	renderer.render_fixed_earth_level(Vector2i(1, 1), -6)
+	var rendered_level: int = GeometryCoords.FLOOR_TOP_LEVEL - 5
+	renderer.render_fixed_earth_level(Vector2i(1, 1), rendered_level)
 
 	var neighbours_untouched := true
-	for level in [-5, -7, -1, -8]:
+	for offset in [4, 6, 0, 7]:  ## the levels either side of it, plus the stack's ends
+		var level: int = GeometryCoords.FLOOR_TOP_LEVEL - offset
 		if renderer.get_layer(level) != null:
 			neighbours_untouched = false
-			_fail("Level %d was created as a side effect of rendering level -6" % level)
+			_fail("Level %d was created as a side effect of rendering level %d" % [level, rendered_level])
 
 	if neighbours_untouched:
-		_pass("Levels -5, -7, -1, -8 remain unbuilt after only -6 was rendered")
+		_pass("The neighbouring ground levels remain unbuilt after only %d was rendered" % rendered_level)
 
 	renderer.queue_free()
 	print("")
 
 
-## The full D13 shape: level -1 is a real Slab (destructible, dirty-tracked);
-## levels -2..-8 are fixed (rendered, but never a Voxel/Slab at all). Confirm
+## The full D13 shape: FLOOR_TOP_LEVEL is a real Slab (destructible, dirty-tracked);
+## the seven levels below it are fixed (rendered, but never a Voxel/Slab at all). Confirm
 ## both halves coexist correctly and the fixed half is structurally incapable
 ## of contributing to any dirty_count.
 func test_full_d13_stack_top_destructible_rest_fixed() -> void:
@@ -145,21 +147,31 @@ func test_full_d13_stack_top_destructible_rest_fixed() -> void:
 	var gu := Vector2i(6, 6)
 	var registry := SlabRegistry.new()
 
+	## OCC-FIX-03c (2026-09-01) — LEVEL-RENUMBER RESIDUE. This file was only half
+	## migrated: test [1] already asked for `FLOOR_TOP_LEVEL - 3`, while [2], [3]
+	## and [4] still spelled the pre-renumber negatives (-1, -2, -6, -8). Those
+	## resolve to real layers 80 levels under the ground stack, so the suite passed
+	## while exercising numbers no production caller can produce — and anything
+	## level-KEYED (layer Y via relative_level(), the B4-pinned earth-variant hash)
+	## was being fed the wrong axis. Derived from FLOOR_TOP_LEVEL now.
+	var stack_top: int = GeometryCoords.FLOOR_TOP_LEVEL
+	var stack_bottom: int = stack_top - 7
+
 	# Top: real Slab, destructible.
-	var top_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, -1, "earth", registry)
+	var top_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, stack_top, "earth", registry)
 	renderer.render_slab(top_slab)
 
 	# The other 7: fixed, no Slab.
-	for level in range(-8, -1):  # -8..-2 inclusive
+	for level in range(stack_bottom, stack_top):
 		renderer.render_fixed_earth_level(gu, level)
 
 	var all_levels_have_layers := true
-	for level in range(-8, 0):  # -8..-1 inclusive
+	for level in range(stack_bottom, stack_top + 1):
 		if renderer.get_layer(level) == null:
 			all_levels_have_layers = false
 			_fail("Level %d has no layer — full 8-level stack incomplete" % level)
 	if all_levels_have_layers:
-		_pass("All 8 levels of the D13 stack (-8..-1) have real layers")
+		_pass("All 8 levels of the D13 stack (%d..%d) have real layers" % [stack_bottom, stack_top])
 
 	# Damage the top — only the Slab (1 registered) can ever be dirty.
 	top_slab.voxels[0].set_damage(Voxel.DamageState.DESTROYED)

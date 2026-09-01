@@ -16,6 +16,15 @@ extends SceneTree
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 
+## OCC-FIX-03c (2026-09-01) — LEVEL-RENUMBER RESIDUE. Every fixture below used to
+## spell its levels as 8, 9, 10, back when a 1-storey block occupied levels 0..7.
+## After the renumber a block at storey 0 occupies 80..87, so those literals put
+## the "roof" SEVENTY-TWO LEVELS BELOW the block it is named for — test [4] read
+## its block from `get_layer(PLAYABLE_LEVEL)` and its roof from `get_layer(8)` and
+## still passed, because it only ever asserted material, never the spatial
+## relation. The numbers are derived now, so a future renumber moves them all.
+const CEILING_LEVEL: int = GeometryCoordsClass.PLAYABLE_LEVEL + GeometryCoordsClass.LEVELS_PER_STOREY
+
 var passed: int = 0
 var failed: int = 0
 
@@ -63,7 +72,7 @@ func test_multi_level_roof_is_n_independent_slabs() -> void:
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(4, 4)
 	var roof_levels: Array[Slab] = []
-	for level in range(8, 11):  # 3 levels: 8, 9, 10 (sitting above a 1-storey block, levels 0-7)
+	for level in range(CEILING_LEVEL, CEILING_LEVEL + 3):  # 3 levels, sitting above a 1-storey block
 		roof_levels.append(SlabGenerator.generate(gu, Slab.Role.CEILING, level, "wood", registry))
 
 	if roof_levels.size() == 3:
@@ -99,10 +108,10 @@ func test_render_slab_solid_uses_fixed_material_no_hash() -> void:
 
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(1, 1)
-	var slab := SlabGenerator.generate(gu, Slab.Role.CEILING, 8, "stone", registry)
+	var slab := SlabGenerator.generate(gu, Slab.Role.CEILING, CEILING_LEVEL, "stone", registry)
 	renderer.render_slab_solid(slab)
 
-	var layer: TileMapLayer = renderer.get_layer(8)
+	var layer: TileMapLayer = renderer.get_layer(CEILING_LEVEL)
 	var expected_source_id: int = VoxelRendererClass.MATERIALS.find("stone")
 	var mismatches := 0
 	var checked := 0
@@ -128,21 +137,21 @@ func test_each_roof_level_independently_destructible() -> void:
 
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(2, 2)
-	var level_8 := SlabGenerator.generate(gu, Slab.Role.CEILING, 8, "concrete", registry)
-	var level_9 := SlabGenerator.generate(gu, Slab.Role.CEILING, 9, "concrete", registry)
-	var level_10 := SlabGenerator.generate(gu, Slab.Role.CEILING, 10, "concrete", registry)
+	var roof_lo := SlabGenerator.generate(gu, Slab.Role.CEILING, CEILING_LEVEL, "concrete", registry)
+	var roof_mid := SlabGenerator.generate(gu, Slab.Role.CEILING, CEILING_LEVEL + 1, "concrete", registry)
+	var roof_hi := SlabGenerator.generate(gu, Slab.Role.CEILING, CEILING_LEVEL + 2, "concrete", registry)
 
-	level_9.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
+	roof_mid.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
 
-	if level_9.dirty_count == 1 and level_8.dirty_count == 0 and level_10.dirty_count == 0:
-		_pass("Damaging level 9 left levels 8 and 10 untouched (dirty_count 0 each)")
+	if roof_mid.dirty_count == 1 and roof_lo.dirty_count == 0 and roof_hi.dirty_count == 0:
+		_pass("Damaging the middle roof level left the one below and the one above untouched (dirty_count 0 each)")
 	else:
-		_fail("Cross-contamination: level8=%d level9=%d level10=%d" % [
-			level_8.dirty_count, level_9.dirty_count, level_10.dirty_count,
+		_fail("Cross-contamination: lo=%d mid=%d hi=%d" % [
+			roof_lo.dirty_count, roof_mid.dirty_count, roof_hi.dirty_count,
 		])
 
-	level_8.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
-	level_10.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
+	roof_lo.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
+	roof_hi.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
 
 	if registry.dirty_slabs().size() == 3:
 		_pass("All 3 levels can be independently dirty simultaneously (3/3 registered as dirty)")
@@ -154,8 +163,8 @@ func test_each_roof_level_independently_destructible() -> void:
 
 ## "posicionar sobre as estruturas quadradas que já estão presentes... usando
 ## a mesma arte das paredes que tem o mesmo material" — simulate a real block
-## (material "wood", occupying storey 0 = levels 0-7) and place a 2-level
-## roof starting at level 8, using the BLOCK's own material, not a hardcoded one.
+## (material "wood", occupying storey 0) and place a 2-level roof starting at the
+## level immediately above it, using the BLOCK's own material, not a hardcoded one.
 func test_roof_positioned_above_a_block_uses_the_blocks_own_material() -> void:
 	print("[4] Roof positioned above a simulated block, matching its material\n")
 
@@ -166,32 +175,35 @@ func test_roof_positioned_above_a_block_uses_the_blocks_own_material() -> void:
 	# Simulate the block itself via the existing, proven wall-material path.
 	var block_gu := Vector2i(7, 3)
 	var block_material := "wood"
-	renderer.render_block(block_gu, 0, 1, block_material)  # storey 0 = levels 0-7
+	renderer.render_block(block_gu, 0, 1, block_material)  # storey 0
 
-	# Roof starts immediately above the block's top level (7 -> roof at 8, 9).
-	var block_top_level := 7
+	## Roof starts immediately above the block's top level — DERIVED from the
+	## storey the block was actually rendered at, never a transcribed number.
+	var block_top_level: int = CEILING_LEVEL - 1
 	var registry := SlabRegistry.new()
 	var roof_slabs: Array[Slab] = []
-	for level in range(block_top_level + 1, block_top_level + 3):  # 8, 9
+	for level in range(block_top_level + 1, block_top_level + 3):
 		var roof_slab := SlabGenerator.generate(block_gu, Slab.Role.CEILING, level, block_material, registry)
 		roof_slabs.append(roof_slab)
 		renderer.render_slab_solid(roof_slab)
 
 	var block_layer: TileMapLayer = renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
-	var roof_layer_8: TileMapLayer = renderer.get_layer(8)
-	var roof_layer_9: TileMapLayer = renderer.get_layer(9)
+	var roof_layer_lo: TileMapLayer = renderer.get_layer(CEILING_LEVEL)
+	var roof_layer_hi: TileMapLayer = renderer.get_layer(CEILING_LEVEL + 1)
 
 	var sample_voxel: Vector2i = GeometryCoordsClass.gu_voxels(block_gu)[0]
 	var wood_id: int = VoxelRendererClass.MATERIALS.find("wood")
 
 	if block_layer.get_cell_source_id(sample_voxel) == wood_id \
-	and roof_layer_8.get_cell_source_id(sample_voxel) == wood_id \
-	and roof_layer_9.get_cell_source_id(sample_voxel) == wood_id:
-		_pass("Block (level 0) and both roof levels (8, 9) all render 'wood' — material matches the structure below")
+	and roof_layer_lo.get_cell_source_id(sample_voxel) == wood_id \
+	and roof_layer_hi.get_cell_source_id(sample_voxel) == wood_id:
+		_pass("Block (level %d) and both roof levels (%d, %d) all render 'wood' — material matches the structure below" % [
+			GeometryCoords.PLAYABLE_LEVEL, CEILING_LEVEL, CEILING_LEVEL + 1,
+		])
 	else:
-		_fail("Material mismatch between block and roof — block=%d roof8=%d roof9=%d expected=%d" % [
-			block_layer.get_cell_source_id(sample_voxel), roof_layer_8.get_cell_source_id(sample_voxel),
-			roof_layer_9.get_cell_source_id(sample_voxel), wood_id,
+		_fail("Material mismatch between block and roof — block=%d roof_lo=%d roof_hi=%d expected=%d" % [
+			block_layer.get_cell_source_id(sample_voxel), roof_layer_lo.get_cell_source_id(sample_voxel),
+			roof_layer_hi.get_cell_source_id(sample_voxel), wood_id,
 		])
 
 	if roof_slabs.size() == 2 and registry.all_slabs().size() == 2:
@@ -212,7 +224,7 @@ func test_border_expands_footprint_to_10x10_offset_by_minus_one() -> void:
 
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(5, 5)
-	var slab := SlabGenerator.generate_with_border(gu, Slab.Role.CEILING, 8, "concrete", registry)
+	var slab := SlabGenerator.generate_with_border(gu, Slab.Role.CEILING, CEILING_LEVEL, "concrete", registry)
 
 	if slab.voxels.size() == 100:
 		_pass("100 voxels (10x10), not 64 — the footprint genuinely grew")
@@ -244,7 +256,7 @@ func test_border_per_side_zero_skips_that_side_only() -> void:
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(0, 0)
 	## West=0 (no border on the -x side), other 3 sides default to 1.
-	var slab := SlabGenerator.generate_with_border(gu, Slab.Role.CEILING, 8, "concrete", registry, 0)
+	var slab := SlabGenerator.generate_with_border(gu, Slab.Role.CEILING, CEILING_LEVEL, "concrete", registry, 0)
 
 	## 9 wide (no west extension, +1 east) x 10 tall (+1 north, +1 south) = 90.
 	if slab.voxels.size() == 90:
@@ -284,8 +296,8 @@ func test_adjacent_multi_gu_roofs_do_not_self_overlap() -> void:
 	## Mirrors room_builder.gd's per-side computation for a 2x1 block:
 	## left cell (rx=0): west=1 (true outer edge), east=0 (faces the right cell).
 	## right cell (rx=1, last): west=0 (faces the left cell), east=1 (true outer edge).
-	var slab_left := SlabGenerator.generate_with_border(gu_left, Slab.Role.CEILING, 8, "concrete", registry, 1, 0, 1, 1)
-	var slab_right := SlabGenerator.generate_with_border(gu_right, Slab.Role.CEILING, 8, "concrete", registry, 0, 1, 1, 1)
+	var slab_left := SlabGenerator.generate_with_border(gu_left, Slab.Role.CEILING, CEILING_LEVEL, "concrete", registry, 1, 0, 1, 1)
+	var slab_right := SlabGenerator.generate_with_border(gu_right, Slab.Role.CEILING, CEILING_LEVEL, "concrete", registry, 0, 1, 1, 1)
 
 	var left_positions: Dictionary = {}
 	for voxel in slab_left.voxels:

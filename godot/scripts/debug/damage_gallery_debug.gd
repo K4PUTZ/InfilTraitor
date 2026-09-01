@@ -177,7 +177,14 @@ static func _paint_floor_column(renderer, slab_registry: SlabRegistry, center_gu
 
 
 static func _gallery_ceiling(renderer, slab_registry: SlabRegistry, material: String, gu: Vector2i) -> void:
-	var roof_level: int = BLOCK_STOREYS * GeometryCoords.LEVELS_PER_STOREY
+	## OCC-FIX-03c (2026-09-01) — LEVEL-RENUMBER RESIDUE. `storeys * LEVELS_PER_STOREY`
+	## was the roof level while the ground plane was 0; room_builder registers roof
+	## Slabs at `storey_level_base(storeys)`, which is 80 higher since the renumber.
+	## This looked for SLAB_x_y_CEILING_16 while the real one is _96, so every
+	## material reported CEILING DENTED/CRACKED as MISS "no Slab" — 8 of 8, measured
+	## on PLAYGROUND before the fix. A false negative from a tool whose whole job is
+	## to answer "is this atom actually baked".
+	var roof_level: int = GeometryCoords.storey_level_base(BLOCK_STOREYS)
 	var slab_id := Slab.make_id(gu, Slab.Role.CEILING, roof_level)
 	var slab: Slab = slab_registry.get_slab(slab_id)
 	if slab == null:

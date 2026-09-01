@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-08-31 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-01 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -69,7 +69,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 | `PERFORMANCE` | it *was* the explosion's cost | 🟠 **Its fire block is HISTORY, not status** — D-6 deleted the very subsystem F3–F8 optimized. P3 + P7b/P7c ship and default ON; P4, P6 and §14.3's broken `INFILTRAITOR_HIDE_VOXELS` stay open. **Read §12–§14, not the v2.3 header** |
 | `SOOT_STORAGE_REFORM` | nothing — the presentation reform took the session on 2026-08-27 | 🟡 **PAUSED at SS-3.** SS-4 (checkpoint persistence), SS-5 (subtraction), SS-6 (rotation) open; **§5.3 is an open DESIGN question for the Director** |
 | `MATERIALS` M3-6 (lateral fire propagation) | PERF P7 — *"do not judge a look through a frame time its own voxel count made worse"* | 🟢 **UNBLOCKED** — P7b/P7c shipped 2026-08-26 |
-| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ⚡ **ACTIVE — its own plan since 2026-08-30**: `GLASS_MASTER_PLAN` **v1.10. G1 geometry reworked, G2 + G7 + G-MAP + G-D9 + G-D18 + G-D18b BUILT 2026-08-31.** G-D9 = `panels.bands` multi-material slices. G-D18 = glass removed from occlusion (policy O7). G-D18b = the agent renders behind a pane he stands behind (glass composite lifted above `agent.z_index`). ⚠️ open: intact glass blocks no movement (folds into G3). The break design GREW (G-D11…G-D17). **G3 next** — the break + G-D8's passage work. |
+| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ⚡ **ACTIVE — its own plan since 2026-08-30**: `GLASS_MASTER_PLAN` **v1.13. G1..G-D18b BUILT; G3 (the break) 3 of 4 stages BUILT 2026-08-31/09-01.** G-D9 = `panels.bands` multi-material slices. G-D18 = glass out of occlusion. G-D18b = agent renders behind a pane. **G3: A** `GlassShatter` (`p_shatter` curve, arsenal-pinned) · **B** the roll in the shot path + `plan_pane_shatter` (region flood, G-D13 frame remnants) · **C** the grenade/cook path (`blast_glass_punch`, panels out of the ring model, `erase_glass_cell`). Real map: firearms + a grenade all take the GLASS map's big pane. **Left: G3 Stage D** — the G-D8 passage / movement-blocking work (intact glass blocks no movement today). |
 | `MATERIALS` M5 (voxel props) | renderer v2 | 🔴 Still blocked — the real gate on `OCCLUSION` Part 4 too |
 | `TOP_TEXTURE` Part 3 (textured interiors) | *"the destruction system (no implementation plan exists yet)"* | 🟢 **UNBLOCKED** — that plan was written, shipped and closed. Unscheduled, not blocked |
 | `OCCLUSION` Part 4 (interior cutaway) | Slab/roofs, then *"maps with objects"* | 🟡 Slab landed 2026-07-18; the resume trigger is now M5 props |
@@ -81,8 +81,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 ### 3. What is genuinely open, ordered by how ready it is
 
 1. **GLASS — ⚡ THE ACTIVE TRACK.**
-   [`GLASS_MASTER_PLAN`](../../PROMPTS/PLANNING/GLASS_MASTER_PLAN.md) **v1.8.**
-   BUILT 2026-08-31: **G1 geometry** (the pane thickness is a per-voxel
+   [`GLASS_MASTER_PLAN`](../../PROMPTS/PLANNING/GLASS_MASTER_PLAN.md) **v1.13.**
+   BUILT 2026-08-31/09-01: **G1 geometry** (the pane thickness is a per-voxel
    exposed-face cull — main always, top on the top row, side on the frontmost
    column, all dim; the pre-existing +20 `texture_origin` float was the
    Director's real complaint and is fixed); **G2 `pane_id`** (`GlassPaneGrouper`
@@ -97,12 +97,19 @@ number. If a total is ever quoted as current, it has to be re-measured first.
    G-D11…G-D17, all formalised and Director-signed-off. **G-D18** (2026-08-31):
    glass no longer occludes (`OcclusionSet` policy O7). **G-D18b** (2026-08-31):
    the agent renders BEHIND a pane he stands behind, faintly tinted, like a guard
-   already did (`glass_agent_behind_pane_2026-08-31.png`). ⚠️ **Open** (Director
-   flagged 2026-08-31): intact glass blocks no movement — agent and guards walk
-   through it; folds into G3, needs the movement/vision blocked-edge split G-D7
-   anticipates. **Next: G3** (the break: per-projectile `P_shatter` roll,
-   per-weapon hole size, region flood, the G-D13 remnant floor + the G-D8
-   passage work). Three findings still belong to
+   already did (`glass_agent_behind_pane_2026-08-31.png`). **G3 (the break)
+   Stages A–C** (2026-08-31/09-01): **A** `GlassShatter` — `p_shatter(glass_punch)`
+   (shifted logistic, arsenal-pinned) + `rolls_shatter()`; **B** the roll in the
+   shot path (`_maybe_shatter_pane`) + `plan_pane_shatter()` (pane `(col,level)`
+   lattice, Chebyshev flood, G-D13 frame-ring remnants) + `_dispatch_destruction_vfx`
+   skips glass; **C** the grenade/cook path (`blast_glass_punch`, glass panels
+   pulled out of `_phase_slices`' ring model, `VoxelRenderer.erase_glass_cell()`).
+   Real map: firearms and a grenade all take the GLASS map's big pane, with
+   frame remnants (`glass_shatter_{partial_rifle,full_sniper,grenade}_*.png`).
+   ⚠️ **G3 Stage D still open:** intact glass blocks no movement — agent and
+   guards walk through it; needs the movement/vision blocked-edge split G-D7
+   anticipates, plus broken glass → passage opens (`PassageQuery`) + detection +1
+   + light bump. Three findings still belong to
    systems OUTSIDE glass: `PassageQuery` has only `print` call sites (**no
    passage ever opened, any material**); **`NoiseSystem.emit()` has zero call
    sites**; vision has no material, so **glass blocks sight like concrete**.
@@ -234,8 +241,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 160
-- Test scripts: 47
+- GDScript modules: 161
+- Test scripts: 48
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

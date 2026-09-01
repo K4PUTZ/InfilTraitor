@@ -1,10 +1,14 @@
-# RESUMO_SESSAO — 2026-08-31 · GLASS G-D9: multi-material slices
+# RESUMO_SESSAO — 2026-08-31/09-01 · GLASS: G-D9, G-D18, G-D18b, G3 (A/B/C)
 
 **Continues:** `PROMPTS/RESUMO_SESSAO_2026-08-31_GLASS_G1_G2_G7.md`
-**Kind:** implementation.
+**Kind:** implementation — one long session across the date boundary.
 **VERSION:** unchanged at 0.9.107.
+**Commits (all pushed):** `30d5cc82` (G-D9) · `eb9d96ae` (G-D18) · `4ab83289` (G-D18b)
+· `7d390913` (docs) · `0d4bc677` (G3-A) · `c48ddcfd` (G3-B) · `564f31c0` (G3-C),
+plus the doc commit that closes the session.
 
-> Director, opening: *"Vamos seguir com G-D9."*
+> Director: *"Vamos seguir com G-D9."* → *"Vamos seguir com G3"* → *"Vamos seguir
+> pro stage C. Quando terminar atualize a documentação e encerre a sessão."*
 
 ---
 
@@ -12,8 +16,13 @@
 
 | Piece | State |
 |---|---|
-| **G-D9** — multi-material slices (`panels.bands`) | ✅ **BUILT.** The GLASS map's WINDOWS.png wall renders a brick sill (rel 0-1) + head (rel 22-23) over a glass middle |
-| **Next** | **G3** — the break, per `GLASS_MASTER_PLAN` §5.1's rewritten model (G-D11…G-D14). Director signed the design off at the end of the previous session |
+| **G-D9** — multi-material slices (`panels.bands`) | ✅ **BUILT.** GLASS map WINDOWS.png wall = brick sill (rel 0-1) + head (rel 22-23) over glass |
+| **G-D18** — glass does not occlude | ✅ **BUILT.** `OcclusionSet._group_slices_by_edge` skips base-glass slices (policy O7); the wireframe was drawing over a still-solid pane |
+| **G-D18b** — agent renders behind a pane | ✅ **BUILT.** `VoxelRenderer.set_glass_over_z(agent.z_index + 1)`; a pane he stands behind tints him, like a guard already did |
+| **G3 Stage A** — the `P_shatter` curve | ✅ **BUILT.** `GlassShatter` — shifted logistic, arsenal selftest reads `weapons/*.json`. Director: *"Boa — fixar como está."* |
+| **G3 Stage B** — the roll in the shot path | ✅ **BUILT.** `plan_pane_shatter()` (region flood + G-D13 remnants), `_maybe_shatter_pane()`, glass-VFX guard |
+| **G3 Stage C** — the grenade/cook path | ✅ **BUILT.** `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` |
+| **Next** | **G3 Stage D** — the G-D8 passage / movement-blocking work. Intact glass blocks no movement today; needs the movement/vision blocked-edge split G-D7 anticipates |
 
 ## 1. What landed
 
@@ -137,11 +146,73 @@ task: intact glass → the movement edge set (new split), broken glass → passa
 opens (`PassageQuery`, per-turn recompute) + detection +1 + light bump. Recorded
 in G-D8 and the G3 task-order row.
 
+## 5d. G3 — the break, Stages A/B/C (2026-09-01)
+
+Director staged it: *"Vamos seguir com G3"* → the curve, then *"Vamos seguir pro
+stage C"*. Stage D (passage/movement) is NOT in this session.
+
+**Stage A — `godot/scripts/systems/destruction/glass_shatter.gd` (`0d4bc677`).**
+`p_shatter(glass_punch)` = a **shifted, renormalised logistic** — `clamp(s(p) − C, 0)`
+is what makes the bottom actually reach zero (a plain logistic's tail never does).
+`SHATTER_K` 1.14 · `SHATTER_X0` 3.79 · `SHATTER_C` 0.075 · `SHATTER_P_MAX` 0.98,
+all `static var`. `rolls_shatter(glass_punch, salt)` = B4 FNV-1a. Curve vs the
+Director's targets: smg 0.6% · pellet 2.0% · pistol 5.5% · revolver 14.3% · rifle
+43.8% · sniper 81.1% · **shotgun blast 38.2%**. Director: *"Boa — fixar como está"*
+(a rendered plot was shown). `glass_shatter_selftest` reads `res://weapons/*.json`
+and pins the curve within ±6 pts.
+
+**Stage B — the shot path (`c48ddcfd`).** `GlassShatter.region_radius(glass_punch)`
+= `BASE(3) + GAIN(6)·(glass_punch − PIVOT(2))`. `plan_pane_shatter(pane_slices,
+face, hit, glass_punch, salt)` builds the pane's own `(col, level)` lattice over
+every `pane_id` slice (col = run axis: X for SW/NE, Y for SE/NW — panel panes
+only, `PANE_BLOCK_*` deferred), Chebyshev-BFS-floods from the hit to the radius,
+then G-D13: spares each border voxel in the flood with `lerp(0.10, 0.40, luck)`
+and always keeps ≥ 4 (the ones furthest toward a corner). `agent_shot_controller._maybe_shatter_pane()`
+— one roll per pellet that hit a pane, after its local hole; every flooded voxel
+`set_damage(DESTROYED)` folded into the shot's own `cell_to_voxel` bookkeeping.
+`room._dispatch_destruction_vfx` early-returns for `glass` — a 970-voxel shatter
+was 970 smoke puffs (a haze over the map); glass debris is SHARDS (G6). Real map:
+rifle takes half the GLASS big pane (647/1152), sniper 972/1152 + 180 remnants,
+the round marks the concrete behind.
+
+**Stage C — the grenade/cook path (`564f31c0`).** `GlassShatter.blast_glass_punch(ring_multipliers, ring)`
+= `SHATTER_BLAST_GAIN(3.4) · ring_multipliers[ring] / RESISTANCE["glass"]` — no
+per-projectile punch in the cook, so the roll runs off the blast's falloff (frag:
+~98% ring 0, ~79% ring 1, ~6% ring 2, 0 past). `detonation_plan_builder._phase_slices`
+pulls glass PANEL slices OUT of the ring-scatter model (glass fractures, does not
+deform); `_shatter_glass_panes()` groups affected panels by `pane_id`, rolls once
+per pane, floods into the Delta as blast-sourced DESTROYED, deterministic on
+`(source_gu, pane_id)`. ⚠️ **`detonation_entry_writer`'s "destroy" wave only knew
+`get_layer()` → the opaque stack** — a blast-shattered pane stayed on screen (a
+latent gap for glass BLOCKS too). New `VoxelRenderer.erase_glass_cell(level, cell)`
+(a no-op for non-glass) is now called per destroy entry. Real map: frag grenade
+at a corner of the big pane → ring 0, 1131/1152 flooded, the pane gone.
+
+**Captures:** `Screenshots/history/glass_shatter_{partial_rifle,full_sniper,grenade}_2026-09-01.png`.
+**Selftest:** `glass_shatter_selftest` = 13 checks (curve, blast compound, flat
+bottom, monotonic, roll frequency, region radius, small pane binary, big pane
+partial→full, G-D13 never 0 border, blast falloff). 40 selftests clean throughout.
+
 ## 6. NEXT SESSION — start here
 
-**G3 — the break** (`GLASS_MASTER_PLAN` §5.1, rewritten). Per-projectile
-`P_shatter(glass_punch)` roll pinned by an arsenal selftest; per-weapon hole size
-off `WeaponDef.blowout`; region flood (BFS over the pane's voxels) on a won roll;
-the G-D13 remnant floor (position 0/7, level 0/7 survivors, luck-driven). In
-`build_plan()` + the shot path, `room.bump_world_revision()`. Real-map bed = the
-GLASS map, cell probe (`INFILTRAITOR_CELL_PROBE=1`) not pixels.
+**G3 Stage D — the passage / movement-blocking work** (`GLASS_MASTER_PLAN` G-D8,
+Director's "juntar tudo no G3"). This is the big architectural piece:
+
+1. **The movement/vision blocked-edge split.** `blocked_edges` feeds BOTH
+   `GuardEnemy.can_see_cell()` and pathfinding (`GuardPathfinder`, `movement_overlay`).
+   Glass must block the body but not necessarily the eye (G-D7 is a *roll*, still
+   deferred). Add a movement-only edge set; vision keeps `blocked_edges` as-is.
+2. **Intact glass panel edges → the movement set** at compile time (like a
+   `divider`, but a blocked-EDGE not a blocked-cell — `{"from": gu, "to": gu + Face.delta(face)}`).
+3. **Broken glass → passage opens.** `PassageQuery` (already complete, only `print`
+   call sites) → a per-turn recompute of the movement set from live voxel state.
+   Then `room.report_blast_passage()` / the shot equivalent raise detection +1 and
+   bump the light one step (G-D8).
+4. Real-map bed = the GLASS map. Small pane (gu 4/5, 1 storey) is the binary case;
+   the big pane the partial.
+
+**Also parked:** G-ART (the crack_web / bullet_web / shard_floor / frame_remnant
+decal families), G5 (the CRACKED tier + the blast crack radius), G4 (jagged
+half-voxel remnant art — the remnants currently render as full glass voxels),
+G-VARIANT (`glass_armored`, `glass_screen_*`), G6 (shards as a floor decal),
+`plastic` (MATERIALS).

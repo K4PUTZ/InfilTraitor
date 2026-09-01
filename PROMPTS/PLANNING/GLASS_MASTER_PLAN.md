@@ -1,10 +1,11 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.12 — **G1 geometry, G2, G7, G-MAP, G-D9, G-D18, G-D18b BUILT.
-G3 IN PROGRESS (staged): Stage A (`GlassShatter` curve + arsenal selftest) +
-Stage B (the shatter roll wired into the shot path — region flood, G-D13 remnant
-floor, glass-VFX guard) BUILT. Real-map: rifle takes half the GLASS big pane,
-sniper 972/1152 with 180 remnants. Next: Stage C (grenade/cook), then D (passage).** G1
+**Status:** 🟢 v1.13 — **G1 geometry, G2, G7, G-MAP, G-D9, G-D18, G-D18b BUILT.
+G3 THREE OF FOUR STAGES BUILT: Stage A (`GlassShatter` curve), Stage B (shot
+path — region flood, G-D13 remnants), Stage C (the grenade/cook path — a pane
+inside the blast's damage area shatters). Real-map verified on the GLASS map:
+firearms and a grenade all take the big pane, with frame remnants. Left: Stage D
+(the G-D8 passage / movement-blocking work).** G1
 appearance signed off; G1 geometry awaits a Director tuning verdict on the sliver
 size/dim. **G-D9 (multi-material slices) BUILT 2026-08-31** — `panels.bands` →
 `Slice.material_bands` + `material_at()`, the per-band bake page, a lookup
@@ -320,8 +321,27 @@ haze over the map; glass debris is SHARDS (G6, a floor decal), not particles.
 
 **⚠️ Stage B runs in the SHOT PATH, not the cook.** The shot path does not use
 `build_plan()`/`WorldDelta` — G7 and the local hole are all direct
-`plan_point_impact` + `set_damage`, and Stage B matches that. **Stage C** puts the
-same roll on the grenade/cook path (a pane inside a blast's destruction footprint).
+`plan_point_impact` + `set_damage`, and Stage B matches that.
+
+✅ **BUILT 2026-09-01 (Stage C) — the grenade/cook path.**
+`GlassShatter.blast_glass_punch(ring_multipliers, ring)` = `SHATTER_BLAST_GAIN(3.4)
+· ring_multipliers[ring] / RESISTANCE["glass"]` — the cook has no per-projectile
+punch, so the pane's roll runs off the blast's own per-ring falloff (frag_grenade:
+~98% at ring 0, ~79% at ring 1, ~6% at ring 2, 0 past). In
+`detonation_plan_builder._phase_slices`, glass PANEL slices are pulled OUT of the
+ring-scatter model entirely (glass fractures, it does not deform — whole break or
+none); glass BLOCKS keep it. `_shatter_glass_panes()` groups the affected panels
+by `pane_id`, keeps the nearest ring, rolls once per pane, floods the whole pane
+(`plan_pane_shatter`, G-D13 remnants) into the Delta as blast-sourced DESTROYED,
+deterministic on `(source_gu, pane_id)`. ⚠️ **`detonation_entry_writer`'s "destroy"
+wave only knew `get_layer()` → the opaque stack** — a blast-shattered pane stayed
+on screen because glass renders on `_glass_layers`. New
+`VoxelRenderer.erase_glass_cell(level, cell)` (a no-op for non-glass) is now
+called per destroy entry. This was a latent gap for glass BLOCKS too; Stage C
+surfaced it. Real map: frag grenade at a corner of the GLASS big pane → ring 0,
+1131/1152 flooded, the pane gone (`glass_shatter_grenade_2026-09-01.png`).
+
+**Stage D** (still open) — G-D8's passage / movement-blocking work.
 
 ### 5.2 Remnants on the frame
 
@@ -661,7 +681,7 @@ level→material override on the same half-thickness face:
 | 🟢 | **G-D9** — multi-material slices: `panels.bands` authoring (§9.6), `Slice.material_bands` + `material_at()`, the per-band bake page (extra `wall_descriptor`, NOT a run split — see §9.6), a lookup `material_override`. `GlassPaneGrouper` unions a banded panel by base-or-band glass. **BUILT 2026-08-31.** Acceptance: `glass_bands_wall_before/after_2026-08-31.png` (same-boot) — the WINDOWS.png wall gains a brick sill (rel 0-1) + head (rel 22-23) over a glass middle; `[BAKE] Composed sheet brick\|facade_brick` present on the GLASS map and absent pre-G-D9; `glass_transparency_selftest` test [7]; 39 selftests clean | — |
 | 3 | **G-ART** — the art order + `check_decal.py` coverage for the glass families (`crack_web` now needs a tight AND a wide/spaced variant, G-D14) | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |
-| 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` — `P_shatter` curve + `rolls_shatter()` + arsenal selftest. **B** ✅ the roll wired into the shot path + region flood + G-D13 remnant floor + the glass-VFX guard (see §5.1). **C** the grenade/cook path (a pane inside a blast's destruction footprint shatters here too). **D** G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump. One commit per stage | G-MAP, G2, §5.1 |
+| 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** (open) G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump | G-MAP, G2, §5.1 |
 | 5b | **G-VARIANT** — `glass_class` + tint (G-D16): `glass_armored` (purple, ARMORED + `pane_primed`, G-D15), `glass_screen_{green,red,amber}` (INDESTRUCTIBLE / BREAKABLE). Material roster + `RESISTANCE` rows + a per-placement class tag | G3 |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
 | 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15) | G-ART |

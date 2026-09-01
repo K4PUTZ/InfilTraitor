@@ -277,7 +277,7 @@ the same division of labour `bake_compositor.gd` already has with facades.
 | Color | Full color allowed (these are not facade/pattern sources, so B2 does not bind them) |
 | Families | `bullet` (firearms), `dent` (explosions, on half voxels), `crack` (explosions, on whole voxels) |
 | Variants | **3 per family per material**, fixed. Runtime picks one by hashing the voxel's base coordinates, so the choice survives rotation and repaint |
-| Materials | `concrete`, `metal`, `stone`, `wood`, plus `earth` for `dent` only. **Brick is no longer deferred** — 2026-08-21 it became a real material and is scheduled in `MATERIALS_MASTER_PLAN` M2 (`PROMPTS/ART_ORDER_BRICK_DECALS.md`). **`cardboard`, `fabric` and `plywood` get NONE, ever** — MAT-SOFT-01 (Director, 2026-08-21) gives them exactly two states, INTACT and DESTROYED (`ShotPunchTable.HOLE_ONLY_MATERIALS`), so a decal for them is a file nothing can load. Glass still gets none (D22: no DENTED/CRACKED tier at all — destroyed or intact) and is deferred whole to M4b |
+| Materials | `concrete`, `metal`, `stone`, `wood`, plus `earth` for `dent` only. **Brick is no longer deferred** — 2026-08-21 it became a real material and is scheduled in `MATERIALS_MASTER_PLAN` M2 (`PROMPTS/ART_ORDER_BRICK_DECALS.md`). **`cardboard`, `fabric` and `plywood` get NONE, ever** — MAT-SOFT-01 (Director, 2026-08-21) gives them exactly two states, INTACT and DESTROYED (`ShotPunchTable.HOLE_ONLY_MATERIALS`), so a decal for them is a file nothing can load. **Glass is NO LONGER "none"** — GLASS_MASTER_PLAN **G-D3 amended D22 on 2026-08-30**: CRACKED returns for glass, DENTED stays impossible (glass fractures, it does not deform). Its families are specified in GLASS_MASTER_PLAN §5.4/§7.3 and G-D19–G-D24, and the art is in the Director's queue as of 2026-09-01 |
 
 **Which material needs which family — 42 files, all delivered:**
 
@@ -289,7 +289,24 @@ the same division of labour `bake_compositor.gd` already has with facades.
 
 **Brick landed 2026-08-21** (M2c). Delivered, gated, and wired into both
 `IMPACT_DECAL_MATERIALS` and `IMPACT_CRACK_MATERIALS`. The soft materials get
-none, ever (MAT-SOFT-01); glass gets none by D22 and is not waiting on art.
+none, ever (MAT-SOFT-01).
+
+⚠️ **The line that used to sit here — "glass gets none by D22 and is not waiting
+on art" — was stale and is corrected (2026-09-01).** `G-D3` amended D22 on
+2026-08-30 and glass cracks; as of 2026-09-01 glass art is **exactly what is
+being specified**, and this file saying otherwise would have misled the very
+authoring pass it exists to serve. What glass needs, and the shape of it, lives
+in GLASS_MASTER_PLAN: the impact and shard families (§5.4), the Stable Diffusion
+pipeline and the 16×20 px read that decides what ships (§7.3), the compositing
+order (G-D19), the re-anchored crack sheet (G-D21), the clamp and the maximum
+pane (G-D23), and the crossing rule (G-D24).
+
+⚠️ **The data half is not there yet, and a gate is waiting for it.** `glass`
+still has `crack_factor 0.0`, so nothing can reach a CRACKED glass voxel today.
+The day that number goes non-zero, `voxel_decal_selftest` **[12]
+`test_every_data_reachable_tier_has_art()`** requires the family to be wired AND
+all three variants to be on disk, in both directions — so the data, the wiring
+and the art land together or the suite goes red.
 
 **The acceptance gate for a delivery is `tools/persistent/check_decal.py`**
 (built 2026-08-21, the decal counterpart to `check_facade.py`). It checks the

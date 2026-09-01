@@ -137,7 +137,10 @@ just not the target case.
 | **G-D17** | **A ROUND LOSES POWER THROUGH EVERY GLASS LAYER IT CROSSES.** *"Precisamos implementar quebra em dois vidros seguidos, ou formalizar que vidros só podem ter meia espessura. Seria mais interessante pra engine a primeira opção, porque isso implica nos cubos sólidos de vidro. Adicionamos um modificador de destruição, de forma que cada camada de vidro a mais diminui a potência do projétil."* A LAYER is one thickness of glass the round passes through — the next pane along the ray, or the far face of a solid cube. Depth 0 is unattenuated, so §5.1's ratified arsenal table is untouched by construction. GEOMETRIC (`punch · FALLOFF^depth`), never subtractive: it cannot go negative, and a thick stack stops a round by ARITHMETIC instead of by a special case naming a limit. Applied to the WHOLE projectile — the hole it makes, the pane roll, and the mark on the wall it finally reaches | ✅ Ratified + BUILT 2026-09-01 |
 | **G-D19** | **A CRACKED GLASS VOXEL IS HALF SEE-THROUGH — AND THAT IS NOT AN ALPHA.** *"Com a rachadura nos voxels eles naturalmente vão perder a visibilidade total. Vamos diminuir pra 50% naquele voxel de vidro que tiver algum decal. Mas o decal em si já vai ter a própria opacidade na hora do bake, então precisamos fazer essa sobreposição dos elementos de maneira consciente."* The two quantities are DIFFERENT CHANNELS and must never be multiplied into one: the atom's **alpha is COVERAGE** (is there glass here — the silhouette B3 clamps a decal to), while see-through-ness is how much of `behind` survives the modulate in `glass_apply()`. Fold the 50% into the decal's alpha and it lands in `cover`: the voxel gets HALF A SILHOUETTE and partly vanishes instead of frosting over. So the decal composites into the atom exactly as it does today (alpha = coverage, B3 unchanged), and the 50% rides a SEPARATE per-voxel damage term the shader applies to the background contribution — `lit = mix(lit, frosted_body, damage)` | 🟡 Proposed 2026-09-01 |
 | **G-D20** | ⛔ **SUPERSEDED SAME DAY BY G-D21** — the mosaic's job (event-anchored, not structure-anchored) is right, but assembling it from edge-matched tiles is doing by hand what `_compute_facade_key()`'s offset already does. Kept for the argument, which G-D21 inherits: **PANE FRACTURE IS EVENT-ANCHORED, NOT STRUCTURE-ANCHORED.** *"Uma outra possibilidade seria fazer mosaicos procedurais usando partes de rachaduras similares que se conectam. Isso facilita porque o furo tem que ser posicionado sobre o voxel que o tiro acertou, e não aonde a textura baked fica."* The Director's argument is decisive and it kills the earlier proposal: a facade sheet is **structure-anchored** (`texture_anchor` = the component's NW corner, deliberately static so the pattern does not swim), while a fracture is **event-anchored** — its centre is wherever the round landed, different every shot. A baked sheet would put the radial centre at a fixed spot on the pane no matter where you hit it. A tile set whose edges connect, assembled outward from the impact voxel, is event-anchored by construction, stays inside the existing per-voxel decal path (no new bake axis, no new anchor unit), and is still gated by `check_decal.py` | ✅ Ratified 2026-09-01 |
+| **G-D22** | *(id deliberately skipped — "G-D22" sitting next to the older **D22** decision that G-D3 amends is a collision waiting to be misread. Same reasoning DIRECTION_GLOSSARY §10 applies to names.)* | — |
 | **G-D21** | **THE CRACK IS A FACADE SHEET RE-ANCHORED ONTO THE IMPACT — supersedes G-D20's tile mosaic.** *"essa ideia de fazer a grade e montar o mosaico, me parece que é essencialmente o que o baking system já faz […] gerar uma facade bem maior que as convencionais, com o furo baked no centro. E na hora que o tiro acerta a janela, ela tem margem pra 'sangrar' e ser reposicionada dentro da janela, cobrindo o voxel que foi acertado."* Correct, and it reduces to a SUBTRACTION: `_compute_facade_key()` already keys a voxel by `(column_in_run, level)` relative to the run's own origin, so "reposition the sheet" is offsetting those two numbers by (impact − sheet centre). No new mechanism, no new anchor unit, and — unlike a per-event mosaic — **the atoms are all composed once at load**, because the crack ART is fixed and only the OFFSET moves. A shot changes which atom each voxel picks; it mints nothing | ✅ Ratified 2026-09-01 |
+| **G-D23** | **NO MIRROR FOR THE CRACK FAMILY, AND A PANE HAS A MAXIMUM SIZE.** *"Vamos com a 3, tira o espelho dessa família. E aí convencionamos que toda vidraça vai ter um tamanho máximo. Que é o padrão real mesmo, nenhuma janela é infinita. Precisando, usa-se um frame divisório e começa outra vidraça."* The crack sheet clamps at its edge instead of mirroring, so beyond it there is simply NO crack — the physically right answer, and the one that cannot invent a second false fracture. The maximum pane is then DERIVED from the sheet rather than invented: **64 × 32 voxels = 8 GU × 4 storeys**, which makes *"a centred hit can crack the whole pane"* a guarantee. maps/GLASS.map.json's big pane (6 GU × 3 storeys) already fits. Anything larger is authored as two panes with a divider — and that needs no new feature: `panels[].bands` (G-D9) already puts a non-glass band inside a pane, and G-D13b already makes shards cling to it | ✅ Ratified 2026-09-01 |
+| **G-D24** | **WHERE TWO FRACTURES CROSS, THE GLASS FALLS OUT.** *"Realisticamente falando, um segundo tiro iria quebrar regiões com cruzamentos de rachaduras, então destruir os voxels que se encontram também é uma opção."* A voxel already carrying a crack, reached by a SECOND fracture, becomes DESTROYED. This replaces the "nearest impact wins" tiebreak proposed a turn earlier and is better on every axis: physically right (crossed cracks drop the piece), free (DESTROYED is what the engine does natively — no per-voxel crack-source int, no compositing of two sheets ever), and it gives a second shot a real mechanical identity instead of a cosmetic one — the first shot crazes, the second opens a hole along the intersection. The freed voxels then fall and pile through G-D16a like any other break | ✅ Ratified 2026-09-01 |
 | **G-D15** | **ARMORED GLASS (`glass_armored`, purple) — resists common shots; when breached, usually shatters entirely at once, leaving many individual shards.** ⚠️ **Special rifle case:** a rifle round may pierce a SINGLE voxel without shattering (treated as a weak hit) — this PRIMES the pane, and the next shot of ANY type auto-shatters the whole thing. `pane_primed` is a per-pane flag, checkpoint-scoped | ✅ Ratified 2026-08-31 · build after this doc is signed off |
 | **G-D16** | **Glass is a family of tinted behaviour classes, not new geometry.** All variants share G1's rendering and differ only in a tint (`base_color`) and a `glass_class`: `glass` (blue, BREAKABLE) · `glass_armored` (purple, ARMORED, G-D15) · `glass_screen_{green,red,amber}` (dark terminal tone) which is **INDESTRUCTIBLE** (control interfaces — takes a crack decal, never breaks, and STOPS the round: *"trinca mas o tiro para"*) or **BREAKABLE** (TVs, circuits, news panels) per placement | ✅ Ratified 2026-08-31 |
 | **G-D17** | **A screen is a glass voxel over a BLACK PLASTIC voxel.** *"O voxel de vidro fica na frente de voxels pretos de PLÁSTICO (a implementar — fura [não atravessa] ou derrete), de forma que nesses voxels pretos vamos pintar as imagens e textos posteriormente, e o vidro vai criar o efeito de brilho por cima."* New material **`plastic`** (black): a round DRILLS it (a hole, but the round does NOT pass through — unlike glass) or fire MELTS it. Images/text painted onto the plastic later; the glass in front adds the G1 sheen. Belongs in `MATERIALS_MASTER_PLAN` | ✅ Ratified 2026-08-31 · `plastic` + the paint layer are deferred |
@@ -613,6 +616,52 @@ at all: beyond the crack radius the sheet is EMPTY, and an empty region mirrored
 is still empty. The fold only ever bites inside the radius — which is exactly the
 region the table above measures.
 
+### G-D23 / G-D24 mechanics — what the build has to do
+
+**The clamp (G-D23).** `BakedTileLookup._compute_facade_key()` folds both axes
+through `_mirror_index_1d()`. The crack family takes a clamp instead — index
+below 0 or at/above the period resolves to NO CRACK, not to a reflected one.
+Concretely that is a second key function (or a flag on the existing one), not a
+change to the facade path, which must keep mirroring: a mirrored FACADE is
+invisible and correct, a mirrored FRACTURE is a second false crack. **The two
+families must not share the addressing.**
+
+**The maximum pane (G-D23).** 64 × 32 voxels = 8 GU × 4 storeys, derived from the
+sheet rather than invented, so *"a centred hit can crack the whole pane"* is a
+guarantee rather than a hope. Two consequences worth writing down before someone
+authors a wider window:
+
+- maps/GLASS.map.json's big pane is 6 GU × 3 storeys — inside it already.
+- A larger window is TWO panes with a divider, and that needs no new feature:
+  `panels[].bands` (G-D9) already authors a non-glass band inside a pane, and
+  G-D13b already makes shards cling to it. The divider frame is a sill/head by
+  another name.
+- ⚠️ **Nothing enforces the maximum today.** `GlassPaneGrouper` unions panels by
+  coplanar adjacency with no size bound, so a 12-GU run of `panels` entries
+  becomes ONE pane. The rule needs a check at grouping time, loud-failing the way
+  a map with a bad tile does — otherwise it is a convention nobody is held to.
+
+**The crossing (G-D24).** A voxel already carrying a crack, reached by a second
+fracture, is set DESTROYED. What that buys, beyond being right:
+
+- **No per-voxel crack-source int.** The "nearest impact wins" bookkeeping
+  proposed a turn earlier is deleted before it is written.
+- **No compositing of two sheets, ever** — which was the one cost that could have
+  made G-D21 mint at shot time. It now provably cannot.
+- **A second shot means something.** The first crazes; the second opens a hole
+  along the intersection of the two fractures. That is emergent from the rule,
+  not scripted.
+- The freed voxels fall and pile through G-D16a like any other break, so the
+  floor already knows what to do with them.
+
+⚠️ **Everything above is blocked on the same thing: `glass.crack_factor` is 0.0.**
+No voxel can reach a CRACKED glass state today, so none of G-D19/G-D21/G-D23/
+G-D24 can be exercised on a real map yet. The day that number goes non-zero,
+`voxel_decal_selftest` **[12]** requires the family wired AND all three variants
+on disk, in both directions — the data, the wiring and the art land together or
+the suite goes red. That is deliberate: it is the same coupling that let
+`bake_cache_test` rot for three weeks when only one side moved.
+
 ### The second shot — and it is the same problem the mosaic had
 
 *"O desafio nesse caso seria fazer a conexão quando um segundo tiro na mesma
@@ -620,15 +669,12 @@ janela for efetuado […] adicionar uma rachadura extra por cima, nos voxels que
 ainda resistirem."* Right, and worth saying plainly: **no scheme avoids this**,
 the mosaic included, so it is not an argument against G-D21.
 
-With the sheet model it has a cheap answer, because a voxel can only ever display
-ONE atom: keep a per-voxel **crack source** — which (sheet, offset) this voxel
-samples — and let a later hit claim a voxel only if it is NEARER to that hit than
-to the one already on it. "Nearest impact wins, per voxel" needs one small int
-per cracked voxel, resolves the overlap without compositing two sheets, and reads
-correctly: a voxel between two hits belongs to the one that reached it hardest.
-What it does NOT give is a UNION of two fractures crossing on one voxel; that
-would need real compositing, and it is worth seeing the cheap version on screen
-before deciding the crossing is missed.
+⛔ **The "nearest impact wins, per voxel" answer this paragraph used to propose is
+SUPERSEDED by G-D24, same day.** It needed a per-voxel crack-source int and still
+had no answer for two fractures crossing. The Director's is better and costs
+nothing: **where they cross, the glass falls out.** No bookkeeping, no
+compositing, and the crossing stops being the missing case — it becomes the
+mechanic.
 
 ### G-D21 simplifies G-D19
 

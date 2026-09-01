@@ -815,6 +815,15 @@ var _glass_layers: Dictionary = {}         ## level:int -> TileMapLayer (one per
 ## double-tint. Lazy.
 var _glass_backbuffer: BackBufferCopy = null
 var _glass_composite_z: int = -9999        ## z for the backbuffer + every glass layer
+## GLASS G-D18b (Director 2026-08-31: *"no caso do vidro ser transparente, acho
+## que podemos deixar o agente ser renderizado atrás e ficar parcialmente coberto
+## pelo vidro"*). OCC-03 bumps the agent one z above the tallest opaque layer so a
+## wall never HIDES him — but glass hides nothing, so the agent should read as
+## BEHIND a pane he stands behind, faintly tinted, exactly like a guard already
+## does (`enemies_root.z_index = 10`, never bumped). room.gd calls `set_glass_over_z()`
+## with `agent.z_index + 1` so the whole glass composite (backbuffer + every pane
+## layer) sits just above him.
+var _glass_composite_z_floor: int = -9999
 ## Atlas sources in `_tileset` for the glass pane atoms. GLASS G1 GEOMETRY
 ## (Director's diagram, 2026-08-31): a glass voxel paints its MAIN face always,
 ## its TOP face only when nothing (no glass) is above it, and its SIDE face only
@@ -4400,12 +4409,13 @@ func _ensure_layer(level: int) -> void:
 func _ensure_glass_sublayers(level: int) -> void:
 	if _glass_frosted_source_id < 0:
 		return
-	## Backbuffer + glass sit just above the tallest opaque voxel layer, so glass
-	## composites over every wall behind it and the agent (max_voxel_z + 1) still
-	## draws over the glass. `render()` keeps adding opaque layers as it goes, so
-	## this is recomputed on every glass level and the nodes are moved to the end
-	## of the tree to stay after any opaque layer added since.
-	var z: int = maxi(get_max_voxel_z_index(), _wall_base_z_index)
+	## Backbuffer + glass sit above the tallest opaque voxel layer so glass
+	## composites over every wall behind it — AND, per G-D18b, above the agent
+	## (`_glass_composite_z_floor` = agent.z_index + 1, set by room.gd) so he reads
+	## as behind a pane he stands behind. `render()` keeps adding opaque layers as
+	## it goes, so this is recomputed on every glass level and the nodes are moved
+	## to the end of the tree to stay after any opaque layer added since.
+	var z: int = maxi(maxi(get_max_voxel_z_index(), _wall_base_z_index), _glass_composite_z_floor)
 	if z > _glass_composite_z:
 		_glass_composite_z = z
 	if _glass_backbuffer == null:
@@ -4422,6 +4432,24 @@ func _ensure_glass_sublayers(level: int) -> void:
 		return
 	var gl := _build_glass_sublayer_node(level)
 	_glass_layers[level] = gl
+
+
+## GLASS G-D18b — raise the whole glass composite (backbuffer + every pane layer)
+## to at least `z`, and re-apply it if the sublayers already exist. room.gd calls
+## this with `agent.z_index + 1` after OCC-03 sets the agent's z, so a pane the
+## agent stands behind draws OVER him (a faint tint) instead of him popping in
+## front of it. Idempotent; a no-op when glass is already at or above `z`.
+func set_glass_over_z(z: int) -> void:
+	_glass_composite_z_floor = maxi(_glass_composite_z_floor, z)
+	if _glass_composite_z_floor <= _glass_composite_z:
+		return
+	_glass_composite_z = _glass_composite_z_floor
+	if _glass_backbuffer != null:
+		_glass_backbuffer.z_index = _glass_composite_z
+		move_child(_glass_backbuffer, -1)
+	for l in _glass_layers.values():
+		(l as TileMapLayer).z_index = _glass_composite_z
+		move_child(l, -1)
 
 
 ## GLASS G1 — one glass pane layer (one per level), a direct child of the

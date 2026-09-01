@@ -109,6 +109,31 @@ dotted far edge, a faint fill). After: clean transparent glass.
 
 Recorded as **G-D18** in `GLASS_MASTER_PLAN` (v1.8 → v1.9).
 
+## 5c. Follow-up same session — G-D18b + the movement gap
+
+Director, on the G-D18 capture: *"o agente consegue atravessar o vidro, precisamos
+implementar a questão da abertura de passagem. Além disso ele está sendo
+renderizado por cima sempre … no caso do vidro ser transparente, acho que podemos
+deixar o agente ser renderizado atrás e ficar parcialmente coberto pelo vidro."*
+
+**G-D18b — the agent renders behind a pane (BUILT).** OCC-03 bumps the agent one
+z above the tallest OPAQUE layer so a wall never hides him. Glass hides nothing,
+so `room.gd` now calls `VoxelRenderer.set_glass_over_z(agent.z_index + 1)` — the
+whole glass composite (backbuffer + every pane layer) sits one z above the agent,
+and a pane he stands behind tints him, exactly as it already did for a guard
+(`enemies_root.z_index = 10`, never bumped). An agent IN FRONT of a pane is
+unaffected — the isometric projection draws his sprite below the pane's screen
+footprint, so they never overlap (verified on a capture at gu (13,12)). Capture:
+`Screenshots/history/glass_agent_behind_pane_2026-08-31.png`.
+
+**The movement gap — NOT fixed this session, folded into G3.** Half-thickness
+panels never enter `blocked_edges` (§2), so the agent AND the guards walk straight
+through intact glass. The fix is coupled to G3 (need "broken" before "passage
+opens") and needs the **movement/vision blocked-edge split** G-D7 anticipates:
+`blocked_edges` feeds both `can_see_cell()` and pathfinding today, and glass must
+block the body without necessarily blocking the eye (G-D7 is a *roll*). Recorded
+in G-D8 and the G3 task-order row. **Asked the Director how to sequence it.**
+
 ## 6. NEXT SESSION — start here
 
 **G3 — the break** (`GLASS_MASTER_PLAN` §5.1, rewritten). Per-projectile

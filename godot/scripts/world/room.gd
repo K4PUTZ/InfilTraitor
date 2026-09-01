@@ -959,6 +959,11 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	var max_voxel_z_index := _voxel_renderer.get_max_voxel_z_index()
 	agent.z_index = max_voxel_z_index + 1
 	print("[OCC-03] Agent z_index set to %d (max voxel layer z_index: %d, room size: %s)" % [agent.z_index, max_voxel_z_index, room_size])
+	## GLASS G-D18b: glass hides nothing, so a pane the agent stands BEHIND should
+	## draw over him (a faint tint), the way it already does for a guard. Lift the
+	## whole glass composite one z above him — OCC-03's bump only needs to clear
+	## the OPAQUE stack.
+	_voxel_renderer.set_glass_over_z(agent.z_index + 1)
 	## VL-02a: overhead fixtures/shafts are DRAWN at ceiling_lift — above the whole
 	## wall stack on screen — so they must sort above it too. Their old z values
 	## (rays 0; lamps WALL_BASE_Z_INDEX + ceil_floors + 1 = 19) were derived from the

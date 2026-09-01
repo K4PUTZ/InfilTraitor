@@ -592,6 +592,12 @@ func fire_at_active() -> void:
 					_impact_vfx_done[pkey] = true
 					room.dispatch_impact_vfx(pv.grid_pos, pv.level, slice.material)
 
+		## GLASS G3 (G-D11/G-D12/G-D13) — on top of the local hole, this pellet
+		## rolls its OWN chance to take the whole pane (or a region larger than
+		## its hole). After the local hole so the flood spreads from a real gap.
+		_maybe_shatter_pane(slice, int(resolved["voxel_index"]), weapon_def,
+			"%s:%d" % [salt, i], cell_to_voxel, cell_to_material, cell_to_depth)
+
 	var prof_apply_ms: float = float(Time.get_ticks_usec() - prof_apply0) / 1000.0
 	## B3: a round with no wall behind the target is VOID and nothing happens
 	## (D15). That is a legitimate outcome, not a failure, so it is reported
@@ -777,6 +783,57 @@ func _top_screen_pos(guard) -> Vector2:
 func _index_voxel(cell_to_voxel: Dictionary, v: Voxel) -> void:
 	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 	cell_to_voxel[key] = v
+
+
+## GLASS G3 — the per-projectile shatter roll (G-D11), the region flood (G-D12)
+## and the frame-ring remnant floor (G-D13). Called once per pellet that landed
+## on a pane, AFTER its local hole is applied. On a won roll every flooded voxel
+## is DESTROYED and folded into the shot's own bookkeeping so the render pass,
+## VL-PERSIST and `bump_world_revision()` all pick it up unchanged.
+##
+## Panel panes only — glass BLOCKS (`PANE_BLOCK_*`) have no single run axis and
+## are deferred (they were never the target case, GLASS_MASTER_PLAN §0).
+func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: WeaponDef,
+		pick_salt: String, cell_to_voxel: Dictionary, cell_to_material: Dictionary,
+		cell_to_depth: Dictionary) -> void:
+	if hit_slice.pane_id == "" or hit_slice.pane_id.begins_with("PANE_BLOCK_"):
+		return
+	if hit_voxel_index < 0 or hit_voxel_index >= hit_slice.voxels.size():
+		return
+	var hv: Voxel = hit_slice.voxels[hit_voxel_index]
+	## G-D9: on a brick-capped window the hit may be in a brick band — not a pane hit.
+	var rel: int = hv.level - GeometryCoords.storey_level_base(hit_slice.start_storey)
+	if hit_slice.material_at(rel) != "glass":
+		return
+	## The glass punch for THIS pellet, at this pellet's own luck.
+	var glass_punch: float = ShotPunchTable.compute(weapon_def.punch, "glass",
+		ShotPunchTable.SKILL_NEUTRAL, 1.0, pick_salt)
+	if not GlassShatter.rolls_shatter(glass_punch, pick_salt):
+		return
+
+	var pane_slices: Array = []
+	for s in room._edge_registry.all_slices():
+		if s.pane_id == hit_slice.pane_id:
+			pane_slices.append(s)
+
+	var plan: Array = GlassShatter.plan_pane_shatter(pane_slices, hit_slice.face,
+		hv.grid_pos, hv.level, glass_punch, pick_salt)
+	var n: int = 0
+	for e in plan:
+		var s2: Slice = e["slice"]
+		var pv: Voxel = s2.voxels[int(e["voxel_index"])]
+		if pv.damage_state == Voxel.DamageState.DESTROYED:
+			continue
+		pv.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+		var pkey := Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)
+		_index_voxel(cell_to_voxel, pv)
+		cell_to_material[pkey] = "glass"
+		if not cell_to_depth.has(pkey):
+			cell_to_depth[pkey] = 0
+		n += 1
+	if n > 0:
+		print_debug("[GLASS-SHATTER] pane=%s glass_punch=%.2f radius=%d flooded=%d voxel(s)"
+			% [hit_slice.pane_id, glass_punch, GlassShatter.region_radius(glass_punch), n])
 
 
 ## Same conversion TestZoneController and WeaponBenchController do — room's

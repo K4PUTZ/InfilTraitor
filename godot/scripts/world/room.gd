@@ -2661,6 +2661,14 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String) ->
 func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: String) -> void:
 	if _voxel_renderer == null or _smoke_spark_overlay == null or _debris_overlay == null:
 		return
+	## GLASS G3 — glass does not billow smoke or drop dust. A pane shatter
+	## (GLASS_MASTER_PLAN §5.1) destroys hundreds of voxels in one event; routing
+	## each through the per-voxel smoke puff here buried the map in a milky haze
+	## (measured: a sniper on the GLASS map's big pane = 972 puffs). Glass debris
+	## is SHARDS on the floor and belongs to G6 (a floor decal, not particles);
+	## until then a glass break is visually just the pane going away.
+	if material_id == "glass":
+		return
 	var origin: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, level)
 	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, 0)
 	if floor_pos == Vector2.ZERO:

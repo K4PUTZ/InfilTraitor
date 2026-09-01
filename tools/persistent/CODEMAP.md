@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**224 scripts · 72496 lines total** (under `godot/scripts/`)
+**224 scripts · 72841 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2019,7 +2019,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 81 lines
+`class_name GlassShatter` · 224 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -3479,7 +3479,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 231 lines
+extends `SceneTree` · 368 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -3498,6 +3498,12 @@ extends `SceneTree` · 231 lines
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
+
+**Public API**
+- `func test_region_radius_scales_with_punch() -> void:`
+- `func test_small_pane_is_binary_with_remnants() -> void:`
+- `func test_big_pane_partial_then_full() -> void:`
+- `func test_remnant_floor_never_leaves_zero_border() -> void:`
 
 ---
 
@@ -4609,7 +4615,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 820 lines
+`class_name AgentShotController` · 877 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -4976,7 +4982,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8699 lines
+extends `Node2D` · 8707 lines
 
 `godot/scripts/world/room.gd`
 

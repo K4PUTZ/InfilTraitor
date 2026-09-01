@@ -126,13 +126,16 @@ unaffected — the isometric projection draws his sprite below the pane's screen
 footprint, so they never overlap (verified on a capture at gu (13,12)). Capture:
 `Screenshots/history/glass_agent_behind_pane_2026-08-31.png`.
 
-**The movement gap — NOT fixed this session, folded into G3.** Half-thickness
-panels never enter `blocked_edges` (§2), so the agent AND the guards walk straight
-through intact glass. The fix is coupled to G3 (need "broken" before "passage
-opens") and needs the **movement/vision blocked-edge split** G-D7 anticipates:
-`blocked_edges` feeds both `can_see_cell()` and pathfinding today, and glass must
-block the body without necessarily blocking the eye (G-D7 is a *roll*). Recorded
-in G-D8 and the G3 task-order row. **Asked the Director how to sequence it.**
+**The movement gap — NOT fixed this session, folded into G3 (Director's call).**
+Half-thickness panels never enter `blocked_edges` (§2), so the agent AND the
+guards walk straight through intact glass. The fix is coupled to G3 (need
+"broken" before "passage opens") and needs the **movement/vision blocked-edge
+split** G-D7 anticipates: `blocked_edges` feeds both `can_see_cell()` and
+pathfinding today, and glass must block the body without necessarily blocking the
+eye (G-D7 is a *roll*). **Director chose "juntar tudo no G3"** — one coherent
+task: intact glass → the movement edge set (new split), broken glass → passage
+opens (`PassageQuery`, per-turn recompute) + detection +1 + light bump. Recorded
+in G-D8 and the G3 task-order row.
 
 ## 6. NEXT SESSION — start here
 

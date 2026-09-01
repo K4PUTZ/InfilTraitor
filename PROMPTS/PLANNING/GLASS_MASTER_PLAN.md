@@ -362,6 +362,95 @@ called per destroy entry. This was a latent gap for glass BLOCKS too; Stage C
 surfaced it. Real map: frag grenade at a corner of the GLASS big pane → ring 0,
 1131/1152 flooded, the pane gone (`glass_shatter_grenade_2026-09-01.png`).
 
+## 5.4 — WHERE A SHARD LANDS (proposed, needs sign-off)
+
+Director, 2026-09-01, immediately after ratifying G-D13b: *"vamos empilhar mais
+cacos na base do vidro quebrado… O modelo de âncora precisa ser bem planejado,
+para os cacos caírem no peitoril, balcões, etc. Teremos claraboias e janelas no
+teto, então precisamos arquitetar bem essa queda dos cacos. […] além de paredes
+multi-materiais, precisamos de slabs multimateriais."*
+
+⚠️ **Nothing below is built or ratified.** It is the mechanism, the state of the
+tree it has to land in, and the questions that decide the shape.
+
+### The simplification worth deciding first
+
+G-D13b answers ONE question: *does this shard survive where it is?* Every item
+the Director just named is a DIFFERENT question: *where does the glass that fell
+end up?* Separating the two collapses three features into one rule:
+
+> **A destroyed glass voxel falls straight down its own column until it meets the
+> first horizontal surface, and accumulates there.**
+
+That single rule gives, with no special case per feature:
+
+| case | falls to |
+|---|---|
+| a normal pane | the floor at its base — the pile the Director wants |
+| a pane over a counter (`balcão`) | the counter's top |
+| a window with a sill (`peitoril`) | the sill |
+| a skylight / roof window (`claraboia`) | the floor a whole storey below |
+
+**And that may mean the anchor model needs no horizontal sources at all.** A sill
+would get a PILE ON TOP of it rather than shards WELDED ABOVE it. G-D13b, exactly
+as shipped, already handles the one sill that is genuinely in the pane's plane:
+G-D9's brick band (maps/GLASS.map.json's WINDOWS wall), because a band is part of
+the same Slice. **Q1 for the Director: for a real windowsill, do you want shards
+clinging to the glass above it (an anchor), or piled on top of it (a landing), or
+both?** The answer decides whether `collect_anchor_positions()` ever has to reach
+outside the pane's plane — which is the difference between a tuning change and a
+new cross-plane query.
+
+### What the tree actually holds today (measured, not assumed)
+
+| | state |
+|---|---|
+| `Slice` / `Edge` | `material_bands: Dictionary` keyed by **rel_level**, read through `material_at(rel_level)`. A 1-D run along the vertical axis |
+| `Slab` | **single `material`. No bands, no `material_at()`** |
+| `pane_id` | **`Slice` only.** `plan_pane_shatter()` is built on a `(col, level)` lattice with a run axis — it has no meaning for a horizontal pane |
+| glass on the pane layer | **INTERIOR slabs only.** [`voxel_renderer.gd:3676`](../../godot/scripts/geometry/voxel_renderer.gd) is explicit: *"roofs and glazed floor zones stay opaque"* — a CEILING slab set to `glass` renders as an opaque glass-coloured slab today |
+| G6 shards | designed (§7.1) as a **floor decal** on the floor-dent path, BASE coords, checkpoint-scoped, a third `SaveState` section. **Unbuilt** |
+| `PropDef.material_zones` | the dictionary exists; only `"default"` is ever read ([`voxel_renderer.gd:4773`](../../godot/scripts/geometry/voxel_renderer.gd)). Props are single-material in practice |
+
+So a skylight does not merely lack polish — **it has no pane identity, no
+transparency, and no shatter path.** Three separate seams, not one.
+
+### Multi-material slabs — NOT the slice model with a renamed axis
+
+This is the trap to avoid, and it is worth stating before anyone writes
+`Slab.material_bands`:
+
+- A **slice** band is **1-D along `rel_level`**. A wall is 8 wide × N tall, and a
+  sill/head is a horizontal run across the whole width — so one integer keys it.
+- A **slab** is **one level, 8 × 8 in plan**. There is no level axis inside it. A
+  slab's regions are **2-D sub-areas of the GU footprint**, so the same key shape
+  cannot express them.
+
+**And a per-GU skylight needs no bands at all.** Slabs are already per-GU and
+single-material, so *"this GU's ceiling is glass"* is expressible the moment the
+render routing allows it. Bands are needed only where the boundary is INSIDE one
+GU — a skylight's own frame, a glass counter with a metal rim. That is the same
+order walls took: a whole-GU glass panel worked first (G1), and G-D9 added the
+sill/head inside one GU afterwards.
+
+**Q2 for the Director: is the first skylight a whole GU, or does it need a frame
+inside its own GU?** Whole-GU first is a much smaller piece and unblocks the fall
+model immediately; sub-GU regions can follow the way G-D9 followed G1.
+
+### The staging this implies
+
+| | piece | depends on |
+|---|---|---|
+| **G-D16a** | **The fall.** A destroyed glass voxel's landing cell = straight down its column to the first horizontal surface. Pure geometry, testable with no art | — |
+| **G-D16b** | **G6 accumulation.** The landing cells become shard density on the floor-decal path (§7.1). This is what makes the pile visible, and §7.1's own risk note says a state nobody can see is a state that rots | G-D16a, G-ART |
+| **G-D16c** | **Horizontal panes.** CEILING glass routes to the pane layer; a horizontal `pane_id`; a shatter plan over an (x, y) lattice instead of (col, level) | G-D16a |
+| **G-D16d** | **Sub-GU slab regions.** Only if Q2 says the frame lives inside the GU | G-D16c |
+
+⚠️ **The ordering claim:** G-D16a is worth doing first even if the Director wants
+skylights most, because the fall rule is the thing all four share, it needs no
+art, and it is the only one of them that can be pinned by a selftest before a
+single pixel exists.
+
 **Stage D** (still open) — G-D8's passage / movement-blocking work.
 
 ### 5.2 Remnants on the frame

@@ -72,6 +72,13 @@
           "storeys": 2
         }
       ]
+    },
+    "damage_materials": {
+      "v": 1,
+      "materials": [
+        "concrete",
+        "stone"
+      ]
     }
   }
 }

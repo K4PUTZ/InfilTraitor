@@ -164,17 +164,33 @@ def run_one(godot: str, script_rel: str) -> dict:
 
 
 ## AUDIT-01 (2026-08-06): the glob above is *_selftest.gd, and eight test files
-## in the same folder are named *_test.gd / *_tests.gd. They had been invisible
+## in the same folder were named *_test.gd / *_tests.gd. They had been invisible
 ## to this runner — the arbiter — for as long as they existed, and the audit that
 ## finally ran them by hand found one failing outright (input_controller_test,
 ## exit 1, 17 SCRIPT ERRORs) and one reporting "3/5 passed" while exiting 0
-## (occlusion_set_test, fixtures stale since OCC-07). Both are fixed now.
+## (occlusion_set_test, fixtures stale since OCC-07). Both were fixed then.
 ##
-## Renaming them into the glob is NOT free: prop_01_tests and version_info_test
-## depend on autoloads (Registries, VersionInfo), which `--script` runs do not
-## instantiate, so they cannot pass under this runner as written — the same
-## limitation project_lint.py whitelists. Until that is solved, the runner at
-## least refuses to stay silent about its own blind spot.
+## TEST-DEBT-01 (2026-09-01, Director: "vamos corrigir o que for necessário"):
+## being invisible let them rot again, and this time nothing anywhere said so.
+## bake_cache_test had been 1 PASS / 6 FAIL since the 2026-08-21 asset-tree
+## reform gave TextureResolver.resolve() a material-folder argument;
+## occlusion_set_test had been 2/5 with an EMPTY occlusion set since the
+## 2026-08-24 level renumber, one of its two "passes" reading
+## "Cardinality reasonable: 0 cells (expect dozens)". Both files had a written
+## record of passing months earlier. So six of the eight moved INTO the glob and
+## are gated from here on:
+##     bake_cache · input_controller · mapfile_roundtrip · occlusion_set ·
+##     panel_base · resolver_hardening
+## occlusion_set needed three things before it could join: derived levels, a
+## cardinality guard that rejects the degenerate answer, and `quit(0)`/`quit(1)`
+## instead of a bare `quit()` — its verdict line could not report a failure to
+## anything outside itself.
+##
+## The last two CANNOT join: prop_01_tests and version_info_test depend on
+## autoloads (Registries, VersionInfo), which `--script` runs do not instantiate
+## — the same limitation project_lint.py whitelists. They pass by hand
+## (prop_01_tests 7/7 as of 2026-09-01); the report below refuses to stay silent
+## about them.
 def report_unrun_tests(ran: list) -> None:
     ran_names = {os.path.basename(s) for s in ran}
     others = sorted(

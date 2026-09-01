@@ -1011,15 +1011,54 @@ then the renumber). It fails now; red-before-green: putting the fixture back on
 pre-renumber levels gives 1/5 with `✗ Occlusion set is empty or near-empty (0)`.
 
 **All eight now pass** except `version_info_test.gd`, which cannot load headless
-(`VersionInfo` autoload). Measured under the real runner by temporarily copying
-each into the glob: `bake_cache`, `input_controller`, `mapfile_roundtrip`,
-`resolver_hardening` and `panel_base` (after the leak fix) all come back clean,
-so **five of them could be renamed into `*_selftest.gd` today** and finally be
-gated. `occlusion_set_test` needs the same check on a real rename (the probe's
-only failure was `class_name OcclusionSetTest` clashing with the copy).
-`prop_01_tests` and `version_info_test` cannot — they need autoloads `--script`
-does not instantiate. That rename is a process change, so it awaits the
-Director's call rather than being taken here.
+(`VersionInfo` autoload).
+
+**Six of them moved INTO the glob** (Director, 2026-09-01: *"vamos corrigir o que
+for necessário"*), so the suite went from 40 gated to **46**:
+`bake_cache_selftest`, `input_controller_selftest`, `mapfile_roundtrip_selftest`,
+`occlusion_set_selftest`, `panel_base_selftest`, `resolver_hardening_selftest`.
+
+`occlusion_set` needed three more things before it could join, and each was its
+own way of being unable to report a failure outward:
+
+1. `class_name OcclusionSetTest` — no caller used it, no sibling selftest
+   declares one, and a global class name on a `--script` entry point buys
+   exactly one thing: a "hides a global script class" parse error the moment the
+   file is renamed. Removed.
+2. `quit()` with no argument — **exits 0 whatever happened.** That is the
+   AUDIT-01 trap this file's own header is about, still live in the line that
+   reports the verdict. Now `quit(0)` / `quit(1)`.
+3. No uppercase PASS banner. `run_selftests.py` additionally requires the
+   suite's own banner in the output, because a script that fails to LOAD also
+   exits 0 having run nothing — so `[SUCCESS] All tests passed` did not satisfy
+   the arbiter. Now `[SUCCESS] OCCLUSION SET SELFTEST PASS — all N tests`.
+
+Red-before-green **through the arbiter**: fixture back on pre-renumber levels →
+`✗ occlusion_set_selftest.gd — exit 1`, `RESULT: 0 clean, 1 failed`. The same
+break was invisible before.
+
+`prop_01_tests` and `version_info_test` stay outside — they need autoloads
+`--script` does not instantiate (`prop_01_tests` passes 7/7 by hand). The runner
+still names them in its NOT RUN report.
+
+### Map data (2026-09-01) — the test maps boot silent now
+
+Director: *"não existem mapas autorados ainda, tudo é apenas ambiente de testes.
+Podemos corrigir o que for simples, remover elementos antigos ou mesmo excluir os
+mapas."*
+
+| Map | Was | Fix |
+|---|---|---|
+| `SIGMA_01` | 9 `crate_*` sprite props (`crate_SE` ×3, `crate_SW` ×2, `crate_NW` ×2, `crate_NE` ×2) — 9 `push_error`s at boot, "Scenery is voxels now", nothing drawn where the map said a crate was | `legacy_compiler.props` emptied |
+| `SIGMA_01`, `TEXTURES`, `TEST_BLOCKS`, `FLOOR_ZONES_TEST` | no `damage_materials` section, so their damage atoms never baked (the D13 warning, working correctly) | section added, listing what each map actually uses |
+
+`FLOOR_ZONES_TEST`'s floor-zone materials were the one worth checking rather than
+assuming: adding `grass`/`sand`/`dirt` makes the baker resolve
+`ASSETS/materials/<id>/slab_<id>.png` (1024×1024, validated) and compose a real
+roof page of 1025 atoms each — the art was already there, it was simply never
+asked for.
+
+**All six maps now boot with zero errors and zero warnings.**
 
 ### MAT-COHERENCE-01 (2026-09-01) — is anything instantiated without art?
 

@@ -172,9 +172,18 @@ Enable with `debug_bake_set_dump=true` in `user://bake_config.cfg`.
 **Debug & Test:**
 - `res://godot/scripts/debug/theme_matrix_debug_view.gd`
 - `res://godot/scripts/tools/bake_selftest.gd` — **the standing bake gate**
-- `res://godot/scripts/tools/resolver_hardening_tests.gd`
+- `res://godot/scripts/tools/resolver_hardening_selftest.gd`
 - `res://godot/scripts/tools/texture_resolver_selftest.gd`
-- `res://godot/scripts/tools/bake_cache_test.gd` — acceptance gate for BAKE-CACHE-01
+- `res://godot/scripts/tools/bake_cache_selftest.gd` — acceptance gate for BAKE-CACHE-01
+
+> **Renamed 2026-09-01 (TEST-DEBT-01).** Both were `*_test.gd`, which put them
+> outside `run_selftests.py`'s `*_selftest.gd` glob — ungated, and exiting 0 pass
+> or fail. `bake_cache` had been **1 PASS / 6 FAIL** since the 2026-08-21
+> asset-tree reform gave `TextureResolver.resolve()` a material-folder argument
+> and this file kept calling the one-argument form: every lookup went to the old
+> flat `ASSETS/materials/facade_<id>.png`, found nothing, and six tests reported
+> "Failed to resolve facade" without ever running their real assertions. Both are
+> in the glob now and gated on every commit.
 
 > **One-off tools purged 2026-07-12.** The `bake_fix_*` / `fix_bake_*` /
 > `block_01*` / `*_verification` scripts cited elsewhere in this document were

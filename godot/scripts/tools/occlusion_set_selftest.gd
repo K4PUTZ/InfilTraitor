@@ -1,8 +1,13 @@
 ## OCC-01: Occlusion Set — Headless Test
-## Usage: godot --headless --script godot/scripts/tools/occlusion_set_test.gd
+## Usage: godot --headless --script godot/scripts/tools/occlusion_set_selftest.gd
+##
+## TEST-DEBT-01 (2026-09-01): renamed from `occlusion_set_test.gd` into the
+## `*_selftest.gd` glob, so `run_selftests.py` — the arbiter — actually runs it.
+## The `class_name OcclusionSetTest` it used to declare went with the rename: no
+## caller ever used it, no sibling selftest declares one, and a global class name
+## on a `--script` entry point only buys a "hides a global script class" parse
+## error the moment the file moves.
 extends SceneTree
-
-class_name OcclusionSetTest
 
 const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const OcclusionSetMod = preload("res://godot/scripts/systems/occlusion_set.gd")
@@ -109,12 +114,21 @@ func _initialize():
 	print("SUMMARY: %d/%d tests passed" % [pass_count, total_count])
 	print(separator + "\n")
 	
+	## TEST-DEBT-01 (2026-09-01) — two contract fixes the move into the glob
+	## exposed, both of which had made this file structurally unable to report a
+	## failure to anything outside itself:
+	##  · `quit()` with no argument exits 0 whatever happened. That is the exact
+	##    "prints 3/5 passed, exits 0" trap this file's own AUDIT-01 header is
+	##    about, still live in the line that reports the verdict.
+	##  · run_selftests.py additionally requires the suite's own PASS banner in
+	##    the output ("[SUCCESS] All tests passed" has no uppercase PASS), because
+	##    a script that fails to LOAD also exits 0 having run nothing.
 	if pass_count == total_count:
-		print("[SUCCESS] All tests passed")
+		print("[SUCCESS] OCCLUSION SET SELFTEST PASS — all %d tests" % total_count)
+		quit(0)
 	else:
 		print("[FAILURE] %d test(s) failed" % [total_count - pass_count])
-	
-	quit()
+		quit(1)
 
 ## Test with deliberately wrong predicate (>= instead of >)
 ## This should FAIL to demonstrate the test catches the bug

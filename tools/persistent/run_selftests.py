@@ -85,10 +85,23 @@ def find_godot() -> str:
 
 def run_one(godot: str, script_rel: str) -> dict:
     res_path = "res://" + script_rel.replace(os.path.sep, "/")
+    ## TEST-DEBT-03 (2026-09-01): a `*_selftest.tscn` is launched as the MAIN
+    ## SCENE instead of via `--script`, and that is the only difference that
+    ## matters — Godot registers autoload names as parse-time globals, and adds
+    ## their nodes, only for a scene run. Two selftests need that and could not
+    ## exist before it: version_info_selftest (`VersionInfo` is the thing under
+    ## test) and prop_01_selftest (criterion 7 reaches MapCatalog, which reaches
+    ## the `Registries` autoload). Under `--script` the first failed to LOAD and
+    ## the second could only SKIP that criterion while counting it as a pass.
+    ## Every other check below — script errors, leaks, PASS banner, exit code —
+    ## applies to both invocations unchanged.
+    argv = ([godot, "--headless", "--path", PROJECT_ROOT, res_path]
+            if res_path.endswith(".tscn")
+            else [godot, "--headless", "--script", res_path])
     start = time.time()
     try:
         proc = subprocess.run(
-            [godot, "--headless", "--script", res_path],
+            argv,
             cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=TIMEOUT_S,
         )
         output = proc.stdout + proc.stderr
@@ -186,11 +199,12 @@ def run_one(godot: str, script_rel: str) -> dict:
 ## instead of a bare `quit()` — its verdict line could not report a failure to
 ## anything outside itself.
 ##
-## The last two CANNOT join: prop_01_tests and version_info_test depend on
-## autoloads (Registries, VersionInfo), which `--script` runs do not instantiate
-## — the same limitation project_lint.py whitelists. They pass by hand
-## (prop_01_tests 7/7 as of 2026-09-01); the report below refuses to stay silent
-## about them.
+## TEST-DEBT-03 (2026-09-01) closed the last two as well, by removing the
+## limitation instead of documenting it: `prop_01_selftest` and
+## `version_info_selftest` are `*_selftest.tscn` scenes now, launched as the main
+## scene so the autoloads they need are genuinely present (see run_one). All
+## eight formerly-invisible files are gated. This report stays because the blind
+## spot can come back the moment someone adds another `*_test.gd`.
 def report_unrun_tests(ran: list) -> None:
     ran_names = {os.path.basename(s) for s in ran}
     others = sorted(
@@ -212,8 +226,18 @@ def main() -> int:
     parser.add_argument("--only", help="substring of the selftest name (e.g. blast_calculator)")
     args = parser.parse_args()
 
-    pattern = os.path.join(PROJECT_ROOT, SELFTEST_DIR, "*_selftest.gd")
-    scripts = sorted(os.path.relpath(p, PROJECT_ROOT) for p in glob.glob(pattern))
+    ## Both shapes: a plain `--script` SceneTree selftest, and a `*_selftest.tscn`
+    ## run as a scene so autoloads exist (see run_one). A .tscn and its .gd share
+    ## a basename, so the .gd is skipped when a scene owns it — otherwise the same
+    ## suite would run twice, once in the mode it cannot work in.
+    scene_paths = sorted(glob.glob(os.path.join(PROJECT_ROOT, SELFTEST_DIR, "*_selftest.tscn")))
+    scene_stems = {os.path.splitext(os.path.basename(p))[0] for p in scene_paths}
+    script_paths = [
+        p for p in sorted(glob.glob(os.path.join(PROJECT_ROOT, SELFTEST_DIR, "*_selftest.gd")))
+        if os.path.splitext(os.path.basename(p))[0] not in scene_stems
+    ]
+    scripts = sorted(
+        os.path.relpath(p, PROJECT_ROOT) for p in (script_paths + scene_paths))
     if args.only:
         scripts = [s for s in scripts if args.only in os.path.basename(s)]
     if not scripts:

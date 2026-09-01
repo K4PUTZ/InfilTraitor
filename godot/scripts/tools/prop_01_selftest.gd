@@ -1,7 +1,18 @@
 ## PROP-01 Acceptance Tests
 ## Tests the PropDef/PropRegistry/voxel prop rendering system
+##
+## TEST-DEBT-03 (2026-09-01) — RUNS AS A SCENE, not as a `--script` SceneTree.
+## That is the whole point: criterion 7 reaches `MapCatalog.get_spec()`, which
+## routes through `Registries.ensure_file_map_source()`, and `Registries` is an
+## AUTOLOAD. Godot registers autoload names as parse-time globals and adds their
+## nodes only when a MAIN SCENE runs — a `--script` run does neither, so this
+## file used to fail to load outright (`Compile Error: Identifier not found:
+## Registries` from map_catalog.gd) and criterion 7 could only ever SKIP itself.
+## Launched as `res://godot/scripts/tools/prop_01_selftest.tscn` the autoloads
+## are real, and run_selftests.py knows to invoke a `*_selftest.tscn` that way.
+## Measured: the probe that settled it printed `VersionInfo global: true`.
 
-extends SceneTree
+extends Node
 
 var PropDefClass
 var PropRegistryClass
@@ -14,7 +25,7 @@ var VoxelRendererClass
 var _tests_passed := 0
 var _tests_failed := 0
 
-func _init() -> void:
+func _ready() -> void:
 	# Preload classes
 	PropDefClass = load("res://godot/scripts/systems/prop_def.gd")
 	PropRegistryClass = load("res://godot/scripts/systems/prop_registry.gd")
@@ -41,12 +52,15 @@ func _init() -> void:
 		print("FAILURES: %d" % _tests_failed)
 	print("=".repeat(60) + "\n")
 	
+	## TEST-DEBT-03: `quit()` with no argument exits 0 whatever happened — the
+	## same defect occlusion_set_selftest carried. The verdict has to reach the
+	## shell, or the arbiter is reading a number this file never sets.
 	if _tests_failed == 0:
 		print("✓ ALL TESTS PASS")
+		get_tree().quit(0)
 	else:
 		print("✗ SOME TESTS FAILED")
-	
-	quit()
+		get_tree().quit(1)
 
 
 func _pass(msg: String) -> void:
@@ -184,6 +198,15 @@ func test_criterion_3_render_prop_footprint() -> void:
 				var pos = Vector2i(40 + x, 40 + y)
 				if layer2.get_cell_source_id(pos) >= 0:
 					count2 += 1
+
+	## LEAK-GATE-01 (2026-09-01): both renderers are Node2D, never added to a
+	## tree, so nothing else will ever free them — and they hold a TileSet and
+	## its atlas images, which is where "18 resources still in use at exit" came
+	## from. Freed HERE rather than at the end of the function, because every
+	## verdict below returns early. This file only met the leak gate the day it
+	## joined the glob; it had been leaking for as long as it existed.
+	renderer1.free()
+	renderer2.free()
 	
 	if count1 != count2:
 		_fail("Voxel counts differ: %d vs %d" % [count1, count2])
@@ -341,13 +364,13 @@ func test_criterion_7_non_regression() -> void:
 	# Load a golden map and verify it still compiles without new errors
 	# SIGMA_01 should not have voxel_props, so adding the feature should not change its output
 	#
-	# MapCatalog.get_spec() routes through Registries.ensure_file_map_source() — the
-	# Registries autoload is not yet in the tree this early in --script mode (same
-	# headless-only gap project_lint.py already whitelists for Localization/Registries/
-	# VersionInfo). Guard instead of crashing past this point with no summary line.
-	if not (root != null and root.has_node("Registries")):
-		print("  ⚠ SKIPPED — Registries autoload not in tree yet (headless-only gap, not a code defect)")
-		_tests_passed += 1
+	## TEST-DEBT-03: this used to SKIP (and count the skip as a pass) because the
+	## Registries autoload is absent in `--script` mode. Running as a scene it is
+	## present, so the criterion runs for real — the guard stays as a loud failure
+	## rather than a silent pass, because a missing autoload now means the runner
+	## invoked this file the wrong way, not a known limitation.
+	if not (get_tree().root != null and get_tree().root.has_node("Registries")):
+		_fail("Criterion 7: Registries autoload absent — this selftest must be run as prop_01_selftest.tscn, not via --script")
 		return
 
 	var catalog = MapCatalogClass.new()

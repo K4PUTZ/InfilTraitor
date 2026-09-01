@@ -1037,9 +1037,34 @@ Red-before-green **through the arbiter**: fixture back on pre-renumber levels �
 `✗ occlusion_set_selftest.gd — exit 1`, `RESULT: 0 clean, 1 failed`. The same
 break was invisible before.
 
-`prop_01_tests` and `version_info_test` stay outside — they need autoloads
-`--script` does not instantiate (`prop_01_tests` passes 7/7 by hand). The runner
-still names them in its NOT RUN report.
+**TEST-DEBT-03 closed the last two as well**, by removing the limitation instead
+of documenting it. Godot registers autoload names as parse-time globals — and
+adds their nodes — only when a MAIN SCENE runs, never under `--script`. So those
+two became `*_selftest.tscn` scenes, and `run_selftests.py` launches a `.tscn`
+selftest as the main scene (`--path . res://…`) while everything else keeps the
+`--script` path. Every other check — script errors, leaks, PASS banner, exit code
+— applies to both invocations unchanged.
+
+What that bought, beyond ending the blind spot:
+
+| | before | after |
+|---|---|---|
+| `version_info_selftest` | failed to LOAD (`Identifier not found: VersionInfo`) — the only test of the version singleton had never run since it was written | 4/4 |
+| `prop_01_selftest` criterion 7 | SKIPPED itself and counted the skip as a pass, because `MapCatalog` → `Registries` was unreachable | compiles SIGMA_01 through the real catalog |
+| `prop_01_selftest` lifetime | leaked two `VoxelRenderer` Node2Ds and 18 resources | freed |
+
+⚠️ **`SceneTree.quit(code)` is DEFERRED** — it asks the tree to stop at the end
+of the frame and returns immediately, so a failing branch must `return` as well.
+`version_info_selftest` did not: a deliberately inverted TEST 2 printed
+`❌ version_string is unknown`, fell straight through TESTS 3 and 4, printed the
+PASS banner, and ended on the final `quit(0)` — which OVERWROTE the failure's exit
+code. Measured, then fixed. The `--script` original had the same shape, so that
+test could never have reported a failure to anyone. Swept the other 46: every
+one of them calls `quit(1)` only as the terminal verdict, where the deferral is
+harmless.
+
+**The blind spot is now empty**: no `*_test.gd` / `*_tests.gd` remains, and the
+suite is **48 clean**.
 
 ### Map data (2026-09-01) — the test maps boot silent now
 

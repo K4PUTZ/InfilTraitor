@@ -141,10 +141,16 @@ func test_criterion_3_render_prop_footprint() -> void:
 	prop_def.size_vox = Vector3i(8, 8, 8)
 	prop_def.layers = []
 	prop_def.material_zones = {"default": "concrete"}
-	prop_def.footprint_gus = [Vector2i(0, 0)]
+	## MAT-COHERENCE-01 sweep (2026-09-01): `footprint_gus` is `Array[Vector2i]` and
+	## `tags` is `Array[String]` (prop_def.gd) — an untyped array literal cannot be
+	## assigned to either, and the runtime error aborted this whole criterion before
+	## it reached its first assertion. Typed locals, so the assignment is legal.
+	var footprint: Array[Vector2i] = [Vector2i(0, 0)]
+	prop_def.footprint_gus = footprint
 	prop_def.storeys = 1
 	prop_def.gameplay = {"cover": "full", "destructible": false}
-	prop_def.tags = []
+	var tags: Array[String] = []
+	prop_def.tags = tags
 	
 	# Test both render paths and compare voxel counts
 	var visual_grid_offset = Vector2(0, 0)
@@ -194,16 +200,26 @@ func test_criterion_3_render_prop_footprint() -> void:
 func test_criterion_4_mapcompiler_voxel_props() -> void:
 	print("\n[4] MapCompiler voxel_props translation")
 	
+	## MAT-COHERENCE-01 sweep (2026-09-01): `compile()` takes `inner_size` and
+	## `agent_start` as Vector2i — FileMapSource does that coercion before it ever
+	## calls in (file_map_source.gd's own `runtime["inner_size"] = Vector2i(...)`).
+	## Raw JSON arrays here raised "Trying to assign value of type 'Array' to a
+	## variable of type 'Vector2i'" at map_compiler.gd:63 and aborted the criterion.
+	## `voxel_props` entries keep the array form on purpose — that loop accepts BOTH
+	## shapes explicitly, and this is the only place that fact is exercised. The
+	## legacy `props` loop does not: it calls `Vector2i(prop["cell"])`, and
+	## FileMapSource._convert_from_json_compatible() turns every [x, y] pair into a
+	## Vector2i before the spec is handed over, so Vector2i is the real contract.
 	var spec = {
-		"inner_size": [10, 10],
+		"inner_size": Vector2i(10, 10),
 		"buffer": 1,
-		"agent_start": [1, 1],
+		"agent_start": Vector2i(1, 1),
 		"voxel_props": [
 			{"def": "crate_full", "gu": [5, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0}
 		],
 		"props": [
 			# Legacy sprite prop (should be independent)
-			{"cell": [3, 3], "tile": "crate_SE", "stack": 1, "height": 2}
+			{"cell": Vector2i(3, 3), "tile": "crate_SE", "stack": 1, "height": 2}
 		]
 	}
 	
@@ -299,9 +315,9 @@ func test_criterion_6_invariants_check() -> void:
 	# Verify the pattern is followed: voxel_props loop checks and sets blocked_map
 	
 	var spec = {
-		"inner_size": [5, 5],
+		"inner_size": Vector2i(5, 5),
 		"buffer": 0,
-		"agent_start": [1, 1],
+		"agent_start": Vector2i(1, 1),
 		"voxel_props": [
 			{"def": "crate_full", "gu": [2, 2], "storey": 0, "vox_offset": [0, 0], "rot": 0},
 			{"def": "crate_full", "gu": [2, 2], "storey": 0, "vox_offset": [0, 0], "rot": 0}  # Collision

@@ -10,6 +10,17 @@
 extends SceneTree
 
 const TextureResolverClass = preload("res://godot/scripts/systems/texture_resolver.gd")
+
+
+## ASSET_TREE_REFORM (2026-08-21) moved every facade from a flat
+## `ASSETS/materials/facade_<id>.png` into `ASSETS/materials/<id>/facade_<id>.png`,
+## and `TextureResolver.resolve()` grew a second argument for that folder. This
+## file kept calling the one-argument form, so every lookup went to the old flat
+## path, found nothing, and 6 of its 7 tests reported "Failed to resolve facade"
+## — while the process still exited 0, so nothing anywhere went red. Fixed
+## 2026-09-01 in the same sweep that found it.
+func _material_folder_of(facade_id: String) -> String:
+	return facade_id.trim_prefix("facade_")
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
 const BakeCompositorClass = preload("res://godot/scripts/systems/bake_compositor.gd")
 const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
@@ -56,7 +67,7 @@ func _test_crop_key_collision() -> void:
 	var compositor = BakeCompositorClass.new()
 	
 	var facade_id = "facade_concrete"
-	var resolved = resolver.resolve(facade_id)
+	var resolved = resolver.resolve(facade_id, _material_folder_of(facade_id))
 	var facade = resolved.image if resolved else null
 	if facade == null:
 		_add_result("TEST 1a", false, "Failed to resolve facade")
@@ -80,7 +91,7 @@ func _test_sparse_usage_crop() -> void:
 	var compositor = BakeCompositorClass.new()
 	
 	var facade_id = "facade_concrete"
-	var resolved = resolver.resolve(facade_id)
+	var resolved = resolver.resolve(facade_id, _material_folder_of(facade_id))
 	var facade = resolved.image if resolved else null
 	if facade == null:
 		_add_result("TEST 1b", false, "Failed to resolve facade")
@@ -141,7 +152,7 @@ func _test_transparency() -> void:
 	
 	# Resolve facade
 	var facade_id = "facade_concrete"
-	var resolved = resolver.resolve(facade_id)
+	var resolved = resolver.resolve(facade_id, _material_folder_of(facade_id))
 	var facade = resolved.image if resolved else null
 	if facade == null:
 		_add_result("TEST 1", false, "Failed to resolve facade")
@@ -210,7 +221,7 @@ func _test_invalidation() -> void:
 	var compositor = BakeCompositorClass.new()
 	
 	var facade_id = "facade_stone"
-	var resolved = resolver.resolve(facade_id)
+	var resolved = resolver.resolve(facade_id, _material_folder_of(facade_id))
 	var facade = resolved.image if resolved else null
 	if facade == null:
 		_add_result("TEST 2", false, "Failed to resolve facade")
@@ -255,7 +266,7 @@ func _test_warm_boot_budget() -> void:
 	
 	for material_id in materials:
 		var facade_id = "facade_" + material_id
-		var resolved = resolver.resolve(facade_id)
+		var resolved = resolver.resolve(facade_id, _material_folder_of(facade_id))
 		var facade = resolved.image if resolved else null
 		if facade == null:
 			print("[WARN] Could not resolve %s" % facade_id)
@@ -280,7 +291,7 @@ func _test_warm_boot_budget() -> void:
 	
 	for material_id in materials:
 		var facade_id = "facade_" + material_id
-		var resolved = resolver.resolve(facade_id)
+		var resolved = resolver.resolve(facade_id, _material_folder_of(facade_id))
 		var facade = resolved.image if resolved else null
 		if facade == null:
 			continue
@@ -315,7 +326,7 @@ func _test_format_migration() -> void:
 	compositor.clear_disk_cache()
 
 	var facade_id = "facade_metal"
-	var resolved = resolver.resolve(facade_id)
+	var resolved = resolver.resolve(facade_id, _material_folder_of(facade_id))
 	var facade = resolved.image if resolved else null
 	if facade == null:
 		_add_result("TEST 5", false, "Failed to resolve facade")
@@ -362,7 +373,7 @@ func _test_corruption_safety() -> void:
 	compositor.clear_disk_cache()
 	
 	var facade_id = "facade_metal"
-	var resolved = resolver.resolve(facade_id)
+	var resolved = resolver.resolve(facade_id, _material_folder_of(facade_id))
 	var facade = resolved.image if resolved else null
 	if facade == null:
 		_add_result("TEST 4", false, "Failed to resolve facade")

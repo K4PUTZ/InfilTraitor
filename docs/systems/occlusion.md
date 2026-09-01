@@ -985,6 +985,42 @@ containers with a self-consistent origin that never reaches a layer, a slab id
 in a real registry, a bake row, a hash or a screen position — which is the line
 this sweep drew between "residue" and "a local coordinate".
 
+### The invisible tier (2026-09-01) — the eight files outside the selftest glob
+
+`run_selftests.py` globs `*_selftest.gd` and prints a NOT RUN list for the eight
+`*_test.gd` / `*_tests.gd` files that fall outside it. Nothing gates those, and
+two of them had gone red without a single symptom anywhere — both by an
+unrelated, correctly-executed reform elsewhere in the tree:
+
+| File | Was | Broken by | Now |
+|---|---|---|---|
+| `bake_cache_test.gd` | **1 PASS, 6 FAIL**, exit 0 | ASSET_TREE_REFORM (2026-08-21) gave `TextureResolver.resolve()` a material-folder argument; this file kept calling the one-arg form, so every lookup went to the old flat `ASSETS/materials/facade_<id>.png` and found nothing | 7/7 |
+| `occlusion_set_test.gd` | **2/5**, exit 0, and one of the two "passes" was `✓ Cardinality reasonable: 0 cells (expect dozens)` | LEVEL-RENUMBER (2026-08-24): the fixture built voxels at levels 0..5, which `compute_edge_occlusion()` turns into a screen rectangle ~1600 px from the agent's, so nothing triggered and the set came back EMPTY | 5/5, real counts (4 / 53 / 31 cells) |
+| `prop_01_tests.gd` | **4/7** | `PropDef.footprint_gus` is `Array[Vector2i]` and `tags` is `Array[String]` — untyped literals cannot be assigned; and `MapCompiler.compile()` takes `inner_size`/`agent_start`/`props[].cell` as `Vector2i`, which `FileMapSource._convert_from_json_compatible()` coerces before calling in | 7/7 |
+| `panel_base_test.gd` | passed, but **leaked** two orphan nodes | never freed; invisible because LEAK-GATE-01 only runs inside the glob | freed |
+
+Both regressions predate this session and both files had a written record of
+passing (`RESUMO_SESSAO_2026-07-18` "bake_cache_test 7/7",
+`RESUMO_SESSAO_2026-08-16` "occlusion_set_test passes 5/5"). Nothing regressed
+them on purpose; nothing could tell anyone they had.
+
+`occlusion_set_test`'s cardinality guard also **accepted the degenerate answer**
+— `< 5 cells` printed a ⚠ and returned true. That is how it reported a healthy
+green on an empty set for as long as the fixture was broken, twice (AUDIT-01,
+then the renumber). It fails now; red-before-green: putting the fixture back on
+pre-renumber levels gives 1/5 with `✗ Occlusion set is empty or near-empty (0)`.
+
+**All eight now pass** except `version_info_test.gd`, which cannot load headless
+(`VersionInfo` autoload). Measured under the real runner by temporarily copying
+each into the glob: `bake_cache`, `input_controller`, `mapfile_roundtrip`,
+`resolver_hardening` and `panel_base` (after the leak fix) all come back clean,
+so **five of them could be renamed into `*_selftest.gd` today** and finally be
+gated. `occlusion_set_test` needs the same check on a real rename (the probe's
+only failure was `class_name OcclusionSetTest` clashing with the copy).
+`prop_01_tests` and `version_info_test` cannot — they need autoloads `--script`
+does not instantiate. That rename is a process change, so it awaits the
+Director's call rather than being taken here.
+
 ### MAT-COHERENCE-01 (2026-09-01) — is anything instantiated without art?
 
 Director, on reading the damage gallery's CEILING row: *"tem alguns materiais que

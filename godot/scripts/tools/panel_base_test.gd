@@ -58,6 +58,11 @@ func test_panel_base() -> void:
 	assert_true(panel.has_signal("opened"), "PanelBase has 'opened' signal")
 	assert_true(panel.has_signal("closed"), "PanelBase has 'closed' signal")
 	
+	## LEAK-GATE-01 (fixed 2026-09-01): this node is never added to the tree, so
+	## nothing else will ever free it — the runner's leak gate fails the whole
+	## suite on it. `free()` rather than `queue_free()` for the same reason: an
+	## orphan has no tree to process the deferred delete before quit().
+	panel.free()
 	print("  ✓ PanelBase tests passed")
 
 
@@ -84,6 +89,7 @@ func test_window_base() -> void:
 	window.close()
 	assert_eq(window.is_open(), false, "WindowBase.is_open() false after close()")
 	
+	window.free()  ## LEAK-GATE-01 — orphan node, same as TEST 1
 	print("  ✓ WindowBase tests passed")
 
 

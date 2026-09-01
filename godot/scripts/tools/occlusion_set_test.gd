@@ -36,8 +36,17 @@ func _slices_from_cells(cells: Array) -> Array:
 			edge_id,
 			1             ## storey_count
 		)
-		for level in range(FIXTURE_LEVELS):
-			slice.voxels.append(Voxel.new(cell, level, slice))
+		## LEVEL-RENUMBER (fixed 2026-09-01) — and this is AUDIT-01 happening a
+		## SECOND time, the same way: the fixture built its voxels at levels 0..5,
+		## which the renumber turned into a tower eighty levels under the ground
+		## plane. compute_edge_occlusion() converts a level to a screen Y through
+		## `min_level - PLAYABLE_LEVEL`, so the edge's rectangle landed ~1600 px
+		## from the agent's, nothing triggered, and the set came back EMPTY — the
+		## exact vacuous-pass shape this file's own header was written about.
+		## Levels are derived from the ground plane now (CLAUDE.md rule 9).
+		for level_offset in range(FIXTURE_LEVELS):
+			slice.voxels.append(Voxel.new(
+				cell, GeometryCoordsMod.storey_level_base(0) + level_offset, slice))
 		slices.append(slice)
 	return slices
 
@@ -275,9 +284,16 @@ func _test_cardinality() -> bool:
 	if occluded.size() > 1000:
 		print("    ✗ Occlusion set too large (%d) — likely selected whole storey by z_index" % occluded.size())
 		return false
-	elif occluded.size() < 5:
-		print("    ⚠ Occlusion set very small (%d) — may be tuning issue, but not a bug" % occluded.size())
-		# Not a failure, just a warning
+	## An EMPTY or near-empty set used to pass here with a warning, which is how
+	## this guard reported "✓ Cardinality reasonable: 0 cells (expect dozens)" for
+	## as long as the fixture was broken — twice now (AUDIT-01, then the level
+	## renumber). A guard that accepts the degenerate answer is not a guard.
+	## The floor is deliberately loose (5, against 31 measured on 2026-09-01):
+	## it exists to catch "nothing was computed at all", not to pin a tuning
+	## number that any legitimate change to the trigger geometry would move.
+	if occluded.size() < 5:
+		print("    ✗ Occlusion set is empty or near-empty (%d) — the fixture produced nothing to test" % occluded.size())
+		return false
 	
 	print("    ✓ Cardinality reasonable: %d cells (expect dozens)" % occluded.size())
 	return true

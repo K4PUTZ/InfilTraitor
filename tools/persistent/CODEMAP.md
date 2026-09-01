@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**224 scripts · 73240 lines total** (under `godot/scripts/`)
+**224 scripts · 73289 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2923,7 +2923,7 @@ extends `SceneTree` · 968 lines
 
 ### `bake_cache_test.gd`
 
-extends `SceneTree` · 430 lines
+extends `SceneTree` · 441 lines
 
 `godot/scripts/tools/bake_cache_test.gd`
 
@@ -3828,7 +3828,7 @@ extends `SceneTree` · 187 lines
 
 ### `occlusion_set_test.gd`
 
-`class_name OcclusionSetTest` · extends `SceneTree` · 283 lines
+`class_name OcclusionSetTest` · extends `SceneTree` · 299 lines
 
 `godot/scripts/tools/occlusion_set_test.gd`
 
@@ -3843,7 +3843,7 @@ extends `SceneTree` · 187 lines
 
 ### `panel_base_test.gd`
 
-extends `SceneTree` · 171 lines
+extends `SceneTree` · 177 lines
 
 `godot/scripts/tools/panel_base_test.gd`
 
@@ -3914,7 +3914,7 @@ extends `SceneTree` · 97 lines
 
 ### `prop_01_tests.gd`
 
-extends `SceneTree` · 366 lines
+extends `SceneTree` · 382 lines
 
 `godot/scripts/tools/prop_01_tests.gd`
 

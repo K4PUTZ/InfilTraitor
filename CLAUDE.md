@@ -217,7 +217,19 @@ These must not be broken:
    placement mechanism** (2026-07-15 amendment) — a future Slab renderer
    has no excuse to invent a parallel image-compositing path.
 
-**Enforcement:** rules 1–5 are pre-commit-hook-checked
+9. **The ground plane is never a literal level number.** `VoxelRenderer._layers`
+   is keyed by ABSOLUTE level and the ground plane is `PLAYABLE_LEVEL` (80), so
+   `get_layer(0)` — and the pre-renumber floor levels `-1` / `-2` — return null
+   on every map. Nothing errors: the caller takes its own null branch and does
+   nothing at all, forever. Ask `renderer.ground_plane_level()` for the anchor
+   layer and `renderer.relative_level(level)` for a per-level offset. Cost when
+   ignored: four live defects found together on 2026-09-01 (OCC-FIX-03) — the
+   occlusion wireframe drawing a wedge to the scene origin, the dev occlusion
+   overlay painted in one pile there, and three props whose `_apply_z_index()`
+   had become a silent no-op. Hook-checked as **L1 `ground-plane-not-zero`**
+   (`voxel_renderer.gd` is exempt — it owns the store).
+
+**Enforcement:** rules 1–5 and 9 are pre-commit-hook-checked
 (`check_invariants.py`); 6–8 rely on review.
 
 **Banned terms & eliminated patterns** (`SUBCUBE_*`, `WallContainer`,

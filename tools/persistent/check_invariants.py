@@ -15,6 +15,8 @@ Checks implemented:
   R5  `_alert_meter` is only *accumulated* inside `_apply_tic_result()`
   B1  Baking: voxel_renderer is the sole caller of set_cell() (branch exclusivity)
   B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
+  L1  LEVEL-RENUMBER: `get_layer(0)` (or any negative literal) is never the
+      ground plane — ask `ground_plane_level()`
 
 Not mechanized (documented for honesty):
   R6  mission structure vs narrative — no such code exists yet
@@ -47,6 +49,17 @@ R3_EDGE_KEY = re.compile(r"^\s*(static\s+)?func\s+_edge_key\b")
 R4_STATE_ASSIGN = re.compile(r"^\s+state\s*=(?!=)")
 B1_VOXEL_LAYER_SET_CELL = re.compile(r"_voxel_layers?\[?\s*[.\[]\s*set_cell\s*\(")
 B4_FNV_CONST = re.compile(r"\b(2166136261|16777619)\b")
+# L1: the pre-LEVEL-RENUMBER ground/floor level numbers, still spelled as literals.
+# `_layers` is keyed by ABSOLUTE level and the ground plane moved to PLAYABLE_LEVEL
+# (80) on 2026-08-24, so `get_layer(0)` — and the old floor levels -1 / -2 — return
+# null on every map. Nothing errors: the caller takes its own null branch and does
+# nothing at all, forever. That cost four live defects, found together on 2026-09-01
+# (OCC-FIX-03): a wireframe wedge drawn to the scene origin, a dev overlay painted
+# in one pile there, and three props whose `_apply_z_index()` became a silent no-op.
+# Deliberately narrow — a literal 0 or a negative one, which are exactly the numbers
+# that used to mean "ground" and now mean "nothing". A selftest that builds a fixture
+# at some arbitrary positive level is not making this mistake and is not flagged.
+L1_GROUND_LAYER_LITERAL = re.compile(r"\bget_layer\s*\(\s*(0|-\s*\d+)\s*\)")
 FUNC_DECL = re.compile(r"^func\s+(\w+)\s*\(")
 
 
@@ -145,6 +158,20 @@ def check_file(path: Path) -> list[Violation]:
                     rel, lineno,
                     "_alert_meter may only accumulate inside _apply_tic_result()",
                 ))
+
+        # L1 — the ground plane is ground_plane_level(), never a literal 0 / -N.
+        # voxel_renderer.gd owns the level→layer store, so it is the one file
+        # allowed to speak in raw level numbers. Comments are skipped: the fix
+        # commits quote the broken call in their own headers.
+        if (name != "voxel_renderer.gd"
+                and not line.lstrip().startswith("#")
+                and L1_GROUND_LAYER_LITERAL.search(line)):
+            out.append(Violation(
+                "L1 ground-plane-not-zero",
+                rel, lineno,
+                "get_layer(0)/get_layer(-N) is null since LEVEL-RENUMBER — "
+                "use get_layer(<renderer>.ground_plane_level()) (and relative_level() for offsets)",
+            ))
 
         # B1 — _voxel_layers (voxel grid) only modified via voxel_renderer._set_voxel_cell()
         if B1_VOXEL_LAYER_SET_CELL.search(line) and name != "voxel_renderer.gd":

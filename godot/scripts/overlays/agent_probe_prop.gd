@@ -228,10 +228,16 @@ func update_cell(p_gu_cell: Vector2i) -> void:
 ## Sorts like the level-0 geometry it stands on, NOT "always on top". OCC-03's
 ## always-on-top rule is the agent's own policy and is explicitly agent-only —
 ## copying it onto a prop is the D22-FOLLOWUP mistake, and this probe is a prop.
+##
+## OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE. `get_layer(0)` was the ground
+## plane before the renumber moved it to PLAYABLE_LEVEL (80); after it, that lookup
+## is null on every map and this was a silent no-op that never set z_index. Ask the
+## renderer where its own ground plane is; never name the level.
 func _apply_z_index() -> void:
 	if room == null or room._voxel_renderer == null:
 		return
-	var ground_layer: TileMapLayer = room._voxel_renderer.get_layer(0)
+	var renderer = room._voxel_renderer
+	var ground_layer: TileMapLayer = renderer.get_layer(renderer.ground_plane_level())
 	if ground_layer != null:
 		z_index = ground_layer.z_index
 

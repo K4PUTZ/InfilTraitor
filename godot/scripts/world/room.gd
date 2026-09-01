@@ -4310,8 +4310,12 @@ func _debug_probe_voxel_alignment() -> void:
 	## Uses corrected formula: adjusted = map_to_local() - half_tile_size
 	if not debug_probe_voxel_alignment:
 		return
-	if _voxel_renderer == null or _voxel_renderer.get_layer(0) == null:
-		print_debug("[SLICE-02 probe] ABORT: no voxel renderer or layer 0")
+	## OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE: the ground plane is
+	## `_voxel_renderer.ground_plane_level()`, not 0, so this probe had been
+	## aborting on every map since the renumber. Never name the level.
+	if _voxel_renderer == null \
+			or _voxel_renderer.get_layer(_voxel_renderer.ground_plane_level()) == null:
+		print_debug("[SLICE-02 probe] ABORT: no voxel renderer or ground-plane layer")
 		return
 
 	print_debug("[SLICE-02 probe] ===== STARTING ALIGNMENT CHECK =====")
@@ -4335,7 +4339,7 @@ func _debug_probe_voxel_alignment() -> void:
 	var floor_tile_size = floor_ts.tile_size
 	var floor_half_size = Vector2(floor_tile_size) / 2.0
 
-	var vlayer = _voxel_renderer.get_layer(0)
+	var vlayer = _voxel_renderer.get_layer(_voxel_renderer.ground_plane_level())
 	var voxel_ts = vlayer.tile_set
 	var voxel_tile_size = voxel_ts.tile_size
 	var voxel_half_size = Vector2(voxel_tile_size) / 2.0

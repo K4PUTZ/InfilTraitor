@@ -247,10 +247,20 @@ func update_cell(p_gu_cell: Vector2i) -> void:
 ## flight is exactly last time's bug, one level down: not "wrongly always on
 ## top" but "wrongly always at the bottom," while it is nowhere near the
 ## bottom.
+##
+## OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE, and it had quietly undone
+## the whole rule above. This asked for `get_layer(0)` back when the ground plane
+## WAS level 0; since the renumber put it at PLAYABLE_LEVEL (80) that lookup is
+## null on every map, so this was a silent no-op — which means `set_airborne(false)`
+## at the end of a throw restored NOTHING and the grenade kept the flight z_index
+## (`get_max_voxel_z_index() + 1`) while resting on the floor. D22-FOLLOWUP's
+## "always on top" bug, reintroduced by a number, not by a decision. Ask the
+## renderer where its own ground plane is; never name the level.
 func _apply_z_index() -> void:
 	if room == null or room._voxel_renderer == null:
 		return
-	var ground_layer: TileMapLayer = room._voxel_renderer.get_layer(0)
+	var renderer = room._voxel_renderer
+	var ground_layer: TileMapLayer = renderer.get_layer(renderer.ground_plane_level())
 	if ground_layer != null:
 		z_index = ground_layer.z_index
 

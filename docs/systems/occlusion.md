@@ -927,11 +927,36 @@ y 116 (21 levels × 20 px = 420). Ground (level 80) is therefore y 576, and
 the extrapolation for level 104 gives 576 − 24 × 20 = **96**, exactly one
 step above level 103's 116.
 
-⚠️ `get_layer(0)` survives at four more sites outside this system —
-`floating_collectible.gd`, `grenade_prop.gd` and `agent_probe_prop.gd`
-(all three `_apply_z_index()`, which now early-returns and never sets
-`z_index`) and `room.gd::_debug_probe_voxel_alignment()` (flag-gated, aborts).
-Same defect class, not touched by OCC-FIX-03 — out of its scope.
+**The rest of the sweep** (Director, 2026-09-01: *"sim, vamos consertar tudo"*).
+`get_layer(0)` survived at five more sites outside this system, all the same
+silent-null defect, all fixed in the same pass:
+
+| Site | What it had been doing |
+|---|---|
+| `grenade_prop.gd::_apply_z_index()` | Silent no-op — so `set_airborne(false)` at the end of a throw restored nothing and a **resting** grenade kept the flight z_index (`get_max_voxel_z_index() + 1`), i.e. drawn on top of every wall. D22-FOLLOWUP's own bug, reintroduced by a number. |
+| `floating_collectible.gd::_apply_z_index()` | Returned before the depth sort ran; `z_index` never set at all. Dormant (`TEST_ZONE_COLLECTIBLES_ENABLED = false`). |
+| `agent_probe_prop.gd::_apply_z_index()` | Same. Dormant (`TEST_ZONE_AGENT_PROBE_BRACKET` is empty). |
+| `room.gd::_debug_probe_voxel_alignment()` | Aborted on every map since the renumber. Flag-gated. |
+| `prop_01_tests.gd` (×2) | Read a null layer, so both voxel counts came out 0 and the equality assert passed on `0 == 0`. |
+
+Measured on a real PLAYGROUND `throw_event` boot, with the two dormant props
+temporarily enabled so all three ran their real path — one run, both answers:
+`get_layer(0)` = **null** for every one of them, `ground_plane_level()` = 80,
+and the resting grenade's z_index is now **10** (the ground layer's) rather
+than 34 (`max_voxel_z + 1`).
+
+**Pinned by a new invariant, L1 `ground-plane-not-zero`**
+(`tools/persistent/check_invariants.py`, so it runs in the pre-commit hook): a
+literal `get_layer(0)` or `get_layer(-N)` anywhere outside `voxel_renderer.gd`
+is a violation. Deliberately narrow — 0 and negatives are exactly the numbers
+that used to mean "ground" and now mean "nothing"; a fixture built at some
+arbitrary positive level is not making this mistake. Verified red-before-green.
+
+⚠️ `prop_01_tests.gd` still reports **4/7**, unchanged by this fix: its
+criterion [3] crashes earlier on a `PropDef.footprint_gus` type mismatch, and
+[4]/[6] on `map_compiler.gd:63`, so the corrected lines are not even reached.
+Pre-existing rot in a file the selftest runner already reports as NOT RUN —
+untouched here, and separate from this defect class.
 
 ### Capture instruments (env-gated, zero cost when unset)
 

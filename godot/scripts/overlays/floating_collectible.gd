@@ -395,7 +395,13 @@ func _apply_z_index() -> void:
 	if room == null or room._voxel_renderer == null:
 		return
 	var voxel_renderer = room._voxel_renderer
-	var ground_layer: TileMapLayer = voxel_renderer.get_layer(0)
+	## OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE. This asked for
+	## `get_layer(0)` back when the ground plane WAS level 0; since the renumber
+	## put it at PLAYABLE_LEVEL (80) that lookup is null on every map, so this
+	## whole function returned here and NEVER SET z_index at all — silently, with
+	## no error, leaving the prop wherever its node default put it. Ask the
+	## renderer where its own ground plane is; never name the level.
+	var ground_layer: TileMapLayer = voxel_renderer.get_layer(voxel_renderer.ground_plane_level())
 	if ground_layer == null:
 		return
 	var base_z: int = ground_layer.z_index

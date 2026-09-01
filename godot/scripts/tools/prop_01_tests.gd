@@ -154,9 +154,12 @@ func test_criterion_3_render_prop_footprint() -> void:
 	for r in [renderer1, renderer2]:
 		r.setup(visual_grid_offset)
 	
-	# Render via render_block
+	# Render via render_block. OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE:
+	# storey 0 renders at `ground_plane_level()`, not at level 0. Asking for
+	# layer 0 returned null, both counts came out 0, and the equality check
+	# passed on 0 == 0 before the next assert failed on "expected 64, got 0".
 	renderer1.render_block(Vector2i(5, 5), 0, 1, "concrete")
-	var layer1 = renderer1.get_layer(0)
+	var layer1 = renderer1.get_layer(renderer1.ground_plane_level())
 	var count1 = 0
 	if layer1 != null:
 		for x in range(8):
@@ -167,7 +170,7 @@ func test_criterion_3_render_prop_footprint() -> void:
 	
 	# Render via render_prop
 	renderer2.render_prop(Vector2i(5, 5), 0, prop_def)
-	var layer2 = renderer2.get_layer(0)
+	var layer2 = renderer2.get_layer(renderer2.ground_plane_level())
 	var count2 = 0
 	if layer2 != null:
 		for x in range(8):

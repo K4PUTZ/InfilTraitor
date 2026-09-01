@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**224 scripts · 73018 lines total** (under `godot/scripts/`)
+**224 scripts · 73047 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -980,7 +980,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `agent_probe_prop.gd`
 
-`class_name AgentProbeProp` · extends `Sprite2D` · 314 lines
+`class_name AgentProbeProp` · extends `Sprite2D` · 320 lines
 
 `godot/scripts/overlays/agent_probe_prop.gd`
 
@@ -1230,7 +1230,7 @@ extends `Node2D` · 143 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 614 lines
+`class_name FloatingCollectible` · extends `Node2D` · 620 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1245,7 +1245,7 @@ extends `Node2D` · 143 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 363 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 373 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -3914,7 +3914,7 @@ extends `SceneTree` · 97 lines
 
 ### `prop_01_tests.gd`
 
-extends `SceneTree` · 363 lines
+extends `SceneTree` · 366 lines
 
 `godot/scripts/tools/prop_01_tests.gd`
 
@@ -4984,7 +4984,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8707 lines
+extends `Node2D` · 8711 lines
 
 `godot/scripts/world/room.gd`
 

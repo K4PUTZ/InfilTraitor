@@ -929,7 +929,9 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	for e in view_layout.get("blocked_edges", []):
 		blocked_edges.append(e)
 	_current_blocked_edges = blocked_edges.duplicate(true)
-	movement_overlay.set_blocked_edges(blocked_edges)
+	## G3 STAGE D: the movement set, not the raw wall array — an intact glass pane
+	## has to block from the first frame, not from the first refresh.
+	movement_overlay.set_blocked_edge_keys(_movement_edge_set())
 	path_preview.setup(floor_layer, VISUAL_GRID_OFFSET)
 	path_preview.z_index = 6
 	selection_overlay.floor_layer = floor_layer
@@ -1612,7 +1614,7 @@ func _set_perspective(direction: String) -> void:
 		for e in view_layout.get("blocked_edges", []):
 			blocked_edges.append(e)
 		_current_blocked_edges = blocked_edges.duplicate(true)
-		movement_overlay.set_blocked_edges(blocked_edges)
+		movement_overlay.set_blocked_edge_keys(_movement_edge_set())
 		
 		## Sync new game state to TurnController after perspective change
 		if _turn_controller != null:
@@ -2118,8 +2120,30 @@ func _on_agent_move_finished(_cell: Vector2i) -> void:
 	_refresh_tactical_state()
 
 
+## GLASS G3 STAGE D / G-D8 — the edge set the FEET obey.
+##
+## `_current_blocked_edges` is what everything used to read, and it feeds vision,
+## detection, noise and light as well as movement. Glass must block the body
+## without blocking the eye (G-D7), so movement gets its own set: the same walls,
+## plus every glass pane that is still whole. `build_movement_edge_set()` asks
+## `PassageQuery` per pane, so a broken one simply stops being added and the
+## passage opens — no second record of what is broken, and nothing to keep in sync.
+##
+## Recomputed rather than cached because a pane can break mid-turn: this is called
+## from `_refresh_tactical_state()`, which already runs after every agent move and
+## at turn boundaries.
+func _movement_edge_set() -> Dictionary:
+	if enemy_phase_controller == null:
+		return {}
+	if _edge_registry == null:
+		return enemy_phase_controller.build_blocked_edge_set(_current_blocked_edges)
+	return enemy_phase_controller.build_movement_edge_set(
+		_current_blocked_edges, _edge_registry.glass_edge_keys(), _edge_registry)
+
+
 func _refresh_tactical_state() -> void:
 	movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
+	movement_overlay.set_blocked_edge_keys(_movement_edge_set())
 	movement_overlay.rebuild(agent.cell, turn_manager.get_max_move_points())
 	_update_selected_preview()
 	_update_enemy_visibility()

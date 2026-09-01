@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**226 scripts · 74270 lines total** (under `godot/scripts/`)
+**226 scripts · 74433 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -925,7 +925,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `movement_overlay.gd`
 
-`class_name MovementOverlay` · extends `Node2D` · 260 lines
+`class_name MovementOverlay` · extends `Node2D` · 272 lines
 
 `godot/scripts/navigation/movement_overlay.gd`
 
@@ -946,6 +946,7 @@ extends `ConfirmationDialog` · 64 lines
 - `func setup(tile_layer: TileMapLayer, offset: Vector2, points_per_ap: int = 3) -> void:`
 - `func set_blocked_cells(cells: Array[Vector2i]) -> void:`
 - `func set_blocked_edges(edges: Array[Dictionary]) -> void:`
+- `func set_blocked_edge_keys(keys: Dictionary) -> void:`
 - `func rebuild(start_cell: Vector2i, new_max_path_cost: int) -> void:`
 - `func clear_overlay() -> void:`
 - `func set_highlight_ap(ap: int) -> void:`
@@ -2147,7 +2148,7 @@ extends `Node2D` · 43 lines
 
 ### `enemy_phase_controller.gd`
 
-`class_name EnemyPhaseController` · extends `Node` · 80 lines
+`class_name EnemyPhaseController` · extends `Node` · 131 lines
 
 `godot/scripts/systems/enemy_phase_controller.gd`
 
@@ -2155,8 +2156,9 @@ extends `Node2D` · 43 lines
 - `DEFAULT_VISION_RANGE` = `6`
 
 **Public API**
-- `func run_single_guard_turn( guard, player_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i, occupied: Dictionary, tic_callback: Callable,   ## room._apply_tic_result noise_callback: Callable  ## M2-14: room._on_guard_emits_noise (guard noise emission) ) -> Dictionary:`
+- `func run_single_guard_turn( guard, player_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i, occupied: Dictionary, tic_callback: Callable,   ## room._apply_tic_result noise_callback: Callable,  ## M2-14: room._on_guard_emits_noise (guard noise emission) ## G3 STAGE D — the set the guard's FEET obey, which since G-D8 is not the ## one its eyes do. Empty means "same as `blocked_edges`", so every caller ## that has not been split behaves exactly as it did. movement_edges: Dictionary = {} ) -> Dictionary:`
 - `func build_blocked_edge_set(edges: Array[Dictionary]) -> Dictionary:`
+- `func build_movement_edge_set(edges: Array[Dictionary], glass_edges: Dictionary, edge_registry) -> Dictionary:`
 
 ---
 
@@ -3915,7 +3917,7 @@ extends `SceneTree` · 177 lines
 
 ### `passage_query_selftest.gd`
 
-extends `SceneTree` · 334 lines
+extends `SceneTree` · 405 lines
 
 `godot/scripts/tools/passage_query_selftest.gd`
 
@@ -3940,6 +3942,7 @@ extends `SceneTree` · 334 lines
 - `func test_standing_needs_the_two_runs_to_OVERLAP() -> void:`
 - `func test_half_thickness_edge_opens_on_its_only_face() -> void:`
 - `func test_clear_storeys_reports_where_ascending() -> void:`
+- `func test_glass_blocks_the_body_until_it_breaks() -> void:`
 
 ---
 
@@ -4790,7 +4793,7 @@ extends `Node2D` · 34 lines
 
 ### `turn_controller.gd`
 
-`class_name TurnController` · 376 lines
+`class_name TurnController` · 381 lines
 
 `godot/scripts/world/controllers/turn_controller.gd`
 
@@ -5032,7 +5035,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8711 lines
+extends `Node2D` · 8735 lines
 
 `godot/scripts/world/room.gd`
 

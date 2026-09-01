@@ -290,7 +290,12 @@ func _run_enemy_phase() -> void:
 			_room_size,
 			occupied,
 			_apply_tic_result,   ## passes the callback
-			_guard_coordinator._on_guard_emits_noise if _guard_coordinator != null else func(_a, _b): pass   ## M2-14: noise callback
+			_guard_coordinator._on_guard_emits_noise if _guard_coordinator != null else func(_a, _b): pass,   ## M2-14: noise callback
+			## G3 STAGE D — the guard walks the MOVEMENT set (an intact pane stops
+			## it) while `blocked_edges` above still governs what it can SEE. Asked
+			## of room rather than cached: a pane the agent broke this turn must
+			## open for the guards in the same turn.
+			room._movement_edge_set() if room != null and room.has_method("_movement_edge_set") else {}
 		)
 		max_severity = maxi(max_severity, int(report.get("max_severity", 0)))
 

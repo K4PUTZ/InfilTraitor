@@ -731,7 +731,60 @@ skylights most, because the fall rule is the thing all four share, it needs no
 art, and it is the only one of them that can be pinned by a selftest before a
 single pixel exists.
 
-**Stage D** (still open) — G-D8's passage / movement-blocking work.
+✅ **Stage D — BUILT 2026-09-01 (the split and the opening; the detection/light
+bump is the remaining third).**
+
+**The problem was a conflation, not a missing flag.** `_current_blocked_edges`
+fed MOVEMENT, VISION, DETECTION, NOISE and LIGHT from one set, and a
+half-thickness glass panel entered none of it — so agent and guards walked
+through intact glass, and "just add glass to blocked_edges" would have fixed the
+feet by blinding every guard through every window, which is exactly what G-D7
+forbids.
+
+`EnemyPhaseController.build_movement_edge_set(edges, glass_edges, registry)` is a
+SECOND set, used only where feet are involved:
+
+| consumer | set |
+|---|---|
+| `MovementOverlay` (the agent), `GuardPathfinder` via `choose_next_cell()` / `move_to_cell_animated()` | **movement** |
+| `can_see_cell()`, `TicSystem` | vision |
+| `NoiseSystem` propagation | vision |
+| `ShadowProjector` | vision |
+
+And it answers the other half of G-D8 in the same pass by asking **`PassageQuery`
+rather than a boolean**: a glass edge blocks the body only while its pane is
+still `PassageClass.NONE`. A broken pane simply stops being added, so the passage
+opens with no second record of what is broken and nothing to keep in sync.
+Recomputed in `_refresh_tactical_state()` — which already runs after every agent
+move — so a pane broken mid-turn opens for the guards in that same turn.
+
+`run_single_guard_turn()` takes the movement set as an optional argument
+defaulting to `blocked_edges`, so every caller not yet split behaves exactly as
+before. `MovementOverlay.set_blocked_edge_keys()` is now its single writer;
+`set_blocked_edges(array)` survives as the wrapper, because the `{from, to}`
+array shape cannot express a glass panel at all.
+
+**Real map, GLASS, one sniper shot at the big pane:**
+
+    boot          glass edges=14 | vision blocks=88 | movement blocks=102 (+14 glass) | panes open=0
+    after break   5 of 6 pane edge(s) OPEN [NONE, STANDING x5] | glass edges still blocking movement: 9
+
+Intact glass added exactly its 14 edges to movement and none to vision; the
+shatter (882 of 1152 voxels) opened five of the pane's six edges to STANDING, and
+the movement set dropped 14 → 9. The one edge still NONE is the column outside
+the flood radius — a partial break, which is G-D12 working.
+
+`passage_query_selftest` [10] pins both halves on one edge with nothing changing
+between them but the glass: intact blocks movement and NOT vision, broken drops
+out, and the movement set's verdict is asserted to agree with `PassageQuery`'s own
+so the two cannot drift apart.
+
+⚠️ **Still open, the third part of G-D8:** *"não influencia tanto na luz, apenas
+aumenta um pouco de intensidade e sobe um grau de detecção"* — the light bump and
+the +1 detection step when a passage opens. Both need the opening to be an EVENT,
+and what landed here is a per-turn recomputed SET, which deliberately has no
+memory of the moment it changed. That is the right shape for passage and the
+wrong one for a one-off bump, so it is its own piece rather than a line bolted on.
 
 ### 5.2 Remnants on the frame
 

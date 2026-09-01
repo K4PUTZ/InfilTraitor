@@ -38,6 +38,7 @@ func _init() -> void:
 	test_the_criterion_is_the_amount_not_the_shape()
 	test_survivors_inside_the_opening_are_scenery()
 	test_standing_needs_the_two_runs_to_OVERLAP()
+	test_glass_blocks_the_body_until_it_breaks()
 	test_half_thickness_edge_opens_on_its_only_face()
 	test_clear_storeys_reports_where_ascending()
 
@@ -331,4 +332,74 @@ func test_clear_storeys_reports_where_ascending() -> void:
 		_pass("clear_storeys() = %s — ascending, and independent of the order they were destroyed in" % str(open))
 	else:
 		_fail("clear_storeys() = %s, expected [0, 2]" % str(open))
+	print("")
+
+
+
+## GLASS G3 STAGE D / G-D8 — THE MOVEMENT SET.
+##
+## Director, 2026-08-31: *"o agente consegue atravessar o vidro, precisamos
+## implementar a questão da abertura de passagem."* A half-thickness glass panel
+## never enters `blocked_edges`, so agent and guards walked through intact glass.
+##
+## Both halves of the ruling in one test, on ONE edge, with nothing changing
+## between them but the glass itself:
+##   · intact  -> the movement set blocks it, the vision set does NOT (G-D7: it
+##                stops the body, never the eye)
+##   · broken  -> the movement set stops blocking it, with no separate bookkeeping
+##
+## The vision half is the one worth asserting explicitly: adding glass to the old
+## shared `blocked_edges` would have "fixed" movement and silently made guards
+## blind through windows, which is precisely what G-D7 forbids.
+func test_glass_blocks_the_body_until_it_breaks() -> void:
+	print("[10] G-D8: intact glass stops the body and not the eye; broken glass opens\n")
+
+	var registry := EdgeRegistry.new()
+	var edge := Edge.between(Vector2i(0, 0), Vector2i(0, 1), 1, "glass")
+	SliceGenerator.generate([edge], registry)
+	_fixtures.append(registry)
+	for sl in registry.slices_of_edge(edge.id):
+		sl.pane_id = "PANE_TEST"
+
+	## LEAK-GATE-01: EnemyPhaseController extends Node, and this one is never added
+	## to a tree — `_fixtures` only holds a reference, which frees a RefCounted like
+	## EdgeRegistry but never a Node. Freed at the end of this function.
+	var epc := EnemyPhaseController.new()
+	var key: String = WallEdgeData.edge_key(edge.gu_a, edge.gu_b)
+	var glass_keys: Dictionary = registry.glass_edge_keys()
+
+	## No walls at all in this fixture — so anything in either set came from glass.
+	var walls: Array[Dictionary] = []
+
+	var vision: Dictionary = epc.build_blocked_edge_set(walls)
+	var movement: Dictionary = epc.build_movement_edge_set(walls, glass_keys, registry)
+	if movement.has(key) and not vision.has(key):
+		_pass("intact: the movement set blocks the pane, the vision set does not")
+	else:
+		_fail("intact: movement=%s vision=%s (want blocked / not blocked)"
+			% [movement.has(key), vision.has(key)])
+
+	## Break it — every voxel of both faces, the shatter the cascade produces.
+	## ⚠️ ABSOLUTE storey. The first version of this passed a bare `0`, cleared
+	## nothing (a storey-0 wall's voxels sit at levels 80..87, so their storey is
+	## 10) and reported the pane as still blocking — my fixture was wrong, not the
+	## code. Every other call in this file already says PLAYABLE_STOREY.
+	for sl in registry.slices_of_edge(edge.id):
+		_clear_storey_face(sl, GeometryCoords.PLAYABLE_STOREY)
+	var opened: Dictionary = epc.build_movement_edge_set(walls, glass_keys, registry)
+	if not opened.has(key):
+		_pass("broken: the pane drops out of the movement set — the passage opens")
+	else:
+		_fail("broken: the pane still blocks movement (passage_class=%d)"
+			% PassageQueryClass.passage_class(edge, registry))
+
+	## And the opening is PassageQuery's own verdict, not a second rule that could
+	## drift away from it — same edge, same registry, both must agree.
+	var pc: int = PassageQueryClass.passage_class(edge, registry)
+	if pc != PassageQueryClass.PassageClass.NONE and not opened.has(key):
+		_pass("the movement set and PassageQuery agree: %s" % PassageQueryClass.class_name_of(pc))
+	else:
+		_fail("movement set and PassageQuery disagree: class=%d blocked=%s" % [pc, opened.has(key)])
+
+	epc.free()
 	print("")

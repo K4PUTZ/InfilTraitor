@@ -39,11 +39,23 @@ func set_blocked_cells(cells: Array[Vector2i]) -> void:
 
 
 func set_blocked_edges(edges: Array[Dictionary]) -> void:
-	_blocked_edges.clear()
+	var keys: Dictionary = {}
 	for edge in edges:
 		var from_cell: Vector2i = edge.get("from", Vector2i.ZERO)
 		var to_cell: Vector2i = edge.get("to", Vector2i.ZERO)
-		_blocked_edges[WallEdgeData.edge_key(from_cell, to_cell)] = true
+		keys[WallEdgeData.edge_key(from_cell, to_cell)] = true
+	set_blocked_edge_keys(keys)
+
+
+## GLASS G3 STAGE D — the keyed form, and now the only writer. `blocked_edges` in
+## its `{from, to}` array shape cannot express an intact glass pane, because a
+## half-thickness panel never enters that array at all (§2); the movement set
+## `EnemyPhaseController.build_movement_edge_set()` produces is already keyed, and
+## converting it back to pairs only to re-key it here would be two shapes for one
+## fact. `set_blocked_edges()` above is kept as the wrapper so no existing caller
+## changed.
+func set_blocked_edge_keys(keys: Dictionary) -> void:
+	_blocked_edges = keys.duplicate()
 
 
 func rebuild(start_cell: Vector2i, new_max_path_cost: int) -> void:

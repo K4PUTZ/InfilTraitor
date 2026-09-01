@@ -60,6 +60,7 @@ func _init() -> void:
 	test_blast_glass_punch_reliable_inside_zero_outside()
 	test_banded_pane_never_destroys_its_own_frame_bands()
 	test_unanchored_pane_keeps_nothing()
+	test_layer_falloff_weakens_each_successive_pane()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -530,4 +531,64 @@ func test_unanchored_pane_keeps_nothing() -> void:
 	else:
 		_fail("a pane with nothing around it still kept %d voxel(s) across %d trials — G-D13's unconditional floor"
 			% [left_standing, trials])
+	print("")
+
+
+## G-D17 — THE LAYER MODIFIER.
+##
+## Director, 2026-09-01: *"Adicionamos um modificador de destruição, de forma que
+## cada camada de vidro a mais diminui a potência do projétil."*
+##
+## Two halves, and the first is the one that protects everything already ratified:
+## depth 0 must be BIT-IDENTICAL to no attenuation at all, or every number in §5.1's
+## arsenal table silently moves. The second is the mechanic itself — strictly
+## decreasing, and reaching the flat bottom on its own rather than by a rule that
+## says "stop after N panes".
+func test_layer_falloff_weakens_each_successive_pane() -> void:
+	print("[13] G-D17 — each glass layer weakens the round, and depth 0 changes nothing\n")
+
+	var sniper: float = 5.25   ## §5.1's own sniper glass_punch
+	if is_equal_approx(GlassShatterClass.punch_after_layers(sniper, 0), sniper):
+		_pass("depth 0 is the unattenuated punch — the ratified arsenal table is untouched")
+	else:
+		_fail("depth 0 changed the punch: %.4f vs %.4f"
+			% [GlassShatterClass.punch_after_layers(sniper, 0), sniper])
+
+	var row: Array = []
+	var probs: Array = []
+	var strictly_down: bool = true
+	var prev: float = INF
+	for depth in range(5):
+		var p: float = GlassShatterClass.punch_after_layers(sniper, depth)
+		var pr: float = GlassShatterClass.p_shatter(p)
+		row.append("%.2f" % p)
+		probs.append("%.0f%%" % (pr * 100.0))
+		if p >= prev:
+			strictly_down = false
+		prev = p
+	if strictly_down:
+		_pass("punch decays strictly: %s  ->  P(shatter) %s" % [", ".join(row), ", ".join(probs)])
+	else:
+		_fail("punch is not strictly decreasing across layers: %s" % [", ".join(row)])
+
+	## The point of a geometric decay: a deep stack stops the round by ARITHMETIC,
+	## not by a special case. A sniper must fall under SHATTER_C's flat bottom
+	## somewhere in a handful of layers, without any rule naming a limit.
+	var died_at: int = -1
+	for depth in range(12):
+		if GlassShatterClass.p_shatter(GlassShatterClass.punch_after_layers(sniper, depth)) <= 0.0:
+			died_at = depth
+			break
+	if died_at > 0:
+		_pass("a sniper stops being able to shatter at layer %d, by the curve alone" % died_at)
+	else:
+		_fail("a sniper never reaches zero shatter chance within 12 layers (died_at=%d)" % died_at)
+
+	## And it must never go negative — the reason the decay is geometric and not
+	## a subtraction with a clamp hiding a sign error.
+	var deep: float = GlassShatterClass.punch_after_layers(sniper, 40)
+	if deep > 0.0:
+		_pass("40 layers deep the punch is still positive (%.12f) — no clamp is hiding a sign" % deep)
+	else:
+		_fail("punch went non-positive at depth 40: %f" % deep)
 	print("")

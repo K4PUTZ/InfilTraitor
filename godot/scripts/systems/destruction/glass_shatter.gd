@@ -95,6 +95,46 @@ static var SHATTER_REMNANT_MIN_COUNT: int = 4
 ## a pane breaks whole or not at all); glass BLOCKS keep the ring model.
 static var SHATTER_BLAST_GAIN: float = 3.4
 
+## ── G-D17 — THE LAYER MODIFIER ───────────────────────────────────────────────
+##
+## Director, 2026-09-01: *"Precisamos implementar quebra em dois vidros seguidos,
+## ou formalizar que vidros só podem ter meia espessura. Seria mais interessante
+## pra engine a primeira opção, porque isso implica nos cubos sólidos de vidro.
+## Adicionamos um modificador de destruição, de forma que cada camada de vidro a
+## mais diminui a potência do projétil."*
+##
+## A LAYER is one thickness of glass the round passes through — the next pane
+## along the ray, or the far face of a solid glass cube. The FIRST layer a round
+## meets is depth 0 and is UNATTENUATED, so every number in the ratified arsenal
+## table (§5.1) is untouched by construction: this only describes what is left
+## after the round is already through some glass.
+##
+## GEOMETRIC, not subtractive, for two reasons that both matter:
+##   · it can never go negative, so no clamp is hiding a sign error;
+##   · it decays the way a real absorbing medium does — the same fraction per
+##     layer — so a thick glass block stops a round by ARITHMETIC rather than by
+##     a special case that says "blocks are different".
+##
+## At 0.62 a sniper (glass_punch 5.25, P 81%) reads 5.25 / 3.26 / 2.02 / 1.25
+## across four layers: near-certain, likely, unlikely, and below SHATTER_C's flat
+## bottom — it stops mattering at the fourth pane without any rule saying so.
+## A `static var` like every other balance row here (architecture Rule 1).
+static var SHATTER_LAYER_FALLOFF: float = 0.62
+
+
+## The `glass_punch` that reaches the layer at `depth`, counting the first glass
+## the round meets as depth 0.
+##
+## Used for BOTH halves of what a round does to a pane — the shatter roll and the
+## region radius — because they are the same projectile: a round that arrives at
+## the third pane too weak to shatter it must also be too weak to take a wide
+## patch out of it. Feeding one and not the other is how a pane ends up "barely
+## breaking" but taking half the wall with it.
+static func punch_after_layers(glass_punch: float, depth: int) -> float:
+	if depth <= 0:
+		return glass_punch
+	return glass_punch * pow(SHATTER_LAYER_FALLOFF, float(depth))
+
 
 ## The probability that ONE projectile with this `glass_punch` shatters the whole
 ## pane (or, in Stage B, floods a region larger than its own hole). Monotonic in

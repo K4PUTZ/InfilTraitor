@@ -314,8 +314,14 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 		if resolved.is_empty():
 			continue
 		var slice: Slice = resolved["slice"]
+		## G-D17 — the round arrives at this pick already through `glass_depth`
+		## layers of glass, and everything downstream uses the weakened projectile:
+		## the hole it makes here, the pane roll below, and the mark on whatever
+		## wall it finally reaches.
+		var layer_depth: int = int(picks[i].get("glass_depth", 0))
 		var punch: float = ShotPunchTable.compute(
-			weapon_def.punch, slice.material, ShotPunchTable.SKILL_NEUTRAL,
+			GlassShatter.punch_after_layers(weapon_def.punch, layer_depth),
+			slice.material, ShotPunchTable.SKILL_NEUTRAL,
 			1.0, "%s:%d" % [salt, i])
 		## ⚠️ THE WHOLE LADDER, NOT JUST THE VOXEL THE PELLET NAMED.
 		##
@@ -556,8 +562,15 @@ func fire_at_active() -> void:
 		## Distance stays neutral for both shapes, as on the bench: D29's
 		## falloff is explicitly deferred and switching it on here would be a
 		## behaviour change nobody asked for in this wave.
+		## G-D17 — the round arrives at this pick already through `glass_depth`
+		## layers of glass, and everything downstream uses the weakened projectile:
+		## the hole it makes here, the pane roll below, and the mark on whatever
+		## wall it finally reaches. The precook loop above applies the identical
+		## attenuation, because it has to warm the alternatives this will land on.
+		var layer_depth: int = int(pellet_picks[i].get("glass_depth", 0))
 		var punch: float = ShotPunchTable.compute(
-			weapon_def.punch, slice.material, ShotPunchTable.SKILL_NEUTRAL,
+			GlassShatter.punch_after_layers(weapon_def.punch, layer_depth),
+			slice.material, ShotPunchTable.SKILL_NEUTRAL,
 			1.0, "%s:%d" % [salt, i])
 		punch_log.append(snappedf(punch, 0.01))
 		## D32.4: the SHOOTER's GU decides which face the mark lands on — without
@@ -596,7 +609,8 @@ func fire_at_active() -> void:
 		## rolls its OWN chance to take the whole pane (or a region larger than
 		## its hole). After the local hole so the flood spreads from a real gap.
 		_maybe_shatter_pane(slice, int(resolved["voxel_index"]), weapon_def,
-			"%s:%d" % [salt, i], cell_to_voxel, cell_to_material, cell_to_depth)
+			"%s:%d" % [salt, i], cell_to_voxel, cell_to_material, cell_to_depth,
+			layer_depth)
 
 	var prof_apply_ms: float = float(Time.get_ticks_usec() - prof_apply0) / 1000.0
 	## B3: a round with no wall behind the target is VOID and nothing happens
@@ -795,7 +809,7 @@ func _index_voxel(cell_to_voxel: Dictionary, v: Voxel) -> void:
 ## are deferred (they were never the target case, GLASS_MASTER_PLAN §0).
 func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: WeaponDef,
 		pick_salt: String, cell_to_voxel: Dictionary, cell_to_material: Dictionary,
-		cell_to_depth: Dictionary) -> void:
+		cell_to_depth: Dictionary, layer_depth: int = 0) -> void:
 	if hit_slice.pane_id == "" or hit_slice.pane_id.begins_with("PANE_BLOCK_"):
 		return
 	if hit_voxel_index < 0 or hit_voxel_index >= hit_slice.voxels.size():
@@ -805,8 +819,12 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	var rel: int = hv.level - GeometryCoords.storey_level_base(hit_slice.start_storey)
 	if hit_slice.material_at(rel) != "glass":
 		return
-	## The glass punch for THIS pellet, at this pellet's own luck.
-	var glass_punch: float = ShotPunchTable.compute(weapon_def.punch, "glass",
+	## The glass punch for THIS pellet, at this pellet's own luck — G-D17: through
+	## whatever glass it has already crossed. Attenuating the ROLL and leaving the
+	## REGION at full strength would give a pane that barely breaks a sniper-sized
+	## hole, so `punch_after_layers` is applied once, here, and carried into both.
+	var glass_punch: float = ShotPunchTable.compute(
+		GlassShatter.punch_after_layers(weapon_def.punch, layer_depth), "glass",
 		ShotPunchTable.SKILL_NEUTRAL, 1.0, pick_salt)
 	if not GlassShatter.rolls_shatter(glass_punch, pick_salt):
 		return
@@ -879,13 +897,28 @@ func _glass_edges_dict() -> Dictionary:
 ## GLASS G7 — turn each pick's `glass_passed` (the panes a round crossed) into
 ## standalone picks, in flight order, so the shot's normal resolve/apply loop
 ## puts a hole in every pane on the way to the terminal hit.
+## G-D17 stamps `glass_depth` HERE, because this is the one place that knows the
+## flight order: within one original pellet the crossings come out in the order
+## the ray met them, and the terminal hit last. Depth 0 is the first glass the
+## round meets, so an unobstructed shot is bit-identical to before.
 func _flatten_glass_passthrough(picks: Array) -> Array:
 	var out: Array = []
 	for p in picks:
+		var crossed: int = 0
 		for g in p.get("glass_passed", []):
-			out.append(g)
+			var g2: Dictionary = g.duplicate()
+			g2["glass_depth"] = crossed
+			crossed += 1
+			out.append(g2)
 		if p.has("gu"):
-			out.append(p)
+			## The terminal hit is behind everything the round went through, so it
+			## arrives with the full stack's attenuation — a wall behind two panes
+			## takes a weaker mark than the same wall in the open. That is the
+			## Director's own wording: the PROJECTILE loses power, not just its
+			## chance of taking a pane.
+			var p2: Dictionary = p.duplicate()
+			p2["glass_depth"] = crossed
+			out.append(p2)
 	return out
 
 

@@ -134,6 +134,7 @@ just not the target case.
 | **G-D13** | **Remnants on the frame.** *"nunca queremos que todos os voxels quebrem, sempre deixamos umas sobrinhas nas molduras."* §5.2's luck-driven survivors are a rule of G3 itself, not an optional G4 flourish | ✅ Ratified 2026-08-31 · ⚠️ **its unconditional half superseded by G-D13b** |
 | **G-D13b** | **A remnant is ANCHORED or it is not a remnant.** *"como essa vidraça não tem nada em volta, todos os cacos precisam cair. Então na verdade a regra é: alguns cacos devem sempre ficar sobrando, QUANDO estiverem conectados com qualquer outro material (half slices inclusive)."* A flooded glass voxel survives only if an ORTHOGONAL lattice neighbour holds non-glass material — the pane's own G-D9 bands, or a wall (half-thickness included) on the same edge line. Glass never anchors glass. G-D13's floor of `MIN_COUNT` survivors still holds, but only AMONG THE ANCHORED; a free-standing pane has none and goes completely. ⚠️ The floor the pane stands on is NOT an anchor (it is not in the pane's plane) — stated as an assumption, since counting it would keep a row of shards along the bottom of exactly the pane this rule exists to empty | ✅ Ratified 2026-09-01 |
 | **G-D14** | **Hole size is per-weapon.** *"pistola ou shotgun fazerem um furo de um voxel, com a arte das ondas rachadas em volta, ao passo que armas mais potentes como o fuzil destroem de 2 a 4 voxels, e criam uma arte com ondas maior, e mais espaçada."* Non-shattering hit: pistol / shotgun pellet = 1 voxel + a tight `crack_web`; rifle-class = 2–4 voxels (scaled by power) + a larger, more spaced `crack_web`. Driven by the existing `WeaponDef.blowout` field | ✅ Ratified 2026-08-31 |
+| **G-D17** | **A ROUND LOSES POWER THROUGH EVERY GLASS LAYER IT CROSSES.** *"Precisamos implementar quebra em dois vidros seguidos, ou formalizar que vidros só podem ter meia espessura. Seria mais interessante pra engine a primeira opção, porque isso implica nos cubos sólidos de vidro. Adicionamos um modificador de destruição, de forma que cada camada de vidro a mais diminui a potência do projétil."* A LAYER is one thickness of glass the round passes through — the next pane along the ray, or the far face of a solid cube. Depth 0 is unattenuated, so §5.1's ratified arsenal table is untouched by construction. GEOMETRIC (`punch · FALLOFF^depth`), never subtractive: it cannot go negative, and a thick stack stops a round by ARITHMETIC instead of by a special case naming a limit. Applied to the WHOLE projectile — the hole it makes, the pane roll, and the mark on the wall it finally reaches | ✅ Ratified + BUILT 2026-09-01 |
 | **G-D15** | **ARMORED GLASS (`glass_armored`, purple) — resists common shots; when breached, usually shatters entirely at once, leaving many individual shards.** ⚠️ **Special rifle case:** a rifle round may pierce a SINGLE voxel without shattering (treated as a weak hit) — this PRIMES the pane, and the next shot of ANY type auto-shatters the whole thing. `pane_primed` is a per-pane flag, checkpoint-scoped | ✅ Ratified 2026-08-31 · build after this doc is signed off |
 | **G-D16** | **Glass is a family of tinted behaviour classes, not new geometry.** All variants share G1's rendering and differ only in a tint (`base_color`) and a `glass_class`: `glass` (blue, BREAKABLE) · `glass_armored` (purple, ARMORED, G-D15) · `glass_screen_{green,red,amber}` (dark terminal tone) which is **INDESTRUCTIBLE** (control interfaces — takes a crack decal, never breaks, and STOPS the round: *"trinca mas o tiro para"*) or **BREAKABLE** (TVs, circuits, news panels) per placement | ✅ Ratified 2026-08-31 |
 | **G-D17** | **A screen is a glass voxel over a BLACK PLASTIC voxel.** *"O voxel de vidro fica na frente de voxels pretos de PLÁSTICO (a implementar — fura [não atravessa] ou derrete), de forma que nesses voxels pretos vamos pintar as imagens e textos posteriormente, e o vidro vai criar o efeito de brilho por cima."* New material **`plastic`** (black): a round DRILLS it (a hole, but the round does NOT pass through — unlike glass) or fire MELTS it. Images/text painted onto the plastic later; the glass in front adds the G1 sheen. Belongs in `MATERIALS_MASTER_PLAN` | ✅ Ratified 2026-08-31 · `plastic` + the paint layer are deferred |
@@ -489,6 +490,44 @@ instead.
 ⚠️ **G-D16b is blocked on art.** The landings are computed and reported; nothing
 draws them. §7.1's decal path needs the `shard_floor` family, which G-ART has not
 delivered. That is a real dependency, not a choice.
+
+### ✅ G-D17 BUILT (2026-09-01) — the layer modifier
+
+`GlassShatter.punch_after_layers(glass_punch, depth)` = `punch · SHATTER_LAYER_FALLOFF^depth`,
+`SHATTER_LAYER_FALLOFF` a `static var` at **0.62** (architecture Rule 1, like every
+balance row here). `_flatten_glass_passthrough()` stamps `glass_depth` on each
+pick, because that is the one place that knows the flight order; the apply loop
+and the W-PRECOOK loop apply the identical attenuation, since the precook has to
+warm the alternatives the shot will actually land on.
+
+The sniper, layer by layer — `punch 5.25 → 3.25 → 2.02 → 1.25 → 0.78`, and
+`P(shatter) 81% → 29% → 4% → 0% → 0%`. **It stops being able to shatter at the
+fourth pane by the curve alone**, with no rule saying "stop after N".
+
+⚠️ **The GLASS map had no line that crossed two panes** — every panel was on
+authored row y=9 — so the mechanic could not be verified on it at all. A second
+row (gu x=11..14, y=6, face SW, 3 storeys) was added; the map's own description
+says why. This is the map's stated job (*"Glass Physics Test Zone"*), and a
+physics test zone that cannot express the case under test is the gap, not the fix.
+
+**Real map, same shot, same salt, the model the only variable** (before side
+captured with the change stashed):
+
+    BEFORE  punch=[6.06, 4.72, 1.68]
+    AFTER   punch=[6.06, 2.93, 0.65]
+
+Three picks: the near pane, the pane behind it, and the wall behind both. Depth 0
+is IDENTICAL in the two runs (6.06) — the ratified table really is untouched. The
+second pane loses 38% and the wall behind loses 61%. On the neighbouring column
+the near pane shattered at 5.93 while the far one, rolling at 3.34, did not —
+which is the mechanic doing exactly what it was asked to do.
+
+⚠️ **What this does NOT yet do: a solid glass CUBE.** `PANE_BLOCK_*` panes are
+still excluded from the cascade (they have no single run axis, so
+`plan_pane_shatter`'s `(col, level)` lattice has no meaning for them), and
+`_note_glass_crossing()` dedupes by `pane_id`, so entering and leaving one block
+counts as ONE layer rather than two. The attenuation is the half that generalises;
+the block geometry is its own piece and is named here rather than implied.
 
 ### The staging this implies
 

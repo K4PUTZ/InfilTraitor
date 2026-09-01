@@ -1,5 +1,11 @@
 # Session 2026-09-01 — the occlusion wedge, and what pulling on it unravelled
 
+> ⚠️ **This is PART 1 of the day.** The session continued straight into the glass
+> track and G3 closed. The current state is
+> [`RESUMO_SESSAO_2026-09-01_PART2_GLASS_G3_COMPLETE.md`](RESUMO_SESSAO_2026-09-01_PART2_GLASS_G3_COMPLETE.md)
+> — the "State at close" table below is superseded by that file's (the suite grew
+> 48 → 49 and the glass work landed after this was written).
+
 Started as one visual bug report and ended as a sweep of two defect classes that
 had been quietly disabling parts of the project for weeks. Six commits, all on
 `main`, all pushed.

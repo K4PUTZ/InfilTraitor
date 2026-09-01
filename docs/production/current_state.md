@@ -235,6 +235,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-08-31_GLASS_G1_G2_G7.md
 - RESUMO_SESSAO_2026-08-31_GLASS_GD9.md
 - RESUMO_SESSAO_2026-09-01_OCC_FIX_AND_TEST_DEBT.md
+- RESUMO_SESSAO_2026-09-01_PART2_GLASS_G3_COMPLETE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

@@ -1,11 +1,25 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.13 — **G1 geometry, G2, G7, G-MAP, G-D9, G-D18, G-D18b BUILT.
-G3 THREE OF FOUR STAGES BUILT: Stage A (`GlassShatter` curve), Stage B (shot
-path — region flood, G-D13 remnants), Stage C (the grenade/cook path — a pane
-inside the blast's damage area shatters). Real-map verified on the GLASS map:
-firearms and a grenade all take the big pane, with frame remnants. Left: Stage D
-(the G-D8 passage / movement-blocking work).** G1
+**Status:** 🟢 v1.14 — **G3 IS COMPLETE. All four stages built:** A
+(`GlassShatter` curve), B (shot path — region flood, remnants), C (the
+grenade/cook path), and **D (2026-09-01 — the movement/vision edge-set split, and
+a broken pane opening the passage via `PassageQuery`).** Also built this day:
+**G-D13b** (a remnant is ANCHORED or it is not one — a free-standing pane goes to
+nothing), **G-D16a** (`GlassFall` — where a shard lands: base piles, counters,
+sills and skylights from one rule), **G-D17** (a round loses power through every
+glass layer it crosses), and **G-D23**'s pane-size ceiling enforced in
+`GlassPaneGrouper`. G1 geometry, G2, G7, G-MAP, G-D9, G-D18, G-D18b BUILT.
+
+**What is left, and what each is blocked on:**
+| | blocked on |
+|---|---|
+| G-D8's last third — the light bump and +1 detection when a passage opens | needs the opening as an EVENT; Stage D landed a per-turn recomputed SET, which has no memory of the moment it changed |
+| G-D19 / G-D21 / G-D23's clamp / G-D24 — the crack itself | `glass.crack_factor` is still 0.0 **and** the art does not exist. `voxel_decal_selftest` [12] will require data, wiring and art to land together |
+| G-D16b — shards on screen | the `shard_floor` art (G-ART) |
+| G-D16c / G-D16d — skylights and sub-GU slab regions | CEILING glass still renders opaque (`voxel_renderer.gd:3676`); no horizontal `pane_id` |
+| A solid glass CUBE shattering | `PANE_BLOCK_*` has no run axis for `plan_pane_shatter`'s lattice, and `_note_glass_crossing()` dedupes by `pane_id` so entering and leaving a block counts as one layer |
+
+G1
 appearance signed off; G1 geometry awaits a Director tuning verdict on the sliver
 size/dim. **G-D9 (multi-material slices) BUILT 2026-08-31** — `panels.bands` →
 `Slice.material_bands` + `material_at()`, the per-band bake page, a lookup

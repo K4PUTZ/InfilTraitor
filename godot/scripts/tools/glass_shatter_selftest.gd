@@ -58,6 +58,8 @@ func _init() -> void:
 	test_big_pane_partial_then_full()
 	test_remnant_floor_never_leaves_zero_border()
 	test_blast_glass_punch_reliable_inside_zero_outside()
+	test_banded_pane_never_destroys_its_own_frame_bands()
+	test_unanchored_pane_keeps_nothing()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -253,6 +255,18 @@ func _pane(gu_x_lo: int, gu_x_hi: int, storeys: int) -> Array:
 	return slices
 
 
+## A CONCRETE wall slice on the same face and the same run line as `_pane()` —
+## the frame a pane is set into. `collect_anchor_positions()` finds it the way it
+## finds a real one: same face, same plane coordinate, non-glass material.
+func _wall(gu_x: int, storeys: int) -> Slice:
+	var base: int = GeometryCoords.storey_level_base(0)
+	var w := Slice.new("WALL_S_%d" % gu_x, Vector2i(gu_x, 3), Face.SW, "WALL_E_%d" % gu_x, storeys, "concrete")
+	for lvl_off in range(storeys * 8):
+		for i in range(8):
+			w.voxels.append(Voxel.new(Vector2i(gu_x * 8 + i, 3 * 8 + 7), base + lvl_off, w))
+	return w
+
+
 func _count_visible(slices: Array) -> int:
 	var n: int = 0
 	for s in slices:
@@ -307,22 +321,40 @@ func test_region_radius_scales_with_punch() -> void:
 	print("")
 
 
+## G-D13b, BOTH SIDES, on the same 1 GU x 1 storey pane and the same roll: the
+## ONLY difference between the two halves is whether a concrete wall stands at
+## the next GU. That is the whole rule, isolated — anything else that changed the
+## outcome would show up here as both halves moving together.
 func test_small_pane_is_binary_with_remnants() -> void:
-	print("[7] a small pane (1 GU x 1 storey) breaks whole, minus frame remnants\n")
-	var slices := _pane(4, 4, 1)
-	var total := _count_visible(slices)
-	## Rifle-class win, hit dead centre.
-	var plan := GlassShatterClass.plan_pane_shatter(slices, Face.SW,
-		Vector2i(4 * 8 + 4, 0), GeometryCoords.storey_level_base(0) + 3, 3.75, "SMALL:1")
-	_apply(slices, plan)
-	var left := _count_visible(slices)
-	var border := _surviving_border(slices, 4, 4, 1)
-	print("      64 voxels -> %d destroyed, %d left, %d border survivors" % [plan.size(), left, border])
-	if left > 0 and left <= total - 40 and border >= GlassShatterClass.SHATTER_REMNANT_MIN_COUNT:
-		_pass("the small pane is mostly gone (%d/64 destroyed) with %d frame remnants" % [plan.size(), border])
+	print("[7] G-D13b — a small pane keeps remnants IFF something is next to it\n")
+	var base: int = GeometryCoords.storey_level_base(0)
+	var hit := Vector2i(4 * 8 + 4, 0)
+
+	## Free-standing: nothing to hang from, so nothing hangs.
+	var lone := _pane(4, 4, 1)
+	var lone_plan := GlassShatterClass.plan_pane_shatter(lone, Face.SW, hit, base + 3, 3.75,
+		"SMALL:1", GlassShatterClass.collect_anchor_positions(lone, Face.SW, lone))
+	_apply(lone, lone_plan)
+	var lone_left := _count_visible(lone)
+
+	## The same pane with a concrete wall at gu 5 — its right-hand column is now
+	## anchored, and the conditional floor applies to those voxels.
+	var framed := _pane(4, 4, 1)
+	var wall := _wall(5, 1)
+	var world: Array = framed.duplicate()
+	world.append(wall)
+	var framed_plan := GlassShatterClass.plan_pane_shatter(framed, Face.SW, hit, base + 3, 3.75,
+		"SMALL:1", GlassShatterClass.collect_anchor_positions(framed, Face.SW, world))
+	_apply(framed, framed_plan)
+	var framed_left := _count_visible(framed)
+
+	print("      64 voxels: free-standing -> %d destroyed / %d left;  wall at gu 5 -> %d destroyed / %d left" % [
+		lone_plan.size(), lone_left, framed_plan.size(), framed_left])
+	if lone_left == 0 and framed_left >= GlassShatterClass.SHATTER_REMNANT_MIN_COUNT:
+		_pass("free-standing goes to 0; the framed one keeps %d shard(s) against the wall" % framed_left)
 	else:
-		_fail("small pane: destroyed=%d left=%d border=%d (want most gone, border >= %d)" % [
-			plan.size(), left, border, GlassShatterClass.SHATTER_REMNANT_MIN_COUNT])
+		_fail("free-standing left %d (want 0), framed left %d (want >= %d)" % [
+			lone_left, framed_left, GlassShatterClass.SHATTER_REMNANT_MIN_COUNT])
 	print("")
 
 
@@ -351,21 +383,29 @@ func test_big_pane_partial_then_full() -> void:
 	print("")
 
 
+## G-D13b keeps G-D13's floor, CONDITIONALLY: while a pane has an anchor, no roll
+## may strip it bare. Only the "always, even with nothing to hang from" half was
+## dropped — and [7] and [12] pin that half's replacement.
 func test_remnant_floor_never_leaves_zero_border() -> void:
-	print("[9] G-D13: no won roll ever leaves a pane with zero surviving border voxels\n")
-	var worst_border: int = 1 << 30
+	print("[9] G-D13b: while a pane IS anchored, no won roll ever strips it bare\n")
+	var worst: int = 1 << 30
 	for trial in range(60):
 		var storeys: int = 1 + (trial % 3)
-		var slices := _pane(2, 2 + (trial % 4), storeys)
+		var gu_hi: int = 2 + (trial % 4)
+		var slices := _pane(2, gu_hi, storeys)
+		var world: Array = slices.duplicate()
+		world.append(_wall(gu_hi + 1, storeys))
+		var anchors := GlassShatterClass.collect_anchor_positions(slices, Face.SW, world)
 		var plan := GlassShatterClass.plan_pane_shatter(slices, Face.SW,
-			Vector2i(2 * 8 + 4, 0), GeometryCoords.storey_level_base(0) + storeys * 4, 6.0, "REMNANT:%d" % trial)
+			Vector2i(2 * 8 + 4, 0), GeometryCoords.storey_level_base(0) + storeys * 4, 6.0,
+			"REMNANT:%d" % trial, anchors)
 		_apply(slices, plan)
-		var b := _surviving_border(slices, 2, 2 + (trial % 4), storeys)
-		worst_border = mini(worst_border, b)
-	if worst_border >= 1:
-		_pass("across 60 full-shatter rolls the fewest border survivors was %d (never 0)" % worst_border)
+		worst = mini(worst, _count_visible(slices))
+	if worst >= GlassShatterClass.SHATTER_REMNANT_MIN_COUNT:
+		_pass("across 60 full-shatter rolls on ANCHORED panes the fewest survivors was %d (floor is %d)"
+			% [worst, GlassShatterClass.SHATTER_REMNANT_MIN_COUNT])
 	else:
-		_fail("a full shatter left a pane with 0 border voxels — G-D13 violated")
+		_fail("an anchored pane was stripped to %d survivors — the conditional floor did not hold" % worst)
 	print("")
 
 
@@ -386,4 +426,108 @@ func test_blast_glass_punch_reliable_inside_zero_outside() -> void:
 			p0 * 100.0, p1 * 100.0, p2 * 100.0])
 	else:
 		_fail("blast falloff wrong: p0=%.2f p1=%.2f p2=%.2f punch3=%.2f punchOOB=%.2f" % [p0, p1, p2, p3, p_oob])
+	print("")
+
+
+## A G-D9 BANDED pane: the same slices, with brick bands at the bottom two and
+## top two RELATIVE levels — exactly maps/GLASS.map.json's window at gu 19..21
+## (`"bands": [{levels [0,1] brick}, {levels [22,23] brick}]`). The bands live in
+## the SAME Slice as the glass, reached through `Slice.material_at(rel_level)`.
+func _banded_pane(gu_x_lo: int, gu_x_hi: int, storeys: int) -> Array:
+	var slices: Array = _pane(gu_x_lo, gu_x_hi, storeys)
+	var top: int = storeys * 8 - 1
+	for s in slices:
+		s.material_bands = {0: "brick", 1: "brick", top - 1: "brick", top: "brick"}
+	return slices
+
+
+## Every non-glass voxel of a banded pane that is still standing.
+func _surviving_band_voxels(slices: Array) -> int:
+	var base: int = GeometryCoords.storey_level_base(0)
+	var n: int = 0
+	for s in slices:
+		for v in s.voxels:
+			if s.material_at(v.level - base) == "glass":
+				continue
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				n += 1
+	return n
+
+
+func _band_voxel_total(slices: Array) -> int:
+	var base: int = GeometryCoords.storey_level_base(0)
+	var n: int = 0
+	for s in slices:
+		for v in s.voxels:
+			if s.material_at(v.level - base) != "glass":
+				n += 1
+	return n
+
+
+## G-D13b — THE FRAME IS NOT GLASS, AND THE CASCADE MUST NOT EAT IT.
+##
+## `plan_pane_shatter()` builds its lattice from every voxel of every slice
+## sharing the `pane_id`, and a G-D9 banded window keeps its brick sill and head
+## in those same slices. Nothing in the flood consulted `material_at()`, so a won
+## roll floods straight through the brick and returns it for DESTROY — the pane
+## takes its own frame with it.
+func test_banded_pane_never_destroys_its_own_frame_bands() -> void:
+	print("[11] G-D13b — a won roll never destroys the pane's own non-glass bands\n")
+
+	var base: int = GeometryCoords.storey_level_base(0)
+	var worst_survivors: int = 1 << 30
+	var total_bands: int = 0
+	for trial in range(30):
+		var slices: Array = _banded_pane(19, 21, 3)
+		total_bands = _band_voxel_total(slices)
+		## Aim at the middle of the glass, with a radius big enough to reach both
+		## bands — a sniper takes the whole pane.
+		var hit_col: int = 20 * 8 + 4
+		var plan: Array = GlassShatterClass.plan_pane_shatter(
+			slices, Face.SW, Vector2i(hit_col, 3 * 8 + 7), base + 12, 5.25,
+			"BANDED:%d" % trial)
+		_apply(slices, plan)
+		worst_survivors = mini(worst_survivors, _surviving_band_voxels(slices))
+
+	if worst_survivors == total_bands:
+		_pass("all %d brick band voxels stand in every one of 30 trials" % total_bands)
+	else:
+		_fail("the cascade destroyed the pane's own brick frame: worst trial left %d of %d band voxels"
+			% [worst_survivors, total_bands])
+	print("")
+
+
+## G-D13b — REMNANTS ARE ANCHORED, NOT DECORATIVE.
+##
+## Director, 2026-09-01: *"como essa vidraça não tem nada em volta, todos os
+## cacos precisam cair. Então na verdade a regra é: alguns cacos devem sempre
+## ficar sobrando, QUANDO estiverem conectados com qualquer outro material (half
+## slices inclusive)."* A pane with no non-glass neighbour anywhere — maps/
+## GLASS.map.json's big pane is exactly that — must be able to go to ZERO.
+## G-D13's old unconditional floor of 4 survivors made that impossible.
+func test_unanchored_pane_keeps_nothing() -> void:
+	print("[12] G-D13b — an unanchored pane can shatter to nothing\n")
+
+	var base: int = GeometryCoords.storey_level_base(0)
+	var left_standing: int = 0
+	var trials: int = 30
+	for trial in range(trials):
+		var slices: Array = _pane(10, 15, 3)
+		## The lattice runs cols 80..127; its CENTRE is 103, not 12*8+4. Aiming off
+		## centre left one whole column outside a radius that otherwise covers the
+		## pane, which reads as "remnants survived" and is nothing of the kind —
+		## the first version of this test made exactly that mistake.
+		var hit_col: int = 103
+		var plan: Array = GlassShatterClass.plan_pane_shatter(
+			slices, Face.SW, Vector2i(hit_col, 3 * 8 + 7), base + 12, 5.78,
+			"UNANCHORED:%d" % trial,
+			GlassShatterClass.collect_anchor_positions(slices, Face.SW, slices))
+		_apply(slices, plan)
+		left_standing += _count_visible(slices)
+
+	if left_standing == 0:
+		_pass("%d trials, every voxel of the free-standing pane fell (0 left standing)" % trials)
+	else:
+		_fail("a pane with nothing around it still kept %d voxel(s) across %d trials — G-D13's unconditional floor"
+			% [left_standing, trials])
 	print("")

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**224 scripts · 73351 lines total** (under `godot/scripts/`)
+**224 scripts · 73596 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1966,7 +1966,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2138 lines
+`class_name DetonationPlanBuilder` · 2145 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2019,7 +2019,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 250 lines
+`class_name GlassShatter` · 337 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -2028,6 +2028,7 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`
+- `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 ---
 
@@ -3480,7 +3481,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 389 lines
+extends `SceneTree` · 533 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -3506,6 +3507,8 @@ extends `SceneTree` · 389 lines
 - `func test_big_pane_partial_then_full() -> void:`
 - `func test_remnant_floor_never_leaves_zero_border() -> void:`
 - `func test_blast_glass_punch_reliable_inside_zero_outside() -> void:`
+- `func test_banded_pane_never_destroys_its_own_frame_bands() -> void:`
+- `func test_unanchored_pane_keeps_nothing() -> void:`
 
 ---
 
@@ -4618,7 +4621,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 877 lines
+`class_name AgentShotController` · 884 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 

@@ -52,6 +52,7 @@ class_name GlassShatter
 
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 const ShotPunchTableClass = preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")
+const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
 static var SHATTER_K: float = 1.14       ## logistic steepness
 static var SHATTER_X0: float = 3.79      ## logistic midpoint, in glass_punch units
@@ -137,22 +138,95 @@ static func region_radius(glass_punch: float) -> int:
 	return maxi(int(roundf(r)), int(roundf(SHATTER_REGION_BASE)))
 
 
-## G-D12 + G-D13 — plan the whole-pane (or region) shatter for a WON roll.
+## Lattice key of a voxel within its pane: (col, level), col along the run axis.
+static func _pane_key(v: Voxel, run_is_x: bool) -> Vector2i:
+	return Vector2i(v.grid_pos.x if run_is_x else v.grid_pos.y, v.level)
+
+
+## G-D13b — every lattice position, ANYWHERE in the world, that holds NON-GLASS
+## wall material and could anchor one of this pane's shards.
+##
+## Two sources, and the second is the reason this is not just "the pane's own
+## bands": a pane set INTO a wall is anchored by the wall's slices at the GUs
+## either side of it, which are different Slices on a different edge and never
+## appear in `pane_slices`. `all_slices` is the whole registry
+## (`room._edge_registry.all_slices()`); only slices on the SAME face and the
+## same run line can be in the pane's plane at all, so the rest are skipped.
+##
+## Pure by construction — it takes slice lists, never the registry — so the
+## selftest can hand it a synthetic frame and `plan_pane_shatter` stays a
+## function of its arguments (the same rule PREDICTION_MASTER_PLAN holds
+## `build_plan()` to).
+static func collect_anchor_positions(pane_slices: Array, face: int, all_slices: Array) -> Dictionary:
+	var anchors: Dictionary = {}
+	if pane_slices.is_empty():
+		return anchors
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	## The pane's own plane: same face, and the same coordinate on the axis the
+	## run does NOT travel along.
+	var plane_coord: int = pane_slices[0].gu_cell.y if run_is_x else pane_slices[0].gu_cell.x
+	var pane_ids: Dictionary = {}
+	for ps in pane_slices:
+		pane_ids[ps.id] = true
+	for s in all_slices:
+		if s.face != face:
+			continue
+		var s_plane: int = s.gu_cell.y if run_is_x else s.gu_cell.x
+		if s_plane != plane_coord:
+			continue
+		var s_base: int = GeometryCoordsMod.storey_level_base(s.start_storey)
+		for v in s.voxels:
+			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			## A half-thickness element has ONE slice instead of two and is just as
+			## much a frame — nothing here asks how thick the neighbour is, which
+			## is what makes "half slices inclusive" true by construction.
+			if s.material_at(v.level - s_base) == "glass":
+				continue
+			anchors[_pane_key(v, run_is_x)] = true
+	return anchors
+
+
+## G-D12 + G-D13b — plan the whole-pane (or region) shatter for a WON roll.
 ##
 ## `pane_slices` — every Slice sharing the hit's `pane_id` (a panel pane; glass
 ##   BLOCKS are deferred, they have no single run axis). `face` is the shared
 ##   face orientation, which fixes the pane's run axis: X for SW/NE, Y for SE/NW.
 ## `hit_grid_pos` / `hit_level` — the impact voxel, the flood origin.
 ## `glass_punch` — scales the region radius (region_radius()).
-## `salt` — the shot's salt; the per-border-voxel survival rolls and the
-##   luck-driven keep probability both hash off it, so the remnant pattern
-##   replays exactly.
+## `salt` — the shot's salt; the per-voxel survival rolls and the luck-driven
+##   keep probability both hash off it, so the remnant pattern replays exactly.
+## `anchor_positions` — `collect_anchor_positions()`'s output. EMPTY means the
+##   pane is free-standing, and then it may shatter to nothing.
 ##
-## Returns Array[{"slice": Slice, "voxel_index": int}] — the voxels to DESTROY,
-## with the G-D13 frame-ring remnants already spared. Never returns a set that
-## would leave the pane with zero surviving border voxels.
+## ── G-D13b (Director, 2026-09-01) supersedes G-D13's unconditional floor ──
+##
+## G-D13 spared survivors on the pane's own BOUNDING BOX (col_min/col_max/
+## lvl_min/lvl_max) and forced at least MIN_COUNT of them, on the reading that a
+## pane always has a frame. maps/GLASS.map.json's big pane does not: it is six
+## GUs of glass with nothing around it, and it kept shards hanging in mid-air.
+## Director: *"como essa vidraça não tem nada em volta, todos os cacos precisam
+## cair. Então na verdade a regra é: alguns cacos devem sempre ficar sobrando,
+## QUANDO estiverem conectados com qualquer outro material (half slices
+## inclusive)."*
+##
+## So a remnant is ANCHORED or it is not a remnant. A flooded glass voxel is a
+## survival candidate iff one of its four ORTHOGONAL lattice neighbours holds
+## non-glass material — the pane's own G-D9 bands, or a neighbouring wall on the
+## same edge line. Diagonals do not count: a corner is not something a shard
+## hangs from. Glass never anchors glass. With no candidates the floor has
+## nothing to apply to and the pane goes completely, which is the case that
+## started this.
+##
+## ⚠️ THE FLOOR THE PANE STANDS ON IS NOT AN ANCHOR, deliberately. It is not in
+## the pane's plane — it is a Slab below the wall — and counting it would keep a
+## row of shards along the bottom of exactly the free-standing pane this rule
+## exists to empty. Stated because it is an assumption, not a derivation.
+##
+## Returns Array[{"slice": Slice, "voxel_index": int}] — the voxels to DESTROY.
 static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vector2i,
-		hit_level: int, glass_punch: float, salt: String) -> Array:
+		hit_level: int, glass_punch: float, salt: String,
+		anchor_positions: Dictionary = {}) -> Array:
 	## Run axis of the pane: X for {SW, NE}, Y for {SE, NW} — matches
 	## GlassPaneGrouper's `Vector2i(absi(fd.y), absi(fd.x))`.
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
@@ -160,25 +234,27 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## Build the pane's own lattice of VISIBLE voxels, keyed by (col, level) where
 	## `col` runs along the pane. A destroyed voxel is already a hole and is not a
 	## flood candidate.
-	var lattice: Dictionary = {}   ## Vector2i(col, level) -> {"slice": Slice, "voxel_index": int}
-	var col_min: int = 1 << 30
-	var col_max: int = -(1 << 30)
-	var lvl_min: int = 1 << 30
-	var lvl_max: int = -(1 << 30)
+	## G-D13b: a banded pane (G-D9) keeps its brick sill and head in these SAME
+	## slices, reached through `material_at()`. Those voxels are FRAME, not glass:
+	## they are not flood candidates, the BFS does not travel through them, and
+	## they anchor the shards next to them. Nothing consulted the material before,
+	## so a sniper on the GLASS map's brick-capped window took 91 of its 96 brick
+	## voxels with it — measured by glass_shatter_selftest [11] before this fix.
+	var lattice: Dictionary = {}   ## Vector2i(col, level) -> {"slice", "voxel_index"} — GLASS only
+	var own_frame: Dictionary = {} ## Vector2i(col, level) -> true — this pane's non-glass bands
 	for slice in pane_slices:
+		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
 		for vi in range(slice.voxels.size()):
 			var v: Voxel = slice.voxels[vi]
 			## Already a hole (this shot's own local hole, or an earlier one) — not
-			## a flood candidate, and not part of the border bounds.
+			## a flood candidate, and nothing left to anchor.
 			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
 				continue
-			var col: int = v.grid_pos.x if run_is_x else v.grid_pos.y
-			var key := Vector2i(col, v.level)
+			var key := _pane_key(v, run_is_x)
+			if slice.material_at(v.level - slice_base) != "glass":
+				own_frame[key] = true
+				continue
 			lattice[key] = {"slice": slice, "voxel_index": vi}
-			col_min = mini(col_min, col)
-			col_max = maxi(col_max, col)
-			lvl_min = mini(lvl_min, v.level)
-			lvl_max = maxi(lvl_max, v.level)
 	if lattice.is_empty():
 		return []
 
@@ -212,27 +288,38 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 					flood[nb] = true
 					queue.append(nb)
 
-	## G-D13 — spare the frame ring. `keep_prob` from the shot's luck.
+	## G-D13b — spare ANCHORED shards only. A flooded glass voxel is a candidate
+	## iff one of its four orthogonal neighbours is non-glass: this pane's own
+	## band (`own_frame`) or a neighbouring wall in the same plane
+	## (`anchor_positions`). `keep_prob` from the shot's luck, unchanged.
 	var luck_unit: float = float(FacadeSamplerClass._fnv1a_hash("%s:REMNANT_LUCK" % salt) % 100000) / 100000.0
 	var keep_prob: float = lerpf(SHATTER_REMNANT_KEEP_MIN, SHATTER_REMNANT_KEEP_MAX, luck_unit)
-	var border_in_flood: Array = []
+	var anchored: Array = []
 	for k in flood.keys():
-		var is_border: bool = k.x == col_min or k.x == col_max or k.y == lvl_min or k.y == lvl_max
-		if is_border:
-			border_in_flood.append(k)
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var nb: Vector2i = k + d
+			if own_frame.has(nb) or anchor_positions.has(nb):
+				anchored.append(k)
+				break
 	var spared: Dictionary = {}
-	for k in border_in_flood:
+	for k in anchored:
 		var u: float = float(FacadeSamplerClass._fnv1a_hash("%s:REMNANT:%d:%d" % [salt, k.x, k.y]) % 100000) / 100000.0
 		if u < keep_prob:
 			spared[k] = true
-	## Hard floor: at least SHATTER_REMNANT_MIN_COUNT border voxels survive. If the
-	## rolls spared too few, spare more — the ones the flood is furthest into a
-	## corner of, by |col-mid| + |lvl-mid|, so the survivors read as frame
-	## fragments rather than a random speckle.
-	if spared.size() < SHATTER_REMNANT_MIN_COUNT and not border_in_flood.is_empty():
-		var mid_col: float = float(col_min + col_max) * 0.5
-		var mid_lvl: float = float(lvl_min + lvl_max) * 0.5
-		var ranked: Array = border_in_flood.duplicate()
+	## The floor is CONDITIONAL now: at least SHATTER_REMNANT_MIN_COUNT survive
+	## AMONG THE ANCHORED ONES, and an unanchored pane has none to apply it to —
+	## which is exactly the free-standing case that has to reach zero. Ranked by
+	## distance from the anchored set's own centre, so the forced survivors read
+	## as fragments clinging at the extremities rather than a random speckle.
+	if spared.size() < SHATTER_REMNANT_MIN_COUNT and not anchored.is_empty():
+		var sum_col: float = 0.0
+		var sum_lvl: float = 0.0
+		for k in anchored:
+			sum_col += float(k.x)
+			sum_lvl += float(k.y)
+		var mid_col: float = sum_col / float(anchored.size())
+		var mid_lvl: float = sum_lvl / float(anchored.size())
+		var ranked: Array = anchored.duplicate()
 		ranked.sort_custom(func(a, b) -> bool:
 			var da: float = absf(float(a.x) - mid_col) + absf(float(a.y) - mid_lvl)
 			var db: float = absf(float(b.x) - mid_col) + absf(float(b.y) - mid_lvl)

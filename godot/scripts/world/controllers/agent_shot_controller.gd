@@ -811,13 +811,20 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	if not GlassShatter.rolls_shatter(glass_punch, pick_salt):
 		return
 
+	var all_slices: Array = room._edge_registry.all_slices()
 	var pane_slices: Array = []
-	for s in room._edge_registry.all_slices():
+	for s in all_slices:
 		if s.pane_id == hit_slice.pane_id:
 			pane_slices.append(s)
 
+	## G-D13b — a shard survives only where it has something to hang from. The
+	## anchor set is every non-glass voxel in the pane's own plane: its G-D9
+	## bands, and any wall (half-thickness included) on the same edge line. An
+	## EMPTY set means a free-standing pane, and then the whole thing goes.
+	var anchors: Dictionary = GlassShatter.collect_anchor_positions(
+		pane_slices, hit_slice.face, all_slices)
 	var plan: Array = GlassShatter.plan_pane_shatter(pane_slices, hit_slice.face,
-		hv.grid_pos, hv.level, glass_punch, pick_salt)
+		hv.grid_pos, hv.level, glass_punch, pick_salt, anchors)
 	var n: int = 0
 	for e in plan:
 		var s2: Slice = e["slice"]

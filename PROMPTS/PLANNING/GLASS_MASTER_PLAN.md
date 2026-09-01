@@ -131,7 +131,8 @@ just not the target case.
 | **G-D10** | **Mullions are free or they do not exist — a continuous pane is fine.** *(Director, 2026-08-30, closing §9.1's open observation.)* If the muntin grid falls out of the geometry — horizontals at storey boundaries, verticals at GU boundaries — take it. If the glass reads as one continuous surface instead, that is equally correct. **Neither outcome is a defect, and G-ART owes NO fifth decal family.** The one thing ruled out is authoring muntins as art | ✅ Ratified 2026-08-30 |
 | **G-D11** | **The whole-pane shatter is a PER-PROJECTILE ROLL scaled by power — ⚠️ this replaces §5.1's single `pane_shatter_punch` threshold.** *"Cada pellet ou projetil vai ter sua própria chance de quebrar ou não a janela toda, ou pelo menos uma área maior do que a zona do tiro, de acordo com a potência."* Every pellet/round that hits a pane rolls its OWN chance (B4 FNV-1a on `(salt, projectile index)`) to take the pane — or a region larger than its own hole. The chance rises with the round's glass punch. A shotgun's 24 pellets each roll and the pane's odds compound with the count — and **it is legitimately possible that none shatter it** | ✅ Ratified 2026-08-31, replaces §5.1 |
 | **G-D12** | **A BIG pane breaks PARTIALLY; a SMALL pane is binary.** *"Uma vidraça grande permite que uma parte quebre totalmente, e outra continue resistindo. Em vidros menores é mais binário, quebrou tudo ou não."* A shatter roll takes a REGION — a flood from the hit, radius scaled by the round's power. On a large pane the rest keeps standing (same `pane_id`, still shatterable later); on a small pane the region covers the whole thing | ✅ Ratified 2026-08-31 |
-| **G-D13** | **The cascade NEVER destroys every voxel — remnants on the frame are a HARD INVARIANT.** *"nunca queremos que todos os voxels quebrem, sempre deixamos umas sobrinhas nas molduras."* §5.2's luck-driven border survivors (position 0/7, level 0/7) are now a rule of G3 itself, not an optional G4 flourish. A pane left with zero surviving border voxels is a bug | ✅ Ratified 2026-08-31 |
+| **G-D13** | **Remnants on the frame.** *"nunca queremos que todos os voxels quebrem, sempre deixamos umas sobrinhas nas molduras."* §5.2's luck-driven survivors are a rule of G3 itself, not an optional G4 flourish | ✅ Ratified 2026-08-31 · ⚠️ **its unconditional half superseded by G-D13b** |
+| **G-D13b** | **A remnant is ANCHORED or it is not a remnant.** *"como essa vidraça não tem nada em volta, todos os cacos precisam cair. Então na verdade a regra é: alguns cacos devem sempre ficar sobrando, QUANDO estiverem conectados com qualquer outro material (half slices inclusive)."* A flooded glass voxel survives only if an ORTHOGONAL lattice neighbour holds non-glass material — the pane's own G-D9 bands, or a wall (half-thickness included) on the same edge line. Glass never anchors glass. G-D13's floor of `MIN_COUNT` survivors still holds, but only AMONG THE ANCHORED; a free-standing pane has none and goes completely. ⚠️ The floor the pane stands on is NOT an anchor (it is not in the pane's plane) — stated as an assumption, since counting it would keep a row of shards along the bottom of exactly the pane this rule exists to empty | ✅ Ratified 2026-09-01 |
 | **G-D14** | **Hole size is per-weapon.** *"pistola ou shotgun fazerem um furo de um voxel, com a arte das ondas rachadas em volta, ao passo que armas mais potentes como o fuzil destroem de 2 a 4 voxels, e criam uma arte com ondas maior, e mais espaçada."* Non-shattering hit: pistol / shotgun pellet = 1 voxel + a tight `crack_web`; rifle-class = 2–4 voxels (scaled by power) + a larger, more spaced `crack_web`. Driven by the existing `WeaponDef.blowout` field | ✅ Ratified 2026-08-31 |
 | **G-D15** | **ARMORED GLASS (`glass_armored`, purple) — resists common shots; when breached, usually shatters entirely at once, leaving many individual shards.** ⚠️ **Special rifle case:** a rifle round may pierce a SINGLE voxel without shattering (treated as a weak hit) — this PRIMES the pane, and the next shot of ANY type auto-shatters the whole thing. `pane_primed` is a per-pane flag, checkpoint-scoped | ✅ Ratified 2026-08-31 · build after this doc is signed off |
 | **G-D16** | **Glass is a family of tinted behaviour classes, not new geometry.** All variants share G1's rendering and differ only in a tint (`base_color`) and a `glass_class`: `glass` (blue, BREAKABLE) · `glass_armored` (purple, ARMORED, G-D15) · `glass_screen_{green,red,amber}` (dark terminal tone) which is **INDESTRUCTIBLE** (control interfaces — takes a crack decal, never breaks, and STOPS the round: *"trinca mas o tiro para"*) or **BREAKABLE** (TVs, circuits, news panels) per placement | ✅ Ratified 2026-08-31 |
@@ -292,10 +293,30 @@ does three things, in order.**
    everything → binary. On a large pane the rest survives with its `pane_id`
    intact and can be shattered by a later hit.
 
-**G-D13 is a hard floor on all of it.** After the hole, the region, *and* any
-later hits, the frame ring (position 0/7, level 0/7) keeps luck-driven survivors
-(§5.2). The cascade may not leave a pane with zero border voxels — pin it with a
-selftest.
+**G-D13b is a CONDITIONAL floor on all of it.** After the hole, the region, *and*
+any later hits, a flooded glass voxel survives only where it is ANCHORED — an
+orthogonal neighbour in the pane's lattice holding non-glass material. While a
+pane has any anchor, at least `SHATTER_REMNANT_MIN_COUNT` of those survive; with
+none, the pane goes completely.
+
+✅ **AMENDED 2026-09-01 (G-D13b).** G-D13 spared survivors on the pane's own
+BOUNDING BOX and forced at least 4 of them, on the reading that a pane always has
+a frame. maps/GLASS.map.json's big pane does not — six GUs of glass with nothing
+around it — and it kept shards hanging in mid-air, which is what the Director
+reported. Measured on that exact pane, same shot, same salt, same radius 21, the
+only difference being the model: **848 destroyed before, 882 after — 34 floating
+shards now fall** (`glass_remnant_before_2026-09-01.png` /
+`glass_remnant_after_2026-09-01.png`, 27 291 px changed). The glass still
+standing on the left of both captures is OUTSIDE the flood radius — a legitimate
+G-D12 partial break, not a remnant.
+
+⚠️ **The same pass fixed a defect the anchor model exposed:** `plan_pane_shatter`
+built its lattice from every voxel of every slice sharing the `pane_id`, and a
+G-D9 banded window keeps its brick sill and head in those SAME slices. Nothing
+consulted `material_at()`, so a won roll flooded straight through the brick and
+returned it for DESTROY — **the pane took its own frame with it: 91 of 96 brick
+voxels, worst trial**. Non-glass voxels are now frame: not flood candidates, the
+BFS does not travel through them, and they anchor the shards beside them.
 
 ✅ **BUILT 2026-08-31/09-01 (Stage B) — `GlassShatter.plan_pane_shatter()` +
 `agent_shot_controller._maybe_shatter_pane()`.** Runs in the SHOT PATH (where G7

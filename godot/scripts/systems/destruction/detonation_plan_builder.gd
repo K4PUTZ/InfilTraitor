@@ -569,9 +569,11 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 	if pane_min_ring.is_empty():
 		return
 
-	## Collect each pane's slices once.
+	## Collect each pane's slices once. `all_slices` is hoisted because G-D13b's
+	## anchor scan below needs the same registry-wide list.
+	var all_slices: Array = edge_registry.all_slices()
 	var slices_by_pane: Dictionary = {}
-	for slc2 in edge_registry.all_slices():
+	for slc2 in all_slices:
 		if slc2.pane_id in pane_min_ring:
 			if not slices_by_pane.has(slc2.pane_id):
 				slices_by_pane[slc2.pane_id] = []
@@ -600,8 +602,13 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 					origin_v = v
 		if origin_v == null:
 			continue
+		## G-D13b — same anchor rule as the shot path: remnants only where the pane
+		## touches non-glass material. `all_slices` is the registry-wide list this
+		## function already walked to group the panes.
+		var anchors: Dictionary = GlassShatter.collect_anchor_positions(
+			pane_slices, face, all_slices)
 		var plan: Array = GlassShatter.plan_pane_shatter(pane_slices, face,
-			origin_v.grid_pos, origin_v.level, glass_punch, salt)
+			origin_v.grid_pos, origin_v.level, glass_punch, salt, anchors)
 		var entries: Array = []
 		for e in plan:
 			var pv: Voxel = e["slice"].voxels[int(e["voxel_index"])]

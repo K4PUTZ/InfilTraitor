@@ -552,6 +552,7 @@ static func _is_glass_pane_slice(slice: Slice) -> bool:
 ## pattern hash off (source_gu, pane_id), so a replay matches.
 static func _shatter_glass_panes(s: Dictionary) -> void:
 	var edge_registry: EdgeRegistry = s["edge_registry"]
+	var slab_registry: SlabRegistry = s["slab_registry"]
 	var affected: Dictionary = s["affected"]["slices"]
 	var bomb_def = s["bomb_def"]
 	var delta: WorldDelta = s["delta"]
@@ -610,15 +611,27 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 		var plan: Array = GlassShatter.plan_pane_shatter(pane_slices, face,
 			origin_v.grid_pos, origin_v.level, glass_punch, salt, anchors)
 		var entries: Array = []
+		var fallen: Array = []
 		for e in plan:
 			var pv: Voxel = e["slice"].voxels[int(e["voxel_index"])]
 			if pv.damage_state == Voxel.DamageState.DESTROYED:
 				continue
 			entries.append(BlastCalculatorClass.damage_entry(pv, Voxel.DamageState.DESTROYED, true))
+			fallen.append({"grid_pos": pv.grid_pos, "level": pv.level})
 		if not entries.is_empty():
 			delta.add_damage(entries)
 			print_debug("[GLASS-SHATTER-BLAST] pane=%s ring=%d glass_punch=%.2f flooded=%d voxel(s)"
 				% [pid, ring, glass_punch, entries.size()])
+			## G-D16a — the same landing report the shot path makes. Both paths or
+			## neither: a pane shattered by a grenade producing no shard state while a
+			## shot one does is exactly the asymmetry that gets found months later.
+			var landings: Array = GlassFall.plan_landings(fallen, slab_registry.all_slabs())
+			var piles: Dictionary = GlassFall.pile_by_cell(landings)
+			var deepest: int = 0
+			for c in piles.values():
+				deepest = maxi(deepest, int(c))
+			print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
+				% [landings.size(), entries.size(), piles.size(), deepest, entries.size() - landings.size()])
 
 
 ## E-JUNCTION-01 (2026-08-13): wall-junction corner columns — mirrors

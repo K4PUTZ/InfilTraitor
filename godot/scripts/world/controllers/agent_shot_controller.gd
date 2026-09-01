@@ -826,6 +826,7 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	var plan: Array = GlassShatter.plan_pane_shatter(pane_slices, hit_slice.face,
 		hv.grid_pos, hv.level, glass_punch, pick_salt, anchors)
 	var n: int = 0
+	var fallen: Array = []
 	for e in plan:
 		var s2: Slice = e["slice"]
 		var pv: Voxel = s2.voxels[int(e["voxel_index"])]
@@ -838,9 +839,23 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		if not cell_to_depth.has(pkey):
 			cell_to_depth[pkey] = 0
 		n += 1
+		fallen.append({"grid_pos": pv.grid_pos, "level": pv.level})
 	if n > 0:
 		print_debug("[GLASS-SHATTER] pane=%s glass_punch=%.2f radius=%d flooded=%d voxel(s)"
 			% [hit_slice.pane_id, glass_punch, GlassShatter.region_radius(glass_punch), n])
+		## G-D16a — where the glass that fell ends up. Reported on the REAL path from
+		## the day the rule exists, not left until G6 can draw it: §7.1's own risk
+		## note is that this project has already shipped two features that were built
+		## and never triggered, and a number in the shot's own log is the cheapest
+		## thing that cannot rot unnoticed. G6 is the consumer that makes it visible,
+		## and it is blocked on the `shard_floor` art.
+		var landings: Array = GlassFall.plan_landings(fallen, room._slab_registry.all_slabs())
+		var piles: Dictionary = GlassFall.pile_by_cell(landings)
+		var deepest: int = 0
+		for c in piles.values():
+			deepest = maxi(deepest, int(c))
+		print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
+			% [landings.size(), n, piles.size(), deepest, n - landings.size()])
 
 
 ## Same conversion TestZoneController and WeaponBenchController do — room's

@@ -437,11 +437,64 @@ sill/head inside one GU afterwards.
 inside its own GU?** Whole-GU first is a much smaller piece and unblocks the fall
 model immediately; sub-GU regions can follow the way G-D9 followed G1.
 
+### ✅ G-D16a BUILT (2026-09-01) — `GlassFall`
+
+`godot/scripts/systems/destruction/glass_fall.gd`, pure like
+`collect_anchor_positions()`: it takes a surface INDEX, never the SlabRegistry, so
+the selftest hands it a synthetic counter and proves the rule without a map.
+
+- `build_surface_index(slabs, columns)` — a surface is any visible, undestroyed
+  voxel of ANY Slab. That is why it names no feature: the ground is a FLOOR slab,
+  a block roof and a counter top are CEILING slabs, a ledge is an INTERIOR one, so
+  all three catch shards without a branch. **Glass is not a surface** — a shard
+  through a skylight must not stop on the next pane under it, the same way a round
+  does not (G-D5). `columns` restricts the walk to the columns a break touched, so
+  the cost is proportional to the break, not the map.
+- `landing_level()` = the highest surface STRICTLY below. A shard level-with a
+  counter top is beside it, not on it, and goes to the floor.
+- `plan_landings()` returns only shards that actually came to rest; one with
+  nothing under it is DROPPED, never reported at a fake level 0 (`NO_LANDING`).
+- `pile_by_cell()` gives G6 the shape it needs: `Vector3i(x, y, level) -> count`.
+  Nothing is deduplicated — the multiplicity IS the pile depth.
+
+`glass_fall_selftest`, 6 checks, one per case the Director named, all on the same
+function with nothing changing but the geometry underneath: bare floor → base
+pile; the SAME pane over a counter → 18 shards on the counter and the 6 at or
+below it on the floor; a skylight at level 96 → a 17-level drop to the floor;
+glass under glass → falls through; nothing underneath → no landing; a 3-storey
+column → one cell at density 24.
+
+**Wired into BOTH real paths on day one** — the shot path and the cook — and
+REPORTED there rather than left until G6 can draw it. §7.1's own risk note is
+that this project has already shipped two features that were built and never
+triggered; a number in the shot's own log is the cheapest thing that cannot rot
+unnoticed. Real map, GLASS's big pane, sniper:
+
+    [GLASS-SHATTER] pane=PANE_SLICE_16_10_SW glass_punch=4.99 radius=21 flooded=882 voxel(s)
+    [GLASS-FALL] 882 of 882 shard(s) landed, on 37 cell(s), deepest pile 24 (0 fell out of the world)
+
+Deepest pile 24 is a full 3-storey column of glass emptying onto one floor cell —
+the pile the Director asked for, already computed.
+
+⚠️ **A latent seam found and closed while wiring it.** `plan_pane_shatter`'s
+lattice key is `(col, level)` — for an SW/NE pane that is `(grid_pos.x, level)`,
+and the THICKNESS row is dropped. That holds today because a glass panel is
+half-thickness with exactly ONE slice per GU (verified on the real map: the
+6 GU × 3 storey pane is 48 cols × 24 levels = 1152 voxels). The day a
+full-thickness glass wall or a `PANE_BLOCK_*` exists, two voxels would collide on
+one key and the second would silently overwrite the first — **half the pane would
+never break, with no error anywhere.** It now `push_error`s and returns empty (B6)
+instead.
+
+⚠️ **G-D16b is blocked on art.** The landings are computed and reported; nothing
+draws them. §7.1's decal path needs the `shard_floor` family, which G-ART has not
+delivered. That is a real dependency, not a choice.
+
 ### The staging this implies
 
 | | piece | depends on |
 |---|---|---|
-| **G-D16a** | **The fall.** A destroyed glass voxel's landing cell = straight down its column to the first horizontal surface. Pure geometry, testable with no art | — |
+| **G-D16a** | **The fall.** A destroyed glass voxel's landing cell = straight down its column to the first horizontal surface. Pure geometry, testable with no art | ✅ **BUILT 2026-09-01** |
 | **G-D16b** | **G6 accumulation.** The landing cells become shard density on the floor-decal path (§7.1). This is what makes the pile visible, and §7.1's own risk note says a state nobody can see is a state that rots | G-D16a, G-ART |
 | **G-D16c** | **Horizontal panes.** CEILING glass routes to the pane layer; a horizontal `pane_id`; a shatter plan over an (x, y) lattice instead of (col, level) | G-D16a |
 | **G-D16d** | **Sub-GU slab regions.** Only if Q2 says the frame lives inside the GU | G-D16c |

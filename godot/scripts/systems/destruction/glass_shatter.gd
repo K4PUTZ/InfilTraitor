@@ -254,6 +254,21 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 			if slice.material_at(v.level - slice_base) != "glass":
 				own_frame[key] = true
 				continue
+			## ⚠️ THE LATTICE KEY DROPS THE THICKNESS AXIS. `_pane_key()` is
+			## (col, level) — for an SW/NE pane that is (grid_pos.x, level), and the
+			## row (grid_pos.y) is gone. Today that is safe and load-bearing: a glass
+			## PANEL is half-thickness and has exactly ONE slice per GU (G7's own
+			## note in blast_calculator), so no two voxels of a pane share a key —
+			## verified on the real map, where the 6 GU x 3 storey pane is 48 cols x
+			## 24 levels = 1152 voxels, one slice's worth per GU.
+			##
+			## The day a FULL-thickness glass wall or a PANE_BLOCK_* exists, two
+			## voxels would collide here and the second would silently overwrite the
+			## first — half the pane would never break, with no error anywhere. B6:
+			## fail loudly at that seam instead of shattering half a wall.
+			if lattice.has(key):
+				push_error("[GlassShatter] pane %s has two glass voxels on lattice key %s — the (col, level) key drops the thickness axis and only holds for a HALF-THICKNESS pane. A full-thickness or block pane needs a 3-D key before it can shatter." % [slice.pane_id, key])
+				return []
 			lattice[key] = {"slice": slice, "voxel_index": vi}
 	if lattice.is_empty():
 		return []

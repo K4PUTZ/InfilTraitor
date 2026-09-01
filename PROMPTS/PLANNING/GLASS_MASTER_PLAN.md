@@ -135,6 +135,8 @@ just not the target case.
 | **G-D13b** | **A remnant is ANCHORED or it is not a remnant.** *"como essa vidraça não tem nada em volta, todos os cacos precisam cair. Então na verdade a regra é: alguns cacos devem sempre ficar sobrando, QUANDO estiverem conectados com qualquer outro material (half slices inclusive)."* A flooded glass voxel survives only if an ORTHOGONAL lattice neighbour holds non-glass material — the pane's own G-D9 bands, or a wall (half-thickness included) on the same edge line. Glass never anchors glass. G-D13's floor of `MIN_COUNT` survivors still holds, but only AMONG THE ANCHORED; a free-standing pane has none and goes completely. ⚠️ The floor the pane stands on is NOT an anchor (it is not in the pane's plane) — stated as an assumption, since counting it would keep a row of shards along the bottom of exactly the pane this rule exists to empty | ✅ Ratified 2026-09-01 |
 | **G-D14** | **Hole size is per-weapon.** *"pistola ou shotgun fazerem um furo de um voxel, com a arte das ondas rachadas em volta, ao passo que armas mais potentes como o fuzil destroem de 2 a 4 voxels, e criam uma arte com ondas maior, e mais espaçada."* Non-shattering hit: pistol / shotgun pellet = 1 voxel + a tight `crack_web`; rifle-class = 2–4 voxels (scaled by power) + a larger, more spaced `crack_web`. Driven by the existing `WeaponDef.blowout` field | ✅ Ratified 2026-08-31 |
 | **G-D17** | **A ROUND LOSES POWER THROUGH EVERY GLASS LAYER IT CROSSES.** *"Precisamos implementar quebra em dois vidros seguidos, ou formalizar que vidros só podem ter meia espessura. Seria mais interessante pra engine a primeira opção, porque isso implica nos cubos sólidos de vidro. Adicionamos um modificador de destruição, de forma que cada camada de vidro a mais diminui a potência do projétil."* A LAYER is one thickness of glass the round passes through — the next pane along the ray, or the far face of a solid cube. Depth 0 is unattenuated, so §5.1's ratified arsenal table is untouched by construction. GEOMETRIC (`punch · FALLOFF^depth`), never subtractive: it cannot go negative, and a thick stack stops a round by ARITHMETIC instead of by a special case naming a limit. Applied to the WHOLE projectile — the hole it makes, the pane roll, and the mark on the wall it finally reaches | ✅ Ratified + BUILT 2026-09-01 |
+| **G-D19** | **A CRACKED GLASS VOXEL IS HALF SEE-THROUGH — AND THAT IS NOT AN ALPHA.** *"Com a rachadura nos voxels eles naturalmente vão perder a visibilidade total. Vamos diminuir pra 50% naquele voxel de vidro que tiver algum decal. Mas o decal em si já vai ter a própria opacidade na hora do bake, então precisamos fazer essa sobreposição dos elementos de maneira consciente."* The two quantities are DIFFERENT CHANNELS and must never be multiplied into one: the atom's **alpha is COVERAGE** (is there glass here — the silhouette B3 clamps a decal to), while see-through-ness is how much of `behind` survives the modulate in `glass_apply()`. Fold the 50% into the decal's alpha and it lands in `cover`: the voxel gets HALF A SILHOUETTE and partly vanishes instead of frosting over. So the decal composites into the atom exactly as it does today (alpha = coverage, B3 unchanged), and the 50% rides a SEPARATE per-voxel damage term the shader applies to the background contribution — `lit = mix(lit, frosted_body, damage)` | 🟡 Proposed 2026-09-01 |
+| **G-D20** | **PANE FRACTURE IS A CONNECTING MOSAIC, NOT A BAKED SHEET — supersedes §5.4's facade proposal.** *"Uma outra possibilidade seria fazer mosaicos procedurais usando partes de rachaduras similares que se conectam. Isso facilita porque o furo tem que ser posicionado sobre o voxel que o tiro acertou, e não aonde a textura baked fica."* The Director's argument is decisive and it kills the earlier proposal: a facade sheet is **structure-anchored** (`texture_anchor` = the component's NW corner, deliberately static so the pattern does not swim), while a fracture is **event-anchored** — its centre is wherever the round landed, different every shot. A baked sheet would put the radial centre at a fixed spot on the pane no matter where you hit it. A tile set whose edges connect, assembled outward from the impact voxel, is event-anchored by construction, stays inside the existing per-voxel decal path (no new bake axis, no new anchor unit), and is still gated by `check_decal.py` | ✅ Ratified 2026-09-01 |
 | **G-D15** | **ARMORED GLASS (`glass_armored`, purple) — resists common shots; when breached, usually shatters entirely at once, leaving many individual shards.** ⚠️ **Special rifle case:** a rifle round may pierce a SINGLE voxel without shattering (treated as a weak hit) — this PRIMES the pane, and the next shot of ANY type auto-shatters the whole thing. `pane_primed` is a per-pane flag, checkpoint-scoped | ✅ Ratified 2026-08-31 · build after this doc is signed off |
 | **G-D16** | **Glass is a family of tinted behaviour classes, not new geometry.** All variants share G1's rendering and differ only in a tint (`base_color`) and a `glass_class`: `glass` (blue, BREAKABLE) · `glass_armored` (purple, ARMORED, G-D15) · `glass_screen_{green,red,amber}` (dark terminal tone) which is **INDESTRUCTIBLE** (control interfaces — takes a crack decal, never breaks, and STOPS the round: *"trinca mas o tiro para"*) or **BREAKABLE** (TVs, circuits, news panels) per placement | ✅ Ratified 2026-08-31 |
 | **G-D17** | **A screen is a glass voxel over a BLACK PLASTIC voxel.** *"O voxel de vidro fica na frente de voxels pretos de PLÁSTICO (a implementar — fura [não atravessa] ou derrete), de forma que nesses voxels pretos vamos pintar as imagens e textos posteriormente, e o vidro vai criar o efeito de brilho por cima."* New material **`plastic`** (black): a round DRILLS it (a hole, but the round does NOT pass through — unlike glass) or fire MELTS it. Images/text painted onto the plastic later; the glass in front adds the G1 sheen. Belongs in `MATERIALS_MASTER_PLAN` | ✅ Ratified 2026-08-31 · `plastic` + the paint layer are deferred |
@@ -529,6 +531,57 @@ still excluded from the cascade (they have no single run axis, so
 counts as ONE layer rather than two. The attenuation is the half that generalises;
 the block geometry is its own piece and is named here rather than implied.
 
+### G-D19 mechanics — the free channel that carries the damage term
+
+Verified in the shader, not assumed. There is exactly ONE glass shader
+(`glass_pane.gdshader` + `glass_shading.gdshaderinc`) and it reads exactly two
+things from the atom:
+
+    float cover = smoothstep(glass_alpha_floor, 0.85, t.a);   // silhouette
+    vec3  lit   = glass_apply(behind, local, t.r);            // per-plane dim
+
+`_build_glass_pane_atom()` writes `Color(rgb, rgb, rgb, a)` — **R, G and B are
+the same value and only R is ever read.** So the GREEN channel of a glass atom is
+free, and a per-voxel damage factor can ride it exactly the way FACE-SOOT-01
+rides the soot code in alpha on opaque voxels. No new texture, no new layer, no
+new atlas source.
+
+Why this matters more than it looks: glass does not alpha-blend at all. G-D1 is
+explicit — *"straight alpha averages the texture toward whatever is behind and
+washes it out. Glass MODULATES it"* — so the pane reads a BackBufferCopy of the
+scene behind it and multiplies a tint over it. **There is no opacity knob to turn
+down.** "50% see-through" means mixing the result toward an opaque frosted body,
+which is what `glass_min_body` already does globally for a pane over a void:
+
+    vec3 lit = glass_apply(behind, local, t.r);
+    lit = mix(lit, glass_tint * frosted_body, t.g);   // t.g = per-voxel damage
+
+**The compositing order, stated once so it cannot drift:** the decal composites
+into the atom FIRST and only touches RGB + alpha-as-coverage — B3 still clamps it
+to the silhouette, a decal still cannot enlarge a voxel. The damage term is
+applied by the SHADER, after, to the background contribution. They are never
+multiplied together, and the decal's own opacity never reaches `cover`.
+
+### G-D20 mechanics — what a connecting tile set has to be
+
+The tiles are ordinary per-voxel decals; what makes them a fracture is that their
+EDGES agree. Wang-tile style: each of a tile's four edges is either "no crack
+crosses here" or "a crack crosses at position *p*", and the assembler only places
+a tile whose edges match its already-placed neighbours.
+
+- **The impact voxel** gets the hole tile — the one family whose placement is
+  fixed by the event, which is the whole reason the mosaic exists.
+- **Outward from it**, tiles are chosen by matching the neighbour's exit points,
+  so radials continue across seams instead of restarting per face.
+- **Rotation is free** — four orientations per authored tile, so the authored set
+  is roughly a quarter of the placed variety.
+
+⚠️ **Authoring the tiles by hand is the part most likely to go wrong**, because a
+human drawing sixteen edge-compatible 256 px tiles will miss alignments. The
+cheap way round it: draw ONE large fracture and CUT the tiles out of it on a grid
+— continuity is then true by construction rather than by care. That also happens
+to be the answer to whether Stable Diffusion can author them (§7.3).
+
 ### The staging this implies
 
 | | piece | depends on |
@@ -665,6 +718,35 @@ built and never triggered — the noise indicator and the exposure labels. What
 keeps shards from becoming the third is that the **decal makes them visible from
 day one**: a state that is on screen cannot rot unnoticed. That is the mitigation,
 and it is deliberate, not a hope.
+
+### 7.3 Can Stable Diffusion author this? (Director asked 2026-09-01)
+
+*"temos um Stable Diffusion instalado, seria possível gerar essas artes de
+maneira realista e convincente, com opacidade?"*
+
+**Realism: yes. Opacity: not directly — but glass has a shortcut that makes it a
+non-problem.** SD outputs RGB and no alpha, and a general matting model is
+overkill here. A glass crack is BRIGHT ON DARK, so:
+
+> generate on a pure black field → take alpha = luminance → set RGB to the crack's
+> own near-white → done.
+
+No matting model, no manual cutout, and the result is exactly the shape §7's
+gate wants (`check_decal.py` asks whether the IMAGE is transparent, and accepts a
+palette PNG with a tRNS chunk, so an ordinary export passes).
+
+**Where SD will NOT help, and it is worth knowing before spending a night on it:**
+
+| | |
+|---|---|
+| Edge-matching for G-D20's tiles | SD has no notion of a tile boundary and will not produce cracks that line up across four edges. **Do not fight this** — generate ONE large fracture and cut the tiles out of it on a grid. Continuity becomes true by construction, and it is less work, not more. |
+| The 16×20 px read | The real constraint, and the one neither SD nor any authoring tool solves. Detail that reads beautifully at 256 dissolves at 1/16th linear. Whatever comes out has to be checked at true size before it is delivered — which is what the fracture-plates page exists for. |
+| The hole's position | Fixed by the event, not by the art (G-D20). SD authors the vocabulary of marks; the assembler decides where each one goes. |
+
+**A workable order:** generate a handful of large fractures at 1024–2048 on black
+→ luma-to-alpha → cut the tile grid → check every tile at 16×20 → deliver the set
+that survives that check. The generation is the cheap step; the true-size check is
+the one that decides what ships.
 
 ### 7.2 Pass-through
 

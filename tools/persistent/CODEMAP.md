@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**224 scripts · 72991 lines total** (under `godot/scripts/`)
+**224 scripts · 73018 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1413,7 +1413,7 @@ extends `Node2D` · 58 lines
 
 ### `occlusion_overlay.gd`
 
-extends `Node2D` · 139 lines
+extends `Node2D` · 146 lines
 
 `godot/scripts/overlays/occlusion_overlay.gd`
 
@@ -1458,7 +1458,7 @@ extends `Node2D` · 79 lines
 
 ### `occlusion_wireframe_overlay.gd`
 
-extends `Node2D` · 140 lines
+extends `Node2D` · 160 lines
 
 `godot/scripts/overlays/occlusion_wireframe_overlay.gd`
 

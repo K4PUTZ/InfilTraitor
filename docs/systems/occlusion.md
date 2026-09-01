@@ -873,6 +873,66 @@ overlapping) outlines instead of fusing into one. Director's verdict after
 a real capture: "não ficou muito bom" — reverted via `git revert`, back to
 OCC-27's single unified pass. Not re-attempted.
 
+### OCC-FIX-03 (2026-09-01) — the wedge to the scene origin
+
+**Symptom** (Director, on GLASS): "a oclusão está se confundindo com a
+iluminação e projetando um rastro pro teto" — a translucent grey wedge
+fanning from a ghosted wall's top rim up past the top of the screen, with a
+white line and a dotted line converging on the same apex. It reads as a
+light shaft, which is why it looked like a lighting bug; it is entirely the
+wireframe overlay (`INFILTRAITOR_WF_HIDE=1` removes 100% of it).
+
+**Cause — LEVEL-RENUMBER residue.** Both overlays resolved a screen position
+by asking `VoxelRenderer.get_layer(...)` for the layer that actually draws a
+level, with a fallback for levels that have no layer built — in practice
+`max_level + 1`, which is where the ghost band's **top-cap** rim and fills
+live. That fallback was written when the ground plane WAS level 0:
+
+```gdscript
+var base_layer := voxel_renderer.get_layer(0)          # null since the renumber
+if base_layer == null:
+    return Vector2.ZERO                                 # ← every top-cap point
+return base_pos + Vector2(0.0, -float(level) * VOXEL_STEP_PX)   # absolute level
+```
+
+With the ground plane at `PLAYABLE_LEVEL` (80), `get_layer(0)` is null on
+every map, so every point one level above a wall's top collapsed onto
+`Vector2.ZERO` — the **scene origin**. Each top-cap quad became a triangle
+from the wall's real top rim to (0, 0), and their union is the wedge.
+
+The fix asks the renderer where its own origin is: `ground_plane_level()`
+for the anchor layer and `relative_level()` for the offset — the two
+accessors that exist so no caller has to know. Same one-line defect, same
+root cause, in `occlusion_overlay.gd` (the dev ring-diamond painter, hidden
+behind the `L` light-vision toggle): it returned `Vector2.ZERO` for *every*
+cell, so the whole overlay painted in one pile at the origin.
+
+**Measured, GLASS, agent at (11, 16), zoom 0.28** (erase-diff forensics, the
+technique below):
+
+| | ghosted wall's own pixels | wireframe's own pixels |
+|---|---|---|
+| before | y 153..475 | y 0..478, 81 564 px |
+| after | y 153..475 | y 153..478, 28 053 px |
+
+53 511 phantom pixels, all of them above the wall they claimed to outline.
+Captures: `Screenshots/history/occ_wedge_before_2026-09-01.png` /
+`occ_wedge_after_2026-09-01.png`; dev overlay
+`occ_devoverlay_before_2026-09-01.png` / `..._after_...` (strong-red ring-0
+diamonds: 9 stray px before, 657 px on the wall after).
+
+**Arithmetic check that the fallback is now exact:** the built layers step
+by `VOXEL_STEP_PX` (20 px) per level — level 82 sits at y 536, level 103 at
+y 116 (21 levels × 20 px = 420). Ground (level 80) is therefore y 576, and
+the extrapolation for level 104 gives 576 − 24 × 20 = **96**, exactly one
+step above level 103's 116.
+
+⚠️ `get_layer(0)` survives at four more sites outside this system —
+`floating_collectible.gd`, `grenade_prop.gd` and `agent_probe_prop.gd`
+(all three `_apply_z_index()`, which now early-returns and never sets
+`z_index`) and `room.gd::_debug_probe_voxel_alignment()` (flag-gated, aborts).
+Same defect class, not touched by OCC-FIX-03 — out of its scope.
+
 ### Capture instruments (env-gated, zero cost when unset)
 
 For unattended visual verification (`room.gd::_run_auto_screenshot_capture()`):

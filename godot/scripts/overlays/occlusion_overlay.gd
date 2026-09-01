@@ -128,12 +128,19 @@ func _draw_stats() -> void:
 ## entirely). The voxel TileMapLayer already knows where its cells are. Ask it, and there
 ## is only one copy of the transform in the project.
 ##
-## Level 0 is the right layer to query: the set is over voxel COLUMNS, and column identity
-## is the ground-level cell.
+## The GROUND PLANE layer is the right one to query: the set is over voxel COLUMNS, and
+## column identity is the ground-level cell.
+##
+## OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE, the same one that made the wireframe
+## overlay draw a wedge to the scene origin (see occlusion_wireframe_overlay.gd's
+## _voxel_to_screen()). This said `get_layer(0)` back when the ground plane WAS level 0;
+## since the renumber put it at 80 that lookup is null on every map, so this returned
+## Vector2.ZERO for EVERY cell and the whole dev overlay painted its ring diamonds in one
+## pile at the origin. It is hidden by default, which is why it went unreported.
 func _voxel_to_screen(voxel_cell: Vector2i) -> Vector2:
 	if voxel_renderer == null:
 		return Vector2.ZERO
-	var layer: TileMapLayer = voxel_renderer.get_layer(0)
+	var layer: TileMapLayer = voxel_renderer.get_layer(voxel_renderer.ground_plane_level())
 	if layer == null:
 		return Vector2.ZERO
 	return layer.map_to_local(voxel_cell) + layer.position

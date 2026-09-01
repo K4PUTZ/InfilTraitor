@@ -115,10 +115,12 @@ func _layer_z_index(level: int) -> int:
 	if layer != null:
 		base_z = layer.z_index
 	else:
-		var base_layer: TileMapLayer = voxel_renderer.get_layer(0)
+		## LEVEL-RENUMBER: the ground plane is VoxelRenderer.ground_plane_level(),
+		## not 0 — see _voxel_to_screen() below for what a literal 0 costs here.
+		var base_layer: TileMapLayer = voxel_renderer.get_layer(voxel_renderer.ground_plane_level())
 		if base_layer == null:
 			return 0
-		base_z = base_layer.z_index + level
+		base_z = base_layer.z_index + voxel_renderer.relative_level(level)
 	return base_z - 1  ## OCC-23: in front of lower levels, behind own level's voxels
 
 
@@ -126,15 +128,33 @@ func _layer_z_index(level: int) -> int:
 ## OCC-FIX-02 established for OcclusionOverlay: ask the layer that actually draws it,
 ## never hand-roll the isometric transform (Transform Canon has exactly one copy).
 ## Levels beyond what's currently built (e.g. max_level + 1 on the tallest existing
-## layer) fall back to extrapolating from level 0 by VOXEL_STEP_PX per level — the
-## same per-level offset every voxel layer is positioned with (see VoxelRenderer's
-## _ensure_voxel_layers()), so this stays exact even one level past the last built one.
+## layer) fall back to extrapolating from the GROUND PLANE layer by VOXEL_STEP_PX per
+## relative level — the same per-level offset every voxel layer is positioned with (see
+## VoxelRenderer's _ensure_voxel_layers()), so this stays exact even one level past the
+## last built one.
+##
+## OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE. Both halves of that fallback were
+## written when the ground plane WAS level 0, and the renumber (ground plane = 80) left
+## them measuring against an origin that no longer exists: `get_layer(0)` is null on every
+## map, so the guard below returned Vector2.ZERO, and every point one level above a
+## wall's top — the whole top-cap rim and its fills — collapsed onto the SCENE ORIGIN.
+## On screen that is a translucent grey wedge fanning from each ghosted wall's top rim
+## up to (0, 0) and a line to the same apex (Director, 2026-08-31: "a oclusão está se
+## confundindo com a iluminação e projetando um rastro pro teto" — it reads as a light
+## shaft). Measured on GLASS with the agent at (11, 16): the ghosted wall's own pixels
+## span y 153..475, the wireframe's spanned y 0..478.
+##
+## Ask the renderer for its ground plane (`ground_plane_level()`) and for the relative
+## level (`relative_level()`) — the two accessors that exist precisely so no caller has
+## to know where the origin sits. See VoxelRenderer.relative_level()'s own header: this
+## is the same class of defect it documents (a level is not an index into anything).
 func _voxel_to_screen(voxel_cell: Vector2i, level: int) -> Vector2:
 	var layer: TileMapLayer = voxel_renderer.get_layer(level)
 	if layer != null:
 		return layer.map_to_local(voxel_cell) + layer.position
-	var base_layer: TileMapLayer = voxel_renderer.get_layer(0)
+	var base_layer: TileMapLayer = voxel_renderer.get_layer(voxel_renderer.ground_plane_level())
 	if base_layer == null:
 		return Vector2.ZERO
 	var base_pos := base_layer.map_to_local(voxel_cell) + base_layer.position
-	return base_pos + Vector2(0.0, -float(level) * GeometryCoords.VOXEL_STEP_PX)
+	return base_pos + Vector2(
+		0.0, -float(voxel_renderer.relative_level(level)) * GeometryCoords.VOXEL_STEP_PX)

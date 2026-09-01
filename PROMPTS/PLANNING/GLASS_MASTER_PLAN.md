@@ -1,7 +1,8 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.10 — **G1 geometry reworked, G2 + G7 + G-MAP + G-D9 BUILT; glass
-removed from occlusion (G-D18); the agent renders behind a pane (G-D18b).** G1
+**Status:** 🟢 v1.11 — **G1 geometry, G2, G7, G-MAP, G-D9, G-D18, G-D18b BUILT.
+G3 STARTED (staged) — Stage A (`GlassShatter`, the `P_shatter` curve + arsenal
+selftest) BUILT 2026-08-31.** G1
 appearance signed off; G1 geometry awaits a Director tuning verdict on the sliver
 size/dim. **G-D9 (multi-material slices) BUILT 2026-08-31** — `panels.bands` →
 `Slice.material_bands` + `material_at()`, the per-band bake page, a lookup
@@ -266,6 +267,21 @@ does three things, in order.**
    flat bottom is load-bearing: it is what keeps a shotgun's *volume* (24 rolls
    at ~2%) its advantage over a pistol's single ~2.5% roll, and it is what keeps
    "none of the 24 shattered it" a real outcome.
+
+   ✅ **BUILT 2026-08-31 (Stage A) — `godot/scripts/systems/destruction/glass_shatter.gd`.**
+   `p_shatter(glass_punch)` is a **shifted, renormalised logistic** — the
+   `clamp(s(p) − C, 0)` is what makes the bottom actually reach zero (a plain
+   logistic's tail never does). Constants: `SHATTER_K` 1.14, `SHATTER_X0` 3.79,
+   `SHATTER_C` 0.075, `SHATTER_P_MAX` 0.98 (all `static var`). `rolls_shatter(glass_punch, salt)`
+   is the deterministic B4 FNV-1a roll. `glass_shatter_selftest` (8 checks) reads
+   `res://weapons/*.json`, computes each round's neutral `glass_punch` and pins
+   the curve within ±6 pts (±8 for the 24-pellet compound); it also pins the flat
+   bottom (0 below punch 1.5), the sub-1.0 ceiling, monotonicity, and that the
+   roll's observed frequency tracks `p_shatter`. Curve vs targets as built: smg
+   0.6% · pellet 2.0% · pistol 5.5% · revolver 14.3% · rifle 43.8% · sniper
+   81.1% · shotgun blast 38.2%. Pistol lands a touch high — the target knee
+   between punch 2.1 and 2.63 is sharper than a smooth sigmoid catches; Director
+   2026-08-31: *"Boa — fixar como está."*
 
 3. **The region (G-D12).** A won roll floods DESTROYED outward from the hit — a
    BFS over the pane's own voxels, radius scaled by `glass_punch` (a weak win
@@ -623,7 +639,7 @@ level→material override on the same half-thickness face:
 | 🟢 | **G-D9** — multi-material slices: `panels.bands` authoring (§9.6), `Slice.material_bands` + `material_at()`, the per-band bake page (extra `wall_descriptor`, NOT a run split — see §9.6), a lookup `material_override`. `GlassPaneGrouper` unions a banded panel by base-or-band glass. **BUILT 2026-08-31.** Acceptance: `glass_bands_wall_before/after_2026-08-31.png` (same-boot) — the WINDOWS.png wall gains a brick sill (rel 0-1) + head (rel 22-23) over a glass middle; `[BAKE] Composed sheet brick\|facade_brick` present on the GLASS map and absent pre-G-D9; `glass_transparency_selftest` test [7]; 39 selftests clean | — |
 | 3 | **G-ART** — the art order + `check_decal.py` coverage for the glass families (`crack_web` now needs a tight AND a wide/spaced variant, G-D14) | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |
-| ⏸ | **G3** — the break, per §5.1's REWRITTEN model (G-D11..G-D14): per-projectile shatter roll `P_shatter(glass_punch)`, per-weapon hole size off `blowout`, region flood on a won roll, the G-D13 remnant floor. In `build_plan()` + the shot path, world-revision bump. Real-map bed = the `GLASS` map. **Also folds in G-D8's passage work** (Director flagged 2026-08-31): intact glass → the movement blocked-edge set (a new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump. **PAUSED 2026-08-31 pending this doc's sign-off** | G-MAP, G2, §5.1 sign-off |
+| 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` — the `P_shatter` curve + `rolls_shatter()` + arsenal selftest (BUILT, see §5.1). **B** the roll wired into the shot path (per pellet, FNV-1a on `(salt, index)`) + region flood (BFS over the `pane_id` voxels, radius ∝ `glass_punch`) + the G-D13 remnant floor; `bump_world_revision()`; real-map bed = the `GLASS` map, cell probe. **C** the grenade/cook path (a pane inside a blast's destruction footprint shatters here too). **D** G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump. One commit per stage | G-MAP, G2, §5.1 |
 | 5b | **G-VARIANT** — `glass_class` + tint (G-D16): `glass_armored` (purple, ARMORED + `pane_primed`, G-D15), `glass_screen_{green,red,amber}` (INDESTRUCTIBLE / BREAKABLE). Material roster + `RESISTANCE` rows + a per-placement class tag | G3 |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
 | 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15) | G-ART |

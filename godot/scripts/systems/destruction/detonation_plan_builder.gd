@@ -516,10 +516,14 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 		## subtracts it from `voxel.level`. Unshifted it made every offset ~80, the
 		## ring lookup ran off its table and the blast damaged NOTHING.
 		var base_level: int = GeometryCoords.storey_level_base(slice.start_storey)
-		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
-			slice.voxels, slice.id, slice.material, base_ring, base_level, false,
-			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
-			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
+		## GLASS G3-C — a glass PANEL is pulled out of the ring-scatter model: it
+		## fractures, it does not deform, so it breaks whole (below) or not at all.
+		## Glass BLOCKS keep the ring model (pane-shatter is deferred for them).
+		if not _is_glass_pane_slice(slice):
+			delta.add_damage(BlastCalculatorClass.simulate_container_damage(
+				slice.voxels, slice.id, slice.material, base_ring, base_level, false,
+				bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
+				bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
 		for v in slice.voxels:
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - base_level)
@@ -529,7 +533,85 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= ids.size():
+		_shatter_glass_panes(s)
 		_enter_phase(s, PHASE_JUNCTIONS)
+
+
+## GLASS G3-C — true for a glass PANEL slice (has a pane_id, not a BLOCK).
+static func _is_glass_pane_slice(slice: Slice) -> bool:
+	return slice != null and slice.material == "glass" \
+		and slice.pane_id != "" and not slice.pane_id.begins_with("PANE_BLOCK_")
+
+
+## GLASS G3-C (GLASS_MASTER_PLAN §5.1) — a pane inside the blast's damage area
+## breaks EFFECTIVELY. Groups the affected glass panel slices by `pane_id`, keeps
+## the nearest ring, rolls one shatter per pane off the blast's per-ring falloff
+## (GlassShatter.blast_glass_punch), and on a win floods the whole pane
+## (plan_pane_shatter, with the G-D13 frame-ring remnants) into the Delta as
+## blast-sourced DESTROYED entries. Deterministic: the roll and the remnant
+## pattern hash off (source_gu, pane_id), so a replay matches.
+static func _shatter_glass_panes(s: Dictionary) -> void:
+	var edge_registry: EdgeRegistry = s["edge_registry"]
+	var affected: Dictionary = s["affected"]["slices"]
+	var bomb_def = s["bomb_def"]
+	var delta: WorldDelta = s["delta"]
+	var epicenter: Vector2i = s["epicenter"]
+	var source_gu: Vector2i = s["source_gu"]
+
+	var pane_min_ring: Dictionary = {}   ## pane_id -> nearest ring
+	for sid in affected:
+		var slc: Slice = edge_registry.get_slice(sid)
+		if not _is_glass_pane_slice(slc):
+			continue
+		var r: int = int(affected[sid])
+		if not pane_min_ring.has(slc.pane_id) or r < int(pane_min_ring[slc.pane_id]):
+			pane_min_ring[slc.pane_id] = r
+	if pane_min_ring.is_empty():
+		return
+
+	## Collect each pane's slices once.
+	var slices_by_pane: Dictionary = {}
+	for slc2 in edge_registry.all_slices():
+		if slc2.pane_id in pane_min_ring:
+			if not slices_by_pane.has(slc2.pane_id):
+				slices_by_pane[slc2.pane_id] = []
+			slices_by_pane[slc2.pane_id].append(slc2)
+
+	for pid in pane_min_ring:
+		var ring: int = int(pane_min_ring[pid])
+		var glass_punch: float = GlassShatter.blast_glass_punch(bomb_def.ring_multipliers, ring)
+		var salt := "BLAST_%d_%d_%s" % [source_gu.x, source_gu.y, pid]
+		if not GlassShatter.rolls_shatter(glass_punch, salt):
+			continue
+		var pane_slices: Array = slices_by_pane.get(pid, [])
+		if pane_slices.is_empty():
+			continue
+		## Flood origin = the pane voxel nearest the epicenter.
+		var face: int = pane_slices[0].face
+		var origin_v: Voxel = null
+		var best_d: float = INF
+		for ps in pane_slices:
+			for v in ps.voxels:
+				if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+					continue
+				var d: float = Vector2(v.grid_pos - epicenter).length()
+				if d < best_d:
+					best_d = d
+					origin_v = v
+		if origin_v == null:
+			continue
+		var plan: Array = GlassShatter.plan_pane_shatter(pane_slices, face,
+			origin_v.grid_pos, origin_v.level, glass_punch, salt)
+		var entries: Array = []
+		for e in plan:
+			var pv: Voxel = e["slice"].voxels[int(e["voxel_index"])]
+			if pv.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			entries.append(BlastCalculatorClass.damage_entry(pv, Voxel.DamageState.DESTROYED, true))
+		if not entries.is_empty():
+			delta.add_damage(entries)
+			print_debug("[GLASS-SHATTER-BLAST] pane=%s ring=%d glass_punch=%.2f flooded=%d voxel(s)"
+				% [pid, ring, glass_punch, entries.size()])
 
 
 ## E-JUNCTION-01 (2026-08-13): wall-junction corner columns — mirrors

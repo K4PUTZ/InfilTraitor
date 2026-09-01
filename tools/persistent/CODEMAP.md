@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**224 scripts · 72841 lines total** (under `godot/scripts/`)
+**224 scripts · 72991 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -888,7 +888,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4972 lines
+`class_name VoxelRenderer` · extends `Node2D` · 4989 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1938,7 +1938,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 248 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 252 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -1966,7 +1966,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2056 lines
+`class_name DetonationPlanBuilder` · 2138 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2019,7 +2019,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 224 lines
+`class_name GlassShatter` · 250 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -2027,6 +2027,7 @@ extends `Node2D` · 43 lines
 
 **Constants / tuning**
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`
 
 ---
 
@@ -3479,7 +3480,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 368 lines
+extends `SceneTree` · 389 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -3504,6 +3505,7 @@ extends `SceneTree` · 368 lines
 - `func test_small_pane_is_binary_with_remnants() -> void:`
 - `func test_big_pane_partial_then_full() -> void:`
 - `func test_remnant_floor_never_leaves_zero_border() -> void:`
+- `func test_blast_glass_punch_reliable_inside_zero_outside() -> void:`
 
 ---
 

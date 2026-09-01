@@ -93,6 +93,10 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 				return 0
 			layer.erase_cell(entry["cell"])
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+			## GLASS G3 — a shattered glass voxel lives on `_glass_layers`, which
+			## `get_layer()` above does not reach; erase it there too. A no-op for
+			## every non-glass cell (no glass sublayer at that level).
+			voxel_renderer.erase_glass_cell(int(entry["level"]), entry["cell"])
 			return 1
 		"expose":
 			## §2's exposure fallback (B5). Its own step since E-ORGANIC-01 —

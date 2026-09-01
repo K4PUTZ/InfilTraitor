@@ -57,6 +57,7 @@ func _init() -> void:
 	test_small_pane_is_binary_with_remnants()
 	test_big_pane_partial_then_full()
 	test_remnant_floor_never_leaves_zero_border()
+	test_blast_glass_punch_reliable_inside_zero_outside()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -365,4 +366,24 @@ func test_remnant_floor_never_leaves_zero_border() -> void:
 		_pass("across 60 full-shatter rolls the fewest border survivors was %d (never 0)" % worst_border)
 	else:
 		_fail("a full shatter left a pane with 0 border voxels — G-D13 violated")
+	print("")
+
+
+func test_blast_glass_punch_reliable_inside_zero_outside() -> void:
+	print("[10] G3-C: a grenade breaks a pane inside its damage area, not one at the fringe\n")
+	## frag_grenade's real falloff.
+	var frag: Array = [1.0, 0.6, 0.25, 0.0]
+	var p0: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 0))
+	var p1: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 1))
+	var p2: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 2))
+	var p3: float = GlassShatterClass.blast_glass_punch(frag, 3)
+	var p_oob: float = GlassShatterClass.blast_glass_punch(frag, 9)
+	print("      frag rings: p_shatter(0)=%.0f%%  (1)=%.0f%%  (2)=%.0f%%  punch(3)=%.2f  punch(oob)=%.2f" % [
+		p0 * 100.0, p1 * 100.0, p2 * 100.0, p3, p_oob])
+	## Inside (ring 0-1): reliable. Fringe (ring 2): unlikely. Edge/OOB: impossible.
+	if p0 >= 0.9 and p1 >= 0.6 and p2 <= 0.2 and p3 == 0.0 and p_oob == 0.0:
+		_pass("ring 0 ~%.0f%%, ring 1 ~%.0f%%, ring 2 ~%.0f%%, ring 3 and beyond = 0" % [
+			p0 * 100.0, p1 * 100.0, p2 * 100.0])
+	else:
+		_fail("blast falloff wrong: p0=%.2f p1=%.2f p2=%.2f punch3=%.2f punchOOB=%.2f" % [p0, p1, p2, p3, p_oob])
 	print("")

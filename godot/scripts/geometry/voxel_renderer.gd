@@ -4529,6 +4529,23 @@ func glass_level_keys() -> Array:
 	return out
 
 
+## GLASS G3 — erase one glass pane cell. A glass voxel renders on `_glass_layers`,
+## not `_layers`, so the detonation writer's "destroy" wave (which only knows
+## `get_layer()` → the opaque stack) leaves a blast-shattered pane on screen.
+## The shot path already handles this in `_process_dirty_slice_voxel`; this is
+## the same erase for the cook, callable per destroyed cell. Returns true if a
+## cell was actually removed. A no-op when the level has no glass sublayer.
+func erase_glass_cell(level: int, cell: Vector2i) -> bool:
+	if not _glass_layers.has(level):
+		return false
+	var g := _glass_layers[level] as TileMapLayer
+	var was_there: bool = g.get_cell_source_id(cell) != -1
+	g.erase_cell(cell)
+	note_external_write(level, cell)
+	forget_ghost_record(cell, level)
+	return was_there
+
+
 ## GLASS G1 — the blind strip needs a same-boot CONTROL: glass exactly as it
 ## rendered before G1, a solid pale-blue cube. Hiding the pane layer alone just
 ## leaves a hole (glass no longer writes the opaque layer), so this transiently

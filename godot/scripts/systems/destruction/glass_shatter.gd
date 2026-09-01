@@ -51,6 +51,7 @@
 class_name GlassShatter
 
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
+const ShotPunchTableClass = preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")
 
 static var SHATTER_K: float = 1.14       ## logistic steepness
 static var SHATTER_X0: float = 3.79      ## logistic midpoint, in glass_punch units
@@ -80,6 +81,19 @@ static var SHATTER_REMNANT_KEEP_MIN: float = 0.10
 static var SHATTER_REMNANT_KEEP_MAX: float = 0.40
 static var SHATTER_REMNANT_MIN_COUNT: int = 4
 
+## STAGE C — the grenade/cook path. A pane INSIDE a blast's damage area breaks
+## effectively (Director: *"Quebrar efetivamente quando estiver [dentro da área
+## de dano]"*); one near it but outside only CRACKS (G5, deferred). The cook has
+## no per-projectile punch, so the pane's shatter roll runs off the blast's own
+## per-ring falloff: `blast_glass_punch = SHATTER_BLAST_GAIN · ring_multipliers[ring]
+## / RESISTANCE["glass"]`, fed to the same `p_shatter()` / `rolls_shatter()` as a
+## bullet. For frag_grenade (`ring_multipliers [1.0, 0.6, 0.25, 0.0]`) that is
+## ~98% at ring 0, ~78% at ring 1, ~6% at ring 2, 0% at ring 3 — reliable inside,
+## fading at the edge where G5's crack takes over. Glass PANEL slices are pulled
+## OUT of the cook's ring-scatter entirely (glass fractures, it does not deform —
+## a pane breaks whole or not at all); glass BLOCKS keep the ring model.
+static var SHATTER_BLAST_GAIN: float = 3.4
+
 
 ## The probability that ONE projectile with this `glass_punch` shatters the whole
 ## pane (or, in Stage B, floods a region larger than its own hole). Monotonic in
@@ -102,6 +116,18 @@ static func rolls_shatter(glass_punch: float, salt: String) -> bool:
 		return false
 	var unit: float = float(FacadeSamplerClass._fnv1a_hash("%s:GLASS_SHATTER" % salt) % 100000) / 100000.0
 	return unit < p
+
+
+## STAGE C — the effective `glass_punch` for a pane at ring `ring` of a blast
+## whose per-ring falloff is `ring_multipliers`. Off the table's end (or a 0.0
+## entry) it is 0 — the blast does not reach.
+static func blast_glass_punch(ring_multipliers: Array, ring: int) -> float:
+	if ring < 0 or ring >= ring_multipliers.size():
+		return 0.0
+	var m: float = float(ring_multipliers[ring])
+	if m <= 0.0:
+		return 0.0
+	return SHATTER_BLAST_GAIN * m / maxf(ShotPunchTableClass.resistance("glass"), 0.001)
 
 
 ## G-D12 — the flood radius (in voxels, Chebyshev on the pane surface) for a won

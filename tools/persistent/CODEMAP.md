@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**227 scripts · 74486 lines total** (under `godot/scripts/`)
+**227 scripts · 74576 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2038,7 +2038,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 392 lines
+`class_name GlassShatter` · 417 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -3540,7 +3540,7 @@ extends `SceneTree` · 197 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 594 lines
+extends `SceneTree` · 659 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -3569,6 +3569,7 @@ extends `SceneTree` · 594 lines
 - `func test_banded_pane_never_destroys_its_own_frame_bands() -> void:`
 - `func test_unanchored_pane_keeps_nothing() -> void:`
 - `func test_layer_falloff_weakens_each_successive_pane() -> void:`
+- `func test_local_hole_does_not_wall_off_the_flood() -> void:`
 
 ---
 

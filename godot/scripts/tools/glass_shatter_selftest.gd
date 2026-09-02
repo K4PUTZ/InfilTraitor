@@ -61,6 +61,7 @@ func _init() -> void:
 	test_banded_pane_never_destroys_its_own_frame_bands()
 	test_unanchored_pane_keeps_nothing()
 	test_layer_falloff_weakens_each_successive_pane()
+	test_local_hole_does_not_wall_off_the_flood()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -591,4 +592,68 @@ func test_layer_falloff_weakens_each_successive_pane() -> void:
 		_pass("40 layers deep the punch is still positive (%.12f) — no clamp is hiding a sign" % deep)
 	else:
 		_fail("punch went non-positive at depth 40: %f" % deep)
+	print("")
+
+
+## ⛔ REGRESSION — THE SHOT'S OWN HOLE MUST NOT WALL OFF ITS OWN FLOOD.
+##
+## Found on the REAL MAP on 2026-09-01, with Stage B green in this very suite for
+## a day: a won sniper roll on maps/GLASS.map.json's big pane flooded ZERO
+## voxels. `plan_pane_shatter`'s BFS queues a neighbour only `if lattice.has(nb)`,
+## and `lattice` holds SURVIVING glass, so the walk cannot step across a hole —
+## and the origin IS this shot's own fresh hole. A rifle-class round takes 2–4
+## voxels plus the cascade (G-D14), so every cell around the origin is gone too
+## and the queue empties at step one:
+##
+##     lattice=1143  own_frame=0  origin=(114, 84)  origin_in_lattice=false
+##     neighbours_in_lattice=0/8  flood=0  radius=23
+##
+## The failure scales the WRONG WAY — a wider hole strangles the flood harder —
+## so it bites worst on the round most likely to win the roll.
+##
+## ⚠️ WHY EVERY EXISTING TEST HERE PASSED THROUGH IT. Tests [7], [8] and [9] all
+## aim at an INTACT lattice cell, so their origin is in `lattice` and the walk
+## starts alive. The real path destroys the local hole BEFORE calling
+## `plan_pane_shatter` — `agent_shot_controller` applies `plan_entries` and only
+## then calls `_maybe_shatter_pane`. A synthetic fixture that skips that step
+## cannot see this, which is CLAUDE.md's floor-dent lesson in a new costume: the
+## fixture was built with the data that works.
+##
+## So this test does what the shot does: punch the hole FIRST, then roll.
+func test_local_hole_does_not_wall_off_the_flood() -> void:
+	print("[14] the shot's own local hole must not wall off its own flood\n")
+	var mid_col: int = 10 * 8
+	var mid_lvl: int = GeometryCoords.storey_level_base(0) + 12
+	var total: int = 6 * 8 * 3 * 8
+
+	## CONTROL — the same win with no pre-existing hole, so the assertion below
+	## compares against a measured number rather than a guessed one.
+	var intact := _pane(7, 12, 3)
+	var intact_plan := GlassShatterClass.plan_pane_shatter(intact, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 5.25, "HOLE:control")
+
+	## THE REAL SHAPE — the round's local hole, punched before the roll. Chebyshev
+	## radius 1 is all it takes (the real map measured 0 of 8 neighbours surviving)
+	## and it is the SMALLEST hole a rifle-class round makes.
+	var holed := _pane(7, 12, 3)
+	var punched: int = 0
+	for s in holed:
+		for v in s.voxels:
+			if absi(v.grid_pos.x - mid_col) <= 1 and absi(v.level - mid_lvl) <= 1:
+				v.set_damage(Voxel.DamageState.DESTROYED, false, 0, 0, 0)
+				punched += 1
+	var holed_plan := GlassShatterClass.plan_pane_shatter(holed, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 5.25, "HOLE:control")
+
+	print("      %d voxels, sniper win: intact origin -> %d flooded;  after a %d-voxel local hole -> %d flooded"
+		% [total, intact_plan.size(), punched, holed_plan.size()])
+	## The holed pane has `punched` fewer candidates by construction, so the bar is
+	## "essentially the same flood", not "identical".
+	var floor_size: int = int(float(intact_plan.size()) * 0.9)
+	if holed_plan.size() >= floor_size and holed_plan.size() > 0:
+		_pass("a %d-voxel hole around the origin costs the flood %d voxel(s), not all of them (%d >= %d)"
+			% [punched, intact_plan.size() - holed_plan.size(), holed_plan.size(), floor_size])
+	else:
+		_fail("the local hole strangled the flood: %d flooded vs %d on an intact origin — the BFS cannot step across a hole"
+			% [holed_plan.size(), intact_plan.size()])
 	print("")

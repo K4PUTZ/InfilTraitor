@@ -316,10 +316,33 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	var origin_col: int = hit_grid_pos.x if run_is_x else hit_grid_pos.y
 	var origin := Vector2i(origin_col, hit_level)
 
-	## BFS from the hit, Chebyshev radius. The origin itself (this shot's own
-	## fresh hole) is not in `lattice`, but the walk still starts there and
-	## expands into the surviving voxels around it — so a small radius takes a
-	## patch and a large one takes the lot.
+	## BFS from the hit, Chebyshev radius. A small radius takes a patch, a large
+	## one takes the lot.
+	##
+	## ⛔ THE WALK TRAVELS THROUGH HOLES AND STOPS AT FRAME, AND THOSE ARE TWO
+	## DIFFERENT ABSENCES FROM `lattice` (fix 2026-09-01).
+	##
+	## It used to queue a neighbour only `if lattice.has(nb)` — i.e. only onto
+	## SURVIVING glass — with a comment claiming the walk "still starts there and
+	## expands into the surviving voxels around it". That holds for a ONE-voxel
+	## hole and collapses for any other: the origin is this shot's own fresh hole,
+	## a rifle-class round takes 2–4 voxels plus the cascade (G-D14), so every cell
+	## around the origin is gone too, the queue empties at step one, and a WON roll
+	## floods NOTHING. Measured on maps/GLASS.map.json's big pane, sniper, roll won:
+	##
+	##     lattice=1143  own_frame=0  origin=(114, 84)  origin_in_lattice=false
+	##     neighbours_in_lattice=0/8  flood=0  radius=23
+	##
+	## 1143 surviving voxels, radius 23, zero destroyed — and the failure scaled the
+	## WRONG WAY, since a wider hole strangled the flood harder. It bit worst on the
+	## round most likely to win the roll in the first place.
+	##
+	## An already-broken area does not stop a fracture from propagating past it, so
+	## the walk expands through everything inside the radius; `flood` only RECORDS a
+	## cell the lattice actually holds. What still stops it is `own_frame` — the
+	## pane's own non-glass band (G-D9's brick sill and head), which was blocking
+	## the walk only as a side effect of not being in `lattice` and now says so
+	## outright. Pinned from both sides: [14] is the hole, [11] is the frame.
 	var radius: int = region_radius(glass_punch)
 	var flood: Dictionary = {}   ## Vector2i(col, level) -> true (voxels to destroy)
 	var queue: Array = [origin]
@@ -338,10 +361,12 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 				var nb := Vector2i(cur.x + dc, cur.y + dl)
 				if dist.has(nb):
 					continue
+				if own_frame.has(nb):
+					continue   ## a real frame stops the fracture; a hole does not
 				dist[nb] = d + 1
+				queue.append(nb)
 				if lattice.has(nb):
 					flood[nb] = true
-					queue.append(nb)
 
 	## G-D13b — spare ANCHORED shards only. A flooded glass voxel is a candidate
 	## iff one of its four orthogonal neighbours is non-glass: this pane's own

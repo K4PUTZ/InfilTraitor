@@ -30,6 +30,28 @@ final quality"*. The mechanism is **CRACK-01**, three stages:
   proof. ⚠️ The crack RENDER is renderer-side, so it does not survive a
   perspective flip yet (the CRACKED voxel STATE does — VL-PERSIST); a follow-up
   for when rotation returns.
+- **D ✅ 2026-09-02 — the Director's three rejections on the first frame, and the
+  one root cause under two of them.** *"Os voxels surgem com uma opacidade
+  diferente e criam praticamente um bloco que parece outro material no meio do
+  vidro […] as linhas não se encontram e estão todas embaralhadas […] está muito
+  grande o padrão visual pra um buraco de pistola."*
+  · **The scramble was a WRONG BASIS.** B/C turned a fragment into a sheet UV
+  with `voxel_face_shading`'s GROUND-PLANE inverse, and a pane is a WALL FACE
+  where the vertical screen axis is LEVEL, not ground depth: `c.x = P.x/32 +
+  P.y/16` shifts the sheet column by **exactly 1.25 voxels per level**. The web
+  sheared and read as disconnected tiles. Replaced by the face's own inverse —
+  `run = sx·d.x / RUN_STEP.x`, `level = (run·RUN_STEP.y − d.y) / VOXEL_STEP`,
+  against the impact's CANVAS position (the group texel now stores that, not
+  voxel coords). Pinned by `glass_crack_selftest` **[10]**, which round-trips
+  13×11 offsets exactly (0.00000) and keeps the ground-plane inverse as a CONTROL
+  that must be wrong (6.25 voxels worst, 1.25 per level).
+  · **The block was FLAT G-D19.** A uniform frost over every voxel in the radius
+  has the RADIUS as its silhouette, so it reads as a rectangle of another
+  material. Now DENSITY-DRIVEN: frost and ink both ride the sheet's own value, so
+  the outline is the fracture's, and a fragment off the sheet is untouched glass.
+  Plus an edge feather so the web fades instead of ending on a voxel boundary.
+  · **The size is `glass_sheet_span_tight/_wide`** — how many voxels the full
+  64×32 sheet spans on screen. Compactness is that one dial.
 
 Earlier, v1.20 — **G-ART IS DELIVERED (2026-09-02). All five files are on
 disk, gated green, and PROCEDURAL** — `tools/persistent/gen_fracture_sheet.py`
@@ -283,7 +305,7 @@ just not the target case.
 | **G-D13b** | **A remnant is ANCHORED or it is not a remnant.** *"como essa vidraça não tem nada em volta, todos os cacos precisam cair. Então na verdade a regra é: alguns cacos devem sempre ficar sobrando, QUANDO estiverem conectados com qualquer outro material (half slices inclusive)."* A flooded glass voxel survives only if an ORTHOGONAL lattice neighbour holds non-glass material — the pane's own G-D9 bands, or a wall (half-thickness included) on the same edge line. Glass never anchors glass. G-D13's floor of `MIN_COUNT` survivors still holds, but only AMONG THE ANCHORED; a free-standing pane has none and goes completely. ⚠️ The floor the pane stands on is NOT an anchor (it is not in the pane's plane) — stated as an assumption, since counting it would keep a row of shards along the bottom of exactly the pane this rule exists to empty | ✅ Ratified 2026-09-01 |
 | **G-D14** | **Hole size is per-weapon.** *"pistola ou shotgun fazerem um furo de um voxel, com a arte das ondas rachadas em volta, ao passo que armas mais potentes como o fuzil destroem de 2 a 4 voxels, e criam uma arte com ondas maior, e mais espaçada."* Non-shattering hit: pistol / shotgun pellet = 1 voxel + a tight `crack_web`; rifle-class = 2–4 voxels (scaled by power) + a larger, more spaced `crack_web`. Driven by the existing `WeaponDef.blowout` field | ✅ Ratified 2026-08-31 |
 | **G-D17** | **A ROUND LOSES POWER THROUGH EVERY GLASS LAYER IT CROSSES.** *"Precisamos implementar quebra em dois vidros seguidos, ou formalizar que vidros só podem ter meia espessura. Seria mais interessante pra engine a primeira opção, porque isso implica nos cubos sólidos de vidro. Adicionamos um modificador de destruição, de forma que cada camada de vidro a mais diminui a potência do projétil."* A LAYER is one thickness of glass the round passes through — the next pane along the ray, or the far face of a solid cube. Depth 0 is unattenuated, so §5.1's ratified arsenal table is untouched by construction. GEOMETRIC (`punch · FALLOFF^depth`), never subtractive: it cannot go negative, and a thick stack stops a round by ARITHMETIC instead of by a special case naming a limit. Applied to the WHOLE projectile — the hole it makes, the pane roll, and the mark on the wall it finally reaches | ✅ Ratified + BUILT 2026-09-01 |
-| **G-D19** | **A CRACKED GLASS VOXEL IS HALF SEE-THROUGH — AND THAT IS NOT AN ALPHA.** *"Com a rachadura nos voxels eles naturalmente vão perder a visibilidade total. Vamos diminuir pra 50% naquele voxel de vidro que tiver algum decal. Mas o decal em si já vai ter a própria opacidade na hora do bake, então precisamos fazer essa sobreposição dos elementos de maneira consciente."* The two quantities are DIFFERENT CHANNELS and must never be multiplied into one: the atom's **alpha is COVERAGE** (is there glass here — the silhouette B3 clamps a decal to), while see-through-ness is how much of `behind` survives the modulate in `glass_apply()`. Fold the 50% into the decal's alpha and it lands in `cover`: the voxel gets HALF A SILHOUETTE and partly vanishes instead of frosting over. So the decal composites into the atom exactly as it does today (alpha = coverage, B3 unchanged), and the 50% rides a SEPARATE per-voxel damage term the shader applies to the background contribution — `lit = mix(lit, frosted_body, damage)` | ✅ Ratified 2026-09-02 · **CRACK-01 §B simplifies it as the Director allowed** ("G-D21 simplifies G-D19", §before): the 50% is a flat per-cracked-voxel `mix` in `glass_pane.gdshader`, gated by the crack PLANE, not a channel on the atom. The "different channels, never multiplied" principle holds — the crack sheet's ink and the see-through term are two `mix`es in sequence, neither touching `cover` |
+| **G-D19** | **A CRACKED GLASS VOXEL IS HALF SEE-THROUGH — AND THAT IS NOT AN ALPHA.** *"Com a rachadura nos voxels eles naturalmente vão perder a visibilidade total. Vamos diminuir pra 50% naquele voxel de vidro que tiver algum decal. Mas o decal em si já vai ter a própria opacidade na hora do bake, então precisamos fazer essa sobreposição dos elementos de maneira consciente."* The two quantities are DIFFERENT CHANNELS and must never be multiplied into one: the atom's **alpha is COVERAGE** (is there glass here — the silhouette B3 clamps a decal to), while see-through-ness is how much of `behind` survives the modulate in `glass_apply()`. Fold the 50% into the decal's alpha and it lands in `cover`: the voxel gets HALF A SILHOUETTE and partly vanishes instead of frosting over. So the decal composites into the atom exactly as it does today (alpha = coverage, B3 unchanged), and the 50% rides a SEPARATE per-voxel damage term the shader applies to the background contribution — `lit = mix(lit, frosted_body, damage)` | ✅ Ratified 2026-09-02 · ⚠️ **AMENDED THE SAME DAY: the drop is DENSITY-DRIVEN, not per-voxel flat.** CRACK-01 §B built it flat over the crack radius and the Director rejected it on the first frame — *"os voxels surgem com uma opacidade diferente e criam praticamente um bloco que parece outro material no meio do vidro"*. A flat term's silhouette is the RADIUS, which is a rectangle; the fix is `mix(lit, frosted, crack · frost_strength)` so the silhouette is the FRACTURE's. G-D19's intent survives (a cracked voxel is less see-through, and its tactical half was always state-driven); what does not is "the whole voxel, uniformly". The "different channels, never multiplied" principle still holds — ink and frost are two `mix`es in sequence, neither touching `cover` |
 | **G-D20** | ⛔ **SUPERSEDED SAME DAY BY G-D21** — the mosaic's job (event-anchored, not structure-anchored) is right, but assembling it from edge-matched tiles is doing by hand what `_compute_facade_key()`'s offset already does. Kept for the argument, which G-D21 inherits: **PANE FRACTURE IS EVENT-ANCHORED, NOT STRUCTURE-ANCHORED.** *"Uma outra possibilidade seria fazer mosaicos procedurais usando partes de rachaduras similares que se conectam. Isso facilita porque o furo tem que ser posicionado sobre o voxel que o tiro acertou, e não aonde a textura baked fica."* The Director's argument is decisive and it kills the earlier proposal: a facade sheet is **structure-anchored** (`texture_anchor` = the component's NW corner, deliberately static so the pattern does not swim), while a fracture is **event-anchored** — its centre is wherever the round landed, different every shot. A baked sheet would put the radial centre at a fixed spot on the pane no matter where you hit it. A tile set whose edges connect, assembled outward from the impact voxel, is event-anchored by construction, stays inside the existing per-voxel decal path (no new bake axis, no new anchor unit), and is still gated by `check_decal.py` | ✅ Ratified 2026-09-01 |
 | **G-D22** | *(id deliberately skipped — "G-D22" sitting next to the older **D22** decision that G-D3 amends is a collision waiting to be misread. Same reasoning DIRECTION_GLOSSARY §10 applies to names.)* | — |
 | **G-D21** | **THE CRACK IS A FACADE SHEET RE-ANCHORED ONTO THE IMPACT — supersedes G-D20's tile mosaic.** *"essa ideia de fazer a grade e montar o mosaico, me parece que é essencialmente o que o baking system já faz […] gerar uma facade bem maior que as convencionais, com o furo baked no centro. E na hora que o tiro acerta a janela, ela tem margem pra 'sangrar' e ser reposicionada dentro da janela, cobrindo o voxel que foi acertado."* Correct, and it reduces to a SUBTRACTION: `_compute_facade_key()` already keys a voxel by `(column_in_run, level)` relative to the run's own origin, so "reposition the sheet" is offsetting those two numbers by (impact − sheet centre). No new mechanism, no new anchor unit, and — unlike a per-event mosaic — **the atoms are all composed once at load**, because the crack ART is fixed and only the OFFSET moves. A shot changes which atom each voxel picks; it mints nothing | ✅ Ratified 2026-09-01 · ⚠️ **AMENDED 2026-09-02 (§8.2): the mechanism is WORLD-SPACE sampling, not the `_compute_facade_key()` atom offset.** The "reduces to a subtraction" insight survives verbatim — it is now a subtraction inside `texture(fracture, v_glass_world − impact)` in the glass shader, ~2 MB and 0 atoms, because glass never rides the baked wall path. "Mints nothing" survives; "composed once at load" becomes "not composed at all". CRACK-01 §B |
@@ -1091,13 +1113,19 @@ fracture, is set DESTROYED. What that buys, beyond being right:
 (`damage_state_for()` already returns it sub-breach), and CRACK-01's event sets
 it directly on the ring around a hole. What was actually built:
 
-- **G-D19** — the 50% see-through is a flat `mix(lit, tint·frosted, 0.5)` per
-  cracked voxel in `glass_pane.gdshader`, gated by the crack PLANE. Not a channel
-  on the atom. The Director's "G-D21 simplifies G-D19" note, taken.
-- **G-D21** — world-space, per §8.2's amendment. `fuv = 0.5 + (frag − impact) /
-  sheet_voxels`, sampled per FRAGMENT (the continuous cell coord, not the floored
-  one — a per-voxel sample reads as a blocky checker). Impact rides a
-  `GLASS_CRACK_GROUP_CAP`-wide RGBAF strip, indexed by an R8 per-level plane.
+- **G-D19** — the see-through drop is DENSITY-DRIVEN (amended 2026-09-02, see the
+  decision row): `mix(lit, tint·frosted, crack · glass_crack_frost)`, so the
+  effect's silhouette is the fracture's, not the crack radius'. The first,
+  rejected build was a flat 0.5 over every voxel in the radius and read as a
+  rectangle of another material.
+- **G-D21** — world-space, per §8.2's amendment. `fuv = 0.5 + offset / span`,
+  where the offset comes from the fragment's CANVAS delta from the impact,
+  inverted with the **wall face's** basis (`run = sx·d.x/16`, `level =
+  (run·8 − d.y)/20`) — not the ground-plane inverse, which shears the sheet
+  column by 1.25 voxels per level and scrambled the first build's web. Impact
+  rides a `GLASS_CRACK_GROUP_CAP`-wide RGBAF strip, indexed by an R8 per-level
+  plane. `glass_sheet_span_tight/_wide` set how many voxels the sheet spans —
+  the compactness dial.
 - **G-D23** — `fuv` outside `[0,1]` → no crack. The 64/32 mirror-fold never
   happens because the fold was a property of `_compute_facade_key`, which glass
   does not use.

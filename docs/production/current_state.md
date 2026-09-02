@@ -271,6 +271,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-01_OCC_FIX_AND_TEST_DEBT.md
 - RESUMO_SESSAO_2026-09-01_PART2_GLASS_G3_COMPLETE.md
 - RESUMO_SESSAO_2026-09-01_PART3_GART_AND_G_VARIANT.md
+- RESUMO_SESSAO_2026-09-02_CRACK_01.md
 - RESUMO_SESSAO_2026-09-02_GART_DELIVERY.md
 <!-- AUTO:END pending_prompts -->
 

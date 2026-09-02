@@ -54,6 +54,7 @@ func _init() -> void:
 	test_wide_for_blowout_splits_the_arsenal()
 	test_the_glass_shader_loads()
 	test_apply_stamps_the_plane_and_gd24_crosses()
+	test_wall_face_basis_round_trips_and_the_ground_basis_does_not()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -276,17 +277,21 @@ func test_plan_pane_crack_skips_destroyed_and_banded_frame() -> void:
 	else:
 		_fail("hole dropped %d cells, expected 9 (%d -> %d)" % [full - holed, full, holed])
 
-	## A banded pane: brick sill (rel 0-1) and head (rel top-1..top) in the SAME
-	## slices — a fracture must not cross the frame.
+	## A banded pane: brick sill (rel 0-1), head (rel top-1..top) AND a mid-pane
+	## brick transom at rel 8-9, in the SAME slices — a fracture must not cross the
+	## frame. ⚠️ The transom is what makes this test mean anything: the sill and
+	## head sit outside the (tightened) crack radius, so a fixture with only those
+	## would pass vacuously — banded and unbanded would return the same cells.
 	var banded := _pane(4, 9, 3)
 	var top: int = 3 * 8 - 1
 	for s in banded:
-		s.material_bands = {0: "brick", 1: "brick", top - 1: "brick", top: "brick"}
+		s.material_bands = {0: "brick", 1: "brick", 8: "brick", 9: "brick",
+			top - 1: "brick", top: "brick"}
 	var b_cells: int = GlassCrackClass.plan_pane_crack(banded, Face.SW, hit, hit_level, true).cells.size()
 	var brick_in_web := 0
 	for e in GlassCrackClass.plan_pane_crack(banded, Face.SW, hit, hit_level, true).cells:
 		var rel: int = int(e.level) - base
-		if rel <= 1 or rel >= top - 1:
+		if rel <= 1 or rel == 8 or rel == 9 or rel >= top - 1:
 			brick_in_web += 1
 	if brick_in_web == 0 and b_cells < full:
 		_pass("the brick sill/head are not in the web (%d cells vs %d unbanded)" % [b_cells, full])
@@ -356,15 +361,18 @@ func test_the_glass_shader_loads() -> void:
 	## on rather than proving compilation (which needs a real draw).
 	mat.set_shader_parameter("glass_crack_plane_size", Vector2(512, 512))
 	mat.set_shader_parameter("glass_crack_group_cap", 16.0)
-	mat.set_shader_parameter("glass_layer_rel_level", 0.0)
-	mat.set_shader_parameter("glass_sheet_voxels", Vector2(64, 32))
-	mat.set_shader_parameter("glass_crack_see_through", 0.5)
+	mat.set_shader_parameter("glass_run_step", Vector2(16, 8))
+	mat.set_shader_parameter("glass_voxel_step_px", 20.0)
+	mat.set_shader_parameter("glass_sheet_span_tight", Vector2(20, 10))
+	mat.set_shader_parameter("glass_crack_frost", 0.85)
 	var props: Array = shader.get_shader_uniform_list()
 	var names: Array = []
 	for p in props:
 		names.append(p.name)
 	var required := ["glass_crack_plane", "glass_crack_groups", "glass_fracture_tight",
-		"glass_fracture_wide", "glass_layer_origin", "glass_sheet_voxels"]
+		"glass_fracture_wide", "glass_layer_origin", "glass_run_step",
+		"glass_voxel_step_px", "glass_sheet_span_tight", "glass_sheet_span_wide",
+		"glass_crack_frost"]
 	var missing: Array = []
 	for r in required:
 		if not names.has(r):
@@ -381,15 +389,15 @@ func test_the_glass_shader_loads() -> void:
 ## writes, so G-D24 can be tested without a real renderer.
 class MockRenderer:
 	var plane: Dictionary = {}       ## Vector3i(cell.x, cell.y, level) -> gid
-	var groups: Array = []           ## [{run, rel_level, axis, wide}]
+	var groups: Array = []           ## [{canvas, axis, wide}]
 	var _next: int = 0
 	func alloc_glass_crack_group() -> int:
 		_next = (_next % 16) + 1
 		return _next
-	func set_glass_crack_group(gid: int, run: int, rel: int, axis: int, wide: bool) -> void:
+	func set_glass_crack_group(gid: int, canvas: Vector2, axis: int, wide: bool) -> void:
 		while groups.size() < gid:
 			groups.append({})
-		groups[gid - 1] = {"run": run, "rel_level": rel, "axis": axis, "wide": wide}
+		groups[gid - 1] = {"canvas": canvas, "axis": axis, "wide": wide}
 	func write_glass_crack_cell(level: int, cell: Vector2i, gid: int) -> void:
 		var k := Vector3i(cell.x, cell.y, level)
 		if gid == 0:
@@ -402,6 +410,11 @@ class MockRenderer:
 		return 0
 	func relative_level(level: int) -> int:
 		return level - GeometryCoordsClass.storey_level_base(0)
+	## The same wall-face geometry VoxelRenderer.glass_cell_canvas_pos() uses:
+	## map_to_local's e1 (16,8) / e2 (-16,8), minus VOXEL_STEP_PX per level.
+	func glass_cell_canvas_pos(level: int, cell: Vector2i) -> Vector2:
+		return Vector2(float(cell.x - cell.y) * 16.0,
+			float(cell.x + cell.y) * 8.0 - 20.0 * float(relative_level(level)))
 
 
 func test_apply_stamps_the_plane_and_gd24_crosses() -> void:
@@ -460,5 +473,76 @@ func test_apply_stamps_the_plane_and_gd24_crosses() -> void:
 		_pass("every crossed cell is cleared from the crack plane")
 	else:
 		_fail("%d crossed cells still carry a group id" % still_pointing)
+
+	print("")
+
+
+## [10] THE BUG THAT SHIPPED IN CRACK-01-B/C, PINNED (Director, 2026-09-02:
+## *"as linhas não se encontram e estão todas embaralhadas"*).
+##
+## `glass_pane.gdshader` turns a fragment's CANVAS delta from the impact back
+## into (run, level) on the pane's face, and that inverse must be exact or the
+## fracture sheet shears. The first build reused voxel_face_shading's GROUND-PLANE
+## inverse, which answers a different question: on a vertical face the vertical
+## screen axis is LEVEL, not ground depth.
+##
+## This test walks a grid of real (run, level) offsets, converts each to canvas
+## through the same geometry `VoxelRenderer.glass_cell_canvas_pos()` uses, and
+## asserts BOTH directions: the wall-face inverse recovers the offsets exactly,
+## and the ground-plane inverse does NOT — a control, so a test that recovered
+## everything trivially could not pass.
+func test_wall_face_basis_round_trips_and_the_ground_basis_does_not() -> void:
+	print("[10] the sheet UV inverse is the WALL-FACE one, not the ground plane\n")
+
+	var mock := MockRenderer.new()
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var origin_cell := Vector2i(112, 87)
+	var origin_level: int = base + 10
+	var impact: Vector2 = mock.glass_cell_canvas_pos(origin_level, origin_cell)
+
+	## Run along X (a SW/NE face), so sx = +1 and a run step of +1 moves the cell
+	## by (+1, 0).
+	var sx := 1.0
+	var worst_run := 0.0
+	var worst_level := 0.0
+	var ground_worst_run := 0.0
+	for dr in range(-6, 7):
+		for dl in range(-5, 6):
+			var cell := Vector2i(origin_cell.x + dr, origin_cell.y)
+			var canvas: Vector2 = mock.glass_cell_canvas_pos(origin_level + dl, cell)
+			var d: Vector2 = canvas - impact
+
+			## THE SHIPPING INVERSE (glass_pane.gdshader).
+			var run_off: float = sx * d.x / 16.0
+			var level_off: float = (run_off * 8.0 - d.y) / 20.0
+			worst_run = maxf(worst_run, absf(run_off - float(dr)))
+			worst_level = maxf(worst_level, absf(level_off - float(dl)))
+
+			## THE CONTROL — the ground-plane inverse the first build used.
+			var ground_run: float = d.x / 32.0 + d.y / 16.0
+			ground_worst_run = maxf(ground_worst_run, absf(ground_run - float(dr)))
+
+	if worst_run < 0.001 and worst_level < 0.001:
+		_pass("the wall-face inverse recovers (run, level) exactly over 13x11 offsets (worst %.5f / %.5f)"
+			% [worst_run, worst_level])
+	else:
+		_fail("the wall-face inverse drifts: worst run %.4f, worst level %.4f voxels"
+			% [worst_run, worst_level])
+
+	## 1.25 voxels of column per level is the exact shear the Director saw.
+	if ground_worst_run > 1.0:
+		_pass("the ground-plane inverse is off by up to %.2f voxels of sheet column — the shear that scrambled the web"
+			% ground_worst_run)
+	else:
+		_fail("the ground-plane control only drifted %.4f — this test is not exercising the failure it exists for"
+			% ground_worst_run)
+
+	## And the shear is a function of LEVEL alone: same cell, one level down.
+	var same_cell_down: Vector2 = mock.glass_cell_canvas_pos(origin_level - 1, origin_cell) - impact
+	var shear: float = same_cell_down.x / 32.0 + same_cell_down.y / 16.0
+	if absf(shear - 1.25) < 0.001:
+		_pass("one level down shears the ground-plane column by exactly 1.25 voxels")
+	else:
+		_fail("expected a 1.25-voxel shear per level, measured %.4f" % shear)
 
 	print("")

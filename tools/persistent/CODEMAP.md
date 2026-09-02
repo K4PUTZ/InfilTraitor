@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**229 scripts · 76541 lines total** (under `godot/scripts/`)
+**229 scripts · 76671 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -895,7 +895,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 5176 lines
+`class_name VoxelRenderer` · extends `Node2D` · 5210 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2028,7 +2028,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_crack.gd`
 
-`class_name GlassCrack` · 125 lines
+`class_name GlassCrack` · 137 lines
 
 `godot/scripts/systems/destruction/glass_crack.gd`
 
@@ -3534,7 +3534,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 464 lines
+extends `SceneTree` · 548 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -3564,6 +3564,7 @@ extends `SceneTree` · 464 lines
 - `func test_wide_for_blowout_splits_the_arsenal() -> void:`
 - `func test_the_glass_shader_loads() -> void:`
 - `func test_apply_stamps_the_plane_and_gd24_crosses() -> void:`
+- `func test_wall_face_basis_round_trips_and_the_ground_basis_does_not() -> void:`
 
 ---
 

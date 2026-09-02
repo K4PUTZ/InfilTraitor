@@ -4304,11 +4304,16 @@ var _glass_crack_images: Dictionary = {}     ## level:int -> Image (FORMAT_R8)
 var _glass_crack_textures: Dictionary = {}   ## level:int -> ImageTexture
 var _glass_crack_dirty: Dictionary = {}      ## level:int -> true, cleared by flush_glass_crack()
 ## One RGBAF texel per crack EVENT, shared by every glass layer. FORMAT_RGBAF is
-## full 32-bit float, so the voxel coords ride raw — no bias, no range limit:
-##   r = impact run-coord   (grid_pos along the run axis)
-##   g = impact rel-level   (relative_level of the struck voxel)
-##   b = axis + 2*wide      (axis 0 = run along X, 1 = along Y; wide picks the sheet)
-##   a = 1.0 active, 0.0 free
+## full 32-bit float, so the values ride raw — no bias, no range limit:
+##   rg = the impact voxel's CANVAS position (see `glass_cell_canvas_pos`)
+##   b  = axis + 2*wide  (axis 0 = run along X, 1 = along Y; wide picks the sheet)
+##   a  = 1.0 active, 0.0 free
+##
+## ⚠️ CANVAS, not (run, level). The first build stored voxel coords and had the
+## shader invert a fragment with the GROUND-PLANE basis — which shears 1.25
+## voxels of sheet column per level on a vertical face, and the web read as
+## scrambled tiles. The canvas delta plus the wall-face basis (in the shader) is
+## continuous and correct; this is the value it subtracts.
 var _glass_crack_groups_image: Image = null
 var _glass_crack_groups_texture: ImageTexture = null
 var _glass_crack_next_group: int = 0          ## round-robin allocator, 0..CAP-1
@@ -4344,17 +4349,45 @@ func alloc_glass_crack_group() -> int:
 	return _glass_crack_next_group
 
 
-## Record where crack-group `gid` (1..CAP) radiates from. `impact_run` and
-## `impact_rel_level` are voxel coords along the pane's run axis and
-## `relative_level()`; `run_axis` is 0 (X) or 1 (Y); `wide` picks the sheet.
-func set_glass_crack_group(gid: int, impact_run: int, impact_rel_level: int,
+## The CANVAS position of one glass cell — the space `v_glass_world` is in, so
+## the shader's `canvas - grp.rg` is a real screen-space delta. Uses the level's
+## own glass layer when it exists (its global origin already carries the
+## per-level VOXEL_STEP_PX offset); falls back to the same formula
+## `_build_glass_sublayer_node` uses, so a level with no layer yet still answers.
+func glass_cell_canvas_pos(level: int, cell: Vector2i) -> Vector2:
+	var layer := _glass_layers.get(level) as TileMapLayer
+	if layer != null:
+		return layer.get_global_transform().origin + layer.map_to_local(cell) \
+			+ GLASS_CRACK_FACE_CENTRE
+	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
+	var origin := Vector2(
+		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
+		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y \
+			- GeometryCoords.VOXEL_STEP_PX * float(relative_level(level)))
+	## map_to_local's basis, written out (e1 = (16, 8), e2 = (-16, 8)).
+	return origin + Vector2(float(cell.x - cell.y) * 16.0, float(cell.x + cell.y) * 8.0) \
+		+ GLASS_CRACK_FACE_CENTRE
+
+
+## From `map_to_local(cell)` to the centre of the voxel's MAIN FACE, which is
+## where a crack radiates from. Derived, not nudged: the quad's top-left is
+## `map_to_local(cell) + (-16, -28)` (voxel_face_shading's own note) and the main
+## face occupies atom rows 8..36 of the 32x36 quad, so its centre is
+## `top_left + (16, 22)` = `map_to_local(cell) + (0, -6)`.
+const GLASS_CRACK_FACE_CENTRE: Vector2 = Vector2(0.0, -6.0)
+
+
+## Record where crack-group `gid` (1..CAP) radiates from. `impact_canvas` is the
+## impact voxel's canvas position (`glass_cell_canvas_pos`); `run_axis` is 0 (X)
+## or 1 (Y); `wide` picks the sheet.
+func set_glass_crack_group(gid: int, impact_canvas: Vector2,
 		run_axis: int, wide: bool) -> void:
 	if gid < 1 or gid > GLASS_CRACK_GROUP_CAP:
 		push_error("[VoxelRenderer] CRACK-01: crack group %d out of range 1..%d" % [gid, GLASS_CRACK_GROUP_CAP])
 		return
 	var img := _glass_crack_groups_img()
 	var packed: float = float((run_axis & 1) + (2 if wide else 0))
-	img.set_pixel(gid - 1, 0, Color(float(impact_run), float(impact_rel_level), packed, 1.0))
+	img.set_pixel(gid - 1, 0, Color(impact_canvas.x, impact_canvas.y, packed, 1.0))
 	if _glass_crack_groups_texture != null:
 		_glass_crack_groups_texture.update(img)
 
@@ -4630,15 +4663,16 @@ func _build_glass_sublayer_node(level: int) -> TileMapLayer:
 
 	add_child(layer)
 	move_child(layer, -1)
-	## CRACK-01 — the per-level uniforms: this level's crack plane, its rel-level
-	## (the fracture sheet's row axis), and the canvas→layer offset the shader's
-	## cell recovery inverts. `layer_origin` must be read AFTER add_child, exactly
-	## as _build_voxel_layer_node() does, so the global transform is real.
+	## CRACK-01 — the per-level uniforms: this level's crack plane, and the
+	## canvas→layer offset the shader's cell recovery inverts. `layer_origin` must
+	## be read AFTER add_child, exactly as _build_voxel_layer_node() does, so the
+	## global transform is real. The level itself is NOT pushed: the sheet UV works
+	## off the canvas delta, and each level's layer origin already carries its
+	## VOXEL_STEP_PX offset, so the level difference is in the delta for free.
 	var gmat := layer.material as ShaderMaterial
 	if gmat != null:
 		_glass_crack_image_for(level)
 		gmat.set_shader_parameter("glass_crack_plane", _glass_crack_textures[level])
-		gmat.set_shader_parameter("glass_layer_rel_level", float(relative_level(level)))
 		gmat.set_shader_parameter("glass_layer_origin", layer.get_global_transform().origin)
 	return layer
 

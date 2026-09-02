@@ -25,15 +25,20 @@ class_name GlassCrack
 const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
 ## G-D14 — the crack web's reach, per hole width, as (run, level) voxel radii.
-## This is the set of voxels that enter the CRACKED state — so it is also where
-## G-D19's flat 50% see-through applies, which is why it is kept LOCAL to the
-## impact rather than run out to the sheet's own 32×16 edge: a rifle round crazes
-## a wide patch, not the whole pane. The sheet texture still extends further; a
-## cell just outside this radius simply is not cracked. `tight` falls short of
-## `wide` on purpose (a pistol makes a small web). All `static var` — the
-## Director tunes them on the GLASS map.
-static var CRACK_RADIUS_TIGHT := Vector2i(6, 5)
-static var CRACK_RADIUS_WIDE := Vector2i(12, 9)
+## This is the set of voxels that enter the CRACKED state, i.e. the cells whose
+## plane texel carries the group — the GATE on where the sheet may draw at all.
+##
+## ⚠️ It is NOT the visible silhouette any more. The see-through drop used to be
+## flat over this whole rectangle and the Director rejected it on sight
+## (2026-09-02) — it read as a block of another material. The shader now drives
+## both the frost and the ink off the sheet's own density, so the visible outline
+## is the fracture's; this radius only has to be a little wider than the sheet's
+## ink so nothing is clipped. Sized against `glass_sheet_span_*` in the shader.
+##
+## Tightened the same day: *"está muito grande o padrão visual pra um buraco de
+## pistola. Ele tem que ser mais compacto."* All `static var` — Director dials.
+static var CRACK_RADIUS_TIGHT := Vector2i(4, 4)
+static var CRACK_RADIUS_WIDE := Vector2i(10, 8)
 
 ## `WeaponDef.blowout` at or above this takes the WIDE sheet (rifle-class). The
 ## shipped arsenal: pistol/shotgun 0.0, assault rifle 0.65 — so the split is
@@ -52,7 +57,8 @@ static func wide_for_blowout(blowout: float) -> bool:
 ##               to mark CRACKED (or DESTROY, on a G-D24 crossing)
 ##   run_axis    0 (run along X) or 1 (along Y)
 ##   impact_run  the struck voxel's coord along the run axis
-##   hit_level   passed through, for the caller's rel-level conversion
+##   hit_cell    the struck voxel's grid_pos, for the canvas-position lookup
+##   hit_level   the struck voxel's level, same
 ##   wide        passed through, picks the sheet
 static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2i,
 		hit_level: int, wide: bool) -> Dictionary:
@@ -79,6 +85,7 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 		"cells": cells,
 		"run_axis": 0 if run_is_x else 1,
 		"impact_run": impact_run,
+		"hit_cell": hit_grid_pos,
 		"hit_level": hit_level,
 		"wide": wide,
 	}
@@ -97,8 +104,13 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 static func apply(renderer, plan: Dictionary) -> Dictionary:
 	var wide: bool = bool(plan.get("wide", false))
 	var gid: int = renderer.alloc_glass_crack_group()
-	renderer.set_glass_crack_group(gid, int(plan["impact_run"]),
-		renderer.relative_level(int(plan["hit_level"])), int(plan["run_axis"]), wide)
+	## The impact's CANVAS position — the space the shader's `v_glass_world` is in,
+	## so its `canvas - grp.rg` is a real screen delta it can invert with the
+	## wall-face basis. Voxel coords went through the ground-plane basis and
+	## sheared the web (see the shader's own note).
+	renderer.set_glass_crack_group(gid,
+		renderer.glass_cell_canvas_pos(int(plan["hit_level"]), plan["hit_cell"]),
+		int(plan["run_axis"]), wide)
 	var crazed: int = 0
 	var crossed: int = 0
 	var touched: Array = []

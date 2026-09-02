@@ -29,6 +29,8 @@
 ##   [10] the sheet shearing off the voxels — the CRACK-01-B/C bug, now pinned
 ##       against the SPRITE'S OWN TRANSFORM instead of a shader inverse.
 ##   [11] a crack bleeding past the frame of the pane it is on.
+##   [12] G-D30's cut reading anything other than the live glass tilemap, the
+##       occupancy rows going upside down, or the dial collapsing to a boolean.
 
 extends SceneTree
 
@@ -63,6 +65,7 @@ func _init() -> void:
 	test_apply_spawns_a_sprite_and_gd24_crosses()
 	test_the_sprite_transform_lands_on_the_voxels()
 	test_the_pane_bounds_clip_the_sprite()
+	test_the_occupancy_cut_reads_the_live_tilemap()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -676,3 +679,164 @@ func test_the_pane_bounds_clip_the_sprite() -> void:
 			% [float(b["pane_lo"].y), float(b["pane_hi"].y)])
 
 	print("")
+
+
+## [12] G-D30 — THE OCCUPANCY CUT, AGAINST A REAL RENDERER.
+##
+## The claim is that the sprite's cut is read off the GLASS TILEMAP — the live
+## authority every erase seam already writes — rather than off a parallel plane
+## that could drift from it. That claim is only worth anything if it is exercised
+## through the real `VoxelRenderer`, so this builds one, gives it two glass levels
+## of actual cells, and reads the image the sprite is handed.
+##
+## Three things it pins, and each one is a §13 promise:
+##   · the row/column convention (`crack_occ_origin` is (run_min, level_max), so
+##     row 0 is the HIGHEST level) — invisible on screen until a cut lands on the
+##     wrong side of the pane;
+##   · §13.5's "a banded pane clips for free" — a G-D9 brick band is not on the
+##     glass layer, so the web is cut off it with nobody asking;
+##   · G-D30's "a second event re-cuts every existing crack" — erase a cell that
+##     was standing when the crack was made, and the SAME crack's occupancy
+##     follows.
+func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
+	print("[12] G-D30 — the cut is read off the glass tilemap, live\n")
+
+	var renderer = VoxelRendererClass.new()
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var cross := 7
+	var run0 := 4
+	var runs := 10
+	var levels := 6
+	var brick_level: int = base + 2      ## a G-D9 band: simply never placed
+
+	var ts := _one_tile_tileset()
+	for lvl in range(base, base + levels):
+		var layer := TileMapLayer.new()
+		layer.tile_set = ts
+		if lvl != brick_level:
+			for r in range(run0, run0 + runs):
+				layer.set_cell(Vector2i(r, cross), 0, Vector2i.ZERO)
+		renderer._glass_layers[lvl] = layer
+
+	var impact_run: int = run0 + 5
+	var impact_level: int = base + 3
+	var cid: int = renderer.spawn_glass_crack({
+		"pane_id": "PANE_TEST", "run_axis": 0, "wide": false,
+		"impact_run": impact_run, "impact_level": impact_level,
+		"impact_cell": Vector2i(impact_run, cross),
+		"radius": Vector2i(4, 4), "span": Vector2(20.0, 10.0),
+		"pane_lo": Vector2(float(run0 - impact_run), float(base - impact_level)),
+		"pane_hi": Vector2(float(run0 + runs - 1 - impact_run), float(base + levels - 1 - impact_level)),
+	})
+	if cid == 0:
+		_fail("spawn_glass_crack returned 0 — no sprite, so there is no cut to test")
+		_free_glass_layers(renderer)
+		renderer.free()
+		print("")
+		return
+
+	var occ: Image = _occ_image(renderer)
+	if occ == null:
+		_fail("the crack carries no occupancy image")
+		_free_glass_layers(renderer)
+		renderer.free()
+		print("")
+		return
+
+	if occ.get_width() == runs and occ.get_height() == levels:
+		_pass("the occupancy is the pane's own rectangle, %dx%d cells" % [runs, levels])
+	else:
+		_fail("occupancy is %dx%d, expected %dx%d"
+			% [occ.get_width(), occ.get_height(), runs, levels])
+
+	## Row 0 must be the HIGHEST level — `crack_occ_origin` is (run_min, level_max)
+	## and the shader indexes `j = origin.y - level_off`.
+	var brick_row: int = (base + levels - 1) - brick_level
+	var brick_solid := 0
+	var glass_gone := 0
+	for j in range(occ.get_height()):
+		for i in range(occ.get_width()):
+			var lit: bool = occ.get_pixel(i, j).r > 0.5
+			if j == brick_row and lit:
+				brick_solid += 1
+			elif j != brick_row and not lit:
+				glass_gone += 1
+	if brick_solid == 0 and glass_gone == 0:
+		_pass("row %d (the brick band) reads EMPTY and every glass row reads solid — §13.5's free clip, and row 0 is the top level"
+			% brick_row)
+	else:
+		_fail("%d brick cells read solid, %d glass cells read empty — the row convention or the tilemap read is wrong"
+			% [brick_solid, glass_gone])
+
+	## G-D30's live re-cut: erase a cell the crack was made over, flush, and the
+	## SAME crack follows it. No "update the old sprites" pass.
+	var victim := Vector2i(impact_run, cross)
+	renderer.erase_glass_cell(impact_level, victim)
+	var rebuilt: int = renderer.refresh_glass_crack_occupancy()
+	occ = _occ_image(renderer)
+	var col: int = impact_run - run0
+	var row: int = (base + levels - 1) - impact_level
+	if rebuilt > 0 and occ != null and occ.get_pixel(col, row).r < 0.5:
+		_pass("erasing a standing cell re-cuts the crack that was already there (%d rebuilt)" % rebuilt)
+	else:
+		_fail("the existing crack did not follow the erase — rebuilt=%d" % rebuilt)
+
+	## And a second refresh with nothing erased must do NOTHING: the flag is what
+	## keeps the cook's per-cell erase loop from being quadratic.
+	if renderer.refresh_glass_crack_occupancy() == 0:
+		_pass("a refresh with no erase since the last one is a no-op")
+	else:
+		_fail("refresh_glass_crack_occupancy rebuilt with nothing dirty — the cook's erase loop would be quadratic")
+
+	## The dial is CONTINUOUS and clamped (G-D30: the open question is fiction, so
+	## it is not a boolean).
+	renderer.set_glass_crack_hole_cut(2.5)
+	var clamped: float = renderer.glass_crack_hole_cut()
+	renderer.set_glass_crack_hole_cut(0.5)
+	if is_equal_approx(clamped, 1.0) and is_equal_approx(renderer.glass_crack_hole_cut(), 0.5):
+		_pass("glass_crack_hole_cut is a clamped 0..1 dial, and 0.5 is a real value")
+	else:
+		_fail("the cut dial did not clamp/hold: 2.5 -> %.2f, then 0.5 -> %.2f"
+			% [clamped, renderer.glass_crack_hole_cut()])
+
+	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_crack.gdshader")
+	if src.contains("mix(1.0, texture(crack_occupancy, occ_uv).r, crack_hole_cut)"):
+		_pass("the shader mixes the occupancy by the dial — 0.5 is half a cut, not a rounded boolean")
+	else:
+		_fail("the cut is no longer a continuous mix in glass_crack.gdshader — G-D30 says it is a dial")
+
+	_free_glass_layers(renderer)
+	renderer.free()
+	print("")
+
+
+## One 32x36 white tile, enough for `set_cell` to make `get_cell_source_id`
+## answer. The occupancy read only ever asks whether a cell is occupied.
+func _one_tile_tileset() -> TileSet:
+	var ts := TileSet.new()
+	ts.tile_size = Vector2i(32, 36)
+	var src := TileSetAtlasSource.new()
+	var img := Image.create(32, 36, false, Image.FORMAT_RGBA8)
+	img.fill(Color(1, 1, 1, 1))
+	src.texture = ImageTexture.create_from_image(img)
+	src.texture_region_size = Vector2i(32, 36)
+	src.create_tile(Vector2i.ZERO)
+	ts.add_source(src, 0)
+	return ts
+
+
+func _occ_image(renderer) -> Image:
+	if renderer._glass_cracks.is_empty():
+		return null
+	## The CPU-side copy the builder keeps — see its note. Asking the ImageTexture
+	## would be a RenderingServer readback, and headless it can lag an update().
+	return renderer._glass_cracks[0].get("occ_image")
+
+
+## The layers are hand-made here, not built by the renderer, so nothing else
+## owns them — SELFTEST LEAK GATE: a bare Object needs freeing.
+func _free_glass_layers(renderer) -> void:
+	for l in renderer._glass_layers.values():
+		if l != null and is_instance_valid(l):
+			(l as TileMapLayer).free()
+	renderer._glass_layers.clear()

@@ -48,6 +48,39 @@ uniform vec2 crack_span = vec2(20.0, 10.0);
 uniform vec2 crack_pane_lo = vec2(-1000.0);
 uniform vec2 crack_pane_hi = vec2(1000.0);
 
+// ── G-D30 — A DESTROYED VOXEL CUTS THE SPRITE ───────────────────────────────
+//
+// (Director, 2026-09-02: *"possivelmente, tirar o voxel de trás e deixar o
+// adesivo pode ser que não incomode, representa de fato os estilhaços. Mas
+// precisamos ver acontecendo pra confirmar. Talvez seja necessário remover um
+// pedaço do sprite em runtime […] dá pra fazer isso?"*)
+//
+// `crack_occupancy` is a small R8 image in the PANE's own (run, level) space —
+// one texel per cell, 1 where glass still stands, 0 where it is gone. The
+// renderer rebuilds it from the glass TileMapLayer itself (the live authority
+// that `erase_cell` writes), so a second event re-cuts every existing crack with
+// no "update the old sprites" pass beyond that rebuild.
+//
+// ⚠️ THE CUT AMOUNT IS THE DIRECTOR'S AND IT IS A DIAL, NOT A BOOLEAN. The open
+// question is fiction, not engineering: cutting says *the crack lives on glass
+// that exists*; not cutting says *the crack IS the shard cloud, and it outlives
+// the pane*. So `crack_hole_cut` is continuous 0..1 and gets settled by looking
+// at a same-boot triptych.
+//
+// Two consequences worth stating: a G-D9 banded pane's brick sill is not on the
+// glass layer either, so the web is cut off it for free (§13.5); and armored
+// glass never destroys a voxel (G-D15), so its occupancy is solid and this dial
+// cannot erase it.
+//
+// hint_default_white: an unbound occupancy reads 1 everywhere = no cut.
+uniform sampler2D crack_occupancy : filter_nearest, repeat_disable, hint_default_white;
+uniform vec2 crack_occ_size = vec2(1.0);
+// (run_min, level_max) of the occupancy image, as offsets from the impact — the
+// RAW pane bounds, NOT the clip bounds above (those carry half a voxel of slack,
+// which would shift the lookup by half a texel).
+uniform vec2 crack_occ_origin = vec2(0.0);
+uniform float crack_hole_cut : hint_range(0.0, 1.0) = 1.0;
+
 // G-D26 — ADDITIVE, and now additive by BLEND MODE rather than by arithmetic
 // inside someone else's shader. `blend_add` is `dst.rgb += src.rgb · src.a`, so
 // this is literally `lit + crack_colour · crack`: the glass behind is untouched,
@@ -70,6 +103,13 @@ void fragment() {
 
 	// Luma -> alpha. The sheet is grayscale, so RED is the whole story.
 	float ink = texture(crack_sheet, UV).r;
+
+	// G-D30 — the cut. Nearest-filtered on purpose: a destroyed voxel IS a voxel,
+	// and the hole's own edge is voxel-shaped whatever this does. Softening it
+	// would put a blurred square back into a web that exists to have none.
+	vec2 occ_uv = (vec2(off.x - crack_occ_origin.x, crack_occ_origin.y - off.y)
+			+ vec2(0.5)) / max(crack_occ_size, vec2(1.0));
+	ink *= mix(1.0, texture(crack_occupancy, occ_uv).r, crack_hole_cut);
 
 	// G-D23's clamp, as a feather: the sheet does not repeat and does not mirror,
 	// it fades out at its own edge.

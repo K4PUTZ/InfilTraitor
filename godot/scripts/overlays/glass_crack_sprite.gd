@@ -68,6 +68,28 @@ func setup(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int,
 	material = mat
 
 
+## G-D30 — bind (or rebind) this crack's occupancy image. `origin` is
+## (run_min, level_max) as offsets from the impact: the RAW pane bounds, not the
+## clip bounds, because those carry half a voxel of slack and would shift the
+## lookup by half a texel.
+func set_occupancy(tex: Texture2D, size: Vector2, origin: Vector2) -> void:
+	var mat := material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("crack_occupancy", tex)
+	mat.set_shader_parameter("crack_occ_size", size)
+	mat.set_shader_parameter("crack_occ_origin", origin)
+
+
+## G-D30's dial, 0 (the web outlives the pane) .. 1 (the web lives only on glass
+## that still exists). Continuous because the question it answers is fiction.
+func set_hole_cut(v: float) -> void:
+	var mat := material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("crack_hole_cut", clampf(v, 0.0, 1.0))
+
+
 ## The forward basis, as a pure function — canvas offset for a (run, level)
 ## offset on a face whose run is along X (`run_axis` 0) or Y (1). Used by the
 ## selftest to prove the transform above and `VoxelRenderer.glass_cell_face_pos()`

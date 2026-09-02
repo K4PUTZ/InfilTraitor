@@ -5565,6 +5565,11 @@ func _save_glass_panel(out_dir: String, panel: int) -> void:
 ##   INFILTRAITOR_CRACK_DEMO_SECOND=1   — fire a SECOND crack offset from the
 ##                                       first, so their overlap exercises G-D24
 ##   INFILTRAITOR_CRACK_DEMO_TAG=<name> — filename tag (default "tight"/"wide")
+##   INFILTRAITOR_CRACK_DEMO_EDGE=1     — hit the pane's EDGE, so the sprite runs
+##                                       past the frame and the clip has to act
+##   INFILTRAITOR_CRACK_DEMO_CUT=1      — G-D30's triptych: punch a real hole
+##                                       through the pane first, then save the
+##                                       SAME crack at hole_cut 0 / 0.5 / 1
 func _capture_glass_crack_demo() -> void:
 	if _voxel_renderer == null or _edge_registry == null:
 		push_error("[CRACK-DEMO] no renderer / edge registry")
@@ -5630,7 +5635,13 @@ func _capture_glass_crack_demo() -> void:
 	var zoom: float = zoom_env.to_float() if zoom_env.is_valid_float() else 0.85
 	if _camera_controller != null:
 		_camera_controller.set_zoom_for_capture(zoom)
-		_camera_controller.focus_on(agent._cell_to_world(focus_gu))
+		## ⚠️ FRAME THE IMPACT, NOT THE GROUND UNDER IT. `_cell_to_world()` answers
+		## for a floor cell, and the hit is `relative_level` levels above it — 12
+		## levels on this pane, which at zoom 1.4 put the bore behind the HUD. The
+		## offset is the renderer's own per-level step, not a nudge.
+		_camera_controller.focus_on(agent._cell_to_world(focus_gu)
+			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
+				* float(_voxel_renderer.relative_level(hit_level))))
 	if _fow_controller != null:
 		_fow_controller.reveal_around(focus_gu, 30)
 	for _c in range(30):
@@ -5640,6 +5651,26 @@ func _capture_glass_crack_demo() -> void:
 	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
 	DirAccess.make_dir_recursive_absolute(dir)
 	get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_before.png" % [dir, tag])
+
+	## G-D30's triptych needs a HOLE for the cut to act on, and it has to be a
+	## real one: the voxels are DESTROYED and the erase goes through
+	## `_process_dirty_slice_voxel` — the same seam a round uses — so the
+	## occupancy the sprite reads is written by production code, not by the
+	## capture. Then the crack is laid over it, exactly as
+	## `_craze_pane_around_hole` does after a round makes its hole.
+	var cut_demo := OS.get_environment("INFILTRAITOR_CRACK_DEMO_CUT") == "1"
+	if cut_demo:
+		var bore: int = 3 if wide else 2
+		var holed: int = 0
+		for s2 in pane_slices:
+			for v in s2.voxels:
+				var r2: int = v.grid_pos.x if run_is_x else v.grid_pos.y
+				if absi(r2 - hit_run) <= bore and absi(v.level - hit_level) <= bore \
+						and v.damage_state != Voxel.DamageState.DESTROYED:
+					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+					holed += 1
+		await _voxel_renderer.process_dirty_async(_edge_registry)
+		print("[CRACK-DEMO] G-D30: punched a %d-voxel hole through the real erase seam" % holed)
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
@@ -5667,6 +5698,31 @@ func _capture_glass_crack_demo() -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_after.png" % [dir, tag])
 	print("[CRACK-DEMO] wrote glass_crack_demo_%s_{before,after}.png" % tag)
+
+	## G-D30 — ONE crack, ONE boot, three values of the dial. Separate boots would
+	## not answer the question: the pane, the light and the shot would all be the
+	## same by intent and different in fact, and the Director would be comparing
+	## three pictures instead of one decision.
+	if cut_demo:
+		for cut in [0.0, 0.5, 1.0]:
+			_voxel_renderer.set_glass_crack_hole_cut(cut)
+			for _f in range(6):
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			var name := "%s/glass_crack_cut_%s_%02d.png" % [dir, tag, int(cut * 100.0)]
+			get_viewport().get_texture().get_image().save_png(name)
+			print("[CRACK-DEMO] G-D30 cut=%.2f -> %s" % [cut, name.get_file()])
+
+	## §13.5 — "perf is a claim, not a fact". With INFILTRAITOR_FRAME_PROBE=1 the
+	## demo holds the finished board long enough for the standing probe to print,
+	## so the LOADED side of CRACK-02 (N extra sprite quads on screen) is a
+	## measurement on the same map as the idle side. Run it with --disable-vsync
+	## or every number under 16.7 ms is the 60 Hz pace, not the work.
+	if OS.get_environment("INFILTRAITOR_FRAME_PROBE") == "1":
+		print("[CRACK-DEMO] holding for the frame probe (%d crack sprite(s) on screen)"
+			% _voxel_renderer.glass_crack_count())
+		for _p in range(420):
+			await get_tree().process_frame
 
 
 ## CRACK-02 — the SHEET quad and the PANE quad, in SCREEN pixels, so "the web

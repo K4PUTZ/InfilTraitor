@@ -250,3 +250,7 @@ func flush(voxel_renderer) -> void:
 	voxel_renderer.flush_damage_composite_pages()
 	## PERF-P2b: one soot upload per flushed frame, never one per cell.
 	voxel_renderer.flush_cell_soot()
+	## G-D30 — the cook's own batch seam. `erase_glass_cell()` above only flags;
+	## this is where a blast that took glass out from under a standing crack
+	## re-cuts it, once, instead of once per erased cell.
+	voxel_renderer.refresh_glass_crack_occupancy()

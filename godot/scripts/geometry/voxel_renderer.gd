@@ -3547,6 +3547,8 @@ func process_dirty(registry: EdgeRegistry) -> void:
 	## PERF-02 A1: one upload per page this batch composited into, instead of
 	## one per composited atom.
 	flush_damage_composite_pages()
+	## G-D30 — a batch just ended; re-cut any crack whose pane lost glass.
+	refresh_glass_crack_occupancy()
 
 
 ## PERF-01: the per-voxel body process_dirty() runs for every dirty voxel in
@@ -3583,6 +3585,9 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 			gpane.erase_cell(voxel.grid_pos)
 			note_external_write(voxel.level, voxel.grid_pos)
 			forget_ghost_record(voxel.grid_pos, voxel.level)
+			## G-D30 — one of the three glass erase seams: any crack over this
+			## pane has to be re-cut. Flag only; the rebuild is at the flush.
+			note_glass_erased()
 			if not g_gone:
 				voxel_destroyed.emit(voxel.grid_pos, voxel.level, vmat_gone)
 			return
@@ -3656,6 +3661,8 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 
 	## PERF-02 A1: see process_dirty()'s own flush.
 	flush_damage_composite_pages()
+	## G-D30 — a batch just ended; re-cut any crack whose pane lost glass.
+	refresh_glass_crack_occupancy()
 
 
 ## PERF-01: the per-voxel body process_dirty_slabs() runs for every dirty
@@ -3724,6 +3731,7 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 			gpane.erase_cell(voxel.grid_pos)
 			note_external_write(voxel.level, voxel.grid_pos)
 			forget_ghost_record(voxel.grid_pos, voxel.level)
+			note_glass_erased()   ## G-D30, seam 2 of 3
 			if not g_gone:
 				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
 			return
@@ -3816,6 +3824,10 @@ func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:
 					## touched page per frame still collapses the 197 measured
 					## uploads to a handful.
 					flush_damage_composite_pages()
+					## G-D30 — same reason as the flush above, one layer up: a
+					## frame is about to DRAW, and a crack whose pane just lost
+					## glass would be shown uncut for it.
+					refresh_glass_crack_occupancy()
 					await get_tree().process_frame
 					## Restart the clock AFTER the frame wait, so the wait
 					## itself is not charged against the next batch's budget.
@@ -3826,6 +3838,8 @@ func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:
 			slice.clear_all_dirty()
 
 	flush_damage_composite_pages()
+	## G-D30 — a batch just ended; re-cut any crack whose pane lost glass.
+	refresh_glass_crack_occupancy()
 
 
 ## Async counterpart to process_dirty_slabs() — see process_dirty_async()'s
@@ -3852,6 +3866,10 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 				if float(Time.get_ticks_usec() - batch_start) / 1000.0 >= render_frame_budget_ms:
 					## PERF-02 A1: see process_dirty_async()'s own pre-yield flush.
 					flush_damage_composite_pages()
+					## G-D30 — same reason as the flush above, one layer up: a
+					## frame is about to DRAW, and a crack whose pane just lost
+					## glass would be shown uncut for it.
+					refresh_glass_crack_occupancy()
 					await get_tree().process_frame
 					batch_start = Time.get_ticks_usec()
 		## D11: see process_dirty_async()'s own note.
@@ -3859,6 +3877,8 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 			slab.clear_all_dirty()
 
 	flush_damage_composite_pages()
+	## G-D30 — a batch just ended; re-cut any crack whose pane lost glass.
+	refresh_glass_crack_occupancy()
 
 
 ## Ensure layers exist up to storey count (E1 equation from SLICE-00)
@@ -4324,10 +4344,22 @@ func _ensure_glass_crack_root() -> Node2D:
 		return _glass_crack_root
 	_glass_crack_root = Node2D.new()
 	_glass_crack_root.name = "glass_crack_root"
-	_glass_crack_root.z_index = _glass_composite_z
+	_apply_glass_composite_z(_glass_crack_root)
 	add_child(_glass_crack_root)
 	move_child(_glass_crack_root, -1)
 	return _glass_crack_root
+
+
+## ⚠️ `_glass_composite_z` STARTS AT A SENTINEL, AND THE ENGINE REJECTS IT.
+## -9999 is below `CANVAS_ITEM_Z_MIN` (-4096), so assigning it prints
+## `Condition "p_z < RenderingServer::CANVAS_ITEM_Z_MIN" is true` and leaves the
+## node at 0. The glass LAYERS never hit this because `_ensure_glass_sublayers()`
+## establishes the real z on its first line; the crack root can be asked for
+## before any of that has happened. Skipping the assignment leaves the node
+## relative to its parent, which is the honest answer for "no composite z yet".
+func _apply_glass_composite_z(node: CanvasItem) -> void:
+	if _glass_composite_z > RenderingServer.CANVAS_ITEM_Z_MIN:
+		node.z_index = _glass_composite_z
 
 
 ## Re-assert the crack root's place at the top of the glass composite. Called
@@ -4336,7 +4368,7 @@ func _ensure_glass_crack_root() -> Node2D:
 func _lift_glass_crack_root() -> void:
 	if _glass_crack_root == null or not is_instance_valid(_glass_crack_root):
 		return
-	_glass_crack_root.z_index = _glass_composite_z
+	_apply_glass_composite_z(_glass_crack_root)
 	move_child(_glass_crack_root, -1)
 
 
@@ -4429,16 +4461,22 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 		int(spec["run_axis"]), spec["pane_lo"], spec["pane_hi"], _glass_crack_shader)
 	_ensure_glass_crack_root().add_child(sprite)
 	_glass_crack_next_id += 1
-	_glass_cracks.append({
+	var rec := {
 		"id": _glass_crack_next_id,
 		"pane_id": String(spec.get("pane_id", "")),
 		"run_axis": int(spec["run_axis"]),
 		"wide": wide,
 		"impact_run": int(spec["impact_run"]),
 		"impact_level": int(spec["impact_level"]),
+		"impact_cell": spec["impact_cell"],
 		"radius": spec["radius"],
+		"pane_lo": spec["pane_lo"],
+		"pane_hi": spec["pane_hi"],
 		"sprite": sprite,
-	})
+	}
+	_glass_cracks.append(rec)
+	sprite.set_hole_cut(_glass_crack_hole_cut)
+	_build_crack_occupancy(rec)
 	return _glass_crack_next_id
 
 
@@ -4456,6 +4494,125 @@ func clear_glass_cracks() -> void:
 		if s != null and is_instance_valid(s):
 			s.queue_free()
 	_glass_cracks.clear()
+
+
+## ── G-D30 — THE OCCUPANCY CUT ────────────────────────────────────────────────
+##
+## A crack's occupancy is a small R8 image in its PANE's own (run, level) space —
+## 1 where glass still stands, 0 where it is gone — and the sprite multiplies its
+## alpha by it, scaled by the Director's `glass_crack_hole_cut` dial.
+##
+## ⚠️ IT IS READ OFF THE GLASS TILEMAP, NOT MAINTAINED AS A PARALLEL PLANE, and
+## that is the whole design. `erase_cell()` on `_glass_layers` is what actually
+## removes a glass voxel from the screen — it is the live authority every erase
+## seam already goes through (the cook's `erase_glass_cell`, and the two dirty
+## passes). A second plane written alongside them would be a third copy of the
+## same fact, free to drift; asking the tilemap cannot drift, and it is the same
+## instrument INFILTRAITOR_CELL_PROBE reads.
+##
+## The rebuild is bounded by G-D23: a pane is at most 64 x 32 cells, so one crack
+## costs at most 2048 cell queries and only when glass was actually erased.
+const GLASS_OCC_MAX_SIDE: int = 128
+## G-D30's dial. `INFILTRAITOR_GLASS_CRACK_CUT=<0..1>` overrides it for a capture,
+## because the VALUE is the Director's open question and comparing two ends of it
+## has to be possible without an edit. The shipped default is stated here, once.
+var _glass_crack_hole_cut: float = _env_hole_cut()
+var _glass_crack_occ_dirty: bool = false
+
+
+static func _env_hole_cut() -> float:
+	var e := OS.get_environment("INFILTRAITOR_GLASS_CRACK_CUT")
+	return clampf(e.to_float(), 0.0, 1.0) if e.is_valid_float() else 1.0
+
+
+## The Director's dial. Applied to every live crack and remembered for new ones.
+func set_glass_crack_hole_cut(v: float) -> void:
+	_glass_crack_hole_cut = clampf(v, 0.0, 1.0)
+	for c in _glass_cracks:
+		var sp = c["sprite"]
+		if sp != null and is_instance_valid(sp):
+			sp.set_hole_cut(_glass_crack_hole_cut)
+
+
+func glass_crack_hole_cut() -> float:
+	return _glass_crack_hole_cut
+
+
+## Every glass erase seam calls this. Deliberately just a FLAG: the cook erases
+## cell by cell, and rebuilding a pane's occupancy per cell would be quadratic in
+## the size of the hole. The rebuild happens once at the batch's flush.
+func note_glass_erased() -> void:
+	if not _glass_cracks.is_empty():
+		_glass_crack_occ_dirty = true
+
+
+## Rebuild the occupancy of every live crack, if any glass was erased since the
+## last call. Returns how many were rebuilt. Called at the four dirty-pass ends
+## and from DetonationEntryWriter.flush() — the same five batch seams
+## `flush_damage_composite_pages()` already uses.
+func refresh_glass_crack_occupancy() -> int:
+	if not _glass_crack_occ_dirty:
+		return 0
+	_glass_crack_occ_dirty = false
+	for c in _glass_cracks:
+		_build_crack_occupancy(c)
+	return _glass_cracks.size()
+
+
+## One crack's occupancy image, walked over its pane's (run, level) rectangle.
+## Row 0 is the HIGHEST level, so the image reads the way the pane does on screen
+## and the shader's `crack_occ_origin` is (run_min, level_max).
+func _build_crack_occupancy(c: Dictionary) -> void:
+	var sprite = c["sprite"]
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	var lo: Vector2 = c["pane_lo"]
+	var hi: Vector2 = c["pane_hi"]
+	var run0: int = int(c["impact_run"]) + int(roundf(lo.x))
+	var lvl1: int = int(c["impact_level"]) + int(roundf(hi.y))
+	var w: int = int(roundf(hi.x - lo.x)) + 1
+	var h: int = int(roundf(hi.y - lo.y)) + 1
+	if w < 1 or h < 1:
+		return
+	if w > GLASS_OCC_MAX_SIDE or h > GLASS_OCC_MAX_SIDE:
+		## G-D23 caps a pane at 64 x 32; anything past this is a pane that was
+		## never authored, and silently allocating for it is how a 6 MB surprise
+		## gets in. Clamp and say so.
+		push_warning("[VoxelRenderer] G-D30: pane %s is %dx%d cells, past the %d cap — the crack's cut is clipped"
+			% [c["pane_id"], w, h, GLASS_OCC_MAX_SIDE])
+		w = mini(w, GLASS_OCC_MAX_SIDE)
+		h = mini(h, GLASS_OCC_MAX_SIDE)
+	var run_is_x: bool = int(c["run_axis"]) == 0
+	var cross: Vector2i = c["impact_cell"]
+	var img := Image.create(w, h, false, Image.FORMAT_R8)
+	var solid := Color8(255, 0, 0, 255)
+	var gone := Color8(0, 0, 0, 255)
+	for j in range(h):
+		var level: int = lvl1 - j
+		var layer := _glass_layers.get(level) as TileMapLayer
+		if layer == null:
+			## No glass sublayer at this level at all — nothing stands here.
+			for i in range(w):
+				img.set_pixel(i, j, gone)
+			continue
+		for i in range(w):
+			var run: int = run0 + i
+			var cell := Vector2i(run, cross.y) if run_is_x else Vector2i(cross.x, run)
+			img.set_pixel(i, j, solid if layer.get_cell_source_id(cell) != -1 else gone)
+	var tex = c.get("occ_texture")
+	if tex != null and tex is ImageTexture \
+			and (tex as ImageTexture).get_size() == Vector2(float(w), float(h)):
+		(tex as ImageTexture).update(img)
+	else:
+		tex = ImageTexture.create_from_image(img)
+		c["occ_texture"] = tex
+	## The CPU-side copy, kept because it is the authority: `get_image()` on an
+	## ImageTexture is a readback through the RenderingServer and does not have to
+	## reflect an `update()` yet — a diagnostic that asked the texture would read
+	## the crack's occupancy one event stale and say the cut had not followed.
+	c["occ_image"] = img
+	sprite.set_occupancy(tex, Vector2(float(w), float(h)),
+		Vector2(lo.x, hi.y))
 
 
 func _get_layer_material(level: int) -> ShaderMaterial:
@@ -4771,6 +4928,7 @@ func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 	g.erase_cell(cell)
 	note_external_write(level, cell)
 	forget_ghost_record(cell, level)
+	note_glass_erased()   ## G-D30, seam 3 of 3 (the cook)
 	return was_there
 
 

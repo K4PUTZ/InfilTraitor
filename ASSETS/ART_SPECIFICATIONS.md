@@ -279,13 +279,14 @@ the same division of labour `bake_compositor.gd` already has with facades.
 | Variants | **3 per family per material**, fixed. Runtime picks one by hashing the voxel's base coordinates, so the choice survives rotation and repaint |
 | Materials | `concrete`, `metal`, `stone`, `wood`, plus `earth` for `dent` only. **Brick is no longer deferred** — 2026-08-21 it became a real material and is scheduled in `MATERIALS_MASTER_PLAN` M2 (`PROMPTS/ART_ORDER_BRICK_DECALS.md`). **`cardboard`, `fabric` and `plywood` get NONE, ever** — MAT-SOFT-01 (Director, 2026-08-21) gives them exactly two states, INTACT and DESTROYED (`ShotPunchTable.HOLE_ONLY_MATERIALS`), so a decal for them is a file nothing can load. **Glass is NO LONGER "none"** — GLASS_MASTER_PLAN **G-D3 amended D22 on 2026-08-30**: CRACKED returns for glass, DENTED stays impossible (glass fractures, it does not deform). Its families are specified in GLASS_MASTER_PLAN §5.4/§7.3 and G-D19–G-D24, and the art is in the Director's queue as of 2026-09-01 |
 
-**Which material needs which family — 42 files, all delivered:**
+**Which material needs which family — 45 files, all delivered:**
 
 | Family | Materials | Files | Why not the others |
 |---|---|---|---|
 | `bullet` | concrete, metal, stone, wood, **brick** | 15 | Firearms hit walls only |
 | `dent` | concrete, metal, stone, wood, **earth**, **brick** | 18 | `earth` is the shared floor dent every ground material routes to (D26) |
 | `crack` | concrete, stone, **brick** | 9 | D32.6 — metal and wood do not fracture, only dent or take bullets. Brick does: it is a rigid mineral material |
+| `shard` | **glass**, and glass only | 3 | G-D16b's fallen glass on the FLOOR, not a mark on a wall. It rides `_floor_sunk_decal_plan` like earth's dent. Delivered 2026-09-02 by `tools/persistent/gen_shard_decal.py`; ⚠️ its consumer (G6/`GlassFall`) is unbuilt, so it loads nowhere yet — and the fix is NOT to add `glass` to `IMPACT_DECAL_MATERIALS`, see §7b |
 
 **Brick landed 2026-08-21** (M2c). Delivered, gated, and wired into both
 `IMPACT_DECAL_MATERIALS` and `IMPACT_CRACK_MATERIALS`. The soft materials get
@@ -313,7 +314,7 @@ The design behind all of it stays in GLASS_MASTER_PLAN: where a shard lands
 re-anchored crack sheet (G-D21), the clamp and the maximum pane (G-D23), and the
 crossing rule (G-D24).
 
-### 7b. Fracture sheets (ORDERED 2026-09-01 — G-D21)
+### 7b. Fracture sheets (DELIVERED 2026-09-02 — G-D21)
 
 A third asset class, and it fails like neither of the other two: **facade-shaped,
 decal-semantic.**
@@ -330,17 +331,30 @@ decal-semantic.**
 | Count | **Two per material**, tight and wide — G-D14's two hole sizes. Each sheet is 2048 atoms composed at every map load, so variants are a cost, not a freebie |
 
 Gated by `check_decal.py` (the same tool — it dispatches on the `fracture_`
-prefix). ⚠️ Two build steps are owed before a delivered sheet can load at all,
-and both are listed in the order's §4: a `fracture_` category in
-`TextureResolver._validate_dimensions()`, and a constant naming the sheets so the
-gate can check their wiring the way it checks a decal family's.
+prefix). **Both build steps the order's §4 owed are now done (2026-09-02):**
+`TextureResolver._validate_dimensions()` has a `fracture_` category (same 64×32
+contract as a facade, because the sheet rides the facade path verbatim — G-D21
+changes the KEY, not the plane geometry), and `GlassMaterials.FRACTURE_WIDTHS`
+names the two sheets, which is what the gate now reads to check their wiring.
 
-⚠️ **The data half is not there yet, and a gate is waiting for it.** `glass`
-still has `crack_factor 0.0`, so nothing can reach a CRACKED glass voxel today.
-The day that number goes non-zero, `voxel_decal_selftest` **[12]
-`test_every_data_reachable_tier_has_art()`** requires the family to be wired AND
-all three variants to be on disk, in both directions — so the data, the wiring
-and the art land together or the suite goes red.
+**The art is delivered too** — `tools/persistent/gen_fracture_sheet.py`, seed 1,
+procedural rather than hand-painted or generated, because the centred origin and
+the edge-to-edge reach are a parameter and a measurement here and a lottery
+anywhere else (`PROMPTS/ART_ORDER_GLASS.md` §6). ⚠️ **Wired is not used:** G-D21's
+re-anchoring is unbuilt, so nothing requests a sheet yet and the gate says so on
+its own line rather than letting two green wiring lines imply a working feature.
+
+⚠️ **The data half is not there yet, and RAISING IT NAIVELY WOULD DEMAND ART
+THAT MUST NOT EXIST.** `glass` still has `crack_factor 0.0`, so nothing can reach
+a CRACKED glass voxel today. But `voxel_decal_selftest` **[12]** ties that number
+to `IMPACT_CRACK_MATERIALS` **and to `decal_crack_glass_{0,1,2}.png` on disk** —
+a per-voxel crack DECAL family, which is exactly what G-D21 folded into the
+fracture sheet and says must never be authored separately. So glass is the first
+material for which "crack_factor > 0" and "has a crack decal family" come apart,
+and [12] cannot express that today. **Resolving it is a decision, not an edit**
+(GLASS_MASTER_PLAN §8 / `ART_ORDER_GLASS.md` §6.6) — either [12] learns that a
+sheet-cracking material satisfies the tier without a decal family, or glass
+reaches CRACKED through a path that is not `crack_factor`.
 
 **The acceptance gate for a delivery is `tools/persistent/check_decal.py`**
 (built 2026-08-21, the decal counterpart to `check_facade.py`). It checks the

@@ -49,6 +49,31 @@ const BASE: String = "glass"
 const TINT_SLOTS: int = 5
 
 
+## ── THE FRACTURE SHEETS (G-D14 / G-D21 / G-D23) ──────────────────────────────
+##
+## EXACTLY TWO, and the count is ratified rather than incidental: G-D14 gives
+## glass two hole sizes (pistol / shotgun pellet take `tight`, rifle-class takes
+## `wide`), and inside the rifle class the ENGINE destroys 2-4 voxels rather than
+## the art growing a variant per weapon (Director, 2026-09-02). A third width
+## would also cost 2048 composed atoms at every map load, cracked or not.
+##
+## Named here rather than at the consumer because there IS no consumer yet —
+## G-D21's re-anchoring is unbuilt — and until one exists `check_decal.py` has
+## nothing to read to tell a wired sheet from an orphan one. Order is the
+## authoring order and carries no index.
+const FRACTURE_WIDTHS: Array[String] = ["tight", "wide"]
+
+
+## The sheet a member of the family cracks with. Every variant reuses BASE's
+## pair (G-D16: the variants differ by tint and behaviour class, never by
+## geometry), so this goes through `art_id()` for the same reason every other
+## art seam does — a variant id must never reach a texture lookup under its own
+## name. Returns the `texture_id` half of `TextureResolver.resolve()`, whose
+## folder argument is `art_id()` as well.
+static func fracture_texture_id(material_id: String, width: String) -> String:
+	return "fracture_%s_%s" % [art_id(material_id), width]
+
+
 ## The only question the engine asks about glass-ness.
 ##
 ## Takes the material id a caller already has — a `Slice.material`, an

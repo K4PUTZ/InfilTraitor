@@ -78,6 +78,11 @@ GENERIC_MATERIAL = "_generic"
 def decal_dir(material):
     return os.path.join(MATERIALS_ROOT, material, "decals")
 RENDERER = os.path.join(REPO_ROOT, "godot", "scripts", "geometry", "voxel_renderer.gd")
+## The two files the SHEET wiring check reads. GlassMaterials owns the width
+## roster (the same file CLAUDE.md rule L2 already parses the glass family out
+## of), and TextureResolver is where a sheet is accepted or silently dropped.
+GLASS_MATERIALS = os.path.join(REPO_ROOT, "godot", "scripts", "systems", "glass_materials.gd")
+TEXTURE_RESOLVER = os.path.join(REPO_ROOT, "godot", "scripts", "systems", "texture_resolver.gd")
 
 ## §7, pinned: 256x256 is 16x the canonical TEX_AUTHORING_N density, and square
 ## because a voxel face is square in flat space. The x20/16 vertical stretch
@@ -584,16 +589,89 @@ def check_material_fractures(material):
             print("    " + line)
     print("")
     if found_any:
-        ## The honest counterpart of the IMPACT_DECAL_MATERIALS check below: there
-        ## is no constant to read yet, so there is no two-lists check to run, and
-        ## saying so loudly is the only thing that keeps this from being a gate
-        ## that silently half-works once the art lands.
-        print("  ⚠ NO WIRING CHECK EXISTS FOR SHEETS — G-D21 is unbuilt, so no")
-        print("    constant names them and this gate cannot tell a wired sheet")
-        print("    from an orphan one. Add it with the constant (ART_ORDER_GLASS")
-        print("    §4), or these files pass here and load nowhere.")
-        print("")
+        all_ok = _check_fracture_wiring() and all_ok
     return all_ok
+
+
+def _declared_fracture_widths():
+    """GlassMaterials.FRACTURE_WIDTHS, or None if it cannot be read.
+
+    Parsed off ONE line for the same reason L2 parses the family roster off one:
+    a multi-line literal would silently defeat the parser, so a parse failure is
+    reported as a violation rather than skipped.
+    """
+    try:
+        for line in open(GLASS_MATERIALS, encoding="utf-8", errors="replace"):
+            if line.startswith("const FRACTURE_WIDTHS"):
+                ## Split on "=" first: the TYPE is `Array[String]`, so taking
+                ## the first "[" on the line grabs the type parameter and the
+                ## roster comes back as ['String] = ["tight', 'wide'].
+                body = line.split("=", 1)[-1].strip()
+                body = body[body.index("[") + 1:body.rindex("]")]
+                return [w.strip().strip('"') for w in body.split(",") if w.strip()]
+    except OSError:
+        pass
+    return None
+
+
+def _resolver_knows_fracture():
+    """Does TextureResolver._validate_dimensions() have a `fracture_` category?
+
+    ⚠️ THE FAILURE THIS CATCHES IS TOTALLY SILENT. The function infers a
+    texture's category from the filename prefix and `return false` for anything
+    it does not recognise: the file is rejected, the surface falls back to the
+    generic atlas, and nothing above a WARN is printed. The same Tier.NONE trap
+    once swallowed a full-colour facade_earth.png.
+    """
+    try:
+        return 'begins_with("fracture_")' in open(
+            TEXTURE_RESOLVER, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return None
+
+
+def _check_fracture_wiring():
+    """The sheet half of the two-lists check. Files on disk are only half the
+    claim; these are the two seams that decide whether they are ever read."""
+    ok = True
+    widths = _declared_fracture_widths()
+    if widths is None:
+        ok = False
+        print("  WIRING FAIL  could not read FRACTURE_WIDTHS from %s. Fix the"
+              % os.path.relpath(GLASS_MATERIALS, REPO_ROOT))
+        print("               parser or the constant rather than trusting a PASS.")
+    elif tuple(widths) != FRACTURE_WIDTHS:
+        ok = False
+        print("  WIRING FAIL  FRACTURE_WIDTHS is %s in GlassMaterials but %s here."
+              % (widths, list(FRACTURE_WIDTHS)))
+        print("               The runtime composes the filename from ITS list, so a")
+        print("               width only this gate knows about is art nothing asks for.")
+    else:
+        print("  wiring  ok    widths %s agree with GlassMaterials.FRACTURE_WIDTHS"
+              % "/".join(widths))
+
+    knows = _resolver_knows_fracture()
+    if knows is None:
+        ok = False
+        print("  WIRING FAIL  could not read %s."
+              % os.path.relpath(TEXTURE_RESOLVER, REPO_ROOT))
+    elif not knows:
+        ok = False
+        print("  WIRING FAIL  TextureResolver._validate_dimensions() has no")
+        print("               `fracture_` category, so every sheet is REJECTED with")
+        print("               no error at all — Tier.NONE, generic atlas, silently")
+        print("               wrong. One elif, 64x32 * TEX_AUTHORING_N.")
+    else:
+        print("  wiring  ok    TextureResolver accepts the `fracture_` category")
+
+    ## ⚠️ WHAT THIS CHECK STILL CANNOT SEE, said out loud so a green line is not
+    ## read as more than it is: G-D21's re-anchoring is UNBUILT, so nothing
+    ## ASKS for a sheet yet. Both seams above being wired means a sheet would
+    ## resolve if something requested it, not that anything does.
+    print("  note          G-D21 is unbuilt — nothing requests a sheet yet, so")
+    print("                these two seams are readiness, not use.")
+    print("")
+    return ok
 
 
 def check_material(material):
@@ -661,10 +739,31 @@ def check_material(material):
     else:
         if found_any:
             all_ok = False
-            print("  WIRING FAIL  the files exist but %r is NOT in IMPACT_DECAL_MATERIALS,"
-                  % material)
-            print("               so nothing will ever load them — the material still")
-            print("               falls back to the generic family. Add the id.")
+            ## ⚠️ THE REMEDY IS NOT THE SAME FOR EVERY MATERIAL, and printing the
+            ## wrong one is worse than printing none. `_decal_material()` composes
+            ## a name from the DAMAGE STATE, so IMPACT_DECAL_MATERIALS only ever
+            ## reaches the WALL families (bullet/crack/dent). A material whose
+            ## only family is a FLOOR one — glass's `shard`, G-D16b — is not
+            ## reachable from that list at all, and adding its id there would ask
+            ## the renderer for `<id>_bullet_cracked_*`, exactly the art G-D21
+            ## folded into the fracture sheet and says must never exist.
+            wall_families = [f for f in families_for(material) if f in FAMILIES]
+            if wall_families:
+                print("  WIRING FAIL  the files exist but %r is NOT in IMPACT_DECAL_MATERIALS,"
+                      % material)
+                print("               so nothing will ever load them — the material still")
+                print("               falls back to the generic family. Add the id.")
+            else:
+                print("  WIRING FAIL  the files exist and nothing loads them — but DO NOT")
+                print("               add %r to IMPACT_DECAL_MATERIALS. Its only family"
+                      % material)
+                print("               (%s) is a FLOOR mark, and that list reaches the wall"
+                      % "/".join(families_for(material)))
+                print("               families only: the id there would compose")
+                print("               %s_bullet_cracked_*, the art G-D21 folded into the"
+                      % material)
+                print("               fracture sheet. The real consumer is G6/GlassFall,")
+                print("               unbuilt (glass_fall.gd names the shape and stops).")
         else:
             print("  wiring  ok    %r is not wired and has no files — it takes its marks"
                   % material)

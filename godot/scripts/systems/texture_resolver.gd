@@ -179,6 +179,15 @@ func _validate_dimensions(path: String, img: Image) -> bool:
 	elif filename.begins_with("slice_"):
 		expected_w = 8 * GeometryCoords.TEX_AUTHORING_N
 		expected_h = 8 * GeometryCoords.TEX_AUTHORING_N
+	elif filename.begins_with("fracture_"):
+		# G-D21's pane fracture. Facade-SHAPED (one 64x32-voxel page) because it
+		# rides the facade compositing path verbatim — the sheet is re-anchored
+		# onto the impact by offsetting (column_in_run, level), which is an
+		# arithmetic change at the key, not a new plane geometry. So the same
+		# 64x32 contract, deliberately not a constant of its own: a fracture
+		# sheet that disagreed with the facade page would break the offset.
+		expected_w = 64 * GeometryCoords.TEX_AUTHORING_N
+		expected_h = 32 * GeometryCoords.TEX_AUTHORING_N
 	elif filename.begins_with("slab_"):
 		# Isotropic floor-bake plane: resolve_flat() folds both axes at
 		# SHEET_COLS=64, so 64 * TEX_AUTHORING_N is the addressable domain

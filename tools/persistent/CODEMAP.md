@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**227 scripts · 75620 lines total** (under `godot/scripts/`)
+**227 scripts · 75654 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2186,7 +2186,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_materials.gd`
 
-`class_name GlassMaterials` · 215 lines
+`class_name GlassMaterials` · 240 lines
 
 `godot/scripts/systems/glass_materials.gd`
 
@@ -2196,6 +2196,7 @@ extends `Node2D` · 43 lines
 - `FAMILY` = `["glass", "glass_armored", "glass_screen_green", "glass_screen_red", "glass_screen_amber"]`
 - `BASE` = `"glass"`
 - `TINT_SLOTS` = `5`
+- `FRACTURE_WIDTHS` = `["tight", "wide"]`
 
 ---
 
@@ -2752,7 +2753,7 @@ extends `Node` · 156 lines
 
 ### `texture_resolver.gd`
 
-`class_name TextureResolver` · 215 lines
+`class_name TextureResolver` · 224 lines
 
 `godot/scripts/systems/texture_resolver.gd`
 

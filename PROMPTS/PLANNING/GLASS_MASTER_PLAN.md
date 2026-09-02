@@ -1,6 +1,13 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.14 — **G3 IS COMPLETE. All four stages built:** A
+**Status:** 🟢 v1.15 — **G-ART's ORDER AND GATE ARE DONE (2026-09-01, §8):**
+[`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md) asks for five files — two 1024×512
+grayscale fracture sheets (tight/wide, G-D14/G-D21) and three 256×256 shard
+decals — and `check_decal.py` enforces both classes, earned before the art (the
+M2a precedent) and proven red on seven failure modes with all 54 shipped decals
+unchanged. Every remaining glass task is now blocked on the DELIVERY alone.
+
+Earlier, v1.14 — **G3 IS COMPLETE. All four stages built:** A
 (`GlassShatter` curve), B (shot path — region flood, remnants), C (the
 grenade/cook path), and **D (2026-09-01 — the movement/vision edge-set split, and
 a broken pane opening the passage via `PassageQuery`).** Also built this day:
@@ -14,8 +21,8 @@ glass layer it crosses), and **G-D23**'s pane-size ceiling enforced in
 | | blocked on |
 |---|---|
 | G-D8's last third — the light bump and +1 detection when a passage opens | needs the opening as an EVENT; Stage D landed a per-turn recomputed SET, which has no memory of the moment it changed |
-| G-D19 / G-D21 / G-D23's clamp / G-D24 — the crack itself | `glass.crack_factor` is still 0.0 **and** the art does not exist. `voxel_decal_selftest` [12] will require data, wiring and art to land together |
-| G-D16b — shards on screen | the `shard_floor` art (G-ART) |
+| G-D19 / G-D21 / G-D23's clamp / G-D24 — the crack itself | **the two fracture sheets** (ordered 2026-09-01, §8). `glass.crack_factor` is still 0.0 and moves WITH the art, never before it: `voxel_decal_selftest` [12] requires data, wiring and art together |
+| G-D16b — shards on screen | **the three `decal_shard_glass_*` files** (ordered 2026-09-01, §8) |
 | G-D16c / G-D16d — skylights and sub-GU slab regions | CEILING glass still renders opaque (`voxel_renderer.gd:3676`); no horizontal `pane_id` |
 | A solid glass CUBE shattering | `PANE_BLOCK_*` has no run axis for `plan_pane_shatter`'s lattice, and `_note_glass_crossing()` dedupes by `pane_id` so entering and leaving a block counts as one layer |
 
@@ -37,7 +44,8 @@ per-weapon hole size (G-D14), armored/purple glass with a primed state (G-D15),
 terminal-colour glass classes (G-D16 — INDESTRUCTIBLE *stops the round*), a
 black-plastic screen backing (G-D17). **G3 is PAUSED for this doc's sign-off**
 before any code — the Director gave it at the end of the 2026-08-31 session.
-Next: **G3**. G-ART, G5, G4, G6, G-D4, G-VARIANT, `plastic` unbuilt.
+Next: **G3**. G-ART, G5, G4, G6, G-D4, G-VARIANT, `plastic` unbuilt. *(G3 and
+G-ART have since landed — see the status block at the top of this file.)*
 
 **G1 GEOMETRY as reworked** (Director's two diagrams, 2026-08-31): the pane
 thickness is a per-voxel **exposed-face cull**, not per-position atoms. A glass
@@ -885,9 +893,15 @@ The hole is one voxel; the ring cells around it go CRACKED (G-D4). The ring inde
 picks the decal variant — dense near the hole, sparse further out.
 
 ⚠️ **The art constraint this creates, and it is the one that decides whether it
-reads as glass:** the crack decal must be chosen by *direction from the hole*, so
-the radial lines point outward and the web reads as one continuous fracture. Nine
-identical stamps in a 3×3 read as nine stickers. §8 carries this into the order.
+reads as glass:** the radial lines must point outward from the hole, so the web
+reads as one continuous fracture rather than nine stickers in a 3×3.
+
+⛔ **The mechanism this paragraph proposed — a decal chosen by BEARING from the
+hole — is superseded by G-D21.** A single sheet re-anchored onto the impact is
+radially continuous by construction, because every voxel reads its own place in
+one fracture rather than picking a stamp that has to agree with its neighbours.
+The requirement survives; the direction index does not, and §8 no longer orders
+one.
 
 ---
 
@@ -958,27 +972,64 @@ real impact. One rule at one seam.
 
 ---
 
-## 8. G-ART — the art order glass has never had
+## 8. G-ART — ✅ WRITTEN AND GATED 2026-09-01
 
-`ASSETS/materials/glass/` holds a facade and a voxel and **no decals**; glass is
-absent from `IMPACT_DECAL_MATERIALS` by D22, which G-D3 now retires. The families
-glass needs are not the standard four:
+**The order is [`PROMPTS/ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md)** and
+`tools/persistent/check_decal.py` now enforces it — earned BEFORE the art, the
+way M2a was. What remains of G-ART is the delivery itself.
 
-| Family | What it is | Notes |
+**FIVE files, in two classes that fail in completely different ways:**
+
+| Class | Files | Shape |
 |---|---|---|
-| `crack_web` | radial fracture, 3 variants | **Direction-indexed** (§6.3) — the variant is chosen by bearing from the origin so lines point outward |
-| `bullet_web` | hole + surrounding craze | the impact cell itself |
-| `shard_floor` | fallen glass on the ground | floor family, like `earth`'s dent |
-| `frame_remnant` | jagged surviving silhouette | **geometry, not a decal** — a half-voxel substrate (§5.2) |
+| **fracture sheet** | `fracture_glass_tight.png`, `fracture_glass_wide.png` | 1024×512 grayscale **on a black field, no alpha** — one 64×32-voxel page, G-D21/G-D23 |
+| **floor shard decal** | `decal_shard_glass_{0,1,2}.png` | 256×256 RGBA with real transparency — an ordinary §7 decal, G-D16b |
+
+⚠️ **THIS SECTION'S OWN FOUR-FAMILY TABLE IS SUPERSEDED and is kept below only
+so the change is visible.** It was written on 2026-08-30, before G-D20/G-D21, and
+three of its four rows are now wrong:
+
+| Old row | What replaced it |
+|---|---|
+| `crack_web`, 3 variants, **direction-indexed** by bearing | **G-D21's sheet.** The fracture is anchored to the EVENT, so direction falls out of the `(impact − centre)` offset and no art is indexed by bearing. Two sheets, tight and wide (G-D14), not three variants |
+| `bullet_web` — the impact cell itself | **Folded into the sheet**, whose hole is baked at its centre. A separate per-voxel bullet mark would be a second, competing fracture |
+| `shard_floor` | Survives, as the decal family `shard` — the only one glass claims |
+| `frame_remnant` | Survives as stated: **geometry, not a decal** (§5.2) |
+
+**Three things the order records that were only discovered by reading the
+consumers, and each would have wasted an authoring pass:**
+
+1. **The facade path DESTROYS alpha.** `bake_compositor.gd:556-558` round-trips
+   through RGB8 and flattens it to 255, so §7.3's *"generate on black, alpha =
+   luminance"* recipe — correct for the DECALS — would deliver a sheet as a
+   bright crack on **opaque black**. The sheet is a grayscale MASK; alpha is
+   never consulted.
+2. **`TextureResolver` knows three filename prefixes and rejects the rest with no
+   error at all** (`texture_resolver.gd:176` — `facade_`/`slice_`/`slab_`, then
+   `return false` → Tier.NONE → generic atlas). A `fracture_` category is one
+   `elif`, listed in the order's §4 as work for when the art lands.
+3. **A sheet is authored at 1:1 horizontally** (16 authored texels = 16 screen px;
+   vertically ×20/16 NEAREST). §7.3's *"detail that dissolves at 1/16th linear"*
+   warning applies to the **shard decals**, which are 256 → 16, and **not** to
+   the sheets, which have no downsample to survive.
+
+**The gate, proven red before it was trusted** (a green control first, since a
+gate that rejects everything would pass a rejection-only test): off-centre origin,
+alpha-only crack, non-grayscale, pre-squared, an unknown width, `decal_dent_glass_*`
+(a tier glass cannot reach), and an unimported file — all rejected; all **54
+shipped decals still PASS unchanged.** The origin check is the one that justifies
+the new asset class: G-D21 offsets by `(impact − centre)`, so an off-centre
+fracture displaces **every** crack in the game by a constant nobody can see.
+
+⚠️ **The sheets have NO wiring check and the gate says so itself** — G-D21 is
+unbuilt, so no constant names them. The shards' wiring check is already armed: the
+day the three files exist, `--material glass` fails with `WIRING FAIL … 'glass' is
+NOT in IMPACT_DECAL_MATERIALS`.
 
 🔎 **Reference material the Director already collected:**
-`REFERENCES/bullet-hole-transparent-glass-abstract-background-*.zip` (2026-08-02) —
-glass bullet holes, gathered a month before this plan existed. Worth opening before
-the order is written rather than commissioning from scratch.
-
-The order goes out as a standalone `PROMPTS/ART_ORDER_GLASS.md` in the shape of
-`ART_ORDER_BRICK_DECALS.md`, and **`tools/persistent/check_decal.py` is the
-acceptance gate** — earned before the art, the way M2a was.
+`REFERENCES/bullet-hole-transparent-glass-abstract-background-*.zip`,
+`REFERENCES/Glass.png`, `REFERENCES/Glass.psd` (2026-08-02) — gathered a month
+before this plan existed.
 
 ---
 
@@ -1165,8 +1216,8 @@ level→material override on the same half-thickness face:
 | 🟢 | **G7** — the round passes through a pane (G-D5): `EdgeRegistry.glass_edge_keys()`, `_walk_pellet_ray` records the crossing (deduped by pane) and continues, `agent_shot_controller` flattens crossings into picks. Real-map: `glass destroyed=1` AND `concrete dented=1` from one pistol shot. Blocks excluded (their cells are in `blocked_cells`, deferred). **BUILT 2026-08-31** | — |
 | 🟢 | **G-MAP** — `maps/GLASS.map.json` **BUILT 2026-08-31**: big pane (authored gu x 10–15, y 9, SW, 3 storeys) in front of the agent, a WINDOWS.png `bands` wall (gu 19–21 — `bands` ignored until G-D9, renders as plain glass), a small 1-storey pane, a guard behind the big pane, a 3-wide glass block. Auto-registered via `FileMapSource`. `INFILTRAITOR_MAP=GLASS` boots it without touching the persisted cfg. Verified: pane_ids correct (one big pane, one small, one block, one bands wall), and a pistol shot goes `glass destroyed=1` + `concrete dented=1` through the big pane | — |
 | 🟢 | **G-D9** — multi-material slices: `panels.bands` authoring (§9.6), `Slice.material_bands` + `material_at()`, the per-band bake page (extra `wall_descriptor`, NOT a run split — see §9.6), a lookup `material_override`. `GlassPaneGrouper` unions a banded panel by base-or-band glass. **BUILT 2026-08-31.** Acceptance: `glass_bands_wall_before/after_2026-08-31.png` (same-boot) — the WINDOWS.png wall gains a brick sill (rel 0-1) + head (rel 22-23) over a glass middle; `[BAKE] Composed sheet brick\|facade_brick` present on the GLASS map and absent pre-G-D9; `glass_transparency_selftest` test [7]; 39 selftests clean | — |
-| 3 | **G-ART** — the art order + `check_decal.py` coverage for the glass families (`crack_web` now needs a tight AND a wide/spaced variant, G-D14) | — |
-| 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | G-ART |
+| 🟢 | **G-ART** — **the order and the gate are DONE 2026-09-01** ([`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md); `check_decal.py` now carries per-material families + the fracture-sheet class, proven red on 7 modes with all 54 shipped decals unchanged). Five files asked for: two 1024×512 grayscale fracture sheets (tight/wide, G-D14) and three 256×256 shard decals. **What is left is the delivery** | — |
+| 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | the art itself |
 | 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** (open) G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump | G-MAP, G2, §5.1 |
 | 5b | **G-VARIANT** — `glass_class` + tint (G-D16): `glass_armored` (purple, ARMORED + `pane_primed`, G-D15), `glass_screen_{green,red,amber}` (INDESTRUCTIBLE / BREAKABLE). Material roster + `RESISTANCE` rows + a per-placement class tag | G3 |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |

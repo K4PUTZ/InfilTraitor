@@ -293,13 +293,47 @@ none, ever (MAT-SOFT-01).
 
 ⚠️ **The line that used to sit here — "glass gets none by D22 and is not waiting
 on art" — was stale and is corrected (2026-09-01).** `G-D3` amended D22 on
-2026-08-30 and glass cracks; as of 2026-09-01 glass art is **exactly what is
-being specified**, and this file saying otherwise would have misled the very
-authoring pass it exists to serve. What glass needs, and the shape of it, lives
-in GLASS_MASTER_PLAN: the impact and shard families (§5.4), the Stable Diffusion
-pipeline and the 16×20 px read that decides what ships (§7.3), the compositing
-order (G-D19), the re-anchored crack sheet (G-D21), the clamp and the maximum
-pane (G-D23), and the crossing rule (G-D24).
+2026-08-30 and glass cracks. **The order is now written:
+`PROMPTS/ART_ORDER_GLASS.md` (G-ART, 2026-09-01)**, and it asks for five files in
+two classes:
+
+| Class | Files | Shape |
+|---|---|---|
+| **fracture sheet** — a NEW asset class, §7b below | `fracture_glass_{tight,wide}.png` | 1024×512 grayscale **on black, no alpha** |
+| decal family `shard` | `decal_shard_glass_{0,1,2}.png` | 256×256 RGBA, an ordinary decal |
+
+**Glass claims `shard` and NOTHING else.** `dent` is impossible for it forever
+(G-D3: glass fractures, it does not deform — `dent_factor` pinned at 0.0), and
+its `bullet`/`crack` marks are folded into the fracture sheet by G-D21. The
+per-material family sets live in `check_decal.py`'s `MATERIAL_FAMILIES`, so a
+`decal_dent_glass_*` delivery is now rejected by name.
+
+The design behind all of it stays in GLASS_MASTER_PLAN: where a shard lands
+(§5.4), the Stable Diffusion route (§7.3), the compositing order (G-D19), the
+re-anchored crack sheet (G-D21), the clamp and the maximum pane (G-D23), and the
+crossing rule (G-D24).
+
+### 7b. Fracture sheets (ORDERED 2026-09-01 — G-D21)
+
+A third asset class, and it fails like neither of the other two: **facade-shaped,
+decal-semantic.**
+
+| Property | Specification |
+|---|---|
+| File | `ASSETS/materials/<id>/fracture_<id>_<tight\|wide>.png` — beside the facade, NOT under `decals/`; `TextureResolver` has no subdirectory step |
+| Dimensions | **1024 × 512** — one 64 × 32-voxel page at the pinned 16 texels/voxel. G-D23 DERIVES the maximum pane (8 GU × 4 storeys) from this, so the size is a rule, not a convenience |
+| Colour | **Grayscale (B2).** The sheet is a MASK: luminance is how much fracture is at that texel, black is none |
+| Alpha | **Not used, and must not be relied on.** `BakeCompositor._get_plane_source()` round-trips a facade through RGB8 and flattens alpha to 255, so a crack that lives only in the alpha channel renders as a black page |
+| Origin | **The fracture radiates from the exact canvas centre.** G-D21 re-anchors by (impact − centre); an off-centre origin displaces every crack in the game by a constant, invisibly |
+| Repeat | **Clamps, never mirrors** (G-D23) — a mirrored facade is invisible and correct, a mirrored fracture is a second false crack |
+| Scale on screen | **1 : 1 horizontally**, ×20/16 vertically (NEAREST). Unlike a decal, a sheet has no downsample to survive |
+| Count | **Two per material**, tight and wide — G-D14's two hole sizes. Each sheet is 2048 atoms composed at every map load, so variants are a cost, not a freebie |
+
+Gated by `check_decal.py` (the same tool — it dispatches on the `fracture_`
+prefix). ⚠️ Two build steps are owed before a delivered sheet can load at all,
+and both are listed in the order's §4: a `fracture_` category in
+`TextureResolver._validate_dimensions()`, and a constant naming the sheets so the
+gate can check their wiring the way it checks a decal family's.
 
 ⚠️ **The data half is not there yet, and a gate is waiting for it.** `glass`
 still has `crack_factor 0.0`, so nothing can reach a CRACKED glass voxel today.

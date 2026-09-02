@@ -152,6 +152,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 
 <!-- AUTO:BEGIN pending_prompts -->
 - ART_ORDER_BRICK_DECALS.md
+- ART_ORDER_GLASS.md
 - ART_ORDER_NEW_MATERIALS.md
 - BAKE_ORDER_CHARACTER_LAYERS.md
 - BAKE_ORDER_WEAPON_GRIPS.md

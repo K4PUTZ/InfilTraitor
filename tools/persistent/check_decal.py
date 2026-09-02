@@ -21,8 +21,9 @@
 ## here.
 ##
 ## Checks, in the order they bite:
-##   1. filename        — decal_<family>_<material>_<n>.png, family in
-##                        bullet/dent/crack, n in 0..2
+##   1. filename        — decal_<family>_<material>_<n>.png, family in the set
+##                        THAT MATERIAL claims (glass takes `shard` and nothing
+##                        else — G-ART), n in 0..2
 ##   2. dimensions      — 256x256 exactly, square (§7: a voxel face is square
 ##                        in flat space; the x20/16 stretch is the generator's)
 ##   3. alpha channel   — REQUIRED, unlike a facade. §7: "the decal is a mark on
@@ -41,9 +42,19 @@
 ##                        material claims. This is the check the runtime needs
 ##                        and the one a per-file gate cannot do
 ##
+## A SECOND ASSET CLASS lives here since 2026-09-01 (GLASS_MASTER_PLAN G-ART):
+## the FRACTURE SHEET, `fracture_<material>_<tight|wide>.png`. It is facade-
+## shaped (1024x512 = one 64x32-voxel page) and decal-semantic (it is a mark),
+## so neither existing gate fits it — see the FRACTURE_* block below. Its own
+## checks are dimensions, grayscale (B2), fracture coverage, IMPORT, and the one
+## that justifies the class: the fracture's ORIGIN must be the page centre,
+## because G-D21 re-anchors the sheet by (impact - centre) and an off-centre
+## origin displaces every crack in the game by a constant nobody will see.
+##
 ## Usage:
 ##     python3 tools/persistent/check_decal.py <file.png> [<file.png> ...]
 ##     python3 tools/persistent/check_decal.py --material brick
+##     python3 tools/persistent/check_decal.py --material glass
 ##     python3 tools/persistent/check_decal.py --all
 ##
 ## Exit code is 0 only if every file PASSes, so it can gate a delivery.
@@ -78,6 +89,95 @@ DECAL_H = 256
 ## into. Not a convention — a missing variant is a boot-time B6 failure.
 VARIANT_COUNT = 3
 FAMILIES = ("bullet", "dent", "crack")
+
+## GLASS_MASTER_PLAN G-ART (2026-09-01). A material's families are no longer a
+## single global tuple, because GLASS DOES NOT TAKE THE WALL FAMILIES AND THAT IS
+## A RULE RATHER THAN AN OMISSION:
+##
+##   - `dent` is impossible for glass, permanently. G-D3 amended D22 so CRACKED
+##     returns and DENTED never does — glass fractures, it does not deform, and
+##     `dent_factor` is pinned at 0.0 to say so. A delivered `decal_dent_glass_*`
+##     is a file nothing can ever load, which is the same silent miss this gate
+##     is named after.
+##   - `bullet` and `crack` are not 256x256 decals for glass either. G-D21 makes
+##     a pane fracture a SHEET re-anchored onto the impact (see FRACTURE_* below)
+##     with the hole baked at its centre, so the per-voxel bullet mark is folded
+##     into the sheet rather than authored separately.
+##   - what glass DOES claim as an ordinary decal is `shard` — G-D16b's fallen
+##     glass on the floor, which rides `_floor_sunk_decal_plan` exactly like
+##     earth's dent and is a mark on a face like any other.
+##
+## Everything not named here keeps FAMILIES, so all 45 shipped material decals
+## are unaffected by construction.
+MATERIAL_FAMILIES = {
+    "glass": ("shard",),
+}
+
+
+def families_for(material):
+    """The families THIS material may claim. Not a filter over one global list:
+    a `dent` for glass and a `shard` for concrete are both errors, and only a
+    per-material answer can say so."""
+    return MATERIAL_FAMILIES.get(material, FAMILIES)
+
+
+## ---------------------------------------------------------------------------
+## Fracture sheets (GLASS_MASTER_PLAN G-D21/G-D23) — a THIRD asset class, and it
+## fails like neither of the other two.
+##
+## A fracture sheet is facade-SHAPED (one 64x32-voxel page) but decal-SEMANTIC
+## (it is a mark, not a surface). Neither existing gate is right for it:
+##
+##   - check_facade.py would PASS a sheet whose fracture is missing or off
+##     centre, because it only ever asks about dimensions, grayscale and import;
+##   - check_decal.py's own file checks would FAIL it on dimensions, and its
+##     alpha rule is actively WRONG here — `BakeCompositor._get_plane_source()`
+##     round-trips a facade through RGB8, which flattens any alpha the PNG
+##     carries to 255. A sheet authored as "bright crack on transparent" arrives
+##     at the compositor as "bright crack on OPAQUE BLACK".
+##
+## So the sheet is a GRAYSCALE MASK ON A BLACK FIELD: luminance is how much
+## fracture is at that texel, and alpha is irrelevant (§7.3's luma-to-alpha step
+## applies to the shard DECALS, never to these). That is also what Stable
+## Diffusion produces natively, with no matting step at all.
+FRACTURE_COLS = 64
+FRACTURE_ROWS = 32
+TEX_AUTHORING_N = 16    ## pinned, ASSETS/ART_SPECIFICATIONS.md §1
+FRACTURE_W = FRACTURE_COLS * TEX_AUTHORING_N    ## 1024
+FRACTURE_H = FRACTURE_ROWS * TEX_AUTHORING_N    ## 512
+
+## G-D14's two hole sizes, and the sheet count is exactly two because of it:
+## pistol/shotgun take the tight web, rifle-class the wide/spaced one.
+FRACTURE_WIDTHS = ("tight", "wide")
+
+## Which materials claim a sheet. `glass_armored` and `glass_screen_*` reuse
+## these (G-D16: the variants differ by tint and class, never by geometry), so
+## G-VARIANT adds no art and this tuple does not grow with it.
+FRACTURE_MATERIALS = ("glass",)
+
+## B2, and the tolerance is check_facade.py's own: for PNG quantisation, not for
+## "a bit of colour".
+CHANNEL_TOLERANCE = 2
+
+## ⚠️ UNLIKE EVERY OTHER NUMBER IN THIS FILE, THE THREE BELOW ARE NOT MEASURED —
+## there is no shipped fracture art to measure against yet, and this gate is
+## deliberately being earned BEFORE the delivery (the M2a precedent). So they sit
+## at the useless extremes only, which is the same discipline COVERAGE_FLOOR /
+## COVERAGE_CEILING already follow for decals. Re-measure them against the first
+## accepted sheet rather than leaving them as a spec nobody checked.
+FRACTURE_INK_MIN = 8            ## luminance above the black field = fracture
+FRACTURE_COVERAGE_FLOOR = 0.1   ## below this the page carries no crack at all
+FRACTURE_COVERAGE_CEILING = 90.0  ## above this it is a lit page, not a fracture
+
+## THE ONE THRESHOLD THAT IS STRUCTURAL RATHER THAN AESTHETIC, and the reason
+## this check exists at all. G-D21 re-anchors the sheet by offsetting
+## `(column_in_run, level)` by (impact - sheet centre), so the fracture's ORIGIN
+## must be the sheet's centre. Author it off centre and every crack in the game
+## lands a fixed distance from where the round actually hit — systematically,
+## invisibly, forever. A radial fracture's ink-weighted centroid IS its origin by
+## construction, so the centroid is a direct measurement of that claim; 4 voxels
+## of slack absorbs an asymmetric web without absorbing a misplaced one.
+FRACTURE_ORIGIN_SLACK_VOXELS = 4
 
 ## Measured over all 45 shipped decals: coverage runs 2.6% to 82.9% — a span
 ## wide enough that ANY meaningful band would reject known-good art. The generic
@@ -198,10 +298,16 @@ def check(path):
         ok = False
         notes.append("filename does not parse as decal_<family>_<material>_<n>.png")
     else:
-        family, _material, index = parsed
-        if family not in FAMILIES and not name.startswith("decal_generic_"):
+        family, material, index = parsed
+        ## Per-material, not global (G-ART): `decal_dent_glass_0.png` parses
+        ## perfectly and is still art nothing can load, because glass has no
+        ## DENTED tier to reach. The generic family is material-agnostic by
+        ## definition and keeps its exemption.
+        allowed = families_for(material)
+        if family not in allowed and not name.startswith("decal_generic_"):
             ok = False
-            notes.append("family %r is not one of %s" % (family, "/".join(FAMILIES)))
+            notes.append("family %r is not one of %s for material %r"
+                         % (family, "/".join(allowed), material))
         if index >= VARIANT_COUNT:
             ok = False
             notes.append("variant index %d is outside 0..%d — the runtime hashes "
@@ -278,17 +384,237 @@ def check(path):
     return ok, [head] + ["    - " + n for n in notes]
 
 
+def _parse_fracture_name(name):
+    """fracture_<material>_<width>.png -> (material, width) or None.
+
+    Split from the RIGHT, because the material can itself carry an underscore
+    (`glass_armored`) while the width never does — the same reasoning
+    `_parse_name` uses for the generic family, applied to the other end of the
+    string."""
+    if not name.startswith("fracture_") or not name.endswith(".png"):
+        return None
+    stem = name[len("fracture_"):-len(".png")]
+    parts = stem.split("_")
+    if len(parts) < 2:
+        return None
+    return "_".join(parts[:-1]), parts[-1]
+
+
+def fracture_path(material, width):
+    """Beside the facade, NOT under `decals/` — and that is forced, not chosen.
+    `TextureResolver.resolve(id, folder)` reads
+    `res://ASSETS/materials/<folder>/<id>.png` with no subdirectory step, so a
+    sheet in a subfolder is Tier.NONE: unresolved, no error, generic atlas."""
+    return os.path.join(MATERIALS_ROOT, material, "fracture_%s_%s.png" % (material, width))
+
+
+def check_fracture(path):
+    """The fracture-sheet gate. Returns (ok: bool, lines: list[str])."""
+    name = os.path.basename(path)
+    notes = []
+
+    if not os.path.exists(path):
+        return False, ["%-34s FAIL  file does not exist" % name]
+
+    ok = True
+
+    ## 1. Filename. Two things ride on it and both fail silently.
+    ##
+    ## ⚠️ THE PREFIX IS LOAD-BEARING. `TextureResolver._validate_dimensions()`
+    ## infers a texture's category from the filename prefix and returns FALSE for
+    ## anything it does not recognise — the file is rejected, the surface falls
+    ## back to the generic atlas, and nothing is printed above a WARN. Today the
+    ## recognised prefixes are `facade_`, `slice_` and `slab_` ONLY, so a sheet
+    ## named `fracture_*` needs its category added there before it resolves.
+    ## That one line is listed in ART_ORDER_GLASS.md §4 as work to do when the
+    ## art lands, deliberately NOT done in advance: a resolver branch for an
+    ## asset class that does not exist yet is a branch nothing exercises.
+    parsed = _parse_fracture_name(name)
+    if parsed is None:
+        ok = False
+        notes.append("filename does not parse as fracture_<material>_<width>.png")
+    else:
+        material, width = parsed
+        if width not in FRACTURE_WIDTHS:
+            ok = False
+            notes.append("width %r is not one of %s — G-D14 gives glass exactly "
+                         "two hole sizes and the runtime asks for those names"
+                         % (width, "/".join(FRACTURE_WIDTHS)))
+        if material not in FRACTURE_MATERIALS:
+            ok = False
+            notes.append("material %r claims no fracture sheet (%s do) — nothing "
+                         "will ever load this file"
+                         % (material, "/".join(FRACTURE_MATERIALS)))
+
+    try:
+        im = Image.open(path)
+    except Exception as exc:
+        return False, ["%-34s FAIL  not a readable image: %s" % (name, exc)]
+
+    ## 2. Dimensions — one facade page, and G-D23 DERIVES the maximum pane from
+    ## it (64 x 32 voxels = 8 GU x 4 storeys) rather than inventing a limit. A
+    ## sheet of any other size moves that rule without anyone editing it.
+    w, h = im.size
+    if (w, h) != (FRACTURE_W, FRACTURE_H):
+        ok = False
+        extra = ""
+        if (w, h) == (FRACTURE_W, FRACTURE_W):
+            extra = "  <- pre-squared; author 1024x512, %d cols x %d rows of voxels" \
+                % (FRACTURE_COLS, FRACTURE_ROWS)
+        notes.append("dimensions %dx%d, expected %dx%d%s"
+                     % (w, h, FRACTURE_W, FRACTURE_H, extra))
+
+    ## 3. Grayscale (B2), every pixel — check_facade.py's rule and its tolerance.
+    ## Colour reaches a wall through base_color's MULTIPLY, never through a
+    ## pattern source, and a fracture sheet is a pattern source.
+    ## `tobytes()` rather than `getdata()`: the latter is deprecated for removal
+    ## in Pillow 14 and warns on every run, and a gate that prints noise beside
+    ## its verdict trains the reader to skim it.
+    raw = im.convert("RGB").tobytes()
+    total = w * h
+    non_gray = 0
+    for i in range(0, len(raw), 3):
+        r, g, b = raw[i], raw[i + 1], raw[i + 2]
+        if max(r, g, b) - min(r, g, b) > CHANNEL_TOLERANCE:
+            non_gray += 1
+    if non_gray:
+        ok = False
+        notes.append("non-grayscale on %d of %d pixels (%.2f%%) — B2"
+                     % (non_gray, total, 100.0 * non_gray / total))
+
+    ## 4. Ink — the fracture itself, measured as luminance above the black field.
+    ## Alpha is NOT consulted and must not be: the facade path round-trips
+    ## through RGB8 and flattens it (bake_compositor.gd:556), so a sheet whose
+    ## crack lives only in its alpha channel measures as an EMPTY page here,
+    ## which is exactly how it would render.
+    lum = im.convert("L")
+    ink_px = 0
+    sum_x = 0.0
+    sum_y = 0.0
+    sum_w = 0.0
+    min_x, max_x, min_y, max_y = w, -1, h, -1
+    px = lum.tobytes()
+    for i, v in enumerate(px):
+        if v < FRACTURE_INK_MIN:
+            continue
+        x = i % w
+        y = i // w
+        ink_px += 1
+        sum_x += x * v
+        sum_y += y * v
+        sum_w += v
+        if x < min_x:
+            min_x = x
+        if x > max_x:
+            max_x = x
+        if y < min_y:
+            min_y = y
+        if y > max_y:
+            max_y = y
+    coverage = 100.0 * ink_px / total
+
+    if coverage < FRACTURE_COVERAGE_FLOOR:
+        ok = False
+        notes.append("effectively empty — %.3f%% of the page carries any fracture "
+                     "above luminance %d. A black page renders an untouched pane "
+                     "and reports no error" % (coverage, FRACTURE_INK_MIN))
+    elif coverage > FRACTURE_COVERAGE_CEILING:
+        ok = False
+        notes.append("effectively solid — %.1f%% of the page is lit, so this is a "
+                     "bright surface, not a fracture on one" % coverage)
+
+    ## 5. THE ORIGIN — G-D21's actual requirement, and the failure this gate is
+    ## worth writing for. The sheet is re-anchored by offsetting (column, level)
+    ## by (impact - sheet centre); if the fracture's origin is not the centre,
+    ## every crack in the game sits a fixed distance from the round that made it.
+    ## Nothing on screen says so — it just always looks slightly wrong.
+    if sum_w > 0.0:
+        cx = sum_x / sum_w
+        cy = sum_y / sum_w
+        dx_v = (cx - w / 2.0) / float(TEX_AUTHORING_N)
+        dy_v = (cy - h / 2.0) / float(TEX_AUTHORING_N)
+        if abs(dx_v) > FRACTURE_ORIGIN_SLACK_VOXELS or abs(dy_v) > FRACTURE_ORIGIN_SLACK_VOXELS:
+            ok = False
+            notes.append("fracture origin is off centre — ink centroid sits "
+                         "(%+.1f, %+.1f) voxels from the page centre, past the "
+                         "%d-voxel slack. G-D21 anchors the sheet by (impact - "
+                         "centre), so this offset would apply to EVERY crack"
+                         % (dx_v, dy_v, FRACTURE_ORIGIN_SLACK_VOXELS))
+        else:
+            notes.append("origin ok — centroid (%+.1f, %+.1f) voxels from centre"
+                         % (dx_v, dy_v))
+
+        ## 6. Reach — REPORTED, never failed. This is the number that decides
+        ## whether G-D23's "a centred hit can crack the whole pane" is real: the
+        ## maximum pane is 64 x 32, so reaching it from the centre needs 32
+        ## columns and 16 rows. A tight web is SUPPOSED to fall short (G-D14),
+        ## which is why this cannot be a failure.
+        reach_x = max(abs(max_x - w / 2.0), abs(w / 2.0 - min_x)) / float(TEX_AUTHORING_N)
+        reach_y = max(abs(max_y - h / 2.0), abs(h / 2.0 - min_y)) / float(TEX_AUTHORING_N)
+        notes.append("reach %.0f col / %.0f row voxels from centre (a max pane "
+                     "needs 32 / 16 to crack edge to edge, G-D23)"
+                     % (reach_x, reach_y))
+
+    ## 7. Imported — the same check, for the same reason, as every other asset.
+    for n in _import_notes(path):
+        ok = False
+        notes.append(n)
+
+    head = "%-34s %s  %dx%d %s  fracture %.2f%%" % (
+        name, "PASS" if ok else "FAIL", w, h, im.mode, coverage)
+    return ok, [head] + ["    - " + n for n in notes]
+
+
+def check_material_fractures(material):
+    """The sheet half of `--material`. Separate from family completeness because
+    a sheet is not a family: there are no variants to be missing, only the two
+    G-D14 widths to be present."""
+    print("  fracture sheets (G-D21) — %s\n" % ", ".join(FRACTURE_WIDTHS))
+    all_ok = True
+    found_any = False
+    for width in FRACTURE_WIDTHS:
+        path = fracture_path(material, width)
+        if not os.path.exists(path):
+            print("  %-8s —  absent (%s)" % (width, os.path.relpath(path, REPO_ROOT)))
+            continue
+        found_any = True
+        ok, lines = check_fracture(path)
+        all_ok = all_ok and ok
+        for line in lines:
+            print("    " + line)
+    print("")
+    if found_any:
+        ## The honest counterpart of the IMPACT_DECAL_MATERIALS check below: there
+        ## is no constant to read yet, so there is no two-lists check to run, and
+        ## saying so loudly is the only thing that keeps this from being a gate
+        ## that silently half-works once the art lands.
+        print("  ⚠ NO WIRING CHECK EXISTS FOR SHEETS — G-D21 is unbuilt, so no")
+        print("    constant names them and this gate cannot tell a wired sheet")
+        print("    from an orphan one. Add it with the constant (ART_ORDER_GLASS")
+        print("    §4), or these files pass here and load nowhere.")
+        print("")
+    return all_ok
+
+
 def check_material(material):
     """7. Family completeness — the check a per-file pass cannot make."""
     print("[DECAL] material %r — family completeness\n" % material)
     all_ok = True
     found_any = False
-    for family in FAMILIES:
+    for family in families_for(material):
         paths = [os.path.join(decal_dir(material), "decal_%s_%s_%d.png" % (family, material, i))
                  for i in range(VARIANT_COUNT)]
         present = [p for p in paths if os.path.exists(p)]
         if not present:
-            print("  %-8s —  absent (this material does not claim the family)" % family)
+            ## Two different absences, and conflating them was wrong the moment
+            ## families became per-material: `crack` missing from metal is the
+            ## RULE (D32.6 — metal does not fracture), while `shard` missing from
+            ## glass is UNDELIVERED ART. Only the second one is a to-do.
+            if material in MATERIAL_FAMILIES:
+                print("  %-8s —  absent — %r claims this family (G-ART); art not "
+                      "delivered yet" % (family, material))
+            else:
+                print("  %-8s —  absent (this material does not claim the family)" % family)
             continue
         found_any = True
         if len(present) != VARIANT_COUNT:
@@ -309,6 +635,10 @@ def check_material(material):
             for line in lines:
                 print("    " + line)
         print("")
+
+    ## The sheet class, for the materials that claim one.
+    if material in FRACTURE_MATERIALS:
+        all_ok = check_material_fractures(material) and all_ok
 
     ## The two-lists check — the silent miss this whole gate is named after.
     wired = _wired_materials()
@@ -389,6 +719,14 @@ def main():
     if args == ["--all"]:
         paths = []
         for material in sorted(os.listdir(MATERIALS_ROOT)) if os.path.isdir(MATERIALS_ROOT) else []:
+            ## Sheets sit BESIDE the facade, in the material folder itself —
+            ## TextureResolver has no subdirectory step (see fracture_path).
+            mdir = os.path.join(MATERIALS_ROOT, material)
+            if os.path.isdir(mdir):
+                paths.extend(sorted(
+                    os.path.join(mdir, f) for f in os.listdir(mdir)
+                    if f.startswith("fracture_") and f.endswith(".png")
+                ))
             ddir = decal_dir(material)
             if not os.path.isdir(ddir):
                 continue
@@ -397,14 +735,17 @@ def main():
                 if f.startswith("decal_") and f.endswith(".png")
             ))
         if not paths:
-            print("[DECAL] no decal_*.png found under %s" % MATERIALS_ROOT)
+            print("[DECAL] no decal_*.png or fracture_*.png found under %s" % MATERIALS_ROOT)
             return 1
     else:
         paths = args
 
     all_ok = True
     for p in paths:
-        ok, lines = check(p)
+        ## One entry point, two asset classes: they fail differently and the
+        ## filename is what says which set of rules applies.
+        checker = check_fracture if os.path.basename(p).startswith("fracture_") else check
+        ok, lines = checker(p)
         all_ok = all_ok and ok
         for line in lines:
             print(line)

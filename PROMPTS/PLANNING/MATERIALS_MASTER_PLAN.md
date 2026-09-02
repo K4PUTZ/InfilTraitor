@@ -1,7 +1,18 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
-**Status:** 🟢 **v1.5 — 2026-08-30: THE SEQUENCING BLOCK IS GONE.** M3-6 was
+**Status:** 🟢 **v1.6 — 2026-09-02: M4 (GLASS) IS THE ACTIVE TRACK AND ITS ART IS
+DELIVERED.** `GLASS_MASTER_PLAN` is at v1.20: G1, G2, G7, G-MAP, G3 (all four
+stages), G-VARIANT (V-A…V-D) and now **G-ART** are built. The five art files are
+procedural (`tools/persistent/gen_fracture_sheet.py`, `gen_shard_decal.py`) and
+gate green. ⚠️ **M4 is NOT closable**, and the reason is a decision rather than
+work: `GLASS_MASTER_PLAN` §8.1 — raising glass's `crack_factor` above 0 makes
+`voxel_decal_selftest` [12] demand a crack DECAL family that G-D21 explicitly
+folded into the fracture sheet, so **glass cannot reach CRACKED at all** and G5,
+G-D4 and the map test all sit behind that. §8.2 holds a second open question: the
+mechanism G-D21 names is the baked WALL path, which glass does not use.
+
+Earlier, v1.5 — **2026-08-30: THE SEQUENCING BLOCK IS GONE.** M3-6 was
 sequenced behind `PERFORMANCE_MASTER_PLAN` P7; **P7b and P7c shipped 2026-08-26**
 (the `MultiMesh` circle field — the fire's worst frame 42.4 → 19.5 ms), so M3-6 is
 UNBLOCKED and M3-7 follows it. **M4 — GLASS — is now the named next item**: it is
@@ -51,7 +62,7 @@ Nine materials exist. Five arrived on 2026-08-21 and render correctly
 | **M1** | The five materials exist, render, and break | ✅ **DONE** |
 | **M2** | Decals — the marks each material takes | ✅ **DONE 2026-08-21** — 9 files, brick only |
 | **M3** | Fire that consumes and opens passages | **Large.** The milestone's centre |
-| **M4** | Glass: seeing through it, and breaking it non-locally | Medium + one hard rendering question. **LAST, by decision** |
+| **M4** | Glass: seeing through it, and breaking it non-locally | ⚡ **ACTIVE.** Seeing through it and breaking it are BUILT; the art landed 2026-09-02. Open: `GLASS_MASTER_PLAN` §8.1 (the CRACKED tier) and §8.2 (G-D21's mechanism) |
 | **M5** | Voxel props — the thing these materials are actually for | Medium, blocked on renderer v2 |
 | **M6** | Fluids (water/lava) | **Research first, unscoped** |
 

@@ -69,7 +69,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 | `PERFORMANCE` | it *was* the explosion's cost | 🟠 **Its fire block is HISTORY, not status** — D-6 deleted the very subsystem F3–F8 optimized. P3 + P7b/P7c ship and default ON; P4, P6 and §14.3's broken `INFILTRAITOR_HIDE_VOXELS` stay open. **Read §12–§14, not the v2.3 header** |
 | `SOOT_STORAGE_REFORM` | nothing — the presentation reform took the session on 2026-08-27 | 🟡 **PAUSED at SS-3.** SS-4 (checkpoint persistence), SS-5 (subtraction), SS-6 (rotation) open; **§5.3 is an open DESIGN question for the Director** |
 | `MATERIALS` M3-6 (lateral fire propagation) | PERF P7 — *"do not judge a look through a frame time its own voxel count made worse"* | 🟢 **UNBLOCKED** — P7b/P7c shipped 2026-08-26 |
-| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ⚡ **ACTIVE — its own plan since 2026-08-30**: `GLASS_MASTER_PLAN` **v1.13. G1..G-D18b BUILT; G3 (the break) 3 of 4 stages BUILT 2026-08-31/09-01.** G-D9 = `panels.bands` multi-material slices. G-D18 = glass out of occlusion. G-D18b = agent renders behind a pane. **G3: A** `GlassShatter` (`p_shatter` curve, arsenal-pinned) · **B** the roll in the shot path + `plan_pane_shatter` (region flood, G-D13 frame remnants) · **C** the grenade/cook path (`blast_glass_punch`, panels out of the ring model, `erase_glass_cell`). Real map: firearms + a grenade all take the GLASS map's big pane. **Left: G3 Stage D** — the G-D8 passage / movement-blocking work (intact glass blocks no movement today). |
+| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ⚡ **ACTIVE — its own plan since 2026-08-30**: `GLASS_MASTER_PLAN` **v1.20. G1..G-D18b, G3 (all four stages), G-VARIANT (V-A…V-D) and G-ART all BUILT.** The five art files landed 2026-09-02, procedural and gated green, with §4's wiring in. ⛔ **Blocked on a DECISION, not on work** — §8.1: `crack_factor > 0` demands a crack DECAL family G-D21 folded into the sheet, so glass cannot reach CRACKED and G5 / G-D4 / the map test all sit behind it. §8.2 asks whether G-D21 keeps its baked-wall mechanism (36 MB of atoms) or moves to world-space sampling (2.0 MB) |
 | `MATERIALS` M5 (voxel props) | renderer v2 | 🔴 Still blocked — the real gate on `OCCLUSION` Part 4 too |
 | `TOP_TEXTURE` Part 3 (textured interiors) | *"the destruction system (no implementation plan exists yet)"* | 🟢 **UNBLOCKED** — that plan was written, shipped and closed. Unscheduled, not blocked |
 | `OCCLUSION` Part 4 (interior cutaway) | Slab/roofs, then *"maps with objects"* | 🟡 Slab landed 2026-07-18; the resume trigger is now M5 props |
@@ -81,7 +81,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 ### 3. What is genuinely open, ordered by how ready it is
 
 1. **GLASS — ⚡ THE ACTIVE TRACK.**
-   [`GLASS_MASTER_PLAN`](../../PROMPTS/PLANNING/GLASS_MASTER_PLAN.md) **v1.13.**
+   [`GLASS_MASTER_PLAN`](../../PROMPTS/PLANNING/GLASS_MASTER_PLAN.md) **v1.20.**
    BUILT 2026-08-31/09-01: **G1 geometry** (the pane thickness is a per-voxel
    exposed-face cull — main always, top on the top row, side on the frontmost
    column, all dim; the pre-existing +20 `texture_origin` float was the
@@ -106,12 +106,29 @@ number. If a total is ever quoted as current, it has to be re-measured first.
    pulled out of `_phase_slices`' ring model, `VoxelRenderer.erase_glass_cell()`).
    Real map: firearms and a grenade all take the GLASS map's big pane, with
    frame remnants (`glass_shatter_{partial_rifle,full_sniper,grenade}_*.png`).
-   ⚠️ **G3 Stage D still open:** intact glass blocks no movement — agent and
-   guards walk through it; needs the movement/vision blocked-edge split G-D7
-   anticipates, plus broken glass → passage opens (`PassageQuery`) + detection +1
-   + light bump. Three findings still belong to
-   systems OUTSIDE glass: `PassageQuery` has only `print` call sites (**no
-   passage ever opened, any material**); **`NoiseSystem.emit()` has zero call
+   **D** (2026-09-01) the movement/vision edge-set split, and a broken pane
+   opening the passage via `PassageQuery` — so G3 is COMPLETE. **G-VARIANT is
+   complete too** (V-A the family seam + invariant L2 · V-B the roster and tints
+   · V-C the behaviour classes · V-D `glass_class` per placement and G-D15's
+   pierce-and-prime end to end).
+   **G-ART DELIVERED 2026-09-02** — two 1024×512 fracture sheets and three
+   256×256 shard decals, authored PROCEDURALLY (`tools/persistent/gen_fracture_sheet.py`,
+   `gen_shard_decal.py`) rather than by prompt, because the sheet's centred origin
+   (G-D21) and edge-to-edge reach (G-D23) are a parameter and a measurement here
+   and a lottery anywhere else. Measured: `wide` reach 32×16, exactly the
+   guarantee. §4's wiring is in (a `fracture_` category in `TextureResolver`,
+   `GlassMaterials.FRACTURE_WIDTHS`, and the sheet wiring check the gate lacked).
+   ⛔ **NOTHING LOADS THE ART YET, and the blocker is a Director decision:**
+   §8.1 — `IMPACT_DECAL_MATERIALS` reaches only the WALL families, and
+   `crack_factor > 0` makes `voxel_decal_selftest` [12] demand
+   `decal_crack_glass_*`, the per-voxel family G-D21 folded into the sheet. Glass
+   is the first material where "cracks" and "has a crack decal family" come
+   apart. Until that is settled **glass cannot reach CRACKED at all**, which is
+   why G5 is blocked and why G-D21 cannot be tested on the map. §8.2 is the
+   second open question — G-D21's stated mechanism is the baked WALL path and
+   glass does not use it.
+   Three findings still belong to systems OUTSIDE glass: `PassageQuery` had only
+   `print` call sites before G3 Stage D; **`NoiseSystem.emit()` has zero call
    sites**; vision has no material, so **glass blocks sight like concrete**.
 2. **`MATERIALS` M3-6 / M3-7** — lateral fire propagation and the measured
    per-material passage table. Unblocked by P7, never started.
@@ -131,18 +148,34 @@ number. If a total is ever quoted as current, it has to be re-measured first.
    (*"o que a gente conseguir colocar de vermelho brilhando que vira preto é
    lucro. De resto pode deixar assim mesmo"*); what shipped is the brasa on
    consumed cells, and a voxel that survives *while* glowing still needs a burn
-   state that does not exist — and `update_docs.py`'s silent wipe.
+   state that does not exist. ~~and `update_docs.py`'s silent wipe~~ — **CLOSED
+   2026-09-02** (`34bb91dc`): carried here unowned since 2026-08-30, it then
+   fired live during this session's own doc regeneration and wiped five real
+   version-history rows. Every AUTO source now separates "could not determine"
+   from "determined and empty" and leaves an undetermined block byte-identical;
+   the report rides the EXIT CODE, because the pre-commit hook runs the script as
+   `> /dev/null 2>&1`. Audited: no wiped block ever landed in 334 commits.
 
 ### 4. Decisions that are the Director's, not the agent's
 
-1. **What the next milestone is.** The explosion no longer picks it. The three
+1. ⛔ **GLASS §8.1 — how does glass reach CRACKED?** The live blocker, and it
+   stops G5, G-D4 and any map test of G-D21. `crack_factor > 0` makes
+   `voxel_decal_selftest` [12] demand `decal_crack_glass_*`, the per-voxel crack
+   family G-D21 folded into the fracture sheet. Either [12] learns that a
+   sheet-cracking material satisfies the tier without a decal family, or glass
+   reaches CRACKED by a route that is not `crack_factor`.
+2. ⚠️ **GLASS §8.2 — does G-D21 keep its mechanism?** As ratified it reuses the
+   baked WALL path, which glass does not use. Measured: 36 MB of fracture atoms
+   against 2.0 MB for the sheet sampled by world position, the way the frost
+   already is. Amending it is a change to a ratified decision.
+3. **What the next milestone is.** The explosion no longer picks it. The three
    live candidates are the materials tail (M4 glass), the character/movement
    track, and the gameplay milestones (GAMEPLAY-01's non-combat turn, then
    GAME-01). Nothing technical orders them.
-2. **`SOOT_STORAGE_REFORM` §5.3 — should a wall's scorch outlive the wall?**
+4. **`SOOT_STORAGE_REFORM` §5.3 — should a wall's scorch outlive the wall?**
    Measured: 2 040 store-only cells after two fires, in a store whose lifetime is
    one level run. Both answers are defensible; it is a design call.
-3. **AI-02 resume timing** — open since 2026-07-26 and never re-raised.
+5. **AI-02 resume timing** — open since 2026-07-26 and never re-raised.
 
 ---
 
@@ -238,6 +271,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-01_OCC_FIX_AND_TEST_DEBT.md
 - RESUMO_SESSAO_2026-09-01_PART2_GLASS_G3_COMPLETE.md
 - RESUMO_SESSAO_2026-09-01_PART3_GART_AND_G_VARIANT.md
+- RESUMO_SESSAO_2026-09-02_GART_DELIVERY.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

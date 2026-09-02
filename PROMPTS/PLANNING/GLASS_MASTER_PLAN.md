@@ -1,6 +1,53 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.19 — **G-VARIANT IS COMPLETE. V-D BUILT (2026-09-01):**
+**Status:** 🟢 v1.20 — **G-ART IS DELIVERED (2026-09-02). All five files are on
+disk, gated green, and PROCEDURAL** — `tools/persistent/gen_fracture_sheet.py`
+and `gen_shard_decal.py` author them, so the art is a parameter set rather than
+an authoring night, and it is reproducible from a seed. `--material glass`
+measures: `tight` centroid (−0.2, −0.1) vox / reach 11×12 / 2.61 % ink, `wide`
+(−0.5, +0.2) vox / **reach 32×16** (G-D23's guarantee, exactly) / 6.84 %, and the
+three shards at 25.7 / 21.5 / 25.8 % coverage.
+
+**Procedural rather than §7.3's Stable Diffusion route, and the reason is
+measurable:** the sheet must radiate from the EXACT page centre (G-D21) and
+`wide` must carry ink to the edges (G-D23). Generated, those are a parameter and
+a measurement; prompted, they are a lottery sampled until the gate agrees. Across
+six seeds of each width every centroid landed inside ±1.6 voxels and every `wide`
+hit 32/16 — 12 for 12. SD's realism is real and the shards were its natural
+territory, but it aims at neither of those two numbers.
+
+**§4 of the order is wired (steps 2, 4, 5, 6):** `TextureResolver` has a
+`fracture_` category on the facade's own 64×32 contract, `GlassMaterials.FRACTURE_WIDTHS`
+names the two sheets, and `check_decal.py` gained the sheet wiring check §3 said
+was missing — proven red on both of its branches. ⚠️ **Wired is not used:** G-D21
+is unbuilt, so nothing requests a sheet yet, and the gate prints that on its own
+line rather than letting two green wiring lines imply a working feature.
+
+⚠️ **TWO FINDINGS BLOCK THE REST, and both are Director decisions, not patches:**
+
+1. **§8.1 — step 3 of the order is a CONTRADICTION.** It says to add `glass` to
+   `IMPACT_DECAL_MATERIALS` and raise `crack_factor` above 0. Both halves are
+   wrong for glass: that list reaches only the WALL families (`_decal_material()`
+   composes from the DAMAGE STATE, so the id there would ask for
+   `glass_bullet_cracked_*`), and `crack_factor > 0` makes `voxel_decal_selftest`
+   **[12]** demand `decal_crack_glass_{0,1,2}.png` — the per-voxel crack family
+   G-D21 folded into the sheet. **Glass is the first material where "this
+   material cracks" and "this material has a crack decal family" come apart, and
+   [12] cannot say that today.** Until it is resolved glass cannot reach CRACKED
+   at all, so G-D21 has nothing to trigger it and cannot be tested on the map.
+2. **§8.2 — G-D21's stated MECHANISM does not fit glass.** It reuses
+   `_compute_facade_key()`'s offset, which is the BAKED WALL path. Glass does not
+   use it: it has its own `_glass_atom_source[material][face][mask]`, and the
+   frosted pattern is not even in the atom — the shader samples it by WORLD
+   POSITION. Measured: a fracture atom page is 9.0 MB per face, 36 MB across the
+   four, against 360 KB for every glass atom that exists today and 2.0 MB for the
+   sheet as a plain texture. Awaiting the Director's call.
+
+Also 2026-09-02: **G-D25** (a big shard is a cut silhouette on whole voxels, not
+a texture) and the Director's ratification that the shard decal's shimmering
+white noise at 16×20 px **is the expected read**, not a shortfall.
+
+Earlier, v1.19 — **G-VARIANT IS COMPLETE. V-D BUILT (2026-09-01):**
 `panels[].glass_class` (a screen is a control interface or a TV *per placement*)
 rides all the way to `Slice.glass_class`, and **G-D15's pierce-and-prime works
 end to end**. Proved in ONE boot on the real map: shot 1 `PIERCED but held (punch
@@ -93,8 +140,10 @@ per-weapon hole size (G-D14), armored/purple glass with a primed state (G-D15),
 terminal-colour glass classes (G-D16 — INDESTRUCTIBLE *stops the round*), a
 black-plastic screen backing (G-D17). **G3 is PAUSED for this doc's sign-off**
 before any code — the Director gave it at the end of the 2026-08-31 session.
-Next: **G3**. G-ART, G5, G4, G6, G-D4, G-VARIANT, `plastic` unbuilt. *(G3 and
-G-ART have since landed — see the status block at the top of this file.)*
+Next: **G3**. G-ART, G5, G4, G6, G-D4, G-VARIANT, `plastic` unbuilt. *(G3,
+G-VARIANT and G-ART have all since landed — see the status block at the top of
+this file. G5, G4, G6, G-D4 and `plastic` are still unbuilt, and G5 is now
+blocked on §8.1's decision rather than on art.)*
 
 **G1 GEOMETRY as reworked** (Director's two diagrams, 2026-08-31): the pane
 thickness is a per-voxel **exposed-face cull**, not per-position atoms. A glass
@@ -629,9 +678,12 @@ one key and the second would silently overwrite the first — **half the pane wo
 never break, with no error anywhere.** It now `push_error`s and returns empty (B6)
 instead.
 
-⚠️ **G-D16b is blocked on art.** The landings are computed and reported; nothing
-draws them. §7.1's decal path needs the `shard_floor` family, which G-ART has not
-delivered. That is a real dependency, not a choice.
+⚠️ **G-D16b is no longer blocked on ART — it is blocked on its CONSUMER.** The
+three `decal_shard_glass_{0,1,2}.png` landed 2026-09-02 and gate green. What does
+not exist is the code that draws them: `glass_fall.gd:119` names the shape G6
+needs and stops there. ⚠️ And the fix is NOT to add `glass` to
+`IMPACT_DECAL_MATERIALS` — see §8.1; `shard` is a FLOOR mark whose sibling
+(earth's dent) rides `IMPACT_FLOOR_MATERIAL` on a different path entirely.
 
 ### ✅ G-D17 BUILT (2026-09-01) — the layer modifier
 
@@ -1291,11 +1343,62 @@ real impact. One rule at one seam.
 
 ---
 
-## 8. G-ART — ✅ WRITTEN AND GATED 2026-09-01
+## 8. G-ART — ✅ DELIVERED 2026-09-02 (order + gate 2026-09-01)
 
 **The order is [`PROMPTS/ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md)** and
-`tools/persistent/check_decal.py` now enforces it — earned BEFORE the art, the
-way M2a was. What remains of G-ART is the delivery itself.
+`tools/persistent/check_decal.py` enforces it — earned BEFORE the art, the way
+M2a was. **The delivery landed 2026-09-02** (§6 of the order carries the measured
+numbers and the four symmetry defects that passed the gate and were visible only
+at true size). Two sections below record what the delivery FOUND rather than what
+it produced, and both outlive the art.
+
+### 8.1 ⛔ STEP 3 OF THE ORDER IS A CONTRADICTION — a decision, not an edit
+
+`_decal_material()` (`voxel_renderer.gd:286`) composes a decal name from the
+DAMAGE STATE for every material in `IMPACT_DECAL_MATERIALS`, so putting `glass`
+there asks the renderer for `glass_bullet_cracked_*` — the per-voxel mark G-D21
+folded into the sheet. `shard` is not a name that function can compose at all;
+its sibling, earth's dent, rides `IMPACT_FLOOR_MATERIAL` through
+`_floor_sunk_decal_plan()`, a different constant on a different path.
+
+And `crack_factor > 0` is not a free data edit either: `voxel_decal_selftest`
+**[12]** ties it to `IMPACT_CRACK_MATERIALS` **and** to
+`decal_crack_glass_{0,1,2}.png` existing on disk, and `damage_variant_baker.gd:161`
+reads the same number for crack eligibility. So raising it demands art G-D21 says
+must never exist.
+
+**Glass is the first material for which "cracks" and "has a crack decal family"
+are different claims.** Either [12] learns that a sheet-cracking material
+satisfies the tier without a decal family, or glass reaches CRACKED by a route
+that is not `crack_factor`. Until then **glass cannot reach CRACKED at all**,
+which is what blocks G5 and makes G-D21 untestable on the map.
+
+### 8.2 ⚠️ G-D21's MECHANISM ASSUMES THE WALL PATH, AND GLASS IS NOT ON IT
+
+G-D21 reuses `_compute_facade_key()`'s `(column_in_run, level)` offset. That is
+the BAKED WALL path, and it is correct for concrete. **Glass never touches it.**
+Glass renders from `_glass_atom_source[material][face][mask]` — 16 atoms per
+member — and the frosted pattern is not in the atom at all: `glass_shading.gdshaderinc`
+samples it by WORLD POSITION (`texture(glass_frost_tex, v_glass_world * glass_frost_scale)`)
+precisely so it flows across a pane instead of repeating per voxel.
+
+Measured, 2026-09-02:
+
+| | RAM | new atoms |
+|---|---|---|
+| every glass atom that exists today (5 members × 4 faces × 4 masks) | 360 KB | 80 |
+| a fracture atom page, **per face** (2048 atoms) | 9.0 MB | 2048 |
+| × the four faces | **36 MB** | 8192 |
+| × faces AND masks | 144 MB | 32768 |
+| the sheet as a plain texture, sampled by world position | **2.0 MB** | **0** |
+
+The cheap route is the one the architecture is already asking for: a fracture
+sampled by world position with an offset equal to the impact IS the
+re-anchoring — a subtraction inside `texture()`, one fetch, nothing minted. Its
+one real problem is multiplicity: a uniform is global and each pane has its own
+impact, and the include's own comment records that a `uniform vec3 array[]` in
+this shader prints an error on every boot. **Open for the Director** — amending
+G-D21 to world-space sampling is a change to a ratified decision.
 
 **FIVE files, in two classes that fail in completely different ways:**
 
@@ -1535,13 +1638,13 @@ level→material override on the same half-thickness face:
 | 🟢 | **G7** — the round passes through a pane (G-D5): `EdgeRegistry.glass_edge_keys()`, `_walk_pellet_ray` records the crossing (deduped by pane) and continues, `agent_shot_controller` flattens crossings into picks. Real-map: `glass destroyed=1` AND `concrete dented=1` from one pistol shot. Blocks excluded (their cells are in `blocked_cells`, deferred). **BUILT 2026-08-31** | — |
 | 🟢 | **G-MAP** — `maps/GLASS.map.json` **BUILT 2026-08-31**: big pane (authored gu x 10–15, y 9, SW, 3 storeys) in front of the agent, a WINDOWS.png `bands` wall (gu 19–21 — `bands` ignored until G-D9, renders as plain glass), a small 1-storey pane, a guard behind the big pane, a 3-wide glass block. Auto-registered via `FileMapSource`. `INFILTRAITOR_MAP=GLASS` boots it without touching the persisted cfg. Verified: pane_ids correct (one big pane, one small, one block, one bands wall), and a pistol shot goes `glass destroyed=1` + `concrete dented=1` through the big pane | — |
 | 🟢 | **G-D9** — multi-material slices: `panels.bands` authoring (§9.6), `Slice.material_bands` + `material_at()`, the per-band bake page (extra `wall_descriptor`, NOT a run split — see §9.6), a lookup `material_override`. `GlassPaneGrouper` unions a banded panel by base-or-band glass. **BUILT 2026-08-31.** Acceptance: `glass_bands_wall_before/after_2026-08-31.png` (same-boot) — the WINDOWS.png wall gains a brick sill (rel 0-1) + head (rel 22-23) over a glass middle; `[BAKE] Composed sheet brick\|facade_brick` present on the GLASS map and absent pre-G-D9; `glass_transparency_selftest` test [7]; 39 selftests clean | — |
-| 🟢 | **G-ART** — **the order and the gate are DONE 2026-09-01** ([`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md); `check_decal.py` now carries per-material families + the fracture-sheet class, proven red on 7 modes with all 54 shipped decals unchanged). Five files asked for: two 1024×512 grayscale fracture sheets (tight/wide, G-D14) and three 256×256 shard decals. **What is left is the delivery** | — |
-| 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | the art itself |
+| ✅ | **G-ART** — **DELIVERED 2026-09-02.** All five files on disk and green, authored PROCEDURALLY (`gen_fracture_sheet.py`, `gen_shard_decal.py`), plus §4's wiring (steps 2/4/5/6). Found §8.1 and §8.2. *(Below: the order and gate, done 2026-09-01.)* **the order and the gate are DONE 2026-09-01** ([`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md); `check_decal.py` now carries per-material families + the fracture-sheet class, proven red on 7 modes with all 54 shipped decals unchanged). Five files asked for: two 1024×512 grayscale fracture sheets (tight/wide, G-D14) and three 256×256 shard decals. **What is left is the delivery** | — |
+| 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | ⛔ **§8.1's decision** — no longer the art, which landed 2026-09-02 |
 | 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** (open) G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump | G-MAP, G2, §5.1 |
 | 🟡 | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** ✅ the roster + the tint on screen — 4 material rows, per-member atoms carrying the tint index in the atom's free BLUE channel, a material-aware pane union, and the bake collapsed onto BASE's facade (§5.4b). **V-C** ✅ the class behaviour — `GlassMaterials.Class`, ARMORED's whole-pane break + sparser remnants, INDESTRUCTIBLE's CRACKED ceiling and the terminal `glass_stop_edge_keys()` set, and the cook made material-aware (§5.4c). **V-D** ✅ `pane_primed` (G-D15, checkpoint-scoped in `SaveState`) + the per-placement `glass_class` tag, and G-D3's no-DENTED rule made structural (§5.4d). **G-VARIANT IS COMPLETE** | — |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
-| 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15) | G-ART |
-| 8 | **G-D4** — the bullet web on shot neighbours | G5, G-ART |
+| 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15). **Now also owns G-D25's big shards** — a cut silhouette on 1–4 whole voxels, no per-shape texture | ~~G-ART~~ (delivered) — unblocked |
+| 8 | **G-D4** — the bullet web on shot neighbours | G5 (so §8.1), ~~G-ART~~ (delivered) |
 | ⤴ | **`plastic`** (black backing material for screens, G-D17) + the paint-on-plastic layer + the screen-art pipeline — **`MATERIALS_MASTER_PLAN`, deferred.** A round DRILLS plastic (hole, no pass-through); fire MELTS it | MATERIALS |
 
 **Deferred, with owners:** the window's full *reveal* geometry (§9, scenario

@@ -21,6 +21,7 @@ extends SceneTree
 const GlassShatterClass = preload("res://godot/scripts/systems/destruction/glass_shatter.gd")
 const ShotPunchTableClass = preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")
 const WeaponDefClass = preload("res://godot/scripts/systems/destruction/weapon_def.gd")
+const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -62,6 +63,8 @@ func _init() -> void:
 	test_unanchored_pane_keeps_nothing()
 	test_layer_falloff_weakens_each_successive_pane()
 	test_local_hole_does_not_wall_off_the_flood()
+	test_armored_takes_the_whole_pane_and_leaves_fewer_remnants()
+	test_indestructible_never_breaks_and_stops_the_round()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -243,11 +246,11 @@ func test_roll_is_deterministic_and_honours_probability() -> void:
 ## One SW-face glass panel pane: `gu_x` GUs wide along X at y=3, `storeys` tall,
 ## every voxel visible, `pane_id` stamped. Mirrors what GlassPaneGrouper +
 ## SliceGenerator produce for a `panels` entry.
-func _pane(gu_x_lo: int, gu_x_hi: int, storeys: int) -> Array:
+func _pane(gu_x_lo: int, gu_x_hi: int, storeys: int, material: String = "glass") -> Array:
 	var slices: Array = []
 	var base: int = GeometryCoords.storey_level_base(0)
 	for gx in range(gu_x_lo, gu_x_hi + 1):
-		var s := Slice.new("PANE_S_%d" % gx, Vector2i(gx, 3), Face.SW, "PANE_E_%d" % gx, storeys, "glass")
+		var s := Slice.new("PANE_S_%d" % gx, Vector2i(gx, 3), Face.SW, "PANE_E_%d" % gx, storeys, material)
 		s.pane_id = "PANE_TEST"
 		for lvl_off in range(storeys * 8):
 			for i in range(8):
@@ -656,4 +659,138 @@ func test_local_hole_does_not_wall_off_the_flood() -> void:
 	else:
 		_fail("the local hole strangled the flood: %d flooded vs %d on an intact origin — the BFS cannot step across a hole"
 			% [holed_plan.size(), intact_plan.size()])
+	print("")
+
+
+## G-D15 / V-C — ARMORED GLASS HAS NO REGION.
+##
+## G-D12's partial break is the model for ordinary glass: a weak win takes a
+## patch and a big pane keeps standing where the round did not reach. Armoured
+## glass is the exception the Director stated directly — once breached it
+## *"usually shatters entirely at once, leaving many individual shards"* — so the
+## test that matters is the one on a WEAK win: the same revolver-grade punch that
+## takes a patch out of plain glass must take an armoured pane whole.
+##
+## The remnant half is measured against the plain pane rather than a fixed
+## number, because "fewer" is a comparison and the absolute count moves with the
+## luck roll.
+func test_armored_takes_the_whole_pane_and_leaves_fewer_remnants() -> void:
+	print("[15] G-D15: armoured glass breaks WHOLE on a weak win, and leaves fewer remnants\n")
+	var mid_col: int = 10 * 8
+	var mid_lvl: int = GeometryCoords.storey_level_base(0) + 12
+	var total: int = 6 * 8 * 3 * 8
+	## A weak win — the punch at which plain glass takes a PATCH (test [8]).
+	var weak: float = 2.63
+
+	var plain := _pane(7, 12, 3)
+	var plain_world: Array = plain.duplicate()
+	plain_world.append(_wall(13, 3))
+	var plain_anchors := GlassShatterClass.collect_anchor_positions(plain, Face.SW, plain_world)
+	var plain_plan := GlassShatterClass.plan_pane_shatter(plain, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, weak, "ARM:cmp", plain_anchors)
+
+	var armored := _pane(7, 12, 3, "glass_armored")
+	var armored_world: Array = armored.duplicate()
+	armored_world.append(_wall(13, 3))
+	var armored_anchors := GlassShatterClass.collect_anchor_positions(armored, Face.SW, armored_world)
+	var armored_plan := GlassShatterClass.plan_pane_shatter(armored, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, weak, "ARM:cmp", armored_anchors)
+
+	print("      %d voxels at glass_punch %.2f: plain -> %d destroyed (%.0f%%);  armoured -> %d (%.0f%%)"
+		% [total, weak, plain_plan.size(), 100.0 * plain_plan.size() / total,
+			armored_plan.size(), 100.0 * armored_plan.size() / total])
+	if plain_plan.size() < total / 2 and armored_plan.size() > int(total * 0.9):
+		_pass("the same weak win takes a PATCH of plain glass (%d) and nearly all of the armoured pane (%d of %d)"
+			% [plain_plan.size(), armored_plan.size(), total])
+	else:
+		_fail("plain=%d (expected a patch) armoured=%d of %d (expected >90%%)"
+			% [plain_plan.size(), armored_plan.size(), total])
+
+	## Remnants: same salt, same anchors, so only the class differs. Compared on
+	## a FULL win for both, or the plain pane's survivors would include everything
+	## its smaller region never reached.
+	var plain_full := _pane(7, 12, 3)
+	var plain_full_world: Array = plain_full.duplicate()
+	plain_full_world.append(_wall(13, 3))
+	var pfa := GlassShatterClass.collect_anchor_positions(plain_full, Face.SW, plain_full_world)
+	_apply(plain_full, GlassShatterClass.plan_pane_shatter(plain_full, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 9.0, "ARM:rem", pfa))
+	var armored_full := _pane(7, 12, 3, "glass_armored")
+	var armored_full_world: Array = armored_full.duplicate()
+	armored_full_world.append(_wall(13, 3))
+	var afa := GlassShatterClass.collect_anchor_positions(armored_full, Face.SW, armored_full_world)
+	_apply(armored_full, GlassShatterClass.plan_pane_shatter(armored_full, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 9.0, "ARM:rem", afa))
+	var plain_left: int = _count_visible(plain_full)
+	var armored_left: int = _count_visible(armored_full)
+	print("      full win, same salt: plain leaves %d remnant(s), armoured leaves %d"
+		% [plain_left, armored_left])
+	if armored_left < plain_left and armored_left >= GlassShatterClass.SHATTER_REMNANT_MIN_COUNT:
+		_pass("armoured leaves fewer remnants (%d < %d) and still honours G-D13b's floor of %d"
+			% [armored_left, plain_left, GlassShatterClass.SHATTER_REMNANT_MIN_COUNT])
+	else:
+		_fail("armoured=%d plain=%d floor=%d" % [armored_left, plain_left,
+			GlassShatterClass.SHATTER_REMNANT_MIN_COUNT])
+	print("")
+
+
+## G-D16 / V-C — AN INDESTRUCTIBLE SCREEN NEVER BREAKS, AND THE ROUND STOPS.
+##
+## Director, 2026-08-31: *"trinca mas o tiro para"*. Two independent claims, and
+## the second is the one that makes it read as armoured rather than merely tough
+## — it is the ONE glass G-D5's pass-through does not apply to.
+##
+## Both are checked against a plain-glass CONTROL at the same punch and on the
+## same ray, so a pass means "the class changed the outcome" rather than "the
+## number happened to land there".
+func test_indestructible_never_breaks_and_stops_the_round() -> void:
+	print("[16] G-D16: a control interface caps at CRACKED, and the round stops at it\n")
+
+	## 1. THE TIER CEILING. A punch far past every breach threshold.
+	var punch: float = 9.0
+	var screen_state: int = ShotPunchTableClass.damage_state_for(
+		punch, ShotPunchTableClass.destroy_min("glass_screen_green"), "glass_screen_green")
+	var glass_state: int = ShotPunchTableClass.damage_state_for(
+		punch, ShotPunchTableClass.destroy_min("glass"), "glass")
+	if screen_state == Voxel.DamageState.CRACKED and glass_state == Voxel.DamageState.DESTROYED:
+		_pass("at glass_punch %.1f a screen is CRACKED where plain glass is DESTROYED" % punch)
+	else:
+		_fail("screen=%d glass=%d (expected CRACKED=%d and DESTROYED=%d)"
+			% [screen_state, glass_state, Voxel.DamageState.CRACKED, Voxel.DamageState.DESTROYED])
+
+	## 2. THE ROUND STOPS. One ray, one glass edge four cells out, run twice: as a
+	## PASSABLE pane and as a STOPPING one. `blocked_edges` is empty on purpose —
+	## a half-thickness panel never populates it, which is exactly why absence
+	## cannot express a stop.
+	var source := Vector2i(2, 10)
+	var forward := Vector2i(1, 0)
+	var pane_at := Vector2i(6, 10)
+	var key: String = WallEdgeData.edge_key(pane_at, pane_at + forward)
+	var passable := BlastCalculatorClass.select_line_impact(
+		source, forward, 12, {}, {}, 0.0, {key: "PANE_TEST"}, {})
+	var stopping := BlastCalculatorClass.select_line_impact(
+		source, forward, 12, {}, {}, 0.0, {}, {key: "PANE_TEST"})
+
+	var passed_through: bool = passable.has("glass_passed") and not passable.has("gu")
+	if passed_through:
+		_pass("a BREAKABLE pane is crossed and recorded — the round runs out of map beyond it (G-D5)")
+	else:
+		_fail("the passable case did not read as a crossing: %s" % [passable])
+
+	if stopping.get("gu", Vector2i(-1, -1)) == pane_at:
+		_pass("an INDESTRUCTIBLE pane is TERMINAL — the round stops at %s instead of crossing"
+			% [pane_at])
+	else:
+		_fail("the round did not stop at the screen: %s" % [stopping])
+
+	## The failure this pairing exists to catch: dropping a screen from
+	## `glass_edges` WITHOUT a stop set is not a stop at all — a half-thickness
+	## panel is in neither dictionary, so the round sails through recording
+	## nothing.
+	var neither := BlastCalculatorClass.select_line_impact(source, forward, 12, {}, {}, 0.0, {}, {})
+	if not neither.has("gu") and not neither.has("glass_passed"):
+		_pass("absence is NOT a stop — with the edge in neither set the round records nothing, "
+			+ "which is why glass_stop_edge_keys() is a second set and not a filter")
+	else:
+		_fail("the empty-dictionary control was not a clean miss: %s" % [neither])
 	print("")

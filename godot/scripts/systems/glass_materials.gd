@@ -105,6 +105,61 @@ static func pane_tint(material_id: String) -> Color:
 	return PANE_TINT[i]
 
 
+## ── THE BEHAVIOUR CLASSES (G-D16, V-C) ───────────────────────────────────────
+##
+## The half of G-D16 the tint exists to announce. A class is not a difficulty
+## dial — it changes WHICH RULES APPLY, which is why it is an enum and not a
+## number:
+##
+##   BREAKABLE      the shipped model. §5.1's roll, §5.4's flood, G-D5's
+##                  pass-through: a round goes through and the pane may take it.
+##   ARMORED        resists common shots (its RESISTANCE row does that), and when
+##                  a roll DOES win it goes ALL AT ONCE regardless of pane size —
+##                  G-D12's partial break is exactly what armoured glass does not
+##                  do. G-D15's rifle pierce-and-prime is V-D.
+##   INDESTRUCTIBLE a control interface. It never reaches DESTROYED, it never
+##                  rolls, and — Director, 2026-08-31, *"trinca mas o tiro
+##                  para"* — **it STOPS THE ROUND.** It is the one glass G-D5
+##                  does not apply to, and that is what sells it as armoured
+##                  rather than merely tough.
+enum Class { BREAKABLE, ARMORED, INDESTRUCTIBLE }
+
+## ⚠️ The screens default to INDESTRUCTIBLE, and that is an ASSUMPTION worth
+## seeing rather than burying. G-D16 gives `glass_screen_*` both readings —
+## INDESTRUCTIBLE for control interfaces, BREAKABLE for TVs, circuits and news
+## panels — *per placement*. The per-placement tag is V-D; until it exists the
+## material default has to be one of them, and INDESTRUCTIBLE is the one with
+## behaviour to build and test. V-D's tag flips a placement back to BREAKABLE.
+const CLASS_OF: Dictionary = {
+	"glass": Class.BREAKABLE,
+	"glass_armored": Class.ARMORED,
+	"glass_screen_green": Class.INDESTRUCTIBLE,
+	"glass_screen_red": Class.INDESTRUCTIBLE,
+	"glass_screen_amber": Class.INDESTRUCTIBLE,
+}
+
+
+## The member's behaviour class. BREAKABLE for anything else — a non-member is
+## not glass at all, and every caller here has already asked `is_glass()`; the
+## default exists so a missed roster row degrades to the SHIPPED behaviour rather
+## than to a pane that cannot be broken.
+static func class_of(material_id: String) -> Class:
+	return CLASS_OF.get(material_id, Class.BREAKABLE)
+
+
+## True when this glass never breaks and STOPS a round instead of passing it
+## through (G-D5's one exception). Named for the question rather than the class
+## so the call sites read as physics.
+static func stops_a_round(material_id: String) -> bool:
+	return is_glass(material_id) and class_of(material_id) == Class.INDESTRUCTIBLE
+
+
+## True when a won shatter roll must take the WHOLE pane rather than a region
+## scaled by punch (G-D15) — armoured glass does not break in patches.
+static func shatters_whole_pane(material_id: String) -> bool:
+	return is_glass(material_id) and class_of(material_id) == Class.ARMORED
+
+
 ## ── ART (G-D16: "a family of tinted behaviour classes, NOT new geometry") ─────
 ##
 ## Every member renders from BASE's art — the same voxel atom silhouette, the

@@ -82,6 +82,13 @@ static var SHATTER_REMNANT_KEEP_MIN: float = 0.10
 static var SHATTER_REMNANT_KEEP_MAX: float = 0.40
 static var SHATTER_REMNANT_MIN_COUNT: int = 4
 
+## G-D15 / V-C — armoured glass leaves FEWER hangers-on. Director: when it does
+## go it *"usually shatters entirely at once, leaving many individual shards"* —
+## many shards on the floor is the same statement as few remnants on the frame.
+## Scales `keep_prob` only; G-D13b's conditional MIN_COUNT floor still applies,
+## so an ANCHORED armoured pane still cannot be stripped completely bare.
+static var SHATTER_REMNANT_ARMORED_SCALE: float = 0.35
+
 ## STAGE C — the grenade/cook path. A pane INSIDE a blast's damage area breaks
 ## effectively (Director: *"Quebrar efetivamente quando estiver [dentro da área
 ## de dano]"*); one near it but outside only CRACKS (G5, deferred). The cook has
@@ -162,13 +169,19 @@ static func rolls_shatter(glass_punch: float, salt: String) -> bool:
 ## STAGE C — the effective `glass_punch` for a pane at ring `ring` of a blast
 ## whose per-ring falloff is `ring_multipliers`. Off the table's end (or a 0.0
 ## entry) it is 0 — the blast does not reach.
-static func blast_glass_punch(ring_multipliers: Array, ring: int) -> float:
+## ⚠️ `material` was the literal `"glass"` until the family existed (V-A left it
+## as the last one standing), which quietly gave an ARMORED pane a common pane's
+## odds against a grenade — the entire point of its RESISTANCE row is that it
+## divides HERE. Defaulted to BASE so the pre-family callers and the selftest's
+## own arsenal table are unchanged by construction.
+static func blast_glass_punch(ring_multipliers: Array, ring: int,
+		material: String = GlassMaterials.BASE) -> float:
 	if ring < 0 or ring >= ring_multipliers.size():
 		return 0.0
 	var m: float = float(ring_multipliers[ring])
 	if m <= 0.0:
 		return 0.0
-	return SHATTER_BLAST_GAIN * m / maxf(ShotPunchTableClass.resistance("glass"), 0.001)
+	return SHATTER_BLAST_GAIN * m / maxf(ShotPunchTableClass.resistance(material), 0.001)
 
 
 ## G-D12 — the flood radius (in voxels, Chebyshev on the pane surface) for a won
@@ -270,6 +283,13 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## Run axis of the pane: X for {SW, NE}, Y for {SE, NW} — matches
 	## GlassPaneGrouper's `Vector2i(absi(fd.y), absi(fd.x))`.
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	## G-D16 / V-C — the pane's BASE material, and it is safe to read from any one
+	## slice: `GlassPaneGrouper` only unions slices that share it (two glass
+	## materials are two panes), so a pane is single-material by construction.
+	## Base, not `material_at()`: a G-D9 banded window is base glass with brick
+	## bands, and the bands are frame here, never pane.
+	var pane_material: String = pane_slices[0].material if not pane_slices.is_empty() \
+		else GlassMaterials.BASE
 
 	## Build the pane's own lattice of VISIBLE voxels, keyed by (col, level) where
 	## `col` runs along the pane. A destroyed voxel is already a hole and is not a
@@ -345,28 +365,46 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## outright. Pinned from both sides: [14] is the hole, [11] is the frame.
 	var radius: int = region_radius(glass_punch)
 	var flood: Dictionary = {}   ## Vector2i(col, level) -> true (voxels to destroy)
-	var queue: Array = [origin]
-	var dist: Dictionary = {origin: 0}
-	if lattice.has(origin):
-		flood[origin] = true
-	while not queue.is_empty():
-		var cur: Vector2i = queue.pop_front()
-		var d: int = int(dist[cur])
-		if d >= radius:
-			continue
-		for dc in [-1, 0, 1]:
-			for dl in [-1, 0, 1]:
-				if dc == 0 and dl == 0:
-					continue
-				var nb := Vector2i(cur.x + dc, cur.y + dl)
-				if dist.has(nb):
-					continue
-				if own_frame.has(nb):
-					continue   ## a real frame stops the fracture; a hole does not
-				dist[nb] = d + 1
-				queue.append(nb)
-				if lattice.has(nb):
-					flood[nb] = true
+
+	## G-D15 / V-C — ARMORED GLASS HAS NO REGION. Director: once breached it
+	## *"usually shatters entirely at once"*, so G-D12's partial break — whose
+	## whole point is that a big pane keeps standing where the round did not reach
+	## — is precisely what armoured glass does NOT do. It takes the lattice whole.
+	##
+	## ⚠️ Written as "take the lattice" rather than "use a huge radius", and that
+	## is a measured decision rather than a stylistic one. Since the 2026-09-01
+	## flood fix the walk expands through HOLES as well as glass, so its cost is
+	## the AREA OF THE DISC — about (2r+1)^2 cells — and is no longer bounded by
+	## the pane. A sentinel radius would make a maximum 8x4 GU pane cost a walk
+	## over tens of thousands of cells to reach 2048 voxels it can simply
+	## enumerate.
+	var whole_pane: bool = GlassMaterials.shatters_whole_pane(pane_material)
+	if whole_pane:
+		for k in lattice.keys():
+			flood[k] = true
+	else:
+		var queue: Array = [origin]
+		var dist: Dictionary = {origin: 0}
+		if lattice.has(origin):
+			flood[origin] = true
+		while not queue.is_empty():
+			var cur: Vector2i = queue.pop_front()
+			var d: int = int(dist[cur])
+			if d >= radius:
+				continue
+			for dc in [-1, 0, 1]:
+				for dl in [-1, 0, 1]:
+					if dc == 0 and dl == 0:
+						continue
+					var nb := Vector2i(cur.x + dc, cur.y + dl)
+					if dist.has(nb):
+						continue
+					if own_frame.has(nb):
+						continue   ## a real frame stops the fracture; a hole does not
+					dist[nb] = d + 1
+					queue.append(nb)
+					if lattice.has(nb):
+						flood[nb] = true
 
 	## G-D13b — spare ANCHORED shards only. A flooded glass voxel is a candidate
 	## iff one of its four orthogonal neighbours is non-glass: this pane's own
@@ -374,6 +412,8 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## (`anchor_positions`). `keep_prob` from the shot's luck, unchanged.
 	var luck_unit: float = float(FacadeSamplerClass._fnv1a_hash("%s:REMNANT_LUCK" % salt) % 100000) / 100000.0
 	var keep_prob: float = lerpf(SHATTER_REMNANT_KEEP_MIN, SHATTER_REMNANT_KEEP_MAX, luck_unit)
+	if whole_pane:
+		keep_prob *= SHATTER_REMNANT_ARMORED_SCALE
 	var anchored: Array = []
 	for k in flood.keys():
 		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:

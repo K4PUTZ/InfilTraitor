@@ -293,14 +293,16 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 	if is_line:
 		var line_hit := BlastCalculatorClass.select_line_impact(
 			origin_gu, forward, PELLET_FLOOD_MAX_STEPS,
-			_blocked_edges_dict(), room._blocked_cells, offset, _glass_edges_dict())
+			_blocked_edges_dict(), room._blocked_cells, offset, _glass_edges_dict(),
+			_glass_stop_edges_dict())
 		if not line_hit.is_empty():
 			picks.append(line_hit)
 	else:
 		picks = BlastCalculatorClass.select_cone_pellet_impacts(
 			origin_gu, forward, weapon_def.cone_half_angle_deg,
 			PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count,
-			_blocked_edges_dict(), room._blocked_cells, salt, offset, _glass_edges_dict())
+			_blocked_edges_dict(), room._blocked_cells, salt, offset, _glass_edges_dict(),
+			_glass_stop_edges_dict())
 	## GLASS G7 — a hole in every pane the round crossed on the way in.
 	picks = _flatten_glass_passthrough(picks)
 	var destroyed: Dictionary = {}
@@ -482,14 +484,16 @@ func fire_at_active() -> void:
 	if weapon_def.delivery == WeaponDef.DELIVERY_LINE:
 		var line_hit := BlastCalculatorClass.select_line_impact(
 			origin_gu, forward, PELLET_FLOOD_MAX_STEPS,
-			_blocked_edges_dict(), room._blocked_cells, aim_offset_deg, _glass_edges_dict())
+			_blocked_edges_dict(), room._blocked_cells, aim_offset_deg, _glass_edges_dict(),
+			_glass_stop_edges_dict())
 		if not line_hit.is_empty():
 			pellet_picks.append(line_hit)
 	else:
 		pellet_picks = BlastCalculatorClass.select_cone_pellet_impacts(
 			origin_gu, forward, weapon_def.cone_half_angle_deg,
 			PELLET_FLOOD_MAX_STEPS, weapon_def.projectile_count,
-			_blocked_edges_dict(), room._blocked_cells, salt, aim_offset_deg, _glass_edges_dict())
+			_blocked_edges_dict(), room._blocked_cells, salt, aim_offset_deg, _glass_edges_dict(),
+			_glass_stop_edges_dict())
 	## GLASS G7 (G-D5) — the round passes through glass; every pane it crossed
 	## takes a hole, resolved and applied by the same loop as the terminal hit.
 	pellet_picks = _flatten_glass_passthrough(pellet_picks)
@@ -823,6 +827,11 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	var hit_material: String = hit_slice.material_at(rel)
 	if not GlassMaterials.is_glass(hit_material):
 		return
+	## G-D16 / V-C — a control interface never rolls. It cracks and the round
+	## stops (`glass_stop_edge_keys()` made it terminal; `damage_state_for()`
+	## caps its tier at CRACKED), so there is nothing here for a shatter to take.
+	if GlassMaterials.stops_a_round(hit_material):
+		return
 	## The glass punch for THIS pellet, at this pellet's own luck — G-D17: through
 	## whatever glass it has already crossed. Attenuating the ROLL and leaving the
 	## REGION at full strength would give a pane that barely breaks a sniper-sized
@@ -863,8 +872,16 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		n += 1
 		fallen.append({"grid_pos": pv.grid_pos, "level": pv.level})
 	if n > 0:
-		print_debug("[GLASS-SHATTER] pane=%s glass_punch=%.2f radius=%d flooded=%d voxel(s)"
-			% [hit_slice.pane_id, glass_punch, GlassShatter.region_radius(glass_punch), n])
+		## G-D15 / V-C — an ARMORED pane has no region, so printing one is a number
+		## that means nothing and invites a calibration pass on a knob the class
+		## does not read. Measured on the GLASS map: `radius=9` next to
+		## `flooded=119` of a 128-voxel pane, which reads as a coincidence rather
+		## than the rule it actually is.
+		var region: String = "WHOLE PANE (armoured)" \
+			if GlassMaterials.shatters_whole_pane(hit_material) \
+			else "radius=%d" % GlassShatter.region_radius(glass_punch)
+		print_debug("[GLASS-SHATTER] pane=%s glass_punch=%.2f %s flooded=%d voxel(s)"
+			% [hit_slice.pane_id, glass_punch, region, n])
 		## G-D16a — where the glass that fell ends up. Reported on the REAL path from
 		## the day the rule exists, not left until G6 can draw it: §7.1's own risk
 		## note is that this project has already shipped two features that were built
@@ -896,6 +913,13 @@ func _glass_edges_dict() -> Dictionary:
 	if room._edge_registry == null:
 		return {}
 	return room._edge_registry.glass_edge_keys()
+
+
+## GLASS G-D16 / V-C — the glass edges a round STOPS at (INDESTRUCTIBLE screens).
+func _glass_stop_edges_dict() -> Dictionary:
+	if room._edge_registry == null:
+		return {}
+	return room._edge_registry.glass_stop_edge_keys()
 
 
 ## GLASS G7 — turn each pick's `glass_passed` (the panes a round crossed) into

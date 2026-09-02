@@ -537,9 +537,19 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 		_enter_phase(s, PHASE_JUNCTIONS)
 
 
-## GLASS G3-C — true for a glass PANEL slice (has a pane_id, not a BLOCK).
+## GLASS G3-C — true for a glass PANEL slice (has a pane_id, not a BLOCK) that a
+## blast can actually take.
+##
+## G-D16 / V-C — an INDESTRUCTIBLE member is excluded, and it has to be excluded
+## HERE rather than at the roll: this predicate ALSO decides which slices leave
+## the cook's ring-scatter model (glass fractures, it does not deform, so a pane
+## breaks whole or not at all). Excluding a screen only from the roll would pull
+## it out of the ring model and then never break it — a control interface that a
+## grenade leaves untouched AND that takes no blast damage of any other kind
+## either, which is not the same rule.
 static func _is_glass_pane_slice(slice: Slice) -> bool:
 	return slice != null and GlassMaterials.is_glass(slice.material) \
+		and not GlassMaterials.stops_a_round(slice.material) \
 		and slice.pane_id != "" and not slice.pane_id.begins_with("PANE_BLOCK_")
 
 
@@ -582,12 +592,17 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 
 	for pid in pane_min_ring:
 		var ring: int = int(pane_min_ring[pid])
-		var glass_punch: float = GlassShatter.blast_glass_punch(bomb_def.ring_multipliers, ring)
-		var salt := "BLAST_%d_%d_%s" % [source_gu.x, source_gu.y, pid]
-		if not GlassShatter.rolls_shatter(glass_punch, salt):
-			continue
 		var pane_slices: Array = slices_by_pane.get(pid, [])
 		if pane_slices.is_empty():
+			continue
+		## G-D16 / V-C — the pane's OWN resistance divides the blast punch. With
+		## the literal `"glass"` this used to carry, an armoured pane rolled a
+		## common pane's odds against a grenade and its RESISTANCE row did nothing
+		## on the cook path at all.
+		var glass_punch: float = GlassShatter.blast_glass_punch(
+			bomb_def.ring_multipliers, ring, pane_slices[0].material)
+		var salt := "BLAST_%d_%d_%s" % [source_gu.x, source_gu.y, pid]
+		if not GlassShatter.rolls_shatter(glass_punch, salt):
 			continue
 		## Flood origin = the pane voxel nearest the epicenter.
 		var face: int = pane_slices[0].face

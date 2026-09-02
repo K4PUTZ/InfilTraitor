@@ -129,6 +129,37 @@ func glass_edge_keys() -> Dictionary:
 	return out
 
 
+## GLASS G-D16 / V-C — the glass edges a ROUND STOPS AT, keyed like the above,
+## value = pane_id. INDESTRUCTIBLE members only (the control-interface screens):
+## *"trinca mas o tiro para"*.
+##
+## ⚠️ THIS IS A SECOND SET, NOT A FILTER ON THE FIRST, and the distinction is the
+## same conflation G3 Stage D already had to undo once. `glass_edge_keys()` reads
+## as "these edges are glass" and today answers TWO different questions —
+## `build_movement_edge_set` asks *does this stop a body*, the pellet flood asks
+## *does a round go through*. Narrowing it to the passable subset would have
+## silently made every screen WALK-THROUGH, because a half-thickness panel is not
+## in `blocked_edges` either: it would have vanished from both answers at once.
+## So the pass-through question gets its own set and the movement question keeps
+## the full one.
+func glass_stop_edge_keys() -> Dictionary:
+	var out: Dictionary = {}
+	for edge in _edges.values():
+		if not GlassMaterials.stops_a_round(edge.material):
+			continue
+		var pid: String = ""
+		var sa := get_slice(edge.slice_a_id)
+		var sb := get_slice(edge.slice_b_id)
+		if sa != null and sa.pane_id != "":
+			pid = sa.pane_id
+		elif sb != null and sb.pane_id != "":
+			pid = sb.pane_id
+		if pid.begins_with("PANE_BLOCK_"):
+			continue
+		out[WallEdgeData.edge_key(edge.gu_a, edge.gu_b)] = pid
+	return out
+
+
 ## Dirty slices (dirty_count > 0) — TIC entry point
 func dirty_slices() -> Array:
 	var result: Array = []

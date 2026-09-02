@@ -218,7 +218,8 @@ static func flood_gu_cone(source_gu: Vector2i, facing_delta: Vector2i, half_angl
 static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector2i,
 		half_angle_deg: float, max_steps: int, projectile_count: int,
 		blocked_edges: Dictionary, blocked_cells: Dictionary, salt: String,
-		aim_offset_deg: float = 0.0, glass_edges: Dictionary = {}) -> Array:
+		aim_offset_deg: float = 0.0, glass_edges: Dictionary = {},
+		glass_stop_edges: Dictionary = {}) -> Array:
 	var picks: Array = []
 	if facing_delta == Vector2i.ZERO or projectile_count <= 0:
 		return picks
@@ -257,7 +258,7 @@ static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector
 		var rho: float = sqrt(float(FacadeSampler._fnv1a_hash(rho_key) % 10000) / 10000.0)
 		var angle_deg: float = aim_offset_deg + half_angle_deg * rho * cos(theta)
 		var hit := _walk_pellet_ray(source_gu, facing_delta, lateral, deg_to_rad(angle_deg),
-			max_steps, blocked_edges, blocked_cells, glass_edges)
+			max_steps, blocked_edges, blocked_cells, glass_edges, glass_stop_edges)
 		if not hit.is_empty():
 			## Carried so the impact voxel can be placed on the same disc the
 			## lateral angle came from, instead of an unrelated hash.
@@ -282,9 +283,19 @@ static func select_cone_pellet_impacts(source_gu: Vector2i, facing_delta: Vector
 ## solid hit carries `glass_passed` — the panes crossed on the way, deduped by
 ## pane_id; a round that only ever met glass returns `{"glass_passed": [...]}`
 ## with no `gu`. Default `{}` leaves every non-glass shot bit-identical.
+##
+## G-D16 / V-C — `glass_stop_edges` (EdgeRegistry.glass_stop_edge_keys()) is the
+## INDESTRUCTIBLE subset, and it is TERMINAL: *"trinca mas o tiro para"*. It is
+## tested BEFORE `glass_edges` because a stopping pane is glass too and would
+## otherwise be passed through by the first branch that matches.
+##
+## ⚠️ It cannot be expressed by simply leaving those edges OUT of `glass_edges`.
+## A half-thickness panel never reaches `blocked_edges`, so an edge in neither
+## dictionary is not a wall — it is open air, and the round would sail through
+## the screen recording nothing at all. Absence is not a stop; a stop is a stop.
 static func _walk_pellet_ray(source_gu: Vector2i, forward: Vector2i, lateral: Vector2i,
 		angle_rad: float, max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary,
-		glass_edges: Dictionary = {}) -> Dictionary:
+		glass_edges: Dictionary = {}, glass_stop_edges: Dictionary = {}) -> Dictionary:
 	var current := source_gu
 	var lateral_accum := 0.0
 	var tan_angle := tan(angle_rad)
@@ -297,7 +308,9 @@ static func _walk_pellet_ray(source_gu: Vector2i, forward: Vector2i, lateral: Ve
 			var lateral_step: Vector2i = lateral * step_sign
 			var lateral_target: Vector2i = current + lateral_step
 			var lkey := WallEdgeData.edge_key(current, lateral_target)
-			if glass_edges.has(lkey):
+			if glass_stop_edges.has(lkey):
+				return _pellet_terminal(current, lateral_step, step, glass_passed)
+			elif glass_edges.has(lkey):
 				_note_glass_crossing(glass_passed, seen_panes, current, lateral_step, step, glass_edges[lkey])
 				current = lateral_target
 				lateral_accum -= step_sign
@@ -308,7 +321,9 @@ static func _walk_pellet_ray(source_gu: Vector2i, forward: Vector2i, lateral: Ve
 				lateral_accum -= step_sign
 		var forward_target: Vector2i = current + forward
 		var fkey := WallEdgeData.edge_key(current, forward_target)
-		if glass_edges.has(fkey):
+		if glass_stop_edges.has(fkey):
+			return _pellet_terminal(current, forward, step, glass_passed)
+		elif glass_edges.has(fkey):
 			_note_glass_crossing(glass_passed, seen_panes, current, forward, step, glass_edges[fkey])
 			current = forward_target
 		elif WallEdgeData.is_edge_blocked(current, forward_target, blocked_edges) or blocked_cells.has(forward_target):
@@ -662,12 +677,14 @@ static func select_face_neighbours(slice: Slice, voxel_index: int, count: int,
 ## travelling, it does not stop at a range limit).
 static func select_line_impact(source_gu: Vector2i, facing_delta: Vector2i,
 		max_steps: int, blocked_edges: Dictionary, blocked_cells: Dictionary,
-		aim_offset_deg: float = 0.0, glass_edges: Dictionary = {}) -> Dictionary:
+		aim_offset_deg: float = 0.0, glass_edges: Dictionary = {},
+		glass_stop_edges: Dictionary = {}) -> Dictionary:
 	if facing_delta == Vector2i.ZERO:
 		return {}
 	var lateral := Vector2i(-facing_delta.y, facing_delta.x)
 	var hit := _walk_pellet_ray(source_gu, facing_delta, lateral,
-		deg_to_rad(aim_offset_deg), max_steps, blocked_edges, blocked_cells, glass_edges)
+		deg_to_rad(aim_offset_deg), max_steps, blocked_edges, blocked_cells,
+		glass_edges, glass_stop_edges)
 	if hit.is_empty():
 		return {}
 	## GLASS G7 — the round only ever met glass and flew on into the void. The

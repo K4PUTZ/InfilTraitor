@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**227 scripts · 74924 lines total** (under `godot/scripts/`)
+**227 scripts · 75251 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -641,7 +641,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge_registry.gd`
 
-`class_name EdgeRegistry` · 161 lines
+`class_name EdgeRegistry` · 192 lines
 
 `godot/scripts/geometry/edge_registry.gd`
 
@@ -662,6 +662,7 @@ extends `ConfirmationDialog` · 64 lines
 - `func all_edges() -> Array:`
 - `func all_slices() -> Array:`
 - `func glass_edge_keys() -> Dictionary:`
+- `func glass_stop_edge_keys() -> Dictionary:`
 - `func dirty_slices() -> Array:`
 - `func clear() -> void:`
 - `func is_empty() -> bool:`
@@ -1885,7 +1886,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1927 lines
+`class_name BlastCalculator` · 1944 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -1972,7 +1973,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2158 lines
+`class_name DetonationPlanBuilder` · 2173 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2039,7 +2040,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 417 lines
+`class_name GlassShatter` · 457 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -2078,7 +2079,7 @@ extends `Node2D` · 43 lines
 
 ### `shot_punch_table.gd`
 
-`class_name ShotPunchTable` · 388 lines
+`class_name ShotPunchTable` · 396 lines
 
 `godot/scripts/systems/destruction/shot_punch_table.gd`
 
@@ -2183,7 +2184,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_materials.gd`
 
-`class_name GlassMaterials` · 120 lines
+`class_name GlassMaterials` · 175 lines
 
 `godot/scripts/systems/glass_materials.gd`
 
@@ -3542,7 +3543,7 @@ extends `SceneTree` · 197 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 659 lines
+extends `SceneTree` · 796 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -3552,6 +3553,7 @@ extends `SceneTree` · 659 lines
 - `GlassShatterClass` = `preload("res://godot/scripts/systems/destruction/glass_shatter.gd")`
 - `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`
 - `WeaponDefClass` = `preload("res://godot/scripts/systems/destruction/weapon_def.gd")`
+- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `TARGETS` = `{ "smg": 0.00, "pistol": 0.025, "revolver": 0.16, "assault_rifle": 0.44, "sniper_rifle": 0.81, }`
 - `SINGLE_TOL` = `0.06`
 - `PELLET_TARGET` = `0.02`
@@ -3572,6 +3574,8 @@ extends `SceneTree` · 659 lines
 - `func test_unanchored_pane_keeps_nothing() -> void:`
 - `func test_layer_falloff_weakens_each_successive_pane() -> void:`
 - `func test_local_hole_does_not_wall_off_the_flood() -> void:`
+- `func test_armored_takes_the_whole_pane_and_leaves_fewer_remnants() -> void:`
+- `func test_indestructible_never_breaks_and_stops_the_round() -> void:`
 
 ---
 
@@ -4685,7 +4689,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 936 lines
+`class_name AgentShotController` · 960 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 

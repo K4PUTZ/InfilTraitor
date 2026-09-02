@@ -366,6 +366,14 @@ static func damage_state_for(punch: float, breach_min: float = PUNCH_DESTROY_MIN
 	## caller that has no material in hand keeps the ladder it always had.
 	if HOLE_ONLY_MATERIALS.has(material):
 		return Voxel.DamageState.DESTROYED
+	## G-D16 / V-C — an INDESTRUCTIBLE glass (a control interface) is the exact
+	## opposite capability, and it is a TIER CEILING no threshold can express
+	## either: *"trinca mas o tiro para"*. It never reaches DESTROYED and it never
+	## DENTS (glass fractures, it does not deform — G-D3), so the whole ladder
+	## collapses to its one rung. Ahead of the punch tests for the same reason
+	## HOLE_ONLY is: a capability outranks a threshold.
+	if GlassMaterials.stops_a_round(material):
+		return Voxel.DamageState.CRACKED
 	if punch < PUNCH_DENT_MIN:
 		return Voxel.DamageState.CRACKED
 	if punch < breach_min:

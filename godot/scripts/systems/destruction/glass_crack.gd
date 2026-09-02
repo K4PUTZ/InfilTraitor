@@ -125,6 +125,27 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 	}
 
 
+## The RENDER half of a plan, as `VoxelRenderer.spawn_glass_crack()` wants it.
+## Separated from `apply()` because CRACK-02 decoupled state from render (§13.1)
+## and S-3 needs the render half ALONE: after a perspective flip the CRACKED
+## states are already back (VL-PERSIST re-applied them), and re-running `apply()`
+## would set them a second time and re-run G-D24 against the cracks it is in the
+## middle of rebuilding.
+static func sprite_spec(plan: Dictionary) -> Dictionary:
+	return {
+		"pane_id": String(plan.get("pane_id", "")),
+		"run_axis": int(plan["run_axis"]),
+		"wide": bool(plan.get("wide", false)),
+		"impact_run": int(plan["impact_run"]),
+		"impact_level": int(plan["hit_level"]),
+		"impact_cell": plan["hit_cell"],
+		"radius": plan["radius"],
+		"span": sheet_span(bool(plan.get("wide", false))),
+		"pane_lo": plan["pane_lo"],
+		"pane_hi": plan["pane_hi"],
+	}
+
+
 ## Apply a plan: set the voxel states, resolve G-D24's crossings against the
 ## cracks already live, and spawn the crack SPRITE. Shared by the shot path
 ## (`agent_shot_controller._craze_pane_around_hole`) and the demo capture, so the
@@ -163,17 +184,6 @@ static func apply(renderer, plan: Dictionary) -> Dictionary:
 		touched.append(v)
 	var crack_id: int = 0
 	if crazed > 0:
-		crack_id = renderer.spawn_glass_crack({
-			"pane_id": pane_id,
-			"run_axis": int(plan["run_axis"]),
-			"wide": bool(plan.get("wide", false)),
-			"impact_run": int(plan["impact_run"]),
-			"impact_level": int(plan["hit_level"]),
-			"impact_cell": plan["hit_cell"],
-			"radius": plan["radius"],
-			"span": sheet_span(bool(plan.get("wide", false))),
-			"pane_lo": plan["pane_lo"],
-			"pane_hi": plan["pane_hi"],
-		})
+		crack_id = renderer.spawn_glass_crack(sprite_spec(plan))
 	return {"crack_id": crack_id, "crazed": crazed, "crossed": crossed,
 		"voxels": touched, "fallen": fallen}

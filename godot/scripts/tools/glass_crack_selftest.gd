@@ -31,6 +31,8 @@
 ##   [11] a crack bleeding past the frame of the pane it is on.
 ##   [12] G-D30's cut reading anything other than the live glass tilemap, the
 ##       occupancy rows going upside down, or the dial collapsing to a boolean.
+##   [13] S-3's rebuild path acquiring side effects — a perspective flip that
+##       re-damages the pane it is only supposed to redraw.
 
 extends SceneTree
 
@@ -66,6 +68,7 @@ func _init() -> void:
 	test_the_sprite_transform_lands_on_the_voxels()
 	test_the_pane_bounds_clip_the_sprite()
 	test_the_occupancy_cut_reads_the_live_tilemap()
+	test_sprite_spec_is_render_only()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -840,3 +843,66 @@ func _free_glass_layers(renderer) -> void:
 		if l != null and is_instance_valid(l):
 			(l as TileMapLayer).free()
 	renderer._glass_layers.clear()
+
+
+## [13] CRACK-02 S-3 — `sprite_spec()` IS THE RENDER HALF, AND ONLY THAT.
+##
+## A perspective flip re-applies the CRACKED states through VL-PERSIST and then
+## rebuilds the sprites; the rebuild must therefore change NOTHING about the
+## voxels. Calling `apply()` there would set the states a second time and run
+## G-D24 against the cracks it is in the middle of rebuilding — every crack would
+## cross the one before it and the pane would come apart on a camera move. So the
+## split is load-bearing, and this pins both halves of it.
+func test_sprite_spec_is_render_only() -> void:
+	print("[13] S-3 — sprite_spec() carries the whole render contract and touches no voxel\n")
+
+	var pane := _pane(4, 9, 3)
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var hit := Vector2i(6 * 8 + 4, 31)
+	var plan: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit, base + 10, false)
+
+	var before: Array = []
+	for e in plan.cells:
+		before.append(e.voxel.damage_state)
+	var spec: Dictionary = GlassCrackClass.sprite_spec(plan)
+	var changed := 0
+	for i in range(plan.cells.size()):
+		if plan.cells[i].voxel.damage_state != before[i]:
+			changed += 1
+	if changed == 0:
+		_pass("sprite_spec() changed 0 of %d voxel states — a rebuild cannot re-damage the pane"
+			% plan.cells.size())
+	else:
+		_fail("sprite_spec() changed %d voxel states — a perspective flip would re-run G-D24 on itself"
+			% changed)
+
+	## Every key `VoxelRenderer.spawn_glass_crack()` reads. A missing one is not a
+	## crash — GDScript would index a Dictionary and get null — so it is listed.
+	var required := ["pane_id", "run_axis", "wide", "impact_run", "impact_level",
+		"impact_cell", "radius", "span", "pane_lo", "pane_hi"]
+	var missing: Array = []
+	for k in required:
+		if not spec.has(k):
+			missing.append(k)
+	if missing.is_empty():
+		_pass("the spec carries all %d keys the renderer reads" % required.size())
+	else:
+		_fail("sprite_spec() is missing %s — the sprite would be built from nulls" % ", ".join(missing))
+
+	## And `apply()` must be built ON it, not beside it: the same plan through
+	## apply() has to spawn a crack described identically.
+	var mock := MockRenderer.new()
+	var res: Dictionary = GlassCrackClass.apply(mock, plan)
+	if int(res.crack_id) != 0 and mock.cracks.size() == 1:
+		var spawned: Dictionary = mock.cracks[0]
+		var same := true
+		for k in required:
+			if spawned.get(k) != spec.get(k):
+				same = false
+				_fail("apply() spawned %s=%s but sprite_spec() says %s" % [k, spawned.get(k), spec.get(k)])
+		if same:
+			_pass("apply() spawns exactly what sprite_spec() describes — one definition, two callers")
+	else:
+		_fail("apply() did not spawn a crack for a plan with %d cells" % plan.cells.size())
+
+	print("")

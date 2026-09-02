@@ -249,6 +249,29 @@ var _soot_store_absorbs: int = 0
 ## read back as substrate 0.
 var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see above)
 
+## CRACK-02 S-3 (GLASS_MASTER_PLAN §13.2) — EVERY CRACK, IN BASE COORDS.
+##
+## A crack sprite's transform is in the CURRENT view's screen space, so a
+## perspective flip has to throw it away (the ember/smoke/debris overlays are
+## cleared for the identical reason). The CRACKED voxel STATE survives on its own
+## — `_base_damage` carries it and `_reapply_base_damage()` stamps it back — but
+## the WEB is a node, and a node has to be rebuilt.
+##
+## So this stores the only two things a crack cannot re-derive: WHERE the round
+## landed, in base coords, and which sheet it took. Everything else — the pane,
+## the run axis, the pane's bounds — is re-derived from the rebuilt geometry by
+## `GlassCrack.plan_pane_crack()`, which is what makes this a handful of ints per
+## crack instead of a serialised sprite.
+##
+## Each entry: {"base": Vector3i(base_x, base_y, level), "wide": bool}.
+##
+## ⚠️ NOT in SaveState yet, and that is a real gap said out loud rather than left
+## to be discovered: a save/load restores the CRACKED voxels and loses their webs,
+## exactly the way a flip did before S-3. The fix is the same shape as
+## `base_damage`'s own row and belongs with the next SaveState change, not
+## smuggled into a render stage.
+var _base_cracks: Array = []
+
 ## GLASS G-D15 / V-D — PANES THAT ARE PRIMED. `pane_id -> true`.
 ##
 ## Director, 2026-08-31: a rifle round that fails its shatter roll on an intact
@@ -338,6 +361,90 @@ func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: i
 	var key := Vector3i(base_xy.x, base_xy.y, level)
 	var dir := _carved_side_to_base_dir(grid_pos, carved_side)
 	_base_damage[key] = [damage_state, 1 if is_blast else 0, dir.x, dir.y, dir.z, variant, substrate]
+
+
+## CRACK-02 S-3 — record one crack in base coords. `hit_grid_pos` is the struck
+## voxel in the CURRENT view; `wide` is G-D14's sheet choice. Called by whoever
+## called `GlassCrack.apply()` and got a non-zero crack id back, the same way the
+## shot path calls `record_voxel_damage_to_base()` for the voxels it changed.
+func record_glass_crack_to_base(hit_grid_pos: Vector2i, hit_level: int, wide: bool) -> void:
+	var base_xy := PerspectiveMapperClass.cell_to_base(
+		hit_grid_pos, _active_perspective, _base_voxel_size())
+	_base_cracks.append({
+		"base": Vector3i(base_xy.x, base_xy.y, hit_level),
+		"wide": wide,
+	})
+
+
+## CRACK-02 S-3 — rebuild every crack sprite for the perspective just entered.
+## Runs immediately after `_reapply_base_damage()`, which is what makes it
+## correct: the CRACKED/DESTROYED states are already back on this view's voxels,
+## so `plan_pane_crack()` sees the same pane the crack was made on and
+## `_build_crack_occupancy()` reads a tilemap that already has its holes.
+##
+## ⚠️ USES `sprite_spec()`, NOT `apply()`. Re-applying would set the damage states
+## a second time and run G-D24 against cracks it is in the middle of rebuilding —
+## every crack would cross the one before it and the pane would fall apart on a
+## camera move.
+##
+## ⚠️ ON THE `GLASS` MAP EVERY CRACK REPORTS "without a pane" IN E/S/W, AND THE
+## CAUSE IS NOT HERE. `PerspectiveMapper.layout_with_perspective()` rotates
+## `wall_tiles`, `wall_levels`, `solid_block_instances`, `floor_zone_instances`,
+## `voxel_prop_instances` and the rest — but NOT `panel_instances`, which is where
+## every half-thickness element lives, G-D9's windows included. Measured
+## 2026-09-02 from one boot: seven of the GLASS map's eight panes have IDENTICAL
+## cells in N and in E, all of them on a constant-y line that a quarter turn must
+## put on a constant-x one. So the panes stand still while the walls around them
+## rotate. That is ROOF-BAKE-02a repeating on a key nobody added, it is a map
+## defect independent of glass (E/S/W are geometrically wrong today), and fixing
+## it is not this stage's business — a panel carries a FACE, so it needs the
+## `remap_tile_name` treatment and not a copy of the block branch.
+func _respawn_base_cracks() -> void:
+	if _base_cracks.is_empty() or _voxel_renderer == null or _edge_registry == null:
+		return
+	var base_size := _base_voxel_size()
+	var all_slices: Array = _edge_registry.all_slices()
+	## One pass to index the panes, rather than one scan per crack.
+	var by_pane: Dictionary = {}
+	for sl in all_slices:
+		if sl.pane_id == "" or sl.pane_id.begins_with("PANE_BLOCK_"):
+			continue
+		by_pane.get_or_add(sl.pane_id, [])
+		by_pane[sl.pane_id].append(sl)
+	var rebuilt: int = 0
+	var lost: int = 0
+	for rec in _base_cracks:
+		var key: Vector3i = rec["base"]
+		var vxy := PerspectiveMapperClass.cell_from_base(
+			Vector2i(key.x, key.y), _active_perspective, base_size)
+		## The pane this cell belongs to, in THIS view.
+		var found_slice = null
+		for sl in all_slices:
+			if sl.pane_id == "" or sl.pane_id.begins_with("PANE_BLOCK_"):
+				continue
+			for v in sl.voxels:
+				if v.grid_pos == vxy and v.level == key.z:
+					found_slice = sl
+					break
+			if found_slice != null:
+				break
+		if found_slice == null:
+			## The impact voxel is not in this view's geometry, so there is no pane
+			## to draw a web on. Not an error, and it is REPORTED rather than
+			## swallowed — measured 2026-09-02, it is how a real map defect showed
+			## up. See `_respawn_base_cracks()`'s own ⚠️ note.
+			lost += 1
+			print_debug("[GLASS-CRACK] base %s -> view %s level %d has no pane voxel in perspective %s"
+				% [key, vxy, key.z, _active_perspective])
+			continue
+		var plan: Dictionary = GlassCrack.plan_pane_crack(
+			by_pane[found_slice.pane_id], found_slice.face, vxy, key.z, bool(rec["wide"]))
+		if _voxel_renderer.spawn_glass_crack(GlassCrack.sprite_spec(plan)) != 0:
+			rebuilt += 1
+		else:
+			lost += 1
+	print_debug("[GLASS-CRACK] perspective %s — %d crack(s) rebuilt from base coords, %d without a pane"
+		% [_active_perspective, rebuilt, lost])
 
 
 ## D25 — VIEW-space Voxel.CarvedSide → BASE-space unit direction pointing at the
@@ -907,6 +1014,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_crater_floor_soot.clear()  ## VL-D2: fresh map, no crater floor scorch yet
 	_soot_map.clear()           ## SS-1: the scorch store dies with the board too
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
+	_base_cracks.clear()        ## CRACK-02 S-3: and no glass has been crazed on it
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
@@ -1677,10 +1785,18 @@ func _set_perspective(direction: String) -> void:
 		## geometry (build just rendered everything unbroken) — before reapply
 		## damage punches holes, so it reflects the ORIGINAL cover.
 		_under_structure = _voxel_renderer.columns_with_structure()
+		## CRACK-02 S-3 — drop the OLD view's crack sprites before anything
+		## rebuilds: their transforms are in the old view's screen space, the same
+		## reason the ember/smoke/debris overlays are cleared below.
+		## `_respawn_base_cracks()` puts them back, after the damage is stamped.
+		_voxel_renderer.clear_glass_cracks()
 		## VL-PERSIST: stamp recorded destruction back onto the freshly rebuilt
 		## geometry BEFORE the lighting rebuild, so the repaint sees the holes and
 		## soot in this view (build_from_layout rebuilt every Voxel intact).
 		_reapply_base_damage()
+		## CRACK-02 S-3 — and the webs, from the base-coord registry, on the
+		## geometry the line above just finished stamping.
+		_respawn_base_cracks()
 
 		## Re-derive the per-cell overlays for the rotated layout so they follow the scenery:
 		## numbers redraw, lighting (lights/semantics/shadows/exposure) rebuilds from the rotated
@@ -1703,15 +1819,6 @@ func _set_perspective(direction: String) -> void:
 			_debris_overlay.clear()
 		if _shrapnel_overlay != null:
 			_shrapnel_overlay.clear()
-		## CRACK-02 — for exactly the reason above, and it is the same class of
-		## bug: a crack sprite's transform is in the OLD view's screen space, so
-		## carrying it into the rotated frame would draw a web over a pane that is
-		## not there any more. The CRACKED voxel STATE survives (VL-PERSIST records
-		## it and _reapply_base_damage stamps it back); the web does not, yet.
-		## §13.2 S-3 is the base-coord crack registry that rebuilds the sprites —
-		## G-D27 was partly chosen for it, and rotation is suspended meanwhile.
-		if _voxel_renderer != null:
-			_voxel_renderer.clear_glass_cracks()
 		if _aim_bubble_overlay != null:
 			_aim_bubble_overlay.clear()
 		if _throw_perimeter_overlay != null:
@@ -5570,6 +5677,9 @@ func _save_glass_panel(out_dir: String, panel: int) -> void:
 ##   INFILTRAITOR_CRACK_DEMO_CUT=1      — G-D30's triptych: punch a real hole
 ##                                       through the pane first, then save the
 ##                                       SAME crack at hole_cut 0 / 0.5 / 1
+##   INFILTRAITOR_CRACK_DEMO_FLIP=<dir>  — S-3: rotate to that perspective after
+##                                       the crack and save the frame, so "still
+##                                       there, in the right place" is a picture
 func _capture_glass_crack_demo() -> void:
 	if _voxel_renderer == null or _edge_registry == null:
 		push_error("[CRACK-DEMO] no renderer / edge registry")
@@ -5674,6 +5784,8 @@ func _capture_glass_crack_demo() -> void:
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
+	if int(res["crack_id"]) != 0:
+		record_glass_crack_to_base(hit_gp, hit_level, wide)   ## CRACK-02 S-3
 	print("[CRACK-DEMO] hit run=%d level=%d gp=%s wide=%s -> crazed=%d crossed=%d"
 		% [hit_run, hit_level, hit_gp, wide, res["crazed"], res["crossed"]])
 	## CRACK-02 — the two numbers that decide whether the web can bleed past the
@@ -5689,6 +5801,8 @@ func _capture_glass_crack_demo() -> void:
 		var hit2 := Vector2i(hit_gp.x + (10 if run_is_x else 0), hit_gp.y + (0 if run_is_x else 10))
 		var plan2: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit2, hit_level, wide)
 		var res2: Dictionary = GlassCrack.apply(_voxel_renderer, plan2)
+		if int(res2["crack_id"]) != 0:
+			record_glass_crack_to_base(hit2, hit_level, wide)   ## CRACK-02 S-3
 		print("[CRACK-DEMO] second crack at %s -> crazed=%d crossed=%d (G-D24)"
 			% [hit2, res2["crazed"], res2["crossed"]])
 
@@ -5712,6 +5826,38 @@ func _capture_glass_crack_demo() -> void:
 			var name := "%s/glass_crack_cut_%s_%02d.png" % [dir, tag, int(cut * 100.0)]
 			get_viewport().get_texture().get_image().save_png(name)
 			print("[CRACK-DEMO] G-D30 cut=%.2f -> %s" % [cut, name.get_file()])
+
+	## CRACK-02 S-3 — the flip proof. Rotate through the REAL `_set_perspective()`
+	## (which rebuilds every Voxel and re-stamps the damage), then photograph the
+	## same crack in the new view. A crack that is still there and in the right
+	## place is the whole acceptance condition §13.2 gives this stage.
+	## Takes a COMMA LIST ("E,N"), and that is what makes it a proof rather than a
+	## picture: a round trip comes back to the perspective the crack was made in,
+	## where `cell_from_base` is the identity, so the rebuilt sprite must land on
+	## the very pixels of the pre-flip frame. Anything less is "a crack appeared
+	## somewhere", which is what the eye would have accepted.
+	var flip_env := OS.get_environment("INFILTRAITOR_CRACK_DEMO_FLIP")
+	if flip_env != "":
+		for flip_to in flip_env.split(",", false):
+			_set_perspective(flip_to)
+			if _camera_controller != null:
+				_camera_controller.set_zoom_for_capture(zoom)
+				var flipped := PerspectiveMapperClass.cell_from_base(
+					Vector2i(_base_cracks[0]["base"].x, _base_cracks[0]["base"].y),
+					_active_perspective, _base_voxel_size()) if not _base_cracks.is_empty() else hit_gp
+				_camera_controller.focus_on(
+					agent._cell_to_world(Vector2i(flipped.x >> 3, flipped.y >> 3))
+					+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
+						* float(_voxel_renderer.relative_level(hit_level))))
+				if _fow_controller != null:
+					_fow_controller.reveal_around(Vector2i(flipped.x >> 3, flipped.y >> 3), 30)
+			for _f in range(40):
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(
+				"%s/glass_crack_flip_%s_%s.png" % [dir, tag, flip_to])
+			print("[CRACK-DEMO] S-3 flip to %s -> glass_crack_flip_%s_%s.png · %d sprite(s) live"
+				% [flip_to, tag, flip_to, _voxel_renderer.glass_crack_count()])
 
 	## §13.5 — "perf is a claim, not a fact". With INFILTRAITOR_FRAME_PROBE=1 the
 	## demo holds the finished board long enough for the standing probe to print,

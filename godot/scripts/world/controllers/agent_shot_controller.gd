@@ -976,6 +976,11 @@ func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 		cell_to_material[pkey] = hit_material
 		if not cell_to_depth.has(pkey):
 			cell_to_depth[pkey] = 0
+	## CRACK-02 S-3 — a crack that actually happened is recorded in BASE coords, so
+	## a perspective flip can rebuild the sprite. Only when one was spawned: a
+	## fracture whose every cell crossed an older web made a hole, not a web.
+	if int(res["crack_id"]) != 0:
+		room.record_glass_crack_to_base(hv.grid_pos, hv.level, wide)
 	print_debug("[GLASS-CRACK] pane=%s crack=%d width=%s crazed=%d crossed=%d (G-D24)"
 		% [hit_slice.pane_id, res["crack_id"], "wide" if wide else "tight",
 		res["crazed"], res["crossed"]])

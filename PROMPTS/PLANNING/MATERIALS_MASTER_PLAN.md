@@ -1,16 +1,16 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
-**Status:** 🟢 **v1.6 — 2026-09-02: M4 (GLASS) IS THE ACTIVE TRACK AND ITS ART IS
-DELIVERED.** `GLASS_MASTER_PLAN` is at v1.20: G1, G2, G7, G-MAP, G3 (all four
-stages), G-VARIANT (V-A…V-D) and now **G-ART** are built. The five art files are
-procedural (`tools/persistent/gen_fracture_sheet.py`, `gen_shard_decal.py`) and
-gate green. ⚠️ **M4 is NOT closable**, and the reason is a decision rather than
-work: `GLASS_MASTER_PLAN` §8.1 — raising glass's `crack_factor` above 0 makes
-`voxel_decal_selftest` [12] demand a crack DECAL family that G-D21 explicitly
-folded into the fracture sheet, so **glass cannot reach CRACKED at all** and G5,
-G-D4 and the map test all sit behind that. §8.2 holds a second open question: the
-mechanism G-D21 names is the baked WALL path, which glass does not use.
+**Status:** 🟢 **v1.7 — 2026-09-02: M4 (GLASS) — THE CRACK IS BUILT (CRACK-01).**
+`GLASS_MASTER_PLAN` v1.21: G1, G2, G7, G-MAP, G-D9, G3 (all four stages),
+G-VARIANT (V-A…V-D), G-ART and now **CRACK-01** (G-D14/G-D19/G-D21/G-D23/G-D24)
+are built. Both §8 blockers were resolved by Director ruling: **§8.1** → glass
+reaches CRACKED through `damage_state_for()` + CRACK-01's own event, so
+`crack_factor` stays 0.0 and `voxel_decal_selftest` [12] is untouched; **§8.2**
+→ G-D21 amended to world-space sampling (~2 MB, 0 atoms minted — not the 36–144
+MB atom page). Real GLASS map: a pistol through the two-pane row crazes 129
+voxels on each pane and continues to the concrete behind. **Left in M4:** G6
+(shards on screen), G-D25 (big shards), `plastic` (screen backing).
 
 Earlier, v1.5 — **2026-08-30: THE SEQUENCING BLOCK IS GONE.** M3-6 was
 sequenced behind `PERFORMANCE_MASTER_PLAN` P7; **P7b and P7c shipped 2026-08-26**

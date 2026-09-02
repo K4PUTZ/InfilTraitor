@@ -817,14 +817,18 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	var hv: Voxel = hit_slice.voxels[hit_voxel_index]
 	## G-D9: on a brick-capped window the hit may be in a brick band — not a pane hit.
 	var rel: int = hv.level - GeometryCoords.storey_level_base(hit_slice.start_storey)
-	if hit_slice.material_at(rel) != "glass":
+	## G-D16: the hit's OWN glass id, carried from here on rather than the literal
+	## it used to be. Identical for base glass, and it is what lets an armored or
+	## screen pane take its own resistance row when V-B adds them.
+	var hit_material: String = hit_slice.material_at(rel)
+	if not GlassMaterials.is_glass(hit_material):
 		return
 	## The glass punch for THIS pellet, at this pellet's own luck — G-D17: through
 	## whatever glass it has already crossed. Attenuating the ROLL and leaving the
 	## REGION at full strength would give a pane that barely breaks a sniper-sized
 	## hole, so `punch_after_layers` is applied once, here, and carried into both.
 	var glass_punch: float = ShotPunchTable.compute(
-		GlassShatter.punch_after_layers(weapon_def.punch, layer_depth), "glass",
+		GlassShatter.punch_after_layers(weapon_def.punch, layer_depth), hit_material,
 		ShotPunchTable.SKILL_NEUTRAL, 1.0, pick_salt)
 	if not GlassShatter.rolls_shatter(glass_punch, pick_salt):
 		return
@@ -853,7 +857,7 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		pv.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 		var pkey := Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)
 		_index_voxel(cell_to_voxel, pv)
-		cell_to_material[pkey] = "glass"
+		cell_to_material[pkey] = hit_material
 		if not cell_to_depth.has(pkey):
 			cell_to_depth[pkey] = 0
 		n += 1

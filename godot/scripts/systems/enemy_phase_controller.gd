@@ -110,7 +110,7 @@ func build_movement_edge_set(edges: Array[Dictionary], glass_edges: Dictionary,
 	if edge_registry == null:
 		return blocked
 	for edge in edge_registry.all_edges():
-		if edge.material != "glass":
+		if not GlassMaterials.is_glass(edge.material):
 			continue
 		var key: String = WallEdgeData.edge_key(edge.gu_a, edge.gu_b)
 		if not glass_edges.has(key):

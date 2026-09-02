@@ -448,7 +448,7 @@ func _surviving_band_voxels(slices: Array) -> int:
 	var n: int = 0
 	for s in slices:
 		for v in s.voxels:
-			if s.material_at(v.level - base) == "glass":
+			if GlassMaterials.is_glass(s.material_at(v.level - base)):
 				continue
 			if v.damage_state != Voxel.DamageState.DESTROYED:
 				n += 1
@@ -460,7 +460,7 @@ func _band_voxel_total(slices: Array) -> int:
 	var n: int = 0
 	for s in slices:
 		for v in s.voxels:
-			if s.material_at(v.level - base) != "glass":
+			if not GlassMaterials.is_glass(s.material_at(v.level - base)):
 				n += 1
 	return n
 

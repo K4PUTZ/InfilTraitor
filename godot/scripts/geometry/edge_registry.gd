@@ -114,7 +114,7 @@ func all_slices() -> Array:
 func glass_edge_keys() -> Dictionary:
 	var out: Dictionary = {}
 	for edge in _edges.values():
-		if edge.material != "glass":
+		if not GlassMaterials.is_glass(edge.material):
 			continue
 		var pid: String = ""
 		var sa := get_slice(edge.slice_a_id)

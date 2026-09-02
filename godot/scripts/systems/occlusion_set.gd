@@ -497,7 +497,7 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 	for slice in slices:
 		if slice.voxels.is_empty():
 			continue
-		if slice.material == "glass":
+		if GlassMaterials.is_glass(slice.material):
 			continue
 		if not by_edge.has(slice.edge_id):
 			by_edge[slice.edge_id] = []

@@ -32,7 +32,7 @@ static func assign(edge_registry: EdgeRegistry, solid_block_instances: Array) ->
 	## --- blocks: one merged cell set, flood-filled into components --------
 	var block_cells: Dictionary = {}   ## Vector2i -> true
 	for b in solid_block_instances:
-		if not (b is Dictionary) or String(b.get("material", "")) != "glass":
+		if not (b is Dictionary) or not GlassMaterials.is_glass(String(b.get("material", ""))):
 			continue
 		var origin: Vector2i = b.get("gu_cell", Vector2i.ZERO)
 		var size: Vector2i = b.get("size", Vector2i.ONE)
@@ -175,10 +175,10 @@ static func _check_pane_size(panels: Array) -> void:
 ## GLASS G-D9 — a slice is glass if its base material is glass OR any level band
 ## is (a mostly-brick wall with a glass strip is still a pane at that strip).
 static func _is_glass_slice(slice) -> bool:
-	if slice.material == "glass":
+	if GlassMaterials.is_glass(slice.material):
 		return true
 	for m in slice.material_bands.values():
-		if m == "glass":
+		if GlassMaterials.is_glass(m):
 			return true
 	return false
 

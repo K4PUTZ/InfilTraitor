@@ -49,7 +49,7 @@ const NO_LANDING: int = -1
 static func build_surface_index(slabs: Array, columns: Dictionary) -> Dictionary:
 	var index: Dictionary = {}   ## Vector2i grid_pos -> Array[int] levels, ascending
 	for slab in slabs:
-		if slab.material == "glass":
+		if GlassMaterials.is_glass(slab.material):
 			continue
 		for v in slab.voxels:
 			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:

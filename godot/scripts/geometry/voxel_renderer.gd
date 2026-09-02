@@ -2283,7 +2283,7 @@ func _render_slice(slice: Slice, edge = null) -> void:
 			var vmat := slice.material_at(voxel.level - slice_level_base)
 			var render_material := damage_variant_material(vmat, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 			var glass_mask: int = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, glass_top_level) \
-				if vmat == "glass" else 0
+				if GlassMaterials.is_glass(vmat) else 0
 			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge,
 				voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE,
 				true, glass_mask)
@@ -2293,10 +2293,10 @@ func _render_slice(slice: Slice, edge = null) -> void:
 ## any level band). Non-banded glass slices answer via the base check with zero
 ## dictionary work.
 func _slice_is_glassy(slice: Slice) -> bool:
-	if slice.material == "glass":
+	if GlassMaterials.is_glass(slice.material):
 		return true
 	for m in slice.material_bands.values():
-		if m == "glass":
+		if GlassMaterials.is_glass(m):
 			return true
 	return false
 
@@ -2313,7 +2313,7 @@ func _slice_top_glass_level(slice: Slice) -> int:
 	if not slice.has_material_bands():
 		return base + span - 1
 	for rel in range(span - 1, -1, -1):
-		if slice.material_at(rel) == "glass":
+		if GlassMaterials.is_glass(slice.material_at(rel)):
 			return base + rel
 	return -99999
 
@@ -2690,7 +2690,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	## glazed floor zone — stays opaque for G1: a see-through roof is out of scope
 	## and it kept the roof-coverage geometry intact. The sublayers build lazily,
 	## so a map with no vertical glass builds none.
-	if material_name == "glass" and not _glass_atom_source.is_empty() and not flat_baked:
+	if GlassMaterials.is_glass(material_name) and not _glass_atom_source.is_empty() and not flat_baked:
 		## GLASS G1 GEOMETRY — one of the four per-face masks (main / +top / +side
 		## / +top+side). The main face is always present; the dim slivers are
 		## added only where the voxel's top or camera-facing side is exposed. The
@@ -3527,7 +3527,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 		var vmat := slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
 		var render_material := damage_variant_material(vmat, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 		var glass_mask: int = 0
-		if vmat == "glass":
+		if GlassMaterials.is_glass(vmat):
 			glass_mask = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, _slice_top_glass_level(slice))
 		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy,
 			slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, true, glass_mask)
@@ -3538,7 +3538,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 		## per-level material, not the slice base — a brick-band voxel takes the
 		## ordinary opaque path below.
 		var vmat_gone := slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
-		if vmat_gone == "glass" and _glass_layers.has(voxel.level):
+		if GlassMaterials.is_glass(vmat_gone) and _glass_layers.has(voxel.level):
 			var gpane := _glass_layers[voxel.level] as TileMapLayer
 			var g_gone: bool = gpane.get_cell_source_id(voxel.grid_pos) == -1
 			gpane.erase_cell(voxel.grid_pos)
@@ -3676,7 +3676,7 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 		## GLASS G1 — a glass INTERIOR slab voxel (a glazed partition — the only
 		## slab kind G1 routes to the glass pane layer; roofs and glazed floor
 		## zones stay opaque) is erased from the pane layer, mirroring the slice.
-		var glass_on_pane: bool = slab.material == "glass" \
+		var glass_on_pane: bool = GlassMaterials.is_glass(slab.material) \
 			and not (slab.role == Slab.Role.CEILING or is_zoned_floor) \
 			and _glass_layers.has(voxel.level)
 		if glass_on_pane:
@@ -4552,7 +4552,7 @@ func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 ## paints the opaque cube back onto every glass cell and hides the pane + the
 ## backbuffer. `enable=false` undoes both. Capture-only — never on the play path.
 func set_glass_opaque_preview(enable: bool) -> void:
-	var opaque_glass_id: int = MATERIALS.find("glass")
+	var opaque_glass_id: int = MATERIALS.find(GlassMaterials.BASE)
 	for level in _glass_layers:
 		var gpane := _glass_layers[level] as TileMapLayer
 		var opaque := get_layer(level)

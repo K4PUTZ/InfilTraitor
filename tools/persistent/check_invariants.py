@@ -68,6 +68,49 @@ B4_FNV_CONST = re.compile(r"\b(2166136261|16777619)\b")
 L1_GROUND_LAYER_LITERAL = re.compile(r"\bget_layer\s*\(\s*-?\s*\d+\s*\)")
 FUNC_DECL = re.compile(r"^func\s+(\w+)\s*\(")
 
+# L2: glass-ness is ASKED, never COMPARED (GLASS_MASTER_PLAN G-D16, V-A).
+#
+# Before the family seam, "is this glass?" was a bare `material == "glass"` in
+# twenty-five places across rendering, geometry, occlusion, the guard phase, the
+# shot path and the cook — and every one of them is a BEHAVIOUR: glass does not
+# occlude, groups into a pane, lets a round through, renders on its own
+# transparent layers, drops no smoke, anchors no shards.
+#
+# G-D16 makes glass a FAMILY (`glass_armored`, `glass_screen_*`). A literal
+# comparison silently excludes every new member, and the failure is invisible:
+# the new material is simply an OPAQUE wall that happens to be named glass. It
+# renders, it occludes, it stops rounds, and nothing errors — the same failure
+# class as a rejected facade.
+#
+# So the roster is read out of glass_materials.gd rather than duplicated here
+# (check_decal.py's `_wired_materials()` discipline: a source that moves must not
+# leave a stale copy behind), and any `== "<member>"` / `!= "<member>"` outside
+# that file is a violation. It matches COMPARISONS only — a dict row
+# (`"glass": 0.4`), an authoring default (`get("material", "glass")`) and a
+# lookup (`resistance("glass")`) are data, not predicates, and stay legal.
+GLASS_FAMILY_SOURCE = SCRIPTS_DIR / "systems" / "glass_materials.gd"
+GLASS_FAMILY_CONST = re.compile(r"^const\s+FAMILY\s*:.*=\s*\[(.*)\]")
+
+
+def _glass_family() -> list[str] | None:
+    """The glass material ids, read from the seam module. None when the constant
+    cannot be found, so a refactor of that file degrades this rule to "cannot
+    check" instead of to a false pass."""
+    try:
+        for line in GLASS_FAMILY_SOURCE.read_text(encoding="utf-8").splitlines():
+            m = GLASS_FAMILY_CONST.match(line)
+            if m:
+                return [t.strip().strip('"') for t in m.group(1).split(",") if t.strip()]
+    except OSError:
+        return None
+    return None
+
+
+_GLASS_MEMBERS = _glass_family()
+L2_GLASS_COMPARISON = re.compile(
+    r"[=!]=\s*\"(%s)\"" % "|".join(re.escape(m) for m in _GLASS_MEMBERS)
+) if _GLASS_MEMBERS else None
+
 
 @dataclass
 class Violation:
@@ -178,6 +221,32 @@ def check_file(path: Path) -> list[Violation]:
                 "get_layer(<literal>) hardcodes a level — the ground plane is "
                 "PLAYABLE_LEVEL (80), not 0. Derive it: ground_plane_level() / "
                 "storey_level_base() (and relative_level() for offsets)",
+            ))
+
+        # L2 — glass-ness is asked, never compared.
+        #
+        # Two exemptions, both reasoned rather than convenient:
+        #   · glass_materials.gd OWNS the family and has to name its members;
+        #   · godot/scripts/tools/ is where selftests assert on FIXTURE AND MAP
+        #     DATA — `s.material_at(7) == "glass"` in glass_transparency_selftest
+        #     is checking that the GLASS map authored a glass middle band, which
+        #     is a fact about the data and not a predicate about behaviour. A gate
+        #     that failed it would be failing known-good code, which is
+        #     check_facade.py's own first-run mistake. A selftest that MIRRORS an
+        #     engine rule should still call the seam, and the two in
+        #     glass_shatter_selftest.gd were converted with this rule.
+        if (L2_GLASS_COMPARISON is not None
+                and name != "glass_materials.gd"
+                and "/tools/" not in rel
+                and not line.lstrip().startswith("#")
+                and L2_GLASS_COMPARISON.search(line)):
+            out.append(Violation(
+                "L2 glass-is-a-family",
+                rel, lineno,
+                "comparing a material against a glass id excludes every other "
+                "member of the family (G-D16: glass_armored, glass_screen_*) and "
+                "fails SILENTLY — the new material renders as an opaque wall. "
+                "Ask GlassMaterials.is_glass(<id>) instead",
             ))
 
         # B1 — _voxel_layers (voxel grid) only modified via voxel_renderer._set_voxel_cell()

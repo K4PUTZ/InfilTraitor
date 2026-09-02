@@ -2691,7 +2691,7 @@ func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: Stri
 	## (measured: a sniper on the GLASS map's big pane = 972 puffs). Glass debris
 	## is SHARDS on the floor and belongs to G6 (a floor decal, not particles);
 	## until then a glass break is visually just the pane going away.
-	if material_id == "glass":
+	if GlassMaterials.is_glass(material_id):
 		return
 	var origin: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, level)
 	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, 0)

@@ -221,7 +221,7 @@ static func collect_anchor_positions(pane_slices: Array, face: int, all_slices: 
 			## A half-thickness element has ONE slice instead of two and is just as
 			## much a frame — nothing here asks how thick the neighbour is, which
 			## is what makes "half slices inclusive" true by construction.
-			if s.material_at(v.level - s_base) == "glass":
+			if GlassMaterials.is_glass(s.material_at(v.level - s_base)):
 				continue
 			anchors[_pane_key(v, run_is_x)] = true
 	return anchors
@@ -291,7 +291,7 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
 				continue
 			var key := _pane_key(v, run_is_x)
-			if slice.material_at(v.level - slice_base) != "glass":
+			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
 				own_frame[key] = true
 				continue
 			## ⚠️ THE LATTICE KEY DROPS THE THICKNESS AXIS. `_pane_key()` is

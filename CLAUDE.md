@@ -235,7 +235,19 @@ These must not be broken:
    Hook-checked as **L1 `level-never-a-literal`** — any integer literal passed
    to `get_layer()` outside `voxel_renderer.gd`, which owns the store.
 
-**Enforcement:** rules 1–5 and 9 are pre-commit-hook-checked
+10. **A material FAMILY is asked, never compared.** `glass` is not one material
+   — G-D16 makes it a family (`glass_armored`, `glass_screen_*`) whose members
+   share every behaviour that matters: they do not occlude, they group into
+   panes, they let a round through, they render on their own transparent layers,
+   they drop no smoke, they anchor no shards. A bare `material == "glass"`
+   excludes every new member and **fails silently** — the new material is simply
+   an opaque wall that happens to be named glass, and nothing errors. Ask
+   `GlassMaterials.is_glass(id)`. Hook-checked as **L2 `glass-is-a-family`**,
+   which reads the roster out of `glass_materials.gd` rather than duplicating it;
+   the seam module and `godot/scripts/tools/` (where selftests assert on fixture
+   and map DATA, not behaviour) are the two exemptions.
+
+**Enforcement:** rules 1–5, 9 and 10 are pre-commit-hook-checked
 (`check_invariants.py`); 6–8 rely on review.
 
 **Banned terms & eliminated patterns** (`SUBCUBE_*`, `WallContainer`,

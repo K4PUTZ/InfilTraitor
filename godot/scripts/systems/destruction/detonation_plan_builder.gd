@@ -539,7 +539,7 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 
 ## GLASS G3-C — true for a glass PANEL slice (has a pane_id, not a BLOCK).
 static func _is_glass_pane_slice(slice: Slice) -> bool:
-	return slice != null and slice.material == "glass" \
+	return slice != null and GlassMaterials.is_glass(slice.material) \
 		and slice.pane_id != "" and not slice.pane_id.begins_with("PANE_BLOCK_")
 
 

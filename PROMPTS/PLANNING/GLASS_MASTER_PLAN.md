@@ -1,6 +1,21 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.15 — **G-ART's ORDER AND GATE ARE DONE (2026-09-01, §8):**
+**Status:** 🟠 v1.16 — **G-VARIANT V-A BUILT (2026-09-01): the glass FAMILY
+SEAM.** `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons
+across rendering, geometry, occlusion, the guard phase, the shot path and the
+cook — G-D16 makes glass a family, and against a literal comparison every new
+member would be a silently OPAQUE wall that renders, occludes and stops rounds
+with no error anywhere. Pinned by new invariant **L2 `glass-is-a-family`**, which
+reads the roster out of the seam module rather than duplicating it.
+
+⛔ **AND V-A's verification found Stage B INERT ON THE REAL MAP (§5.1).** A won
+sniper roll on the GLASS map's big pane floods **zero** voxels: the shot's own
+local hole surrounds the origin, and the BFS can only step onto surviving glass,
+so `radius=23` over `lattice=1143` dies at step one. Pre-existing — the
+before/after runs on the same binary are identical. **The fix is one branch and
+V-C is blocked on it.**
+
+Earlier, v1.15 — **G-ART's ORDER AND GATE ARE DONE (2026-09-01, §8):**
 [`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md) asks for five files — two 1024×512
 grayscale fracture sheets (tight/wide, G-D14/G-D21) and three 256×256 shard
 decals — and `check_decal.py` enforces both classes, earned before the art (the
@@ -368,6 +383,45 @@ Real-map, GLASS map's big pane (6 GU × 3 storeys, 1152 voxels): assault rifle
 the round passes through and marks the concrete behind. ⚠️ `_dispatch_destruction_vfx`
 now early-returns for `glass` — a 970-voxel shatter was 970 smoke puffs, a milky
 haze over the map; glass debris is SHARDS (G6, a floor decal), not particles.
+
+⛔ **STAGE B IS INERT ON THE REAL MAP — found 2026-09-01 while verifying V-A,
+and it is NOT a regression from that work** (the before/after runs on the same
+binary are identical: `glass destroyed=18` for sniper, rifle and shotgun alike).
+
+**The local hole walls off its own shatter flood.** The BFS queues a neighbour
+only `if lattice.has(nb)`, and `lattice` holds SURVIVING glass only — so it can
+never step across a hole. The origin is this shot's own fresh hole, and a
+rifle-class round's hole (G-D14: 2–4 voxels, plus the cascade) takes every cell
+around it too. Measured on the GLASS map's big pane, sniper, roll WON:
+
+    lattice=1143  own_frame=0  origin=(114, 84)  origin_in_lattice=false
+    neighbours_in_lattice=0/8  flood=0  radius=23
+
+1143 surviving voxels, a radius of 23, and the walk dies at step one. **The
+failure scales the WRONG WAY:** the more powerful the round, the wider its local
+hole, the more certainly the flood is strangled — and it bites hardest on the
+sniper, which is the round most likely to win the roll in the first place. The
+2026-09-01 captures above (972 / 647 destroyed) were taken before the GLASS map
+grew its second pane row, and no longer reproduce.
+
+**The fix is one branch, and it must distinguish two absences that are the same
+absence today.** A cell missing from `lattice` is either a HOLE (fracture travels
+straight through it — an already-broken area does not stop a crack) or the pane's
+own non-glass BAND (`own_frame`, which must keep stopping it, G-D13b). So the
+walk expands through everything inside the radius except `own_frame`, and only
+RECORDS a cell in `flood` when the lattice holds it:
+
+    if dist.has(nb): continue
+    if own_frame.has(nb): continue   ## a real frame stops the fracture
+    dist[nb] = d + 1
+    queue.append(nb)                 ## a hole does not
+    if lattice.has(nb): flood[nb] = true
+
+⚠️ **The selftest could not have caught this and still cannot**: its fixtures
+place the hit on an INTACT lattice cell, so the origin is in `lattice` and the
+walk starts alive. The regression test has to destroy the origin's whole
+neighbourhood first — which is what a real shot does before `_maybe_shatter_pane`
+is even called.
 
 **⚠️ Stage B runs in the SHOT PATH, not the cook.** The shot path does not use
 `build_plan()`/`WorldDelta` — G7 and the local hole are all direct
@@ -1219,7 +1273,7 @@ level→material override on the same half-thickness face:
 | 🟢 | **G-ART** — **the order and the gate are DONE 2026-09-01** ([`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md); `check_decal.py` now carries per-material families + the fracture-sheet class, proven red on 7 modes with all 54 shipped decals unchanged). Five files asked for: two 1024×512 grayscale fracture sheets (tight/wide, G-D14) and three 256×256 shard decals. **What is left is the delivery** | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | the art itself |
 | 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** (open) G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump | G-MAP, G2, §5.1 |
-| 5b | **G-VARIANT** — `glass_class` + tint (G-D16): `glass_armored` (purple, ARMORED + `pane_primed`, G-D15), `glass_screen_{green,red,amber}` (INDESTRUCTIBLE / BREAKABLE). Material roster + `RESISTANCE` rows + a per-placement class tag | G3 |
+| 🟡 | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** the roster + the tint on screen (`glass_armored`, `glass_screen_{green,red,amber}`; the tint rides the glass atom's free BLUE channel — G-D19 reserves GREEN, and RGB are written identical today so B is spare). **V-C** the class behaviour (ARMORED's whole-pane break; INDESTRUCTIBLE stops the round — the one glass G-D5 does not apply to). **V-D** `pane_primed` (G-D15) + the per-placement `glass_class` tag in the mapfile | V-C needs Stage B's flood fixed (see §5.1) |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
 | 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15) | G-ART |
 | 8 | **G-D4** — the bullet web on shot neighbours | G5, G-ART |

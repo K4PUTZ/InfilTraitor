@@ -341,10 +341,54 @@ that the eye reads as ornament — and the next generator will reinvent them:
    radial opens into a huge wedge, because `wide`'s runs are three times longer.
    Fixed: a twin is capped to 16–34 % of the run.
 
-### 6.3 What is NOT done
+### 6.3 The shard decals — also procedural, delivered 2026-09-02
 
-- **The three shard decals** (§2) — still absent, still `glass`'s only claimed
-  family. §5's luma-to-alpha SD recipe applies to them and not to these sheets.
+`tools/persistent/gen_shard_decal.py`, three variants at `seed 11`. Same
+scheme as the sheets, with §5's luma-to-alpha step applied — which belongs to
+THIS class and never to the sheets, because the facade path destroys alpha and
+a decal *is* its alpha.
+
+| | coverage | |
+|---|---|---|
+| `decal_shard_glass_0.png` | 25.7 % | 256×256 RGBA |
+| `decal_shard_glass_1.png` | 21.5 % | 256×256 RGBA |
+| `decal_shard_glass_2.png` | 25.8 % | 256×256 RGBA |
+
+**The 1:16 read is what set every size here, and it rejected the first pass.**
+Shards drawn up to 200 authored px look magnificent at 256 and dissolve into
+undifferentiated grey at 16 × 20 — §7.3's warning, arriving exactly as written.
+Held to ~30–70 authored px and tripled in count, they survive as a glint field;
+a handful of deliberately larger HEROES then give the reduction something that
+still lands as a distinct bright pixel. Small-and-many alone averages to noise.
+
+### 6.4 ⚠️ THE SHARD DECALS LOAD NOWHERE, AND THE GATE PRESCRIBES A FIX THAT
+### WOULD BREAK CANON
+
+`check_decal.py --material glass` now ends **WIRING FAIL**, and the failure is
+TRUE — but its suggested remedy is wrong for this material, so it is written
+down here before someone follows it:
+
+> the files exist but 'glass' is NOT in IMPACT_DECAL_MATERIALS … Add the id.
+
+**Do not add the id.** `VoxelRenderer._decal_material()` (`voxel_renderer.gd:286`)
+composes names from the DAMAGE STATE for every material in that list —
+`glass_cracked_*`, `glass_bullet_*`. Those are precisely the two families
+G-D21 folded into the fracture sheet and that this gate's own header says glass
+must never claim. Adding `glass` there would ask the renderer for wall decals
+that must not exist, and `shard` is not a name that function can compose at all.
+
+`shard` is a FLOOR mark. Its sibling, earth's dent, rides `IMPACT_FLOOR_MATERIAL`
+(`= "earth"`) through `_floor_sunk_decal_plan()` — a different constant and a
+different path. Glass's consumer is **G6 / `GlassFall`**, which is unbuilt:
+`glass_fall.gd:119` names the shape it will need and stops there.
+
+So the wiring check has a hole: it assumes any material with decal files must be
+in `IMPACT_DECAL_MATERIALS`, which is false for a material whose only family is a
+floor one. Left RED deliberately — the art really does load nowhere, and a gate
+that says so is doing its job even when its advice is wrong.
+
+### 6.5 What is NOT done
+
 - **§4's wiring, all of it.** `TextureResolver` still knows only `facade_` /
   `slice_` / `slab_` and rejects a `fracture_` name with no error at all, so
   these two files currently **load nowhere** — the gate says so itself under

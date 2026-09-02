@@ -80,17 +80,26 @@ uniform vec2 glass_inv_basis_row0 = vec2(0.03125, 0.0625);
 uniform vec2 glass_inv_basis_row1 = vec2(-0.03125, 0.0625);
 uniform vec2 glass_quad_to_map = vec2(0.0, 20.0);
 
-// ⚠️ THE LOOK. G-D19's "50% see-through on a cracked voxel" was built FLAT, and
-// the Director rejected it on sight (2026-09-02): a uniform frost over every
-// voxel in the radius reads as *"praticamente um bloco que parece outro material
-// no meio do vidro"* — a rectangle, because its silhouette is the RADIUS, not
-// the fracture. So the drop is DENSITY-DRIVEN: the glass loses see-through
-// exactly where the sheet has ink, and the effect's outline becomes the crack's
-// own. G-D19's intent survives (a cracked voxel is less see-through, and the
-// tactical half is state-driven anyway); the rectangle does not.
-uniform float glass_crack_frost : hint_range(0.0, 2.0) = 0.85;
-uniform float glass_crack_ink : hint_range(0.0, 1.0) = 0.75;
-uniform vec3 glass_crack_ink_color : source_color = vec3(0.90, 0.94, 1.0);
+// ⚠️ THE CRACK IS PURE ADDITIVE LIGHT, AND G-D19 IS RETRACTED (Director,
+// 2026-09-02, correcting himself: *"a gente não pode considerar o voxel todo como
+// 50% menos transparente. Isso automaticamente cria uma 'moldura' porque os
+// voxels ao lado estarão com 100% da opacidade planejada. […] Provavelmente um
+// mecanismo de adição, que soma as áreas brancas do decal/facade e não toca no
+// resto."*)
+//
+// The argument is stronger than the two builds it replaces. It is not that a
+// FLAT modulate reads as a rectangle (build 1) or that a density-driven one
+// fixes it (build 2) — it is that **any** change to a voxel's transparency
+// frames that voxel, because transparency is read continuously across the pane
+// and the untouched neighbour draws the cell boundary for you. So the crack
+// changes NOTHING about the glass surface: `cover` and `glass_apply()`'s
+// modulate are both untouched, and the fracture is added on top, exactly the way
+// G1's own sheen is (`out_rgb += hi * sheen * glass_add_strength * ff`).
+//
+// It is also the physically honest one: a fracture SCATTERS light, it does not
+// paint over what is behind it. You still see through a cracked pane.
+uniform float glass_crack_add : hint_range(0.0, 2.0) = 0.85;
+uniform vec3 glass_crack_add_color : source_color = vec3(0.90, 0.94, 1.0);
 // A soft outer falloff so the web fades instead of ending on a voxel boundary.
 uniform float glass_crack_edge_feather : hint_range(0.0, 0.5) = 0.18;
 
@@ -98,13 +107,14 @@ void vertex() {
 	v_glass_world = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
 }
 
-// CRACK-01 — the web + the see-through drop for one fragment, given the glass
-// colour `lit` already computed. `frag_cell` is the recovered voxel cell (for
-// the PLANE lookup, quantised per quad); `canvas` is this fragment's canvas
-// position, which is all the sheet UV needs. Returns `lit` unchanged off a
-// cracked cell or off the sheet (G-D23: beyond the sheet there is simply no
-// crack, never a mirrored one).
-vec3 glass_apply_crack(vec3 lit, vec2 frag_cell, vec2 canvas, vec3 tint) {
+// CRACK-01 — the fracture's own light, ADDED to the glass colour `lit` already
+// computed. `frag_cell` is the recovered voxel cell (for the PLANE lookup,
+// quantised per quad); `canvas` is this fragment's canvas position, which is all
+// the sheet UV needs; `dim` is the atom's per-plane brightness, so a crack on a
+// dim top/side sliver is dimmer too, matching how G1 scales its sheen. Returns
+// `lit` unchanged off a cracked cell or off the sheet (G-D23: beyond the sheet
+// there is simply no crack, never a mirrored one).
+vec3 glass_apply_crack(vec3 lit, vec2 frag_cell, vec2 canvas, float dim) {
 	vec2 pcell = frag_cell + glass_crack_plane_origin;
 	if (pcell.x < 0.0 || pcell.y < 0.0
 			|| pcell.x >= glass_crack_plane_size.x || pcell.y >= glass_crack_plane_size.y) {
@@ -134,9 +144,9 @@ vec3 glass_apply_crack(vec3 lit, vec2 frag_cell, vec2 canvas, vec3 tint) {
 	vec2 span = mix(glass_sheet_span_tight, glass_sheet_span_wide, is_wide);
 	vec2 fuv = vec2(0.5 + run_off / span.x, 0.5 - level_off / span.y);
 
-	// G-D23 — the clamp. Beyond the sheet there is no crack at all, so this
-	// fragment is untouched glass (NOT frosted: the frost is the crack's, and a
-	// frost without a crack is the rectangle the Director rejected).
+	// G-D23 — the clamp. Beyond the sheet there is no crack at all, and an
+	// uncracked fragment is ORDINARY GLASS: nothing here may touch its
+	// transparency, or the voxel frames itself against its neighbours.
 	if (fuv.x < 0.0 || fuv.x > 1.0 || fuv.y < 0.0 || fuv.y > 1.0) {
 		return lit;
 	}
@@ -148,17 +158,11 @@ vec3 glass_apply_crack(vec3 lit, vec2 frag_cell, vec2 canvas, vec3 tint) {
 	// on a hard edge.
 	vec2 e = min(fuv, vec2(1.0) - fuv) / max(glass_crack_edge_feather, 0.001);
 	crack *= clamp(min(e.x, e.y), 0.0, 1.0);
-	if (crack <= 0.0) {
-		return lit;
-	}
 
-	// G-D19, DENSITY-DRIVEN — the see-through drop rides the ink, so the effect's
-	// silhouette is the fracture rather than the crack radius.
-	float frost = texture(glass_frost_tex, canvas * glass_frost_scale).r;
-	vec3 frosted = tint * (0.40 + 0.60 * frost);
-	vec3 out_rgb = mix(lit, frosted, clamp(crack * glass_crack_frost, 0.0, 1.0));
-	out_rgb = mix(out_rgb, glass_crack_ink_color, crack * glass_crack_ink);
-	return out_rgb;
+	// THE WHOLE EFFECT: light ADDED where the sheet is white, nothing anywhere
+	// else. No mix, no modulate, no second alpha — see the uniform block.
+	return clamp(lit + glass_crack_add_color * (crack * glass_crack_add * dim),
+		vec3(0.0), vec3(1.0));
 }
 
 void fragment() {
@@ -183,7 +187,7 @@ void fragment() {
 		vec2 frag_cell = floor(vec2(
 			dot(glass_inv_basis_row0, quad_tl + glass_quad_to_map),
 			dot(glass_inv_basis_row1, quad_tl + glass_quad_to_map)) + 0.5);
-		lit = glass_apply_crack(lit, frag_cell, v_glass_world, tint);
+		lit = glass_apply_crack(lit, frag_cell, v_glass_world, t.r);
 
 		COLOR = vec4(lit, cover);
 	}

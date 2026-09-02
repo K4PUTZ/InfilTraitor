@@ -364,7 +364,7 @@ func test_the_glass_shader_loads() -> void:
 	mat.set_shader_parameter("glass_run_step", Vector2(16, 8))
 	mat.set_shader_parameter("glass_voxel_step_px", 20.0)
 	mat.set_shader_parameter("glass_sheet_span_tight", Vector2(20, 10))
-	mat.set_shader_parameter("glass_crack_frost", 0.85)
+	mat.set_shader_parameter("glass_crack_add", 0.85)
 	var props: Array = shader.get_shader_uniform_list()
 	var names: Array = []
 	for p in props:
@@ -372,7 +372,7 @@ func test_the_glass_shader_loads() -> void:
 	var required := ["glass_crack_plane", "glass_crack_groups", "glass_fracture_tight",
 		"glass_fracture_wide", "glass_layer_origin", "glass_run_step",
 		"glass_voxel_step_px", "glass_sheet_span_tight", "glass_sheet_span_wide",
-		"glass_crack_frost"]
+		"glass_crack_add", "glass_crack_add_color"]
 	var missing: Array = []
 	for r in required:
 		if not names.has(r):
@@ -381,6 +381,30 @@ func test_the_glass_shader_loads() -> void:
 		_pass("the shader declares all %d CRACK-01 uniforms the renderer feeds" % required.size())
 	else:
 		_fail("the shader is missing uniform(s): %s" % ", ".join(missing))
+
+	## G-D19 RETRACTED (Director, 2026-09-02) — the crack is ADDITIVE and must not
+	## touch the glass's transparency, because any per-voxel change to it frames
+	## that voxel against its untouched neighbours. So the shader must carry NO
+	## crack term that modulates: a `frost`/`see_through`/`opacity` uniform coming
+	## back is the retracted design coming back with it.
+	var banned := ["glass_crack_frost", "glass_crack_see_through", "glass_crack_opacity"]
+	var revived: Array = []
+	for b in banned:
+		if names.has(b):
+			revived.append(b)
+	if revived.is_empty():
+		_pass("no crack uniform modulates the glass — the effect is add-only, so a cracked voxel cannot frame itself")
+	else:
+		_fail("%s is back: the crack must not change a voxel's transparency (G-D19 retracted)"
+			% ", ".join(revived))
+
+	## And the source says so too: the crack must reach COLOR by `+`, never by a
+	## mix against the glass body.
+	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_pane.gdshader")
+	if src.contains("lit + glass_crack_add_color"):
+		_pass("glass_apply_crack returns `lit + <crack light>` — additive in the source, not just in name")
+	else:
+		_fail("glass_apply_crack no longer adds its light onto `lit` — check it has not become a mix again")
 
 	print("")
 

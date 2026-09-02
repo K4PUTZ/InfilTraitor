@@ -831,6 +831,10 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	## stops (`glass_stop_edge_keys()` made it terminal; `damage_state_for()`
 	## caps its tier at CRACKED), so there is nothing here for a shatter to take.
 	if GlassMaterials.stops_a_round(hit_material, hit_slice.glass_class):
+		## V-C — the round stops here, but the pane still CRACKS: Director,
+		## 2026-08-31, *"trinca mas o tiro para"*.
+		_craze_pane_around_hole(hit_slice, hv, hit_material, weapon_def,
+			cell_to_voxel, cell_to_material, cell_to_depth)
 		return
 	## The glass punch for THIS pellet, at this pellet's own luck — G-D17: through
 	## whatever glass it has already crossed. Attenuating the ROLL and leaving the
@@ -867,6 +871,9 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 			room._pane_primed[hit_slice.pane_id] = true
 			print_debug("[GLASS-PRIME] pane=%s PIERCED but held (punch %.2f) — primed; the next hit takes it"
 				% [hit_slice.pane_id, glass_punch])
+		## CRACK-01 — the pane held, so it crazes around the hole (G-D14).
+		_craze_pane_around_hole(hit_slice, hv, hit_material, weapon_def,
+			cell_to_voxel, cell_to_material, cell_to_depth)
 		return
 
 	var all_slices: Array = room._edge_registry.all_slices()
@@ -922,6 +929,59 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 			deepest = maxi(deepest, int(c))
 		print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
 			% [landings.size(), n, piles.size(), deepest, n - landings.size()])
+
+	## CRACK-01 — the standing edge of a PARTIAL shatter crazes (G-D12: a big pane
+	## keeps part of itself). A binary break destroyed the lot and this is a no-op.
+	_craze_pane_around_hole(hit_slice, hv, hit_material, weapon_def,
+		cell_to_voxel, cell_to_material, cell_to_depth)
+
+
+## CRACK-01 (GLASS_MASTER_PLAN §8, G-D14 / G-D19 / G-D21 / G-D24) — a pane that
+## took a hit and stayed standing crazes around the hole. The still-standing
+## glass within the crack radius (tight for pistol/pellet, wider for rifle-class
+## off `WeaponDef.blowout`, G-D14) goes CRACKED and takes a crack GROUP id in the
+## renderer's per-level plane; `glass_pane.gdshader` reanchors the fracture sheet
+## onto the hit (G-D21, world-space — a subtraction, no atom minted). A cell
+## already carrying a DIFFERENT group is a crossing: G-D24 DESTROYS it and it
+## falls through GlassFall like any other break.
+##
+## ⚠️ The crack RENDER is renderer-side (the plane + groups strip), so it does
+## NOT survive a perspective flip today — the CRACKED voxel STATE does (VL-PERSIST
+## records it), the web overlay would need re-stamping in _reapply_base_damage().
+## Rotation is suspended; this is a follow-up for when it returns.
+func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
+		weapon_def: WeaponDef, cell_to_voxel: Dictionary, cell_to_material: Dictionary,
+		cell_to_depth: Dictionary) -> void:
+	var renderer = room._voxel_renderer
+	if renderer == null or not is_instance_valid(renderer):
+		return
+	if room._edge_registry == null:
+		return
+	var pane_slices: Array = []
+	for s in room._edge_registry.all_slices():
+		if s.pane_id == hit_slice.pane_id:
+			pane_slices.append(s)
+	if pane_slices.is_empty():
+		return
+	var wide: bool = GlassCrack.wide_for_blowout(weapon_def.blowout)
+	var plan: Dictionary = GlassCrack.plan_pane_crack(
+		pane_slices, hit_slice.face, hv.grid_pos, hv.level, wide)
+	if plan.cells.is_empty():
+		return
+	var res: Dictionary = GlassCrack.apply(renderer, plan)
+	for v in res["voxels"]:
+		var pkey := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+		_index_voxel(cell_to_voxel, v)
+		cell_to_material[pkey] = hit_material
+		if not cell_to_depth.has(pkey):
+			cell_to_depth[pkey] = 0
+	print_debug("[GLASS-CRACK] pane=%s group=%d width=%s crazed=%d crossed=%d (G-D24)"
+		% [hit_slice.pane_id, res["gid"], "wide" if wide else "tight",
+		res["crazed"], res["crossed"]])
+	if not res["fallen"].is_empty():
+		var landings: Array = GlassFall.plan_landings(res["fallen"], room._slab_registry.all_slabs())
+		print_debug("[GLASS-FALL] %d G-D24 shard(s) landed on %d cell(s)"
+			% [landings.size(), GlassFall.pile_by_cell(landings).size()])
 
 
 ## Same conversion TestZoneController and WeaponBenchController do — room's

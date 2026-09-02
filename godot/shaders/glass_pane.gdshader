@@ -72,11 +72,14 @@ void vertex() {
 }
 
 // CRACK-01 — the web + the see-through drop for one fragment, given the glass
-// colour `lit` already computed. `frag_cell` is the recovered voxel cell, `tint`
-// the member tint (for the frosted body). Returns `lit` unchanged when this
-// fragment's cell carries no crack group or the reanchored sample lands off the
-// sheet (G-D23: beyond the sheet there is simply no crack, never a mirrored one).
-vec3 glass_apply_crack(vec3 lit, vec2 frag_cell, vec2 local_frost_world, vec3 tint) {
+// colour `lit` already computed. `frag_cell` is the recovered voxel cell (for
+// the plane lookup); `c_frag` is the CONTINUOUS grid coord of the fragment and
+// `sub_v` its fraction within its voxel vertically — both so the fracture sheet
+// samples per-FRAGMENT, not per-voxel (a per-voxel sample reads as a blocky
+// checker, not a web). Returns `lit` unchanged off a cracked cell or off the
+// sheet (G-D23: beyond the sheet there is simply no crack, never a mirror).
+vec3 glass_apply_crack(vec3 lit, vec2 frag_cell, vec2 c_frag, float sub_v,
+		vec2 local_frost_world, vec3 tint) {
 	vec2 pcell = frag_cell + glass_crack_plane_origin;
 	if (pcell.x < 0.0 || pcell.y < 0.0
 			|| pcell.x >= glass_crack_plane_size.x || pcell.y >= glass_crack_plane_size.y) {
@@ -96,11 +99,11 @@ vec3 glass_apply_crack(vec3 lit, vec2 frag_cell, vec2 local_frost_world, vec3 ti
 	float impact_rel_level = grp.g;
 	float axis = mod(grp.b, 2.0);             // 0 = run along X, 1 = along Y
 	float is_wide = step(2.0, grp.b);
-	float frag_run = mix(frag_cell.x, frag_cell.y, axis);
+	float frag_run_c = mix(c_frag.x, c_frag.y, axis);
 
 	vec2 fuv = vec2(
-		0.5 + (frag_run - impact_run) / glass_sheet_voxels.x,
-		0.5 + (impact_rel_level - glass_layer_rel_level) / glass_sheet_voxels.y);
+		0.5 + (frag_run_c - impact_run) / glass_sheet_voxels.x,
+		0.5 + (impact_rel_level - (glass_layer_rel_level - sub_v)) / glass_sheet_voxels.y);
 
 	// G-D19 — the whole cracked voxel loses see-through, whether or not a crack
 	// LINE passes through this exact fragment.
@@ -135,12 +138,20 @@ void fragment() {
 		vec3 tint = glass_class_tint(t.b);
 		vec3 lit = glass_apply(behind, local, t.r, tint);
 
-		// CRACK-01 — recover this fragment's cell and overlay any crack on it.
+		// CRACK-01 — recover this fragment's cell (for the plane lookup) AND its
+		// continuous grid coord (for a per-fragment fracture sample). `quad_tl` is
+		// the quad's top-left in layer space; `+ local` walks to this fragment.
 		vec2 quad_tl = (v_glass_world - glass_layer_origin) - local;
 		vec2 frag_cell = floor(vec2(
 			dot(glass_inv_basis_row0, quad_tl + glass_quad_to_map),
 			dot(glass_inv_basis_row1, quad_tl + glass_quad_to_map)) + 0.5);
-		lit = glass_apply_crack(lit, frag_cell, v_glass_world, tint);
+		vec2 c_frag = vec2(
+			dot(glass_inv_basis_row0, (quad_tl + local) + glass_quad_to_map),
+			dot(glass_inv_basis_row1, (quad_tl + local) + glass_quad_to_map));
+		// Vertical fraction within the voxel, from atom-local Y. ~[-0.5, 0.5] of
+		// one level, for sub-level detail on the sheet's row axis.
+		float sub_v = local.y / atom_size.y - 0.5;
+		lit = glass_apply_crack(lit, frag_cell, c_frag, sub_v, v_glass_world, tint);
 
 		COLOR = vec4(lit, cover);
 	}

@@ -48,7 +48,8 @@ static func wide_for_blowout(blowout: float) -> bool:
 ## Pure. `pane_slices` share one `pane_id`; `face` fixes the run axis (X for
 ## SW/NE, Y for SE/NW — the same rule GlassShatter uses). `hit_grid_pos` /
 ## `hit_level` are the struck voxel. Returns:
-##   cells       Array[{level:int, cell:Vector2i}] — standing glass to mark CRACKED
+##   cells       Array[{level:int, cell:Vector2i, voxel:Voxel}] — standing glass
+##               to mark CRACKED (or DESTROY, on a G-D24 crossing)
 ##   run_axis    0 (run along X) or 1 (along Y)
 ##   impact_run  the struck voxel's coord along the run axis
 ##   hit_level   passed through, for the caller's rel-level conversion
@@ -73,7 +74,7 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 				continue
 			if absi(v.level - hit_level) > radius.y:
 				continue
-			cells.append({"level": v.level, "cell": v.grid_pos})
+			cells.append({"level": v.level, "cell": v.grid_pos, "voxel": v})
 	return {
 		"cells": cells,
 		"run_axis": 0 if run_is_x else 1,
@@ -81,3 +82,44 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 		"hit_level": hit_level,
 		"wide": wide,
 	}
+
+
+## Apply a plan to the renderer's crack plane + groups strip and set the voxel
+## states. Shared by the shot path (`agent_shot_controller._craze_pane_around_hole`)
+## and the demo capture, so the "alloc group / write cells / G-D24 / set_damage"
+## sequence has ONE definition. `renderer` is the VoxelRenderer; it must expose
+## `alloc_glass_crack_group` / `set_glass_crack_group` / `write_glass_crack_cell`
+## / `glass_crack_group_at` / `flush_glass_crack` / `relative_level`.
+##
+## Returns { gid, crazed, crossed, voxels:Array[Voxel], fallen:Array }. The caller
+## folds `voxels` into its own bookkeeping (the shot's cell dicts / VL-PERSIST);
+## `fallen` is the G-D24 drop-outs for GlassFall.
+static func apply(renderer, plan: Dictionary) -> Dictionary:
+	var wide: bool = bool(plan.get("wide", false))
+	var gid: int = renderer.alloc_glass_crack_group()
+	renderer.set_glass_crack_group(gid, int(plan["impact_run"]),
+		renderer.relative_level(int(plan["hit_level"])), int(plan["run_axis"]), wide)
+	var crazed: int = 0
+	var crossed: int = 0
+	var touched: Array = []
+	var fallen: Array = []
+	for c in plan["cells"]:
+		var v: Voxel = c["voxel"]
+		if v.damage_state == Voxel.DamageState.DESTROYED:
+			continue
+		var existing: int = renderer.glass_crack_group_at(int(c["level"]), c["cell"])
+		if existing != 0 and existing != gid:
+			## G-D24 — two fractures cross here; the piece drops out.
+			v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+			renderer.write_glass_crack_cell(int(c["level"]), c["cell"], 0)
+			fallen.append({"grid_pos": v.grid_pos, "level": v.level})
+			crossed += 1
+		else:
+			renderer.write_glass_crack_cell(int(c["level"]), c["cell"], gid)
+			if v.damage_state != Voxel.DamageState.CRACKED:
+				v.set_damage(Voxel.DamageState.CRACKED, false, Voxel.CarvedSide.NONE, 0, 0)
+			crazed += 1
+		touched.append(v)
+	renderer.flush_glass_crack()
+	return {"gid": gid, "crazed": crazed, "crossed": crossed,
+		"voxels": touched, "fallen": fallen}

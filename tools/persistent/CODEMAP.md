@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**229 scripts · 76252 lines total** (under `godot/scripts/`)
+**229 scripts · 76541 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -895,7 +895,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 5179 lines
+`class_name VoxelRenderer` · extends `Node2D` · 5176 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2028,7 +2028,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_crack.gd`
 
-`class_name GlassCrack` · 83 lines
+`class_name GlassCrack` · 125 lines
 
 `godot/scripts/systems/destruction/glass_crack.gd`
 
@@ -3534,7 +3534,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 376 lines
+extends `SceneTree` · 464 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -3563,6 +3563,7 @@ extends `SceneTree` · 376 lines
 - `func test_plan_pane_crack_run_axis_follows_the_face() -> void:`
 - `func test_wide_for_blowout_splits_the_arsenal() -> void:`
 - `func test_the_glass_shader_loads() -> void:`
+- `func test_apply_stamps_the_plane_and_gd24_crosses() -> void:`
 
 ---
 
@@ -4742,7 +4743,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 987 lines
+`class_name AgentShotController` · 1047 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -5109,7 +5110,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8769 lines
+extends `Node2D` · 8871 lines
 
 `godot/scripts/world/room.gd`
 

@@ -5541,6 +5541,104 @@ func _save_glass_panel(out_dir: String, panel: int) -> void:
 	img.save_png("%s/panel_%03d.png" % [out_dir, panel])
 
 
+## CRACK-01 — the on-map proof, without the agent_shot pipeline's timing.
+## `INFILTRAITOR_CAPTURE_ACTION=glass_crack_demo` on the GLASS map: finds the
+## biggest panel pane, stamps a crack at its centre through the REAL
+## `GlassCrack.plan_pane_crack` + `GlassCrack.apply` path, re-renders and saves a
+## before/after pair to Screenshots/history/ (hand-named, rotation-proof).
+##   INFILTRAITOR_CRACK_DEMO_WIDE=1     — the wide (rifle) sheet, else tight
+##   INFILTRAITOR_CRACK_DEMO_SECOND=1   — fire a SECOND crack offset from the
+##                                       first, so their overlap exercises G-D24
+##   INFILTRAITOR_CRACK_DEMO_TAG=<name> — filename tag (default "tight"/"wide")
+func _capture_glass_crack_demo() -> void:
+	if _voxel_renderer == null or _edge_registry == null:
+		push_error("[CRACK-DEMO] no renderer / edge registry")
+		return
+	var wide := OS.get_environment("INFILTRAITOR_CRACK_DEMO_WIDE") == "1"
+	var tag := OS.get_environment("INFILTRAITOR_CRACK_DEMO_TAG")
+	if tag == "":
+		tag = "wide" if wide else "tight"
+
+	## The biggest panel pane (PANE_BLOCK_* excluded — no single run axis).
+	var by_pane: Dictionary = {}
+	for s in _edge_registry.all_slices():
+		if s.pane_id == "" or s.pane_id.begins_with("PANE_BLOCK_"):
+			continue
+		if not GlassMaterials.is_glass(s.material):
+			continue
+		by_pane.get_or_add(s.pane_id, [])
+		by_pane[s.pane_id].append(s)
+	var best_id := ""
+	var best_n := 0
+	for pid in by_pane:
+		var n := 0
+		for s in by_pane[pid]:
+			n += s.voxels.size()
+		if n > best_n:
+			best_n = n
+			best_id = pid
+	if best_id == "":
+		push_error("[CRACK-DEMO] no panel pane on this map")
+		return
+	var pane_slices: Array = by_pane[best_id]
+	print("[CRACK-DEMO] pane=%s slices=%d voxels=%d" % [best_id, pane_slices.size(), best_n])
+
+	## The centre-ish voxel of the pane, by the median of its standing glass.
+	var xs: Array = []
+	var ls: Array = []
+	var face: int = pane_slices[0].face
+	for s in pane_slices:
+		for v in s.voxels:
+			xs.append(v.grid_pos.x if (face == Face.SW or face == Face.NE) else v.grid_pos.y)
+			ls.append(v.level)
+	xs.sort()
+	ls.sort()
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	var hit_run: int = int(xs[xs.size() / 2])
+	var hit_level: int = int(ls[ls.size() / 2])
+	## Recover a real grid_pos on the run line at that level.
+	var hit_gp := Vector2i.ZERO
+	for s in pane_slices:
+		for v in s.voxels:
+			var r: int = v.grid_pos.x if run_is_x else v.grid_pos.y
+			if r == hit_run and v.level == hit_level:
+				hit_gp = v.grid_pos
+	var focus_gu := Vector2i(hit_gp.x >> 3, hit_gp.y >> 3)
+	var zoom_env := OS.get_environment("INFILTRAITOR_CRACK_DEMO_ZOOM")
+	var zoom: float = zoom_env.to_float() if zoom_env.is_valid_float() else 0.85
+	if _camera_controller != null:
+		_camera_controller.set_zoom_for_capture(zoom)
+		_camera_controller.focus_on(agent._cell_to_world(focus_gu))
+	if _fow_controller != null:
+		_fow_controller.reveal_around(focus_gu, 30)
+	for _c in range(30):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+
+	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(dir)
+	get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_before.png" % [dir, tag])
+
+	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
+	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
+	print("[CRACK-DEMO] hit run=%d level=%d gp=%s wide=%s -> crazed=%d crossed=%d"
+		% [hit_run, hit_level, hit_gp, wide, res["crazed"], res["crossed"]])
+
+	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_SECOND") == "1":
+		var hit2 := Vector2i(hit_gp.x + (10 if run_is_x else 0), hit_gp.y + (0 if run_is_x else 10))
+		var plan2: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit2, hit_level, wide)
+		var res2: Dictionary = GlassCrack.apply(_voxel_renderer, plan2)
+		print("[CRACK-DEMO] second crack at %s -> crazed=%d crossed=%d (G-D24)"
+			% [hit2, res2["crazed"], res2["crossed"]])
+
+	await _voxel_renderer.process_dirty_async(_edge_registry)
+	for _c in range(10):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_after.png" % [dir, tag])
+	print("[CRACK-DEMO] wrote glass_crack_demo_%s_{before,after}.png" % tag)
+
+
 ## Small helper: parse "a,b,c" of floats from an env var, else the fallback.
 func _env_float_list(env_name: String, fallback: Array) -> Array:
 	var raw := OS.get_environment(env_name)
@@ -7909,6 +8007,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "glass_calibration":
 		await _capture_glass_calibration()
+		get_tree().quit(0)
+		return
+	elif capture_action == "glass_crack_demo":
+		await _capture_glass_crack_demo()
 		get_tree().quit(0)
 		return
 	elif capture_action == "escape_open_menu":

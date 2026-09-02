@@ -53,6 +53,7 @@ func _init() -> void:
 	test_plan_pane_crack_run_axis_follows_the_face()
 	test_wide_for_blowout_splits_the_arsenal()
 	test_the_glass_shader_loads()
+	test_apply_stamps_the_plane_and_gd24_crosses()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -372,5 +373,92 @@ func test_the_glass_shader_loads() -> void:
 		_pass("the shader declares all %d CRACK-01 uniforms the renderer feeds" % required.size())
 	else:
 		_fail("the shader is missing uniform(s): %s" % ", ".join(missing))
+
+	print("")
+
+
+## A stand-in for VoxelRenderer's crack-plane API — records what GlassCrack.apply
+## writes, so G-D24 can be tested without a real renderer.
+class MockRenderer:
+	var plane: Dictionary = {}       ## Vector3i(cell.x, cell.y, level) -> gid
+	var groups: Array = []           ## [{run, rel_level, axis, wide}]
+	var _next: int = 0
+	func alloc_glass_crack_group() -> int:
+		_next = (_next % 16) + 1
+		return _next
+	func set_glass_crack_group(gid: int, run: int, rel: int, axis: int, wide: bool) -> void:
+		while groups.size() < gid:
+			groups.append({})
+		groups[gid - 1] = {"run": run, "rel_level": rel, "axis": axis, "wide": wide}
+	func write_glass_crack_cell(level: int, cell: Vector2i, gid: int) -> void:
+		var k := Vector3i(cell.x, cell.y, level)
+		if gid == 0:
+			plane.erase(k)
+		else:
+			plane[k] = gid
+	func glass_crack_group_at(level: int, cell: Vector2i) -> int:
+		return int(plane.get(Vector3i(cell.x, cell.y, level), 0))
+	func flush_glass_crack() -> int:
+		return 0
+	func relative_level(level: int) -> int:
+		return level - GeometryCoordsClass.storey_level_base(0)
+
+
+func test_apply_stamps_the_plane_and_gd24_crosses() -> void:
+	print("[9] GlassCrack.apply stamps the plane; a crossed cell is DESTROYED (G-D24)\n")
+
+	var pane := _pane(4, 9, 3)
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var mock := MockRenderer.new()
+
+	## First crack, centred.
+	var hit1 := Vector2i(6 * 8 + 4, 31)
+	var lvl1: int = base + 10
+	var plan1: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit1, lvl1, false)
+	var r1: Dictionary = GlassCrackClass.apply(mock, plan1)
+	if r1.crazed == plan1.cells.size() and r1.crossed == 0 and mock.plane.size() == r1.crazed:
+		_pass("first crack: %d cells stamped, 0 crossings, plane holds them all" % r1.crazed)
+	else:
+		_fail("first crack: crazed %d / crossed %d / plane %d (expected %d / 0 / same)"
+			% [r1.crazed, r1.crossed, mock.plane.size(), plan1.cells.size()])
+
+	var cracked_1 := 0
+	for e in plan1.cells:
+		if e.voxel.damage_state == Voxel.DamageState.CRACKED:
+			cracked_1 += 1
+	if cracked_1 == plan1.cells.size():
+		_pass("every stamped voxel is now CRACKED (%d)" % cracked_1)
+	else:
+		_fail("%d of %d stamped voxels reached CRACKED" % [cracked_1, plan1.cells.size()])
+
+	## Second crack, overlapping — the shared cells cross.
+	var hit2 := Vector2i(6 * 8 + 4 + 6, 31)
+	var plan2: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit2, lvl1, false)
+	var r2: Dictionary = GlassCrackClass.apply(mock, plan2)
+	if r2.crossed > 0:
+		_pass("second crack: %d cells crossed the first web -> DESTROYED (G-D24)" % r2.crossed)
+	else:
+		_fail("second overlapping crack produced 0 crossings — G-D24 never fired")
+
+	var destroyed := 0
+	for f in r2.fallen:
+		destroyed += 1
+	for e in plan2.cells:
+		if e.voxel.damage_state == Voxel.DamageState.DESTROYED:
+			pass
+	if destroyed == r2.crossed and not r2.fallen.is_empty():
+		_pass("the %d crossed voxels are DESTROYED and handed to GlassFall" % destroyed)
+	else:
+		_fail("fallen list has %d, crossed count %d" % [destroyed, r2.crossed])
+
+	## A crossed cell is cleared from the plane (0), not left pointing at a group.
+	var still_pointing := 0
+	for f in r2.fallen:
+		if mock.glass_crack_group_at(int(f.level), f.grid_pos) != 0:
+			still_pointing += 1
+	if still_pointing == 0:
+		_pass("every crossed cell is cleared from the crack plane")
+	else:
+		_fail("%d crossed cells still carry a group id" % still_pointing)
 
 	print("")

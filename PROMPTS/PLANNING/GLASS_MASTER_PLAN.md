@@ -12,16 +12,24 @@ final quality"*. The mechanism is **CRACK-01**, three stages:
   wiring lists, in the composed name, or on disk). `crack_factor` untouched, so
   `voxel_decal_selftest` [12] / [10] and the blast-crack tests are all still
   green with zero edits.
-- **B** — the render: a per-level crack PLANE (the soot-plane pattern), a tiny
-  crack-GROUPS data texture (impact world-pos + width per event — solves §8.2's
-  multiplicity without a uniform array), and the `glass_pane.gdshader` sampling
-  `fracture_glass_{tight,wide}.png` at `(v_glass_world − impact)` with a plain
-  `in [0,1]` clamp (that IS G-D23 — the 64/32 mirror-fold question in §8.2 is
-  moot). G-D19's 50%-see-through is a flat per-voxel `mix` in the same shader.
-- **C** — the event: `GlassCrack.plan_pane_crack()` on the lost shatter roll
-  (`agent_shot_controller` line ~853), marking the surviving ring around the
-  hole CRACKED with a group id; a cell already in another group → DESTROYED
-  (**G-D24**, falls via `GlassFall`).
+- **B ✅ 2026-09-02** — the render. `VoxelRenderer` gained a per-level R8 crack
+  PLANE (the soot-plane pattern verbatim) and a `GLASS_CRACK_GROUP_CAP`-wide
+  RGBAF crack-GROUPS strip (one texel per event: impact run/rel-level/axis/wide
+  — solves §8.2's multiplicity, no `uniform vec3[]`). `glass_pane.gdshader`
+  recovers the fragment's cell, reads the plane, and for a non-zero group
+  reanchors the sheet: `fuv = 0.5 + (frag − impact) / sheet_voxels`, `fuv`
+  outside `[0,1]` is G-D23 (the 64/32 mirror-fold is moot). G-D19's 50% is a
+  flat `mix` toward a frosted body per grouped cell. `glass_crack.gd` is the
+  PURE planner. 27-check selftest.
+- **C ✅ 2026-09-02** — the event. `agent_shot_controller._craze_pane_around_hole`
+  fires wherever a glass hit does not clear the pane: an INDESTRUCTIBLE screen
+  ("trinca mas o tiro para"), a lost shatter roll, and the standing edge of a
+  partial shatter. `GlassCrack.apply()` stamps the plane + group and sets the
+  ring CRACKED; a cell already in another group → DESTROYED (**G-D24**, falls
+  via `GlassFall`). `INFILTRAITOR_CAPTURE_ACTION=glass_crack_demo` is the on-map
+  proof. ⚠️ The crack RENDER is renderer-side, so it does not survive a
+  perspective flip yet (the CRACKED voxel STATE does — VL-PERSIST); a follow-up
+  for when rotation returns.
 
 Earlier, v1.20 — **G-ART IS DELIVERED (2026-09-02). All five files are on
 disk, gated green, and PROCEDURAL** — `tools/persistent/gen_fracture_sheet.py`
@@ -1077,13 +1085,33 @@ fracture, is set DESTROYED. What that buys, beyond being right:
 - The freed voxels fall and pile through G-D16a like any other break, so the
   floor already knows what to do with them.
 
-⚠️ **Everything above is blocked on the same thing: `glass.crack_factor` is 0.0.**
-No voxel can reach a CRACKED glass state today, so none of G-D19/G-D21/G-D23/
-G-D24 can be exercised on a real map yet. The day that number goes non-zero,
-`voxel_decal_selftest` **[12]** requires the family wired AND all three variants
-on disk, in both directions — the data, the wiring and the art land together or
-the suite goes red. That is deliberate: it is the same coupling that let
-`bake_cache_test` rot for three weeks when only one side moved.
+✅ **BUILT AS CRACK-01, 2026-09-02** — and the "everything is blocked on
+`crack_factor`" reading above turned out to be wrong. `glass.crack_factor` STAYS
+0.0 (§8.1's resolution): a glass voxel reaches CRACKED through the shot ladder
+(`damage_state_for()` already returns it sub-breach), and CRACK-01's event sets
+it directly on the ring around a hole. What was actually built:
+
+- **G-D19** — the 50% see-through is a flat `mix(lit, tint·frosted, 0.5)` per
+  cracked voxel in `glass_pane.gdshader`, gated by the crack PLANE. Not a channel
+  on the atom. The Director's "G-D21 simplifies G-D19" note, taken.
+- **G-D21** — world-space, per §8.2's amendment. `fuv = 0.5 + (frag − impact) /
+  sheet_voxels`, sampled per FRAGMENT (the continuous cell coord, not the floored
+  one — a per-voxel sample reads as a blocky checker). Impact rides a
+  `GLASS_CRACK_GROUP_CAP`-wide RGBAF strip, indexed by an R8 per-level plane.
+- **G-D23** — `fuv` outside `[0,1]` → no crack. The 64/32 mirror-fold never
+  happens because the fold was a property of `_compute_facade_key`, which glass
+  does not use.
+- **G-D24** — `GlassCrack.apply()` checks the plane before stamping: a cell
+  already in another group is `set_damage(DESTROYED)` and handed to `GlassFall`.
+- **G-D14** — `tight` / `wide` off `WeaponDef.blowout` (`GlassCrack.wide_for_blowout`,
+  ≥ 0.5 → wide). `CRACK_RADIUS_TIGHT` (6,5) / `_WIDE` (12,9), `static var`.
+
+`glass_crack_selftest` (27 checks). On the real GLASS map
+(`INFILTRAITOR_CAPTURE_ACTION=glass_crack_demo`): tight crazes 143 voxels, wide
+475, and a second overlapping crack DESTROYS the crossing. Captures
+`glass_crack_demo_{tight,wide,gd24}_{before,after}.png`. ⚠️ The look — sheet ink,
+radius, `glass_crack_see_through`, and the voxel-step aliasing — is a Director
+calibration pass (the fracture sheets regenerate from `gen_fracture_sheet.py`).
 
 ### The second shot — and it is the same problem the mosaic had
 

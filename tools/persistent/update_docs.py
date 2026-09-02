@@ -11,6 +11,23 @@ Marker blocks protect hand-written prose:
 All content outside markers is copied byte-identical. Missing/malformed markers fail
 loudly with non-zero exit (never guess, never append).
 
+⚠️ UNDETERMINED IS NOT EMPTY, and conflating the two silently destroyed a tracked
+file. Measured 2026-09-02: a routine run on this repo (which lives on a slow
+external drive) hit `get_version_history()`'s 5-second git timeout, the
+`except Exception: return []` turned that into "no rows", and the caller wrote
+the literal "(no version history)" OVER five real entries in
+docs/production/current_state.md. Re-running a minute later restored them, so the
+input was never empty — only unreadable, once. It was caught by reading the diff;
+nothing in the tooling would have said a word.
+
+So every source below answers with `None` for "I could not determine this" and
+keeps [] / 0 / "" for "I determined this and it is empty", and a block whose
+source is None is LEFT EXACTLY AS IT IS ON DISK. A skipped block also makes the
+run exit non-zero, because this is the one signal that survives: the pre-commit
+hook runs this script as `> /dev/null 2>&1`, so stderr never reaches a human
+there — the exit code is what makes it decline to stage the file, and what makes
+push.sh refuse to publish a doc it could not verify.
+
 Usage:
     python3 tools/persistent/update_docs.py
     echo $?  # 0 on success, 1 on failure (e.g., stale CODEMAP, missing marker)
@@ -26,6 +43,44 @@ from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+## A git read on this repo is a read from a slow external drive, and the 5-second
+## limit these calls carried was measured failing on a COLD cache and succeeding
+## a minute later. The retry is what makes "undetermined" rare enough that
+## treating it as an error is reasonable rather than a nuisance.
+GIT_TIMEOUT_S = 20
+GIT_ATTEMPTS = 2
+
+
+def _git(args: list[str]) -> str | None:
+    """Run a git command and return its stdout, or None if it could not be run.
+
+    None means UNDETERMINED and never "the answer is empty" — a command that
+    succeeds and prints nothing returns "". Callers must keep that distinction:
+    it is the whole point of this module.
+    """
+    for attempt in range(GIT_ATTEMPTS):
+        try:
+            result = subprocess.run(
+                ["git"] + args,
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=GIT_TIMEOUT_S,
+            )
+        except Exception as e:
+            if attempt == GIT_ATTEMPTS - 1:
+                print(f"[GIT] ❌ `git {' '.join(args)}` failed: {e}", file=sys.stderr)
+                return None
+            continue
+        if result.returncode == 0:
+            return result.stdout
+        if attempt == GIT_ATTEMPTS - 1:
+            print(f"[GIT] ❌ `git {' '.join(args)}` exited {result.returncode}: "
+                  f"{result.stderr.strip()}", file=sys.stderr)
+            return None
+    return None
+
 
 @dataclass
 class UpdateResult:
@@ -56,49 +111,26 @@ def run_gen_codemap() -> bool:
         return False
 
 
-def get_git_branch() -> str:
-    """Return current git branch name."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        return result.stdout.strip() if result.returncode == 0 else "unknown"
-    except Exception:
-        return "unknown"
+def get_git_branch() -> str | None:
+    """Return current git branch name, or None if it could not be read.
+
+    It used to answer "unknown", which is a VALUE — it would be written into the
+    header over a correct branch name on any transient failure.
+    """
+    out = _git(["rev-parse", "--abbrev-ref", "HEAD"])
+    return out.strip() if out is not None else None
 
 
-def get_git_head_short() -> str:
-    """Return short commit hash."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        return result.stdout.strip() if result.returncode == 0 else "unknown"
-    except Exception:
-        return "unknown"
+def get_git_head_short() -> str | None:
+    """Return short commit hash, or None if it could not be read."""
+    out = _git(["rev-parse", "--short", "HEAD"])
+    return out.strip() if out is not None else None
 
 
-def get_git_head_subject() -> str:
-    """Return current commit subject."""
-    try:
-        result = subprocess.run(
-            ["git", "log", "-1", "--format=%s"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        return result.stdout.strip() if result.returncode == 0 else "unknown"
-    except Exception:
-        return "unknown"
+def get_git_head_subject() -> str | None:
+    """Return current commit subject, or None if it could not be read."""
+    out = _git(["log", "-1", "--format=%s"])
+    return out.strip() if out is not None else None
 
 
 def get_version_string() -> str:
@@ -111,19 +143,43 @@ def get_version_string() -> str:
         sys.exit(1)
 
 
-def get_pending_prompts() -> list[str]:
-    """List PROMPTS/*.md (root only, exclude DONE/PLANNING). Return sorted list."""
+def get_pending_prompts() -> list[str] | None:
+    """List PROMPTS/*.md (root only, exclude DONE/PLANNING), or None if the tree
+    could not be read.
+
+    `PROMPTS/` always exists in this repo, so its ABSENCE is not the true answer
+    "there are no prompts" — it is the working tree being unreadable, which on an
+    external drive is a real transient. An empty root, on the other hand, is a
+    real and common state: measured, 60 commits in this file's history carry a
+    genuine "(none)" from an era when every prompt was archived.
+    """
     prompts_dir = REPO_ROOT / "PROMPTS"
-    if not prompts_dir.exists():
-        return []
+    if not prompts_dir.is_dir():
+        print("[PROMPTS] ❌ PROMPTS/ is not readable — pending_prompts undetermined",
+              file=sys.stderr)
+        return None
     prompts = []
     for f in prompts_dir.glob("*.md"):
         prompts.append(f.name)
     return sorted(prompts) if prompts else []
 
 
-def count_inventory() -> dict[str, int]:
-    """Count modules, tests, maps, shipped facades, archived prompts."""
+def count_inventory() -> dict[str, int] | None:
+    """Count modules, tests, maps, shipped facades, archived prompts — or None if
+    the tree could not be read.
+
+    ⚠️ The guard is `godot/scripts/` ONLY, and the asymmetry is deliberate.
+    That directory always exists, so its absence means an unreadable tree and a
+    zeroed inventory would be a lie. `godot/textures/defaults/` genuinely does
+    NOT exist any more (assets moved to ASSETS/materials/<id>/ on 2026-08-21), so
+    `shipped_facades: 0` is the measured truth and must NOT be turned into an
+    error — the one that is really missing is the one that must not fail.
+    """
+    scripts_dir_probe = REPO_ROOT / "godot" / "scripts"
+    if not scripts_dir_probe.is_dir():
+        print("[INVENTORY] ❌ godot/scripts/ is not readable — inventory undetermined",
+              file=sys.stderr)
+        return None
     result = {
         "gdscript_modules": 0,
         "test_scripts": 0,
@@ -163,22 +219,21 @@ def count_inventory() -> dict[str, int]:
     return result
 
 
-def get_version_history(lines_count: int = 5) -> list[str]:
-    """Return last N lines of git log touching VERSION, as plain strings."""
-    try:
-        result = subprocess.run(
-            ["git", "log", "--oneline", "-n", str(lines_count), "--", "VERSION"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        return result.stdout.strip().split("\n") if result.returncode == 0 else []
-    except Exception:
-        return []
+def get_version_history(lines_count: int = 5) -> list[str] | None:
+    """Last N git log entries touching VERSION, or None if git could not be run.
+
+    ⚠️ THE ORIGINAL DEFECT LIVED HERE. A timeout returned [], the caller could
+    not tell that from "VERSION has no history", and five real rows were
+    overwritten with "(no version history)".
+    """
+    out = _git(["log", "--oneline", "-n", str(lines_count), "--", "VERSION"])
+    if out is None:
+        return None
+    stripped = out.strip()
+    return stripped.split("\n") if stripped else []
 
 
-def build_auto_header() -> str:
+def build_auto_header() -> str | None:
     """Build AUTO:header content for docs/production/current_state.md.
 
     Deliberately carries NO commit hash/subject (removed 2026-07-10, Director
@@ -187,24 +242,30 @@ def build_auto_header() -> str:
     reads as a lie ("Last commit: Alpha End Beep" weeks later). Version,
     date and branch are accurate at commit time; for history, use git.
     """
+    branch = get_git_branch()
+    if branch is None:
+        return None
     version = get_version_string()
     date_str = datetime.now().strftime("%Y-%m-%d")
-    branch = get_git_branch()
 
     return f"**Version:** {version} · **Updated:** {date_str} · **Branch:** {branch}"
 
 
-def build_pending_prompts_block() -> str:
-    """Build AUTO:pending_prompts content."""
+def build_pending_prompts_block() -> str | None:
+    """Build AUTO:pending_prompts content, or None if it is undetermined."""
     prompts = get_pending_prompts()
+    if prompts is None:
+        return None
     if not prompts:
         return "(none)"
     return "\n".join(f"- {p}" for p in prompts)
 
 
-def build_inventory_block() -> str:
-    """Build AUTO:inventory content."""
+def build_inventory_block() -> str | None:
+    """Build AUTO:inventory content, or None if it is undetermined."""
     counts = count_inventory()
+    if counts is None:
+        return None
     lines = [
         "**Code & Test Inventory**",
         "",
@@ -217,9 +278,15 @@ def build_inventory_block() -> str:
     return "\n".join(lines)
 
 
-def build_version_history_block() -> str:
-    """Build AUTO:version_history content (last 5 git log entries touching VERSION)."""
+def build_version_history_block() -> str | None:
+    """AUTO:version_history content, or None if git could not be read.
+
+    "(no version history)" is now reachable ONLY from a git command that ran and
+    printed nothing — never from a failure.
+    """
     lines = get_version_history(5)
+    if lines is None:
+        return None
     if not lines or lines == [""]:
         return "(no version history)"
     return "\n".join(f"- {line}" for line in lines if line)
@@ -277,41 +344,46 @@ def update_current_state_md() -> UpdateResult:
 
     content = file_path.read_text(encoding="utf-8")
     any_updated = False
+    skipped: list[str] = []
 
     try:
-        # AUTO:header
-        header = build_auto_header()
-        content, updated = replace_marker_block(content, "header", header)
-        any_updated = any_updated or updated
-
-        # AUTO:pending_prompts
-        prompts = build_pending_prompts_block()
-        content, updated = replace_marker_block(content, "pending_prompts", prompts)
-        any_updated = any_updated or updated
-
-        # AUTO:inventory
-        inventory = build_inventory_block()
-        content, updated = replace_marker_block(content, "inventory", inventory)
-        any_updated = any_updated or updated
-
-        # AUTO:version_history
-        history = build_version_history_block()
-        content, updated = replace_marker_block(content, "version_history", history)
-        any_updated = any_updated or updated
+        ## A builder answering None means UNDETERMINED, and the block is left
+        ## byte-identical — the same protection the prose outside the markers
+        ## already had. Content on disk was written when the source WAS readable,
+        ## so it is the best answer available; generated-from-nothing is not.
+        for section_id, builder in (
+            ("header", build_auto_header),
+            ("pending_prompts", build_pending_prompts_block),
+            ("inventory", build_inventory_block),
+            ("version_history", build_version_history_block),
+        ):
+            block = builder()
+            if block is None:
+                skipped.append(section_id)
+                continue
+            content, updated = replace_marker_block(content, section_id, block)
+            any_updated = any_updated or updated
 
         if any_updated:
             file_path.write_text(content, encoding="utf-8")
+
+        if skipped:
+            return UpdateResult(
+                file="docs/production/current_state.md",
+                updated=any_updated,
+                reason="UNDETERMINED, left on disk: %s" % ", ".join(skipped),
+            )
+        if any_updated:
             return UpdateResult(
                 file="docs/production/current_state.md",
                 updated=True,
                 reason="4 blocks refreshed"
             )
-        else:
-            return UpdateResult(
-                file="docs/production/current_state.md",
-                updated=False,
-                reason="all blocks unchanged"
-            )
+        return UpdateResult(
+            file="docs/production/current_state.md",
+            updated=False,
+            reason="all blocks unchanged"
+        )
 
     except ValueError as e:
         return UpdateResult(
@@ -363,6 +435,24 @@ def main() -> int:
     if result.reason.startswith("marker error") or result.reason == "file not found":
         print(f"[current_state.md] ❌ {result.reason}", file=sys.stderr)
         return 1
+
+    ## ⚠️ THE EXIT CODE IS THE ONLY SIGNAL THAT SURVIVES HERE. The pre-commit
+    ## hook runs this script as `> /dev/null 2>&1`, so a message on stderr
+    ## reaches nobody in the path where the damage happens. Non-zero is what
+    ## makes that hook print its warning and DECLINE TO STAGE the file, and what
+    ## makes push.sh refuse to publish a doc it could not verify. The blocks
+    ## themselves are already safe by then — this is the report, not the fix.
+    if result.reason.startswith("UNDETERMINED"):
+        print(f"[current_state.md] ❌ {result.reason}", file=sys.stderr)
+        print("[current_state.md] the block(s) on disk were NOT overwritten. "
+              "Re-run once the source is readable.", file=sys.stderr)
+        print()
+        print("=" * 70)
+        print("❌ Documentation refresh INCOMPLETE — see above")
+        print("=" * 70)
+        print()
+        return 1
+
     status = "✅ UPDATED" if result.updated else "⏭️  UNCHANGED"
     print(f"[current_state.md] {status} ({result.reason})")
     print()

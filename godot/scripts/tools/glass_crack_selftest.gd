@@ -23,6 +23,12 @@
 ##   [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists,
 ##       or on disk.
 ##   [3] the fracture SHEETS (the real CRACKED art) going missing or unimported.
+##   [8] the crack coming back INSIDE glass_pane.gdshader — CRACK-02 / G-D27 took
+##       it out of the voxel because a crack drawn there inherits `dim`, `cover`
+##       and the quad seams, and no tuning survives that.
+##   [10] the sheet shearing off the voxels — the CRACK-01-B/C bug, now pinned
+##       against the SPRITE'S OWN TRANSFORM instead of a shader inverse.
+##   [11] a crack bleeding past the frame of the pane it is on.
 
 extends SceneTree
 
@@ -31,6 +37,7 @@ const MaterialResistanceTableClass = preload("res://godot/scripts/systems/destru
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 const GlassMaterialsClass = preload("res://godot/scripts/systems/glass_materials.gd")
 const GlassCrackClass = preload("res://godot/scripts/systems/destruction/glass_crack.gd")
+const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
 const CRACK_DECAL_TEMPLATE := "res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"
@@ -42,7 +49,7 @@ var failed: int = 0
 
 func _init() -> void:
 	print("\n" + "=".repeat(70))
-	print("GLASS §8.1 / CRACK-01 — CRACKED TIER SELFTEST")
+	print("GLASS §8.1 / CRACK-01+02 — CRACKED TIER AND THE CRACK SPRITE")
 	print("=".repeat(70) + "\n")
 
 	test_glass_reaches_cracked_through_the_shot_ladder()
@@ -52,18 +59,19 @@ func _init() -> void:
 	test_plan_pane_crack_skips_destroyed_and_banded_frame()
 	test_plan_pane_crack_run_axis_follows_the_face()
 	test_wide_for_blowout_splits_the_arsenal()
-	test_the_glass_shader_loads()
-	test_apply_stamps_the_plane_and_gd24_crosses()
-	test_wall_face_basis_round_trips_and_the_ground_basis_does_not()
+	test_the_glass_shaders_split_the_crack_out()
+	test_apply_spawns_a_sprite_and_gd24_crosses()
+	test_the_sprite_transform_lands_on_the_voxels()
+	test_the_pane_bounds_clip_the_sprite()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
 	print("=".repeat(70) + "\n")
 	if failed == 0:
-		print("✓ GLASS CRACK-01 CRACKED-TIER SELFTEST PASS\n")
+		print("✓ GLASS CRACK-02 SELFTEST PASS\n")
 		quit(0)
 	else:
-		print("✗ GLASS CRACK-01 CRACKED-TIER SELFTEST FAILED\n")
+		print("✗ GLASS CRACK-02 SELFTEST FAILED\n")
 		quit(1)
 
 
@@ -164,12 +172,12 @@ func test_glass_has_no_crack_decal_family() -> void:
 ## and gated by check_decal.py already; pinned here so the suite that grows to
 ## test the crack RENDER fails loudly if its texture source vanishes.
 func test_the_fracture_sheets_are_the_cracked_art() -> void:
-	print("[3] the two fracture sheets exist, are imported, and are named as CRACK-01 expects\n")
+	print("[3] the two fracture sheets exist, import, and match the span they are drawn at\n")
 
 	if Array(GlassMaterialsClass.FRACTURE_WIDTHS) == ["tight", "wide"]:
 		_pass("GlassMaterials.FRACTURE_WIDTHS is [tight, wide] (G-D14's two hole sizes)")
 	else:
-		_fail("GlassMaterials.FRACTURE_WIDTHS is %s — CRACK-01 keys the render on exactly tight/wide"
+		_fail("GlassMaterials.FRACTURE_WIDTHS is %s — the crack keys the sheet on exactly tight/wide"
 			% str(GlassMaterialsClass.FRACTURE_WIDTHS))
 
 	var tid: String = GlassMaterialsClass.fracture_texture_id("glass", "tight")
@@ -182,18 +190,32 @@ func test_the_fracture_sheets_are_the_cracked_art() -> void:
 		var path: String = FRACTURE_TEMPLATE % width
 		var import_path: String = path + ".import"
 		if not FileAccess.file_exists(path):
-			_fail("%s is missing — CRACK-01's render has no crack texture for '%s'" % [path, width])
+			_fail("%s is missing — the crack sprite has no texture for '%s'" % [path, width])
 		elif not FileAccess.file_exists(import_path):
 			_fail("%s has no .import sidecar — Godot has not imported it, so it hard-errors at boot (B6)" % path)
 		else:
 			var tex := load(path) as Texture2D
 			if tex == null:
 				_fail("%s did not load as a Texture2D — the import is broken" % path)
-			elif tex.get_width() != 1024 or tex.get_height() != 512:
-				_fail("%s is %dx%d, expected 1024x512 (64x32-voxel page at TEX_AUTHORING_N=16)"
-					% [path, tex.get_width(), tex.get_height()])
 			else:
-				_pass("%s is present, imported, and 1024x512" % path)
+				## ⚠️ NO PIXEL-SIZE CONTRACT SINCE CRACK-02 (§13.3). The sheet is a
+				## SPRITE's texture scaled to GlassCrack.SHEET_SPAN_*, so its
+				## dimensions are resolution, not geometry; `check_decal.py` owns
+				## the art gate (aspect, ink, origin) and pinning 1024x512 here
+				## would reject good free-size art from the other side.
+				## What still matters at RUNTIME is that it is not degenerate.
+				var aspect: float = float(tex.get_width()) / maxf(float(tex.get_height()), 1.0)
+				var span: Vector2 = GlassCrackClass.sheet_span(width == "wide")
+				var want: float = span.x / span.y
+				if tex.get_width() < 128 or tex.get_height() < 128:
+					_fail("%s is %dx%d — too small to carry a web at any span"
+						% [path, tex.get_width(), tex.get_height()])
+				elif absf(aspect - want) > 0.05 * want:
+					_fail("%s is %dx%d (aspect %.2f) but its span is %.0fx%.0f (aspect %.2f) — it arrives on the pane stretched"
+						% [path, tex.get_width(), tex.get_height(), aspect, span.x, span.y, want])
+				else:
+					_pass("%s is present, imported, %dx%d, and matches its %.0fx%.0f-voxel span"
+						% [path, tex.get_width(), tex.get_height(), span.x, span.y])
 
 	print("")
 
@@ -346,103 +368,109 @@ func test_wide_for_blowout_splits_the_arsenal() -> void:
 	print("")
 
 
-func test_the_glass_shader_loads() -> void:
-	print("[8] glass_pane.gdshader loads and takes CRACK-01's uniforms\n")
+func test_the_glass_shaders_split_the_crack_out() -> void:
+	print("[8] the crack left glass_pane.gdshader, and glass_crack.gdshader took it\n")
 
-	var shader := load("res://godot/shaders/glass_pane.gdshader") as Shader
-	if shader == null:
+	var pane_shader := load("res://godot/shaders/glass_pane.gdshader") as Shader
+	if pane_shader == null:
 		_fail("glass_pane.gdshader did not load as a Shader")
 		print("")
 		return
-	var mat := ShaderMaterial.new()
-	mat.shader = shader
-	## Set every CRACK-01 uniform once — a name the shader does not declare is a
-	## silent no-op in Godot, so this pins the wiring contract the renderer relies
-	## on rather than proving compilation (which needs a real draw).
-	mat.set_shader_parameter("glass_crack_plane_size", Vector2(512, 512))
-	mat.set_shader_parameter("glass_crack_group_cap", 16.0)
-	mat.set_shader_parameter("glass_run_step", Vector2(16, 8))
-	mat.set_shader_parameter("glass_voxel_step_px", 20.0)
-	mat.set_shader_parameter("glass_sheet_span_tight", Vector2(20, 10))
-	mat.set_shader_parameter("glass_crack_add", 0.85)
-	var props: Array = shader.get_shader_uniform_list()
+
+	## ⚠️ CRACK-02 / G-D27 — THE PANE SHADER MUST CARRY NO CRACK AT ALL.
+	## CRACK-01 put the web in here and the Director rejected it three times; the
+	## third rejection was the mechanism, not the tuning: a crack drawn by the
+	## voxel shader inherits the atom's `dim`, the coverage alpha and the quad
+	## seams. Any crack uniform reappearing on this shader is that design coming
+	## back, whatever it is called.
+	var pane_names: Array = []
+	for prop in pane_shader.get_shader_uniform_list():
+		pane_names.append(prop.name)
+	var leaked: Array = []
+	for n in pane_names:
+		if String(n).contains("crack") or String(n).contains("fracture"):
+			leaked.append(n)
+	if leaked.is_empty():
+		_pass("glass_pane.gdshader declares no crack/fracture uniform — the web is not the voxel's any more")
+	else:
+		_fail("glass_pane.gdshader is drawing the crack again (%s) — G-D27 moved it to a sprite"
+			% ", ".join(leaked))
+
+	var crack_shader := load("res://godot/shaders/glass_crack.gdshader") as Shader
+	if crack_shader == null:
+		_fail("glass_crack.gdshader did not load as a Shader — the crack has no renderer")
+		print("")
+		return
 	var names: Array = []
-	for p in props:
-		names.append(p.name)
-	var required := ["glass_crack_plane", "glass_crack_groups", "glass_fracture_tight",
-		"glass_fracture_wide", "glass_layer_origin", "glass_run_step",
-		"glass_voxel_step_px", "glass_sheet_span_tight", "glass_sheet_span_wide",
-		"glass_crack_add", "glass_crack_add_color"]
+	for prop in crack_shader.get_shader_uniform_list():
+		names.append(prop.name)
+	var required := ["crack_sheet", "crack_span", "crack_pane_lo", "crack_pane_hi",
+		"crack_color", "crack_strength", "crack_edge_feather"]
 	var missing: Array = []
 	for r in required:
 		if not names.has(r):
 			missing.append(r)
 	if missing.is_empty():
-		_pass("the shader declares all %d CRACK-01 uniforms the renderer feeds" % required.size())
+		_pass("glass_crack.gdshader declares all %d uniforms GlassCrackSprite feeds" % required.size())
 	else:
-		_fail("the shader is missing uniform(s): %s" % ", ".join(missing))
+		_fail("glass_crack.gdshader is missing uniform(s): %s" % ", ".join(missing))
 
-	## G-D19 RETRACTED (Director, 2026-09-02) — the crack is ADDITIVE and must not
-	## touch the glass's transparency, because any per-voxel change to it frames
-	## that voxel against its untouched neighbours. So the shader must carry NO
-	## crack term that modulates: a `frost`/`see_through`/`opacity` uniform coming
-	## back is the retracted design coming back with it.
-	var banned := ["glass_crack_frost", "glass_crack_see_through", "glass_crack_opacity"]
-	var revived: Array = []
-	for b in banned:
-		if names.has(b):
-			revived.append(b)
-	if revived.is_empty():
-		_pass("no crack uniform modulates the glass — the effect is add-only, so a cracked voxel cannot frame itself")
+	## G-D26 stays in force and is now enforced by the BLEND MODE rather than by
+	## arithmetic inside someone else's shader: `blend_add` is
+	## `dst.rgb += src.rgb * src.a`, so the glass behind is untouched by
+	## construction and a cracked voxel cannot frame itself.
+	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_crack.gdshader")
+	if src.contains("render_mode blend_add"):
+		_pass("the crack sprite is `render_mode blend_add` — additive by construction (G-D26)")
 	else:
-		_fail("%s is back: the crack must not change a voxel's transparency (G-D19 retracted)"
-			% ", ".join(revived))
-
-	## And the source says so too: the crack must reach COLOR by `+`, never by a
-	## mix against the glass body.
-	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_pane.gdshader")
-	if src.contains("lit + glass_crack_add_color"):
-		_pass("glass_apply_crack returns `lit + <crack light>` — additive in the source, not just in name")
+		_fail("glass_crack.gdshader is not blend_add — the crack would modulate the pane (G-D26 retracted G-D19 for exactly this)")
+	if src.contains("discard"):
+		_pass("the sprite discards outside the pane bounds — G-D27's one named cost, paid")
 	else:
-		_fail("glass_apply_crack no longer adds its light onto `lit` — check it has not become a mix again")
+		_fail("no pane clipping in glass_crack.gdshader: a crack near a frame will bleed over what is beside it")
 
 	print("")
 
 
-## A stand-in for VoxelRenderer's crack-plane API — records what GlassCrack.apply
-## writes, so G-D24 can be tested without a real renderer.
+## A stand-in for VoxelRenderer's CRACK-02 crack registry — records what
+## GlassCrack.apply spawns and answers G-D24's geometric test, so the rule can be
+## tested without a real renderer.
 class MockRenderer:
-	var plane: Dictionary = {}       ## Vector3i(cell.x, cell.y, level) -> gid
-	var groups: Array = []           ## [{canvas, axis, wide}]
+	var cracks: Array = []            ## the spawned specs, in order
 	var _next: int = 0
-	func alloc_glass_crack_group() -> int:
-		_next = (_next % 16) + 1
-		return _next
-	func set_glass_crack_group(gid: int, canvas: Vector2, axis: int, wide: bool) -> void:
-		while groups.size() < gid:
-			groups.append({})
-		groups[gid - 1] = {"canvas": canvas, "axis": axis, "wide": wide}
-	func write_glass_crack_cell(level: int, cell: Vector2i, gid: int) -> void:
-		var k := Vector3i(cell.x, cell.y, level)
-		if gid == 0:
-			plane.erase(k)
-		else:
-			plane[k] = gid
-	func glass_crack_group_at(level: int, cell: Vector2i) -> int:
-		return int(plane.get(Vector3i(cell.x, cell.y, level), 0))
-	func flush_glass_crack() -> int:
+
+	## G-D24, exactly as VoxelRenderer.glass_crack_covering() does it.
+	func glass_crack_covering(pane_id: String, run: int, level: int) -> int:
+		for c in cracks:
+			if String(c["pane_id"]) != pane_id:
+				continue
+			var r: Vector2i = c["radius"]
+			if absi(run - int(c["impact_run"])) > r.x:
+				continue
+			if absi(level - int(c["impact_level"])) > r.y:
+				continue
+			return int(c["id"])
 		return 0
+
+	func spawn_glass_crack(spec: Dictionary) -> int:
+		_next += 1
+		var rec := spec.duplicate()
+		rec["id"] = _next
+		cracks.append(rec)
+		return _next
+
 	func relative_level(level: int) -> int:
 		return level - GeometryCoordsClass.storey_level_base(0)
-	## The same wall-face geometry VoxelRenderer.glass_cell_canvas_pos() uses:
+
+	## The same wall-face geometry VoxelRenderer.glass_cell_face_pos() uses:
 	## map_to_local's e1 (16,8) / e2 (-16,8), minus VOXEL_STEP_PX per level.
-	func glass_cell_canvas_pos(level: int, cell: Vector2i) -> Vector2:
+	func glass_cell_face_pos(level: int, cell: Vector2i) -> Vector2:
 		return Vector2(float(cell.x - cell.y) * 16.0,
 			float(cell.x + cell.y) * 8.0 - 20.0 * float(relative_level(level)))
 
 
-func test_apply_stamps_the_plane_and_gd24_crosses() -> void:
-	print("[9] GlassCrack.apply stamps the plane; a crossed cell is DESTROYED (G-D24)\n")
+func test_apply_spawns_a_sprite_and_gd24_crosses() -> void:
+	print("[9] GlassCrack.apply spawns ONE crack; a covered cell is DESTROYED (G-D24)\n")
 
 	var pane := _pane(4, 9, 3)
 	var base: int = GeometryCoordsClass.storey_level_base(0)
@@ -453,107 +481,127 @@ func test_apply_stamps_the_plane_and_gd24_crosses() -> void:
 	var lvl1: int = base + 10
 	var plan1: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit1, lvl1, false)
 	var r1: Dictionary = GlassCrackClass.apply(mock, plan1)
-	if r1.crazed == plan1.cells.size() and r1.crossed == 0 and mock.plane.size() == r1.crazed:
-		_pass("first crack: %d cells stamped, 0 crossings, plane holds them all" % r1.crazed)
+	if r1.crazed == plan1.cells.size() and r1.crossed == 0 and mock.cracks.size() == 1:
+		_pass("first crack: %d cells crazed, 0 crossings, exactly ONE sprite spawned" % r1.crazed)
 	else:
-		_fail("first crack: crazed %d / crossed %d / plane %d (expected %d / 0 / same)"
-			% [r1.crazed, r1.crossed, mock.plane.size(), plan1.cells.size()])
+		_fail("first crack: crazed %d / crossed %d / sprites %d (expected %d / 0 / 1)"
+			% [r1.crazed, r1.crossed, mock.cracks.size(), plan1.cells.size()])
 
 	var cracked_1 := 0
 	for e in plan1.cells:
 		if e.voxel.damage_state == Voxel.DamageState.CRACKED:
 			cracked_1 += 1
 	if cracked_1 == plan1.cells.size():
-		_pass("every stamped voxel is now CRACKED (%d)" % cracked_1)
+		_pass("every cell in the web is now CRACKED (%d)" % cracked_1)
 	else:
-		_fail("%d of %d stamped voxels reached CRACKED" % [cracked_1, plan1.cells.size()])
+		_fail("%d of %d web cells reached CRACKED" % [cracked_1, plan1.cells.size()])
+
+	## ⚠️ THE ORDER TEST. `apply` must resolve every crossing BEFORE registering
+	## its own crack, or the fracture crosses itself and destroys its own web.
+	## r1.crossed == 0 above is that check; this makes the reason explicit.
+	if r1.crossed == 0 and int(r1.crack_id) == 1:
+		_pass("a fracture does not cross ITSELF — the registry is written after the test, not before")
+	else:
+		_fail("the new crack was registered before its own crossing test (crossed=%d)" % r1.crossed)
 
 	## Second crack, overlapping — the shared cells cross.
 	var hit2 := Vector2i(6 * 8 + 4 + 6, 31)
 	var plan2: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit2, lvl1, false)
 	var r2: Dictionary = GlassCrackClass.apply(mock, plan2)
 	if r2.crossed > 0:
-		_pass("second crack: %d cells crossed the first web -> DESTROYED (G-D24)" % r2.crossed)
+		_pass("second crack: %d cells fell inside the first crack's region -> DESTROYED (G-D24)" % r2.crossed)
 	else:
 		_fail("second overlapping crack produced 0 crossings — G-D24 never fired")
 
-	var destroyed := 0
-	for f in r2.fallen:
-		destroyed += 1
-	for e in plan2.cells:
-		if e.voxel.damage_state == Voxel.DamageState.DESTROYED:
-			pass
-	if destroyed == r2.crossed and not r2.fallen.is_empty():
-		_pass("the %d crossed voxels are DESTROYED and handed to GlassFall" % destroyed)
+	if r2.fallen.size() == r2.crossed and not r2.fallen.is_empty():
+		_pass("the %d crossed voxels are DESTROYED and handed to GlassFall" % r2.fallen.size())
 	else:
-		_fail("fallen list has %d, crossed count %d" % [destroyed, r2.crossed])
+		_fail("fallen list has %d, crossed count %d" % [r2.fallen.size(), r2.crossed])
 
-	## A crossed cell is cleared from the plane (0), not left pointing at a group.
-	var still_pointing := 0
+	var still_standing := 0
 	for f in r2.fallen:
-		if mock.glass_crack_group_at(int(f.level), f.grid_pos) != 0:
-			still_pointing += 1
-	if still_pointing == 0:
-		_pass("every crossed cell is cleared from the crack plane")
+		for s in pane:
+			for v in s.voxels:
+				if v.grid_pos == f.grid_pos and v.level == int(f.level) \
+						and v.damage_state != Voxel.DamageState.DESTROYED:
+					still_standing += 1
+	if still_standing == 0:
+		_pass("no crossed cell survived as CRACKED — the piece drops out, it does not re-craze")
 	else:
-		_fail("%d crossed cells still carry a group id" % still_pointing)
+		_fail("%d crossed cells are still standing" % still_standing)
+
+	## A crack on ANOTHER pane must not cross this one, however close the coords.
+	var other := _pane(4, 9, 3)
+	for s in other:
+		s.pane_id = "PANE_OTHER"
+	var plan3: Dictionary = GlassCrackClass.plan_pane_crack(other, Face.SW, hit1, lvl1, false)
+	var r3: Dictionary = GlassCrackClass.apply(mock, plan3)
+	if r3.crossed == 0:
+		_pass("a crack on a DIFFERENT pane crosses nothing, at identical coordinates")
+	else:
+		_fail("%d cells crossed across a pane boundary — the registry is not keyed by pane" % r3.crossed)
 
 	print("")
 
 
-## [10] THE BUG THAT SHIPPED IN CRACK-01-B/C, PINNED (Director, 2026-09-02:
-## *"as linhas não se encontram e estão todas embaralhadas"*).
+## [10] THE BUG THAT SHIPPED IN CRACK-01-B/C, STILL PINNED — WITH THE BASIS IN ITS
+## NEW JOB (Director, 2026-09-02: *"as linhas não se encontram e estão todas
+## embaralhadas"*).
 ##
-## `glass_pane.gdshader` turns a fragment's CANVAS delta from the impact back
-## into (run, level) on the pane's face, and that inverse must be exact or the
-## fracture sheet shears. The first build reused voxel_face_shading's GROUND-PLANE
-## inverse, which answers a different question: on a vertical face the vertical
-## screen axis is LEVEL, not ground depth.
-##
-## This test walks a grid of real (run, level) offsets, converts each to canvas
-## through the same geometry `VoxelRenderer.glass_cell_canvas_pos()` uses, and
-## asserts BOTH directions: the wall-face inverse recovers the offsets exactly,
-## and the ground-plane inverse does NOT — a control, so a test that recovered
-## everything trivially could not pass.
-func test_wall_face_basis_round_trips_and_the_ground_basis_does_not() -> void:
-	print("[10] the sheet UV inverse is the WALL-FACE one, not the ground plane\n")
+## CRACK-01 had the shader INVERT a canvas delta into (run, level) per fragment,
+## and the first build used voxel_face_shading's GROUND-PLANE inverse, which
+## answers a different question: on a vertical face the vertical screen axis is
+## LEVEL, not ground depth. CRACK-02 does not invert anything — `GlassCrackSprite`
+## bakes the FORWARD basis into the node's Transform2D — so this test now asserts
+## the transform itself lands the sheet on the voxels, and keeps the ground-plane
+## inverse as a CONTROL THAT MUST BE WRONG, so a test that recovered everything
+## trivially could not pass.
+func test_the_sprite_transform_lands_on_the_voxels() -> void:
+	print("[10] the crack sprite's transform IS the wall-face basis (and the ground plane is not)\n")
+
+	var sheet := load(FRACTURE_TEMPLATE % "tight") as Texture2D
+	var shader := load("res://godot/shaders/glass_crack.gdshader") as Shader
+	if sheet == null or shader == null:
+		_fail("no fracture sheet / crack shader to build a sprite from")
+		print("")
+		return
 
 	var mock := MockRenderer.new()
 	var base: int = GeometryCoordsClass.storey_level_base(0)
 	var origin_cell := Vector2i(112, 87)
 	var origin_level: int = base + 10
-	var impact: Vector2 = mock.glass_cell_canvas_pos(origin_level, origin_cell)
+	var impact: Vector2 = mock.glass_cell_face_pos(origin_level, origin_cell)
+	var span := Vector2(20.0, 10.0)
 
-	## Run along X (a SW/NE face), so sx = +1 and a run step of +1 moves the cell
-	## by (+1, 0).
-	var sx := 1.0
-	var worst_run := 0.0
-	var worst_level := 0.0
+	var sprite = GlassCrackSpriteClass.new()
+	sprite.setup(sheet, span, impact, 0, Vector2(-1000, -1000), Vector2(1000, 1000), shader)
+
+	var w := float(sheet.get_width())
+	var h := float(sheet.get_height())
+	var worst := 0.0
 	var ground_worst_run := 0.0
 	for dr in range(-6, 7):
 		for dl in range(-5, 6):
-			var cell := Vector2i(origin_cell.x + dr, origin_cell.y)
-			var canvas: Vector2 = mock.glass_cell_canvas_pos(origin_level + dl, cell)
-			var d: Vector2 = canvas - impact
-
-			## THE SHIPPING INVERSE (glass_pane.gdshader).
-			var run_off: float = sx * d.x / 16.0
-			var level_off: float = (run_off * 8.0 - d.y) / 20.0
-			worst_run = maxf(worst_run, absf(run_off - float(dr)))
-			worst_level = maxf(worst_level, absf(level_off - float(dl)))
+			## Where the VOXEL is, walked by the renderer's own geometry.
+			var want: Vector2 = mock.glass_cell_face_pos(
+				origin_level + dl, Vector2i(origin_cell.x + dr, origin_cell.y))
+			## Where the SPRITE puts that (run, level) offset — the texture-space
+			## point for it, through the node's transform. Sprite2D is centred, so
+			## texture space runs -w/2..w/2 and UV.y grows downward.
+			var local := Vector2(float(dr) / span.x * w, -float(dl) / span.y * h)
+			var got: Vector2 = sprite.transform * local
+			worst = maxf(worst, (got - want).length())
 
 			## THE CONTROL — the ground-plane inverse the first build used.
+			var d: Vector2 = want - impact
 			var ground_run: float = d.x / 32.0 + d.y / 16.0
 			ground_worst_run = maxf(ground_worst_run, absf(ground_run - float(dr)))
 
-	if worst_run < 0.001 and worst_level < 0.001:
-		_pass("the wall-face inverse recovers (run, level) exactly over 13x11 offsets (worst %.5f / %.5f)"
-			% [worst_run, worst_level])
+	if worst < 0.001:
+		_pass("the sprite quad lands on every voxel over 13x11 offsets (worst %.5f px)" % worst)
 	else:
-		_fail("the wall-face inverse drifts: worst run %.4f, worst level %.4f voxels"
-			% [worst_run, worst_level])
+		_fail("the sprite quad drifts from the voxels by up to %.4f px — the sheet will shear" % worst)
 
-	## 1.25 voxels of column per level is the exact shear the Director saw.
 	if ground_worst_run > 1.0:
 		_pass("the ground-plane inverse is off by up to %.2f voxels of sheet column — the shear that scrambled the web"
 			% ground_worst_run)
@@ -562,11 +610,69 @@ func test_wall_face_basis_round_trips_and_the_ground_basis_does_not() -> void:
 			% ground_worst_run)
 
 	## And the shear is a function of LEVEL alone: same cell, one level down.
-	var same_cell_down: Vector2 = mock.glass_cell_canvas_pos(origin_level - 1, origin_cell) - impact
+	var same_cell_down: Vector2 = mock.glass_cell_face_pos(origin_level - 1, origin_cell) - impact
 	var shear: float = same_cell_down.x / 32.0 + same_cell_down.y / 16.0
 	if absf(shear - 1.25) < 0.001:
 		_pass("one level down shears the ground-plane column by exactly 1.25 voxels")
 	else:
 		_fail("expected a 1.25-voxel shear per level, measured %.4f" % shear)
+
+	sprite.free()
+	print("")
+
+
+## [11] G-D27's ONE NAMED COST — a sprite is a rectangle and a pane is not.
+## `plan_pane_crack` reports the pane's own extent as (run, level) offsets from
+## the impact, and that is what clips the sprite. Two things have to hold: a hit
+## at the pane's EDGE must produce a bound that stops the web there, and a hole
+## the round already made must NOT shrink the pane.
+func test_the_pane_bounds_clip_the_sprite() -> void:
+	print("[11] the pane's own extent clips the crack sprite (G-D27's named cost)\n")
+
+	var pane := _pane(4, 9, 3)             ## runs 32..79, 3 storeys from base
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var run_lo := 4 * 8
+	var run_hi := 9 * 8 + 7
+
+	## A hit hard against the pane's left edge.
+	var hit := Vector2i(run_lo, 31)
+	var hit_level: int = base + 4
+	var plan: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit, hit_level, false)
+	var lo: Vector2 = plan["pane_lo"]
+	var hi: Vector2 = plan["pane_hi"]
+	if is_equal_approx(lo.x, 0.0) and is_equal_approx(hi.x, float(run_hi - run_lo)):
+		_pass("an edge hit reports pane_lo.x = 0 and pane_hi.x = %d — nothing draws past the frame" % (run_hi - run_lo))
+	else:
+		_fail("edge hit reported run bounds (%.1f, %.1f), expected (0, %d)" % [lo.x, hi.x, run_hi - run_lo])
+	if is_equal_approx(lo.y, float(base - hit_level)) and is_equal_approx(hi.y, float(base + 3 * 8 - 1 - hit_level)):
+		_pass("the level bounds span the pane's %d levels, measured from the impact" % (3 * 8))
+	else:
+		_fail("level bounds (%.1f, %.1f), expected (%d, %d)"
+			% [lo.y, hi.y, base - hit_level, base + 3 * 8 - 1 - hit_level])
+
+	## ⚠️ A HOLE IS NOT A SMALLER PANE. Destroy the whole left column and the
+	## extent must not move — otherwise every second hit shrinks the web.
+	for s in pane:
+		for v in s.voxels:
+			if v.grid_pos.x <= run_lo + 1:
+				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+	var holed: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit, hit_level, false)
+	if holed["pane_lo"] == lo and holed["pane_hi"] == hi:
+		_pass("destroying the pane's edge column leaves the extent unchanged — a hole is still part of the pane")
+	else:
+		_fail("the extent moved after a hole: (%s, %s) vs (%s, %s)"
+			% [holed["pane_lo"], holed["pane_hi"], lo, hi])
+
+	## A G-D9 brick band is NOT pane: the extent stops at the glass.
+	var banded := _pane(4, 9, 3)
+	for s in banded:
+		s.material_bands = {0: "brick", 1: "brick", 22: "brick", 23: "brick"}
+	var b: Dictionary = GlassCrackClass.plan_pane_crack(banded, Face.SW, hit, hit_level, false)
+	if float(b["pane_lo"].y) > lo.y and float(b["pane_hi"].y) < hi.y:
+		_pass("a brick sill/head pulls the level bounds in (%.0f..%.0f vs %.0f..%.0f)"
+			% [float(b["pane_lo"].y), float(b["pane_hi"].y), lo.y, hi.y])
+	else:
+		_fail("the brick bands did not shrink the pane extent: %.0f..%.0f"
+			% [float(b["pane_lo"].y), float(b["pane_hi"].y)])
 
 	print("")

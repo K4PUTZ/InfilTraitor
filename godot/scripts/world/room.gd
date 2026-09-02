@@ -11,6 +11,11 @@ const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 const DebugToolsControllerClass = preload("res://godot/scripts/world/controllers/debug_tools_controller.gd")
 const InputControllerClass = preload("res://godot/scripts/world/controllers/input_controller.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
+## CRACK-02 — preloaded rather than reached by its `class_name`: a script added
+## in the same commit is not in Godot's global class cache until the editor
+## rescans, so a headless capture run fails to PARSE room.gd. Measured, not
+## guessed — it cost one hung capture boot.
+const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/test_zone_controller.gd")
 const WeaponBenchControllerClass = preload("res://godot/scripts/world/controllers/weapon_bench_controller.gd")
@@ -1698,6 +1703,15 @@ func _set_perspective(direction: String) -> void:
 			_debris_overlay.clear()
 		if _shrapnel_overlay != null:
 			_shrapnel_overlay.clear()
+		## CRACK-02 — for exactly the reason above, and it is the same class of
+		## bug: a crack sprite's transform is in the OLD view's screen space, so
+		## carrying it into the rotated frame would draw a web over a pane that is
+		## not there any more. The CRACKED voxel STATE survives (VL-PERSIST records
+		## it and _reapply_base_damage stamps it back); the web does not, yet.
+		## §13.2 S-3 is the base-coord crack registry that rebuilds the sprites —
+		## G-D27 was partly chosen for it, and rotation is suspended meanwhile.
+		if _voxel_renderer != null:
+			_voxel_renderer.clear_glass_cracks()
 		if _aim_bubble_overlay != null:
 			_aim_bubble_overlay.clear()
 		if _throw_perimeter_overlay != null:
@@ -5541,11 +5555,12 @@ func _save_glass_panel(out_dir: String, panel: int) -> void:
 	img.save_png("%s/panel_%03d.png" % [out_dir, panel])
 
 
-## CRACK-01 — the on-map proof, without the agent_shot pipeline's timing.
+## CRACK-01/02 — the on-map proof, without the agent_shot pipeline's timing.
 ## `INFILTRAITOR_CAPTURE_ACTION=glass_crack_demo` on the GLASS map: finds the
-## biggest panel pane, stamps a crack at its centre through the REAL
-## `GlassCrack.plan_pane_crack` + `GlassCrack.apply` path, re-renders and saves a
-## before/after pair to Screenshots/history/ (hand-named, rotation-proof).
+## biggest panel pane, cracks it at its centre through the REAL
+## `GlassCrack.plan_pane_crack` + `GlassCrack.apply` path (which now spawns a
+## crack SPRITE, G-D27), re-renders and saves a before/after pair to
+## Screenshots/history/ (hand-named, rotation-proof).
 ##   INFILTRAITOR_CRACK_DEMO_WIDE=1     — the wide (rifle) sheet, else tight
 ##   INFILTRAITOR_CRACK_DEMO_SECOND=1   — fire a SECOND crack offset from the
 ##                                       first, so their overlap exercises G-D24
@@ -5596,6 +5611,13 @@ func _capture_glass_crack_demo() -> void:
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
 	var hit_run: int = int(xs[xs.size() / 2])
 	var hit_level: int = int(ls[ls.size() / 2])
+	## CRACK-02 — INFILTRAITOR_CRACK_DEMO_EDGE=1 hits the pane's own EDGE instead
+	## of its middle. §13.5 asks for the clip to be proven rather than asserted,
+	## and a centred hit cannot prove it: the sheet is smaller than a big pane, so
+	## the bounds never engage and the picture looks correct for the wrong reason.
+	## From the edge, a wide sheet reaches ~22 voxels past the frame.
+	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_EDGE") == "1":
+		hit_run = int(xs[0])
 	## Recover a real grid_pos on the run line at that level.
 	var hit_gp := Vector2i.ZERO
 	for s in pane_slices:
@@ -5623,6 +5645,14 @@ func _capture_glass_crack_demo() -> void:
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
 	print("[CRACK-DEMO] hit run=%d level=%d gp=%s wide=%s -> crazed=%d crossed=%d"
 		% [hit_run, hit_level, hit_gp, wide, res["crazed"], res["crossed"]])
+	## CRACK-02 — the two numbers that decide whether the web can bleed past the
+	## frame (G-D27's one named cost). Printed rather than inferred from the
+	## picture: a sheet SMALLER than the pane clips nothing, and reading that as
+	## "the clip works" is the mistake this line exists to prevent.
+	print("[CRACK-DEMO] sheet span %s voxels, pane extent run %.0f..%.0f level %.0f..%.0f (from the impact)"
+		% [GlassCrack.sheet_span(wide), plan["pane_lo"].x, plan["pane_hi"].x,
+		plan["pane_lo"].y, plan["pane_hi"].y])
+	_print_crack_quads(plan)
 
 	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_SECOND") == "1":
 		var hit2 := Vector2i(hit_gp.x + (10 if run_is_x else 0), hit_gp.y + (0 if run_is_x else 10))
@@ -5637,6 +5667,40 @@ func _capture_glass_crack_demo() -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_after.png" % [dir, tag])
 	print("[CRACK-DEMO] wrote glass_crack_demo_%s_{before,after}.png" % tag)
+
+
+## CRACK-02 — the SHEET quad and the PANE quad, in SCREEN pixels, so "the web
+## stays inside the pane" (G-D27's one named cost) is a measurement instead of a
+## squint at an isometric picture. Both are walked with the SAME public geometry
+## the sprite itself uses — `glass_cell_face_pos()` for the impact and
+## `GlassCrackSpriteClass.face_offset()` for the basis — so this cannot agree with the
+## render by accident and disagree with the truth.
+##
+## ⚠️ A sheet SMALLER than its pane clips nothing, and reading that picture as
+## "the clip works" is the exact mistake this print exists to prevent: compare the
+## two rectangles, not the crack against the wall you think you see.
+func _print_crack_quads(plan: Dictionary) -> void:
+	if _voxel_renderer == null:
+		return
+	var axis: int = int(plan["run_axis"])
+	var span: Vector2 = GlassCrack.sheet_span(bool(plan.get("wide", false)))
+	var impact: Vector2 = _voxel_renderer.glass_cell_face_pos(
+		int(plan["hit_level"]), plan["hit_cell"])
+	var to_screen: Transform2D = _voxel_renderer.get_global_transform_with_canvas()
+	var lo: Vector2 = plan["pane_lo"]
+	var hi: Vector2 = plan["pane_hi"]
+	var sheet_c: Array = [Vector2(-span.x * 0.5, span.y * 0.5), Vector2(span.x * 0.5, span.y * 0.5),
+		Vector2(span.x * 0.5, -span.y * 0.5), Vector2(-span.x * 0.5, -span.y * 0.5)]
+	var pane_c: Array = [Vector2(lo.x, hi.y), Vector2(hi.x, hi.y),
+		Vector2(hi.x, lo.y), Vector2(lo.x, lo.y)]
+	var out: Array = []
+	for c in sheet_c:
+		out.append(to_screen * (impact + GlassCrackSpriteClass.face_offset(c.x, c.y, axis)))
+	print("[CRACK-DEMO] sheet quad (screen px, NW NE SE SW): %s" % str(out))
+	out = []
+	for c in pane_c:
+		out.append(to_screen * (impact + GlassCrackSpriteClass.face_offset(c.x, c.y, axis)))
+	print("[CRACK-DEMO] pane  quad (screen px, NW NE SE SW): %s" % str(out))
 
 
 ## Small helper: parse "a,b,c" of floats from an env var, else the fallback.

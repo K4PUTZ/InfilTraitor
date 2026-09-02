@@ -4291,74 +4291,85 @@ func flush_cell_soot() -> int:
 	return n
 
 
-## ── CRACK-01 — THE GLASS CRACK PLANE (GLASS_MASTER_PLAN §8.2) ─────────────────
+## ── CRACK-02 — THE CRACK SPRITES (GLASS_MASTER_PLAN §13, G-D27) ───────────────
 ##
-## The soot-plane pattern, reused verbatim: one R8 texel per glass cell, per
-## level, holding the crack GROUP id (0 = intact). `glass_pane.gdshader` recovers
-## a fragment's cell exactly as `voxel_face_shading.gdshader` does and reads this
-## plane; a non-zero id sends it to `_glass_crack_groups` for the impact the web
-## radiates from. G-D21 amended to WORLD-SPACE (2026-09-02): a shot mints no
-## atom, it writes pixels into this plane and one texel into the groups strip.
-const GLASS_CRACK_GROUP_CAP: int = 16
-var _glass_crack_images: Dictionary = {}     ## level:int -> Image (FORMAT_R8)
-var _glass_crack_textures: Dictionary = {}   ## level:int -> ImageTexture
-var _glass_crack_dirty: Dictionary = {}      ## level:int -> true, cleared by flush_glass_crack()
-## One RGBAF texel per crack EVENT, shared by every glass layer. FORMAT_RGBAF is
-## full 32-bit float, so the values ride raw — no bias, no range limit:
-##   rg = the impact voxel's CANVAS position (see `glass_cell_canvas_pos`)
-##   b  = axis + 2*wide  (axis 0 = run along X, 1 = along Y; wide picks the sheet)
-##   a  = 1.0 active, 0.0 free
+## CRACK-01 drew the web from inside `glass_pane.gdshader`, off a per-level R8
+## group plane and a 16-wide RGBAF strip. All of that is DELETED (§13.1): a crack
+## drawn by the voxel shader inherits the atom's `dim`, the coverage alpha and the
+## quad seams, which is why the look was rejected three times.
 ##
-## ⚠️ CANVAS, not (run, level). The first build stored voxel coords and had the
-## shader invert a fragment with the GROUND-PLANE basis — which shears 1.25
-## voxels of sheet column per level on a vertical face, and the web read as
-## scrambled tiles. The canvas delta plus the wall-face basis (in the shader) is
-## continuous and correct; this is the value it subtracts.
-var _glass_crack_groups_image: Image = null
-var _glass_crack_groups_texture: ImageTexture = null
-var _glass_crack_next_group: int = 0          ## round-robin allocator, 0..CAP-1
-var _glass_crack_out_of_range_reported: bool = false
+## A crack is now a NODE — one `GlassCrackSprite` per event, parented into the
+## glass composite so it rides `_glass_composite_z` and G-D18b still holds. What
+## the renderer owns here is the registry: enough to answer G-D24's crossing test
+## geometrically (§13.1's one rewritten piece) and, from S-3, to rebuild the
+## sprites after a perspective flip.
+const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
+
+## Every live crack, in creation order. One entry per sprite:
+##   id, pane_id, run_axis, wide, impact_run, impact_level, radius (Vector2i),
+##   sprite (GlassCrackSprite)
+var _glass_cracks: Array = []
+var _glass_crack_next_id: int = 0
+var _glass_crack_root: Node2D = null
+var _glass_crack_shader: Shader = null
+var _glass_crack_sheets: Dictionary = {}   ## width:String -> Texture2D
 
 
-func _glass_crack_image_for(level: int) -> Image:
-	if _glass_crack_images.has(level):
-		return _glass_crack_images[level]
-	var img := Image.create(SOOT_TEX_SIZE, SOOT_TEX_SIZE, false, Image.FORMAT_R8)
-	img.fill(Color8(0, 0, 0, 255))   ## group 0 = intact glass everywhere
-	_glass_crack_images[level] = img
-	_glass_crack_textures[level] = ImageTexture.create_from_image(img)
-	return img
+## The container the sprites live in — a direct child of the renderer, so a
+## sprite's transform origin is in the same space `glass_cell_face_pos()` answers
+## in. Kept LAST in the child list at `_glass_composite_z`, which is what puts the
+## web over every glass pane layer (they share the z; tree order decides).
+func _ensure_glass_crack_root() -> Node2D:
+	if _glass_crack_root != null and is_instance_valid(_glass_crack_root):
+		return _glass_crack_root
+	_glass_crack_root = Node2D.new()
+	_glass_crack_root.name = "glass_crack_root"
+	_glass_crack_root.z_index = _glass_composite_z
+	add_child(_glass_crack_root)
+	move_child(_glass_crack_root, -1)
+	return _glass_crack_root
 
 
-func _glass_crack_groups_img() -> Image:
-	if _glass_crack_groups_image != null:
-		return _glass_crack_groups_image
-	var img := Image.create(GLASS_CRACK_GROUP_CAP, 1, false, Image.FORMAT_RGBAF)
-	img.fill(Color(0.0, 0.0, 0.0, 0.0))   ## every slot free
-	_glass_crack_groups_image = img
-	_glass_crack_groups_texture = ImageTexture.create_from_image(img)
-	return img
+## Re-assert the crack root's place at the top of the glass composite. Called
+## wherever the glass layers are re-ordered, for the same reason they are: an
+## opaque layer added later would otherwise draw over them.
+func _lift_glass_crack_root() -> void:
+	if _glass_crack_root == null or not is_instance_valid(_glass_crack_root):
+		return
+	_glass_crack_root.z_index = _glass_composite_z
+	move_child(_glass_crack_root, -1)
 
 
-## Claim a crack-group slot (1..CAP). Round-robins: the oldest crack is recycled
-## when all CAP are live, which repoints its still-marked cells at the new
-## impact. CAP is 16 — far more concurrent cracked panes than a scenario holds.
-func alloc_glass_crack_group() -> int:
-	_glass_crack_groups_img()
-	_glass_crack_next_group = (_glass_crack_next_group % GLASS_CRACK_GROUP_CAP) + 1
-	return _glass_crack_next_group
+## The fracture sheet for one width (G-D14's `tight` / `wide`), cached. Loaded
+## directly rather than through TextureResolver: a sprite is free-size art, and
+## §13.3 took the facade contract off this class precisely so it can be.
+func _glass_crack_sheet(width: String) -> Texture2D:
+	if _glass_crack_sheets.has(width):
+		return _glass_crack_sheets[width]
+	var path: String = MATERIAL_ASSET_ROOT + "glass/fracture_glass_%s.png" % width
+	var tex := load(path) as Texture2D
+	if tex == null:
+		## B6 loud-fail: a missing sheet must not degrade to an invisible crack.
+		push_error("[VoxelRenderer] CRACK-02: fracture sheet %s failed to load — the crack will not draw" % path)
+	_glass_crack_sheets[width] = tex
+	return tex
 
 
-## The CANVAS position of one glass cell — the space `v_glass_world` is in, so
-## the shader's `canvas - grp.rg` is a real screen-space delta. Uses the level's
-## own glass layer when it exists (its global origin already carries the
-## per-level VOXEL_STEP_PX offset); falls back to the same formula
-## `_build_glass_sublayer_node` uses, so a level with no layer yet still answers.
-func glass_cell_canvas_pos(level: int, cell: Vector2i) -> Vector2:
+## The renderer-local position of one glass cell's MAIN FACE CENTRE — the point a
+## crack radiates from, and the origin a crack sprite is placed at.
+##
+## ⚠️ RENDERER-LOCAL, not global (CRACK-01 read the layer's GLOBAL origin because
+## the old shader compared it against `v_glass_world`). The renderer is added at
+## an identity transform, so the two agree today; asking for the local one is what
+## makes that an assumption the sprite does not carry.
+##
+## Uses the level's own glass layer when it exists (its position already carries
+## the per-level VOXEL_STEP_PX offset); falls back to the same formula
+## `_build_glass_sublayer_node()` uses, so a level with no layer yet still answers.
+func glass_cell_face_pos(level: int, cell: Vector2i) -> Vector2:
 	var layer := _glass_layers.get(level) as TileMapLayer
 	if layer != null:
-		return layer.get_global_transform().origin + layer.map_to_local(cell) \
-			+ GLASS_CRACK_FACE_CENTRE
+		return layer.position + layer.map_to_local(cell) + GLASS_CRACK_FACE_CENTRE
 	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
 	var origin := Vector2(
 		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
@@ -4377,59 +4388,74 @@ func glass_cell_canvas_pos(level: int, cell: Vector2i) -> Vector2:
 const GLASS_CRACK_FACE_CENTRE: Vector2 = Vector2(0.0, -6.0)
 
 
-## Record where crack-group `gid` (1..CAP) radiates from. `impact_canvas` is the
-## impact voxel's canvas position (`glass_cell_canvas_pos`); `run_axis` is 0 (X)
-## or 1 (Y); `wide` picks the sheet.
-func set_glass_crack_group(gid: int, impact_canvas: Vector2,
-		run_axis: int, wide: bool) -> void:
-	if gid < 1 or gid > GLASS_CRACK_GROUP_CAP:
-		push_error("[VoxelRenderer] CRACK-01: crack group %d out of range 1..%d" % [gid, GLASS_CRACK_GROUP_CAP])
-		return
-	var img := _glass_crack_groups_img()
-	var packed: float = float((run_axis & 1) + (2 if wide else 0))
-	img.set_pixel(gid - 1, 0, Color(impact_canvas.x, impact_canvas.y, packed, 1.0))
-	if _glass_crack_groups_texture != null:
-		_glass_crack_groups_texture.update(img)
+## G-D24's test, now GEOMETRIC (§13.1 — the one piece of CRACK-01 that had to be
+## rewritten rather than moved). With no per-cell plane, "does this cell already
+## carry a crack" is "does it fall inside a live crack's region on the same pane".
+## Returns that crack's id, or 0.
+##
+## Faithful to the plane it replaces: a crack's region IS the rectangle
+## `plan_pane_crack()` selected its cells from, and every cell it skipped
+## (DESTROYED, or a G-D9 band) is skipped by the new plan for the same reason.
+func glass_crack_covering(pane_id: String, run: int, level: int) -> int:
+	for c in _glass_cracks:
+		if c["pane_id"] != pane_id:
+			continue
+		var r: Vector2i = c["radius"]
+		if absi(run - int(c["impact_run"])) > r.x:
+			continue
+		if absi(level - int(c["impact_level"])) > r.y:
+			continue
+		return int(c["id"])
+	return 0
 
 
-## Stamp one glass cell on `level` with a crack group (0 clears it).
-func write_glass_crack_cell(level: int, cell: Vector2i, gid: int) -> void:
-	var p := cell + SOOT_PLANE_ORIGIN
-	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
-		if not _glass_crack_out_of_range_reported:
-			_glass_crack_out_of_range_reported = true
-			push_error("[VoxelRenderer] CRACK-01: cell %s is outside the %dx%d crack plane" % [cell, SOOT_TEX_SIZE, SOOT_TEX_SIZE])
-		return
-	var img := _glass_crack_image_for(level)
-	var v: int = clampi(gid, 0, GLASS_CRACK_GROUP_CAP)
-	if img.get_pixel(p.x, p.y).r8 == v:
-		return
-	img.set_pixel(p.x, p.y, Color8(v, 0, 0, 255))
-	_glass_crack_dirty[level] = true
-
-
-## The crack group at one glass cell — G-D24's read: a cell already carrying a
-## DIFFERENT group, reached by a second fracture, is DESTROYED by the caller.
-func glass_crack_group_at(level: int, cell: Vector2i) -> int:
-	var p := cell + SOOT_PLANE_ORIGIN
-	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
+## Create one crack sprite. `spec` is the shape `GlassCrack.apply()` builds — see
+## its own note; the keys are pane_id, run_axis, wide, impact_run, impact_level,
+## impact_cell, radius, span, pane_lo, pane_hi. Returns the new crack's id, or 0
+## if the art or the shader is missing (already loud-failed by then).
+func spawn_glass_crack(spec: Dictionary) -> int:
+	if _glass_crack_shader == null:
+		_glass_crack_shader = load("res://godot/shaders/glass_crack.gdshader") as Shader
+		if _glass_crack_shader == null:
+			push_error("[VoxelRenderer] CRACK-02: glass_crack.gdshader failed to load — no crack will draw")
+			return 0
+	var wide: bool = bool(spec.get("wide", false))
+	var sheet: Texture2D = _glass_crack_sheet("wide" if wide else "tight")
+	if sheet == null:
 		return 0
-	if not _glass_crack_images.has(level):
-		return 0
-	return (_glass_crack_images[level] as Image).get_pixel(p.x, p.y).r8
+	var sprite := GlassCrackSpriteClass.new()
+	sprite.setup(sheet, spec["span"],
+		glass_cell_face_pos(int(spec["impact_level"]), spec["impact_cell"]),
+		int(spec["run_axis"]), spec["pane_lo"], spec["pane_hi"], _glass_crack_shader)
+	_ensure_glass_crack_root().add_child(sprite)
+	_glass_crack_next_id += 1
+	_glass_cracks.append({
+		"id": _glass_crack_next_id,
+		"pane_id": String(spec.get("pane_id", "")),
+		"run_axis": int(spec["run_axis"]),
+		"wide": wide,
+		"impact_run": int(spec["impact_run"]),
+		"impact_level": int(spec["impact_level"]),
+		"radius": spec["radius"],
+		"sprite": sprite,
+	})
+	return _glass_crack_next_id
 
 
-func flush_glass_crack() -> int:
-	if _glass_crack_dirty.is_empty():
-		return 0
-	var n: int = 0
-	for level in _glass_crack_dirty.keys():
-		var tex = _glass_crack_textures.get(level)
-		if tex != null:
-			(tex as ImageTexture).update(_glass_crack_images[level])
-			n += 1
-	_glass_crack_dirty.clear()
-	return n
+## How many crack sprites are live. Diagnostics and the selftest.
+func glass_crack_count() -> int:
+	return _glass_cracks.size()
+
+
+## Drop every crack sprite. A perspective flip rebuilds the whole renderer, so
+## this is what keeps orphaned nodes from surviving it; S-3 is what puts the
+## cracks BACK from the room-side base-coord registry.
+func clear_glass_cracks() -> void:
+	for c in _glass_cracks:
+		var s = c["sprite"]
+		if s != null and is_instance_valid(s):
+			s.queue_free()
+	_glass_cracks.clear()
 
 
 func _get_layer_material(level: int) -> ShaderMaterial:
@@ -4608,6 +4634,7 @@ func _ensure_glass_sublayers(level: int) -> void:
 	for l in _glass_layers.values():
 		(l as TileMapLayer).z_index = _glass_composite_z
 		move_child(l, -1)
+	_lift_glass_crack_root()
 	if _glass_layers.has(level):
 		return
 	var gl := _build_glass_sublayer_node(level)
@@ -4630,6 +4657,7 @@ func set_glass_over_z(z: int) -> void:
 	for l in _glass_layers.values():
 		(l as TileMapLayer).z_index = _glass_composite_z
 		move_child(l, -1)
+	_lift_glass_crack_root()
 
 
 ## GLASS G1 — one glass pane layer (one per level), a direct child of the
@@ -4663,17 +4691,10 @@ func _build_glass_sublayer_node(level: int) -> TileMapLayer:
 
 	add_child(layer)
 	move_child(layer, -1)
-	## CRACK-01 — the per-level uniforms: this level's crack plane, and the
-	## canvas→layer offset the shader's cell recovery inverts. `layer_origin` must
-	## be read AFTER add_child, exactly as _build_voxel_layer_node() does, so the
-	## global transform is real. The level itself is NOT pushed: the sheet UV works
-	## off the canvas delta, and each level's layer origin already carries its
-	## VOXEL_STEP_PX offset, so the level difference is in the delta for free.
-	var gmat := layer.material as ShaderMaterial
-	if gmat != null:
-		_glass_crack_image_for(level)
-		gmat.set_shader_parameter("glass_crack_plane", _glass_crack_textures[level])
-		gmat.set_shader_parameter("glass_layer_origin", layer.get_global_transform().origin)
+	## CRACK-02 — nothing crack-shaped is bound here any more. The web left this
+	## shader entirely (G-D27): it is a sprite over the pane, and the pane layer
+	## went back to what it was before CRACK-01-B.
+	_lift_glass_crack_root()
 	return layer
 
 
@@ -4705,24 +4726,10 @@ func _make_glass_material() -> ShaderMaterial:
 	var frost_tex := load(MATERIAL_ASSET_ROOT + "glass/facade_glass.png")
 	if frost_tex != null:
 		mat.set_shader_parameter("glass_frost_tex", frost_tex)
-	## CRACK-01 — the two fracture sheets (G-D14) and the shared crack-groups
-	## strip. The per-level crack PLANE is bound in _build_glass_sublayer_node()
-	## alongside layer_origin, since both are per level.
-	var f_tight := load(MATERIAL_ASSET_ROOT + "glass/fracture_glass_tight.png")
-	var f_wide := load(MATERIAL_ASSET_ROOT + "glass/fracture_glass_wide.png")
-	if f_tight != null:
-		mat.set_shader_parameter("glass_fracture_tight", f_tight)
-	if f_wide != null:
-		mat.set_shader_parameter("glass_fracture_wide", f_wide)
-	if f_tight == null or f_wide == null:
-		push_warning("[VoxelRenderer] CRACK-01: a fracture sheet failed to load — cracked glass will show the see-through drop but no web")
-	_glass_crack_groups_img()
-	mat.set_shader_parameter("glass_crack_groups", _glass_crack_groups_texture)
-	mat.set_shader_parameter("glass_crack_group_cap", float(GLASS_CRACK_GROUP_CAP))
-	mat.set_shader_parameter("glass_crack_plane_size",
-		Vector2(float(SOOT_TEX_SIZE), float(SOOT_TEX_SIZE)))
-	mat.set_shader_parameter("glass_crack_plane_origin",
-		Vector2(float(SOOT_PLANE_ORIGIN.x), float(SOOT_PLANE_ORIGIN.y)))
+	## CRACK-02 — the fracture sheets are NOT bound here. They are the crack
+	## SPRITE's texture now (G-D27), loaded per width by `_glass_crack_sheet()`, so
+	## a pane layer carries no crack uniform at all and every glass fragment on the
+	## map loses a `texture()` + branch.
 	return mat
 
 

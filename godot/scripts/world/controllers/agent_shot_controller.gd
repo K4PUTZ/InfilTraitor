@@ -936,19 +936,20 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		cell_to_voxel, cell_to_material, cell_to_depth)
 
 
-## CRACK-01 (GLASS_MASTER_PLAN §8, G-D14 / G-D19 / G-D21 / G-D24) — a pane that
+## CRACK-02 (GLASS_MASTER_PLAN §13, G-D14 / G-D24 / G-D26 / G-D27) — a pane that
 ## took a hit and stayed standing crazes around the hole. The still-standing
 ## glass within the crack radius (tight for pistol/pellet, wider for rifle-class
-## off `WeaponDef.blowout`, G-D14) goes CRACKED and takes a crack GROUP id in the
-## renderer's per-level plane; `glass_pane.gdshader` reanchors the fracture sheet
-## onto the hit (G-D21, world-space — a subtraction, no atom minted). A cell
-## already carrying a DIFFERENT group is a crossing: G-D24 DESTROYS it and it
-## falls through GlassFall like any other break.
+## off `WeaponDef.blowout`, G-D14) goes CRACKED, and one crack SPRITE is laid over
+## the pane at the impact. A cell already covered by a DIFFERENT crack is a
+## crossing: G-D24 DESTROYS it and it falls through GlassFall like any other
+## break.
 ##
-## ⚠️ The crack RENDER is renderer-side (the plane + groups strip), so it does
-## NOT survive a perspective flip today — the CRACKED voxel STATE does (VL-PERSIST
-## records it), the web overlay would need re-stamping in _reapply_base_damage().
-## Rotation is suspended; this is a follow-up for when it returns.
+## The TRIGGERS are exactly CRACK-01's and did not move — only the renderer did.
+##
+## ⚠️ The sprites are renderer-side nodes, so they do NOT survive a perspective
+## flip yet — the CRACKED voxel STATE does (VL-PERSIST records it). §13.2 S-3 is
+## the room-side base-coord registry that rebuilds them; rotation is suspended, so
+## it is a follow-up.
 func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 		weapon_def: WeaponDef, cell_to_voxel: Dictionary, cell_to_material: Dictionary,
 		cell_to_depth: Dictionary) -> void:
@@ -975,8 +976,8 @@ func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 		cell_to_material[pkey] = hit_material
 		if not cell_to_depth.has(pkey):
 			cell_to_depth[pkey] = 0
-	print_debug("[GLASS-CRACK] pane=%s group=%d width=%s crazed=%d crossed=%d (G-D24)"
-		% [hit_slice.pane_id, res["gid"], "wide" if wide else "tight",
+	print_debug("[GLASS-CRACK] pane=%s crack=%d width=%s crazed=%d crossed=%d (G-D24)"
+		% [hit_slice.pane_id, res["crack_id"], "wide" if wide else "tight",
 		res["crazed"], res["crossed"]])
 	if not res["fallen"].is_empty():
 		var landings: Array = GlassFall.plan_landings(res["fallen"], room._slab_registry.all_slabs())

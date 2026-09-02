@@ -180,14 +180,21 @@ func _validate_dimensions(path: String, img: Image) -> bool:
 		expected_w = 8 * GeometryCoords.TEX_AUTHORING_N
 		expected_h = 8 * GeometryCoords.TEX_AUTHORING_N
 	elif filename.begins_with("fracture_"):
-		# G-D21's pane fracture. Facade-SHAPED (one 64x32-voxel page) because it
-		# rides the facade compositing path verbatim — the sheet is re-anchored
-		# onto the impact by offsetting (column_in_run, level), which is an
-		# arithmetic change at the key, not a new plane geometry. So the same
-		# 64x32 contract, deliberately not a constant of its own: a fracture
-		# sheet that disagreed with the facade page would break the offset.
-		expected_w = 64 * GeometryCoords.TEX_AUTHORING_N
-		expected_h = 32 * GeometryCoords.TEX_AUTHORING_N
+		# ⚠️ A FRACTURE SHEET IS FREE-SIZE, AND THIS BRANCH EXISTS ONLY TO SAY SO.
+		#
+		# It used to enforce the facade page (64x32 voxels = 1024x512) because
+		# G-D21 had the sheet riding the facade compositing path, re-anchored by
+		# offsetting (column_in_run, level). CRACK-02 / G-D27 took the crack out
+		# of the atlas entirely: it is a SPRITE over the pane, scaled by
+		# GlassCrack.SHEET_SPAN_*, so its pixel dimensions carry no contract at all
+		# — only its aspect matters, and that is the artist's business.
+		#
+		# The branch has to stay: an unrecognised prefix returns FALSE, which
+		# rejects the file into Tier.NONE and the generic atlas with nothing above
+		# a WARN — the exact silent failure GLASS_MASTER_PLAN §13.3 names. The
+		# grayscale check above still applies (a sheet is a pattern source, B2) and
+		# check_decal.py owns the art gate.
+		return true
 	elif filename.begins_with("slab_"):
 		# Isotropic floor-bake plane: resolve_flat() folds both axes at
 		# SHEET_COLS=64, so 64 * TEX_AUTHORING_N is the addressable domain

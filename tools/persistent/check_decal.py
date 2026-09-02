@@ -83,6 +83,7 @@ RENDERER = os.path.join(REPO_ROOT, "godot", "scripts", "geometry", "voxel_render
 ## of), and TextureResolver is where a sheet is accepted or silently dropped.
 GLASS_MATERIALS = os.path.join(REPO_ROOT, "godot", "scripts", "systems", "glass_materials.gd")
 TEXTURE_RESOLVER = os.path.join(REPO_ROOT, "godot", "scripts", "systems", "texture_resolver.gd")
+GLASS_CRACK = os.path.join(REPO_ROOT, "godot", "scripts", "systems", "destruction", "glass_crack.gd")
 
 ## §7, pinned: 256x256 is 16x the canonical TEX_AUTHORING_N density, and square
 ## because a voxel face is square in flat space. The x20/16 vertical stretch
@@ -127,11 +128,11 @@ def families_for(material):
 
 
 ## ---------------------------------------------------------------------------
-## Fracture sheets (GLASS_MASTER_PLAN G-D21/G-D23) — a THIRD asset class, and it
-## fails like neither of the other two.
+## Fracture sheets (GLASS_MASTER_PLAN §13, G-D23/G-D27) — a THIRD asset class,
+## and it fails like neither of the other two.
 ##
-## A fracture sheet is facade-SHAPED (one 64x32-voxel page) but decal-SEMANTIC
-## (it is a mark, not a surface). Neither existing gate is right for it:
+## A fracture sheet is decal-SEMANTIC (it is a mark, not a surface) and neither
+## existing gate is right for it:
 ##
 ##   - check_facade.py would PASS a sheet whose fracture is missing or off
 ##     centre, because it only ever asks about dimensions, grayscale and import;
@@ -145,11 +146,28 @@ def families_for(material):
 ## fracture is at that texel, and alpha is irrelevant (§7.3's luma-to-alpha step
 ## applies to the shard DECALS, never to these). That is also what Stable
 ## Diffusion produces natively, with no matting step at all.
-FRACTURE_COLS = 64
-FRACTURE_ROWS = 32
+##
+## ⚠️ CRACK-02 (G-D27) TOOK THE SIZE CONTRACT OFF THIS CLASS, and this gate moved
+## with it in S-1's own commit — the alternative, spelled out in §13.3, is that
+## the gate rejects good art on size while `TextureResolver` drops it into the
+## generic atlas with no error at all.
+##
+## Until CRACK-02 the sheet was facade-SHAPED (one 64x32-voxel page) because
+## G-D21 had it riding the facade compositing path, re-anchored by offsetting
+## `(column_in_run, level)`. It does not ride that path any more: a crack is a
+## SPRITE scaled by `GlassCrack.SHEET_SPAN_*`, so PIXEL dimensions carry no
+## contract — only the ASPECT does, because the span is authored in voxels and a
+## sheet whose aspect disagrees with its span is stretched on the pane.
+##
+## What survives untouched is the ANCHOR (below): `Sprite2D.centered` puts the
+## page centre on the impact, so an off-centre bore still lands every crack a
+## fixed distance from the round that made it. G-D28's four classes (S-4) will
+## make that rule class-dependent — `blast` has no centre at all — and this gate
+## grows a class column when that art is ordered, not before.
+FRACTURE_ASPECT = 2.0           ## width / height, from SHEET_SPAN_* (20x10, 44x22)
+FRACTURE_ASPECT_SLACK = 0.02    ## PNG dimensions are integers; 2% absorbs rounding
+FRACTURE_MIN_PX = 128           ## below this there is no web to resolve, at any span
 TEX_AUTHORING_N = 16    ## pinned, ASSETS/ART_SPECIFICATIONS.md §1
-FRACTURE_W = FRACTURE_COLS * TEX_AUTHORING_N    ## 1024
-FRACTURE_H = FRACTURE_ROWS * TEX_AUTHORING_N    ## 512
 
 ## G-D14's two hole sizes, and the sheet count is exactly two because of it:
 ## pistol/shotgun take the tight web, rifle-class the wide/spaced one.
@@ -175,14 +193,20 @@ FRACTURE_COVERAGE_FLOOR = 0.1   ## below this the page carries no crack at all
 FRACTURE_COVERAGE_CEILING = 90.0  ## above this it is a lit page, not a fracture
 
 ## THE ONE THRESHOLD THAT IS STRUCTURAL RATHER THAN AESTHETIC, and the reason
-## this check exists at all. G-D21 re-anchors the sheet by offsetting
-## `(column_in_run, level)` by (impact - sheet centre), so the fracture's ORIGIN
-## must be the sheet's centre. Author it off centre and every crack in the game
-## lands a fixed distance from where the round actually hit — systematically,
-## invisibly, forever. A radial fracture's ink-weighted centroid IS its origin by
-## construction, so the centroid is a direct measurement of that claim; 4 voxels
-## of slack absorbs an asymmetric web without absorbing a misplaced one.
-FRACTURE_ORIGIN_SLACK_VOXELS = 4
+## this check exists at all. `GlassCrackSprite` is `centered`, so the page centre
+## goes on the impact: the fracture's ORIGIN must be the sheet's centre. Author it
+## off centre and every crack in the game lands a fixed distance from where the
+## round actually hit — systematically, invisibly, forever. A radial fracture's
+## ink-weighted centroid IS its origin by construction, so the centroid is a
+## direct measurement of that claim.
+##
+## ⚠️ A FRACTION OF THE PAGE, NOT A VOXEL COUNT — and it is the SAME tolerance,
+## re-expressed. It used to read "4 voxels" against a fixed 64x32 authoring page,
+## which is 4/64 of the width and 4/32 of the height. With CRACK-02 the page has
+## no fixed voxel extent (its span is a runtime dial, GlassCrack.SHEET_SPAN_*), so
+## a voxel count would have quietly become 3x more permissive on a `tight` sheet.
+FRACTURE_ORIGIN_SLACK_X = 4.0 / 64.0    ## of page width
+FRACTURE_ORIGIN_SLACK_Y = 4.0 / 32.0    ## of page height
 
 ## Measured over all 45 shipped decals: coverage runs 2.6% to 82.9% — a span
 ## wide enough that ANY meaningful band would reject known-good art. The generic
@@ -456,18 +480,23 @@ def check_fracture(path):
     except Exception as exc:
         return False, ["%-34s FAIL  not a readable image: %s" % (name, exc)]
 
-    ## 2. Dimensions — one facade page, and G-D23 DERIVES the maximum pane from
-    ## it (64 x 32 voxels = 8 GU x 4 storeys) rather than inventing a limit. A
-    ## sheet of any other size moves that rule without anyone editing it.
+    ## 2. Dimensions — FREE SINCE CRACK-02, except for the aspect. The sprite is
+    ## scaled to `SHEET_SPAN_*` voxels, so pixel size is resolution and nothing
+    ## more; but the span is 2:1 (20x10 tight, 44x22 wide), so a sheet authored
+    ## square arrives on the pane stretched, and nothing on screen says so.
     w, h = im.size
-    if (w, h) != (FRACTURE_W, FRACTURE_H):
+    if w < FRACTURE_MIN_PX or h < FRACTURE_MIN_PX:
+        ok = False
+        notes.append("dimensions %dx%d — under %d px there is no web left to "
+                     "resolve at any span" % (w, h, FRACTURE_MIN_PX))
+    elif abs((float(w) / float(h)) - FRACTURE_ASPECT) > FRACTURE_ASPECT_SLACK * FRACTURE_ASPECT:
         ok = False
         extra = ""
-        if (w, h) == (FRACTURE_W, FRACTURE_W):
-            extra = "  <- pre-squared; author 1024x512, %d cols x %d rows of voxels" \
-                % (FRACTURE_COLS, FRACTURE_ROWS)
-        notes.append("dimensions %dx%d, expected %dx%d%s"
-                     % (w, h, FRACTURE_W, FRACTURE_H, extra))
+        if w == h:
+            extra = "  <- square; the span is 2:1, so this arrives stretched"
+        notes.append("aspect %.3f, expected %.1f +/- %.0f%%%s"
+                     % (float(w) / float(h), FRACTURE_ASPECT,
+                        FRACTURE_ASPECT_SLACK * 100.0, extra))
 
     ## 3. Grayscale (B2), every pixel — check_facade.py's rule and its tolerance.
     ## Colour reaches a wall through base_color's MULTIPLY, never through a
@@ -528,37 +557,53 @@ def check_fracture(path):
         notes.append("effectively solid — %.1f%% of the page is lit, so this is a "
                      "bright surface, not a fracture on one" % coverage)
 
-    ## 5. THE ORIGIN — G-D21's actual requirement, and the failure this gate is
-    ## worth writing for. The sheet is re-anchored by offsetting (column, level)
-    ## by (impact - sheet centre); if the fracture's origin is not the centre,
+    ## 5. THE ORIGIN — the requirement CRACK-02 did NOT remove, and the failure
+    ## this gate is worth writing for. `GlassCrackSprite` is `centered`, so the
+    ## page centre goes on the impact; if the fracture's origin is not the centre,
     ## every crack in the game sits a fixed distance from the round that made it.
     ## Nothing on screen says so — it just always looks slightly wrong.
     if sum_w > 0.0:
         cx = sum_x / sum_w
         cy = sum_y / sum_w
-        dx_v = (cx - w / 2.0) / float(TEX_AUTHORING_N)
-        dy_v = (cy - h / 2.0) / float(TEX_AUTHORING_N)
-        if abs(dx_v) > FRACTURE_ORIGIN_SLACK_VOXELS or abs(dy_v) > FRACTURE_ORIGIN_SLACK_VOXELS:
+        fx = (cx - w / 2.0) / float(w)
+        fy = (cy - h / 2.0) / float(h)
+        ## The span this width is drawn at, so the report can speak in PANE
+        ## voxels — the unit the Director actually sees — while the gate itself
+        ## stays in page fractions.
+        span = _declared_sheet_spans().get(parsed[1] if parsed else "", None)
+        as_voxels = ""
+        if span:
+            as_voxels = "  (%+.1f, %+.1f pane voxels at span %gx%g)" % (
+                fx * span[0], fy * span[1], span[0], span[1])
+        if abs(fx) > FRACTURE_ORIGIN_SLACK_X or abs(fy) > FRACTURE_ORIGIN_SLACK_Y:
             ok = False
             notes.append("fracture origin is off centre — ink centroid sits "
-                         "(%+.1f, %+.1f) voxels from the page centre, past the "
-                         "%d-voxel slack. G-D21 anchors the sheet by (impact - "
-                         "centre), so this offset would apply to EVERY crack"
-                         % (dx_v, dy_v, FRACTURE_ORIGIN_SLACK_VOXELS))
+                         "(%+.1f%%, %+.1f%%) of the page from its centre, past the "
+                         "(%.1f%%, %.1f%%) slack%s. The sprite is centred on the "
+                         "impact, so this offset would apply to EVERY crack"
+                         % (fx * 100.0, fy * 100.0,
+                            FRACTURE_ORIGIN_SLACK_X * 100.0,
+                            FRACTURE_ORIGIN_SLACK_Y * 100.0, as_voxels))
         else:
-            notes.append("origin ok — centroid (%+.1f, %+.1f) voxels from centre"
-                         % (dx_v, dy_v))
+            notes.append("origin ok — centroid (%+.1f%%, %+.1f%%) of the page from "
+                         "centre%s" % (fx * 100.0, fy * 100.0, as_voxels))
 
         ## 6. Reach — REPORTED, never failed. This is the number that decides
         ## whether G-D23's "a centred hit can crack the whole pane" is real: the
-        ## maximum pane is 64 x 32, so reaching it from the centre needs 32
-        ## columns and 16 rows. A tight web is SUPPOSED to fall short (G-D14),
-        ## which is why this cannot be a failure.
-        reach_x = max(abs(max_x - w / 2.0), abs(w / 2.0 - min_x)) / float(TEX_AUTHORING_N)
-        reach_y = max(abs(max_y - h / 2.0), abs(h / 2.0 - min_y)) / float(TEX_AUTHORING_N)
-        notes.append("reach %.0f col / %.0f row voxels from centre (a max pane "
-                     "needs 32 / 16 to crack edge to edge, G-D23)"
-                     % (reach_x, reach_y))
+        ## maximum pane is 64 x 32 voxels, so reaching it from the centre needs 32
+        ## columns and 16 rows OF PANE. A tight web is SUPPOSED to fall short
+        ## (G-D14), which is why this cannot be a failure.
+        rx = max(abs(max_x - w / 2.0), abs(w / 2.0 - min_x)) / float(w)
+        ry = max(abs(max_y - h / 2.0), abs(h / 2.0 - min_y)) / float(h)
+        if span:
+            notes.append("reach %.1f col / %.1f row PANE voxels from centre at "
+                         "span %gx%g (a max pane needs 32 / 16 to crack edge to "
+                         "edge, G-D23)"
+                         % (rx * span[0], ry * span[1], span[0], span[1]))
+        else:
+            notes.append("reach %.0f%% / %.0f%% of the page from centre (no span "
+                         "declared for this width, so it cannot be stated in "
+                         "pane voxels)" % (rx * 100.0, ry * 100.0))
 
     ## 7. Imported — the same check, for the same reason, as every other asset.
     for n in _import_notes(path):
@@ -591,6 +636,31 @@ def check_material_fractures(material):
     if found_any:
         all_ok = _check_fracture_wiring() and all_ok
     return all_ok
+
+
+def _declared_sheet_spans():
+    """GlassCrack.SHEET_SPAN_<WIDTH>, in (run, level) pane voxels, per width.
+
+    Read from the source for the same reason the widths are: the number that
+    decides how big a crack looks on the pane is a Director dial in
+    `glass_crack.gd`, and a copy of it here would rot the first time he moves it.
+    An unreadable file yields {} and the reports degrade to page fractions rather
+    than lying in voxels.
+    """
+    out = {}
+    try:
+        for line in open(GLASS_CRACK, encoding="utf-8", errors="replace"):
+            if not line.startswith("static var SHEET_SPAN_"):
+                continue
+            name = line.split()[2].split(":")[0]           ## SHEET_SPAN_TIGHT
+            width = name[len("SHEET_SPAN_"):].lower()
+            body = line[line.index("Vector2(") + len("Vector2("):]
+            body = body[:body.index(")")]
+            xs, ys = body.split(",")
+            out[width] = (float(xs), float(ys))
+    except (OSError, ValueError, IndexError):
+        return {}
+    return out
 
 
 def _declared_fracture_widths():
@@ -660,16 +730,18 @@ def _check_fracture_wiring():
         print("  WIRING FAIL  TextureResolver._validate_dimensions() has no")
         print("               `fracture_` category, so every sheet is REJECTED with")
         print("               no error at all — Tier.NONE, generic atlas, silently")
-        print("               wrong. One elif, 64x32 * TEX_AUTHORING_N.")
+        print("               wrong. One elif that returns true (free-size art).")
     else:
         print("  wiring  ok    TextureResolver accepts the `fracture_` category")
 
     ## ⚠️ WHAT THIS CHECK STILL CANNOT SEE, said out loud so a green line is not
-    ## read as more than it is: G-D21's re-anchoring is UNBUILT, so nothing
-    ## ASKS for a sheet yet. Both seams above being wired means a sheet would
-    ## resolve if something requested it, not that anything does.
-    print("  note          G-D21 is unbuilt — nothing requests a sheet yet, so")
-    print("                these two seams are readiness, not use.")
+    ## read as more than it is. CRACK-01/02 BUILT the consumer — the sheets are
+    ## `GlassCrackSprite`'s texture, loaded by `VoxelRenderer._glass_crack_sheet()`
+    ## — so these two seams are now use, not readiness. What no static gate can
+    ## reach is how the web LOOKS on a pane; that took a real capture three times
+    ## in one session (§13's rejection table).
+    print("  note          the sheets ARE loaded (VoxelRenderer._glass_crack_sheet),")
+    print("                but no gate here can see how the web reads on a pane.")
     print("")
     return ok
 

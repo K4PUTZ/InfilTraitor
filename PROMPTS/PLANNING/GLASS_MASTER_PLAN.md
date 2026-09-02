@@ -1,17 +1,33 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.22 — **CRACK-01 IS BUILT AND WORKING (stages A–E), AND THE
-DIRECTOR HAS RULED ITS RENDERER OUT.** The crack fires, is state-correct and is
-on the real map; what it cannot do is stop looking like it was drawn by the
-voxels, because it was. **CRACK-02 (§13) is the planned replacement: the crack
-becomes a SPRITE over the pane** — G-D27, with G-D28 (four decal classes),
-G-D29 (`blast` = 3 patterns × H/V flip, hashed) and G-D30 (a destroyed voxel
-cuts the sprite, by how much is a dial the Director settles by capture). **§13
-is the build order; nothing of CRACK-02 is built yet.**
+**Status:** 🟢 v1.23 — **CRACK-02 IS BUILT: S-1, S-2 AND S-3 (§13).** The crack
+left the voxel and is a SPRITE over the pane (G-D27), it is cut by a destroyed
+voxel through an occupancy read off the live glass tilemap (G-D30), and it
+survives a perspective flip from a base-coord registry (S-3). §13.3's contract
+moved with the mechanism, in S-1's own commit. **S-4 (the four-class art order)
+is WRITTEN and its art is UNBUILT** —
+[`ART_ORDER_GLASS_FRACTURE_CLASSES.md`](../ART_ORDER_GLASS_FRACTURE_CLASSES.md).
 
-Read §13.3 before starting it: `TextureResolver`'s `fracture_` category and
-`check_decal.py`'s fracture class both encode the atlas assumption CRACK-02
-removes, and left alone they drop the new art **with no error at all**.
+**Two things are open and both are the Director's:**
+- **G-D30's cut VALUE.** The triptych is captured and waiting
+  (`glass_crack_cut_triptych_2026-09-02.png`). ⚠️ It is not the small aesthetic
+  choice it looked like: on the real shotgun path, cut 1.0 leaves **no web at
+  all**, because G-D24 turns every overlapping pellet crack into a hole
+  (`glass_crack_cut_shotgun_2026-09-02.png`). Shipped default is 1.0 until he
+  rules; `INFILTRAITOR_GLASS_CRACK_CUT=<0..1>` compares the ends without an edit.
+- **The `tight` sheet's density**, before six more sheets are generated against a
+  guess — see the art order's §6.
+
+⚠️ **A map defect surfaced while proving S-3, and it is not glass's.**
+`PerspectiveMapper.layout_with_perspective()` rotates every layout key except
+`panel_instances`, where all half-thickness elements live — G-D9's windows
+included. Measured from one boot, N then E: seven of the GLASS map's eight panes
+have IDENTICAL cells, all on a constant-y line a quarter turn must move. The
+panes stand still while the walls rotate, so E/S/W are geometrically wrong today,
+independent of cracks. Rotation is suspended for performance, so nothing is on
+fire — but the on-map E/S/W acceptance capture for S-3 is blocked behind it, and
+the fix is NOT a copy of the block branch (a panel carries a FACE, so it needs the
+`remap_tile_name` treatment too).
 
 Earlier the same day — both §8 blockers resolved by Director ruling: §8.1 →
 glass reaches CRACKED by the route it ALREADY has and `crack_factor` stays 0.0;
@@ -340,10 +356,10 @@ just not the target case.
 | **G-D16** | **Glass is a family of tinted behaviour classes, not new geometry.** All variants share G1's rendering and differ only in a tint (`base_color`) and a `glass_class`: `glass` (blue, BREAKABLE) · `glass_armored` (purple, ARMORED, G-D15) · `glass_screen_{green,red,amber}` (dark terminal tone) which is **INDESTRUCTIBLE** (control interfaces — takes a crack decal, never breaks, and STOPS the round: *"trinca mas o tiro para"*) or **BREAKABLE** (TVs, circuits, news panels) per placement | ✅ Ratified 2026-08-31 |
 | **G-D17** | **A screen is a glass voxel over a BLACK PLASTIC voxel.** *"O voxel de vidro fica na frente de voxels pretos de PLÁSTICO (a implementar — fura [não atravessa] ou derrete), de forma que nesses voxels pretos vamos pintar as imagens e textos posteriormente, e o vidro vai criar o efeito de brilho por cima."* New material **`plastic`** (black): a round DRILLS it (a hole, but the round does NOT pass through — unlike glass) or fire MELTS it. Images/text painted onto the plastic later; the glass in front adds the G1 sheen. Belongs in `MATERIALS_MASTER_PLAN` | ✅ Ratified 2026-08-31 · `plastic` + the paint layer are deferred |
 | **G-D18** | **Glass does not occlude.** *(Director, 2026-08-31, on the G-D9 capture: "tem algum problema com a oclusão. Podemos considerar não fazer em materiais de vidro.")* A glass pane is see-through by construction (G-D1) — the agent behind it is already visible, so ghosting it reveals nothing, and because glass renders on its own `_glass_layers` (which `apply_occlusion()` never erases) the wireframe drew its lines and ghost-band fill over a still-solid pane. `OcclusionSet` now filters out any slice whose BASE material is glass (policy O7, `_group_slices_by_edge`): no trigger, no ring stop, no wireframe. A mostly-opaque wall with a small glass viewport (base ≠ glass) still occludes. Guard-through-glass vision is G-D7, a separate roll | ✅ **BUILT 2026-08-31** |
-| **G-D27** | **THE CRACK IS A SPRITE OVER THE PANE, NOT SOMETHING THE VOXEL SHADER DRAWS. ⛔ This replaces G-D21's MECHANISM (the art and the event survive; only the renderer changes).** *(Director, 2026-09-02: "talvez fosse melhor colocar um sprite em alpha, só com a parte branca das rachaduras, sobre a vidraça deixando o buraco sem voxels no centro. Porque no fim do dia a gente quer que os voxels atrás da rachadura sejam idênticos aos outros. E de quebra a gente resolve o problema da rotação e da adição de mais buracos, porque os adesivos se somam sem depender do atlas de voxels.")* **Why the additive fix (G-D26) was still not enough:** a crack drawn BY the voxel shader inherits every per-voxel property whether it wants to or not — the atom's `dim` (1.0 / 0.78 / 0.60 by face plane), the coverage alpha `cover` the whole fragment is blended at, and the quad seams themselves. Additive or not, it is still the voxel's. Only leaving the voxel reaches *"idênticos aos outros"*. **What it buys, all four measurable:** the glass behind is untouched by construction; a crack becomes a node with a position, so a perspective rebuild recreates it from a base-coord registry instead of losing a renderer-side plane; N impacts are N sprites that alpha-composite, so the 16-group cap, the per-cell group plane and the RGBAF strip all delete; and it REMOVES a `texture()` + branch from every glass fragment on the map. **The one real cost, named before building:** a sprite is a rectangle and a pane is not, so a crack near a frame would bleed over whatever is beside it. The fix reuses the wall-face inverse CRACK-01-D built and `glass_crack_selftest` [10] pinned — the pane is a rect in `(run, level)`, so the sprite discards fragments outside its run/level bounds. That basis changes job rather than being thrown away | ✅ Ratified 2026-09-02 · **UNBUILT — the plan is §13** |
+| **G-D27** | **THE CRACK IS A SPRITE OVER THE PANE, NOT SOMETHING THE VOXEL SHADER DRAWS. ⛔ This replaces G-D21's MECHANISM (the art and the event survive; only the renderer changes).** *(Director, 2026-09-02: "talvez fosse melhor colocar um sprite em alpha, só com a parte branca das rachaduras, sobre a vidraça deixando o buraco sem voxels no centro. Porque no fim do dia a gente quer que os voxels atrás da rachadura sejam idênticos aos outros. E de quebra a gente resolve o problema da rotação e da adição de mais buracos, porque os adesivos se somam sem depender do atlas de voxels.")* **Why the additive fix (G-D26) was still not enough:** a crack drawn BY the voxel shader inherits every per-voxel property whether it wants to or not — the atom's `dim` (1.0 / 0.78 / 0.60 by face plane), the coverage alpha `cover` the whole fragment is blended at, and the quad seams themselves. Additive or not, it is still the voxel's. Only leaving the voxel reaches *"idênticos aos outros"*. **What it buys, all four measurable:** the glass behind is untouched by construction; a crack becomes a node with a position, so a perspective rebuild recreates it from a base-coord registry instead of losing a renderer-side plane; N impacts are N sprites that alpha-composite, so the 16-group cap, the per-cell group plane and the RGBAF strip all delete; and it REMOVES a `texture()` + branch from every glass fragment on the map. **The one real cost, named before building:** a sprite is a rectangle and a pane is not, so a crack near a frame would bleed over whatever is beside it. The fix reuses the wall-face inverse CRACK-01-D built and `glass_crack_selftest` [10] pinned — the pane is a rect in `(run, level)`, so the sprite discards fragments outside its run/level bounds. That basis changes job rather than being thrown away | ✅ Ratified 2026-09-02 · **BUILT 2026-09-02, §13 stages S-1..S-3.** Every one of the four promised gains is real: the glass behind is untouched by construction, a crack is a node a flip can rebuild (S-3, 5853 of 5855 pixels), the 16-group cap and the plane are deleted, and the per-fragment read is gone. ⚠️ The fifth thing it was expected to buy — a measurable frame win — is NOT there: idle `GLASS` reads 6.40 ms on both binaries (§13.5) |
 | **G-D28** | **FOUR DECAL CLASSES, AND `armored` HAS A CENTRE TOO.** *(Director, 2026-09-02, correcting the reading of his own reference set: "o tiro a prova de balas não é uniforme, ele tem um centro assim".)* The `REFERENCES/Vidro` set resolves into four distinct vocabularies, and the distinguishing feature is the CENTRE, not the spread: `bullet_tight` (small empty bore · sparse · a few long runners), `bullet_wide` (empty bore, irregular outline · radials + concentric arcs), **`armored`** (an OPAQUE crushed-white core — pulverised glass, never a void — dense radial needles and a wider secondary craze field, and no through-passage: *"estilhaça mas não rompe"*), and `blast` (no centre at all · spread crazing, the shockwave case). They map onto triggers that already exist — `WeaponDef.blowout` splits the two bullet classes (G-D14), `glass_armored` / INDESTRUCTIBLE screens take `armored` (G-D15/G-D16), and the cook path takes `blast` | ✅ Ratified 2026-09-02 |
 | **G-D29** | **`blast` IS 3 PATTERNS × H/V FLIP, HASHED PER PANEL.** *(Director, 2026-09-02: "vamos usar um conjunto de padrões nos painéis, digamos 3, que podem ser escolhidos aleatoriamente e flipados vertical e horizontal. Assim teremos uma variação legal, sem consumir quase nada a mais de memória.")* Three textures, twelve apparent variants. The choice is NOT new machinery: it comes from the B4 FNV-1a the destruction stack already uses (`FacadeSampler._fnv1a_hash` over `pane_id` + panel index), which makes it deterministic and replay-safe by the same rule as every other per-cell choice in the project — and the same hash yields the two flip bits for free. This is also the answer to *"stretch one sprite / tile a field / scatter several"*: none of the three; a small pool placed per panel | ✅ Ratified 2026-09-02 |
-| **G-D30** | **A DESTROYED VOXEL CUTS THE SPRITE, BY A PER-LEVEL OCCUPANCY PLANE — AND HOW MUCH IT CUTS IS THE DIRECTOR'S, DECIDED BY LOOKING.** *(Director, 2026-09-02: "possivelmente, tirar o voxel de trás e deixar o adesivo pode ser que não incomode, representa de fato os estilhaços. Mas precisamos ver acontecendo pra confirmar. Talvez seja necessário remover um pedaço do sprite em runtime […] dá pra fazer isso?")* **Yes, and cheaply.** The sprite's shader already recovers `(run, level)` per fragment for G-D27's pane clipping, so it can sample one per-level R8 "is there still glass at this cell" plane and multiply alpha by it. The data has three writers and no more — `erase_glass_cell()` (the cook) and the two dirty-render passes (`voxel_renderer.gd:3583` slices, `:3724` slabs) — and because the sprite reads LIVE state, **a second event re-cuts every existing crack for free**; there is no "update the old sprites" pass. It also cuts a G-D9 banded pane's brick sill out of the web as a side effect. ⚠️ **The remaining question is fiction, not engineering, and stays open:** cutting says *the crack lives on glass that exists*; not cutting says *the crack is the shard cloud, and it outlives the pane*. So `glass_crack_hole_cut` is a CONTINUOUS 0..1 dial, not a boolean, and it is settled by a same-boot capture of both ends plus the middle — the Director's own *"precisamos ver acontecendo"* | ✅ Mechanism ratified 2026-09-02 · ⏳ the cut VALUE awaits a capture |
+| **G-D30** | **A DESTROYED VOXEL CUTS THE SPRITE, BY A PER-LEVEL OCCUPANCY PLANE — AND HOW MUCH IT CUTS IS THE DIRECTOR'S, DECIDED BY LOOKING.** *(Director, 2026-09-02: "possivelmente, tirar o voxel de trás e deixar o adesivo pode ser que não incomode, representa de fato os estilhaços. Mas precisamos ver acontecendo pra confirmar. Talvez seja necessário remover um pedaço do sprite em runtime […] dá pra fazer isso?")* **Yes, and cheaply.** The sprite's shader already recovers `(run, level)` per fragment for G-D27's pane clipping, so it can sample one per-level R8 "is there still glass at this cell" plane and multiply alpha by it. The data has three writers and no more — `erase_glass_cell()` (the cook) and the two dirty-render passes (`voxel_renderer.gd:3583` slices, `:3724` slabs) — and because the sprite reads LIVE state, **a second event re-cuts every existing crack for free**; there is no "update the old sprites" pass. It also cuts a G-D9 banded pane's brick sill out of the web as a side effect. ⚠️ **The remaining question is fiction, not engineering, and stays open:** cutting says *the crack lives on glass that exists*; not cutting says *the crack is the shard cloud, and it outlives the pane*. So `glass_crack_hole_cut` is a CONTINUOUS 0..1 dial, not a boolean, and it is settled by a same-boot capture of both ends plus the middle — the Director's own *"precisamos ver acontecendo"* | ✅ Mechanism **BUILT 2026-09-02** (§13 S-2) · ⏳ **the cut VALUE is still the Director's, and the capture changed what the question is.** Built as a READ of the glass tilemap rather than a second plane — `erase_cell()` is the live authority all three seams already go through, and a parallel plane would be a third copy free to drift. The triptych exists (`glass_crack_cut_triptych_2026-09-02.png`). ⚠️ **It is not the local aesthetic choice it looked like:** on the real shotgun path cut 1.0 leaves **no web at all**, because G-D24 turns every overlapping pellet crack into a hole and the shot ends `cracked=0 destroyed=279` — there is no standing glass under any of the webs (`glass_crack_cut_shotgun_2026-09-02.png`). At 0.0 the whole cluster is there. Shipped default 1.0 until he rules; `INFILTRAITOR_GLASS_CRACK_CUT=<0..1>` compares the ends |
 | **G-D18b** | **The agent renders BEHIND a glass pane he stands behind.** *(Director, 2026-08-31: "no caso do vidro ser transparente, acho que podemos deixar o agente ser renderizado atrás e ficar parcialmente coberto pelo vidro.")* OCC-03 bumps the agent one z above the tallest OPAQUE layer so a wall never hides him. Glass hides nothing, so the whole glass composite (backbuffer + every pane layer) is now lifted one z above the agent (`VoxelRenderer.set_glass_over_z(agent.z_index + 1)`, called from room.gd) — a pane the agent stands behind tints him, exactly as it already did for a guard (`enemies_root.z_index = 10`, never bumped). An agent standing IN FRONT of a pane is unaffected: the isometric projection draws his sprite below the pane's screen footprint, so they do not overlap | ✅ **BUILT 2026-08-31** |
 
 ---
@@ -1867,10 +1883,11 @@ wall and the small pane in one frame.
 
 ## 13. CRACK-02 — the crack leaves the voxel (G-D27..G-D30)
 
-**Status:** 🟡 PLANNED 2026-09-02, UNBUILT. Ratified in the register as G-D27
-(the sprite), G-D28 (the four classes), G-D29 (`blast` = 3 × flips) and G-D30
-(the occupancy cut). This section is the build order; the decisions and their
-reasoning live in §1 and are not repeated here.
+**Status:** 🟢 **S-1, S-2 AND S-3 BUILT 2026-09-02** (`a6cb797f`, `a407b93e`,
+`34077458`); **S-4's order is written and its art is unbuilt.** Ratified in the
+register as G-D27 (the sprite), G-D28 (the four classes), G-D29 (`blast` = 3 ×
+flips) and G-D30 (the occupancy cut). This section is the build order; the
+decisions and their reasoning live in §1 and are not repeated here.
 
 CRACK-01 shipped a working crack (§8, stages A–E) and the Director rejected its
 LOOK three times in a row, each rejection landing one level deeper:
@@ -1908,14 +1925,14 @@ rewritten rather than moved.
 
 ### 13.2 Stages
 
-| | stage | what closes it |
+| | stage | what closed it |
 |---|---|---|
-| **S-1** | **The sprite.** One node per crack instance, parented into the glass composite (its z must ride `_glass_composite_z`, so G-D18b's agent rule still holds). Shader: luma→alpha from the sheet, additive per G-D26, pane clipping via the wall-face inverse against the pane's run/level bounds. Delete §13.1's list. Rewrite G-D24's test | the same real-map shot as CRACK-01-C, showing no per-voxel variation anywhere in the web |
-| **S-2** | **The occupancy plane + the cut (G-D30).** One per-level R8 plane written at the three erase seams; the sprite multiplies alpha by it, scaled by `glass_crack_hole_cut` | a same-boot triptych at cut 0 / 0.5 / 1 on one pane, one shot — the Director picks the value |
-| **S-3** | **Rotation survival.** A room-side crack registry in BASE coords, mirroring `_base_damage`; sprites recreated after `_reapply_base_damage()`. This closes the gap CRACK-01 left open and G-D27 was partly chosen for | a crack that is still there, in the right place, after a perspective flip |
-| **S-4** | **The art order** — `bullet_tight`, `bullet_wide`, `armored`, `blast` ×3 (G-D28/G-D29). Written only AFTER S-1, because S-1 is what makes the format contract real | `check_decal.py` green on the new class, and each class visible on the GLASS map |
+| **S-1 ✅** | **The sprite.** `GlassCrackSprite` + `glass_crack.gdshader`, one node per crack, parented into the glass composite so G-D18b still holds. ⚠️ **The wall-face basis changed job rather than being inverted**: the FORWARD basis is baked into the node's `Transform2D`, so the quad IS the pane's parallelogram and the shader has no inverse in it — UV is already the sheet. Additive by BLEND MODE (`blend_add`) rather than by arithmetic inside someone else's shader. §13.1's delete list is gone; G-D24 is geometric | `glass_crack_demo_c02_*` — a continuous web, no per-voxel variation, no quad seams. And **`glass_crack_demo_c02_edge_clip_*`**, which is the one that matters: a CENTRED hit cannot prove the clip, because the sheet is smaller than a big pane and the bounds never engage. An EDGE hit puts the sheet 22 voxels past the frame and it is cut dead on the boundary; the demo prints both quads in screen pixels so it is a measurement |
+| **S-2 ✅** | **The occupancy cut (G-D30).** ⚠️ **Not a plane — a READ of the glass tilemap.** `erase_cell()` on `_glass_layers` is what actually removes a glass voxel, and all three erase seams already go through it, so a parallel plane would be a third copy of the same fact, free to drift. The seams only FLAG; the rebuild is once per batch at the five seams `flush_damage_composite_pages()` already uses. §13.5's two side effects both confirmed: the brick band clips for free, and `armored` cannot be erased by the dial | `glass_crack_cut_triptych_2026-09-02.png` — one crack, one boot, 0.0 / 0.5 / 1.0 over a real hole punched through the real erase seam. **⏳ the VALUE is still the Director's**, and `glass_crack_cut_shotgun_2026-09-02.png` is why it is not a small choice |
+| **S-3 ✅** | **Rotation survival.** `_base_cracks` mirrors `_base_damage` and stores only what cannot be re-derived: the impact in base coords and the sheet id. ⚠️ **Rebuilds through `sprite_spec()`, never `apply()`** — re-applying would set the damage a second time and run G-D24 against the cracks it is rebuilding, so every crack would cross the one before it | a **round trip** N→E→N, which returns to the identity so the sprite must land on the pre-flip pixels: **5853 of 5855 bright pixels identical**. "A crack appeared somewhere" is what the eye would have accepted. ⚠️ The E/S/W half is blocked by the `panel_instances` defect in the header |
+| **S-4 🟡** | **The art order** — `tight`, `wide`, `armored`, `blast` ×3 (G-D28/G-D29). **Written**: [`ART_ORDER_GLASS_FRACTURE_CLASSES.md`](../ART_ORDER_GLASS_FRACTURE_CLASSES.md), including the free-size/aspect contract S-1 made real and the six wiring steps. **Art unbuilt on purpose** — §6 of that order: the generator would have to produce the opposite distribution (§13.4), `blast_*` has no caller yet (§6.2 is unbuilt), and the look has been rejected three times on this track already | `check_decal.py` green on the new classes, and each class visible on the GLASS map — neither yet |
 
-### 13.3 ⚠️ The contract that must move in S-1's own commit
+### 13.3 ✅ RESOLVED IN S-1's OWN COMMIT — the contract that had to move
 
 `TextureResolver`'s `fracture_` category enforces the FACADE contract (64 × 32
 voxels = 1024 × 512) and `check_decal.py`'s fracture class enforces 1024 × 512
@@ -1925,6 +1942,17 @@ as they are the gate rejects good art on size and — worse — the resolver dro
 with **no error at all** (Tier.NONE → generic atlas), which is the exact silent
 failure this project has already paid for three times. They move with the
 mechanism or the art lands and quietly does not load.
+
+**✅ Both moved in `a6cb797f`.** `TextureResolver`'s `fracture_` branch now
+returns true for any size — the branch still has to EXIST, because an
+unrecognised prefix is `Tier.NONE` and the generic atlas with no error at all,
+which is the failure this warning is about. `check_decal.py` swapped the 1024×512
+rule for an ASPECT one (2:1 ± 2%, ≥128 px), reading the spans out of
+`glass_crack.gd` rather than duplicating them, and re-expressed the ORIGIN slack
+as a fraction of the page — the same tolerance, because "4 voxels" against a page
+with no fixed voxel extent would have quietly become 3× more permissive on a
+`tight` sheet. The origin rule itself is untouched and still fails: `Sprite2D`
+is `centered`, so the page centre goes on the impact.
 
 ### 13.4 What the reference set actually said (`REFERENCES/Vidro`, read 2026-09-02)
 
@@ -1945,13 +1973,45 @@ Two findings that contradict the art CRACK-01 shipped, and one licence flag.
 
 ### 13.5 Risks worth stating before the build, not after
 
-- **Perf is a claim, not a fact.** Removing a per-fragment `texture()` + branch
-  from every glass fragment and adding N sprite quads *should* be a net win. It
-  is the standing priority, so it gets measured against the pre-CRACK-02 binary
-  rather than asserted.
-- **A banded pane clips for free, and that is luck, not design.** G-D9's brick
-  bands are non-glass cells, so the occupancy plane cuts them out of the web
-  without anyone asking. Worth a selftest so it stays true.
+- **Perf is a claim, not a fact.** ✅ **MEASURED 2026-09-02, and the prediction
+  did NOT hold.** Same map, same camera, idle `GLASS`, 40 probe samples each
+  side, `--disable-vsync`:
+
+  | binary | frame (median) | render cpu | draw calls |
+  |---|---|---|---|
+  | CRACK-01 `6d8bd94e` | **6.40 ms** | 3.10 ms | 7944 |
+  | CRACK-02 `a407b93e` | **6.40 ms** | 3.10 ms | 7944 |
+
+  Identical. Removing a `texture()` + branch from every glass fragment is real in
+  instruction count and **invisible in the frame**, because this board is not
+  glass-fragment bound (`render gpu` reads 0.0). The cost side is **+1 draw call
+  and +1 quad per live crack**. Neither number is a reason to have done CRACK-02
+  or to undo it — the reason was the look — but the plan predicted a win and
+  there is not one, so it says so.
+- **A banded pane clips for free, and that is luck, not design.** ✅ CONFIRMED and
+  pinned: `glass_crack_selftest` **[12]** builds a real `VoxelRenderer` with two
+  glass levels of real cells and asserts the brick-band row reads EMPTY while
+  every glass row reads solid. It also pins the row convention (row 0 is the
+  HIGHEST level) and G-D30's live re-cut after an erase.
 - **`armored` never destroys voxels** (it holds, G-D15), so its opaque core has
-  no hole to be cut by — S-2's dial does not apply to it. Do not let the dial's
-  default silently erase it.
+  no hole to be cut by — S-2's dial does not apply to it. ✅ Free by construction:
+  the occupancy is read off the glass tilemap, and an armored pane's cells are
+  never erased, so its occupancy is solid whatever the dial says.
+
+### 13.6 What S-1..S-3 cost that the plan did not predict
+
+Three defects, each invisible to every gate that existed and each found by a
+capture or by the test written for something else:
+
+1. **A centred hit cannot prove the pane clip.** The sheet is smaller than a big
+   pane, so the bounds never engage and the picture is correct for the wrong
+   reason. The demo now prints the sheet quad and the pane quad in screen pixels,
+   and `INFILTRAITOR_CRACK_DEMO_EDGE=1` puts the sheet past the frame on purpose.
+2. **`_glass_composite_z` starts at −9999, below `CANVAS_ITEM_Z_MIN`.** Assigning
+   it printed an engine error and left the node at z 0. The glass LAYERS never hit
+   it because `_ensure_glass_sublayers()` sets the real z on its first line; the
+   crack root can be asked for before any of that has run.
+3. **`ImageTexture.get_image()` is a readback and can lag an `update()`.** A
+   diagnostic that asked the texture read the occupancy one event stale and
+   reported that the cut had not followed. The builder keeps the CPU-side Image
+   as the authority.

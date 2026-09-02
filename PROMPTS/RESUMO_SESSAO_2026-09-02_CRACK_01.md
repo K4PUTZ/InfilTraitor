@@ -1,10 +1,16 @@
-# Session 2026-09-02 — CRACK-01: the crack, in three stages
+# Session 2026-09-02 — CRACK-01: the crack, in five stages, and its renderer ruled out
+
+⚠️ **PART 2 IS BELOW AND IT SUPERSEDES THIS ONE'S CLOSING STATE.** Part 1 records
+stages A–C as they were built. The Director then rejected the LOOK three times,
+each rejection one level deeper than the last, and the third took the renderer
+itself. Part 2 has D, E, the full decision list and the real state at close.
+`GLASS_MASTER_PLAN` v1.20 → **v1.22**.
 
 The previous session is
 [`RESUMO_SESSAO_2026-09-02_GART_DELIVERY.md`](RESUMO_SESSAO_2026-09-02_GART_DELIVERY.md),
 which closed G-ART and left glass blocked on two Director decisions — §8.1 (the
 CRACKED tier) and §8.2 (G-D21's mechanism). **This session got both rulings and
-built the crack.** `GLASS_MASTER_PLAN` v1.20 → v1.21.
+built the crack.**
 
 | | commit |
 |---|---|
@@ -142,3 +148,104 @@ radial web around each bullet hole, the round through to the concrete behind.
 | Unbuilt in glass | **G6** (shards on screen, G-D16b) · **G-D25** (big shards) · `plastic` · skylights (G-D16c/d) · glass cube · G-D8's last third |
 | Verification | `project_lint` PASS (231) · `check_invariants` OK · CODEMAP fresh · `run_selftests` **50 clean, 0 failed** · `glass_crack_selftest` 27 checks |
 | Open for the Director | the crack LOOK calibration · whether the flip-survival follow-up waits for rotation to return |
+
+---
+
+# Part 2 — D, E, and the renderer being ruled out
+
+Stages A–C above shipped a working crack. The Director then rejected its LOOK
+three times, and **each rejection landed one level deeper than the last.** That
+progression is the useful part of this session, more than the code.
+
+| | commit | rejected | root cause |
+|---|---|---|---|
+| **D** | `4f5ca09d` | a block of another material in the glass; *"as linhas não se encontram e estão todas embaralhadas"*; too big for a pistol | two causes: a FLAT frost whose silhouette is the RADIUS, and the GROUND-PLANE inverse used on a WALL face |
+| **E** | `532127f0` | the opacity itself | **G-D19's premise** — any per-voxel change to transparency frames that voxel |
+| — | *(planned)* | *"ainda dá pra ver muita diferença entre voxels"* | **the voxel shader drawing it at all** → CRACK-02, §13 |
+
+## D — a wall face is not the ground plane
+
+The sheet UV was built on `voxel_face_shading`'s inverse basis, which answers
+*"which GROUND cell is this screen point"*. A pane is a vertical face, where the
+vertical screen axis is LEVEL: `c.x = P.x/32 + P.y/16`, so one level down shifts
+the sheet column by **exactly 1.25 voxels**. The web sheared and read as
+disconnected tiles.
+
+That basis is legitimate where `voxel_face_shading` uses it — quantised per QUAD,
+one value per voxel, the shear never surfaces. **It breaks the moment anything
+wants a continuous per-fragment coordinate on a face.** Replaced with the face's
+own inverse (`run = sx·d.x/16`, `level = (run·8 − d.y)/20`) against the impact's
+canvas position.
+
+⚠️ **Every numeric gate was green while this shipped** — 27 selftest checks,
+lint, invariants, a real-map run printing correct voxel counts. The counts were
+right; only the picture was wrong. `glass_crack_selftest` **[10]** now
+round-trips 13×11 offsets at 0.00000 error AND keeps the ground-plane inverse as
+a **control that must be wrong** (6.25 voxels worst, 1.25 per level) — a test
+that recovered everything trivially could not pass it.
+
+Also fixed in D: the flat frost became density-driven, and
+`glass_sheet_span_tight/_wide` became the compactness dial.
+
+## E — G-D19 retracted by its own author
+
+The Director corrected his own ruling: *"Eu estava errado […] isso automaticamente
+cria uma 'moldura' porque os voxels ao lado estarão com 100% da opacidade
+planejada."*
+
+D's density-driven version was a better silhouette on a premise that had to go.
+**The rule that replaced it (G-D26) generalises well past glass: any per-voxel
+change to a property the eye reads CONTINUOUSLY across a surface frames that
+voxel, because the untouched neighbour draws the cell boundary for you.** Such an
+effect must be ADDITIVE — it adds its own light and leaves the surface's property
+alone. `lit + crack_colour · crack · dim`, the same pure ADD G1's sheen already
+used. Deleted rather than added: `glass_crack_frost` and the frosted-body mix.
+
+Pinned so it cannot return renamed: the selftest bans any crack uniform that
+modulates (`frost` / `see_through` / `opacity`) and asserts the source still
+reads `lit + glass_crack_add_color`.
+
+## And then the premise under THAT went too
+
+Additive was still not *"idênticos aos outros"*, because a crack drawn by the
+voxel shader inherits `dim` (1.0 / 0.78 / 0.60 by face plane), the `cover` alpha
+the whole fragment is blended at, and the quad seams. The Director's proposal —
+**a sprite over the pane** — is the only thing that reaches identical, and it
+also pays for rotation survival and unlimited stacking. Ratified as **G-D27**,
+planned as **CRACK-02 in §13**, unbuilt.
+
+## Decisions this session, all in the register
+
+| | |
+|---|---|
+| §8.1 | glass reaches CRACKED without `crack_factor` |
+| §8.2 | G-D21 → world-space sampling |
+| **G-D26** | the crack is additive light; **retracts G-D19** |
+| **G-D27** | the crack is a SPRITE, not the voxel shader; replaces G-D21's mechanism |
+| **G-D28** | four decal classes — and `armored` has an OPAQUE crushed core, not a void |
+| **G-D29** | `blast` = 3 patterns × H/V flip, chosen by the B4 FNV-1a |
+| **G-D30** | a destroyed voxel cuts the sprite via an occupancy plane; **the cut VALUE is still open**, to be settled by capture |
+
+## State at close
+
+| | |
+|---|---|
+| `GLASS_MASTER_PLAN` | **v1.22.** CRACK-01 built (A–E); CRACK-02 planned (§13), unbuilt |
+| Verification | `project_lint` PASS · `check_invariants` OK · CODEMAP fresh · `run_selftests` **50 clean, 0 failed** · `glass_crack_selftest` **32 checks** |
+| Captures | `shot_crack_add_3_damage.png` (additive, no frame) · `shot_crack_v2_3_damage.png` (basis fixed) · `glass_crack_demo_{tight,wide,gd24}_*` |
+| Next session | **CRACK-02 S-1** — and read §13.3 first: the resolver + gate contract must move in the same commit, or the new art drops with no error |
+| Open for the Director | G-D30's cut value (needs S-2's capture) · the `blast`/`armored` art (S-4) · `glass_crack_add` if the wide bore's bloom reads too hot |
+
+## The transferable lessons
+
+1. **A wall face is not the ground plane** — and the same basis can be correct
+   quantised and wrong continuous. Memory: `wall-face-is-not-the-ground-plane`.
+2. **Any per-voxel modulation of a continuously-read surface property makes a
+   moldura.** Effects over such surfaces are additive.
+3. **Three green gates and a correct count are not a correct picture.** Every
+   defect this session was invisible to every numeric check that existed, and
+   visible in the first frame the Director looked at. The counts were never
+   wrong.
+4. **A rejection can be about the premise, not the tuning** — twice in one
+   session, one level deeper each time. When the second fix in a row gets
+   rejected for a related reason, stop tuning and question the layer below.

@@ -280,7 +280,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 **Code & Test Inventory**
 
 - GDScript modules: 163
-- Test scripts: 49
+- Test scripts: 50
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

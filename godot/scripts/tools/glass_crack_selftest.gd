@@ -30,6 +30,8 @@ const ShotPunchTableClass = preload("res://godot/scripts/systems/destruction/sho
 const MaterialResistanceTableClass = preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 const GlassMaterialsClass = preload("res://godot/scripts/systems/glass_materials.gd")
+const GlassCrackClass = preload("res://godot/scripts/systems/destruction/glass_crack.gd")
+const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
 const CRACK_DECAL_TEMPLATE := "res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"
 const FRACTURE_TEMPLATE := "res://ASSETS/materials/glass/fracture_glass_%s.png"
@@ -46,6 +48,11 @@ func _init() -> void:
 	test_glass_reaches_cracked_through_the_shot_ladder()
 	test_glass_has_no_crack_decal_family()
 	test_the_fracture_sheets_are_the_cracked_art()
+	test_plan_pane_crack_marks_standing_glass_in_radius()
+	test_plan_pane_crack_skips_destroyed_and_banded_frame()
+	test_plan_pane_crack_run_axis_follows_the_face()
+	test_wide_for_blowout_splits_the_arsenal()
+	test_the_glass_shader_loads()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -185,5 +192,185 @@ func test_the_fracture_sheets_are_the_cracked_art() -> void:
 					% [path, tex.get_width(), tex.get_height()])
 			else:
 				_pass("%s is present, imported, and 1024x512" % path)
+
+	print("")
+
+
+## ── CRACK-01 §B — the pure planner ──────────────────────────────────────────
+
+## One SW-face glass panel pane, `storeys` tall, along X at gu y=3 — mirrors
+## glass_shatter_selftest._pane(). `pane_id` stamped, every voxel visible.
+func _pane(gx_lo: int, gx_hi: int, storeys: int, material: String = "glass") -> Array:
+	var slices: Array = []
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	for gx in range(gx_lo, gx_hi + 1):
+		var s := Slice.new("PANE_S_%d" % gx, Vector2i(gx, 3), Face.SW, "PANE_E_%d" % gx, storeys, material)
+		s.pane_id = "PANE_TEST"
+		for lvl_off in range(storeys * 8):
+			for i in range(8):
+				s.voxels.append(Voxel.new(Vector2i(gx * 8 + i, 3 * 8 + 7), base + lvl_off, s))
+		slices.append(s)
+	return slices
+
+
+func test_plan_pane_crack_marks_standing_glass_in_radius() -> void:
+	print("[4] plan_pane_crack marks the standing glass inside the crack radius\n")
+
+	var pane := _pane(4, 9, 3)              ## 6 GU × 3 storeys = 1152 voxels
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var hit := Vector2i(6 * 8 + 4, 31)      ## mid-pane
+	var hit_level: int = base + 12
+
+	var tight: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit, hit_level, false)
+	var wide: Dictionary = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit, hit_level, true)
+
+	if tight.cells.size() > 0 and wide.cells.size() > tight.cells.size():
+		_pass("tight web %d cells, wide web %d — wider hole, wider web (G-D14)"
+			% [tight.cells.size(), wide.cells.size()])
+	else:
+		_fail("tight %d / wide %d — wide must reach further than tight"
+			% [tight.cells.size(), wide.cells.size()])
+
+	## Every returned cell is within the wide radius of the impact, on the run axis
+	## and in level.
+	var r := GlassCrackClass.CRACK_RADIUS_WIDE
+	var outside := 0
+	for e in wide.cells:
+		var dr: int = absi(int(e.cell.x) - hit.x)
+		var dl: int = absi(int(e.level) - hit_level)
+		if dr > r.x or dl > r.y:
+			outside += 1
+	if outside == 0:
+		_pass("all %d wide-web cells are inside the (%d,%d) radius of the impact"
+			% [wide.cells.size(), r.x, r.y])
+	else:
+		_fail("%d wide-web cells fell outside the crack radius" % outside)
+
+	if int(wide.impact_run) == hit.x and int(wide.run_axis) == 0:
+		_pass("impact_run %d and run_axis 0 (X) match the SW face" % wide.impact_run)
+	else:
+		_fail("impact_run %s / run_axis %s, expected %d / 0" % [wide.impact_run, wide.run_axis, hit.x])
+
+	print("")
+
+
+func test_plan_pane_crack_skips_destroyed_and_banded_frame() -> void:
+	print("[5] plan_pane_crack skips DESTROYED voxels and a G-D9 brick frame\n")
+
+	var pane := _pane(4, 9, 3)
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var hit := Vector2i(6 * 8 + 4, 31)
+	var hit_level: int = base + 10
+
+	var full: int = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit, hit_level, true).cells.size()
+
+	## Punch a hole: DESTROY a 3×3 block around the hit.
+	for s in pane:
+		for v in s.voxels:
+			if absi(v.grid_pos.x - hit.x) <= 1 and absi(v.level - hit_level) <= 1:
+				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+	var holed: int = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit, hit_level, true).cells.size()
+	if holed < full and holed == full - 9:
+		_pass("a 9-voxel hole drops exactly those 9 from the web (%d -> %d)" % [full, holed])
+	else:
+		_fail("hole dropped %d cells, expected 9 (%d -> %d)" % [full - holed, full, holed])
+
+	## A banded pane: brick sill (rel 0-1) and head (rel top-1..top) in the SAME
+	## slices — a fracture must not cross the frame.
+	var banded := _pane(4, 9, 3)
+	var top: int = 3 * 8 - 1
+	for s in banded:
+		s.material_bands = {0: "brick", 1: "brick", top - 1: "brick", top: "brick"}
+	var b_cells: int = GlassCrackClass.plan_pane_crack(banded, Face.SW, hit, hit_level, true).cells.size()
+	var brick_in_web := 0
+	for e in GlassCrackClass.plan_pane_crack(banded, Face.SW, hit, hit_level, true).cells:
+		var rel: int = int(e.level) - base
+		if rel <= 1 or rel >= top - 1:
+			brick_in_web += 1
+	if brick_in_web == 0 and b_cells < full:
+		_pass("the brick sill/head are not in the web (%d cells vs %d unbanded)" % [b_cells, full])
+	else:
+		_fail("%d brick-band cells leaked into the web (%d total)" % [brick_in_web, b_cells])
+
+	print("")
+
+
+func test_plan_pane_crack_run_axis_follows_the_face() -> void:
+	print("[6] the run axis is X for SW/NE, Y for SE/NW (matches GlassShatter)\n")
+
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var hit := Vector2i(50, 31)
+	var hit_level: int = base + 8
+
+	## _pane() always authors an SW face; for the SE check, re-face its slices.
+	var sw := _pane(4, 9, 2)
+	var sw_plan: Dictionary = GlassCrackClass.plan_pane_crack(sw, Face.SW, hit, hit_level, false)
+	if int(sw_plan.run_axis) == 0 and int(sw_plan.impact_run) == hit.x:
+		_pass("SW face -> run_axis 0 (X), impact_run = grid_pos.x (%d)" % hit.x)
+	else:
+		_fail("SW face gave run_axis %s / impact_run %s" % [sw_plan.run_axis, sw_plan.impact_run])
+
+	var se := _pane(4, 9, 2)
+	for s in se:
+		s.face = Face.SE
+	var se_plan: Dictionary = GlassCrackClass.plan_pane_crack(se, Face.SE, hit, hit_level, false)
+	if int(se_plan.run_axis) == 1 and int(se_plan.impact_run) == hit.y:
+		_pass("SE face -> run_axis 1 (Y), impact_run = grid_pos.y (%d)" % hit.y)
+	else:
+		_fail("SE face gave run_axis %s / impact_run %s, expected 1 / %d"
+			% [se_plan.run_axis, se_plan.impact_run, hit.y])
+
+	print("")
+
+
+func test_wide_for_blowout_splits_the_arsenal() -> void:
+	print("[7] wide_for_blowout: pistol/pellet -> tight, rifle -> wide (G-D14)\n")
+
+	var cases := {"pistol": 0.0, "shotgun": 0.0, "assault_rifle": 0.65}
+	var want := {"pistol": false, "shotgun": false, "assault_rifle": true}
+	var ok := true
+	for wid in cases:
+		var got: bool = GlassCrackClass.wide_for_blowout(cases[wid])
+		if got != want[wid]:
+			ok = false
+			_fail("%s (blowout %.2f) -> wide=%s, expected %s" % [wid, cases[wid], got, want[wid]])
+	if ok:
+		_pass("blowout 0.0 -> tight, 0.65 -> wide — exactly the shipped split")
+
+	print("")
+
+
+func test_the_glass_shader_loads() -> void:
+	print("[8] glass_pane.gdshader loads and takes CRACK-01's uniforms\n")
+
+	var shader := load("res://godot/shaders/glass_pane.gdshader") as Shader
+	if shader == null:
+		_fail("glass_pane.gdshader did not load as a Shader")
+		print("")
+		return
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	## Set every CRACK-01 uniform once — a name the shader does not declare is a
+	## silent no-op in Godot, so this pins the wiring contract the renderer relies
+	## on rather than proving compilation (which needs a real draw).
+	mat.set_shader_parameter("glass_crack_plane_size", Vector2(512, 512))
+	mat.set_shader_parameter("glass_crack_group_cap", 16.0)
+	mat.set_shader_parameter("glass_layer_rel_level", 0.0)
+	mat.set_shader_parameter("glass_sheet_voxels", Vector2(64, 32))
+	mat.set_shader_parameter("glass_crack_see_through", 0.5)
+	var props: Array = shader.get_shader_uniform_list()
+	var names: Array = []
+	for p in props:
+		names.append(p.name)
+	var required := ["glass_crack_plane", "glass_crack_groups", "glass_fracture_tight",
+		"glass_fracture_wide", "glass_layer_origin", "glass_sheet_voxels"]
+	var missing: Array = []
+	for r in required:
+		if not names.has(r):
+			missing.append(r)
+	if missing.is_empty():
+		_pass("the shader declares all %d CRACK-01 uniforms the renderer feeds" % required.size())
+	else:
+		_fail("the shader is missing uniform(s): %s" % ", ".join(missing))
 
 	print("")

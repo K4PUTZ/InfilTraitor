@@ -280,3 +280,73 @@ Realism: yes. And the sheet is the easy half.
 `REFERENCES/bullet-hole-transparent-glass-abstract-background-*.zip`,
 `REFERENCES/Glass.png` and `REFERENCES/Glass.psd` were collected on 2026-08-02,
 a month before this plan existed. Worth opening before generating anything.
+
+---
+
+## 6. The sheets were AUTHORED PROCEDURALLY — delivered 2026-09-02
+
+`tools/persistent/gen_fracture_sheet.py` generates both sheets, and the pair in
+`ASSETS/materials/glass/` is its output at `seed 1`. Regenerate with:
+
+```
+python3 tools/persistent/gen_fracture_sheet.py tight ASSETS/materials/glass/fracture_glass_tight.png 1
+python3 tools/persistent/gen_fracture_sheet.py wide  ASSETS/materials/glass/fracture_glass_wide.png  1
+```
+
+**Why procedural rather than the §5 Stable Diffusion route.** §5 is not wrong —
+SD's realism is real and the shard decals are still its natural territory. But
+the sheet has two requirements SD cannot aim at: the fracture must radiate from
+the EXACT page centre (§1.2), and `wide` must carry ink to the edges (§1.3).
+Generated, those are a parameter and a measurement; prompted, they are a lottery
+you sample until the gate happens to agree. Measured across six seeds of each
+width: every centroid landed inside ±1.6 voxels of centre and every `wide` hit
+32/16 reach — a 12-for-12 that no prompt loop would give.
+
+The delivered pair, from `check_decal.py --material glass`:
+
+| | centroid | reach | coverage |
+|---|---|---|---|
+| `fracture_glass_tight.png` | (−0.2, −0.1) vox | 11 / 12 | 2.61 % |
+| `fracture_glass_wide.png` | (−0.5, +0.2) vox | **32 / 16** | 6.84 % |
+
+### 6.1 The hole is denominated in VOXELS, and that was a real bug
+
+The first drafts sized the bore in pixels, which put `wide` at ≈1.2 voxels —
+a rifle hole the size of a pistol's, against ratified G-D14 (pistol / shotgun
+pellet = 1 voxel, rifle-class = 2–4). `hole_voxels` is now a diameter in voxels:
+`tight` = 1.0, `wide` = 3.0, the middle of the rifle band (Director,
+2026-09-02, who also closed the question of a third sheet: there is none, and
+G-D14/G-D21 are untouched — inside the rifle class the ENGINE destroys 2–4
+voxels, the art does not grow a variant per weapon).
+
+### 6.2 Four symmetry defects, each found only at TRUE SIZE
+
+Every one of these passed the gate. None was visible while zoomed in. They are
+recorded because they are the failure MODE of a procedural sheet — regularity
+that the eye reads as ornament — and the next generator will reinvent them:
+
+1. **The mandala.** A concentric wave drawn across every sector at one radius
+   closes into a regular polygon; stacked, they read as a flower. Fixed: a wave
+   is an arc of 1–4 adjacent sectors from a random start, its radius drifts as
+   it goes, and outer waves mostly do not happen.
+2. **The rim polygon.** The same defect at the other end of the radius — outer
+   arcs chaining into a big regular ring. Fixed: beyond half the radius a wave
+   spans one sector only.
+3. **The slab.** A shard drawn as a free polygon in a sector floats as a flat
+   grey block. It also moved the ink centroid to (+1.6, +1.8) voxels — the gate
+   telling the same story in a number. Fixed: a sliver is CLIPPED to the two
+   real crack paths that bound it, so it cannot float and its outline is
+   irregular for free.
+4. **The slab, returning through the twins.** An un-capped twin beside a `wide`
+   radial opens into a huge wedge, because `wide`'s runs are three times longer.
+   Fixed: a twin is capped to 16–34 % of the run.
+
+### 6.3 What is NOT done
+
+- **The three shard decals** (§2) — still absent, still `glass`'s only claimed
+  family. §5's luma-to-alpha SD recipe applies to them and not to these sheets.
+- **§4's wiring, all of it.** `TextureResolver` still knows only `facade_` /
+  `slice_` / `slab_` and rejects a `fracture_` name with no error at all, so
+  these two files currently **load nowhere** — the gate says so itself under
+  "NO WIRING CHECK EXISTS FOR SHEETS". The art being green is not the feature
+  being on.

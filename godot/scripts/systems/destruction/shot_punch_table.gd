@@ -44,6 +44,25 @@ static var RESISTANCE: Dictionary = {
 	"glass": 0.4,
 	"cardboard": 0.35,
 	"fabric": 0.3,
+	## G-D16 / V-B — the glass family. A screen is ordinary glass with a tint and
+	## a behaviour class, so it takes glass's own row; only ARMORED changes the
+	## number, and the number is DERIVED from the shatter curve rather than
+	## picked, because "resists common shots" (G-D15) is a statement about
+	## P_shatter and nothing else.
+	##
+	## `glass_punch = PUNCH_GAIN(3.0) · weapon.punch / RESISTANCE`, and
+	## GlassShatter.p_shatter has a flat bottom below ~1.5. At 0.80 the shipped
+	## arsenal reads: pistol 1.05 -> 0%, assault rifle 1.88 -> ~1.5%, sniper
+	## 2.63 -> ~15% (against 5%/44%/81% on plain glass). That is the shape G-D15
+	## asks for — a common round does not take an armored pane, a sniper
+	## sometimes does — WITHOUT the pane becoming invulnerable, which a resistance
+	## up at stone's 1.6 would have made it (every shipped round under the flat
+	## bottom, and the rifle pierce-and-prime case then unreachable by
+	## construction).
+	"glass_armored": 0.8,
+	"glass_screen_green": 0.4,
+	"glass_screen_red": 0.4,
+	"glass_screen_amber": 0.4,
 }
 static var DEFAULT_RESISTANCE: float = 1.3
 
@@ -85,6 +104,13 @@ static var DESTROY_MIN: Dictionary = {
 	"concrete": 0.63,  ## buckshot breaches on its best 3 pellets of 24
 	"wood": 1.03,      ## the soft outlier: a pistol goes through, buckshot tears
 	"glass": 0.30,     ## shatters to anything that reaches it
+	## The screens share it; armored glass does not — a hole in it is a real
+	## event, not the default outcome (G-D15's rifle pierce is the case that
+	## PRIMES a pane, and it lands in V-C).
+	"glass_screen_green": 0.30,
+	"glass_screen_red": 0.30,
+	"glass_screen_amber": 0.30,
+	"glass_armored": 0.75,
 	"earth": 0.75,
 	## MAT-REG-01 (2026-08-21). These four are NOT hand-tuned against captures
 	## the way the six above were — they are DERIVED, and the derivation is the
@@ -218,6 +244,14 @@ static var NEIGHBOUR_CASCADE_PUNCH: float = 5.0
 static var CASCADE_MIN: Dictionary = {
 	"plywood": 6.8,    ## worst case 5.88 (3.528/0.60)
 	"glass": 10.2,     ## worst case 8.82 (3.528/0.40) — retires the selftest exclusion
+	## Same resistance, same worst case, same row. ⚠️ `glass_armored` is ABSENT on
+	## purpose and that absence is the table's own rule working: at resistance
+	## 0.80 its worst case is 4.41, under the global 5.0, so it needs no
+	## floor-lifting exception. A row here would be a number pretending to do
+	## something.
+	"glass_screen_green": 10.2,
+	"glass_screen_red": 10.2,
+	"glass_screen_amber": 10.2,
 	"cardboard": 11.6, ## worst case 10.08 (3.528/0.35)
 	"fabric": 13.5,    ## worst case 11.76 (3.528/0.30)
 }

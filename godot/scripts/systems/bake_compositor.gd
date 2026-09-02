@@ -32,6 +32,7 @@ const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coord
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
 
+const GlassMaterialsClass = preload("res://godot/scripts/systems/glass_materials.gd")
 const TEX_AUTHORING_N: int = GeometryCoordsClass.TEX_AUTHORING_N   # 16
 const VOXEL_ATOM_W: int = GeometryCoordsClass.VOXEL_ATOM_W         # 32
 const VOXEL_ATOM_H: int = GeometryCoordsClass.VOXEL_ATOM_H         # 36
@@ -1082,8 +1083,24 @@ func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
 			blocks = blocks_section["items"]
 	elif map_spec.has("blocks"):
 		blocks = map_spec["blocks"] if typeof(map_spec["blocks"]) == TYPE_ARRAY else []
+	## G-D16 / V-B — THE WHOLE GLASS FAMILY CONTRIBUTES ONE COMBO, BASE's.
+	##
+	## Measured on the GLASS map the day the four variants were added, both sides:
+	## `Baked 7 combos x 2 directions in 1374.0 ms` before, `Baked 3 combos x 2
+	## directions in 1263.0 ms` after. Four of those seven were sheets no glass
+	## surface ever reads — a pane renders from VoxelRenderer._glass_atom_source,
+	## and roofs get their own page family — so 8 pages and 16 384 atoms were
+	## composed purely to be ignored, plus the TileSet sources they occupy, which
+	## every rebuild then carries.
+	##
+	## ⚠️ The saving is **111 ms**, not the ~785 ms a per-combo average predicted:
+	## combos are wildly unequal (concrete's roof page alone is 4096 atoms against
+	## a glass sheet's 2048). The estimate was written before the second
+	## measurement and was wrong by 7x — dividing a total by a count is not a
+	## measurement of any one item.
 	for block in blocks:
 		var material = block.get("material", "default") if typeof(block) == TYPE_DICTIONARY else "default"
+		material = GlassMaterialsClass.art_id(material)
 		combos["%s|facade_%s" % [material, material]] = true
 	# Real production callers pass map_spec["walls"] (see room_builder._bake_textures)
 	if map_spec.has("walls"):
@@ -1091,7 +1108,7 @@ func _extract_unique_combos(map_spec: Dictionary, _resolver) -> Array:
 		for wall in walls:
 			if typeof(wall) != TYPE_DICTIONARY:
 				continue
-			var material_id = wall.get("material_id", "default")
+			var material_id = GlassMaterialsClass.art_id(wall.get("material_id", "default"))
 			var facade_id = wall.get("facade_id", "facade_" + material_id)
 			combos["%s|%s" % [material_id, facade_id]] = true
 	# (ROOF-BAKE-02c: roofs no longer contribute WALL-sheet combos — they get

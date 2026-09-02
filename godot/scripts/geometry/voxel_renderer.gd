@@ -833,9 +833,13 @@ var _glass_composite_z_floor: int = -9999
 ## — with transparency every hidden face that gets drawn shows through as a
 ## doubled ghost. The rule generalises by exposure to L-walls and glass cubes.
 ##
-## So four faces × four masks (main / +top / +side / +top+side) = 16 sources.
-## `_glass_atom_source[face][mask]`, mask = (want_top << 1) | want_side.
-var _glass_atom_source: Dictionary = {}       ## Face int -> { mask:int -> source_id:int }
+## So four faces × four masks (main / +top / +side / +top+side) = 16 sources —
+## PER GLASS MATERIAL since G-D16 / V-B, because the atom is where a member's
+## tint index lives (its BLUE channel). Five members = 80 atoms, composed once at
+## load; the alternative, a TileMapLayer set per material, would multiply DRAW
+## SUBMISSION instead, and submission is what an event actually pays for.
+## `_glass_atom_source[material_id][face][mask]`, mask = (want_top << 1) | want_side.
+var _glass_atom_source: Dictionary = {}       ## material:String -> { Face int -> { mask:int -> source_id:int } }
 ## Back-compat alias — the SW main-only source id (diagnostics / selftest).
 var _glass_frosted_source_id: int = -1
 ## GLASS G1 GEOMETRY — how far the dim top/side slivers recede into the atom, as
@@ -858,7 +862,11 @@ var _glass_shader_params: Dictionary = {
 	"glass_add_strength": 0.20,
 	"glass_add_threshold": 0.55,
 	"glass_add_mode": 1.0,
-	"glass_tint": Color(0.47, 0.63, 0.90),
+	## G-D16 / V-B — the BASE member's tint, taken from the roster rather than
+	## re-typed. It was one of three copies of 0.47/0.63/0.90 (here, the shader
+	## default, and now GlassMaterials); this leaves two, and
+	## `glass_transparency_selftest` pins those equal.
+	"glass_tint": GlassMaterials.PANE_TINT[0],
 }
 
 ## LEVEL-RENUMBER — the ground plane: the lowest level that counts as WALL rather
@@ -2045,33 +2053,45 @@ func _build_voxel_tileset() -> void:
 	_glass_atom_source.clear()
 	var ok := true
 	var next_id: int = MATERIALS.size()
-	for face in [Face.SW, Face.SE, Face.NW, Face.NE]:
-		_glass_atom_source[face] = {}
-		for mask in range(4):
-			var want_top: bool = (mask & 0b10) != 0
-			var want_side: bool = (mask & 0b01) != 0
-			var atom := _build_glass_pane_atom(face, want_top, want_side)
-			if atom == null:
-				ok = false
+	## G-D16 / V-B — B6 loud-fail BEFORE building anything: a roster larger than
+	## the shader's tint table would build atoms whose index the shader clamps,
+	## and a sixth member silently wearing the fifth member's colour is the kind
+	## of wrongness nobody reports because it still looks like glass.
+	if GlassMaterials.FAMILY.size() > GlassMaterials.TINT_SLOTS:
+		push_error("[VoxelRenderer] GLASS-G-D16: %d glass materials but glass_pane.gdshader holds %d tints (glass_tint + glass_tint_alt[4]) — widen the array and GlassMaterials.TINT_SLOTS together, or the extra members render in the wrong colour with no error" % [
+			GlassMaterials.FAMILY.size(), GlassMaterials.TINT_SLOTS])
+	for material_id in GlassMaterials.FAMILY:
+		var tint_index: int = GlassMaterials.tint_index(material_id)
+		_glass_atom_source[material_id] = {}
+		for face in [Face.SW, Face.SE, Face.NW, Face.NE]:
+			(_glass_atom_source[material_id] as Dictionary)[face] = {}
+			for mask in range(4):
+				var want_top: bool = (mask & 0b10) != 0
+				var want_side: bool = (mask & 0b01) != 0
+				var atom := _build_glass_pane_atom(face, want_top, want_side, tint_index)
+				if atom == null:
+					ok = false
+					break
+				var src := TileSetAtlasSource.new()
+				src.texture = ImageTexture.create_from_image(atom)
+				src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
+				src.separation = Vector2i.ZERO
+				src.margins = Vector2i.ZERO
+				src.create_tile(Vector2i.ZERO)
+				_tileset.add_source(src, next_id)
+				var td: TileData = src.get_tile_data(Vector2i.ZERO, 0)
+				if td != null:
+					td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
+					td.set_custom_data("tile_name", material_id)
+				((_glass_atom_source[material_id] as Dictionary)[face] as Dictionary)[mask] = next_id
+				next_id += 1
+			if not ok:
 				break
-			var src := TileSetAtlasSource.new()
-			src.texture = ImageTexture.create_from_image(atom)
-			src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
-			src.separation = Vector2i.ZERO
-			src.margins = Vector2i.ZERO
-			src.create_tile(Vector2i.ZERO)
-			_tileset.add_source(src, next_id)
-			var td: TileData = src.get_tile_data(Vector2i.ZERO, 0)
-			if td != null:
-				td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
-				td.set_custom_data("tile_name", "glass")
-			(_glass_atom_source[face] as Dictionary)[mask] = next_id
-			next_id += 1
 		if not ok:
 			break
 	if ok:
-		## Back-compat alias: the SW main-only source, used by diagnostics/selftest.
-		_glass_frosted_source_id = _glass_atom_source[Face.SW][0]
+		## Back-compat alias: BASE's SW main-only source, used by diagnostics/selftest.
+		_glass_frosted_source_id = _glass_atom_source[GlassMaterials.BASE][Face.SW][0]
 	else:
 		## B6 loud-fail: without the atoms glass panes would silently disappear.
 		push_error("[VoxelRenderer] GLASS-G1: glass pane atom build failed — glass panes will not render")
@@ -2118,7 +2138,13 @@ static func _read_glass_atom_nudge() -> Vector2i:
 ## nothing double-covers and the container never double-tints. NW/NE slivers are
 ## computed but their extrusion comes toward the camera (back walls) — the
 ## tested case is SW/SE.
-func _build_glass_pane_atom(face: int, want_top: bool = false, want_side: bool = false) -> Image:
+## `tint_index` (G-D16 / V-B) is the member's slot in GlassMaterials.FAMILY and
+## rides the BLUE channel, which this builder has always written as a third copy
+## of the dim nothing reads. glass_pane.gdshader decodes it back with
+## `int(round(t.b * 255.0))` — exact for 8-bit, and every texel of one atom
+## carries the same value so filtering inside the atom cannot smear it.
+func _build_glass_pane_atom(face: int, want_top: bool = false, want_side: bool = false,
+		tint_index: int = 0) -> Image:
 	var w: int = GeometryCoords.VOXEL_ATOM_W          # 32
 	var h: int = GeometryCoords.VOXEL_ATOM_H          # 36
 	var step: float = GeometryCoords.VOXEL_STEP_PX    # 20
@@ -2150,6 +2176,9 @@ func _build_glass_pane_atom(face: int, want_top: bool = false, want_side: bool =
 	var side_q: PackedVector2Array = [eb, eb + d_vec, eb + d_vec + down, eb + down]
 
 	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	## Quantised the same way the shader reads it back, so the round-trip is a
+	## measurement rather than a hope.
+	var tint_b: float = float(clampi(tint_index, 0, 255)) / 255.0
 	for y in range(h):
 		for x in range(w):
 			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
@@ -2166,7 +2195,10 @@ func _build_glass_pane_atom(face: int, want_top: bool = false, want_side: bool =
 					a = a_side
 					rgb = GLASS_DIM_SIDE
 			if a > 0.0:
-				out.set_pixel(x, y, Color(rgb, rgb, rgb, a))
+				## RED = the per-plane dim (read by the shader). GREEN = the same
+				## value, reserved for G-D19's per-voxel damage term and not read.
+				## BLUE = the tint index.
+				out.set_pixel(x, y, Color(rgb, rgb, tint_b, a))
 	return out
 
 
@@ -2677,7 +2709,12 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	# Fallback: material-only path
 	if source_id < 0:
 		_diag_generic_fallbacks += 1
-		source_id = MATERIALS.find(material_name)
+		## G-D16 / V-B — a glass VARIANT has no art of its own (the family differs
+		## by tint, never by geometry), so it resolves through BASE here. Without
+		## this a glass roof or a glazed floor zone — the horizontal cases G1
+		## deliberately leaves opaque — would `find()` -1 and render as CONCRETE,
+		## with no error anywhere.
+		source_id = MATERIALS.find(GlassMaterials.art_id(material_name))
 		if source_id == -1:
 			source_id = 0  # Fallback to concrete
 		atlas_coords = Vector2i.ZERO
@@ -2695,7 +2732,9 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 		## / +top+side). The main face is always present; the dim slivers are
 		## added only where the voxel's top or camera-facing side is exposed. The
 		## container lets the atoms overlap without tint².
-		var face_atoms: Dictionary = _glass_atom_source.get(slice_face, {})
+		var member_atoms: Dictionary = _glass_atom_source.get(material_name,
+			_glass_atom_source.get(GlassMaterials.BASE, {}))
+		var face_atoms: Dictionary = member_atoms.get(slice_face, {})
 		var glass_src: int = int(face_atoms.get(glass_mask, face_atoms.get(0, _glass_frosted_source_id)))
 		if glass_src < 0:
 			glass_src = _glass_frosted_source_id
@@ -4497,6 +4536,18 @@ func _make_glass_material() -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	_apply_glass_params_to(mat)
+	## G-D16 / V-B — the rest of the family's tints. NOT a `_glass_shader_params`
+	## key: those are the five calibration knobs the blind-strip capture action
+	## drives one at a time by name, and this is a fixed-size array the roster
+	## owns. Index 0 (`glass_tint`) stays a knob because that is how "painel 005"
+	## was picked.
+	## Four named uniforms rather than one array — see the ⚠️ in
+	## glass_shading.gdshaderinc: the array form prints a shader-compiler error on
+	## every boot while rendering correctly, which is the kind of noise that
+	## teaches a reader to skim the log.
+	for i in range(1, GlassMaterials.TINT_SLOTS):
+		var c: Color = GlassMaterials.PANE_TINT[i]
+		mat.set_shader_parameter("glass_tint_alt_%d" % (i - 1), Vector3(c.r, c.g, c.b))
 	## The frosted grain, sampled by world position (see the shader). Bound once
 	## here — it is not a calibration knob.
 	var frost_tex := load(MATERIAL_ASSET_ROOT + "glass/facade_glass.png")

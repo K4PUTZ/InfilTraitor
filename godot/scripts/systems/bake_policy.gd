@@ -44,8 +44,16 @@ class_name BakePolicy
 enum SurfaceClass { SLICE, SLAB }
 
 ## SLICE (vertical, walls/roofs) texture id for a material.
+##
+## G-D16 / V-B — a glass VARIANT resolves to BASE's facade. The family differs by
+## tint and behaviour class, never by art (`GlassMaterials.art_id`), so asking for
+## `facade_glass_armored` finds nothing and prints an UNRESOLVED line per member
+## per boot — measured on the GLASS map the day the variants were added. Routing
+## them here also stops the compositor composing a second, third and fourth
+## IDENTICAL 2048-atom sheet for materials whose panes never read a baked sheet
+## at all (they render through VoxelRenderer._glass_atom_source).
 static func facade_for_material(material_id: String) -> String:
-	return "facade_" + material_id
+	return "facade_" + GlassMaterials.art_id(material_id)
 
 
 ## SLAB (horizontal) texture id for a material — the PHOTOGRAPHIC family only.

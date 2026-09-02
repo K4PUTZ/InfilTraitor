@@ -27,16 +27,26 @@
 ## the glass family, and (from V-C) which behaviour class each one carries.
 class_name GlassMaterials
 
-## The roster. **V-A ships with one member on purpose** — the sweep that replaced
-## the 25 literals has to be provably behaviour-preserving, and a one-member
-## family makes `is_glass(m)` and `m == "glass"` the same function by
-## construction. The variants land in V-B, after the seam is green.
-const FAMILY: Array[String] = ["glass"]
+## The roster (V-B, 2026-09-01). ⚠️ ONE LINE, and `check_invariants.py`'s L2
+## parses it off this line — a multi-line literal turns the rule off, which is
+## why the parser reports "cannot check" as a violation rather than passing.
+##
+## Order is the TINT INDEX and is therefore load-bearing: the pane atom carries
+## it in its BLUE channel and glass_pane.gdshader indexes `glass_tint_alt` with
+## it. Append, never reorder.
+const FAMILY: Array[String] = ["glass", "glass_armored", "glass_screen_green", "glass_screen_red", "glass_screen_amber"]
 
-## The BASE member — the id whose balance rows, frost texture and tint every
-## other member starts from. Kept as a named constant rather than `FAMILY[0]`
-## so a future reordering of the roster cannot silently repoint it.
+## The BASE member — the id whose balance rows, frost texture, atom silhouette
+## and calibrated tint every other member starts from. Kept as a named constant
+## rather than `FAMILY[0]` so a future reordering of the roster cannot silently
+## repoint it.
 const BASE: String = "glass"
+
+## How many tints glass_pane.gdshader can hold: `glass_tint` (index 0) plus
+## `glass_tint_alt[4]`. The renderer LOUD-FAILS when the roster outgrows this
+## rather than clamping — a sixth member silently wearing the fifth's colour is
+## exactly the kind of quiet wrongness a clamp buys.
+const TINT_SLOTS: int = 5
 
 
 ## The only question the engine asks about glass-ness.
@@ -47,3 +57,64 @@ const BASE: String = "glass"
 ## and in a pure planner alike.
 static func is_glass(material_id: String) -> bool:
 	return FAMILY.has(material_id)
+
+
+## The member's slot in the shader's tint table, or -1 for a non-member.
+static func tint_index(material_id: String) -> int:
+	return FAMILY.find(material_id)
+
+
+## ── THE PANE TINTS (G-D16) ───────────────────────────────────────────────────
+##
+## ⚠️ THIS IS NOT `base_color`, AND CONFLATING THE TWO WOULD BE WRONG RATHER THAN
+## MERELY UNTIDY. A pane does not alpha-blend: `glass_apply()` MULTIPLIES this
+## colour over a BackBufferCopy of the scene behind it and adds a sheen on top
+## (G-D1). It is a filter, not a paint. `base_color` is the opaque MULTIPLY a
+## material's atom takes on the ordinary wall path — a different operation on a
+## different surface — and the two have carried different values for base glass
+## since G1 shipped (`glass.json` says 0.62/0.74/0.78; the pane reads
+## 0.47/0.63/0.90, the Director's calibrated "painel 005"). Reading the JSON here
+## would silently repaint every pane in the game.
+##
+## Index 0 MUST equal glass_shading.gdshaderinc's `glass_tint` default and
+## VoxelRenderer._glass_shader_params — three copies of one number, which is one
+## too many; the selftest pins them equal rather than trusting the comment.
+##
+## `static var` (not const) for the same reason every balance row in
+## ShotPunchTable and GlassShatter is: these are the Director's dials, and 1..4
+## are FIRST-PASS placeholders awaiting a calibration pass on the GLASS map.
+## Index 0 is calibrated and must not be touched by that pass.
+static var PANE_TINT: Array[Color] = [
+	Color(0.47, 0.63, 0.90),   ## glass — CALIBRATED ("painel 005"), do not retune
+	Color(0.63, 0.47, 0.90),   ## glass_armored — the blue rotated toward magenta at
+	                           ##   the same luminance, so G1's calibration still reads
+	Color(0.24, 0.62, 0.34),   ## glass_screen_green — a terminal, not a window: darker
+	                           ##   so the MULTIPLY reads as a lit panel over a dark body
+	Color(0.72, 0.26, 0.28),   ## glass_screen_red
+	Color(0.82, 0.60, 0.20),   ## glass_screen_amber
+]
+
+
+## The tint a member's pane is filtered through. BASE's tint for anything else,
+## so a caller that has not checked `is_glass()` gets the shipped look rather
+## than a black pane.
+static func pane_tint(material_id: String) -> Color:
+	var i: int = tint_index(material_id)
+	if i < 0 or i >= PANE_TINT.size():
+		return PANE_TINT[0]
+	return PANE_TINT[i]
+
+
+## ── ART (G-D16: "a family of tinted behaviour classes, NOT new geometry") ─────
+##
+## Every member renders from BASE's art — the same voxel atom silhouette, the
+## same `facade_glass.png` frost. So the family costs ZERO new PNGs, and this is
+## the function that makes that true at every art seam: a variant id never
+## reaches a texture lookup under its own name.
+##
+## It matters most on the OPAQUE fallback. `MATERIALS.find(id)` returns -1 for an
+## unregistered material and the renderer then falls back to source 0 — CONCRETE.
+## A glass roof or a glazed floor zone (the horizontal cases G1 deliberately
+## leaves opaque) would render as a concrete slab, with no error anywhere.
+static func art_id(material_id: String) -> String:
+	return BASE if is_glass(material_id) else material_id

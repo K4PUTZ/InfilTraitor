@@ -51,6 +51,8 @@ func _init() -> void:
 	test_material_bands_route_per_level()
 	test_glass_does_not_occlude()
 	test_pane_size_ceiling_is_enforced()
+	test_two_glass_materials_are_two_panes()
+	test_every_family_member_has_its_own_tinted_atoms()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -119,7 +121,7 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 	if gpane != null:
 		## GLASS G1 GEOMETRY — an INTERIOR SW voxel (pos 2, not the front column,
 		## not the top level) → mask 0, the SW main-only atom.
-		var main_src: int = int(r._glass_atom_source.get(Face.SW, {}).get(0, -1))
+		var main_src: int = int(r._glass_atom_source.get(GlassMaterials.BASE, {}).get(Face.SW, {}).get(0, -1))
 		var src: int = gpane.get_cell_source_id(Vector2i(26, 31))
 		if src == main_src and src >= 0:
 			_pass("an interior SW glass cell uses the SW main-only atom (id %d)" % src)
@@ -127,7 +129,7 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 			_fail("interior SW glass cell source id %d, expected SW mask-0 %d" % [src, main_src])
 		## The FRONTMOST column (pos 7, x31) → mask 1, the SW main+side atom —
 		## a distinct source that carries the dim side sliver.
-		var side_src: int = int(r._glass_atom_source.get(Face.SW, {}).get(1, -1))
+		var side_src: int = int(r._glass_atom_source.get(GlassMaterials.BASE, {}).get(Face.SW, {}).get(1, -1))
 		var front_src: int = gpane.get_cell_source_id(Vector2i(31, 31))
 		if front_src == side_src and front_src >= 0 and front_src != main_src:
 			_pass("the frontmost SW column uses the SW main+side atom (id %d)" % front_src)
@@ -138,7 +140,7 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 		var missing := false
 		for fc in [Face.SW, Face.SE, Face.NW, Face.NE]:
 			for m in range(4):
-				var sid: int = int(r._glass_atom_source.get(fc, {}).get(m, -1))
+				var sid: int = int(r._glass_atom_source.get(GlassMaterials.BASE, {}).get(fc, {}).get(m, -1))
 				if sid < 0:
 					missing = true
 				ids[sid] = true
@@ -518,3 +520,151 @@ func _panel_run(gu_lo: int, gu_hi: int, storeys: int, tag: String) -> Array:
 		sl.pane_id = "PANE_%s" % tag
 		out.append(sl)
 	return out
+
+
+## G-D16 / V-B — TWO GLASS MATERIALS ARE TWO PANES.
+##
+## The union-find matched on face and adjacency and never on material, which was
+## invisible while glass was a single id. The moment it became a family a plain
+## pane touching an armoured one would have merged into ONE pane carrying two
+## resistances and two behaviour classes — and `plan_pane_shatter` would then
+## flood a won roll straight out of the ordinary glass and through the armour,
+## defeating it with no error and nothing on screen to explain why.
+##
+## The banded case is pinned in the SAME test on purpose, because it is the
+## distinction that makes the rule right rather than merely strict: a G-D9 window
+## is BASE glass with brick bands, so it still joins its plain-glass neighbours.
+## Base material, not per-level material — which is exactly why §G-D23 says a
+## `bands` entry is not a divider.
+func test_two_glass_materials_are_two_panes() -> void:
+	print("[10] G-D16: two glass MATERIALS never share a pane; a banded one still joins\n")
+	var reg := EdgeRegistry.new()
+	## Four SW panels in one adjacent run: glass, glass, glass_armored, glass.
+	## The armoured one must split the run into two panes AND be alone in its own.
+	var a := Slice.new("V_A", Vector2i(3, 7), Face.SW, "V_EA", 1, "glass")
+	var b := Slice.new("V_B", Vector2i(4, 7), Face.SW, "V_EB", 1, "glass")
+	var armored := Slice.new("V_ARM", Vector2i(5, 7), Face.SW, "V_EARM", 1, "glass_armored")
+	var d := Slice.new("V_D", Vector2i(6, 7), Face.SW, "V_ED", 1, "glass")
+	## A BANDED glass panel adjacent to `a` — base glass, so it must still join.
+	var banded := Slice.new("V_BAND", Vector2i(2, 7), Face.SW, "V_EBAND", 1, "glass")
+	banded.material_bands = {0: "brick", 1: "brick"}
+	for sl in [a, b, armored, d, banded]:
+		reg._slices[sl.id] = sl
+	_fixtures.append_array([a, b, armored, d, banded])
+	GlassPaneGrouper.assign(reg, [])
+
+	if armored.pane_id != "" and armored.pane_id != a.pane_id and armored.pane_id != d.pane_id:
+		_pass("the glass_armored panel is its own pane (%s), splitting the run" % armored.pane_id)
+	else:
+		_fail("glass_armored merged with plain glass: armored=%s a=%s d=%s"
+			% [armored.pane_id, a.pane_id, d.pane_id])
+
+	if a.pane_id == b.pane_id and a.pane_id != "":
+		_pass("the two plain-glass neighbours still share a pane (%s)" % a.pane_id)
+	else:
+		_fail("plain glass neighbours no longer union: %s vs %s" % [a.pane_id, b.pane_id])
+
+	if d.pane_id != "" and d.pane_id != a.pane_id:
+		_pass("the glass beyond the armoured panel is a SEPARATE pane (%s) — the armour divides the run"
+			% d.pane_id)
+	else:
+		_fail("the run was not divided: d=%s a=%s" % [d.pane_id, a.pane_id])
+
+	if banded.pane_id == a.pane_id:
+		_pass("a G-D9 banded window is BASE glass and still joins its neighbours — a `bands` entry is not a divider (G-D23)")
+	else:
+		_fail("the banded panel stopped joining: banded=%s a=%s" % [banded.pane_id, a.pane_id])
+	print("")
+
+
+## G-D16 / V-B — EVERY MEMBER GETS ITS OWN 16 ATOMS, CARRYING ITS OWN TINT INDEX.
+##
+## The tint does not ride a uniform per layer or a per-cell alternative: it rides
+## the atom's BLUE channel, which the builder had always written as a third copy
+## of the dim nothing reads. Three things can silently go wrong and all three are
+## pinned here rather than eyeballed on a capture:
+##
+##   · a member missing from the atom table renders through BASE's fallback and
+##     is simply the wrong colour;
+##   · two members sharing a source id means one of them is not really there;
+##   · the BLUE byte disagreeing with FAMILY's order means every tint after the
+##     first is off by one, which looks plausible and is wrong.
+##
+## Plus the three-copies problem: PANE_TINT[0], the shader's `glass_tint` default
+## and `_glass_shader_params` are the same number written in three files. The
+## comment says keep them equal; this asserts it.
+func test_every_family_member_has_its_own_tinted_atoms() -> void:
+	print("[11] G-D16: per-member glass atoms, and the tint index in the BLUE channel\n")
+	## `_fresh_renderer()` parents it under `root` and calls `setup()`, which is
+	## what builds the tileset — including the glass atom table.
+	var r := _fresh_renderer()
+
+	var seen: Dictionary = {}
+	var missing: Array = []
+	var dupes: Array = []
+	for material_id in GlassMaterials.FAMILY:
+		var per_face: Dictionary = r._glass_atom_source.get(material_id, {})
+		if per_face.is_empty():
+			missing.append(material_id)
+			continue
+		for fc in [Face.SW, Face.SE, Face.NW, Face.NE]:
+			for m in range(4):
+				var sid: int = int((per_face.get(fc, {}) as Dictionary).get(m, -1))
+				if sid < 0:
+					missing.append("%s/%d/%d" % [material_id, fc, m])
+				elif seen.has(sid):
+					dupes.append("%s shares source %d with %s" % [material_id, sid, seen[sid]])
+				else:
+					seen[sid] = material_id
+	var expected: int = GlassMaterials.FAMILY.size() * 4 * 4
+	if missing.is_empty() and dupes.is_empty() and seen.size() == expected:
+		_pass("%d distinct glass atoms — %d members x 4 faces x 4 masks"
+			% [seen.size(), GlassMaterials.FAMILY.size()])
+	else:
+		_fail("atoms missing=%s dupes=%s distinct=%d expected=%d"
+			% [missing, dupes, seen.size(), expected])
+
+	## The BLUE byte, read straight back out of the built atom the way the shader
+	## reads it: `int(round(t.b * 255.0))`.
+	var wrong: Array = []
+	for material_id in GlassMaterials.FAMILY:
+		var want: int = GlassMaterials.tint_index(material_id)
+		var atom: Image = r._build_glass_pane_atom(Face.SW, false, false, want)
+		if atom == null:
+			wrong.append("%s: no atom" % material_id)
+			continue
+		var got: int = -1
+		for y in range(atom.get_height()):
+			for x in range(atom.get_width()):
+				var px: Color = atom.get_pixel(x, y)
+				if px.a > 0.0:
+					got = int(round(px.b * 255.0))
+					break
+			if got >= 0:
+				break
+		if got != want:
+			wrong.append("%s: blue byte %d, expected index %d" % [material_id, got, want])
+	if wrong.is_empty():
+		_pass("every member's atom carries its own FAMILY index in BLUE (0..%d)"
+			% (GlassMaterials.FAMILY.size() - 1))
+	else:
+		_fail("tint index round-trip broken: %s" % [wrong])
+
+	## The same number in three files.
+	var from_params = r._glass_shader_params.get("glass_tint", null)
+	if from_params is Color and (from_params as Color).is_equal_approx(GlassMaterials.PANE_TINT[0]):
+		_pass("_glass_shader_params['glass_tint'] IS GlassMaterials.PANE_TINT[0] (%s)"
+			% [GlassMaterials.PANE_TINT[0]])
+	else:
+		_fail("the base tint disagrees between GlassMaterials and _glass_shader_params: %s vs %s"
+			% [GlassMaterials.PANE_TINT[0], from_params])
+
+	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_shading.gdshaderinc")
+	var t0: Color = GlassMaterials.PANE_TINT[0]
+	var want_default := "vec3(%.2f, %.2f, %.2f)" % [t0.r, t0.g, t0.b]
+	if src.contains("uniform vec3 glass_tint : source_color = " + want_default):
+		_pass("glass_shading.gdshaderinc's `glass_tint` default is the same number (%s)" % want_default)
+	else:
+		_fail("the shader's glass_tint default is not %s — three copies of one colour and they have drifted"
+			% want_default)
+	print("")

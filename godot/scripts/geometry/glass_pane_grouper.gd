@@ -62,6 +62,23 @@ static func assign(edge_registry: EdgeRegistry, solid_block_instances: Array) ->
 			var b2: Slice = panels[j]
 			if a.face != b2.face:
 				continue
+			## G-D16 / V-B — TWO GLASS MATERIALS ARE TWO PANES, always.
+			##
+			## This union never read the material, which was invisible while glass
+			## was one id and wrong the moment it became a family: a `glass` panel
+			## touching a `glass_armored` one would have merged into a single pane
+			## with two resistances, two behaviour classes and two tints, and
+			## `plan_pane_shatter` would then flood a won roll straight from the
+			## ordinary glass through the armoured half — defeating the armour with
+			## no error and no way to see why. Physically they are two panes in one
+			## frame, which is exactly what a divider is.
+			##
+			## The BASE material only. A G-D9 banded window is base glass with brick
+			## bands, so it still joins its plain-glass neighbours — the measured
+			## behaviour §G-D23 documents, and the reason a `bands` entry is not a
+			## divider.
+			if a.material != b2.material:
+				continue
 			var d: Vector2i = a.gu_cell - b2.gu_cell
 			if absi(d.x) + absi(d.y) != 1:
 				continue

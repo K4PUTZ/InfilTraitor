@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**227 scripts · 74576 lines total** (under `godot/scripts/`)
+**227 scripts · 74924 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -706,7 +706,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `glass_pane_grouper.gd`
 
-`class_name GlassPaneGrouper` · 215 lines
+`class_name GlassPaneGrouper` · 232 lines
 
 `godot/scripts/geometry/glass_pane_grouper.gd`
 
@@ -892,7 +892,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 4989 lines
+`class_name VoxelRenderer` · extends `Node2D` · 5040 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1756,7 +1756,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_compositor.gd`
 
-`class_name BakeCompositor` · 1244 lines
+`class_name BakeCompositor` · 1261 lines
 
 `godot/scripts/systems/bake_compositor.gd`
 
@@ -1766,6 +1766,7 @@ extends `Node2D` · 43 lines
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
+- `GlassMaterialsClass` = `preload("res://godot/scripts/systems/glass_materials.gd")`
 - `TEX_AUTHORING_N` = `GeometryCoordsClass.TEX_AUTHORING_N`
 - `VOXEL_ATOM_W` = `GeometryCoordsClass.VOXEL_ATOM_W`
 - `VOXEL_ATOM_H` = `GeometryCoordsClass.VOXEL_ATOM_H`
@@ -1796,7 +1797,7 @@ extends `Node2D` · 43 lines
 
 ### `bake_policy.gd`
 
-`class_name BakePolicy` · 145 lines
+`class_name BakePolicy` · 153 lines
 
 `godot/scripts/systems/bake_policy.gd`
 
@@ -2077,7 +2078,7 @@ extends `Node2D` · 43 lines
 
 ### `shot_punch_table.gd`
 
-`class_name ShotPunchTable` · 354 lines
+`class_name ShotPunchTable` · 388 lines
 
 `godot/scripts/systems/destruction/shot_punch_table.gd`
 
@@ -2182,15 +2183,16 @@ extends `Node2D` · 43 lines
 
 ### `glass_materials.gd`
 
-`class_name GlassMaterials` · 49 lines
+`class_name GlassMaterials` · 120 lines
 
 `godot/scripts/systems/glass_materials.gd`
 
 > GlassMaterials — GLASS_MASTER_PLAN G-D16, the glass FAMILY seam. WHY THIS EXISTS, and it is measured rather than stylistic. Before G-VARIANT, "is this glass?" was written as a bare `material == "glass"` in TWENTY-FIVE places across rendering, geometry, occlusion, the guard phase, the shot path and the cook. Every one of them is a BEHAVIOUR: a glass slice does not occlude, does not enter the vision edge set, groups into a pane, lets a round through, renders on its own transparent layers, drops no smoke, and anchors no shards. G-D16 adds `glass_armored` and `glass_screen_{green,red,amber}` as members of that same family — *"a family of tinted behaviour classes, not new geometry"*. Adding them against 25 literal comparisons would make each new material a silently OPAQUE wall that happens to be named glass: it would occlude, block sight, stop rounds, puff smoke, and never form a pane. Nothing would error. So the family is asked, never compared. `is_glass()` is the only question the engine is allowed to ask about glass-ness, and `check_invariants.py` rule **L2** fails any new bare comparison outside this file. ── WHAT THIS FILE IS NOT ── It is not a second material registry. Resistance, destroy/dent/crack factors and `base_color` stay where they already live — `ASSETS/materials/<id>/<id>.json` via `MaterialResistanceTable`/`MaterialRegistry`, and `ShotPunchTable`'s balance rows. This file answers exactly one thing: which material ids are in the glass family, and (from V-C) which behaviour class each one carries.
 
 **Constants / tuning**
-- `FAMILY` = `["glass"]`
+- `FAMILY` = `["glass", "glass_armored", "glass_screen_green", "glass_screen_red", "glass_screen_amber"]`
 - `BASE` = `"glass"`
+- `TINT_SLOTS` = `5`
 
 ---
 
@@ -3575,7 +3577,7 @@ extends `SceneTree` · 659 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 520 lines
+extends `SceneTree` · 670 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 

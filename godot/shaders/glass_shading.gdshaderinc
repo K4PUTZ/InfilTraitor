@@ -26,7 +26,47 @@ uniform float face_sw : hint_range(0.0, 1.0) = 0.966;
 
 // The tint glass lays over the background — blue (Director, 2026-08-30). The
 // runtime value is seeded from VoxelRenderer._glass_shader_params.
+//
+// THIS IS THE BASE MEMBER'S TINT, index 0 of GlassMaterials.PANE_TINT, and it
+// stays a lone uniform rather than folding into the array below for one reason:
+// the calibration capture action drives it by name
+// (`set_glass_shader_param("glass_tint", …)`), and that is how "painel 005" was
+// picked in the first place.
 uniform vec3 glass_tint : source_color = vec3(0.47, 0.63, 0.90);
+
+// G-D16 / V-B — THE REST OF THE FAMILY, in GlassMaterials.FAMILY order minus the
+// base: glass_armored, glass_screen_{green,red,amber}.
+//
+// One shader, one BackBufferCopy container and one TileMapLayer per level still
+// serve every glass material. The alternative — a layer set per material — would
+// multiply draw submission by the roster size, and submission is what a
+// detonation actually pays for (VFX-COST-01). What multiplies instead is the
+// ATOM table: 16 atoms per member, composed once at load, and an atom carries
+// its member's index in the BLUE channel it was already wasting (the builder
+// writes RGB identical; the shader has only ever read RED, and GREEN is spoken
+// for by G-D19's damage term).
+//
+// Fixed count 4, deliberately. GlassMaterials.TINT_SLOTS mirrors it and
+// VoxelRenderer LOUD-FAILS if the roster outgrows it — a sixth member silently
+// wearing the fifth's colour is worse than a boot error.
+//
+// ⚠️ FOUR SCALARS AND NOT `uniform vec3 glass_tint_alt[4]`, which is what this
+// was first written as. The array compiles and RENDERS CORRECTLY, and prints
+// this on every boot:
+//
+//   ERROR: Condition "!actions.custom_samplers.has(function->arguments[j].tex_builtin)"
+//   is true. Continuing.
+//
+// Measured, not guessed: 0 occurrences with the pre-V-B shader, 1 per boot with
+// the array, 0 again with these scalars — the whole difference being the array.
+// "Continuing." makes it the worst kind of error, the sort that is easy to learn
+// to scroll past. Four named uniforms and a four-way select cost nothing at
+// runtime (the branch is on a value constant across each atom) and cost one boot
+// error less.
+uniform vec3 glass_tint_alt_0;
+uniform vec3 glass_tint_alt_1;
+uniform vec3 glass_tint_alt_2;
+uniform vec3 glass_tint_alt_3;
 
 // CALIBRATION — the Director's pick on the parallelogram strip was "painel 005":
 // sheen mode, mul 0.60, add 0.20.
@@ -68,18 +108,33 @@ float glass_face_factor(vec2 local) {
 // ADD highlight. `local` is the atom-local pixel (for the face factor); `dim` is
 // the per-plane brightness from the atom (1.0 = the pane face, < 1 = a top or
 // side cap, so those planes read darker — Director, 2026-08-30).
-vec3 glass_apply(vec3 behind, vec2 local, float dim) {
+// The member's tint, from the index the atom carries in its BLUE channel. The
+// atom is 8-bit RGBA and every texel of one atom holds the same value, so the
+// round-trip is exact and interpolation inside an atom is a no-op.
+vec3 glass_class_tint(float encoded) {
+	int i = int(round(encoded * 255.0));
+	if (i <= 0) {
+		return glass_tint;
+	}
+	int k = clamp(i - 1, 0, 3);
+	if (k == 0) { return glass_tint_alt_0; }
+	if (k == 1) { return glass_tint_alt_1; }
+	if (k == 2) { return glass_tint_alt_2; }
+	return glass_tint_alt_3;
+}
+
+vec3 glass_apply(vec3 behind, vec2 local, float dim, vec3 tint) {
 	float ff = glass_face_factor(local) * dim;
 	float frost = texture(glass_frost_tex, v_glass_world * glass_frost_scale).r;
 
 	// --- MULTIPLY: the tint ---
-	vec3 tinted = glass_tint * (0.82 + 0.30 * frost) * ff;
+	vec3 tinted = tint * (0.82 + 0.30 * frost) * ff;
 	float k = mix(0.12, 1.0, glass_mul_strength);   // a floor so a pane never vanishes
 	vec3 mul = mix(vec3(1.0), tinted, k);
 	// max() with a faint tinted body so glass over a black void is not a black
 	// hole — it still reads as glass.
 	vec3 out_rgb = max(behind * clamp(mul, vec3(0.0), vec3(1.0)),
-			glass_tint * glass_min_body * ff);
+			tint * glass_min_body * ff);
 
 	// --- ADD: the highlight ---
 	float sheen;
@@ -93,7 +148,7 @@ vec3 glass_apply(vec3 behind, vec2 local, float dim) {
 		float lo = mix(0.30, 0.92, glass_sheen_sharpness);
 		sheen = smoothstep(lo, 1.0, band);
 	}
-	vec3 hi = mix(glass_tint, vec3(1.0), 0.5);   // a reflection is light, not more glass
+	vec3 hi = mix(tint, vec3(1.0), 0.5);   // a reflection is light, not more glass
 	out_rgb += hi * sheen * glass_add_strength * ff;
 
 	return clamp(out_rgb, vec3(0.0), vec3(1.0));

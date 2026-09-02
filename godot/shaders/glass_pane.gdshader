@@ -28,8 +28,10 @@ void fragment() {
 	} else {
 		vec2 local = mod(UV / TEXTURE_PIXEL_SIZE, atom_size);
 		vec3 behind = texture(glass_screen, SCREEN_UV).rgb;
-		// The atom's RED channel is the per-plane DIM (1.0 face, <1 top/side cap).
-		vec3 lit = glass_apply(behind, local, t.r);
+		// The atom's RED channel is the per-plane DIM (1.0 face, <1 top/side cap);
+		// its BLUE channel is the glass member's tint index (G-D16 / V-B). GREEN is
+		// reserved for G-D19's per-voxel damage term and is not read yet.
+		vec3 lit = glass_apply(behind, local, t.r, glass_class_tint(t.b));
 		COLOR = vec4(lit, cover);
 	}
 }

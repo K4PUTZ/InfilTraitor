@@ -1,7 +1,16 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟠 v1.16 — **G-VARIANT V-A BUILT (2026-09-01): the glass FAMILY
-SEAM.** `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons
+**Status:** 🟠 v1.17 — **G-VARIANT V-B BUILT (2026-09-01): the roster is real and
+the tints are on screen.** `glass_armored` (purple) and
+`glass_screen_{green,red,amber}` are registered materials with their own
+resistance rows, and **they cost ZERO new art** — the family shares every pixel
+of `glass`'s (G-D16). The tint rides the pane atom's free BLUE channel into a
+per-class shader uniform, so one container, one shader and one TileMapLayer per
+level still serve all five: what multiplies is the ATOM table (80 atoms, composed
+once at load), never draw submission. Capture:
+`glass_variants_2026-09-01.png`. §5.4b has the detail.
+
+Earlier, v1.16 — **G-VARIANT V-A BUILT (2026-09-01): the glass FAMILY SEAM.** `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons
 across rendering, geometry, occlusion, the guard phase, the shot path and the
 cook — G-D16 makes glass a family, and against a literal comparison every new
 member would be a silently OPAQUE wall that renders, occludes and stops rounds
@@ -637,6 +646,77 @@ still excluded from the cascade (they have no single run axis, so
 `_note_glass_crossing()` dedupes by `pane_id`, so entering and leaving one block
 counts as ONE layer rather than two. The attenuation is the half that generalises;
 the block geometry is its own piece and is named here rather than implied.
+
+### ✅ V-B BUILT (2026-09-01) — the roster, and the tint on screen
+
+**Five materials, one shader, one layer set, ZERO new art.** G-D16's *"a family
+of tinted behaviour classes, not new geometry"* taken literally: every member
+renders from BASE's voxel atom and BASE's `facade_glass.png` frost, and
+`GlassMaterials.art_id()` is the one function that makes that true at every art
+seam — a variant id never reaches a texture lookup under its own name.
+
+**Where the tint lives, and why not anywhere else.** `_build_glass_pane_atom()`
+has always written `Color(dim, dim, dim, alpha)` while the shader reads only RED;
+G-D19 has already spoken for GREEN. So BLUE was free, and it now carries the
+member's index in `GlassMaterials.FAMILY`, decoded as `int(round(t.b * 255.0))`
+— exact for 8-bit, and every texel of one atom carries the same value so
+filtering inside it cannot smear the index.
+
+The alternative was a TileMapLayer set per material with its own `glass_tint`
+uniform. Rejected on the standing priority: that multiplies **draw submission**,
+which is what an event actually pays for (VFX-COST-01), while the atom route
+multiplies a table composed once at load. Measured: **80 atoms** (5 members × 4
+faces × 4 masks), all source ids distinct.
+
+| | |
+|---|---|
+| `glass` | blue `0.47/0.63/0.90` — **CALIBRATED** ("painel 005"), untouched |
+| `glass_armored` | `0.63/0.47/0.90` — the same blue rotated toward magenta at the same luminance, so G1's calibration still reads |
+| `glass_screen_{green,red,amber}` | `0.24/0.62/0.34` · `0.72/0.26/0.28` · `0.82/0.60/0.20` — darker, so the MULTIPLY reads as a lit panel rather than a window |
+
+⚠️ **A pane tint is NOT `base_color`,** and conflating them would be wrong rather
+than untidy: the tint MULTIPLIES a BackBufferCopy of the scene behind the pane
+(G-D1) while `base_color` is the opaque multiply on the ordinary wall path. The
+two have carried different values for base glass since G1 shipped. Indices 1–4
+are first-pass placeholders for a Director calibration pass; index 0 is not.
+
+**⚠️ TWO GLASS MATERIALS ARE TWO PANES — a defect the family created and V-B
+closed.** `GlassPaneGrouper`'s union matched on face and adjacency and **never on
+material**, which was invisible while glass was one id. A plain pane touching an
+armoured one would have become ONE pane with two resistances and two classes, and
+`plan_pane_shatter` would then flood a won roll out of the ordinary glass and
+straight through the armour — defeating it with nothing on screen to explain why.
+The union now requires the same BASE material; a G-D9 banded window is still base
+glass and still joins its neighbours, which is exactly why §G-D23 says a `bands`
+entry is not a divider. Real map: four adjacent variant panels, same face, **four
+distinct `pane_id`s**.
+
+**Two costs the variants introduced and V-B paid back before shipping them:**
+
+1. **A shader-compiler error on every boot.** `uniform vec3 glass_tint_alt[4]`
+   renders correctly and prints `Condition "!actions.custom_samplers.has(...)" is
+   true. Continuing.` — measured 0 occurrences before, 1 per boot with the array,
+   0 with four named scalars. *"Continuing"* makes it the worst kind of error: the
+   sort a reader learns to scroll past.
+2. **Four identical baked sheets nothing reads.** The bake went `3 combos` →
+   `7 combos × 2 directions in 1374.0 ms`, composing 8 pages and 16 384 atoms for
+   materials whose panes render from `_glass_atom_source` and whose roofs get
+   their own page family. Collapsing the family onto BASE's combo: **`3 combos …
+   in 1263.0 ms`.** ⚠️ The saving is **111 ms, not the ~785 ms** a per-combo
+   average predicted — combos are wildly unequal (concrete's roof page alone is
+   4096 atoms against a sheet's 2048), and dividing a total by a count is not a
+   measurement of any one item.
+
+**Pinned by** `glass_transparency_selftest` [10] (two materials never share a
+pane; a banded one still joins) and [11] (80 distinct atoms; the BLUE round-trip
+per member; and the base tint being ONE number rather than three copies — it is
+written in `GlassMaterials.PANE_TINT[0]`, `_glass_shader_params` and the shader
+default, and the test asserts all three equal).
+
+⚠️ **Still V-C's, not built:** the behaviour behind the colours. An armoured pane
+is only *harder* today (resistance 0.80 → pistol 0%, rifle ~1.5%, sniper ~15%
+against 5%/44%/81%); it does not yet break whole-pane on a win, and a screen is
+not yet INDESTRUCTIBLE and does not stop a round.
 
 ### G-D19 mechanics — the free channel that carries the damage term
 
@@ -1300,7 +1380,7 @@ level→material override on the same half-thickness face:
 | 🟢 | **G-ART** — **the order and the gate are DONE 2026-09-01** ([`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md); `check_decal.py` now carries per-material families + the fracture-sheet class, proven red on 7 modes with all 54 shipped decals unchanged). Five files asked for: two 1024×512 grayscale fracture sheets (tight/wide, G-D14) and three 256×256 shard decals. **What is left is the delivery** | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | the art itself |
 | 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** (open) G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump | G-MAP, G2, §5.1 |
-| 🟡 | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** the roster + the tint on screen (`glass_armored`, `glass_screen_{green,red,amber}`; the tint rides the glass atom's free BLUE channel — G-D19 reserves GREEN, and RGB are written identical today so B is spare). **V-C** the class behaviour (ARMORED's whole-pane break; INDESTRUCTIBLE stops the round — the one glass G-D5 does not apply to). **V-D** `pane_primed` (G-D15) + the per-placement `glass_class` tag in the mapfile | — (Stage B's flood was fixed 2026-09-01, §5.1) |
+| 🟡 | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** ✅ the roster + the tint on screen — 4 material rows, per-member atoms carrying the tint index in the atom's free BLUE channel, a material-aware pane union, and the bake collapsed onto BASE's facade (§5.4b). **V-C** the class behaviour (ARMORED's whole-pane break; INDESTRUCTIBLE stops the round — the one glass G-D5 does not apply to). **V-D** `pane_primed` (G-D15) + the per-placement `glass_class` tag in the mapfile | — (Stage B's flood was fixed 2026-09-01, §5.1) |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
 | 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15) | G-ART |
 | 8 | **G-D4** — the bullet web on shot neighbours | G5, G-ART |

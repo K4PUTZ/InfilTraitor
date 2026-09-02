@@ -4,7 +4,7 @@
   "id": "GLASS",
   "meta": {
     "title": "Glass Physics Test Zone",
-    "description": "GLASS_MASTER_PLAN \u00a712. Dedicated to glass physics \u2014 PLAYGROUND stays as it is. The agent starts at authored (13,13) looking north at a BIG pane (authored gu x=10..15, y=9, face SW, 3 storeys, 6 GUs wide) so G-D12's partial break has room to read; a guard patrols behind it at (13,6) for the shoot-through-glass path (G7) and the see-through roll (G-D7). A SMALL pane (gu 4,9, face SW, 1 storey) west of the agent is the binary all-or-nothing case. A WINDOWS.png bands wall (gu x=19..21, y=9, face SW, 3 storeys) carries a brick sill (levels 0-1) and head (levels 22-23) over a glass middle \u2014 the multi-material-slice case (G-D9); until G-D9 lands the `bands` key is ignored and it renders as plain glass. A 3-wide glass block (gu x=6..8, y=3) keeps block geometry a home. Floor is one concrete zone; three lights cover the play area. G-D17 (2026-09-01): a SECOND pane row (gu x=11..14, y=6, face SW, 3 storeys) stands behind the big one so a single round crosses TWO panes \u2014 the map had no such line, and the per-layer punch falloff cannot be verified on a map where every pane is on one row. G-D16/V-B (2026-09-01): a row of four VARIANT panels at authored gu x=5..8, y=9, 2 storeys \u2014 glass_armored (purple), then glass_screen_green/red/amber \u2014 west of the big pane with a gap at x=9 so the pane union cannot reach it. They exist to make the per-class tint visible in one frame; the variants share every pixel of glass's art and differ only by the tint index the atom carries in its BLUE channel."
+    "description": "GLASS_MASTER_PLAN \u00a712. Dedicated to glass physics \u2014 PLAYGROUND stays as it is. The agent starts at authored (13,13) looking north at a BIG pane (authored gu x=10..15, y=9, face SW, 3 storeys, 6 GUs wide) so G-D12's partial break has room to read; a guard patrols behind it at (13,6) for the shoot-through-glass path (G7) and the see-through roll (G-D7). A SMALL pane (gu 4,9, face SW, 1 storey) west of the agent is the binary all-or-nothing case. A WINDOWS.png bands wall (gu x=19..21, y=9, face SW, 3 storeys) carries a brick sill (levels 0-1) and head (levels 22-23) over a glass middle \u2014 the multi-material-slice case (G-D9); until G-D9 lands the `bands` key is ignored and it renders as plain glass. A 3-wide glass block (gu x=6..8, y=3) keeps block geometry a home. Floor is one concrete zone; three lights cover the play area. G-D17 (2026-09-01): a SECOND pane row (gu x=11..14, y=6, face SW, 3 storeys) stands behind the big one so a single round crosses TWO panes \u2014 the map had no such line, and the per-layer punch falloff cannot be verified on a map where every pane is on one row. G-D16/V-B (2026-09-01): a row of four VARIANT panels at authored gu x=5..8, y=9, 2 storeys \u2014 glass_armored (purple), then glass_screen_green/red/amber \u2014 west of the big pane with a gap at x=9 so the pane union cannot reach it. They exist to make the per-class tint visible in one frame; the variants share every pixel of glass's art and differ only by the tint index the atom carries in its BLUE channel. V-D (2026-09-01): the amber screen carries `glass_class: \"breakable\"` \u2014 G-D16's per-placement override (a TV rather than a control interface), so the map exercises both readings of glass_screen_*."
   },
   "sections": {
     "board": {
@@ -342,7 +342,8 @@
           ],
           "face": "SW",
           "material": "glass_screen_amber",
-          "storeys": 2
+          "storeys": 2,
+          "glass_class": "breakable"
         }
       ]
     }

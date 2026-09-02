@@ -244,6 +244,19 @@ var _soot_store_absorbs: int = 0
 ## read back as substrate 0.
 var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see above)
 
+## GLASS G-D15 / V-D — PANES THAT ARE PRIMED. `pane_id -> true`.
+##
+## Director, 2026-08-31: a rifle round that fails its shatter roll on an intact
+## ARMORED pane may still pierce a single voxel; that hit PRIMES the pane, and
+## *"a primed pane's next hit of ANY type auto-shatters"*. So this is not a
+## damage record — it is a one-shot promise the pane makes, consumed the moment
+## it is honoured.
+##
+## Keyed by `pane_id` rather than by voxel because that is the unit the promise
+## is about, and checkpoint-scoped like every other scenario mutation: it lives
+## in `SaveState` beside `base_damage` and dies with the level.
+var _pane_primed: Dictionary = {}
+
 ## D2 (EXPLOSION_REBUILD_MASTER_PLAN §4.4, Task 5/E-WAVE, 2026-08-07) — how
 ## many times a GU has been detonated on, base-coord keyed (Vector2i) for the
 ## identical reason `_base_damage` is: it must survive a perspective rotation,
@@ -6836,6 +6849,27 @@ func _capture_shot_filmstrip() -> void:
 	var idx_env := OS.get_environment("INFILTRAITOR_SHOT_GUARD_INDEX")
 	var guard_idx: int = idx_env.to_int() if idx_env.is_valid_int() else 0
 	guard_idx = clampi(guard_idx, 0, _guards.size() - 1)
+	## GLASS G-D15 / V-D — the same two placement overrides `_capture_agent_shot`
+	## has, for the same reason it has them: this is the ONLY capture action that
+	## fires TWICE in one boot, and a two-shot mechanic (a pane primed by the
+	## first hit and taken by the second) cannot be evidenced across two boots —
+	## the shatter salt carries `_world_revision`, which the first shot bumps, so
+	## two boots are two independent rolls rather than a sequence.
+	var agent_env := OS.get_environment("INFILTRAITOR_SHOT_AGENT_CELL")
+	if agent_env != "" and agent != null:
+		var ap := agent_env.split(",")
+		if ap.size() == 2 and ap[0].is_valid_int() and ap[1].is_valid_int():
+			agent.set_cell(Vector2i(ap[0].to_int(), ap[1].to_int()))
+	var guard_env := OS.get_environment("INFILTRAITOR_SHOT_GUARD_CELL")
+	if guard_env != "":
+		var gp := guard_env.split(",")
+		if gp.size() == 2 and gp[0].is_valid_int() and gp[1].is_valid_int():
+			## GuardEnemy has no set_cell() — its cell is placed by its own two
+			## fields plus the world transform (`_capture_agent_shot`'s own note).
+			var g = _guards[guard_idx]
+			g.cell = Vector2i(gp[0].to_int(), gp[1].to_int())
+			g.position = g._cell_to_world(g.cell)
+			g.queue_redraw()
 	## W-TUNE-01: the sheet's SUBJECT is selectable, because the two things worth
 	## watching are 12 GU apart. Centred between shooter and target (the default)
 	## the figure and the muzzle flash read and the wall does not; the round is

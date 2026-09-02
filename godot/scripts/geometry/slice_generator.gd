@@ -52,6 +52,9 @@ static func _create_slice(edge: Edge, is_side_a: bool, _registry: EdgeRegistry) 
 	## side-independent — both slices of a mixed edge carry the same override.
 	if edge.has_material_bands():
 		slice.material_bands = edge.material_bands.duplicate()
+	## GLASS G-D16 / V-D — the per-placement class rides the placement down to the
+	## slice, the same way the bands do.
+	slice.glass_class = edge.glass_class
 	
 	# Generate voxel positions for this slice
 	var voxel_positions := slice_voxel_positions(gu_cell, face)

@@ -267,6 +267,10 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			## an inclusive [lo, hi] pair — FileMapSource's JSON converter folds a
 			## 2-int array into a Vector2i, so accept either shape.
 			"material_bands": _compile_panel_bands(panel.get("bands", [])),
+			## GLASS G-D16 / V-D (§9.6): the per-placement behaviour class, as the
+			## authored NAME. Parsed (and loud-failed) once, in EdgeExtractor, so a
+			## typo is reported against the panel rather than swallowed here.
+			"glass_class": String(panel.get("glass_class", "")),
 		})
 
 	var result: Dictionary = {

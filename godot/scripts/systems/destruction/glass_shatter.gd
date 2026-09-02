@@ -290,6 +290,11 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## bands, and the bands are frame here, never pane.
 	var pane_material: String = pane_slices[0].material if not pane_slices.is_empty() \
 		else GlassMaterials.BASE
+	## V-D — and the pane's per-placement class override, from the same slice. A
+	## pane is single-material by construction (the union splits on material), and
+	## every slice of one authored panel carries the same tag.
+	var pane_class: int = pane_slices[0].glass_class if not pane_slices.is_empty() \
+		else GlassMaterials.CLASS_UNSET
 
 	## Build the pane's own lattice of VISIBLE voxels, keyed by (col, level) where
 	## `col` runs along the pane. A destroyed voxel is already a hole and is not a
@@ -378,7 +383,7 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## the pane. A sentinel radius would make a maximum 8x4 GU pane cost a walk
 	## over tens of thousands of cells to reach 2048 voxels it can simply
 	## enumerate.
-	var whole_pane: bool = GlassMaterials.shatters_whole_pane(pane_material)
+	var whole_pane: bool = GlassMaterials.shatters_whole_pane(pane_material, pane_class)
 	if whole_pane:
 		for k in lattice.keys():
 			flood[k] = true

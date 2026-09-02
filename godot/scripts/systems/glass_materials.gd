@@ -139,6 +139,11 @@ const CLASS_OF: Dictionary = {
 }
 
 
+## V-D — "no per-placement override", the value `Slice.glass_class` carries for
+## every ordinary pane. Not 0, which is a real class (BREAKABLE).
+const CLASS_UNSET: int = -1
+
+
 ## The member's behaviour class. BREAKABLE for anything else — a non-member is
 ## not glass at all, and every caller here has already asked `is_glass()`; the
 ## default exists so a missed roster row degrades to the SHIPPED behaviour rather
@@ -147,17 +152,52 @@ static func class_of(material_id: String) -> Class:
 	return CLASS_OF.get(material_id, Class.BREAKABLE)
 
 
+## V-D — the class that actually applies HERE. G-D16 makes the screens
+## INDESTRUCTIBLE or BREAKABLE *per placement* (a control interface against a TV
+## or a news panel), so the material carries a default and the map may override
+## it per panel. `override` is `Slice.glass_class`, or CLASS_UNSET when the map
+## said nothing.
+static func effective_class(material_id: String, override: int = CLASS_UNSET) -> Class:
+	if override != CLASS_UNSET:
+		return override as Class
+	return class_of(material_id)
+
+
 ## True when this glass never breaks and STOPS a round instead of passing it
 ## through (G-D5's one exception). Named for the question rather than the class
 ## so the call sites read as physics.
-static func stops_a_round(material_id: String) -> bool:
-	return is_glass(material_id) and class_of(material_id) == Class.INDESTRUCTIBLE
+static func stops_a_round(material_id: String, override: int = CLASS_UNSET) -> bool:
+	return is_glass(material_id) \
+		and effective_class(material_id, override) == Class.INDESTRUCTIBLE
 
 
 ## True when a won shatter roll must take the WHOLE pane rather than a region
 ## scaled by punch (G-D15) — armoured glass does not break in patches.
-static func shatters_whole_pane(material_id: String) -> bool:
-	return is_glass(material_id) and class_of(material_id) == Class.ARMORED
+static func shatters_whole_pane(material_id: String, override: int = CLASS_UNSET) -> bool:
+	return is_glass(material_id) \
+		and effective_class(material_id, override) == Class.ARMORED
+
+
+## The authoring vocabulary for `panels[].glass_class` (§9.6). Kept beside the
+## enum so the mapfile spelling and the code cannot drift, and parsed loudly:
+## a typo in a map is a placement whose class silently reverts to the material
+## default, which is the quietest possible way to lose armour.
+const CLASS_NAMES: Dictionary = {
+	"breakable": Class.BREAKABLE,
+	"armored": Class.ARMORED,
+	"indestructible": Class.INDESTRUCTIBLE,
+}
+
+
+static func class_from_name(name: String) -> int:
+	if name == "":
+		return CLASS_UNSET
+	var key := name.to_lower()
+	if not CLASS_NAMES.has(key):
+		push_error("[GlassMaterials] unknown glass_class %r in a map — expected one of %s. The panel keeps its material default, which is how a screen silently stops being a control interface." % [
+			name, ", ".join(CLASS_NAMES.keys())])
+		return CLASS_UNSET
+	return int(CLASS_NAMES[key])
 
 
 ## ── ART (G-D16: "a family of tinted behaviour classes, NOT new geometry") ─────

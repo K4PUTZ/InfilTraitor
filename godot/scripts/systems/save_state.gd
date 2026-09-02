@@ -59,6 +59,16 @@ static func capture(room) -> Dictionary:
 		"map_id": room.map_id,
 		"base_damage": damage,
 		"crater_floor_soot": craters,
+		## GLASS G-D15 / V-D — the panes a rifle round pierced without taking
+		## (`Room._pane_primed`). A flat array of pane_ids: the value is always
+		## `true`, so storing it would be storing a constant.
+		##
+		## ⚠️ FORMAT_VERSION is deliberately NOT bumped. `validate()` rejects a
+		## version mismatch outright, and an OLD save simply has no `pane_primed`
+		## key — `data.get("pane_primed", [])` reads it as "nothing was primed",
+		## which is both true and the safe direction to be wrong in. A bump would
+		## refuse every save written before today to gain nothing.
+		"pane_primed": room._pane_primed.keys(),
 	}
 
 
@@ -88,6 +98,9 @@ static func validate(data: Dictionary) -> String:
 	for c in data.get("crater_floor_soot", []):
 		if typeof(c) != TYPE_ARRAY or (c as Array).size() < 4:
 			return "malformed crater_floor_soot entry: %s" % [c]
+	for pid in data.get("pane_primed", []):
+		if typeof(pid) != TYPE_STRING or String(pid) == "":
+			return "malformed pane_primed entry: %s" % [pid]
 	return ""
 
 
@@ -108,6 +121,9 @@ static func restore(room, data: Dictionary) -> bool:
 		if not room._crater_floor_soot.has(level):
 			room._crater_floor_soot[level] = {}
 		room._crater_floor_soot[level][Vector2i(int(c[1]), int(c[2]))] = int(c[3])
+	room._pane_primed.clear()
+	for pid in data.get("pane_primed", []):
+		room._pane_primed[String(pid)] = true
 	## The cache is NOT restored — it is rebuilt. See the class note.
 	room.invalidate_soot_index("save restored")
 	return true
@@ -149,6 +165,9 @@ static func load_from_file(room, path: String = "user://save_01.json") -> bool:
 static func clear_run_state(room) -> void:
 	room._base_damage.clear()
 	room._crater_floor_soot.clear()
+	## G-D15 / V-D — a primed pane is a promise made to THIS run. A fresh mission
+	## must not inherit a window that shatters to the first pistol shot.
+	room._pane_primed.clear()
 	## SS-1 (`SOOT_STORAGE_REFORM`) — the scorch store is registered for forgetting
 	## the moment it exists, not when it is first SAVED (that is SS-4). This
 	## function's whole reason for being is *"so a new persisted field has exactly

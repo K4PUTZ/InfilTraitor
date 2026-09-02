@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**227 scripts · 75251 lines total** (under `godot/scripts/`)
+**227 scripts · 75620 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -592,7 +592,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge.gd`
 
-`class_name Edge` · 187 lines
+`class_name Edge` · 195 lines
 
 `godot/scripts/geometry/edge.gd`
 
@@ -610,6 +610,7 @@ extends `ConfirmationDialog` · 64 lines
 - `var slice_a_id: String = ""`
 - `var slice_b_id: String = ""`
 - `var material_bands: Dictionary = {}`
+- `var glass_class: int = GlassMaterials.CLASS_UNSET`
 - `var occupied_sides: int = OccupiedSides.BOTH`
 
 **Public API**
@@ -627,7 +628,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge_extractor.gd`
 
-`class_name EdgeExtractor` · 239 lines
+`class_name EdgeExtractor` · 246 lines
 
 `godot/scripts/geometry/edge_extractor.gd`
 
@@ -641,7 +642,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `edge_registry.gd`
 
-`class_name EdgeRegistry` · 192 lines
+`class_name EdgeRegistry` · 203 lines
 
 `godot/scripts/geometry/edge_registry.gd`
 
@@ -837,7 +838,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slice.gd`
 
-`class_name Slice` · 94 lines
+`class_name Slice` · 102 lines
 
 `godot/scripts/geometry/slice.gd`
 
@@ -858,6 +859,7 @@ extends `ConfirmationDialog` · 64 lines
 - `var bake_texture: Texture2D`
 - `var pane_id: String = ""`
 - `var material_bands: Dictionary = {}`
+- `var glass_class: int = GlassMaterials.CLASS_UNSET`
 
 **Public API**
 - `func has_material_bands() -> bool:`
@@ -873,7 +875,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `slice_generator.gd`
 
-`class_name SliceGenerator` · 105 lines
+`class_name SliceGenerator` · 108 lines
 
 `godot/scripts/geometry/slice_generator.gd`
 
@@ -1886,7 +1888,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1944 lines
+`class_name BlastCalculator` · 1947 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2040,7 +2042,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 457 lines
+`class_name GlassShatter` · 462 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -2079,7 +2081,7 @@ extends `Node2D` · 43 lines
 
 ### `shot_punch_table.gd`
 
-`class_name ShotPunchTable` · 396 lines
+`class_name ShotPunchTable` · 429 lines
 
 `godot/scripts/systems/destruction/shot_punch_table.gd`
 
@@ -2184,7 +2186,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_materials.gd`
 
-`class_name GlassMaterials` · 175 lines
+`class_name GlassMaterials` · 215 lines
 
 `godot/scripts/systems/glass_materials.gd`
 
@@ -2726,7 +2728,7 @@ extends `Node` · 156 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 160 lines
+`class_name SaveState` · extends `RefCounted` · 179 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -3543,7 +3545,7 @@ extends `SceneTree` · 197 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 796 lines
+extends `SceneTree` · 944 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -3576,6 +3578,9 @@ extends `SceneTree` · 796 lines
 - `func test_local_hole_does_not_wall_off_the_flood() -> void:`
 - `func test_armored_takes_the_whole_pane_and_leaves_fewer_remnants() -> void:`
 - `func test_indestructible_never_breaks_and_stops_the_round() -> void:`
+- `func test_glass_never_dents() -> void:`
+- `func test_per_placement_class_overrides_the_material() -> void:`
+- `func test_only_rifle_class_pierces_armored_glass() -> void:`
 
 ---
 
@@ -4154,7 +4159,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 126 lines
+extends `SceneTree` · 145 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -4689,7 +4694,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 960 lines
+`class_name AgentShotController` · 987 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -4985,7 +4990,7 @@ extends `Node2D` · 34 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 419 lines
+`class_name MapCompiler` · extends `RefCounted` · 423 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -5056,7 +5061,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 8735 lines
+extends `Node2D` · 8769 lines
 
 `godot/scripts/world/room.gd`
 

@@ -145,11 +145,22 @@ func glass_edge_keys() -> Dictionary:
 func glass_stop_edge_keys() -> Dictionary:
 	var out: Dictionary = {}
 	for edge in _edges.values():
-		if not GlassMaterials.stops_a_round(edge.material):
+		if not GlassMaterials.is_glass(edge.material):
 			continue
-		var pid: String = ""
 		var sa := get_slice(edge.slice_a_id)
 		var sb := get_slice(edge.slice_b_id)
+		## V-D — the class is read off the SLICE, not the edge, because the
+		## per-placement override travels with the placement. Either side will do:
+		## a panel has exactly one slice, and a full-thickness pane's two slices
+		## come from the same authored panel.
+		var override: int = GlassMaterials.CLASS_UNSET
+		if sa != null:
+			override = sa.glass_class
+		elif sb != null:
+			override = sb.glass_class
+		if not GlassMaterials.stops_a_round(edge.material, override):
+			continue
+		var pid: String = ""
 		if sa != null and sa.pane_id != "":
 			pid = sa.pane_id
 		elif sb != null and sb.pane_id != "":

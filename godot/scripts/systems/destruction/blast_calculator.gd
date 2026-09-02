@@ -586,8 +586,11 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		## MAT-SOFT-01: the material goes in as well as its threshold, because a
 		## hole-only material's rule is a TIER capability that no threshold can
 		## express — see ShotPunchTable.HOLE_ONLY_MATERIALS.
+		## V-D: the slice's own per-placement glass class travels with the material,
+		## because a screen's INDESTRUCTIBLE ceiling is a property of the PLACEMENT.
 		var state: int = ShotPunchTable.damage_state_for(current_punch,
-			ShotPunchTable.destroy_min(current_slice.material), current_slice.material)
+			ShotPunchTable.destroy_min(current_slice.material), current_slice.material,
+			current_slice.glass_class)
 		if state != Voxel.DamageState.DESTROYED:
 			## CRACKED or DENTED — the projectile's own mark, bullet family
 			## (from_blast stays false, D23), on the face the shot came from

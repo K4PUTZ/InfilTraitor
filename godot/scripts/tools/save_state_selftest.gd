@@ -15,6 +15,10 @@ class RoomStub extends RefCounted:
 	var map_id: String = "TESTMAP"
 	var _base_damage: Dictionary = {}
 	var _crater_floor_soot: Dictionary = {}
+	## GLASS G-D15 / V-D — the primed-pane store. The stub models the real Room's
+	## persisted fields, so a new one has to appear here too; that is the point of
+	## a stub rather than a mock.
+	var _pane_primed: Dictionary = {}
 	## SS-1 (SOOT_STORAGE_REFORM) — the scorch store. Present here from the moment
 	## the field exists, not from the moment it is SAVED (that is SS-4), because
 	## `clear_run_state()` already has to forget it: the Director's save model
@@ -66,6 +70,7 @@ func _test_round_trip() -> void:
 	a._base_damage[Vector3i(3, -4, 80)] = [2, 1, 0, 1, 0, 5, 2]
 	a._base_damage[Vector3i(-9, 12, 79)] = [1, 0, 0, 0, 0, 0, 0]
 	a._crater_floor_soot[79] = {Vector2i(5, 6): 2, Vector2i(-1, 0): 3}
+	a._pane_primed["PANE_SLICE_6_10_SW"] = true
 
 	var blob: Dictionary = SaveState.capture(a)
 	var b := RoomStub.new()
@@ -78,6 +83,16 @@ func _test_round_trip() -> void:
 		"base_damage: a negative-Y key round-trips with its payload")
 	_check(b._base_damage.get(Vector3i(-9, 12, 79), []) == [1, 0, 0, 0, 0, 0, 0],
 		"base_damage: a negative-X key round-trips with its payload")
+	## G-D15 / V-D — the primed pane survives a round trip, and an OLD save with
+	## no `pane_primed` key restores as "nothing primed" rather than refusing.
+	_check(b._pane_primed.has("PANE_SLICE_6_10_SW"),
+		"pane_primed: the primed pane survived the round trip")
+	var legacy: Dictionary = SaveState.capture(a)
+	legacy.erase("pane_primed")
+	var c := RoomStub.new()
+	c._pane_primed["STALE"] = true
+	_check(SaveState.restore(c, legacy) and c._pane_primed.is_empty(),
+		"pane_primed: a save written before V-D restores as nothing primed, not a refusal")
 	_check(b._crater_floor_soot.get(79, {}).get(Vector2i(-1, 0), -1) == 3,
 		"crater_floor_soot: a negative cell round-trips")
 	_check(blob["map_id"] == "TESTMAP", "map_id travels with the record")
@@ -116,6 +131,9 @@ func _test_clear() -> void:
 	var r := RoomStub.new()
 	r._base_damage[Vector3i(0, 0, 0)] = [1, 0, 0, 0, 0, 0, 0]
 	r._crater_floor_soot[79] = {Vector2i(0, 0): 1}
+	## G-D15 / V-D — a primed pane is a promise made to THIS run: a fresh mission
+	## must not inherit a window that shatters to the first pistol shot.
+	r._pane_primed["PANE_X"] = true
 	r._soot_map[79] = {Vector2i(0, 0): 1234}
 	SaveState.clear_run_state(r)
 	_check(r._base_damage.is_empty(), "clear_run_state empties base_damage")
@@ -123,4 +141,5 @@ func _test_clear() -> void:
 	## SS-1 — the silent half. Nothing on screen would report a store that
 	## survived a level change; it would simply be last level's scorch.
 	_check(r._soot_map.is_empty(), "clear_run_state empties the SS-1 scorch store")
+	_check(r._pane_primed.is_empty(), "clear_run_state empties the primed-pane store")
 	_check(r.invalidated == 1, "clear_run_state invalidates the soot index")

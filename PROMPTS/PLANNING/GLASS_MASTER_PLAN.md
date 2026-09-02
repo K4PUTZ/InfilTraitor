@@ -1,6 +1,20 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟠 v1.18 — **G-VARIANT V-C BUILT (2026-09-01): the behaviour behind
+**Status:** 🟢 v1.19 — **G-VARIANT IS COMPLETE. V-D BUILT (2026-09-01):**
+`panels[].glass_class` (a screen is a control interface or a TV *per placement*)
+rides all the way to `Slice.glass_class`, and **G-D15's pierce-and-prime works
+end to end**. Proved in ONE boot on the real map: shot 1 `PIERCED but held (punch
+2.16) — primed` with the pane still standing and the round continuing to the
+concrete behind it; shot 2 `was PRIMED — this hit auto-shatters it` →
+`WHOLE PANE flooded=122` at punch **2.01**, lower than the first and far below
+anything that could have taken the pane on its own. §5.4d.
+
+⚠️ V-D also had to make **G-D3 structural**: glass never DENTS. That was true
+only because `DESTROY_MIN["glass"]` and `PUNCH_DENT_MIN` were both 0.30, and
+raising the armoured breach to 1.50 would have opened a band every common round
+lands in. §6.1 asked for exactly this pin.
+
+Earlier, v1.18 — **G-VARIANT V-C BUILT (2026-09-01): the behaviour behind
 the colours.** ARMORED has no region — a won roll takes the pane WHOLE (G-D15) —
 and INDESTRUCTIBLE caps at CRACKED and **STOPS THE ROUND**, the one glass G-D5
 does not apply to. Real map, three shots, one weapon: armoured `glass_punch 3.03
@@ -791,6 +805,76 @@ the state is CRACKED and correct, and glass has no marked-tier art yet, so a hit
 screen looks untouched. And G-D15's rifle **pierce-and-prime** (`pane_primed`) is
 V-D, with the per-placement `glass_class` tag that flips a screen to BREAKABLE.
 
+### ✅ V-D BUILT (2026-09-01) — the placement tag, and the primed pane
+
+**1. `panels[].glass_class` — the class is a property of the PLACEMENT.** G-D16
+makes a `glass_screen_*` either a control interface or a TV *per placement*, and
+that is a fact about where the pane was PUT. So the tag rides the same path
+`bands` does — `panels[].glass_class` → `MapCompiler` → `Edge.glass_class` →
+`Slice.glass_class` — parsed once in `EdgeExtractor` where a bad name can still
+be reported against the panel that wrote it. `CLASS_UNSET` (−1, not 0, which is a
+real class) means the material's own default.
+
+Every class question is now placement-aware: the tier ladder (via
+`plan_point_impact`, which has the slice), `glass_stop_edge_keys()`,
+`_maybe_shatter_pane`, `plan_pane_shatter` and the cook's `_is_glass_pane_slice`.
+**Real map, same material, same weapon, only the map tag differing:** the red
+screen `cracked=1 destroyed=0` and the round stops; the amber screen — authored
+`"glass_class": "breakable"` — `WHOLE PANE flooded=119`, `destroyed=128`, and the
+round carries on through the glass beyond it.
+
+**2. ⚠️ G-D3 MADE STRUCTURAL — glass never DENTS, and until now that was a
+coincidence.** §6.1 called it out: `DESTROY_MIN["glass"]` and `PUNCH_DENT_MIN`
+were both 0.30, so the DENTED band was *exactly* empty, and *"it must be pinned
+by a selftest, not left as an equality two independent edits could break."* V-D
+is the edit that would have broken it — raising the armoured breach to 1.50 opens
+a 0.30–1.50 band every common round lands in, and an armoured pane would have
+started DENTING into a tier glass has no art and no physics for. The family's
+ladder is now written out in full: CRACKED below the breach, DESTROYED at or
+above, never anything else. Pinned by [17], which sweeps all five materials × 61
+punches **and keeps a concrete control that must still dent** — a glass-only
+sweep would pass just as happily if DENTED had stopped existing for everything.
+
+**3. `glass_armored`'s breach: 0.75 → 1.50, DERIVED from the shipped arsenal.**
+`glass_punch = 3.0 · punch / 0.80` gives smg 0.82 · shotgun pellet 0.90 · pistol
+1.05 · revolver 1.31 · assault rifle 1.88 · sniper 2.62. **1.50 is the only value
+that splits that list where G-D15 splits it** — *"resists common shots"* and
+*"a RIFLE round may pierce a single voxel"*. At V-B's 0.75 every shipped round
+holed armoured glass as readily as a sniper. Pinned by [19], off the real weapon
+JSONs.
+
+**4. `pane_primed` — and it has no threshold of its own.** The gate is the
+LADDER'S OWN OUTCOME: a round that DESTROYS a voxel of an armoured pane and still
+loses its roll has breached the armour locally and been held, so it primes the
+pane. One number (the breach above), one place, and no second "is this
+rifle-class" test to drift away from the first. The flag is cleared BEFORE the
+flood, so a second pellet of the same burst finds an ordinary pane rather than a
+second free shatter. Stored per `pane_id` in `Room._pane_primed`, checkpoint-
+scoped: captured in `SaveState`, validated, restored, and cleared by
+`clear_run_state` — a fresh mission must not inherit a window that goes to the
+first pistol shot. ⚠️ `FORMAT_VERSION` is deliberately NOT bumped: an old save
+has no `pane_primed` key and reads as "nothing primed", which is both true and
+the safe direction; a bump would refuse every existing save to gain nothing.
+
+**The whole G-D15 sequence, ONE boot, real map, assault rifle:**
+
+    shot 1  [GLASS-PRIME] PIERCED but held (punch 2.16) — primed
+            glass_armored:s1 destroyed=6 · concrete:s1 destroyed=1  (the round went on through)
+    shot 2  [GLASS-PRIME] was PRIMED — this hit auto-shatters it
+            [GLASS-SHATTER] glass_punch=2.01 WHOLE PANE (armoured) flooded=122
+            [GLASS-FALL] 122 of 122 shard(s) landed, on 8 cell(s), deepest pile 16
+
+Shot 2's punch is LOWER than shot 1's (different luck) and nowhere near enough to
+take the pane on its own — which is the mechanic proving itself rather than a
+number happening to land.
+
+⚠️ **A capture-tooling addition this needed:** `shot_filmstrip` is the only action
+that fires TWICE in one boot, and it could not be aimed. It now takes the same
+`INFILTRAITOR_SHOT_AGENT_CELL` / `_GUARD_CELL` overrides `agent_shot` has —
+without them a two-shot mechanic is unprovable, because the shatter salt carries
+`_world_revision` and the first shot bumps it, so two boots are two independent
+rolls rather than a sequence.
+
 ### G-D19 mechanics — the free channel that carries the damage term
 
 Verified in the shader, not assumed. There is exactly ONE glass shader
@@ -1453,7 +1537,7 @@ level→material override on the same half-thickness face:
 | 🟢 | **G-ART** — **the order and the gate are DONE 2026-09-01** ([`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md); `check_decal.py` now carries per-material families + the fracture-sheet class, proven red on 7 modes with all 54 shipped decals unchanged). Five files asked for: two 1024×512 grayscale fracture sheets (tight/wide, G-D14) and three 256×256 shard decals. **What is left is the delivery** | — |
 | 4 | **G5** — the CRACKED tier returns (G-D3): `crack_factor`, the pinned empty DENTED band, the blast crack radius | the art itself |
 | 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** (open) G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump | G-MAP, G2, §5.1 |
-| 🟡 | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** ✅ the roster + the tint on screen — 4 material rows, per-member atoms carrying the tint index in the atom's free BLUE channel, a material-aware pane union, and the bake collapsed onto BASE's facade (§5.4b). **V-C** ✅ the class behaviour — `GlassMaterials.Class`, ARMORED's whole-pane break + sparser remnants, INDESTRUCTIBLE's CRACKED ceiling and the terminal `glass_stop_edge_keys()` set, and the cook made material-aware (§5.4c). **V-D** `pane_primed` (G-D15) + the per-placement `glass_class` tag in the mapfile | — (Stage B's flood was fixed 2026-09-01, §5.1) |
+| 🟡 | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** ✅ the roster + the tint on screen — 4 material rows, per-member atoms carrying the tint index in the atom's free BLUE channel, a material-aware pane union, and the bake collapsed onto BASE's facade (§5.4b). **V-C** ✅ the class behaviour — `GlassMaterials.Class`, ARMORED's whole-pane break + sparser remnants, INDESTRUCTIBLE's CRACKED ceiling and the terminal `glass_stop_edge_keys()` set, and the cook made material-aware (§5.4c). **V-D** ✅ `pane_primed` (G-D15, checkpoint-scoped in `SaveState`) + the per-placement `glass_class` tag, and G-D3's no-DENTED rule made structural (§5.4d). **G-VARIANT IS COMPLETE** | — |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
 | 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15) | G-ART |
 | 8 | **G-D4** — the bullet web on shot neighbours | G5, G-ART |

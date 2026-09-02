@@ -110,7 +110,18 @@ static var DESTROY_MIN: Dictionary = {
 	"glass_screen_green": 0.30,
 	"glass_screen_red": 0.30,
 	"glass_screen_amber": 0.30,
-	"glass_armored": 0.75,
+	## V-D — DERIVED, not picked. `glass_punch = 3.0 · weapon.punch / 0.80`, so the
+	## shipped arsenal lands at: smg 0.83 · shotgun pellet 0.90 · pistol 1.05 ·
+	## revolver 1.31 · assault rifle 1.88 · sniper 2.63. A breach at **1.50** is
+	## the only value that splits that list where G-D15 says it splits — *"resists
+	## common shots"*, and *"a RIFLE round may pierce a single voxel"*. Below it
+	## the round only CRACKS the pane (never DENTS — see damage_state_for), and
+	## piercing without taking the pane is exactly the event that PRIMES it.
+	##
+	## ⚠️ It was 0.75 from V-B, which put every shipped round above the threshold:
+	## a pistol holed armoured glass as readily as a sniper, and the pierce-and-
+	## prime case could never be reached by anything but the whole arsenal at once.
+	"glass_armored": 1.50,
 	"earth": 0.75,
 	## MAT-REG-01 (2026-08-21). These four are NOT hand-tuned against captures
 	## the way the six above were — they are DERIVED, and the derivation is the
@@ -359,8 +370,11 @@ static func compute(weapon_punch: float, material: String, skill: float,
 ## punch -> DamageState for the IMPACT voxel (never for neighbours).
 ## `breach_min` is the material's own DESTROY_MIN; the default keeps every
 ## caller that has no material in hand on the global fallback.
+## V-D — `glass_class` is `Slice.glass_class`, the map's per-placement override
+## (G-D16: a screen is a control interface or a TV *per placement*). CLASS_UNSET
+## means "use the material's default", which is every caller that has no slice.
 static func damage_state_for(punch: float, breach_min: float = PUNCH_DESTROY_MIN,
-		material: String = "") -> int:
+		material: String = "", glass_class: int = GlassMaterials.CLASS_UNSET) -> int:
 	## MAT-SOFT-01 — ahead of the CRACKED floor, because that floor is exactly
 	## what a breach threshold cannot reach. `material` defaults to "" so every
 	## caller that has no material in hand keeps the ladder it always had.
@@ -372,8 +386,27 @@ static func damage_state_for(punch: float, breach_min: float = PUNCH_DESTROY_MIN
 	## DENTS (glass fractures, it does not deform — G-D3), so the whole ladder
 	## collapses to its one rung. Ahead of the punch tests for the same reason
 	## HOLE_ONLY is: a capability outranks a threshold.
-	if GlassMaterials.stops_a_round(material):
-		return Voxel.DamageState.CRACKED
+	## ── GLASS: THE DENTED RUNG DOES NOT EXIST, AND NOW IT CANNOT (G-D3, V-D) ──
+	##
+	## D22 ruled glass DESTROYED-only; G-D3 amended it so CRACKED returns and
+	## **DENTED stays impossible** — glass fractures, it does not deform. That was
+	## true until V-D only by COINCIDENCE: `DESTROY_MIN["glass"]` and
+	## `PUNCH_DENT_MIN` were both 0.30, so the band between them was empty.
+	## §6.1 flagged that exact equality as needing a pin rather than trust, and
+	## V-D is where it would have broken: raising `glass_armored`'s breach to 1.50
+	## opens a band from 0.30 to 1.50 that every common round lands in, and an
+	## armoured pane would have started DENTING — a tier glass has no art for and
+	## no physics for.
+	##
+	## So the family's ladder is written out in full instead of inherited:
+	## CRACKED below the breach, DESTROYED at or above it, and nothing else ever.
+	if GlassMaterials.is_glass(material):
+		if GlassMaterials.stops_a_round(material, glass_class):
+			## A control interface: *"trinca mas o tiro para"*. A capability
+			## outranks a threshold, exactly as HOLE_ONLY does at the other end.
+			return Voxel.DamageState.CRACKED
+		return Voxel.DamageState.CRACKED if punch < breach_min \
+			else Voxel.DamageState.DESTROYED
 	if punch < PUNCH_DENT_MIN:
 		return Voxel.DamageState.CRACKED
 	if punch < breach_min:

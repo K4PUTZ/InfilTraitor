@@ -65,6 +65,9 @@ func _init() -> void:
 	test_local_hole_does_not_wall_off_the_flood()
 	test_armored_takes_the_whole_pane_and_leaves_fewer_remnants()
 	test_indestructible_never_breaks_and_stops_the_round()
+	test_glass_never_dents()
+	test_per_placement_class_overrides_the_material()
+	test_only_rifle_class_pierces_armored_glass()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -793,4 +796,149 @@ func test_indestructible_never_breaks_and_stops_the_round() -> void:
 			+ "which is why glass_stop_edge_keys() is a second set and not a filter")
 	else:
 		_fail("the empty-dictionary control was not a clean miss: %s" % [neither])
+	print("")
+
+
+## G-D3 / V-D — GLASS FRACTURES, IT DOES NOT DEFORM, AND NOW IT CANNOT.
+##
+## D22 ruled glass DESTROYED-only; G-D3 amended it so CRACKED returns and DENTED
+## stays impossible. Until V-D that was true only by COINCIDENCE —
+## `DESTROY_MIN["glass"]` and `PUNCH_DENT_MIN` were both 0.30, so the DENTED band
+## between them was exactly empty. §6.1 flagged that equality as *"a coincidence
+## of two equal numbers"* that must be pinned rather than trusted, and V-D is the
+## edit that would have broken it: raising `glass_armored`'s breach to 1.50 opens
+## a 0.30–1.50 band that every common round lands in.
+##
+## Swept across the WHOLE family and a punch range that spans every threshold,
+## with a concrete CONTROL at the same punch to prove the sweep can see a DENT at
+## all — a test that only ever looks at glass would pass just as happily if
+## `damage_state_for` had stopped returning DENTED for everything.
+func test_glass_never_dents() -> void:
+	print("[17] G-D3: no glass material EVER reaches DENTED, at any punch\n")
+	var offenders: Array = []
+	var saw_cracked: bool = false
+	var saw_destroyed: bool = false
+	for material in GlassMaterials.FAMILY:
+		var breach: float = ShotPunchTableClass.destroy_min(material)
+		for step in range(0, 61):
+			var punch: float = float(step) * 0.1
+			var st: int = ShotPunchTableClass.damage_state_for(punch, breach, material)
+			if st == Voxel.DamageState.DENTED:
+				offenders.append("%s at punch %.1f" % [material, punch])
+			elif st == Voxel.DamageState.CRACKED:
+				saw_cracked = true
+			elif st == Voxel.DamageState.DESTROYED:
+				saw_destroyed = true
+	## The control: the same sweep on concrete MUST produce a DENT, or the sweep
+	## is not looking at anything.
+	var control_dented: bool = false
+	for step in range(0, 61):
+		var punch: float = float(step) * 0.1
+		if ShotPunchTableClass.damage_state_for(punch,
+				ShotPunchTableClass.destroy_min("concrete"), "concrete") == Voxel.DamageState.DENTED:
+			control_dented = true
+			break
+	if offenders.is_empty() and saw_cracked and saw_destroyed and control_dented:
+		_pass("across %d glass materials x 61 punches: only CRACKED and DESTROYED, "
+			% GlassMaterials.FAMILY.size()
+			+ "and the same sweep DOES dent concrete")
+	else:
+		_fail("dented=%s saw_cracked=%s saw_destroyed=%s control_dented=%s"
+			% [offenders, saw_cracked, saw_destroyed, control_dented])
+	print("")
+
+
+## G-D16 / V-D — THE CLASS IS A PROPERTY OF THE PLACEMENT, NOT ONLY OF THE
+## MATERIAL. A `glass_screen_*` is a control interface or a TV *per placement*,
+## so `panels[].glass_class` overrides the material default all the way down to
+## `Slice.glass_class`.
+##
+## The pairing is what matters: the SAME material must answer differently under
+## the two overrides, and answer the material default under CLASS_UNSET.
+func test_per_placement_class_overrides_the_material() -> void:
+	print("[18] G-D16: panels[].glass_class overrides the material's own class\n")
+	var U: int = GlassMaterials.CLASS_UNSET
+	var rows: Array = [
+		## material, override, stops_a_round, shatters_whole_pane, what it is
+		["glass_screen_red", U, true, false, "a screen's own default: a control interface"],
+		["glass_screen_red", GlassMaterials.Class.BREAKABLE, false, false, "the same screen authored as a TV"],
+		["glass", GlassMaterials.Class.INDESTRUCTIBLE, true, false, "plain glass authored as a control interface"],
+		["glass_armored", U, false, true, "armoured glass, unoverridden"],
+		["glass_armored", GlassMaterials.Class.BREAKABLE, false, false, "armoured glass authored as ordinary"],
+	]
+	var bad: Array = []
+	for r in rows:
+		var stops: bool = GlassMaterials.stops_a_round(r[0], r[1])
+		var whole: bool = GlassMaterials.shatters_whole_pane(r[0], r[1])
+		if stops != r[2] or whole != r[3]:
+			bad.append("%s (%s): stops=%s want %s, whole=%s want %s"
+				% [r[4], r[0], stops, r[2], whole, r[3]])
+	if bad.is_empty():
+		_pass("all %d placement/material combinations answer as authored" % rows.size())
+	else:
+		_fail("%s" % [bad])
+
+	## And the tier ceiling follows the override, not the material.
+	var as_tv: int = ShotPunchTableClass.damage_state_for(9.0,
+		ShotPunchTableClass.destroy_min("glass_screen_red"), "glass_screen_red",
+		GlassMaterials.Class.BREAKABLE)
+	var as_panel: int = ShotPunchTableClass.damage_state_for(9.0,
+		ShotPunchTableClass.destroy_min("glass_screen_red"), "glass_screen_red", U)
+	if as_tv == Voxel.DamageState.DESTROYED and as_panel == Voxel.DamageState.CRACKED:
+		_pass("the same screen is DESTROYED as a TV and CRACKED as a control interface")
+	else:
+		_fail("as_tv=%d as_panel=%d" % [as_tv, as_panel])
+
+	## The authoring vocabulary, and its loud failure.
+	if GlassMaterials.class_from_name("breakable") == GlassMaterials.Class.BREAKABLE \
+			and GlassMaterials.class_from_name("") == U:
+		_pass("`breakable` parses, and an absent tag is CLASS_UNSET (the material default)")
+	else:
+		_fail("class_from_name is not round-tripping the authoring names")
+	print("")
+
+
+## G-D15 / V-D — WHO CAN PIERCE ARMOURED GLASS, read off the SHIPPED ARSENAL.
+##
+## The pierce-and-prime rule has no threshold of its own: it fires when a round
+## DESTROYS a voxel of an armoured pane and still loses the roll. That makes
+## `DESTROY_MIN["glass_armored"]` the whole gate, so this pins it against the
+## real weapon JSONs the way [1] pins the shatter curve — a later balance edit to
+## a weapon's `punch`, or to the armoured resistance, fails here instead of
+## quietly making a pistol able to prime a pane.
+func test_only_rifle_class_pierces_armored_glass() -> void:
+	print("[19] G-D15: only rifle-class rounds pierce armoured glass at all\n")
+	var defs := _load_weapons()
+	if defs.is_empty():
+		_fail("no weapons loaded")
+		return
+	var breach: float = ShotPunchTableClass.destroy_min("glass_armored")
+	var pierce: Array = []
+	var craze: Array = []
+	for wid in defs:
+		var def: WeaponDef = defs[wid]
+		var gp: float = ShotPunchTableClass.PUNCH_GAIN * def.punch \
+			/ ShotPunchTableClass.resistance("glass_armored")
+		var st: int = ShotPunchTableClass.damage_state_for(gp, breach, "glass_armored")
+		if st == Voxel.DamageState.DESTROYED:
+			pierce.append("%s %.2f" % [wid, gp])
+		else:
+			craze.append("%s %.2f" % [wid, gp])
+	pierce.sort()
+	craze.sort()
+	print("      breach %.2f — pierces: %s" % [breach, ", ".join(pierce)])
+	print("                  crazes only: %s" % ", ".join(craze))
+	var want_pierce: Array = ["assault_rifle", "sniper_rifle"]
+	var got: Array = []
+	for e in pierce:
+		got.append(String(e).split(" ")[0])
+	got.sort()
+	if got == want_pierce:
+		_pass("exactly the rifle-class rounds pierce armoured glass (%s); everything "
+			% ", ".join(want_pierce)
+			+ "else only crazes it, so only they can PRIME a pane")
+	else:
+		_fail("pierced by %s, expected exactly %s — the armoured breach (%.2f) no "
+			% [got, want_pierce, breach]
+			+ "longer splits the arsenal where G-D15 says it does")
 	print("")

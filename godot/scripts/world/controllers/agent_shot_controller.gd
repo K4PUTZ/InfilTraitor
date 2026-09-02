@@ -830,7 +830,7 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	## G-D16 / V-C — a control interface never rolls. It cracks and the round
 	## stops (`glass_stop_edge_keys()` made it terminal; `damage_state_for()`
 	## caps its tier at CRACKED), so there is nothing here for a shatter to take.
-	if GlassMaterials.stops_a_round(hit_material):
+	if GlassMaterials.stops_a_round(hit_material, hit_slice.glass_class):
 		return
 	## The glass punch for THIS pellet, at this pellet's own luck — G-D17: through
 	## whatever glass it has already crossed. Attenuating the ROLL and leaving the
@@ -839,7 +839,34 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	var glass_punch: float = ShotPunchTable.compute(
 		GlassShatter.punch_after_layers(weapon_def.punch, layer_depth), hit_material,
 		ShotPunchTable.SKILL_NEUTRAL, 1.0, pick_salt)
-	if not GlassShatter.rolls_shatter(glass_punch, pick_salt):
+	## ── G-D15 / V-D — PRIMED PANES ───────────────────────────────────────────
+	##
+	## *"A primed pane's next hit of ANY type has P_shatter = 1.0."* The promise is
+	## consumed here whether or not this particular round could ever have taken the
+	## pane on its own — that is the point of it, and it is why the flag is cleared
+	## before the flood rather than after: a second pellet of the same burst must
+	## find an ordinary pane, not a second free shatter.
+	var primed: bool = room._pane_primed.has(hit_slice.pane_id)
+	if primed:
+		room._pane_primed.erase(hit_slice.pane_id)
+		print_debug("[GLASS-PRIME] pane=%s was PRIMED — this hit auto-shatters it" % hit_slice.pane_id)
+	elif not GlassShatter.rolls_shatter(glass_punch, pick_salt):
+		## The roll is lost. On ARMORED glass that is not necessarily nothing: if
+		## the round still opened a hole, the armour was breached locally and held,
+		## and G-D15 says that PRIMES the pane.
+		##
+		## ⚠️ The gate is the LADDER'S OWN OUTCOME — did this round destroy the
+		## voxel it hit — not a second "is this rifle-class" threshold. That is
+		## what `DESTROY_MIN["glass_armored"] = 1.50` is derived to express: on the
+		## shipped arsenal only the assault rifle (1.88) and the sniper (2.63)
+		## clear it, while a pistol (1.05), revolver (1.31), shotgun pellet (0.90)
+		## and smg (0.83) merely craze it. One number, one place, and the two
+		## cannot drift apart the way a second threshold would.
+		if GlassMaterials.shatters_whole_pane(hit_material, hit_slice.glass_class) \
+				and hv.damage_state == Voxel.DamageState.DESTROYED:
+			room._pane_primed[hit_slice.pane_id] = true
+			print_debug("[GLASS-PRIME] pane=%s PIERCED but held (punch %.2f) — primed; the next hit takes it"
+				% [hit_slice.pane_id, glass_punch])
 		return
 
 	var all_slices: Array = room._edge_registry.all_slices()
@@ -878,7 +905,7 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		## `flooded=119` of a 128-voxel pane, which reads as a coincidence rather
 		## than the rule it actually is.
 		var region: String = "WHOLE PANE (armoured)" \
-			if GlassMaterials.shatters_whole_pane(hit_material) \
+			if GlassMaterials.shatters_whole_pane(hit_material, hit_slice.glass_class) \
 			else "radius=%d" % GlassShatter.region_radius(glass_punch)
 		print_debug("[GLASS-SHATTER] pane=%s glass_punch=%.2f %s flooded=%d voxel(s)"
 			% [hit_slice.pane_id, glass_punch, region, n])

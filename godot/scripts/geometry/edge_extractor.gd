@@ -226,6 +226,13 @@ static func _extract_panels(compiled: Dictionary, edge_groups: Dictionary, resul
 		var bands = panel.get("material_bands", {})
 		if bands is Dictionary and not bands.is_empty():
 			edge.material_bands = bands.duplicate()
+		## GLASS G-D16 / V-D — the per-placement class. Parsed HERE, once, because
+		## this is the only place that still knows which authored panel a bad name
+		## came from; `class_from_name` push_errors and returns CLASS_UNSET, so a
+		## typo degrades to the material default AND says so.
+		var class_name_raw := String(panel.get("glass_class", ""))
+		if class_name_raw != "":
+			edge.glass_class = GlassMaterials.class_from_name(class_name_raw)
 		if edge_groups.has(edge.id):
 			push_error("[EdgeExtractor] panel at %s face %s collides with an existing wall edge (%s) — a pane cannot share a face with a wall. Remove one, or make the wall itself the panel."
 				% [gu, face_name, edge.id])

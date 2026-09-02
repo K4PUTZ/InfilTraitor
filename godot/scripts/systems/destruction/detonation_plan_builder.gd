@@ -549,7 +549,7 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 ## either, which is not the same rule.
 static func _is_glass_pane_slice(slice: Slice) -> bool:
 	return slice != null and GlassMaterials.is_glass(slice.material) \
-		and not GlassMaterials.stops_a_round(slice.material) \
+		and not GlassMaterials.stops_a_round(slice.material, slice.glass_class) \
 		and slice.pane_id != "" and not slice.pane_id.begins_with("PANE_BLOCK_")
 
 

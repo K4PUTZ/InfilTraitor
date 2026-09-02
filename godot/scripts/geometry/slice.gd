@@ -27,6 +27,14 @@ var pane_id: String = ""
 ## slice's own bottom (0 … storey_count*8 − 1). Empty for every ordinary wall.
 var material_bands: Dictionary = {}
 
+## GLASS G-D16 / V-D — the map's PER-PLACEMENT behaviour class for this glass
+## panel, or `GlassMaterials.CLASS_UNSET` when the map said nothing and the
+## material's own default applies. G-D16 makes a `glass_screen_*` either a
+## control interface (INDESTRUCTIBLE) or a TV / news panel (BREAKABLE)
+## *per placement*, which is a property of where the pane was PUT, not of what
+## it is made of — so it rides the placement all the way from `panels[].glass_class`.
+var glass_class: int = GlassMaterials.CLASS_UNSET
+
 
 func has_material_bands() -> bool:
 	return not material_bands.is_empty()

@@ -174,6 +174,55 @@ it — the reason was the look — but the plan predicted a win and there is not
    diagnostic that asked the texture read the occupancy one event stale and said
    the cut had not followed. The builder keeps the CPU-side Image as the authority.
 
+---
+
+# Part 2 — the Director's ruling, and the defect it named
+
+He looked at the set and ruled on both open questions at once:
+
+> *"a transparência está correta e o adesivo funciona. O único defeito é que falta
+> o buraco no centro. As versões com o adesivo sem voxels atrás não funcionam,
+> podemos descartar."*
+
+**✅ G-D30 = 1.0.** The crack lives on glass that exists; 0.0 and 0.5 are
+discarded. That was already the shipped default, so no behaviour moved — but
+`glass_crack_selftest` [12] now PINS it, because it is a one-character edit away
+from a design he has already rejected and nothing else would notice. The dial
+stays: `INFILTRAITOR_GLASS_CRACK_CUT` is how the ends were compared.
+
+**"Falta o buraco no centro" turned out to be two different things.**
+
+1. **The DEMO was fabricating a crack with no round behind it** — a state the game
+   cannot produce. It punched a bore only under `INFILTRAITOR_CRACK_DEMO_CUT=1`,
+   so every other demo capture showed a web over intact glass. Fixed: the bore is
+   punched first, always, through `_process_dirty_slice_voxel` — the same seam a
+   round uses. This is the capture version of building a fixture out of the data
+   that works.
+2. **On the real path the hole was already there for ordinary glass** — measured
+   on the GLASS map: pistol `destroyed=2` (1 per pane), assault rifle
+   `destroyed=12` (6 per pane), each with the web around it and daylight through
+   the middle (`glass_crack_real_bore_2026-09-02.png`).
+
+## ⚠️ And chasing it found a real one
+
+**For `glass_armored` and INDESTRUCTIBLE screens the missing hole is a genuine
+defect, and it is on screen today.** Captured: a pistol on the GLASS map's
+armoured pane reports `glass_armored:s1 cracked=63 destroyed=0` — correct, the
+round did not pass through (G-D15, V-C's *"trinca mas o tiro para"*) — and draws
+a **bullet web with an empty painted bore over glass nothing pierced**
+(`shot_c02_screen_3_damage.png`). `GlassCrack.wide_for_blowout()` picks tight/wide
+off `blowout` alone and has no class branch, so every armoured pane and every
+screen wears a hole it does not have.
+
+It cannot be fixed by making a hole — the class exists to say the round stopped.
+**G-D28 already has the answer**: `armored`'s OPAQUE crushed-white core, never a
+void. So S-4's `armored` sheet moves from a nice-to-have to the fix for a defect
+the Director has already seen, and the art order now says so — it is the one class
+that can be commissioned before the `tight` density question is settled, because
+its vocabulary does not depend on that answer. ⚠️ §5 step 4 (the class-aware
+selector) must land in the SAME commit as the sheet: a branch with nothing to
+select is a branch nothing exercises.
+
 ## State at close
 
 | | |
@@ -181,7 +230,7 @@ it — the reason was the look — but the plan predicted a win and there is not
 | `GLASS_MASTER_PLAN` | **v1.23.** CRACK-02 S-1/S-2/S-3 built; S-4's order written, art unbuilt |
 | Verification | `project_lint` PASS (230) · `check_invariants` OK · CODEMAP fresh · `run_selftests` **50 clean, 0 failed** · `glass_crack_selftest` **48 checks** (32 → 39 → 45 → 48) |
 | Captures (hand-named, rotation-proof) | `glass_crack_demo_c02_{tight,wide,gd24,edge_clip}_*` · `glass_crack_cut_triptych_2026-09-02.png` · `glass_crack_cut_shotgun_2026-09-02.png` · `glass_crack_flip_roundtrip_2026-09-02.png` · `shot_c02_{realshot,cut0}_3_damage.png` |
-| **Open for the Director** | **G-D30's cut value** (and it is a bigger question than it looked) · the `tight` sheet's density, before six more are generated · whether the `panel_instances` rotation defect is worth fixing while rotation is suspended |
+| **Open for the Director** | the `tight` sheet's density, before six more are generated · whether the `panel_instances` rotation defect is worth fixing while rotation is suspended. **G-D30 is RULED (1.0)** |
 | Unbuilt in glass | **G6** (shards on screen) · **G-D25** (big shards) · `plastic` · skylights · glass cube · G-D8's last third · §6.2's blast-crack trigger (which `blast_*` art needs) |
 
 ## The transferable lessons
@@ -199,3 +248,11 @@ it — the reason was the look — but the plan predicted a win and there is not
    identity turns "is it still there" into a pixel comparison.
 5. **Measure the perf claim even when it is obviously true.** Removing work from
    every fragment of a whole material moved the frame by 0.00 ms.
+6. **A capture action can build its fixture out of the data that works, exactly
+   like a selftest.** The crack demo made a crack with no round, so it
+   photographed a state the game cannot produce — and the Director read the
+   missing hole as the effect's defect. A demo of an effect must go through the
+   event that causes it, not just the effect.
+7. **Chasing a cosmetic complaint found a real one.** "The hole is missing" was
+   right about the picture and wrong about the cause, and following it to the
+   cause turned up armoured glass wearing a bullet hole it never took.

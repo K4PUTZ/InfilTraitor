@@ -791,8 +791,19 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 	else:
 		_fail("refresh_glass_crack_occupancy rebuilt with nothing dirty — the cook's erase loop would be quadratic")
 
-	## The dial is CONTINUOUS and clamped (G-D30: the open question is fiction, so
-	## it is not a boolean).
+	## ⚠️ THE DEFAULT IS 1.0 BY DIRECTOR RULING (G-D30, 2026-09-02: *"as versões com
+	## o adesivo sem voxels atrás não funcionam, podemos descartar"*). The crack
+	## lives on glass that exists. Pinned here because it is a one-character edit
+	## away from a design the Director has already rejected, and nothing else would
+	## notice.
+	if is_equal_approx(renderer.glass_crack_hole_cut(), 1.0):
+		_pass("the shipped cut defaults to 1.0 — the ruled value, not a placeholder")
+	else:
+		_fail("the shipped cut is %.2f, not the ruled 1.0 — a crack would draw over glass that is gone"
+			% renderer.glass_crack_hole_cut())
+
+	## The dial itself is CONTINUOUS and clamped: it is how the ends were compared
+	## and how they can be compared again (INFILTRAITOR_GLASS_CRACK_CUT).
 	renderer.set_glass_crack_hole_cut(2.5)
 	var clamped: float = renderer.glass_crack_hole_cut()
 	renderer.set_glass_crack_hole_cut(0.5)

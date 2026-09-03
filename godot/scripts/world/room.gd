@@ -5762,25 +5762,33 @@ func _capture_glass_crack_demo() -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_before.png" % [dir, tag])
 
-	## G-D30's triptych needs a HOLE for the cut to act on, and it has to be a
-	## real one: the voxels are DESTROYED and the erase goes through
-	## `_process_dirty_slice_voxel` — the same seam a round uses — so the
-	## occupancy the sprite reads is written by production code, not by the
-	## capture. Then the crack is laid over it, exactly as
-	## `_craze_pane_around_hole` does after a round makes its hole.
+	## ⚠️ THE BORE IS PUNCHED FIRST, ALWAYS — A CRACK WITHOUT A HOLE IS A STATE THE
+	## GAME CANNOT PRODUCE, and this demo used to show one (Director, 2026-09-02:
+	## *"o único defeito é que falta o buraco no centro"*). On the real path the
+	## round makes its hole and `_craze_pane_around_hole` crazes AROUND it; a demo
+	## that skipped the round was photographing a fiction, which is the capture
+	## version of building a fixture out of the data that works.
+	##
+	## The voxels are DESTROYED and the erase goes through
+	## `_process_dirty_slice_voxel` — the same seam a round uses — so the occupancy
+	## the sprite reads is written by production code, not by the capture.
+	##
+	## The SIZE is an approximation of G-D14 and says so: the real ladder decides
+	## the real count, measured 2026-09-02 on the GLASS map at 1 voxel per pane for
+	## a pistol and 6 for an assault rifle. The demo only needs a bore of the right
+	## order for the cut to have something to act on.
 	var cut_demo := OS.get_environment("INFILTRAITOR_CRACK_DEMO_CUT") == "1"
-	if cut_demo:
-		var bore: int = 3 if wide else 2
-		var holed: int = 0
-		for s2 in pane_slices:
-			for v in s2.voxels:
-				var r2: int = v.grid_pos.x if run_is_x else v.grid_pos.y
-				if absi(r2 - hit_run) <= bore and absi(v.level - hit_level) <= bore \
-						and v.damage_state != Voxel.DamageState.DESTROYED:
-					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-					holed += 1
-		await _voxel_renderer.process_dirty_async(_edge_registry)
-		print("[CRACK-DEMO] G-D30: punched a %d-voxel hole through the real erase seam" % holed)
+	var bore: int = 1 if wide else 0
+	var holed: int = 0
+	for s2 in pane_slices:
+		for v in s2.voxels:
+			var r2: int = v.grid_pos.x if run_is_x else v.grid_pos.y
+			if absi(r2 - hit_run) <= bore and absi(v.level - hit_level) <= bore \
+					and v.damage_state != Voxel.DamageState.DESTROYED:
+				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+				holed += 1
+	await _voxel_renderer.process_dirty_async(_edge_registry)
+	print("[CRACK-DEMO] bore: %d voxel(s) destroyed through the real erase seam (G-D14)" % holed)
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)

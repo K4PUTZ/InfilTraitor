@@ -186,6 +186,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN pending_prompts -->
 - ART_ORDER_BRICK_DECALS.md
 - ART_ORDER_GLASS.md
+- ART_ORDER_GLASS_FRACTURE_CLASSES.md
 - ART_ORDER_NEW_MATERIALS.md
 - BAKE_ORDER_CHARACTER_LAYERS.md
 - BAKE_ORDER_WEAPON_GRIPS.md
@@ -272,6 +273,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-01_PART2_GLASS_G3_COMPLETE.md
 - RESUMO_SESSAO_2026-09-01_PART3_GART_AND_G_VARIANT.md
 - RESUMO_SESSAO_2026-09-02_CRACK_01.md
+- RESUMO_SESSAO_2026-09-02_CRACK_02.md
 - RESUMO_SESSAO_2026-09-02_GART_DELIVERY.md
 <!-- AUTO:END pending_prompts -->
 

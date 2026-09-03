@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**230 scripts · 77631 lines total** (under `godot/scripts/`)
+**230 scripts · 77650 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3555,7 +3555,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 908 lines
+extends `SceneTree` · 919 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -5132,7 +5132,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9137 lines
+extends `Node2D` · 9145 lines
 
 `godot/scripts/world/room.gd`
 

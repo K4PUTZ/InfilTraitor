@@ -47,11 +47,23 @@ the CENTRE, not the spread.**
 | `armored` | an **OPAQUE CRUSHED-WHITE CORE** — pulverised glass, never a void | dense radial needles + a wider secondary craze field | `glass_armored`, and INDESTRUCTIBLE screens (G-D15 / G-D16): *"estilhaça mas não rompe"* |
 | `blast_0` `blast_1` `blast_2` | **none at all** | spread crazing, the shockwave case | the cook's path, when a pane survives a blast (§6.2) |
 
-⚠️ **`armored`'s core is the one that cannot be got wrong by half.** It is not a
-smaller hole — it is the opposite of a hole. The round did not pass through, so
-there is nothing to see behind: the centre must read as WHITE PULVERISED GLASS,
-brightest at the middle, and the sprite is additive so white there means opaque
-there. A void in that class contradicts the rule the class exists to express.
+⚠️ **`armored` IS THE PRIORITY OF THIS ORDER, because it closes a defect that is
+on screen today.** Not a smaller hole — the opposite of a hole. The round did not
+pass through, so there is nothing to see behind: the centre must read as WHITE
+PULVERISED GLASS, brightest at the middle, and the sprite is additive, so white
+there means opaque there.
+
+Captured 2026-09-02, `shot_c02_screen_3_damage.png`: a pistol on the GLASS map's
+armoured pane reports `glass_armored:s1 cracked=63 destroyed=0` — correct
+(G-D15) — and draws a **bullet web with an empty painted bore over glass nothing
+pierced.** `GlassCrack.wide_for_blowout()` picks tight/wide off `blowout` alone
+and has no class branch, so every armoured pane and every INDESTRUCTIBLE screen
+currently wears a hole it does not have. This is the same *"falta o buraco no
+centro"* the Director raised on the demo, except here it cannot be fixed by
+making a hole: the class exists to say the round stopped. **The sheet is the fix**
+— which is why step 4 of §5 (the selector) must land in the same commit as this
+sheet and not before it: a class branch with nothing to select is a branch
+nothing exercises.
 
 ## 2. `blast` is three patterns and twelve looks (G-D29)
 
@@ -175,3 +187,9 @@ omission:
 
 **The next step is one `tight` sample at the reference's density, at true size on
 the GLASS map, for a yes or no.** Everything in §5 follows the yes.
+
+⚠️ **`armored` is the exception to that ordering and can be commissioned first.**
+It is the only class of the four that fixes something already visible (§1), it has
+a caller today (`glass_armored` and every INDESTRUCTIBLE screen), and its
+vocabulary — an opaque crushed core with dense radial needles — does not depend on
+the sparse/long-runner question the `tight` sample is there to settle.

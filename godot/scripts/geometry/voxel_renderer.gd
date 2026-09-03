@@ -859,6 +859,14 @@ var _glass_composite_z_floor: int = -9999
 ## SUBMISSION instead, and submission is what an event actually pays for.
 ## `_glass_atom_source[material_id][face][mask]`, mask = (want_top << 1) | want_side.
 var _glass_atom_source: Dictionary = {}       ## material:String -> { Face int -> { mask:int -> source_id:int } }
+## CRACK-03 — the shard rim. "<material>|<face>|<dir>" -> source_id, composed
+## lazily; and the inverse of `_glass_atom_source`, so a placed cell can be
+## identified from the id the tilemap already holds (which is what lets the rim
+## be applied as a SWAP, with no registry and no dirty flags).
+var _glass_rim_sources: Dictionary = {}
+var _glass_source_info: Dictionary = {}       ## source_id:int -> {material, face, mask}
+## Glass cells erased since the last rim refresh, level -> Array[Vector2i].
+var _glass_rim_dirty: Dictionary = {}
 ## Back-compat alias — the SW main-only source id (diagnostics / selftest).
 var _glass_frosted_source_id: int = -1
 ## GLASS G1 GEOMETRY — how far the dim top/side slivers recede into the atom, as
@@ -2070,6 +2078,9 @@ func _build_voxel_tileset() -> void:
 	## carries the per-face dim (1.0 main, GLASS_DIM_TOP / GLASS_DIM_SIDE for the
 	## slivers); glass_pane.gdshader multiplies by it. Alpha is the silhouette.
 	_glass_atom_source.clear()
+	_glass_source_info.clear()
+	_glass_rim_sources.clear()
+	_glass_rim_dirty.clear()
 	var ok := true
 	var next_id: int = MATERIALS.size()
 	## G-D16 / V-B — B6 loud-fail BEFORE building anything: a roster larger than
@@ -2103,6 +2114,12 @@ func _build_voxel_tileset() -> void:
 					td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
 					td.set_custom_data("tile_name", material_id)
 				((_glass_atom_source[material_id] as Dictionary)[face] as Dictionary)[mask] = next_id
+				## CRACK-03 — the inverse. A placed glass cell carries only its
+				## source id, and this is what turns that id back into
+				## (material, face, mask) so the rim can be applied as a SWAP —
+				## no registry, no dirty flags, no per-cell state.
+				_glass_source_info[next_id] = {
+					"material": material_id, "face": face, "mask": mask}
 				next_id += 1
 			if not ok:
 				break
@@ -2219,6 +2236,152 @@ func _build_glass_pane_atom(face: int, want_top: bool = false, want_side: bool =
 				## BLUE = the tint index.
 				out.set_pixel(x, y, Color(rgb, rgb, tint_b, a))
 	return out
+
+
+## ── CRACK-03 — THE SHARD RIM (Director, 2026-09-02) ──────────────────────────
+##
+## *"em vez de voxels cúbicos, a gente vai ter partes de voxel formando triângulos
+## agudos apontando em direção ao centro do buraco […] estaríamos criando o
+## verdadeiro caco com voxel atrás + adesivo complementando."*
+##
+## A hole in a pane is a rectangle of missing cells, and a rectangle reads as a
+## rectangle however good the web over it is. So the cells that BORDER a hole stop
+## being cubes: their alpha is cut to a wedge that narrows to a point aimed at the
+## hole. The glass that remains is the shard.
+##
+## ⚠️ IT IS THE SAME PRIMITIVE G-D25 ALREADY RATIFIED — an alpha mask carving a
+## whole voxel's outline, the dented-ceiling mechanism — applied to the rim
+## instead of to free shards. No new art, no new render path: the mask multiplies
+## the alpha of the atom `_build_glass_pane_atom()` already builds.
+##
+## ⚠️ AND IT DOES NOT RE-CREATE G-D26's MOLDURA. That rule bans a per-voxel change
+## to a property the eye reads CONTINUOUSLY across the surface — transparency —
+## because the untouched neighbour draws the cell boundary for you. A cut is a
+## SILHOUETTE: the glass that survives is pixel-identical to its neighbours, only
+## its outline moved. It is the same reason a DESTROYED voxel (a 100% cut) never
+## framed anything.
+##
+## The Director set the shape budget: eight directions, the four orthogonals plus
+## the four diagonals. *"E isso já cobre praticamente todos os buracos."*
+const GLASS_RIM_DIRS: int = 8
+## The wedge, both dials. `TIP_HALF` is the half-width still kept at the
+## hole-facing end (0 = a true point); `DEPTH` is how far back the narrowing
+## reaches (1.0 = a triangle across the whole cell, 0.5 = only the near half).
+static var GLASS_RIM_TIP_HALF: float = 0.05
+static var GLASS_RIM_DEPTH: float = 1.0
+## `INFILTRAITOR_GLASS_RIM=0` turns the cut off, so the A/B is one boot apart on
+## the same camera. A cut glass voxel reveals GLASS, not a void, so the change is
+## subtle by nature and the comparison has to be controlled rather than squinted
+## at — the same lesson the pane-clip capture taught.
+static var GLASS_RIM_ENABLED: bool = OS.get_environment("INFILTRAITOR_GLASS_RIM") != "0"
+
+## The eight directions in the pane's own (run, level) lattice, in the order the
+## rim index uses. Index 0 is +run, then counter-clockwise through the diagonals.
+const GLASS_RIM_VECTORS: Array[Vector2] = [
+	Vector2(1.0, 0.0), Vector2(1.0, 1.0), Vector2(0.0, 1.0), Vector2(-1.0, 1.0),
+	Vector2(-1.0, 0.0), Vector2(-1.0, -1.0), Vector2(0.0, -1.0), Vector2(1.0, -1.0),
+]
+
+
+## The rim atom for one (material, face, direction), composed and registered on
+## first use. LAZY on purpose: a map with no holes builds none, and a real
+## scenario touches a handful — eager would add 5 members x 4 faces x 8 dirs = 160
+## sources at load for something most maps never show. The same pattern
+## `_ensure_light_alt()` uses, for the same reason.
+##
+## ⚠️ THE FACE MASK IS PART OF THE KEY, and skipping it was a real bug for exactly
+## one run: the first version built main-face atoms only, on the reasoning that a
+## cell showing a top or side sliver is on the pane's outer edge. It is not — the
+## SIDE sliver marks the frontmost column of every GU, so one of the three columns
+## bordering a hole carries it whenever the hole lands on a GU boundary. Measured:
+## a 1-voxel hole cut **5** of its 8 neighbours instead of 8. The slivers survive
+## the cut for free, because `_cut_glass_rim_wedge()` only touches pixels inside
+## the main-face parallelogram.
+func _glass_rim_atom_source(material_id: String, face: int, mask: int, dir_index: int) -> int:
+	var key := "%s|%d|%d|%d" % [material_id, face, mask, dir_index]
+	if _glass_rim_sources.has(key):
+		return _glass_rim_sources[key]
+	var atom := _build_glass_pane_atom(face, (mask & 0b10) != 0, (mask & 0b01) != 0,
+		GlassMaterials.tint_index(material_id))
+	if atom == null:
+		_glass_rim_sources[key] = -1
+		return -1
+	_cut_glass_rim_wedge(atom, GLASS_RIM_VECTORS[dir_index % GLASS_RIM_DIRS], face)
+	var src := TileSetAtlasSource.new()
+	src.texture = ImageTexture.create_from_image(atom)
+	src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
+	src.separation = Vector2i.ZERO
+	src.margins = Vector2i.ZERO
+	src.create_tile(Vector2i.ZERO)
+	var id: int = _next_free_tileset_source_id()
+	_tileset.add_source(src, id)
+	var td: TileData = src.get_tile_data(Vector2i.ZERO, 0)
+	if td != null:
+		## The SAME origin the pane atoms take — a rim shard that registered half a
+		## pixel off would read as a seam along every hole.
+		td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
+		td.set_custom_data("tile_name", material_id)
+	_glass_rim_sources[key] = id
+	return id
+
+
+## Cut the wedge into `atom`'s alpha, in the FACE's own (u, v) coordinates.
+##
+## The main face is the parallelogram [ea, eb, eb+down, ea+down], so `u` runs
+## along the diamond edge and `v` straight down. Measured, not assumed: for all
+## four faces `ea -> eb` is the canvas direction of the RUN step, so u+ is run+
+## and v+ (down) is level−. That is why one mask serves every face.
+func _cut_glass_rim_wedge(atom: Image, dir_run_level: Vector2, face: int) -> void:
+	var w: int = atom.get_width()
+	var h: int = atom.get_height()
+	var vn := Vector2(16.0, 0.0)
+	var ve := Vector2(32.0, 8.0)
+	var vs := Vector2(16.0, 16.0)
+	var vw := Vector2(0.0, 8.0)
+	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
+	var ea: Vector2
+	var eb: Vector2
+	match face:
+		Face.SW: ea = vw; eb = vs
+		Face.SE: ea = ve; eb = vs
+		Face.NW: ea = vn; eb = vw
+		Face.NE: ea = vn; eb = ve
+		_: return
+	var e_u: Vector2 = eb - ea
+	## (u, v) from a pixel: invert the 2x2 [e_u | down].
+	var det: float = e_u.x * down.y - e_u.y * down.x
+	if absf(det) < 0.0001:
+		return
+	## The cut direction in (u, v): u+ is run+, v+ is level DOWN.
+	var d := Vector2(dir_run_level.x, -dir_run_level.y).normalized()
+	var perp := Vector2(-d.y, d.x)
+	for y in range(h):
+		for x in range(w):
+			var px: Vector2 = Vector2(float(x) + 0.5, float(y) + 0.5) - ea
+			var u: float = (px.x * down.y - px.y * down.x) / det
+			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
+			if u < 0.0 or u > 1.0 or v < 0.0 or v > 1.0:
+				continue
+			var q := Vector2(u, v) - Vector2(0.5, 0.5)
+			## `t` grows toward the hole, -0.5 at the far side, +0.5 at the near.
+			var t: float = q.dot(d)
+			var sdist: float = absf(q.dot(perp))
+			var k: float = clampf((t + 0.5) / maxf(GLASS_RIM_DEPTH, 0.001), 0.0, 1.0)
+			var half: float = lerpf(0.5, GLASS_RIM_TIP_HALF, k)
+			if sdist > half:
+				var c := atom.get_pixel(x, y)
+				if c.a > 0.0:
+					atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
+
+
+## The next unused TileSet source id. The glass atoms take a contiguous run from
+## MATERIALS.size(); the light alts live on ALTERNATIVES, not on sources, so this
+## only has to clear whatever is already registered.
+func _next_free_tileset_source_id() -> int:
+	var id: int = MATERIALS.size() + 1
+	while _tileset.has_source(id):
+		id += 1
+	return id
 
 
 ## Signed distance from `p` to the boundary of convex quad `q` (CW or CCW):
@@ -3568,6 +3731,7 @@ func process_dirty(registry: EdgeRegistry) -> void:
 	flush_damage_composite_pages()
 	## G-D30 — a batch just ended; re-cut any crack whose pane lost glass.
 	refresh_glass_crack_occupancy()
+	refresh_glass_rims()   ## CRACK-03 — and the shard rim around any new hole.
 
 
 ## PERF-01: the per-voxel body process_dirty() runs for every dirty voxel in
@@ -3607,6 +3771,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 			## G-D30 — one of the three glass erase seams: any crack over this
 			## pane has to be re-cut. Flag only; the rebuild is at the flush.
 			note_glass_erased()
+			note_glass_erased_for_rim(voxel.level, voxel.grid_pos)   ## CRACK-03
 			if not g_gone:
 				voxel_destroyed.emit(voxel.grid_pos, voxel.level, vmat_gone)
 			return
@@ -3682,6 +3847,7 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 	flush_damage_composite_pages()
 	## G-D30 — a batch just ended; re-cut any crack whose pane lost glass.
 	refresh_glass_crack_occupancy()
+	refresh_glass_rims()   ## CRACK-03 — and the shard rim around any new hole.
 
 
 ## PERF-01: the per-voxel body process_dirty_slabs() runs for every dirty
@@ -3751,6 +3917,7 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 			note_external_write(voxel.level, voxel.grid_pos)
 			forget_ghost_record(voxel.grid_pos, voxel.level)
 			note_glass_erased()   ## G-D30, seam 2 of 3
+			note_glass_erased_for_rim(voxel.level, voxel.grid_pos)   ## CRACK-03
 			if not g_gone:
 				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
 			return
@@ -3847,6 +4014,7 @@ func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:
 					## frame is about to DRAW, and a crack whose pane just lost
 					## glass would be shown uncut for it.
 					refresh_glass_crack_occupancy()
+					refresh_glass_rims()   ## CRACK-03 — and the shard rim around any new hole.
 					await get_tree().process_frame
 					## Restart the clock AFTER the frame wait, so the wait
 					## itself is not charged against the next batch's budget.
@@ -3859,6 +4027,7 @@ func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:
 	flush_damage_composite_pages()
 	## G-D30 — a batch just ended; re-cut any crack whose pane lost glass.
 	refresh_glass_crack_occupancy()
+	refresh_glass_rims()   ## CRACK-03 — and the shard rim around any new hole.
 
 
 ## Async counterpart to process_dirty_slabs() — see process_dirty_async()'s
@@ -3889,6 +4058,7 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 					## frame is about to DRAW, and a crack whose pane just lost
 					## glass would be shown uncut for it.
 					refresh_glass_crack_occupancy()
+					refresh_glass_rims()   ## CRACK-03 — and the shard rim around any new hole.
 					await get_tree().process_frame
 					batch_start = Time.get_ticks_usec()
 		## D11: see process_dirty_async()'s own note.
@@ -3898,6 +4068,7 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 	flush_damage_composite_pages()
 	## G-D30 — a batch just ended; re-cut any crack whose pane lost glass.
 	refresh_glass_crack_occupancy()
+	refresh_glass_rims()   ## CRACK-03 — and the shard rim around any new hole.
 
 
 ## Ensure layers exist up to storey count (E1 equation from SLICE-00)
@@ -4634,6 +4805,114 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 		Vector2(lo.x, hi.y))
 
 
+## ── CRACK-03 — APPLYING THE RIM ──────────────────────────────────────────────
+##
+## Every glass erase records its cell here; `refresh_glass_rims()` runs at the
+## same five batch seams the crack occupancy uses and re-cuts the neighbours.
+##
+## ⚠️ IT IS A SWAP ON THE TILEMAP, NOT A RE-RENDER. The alternative was to mark
+## the eight neighbouring VOXELS dirty so the next dirty pass re-placed them —
+## which needs the edge registry (a neighbour is usually in another Slice), a
+## dirty flag on a voxel nothing damaged, and a second pass over geometry. The
+## cell already on the tilemap carries its own source id, and `_glass_source_info`
+## turns that back into (material, face, mask), so the rim needs neither.
+func note_glass_erased_for_rim(level: int, cell: Vector2i) -> void:
+	if not _glass_rim_dirty.has(level):
+		_glass_rim_dirty[level] = []
+	(_glass_rim_dirty[level] as Array).append(cell)
+
+
+## Is there still glass drawn at this (level, cell)? The live authority, the same
+## one G-D30's occupancy reads.
+func _glass_cell_present(level: int, cell: Vector2i) -> bool:
+	var layer := _glass_layers.get(level) as TileMapLayer
+	if layer == null:
+		return false
+	return layer.get_cell_source_id(cell) != -1
+
+
+## The (run, level) neighbour offset `d` as a real (cell, level) pair, given the
+## face's run axis. Run along X for SW/NE, along Y for SE/NW — the same rule
+## GlassShatter and GlassCrack use.
+func _glass_neighbour(cell: Vector2i, level: int, face: int, d: Vector2) -> Array:
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	var dr: int = int(d.x)
+	var off := Vector2i(dr, 0) if run_is_x else Vector2i(0, dr)
+	return [cell + off, level + int(d.y)]
+
+
+## Re-cut every cell that borders a hole made since the last call. Returns how
+## many cells were swapped.
+func refresh_glass_rims() -> int:
+	if _glass_rim_dirty.is_empty():
+		return 0
+	if not GLASS_RIM_ENABLED:
+		_glass_rim_dirty.clear()
+		return 0
+	## The candidate set: the neighbours of every erased cell, deduplicated so a
+	## cell bordering a 20-voxel hole is cut once, not twenty times.
+	var candidates: Dictionary = {}
+	for level in _glass_rim_dirty:
+		for cell in _glass_rim_dirty[level]:
+			for d in GLASS_RIM_VECTORS:
+				## The face is not known for the ERASED cell (its source is gone),
+				## so both run axes are offered and the miss costs one dictionary
+				## lookup. A cell that is not glass simply is not a candidate.
+				for off in [Vector2i(int(d.x), 0), Vector2i(0, int(d.x))]:
+					candidates[Vector3i(cell.x + off.x, cell.y + off.y,
+						level + int(d.y))] = true
+	_glass_rim_dirty.clear()
+
+	var swapped: int = 0
+	for key in candidates:
+		var cell := Vector2i(key.x, key.y)
+		var level: int = key.z
+		var layer := _glass_layers.get(level) as TileMapLayer
+		if layer == null:
+			continue
+		var sid: int = layer.get_cell_source_id(cell)
+		if sid == -1 or not _glass_source_info.has(sid):
+			## Either no glass here, or it is ALREADY a rim shard (rim ids are not
+			## in the info map). A hole never heals, so a shard never has to be
+			## recomputed — and leaving it alone is what keeps this idempotent.
+			continue
+		var info: Dictionary = _glass_source_info[sid]
+		var face: int = int(info["face"])
+		var toward := Vector2.ZERO
+		for d in GLASS_RIM_VECTORS:
+			var n: Array = _glass_neighbour(cell, level, face, d)
+			if not _glass_cell_present(int(n[1]), n[0]):
+				toward += d.normalized()
+		if toward.length_squared() < 0.0001:
+			continue   ## fully surrounded: not a rim after all
+		var dir_index: int = _glass_rim_index(toward)
+		var rim_id: int = _glass_rim_atom_source(String(info["material"]), face,
+			int(info["mask"]), dir_index)
+		if rim_id < 0:
+			continue
+		layer.set_cell(cell, rim_id, Vector2i.ZERO, 0)
+		note_external_write(level, cell)
+		swapped += 1
+	if swapped > 0:
+		print_debug("[GLASS-RIM] %d cell(s) cut into shards around the new hole(s)" % swapped)
+	return swapped
+
+
+## The nearest of the eight authored directions to `v`. Quantised rather than
+## rotated because the shapes are eight authored masks (the Director's budget),
+## not a continuous family.
+func _glass_rim_index(v: Vector2) -> int:
+	var best: int = 0
+	var best_dot: float = -2.0
+	var n := v.normalized()
+	for i in range(GLASS_RIM_DIRS):
+		var d: float = n.dot(GLASS_RIM_VECTORS[i].normalized())
+		if d > best_dot:
+			best_dot = d
+			best = i
+	return best
+
+
 func _get_layer_material(level: int) -> ShaderMaterial:
 	if _layer_materials.has(level):
 		return _layer_materials[level]
@@ -4948,6 +5227,7 @@ func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 	note_external_write(level, cell)
 	forget_ghost_record(cell, level)
 	note_glass_erased()   ## G-D30, seam 3 of 3 (the cook)
+	note_glass_erased_for_rim(level, cell)   ## CRACK-03
 	return was_there
 
 

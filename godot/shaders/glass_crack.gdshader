@@ -26,7 +26,21 @@ shader_type canvas_item;
 //
 // So all this shader has to do with UV is turn it back into (run, level)
 // OFFSETS in voxels, which is one multiply, for the pane clipping below.
-render_mode blend_add;
+// ⚠️ BLEND MODE IS THE DIRECTOR'S, AND IT CHANGED ON 2026-09-02 (*"vamos tentar
+// botar ele com 90% de opacidade, e deixar um pouquinho de transparência
+// passar"*). It was `blend_add`, which is what G-D26 proposed — but additive
+// SATURATES: the web's core blew out to pure white over anything, so there was
+// no "a little transparency" left to give. `blend_mix` at an alpha of
+// `crack_opacity` is the sticker he described: 90% crack, 10% of the pane
+// showing through, everywhere the sheet has ink.
+//
+// G-D26 IS NOT WEAKENED BY THIS, and the distinction is the whole reason the
+// crack left the voxel. G-D26 bans changing a VOXEL's transparency, because that
+// property is read continuously across a pane and the untouched neighbour draws
+// the cell boundary for you — a moldura. A sprite cannot do that whatever it
+// blends with: it draws OVER the pane in one continuous piece, and the glass
+// underneath is untouched.
+render_mode blend_mix;
 
 // The fracture sheet: GRAYSCALE ON BLACK (the art G-ART shipped, unchanged —
 // §13.1). Luma IS the alpha; the art carries no alpha channel and must not need
@@ -86,7 +100,16 @@ uniform float crack_hole_cut : hint_range(0.0, 1.0) = 1.0;
 // this is literally `lit + crack_colour · crack`: the glass behind is untouched,
 // and a cracked voxel cannot frame itself against its neighbours.
 uniform vec3 crack_color : source_color = vec3(0.90, 0.94, 1.0);
-uniform float crack_strength : hint_range(0.0, 2.0) = 0.85;
+uniform float crack_strength : hint_range(0.0, 2.0) = 1.0;
+// How opaque the web is at full ink. 1.0 would hide the pane completely where the
+// sheet is solid, and the Director wants a little of it through — *"da pra ver um
+// pouco do cenário atrás da rachadura"*. Ruled 0.90 and then 0.80 the same day.
+//
+// ⚠️ It is the WHOLE opacity: `crack_strength` used to be a second multiplier
+// tuned for the additive mode, and 0.85 × 0.90 landed at 76%, not the 90% that
+// was asked for. Under a mix the ink IS the shape, so the gain is 1.0 and this
+// dial means what it says.
+uniform float crack_opacity : hint_range(0.0, 1.0) = 0.80;
 
 // A soft outer falloff so the web fades instead of ending on the sheet's edge
 // (G-D23: beyond the sheet there is simply NO crack, never a mirrored one).
@@ -116,5 +139,5 @@ void fragment() {
 	vec2 e = min(UV, vec2(1.0) - UV) / max(crack_edge_feather, 0.001);
 	ink *= clamp(min(e.x, e.y), 0.0, 1.0);
 
-	COLOR = vec4(crack_color, clamp(ink * crack_strength, 0.0, 1.0));
+	COLOR = vec4(crack_color, clamp(ink * crack_strength, 0.0, 1.0) * crack_opacity);
 }

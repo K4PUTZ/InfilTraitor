@@ -33,6 +33,8 @@
 ##       occupancy rows going upside down, or the dial collapsing to a boolean.
 ##   [13] S-3's rebuild path acquiring side effects — a perspective flip that
 ##       re-damages the pane it is only supposed to redraw.
+##   [14] the shard rim collapsing to one shape, eating the pane's slivers, or
+##       losing the face-mask axis (which cost 3 of 8 neighbours for one run).
 
 extends SceneTree
 
@@ -69,6 +71,7 @@ func _init() -> void:
 	test_the_pane_bounds_clip_the_sprite()
 	test_the_occupancy_cut_reads_the_live_tilemap()
 	test_sprite_spec_is_render_only()
+	test_the_shard_rim_cuts_eight_distinct_shapes()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -434,7 +437,7 @@ func test_the_glass_shaders_split_the_crack_out() -> void:
 	for prop in crack_shader.get_shader_uniform_list():
 		names.append(prop.name)
 	var required := ["crack_sheet", "crack_span", "crack_pane_lo", "crack_pane_hi",
-		"crack_color", "crack_strength", "crack_edge_feather"]
+		"crack_color", "crack_strength", "crack_opacity", "crack_edge_feather"]
 	var missing: Array = []
 	for r in required:
 		if not names.has(r):
@@ -444,15 +447,24 @@ func test_the_glass_shaders_split_the_crack_out() -> void:
 	else:
 		_fail("glass_crack.gdshader is missing uniform(s): %s" % ", ".join(missing))
 
-	## G-D26 stays in force and is now enforced by the BLEND MODE rather than by
-	## arithmetic inside someone else's shader: `blend_add` is
-	## `dst.rgb += src.rgb * src.a`, so the glass behind is untouched by
-	## construction and a cracked voxel cannot frame itself.
+	## ⚠️ WHAT G-D26 ACTUALLY REQUIRES, AND WHAT IT DOES NOT.
+	##
+	## This used to assert `render_mode blend_add`. The Director changed the sprite
+	## to a 90%-opacity sticker on 2026-09-02 (*"deixar um pouquinho de
+	## transparência passar"*), because additive SATURATES — the web's core blew
+	## out to white and there was no transparency left to give. The blend mode is
+	## his look dial and does not belong in a gate.
+	##
+	## G-D26's rule survives untouched, and it is asserted ABOVE instead: the crack
+	## may not be drawn by the PANE shader. That is the whole content of it — a
+	## per-voxel change to transparency frames the voxel against its untouched
+	## neighbours. A sprite cannot do that whatever it blends with: it draws over
+	## the pane in one continuous piece and the glass underneath is not modified.
 	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_crack.gdshader")
-	if src.contains("render_mode blend_add"):
-		_pass("the crack sprite is `render_mode blend_add` — additive by construction (G-D26)")
+	if src.contains("crack_opacity"):
+		_pass("the sprite's opacity is a uniform — the Director's 90% is a dial, not a hardcode")
 	else:
-		_fail("glass_crack.gdshader is not blend_add — the crack would modulate the pane (G-D26 retracted G-D19 for exactly this)")
+		_fail("glass_crack.gdshader has no crack_opacity uniform to set")
 	if src.contains("discard"):
 		_pass("the sprite discards outside the pane bounds — G-D27's one named cost, paid")
 	else:
@@ -940,3 +952,106 @@ func test_sprite_spec_is_render_only() -> void:
 		_fail("apply() did not spawn a crack for a plan with %d cells" % plan.cells.size())
 
 	print("")
+
+
+## [14] CRACK-03 — THE SHARD RIM (Director, 2026-09-02: *"em vez de voxels
+## cúbicos, a gente vai ter partes de voxel formando triângulos agudos apontando
+## em direção ao centro do buraco"*).
+##
+## A hole is a rectangle of missing cells and reads as one however good the web
+## over it is, so the cells bordering it stop being cubes. This pins the three
+## things that are invisible on screen when they break:
+##   · the eight masks are eight DIFFERENT shapes. If the direction were dropped
+##     on the way to the atom they would all be the same wedge, and on a 1-voxel
+##     hole nobody would see it;
+##   · the cut never eats the top/side SLIVERS, which are what make a pane read
+##     as one voxel thick;
+##   · the FACE MASK is part of the atom key. It was not, for one run: the side
+##     sliver marks the frontmost column of every GU, so a hole on a GU boundary
+##     cut **5** of its 8 neighbours instead of 8.
+func test_the_shard_rim_cuts_eight_distinct_shapes() -> void:
+	print("[14] CRACK-03 — the hole's rim is eight distinct wedges, and the slivers survive\n")
+
+	var r = VoxelRendererClass.new()
+	var plain: Image = r._build_glass_pane_atom(Face.SW, false, false, 0)
+	if plain == null:
+		_fail("the intact glass atom did not build — nothing to cut")
+		r.free()
+		print("")
+		return
+	var full: int = _opaque_px(plain)
+
+	var shapes: Array = []
+	var kept_all: Array = []
+	for i in range(VoxelRendererClass.GLASS_RIM_DIRS):
+		var a: Image = r._build_glass_pane_atom(Face.SW, false, false, 0)
+		r._cut_glass_rim_wedge(a, VoxelRendererClass.GLASS_RIM_VECTORS[i], Face.SW)
+		shapes.append(a)
+		kept_all.append(_opaque_px(a))
+
+	var uncut: Array = []
+	for i in range(shapes.size()):
+		if kept_all[i] >= full:
+			uncut.append(i)
+	if uncut.is_empty():
+		_pass("every one of the %d directions removes glass (kept %d..%d of %d px)"
+			% [shapes.size(), kept_all.min(), kept_all.max(), full])
+	else:
+		_fail("direction(s) %s removed nothing — the wedge is not being applied" % str(uncut))
+
+	## Eight DIFFERENT shapes. Compared pairwise on the alpha mask, because "they
+	## all removed something" is satisfied by eight copies of one wedge.
+	var identical: Array = []
+	for i in range(shapes.size()):
+		for j in range(i + 1, shapes.size()):
+			if _same_alpha(shapes[i], shapes[j]):
+				identical.append("%d==%d" % [i, j])
+	if identical.is_empty():
+		_pass("all %d wedges are distinct masks — the direction really reaches the atom" % shapes.size())
+	else:
+		_fail("wedges are duplicates: %s — the direction is being dropped" % ", ".join(identical))
+
+	## The slivers survive: `_cut_glass_rim_wedge` only touches pixels inside the
+	## MAIN face parallelogram, which is what lets the rim keep the pane's
+	## 1-voxel-thick read on a GU boundary.
+	var with_slivers: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
+	var sliver_px: int = _opaque_px(with_slivers) - full
+	var cut_slivers: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
+	r._cut_glass_rim_wedge(cut_slivers, VoxelRendererClass.GLASS_RIM_VECTORS[0], Face.SW)
+	var kept_sliver: int = _opaque_px(cut_slivers) - kept_all[0]
+	if sliver_px > 0 and kept_sliver == sliver_px:
+		_pass("the top/side slivers survive the cut intact (%d px) — a rim cell on a GU boundary still reads 1 voxel thick"
+			% sliver_px)
+	else:
+		_fail("the cut ate %d of the %d sliver pixels" % [sliver_px - kept_sliver, sliver_px])
+
+	## The quantiser: a pure +run vector must pick index 0, +level index 2 — the
+	## order `GLASS_RIM_VECTORS` declares.
+	var idx_run: int = r._glass_rim_index(Vector2(1.0, 0.0))
+	var idx_lvl: int = r._glass_rim_index(Vector2(0.0, 1.0))
+	var idx_diag: int = r._glass_rim_index(Vector2(0.9, 1.1))
+	if idx_run == 0 and idx_lvl == 2 and idx_diag == 1:
+		_pass("the direction quantiser lands on the authored eight (+run=0, +level=2, diagonal=1)")
+	else:
+		_fail("quantiser gave +run=%d, +level=%d, diagonal=%d (expected 0, 2, 1)"
+			% [idx_run, idx_lvl, idx_diag])
+
+	r.free()
+	print("")
+
+
+func _opaque_px(img: Image) -> int:
+	var n := 0
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			if img.get_pixel(x, y).a > 0.0:
+				n += 1
+	return n
+
+
+func _same_alpha(a: Image, b: Image) -> bool:
+	for y in range(a.get_height()):
+		for x in range(a.get_width()):
+			if (a.get_pixel(x, y).a > 0.0) != (b.get_pixel(x, y).a > 0.0):
+				return false
+	return true

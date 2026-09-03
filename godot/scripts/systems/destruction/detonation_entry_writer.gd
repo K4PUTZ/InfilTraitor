@@ -254,3 +254,5 @@ func flush(voxel_renderer) -> void:
 	## this is where a blast that took glass out from under a standing crack
 	## re-cuts it, once, instead of once per erased cell.
 	voxel_renderer.refresh_glass_crack_occupancy()
+	## CRACK-03 — and the shard rim around whatever hole the blast just opened.
+	voxel_renderer.refresh_glass_rims()

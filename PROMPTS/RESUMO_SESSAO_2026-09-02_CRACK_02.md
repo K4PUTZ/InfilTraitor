@@ -299,14 +299,146 @@ All cited captures were RE-TAKEN after the fix, deliberately overwriting the one
 that were photographs of the defect: `glass_crack_cut_triptych_2026-09-02.png`,
 `glass_crack_cut_shotgun_2026-09-02.png`, `glass_crack_real_bore_2026-09-02.png`.
 
+---
+
+# Part 4 — CRACK-03: the hole stops being a rectangle
+
+With the square gone and the sprite at 80%, the Director named what was left:
+
+> *"Tirando um ou 3 ou 18 voxels o problema é o mesmo: o buraco fica todo
+> quadrado. Pra corrigir isso, eu vou propor a criação de um conjunto de voxels
+> especiais, derivados do vidro intacto, mas que tem um recorte em alfa, formando
+> arestas pontiagudas em direção ao centro do buraco […] dessa forma a gente
+> estaria na verdade criando o verdadeiro caco com voxel atrás + adesivo
+> complementando."*
+
+**It is G-D25's primitive, not a new one** — the dented-ceiling alpha mask carving
+a voxel's outline, pointed at the rim instead of at free shards. So no art, no new
+render path: the wedge multiplies the alpha of the atom `_build_glass_pane_atom()`
+already builds.
+
+**And it does not re-create G-D26's moldura**, which is the check that mattered
+before writing a line. G-D26 bans a per-voxel change to a property read
+CONTINUOUSLY across the surface. A cut is a SILHOUETTE: the glass that survives is
+pixel-identical to its neighbours and only its outline moved — the same reason a
+DESTROYED voxel, a 100% cut, never framed anything.
+
+### The mechanism, and why it needs no state
+
+The rim is a **swap on the tilemap**, not a re-render. The alternative wanted the
+edge registry (a neighbour is usually in another Slice), a dirty flag on a voxel
+nothing damaged, and a second pass over geometry. The placed cell already carries
+its source id, and `_glass_source_info` (the new inverse of the atom table) turns
+that back into (material, face, mask) — so the rim needs no registry, no dirty
+flags and no per-cell state. Atoms compose LAZILY: a map with no holes builds none.
+
+### Then the Director's diagram corrected the count
+
+`1 PIERCED VOXEL` → `4 CORNERS UNTOUCHED` → `4 SPECIAL VOXELS CUT OUT`.
+
+The first build cut all eight neighbours. **A cell that touches the hole only at a
+CORNER has not been broken by it** — cutting it eats glass the round never reached
+and rounds the hole off instead of opening it. Now four, and
+`glass_crack_selftest` [15] counts them against a real renderer, because the
+difference between 4 and 8 on a one-voxel hole is invisible at play zoom. It took
+a diagram to catch; it gets a test rather than an eye.
+
+That change also moved the DIRECTION source: it now comes from the batch's erased
+cells rather than from reading the tilemap for absence. "Absent" is also true one
+cell past the pane's own frame, so averaging over absent neighbours made an edge
+cell point half at the hole and half at the outside world — and the two could
+cancel exactly, silently dropping the shard.
+
+### Four defects the new tests found, two of them mine
+
+1. **The face mask was not in the atom key.** The SIDE sliver marks the frontmost
+   column of every GU, so a hole landing on a GU boundary cut **5 of its 8**
+   neighbours. With the mask in the key it is 8 (then 4, by the diagram).
+2. **The two axis maps overlap.** A level-only neighbour is the same key in both,
+   so concatenating their keys visited it twice: a 1-voxel hole reported 6, not 4.
+3. **`set_cell()` naming a source the LAYER's tileset does not have is SILENTLY
+   IGNORED** — the cell keeps its old id and the swap looks like it worked. Found
+   by the fixture, and worth remembering well past glass.
+4. **`_glass_composite_z` starts below `CANVAS_ITEM_Z_MIN`** (Part 1's item 2).
+
+### ⚠️ And the A/B instrument does not survive scrutiny
+
+`INFILTRAITOR_GLASS_RIM=0/1` gives the same camera twice, and it is **not** a pixel
+measurement: two boots differ by far more than the rim — the agent's selection
+marker alone moved 27 336 pixels across a full-screen bbox. The rim is judged at
+the ATOM (`glass_rim_atoms_2026-09-02.png`, and the silhouette composites), never
+at a frame diff.
+
+## The shape became a pool (G-D32)
+
+The four candidates were rendered as hole SILHOUETTES from the real atoms rather
+than described — spike-deep, spike-shallow, V-notch, 45° chamfer
+(`glass_rim_shape_options_2026-09-02.png`). The Director's answer was better than
+the question:
+
+> *"Gostei muito dessas 4 opções que você mostrou. Se a gente puder randomizar
+> todas elas para cada pedaço do buraco, melhor ainda."*
+
+So they are a POOL, drawn per shard — **G-D32**, which also retires the
+"borda ligeiramente irregular" he had ruled *preciosismo*, because the draw IS the
+irregularity at no authoring cost.
+
+⚠️ **It must be the B4 FNV-1a, never `randf()`.** The shard set is rebuilt on a
+perspective flip (S-3) and on a load, so an RNG would reshuffle a hole's shape
+every time the camera turned — the exact failure S-3 exists to prevent. Same rule
+G-D29 already uses for the `blast` patterns.
+
+⏳ **Open, and it is plumbing rather than design:** the hash key must be in BASE
+coordinates or the shapes reshuffle on a flip anyway, and the renderer has no
+base-space knowledge today. Recorded rather than decided by omission.
+
+## 🟡 The standing proposal — the sheet stops drawing the bore
+
+Asked for the best suggestion, and **NOT yet ruled on**. It is filed as G-D33
+PROPOSED, and it is one move that closes two open questions at once.
+
+**The voxel becomes the master and the sheet stops drawing a centre**, because the
+bore is geometry now. The rim IS the hole's edge — four shards, four hashed shapes.
+A sheet that still draws a crush rim means TWO AUTHORITIES describing one feature,
+and after G-D32 they cannot be reconciled by authoring: the voxel side is drawn at
+random, so no fixed art can match it. What is left for the sheet is what the voxel
+lattice can never do — the fine radial runners and the craze field, at sub-voxel
+scale.
+
+Three things follow, and the third was not obvious going in:
+- §13.4's measured mismatch closes in the same pass. With no centre to draw,
+  *"sparse with a few long runners"* becomes the whole brief and the dense even
+  field goes away by construction rather than by calibration.
+- The rule is one line, not a case list: **the sheet draws a centre exactly when
+  the geometry has no hole to show.** `tight`/`wide` no; `armored` and
+  INDESTRUCTIBLE screens yes — the round stopped, no voxel was removed, so the
+  crushed-white core is the only thing that can tell that story.
+- G-D30's cut currently eats the sheet's bore, which is its brightest part. With
+  no bore there is almost nothing left to cut, and the two mechanisms stop
+  competing for the same pixel.
+
+**Priority that follows:** `armored` before the `tight` redraw. It is the only
+piece that fixes something wrong on screen today, and the only class whose
+vocabulary does not depend on the density question — it will never have geometry
+to match.
+
+**What the proposal says NOT to do:** more shape variants, per-shape art, or
+tuning `crack_strength`. Every advance on this track came from REMOVING an
+authority — the crack left the voxel shader, the damage variant left glass, the
+occupancy plane became a read, the cut left the sprite. None came from adding.
+Taking the bore off the sheet is the same move once more, and it is the last place
+where two authorities still describe one thing.
+
 ## State at close
 
 | | |
 |---|---|
-| `GLASS_MASTER_PLAN` | **v1.23.** CRACK-02 S-1/S-2/S-3 built; S-4's order written, art unbuilt |
-| Verification | `project_lint` PASS (230) · `check_invariants` OK · CODEMAP fresh · `run_selftests` **50 clean, 0 failed** · `glass_crack_selftest` **48 checks** (32 → 39 → 45 → 48) |
+| `GLASS_MASTER_PLAN` | **v1.24.** CRACK-02 S-1/S-2/S-3 built · **CRACK-03 (S-5) built** · S-4's order written and its art unbuilt · S-6 (G-D32's hashed pool) ratified and unbuilt |
+| Verification | `project_lint` PASS (230) · `check_invariants` OK · CODEMAP fresh · `run_selftests` **50 clean, 0 failed** · `glass_crack_selftest` **55 checks** (32 → 39 → 45 → 48 → 52 → 55) |
 | Captures (hand-named, rotation-proof) | `glass_crack_demo_c02_{tight,wide,gd24,edge_clip}_*` · `glass_crack_cut_triptych_2026-09-02.png` · `glass_crack_cut_shotgun_2026-09-02.png` · `glass_crack_flip_roundtrip_2026-09-02.png` · `shot_c02_{realshot,cut0}_3_damage.png` |
-| **Open for the Director** | the `tight` sheet's density, before six more are generated · whether the `panel_instances` rotation defect is worth fixing while rotation is suspended. **G-D30 is RULED (1.0)** |
+| Captures added in parts 3–4 | `glass_crack_real_bore_2026-09-02.png` · `glass_rim_ab_{pistol,rifle}_2026-09-02.png` · `glass_rim_atoms_2026-09-02.png` · **`glass_rim_shape_options_2026-09-02.png`** (the four hole silhouettes that settled G-D32) |
+| **Open for the Director** | 🟡 **G-D33** (the sheet stops drawing the bore) — proposed, not ruled · the `tight` sheet's density, which G-D33 would fold into the same authoring pass · whether the `panel_instances` rotation defect is worth fixing while rotation is suspended. **RULED this session: G-D30 = 1.0 · G-D31 · G-D32** |
+| **Open, plumbing** | G-D32's hash key must be BASE-space; the renderer has no base-space knowledge today |
 | Unbuilt in glass | **G6** (shards on screen) · **G-D25** (big shards) · `plastic` · skylights · glass cube · G-D8's last third · §6.2's blast-crack trigger (which `blast_*` art needs) |
 
 ## The transferable lessons
@@ -341,3 +473,21 @@ that were photographs of the defect: `glass_crack_cut_triptych_2026-09-02.png`,
    catch.** "CRACKED glass does not resolve to a decal path" was true, and the
    voxel still went to the opaque layer. Assert what must be TRUE (the name is
    unchanged), not what must be absent.
+10. **Render the options; do not describe them.** The four rim shapes were
+    composited as HOLE SILHOUETTES from the real atoms, in the iso lattice, with
+    no game boot. The Director answered in one line and improved the question —
+    all four, drawn per shard. A prose description of four wedges would have
+    bought an argument instead.
+11. **A cross-boot A/B is not a measurement.** `INFILTRAITOR_GLASS_RIM=0/1` looked
+    like a control until the diff came back at 27 336 pixels over a full-screen
+    bbox: two boots differ by the agent's selection marker and more. Where the
+    effect is small, measure the ARTEFACT (the atom), not the frame.
+12. **A silent engine no-op costs a whole debugging pass.** `set_cell()` naming a
+    source the LAYER's tileset does not have is ignored — the cell keeps its old
+    id and the swap looks like it worked. Found by a test fixture, not by the
+    game.
+13. **When two authorities describe one feature, remove one.** Every advance on
+    this track was a removal: the crack left the voxel shader, the damage variant
+    left glass, the occupancy plane became a read of the tilemap, the cut left the
+    sprite. The standing proposal (G-D33) is the same move applied to the last
+    pair.

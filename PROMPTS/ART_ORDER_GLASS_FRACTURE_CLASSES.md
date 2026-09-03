@@ -7,6 +7,21 @@ S-1, because S-1 is what makes the format contract real."*
 **Status:** 🟡 ORDER WRITTEN, ART UNBUILT. Nothing below is delivered yet, and
 §6 says plainly why I stopped at the order rather than generating six sheets.
 
+⚠️ **TWO DECISIONS LANDED AFTER THIS ORDER WAS WRITTEN AND THEY CHANGE IT.**
+- **G-D32** (ratified): the hole's rim is cut into shards whose SHAPE is drawn per
+  cell from a pool of four. The bore's outline is therefore RANDOM geometry, and
+  no fixed art can be authored to match it.
+- **G-D33** (🟡 proposed, not ruled): the sheet therefore stops drawing a bore at
+  all, and the rule becomes **the sheet draws a centre exactly when the geometry
+  has no hole to show**. Under it, `bullet_tight` and `bullet_wide` lose their
+  centres entirely and keep only the runners and the craze field, while `armored`
+  keeps its crushed core — the round stopped, no voxel was removed, and the sheet
+  is the only thing that can say so.
+
+**Read §1 and §3 with that in mind.** If G-D33 is ruled in, §3.1's sparse/long-
+runner rewrite and the centre removal are ONE authoring pass, not two, and
+`armored` becomes the first sheet to commission rather than the third.
+
 The two sheets that exist (`fracture_glass_tight.png`, `fracture_glass_wide.png`,
 delivered 2026-09-02 by [`ART_ORDER_GLASS.md`](ART_ORDER_GLASS.md)) stay in
 service unchanged. This order is what turns them into a family of four.

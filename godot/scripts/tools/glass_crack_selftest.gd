@@ -35,6 +35,8 @@
 ##       re-damages the pane it is only supposed to redraw.
 ##   [14] the shard rim collapsing to one shape, eating the pane's slivers, or
 ##       losing the face-mask axis (which cost 3 of 8 neighbours for one run).
+##   [15] the rim eating the CORNERS. Four neighbours, not eight — the Director's
+##       diagram, and a difference nobody can see at play zoom.
 
 extends SceneTree
 
@@ -72,6 +74,7 @@ func _init() -> void:
 	test_the_occupancy_cut_reads_the_live_tilemap()
 	test_sprite_spec_is_render_only()
 	test_the_shard_rim_cuts_eight_distinct_shapes()
+	test_only_the_four_orthogonal_neighbours_become_shards()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1055,3 +1058,79 @@ func _same_alpha(a: Image, b: Image) -> bool:
 			if (a.get_pixel(x, y).a > 0.0) != (b.get_pixel(x, y).a > 0.0):
 				return false
 	return true
+
+
+## [15] CRACK-03 — FOUR NEIGHBOURS, NOT EIGHT (Director's diagram, 2026-09-02:
+## "1 PIERCED VOXEL" -> "4 CORNERS UNTOUCHED" -> "4 SPECIAL VOXELS CUT OUT").
+##
+## The first build cut all eight. A cell that touches the hole only at a CORNER
+## has not been broken by it, and cutting it rounds the hole off instead of
+## opening it. This runs the real `refresh_glass_rims()` against a real renderer
+## and counts, because the difference between 4 and 8 on a one-voxel hole is
+## invisible at play zoom — it took a diagram to catch.
+func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
+	print("[15] a pierced voxel cuts its 4 orthogonal neighbours; the corners stay cubes\n")
+
+	var r = VoxelRendererClass.new()
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var cross := 7
+	var run0 := 4
+	var runs := 9
+	var levels := 5
+	var ts := _one_tile_tileset()
+	## ⚠️ THE RENDERER'S OWN TileSet MUST BE THE LAYERS' TileSet. The rim atoms
+	## register into `_tileset`, and a `set_cell()` naming a source the LAYER's
+	## tileset does not have is silently ignored — the cell keeps its old id and
+	## the swap looks like it worked. Found by this test on its first run.
+	r._tileset = ts
+	for lvl in range(base, base + levels):
+		var layer := TileMapLayer.new()
+		layer.tile_set = ts
+		for run in range(run0, run0 + runs):
+			layer.set_cell(Vector2i(run, cross), 0, Vector2i.ZERO)
+		r._glass_layers[lvl] = layer
+	## Every cell must look like a real SW pane atom, or the swap has no
+	## (material, face, mask) to read back — that inverse IS the mechanism.
+	r._glass_source_info[0] = {"material": "glass", "face": Face.SW, "mask": 0}
+
+	var hit_run: int = run0 + 4
+	var hit_level: int = base + 2
+	(r._glass_layers[hit_level] as TileMapLayer).erase_cell(Vector2i(hit_run, cross))
+	r.note_glass_erased_for_rim(hit_level, Vector2i(hit_run, cross))
+	var swapped: int = r.refresh_glass_rims()
+
+	if swapped == 4:
+		_pass("a 1-voxel hole cut exactly 4 cells — the Director's four special voxels")
+	else:
+		_fail("a 1-voxel hole cut %d cells, expected 4 (8 means the corners are being eaten)" % swapped)
+
+	## And they are the RIGHT four. A corner still carrying source 0 is untouched;
+	## an orthogonal one must have moved to a rim source.
+	var wrong: Array = []
+	for dr in [-1, 0, 1]:
+		for dl in [-1, 0, 1]:
+			if dr == 0 and dl == 0:
+				continue
+			var layer := r._glass_layers.get(hit_level + dl) as TileMapLayer
+			if layer == null:
+				continue
+			var sid: int = layer.get_cell_source_id(Vector2i(hit_run + dr, cross))
+			var is_rim: bool = sid != -1 and not r._glass_source_info.has(sid)
+			var should_be_rim: bool = (absi(dr) + absi(dl)) == 1
+			if is_rim != should_be_rim:
+				wrong.append("(%d,%d) rim=%s" % [dr, dl, is_rim])
+	if wrong.is_empty():
+		_pass("the 4 orthogonals are shards and the 4 corners are still whole cubes")
+	else:
+		_fail("wrong cells cut: %s" % ", ".join(wrong))
+
+	## A second refresh with nothing erased must do nothing — the cook erases cell
+	## by cell and this runs at every batch seam.
+	if r.refresh_glass_rims() == 0:
+		_pass("a refresh with no erase since the last one is a no-op")
+	else:
+		_fail("refresh_glass_rims re-cut with nothing dirty")
+
+	_free_glass_layers(r)
+	r.free()
+	print("")

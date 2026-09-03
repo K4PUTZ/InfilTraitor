@@ -4849,22 +4849,44 @@ func refresh_glass_rims() -> int:
 	if not GLASS_RIM_ENABLED:
 		_glass_rim_dirty.clear()
 		return 0
-	## The candidate set: the neighbours of every erased cell, deduplicated so a
-	## cell bordering a 20-voxel hole is cut once, not twenty times.
-	var candidates: Dictionary = {}
+	## ⚠️ ONLY THE FOUR ORTHOGONAL NEIGHBOURS ARE CUT — THE CORNERS STAY CUBES.
+	## (Director's diagram, 2026-09-02: "1 PIERCED VOXEL" -> "4 CORNERS UNTOUCHED"
+	## -> "4 SPECIAL VOXELS CUT OUT".) The first build cut all eight, and a cell
+	## that touches the hole only at a corner has not been broken by it — cutting
+	## it eats glass the round never reached and rounds the hole off instead of
+	## opening it.
+	##
+	## ⚠️ THE DIRECTION COMES FROM THE ERASED CELLS, NOT FROM READING THE TILEMAP
+	## FOR ABSENCE. "Absent" is also true one cell past the pane's own frame, so
+	## averaging over absent neighbours made a cell at the pane edge point half at
+	## the hole and half at the outside world — and the two could cancel exactly,
+	## silently dropping the shard. The batch's own erased list cannot say that.
+	var toward_x: Dictionary = {}   ## for a face whose run is along X
+	var toward_y: Dictionary = {}   ## ... along Y
+	const ORTHO: Array[Vector2] = [Vector2(1.0, 0.0), Vector2(0.0, 1.0),
+		Vector2(-1.0, 0.0), Vector2(0.0, -1.0)]
 	for level in _glass_rim_dirty:
 		for cell in _glass_rim_dirty[level]:
-			for d in GLASS_RIM_VECTORS:
-				## The face is not known for the ERASED cell (its source is gone),
-				## so both run axes are offered and the miss costs one dictionary
-				## lookup. A cell that is not glass simply is not a candidate.
-				for off in [Vector2i(int(d.x), 0), Vector2i(0, int(d.x))]:
-					candidates[Vector3i(cell.x + off.x, cell.y + off.y,
-						level + int(d.y))] = true
+			for d in ORTHO:
+				## The erased cell's own face went with its source, so both run
+				## axes are offered; the wrong one simply is not glass.
+				var kx := Vector3i(cell.x + int(d.x), cell.y, level + int(d.y))
+				var ky := Vector3i(cell.x, cell.y + int(d.x), level + int(d.y))
+				toward_x[kx] = toward_x.get(kx, Vector2.ZERO) - d
+				toward_y[ky] = toward_y.get(ky, Vector2.ZERO) - d
 	_glass_rim_dirty.clear()
 
+	## ⚠️ The two axis maps OVERLAP: a level-only neighbour (the cell above or
+	## below) is the same key in both, so concatenating their keys visits it twice
+	## and double-counts it. Merge first.
+	var seen: Dictionary = {}
+	for k in toward_x:
+		seen[k] = true
+	for k in toward_y:
+		seen[k] = true
+
 	var swapped: int = 0
-	for key in candidates:
+	for key in seen:
 		var cell := Vector2i(key.x, key.y)
 		var level: int = key.z
 		var layer := _glass_layers.get(level) as TileMapLayer
@@ -4878,13 +4900,10 @@ func refresh_glass_rims() -> int:
 			continue
 		var info: Dictionary = _glass_source_info[sid]
 		var face: int = int(info["face"])
-		var toward := Vector2.ZERO
-		for d in GLASS_RIM_VECTORS:
-			var n: Array = _glass_neighbour(cell, level, face, d)
-			if not _glass_cell_present(int(n[1]), n[0]):
-				toward += d.normalized()
+		var run_is_x: bool = (face == Face.SW or face == Face.NE)
+		var toward: Vector2 = (toward_x if run_is_x else toward_y).get(key, Vector2.ZERO)
 		if toward.length_squared() < 0.0001:
-			continue   ## fully surrounded: not a rim after all
+			continue
 		var dir_index: int = _glass_rim_index(toward)
 		var rim_id: int = _glass_rim_atom_source(String(info["material"]), face,
 			int(info["mask"]), dir_index)

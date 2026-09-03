@@ -399,6 +399,12 @@ func record_glass_crack_to_base(hit_grid_pos: Vector2i, hit_level: int, wide: bo
 ## defect independent of glass (E/S/W are geometrically wrong today), and fixing
 ## it is not this stage's business — a panel carries a FACE, so it needs the
 ## `remap_tile_name` treatment and not a copy of the block branch.
+##
+## ⚠️ The pane cell dump above is the WHOLE evidence for that. A second symptom
+## was briefly attributed to it — a 1382-pixel block missing from the round-trip
+## frame — and that reading was WRONG: it was the CRACKED-glass rectangle, which
+## the round trip did not restore because the demo records no voxel damage to
+## base. It has since stopped existing (glass no longer takes a damage variant).
 func _respawn_base_cracks() -> void:
 	if _base_cracks.is_empty() or _voxel_renderer == null or _edge_registry == null:
 		return

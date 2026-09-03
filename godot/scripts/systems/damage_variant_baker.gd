@@ -131,6 +131,12 @@ func bake_all(declared_materials: Array[String], floor_materials: Array[String] 
 		if md == null:
 			push_warning("[DamageVariantBaker] declared material '%s' not registered — skipping" % material)
 			continue
+		## GLASS G-D27 — a glass member has no damage-variant surface at all
+		## (`VoxelRenderer.damage_variant_material()` returns its base name), so
+		## every atom baked here would be one nothing can ever look up. It DOES
+		## have a facade, so without this it bakes the full wall set.
+		if GlassMaterials.is_glass(material):
+			continue
 		if md.has_facade:
 			## E-CRACK-01: a material that is ALSO a real floor zone gets the
 			## universal CRACKED-blast atom registered under "FLOOR" as well —

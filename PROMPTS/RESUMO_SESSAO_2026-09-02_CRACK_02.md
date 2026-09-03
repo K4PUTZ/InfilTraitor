@@ -96,7 +96,9 @@ apart on a camera move. Selftest [13] pins both halves.
 crack was made in, where `cell_from_base` is the identity — so the rebuilt sprite
 has to land on the very pixels of the pre-flip frame. Measured: **5853 of the
 returning frame's 5855 bright pixels are the original's**, 2 new, bbox unchanged.
-"A crack appeared somewhere" is what the eye would have accepted.
+"A crack appeared somewhere" is what the eye would have accepted. (The frames
+differ elsewhere by a 1382-pixel rectangle — see the correction below; it is the
+CRACKED-glass block, and part 3 is where it stopped existing.)
 
 ### ⚠️ A map defect, and it is not glass's
 
@@ -112,9 +114,17 @@ Measured from one boot, N then E:
     E: PANE_SLICE_16_10_SW cells (88,87)..(135,87)   <- identical
 
 Seven of eight panes, all on a constant-y line a quarter turn must put on a
-constant-x one. The panes stand still while the walls rotate; the union-find then
-regroups them, which is why one pane's own body (1382 contiguous bright pixels)
-does not come back from the round trip either.
+constant-x one. The panes stand still while the walls rotate.
+
+⚠️ **CORRECTION (part 3).** I attributed a SECOND symptom to this defect — 1382
+contiguous bright pixels that did not come back from the N→E→N round trip, read
+as "a pane's own body". That was wrong, and part 3 found what it really was: the
+CRACKED-glass rectangle. The demo never records voxel damage to base, so the
+round trip restored no CRACKED states, so the opaque rectangle that had been
+sitting behind the web simply was not rebuilt. **The measurement was right and my
+reading of it was wrong** — and the same number turned out to be the exact
+evidence for the defect the Director reported next. The `panel_instances` finding
+itself stands on its own evidence: the pane cell dump, N against E.
 
 That is ROOF-BAKE-02a repeating on a key nobody added. **Left alone and
 reported** — it is a map defect independent of glass, and the fix is NOT a copy of
@@ -223,6 +233,72 @@ its vocabulary does not depend on that answer. ⚠️ §5 step 4 (the class-awar
 selector) must land in the SAME commit as the sheet: a branch with nothing to
 select is a branch nothing exercises.
 
+---
+
+# Part 3 — the square, and what it really was
+
+He rejected the result again, and the rejection was precise:
+
+> *"Não ficou bom. Volta a aparecer o quadrado em volta do decal. O único que
+> funcionou foi o adesivo sobre o vidro intacto. Precisamos perseguir esse
+> estado, e apenas remover os voxels do buraco, sem modificar o restante dos
+> voxels atrás do adesivo."*
+
+**A CRACKED glass voxel was not rendering as glass at all.**
+`damage_variant_material("glass", CRACKED)` returns `"glass_cracked"`, and
+`GlassMaterials.is_glass("glass_cracked")` is FALSE — so `_set_voxel_cell()`
+skipped the glass branch entirely and placed the voxel on the **OPAQUE** layer.
+Every cell inside the crack radius became a different material, and the crack
+radius is a RECTANGLE. `DamageVariantBaker` reads the same function, so it had
+also baked a full wall damage set for glass, which the swap path then used.
+
+**Fix, one line where the rule belongs:** a glass family member keeps its own name
+at every damage state. `damage_variant_material()` returns `base_material` for any
+`is_glass()` id, which fixes the fallback path and the baked-swap path at once,
+and `DamageVariantBaker.bake_all()` skips glass so it stops baking atoms nothing
+may look up. The STATE is untouched — G-D3/G-D4 ratified that glass cracks, and
+VL-PERSIST still saves it — it just no longer changes how the voxel LOOKS. That
+is G-D26's own rule, applied to the place it had been quietly broken all along.
+
+Pinned by `glass_crack_selftest` [2], strengthened from "not a decal path" to
+**"identical to its own name, across every member × every damage state × blast"**
+— 24 combinations. The old assertion passed while the bug shipped, because it only
+asked whether the name was a decal.
+
+## ⚠️ And it corrects Part 2's own reading of its own measurement
+
+Part 2 reported that a pane's body (1382 contiguous bright pixels) did not survive
+the N→E→N round trip, and filed it as a second symptom of the `panel_instances`
+defect. **The measurement was right and the reading was wrong.** Those 1382 pixels
+were the CRACKED-glass opaque rectangle: the demo records no voxel damage to base,
+so the round trip restored no CRACKED states, so the block was simply not
+rebuilt — which is why that frame was the one the Director singled out as *"o
+único que funcionou"*. The evidence for the `panel_instances` defect was never
+that pixel count; it is the pane cell dump, N against E, and it stands.
+
+**The lesson is the sharp one of this session:** a same-boot diff told the truth
+and I explained it with the first plausible cause instead of the one that was
+sitting in the same frame. It took the Director's eye to read the number
+correctly.
+
+## And "falta o buraco no centro" was two things, only one a bug
+
+- The **demo** was fabricating a crack with no round behind it — a state the game
+  cannot produce. Fixed: it punches its bore first, always, through the same erase
+  seam a round uses.
+- On the **real path** the hole was already there: pistol `destroyed=2` (1 voxel
+  per pane), assault rifle `destroyed=12` (6 per pane).
+- ⚠️ **But for `glass_armored` and INDESTRUCTIBLE screens it is a real defect**,
+  captured: `glass_armored:s1 cracked=63 destroyed=0` draws a BULLET web with an
+  empty painted bore over glass nothing pierced, because
+  `GlassCrack.wide_for_blowout()` has no class branch. It cannot be fixed by
+  making a hole — the class exists to say the round stopped. G-D28's `armored`
+  sheet (an OPAQUE crushed-white core) is the fix, and it is now S-4's priority.
+
+All cited captures were RE-TAKEN after the fix, deliberately overwriting the ones
+that were photographs of the defect: `glass_crack_cut_triptych_2026-09-02.png`,
+`glass_crack_cut_shotgun_2026-09-02.png`, `glass_crack_real_bore_2026-09-02.png`.
+
 ## State at close
 
 | | |
@@ -256,3 +332,12 @@ select is a branch nothing exercises.
 7. **Chasing a cosmetic complaint found a real one.** "The hole is missing" was
    right about the picture and wrong about the cause, and following it to the
    cause turned up armoured glass wearing a bullet hole it never took.
+8. ⚠️ **A same-boot diff can be right while the explanation of it is wrong.** The
+   1382-pixel rectangle was measured correctly and attributed to the first
+   plausible cause in view (a rotation defect found minutes earlier) instead of
+   the one sitting in the same frame. When a diff has an unexplained region,
+   name it before filing it under something else.
+9. **An assertion can pass for the whole life of the bug it was written to
+   catch.** "CRACKED glass does not resolve to a decal path" was true, and the
+   voxel still went to the opaque layer. Assert what must be TRUE (the name is
+   unchanged), not what must be absent.

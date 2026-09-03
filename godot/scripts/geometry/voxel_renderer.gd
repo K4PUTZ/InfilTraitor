@@ -240,6 +240,25 @@ static func _is_impact_mark(material_name: String) -> bool:
 static func damage_variant_material(base_material: String, damage_state: int,
 		blast_sourced: bool = false, carved_side: int = Voxel.CarvedSide.NONE,
 		variant: int = 0) -> String:
+	## ⚠️ A GLASS FAMILY MEMBER HAS NO DAMAGE-VARIANT SURFACE, AND THIS IS THE
+	## LINE THAT MAKES IT TRUE (G-D26 / G-D27, Director 2026-09-02: *"volta a
+	## aparecer o quadrado em volta do decal […] apenas remover os voxels do
+	## buraco, sem modificar o restante dos voxels atrás do adesivo"*).
+	##
+	## Without it, a CRACKED glass voxel resolves to `"glass_cracked"` — and
+	## `is_glass("glass_cracked")` is FALSE, so `_set_voxel_cell()` skips the glass
+	## branch entirely and places the voxel on the OPAQUE layer. Every cell in the
+	## crack radius turned into a different material, which is a RECTANGLE, which
+	## is the square the Director has now rejected twice: once as CRACK-01's flat
+	## frost and once as this. `DamageVariantBaker` reads this function too, so the
+	## same line stops it baking atoms nothing may use.
+	##
+	## The STATE is untouched and still recorded — G-D3/G-D4 ratified that glass
+	## cracks, VL-PERSIST saves it, and a cracked pane is a fact the game may read.
+	## What it must not do is CHANGE HOW THE VOXEL LOOKS: the web is the sprite
+	## over the pane, and the glass behind it is ordinary glass.
+	if GlassMaterials.is_glass(base_material):
+		return base_material
 	var decal := _decal_material(base_material, damage_state, blast_sourced,
 		carved_side, variant)
 	if decal != "":

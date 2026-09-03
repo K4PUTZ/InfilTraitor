@@ -151,16 +151,39 @@ func test_glass_has_no_crack_decal_family() -> void:
 	else:
 		_fail("glass is in IMPACT_DECAL_MATERIALS — it would ask for a bullet-crack decal family")
 
-	## The name the renderer composes for a CRACKED glass voxel must never be a
-	## decal path — it falls back to the flat "glass_cracked", which the glass
-	## render path ignores in favour of _glass_atom_source.
-	for blast in [false, true]:
-		var name: String = VoxelRendererClass.damage_variant_material(
-			"glass", Voxel.DamageState.CRACKED, blast, Voxel.CarvedSide.NONE, 0)
-		if name.contains("decal_") or name.contains("/"):
-			_fail("CRACKED glass (blast=%s) resolves to a decal path: %s" % [blast, name])
-		else:
-			_pass("CRACKED glass (blast=%s) resolves to the flat fallback '%s', not a decal" % [blast, name])
+	## ⚠️ A GLASS MEMBER MUST RESOLVE TO ITS OWN NAME, UNCHANGED, AT EVERY DAMAGE
+	## STATE — not merely to "not a decal" (Director, 2026-09-02: *"volta a
+	## aparecer o quadrado em volta do decal"*).
+	##
+	## This used to accept the flat `"glass_cracked"`, on the belief that the
+	## render path ignored it. It does not: `_set_voxel_cell()` takes the glass
+	## branch only when `GlassMaterials.is_glass(material_name)`, and
+	## `is_glass("glass_cracked")` is FALSE — so every CRACKED cell went to the
+	## OPAQUE layer instead. The crack radius is a rectangle, so the whole web sat
+	## inside a block of another material. Measured from one boot: the pre-flip
+	## and post-round-trip frames of the S-3 capture differ by exactly that
+	## rectangle, 1382 contiguous pixels.
+	##
+	## `DamageVariantBaker` reads the same function, so this one assertion covers
+	## the baked-swap path too.
+	var members: Array = ["glass", "glass_armored", "glass_screen_green"]
+	var states := {"CRACKED": Voxel.DamageState.CRACKED, "DENTED": Voxel.DamageState.DENTED,
+		"DESTROYED": Voxel.DamageState.DESTROYED, "INTACT": Voxel.DamageState.INTACT}
+	var renamed: Array = []
+	for member in members:
+		for sname in states:
+			for blast in [false, true]:
+				var name: String = VoxelRendererClass.damage_variant_material(
+					member, states[sname], blast, Voxel.CarvedSide.LEFT, 0)
+				if name != member:
+					renamed.append("%s/%s%s -> %s"
+						% [member, sname, " blast" if blast else "", name])
+	if renamed.is_empty():
+		_pass("every glass member keeps its own name at every damage state (%d combinations) — so it stays on the GLASS layer"
+			% (members.size() * states.size() * 2))
+	else:
+		_fail("a glass member is renamed by damage and would render OPAQUE: %s"
+			% ", ".join(renamed.slice(0, 4)))
 
 	var on_disk: Array = []
 	for v in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):

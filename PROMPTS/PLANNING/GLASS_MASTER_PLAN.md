@@ -39,8 +39,9 @@ sheets are generated against a guess — see the art order's §6.
 included. Measured from one boot, N then E: seven of the GLASS map's eight panes
 have IDENTICAL cells, all on a constant-y line a quarter turn must move. The
 panes stand still while the walls rotate, so E/S/W are geometrically wrong today,
-independent of cracks. Rotation is suspended for performance, so nothing is on
-fire — but the on-map E/S/W acceptance capture for S-3 is blocked behind it, and
+independent of cracks. (⚠️ A second symptom was briefly filed under this and was
+a misreading — see §13.6 item 4. The cell dump is the evidence and it stands.)
+Rotation is suspended for performance, so nothing is on fire — but the on-map E/S/W acceptance capture for S-3 is blocked behind it, and
 the fix is NOT a copy of the block branch (a panel carries a FACE, so it needs the
 `remap_tile_name` treatment too).
 
@@ -2030,3 +2031,32 @@ capture or by the test written for something else:
    diagnostic that asked the texture read the occupancy one event stale and
    reported that the cut had not followed. The builder keeps the CPU-side Image
    as the authority.
+4. ⚠️ **A CRACKED GLASS VOXEL WAS NOT RENDERING AS GLASS AT ALL, AND HAD NOT BEEN
+   SINCE BEFORE CRACK-01.** `damage_variant_material("glass", CRACKED)` returns
+   `"glass_cracked"`, and `is_glass("glass_cracked")` is FALSE, so
+   `_set_voxel_cell()` skipped the glass branch and put the voxel on the OPAQUE
+   layer. The crack radius is a rectangle, so the whole web sat inside a block of
+   another material — *"volta a aparecer o quadrado em volta do decal"*, the
+   Director's third rejection of a square and the same picture CRACK-01-D's flat
+   frost produced by a different route. `DamageVariantBaker` reads the same
+   function and had baked the full wall damage set for glass, so the swap path
+   used it too.
+
+   Fixed where the rule belongs: **a glass member keeps its own name at every
+   damage state.** The STATE is untouched (G-D3/G-D4 ratified that glass cracks,
+   VL-PERSIST still saves it); it simply no longer changes how the voxel LOOKS,
+   which is G-D26's rule applied to the place it had been quietly broken.
+
+   ⚠️ **The assertion that should have caught it passed for the whole life of the
+   bug.** `glass_crack_selftest` [2] asked whether the name was a decal path — it
+   was not — and never asked whether it was the material's own name. It now
+   asserts identity across every member × damage state × blast, 24 combinations.
+   *Assert what must be true, not what must be absent.*
+
+   ⚠️ **It also corrected a misreading of this session's own measurement.** The
+   1382-pixel block missing from S-3's round-trip frame was filed as "a pane's
+   body", a second symptom of the `panel_instances` defect. It was THIS rectangle
+   — the demo records no voxel damage to base, so the round trip restored no
+   CRACKED states, which is exactly why that frame was the one the Director
+   singled out as *"o único que funcionou"*. The `panel_instances` finding stands
+   on its own evidence, the pane cell dump.

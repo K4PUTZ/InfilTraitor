@@ -164,6 +164,15 @@ const FAMILY: Dictionary = {
 	## of one side with a long sweeping edge, the far side barely opened.
 	"crescent_wide": {"size": "large", "phase": 0.30, "radii": [
 		4.30, 3.90, 1.15, 1.00, 1.40, 1.05, 0.95, 1.20, 1.00, 1.60, 2.60, 3.90]},
+
+	## `gash_wide` — the one shape class the other eleven did not have: ELONGATED.
+	## Every other member is roughly radial, so a map of them reads as twelve sizes
+	## of the same idea. This one runs long on one axis and stays tight on the
+	## other, with the sides jagged rather than parallel — a pane that split along
+	## a line rather than a round that punched through it.
+	"gash_wide": {"size": "large", "phase": 0.08, "radii": [
+		3.60, 1.50, 2.20, 0.90, 1.10, 0.85, 2.90,
+		3.80, 1.30, 0.90, 1.00, 0.80, 1.90, 1.20]},
 }
 
 ## The pools `pick()` draws from, by size class. Kept as explicit ordered arrays
@@ -174,7 +183,7 @@ const POOLS: Dictionary = {
 	"small": ["star_deep", "star_shallow", "notch_v", "chamfer_45",
 		"chunk_bite", "star_wild"],
 	"large": ["star_deep_wide", "star_ragged_wide", "chamfer_45_wide",
-		"shard_fan_wide", "crescent_wide"],
+		"shard_fan_wide", "crescent_wide", "gash_wide"],
 }
 
 

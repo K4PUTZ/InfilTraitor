@@ -5953,6 +5953,20 @@ func _capture_glass_crack_demo() -> void:
 	## not answer the question: the pane, the light and the shot would all be the
 	## same by intent and different in fact, and the Director would be comparing
 	## three pictures instead of one decision.
+	## CRACK-04 — the ALIGNMENT pair, one boot: the same frame with the crack
+	## sprite hidden and shown, so the web can be isolated by subtraction and its
+	## centre compared to the hole's without a second boot's noise in between.
+	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_ALIGN") == "1":
+		for shown in [false, true]:
+			_voxel_renderer.set_glass_cracks_visible(shown)
+			for _f in range(6):
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			var aname := "%s/glass_crack_align_%s_%s.png" % [dir, tag, "web" if shown else "hole"]
+			get_viewport().get_texture().get_image().save_png(aname)
+			print("[CRACK-DEMO] alignment frame (%s) -> %s"
+				% ["web shown" if shown else "web hidden", aname.get_file()])
+
 	## CRACK-04 — the void A/B, in ONE boot for the reason the cut triptych is.
 	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_VOID") == "1":
 		for on in [false, true]:

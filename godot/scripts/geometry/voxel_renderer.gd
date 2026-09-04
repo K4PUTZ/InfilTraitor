@@ -4918,6 +4918,21 @@ func _glass_opening_mask(opening_id: String) -> Dictionary:
 	return out
 
 
+## Show or hide every live crack SPRITE, for a same-boot alignment measurement.
+##
+## ⚠️ IT EXISTS BECAUSE THE CROSS-BOOT VERSION IS NOISE. Two boots of the GLASS
+## map differ by tens of thousands of pixels before anything glass-related moves,
+## so "photograph the hole in one boot and the web in another and compare
+## centroids" gives a delta with no meaning — measured 2026-09-04, the same pair
+## of frames put the hole's centroid 22 px apart from itself depending on which
+## mask was used. Hiding the sprite inside ONE boot isolates the web exactly.
+func set_glass_cracks_visible(v: bool) -> void:
+	for c in _glass_cracks:
+		var sp = c["sprite"]
+		if sp != null and is_instance_valid(sp):
+			sp.visible = v
+
+
 ## CRACK-04 — bind or UNBIND every live crack's opening void, for a same-boot A/B.
 ##
 ## ⚠️ IT HAS TO BE ONE BOOT. Two boots of this map differ by tens of thousands of

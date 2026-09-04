@@ -45,19 +45,37 @@ const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.g
 ## Coverage of one cell by an opening.
 enum Coverage { NONE, PARTIAL, FULL }
 
-## How finely `coverage()` samples a cell before calling it FULL or NONE. A cell
-## is 1 voxel and an opening's features are tenths of one, so a coarse grid would
-## report FULL for a cell a spike merely crosses — and a cell wrongly called FULL
-## is ERASED, which is not recoverable by a later pass.
-const COVERAGE_SAMPLES: int = 9
+## How finely `coverage()` samples a cell before calling it FULL or NONE.
+##
+## ⚠️ IT MUST DOMINATE THE RASTER, and 9 did not. `_cut_glass_opening()` decides
+## per ATOM PIXEL — about 32 x 20 of them across a cell's face — so a spike
+## narrower than the sampler's spacing is invisible here and perfectly visible
+## there. `chunk_bite` has one: cell (3,1) read NONE and came back CUT, and the
+## two disagreeing about the same cell is the whole failure mode, in either
+## direction (a cell wrongly FULL would be ERASED, which no later pass can undo).
+## 33 puts a sample on every atom pixel column and then some. Selftest [16] holds
+## the two in agreement now, cell by cell, rather than trusting this number.
+const COVERAGE_SAMPLES: int = 33
+
+## `coverage()` is pure and its answer never changes for a given (opening, cell),
+## so it is memoised — 33 x 33 point-in-polygon tests per cell over an 8x8
+## footprint is 70k tests, and the walk asks for the same cells on every hole.
+static var _coverage_cache: Dictionary = {}
 
 ## ── THE FAMILY ───────────────────────────────────────────────────────────────
 ##
-## Every member is a star: `lobes` points at `r_out`, the valleys between them at
-## `r_in`, turned by `phase`. That one generator covers everything the Director
-## approved — an 8-point star is `lobes=8`, a V-notch is `lobes=4`, and a regular
-## octagon is `lobes=8` with `r_in = r_out · cos(π/8)`, which is why the family
-## needs no second shape language.
+## A member is written in one of two forms, and `polygon()` resolves both to the
+## same thing — a closed polygon — so there is one shape language at RUNTIME and
+## two conveniences at authoring time.
+##
+##   * REGULAR: `lobes` points at `r_out`, valleys at `r_in`, turned by `phase`.
+##     An 8-point star is `lobes=8`, a V-notch is `lobes=4`, and a regular octagon
+##     is `lobes=8` with `r_in = r_out · cos(π/8)`.
+##   * IRREGULAR: `radii`, one per vertex, with optional `angles` in TURNS. This
+##     exists because the regular form cannot express what the Director asked for
+##     — *"um chunk grande faltando, angulos irregulares"* — at ANY parameter
+##     value: it has exactly one point length and one valley length by
+##     construction, so every arm is every other arm.
 ##
 ## `SMALL` is the four he already ruled on (`glass_rim_shape_options_2026-09-02`,
 ## A/B/C/D). `LARGE` is the room the same message asked for — *"os buracos de
@@ -106,6 +124,46 @@ const FAMILY: Dictionary = {
 	"star_deep_wide":  {"lobes": 8, "r_out": 3.20, "r_in": 1.05, "phase": 0.0, "size": "large"},
 	"star_ragged_wide": {"lobes": 11, "r_out": 2.80, "r_in": 1.20, "phase": 0.19, "size": "large"},
 	"chamfer_45_wide": {"lobes": 8, "r_out": 2.10, "r_in": 1.94, "phase": 0.3927, "size": "large"},
+
+	## ── THE IRREGULAR MEMBERS (Director, 2026-09-04: *"algumas mais esquisitas,
+	## com um chunk grande faltando, angulos irregulares"*, on three references —
+	## a real bullet impact and two shard renders). ──────────────────────────
+	##
+	## ⚠️ EVERY RADIUS STILL CLEARS `MIN_VALLEY`. An asymmetric opening is one
+	## whose LARGE side is much larger, never one whose small side vanishes: the
+	## struck voxel is gone whole either way, so a radius under 0.708 would ask
+	## to keep a corner of it. [16] holds the line for these the same as the rest.
+	##
+	## `chunk_bite` — one big smooth chunk gone from a single quadrant, the rest a
+	## tight ragged rim. The asymmetry IS the shape.
+	##
+	## ⚠️ THE READ COMES FROM THE JUMP BETWEEN ADJACENT RADII, NOT FROM THE RANGE.
+	## The first pass at these two used 16 vertices easing smoothly from 4.2 down
+	## to 1.0, a 4:1 range — and both rendered as ROUND BLOBS
+	## (`glass_openings_family_2026-09-04.png`, first version). Every reference the
+	## Director sent is made of long STRAIGHT fracture edges, and a straight edge
+	## is what you get when two adjacent vertices are far apart in radius: the
+	## chord between them cuts across. Fewer vertices, bigger jumps.
+	"chunk_bite": {"size": "small", "phase": 0.55, "radii": [
+		2.90, 3.10, 1.00, 0.85, 1.60, 0.80, 1.10, 0.78, 0.90, 2.20]},
+
+	## `star_wild` — irregular in BOTH axes: spikes of unequal length at unequal
+	## angles, so no two arms of the hole read as a pair.
+	"star_wild": {"size": "small", "phase": 0.11, "radii": [
+		2.10, 0.80, 1.30, 0.75, 2.60, 0.90, 1.00, 0.76, 1.70, 0.80, 2.30, 0.85],
+		"angles": [
+		0.00, 0.06, 0.13, 0.21, 0.27, 0.35, 0.44, 0.51, 0.60, 0.68, 0.79, 0.90]},
+
+	## `shard_fan_wide` — the many-thin-spikes read of the third reference: a
+	## dense fan of long slivers, each a different length.
+	"shard_fan_wide": {"size": "large", "phase": 0.0, "radii": [
+		3.40, 1.10, 2.60, 1.05, 3.90, 1.20, 2.20, 1.00, 3.10, 1.15,
+		3.60, 1.05, 2.40, 1.10, 3.30, 1.00, 2.80, 1.20, 3.70, 1.10]},
+
+	## `crescent_wide` — the first reference's silhouette: a huge chunk taken out
+	## of one side with a long sweeping edge, the far side barely opened.
+	"crescent_wide": {"size": "large", "phase": 0.30, "radii": [
+		4.30, 3.90, 1.15, 1.00, 1.40, 1.05, 0.95, 1.20, 1.00, 1.60, 2.60, 3.90]},
 }
 
 ## The pools `pick()` draws from, by size class. Kept as explicit ordered arrays
@@ -113,8 +171,10 @@ const FAMILY: Dictionary = {
 ## list, so its ORDER is part of what makes a pick reproducible, and a Dictionary
 ## iteration order is not something to pin a saved hole's shape to.
 const POOLS: Dictionary = {
-	"small": ["star_deep", "star_shallow", "notch_v", "chamfer_45"],
-	"large": ["star_deep_wide", "star_ragged_wide", "chamfer_45_wide"],
+	"small": ["star_deep", "star_shallow", "notch_v", "chamfer_45",
+		"chunk_bite", "star_wild"],
+	"large": ["star_deep_wide", "star_ragged_wide", "chamfer_45_wide",
+		"shard_fan_wide", "crescent_wide"],
 }
 
 
@@ -153,11 +213,33 @@ static func polygon(id: String) -> PackedVector2Array:
 	if spec.is_empty():
 		push_error("[GlassOpening] unknown opening '%s'" % id)
 		return PackedVector2Array()
+	var phase: float = float(spec.get("phase", 0.0))
+	var out := PackedVector2Array()
+
+	## ── THE IRREGULAR FORM: an explicit polar vertex list. ──────────────────
+	## `radii` is one radius per vertex, evenly spaced unless `angles` gives the
+	## spacing too (in TURNS, 0..1, so the table reads as fractions of a circle
+	## rather than as radians nobody can picture). This is what the regular
+	## generator below structurally cannot produce — it has one `r_out` and one
+	## `r_in`, so every point and every valley are the same, and a big chunk
+	## missing from one side is not expressible at any parameter value.
+	if spec.has("radii"):
+		var radii: Array = spec["radii"]
+		var angles: Array = spec.get("angles", [])
+		for i in range(radii.size()):
+			var frac: float = float(angles[i]) if i < angles.size() \
+				else float(i) / float(radii.size())
+			var ta: float = phase + TAU * frac
+			var ra: float = float(radii[i])
+			out.append(Vector2(cos(ta) * ra, sin(ta) * ra))
+		return out
+
+	## ── THE REGULAR FORM: the star shorthand. ───────────────────────────────
+	## Kept because four of the members really are regular and writing them as
+	## 16 explicit vertices would hide that, not reveal it.
 	var lobes: int = int(spec["lobes"])
 	var r_out: float = float(spec["r_out"])
 	var r_in: float = float(spec["r_in"])
-	var phase: float = float(spec["phase"])
-	var out := PackedVector2Array()
 	## 2 vertices per lobe: the point, then the valley after it.
 	for i in range(lobes * 2):
 		var t: float = phase + TAU * float(i) / float(lobes * 2)
@@ -196,6 +278,9 @@ static func cell_bounds(id: String) -> Rect2i:
 ## thing it feeds. What matters is that FULL is never returned for a cell the
 ## boundary merely crosses, which is why the grid is 9x9 and includes the corners.
 static func coverage(id: String, dr: int, dl: int) -> Coverage:
+	var ck := "%s|%d|%d" % [id, dr, dl]
+	if _coverage_cache.has(ck):
+		return _coverage_cache[ck]
 	var poly: PackedVector2Array = polygon(id)
 	if poly.is_empty():
 		return Coverage.NONE
@@ -209,11 +294,13 @@ static func coverage(id: String, dr: int, dl: int) -> Coverage:
 			total += 1
 			if Geometry2D.is_point_in_polygon(p, poly):
 				inside += 1
+	var result: Coverage = Coverage.PARTIAL
 	if inside == 0:
-		return Coverage.NONE
-	if inside == total:
-		return Coverage.FULL
-	return Coverage.PARTIAL
+		result = Coverage.NONE
+	elif inside == total:
+		result = Coverage.FULL
+	_coverage_cache[ck] = result
+	return result
 
 
 ## Is this point — in voxels from the struck cell's centre — inside the hole?

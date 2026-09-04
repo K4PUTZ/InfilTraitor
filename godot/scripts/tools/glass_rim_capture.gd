@@ -34,8 +34,8 @@ const GlassOpeningClass = preload("res://godot/scripts/systems/destruction/glass
 ## no edge case of the rim walk is silently doing the work.
 ## Big enough that the LARGE openings (7x7 cells) sit well inside it — a hole
 ## touching the pane edge would be measuring the pane, not the opening.
-const RUNS: int = 15
-const LEVELS: int = 11
+const RUNS: int = 13
+const LEVELS: int = 13
 const OUT_DIR := "res://Screenshots/history"
 
 ## Background and the flat colour every surviving atom is painted, so the picture

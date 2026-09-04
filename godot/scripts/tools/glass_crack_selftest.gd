@@ -1062,6 +1062,28 @@ func test_the_shard_rim_cuts_eight_distinct_shapes() -> void:
 		_fail("the pieces collapsed to one mask: %s — the cell offset is being dropped"
 			% ", ".join(identical))
 
+	## ⚠️ AND THE SAMPLER AGREES WITH THE RASTER, WHICH IS THE OTHER HALF.
+	## `coverage()` classifies a cell on a 33x33 grid; `_cut_glass_opening()`
+	## decides per ATOM PIXEL. Where they disagree the walk is wrong in a way
+	## nothing else can see: a cell called NONE is never rastered at all, so a
+	## spike thinner than the sampler's spacing is silently lost from the hole's
+	## shape, and [15] cannot catch it because [15] compares the board against the
+	## same sampler. This compares the sampler against the OTHER instrument.
+	var leaks: Array = []
+	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
+		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
+			if GlassOpeningClass.coverage(opening, dr, dl) != GlassOpeningClass.Coverage.NONE:
+				continue
+			var probe: Image = r._build_glass_pane_atom(Face.SW, false, false, 0)
+			r._cut_glass_opening(probe, opening, dr, dl, Face.SW)
+			if _opaque_px(probe) < full:
+				leaks.append("(%d,%d)" % [dr, dl])
+	if leaks.is_empty():
+		_pass("every cell the sampler calls NONE is cut by nothing — sampler and raster agree")
+	else:
+		_fail("cell(s) %s read NONE but the raster cuts them — the sampler is coarser than the cut"
+			% ", ".join(leaks))
+
 	## The slivers survive: `_cut_glass_opening` only touches pixels inside the
 	## MAIN face parallelogram, which is what lets a shard keep the pane's
 	## 1-voxel-thick read on a GU boundary.
@@ -1190,13 +1212,19 @@ func _same_alpha(a: Image, b: Image) -> bool:
 func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 	print("[15] the cut cells are exactly the opening's PARTIAL set, for every opening\n")
 
-	for opening in GlassOpeningClass.pool("small"):
+	## ⚠️ EVERY member, not just the small pool. The anchor defect this test found
+	## (a claim matched by centroid instead of by membership) was invisible on all
+	## seven SYMMETRIC openings and showed only on `chunk_bite` — so a suite that
+	## covers one size class covers the easy half of the family by construction.
+	for opening in GlassOpeningClass.ids():
 		var r = VoxelRendererClass.new()
 		var base: int = GeometryCoordsClass.storey_level_base(0)
 		var cross := 7
 		var run0 := 0
-		var runs := 15
-		var levels := 11
+		## Wide enough for the largest member (`crescent_wide` reaches 4.2 voxels)
+		## with clearance, so a hole never touches the pane's own edge.
+		var runs := 23
+		var levels := 17
 		var ts := _one_tile_tileset()
 		## ⚠️ THE RENDERER'S OWN TileSet MUST BE THE LAYERS' TileSet. The shard
 		## atoms register into `_tileset`, and a `set_cell()` naming a source the
@@ -1261,5 +1289,5 @@ func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 
 		_free_glass_layers(r)
 		r.free()
-	_pass("every small opening survived the round with no idempotence failure")
+	_pass("all %d openings survived the round with no idempotence failure" % GlassOpeningClass.ids().size())
 	print("")

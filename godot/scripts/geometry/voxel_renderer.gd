@@ -4900,14 +4900,21 @@ func refresh_glass_rims() -> int:
 	return swapped
 
 
-## Group the batch's erased cells into connected regions, each carrying its own
-## anchor (the region's centre cell) and the opening chosen for it, if any.
+## Turn the batch's erased cells into regions to apply an opening around.
 ##
-## ⚠️ ADJACENCY IS IN THE PANE'S LATTICE, AND BOTH RUN AXES ARE OFFERED, because
-## the erased cell's own face went with its source and the renderer cannot ask a
-## hole which axis it ran along. Two cells that are neighbours on the wrong axis
-## are not neighbours in any pane, so the wrong grouping is empty rather than
-## wrong — the same reasoning `refresh_glass_rims()` used for its direction map.
+## ⚠️ A CLAIM DEFINES ITS REGION; CONNECTIVITY IS ONLY THE FALLBACK. The first
+## version grouped every erased cell by adjacency and then looked for a claim
+## inside each group, and it had a defect that no symmetric opening could show:
+## `chunk_bite` swallows cells (0,0) and (1,1) WHOLE, and those touch only
+## DIAGONALLY. Under 6-connectivity they were two regions — the claimed one, and
+## an orphan that fell through to `GLASS_OPENING_DEFAULT` and stamped a second
+## `star_deep` centred one cell over, three cells outside the real opening's own
+## bounds. Selftest [15] caught it as "(3,1) cut", a shard outside the footprint.
+##
+## So a claim comes first and takes every erased cell inside its opening's
+## footprint. Only what no claim wanted is grouped, and that grouping is
+## 26-connected (diagonals included) because a hole's cells are one hole however
+## they touch.
 func _group_erased_into_regions() -> Array:
 	var all: Dictionary = {}
 	for level in _glass_rim_dirty:
@@ -4915,6 +4922,24 @@ func _group_erased_into_regions() -> Array:
 			all[Vector3i(cell.x, cell.y, level)] = true
 
 	var regions: Array = []
+
+	## 1. Every claim is a region, anchored where the claimer said the impact was.
+	for anchor in _glass_region_openings:
+		var opening_id: String = String(_glass_region_openings[anchor])
+		var bounds: Rect2i = GlassOpening.cell_bounds(opening_id)
+		var members: Array = []
+		for k in all.keys():
+			## Both run axes are offered — the erased cell's own face went with
+			## its source, and a cell that is not in this pane simply will not be
+			## glass when the walk gets there.
+			var in_x: bool = absi(k.x - anchor.x) <= bounds.size.x and k.y == anchor.y
+			var in_y: bool = absi(k.y - anchor.y) <= bounds.size.x and k.x == anchor.x
+			if (in_x or in_y) and absi(k.z - anchor.z) <= bounds.size.y:
+				members.append(k)
+				all.erase(k)
+		regions.append({"members": members, "anchor": anchor, "opening": opening_id})
+
+	## 2. Whatever no claim wanted, grouped by adjacency and given a default.
 	var seen: Dictionary = {}
 	for key in all:
 		if seen.has(key):
@@ -4925,16 +4950,23 @@ func _group_erased_into_regions() -> Array:
 		while not queue.is_empty():
 			var k: Vector3i = queue.pop_back()
 			members.append(k)
-			for n in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
-					Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
-				var nk: Vector3i = k + n
-				if all.has(nk) and not seen.has(nk):
-					seen[nk] = true
-					queue.append(nk)
+			for dx in [-1, 0, 1]:
+				for dy in [-1, 0, 1]:
+					for dz in [-1, 0, 1]:
+						if dx == 0 and dy == 0 and dz == 0:
+							continue
+						var nk: Vector3i = k + Vector3i(dx, dy, dz)
+						if all.has(nk) and not seen.has(nk):
+							seen[nk] = true
+							queue.append(nk)
 		regions.append({
 			"members": members,
+			## The centroid is the stand-in for an impact nobody named, and it is
+			## only ever right for a SYMMETRIC opening — an asymmetric one puts its
+			## centroid out in the chunk it removed. That is why the play path must
+			## claim rather than lean on this.
 			"anchor": _region_anchor(members),
-			"opening": String(_glass_region_openings.get(_region_anchor(members), "")),
+			"opening": "",
 		})
 	_glass_region_openings.clear()
 	return regions

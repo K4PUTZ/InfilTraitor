@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**232 scripts · 78900 lines total** (under `godot/scripts/`)
+**232 scripts · 79047 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -895,7 +895,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 5800 lines
+`class_name VoxelRenderer` · extends `Node2D` · 5832 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2077,7 +2077,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_opening.gd`
 
-`class_name GlassOpening` · 222 lines
+`class_name GlassOpening` · 309 lines
 
 `godot/scripts/systems/destruction/glass_opening.gd`
 
@@ -2085,10 +2085,10 @@ extends `Node2D` · 43 lines
 
 **Constants / tuning**
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
-- `COVERAGE_SAMPLES` = `9`
+- `COVERAGE_SAMPLES` = `33`
 - `MIN_VALLEY` = `0.708`
-- `FAMILY` = `{ ## A — "bico fundo": the long-spiked star, the silhouette the build has been ## making since CRACK-03. "star_deep":    {"lobes": 8, "r_out": 1.90, "r_in": 0.75, "phase": 0.0, "size": "small"}, ## B — "bico raso": the same star pulled in to half the reach. "star_shallow": {"lobes": 8, "r_out": 1.30, "r_in": 0.74, "phase": 0.0, "size": "small"}, ## C — "entalhe em V, cantos ficam": four points on the orthogonals only, so ## the diagonal corners of the struck cell's neighbours are never reached. "notch_v":      {"lobes": 4, "r_out": 1.70, "r_in": 0.76, "phase": 0.0, "size": "small"}, ## D — "chanfro 45 graus": the compact one. `r_in = r_out · cos(π/8)` makes it ## a regular octagon rather than a star. "chamfer_45":   {"lobes": 8, "r_out": 0.80, "r_in": 0.739, "phase": 0.3927, "size": "small"}, ## The large members. Same language, more reach — a rifle or a shotgun breach ## is not a different mechanism, only a bigger polygon. "star_deep_wide":  {"lobes": 8, "r_out": 3.20, "r_in": 1.05, "phase": 0.0, "size": "large"}, "star_ragged_wide": {"lobes": 11, "r_out": 2.80, "r_in": 1.20, "phase": 0.19, "size": "large"}, "chamfer_45_wide": {"lobes": 8, "r_out": 2.10, "r_in": 1.94, "phase": 0.3927, "size": "large"}, }`
-- `POOLS` = `{ "small": ["star_deep", "star_shallow", "notch_v", "chamfer_45"], "large": ["star_deep_wide", "star_ragged_wide", "chamfer_45_wide"], }`
+- `FAMILY` = `{ ## A — "bico fundo": the long-spiked star, the silhouette the build has been ## making since CRACK-03. "star_deep":    {"lobes": 8, "r_out": 1.90, "r_in": 0.75, "phase": 0.0, "size": "small"}, ## B — "bico raso": the same star pulled in to half the reach. "star_shallow": {"lobes": 8, "r_out": 1.30, "r_in": 0.74, "phase": 0.0, "size": "small"}, ## C — "entalhe em V, cantos ficam": four points on the orthogonals only, so ## the diagonal corners of the struck cell's neighbours are never reached. "notch_v":      {"lobes": 4, "r_out": 1.70, "r_in": 0.76, "phase": 0.0, "size": "small"}, ## D — "chanfro 45 graus": the compact one. `r_in = r_out · cos(π/8)` makes it ## a regular octagon rather than a star. "chamfer_45":   {"lobes": 8, "r_out": 0.80, "r_in": 0.739, "phase": 0.3927, "size": "small"}, ## The large members. Same language, more reach — a rifle or a shotgun breach ## is not a different mechanism, only a bigger polygon. "star_deep_wide":  {"lobes": 8, "r_out": 3.20, "r_in": 1.05, "phase": 0.0, "size": "large"}, "star_ragged_wide": {"lobes": 11, "r_out": 2.80, "r_in": 1.20, "phase": 0.19, "size": "large"}, "chamfer_45_wide": {"lobes": 8, "r_out": 2.10, "r_in": 1.94, "phase": 0.3927, "size": "large"}, ## ── THE IRREGULAR MEMBERS (Director, 2026-09-04: *"algumas mais esquisitas, ## com um chunk grande faltando, angulos irregulares"*, on three references — ## a real bullet impact and two shard renders). ────────────────────────── ## ## ⚠️ EVERY RADIUS STILL CLEARS `MIN_VALLEY`. An asymmetric opening is one ## whose LARGE side is much larger, never one whose small side vanishes: the ## struck voxel is gone whole either way, so a radius under 0.708 would ask ## to keep a corner of it. [16] holds the line for these the same as the rest. ## ## `chunk_bite` — one big smooth chunk gone from a single quadrant, the rest a ## tight ragged rim. The asymmetry IS the shape. ## ## ⚠️ THE READ COMES FROM THE JUMP BETWEEN ADJACENT RADII, NOT FROM THE RANGE. ## The first pass at these two used 16 vertices easing smoothly from 4.2 down ## to 1.0, a 4:1 range — and both rendered as ROUND BLOBS ## (`glass_openings_family_2026-09-04.png`, first version). Every reference the ## Director sent is made of long STRAIGHT fracture edges, and a straight edge ## is what you get when two adjacent vertices are far apart in radius: the ## chord between them cuts across. Fewer vertices, bigger jumps. "chunk_bite": {"size": "small", "phase": 0.55, "radii": [ 2.90, 3.10, 1.00, 0.85, 1.60, 0.80, 1.10, 0.78, 0.90, 2.20]}, ## `star_wild` — irregular in BOTH axes: spikes of unequal length at unequal ## angles, so no two arms of the hole read as a pair. "star_wild": {"size": "small", "phase": 0.11, "radii": [ 2.10, 0.80, 1.30, 0.75, 2.60, 0.90, 1.00, 0.76, 1.70, 0.80, 2.30, 0.85], "angles": [ 0.00, 0.06, 0.13, 0.21, 0.27, 0.35, 0.44, 0.51, 0.60, 0.68, 0.79, 0.90]}, ## `shard_fan_wide` — the many-thin-spikes read of the third reference: a ## dense fan of long slivers, each a different length. "shard_fan_wide": {"size": "large", "phase": 0.0, "radii": [ 3.40, 1.10, 2.60, 1.05, 3.90, 1.20, 2.20, 1.00, 3.10, 1.15, 3.60, 1.05, 2.40, 1.10, 3.30, 1.00, 2.80, 1.20, 3.70, 1.10]}, ## `crescent_wide` — the first reference's silhouette: a huge chunk taken out ## of one side with a long sweeping edge, the far side barely opened. "crescent_wide": {"size": "large", "phase": 0.30, "radii": [ 4.30, 3.90, 1.15, 1.00, 1.40, 1.05, 0.95, 1.20, 1.00, 1.60, 2.60, 3.90]}, }`
+- `POOLS` = `{ "small": ["star_deep", "star_shallow", "notch_v", "chamfer_45", "chunk_bite", "star_wild"], "large": ["star_deep_wide", "star_ragged_wide", "chamfer_45_wide", "shard_fan_wide", "crescent_wide"], }`
 
 ---
 
@@ -3573,7 +3573,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1265 lines
+extends `SceneTree` · 1293 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -3645,8 +3645,8 @@ extends `SceneTree` · 243 lines
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `GlassOpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
-- `RUNS` = `15`
-- `LEVELS` = `11`
+- `RUNS` = `13`
+- `LEVELS` = `13`
 - `OUT_DIR` = `"res://Screenshots/history"`
 - `BG` = `Color(0.16, 0.17, 0.22, 1.0)`
 - `GLASS_FLAT` = `Color(1.0, 0.93, 0.20, 1.0)`

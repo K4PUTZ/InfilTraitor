@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**232 scripts · 79056 lines total** (under `godot/scripts/`)
+**232 scripts · 79271 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -895,7 +895,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 5832 lines
+`class_name VoxelRenderer` · extends `Node2D` · 5861 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -3573,7 +3573,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1293 lines
+extends `SceneTree` · 1356 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -4804,7 +4804,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1053 lines
+`class_name AgentShotController` · 1073 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -5171,7 +5171,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9151 lines
+extends `Node2D` · 9254 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5187,6 +5187,7 @@ extends `Node2D` · 9151 lines
 - `InputControllerClass` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `GlassCrackSpriteClass` = `preload("res://godot/scripts/overlays/glass_crack_sprite.gd")`
+- `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
 - `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/test_zone_controller.gd")`
 - `WeaponBenchControllerClass` = `preload("res://godot/scripts/world/controllers/weapon_bench_controller.gd")`

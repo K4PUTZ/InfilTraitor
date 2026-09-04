@@ -4892,11 +4892,20 @@ func refresh_glass_rims() -> int:
 	_glass_rim_dirty.clear()
 
 	var swapped: int = 0
+	## ⚠️ THE LINE NAMES THE OPENING PER REGION, and it has to. A count alone
+	## cannot tell a real pick from `GLASS_OPENING_DEFAULT` — a hole that silently
+	## fell through to the default looks exactly like one that was claimed, and the
+	## whole point of the claim is that the SHAPE is chosen. `*` marks a region
+	## nobody claimed.
+	var applied: Array = []
 	for region in regions:
 		swapped += _apply_opening_to_region(region)
+		applied.append("%s%s" % [
+			region["opening"] if String(region["opening"]) != "" else GLASS_OPENING_DEFAULT,
+			"" if String(region["opening"]) != "" else "*"])
 	if swapped > 0:
-		print_debug("[GLASS-OPENING] %d region(s), %d cell(s) cut into shards"
-			% [regions.size(), swapped])
+		print_debug("[GLASS-OPENING] %d region(s) [%s], %d cell(s) cut into shards"
+			% [regions.size(), ", ".join(applied), swapped])
 	return swapped
 
 
@@ -5065,10 +5074,30 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 
 ## CRACK-04 — claim a region's opening BEFORE the erase batch is flushed. Called
 ## by whoever knows base coordinates (the room / the shot path), so the pick is
-## stable across a perspective flip. `cell`/`level` must be the region's anchor,
-## the same rounded centroid `_region_anchor()` computes.
+## stable across a perspective flip. `cell`/`level` is the IMPACT.
 func claim_glass_opening(level: int, cell: Vector2i, opening_id: String) -> void:
 	_glass_region_openings[Vector3i(cell.x, cell.y, level)] = opening_id
+
+
+## CRACK-04 — apply one opening at a known impact IMMEDIATELY, without going
+## through the erase-flag batch.
+##
+## ⚠️ THE REBUILD NEEDS THIS AND THE SHOT PATH MUST NOT USE IT, because the two
+## situations differ in a way that is invisible until measured. On a live shot the
+## glass is removed by `erase_cell()`, which flags the rim and the batch flush cuts
+## it. On a REBUILD (a perspective flip, a load) nothing is erased at all: the
+## geometry is built fresh from voxel state, and a voxel already DESTROYED is
+## simply never PLACED — so there is no erase, no flag, and the flush runs with
+## `dirty_levels=0`. Measured 2026-09-04 on the GLASS map: after a flip the rim
+## was never re-cut, which means **CRACK-03's rim never survived a rotation
+## either**. Claiming an opening for that path is useless; it has to be applied.
+func apply_glass_opening_at(level: int, cell: Vector2i, opening_id: String) -> int:
+	if not GLASS_RIM_ENABLED or opening_id == "":
+		return 0
+	var anchor := Vector3i(cell.x, cell.y, level)
+	return _apply_opening_to_region({
+		"members": [anchor], "anchor": anchor, "opening": opening_id,
+	})
 
 
 func _get_layer_material(level: int) -> ShaderMaterial:

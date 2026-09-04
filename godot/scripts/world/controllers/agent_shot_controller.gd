@@ -827,6 +827,26 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	var hit_material: String = hit_slice.material_at(rel)
 	if not GlassMaterials.is_glass(hit_material):
 		return
+	## ── CRACK-04 / G-D34 — CLAIM THE HOLE'S OPENING ─────────────────────────
+	##
+	## This is the impact, and it is the only place on the shot path that knows
+	## which of the destroyed cells the round actually arrived at. The renderer
+	## cannot work it out afterwards: for an ASYMMETRIC opening the impact is not
+	## the centroid of what came out, so an unclaimed hole is not merely
+	## default-shaped, it is default-shaped in the WRONG PLACE.
+	##
+	## ⚠️ ONLY WHEN THE ROUND ACTUALLY OPENED A HOLE. A pane that merely crazed —
+	## a screen that stopped the round, a lost roll under the breach threshold —
+	## has nothing for an opening to be the shape of, and claiming one would ask
+	## the renderer to cut a rim around a hole that is not there. It warns about
+	## exactly that, loudly, which is how this rule got written down.
+	##
+	## ⚠️ The room makes the pick, not this controller and not the renderer: the
+	## key has to be BASE-space or the shape reshuffles on a camera turn.
+	if hv.damage_state == Voxel.DamageState.DESTROYED:
+		room.claim_glass_opening_for_hit(hv.grid_pos, hv.level,
+			GlassCrack.wide_for_blowout(weapon_def.blowout))
+
 	## G-D16 / V-C — a control interface never rolls. It cracks and the round
 	## stops (`glass_stop_edge_keys()` made it terminal; `damage_state_for()`
 	## caps its tier at CRACKED), so there is nothing here for a shatter to take.

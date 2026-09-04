@@ -16,6 +16,9 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 ## rescans, so a headless capture run fails to PARSE room.gd. Measured, not
 ## guessed — it cost one hung capture boot.
 const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
+## CRACK-04 / G-D34 — the catalogue of hole shapes. Preloaded rather than left to
+## the global class_name so the dependency is visible where this file is read.
+const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/test_zone_controller.gd")
 const WeaponBenchControllerClass = preload("res://godot/scripts/world/controllers/weapon_bench_controller.gd")
@@ -271,6 +274,16 @@ var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see
 ## `base_damage`'s own row and belongs with the next SaveState change, not
 ## smuggled into a render stage.
 var _base_cracks: Array = []
+## CRACK-04 / G-D34 — one record per hole whose OPENING was claimed: the impact in
+## BASE coords and its size class. Mirrors `_base_cracks` for the same reason and
+## with the same shape, because the same thing is true of both — the impact cannot
+## be re-derived from the rebuilt geometry, and everything else can.
+##
+## ⚠️ THE OPENING ID IS NOT STORED, AND THAT IS DELIBERATE. `GlassOpening.pick()`
+## is a pure function of (size class, base key), so replaying the key reproduces
+## the shape. Storing the id too would be a second copy of a derived fact, free to
+## drift from the pool the day a member is added or reordered.
+var _base_openings: Array = []
 
 ## GLASS G-D15 / V-D — PANES THAT ARE PRIMED. `pane_id -> true`.
 ##
@@ -374,6 +387,84 @@ func record_glass_crack_to_base(hit_grid_pos: Vector2i, hit_level: int, wide: bo
 		"base": Vector3i(base_xy.x, base_xy.y, hit_level),
 		"wide": wide,
 	})
+
+
+## CRACK-04 / G-D34 — choose the OPENING for a hole and hand it to the renderer.
+##
+## ⚠️ THE ROOM MAKES THIS CALL BECAUSE THE KEY MUST BE BASE-SPACE. A view-space
+## cell is renumbered by a perspective flip, so a pick keyed on one would reshape
+## every standing hole the moment the camera turned — the exact failure CRACK-02
+## S-3 exists to prevent. The renderer has no base-space knowledge; this room owns
+## the conversion, the same one `record_glass_crack_to_base()` uses.
+##
+## The size class comes from `GlassCrack.wide_for_blowout()`, which is ALSO what
+## picks the fracture sheet — so the hole and the sheet drawn over it are sized by
+## one rule rather than by two that can drift.
+##
+## `record` is false on a rotation replay: the record is already in the store and
+## re-appending would grow it by one hole per camera turn, forever.
+func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
+		record: bool = true) -> String:
+	if _voxel_renderer == null:
+		return ""
+	var opening_id: String = _pick_glass_opening(grid_pos, level, wide)
+	if opening_id == "":
+		return ""
+	_voxel_renderer.claim_glass_opening(level, grid_pos, opening_id)
+	if record:
+		var base_xy := PerspectiveMapperClass.cell_to_base(
+			grid_pos, _active_perspective, _base_voxel_size())
+		_base_openings.append({"base": Vector3i(base_xy.x, base_xy.y, level), "wide": wide})
+	return opening_id
+
+
+## The pick itself, shared by the live claim and the rebuild replay so the two
+## cannot resolve a hole differently. Pure: same base key, same opening, forever.
+func _pick_glass_opening(grid_pos: Vector2i, level: int, wide: bool) -> String:
+	var base_xy := PerspectiveMapperClass.cell_to_base(
+		grid_pos, _active_perspective, _base_voxel_size())
+	return GlassOpening.pick("large" if wide else "small",
+		"%d,%d,%d" % [base_xy.x, base_xy.y, level])
+
+
+## CRACK-04 — re-claim every recorded hole's opening for the perspective just
+## entered, so a rebuilt hole keeps the shape it was opened with.
+##
+## ⚠️ IT APPLIES, IT DOES NOT CLAIM — AND IT RUNS AFTER `_reapply_base_damage()`.
+## The first version did the opposite of both, on the reasonable-sounding theory
+## that a rebuild re-erases the glass and the erase flush would consume a claim
+## the way the shot path's does. **Measured on the GLASS map, it does not:** a
+## rebuild constructs the geometry fresh from voxel state and a voxel already
+## DESTROYED is never PLACED, so nothing calls `erase_cell()`, nothing flags a
+## rim, and the flush ran with `dirty_levels=0`. The claim sat unused and the hole
+## came back a RECTANGLE — which also means CRACK-03's rim never survived a
+## rotation, before any of this.
+##
+## So the opening is applied directly, and after the damage is stamped, because
+## the walk reads the tilemap and needs the holes already in it. Same side of the
+## sequence as `_respawn_base_cracks()`, for the same reason.
+##
+## The opening id is re-derived rather than stored: `pick()` is pure in the base
+## key, so replaying the key reproduces the shape.
+func _respawn_base_openings() -> void:
+	if _base_openings.is_empty() or _voxel_renderer == null:
+		return
+	var base_size := _base_voxel_size()
+	var applied: int = 0
+	var cut: int = 0
+	for rec in _base_openings:
+		var key: Vector3i = rec["base"]
+		var vxy := PerspectiveMapperClass.cell_from_base(
+			Vector2i(key.x, key.y), _active_perspective, base_size)
+		var opening_id: String = _pick_glass_opening(vxy, key.z, bool(rec["wide"]))
+		if opening_id == "":
+			continue
+		var n: int = _voxel_renderer.apply_glass_opening_at(key.z, vxy, opening_id)
+		if n > 0:
+			applied += 1
+			cut += n
+	print_debug("[GLASS-OPENING] rebuilt %d of %d recorded hole(s), %d shard(s), perspective %s"
+		% [applied, _base_openings.size(), cut, _active_perspective])
 
 
 ## CRACK-02 S-3 — rebuild every crack sprite for the perspective just entered.
@@ -1021,6 +1112,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_soot_map.clear()           ## SS-1: the scorch store dies with the board too
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
 	_base_cracks.clear()        ## CRACK-02 S-3: and no glass has been crazed on it
+	_base_openings.clear()      ## CRACK-04: nor any hole opened in it
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
@@ -1800,6 +1892,10 @@ func _set_perspective(direction: String) -> void:
 		## geometry BEFORE the lighting rebuild, so the repaint sees the holes and
 		## soot in this view (build_from_layout rebuilt every Voxel intact).
 		_reapply_base_damage()
+		## CRACK-04 — and the shard rims around every recorded hole. AFTER the
+		## stamp, because the walk reads the tilemap; see its own note for why a
+		## rebuild cannot use the claim path the shot path uses.
+		_respawn_base_openings()
 		## CRACK-02 S-3 — and the webs, from the base-coord registry, on the
 		## geometry the line above just finished stamping.
 		_respawn_base_cracks()
@@ -5793,8 +5889,15 @@ func _capture_glass_crack_demo() -> void:
 					and v.damage_state != Voxel.DamageState.DESTROYED:
 				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 				holed += 1
+	## CRACK-04 — claim the opening BEFORE the dirty pass, exactly as the shot path
+	## does: that pass is what erases the glass, and the erase flush consumes the
+	## claim in the same call. Claiming after it would leave the demo's hole
+	## default-shaped while the real path's is picked — a demo that quietly differs
+	## from the build it exists to photograph.
+	var demo_opening: String = claim_glass_opening_for_hit(hit_gp, hit_level, wide)
 	await _voxel_renderer.process_dirty_async(_edge_registry)
-	print("[CRACK-DEMO] bore: %d voxel(s) destroyed through the real erase seam (G-D14)" % holed)
+	print("[CRACK-DEMO] bore: %d voxel(s) destroyed through the real erase seam (G-D14), opening=%s"
+		% [holed, demo_opening if demo_opening != "" else "(none)"])
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)

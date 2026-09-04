@@ -1287,6 +1287,69 @@ func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 		if r.refresh_glass_rims() != 0:
 			_fail("'%s': refresh_glass_rims re-cut with nothing dirty" % opening)
 
+		## ⚠️ THE REBUILD PATH MUST PRODUCE THE SAME BOARD AS THE SHOT PATH.
+		## There are two ways an opening reaches the tilemap — `claim` + the erase
+		## flush (a live shot) and `apply_glass_opening_at()` (a perspective flip or
+		## a load, where nothing is erased so nothing flags a rim). They were NOT
+		## equivalent when written: the rebuild claimed into a flush that never ran
+		## and the hole came back a rectangle, silently, for every opening. Two
+		## paths for one feature need the assertion that they agree.
+		var r2 = VoxelRendererClass.new()
+		r2._tileset = ts
+		for lvl2 in range(base, base + levels):
+			var l2 := TileMapLayer.new()
+			l2.tile_set = ts
+			for run2 in range(run0, run0 + runs):
+				l2.set_cell(Vector2i(run2, cross), 0, Vector2i.ZERO)
+			r2._glass_layers[lvl2] = l2
+		r2._glass_source_info[0] = {"material": "glass", "face": Face.SW, "mask": 0}
+		## Same holes, but erased WITHOUT flagging a rim — which is exactly what a
+		## rebuild looks like: the cells are simply never placed.
+		for dl2 in range(bounds.position.y, bounds.position.y + bounds.size.y):
+			for dr2 in range(bounds.position.x, bounds.position.x + bounds.size.x):
+				if GlassOpeningClass.coverage(opening, dr2, dl2) == GlassOpeningClass.Coverage.FULL:
+					(r2._glass_layers[hit_level + dl2] as TileMapLayer).erase_cell(
+						Vector2i(hit_run + dr2, cross))
+		var direct: int = r2.apply_glass_opening_at(hit_level, Vector2i(hit_run, cross), opening)
+		## ⚠️ COMPARE THE SHAPE, NOT THE SOURCE ID. The two renderers register their
+		## shard atoms into the same TileSet, so equivalent shards get DIFFERENT
+		## ids — `_next_free_tileset_source_id()` skips whatever is already there.
+		## The first version of this check compared ids and failed all twelve
+		## openings with identical counts on identical cells, which is the shape of
+		## a wrong instrument rather than a wrong build.
+		var mismatch: Array = []
+		for dl2 in range(bounds.position.y - 1, bounds.position.y + bounds.size.y + 1):
+			for dr2 in range(bounds.position.x - 1, bounds.position.x + bounds.size.x + 1):
+				var la := r._glass_layers.get(hit_level + dl2) as TileMapLayer
+				var lb := r2._glass_layers.get(hit_level + dl2) as TileMapLayer
+				if la == null or lb == null:
+					continue
+				var c := Vector2i(hit_run + dr2, cross)
+				var sa: int = la.get_cell_source_id(c)
+				var sb: int = lb.get_cell_source_id(c)
+				## Class first: empty / intact / shard.
+				var ca: int = 0 if sa == -1 else (1 if r._glass_source_info.has(sa) else 2)
+				var cb: int = 0 if sb == -1 else (1 if r2._glass_source_info.has(sb) else 2)
+				if ca != cb:
+					mismatch.append("(%d,%d) %d!=%d" % [dr2, dl2, ca, cb])
+					continue
+				if ca != 2:
+					continue
+				## Both shards — then the CUT must be pixel-identical.
+				var ia: Image = ((r._tileset.get_source(sa) as TileSetAtlasSource)
+					.texture as ImageTexture).get_image()
+				var ib: Image = ((r2._tileset.get_source(sb) as TileSetAtlasSource)
+					.texture as ImageTexture).get_image()
+				if not _same_alpha(ia, ib):
+					mismatch.append("(%d,%d) shape" % [dr2, dl2])
+		if mismatch.is_empty() and direct == swapped:
+			_pass("'%s': the rebuild path lands the same %d shard(s) on the same cells" % [opening, direct])
+		else:
+			_fail("'%s': rebuild cut %d vs shot %d; cells differing: %s"
+				% [opening, direct, swapped, ", ".join(mismatch) if not mismatch.is_empty() else "none"])
+		_free_glass_layers(r2)
+		r2.free()
+
 		_free_glass_layers(r)
 		r.free()
 	_pass("all %d openings survived the round with no idempotence failure" % GlassOpeningClass.ids().size())

@@ -362,6 +362,25 @@ static func mask_image(id: String) -> Dictionary:
 	return {"image": img, "origin": Vector2(lo.x, hi.y), "size": size}
 
 
+## Distance from `p` to the opening's BOUNDARY, in voxels. Positive either side —
+## the caller already knows which side it is on from `contains()`.
+##
+## Used to give a cut its FACET: the glass immediately outside the boundary is the
+## fractured thickness of the pane and must read as a different plane, not as more
+## of the same sheet.
+static func distance_to_edge(poly: PackedVector2Array, p: Vector2) -> float:
+	var best: float = INF
+	var n: int = poly.size()
+	for i in range(n):
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % n]
+		var ab: Vector2 = b - a
+		var len2: float = ab.length_squared()
+		var t: float = 0.0 if len2 < 0.000001 else clampf((p - a).dot(ab) / len2, 0.0, 1.0)
+		best = minf(best, (p - (a + ab * t)).length())
+	return best
+
+
 ## Is this point — in voxels from the struck cell's centre — inside the hole?
 ## The per-pixel test the atom cut runs.
 static func contains(poly: PackedVector2Array, p: Vector2) -> bool:

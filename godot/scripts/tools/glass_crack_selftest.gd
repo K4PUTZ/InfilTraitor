@@ -40,7 +40,9 @@
 ##       struck cell, a pooled id with no shape, a pick that stops hashing, or the
 ##       SHEET's void drifting from the voxel cut (G-D34's whole point).
 ##   [15] the applied hole drifting from the opening it claims to be — a cell cut
-##       that coverage() calls outside, or left whole that it calls PARTIAL.
+##       that coverage() calls outside, or left whole that it calls PARTIAL — and
+##       the shards NOT SURVIVING a later render pass, which is what kept
+##       CRACK-03's rim off the screen for its entire life.
 
 extends SceneTree
 
@@ -1320,10 +1322,30 @@ func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 			_fail("'%s': %d cell(s) disagree with coverage(): %s"
 				% [opening, wrong.size(), ", ".join(wrong)])
 
-		## A second refresh with nothing erased must do nothing — the cook erases
-		## cell by cell and this runs at every batch seam.
-		if r.refresh_glass_rims() != 0:
-			_fail("'%s': refresh_glass_rims re-cut with nothing dirty" % opening)
+		## ⚠️ AND THE SHARDS MUST SURVIVE A RE-RENDER. This is the assertion whose
+		## absence made CRACK-03 invisible for its whole life: the swap was correct,
+		## the atoms were correct, and the CRACKED ring that a hole always crazes
+		## re-placed those very cells with the intact atom a frame later. Measured
+		## on the real map before the fix — `refresh_glass_rims()` said 12 cells
+		## cut, the tilemap said 0.
+		##
+		## Simulated exactly as it happens: put the ORIGINAL source back on every
+		## shard cell (that is all a re-render does), then run the seam that is
+		## supposed to notice. Note it is run with NOTHING dirty, because the pass
+		## that overwrites a shard flags no erase at all — which is why the repair
+		## cannot live behind the dirty check.
+		var shard_cells: Array = r._glass_shard_cells.keys()
+		for k in shard_cells:
+			(r._glass_layers[k.z] as TileMapLayer).set_cell(Vector2i(k.x, k.y), 0, Vector2i.ZERO)
+		if r.count_glass_shards() != 0:
+			_fail("'%s': the re-render simulation did not actually clear the shards" % opening)
+		r.refresh_glass_rims()
+		if r.count_glass_shards() == shard_cells.size() and shard_cells.size() > 0:
+			_pass("'%s': all %d shard(s) survive a render pass that overwrote them"
+				% [opening, shard_cells.size()])
+		else:
+			_fail("'%s': %d of %d shard(s) came back after a re-render — the hole heals"
+				% [opening, r.count_glass_shards(), shard_cells.size()])
 
 		## ⚠️ THE REBUILD PATH MUST PRODUCE THE SAME BOARD AS THE SHOT PATH.
 		## There are two ways an opening reaches the tilemap — `claim` + the erase

@@ -5943,6 +5943,11 @@ func _capture_glass_crack_demo() -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_after.png" % [dir, tag])
 	print("[CRACK-DEMO] wrote glass_crack_demo_%s_{before,after}.png" % tag)
+	## ⚠️ THE BOARD, NOT THE COUNTER. `refresh_glass_rims()` reporting "12 cells
+	## cut" says the swap was ISSUED; this reads the tilemap back. The two
+	## disagreed for the whole life of CRACK-03 — 12 issued, 0 on the board.
+	print("[CRACK-DEMO] shards: registry=%d board=%d"
+		% [_voxel_renderer._glass_shard_cells.size(), _voxel_renderer.count_glass_shards()])
 
 	## G-D30 — ONE crack, ONE boot, three values of the dial. Separate boots would
 	## not answer the question: the pane, the light and the shot would all be the

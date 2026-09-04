@@ -218,9 +218,14 @@ func _composite(r, base: int) -> Image:
 	return canvas
 
 
-## Alpha-over `atom` onto `canvas`, repainting every covered pixel the SAME flat
-## colour. The atom's RGB carries the per-plane dim and the tint index; keeping
-## them would make the eye read lighting when the question is silhouette.
+## Alpha-over `atom` onto `canvas`, modulating the flat colour by the atom's RED
+## channel — the per-plane dim.
+##
+## ⚠️ IT USED TO FLATTEN THE RED AWAY, and that hid the thing this tool now exists
+## to show. Discarding the dim made the picture a pure SILHOUETTE, which was right
+## while the question was "what shape is the hole" and wrong the moment the
+## question became "can the topography be read at all" — the cut's own facet lives
+## entirely in that channel, so a flattened render would show none of it.
 func _blit_flat(canvas: Image, atom: Image, at: Vector2i) -> void:
 	for y in range(atom.get_height()):
 		for x in range(atom.get_width()):
@@ -231,8 +236,10 @@ func _blit_flat(canvas: Image, atom: Image, at: Vector2i) -> void:
 			var py: int = at.y + y
 			if px < 0 or py < 0 or px >= canvas.get_width() or py >= canvas.get_height():
 				continue
+			var dim: float = atom.get_pixel(x, y).r
 			var dst: Color = canvas.get_pixel(px, py)
-			canvas.set_pixel(px, py, dst.lerp(GLASS_FLAT, a))
+			canvas.set_pixel(px, py, dst.lerp(
+				Color(GLASS_FLAT.r * dim, GLASS_FLAT.g * dim, GLASS_FLAT.b * dim), a))
 
 
 func _free_layers(r) -> void:

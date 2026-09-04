@@ -877,6 +877,18 @@ var _glass_region_openings: Dictionary = {}
 ## Rasterised once per opening and shared by every crack that uses it: there are
 ## twelve of them and a map can have hundreds of holes.
 var _glass_opening_masks: Dictionary = {}
+## CRACK-04 — every cell that currently holds a SHARD, as Vector3i(cell, level) ->
+## the rim source id.
+##
+## ⚠️ CRACK-03 SHIPPED WITHOUT THIS AND THE RIM NEVER REACHED THE SCREEN. Its
+## commit celebrated needing "no registry, no dirty flags and no per-cell state",
+## and that is exactly why: the swap writes the shard onto the tilemap, and the
+## craze that follows a hole sets ~80 voxels around it to CRACKED, whose render
+## pass re-places those same cells with the intact atom. Measured 2026-09-04 on
+## the real map — `refresh_glass_rims()` reported **12 cells cut** and
+## `count_glass_shards()` read **0** on the board a frame later. A hole never
+## heals, so the shard is re-stamped at every batch seam until the cell is erased.
+var _glass_shard_cells: Dictionary = {}
 ## Back-compat alias — the SW main-only source id (diagnostics / selftest).
 var _glass_frosted_source_id: int = -1
 ## GLASS G1 GEOMETRY — how far the dim top/side slivers recede into the atom, as
@@ -886,8 +898,21 @@ const GLASS_FACE_SLIVER_FRAC: float = 0.55
 ## Dimness of the top and side face slivers (rides the atom's RED channel;
 ## glass_pane.gdshader multiplies by it). Director: *"diminuir o brilho das
 ## faces de topo e de lateral ... para diferenciar esses planos"*.
-const GLASS_DIM_TOP: float = 0.60
-const GLASS_DIM_SIDE: float = 0.78
+##
+## ⚠️ `static var` AND ENV-OVERRIDABLE SINCE 2026-09-04, because they are a LOOK
+## calibration the Director iterates on and a `const` cannot be swept. He could
+## not read the hole's topography — *"consegue criar mais contraste entre as
+## facetas, principalmente o lado interno (direito) dos voxels?"* — and the SIDE
+## sliver at 0.78 sits close enough to the main face's 1.0 that the two planes
+## barely separate.
+##
+## ⚠️ THE DIM IS BAKED INTO THE ATOM'S RED CHANNEL, so changing these needs the
+## atoms recomposed — it is not a shader uniform and a running scene will not
+## follow it. That is why the sweep is one boot per value.
+static var GLASS_DIM_TOP: float = float(OS.get_environment("INFILTRAITOR_GLASS_DIM_TOP")) \
+	if OS.get_environment("INFILTRAITOR_GLASS_DIM_TOP") != "" else 0.60
+static var GLASS_DIM_SIDE: float = float(OS.get_environment("INFILTRAITOR_GLASS_DIM_SIDE")) \
+	if OS.get_environment("INFILTRAITOR_GLASS_DIM_SIDE") != "" else 0.78
 ## The five calibration knobs the glass sublayer shaders expose, mirrored here so
 ## `set_glass_shader_param()` (the blind-strip capture action) can drive them and
 ## every freshly-built sublayer inherits the current value. Defaults match
@@ -2091,6 +2116,7 @@ func _build_voxel_tileset() -> void:
 	_glass_source_info.clear()
 	_glass_rim_sources.clear()
 	_glass_rim_dirty.clear()
+	_glass_shard_cells.clear()   ## CRACK-04 — a fresh board has no shards on it
 	var ok := true
 	var next_id: int = MATERIALS.size()
 	## G-D16 / V-B — B6 loud-fail BEFORE building anything: a roster larger than
@@ -2291,6 +2317,15 @@ static var GLASS_RIM_ENABLED: bool = OS.get_environment("INFILTRAITOR_GLASS_RIM"
 ## time the camera turns.
 static var GLASS_OPENING_DEFAULT: String = "star_deep"
 
+## CRACK-04 — the cut's facet: how wide the darkened band along the opening's edge
+## is, in VOXELS, and how dark it goes at the edge itself. Both are LOOK dials and
+## both are env-overridable, because the whole point of them is that the Director
+## can read the hole's topography and only he can say when he can.
+static var GLASS_CUT_FACET_WIDTH: float = float(OS.get_environment("INFILTRAITOR_GLASS_FACET_W")) \
+	if OS.get_environment("INFILTRAITOR_GLASS_FACET_W") != "" else 0.22
+static var GLASS_CUT_FACET_DIM: float = float(OS.get_environment("INFILTRAITOR_GLASS_FACET_DIM")) \
+	if OS.get_environment("INFILTRAITOR_GLASS_FACET_DIM") != "" else 0.30
+
 
 ## The shard atom for one (material, face, mask, opening, cell offset), composed
 ## and registered on first use. LAZY on purpose, and more so than before: the key
@@ -2355,8 +2390,52 @@ func _cut_glass_opening(atom: Image, opening_id: String, dr: int, dl: int, face:
 	var poly: PackedVector2Array = GlassOpening.polygon(opening_id)
 	if poly.is_empty():
 		return
+	var cell := Vector2(float(dr), float(dl))
 	_cut_glass_face_region(atom, face, func(off: Vector2) -> bool:
-		return GlassOpening.contains(poly, off + Vector2(float(dr), float(dl))))
+		return GlassOpening.contains(poly, off + cell))
+	_shade_glass_cut_facet(atom, poly, cell, face)
+
+
+## ── CRACK-04 — THE CUT'S OWN FACET ───────────────────────────────────────────
+##
+## (Director, 2026-09-04, on a capture where the hole still read as a square:
+## *"os voxels em si não tem recorte. Observe que eles precisaram de uma
+## adaptação nas facetas para ficarem nesse formato […] Não basta apenas recortar
+## o voxel."*)
+##
+## ⚠️ REMOVING ALPHA IS NOT A SHAPE, AND THAT IS THE WHOLE FINDING. A cut glass
+## voxel reveals whatever is behind it — on a two-pane window, more glass — so the
+## silhouette the cut makes has no edge for the eye to land on and the hole goes on
+## reading as the one fully-destroyed cell. Measured the same day from the other
+## direction: sweeping `GLASS_DIM_TOP`/`GLASS_DIM_SIDE` across their whole range
+## moved 17 296 px of the frame and **3.47% of a 40 px box around the bore**,
+## because the cells bordering a hole have no sliver to dim. There was no facet
+## there to make contrast with.
+##
+## So the glass immediately OUTSIDE the boundary — the pane's fractured thickness,
+## seen edge-on — is written dark, into the same RED channel the top and side
+## slivers already ride. No new render path, no new uniform: `glass_pane.gdshader`
+## multiplies by it exactly as it does for them.
+##
+## ⚠️ IT IS NOT G-D26'S MOLDURA. That rule bans a per-voxel change to a property
+## read CONTINUOUSLY across the pane, because the untouched neighbour then draws
+## the cell boundary. This band follows the CUT, not the cell: it exists only where
+## the opening's edge passes, is the same shade on both sides of any cell boundary
+## it crosses, and an uncut voxel has none of it at all.
+func _shade_glass_cut_facet(atom: Image, poly: PackedVector2Array, cell: Vector2,
+		face: int) -> void:
+	if GLASS_CUT_FACET_WIDTH <= 0.0:
+		return
+	_shade_glass_face_region(atom, face, func(off: Vector2) -> float:
+		var p: Vector2 = off + cell
+		if GlassOpening.contains(poly, p):
+			return -1.0    ## inside the hole — already cut away
+		var d: float = GlassOpening.distance_to_edge(poly, p)
+		if d > GLASS_CUT_FACET_WIDTH:
+			return -1.0
+		## Darkest at the very edge, easing back to the pane over the band, so the
+		## facet reads as a bevel rather than as a painted outline.
+		return lerpf(GLASS_CUT_FACET_DIM, 1.0, d / GLASS_CUT_FACET_WIDTH))
 
 
 ## Walk the main face's pixels, handing each one its offset in VOXELS from the
@@ -2399,6 +2478,49 @@ func _cut_glass_face_region(atom: Image, face: int, is_inside: Callable) -> void
 			var c := atom.get_pixel(x, y)
 			if c.a > 0.0:
 				atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
+
+
+## The same face walk as `_cut_glass_face_region()`, but writing the RED/GREEN
+## channels instead of clearing alpha. `shade` returns the dim to write, or a
+## negative to leave the pixel alone.
+##
+## ⚠️ RED AND GREEN TOGETHER. `_build_glass_pane_atom()` writes them identical and
+## the shader reads RED; GREEN is reserved and unread. Writing only one would work
+## today and diverge the day something starts reading the other.
+func _shade_glass_face_region(atom: Image, face: int, shade: Callable) -> void:
+	var w: int = atom.get_width()
+	var h: int = atom.get_height()
+	var vn := Vector2(16.0, 0.0)
+	var ve := Vector2(32.0, 8.0)
+	var vs := Vector2(16.0, 16.0)
+	var vw := Vector2(0.0, 8.0)
+	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
+	var ea: Vector2
+	var eb: Vector2
+	match face:
+		Face.SW: ea = vw; eb = vs
+		Face.SE: ea = ve; eb = vs
+		Face.NW: ea = vn; eb = vw
+		Face.NE: ea = vn; eb = ve
+		_: return
+	var e_u: Vector2 = eb - ea
+	var det: float = e_u.x * down.y - e_u.y * down.x
+	if absf(det) < 0.0001:
+		return
+	for y in range(h):
+		for x in range(w):
+			var px: Vector2 = Vector2(float(x) + 0.5, float(y) + 0.5) - ea
+			var u: float = (px.x * down.y - px.y * down.x) / det
+			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
+			if u < 0.0 or u > 1.0 or v < 0.0 or v > 1.0:
+				continue
+			var c := atom.get_pixel(x, y)
+			if c.a <= 0.0:
+				continue
+			var dim: float = shade.call(Vector2(u - 0.5, 0.5 - v))
+			if dim < 0.0:
+				continue
+			atom.set_pixel(x, y, Color(c.r * dim, c.g * dim, c.b, c.a))
 
 
 ## The next unused TileSet source id. The glass atoms take a contiguous run from
@@ -4752,6 +4874,26 @@ func set_glass_opening_void(enabled: bool) -> void:
 			sp.set_opening(null, Vector2.ZERO, Vector2.ONE)
 
 
+## CRACK-04 — how many glass cells currently hold a SHARD atom (a source the
+## `_glass_source_info` inverse does not know, which is what a rim swap writes).
+##
+## ⚠️ IT READS THE TILEMAP, not a counter kept alongside it. `refresh_glass_rims()`
+## reporting "12 cell(s) cut" says the swap was ISSUED; whether those cells still
+## hold the shard after the frame settles is a different question, and the only
+## instrument that can answer it is the board itself.
+func count_glass_shards() -> int:
+	var n: int = 0
+	for level in _glass_layers:
+		var layer := _glass_layers[level] as TileMapLayer
+		if layer == null:
+			continue
+		for cell in layer.get_used_cells():
+			var sid: int = layer.get_cell_source_id(cell)
+			if sid != -1 and not _glass_source_info.has(sid):
+				n += 1
+	return n
+
+
 ## How many crack sprites are live. Diagnostics and the selftest.
 func glass_crack_count() -> int:
 	return _glass_cracks.size()
@@ -4941,11 +5083,18 @@ func _glass_neighbour(cell: Vector2i, level: int, face: int, d: Vector2) -> Arra
 ## is a capture dial, not a play-path answer — a view-space pick would reshape a
 ## standing hole on every camera turn, which is the failure S-3 exists to prevent.
 func refresh_glass_rims() -> int:
+	## ⚠️ THE RE-STAMP RUNS EVEN WHEN NOTHING IS DIRTY, AND THAT IS THE WHOLE FIX.
+	## The pass that overwrites a shard is the CRACKED ring's own re-render, which
+	## flags no glass erase at all — so the seam that has to repair it is the one
+	## where nothing happened. Putting the re-stamp behind the early return left
+	## `registry=12 board=0` on the real map with the repair code already written
+	## and simply never reached.
+	var restamped: int = restamp_glass_shards()
 	if _glass_rim_dirty.is_empty():
-		return 0
+		return restamped
 	if not GLASS_RIM_ENABLED:
 		_glass_rim_dirty.clear()
-		return 0
+		return restamped
 
 	var regions: Array = _group_erased_into_regions()
 	_glass_rim_dirty.clear()
@@ -4965,7 +5114,45 @@ func refresh_glass_rims() -> int:
 	if swapped > 0:
 		print_debug("[GLASS-OPENING] %d region(s) [%s], %d cell(s) cut into shards"
 			% [regions.size(), ", ".join(applied), swapped])
-	return swapped
+	return swapped + restamped
+
+
+## Put every shard back that a render pass has overwritten. A hole never heals,
+## so this is idempotent by nature: a cell that still holds its shard costs one
+## comparison, and one that was erased leaves the registry for good.
+##
+## ⚠️ THIS IS THE HALF CRACK-03 WAS MISSING. Its swap was correct and its atoms
+## were correct; nothing kept them on the board once the CRACKED ring around the
+## hole re-rendered. Called from every seam `refresh_glass_rims()` is, so any pass
+## that re-places glass is followed by one that puts the shards back.
+func restamp_glass_shards() -> int:
+	if _glass_shard_cells.is_empty():
+		return 0
+	var gone: Array = []
+	var fixed: int = 0
+	for key in _glass_shard_cells:
+		var layer := _glass_layers.get(key.z) as TileMapLayer
+		if layer == null:
+			gone.append(key)
+			continue
+		var cell := Vector2i(key.x, key.y)
+		var sid: int = layer.get_cell_source_id(cell)
+		if sid == -1:
+			## The cell was destroyed outright since — it is a hole now, not a
+			## shard, and a hole is not something to restore.
+			gone.append(key)
+			continue
+		var want: int = int(_glass_shard_cells[key])
+		if sid == want:
+			continue
+		layer.set_cell(cell, want, Vector2i.ZERO, 0)
+		note_external_write(key.z, cell)
+		fixed += 1
+	for k in gone:
+		_glass_shard_cells.erase(k)
+	if fixed > 0:
+		print_debug("[GLASS-OPENING] re-stamped %d shard(s) a render pass had overwritten" % fixed)
+	return fixed
 
 
 ## Turn the batch's erased cells into regions to apply an opening around.
@@ -5123,6 +5310,7 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 				if rim_id < 0:
 					continue
 				layer.set_cell(cell, rim_id, Vector2i.ZERO, 0)
+				_glass_shard_cells[Vector3i(cell.x, cell.y, level)] = rim_id
 				note_external_write(level, cell)
 				swapped += 1
 	if unswallowed > 0:

@@ -407,7 +407,7 @@ func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
 		record: bool = true) -> String:
 	if _voxel_renderer == null:
 		return ""
-	var opening_id: String = _pick_glass_opening(grid_pos, level, wide)
+	var opening_id: String = glass_opening_for(grid_pos, level, wide)
 	if opening_id == "":
 		return ""
 	_voxel_renderer.claim_glass_opening(level, grid_pos, opening_id)
@@ -418,9 +418,11 @@ func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
 	return opening_id
 
 
-## The pick itself, shared by the live claim and the rebuild replay so the two
-## cannot resolve a hole differently. Pure: same base key, same opening, forever.
-func _pick_glass_opening(grid_pos: Vector2i, level: int, wide: bool) -> String:
+## The pick itself, shared by the live claim, the rebuild replay and the crack
+## sprite's void, so no two of them can resolve one hole differently. Pure: same
+## base key, same opening, forever — which is why callers RE-DERIVE it instead of
+## being handed it, and why nothing stores the id.
+func glass_opening_for(grid_pos: Vector2i, level: int, wide: bool) -> String:
 	var base_xy := PerspectiveMapperClass.cell_to_base(
 		grid_pos, _active_perspective, _base_voxel_size())
 	return GlassOpening.pick("large" if wide else "small",
@@ -456,7 +458,7 @@ func _respawn_base_openings() -> void:
 		var key: Vector3i = rec["base"]
 		var vxy := PerspectiveMapperClass.cell_from_base(
 			Vector2i(key.x, key.y), _active_perspective, base_size)
-		var opening_id: String = _pick_glass_opening(vxy, key.z, bool(rec["wide"]))
+		var opening_id: String = glass_opening_for(vxy, key.z, bool(rec["wide"]))
 		if opening_id == "":
 			continue
 		var n: int = _voxel_renderer.apply_glass_opening_at(key.z, vxy, opening_id)
@@ -516,12 +518,18 @@ func _respawn_base_cracks() -> void:
 			Vector2i(key.x, key.y), _active_perspective, base_size)
 		## The pane this cell belongs to, in THIS view.
 		var found_slice = null
+		## ⚠️ THE IMPACT VOXEL ITSELF IS KEPT, not just the slice it is in: whether
+		## it is DESTROYED is what decides if this crack has a hole under it, and
+		## therefore whether the sheet is cut. Losing that on a flip would put the
+		## sheet's whole centre back over an open hole.
+		var found_voxel: Voxel = null
 		for sl in all_slices:
 			if sl.pane_id == "" or sl.pane_id.begins_with("PANE_BLOCK_"):
 				continue
 			for v in sl.voxels:
 				if v.grid_pos == vxy and v.level == key.z:
 					found_slice = sl
+					found_voxel = v
 					break
 			if found_slice != null:
 				break
@@ -536,6 +544,11 @@ func _respawn_base_cracks() -> void:
 			continue
 		var plan: Dictionary = GlassCrack.plan_pane_crack(
 			by_pane[found_slice.pane_id], found_slice.face, vxy, key.z, bool(rec["wide"]))
+		## CRACK-04 — and the sheet's void, re-derived from the same base key that
+		## `_respawn_base_openings()` used moments ago, so the rebuilt sheet is cut
+		## to the very opening the rebuilt voxels were.
+		if found_voxel != null and found_voxel.damage_state == Voxel.DamageState.DESTROYED:
+			plan["opening"] = glass_opening_for(vxy, key.z, bool(rec["wide"]))
 		if _voxel_renderer.spawn_glass_crack(GlassCrack.sprite_spec(plan)) != 0:
 			rebuilt += 1
 		else:
@@ -5900,6 +5913,7 @@ func _capture_glass_crack_demo() -> void:
 		% [holed, demo_opening if demo_opening != "" else "(none)"])
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
+	plan["opening"] = demo_opening   ## CRACK-04 — the sheet's void, same polygon
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
 	if int(res["crack_id"]) != 0:
 		record_glass_crack_to_base(hit_gp, hit_level, wide)   ## CRACK-02 S-3
@@ -5934,6 +5948,17 @@ func _capture_glass_crack_demo() -> void:
 	## not answer the question: the pane, the light and the shot would all be the
 	## same by intent and different in fact, and the Director would be comparing
 	## three pictures instead of one decision.
+	## CRACK-04 — the void A/B, in ONE boot for the reason the cut triptych is.
+	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_VOID") == "1":
+		for on in [false, true]:
+			_voxel_renderer.set_glass_opening_void(on)
+			for _f in range(6):
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			var vname := "%s/glass_crack_void_%s_%s.png" % [dir, tag, "on" if on else "off"]
+			get_viewport().get_texture().get_image().save_png(vname)
+			print("[CRACK-DEMO] G-D34 opening void %s -> %s" % ["ON" if on else "OFF", vname.get_file()])
+
 	if cut_demo:
 		for cut in [0.0, 0.5, 1.0]:
 			_voxel_renderer.set_glass_crack_hole_cut(cut)

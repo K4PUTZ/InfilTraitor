@@ -95,6 +95,31 @@ uniform vec2 crack_occ_size = vec2(1.0);
 uniform vec2 crack_occ_origin = vec2(0.0);
 uniform float crack_hole_cut : hint_range(0.0, 1.0) = 1.0;
 
+// ── CRACK-04 / G-D34 — THE SHEET'S INNER VOID IS THE OPENING ────────────────
+//
+// (Director, 2026-09-04: *"o que realmente importa é o shape total do buraco
+// casar exatamente com o shape interno do decal, fazendo esse corte pra dentro,
+// em intrusão nas bordas dos voxels ao redor."*)
+//
+// `crack_opening` is the SAME polygon `GlassOpening` cuts the voxels with,
+// rasterised to an R8 mask in voxels from the impact — 1 inside the hole. The
+// equality the ruling asks for therefore holds by CONSTRUCTION rather than by
+// authoring: twelve openings against two fracture sheets would otherwise need
+// twenty-four hand-matched files, re-made every time a member joined the family.
+//
+// ⚠️ IT IS NOT THE OCCUPANCY, AND IT CANNOT BE. G-D30's occupancy is one texel
+// per CELL, so a cell that still holds a SHARD reads "glass present" and the
+// sheet paints over the part of it the opening cut away. The opening's edge is
+// sub-cell by definition — that is what "intrusão nas bordas dos voxels" means.
+//
+// hint_default_black: an unbound mask reads 0 everywhere = no void, which is the
+// correct behaviour for a crack with no hole under it (a pane that only crazed).
+// That is G-D33's rule falling out of the wiring instead of needing a branch:
+// **the sheet draws a centre exactly when the geometry has no hole to show.**
+uniform sampler2D crack_opening : filter_linear, repeat_disable, hint_default_black;
+uniform vec2 crack_opening_origin = vec2(0.0);
+uniform vec2 crack_opening_size = vec2(1.0);
+
 // G-D26 — ADDITIVE, and now additive by BLEND MODE rather than by arithmetic
 // inside someone else's shader. `blend_add` is `dst.rgb += src.rgb · src.a`, so
 // this is literally `lit + crack_colour · crack`: the glass behind is untouched,
@@ -133,6 +158,15 @@ void fragment() {
 	vec2 occ_uv = (vec2(off.x - crack_occ_origin.x, crack_occ_origin.y - off.y)
 			+ vec2(0.5)) / max(crack_occ_size, vec2(1.0));
 	ink *= mix(1.0, texture(crack_occupancy, occ_uv).r, crack_hole_cut);
+
+	// CRACK-04 — the opening's void. Same parameterisation as the occupancy
+	// above: `off` is voxels from the impact, the mask's origin is its top-left
+	// in that space and y runs DOWN in the image.
+	vec2 op_uv = vec2(off.x - crack_opening_origin.x, crack_opening_origin.y - off.y)
+			/ max(crack_opening_size, vec2(0.0001));
+	if (op_uv.x >= 0.0 && op_uv.x <= 1.0 && op_uv.y >= 0.0 && op_uv.y <= 1.0) {
+		ink *= 1.0 - texture(crack_opening, op_uv).r;
+	}
 
 	// G-D23's clamp, as a feather: the sheet does not repeat and does not mirror,
 	// it fades out at its own edge.

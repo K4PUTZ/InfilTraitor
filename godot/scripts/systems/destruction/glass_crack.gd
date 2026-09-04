@@ -143,6 +143,10 @@ static func sprite_spec(plan: Dictionary) -> Dictionary:
 		"span": sheet_span(bool(plan.get("wide", false))),
 		"pane_lo": plan["pane_lo"],
 		"pane_hi": plan["pane_hi"],
+		## CRACK-04 / G-D34 — the opening this hole was cut with, or "" when the
+		## round opened no hole at all. The sheet's inner void is cut from it, so
+		## the hole's shape and the decal's internal shape are the same polygon.
+		"opening": String(plan.get("opening", "")),
 	}
 
 

@@ -873,6 +873,10 @@ var _glass_rim_dirty: Dictionary = {}
 ## CRACK-04 — region anchor -> the opening claimed for it, consumed by the next
 ## `refresh_glass_rims()`. Empty is the normal case for the cook.
 var _glass_region_openings: Dictionary = {}
+## CRACK-04 — opening id -> { texture, origin, size } for the SHEET's void.
+## Rasterised once per opening and shared by every crack that uses it: there are
+## twelve of them and a map can have hundreds of holes.
+var _glass_opening_masks: Dictionary = {}
 ## Back-compat alias — the SW main-only source id (diagnostics / selftest).
 var _glass_frosted_source_id: int = -1
 ## GLASS G1 GEOMETRY — how far the dim top/side slivers recede into the atom, as
@@ -4686,11 +4690,66 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 		"pane_lo": spec["pane_lo"],
 		"pane_hi": spec["pane_hi"],
 		"sprite": sprite,
+		"opening": String(spec.get("opening", "")),
 	}
 	_glass_cracks.append(rec)
 	sprite.set_hole_cut(_glass_crack_hole_cut)
+	## CRACK-04 — the sheet's inner void IS the opening this hole was cut with.
+	## An empty id is the pane that only CRAZED: no hole, so no void, and the sheet
+	## keeps its whole centre. That is G-D33's rule arriving as a consequence of
+	## the wiring rather than as a branch someone has to remember to write.
+	var opening_id: String = String(spec.get("opening", ""))
+	if opening_id != "":
+		var m: Dictionary = _glass_opening_mask(opening_id)
+		if not m.is_empty():
+			sprite.set_opening(m["texture"], m["origin"], m["size"])
 	_build_crack_occupancy(rec)
 	return _glass_crack_next_id
+
+
+## The opening's void as a texture, built on first use and cached. The image
+## itself comes from `GlassOpening.mask_image()` — the SAME polygon the atoms are
+## cut with, which is what makes the sheet's void and the hole's edge one line
+## rather than two that have to be kept in agreement.
+func _glass_opening_mask(opening_id: String) -> Dictionary:
+	if _glass_opening_masks.has(opening_id):
+		return _glass_opening_masks[opening_id]
+	var m: Dictionary = GlassOpening.mask_image(opening_id)
+	if m.is_empty():
+		_glass_opening_masks[opening_id] = {}
+		return {}
+	var out := {
+		"texture": ImageTexture.create_from_image(m["image"]),
+		"origin": m["origin"],
+		"size": m["size"],
+	}
+	_glass_opening_masks[opening_id] = out
+	return out
+
+
+## CRACK-04 — bind or UNBIND every live crack's opening void, for a same-boot A/B.
+##
+## ⚠️ IT HAS TO BE ONE BOOT. Two boots of this map differ by tens of thousands of
+## pixels before anything glass-related changes (the agent's selection marker
+## alone was 27 336 px when the rim's A/B was measured), so a diff across boots
+## cannot see a void two voxels wide. Unbinding sets the shader's mask back to its
+## `hint_default_black` default, which reads as "no hole" — the same state a pane
+## that only crazed is in, so this exercises a real code path rather than a
+## capture-only one.
+func set_glass_opening_void(enabled: bool) -> void:
+	for c in _glass_cracks:
+		var sp = c["sprite"]
+		if sp == null or not is_instance_valid(sp):
+			continue
+		var oid: String = String(c.get("opening", ""))
+		if oid == "":
+			continue
+		if enabled:
+			var m: Dictionary = _glass_opening_mask(oid)
+			if not m.is_empty():
+				sp.set_opening(m["texture"], m["origin"], m["size"])
+		else:
+			sp.set_opening(null, Vector2.ZERO, Vector2.ONE)
 
 
 ## How many crack sprites are live. Diagnostics and the selftest.

@@ -989,6 +989,18 @@ func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 		pane_slices, hit_slice.face, hv.grid_pos, hv.level, wide)
 	if plan.cells.is_empty():
 		return
+	## CRACK-04 / G-D34 — the sheet's inner void is cut from the SAME opening the
+	## voxels were, so the hole's shape and the decal's internal shape are one
+	## polygon. Re-derived rather than threaded down: the pick is pure in the base
+	## key, so a parameter would only be a second copy of it.
+	##
+	## ⚠️ ONLY WHEN A HOLE EXISTS. On the two branches that reach here with the
+	## pane intact — a screen that stopped the round, a lost roll under the breach
+	## threshold — there is no hole, and the sheet must keep its whole centre.
+	## That is G-D33's rule ("the sheet draws a centre exactly when the geometry
+	## has no hole to show") arriving as a consequence rather than as a branch.
+	if hv.damage_state == Voxel.DamageState.DESTROYED:
+		plan["opening"] = room.glass_opening_for(hv.grid_pos, hv.level, wide)
 	var res: Dictionary = GlassCrack.apply(renderer, plan)
 	for v in res["voxels"]:
 		var pkey := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)

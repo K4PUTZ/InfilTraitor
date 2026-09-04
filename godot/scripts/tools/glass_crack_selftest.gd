@@ -37,7 +37,8 @@
 ##       from the atom key), a PARTIAL cell being cut away entirely, or the cut
 ##       eating the pane's slivers.
 ##   [16] the opening FAMILY going malformed — an opening that does not leave the
-##       struck cell, a pooled id with no shape, or a pick that stops hashing.
+##       struck cell, a pooled id with no shape, a pick that stops hashing, or the
+##       SHEET's void drifting from the voxel cut (G-D34's whole point).
 ##   [15] the applied hole drifting from the opening it claims to be — a cell cut
 ##       that coverage() calls outside, or left whole that it calls PARTIAL.
 
@@ -1169,6 +1170,43 @@ func test_the_opening_family_is_well_formed() -> void:
 		_pass("64 keys reached %d of the %d small openings" % [spread.size(), GlassOpeningClass.pool("small").size()])
 	else:
 		_fail("64 keys all resolved to one opening — the hash is not reaching the pool")
+
+	## ⚠️ THE SHEET'S VOID AND THE VOXEL CUT MUST BE ONE POLYGON (G-D34). They are
+	## consumed by different machines — `mask_image()` rasterises for the SHADER,
+	## `contains()` is called per atom pixel on the CPU — and "they both come from
+	## polygon()" is a claim about the code, not about the pixels. A transposed
+	## axis or an off-by-half origin in the mask would leave the hole and the
+	## decal's inner border describing two different shapes, which is the exact
+	## thing the Director's ruling is about.
+	var drift: Array = []
+	for id in GlassOpeningClass.ids():
+		var m: Dictionary = GlassOpeningClass.mask_image(id)
+		if m.is_empty():
+			drift.append("%s: no mask" % id)
+			continue
+		var img: Image = m["image"]
+		var origin: Vector2 = m["origin"]
+		var size: Vector2 = m["size"]
+		var poly: PackedVector2Array = GlassOpeningClass.polygon(id)
+		var wrong_texels: int = 0
+		var checked: int = 0
+		for ty in range(img.get_height()):
+			for tx in range(img.get_width()):
+				## Texel centre back to voxels — the inverse of what the shader does.
+				var pt := Vector2(
+					origin.x + (float(tx) + 0.5) / float(img.get_width()) * size.x,
+					origin.y - (float(ty) + 0.5) / float(img.get_height()) * size.y)
+				var in_mask: bool = img.get_pixel(tx, ty).r > 0.5
+				var in_poly: bool = GlassOpeningClass.contains(poly, pt)
+				checked += 1
+				if in_mask != in_poly:
+					wrong_texels += 1
+		if wrong_texels > 0:
+			drift.append("%s: %d/%d texels" % [id, wrong_texels, checked])
+	if drift.is_empty():
+		_pass("every opening's sheet mask agrees with its polygon texel for texel — one shape, two consumers")
+	else:
+		_fail("mask and polygon disagree: %s" % ", ".join(drift))
 
 	## An unknown size class must be loud, not silently substituted.
 	if GlassOpeningClass.pick("no_such_class", "k") == "":

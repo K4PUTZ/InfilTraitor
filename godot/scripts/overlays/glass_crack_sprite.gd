@@ -83,6 +83,19 @@ func set_occupancy(tex: Texture2D, size: Vector2, origin: Vector2) -> void:
 
 ## G-D30's dial, 0 (the web outlives the pane) .. 1 (the web lives only on glass
 ## that still exists). Continuous because the question it answers is fiction.
+## CRACK-04 / G-D34 — bind the opening's void. `origin`/`size` are in VOXELS from
+## the impact, the same space `set_occupancy()` uses. Leaving it unbound is the
+## correct state for a crack with no hole under it: the shader's mask defaults to
+## black, so the sheet keeps its whole centre.
+func set_opening(tex: Texture2D, origin: Vector2, size: Vector2) -> void:
+	var mat := material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("crack_opening", tex)
+	mat.set_shader_parameter("crack_opening_origin", origin)
+	mat.set_shader_parameter("crack_opening_size", size)
+
+
 func set_hole_cut(v: float) -> void:
 	var mat := material as ShaderMaterial
 	if mat == null:

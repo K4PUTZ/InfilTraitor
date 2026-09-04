@@ -312,6 +312,56 @@ static func coverage(id: String, dr: int, dl: int) -> Coverage:
 	return result
 
 
+## How finely an opening is rasterised for the SHEET's cut, in texels per voxel.
+## The sheet is continuous and the hole's edge is the thing the eye lands on, so
+## this is a look number, not a correctness one — but it must be fine enough that
+## the sheet's void edge reads as the same line the voxel shards cut, and the
+## voxel side works at roughly 32 x 20 atom pixels per voxel.
+const MASK_TEXELS_PER_VOXEL: int = 24
+## Slack around the polygon's own extent, in voxels, so the mask's border texels
+## are outside the shape and `filter_linear` has something to fade into.
+const MASK_PAD: float = 0.25
+
+
+## Rasterise an opening into an R8 image: 1 INSIDE the hole, 0 outside.
+##
+## ⚠️ THIS IS THE SAME POLYGON THE VOXELS ARE CUT WITH, AND THAT IS THE ENTIRE
+## POINT (Director, 2026-09-04: *"o que realmente importa é o shape total do
+## buraco casar exatamente com o shape interno do decal"*). Twelve openings and
+## two fracture sheets cannot be made equal by AUTHORING without twenty-four
+## files that would then have to be re-made every time a member is added. Cutting
+## the sheet at runtime from the opening makes the equality hold by construction
+## instead — one shape, read by the atom cut and by the sprite shader.
+##
+## Returns { image, origin, size } with origin/size in VOXELS from the impact, the
+## same space `glass_crack.gdshader` already works in for the occupancy.
+static func mask_image(id: String) -> Dictionary:
+	var poly: PackedVector2Array = polygon(id)
+	if poly.is_empty():
+		return {}
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for p in poly:
+		lo = lo.min(p)
+		hi = hi.max(p)
+	lo -= Vector2(MASK_PAD, MASK_PAD)
+	hi += Vector2(MASK_PAD, MASK_PAD)
+	var size: Vector2 = hi - lo
+	var w: int = maxi(2, int(ceil(size.x * float(MASK_TEXELS_PER_VOXEL))))
+	var h: int = maxi(2, int(ceil(size.y * float(MASK_TEXELS_PER_VOXEL))))
+	var img := Image.create(w, h, false, Image.FORMAT_R8)
+	for y in range(h):
+		for x in range(w):
+			## Texel centre -> voxels. `+y` here is the image's own DOWN; the
+			## shader flips it back, the same way it does for the occupancy.
+			var p := Vector2(
+				lo.x + (float(x) + 0.5) / float(w) * size.x,
+				hi.y - (float(y) + 0.5) / float(h) * size.y)
+			img.set_pixel(x, y, Color(1.0, 0.0, 0.0) if Geometry2D.is_point_in_polygon(p, poly)
+				else Color(0.0, 0.0, 0.0))
+	return {"image": img, "origin": Vector2(lo.x, hi.y), "size": size}
+
+
 ## Is this point — in voxels from the struck cell's centre — inside the hole?
 ## The per-pixel test the atom cut runs.
 static func contains(poly: PackedVector2Array, p: Vector2) -> bool:

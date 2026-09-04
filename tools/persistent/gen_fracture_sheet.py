@@ -28,7 +28,10 @@ breaking its own symmetry.
 
     python3 gen_fracture.py tight out.png [seed]
 """
+import argparse
+import io
 import math
+import zlib
 import random
 import sys
 
@@ -38,20 +41,33 @@ W, H = 1024, 512
 SS = 2                      # supersample, downsampled at the end for antialias
 VOXEL = 16                  # TEX_AUTHORING_N, pinned by ART_SPECIFICATIONS.md
 
-# G-D14 sizes the hole IN VOXELS, and it is the one number here that is
-# ratified rather than tuned: pistol / shotgun pellet destroy 1 voxel, and
-# rifle-class destroys 2-4 scaled by power (`hole_voxels` = 3.0, the middle,
-# ratified by the Director 2026-09-02). This is a DIAMETER. The engine picks how
-# many voxels actually die; the art only has to put the crush rim at the
-# matching radius, or a rifle hole reads as a pistol one.
+# ⚠️ THE HOLE IS NO LONGER A NUMBER HERE. It used to be `hole_voxels`, a DIAMETER
+# in voxels, and the art's job was to put a crush rim at the matching radius. Since
+# CRACK-04 the hole is an OPENING — a polygon from `GlassOpening`, twelve of them,
+# none of them round — so the sheet is generated FROM that polygon: every crack
+# starts on its boundary at its own angle, and the rim traces it.
+#
+# ⚠️ AND THE POLYGON IS NOT COPIED INTO THIS FILE. `glass_opening.gd` is the one
+# authority; `--openings` runs the dumper and reads it back, so a member retuned in
+# GDScript cannot leave the art describing a hole the engine no longer cuts.
+#
+# What is left here is DENSITY, per size class, scaled by the opening's own reach.
 PRESETS = {
-    "tight": dict(radials=11, reach=0.34, hole_voxels=1.0,
+    "small": dict(radials=11, reach=0.34,
                   waves=9, wave_ratio=1.30, wave_span=(1, 3), wave_falloff=0.55,
                   wave_start=1.55, slivers=9, stubs=90, specks=110, twins=2),
-    "wide":  dict(radials=15, reach=1.16, hole_voxels=3.0,
+    "large": dict(radials=15, reach=1.16,
                   waves=12, wave_ratio=1.28, wave_span=(1, 4), wave_falloff=0.70,
                   wave_start=2.30, slivers=16, stubs=170, specks=190, twins=4),
 }
+
+# How many voxels of PAGE per voxel of hole DIAMETER. Ratified by looking:
+# `SHEET_SCALE` 1.4 on the old (20 voxel page / 3.4 voxel hole) is ~8.2, and the
+# Director picked that from the 1.0 / 1.4 / 1.8 strip.
+SPAN_RATIO = 8.2
+
+# Variants per opening (Director, 2026-09-04: *"3 decals pra cada tipo de buraco"*).
+VARIANTS = 3
 
 # A crack runs STRAIGHT and changes direction only where it forks or kinks.
 # The wandering line of the first draft read as a root or a lightning bolt,
@@ -101,13 +117,41 @@ def _falloff_radius(rng, hole, limit):
     return rng.uniform(hole, limit * 0.4)
 
 
-def generate(width_name, seed=7):
-    p = PRESETS[width_name]
+def span_voxels(opening):
+    """The page's span in voxels for this opening — width, height (the page is 2:1).
+
+    Returned rather than assumed by the engine: the manifest carries it, so the
+    quad the sprite builds and the page the art was drawn on cannot disagree."""
+    d = opening["r_max"] * 2.0
+    return (d * SPAN_RATIO, d * SPAN_RATIO / 2.0)
+
+
+def generate(opening, seed=7):
+    p = PRESETS[opening["size"]]
     img = Image.new("L", (W * SS, H * SS), 0)
     d = ImageDraw.Draw(img)
     rng = random.Random(seed)
     cx, cy = W * SS / 2.0, H * SS / 2.0
-    hole = p["hole_voxels"] / 2.0 * VOXEL * SS          # RADIUS, in page pixels
+
+    # Voxels -> page pixels. The page spans `span_x` voxels across its full width.
+    span_x, _span_y = span_voxels(opening)
+    px_per_voxel = (W * SS) / span_x
+    radii = opening["radii"]
+    n_r = len(radii)
+
+    def hole_at(ang):
+        """The opening's boundary along `ang`, in page pixels. This replaces the
+        single `hole` radius: a crack starts where the glass actually ends."""
+        t = (ang % (2.0 * math.pi)) / (2.0 * math.pi) * n_r
+        i0 = int(t) % n_r
+        i1 = (i0 + 1) % n_r
+        f = t - int(t)
+        return (radii[i0] * (1.0 - f) + radii[i1] * f) * px_per_voxel
+
+    # A representative radius, for the routines that want one scalar (the speck
+    # and stub falloffs). The MEAN, not the max: the max is one spike's tip and
+    # would push every speck out past the whole web.
+    hole = (sum(radii) / float(n_r)) * px_per_voxel
 
     # The radial run reaches a page CORNER at 1.0, so reach > 1 clips at the
     # edges instead of stopping short of them.
@@ -131,7 +175,8 @@ def generate(width_name, seed=7):
     #    same weight reads as a wheel, not as a break.
     paths = []
     for a in angs:
-        pts, _ = _walk(rng, cx + math.cos(a) * hole, cy + math.sin(a) * hole, a,
+        h_a = hole_at(a)
+        pts, _ = _walk(rng, cx + math.cos(a) * h_a, cy + math.sin(a) * h_a, a,
                        length * rng.uniform(0.35, 1.0))
         paths.append(pts)
 
@@ -146,8 +191,9 @@ def generate(width_name, seed=7):
         # the sliver between them opens into a huge grey WEDGE — the v4 slab
         # defect coming back through a different door. A twin is a SHORT mark.
         twin_len = length * rng.uniform(0.16, 0.34)
-        pts, _ = _walk(rng, cx + math.cos(a) * hole * rng.uniform(1.0, 1.6),
-                       cy + math.sin(a) * hole * rng.uniform(1.0, 1.6), a, twin_len)
+        h_t = hole_at(a) * rng.uniform(1.0, 1.6)
+        pts, _ = _walk(rng, cx + math.cos(a) * h_t,
+                       cy + math.sin(a) * h_t, a, twin_len)
         base = [q for (q, t) in paths[i] if t <= twin_len / length]
         n = min(len(pts), len(base))
         if n >= 3:
@@ -242,24 +288,98 @@ def generate(width_name, seed=7):
     # 5. THE HOLE. The impact voxel is DESTROYED by G3 and stops rendering
     #    (order section 1.2), so what has to read is the crush RIM around it:
     #    a bright ragged lip, with the bore itself black.
-    for _ in range(int(150 * p["hole_voxels"])):
+    for _ in range(int(150 * opening["r_max"] * 2.0)):
         a = rng.uniform(0, 2 * math.pi)
-        r0 = hole * rng.uniform(0.95, 1.12)
-        r1 = r0 + hole * rng.uniform(0.15, 0.75)
+        h_s = hole_at(a)
+        r0 = h_s * rng.uniform(0.95, 1.12)
+        r1 = r0 + h_s * rng.uniform(0.15, 0.75)
         d.line([(cx + math.cos(a) * r0, cy + math.sin(a) * r0),
                 (cx + math.cos(a) * r1, cy + math.sin(a) * r1)],
                fill=rng.randint(190, 255), width=max(1, int(1.4 * SS)))
-    d.ellipse([cx - hole * 1.08, cy - hole * 1.08, cx + hole * 1.08, cy + hole * 1.08],
-              outline=255, width=max(1, int(2.2 * SS)))
-    d.ellipse([cx - hole, cy - hole, cx + hole, cy + hole], fill=0)
+    # ⚠️ THE RIM IS THE OPENING'S OWN OUTLINE, NOT A CIRCLE. Drawing an ellipse
+    # here was right while the hole was round; against a star or a chunk it left a
+    # bright ring floating across the void with the glass nowhere near it.
+    ring = [(cx + math.cos(2.0 * math.pi * i / 360.0) * hole_at(2.0 * math.pi * i / 360.0) * 1.08,
+             cy + math.sin(2.0 * math.pi * i / 360.0) * hole_at(2.0 * math.pi * i / 360.0) * 1.08)
+            for i in range(360)]
+    d.line(ring + [ring[0]], fill=255, width=max(1, int(2.2 * SS)))
+    # ...and the void itself, so no ink survives where the engine will cut anyway.
+    d.polygon([(cx + math.cos(2.0 * math.pi * i / 360.0) * hole_at(2.0 * math.pi * i / 360.0),
+                cy + math.sin(2.0 * math.pi * i / 360.0) * hole_at(2.0 * math.pi * i / 360.0))
+               for i in range(360)], fill=0)
 
     img = img.filter(ImageFilter.GaussianBlur(0.55 * SS))
     img = img.resize((W, H), Image.LANCZOS)
     return img.convert("RGB")          # R == G == B, invariant B2
 
 
+GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
+DUMPER = "godot/scripts/tools/dump_glass_openings.gd"
+
+
+def load_openings(project_root):
+    """Ask `glass_opening.gd` for the family. See the note on PRESETS: this is the
+    reason the polygons are not duplicated here."""
+    import json
+    import subprocess
+    r = subprocess.run([GODOT, "--headless", "--path", project_root, "--script", DUMPER],
+                       capture_output=True, text=True)
+    for line in r.stdout.splitlines():
+        line = line.strip()
+        if line.startswith("{") and '"openings"' in line:
+            return json.load(io.StringIO(line))["openings"]
+    raise SystemExit("could not read the opening family from Godot:\n" + r.stdout + r.stderr)
+
+
 if __name__ == "__main__":
-    kind, out = sys.argv[1], sys.argv[2]
-    s = int(sys.argv[3]) if len(sys.argv) > 3 else 7
-    generate(kind, s).save(out)
-    print("wrote %s (%s, seed %d)" % (out, kind, s))
+    import io
+    import json
+    import os
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--all", action="store_true",
+                    help="generate every opening x variant, plus the manifest")
+    ap.add_argument("--out-dir", default="ASSETS/materials/glass",
+                    help="where the sheets and the manifest are written")
+    ap.add_argument("--project", default=".", help="Godot project root")
+    ap.add_argument("--only", default="", help="one opening id, for a quick look")
+    args = ap.parse_args()
+
+    if not args.all and not args.only:
+        ap.error("nothing to do — pass --all, or --only <opening>")
+
+    openings = load_openings(args.project)
+    if args.only:
+        openings = [o for o in openings if o["id"] == args.only]
+        if not openings:
+            raise SystemExit("no such opening: %s" % args.only)
+
+    os.makedirs(args.out_dir, exist_ok=True)
+    manifest = {}
+    for o in openings:
+        sx, sy = span_voxels(o)
+        entries = []
+        for v in range(VARIANTS):
+            name = "fracture_glass_%s_%d.png" % (o["id"], v)
+            # ⚠️ THE SEED IS DERIVED FROM THE ID, not from a counter: re-running
+            # this for one opening must reproduce that opening's sheets and touch
+            # no other, and a global counter would reshuffle every file after it.
+            #
+            # ⚠️ AND IT IS CRC32, NOT `hash()`. Python randomises string hashing
+            # per PROCESS unless PYTHONHASHSEED is pinned, so the first version of
+            # this line produced DIFFERENT ART ON EVERY RUN — caught by asking the
+            # same expression twice in two interpreters (21240, then 67843). An
+            # asset generator that cannot reproduce its own output is the B4
+            # determinism failure this project bans, arriving through the standard
+            # library's front door.
+            seed = (zlib.crc32(o["id"].encode()) % 100000) * 10 + v
+            generate(o, seed).save(os.path.join(args.out_dir, name))
+            entries.append(name)
+            print("wrote %s (seed %d, span %.1f x %.1f voxels)" % (name, seed, sx, sy))
+        manifest[o["id"]] = {"span": [round(sx, 3), round(sy, 3)], "sheets": entries}
+
+    if args.all:
+        mpath = os.path.join(args.out_dir, "fracture_manifest.json")
+        with open(mpath, "w") as f:
+            json.dump({"variants": VARIANTS, "openings": manifest}, f, indent=1, sort_keys=True)
+        print("wrote %s (%d openings x %d variants)" % (mpath, len(manifest), VARIANTS))

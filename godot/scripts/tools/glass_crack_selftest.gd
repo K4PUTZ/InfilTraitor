@@ -654,6 +654,43 @@ func test_the_sprite_transform_lands_on_the_voxels() -> void:
 		print("")
 		return
 
+	## ⚠️ A SECOND INSTRUMENT, BECAUSE THE REST OF THIS TEST CANNOT SEE THE BUG IT
+	## WAS WRITTEN AFTER. Everything below compares the sprite's transform against
+	## `glass_cell_face_pos()` — the same function that builds it — so it reported
+	## 0.00000 px while the sheet sat HALF A RUN STEP right of the hole, for the
+	## whole life of `GLASS_CRACK_FACE_CENTRE = (0, -6)`. The centre is a claim
+	## about the ATOM, so the atom is what has to answer it: compose a main-face-
+	## only glass atom and take the centroid of the pixels it actually drew.
+	var probe = VoxelRendererClass.new()
+	var centre_drift: Array = []
+	for f in [Face.SW, Face.SE, Face.NW, Face.NE]:
+		var atom: Image = probe._build_glass_pane_atom(f, false, false, 0)
+		if atom == null:
+			centre_drift.append("face %d: no atom" % f)
+			continue
+		var sx: float = 0.0
+		var sy: float = 0.0
+		var n: int = 0
+		for y in range(atom.get_height()):
+			for x in range(atom.get_width()):
+				if atom.get_pixel(x, y).a > 0.5:
+					sx += float(x) + 0.5
+					sy += float(y) + 0.5
+					n += 1
+		if n == 0:
+			centre_drift.append("face %d: empty atom" % f)
+			continue
+		## `map_to_local`'s own atom reference, the point the offset is added to.
+		var measured := Vector2(sx / float(n), sy / float(n)) - Vector2(16.0, 28.0)
+		var declared: Vector2 = VoxelRendererClass.glass_crack_face_centre(f)
+		if measured.distance_to(declared) > 1.0:
+			centre_drift.append("face %d: atom says %s, code says %s" % [f, measured, declared])
+	probe.free()
+	if centre_drift.is_empty():
+		_pass("the face centre matches the atom's own drawn pixels on all 4 faces (within 1 px)")
+	else:
+		_fail("face centre disagrees with the composed atom: %s" % ", ".join(centre_drift))
+
 	var mock := MockRenderer.new()
 	var base: int = GeometryCoordsClass.storey_level_base(0)
 	var origin_cell := Vector2i(112, 87)

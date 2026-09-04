@@ -4813,10 +4813,11 @@ func _glass_crack_sheet(opening_id: String, variant: int) -> Texture2D:
 ## Uses the level's own glass layer when it exists (its position already carries
 ## the per-level VOXEL_STEP_PX offset); falls back to the same formula
 ## `_build_glass_sublayer_node()` uses, so a level with no layer yet still answers.
-func glass_cell_face_pos(level: int, cell: Vector2i) -> Vector2:
+func glass_cell_face_pos(level: int, cell: Vector2i, face: int = Face.SW) -> Vector2:
+	var centre: Vector2 = glass_crack_face_centre(face)
 	var layer := _glass_layers.get(level) as TileMapLayer
 	if layer != null:
-		return layer.position + layer.map_to_local(cell) + GLASS_CRACK_FACE_CENTRE
+		return layer.position + layer.map_to_local(cell) + centre
 	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
 	var origin := Vector2(
 		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
@@ -4824,15 +4825,44 @@ func glass_cell_face_pos(level: int, cell: Vector2i) -> Vector2:
 			- GeometryCoords.VOXEL_STEP_PX * float(relative_level(level)))
 	## map_to_local's basis, written out (e1 = (16, 8), e2 = (-16, 8)).
 	return origin + Vector2(float(cell.x - cell.y) * 16.0, float(cell.x + cell.y) * 8.0) \
-		+ GLASS_CRACK_FACE_CENTRE
+		+ centre
 
 
-## From `map_to_local(cell)` to the centre of the voxel's MAIN FACE, which is
-## where a crack radiates from. Derived, not nudged: the quad's top-left is
-## `map_to_local(cell) + (-16, -28)` (voxel_face_shading's own note) and the main
-## face occupies atom rows 8..36 of the 32x36 quad, so its centre is
-## `top_left + (16, 22)` = `map_to_local(cell) + (0, -6)`.
-const GLASS_CRACK_FACE_CENTRE: Vector2 = Vector2(0.0, -6.0)
+## From `map_to_local(cell)` to the centre of the voxel's MAIN FACE — the point a
+## crack radiates from, and the point the OPENING is centred on.
+##
+## ⚠️ IT IS PER FACE, AND IT WAS A SINGLE CONSTANT `(0, -6)` UNTIL 2026-09-04.
+## The old derivation took the quad's own centre in x: *"the main face occupies
+## atom rows 8..36 of the 32x36 quad, so its centre is top_left + (16, 22)"*. The
+## rows were right and the column was not — a face occupies HALF the quad's width,
+## because its diamond edge runs from one vertex to the next. For SW that is
+## `vw -> vs`, x 0..16, so the centre is at atom x=8 and the constant put the
+## sheet **8 px to the right of the hole** — half a run step, on every crack in
+## the game, forever. The Director found it by outlining the two shapes on one
+## frame (red the voxels, yellow the decal) once they were finally the same
+## polygon and any difference had to be a coordinate error.
+##
+## Derived from the SAME `ea`/`eb`/`down` the atom builder composes the face from,
+## so the two cannot disagree:
+##   SW (-8, -6)   SE (+8, -6)   NW (-8, -14)   NE (+8, -14)
+static func glass_crack_face_centre(face: int) -> Vector2:
+	var vn := Vector2(16.0, 0.0)
+	var ve := Vector2(32.0, 8.0)
+	var vs := Vector2(16.0, 16.0)
+	var vw := Vector2(0.0, 8.0)
+	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
+	var ea: Vector2
+	var eb: Vector2
+	match face:
+		Face.SW: ea = vw; eb = vs
+		Face.SE: ea = ve; eb = vs
+		Face.NW: ea = vn; eb = vw
+		Face.NE: ea = vn; eb = ve
+		_: return Vector2.ZERO
+	## The parallelogram's centroid, minus `map_to_local`'s own atom reference
+	## (16, 28) — the offset the caller adds it to.
+	var centroid: Vector2 = (ea + eb + (eb + down) + (ea + down)) * 0.25
+	return centroid - Vector2(16.0, 28.0)
 
 
 ## G-D24's test, now GEOMETRIC (§13.1 — the one piece of CRACK-01 that had to be
@@ -4881,7 +4911,8 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 		return 0
 	var sprite := GlassCrackSpriteClass.new()
 	sprite.setup(sheet, spec["span"],
-		glass_cell_face_pos(int(spec["impact_level"]), spec["impact_cell"]),
+		glass_cell_face_pos(int(spec["impact_level"]), spec["impact_cell"],
+			int(spec.get("face", Face.SW))),
 		int(spec["run_axis"]), spec["pane_lo"], spec["pane_hi"], _glass_crack_shader)
 	_ensure_glass_crack_root().add_child(sprite)
 	_glass_crack_next_id += 1

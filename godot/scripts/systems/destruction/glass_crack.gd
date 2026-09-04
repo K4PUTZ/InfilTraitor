@@ -196,6 +196,11 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 	return {
 		"cells": cells,
 		"run_axis": 0 if run_is_x else 1,
+		## ⚠️ THE FACE, NOT JUST THE RUN AXIS. `run_axis` collapses SW with NE and
+		## SE with NW, and the point a crack radiates from — the centre of the
+		## voxel's visible face — differs between the members of each pair. It was
+		## dropped here and the renderer used one constant for all four.
+		"face": face,
 		"impact_run": impact_run,
 		"hit_cell": hit_grid_pos,
 		"hit_level": hit_level,
@@ -221,6 +226,7 @@ static func sprite_spec(plan: Dictionary) -> Dictionary:
 		"impact_run": int(plan["impact_run"]),
 		"impact_level": int(plan["hit_level"]),
 		"impact_cell": plan["hit_cell"],
+		"face": int(plan.get("face", 0)),
 		"radius": plan["radius"],
 		"span": sheet_span_for(String(plan.get("opening", "")), bool(plan.get("wide", false))),
 		"variant": int(plan.get("variant", 0)),

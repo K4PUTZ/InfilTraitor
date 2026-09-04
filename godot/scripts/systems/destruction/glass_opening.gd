@@ -207,7 +207,16 @@ static func pool(size_class: String) -> Array:
 ## ⚠️ B4: FNV-1a, the project's one hash, never `randf()`. Returns "" when the
 ## class is unknown, and the caller must treat that as the error it is rather
 ## than substituting a default.
+## ⚠️ CAPTURE-ONLY OVERRIDE. `INFILTRAITOR_GLASS_OPENING=<id>` forces every hole
+## to one member, so the family can be photographed on the REAL map one shape at a
+## time. Never on the play path — the whole point of `pick()` is that a map does
+## not repeat itself.
+static var FORCE: String = OS.get_environment("INFILTRAITOR_GLASS_OPENING")
+
+
 static func pick(size_class: String, base_key: String) -> String:
+	if FORCE != "" and FAMILY.has(FORCE):
+		return FORCE
 	var p: Array = pool(size_class)
 	if p.is_empty():
 		push_error("[GlassOpening] unknown size class '%s' — no opening picked" % size_class)

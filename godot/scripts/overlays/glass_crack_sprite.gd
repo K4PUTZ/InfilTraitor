@@ -65,6 +65,12 @@ func setup(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int,
 	mat.set_shader_parameter("crack_span", span)
 	mat.set_shader_parameter("crack_pane_lo", pane_lo - Vector2(PANE_CLIP_SLACK, PANE_CLIP_SLACK))
 	mat.set_shader_parameter("crack_pane_hi", pane_hi + Vector2(PANE_CLIP_SLACK, PANE_CLIP_SLACK))
+	## ⚠️ THE OPACITY IS A DIRECTOR DIAL AND IT MOVED TWICE ALREADY (90% then 80%,
+	## 2026-09-02). `INFILTRAITOR_GLASS_CRACK_OPACITY` overrides the shader default
+	## so a sweep is one boot per value instead of an edit per value.
+	var env := OS.get_environment("INFILTRAITOR_GLASS_CRACK_OPACITY")
+	if env != "":
+		mat.set_shader_parameter("crack_opacity", clampf(float(env), 0.0, 1.0))
 	material = mat
 
 

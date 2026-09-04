@@ -5903,15 +5903,41 @@ func _capture_glass_crack_demo() -> void:
 	## a pistol and 6 for an assault rifle. The demo only needs a bore of the right
 	## order for the cut to have something to act on.
 	var cut_demo := OS.get_environment("INFILTRAITOR_CRACK_DEMO_CUT") == "1"
-	var bore: int = 1 if wide else 0
+	## CRACK-04 — the demo destroys exactly what the OPENING swallows whole, which
+	## is the part destruction owns on the real path.
+	##
+	## ⚠️ IT USED TO PUNCH A FIXED BORE (1 voxel tight, 3x3 wide) whatever the
+	## opening was, and that is not a smaller version of the truth — it is a
+	## different picture. A large member covers cells the bore never touched, the
+	## renderer REFUSES to erase them (destruction is the one authority on voxel
+	## existence) and warns, so half the family photographed with standing glass
+	## sitting inside its own hole. The demo has to play destruction's part
+	## properly, exactly as the atom harness already does.
+	var demo_opening_pre: String = glass_opening_for(hit_gp, hit_level, wide)
+	var ob: Rect2i = GlassOpening.cell_bounds(demo_opening_pre)
 	var holed: int = 0
 	for s2 in pane_slices:
 		for v in s2.voxels:
+			if v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
 			var r2: int = v.grid_pos.x if run_is_x else v.grid_pos.y
-			if absi(r2 - hit_run) <= bore and absi(v.level - hit_level) <= bore \
-					and v.damage_state != Voxel.DamageState.DESTROYED:
-				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-				holed += 1
+			var dr2: int = r2 - hit_run
+			var dl2: int = v.level - hit_level
+			if dr2 < ob.position.x or dr2 >= ob.position.x + ob.size.x \
+					or dl2 < ob.position.y or dl2 >= ob.position.y + ob.size.y:
+				continue
+			if GlassOpening.coverage(demo_opening_pre, dr2, dl2) != GlassOpening.Coverage.FULL:
+				continue
+			v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+			holed += 1
+	## A small opening can swallow nothing whole; the struck cell still goes.
+	if holed == 0:
+		for s2 in pane_slices:
+			for v in s2.voxels:
+				if v.grid_pos == hit_gp and v.level == hit_level \
+						and v.damage_state != Voxel.DamageState.DESTROYED:
+					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+					holed += 1
 	## CRACK-04 — claim the opening BEFORE the dirty pass, exactly as the shot path
 	## does: that pass is what erases the glass, and the erase flush consumes the
 	## claim in the same call. Claiming after it would leave the demo's hole

@@ -56,6 +56,7 @@ const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coord
 const GlassOpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 
 const CRACK_DECAL_TEMPLATE := "res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"
+## ⛔ The RETIRED round-hole pair, kept only so [3] can assert they are GONE.
 const FRACTURE_TEMPLATE := "res://ASSETS/materials/glass/fracture_glass_%s.png"
 
 var passed: int = 0
@@ -215,7 +216,7 @@ func test_glass_has_no_crack_decal_family() -> void:
 ## and gated by check_decal.py already; pinned here so the suite that grows to
 ## test the crack RENDER fails loudly if its texture source vanishes.
 func test_the_fracture_sheets_are_the_cracked_art() -> void:
-	print("[3] the two fracture sheets exist, import, and match the span they are drawn at\n")
+	print("[3] every (opening x variant) sheet exists, imports, and matches its span\n")
 
 	if Array(GlassMaterialsClass.FRACTURE_WIDTHS) == ["tight", "wide"]:
 		_pass("GlassMaterials.FRACTURE_WIDTHS is [tight, wide] (G-D14's two hole sizes)")
@@ -223,42 +224,75 @@ func test_the_fracture_sheets_are_the_cracked_art() -> void:
 		_fail("GlassMaterials.FRACTURE_WIDTHS is %s — the crack keys the sheet on exactly tight/wide"
 			% str(GlassMaterialsClass.FRACTURE_WIDTHS))
 
-	var tid: String = GlassMaterialsClass.fracture_texture_id("glass", "tight")
-	if tid == "fracture_glass_tight":
-		_pass("fracture_texture_id(glass, tight) == '%s'" % tid)
-	else:
-		_fail("fracture_texture_id(glass, tight) == '%s', expected fracture_glass_tight" % tid)
+	## ⛔ `fracture_glass_{tight,wide}` ARE RETIRED (CRACK-04). They drew a ROUND
+	## hole and no member of the opening family is round. What has to exist now is
+	## one sheet per (opening, variant), and the CONTRACT is that the manifest and
+	## the files agree — a manifest naming a sheet nobody generated resolves to
+	## `load() == null` and a crack that silently does not draw.
+	var mf := FileAccess.open("res://ASSETS/materials/glass/fracture_manifest.json",
+		FileAccess.READ)
+	if mf == null:
+		_fail("fracture_manifest.json is missing — run tools/persistent/gen_fracture_sheet.py --all")
+		print("")
+		return
+	var manifest = JSON.parse_string(mf.get_as_text())
+	mf.close()
+	if typeof(manifest) != TYPE_DICTIONARY or not manifest.has("openings"):
+		_fail("fracture_manifest.json is not the expected shape")
+		print("")
+		return
 
-	for width in ["tight", "wide"]:
-		var path: String = FRACTURE_TEMPLATE % width
-		var import_path: String = path + ".import"
-		if not FileAccess.file_exists(path):
-			_fail("%s is missing — the crack sprite has no texture for '%s'" % [path, width])
-		elif not FileAccess.file_exists(import_path):
-			_fail("%s has no .import sidecar — Godot has not imported it, so it hard-errors at boot (B6)" % path)
-		else:
+	## ⚠️ EVERY OPENING IN THE FAMILY, not every opening in the manifest. Reading
+	## the manifest's own key list would pass for a manifest that simply forgot a
+	## member — the family is the authority on which sheets must exist.
+	var missing: Array = []
+	var bad_aspect: Array = []
+	var checked: int = 0
+	for id in GlassOpeningClass.ids():
+		if not manifest["openings"].has(id):
+			missing.append("%s (no manifest row)" % id)
+			continue
+		var span_arr: Array = manifest["openings"][id].get("span", [])
+		for v in range(int(manifest.get("variants", 3))):
+			var path: String = GlassCrackClass.sheet_path(id, v)
+			if path == "" or not FileAccess.file_exists(path):
+				missing.append("%s v%d" % [id, v])
+				continue
+			if not FileAccess.file_exists(path + ".import"):
+				missing.append("%s v%d (no .import sidecar — hard-errors at boot, B6)" % [id, v])
+				continue
 			var tex := load(path) as Texture2D
 			if tex == null:
-				_fail("%s did not load as a Texture2D — the import is broken" % path)
-			else:
-				## ⚠️ NO PIXEL-SIZE CONTRACT SINCE CRACK-02 (§13.3). The sheet is a
-				## SPRITE's texture scaled to GlassCrack.SHEET_SPAN_*, so its
-				## dimensions are resolution, not geometry; `check_decal.py` owns
-				## the art gate (aspect, ink, origin) and pinning 1024x512 here
-				## would reject good free-size art from the other side.
-				## What still matters at RUNTIME is that it is not degenerate.
+				missing.append("%s v%d (did not load)" % [id, v])
+				continue
+			checked += 1
+			## The page's aspect must match the span it is drawn for, or the web
+			## arrives on the pane stretched. No pixel-SIZE contract (§13.3) — the
+			## sheet is a sprite texture, so its dimensions are resolution.
+			if tex.get_width() < 128 or tex.get_height() < 128:
+				bad_aspect.append("%s v%d too small (%dx%d)" % [id, v, tex.get_width(), tex.get_height()])
+			elif span_arr.size() == 2 and float(span_arr[1]) > 0.0:
 				var aspect: float = float(tex.get_width()) / maxf(float(tex.get_height()), 1.0)
-				var span: Vector2 = GlassCrackClass.sheet_span(width == "wide")
-				var want: float = span.x / span.y
-				if tex.get_width() < 128 or tex.get_height() < 128:
-					_fail("%s is %dx%d — too small to carry a web at any span"
-						% [path, tex.get_width(), tex.get_height()])
-				elif absf(aspect - want) > 0.05 * want:
-					_fail("%s is %dx%d (aspect %.2f) but its span is %.0fx%.0f (aspect %.2f) — it arrives on the pane stretched"
-						% [path, tex.get_width(), tex.get_height(), aspect, span.x, span.y, want])
-				else:
-					_pass("%s is present, imported, %dx%d, and matches its %.0fx%.0f-voxel span"
-						% [path, tex.get_width(), tex.get_height(), span.x, span.y])
+				var want: float = float(span_arr[0]) / float(span_arr[1])
+				if absf(aspect - want) > 0.05 * want:
+					bad_aspect.append("%s v%d aspect %.2f vs span %.2f" % [id, v, aspect, want])
+	if missing.is_empty():
+		_pass("all %d (opening x variant) sheets exist, import and load" % checked)
+	else:
+		_fail("missing or broken sheet(s): %s" % ", ".join(missing))
+	if bad_aspect.is_empty():
+		_pass("every sheet's aspect matches the span the manifest draws it at")
+	else:
+		_fail("stretched sheet(s): %s" % ", ".join(bad_aspect))
+
+	## ⚠️ AND THE RETIRED PAIR MUST BE GONE. Leaving them on disk is how a
+	## fallback creeps back in: `load()` would succeed, so nothing would fail.
+	for old_name in ["tight", "wide"]:
+		var old_path: String = FRACTURE_TEMPLATE % old_name
+		if FileAccess.file_exists(old_path):
+			_fail("%s still exists — the round-hole sheets are retired (CRACK-04)" % old_path)
+	if not FileAccess.file_exists(FRACTURE_TEMPLATE % "tight"):
+		_pass("the retired round-hole sheets are gone from disk")
 
 	print("")
 
@@ -611,7 +645,9 @@ func test_apply_spawns_a_sprite_and_gd24_crosses() -> void:
 func test_the_sprite_transform_lands_on_the_voxels() -> void:
 	print("[10] the crack sprite's transform IS the wall-face basis (and the ground plane is not)\n")
 
-	var sheet := load(FRACTURE_TEMPLATE % "tight") as Texture2D
+	## Any real sheet does — this test is about the TRANSFORM, and the transform is
+	## built from the span, not from the art. `star_deep` v0 simply exists.
+	var sheet := load(GlassCrackClass.sheet_path("star_deep", 0)) as Texture2D
 	var shader := load("res://godot/shaders/glass_crack.gdshader") as Shader
 	if sheet == null or shader == null:
 		_fail("no fracture sheet / crack shader to build a sprite from")

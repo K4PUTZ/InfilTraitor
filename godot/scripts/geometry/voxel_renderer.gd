@@ -4783,15 +4783,22 @@ func _lift_glass_crack_root() -> void:
 ## The fracture sheet for one width (G-D14's `tight` / `wide`), cached. Loaded
 ## directly rather than through TextureResolver: a sprite is free-size art, and
 ## §13.3 took the facade contract off this class precisely so it can be.
-func _glass_crack_sheet(width: String) -> Texture2D:
-	if _glass_crack_sheets.has(width):
-		return _glass_crack_sheets[width]
-	var path: String = MATERIAL_ASSET_ROOT + "glass/fracture_glass_%s.png" % width
+## CRACK-04 — the sheet for one (opening, variant). Keyed by the PATH, so the same
+## art shared by two holes is loaded once.
+##
+## ⛔ The old `fracture_glass_{tight,wide}.png` are retired: they drew a ROUND
+## hole, and no member of the opening family is round.
+func _glass_crack_sheet(opening_id: String, variant: int) -> Texture2D:
+	var path: String = GlassCrack.sheet_path(opening_id, variant)
+	if path == "":
+		return null
+	if _glass_crack_sheets.has(path):
+		return _glass_crack_sheets[path]
 	var tex := load(path) as Texture2D
 	if tex == null:
 		## B6 loud-fail: a missing sheet must not degrade to an invisible crack.
-		push_error("[VoxelRenderer] CRACK-02: fracture sheet %s failed to load — the crack will not draw" % path)
-	_glass_crack_sheets[width] = tex
+		push_error("[VoxelRenderer] CRACK-04: fracture sheet %s failed to load — the crack will not draw" % path)
+	_glass_crack_sheets[path] = tex
 	return tex
 
 
@@ -4860,7 +4867,16 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 			push_error("[VoxelRenderer] CRACK-02: glass_crack.gdshader failed to load — no crack will draw")
 			return 0
 	var wide: bool = bool(spec.get("wide", false))
-	var sheet: Texture2D = _glass_crack_sheet("wide" if wide else "tight")
+	var opening_id: String = String(spec.get("opening", ""))
+	## ⚠️ A CRACK WITH NO HOLE STILL NEEDS A SHEET. The two branches that craze an
+	## INTACT pane (a screen that stopped the round, a lost roll under the breach
+	## threshold) have no opening to be the shape of, so they borrow the smallest
+	## family member's page — its void is 0.8 voxels, small enough that a clear
+	## centre on standing glass is not something anyone reads as a feature.
+	## `sheet_span_for()` falls back to the same one, so page and quad agree.
+	var sheet_opening: String = opening_id if opening_id != "" \
+		else ("chamfer_45_wide" if wide else "chamfer_45")
+	var sheet: Texture2D = _glass_crack_sheet(sheet_opening, int(spec.get("variant", 0)))
 	if sheet == null:
 		return 0
 	var sprite := GlassCrackSpriteClass.new()
@@ -4889,7 +4905,6 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 	## An empty id is the pane that only CRAZED: no hole, so no void, and the sheet
 	## keeps its whole centre. That is G-D33's rule arriving as a consequence of
 	## the wiring rather than as a branch someone has to remember to write.
-	var opening_id: String = String(spec.get("opening", ""))
 	if opening_id != "":
 		var m: Dictionary = _glass_opening_mask(opening_id)
 		if not m.is_empty():

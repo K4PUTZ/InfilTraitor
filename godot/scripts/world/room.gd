@@ -423,10 +423,18 @@ func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
 ## base key, same opening, forever — which is why callers RE-DERIVE it instead of
 ## being handed it, and why nothing stores the id.
 func glass_opening_for(grid_pos: Vector2i, level: int, wide: bool) -> String:
+	return GlassOpening.pick("large" if wide else "small",
+		glass_base_key(grid_pos, level))
+
+
+## The BASE-space key a hole is identified by. One definition, because the opening
+## pick, the sheet variant pick and the rotation replay all have to agree on it —
+## three call sites deriving "the same" key separately is how two of them end up
+## disagreeing after an unrelated edit.
+func glass_base_key(grid_pos: Vector2i, level: int) -> String:
 	var base_xy := PerspectiveMapperClass.cell_to_base(
 		grid_pos, _active_perspective, _base_voxel_size())
-	return GlassOpening.pick("large" if wide else "small",
-		"%d,%d,%d" % [base_xy.x, base_xy.y, level])
+	return "%d,%d,%d" % [base_xy.x, base_xy.y, level]
 
 
 ## CRACK-04 — re-claim every recorded hole's opening for the perspective just
@@ -549,6 +557,8 @@ func _respawn_base_cracks() -> void:
 		## to the very opening the rebuilt voxels were.
 		if found_voxel != null and found_voxel.damage_state == Voxel.DamageState.DESTROYED:
 			plan["opening"] = glass_opening_for(vxy, key.z, bool(rec["wide"]))
+		## The variant rides the same base key, so a flip redraws the sheet it had.
+		plan["variant"] = GlassCrack.pick_variant(glass_base_key(vxy, key.z))
 		if _voxel_renderer.spawn_glass_crack(GlassCrack.sprite_spec(plan)) != 0:
 			rebuilt += 1
 		else:
@@ -5914,6 +5924,7 @@ func _capture_glass_crack_demo() -> void:
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	plan["opening"] = demo_opening   ## CRACK-04 — the sheet's void, same polygon
+	plan["variant"] = GlassCrack.pick_variant(glass_base_key(hit_gp, hit_level))
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
 	if int(res["crack_id"]) != 0:
 		record_glass_crack_to_base(hit_gp, hit_level, wide)   ## CRACK-02 S-3
@@ -5924,7 +5935,7 @@ func _capture_glass_crack_demo() -> void:
 	## picture: a sheet SMALLER than the pane clips nothing, and reading that as
 	## "the clip works" is the mistake this line exists to prevent.
 	print("[CRACK-DEMO] sheet span %s voxels, pane extent run %.0f..%.0f level %.0f..%.0f (from the impact)"
-		% [GlassCrack.sheet_span(wide), plan["pane_lo"].x, plan["pane_hi"].x,
+		% [GlassCrack.sheet_span_for(String(plan.get("opening", "")), wide), plan["pane_lo"].x, plan["pane_hi"].x,
 		plan["pane_lo"].y, plan["pane_hi"].y])
 	_print_crack_quads(plan)
 
@@ -6046,7 +6057,7 @@ func _print_crack_quads(plan: Dictionary) -> void:
 	if _voxel_renderer == null:
 		return
 	var axis: int = int(plan["run_axis"])
-	var span: Vector2 = GlassCrack.sheet_span(bool(plan.get("wide", false)))
+	var span: Vector2 = GlassCrack.sheet_span_for(String(plan.get("opening", "")), bool(plan.get("wide", false)))
 	var impact: Vector2 = _voxel_renderer.glass_cell_face_pos(
 		int(plan["hit_level"]), plan["hit_cell"])
 	var to_screen: Transform2D = _voxel_renderer.get_global_transform_with_canvas()

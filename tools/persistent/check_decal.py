@@ -60,6 +60,7 @@
 ## Exit code is 0 only if every file PASSes, so it can gate a delivery.
 
 import os
+import re
 import sys
 
 try:
@@ -171,7 +172,20 @@ TEX_AUTHORING_N = 16    ## pinned, ASSETS/ART_SPECIFICATIONS.md §1
 
 ## G-D14's two hole sizes, and the sheet count is exactly two because of it:
 ## pistol/shotgun take the tight web, rifle-class the wide/spaced one.
-FRACTURE_WIDTHS = ("tight", "wide")
+## ⛔ IT WAS `("tight", "wide")`. CRACK-04 retired both — they drew a ROUND hole,
+## and no member of the opening family is round. The roster is one family per
+## OPENING x variant now, read from the manifest the generator writes beside the
+## sheets rather than listed here: `glass_opening.gd` is the one authority, and a
+## copy in this file would pass a stale gate on stale art.
+FRACTURE_MANIFEST = os.path.join(REPO_ROOT, "ASSETS/materials/glass/fracture_manifest.json")
+
+
+def _fracture_manifest():
+    import json
+    if not os.path.exists(FRACTURE_MANIFEST):
+        return {}
+    with open(FRACTURE_MANIFEST) as f:
+        return json.load(f)
 
 ## Which materials claim a sheet. `glass_armored` and `glass_screen_*` reuse
 ## these (G-D16: the variants differ by tint and class, never by geometry), so
@@ -422,11 +436,17 @@ def _parse_fracture_name(name):
     string."""
     if not name.startswith("fracture_") or not name.endswith(".png"):
         return None
+    ## ⚠️ SPLIT FROM THE LEFT AGAINST THE KNOWN MATERIALS, not from the right.
+    ## Right-splitting worked while the tail was one word (`tight`); every opening
+    ## id carries underscores (`star_wild`, `chamfer_45_wide`), so it read
+    ## `fracture_glass_star_wild_2` as material `glass_star_wild` / width `2` and
+    ## reported BOTH halves unknown on all 36 files — the shape of a parser
+    ## failing, not of art failing.
     stem = name[len("fracture_"):-len(".png")]
-    parts = stem.split("_")
-    if len(parts) < 2:
-        return None
-    return "_".join(parts[:-1]), parts[-1]
+    for mat in sorted(FRACTURE_MATERIALS, key=len, reverse=True):
+        if stem.startswith(mat + "_"):
+            return mat, stem[len(mat) + 1:]
+    return None
 
 
 def fracture_path(material, width):
@@ -464,11 +484,13 @@ def check_fracture(path):
         notes.append("filename does not parse as fracture_<material>_<width>.png")
     else:
         material, width = parsed
-        if width not in FRACTURE_WIDTHS:
+        roster = _fracture_manifest().get("openings", {})
+        opening = width.rsplit("_", 1)[0] if "_" in width else width
+        if roster and opening not in roster:
             ok = False
-            notes.append("width %r is not one of %s — G-D14 gives glass exactly "
-                         "two hole sizes and the runtime asks for those names"
-                         % (width, "/".join(FRACTURE_WIDTHS)))
+            notes.append("opening %r is not in fracture_manifest.json (%d known) — "
+                         "the runtime resolves sheets by opening id, so nothing "
+                         "will ever load this file" % (opening, len(roster)))
         if material not in FRACTURE_MATERIALS:
             ok = False
             notes.append("material %r claims no fracture sheet (%s do) — nothing "
@@ -619,22 +641,40 @@ def check_material_fractures(material):
     """The sheet half of `--material`. Separate from family completeness because
     a sheet is not a family: there are no variants to be missing, only the two
     G-D14 widths to be present."""
-    print("  fracture sheets (G-D21) — %s\n" % ", ".join(FRACTURE_WIDTHS))
+    man = _fracture_manifest()
+    roster = man.get("openings", {})
+    if not roster:
+        print("  fracture sheets — NO MANIFEST (%s)\n"
+              % os.path.relpath(FRACTURE_MANIFEST, REPO_ROOT))
+        print("  Run: python3 tools/persistent/gen_fracture_sheet.py --all\n")
+        return False
+    variants = int(man.get("variants", 1))
+    print("  fracture sheets (G-D21 / CRACK-04) — %d openings x %d variants\n"
+          % (len(roster), variants))
     all_ok = True
-    found_any = False
-    for width in FRACTURE_WIDTHS:
-        path = fracture_path(material, width)
-        if not os.path.exists(path):
-            print("  %-8s —  absent (%s)" % (width, os.path.relpath(path, REPO_ROOT)))
-            continue
-        found_any = True
-        ok, lines = check_fracture(path)
-        all_ok = all_ok and ok
+    checked = 0
+    failed = []
+    for opening in sorted(roster):
+        for v in range(variants):
+            path = os.path.join(REPO_ROOT, "ASSETS/materials/glass",
+                                "fracture_glass_%s_%d.png" % (opening, v))
+            if not os.path.exists(path):
+                print("  %-24s v%d  ABSENT" % (opening, v))
+                all_ok = False
+                continue
+            ok, lines = check_fracture(path)
+            checked += 1
+            if not ok:
+                all_ok = False
+                failed.append((opening, v, lines))
+    ## ⚠️ ONLY FAILURES ARE PRINTED IN FULL. 36 passing sheets is six screens of
+    ## text nobody reads, and a gate whose output is skipped is not a gate.
+    for opening, v, lines in failed:
+        print("  %s v%d:" % (opening, v))
         for line in lines:
             print("    " + line)
-    print("")
-    if found_any:
-        all_ok = _check_fracture_wiring() and all_ok
+    print("  %d sheet(s) checked, %d failed\n" % (checked, len(failed)))
+    all_ok = _check_fracture_wiring() and all_ok
     return all_ok
 
 
@@ -701,50 +741,58 @@ def _resolver_knows_fracture():
 
 
 def _check_fracture_wiring():
-    """The sheet half of the two-lists check. Files on disk are only half the
-    claim; these are the two seams that decide whether they are ever read."""
+    """The sheet half of the two-lists check: files on disk are only half the
+    claim, and this is the seam that decides whether they are ever read.
+
+    ⚠️ IT USED TO COMPARE `GlassMaterials.FRACTURE_WIDTHS` AGAINST A COPY HERE.
+    CRACK-04 removed the width axis entirely — sheets resolve by (opening,
+    variant) through `GlassCrack.sheet_path()`. So the claim that matters now is
+    that the manifest covers the FAMILY, and the family's one authority is
+    `glass_opening.gd`."""
+    man = _fracture_manifest()
+    roster = set(man.get("openings", {}).keys())
+    src = os.path.join(REPO_ROOT, "godot/scripts/systems/destruction/glass_opening.gd")
+    if not os.path.exists(src):
+        print("  WIRING FAIL  %s is missing — cannot confirm the manifest covers "
+              "the family" % os.path.relpath(src, REPO_ROOT))
+        return False
+    family = set()
+    with open(src) as f:
+        in_family = False
+        for line in f:
+            t = line.strip()
+            if t.startswith("const FAMILY"):
+                in_family = True
+                continue
+            if in_family:
+                if t.startswith("}"):
+                    break
+                ## ⚠️ Only a TOP-LEVEL key, i.e. one whose value opens a dict —
+                ## and matched with a REGEX, because the table is column-aligned.
+                ## Matching any quoted token pulled `"angles"` out of `star_wild`'s
+                ## own spec; matching the literal `": {"` then missed the four
+                ## members whose padding is `":    {"`. Both failures reported real
+                ## openings as missing or foreign, which is the gate lying in the
+                ## direction that gets art regenerated for no reason.
+                m = re.match(r'^"([A-Za-z0-9_]+)"\s*:\s*\{', t)
+                if m:
+                    family.add(m.group(1))
     ok = True
-    widths = _declared_fracture_widths()
-    if widths is None:
+    missing = sorted(family - roster)
+    extra = sorted(roster - family)
+    if missing:
         ok = False
-        print("  WIRING FAIL  could not read FRACTURE_WIDTHS from %s. Fix the"
-              % os.path.relpath(GLASS_MATERIALS, REPO_ROOT))
-        print("               parser or the constant rather than trusting a PASS.")
-    elif tuple(widths) != FRACTURE_WIDTHS:
+        print("  WIRING FAIL  the manifest has no sheets for %s — run "
+              "tools/persistent/gen_fracture_sheet.py --all" % ", ".join(missing))
+    if extra:
         ok = False
-        print("  WIRING FAIL  FRACTURE_WIDTHS is %s in GlassMaterials but %s here."
-              % (widths, list(FRACTURE_WIDTHS)))
-        print("               The runtime composes the filename from ITS list, so a")
-        print("               width only this gate knows about is art nothing asks for.")
-    else:
-        print("  wiring  ok    widths %s agree with GlassMaterials.FRACTURE_WIDTHS"
-              % "/".join(widths))
-
-    knows = _resolver_knows_fracture()
-    if knows is None:
-        ok = False
-        print("  WIRING FAIL  could not read %s."
-              % os.path.relpath(TEXTURE_RESOLVER, REPO_ROOT))
-    elif not knows:
-        ok = False
-        print("  WIRING FAIL  TextureResolver._validate_dimensions() has no")
-        print("               `fracture_` category, so every sheet is REJECTED with")
-        print("               no error at all — Tier.NONE, generic atlas, silently")
-        print("               wrong. One elif that returns true (free-size art).")
-    else:
-        print("  wiring  ok    TextureResolver accepts the `fracture_` category")
-
-    ## ⚠️ WHAT THIS CHECK STILL CANNOT SEE, said out loud so a green line is not
-    ## read as more than it is. CRACK-01/02 BUILT the consumer — the sheets are
-    ## `GlassCrackSprite`'s texture, loaded by `VoxelRenderer._glass_crack_sheet()`
-    ## — so these two seams are now use, not readiness. What no static gate can
-    ## reach is how the web LOOKS on a pane; that took a real capture three times
-    ## in one session (§13's rejection table).
-    print("  note          the sheets ARE loaded (VoxelRenderer._glass_crack_sheet),")
-    print("                but no gate here can see how the web reads on a pane.")
-    print("")
+        print("  WIRING FAIL  the manifest carries %s, which the family no longer "
+              "defines. Regenerate, or the art describes a hole nothing cuts"
+              % ", ".join(extra))
+    if ok:
+        print("  wiring ok — the manifest covers all %d openings the family defines"
+              % len(family))
     return ok
-
 
 def check_material(material):
     """7. Family completeness — the check a per-file pass cannot make."""

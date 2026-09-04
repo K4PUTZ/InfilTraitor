@@ -1001,6 +1001,9 @@ func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 	## has no hole to show") arriving as a consequence rather than as a branch.
 	if hv.damage_state == Voxel.DamageState.DESTROYED:
 		plan["opening"] = room.glass_opening_for(hv.grid_pos, hv.level, wide)
+	## The variant is picked whether or not there is a hole: a crazed pane draws a
+	## sheet too, and it should not always be the same one.
+	plan["variant"] = GlassCrack.pick_variant(room.glass_base_key(hv.grid_pos, hv.level))
 	var res: Dictionary = GlassCrack.apply(renderer, plan)
 	for v in res["voxels"]:
 		var pkey := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)

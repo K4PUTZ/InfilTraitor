@@ -66,6 +66,10 @@ PRESETS = {
 # Director picked that from the 1.0 / 1.4 / 1.8 strip.
 SPAN_RATIO = 8.2
 
+# How far past the void's edge the ink ramps in, as a fraction of the LOCAL hole
+# radius. 0 restores the hard bright ring the sheets opened with before.
+CENTRE_FEATHER = 0.45
+
 # Variants per opening (Director, 2026-09-04: *"3 decals pra cada tipo de buraco"*).
 VARIANTS = 3
 
@@ -141,8 +145,20 @@ def generate(opening, seed=7):
 
     def hole_at(ang):
         """The opening's boundary along `ang`, in page pixels. This replaces the
-        single `hole` radius: a crack starts where the glass actually ends."""
-        t = (ang % (2.0 * math.pi)) / (2.0 * math.pi) * n_r
+        single `hole` radius: a crack starts where the glass actually ends.
+
+        ⚠️ THE ANGLE IS NEGATED, AND THAT IS A FIXED BUG, NOT A CONVENTION CHOICE.
+        This file draws in IMAGE space, where y grows DOWN; `radii` was sampled in
+        the pane's (run, level) space, where y grows UP. `glass_crack.gdshader`
+        confirms which way the sheet is read: `off.y = (0.5 - UV.y) * span.y`, so
+        image row 0 is level UP. Looking the radius up at `+ang` therefore drew
+        every opening MIRRORED VERTICALLY.
+        ⚠️ AND IT WAS INVISIBLE ON TWO THIRDS OF THE FAMILY: every regular star at
+        phase 0 is symmetric about the horizontal axis, so the mirror is the
+        identity on it. It showed only on the asymmetric members — which is
+        exactly the set the Director circled (`chunk_bite`, `crescent_wide`,
+        `star_ragged_wide`, `star_wild`) while asking whether there was a flip."""
+        t = ((-ang) % (2.0 * math.pi)) / (2.0 * math.pi) * n_r
         i0 = int(t) % n_r
         i1 = (i0 + 1) % n_r
         f = t - int(t)
@@ -307,6 +323,38 @@ def generate(opening, seed=7):
     d.polygon([(cx + math.cos(2.0 * math.pi * i / 360.0) * hole_at(2.0 * math.pi * i / 360.0),
                 cy + math.sin(2.0 * math.pi * i / 360.0) * hole_at(2.0 * math.pi * i / 360.0))
                for i in range(360)], fill=0)
+
+    # ── THE CENTRE FEATHER (Director, 2026-09-04: *"da um pouco de father no
+    # centro dos decals, pra eles começarem mais suaves"*) ─────────────────────
+    #
+    # The ink used to start at full weight on the void's edge, so every sheet
+    # opened with a hard bright ring. This ramps it in over a band just outside
+    # the boundary — smoothstep, in units of the LOCAL hole radius, so a spike's
+    # flank feathers over the same fraction as a valley rather than the same
+    # number of pixels.
+    if CENTRE_FEATHER > 0.0:
+        px_img = img.load()
+        reach = int(math.ceil(max(radii) * px_per_voxel * (1.0 + CENTRE_FEATHER))) + 2
+        x0 = max(0, int(cx) - reach)
+        x1 = min(W * SS, int(cx) + reach)
+        y0 = max(0, int(cy) - reach)
+        y1 = min(H * SS, int(cy) + reach)
+        for y in range(y0, y1):
+            dy = float(y) - cy
+            for x in range(x0, x1):
+                v = px_img[x, y]
+                if v == 0:
+                    continue
+                dx = float(x) - cx
+                r = math.hypot(dx, dy)
+                if r < 0.0001:
+                    continue
+                h_r = hole_at(math.atan2(dy, dx))
+                if h_r <= 0.0 or r >= h_r * (1.0 + CENTRE_FEATHER):
+                    continue
+                t = (r / h_r - 1.0) / CENTRE_FEATHER
+                t = 0.0 if t < 0.0 else (1.0 if t > 1.0 else t)
+                px_img[x, y] = int(v * (t * t * (3.0 - 2.0 * t)))
 
     img = img.filter(ImageFilter.GaussianBlur(0.55 * SS))
     img = img.resize((W, H), Image.LANCZOS)

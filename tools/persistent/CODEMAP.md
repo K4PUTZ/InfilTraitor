@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**231 scripts · 78449 lines total** (under `godot/scripts/`)
+**232 scripts · 78900 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,7 +18,7 @@
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, glass_materials.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, glass_materials.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_rim_capture.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -895,7 +895,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 5693 lines
+`class_name VoxelRenderer` · extends `Node2D` · 5800 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -909,6 +909,7 @@ extends `ConfirmationDialog` · 64 lines
 - `HalfVoxelCompositorClass` = `preload("res://godot/scripts/geometry/half_voxel_compositor.gd")`
 - `VoxelVariantRegistryClass` = `preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
+- `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `VOXEL_SOURCE_ID` = `0`
 
 **Public vars**
@@ -2071,6 +2072,23 @@ extends `Node2D` · 43 lines
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `NO_LANDING` = `-1`
+
+---
+
+### `glass_opening.gd`
+
+`class_name GlassOpening` · 222 lines
+
+`godot/scripts/systems/destruction/glass_opening.gd`
+
+> GLASS CRACK-04 / G-D34 — THE FAMILY OF OPENINGS. (Director, 2026-09-04: *"Vamos usar formatos simples internos conhecidos, como os 4 sugeridos anteriormente, e outros para os buracos maiores. Criamos uma família de aberturas para serem escolhidas. Os decals se adaptam a esses formatos internos, podendo variar completamente do buraco para fora. Dessa forma já sabemos como construir o buraco sempre, independente de como vai ser o decal."*) ── WHAT AN OPENING IS ────────────────────────────────────────────────────── A closed polygon in the PANE's own (run, level) space, in VOXEL units, centred on the struck cell's CENTRE. Its interior is the hole. That single shape is the whole contract: * a glass cell entirely inside it is ERASED; * a cell the boundary CROSSES keeps only the glass outside the polygon — the intrusion into that cell's border the Director asked for; * a cell entirely outside is untouched; * and the crack sheet's inner void is this same polygon, so the hole's total shape and the decal's internal shape are equal by construction. ⚠️ THE OPENING IS THE AUTHORITY, NOT THE ART — AND THAT IS THE POINT OF THE FAMILY. The previous ruling (*"o decal é o dono da forma"*) was refined the same day for a concrete reason: if the shape lived in the sheet's pixels, the voxel side would have to RECOVER it (flood-fill the central black region, which is exactly what I was measuring when the Director stopped me), and the hole could not be built at all until that class's art existed. Measured on the two sheets that do exist: `fracture_glass_tight`'s void is **0.29 voxels** across and `fracture_glass_wide`'s is **2.02** — both well-defined, and both irrelevant, because a known family means *"já sabemos como construir o buraco sempre, independente de como vai ser o decal"*. The decal adapts to the opening; beyond the opening it is free to be anything. ⚠️ CHOSEN BY HASH, NEVER BY `randf()` — B4's rule, and G-D32's for the same reason one level up. The opening is re-picked whenever the geometry is rebuilt (a perspective flip, a load), so an RNG would reshape a standing hole every time the camera turned. The key must be BASE-space; `pick()` takes the key rather than building one, because the renderer has no base-space knowledge and the room does (`PerspectiveMapper.cell_to_base`).
+
+**Constants / tuning**
+- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `COVERAGE_SAMPLES` = `9`
+- `MIN_VALLEY` = `0.708`
+- `FAMILY` = `{ ## A — "bico fundo": the long-spiked star, the silhouette the build has been ## making since CRACK-03. "star_deep":    {"lobes": 8, "r_out": 1.90, "r_in": 0.75, "phase": 0.0, "size": "small"}, ## B — "bico raso": the same star pulled in to half the reach. "star_shallow": {"lobes": 8, "r_out": 1.30, "r_in": 0.74, "phase": 0.0, "size": "small"}, ## C — "entalhe em V, cantos ficam": four points on the orthogonals only, so ## the diagonal corners of the struck cell's neighbours are never reached. "notch_v":      {"lobes": 4, "r_out": 1.70, "r_in": 0.76, "phase": 0.0, "size": "small"}, ## D — "chanfro 45 graus": the compact one. `r_in = r_out · cos(π/8)` makes it ## a regular octagon rather than a star. "chamfer_45":   {"lobes": 8, "r_out": 0.80, "r_in": 0.739, "phase": 0.3927, "size": "small"}, ## The large members. Same language, more reach — a rifle or a shotgun breach ## is not a different mechanism, only a bigger polygon. "star_deep_wide":  {"lobes": 8, "r_out": 3.20, "r_in": 1.05, "phase": 0.0, "size": "large"}, "star_ragged_wide": {"lobes": 11, "r_out": 2.80, "r_in": 1.20, "phase": 0.19, "size": "large"}, "chamfer_45_wide": {"lobes": 8, "r_out": 2.10, "r_in": 1.94, "phase": 0.3927, "size": "large"}, }`
+- `POOLS` = `{ "small": ["star_deep", "star_shallow", "notch_v", "chamfer_45"], "large": ["star_deep_wide", "star_ragged_wide", "chamfer_45_wide"], }`
 
 ---
 
@@ -3555,11 +3573,11 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1136 lines
+extends `SceneTree` · 1265 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
-> GLASS_MASTER_PLAN §8.1 / CRACK-01 — the CRACKED tier for glass. Rodar: python3 tools/persistent/run_selftests.py --only glass_crack §8.1 was written up as a CONTRADICTION: the art order's step 3 asked to raise `glass.json`'s `crack_factor` above 0 and add `glass` to `IMPACT_DECAL_MATERIALS`, which together make `voxel_decal_selftest` [12] demand `decal_crack_glass_{0,1,2}.png` — the per-voxel crack family G-D21 explicitly folded into the fracture SHEET. The resolution (Director, 2026-09-02): glass reaches CRACKED by the route it ALREADY has — `ShotPunchTable.damage_state_for()` returns CRACKED for a sub-breach glass hit — and NOT through the blast `crack_factor` probability path. So `crack_factor` stays 0.0, `glass` stays out of both decal lists, and the whole [12] coupling is untouched. Glass is simply the first material whose CRACKED art is a sheet, not a decal family. This suite is the guard on that resolution — it fails if a future edit "fixes" §8.1 by commissioning the decal family, and (from CRACK-01 stages B/C) it grows to pin the render and the shot-path event. What each test catches: [1] the CRACKED tier going unreachable for glass — the enum path breaking. [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists, or on disk. [3] the fracture SHEETS (the real CRACKED art) going missing or unimported. [8] the crack coming back INSIDE glass_pane.gdshader — CRACK-02 / G-D27 took it out of the voxel because a crack drawn there inherits `dim`, `cover` and the quad seams, and no tuning survives that. [10] the sheet shearing off the voxels — the CRACK-01-B/C bug, now pinned against the SPRITE'S OWN TRANSFORM instead of a shader inverse. [11] a crack bleeding past the frame of the pane it is on. [12] G-D30's cut reading anything other than the live glass tilemap, the occupancy rows going upside down, or the dial collapsing to a boolean. [13] S-3's rebuild path acquiring side effects — a perspective flip that re-damages the pane it is only supposed to redraw. [14] the shard rim collapsing to one shape, eating the pane's slivers, or losing the face-mask axis (which cost 3 of 8 neighbours for one run). [15] the rim eating the CORNERS. Four neighbours, not eight — the Director's diagram, and a difference nobody can see at play zoom.
+> GLASS_MASTER_PLAN §8.1 / CRACK-01 — the CRACKED tier for glass. Rodar: python3 tools/persistent/run_selftests.py --only glass_crack §8.1 was written up as a CONTRADICTION: the art order's step 3 asked to raise `glass.json`'s `crack_factor` above 0 and add `glass` to `IMPACT_DECAL_MATERIALS`, which together make `voxel_decal_selftest` [12] demand `decal_crack_glass_{0,1,2}.png` — the per-voxel crack family G-D21 explicitly folded into the fracture SHEET. The resolution (Director, 2026-09-02): glass reaches CRACKED by the route it ALREADY has — `ShotPunchTable.damage_state_for()` returns CRACKED for a sub-breach glass hit — and NOT through the blast `crack_factor` probability path. So `crack_factor` stays 0.0, `glass` stays out of both decal lists, and the whole [12] coupling is untouched. Glass is simply the first material whose CRACKED art is a sheet, not a decal family. This suite is the guard on that resolution — it fails if a future edit "fixes" §8.1 by commissioning the decal family, and (from CRACK-01 stages B/C) it grows to pin the render and the shot-path event. What each test catches: [1] the CRACKED tier going unreachable for glass — the enum path breaking. [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists, or on disk. [3] the fracture SHEETS (the real CRACKED art) going missing or unimported. [8] the crack coming back INSIDE glass_pane.gdshader — CRACK-02 / G-D27 took it out of the voxel because a crack drawn there inherits `dim`, `cover` and the quad seams, and no tuning survives that. [10] the sheet shearing off the voxels — the CRACK-01-B/C bug, now pinned against the SPRITE'S OWN TRANSFORM instead of a shader inverse. [11] a crack bleeding past the frame of the pane it is on. [12] G-D30's cut reading anything other than the live glass tilemap, the occupancy rows going upside down, or the dial collapsing to a boolean. [13] S-3's rebuild path acquiring side effects — a perspective flip that re-damages the pane it is only supposed to redraw. [14] a cell's cut collapsing to one shape (the cell OFFSET being dropped from the atom key), a PARTIAL cell being cut away entirely, or the cut eating the pane's slivers. [16] the opening FAMILY going malformed — an opening that does not leave the struck cell, a pooled id with no shape, or a pick that stops hashing. [15] the applied hole drifting from the opening it claims to be — a cell cut that coverage() calls outside, or left whole that it calls PARTIAL.
 
 **Constants / tuning**
 - `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`
@@ -3569,6 +3587,7 @@ extends `SceneTree` · 1136 lines
 - `GlassCrackClass` = `preload("res://godot/scripts/systems/destruction/glass_crack.gd")`
 - `GlassCrackSpriteClass` = `preload("res://godot/scripts/overlays/glass_crack_sprite.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `GlassOpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `CRACK_DECAL_TEMPLATE` = `"res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"`
 - `FRACTURE_TEMPLATE` = `"res://ASSETS/materials/glass/fracture_glass_%s.png"`
 
@@ -3616,21 +3635,21 @@ extends `SceneTree` · 197 lines
 
 ### `glass_rim_capture.gd`
 
-extends `SceneTree` · 250 lines
+extends `SceneTree` · 243 lines
 
 `godot/scripts/tools/glass_rim_capture.gd`
 
-> GLASS CRACK-03 — RENDER THE HOLE'S SILHOUETTE FROM THE REAL ATOMS. Rodar: /Applications/Godot.app/Contents/MacOS/Godot --headless --path . \ --script godot/scripts/tools/glass_rim_capture.gd ⚠️ WHY THIS EXISTS AS A COMMITTED TOOL AND NOT A SCRATCH SCRIPT. `glass_rim_shape_options_2026-09-02.png` — the picture G-D32 was ratified from — was made by an ad-hoc script that was never committed and no longer exists. It was captured at 04:11 on 2026-09-03, **four minutes before `330d285d` cut the neighbour count from 8 to 4**, so the silhouette it shows is one the build has not made since. A shape decision needs a picture of the CURRENT build, and a picture that cannot be re-made is a citation that decays (the same lesson the `auto_*.png` rotation already taught this project). ⚠️ IT COMPOSITES ATOMS, IT DOES NOT BOOT THE GAME. That is the point: the question is what SILHOUETTE the rim atoms cut, and a play-zoom screenshot of a real pane cannot answer it (the difference between 4 and 8 neighbours on a one-voxel hole is a handful of pixels there — it took a diagram to catch). Compositing runs headless, deterministically, in under a second. The geometry is the atom's own, not a re-derivation: a SW face's diamond edge runs `vw -> vs`, so the RUN step in canvas is (16, 8), and a level is `VOXEL_STEP_PX` straight up. Those two vectors ARE the pane's basis — the same one `GlassCrackSprite` bakes into its Transform2D.
+> GLASS CRACK-04 — RENDER THE FAMILY OF OPENINGS FROM THE REAL ATOMS. Rodar: /Applications/Godot.app/Contents/MacOS/Godot --headless --path . \ --script godot/scripts/tools/glass_rim_capture.gd One panel per member of `GlassOpening.FAMILY`, each a real pierced pane with that opening applied through the real `refresh_glass_rims()`. This is the picture a shape decision gets made on. ⚠️ WHY THIS EXISTS AS A COMMITTED TOOL AND NOT A SCRATCH SCRIPT. `glass_rim_shape_options_2026-09-02.png` — the picture G-D32 was ratified from — was made by an ad-hoc script that was never committed and no longer exists. It was captured at 04:11 on 2026-09-03, **four minutes before `330d285d` cut the neighbour count from 8 to 4**, so the silhouette it shows is one the build has not made since. A picture that cannot be re-made is a citation that decays (the same lesson the `auto_*.png` rotation already taught this project). ⚠️ IT COMPOSITES ATOMS, IT DOES NOT BOOT THE GAME. That is the point: the question is what SILHOUETTE an opening cuts, and a play-zoom screenshot cannot answer it — the difference between two openings is tenths of a voxel there. Compositing runs headless, deterministically, in under a second. The geometry is the atom's own, not a re-derivation: a SW face's diamond edge runs `vw -> vs`, so the RUN step in canvas is (16, 8), and a level is `VOXEL_STEP_PX` straight up. Those two vectors ARE the pane's basis — the same one `GlassCrackSprite` bakes into its Transform2D.
 
 **Constants / tuning**
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `RUNS` = `11`
-- `LEVELS` = `7`
+- `GlassOpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
+- `RUNS` = `15`
+- `LEVELS` = `11`
 - `OUT_DIR` = `"res://Screenshots/history"`
 - `BG` = `Color(0.16, 0.17, 0.22, 1.0)`
 - `GLASS_FLAT` = `Color(1.0, 0.93, 0.20, 1.0)`
-- `MOCK_DIALS` = `[ Vector2(0.05, 1.00), Vector2(0.22, 0.55), Vector2(0.05, 0.70), Vector2(0.14, 0.90), ]`
 
 ---
 

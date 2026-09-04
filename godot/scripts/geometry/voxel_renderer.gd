@@ -20,6 +20,9 @@ const HalfVoxelCompositorClass = preload("res://godot/scripts/geometry/half_voxe
 const VoxelVariantRegistryClass = preload("res://godot/scripts/systems/voxel_variant_registry.gd")
 ## D19/D20 (EXPLOSION_REBUILD_MASTER_PLAN): SurfaceClass enum for resolve_flat().
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
+## CRACK-04 / G-D34 — the catalogue of hole shapes. Preloaded rather than left to
+## the global class_name so the dependency is visible where the renderer is read.
+const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 
 ## TileSet source ID for voxels
 const VOXEL_SOURCE_ID: int = 0
@@ -867,6 +870,9 @@ var _glass_rim_sources: Dictionary = {}
 var _glass_source_info: Dictionary = {}       ## source_id:int -> {material, face, mask}
 ## Glass cells erased since the last rim refresh, level -> Array[Vector2i].
 var _glass_rim_dirty: Dictionary = {}
+## CRACK-04 — region anchor -> the opening claimed for it, consumed by the next
+## `refresh_glass_rims()`. Empty is the normal case for the cook.
+var _glass_region_openings: Dictionary = {}
 ## Back-compat alias — the SW main-only source id (diagnostics / selftest).
 var _glass_frosted_source_id: int = -1
 ## GLASS G1 GEOMETRY — how far the dim top/side slivers recede into the atom, as
@@ -2261,33 +2267,34 @@ func _build_glass_pane_atom(face: int, want_top: bool = false, want_side: bool =
 ## its outline moved. It is the same reason a DESTROYED voxel (a 100% cut) never
 ## framed anything.
 ##
-## The Director set the shape budget: eight directions, the four orthogonals plus
-## the four diagonals. *"E isso já cobre praticamente todos os buracos."*
-const GLASS_RIM_DIRS: int = 8
-## The wedge, both dials. `TIP_HALF` is the half-width still kept at the
-## hole-facing end (0 = a true point); `DEPTH` is how far back the narrowing
-## reaches (1.0 = a triangle across the whole cell, 0.5 = only the near half).
-static var GLASS_RIM_TIP_HALF: float = 0.05
-static var GLASS_RIM_DEPTH: float = 1.0
+## ⚠️ CRACK-04 REPLACED THE SHAPE BUDGET WITH A FAMILY (G-D34). CRACK-03 cut each
+## bordering cell with a wedge aimed at the hole, chosen from eight directions —
+## so the hole's silhouette was a SIDE EFFECT of a per-cell rule, and nothing
+## could state what shape it was. The Director's ruling inverts that: the OPENING
+## is a known shape from a catalogue, and a cell's cut is whatever piece of that
+## shape crosses it. `GlassOpening` owns the shapes; this file only applies them.
+##
 ## `INFILTRAITOR_GLASS_RIM=0` turns the cut off, so the A/B is one boot apart on
 ## the same camera. A cut glass voxel reveals GLASS, not a void, so the change is
 ## subtle by nature and the comparison has to be controlled rather than squinted
 ## at — the same lesson the pane-clip capture taught.
 static var GLASS_RIM_ENABLED: bool = OS.get_environment("INFILTRAITOR_GLASS_RIM") != "0"
 
-## The eight directions in the pane's own (run, level) lattice, in the order the
-## rim index uses. Index 0 is +run, then counter-clockwise through the diagonals.
-const GLASS_RIM_VECTORS: Array[Vector2] = [
-	Vector2(1.0, 0.0), Vector2(1.0, 1.0), Vector2(0.0, 1.0), Vector2(-1.0, 1.0),
-	Vector2(-1.0, 0.0), Vector2(-1.0, -1.0), Vector2(0.0, -1.0), Vector2(1.0, -1.0),
-]
+## The opening used when a hole arrives with no chosen one. ⚠️ It is a DIAL for
+## the capture harness, not a fallback the play path is allowed to lean on: the
+## real pick is `GlassOpening.pick()` on a BASE-space key, made by whoever knows
+## base coordinates, because a view-space pick reshapes a standing hole every
+## time the camera turns.
+static var GLASS_OPENING_DEFAULT: String = "star_deep"
 
 
-## The rim atom for one (material, face, direction), composed and registered on
-## first use. LAZY on purpose: a map with no holes builds none, and a real
-## scenario touches a handful — eager would add 5 members x 4 faces x 8 dirs = 160
-## sources at load for something most maps never show. The same pattern
-## `_ensure_light_alt()` uses, for the same reason.
+## The shard atom for one (material, face, mask, opening, cell offset), composed
+## and registered on first use. LAZY on purpose, and more so than before: the key
+## now carries the cell's OFFSET inside the opening, because every cell the
+## boundary crosses sees a different piece of it — there is no longer a fixed set
+## of eight shapes to enumerate. Eager composition is not merely wasteful here,
+## it is unbounded. A real scenario touches the handful of offsets its holes
+## actually have. The same pattern `_ensure_light_alt()` uses, for the same reason.
 ##
 ## ⚠️ THE FACE MASK IS PART OF THE KEY, and skipping it was a real bug for exactly
 ## one run: the first version built main-face atoms only, on the reasoning that a
@@ -2297,8 +2304,9 @@ const GLASS_RIM_VECTORS: Array[Vector2] = [
 ## a 1-voxel hole cut **5** of its 8 neighbours instead of 8. The slivers survive
 ## the cut for free, because `_cut_glass_rim_wedge()` only touches pixels inside
 ## the main-face parallelogram.
-func _glass_rim_atom_source(material_id: String, face: int, mask: int, dir_index: int) -> int:
-	var key := "%s|%d|%d|%d" % [material_id, face, mask, dir_index]
+func _glass_rim_atom_source(material_id: String, face: int, mask: int,
+		opening_id: String, dr: int, dl: int) -> int:
+	var key := "%s|%d|%d|%s|%d|%d" % [material_id, face, mask, opening_id, dr, dl]
 	if _glass_rim_sources.has(key):
 		return _glass_rim_sources[key]
 	var atom := _build_glass_pane_atom(face, (mask & 0b10) != 0, (mask & 0b01) != 0,
@@ -2306,7 +2314,7 @@ func _glass_rim_atom_source(material_id: String, face: int, mask: int, dir_index
 	if atom == null:
 		_glass_rim_sources[key] = -1
 		return -1
-	_cut_glass_rim_wedge(atom, GLASS_RIM_VECTORS[dir_index % GLASS_RIM_DIRS], face)
+	_cut_glass_opening(atom, opening_id, dr, dl, face)
 	var src := TileSetAtlasSource.new()
 	src.texture = ImageTexture.create_from_image(atom)
 	src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
@@ -2325,13 +2333,34 @@ func _glass_rim_atom_source(material_id: String, face: int, mask: int, dir_index
 	return id
 
 
-## Cut the wedge into `atom`'s alpha, in the FACE's own (u, v) coordinates.
+## Cut one cell's piece of an OPENING out of `atom`'s alpha, in the FACE's own
+## (u, v) coordinates. `(dr, dl)` is this cell's integer offset from the struck
+## one, so the polygon is evaluated in the opening's own frame and the cell only
+## ever sees the part of the boundary that crosses it.
 ##
 ## The main face is the parallelogram [ea, eb, eb+down, ea+down], so `u` runs
 ## along the diamond edge and `v` straight down. Measured, not assumed: for all
 ## four faces `ea -> eb` is the canvas direction of the RUN step, so u+ is run+
-## and v+ (down) is level−. That is why one mask serves every face.
-func _cut_glass_rim_wedge(atom: Image, dir_run_level: Vector2, face: int) -> void:
+## and v+ (down) is level−. That is why one polygon serves every face.
+##
+## ⚠️ ONLY THE MAIN-FACE PARALLELOGRAM IS TOUCHED, and that is load-bearing: the
+## top and side SLIVERS mark the frontmost column of a GU, so cutting them would
+## make a shard on a GU boundary stop reading as one voxel thick. CRACK-03 paid
+## for this once already, in the atom key.
+func _cut_glass_opening(atom: Image, opening_id: String, dr: int, dl: int, face: int) -> void:
+	var poly: PackedVector2Array = GlassOpening.polygon(opening_id)
+	if poly.is_empty():
+		return
+	_cut_glass_face_region(atom, face, func(off: Vector2) -> bool:
+		return GlassOpening.contains(poly, off + Vector2(float(dr), float(dl))))
+
+
+## Walk the main face's pixels, handing each one its offset in VOXELS from the
+## cell's centre, and clear the alpha wherever `is_inside` says the hole is.
+## Factored out because it is the one place the face basis is inverted, and a
+## second copy of that inversion is how a shear bug gets in (CRACK-01 shipped
+## one: the GROUND-plane inverse on a WALL face, 1.25 voxels of error per level).
+func _cut_glass_face_region(atom: Image, face: int, is_inside: Callable) -> void:
 	var w: int = atom.get_width()
 	var h: int = atom.get_height()
 	var vn := Vector2(16.0, 0.0)
@@ -2352,9 +2381,6 @@ func _cut_glass_rim_wedge(atom: Image, dir_run_level: Vector2, face: int) -> voi
 	var det: float = e_u.x * down.y - e_u.y * down.x
 	if absf(det) < 0.0001:
 		return
-	## The cut direction in (u, v): u+ is run+, v+ is level DOWN.
-	var d := Vector2(dir_run_level.x, -dir_run_level.y).normalized()
-	var perp := Vector2(-d.y, d.x)
 	for y in range(h):
 		for x in range(w):
 			var px: Vector2 = Vector2(float(x) + 0.5, float(y) + 0.5) - ea
@@ -2362,16 +2388,13 @@ func _cut_glass_rim_wedge(atom: Image, dir_run_level: Vector2, face: int) -> voi
 			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
 			if u < 0.0 or u > 1.0 or v < 0.0 or v > 1.0:
 				continue
-			var q := Vector2(u, v) - Vector2(0.5, 0.5)
-			## `t` grows toward the hole, -0.5 at the far side, +0.5 at the near.
-			var t: float = q.dot(d)
-			var sdist: float = absf(q.dot(perp))
-			var k: float = clampf((t + 0.5) / maxf(GLASS_RIM_DEPTH, 0.001), 0.0, 1.0)
-			var half: float = lerpf(0.5, GLASS_RIM_TIP_HALF, k)
-			if sdist > half:
-				var c := atom.get_pixel(x, y)
-				if c.a > 0.0:
-					atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
+			## (u, v) -> voxels from the CELL's centre. u+ is run+; v grows DOWN
+			## and level grows UP, hence the flip on y.
+			if not is_inside.call(Vector2(u - 0.5, 0.5 - v)):
+				continue
+			var c := atom.get_pixel(x, y)
+			if c.a > 0.0:
+				atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
 
 
 ## The next unused TileSet source id. The glass atoms take a contiguous run from
@@ -4841,95 +4864,179 @@ func _glass_neighbour(cell: Vector2i, level: int, face: int, d: Vector2) -> Arra
 	return [cell + off, level + int(d.y)]
 
 
-## Re-cut every cell that borders a hole made since the last call. Returns how
-## many cells were swapped.
+## Apply an OPENING around every hole made since the last call. Returns how many
+## cells were cut into shards.
+##
+## ⚠️ THE OPENING IS THE SHAPE OF THE WHOLE HOLE, NOT A PER-CELL RULE (G-D34).
+## CRACK-03 walked the four orthogonal neighbours and gave each a wedge aimed at
+## the hole; the silhouette that produced was a side effect nobody could name. A
+## batch's erased cells are grouped into CONNECTED REGIONS instead, each region
+## gets one opening sized to it, and the polygon decides which cells it erases
+## outright and which it merely intrudes on. That is what makes a bigger hole a
+## bigger polygon rather than a different mechanism — the Director's *"buracos de
+## tiros maiores vão precisar de mais estados de voxels intermediários"*.
+##
+## ⚠️ THE PICK IS THE CALLER'S WHEN THE CALLER KNOWS BASE COORDINATES. A region
+## whose opening was chosen by `apply_glass_opening()` keeps that choice; only a
+## region that arrives unclaimed falls back to `GLASS_OPENING_DEFAULT`, and that
+## is a capture dial, not a play-path answer — a view-space pick would reshape a
+## standing hole on every camera turn, which is the failure S-3 exists to prevent.
 func refresh_glass_rims() -> int:
 	if _glass_rim_dirty.is_empty():
 		return 0
 	if not GLASS_RIM_ENABLED:
 		_glass_rim_dirty.clear()
 		return 0
-	## ⚠️ ONLY THE FOUR ORTHOGONAL NEIGHBOURS ARE CUT — THE CORNERS STAY CUBES.
-	## (Director's diagram, 2026-09-02: "1 PIERCED VOXEL" -> "4 CORNERS UNTOUCHED"
-	## -> "4 SPECIAL VOXELS CUT OUT".) The first build cut all eight, and a cell
-	## that touches the hole only at a corner has not been broken by it — cutting
-	## it eats glass the round never reached and rounds the hole off instead of
-	## opening it.
-	##
-	## ⚠️ THE DIRECTION COMES FROM THE ERASED CELLS, NOT FROM READING THE TILEMAP
-	## FOR ABSENCE. "Absent" is also true one cell past the pane's own frame, so
-	## averaging over absent neighbours made a cell at the pane edge point half at
-	## the hole and half at the outside world — and the two could cancel exactly,
-	## silently dropping the shard. The batch's own erased list cannot say that.
-	var toward_x: Dictionary = {}   ## for a face whose run is along X
-	var toward_y: Dictionary = {}   ## ... along Y
-	const ORTHO: Array[Vector2] = [Vector2(1.0, 0.0), Vector2(0.0, 1.0),
-		Vector2(-1.0, 0.0), Vector2(0.0, -1.0)]
-	for level in _glass_rim_dirty:
-		for cell in _glass_rim_dirty[level]:
-			for d in ORTHO:
-				## The erased cell's own face went with its source, so both run
-				## axes are offered; the wrong one simply is not glass.
-				var kx := Vector3i(cell.x + int(d.x), cell.y, level + int(d.y))
-				var ky := Vector3i(cell.x, cell.y + int(d.x), level + int(d.y))
-				toward_x[kx] = toward_x.get(kx, Vector2.ZERO) - d
-				toward_y[ky] = toward_y.get(ky, Vector2.ZERO) - d
+
+	var regions: Array = _group_erased_into_regions()
 	_glass_rim_dirty.clear()
 
-	## ⚠️ The two axis maps OVERLAP: a level-only neighbour (the cell above or
-	## below) is the same key in both, so concatenating their keys visits it twice
-	## and double-counts it. Merge first.
-	var seen: Dictionary = {}
-	for k in toward_x:
-		seen[k] = true
-	for k in toward_y:
-		seen[k] = true
-
 	var swapped: int = 0
-	for key in seen:
-		var cell := Vector2i(key.x, key.y)
-		var level: int = key.z
-		var layer := _glass_layers.get(level) as TileMapLayer
-		if layer == null:
-			continue
-		var sid: int = layer.get_cell_source_id(cell)
-		if sid == -1 or not _glass_source_info.has(sid):
-			## Either no glass here, or it is ALREADY a rim shard (rim ids are not
-			## in the info map). A hole never heals, so a shard never has to be
-			## recomputed — and leaving it alone is what keeps this idempotent.
-			continue
-		var info: Dictionary = _glass_source_info[sid]
-		var face: int = int(info["face"])
-		var run_is_x: bool = (face == Face.SW or face == Face.NE)
-		var toward: Vector2 = (toward_x if run_is_x else toward_y).get(key, Vector2.ZERO)
-		if toward.length_squared() < 0.0001:
-			continue
-		var dir_index: int = _glass_rim_index(toward)
-		var rim_id: int = _glass_rim_atom_source(String(info["material"]), face,
-			int(info["mask"]), dir_index)
-		if rim_id < 0:
-			continue
-		layer.set_cell(cell, rim_id, Vector2i.ZERO, 0)
-		note_external_write(level, cell)
-		swapped += 1
+	for region in regions:
+		swapped += _apply_opening_to_region(region)
 	if swapped > 0:
-		print_debug("[GLASS-RIM] %d cell(s) cut into shards around the new hole(s)" % swapped)
+		print_debug("[GLASS-OPENING] %d region(s), %d cell(s) cut into shards"
+			% [regions.size(), swapped])
 	return swapped
 
 
-## The nearest of the eight authored directions to `v`. Quantised rather than
-## rotated because the shapes are eight authored masks (the Director's budget),
-## not a continuous family.
-func _glass_rim_index(v: Vector2) -> int:
-	var best: int = 0
-	var best_dot: float = -2.0
-	var n := v.normalized()
-	for i in range(GLASS_RIM_DIRS):
-		var d: float = n.dot(GLASS_RIM_VECTORS[i].normalized())
-		if d > best_dot:
-			best_dot = d
-			best = i
-	return best
+## Group the batch's erased cells into connected regions, each carrying its own
+## anchor (the region's centre cell) and the opening chosen for it, if any.
+##
+## ⚠️ ADJACENCY IS IN THE PANE'S LATTICE, AND BOTH RUN AXES ARE OFFERED, because
+## the erased cell's own face went with its source and the renderer cannot ask a
+## hole which axis it ran along. Two cells that are neighbours on the wrong axis
+## are not neighbours in any pane, so the wrong grouping is empty rather than
+## wrong — the same reasoning `refresh_glass_rims()` used for its direction map.
+func _group_erased_into_regions() -> Array:
+	var all: Dictionary = {}
+	for level in _glass_rim_dirty:
+		for cell in _glass_rim_dirty[level]:
+			all[Vector3i(cell.x, cell.y, level)] = true
+
+	var regions: Array = []
+	var seen: Dictionary = {}
+	for key in all:
+		if seen.has(key):
+			continue
+		var members: Array = []
+		var queue: Array = [key]
+		seen[key] = true
+		while not queue.is_empty():
+			var k: Vector3i = queue.pop_back()
+			members.append(k)
+			for n in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
+					Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+				var nk: Vector3i = k + n
+				if all.has(nk) and not seen.has(nk):
+					seen[nk] = true
+					queue.append(nk)
+		regions.append({
+			"members": members,
+			"anchor": _region_anchor(members),
+			"opening": String(_glass_region_openings.get(_region_anchor(members), "")),
+		})
+	_glass_region_openings.clear()
+	return regions
+
+
+## A region's anchor cell — the rounded centroid of its members. The opening is
+## centred here, so it has to be derived the SAME way by whoever pre-picked the
+## opening and by this walk, or the two disagree about where the hole is.
+func _region_anchor(members: Array) -> Vector3i:
+	var sx: int = 0
+	var sy: int = 0
+	var sz: int = 0
+	for m in members:
+		sx += m.x
+		sy += m.y
+		sz += m.z
+	var n: int = maxi(members.size(), 1)
+	return Vector3i(int(round(float(sx) / float(n))), int(round(float(sy) / float(n))),
+		int(round(float(sz) / float(n))))
+
+
+## Cut every cell the region's opening crosses, and erase every cell it swallows.
+func _apply_opening_to_region(region: Dictionary) -> int:
+	var anchor: Vector3i = region["anchor"]
+	var members: Array = region["members"]
+	var opening_id: String = String(region["opening"])
+	if opening_id == "":
+		## Sized from the region's own extent: a one-cell pierce takes a small
+		## opening, a breach several cells across takes a large one. The pick is
+		## the DEFAULT only because nobody upstream claimed this region.
+		opening_id = GLASS_OPENING_DEFAULT if members.size() <= 2 else "star_deep_wide"
+	var bounds: Rect2i = GlassOpening.cell_bounds(opening_id)
+	if bounds.size == Vector2i.ZERO:
+		return 0
+
+	## The run axis comes from the face of a cell the opening actually touches —
+	## asked once per region rather than per cell, since a pane has one face.
+	var face: int = -1
+	var material_id: String = ""
+	var mask: int = 0
+	var swapped: int = 0
+	var unswallowed: int = 0
+	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
+		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
+			var cover: int = GlassOpening.coverage(opening_id, dr, dl)
+			if cover == GlassOpening.Coverage.NONE:
+				continue
+			## Both run axes are offered; the one that is not this pane's simply
+			## has no glass at the cell it names.
+			for run_is_x in [true, false]:
+				var cell := Vector2i(anchor.x + dr, anchor.y) if run_is_x \
+					else Vector2i(anchor.x, anchor.y + dr)
+				var level: int = anchor.z + dl
+				var layer := _glass_layers.get(level) as TileMapLayer
+				if layer == null:
+					continue
+				var sid: int = layer.get_cell_source_id(cell)
+				if sid == -1 or not _glass_source_info.has(sid):
+					## Either no glass here, or it is ALREADY a shard (shard ids
+					## are not in the info map). A hole never heals, so a shard is
+					## never recomputed — that is what keeps this idempotent.
+					continue
+				var info: Dictionary = _glass_source_info[sid]
+				if (int(info["face"]) == Face.SW or int(info["face"]) == Face.NE) != run_is_x:
+					continue
+				face = int(info["face"])
+				material_id = String(info["material"])
+				mask = int(info["mask"])
+				if cover == GlassOpening.Coverage.FULL:
+					## ⚠️ THE RENDERER DOES NOT ERASE. A cell the opening swallows
+					## whole should ALREADY be gone, because destruction is the one
+					## authority on which voxels exist and this walk only shapes
+					## the region it opened. Erasing here would put a second writer
+					## on `Voxel.visible` — the exact drift the architecture rules
+					## forbid — and it would erase glass whose `damage_state` still
+					## says DESTROYED is false.
+					##
+					## Reaching this line therefore means the opening is BIGGER than
+					## the hole destruction made, which is a wiring error and is
+					## loud rather than quietly patched: patching it would show a
+					## correct hole on screen while the two models disagreed.
+					unswallowed += 1
+					continue
+				var rim_id: int = _glass_rim_atom_source(material_id, face, mask,
+					opening_id, dr, dl)
+				if rim_id < 0:
+					continue
+				layer.set_cell(cell, rim_id, Vector2i.ZERO, 0)
+				note_external_write(level, cell)
+				swapped += 1
+	if unswallowed > 0:
+		push_warning("[VoxelRenderer] opening '%s' at %s covers %d cell(s) whole that still hold glass — the opening is larger than the hole destruction opened"
+			% [opening_id, str(anchor), unswallowed])
+	return swapped
+
+
+## CRACK-04 — claim a region's opening BEFORE the erase batch is flushed. Called
+## by whoever knows base coordinates (the room / the shot path), so the pick is
+## stable across a perspective flip. `cell`/`level` must be the region's anchor,
+## the same rounded centroid `_region_anchor()` computes.
+func claim_glass_opening(level: int, cell: Vector2i, opening_id: String) -> void:
+	_glass_region_openings[Vector3i(cell.x, cell.y, level)] = opening_id
 
 
 func _get_layer_material(level: int) -> ShaderMaterial:

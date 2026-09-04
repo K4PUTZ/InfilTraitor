@@ -33,10 +33,13 @@
 ##       occupancy rows going upside down, or the dial collapsing to a boolean.
 ##   [13] S-3's rebuild path acquiring side effects — a perspective flip that
 ##       re-damages the pane it is only supposed to redraw.
-##   [14] the shard rim collapsing to one shape, eating the pane's slivers, or
-##       losing the face-mask axis (which cost 3 of 8 neighbours for one run).
-##   [15] the rim eating the CORNERS. Four neighbours, not eight — the Director's
-##       diagram, and a difference nobody can see at play zoom.
+##   [14] a cell's cut collapsing to one shape (the cell OFFSET being dropped
+##       from the atom key), a PARTIAL cell being cut away entirely, or the cut
+##       eating the pane's slivers.
+##   [16] the opening FAMILY going malformed — an opening that does not leave the
+##       struck cell, a pooled id with no shape, or a pick that stops hashing.
+##   [15] the applied hole drifting from the opening it claims to be — a cell cut
+##       that coverage() calls outside, or left whole that it calls PARTIAL.
 
 extends SceneTree
 
@@ -47,6 +50,7 @@ const GlassMaterialsClass = preload("res://godot/scripts/systems/glass_materials
 const GlassCrackClass = preload("res://godot/scripts/systems/destruction/glass_crack.gd")
 const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const GlassOpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 
 const CRACK_DECAL_TEMPLATE := "res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"
 const FRACTURE_TEMPLATE := "res://ASSETS/materials/glass/fracture_glass_%s.png"
@@ -74,6 +78,7 @@ func _init() -> void:
 	test_the_occupancy_cut_reads_the_live_tilemap()
 	test_sprite_spec_is_render_only()
 	test_the_shard_rim_cuts_eight_distinct_shapes()
+	test_the_opening_family_is_well_formed()
 	test_only_the_four_orthogonal_neighbours_become_shards()
 
 	print("\n" + "=".repeat(70))
@@ -867,6 +872,12 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 func _one_tile_tileset() -> TileSet:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(32, 36)
+	## `_glass_rim_atom_source()` stamps `tile_name` on every shard it registers.
+	## Without the layer the engine prints an error per shard and the test still
+	## runs — the kind of noise that trains an eye to skip a log.
+	ts.add_custom_data_layer()
+	ts.set_custom_data_layer_name(0, "tile_name")
+	ts.set_custom_data_layer_type(0, TYPE_STRING)
 	var src := TileSetAtlasSource.new()
 	var img := Image.create(32, 36, false, Image.FORMAT_RGBA8)
 	img.fill(Color(1, 1, 1, 1))
@@ -973,7 +984,7 @@ func test_sprite_spec_is_render_only() -> void:
 ##     sliver marks the frontmost column of every GU, so a hole on a GU boundary
 ##     cut **5** of its 8 neighbours instead of 8.
 func test_the_shard_rim_cuts_eight_distinct_shapes() -> void:
-	print("[14] CRACK-03 — the hole's rim is eight distinct wedges, and the slivers survive\n")
+	print("[14] CRACK-04 — a cell's cut is its own piece of the opening, and the slivers survive\n")
 
 	var r = VoxelRendererClass.new()
 	var plain: Image = r._build_glass_pane_atom(Face.SW, false, false, 0)
@@ -984,62 +995,165 @@ func test_the_shard_rim_cuts_eight_distinct_shapes() -> void:
 		return
 	var full: int = _opaque_px(plain)
 
+	## ⚠️ THE OFFSETS ARE READ OFF THE OPENING, NOT ASSUMED. CRACK-03 asked for
+	## eight fixed directions; an opening has whatever partial cells its polygon
+	## happens to cross, and that count is a property of the SHAPE. Asserting a
+	## hardcoded 8 here would pass for `star_deep` and fail the family.
+	var opening: String = "star_deep"
+	var bounds: Rect2i = GlassOpeningClass.cell_bounds(opening)
+	var partials: Array = []
+	var fulls: Array = []
+	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
+		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
+			var cov: int = GlassOpeningClass.coverage(opening, dr, dl)
+			if cov == GlassOpeningClass.Coverage.PARTIAL:
+				partials.append(Vector2i(dr, dl))
+			elif cov == GlassOpeningClass.Coverage.FULL:
+				fulls.append(Vector2i(dr, dl))
+	if partials.size() >= 4:
+		_pass("'%s' crosses %d cells partially and swallows %d whole" % [opening, partials.size(), fulls.size()])
+	else:
+		_fail("'%s' has only %d partial cells — an opening that intrudes on nothing is a rectangle again"
+			% [opening, partials.size()])
+
 	var shapes: Array = []
 	var kept_all: Array = []
-	for i in range(VoxelRendererClass.GLASS_RIM_DIRS):
+	for off in partials:
 		var a: Image = r._build_glass_pane_atom(Face.SW, false, false, 0)
-		r._cut_glass_rim_wedge(a, VoxelRendererClass.GLASS_RIM_VECTORS[i], Face.SW)
+		r._cut_glass_opening(a, opening, off.x, off.y, Face.SW)
 		shapes.append(a)
 		kept_all.append(_opaque_px(a))
 
 	var uncut: Array = []
 	for i in range(shapes.size()):
 		if kept_all[i] >= full:
-			uncut.append(i)
+			uncut.append(str(partials[i]))
 	if uncut.is_empty():
-		_pass("every one of the %d directions removes glass (kept %d..%d of %d px)"
-			% [shapes.size(), kept_all.min(), kept_all.max(), full])
+		_pass("every partial cell loses glass (kept %d..%d of %d px)"
+			% [kept_all.min(), kept_all.max(), full])
 	else:
-		_fail("direction(s) %s removed nothing — the wedge is not being applied" % str(uncut))
+		_fail("cell(s) %s lost nothing — the opening is not reaching the atom" % ", ".join(uncut))
 
-	## Eight DIFFERENT shapes. Compared pairwise on the alpha mask, because "they
-	## all removed something" is satisfied by eight copies of one wedge.
+	## ⚠️ AND NONE OF THEM IS EMPTY. A partial cell that lost EVERYTHING is a cell
+	## the coverage sampler should have called FULL, and it would read on screen as
+	## a hole one voxel bigger than the opening — the failure that cannot be undone
+	## by a later pass, since the glass is already gone.
+	var emptied: Array = []
+	for i in range(shapes.size()):
+		if kept_all[i] == 0:
+			emptied.append(str(partials[i]))
+	if emptied.is_empty():
+		_pass("no partial cell was cut away entirely — PARTIAL and FULL agree with the raster")
+	else:
+		_fail("cell(s) %s were cut to nothing but classified PARTIAL" % ", ".join(emptied))
+
+	## Distinct pieces. Compared pairwise on the alpha mask, because "they all
+	## removed something" is satisfied by one shape stamped many times — which is
+	## exactly what the cut degrades to if `(dr, dl)` is dropped from the key.
 	var identical: Array = []
 	for i in range(shapes.size()):
 		for j in range(i + 1, shapes.size()):
 			if _same_alpha(shapes[i], shapes[j]):
-				identical.append("%d==%d" % [i, j])
-	if identical.is_empty():
-		_pass("all %d wedges are distinct masks — the direction really reaches the atom" % shapes.size())
+				identical.append("%s==%s" % [partials[i], partials[j]])
+	if identical.size() * 4 < shapes.size() * shapes.size():
+		_pass("the %d pieces are shape-distinct (%d symmetric pairs, as a symmetric star should have)"
+			% [shapes.size(), identical.size()])
 	else:
-		_fail("wedges are duplicates: %s — the direction is being dropped" % ", ".join(identical))
+		_fail("the pieces collapsed to one mask: %s — the cell offset is being dropped"
+			% ", ".join(identical))
 
-	## The slivers survive: `_cut_glass_rim_wedge` only touches pixels inside the
-	## MAIN face parallelogram, which is what lets the rim keep the pane's
+	## The slivers survive: `_cut_glass_opening` only touches pixels inside the
+	## MAIN face parallelogram, which is what lets a shard keep the pane's
 	## 1-voxel-thick read on a GU boundary.
 	var with_slivers: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
 	var sliver_px: int = _opaque_px(with_slivers) - full
 	var cut_slivers: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
-	r._cut_glass_rim_wedge(cut_slivers, VoxelRendererClass.GLASS_RIM_VECTORS[0], Face.SW)
+	r._cut_glass_opening(cut_slivers, opening, partials[0].x, partials[0].y, Face.SW)
 	var kept_sliver: int = _opaque_px(cut_slivers) - kept_all[0]
 	if sliver_px > 0 and kept_sliver == sliver_px:
-		_pass("the top/side slivers survive the cut intact (%d px) — a rim cell on a GU boundary still reads 1 voxel thick"
+		_pass("the top/side slivers survive the cut intact (%d px) — a shard on a GU boundary still reads 1 voxel thick"
 			% sliver_px)
 	else:
 		_fail("the cut ate %d of the %d sliver pixels" % [sliver_px - kept_sliver, sliver_px])
 
-	## The quantiser: a pure +run vector must pick index 0, +level index 2 — the
-	## order `GLASS_RIM_VECTORS` declares.
-	var idx_run: int = r._glass_rim_index(Vector2(1.0, 0.0))
-	var idx_lvl: int = r._glass_rim_index(Vector2(0.0, 1.0))
-	var idx_diag: int = r._glass_rim_index(Vector2(0.9, 1.1))
-	if idx_run == 0 and idx_lvl == 2 and idx_diag == 1:
-		_pass("the direction quantiser lands on the authored eight (+run=0, +level=2, diagonal=1)")
-	else:
-		_fail("quantiser gave +run=%d, +level=%d, diagonal=%d (expected 0, 2, 1)"
-			% [idx_run, idx_lvl, idx_diag])
-
 	r.free()
+	print("")
+
+
+## [16] CRACK-04 / G-D34 — the family itself. These are the properties the
+## renderer RELIES on, so they are asserted on the catalogue rather than
+## rediscovered per hole.
+func test_the_opening_family_is_well_formed() -> void:
+	print("[16] CRACK-04 — every opening intrudes, stays bounded, and picks reproducibly\n")
+
+	var bad: Array = []
+	for id in GlassOpeningClass.ids():
+		var poly: PackedVector2Array = GlassOpeningClass.polygon(id)
+		if poly.size() < 6:
+			bad.append("%s: %d verts" % [id, poly.size()])
+			continue
+		## An opening must reach PAST the struck cell, or it cuts nothing and the
+		## hole is the rectangle CRACK-03 exists to remove.
+		var r_max: float = 0.0
+		for pt in poly:
+			r_max = maxf(r_max, pt.length())
+		if r_max <= 0.5:
+			bad.append("%s: reach %.2f does not leave the struck cell" % [id, r_max])
+		## ...and it must swallow the struck cell WHOLE. The centre point being
+		## inside is the weaker claim and passes for an opening whose valleys cut
+		## through the hit cell's corners — which is a state with no resolution,
+		## because destruction has already removed that voxel entirely and the
+		## opening wants to keep four slivers of it. [15] found exactly this on
+		## three of the four small members.
+		if GlassOpeningClass.coverage(id, 0, 0) != GlassOpeningClass.Coverage.FULL:
+			bad.append("%s: does not swallow the struck cell (valley under %.3f)"
+				% [id, GlassOpeningClass.MIN_VALLEY])
+	if bad.is_empty():
+		_pass("all %d openings are closed, contain the impact, and intrude on a neighbour"
+			% GlassOpeningClass.ids().size())
+	else:
+		_fail("malformed opening(s): %s" % ", ".join(bad))
+
+	## Every member of a pool must be a real opening — a typo in POOLS resolves to
+	## an empty polygon, which cuts NOTHING and fails silently.
+	var orphans: Array = []
+	for size_class in ["small", "large"]:
+		for id in GlassOpeningClass.pool(size_class):
+			if not GlassOpeningClass.FAMILY.has(id):
+				orphans.append("%s/%s" % [size_class, id])
+	if orphans.is_empty():
+		_pass("every pooled id exists in FAMILY — no pick can resolve to an empty polygon")
+	else:
+		_fail("pooled id(s) with no shape: %s" % ", ".join(orphans))
+
+	## B4 / G-D32: the pick is a HASH, so the same key must give the same opening
+	## forever. A `randf()` here reshapes a standing hole on every camera turn.
+	var stable: bool = true
+	var spread: Dictionary = {}
+	for i in range(64):
+		var key: String = "base_%d" % i
+		var first: String = GlassOpeningClass.pick("small", key)
+		if first != GlassOpeningClass.pick("small", key):
+			stable = false
+		spread[first] = true
+	if stable:
+		_pass("pick() is reproducible for a given base key — FNV-1a, not randf()")
+	else:
+		_fail("pick() returned different openings for the same key — the pool is being randomised")
+
+	## ...and it must actually SPREAD. A hash that always returns member 0 is
+	## reproducible and useless, and would pass the test above forever.
+	if spread.size() >= 2:
+		_pass("64 keys reached %d of the %d small openings" % [spread.size(), GlassOpeningClass.pool("small").size()])
+	else:
+		_fail("64 keys all resolved to one opening — the hash is not reaching the pool")
+
+	## An unknown size class must be loud, not silently substituted.
+	if GlassOpeningClass.pick("no_such_class", "k") == "":
+		_pass("an unknown size class returns \"\" rather than a default that happens to exist")
+	else:
+		_fail("an unknown size class silently resolved to an opening")
+
 	print("")
 
 
@@ -1060,77 +1174,92 @@ func _same_alpha(a: Image, b: Image) -> bool:
 	return true
 
 
-## [15] CRACK-03 — FOUR NEIGHBOURS, NOT EIGHT (Director's diagram, 2026-09-02:
-## "1 PIERCED VOXEL" -> "4 CORNERS UNTOUCHED" -> "4 SPECIAL VOXELS CUT OUT").
+## [15] CRACK-04 — THE CELLS THAT GET CUT ARE EXACTLY THE OPENING'S PARTIAL SET.
 ##
-## The first build cut all eight. A cell that touches the hole only at a CORNER
-## has not been broken by it, and cutting it rounds the hole off instead of
-## opening it. This runs the real `refresh_glass_rims()` against a real renderer
-## and counts, because the difference between 4 and 8 on a one-voxel hole is
-## invisible at play zoom — it took a diagram to catch.
+## CRACK-03 asserted a fixed FOUR (the Director's diagram: the corners stay
+## cubes). That number was never the rule — it was `star_deep`'s footprint under a
+## per-cell wedge, and G-D34 replaced the wedge with a catalogue, so a different
+## opening legitimately cuts a different set. What must hold for EVERY opening is
+## the identity: the cells the walk swaps are the cells `coverage()` calls
+## PARTIAL — no more (glass eaten that the round never reached) and no fewer (a
+## boundary crossing a cell and leaving it a cube).
+##
+## ⚠️ Asserting a count would pass for one opening and be meaningless for the
+## family; asserting "not eight" would pass for the whole life of any bug that
+## cut seven. This asserts the SET.
 func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
-	print("[15] a pierced voxel cuts its 4 orthogonal neighbours; the corners stay cubes\n")
+	print("[15] the cut cells are exactly the opening's PARTIAL set, for every opening\n")
 
-	var r = VoxelRendererClass.new()
-	var base: int = GeometryCoordsClass.storey_level_base(0)
-	var cross := 7
-	var run0 := 4
-	var runs := 9
-	var levels := 5
-	var ts := _one_tile_tileset()
-	## ⚠️ THE RENDERER'S OWN TileSet MUST BE THE LAYERS' TileSet. The rim atoms
-	## register into `_tileset`, and a `set_cell()` naming a source the LAYER's
-	## tileset does not have is silently ignored — the cell keeps its old id and
-	## the swap looks like it worked. Found by this test on its first run.
-	r._tileset = ts
-	for lvl in range(base, base + levels):
-		var layer := TileMapLayer.new()
-		layer.tile_set = ts
-		for run in range(run0, run0 + runs):
-			layer.set_cell(Vector2i(run, cross), 0, Vector2i.ZERO)
-		r._glass_layers[lvl] = layer
-	## Every cell must look like a real SW pane atom, or the swap has no
-	## (material, face, mask) to read back — that inverse IS the mechanism.
-	r._glass_source_info[0] = {"material": "glass", "face": Face.SW, "mask": 0}
+	for opening in GlassOpeningClass.pool("small"):
+		var r = VoxelRendererClass.new()
+		var base: int = GeometryCoordsClass.storey_level_base(0)
+		var cross := 7
+		var run0 := 0
+		var runs := 15
+		var levels := 11
+		var ts := _one_tile_tileset()
+		## ⚠️ THE RENDERER'S OWN TileSet MUST BE THE LAYERS' TileSet. The shard
+		## atoms register into `_tileset`, and a `set_cell()` naming a source the
+		## LAYER's tileset does not have is silently ignored — the cell keeps its
+		## old id and the swap looks like it worked. Found by this test's ancestor
+		## on its first run.
+		r._tileset = ts
+		for lvl in range(base, base + levels):
+			var layer := TileMapLayer.new()
+			layer.tile_set = ts
+			for run in range(run0, run0 + runs):
+				layer.set_cell(Vector2i(run, cross), 0, Vector2i.ZERO)
+			r._glass_layers[lvl] = layer
+		r._glass_source_info[0] = {"material": "glass", "face": Face.SW, "mask": 0}
 
-	var hit_run: int = run0 + 4
-	var hit_level: int = base + 2
-	(r._glass_layers[hit_level] as TileMapLayer).erase_cell(Vector2i(hit_run, cross))
-	r.note_glass_erased_for_rim(hit_level, Vector2i(hit_run, cross))
-	var swapped: int = r.refresh_glass_rims()
+		var hit_run: int = run0 + runs / 2
+		var hit_level: int = base + levels / 2
+		var bounds: Rect2i = GlassOpeningClass.cell_bounds(opening)
 
-	if swapped == 4:
-		_pass("a 1-voxel hole cut exactly 4 cells — the Director's four special voxels")
-	else:
-		_fail("a 1-voxel hole cut %d cells, expected 4 (8 means the corners are being eaten)" % swapped)
+		## Destruction's part, played here: every cell the opening swallows whole
+		## is erased first. The renderer refuses to erase, on purpose — it would be
+		## a second writer on voxel existence.
+		var expect_partial: Dictionary = {}
+		for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
+			for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
+				var cov: int = GlassOpeningClass.coverage(opening, dr, dl)
+				if cov == GlassOpeningClass.Coverage.FULL:
+					(r._glass_layers[hit_level + dl] as TileMapLayer).erase_cell(
+						Vector2i(hit_run + dr, cross))
+					r.note_glass_erased_for_rim(hit_level + dl, Vector2i(hit_run + dr, cross))
+				elif cov == GlassOpeningClass.Coverage.PARTIAL:
+					expect_partial[Vector2i(dr, dl)] = true
+		if r._glass_rim_dirty.is_empty():
+			(r._glass_layers[hit_level] as TileMapLayer).erase_cell(Vector2i(hit_run, cross))
+			r.note_glass_erased_for_rim(hit_level, Vector2i(hit_run, cross))
 
-	## And they are the RIGHT four. A corner still carrying source 0 is untouched;
-	## an orthogonal one must have moved to a rim source.
-	var wrong: Array = []
-	for dr in [-1, 0, 1]:
-		for dl in [-1, 0, 1]:
-			if dr == 0 and dl == 0:
-				continue
-			var layer := r._glass_layers.get(hit_level + dl) as TileMapLayer
-			if layer == null:
-				continue
-			var sid: int = layer.get_cell_source_id(Vector2i(hit_run + dr, cross))
-			var is_rim: bool = sid != -1 and not r._glass_source_info.has(sid)
-			var should_be_rim: bool = (absi(dr) + absi(dl)) == 1
-			if is_rim != should_be_rim:
-				wrong.append("(%d,%d) rim=%s" % [dr, dl, is_rim])
-	if wrong.is_empty():
-		_pass("the 4 orthogonals are shards and the 4 corners are still whole cubes")
-	else:
-		_fail("wrong cells cut: %s" % ", ".join(wrong))
+		r.claim_glass_opening(hit_level, Vector2i(hit_run, cross), opening)
+		var swapped: int = r.refresh_glass_rims()
 
-	## A second refresh with nothing erased must do nothing — the cook erases cell
-	## by cell and this runs at every batch seam.
-	if r.refresh_glass_rims() == 0:
-		_pass("a refresh with no erase since the last one is a no-op")
-	else:
-		_fail("refresh_glass_rims re-cut with nothing dirty")
+		## Read the board back and compare SETS.
+		var wrong: Array = []
+		for dl in range(bounds.position.y - 1, bounds.position.y + bounds.size.y + 1):
+			for dr in range(bounds.position.x - 1, bounds.position.x + bounds.size.x + 1):
+				var layer := r._glass_layers.get(hit_level + dl) as TileMapLayer
+				if layer == null:
+					continue
+				var sid: int = layer.get_cell_source_id(Vector2i(hit_run + dr, cross))
+				var is_shard: bool = sid != -1 and not r._glass_source_info.has(sid)
+				if is_shard != expect_partial.has(Vector2i(dr, dl)):
+					wrong.append("(%d,%d)%s" % [dr, dl, " cut" if is_shard else " whole"])
+		if wrong.is_empty():
+			_pass("'%s': %d shard(s), and they are exactly the %d PARTIAL cells"
+				% [opening, swapped, expect_partial.size()])
+		else:
+			_fail("'%s': %d cell(s) disagree with coverage(): %s"
+				% [opening, wrong.size(), ", ".join(wrong)])
 
-	_free_glass_layers(r)
-	r.free()
+		## A second refresh with nothing erased must do nothing — the cook erases
+		## cell by cell and this runs at every batch seam.
+		if r.refresh_glass_rims() != 0:
+			_fail("'%s': refresh_glass_rims re-cut with nothing dirty" % opening)
+
+		_free_glass_layers(r)
+		r.free()
+	_pass("every small opening survived the round with no idempotence failure")
 	print("")

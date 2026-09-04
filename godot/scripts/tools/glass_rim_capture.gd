@@ -1,21 +1,23 @@
-## GLASS CRACK-03 — RENDER THE HOLE'S SILHOUETTE FROM THE REAL ATOMS.
+## GLASS CRACK-04 — RENDER THE FAMILY OF OPENINGS FROM THE REAL ATOMS.
 ##
 ## Rodar: /Applications/Godot.app/Contents/MacOS/Godot --headless --path . \
 ##            --script godot/scripts/tools/glass_rim_capture.gd
+##
+## One panel per member of `GlassOpening.FAMILY`, each a real pierced pane with
+## that opening applied through the real `refresh_glass_rims()`. This is the
+## picture a shape decision gets made on.
 ##
 ## ⚠️ WHY THIS EXISTS AS A COMMITTED TOOL AND NOT A SCRATCH SCRIPT.
 ## `glass_rim_shape_options_2026-09-02.png` — the picture G-D32 was ratified from
 ## — was made by an ad-hoc script that was never committed and no longer exists.
 ## It was captured at 04:11 on 2026-09-03, **four minutes before `330d285d` cut
 ## the neighbour count from 8 to 4**, so the silhouette it shows is one the build
-## has not made since. A shape decision needs a picture of the CURRENT build, and
-## a picture that cannot be re-made is a citation that decays (the same lesson the
-## `auto_*.png` rotation already taught this project).
+## has not made since. A picture that cannot be re-made is a citation that decays
+## (the same lesson the `auto_*.png` rotation already taught this project).
 ##
 ## ⚠️ IT COMPOSITES ATOMS, IT DOES NOT BOOT THE GAME. That is the point: the
-## question is what SILHOUETTE the rim atoms cut, and a play-zoom screenshot of a
-## real pane cannot answer it (the difference between 4 and 8 neighbours on a
-## one-voxel hole is a handful of pixels there — it took a diagram to catch).
+## question is what SILHOUETTE an opening cuts, and a play-zoom screenshot cannot
+## answer it — the difference between two openings is tenths of a voxel there.
 ## Compositing runs headless, deterministically, in under a second.
 ##
 ## The geometry is the atom's own, not a re-derivation: a SW face's diamond edge
@@ -26,11 +28,14 @@ extends SceneTree
 
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const GlassOpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 
 ## The pane to build, in cells. Big enough that the hole sits well inside it, so
 ## no edge case of the rim walk is silently doing the work.
-const RUNS: int = 11
-const LEVELS: int = 7
+## Big enough that the LARGE openings (7x7 cells) sit well inside it — a hole
+## touching the pane edge would be measuring the pane, not the opening.
+const RUNS: int = 15
+const LEVELS: int = 11
 const OUT_DIR := "res://Screenshots/history"
 
 ## Background and the flat colour every surviving atom is painted, so the picture
@@ -41,60 +46,57 @@ const BG := Color(0.16, 0.17, 0.22, 1.0)
 const GLASS_FLAT := Color(1.0, 0.93, 0.20, 1.0)
 
 
-## The per-shard dial sets for the RIGHT panel. ⚠️ THIS PANEL IS A MOCK, NOT THE
-## BUILD: it hands each of the four shards a different (TIP_HALF, DEPTH) to show
-## what G-D32's hashed pool does to the SILHOUETTE. The real S-6 is unbuilt, and
-## only two of the four ratified shapes (spike-deep, spike-shallow) are
-## expressible with today's dials at all — the V-notch and the 45° chamfer are
-## not, so this understates the variety rather than inventing it.
-const MOCK_DIALS: Array[Vector2] = [
-	Vector2(0.05, 1.00), Vector2(0.22, 0.55), Vector2(0.05, 0.70), Vector2(0.14, 0.90),
-]
-
-
 func _init() -> void:
 	print("\n" + "=".repeat(70))
-	print("GLASS CRACK-03 — the hole silhouette, composited from the real atoms")
+	print("GLASS CRACK-04 — the family of openings, composited from the real atoms")
 	print("=".repeat(70) + "\n")
 
-	print("LEFT — the real path: refresh_glass_rims() on a real pierced pane")
-	var built := _render_hole(false)
-	print("RIGHT — a MOCK of G-D32: the same hole, one dial set per shard")
-	var mocked := _render_hole(true)
-	if built == null or mocked == null:
-		push_error("[glass_rim_capture] the composite failed — no image produced")
-		quit(1)
-		return
+	var panels: Array = []
+	for id in GlassOpeningClass.ids():
+		var img := _render_hole(id)
+		if img == null:
+			push_error("[glass_rim_capture] '%s' produced no image" % id)
+			quit(1)
+			return
+		panels.append(img)
 
-	var img := _side_by_side(built, mocked)
+	var sheet := _tile(panels)
 	var stamp: String = Time.get_date_string_from_system()
-	var path: String = "%s/glass_rim_hole_4neighbours_%s.png" % [OUT_DIR, stamp]
-	var err: int = img.save_png(path)
+	var path: String = "%s/glass_openings_family_%s.png" % [OUT_DIR, stamp]
+	var err: int = sheet.save_png(path)
 	if err != OK:
 		push_error("[glass_rim_capture] save_png failed (%d) for %s" % [err, path])
 		quit(1)
 		return
-	print("wrote %s  (%d x %d)" % [path, img.get_width(), img.get_height()])
+	print("\nwrote %s  (%d x %d)" % [path, sheet.get_width(), sheet.get_height()])
 	print("")
 	quit(0)
 
 
-## The two panels on one sheet, with a divider — one file, one look, no flipping
-## between windows to compare two silhouettes that differ by a few pixels.
-func _side_by_side(a: Image, b: Image) -> Image:
-	var gap: int = 8
-	var w: int = a.get_width() + gap + b.get_width()
-	var h: int = maxi(a.get_height(), b.get_height())
-	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
+## Lay the panels out in a grid, widest-first, so the whole family is one look
+## instead of a folder to click through.
+func _tile(panels: Array) -> Image:
+	var cols: int = 4
+	var pw: int = 0
+	var ph: int = 0
+	for img in panels:
+		pw = maxi(pw, img.get_width())
+		ph = maxi(ph, img.get_height())
+	var rows: int = int(ceil(float(panels.size()) / float(cols)))
+	var gap: int = 6
+	var out := Image.create(cols * pw + (cols - 1) * gap, rows * ph + (rows - 1) * gap,
+		false, Image.FORMAT_RGBA8)
 	out.fill(Color(0.08, 0.08, 0.10, 1.0))
-	out.blit_rect(a, Rect2i(Vector2i.ZERO, a.get_size()), Vector2i.ZERO)
-	out.blit_rect(b, Rect2i(Vector2i.ZERO, b.get_size()), Vector2i(a.get_width() + gap, 0))
+	for i in range(panels.size()):
+		var img: Image = panels[i]
+		out.blit_rect(img, Rect2i(Vector2i.ZERO, img.get_size()),
+			Vector2i((i % cols) * (pw + gap), (i / cols) * (ph + gap)))
 	return out
 
 
 ## Build a real pane of real atoms, punch one voxel, run the REAL
 ## `refresh_glass_rims()`, then composite whatever the tilemap ended up holding.
-func _render_hole(mock_pool: bool) -> Image:
+func _render_hole(opening_id: String) -> Image:
 	var r = VoxelRendererClass.new()
 	var base: int = GeometryCoordsClass.storey_level_base(0)
 	var cross: int = 7
@@ -135,54 +137,45 @@ func _render_hole(mock_pool: bool) -> Image:
 
 	var hit_run: int = run0 + RUNS / 2
 	var hit_level: int = base + LEVELS / 2
-	(r._glass_layers[hit_level] as TileMapLayer).erase_cell(Vector2i(hit_run, cross))
-	r.note_glass_erased_for_rim(hit_level, Vector2i(hit_run, cross))
+
+	## ⚠️ THE CAPTURE PLAYS DESTRUCTION'S PART, because the renderer refuses to.
+	## Every cell the opening swallows WHOLE is erased here, the way the shot or
+	## the cook would erase it; the renderer is then only asked to shape the rim.
+	## Doing it the other way — letting the walk erase what it covers — would put
+	## a second writer on voxel existence and make this picture prettier than the
+	## build, which is the one thing a capture must never be.
+	var b: Rect2i = GlassOpeningClass.cell_bounds(opening_id)
+	var erased: int = 0
+	for dl in range(b.position.y, b.position.y + b.size.y):
+		for dr in range(b.position.x, b.position.x + b.size.x):
+			if GlassOpeningClass.coverage(opening_id, dr, dl) != GlassOpeningClass.Coverage.FULL:
+				continue
+			var cell := Vector2i(hit_run + dr, cross)
+			var lvl: int = hit_level + dl
+			var layer := r._glass_layers.get(lvl) as TileMapLayer
+			if layer == null:
+				continue
+			layer.erase_cell(cell)
+			r.note_glass_erased_for_rim(lvl, cell)
+			erased += 1
+	## A small opening can swallow nothing whole; the struck cell still goes.
+	if erased == 0:
+		(r._glass_layers[hit_level] as TileMapLayer).erase_cell(Vector2i(hit_run, cross))
+		r.note_glass_erased_for_rim(hit_level, Vector2i(hit_run, cross))
+		erased = 1
+
+	## Claim the opening for this region BEFORE the flush, the same way the play
+	## path will — so what this renders is the real application walk, not a
+	## private one that only the capture uses.
+	r.claim_glass_opening(hit_level, Vector2i(hit_run, cross), opening_id)
 	var swapped: int = r.refresh_glass_rims()
-	print("  pierced 1 voxel -> %d cell(s) cut into shards" % swapped)
-	if mock_pool:
-		_repaint_shards_with_pool(r, hit_run, hit_level, cross)
-	else:
-		print("  TIP_HALF=%.2f  DEPTH=%.2f (one shape, every shard)" % [
-			VoxelRendererClass.GLASS_RIM_TIP_HALF, VoxelRendererClass.GLASS_RIM_DEPTH])
+	print("  %-18s footprint %dx%d  destroyed %2d  shards %2d"
+		% [opening_id, b.size.x, b.size.y, erased, swapped])
 
 	var out := _composite(r, base)
 	_free_layers(r)
 	r.free()
 	return out
-
-
-## Re-cut the four shards, each with its own dial set, and put them back on the
-## tilemap. ⚠️ A MOCK OF S-6, not S-6: it walks the four orthogonals directly
-## instead of hashing, because the hash key is the open sub-question G-D32 left
-## (it has to be BASE-space or a perspective flip reshuffles the hole). What this
-## panel answers is only *what an irregular star looks like*, which is the part
-## a picture can settle and reasoning cannot.
-func _repaint_shards_with_pool(r, hit_run: int, hit_level: int, cross: int) -> void:
-	var keep_tip: float = VoxelRendererClass.GLASS_RIM_TIP_HALF
-	var keep_depth: float = VoxelRendererClass.GLASS_RIM_DEPTH
-	var orthos: Array[Vector2] = [Vector2(1.0, 0.0), Vector2(0.0, 1.0),
-		Vector2(-1.0, 0.0), Vector2(0.0, -1.0)]
-	for i in range(orthos.size()):
-		var d: Vector2 = orthos[i]
-		var dials: Vector2 = MOCK_DIALS[i]
-		VoxelRendererClass.GLASS_RIM_TIP_HALF = dials.x
-		VoxelRendererClass.GLASS_RIM_DEPTH = dials.y
-		var cell := Vector2i(hit_run + int(d.x), cross)
-		var lvl: int = hit_level + int(d.y)
-		var layer := r._glass_layers.get(lvl) as TileMapLayer
-		if layer == null:
-			continue
-		## The cut points back AT the hole, so the direction is the negated offset
-		## — the same vector `refresh_glass_rims()` accumulates.
-		var dir_index: int = r._glass_rim_index(-d)
-		## A fresh key per dial set, or the cache hands back the shape already cut.
-		r._glass_rim_sources.erase("glass|%d|0|%d" % [Face.SW, dir_index])
-		var rim_id: int = r._glass_rim_atom_source("glass", Face.SW, 0, dir_index)
-		if rim_id >= 0:
-			layer.set_cell(cell, rim_id, Vector2i.ZERO, 0)
-		print("    shard %d: tip=%.2f depth=%.2f" % [i, dials.x, dials.y])
-	VoxelRendererClass.GLASS_RIM_TIP_HALF = keep_tip
-	VoxelRendererClass.GLASS_RIM_DEPTH = keep_depth
 
 
 ## Blit every placed cell's atom onto one canvas. Position is the pane's own

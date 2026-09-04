@@ -2322,9 +2322,9 @@ static var GLASS_OPENING_DEFAULT: String = "star_deep"
 ## both are env-overridable, because the whole point of them is that the Director
 ## can read the hole's topography and only he can say when he can.
 static var GLASS_CUT_FACET_WIDTH: float = float(OS.get_environment("INFILTRAITOR_GLASS_FACET_W")) \
-	if OS.get_environment("INFILTRAITOR_GLASS_FACET_W") != "" else 0.22
+	if OS.get_environment("INFILTRAITOR_GLASS_FACET_W") != "" else 0.30
 static var GLASS_CUT_FACET_DIM: float = float(OS.get_environment("INFILTRAITOR_GLASS_FACET_DIM")) \
-	if OS.get_environment("INFILTRAITOR_GLASS_FACET_DIM") != "" else 0.30
+	if OS.get_environment("INFILTRAITOR_GLASS_FACET_DIM") != "" else 0.35
 
 
 ## The shard atom for one (material, face, mask, opening, cell offset), composed
@@ -2393,7 +2393,76 @@ func _cut_glass_opening(atom: Image, opening_id: String, dr: int, dl: int, face:
 	var cell := Vector2(float(dr), float(dl))
 	_cut_glass_face_region(atom, face, func(off: Vector2) -> bool:
 		return GlassOpening.contains(poly, off + cell))
+	_cut_glass_opening_slivers(atom, poly, cell, face)
 	_shade_glass_cut_facet(atom, poly, cell, face)
+
+
+## ── THE SLIVERS INSIDE THE HOLE ──────────────────────────────────────────────
+##
+## (Director, 2026-09-04: *"parece que tem uma faixa vertical no centro do buraco
+## […] o vidro deveria ter só uma camada simples."*)
+##
+## ⚠️ CRACK-03 SPARED THE SLIVERS ON PURPOSE AND THAT WAS RIGHT FOR THE WRONG
+## SCOPE. Its cut touched only the main-face parallelogram so that a shard sitting
+## on a GU boundary would still read one voxel THICK — a real requirement, and the
+## reason its atom key had to carry the face mask. But the side sliver is a
+## VERTICAL strip on the frontmost column of a GU, so where a hole crosses one it
+## survives standing in mid-air inside the opening: the vertical band he marked.
+##
+## The rule is not "spare the slivers", it is "spare the slivers OUTSIDE the
+## hole". A sliver pixel belongs to one edge of the voxel, so it is tested at that
+## EDGE's own (run, level): the top sliver along the cell's top edge, the side
+## sliver down the cell's front edge. Inside the opening it goes; outside it stays
+## and the shard keeps its thickness.
+func _cut_glass_opening_slivers(atom: Image, poly: PackedVector2Array, cell: Vector2,
+		face: int) -> void:
+	var vn := Vector2(16.0, 0.0)
+	var ve := Vector2(32.0, 8.0)
+	var vs := Vector2(16.0, 16.0)
+	var vw := Vector2(0.0, 8.0)
+	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
+	var f: float = GLASS_FACE_SLIVER_FRAC
+	var ea: Vector2
+	var eb: Vector2
+	var d_vec: Vector2
+	match face:
+		Face.SW: ea = vw; eb = vs; d_vec = (ve - vs) * f
+		Face.SE: ea = ve; eb = vs; d_vec = (vw - vs) * f
+		Face.NW: ea = vn; eb = vw; d_vec = (vs - vw) * f
+		Face.NE: ea = vn; eb = ve; d_vec = (vs - ve) * f
+		_: return
+	## The same three quads `_build_glass_pane_atom()` composes from.
+	var face_q: PackedVector2Array = [ea, eb, eb + down, ea + down]
+	var top_q: PackedVector2Array = [ea, eb, eb + d_vec, ea + d_vec]
+	var side_q: PackedVector2Array = [eb, eb + d_vec, eb + d_vec + down, eb + down]
+	var e_u: Vector2 = eb - ea
+	var det: float = e_u.x * down.y - e_u.y * down.x
+	if absf(det) < 0.0001:
+		return
+	for y in range(atom.get_height()):
+		for x in range(atom.get_width()):
+			var c := atom.get_pixel(x, y)
+			if c.a <= 0.0:
+				continue
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			## Main face is already handled; only the slivers are left.
+			if _signed_dist_in_quad(p, face_q) >= 0.0:
+				continue
+			var in_top: bool = _signed_dist_in_quad(p, top_q) >= 0.0
+			var in_side: bool = _signed_dist_in_quad(p, side_q) >= 0.0
+			if not in_top and not in_side:
+				continue
+			## Project onto the face's own basis to recover which point of which
+			## EDGE this sliver pixel belongs to.
+			var px: Vector2 = p - ea
+			var u: float = (px.x * down.y - px.y * down.x) / det
+			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
+			## Top sliver: run varies, level is the cell's top. Side sliver: run is
+			## the cell's front edge, level varies.
+			var off := Vector2(clampf(u, 0.0, 1.0) - 0.5, 0.5) if in_top \
+				else Vector2(0.5, 0.5 - clampf(v, 0.0, 1.0))
+			if GlassOpening.contains(poly, off + cell):
+				atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
 
 
 ## ── CRACK-04 — THE CUT'S OWN FACET ───────────────────────────────────────────

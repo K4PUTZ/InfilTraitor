@@ -1087,19 +1087,40 @@ func test_the_shard_rim_cuts_eight_distinct_shapes() -> void:
 		_fail("cell(s) %s read NONE but the raster cuts them — the sampler is coarser than the cut"
 			% ", ".join(leaks))
 
-	## The slivers survive: `_cut_glass_opening` only touches pixels inside the
-	## MAIN face parallelogram, which is what lets a shard keep the pane's
-	## 1-voxel-thick read on a GU boundary.
+	## ⚠️ THE SLIVER RULE CHANGED ON 2026-09-04 AND THIS ASSERTION WITH IT.
+	## CRACK-03 spared the top/side slivers wholesale, so a shard on a GU boundary
+	## still read one voxel THICK. Right requirement, wrong scope: the side sliver
+	## is a VERTICAL strip on the frontmost column, so where a hole crossed one it
+	## survived standing in mid-air inside the opening — the vertical band the
+	## Director marked in the middle of the bore.
+	##
+	## The rule is now "spare the slivers OUTSIDE the hole", which needs both
+	## halves asserted, because either one alone passes for a broken build: sparing
+	## everything passes the first, cutting everything passes the second.
 	var with_slivers: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
 	var sliver_px: int = _opaque_px(with_slivers) - full
 	var cut_slivers: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
 	r._cut_glass_opening(cut_slivers, opening, partials[0].x, partials[0].y, Face.SW)
 	var kept_sliver: int = _opaque_px(cut_slivers) - kept_all[0]
-	if sliver_px > 0 and kept_sliver == sliver_px:
-		_pass("the top/side slivers survive the cut intact (%d px) — a shard on a GU boundary still reads 1 voxel thick"
-			% sliver_px)
+	if sliver_px > 0 and kept_sliver > 0:
+		_pass("a cut cell keeps %d of its %d sliver px — a shard on a GU boundary still reads 1 voxel thick"
+			% [kept_sliver, sliver_px])
 	else:
-		_fail("the cut ate %d of the %d sliver pixels" % [sliver_px - kept_sliver, sliver_px])
+		_fail("the cut ate the slivers whole (%d of %d left) — the shard lost its thickness"
+			% [kept_sliver, sliver_px])
+
+	## ...and a cell the opening does not reach loses NOTHING, sliver included.
+	## This is the half that catches an over-eager sliver cut, which would eat the
+	## pane's thickness everywhere and look like a rendering change nobody ordered.
+	var far := Vector2i(bounds.position.x + bounds.size.x + 3, 0)
+	var far_atom: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
+	var far_before: int = _opaque_px(far_atom)
+	r._cut_glass_opening(far_atom, opening, far.x, far.y, Face.SW)
+	if _opaque_px(far_atom) == far_before:
+		_pass("a cell outside the opening loses nothing at all, slivers included")
+	else:
+		_fail("a cell %s outside the opening lost %d px — the sliver cut is reaching too far"
+			% [far, far_before - _opaque_px(far_atom)])
 
 	r.free()
 	print("")

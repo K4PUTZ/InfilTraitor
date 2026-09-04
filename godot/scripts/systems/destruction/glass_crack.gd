@@ -43,6 +43,18 @@ static var CRACK_RADIUS_WIDE := Vector2i(10, 8)
 ## is a NODE SCALE rather than a shader uniform — the sprite's transform is built
 ## from it. The sheets carry their ink in the middle ~34% of the page, so a
 ## `tight` span of 20 x 10 puts a pistol's web inside ~3-4 voxels.
+## ⚠️ THE SPAN IS WHAT SIZES THE WEB AGAINST THE HOLE, and the two had grown to
+## the same size. The ink sits in the middle ~34% of the page, so a `tight` span
+## of 20 puts the web inside ~3.4 voxels — and `notch_v`'s opening is 3.4 voxels
+## across, so the void ate exactly the dense core and the web read as a ring
+## around a hole rather than a web the hole is in. (Director, 2026-09-04: *"A
+## abertura precisa ser um pouco menor, ou então o adesivo um pouco maior, se
+## adaptando a esse shape da abertura."*)
+##
+## The opening cannot shrink much — `MIN_VALLEY` pins its inner radius at the
+## struck cell's own corners — so it is the SHEET that grows.
+static var SHEET_SCALE: float = float(OS.get_environment("INFILTRAITOR_GLASS_SHEET_SCALE")) \
+	if OS.get_environment("INFILTRAITOR_GLASS_SHEET_SCALE") != "" else 1.4
 static var SHEET_SPAN_TIGHT := Vector2(20.0, 10.0)
 static var SHEET_SPAN_WIDE := Vector2(44.0, 22.0)
 
@@ -57,7 +69,7 @@ static func wide_for_blowout(blowout: float) -> bool:
 
 
 static func sheet_span(wide: bool) -> Vector2:
-	return SHEET_SPAN_WIDE if wide else SHEET_SPAN_TIGHT
+	return (SHEET_SPAN_WIDE if wide else SHEET_SPAN_TIGHT) * SHEET_SCALE
 
 
 ## Pure. `pane_slices` share one `pane_id`; `face` fixes the run axis (X for

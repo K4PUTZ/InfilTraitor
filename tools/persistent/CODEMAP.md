@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**232 scripts · 79844 lines total** (under `godot/scripts/`)
+**232 scripts · 79866 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -182,7 +182,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1215 lines
+`class_name GuardEnemy` · extends `Node2D` · 1237 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -221,9 +221,6 @@
 - `TIMER_NOISE_SUSPICIOUS` = `3`
 - `TIMER_NOISE_SUSPICIOUS_MED` = `2`
 - `TURN_SPEED` = `4.0`
-- `SEARCH_RADIUS` = `2`
-- `SEARCH_TURNS_MAX` = `5`
-- `COMMS_LABEL_DURATION` = `2.0`
 
 **Public vars**
 - `var floor_layer: TileMapLayer = null`
@@ -243,20 +240,6 @@
 - `var facing_angle_deg: float = 0.0`
 - `var body_angle: float   = 0.0`
 - `var vision_angle: float = 0.0`
-- `var attention: GuardAttention = GuardAttention.new()`
-- `var dev_vision: bool = false`
-- `var detection: float = 0.0`
-- `var idle_turns_remaining: int = 0`
-
-**Public API**
-- `func set_dev_vision(enabled: bool) -> void:`
-- `func set_los_data(blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i = Vector2i.ZERO, shadow_tiles: Dictionary = {}) -> void:`
-- `func setup( tile_layer: TileMapLayer, offset: Vector2, id: String, route: Array[Vector2i], start_index: int = 0 ) -> void:`
-- `func reset_to_route_start() -> void:`
-- `func evaluate_detection( player_cell: Vector2i, _vision_range: int = VISION_RANGE, blocked_cells: Dictionary = {}, blocked_edges: Dictionary = {}, _close_warning_range: int = 2, agent_ref: DebugAgent = null ) -> Dictionary:`
-- `func pick_next_patrol_cell( occupied_cells: Dictionary, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i ) -> Vector2i:`
-- `func move_to_cell_animated( new_cell: Vector2i, blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i ) -> void:`
-- `func move_along_path(path: Array[Vector2i]) -> void:`
 
 ---
 

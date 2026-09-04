@@ -80,6 +80,22 @@ var facing_angle_deg: float = 0.0  ## 0=UP 90=RIGHT 180=DOWN 270=LEFT
 var body_angle: float   = 0.0
 var vision_angle: float = 0.0
 const TURN_SPEED := 4.0
+## ⚠️ CAPTURE-ONLY: SNAP THE BODY AND HEAD TO THEIR TARGETS INSTEAD OF EASING.
+##
+## (Director, 2026-09-04: *"os guardas tem um movimento automatico no inicio do
+## turno, porque eles começam olhando pra frente e giram logo em seguida. Isso faz
+## o cone de visão se mover junto, o que poderia explicar as diferenças nas
+## medições, caso o frame escolhido seja antes ou depois."*)
+##
+## He is right, and it is the reason a whole class of measurement on this project
+## has had to be same-boot: a guard boots looking forward and eases to its posted
+## facing over several frames, so two captures land at different points of that
+## sweep and differ by thousands of pixels in the cone before anything under test
+## has moved. Snapping removes the transient rather than trying to time it.
+##
+## NEVER on the play path — the ease IS the animation. `_rotate_towards` is left
+## exactly as it is for every other caller and every other frame.
+static var FREEZE_TURN: bool = OS.get_environment("INFILTRAITOR_FREEZE_GUARD_TURN") == "1"
 
 ## Contextual attention
 var attention: GuardAttention = GuardAttention.new()
@@ -202,7 +218,10 @@ func _process(delta: float) -> void:
 		_update_debug_label()
 
 	## Body follows facing_angle_deg (discrete → continuous)
-	body_angle = _rotate_towards(body_angle, deg_to_rad(facing_angle_deg), TURN_SPEED, delta)
+	if FREEZE_TURN:
+		body_angle = deg_to_rad(facing_angle_deg)
+	else:
+		body_angle = _rotate_towards(body_angle, deg_to_rad(facing_angle_deg), TURN_SPEED, delta)
 
 	## Head/vision: follows the body by default, diverges with active attention.
 	##
@@ -227,7 +246,10 @@ func _process(delta: float) -> void:
 		if grid_delta != Vector2i.ZERO:
 			target_vision = atan2(float(grid_delta.x), float(-grid_delta.y))
 
-	vision_angle = _rotate_towards(vision_angle, target_vision, TURN_SPEED * 1.35, delta)
+	if FREEZE_TURN:
+		vision_angle = target_vision
+	else:
+		vision_angle = _rotate_towards(vision_angle, target_vision, TURN_SPEED * 1.35, delta)
 
 	## THE HEAD LAYER, driven by the angle that was ALREADY here. `vision_angle`
 	## is the guard's real line of sight — it is what `_get_cone_tiles()` tests

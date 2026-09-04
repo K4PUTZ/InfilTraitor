@@ -440,6 +440,44 @@ func glass_base_key(grid_pos: Vector2i, level: int) -> String:
 ## CRACK-04 — re-claim every recorded hole's opening for the perspective just
 ## entered, so a rebuilt hole keeps the shape it was opened with.
 ##
+## ⚠️ CAPTURE-ONLY: STRIP THE BOARD DOWN TO THE THING BEING JUDGED.
+##
+## (Director, 2026-09-04: *"a gente poderia fazer um mapa sem o guarda atrás,
+## porque o amarelo do cone de visão está atrapalhando […] E o chão também poderia
+## ser de uma cor só, pra facilitar o diagnóstico."*)
+##
+## He is diagnosing a HOLE, and the frame behind it carries a guard's vision cone
+## and a two-tone lit floor. Both are the picture doing the arguing. It is also
+## why the numeric check failed the last time it was tried: a colour mask of "what
+## shows through the hole" sampled 103..151 in RED around one impact, so its
+## centroid was biased by which half of the backdrop the hole happened to sit on.
+## A flat backdrop makes that measurement possible, not merely prettier.
+##
+## NEVER on the play path. It hides nodes and modulates a layer; nothing here
+## changes geometry, damage or any decision the game makes.
+func apply_glass_diagnostic_backdrop() -> void:
+	if OS.get_environment("INFILTRAITOR_GLASS_DIAG") != "1":
+		return
+	var hidden: int = 0
+	for g in _guards:
+		if g != null and is_instance_valid(g):
+			g.visible = false
+			hidden += 1
+	## The overlays that draw ON the guards, which do not go with them.
+	for ov in [_vision_controller, _shadow_boundary_overlay, _light_ray_overlay,
+			_ceiling_overlay]:
+		if ov != null and is_instance_valid(ov):
+			ov.visible = false
+	## One flat floor. `modulate` rather than a repaint: the tiles keep their own
+	## ids, so nothing downstream sees a different board — only the eye does.
+	if floor_layer != null:
+		floor_layer.modulate = Color(0.22, 0.23, 0.26, 1.0)
+	## ⚠️ NOT `[GLASS-DIAG]` — that tag already belongs to the slice dump above,
+	## and two unrelated things under one tag is how a log stops being readable.
+	print("[GLASS-BACKDROP] stripped — %d guard(s) hidden, overlays off, floor flat"
+		% hidden)
+
+
 ## ⚠️ IT APPLIES, IT DOES NOT CLAIM — AND IT RUNS AFTER `_reapply_base_damage()`.
 ## The first version did the opposite of both, on the reasonable-sounding theory
 ## that a rebuild re-erases the glass and the erase flush would consume a claim
@@ -5913,6 +5951,9 @@ func _capture_glass_crack_demo() -> void:
 	## existence) and warns, so half the family photographed with standing glass
 	## sitting inside its own hole. The demo has to play destruction's part
 	## properly, exactly as the atom harness already does.
+	## The Director is judging a HOLE; strip the guard and the two-tone floor out
+	## of the frame first (capture-only, INFILTRAITOR_GLASS_DIAG=1).
+	apply_glass_diagnostic_backdrop()
 	var demo_opening_pre: String = glass_opening_for(hit_gp, hit_level, wide)
 	var ob: Rect2i = GlassOpening.cell_bounds(demo_opening_pre)
 	var holed: int = 0

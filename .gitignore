@@ -65,6 +65,16 @@ ASSETS/materials/*
 !ASSETS/materials/*/
 ASSETS/materials/*/*
 !ASSETS/materials/*/*.json
+
+# ...EXCEPT a GENERATED one. `fracture_manifest.json` is written by
+# `gen_fracture_sheet.py` beside the 36 sheets it describes, and the re-include
+# above caught it purely by extension. The rule it breaks is the reason that
+# re-include exists: material rows are versioned because they are HAND-TUNED
+# data. This is not. Worse, the sheets themselves stay ignored, so committing the
+# manifest alone would version half a generated pair — a manifest naming art
+# nobody has, which resolves to `load() == null` and a crack that silently does
+# not draw. They regenerate together, in one command, or not at all.
+ASSETS/materials/*/fracture_manifest.json
 !ASSETS/materials/manifest.json
 
 # SCULPT SOURCES ARE VERSIONED (Director ruling 2026-08-15, ACTOR D50).

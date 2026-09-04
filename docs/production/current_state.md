@@ -275,6 +275,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-02_CRACK_01.md
 - RESUMO_SESSAO_2026-09-02_CRACK_02.md
 - RESUMO_SESSAO_2026-09-02_GART_DELIVERY.md
+- RESUMO_SESSAO_2026-09-04_CRACK_04.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

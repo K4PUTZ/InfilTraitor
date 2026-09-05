@@ -5,13 +5,16 @@ The previous session is
 It closed CRACK-04 and left **exactly two things open**, both named rather than
 implied. The Director asked for both: *"Cooking + armored glass."*
 
-`GLASS_MASTER_PLAN` v1.25 → **v1.27**, new **§15** and **§16**, register gains **G-D35**.
+`GLASS_MASTER_PLAN` v1.25 → **v1.28**, new **§15** and **§16**, register gains
+**G-D35**. Four commits, and the session ended with the Director asking for
+everything to be written down before stopping.
 
 | | commit |
 |---|---|
 | the cook names its hole; the claim rides the Delta | `c1089d67` |
 | the pane that held, and the core that says so (G-D28) | `155663c7` |
-| the Director's three rulings, and the calibre split | (this commit) |
+| the Director's three rulings, and the calibre split | `7ccbc6d0` |
+| §6.2 / G-D35 **B-1** — the pane a blast does not take now crazes | `96748f0a` |
 
 ---
 
@@ -179,5 +182,84 @@ centre, two axes (destruction × granularity), perforation chosen per voxel, and
 variants were not. `GLASS_MASTER_PLAN.md` §16 carries the spec and the B-1..B-5
 staging; **B-1 is the trigger**, because art without its caller is the trap this
 project has already paid for twice.
+
+## 9. B-1 BUILT — the trigger, before the art
+
+The Director: *"Pode ir no B1."* A pane the blast reaches and does not take goes
+CRACKED, **whole** (G-D2 — the intensity axis is granularity, not area), with
+`CRAZE_RING_INTENSITY[ring]` riding out on `WorldDelta.glass_crazes` for B-3.
+Real map: `pane=PANE_SLICE_16_10_SW ring=2 intensity=0.55 — pane STANDS, 1152
+voxel(s) CRACKED`.
+
+⚠️ **Nothing changes on screen, and that is the point of the ordering.** G-D35's
+sheet is a centreless tiled field; drawing today's bullet page over a
+blast-crazed pane would be the wrong art wired to a real trigger — worse than no
+art, because it would look finished.
+
+**Two measurements came out of building it:**
+
+1. **§6.2's predicted new BFS was never needed.** `flood_gu_rings()` already
+   floods to `ring_multipliers.size() - 1`, and frag_grenade's last entry is
+   **0.0** — ring 3 is already in `affected` and takes no damage at all. The two
+   cases §6.2 and G-D35 describe (the pane inside that held, the pane outside
+   that was never at risk) are one branch.
+2. **576 of 1152 crazed voxels would never have been persisted.**
+   `PHASE_PACKAGE` fills `touched_voxels` and walks `ring_of`, which covers only
+   the slices in `affected` — the blast reached 3 of this pane's 6. Half of every
+   crazed pane would have been dropped by VL-PERSIST silently. Topped up after
+   PACKAGE, not at the craze.
+
+## 10. ⚠️ AND THE MEASUREMENT FOUND A DEFECT THAT IS NOT B-1's
+
+**A PANEL pane's damage does not survive a rotation at all.** 1152 CRACKED before
+a flip to E, **0** after; `[VL-PERSIST] 441 of 1593 re-applied, 1152 had no
+voxel` — 441 is exactly the floor records, 1152 exactly the pane. Two controls
+place it: the SHOT path loses it identically, and PLAYGROUND's ordinary walls
+restore **417 of 417**. So it is the half-thickness PANEL — its voxels sit at the
+FACE's own offset inside the GU, and rotating the voxel grid does not put them
+where the rotated face's voxels are.
+
+⚠️ **This also means CRACK-02 S-3's rebuild has never worked on a single flip.**
+Its acceptance was a ROUND TRIP (`"E,N"`), where `cell_from_base` is the identity
+— exact and tautological the same way selftest [10] was before CRACK-04 found it.
+**Reported, not fixed:** it belongs to VL-PERSIST / CRACK-02 S-3, the fix is a
+base-space key that carries the FACE, and rotation is suspended for performance
+meanwhile. §16.6.
+
+## 11. Where tomorrow starts
+
+**Read `GLASS_MASTER_PLAN.md` §16 first** — it carries the B-1..B-5 staging and
+everything below.
+
+Three things are waiting on the Director, and B-2 cannot be scoped without the
+first:
+
+1. **Does §16.6 get fixed before B-2?** A tiled sheet has the same base-space
+   problem as a voxel, one level up — B-2 would be built on a seam that is known
+   broken. The alternative is to build B-2 anyway and accept that neither the
+   craze state nor its sheet survives a rotation until VL-PERSIST is repaired.
+2. **How many granularity steps** (§16.4), and whether the coarse end is a
+   different mesh or the same one at a bigger scale. The second is nearly free.
+3. **Does a crazed pane still block sight?** G1 says glass is see-through; a
+   dense craze mesh is not. This is a GAMEPLAY question — `LIGHT_MASTER_PLAN`'s
+   visual-brightness vs tactical-visibility split — not an art one.
+
+**Instruments that exist now and tomorrow will need**, because CRACKED glass
+renders exactly like intact glass and no screenshot can see any of this:
+
+    INFILTRAITOR_CAPTURE_ACTION=glass_blast_demo
+      INFILTRAITOR_GLASS_BLAST_GU=x,y      where the grenade goes
+      INFILTRAITOR_GLASS_BLAST_PANE=<id>   which pane to frame
+      INFILTRAITOR_GLASS_BLAST_FLIP=E      count cracked, rotate, count again
+    INFILTRAITOR_CAPTURE_ACTION=glass_crack_demo
+      INFILTRAITOR_CRACK_DEMO_MATERIAL=glass_armored
+      INFILTRAITOR_CRACK_DEMO_SPANS=24,18,14,10
+    always: INFILTRAITOR_MAP=GLASS INFILTRAITOR_AUTO_SCREENSHOT=1
+            INFILTRAITOR_GLASS_DIAG=1 INFILTRAITOR_FREEZE_GUARD_TURN=1
+
+⚠️ **A ring-2 win is what the cook's opening claim needs to be visible, and no
+grenade cell on the GLASS map produces one** (§2 of `GLASS_MASTER_PLAN` §15.2).
+If that ever needs photographing, it needs a bigger pane or a balance change —
+not another salt search.
 
 Full detail: `GLASS_MASTER_PLAN.md` §15 and §16.

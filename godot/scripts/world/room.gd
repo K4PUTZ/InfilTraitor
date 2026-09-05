@@ -2150,6 +2150,9 @@ func _set_perspective(direction: String) -> void:
 		## reachable at all since §16.6: a panel pane did not move with the map, so
 		## every one of these would have reported "no pane voxel" and healed.
 		_respawn_base_crazes()
+		## B-4b — the fields' hole masks, after the openings above have been
+		## re-applied (that is what refills the polygon log the mask reads).
+		_voxel_renderer.refresh_craze_opening_masks()
 
 		## Re-derive the per-cell overlays for the rotated layout so they follow the scenery:
 		## numbers redraw, lighting (lights/semantics/shadows/exposure) rebuilds from the rotated
@@ -6467,6 +6470,14 @@ func _capture_glass_blast_demo() -> void:
 			worst_run = maxi(worst_run, int(perf_runs[run]))
 	print("[GLASS-BLAST] perforations: %d hole(s) across %d run(s) and %d level(s), worst run %d"
 		% [perf_n, perf_runs.size(), perf_levels.size(), worst_run])
+	## B-4b — did the mesh actually get cut to the holes? The painted-texel count
+	## is the only number that says so: an empty mask and a correct one produce the
+	## same log everywhere else, and the difference is sub-cell on screen.
+	for c in _voxel_renderer._glass_cracks:
+		if bool(c.get("field", false)):
+			print("[GLASS-BLAST] craze hole mask: %d texel(s) inside a hole, %d opening(s) logged"
+				% [int(c.get("craze_mask_painted", -1)),
+				_voxel_renderer._glass_applied_openings.size()])
 	print("[GLASS-BLAST] craze fields: claimed=%d live=%d"
 		% [_base_crazes.size(), _voxel_renderer.glass_craze_count()])
 	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")

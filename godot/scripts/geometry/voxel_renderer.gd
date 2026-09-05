@@ -4742,6 +4742,10 @@ var _glass_cracks: Array = []
 var _glass_craze_art_noted: bool = false
 ## B-2's wrap-test tile, built once per boot when the env var asks for it.
 var _glass_craze_tile_cache: Texture2D = null
+## B-4b — every opening polygon actually applied, so a craze field can be cut to
+## the same shapes the voxels were. Cleared with the cracks on a rebuild, and
+## refilled by `_respawn_base_openings()` replaying them.
+var _glass_applied_openings: Array = []
 var _glass_crack_next_id: int = 0
 var _glass_crack_root: Node2D = null
 var _glass_crack_shader: Shader = null
@@ -5044,6 +5048,7 @@ func spawn_glass_craze(spec: Dictionary) -> int:
 	_glass_cracks.append(rec)
 	sprite.set_hole_cut(_glass_crack_hole_cut)
 	_build_crack_occupancy(rec)
+	_build_craze_opening_mask(rec)
 	return _glass_crack_next_id
 
 
@@ -5105,6 +5110,97 @@ func _glass_craze_wrap_tile() -> Texture2D:
 				img.set_pixel(x, y, ink)
 	_glass_craze_tile_cache = ImageTexture.create_from_image(img)
 	return _glass_craze_tile_cache
+
+
+## ── B-4b — CUT THE CRAZE FIELD TO THE HOLES' OWN POLYGONS ───────────────────
+##
+## One R8 mask over the field's pane rectangle, at sub-cell resolution, carrying
+## every opening applied on that pane. 1 = inside a hole, so the shader multiplies
+## the mesh by `1 - mask` and the craze simply stops at the glass's real edge.
+##
+## ⚠️ THIS IS NOT THE OCCUPANCY AND CANNOT BE. The occupancy is one texel per CELL
+## and nearest-filtered on purpose (a destroyed voxel IS a voxel). The opening's
+## edge is sub-cell by definition — *"intrusão nas bordas dos voxels ao redor"* —
+## so a cell that still holds a SHARD reads as full glass to the occupancy while
+## most of it is gone. Before this, the mesh drew over that missing part, which is
+## what made the perforated pane read as confused.
+##
+## ⚠️ AND IT IS RASTERISED FROM `GlassOpening.polygon()`, not composited from the
+## per-opening mask images. Those carry their own origins and paddings; walking
+## the one authority into this rect keeps the mesh's cut and the voxels' cut the
+## SAME line rather than two that have to be kept in agreement (G-D34's whole
+## point, one level up).
+const CRAZE_MASK_TEXELS_PER_VOXEL: int = 6
+
+
+func _build_craze_opening_mask(c: Dictionary) -> void:
+	var sprite = c["sprite"]
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	var lo: Vector2 = c["pane_lo"]
+	var hi: Vector2 = c["pane_hi"]
+	var span := Vector2(hi.x - lo.x + 1.0, hi.y - lo.y + 1.0)
+	var w: int = int(round(span.x * float(CRAZE_MASK_TEXELS_PER_VOXEL)))
+	var h: int = int(round(span.y * float(CRAZE_MASK_TEXELS_PER_VOXEL)))
+	if w < 2 or h < 2 or w > 4096 or h > 4096:
+		return
+	## The mask's own frame: its top-left in (run, level) voxels from the sprite
+	## centre, exactly the parameterisation `set_opening()` already takes.
+	var origin := Vector2(lo.x - 0.5, hi.y + 0.5)
+	var img: Image = c.get("craze_mask_image")
+	if img == null or img.get_width() != w or img.get_height() != h:
+		img = Image.create(w, h, false, Image.FORMAT_R8)
+	img.fill(Color(0.0, 0.0, 0.0))
+
+	var run_is_x: bool = int(c["run_axis"]) == 0
+	var c_run: int = int(c["impact_run"])
+	var c_lvl: int = int(c["impact_level"])
+	var cross: int = (c["impact_cell"] as Vector2i).y if run_is_x \
+		else (c["impact_cell"] as Vector2i).x
+	var painted: int = 0
+	for rec in _glass_applied_openings:
+		if bool(rec["run_is_x"]) != run_is_x:
+			continue
+		var a: Vector3i = rec["anchor"]
+		## Same face plane as this pane, or it is another pane's hole.
+		if (a.y if run_is_x else a.x) != cross:
+			continue
+		var a_run: int = a.x if run_is_x else a.y
+		var poly: PackedVector2Array = GlassOpening.polygon(String(rec["opening"]))
+		if poly.is_empty():
+			continue
+		## The polygon lives in (run, level) voxels around its own anchor; move it
+		## into the mask's frame once, rather than per texel.
+		var off := Vector2(float(a_run - c_run) - origin.x, origin.y - float(a.z - c_lvl))
+		## Only this opening's own bounding box is walked — a whole-mask sweep per
+		## hole would be 38 point-in-polygon tests per texel on a real pane.
+		var plo := Vector2(INF, INF)
+		var phi := Vector2(-INF, -INF)
+		for pt in poly:
+			plo = plo.min(pt)
+			phi = phi.max(pt)
+		var x0: int = maxi(0, int(floor((off.x + plo.x) * CRAZE_MASK_TEXELS_PER_VOXEL)))
+		var x1: int = mini(w - 1, int(ceil((off.x + phi.x) * CRAZE_MASK_TEXELS_PER_VOXEL)))
+		var y0: int = maxi(0, int(floor((off.y - phi.y) * CRAZE_MASK_TEXELS_PER_VOXEL)))
+		var y1: int = mini(h - 1, int(ceil((off.y + -plo.y) * CRAZE_MASK_TEXELS_PER_VOXEL)))
+		for y in range(y0, y1 + 1):
+			for x in range(x0, x1 + 1):
+				var p := Vector2(
+					(float(x) + 0.5) / float(CRAZE_MASK_TEXELS_PER_VOXEL) - off.x,
+					off.y - (float(y) + 0.5) / float(CRAZE_MASK_TEXELS_PER_VOXEL))
+				if Geometry2D.is_point_in_polygon(p, poly):
+					img.set_pixel(x, y, Color(1.0, 0.0, 0.0))
+					painted += 1
+	c["craze_mask_image"] = img
+	var tex = c.get("craze_mask_texture")
+	if tex != null and tex is ImageTexture \
+			and (tex as ImageTexture).get_size() == Vector2(float(w), float(h)):
+		(tex as ImageTexture).update(img)
+	else:
+		tex = ImageTexture.create_from_image(img)
+		c["craze_mask_texture"] = tex
+	sprite.set_opening(tex, origin, span)
+	c["craze_mask_painted"] = painted
 
 
 ## The opening's void as a texture, built on first use and cached. The image
@@ -5216,6 +5312,9 @@ func clear_glass_cracks() -> void:
 		if s != null and is_instance_valid(s):
 			s.queue_free()
 	_glass_cracks.clear()
+	## B-4b — the applied-opening log describes THIS view's geometry, which the
+	## rebuild is about to replace. `_respawn_base_openings()` refills it.
+	_glass_applied_openings.clear()
 
 
 ## ── G-D30 — THE OCCUPANCY CUT ────────────────────────────────────────────────
@@ -5278,7 +5377,24 @@ func refresh_glass_crack_occupancy() -> int:
 	_glass_crack_occ_dirty = false
 	for c in _glass_cracks:
 		_build_crack_occupancy(c)
+		## B-4b — a field's hole mask changes for exactly the same reason its
+		## occupancy does, so it is rebuilt on the same seam rather than on one of
+		## its own that could fall out of step.
 	return _glass_cracks.size()
+
+
+## B-4b — rebuild every craze FIELD's hole mask. Its own seam rather than a
+## passenger on the occupancy's, because the two are filled by different passes:
+## the occupancy reads the tilemap (which the erase already changed) while this
+## reads the applied-opening log (which only `refresh_glass_rims()` fills). Run
+## together, the mask would be one flush behind, forever.
+func refresh_craze_opening_masks() -> int:
+	var n: int = 0
+	for c in _glass_cracks:
+		if bool(c.get("field", false)):
+			_build_craze_opening_mask(c)
+			n += 1
+	return n
 
 
 ## One crack's occupancy image, walked over its pane's (run, level) rectangle.
@@ -5624,6 +5740,24 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 	if unswallowed > 0:
 		push_warning("[VoxelRenderer] opening '%s' at %s covers %d cell(s) whole that still hold glass — the opening is larger than the hole destruction opened"
 			% [opening_id, str(anchor), unswallowed])
+	## ── G-D35 B-4b — REMEMBER THE POLYGON, NOT JUST ITS EFFECT ───────────────
+	##
+	## (Director, 2026-09-05: *"reaproveitamos o formato das aberturas
+	## intersectando com a malha rachada, mas sem o decal radial em volta."*)
+	##
+	## The cells above are already shaped. What is NOT recoverable from them is the
+	## polygon's SUB-CELL edge, and that is exactly what the craze field has to be
+	## cut by: G-D30's occupancy is one texel per CELL, so a cell holding a shard
+	## reads "glass present" and the mesh paints straight over the part the opening
+	## took away. The shader has carried a sub-cell `crack_opening` mask since
+	## CRACK-04 and no field has ever bound one.
+	##
+	## ⚠️ Recorded even when `swapped` is 0. A hole whose rim was already cut by a
+	## neighbour swaps nothing and its polygon still has to cut the mesh.
+	if face != -1:
+		_glass_applied_openings.append({
+			"anchor": anchor, "opening": opening_id,
+			"run_is_x": (face == Face.SW or face == Face.NE)})
 	return swapped
 
 

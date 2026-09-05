@@ -1,29 +1,29 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.34 — **G-D35 B-4 IS BUILT (2026-09-05): a crazed pane is
-PERFORATED** (§16.13). G-D35's second axis — some of the pane actually goes,
-chosen per voxel at runtime and never drawn into the tile, with each hole's SHAPE
-riding the `glass_openings` channel CRACK-05 already built. Real map: 38 holes, 38
-regions, six different opening shapes, none defaulted.
+**Status:** 🟡 v1.35 — **B-4b: the craze mesh is now CUT to the holes' own
+polygons** (§16.14), the Director's last test on the perforation before he decides
+whether to keep it at all.
 
-⚠️ **AND FNV-1a CANNOT TAKE A 3 % SLICE.** The first build put the right NUMBER of
-holes in the wrong PLACES — 34 across 4 runs of 48, ten stacked in one, i.e.
-full-height slots. Measured over 200 salts: raw gives sd **1.41** (min 0.00 — some
-panes would perforate nothing); with a murmur3 finalizer, sd **0.51**, which is
-the binomial value for n=1152, p=0.03 to two decimals. ⛔ `_fnv1a_hash` itself is
-untouched — B4 pins it — the finalizer is applied by the one caller that needs a
-uniform slice. `glass_perforation_ab_2026-09-05.png`.
+⚠️ **Half of what he asked for was already true and the other half was a real
+defect.** A perforation never spawned a radial sheet and has always used G-D31's
+shard atoms. What was missing is the MASK: G-D30's occupancy is one texel per
+CELL, so a cell holding a shard reads as full glass and **the mesh painted over
+the part the opening had taken away**. The shader has carried a sub-cell
+`crack_opening` sampler since CRACK-04 and no field had ever bound one. Real map:
+`38 opening(s) logged, 5868 texel(s) inside a hole`.
 
-⚠️ **The rate assertion passed while the pane wore slots.** Only the SPREAD can
-tell a scatter from a column pattern, so that is what [22] asserts and what the
-demo now measures.
+⚠️ **The seam order is load-bearing:** the writer refreshes the occupancy BEFORE
+the rims, and it is the rims pass that records the polygons — so the mask needs
+its own seam after it, or it is one flush behind forever with a log identical to
+a correct one.
 
-🟡 **Reported, not fixed:** shard cells go 340 → 389 across a flip, because the
-live path merges adjacent erases into one region and the rebuild replays each
-hole separately. Which is right is a question; the fix is CRACK-04's.
+🟡 **Awaiting his eye. The honest reading is better-but-still-busy.**
+`PERFORATION_RATE_AT_FULL = 0.0` turns the mechanic off completely if he abandons
+it, and the mask goes inert with it — no code comes out.
 
-**Left in glass: G4 (remnants in the frame) and G6 (shards on the floor)** — the
-two the Director named.
+Earlier, v1.34 — **B-4: a crazed pane is PERFORATED** (§16.13), each hole shaped
+by the opening family. ⚠️ It needed a hash finalizer: raw FNV-1a put the right
+NUMBER of holes in 4 runs of 48 with ten stacked in one.
 
 Earlier, v1.33 — **THE CRAZE ROSTER IS CLOSED.** Six patterns on one density
 ladder — 58, 70, 90, 110, 150, 210 — split into two buckets of three (§16.12).
@@ -2989,3 +2989,49 @@ records the way the live path groups the erases, in `_respawn_base_openings()`,
 and it belongs to CRACK-04's rebuild rather than to B-4. `rebuilt 16 of 38` in
 that log is the same effect on the counter and is NOT a loss: it counts a hole
 only when it swapped a NEW cell.
+
+### 🟡 16.14 B-4b — the Director's last test on the perforation (2026-09-05)
+
+> *"Ficou confuso visualmente, e eu acho que é muito trabalho para pouca vantagem
+> ficar furando parcialmente. Só um último teste que eu queria fazer, que é
+> adicionar os furos normais de balas, usando os voxels especiais que criamos, sem
+> o decal de furo de bala, e botar uma máscara no padrão de vidro rachado com o
+> mesmo shape. Ou seja, a gente reaproveita o formato das aberturas intersectando
+> com a malha rachada, mas sem o decal radial em volta. Se não ficar bom
+> abandonamos essa mecânica, mas vale uma última tentativa."*
+
+**⚠️ HALF OF WHAT HE ASKED FOR WAS ALREADY TRUE, AND THE OTHER HALF WAS A REAL
+DEFECT.** A perforation never spawned a radial sheet — only the shot path does —
+and it has used G-D31's shard atoms since it was built. What was missing is the
+mask, and its absence is exactly what made the pane read as confused:
+
+**G-D30's occupancy is ONE TEXEL PER CELL and nearest-filtered on purpose** (a
+destroyed voxel IS a voxel). An opening's edge is sub-cell by definition —
+*"intrusão nas bordas dos voxels ao redor"* — so a cell holding a SHARD reads as
+full glass to the occupancy, and **the craze mesh painted straight over the part
+of it the opening had taken away.** The shader has carried a sub-cell
+`crack_opening` sampler since CRACK-04 and no field had ever bound one.
+
+`_build_craze_opening_mask()` builds one R8 mask over the pane's rectangle at
+6 texels per voxel, rasterising every applied opening from
+**`GlassOpening.polygon()` itself** rather than compositing the per-opening mask
+images — so the mesh's cut and the voxels' cut are the SAME line, which is G-D34's
+own rule one level up. Real map: `38 opening(s) logged, 5868 texel(s) inside a
+hole`.
+
+⚠️ **AND THE SEAM ORDER IS LOAD-BEARING.** `DetonationEntryWriter.flush()` calls
+`refresh_glass_crack_occupancy()` BEFORE `refresh_glass_rims()`, and it is
+`refresh_glass_rims()` that applies the openings and therefore records their
+polygons. Built on the occupancy's seam the mask would be one flush behind
+forever — an empty mask on the first blast, and a log identical to a correct one.
+So it has its own seam, `refresh_craze_opening_masks()`, called after the rims and
+again after `_respawn_base_openings()` on a rebuild.
+
+`glass_perforation_masked_2026-09-05.png` — same holes, same shard voxels, no
+radial decal; the mesh now stops at the glass's real edge.
+
+🟡 **STILL THE DIRECTOR'S CALL, AND THE HONEST READING IS THAT IT IS BETTER BUT
+STILL BUSY.** The mesh no longer crosses the shard points, but the openings are
+bullet-hole shapes 2–4 voxels across with bright lit rims, and at ~38 per pane
+they dominate. If he abandons the mechanic, `PERFORATION_RATE_AT_FULL = 0.0`
+turns it off completely and the mask goes inert with it — no code comes out.

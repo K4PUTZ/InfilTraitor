@@ -256,3 +256,9 @@ func flush(voxel_renderer) -> void:
 	voxel_renderer.refresh_glass_crack_occupancy()
 	## CRACK-03 — and the shard rim around whatever hole the blast just opened.
 	voxel_renderer.refresh_glass_rims()
+	## ⚠️ B-4b — AND THE CRAZE FIELD'S HOLE MASK, WHICH MUST COME AFTER THE RIMS
+	## AND NOT WITH THE OCCUPANCY ABOVE. `refresh_glass_rims()` is what APPLIES the
+	## openings, and applying them is what records their polygons; asked before it,
+	## the mask would be built from an empty log and the mesh would draw over every
+	## hole — the silent version of the defect this exists to fix.
+	voxel_renderer.refresh_craze_opening_masks()

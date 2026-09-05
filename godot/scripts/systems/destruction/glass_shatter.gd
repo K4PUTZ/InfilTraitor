@@ -154,6 +154,96 @@ static func blast_craze_intensity(ring: int) -> float:
 ## nothing — but it would inflate every count this event reports, and the count is
 ## what the selftest and the log read.
 ##
+## ── G-D35 B-4 — THE PERFORATION ─────────────────────────────────────────────
+##
+## (Director's brief, 2026-09-04: *"Nesse caso também queremos que alguns decals
+## sejam perfurados aleatoriamente em alguns voxels."*)
+##
+## G-D35's SECOND axis. Granularity is the art (B-3); DESTRUCTION is this — a
+## crazed pane does not only craze, some of it actually goes. ⚠️ **And it is
+## chosen per VOXEL at runtime, never drawn into the tile** — that is what lets
+## one page serve every pane, which is the whole reason the class is cheap:
+## *"só mudando os buracos de lugar"*.
+##
+## Placeholder like every balance row in this file. The fraction of a crazed
+## pane's standing glass that is punched through, at full intensity.
+static var PERFORATION_RATE_AT_FULL: float = 0.055
+
+
+## How much of the pane goes, at this craze intensity. Linear in it, so the two
+## axes move together the way §16.2 says distance drives them: the near blast both
+## crazes finer AND takes more glass.
+static func perforation_rate(intensity: float) -> float:
+	return maxf(0.0, PERFORATION_RATE_AT_FULL * intensity)
+
+
+## Which of a crazed pane's voxels are punched through. PURE, and deterministic in
+## `salt` — `build_plan()` runs on every cursor move and must answer the same
+## thing every time or the preview would flicker a different hole set per frame.
+##
+## ⚠️ B4 FNV-1a, NEVER `randf()`, and the reason is the same one G-D29 and G-D34
+## already live by. It is also why the threshold is compared against the hash
+## rather than a counter: taking "the first N of a shuffled list" would make each
+## voxel's fate depend on the ORDER `plan_pane_craze()` happened to return, so a
+## slice added anywhere on the pane would move every hole.
+##
+## ⚠️ THE ROTATION GUARANTEE HERE IS NOT THIS FUNCTION'S. A perforation is a
+## DESTROYED voxel, and VL-PERSIST records destruction in base coords — so the
+## same physical glass is gone in every view whatever key chose it. What the base
+## key does own is the hole's SHAPE, claimed by the room at commit (G-D34).
+##
+## Returns Array[Voxel] — a subset of `voxels`.
+static func plan_pane_perforations(voxels: Array, intensity: float, salt: String) -> Array:
+	var out: Array = []
+	var rate: float = perforation_rate(intensity)
+	if rate <= 0.0:
+		return out
+	## 1 in 2^20, so the threshold has room to be tuned to a tenth of a percent
+	## without the quantisation showing up as a step in the count.
+	var cut: int = int(rate * 1048576.0)
+	for v in voxels:
+		var h: int = _avalanche(FacadeSamplerClass._fnv1a_hash(
+			"perforate|%s|%d,%d,%d" % [salt, v.grid_pos.x, v.grid_pos.y, v.level]))
+		if (h & 0xFFFFF) < cut:
+			out.append(v)
+	return out
+
+
+## ⚠️ FNV-1a IS NOT UNIFORM ENOUGH TO TAKE A 3 % SLICE OF, AND THE FIRST BUILD
+## DREW THE PROOF ON SCREEN. Keys that differ only in a few digits deep inside a
+## long string barely move its output, so thresholding it selected whole COLUMNS:
+## the real map's first perforated pane put its 34 holes across **4 runs of 48**,
+## with 10 of one run's 24 levels gone — full-height slots instead of scattered
+## holes, which is not what a blast does to glass.
+##
+## Measured offline over the pane's own 1152 keys, and over 200 different salts:
+##
+##     raw, low 20 bits    4.86 % where 3.00 % was asked, 8 runs of 48 touched,
+##                         worst run 10 of 24. Over 200 salts: sd 1.41, min 0.00,
+##                         max 6.42 — some panes would perforate NOTHING.
+##     finalized           3.12 %, 27 runs of 48, worst run 3. Over 200 salts:
+##                         sd 0.51, min 1.82, max 4.77.
+##
+## ⚠️ **0.51 is the binomial standard deviation for n=1152, p=0.03 to two decimals
+## (0.50).** The finalized hash is statistically indistinguishable from a fair
+## coin; the raw one is nearly three times too wide. That is the whole
+## justification, and it is a measurement rather than a preference.
+##
+## ⛔ `_fnv1a_hash` ITSELF IS NOT TOUCHED, and must not be. Invariant B4 pins its
+## values, and every bake origin, opening pick and sheet variant in the game is
+## keyed on it — changing it would silently reshuffle all of them. The finalizer
+## is applied HERE, by the one caller that needs a uniform slice rather than a
+## bucket index.
+static func _avalanche(h: int) -> int:
+	var x: int = h & 0xFFFFFFFF
+	x ^= (x >> 16)
+	x = (x * 0x85EBCA6B) & 0xFFFFFFFF
+	x ^= (x >> 13)
+	x = (x * 0xC2B2AE35) & 0xFFFFFFFF
+	x ^= (x >> 16)
+	return x
+
+
 ## Returns Array[Voxel].
 static func plan_pane_craze(pane_slices: Array) -> Array:
 	var out: Array = []

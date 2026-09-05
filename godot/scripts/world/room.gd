@@ -6438,6 +6438,35 @@ func _capture_glass_blast_demo() -> void:
 	## G-D35 B-2 — the craze FIELDS. `_base_crazes` is what was claimed and the
 	## count is what actually reached the scene; before B-3's art the second is 0
 	## by design, and printing both is what tells "not wired" from "no sheet yet".
+	## ── G-D35 B-4 — WHERE THE PERFORATIONS LANDED, NOT JUST HOW MANY ─────────
+	##
+	## ⚠️ THE COUNT ALONE CANNOT SEE THE ONLY DEFECT THIS FEATURE HAS. The first
+	## build put 34 holes on the pane — the right NUMBER — in 4 runs of 48, ten of
+	## them stacked in one run: full-height slots rather than scattered holes,
+	## because FNV-1a's output barely moves for keys that differ in a few digits
+	## deep inside a long string. A screenshot showed it and a counter never could.
+	## So the instrument is the SPREAD.
+	var perf_runs: Dictionary = {}
+	var perf_levels: Dictionary = {}
+	var perf_n: int = 0
+	var worst_run: int = 0
+	for sl in _edge_registry.all_slices():
+		if sl.pane_id == "" or sl.pane_id.begins_with("PANE_BLOCK_"):
+			continue
+		var sb: int = GeometryCoords.storey_level_base(sl.start_storey)
+		var sl_run_is_x: bool = (sl.face == Face.SW or sl.face == Face.NE)
+		for v in sl.voxels:
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				continue
+			if not GlassMaterials.is_glass(sl.material_at(v.level - sb)):
+				continue
+			perf_n += 1
+			var run: int = v.grid_pos.x if sl_run_is_x else v.grid_pos.y
+			perf_runs[run] = int(perf_runs.get(run, 0)) + 1
+			perf_levels[v.level] = true
+			worst_run = maxi(worst_run, int(perf_runs[run]))
+	print("[GLASS-BLAST] perforations: %d hole(s) across %d run(s) and %d level(s), worst run %d"
+		% [perf_n, perf_runs.size(), perf_levels.size(), worst_run])
 	print("[GLASS-BLAST] craze fields: claimed=%d live=%d"
 		% [_base_crazes.size(), _voxel_renderer.glass_craze_count()])
 	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")
@@ -6471,6 +6500,15 @@ func _capture_glass_blast_demo() -> void:
 			% [before_n, after_n, "KEPT" if after_n == before_n else "LOST %d" % (before_n - after_n)])
 		print("[GLASS-BLAST] craze fields: %d live after the flip (%d claimed)"
 			% [_voxel_renderer.glass_craze_count(), _base_crazes.size()])
+		## ⚠️ THE BOARD, NOT THE REBUILD COUNTER. `_respawn_base_openings()` counts
+		## a hole as rebuilt only when it swapped at least one NEW cell into a
+		## shard — so two perforations whose rims overlap make the second report
+		## zero even though the glass is cut exactly right. The number that
+		## actually answers "did the rims survive" is how many shard cells stand on
+		## the tilemap, which is what CRACK-04 learned to read.
+		print("[GLASS-BLAST] shards after the flip: registry=%d board=%d"
+			% [_voxel_renderer._glass_shard_cells.size(),
+			_voxel_renderer.count_glass_shards()])
 		## ⚠️ B-2b's WHOLE CLAIM, as a verdict. The tile lattice's anchor and the
 		## sheet variant are keyed in BASE space, so a quarter turn must leave both
 		## untouched — a pane cannot wear a different craze depending on where the

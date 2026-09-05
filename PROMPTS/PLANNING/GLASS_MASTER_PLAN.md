@@ -1,23 +1,35 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.33 — **THE CRAZE ROSTER IS CLOSED (2026-09-05).** Six patterns
-on one density ladder — 58, 70, 90, 110, 150, 210 — split into two buckets of
-three, the low half for the far blast and the high half for the near one (§16.12).
-G-D37's granularity axis and G-D29's three-patterns-per-class are satisfied by the
-same six files, with no third axis invented for either. The three in a bucket are
-three different DRAWINGS, not three seeds of one, and each still carries three
-seed variants and four flips underneath — **36 looks per bucket**.
+**Status:** 🟢 v1.34 — **G-D35 B-4 IS BUILT (2026-09-05): a crazed pane is
+PERFORATED** (§16.13). G-D35's second axis — some of the pane actually goes,
+chosen per voxel at runtime and never drawn into the tile, with each hole's SHAPE
+riding the `glass_openings` channel CRACK-05 already built. Real map: 38 holes, 38
+regions, six different opening shapes, none defaulted.
 
-⚠️ **The new art exposed a wrong NORMALISER in the seam gate.** `blast_mid_70 v0`
-scored 1.94 against a 2.0 threshold while tiling perfectly: the metric compared
-the wrap pair against the page's mean adjacent pair, and a page mean is dominated
-by the black between cracks. Against the same edge's own inward neighbour — where
-the ink level cancels — the worst of all 18 sheets is **1.35** and the
-non-wrapping control moves 3.15 → **7.26**. Separation ×1.6 → **×5.4** at the
-same threshold. A gate whose passing art sits at 97 % of its limit is a gate about
-to fail correct work.
+⚠️ **AND FNV-1a CANNOT TAKE A 3 % SLICE.** The first build put the right NUMBER of
+holes in the wrong PLACES — 34 across 4 runs of 48, ten stacked in one, i.e.
+full-height slots. Measured over 200 salts: raw gives sd **1.41** (min 0.00 — some
+panes would perforate nothing); with a murmur3 finalizer, sd **0.51**, which is
+the binomial value for n=1152, p=0.03 to two decimals. ⛔ `_fnv1a_hash` itself is
+untouched — B4 pins it — the finalizer is applied by the one caller that needs a
+uniform slice. `glass_perforation_ab_2026-09-05.png`.
 
-**60 sheets checked / 0 failed. Rotation KEPT in E, S and W. B-4 is next.**
+⚠️ **The rate assertion passed while the pane wore slots.** Only the SPREAD can
+tell a scatter from a column pattern, so that is what [22] asserts and what the
+demo now measures.
+
+🟡 **Reported, not fixed:** shard cells go 340 → 389 across a flip, because the
+live path merges adjacent erases into one region and the rebuild replays each
+hole separately. Which is right is a question; the fix is CRACK-04's.
+
+**Left in glass: G4 (remnants in the frame) and G6 (shards on the floor)** — the
+two the Director named.
+
+Earlier, v1.33 — **THE CRAZE ROSTER IS CLOSED.** Six patterns on one density
+ladder — 58, 70, 90, 110, 150, 210 — split into two buckets of three (§16.12).
+⚠️ The new art exposed a wrong NORMALISER in the seam gate: passing art sat at
+1.94 of a 2.0 threshold; against the same edge's own inward neighbour the worst
+of 18 is 1.35 and the control moves 3.15 → 7.26.
 
 Earlier, v1.32 — **THE TILE PHASE IS CLOSED (B-2b)** on the Director's
 instruction. The craze lattice is anchored at the pane corner minimal in BASE
@@ -2339,7 +2351,7 @@ radius one or two rings beyond the destruction radius"*.
 | **B-1 ✅** | **BUILT 2026-09-04 — the trigger.** §16.5. A pane the blast reaches and does not take goes CRACKED, whole, with an intensity from its ring. |
 | **B-2 ✅** | **BUILT 2026-09-05 — the tiling seam.** §16.8. A second sprite mode: the quad is the pane's own rectangle and the sheet repeats across it, wired end to end from `delta.glass_crazes` through `commit()` to a rotation replay. ⚠️ **The unknown this row predicted was not the real one** — a panel pane is coplanar by construction, so there is no fold to seam at; the phase ANCHOR was. |
 | **B-3 ✅** | **BUILT 2026-09-05 — the art.** §16.9. Two granularities (G-D37), a Voronoi mesh on a TOROIDAL metric, 3 variants each. The whole path lit up with **no code change**, which is what B-2's stage gate was for. |
-| **B-4** | **NEXT.** **The perforation**: N voxels punched per pane, chosen by B4 FNV-1a on the BASE key so a flip does not reshuffle them — the same rule G-D34 already lives by — and cut with the openings that already exist. |
+| **B-4 ✅** | **BUILT 2026-09-05** — §16.13. **The perforation**: N voxels punched per pane, chosen by B4 FNV-1a on the BASE key so a flip does not reshuffle them — the same rule G-D34 already lives by — and cut with the openings that already exist. |
 | **B-5 🟢** | **The gate — MOSTLY LANDED WITH B-3, because art whose defining property is unverified is not delivered.** `check_decal.py` learns the class (read off `CRAZE_SHEET_*`), skips the ORIGIN rule for it, and runs a SEAM check in its place. ⚠️ It also removed a constant: the aspect rule was never "2:1", it was "the aspect must match the SPAN", and the manifest now answers per sheet. What is left for B-5 proper is B-4's perforation coverage. |
 
 ### 16.4 ✅ BOTH RULED 2026-09-05 — what B-3 now builds
@@ -2896,3 +2908,84 @@ passing, which is exactly why it had to be looked at rather than left.
 ~~🟡 Open: should the three "variants" be three distinct STYLES?~~ ✅ **Answered
 2026-09-05 — yes, and with his own six.** §16.12.
 
+### ✅ 16.13 B-4 IS BUILT (2026-09-05) — the perforation, and the hash that could not do it
+
+G-D35's SECOND axis. *"Nesse caso também queremos que alguns decals sejam
+perfurados aleatoriamente em alguns voxels."* A crazed pane does not only craze —
+some of it goes.
+
+`GlassShatter.plan_pane_perforations()` picks the voxels, `_craze_pane()` marks
+them DESTROYED instead of CRACKED and puts each one on `delta.glass_openings`, so
+**the hole's SHAPE rides the channel CRACK-05 already built**: the room claims it
+at commit and base-keys the pick, and a perforation is shaped by the same family,
+by the same rule, as a bullet hole. Real map, first run: 38 holes, 38 regions,
+**six different opening shapes** among them, and none defaulted.
+
+⚠️ **It is chosen per VOXEL at runtime and never drawn into the tile** — which is
+what lets one page serve every pane, the whole reason the class is cheap:
+*"só mudando os buracos de lugar"*.
+
+#### ⚠️ AND THE HASH THIS PROJECT USES EVERYWHERE CANNOT TAKE A 3 % SLICE
+
+The first build put the right NUMBER of holes in the wrong PLACES: 34 across
+**4 runs of 48**, ten of them stacked in one — full-height slots, which is not
+what a blast does to glass. `glass_perforation_ab_2026-09-05.png`.
+
+FNV-1a barely moves for keys that differ in a few digits deep inside a long
+string, so thresholding its output selects whole columns. Measured offline over
+the pane's own 1152 keys and over 200 salts:
+
+| | rate asked 3.00 % | runs touched | worst run | over 200 salts |
+|---|---|---|---|---|
+| raw, low 20 bits | **4.86 %** | 8 / 48 | 10 of 24 | sd **1.41**, min 0.00, max 6.42 |
+| finalized | 3.12 % | 27 / 48 | 3 | sd **0.51**, min 1.82, max 4.77 |
+
+⚠️ **0.51 is the binomial standard deviation for n=1152, p=0.03 to two decimals
+(0.50).** The finalized hash is statistically indistinguishable from a fair coin;
+the raw one is nearly three times too wide — and at min 0.00 some panes would have
+perforated nothing at all.
+
+⛔ **`_fnv1a_hash` itself is NOT touched, and must not be.** Invariant B4 pins its
+values and every bake origin, opening pick and sheet variant is keyed on it;
+changing it would silently reshuffle all of them. A murmur3-style finalizer is
+applied by the one caller that needs a uniform SLICE rather than a bucket index.
+
+#### The assertion that changed, and it got stronger
+
+`glass_shatter` [21] read `destroyed == 0` for a crazed pane — the honest
+statement of B-1, and after B-4 it would be asserting the feature is absent. It
+now asserts the pair the ruling implies: the pane STANDS (cracked outnumbers
+perforated at least 4:1) **and** the holes match the RATE **and** one opening is
+claimed per hole. Real numbers: `1133 CRACKED against 19 perforated, rate wanted
+19.0, 19 openings claimed`.
+
+New test **[22]**, three assertions, ⚠️ **and the rate one is not the one that
+matters**: with the raw hash it PASSED (63 holes where 63.4 were expected) while
+the pane wore slots. Only the SPREAD tells the two apart, so the spread is
+asserted — `26 runs, 21 levels, worst run 4` against a red of `7 runs, worst run
+10`. The demo carries the same census, because no screenshot gate can see it.
+
+#### The evidence
+
+- 38 holes across 26 runs and 19 levels, worst run 4, on the real map.
+- Rotation: VL-PERSIST **1593 of 1593**, craze identity **KEPT** — the holes are
+  DESTROYED voxels, so base-coord persistence carries them and the shapes are
+  re-picked from the same base keys.
+- The shipped shot path is **0 px** against the B-2 baseline.
+- 50 selftests clean, invariants OK.
+
+#### 🟡 REPORTED, NOT FIXED — the rim differs across a rotation, and it is CRACK-04's
+
+Shard cells on the board: **340 before a flip, 389 after.** Not lost — *more*. The
+live path groups adjacent erased cells into ONE region and applies ONE opening to
+it (`_group_erased_into_regions()`); the rebuild replays each recorded hole
+SEPARATELY, so two perforations whose rims overlap cut one rim live and two on the
+rebuild. It was invisible while a pane had one or two holes and B-4 is what made
+it visible.
+
+⚠️ **Which number is right is a question, not an oversight** — the merged region
+may be under-cutting, or the replay over-cutting. The fix is to group the base
+records the way the live path groups the erases, in `_respawn_base_openings()`,
+and it belongs to CRACK-04's rebuild rather than to B-4. `rebuilt 16 of 38` in
+that log is the same effect on the counter and is NOT a loss: it counts a hole
+only when it swapped a NEW cell.

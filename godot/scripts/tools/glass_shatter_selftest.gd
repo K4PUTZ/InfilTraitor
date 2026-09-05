@@ -74,6 +74,7 @@ func _init() -> void:
 	test_only_rifle_class_pierces_armored_glass()
 	test_cook_proposes_the_opening_and_only_commit_claims_it()
 	test_a_pane_the_blast_does_not_take_crazes()
+	test_the_perforation_is_scattered_and_rated()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1155,15 +1156,34 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 			elif int(e["state"]) == Voxel.DamageState.DESTROYED:
 				destroyed += 1
 		if ring == 3:
-			if cracked > 0 and destroyed == 0 and delta.glass_crazes.size() == 1 \
+			## ⚠️ THIS ASSERTION CHANGED WITH B-4, AND IT GOT STRONGER RATHER THAN
+			## LOOSER. Until the perforation existed it read `destroyed == 0`,
+			## which was the honest statement of B-1: a crazed pane lost no glass.
+			## G-D35's SECOND axis is that some of it does go, so a flat zero would
+			## now be asserting the feature is absent. What replaces it is the pair
+			## the ruling actually implies — the pane STANDS (the overwhelming
+			## majority is merely cracked) and the holes match the RATE, which a
+			## zero could never have caught either way.
+			var want_holes: float = GlassShatterClass.perforation_rate(
+				GlassShatterClass.blast_craze_intensity(3)) * float(cracked + destroyed)
+			var sd: float = sqrt(maxf(want_holes, 1.0))
+			var rate_ok: bool = absf(float(destroyed) - want_holes) <= 3.0 * sd + 1.0
+			if cracked > 0 and destroyed * 4 < cracked and rate_ok \
+					and delta.glass_openings.size() == destroyed \
+					and delta.glass_crazes.size() == 1 \
 					and float(delta.glass_crazes[0]["intensity"]) > 0.0:
-				_pass("ring 3 (outside the damage area): %d voxel(s) CRACKED, 0 destroyed, "
-					% cracked + "1 craze recorded at intensity %.2f"
-					% float(delta.glass_crazes[0]["intensity"]))
+				_pass("ring 3 (outside the damage area): the pane STANDS — %d voxel(s) "
+					% cracked + "CRACKED against %d perforated (rate wanted %.1f), "
+					% [destroyed, want_holes]
+					+ "%d opening(s) claimed, 1 craze at intensity %.2f"
+					% [delta.glass_openings.size(),
+					float(delta.glass_crazes[0]["intensity"])])
 			else:
-				_fail("ring 3 gave cracked=%d destroyed=%d crazes=%d — the pane should "
-					% [cracked, destroyed, delta.glass_crazes.size()]
-					+ "stand and craze")
+				_fail("ring 3 gave cracked=%d destroyed=%d (rate wanted %.1f) "
+					% [cracked, destroyed, want_holes]
+					+ "openings=%d crazes=%d — the pane should stand, craze, and "
+					% [delta.glass_openings.size(), delta.glass_crazes.size()]
+					+ "claim one opening per hole")
 		else:
 			## ⚠️ A WON ROLL MUST NOT ALSO CRAZE. The two are alternatives, and a
 			## pane that shattered AND recorded a craze would hand G-D35's art a
@@ -1175,3 +1195,102 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 				_fail("ring 0 gave cracked=%d destroyed=%d crazes=%d"
 					% [cracked, destroyed, delta.glass_crazes.size()])
 	print("")
+
+
+## ── G-D35 B-4 — THE PERFORATION ─────────────────────────────────────────────
+func test_the_perforation_is_scattered_and_rated() -> void:
+	print("[22] G-D35 B-4 — the perforation is RATED and SCATTERED\n")
+
+	var pane := _pane(4, 9, 3)              ## 6 GU x 3 storeys = 48 x 24 voxels
+	var voxels: Array = GlassShatterClass.plan_pane_craze(pane)
+	if voxels.size() != 1152:
+		_fail("fixture is %d voxels, expected 1152" % voxels.size())
+		print("")
+		return
+
+	## ── 1. THE RATE IS HONOURED, AND IT TRACKS INTENSITY ────────────────────
+	var ok_rate := true
+	var counts: Array = []
+	for intensity in [1.0, 0.55, 0.0]:
+		var n: int = GlassShatterClass.plan_pane_perforations(
+			voxels, intensity, "PANE_TEST|100,100").size()
+		counts.append(n)
+		var want: float = GlassShatterClass.perforation_rate(intensity) * 1152.0
+		## Three binomial standard deviations. A rate check with no tolerance is a
+		## check of the seed, not of the rate.
+		var sd: float = sqrt(maxf(want, 1.0))
+		if absf(float(n) - want) > 3.0 * sd + 1.0:
+			_fail("intensity %.2f gave %d holes, expected about %.1f (+/- %.1f)"
+				% [intensity, n, want, 3.0 * sd])
+			ok_rate = false
+	if counts[2] != 0:
+		_fail("intensity 0 perforated %d voxel(s) — a pane the blast does not "
+			% counts[2] + "reach must keep all its glass")
+		ok_rate = false
+	if counts[0] <= counts[1]:
+		_fail("a NEAR blast (%d holes) must take more glass than a far one (%d)"
+			% [counts[0], counts[1]])
+		ok_rate = false
+	if ok_rate:
+		_pass("rate honoured and monotone in intensity: %d holes at 1.00, %d at "
+			% [counts[0], counts[1]] + "0.55, %d at 0.00" % counts[2])
+
+	## ── 2. SCATTERED, NOT STACKED — THE DEFECT THE COUNT CANNOT SEE ─────────
+	## ⚠️ THE FIRST BUILD PASSED ASSERTION 1 AND WAS STILL WRONG. Raw FNV-1a barely
+	## moves for keys that differ in a few digits deep inside a long string, so the
+	## right NUMBER of holes landed in 4 runs of 48 with ten stacked in one — a
+	## full-height slot, which is not what a blast does to glass. Only the SPREAD
+	## can tell the two apart, so the spread is what is asserted.
+	var holes: Array = GlassShatterClass.plan_pane_perforations(
+		voxels, 1.0, "PANE_TEST|100,100")
+	var per_run: Dictionary = {}
+	var levels: Dictionary = {}
+	for v in holes:
+		per_run[v.grid_pos.x] = int(per_run.get(v.grid_pos.x, 0)) + 1
+		levels[v.level] = true
+	var worst: int = 0
+	for r in per_run:
+		worst = maxi(worst, int(per_run[r]))
+	## The pane is 48 runs x 24 levels. At ~5.5 % that is ~63 holes, so a fair
+	## draw touches most runs and stacks two or three at most in any one of them.
+	## The measured raw-FNV build stacked TEN.
+	if per_run.size() >= 20 and levels.size() >= 12 and worst <= 6:
+		_pass("%d holes spread over %d run(s) and %d level(s), worst run %d — "
+			% [holes.size(), per_run.size(), levels.size(), worst]
+			+ "scattered, not stacked")
+	else:
+		_fail("%d holes in %d run(s) / %d level(s), worst run %d — this is a "
+			% [holes.size(), per_run.size(), levels.size(), worst]
+			+ "column pattern, not a scatter")
+
+	## ── 3. PURE IN THE SALT, AND THE SALT MATTERS ───────────────────────────
+	## `build_plan()` runs on every cursor move: same inputs must give the same
+	## holes or the preview would flicker a different set every frame. And a
+	## different blast on the same pane must NOT reopen the same holes, or a
+	## pane's damage would look authored.
+	var again: Array = GlassShatterClass.plan_pane_perforations(
+		voxels, 1.0, "PANE_TEST|100,100")
+	var other: Array = GlassShatterClass.plan_pane_perforations(
+		voxels, 1.0, "PANE_TEST|140,90")
+	var same := again.size() == holes.size()
+	if same:
+		for i in range(holes.size()):
+			if holes[i] != again[i]:
+				same = false
+				break
+	var overlap: int = 0
+	var in_first: Dictionary = {}
+	for v in holes:
+		in_first[v.get_instance_id()] = true
+	for v in other:
+		if in_first.has(v.get_instance_id()):
+			overlap += 1
+	if same and overlap < holes.size() / 2:
+		_pass("pure in the salt (same salt, same %d holes) and a different "
+			% holes.size() + "epicenter reopens only %d of them" % overlap)
+	else:
+		_fail("determinism: identical=%s, and a different salt shared %d of %d holes"
+			% [same, overlap, holes.size()])
+
+	print("")
+

@@ -603,6 +603,14 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			bomb_def.ring_multipliers, ring, pane_slices[0].material)
 		var salt := "BLAST_%d_%d_%s" % [source_gu.x, source_gu.y, pid]
 		if not GlassShatter.rolls_shatter(glass_punch, salt):
+			## CRACK-05 — a pane that was INSIDE the blast and survived it. Printed
+			## because the two silences are not the same event and the log could not
+			## tell them apart: a pane out of reach never gets here at all, while
+			## this one rolled and held. It is also the seam §6.2's crack-near-a-
+			## -blast-it-survives will hook, and the only way to read a ring off a
+			## real detonation today.
+			print_debug("[GLASS-SHATTER-BLAST] pane=%s ring=%d glass_punch=%.2f — roll LOST, pane stands"
+				% [pid, ring, glass_punch])
 			continue
 		## Flood origin = the pane voxel nearest the epicenter.
 		var face: int = pane_slices[0].face
@@ -635,6 +643,22 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			fallen.append({"grid_pos": pv.grid_pos, "level": pv.level})
 		if not entries.is_empty():
 			delta.add_damage(entries)
+			## CRACK-05 / G-D34 — PROPOSE THIS HOLE'S OPENING. `origin_v` is the
+			## pane voxel nearest the epicenter and is therefore this fracture's
+			## impact, the one thing the renderer cannot work out afterwards: for an
+			## asymmetric member the impact is not the centroid of what came out
+			## (§14.4), so an unclaimed blast hole is default-shaped AND misplaced.
+			##
+			## ⚠️ PROPOSED, NEVER CLAIMED HERE. `build_plan()` is pure and runs on
+			## every cursor move; the claim is a write and belongs to `commit()`.
+			##
+			## `wide` is true because a grenade is not a pistol — G-D14 splits the
+			## size class by hole width, and every blast that wins this roll takes
+			## at least `region_radius()`'s 3-voxel Chebyshev disc, which is already
+			## past anything the SMALL pool is drawn for.
+			delta.glass_openings.append({
+				"cell": origin_v.grid_pos, "level": origin_v.level, "wide": true,
+			})
 			print_debug("[GLASS-SHATTER-BLAST] pane=%s ring=%d glass_punch=%.2f flooded=%d voxel(s)"
 				% [pid, ring, glass_punch, entries.size()])
 			## G-D16a — the same landing report the shot path makes. Both paths or

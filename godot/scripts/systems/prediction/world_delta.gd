@@ -112,6 +112,29 @@ var cost_ms: float = 0.0
 ## plan predicted that the first person to see both would try to unify them.
 var scorch_writes: Dictionary = {}
 
+## CRACK-05 (`GLASS_MASTER_PLAN` §14.5) — THE SHAPE OF EVERY HOLE THIS BLAST OPENS
+## IN GLASS, as a proposal.
+##
+## `Array[{"cell": Vector2i, "level": int, "wide": bool}]` — one entry per pane
+## `DetonationPlanBuilder._shatter_glass_panes()` decided to take, naming the
+## voxel the fracture started at. `commit()` turns each into
+## `Room.claim_glass_opening_for_hit()`, which is what makes a grenade's hole a
+## picked member of G-D34's family instead of the one default shape every blast
+## repeated.
+##
+## ⚠️ **IT IS A PROPOSAL FOR THE SAME REASON `scorch_writes` IS, AND THE REASON
+## BITES HARDER HERE.** Claiming is a WRITE — it puts an entry in the renderer's
+## `_glass_region_openings` and a record in `Room._base_openings` — and
+## `build_plan()` runs on every cursor move, cached and thrown away. Claiming
+## from the builder would leave one pending claim per previewed GU, all of them
+## for holes that were never opened, and the first real blast anywhere on the map
+## would wear whichever of them happened to match its region.
+##
+## ⚠️ AND THE CELL IS THE FLOOD'S ORIGIN, NOT THE REGION'S CENTROID. For an
+## asymmetric member the two are far apart (§14.4), so an unclaimed region is not
+## merely default-shaped — it is default-shaped in the wrong place.
+var glass_openings: Array = []
+
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
 ##
 ## `{Vector3i: {"at": seconds, "ring": int}}`. Every one of these is also a
@@ -267,6 +290,17 @@ func commit(room = null) -> void:
 	BlastCalculatorClass.commit_damage(damage)
 	if room != null and not scorch_writes.is_empty():
 		room.absorb_scorch(scorch_writes)
+	## CRACK-05 — the glass holes this blast opened take their SHAPE here.
+	##
+	## ⚠️ ORDER IS LOAD-BEARING AND IT IS THE ORDER OF THIS FUNCTION, NOT A
+	## COINCIDENCE. `commit_damage()` above is what marks the pane's voxels
+	## DESTROYED; the renderer's erase pass then flags each cell and
+	## `DetonationEntryWriter.flush()` calls `refresh_glass_rims()`, which CONSUMES
+	## every pending claim and clears the table. A claim made after that flush
+	## would be picked up by whatever glass broke next, on some other pane.
+	if room != null:
+		for c in glass_openings:
+			room.claim_glass_opening_for_hit(c["cell"], int(c["level"]), bool(c["wide"]))
 
 
 func is_empty() -> bool:

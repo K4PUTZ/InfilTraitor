@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**233 scripts · 80219 lines total** (under `godot/scripts/`)
+**233 scripts · 80516 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1981,7 +1981,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2173 lines
+`class_name DetonationPlanBuilder` · 2197 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2647,7 +2647,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 273 lines
+`class_name WorldDelta` · extends `RefCounted` · 307 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2670,6 +2670,7 @@ extends `Node2D` · 43 lines
 - `var touched_voxels: Array = []`
 - `var cost_ms: float = 0.0`
 - `var scorch_writes: Dictionary = {}`
+- `var glass_openings: Array = []`
 - `var burnt_cells: Dictionary = {}`
 - `var light_field = null`
 - `var light_changed_cells: Dictionary = {}`
@@ -3654,7 +3655,7 @@ extends `SceneTree` · 250 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 944 lines
+extends `SceneTree` · 1054 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -3665,6 +3666,9 @@ extends `SceneTree` · 944 lines
 - `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`
 - `WeaponDefClass` = `preload("res://godot/scripts/systems/destruction/weapon_def.gd")`
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
+- `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
+- `WorldDeltaClass` = `preload("res://godot/scripts/systems/prediction/world_delta.gd")`
+- `BombDefClass` = `preload("res://godot/scripts/systems/destruction/bomb_def.gd")`
 - `TARGETS` = `{ "smg": 0.00, "pistol": 0.025, "revolver": 0.16, "assault_rifle": 0.44, "sniper_rifle": 0.81, }`
 - `SINGLE_TOL` = `0.06`
 - `PELLET_TARGET` = `0.02`
@@ -3690,6 +3694,7 @@ extends `SceneTree` · 944 lines
 - `func test_glass_never_dents() -> void:`
 - `func test_per_placement_class_overrides_the_material() -> void:`
 - `func test_only_rifle_class_pierces_armored_glass() -> void:`
+- `func test_cook_proposes_the_opening_and_only_commit_claims_it() -> void:`
 
 ---
 
@@ -5170,7 +5175,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9376 lines
+extends `Node2D` · 9505 lines
 
 `godot/scripts/world/room.gd`
 

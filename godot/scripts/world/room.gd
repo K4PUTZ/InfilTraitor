@@ -5853,28 +5853,21 @@ func _capture_glass_crack_demo() -> void:
 		tag = "wide" if wide else "tight"
 
 	## The biggest panel pane (PANE_BLOCK_* excluded — no single run axis).
-	var by_pane: Dictionary = {}
-	for s in _edge_registry.all_slices():
-		if s.pane_id == "" or s.pane_id.begins_with("PANE_BLOCK_"):
-			continue
-		if not GlassMaterials.is_glass(s.material):
-			continue
-		by_pane.get_or_add(s.pane_id, [])
-		by_pane[s.pane_id].append(s)
-	var best_id := ""
-	var best_n := 0
-	for pid in by_pane:
-		var n := 0
-		for s in by_pane[pid]:
-			n += s.voxels.size()
-		if n > best_n:
-			best_n = n
-			best_id = pid
-	if best_id == "":
-		push_error("[CRACK-DEMO] no panel pane on this map")
+	## CRACK-05 — narrowed to ONE member of the family by
+	## `INFILTRAITOR_CRACK_DEMO_MATERIAL`, which is the only way to photograph the
+	## armoured sheet: the GLASS map's biggest pane is plain `glass`, and G-D28's
+	## `armored` class is chosen by MATERIAL, never by the weapon.
+	var pane_material := OS.get_environment("INFILTRAITOR_CRACK_DEMO_MATERIAL")
+	var pane_slices: Array = _biggest_glass_pane(pane_material)
+	if pane_slices.is_empty():
+		push_error("[CRACK-DEMO] no %s panel pane on this map"
+			% (pane_material if pane_material != "" else "glass"))
 		return
-	var pane_slices: Array = by_pane[best_id]
-	print("[CRACK-DEMO] pane=%s slices=%d voxels=%d" % [best_id, pane_slices.size(), best_n])
+	var best_n: int = 0
+	for s in pane_slices:
+		best_n += s.voxels.size()
+	print("[CRACK-DEMO] pane=%s material=%s slices=%d voxels=%d"
+		% [pane_slices[0].pane_id, pane_slices[0].material, pane_slices.size(), best_n])
 
 	## The centre-ish voxel of the pane, by the median of its standing glass.
 	var xs: Array = []
@@ -6108,6 +6101,138 @@ func _capture_glass_crack_demo() -> void:
 			% _voxel_renderer.glass_crack_count())
 		for _p in range(420):
 			await get_tree().process_frame
+
+
+## CRACK-05 (`GLASS_MASTER_PLAN` §14.5) — THE COOK'S OWN HOLE, ON THE REAL MAP.
+##
+## `INFILTRAITOR_CAPTURE_ACTION=glass_blast_demo` on the GLASS map: drop one dev
+## grenade in front of the biggest pane, detonate it through the REAL test-zone
+## path, and photograph the pane before and after.
+##
+## ⚠️ IT EXISTS BECAUSE THE SELFTEST CANNOT ANSWER THE QUESTION THE CHANGE IS
+## ABOUT. `WorldDelta.glass_openings` is easy to assert on a fixture; whether the
+## claim SURVIVES to `refresh_glass_rims()` depends on the order of four real
+## seams (commit → erase → flag → flush), and the one before it did not — CRACK-04
+## found `refresh_glass_rims()` reporting 12 cells cut with 0 of them on the
+## board. So this reads the board back, the same way the crack demo learned to.
+##
+##   INFILTRAITOR_GLASS_BLAST_GU=x,y   — where the grenade goes (default: the GU
+##                                      immediately outside the pane it found)
+##   INFILTRAITOR_GLASS_DIAG=1         — the flat backdrop, for a readable frame
+##   INFILTRAITOR_FREEZE_GUARD_TURN=1  — 0-px reproducibility between two runs
+func _capture_glass_blast_demo() -> void:
+	if _voxel_renderer == null or _edge_registry == null or _test_zone_controller == null:
+		push_error("[GLASS-BLAST] no renderer / edge registry / test zone controller")
+		return
+	## ⚠️ THE PANE IS SELECTABLE, AND IT HAS TO BE. Under the shipped balance a
+	## blast that wins its roll at ring 0 or 1 takes the pane WHOLE
+	## (`region_radius` is 42 and 22 voxels there), and a hole with no surviving
+	## glass around it has no rim to shape — so the biggest pane cannot photograph
+	## this at all. The case that can is a ring-2 win, whose radius is 4.
+	var pane_id_want := OS.get_environment("INFILTRAITOR_GLASS_BLAST_PANE")
+	var pane_slices: Array = _pane_by_id(pane_id_want) if pane_id_want != "" \
+		else _biggest_glass_pane("")
+	if pane_slices.is_empty():
+		push_error("[GLASS-BLAST] no panel pane%s on this map"
+			% ("" if pane_id_want == "" else " named %s" % pane_id_want))
+		return
+	var face: int = pane_slices[0].face
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+
+	## The pane's middle GU, and the cell just OUTSIDE it. A SW face looks along
+	## grid +y and an SE face along grid +x — the same two deltas
+	## `_carved_side_to_base_dir()` uses, rather than a second table of them.
+	var mid: Vector2i = pane_slices[pane_slices.size() / 2].voxels[0].grid_pos
+	var pane_gu := Vector2i(mid.x >> 3, mid.y >> 3)
+	var gu: Vector2i = pane_gu + (Vector2i(0, 1) if run_is_x else Vector2i(1, 0))
+	var gu_env := OS.get_environment("INFILTRAITOR_GLASS_BLAST_GU")
+	if gu_env != "":
+		var xy := gu_env.split(",")
+		if xy.size() == 2 and xy[0].is_valid_int() and xy[1].is_valid_int():
+			gu = Vector2i(xy[0].to_int(), xy[1].to_int())
+		else:
+			push_warning("[GLASS-BLAST] INFILTRAITOR_GLASS_BLAST_GU=%r — expected \"x,y\"" % gu_env)
+	print("[GLASS-BLAST] pane=%s slices=%d, pane gu=%s, grenade gu=%s"
+		% [pane_slices[0].pane_id, pane_slices.size(), pane_gu, gu])
+
+	apply_glass_diagnostic_backdrop()
+	_test_zone_controller.add_grenade(gu)
+	var idx: int = _test_zone_controller._grenades.size() - 1
+
+	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(dir)
+	if _camera_controller != null and agent != null:
+		_camera_controller.set_zoom_for_capture(0.75)
+		## Frame the PANE, not the floor under it — the same per-level offset the
+		## crack demo needs, and for the same reason.
+		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
+			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
+				* float(_voxel_renderer.relative_level(pane_slices[0].voxels[0].level))))
+	if _fow_controller != null:
+		_fow_controller.reveal_around(pane_gu, 30)
+	for _s in range(60):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/glass_blast_demo_before.png" % dir)
+
+	## The same close-then-detonate order P-FILM documents: the menu must be gone
+	## before the blast's own visuals play, and `_active_index` survives close().
+	_test_zone_controller.open_menu_for(idx)
+	if _context_menu != null:
+		_context_menu.close()
+	if _blast_wireframe_overlay != null:
+		_blast_wireframe_overlay.clear()
+	_test_zone_controller.detonate_active()
+	for _f in range(240):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/glass_blast_demo_after.png" % dir)
+
+	## ⚠️ THE BOARD, NOT THE COUNTER — CRACK-04's lesson, and the only reading that
+	## can tell a claim that reached the tilemap from one that was merely issued.
+	print("[GLASS-BLAST] shards: registry=%d board=%d"
+		% [_voxel_renderer._glass_shard_cells.size(), _voxel_renderer.count_glass_shards()])
+	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")
+
+
+## The biggest glass PANEL pane on the map, as its slices — `PANE_BLOCK_*`
+## excluded, because a block has no single run axis for a pane basis to be built
+## from. `material` narrows it to one member of the family ("" = any).
+##
+## Shared by the crack demo and the blast demo rather than written twice: they
+## have to photograph the SAME pane for their two frames to be comparable, and
+## two copies of "biggest" is how that quietly stops being true.
+func _biggest_glass_pane(material: String) -> Array:
+	var by_pane: Dictionary = {}
+	for s in _edge_registry.all_slices():
+		if s.pane_id == "" or s.pane_id.begins_with("PANE_BLOCK_"):
+			continue
+		if not GlassMaterials.is_glass(s.material):
+			continue
+		if material != "" and s.material != material:
+			continue
+		by_pane.get_or_add(s.pane_id, [])
+		by_pane[s.pane_id].append(s)
+	var best_id := ""
+	var best_n := 0
+	for pid in by_pane:
+		var n := 0
+		for s in by_pane[pid]:
+			n += s.voxels.size()
+		if n > best_n:
+			best_n = n
+			best_id = pid
+	return by_pane.get(best_id, [])
+
+
+## One named pane's slices, for a capture that has to land on a SPECIFIC pane
+## rather than the largest one. Empty when nothing on the map carries that id.
+func _pane_by_id(pane_id: String) -> Array:
+	var out: Array = []
+	for s in _edge_registry.all_slices():
+		if s.pane_id == pane_id:
+			out.append(s)
+	return out
 
 
 ## CRACK-02 — the SHEET quad and the PANE quad, in SCREEN pixels, so "the web
@@ -8516,6 +8641,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "glass_crack_demo":
 		await _capture_glass_crack_demo()
+		get_tree().quit(0)
+		return
+	elif capture_action == "glass_blast_demo":
+		await _capture_glass_blast_demo()
 		get_tree().quit(0)
 		return
 	elif capture_action == "escape_open_menu":

@@ -22,6 +22,10 @@ const GlassShatterClass = preload("res://godot/scripts/systems/destruction/glass
 const ShotPunchTableClass = preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")
 const WeaponDefClass = preload("res://godot/scripts/systems/destruction/weapon_def.gd")
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
+## CRACK-05 — the cook path's own producer, and the Delta it proposes into.
+const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
+const WorldDeltaClass = preload("res://godot/scripts/systems/prediction/world_delta.gd")
+const BombDefClass = preload("res://godot/scripts/systems/destruction/bomb_def.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -68,6 +72,7 @@ func _init() -> void:
 	test_glass_never_dents()
 	test_per_placement_class_overrides_the_material()
 	test_only_rifle_class_pierces_armored_glass()
+	test_cook_proposes_the_opening_and_only_commit_claims_it()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -941,4 +946,109 @@ func test_only_rifle_class_pierces_armored_glass() -> void:
 		_fail("pierced by %s, expected exactly %s — the armoured breach (%.2f) no "
 			% [got, want_pierce, breach]
 			+ "longer splits the arsenal where G-D15 says it does")
+	print("")
+
+
+## ── CRACK-05 (`GLASS_MASTER_PLAN` §14.5) ─────────────────────────────────────
+##
+## A stand-in for the room, holding exactly the one call `WorldDelta.commit()`
+## makes on this path. It records rather than acts, because what is being tested
+## is WHEN the claim happens, not what claiming does — and the real
+## `claim_glass_opening_for_hit()` needs a VoxelRenderer, a PerspectiveMapper and
+## a live map to do anything at all.
+class RoomStub:
+	extends RefCounted
+	var claims: Array = []
+	func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
+			record: bool = true) -> String:
+		claims.append({"cell": grid_pos, "level": level, "wide": wide, "record": record})
+		return "STUB"
+	func absorb_scorch(_writes: Dictionary) -> void:
+		pass
+
+
+## CRACK-05 — THE COOK PROPOSES A HOLE'S SHAPE, AND ONLY `commit()` CLAIMS IT.
+##
+## Two halves, and the second is the one that would fail silently. §14.5 left the
+## cook unable to name its hole, so every blast fell through to
+## `GLASS_OPENING_DEFAULT` — a grenade repeating one shape. The fix has to live on
+## the Delta rather than in the builder, because `build_plan()` runs on every
+## cursor move: a claim made there is a WRITE for a hole that was never opened,
+## and the next real blast anywhere on the map would wear it.
+func test_cook_proposes_the_opening_and_only_commit_claims_it() -> void:
+	print("[20] CRACK-05 — the cook PROPOSES a blast hole's opening; commit() claims it\n")
+	var registry := EdgeRegistry.new()
+	var pane: Array = _pane(2, 7, 3)
+	for s in pane:
+		registry.register_slice(s)
+	var bomb := BombDefClass.from_json({
+		"id": "frag_grenade",
+		"ring_multipliers": [1.0, 0.6, 0.25, 0.0],
+		"destroy_ring_weights": [0.85, 0.28, 0.06, 0.0],
+		"dent_ring_weights": [1.0, 0.8, 0.25, 0.0],
+		"crack_ring_weights": [0.0, 1.0, 0.6, 0.0],
+	})
+	var affected: Dictionary = {}
+	for s in pane:
+		affected[s.id] = 0
+	## The epicenter, in the pane's own column space: the flood origin must be the
+	## STANDING pane voxel nearest it, and picking one at the far end is what makes
+	## "nearest" a real assertion instead of a coincidence of iteration order.
+	var epicenter := Vector2i(pane[0].voxels[0].grid_pos.x, pane[0].voxels[0].grid_pos.y)
+	var delta := WorldDeltaClass.new()
+	var state: Dictionary = {
+		"edge_registry": registry,
+		"slab_registry": SlabRegistry.new(),
+		"affected": {"slices": affected},
+		"bomb_def": bomb,
+		"delta": delta,
+		"epicenter": epicenter,
+		"source_gu": Vector2i(2, 4),
+	}
+	DetonationPlanBuilderClass._shatter_glass_panes(state)
+
+	if delta.glass_openings.size() != 1:
+		_fail("the cook proposed %d opening(s) for one shattered pane — expected exactly 1"
+			% delta.glass_openings.size())
+		print("")
+		return
+	var proposal: Dictionary = delta.glass_openings[0]
+	## The nearest STANDING pane voxel to the epicenter, derived here the way the
+	## builder derives it — from the pane, not from the builder's own answer.
+	var want: Voxel = null
+	var best: float = INF
+	for s in pane:
+		for v in s.voxels:
+			if v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			var d: float = Vector2(v.grid_pos - epicenter).length()
+			if d < best:
+				best = d
+				want = v
+	if proposal["cell"] == want.grid_pos and int(proposal["level"]) == want.level \
+			and bool(proposal["wide"]):
+		_pass("the proposal names the flood's own origin %s level %d, size class LARGE"
+			% [proposal["cell"], int(proposal["level"])])
+	else:
+		_fail("the proposal is %s level %d wide=%s — the flood started at %s level %d"
+			% [proposal["cell"], int(proposal["level"]), proposal["wide"],
+			want.grid_pos, want.level])
+
+	## ⚠️ THE HALF THAT MATTERS. `_shatter_glass_panes()` runs inside `build_plan()`,
+	## which is pure and speculative; a claim is a write. Nothing may have been
+	## claimed yet, and the commit must make exactly the one call.
+	var room := RoomStub.new()
+	if not room.claims.is_empty():
+		_fail("the builder claimed before any commit — build_plan() is not pure")
+	var before: int = room.claims.size()
+	delta.commit(room)
+	if before == 0 and room.claims.size() == 1 \
+			and room.claims[0]["cell"] == proposal["cell"] \
+			and int(room.claims[0]["level"]) == int(proposal["level"]) \
+			and bool(room.claims[0]["record"]):
+		_pass("0 claims before commit(), exactly 1 after — and it is RECORDED, so the "
+			+ "hole keeps its shape through a perspective flip")
+	else:
+		_fail("claims before=%d after=%d (%s) — the proposal did not reach the room"
+			% [before, room.claims.size(), room.claims])
 	print("")

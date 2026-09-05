@@ -1,28 +1,23 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.37 — **G6 IS BUILT (2026-09-05): broken glass lands on the
-floor and stays there** (§17). `GlassFall` had decided WHERE since 2026-09-01 and
-nothing drew it; all three fall sites record now, the cook through the Delta.
-BASE-coord store, accumulating, with a `SaveState` section.
+**Status:** 🟢 v1.38 — **G4's TEST BENCH IS BUILT (2026-09-05)**: four windows in
+the GLASS map at 1×1, 2×2, 3×3 and 4×3 GU, with brick and concrete frames,
+plywood transoms and a plywood mullion (§17.7). 19 panels, authored entirely in
+`panels` + G-D9's `bands` — no new mechanism. Built from `REFERENCES/WINDOWS.png`.
 
-⚠️ **Drawn as a SPRITE, not composited into the floor's atom — §7.1 says the
-other thing.** That section predates CRACK-02's ruling on the same question. A
-pile folded into an atom multiplies with every other per-cell state
-(`+ dented`, `+ scorched`, per variant) on the most overloaded surface in the
-game; a sprite multiplies with nothing. §17.2.
+⚠️ **W4's mullion splits the pane UNION**, so a subdivided window is already
+several panes to every per-pane rule — the shatter roll, the craze, the sheet
+pick — without a line of new code.
 
-✅ **And it closed a WIRING FAIL standing since CRACK-05** — *"the files exist and
-nothing loads them"*. The gate had no third state for CORRECTLY ABSENT; it has one
-now, and the fix was to build the consumer rather than silence the check. Proven
-RED. `check_decal.py --all`: 117 files, all PASS.
+⚠️ **The one authoring limit:** a mullion is a whole GU (8 voxels). `bands` is
+level-ranged only, so a one-voxel-column mullion needs a second axis, which is a
+format change and the Director's call.
 
-Real map: `1152 of 1152 shard(s) landed, on 48 cell(s), deepest pile 24` → 48
-recorded, 48 live; after a flip to S, 48 redrawn, 0 without a layer.
-
-🟡 **G4 is next and the Director specified it (§17.6):** *a glass voxel touching
-another material has a chance of staying stuck* — and it needs **windows of
-several sizes with brick and concrete frames** built in the scenario first, or the
-rule cannot be told apart from G-D13's border ring.
+Earlier, v1.37 — **G6 IS BUILT: broken glass lands on the floor and stays there**
+(§17). All three fall sites record; the cook proposes on the Delta and the room
+writes. ⚠️ Drawn as a SPRITE, not composited into the floor's atom — §17.2 argues
+the departure. ✅ It closed a WIRING FAIL standing since CRACK-05 by BUILDING the
+consumer.
 
 Earlier, v1.36 — **B-4's PERFORATION IS ABANDONED.** G-D35's destruction axis is
 out and the granularity axis is what ships. ⚠️ Removed, not left at rate 0: 281
@@ -3213,3 +3208,54 @@ SEVERAL SIZES with brick and concrete frames. §12's list has one banded WINDOWS
 wall; this asks for a set. ⚠️ Without them the rule cannot be seen — the map's
 big pane has frame on two sides only, so "touching another material" is nearly
 the same as "on the border" there, and the two would be indistinguishable.
+
+### ✅ 17.7 THE TEST WINDOWS ARE BUILT (2026-09-05) — G4's bench, before G4
+
+> Director: *"Pode construir as janelas no mapa GLASS com tamanhos variados. […]
+> As faixas escuras horizontais são apenas um efeito da união das bordas e não
+> precisam estar presentes in-game, embora janelas com subdivisões sejam
+> desejáveis também, usando pelo menos uma linha de voxels de madeira ou outros
+> materiais entre as placas de vidro menores. Aqui a gente já está esbarrando na
+> Milestone de arquitetura do cenário, mas são esses testes que vão permitir a
+> criação de outras estruturas mais complexas."*
+
+Four windows, 19 new panels, authored entirely in `panels` + G-D9's `bands` — no
+new mechanism. `REFERENCES/WINDOWS.png` is the drawing they are built from; its
+dark horizontal bands are the edge-union artefact he names and are absent here.
+
+| | size | frame | subdivision | result |
+|---|---|---|---|---|
+| **W1** | 1 GU × 1 storey | brick jambs + sill/head | — | the smallest window there is |
+| **W2** | 2 GU × 2 storeys | concrete | — | `PANE_SLICE_10_15_SW` |
+| **W3** | 3 GU × 3 storeys | brick | **plywood TRANSOM** (`bands` rel 11–12) | one pane, split visually |
+| **W4** | 4 GU × 3 storeys | concrete | transom **+ plywood MULLION** | ⚠️ **TWO panes** — `PANE_SLICE_6_12_SW` and `PANE_SLICE_9_12_SW` |
+
+⚠️ **W4's mullion splitting the union is the interesting result.** `GlassPaneGrouper`
+unions coplanar adjacent GLASS, so a plywood GU between two glazed runs makes two
+panes rather than one — which is what a mullion physically is, and it means every
+per-pane rule (the shatter roll, the craze, the sheet pick) already treats a
+subdivided window as several windows without a line of new code.
+
+#### ⚠️ WHAT I COULD NOT DO, AND IT IS AN AUTHORING LIMIT
+
+**The mullion is a whole GU — 8 voxels wide.** `bands` is LEVEL-ranged only, so a
+one-voxel-column mullion is not expressible today. The Director asked for *"pelo
+menos uma linha"* and 8 satisfies "at least", but a thin mullion needs a second
+authoring axis (`bands` by run offset as well as by level), which is a new format
+and therefore his call rather than mine.
+
+#### And two things the bench needed that are not windows
+
+- **`plywood` joined `damage_materials`** — it is a real material with a facade,
+  and without the row its damage atoms do not bake.
+- **Two lights**, because a test bench nobody can see is not a bench. The map's
+  existing three do not reach y=12/15.
+- **`INFILTRAITOR_CAPTURE_FOCUS` / `_ZOOM`** on the four-view capture. It framed
+  whatever the camera already held — fine for a rotation A/B, useless for looking
+  at a RUN of geometry, which is what every scenario-architecture test will be.
+  ⚠️ Applied INSIDE the view loop and through `PerspectiveMapper`: `_set_perspective()`
+  rebuilds the camera, so a framing set once survives exactly one view, and a raw
+  cell would frame a different place in three of the four.
+
+`glass_test_windows_2026-09-05.png`. **G4 can now be built against geometry where
+"touching another material" and "on the border" are genuinely different.**

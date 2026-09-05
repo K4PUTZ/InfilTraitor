@@ -8509,11 +8509,42 @@ func _capture_all_four_views() -> void:
 	var history_dir := project_root + "Screenshots/history"
 	DirAccess.make_dir_recursive_absolute(history_dir)
 
+	## ⚠️ FRAMING IS A KNOB NOW, AND THE SCENARIO WORK IS WHY. This capture was
+	## written to photograph one agent's surroundings, so it framed whatever the
+	## camera already held — fine for a rotation A/B, useless for looking at a
+	## RUN of geometry, which is what the Director's window set and everything
+	## after it in the scenario-architecture milestone actually is.
+	##   INFILTRAITOR_CAPTURE_FOCUS=x,y   the GU to centre on (authored coords + buffer)
+	##   INFILTRAITOR_CAPTURE_ZOOM=<f>    smaller sees more
+	## Applied INSIDE the loop: `_set_perspective()` rebuilds the world and the
+	## camera with it, so a framing set once before the loop survives exactly one
+	## view — which reads as "three of the four captures ignored the setting".
+	var focus_env := OS.get_environment("INFILTRAITOR_CAPTURE_FOCUS")
+	var zoom_env := OS.get_environment("INFILTRAITOR_CAPTURE_ZOOM")
+
 	for view in ["N", "E", "S", "W"]:
 		_set_perspective(view)
 		if _occlusion_overlay != null:
 			_occlusion_overlay.visible = show_overlay
 			_occlusion_overlay.queue_redraw()
+		if _camera_controller != null and agent != null:
+			if focus_env != "":
+				var xy := focus_env.split(",")
+				if xy.size() == 2 and xy[0].is_valid_int() and xy[1].is_valid_int():
+					## ⚠️ THROUGH THE MAPPER, because the cell was named in BASE
+					## coords and this loop is standing in four different views. A
+					## raw cell would frame a different place in three of them.
+					var base_cell := Vector2i(xy[0].to_int(), xy[1].to_int())
+					var view_cell := PerspectiveMapperClass.cell_from_base(
+						base_cell, view, _base_layout.get("size", Vector2i.ZERO))
+					_camera_controller.focus_on(agent._cell_to_world(view_cell))
+					if _fow_controller != null:
+						_fow_controller.reveal_around(view_cell, 40)
+				else:
+					push_warning("[CAPTURE] INFILTRAITOR_CAPTURE_FOCUS=%r — expected \"x,y\""
+						% focus_env)
+			if zoom_env.is_valid_float():
+				_camera_controller.set_zoom_for_capture(zoom_env.to_float())
 		for _f in range(12):
 			await get_tree().process_frame
 

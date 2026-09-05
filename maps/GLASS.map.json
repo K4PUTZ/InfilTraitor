@@ -1,351 +1,746 @@
 {
-  "format": "infiltraitor-map",
-  "schema_version": 3,
-  "id": "GLASS",
-  "meta": {
-    "title": "Glass Physics Test Zone",
-    "description": "GLASS_MASTER_PLAN \u00a712. Dedicated to glass physics \u2014 PLAYGROUND stays as it is. The agent starts at authored (13,13) looking north at a BIG pane (authored gu x=10..15, y=9, face SW, 3 storeys, 6 GUs wide) so G-D12's partial break has room to read; a guard patrols behind it at (13,6) for the shoot-through-glass path (G7) and the see-through roll (G-D7). A SMALL pane (gu 4,9, face SW, 1 storey) west of the agent is the binary all-or-nothing case. A WINDOWS.png bands wall (gu x=19..21, y=9, face SW, 3 storeys) carries a brick sill (levels 0-1) and head (levels 22-23) over a glass middle \u2014 the multi-material-slice case (G-D9); until G-D9 lands the `bands` key is ignored and it renders as plain glass. A 3-wide glass block (gu x=6..8, y=3) keeps block geometry a home. Floor is one concrete zone; three lights cover the play area. G-D17 (2026-09-01): a SECOND pane row (gu x=11..14, y=6, face SW, 3 storeys) stands behind the big one so a single round crosses TWO panes \u2014 the map had no such line, and the per-layer punch falloff cannot be verified on a map where every pane is on one row. G-D16/V-B (2026-09-01): a row of four VARIANT panels at authored gu x=5..8, y=9, 2 storeys \u2014 glass_armored (purple), then glass_screen_green/red/amber \u2014 west of the big pane with a gap at x=9 so the pane union cannot reach it. They exist to make the per-class tint visible in one frame; the variants share every pixel of glass's art and differ only by the tint index the atom carries in its BLUE channel. V-D (2026-09-01): the amber screen carries `glass_class: \"breakable\"` \u2014 G-D16's per-placement override (a TV rather than a control interface), so the map exercises both readings of glass_screen_*."
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "GLASS",
+ "meta": {
+  "title": "Glass Physics Test Zone",
+  "description": "GLASS_MASTER_PLAN §12. Dedicated to glass physics — PLAYGROUND stays as it is. The agent starts at authored (13,13) looking north at a BIG pane (authored gu x=10..15, y=9, face SW, 3 storeys, 6 GUs wide) so G-D12's partial break has room to read; a guard patrols behind it at (13,6) for the shoot-through-glass path (G7) and the see-through roll (G-D7). A SMALL pane (gu 4,9, face SW, 1 storey) west of the agent is the binary all-or-nothing case. A WINDOWS.png bands wall (gu x=19..21, y=9, face SW, 3 storeys) carries a brick sill (levels 0-1) and head (levels 22-23) over a glass middle — the multi-material-slice case (G-D9); until G-D9 lands the `bands` key is ignored and it renders as plain glass. A 3-wide glass block (gu x=6..8, y=3) keeps block geometry a home. Floor is one concrete zone; three lights cover the play area. G-D17 (2026-09-01): a SECOND pane row (gu x=11..14, y=6, face SW, 3 storeys) stands behind the big one so a single round crosses TWO panes — the map had no such line, and the per-layer punch falloff cannot be verified on a map where every pane is on one row. G-D16/V-B (2026-09-01): a row of four VARIANT panels at authored gu x=5..8, y=9, 2 storeys — glass_armored (purple), then glass_screen_green/red/amber — west of the big pane with a gap at x=9 so the pane union cannot reach it. They exist to make the per-class tint visible in one frame; the variants share every pixel of glass's art and differ only by the tint index the atom carries in its BLUE channel. V-D (2026-09-01): the amber screen carries `glass_class: \"breakable\"` — G-D16's per-placement override (a TV rather than a control interface), so the map exercises both readings of glass_screen_*."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    26,
+    18
+   ],
+   "buffer": 1,
+   "floor_tile": "floor_SE"
   },
-  "sections": {
-    "board": {
-      "v": 1,
-      "inner_size": [
-        26,
-        18
-      ],
-      "buffer": 1,
-      "floor_tile": "floor_SE"
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    13,
+    13
+   ],
+   "guards": [
+    [
+     [
+      13,
+      6
+     ],
+     [
+      12,
+      6
+     ]
+    ],
+    [
+     [
+      20,
+      5
+     ],
+     [
+      21,
+      5
+     ]
+    ]
+   ]
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": [
+    {
+     "x": 13,
+     "y": 11,
+     "height_class": 4,
+     "radius": 11,
+     "intensity": 1.1
     },
-    "actors": {
-      "v": 1,
-      "agent_start": [
-        13,
-        13
-      ],
-      "guards": [
-        [
-          [
-            13,
-            6
-          ],
-          [
-            12,
-            6
-          ]
-        ],
-        [
-          [
-            20,
-            5
-          ],
-          [
-            21,
-            5
-          ]
-        ]
-      ]
+    {
+     "x": 7,
+     "y": 5,
+     "height_class": 4,
+     "radius": 8,
+     "intensity": 1.0
     },
-    "legacy_compiler": {
-      "v": 1,
-      "wall_height": 1,
-      "access_points": [],
-      "dividers": [],
-      "lights": [
-        {
-          "x": 13,
-          "y": 11,
-          "height_class": 4,
-          "radius": 11,
-          "intensity": 1.1
-        },
-        {
-          "x": 7,
-          "y": 5,
-          "height_class": 4,
-          "radius": 8,
-          "intensity": 1.0
-        },
-        {
-          "x": 20,
-          "y": 11,
-          "height_class": 3,
-          "radius": 9,
-          "intensity": 1.0
-        }
-      ]
+    {
+     "x": 20,
+     "y": 11,
+     "height_class": 3,
+     "radius": 9,
+     "intensity": 1.0
     },
-    "blocks": {
-      "v": 1,
-      "items": [
-        {
-          "gu": [
-            6,
-            3
-          ],
-          "material": "glass",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            7,
-            3
-          ],
-          "material": "glass",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            8,
-            3
-          ],
-          "material": "glass",
-          "storeys": 2
-        }
-      ]
+    {
+     "x": 10,
+     "y": 15,
+     "height_class": 4,
+     "radius": 12,
+     "intensity": 1.1
     },
-    "floor_zones": {
-      "v": 2,
-      "items": [
-        {
-          "gu": [
-            0,
-            0
-          ],
-          "size": [
-            26,
-            18
-          ],
-          "material": "concrete"
-        }
-      ]
-    },
-    "damage_materials": {
-      "v": 1,
-      "materials": [
-        "glass",
-        "brick",
-        "concrete",
-        "glass_armored",
-        "glass_screen_green",
-        "glass_screen_red",
-        "glass_screen_amber"
-      ]
-    },
-    "panels": {
-      "v": 1,
-      "items": [
-        {
-          "gu": [
-            10,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            11,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            12,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            13,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            14,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            15,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            4,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 1
-        },
-        {
-          "gu": [
-            19,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3,
-          "bands": [
-            {
-              "levels": [
-                0,
-                1
-              ],
-              "material": "brick"
-            },
-            {
-              "levels": [
-                22,
-                23
-              ],
-              "material": "brick"
-            }
-          ]
-        },
-        {
-          "gu": [
-            20,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3,
-          "bands": [
-            {
-              "levels": [
-                0,
-                1
-              ],
-              "material": "brick"
-            },
-            {
-              "levels": [
-                22,
-                23
-              ],
-              "material": "brick"
-            }
-          ]
-        },
-        {
-          "gu": [
-            21,
-            9
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3,
-          "bands": [
-            {
-              "levels": [
-                0,
-                1
-              ],
-              "material": "brick"
-            },
-            {
-              "levels": [
-                22,
-                23
-              ],
-              "material": "brick"
-            }
-          ]
-        },
-        {
-          "gu": [
-            11,
-            6
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            12,
-            6
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            13,
-            6
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            14,
-            6
-          ],
-          "face": "SW",
-          "material": "glass",
-          "storeys": 3
-        },
-        {
-          "gu": [
-            5,
-            9
-          ],
-          "face": "SW",
-          "material": "glass_armored",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            6,
-            9
-          ],
-          "face": "SW",
-          "material": "glass_screen_green",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            7,
-            9
-          ],
-          "face": "SW",
-          "material": "glass_screen_red",
-          "storeys": 2
-        },
-        {
-          "gu": [
-            8,
-            9
-          ],
-          "face": "SW",
-          "material": "glass_screen_amber",
-          "storeys": 2,
-          "glass_class": "breakable"
-        }
-      ]
+    {
+     "x": 7,
+     "y": 12,
+     "height_class": 4,
+     "radius": 10,
+     "intensity": 1.0
     }
+   ]
+  },
+  "blocks": {
+   "v": 1,
+   "items": [
+    {
+     "gu": [
+      6,
+      3
+     ],
+     "material": "glass",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      7,
+      3
+     ],
+     "material": "glass",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      3
+     ],
+     "material": "glass",
+     "storeys": 2
+    }
+   ]
+  },
+  "floor_zones": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      26,
+      18
+     ],
+     "material": "concrete"
+    }
+   ]
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "glass",
+    "brick",
+    "concrete",
+    "glass_armored",
+    "glass_screen_green",
+    "glass_screen_red",
+    "glass_screen_amber",
+    "plywood"
+   ]
+  },
+  "panels": {
+   "v": 1,
+   "items": [
+    {
+     "gu": [
+      10,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      11,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      12,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      13,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      14,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      15,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      4,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 1
+    },
+    {
+     "gu": [
+      19,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "brick"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "brick"
+      }
+     ]
+    },
+    {
+     "gu": [
+      20,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "brick"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "brick"
+      }
+     ]
+    },
+    {
+     "gu": [
+      21,
+      9
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "brick"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "brick"
+      }
+     ]
+    },
+    {
+     "gu": [
+      11,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      12,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      13,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      14,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      5,
+      9
+     ],
+     "face": "SW",
+     "material": "glass_armored",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      6,
+      9
+     ],
+     "face": "SW",
+     "material": "glass_screen_green",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      7,
+      9
+     ],
+     "face": "SW",
+     "material": "glass_screen_red",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      9
+     ],
+     "face": "SW",
+     "material": "glass_screen_amber",
+     "storeys": 2,
+     "glass_class": "breakable"
+    },
+    {
+     "gu": [
+      3,
+      14
+     ],
+     "face": "SW",
+     "material": "brick",
+     "storeys": 1
+    },
+    {
+     "gu": [
+      4,
+      14
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 1,
+     "bands": [
+      {
+       "levels": [
+        0,
+        0
+       ],
+       "material": "brick"
+      },
+      {
+       "levels": [
+        7,
+        7
+       ],
+       "material": "brick"
+      }
+     ]
+    },
+    {
+     "gu": [
+      5,
+      14
+     ],
+     "face": "SW",
+     "material": "brick",
+     "storeys": 1
+    },
+    {
+     "gu": [
+      7,
+      14
+     ],
+     "face": "SW",
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      14
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "concrete"
+      },
+      {
+       "levels": [
+        14,
+        15
+       ],
+       "material": "concrete"
+      }
+     ]
+    },
+    {
+     "gu": [
+      9,
+      14
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "concrete"
+      },
+      {
+       "levels": [
+        14,
+        15
+       ],
+       "material": "concrete"
+      }
+     ]
+    },
+    {
+     "gu": [
+      10,
+      14
+     ],
+     "face": "SW",
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      12,
+      14
+     ],
+     "face": "SW",
+     "material": "brick",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      13,
+      14
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "brick"
+      },
+      {
+       "levels": [
+        11,
+        12
+       ],
+       "material": "plywood"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "brick"
+      }
+     ]
+    },
+    {
+     "gu": [
+      14,
+      14
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "brick"
+      },
+      {
+       "levels": [
+        11,
+        12
+       ],
+       "material": "plywood"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "brick"
+      }
+     ]
+    },
+    {
+     "gu": [
+      15,
+      14
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "brick"
+      },
+      {
+       "levels": [
+        11,
+        12
+       ],
+       "material": "plywood"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "brick"
+      }
+     ]
+    },
+    {
+     "gu": [
+      16,
+      14
+     ],
+     "face": "SW",
+     "material": "brick",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      3,
+      11
+     ],
+     "face": "SW",
+     "material": "concrete",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      4,
+      11
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "concrete"
+      },
+      {
+       "levels": [
+        11,
+        11
+       ],
+       "material": "plywood"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "concrete"
+      }
+     ]
+    },
+    {
+     "gu": [
+      5,
+      11
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "concrete"
+      },
+      {
+       "levels": [
+        11,
+        11
+       ],
+       "material": "plywood"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "concrete"
+      }
+     ]
+    },
+    {
+     "gu": [
+      6,
+      11
+     ],
+     "face": "SW",
+     "material": "plywood",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      7,
+      11
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "concrete"
+      },
+      {
+       "levels": [
+        11,
+        11
+       ],
+       "material": "plywood"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "concrete"
+      }
+     ]
+    },
+    {
+     "gu": [
+      8,
+      11
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3,
+     "bands": [
+      {
+       "levels": [
+        0,
+        1
+       ],
+       "material": "concrete"
+      },
+      {
+       "levels": [
+        11,
+        11
+       ],
+       "material": "plywood"
+      },
+      {
+       "levels": [
+        22,
+        23
+       ],
+       "material": "concrete"
+      }
+     ]
+    },
+    {
+     "gu": [
+      9,
+      11
+     ],
+     "face": "SW",
+     "material": "concrete",
+     "storeys": 3
+    }
+   ]
   }
+ }
 }

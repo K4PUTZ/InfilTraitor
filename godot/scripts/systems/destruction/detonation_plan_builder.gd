@@ -701,21 +701,6 @@ static func _craze_pane(s: Dictionary, pane_id: String, pane_slices: Array,
 	var voxels: Array = GlassShatter.plan_pane_craze(pane_slices)
 	if voxels.is_empty():
 		return
-	## ── G-D35 B-4 — SOME OF IT ACTUALLY GOES ─────────────────────────────────
-	##
-	## The class's DESTRUCTION axis. Chosen per voxel and never drawn into the tile
-	## (*"só mudando os buracos de lugar"*), so one page serves every pane.
-	##
-	## ⚠️ THE SALT CARRIES THE EPICENTER, not just the pane. Keyed on the pane
-	## alone, the same glass would perforate in the same places every time it was
-	## crazed — so a second grenade on the other side of the map would open exactly
-	## the holes the first one did, and a pane's damage would look authored.
-	var perforated: Array = GlassShatter.plan_pane_perforations(
-		voxels, intensity, "%s|%d,%d" % [pane_id, epicenter.x, epicenter.y])
-	var punched: Dictionary = {}
-	for pv in perforated:
-		punched[pv.get_instance_id()] = true
-
 	var entries: Array = []
 	## The pane voxel nearest the epicenter, for the record. Not an impact — a
 	## craze has no impact, which is the whole point of G-D29/G-D35's centreless
@@ -726,21 +711,12 @@ static func _craze_pane(s: Dictionary, pane_id: String, pane_slices: Array,
 	var anchor: Voxel = null
 	var best_d: float = INF
 	for v in voxels:
-		## ⚠️ A PERFORATED VOXEL IS DESTROYED, NOT CRACKED, and it must not be both.
-		## `commit_damage()` replays entries in order, so a cell appearing twice
-		## would take whichever came last — the kind of ordering dependency that
-		## reads as random hole loss.
-		var punched_here: bool = punched.has(v.get_instance_id())
-		entries.append(BlastCalculatorClass.damage_entry(v,
-			Voxel.DamageState.DESTROYED if punched_here else Voxel.DamageState.CRACKED,
-			true))
-		if punched_here:
-			## The hole's SHAPE rides the channel CRACK-05 already built: the room
-			## claims it at commit and base-keys the pick, so a perforation is
-			## shaped by the same family, by the same rule, as a bullet hole.
-			## `wide` false — a perforation is a small hole by definition.
-			delta.glass_openings.append({
-				"cell": v.grid_pos, "level": v.level, "wide": false})
+		## ⛔ EVERY ONE OF THEM CRACKS, AND NONE OF THEM GOES. B-4 made a fraction
+		## of them DESTROYED — G-D35's destruction axis — and the Director ruled
+		## against it on the real pane (2026-09-05): *"abandona. Vamos usar o
+		## rachado sem furos."* So the craze is what B-1 made it again: the pane
+		## STANDS, whole, and only its state changes.
+		entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.CRACKED, true))
 		var d: float = Vector2(v.grid_pos - epicenter).length()
 		if d < best_d:
 			best_d = d
@@ -761,9 +737,8 @@ static func _craze_pane(s: Dictionary, pane_id: String, pane_slices: Array,
 		"pane_id": pane_id, "cell": anchor.grid_pos, "level": anchor.level,
 		"ring": ring, "intensity": intensity,
 	})
-	print_debug("[GLASS-CRAZE] pane=%s ring=%d intensity=%.2f — pane STANDS, %d voxel(s) CRACKED, %d PERFORATED (rate %.3f)"
-		% [pane_id, ring, intensity, entries.size() - perforated.size(),
-		perforated.size(), GlassShatter.perforation_rate(intensity)])
+	print_debug("[GLASS-CRAZE] pane=%s ring=%d intensity=%.2f — pane STANDS, %d voxel(s) CRACKED"
+		% [pane_id, ring, intensity, entries.size()])
 
 
 ## E-JUNCTION-01 (2026-08-13): wall-junction corner columns — mirrors

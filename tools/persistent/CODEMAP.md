@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**233 scripts · 82457 lines total** (under `godot/scripts/`)
+**233 scripts · 82324 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -878,7 +878,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 6550 lines
+`class_name VoxelRenderer` · extends `Node2D` · 6552 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1980,7 +1980,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2317 lines
+`class_name DetonationPlanBuilder` · 2292 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2078,7 +2078,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 619 lines
+`class_name GlassShatter` · 546 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -3573,7 +3573,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1837 lines
+extends `SceneTree` · 1939 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -3656,7 +3656,7 @@ extends `SceneTree` · 250 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 1296 lines
+extends `SceneTree` · 1186 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -5178,7 +5178,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9863 lines
+extends `Node2D` · 9834 lines
 
 `godot/scripts/world/room.gd`
 

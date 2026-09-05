@@ -5123,7 +5123,9 @@ func _glass_craze_wrap_tile() -> Texture2D:
 ## edge is sub-cell by definition — *"intrusão nas bordas dos voxels ao redor"* —
 ## so a cell that still holds a SHARD reads as full glass to the occupancy while
 ## most of it is gone. Before this, the mesh drew over that missing part, which is
-## what made the perforated pane read as confused.
+## what made B-4's perforated pane read as confused — and what would do the
+## same to a pane a ROUND has holed and a later blast then crazes, which is the
+## case that survives now that the perforation is gone.
 ##
 ## ⚠️ AND IT IS RASTERISED FROM `GlassOpening.polygon()`, not composited from the
 ## per-opening mask images. Those carry their own origins and paddings; walking

@@ -88,6 +88,7 @@ func _init() -> void:
 	test_only_the_four_orthogonal_neighbours_become_shards()
 	test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon()
 	test_the_craze_field_covers_the_pane_and_tiles()
+	test_the_craze_field_is_cut_to_the_holes()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1833,5 +1834,106 @@ func test_the_craze_field_covers_the_pane_and_tiles() -> void:
 	else:
 		_fail("the field plan carries impact keys: %s" % plan.keys())
 
+	print("")
+
+
+## ── B-4b — THE CRAZE FIELD IS CUT TO THE HOLES' OWN POLYGONS ────────────────
+func test_the_craze_field_is_cut_to_the_holes() -> void:
+	print("[19] B-4b — a hole's polygon cuts the craze mesh, sub-cell\n")
+
+	## ⚠️ WHY THIS TEST EXISTS AFTER B-4 WAS ABANDONED. The Director dropped the
+	## PERFORATION (*"vamos usar o rachado sem furos"*), not the mask — and the
+	## defect the mask fixes belongs to any hole from any source. A pane a ROUND
+	## has holed and a later blast crazes has exactly the same shard cells, which
+	## G-D30's per-CELL occupancy reads as full glass while most of each is gone.
+	## That path has no capture (it needs a shot and a blast on one pane in one
+	## boot), so it is pinned here instead of left as a claim.
+	var renderer = VoxelRendererClass.new()
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var cross := 7
+	var run0 := 4
+	var runs := 12
+	var levels := 8
+	var ts := _one_tile_tileset()
+	for lvl in range(base, base + levels):
+		var layer := TileMapLayer.new()
+		layer.tile_set = ts
+		for r in range(run0, run0 + runs):
+			layer.set_cell(Vector2i(r, cross), 0, Vector2i.ZERO)
+		renderer._glass_layers[lvl] = layer
+
+	var c_run: int = run0 + runs / 2
+	var c_lvl: int = base + levels / 2
+	var spec := {
+		"pane_id": "PANE_TEST", "run_axis": 0, "face": Face.SW,
+		"centre_cell": Vector2i(c_run, cross), "centre_level": c_lvl,
+		"centre_run": c_run,
+		"pane_lo": Vector2(float(run0 - c_run), float(base - c_lvl)),
+		"pane_hi": Vector2(float(run0 + runs - 1 - c_run), float(base + levels - 1 - c_lvl)),
+		"span": Vector2(float(runs) + 1.0, float(levels) + 1.0),
+		"intensity": 0.55, "sheet": "blast_coarse",
+		"tile_span": Vector2(8.0, 8.0), "variant": 0,
+	}
+	var fid: int = renderer.spawn_glass_craze(spec)
+	if fid == 0:
+		_fail("spawn_glass_craze returned 0 — no field, so there is no mask to test")
+		_free_glass_layers(renderer)
+		renderer.free()
+		print("")
+		return
+
+	var rec: Dictionary = renderer._glass_cracks[renderer._glass_cracks.size() - 1]
+
+	## ── 1. NO HOLES, NO CUT ─────────────────────────────────────────────────
+	## ⚠️ The control, and it is the half that matters most: an empty mask must
+	## paint NOTHING. A mask that cut something on a clean pane would be eating the
+	## mesh everywhere, and the difference is sub-cell on screen.
+	if int(rec.get("craze_mask_painted", -1)) == 0:
+		_pass("a pane with no holes paints 0 mask texel(s) — the mesh is untouched")
+	else:
+		_fail("a clean pane painted %d mask texel(s)" % int(rec.get("craze_mask_painted", -1)))
+
+	## ── 2. A LOGGED OPENING CUTS IT ─────────────────────────────────────────
+	var hole_run: int = c_run + 2
+	var hole_lvl: int = c_lvl - 1
+	renderer._glass_applied_openings.append({
+		"anchor": Vector3i(hole_run, cross, hole_lvl),
+		"opening": "chamfer_45", "run_is_x": true})
+	renderer.refresh_craze_opening_masks()
+	var painted: int = int(rec.get("craze_mask_painted", -1))
+	if painted > 0:
+		_pass("one logged opening cuts %d mask texel(s) out of the mesh" % painted)
+	else:
+		_fail("a logged opening cut nothing — the field is still drawing over the hole")
+
+	## ── 3. AND IT CUTS WHERE THE HOLE IS, NOT SOMEWHERE ELSE ────────────────
+	## ⚠️ ASSERTED AS A POSITION, NOT A COUNT. "something was painted" passes for a
+	## mask painted in the wrong corner, which is the failure a wrong origin or a
+	## flipped axis actually produces — and §16.6 is this project's standing lesson
+	## about exactly that.
+	var img: Image = rec.get("craze_mask_image")
+	if img != null:
+		var k: int = renderer.CRAZE_MASK_TEXELS_PER_VOXEL
+		var lo: Vector2 = rec["pane_lo"]
+		var hi: Vector2 = rec["pane_hi"]
+		## The hole's centre, in the mask's own texel frame.
+		var mx: int = int(round((float(hole_run - c_run) - (lo.x - 0.5)) * float(k)))
+		var my: int = int(round(((hi.y + 0.5) - float(hole_lvl - c_lvl)) * float(k)))
+		var inside: bool = mx >= 0 and my >= 0 and mx < img.get_width() and my < img.get_height() \
+			and img.get_pixel(mx, my).r > 0.5
+		## And a cell four voxels away on the same row must be untouched.
+		var fx: int = mx - 4 * k
+		var far_clear: bool = fx < 0 or img.get_pixel(fx, my).r < 0.5
+		if inside and far_clear:
+			_pass("the cut lands ON the hole (texel %d,%d) and 4 voxels away is clear"
+				% [mx, my])
+		else:
+			_fail("the cut is in the wrong place: hole texel painted=%s, far cell clear=%s"
+				% [inside, far_clear])
+	else:
+		_fail("no mask image was built")
+
+	_free_glass_layers(renderer)
+	renderer.free()
 	print("")
 

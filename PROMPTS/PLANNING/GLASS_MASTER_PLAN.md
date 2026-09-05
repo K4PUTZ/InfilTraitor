@@ -1,25 +1,31 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟡 v1.35 — **B-4b: the craze mesh is now CUT to the holes' own
-polygons** (§16.14), the Director's last test on the perforation before he decides
-whether to keep it at all.
+**Status:** 🟢 v1.36 — **B-4's PERFORATION IS ABANDONED (2026-09-05, Director:
+*"Abandona. Vamos usar o rachado sem furos."*).** G-D35's destruction axis is out
+and the granularity axis is what ships: a crazed pane STANDS, whole, and only its
+state changes. §16.15.
 
-⚠️ **Half of what he asked for was already true and the other half was a real
-defect.** A perforation never spawned a radial sheet and has always used G-D31's
-shard atoms. What was missing is the MASK: G-D30's occupancy is one texel per
-CELL, so a cell holding a shard reads as full glass and **the mesh painted over
-the part the opening had taken away**. The shader has carried a sub-cell
-`crack_opening` sampler since CRACK-04 and no field had ever bound one. Real map:
-`38 opening(s) logged, 5868 texel(s) inside a hole`.
+⚠️ **Removed, not left at rate 0.** A dial set to zero is a feature that is built,
+wired, tested and never triggered — the shape of the two this project already
+shipped and had to find later. **281 lines out, 46 in**; the code is in
+`9e66b409` if it is ever wanted back. Selftest [21]'s `destroyed == 0` — the
+stronger form — came back with it.
 
-⚠️ **The seam order is load-bearing:** the writer refreshes the occupancy BEFORE
-the rims, and it is the rims pass that records the polygons — so the mask needs
-its own seam after it, or it is one flush behind forever with a log identical to
-a correct one.
+🟡 **The MASK (B-4b) is kept, and it is not the abandoned mechanic.** The defect it
+fixes belongs to any hole from any source: a pane a ROUND has holed and a later
+blast crazes has the same shard cells, which the per-CELL occupancy reads as full
+glass. It has no capture, so it is pinned by selftest **[19]** — whose control is
+the half that matters: *a clean pane paints 0 mask texels*.
 
-🟡 **Awaiting his eye. The honest reading is better-but-still-busy.**
-`PERFORATION_RATE_AT_FULL = 0.0` turns the mechanic off completely if he abandons
-it, and the mask goes inert with it — no code comes out.
+Real map after the removal: `pane STANDS, 1152 voxel(s) CRACKED`, `shards: 0`,
+mask inert. Shot path 0 px. 50 selftests clean.
+
+**Left in glass: G4 (remnants in the frame) and G6 (shards on the floor).**
+
+Earlier, v1.34 — **B-4: a crazed pane is PERFORATED** (§16.13), each hole shaped
+by the opening family. ⚠️ It needed a hash finalizer: raw FNV-1a put the right
+NUMBER of holes in 4 runs of 48 with ten stacked in one. The measurement is the
+part worth keeping.
 
 Earlier, v1.34 — **B-4: a crazed pane is PERFORATED** (§16.13), each hole shaped
 by the opening family. ⚠️ It needed a hash finalizer: raw FNV-1a put the right
@@ -2351,7 +2357,7 @@ radius one or two rings beyond the destruction radius"*.
 | **B-1 ✅** | **BUILT 2026-09-04 — the trigger.** §16.5. A pane the blast reaches and does not take goes CRACKED, whole, with an intensity from its ring. |
 | **B-2 ✅** | **BUILT 2026-09-05 — the tiling seam.** §16.8. A second sprite mode: the quad is the pane's own rectangle and the sheet repeats across it, wired end to end from `delta.glass_crazes` through `commit()` to a rotation replay. ⚠️ **The unknown this row predicted was not the real one** — a panel pane is coplanar by construction, so there is no fold to seam at; the phase ANCHOR was. |
 | **B-3 ✅** | **BUILT 2026-09-05 — the art.** §16.9. Two granularities (G-D37), a Voronoi mesh on a TOROIDAL metric, 3 variants each. The whole path lit up with **no code change**, which is what B-2's stage gate was for. |
-| **B-4 ✅** | **BUILT 2026-09-05** — §16.13. **The perforation**: N voxels punched per pane, chosen by B4 FNV-1a on the BASE key so a flip does not reshuffle them — the same rule G-D34 already lives by — and cut with the openings that already exist. |
+| **B-4 ⛔** | **BUILT AND ABANDONED 2026-09-05** — §16.13, §16.14, §16.15. **The perforation**: N voxels punched per pane, chosen by B4 FNV-1a on the BASE key so a flip does not reshuffle them — the same rule G-D34 already lives by — and cut with the openings that already exist. |
 | **B-5 🟢** | **The gate — MOSTLY LANDED WITH B-3, because art whose defining property is unverified is not delivered.** `check_decal.py` learns the class (read off `CRAZE_SHEET_*`), skips the ORIGIN rule for it, and runs a SEAM check in its place. ⚠️ It also removed a constant: the aspect rule was never "2:1", it was "the aspect must match the SPAN", and the manifest now answers per sheet. What is left for B-5 proper is B-4's perforation coverage. |
 
 ### 16.4 ✅ BOTH RULED 2026-09-05 — what B-3 now builds
@@ -3035,3 +3041,60 @@ STILL BUSY.** The mesh no longer crosses the shard points, but the openings are
 bullet-hole shapes 2–4 voxels across with bright lit rims, and at ~38 per pane
 they dominate. If he abandons the mechanic, `PERFORATION_RATE_AT_FULL = 0.0`
 turns it off completely and the mask goes inert with it — no code comes out.
+
+### ⛔ 16.15 B-4 IS ABANDONED (2026-09-05) — the craze ships without holes
+
+> Director, on the masked version: *"Abandona. Vamos usar o rachado sem furos."*
+
+Ruled by looking, twice, on the real pane — first *"ficou confuso visualmente, e
+eu acho que é muito trabalho para pouca vantagem ficar furando parcialmente"*,
+then this. **G-D35's destruction axis is out; the granularity axis is what ships.**
+A crazed pane is what B-1 made it again: it STANDS, whole, and only its state
+changes (G-D2).
+
+#### ⚠️ REMOVED, NOT LEFT AT RATE 0 — and that is the ruling being honoured
+
+`PERFORATION_RATE_AT_FULL = 0.0` was the cheap option and it is the wrong one: a
+dial set to zero is a feature that is built, wired, tested and never triggered,
+which is the shape of the two this project already shipped and had to find later
+(the noise indicator, the exposure labels). **281 lines out, 46 in.** The code is
+in `9e66b409` if it is ever wanted back.
+
+What was deleted: `PERFORATION_RATE_AT_FULL`, `perforation_rate()`,
+`plan_pane_perforations()`, `_avalanche()`, the branch in `_craze_pane()`, its
+`glass_openings` proposals, selftest [22] and the demo's spread census.
+
+#### ✅ And selftest [21]'s strong form came back with it
+
+That assertion read `destroyed == 0` for a crazed pane until B-4 needed it to read
+a rate. It is `destroyed == 0 and glass_openings.is_empty()` again — the STRONGER
+statement, and the correct one: one destroyed voxel there now means something has
+started taking glass off a pane that held.
+
+#### 🟡 THE MASK (B-4b) IS KEPT, AND IT IS NOT THE ABANDONED MECHANIC
+
+The Director dropped the PERFORATION. The defect the mask fixes belongs to **any
+hole from any source**: a pane a ROUND has holed and a later blast crazes has the
+same shard cells, which G-D30's per-CELL occupancy reads as full glass while most
+of each is gone — so the mesh would paint over them. That sequence is ordinary
+play and costs nothing when it does not happen: on a pane with no holes the mask
+is empty and the shader multiplies by 1.
+
+⚠️ **It has no capture** — photographing it needs a shot and a blast on one pane
+in one boot — **so it is pinned by selftest [19] instead of left as a claim.**
+Three assertions, and the CONTROL is the one that matters: *a pane with no holes
+paints 0 mask texels*. A mask that cut something on clean glass would be eating
+the mesh everywhere, sub-cell, invisibly. Then: one logged opening cuts 60 texels,
+and the cut lands ON the hole with a cell four voxels away still clear — a
+POSITION, not a count, because a wrong origin or a flipped axis paints the right
+number of texels in the wrong corner (§16.6's standing lesson).
+
+#### Verified after the removal
+
+- Real map: `pane STANDS, 1152 voxel(s) CRACKED` — all of them, `shards: 0`,
+  `craze hole mask: 0 texel(s), 0 opening(s) logged`, `craze fields: 1 live`.
+- The shipped shot path is **0 px** against the B-2 baseline.
+- 50 selftests clean, invariants OK, 60 sheets / 0 failed.
+
+**Glass now stands where the Director left it: the craze ships, the holes do not.
+What remains is G4 (remnants in the frame) and G6 (shards on the floor).**

@@ -118,27 +118,53 @@ static func wide_for_blowout(blowout: float) -> bool:
 	return blowout >= WIDE_BLOWOUT_MIN
 
 
-## The page span, in voxels, for the opening this hole was cut with.
+## ── G-D28's `armored` CLASS (CRACK-05, 2026-09-04) ──────────────────────────
+##
+## The manifest key of the sheet a stopped round leaves. ⚠️ IT IS NOT AN OPENING
+## AND MUST NEVER BE ONE: `GlassOpening.FAMILY` holds HOLES, and this class exists
+## precisely because armoured glass loses no voxel (G-D15) — *"estilhaça mas não
+## rompe"*. Adding it to the family would make it pickable by `pick()` and
+## cuttable by `refresh_glass_rims()`, which is the one pane that must never be
+## cut. It is a sheet id, chosen here, and nowhere else knows the difference.
+const ARMORED_SHEET: String = "armored"
+
+
+## WHICH SHEET this crack draws, as a manifest key.
+##
+## ⚠️ ONE DEFINITION, AND IT USED TO BE TWO. The "a crack with no hole borrows the
+## smallest member's page" fallback was written once in `sheet_span_for()` and
+## again in `VoxelRenderer.spawn_glass_crack()`, so the PAGE and the QUAD were
+## chosen by two copies of one rule — the arrangement that silently draws a sheet
+## at another sheet's scale the day only one of them is edited. G-D28 is that day.
+##
+## The three cases, and the order matters:
+##   * a hole was opened → the opening's own page, because the sheet's void IS
+##     that polygon (G-D34);
+##   * no hole, and the pane STOPS rounds or shatters whole → `armored`, an
+##     opaque crushed-white core. Chosen by MATERIAL/CLASS, never by the weapon:
+##     G-D28's trigger is `glass_armored` and the INDESTRUCTIBLE screens;
+##   * no hole, ordinary glass → the smallest member's page, whose 0.8-voxel void
+##     is too small to read as a feature. Unchanged.
+static func sheet_id_for(opening_id: String, wide: bool, armored: bool = false) -> String:
+	if opening_id != "":
+		return opening_id
+	if armored:
+		return ARMORED_SHEET
+	return "chamfer_45_wide" if wide else "chamfer_45"
+
+
+## The page span, in voxels, for the sheet this crack actually draws.
 ##
 ## ⚠️ `wide` NO LONGER SIZES ANYTHING. It still chooses the opening's size CLASS
 ## (G-D14: pistol/pellet small, rifle large), but the span now comes from the
 ## opening itself, because a `crescent_wide` page is twice a `chamfer_45_wide`
 ## page and one number for both would draw one of them at the wrong scale.
-static func sheet_span_for(opening_id: String, wide: bool) -> Vector2:
-	var row: Dictionary = _manifest_data().get("openings", {}).get(opening_id, {})
+static func sheet_span_for(opening_id: String, wide: bool, armored: bool = false) -> Vector2:
+	var row: Dictionary = _manifest_data().get("openings", {}).get(
+		sheet_id_for(opening_id, wide, armored), {})
 	var span: Array = row.get("span", [])
 	if span.size() == 2:
 		return Vector2(float(span[0]), float(span[1]))
-	## No opening (a pane that only crazed, so there is no hole to be the shape
-	## of). The smallest family member's page is the right fallback: its void is
-	## 0.8 voxels, small enough that a clear centre on intact glass is not a
-	## feature anyone reads. ⚠️ The crushed-white core a stopped round deserves is
-	## G-D28's `armored` class and is still unbuilt.
-	var fb: Dictionary = _manifest_data().get("openings", {}).get(
-		"chamfer_45_wide" if wide else "chamfer_45", {})
-	var fspan: Array = fb.get("span", [])
-	if fspan.size() == 2:
-		return Vector2(float(fspan[0]), float(fspan[1]))
 	return Vector2(20.0, 10.0)
 
 
@@ -161,6 +187,20 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
 	var impact_run: int = hit_grid_pos.x if run_is_x else hit_grid_pos.y
 	var radius: Vector2i = CRACK_RADIUS_WIDE if wide else CRACK_RADIUS_TIGHT
+	## G-D28 — is this an ARMOURED-family pane? Read from the pane's own slices,
+	## the way `GlassShatter.plan_pane_shatter()` reads them: a pane is
+	## single-material by construction (`GlassPaneGrouper` splits the union on
+	## material), and V-D's per-placement override rides the same slice.
+	##
+	## ⚠️ BOTH CLASSES, NOT JUST `glass_armored`. G-D28 names the trigger as
+	## *"`glass_armored`, and INDESTRUCTIBLE screens"* — a control interface stops
+	## the round outright (V-C), which is the same statement the crushed core makes.
+	var pane_material: String = pane_slices[0].material if not pane_slices.is_empty() \
+		else GlassMaterials.BASE
+	var pane_class: int = pane_slices[0].glass_class if not pane_slices.is_empty() \
+		else GlassMaterials.CLASS_UNSET
+	var armored: bool = GlassMaterials.stops_a_round(pane_material, pane_class) \
+		or GlassMaterials.shatters_whole_pane(pane_material, pane_class)
 	var cells: Array = []
 	var run_lo: int = impact_run
 	var run_hi: int = impact_run
@@ -206,6 +246,9 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 		"hit_level": hit_level,
 		"radius": radius,
 		"wide": wide,
+		## G-D28 — the pane held rounds by its CLASS, so a hit that opened no hole
+		## draws the crushed-white core instead of borrowing a bullet page.
+		"armored": armored,
 		"pane_id": pane_id,
 		"pane_lo": Vector2(float(run_lo - impact_run), float(lvl_lo - hit_level)),
 		"pane_hi": Vector2(float(run_hi - impact_run), float(lvl_hi - hit_level)),
@@ -228,7 +271,9 @@ static func sprite_spec(plan: Dictionary) -> Dictionary:
 		"impact_cell": plan["hit_cell"],
 		"face": int(plan.get("face", 0)),
 		"radius": plan["radius"],
-		"span": sheet_span_for(String(plan.get("opening", "")), bool(plan.get("wide", false))),
+		"span": sheet_span_for(String(plan.get("opening", "")), bool(plan.get("wide", false)),
+			bool(plan.get("armored", false))),
+		"armored": bool(plan.get("armored", false)),
 		"variant": int(plan.get("variant", 0)),
 		"pane_lo": plan["pane_lo"],
 		"pane_hi": plan["pane_hi"],

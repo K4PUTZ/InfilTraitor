@@ -777,9 +777,20 @@ def _check_fracture_wiring():
                 m = re.match(r'^"([A-Za-z0-9_]+)"\s*:\s*\{', t)
                 if m:
                     family.add(m.group(1))
+    ## ⚠️ NOT EVERY SHEET IS AN OPENING, since G-D28's `armored` (CRACK-05).
+    ## A pane that STOPS the round loses no voxel, so its sheet answers to no
+    ## polygon and must never be in `GlassOpening.FAMILY` — putting it there
+    ## would make it pickable by `pick()` and cuttable by `refresh_glass_rims()`,
+    ## on the one pane that may not be cut. It is still REQUIRED: read out of
+    ## `glass_crack.gd`, which owns the selection, rather than copied here.
+    classless = _classless_sheets()
+    if classless is None:
+        print("  WIRING FAIL  glass_crack.gd is missing — cannot confirm which "
+              "sheets are not openings")
+        return False
     ok = True
-    missing = sorted(family - roster)
-    extra = sorted(roster - family)
+    missing = sorted((family | classless) - roster)
+    extra = sorted(roster - family - classless)
     if missing:
         ok = False
         print("  WIRING FAIL  the manifest has no sheets for %s — run "
@@ -790,9 +801,29 @@ def _check_fracture_wiring():
               "defines. Regenerate, or the art describes a hole nothing cuts"
               % ", ".join(extra))
     if ok:
-        print("  wiring ok — the manifest covers all %d openings the family defines"
-              % len(family))
+        print("  wiring ok — the manifest covers all %d openings the family defines, "
+              "plus %d sheet(s) that are not openings (%s)"
+              % (len(family), len(classless), ", ".join(sorted(classless)) or "none"))
     return ok
+
+
+def _classless_sheets():
+    """The sheet ids that are NOT members of the opening family, read off
+    `glass_crack.gd`'s own constants. Returns None when the file is unreadable.
+
+    Kept as a parse of the owner rather than a tuple here for the same reason
+    the family is: two copies of a roster is how a gate starts passing for art
+    the engine no longer asks for."""
+    src = os.path.join(REPO_ROOT, "godot/scripts/systems/destruction/glass_crack.gd")
+    try:
+        text = open(src, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return None
+    out = set()
+    for m in re.finditer(r'^const\s+ARMORED_SHEET\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"',
+                         text, re.M):
+        out.add(m.group(1))
+    return out
 
 def check_material(material):
     """7. Family completeness — the check a per-file pass cannot make."""

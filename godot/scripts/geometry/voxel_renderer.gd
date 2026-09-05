@@ -4898,14 +4898,14 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 			return 0
 	var wide: bool = bool(spec.get("wide", false))
 	var opening_id: String = String(spec.get("opening", ""))
-	## ⚠️ A CRACK WITH NO HOLE STILL NEEDS A SHEET. The two branches that craze an
-	## INTACT pane (a screen that stopped the round, a lost roll under the breach
-	## threshold) have no opening to be the shape of, so they borrow the smallest
-	## family member's page — its void is 0.8 voxels, small enough that a clear
-	## centre on standing glass is not something anyone reads as a feature.
-	## `sheet_span_for()` falls back to the same one, so page and quad agree.
-	var sheet_opening: String = opening_id if opening_id != "" \
-		else ("chamfer_45_wide" if wide else "chamfer_45")
+	## ⚠️ A CRACK WITH NO HOLE STILL NEEDS A SHEET, AND WHICH ONE IS NOT DECIDED
+	## HERE. This branch used to carry its own copy of the fallback rule while
+	## `sheet_span_for()` carried another, so the PAGE and the QUAD were picked by
+	## two statements of one thing — and G-D28's `armored` class is exactly the
+	## edit that would have moved one and not the other. `GlassCrack.sheet_id_for()`
+	## is the single answer now; this asks it.
+	var sheet_opening: String = GlassCrack.sheet_id_for(opening_id, wide,
+		bool(spec.get("armored", false)))
 	var sheet: Texture2D = _glass_crack_sheet(sheet_opening, int(spec.get("variant", 0)))
 	if sheet == null:
 		return 0

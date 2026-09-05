@@ -5947,10 +5947,24 @@ func _capture_glass_crack_demo() -> void:
 	## The Director is judging a HOLE; strip the guard and the two-tone floor out
 	## of the frame first (capture-only, INFILTRAITOR_GLASS_DIAG=1).
 	apply_glass_diagnostic_backdrop()
-	var demo_opening_pre: String = glass_opening_for(hit_gp, hit_level, wide)
-	var ob: Rect2i = GlassOpening.cell_bounds(demo_opening_pre)
+	## ── G-D28 / CRACK-05 — AN ARMOURED PANE GETS NO BORE, AND IT IS DERIVED ────
+	##
+	## `glass_armored` and the INDESTRUCTIBLE screens lose no voxel: V-C caps them
+	## at CRACKED and stops the round outright. Punching one here would photograph
+	## a state the game cannot reach — the same fiction the fixed bore was, one
+	## class over — so the demo asks the PANE rather than taking a flag, and the
+	## armoured branch is then exercised exactly when the map's pane is armoured.
+	var armored_pane: bool = GlassMaterials.stops_a_round(
+			pane_slices[0].material, pane_slices[0].glass_class) \
+		or GlassMaterials.shatters_whole_pane(
+			pane_slices[0].material, pane_slices[0].glass_class)
+	var demo_opening_pre: String = "" if armored_pane \
+		else glass_opening_for(hit_gp, hit_level, wide)
+	var ob: Rect2i = Rect2i() if armored_pane else GlassOpening.cell_bounds(demo_opening_pre)
 	var holed: int = 0
 	for s2 in pane_slices:
+		if armored_pane:
+			break
 		for v in s2.voxels:
 			if v.damage_state == Voxel.DamageState.DESTROYED:
 				continue
@@ -5965,7 +5979,7 @@ func _capture_glass_crack_demo() -> void:
 			v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 			holed += 1
 	## A small opening can swallow nothing whole; the struck cell still goes.
-	if holed == 0:
+	if holed == 0 and not armored_pane:
 		for s2 in pane_slices:
 			for v in s2.voxels:
 				if v.grid_pos == hit_gp and v.level == hit_level \
@@ -5977,10 +5991,11 @@ func _capture_glass_crack_demo() -> void:
 	## claim in the same call. Claiming after it would leave the demo's hole
 	## default-shaped while the real path's is picked — a demo that quietly differs
 	## from the build it exists to photograph.
-	var demo_opening: String = claim_glass_opening_for_hit(hit_gp, hit_level, wide)
+	var demo_opening: String = "" if armored_pane \
+		else claim_glass_opening_for_hit(hit_gp, hit_level, wide)
 	await _voxel_renderer.process_dirty_async(_edge_registry)
-	print("[CRACK-DEMO] bore: %d voxel(s) destroyed through the real erase seam (G-D14), opening=%s"
-		% [holed, demo_opening if demo_opening != "" else "(none)"])
+	print("[CRACK-DEMO] bore: %d voxel(s) destroyed through the real erase seam (G-D14), opening=%s, armored=%s"
+		% [holed, demo_opening if demo_opening != "" else "(none)", armored_pane])
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	plan["opening"] = demo_opening   ## CRACK-04 — the sheet's void, same polygon
@@ -5988,14 +6003,17 @@ func _capture_glass_crack_demo() -> void:
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
 	if int(res["crack_id"]) != 0:
 		record_glass_crack_to_base(hit_gp, hit_level, wide)   ## CRACK-02 S-3
-	print("[CRACK-DEMO] hit run=%d level=%d gp=%s wide=%s -> crazed=%d crossed=%d"
-		% [hit_run, hit_level, hit_gp, wide, res["crazed"], res["crossed"]])
+	print("[CRACK-DEMO] hit run=%d level=%d gp=%s wide=%s -> crazed=%d crossed=%d, sheet=%s"
+		% [hit_run, hit_level, hit_gp, wide, res["crazed"], res["crossed"],
+		GlassCrack.sheet_id_for(String(plan.get("opening", "")), wide,
+			bool(plan.get("armored", false)))])
 	## CRACK-02 — the two numbers that decide whether the web can bleed past the
 	## frame (G-D27's one named cost). Printed rather than inferred from the
 	## picture: a sheet SMALLER than the pane clips nothing, and reading that as
 	## "the clip works" is the mistake this line exists to prevent.
 	print("[CRACK-DEMO] sheet span %s voxels, pane extent run %.0f..%.0f level %.0f..%.0f (from the impact)"
-		% [GlassCrack.sheet_span_for(String(plan.get("opening", "")), wide), plan["pane_lo"].x, plan["pane_hi"].x,
+		% [GlassCrack.sheet_span_for(String(plan.get("opening", "")), wide, bool(plan.get("armored", false))),
+		plan["pane_lo"].x, plan["pane_hi"].x,
 		plan["pane_lo"].y, plan["pane_hi"].y])
 	_print_crack_quads(plan)
 
@@ -6249,7 +6267,8 @@ func _print_crack_quads(plan: Dictionary) -> void:
 	if _voxel_renderer == null:
 		return
 	var axis: int = int(plan["run_axis"])
-	var span: Vector2 = GlassCrack.sheet_span_for(String(plan.get("opening", "")), bool(plan.get("wide", false)))
+	var span: Vector2 = GlassCrack.sheet_span_for(String(plan.get("opening", "")),
+		bool(plan.get("wide", false)), bool(plan.get("armored", false)))
 	var impact: Vector2 = _voxel_renderer.glass_cell_face_pos(
 		int(plan["hit_level"]), plan["hit_cell"])
 	var to_screen: Transform2D = _voxel_renderer.get_global_transform_with_canvas()

@@ -17,16 +17,19 @@ The vocabulary, in the order it is drawn:
                      arcs so they never close into a ring
   4. the dirt      — incomplete stubs, misshapen flecks and specks, densest at
                      the hole and thinning as 1/r^2
-  5. the hole      — the bullet's own crush rim, sized in VOXELS per G-D14
+  5. the centre    — the bullet's own crush RIM around a void (G-D14), or, for
+                     G-D28's `armored` class, an opaque crushed-white CORE where
+                     the round stopped and no voxel was removed
 
-⚠️ There are exactly TWO sheets and there is no third (G-D14 / G-D21, and
-`check_decal.py` enforces the two names). Within the rifle class the ENGINE
-destroys 2-4 voxels; the art does not grow a variant for each. So all the
-variation a player ever sees comes from inside these two images plus G-D21's
-per-impact re-anchoring — which is why this file works as hard as it does at
-breaking its own symmetry.
+⚠️ ONE SHEET FAMILY PER OPENING, PLUS THE ONE CLASS THAT HAS NO OPENING.
+CRACK-04 retired the `tight`/`wide` pair: each of the twelve members of
+`GlassOpening.FAMILY` gets three sheets generated FROM its own polygon, and
+`fracture_manifest.json` is the roster `check_decal.py` reads. `armored`
+(CRACK-05) rides that roster WITHOUT being a member of the family — armoured
+glass loses no voxel, so its sheet answers to no polygon.
 
-    python3 gen_fracture.py tight out.png [seed]
+    python3 tools/persistent/gen_fracture_sheet.py --all
+    python3 tools/persistent/gen_fracture_sheet.py --only armored
 """
 import argparse
 import io
@@ -59,7 +62,46 @@ PRESETS = {
     "large": dict(radials=15, reach=1.16,
                   waves=12, wave_ratio=1.28, wave_span=(1, 4), wave_falloff=0.70,
                   wave_start=2.30, slivers=16, stubs=170, specks=190, twins=4),
+
+    # ── G-D28's ARMORED class ────────────────────────────────────────────────
+    #
+    # (Director, 2026-09-02, correcting the reading of his own reference set:
+    # *"o tiro a prova de balas não é uniforme, ele tem um centro assim"*.)
+    #
+    # ⚠️ THE DISTINGUISHING FEATURE IS THE CENTRE, NOT THE SPREAD, and here the
+    # centre is the OPPOSITE of every other member's: an OPAQUE CRUSHED-WHITE
+    # CORE of pulverised glass where the others have a void. The round did not
+    # pass through — *"estilhaça mas não rompe"* — so there is nothing behind to
+    # see, and the sheet is the ONLY thing that can say the pane held.
+    #
+    # Around it: dense radial NEEDLES (many, fine, short) rather than a few long
+    # runners, and a wider secondary craze field carried by the waves.
+    "armored": dict(radials=26, reach=0.30, stroke=(1.1, 2.0), stroke_twin=(0.7, 1.3),
+                    waves=7, wave_ratio=1.34, wave_span=(3, 6), wave_falloff=0.30,
+                    wave_start=2.20, slivers=6, stubs=150, specks=240, twins=3,
+                    field=(900, 2.2, 8.5), span=(24.0, 12.0)),
 }
+
+# ── THE ARMORED "OPENING", WHICH IS NOT ONE ─────────────────────────────────
+#
+# ⚠️ IT IS A CORE OUTLINE, NOT A HOLE, AND THAT IS THE ONLY DIFFERENCE THE REST
+# OF THIS FILE NEEDS. Every routine below already asks `hole_at(ang)` for "where
+# does the glass begin" — the needles start on it, the rim traces it, the feather
+# ramps from it. For `armored` the same curve is where the PULVERISED glass ends
+# and the cracked-but-whole pane begins, so the machinery is reused verbatim and
+# exactly two things change: the void is FILLED instead of cut, and the centre
+# feather is off (it exists to ramp ink IN from a void's edge, and this centre is
+# the brightest part of the page).
+#
+# Radii in voxels. Ragged rather than round: a crush zone is not a circle, and a
+# circle is what would read as a painted dot.
+ARMORED_CORE = [0.62, 0.55, 0.68, 0.58, 0.50, 0.64, 0.57, 0.71,
+                0.54, 0.60, 0.66, 0.52, 0.63, 0.56, 0.69, 0.59]
+
+# How far into the core the SOLID white heart reaches, as a fraction of the local
+# core radius. Below it the page is flat 255; above it the facets take over and
+# fade. 1.0 would be a painted disc, 0.0 a ring with a hole in it.
+ARMORED_HEART = 0.42
 
 # How many voxels of PAGE per voxel of hole DIAMETER. Ratified by looking:
 # `SHEET_SCALE` 1.4 on the old (20 voxel page / 3.4 voxel hole) is ~8.2, and the
@@ -125,9 +167,97 @@ def span_voxels(opening):
     """The page's span in voxels for this opening — width, height (the page is 2:1).
 
     Returned rather than assumed by the engine: the manifest carries it, so the
-    quad the sprite builds and the page the art was drawn on cannot disagree."""
+    quad the sprite builds and the page the art was drawn on cannot disagree.
+
+    ⚠️ `armored` OVERRIDES IT, and has to. Every other member's page is sized from
+    its HOLE, because the hole is what the web is a consequence of. Armoured glass
+    has no hole and its core is barely a voxel across, so `SPAN_RATIO` would draw
+    the whole class at a tenth of the size — a crush mark the eye would never find
+    on a pane. Its span is stated instead, near the retired `tight` page's 20 x 10
+    and a little wider for the secondary craze field the class is defined by."""
+    p = PRESETS[opening["size"]]
+    if "span" in p:
+        return p["span"]
     d = opening["r_max"] * 2.0
     return (d * SPAN_RATIO, d * SPAN_RATIO / 2.0)
+
+
+def _draw_craze_field(d, rng, cx, cy, hole, count, r_lo, r_hi):
+    """G-D28's *"wider secondary craze field"*, as its own population.
+
+    ⚠️ IT IS NOT MORE WAVES, AND THE FIRST VERSION PROVED WHY. Reusing the wave
+    generator at a bigger radius drew a handful of long zigzag polylines out in
+    the dark — the *mandala* trap's opposite number, reading as scattered
+    lightning rather than as a field. A craze field is MANY SHORT cracks, mostly
+    TANGENTIAL to the impact (that is what distinguishes it from the radial
+    needles), thinning outward, none of them bright."""
+    for _ in range(count):
+        ## Area-uniform between the two radii, then thinned by 1/r so the band
+        ## still fades rather than ending on a hard circle.
+        r = math.sqrt(rng.uniform(r_lo ** 2, r_hi ** 2)) * hole
+        if rng.random() > r_lo * hole / r:
+            continue
+        a = rng.uniform(0, 2.0 * math.pi)
+        x, y = cx + math.cos(a) * r, cy + math.sin(a) * r
+        ## Tangential, give or take: a + pi/2 with a wide jitter.
+        ang = a + math.pi * 0.5 + rng.uniform(-0.7, 0.7)
+        ln = rng.uniform(0.35, 1.1) * hole
+        pts, _ = _walk(rng, x, y, ang, ln)
+        _stroke(d, pts, rng.randint(70, 150), rng.uniform(0.7, 1.3))
+
+
+def _draw_crushed_core(d, rng, cx, cy, hole_at, px_per_voxel):
+    """G-D28's opaque core: pulverised glass, brightest at the middle, ragged at
+    the edge, never a void and never a clean disc.
+
+    Three layers, and each answers a way the first attempts read wrong:
+      1. the HEART — a filled irregular polygon at full white, so the middle is
+         actually opaque rather than a dense speckle that greys out at distance;
+      2. the FACETS — several hundred tiny bright polygons between the heart and
+         the core edge, thinning and dimming outward, which is what makes it read
+         as crushed rather than painted;
+      3. the LIP — short bright strokes crossing the boundary, so the core is
+         continuous with the needles instead of sitting on top of them."""
+    n = 360
+    ang = [2.0 * math.pi * i / n for i in range(n)]
+
+    ## 1. The heart.
+    d.polygon([(cx + math.cos(a) * hole_at(a) * ARMORED_HEART * rng.uniform(0.88, 1.12),
+                cy + math.sin(a) * hole_at(a) * ARMORED_HEART * rng.uniform(0.88, 1.12))
+               for a in ang[::12]], fill=255)
+
+    ## 2. The facets. Area-uniform in r so they do not pile up at the centre —
+    ## the DENSITY gradient comes from the brightness ramp, not from crowding,
+    ## because a crowded centre is already solid.
+    for _ in range(520):
+        a = rng.uniform(0, 2.0 * math.pi)
+        h = hole_at(a)
+        r = h * math.sqrt(rng.uniform(ARMORED_HEART ** 2, 1.0))
+        x, y = cx + math.cos(a) * r, cy + math.sin(a) * r
+        t = (r / h - ARMORED_HEART) / max(1.0 - ARMORED_HEART, 0.001)
+        s = rng.uniform(0.02, 0.09) * h
+        d.polygon([(x + math.cos(b) * s * rng.uniform(0.4, 1.7),
+                    y + math.sin(b) * s * rng.uniform(0.4, 1.7))
+                   for b in (0.0, 1.9, 3.6, 5.0)],
+                  fill=int(255 * (1.0 - 0.55 * t) * rng.uniform(0.75, 1.0)))
+
+    ## 3. The lip — outward strokes straddling the boundary.
+    for _ in range(220):
+        a = rng.uniform(0, 2.0 * math.pi)
+        h = hole_at(a)
+        r0 = h * rng.uniform(0.80, 1.00)
+        r1 = h * rng.uniform(1.02, 1.45)
+        d.line([(cx + math.cos(a) * r0, cy + math.sin(a) * r0),
+                (cx + math.cos(a) * r1, cy + math.sin(a) * r1)],
+               fill=rng.randint(150, 235), width=max(1, int(1.2 * SS)))
+    ## A few longer spall cracks leaving the core, so it is not a self-contained
+    ## blob: the pane is cracked, the core is only where it was pulverised.
+    for _ in range(14):
+        a = rng.uniform(0, 2.0 * math.pi)
+        h = hole_at(a)
+        pts, _ = _walk(rng, cx + math.cos(a) * h, cy + math.sin(a) * h, a,
+                       px_per_voxel * rng.uniform(1.2, 3.4))
+        _stroke(d, pts, rng.randint(170, 230), rng.uniform(1.0, 1.8))
 
 
 def generate(opening, seed=7):
@@ -237,10 +367,19 @@ def generate(opening, seed=7):
             # EDGE, never through its fill.
             d.polygon(poly, fill=rng.randint(10, 30), outline=rng.randint(140, 225))
 
+    ## The stroke width is a class property: `armored`'s vocabulary is dense
+    ## NEEDLES, and 26 radials at a bullet hole's 2.4–4.0 px would close into a
+    ## solid star instead of reading as separate cracks.
+    ## ⚠️ THE TWIN WIDTH IS ITS OWN KEY, NOT A FRACTION OF THE RADIAL'S. Deriving
+    ## it (`w0 * 0.58`) reproduced the shipped 1.4 only to three decimals, and this
+    ## generator's whole claim is that re-running it reproduces the art — 36 sheets
+    ## would have come back byte-different for a rounding error in a default.
+    w0, w1 = p.get("stroke", (2.4, 4.0))
+    t0, t1 = p.get("stroke_twin", (1.4, 2.4))
     for pts in paths[:len(angs)]:
-        _stroke(d, pts, rng.randint(210, 255), rng.uniform(2.4, 4.0))
+        _stroke(d, pts, rng.randint(210, 255), rng.uniform(w0, w1))
     for pts in paths[len(angs):]:
-        _stroke(d, pts, rng.randint(150, 210), rng.uniform(1.4, 2.4))
+        _stroke(d, pts, rng.randint(150, 210), rng.uniform(t0, t1))
 
     # 3. THE WAVES. Spaced GEOMETRICALLY so they crowd the shot and thin
     #    outward — that density gradient is what reads as "a round went through
@@ -301,9 +440,20 @@ def generate(opening, seed=7):
                     y + math.sin(b) * s * rng.uniform(0.4, 1.6))
                    for b in (0.0, 2.1, 4.2)], fill=rng.randint(110, 255))
 
-    # 5. THE HOLE. The impact voxel is DESTROYED by G3 and stops rendering
-    #    (order section 1.2), so what has to read is the crush RIM around it:
-    #    a bright ragged lip, with the bore itself black.
+    # 5. THE CENTRE. Two classes, and G-D28 says the centre is what separates
+    #    them: a bullet class has a VOID with a crush rim around it, `armored`
+    #    has an opaque crushed CORE and no void at all.
+    if opening.get("solid_core", False):
+        f = p.get("field", (0, 2.0, 6.0))
+        _draw_craze_field(d, rng, cx, cy, hole, f[0], f[1], f[2])
+        _draw_crushed_core(d, rng, cx, cy, hole_at, px_per_voxel)
+        img = img.filter(ImageFilter.GaussianBlur(0.55 * SS))
+        img = img.resize((W, H), Image.LANCZOS)
+        return img.convert("RGB")
+
+    # The impact voxel is DESTROYED by G3 and stops rendering (order section
+    # 1.2), so what has to read is the crush RIM around it: a bright ragged lip,
+    # with the bore itself black.
     for _ in range(int(150 * opening["r_max"] * 2.0)):
         a = rng.uniform(0, 2 * math.pi)
         h_s = hole_at(a)
@@ -365,6 +515,23 @@ GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 DUMPER = "godot/scripts/tools/dump_glass_openings.gd"
 
 
+def armored_opening():
+    """G-D28's `armored` class, in the shape this generator draws from.
+
+    ⚠️ IT IS DELIBERATELY NOT A MEMBER OF `GlassOpening.FAMILY`, and the reason is
+    the whole ruling: an OPENING is a hole — a polygon the engine erases voxels
+    inside of — and armoured glass has none. Putting it in the family would make
+    it pickable by `GlassOpening.pick()` and cuttable by `refresh_glass_rims()`,
+    which is precisely the pane that must never lose a voxel (G-D15).
+
+    So it rides here as a SHEET id only. It reaches the runtime the same way every
+    other sheet does — a row in `fracture_manifest.json`, keyed by name — and
+    `GlassCrack.sheet_id_for()` is what selects it, off the pane's MATERIAL rather
+    than off the weapon."""
+    return {"id": "armored", "size": "armored", "solid_core": True,
+            "radii": ARMORED_CORE, "r_max": max(ARMORED_CORE)}
+
+
 def load_openings(project_root):
     """Ask `glass_opening.gd` for the family. See the note on PRESETS: this is the
     reason the polygons are not duplicated here."""
@@ -396,7 +563,7 @@ if __name__ == "__main__":
     if not args.all and not args.only:
         ap.error("nothing to do — pass --all, or --only <opening>")
 
-    openings = load_openings(args.project)
+    openings = load_openings(args.project) + [armored_opening()]
     if args.only:
         openings = [o for o in openings if o["id"] == args.only]
         if not openings:

@@ -84,6 +84,7 @@ func _init() -> void:
 	test_the_shard_rim_cuts_eight_distinct_shapes()
 	test_the_opening_family_is_well_formed()
 	test_only_the_four_orthogonal_neighbours_become_shards()
+	test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1507,4 +1508,127 @@ func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 		_free_glass_layers(r)
 		r.free()
 	_pass("all %d openings survived the round with no idempotence failure" % GlassOpeningClass.ids().size())
+	print("")
+
+
+## ── [17] CRACK-05 / G-D28 — THE `armored` SHEET ──────────────────────────────
+##
+## What this catches: an armoured pane going back to wearing a BULLET page — a
+## painted bore over glass nothing pierced, which is what
+## `shot_c02_screen_3_damage.png` recorded and what
+## `ART_ORDER_GLASS_FRACTURE_CLASSES.md` §1 calls the priority of that order. And
+## the two failures either side of it: ordinary glass acquiring a crushed core it
+## has not earned, and the class being chosen by the WEAPON rather than by the
+## pane's material.
+func test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon() -> void:
+	print("[17] CRACK-05 / G-D28 — a pane that STOPPED the round draws a crushed core\n")
+
+	## ── The selector, all three of its cases. ────────────────────────────────
+	var ok_sel := true
+	## A hole was opened: the opening's own page wins, armoured or not. An
+	## armoured pane CAN be pierced (G-D15's rifle pierce-and-prime), and when it
+	## is there is a real hole for the sheet's void to be the shape of.
+	if GlassCrackClass.sheet_id_for("crescent_wide", true, true) != "crescent_wide":
+		_fail("a claimed opening lost to the armoured branch — a pierced armoured "
+			+ "pane would draw a crushed core over a hole that exists")
+		ok_sel = false
+	if GlassCrackClass.sheet_id_for("", false, true) != GlassCrackClass.ARMORED_SHEET:
+		_fail("a crazed armoured pane does not select %s" % GlassCrackClass.ARMORED_SHEET)
+		ok_sel = false
+	## Ordinary glass that only crazed keeps the smallest member's page. ⚠️ This
+	## is the half that would fail SILENTLY: a crushed white core on a pane a
+	## round went straight through says the opposite of what happened.
+	if GlassCrackClass.sheet_id_for("", false, false) != "chamfer_45" \
+			or GlassCrackClass.sheet_id_for("", true, false) != "chamfer_45_wide":
+		_fail("ordinary crazed glass no longer falls back to the chamfer_45 pages")
+		ok_sel = false
+	if ok_sel:
+		_pass("sheet_id_for: opening wins > armoured core > the smallest member's page")
+
+	## ⚠️ AND THE SPAN MUST FOLLOW THE SAME PICK. The page and the quad were
+	## chosen by two copies of this rule until CRACK-05; a span that still
+	## answered `chamfer_45` would draw the armoured sheet at half scale, and
+	## nothing would error.
+	var span_arm: Vector2 = GlassCrackClass.sheet_span_for("", false, true)
+	var span_plain: Vector2 = GlassCrackClass.sheet_span_for("", false, false)
+	if span_arm != span_plain and span_arm.x > 0.0:
+		_pass("the quad follows the sheet: armoured %s vs ordinary %s voxels"
+			% [span_arm, span_plain])
+	else:
+		_fail("sheet_span_for returns %s for the armoured page and %s for the "
+			% [span_arm, span_plain]
+			+ "ordinary one — the span is not following the sheet id")
+
+	## ── The three sheets, on disk and loading. ───────────────────────────────
+	var bad: Array = []
+	for v in range(GlassCrackClass.variant_count()):
+		var path: String = GlassCrackClass.sheet_path(GlassCrackClass.ARMORED_SHEET, v)
+		if path == "":
+			bad.append("v%d has no manifest row" % v)
+		elif not FileAccess.file_exists(path):
+			bad.append("v%d missing (%s)" % [v, path])
+		elif not FileAccess.file_exists(path + ".import"):
+			bad.append("v%d has no .import sidecar (hard-errors at boot, B6)" % v)
+		elif load(path) as Texture2D == null:
+			bad.append("v%d did not load" % v)
+	if bad.is_empty():
+		_pass("all %d armoured sheets exist, import and load" % GlassCrackClass.variant_count())
+	else:
+		_fail("armoured sheet(s): %s — run tools/persistent/gen_fracture_sheet.py --all"
+			% ", ".join(bad))
+
+	## ⚠️ AND IT IS NOT AN OPENING. `GlassOpening.FAMILY` holds HOLES; a member
+	## there is pickable by `pick()` and cuttable by `refresh_glass_rims()`, and
+	## armoured glass is the one pane that must never lose a voxel (G-D15).
+	if GlassOpeningClass.FAMILY.has(GlassCrackClass.ARMORED_SHEET):
+		_fail("%s is in GlassOpening.FAMILY — it would become a real hole, on the "
+			% GlassCrackClass.ARMORED_SHEET
+			+ "one class of pane that cannot have one")
+	else:
+		_pass("%s is a sheet id and NOT an opening — nothing can cut a voxel with it"
+			% GlassCrackClass.ARMORED_SHEET)
+
+	## ── The plan derives it from the PANE, not from the weapon. ──────────────
+	##
+	## G-D28's trigger is `glass_armored` and the INDESTRUCTIBLE screens; V-D's
+	## per-placement override has to win over the material's own default, or the
+	## GLASS map's `breakable` amber screen would wear a crushed core it cannot
+	## earn.
+	var cases: Array = [
+		{"mat": "glass", "cls": GlassMaterialsClass.CLASS_UNSET, "want": false},
+		{"mat": "glass_armored", "cls": GlassMaterialsClass.CLASS_UNSET, "want": true},
+		{"mat": "glass_screen_green", "cls": GlassMaterialsClass.CLASS_UNSET, "want": true},
+		{"mat": "glass_screen_amber", "cls": GlassMaterialsClass.Class.BREAKABLE, "want": false},
+	]
+	var wrong: Array = []
+	for c in cases:
+		var pane: Array = _pane(4, 5, 1, String(c["mat"]))
+		for s in pane:
+			s.glass_class = int(c["cls"])
+		var base: int = GeometryCoordsClass.storey_level_base(0)
+		var plan: Dictionary = GlassCrackClass.plan_pane_crack(
+			pane, Face.SW, Vector2i(4 * 8 + 4, 3 * 8 + 7), base + 4, false)
+		if bool(plan.get("armored", false)) != bool(c["want"]):
+			wrong.append("%s/%d -> %s (wanted %s)"
+				% [c["mat"], int(c["cls"]), plan.get("armored"), c["want"]])
+	if wrong.is_empty():
+		_pass("plan_pane_crack reads the class off the pane: plain no, armoured yes, "
+			+ "screen yes, and V-D's `breakable` override wins")
+	else:
+		_fail("the armoured flag is wrong for %s" % ", ".join(wrong))
+
+	## ⚠️ AND THE WEAPON MUST NOT REACH IT. `wide` is the hole-width axis (G-D14);
+	## if it could flip this flag, a rifle on plain glass would draw a crushed core.
+	var plain: Array = _pane(4, 5, 1, "glass")
+	var b: int = GeometryCoordsClass.storey_level_base(0)
+	var p_tight: Dictionary = GlassCrackClass.plan_pane_crack(
+		plain, Face.SW, Vector2i(36, 31), b + 4, false)
+	var p_wide: Dictionary = GlassCrackClass.plan_pane_crack(
+		plain, Face.SW, Vector2i(36, 31), b + 4, true)
+	if not bool(p_tight.get("armored", true)) and not bool(p_wide.get("armored", true)):
+		_pass("the weapon's hole width cannot make a pane armoured (G-D28: chosen "
+			+ "by MATERIAL/CLASS)")
+	else:
+		_fail("blowout reached the armoured flag: tight=%s wide=%s"
+			% [p_tight.get("armored"), p_wide.get("armored")])
 	print("")

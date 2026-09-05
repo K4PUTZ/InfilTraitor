@@ -1,6 +1,18 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.25 — **CRACK-04 IS BUILT AND WIRED: the hole is an OPENING from a
+**Status:** 🟢 v1.26 — **CRACK-05 CLOSED §14.5's TWO OPEN ITEMS (2026-09-04).**
+G-D28's **`armored`** class is on screen: a pane that stopped the round wears an
+OPAQUE CRUSHED-WHITE CORE instead of a bullet page with a bore over glass nothing
+pierced — the defect `ART_ORDER_GLASS_FRACTURE_CLASSES.md` §1 called that order's
+priority. And the **cook names its hole**: the blast proposes an opening on the
+`WorldDelta` and `commit()` claims it, so a grenade's hole is a picked member of
+the family and survives a perspective flip. ⚠️ **That second one is correct and
+LATENT under the shipped balance, measured rather than assumed** — a won roll at
+ring 0 or 1 floods 42 / 22 voxels against a 48 × 24 pane, so the pane goes WHOLE
+and there is no rim to shape; see §15.2, which also names where the cook's glass
+work belongs next (§6.2's crack near a blast it survives).
+
+Earlier, v1.25 — **CRACK-04 IS BUILT AND WIRED: the hole is an OPENING from a
 12-member catalogue (G-D34), the decal is generated FROM it, and the two are the
 same polygon.** The crack left the voxel (G-D27), is cut by the live glass tilemap
 (G-D30), survives a flip (S-3), and its rim is shards (G-D31). CRACK-04 replaced
@@ -277,7 +289,7 @@ just not the target case.
 | **G-D17** | **A screen is a glass voxel over a BLACK PLASTIC voxel.** *"O voxel de vidro fica na frente de voxels pretos de PLÁSTICO (a implementar — fura [não atravessa] ou derrete), de forma que nesses voxels pretos vamos pintar as imagens e textos posteriormente, e o vidro vai criar o efeito de brilho por cima."* New material **`plastic`** (black): a round DRILLS it (a hole, but the round does NOT pass through — unlike glass) or fire MELTS it. Images/text painted onto the plastic later; the glass in front adds the G1 sheen. Belongs in `MATERIALS_MASTER_PLAN` | ✅ Ratified 2026-08-31 · `plastic` + the paint layer are deferred |
 | **G-D18** | **Glass does not occlude.** *(Director, 2026-08-31, on the G-D9 capture: "tem algum problema com a oclusão. Podemos considerar não fazer em materiais de vidro.")* A glass pane is see-through by construction (G-D1) — the agent behind it is already visible, so ghosting it reveals nothing, and because glass renders on its own `_glass_layers` (which `apply_occlusion()` never erases) the wireframe drew its lines and ghost-band fill over a still-solid pane. `OcclusionSet` now filters out any slice whose BASE material is glass (policy O7, `_group_slices_by_edge`): no trigger, no ring stop, no wireframe. A mostly-opaque wall with a small glass viewport (base ≠ glass) still occludes. Guard-through-glass vision is G-D7, a separate roll | ✅ **BUILT 2026-08-31** |
 | **G-D27** | **THE CRACK IS A SPRITE OVER THE PANE, NOT SOMETHING THE VOXEL SHADER DRAWS. ⛔ This replaces G-D21's MECHANISM (the art and the event survive; only the renderer changes).** *(Director, 2026-09-02: "talvez fosse melhor colocar um sprite em alpha, só com a parte branca das rachaduras, sobre a vidraça deixando o buraco sem voxels no centro. Porque no fim do dia a gente quer que os voxels atrás da rachadura sejam idênticos aos outros. E de quebra a gente resolve o problema da rotação e da adição de mais buracos, porque os adesivos se somam sem depender do atlas de voxels.")* **Why the additive fix (G-D26) was still not enough:** a crack drawn BY the voxel shader inherits every per-voxel property whether it wants to or not — the atom's `dim` (1.0 / 0.78 / 0.60 by face plane), the coverage alpha `cover` the whole fragment is blended at, and the quad seams themselves. Additive or not, it is still the voxel's. Only leaving the voxel reaches *"idênticos aos outros"*. **What it buys, all four measurable:** the glass behind is untouched by construction; a crack becomes a node with a position, so a perspective rebuild recreates it from a base-coord registry instead of losing a renderer-side plane; N impacts are N sprites that alpha-composite, so the 16-group cap, the per-cell group plane and the RGBAF strip all delete; and it REMOVES a `texture()` + branch from every glass fragment on the map. **The one real cost, named before building:** a sprite is a rectangle and a pane is not, so a crack near a frame would bleed over whatever is beside it. The fix reuses the wall-face inverse CRACK-01-D built and `glass_crack_selftest` [10] pinned — the pane is a rect in `(run, level)`, so the sprite discards fragments outside its run/level bounds. That basis changes job rather than being thrown away | ✅ Ratified 2026-09-02 · **BUILT 2026-09-02, §13 stages S-1..S-3.** Every one of the four promised gains is real: the glass behind is untouched by construction, a crack is a node a flip can rebuild (S-3, 5853 of 5855 pixels), the 16-group cap and the plane are deleted, and the per-fragment read is gone. ⚠️ The fifth thing it was expected to buy — a measurable frame win — is NOT there: idle `GLASS` reads 6.40 ms on both binaries (§13.5) |
-| **G-D28** | **FOUR DECAL CLASSES, AND `armored` HAS A CENTRE TOO.** *(Director, 2026-09-02, correcting the reading of his own reference set: "o tiro a prova de balas não é uniforme, ele tem um centro assim".)* The `REFERENCES/Vidro` set resolves into four distinct vocabularies, and the distinguishing feature is the CENTRE, not the spread: `bullet_tight` (small empty bore · sparse · a few long runners), `bullet_wide` (empty bore, irregular outline · radials + concentric arcs), **`armored`** (an OPAQUE crushed-white core — pulverised glass, never a void — dense radial needles and a wider secondary craze field, and no through-passage: *"estilhaça mas não rompe"*), and `blast` (no centre at all · spread crazing, the shockwave case). They map onto triggers that already exist — `WeaponDef.blowout` splits the two bullet classes (G-D14), `glass_armored` / INDESTRUCTIBLE screens take `armored` (G-D15/G-D16), and the cook path takes `blast` | ✅ Ratified 2026-09-02 |
+| **G-D28** | **FOUR DECAL CLASSES, AND `armored` HAS A CENTRE TOO.** *(Director, 2026-09-02, correcting the reading of his own reference set: "o tiro a prova de balas não é uniforme, ele tem um centro assim".)* The `REFERENCES/Vidro` set resolves into four distinct vocabularies, and the distinguishing feature is the CENTRE, not the spread: `bullet_tight` (small empty bore · sparse · a few long runners), `bullet_wide` (empty bore, irregular outline · radials + concentric arcs), **`armored`** (an OPAQUE crushed-white core — pulverised glass, never a void — dense radial needles and a wider secondary craze field, and no through-passage: *"estilhaça mas não rompe"*), and `blast` (no centre at all · spread crazing, the shockwave case). They map onto triggers that already exist — `WeaponDef.blowout` splits the two bullet classes (G-D14), `glass_armored` / INDESTRUCTIBLE screens take `armored` (G-D15/G-D16), and the cook path takes `blast`. ✅ **`armored` BUILT 2026-09-04 (CRACK-05)** — three procedural sheets whose centre is an OPAQUE CRUSHED CORE, selected by `GlassCrack.sheet_id_for()` off the pane’s MATERIAL/CLASS and never off the weapon, on a 24 × 12 voxel page. ⚠️ It is a sheet id and **deliberately NOT a member of `GlassOpening.FAMILY`**: a member is pickable by `pick()` and cuttable by `refresh_glass_rims()`, and armoured glass is the one pane that may never lose a voxel (G-D15). 🟡 `blast_*` stays unbuilt — §6.2, its only caller, is unbuilt | ✅ Ratified 2026-09-02 · `armored` BUILT 2026-09-04 |
 | **G-D29** | **`blast` IS 3 PATTERNS × H/V FLIP, HASHED PER PANEL.** *(Director, 2026-09-02: "vamos usar um conjunto de padrões nos painéis, digamos 3, que podem ser escolhidos aleatoriamente e flipados vertical e horizontal. Assim teremos uma variação legal, sem consumir quase nada a mais de memória.")* Three textures, twelve apparent variants. The choice is NOT new machinery: it comes from the B4 FNV-1a the destruction stack already uses (`FacadeSampler._fnv1a_hash` over `pane_id` + panel index), which makes it deterministic and replay-safe by the same rule as every other per-cell choice in the project — and the same hash yields the two flip bits for free. This is also the answer to *"stretch one sprite / tile a field / scatter several"*: none of the three; a small pool placed per panel | ✅ Ratified 2026-09-02 |
 | **G-D34** | **THE HOLE IS A KNOWN OPENING FROM A FAMILY, AND THE DECAL IS GENERATED FROM IT.** *(Director, 2026-09-04, in two steps. First "o decal é o dono da forma"; then, watching me start to flood-fill the sheets' voids to recover that shape: "vamos usar formatos simples internos conhecidos […] Criamos uma família de aberturas para serem escolhidas. Os decals se adaptam a esses formatos internos, podendo variar completamente do buraco para fora. Dessa forma já sabemos como construir o buraco sempre, independente de como vai ser o decal.")* An OPENING is a closed polygon in the pane's (run, level) space, voxels, centred on the struck cell: a cell inside is gone, a cell the boundary CROSSES keeps only the glass outside it (the intrusion into the neighbours' borders), a cell outside is untouched. **12 members** — four regular he had already ruled on, three large, four irregular *("algumas mais esquisitas, com um chunk grande faltando, angulos irregulares")* and one elongated. The decal's inner void is the SAME polygon, cut at runtime from a rasterised mask, so 12 openings × 2 sheets never becomes 24 hand-matched files. ⚠️ `MIN_VALLEY = 0.708`: an opening must swallow the cell it is centred on, or it asks to keep four corners of a voxel destruction removed whole. ⚠️ The pick is B4 FNV-1a on a BASE-space key (the room owns the conversion), and so is the sheet VARIANT, salted apart. ⛔ **This supersedes G-D32** — irregularity comes from the opening's own polygon, not from hashing each shard — and **resolves G-D33 as a consequence rather than a ruling**: the sheet's void is `hint_default_black`, so a crack with no hole binds nothing and keeps its centre | ✅ Ratified + **BUILT AND WIRED 2026-09-04** (§14) |
 | **G-D33** | ✅ **ANSWERED BY G-D34's WIRING, not by a ruling** — the sheet's opening mask defaults to black, so a crack with no hole under it binds none and draws its whole centre. The rule it proposed holds; nobody had to maintain a case list for it. Original entry: 🟡 **PROPOSED, NOT RULED — the sheet stops drawing the bore, and the voxel becomes the master.** *(Claude's recommendation, 2026-09-02, asked for.)* The bore is GEOMETRY now: the rim IS the hole's edge, four shards with four hashed shapes. A sheet that still draws a crush rim means **two authorities describing one feature**, and after G-D32 they cannot be reconciled by authoring — the voxel side is drawn at random, so no fixed art can match it. What is left for the sheet is what the voxel lattice can never do: the fine radial runners and the craze field, at sub-voxel scale. **Three things follow.** §13.4's measured mismatch closes in the same pass (with no centre to draw, *"sparse with a few long runners"* becomes the whole brief and the dense even field goes by construction, not by calibration). The rule is one line rather than a case list: **the sheet draws a centre exactly when the geometry has no hole to show** — `tight`/`wide` no, `armored` and INDESTRUCTIBLE screens yes, because the round stopped and no voxel was removed, so the crushed-white core is the only thing that can say so. And G-D30's cut currently eats the sheet's bore, its brightest part; with no bore there is almost nothing left to cut and the two mechanisms stop competing for the same pixel. **Priority it implies:** `armored` before the `tight` redraw — the only piece that fixes something wrong on screen today, and the only class whose vocabulary does not depend on the density question. **What it says NOT to do:** more shape variants, per-shape art, or tuning `crack_strength` — every advance on this track came from REMOVING an authority, never from adding one | 🟡 Proposed 2026-09-02 · awaiting the Director |
@@ -2054,13 +2066,113 @@ asymmetric members read 5–23 px off and are NOT misaligned — a lopsided shap
 centroid has no reason to sit on its own impact. **Only a symmetric member can
 test alignment at all.**
 
-### 14.5 Still open
+### 14.5 ✅ BOTH CLOSED BY CRACK-05 (2026-09-04) — see §15
 
-- **The cook does not claim.** Every blast hole takes `GLASS_OPENING_DEFAULT`, so
-  a grenade repeats one shape. `claim_glass_opening()` is the seam; the cook needs
-  the base key the shot path already gets from `Room.glass_base_key()`.
-- **G-D28's `armored` class.** A pane that only CRAZES has no opening to be the
-  shape of and borrows the smallest member's page — a 0.8-voxel void where a
-  stopped round deserves a crushed-white core.
+- ~~**The cook does not claim.**~~ It proposes on the `WorldDelta` and `commit()`
+  claims. ⚠️ **And the measurement that came with it is the more useful half:
+  under the shipped balance the claim is LATENT** — §15.2.
+- ~~**G-D28's `armored` class.**~~ Built: three procedural sheets with an opaque
+  crushed core, selected off the pane's material. §15.3.
 
 
+
+
+---
+
+## 15. CRACK-05 — the cook's own hole, and the pane that holds (2026-09-04)
+
+**Status:** 🟢 **BUILT.** §14.5's two open items, closed. G-D28's `armored` class
+is on screen; the cook names the shape of the hole it opens.
+
+### 15.1 What was added
+
+| | |
+|---|---|
+| `WorldDelta.glass_openings` | the blast's holes as a PROPOSAL; `commit(room)` is the only claimer |
+| `DetonationPlanBuilder._shatter_glass_panes()` | proposes one entry per pane it takes, at the flood's ORIGIN |
+| `GlassCrack.sheet_id_for()` | the single answer to "which sheet" — opening › armoured core › the smallest member's page |
+| `GlassCrack.ARMORED_SHEET` + `plan["armored"]` | read off the pane's material/class in `plan_pane_crack()` |
+| `gen_fracture_sheet.py --only armored` | 3 sheets, an opaque crushed core, a 24 × 12 voxel page |
+| `INFILTRAITOR_CAPTURE_ACTION=glass_blast_demo` | one grenade in front of a chosen pane, on the real map |
+| `INFILTRAITOR_CRACK_DEMO_MATERIAL` | the crack demo, aimed at one member of the family |
+
+### 15.2 ⚠️ THE COOK'S CLAIM IS CORRECT AND CURRENTLY LATENT, AND THAT IS A
+### BALANCE FACT
+
+Measured on `maps/GLASS.map.json`, not reasoned:
+
+    ring 0   glass_punch 8.50   region_radius 42 voxels   flooded 1152 of 1152
+    ring 1   glass_punch 5.10   region_radius 22 voxels   flooded  966 of 1152
+    ring 2   glass_punch 2.12   region_radius  4 voxels   P(shatter) 5.9 %
+    ring 3   glass_punch 0.00   — the blast does not reach
+
+The pane is 48 × 24 voxels. At ring 0 and ring 1 the flood radius is larger than
+the pane, so **a won roll takes the whole thing** — and a hole with no glass
+around it has no rim for an opening to shape. Only ring 2 leaves one. Its roll is
+deterministic in `(source_gu, pane_id)`, and reproducing the FNV-1a offline over
+every in-line grenade cell against all three of the map's panes returns **no
+winner**: the visible case does not occur on this map at all.
+
+So the claim's effect today is the RECORD — a blast hole now keeps its shape
+through a perspective flip, which the shot path's holes have done since CRACK-04
+and the cook's had not. Everything else waits on either a balance change or a
+bigger pane. **This is worth stating rather than implying**, because a reader of
+the code would reasonably assume the shapes were now varying on screen.
+
+⚠️ It also names where the cook's glass work actually belongs next: **§6.2, the
+crack near a blast it SURVIVES.** That is the fringe case with something to draw,
+it is the caller G-D29's `blast_*` sheets exist for, and it is now reachable —
+a pane that rolled and held says so in the log.
+
+### 15.3 G-D28's `armored`, and the one rule that made it cheap
+
+The class needed no new plumbing at all. A sheet is looked up by a KEY in
+`fracture_manifest.json`, and CRACK-04 had already made that key an opening id —
+so `armored` is simply a key that is not an opening. What it must never be is a
+member of `GlassOpening.FAMILY`: a member is pickable by `pick()` and cuttable by
+`refresh_glass_rims()`, and G-D15's whole point is that this pane loses no voxel.
+`check_decal.py` now reads that distinction out of `glass_crack.gd` rather than
+holding its own list, and REQUIRES the row.
+
+**What the sheet draws** (`gen_fracture_sheet.py`, `PRESETS["armored"]`): an
+opaque crushed-white core — a solid heart, ~500 facets fading outward, a ragged
+lip straddling the boundary — then 26 dense radial needles at a fine stroke, and
+a secondary craze field of ~900 short TANGENTIAL cracks between 2.2 and 8.5 core
+radii.
+
+⚠️ **The field is its own population, and the first version proved why.** Reusing
+the wave generator at a bigger radius drew a handful of long zigzag polylines out
+in the dark — the mandala trap's opposite number, reading as scattered lightning
+rather than as a field. A craze field is MANY SHORT cracks, mostly tangential,
+none of them bright.
+
+### 15.4 The evidence
+
+- `glass_armored_sheet_ab_2026-09-04.png` — **a same-binary A/B**, one map, one
+  weapon, the armoured branch switched off for the left half. Before: a dark bore
+  ringed by a crush rim, on glass nothing pierced. After: the crushed core.
+- `shot_c05_armored_3_damage.png` — the REAL shot path (`agent_shot`, pistol,
+  agent 6,13 → guard 6,7): `glass_armored:s1 cracked=72 dented=0 destroyed=0`,
+  and the round carries on into the concrete behind (`dented=1`).
+- `glass_crack_demo_armored_{before,after}.png` — the demo, which now derives
+  "this pane gets no bore" from the pane instead of taking a flag.
+- `glass_blast_demo_{before,after}.png` — the cook's ring-0 case: 1152 voxels
+  flooded, 1152 shards landed.
+- Selftests: `glass_shatter` **[20]** (the proposal and the commit, red on both
+  halves) and `glass_crack` **[17]** (the selector's three cases, the span
+  following the pick, the three sheets on disk, `armored` NOT in the family, and
+  the class read off the pane rather than off the weapon).
+
+⚠️ **`check_decal.py --material glass` still reports one WIRING FAIL, and it is
+PRE-EXISTING** — verified by running HEAD's own copy of the gate against a
+manifest with the `armored` row removed. It is the shard family's
+`IMPACT_DECAL_MATERIALS` branch, whose own comment says glass must NOT be added
+to that list; the gate has no third state for "correctly absent". Untouched here.
+
+### 15.5 Left open
+
+- **§6.2 / G-D29 `blast_*`** — see §15.2. The trigger is now one branch away.
+- **The armoured page's SIZE is a dial.** 24 × 12 voxels, chosen as *"near
+  `tight`'s"* (the retired 20 × 10) plus a little for the craze field. The
+  Director tuned the bullet web down once already for being *"muito grande"*;
+  this has not been through his eye at true size.

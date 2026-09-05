@@ -4,7 +4,29 @@
 S-1/S-2/S-3 landed, because §13.2 says so in as many words: *"Written only AFTER
 S-1, because S-1 is what makes the format contract real."*
 
-**Status:** 🟡 ORDER WRITTEN, ART UNBUILT. Nothing below is delivered yet, and
+**Status:** 🟢 **`armored` DELIVERED 2026-09-04 (CRACK-05)** — the class §1 and §6
+both name as the one to commission first, because it is the only one that fixes
+something already on screen. 🟡 `blast_0/1/2` remain unbuilt, and for the reason
+§5 step 5 gives rather than for effort: **§6.2 is still their only caller.**
+
+What `armored` actually shipped, against what §5 asked for:
+
+| §5 step | outcome |
+|---|---|
+| 1 · `FRACTURE_WIDTHS` grows | ⛔ **not done, and it is right not to.** CRACK-04 removed the width axis: sheets resolve by (opening, variant) through `fracture_manifest.json`, which is what `check_decal.py` reads. `FRACTURE_WIDTHS` is vestigial |
+| 2 · the gate learns the class | ✅ `check_decal.py` reads the non-opening sheet ids out of `glass_crack.gd` and REQUIRES the row. The `blast_*` origin exemption is still owed, with the art |
+| 3 · a span per class | ✅ `armored` is 24 × 12 voxels, carried in the manifest like every other page |
+| 4 · the selector | ✅ `GlassCrack.sheet_id_for(opening, wide, armored)` — one authority, replacing the two copies of the fallback rule that page and quad were each using |
+| 5 · the blast trigger | 🟡 unbuilt, as ordered. CRACK-05 did add the seam it will hook: a pane inside a blast that ROLLS AND HOLDS now says so |
+| 6 · the hash | 🟡 unbuilt — it belongs to `blast_*`. `armored`'s three variants ride CRACK-04's existing `pick_variant()` |
+
+Evidence: `glass_armored_sheet_ab_2026-09-04.png` (a same-binary A/B),
+`shot_c05_armored_3_damage.png` (the real shot path). Full detail in
+`GLASS_MASTER_PLAN.md` §15.
+
+---
+
+**Original status:** 🟡 ORDER WRITTEN, ART UNBUILT. Nothing below is delivered yet, and
 §6 says plainly why I stopped at the order rather than generating six sheets.
 
 ⚠️ **TWO DECISIONS LANDED AFTER THIS ORDER WAS WRITTEN AND THEY CHANGE IT.**

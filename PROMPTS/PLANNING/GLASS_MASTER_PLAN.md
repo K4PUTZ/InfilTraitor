@@ -3628,7 +3628,7 @@ would have had to invent and defend.
 
 | | task | gate |
 |---|---|---|
-| **G4-1** | `glass_shard_shapes.gd` — the 5-member family + G-D44's "0.5-1.0 voxel, angular, never a filled cell" invariant | selftest, and a true-size render of all 5 x 4 orientations |
+| ✅ **G4-1** | `glass_shard_shapes.gd` — the 5-member family + G-D44's "0.5-1.0 voxel, angular, never a filled cell" invariant. **BUILT 2026-09-05, §18.9** | ✅ `glass_shard_shapes_selftest` 10/10, `glass_shard_family_2026-09-05.png` |
 | **G4-2** | `plan_pane_shatter()` returns `spared`; Delta + room + SaveState + respawn chain | RED first: prove no remnant is reported today |
 | **G4-3** | the cut remnant atom, oriented by `anchor_mask`; minting measured | `INFILTRAITOR_TILESET_STATS`, real GLASS-map capture on W1-W4 |
 | **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set | a 0-instance-culled control, the P7b defect's own gate |
@@ -3641,3 +3641,72 @@ A falling shard is a transient: a before/after capture cannot see it, and this
 project has a standing finding that a defect which restores itself is invisible
 to any before/after diff. `build_filmstrip.py` boots once at `--fixed-fps 60`;
 both matter.
+
+
+### ✅ 18.9 G4-1 IS BUILT (2026-09-05) — and what the two instruments each caught
+
+[`glass_shard_shapes.gd`](../../godot/scripts/systems/destruction/glass_shard_shapes.gd),
+[`glass_shard_shapes_selftest.gd`](../../godot/scripts/tools/glass_shard_shapes_selftest.gd)
+(10 assertions), [`glass_shard_shapes_capture.gd`](../../godot/scripts/tools/glass_shard_shapes_capture.gd)
+→ `Screenshots/history/glass_shard_family_2026-09-05.png`. Five members —
+`wedge`, `sliver`, `chip`, `hook`, `blade` — with `polygon()` for the rain and
+`anchored_polygon(id, mask, flop)` for the remnant, one family, two consumers
+(G-D38), oriented by the anchor (G-D39), in G-D44's size band.
+
+⚠️ **The capture renders `GlassShardShapes` ITSELF, never a transcription of the
+numbers** — a preview drawn from a copy is a picture of a second family that
+happens to look similar.
+
+#### The numeric gate caught what the eye could not
+
+**"Too small" turned out to be three different degeneracies, and one number could
+not hold them.** The first gate was a single `AREA_MIN = 0.12`; it rejected
+`sliver` on its first run at area 0.114 — a member that is not small at all
+(0.980 x 0.420, a full voxel on its long axis). An absolute area floor conflates
+"too small" with ELONGATED. The replacement was a fill ratio, and **the control
+written for it failed immediately**: a 1.0 x 0.1 rectangle has fill 0.70, because
+a rectangle IS its own bounding box. So there are two bounds now, each with its
+own control in [3]: `ASPECT_MAX` catches the splinter, `FILL_MIN` catches the
+spider (plenty of box, no body), and neither catches the other's case.
+
+**And G-D44's band was not exact.** A single `scale in [0.5, 1.0]` over members of
+DIFFERENT authored sizes does not produce *"entre 1 e 1/2 voxel"*: `chip` is
+authored 0.534 across, so half of it is 0.267 — half the Director's lower bound.
+An instance now asks for a TARGET SIZE and `size_scale()` works out that member's
+multiplier, so the band holds by construction whatever the family grows into.
+Asserted at both ends, for every member.
+
+#### The capture caught what the numbers could not
+
+Every number was green when the picture showed two things wrong:
+
+1. **`sliver` was a four-pointed star, not a splinter.** Its long radii sat
+   opposite each other on an EVENLY SPACED ring, and two long points opposite each
+   other make a sparkle. Elongation lives in the ANGLE table. ⚠️ The gate had in
+   fact flagged it — lowest fill in the family — and I read that as "it is thin",
+   which was the symptom, not the shape. Its second version was then a smooth
+   convex lens: elongated, with nothing on its flanks that reads as a break. The
+   flanks have to ZIGZAG, so the radii alternate along them instead of easing.
+2. **Half the anchored placements read as fragments FLOATING near the brick.**
+   "Flush and flat" was true of all twenty of them — and a flat cut two
+   hundredths of a voxel long is a nub, which satisfies both words. ⚠️ The fixed
+   `ATTACH_OVERHANG = 0.06` could not work in principle: how broad the contact is
+   depends on which part of the member happens to face the anchor after the
+   rotation, and a member has four rotations and one dense side. **So the push
+   depth is SOLVED, not authored** — `_push_and_cut()` walks in until the cut is
+   `ATTACH_MIN_CONTACT` long and gives up at `ATTACH_MAX_LOSS` of the area,
+   because a piece that has to be buried to be held is one the frame would not
+   have kept. 20 of 20 placements now reach the target; the narrowest is 0.305.
+
+The measure of *"grudado"* is now in the suite as a number (contact length), not
+left to the eye — which is the only reason the next member added to this family
+cannot quietly reintroduce the nub.
+
+⚠️ **A third defect the capture found and the numbers had no opinion on:** a
+placement can leave its own cell. Pushing flush fixes the piece on the ANCHORED
+axis only; on the other one it sits wherever the polar construction left it, and a
+member's bounding box is not symmetric about its own origin. 5 of the 20 single
+anchor placements had a vertex past the cell edge. The free axis is recentred now —
+where along the edge a fragment hangs is a free parameter, so centring it is not a
+compromise, and it is the only answer that does not need a second clip (a fragment
+clipped on three sides is a square again).

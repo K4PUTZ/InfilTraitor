@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**233 scripts · 82621 lines total** (under `godot/scripts/`)
+**236 scripts · 83597 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,8 +18,8 @@
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, glass_materials.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_rim_capture.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, glass_materials.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -2076,6 +2076,33 @@ extends `Node2D` · 43 lines
 
 ---
 
+### `glass_shard_shapes.gd`
+
+`class_name GlassShardShapes` · 488 lines
+
+`godot/scripts/systems/destruction/glass_shard_shapes.gd`
+
+> GLASS G4-1 / G-D38 + G-D39 + G-D44 — THE SHARD SHAPE FAMILY. (Director, 2026-09-05: *"Precisamos de alguns voxels especiais, nos mesmos moldes que usamos para fazer as aberturas das balas, com formatos bem irregulares e angulosos"*, and *"os demais voxels também se transformam em uma multidão de partículas com formatos irregulares, que na verdade vão ser só umas 5 shapes"*.) ── ONE FAMILY, TWO CONSUMERS (G-D38) ──────────────────────────────────────── Those two sentences describe the SAME five shapes, and saying so once is what keeps this cheap: * `polygon(id)` — the free fragment, jagged all round. Rasterised into a 5-cell atlas, it is one instance of the falling rain's MultiMesh. * `anchored_polygon(id, mask, flop)` — the same member rotated to face the material it hangs from, pushed into that edge and CUT FLAT there. It cuts a voxel atom's alpha, exactly as `GlassOpening` already cuts a bullet hole's rim, and it is the remnant stuck in the frame. ⚠️ **THIS CANNOT BE `GlassOpening` WITH THE TEST INVERTED.** An opening's INTERIOR is removed; a fragment's interior is what is KEPT. Reusing those members the other way round gives remnants shaped like the NEGATIVE of a bullet hole — a ring, or a cell with a star-shaped bite out of it — which is the opposite of *"irregulares e angulosos"*. Same authoring language, different family, and the two never share a member. ⚠️ **THE ATTACH EDGE IS STRAIGHT, AND THAT IS PHYSICS, NOT A SHORTCUT.** A remnant is the glass that survived inside its own cell, and it meets the frame at the CELL BOUNDARY, which is a straight line. So `anchored_polygon()` clips at that plane: flat where it is held, jagged everywhere it broke. ⚠️ **G-D39 — ORIENTED BY THE ANCHOR, NEVER FREELY ROTATED.** The four-neighbour test in `GlassShatter.plan_pane_shatter()` has already decided which side is solid. A jagged fragment placed without regard to it floats in the middle of the opening with its solid corner facing away from the brick — the detail that would make the whole feature read as decoration rather than as physics. ── THE SIZE LAW (G-D44) ───────────────────────────────────────────────────── *"os cacos se subdividem todos em partes com tamanhos entre 1 e 1/2 voxel."* Every member is authored to fit inside one voxel, and an instance asks for a TARGET SIZE in `TARGET_MIN..TARGET_MAX` which `size_scale()` converts to that member's own multiplier — so the band is exact for every member rather than approximate for most. The member's own invariant is what `glass_shard_shapes_selftest` pins: * `EXTENT_MAX` — never wider or taller than one voxel, either axis; * `MAJOR_MIN` — and its long axis reaches at least half a voxel; * `AREA_MAX` — never a filled cell. A member at area 1.0 IS the square this whole feature exists to remove. * `ASPECT_MAX` and `FILL_MIN` — and not degenerate: not a splinter, not a spider. ⚠️ Two bounds, not one: see the constants' own note, where a single absolute area floor rejected the family's one deliberately elongated member and a single fill ratio then let a 10:1 needle straight through. * `ANGULAR_JUMPS` — at least this many adjacent-vertex pairs whose radii differ by `ANGULAR_RATIO`. ⚠️ **The angular read comes from the JUMP between adjacent radii, not from the range of them** — a straight fracture edge is the chord between two vertices at very different radii, and `GlassOpening` paid for this lesson once already with sixteen smoothly-eased vertices that rendered as round blobs. ⚠️ CHOSEN BY HASH, NEVER BY `randf()` — B4's rule. A remnant is re-picked whenever the geometry is rebuilt (a perspective flip, a load), so an RNG would reshape a standing fragment every time the camera turned. The rain does not need this for correctness (G-D43: it rests nowhere), but it keeps it anyway, because a `randf()` field cannot host a pixel gate and a hashed one can.
+
+**Constants / tuning**
+- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
+- `EXTENT_MAX` = `1.0`
+- `MAJOR_MIN` = `0.50`
+- `AREA_MAX` = `0.58`
+- `ANGULAR_RATIO` = `1.55`
+- `ANGULAR_JUMPS` = `2`
+- `ASPECT_MAX` = `3.0`
+- `FILL_MIN` = `0.22`
+- `ANCHOR_RUN_POS` = `1`
+- `ANCHOR_RUN_NEG` = `2`
+- `ANCHOR_LEVEL_POS` = `4`
+- `ANCHOR_LEVEL_NEG` = `8`
+- `ANCHOR_DIRS` = `{ ANCHOR_RUN_POS: Vector2(1.0, 0.0), ANCHOR_RUN_NEG: Vector2(-1.0, 0.0), ANCHOR_LEVEL_POS: Vector2(0.0, 1.0), ANCHOR_LEVEL_NEG: Vector2(0.0, -1.0), }`
+- `FAMILY` = `{ ## A — the classic fragment: one long point, a broad back. "wedge": {"phase": 0.06, "radii": [ 0.30, 0.24, 0.50, 0.20, 0.34, 0.19, 0.29]}, ## B — elongated. Every other member is roughly radial, so without this one a ## map of them reads as four sizes of the same idea: a pane splits along a ## LINE as often as it punches out a disc. ## ## ⚠️ THE FIRST VERSION OF THIS MEMBER WAS A FOUR-POINTED STAR, NOT A SPLINTER, ## and every number passed. It had radii alternating 0.50 / 0.13 at EVENLY ## SPACED angles, which is a sparkle — the shape had the elongation in its ## radii and none in its outline, because two long points opposite each other ## on a symmetric ring make a cross, not a shard. Elongation lives in the ANGLE ## table: the long radii sit at 0.00 and 0.50 turns and everything between them ## is short, so the outline itself runs long. Found by looking at the capture; ## the gate had flagged it as the lowest fill ratio in the family and I read ## that as "it is thin", which was the symptom and not the shape. ## ⚠️ AND THE SECOND VERSION WAS A SMOOTH LENS. Ten vertices whose radii eased ## from 0.50 down to 0.15 and back gave a convex almond — elongated, and with ## nothing on its flanks that reads as a break. The elongation has to come from ## the angle table AND the flanks have to zigzag, so the radii alternate along ## them instead of easing. "sliver": {"phase": 0.0, "radii": [ 0.50, 0.19, 0.29, 0.15, 0.25, 0.14, 0.21, 0.38, 0.16, 0.27, 0.13, 0.23, 0.15, 0.30], "angles": [0.00, 0.06, 0.13, 0.20, 0.27, 0.34, 0.42, 0.50, 0.57, 0.64, 0.71, 0.79, 0.86, 0.93]}, ## C — blocky: three broad faces with hard corners between them, the piece that ## came away along two existing cracks. ⚠️ Its radii used to be 0.31 / 0.20, ## a ratio of 1.55 — exactly ANGULAR_RATIO, so it counted as angular and read ## as a rounded hexagon. `angular_jumps()` is a floor, not a target. "chip": {"phase": 0.19, "radii": [ 0.34, 0.15, 0.30, 0.17, 0.36, 0.14]}, ## D — asymmetric, with a concave bite out of one flank. The bite IS the shape. "hook": {"phase": 0.42, "radii": [ 0.47, 0.42, 0.14, 0.19, 0.44, 0.24, 0.36, 0.16, 0.30]}, ## E — one long straight edge against a jagged opposite side: the piece that ## broke along an existing crack on one flank only. "blade": {"phase": 0.27, "radii": [ 0.49, 0.46, 0.17, 0.29, 0.15, 0.34, 0.18, 0.44], "angles": [0.00, 0.09, 0.28, 0.40, 0.52, 0.66, 0.80, 0.91]}, }`
+- `IDS` = `["wedge", "sliver", "chip", "hook", "blade"]`
+
+---
+
 ### `glass_shatter.gd`
 
 `class_name GlassShatter` · 546 lines
@@ -3652,6 +3679,59 @@ extends `SceneTree` · 250 lines
 - `OUT_DIR` = `"res://Screenshots/history"`
 - `BG` = `Color(0.16, 0.17, 0.22, 1.0)`
 - `GLASS_FLAT` = `Color(1.0, 0.93, 0.20, 1.0)`
+
+---
+
+### `glass_shard_shapes_capture.gd`
+
+extends `SceneTree` · 147 lines
+
+`godot/scripts/tools/glass_shard_shapes_capture.gd`
+
+> GLASS G4-1 — photograph the shard shape family, from the SHIPPED data. Rodar: /Applications/Godot.app/Contents/MacOS/Godot --headless --path . \ --script godot/scripts/tools/glass_shard_shapes_capture.gd ⚠️ IT RASTERISES `GlassShardShapes` ITSELF, never a copy of the numbers. A preview drawn from a transcription would be a picture of a second family that happens to look similar, and the whole point of a true-size check is that it is the thing that ships. Three bands, because they answer different questions: 1. the five free members, magnified — what each shape IS 2. every member x every anchor placement (G-D39) — how it hangs 3. TRUE SIZE — the only band that decides anything. A voxel's face is 20 px tall (`GeometryCoords.VOXEL_STEP_PX`), so a shard at G-D44's band is 10 to 20 px, and detail that reads beautifully in band 1 dissolves here.
+
+**Constants / tuning**
+- `ShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
+- `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `OUT_PATH` = `"res://Screenshots/history/glass_shard_family_2026-09-05.png"`
+- `BG` = `Color(0.086, 0.094, 0.110)`
+- `CELL` = `Color(0.172, 0.184, 0.207)`
+- `CELL_EDGE` = `Color(0.255, 0.274, 0.309)`
+- `GLASS` = `Color(0.769, 0.910, 0.957)`
+- `BRICK` = `Color(0.659, 0.361, 0.290)`
+- `LABEL` = `Color(0.55, 0.58, 0.63)`
+- `STUDY_PX` = `120`
+- `TRUE_PX` = `20`
+
+---
+
+### `glass_shard_shapes_selftest.gd`
+
+extends `SceneTree` · 341 lines
+
+`godot/scripts/tools/glass_shard_shapes_selftest.gd`
+
+> GLASS G4-1 / G-D38 + G-D39 + G-D44 — GlassShardShapes selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_shard_shapes [1] G-D44's size law, member by member, with the measured numbers printed [2] every member is ANGULAR — straight chords, not a round blob [3] the size law has TEETH: a filled cell is rejected by it [4] the anchored form stays in its cell, touches its edge, and is FLAT there [5] a corner anchor is cut on BOTH edges, not on a 45 degree plane [6] the flop is a different placement, not the same polygon twice [7] every member is REACHABLE by pick() [8] the family shares no member with GlassOpening [9] an empty anchor mask invents no placement
+
+**Constants / tuning**
+- `ShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
+- `OpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
+- `EPS` = `0.0005`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_size_law() -> void:`
+- `func test_members_are_angular() -> void:`
+- `func test_the_size_law_has_teeth() -> void:`
+- `func test_anchored_form_is_flush_and_flat() -> void:`
+- `func test_a_corner_is_cut_on_both_edges() -> void:`
+- `func test_the_flop_is_a_different_placement() -> void:`
+- `func test_every_member_is_reachable() -> void:`
+- `func test_no_member_is_shared_with_glassopening() -> void:`
+- `func test_an_empty_mask_invents_nothing() -> void:`
 
 ---
 

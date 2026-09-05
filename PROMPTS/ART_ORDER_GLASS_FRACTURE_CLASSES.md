@@ -17,8 +17,8 @@ What `armored` actually shipped, against what §5 asked for:
 | 2 · the gate learns the class | ✅ `check_decal.py` reads the non-opening sheet ids out of `glass_crack.gd` and REQUIRES the row. The `blast_*` origin exemption is still owed, with the art |
 | 3 · a span per class | ✅ and it is **two** classes, on G-D14's blowout split (Director: *"3 versões diferentes pra cada calibre"*): `armored_tight` 10 × 5 and `armored_wide` 16 × 8, three variants each. Both sizes ruled by looking, off `glass_armored_span_strip_2026-09-04.png` |
 | 4 · the selector | ✅ `GlassCrack.sheet_id_for(opening, wide, armored)` — one authority, replacing the two copies of the fallback rule that page and quad were each using. WHETHER a pane is armoured is material/class; WHICH of the two sheets is the weapon's blowout, and only its size |
-| 5 · the blast trigger | 🟡 unbuilt, as ordered. CRACK-05 did add the seam it will hook: a pane inside a blast that ROLLS AND HOLDS now says so |
-| 6 · the hash | 🟡 unbuilt — it belongs to `blast_*`. `armored`'s three variants ride CRACK-04's existing `pick_variant()` |
+| 5 · the blast trigger | ✅ **B-1 (2026-09-04) then B-2/B-3 (2026-09-05).** A pane a blast reaches and does not take goes CRACKED whole, and a TILED craze field is drawn over the pane's own rectangle. §16.5 / §16.8 / §16.9 |
+| 6 · the hash | ✅ **`blast_*` rides the SAME `pick_variant()`**, keyed on the pane's CENTRE cell in BASE space. G-D29's *"3 padrões escolhidos aleatoriamente"* arrives as the existing mechanism rather than a second one; its H/V flips are still unbuilt and are free variation, not a seam requirement |
 
 ⚠️ **`blast_*` is superseded as an ART SPEC by G-D35** (Director, 2026-09-04),
 which is a different thing from the three flip-hashed panels §2 of this order
@@ -90,7 +90,7 @@ the CENTRE, not the spread.**
 | `tight` | small **empty** bore, 1 voxel across | sparse; a few LONG runners | `WeaponDef.blowout < 0.5` — pistol, shotgun pellet (G-D14) |
 | `wide` | **empty** bore, irregular outline, 2–4 voxels | radials **plus** concentric arcs | `blowout >= 0.5` — rifle-class (G-D14) |
 | `armored` | an **OPAQUE CRUSHED-WHITE CORE** — pulverised glass, never a void | dense radial needles + a wider secondary craze field | `glass_armored`, and INDESTRUCTIBLE screens (G-D15 / G-D16): *"estilhaça mas não rompe"* |
-| `blast_0` `blast_1` `blast_2` | **none at all** | spread crazing, the shockwave case | the cook's path, when a pane survives a blast (§6.2) |
+| `blast_fine` `blast_coarse` ✅ | **none at all** | a TILED Voronoi craze mesh, 3 variants each | the cook's path, when a pane survives a blast (§6.2). ⚠️ The ids changed with G-D35: the axis is GRANULARITY (G-D37), not three unrelated patterns, and the 3 variants ride `pick_variant()` |
 
 ⚠️ **`armored` IS THE PRIORITY OF THIS ORDER, because it closes a defect that is
 on screen today.** Not a smaller hole — the opposite of a hole. The round did not

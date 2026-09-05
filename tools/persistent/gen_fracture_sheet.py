@@ -83,6 +83,33 @@ PRESETS = {
     # is page-relative throughout (see ARMORED_CORE), so one preset body serves
     # both and the span is the whole size decision. 10 x 5 is the Director's pick
     # off `glass_armored_span_strip_2026-09-04.png`.
+    # ── G-D35 / G-D37's BLAST CRAZE, and it is a different DRAWING, not a preset
+    # of the one above ─────────────────────────────────────────────────────────
+    #
+    # (Director, 2026-09-04: *"como são mais regulares, esses tipos de rachadura
+    # podem ser espelhados/repetidos com o método de azulejos"*; and 2026-09-05,
+    # ruling §16.4: *"o rachado mais grosso precisa de uma malha diferente, mas
+    # pode ser parecida."*)
+    #
+    # ⚠️ EVERY LINE OF THE RADIAL VOCABULARY ABOVE IS WRONG FOR THIS CLASS. There
+    # is no impact, so there are no radials to leave it, no slivers between them,
+    # no waves concentrated on it and no centre. `generate()` is not called at all
+    # — `generate_blast()` is, and it draws a WRAPPING VORONOI mesh.
+    #
+    # ⚠️ AND THE PAGE IS SQUARE, WHICH THE OTHERS MAY NOT BE. Every other sheet is
+    # a 2:1 page because its SPAN is 2:1; a tile's span is square, so its page is.
+    # The aspect rule was never "2:1", it was "the aspect must match the span" —
+    # `check_decal.py` now reads the span rather than holding a constant.
+    #
+    # ⚠️ THE TWO CLASSES SHARE A TILE SPAN AND DIFFER IN CELL COUNT, which is what
+    # makes them a different MESH rather than one mesh at a bigger scale (G-D37,
+    # explicitly). Change the span instead and the coarse sheet is the fine sheet
+    # zoomed — the reading the Director rejected.
+    "blast_fine": dict(cells=210, edge=0.0110, gamma=1.55, relax=2,
+                       deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
+    "blast_coarse": dict(cells=58, edge=0.0150, gamma=1.45, relax=2,
+                         deep=(0.50, 1.0), span=(8.0, 8.0), page=512),
+
     "armored_tight": dict(radials=26, reach=0.30, stroke=(1.1, 2.0), stroke_twin=(0.7, 1.3),
                     waves=7, wave_ratio=1.34, wave_span=(3, 6), wave_falloff=0.30,
                     wave_start=2.20, slivers=6, stubs=150, specks=240, twins=3,
@@ -302,7 +329,119 @@ def _draw_crushed_core(d, rng, cx, cy, hole_at):
         _stroke(d, pts, rng.randint(170, 230), rng.uniform(1.0, 1.8))
 
 
+def generate_blast(opening, seed=7):
+    """G-D35 B-3 — one TILE of blast craze: a Voronoi mesh that wraps in both axes.
+
+    ⚠️ IT TILES BY CONSTRUCTION, WHICH IS THE WHOLE REASON FOR THE CHOICE. The
+    metric is TOROIDAL — every offset is wrapped into [-0.5, 0.5) before the
+    distance is taken — so a seed near the left edge is genuinely a neighbour of
+    the pixels on the right. Nothing is mirrored, blended or fixed up at the
+    border afterwards; there is no border. This is why §16.3 named Voronoi as
+    *"the cheapest honest route"*: `repeat_enable` in the shader then just works,
+    and no amount of edge-fixing could have made a hand-drawn page do it.
+
+    ⚠️ NO REPLICA GRID. The obvious implementation puts 9 copies of the seed set
+    around the page and takes the nearest over all of them; wrapping the offset
+    is the same answer for a ninth of the arithmetic, and — more to the point —
+    it cannot be *slightly* wrong at one edge the way a replica grid can.
+
+    The mesh is the cell BOUNDARY, recovered from the two nearest seeds: F2 - F1
+    is (twice) the distance to the bisector, so a smooth falloff on it draws an
+    antialiased line with no supersampling at all.
+
+    Two touches keep it from reading as a machine:
+      * LLOYD RELAXATION, toroidal, `relax` passes. Tempered glass breaks into
+        cells of fairly EVEN size, and raw Poisson seeds give a scatter of tiny
+        and huge ones. This is the difference between "shattered pane" and
+        "cracked mud".
+      * a per-EDGE depth, hashed from the unordered pair of cell indices, so some
+        cracks read deeper than others. ⚠️ Per EDGE, not per pixel: a pixel-noise
+        version modulates ALONG each crack and reads as a bad brush instead.
+    """
+    import numpy as np
+    p = PRESETS[opening["size"]]
+    n = int(p["page"])
+    rng = np.random.default_rng(seed)
+    k = int(p["cells"])
+    pts = rng.random((k, 2))
+
+    ax = (np.arange(n) + 0.5) / float(n)
+    gx, gy = np.meshgrid(ax, ax)
+
+    def wrapped(px, py):
+        """Toroidal offsets from one seed to every pixel."""
+        dx = gx - px
+        dy = gy - py
+        return dx - np.round(dx), dy - np.round(dy)
+
+    ## ── Lloyd, on the torus ─────────────────────────────────────────────────
+    ## The mean has to be taken over WRAPPED offsets and added back to the seed;
+    ## averaging raw coordinates would drag every seed near an edge to the middle
+    ## of the page, which is the classic way this goes wrong silently.
+    for _ in range(int(p["relax"])):
+        best = np.full((n, n), np.inf)
+        who = np.zeros((n, n), dtype=np.int32)
+        for i in range(k):
+            dx, dy = wrapped(pts[i, 0], pts[i, 1])
+            d = dx * dx + dy * dy
+            m = d < best
+            best = np.where(m, d, best)
+            who = np.where(m, i, who)
+        for i in range(k):
+            m = who == i
+            if not m.any():
+                continue
+            dx, dy = wrapped(pts[i, 0], pts[i, 1])
+            pts[i, 0] = (pts[i, 0] + dx[m].mean()) % 1.0
+            pts[i, 1] = (pts[i, 1] + dy[m].mean()) % 1.0
+
+    ## ── F1 / F2, and which cells they belong to ─────────────────────────────
+    f1 = np.full((n, n), np.inf)
+    f2 = np.full((n, n), np.inf)
+    i1 = np.zeros((n, n), dtype=np.int32)
+    i2 = np.zeros((n, n), dtype=np.int32)
+    for i in range(k):
+        dx, dy = wrapped(pts[i, 0], pts[i, 1])
+        d = np.sqrt(dx * dx + dy * dy)
+        closer = d < f1
+        f2 = np.where(closer, f1, np.minimum(f2, d))
+        i2 = np.where(closer, i1, np.where(d < f2, i, i2))
+        f1 = np.where(closer, d, f1)
+        i1 = np.where(closer, i, i1)
+
+    ink = np.clip(1.0 - (f2 - f1) / float(p["edge"]), 0.0, 1.0) ** float(p["gamma"])
+
+    ## Per-edge depth. A cheap integer hash of the unordered pair, so the same
+    ## crack has the same depth along its whole length — and the same tile
+    ## reproduces it, which is what the manifest's determinism claim needs.
+    lo = np.minimum(i1, i2).astype(np.int64)
+    hi = np.maximum(i1, i2).astype(np.int64)
+    h = (lo * 73856093) ^ (hi * 19349663)
+    h = (h ^ (h >> 13)) * 1274126177
+    depth_lo, depth_hi = p["deep"]
+    depth = depth_lo + (depth_hi - depth_lo) * (((h >> 7) & 1023).astype(np.float64) / 1023.0)
+
+    out = np.clip(ink * depth, 0.0, 1.0)
+    img = Image.fromarray((out * 255.0 + 0.5).astype("uint8"), mode="L")
+    return img.convert("RGB")          # R == G == B, invariant B2
+
+
+def blast_openings():
+    """G-D35 / G-D37's two granularities, in the shape the driver below wants.
+
+    Like `armored`, these are SHEET ids and not members of `GlassOpening.FAMILY`:
+    a blast craze removes no voxel by itself (B-4's perforation is chosen per
+    voxel at runtime, not drawn into the art), so there is no polygon for them to
+    answer to. `GlassCrack.CRAZE_SHEET_FINE` / `_COARSE` are the constants that
+    select them, and `check_decal.py` reads those rather than holding a copy."""
+    return [{"id": name, "size": name, "tile": True, "radii": [1.0], "r_max": 1.0}
+            for name in ("blast_fine", "blast_coarse")]
+
+
 def generate(opening, seed=7):
+    ## G-D35 B-3 — a tile is a different drawing, not a different preset.
+    if opening.get("tile", False):
+        return generate_blast(opening, seed)
     p = PRESETS[opening["size"]]
     img = Image.new("L", (W * SS, H * SS), 0)
     d = ImageDraw.Draw(img)
@@ -618,7 +757,7 @@ if __name__ == "__main__":
     if not args.all and not args.only:
         ap.error("nothing to do — pass --all, or --only <opening>")
 
-    openings = load_openings(args.project) + armored_openings()
+    openings = load_openings(args.project) + armored_openings() + blast_openings()
     if args.only:
         openings = [o for o in openings if o["id"] == args.only]
         if not openings:

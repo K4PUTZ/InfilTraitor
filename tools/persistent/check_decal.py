@@ -165,9 +165,22 @@ def families_for(material):
 ## fixed distance from the round that made it. G-D28's four classes (S-4) will
 ## make that rule class-dependent — `blast` has no centre at all — and this gate
 ## grows a class column when that art is ordered, not before.
-FRACTURE_ASPECT = 2.0           ## width / height, from SHEET_SPAN_* (20x10, 44x22)
+## ⚠️ A FALLBACK, NOT THE RULE — CORRECTED 2026-09-05 (G-D35 B-3). The rule was
+## always the sentence three paragraphs up: *"a sheet whose aspect disagrees with
+## its SPAN is stretched on the pane"*. 2.0 was true of every span that existed,
+## so the constant and the rule were indistinguishable until a class arrived whose
+## span is square — and then the constant would have rejected correct art with the
+## message "square; the span is 2:1", which is a gate confidently wrong. The span
+## is read from the manifest per sheet now; this stands in only when the manifest
+## has no row, where the check is nearly meaningless anyway.
+FRACTURE_ASPECT = 2.0           ## width / height, when the manifest cannot say
 FRACTURE_ASPECT_SLACK = 0.02    ## PNG dimensions are integers; 2% absorbs rounding
 FRACTURE_MIN_PX = 128           ## below this there is no web to resolve, at any span
+## G-D35 B-3 — how much worse a tile's wrap seam may look than an ordinary
+## adjacent pair inside it. Measured on both sides before it was written down:
+## the shipped `blast_fine` scores 1.14 / 0.99, and the same page against a random
+## far column — the shape of NOT wrapping — scores 3.93.
+FRACTURE_SEAM_MAX_RATIO = 2.0
 TEX_AUTHORING_N = 16    ## pinned, ASSETS/ART_SPECIFICATIONS.md §1
 
 ## G-D14's two hole sizes, and the sheet count is exactly two because of it:
@@ -507,18 +520,25 @@ def check_fracture(path):
     ## more; but the span is 2:1 (20x10 tight, 44x22 wide), so a sheet authored
     ## square arrives on the pane stretched, and nothing on screen says so.
     w, h = im.size
+    ## The span this sheet's own manifest row declares, which is what the aspect
+    ## has to match. `armored` is 10x5 and `blast_*` is 8x8; both are correct, and
+    ## a single constant can only ever describe one of them.
+    span_row = _fracture_manifest().get("openings", {}).get(
+        (width.rsplit("_", 1)[0] if parsed and "_" in width else (width if parsed else "")),
+        {}).get("span", [])
+    want_aspect = (float(span_row[0]) / float(span_row[1])
+                   if len(span_row) == 2 and float(span_row[1]) > 0.0 else FRACTURE_ASPECT)
     if w < FRACTURE_MIN_PX or h < FRACTURE_MIN_PX:
         ok = False
         notes.append("dimensions %dx%d — under %d px there is no web left to "
                      "resolve at any span" % (w, h, FRACTURE_MIN_PX))
-    elif abs((float(w) / float(h)) - FRACTURE_ASPECT) > FRACTURE_ASPECT_SLACK * FRACTURE_ASPECT:
+    elif abs((float(w) / float(h)) - want_aspect) > FRACTURE_ASPECT_SLACK * want_aspect:
         ok = False
-        extra = ""
-        if w == h:
-            extra = "  <- square; the span is 2:1, so this arrives stretched"
-        notes.append("aspect %.3f, expected %.1f +/- %.0f%%%s"
-                     % (float(w) / float(h), FRACTURE_ASPECT,
-                        FRACTURE_ASPECT_SLACK * 100.0, extra))
+        notes.append("aspect %.3f, but its span is %g x %g so the page must be "
+                     "%.3f +/- %.0f%% — this arrives stretched on the pane"
+                     % (float(w) / float(h), span_row[0] if span_row else 0,
+                        span_row[1] if span_row else 0, want_aspect,
+                        FRACTURE_ASPECT_SLACK * 100.0))
 
     ## 3. Grayscale (B2), every pixel — check_facade.py's rule and its tolerance.
     ## Colour reaches a wall through base_color's MULTIPLY, never through a
@@ -579,12 +599,47 @@ def check_fracture(path):
         notes.append("effectively solid — %.1f%% of the page is lit, so this is a "
                      "bright surface, not a fracture on one" % coverage)
 
+    ## 5a. G-D35 B-3 — THE TILE CLASS, WHERE 5 DOES NOT APPLY AND THIS DOES.
+    ##
+    ## A blast craze has no impact and no centre, so "the ink centroid is the page
+    ## centre" is not a claim about it — and worse, a uniform field satisfies it
+    ## TRIVIALLY (measured: -0.8%, +0.4%). A check that passes for reasons
+    ## unrelated to what it is checking is worse than none: it reads as coverage
+    ## and provides none. What the class actually claims is that it TILES, and
+    ## that is a real measurement.
+    ##
+    ## The measurement: on a page that wraps, the first and last columns are
+    ## NEIGHBOURS, so their mean absolute difference should look like any other
+    ## adjacent pair inside the page. On one that does not, they are two unrelated
+    ## slices of the image.
+    ##
+    ## ⚠️ THE THRESHOLD IS MEASURED AGAINST BOTH SIDES, not picked. The shipped
+    ## `blast_fine` scores 1.14 (columns) and 0.99 (rows); the same page compared
+    ## against a random FAR column — which is what not wrapping looks like —
+    ## scores 3.93. 2.0 sits between them with room on each side.
+    if parsed and width.rsplit("_", 1)[0] in (_tile_sheets() or set()):
+        ratios = _wrap_ratios(im)
+        if ratios is None:
+            notes.append("seam check skipped — the page could not be read as luma")
+        else:
+            rc, rr = ratios
+            if max(rc, rr) > FRACTURE_SEAM_MAX_RATIO:
+                ok = False
+                notes.append("THE PAGE DOES NOT TILE — its wrap seam is %.2fx "
+                             "(columns) / %.2fx (rows) an ordinary adjacent pair, "
+                             "past %.1fx. The shader samples this class with "
+                             "repeat_enable, so the seam would be a visible line "
+                             "across every crazed pane"
+                             % (rc, rr, FRACTURE_SEAM_MAX_RATIO))
+            else:
+                notes.append("tiles — wrap seam %.2fx / %.2fx an ordinary adjacent "
+                             "pair (1.0 = indistinguishable)" % (rc, rr))
     ## 5. THE ORIGIN — the requirement CRACK-02 did NOT remove, and the failure
     ## this gate is worth writing for. `GlassCrackSprite` is `centered`, so the
     ## page centre goes on the impact; if the fracture's origin is not the centre,
     ## every crack in the game sits a fixed distance from the round that made it.
     ## Nothing on screen says so — it just always looks slightly wrong.
-    if sum_w > 0.0:
+    if sum_w > 0.0 and not (parsed and width.rsplit("_", 1)[0] in (_tile_sheets() or set())):
         cx = sum_x / sum_w
         cy = sum_y / sum_w
         fx = (cx - w / 2.0) / float(w)
@@ -807,6 +862,62 @@ def _check_fracture_wiring():
     return ok
 
 
+def _tile_sheets():
+    """The sheet ids that are TILED fields rather than pages centred on an impact.
+
+    Read off `GlassCrack.CRAZE_SHEET_*` for the same reason `_classless_sheets()`
+    reads the armoured pair: the runtime owns which class is which, and a copy
+    here would keep testing the old answer after it moved. Returns None when the
+    file is unreadable, which the callers treat as "no tile classes"."""
+    src = os.path.join(REPO_ROOT, "godot/scripts/systems/destruction/glass_crack.gd")
+    try:
+        text = open(src, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return None
+    return {m.group(1) for m in re.finditer(
+        r'^const\s+CRAZE_SHEET_[A-Z]+\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"', text, re.M)}
+
+
+def _wrap_ratios(im):
+    """(columns, rows) — how the page's wrap seam compares to an ordinary adjacent
+    pair inside it. 1.0 means indistinguishable, i.e. the page tiles.
+
+    Pure PIL and integers on purpose: this file is a gate, and a gate that needs
+    numpy is a gate that stops running the day an environment lacks it."""
+    try:
+        g = im.convert("L")
+    except Exception:
+        return None
+    w, h = g.size
+    if w < 2 or h < 2:
+        return None
+    px = g.tobytes()
+
+    def row(y):
+        return px[y * w:(y + 1) * w]
+
+    seam_c = sum(abs(row(y)[0] - row(y)[w - 1]) for y in range(h)) / float(h)
+    inner_c = 0
+    for y in range(h):
+        r = row(y)
+        inner_c += sum(abs(r[x] - r[x + 1]) for x in range(w - 1))
+    inner_c /= float(h * (w - 1))
+
+    top, bot = row(0), row(h - 1)
+    seam_r = sum(abs(top[x] - bot[x]) for x in range(w)) / float(w)
+    inner_r = 0
+    for y in range(h - 1):
+        a, b = row(y), row(y + 1)
+        inner_r += sum(abs(a[x] - b[x]) for x in range(w))
+    inner_r /= float(w * (h - 1))
+
+    ## A perfectly flat page has no adjacent variation to compare against; the
+    ## coverage checks above have already rejected it, so 1.0 is the honest answer
+    ## rather than a division by zero.
+    return (seam_c / inner_c if inner_c > 0.0 else 1.0,
+            seam_r / inner_r if inner_r > 0.0 else 1.0)
+
+
 def _classless_sheets():
     """The sheet ids that are NOT members of the opening family, read off
     `glass_crack.gd`'s own constants. Returns None when the file is unreadable.
@@ -820,7 +931,13 @@ def _classless_sheets():
     except OSError:
         return None
     out = set()
-    for m in re.finditer(r'^const\s+ARMORED_SHEET_[A-Z]+\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"',
+    ## ⚠️ TWO CLASSES NOW, AND BOTH ARE READ RATHER THAN LISTED. `ARMORED_SHEET_*`
+    ## (G-D28) and `CRAZE_SHEET_*` (G-D35 B-3) are both sheet ids that answer to no
+    ## opening polygon — the armoured pane loses no voxel, and a blast craze's
+    ## perforation is chosen per voxel at runtime (B-4) rather than drawn into the
+    ## art. A hard-coded tuple here is how a gate starts passing for art the
+    ## engine no longer asks for.
+    for m in re.finditer(r'^const\s+(?:ARMORED|CRAZE)_SHEET_[A-Z]+\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"',
                          text, re.M):
         out.add(m.group(1))
     return out

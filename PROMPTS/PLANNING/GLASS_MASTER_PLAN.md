@@ -1,27 +1,40 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.30 — **G-D35 B-2 IS BUILT (2026-09-05): the craze FIELD is the
+**Status:** 🟢 v1.31 — **G-D35 B-3 IS BUILT (2026-09-05): the blast craze art is
+on the pane** (§16.9). Two granularities per G-D37 — `blast_fine` (210 cells per
+tile) and `blast_coarse` (58), three variants each — drawn as a Voronoi mesh on a
+**toroidal metric**, so it tiles by construction: no border is mirrored, blended
+or fixed up afterwards, because there is no border.
+
+**The whole runtime path lit up with no code change**, which is exactly what B-2's
+stage gate existed to make true. Evidence:
+`glass_craze_granularity_2026-09-05.png`.
+
+⚠️ **B-2's split point was wrong and only the real table said so.**
+`CRAZE_FINE_MIN = 0.5` against `[1.0, 0.80, 0.55, 0.30]` put THREE of four rings
+on the fine sheet — half of G-D37's art almost never drawn, with every geometry
+assertion green. Now 0.67, and [18] pins REACHABILITY beside direction.
+
+⚠️ **The gate learned the class and LOST a constant doing it.** The ORIGIN rule is
+skipped for a tile (a uniform field satisfies it trivially at −0.8 %, +0.4 % — a
+check passing for reasons unrelated to what it checks) and a SEAM check replaces
+it, thresholded against both sides: the shipped sheet scores **1.14 / 0.99**, a
+page with the wrap removed scores **3.15 / 3.72**. And the aspect rule was never
+"2:1" — it was always "the aspect must match the SPAN", which the manifest now
+answers per sheet. **B-4 (the perforation) is next.**
+
+⚠️ **The 42 shipped sheets came back byte-identical from `--all`** — hash-compared,
+not assumed.
+
+Earlier, v1.30 — **G-D35 B-2 IS BUILT: the craze FIELD is the
 pane's own rectangle, tiled** (§16.8), wired end to end from B-1's trigger through
 `WorldDelta.commit()` to a rotation replay. It is a second sprite MODE, not a
 parameter: the quad stops being a page and becomes the pane, UV stops being the
 sheet and becomes a lattice, and the page feather goes to zero because a field
-ends at the frame. The pane clip and G-D30's occupancy cut are shared verbatim.
-
-⚠️ **The unknown §16.3 predicted was not the real one.** It warned about the pane
-being a parallelogram and the tile seaming "at the fold" — there is no fold, a
-panel pane is coplanar by construction. The real one was the phase ANCHOR: the
-lattice is anchored at the pane's own corner, never at the symmetric quad's
-centre, and only an asymmetric pane can tell the two apart.
-
-⚠️ **It draws nothing yet, and that is the ordering.** `spawn_glass_craze()`
-returns 0 until the manifest carries a `blast_*` row — B-3 lights it up with no
-code change. The seam is proven with a wrap-test tile that could never be mistaken
-for art (`glass_craze_field_seam_2026-09-05.png`), and the shipped shot path is
-**0 pixels** different against a determinism control of **0**.
-
-⚠️ **And the blast demo cannot host a pixel gate: two identical runs differ by
-160 276 pixels.** Same finding as 2026-08-09's 45-frame measurement, at a third
-point on the same curve. A B-5 gate belongs on the crack demo.
+ends at the frame. ⚠️ **The unknown §16.3 predicted was not the real one** — there
+is no fold, a panel pane is coplanar by construction; the real one was the phase
+ANCHOR. ⚠️ **And the blast demo cannot host a pixel gate: two identical runs
+differ by 160 276 pixels.** A gate belongs on the crack demo, which measured 0.
 
 Earlier, v1.29 — **§16.6 IS FIXED (2026-09-05), AND ITS DIAGNOSIS WAS
 WRONG.** A PANEL pane's damage did not survive a rotation — 1152 cracked before a
@@ -2318,9 +2331,9 @@ radius one or two rings beyond the destruction radius"*.
 |---|---|
 | **B-1 ✅** | **BUILT 2026-09-04 — the trigger.** §16.5. A pane the blast reaches and does not take goes CRACKED, whole, with an intensity from its ring. |
 | **B-2 ✅** | **BUILT 2026-09-05 — the tiling seam.** §16.8. A second sprite mode: the quad is the pane's own rectangle and the sheet repeats across it, wired end to end from `delta.glass_crazes` through `commit()` to a rotation replay. ⚠️ **The unknown this row predicted was not the real one** — a panel pane is coplanar by construction, so there is no fold to seam at; the phase ANCHOR was. |
-| **B-3** | **NEXT.** **The art**: 2 granularities (G-D37), generated. A Voronoi/Delaunay mesh with a wrapping seed set tiles by construction, which is the cheapest honest route and does not need a centre. |
-| **B-4** | **The perforation**: N voxels punched per pane, chosen by B4 FNV-1a on the BASE key so a flip does not reshuffle them — the same rule G-D34 already lives by — and cut with the openings that already exist. |
-| **B-5** | **The gate**: `check_decal.py` learns a class whose ORIGIN rule does not apply and whose tiling DOES (a seam check is a real measurement: compare the page's opposite edges). |
+| **B-3 ✅** | **BUILT 2026-09-05 — the art.** §16.9. Two granularities (G-D37), a Voronoi mesh on a TOROIDAL metric, 3 variants each. The whole path lit up with **no code change**, which is what B-2's stage gate was for. |
+| **B-4** | **NEXT.** **The perforation**: N voxels punched per pane, chosen by B4 FNV-1a on the BASE key so a flip does not reshuffle them — the same rule G-D34 already lives by — and cut with the openings that already exist. |
+| **B-5 🟢** | **The gate — MOSTLY LANDED WITH B-3, because art whose defining property is unverified is not delivered.** `check_decal.py` learns the class (read off `CRAZE_SHEET_*`), skips the ORIGIN rule for it, and runs a SEAM check in its place. ⚠️ It also removed a constant: the aspect rule was never "2:1", it was "the aspect must match the SPAN", and the manifest now answers per sheet. What is left for B-5 proper is B-4's perforation coverage. |
 
 ### 16.4 ✅ BOTH RULED 2026-09-05 — what B-3 now builds
 
@@ -2593,3 +2606,111 @@ measured 0.
   requirement) but not identical across views. The fix is a phase carried in base
   space; it is not built because rotation is suspended for performance and nothing
   can currently see it.
+
+
+### ✅ 16.9 B-3 IS BUILT (2026-09-05) — the craze art, and the gate that can see it
+
+`gen_fracture_sheet.generate_blast()` + `blast_openings()`. Two manifest rows,
+`blast_fine` and `blast_coarse`, three variants each, 512 × 512 grayscale on
+black, span 8 × 8 voxels.
+
+**The whole runtime path lit up with no code change**, which is exactly what B-2's
+stage gate existed to make true: the first boot after the manifest gained its rows
+went `craze fields: claimed=1 live=1` and the pane came back crazed.
+
+#### Why a toroidal Voronoi, and what it replaced
+
+The metric wraps every offset into `[-0.5, 0.5)` before taking the distance, so a
+seed near the left edge is genuinely a neighbour of the pixels on the right.
+**Nothing is mirrored, blended or fixed up at the border afterwards; there is no
+border.** That is what §16.3 meant by *"tiles by construction"*, and it is why
+the class is cheap where twelve openings × three variants were not.
+
+⚠️ **No replica grid.** The obvious implementation surrounds the page with 9
+copies of the seed set. Wrapping the offset is the same answer for a ninth of the
+arithmetic — and, more to the point, it cannot be *slightly* wrong at one edge the
+way a replica grid can.
+
+The mesh is the cell BOUNDARY, recovered as `F2 − F1` (twice the distance to the
+bisector), so a smooth falloff draws an antialiased line with **no supersampling
+at all** — the radial sheets need `SS = 2`; a distance field does not.
+
+Two touches keep it off the machine:
+
+- **Lloyd relaxation, on the torus.** Tempered glass breaks into cells of fairly
+  even size; raw Poisson seeds give a scatter of tiny and huge ones — cracked mud,
+  not a shattered pane. ⚠️ The mean must be taken over WRAPPED offsets and added
+  back to the seed; averaging raw coordinates drags every edge seed to the middle
+  of the page, silently.
+- **A per-EDGE depth**, hashed from the unordered pair of cell indices, so some
+  cracks read deeper than others. Per EDGE, not per pixel: a pixel-noise version
+  modulates *along* each crack and reads as a bad brush.
+
+#### ⚠️ G-D37 is honoured by the CELL COUNT, not by the span
+
+Both classes are 8 × 8 voxels and differ in cells per tile (210 against 58). That
+is what makes them *a different mesh* rather than *one mesh at a bigger scale* —
+the reading the Director explicitly rejected. Change the span instead and the
+coarse sheet is literally the fine sheet zoomed.
+
+#### ⚠️ AND THE SPLIT POINT WAS WRONG IN A WAY ONLY THE REAL TABLE SHOWS
+
+B-2 shipped `CRAZE_FINE_MIN = 0.5` with a comment claiming it put rings 0/1 fine
+and 2/3 coarse. `CRAZE_RING_INTENSITY` is `[1.0, 0.80, 0.55, 0.30]`, so 0.5 put
+**three** of the four rings on the fine sheet and left the coarse mesh reachable
+at ring 3 alone — half of G-D37's art almost never drawn, with every geometry
+assertion still green. Now **0.67**, which sits between 0.80 and 0.55.
+Selftest [18] pins REACHABILITY (≥ 2 rings each) beside the direction, proven RED
+at 0.5. *The midpoint of a table's endpoints is not the midpoint of its rows.*
+
+#### The gate learned the class, and lost a constant doing it
+
+- `_classless_sheets()` reads `(?:ARMORED|CRAZE)_SHEET_*` — the runtime still owns
+  which ids are not openings.
+- **The ORIGIN rule is skipped for a tile class, and that is the point.** A
+  uniform field satisfies "the ink centroid is the page centre" TRIVIALLY —
+  measured at (−0.8 %, +0.4 %). A check that passes for reasons unrelated to what
+  it checks is worse than no check: it reads as coverage and provides none.
+- **A SEAM check replaces it, and it is a real measurement.** On a page that
+  wraps, the first and last columns are neighbours, so their mean absolute
+  difference should look like any other adjacent pair. ⚠️ **The threshold was
+  measured against both sides before it was written:** the shipped `blast_fine`
+  scores **1.14 / 0.99**, and a page drawn with the toroidal wrap REMOVED — the
+  shape of not tiling — scores **3.15 / 3.72**. 2.0 sits between them with room
+  each side.
+- ⚠️ **The aspect rule was never "2:1".** Line 161 of the gate had said for months
+  that *"a sheet whose aspect disagrees with its SPAN is stretched on the pane"*,
+  and 2.0 was true of every span that existed — so the constant and the rule were
+  indistinguishable until a class arrived whose span is square. It would have
+  rejected correct art with the message *"square; the span is 2:1"*: a gate
+  confidently wrong. The span is read from the manifest per sheet now.
+
+#### The evidence
+
+- `glass_craze_granularity_2026-09-05.png` — both meshes on the real pane, whole
+  frame and zoomed. No visible tile seam in either.
+- **The 42 shipped sheets came back byte-identical from `--all`, 0 different.**
+  Hash-compared, not assumed — §15.3's near-miss cost 36 files to a rounding error
+  in a default, and a generator that cannot reproduce its own output is the B4
+  failure this project bans.
+- `check_decal.py --material glass`: **48 sheets checked, 0 failed**; wiring
+  reports all 12 openings plus 4 non-opening sheets. The one WIRING FAIL is
+  pre-existing (the shard family's `IMPACT_DECAL_MATERIALS` branch, which has no
+  third state for *correctly absent*).
+- **The shipped shot path is 0 px** against B-2, on a harness whose determinism
+  control measured 0.
+- 50 selftests clean; [18] now nine assertions.
+
+#### What B-4 inherits
+
+- Perforation is chosen **per voxel** and is NOT in the art — G-D35 says so, and
+  the tile carries no holes. B4 FNV-1a on the BASE key, cut with the openings that
+  already exist.
+- The rotation note from §16.8 stands and now has the Director's own direction
+  behind it (2026-09-05: *"desejamos ter rotação futuramente"*): the tile lattice
+  is anchored in the CURRENT view, so a pane that is not a whole number of tiles
+  wide shows a different PHASE across views. ⚠️ **Everything else here is already
+  rotation-safe, and the tile is the friendliest possible choice** — level is
+  rotation-invariant, and mirroring an irregular craze mesh is invisible (G-D29
+  even wants the flips as free variation). The phase is the one line, and it is
+  `plan_pane_field()`'s, not the art's.

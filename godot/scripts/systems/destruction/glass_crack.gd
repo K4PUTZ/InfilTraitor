@@ -201,11 +201,17 @@ static func page_span(sheet_id: String) -> Vector2:
 const CRAZE_SHEET_FINE: String = "blast_fine"
 const CRAZE_SHEET_COARSE: String = "blast_coarse"
 
-## Intensity at or above this crazes FINE. A Director dial like every other
-## balance row here — placed at the midpoint of `CRAZE_RING_INTENSITY` so rings
-## 0/1 are fine and 2/3 coarse, and calibrated against a capture once B-3's art
-## exists to look at.
-static var CRAZE_FINE_MIN: float = 0.5
+## Intensity at or above this crazes FINE — a Director dial like every other
+## balance row here, calibrated by looking.
+##
+## ⚠️ 0.67, AND THE FIRST VALUE WAS WRONG IN A WAY ONLY THE REAL TABLE SHOWS.
+## B-2 shipped 0.5 with a comment claiming it put rings 0/1 fine and 2/3 coarse.
+## `CRAZE_RING_INTENSITY` is [1.0, 0.80, 0.55, 0.30], so 0.5 actually made THREE
+## of the four rings fine and left the coarse mesh reachable at ring 3 alone —
+## half of G-D37's art almost never drawn, and nothing anywhere would have said
+## so. 0.67 sits between 0.80 and 0.55, which is the split the comment always
+## described. Read the table, not the midpoint of its endpoints.
+static var CRAZE_FINE_MIN: float = 0.67
 
 
 static func craze_sheet_id_for(intensity: float) -> String:

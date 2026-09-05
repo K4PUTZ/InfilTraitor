@@ -1763,16 +1763,33 @@ func test_the_craze_field_covers_the_pane_and_tiles() -> void:
 	## small polygons and a far one into large ones, and `CRAZE_RING_INTENSITY`
 	## runs 1.0 at ring 0 down to 0.30 at ring 3 — so high intensity is the FINE
 	## mesh. Inverted, everything above still passes and every picture is wrong.
-	var near: String = GlassCrackClass.craze_sheet_id_for(
-		GlassShatterClass.blast_craze_intensity(0))
-	var far: String = GlassCrackClass.craze_sheet_id_for(
-		GlassShatterClass.blast_craze_intensity(3))
+	var per_ring: Array = []
+	for r in range(GlassShatterClass.CRAZE_RING_INTENSITY.size()):
+		per_ring.append(GlassCrackClass.craze_sheet_id_for(
+			GlassShatterClass.blast_craze_intensity(r)))
+	var near: String = per_ring[0]
+	var far: String = per_ring[per_ring.size() - 1]
 	if near == GlassCrackClass.CRAZE_SHEET_FINE and far == GlassCrackClass.CRAZE_SHEET_COARSE:
-		_pass("ring 0 (%.2f) crazes FINE and ring 3 (%.2f) crazes COARSE"
-			% [GlassShatterClass.blast_craze_intensity(0),
-			GlassShatterClass.blast_craze_intensity(3)])
+		_pass("ring 0 (%.2f) crazes FINE and ring %d (%.2f) crazes COARSE"
+			% [GlassShatterClass.blast_craze_intensity(0), per_ring.size() - 1,
+			GlassShatterClass.blast_craze_intensity(per_ring.size() - 1)])
 	else:
-		_fail("granularity is inverted: ring 0 -> %s, ring 3 -> %s" % [near, far])
+		_fail("granularity is inverted: ring 0 -> %s, last ring -> %s" % [near, far])
+
+	## ⚠️ AND BOTH MESHES MUST BE REACHABLE, WHICH THE ENDS ALONE CANNOT SAY.
+	## `CRAZE_FINE_MIN` shipped at 0.5 against a table of [1.0, 0.80, 0.55, 0.30],
+	## which put THREE rings on the fine sheet and left the coarse one at ring 3
+	## alone — half of G-D37's art almost never drawn, with both assertions above
+	## still green. A class the balance cannot reach is art nobody will see.
+	var fine_n: int = per_ring.count(GlassCrackClass.CRAZE_SHEET_FINE)
+	var coarse_n: int = per_ring.count(GlassCrackClass.CRAZE_SHEET_COARSE)
+	if fine_n >= 2 and coarse_n >= 2:
+		_pass("both meshes are reachable from the ring table: %d fine, %d coarse (%s)"
+			% [fine_n, coarse_n, ", ".join(per_ring)])
+	else:
+		_fail("the ring table reaches %d fine and %d coarse ring(s) — one of "
+			% [fine_n, coarse_n] + "G-D37's two meshes is effectively unused (%s)"
+			% ", ".join(per_ring))
 
 	## ── 7. THE FIELD IS NOT A FRACTURE, SO IT MUST NOT BE AN OPENING ────────
 	## A field borrows `plan_pane_crack`'s vocabulary but none of its event: it

@@ -176,10 +176,10 @@ def families_for(material):
 FRACTURE_ASPECT = 2.0           ## width / height, when the manifest cannot say
 FRACTURE_ASPECT_SLACK = 0.02    ## PNG dimensions are integers; 2% absorbs rounding
 FRACTURE_MIN_PX = 128           ## below this there is no web to resolve, at any span
-## G-D35 B-3 — how much worse a tile's wrap seam may look than an ordinary
-## adjacent pair inside it. Measured on both sides before it was written down:
-## the shipped `blast_fine` scores 1.14 / 0.99, and the same page against a random
-## far column — the shape of NOT wrapping — scores 3.93.
+## G-D35 B-3 — how much worse a tile's wrap seam may look than the same edge's own
+## inward neighbour. Measured on both sides before it was written down: the worst
+## of the 18 shipped craze sheets scores 1.35, and a page with the toroidal wrap
+## removed scores 7.26 / 11.69.
 FRACTURE_SEAM_MAX_RATIO = 2.0
 TEX_AUTHORING_N = 16    ## pinned, ASSETS/ART_SPECIFICATIONS.md §1
 
@@ -613,10 +613,10 @@ def check_fracture(path):
     ## adjacent pair inside the page. On one that does not, they are two unrelated
     ## slices of the image.
     ##
-    ## ⚠️ THE THRESHOLD IS MEASURED AGAINST BOTH SIDES, not picked. The shipped
-    ## `blast_fine` scores 1.14 (columns) and 0.99 (rows); the same page compared
-    ## against a random FAR column — which is what not wrapping looks like —
-    ## scores 3.93. 2.0 sits between them with room on each side.
+    ## ⚠️ THE THRESHOLD IS MEASURED AGAINST BOTH SIDES, not picked. Over the 18
+    ## shipped craze sheets the worst score is **1.35**; a page drawn with the
+    ## toroidal wrap removed — the shape of not tiling — scores **7.26 / 11.69**.
+    ## 2.0 sits between them with a factor of 5.4 of separation.
     if parsed and width.rsplit("_", 1)[0] in (_tile_sheets() or set()):
         ratios = _wrap_ratios(im)
         if ratios is None:
@@ -874,13 +874,32 @@ def _tile_sheets():
         text = open(src, encoding="utf-8", errors="replace").read()
     except OSError:
         return None
-    return {m.group(1) for m in re.finditer(
-        r'^const\s+CRAZE_SHEET_[A-Z]+\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"', text, re.M)}
+    ## The roster is two ARRAYS since the Director's six (2026-09-05), so the ids
+    ## are pulled out of the bracket rather than off one constant each — still a
+    ## parse of the owner, which is the point: a tuple here is how a gate starts
+    ## testing a roster the runtime has moved on from.
+    out = set()
+    for m in re.finditer(r'^const\s+CRAZE_BUCKET_[A-Z]+\s*:\s*Array\[String\]\s*=\s*\[([^\]]*)\]',
+                         text, re.M):
+        out.update(re.findall(r'"([A-Za-z0-9_]+)"', m.group(1)))
+    return out
 
 
 def _wrap_ratios(im):
-    """(columns, rows) — how the page's wrap seam compares to an ordinary adjacent
-    pair inside it. 1.0 means indistinguishable, i.e. the page tiles.
+    """(columns, rows) — how the page's wrap seam compares to the SAME edge's own
+    inward neighbour. 1.0 means indistinguishable, i.e. the page tiles.
+
+    ⚠️ THE NORMALISER IS `col0 vs col1`, NOT THE PAGE'S MEAN ADJACENT PAIR, AND THE
+    FIRST VERSION WAS THE SECOND. Both terms then involve col0, so its INK LEVEL
+    cancels — which is the whole problem with a page mean: a wrap column that
+    happens to lie along a crack has a large difference against anything, while
+    the page average is dominated by the black between cracks, so the ratio
+    measured "is this column on ink" as much as "does it wrap". Measured over the
+    18 shipped craze sheets: the old normaliser put the worst PASSING sheet at
+    **1.94** against a 2.0 threshold — a margin that a reseed would have crossed,
+    failing correct art. The same 18 score **1.35** at worst under this one, and
+    the non-wrapping control moves the other way, 3.15 -> **7.26**. Same threshold,
+    a factor of 5.4 of separation instead of 1.6.
 
     Pure PIL and integers on purpose: this file is a gate, and a gate that needs
     numpy is a gate that stops running the day an environment lacks it."""
@@ -896,20 +915,18 @@ def _wrap_ratios(im):
     def row(y):
         return px[y * w:(y + 1) * w]
 
-    seam_c = sum(abs(row(y)[0] - row(y)[w - 1]) for y in range(h)) / float(h)
+    seam_c = 0
     inner_c = 0
     for y in range(h):
         r = row(y)
-        inner_c += sum(abs(r[x] - r[x + 1]) for x in range(w - 1))
-    inner_c /= float(h * (w - 1))
+        seam_c += abs(r[0] - r[w - 1])       ## the wrap pair
+        inner_c += abs(r[0] - r[1])          ## the same column's own neighbour
+    seam_c /= float(h)
+    inner_c /= float(h)
 
-    top, bot = row(0), row(h - 1)
+    top, second, bot = row(0), row(1), row(h - 1)
     seam_r = sum(abs(top[x] - bot[x]) for x in range(w)) / float(w)
-    inner_r = 0
-    for y in range(h - 1):
-        a, b = row(y), row(y + 1)
-        inner_r += sum(abs(a[x] - b[x]) for x in range(w))
-    inner_r /= float(w * (h - 1))
+    inner_r = sum(abs(top[x] - second[x]) for x in range(w)) / float(w)
 
     ## A perfectly flat page has no adjacent variation to compare against; the
     ## coverage checks above have already rejected it, so 1.0 is the honest answer
@@ -937,9 +954,12 @@ def _classless_sheets():
     ## perforation is chosen per voxel at runtime (B-4) rather than drawn into the
     ## art. A hard-coded tuple here is how a gate starts passing for art the
     ## engine no longer asks for.
-    for m in re.finditer(r'^const\s+(?:ARMORED|CRAZE)_SHEET_[A-Z]+\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"',
+    for m in re.finditer(r'^const\s+ARMORED_SHEET_[A-Z]+\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"',
                          text, re.M):
         out.add(m.group(1))
+    ## The craze roster lives in the bucket arrays; `_tile_sheets()` owns that
+    ## parse, and every one of them is a non-opening sheet too.
+    out |= (_tile_sheets() or set())
     return out
 
 def check_material(material):

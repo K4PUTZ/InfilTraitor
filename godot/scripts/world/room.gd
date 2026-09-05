@@ -515,6 +515,10 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 	## Measured: flip came back (1.0) in N and (-1.0) in S off the same pane.
 	## The anchor is view-invariant by construction and by measurement.
 	var pane_key: String = glass_base_key(anchor_cell, anchor_level)
+	## B-3 — WHICH of this granularity's three patterns, keyed on that same anchor.
+	## Resolved here rather than in the pure planner because only the room knows
+	## base space, the same split `glass_opening_for()` already lives by.
+	GlassCrack.resolve_craze_sheet(plan, pane_key)
 	## The identity a rotation must not change, as one comparable string. Kept on
 	## the room so the demo can print a VERDICT instead of leaving two log lines to
 	## be eyeballed — which is how the flip difference that found this bug nearly

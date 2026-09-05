@@ -1,25 +1,30 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.32 — **THE TILE PHASE IS CLOSED (B-2b, 2026-09-05)** on the
-Director's instruction (*"fecha a fase antes do B4"*, after *"desejamos ter
-rotação futuramente"*). The craze lattice is anchored at the pane corner that is
-minimal in BASE space and counts in the base direction, so the same glass wears
-the same craze from every camera angle. §16.10.
+**Status:** 🟢 v1.33 — **THE CRAZE ROSTER IS CLOSED (2026-09-05).** Six patterns
+on one density ladder — 58, 70, 90, 110, 150, 210 — split into two buckets of
+three, the low half for the far blast and the high half for the near one (§16.12).
+G-D37's granularity axis and G-D29's three-patterns-per-class are satisfied by the
+same six files, with no third axis invented for either. The three in a bucket are
+three different DRAWINGS, not three seeds of one, and each still carries three
+seed variants and four flips underneath — **36 looks per bucket**.
 
-⚠️ **AND IT FOUND A REAL DEFECT.** B-2 keyed the sheet VARIANT on the pane's
-centre cell, which `plan_pane_field()` computes with integer division in the
-CURRENT view — so on an even-width pane a quarter turn landed on a different
-physical cell and the pane redrew itself with another pattern. Measured: with the
-old key, a flip to **S** went `variant 2 -> 1`; a flip to **E** passed. The anchor
-key holds in E, S and W. **Flipping to E alone would have shown green.**
+⚠️ **The new art exposed a wrong NORMALISER in the seam gate.** `blast_mid_70 v0`
+scored 1.94 against a 2.0 threshold while tiling perfectly: the metric compared
+the wrap pair against the page's mean adjacent pair, and a page mean is dominated
+by the black between cracks. Against the same edge's own inward neighbour — where
+the ink level cancels — the worst of all 18 sheets is **1.35** and the
+non-wrapping control moves 3.15 → **7.26**. Separation ×1.6 → **×5.4** at the
+same threshold. A gate whose passing art sits at 97 % of its limit is a gate about
+to fail correct work.
 
-**G-D29's H/V flip arrived in the same uniform** — a mirror IS a sign on the
-lattice axis — so three patterns are now twelve looks per granularity at zero
-memory.
+**60 sheets checked / 0 failed. Rotation KEPT in E, S and W. B-4 is next.**
 
-🟡 **Pattern candidates are rendered and waiting on the Director** (§16.11): the
-class has four knobs (`cells`, `relax`, `aniso`, `sub`) and three candidates are
-photographed on the real pane. **B-4 (the perforation) is next.**
+Earlier, v1.32 — **THE TILE PHASE IS CLOSED (B-2b)** on the Director's
+instruction. The craze lattice is anchored at the pane corner minimal in BASE
+space, ⚠️ **and it found a real defect** — the sheet VARIANT was keyed on the
+pane's centre cell, computed with integer division in the CURRENT view, so a
+quarter turn landed on a different physical cell and the pane redrew itself with
+another pattern (`flip to S: variant 2 -> 1`; a flip to E passed). §16.10.
 
 Earlier, v1.31 — **G-D35 B-3: the blast craze art is on the pane** (§16.9). Two
 granularities per G-D37 — `blast_fine` (210 cells per tile) and `blast_coarse`
@@ -2826,11 +2831,68 @@ sheets came back byte-identical, hash-compared.
 a whole-pane read and a zoom cannot show it. **Recommended: `mid_b`** — `mid_a`
 still reads its plates, `mid_c` has lost the two-scale character.
 
-🟡 **Open, and it is a question about what SHIPS rather than about art:** the three
-"variants" of each granularity are three SEEDS of one preset today. G-D29's own
-wording is *"um conjunto de padrões, digamos 3, que podem ser escolhidos
-aleatoriamente"* — so they could be three distinct STYLES at the same cell count
-(even / wild / mid) instead. Same count of files, same memory, three genuinely
-different patterns per pane rather than three shuffles of one. Awaiting the
-Director.
+### ✅ 16.12 THE CRAZE ROSTER IS CLOSED — six patterns, two buckets of three
+
+> Director, 2026-09-05: *"Vamos com 70, 90, 110 celulas + os anteriores que ja
+> aprovamos."*
+
+The six he named sort into **one density ladder — 58, 70, 90, 110, 150, 210 —
+and that ladder IS the structure.** The low half is the far blast, the high half
+the near one, three patterns in each. G-D37's granularity axis and G-D29's *"um
+conjunto de padrões, digamos 3, escolhidos aleatoriamente"* are satisfied by the
+same six files, with no third axis invented for either.
+
+| bucket | patterns |
+|---|---|
+| **COARSE** (rings 2/3) | `blast_coarse` 58 even · `blast_mid_70` · `blast_mid_90` |
+| **FINE** (rings 0/1) | `blast_mid_110` · `blast_wild` 150 unrelaxed · `blast_fine` 210 even |
+
+⚠️ **The three in a bucket are not three seeds of one mesh** — they are three
+different drawings at neighbouring densities, which is what *"outros padrões"*
+asked for. Each still carries its own three seed variants and G-D29's four flips
+underneath, so a bucket is **36 looks**, not 12.
+
+The pick is `craze_sheet_id_for(intensity, base_key)`, keyed on the pane's
+BASE-space anchor and salted apart from `pick_variant()` — the same rule and the
+same reason as every other per-pane choice on this track (§16.10 measured a
+variant changing on a flip when a view-space key was used). Resolved in the ROOM,
+because only the room knows base space: `resolve_craze_sheet()` sets the sheet and
+its page span in one statement, so they cannot be chosen by two calls — the
+CRACK-05 defect one class up.
+
+#### ⚠️ AND THE SEAM GATE'S NORMALISER WAS WRONG, WHICH THE NEW ART EXPOSED
+
+`blast_mid_70 v0` scored **1.94** against a 2.0 threshold. It tiles perfectly —
+the metric was at fault. It compared the wrap pair against the mean adjacent pair
+of the WHOLE page, and a page mean is dominated by the black between cracks; so a
+wrap column that happens to lie along a crack scores high for being on ink rather
+than for failing to wrap.
+
+The normaliser is now **the same edge's own inward neighbour** (`col0 vs col1`),
+where the ink level cancels because both terms involve `col0`. Re-measured over
+all 18 sheets and the control:
+
+| | worst PASSING art | non-wrapping control | separation |
+|---|---|---|---|
+| old (page mean) | 1.94 | 3.15 / 3.72 | ×1.6 |
+| **new (own neighbour)** | **1.35** | **7.26 / 11.69** | **×5.4** |
+
+Same threshold, and a margin a reseed cannot cross. ⚠️ **A gate whose passing art
+sits at 97 % of its threshold is a gate about to fail correct work** — it was
+passing, which is exactly why it had to be looked at rather than left.
+
+#### The evidence
+
+- `glass_craze_full_set_2026-09-05.png` — all six on the real pane, whole frame.
+- `check_decal.py --material glass`: **60 sheets checked, 0 failed**; wiring
+  reports the 12 openings plus 8 non-opening sheets.
+- Selftest [18], eleven assertions: every one of the six is REACHABLE from a
+  24 × 24 key sweep and nothing outside the roster is drawn; the pick is pure in
+  the key; both buckets are reachable from the ring table.
+- Rotation: `KEPT` in E, S and W — the pattern pick rides the anchor, so it
+  inherits §16.10's guarantee rather than needing its own.
+- The shipped shot path is **0 px** against the B-2 baseline.
+
+~~🟡 Open: should the three "variants" be three distinct STYLES?~~ ✅ **Answered
+2026-09-05 — yes, and with his own six.** §16.12.
 

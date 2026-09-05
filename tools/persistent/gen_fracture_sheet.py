@@ -145,13 +145,23 @@ PRESETS = {
                        deep=(0.50, 1.0), span=(8.0, 8.0), page=512),
     "blast_plates": dict(cells=26, edge=0.0165, gamma=1.40, relax=2, sub=(0.62, 240),
                          deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
-    # The middle-ground bracket. One axis, three points, nothing else moving.
-    "blast_mid_a": dict(cells=40, edge=0.0150, gamma=1.45, relax=2, sub=(0.70, 270, 0.95),
-                        deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
-    "blast_mid_b": dict(cells=70, edge=0.0140, gamma=1.48, relax=2, sub=(0.76, 300, 0.95),
-                        deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
-    "blast_mid_c": dict(cells=110, edge=0.0130, gamma=1.50, relax=2, sub=(0.82, 330, 0.95),
-                        deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
+    # ── THE MIDDLE GROUND, AT THE DIRECTOR'S OWN THREE DENSITIES ─────────────
+    # (2026-09-05: *"vamos com 70, 90, 110 celulas + os anteriores que ja
+    # aprovamos"*.) Named for the number, not a letter: the cell count IS the
+    # decision, and `mid_b` would say nothing to the next reader.
+    #
+    # ⚠️ ONLY `cells` MOVES ACROSS THE THREE. `edge` and `gamma` are interpolated
+    # with it so the crack WEIGHT stays constant as the cells shrink — otherwise
+    # the densest sheet would also be the boldest and the comparison would be of
+    # two things at once. The dice fraction rises with the count for the reason
+    # his ruling names: more cells means smaller survivors, and a smaller
+    # survivor is what stops the tile advertising its period.
+    "blast_mid_70": dict(cells=70, edge=0.0140, gamma=1.48, relax=2, sub=(0.76, 300, 0.95),
+                         deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
+    "blast_mid_90": dict(cells=90, edge=0.0135, gamma=1.49, relax=2, sub=(0.79, 315, 0.95),
+                         deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
+    "blast_mid_110": dict(cells=110, edge=0.0130, gamma=1.50, relax=2, sub=(0.82, 330, 0.95),
+                          deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
 
     "armored_tight": dict(radials=26, reach=0.30, stroke=(1.1, 2.0), stroke_twin=(0.7, 1.3),
                     waves=7, wave_ratio=1.34, wave_span=(3, 6), wave_falloff=0.30,
@@ -524,14 +534,18 @@ def blast_openings():
     voxel at runtime, not drawn into the art), so there is no polygon for them to
     answer to. `GlassCrack.CRAZE_SHEET_FINE` / `_COARSE` are the constants that
     select them, and `check_decal.py` reads those rather than holding a copy."""
-    names = ("blast_fine", "blast_coarse")
+    ## The six the Director approved 2026-09-05, as one density ladder:
+    ## 58, 70, 90, 110, 150, 210. `GlassCrack.CRAZE_BUCKET_*` splits them into the
+    ## far and near halves — the roster is stated there, once, and read by
+    ## `check_decal.py`; this list is the art side of the same six.
+    names = ("blast_coarse", "blast_mid_70", "blast_mid_90",
+             "blast_mid_110", "blast_wild", "blast_fine")
     if os.environ.get("INFILTRAITOR_CRAZE_CANDIDATES") == "1":
         ## The Director's eye only. These are NOT shipped rows — `check_decal.py`
         ## would flag them as art the family does not define, which is the gate
         ## behaving. Generate them to a scratch dir, look, then promote the ones
         ## he keeps by moving them into `names`.
-        names = names + ("blast_wild", "blast_plates",
-                         "blast_mid_a", "blast_mid_b", "blast_mid_c")
+        names = names + ("blast_plates",)
     return [{"id": name, "size": name, "tile": True, "radii": [1.0], "r_max": 1.0}
             for name in names]
 

@@ -198,8 +198,25 @@ static func page_span(sheet_id: String) -> Vector2:
 ## to 0.30 at ring 3 — so intensity and granularity move TOGETHER, and a high
 ## intensity is the FINE mesh. Getting this backwards is invisible in every test
 ## that does not look at a picture.
-const CRAZE_SHEET_FINE: String = "blast_fine"
-const CRAZE_SHEET_COARSE: String = "blast_coarse"
+##
+## ── SIX PATTERNS, TWO BUCKETS OF THREE (Director, 2026-09-05) ───────────────
+##
+## *"Vamos com 70, 90, 110 celulas + os anteriores que ja aprovamos."*
+##
+## The six he named sort into one density ladder — 58, 70, 90, 110, 150, 210 —
+## and that ladder IS the structure: the low half is the far blast and the high
+## half the near one, three patterns in each. So G-D37's granularity axis and
+## G-D29's *"um conjunto de padrões, digamos 3, que podem ser escolhidos
+## aleatoriamente"* are satisfied by the same six files, with no third axis
+## invented for either.
+##
+## ⚠️ THE THREE IN A BUCKET ARE NOT THREE SEEDS OF ONE MESH. They are three
+## different drawings at neighbouring densities (even / two-scale / unrelaxed),
+## which is what the Director asked for when he asked for *"outros padrões"* —
+## and each still carries its own three seed variants and G-D29's four flips
+## underneath, so a bucket is 36 looks rather than 12.
+const CRAZE_BUCKET_COARSE: Array[String] = ["blast_coarse", "blast_mid_70", "blast_mid_90"]
+const CRAZE_BUCKET_FINE: Array[String] = ["blast_mid_110", "blast_wild", "blast_fine"]
 
 ## Intensity at or above this crazes FINE — a Director dial like every other
 ## balance row here, calibrated by looking.
@@ -214,8 +231,24 @@ const CRAZE_SHEET_COARSE: String = "blast_coarse"
 static var CRAZE_FINE_MIN: float = 0.67
 
 
-static func craze_sheet_id_for(intensity: float) -> String:
-	return CRAZE_SHEET_FINE if intensity >= CRAZE_FINE_MIN else CRAZE_SHEET_COARSE
+## The three patterns this intensity may draw.
+static func craze_bucket_for(intensity: float) -> Array:
+	return CRAZE_BUCKET_FINE if intensity >= CRAZE_FINE_MIN else CRAZE_BUCKET_COARSE
+
+
+## WHICH of the bucket's three, for a pane. ⚠️ The key is the pane's BASE-space
+## anchor, the same one `pick_variant()` rides and for the same reason: keyed on
+## anything the camera renumbers, a standing craze would redraw itself with
+## another pattern on every quarter turn (§16.10 measured exactly that happening).
+## Salted apart from the variant pick, or the two would correlate and a pattern
+## would only ever be seen with one of its three sheets.
+static func craze_sheet_id_for(intensity: float, base_key: String = "") -> String:
+	var bucket: Array = craze_bucket_for(intensity)
+	if base_key == "":
+		## No key: the bucket's first member, deterministically. Only the pure
+		## planner and the selftest reach this — the room always has a key.
+		return String(bucket[0])
+	return String(bucket[FacadeSampler._fnv1a_hash("craze_pattern|%s" % base_key) % bucket.size()])
 
 
 ## Whether B-3 has delivered the craze art yet.
@@ -228,7 +261,20 @@ static func craze_sheet_id_for(intensity: float) -> String:
 ## carries a `blast_*` row, at which point it lights up with no code change.
 static func has_craze_art() -> bool:
 	var o: Dictionary = _manifest_data().get("openings", {})
-	return o.has(CRAZE_SHEET_FINE) or o.has(CRAZE_SHEET_COARSE)
+	for id in CRAZE_BUCKET_COARSE + CRAZE_BUCKET_FINE:
+		if o.has(id):
+			return true
+	return false
+
+
+## G-D35 B-3 — resolve the SHEET on a field plan, once the room knows the pane's
+## base-space key. Split out of `plan_pane_field()` (which is pure and has no base
+## knowledge) so the pick and the page span stay one statement: a plan whose sheet
+## and tile span were chosen by two calls is the CRACK-05 defect one class up.
+static func resolve_craze_sheet(plan: Dictionary, base_key: String) -> void:
+	var id: String = craze_sheet_id_for(float(plan.get("intensity", 0.0)), base_key)
+	plan["sheet"] = id
+	plan["tile_span"] = page_span(id)
 
 
 ## Pure, and shaped like `plan_pane_crack()` so the two cannot disagree about what

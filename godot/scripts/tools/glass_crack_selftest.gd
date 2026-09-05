@@ -1765,31 +1765,64 @@ func test_the_craze_field_covers_the_pane_and_tiles() -> void:
 	## mesh. Inverted, everything above still passes and every picture is wrong.
 	var per_ring: Array = []
 	for r in range(GlassShatterClass.CRAZE_RING_INTENSITY.size()):
-		per_ring.append(GlassCrackClass.craze_sheet_id_for(
+		per_ring.append(GlassCrackClass.craze_bucket_for(
 			GlassShatterClass.blast_craze_intensity(r)))
-	var near: String = per_ring[0]
-	var far: String = per_ring[per_ring.size() - 1]
-	if near == GlassCrackClass.CRAZE_SHEET_FINE and far == GlassCrackClass.CRAZE_SHEET_COARSE:
-		_pass("ring 0 (%.2f) crazes FINE and ring %d (%.2f) crazes COARSE"
+	var near: Array = per_ring[0]
+	var far: Array = per_ring[per_ring.size() - 1]
+	if near == GlassCrackClass.CRAZE_BUCKET_FINE and far == GlassCrackClass.CRAZE_BUCKET_COARSE:
+		_pass("ring 0 (%.2f) crazes from the FINE bucket and ring %d (%.2f) from the COARSE"
 			% [GlassShatterClass.blast_craze_intensity(0), per_ring.size() - 1,
 			GlassShatterClass.blast_craze_intensity(per_ring.size() - 1)])
 	else:
 		_fail("granularity is inverted: ring 0 -> %s, last ring -> %s" % [near, far])
 
-	## ⚠️ AND BOTH MESHES MUST BE REACHABLE, WHICH THE ENDS ALONE CANNOT SAY.
+	## ⚠️ AND BOTH BUCKETS MUST BE REACHABLE, WHICH THE ENDS ALONE CANNOT SAY.
 	## `CRAZE_FINE_MIN` shipped at 0.5 against a table of [1.0, 0.80, 0.55, 0.30],
-	## which put THREE rings on the fine sheet and left the coarse one at ring 3
+	## which put THREE rings on the fine bucket and left the coarse one at ring 3
 	## alone — half of G-D37's art almost never drawn, with both assertions above
-	## still green. A class the balance cannot reach is art nobody will see.
-	var fine_n: int = per_ring.count(GlassCrackClass.CRAZE_SHEET_FINE)
-	var coarse_n: int = per_ring.count(GlassCrackClass.CRAZE_SHEET_COARSE)
+	## still green. Art the balance cannot reach is art nobody will see.
+	var fine_n: int = per_ring.count(GlassCrackClass.CRAZE_BUCKET_FINE)
+	var coarse_n: int = per_ring.count(GlassCrackClass.CRAZE_BUCKET_COARSE)
 	if fine_n >= 2 and coarse_n >= 2:
-		_pass("both meshes are reachable from the ring table: %d fine, %d coarse (%s)"
-			% [fine_n, coarse_n, ", ".join(per_ring)])
+		_pass("both buckets are reachable from the ring table: %d fine, %d coarse"
+			% [fine_n, coarse_n])
 	else:
 		_fail("the ring table reaches %d fine and %d coarse ring(s) — one of "
-			% [fine_n, coarse_n] + "G-D37's two meshes is effectively unused (%s)"
-			% ", ".join(per_ring))
+			% [fine_n, coarse_n] + "G-D37's two granularities is effectively unused")
+
+	## ── 6b. EVERY PATTERN IN A BUCKET IS REACHABLE (Director's six) ─────────
+	## ⚠️ THE SAME CLASS OF DEFECT ONE LEVEL DOWN, and the reason to assert it
+	## rather than trust the modulo: a bucket the hash only ever lands on two of
+	## would leave a third of the approved art undrawn, and nothing would fail. The
+	## keys are real base keys' shape, swept.
+	var seen: Dictionary = {}
+	for gx in range(24):
+		for gy in range(24):
+			var key := "%d,%d,80" % [gx * 7, gy * 5]
+			seen[GlassCrackClass.craze_sheet_id_for(1.0, key)] = true
+			seen[GlassCrackClass.craze_sheet_id_for(0.3, key)] = true
+	var roster: Array = GlassCrackClass.CRAZE_BUCKET_FINE + GlassCrackClass.CRAZE_BUCKET_COARSE
+	var unreached: Array = []
+	for id in roster:
+		if not seen.has(id):
+			unreached.append(id)
+	if unreached.is_empty() and seen.size() == roster.size():
+		_pass("all %d approved craze patterns are reachable, and nothing outside "
+			% roster.size() + "the roster is: %s" % ", ".join(roster))
+	else:
+		_fail("craze patterns never picked: %s (and %d id(s) drawn in total)"
+			% [", ".join(unreached), seen.size()])
+
+	## ⚠️ AND THE PICK MUST BE STABLE IN THE KEY, which is what makes a standing
+	## craze survive a camera turn. Same key twice, same sheet — asserted rather
+	## than assumed, because §16.10 measured a variant CHANGING on a flip.
+	var k := "88,87,80"
+	if GlassCrackClass.craze_sheet_id_for(1.0, k) == GlassCrackClass.craze_sheet_id_for(1.0, k) \
+			and GlassCrackClass.craze_sheet_id_for(1.0, k) != "":
+		_pass("the pattern pick is pure in the base key (%s)"
+			% GlassCrackClass.craze_sheet_id_for(1.0, k))
+	else:
+		_fail("the pattern pick is not stable in its key")
 
 	## ── 7. THE FIELD IS NOT A FRACTURE, SO IT MUST NOT BE AN OPENING ────────
 	## A field borrows `plan_pane_crack`'s vocabulary but none of its event: it

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**233 scripts · 82324 lines total** (under `godot/scripts/`)
+**233 scripts · 82590 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -878,7 +878,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 6552 lines
+`class_name VoxelRenderer` · extends `Node2D` · 6657 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1980,7 +1980,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2292 lines
+`class_name DetonationPlanBuilder` · 2299 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2646,7 +2646,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 339 lines
+`class_name WorldDelta` · extends `RefCounted` · 355 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2671,6 +2671,7 @@ extends `Node2D` · 43 lines
 - `var scorch_writes: Dictionary = {}`
 - `var glass_openings: Array = []`
 - `var glass_crazes: Array = []`
+- `var glass_shard_piles: Dictionary = {}`
 - `var burnt_cells: Dictionary = {}`
 - `var light_field = null`
 - `var light_changed_cells: Dictionary = {}`
@@ -2767,7 +2768,7 @@ extends `Node` · 156 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 179 lines
+`class_name SaveState` · extends `RefCounted` · 194 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -4274,7 +4275,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 145 lines
+extends `SceneTree` · 166 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -4811,7 +4812,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1088 lines
+`class_name AgentShotController` · 1098 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -5178,7 +5179,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9834 lines
+extends `Node2D` · 9926 lines
 
 `godot/scripts/world/room.gd`
 

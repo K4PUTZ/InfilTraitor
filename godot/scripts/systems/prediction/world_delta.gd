@@ -160,6 +160,17 @@ var glass_openings: Array = []
 ## no code change.
 var glass_crazes: Array = []
 
+## G6 (`GLASS_MASTER_PLAN` §7.1) — WHERE THE GLASS THIS BLAST BROKE LANDED.
+##
+## `Vector3i(cell, landing_level) -> count`, in the CURRENT view's coords, merged
+## across every pane the blast took. `GlassFall.pile_by_cell()`'s own shape.
+##
+## ⚠️ **A PROPOSAL, FOR THE SAME REASON `glass_openings` IS.** Drawing a pile is a
+## WRITE — it adds a node and a base-coord record — and `build_plan()` runs on
+## every cursor move, cached and thrown away. Piles made in the builder would
+## leave glass on the floor of every GU the cursor ever hovered.
+var glass_shard_piles: Dictionary = {}
+
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
 ##
 ## `{Vector3i: {"at": seconds, "ring": int}}`. Every one of these is also a
@@ -333,6 +344,11 @@ func commit(room = null) -> void:
 		## is walked.
 		for z in glass_crazes:
 			room.claim_glass_craze(z["cell"], int(z["level"]), float(z["intensity"]))
+		## G6 — and the glass that fell. AFTER the openings, so a floor cell that
+		## is about to be revealed by a crater is already the surface the pile is
+		## drawn on.
+		if not glass_shard_piles.is_empty():
+			room.record_glass_shards(glass_shard_piles)
 
 
 func is_empty() -> bool:

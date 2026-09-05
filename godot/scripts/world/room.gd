@@ -300,6 +300,23 @@ var _base_openings: Array = []
 ## ⚠️ NOT in SaveState yet — the same gap `_base_cracks` states above, for the same
 ## reason and with the same fix.
 var _base_crazes: Array = []
+
+## ── G6 (§7.1) — GLASS ON THE FLOOR, IN BASE COORDS ──────────────────────────
+##
+## `Vector3i(base_x, base_y, level) -> pile count`. One entry per cell that glass
+## has landed on, accumulated across events: a second pane breaking over the same
+## floor makes the pile heavier rather than replacing it.
+##
+## ⚠️ BASE COORDS, like every other scenario mutation on this track. A record in
+## view space is a record rotation loses in silence, and rotation is coming back
+## (Director, 2026-09-05). The level needs no conversion — a quarter turn does not
+## move a voxel's level.
+##
+## ⚠️ AND THE COUNT IS KEPT, NOT A BOOLEAN. `GlassFall.pile_by_cell()` already
+## answers how many voxels landed where, and it is what drives how heavy the pile
+## reads. Collapsing it to "there is glass here" would throw away the only
+## distinction between a single round's worth and a whole pane coming down.
+var _base_shards: Dictionary = {}
 ## B-2b — the last claimed craze's view-invariant identity, for the flip demo's
 ## verdict. Diagnostic only; nothing reads it to make a decision.
 var _last_craze_identity: String = ""
@@ -552,6 +569,70 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 		_base_crazes.append({
 			"base": Vector3i(base_xy.x, base_xy.y, level), "intensity": intensity})
 	return id
+
+
+## ── G6 — RECORD AND DRAW WHERE GLASS LANDED ─────────────────────────────────
+##
+## `piles` is `GlassFall.pile_by_cell()`'s output: `Vector3i(cell, landing_level)
+## -> count`, in THIS view's coords. Called by the shot path and by the cook, the
+## two places that already compute landings and then threw them away.
+##
+## ⚠️ ACCUMULATES. Two events over one floor make one heavier pile, not the second
+## event's pile replacing the first's — glass does not tidy itself up.
+##
+## Returns how many piles reached the screen, which is not always how many were
+## recorded: a landing on a plane this view does not build is stored and simply
+## not drawn, and the caller's log says so.
+func record_glass_shards(piles: Dictionary) -> int:
+	if piles.is_empty():
+		return 0
+	var bsize := _base_voxel_size()
+	var drawn: int = 0
+	for key in piles:
+		var k: Vector3i = key
+		var base_xy := PerspectiveMapperClass.cell_to_base(
+			Vector2i(k.x, k.y), _active_perspective, bsize)
+		var bkey := Vector3i(base_xy.x, base_xy.y, k.z)
+		var total: int = int(_base_shards.get(bkey, 0)) + int(piles[key])
+		_base_shards[bkey] = total
+		if _voxel_renderer != null and _voxel_renderer.spawn_floor_shard_pile(
+				k.z, Vector2i(k.x, k.y), total, _shard_variant_for(bkey)):
+			drawn += 1
+	return drawn
+
+
+## Which of the three shard decals a cell wears. ⚠️ B4 FNV-1a on the BASE key, the
+## same rule and the same reason as every other per-cell pick on this track: keyed
+## on anything the camera renumbers, a standing pile would redraw itself with
+## another decal on every quarter turn.
+func _shard_variant_for(base_key: Vector3i) -> int:
+	return FacadeSampler._fnv1a_hash(
+		"shardpile|%d,%d,%d" % [base_key.x, base_key.y, base_key.z]) % 3
+
+
+## G6 — redraw every recorded pile for the perspective just entered. Runs beside
+## the crack and craze respawns and for the same reason: the record survives the
+## rebuild and the NODE does not.
+func _respawn_base_shards() -> void:
+	if _base_shards.is_empty() or _voxel_renderer == null:
+		return
+	var bsize := _base_voxel_size()
+	var drawn: int = 0
+	var lost: int = 0
+	for bkey in _base_shards:
+		var k: Vector3i = bkey
+		var vxy := PerspectiveMapperClass.cell_from_base(
+			Vector2i(k.x, k.y), _active_perspective, bsize)
+		if _voxel_renderer.spawn_floor_shard_pile(
+				k.z, vxy, int(_base_shards[bkey]), _shard_variant_for(k)):
+			drawn += 1
+		else:
+			lost += 1
+	## ⚠️ REPORTED, NOT SWALLOWED — the discipline §16.6 was caught by. A pile that
+	## silently stops being drawn on a flip is a whole feature healing itself with
+	## nothing in any log to say so.
+	print_debug("[GLASS-SHARDS] perspective %s — %d pile(s) redrawn, %d had no layer"
+		% [_active_perspective, drawn, lost])
 
 
 ## The glass SLICE holding one voxel in this view, or null. Shared by the craze
@@ -1360,6 +1441,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_cracks.clear()        ## CRACK-02 S-3: and no glass has been crazed on it
 	_base_openings.clear()      ## CRACK-04: nor any hole opened in it
 	_base_crazes.clear()        ## G-D35 B-2: nor any pane crazed by a blast
+	_base_shards.clear()        ## G6: and no glass has fallen on its floor
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
@@ -2150,6 +2232,9 @@ func _set_perspective(direction: String) -> void:
 		## reachable at all since §16.6: a panel pane did not move with the map, so
 		## every one of these would have reported "no pane voxel" and healed.
 		_respawn_base_crazes()
+		## G6 — and the glass on the floor.
+		_voxel_renderer.clear_floor_shards()
+		_respawn_base_shards()
 		## B-4b — the fields' hole masks, after the openings above have been
 		## re-applied (that is what refills the polygon log the mask reads).
 		_voxel_renderer.refresh_craze_opening_masks()
@@ -6449,6 +6534,11 @@ func _capture_glass_blast_demo() -> void:
 			print("[GLASS-BLAST] craze hole mask: %d texel(s) inside a hole, %d opening(s) logged"
 				% [int(c.get("craze_mask_painted", -1)),
 				_voxel_renderer._glass_applied_openings.size()])
+	## G6 — the glass on the floor. RECORDED against LIVE, because a landing on a
+	## plane this view does not build is stored and not drawn, and the two numbers
+	## are the only thing that tells that apart from nothing having landed.
+	print("[GLASS-BLAST] floor shards: %d pile(s) recorded, %d live"
+		% [_base_shards.size(), _voxel_renderer.floor_shard_pile_count()])
 	print("[GLASS-BLAST] craze fields: claimed=%d live=%d"
 		% [_base_crazes.size(), _voxel_renderer.glass_craze_count()])
 	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")
@@ -6491,6 +6581,8 @@ func _capture_glass_blast_demo() -> void:
 		print("[GLASS-BLAST] shards after the flip: registry=%d board=%d"
 			% [_voxel_renderer._glass_shard_cells.size(),
 			_voxel_renderer.count_glass_shards()])
+		print("[GLASS-BLAST] floor shards after the flip: %d recorded, %d live"
+			% [_base_shards.size(), _voxel_renderer.floor_shard_pile_count()])
 		## ⚠️ B-2b's WHOLE CLAIM, as a verdict. The tile lattice's anchor and the
 		## sheet variant are keyed in BASE space, so a quarter turn must leave both
 		## untouched — a pane cannot wear a different craze depending on where the

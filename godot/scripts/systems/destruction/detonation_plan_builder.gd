@@ -676,6 +676,13 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			var deepest: int = 0
 			for c in piles.values():
 				deepest = maxi(deepest, int(c))
+			## G6 — the piles ride the Delta and the ROOM draws them. This builder
+			## is PURE (PREDICTION_MASTER_PLAN), so it proposes and never writes:
+			## a pile made here would land on the floor of every GU the cursor
+			## hovered over, exactly as an opening claimed here would.
+			for pk in piles:
+				delta.glass_shard_piles[pk] = int(delta.glass_shard_piles.get(pk, 0)) \
+					+ int(piles[pk])
 			print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
 				% [landings.size(), entries.size(), piles.size(), deepest, entries.size() - landings.size()])
 

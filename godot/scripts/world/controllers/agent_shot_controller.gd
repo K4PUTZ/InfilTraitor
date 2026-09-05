@@ -947,8 +947,13 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		var deepest: int = 0
 		for c in piles.values():
 			deepest = maxi(deepest, int(c))
-		print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
-			% [landings.size(), n, piles.size(), deepest, n - landings.size()])
+		## G6 — and they are DRAWN now, not only counted. `record_glass_shards()`
+		## stores the pile in BASE coords and puts a sprite on the floor; §7.1's
+		## own risk note is that unseen state rots, and this is the line that
+		## stops it.
+		var drawn: int = room.record_glass_shards(piles)
+		print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world), %d pile(s) drawn"
+			% [landings.size(), n, piles.size(), deepest, n - landings.size(), drawn])
 
 	## CRACK-01 — the standing edge of a PARTIAL shatter crazes (G-D12: a big pane
 	## keeps part of itself). A binary break destroyed the lot and this is a no-op.
@@ -1021,8 +1026,13 @@ func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 		res["crazed"], res["crossed"]])
 	if not res["fallen"].is_empty():
 		var landings: Array = GlassFall.plan_landings(res["fallen"], room._slab_registry.all_slabs())
-		print_debug("[GLASS-FALL] %d G-D24 shard(s) landed on %d cell(s)"
-			% [landings.size(), GlassFall.pile_by_cell(landings).size()])
+		## G6 — the G-D24 drop-outs land like any other broken glass. Both fall
+		## sites record, or a pane that lost pieces to crossed cracks would leave a
+		## clean floor while one that shattered leaves glass — the asymmetry the
+		## note on the cook's own landing report warns about.
+		var g24_piles: Dictionary = GlassFall.pile_by_cell(landings)
+		print_debug("[GLASS-FALL] %d G-D24 shard(s) landed on %d cell(s), %d pile(s) drawn"
+			% [landings.size(), g24_piles.size(), room.record_glass_shards(g24_piles)])
 
 
 ## Same conversion TestZoneController and WeaponBenchController do — room's

@@ -1,26 +1,33 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.36 — **B-4's PERFORATION IS ABANDONED (2026-09-05, Director:
-*"Abandona. Vamos usar o rachado sem furos."*).** G-D35's destruction axis is out
-and the granularity axis is what ships: a crazed pane STANDS, whole, and only its
-state changes. §16.15.
+**Status:** 🟢 v1.37 — **G6 IS BUILT (2026-09-05): broken glass lands on the
+floor and stays there** (§17). `GlassFall` had decided WHERE since 2026-09-01 and
+nothing drew it; all three fall sites record now, the cook through the Delta.
+BASE-coord store, accumulating, with a `SaveState` section.
 
-⚠️ **Removed, not left at rate 0.** A dial set to zero is a feature that is built,
-wired, tested and never triggered — the shape of the two this project already
-shipped and had to find later. **281 lines out, 46 in**; the code is in
-`9e66b409` if it is ever wanted back. Selftest [21]'s `destroyed == 0` — the
-stronger form — came back with it.
+⚠️ **Drawn as a SPRITE, not composited into the floor's atom — §7.1 says the
+other thing.** That section predates CRACK-02's ruling on the same question. A
+pile folded into an atom multiplies with every other per-cell state
+(`+ dented`, `+ scorched`, per variant) on the most overloaded surface in the
+game; a sprite multiplies with nothing. §17.2.
 
-🟡 **The MASK (B-4b) is kept, and it is not the abandoned mechanic.** The defect it
-fixes belongs to any hole from any source: a pane a ROUND has holed and a later
-blast crazes has the same shard cells, which the per-CELL occupancy reads as full
-glass. It has no capture, so it is pinned by selftest **[19]** — whose control is
-the half that matters: *a clean pane paints 0 mask texels*.
+✅ **And it closed a WIRING FAIL standing since CRACK-05** — *"the files exist and
+nothing loads them"*. The gate had no third state for CORRECTLY ABSENT; it has one
+now, and the fix was to build the consumer rather than silence the check. Proven
+RED. `check_decal.py --all`: 117 files, all PASS.
 
-Real map after the removal: `pane STANDS, 1152 voxel(s) CRACKED`, `shards: 0`,
-mask inert. Shot path 0 px. 50 selftests clean.
+Real map: `1152 of 1152 shard(s) landed, on 48 cell(s), deepest pile 24` → 48
+recorded, 48 live; after a flip to S, 48 redrawn, 0 without a layer.
 
-**Left in glass: G4 (remnants in the frame) and G6 (shards on the floor).**
+🟡 **G4 is next and the Director specified it (§17.6):** *a glass voxel touching
+another material has a chance of staying stuck* — and it needs **windows of
+several sizes with brick and concrete frames** built in the scenario first, or the
+rule cannot be told apart from G-D13's border ring.
+
+Earlier, v1.36 — **B-4's PERFORATION IS ABANDONED.** G-D35's destruction axis is
+out and the granularity axis is what ships. ⚠️ Removed, not left at rate 0: 281
+lines out. The MASK (B-4b) was kept — it is not the abandoned mechanic — and is
+pinned by selftest [19].
 
 Earlier, v1.34 — **B-4: a crazed pane is PERFORATED** (§16.13), each hole shaped
 by the opening family. ⚠️ It needed a hash finalizer: raw FNV-1a put the right
@@ -1848,7 +1855,7 @@ level→material override on the same half-thickness face:
 | 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** (open) G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump | G-MAP, G2, §5.1 |
 | 🟡 | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** ✅ the roster + the tint on screen — 4 material rows, per-member atoms carrying the tint index in the atom's free BLUE channel, a material-aware pane union, and the bake collapsed onto BASE's facade (§5.4b). **V-C** ✅ the class behaviour — `GlassMaterials.Class`, ARMORED's whole-pane break + sparser remnants, INDESTRUCTIBLE's CRACKED ceiling and the terminal `glass_stop_edge_keys()` set, and the cook made material-aware (§5.4c). **V-D** ✅ `pane_primed` (G-D15, checkpoint-scoped in `SaveState`) + the per-placement `glass_class` tag, and G-D3's no-DENTED rule made structural (§5.4d). **G-VARIANT IS COMPLETE** | — |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
-| 7 | **G6** — shards: BASE-coord store, floor decal, `SaveState` section (also holds `pane_primed`, G-D15). **Now also owns G-D25's big shards** — a cut silhouette on 1–4 whole voxels, no per-shape texture | ~~G-ART~~ (delivered) — unblocked |
+| ✅ | **G6** — shards on the floor: BASE-coord store, the render, the `SaveState` section. **BUILT 2026-09-05**, §17. ⚠️ Drawn as a SPRITE, not composited into the floor's atom — §7.1 said the latter and the departure is argued in §17. 🟡 G-D25's big shards (a cut silhouette on 1–4 whole voxels) are still open and are a separate piece | ~~G-ART~~ (delivered) |
 | ✅ | **G-D4** — the bullet web on shot neighbours. ⚠️ **This row was stale until 2026-09-05: it was DELIVERED by CRACK-01/02.** `GlassCrack.plan_pane_crack()` crazes every glass cell within the crack radius around the bore and lays ONE sheet over the pane — the real shot path reports `crazed=80` on the GLASS map. §6.3's mechanism (a decal chosen by BEARING) is the part that died, superseded by G-D21; the requirement it carried was met by a different means, which is why nobody noticed the row | ~~G5~~, ~~G-ART~~ |
 | ⤴ | **`plastic`** (black backing material for screens, G-D17) + the paint-on-plastic layer + the screen-art pipeline — **`MATERIALS_MASTER_PLAN`, deferred.** A round DRILLS plastic (hole, no pass-through); fire MELTS it | MATERIALS |
 
@@ -3098,3 +3105,111 @@ number of texels in the wrong corner (§16.6's standing lesson).
 
 **Glass now stands where the Director left it: the craze ships, the holes do not.
 What remains is G4 (remnants in the frame) and G6 (shards on the floor).**
+
+---
+
+## 17. G6 — SHARDS ON THE FLOOR (BUILT 2026-09-05)
+
+`GlassFall` (G-D16a) has decided WHERE the glass lands since 2026-09-01 and
+**nothing drew it**: the landings were computed, logged and thrown away on both
+paths. §7.1's own risk note is that unseen state rots, and this project has
+shipped two features that were built and never triggered. This is the consumer.
+
+### 17.1 The three seams, and all three record
+
+| path | where |
+|---|---|
+| the SHOT's shatter | `agent_shot_controller`, beside the landing report it already made |
+| the SHOT's G-D24 crossings | the second fall site — ⚠️ **both, or a pane that lost pieces to crossed cracks leaves a clean floor while a shattered one leaves glass**, the asymmetry that fall site's own note warns about |
+| the COOK | on `WorldDelta.glass_shard_piles`, claimed by `commit()` |
+
+⚠️ **The cook PROPOSES and the room WRITES**, the same split as `glass_openings`
+and `glass_crazes` and for the same reason: drawing a pile is a write, and
+`build_plan()` runs on every cursor move — piles made in the builder would leave
+glass on the floor of every GU the cursor ever hovered.
+
+### 17.2 ⚠️ A SPRITE, NOT A DECAL IN THE FLOOR'S ATOM — and §7.1 says the other thing
+
+That section was written 2026-08-30, **before** CRACK-02 (2026-09-02) settled the
+same question for the crack and before G-D26's *moldura* lesson was generalised.
+Three reasons, and the first decides it:
+
+1. **A pile MULTIPLIES with every other per-cell state.** Folded into the atom,
+   `ground_concrete + shards` also needs `+ dented`, `+ scorched`, `+ dented +
+   scorched`, per shard variant. A floor cell is already the most overloaded
+   surface in the game. A sprite multiplies with nothing.
+2. **Minting is charged per FRAME that mints** (the standing perf finding), and a
+   pile is not damage — it would put new TileSet alternatives on the board for a
+   cosmetic overlay that changes no geometry.
+3. **It is the CRACK-02 shape exactly.** *"No fim do dia a gente quer que os
+   voxels atrás sejam idênticos aos outros"* — the floor under a pile is untouched
+   floor, and only LEAVING the voxel says so.
+
+The position is analytic, never measured (Transform Canon): `map_to_local()`
+returns the cell's own local centre, which for a floor voxel IS the centre of its
+top diamond — the same origin `glass_crack_face_centre()` offsets AWAY from for a
+wall face.
+
+### 17.3 The store
+
+`Room._base_shards`: `Vector3i(base_x, base_y, level) -> pile count`, in BASE
+coords like every other scenario mutation, because rotation is coming back. It
+**accumulates** — two events over one floor make one heavier pile, not the second
+replacing the first; glass does not tidy itself up. The COUNT is kept rather than
+a flag, because it is what decides how heavy the pile reads, and the decal VARIANT
+is B4 FNV-1a on the base key (a view-space key would redraw a standing pile with
+another decal on every quarter turn — §16.10 measured exactly that happening).
+
+`SaveState` gains `floor_shards`, `[base_x, base_y, level, count]` per pile. A
+save written before G6 has no such key and restores as a clean floor rather than a
+refusal.
+
+### 17.4 ✅ AND IT CLOSED A WIRING FAIL THAT HAD BEEN STANDING SINCE CRACK-05
+
+`check_decal.py --material glass` reported *"the files exist and nothing loads
+them"* from 2026-09-04, and the CRACK-05 summary recorded it as pre-existing with
+the note that *"the gate has no third state for correctly absent"*. **It does
+now, and the fix was to build the consumer rather than to silence the check.**
+
+`IMPACT_DECAL_MATERIALS` reaches the WALL families only, so a floor-only family
+like glass's `shard` is unreachable from it by construction — the id there would
+compose `glass_bullet_cracked_*`, the art G-D21 folded into the fracture sheet.
+"Absent from the list" and "nothing loads it" were being reported as one thing.
+They are two, and the gate now checks the one that matters: does anything load the
+files? `_floor_family_consumer()` greps the renderer for the literal path — read
+the owner, never keep a second copy of the answer. ⚠️ The premature
+`all_ok = False` above the branches had to go with it, or "correctly absent" was
+inexpressible: the verdict was already a failure before the branches decided which
+case this was. Proven RED by breaking the load path; the FAIL returns.
+
+### 17.5 The evidence
+
+- Real map, a blast that takes the pane whole: `1152 of 1152 shard(s) landed, on
+  48 cell(s), deepest pile 24 (0 fell out of the world)` → `48 pile(s) recorded,
+  48 live`. The debris line follows the pane's own 48-column footprint.
+- Rotation: `perspective S — 48 pile(s) redrawn, 0 had no layer`, `48 recorded, 48
+  live`, and the line is on the pane's footprint in the rotated view too.
+- `save_state` [round trip]: a pile round-trips **with its depth (17)** on a
+  negative cell. ⚠️ Asserted as the VALUE — a save restoring every pile at 1 would
+  round-trip "there is glass here" perfectly and flatten every heap.
+- `check_decal.py --all`: **117 files, all PASS**; `material 'glass': PASS`.
+- 50 selftests clean, invariants OK.
+  `glass_floor_shards_2026-09-05.png`.
+
+### 17.6 🟡 G4 — what the Director specified for it (2026-09-05, UNBUILT)
+
+> *"O G4 acredito que já está parcialmente implementado nas armas de tiro, mas de
+> qualquer maneira precisamos construir algumas janelas de diferentes tamanhos,
+> com molduras de tijolo, concreto, etc. no cenário para testar. A regra é que
+> voxels de vidro tocando outros materiais têm uma chance de ficarem grudados."*
+
+**The rule, stated by him:** a glass voxel TOUCHING ANOTHER MATERIAL has a chance
+of staying stuck. That is more general than G-D13's border ring — it is a
+neighbour test against the material, not a distance from an edge — and it covers
+a mullion or a transom as naturally as the outer frame.
+
+**And it names a map job before the code:** the GLASS map needs windows of
+SEVERAL SIZES with brick and concrete frames. §12's list has one banded WINDOWS
+wall; this asks for a set. ⚠️ Without them the rule cannot be seen — the map's
+big pane has frame on two sides only, so "touching another material" is nearly
+the same as "on the border" there, and the two would be indistinguishable.

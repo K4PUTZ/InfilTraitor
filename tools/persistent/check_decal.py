@@ -935,6 +935,26 @@ def _wrap_ratios(im):
             seam_r / inner_r if inner_r > 0.0 else 1.0)
 
 
+def _floor_family_consumer(material):
+    """Does anything actually load this material's FLOOR decal files?
+
+    ⚠️ A PATH GREP, AND THE PATH IS THE CONTRACT. `IMPACT_DECAL_MATERIALS` only
+    reaches the wall families, so a floor-only family is loaded by whoever wants
+    it — for glass that is `VoxelRenderer._floor_shard_texture()`. Asking whether
+    the LITERAL path appears in the renderer is the same discipline the rest of
+    this file follows: read the owner, never keep a second copy of the answer.
+    """
+    src = os.path.join(REPO_ROOT, "godot/scripts/geometry/voxel_renderer.gd")
+    try:
+        text = open(src, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return False
+    for family in families_for(material):
+        if "decal_%s_%s_" % (family, material) in text:
+            return True
+    return False
+
+
 def _classless_sheets():
     """The sheet ids that are NOT members of the opening family, read off
     `glass_crack.gd`'s own constants. Returns None when the file is unreadable.
@@ -1026,7 +1046,10 @@ def check_material(material):
             print("  wiring  ok    %r is wired through %s" % (material, where))
     else:
         if found_any:
-            all_ok = False
+            ## ⚠️ NOT `all_ok = False` HERE ANY MORE — that line predated the third
+            ## state below and made "correctly absent" impossible to express: the
+            ## verdict was already a failure before the branches decided which of
+            ## the three cases this is. Each branch now fails for itself.
             ## ⚠️ THE REMEDY IS NOT THE SAME FOR EVERY MATERIAL, and printing the
             ## wrong one is worse than printing none. `_decal_material()` composes
             ## a name from the DAMAGE STATE, so IMPACT_DECAL_MATERIALS only ever
@@ -1037,11 +1060,27 @@ def check_material(material):
             ## folded into the fracture sheet and says must never exist.
             wall_families = [f for f in families_for(material) if f in FAMILIES]
             if wall_families:
+                all_ok = False
                 print("  WIRING FAIL  the files exist but %r is NOT in IMPACT_DECAL_MATERIALS,"
                       % material)
                 print("               so nothing will ever load them — the material still")
                 print("               falls back to the generic family. Add the id.")
+            elif _floor_family_consumer(material):
+                ## ✅ THE THIRD STATE THIS GATE DID NOT HAVE, and it stood as a
+                ## standing WIRING FAIL from CRACK-05 (2026-09-04) until G6 was
+                ## built (2026-09-05). A material can be CORRECTLY ABSENT from
+                ## IMPACT_DECAL_MATERIALS and still be loaded — glass's `shard` is
+                ## a FLOOR mark, which that list cannot reach by construction, and
+                ## `VoxelRenderer._floor_shard_texture()` is what asks the disk for
+                ## it. "Absent from the list" and "nothing loads it" were being
+                ## reported as one thing; they are two, and the gate now checks the
+                ## one that matters — that SOMETHING loads the files.
+                print("  wiring  ok    %r's floor family is loaded directly by the"
+                      % material)
+                print("                renderer (G6), which is why it is correctly")
+                print("                absent from IMPACT_DECAL_MATERIALS")
             else:
+                all_ok = False
                 print("  WIRING FAIL  the files exist and nothing loads them — but DO NOT")
                 print("               add %r to IMPACT_DECAL_MATERIALS. Its only family"
                       % material)

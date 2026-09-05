@@ -25,6 +25,10 @@ class RoomStub extends RefCounted:
 	## discards scenario state with the level, so a store left behind comes back as
 	## the previous level's crater.
 	var _soot_map: Dictionary = {}
+	## G6 (§7.1) — where broken glass came to rest, in BASE coords, with its pile
+	## depth. Same reasoning as the fields above: the stub models the real Room's
+	## persisted state, so a new one appears here the moment it exists.
+	var _base_shards: Dictionary = {}
 	var invalidated: int = 0
 	func invalidate_soot_index(_reason: String = "") -> void:
 		invalidated += 1
@@ -71,6 +75,9 @@ func _test_round_trip() -> void:
 	a._base_damage[Vector3i(-9, 12, 79)] = [1, 0, 0, 0, 0, 0, 0]
 	a._crater_floor_soot[79] = {Vector2i(5, 6): 2, Vector2i(-1, 0): 3}
 	a._pane_primed["PANE_SLICE_6_10_SW"] = true
+	## G6 — a pile 17 deep on a negative cell, so the count and the sign are both
+	## on the wire.
+	a._base_shards[Vector3i(9, -4, 79)] = 17
 
 	var blob: Dictionary = SaveState.capture(a)
 	var b := RoomStub.new()
@@ -95,6 +102,20 @@ func _test_round_trip() -> void:
 		"pane_primed: a save written before V-D restores as nothing primed, not a refusal")
 	_check(b._crater_floor_soot.get(79, {}).get(Vector2i(-1, 0), -1) == 3,
 		"crater_floor_soot: a negative cell round-trips")
+	## ── G6 — THE PILE DEPTH TRAVELS, NOT A FLAG ─────────────────────────────
+	## ⚠️ Asserted as the VALUE, not as presence. A save that restored every pile
+	## at 1 would round-trip "there is glass here" perfectly and quietly flatten
+	## every heap a shattered pane left — and the count is the only thing that
+	## tells a single round's worth from a whole pane coming down.
+	_check(int(b._base_shards.get(Vector3i(9, -4, 79), -1)) == 17,
+		"floor_shards: a pile round-trips with its DEPTH (17), negative cell included")
+	## And a save written before G6 restores as a clean floor rather than a refusal.
+	var pre_g6: Dictionary = SaveState.capture(a)
+	pre_g6.erase("floor_shards")
+	var d := RoomStub.new()
+	d._base_shards[Vector3i(1, 1, 79)] = 9
+	_check(SaveState.restore(d, pre_g6) and d._base_shards.is_empty(),
+		"floor_shards: a save written before G6 restores as no glass, not a refusal")
 	_check(blob["map_id"] == "TESTMAP", "map_id travels with the record")
 	## The cache is rebuilt, never restored — SaveState's own class note.
 	_check(b.invalidated == 1, "restore() invalidates the soot index exactly once")

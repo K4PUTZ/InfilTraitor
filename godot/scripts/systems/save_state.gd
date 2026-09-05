@@ -24,6 +24,9 @@ class_name SaveState
 ##     This is already the authoritative record (VL-PERSIST writes it on every
 ##     committed damage so a perspective rotation can replay it), which makes it
 ##     the right thing to save and means no new bookkeeping had to be invented.
+##   · `floor_shards` — G6: where broken glass came to rest, in BASE coords, with
+##     its pile depth. Scenario state like the rest: it is what the level looks
+##     like after a fight, and it dies with the checkpoint.
 ##   · `crater_floor_soot` — scorch on revealed crater-floor cells, which hang on
 ##     no Voxel and so cannot be re-derived from the board.
 ##
@@ -47,6 +50,9 @@ static func capture(room) -> Dictionary:
 		var payload: Array = room._base_damage[key]
 		damage.append([key.x, key.y, key.z] + payload)
 	var craters: Array = []
+	var shards: Array = []
+	for key in room._base_shards.keys():
+		shards.append([key.x, key.y, key.z, int(room._base_shards[key])])
 	for level in room._crater_floor_soot.keys():
 		for cell in room._crater_floor_soot[level].keys():
 			craters.append([int(level), cell.x, cell.y,
@@ -59,6 +65,10 @@ static func capture(room) -> Dictionary:
 		"map_id": room.map_id,
 		"base_damage": damage,
 		"crater_floor_soot": craters,
+		## G6 — `[base_x, base_y, level, count]` per pile. ⚠️ The COUNT travels, not
+		## a flag: it is what decides how heavy the pile reads, and a save that
+		## dropped it would restore every pile at a single shard's weight.
+		"floor_shards": shards,
 		## GLASS G-D15 / V-D — the panes a rifle round pierced without taking
 		## (`Room._pane_primed`). A flat array of pane_ids: the value is always
 		## `true`, so storing it would be storing a constant.
@@ -115,6 +125,11 @@ static func restore(room, data: Dictionary) -> bool:
 	for e in data.get("base_damage", []):
 		room._base_damage[Vector3i(int(e[0]), int(e[1]), int(e[2]))] = \
 			(e as Array).slice(3)
+	## G6 — an OLD save simply has no `floor_shards` key, and `get()` reads that as
+	## "no glass on the floor", which is the honest restore rather than a refusal.
+	room._base_shards.clear()
+	for sh in data.get("floor_shards", []):
+		room._base_shards[Vector3i(int(sh[0]), int(sh[1]), int(sh[2]))] = int(sh[3])
 	room._crater_floor_soot.clear()
 	for c in data.get("crater_floor_soot", []):
 		var level: int = int(c[0])

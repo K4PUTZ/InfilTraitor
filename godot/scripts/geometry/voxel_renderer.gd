@@ -5205,6 +5205,111 @@ func _build_craze_opening_mask(c: Dictionary) -> void:
 	c["craze_mask_painted"] = painted
 
 
+## ── G6 (§7.1) — SHARDS ON THE FLOOR ─────────────────────────────────────────
+##
+## `GlassFall` (G-D16a) has decided WHERE the glass lands since 2026-09-01 and
+## nothing has drawn it: the landings are computed, logged, and thrown away.
+## §7.1's own risk note is that unseen state rots, and this project has shipped
+## two features that were built and never triggered. This is the consumer.
+##
+## ⚠️ A SPRITE, NOT A DECAL COMPOSITED INTO THE FLOOR'S ATOM — and §7.1 says the
+## other thing, so the departure is argued rather than slipped in. That section
+## was written 2026-08-30, before CRACK-02 (2026-09-02) ruled the same question
+## for the crack and before G-D26's *moldura* lesson was generalised. Three
+## reasons, and the first is the one that decides it:
+##
+##   1. **A pile MULTIPLIES with every other per-cell state.** Folded into the
+##      atom, `ground_concrete + shards` also needs `+ dented`, `+ scorched`,
+##      `+ dented + scorched`, per shard variant. A floor cell is already the most
+##      heavily overloaded surface in the game. A sprite multiplies with nothing.
+##   2. **Minting is charged per FRAME that mints** (the standing perf finding),
+##      and a pile is not damage: it would put new alternatives on a TileSet for a
+##      cosmetic overlay that changes no geometry.
+##   3. **It is the CRACK-02 shape exactly.** *"No fim do dia a gente quer que os
+##      voxels atrás sejam idênticos aos outros"* — the floor under a pile is
+##      untouched floor, and only LEAVING the voxel says so.
+##
+## The position is analytic, never measured: `map_to_local()` returns the cell's
+## own local centre, which for a floor voxel IS the centre of its top diamond —
+## the same origin `glass_crack_face_centre()` offsets AWAY from for a wall face.
+var _floor_shards: Dictionary = {}      ## Vector3i(cell, level) -> Sprite2D
+var _floor_shard_root: Node2D = null
+var _floor_shard_textures: Array = []
+
+
+func _ensure_floor_shard_root() -> Node2D:
+	if _floor_shard_root != null and is_instance_valid(_floor_shard_root):
+		return _floor_shard_root
+	_floor_shard_root = Node2D.new()
+	_floor_shard_root.name = "floor_shard_root"
+	add_child(_floor_shard_root)
+	return _floor_shard_root
+
+
+## The three shipped shard decals. ⚠️ Loaded through `load()` and CHECKED: G-ART
+## delivered them and `check_decal.py` has reported "the files exist and nothing
+## loads them" ever since. If one is missing that is a B6 loud failure, not a
+## silently pile-less floor.
+func _floor_shard_texture(variant: int) -> Texture2D:
+	if _floor_shard_textures.is_empty():
+		for i in range(3):
+			var path := "res://ASSETS/materials/glass/decals/decal_shard_glass_%d.png" % i
+			var tex := load(path) as Texture2D
+			if tex == null:
+				push_error("[VoxelRenderer] G6: %s failed to load — no shards will draw" % path)
+			_floor_shard_textures.append(tex)
+	return _floor_shard_textures[variant % _floor_shard_textures.size()] as Texture2D
+
+
+## Draw (or refresh) one pile. `count` is how many voxels landed here; it drives
+## the pile's OPACITY, so a shattered pane reads heavier than a single round's
+## worth without needing a second art axis.
+func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int) -> bool:
+	var layer := get_layer(level)
+	if layer == null:
+		## Rule 9 — the level is derived by the caller and may genuinely have no
+		## layer (a landing on a plane this view does not build). Reported by the
+		## caller's own count, not swallowed here.
+		return false
+	var tex := _floor_shard_texture(variant)
+	if tex == null:
+		return false
+	var key := Vector3i(cell.x, cell.y, level)
+	var sprite: Sprite2D = _floor_shards.get(key)
+	if sprite == null or not is_instance_valid(sprite):
+		sprite = Sprite2D.new()
+		sprite.centered = true
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		_ensure_floor_shard_root().add_child(sprite)
+		_floor_shards[key] = sprite
+	sprite.texture = tex
+	## One voxel of glass is 1/64th of a cell's worth, so a single shard is faint
+	## and a whole column's collapse is not. Capped well below 1 — a pile is glass
+	## on a floor, never a new floor.
+	sprite.modulate = Color(1.0, 1.0, 1.0,
+		clampf(0.18 + 0.03 * float(count), 0.18, 0.72))
+	sprite.position = layer.position + layer.map_to_local(cell)
+	## The decal is authored at 256 px square for a 32 px cell diamond.
+	sprite.scale = Vector2.ONE * (32.0 / maxf(float(tex.get_width()), 1.0))
+	sprite.z_index = layer.z_index + 1
+	return true
+
+
+## Drop every pile. A perspective flip rebuilds the renderer, so this is what
+## keeps orphans from surviving it; the room puts them back from its base store.
+func clear_floor_shards() -> void:
+	for k in _floor_shards:
+		var sp = _floor_shards[k]
+		if sp != null and is_instance_valid(sp):
+			sp.queue_free()
+	_floor_shards.clear()
+
+
+## How many piles are live. Diagnostics and the selftest.
+func floor_shard_pile_count() -> int:
+	return _floor_shards.size()
+
+
 ## The opening's void as a texture, built on first use and cached. The image
 ## itself comes from `GlassOpening.mask_image()` — the SAME polygon the atoms are
 ## cut with, which is what makes the sheet's void and the hole's edge one line

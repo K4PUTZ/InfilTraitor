@@ -8,11 +8,17 @@
 ##   1. cell_from_base and cell_to_base are exact inverses at voxel scale.
 ##   2. A voxel's rotation is consistent with its owning GU's rotation — the 8×8
 ##      quadrant rotates coherently, so a voxel stays inside its rotated GU.
+##   3. GLASS §16.6 — the GEOMETRY the coordinates point at rotates too. Properties
+##      1 and 2 were green for months while every half-thickness PANEL stood still
+##      through a quarter turn, because `layout_with_perspective()` never rotated
+##      `panel_instances`. A coordinate test cannot see that: the key was right,
+##      the pane was not there.
 
 extends SceneTree
 
 const PM = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const SliceGeneratorClass = preload("res://godot/scripts/geometry/slice_generator.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -25,6 +31,7 @@ func _init() -> void:
 
 	test_voxel_roundtrip_all_directions()
 	test_voxel_stays_in_rotated_gu()
+	test_panel_rotates_with_the_map()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -93,3 +100,63 @@ func test_voxel_stays_in_rotated_gu() -> void:
 	if ok:
 		_pass("all 64 voxels of every tested GU land inside the rotated GU cell")
 	print("")
+
+
+## Property 3: GLASS §16.6 — a PANEL is a point PLUS a face, and both rotate.
+##
+## ⚠️ THIS ASSERTS AN IDENTITY, NOT AN ABSENCE. "the panel entry changed" would
+## pass for a gu_cell rotated with the face left alone — the silent half of the
+## same defect, which puts the pane in the right GU facing the wrong way. What is
+## checked is that the rotated panel's voxel PLANE is exactly the rotation of the
+## original panel's voxel plane, which is the only statement `_reapply_base_damage()`
+## actually depends on.
+func test_panel_rotates_with_the_map() -> void:
+	print("[3] A half-thickness PANEL rotates with the map, face included (§16.6)\n")
+	var gu_size := Vector2i(26, 18)
+	var vox_size := gu_size * GeometryCoordsClass.VOXELS_PER_UNIT_AXIS
+	var faces := {"NW": Face.NW, "NE": Face.NE, "SE": Face.SE, "SW": Face.SW}
+	var test_gus := [Vector2i(3, 5), Vector2i(0, 0), Vector2i(25, 17), Vector2i(14, 9)]
+
+	var panels: Array[Dictionary] = []
+	for gu in test_gus:
+		for fname in faces:
+			panels.append({"gu_cell": gu, "face": fname, "material": "glass", "storeys": 3})
+	var layout := {"size": gu_size, "panel_instances": panels}
+
+	var ok := true
+	for dir in ["N", "E", "S", "W"]:
+		var mapped: Dictionary = PM.layout_with_perspective(layout, dir)
+		var out: Array = mapped.get("panel_instances", [])
+		if out.size() != panels.size():
+			_fail("dir=%s — %d panel(s) out of %d in" % [dir, out.size(), panels.size()])
+			ok = false
+			continue
+		for i in range(panels.size()):
+			var src: Dictionary = panels[i]
+			var dst: Dictionary = out[i]
+			var gu: Vector2i = src["gu_cell"]
+			var face_in: int = faces[String(src["face"])]
+			var face_out_name := String(dst.get("face", ""))
+			if not faces.has(face_out_name):
+				_fail("dir=%s gu=%s face=%s → %r is not a face" % [dir, gu, src["face"], face_out_name])
+				ok = false
+				continue
+			## The plane the rotated panel actually builds its voxels on...
+			var got: Array = SliceGeneratorClass.slice_voxel_positions(
+				dst["gu_cell"], faces[face_out_name])
+			## ...against the rotation of the plane the original one built.
+			var want: Array = []
+			for v in SliceGeneratorClass.slice_voxel_positions(gu, face_in):
+				want.append(PM.cell_from_base(v, dir, vox_size))
+			got.sort()
+			want.sort()
+			if got != want:
+				_fail("dir=%s gu=%s face=%s → gu=%s face=%s: plane %s, expected %s" % [
+					dir, gu, src["face"], dst["gu_cell"], face_out_name,
+					got.slice(0, 2), want.slice(0, 2)])
+				ok = false
+	if ok:
+		_pass("%d panel placements × 4 directions land on the rotated voxel plane"
+			% panels.size())
+	print("")
+

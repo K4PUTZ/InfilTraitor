@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**233 scripts · 81128 lines total** (under `godot/scripts/`)
+**233 scripts · 81251 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -4514,15 +4514,16 @@ extends `SceneTree` · 195 lines
 
 ### `voxel_persist_selftest.gd`
 
-extends `SceneTree` · 95 lines
+extends `SceneTree` · 162 lines
 
 `godot/scripts/tools/voxel_persist_selftest.gd`
 
-> VL-PERSIST selftest — the coordinate math destruction persistence relies on. Run: godot --headless --script res://godot/scripts/tools/voxel_persist_selftest.gd Destruction is recorded in BASE (N-frame) voxel coords and re-applied per view by PerspectiveMapper.cell_to_base / cell_from_base at 8× the GU resolution (base_size × VOXELS_PER_UNIT_AXIS). Two properties must hold or holes land on the wrong voxels after a rotation: 1. cell_from_base and cell_to_base are exact inverses at voxel scale. 2. A voxel's rotation is consistent with its owning GU's rotation — the 8×8 quadrant rotates coherently, so a voxel stays inside its rotated GU.
+> VL-PERSIST selftest — the coordinate math destruction persistence relies on. Run: godot --headless --script res://godot/scripts/tools/voxel_persist_selftest.gd Destruction is recorded in BASE (N-frame) voxel coords and re-applied per view by PerspectiveMapper.cell_to_base / cell_from_base at 8× the GU resolution (base_size × VOXELS_PER_UNIT_AXIS). Two properties must hold or holes land on the wrong voxels after a rotation: 1. cell_from_base and cell_to_base are exact inverses at voxel scale. 2. A voxel's rotation is consistent with its owning GU's rotation — the 8×8 quadrant rotates coherently, so a voxel stays inside its rotated GU. 3. GLASS §16.6 — the GEOMETRY the coordinates point at rotates too. Properties 1 and 2 were green for months while every half-thickness PANEL stood still through a quarter turn, because `layout_with_perspective()` never rotated `panel_instances`. A coordinate test cannot see that: the key was right, the pane was not there.
 
 **Constants / tuning**
 - `PM` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -4531,6 +4532,7 @@ extends `SceneTree` · 95 lines
 **Public API**
 - `func test_voxel_roundtrip_all_directions() -> void:`
 - `func test_voxel_stays_in_rotated_gu() -> void:`
+- `func test_panel_rotates_with_the_map() -> void:`
 
 ---
 
@@ -5176,7 +5178,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9614 lines
+extends `Node2D` · 9619 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5322,7 +5324,7 @@ extends `Node2D` · 9614 lines
 
 ### `perspective_mapper.gd`
 
-`class_name PerspectiveMapper` · 238 lines
+`class_name PerspectiveMapper` · 289 lines
 
 `godot/scripts/world/utilities/perspective_mapper.gd`
 

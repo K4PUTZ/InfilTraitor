@@ -50,16 +50,42 @@ static func remap_tile_name(tile_name: String, direction: String) -> String:
 		return tile_name
 	
 	var base := tile_name.substr(0, i)
-	var suffix := tile_name.substr(i + 1)
-	
-	if not SUFFIX_MAP.has(direction):
+	var suffix := _remap_suffix(tile_name.substr(i + 1), direction)
+	if suffix == "":
 		return tile_name
 	
+	return "%s_%s" % [base, suffix]
+
+
+## Remap a BARE compass face ("NW"/"NE"/"SE"/"SW") from base (N) to `direction`.
+##
+## ⚠️ THIS IS THE SAME TABLE `remap_tile_name` USES, AND IT HAS TO BE. A wall
+## carries its face in a tile-name suffix and a PANEL carries it in a field of its
+## own; they are one rotation, and the day they are two tables is the day one of
+## them is edited. Proven against `Face.delta()` rather than asserted: a quarter
+## turn to E sends a grid delta (dx, dy) to (-dy, dx), so NW(-1,0)→NE(0,-1),
+## NE(0,-1)→SE(1,0), SE(1,0)→SW(0,1), SW(0,1)→NW(-1,0) — which is SUFFIX_MAP["E"]
+## row for row. `slice_voxel_positions()` places those faces at local col 0 / row 0
+## / col 7 / row 7, and the 8x-resolution cell rotation carries a face's voxel
+## plane onto exactly the plane its remapped face occupies.
+##
+## An unrecognised name comes back UNCHANGED on purpose: `EdgeExtractor` is the
+## one place that still knows which authored panel a bad face came from, and it
+## already push_errors there. A second loud-fail here would only report it twice.
+static func remap_face(face_name: String, direction: String) -> String:
+	var out := _remap_suffix(face_name.to_upper(), direction)
+	return face_name if out == "" else out
+
+
+## The suffix half of both remappers. "" means "this direction or this suffix is
+## not in the table" — the caller decides what unchanged means for its own shape.
+static func _remap_suffix(suffix: String, direction: String) -> String:
+	if not SUFFIX_MAP.has(direction):
+		return ""
 	var suffix_map: Dictionary = SUFFIX_MAP[direction]
 	if not suffix_map.has(suffix):
-		return tile_name
-	
-	return "%s_%s" % [base, String(suffix_map[suffix])]
+		return ""
+	return String(suffix_map[suffix])
 
 
 ## Query whether direction is valid (in SUFFIX_MAP).
@@ -232,6 +258,31 @@ static func layout_with_perspective(layout: Dictionary, direction: String) -> Di
 		out["gu_cell"] = cell_from_base(out.get("gu_cell", Vector2i.ZERO), direction, base_size)
 		rotated_props.append(out)
 	mapped["voxel_prop_instances"] = rotated_props
+
+	## GLASS §16.6 — ROOF-BAKE-02a, a THIRD time, on the key that carries every
+	## half-thickness element: `panel_instances` rode `duplicate(true)` UNROTATED
+	## while the walls around it rotated, so the panes stood still and the whole
+	## map turned around them. Every G-D9 window and every glass pane is here.
+	##
+	## ⚠️ THE SYMPTOM WAS READ AS A PERSISTENCE BUG FOR TWO DAYS, AND IT IS NOT
+	## ONE. `INFILTRAITOR_GLASS_BLAST_FLIP=E` reported `441 of 1593 base damage
+	## record(s) re-applied, 1152 had no voxel` and `1152 cracked before the flip,
+	## 0 after` — which reads as a bad base-space key, and GLASS_MASTER_PLAN §16.6
+	## wrote it down as one ("the fix is a base-space key that carries the FACE").
+	## The key was right the whole time: it pointed at where the pane SHOULD have
+	## been, and the pane had not moved. 441 is exactly the floor records, i.e.
+	## everything that was not on a panel.
+	##
+	## A panel is a POINT plus a FACE, so it needs both halves rotated — the block
+	## branch above would place it and leave it facing the wrong way, which is the
+	## silent version of this same defect.
+	var rotated_panels: Array[Dictionary] = []
+	for panel in layout.get("panel_instances", []):
+		var out := (panel as Dictionary).duplicate(true)
+		out["gu_cell"] = cell_from_base(out.get("gu_cell", Vector2i.ZERO), direction, base_size)
+		out["face"] = remap_face(String(out.get("face", "")), direction)
+		rotated_panels.append(out)
+	mapped["panel_instances"] = rotated_panels
 
 	var buffer: int = layout.get("buffer", 0)
 	mapped["buffer"] = buffer

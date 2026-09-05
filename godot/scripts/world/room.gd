@@ -526,18 +526,23 @@ func _respawn_base_openings() -> void:
 ## every crack would cross the one before it and the pane would fall apart on a
 ## camera move.
 ##
-## ⚠️ ON THE `GLASS` MAP EVERY CRACK REPORTS "without a pane" IN E/S/W, AND THE
-## CAUSE IS NOT HERE. `PerspectiveMapper.layout_with_perspective()` rotates
+## ✅ THIS USED TO REPORT "without a pane" FOR EVERY CRACK IN E/S/W, AND THE CAUSE
+## WAS NEVER HERE. `PerspectiveMapper.layout_with_perspective()` rotated
 ## `wall_tiles`, `wall_levels`, `solid_block_instances`, `floor_zone_instances`,
 ## `voxel_prop_instances` and the rest — but NOT `panel_instances`, which is where
 ## every half-thickness element lives, G-D9's windows included. Measured
-## 2026-09-02 from one boot: seven of the GLASS map's eight panes have IDENTICAL
+## 2026-09-02 from one boot: seven of the GLASS map's eight panes had IDENTICAL
 ## cells in N and in E, all of them on a constant-y line that a quarter turn must
-## put on a constant-x one. So the panes stand still while the walls around them
-## rotate. That is ROOF-BAKE-02a repeating on a key nobody added, it is a map
-## defect independent of glass (E/S/W are geometrically wrong today), and fixing
-## it is not this stage's business — a panel carries a FACE, so it needs the
-## `remap_tile_name` treatment and not a copy of the block branch.
+## put on a constant-x one. The panes stood still while the walls around them
+## rotated — ROOF-BAKE-02a repeating on a key nobody had added to it.
+##
+## ⚠️ FIXED 2026-09-05 (GLASS §16.6), AND THE LESSON IS THE TWO DAYS IN BETWEEN.
+## The symptom was ALSO read as a persistence bug (`441 of 1593 re-applied`), and
+## GLASS_MASTER_PLAN §16.6 wrote the fix down as "a base-space key that carries the
+## FACE". The key was right; the pane was not there. This comment held the correct
+## cause the whole time and was not connected to it. A panel is a POINT plus a
+## FACE, so `layout_with_perspective()` now rotates both — `remap_face()`, sharing
+## `remap_tile_name()`'s own table, not a copy of the block branch.
 ##
 ## ⚠️ The pane cell dump above is the WHOLE evidence for that. A second symptom
 ## was briefly attributed to it — a 1382-pixel block missing from the round-trip

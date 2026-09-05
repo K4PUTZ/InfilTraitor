@@ -5012,7 +5012,12 @@ func spawn_glass_craze(spec: Dictionary) -> int:
 	sprite.setup_field(sheet, spec["span"],
 		glass_cell_face_pos(centre_level, centre_cell, int(spec.get("face", Face.SW))),
 		int(spec["run_axis"]), spec["pane_lo"], spec["pane_hi"], tile_span,
-		_glass_crack_shader)
+		_glass_crack_shader,
+		## B-2b — the base-space anchor, computed by the room (it owns the
+		## conversion) and defaulting to B-2's view-space corner when a caller has
+		## none, which is only the selftest's synthetic frame.
+		spec.get("field_origin", spec["pane_lo"]),
+		spec.get("field_dir", Vector2.ONE))
 	_ensure_glass_crack_root().add_child(sprite)
 	_glass_crack_next_id += 1
 	## ⚠️ THE RECORD'S `impact_*` ARE THE PANE'S CENTRE CELL, NOT AN IMPACT. A

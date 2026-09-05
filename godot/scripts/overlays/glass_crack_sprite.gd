@@ -91,14 +91,21 @@ func setup(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int,
 ## to the glass whenever that asymmetry changed. The pane's own corner does not
 ## move.
 func setup_field(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int,
-		pane_lo: Vector2, pane_hi: Vector2, tile_span: Vector2, shader: Shader) -> void:
+		pane_lo: Vector2, pane_hi: Vector2, tile_span: Vector2, shader: Shader,
+		field_origin: Vector2, field_dir: Vector2) -> void:
 	setup(sheet, span, origin, run_axis, pane_lo, pane_hi, shader)
 	var mat := material as ShaderMaterial
 	if mat == null:
 		return
 	mat.set_shader_parameter("crack_field", true)
 	mat.set_shader_parameter("crack_tile_span", tile_span)
-	mat.set_shader_parameter("crack_field_origin", pane_lo)
+	## ⚠️ `field_origin` IS NOT `pane_lo`, AND IT USED TO BE. B-2 anchored the
+	## lattice at the low-run corner of the CURRENT view; B-2b anchors it at the
+	## corner that is minimal in BASE space and counts in the base direction, so
+	## the same glass wears the same craze from every camera angle. The room owns
+	## that conversion — this node is handed the answer.
+	mat.set_shader_parameter("crack_field_origin", field_origin)
+	mat.set_shader_parameter("crack_field_dir", field_dir)
 
 
 ## G-D30 — bind (or rebind) this crack's occupancy image. `origin` is

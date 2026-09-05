@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**233 scripts · 81855 lines total** (under `godot/scripts/`)
+**233 scripts · 81946 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -878,7 +878,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 6411 lines
+`class_name VoxelRenderer` · extends `Node2D` · 6416 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1237,7 +1237,7 @@ extends `Node2D` · 143 lines
 
 ### `glass_crack_sprite.gd`
 
-`class_name GlassCrackSprite` · extends `Sprite2D` · 146 lines
+`class_name GlassCrackSprite` · extends `Sprite2D` · 153 lines
 
 `godot/scripts/overlays/glass_crack_sprite.gd`
 
@@ -5178,7 +5178,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9731 lines
+extends `Node2D` · 9810 lines
 
 `godot/scripts/world/room.gd`
 

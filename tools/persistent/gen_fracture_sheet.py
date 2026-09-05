@@ -33,6 +33,7 @@ glass loses no voxel, so its sheet answers to no polygon.
 """
 import argparse
 import io
+import os
 import math
 import zlib
 import random
@@ -105,10 +106,31 @@ PRESETS = {
     # makes them a different MESH rather than one mesh at a bigger scale (G-D37,
     # explicitly). Change the span instead and the coarse sheet is the fine sheet
     # zoomed — the reading the Director rejected.
+    # ⚠️ FOUR KNOBS, AND EVERY PATTERN THIS CLASS CAN HAVE IS A POINT IN THEM.
+    # Stated as a space rather than a list, because the Director asked for "outros
+    # padrões" and the useful answer is which axes exist, not which four files
+    # happen to be on disk:
+    #   cells   — granularity. The G-D37 axis, and the only one distance drives.
+    #   relax   — Lloyd passes. 2 gives tempered glass's even dicing; 0 leaves the
+    #             raw Poisson scatter, which is big plates beside slivers.
+    #   aniso   — a scale on the metric. Cells stretch along one axis, as if the
+    #             stress had a direction.
+    #   sub     — the two-scale knob: this fraction of the COARSE cells is diced
+    #             again by a finer set, so a few large plates survive inside a
+    #             field that mostly shattered.
+    # Anything reachable here tiles, because all four act on the toroidal metric
+    # and none of them touches the border.
     "blast_fine": dict(cells=210, edge=0.0110, gamma=1.55, relax=2,
                        deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
     "blast_coarse": dict(cells=58, edge=0.0150, gamma=1.45, relax=2,
                          deep=(0.50, 1.0), span=(8.0, 8.0), page=512),
+    # ── Candidates, for the Director's eye (2026-09-05) ──────────────────────
+    "blast_wild": dict(cells=150, edge=0.0115, gamma=1.55, relax=0,
+                       deep=(0.50, 1.0), span=(8.0, 8.0), page=512),
+    "blast_aniso": dict(cells=170, edge=0.0115, gamma=1.55, relax=2,
+                        aniso=(1.0, 2.6), deep=(0.50, 1.0), span=(8.0, 8.0), page=512),
+    "blast_plates": dict(cells=26, edge=0.0165, gamma=1.40, relax=2, sub=(0.62, 240),
+                         deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
 
     "armored_tight": dict(radials=26, reach=0.30, stroke=(1.1, 2.0), stroke_twin=(0.7, 1.3),
                     waves=7, wave_ratio=1.34, wave_span=(3, 6), wave_falloff=0.30,
@@ -368,11 +390,17 @@ def generate_blast(opening, seed=7):
     ax = (np.arange(n) + 0.5) / float(n)
     gx, gy = np.meshgrid(ax, ax)
 
-    def wrapped(px, py):
+    ## ⚠️ ANISOTROPY IS A SCALE ON THE METRIC, NOT ON THE PAGE. Stretching the
+    ## finished image would stretch the crack WIDTHS with the cells and break the
+    ## wrap; scaling inside the distance makes the cells elongate while every line
+    ## keeps its own weight, and the torus is untouched.
+    an = p.get("aniso", (1.0, 1.0))
+
+    def wrapped(px, py, scale=an):
         """Toroidal offsets from one seed to every pixel."""
         dx = gx - px
         dy = gy - py
-        return dx - np.round(dx), dy - np.round(dy)
+        return (dx - np.round(dx)) * scale[0], (dy - np.round(dy)) * scale[1]
 
     ## ── Lloyd, on the torus ─────────────────────────────────────────────────
     ## The mean has to be taken over WRAPPED offsets and added back to the seed;
@@ -411,6 +439,28 @@ def generate_blast(opening, seed=7):
 
     ink = np.clip(1.0 - (f2 - f1) / float(p["edge"]), 0.0, 1.0) ** float(p["gamma"])
 
+    ## ── The two-scale knob ──────────────────────────────────────────────────
+    ## A real blast does not dice a pane evenly: some plates survive whole inside
+    ## a field that shattered. A SECOND, finer seed set is drawn only where the
+    ## coarse cell's own hash says so, so the large plates are the coarse cells
+    ## that were spared — and because both sets live on the same torus, the
+    ## composite tiles exactly as either one does.
+    if "sub" in p:
+        frac, sub_cells = p["sub"]
+        spts = rng.random((int(sub_cells), 2))
+        sf1 = np.full((n, n), np.inf)
+        sf2 = np.full((n, n), np.inf)
+        for i in range(int(sub_cells)):
+            dx, dy = wrapped(spts[i, 0], spts[i, 1])
+            d = np.sqrt(dx * dx + dy * dy)
+            closer = d < sf1
+            sf2 = np.where(closer, sf1, np.minimum(sf2, d))
+            sf1 = np.where(closer, d, sf1)
+        fine = np.clip(1.0 - (sf2 - sf1) / (float(p["edge"]) * 0.72), 0.0, 1.0) ** 1.6
+        ch = (i1.astype(np.int64) * 2654435761) & 0xFFFFFFFF
+        shattered = ((ch >> 9) & 1023) < int(1023 * float(frac))
+        ink = np.maximum(ink, np.where(shattered, fine * 0.86, 0.0))
+
     ## Per-edge depth. A cheap integer hash of the unordered pair, so the same
     ## crack has the same depth along its whole length — and the same tile
     ## reproduces it, which is what the manifest's determinism claim needs.
@@ -434,8 +484,15 @@ def blast_openings():
     voxel at runtime, not drawn into the art), so there is no polygon for them to
     answer to. `GlassCrack.CRAZE_SHEET_FINE` / `_COARSE` are the constants that
     select them, and `check_decal.py` reads those rather than holding a copy."""
+    names = ("blast_fine", "blast_coarse")
+    if os.environ.get("INFILTRAITOR_CRAZE_CANDIDATES") == "1":
+        ## The Director's eye only. These are NOT shipped rows — `check_decal.py`
+        ## would flag them as art the family does not define, which is the gate
+        ## behaving. Generate them to a scratch dir, look, then promote the ones
+        ## he keeps by moving them into `names`.
+        names = names + ("blast_wild", "blast_aniso", "blast_plates")
     return [{"id": name, "size": name, "tile": True, "radii": [1.0], "r_max": 1.0}
-            for name in ("blast_fine", "blast_coarse")]
+            for name in names]
 
 
 def generate(opening, seed=7):

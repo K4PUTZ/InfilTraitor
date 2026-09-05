@@ -1,30 +1,32 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.31 — **G-D35 B-3 IS BUILT (2026-09-05): the blast craze art is
-on the pane** (§16.9). Two granularities per G-D37 — `blast_fine` (210 cells per
-tile) and `blast_coarse` (58), three variants each — drawn as a Voronoi mesh on a
-**toroidal metric**, so it tiles by construction: no border is mirrored, blended
-or fixed up afterwards, because there is no border.
+**Status:** 🟢 v1.32 — **THE TILE PHASE IS CLOSED (B-2b, 2026-09-05)** on the
+Director's instruction (*"fecha a fase antes do B4"*, after *"desejamos ter
+rotação futuramente"*). The craze lattice is anchored at the pane corner that is
+minimal in BASE space and counts in the base direction, so the same glass wears
+the same craze from every camera angle. §16.10.
 
-**The whole runtime path lit up with no code change**, which is exactly what B-2's
-stage gate existed to make true. Evidence:
-`glass_craze_granularity_2026-09-05.png`.
+⚠️ **AND IT FOUND A REAL DEFECT.** B-2 keyed the sheet VARIANT on the pane's
+centre cell, which `plan_pane_field()` computes with integer division in the
+CURRENT view — so on an even-width pane a quarter turn landed on a different
+physical cell and the pane redrew itself with another pattern. Measured: with the
+old key, a flip to **S** went `variant 2 -> 1`; a flip to **E** passed. The anchor
+key holds in E, S and W. **Flipping to E alone would have shown green.**
 
-⚠️ **B-2's split point was wrong and only the real table said so.**
-`CRAZE_FINE_MIN = 0.5` against `[1.0, 0.80, 0.55, 0.30]` put THREE of four rings
-on the fine sheet — half of G-D37's art almost never drawn, with every geometry
-assertion green. Now 0.67, and [18] pins REACHABILITY beside direction.
+**G-D29's H/V flip arrived in the same uniform** — a mirror IS a sign on the
+lattice axis — so three patterns are now twelve looks per granularity at zero
+memory.
 
-⚠️ **The gate learned the class and LOST a constant doing it.** The ORIGIN rule is
-skipped for a tile (a uniform field satisfies it trivially at −0.8 %, +0.4 % — a
-check passing for reasons unrelated to what it checks) and a SEAM check replaces
-it, thresholded against both sides: the shipped sheet scores **1.14 / 0.99**, a
-page with the wrap removed scores **3.15 / 3.72**. And the aspect rule was never
-"2:1" — it was always "the aspect must match the SPAN", which the manifest now
-answers per sheet. **B-4 (the perforation) is next.**
+🟡 **Pattern candidates are rendered and waiting on the Director** (§16.11): the
+class has four knobs (`cells`, `relax`, `aniso`, `sub`) and three candidates are
+photographed on the real pane. **B-4 (the perforation) is next.**
 
-⚠️ **The 42 shipped sheets came back byte-identical from `--all`** — hash-compared,
-not assumed.
+Earlier, v1.31 — **G-D35 B-3: the blast craze art is on the pane** (§16.9). Two
+granularities per G-D37 — `blast_fine` (210 cells per tile) and `blast_coarse`
+(58), three variants each — drawn as a Voronoi mesh on a **toroidal metric**, so
+it tiles by construction. The whole runtime path lit up with **no code change**.
+⚠️ B-2's split point was wrong and only the real table said so; ⚠️ the gate learned
+the class and LOST a constant doing it (the aspect rule was never "2:1").
 
 Earlier, v1.30 — **G-D35 B-2 IS BUILT: the craze FIELD is the
 pane's own rectangle, tiled** (§16.8), wired end to end from B-1's trigger through
@@ -2714,3 +2716,79 @@ at 0.5. *The midpoint of a table's endpoints is not the midpoint of its rows.*
   rotation-invariant, and mirroring an irregular craze mesh is invisible (G-D29
   even wants the flips as free variation). The phase is the one line, and it is
   `plan_pane_field()`'s, not the art's.
+
+### ✅ 16.10 B-2b — THE PHASE IS CLOSED (2026-09-05), AND IT FOUND A REAL DEFECT
+
+> Director, 2026-09-05: *"vamos manter em mente que desejamos ter rotação
+> futuramente, se for possível"*, then *"fecha a fase antes do B4"*.
+
+§16.8 left the tile lattice anchored at the pane's low-run corner **of the current
+view**, so a pane that is not a whole number of tiles wide would show a different
+tile phase from every camera angle. Closed on his instruction, before B-4.
+
+**The anchor is now the pane corner that is minimal in BASE space, counted in the
+base direction.** ⚠️ The direction is MEASURED, not tabulated: two adjacent pane
+cells are converted and the sign of their base difference is read off, so it
+cannot drift from `PerspectiveMapper`'s own rotation the way a per-face lookup
+table would — the same reasoning `_carved_side_to_base_dir()` already uses.
+
+#### ⚠️ AND THE PANE'S IDENTITY KEY WAS WRONG, WHICH IS THE BIGGER FIND
+
+B-2 keyed `pick_variant()` on the pane's CENTRE cell. `plan_pane_field()` computes
+that as `(run_lo + run_hi) / 2` **in the current view**, and integer division
+truncates — so on an even-width pane a quarter turn reverses the run range and the
+expression lands on a **different physical cell**. The key changed with the camera,
+and with it the flip and the SHEET: a standing craze redrawing itself with another
+pattern every time the map turned, which is exactly what G-D29's hash rule exists
+to prevent.
+
+Measured, with the identity printed as one comparable string:
+
+    with the CENTRE key   flip to E: variant 2 -> 2  KEPT
+                          flip to S: variant 2 -> 1  CHANGED
+    with the ANCHOR key   E, S and W: anchor (88,87) level 80 variant 0  KEPT
+
+⚠️ **Flipping to E alone would have passed.** The defect needed S. Third time this
+track has been caught by an asymmetric case that the symmetric one hides
+(§14, §16.8's own selftest, now this).
+
+#### G-D29's H/V flip arrived for free, in the same uniform
+
+A mirror IS a sign on the lattice axis, so the flip bits multiply into
+`crack_field_dir` beside the rotation correction — two mechanisms, one uniform, no
+way for them to disagree. Three patterns become **twelve looks per granularity**
+at zero memory. Level takes the flip but never the rotation half, because a
+quarter turn does not move a voxel's level.
+
+#### The instrument
+
+`INFILTRAITOR_GLASS_BLAST_FLIP` now prints a VERDICT rather than two lines to be
+eyeballed: `craze identity: <anchor/level/variant> -> <same> (KEPT|CHANGED)`.
+⚠️ A string and not a picture, and it has to be — a rotated pane is sheared on
+screen, so two views of one craze cannot be diffed at all.
+
+### 16.11 Pattern candidates, rendered for the Director (2026-09-05, OPEN)
+
+> Director: *"daria pra ter algumas variações? Outros padrões?"*
+
+**The useful answer is which axes exist, not which files are on disk.** The class
+has four knobs and every pattern it can have is a point in them — all four act on
+the toroidal metric, so anything reachable tiles:
+
+| knob | what it moves |
+|---|---|
+| `cells` | granularity. The G-D37 axis, and the only one distance drives |
+| `relax` | Lloyd passes. 2 = tempered glass's even dicing; 0 = raw Poisson, big plates beside slivers |
+| `aniso` | a scale on the METRIC (never on the page — that would stretch the crack widths and break the wrap). Cells elongate, as if the stress had a direction |
+| `sub` | the two-scale knob: this fraction of the COARSE cells is diced again by a finer set, so a few large plates survive inside a field that shattered |
+
+Three candidates are generated behind `INFILTRAITOR_CRAZE_CANDIDATES=1` and
+photographed on the real pane — `blast_wild` (relax 0), `blast_aniso` (2.6:1) and
+`blast_plates` (two-scale, 62 %). All five patterns pass the seam gate.
+`glass_craze_candidates_2026-09-05.png` (tiles, 2 × 2) and
+`glass_craze_patterns_on_pane_2026-09-05.png` (the pane).
+
+🟡 **They are deliberately NOT shipped rows.** `check_decal.py` would flag them as
+art the family does not define, which is the gate behaving; promoting one is
+moving its name into `blast_openings()`. Awaiting the Director's eye.
+

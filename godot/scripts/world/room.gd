@@ -300,6 +300,9 @@ var _base_openings: Array = []
 ## ⚠️ NOT in SaveState yet — the same gap `_base_cracks` states above, for the same
 ## reason and with the same fix.
 var _base_crazes: Array = []
+## B-2b — the last claimed craze's view-invariant identity, for the flip demo's
+## verdict. Diagnostic only; nothing reads it to make a decision.
+var _last_craze_identity: String = ""
 
 ## GLASS G-D15 / V-D — PANES THAT ARE PRIMED. `pane_id -> true`.
 ##
@@ -470,8 +473,74 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 	## Keyed on the pane's CENTRE cell, not the anchor — the anchor is wherever the
 	## blast happened to be nearest, so two blasts on one pane would otherwise draw
 	## two different patterns over the same glass.
-	plan["variant"] = GlassCrack.pick_variant(
-		glass_base_key(plan["centre_cell"], int(plan["centre_level"])))
+	## ── B-2b — ONE BASE-SPACE ANCHOR, AND EVERYTHING KEYS ON IT ──────────────
+	##
+	## (Director, 2026-09-05: *"vamos manter em mente que desejamos ter rotação
+	## futuramente"*, then *"fecha a fase antes do B4"*.)
+	##
+	## B-2 started the lattice at the low-run corner OF THIS VIEW, so a pane that
+	## is not a whole number of tiles wide wore a different tile phase from every
+	## camera angle. The anchor becomes the pane corner that is minimal in BASE
+	## space, counted in the base direction.
+	##
+	## ⚠️ THE DIRECTION IS MEASURED, NOT TABULATED. Two adjacent pane cells are
+	## converted and the sign of their base difference is read off, so this cannot
+	## drift from `PerspectiveMapper`'s own rotation the way a per-face lookup
+	## would — the same reason `_carved_side_to_base_dir()` takes the difference of
+	## two rotated points instead of listing four cases.
+	var run_is_x: bool = int(plan["run_axis"]) == 0
+	var c_cell: Vector2i = plan["centre_cell"]
+	var lo_off: Vector2 = plan["pane_lo"]
+	var hi_off: Vector2 = plan["pane_hi"]
+	var step := Vector2i(1, 0) if run_is_x else Vector2i(0, 1)
+	var bsize := _base_voxel_size()
+	var b0 := PerspectiveMapperClass.cell_to_base(c_cell, _active_perspective, bsize)
+	var b1 := PerspectiveMapperClass.cell_to_base(c_cell + step, _active_perspective, bsize)
+	var db := b1 - b0
+	var run_grows_with_base: bool = (db.x + db.y) > 0
+	var anchor_off: float = lo_off.x if run_grows_with_base else hi_off.x
+	var anchor_run: int = int(plan["centre_run"]) + int(roundf(anchor_off))
+	var anchor_cell := Vector2i(anchor_run, c_cell.y) if run_is_x \
+		else Vector2i(c_cell.x, anchor_run)
+	var anchor_level: int = int(plan["centre_level"]) + int(roundf(lo_off.y))
+
+	## ⚠️ AND THE PANE'S IDENTITY KEY IS THIS ANCHOR, NOT ITS CENTRE — B-2 HAD IT
+	## WRONG AND THE ANCHOR MEASUREMENT IS WHAT FOUND IT. `plan_pane_field()`
+	## computes the centre as `(run_lo + run_hi) / 2` in the CURRENT view, and
+	## integer division truncates: on an even-width pane a quarter turn reverses
+	## the run range and that expression lands on a DIFFERENT physical cell. So the
+	## key changed with the camera, and with it the flip AND `pick_variant()` — a
+	## standing craze redrawing itself with another sheet every time the map
+	## turned, which is precisely what G-D29's hash rule exists to prevent.
+	## Measured: flip came back (1.0) in N and (-1.0) in S off the same pane.
+	## The anchor is view-invariant by construction and by measurement.
+	var pane_key: String = glass_base_key(anchor_cell, anchor_level)
+	## The identity a rotation must not change, as one comparable string. Kept on
+	## the room so the demo can print a VERDICT instead of leaving two log lines to
+	## be eyeballed — which is how the flip difference that found this bug nearly
+	## went unnoticed.
+	_last_craze_identity = "anchor=%s level=%d variant=%d" % [
+		PerspectiveMapperClass.cell_to_base(anchor_cell, _active_perspective, bsize),
+		anchor_level, GlassCrack.pick_variant(pane_key)]
+	plan["variant"] = GlassCrack.pick_variant(pane_key)
+	## G-D29's H/V flip, off the same hash — three patterns become twelve looks for
+	## no memory at all. A mirror IS a sign on this axis, so it multiplies into the
+	## same uniform as the rotation correction rather than needing its own.
+	var flip: int = FacadeSampler._fnv1a_hash("craze_flip|%s" % pane_key)
+	var flip_x: float = -1.0 if (flip & 1) == 1 else 1.0
+	var flip_y: float = -1.0 if (flip & 2) == 2 else 1.0
+	plan["field_origin"] = Vector2(anchor_off, lo_off.y)
+	plan["field_dir"] = Vector2(
+		flip_x * (1.0 if run_grows_with_base else -1.0), flip_y)
+	if OS.get_environment("INFILTRAITOR_GLASS_DIAG") == "1":
+		## ⚠️ A NUMBER, NOT A PICTURE, AND IT HAS TO BE. A rotated pane is sheared
+		## on screen, so no two views of one craze can be diffed; the claim is that
+		## the anchor, the variant and the flip are IDENTICAL in every view, and
+		## these are them.
+		var ab := PerspectiveMapperClass.cell_to_base(anchor_cell, _active_perspective, bsize)
+		print("[GLASS-CRAZE] lattice anchor base (%d,%d) level %d · variant %d · dir %s (view %s)"
+			% [ab.x, ab.y, anchor_level, int(plan["variant"]),
+			plan["field_dir"], _active_perspective])
 	var id: int = _voxel_renderer.spawn_glass_craze(plan)
 	if record and id != 0:
 		var base_xy := PerspectiveMapperClass.cell_to_base(
@@ -6381,6 +6450,7 @@ func _capture_glass_blast_demo() -> void:
 	## This is the only instrument that can see B-1 at all.
 	var flip_to := OS.get_environment("INFILTRAITOR_GLASS_BLAST_FLIP")
 	if flip_to != "":
+		var craze_id_before: String = _last_craze_identity
 		var before_n: int = _count_cracked_glass()
 		var recs: int = _base_damage.size()
 		var cracked_recs: int = 0
@@ -6397,6 +6467,15 @@ func _capture_glass_blast_demo() -> void:
 			% [before_n, after_n, "KEPT" if after_n == before_n else "LOST %d" % (before_n - after_n)])
 		print("[GLASS-BLAST] craze fields: %d live after the flip (%d claimed)"
 			% [_voxel_renderer.glass_craze_count(), _base_crazes.size()])
+		## ⚠️ B-2b's WHOLE CLAIM, as a verdict. The tile lattice's anchor and the
+		## sheet variant are keyed in BASE space, so a quarter turn must leave both
+		## untouched — a pane cannot wear a different craze depending on where the
+		## camera stands. It is a string rather than a picture because a rotated
+		## pane is sheared on screen and two views of one craze cannot be diffed.
+		if craze_id_before != "":
+			print("[GLASS-BLAST] craze identity: %s -> %s (%s)"
+				% [craze_id_before, _last_craze_identity,
+				"KEPT" if craze_id_before == _last_craze_identity else "CHANGED"])
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(
 			"%s/glass_blast_demo_flip_%s.png" % [dir, flip_to])

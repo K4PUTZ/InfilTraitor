@@ -96,10 +96,33 @@ uniform bool crack_field = false;
 // `GlassCrack.field_tile_span()` for why that is a property and not a rounding
 // convenience.
 uniform vec2 crack_tile_span = vec2(8.0, 8.0);
-// The pane's low-run / low-level corner as an offset from the quad's centre, in
-// voxels. The tile lattice starts exactly there, so the field is anchored to the
-// PANE rather than to wherever the quad's centre happened to land.
+// The pane corner the tile lattice starts at, as an offset from the quad's centre,
+// in voxels. Anchored to the PANE rather than to wherever the quad's centre
+// happened to land — a centre CELL can sit half a voxel off the pane's middle,
+// and the corner cannot.
 uniform vec2 crack_field_origin = vec2(0.0);
+
+// ── B-2b — WHICH WAY THE LATTICE COUNTS, AND WHY IT IS NOT ALWAYS +1 ────────
+//
+// (Director, 2026-09-05: *"vamos manter em mente que desejamos ter rotação
+// futuramente"*, then *"fecha a fase antes do B4"*.)
+//
+// The field is drawn in the CURRENT view's (run, level), and a quarter turn can
+// reverse which way run counts. Anchored at "the low-run corner" the lattice
+// would then start from the pane's OTHER physical end, so a pane that is not a
+// whole number of tiles wide would show a different tile phase in every view —
+// the same glass wearing a different craze depending on where the camera stands.
+//
+// So the room picks the corner that is minimal in BASE space and hands the sign
+// that makes the lattice count in the base direction. `crack_field_origin` and
+// this together are a base-space anchor expressed in view coordinates, which is
+// the same trick `_base_damage` plays on a voxel one level down.
+//
+// ⚠️ IT ALSO CARRIES G-D29's H/V FLIP, and that is not a coincidence — a mirror
+// IS a sign on this axis. Two mechanisms, one uniform, and no way for them to
+// disagree. LEVEL never needs the rotation half (a quarter turn does not move a
+// voxel's level) but does take the flip.
+uniform vec2 crack_field_dir = vec2(1.0, 1.0);
 
 // ── G-D30 — A DESTROYED VOXEL CUTS THE SPRITE ───────────────────────────────
 //
@@ -196,7 +219,7 @@ void fragment() {
 	// (B-3's wrapping seed set), because nothing here can hide an edge that does
 	// not meet its opposite.
 	vec2 sheet_uv = crack_field
-		? (off - crack_field_origin) / max(crack_tile_span, vec2(0.0001))
+		? ((off - crack_field_origin) * crack_field_dir) / max(crack_tile_span, vec2(0.0001))
 		: UV;
 	float ink = texture(crack_sheet, sheet_uv).r;
 

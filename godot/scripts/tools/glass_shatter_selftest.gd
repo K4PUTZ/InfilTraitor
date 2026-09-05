@@ -73,6 +73,7 @@ func _init() -> void:
 	test_per_placement_class_overrides_the_material()
 	test_only_rifle_class_pierces_armored_glass()
 	test_cook_proposes_the_opening_and_only_commit_claims_it()
+	test_a_pane_the_blast_does_not_take_crazes()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1051,4 +1052,126 @@ func test_cook_proposes_the_opening_and_only_commit_claims_it() -> void:
 	else:
 		_fail("claims before=%d after=%d (%s) — the proposal did not reach the room"
 			% [before, room.claims.size(), room.claims])
+	print("")
+
+
+## §6.2 / G-D35 B-1 — THE PANE THE BLAST DOES NOT TAKE.
+##
+## What this catches: the craze walking the pane's brick bands (the same trap
+## [11] pins for the shatter), a won roll crazing as well as shattering, the
+## intensity table losing its ring 3 (which is the *"perto de uma explosão mas
+## fora da área de dano"* case §6.2 is named after), and the whole trigger going
+## inert — which would leave G-D35's art with nothing to draw it.
+func test_a_pane_the_blast_does_not_take_crazes() -> void:
+	print("[21] §6.2 / B-1 — a pane the blast does NOT take goes CRACKED, whole\n")
+
+	## ── The intensity table. ────────────────────────────────────────────────
+	var ramp: Array = []
+	for r in range(5):
+		ramp.append("%d:%.2f" % [r, GlassShatterClass.blast_craze_intensity(r)])
+	print("      ring intensity — %s" % ", ".join(ramp))
+	var monotonic := true
+	for r in range(1, GlassShatterClass.CRAZE_RING_INTENSITY.size()):
+		if GlassShatterClass.blast_craze_intensity(r) > GlassShatterClass.blast_craze_intensity(r - 1):
+			monotonic = false
+	## ⚠️ RING 3 MUST CARRY A CRAZE. frag_grenade's `ring_multipliers` ends in 0.0,
+	## so ring 3 is inside `affected` and takes NO damage — which is exactly
+	## §6.2's *"perto de uma explosão, mas não dentro da área de dano"*. A table
+	## that stopped at ring 2 would silently delete the case the feature is for.
+	if monotonic and GlassShatterClass.blast_craze_intensity(3) > 0.0 \
+			and GlassShatterClass.blast_craze_intensity(4) == 0.0:
+		_pass("intensity falls with the ring, still bites at ring 3 (the blast's own "
+			+ "damage stops at ring 2), and is 0 off the end of the table")
+	else:
+		_fail("the intensity ramp is wrong: %s" % ", ".join(ramp))
+
+	## ── `plan_pane_craze` walks glass and nothing else. ─────────────────────
+	var banded: Array = _banded_pane(2, 4, 3)
+	var glass_total: int = 0
+	var base: int = GeometryCoords.storey_level_base(0)
+	for s in banded:
+		for v in s.voxels:
+			if GlassMaterials.is_glass(s.material_at(v.level - base)):
+				glass_total += 1
+	## One voxel destroyed and one already cracked — neither may be returned.
+	banded[0].voxels[40].set_damage(Voxel.DamageState.DESTROYED, false, 0, 0, 0)
+	banded[0].voxels[41].set_damage(Voxel.DamageState.CRACKED, false, 0, 0, 0)
+	var craze: Array = GlassShatterClass.plan_pane_craze(banded)
+	## ⚠️ THE FRAME SET IS BUILT FROM THE SLICES, NOT ASKED OF THE VOXEL. A Voxel
+	## holds its container by INSTANCE ID rather than by reference (the RefCounted
+	## cycle fix, 2026-08-17), so `v.container` is not a property — and reaching
+	## for one is a SCRIPT ERROR that GDScript cannot catch in-process: the
+	## function aborts, the remaining assertions never run, and the suite still
+	## prints PASS with exit 0. Caught here by reading the output rather than the
+	## exit code, which is the whole reason `run_selftests.py` is the arbiter.
+	var frame_voxels: Dictionary = {}
+	for s2 in banded:
+		for v2 in s2.voxels:
+			if not GlassMaterials.is_glass(s2.material_at(v2.level - base)):
+				frame_voxels[v2.get_instance_id()] = true
+	var frame_hits: int = 0
+	for v in craze:
+		if frame_voxels.has(v.get_instance_id()):
+			frame_hits += 1
+	if craze.size() == glass_total - 2 and frame_hits == 0:
+		_pass("the whole pane crazes: %d of %d glass voxels (the destroyed one and the "
+			% [craze.size(), glass_total]
+			+ "already-cracked one skipped), and 0 of its brick bands")
+	else:
+		_fail("plan_pane_craze returned %d voxel(s) of %d glass (expected %d), %d of them frame"
+			% [craze.size(), glass_total, glass_total - 2, frame_hits])
+
+	## ── The cook: a LOST roll crazes, a WON roll does not. ──────────────────
+	##
+	## Ring 3 is the reliable loser — `blast_glass_punch` is 0 there because
+	## `ring_multipliers` ends in 0.0 — so this needs no salt fishing.
+	for ring in [3, 0]:
+		var registry := EdgeRegistry.new()
+		var pane: Array = _pane(2, 7, 3)
+		for s in pane:
+			registry.register_slice(s)
+		var bomb := BombDefClass.from_json({
+			"id": "frag_grenade",
+			"ring_multipliers": [1.0, 0.6, 0.25, 0.0],
+			"destroy_ring_weights": [0.85, 0.28, 0.06, 0.0],
+			"dent_ring_weights": [1.0, 0.8, 0.25, 0.0],
+			"crack_ring_weights": [0.0, 1.0, 0.6, 0.0],
+		})
+		var affected: Dictionary = {}
+		for s in pane:
+			affected[s.id] = ring
+		var delta := WorldDeltaClass.new()
+		DetonationPlanBuilderClass._shatter_glass_panes({
+			"edge_registry": registry, "slab_registry": SlabRegistry.new(),
+			"affected": {"slices": affected}, "bomb_def": bomb, "delta": delta,
+			"epicenter": pane[0].voxels[0].grid_pos, "source_gu": Vector2i(2, 4),
+			"crazed_voxels": [],
+		})
+		var cracked: int = 0
+		var destroyed: int = 0
+		for e in delta.damage:
+			if int(e["state"]) == Voxel.DamageState.CRACKED:
+				cracked += 1
+			elif int(e["state"]) == Voxel.DamageState.DESTROYED:
+				destroyed += 1
+		if ring == 3:
+			if cracked > 0 and destroyed == 0 and delta.glass_crazes.size() == 1 \
+					and float(delta.glass_crazes[0]["intensity"]) > 0.0:
+				_pass("ring 3 (outside the damage area): %d voxel(s) CRACKED, 0 destroyed, "
+					% cracked + "1 craze recorded at intensity %.2f"
+					% float(delta.glass_crazes[0]["intensity"]))
+			else:
+				_fail("ring 3 gave cracked=%d destroyed=%d crazes=%d — the pane should "
+					% [cracked, destroyed, delta.glass_crazes.size()]
+					+ "stand and craze")
+		else:
+			## ⚠️ A WON ROLL MUST NOT ALSO CRAZE. The two are alternatives, and a
+			## pane that shattered AND recorded a craze would hand G-D35's art a
+			## field to draw over voxels that are gone.
+			if destroyed > 0 and cracked == 0 and delta.glass_crazes.is_empty():
+				_pass("ring 0 (a won roll): %d voxel(s) DESTROYED, 0 cracked, no craze "
+					% destroyed + "recorded — the two are alternatives")
+			else:
+				_fail("ring 0 gave cracked=%d destroyed=%d crazes=%d"
+					% [cracked, destroyed, delta.glass_crazes.size()])
 	print("")

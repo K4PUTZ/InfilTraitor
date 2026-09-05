@@ -102,6 +102,73 @@ static var SHATTER_REMNANT_ARMORED_SCALE: float = 0.35
 ## a pane breaks whole or not at all); glass BLOCKS keep the ring model.
 static var SHATTER_BLAST_GAIN: float = 3.4
 
+## ── §6.2 / G-D35 B-1 — THE PANE THE BLAST DOES NOT TAKE ─────────────────────
+##
+## *"Fazer o vidro rachar, se estiver perto de uma explosão, mas não dentro da
+## área de dano"* (§6.2), and, once the family had a shape, *"as explosões ou vão
+## destruir a vidraça toda, ou vão deixar rachado com maior ou menor intensidade,
+## dependendo da distância"* (G-D35).
+##
+## The two sentences describe ONE event, and reading them as one is what makes
+## this cheap: a pane the blast reaches and does not take goes CRACKED, whole,
+## with an INTENSITY from its ring. That covers both the pane inside the damage
+## area whose roll was lost and the pane outside it that was never at risk.
+##
+## ⚠️ **THE WHOLE PANE, NOT A REGION** — G-D2 (*"o vidro é uma coisa só, desde que
+## seja a mesma superfície contínua"*) and G-D35, whose intensity axis is
+## GRANULARITY, not area: a near blast crazes into small polygons and a far one
+## into large ones. A partial craze would be the shatter model wearing a second
+## name.
+##
+## ⚠️ **AND §6.2's PREDICTED NEW BFS IS NOT NEEDED.** It asked for *"a crack radius
+## one or two rings beyond the destruction radius, reusing the same BFS the soot
+## derivation already walks"*. Measured instead of assumed: `flood_gu_rings()`
+## already floods to `ring_multipliers.size() - 1`, and frag_grenade's last entry
+## is **0.0** — so ring 3 is in `affected` and takes no damage at all. The ring
+## beyond the damage radius is already there; nothing new walks anywhere.
+##
+## Placeholders like every balance row in this file — the Director calibrates
+## against a GLASS map capture. Index is the ring; off the end is no craze.
+static var CRAZE_RING_INTENSITY: Array[float] = [1.0, 0.80, 0.55, 0.30]
+
+
+## How hard a blast crazes a pane it did not take, at this ring. 0.0 off the end
+## of the table, which is the honest answer for a pane the flood never reached.
+static func blast_craze_intensity(ring: int) -> float:
+	if ring < 0 or ring >= CRAZE_RING_INTENSITY.size():
+		return 0.0
+	return float(CRAZE_RING_INTENSITY[ring])
+
+
+## §6.2 / B-1 — the pane's standing GLASS voxels, as the `set_damage(CRACKED)`
+## calls a blast that did not take it WOULD make. Pure, and shaped exactly like
+## `plan_pane_shatter()` so the two paths cannot disagree about what a pane is.
+##
+## ⚠️ `material_at()`, NOT `slice.material` — a G-D9 banded window keeps its brick
+## sill and head in these same slices, and brick does not craze. This is the same
+## trap that took 91 of 96 brick voxels with a sniper's pane before [11] pinned
+## it; the craze walks the same lattice rule for the same reason.
+##
+## ⚠️ A voxel that is ALREADY cracked is skipped rather than re-entered. `set_damage`
+## early-returns on a state it already holds, so including it would change
+## nothing — but it would inflate every count this event reports, and the count is
+## what the selftest and the log read.
+##
+## Returns Array[Voxel].
+static func plan_pane_craze(pane_slices: Array) -> Array:
+	var out: Array = []
+	for slice in pane_slices:
+		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
+		for v in slice.voxels:
+			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			if v.damage_state == Voxel.DamageState.CRACKED:
+				continue
+			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
+				continue
+			out.append(v)
+	return out
+
 ## ── G-D17 — THE LAYER MODIFIER ───────────────────────────────────────────────
 ##
 ## Director, 2026-09-01: *"Precisamos implementar quebra em dois vidros seguidos,

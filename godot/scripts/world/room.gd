@@ -657,12 +657,20 @@ func _reapply_base_damage() -> void:
 	var reveal_slab_gus: Dictionary = {}    ## Vector2i(gu) → true (deep Slab to draw)
 	var reveal_fixed: Dictionary = {}       ## Vector2i(gu) → fixed level to draw
 
+	## ⚠️ REPORTED, NOT SWALLOWED — the same discipline `_respawn_base_cracks()`
+	## already applies to its own misses, and for the same reason: a record whose
+	## voxel is not in this view is how a whole feature turns out to be healing on
+	## every rotation with nothing in the log to say so.
+	var reapplied: int = 0
+	var missed: int = 0
 	for base_key in _base_damage:
 		var vxy := PerspectiveMapperClass.cell_from_base(
 				Vector2i(base_key.x, base_key.y), _active_perspective, base_size_vox)
 		var v = index.get(Vector3i(vxy.x, vxy.y, base_key.z))
 		if v == null:
+			missed += 1
 			continue
+		reapplied += 1
 		## D23/D25: replay the FULL record, not just damage_state — the carved
 		## side is re-derived for the perspective being entered, so the hole
 		## stays on the side that physically faced the blast instead of
@@ -707,6 +715,8 @@ func _reapply_base_damage() -> void:
 		_voxel_renderer.render_fixed_earth_level(gu, reveal_fixed[gu])
 	_voxel_renderer.process_dirty(_edge_registry)
 	_voxel_renderer.process_dirty_slabs(_slab_registry)
+	print_debug("[VL-PERSIST] perspective %s — %d of %d base damage record(s) re-applied, %d had no voxel in this view"
+		% [_active_perspective, reapplied, _base_damage.size(), missed])
 var _ceiling_overlay: Node2D = null  ## VIS-01: overhead ceiling props/lights (CeilingPropOverlay)
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
@@ -6246,6 +6256,51 @@ func _capture_glass_blast_demo() -> void:
 	print("[GLASS-BLAST] shards: registry=%d board=%d"
 		% [_voxel_renderer._glass_shard_cells.size(), _voxel_renderer.count_glass_shards()])
 	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")
+
+	## ── §6.2 / G-D35 B-1 — DOES THE CRAZE SURVIVE A ROTATION? ────────────────
+	##
+	## `INFILTRAITOR_GLASS_BLAST_FLIP=E` counts the CRACKED glass voxels, rotates
+	## through the real `_set_perspective()` (which rebuilds every Voxel from the
+	## MapSpec and re-stamps the recorded damage) and counts again.
+	##
+	## ⚠️ A COUNT, NOT A PICTURE, AND IT HAS TO BE. CRACKED glass renders exactly
+	## like intact glass — the sheet is the whole visual and G-D35's is unbuilt —
+	## so a screenshot cannot tell a pane that kept its state from one that healed.
+	## This is the only instrument that can see B-1 at all.
+	var flip_to := OS.get_environment("INFILTRAITOR_GLASS_BLAST_FLIP")
+	if flip_to != "":
+		var before_n: int = _count_cracked_glass()
+		var recs: int = _base_damage.size()
+		var cracked_recs: int = 0
+		for k in _base_damage:
+			if int((_base_damage[k] as Array)[0]) == Voxel.DamageState.CRACKED:
+				cracked_recs += 1
+		print("[GLASS-BLAST] base-damage store: %d record(s), %d of them CRACKED"
+			% [recs, cracked_recs])
+		_set_perspective(flip_to)
+		for _f in range(40):
+			await get_tree().process_frame
+		var after_n: int = _count_cracked_glass()
+		print("[GLASS-BLAST] cracked glass voxels: %d before the flip, %d after (%s)"
+			% [before_n, after_n, "KEPT" if after_n == before_n else "LOST %d" % (before_n - after_n)])
+
+
+## Every CRACKED glass voxel standing in the world right now. Walks the registry
+## rather than a counter kept beside it — the same reason `count_glass_shards()`
+## reads the tilemap: a number maintained alongside the thing it describes can
+## only ever confirm what the code that maintains it already believes.
+func _count_cracked_glass() -> int:
+	if _edge_registry == null:
+		return 0
+	var n: int = 0
+	for sl in _edge_registry.all_slices():
+		var base: int = GeometryCoords.storey_level_base(sl.start_storey)
+		for v in sl.voxels:
+			if v.damage_state != Voxel.DamageState.CRACKED:
+				continue
+			if GlassMaterials.is_glass(sl.material_at(v.level - base)):
+				n += 1
+	return n
 
 
 ## The biggest glass PANEL pane on the map, as its slices — `PANE_BLOCK_*`

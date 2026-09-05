@@ -1,6 +1,22 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.27 — **CRACK-05 IS CLOSED AND RULED ON (2026-09-04).** The
+**Status:** 🟢 v1.28 — **G-D35 B-1 IS BUILT (2026-09-04): a pane the blast does
+not take now CRAZES**, whole, with an intensity from its ring (§16.5). The
+trigger comes before the art on purpose — G-D35's sheet is a centreless tiled
+field, and drawing today's bullet page over a blast-crazed pane would be the
+wrong art wired to a real trigger. ⚠️ **Nothing changes on screen yet, and two
+measurements came out of building it:** §6.2's predicted new BFS was never needed
+(ring 3 is already in `affected` at zero cost), and **576 of 1152 crazed voxels
+would never have been persisted** — PACKAGE only walks the slices the blast
+reached, a craze takes the whole pane.
+
+⚠️ **AND IT EXPOSED A PRE-EXISTING DEFECT THAT IS NOT ITS OWN: a PANEL pane's
+damage does not survive a rotation at all** — 1152 cracked before a flip, 0
+after, while PLAYGROUND's ordinary walls restore 417 of 417. The shot path loses
+it identically, so CRACK-02 S-3's rebuild has never worked on a single flip; its
+acceptance was a round trip, where the conversion is the identity. §16.6.
+
+Earlier, v1.27 — **CRACK-05 IS CLOSED AND RULED ON (2026-09-04).** The
 armoured class shipped, the Director sized it by looking (**10 × 5** voxels for
 the bullet calibre, **16 × 8** for the rifle — G-D14's own split, *"3 versões
 diferentes pra cada calibre"*) and softened its core to 64 % opaque so a little
@@ -2265,7 +2281,7 @@ radius one or two rings beyond the destruction radius"*.
 
 | | |
 |---|---|
-| **B-1** | **The trigger first, and this is the standing rule of this track.** §6.2 — a pane inside a blast that ROLLS AND HOLDS. It already prints (CRACK-05); it does not yet craze. ⚠️ `ART_ORDER_GLASS_FRACTURE_CLASSES.md` §5 step 5 is explicit that art without its caller is the *"built but never triggered"* trap this project has paid for twice. |
+| **B-1 ✅** | **BUILT 2026-09-04 — the trigger.** §16.5. A pane the blast reaches and does not take goes CRACKED, whole, with an intensity from its ring. |
 | **B-2** | **The tiling seam.** `GlassCrackSprite` is centred on an impact and spans a fixed page; a field is the pane's own rectangle, repeating. This is a second sprite mode, not a parameter — and it is the one piece with real unknowns (the pane is a parallelogram in screen space and the tile must not seam at the fold). |
 | **B-3** | **The art**: 2–3 granularities, generated. A Voronoi/Delaunay mesh with a wrapping seed set tiles by construction, which is the cheapest honest route and does not need a centre. |
 | **B-4** | **The perforation**: N voxels punched per pane, chosen by B4 FNV-1a on the BASE key so a flip does not reshuffle them — the same rule G-D34 already lives by — and cut with the openings that already exist. |
@@ -2281,3 +2297,81 @@ radius one or two rings beyond the destruction radius"*.
 - 🔒 The two reference photos are read for **vocabulary only**. Delivery stays
   procedural — D57, and the same discipline §8's watermarked comps already
   imposed on this very track.
+
+
+### 16.5 ✅ B-1 IS BUILT (2026-09-04) — the trigger, and two things it measured
+
+`GlassShatter.plan_pane_craze()` + `DetonationPlanBuilder._craze_pane()`:
+a pane the blast reaches and does not take goes CRACKED, **whole** (G-D2), with
+`CRAZE_RING_INTENSITY[ring]` riding out on `WorldDelta.glass_crazes` for B-3 to
+read. Real map, grenade at gu (14,13) on `maps/GLASS.map.json`:
+
+    [GLASS-CRAZE] pane=PANE_SLICE_16_10_SW ring=2 intensity=0.55
+                  — pane STANDS, 1152 voxel(s) CRACKED
+
+**Nothing changes on screen, and that is the point of doing it first.** G-D35's
+sheet is a tiled centreless field; drawing today's centred bullet page over a
+blast-crazed pane would be the wrong art wired to a real trigger — worse than no
+art, because it would look finished.
+
+#### ⚠️ §6.2's predicted new BFS was not needed, and that is a measurement
+
+§6.2 asked for *"a crack radius one or two rings beyond the destruction radius,
+reusing the same BFS the soot derivation already walks"*. `flood_gu_rings()`
+already floods to `ring_multipliers.size() - 1`, and frag_grenade's last entry is
+**0.0** — so **ring 3 is already in `affected` and takes no damage at all**. The
+ring beyond the damage radius was there the whole time; the two cases §6.2 and
+G-D35 describe (the pane inside that held, the pane outside that was never at
+risk) turned out to be one branch.
+
+#### ⚠️ 576 of 1152 crazed voxels would never have been persisted
+
+`PHASE_PACKAGE` is what fills `touched_voxels`, and it walks `ring_of` — which
+`_phase_slices` fills only for the slices in `affected`. The blast reached **3 of
+this pane's 6 slices**; a craze takes all 6 by design. So half of every crazed
+pane would have been dropped by VL-PERSIST with nothing in any log to say so.
+Topped up after PACKAGE (not at the craze: PACKAGE appends unconditionally, and
+flagging `touched_this_blast` early would silently change what `_phase_soot_wave`
+repaints). Now `[GLASS-CRAZE] 576 of 1152 ... added to the persistence set`.
+
+### ⚠️ 16.6 AND THE MEASUREMENT FOUND A PRE-EXISTING DEFECT THAT IS NOT B-1's
+
+**A PANEL pane's damage does not survive a rotation at all.**
+`INFILTRAITOR_GLASS_BLAST_FLIP=E` counts CRACKED glass before and after a real
+`_set_perspective()`:
+
+    base-damage store: 1593 record(s), 1244 of them CRACKED
+    [VL-PERSIST] perspective E — 441 of 1593 re-applied, 1152 had no voxel
+    cracked glass voxels: 1152 before the flip, 0 after (LOST 1152)
+
+**441 = exactly the FLOOR records; 1152 = exactly the pane.** Two controls place
+it:
+
+- **It is not B-1's.** The SHOT path loses it identically — the crack demo
+  flipped to E reports `[GLASS-CRACK] base (112,87,92) -> view (72,112) level 92
+  has no pane voxel in perspective E · 0 crack(s) rebuilt, 1 without a pane`.
+- **It is not walls in general.** PLAYGROUND, four-view capture with a real
+  detonation: `417 of 417 base damage record(s) re-applied, 0 had no voxel`,
+  including 14 WALL/concrete rows.
+
+So it is the **half-thickness PANEL** specifically. A panel's voxels sit at the
+FACE's own offset inside its GU — a SW face at `(gu.x·8+i, gu.y·8+7)` — and
+rotating the voxel grid through `PerspectiveMapper` does not put them where the
+rotated face's voxels actually are. An ordinary wall survives because it is
+two-sided and the rotated cell still holds *a* voxel; a panel has nothing there.
+
+⚠️ **This also means CRACK-02 S-3's rebuild has never worked on a single flip.**
+Its acceptance was a ROUND TRIP (`"E,N"`), where `cell_from_base` is the identity
+— exact and tautological in the same way selftest [10] was before CRACK-04 found
+it. Left open and named rather than fixed here: it belongs to VL-PERSIST /
+CRACK-02 S-3, the fix is a base-space key that carries the FACE, and rotation is
+suspended for performance meanwhile.
+
+### 16.7 What B-2 inherits
+
+- The trigger, with its intensity, on `delta.glass_crazes`.
+- `_count_cracked_glass()` + `INFILTRAITOR_GLASS_BLAST_FLIP`, the only instrument
+  that can see any of this: **CRACKED glass renders exactly like intact glass**,
+  so no screenshot can tell a crazed pane from a clean one until B-3 exists.
+- §16.6, which B-2 has to decide whether to wait for: a tiled sheet has the same
+  base-space problem as a voxel, one level up.

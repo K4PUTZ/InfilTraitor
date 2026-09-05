@@ -135,6 +135,27 @@ var scorch_writes: Dictionary = {}
 ## merely default-shaped — it is default-shaped in the wrong place.
 var glass_openings: Array = []
 
+## G-D35 B-1 (`GLASS_MASTER_PLAN` §6.2 / §16.3) — THE PANES THIS BLAST CRAZED
+## BUT DID NOT TAKE.
+##
+## `Array[{"pane_id": String, "cell": Vector2i, "level": int, "ring": int,
+## "intensity": float}]` — one entry per pane, naming the voxel nearest the
+## epicenter and how hard the blast crazed it (`GlassShatter.blast_craze_intensity`).
+##
+## ⚠️ **THE CRACKED STATE IS NOT HERE — IT IS IN `damage`, WITH EVERYTHING ELSE.**
+## The state is a gameplay fact that VL-PERSIST already saves and a perspective
+## flip already restores; routing it through a second channel would make the glass
+## the one material whose damage commits by its own path. What this carries is the
+## ATTRIBUTION — which pane, which ring, how hard — the way `burnt_cells` carries
+## the fire's, and for the same reason: once committed, a blast-crazed pane is
+## indistinguishable from any other cracked glass.
+##
+## ⚠️ **AND IT HAS NO VISUAL CONSUMER YET, DELIBERATELY.** G-D35's sheet is a
+## TILED field with no centre (§16), and drawing today's centred bullet page over
+## a blast-crazed pane would be the wrong art wired to a real trigger — worse than
+## no art, because it would look finished. B-3 is the consumer; this is B-1.
+var glass_crazes: Array = []
+
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
 ##
 ## `{Vector3i: {"at": seconds, "ring": int}}`. Every one of these is also a

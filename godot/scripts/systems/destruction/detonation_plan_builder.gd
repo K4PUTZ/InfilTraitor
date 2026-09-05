@@ -480,6 +480,10 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["occupancy"] = {}
 	s["touched_this_blast"] = {}
 	s["touched_voxels"] = []
+	## §6.2 / G-D35 B-1 — every voxel a craze marked, for the persistence top-up in
+	## `_phase_smoke`'s tail. See that block for the measurement that made it
+	## necessary.
+	s["crazed_voxels"] = []
 	s["census"] = {}
 	s["smoked_gus"] = {}
 	## D-4b — `{gu: [world_pos, level]}`, the HIGHEST damaged voxel of each GU the
@@ -603,14 +607,17 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			bomb_def.ring_multipliers, ring, pane_slices[0].material)
 		var salt := "BLAST_%d_%d_%s" % [source_gu.x, source_gu.y, pid]
 		if not GlassShatter.rolls_shatter(glass_punch, salt):
-			## CRACK-05 — a pane that was INSIDE the blast and survived it. Printed
-			## because the two silences are not the same event and the log could not
-			## tell them apart: a pane out of reach never gets here at all, while
-			## this one rolled and held. It is also the seam §6.2's crack-near-a-
-			## -blast-it-survives will hook, and the only way to read a ring off a
-			## real detonation today.
-			print_debug("[GLASS-SHATTER-BLAST] pane=%s ring=%d glass_punch=%.2f — roll LOST, pane stands"
-				% [pid, ring, glass_punch])
+			## ── §6.2 / G-D35 B-1 — THE PANE STANDS, AND IT CRAZES ────────────────
+			##
+			## Two cases arrive here and they are ONE event (`GlassShatter.
+			## CRAZE_RING_INTENSITY`'s own note): the pane inside the damage area
+			## whose roll was lost, and the pane at ring 3 that was never at risk
+			## because `ring_multipliers` ends in 0.0 — *"perto de uma explosão, mas
+			## não dentro da área de dano"*, already in `affected` at no cost.
+			##
+			## The WHOLE pane goes CRACKED (G-D2, G-D35): the intensity axis is
+			## granularity, not area.
+			_craze_pane(s, pid, slices_by_pane.get(pid, []), ring, epicenter)
 			continue
 		## Flood origin = the pane voxel nearest the epicenter.
 		var face: int = pane_slices[0].face
@@ -671,6 +678,62 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 				deepest = maxi(deepest, int(c))
 			print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
 				% [landings.size(), entries.size(), piles.size(), deepest, entries.size() - landings.size()])
+
+
+## §6.2 / G-D35 B-1 — mark one surviving pane CRACKED and record the attribution.
+##
+## Split out of `_shatter_glass_panes()` rather than inlined because the two
+## branches answer different questions: that one decides WHETHER a pane goes, this
+## one describes what happens to one that does not. Pure — it appends to the Delta
+## and touches no Voxel, exactly like the branch above it.
+static func _craze_pane(s: Dictionary, pane_id: String, pane_slices: Array,
+		ring: int, epicenter: Vector2i) -> void:
+	var delta: WorldDelta = s["delta"]
+	var intensity: float = GlassShatter.blast_craze_intensity(ring)
+	if pane_slices.is_empty() or intensity <= 0.0:
+		## Off the end of the intensity table — the pane is in `affected` but the
+		## blast does not reach it even to craze. Said out loud, because "nothing
+		## happened" and "the table has no row for this ring" look identical in a
+		## log and only one of them is a tuning question.
+		print_debug("[GLASS-CRAZE] pane=%s ring=%d — no craze (intensity %.2f)"
+			% [pane_id, ring, intensity])
+		return
+	var voxels: Array = GlassShatter.plan_pane_craze(pane_slices)
+	if voxels.is_empty():
+		return
+	var entries: Array = []
+	## The pane voxel nearest the epicenter, for the record. Not an impact — a
+	## craze has no impact, which is the whole point of G-D29/G-D35's centreless
+	## field — but the sheet has to be ANCHORED somewhere to be rebuilt after a
+	## flip, and "the corner of the pane the blast was closest to" is the one
+	## point on it a later pass can re-derive without storing a pane id that a
+	## rotation renumbers.
+	var anchor: Voxel = null
+	var best_d: float = INF
+	for v in voxels:
+		entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.CRACKED, true))
+		var d: float = Vector2(v.grid_pos - epicenter).length()
+		if d < best_d:
+			best_d = d
+			anchor = v
+	delta.add_damage(entries)
+	## ⚠️ AND THEY MUST REACH `touched_voxels`, WHICH PACKAGE ALONE CANNOT DO.
+	## Measured on the GLASS map: the craze marked **1152** voxels and the census
+	## reported **576**. PHASE_PACKAGE walks `ring_of`, which `_phase_slices` fills
+	## only for the slices in `affected` — the blast reached 3 of this pane's 6
+	## slices. A craze takes the WHOLE pane by design (G-D2), so half of it was
+	## never packaged, never entered `touched_voxels`, and would therefore have been
+	## dropped by VL-PERSIST: **a perspective flip would have healed half of every
+	## blast-crazed pane.** Collected here, topped up after PACKAGE has run.
+	var crazed: Array = s["crazed_voxels"]
+	for v2 in voxels:
+		crazed.append(v2)
+	delta.glass_crazes.append({
+		"pane_id": pane_id, "cell": anchor.grid_pos, "level": anchor.level,
+		"ring": ring, "intensity": intensity,
+	})
+	print_debug("[GLASS-CRAZE] pane=%s ring=%d intensity=%.2f — pane STANDS, %d voxel(s) CRACKED"
+		% [pane_id, ring, intensity, entries.size()])
 
 
 ## E-JUNCTION-01 (2026-08-13): wall-junction corner columns — mirrors
@@ -1260,6 +1323,33 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 		## Delta, a HUD readout). `census` stops being a print-only side effect.
 		var delta: WorldDelta = s["delta"]
 		var touched_voxels: Array = s["touched_voxels"]
+		## ── §6.2 / G-D35 B-1 — THE CRAZE'S PERSISTENCE TOP-UP ─────────────────
+		##
+		## ⚠️ IT RUNS HERE AND NOT AT THE CRAZE, AND THE PLACE IS THE WHOLE POINT.
+		## PHASE_PACKAGE is what fills `touched_voxels`, and it only walks the
+		## slices the blast REACHED; a craze takes the whole pane. Adding the
+		## voxels at craze time would double every one PACKAGE also saw (it appends
+		## unconditionally), and flagging them in `touched_this_blast` to stop that
+		## would silently change what `_phase_soot_wave` repaints — a second
+		## consumer of that dictionary, and a cell outside `affected` is exactly
+		## the kind it exists to catch. Deduped against the packaged set instead,
+		## once, after both are final.
+		var crazed: Array = s["crazed_voxels"]
+		if not crazed.is_empty():
+			var seen: Dictionary = {}
+			for tv in touched_voxels:
+				seen[Vector3i(tv.grid_pos.x, tv.grid_pos.y, tv.level)] = true
+			var added: int = 0
+			for cv in crazed:
+				var ck := Vector3i(cv.grid_pos.x, cv.grid_pos.y, cv.level)
+				if seen.has(ck):
+					continue
+				seen[ck] = true
+				touched_voxels.append(cv)
+				added += 1
+			if added > 0:
+				print_debug("[GLASS-CRAZE] %d of %d crazed voxel(s) were outside the packaged rings — added to the persistence set"
+					% [added, crazed.size()])
 		delta.touched_voxels = touched_voxels
 		var touched_cells: Array[Vector3i] = []
 		for v in touched_voxels:

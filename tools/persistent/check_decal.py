@@ -820,7 +820,7 @@ def _classless_sheets():
     except OSError:
         return None
     out = set()
-    for m in re.finditer(r'^const\s+ARMORED_SHEET\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"',
+    for m in re.finditer(r'^const\s+ARMORED_SHEET_[A-Z]+\s*:\s*String\s*=\s*"([A-Za-z0-9_]+)"',
                          text, re.M):
         out.add(m.group(1))
     return out

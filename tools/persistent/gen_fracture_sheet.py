@@ -76,10 +76,21 @@ PRESETS = {
     #
     # Around it: dense radial NEEDLES (many, fine, short) rather than a few long
     # runners, and a wider secondary craze field carried by the waves.
-    "armored": dict(radials=26, reach=0.30, stroke=(1.1, 2.0), stroke_twin=(0.7, 1.3),
+    # ⚠️ TWO CLASSES, AND THE ONLY THING THAT DIFFERS IS THE PAGE SPAN (Director,
+    # 2026-09-04: *"3 versões diferentes pra cada calibre"*, on G-D14's existing
+    # two-way split — `WeaponDef.blowout` < 0.5 vs >= 0.5). A rifle's mark is a
+    # BIGGER version of the same composition, not a different drawing: the sheet
+    # is page-relative throughout (see ARMORED_CORE), so one preset body serves
+    # both and the span is the whole size decision. 10 x 5 is the Director's pick
+    # off `glass_armored_span_strip_2026-09-04.png`.
+    "armored_tight": dict(radials=26, reach=0.30, stroke=(1.1, 2.0), stroke_twin=(0.7, 1.3),
                     waves=7, wave_ratio=1.34, wave_span=(3, 6), wave_falloff=0.30,
                     wave_start=2.20, slivers=6, stubs=150, specks=240, twins=3,
-                    field=(900, 2.2, 8.5), span=(24.0, 12.0)),
+                    field=(900, 2.2, 8.5), span=(10.0, 5.0)),
+    "armored_wide": dict(radials=30, reach=0.30, stroke=(1.1, 2.0), stroke_twin=(0.7, 1.3),
+                    waves=7, wave_ratio=1.34, wave_span=(3, 6), wave_falloff=0.30,
+                    wave_start=2.20, slivers=6, stubs=170, specks=270, twins=3,
+                    field=(1000, 2.2, 8.5), span=(16.0, 8.0)),
 }
 
 # ── THE ARMORED "OPENING", WHICH IS NOT ONE ─────────────────────────────────
@@ -93,15 +104,45 @@ PRESETS = {
 # feather is off (it exists to ramp ink IN from a void's edge, and this centre is
 # the brightest part of the page).
 #
-# Radii in voxels. Ragged rather than round: a crush zone is not a circle, and a
-# circle is what would read as a painted dot.
-ARMORED_CORE = [0.62, 0.55, 0.68, 0.58, 0.50, 0.64, 0.57, 0.71,
-                0.54, 0.60, 0.66, 0.52, 0.63, 0.56, 0.69, 0.59]
+# ⚠️ RADII ARE A FRACTION OF THE PAGE'S HALF-WIDTH, NOT VOXELS, AND THE SPAN
+# STRIP IS WHY.
+#
+# Every other member's geometry is anchored in VOXELS because it is generated
+# from a real OPENING: a hole is a fixed number of voxels across whatever page it
+# is drawn on, so the page may be resized around it. `armored` has no hole, so
+# nothing anchors it — and the Director sized it by looking at the WHOLE
+# composition scaled up and down (`glass_armored_span_strip_2026-09-04.png`,
+# where only the quad moved and the art did not change).
+#
+# Leaving the radii in voxels would therefore have re-proportioned the sheet at
+# the span he picked: at 24 the core is 2.5% of the page, at 10 it would have
+# been 6.0% — a core 2.4x larger relative to its own needles than the frame that
+# was approved. Page-relative, the composition is identical at every span and the
+# span is purely how big the mark is on the pane.
+#
+# Ragged rather than round: a crush zone is not a circle, and a circle is what
+# would read as a painted dot.
+ARMORED_CORE = [0.0517, 0.0458, 0.0567, 0.0483, 0.0417, 0.0533, 0.0475, 0.0592,
+                0.0450, 0.0500, 0.0550, 0.0433, 0.0525, 0.0467, 0.0575, 0.0492]
 
 # How far into the core the SOLID white heart reaches, as a fraction of the local
-# core radius. Below it the page is flat 255; above it the facets take over and
-# fade. 1.0 would be a painted disc, 0.0 a ring with a hole in it.
+# core radius. Above it the facets take over and fade. 1.0 would be a painted
+# disc, 0.0 a ring with a hole in it.
 ARMORED_HEART = 0.42
+
+# The heart's LUMINANCE, and it is deliberately not 255 (Director, 2026-09-04:
+# *"tira um pouco a opacidade do centro, queremos ver um restinho do fundo"*).
+#
+# ⚠️ IT IS TUNED HERE AND NOT IN THE SHADER. `crack_opacity` is 0.80 for EVERY
+# crack in the game — a ratified dial (*"da pra ver um pouco do cenário atrás da
+# rachadura"*) — so lowering it for the armoured core would quietly re-open a
+# decision that was made once for the whole track. The sheet's own ink is the
+# per-class knob: luma IS the alpha, so 205 lands the core at 205/255 x 0.80 =
+# 64% opaque and leaves a third of the pane showing through.
+#
+# The facets on top still reach 255 in places, which is what keeps the core
+# reading as CRUSHED rather than as a flat translucent dot.
+ARMORED_HEART_LUMA = 205
 
 # How many voxels of PAGE per voxel of hole DIAMETER. Ratified by looking:
 # `SHEET_SCALE` 1.4 on the old (20 voxel page / 3.4 voxel hole) is ~8.2, and the
@@ -206,7 +247,7 @@ def _draw_craze_field(d, rng, cx, cy, hole, count, r_lo, r_hi):
         _stroke(d, pts, rng.randint(70, 150), rng.uniform(0.7, 1.3))
 
 
-def _draw_crushed_core(d, rng, cx, cy, hole_at, px_per_voxel):
+def _draw_crushed_core(d, rng, cx, cy, hole_at):
     """G-D28's opaque core: pulverised glass, brightest at the middle, ragged at
     the edge, never a void and never a clean disc.
 
@@ -224,7 +265,7 @@ def _draw_crushed_core(d, rng, cx, cy, hole_at, px_per_voxel):
     ## 1. The heart.
     d.polygon([(cx + math.cos(a) * hole_at(a) * ARMORED_HEART * rng.uniform(0.88, 1.12),
                 cy + math.sin(a) * hole_at(a) * ARMORED_HEART * rng.uniform(0.88, 1.12))
-               for a in ang[::12]], fill=255)
+               for a in ang[::12]], fill=ARMORED_HEART_LUMA)
 
     ## 2. The facets. Area-uniform in r so they do not pile up at the centre —
     ## the DENSITY gradient comes from the brightness ramp, not from crowding,
@@ -239,7 +280,8 @@ def _draw_crushed_core(d, rng, cx, cy, hole_at, px_per_voxel):
         d.polygon([(x + math.cos(b) * s * rng.uniform(0.4, 1.7),
                     y + math.sin(b) * s * rng.uniform(0.4, 1.7))
                    for b in (0.0, 1.9, 3.6, 5.0)],
-                  fill=int(255 * (1.0 - 0.55 * t) * rng.uniform(0.75, 1.0)))
+                  fill=int(ARMORED_HEART_LUMA * 1.24 * (1.0 - 0.55 * t)
+                            * rng.uniform(0.75, 1.0)))
 
     ## 3. The lip — outward strokes straddling the boundary.
     for _ in range(220):
@@ -256,7 +298,7 @@ def _draw_crushed_core(d, rng, cx, cy, hole_at, px_per_voxel):
         a = rng.uniform(0, 2.0 * math.pi)
         h = hole_at(a)
         pts, _ = _walk(rng, cx + math.cos(a) * h, cy + math.sin(a) * h, a,
-                       px_per_voxel * rng.uniform(1.2, 3.4))
+                       h * rng.uniform(2.6, 7.0))
         _stroke(d, pts, rng.randint(170, 230), rng.uniform(1.0, 1.8))
 
 
@@ -272,6 +314,13 @@ def generate(opening, seed=7):
     px_per_voxel = (W * SS) / span_x
     radii = opening["radii"]
     n_r = len(radii)
+    ## ⚠️ WHAT ONE UNIT OF `radii` MEANS DEPENDS ON THE CLASS, and it is stated
+    ## here rather than left to the caller. An OPENING's radii are VOXELS — the
+    ## polygon the engine cuts, which is a fixed size on the pane however the page
+    ## is scaled. `armored`'s are a fraction of the page's HALF-WIDTH, because it
+    ## has no opening to be anchored to and its size is the span alone
+    ## (ARMORED_CORE's own note carries the measurement).
+    radius_unit = (W * SS) / 2.0 if opening.get("solid_core", False) else px_per_voxel
 
     def hole_at(ang):
         """The opening's boundary along `ang`, in page pixels. This replaces the
@@ -292,12 +341,12 @@ def generate(opening, seed=7):
         i0 = int(t) % n_r
         i1 = (i0 + 1) % n_r
         f = t - int(t)
-        return (radii[i0] * (1.0 - f) + radii[i1] * f) * px_per_voxel
+        return (radii[i0] * (1.0 - f) + radii[i1] * f) * radius_unit
 
     # A representative radius, for the routines that want one scalar (the speck
     # and stub falloffs). The MEAN, not the max: the max is one spike's tip and
     # would push every speck out past the whole web.
-    hole = (sum(radii) / float(n_r)) * px_per_voxel
+    hole = (sum(radii) / float(n_r)) * radius_unit
 
     # The radial run reaches a page CORNER at 1.0, so reach > 1 clips at the
     # edges instead of stopping short of them.
@@ -446,7 +495,7 @@ def generate(opening, seed=7):
     if opening.get("solid_core", False):
         f = p.get("field", (0, 2.0, 6.0))
         _draw_craze_field(d, rng, cx, cy, hole, f[0], f[1], f[2])
-        _draw_crushed_core(d, rng, cx, cy, hole_at, px_per_voxel)
+        _draw_crushed_core(d, rng, cx, cy, hole_at)
         img = img.filter(ImageFilter.GaussianBlur(0.55 * SS))
         img = img.resize((W, H), Image.LANCZOS)
         return img.convert("RGB")
@@ -515,8 +564,13 @@ GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 DUMPER = "godot/scripts/tools/dump_glass_openings.gd"
 
 
-def armored_opening():
+def armored_openings():
     """G-D28's `armored` class, in the shape this generator draws from.
+
+    Two of them since the Director's *"3 versões diferentes pra cada calibre"* —
+    `armored_tight` and `armored_wide`, on G-D14's existing blowout split. They
+    share every parameter but the page SPAN, which is the whole size decision
+    because the composition is page-relative (see ARMORED_CORE).
 
     ⚠️ IT IS DELIBERATELY NOT A MEMBER OF `GlassOpening.FAMILY`, and the reason is
     the whole ruling: an OPENING is a hole — a polygon the engine erases voxels
@@ -528,8 +582,9 @@ def armored_opening():
     other sheet does — a row in `fracture_manifest.json`, keyed by name — and
     `GlassCrack.sheet_id_for()` is what selects it, off the pane's MATERIAL rather
     than off the weapon."""
-    return {"id": "armored", "size": "armored", "solid_core": True,
-            "radii": ARMORED_CORE, "r_max": max(ARMORED_CORE)}
+    return [{"id": name, "size": name, "solid_core": True,
+             "radii": ARMORED_CORE, "r_max": max(ARMORED_CORE)}
+            for name in ("armored_tight", "armored_wide")]
 
 
 def load_openings(project_root):
@@ -563,7 +618,7 @@ if __name__ == "__main__":
     if not args.all and not args.only:
         ap.error("nothing to do — pass --all, or --only <opening>")
 
-    openings = load_openings(args.project) + [armored_opening()]
+    openings = load_openings(args.project) + armored_openings()
     if args.only:
         openings = [o for o in openings if o["id"] == args.only]
         if not openings:

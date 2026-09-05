@@ -15,12 +15,20 @@ What `armored` actually shipped, against what §5 asked for:
 |---|---|
 | 1 · `FRACTURE_WIDTHS` grows | ⛔ **not done, and it is right not to.** CRACK-04 removed the width axis: sheets resolve by (opening, variant) through `fracture_manifest.json`, which is what `check_decal.py` reads. `FRACTURE_WIDTHS` is vestigial |
 | 2 · the gate learns the class | ✅ `check_decal.py` reads the non-opening sheet ids out of `glass_crack.gd` and REQUIRES the row. The `blast_*` origin exemption is still owed, with the art |
-| 3 · a span per class | ✅ `armored` is 24 × 12 voxels, carried in the manifest like every other page |
-| 4 · the selector | ✅ `GlassCrack.sheet_id_for(opening, wide, armored)` — one authority, replacing the two copies of the fallback rule that page and quad were each using |
+| 3 · a span per class | ✅ and it is **two** classes, on G-D14's blowout split (Director: *"3 versões diferentes pra cada calibre"*): `armored_tight` 10 × 5 and `armored_wide` 16 × 8, three variants each. Both sizes ruled by looking, off `glass_armored_span_strip_2026-09-04.png` |
+| 4 · the selector | ✅ `GlassCrack.sheet_id_for(opening, wide, armored)` — one authority, replacing the two copies of the fallback rule that page and quad were each using. WHETHER a pane is armoured is material/class; WHICH of the two sheets is the weapon's blowout, and only its size |
 | 5 · the blast trigger | 🟡 unbuilt, as ordered. CRACK-05 did add the seam it will hook: a pane inside a blast that ROLLS AND HOLDS now says so |
 | 6 · the hash | 🟡 unbuilt — it belongs to `blast_*`. `armored`'s three variants ride CRACK-04's existing `pick_variant()` |
 
+⚠️ **`blast_*` is superseded as an ART SPEC by G-D35** (Director, 2026-09-04),
+which is a different thing from the three flip-hashed panels §2 of this order
+describes: no centre, two axes (destruction × granularity), perforated per voxel,
+and tiled rather than placed. §2's hash-and-flip mechanism survives; the sheet it
+was written for does not. `GLASS_MASTER_PLAN.md` §16 is the live spec.
+
 Evidence: `glass_armored_sheet_ab_2026-09-04.png` (a same-binary A/B),
+`glass_armored_span_strip_2026-09-04.png` (the size ruling, one boot),
+`glass_armored_calibres_2026-09-04.png` (the two calibres),
 `shot_c05_armored_3_damage.png` (the real shot path). Full detail in
 `GLASS_MASTER_PLAN.md` §15.
 

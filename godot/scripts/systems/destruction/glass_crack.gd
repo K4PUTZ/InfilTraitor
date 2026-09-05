@@ -126,7 +126,14 @@ static func wide_for_blowout(blowout: float) -> bool:
 ## rompe"*. Adding it to the family would make it pickable by `pick()` and
 ## cuttable by `refresh_glass_rims()`, which is the one pane that must never be
 ## cut. It is a sheet id, chosen here, and nowhere else knows the difference.
-const ARMORED_SHEET: String = "armored"
+## ⚠️ TWO OF THEM, ON G-D14's OWN AXIS (Director, 2026-09-04: *"3 versões
+## diferentes pra cada calibre"*). A rifle leaves a bigger crush mark than a
+## pistol, and the split that already exists — `WeaponDef.blowout` — is the one
+## that says so. Nothing else about the two sheets differs: the composition is
+## page-relative, so the SPAN is the whole size decision (10 x 5 voxels against
+## 16 x 8, ruled off `glass_armored_span_strip_2026-09-04.png`).
+const ARMORED_SHEET_TIGHT: String = "armored_tight"
+const ARMORED_SHEET_WIDE: String = "armored_wide"
 
 
 ## WHICH SHEET this crack draws, as a manifest key.
@@ -140,16 +147,19 @@ const ARMORED_SHEET: String = "armored"
 ## The three cases, and the order matters:
 ##   * a hole was opened → the opening's own page, because the sheet's void IS
 ##     that polygon (G-D34);
-##   * no hole, and the pane STOPS rounds or shatters whole → `armored`, an
-##     opaque crushed-white core. Chosen by MATERIAL/CLASS, never by the weapon:
-##     G-D28's trigger is `glass_armored` and the INDESTRUCTIBLE screens;
+##   * no hole, and the pane STOPS rounds or shatters whole → the `armored` pair,
+##     an opaque crushed-white core. WHETHER it is armoured is decided by
+##     MATERIAL/CLASS and never by the weapon — G-D28's trigger is
+##     `glass_armored` and the INDESTRUCTIBLE screens. ⚠️ WHICH OF THE TWO is the
+##     weapon's business, and only its size: `wide` is G-D14's blowout split, so
+##     a rifle's crush mark is a bigger page than a pistol's;
 ##   * no hole, ordinary glass → the smallest member's page, whose 0.8-voxel void
 ##     is too small to read as a feature. Unchanged.
 static func sheet_id_for(opening_id: String, wide: bool, armored: bool = false) -> String:
 	if opening_id != "":
 		return opening_id
 	if armored:
-		return ARMORED_SHEET
+		return ARMORED_SHEET_WIDE if wide else ARMORED_SHEET_TIGHT
 	return "chamfer_45_wide" if wide else "chamfer_45"
 
 

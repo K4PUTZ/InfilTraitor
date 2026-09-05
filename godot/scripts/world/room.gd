@@ -6056,6 +6056,41 @@ func _capture_glass_crack_demo() -> void:
 			print("[CRACK-DEMO] alignment frame (%s) -> %s"
 				% ["web shown" if shown else "web hidden", aname.get_file()])
 
+	## ── CRACK-05 — THE SPAN STRIP, IN ONE BOOT ───────────────────────────────
+	##
+	## (Director, 2026-09-04, on the armoured core: *"tem que diminuir mesmo o
+	## decal"*.)
+	##
+	## `INFILTRAITOR_CRACK_DEMO_SPANS="24,18,14,10"` redraws the SAME crack at each
+	## page span in voxels and saves a frame per value. One boot, for the reason the
+	## G-D30 cut triptych is one boot: separate runs would differ in the light, the
+	## guard sweep and the shard set by intent and in fact, and the Director would
+	## be comparing four pictures instead of making one decision.
+	##
+	## ⚠️ THE SPAN IS THE ONLY THING THAT MOVES. Same opening, same variant, same
+	## impact, same sheet — the sprite is rebuilt from the very spec the real path
+	## produced, with one field replaced.
+	var spans_env := OS.get_environment("INFILTRAITOR_CRACK_DEMO_SPANS")
+	if spans_env != "":
+		var base_spec: Dictionary = GlassCrack.sprite_spec(plan)
+		for part in spans_env.split(",", false):
+			if not part.is_valid_float():
+				push_warning("[CRACK-DEMO] span %r is not a number" % part)
+				continue
+			var sw: float = part.to_float()
+			_voxel_renderer.clear_glass_cracks()
+			var spec2: Dictionary = base_spec.duplicate(true)
+			spec2["span"] = Vector2(sw, sw * 0.5)
+			if _voxel_renderer.spawn_glass_crack(spec2) == 0:
+				push_warning("[CRACK-DEMO] span %.1f produced no sprite" % sw)
+				continue
+			for _f in range(8):
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			var sname := "%s/glass_crack_span_%s_%02d.png" % [dir, tag, int(round(sw))]
+			get_viewport().get_texture().get_image().save_png(sname)
+			print("[CRACK-DEMO] span %.1f x %.1f voxels -> %s" % [sw, sw * 0.5, sname.get_file()])
+
 	## CRACK-04 — the void A/B, in ONE boot for the reason the cut triptych is.
 	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_VOID") == "1":
 		for on in [false, true]:

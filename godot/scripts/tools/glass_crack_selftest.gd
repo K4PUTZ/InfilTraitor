@@ -1532,8 +1532,11 @@ func test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon() -> void:
 		_fail("a claimed opening lost to the armoured branch — a pierced armoured "
 			+ "pane would draw a crushed core over a hole that exists")
 		ok_sel = false
-	if GlassCrackClass.sheet_id_for("", false, true) != GlassCrackClass.ARMORED_SHEET:
-		_fail("a crazed armoured pane does not select %s" % GlassCrackClass.ARMORED_SHEET)
+	if GlassCrackClass.sheet_id_for("", false, true) != GlassCrackClass.ARMORED_SHEET_TIGHT \
+			or GlassCrackClass.sheet_id_for("", true, true) != GlassCrackClass.ARMORED_SHEET_WIDE:
+		_fail("a crazed armoured pane does not select the armoured pair (got %s / %s)"
+			% [GlassCrackClass.sheet_id_for("", false, true),
+			GlassCrackClass.sheet_id_for("", true, true)])
 		ok_sel = false
 	## Ordinary glass that only crazed keeps the smallest member's page. ⚠️ This
 	## is the half that would fail SILENTLY: a crushed white core on a pane a
@@ -1543,7 +1546,8 @@ func test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon() -> void:
 		_fail("ordinary crazed glass no longer falls back to the chamfer_45 pages")
 		ok_sel = false
 	if ok_sel:
-		_pass("sheet_id_for: opening wins > armoured core > the smallest member's page")
+		_pass("sheet_id_for: opening wins > the armoured pair (tight/wide on G-D14's "
+			+ "blowout split) > the smallest member's page")
 
 	## ⚠️ AND THE SPAN MUST FOLLOW THE SAME PICK. The page and the quad were
 	## chosen by two copies of this rule until CRACK-05; a span that still
@@ -1561,32 +1565,51 @@ func test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon() -> void:
 
 	## ── The three sheets, on disk and loading. ───────────────────────────────
 	var bad: Array = []
-	for v in range(GlassCrackClass.variant_count()):
-		var path: String = GlassCrackClass.sheet_path(GlassCrackClass.ARMORED_SHEET, v)
-		if path == "":
-			bad.append("v%d has no manifest row" % v)
-		elif not FileAccess.file_exists(path):
-			bad.append("v%d missing (%s)" % [v, path])
-		elif not FileAccess.file_exists(path + ".import"):
-			bad.append("v%d has no .import sidecar (hard-errors at boot, B6)" % v)
-		elif load(path) as Texture2D == null:
-			bad.append("v%d did not load" % v)
+	var n_sheets: int = 0
+	for id in [GlassCrackClass.ARMORED_SHEET_TIGHT, GlassCrackClass.ARMORED_SHEET_WIDE]:
+		for v in range(GlassCrackClass.variant_count()):
+			var path: String = GlassCrackClass.sheet_path(String(id), v)
+			if path == "":
+				bad.append("%s v%d has no manifest row" % [id, v])
+			elif not FileAccess.file_exists(path):
+				bad.append("%s v%d missing (%s)" % [id, v, path])
+			elif not FileAccess.file_exists(path + ".import"):
+				bad.append("%s v%d has no .import sidecar (hard-errors at boot, B6)" % [id, v])
+			elif load(path) as Texture2D == null:
+				bad.append("%s v%d did not load" % [id, v])
+			else:
+				n_sheets += 1
 	if bad.is_empty():
-		_pass("all %d armoured sheets exist, import and load" % GlassCrackClass.variant_count())
+		_pass("all %d armoured sheets exist, import and load (2 calibre classes x %d)"
+			% [n_sheets, GlassCrackClass.variant_count()])
 	else:
 		_fail("armoured sheet(s): %s — run tools/persistent/gen_fracture_sheet.py --all"
 			% ", ".join(bad))
 
+	## ⚠️ AND THE RIFLE'S PAGE MUST BE BIGGER. The two sheets differ in NOTHING but
+	## the span — that is what makes one preset body serve both — so a manifest that
+	## gave them the same number would silently collapse the calibre split.
+	var s_t: Vector2 = GlassCrackClass.sheet_span_for("", false, true)
+	var s_w: Vector2 = GlassCrackClass.sheet_span_for("", true, true)
+	if s_w.x > s_t.x:
+		_pass("the rifle's crush mark is a bigger page: %s vs %s voxels (G-D14)" % [s_w, s_t])
+	else:
+		_fail("armoured tight %s is not smaller than wide %s — the calibre split "
+			% [s_t, s_w] + "has collapsed")
+
 	## ⚠️ AND IT IS NOT AN OPENING. `GlassOpening.FAMILY` holds HOLES; a member
 	## there is pickable by `pick()` and cuttable by `refresh_glass_rims()`, and
 	## armoured glass is the one pane that must never lose a voxel (G-D15).
-	if GlassOpeningClass.FAMILY.has(GlassCrackClass.ARMORED_SHEET):
-		_fail("%s is in GlassOpening.FAMILY — it would become a real hole, on the "
-			% GlassCrackClass.ARMORED_SHEET
-			+ "one class of pane that cannot have one")
+	var in_family: Array = []
+	for id in [GlassCrackClass.ARMORED_SHEET_TIGHT, GlassCrackClass.ARMORED_SHEET_WIDE]:
+		if GlassOpeningClass.FAMILY.has(id):
+			in_family.append(String(id))
+	if in_family.is_empty():
+		_pass("both armoured ids are sheet ids and NOT openings — nothing can cut a "
+			+ "voxel with either")
 	else:
-		_pass("%s is a sheet id and NOT an opening — nothing can cut a voxel with it"
-			% GlassCrackClass.ARMORED_SHEET)
+		_fail("%s in GlassOpening.FAMILY — they would become real holes, on the one "
+			% ", ".join(in_family) + "class of pane that cannot have one")
 
 	## ── The plan derives it from the PANE, not from the weapon. ──────────────
 	##

@@ -5,12 +5,13 @@ The previous session is
 It closed CRACK-04 and left **exactly two things open**, both named rather than
 implied. The Director asked for both: *"Cooking + armored glass."*
 
-`GLASS_MASTER_PLAN` v1.25 → **v1.26**, new **§15**.
+`GLASS_MASTER_PLAN` v1.25 → **v1.27**, new **§15** and **§16**, register gains **G-D35**.
 
 | | commit |
 |---|---|
 | the cook names its hole; the claim rides the Delta | `c1089d67` |
 | the pane that held, and the core that says so (G-D28) | `155663c7` |
+| the Director's three rulings, and the calibre split | (this commit) |
 
 ---
 
@@ -85,7 +86,8 @@ override beats the material's default (the GLASS map's amber screen).
 An opaque crushed-white core — a solid heart, ~500 facets fading outward, a
 ragged lip straddling the boundary — then 26 dense radial needles at a fine
 stroke, and a secondary craze field of ~900 short TANGENTIAL cracks between 2.2
-and 8.5 core radii, on a 24 × 12 voxel page.
+and 8.5 core radii. ⚠️ The page was 24 × 12 voxels when he first saw it; §7 is
+what it became.
 
 ⚠️ **The craze field is its own population, and the first version proved why.**
 Reusing the wave generator at a bigger radius drew a handful of long zigzag
@@ -112,7 +114,12 @@ claim is that re-running it reproduces the art.
 - `shot_c05_armored_3_damage.png` — the REAL shot path (`agent_shot`, pistol,
   agent 6,13 → guard 6,7): `glass_armored:s1 cracked=72 dented=0 destroyed=0`,
   and the round carries on into the concrete behind it.
-- `glass_crack_demo_armored_{before,after}.png` · `glass_blast_demo_{before,after}.png`.
+- `glass_armored_span_strip_2026-09-04.png` — the size ruling, one boot, four
+  spans, only the quad moving.
+- `glass_armored_calibres_2026-09-04.png` — the approved frame beside the
+  regenerated `armored_tight` and its `armored_wide` sibling.
+- `glass_crack_demo_armored_{before,after,tight_after,wide_after}.png` ·
+  `glass_blast_demo_{before,after}.png`.
 - Selftests: `glass_shatter` **[20]** and `glass_crack` **[17]**, both proven RED
   with the change removed. **50 clean, 0 failed** across the suite.
 
@@ -133,14 +140,44 @@ claim is that re-running it reproduces the art.
 ## 6. Left open
 
 - **§6.2 / G-D29 `blast_*`** — the fringe crack, now one branch away. See §15.2.
-- **The armoured page's SIZE is a dial**: 24 × 12 voxels, picked as *"near
-  `tight`'s"* plus a little for the craze field. The Director tuned the bullet web
-  down once for being *"muito grande"*; this has not been through his eye at true
-  size.
+- ~~**The armoured page's SIZE is a dial.**~~ Ruled the same day — §7.
+- **G-D35, the blast craze family** — §8, and `GLASS_MASTER_PLAN.md` §16.
 - ⚠️ **`check_decal.py --material glass` still reports one WIRING FAIL, and it is
   PRE-EXISTING** — verified by running HEAD's own copy of the gate against a
   manifest with the `armored` row removed. It is the shard family's
   `IMPACT_DECAL_MATERIALS` branch, whose own comment says glass must NOT be added
   to that list; the gate has no third state for "correctly absent".
 
-Full detail: `GLASS_MASTER_PLAN.md` §15.
+## 7. The Director's rulings on the delivered sheet, same day
+
+Shown the class on the real pane he kept the art and changed three things —
+§15.5 carries them, and §15.5a carries the trap inside the first:
+
+1. **10 × 5 voxels**, picked off a one-boot span strip (24 / 18 / 14 / 10, only
+   the quad moving).
+2. **The core at 64 % opaque**, tuned in the ART (luma 205) and NOT in the
+   shader: `crack_opacity` 0.80 is a whole-track dial ruled once.
+3. **Two calibre classes** on G-D14's own blowout split — `armored_tight` and
+   `armored_wide`, three variants each, differing in nothing but the span.
+
+⚠️ **The strip he chose from moved only the QUAD.** Regenerating at span 10 with
+the core still measured in voxels would have kept it at 0.6 voxels while the
+needles shrank with the page — a core 2.4× larger relative to its own needles than
+the frame he approved (2.5 % of the page at span 24 against 6.0 % at span 10). So
+`ARMORED_CORE` became a fraction of the page's half-width. **The distinction is
+the class's own:** every other member is anchored in voxels because it is
+generated from a real opening, and a hole is a fixed size on the pane whatever
+page it is drawn on. `armored` has no hole. That same property is what lets one
+preset body serve both calibres with the span as the only difference.
+
+## 8. G-D35 — the last piece of glass, ratified and staged
+
+The Director's brief for the explosion family, with two reference photos of
+shattered tempered glass. It is **not** a variation on the bullet classes: no
+centre, two axes (destruction × granularity), perforation chosen per voxel, and
+**tileable** — which is exactly what makes it cheap where twelve openings × three
+variants were not. `GLASS_MASTER_PLAN.md` §16 carries the spec and the B-1..B-5
+staging; **B-1 is the trigger**, because art without its caller is the trap this
+project has already paid for twice.
+
+Full detail: `GLASS_MASTER_PLAN.md` §15 and §16.

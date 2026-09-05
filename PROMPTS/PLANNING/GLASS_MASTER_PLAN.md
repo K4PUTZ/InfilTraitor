@@ -1,6 +1,24 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.39 — **G4 + THE SHARD RAIN ARE PLANNED, NOT BUILT (§18)**.
+**Status:** 🟢 v1.40 — **G4 + THE SHARD RAIN ARE PLANNED, NOT BUILT (§18), AND
+BOTH OPEN QUESTIONS ARE CLOSED (2026-09-05).**
+
+**G-D43 — the pile is the only permanent thing; the rain is disposable.** The
+shards fall, fade out over the G6 pile decal already drawn beneath them, and are
+freed. ⚠️ This RESOLVES a two-authorities question by DELETING a claim, not by
+reconciling: the decal is the sole record of "there is broken glass here". ⚠️ It
+also makes the whole effect safe to interrupt — a rain cut short by a stall, an
+off-screen pane or a perf budget still leaves the floor exactly right — so the
+rain can be skipped entirely, which is worth more than the permanence it replaces.
+
+**G-D44 — no big shards; every piece is between 1 and 1/2 voxel.** Supersedes
+G-D25 outright (never built, so nothing to delete; the PRIMITIVE it named still
+ships as CRACK-03's rim). ⚠️ And it is not a subtraction — conserving area, a
+0.5-1.0 voxel piece means **1 to 4 pieces per destroyed voxel**, so the
+population is a consequence of the ruling instead of a knob. It also unifies the
+size law across G-D38's two consumers.
+
+Earlier in v1.39 —
 ⚠️ **The finding that shapes the whole build: G4's RULE is already implemented and
 its answer is thrown away.** `plan_pane_shatter()` computes `spared` — G-D13b's
 anchored survivors, which is word for word the Director's *"voxels de vidro
@@ -12,9 +30,10 @@ The mechanism: **one 5-member polygon family with two consumers** (G-D38) — it
 cuts a voxel atom's alpha for a remnant stuck in the frame, and is rasterised
 into a 5-cell atlas for the falling shards, one textured MultiMesh, one draw
 call, where flip/flop/scale/rotation are free because they are the instance
-transform. The rain is a **pure function of G6's landing record** (G-D40), so
+transform. ~~The rain is a pure function of G6's landing record (G-D40), so
 rotation and a save reload re-lay it with no second store, and the resting field
-IS the animation at `t = 1` — permanent, zero per-frame CPU. The shockwave
+IS the animation at `t = 1` — permanent.~~ ⛔ **Superseded the same day by G-D43
+above: the rain does not rest.** The shockwave
 (G-D42) biases the LANDING CELL, which is state, so it lives in `plan_landings()`
 and not in the presentation.
 
@@ -403,7 +422,7 @@ just not the target case.
 | **G-D21** | **THE CRACK IS A FACADE SHEET RE-ANCHORED ONTO THE IMPACT — supersedes G-D20's tile mosaic.** *"essa ideia de fazer a grade e montar o mosaico, me parece que é essencialmente o que o baking system já faz […] gerar uma facade bem maior que as convencionais, com o furo baked no centro. E na hora que o tiro acerta a janela, ela tem margem pra 'sangrar' e ser reposicionada dentro da janela, cobrindo o voxel que foi acertado."* Correct, and it reduces to a SUBTRACTION: `_compute_facade_key()` already keys a voxel by `(column_in_run, level)` relative to the run's own origin, so "reposition the sheet" is offsetting those two numbers by (impact − sheet centre). No new mechanism, no new anchor unit, and — unlike a per-event mosaic — **the atoms are all composed once at load**, because the crack ART is fixed and only the OFFSET moves. A shot changes which atom each voxel picks; it mints nothing | ✅ Ratified 2026-09-01 · ⚠️ **AMENDED 2026-09-02 (§8.2): the mechanism is WORLD-SPACE sampling, not the `_compute_facade_key()` atom offset.** The "reduces to a subtraction" insight survives verbatim — it is now a subtraction inside `texture(fracture, v_glass_world − impact)` in the glass shader, ~2 MB and 0 atoms, because glass never rides the baked wall path. "Mints nothing" survives; "composed once at load" becomes "not composed at all". CRACK-01 §B |
 | **G-D23** | **NO MIRROR FOR THE CRACK FAMILY, AND A PANE HAS A MAXIMUM SIZE.** *"Vamos com a 3, tira o espelho dessa família. E aí convencionamos que toda vidraça vai ter um tamanho máximo. Que é o padrão real mesmo, nenhuma janela é infinita. Precisando, usa-se um frame divisório e começa outra vidraça."* The crack sheet clamps at its edge instead of mirroring, so beyond it there is simply NO crack — the physically right answer, and the one that cannot invent a second false fracture. The maximum pane is then DERIVED from the sheet rather than invented: **64 × 32 voxels = 8 GU × 4 storeys**, which makes *"a centred hit can crack the whole pane"* a guarantee. maps/GLASS.map.json's big pane (6 GU × 3 storeys) already fits. Anything larger is authored as two panes with a divider — a **NON-GLASS panel at the middle GU, or a gap**. ⚠️ A G-D9 `bands` entry does NOT split a pane (measured — see below); a banded window is still base-glass and the union-find joins it to its neighbours anyway | ✅ Ratified 2026-09-01 |
 | **G-D24** | **WHERE TWO FRACTURES CROSS, THE GLASS FALLS OUT.** *"Realisticamente falando, um segundo tiro iria quebrar regiões com cruzamentos de rachaduras, então destruir os voxels que se encontram também é uma opção."* A voxel already carrying a crack, reached by a SECOND fracture, becomes DESTROYED. This replaces the "nearest impact wins" tiebreak proposed a turn earlier and is better on every axis: physically right (crossed cracks drop the piece), free (DESTROYED is what the engine does natively — no per-voxel crack-source int, no compositing of two sheets ever), and it gives a second shot a real mechanical identity instead of a cosmetic one — the first shot crazes, the second opens a hole along the intersection. The freed voxels then fall and pile through G-D16a like any other break | ✅ Ratified 2026-09-01 |
-| **G-D25** | **A BIG SHARD IS A CUT SILHOUETTE ON WHOLE VOXELS, NOT A TEXTURE.** *(Director, 2026-09-02: "podem ter cacos maiores porém, com o tamanho de um voxel ou até mais: uma união de 2, 3, 4 voxels, em formatos diferentes, que nem precisam de textura específica, mas sim um shape recortado, nos moldes que usamos para fazer os voxels dented de teto, usando um alpha pra criar a máscara no voxel inteiro.")* The `shard` DECAL (G-D16b, delivered 2026-09-02) stays exactly what it is and the Director ratified its read the same day — **a shimmering white noise is the expected result at 16 × 20 px, not a shortfall**; it is the fine debris. What it cannot be is a big piece, because a decal is a mark ON a face and a large shard has a SILHOUETTE that is not the voxel's. So the big shards are a second, separate class: **an alpha mask cutting the whole voxel, the same mechanism as the DENTED CEILING voxel** (the Director's diagram — alpha bottom/top carves the cube's own outline rather than painting on it), spanning **1, 2, 3 or 4 voxels** in several shapes. **No per-shape texture:** the piece takes the material's ordinary glass surface and only its OUTLINE is authored, which is why the shape count is cheap. Build work belongs to G6 and is UNBUILT | ✅ Ratified 2026-09-02 · unbuilt |
+| **G-D25** | **A BIG SHARD IS A CUT SILHOUETTE ON WHOLE VOXELS, NOT A TEXTURE.** *(Director, 2026-09-02: "podem ter cacos maiores porém, com o tamanho de um voxel ou até mais: uma união de 2, 3, 4 voxels, em formatos diferentes, que nem precisam de textura específica, mas sim um shape recortado, nos moldes que usamos para fazer os voxels dented de teto, usando um alpha pra criar a máscara no voxel inteiro.")* The `shard` DECAL (G-D16b, delivered 2026-09-02) stays exactly what it is and the Director ratified its read the same day — **a shimmering white noise is the expected result at 16 × 20 px, not a shortfall**; it is the fine debris. What it cannot be is a big piece, because a decal is a mark ON a face and a large shard has a SILHOUETTE that is not the voxel's. So the big shards are a second, separate class: **an alpha mask cutting the whole voxel, the same mechanism as the DENTED CEILING voxel** (the Director's diagram — alpha bottom/top carves the cube's own outline rather than painting on it), spanning **1, 2, 3 or 4 voxels** in several shapes. **No per-shape texture:** the piece takes the material's ordinary glass surface and only its OUTLINE is authored, which is why the shape count is cheap. Build work belongs to G6 and is UNBUILT | ⛔ **SUPERSEDED 2026-09-05 by G-D44** — *"não precisam existir mais cacos grandes"*. Never built, so nothing to delete; the PRIMITIVE it named (an alpha mask carving a voxel's own silhouette) survives and is what CRACK-03/G-D31 shipped |
 | **G-D15** | **ARMORED GLASS (`glass_armored`, purple) — resists common shots; when breached, usually shatters entirely at once, leaving many individual shards.** ⚠️ **Special rifle case:** a rifle round may pierce a SINGLE voxel without shattering (treated as a weak hit) — this PRIMES the pane, and the next shot of ANY type auto-shatters the whole thing. `pane_primed` is a per-pane flag, checkpoint-scoped | ✅ Ratified 2026-08-31 · build after this doc is signed off |
 | **G-D16** | **Glass is a family of tinted behaviour classes, not new geometry.** All variants share G1's rendering and differ only in a tint (`base_color`) and a `glass_class`: `glass` (blue, BREAKABLE) · `glass_armored` (purple, ARMORED, G-D15) · `glass_screen_{green,red,amber}` (dark terminal tone) which is **INDESTRUCTIBLE** (control interfaces — takes a crack decal, never breaks, and STOPS the round: *"trinca mas o tiro para"*) or **BREAKABLE** (TVs, circuits, news panels) per placement | ✅ Ratified 2026-08-31 |
 | **G-D17** | **A screen is a glass voxel over a BLACK PLASTIC voxel.** *"O voxel de vidro fica na frente de voxels pretos de PLÁSTICO (a implementar — fura [não atravessa] ou derrete), de forma que nesses voxels pretos vamos pintar as imagens e textos posteriormente, e o vidro vai criar o efeito de brilho por cima."* New material **`plastic`** (black): a round DRILLS it (a hole, but the round does NOT pass through — unlike glass) or fire MELTS it. Images/text painted onto the plastic later; the glass in front adds the G1 sheen. Belongs in `MATERIALS_MASTER_PLAN` | ✅ Ratified 2026-08-31 · `plastic` + the paint layer are deferred |
@@ -413,9 +432,11 @@ just not the target case.
 | **G-D36** | **A CRAZED PANE STILL LETS SIGHT THROUGH — WITH A LARGE PENALTY.** *(Director, 2026-09-05, answering §16.4: "vidro rachado ainda permite a visão, mas com uma penalidade grande.")* This is the `LIGHT_MASTER_PLAN` split doing its job: the pane keeps TRANSMITTING (G1's blend is untouched, the agent and the guard still see each other's side), and what degrades is TACTICAL visibility — the detection term through a crazed pane, not the pixels. ⚠️ **It is a penalty, never a block**, which is the whole point: a binary "craze = opaque" would let one grenade delete a guard's sightline and turn the craze into a smoke wall, which is not what glass does. The magnitude is a balance number and belongs with G-D8's detection work, not with the art | ✅ Ratified 2026-09-05 |
 | **G-D38** | **ONE 5-MEMBER POLYGON FAMILY, TWO CONSUMERS.** *(Director, 2026-09-05: the remnant is built "nos mesmos moldes que usamos para fazer as aberturas das balas"; the debris is "só umas 5 shapes, onde vamos duplicar muitas vezes, dar flip, flop, scale up, scale down, rotation".)* Those are the SAME five shapes: the polygon cuts a voxel atom's alpha for a remnant stuck in the frame, and is rasterised once into a 5-cell atlas for the falling shards. ⚠️ **It cannot be `GlassOpening` itself** — an opening's INTERIOR is removed and a fragment's interior is what is KEPT, so reusing those members with the test inverted gives remnants shaped like the negative of a bullet hole (a ring, or a cell with a star-shaped bite), the opposite of "irregulares e angulosos". New family, same authoring language. ⚠️ **`MIN_VALLEY` does NOT carry over**: it exists so an opening swallows the cell it is centred on, and a remnant's invariant is the mirror image — area well under one cell, silhouette touching the edge it hangs from | 🟡 Planned 2026-09-05, §18.2 |
 | **G-D39** | **A REMNANT IS ORIENTED BY ITS ANCHOR, NEVER FREELY ROTATED.** The four-neighbour test that decided the voxel survives already says which side is solid; the shape is placed against it, and the pick key is `(shape, anchor_mask)`. A jagged fragment placed without regard to its anchor floats in the middle of the opening with its solid corner facing away from the brick — the detail that makes the feature read as decoration instead of physics. A two-sided (frame corner) anchor gets its own authored member rather than a rotation of a one-sided one | 🟡 Planned 2026-09-05, §18.3 |
-| **G-D40** | **THE RAIN IS A PURE FUNCTION OF G6'S LANDING RECORD, NOT A SECOND STORE.** Every shard's shape, flips, scale, spin, sub-cell offset and trajectory hash off `Vector3i(base_x, base_y, level)` + index. Consequences, all free: rotation re-lays the identical field; a save reload re-lays it; the ANIMATION and the RESTING field are one function at `t < 1` and `t = 1`; and "there is broken glass here" keeps exactly ONE authority. Answers the Director's *"se puder cair e ficar ótimo"* with **yes** — the frozen buffer is one draw call and zero per-frame CPU, not a fade-and-free | 🟡 Planned 2026-09-05, §18.4 |
+| **G-D40** | ⛔ **ITS PERSISTENCE HALF IS SUPERSEDED BY G-D43 (2026-09-05)** — the rain does not rest, so nothing about it needs to survive a rotation or a save. The DETERMINISM survives on its own smaller merit: a hash-driven field can be pixel-gated and a `randf()` one cannot, which is why `glass_blast_demo` is not pixel-deterministic today. Kept as written below for the record. ~~**THE RAIN IS A PURE FUNCTION OF G6'S LANDING RECORD, NOT A SECOND STORE.**~~ Every shard's shape, flips, scale, spin, sub-cell offset and trajectory hash off `Vector3i(base_x, base_y, level)` + index. Consequences, all free: rotation re-lays the identical field; a save reload re-lays it; the ANIMATION and the RESTING field are one function at `t < 1` and `t = 1`; and "there is broken glass here" keeps exactly ONE authority. Answers the Director's *"se puder cair e ficar ótimo"* with **yes** — the frozen buffer is one draw call and zero per-frame CPU, not a fade-and-free | 🟡 Planned 2026-09-05, §18.4 |
 | **G-D41** | **SUB-GU = ONE VOXEL CELL, AND EVERY DISTANCE IN THE BRIEF IS IN THOSE.** *(Director, 2026-09-05: "sub-GU is a Godot tile, where 1 voxel belongs. This is precisely the depth of the glass: 1 voxel.")* So the scatter is: most shards on the pane's own column, fewer one cell out, a tail reaching three — perpendicular to the pane BOTH ways and along the run. ⚠️ Reading "3 sub-GUs" as 3 GUs would throw glass 24 voxels across the room. ⚠️ **The landing cell is STATE** (the G6 pile, persisted and save-round-tripped), so the scatter is pure and lives in `plan_landings()`, never in the presentation layer | 🟡 Planned 2026-09-05, §18.5 |
 | **G-D42** | **THE SHOCKWAVE BIASES THE SCATTER, IT DOES NOT REPLACE IT.** *(Director, 2026-09-05: "uma força vetor que desloca todo o conjunto de cacos mais pra longe, baseado na força e na distância da granada… descrevendo uma suave parábola durante a queda".)* `plan_landings()` takes `{dir, strength, lift}` derived from the bomb's own `ring_multipliers` falloff — no second force model. At zero impulse G-D41's table is symmetric; a near grenade skews it downrange, further and wider. ⚠️ **`lift` will be UNEXERCISED BY ANY REAL MAP**: G-D16c/d is unbuilt, CEILING glass renders opaque and has no horizontal `pane_id`, so no skylight can shatter yet. It is authored with a synthetic test and an explicit unbuilt-consumer note rather than quietly, so it does not become the fourth feature this project built and never triggered | 🟡 Planned 2026-09-05, §18.5 |
+| **G-D43** | **THE PILE IS THE ONLY PERMANENT THING; THE RAIN IS DISPOSABLE.** *(Director, 2026-09-05: "vamos padronizar a pilha no chão. Os cacos caem no chão, apagam e revelam um sprite padrão por trás.")* This RESOLVES §18.7(a) by removing a claim rather than reconciling two — the standing lesson. G6's pile decal is the sole authority for "there is broken glass here"; the shard field falls, fades out over it, and is freed. ⚠️ **The decal is spawned UNDER the field at the moment of landing, at its final opacity, not faded in** — *"por trás"*, and it means a rain cut short by a stall, an off-screen pane or a perf budget still leaves the floor exactly right. **The rain therefore has NO state consequence at all** and can be skipped entirely, which is worth more than it looks with performance as the standing priority. ⚠️ Consequence for G-D40: nothing about the field has to survive a rotation or a reload, so its hash-determinism is now a TESTABILITY choice (a pixel gate needs it) rather than a correctness one | ✅ Ratified 2026-09-05 |
+| **G-D44** | **NO BIG SHARDS — EVERY PIECE IS BETWEEN 1 AND 1/2 VOXEL.** *(Director, 2026-09-05: "não precisam existir mais cacos grandes, quando houver uma explosão que quebra o vidro, os cacos se subdividem todos em partes com tamanhos entre 1 e 1/2 voxel.")* Supersedes G-D25's 1-4-voxel cut silhouettes outright. **And it hands the population a law instead of a guess:** area is conserved, a piece of edge 0.5-1.0 has area 0.25-1.0, so one voxel yields **1 to 4 pieces**, ~2.3 on average — the map's 6 GU x 3 storey pane is 1 152 voxels and therefore ~2 600 shards, not an arbitrary `shards_per_voxel`. ⚠️ **It also unifies the size law across G-D38's two consumers**: the remnant in the frame is a piece of the same band, so "well under one cell" is replaced by **0.5-1.0 voxel, angular, never a filled cell** — one rule, both consumers. On screen a shard is 16-32 px wide, which is large enough to read as a shape rather than as the noise the `decal_shard_glass_*` art is | ✅ Ratified 2026-09-05 |
 | **G-D37** | **THE COARSE CRAZE IS ITS OWN MESH, SIMILAR TO THE FINE ONE — NOT THE FINE ONE RESCALED.** *(Director, 2026-09-05, answering §16.4: "o rachado mais grosso precisa de uma malha diferente, mas pode ser parecida.")* §16.4 offered "a different mesh or the same one at a bigger scale" and noted the second was nearly free; the Director took the first, and the reason is visible in the reference photos — a coarse craze is not a fine craze zoomed in, its polygons are fewer AND blockier, and the line weight does not grow with them. **What "parecida" buys is that it is one generator with a second parameter set**, not a second vocabulary: same Voronoi body, same wrapping seed rule, same stroke, different cell count. ⚠️ **The count of steps is TWO as a floor** (fine + coarse), which is the minimum reading of a ruling phrased about "o mais grosso"; a third middle step is the same generator a third time and stays the Director's, to be decided by looking at B-3's output rather than in advance | ✅ Ratified 2026-09-05 |
 | **G-D35** | **THE BLAST FAMILY IS A TILEABLE CRAZE MESH ON TWO AXES, PERFORATED PER VOXEL.** *(Director, 2026-09-04, with two references of shattered tempered glass: "as explosões ou vão destruir a vidraça toda, ou vão deixar rachado com maior ou menor intensidade, dependendo da distância […] conseguimos criar padrões mais e menos destruídos (usando o mesmo mecanismo de cortar as bordas dos voxels nas beiradas), e mais e menos rachados (granularidade) […] queremos que alguns decals sejam perfurados aleatoriamente em alguns voxels […] como são mais regulares, esses tipos de rachadura podem ser espelhados/repetidos com o método de azulejos, só mudando os buracos de lugar."* Four things follow, and each one is a departure from the bullet classes rather than a variation on them. **(1) NO CENTRE and no impact** — this is G-D29's field, so it is not radial and has no origin to be anchored to; the sheet is a MESH of small polygons, the read of the reference photos. **(2) TWO AXES, not one intensity dial** — *destruction* (how much of the pane is gone, expressed through the opening/shard-rim mechanism already built) and *granularity* (how fine the craze mesh is), and distance drives them together. **(3) PERFORATION IS PER VOXEL AND RANDOM**, not part of the art: the sheet is uniform, and individual voxels are punched through it. **(4) IT TILES.** A centred sheet cannot repeat; a uniform mesh can, so one page mirrored/repeated covers a whole pane and the variation comes from moving the HOLES, not from more art. ⚠️ This is what makes the class cheap where the bullet classes were expensive — and it is also why `SPAN_RATIO`, the page centre and the origin gate in `check_decal.py` all fail to apply to it. 🔒 The reference photos are read for VOCABULARY only; delivery stays procedural (D57, and the same discipline §8's watermarked comps already imposed) | ✅ Ratified 2026-09-04 · UNBUILT |
 | **G-D29** | **`blast` IS 3 PATTERNS × H/V FLIP, HASHED PER PANEL.** *(Director, 2026-09-02: "vamos usar um conjunto de padrões nos painéis, digamos 3, que podem ser escolhidos aleatoriamente e flipados vertical e horizontal. Assim teremos uma variação legal, sem consumir quase nada a mais de memória.")* Three textures, twelve apparent variants. The choice is NOT new machinery: it comes from the B4 FNV-1a the destruction stack already uses (`FacadeSampler._fnv1a_hash` over `pane_id` + panel index), which makes it deterministic and replay-safe by the same rule as every other per-cell choice in the project — and the same hash yields the two flip bits for free. This is also the answer to *"stretch one sprite / tile a field / scatter several"*: none of the three; a small pool placed per panel | ✅ Ratified 2026-09-02 |
@@ -3390,9 +3411,12 @@ the opposite of *"formatos bem irregulares e angulosos"*. New file,
 would be a silent defect.** That constant exists because an opening must swallow
 the cell it is centred on (a destroyed voxel cannot keep its corners). A remnant
 is the reverse case: it must NOT fill its cell, or it reads as the square it is
-replacing. Its invariant is the mirror image — **every member's area is well
-under one cell and its silhouette touches at least one cell edge** (the edge it
-hangs from). Pinned by a selftest, not by inspection.
+replacing.
+
+**G-D44 then gave both consumers ONE size law** — *"partes com tamanhos entre 1 e
+1/2 voxel"* — so the invariant is: **every member spans 0.5 to 1.0 voxel, is
+angular, and is never a filled cell**, plus, for a remnant, its silhouette
+touches the edge it hangs from. Pinned by a selftest, not by inspection.
 
 ### 18.3 PIECE 1 — THE REMNANT IN THE FRAME (G4 proper)
 
@@ -3440,19 +3464,37 @@ a wrong estimate here lands on the detonation's worst frame.
 
 ### 18.4 PIECE 2 — THE RAIN (G6b)
 
-**G-D40 — the rain is a PURE FUNCTION of the landing record, not a second store.**
+**G-D43 — the rain is DISPOSABLE, and the pile is the only permanent thing.**
 
-This is the decision that makes everything else fall out. G6 already records
-`Vector3i(base_x, base_y, level) -> count` and persists it. If every shard's
-shape, flip, scale, spin, offset within the cell and trajectory is derived by
-hash from *that* key plus its index, then:
+> Director, 2026-09-05: *"vamos padronizar a pilha no chão. Os cacos caem no
+> chão, apagam e revelam um sprite padrão por trás."*
 
-* rotation re-lays the identical field with no extra state;
-* a save reload re-lays it too, for free;
-* the ANIMATION and the RESTING field are the same function, evaluated at
-  `t < 1` and at `t = 1`;
-* and there is exactly one authority for "there is broken glass here", which is
-  the rule this project keeps re-learning (*two authorities — remove one*).
+⚠️ **This supersedes G-D40's persistence half, and it is the better answer.** I
+had proposed freezing the field at `t = 1` and re-laying it from the pile record
+on every rotation and reload — correct, but it left TWO descriptions of one floor
+(the individual pieces and the pile decal under them) and asked the Director to
+choose. He chose by deleting a claim, which is what this project keeps
+re-learning: **G6's pile decal is the sole authority for "there is broken glass
+here"**, and the shard field is a transient that fades out over it and is freed.
+
+⚠️ **The decal is spawned UNDER the field at the moment of landing, at its final
+opacity — not faded in.** *"por trás"* is literal: it is already there. And that
+is what makes the whole effect safe to interrupt — a rain cut short by a stall,
+by an off-screen pane, or by a perf budget still leaves the floor exactly right.
+
+**The rain therefore has no state consequence at all, and can be skipped
+entirely.** With performance as the standing priority that is worth more than the
+permanence it replaces.
+
+What survives of G-D40 is only the hash: a field driven by `randf()` cannot host
+a pixel gate (which is exactly why `glass_blast_demo` is not pixel-deterministic
+today), and one driven by FNV-1a on the landing key can. That is a testability
+choice now, not a correctness one, and it is free.
+
+**Assumption stated, not guessed:** *"um sprite padrão"* is read as *the pile is
+a standard sprite* rather than *reduce the three shipped `decal_shard_glass_*`
+variants to one*. The three are delivered, ratified art and the hash pick between
+them costs nothing; say the word and it becomes one.
 
 **The renderer.** One `MultiMeshInstance2D` holding a textured unit quad,
 `use_colors` on for per-instance alpha, `use_custom_data` on to carry the atlas
@@ -3489,14 +3531,20 @@ spin    theta(t) = theta0 + omega * min(t, t_land), frozen on landing
 ```
 
 `ease_out` is the Director's *"tentando ajustar o ease"* knob and is a `var`
-(Rule 1). At `t = 1` the buffer is the resting field, written once and never
-touched again: **one draw call, zero per-frame CPU, permanent** — which answers
-his *"se puder cair e ficar ótimo"* with yes rather than with a fade.
+(Rule 1). Past `t = 1` the shard holds for a beat and then fades, over the pile
+decal that is already drawn beneath it (G-D43), and the field is freed.
 
-**Population.** `shards_per_voxel` (2-3) x destroyed voxels, capped. The map's
-6 GU x 3 storey pane is 1 152 voxels, so an uncapped 3x is ~3 500 instances; the
-cap exists because instance buffer writes are per-frame during flight, not
-because of the resting field.
+**Population — G-D44 gives it a law instead of a guess.** *"os cacos se
+subdividem todos em partes com tamanhos entre 1 e 1/2 voxel"*: area is conserved,
+a piece of edge 0.5-1.0 has area 0.25-1.0, so **one voxel yields 1 to 4 pieces**,
+~2.3 on average. The map's 6 GU x 3 storey pane is 1 152 voxels and therefore
+~2 600 shards — a number that falls out of the ruling rather than out of a
+`shards_per_voxel` knob. On screen each is 16-32 px wide, large enough to read as
+a shape rather than as the fine noise the `decal_shard_glass_*` art already is.
+
+A cap still exists, and it is now honest about what it is for: instance buffer
+writes are per-frame DURING FLIGHT, and under G-D43 the flight is the only cost
+there is. Dropping shards under budget is free, because none of them are state.
 
 ### 18.5 PIECE 3 — WHERE THEY LAND IS STATE, AND THE SHOCKWAVE WRITES IT
 
@@ -3549,33 +3597,42 @@ never triggered.
    most on the pane's own cell, less on the second, from the DebrisOverlay dust
    mechanism that already exists (`CircleField`, additive, `add_dust`), not a new
    particle system;
-6. the field freezes; the G6 pile record is what makes it permanent.
+6. the shards fade out over the pile decal already drawn beneath them, and the
+   field is freed (G-D43). The pile is what stays.
 
-### 18.7 ⚠️ TWO THINGS THAT ARE THE DIRECTOR'S CALL, NOT MINE
+### ✅ 18.7 BOTH OPEN QUESTIONS WERE ANSWERED THE SAME DAY (2026-09-05)
 
-**(a) Does the G6 pile DECAL survive?** Once the resting shard field draws the
-individual pieces, the pile decal underneath is a second statement about the same
-cell. The three shipped `decal_shard_glass_*.png` are the fine-debris read the
-Director ratified on 2026-09-02 (*a shimmering white noise is the expected result
-at 16 x 20 px*), so the honest options are: keep it as the DUST UNDER the shapes
-(fine debris the shard shapes are too big to represent), or delete it. Both are
-defensible; keeping both without deciding is the failure mode this project has a
-memory about.
+**(a) Does the G6 pile decal survive? — YES, AND IT IS THE ONLY THING THAT DOES.**
+*"Vamos padronizar a pilha no chão. Os cacos caem no chão, apagam e revelam um
+sprite padrão por trás."* → **G-D43**. The question was "two descriptions of one
+floor, which one goes"; the answer removes the other one. §18.4 carries it.
 
-**(b) G-D25's big shards.** *"cacos maiores, com o tamanho de um voxel ou até
-mais: uma união de 2, 3, 4 voxels"*, as an alpha mask cutting whole voxels. That
-is a THIRD consumer of the same polygon family and it is genuinely separate work.
-It is not in this plan's scope and is left open.
+**(b) G-D25's big shards? — DELETED, not deferred.** *"Não precisam existir mais
+cacos grandes, quando houver uma explosão que quebra o vidro, os cacos se
+subdividem todos em partes com tamanhos entre 1 e 1/2 voxel."* → **G-D44**, which
+supersedes G-D25 outright.
+
+⚠️ **Nothing had been built for G-D25, so there is nothing to delete — and that
+is the whole report, deliberately.** The register row is marked SUPERSEDED rather
+than removed, because the PRIMITIVE it named (an alpha mask carving a voxel's own
+silhouette, the dented-ceiling mechanism) is not what was dropped: that primitive
+shipped as CRACK-03's shard rim and is what §18.3 reuses for the remnant. What
+was dropped is only the 1-4-voxel SIZE CLASS.
+
+⚠️ **And (b) is not a subtraction — it is where the population number comes
+from.** See §18.4: conserving area, a 0.5-1.0 voxel piece means 1 to 4 pieces per
+destroyed voxel, so the count is a consequence of the ruling instead of a knob I
+would have had to invent and defend.
 
 ### 18.8 TASK ORDER
 
 | | task | gate |
 |---|---|---|
-| **G4-1** | `glass_shard_shapes.gd` — the 5-member family + the "under one cell, touches an edge" invariant | selftest, and a true-size render of all 5 x 4 orientations |
+| **G4-1** | `glass_shard_shapes.gd` — the 5-member family + G-D44's "0.5-1.0 voxel, angular, never a filled cell" invariant | selftest, and a true-size render of all 5 x 4 orientations |
 | **G4-2** | `plan_pane_shatter()` returns `spared`; Delta + room + SaveState + respawn chain | RED first: prove no remnant is reported today |
 | **G4-3** | the cut remnant atom, oriented by `anchor_mask`; minting measured | `INFILTRAITOR_TILESET_STATS`, real GLASS-map capture on W1-W4 |
 | **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set | a 0-instance-culled control, the P7b defect's own gate |
-| **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; freeze at rest | filmstrip (`build_filmstrip.py`), which is the only instrument that can see a transient |
+| **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; fade-out over the pile decal, then free (G-D43) | filmstrip (`build_filmstrip.py`), which is the only instrument that can see a transient — and a CONTROL that kills the rain mid-flight and asserts the floor is identical, which is G-D43's own claim |
 | **G6b-3** | the dust puff on landing | capture |
 | **G4-4** | `plan_landings()` takes the impulse; the scatter table; `lift` authored + synthetic test | `glass_fall_selftest`, extended; the real pile counts on the GLASS map |
 

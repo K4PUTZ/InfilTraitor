@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**233 scripts · 81251 lines total** (under `godot/scripts/`)
+**233 scripts · 81832 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -878,7 +878,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 6238 lines
+`class_name VoxelRenderer` · extends `Node2D` · 6411 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1237,7 +1237,7 @@ extends `Node2D` · 143 lines
 
 ### `glass_crack_sprite.gd`
 
-`class_name GlassCrackSprite` · extends `Sprite2D` · 119 lines
+`class_name GlassCrackSprite` · extends `Sprite2D` · 146 lines
 
 `godot/scripts/overlays/glass_crack_sprite.gd`
 
@@ -1251,7 +1251,6 @@ extends `Node2D` · 143 lines
 
 **Public API**
 - `func setup(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int, pane_lo: Vector2, pane_hi: Vector2, shader: Shader) -> void:`
-- `func set_occupancy(tex: Texture2D, size: Vector2, origin: Vector2) -> void:`
 - `func set_opening(tex: Texture2D, origin: Vector2, size: Vector2) -> void:`
 - `func set_hole_cut(v: float) -> void:`
 
@@ -2034,7 +2033,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_crack.gd`
 
-`class_name GlassCrack` · 337 lines
+`class_name GlassCrack` · 465 lines
 
 `godot/scripts/systems/destruction/glass_crack.gd`
 
@@ -2647,7 +2646,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 328 lines
+`class_name WorldDelta` · extends `RefCounted` · 339 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3574,7 +3573,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1657 lines
+extends `SceneTree` · 1787 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -3589,6 +3588,7 @@ extends `SceneTree` · 1657 lines
 - `GlassCrackSpriteClass` = `preload("res://godot/scripts/overlays/glass_crack_sprite.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `GlassOpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
+- `GlassShatterClass` = `preload("res://godot/scripts/systems/destruction/glass_shatter.gd")`
 - `CRACK_DECAL_TEMPLATE` = `"res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"`
 - `FRACTURE_TEMPLATE` = `"res://ASSETS/materials/glass/fracture_glass_%s.png"`
 
@@ -5178,7 +5178,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 9619 lines
+extends `Node2D` · 9731 lines
 
 `godot/scripts/world/room.gd`
 

@@ -150,10 +150,14 @@ var glass_openings: Array = []
 ## the fire's, and for the same reason: once committed, a blast-crazed pane is
 ## indistinguishable from any other cracked glass.
 ##
-## ⚠️ **AND IT HAS NO VISUAL CONSUMER YET, DELIBERATELY.** G-D35's sheet is a
-## TILED field with no centre (§16), and drawing today's centred bullet page over
-## a blast-crazed pane would be the wrong art wired to a real trigger — worse than
-## no art, because it would look finished. B-3 is the consumer; this is B-1.
+## ⚠️ **ITS VISUAL CONSUMER IS WIRED (B-2, 2026-09-05) AND STILL DRAWS NOTHING,
+## WHICH IS THE ORDERING RATHER THAN A GAP.** `commit()` hands each entry to
+## `Room.claim_glass_craze()`, which plans a TILED field over the pane's own
+## rectangle and asks the renderer for it — and `spawn_glass_craze()` returns 0
+## until `fracture_manifest.json` carries a `blast_*` row, because G-D35's sheet
+## is centreless and today's bullet page over a crazed pane would be the wrong art
+## wired to a real trigger (§16.5). B-3 delivers the mesh and this lights up with
+## no code change.
 var glass_crazes: Array = []
 
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
@@ -322,6 +326,13 @@ func commit(room = null) -> void:
 	if room != null:
 		for c in glass_openings:
 			room.claim_glass_opening_for_hit(c["cell"], int(c["level"]), bool(c["wide"]))
+		## G-D35 B-2 — and the craze FIELDS over the panes this blast did not take.
+		## Same split, same reason: spawning a sprite is a WRITE, and `build_plan()`
+		## runs on every cursor move. AFTER the openings, so a pane that both
+		## crazed and took a hole has its rim already cut when the field's occupancy
+		## is walked.
+		for z in glass_crazes:
+			room.claim_glass_craze(z["cell"], int(z["level"]), float(z["intensity"]))
 
 
 func is_empty() -> bool:

@@ -4737,6 +4737,11 @@ const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_
 ##   id, pane_id, run_axis, wide, impact_run, impact_level, radius (Vector2i),
 ##   sprite (GlassCrackSprite)
 var _glass_cracks: Array = []
+## B-2 — so the "B-3 owes the art" note is printed once per boot, not once per
+## crazed pane. A blast can craze several.
+var _glass_craze_art_noted: bool = false
+## B-2's wrap-test tile, built once per boot when the env var asks for it.
+var _glass_craze_tile_cache: Texture2D = null
 var _glass_crack_next_id: int = 0
 var _glass_crack_root: Node2D = null
 var _glass_crack_shader: Shader = null
@@ -4873,8 +4878,18 @@ static func glass_crack_face_centre(face: int) -> Vector2:
 ## Faithful to the plane it replaces: a crack's region IS the rectangle
 ## `plan_pane_crack()` selected its cells from, and every cell it skipped
 ## (DESTROYED, or a G-D9 band) is skipped by the new plan for the same reason.
+## ⚠️ G-D35 B-2 — A CRAZE FIELD IS NOT COVERAGE, AND THIS IS THE ONE PLACE THAT
+## HAS TO KNOW THE DIFFERENCE. A field record shares this registry (one lifecycle,
+## one occupancy refresh, one visibility switch — the alternative was a parallel
+## array and five duplicated helpers). But G-D24 is about two FRACTURES crossing,
+## and a craze has no fracture and no region: it is the whole pane at once. Left
+## in, every blast-crazed pane would answer "covered" for every cell, so the next
+## round anywhere on it would destroy what it touched instead of cracking it — a
+## silent gameplay change nothing would have failed on.
 func glass_crack_covering(pane_id: String, run: int, level: int) -> int:
 	for c in _glass_cracks:
+		if bool(c.get("field", false)):
+			continue
 		if c["pane_id"] != pane_id:
 			continue
 		var r: Vector2i = c["radius"]
@@ -4942,6 +4957,149 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 			sprite.set_opening(m["texture"], m["origin"], m["size"])
 	_build_crack_occupancy(rec)
 	return _glass_crack_next_id
+
+
+## ── G-D35 B-2 — SPAWN ONE BLAST CRAZE FIELD ─────────────────────────────────
+##
+## `spec` is `GlassCrack.plan_pane_field()`'s output plus a `variant`. Returns the
+## new field's id, or 0.
+##
+## ⚠️ IT RETURNS 0 UNTIL B-3 DELIVERS THE ART, AND THAT IS THE ORDERING, NOT A
+## FAILURE. G-D35's sheet is a centreless tiled field; drawing today's centred
+## bullet page over a blast-crazed pane would be the wrong art wired to a real
+## trigger — worse than no art, because it would look finished (§16.5). So the
+## whole path is wired and the sheet is the only thing missing: the day
+## `fracture_manifest.json` carries a `blast_*` row, this lights up with no code
+## change anywhere. `INFILTRAITOR_GLASS_CRAZE_SHEET` overrides the key, which is
+## how the demo photographs the SEAM before the art exists.
+func spawn_glass_craze(spec: Dictionary) -> int:
+	if _glass_crack_shader == null:
+		_glass_crack_shader = load("res://godot/shaders/glass_crack.gdshader") as Shader
+		if _glass_crack_shader == null:
+			push_error("[VoxelRenderer] B-2: glass_crack.gdshader failed to load — no craze will draw")
+			return 0
+	var sheet_id: String = String(spec.get("sheet", ""))
+	var tile_span: Vector2 = spec.get("tile_span", Vector2(8.0, 8.0))
+	var forced := OS.get_environment("INFILTRAITOR_GLASS_CRAZE_SHEET")
+	if forced != "":
+		sheet_id = forced
+		tile_span = GlassCrack.page_span(forced)
+	var sheet: Texture2D = null
+	if OS.get_environment("INFILTRAITOR_GLASS_CRAZE_TESTTILE") == "1":
+		sheet = _glass_craze_wrap_tile()
+		## ⚠️ THE TEST TILE CARRIES ITS OWN SPAN, AND IT MUST. `tile_span` comes
+		## from the manifest, and no `blast_*` row exists yet — so without this the
+		## square wrap tile would be drawn on the 2:1 fallback page and every ring
+		## in it would render as an ellipse, which is the exact defect the tile is
+		## here to detect. `INFILTRAITOR_GLASS_CRAZE_TILE_VOXELS` sizes it.
+		var tv := OS.get_environment("INFILTRAITOR_GLASS_CRAZE_TILE_VOXELS")
+		var side: float = tv.to_float() if tv.is_valid_float() and tv.to_float() > 0.0 else 8.0
+		tile_span = Vector2(side, side)
+	else:
+		sheet = _glass_crack_sheet(sheet_id, int(spec.get("variant", 0)))
+	if sheet == null:
+		if not _glass_craze_art_noted:
+			_glass_craze_art_noted = true
+			## ⚠️ %s, NOT %r — GDScript's format has no %r, and it prints the two
+			## characters verbatim. Caught by reading the line the run actually
+			## emitted rather than the one this code says it emits.
+			print_debug("[GLASS-CRAZE] B-2: the field is wired and \"%s\" has no sheet yet — B-3 owes the art (GLASS_MASTER_PLAN §16.3)"
+				% sheet_id)
+		return 0
+	var sprite := GlassCrackSpriteClass.new()
+	var centre_cell: Vector2i = spec["centre_cell"]
+	var centre_level: int = int(spec["centre_level"])
+	sprite.setup_field(sheet, spec["span"],
+		glass_cell_face_pos(centre_level, centre_cell, int(spec.get("face", Face.SW))),
+		int(spec["run_axis"]), spec["pane_lo"], spec["pane_hi"], tile_span,
+		_glass_crack_shader)
+	_ensure_glass_crack_root().add_child(sprite)
+	_glass_crack_next_id += 1
+	## ⚠️ THE RECORD'S `impact_*` ARE THE PANE'S CENTRE CELL, NOT AN IMPACT. A
+	## craze has none — but `_build_crack_occupancy()` is written against exactly
+	## these three keys plus pane_lo/pane_hi, and giving the field its own copy of
+	## that walk is how the cut would drift between the two modes the first time
+	## one of them was fixed.
+	var rec := {
+		"id": _glass_crack_next_id,
+		"field": true,
+		"pane_id": String(spec.get("pane_id", "")),
+		"run_axis": int(spec["run_axis"]),
+		"wide": false,
+		"impact_run": int(spec["centre_run"]),
+		"impact_level": centre_level,
+		"impact_cell": centre_cell,
+		"radius": Vector2i.ZERO,
+		"pane_lo": spec["pane_lo"],
+		"pane_hi": spec["pane_hi"],
+		"sprite": sprite,
+		"opening": "",
+		"intensity": float(spec.get("intensity", 0.0)),
+	}
+	_glass_cracks.append(rec)
+	sprite.set_hole_cut(_glass_crack_hole_cut)
+	_build_crack_occupancy(rec)
+	return _glass_crack_next_id
+
+
+## ── B-2's INSTRUMENT — A TILE THAT WRAPS BY CONSTRUCTION ────────────────────
+##
+## `INFILTRAITOR_GLASS_CRAZE_TESTTILE=1`. Not art and never mistakable for it: a
+## grid of marks placed so that the SEAM is the only thing that can break them.
+##
+## ⚠️ IT EXISTS BECAUSE B-2 CANNOT BE SEEN OTHERWISE, AND THE ORDERING IS ON
+## PURPOSE. B-3 owns the craze mesh; until it lands `spawn_glass_craze()` draws
+## nothing at all, so a capture of the seam would be a capture of an empty pane.
+## Photographing the mechanism with a pattern that is obviously a test keeps the
+## two apart — the trap §16.5 names is art that *looks finished*, and this cannot.
+##
+## What each mark proves, and none of them is decoration:
+##   * quarter-discs at the four CORNERS join into one disc across a 2x2 of tiles
+##     — if the lattice phase is wrong in either axis, the disc is broken;
+##   * half-discs at the four EDGE MIDPOINTS join in pairs — this separates a
+##     phase error from a SCALE error, which the corners alone cannot;
+##   * a centred square, whose printed proportions read the tile's own aspect —
+##     a stretched lattice shows here and nowhere else;
+##   * a full-page diagonal, which stays straight across tiles only if both.
+func _glass_craze_wrap_tile() -> Texture2D:
+	if _glass_craze_tile_cache != null:
+		return _glass_craze_tile_cache
+	var n: int = 256
+	var img := Image.create(n, n, false, Image.FORMAT_R8)
+	img.fill(Color8(0, 0, 0, 255))
+	var ink := Color8(255, 0, 0, 255)
+	var r: float = float(n) * 0.22
+	var centres: Array[Vector2] = [
+		Vector2(0, 0), Vector2(n, 0), Vector2(0, n), Vector2(n, n),          ## corners
+		Vector2(n * 0.5, 0), Vector2(n * 0.5, n),                            ## edge midpoints
+		Vector2(0, n * 0.5), Vector2(n, n * 0.5),
+	]
+	for y in range(n):
+		for x in range(n):
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			var on: bool = false
+			for c in centres:
+				var d: float = p.distance_to(c)
+				## A RING, not a disc: a filled one would merge with its neighbours
+				## and hide the very join it is here to show.
+				if d <= r and d >= r - 3.0:
+					on = true
+					break
+			## The centred square, at a third of the page.
+			var lo: float = float(n) / 3.0
+			var hi: float = float(n) * 2.0 / 3.0
+			if not on and ((absf(p.x - lo) < 1.5 or absf(p.x - hi) < 1.5) and p.y >= lo and p.y <= hi):
+				on = true
+			if not on and ((absf(p.y - lo) < 1.5 or absf(p.y - hi) < 1.5) and p.x >= lo and p.x <= hi):
+				on = true
+			## The diagonal, corner to corner — straight across tiles only if the
+			## phase AND the scale are both right.
+			if not on and absf(p.x - p.y) < 1.5:
+				on = true
+			if on:
+				img.set_pixel(x, y, ink)
+	_glass_craze_tile_cache = ImageTexture.create_from_image(img)
+	return _glass_craze_tile_cache
 
 
 ## The opening's void as a texture, built on first use and cached. The image
@@ -5025,8 +5183,23 @@ func count_glass_shards() -> int:
 
 
 ## How many crack sprites are live. Diagnostics and the selftest.
+## B-2: IMPACT cracks only, so the number keeps meaning what every existing caller
+## reads it as. `glass_craze_count()` answers for the fields.
 func glass_crack_count() -> int:
-	return _glass_cracks.size()
+	var n: int = 0
+	for c in _glass_cracks:
+		if not bool(c.get("field", false)):
+			n += 1
+	return n
+
+
+## G-D35 B-2 — how many blast-craze FIELDS are live.
+func glass_craze_count() -> int:
+	var n: int = 0
+	for c in _glass_cracks:
+		if bool(c.get("field", false)):
+			n += 1
+	return n
 
 
 ## Drop every crack sprite. A perspective flip rebuilds the whole renderer, so

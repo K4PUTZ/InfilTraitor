@@ -54,6 +54,8 @@ const GlassCrackClass = preload("res://godot/scripts/systems/destruction/glass_c
 const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const GlassOpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
+## B-2 [18] — the ring intensities the granularity split is measured against.
+const GlassShatterClass = preload("res://godot/scripts/systems/destruction/glass_shatter.gd")
 
 const CRACK_DECAL_TEMPLATE := "res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"
 ## ⛔ The RETIRED round-hole pair, kept only so [3] can assert they are GONE.
@@ -85,6 +87,7 @@ func _init() -> void:
 	test_the_opening_family_is_well_formed()
 	test_only_the_four_orthogonal_neighbours_become_shards()
 	test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon()
+	test_the_craze_field_covers_the_pane_and_tiles()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1655,3 +1658,130 @@ func test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon() -> void:
 		_fail("blowout reached the armoured flag: tight=%s wide=%s"
 			% [p_tight.get("armored"), p_wide.get("armored")])
 	print("")
+
+
+## ── G-D35 B-2 — THE CRAZE FIELD ─────────────────────────────────────────────
+func test_the_craze_field_covers_the_pane_and_tiles() -> void:
+	print("[18] G-D35 B-2 — the craze FIELD is the pane's own rectangle, tiled\n")
+
+	var pane := _pane(4, 9, 3)              ## 6 GU x 3 storeys = 48 x 24 voxels
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var plan: Dictionary = GlassCrackClass.plan_pane_field(pane, Face.SW, 0.55)
+
+	if plan.is_empty():
+		_fail("plan_pane_field returned {} for a solid glass pane")
+		print("")
+		return
+
+	## ── 1. THE CENTRE IS A REAL CELL OF THE PANE ────────────────────────────
+	## ⚠️ Not the pane's true middle: a pane with an even side has that on a half
+	## voxel, and every other field in the record — the occupancy's world lookup
+	## above all — is measured in WHOLE cells from this one anchor.
+	var centre: Vector2i = plan["centre_cell"]
+	var c_lvl: int = int(plan["centre_level"])
+	var centre_is_real := false
+	for sl in pane:
+		for v in sl.voxels:
+			if v.grid_pos == centre and v.level == c_lvl:
+				centre_is_real = true
+				break
+	if centre_is_real:
+		_pass("the quad's anchor %s level %d is a real voxel of the pane" % [centre, c_lvl])
+	else:
+		_fail("the anchor %s level %d is not on the pane — the occupancy walk would "
+			% [centre, c_lvl] + "read the wrong cells")
+
+	## ── 2. THE CLIP CANNOT CUT THE PANE ─────────────────────────────────────
+	## ⚠️ ASSERTED OVER EVERY VOXEL, NOT OVER THE CORNERS. A bound that is right at
+	## the corners and wrong in between is exactly the defect a four-point check
+	## cannot see, and the pane is the thing the field must cover.
+	var lo: Vector2 = plan["pane_lo"]
+	var hi: Vector2 = plan["pane_hi"]
+	var outside: int = 0
+	for sl in pane:
+		for v in sl.voxels:
+			var off := Vector2(float(v.grid_pos.x - centre.x), float(v.level - c_lvl))
+			if off.x < lo.x or off.x > hi.x or off.y < lo.y or off.y > hi.y:
+				outside += 1
+	if outside == 0:
+		_pass("all 1152 pane voxels lie inside the field's clip bounds %s..%s" % [lo, hi])
+	else:
+		_fail("%d pane voxel(s) fall outside the clip — the field would be cut short" % outside)
+
+	## ── 3. THE QUAD REACHES THE CLIP ────────────────────────────────────────
+	## `Sprite2D.centered` makes the quad symmetric about the anchor, so a span
+	## that merely equalled the pane's WIDTH would fall short on the far side of an
+	## off-centre anchor — and the shortfall is invisible on a symmetric pane,
+	## which is every fixture anyone writes first.
+	var span: Vector2 = plan["span"]
+	var half := span * 0.5
+	if half.x >= maxf(absf(lo.x), absf(hi.x)) and half.y >= maxf(absf(lo.y), absf(hi.y)):
+		_pass("the quad %s reaches the whole clip from a symmetric centre" % span)
+	else:
+		_fail("quad %s is too small for bounds %s..%s" % [span, lo, hi])
+
+	## ── 4. AN OFF-CENTRE PANE, WHICH IS WHERE 3 ACTUALLY BITES ──────────────
+	## An even-sided pane puts the anchor half a voxel off its own middle. Same
+	## two assertions, on the case that can fail them.
+	var odd := _pane(4, 8, 2)               ## 5 GU x 2 storeys = 40 x 16
+	var p2: Dictionary = GlassCrackClass.plan_pane_field(odd, Face.SW, 0.9)
+	var c2: Vector2i = p2["centre_cell"]
+	var l2: int = int(p2["centre_level"])
+	var lo2: Vector2 = p2["pane_lo"]
+	var hi2: Vector2 = p2["pane_hi"]
+	var out2: int = 0
+	for sl in odd:
+		for v in sl.voxels:
+			var o := Vector2(float(v.grid_pos.x - c2.x), float(v.level - l2))
+			if o.x < lo2.x or o.x > hi2.x or o.y < lo2.y or o.y > hi2.y:
+				out2 += 1
+	var h2: Vector2 = Vector2(p2["span"]) * 0.5
+	if out2 == 0 and h2.x >= maxf(absf(lo2.x), absf(hi2.x)) \
+			and h2.y >= maxf(absf(lo2.y), absf(hi2.y)):
+		_pass("an asymmetric pane (bounds %s..%s) is covered too" % [lo2, hi2])
+	else:
+		_fail("asymmetric pane: %d voxel(s) outside, quad %s" % [out2, p2["span"]])
+
+	## ── 5. G-D9's FRAME IS NOT PART OF THE FIELD ────────────────────────────
+	## A banded window keeps its brick sill and head in these same slices. The
+	## field must stop at the glass, not run over the masonry.
+	var banded := _pane(4, 6, 2)
+	for sl in banded:
+		sl.material_bands = {0: "brick", 1: "brick", 14: "brick", 15: "brick"}
+	var pb: Dictionary = GlassCrackClass.plan_pane_field(banded, Face.SW, 0.55)
+	var lvl_lo_b: int = int(pb["centre_level"]) + int(Vector2(pb["pane_lo"]).y)
+	var lvl_hi_b: int = int(pb["centre_level"]) + int(Vector2(pb["pane_hi"]).y)
+	if lvl_lo_b == base + 2 and lvl_hi_b == base + 13:
+		_pass("a G-D9 banded pane's field spans levels %d..%d — the brick sill and "
+			% [lvl_lo_b, lvl_hi_b] + "head are outside it")
+	else:
+		_fail("banded field spans %d..%d, expected %d..%d (the brick rows are in it)"
+			% [lvl_lo_b, lvl_hi_b, base + 2, base + 13])
+
+	## ── 6. GRANULARITY RUNS THE RIGHT WAY (G-D37) ───────────────────────────
+	## ⚠️ THE ONE THING NO GEOMETRY TEST CAN SEE. §16.2: a NEAR blast crazes into
+	## small polygons and a far one into large ones, and `CRAZE_RING_INTENSITY`
+	## runs 1.0 at ring 0 down to 0.30 at ring 3 — so high intensity is the FINE
+	## mesh. Inverted, everything above still passes and every picture is wrong.
+	var near: String = GlassCrackClass.craze_sheet_id_for(
+		GlassShatterClass.blast_craze_intensity(0))
+	var far: String = GlassCrackClass.craze_sheet_id_for(
+		GlassShatterClass.blast_craze_intensity(3))
+	if near == GlassCrackClass.CRAZE_SHEET_FINE and far == GlassCrackClass.CRAZE_SHEET_COARSE:
+		_pass("ring 0 (%.2f) crazes FINE and ring 3 (%.2f) crazes COARSE"
+			% [GlassShatterClass.blast_craze_intensity(0),
+			GlassShatterClass.blast_craze_intensity(3)])
+	else:
+		_fail("granularity is inverted: ring 0 -> %s, ring 3 -> %s" % [near, far])
+
+	## ── 7. THE FIELD IS NOT A FRACTURE, SO IT MUST NOT BE AN OPENING ────────
+	## A field borrows `plan_pane_crack`'s vocabulary but none of its event: it
+	## has no impact, no radius and no hole. `opening` here would put a bullet's
+	## void in the middle of a blast craze.
+	if not plan.has("opening") and not plan.has("radius"):
+		_pass("the field plan carries no opening and no radius — it is not an impact")
+	else:
+		_fail("the field plan carries impact keys: %s" % plan.keys())
+
+	print("")
+

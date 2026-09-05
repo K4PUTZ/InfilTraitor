@@ -170,12 +170,140 @@ static func sheet_id_for(opening_id: String, wide: bool, armored: bool = false) 
 ## opening itself, because a `crescent_wide` page is twice a `chamfer_45_wide`
 ## page and one number for both would draw one of them at the wrong scale.
 static func sheet_span_for(opening_id: String, wide: bool, armored: bool = false) -> Vector2:
-	var row: Dictionary = _manifest_data().get("openings", {}).get(
-		sheet_id_for(opening_id, wide, armored), {})
+	return page_span(sheet_id_for(opening_id, wide, armored))
+
+
+## The page span of ONE manifest key, in voxels — the single reader every caller
+## goes through. ⚠️ It is a property of the page the art was drawn on and is read,
+## never recomputed: an engine-side formula would be a second opinion about a
+## number the generator owns, free to drift the day its ratio is retuned with
+## nothing failing. B-2 shares it, where the same number means "one TILE".
+static func page_span(sheet_id: String) -> Vector2:
+	var row: Dictionary = _manifest_data().get("openings", {}).get(sheet_id, {})
 	var span: Array = row.get("span", [])
 	if span.size() == 2:
 		return Vector2(float(span[0]), float(span[1]))
 	return Vector2(20.0, 10.0)
+
+
+## ── G-D35 B-2 — THE BLAST CRAZE FIELD ───────────────────────────────────────
+##
+## A blast that a pane SURVIVES crazes it whole (B-1). What draws that is not a
+## page centred on anything — there is nothing to centre on — but a TILED field
+## over the pane's own rectangle. These are the two manifest keys G-D37 ruled:
+## one generator, two parameter sets, fine and coarse.
+##
+## ⚠️ FINE IS THE NEAR BLAST. §16.2: *"a near blast crazes into small polygons, a
+## far one into large ones"*, and `CRAZE_RING_INTENSITY` runs 1.0 at ring 0 down
+## to 0.30 at ring 3 — so intensity and granularity move TOGETHER, and a high
+## intensity is the FINE mesh. Getting this backwards is invisible in every test
+## that does not look at a picture.
+const CRAZE_SHEET_FINE: String = "blast_fine"
+const CRAZE_SHEET_COARSE: String = "blast_coarse"
+
+## Intensity at or above this crazes FINE. A Director dial like every other
+## balance row here — placed at the midpoint of `CRAZE_RING_INTENSITY` so rings
+## 0/1 are fine and 2/3 coarse, and calibrated against a capture once B-3's art
+## exists to look at.
+static var CRAZE_FINE_MIN: float = 0.5
+
+
+static func craze_sheet_id_for(intensity: float) -> String:
+	return CRAZE_SHEET_FINE if intensity >= CRAZE_FINE_MIN else CRAZE_SHEET_COARSE
+
+
+## Whether B-3 has delivered the craze art yet.
+##
+## ⚠️ THIS IS A STAGE GATE, NOT A LOUD FAILURE, AND THE DISTINCTION IS DELIBERATE.
+## B6 says a missing dependency fails loudly — but this dependency is not missing,
+## it is NOT BUILT YET, and the ordering is on purpose (§16.5: the wrong art wired
+## to a real trigger is worse than no art, because it looks finished). So the
+## trigger is fully wired and the field simply does not spawn until the manifest
+## carries a `blast_*` row, at which point it lights up with no code change.
+static func has_craze_art() -> bool:
+	var o: Dictionary = _manifest_data().get("openings", {})
+	return o.has(CRAZE_SHEET_FINE) or o.has(CRAZE_SHEET_COARSE)
+
+
+## Pure, and shaped like `plan_pane_crack()` so the two cannot disagree about what
+## a pane is. Given a pane's slices and the blast's intensity, everything the
+## FIELD sprite needs.
+##
+## ⚠️ THE QUAD IS CENTRED ON A REAL CELL, NOT ON THE PANE'S TRUE MIDDLE. A pane
+## with an even number of cells has its middle on a half-voxel, and every other
+## field in the record — `_build_crack_occupancy()`'s world lookup above all — is
+## measured in whole cells from one anchor. Picking the centre CELL keeps ONE
+## anchor for the whole record at the cost of at most one voxel of extra quad,
+## which the pane clip discards anyway.
+##
+## Returns {} when the pane holds no glass at all.
+static func plan_pane_field(pane_slices: Array, face: int, intensity: float) -> Dictionary:
+	if pane_slices.is_empty():
+		return {}
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	var run_lo: int = 0
+	var run_hi: int = 0
+	var lvl_lo: int = 0
+	var lvl_hi: int = 0
+	var cross: int = 0
+	var seen: bool = false
+	var pane_id: String = ""
+	for s in pane_slices:
+		if pane_id == "":
+			pane_id = s.pane_id
+		var s_base: int = GeometryCoordsMod.storey_level_base(s.start_storey)
+		for v in s.voxels:
+			## ⚠️ `material_at()`, never `slice.material` — a G-D9 banded window
+			## keeps its brick sill and head in these same slices, and the field
+			## must not reach across them. Same rule `plan_pane_crack()` walks.
+			if not GlassMaterials.is_glass(s.material_at(v.level - s_base)):
+				continue
+			var run: int = v.grid_pos.x if run_is_x else v.grid_pos.y
+			## The EXTENT counts DESTROYED glass, exactly as the crack's does: a
+			## hole is still part of the pane, and clipping the field to the
+			## standing glass would shrink it every time the pane took a hit.
+			if not seen:
+				run_lo = run
+				run_hi = run
+				lvl_lo = v.level
+				lvl_hi = v.level
+				cross = v.grid_pos.y if run_is_x else v.grid_pos.x
+				seen = true
+			else:
+				run_lo = mini(run_lo, run)
+				run_hi = maxi(run_hi, run)
+				lvl_lo = mini(lvl_lo, v.level)
+				lvl_hi = maxi(lvl_hi, v.level)
+	if not seen:
+		return {}
+	var c_run: int = (run_lo + run_hi) / 2
+	var c_lvl: int = (lvl_lo + lvl_hi) / 2
+	var centre_cell := Vector2i(c_run, cross) if run_is_x else Vector2i(cross, c_run)
+	var lo := Vector2(float(run_lo - c_run), float(lvl_lo - c_lvl))
+	var hi := Vector2(float(run_hi - c_run), float(lvl_hi - c_lvl))
+	## The quad is symmetric about the centre cell (`Sprite2D.centered`), so it has
+	## to reach the FARTHER side on each axis; +1 turns a cell-centre radius into
+	## whole cells.
+	var span := Vector2(
+		2.0 * maxf(absf(lo.x), absf(hi.x)) + 1.0,
+		2.0 * maxf(absf(lo.y), absf(hi.y)) + 1.0)
+	var sheet: String = craze_sheet_id_for(intensity)
+	return {
+		"pane_id": pane_id,
+		"run_axis": 0 if run_is_x else 1,
+		"face": face,
+		"centre_cell": centre_cell,
+		"centre_level": c_lvl,
+		"centre_run": c_run,
+		"pane_lo": lo,
+		"pane_hi": hi,
+		"span": span,
+		"intensity": intensity,
+		"sheet": sheet,
+		## One TILE, in voxels — the same manifest number a page span is, because
+		## for this class the page IS the tile. B-3 owns it.
+		"tile_span": page_span(sheet),
+	}
 
 
 ## Pure. `pane_slices` share one `pane_id`; `face` fixes the run axis (X for

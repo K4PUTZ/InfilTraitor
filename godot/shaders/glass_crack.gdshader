@@ -46,7 +46,14 @@ render_mode blend_mix;
 // §13.1). Luma IS the alpha; the art carries no alpha channel and must not need
 // one, because `check_decal.py` measures the ink in luminance for exactly this
 // reason. hint_default_black so an unbound sampler draws nothing.
-uniform sampler2D crack_sheet : filter_linear, repeat_disable, hint_default_black;
+// ⚠️ `repeat_enable` IS FOR B-2's FIELD MODE AND IS SAFE FOR THE PAGE. Under a
+// linear filter a repeating sampler blends across the wrap at UV 0 and 1, so a
+// page could in principle pull its opposite edge into its own border. It cannot
+// here for two independent reasons: every fracture sheet carries its ink in the
+// middle ~34% of the page and is BLACK at all four edges (black blended with
+// black is black), and `crack_edge_feather` has already taken the outer 12% of a
+// page to zero ink before the sampler's result is used.
+uniform sampler2D crack_sheet : filter_linear, repeat_enable, hint_default_black;
 
 // How many VOXELS the full sheet spans, per width (G-D14's two hole sizes). The
 // node's transform is built from this, so the shader is TOLD the number rather
@@ -61,6 +68,38 @@ uniform vec2 crack_span = vec2(20.0, 10.0);
 // construction, so the clip is two comparisons.
 uniform vec2 crack_pane_lo = vec2(-1000.0);
 uniform vec2 crack_pane_hi = vec2(1000.0);
+
+// ── G-D35 B-2 — THE SECOND MODE: A CRAZE FIELD, NOT A PAGE ──────────────────
+//
+// (Director, 2026-09-04: *"como são mais regulares, esses tipos de rachadura
+// podem ser espelhados/repetidos com o método de azulejos, só mudando os buracos
+// de lugar."*)
+//
+// Everything above this line describes a page CENTRED on an impact: `crack_span`
+// is how many voxels that page covers, UV is the sheet, and the feather fades it
+// out at its own edge because beyond a fracture there is simply no crack.
+//
+// A blast craze has **no impact and no centre** (G-D35), so none of that applies.
+// The quad is the PANE's own rectangle and the sheet REPEATS across it. The
+// switch is a mode rather than a parameter because three things change together:
+//   * UV stops being the sheet and becomes the pane; the sheet's UV is derived
+//     from (run, level) instead, on a lattice;
+//   * the edge feather goes to zero — a field ends at the FRAME, not at a page
+//     boundary, and fading it would draw a vignette no glass has;
+//   * `crack_opening` is never bound, because a craze opened no hole.
+// The pane clip and G-D30's occupancy cut are shared verbatim: a field must not
+// bleed past the pane, and it must not draw on glass that is gone, for exactly
+// the same reasons a page must not.
+uniform bool crack_field = false;
+// One tile, in VOXELS of (run, level). ⚠️ The caller divides the pane into a
+// WHOLE number of tiles and hands the adjusted size here — see
+// `GlassCrack.field_tile_span()` for why that is a property and not a rounding
+// convenience.
+uniform vec2 crack_tile_span = vec2(8.0, 8.0);
+// The pane's low-run / low-level corner as an offset from the quad's centre, in
+// voxels. The tile lattice starts exactly there, so the field is anchored to the
+// PANE rather than to wherever the quad's centre happened to land.
+uniform vec2 crack_field_origin = vec2(0.0);
 
 // ── G-D30 — A DESTROYED VOXEL CUTS THE SPRITE ───────────────────────────────
 //
@@ -150,7 +189,16 @@ void fragment() {
 	}
 
 	// Luma -> alpha. The sheet is grayscale, so RED is the whole story.
-	float ink = texture(crack_sheet, UV).r;
+	//
+	// B-2: in FIELD mode the sheet is sampled on a lattice anchored at the pane's
+	// own corner instead of at UV. `repeat_enable` on the sampler is what makes
+	// the seam a seam at all — and it is why the art has to wrap by construction
+	// (B-3's wrapping seed set), because nothing here can hide an edge that does
+	// not meet its opposite.
+	vec2 sheet_uv = crack_field
+		? (off - crack_field_origin) / max(crack_tile_span, vec2(0.0001))
+		: UV;
+	float ink = texture(crack_sheet, sheet_uv).r;
 
 	// G-D30 — the cut. Nearest-filtered on purpose: a destroyed voxel IS a voxel,
 	// and the hole's own edge is voxel-shaped whatever this does. Softening it
@@ -169,9 +217,13 @@ void fragment() {
 	}
 
 	// G-D23's clamp, as a feather: the sheet does not repeat and does not mirror,
-	// it fades out at its own edge.
-	vec2 e = min(UV, vec2(1.0) - UV) / max(crack_edge_feather, 0.001);
-	ink *= clamp(min(e.x, e.y), 0.0, 1.0);
+	// it fades out at its own edge. ⚠️ NOT IN FIELD MODE — there the quad IS the
+	// pane, so this would fade the craze out against the frame and draw a vignette
+	// that no reference photo has.
+	if (!crack_field) {
+		vec2 e = min(UV, vec2(1.0) - UV) / max(crack_edge_feather, 0.001);
+		ink *= clamp(min(e.x, e.y), 0.0, 1.0);
+	}
 
 	COLOR = vec4(crack_color, clamp(ink * crack_strength, 0.0, 1.0) * crack_opacity);
 }

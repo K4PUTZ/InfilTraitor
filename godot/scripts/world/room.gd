@@ -285,6 +285,22 @@ var _base_cracks: Array = []
 ## drift from the pool the day a member is added or reordered.
 var _base_openings: Array = []
 
+## G-D35 B-2 — ONE RECORD PER PANE A BLAST CRAZED BUT DID NOT TAKE.
+##
+## Each entry: {"base": Vector3i(base_x, base_y, level), "intensity": float} —
+## the ANCHOR voxel (the pane cell nearest the epicenter, chosen by
+## `_craze_pane()`) in BASE coords, and how hard the blast crazed it.
+##
+## ⚠️ THE PANE ID IS NOT STORED, AND THIS IS THE SAME RULE `_base_openings`
+## FOLLOWS. `pane_id` is built from a slice's own view-space GU
+## (`PANE_SLICE_16_10_SW`), so a rotation renumbers it — storing one would make
+## every craze unfindable in E/S/W. The anchor CELL survives the rotation, and the
+## pane it belongs to is looked up in whichever view is current.
+##
+## ⚠️ NOT in SaveState yet — the same gap `_base_cracks` states above, for the same
+## reason and with the same fix.
+var _base_crazes: Array = []
+
 ## GLASS G-D15 / V-D — PANES THAT ARE PRIMED. `pane_id -> true`.
 ##
 ## Director, 2026-08-31: a rifle round that fails its shatter roll on an intact
@@ -416,6 +432,87 @@ func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
 			grid_pos, _active_perspective, _base_voxel_size())
 		_base_openings.append({"base": Vector3i(base_xy.x, base_xy.y, level), "wide": wide})
 	return opening_id
+
+
+## ── G-D35 B-2 — CLAIM ONE BLAST CRAZE ───────────────────────────────────────
+##
+## Called by `WorldDelta.commit()` for each entry B-1 put on `delta.glass_crazes`,
+## and by the rotation replay. Finds the anchor's pane in THIS view, plans the
+## field and spawns it. Returns the new field's id, or 0.
+##
+## ⚠️ IT IS A COMMIT-TIME CLAIM FOR THE SAME REASON THE OPENING IS ONE. Spawning
+## is a WRITE — it adds a node to the scene — and `build_plan()` runs on every
+## cursor move, cached and thrown away. A field spawned from the builder would
+## leave one sprite per previewed GU hanging over the map.
+##
+## `record` is false on a rotation replay, or the store would grow by one craze per
+## camera turn, forever — the same trap `claim_glass_opening_for_hit()` names.
+func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
+		record: bool = true) -> int:
+	if _voxel_renderer == null or _edge_registry == null:
+		return 0
+	var host = _glass_slice_at(grid_pos, level)
+	if host == null:
+		## ⚠️ REPORTED, NOT SWALLOWED — the discipline `_respawn_base_cracks()`
+		## already applies to its own misses. A craze whose anchor is not in this
+		## view is how a whole feature turns out to be healing on every rotation
+		## with nothing in any log to say so (§16.6 was exactly that).
+		print_debug("[GLASS-CRAZE] anchor %s level %d has no pane voxel in perspective %s — no field"
+			% [grid_pos, level, _active_perspective])
+		return 0
+	var plan: Dictionary = GlassCrack.plan_pane_field(
+		_pane_by_id(host.pane_id), host.face, intensity)
+	if plan.is_empty():
+		return 0
+	## The VARIANT rides a BASE-space key, the same rule and the same reason as the
+	## opening's and the sheet's: a variant re-rolled on a perspective flip would
+	## redraw a standing craze every time the camera turned (G-D29's own rule).
+	## Keyed on the pane's CENTRE cell, not the anchor — the anchor is wherever the
+	## blast happened to be nearest, so two blasts on one pane would otherwise draw
+	## two different patterns over the same glass.
+	plan["variant"] = GlassCrack.pick_variant(
+		glass_base_key(plan["centre_cell"], int(plan["centre_level"])))
+	var id: int = _voxel_renderer.spawn_glass_craze(plan)
+	if record and id != 0:
+		var base_xy := PerspectiveMapperClass.cell_to_base(
+			grid_pos, _active_perspective, _base_voxel_size())
+		_base_crazes.append({
+			"base": Vector3i(base_xy.x, base_xy.y, level), "intensity": intensity})
+	return id
+
+
+## The glass SLICE holding one voxel in this view, or null. Shared by the craze
+## claim and its rotation replay so the two cannot look a pane up differently.
+func _glass_slice_at(grid_pos: Vector2i, level: int):
+	for sl in _edge_registry.all_slices():
+		if sl.pane_id == "" or sl.pane_id.begins_with("PANE_BLOCK_"):
+			continue
+		for v in sl.voxels:
+			if v.grid_pos == grid_pos and v.level == level:
+				return sl
+	return null
+
+
+## G-D35 B-2 — respawn every recorded craze field for the perspective just
+## entered. Runs beside `_respawn_base_cracks()` and for the same reason: the
+## CRACKED states are already back (VL-PERSIST), and the FIELD is a node that the
+## renderer rebuild dropped.
+func _respawn_base_crazes() -> void:
+	if _base_crazes.is_empty() or _voxel_renderer == null:
+		return
+	var base_size := _base_voxel_size()
+	var rebuilt: int = 0
+	var lost: int = 0
+	for rec in _base_crazes:
+		var key: Vector3i = rec["base"]
+		var vxy := PerspectiveMapperClass.cell_from_base(
+			Vector2i(key.x, key.y), _active_perspective, base_size)
+		if claim_glass_craze(vxy, key.z, float(rec["intensity"]), false) != 0:
+			rebuilt += 1
+		else:
+			lost += 1
+	print_debug("[GLASS-CRAZE] perspective %s — %d field(s) rebuilt from base coords, %d not rebuilt"
+		% [_active_perspective, rebuilt, lost])
 
 
 ## The pick itself, shared by the live claim, the rebuild replay and the crack
@@ -1189,6 +1286,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
 	_base_cracks.clear()        ## CRACK-02 S-3: and no glass has been crazed on it
 	_base_openings.clear()      ## CRACK-04: nor any hole opened in it
+	_base_crazes.clear()        ## G-D35 B-2: nor any pane crazed by a blast
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
@@ -1975,6 +2073,10 @@ func _set_perspective(direction: String) -> void:
 		## CRACK-02 S-3 — and the webs, from the base-coord registry, on the
 		## geometry the line above just finished stamping.
 		_respawn_base_cracks()
+		## G-D35 B-2 — and the blast craze FIELDS, same registry pattern. ⚠️ Only
+		## reachable at all since §16.6: a panel pane did not move with the map, so
+		## every one of these would have reported "no pane voxel" and healed.
+		_respawn_base_crazes()
 
 		## Re-derive the per-cell overlays for the rotated layout so they follow the scenery:
 		## numbers redraw, lighting (lights/semantics/shadows/exposure) rebuilds from the rotated
@@ -6260,6 +6362,11 @@ func _capture_glass_blast_demo() -> void:
 	## can tell a claim that reached the tilemap from one that was merely issued.
 	print("[GLASS-BLAST] shards: registry=%d board=%d"
 		% [_voxel_renderer._glass_shard_cells.size(), _voxel_renderer.count_glass_shards()])
+	## G-D35 B-2 — the craze FIELDS. `_base_crazes` is what was claimed and the
+	## count is what actually reached the scene; before B-3's art the second is 0
+	## by design, and printing both is what tells "not wired" from "no sheet yet".
+	print("[GLASS-BLAST] craze fields: claimed=%d live=%d"
+		% [_base_crazes.size(), _voxel_renderer.glass_craze_count()])
 	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")
 
 	## ── §6.2 / G-D35 B-1 — DOES THE CRAZE SURVIVE A ROTATION? ────────────────
@@ -6288,6 +6395,11 @@ func _capture_glass_blast_demo() -> void:
 		var after_n: int = _count_cracked_glass()
 		print("[GLASS-BLAST] cracked glass voxels: %d before the flip, %d after (%s)"
 			% [before_n, after_n, "KEPT" if after_n == before_n else "LOST %d" % (before_n - after_n)])
+		print("[GLASS-BLAST] craze fields: %d live after the flip (%d claimed)"
+			% [_voxel_renderer.glass_craze_count(), _base_crazes.size()])
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(
+			"%s/glass_blast_demo_flip_%s.png" % [dir, flip_to])
 
 
 ## Every CRACKED glass voxel standing in the world right now. Walks the registry

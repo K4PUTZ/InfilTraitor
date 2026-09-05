@@ -1,25 +1,42 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.29 — **§16.6 IS FIXED (2026-09-05), AND ITS DIAGNOSIS WAS
+**Status:** 🟢 v1.30 — **G-D35 B-2 IS BUILT (2026-09-05): the craze FIELD is the
+pane's own rectangle, tiled** (§16.8), wired end to end from B-1's trigger through
+`WorldDelta.commit()` to a rotation replay. It is a second sprite MODE, not a
+parameter: the quad stops being a page and becomes the pane, UV stops being the
+sheet and becomes a lattice, and the page feather goes to zero because a field
+ends at the frame. The pane clip and G-D30's occupancy cut are shared verbatim.
+
+⚠️ **The unknown §16.3 predicted was not the real one.** It warned about the pane
+being a parallelogram and the tile seaming "at the fold" — there is no fold, a
+panel pane is coplanar by construction. The real one was the phase ANCHOR: the
+lattice is anchored at the pane's own corner, never at the symmetric quad's
+centre, and only an asymmetric pane can tell the two apart.
+
+⚠️ **It draws nothing yet, and that is the ordering.** `spawn_glass_craze()`
+returns 0 until the manifest carries a `blast_*` row — B-3 lights it up with no
+code change. The seam is proven with a wrap-test tile that could never be mistaken
+for art (`glass_craze_field_seam_2026-09-05.png`), and the shipped shot path is
+**0 pixels** different against a determinism control of **0**.
+
+⚠️ **And the blast demo cannot host a pixel gate: two identical runs differ by
+160 276 pixels.** Same finding as 2026-08-09's 45-frame measurement, at a third
+point on the same curve. A B-5 gate belongs on the crack demo.
+
+Earlier, v1.29 — **§16.6 IS FIXED (2026-09-05), AND ITS DIAGNOSIS WAS
 WRONG.** A PANEL pane's damage did not survive a rotation — 1152 cracked before a
 flip, 0 after — and v1.28 wrote that down as a persistence bug: *"the fix is a
 base-space key that carries the FACE."* **The key was right the whole time.** It
 pointed at where the pane should have been, and the pane had not moved:
 `PerspectiveMapper.layout_with_perspective()` rotates every other geometry key and
 never rotated `panel_instances`, which is where every half-thickness element lives
-— G-D9's windows included. The panes stood still while the map turned around them.
-One branch, and both symptoms close: `1593 of 1593` damage records re-applied in
-E, S **and** W (was 441), `1152 → 1152` CRACKED KEPT, and CRACK-02 S-3's crack
+— G-D9's windows included. One branch, and both symptoms close: `1593 of 1593`
+damage records re-applied in E, S **and** W (was 441), and CRACK-02 S-3's crack
 rebuild goes `0 of 1` → `1 of 1` on a single flip. §16.6.
 
-⚠️ **The N view is pixel-identical (0 px) and E/S/W move by ~246k–311k** —
-the control that says the harness is deterministic and the change is a no-op
-exactly where it must be. `glass_panel_rotation_ab_2026-09-05.png`.
-
-**The Director ruled §16.4's two open questions the same day (G-D36, G-D37):** a
-crazed pane **still lets sight through, with a large penalty**, and the coarse
-craze is **its own mesh**, similar to the fine one rather than the fine one
-rescaled. B-2 is unblocked.
+**The Director ruled §16.4's two open questions (G-D36, G-D37):** a crazed pane
+**still lets sight through, with a large penalty**, and the coarse craze is **its
+own mesh**, similar to the fine one rather than the fine one rescaled.
 
 Earlier, v1.28 — **G-D35 B-1 IS BUILT (2026-09-04): a pane the blast does
 not take now CRAZES**, whole, with an intensity from its ring (§16.5). The
@@ -2300,8 +2317,8 @@ radius one or two rings beyond the destruction radius"*.
 | | |
 |---|---|
 | **B-1 ✅** | **BUILT 2026-09-04 — the trigger.** §16.5. A pane the blast reaches and does not take goes CRACKED, whole, with an intensity from its ring. |
-| **B-2** | **NEXT.** **The tiling seam.** `GlassCrackSprite` is centred on an impact and spans a fixed page; a field is the pane's own rectangle, repeating. This is a second sprite mode, not a parameter — and it is the one piece with real unknowns (the pane is a parallelogram in screen space and the tile must not seam at the fold). ✅ Unblocked 2026-09-05: §16.6 was fixed first, so a pane-anchored sheet now rotates with its pane. |
-| **B-3** | **The art**: 2–3 granularities, generated. A Voronoi/Delaunay mesh with a wrapping seed set tiles by construction, which is the cheapest honest route and does not need a centre. |
+| **B-2 ✅** | **BUILT 2026-09-05 — the tiling seam.** §16.8. A second sprite mode: the quad is the pane's own rectangle and the sheet repeats across it, wired end to end from `delta.glass_crazes` through `commit()` to a rotation replay. ⚠️ **The unknown this row predicted was not the real one** — a panel pane is coplanar by construction, so there is no fold to seam at; the phase ANCHOR was. |
+| **B-3** | **NEXT.** **The art**: 2 granularities (G-D37), generated. A Voronoi/Delaunay mesh with a wrapping seed set tiles by construction, which is the cheapest honest route and does not need a centre. |
 | **B-4** | **The perforation**: N voxels punched per pane, chosen by B4 FNV-1a on the BASE key so a flip does not reshuffle them — the same rule G-D34 already lives by — and cut with the openings that already exist. |
 | **B-5** | **The gate**: `check_decal.py` learns a class whose ORIGIN rule does not apply and whose tiling DOES (a seam check is a real measurement: compare the page's opposite edges). |
 
@@ -2462,3 +2479,117 @@ an unrequested cleanup breaks every wall in the game (2026-07-12).
 - **G-D36 and G-D37** (§16.4): two granularity meshes from one generator, and a
   crazed pane that still transmits. Neither gates B-2 — the first is B-3's, the
   second is a balance number in G-D8's detection work.
+
+
+### ✅ 16.8 B-2 IS BUILT (2026-09-05) — the tiling seam, end to end
+
+`GlassCrackSprite.setup_field()` + `GlassCrack.plan_pane_field()` +
+`VoxelRenderer.spawn_glass_craze()` + `Room.claim_glass_craze()` /
+`_respawn_base_crazes()`, and one branch in `WorldDelta.commit()`. The whole path
+from B-1's trigger to a node in the scene.
+
+#### It is a MODE, not a parameter — three things change together
+
+| the page (every sheet so far) | the field |
+|---|---|
+| the quad is a page centred on an impact | the quad is the **pane's own rectangle** |
+| UV **is** the sheet | UV is the pane; the sheet's UV is a **lattice** in (run, level) |
+| the feather fades the ink at the page's edge | **no feather** — a field ends at the FRAME, and fading it draws a vignette no glass has |
+| `crack_opening` cuts the sheet's void | never bound: a craze opened no hole |
+
+The pane clip and G-D30's occupancy cut are shared **verbatim**. A field must not
+bleed past the pane and must not draw on glass that is gone, for exactly the
+reasons a page must not — and a G-D9 banded pane's brick sill falls out of the
+field for free, the same way it falls out of a web (§13.5).
+
+#### ⚠️ The unknown §16.3 named was not the real one
+
+That row warned that *"the pane is a parallelogram in screen space and the tile
+must not seam at the fold."* **There is no fold.** `GlassPaneGrouper` unions
+panels that are coplanar and adjacent along the run axis, so a panel pane is one
+flat face by construction — the parallelogram is the sprite's own transform,
+which has baked the forward basis since CRACK-02 and needed nothing new.
+
+The real unknown was the **phase anchor**, and it is not where the obvious answer
+puts it. `Sprite2D.centered` makes the quad symmetric about its origin, and a
+pane with an even side has its true middle on a half voxel — so the quad's centre
+moves relative to the glass whenever that asymmetry changes. The lattice is
+anchored at the pane's **low-run / low-level corner** instead (`crack_field_origin`),
+which does not move. Selftest [18] pins it on an asymmetric pane specifically,
+because on a symmetric one the two anchors coincide and every assertion passes
+either way ([[symmetry-hides-bugs]], again).
+
+#### One registry, and the one place that must tell the two apart
+
+A field record lives in `_glass_cracks` beside the impact cracks — one lifecycle,
+one occupancy refresh, one visibility switch, instead of a parallel array and five
+duplicated helpers. `glass_crack_covering()` is the only reader that must exclude
+it, and **the reason is gameplay, not tidiness**: G-D24 drops the piece where two
+FRACTURES cross, and a craze is the whole pane at once. Left in, every
+blast-crazed pane would answer "covered" for every cell, so the next round
+anywhere on it would DESTROY what it touched instead of cracking it — a silent
+balance change nothing would have failed on.
+
+The record's `impact_run` / `impact_level` / `impact_cell` are the pane's **centre
+cell**, not an impact. A craze has none; but `_build_crack_occupancy()` is written
+against exactly those three keys plus the pane bounds, and giving the field its
+own copy of that walk is how the two modes' cuts would drift the first time one
+was fixed.
+
+#### The stage gate — wired, and drawing nothing
+
+`spawn_glass_craze()` returns 0 until `fracture_manifest.json` carries a `blast_*`
+row, and says so once per boot. **That is the ordering, not a gap:** §16.5's rule
+is that the wrong art on a real trigger is worse than none, because it looks
+finished. Every other seam is live, so B-3 lights this up with no code change.
+
+⚠️ **This is deliberately NOT a B6 loud-fail.** B6 is about a missing dependency;
+this one is not missing, it is not built yet, and on purpose.
+
+#### The evidence
+
+- **The seam closes.** `INFILTRAITOR_GLASS_CRAZE_TESTTILE=1` draws a tile that
+  wraps by construction — rings on the corners and edge midpoints, a centred
+  square, a full-page diagonal. On the real pane every ring closes into a full
+  circle across its tile boundary and the diagonal runs straight across six tiles.
+  It is obviously a test pattern and could never be mistaken for the art, which is
+  the point of using one. `glass_craze_field_seam_2026-09-05.png`.
+- **It survives a rotation.** `[GLASS-CRAZE] perspective E — 1 field(s) rebuilt
+  from base coords, 0 not rebuilt`, beside `1593 of 1593` and `1152 KEPT`. Only
+  reachable at all since §16.6.
+- **The shipped path is byte-identical: 0 pixels**, on the shot-path crack demo,
+  against a determinism control of **0 pixels** measured first. This matters
+  because the change touched the shader every existing crack draws
+  (`repeat_enable`, and the mode branch).
+- Selftest **[18]**, seven assertions, proven RED two ways: a quad sized from one
+  side only fails on the asymmetric pane, and a field reading `slice.material`
+  instead of `material_at()` runs over a G-D9 brick sill (`spans 80..95, expected
+  82..93`). 50 selftests clean, 113 PASS in `glass_crack`.
+
+#### ⚠️ The blast demo cannot host a pixel gate, and now that is measured
+
+Two identical runs of `glass_blast_demo` differ by **160 276 pixels**. Its wait is
+240 frames — 4 s at `--fixed-fps 60`, still inside the fire and smoke lifetimes,
+and `spawn_blast_burst()` places embers with `randf_range()`. It is the same
+finding as the 45-frame / 400-frame measurement of 2026-08-09, at a third point on
+the same curve. **A B-2 or B-5 pixel gate has to live on the crack demo**, which
+measured 0.
+
+#### What B-3 inherits
+
+- The tile's SIZE is `fracture_manifest.json`'s own `span` row — for this class
+  the page IS the tile, so B-3 authors it and the engine holds no second number.
+  `GlassCrack.page_span()` is the one reader.
+- Two keys: `blast_fine` and `blast_coarse`, split at `CRAZE_FINE_MIN = 0.5`, so
+  rings 0/1 craze fine and 2/3 coarse. ⚠️ [18] pins the DIRECTION — a near blast
+  is the fine mesh — because inverting it fails no geometry test and every
+  picture.
+- Variants ride `pick_variant()` on a BASE key, which is G-D29's three-patterns
+  pool arriving for free rather than as a second mechanism.
+- 🟡 **Open, and named rather than left to be found:** the lattice is anchored at
+  the pane's corner *in the current view*, so a pane whose width is not a whole
+  number of tiles shows a different tile PHASE in E/S/W than in N. It is
+  deterministic per view (no reshuffling on a camera turn, which is G-D29's actual
+  requirement) but not identical across views. The fix is a phase carried in base
+  space; it is not built because rotation is suspended for performance and nothing
+  can currently see it.

@@ -74,6 +74,33 @@ func setup(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int,
 	material = mat
 
 
+## ── G-D35 B-2 — THE FIELD MODE ──────────────────────────────────────────────
+##
+## A blast craze is not a crack at a place; it is the whole pane, crazed. So the
+## quad is the PANE's rectangle and the sheet repeats across it on a lattice.
+##
+## `span` is the quad in voxels (symmetric about `origin`, which is the pane's
+## CENTRE CELL — the one anchor every other field in the record is measured from,
+## so `_build_crack_occupancy()` serves both modes unchanged). `pane_lo`/`pane_hi`
+## are the pane's bounds as (run, level) offsets from that centre, and
+## `tile_span` is one tile in voxels.
+##
+## ⚠️ THE LATTICE IS ANCHORED AT `pane_lo`, NOT AT THE QUAD'S CENTRE. The quad is
+## symmetric and the pane need not be (a centre CELL can sit half a voxel off the
+## pane's true middle), so anchoring at the centre would move the pattern relative
+## to the glass whenever that asymmetry changed. The pane's own corner does not
+## move.
+func setup_field(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int,
+		pane_lo: Vector2, pane_hi: Vector2, tile_span: Vector2, shader: Shader) -> void:
+	setup(sheet, span, origin, run_axis, pane_lo, pane_hi, shader)
+	var mat := material as ShaderMaterial
+	if mat == null:
+		return
+	mat.set_shader_parameter("crack_field", true)
+	mat.set_shader_parameter("crack_tile_span", tile_span)
+	mat.set_shader_parameter("crack_field_origin", pane_lo)
+
+
 ## G-D30 — bind (or rebind) this crack's occupancy image. `origin` is
 ## (run_min, level_max) as offsets from the impact: the RAW pane bounds, not the
 ## clip bounds, because those carry half a voxel of slack and would shift the

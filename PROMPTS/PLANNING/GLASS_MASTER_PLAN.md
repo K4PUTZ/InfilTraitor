@@ -2790,5 +2790,47 @@ photographed on the real pane — `blast_wild` (relax 0), `blast_aniso` (2.6:1) 
 
 🟡 **They are deliberately NOT shipped rows.** `check_decal.py` would flag them as
 art the family does not define, which is the gate behaving; promoting one is
-moving its name into `blast_openings()`. Awaiting the Director's eye.
+moving its name into `blast_openings()`.
+
+#### The Director's ruling on round one (2026-09-05)
+
+> *"O problema das placas grandes é que elas acabam dando muita pista do padrão.
+> Vamos achar um meio termo. O aniso realmente não fica bom na tela. Os demais
+> estão ok."*
+
+- ⛔ **`blast_aniso` RETIRED** — rejected on screen. Removed from the roster rather
+  than kept "just in case": an unpicked candidate left in the generator is art
+  nobody asked for that the next reader has to re-judge.
+- ⛔ **`blast_plates` as authored is out**, and his objection names the real axis.
+  The giveaway is not the two-scale idea, it is **feature size relative to the
+  tile**: a surviving plate spanning a fifth of an 8-voxel tile is a large,
+  distinctive shape recurring every 8 voxels, and the eye locks the period from
+  it. Smaller, more numerous survivors keep the vocabulary and stop advertising it.
+- ✅ `blast_fine`, `blast_coarse`, `blast_wild` approved.
+
+#### ⚠️ And the bracket exposed a second giveaway that was a DEFECT, not a style
+
+Every `sub` preset grew bright blotches. Two sub-seeds landing close together give
+a BROAD bisector region, so the ink saturates over an area — and a blotch is the
+most distinctive thing on the page, so it hands the eye the tile's period. **The
+Director's objection arriving through a different door.** Fixed by relaxing the
+sub-seed set the same way the coarse one already was; the brightest 1 % of the
+page fell and ink coverage dropped 40 % → 34 %.
+
+⚠️ **The refactor touched only the presets that use `sub`** — the 48 shipped
+sheets came back byte-identical, hash-compared.
+
+**The middle-ground bracket, one axis, three points:** `blast_mid_a` (40 cells,
+70 % diced), `blast_mid_b` (70 / 76 %) and `blast_mid_c` (110 / 82 %).
+`glass_craze_midground_v2_2026-09-05.png` — whole pane, because the tile period is
+a whole-pane read and a zoom cannot show it. **Recommended: `mid_b`** — `mid_a`
+still reads its plates, `mid_c` has lost the two-scale character.
+
+🟡 **Open, and it is a question about what SHIPS rather than about art:** the three
+"variants" of each granularity are three SEEDS of one preset today. G-D29's own
+wording is *"um conjunto de padrões, digamos 3, que podem ser escolhidos
+aleatoriamente"* — so they could be three distinct STYLES at the same cell count
+(even / wild / mid) instead. Same count of files, same memory, three genuinely
+different patterns per pane rather than three shuffles of one. Awaiting the
+Director.
 

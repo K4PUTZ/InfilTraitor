@@ -125,12 +125,33 @@ PRESETS = {
     "blast_coarse": dict(cells=58, edge=0.0150, gamma=1.45, relax=2,
                          deep=(0.50, 1.0), span=(8.0, 8.0), page=512),
     # ── Candidates, for the Director's eye (2026-09-05) ──────────────────────
+    #
+    # ⚠️ HIS RULING ON THE FIRST ROUND, AND IT NAMES THE REAL AXIS: *"o problema
+    # das placas grandes é que elas acabam dando muita pista do padrão. Vamos
+    # achar um meio termo. O aniso realmente não fica bom na tela."*
+    #
+    # The giveaway is not the two-scale idea — it is FEATURE SIZE RELATIVE TO THE
+    # TILE. A surviving plate spanning a fifth of an 8-voxel tile is a large,
+    # distinctive shape that recurs every 8 voxels, and the eye locks the grid
+    # from it. Make the survivors SMALLER and more numerous and the same
+    # vocabulary stops advertising its period. So the bracket moves `cells` (which
+    # sets the plate's size) and `sub`'s fraction together, and lifts the fine
+    # field's brightness so the two scales contrast less.
+    #
+    # ⛔ `blast_aniso` IS RETIRED — rejected on screen, 2026-09-05. Kept out of the
+    # roster rather than kept "just in case": an unpicked candidate left in the
+    # generator is art nobody asked for that the next reader has to re-judge.
     "blast_wild": dict(cells=150, edge=0.0115, gamma=1.55, relax=0,
                        deep=(0.50, 1.0), span=(8.0, 8.0), page=512),
-    "blast_aniso": dict(cells=170, edge=0.0115, gamma=1.55, relax=2,
-                        aniso=(1.0, 2.6), deep=(0.50, 1.0), span=(8.0, 8.0), page=512),
     "blast_plates": dict(cells=26, edge=0.0165, gamma=1.40, relax=2, sub=(0.62, 240),
                          deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
+    # The middle-ground bracket. One axis, three points, nothing else moving.
+    "blast_mid_a": dict(cells=40, edge=0.0150, gamma=1.45, relax=2, sub=(0.70, 270, 0.95),
+                        deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
+    "blast_mid_b": dict(cells=70, edge=0.0140, gamma=1.48, relax=2, sub=(0.76, 300, 0.95),
+                        deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
+    "blast_mid_c": dict(cells=110, edge=0.0130, gamma=1.50, relax=2, sub=(0.82, 330, 0.95),
+                        deep=(0.55, 1.0), span=(8.0, 8.0), page=512),
 
     "armored_tight": dict(radials=26, reach=0.30, stroke=(1.1, 2.0), stroke_twin=(0.7, 1.3),
                     waves=7, wave_ratio=1.34, wave_span=(3, 6), wave_falloff=0.30,
@@ -406,22 +427,27 @@ def generate_blast(opening, seed=7):
     ## The mean has to be taken over WRAPPED offsets and added back to the seed;
     ## averaging raw coordinates would drag every seed near an edge to the middle
     ## of the page, which is the classic way this goes wrong silently.
-    for _ in range(int(p["relax"])):
-        best = np.full((n, n), np.inf)
-        who = np.zeros((n, n), dtype=np.int32)
-        for i in range(k):
-            dx, dy = wrapped(pts[i, 0], pts[i, 1])
-            d = dx * dx + dy * dy
-            m = d < best
-            best = np.where(m, d, best)
-            who = np.where(m, i, who)
-        for i in range(k):
-            m = who == i
-            if not m.any():
-                continue
-            dx, dy = wrapped(pts[i, 0], pts[i, 1])
-            pts[i, 0] = (pts[i, 0] + dx[m].mean()) % 1.0
-            pts[i, 1] = (pts[i, 1] + dy[m].mean()) % 1.0
+    def relax(seeds, passes):
+        kk = seeds.shape[0]
+        for _ in range(int(passes)):
+            best = np.full((n, n), np.inf)
+            who = np.zeros((n, n), dtype=np.int32)
+            for i in range(kk):
+                dx, dy = wrapped(seeds[i, 0], seeds[i, 1])
+                d = dx * dx + dy * dy
+                m = d < best
+                best = np.where(m, d, best)
+                who = np.where(m, i, who)
+            for i in range(kk):
+                m = who == i
+                if not m.any():
+                    continue
+                dx, dy = wrapped(seeds[i, 0], seeds[i, 1])
+                seeds[i, 0] = (seeds[i, 0] + dx[m].mean()) % 1.0
+                seeds[i, 1] = (seeds[i, 1] + dy[m].mean()) % 1.0
+        return seeds
+
+    pts = relax(pts, p["relax"])
 
     ## ── F1 / F2, and which cells they belong to ─────────────────────────────
     f1 = np.full((n, n), np.inf)
@@ -446,8 +472,22 @@ def generate_blast(opening, seed=7):
     ## that were spared — and because both sets live on the same torus, the
     ## composite tiles exactly as either one does.
     if "sub" in p:
-        frac, sub_cells = p["sub"]
-        spts = rng.random((int(sub_cells), 2))
+        ## The third element is the fine field's own brightness against the coarse
+        ## network — the CONTRAST between the two scales. Lower makes the surviving
+        ## plates stand out (and the tile's period with them); higher flattens the
+        ## difference. Optional, so the first `plates` candidate reproduces exactly.
+        sub_p = p["sub"]
+        frac, sub_cells = sub_p[0], sub_p[1]
+        sub_gain = sub_p[2] if len(sub_p) > 2 else 0.86
+        ## ⚠️ THE SUB-SET IS RELAXED TOO, AND THE FIRST VERSION SHOWED WHY. Two
+        ## sub-seeds landing close together give a BROAD bisector region, so the
+        ## ink saturates over an area and the tile grows a bright blotch — and a
+        ## blotch is the most distinctive feature on the page, so it is the thing
+        ## that hands the eye the tile's period. Exactly the defect the Director
+        ## named on `plates` (*"acabam dando muita pista do padrão"*), arriving
+        ## through a different door. Relaxation removes the near-pairs that make
+        ## them.
+        spts = relax(rng.random((int(sub_cells), 2)), p["relax"])
         sf1 = np.full((n, n), np.inf)
         sf2 = np.full((n, n), np.inf)
         for i in range(int(sub_cells)):
@@ -459,7 +499,7 @@ def generate_blast(opening, seed=7):
         fine = np.clip(1.0 - (sf2 - sf1) / (float(p["edge"]) * 0.72), 0.0, 1.0) ** 1.6
         ch = (i1.astype(np.int64) * 2654435761) & 0xFFFFFFFF
         shattered = ((ch >> 9) & 1023) < int(1023 * float(frac))
-        ink = np.maximum(ink, np.where(shattered, fine * 0.86, 0.0))
+        ink = np.maximum(ink, np.where(shattered, fine * sub_gain, 0.0))
 
     ## Per-edge depth. A cheap integer hash of the unordered pair, so the same
     ## crack has the same depth along its whole length — and the same tile
@@ -490,7 +530,8 @@ def blast_openings():
         ## would flag them as art the family does not define, which is the gate
         ## behaving. Generate them to a scratch dir, look, then promote the ones
         ## he keeps by moving them into `names`.
-        names = names + ("blast_wild", "blast_aniso", "blast_plates")
+        names = names + ("blast_wild", "blast_plates",
+                         "blast_mid_a", "blast_mid_b", "blast_mid_c")
     return [{"id": name, "size": name, "tile": True, "radii": [1.0], "r_max": 1.0}
             for name in names]
 

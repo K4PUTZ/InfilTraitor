@@ -1,16 +1,21 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
-**Status:** 🟢 **v1.7 — 2026-09-02: M4 (GLASS) — THE CRACK IS BUILT (CRACK-01).**
-`GLASS_MASTER_PLAN` v1.21: G1, G2, G7, G-MAP, G-D9, G3 (all four stages),
-G-VARIANT (V-A…V-D), G-ART and now **CRACK-01** (G-D14/G-D19/G-D21/G-D23/G-D24)
-are built. Both §8 blockers were resolved by Director ruling: **§8.1** → glass
-reaches CRACKED through `damage_state_for()` + CRACK-01's own event, so
-`crack_factor` stays 0.0 and `voxel_decal_selftest` [12] is untouched; **§8.2**
-→ G-D21 amended to world-space sampling (~2 MB, 0 atoms minted — not the 36–144
-MB atom page). Real GLASS map: a pistol through the two-pane row crazes 129
-voxels on each pane and continues to the concrete behind. **Left in M4:** G6
-(shards on screen), G-D25 (big shards), `plastic` (screen backing).
+**Status:** 🟢 **v1.8 — 2026-09-06: M4 (GLASS) IS ESSENTIALLY DONE — the whole
+shard-rain track (`GLASS_MASTER_PLAN` §18) closed 2026-09-06.** `GLASS_MASTER_PLAN`
+v1.43: G1, G2, G7, G-MAP, G-D9, G3 (all four stages), G-VARIANT, G-ART, the CRACK
+(sprite over the pane, CRACK-02 — CRACK-01 in the voxel shader was rejected 3×),
+the blast CRAZE family (G-D35), G6 shards on the floor, and §18 end to end —
+**G4-1** the 5-shape family · **G4-2/3** remnants stuck in the frame · **G6b-1**
+the field (one texture, one draw call) · **G6b-2** the fall (aged in FRAMES) ·
+**G4-4** the scatter table + the shockwave impulse (the pane's pile went from a
+line to a 284-cell band) · **G-D45** a remnant whose frame is destroyed falls with
+it · **G6b-3** the dust puff. The §8.1/§8.2 CRACKED-tier blockers were resolved by
+Director ruling 2026-09-02 (G-D3 + the CRACK-02 sprite). ⚠️ B-4's per-voxel
+perforation was built and ABANDONED (Director ruling); G-D25's big shards are
+SUPERSEDED by G-D44. **Left in M4:** `plastic` (screen backing) and S-4's
+four-class fracture art (order written, art deliberately not made); skylights
+(G-D16c/d) have `lift` authored but no geometry to run on.
 
 Earlier, v1.5 — **2026-08-30: THE SEQUENCING BLOCK IS GONE.** M3-6 was
 sequenced behind `PERFORMANCE_MASTER_PLAN` P7; **P7b and P7c shipped 2026-08-26**
@@ -62,7 +67,7 @@ Nine materials exist. Five arrived on 2026-08-21 and render correctly
 | **M1** | The five materials exist, render, and break | ✅ **DONE** |
 | **M2** | Decals — the marks each material takes | ✅ **DONE 2026-08-21** — 9 files, brick only |
 | **M3** | Fire that consumes and opens passages | **Large.** The milestone's centre |
-| **M4** | Glass: seeing through it, and breaking it non-locally | ⚡ **ACTIVE.** Seeing through it and breaking it are BUILT; the art landed 2026-09-02. Open: `GLASS_MASTER_PLAN` §8.1 (the CRACKED tier) and §8.2 (G-D21's mechanism) |
+| **M4** | Glass: seeing through it, and breaking it non-locally | ✅ **ESSENTIALLY DONE 2026-09-06** — `GLASS_MASTER_PLAN` §18 (the shard rain) CLOSED. Left: `plastic` screen backing, S-4 fracture art |
 | **M5** | Voxel props — the thing these materials are actually for | Medium, blocked on renderer v2 |
 | **M6** | Fluids (water/lava) | **Research first, unscoped** |
 
@@ -841,8 +846,12 @@ frame.
 
 > ⬆️ **SUPERSEDED IN DETAIL 2026-08-30 by
 > [`GLASS_MASTER_PLAN.md`](GLASS_MASTER_PLAN.md).** That plan carries the ratified
-> design (now G-D1…G-D17), the verified seam table and the task order; M4 keeps its
-> row in this milestone and nothing below is retracted. **Three things below are now
+> design (now G-D1…G-D45), the verified seam table and the task order; M4 keeps its
+> row in this milestone and nothing below is retracted.
+>
+> ✅ **M4 IS ESSENTIALLY DONE 2026-09-06** — `GLASS_MASTER_PLAN` §18 (the shard
+> rain) closed. Everything below reads as the design record; the live status is in
+> that plan's header. Left in M4: `plastic` (below) and S-4's fracture art. **Three things below are now
 > ANSWERED there rather than open:** the *"what is a whole window"* question (the
 > grouping is `Slice.edge_id`, plus a `pane_id` derived at extraction — **G2 BUILT
 > 2026-08-31**), and both carried defects — the far shotgun pellet that CRACKS glass

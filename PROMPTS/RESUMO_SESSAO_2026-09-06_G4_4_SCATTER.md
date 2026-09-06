@@ -162,3 +162,41 @@ over 59 landing bucket(s), peak 65 shard(s)/bucket`.
 **§18 is closed.** Glass rejoins the `MATERIALS_MASTER_PLAN` tail — `plastic`
 screen backing and S-4's fracture art remain (G-D25's big shards were superseded
 by G-D44); M5 voxel props and M6 fluids are the milestone's last two parts.
+
+## 6. The review pass (2026-09-06)
+
+*"dar mais uma revisada no código, checar por fios desencapados e pontas soltas,
+e dar uma limpada no que não estiver mais em uso."*
+
+- ⚠️ **The dust broke `glass_rain_demo`'s G-D43 gate — found in review, not on
+  screen.** That capture re-lays a settled rain and asserts "0 differing pixels
+  after the kill", but step 5 frees only the `GlassRainOverlay` — the puff lives in
+  `_debris_overlay` and would still be settling. `spawn_glass_rain()` gained a
+  `with_dust` flag (default true); the demo passes false. The reap and the real
+  paths keep the dust.
+- **`GlassFall.SCATTER_MAX_CELLS` was a `const 3` with a comment claiming it was
+  "derived from the weight table's length".** It was not — [[two-equal-constants-is-not-a-rule]].
+  Now `scatter_max_cells()`, a `static func` reading `SCATTER_WEIGHTS.size() - 1`.
+- ✅ **G-D45 confirmed on the real map.** New instrument
+  `INFILTRAITOR_CAPTURE_ACTION=glass_reap_demo`: weak shatter of a framed window
+  (4 anchored remnants), destroy the 672-voxel brick jamb, `reap_orphaned_remnants()`.
+  Log: `[GLASS-REMNANT] G-D45 — 4 orphaned remnant(s) fell with their frame, 4
+  landed`, store `4 → 0`, `[GLASS-REAP] PASS`.
+- **No dead code found** — every helper the session added has a caller. The four
+  unshipped `RAIN_TIMING_PRESETS` are the bench's comparison set, kept like
+  `glass_blast_demo` and its siblings.
+- **Docs synced:** `docs/README.md`, `current_state.md` (§2/§3/§4 glass rows),
+  `MATERIALS_MASTER_PLAN` (v1.8, M4 essentially done), `GLASS_MASTER_PLAN` (v1.43,
+  §18.10 resolved, §18.14b), and three memory files.
+
+### Findings that outlive the code
+
+1. **A capture's assertion can be broken by a feature it doesn't test.** The dust
+   goes into a sibling overlay; the demo's "0 pixels" diff never named it, so
+   nothing on screen would have shown the regression until someone re-ran the gate
+   and puzzled over a non-zero. The fix is a flag, but the lesson is to check every
+   assertion a new side-effect can reach, not just the ones near the change.
+2. **A comment that says "derived" is not a derivation.** `SCATTER_MAX_CELLS` had
+   the right value and a comment describing the right rule — and was still a
+   hardcoded literal that a fifth weight entry would silently desync. The project
+   has a memory for exactly this and it still slipped in.

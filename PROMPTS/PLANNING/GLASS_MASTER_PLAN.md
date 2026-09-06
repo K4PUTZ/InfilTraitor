@@ -4117,6 +4117,20 @@ fringe barely, which is the brief. Logged as `[GLASS-DUST]`.
   stays available if a real map shows it is ugly.
 - The reported shard-cell count drift across a flip (340 → 389) still belongs to
   CRACK-04's `_respawn_base_openings()`, not here.
+- 🟡 **A WARM/YELLOW CAST ON CRAZED PANES NEAR A GRENADE, that fades over a few
+  seconds and vanishes on a perspective rotation** — Director-reported 2026-09-06,
+  UNDIAGNOSED (needs a frame-by-frame capture). ⚠️ **Read of the code: this is not
+  a glass bug.** `glass_pane.gdshader` has no warm term and no time term — it shows
+  the backbuffer of the scene BEHIND the pane, tinted. Behind a pane next to a
+  fresh crater is the exposed interior + the blast's warm consequence-light ramp;
+  the soot fade-in beat then darkens it over ~2 s. A rotation force-clears every
+  VFX overlay and runs `_lighting_controller.rebuild_all()` from the SETTLED state
+  (`room.gd` ~2534), so the transient warmth is gone instantly and the pane "snaps"
+  to normal. The glass is honestly showing the crater evolve. The only real oddity
+  is that the rotation skips the transient rather than continuing it — a property
+  of the whole rotation-rebuild path, not of glass. **If it reads as wrong on a
+  real capture, the fix is a glass-specific dampening of the see-through warmth or
+  a gentler consequence-light ramp, both small.**
 
 **§18 is now closed** — the shard rain is scattered, biased by the shockwave,
 lands as a band, leaves a readable pile, puffs dust, and a stranded remnant falls

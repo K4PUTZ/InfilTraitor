@@ -486,3 +486,83 @@ static func angular_jumps(id: String) -> int:
 ## Is this point — in voxels from the piece's own centre — inside the fragment?
 static func contains(poly: PackedVector2Array, p: Vector2) -> bool:
 	return not poly.is_empty() and Geometry2D.is_point_in_polygon(p, poly)
+
+
+## ── G6b-1 — THE ATLAS ────────────────────────────────────────────────────────
+##
+## The five members rasterised side by side into ONE texture, so the falling rain
+## is a single `MultiMesh` with a single draw call and the shape is chosen per
+## instance by custom data rather than by which of five nodes it lives in.
+##
+## White with alpha, deliberately: the glass TINT is the instance colour, so one
+## atlas serves every glass material in the family — a `glass_screen_green` pane
+## rains green shards off these same five cells.
+##
+## ⚠️ `ATLAS_MARGIN` IS NOT DECORATION. Cells are laid out edge to edge in U, and
+## `filter_linear` on a shard drawn a few pixels tall samples ACROSS the boundary:
+## without a margin, member 2 bleeds a fringe of member 3 into every instance at
+## small scale, which is exactly the size the rain is drawn at. The shape is fitted
+## to `1 - 2 * ATLAS_MARGIN` of the cell so the border texels are always empty.
+##
+## ⚠️ SUPERSAMPLED. A hard point-in-polygon test at 64 px gives a stair-stepped
+## silhouette that reads as noise once it is scaled down to 10-20 px, and the whole
+## point of authoring angular members is that their EDGES are the shape.
+const ATLAS_CELL_PX: int = 64
+const ATLAS_MARGIN: float = 0.10
+const ATLAS_SUPERSAMPLE: int = 3
+
+
+## A polygon translated so its BOUNDING BOX is centred on the origin. Also what
+## the rain wants: an instance's transform origin should be the piece's visual
+## centre, or a spinning shard orbits a point that is not in it.
+static func centred(poly: PackedVector2Array) -> PackedVector2Array:
+	if poly.is_empty():
+		return poly
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for p in poly:
+		lo = lo.min(p)
+		hi = hi.max(p)
+	var mid: Vector2 = (lo + hi) * 0.5
+	var out := PackedVector2Array()
+	for p in poly:
+		out.append(p - mid)
+	return out
+
+
+## Build the atlas. `Image`, RGBA8, `ids().size()` cells wide by one cell tall;
+## cell `i` holds `IDS[i]`, which is what makes `index_of()` the custom-data value.
+static func atlas_image(cell_px: int = ATLAS_CELL_PX) -> Image:
+	var n: int = IDS.size()
+	var img := Image.create(cell_px * n, cell_px, false, Image.FORMAT_RGBA8)
+	img.fill(Color(1.0, 1.0, 1.0, 0.0))
+	var fit: float = 1.0 - 2.0 * ATLAS_MARGIN
+	var ss: int = maxi(ATLAS_SUPERSAMPLE, 1)
+	var samples: float = float(ss * ss)
+	for i in range(n):
+		## Sized so the member's LONG axis spans `fit` of the cell — the same
+		## normalisation `size_scale()` applies everywhere else, so a cell's ink is
+		## proportional to the member's shape and never to its authored size.
+		## ⚠️ CENTRED ON ITS BOUNDING BOX, NOT ON THE POLAR ORIGIN. A member's box is
+		## not symmetric about that origin — the radii differ, which is the whole
+		## point of the family — so sizing alone leaves the shape offset and it
+		## pokes past the margin on whichever side is longer. Measured on the first
+		## run of this atlas: 84 texels in the borders. The same recentre
+		## `anchored_polygon()` applies to its free axis, and for the same reason.
+		var poly: PackedVector2Array = centred(polygon_sized(String(IDS[i]), fit))
+		if poly.size() < 3:
+			continue
+		var ox: int = i * cell_px
+		for y in range(cell_px):
+			for x in range(cell_px):
+				var hits: int = 0
+				for sy in range(ss):
+					for sx in range(ss):
+						var p := Vector2(
+							(float(x) + (float(sx) + 0.5) / float(ss)) / float(cell_px) - 0.5,
+							0.5 - (float(y) + (float(sy) + 0.5) / float(ss)) / float(cell_px))
+						if Geometry2D.is_point_in_polygon(p, poly):
+							hits += 1
+				if hits > 0:
+					img.set_pixel(ox + x, y, Color(1.0, 1.0, 1.0, float(hits) / samples))
+	return img

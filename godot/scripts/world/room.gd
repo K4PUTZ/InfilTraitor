@@ -5,6 +5,7 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
 const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
+const ShardField = preload("res://godot/scripts/overlays/shard_field.gd")
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
@@ -8548,6 +8549,93 @@ func _capture_detonation_filmstrip() -> void:
 	print("[P-FILM] wrote %d frames to %s" % [frame_count, out_dir])
 
 
+## ── G6b-1 — THE SHARD FIELD, AND A GATE THAT CAN REACH ITS FAILURE ──────────
+##
+## `INFILTRAITOR_CAPTURE_ACTION=shard_field_demo`
+##
+## ⚠️ **IT RENDERS THE SAME FIELD TWICE AND THE SECOND RUN IS THE POINT.** P7b's
+## culling defect shipped under a green 0-pixel gate, because that gate drew its
+## circles near the node origin where nothing is ever culled — *a green gate that
+## cannot reach the failure is not evidence*. So this captures once with the real
+## `custom_aabb` and once with the DEGENERATE box the engine would derive from the
+## base mesh on its own, and prints both pixel counts. The first number means
+## nothing without the second.
+##
+## The shards are placed far from the field node's origin on purpose: that is the
+## only place the defect exists.
+func _capture_shard_field_demo() -> void:
+	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var host := Node2D.new()
+	host.name = "ShardFieldDemo"
+	add_child(host)
+	var field := ShardField.new()
+	field.attach(host)
+
+	## A grid of every member at a range of sizes, rotations and flips, centred on
+	## the agent so the camera has something to frame.
+	var centre: Vector2 = agent.position if agent != null else Vector2.ZERO
+	var ids: int = GlassShardShapes.ids().size()
+	var cols: int = 24
+	var rows: int = 12
+	field.begin(cols * rows)
+	var n: int = 0
+	for r in range(rows):
+		for c in range(cols):
+			var t: float = float(n)
+			var pos: Vector2 = centre + Vector2(
+				(float(c) - float(cols) * 0.5) * 34.0,
+				(float(r) - float(rows) * 0.5) * 26.0)
+			## G-D44's band in pixels: a voxel face is VOXEL_STEP_PX tall, so a
+			## piece is TARGET_MIN..TARGET_MAX of that.
+			var size_px: float = GeometryCoords.VOXEL_STEP_PX * lerpf(
+				GlassShardShapes.TARGET_MIN, GlassShardShapes.TARGET_MAX,
+				fposmod(t * 0.137, 1.0))
+			field.push(pos, size_px, fposmod(t * 0.61, TAU), n % ids,
+				Color(0.77, 0.91, 0.96, 1.0), (n % 2) == 0, (n % 3) == 0)
+			n += 1
+	field.flush()
+
+	if _camera_controller != null:
+		_camera_controller.set_zoom_for_capture(1.0)
+		_camera_controller.focus_on(centre)
+	for _f in range(20):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var shot_ok: Image = get_viewport().get_texture().get_image()
+	shot_ok.save_png("%s/glass_shard_field_2026-09-05.png" % dir)
+	var px_ok: int = _count_shard_pixels(shot_ok)
+
+	## ⛔ THE CONTROL. The box the engine derives on its own from a unit quad.
+	field._mm.custom_aabb = AABB(Vector3(-0.5, -0.5, -0.5), Vector3(1.0, 1.0, 1.0))
+	for _g in range(10):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var shot_bad: Image = get_viewport().get_texture().get_image()
+	shot_bad.save_png("%s/glass_shard_field_nobox_2026-09-05.png" % dir)
+	var px_bad: int = _count_shard_pixels(shot_bad)
+
+	print("[SHARD-FIELD] %d instance(s) pushed, %d live" % [n, field.live_count()])
+	print("[SHARD-FIELD] shard pixels WITH custom_aabb: %d" % px_ok)
+	print("[SHARD-FIELD] shard pixels WITHOUT it (control): %d" % px_bad)
+	if px_bad >= px_ok:
+		push_warning("[SHARD-FIELD] the control drew as much as the real run — this gate cannot see the culling defect it exists for")
+	host.queue_free()
+
+
+## Pixels close to the shard tint. Crude on purpose: the claim is "the field drew
+## / did not draw", and a count that a human can check against two PNGs beats a
+## similarity metric nobody can re-derive.
+func _count_shard_pixels(img: Image) -> int:
+	var n: int = 0
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var c: Color = img.get_pixel(x, y)
+			if c.b > 0.80 and c.g > 0.75 and c.r > 0.60 and c.b > c.r + 0.06:
+				n += 1
+	return n
+
+
 func _capture_screenshot_to_file() -> void:
 	var image := get_viewport().get_texture().get_image()
 	if image == null:
@@ -9191,6 +9279,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "glass_blast_demo":
 		await _capture_glass_blast_demo()
+		get_tree().quit(0)
+		return
+	elif capture_action == "shard_field_demo":
+		await _capture_shard_field_demo()
 		get_tree().quit(0)
 		return
 	elif capture_action == "escape_open_menu":

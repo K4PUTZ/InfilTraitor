@@ -3631,7 +3631,7 @@ would have had to invent and defend.
 | ✅ **G4-1** | `glass_shard_shapes.gd` — the 5-member family + G-D44's "0.5-1.0 voxel, angular, never a filled cell" invariant. **BUILT 2026-09-05, §18.9** | ✅ `glass_shard_shapes_selftest` 10/10, `glass_shard_family_2026-09-05.png` |
 | ✅ **G4-2** | `plan_pane_shatter()` returns `spared`; Delta + room + SaveState + respawn chain. **BUILT 2026-09-05, §18.10** | ✅ `glass_shatter_selftest` [22], `save_state_selftest` |
 | ✅ **G4-3** | the cut remnant atom, oriented by `anchor_mask`. **BUILT 2026-09-05, §18.10** | ✅ `glass_crack_selftest` [20] · `glass_remnant_atoms_2026-09-05.png` (real atoms, production cut path) · **and the real map**: `glass_remnant_w3_2026-09-05.png`, W3, ring 0, 383 voxels, registry 49 = board 49 (§18.11) |
-| **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set | a 0-instance-culled control, the P7b defect's own gate |
+| ✅ **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set. **BUILT 2026-09-05, §18.12** | ✅ `glass_shard_shapes_selftest` [10]/[11] + the rendered control: **2 757 shard px with the box, 12 without** |
 | **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; fade-out over the pile decal, then free (G-D43) | filmstrip (`build_filmstrip.py`), which is the only instrument that can see a transient — and a CONTROL that kills the rain mid-flight and asserts the floor is identical, which is G-D43's own claim |
 | **G6b-3** | the dust puff on landing | capture |
 | **G4-4** | `plan_landings()` takes the impulse; the scatter table; `lift` authored + synthetic test | `glass_fall_selftest`, extended; the real pile counts on the GLASS map |
@@ -3820,3 +3820,61 @@ harness is a claim about the HARNESS first and about the machine last. Before
 blaming the environment, run the harness in the configuration that is known to
 work — here, one grep for what actually gates the entry point, which would have
 cost a minute against the half hour this took.
+
+
+### ✅ 18.12 G6b-1 IS BUILT (2026-09-05) — one texture, one draw call, and an EARNED gate
+
+[`shard_field.gd`](../../godot/scripts/overlays/shard_field.gd),
+[`glass_shard_field.gdshader`](../../godot/shaders/glass_shard_field.gdshader),
+`GlassShardShapes.atlas_image()`, and
+`INFILTRAITOR_CAPTURE_ACTION=shard_field_demo`.
+
+`CircleField`'s shape exactly — `attach` / `begin` / `push` / `flush` / `clear` —
+because P7b's finding is why both exist and a second idiom for one job is only a
+second place to get it wrong. The five members rasterise into ONE atlas;
+`use_custom_data` carries the cell index and the shader slices the texture's U by
+it, so **flip, flop, scale and rotation are free** — they are the instance's own
+`Transform2D`, uploaded either way. Stride is 16 floats, not `CircleField`'s 12:
+⚠️ `MultiMesh` ACCEPTS a buffer written at the wrong stride and draws garbage,
+which is why [11] asserts the size rather than trusting the arithmetic.
+
+The atlas is white with alpha on purpose — the glass TINT is the instance colour,
+so one atlas serves the whole family and a `glass_screen_green` pane rains green
+shards off the same five cells.
+
+#### ⛔ THE GATE IS EARNED, AND THAT IS THE WHOLE POINT OF §18.12
+
+P7b's culling defect shipped under a green 0-pixel gate: that gate drew its
+circles near the node origin, where nothing is ever culled, so *a green gate that
+cannot reach the failure is not evidence.* So `shard_field_demo` renders the SAME
+288 shards twice in one boot — once with the real `custom_aabb`, once with the
+degenerate box the engine derives from a unit quad on its own:
+
+| | shard pixels |
+|---|---|
+| with `custom_aabb` | **2 757** |
+| the control, without it | **12** |
+
+The first number means nothing without the second, and the demo `push_warning`s
+if the control ever draws as much as the real run — i.e. if the gate stops being
+able to see the thing it exists for.
+
+#### Two things the numeric gates caught
+
+⚠️ **84 texels in the cell borders, on the atlas's first run.** Cells sit edge to
+edge in U, so ink touching a boundary fringes into the neighbour the moment a
+shard is filtered — and 10-20 px is the size the rain is ALWAYS drawn at. The
+cause was not the margin but the CENTRING: a member's bounding box is not
+symmetric about its polar origin (the radii differ — that is the family), so
+sizing alone leaves it offset and it pokes out on the longer side. `centred()`
+now, which the rain wants anyway: a spinning shard whose transform origin is not
+inside it orbits a point in mid-air. ⚠️ [10] asserts the border is EMPTY, not that
+each cell "has ink" — the second would pass for five shapes running off their own
+edges into each other.
+
+⚠️ And [10] asserts the five cells carry **different** amounts of ink, because
+"every cell is non-empty" would also pass for one shape repeated five times.
+
+**Left for G6b-2:** the trajectory (closed form, aged in FRAMES), the bounce, the
+fade over the pile decal, and the freeing. The field draws with no z_index policy
+yet — in the demo the shards sit over the agent and the wall, which G6b-2 places.

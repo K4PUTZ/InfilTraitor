@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**237 scripts · 84324 lines total** (under `godot/scripts/`)
+**238 scripts · 84807 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,7 +17,7 @@
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
+- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, glass_materials.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
@@ -1536,6 +1536,27 @@ extends `Node2D` · 94 lines
 
 ---
 
+### `shard_field.gd`
+
+`class_name ShardField` · extends `RefCounted` · 177 lines
+
+`godot/scripts/overlays/shard_field.gd`
+
+**Constants / tuning**
+- `FLOATS_PER_INSTANCE` = `16`
+- `ShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
+- `FIELD_SHADER_PATH` = `"res://godot/shaders/glass_shard_field.gdshader"`
+
+**Public API**
+- `func attach(parent: Node2D, behind: bool = false) -> void:`
+- `func begin(capacity: int) -> void:`
+- `func push(pos: Vector2, size_px: float, rot: float, shape_index: int, color: Color, flip: bool = false, flop: bool = false) -> void:`
+- `func flush() -> void:`
+- `func live_count() -> int:`
+- `func clear() -> void:`
+
+---
+
 ### `shrapnel_overlay.gd`
 
 `class_name ShrapnelOverlay` · extends `Node2D` · 185 lines
@@ -2079,7 +2100,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shard_shapes.gd`
 
-`class_name GlassShardShapes` · 488 lines
+`class_name GlassShardShapes` · 568 lines
 
 `godot/scripts/systems/destruction/glass_shard_shapes.gd`
 
@@ -2101,6 +2122,9 @@ extends `Node2D` · 43 lines
 - `ANCHOR_DIRS` = `{ ANCHOR_RUN_POS: Vector2(1.0, 0.0), ANCHOR_RUN_NEG: Vector2(-1.0, 0.0), ANCHOR_LEVEL_POS: Vector2(0.0, 1.0), ANCHOR_LEVEL_NEG: Vector2(0.0, -1.0), }`
 - `FAMILY` = `{ ## A — the classic fragment: one long point, a broad back. "wedge": {"phase": 0.06, "radii": [ 0.30, 0.24, 0.50, 0.20, 0.34, 0.19, 0.29]}, ## B — elongated. Every other member is roughly radial, so without this one a ## map of them reads as four sizes of the same idea: a pane splits along a ## LINE as often as it punches out a disc. ## ## ⚠️ THE FIRST VERSION OF THIS MEMBER WAS A FOUR-POINTED STAR, NOT A SPLINTER, ## and every number passed. It had radii alternating 0.50 / 0.13 at EVENLY ## SPACED angles, which is a sparkle — the shape had the elongation in its ## radii and none in its outline, because two long points opposite each other ## on a symmetric ring make a cross, not a shard. Elongation lives in the ANGLE ## table: the long radii sit at 0.00 and 0.50 turns and everything between them ## is short, so the outline itself runs long. Found by looking at the capture; ## the gate had flagged it as the lowest fill ratio in the family and I read ## that as "it is thin", which was the symptom and not the shape. ## ⚠️ AND THE SECOND VERSION WAS A SMOOTH LENS. Ten vertices whose radii eased ## from 0.50 down to 0.15 and back gave a convex almond — elongated, and with ## nothing on its flanks that reads as a break. The elongation has to come from ## the angle table AND the flanks have to zigzag, so the radii alternate along ## them instead of easing. "sliver": {"phase": 0.0, "radii": [ 0.50, 0.19, 0.29, 0.15, 0.25, 0.14, 0.21, 0.38, 0.16, 0.27, 0.13, 0.23, 0.15, 0.30], "angles": [0.00, 0.06, 0.13, 0.20, 0.27, 0.34, 0.42, 0.50, 0.57, 0.64, 0.71, 0.79, 0.86, 0.93]}, ## C — blocky: three broad faces with hard corners between them, the piece that ## came away along two existing cracks. ⚠️ Its radii used to be 0.31 / 0.20, ## a ratio of 1.55 — exactly ANGULAR_RATIO, so it counted as angular and read ## as a rounded hexagon. `angular_jumps()` is a floor, not a target. "chip": {"phase": 0.19, "radii": [ 0.34, 0.15, 0.30, 0.17, 0.36, 0.14]}, ## D — asymmetric, with a concave bite out of one flank. The bite IS the shape. "hook": {"phase": 0.42, "radii": [ 0.47, 0.42, 0.14, 0.19, 0.44, 0.24, 0.36, 0.16, 0.30]}, ## E — one long straight edge against a jagged opposite side: the piece that ## broke along an existing crack on one flank only. "blade": {"phase": 0.27, "radii": [ 0.49, 0.46, 0.17, 0.29, 0.15, 0.34, 0.18, 0.44], "angles": [0.00, 0.09, 0.28, 0.40, 0.52, 0.66, 0.80, 0.91]}, }`
 - `IDS` = `["wedge", "sliver", "chip", "hook", "blade"]`
+- `ATLAS_CELL_PX` = `64`
+- `ATLAS_MARGIN` = `0.10`
+- `ATLAS_SUPERSAMPLE` = `3`
 
 ---
 
@@ -3716,7 +3740,7 @@ extends `SceneTree` · 147 lines
 
 ### `glass_shard_shapes_selftest.gd`
 
-extends `SceneTree` · 341 lines
+extends `SceneTree` · 475 lines
 
 `godot/scripts/tools/glass_shard_shapes_selftest.gd`
 
@@ -3725,6 +3749,7 @@ extends `SceneTree` · 341 lines
 **Constants / tuning**
 - `ShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
 - `OpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
+- `ShardFieldClass` = `preload("res://godot/scripts/overlays/shard_field.gd")`
 - `EPS` = `0.0005`
 
 **Public vars**
@@ -3741,6 +3766,8 @@ extends `SceneTree` · 341 lines
 - `func test_every_member_is_reachable() -> void:`
 - `func test_no_member_is_shared_with_glassopening() -> void:`
 - `func test_an_empty_mask_invents_nothing() -> void:`
+- `func test_the_atlas_holds_five_distinct_cells() -> void:`
+- `func test_the_field_writes_the_buffer_it_claims() -> void:`
 
 ---
 
@@ -5268,13 +5295,14 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10051 lines
+extends `Node2D` · 10143 lines
 
 `godot/scripts/world/room.gd`
 
 **Constants / tuning**
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `GlassShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
+- `ShardField` = `preload("res://godot/scripts/overlays/shard_field.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `LevelGraphClass` = `preload("res://godot/scripts/world/level_graph.gd")`
 - `GuardEnemyClass` = `preload("res://godot/scripts/agents/guard_enemy.gd")`

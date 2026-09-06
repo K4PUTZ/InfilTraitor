@@ -15,6 +15,7 @@ extends SceneTree
 
 const ShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const OpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
+const ShardFieldClass = preload("res://godot/scripts/overlays/shard_field.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -36,6 +37,8 @@ func _init() -> void:
 	test_every_member_is_reachable()
 	test_no_member_is_shared_with_glassopening()
 	test_an_empty_mask_invents_nothing()
+	test_the_atlas_holds_five_distinct_cells()
+	test_the_field_writes_the_buffer_it_claims()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -339,3 +342,134 @@ func test_an_empty_mask_invents_nothing() -> void:
 		_pass("mask 0 returns an empty polygon and says so loudly")
 	else:
 		_fail("mask 0 returned %d vertices — a placement invented with nothing to hang from" % poly.size())
+
+
+## ── [10] G6b-1 — THE ATLAS ───────────────────────────────────────────────────
+##
+## Three claims, and the third is the one nothing else would catch: the cells are
+## laid edge to edge in U, so ink touching a boundary bleeds into the neighbour
+## the moment a shard is drawn small enough to filter — which is the size the rain
+## is ALWAYS drawn at.
+func test_the_atlas_holds_five_distinct_cells() -> void:
+	print("\n[10] G6b-1 — the atlas: five cells, each with its own member, none bleeding\n")
+	var img: Image = ShardShapes.atlas_image()
+	var n: int = ShardShapes.ids().size()
+	var cell: int = ShardShapes.ATLAS_CELL_PX
+	if img.get_width() != cell * n or img.get_height() != cell:
+		_fail("atlas is %dx%d, expected %dx%d" % [img.get_width(), img.get_height(), cell * n, cell])
+		return
+	var inks: Array = []
+	var empty: Array = []
+	for i in range(n):
+		var ink: int = 0
+		for y in range(cell):
+			for x in range(cell):
+				if img.get_pixel(i * cell + x, y).a > 0.0:
+					ink += 1
+		inks.append(ink)
+		if ink == 0:
+			empty.append(ShardShapes.ids()[i])
+		print("      cell %d  %-8s  %5d texel(s)  (%.1f%% of the cell)"
+			% [i, ShardShapes.ids()[i], ink, 100.0 * float(ink) / float(cell * cell)])
+	if empty.is_empty():
+		_pass("all %d cells carry ink — no member rasterised to nothing" % n)
+	else:
+		_fail("empty cell(s): %s — a member that draws nothing at all" % [empty])
+
+	## ⚠️ THE MARGIN, ASSERTED AS IDENTITY. "Every cell has ink" would pass just as
+	## well for five cells whose shapes run off their own edges into each other.
+	var margin_px: int = int(floor(float(cell) * ShardShapes.ATLAS_MARGIN * 0.5))
+	var bleed: int = 0
+	for i in range(n):
+		for y in range(cell):
+			for x in range(cell):
+				if x >= margin_px and x < cell - margin_px \
+						and y >= margin_px and y < cell - margin_px:
+					continue
+				if img.get_pixel(i * cell + x, y).a > 0.0:
+					bleed += 1
+	if bleed == 0:
+		_pass("and not one texel inside the %d px border of any cell — nothing to bleed" % margin_px)
+	else:
+		_fail("%d texel(s) in a cell border — member %d will fringe into member %d at small scale"
+			% [bleed, 0, 1])
+
+	## And the members are not five copies of one shape: the ink counts must differ.
+	var same: bool = true
+	for i in range(1, n):
+		if absi(int(inks[i]) - int(inks[0])) > 8:
+			same = false
+			break
+	if not same:
+		_pass("the five cells carry genuinely different amounts of ink — five members, not one repeated")
+	else:
+		_fail("every cell has the same ink (%s) — the atlas may be one shape five times" % [inks])
+	print("")
+
+
+## ── [11] G6b-1 — THE FIELD ───────────────────────────────────────────────────
+##
+## ⛔ THE `custom_aabb` ASSERTION IS THE POINT OF THIS TEST. Godot derives a
+## MultiMesh's bounds from its BASE MESH — here a quad of half-extent 0.5 — and
+## culls every instance outside it, silently. P7b shipped exactly this and lost
+## whole plumes (0 magenta pixels against 4 055 once the box was set) while its own
+## 0-pixel gate passed, because that gate draws near the origin and could never
+## reach the failure. A shard rain lands hundreds of pixels from its node, so this
+## is the population that breaks it.
+func test_the_field_writes_the_buffer_it_claims() -> void:
+	print("[11] G6b-1 — the field's buffer, and the box that keeps it on screen\n")
+	var host := Node2D.new()
+	root.add_child(host)
+	var field = ShardFieldClass.new()
+	field.attach(host)
+
+	var n: int = 40
+	field.begin(n)
+	var far := Vector2(-4200.0, 3100.0)   ## deliberately far from the node origin
+	for i in range(n):
+		field.push(far + Vector2(float(i) * 13.0, float(i) * -7.0), 16.0,
+			float(i) * 0.31, i % ShardShapes.ids().size(),
+			Color(1.0, 1.0, 1.0, 1.0), i % 2 == 0, i % 3 == 0)
+	field.flush()
+
+	if field.live_count() == n:
+		_pass("%d pushes produce %d live instance(s)" % [n, field.live_count()])
+	else:
+		_fail("pushed %d, published %d" % [n, field.live_count()])
+
+	var buf: PackedFloat32Array = field._mm.buffer
+	if buf.size() == n * ShardFieldClass.FLOATS_PER_INSTANCE:
+		_pass("the buffer is exactly %d floats — %d per instance, the stride use_custom_data needs"
+			% [buf.size(), ShardFieldClass.FLOATS_PER_INSTANCE])
+	else:
+		_fail("buffer is %d floats, expected %d — a wrong stride is ACCEPTED by MultiMesh and draws garbage"
+			% [buf.size(), n * ShardFieldClass.FLOATS_PER_INSTANCE])
+
+	## The custom data must carry the atlas cell, at the offset the shader reads.
+	var wrong: int = 0
+	for i in range(n):
+		var got: int = int(buf[i * ShardFieldClass.FLOATS_PER_INSTANCE + 12])
+		if got != i % ShardShapes.ids().size():
+			wrong += 1
+	if wrong == 0:
+		_pass("every instance's custom data carries its own atlas cell")
+	else:
+		_fail("%d instance(s) carry the wrong atlas cell — the shader would draw another member" % wrong)
+
+	## ⛔ The box.
+	var box: AABB = field._mm.custom_aabb
+	var covered: bool = box.size.x > 1000.0 and box.size.y > 1000.0 \
+		and box.has_point(Vector3(far.x, far.y, 0.0))
+	if covered:
+		_pass("custom_aabb covers a shard at %s — %.0f x %.0f, so nothing is culled for being far from the node"
+			% [far, box.size.x, box.size.y])
+	else:
+		_fail("custom_aabb %s does NOT contain %s — instances there are dropped before they are drawn, silently" % [box, far])
+
+	field.clear()
+	if field.live_count() == 0:
+		_pass("clear() empties the field")
+	else:
+		_fail("clear() left %d instance(s)" % field.live_count())
+	host.queue_free()
+	print("")

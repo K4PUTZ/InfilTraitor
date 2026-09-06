@@ -902,11 +902,19 @@ session by the same Director call that scoped this pass.
 Silent fallback removed (loud-fail on MISS). `MATERIAL_ONLY` kept as a dev toggle.
 Shipped default flips to `enabled = true`. ~~Legacy floor assets retired.~~
 **DONE 2026-07-27** — `generate_master_floor.py` now emits a flat placeholder
-(the sprite was provably always occluded by the voxel earth layer, z=-9 vs
-z=0; see BAKE_SYSTEM_REFERENCE.md). `floor_layer`'s coordinate/occupancy
+(the sprite was *thought* provably always occluded by the voxel earth layer,
+z=-9 vs z=0; see BAKE_SYSTEM_REFERENCE.md). `floor_layer`'s coordinate/occupancy
 role stays load-bearing (~30 files depend on `map_to_local()`/
 `get_cell_source_id()`) — only the never-seen pixel content was retired, not
 the layer itself.
+**AMENDED 2026-09-06 (FLOOR-CRATER-01)** — "provably always occluded" was
+false: a LEVEL-RENUMBER regression left the crater re-reveal in
+`_reapply_base_damage()` dead (guard was `base_key.z < 0`, now
+`< PLAYABLE_LEVEL`), so a rotated blast crater fell straight through the voxel
+floor stack to this plane. The placeholder fill was a muted `#DC842E` orange
+that read as "dirt" — nobody noticed for months. It is now `#FF00FF` magenta:
+a deliberate canary, so the *next* cover failure is unmistakable on screen.
+`glass_blast_demo` (+`INFILTRAITOR_GLASS_BLAST_FLIP`) scans for it.
 ~~BAKE-CACHE-01 resolved — this part cannot close while warm boot is 5× over
 budget.~~ **Already true as of 2026-07-11 — see §4.** That precondition is
 cleared; Part 4's remaining scope is the fallback/loud-fail work and the

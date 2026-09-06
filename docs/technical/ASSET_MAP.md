@@ -88,7 +88,7 @@ master_assets/
 > | Script | Produces | Status |
 > |---|---|---|
 > | **`generate_voxel.py`** | `voxel_{material}.png` — the 32×36 voxel atom | **The base of the entire world.** Permanent. |
-> | **`generate_master_floor.py`** | `floor_{NW,NE,SE,SW}.png` | **The last sprite standing.** Dies when the double voxel slab lands (see the destruction plan). |
+> | **`generate_master_floor.py`** | `floor_{NW,NE,SE,SW}.png` | **The last sprite standing** — `floor_layer` (z=-9), a coordinate/occupancy anchor under the voxel floor stack. Fill is `#FF00FF` magenta on purpose since 2026-09-06 (FLOOR-CRATER-01): a canary, so a cover failure screams instead of hiding as "dirt". |
 >
 > The four wall/block/crate generators were deleted. See "How to Add New Wall Types"
 > below for what replaced them.

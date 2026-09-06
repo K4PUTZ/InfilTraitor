@@ -6,12 +6,21 @@ Produces: floor_NW / floor_NE / floor_SW / floor_SE
 
 ── WHY THIS IS A FLAT PLACEHOLDER, NOT PAINTED ART ───────────────────────────
 DESTRUCTION_MASTER_PLAN.md Part 4 ("Legacy floor assets retired"): floor_layer
-(room.gd $FloorLayer, z_index=-9) is confirmed always fully covered by the
-level -1 voxel earth layer (z_index=0) painted in the same synchronous
-build_from_layout() call — this sprite is provably never seen by the player,
-under any destruction state (max excavation depth is 1 voxel; digging can
-never reveal a void, per D13). Do not restore detailed art here: it would be
-wasted render/generation cost for pixels nobody sees.
+(room.gd $FloorLayer, z_index=-9) is meant to be always fully covered by the
+voxel floor stack (FLOOR_TOP_LEVEL, z_index=0) painted in the same synchronous
+build_from_layout() call. Do not restore detailed art here: it would be wasted
+render/generation cost for pixels that should never show.
+
+── WHY THE FILL IS LOUD MAGENTA (Director, 2026-09-06) ───────────────────────
+"provably never seen by the player" turned out to be false in practice: a
+LEVEL-RENUMBER regression left the crater re-reveal in _reapply_base_damage()
+dead (its guard was `base_key.z < 0`), so a rotated blast crater fell straight
+through the voxel floor stack to this plane and showed its fill (then a
+muted #DC842E orange that read as "dirt", so nobody noticed for months —
+FLOOR-CRATER-01). The fill is now #FF00FF so that the NEXT time the voxel
+stack fails to cover a cell it is unmistakable on screen, not camouflaged.
+`glass_blast_demo` (+INFILTRAITOR_GLASS_BLAST_FLIP) scans for this exact
+colour after a rotation and fails loudly if any of it shows.
 
 What still matters: floor_layer's TileMapLayer occupancy (one valid tile per
 cell) is load-bearing for ~30 files that call floor_layer.map_to_local() /
@@ -38,7 +47,8 @@ import os
 PNG_W, PNG_H  = 256, 512
 
 # ── Colors ───────────────────────────────────────────────────────────────────
-COLOR_FLAT = (220, 132, 46)   # flat placeholder fill — never actually visible
+COLOR_FLAT = (255, 0, 255)   # loud magenta — a canary: if you SEE this, the
+                             # voxel floor stack failed to cover a cell (a bug)
 TRANSPARENT = (0, 0, 0, 0)
 
 OUTPUT_DIR = os.path.join(
@@ -77,7 +87,7 @@ def generate():
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print("floor placeholder (256×512, flat fill, never visible):")
+    print("floor placeholder (256×512, flat magenta canary fill):")
     generate()
 
     print("\n✓ Done — 4 floor PNGs written to source_assets/generated/")

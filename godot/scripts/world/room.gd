@@ -6884,17 +6884,18 @@ func _capture_glass_blast_demo() -> void:
 		flip_img.save_png("%s/glass_blast_demo_flip_%s.png" % [dir, flip_to])
 		## FLOOR-CRATER-01 — a rotation used to leave the crater a clean hole through
 		## the whole voxel floor stack (the re-reveal guard in _reapply_base_damage()
-		## went dead at the LEVEL-RENUMBER), so the legacy `floor_layer` placeholder
-		## tile — a flat #DC842E orange diamond — showed through. Count those pixels:
-		## a crater that re-revealed its deep floor + soot leaves ~none.
-		var orange_px: int = 0
+		## went dead at the LEVEL-RENUMBER), so the legacy `floor_layer` canary tile
+		## — a flat #FF00FF magenta diamond (generate_master_floor.py) — showed
+		## through. Count those pixels: a crater that re-revealed its deep floor +
+		## soot leaves none, and magenta anywhere on screen is a cover failure.
+		var canary_px: int = 0
 		for py in range(0, flip_img.get_height(), 2):
 			for px in range(0, flip_img.get_width(), 2):
 				var c := flip_img.get_pixel(px, py)
-				if absf(c.r - 0.863) < 0.05 and absf(c.g - 0.518) < 0.05 and absf(c.b - 0.180) < 0.05:
-					orange_px += 1
-		print("[GLASS-BLAST] floor_layer placeholder-orange after the flip: %d px (%s)"
-			% [orange_px, "OK" if orange_px < 40 else "LEAKING — crater re-reveal regressed"])
+				if c.r > 0.90 and c.g < 0.10 and c.b > 0.90:
+					canary_px += 1
+		print("[GLASS-BLAST] floor_layer magenta canary after the flip: %d px (%s)"
+			% [canary_px, "OK" if canary_px < 20 else "LEAKING — crater re-reveal regressed"])
 
 
 ## Every CRACKED glass voxel standing in the world right now. Walks the registry

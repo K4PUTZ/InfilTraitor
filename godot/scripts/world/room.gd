@@ -6884,6 +6884,35 @@ func _biggest_glass_pane(material: String) -> Array:
 	return by_pane.get(best_id, [])
 
 
+## The glass PANEL pane best suited to reading a shard fall: FRAMED (so remnants
+## show) and mid-size (so the rain is not a wall of white the way the 6-GU
+## storefront is). Scored by anchor count, then by closeness to ~3 GU wide.
+## Falls back to the biggest pane when nothing on the map is framed.
+func _framed_glass_pane() -> Array:
+	var by_pane: Dictionary = {}
+	for s in _edge_registry.all_slices():
+		if s.pane_id == "" or s.pane_id.begins_with("PANE_BLOCK_"):
+			continue
+		if not GlassMaterials.is_glass(s.material):
+			continue
+		by_pane.get_or_add(s.pane_id, [])
+		by_pane[s.pane_id].append(s)
+	var all_slices: Array = _edge_registry.all_slices()
+	var best: Array = []
+	var best_score: float = -1.0
+	for pid in by_pane:
+		var slices: Array = by_pane[pid]
+		var face: int = slices[0].face
+		var anchors: int = GlassShatter.collect_anchor_positions(slices, face, all_slices).size()
+		if anchors == 0:
+			continue
+		var score: float = float(anchors) - absf(float(slices.size()) - 3.0)
+		if score > best_score:
+			best_score = score
+			best = slices
+	return best if not best.is_empty() else _biggest_glass_pane("")
+
+
 ## One named pane's slices, for a capture that has to land on a SPECIFIC pane
 ## rather than the largest one. Empty when nothing on the map carries that id.
 func _pane_by_id(pane_id: String) -> Array:
@@ -8866,6 +8895,165 @@ func _diff_pixels(a: Image, b: Image) -> int:
 	return n
 
 
+## ── G4-4 — THE RAIN TIMING BENCH, FOR THE DIRECTOR'S VIDEO ──────────────────
+##
+## `INFILTRAITOR_CAPTURE_ACTION=glass_rain_timings` on the GLASS map. Every rain
+## look value (`fall_frames_*`, `hold`, `fade`, `bounce`, `arc`, `stagger`) is a
+## placeholder `var`, and §18.13 says they want the Director's eye AFTER G4-4
+## spreads the landing — before that it would judge the wrong picture. This is
+## how: pick a pane, shatter it for real (real geometry, real G-D41/G-D42
+## scatter), lay the pile decal, then spawn the rain at ONE named preset and film
+## every frame of its span so `build_filmstrip.py --video` can encode it. No
+## grenade VFX — a clean diagnostic backdrop, so the subject is the fall.
+##
+##   INFILTRAITOR_RAIN_TIMING=snappy|default|floaty|heavy|raked   (default: default)
+##   INFILTRAITOR_RAIN_IMPULSE=0.0..1.0    the shockwave bias    (default: 0.6)
+##   INFILTRAITOR_GLASS_BLAST_PANE=<id>    which pane            (default: biggest)
+##   INFILTRAITOR_RAIN_FRAMES=<n>          frames to film        (default: span+20)
+const RAIN_TIMING_PRESETS: Dictionary = {
+	"snappy": {
+		"fall_frames_min": 8, "fall_frames_max": 14, "stagger_frames": 6,
+		"bounce_frames": 5, "bounce_scale": 0.10, "hold_frames": 12,
+		"fade_frames": 10, "arc_px_min": 4.0, "arc_px_max": 14.0},
+	"default": {},   ## the shipped values, untouched
+	"floaty": {
+		"fall_frames_min": 24, "fall_frames_max": 42, "stagger_frames": 16,
+		"bounce_frames": 10, "bounce_scale": 0.22, "hold_frames": 30,
+		"fade_frames": 28, "arc_px_min": 12.0, "arc_px_max": 36.0},
+	"heavy": {
+		"fall_frames_min": 10, "fall_frames_max": 18, "stagger_frames": 8,
+		"bounce_frames": 4, "bounce_scale": 0.07, "hold_frames": 44,
+		"fade_frames": 14, "arc_px_min": 3.0, "arc_px_max": 10.0},
+	"raked": {
+		"fall_frames_min": 16, "fall_frames_max": 30, "stagger_frames": 22,
+		"bounce_frames": 8, "bounce_scale": 0.14, "hold_frames": 18,
+		"fade_frames": 24, "arc_px_min": 10.0, "arc_px_max": 30.0},
+}
+
+
+func _capture_glass_rain_timings() -> void:
+	if _voxel_renderer == null or _edge_registry == null or _slab_registry == null:
+		push_error("[GLASS-RAIN-T] no renderer / edge registry / slab registry")
+		return
+	var preset_name := OS.get_environment("INFILTRAITOR_RAIN_TIMING")
+	if preset_name == "" or not RAIN_TIMING_PRESETS.has(preset_name):
+		if preset_name != "":
+			push_warning("[GLASS-RAIN-T] unknown preset %r — using 'default'" % preset_name)
+		preset_name = "default"
+	var imp_env := OS.get_environment("INFILTRAITOR_RAIN_IMPULSE")
+	var impulse_strength: float = float(imp_env) if imp_env.is_valid_float() else 0.6
+
+	## The big storefront by default — its foot is right where the camera sits, so
+	## the fall fills the frame; a framed window (`INFILTRAITOR_GLASS_BLAST_PANE`,
+	## or `=framed`) is elevated and reads smaller. Remnants are a `glass_blast_demo`
+	## subject; this bench is for the FALL.
+	var pane_id_want := OS.get_environment("INFILTRAITOR_GLASS_BLAST_PANE")
+	var pane_slices: Array
+	if pane_id_want == "framed":
+		pane_slices = _framed_glass_pane()
+	elif pane_id_want != "":
+		pane_slices = _pane_by_id(pane_id_want)
+	else:
+		pane_slices = _biggest_glass_pane("")
+	if pane_slices.is_empty():
+		push_error("[GLASS-RAIN-T] no panel pane to break")
+		return
+
+	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/filmstrip_rain"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var existing := DirAccess.open(dir)
+	if existing != null:
+		for f in existing.get_files():
+			if f.begins_with("frame_") and f.ends_with(".png"):
+				existing.remove(f)
+
+	var face: int = pane_slices[0].face
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	var mid: Vector2i = pane_slices[pane_slices.size() / 2].voxels[0].grid_pos
+	var pane_gu := Vector2i(mid.x >> 3, mid.y >> 3)
+	## The grenade's imagined cell, one GU "outside" the pane — the shockwave
+	## direction the real cook computes at `_shatter_glass_panes`.
+	var out_delta := Vector2i(0, 1) if run_is_x else Vector2i(1, 0)
+	var epicenter: Vector2i = mid + out_delta * 8
+
+	apply_glass_diagnostic_backdrop()
+	if _camera_controller != null and agent != null:
+		_camera_controller.set_zoom_for_capture(1.0)
+		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
+			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
+				* float(_voxel_renderer.relative_level(pane_slices[0].voxels[0].level))))
+	if _fow_controller != null:
+		_fow_controller.reveal_around(pane_gu, 30)
+	for _s in range(50):
+		await get_tree().process_frame
+
+	## ── shatter the pane FOR REAL: the same plan the cook builds ────────────
+	var all_slices: Array = _edge_registry.all_slices()
+	var anchors: Dictionary = GlassShatter.collect_anchor_positions(pane_slices, face, all_slices)
+	var res: Dictionary = GlassShatter.plan_pane_shatter(pane_slices, face,
+		mid, pane_slices[0].voxels[0].level + 12, 8.5, "RAIN_TIMINGS", anchors)
+	var fallen: Array = []
+	for e in res["destroyed"]:
+		var v: Voxel = e["slice"].voxels[int(e["voxel_index"])]
+		if v.damage_state == Voxel.DamageState.DESTROYED:
+			continue
+		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+		fallen.append({"grid_pos": v.grid_pos, "level": v.level})
+	await _voxel_renderer.process_dirty_async(_edge_registry)
+	var remnant_cells: Array = []
+	for r in res["remnants"]:
+		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+		remnant_cells.append({"cell": rv.grid_pos, "level": rv.level})
+	claim_glass_remnants(remnant_cells)
+
+	## ── G-D41 / G-D42 — the real scatter, with an impulse toward the room ───
+	var impulse := {
+		"dir": Vector2(mid - epicenter),
+		"strength": clampf(impulse_strength, 0.0, 1.0),
+		"lift": 0.0,
+	}
+	var landings: Array = GlassFall.plan_landings(fallen, _slab_registry.all_slabs(), impulse)
+	record_glass_shards(GlassFall.pile_by_cell(landings))
+	for _g in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+
+	## ── the rain, at ONE preset ────────────────────────────────────────────
+	GlassRainOverlay.timing_overrides = RAIN_TIMING_PRESETS[preset_name]
+	var n: int = spawn_glass_rain(landings)
+	GlassRainOverlay.timing_overrides = {}
+	var span: int = 0
+	for r in _voxel_renderer.get_children():
+		if r is GlassRainOverlay:
+			span = maxi(span, r.span_frames())
+	var frames_env := OS.get_environment("INFILTRAITOR_RAIN_FRAMES")
+	var frame_count: int = frames_env.to_int() if frames_env.is_valid_int() else span + 20
+	print("[GLASS-RAIN-T] preset=%s impulse=%.2f pane=%s: %d flight(s) -> %d shard(s), span %d, filming %d frame(s)"
+		% [preset_name, impulse["strength"], pane_slices[0].pane_id, landings.size(), n, span, frame_count])
+
+	## Frames are cropped to the action, like `glass_rain_demo`'s own filmstrip:
+	## a full 1280x720 makes the shards a speck in the corner. Overridable as
+	## `INFILTRAITOR_RAIN_CROP=x,y,w,h`.
+	var crop := Rect2i(260, 110, 760, 480)
+	var crop_env := OS.get_environment("INFILTRAITOR_RAIN_CROP")
+	if crop_env != "":
+		var p := crop_env.split(",")
+		if p.size() == 4:
+			crop = Rect2i(p[0].to_int(), p[1].to_int(), p[2].to_int(), p[3].to_int())
+
+	for i in range(frame_count):
+		await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		if img == null:
+			continue
+		var tile: Image = img.get_region(crop)
+		## ⚠️ CONVERT — a viewport image is not RGBA8, and ffmpeg's glob reader is
+		## fussy about mixed formats across a sequence.
+		tile.convert(Image.FORMAT_RGBA8)
+		tile.save_png("%s/frame_%03d.png" % [dir, i])
+	print("[GLASS-RAIN-T] wrote %d frame(s) (crop %s) to %s" % [frame_count, crop, dir])
+
+
 ## ── G6b-1 — THE SHARD FIELD, AND A GATE THAT CAN REACH ITS FAILURE ──────────
 ##
 ## `INFILTRAITOR_CAPTURE_ACTION=shard_field_demo`
@@ -9604,6 +9792,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "glass_rain_demo":
 		await _capture_glass_rain_demo()
+		get_tree().quit(0)
+		return
+	elif capture_action == "glass_rain_timings":
+		await _capture_glass_rain_timings()
 		get_tree().quit(0)
 		return
 	elif capture_action == "escape_open_menu":

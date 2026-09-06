@@ -1,10 +1,16 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.41 — **G4 IS BUILT AND THE RAIN FALLS (§18, 2026-09-05).**
+**Status:** 🟢 v1.42 — **G4 IS BUILT, THE RAIN FALLS, AND THE PILE IS A BAND (§18).**
 G4-1 the shape family · G4-2 the survivors leave the function · G4-3 the cut
 remnant atom, **confirmed on the real map** (W3, ring 0, 383 voxels, registry 49 =
 board 49) · G6b-1 the field, one texture and one draw call · G6b-2 the fall, aged
-in FRAMES.
+in FRAMES · **G4-4 the scatter + the shockwave impulse + G-D45 (a stranded remnant
+falls with its frame), 2026-09-06 §18.14** — on the GLASS map the pile went from a
+~48-cell line to 284 cells.
+
+🟡 **The rain timings are still placeholders and now have their bench**
+(`build_filmstrip.py --glass-rain <preset|all>` — five presets, one MP4 each).
+The Director picks; then **G6b-3** (the dust puff) is the last piece of §18.
 
 ⚠️ **The finding the whole task rested on: G4's RULE was already implemented and
 its answer was thrown away.** `plan_pane_shatter()` computed `spared` — G-D13b's
@@ -16,10 +22,11 @@ defect shipped under a green gate that could not reach it: 2 757 shard px agains
 **12** without `custom_aabb`; 13 244 differing px mid-flight against **0** after
 the rain is killed, which is G-D43's disposability proved rather than asserted.
 
-🟡 **Next is G4-4** — the impulse and the scatter table. Until the shards spread,
-a pane's rain lands on a LINE, because that is what the foot of a pane is. Every
-rain timing is a placeholder and wants the Director's eye AFTER that, not before.
-Session record: [`RESUMO_SESSAO_2026-09-05_G4_SHARDS.md`](../RESUMO_SESSAO_2026-09-05_G4_SHARDS.md).
+Session records:
+[`RESUMO_SESSAO_2026-09-05_G4_SHARDS.md`](../RESUMO_SESSAO_2026-09-05_G4_SHARDS.md)
+(G4-1..G6b-2),
+[`RESUMO_SESSAO_2026-09-06_G4_4_SCATTER.md`](../RESUMO_SESSAO_2026-09-06_G4_4_SCATTER.md)
+(G4-4 + G-D45).
 
 Earlier, v1.40 — **BOTH OPEN QUESTIONS CLOSED (2026-09-05).**
 
@@ -453,8 +460,9 @@ just not the target case.
 | **G-D38** | **ONE 5-MEMBER POLYGON FAMILY, TWO CONSUMERS.** *(Director, 2026-09-05: the remnant is built "nos mesmos moldes que usamos para fazer as aberturas das balas"; the debris is "só umas 5 shapes, onde vamos duplicar muitas vezes, dar flip, flop, scale up, scale down, rotation".)* Those are the SAME five shapes: the polygon cuts a voxel atom's alpha for a remnant stuck in the frame, and is rasterised once into a 5-cell atlas for the falling shards. ⚠️ **It cannot be `GlassOpening` itself** — an opening's INTERIOR is removed and a fragment's interior is what is KEPT, so reusing those members with the test inverted gives remnants shaped like the negative of a bullet hole (a ring, or a cell with a star-shaped bite), the opposite of "irregulares e angulosos". New family, same authoring language. ⚠️ **`MIN_VALLEY` does NOT carry over**: it exists so an opening swallows the cell it is centred on, and a remnant's invariant is the mirror image — area well under one cell, silhouette touching the edge it hangs from | 🟡 Planned 2026-09-05, §18.2 |
 | **G-D39** | **A REMNANT IS ORIENTED BY ITS ANCHOR, NEVER FREELY ROTATED.** The four-neighbour test that decided the voxel survives already says which side is solid; the shape is placed against it, and the pick key is `(shape, anchor_mask)`. A jagged fragment placed without regard to its anchor floats in the middle of the opening with its solid corner facing away from the brick — the detail that makes the feature read as decoration instead of physics. A two-sided (frame corner) anchor gets its own authored member rather than a rotation of a one-sided one | 🟡 Planned 2026-09-05, §18.3 |
 | **G-D40** | ⛔ **ITS PERSISTENCE HALF IS SUPERSEDED BY G-D43 (2026-09-05)** — the rain does not rest, so nothing about it needs to survive a rotation or a save. The DETERMINISM survives on its own smaller merit: a hash-driven field can be pixel-gated and a `randf()` one cannot, which is why `glass_blast_demo` is not pixel-deterministic today. Kept as written below for the record. ~~**THE RAIN IS A PURE FUNCTION OF G6'S LANDING RECORD, NOT A SECOND STORE.**~~ Every shard's shape, flips, scale, spin, sub-cell offset and trajectory hash off `Vector3i(base_x, base_y, level)` + index. Consequences, all free: rotation re-lays the identical field; a save reload re-lays it; the ANIMATION and the RESTING field are one function at `t < 1` and `t = 1`; and "there is broken glass here" keeps exactly ONE authority. Answers the Director's *"se puder cair e ficar ótimo"* with **yes** — the frozen buffer is one draw call and zero per-frame CPU, not a fade-and-free | 🟡 Planned 2026-09-05, §18.4 |
-| **G-D41** | **SUB-GU = ONE VOXEL CELL, AND EVERY DISTANCE IN THE BRIEF IS IN THOSE.** *(Director, 2026-09-05: "sub-GU is a Godot tile, where 1 voxel belongs. This is precisely the depth of the glass: 1 voxel.")* So the scatter is: most shards on the pane's own column, fewer one cell out, a tail reaching three — perpendicular to the pane BOTH ways and along the run. ⚠️ Reading "3 sub-GUs" as 3 GUs would throw glass 24 voxels across the room. ⚠️ **The landing cell is STATE** (the G6 pile, persisted and save-round-tripped), so the scatter is pure and lives in `plan_landings()`, never in the presentation layer | 🟡 Planned 2026-09-05, §18.5 |
-| **G-D42** | **THE SHOCKWAVE BIASES THE SCATTER, IT DOES NOT REPLACE IT.** *(Director, 2026-09-05: "uma força vetor que desloca todo o conjunto de cacos mais pra longe, baseado na força e na distância da granada… descrevendo uma suave parábola durante a queda".)* `plan_landings()` takes `{dir, strength, lift}` derived from the bomb's own `ring_multipliers` falloff — no second force model. At zero impulse G-D41's table is symmetric; a near grenade skews it downrange, further and wider. ⚠️ **`lift` will be UNEXERCISED BY ANY REAL MAP**: G-D16c/d is unbuilt, CEILING glass renders opaque and has no horizontal `pane_id`, so no skylight can shatter yet. It is authored with a synthetic test and an explicit unbuilt-consumer note rather than quietly, so it does not become the fourth feature this project built and never triggered | 🟡 Planned 2026-09-05, §18.5 |
+| **G-D41** | **SUB-GU = ONE VOXEL CELL, AND EVERY DISTANCE IN THE BRIEF IS IN THOSE.** *(Director, 2026-09-05: "sub-GU is a Godot tile, where 1 voxel belongs. This is precisely the depth of the glass: 1 voxel.")* So the scatter is: most shards on the pane's own column, fewer one cell out, a tail reaching three — perpendicular to the pane BOTH ways and along the run. ⚠️ Reading "3 sub-GUs" as 3 GUs would throw glass 24 voxels across the room. ⚠️ **The landing cell is STATE** (the G6 pile, persisted and save-round-tripped), so the scatter is pure and lives in `plan_landings()`, never in the presentation layer. ⚠️ **AMENDED IN THE BUILD (§18.14): the offset is hashed in GRID space, not base.** The result becomes state at `commit()` (recorded in base coords, only re-laid, never recomputed) exactly as the un-scattered landing already was — the hash only has to be stable across one event's `build_plan()` calls, and it is | ✅ **BUILT 2026-09-06 (§18.14)** |
+| **G-D42** | **THE SHOCKWAVE BIASES THE SCATTER, IT DOES NOT REPLACE IT.** *(Director, 2026-09-05: "uma força vetor que desloca todo o conjunto de cacos mais pra longe, baseado na força e na distância da granada… descrevendo uma suave parábola durante a queda".)* `plan_landings()` takes `{dir, strength, lift}` derived from the bomb's own `ring_multipliers` falloff — no second force model. At zero impulse G-D41's table is symmetric; a near grenade skews it downrange, further and wider. ⚠️ **`lift` will be UNEXERCISED BY ANY REAL MAP**: G-D16c/d is unbuilt, CEILING glass renders opaque and has no horizontal `pane_id`, so no skylight can shatter yet. It is authored with a synthetic test and an explicit unbuilt-consumer note rather than quietly, so it does not become the fourth feature this project built and never triggered. ✅ Built with `SCATTER_IMPULSE_GAIN` / `SCATTER_IMPULSE_MIN_FRAC` / `SCATTER_LIFT_GAIN` as `var` knobs; the cook builds `impulse` from `origin_v.grid_pos - epicenter` and `ring_multipliers[ring]`; bullet shatters pass no impulse and scatter symmetrically. `lift` has its synthetic selftest [9] | ✅ **BUILT 2026-09-06 (§18.14)** |
+| **G-D45** | **A REMNANT WHOSE FRAME IS DESTROYED FALLS WITH IT.** *(Director, 2026-09-05: "Cair seria o ideal, mas se for mais fácil pode ser destruído junto com o frame… Se a moldura for destruída o caco grudado cai/some junto.")* A remnant is a glass voxel `plan_pane_shatter()` SPARED because a neighbour held it (G-D13b); a later event that destroys that neighbour orphans it — `remnant_anchor_mask()`, which reads the live world, returns 0. `Room.reap_orphaned_remnants()` runs once per destruction event (the cook's `commit()` and the shot pipeline), AFTER that event's own remnants are claimed (a remnant claimed this event is anchored by definition). "Cai junto", not "some": the orphan becomes an ordinary DESTROYED voxel and joins the shard fall — cut atom erased, base record dropped, freed voxel base-recorded for VL-PERSIST. Pinned by `glass_shatter_selftest` [23] (mask → 0 the instant the jamb falls) | ✅ Ratified + **BUILT 2026-09-06 (§18.14)** |
 | **G-D43** | **THE PILE IS THE ONLY PERMANENT THING; THE RAIN IS DISPOSABLE.** *(Director, 2026-09-05: "vamos padronizar a pilha no chão. Os cacos caem no chão, apagam e revelam um sprite padrão por trás.")* This RESOLVES §18.7(a) by removing a claim rather than reconciling two — the standing lesson. G6's pile decal is the sole authority for "there is broken glass here"; the shard field falls, fades out over it, and is freed. ⚠️ **The decal is spawned UNDER the field at the moment of landing, at its final opacity, not faded in** — *"por trás"*, and it means a rain cut short by a stall, an off-screen pane or a perf budget still leaves the floor exactly right. **The rain therefore has NO state consequence at all** and can be skipped entirely, which is worth more than it looks with performance as the standing priority. ⚠️ Consequence for G-D40: nothing about the field has to survive a rotation or a reload, so its hash-determinism is now a TESTABILITY choice (a pixel gate needs it) rather than a correctness one | ✅ Ratified 2026-09-05 |
 | **G-D44** | **NO BIG SHARDS — EVERY PIECE IS BETWEEN 1 AND 1/2 VOXEL.** *(Director, 2026-09-05: "não precisam existir mais cacos grandes, quando houver uma explosão que quebra o vidro, os cacos se subdividem todos em partes com tamanhos entre 1 e 1/2 voxel.")* Supersedes G-D25's 1-4-voxel cut silhouettes outright. **And it hands the population a law instead of a guess:** area is conserved, a piece of edge 0.5-1.0 has area 0.25-1.0, so one voxel yields **1 to 4 pieces**, ~2.3 on average — the map's 6 GU x 3 storey pane is 1 152 voxels and therefore ~2 600 shards, not an arbitrary `shards_per_voxel`. ⚠️ **It also unifies the size law across G-D38's two consumers**: the remnant in the frame is a piece of the same band, so "well under one cell" is replaced by **0.5-1.0 voxel, angular, never a filled cell** — one rule, both consumers. On screen a shard is 16-32 px wide, which is large enough to read as a shape rather than as the noise the `decal_shard_glass_*` art is | ✅ Ratified 2026-09-05 |
 | **G-D37** | **THE COARSE CRAZE IS ITS OWN MESH, SIMILAR TO THE FINE ONE — NOT THE FINE ONE RESCALED.** *(Director, 2026-09-05, answering §16.4: "o rachado mais grosso precisa de uma malha diferente, mas pode ser parecida.")* §16.4 offered "a different mesh or the same one at a bigger scale" and noted the second was nearly free; the Director took the first, and the reason is visible in the reference photos — a coarse craze is not a fine craze zoomed in, its polygons are fewer AND blockier, and the line weight does not grow with them. **What "parecida" buys is that it is one generator with a second parameter set**, not a second vocabulary: same Voronoi body, same wrapping seed rule, same stroke, different cell count. ⚠️ **The count of steps is TWO as a floor** (fine + coarse), which is the minimum reading of a ruling phrased about "o mais grosso"; a third middle step is the same generator a third time and stays the Director's, to be decided by looking at B-3's output rather than in advance | ✅ Ratified 2026-09-05 |
@@ -3653,8 +3661,8 @@ would have had to invent and defend.
 | ✅ **G4-3** | the cut remnant atom, oriented by `anchor_mask`. **BUILT 2026-09-05, §18.10** | ✅ `glass_crack_selftest` [20] · `glass_remnant_atoms_2026-09-05.png` (real atoms, production cut path) · **and the real map**: `glass_remnant_w3_2026-09-05.png`, W3, ring 0, 383 voxels, registry 49 = board 49 (§18.11) |
 | ✅ **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set. **BUILT 2026-09-05, §18.12** | ✅ `glass_shard_shapes_selftest` [10]/[11] + the rendered control: **2 757 shard px with the box, 12 without** |
 | ✅ **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; fade-out over the pile decal, then free (G-D43). **BUILT 2026-09-05, §18.13** | ✅ `glass_shard_shapes_selftest` [12] · a filmstrip · and the control: **13 244 differing px mid-flight, 0 after the kill** |
+| ✅ **G4-4** | `plan_landings()` takes the impulse; the scatter table; `lift` authored + synthetic test; **plus G-D45** (an orphaned remnant falls). **BUILT 2026-09-06, §18.14** | ✅ `glass_fall_selftest` 6 → 10 · `glass_shatter_selftest` [23] · on the GLASS map the pile went from a ~48-cell line to 284 cells, 1152 flights → 2927 shards · timing videos via `build_filmstrip.py --glass-rain all` |
 | **G6b-3** | the dust puff on landing | capture |
-| **G4-4** | `plan_landings()` takes the impulse; the scatter table; `lift` authored + synthetic test | `glass_fall_selftest`, extended; the real pile counts on the GLASS map |
 
 ⚠️ **G6b-2's gate is a filmstrip, not a screenshot, and that is not a preference.**
 A falling shard is a transient: a before/after capture cannot see it, and this
@@ -3974,3 +3982,73 @@ phase is partly occluded: the synthetic flights all land on ONE level at the pan
 foot, which the parapet in front hides. **The look of the landing wants G4-4's
 scatter first** — until the shards spread perpendicular to the pane and along the
 run, a pane's rain lands on a LINE, because that is what the foot of a pane is.
+
+✅ **G4-4 landed (§18.14), and the timings now have their bench.** The Director's
+answer to reviewing them was *"vamos gravar vídeos com timings diferentes e
+escolher"* — `build_filmstrip.py --glass-rain <preset>` (or `all`) does exactly
+that: five presets (`snappy` / `default` / `floaty` / `heavy` / `raked`), one MP4
+each, the pane shattered for real with the G-D41/G-D42 scatter over a clean
+diagnostic backdrop. Awaiting his pick.
+
+
+### ✅ 18.14 G4-4 + G-D45 ARE BUILT (2026-09-06) — the pile is a band, and a stranded remnant falls
+
+[`glass_fall.gd`](../../godot/scripts/systems/destruction/glass_fall.gd)
+`plan_landings(destroyed, slabs, impulse := {})`,
+[`glass_rain_overlay.gd`](../../godot/scripts/overlays/glass_rain_overlay.gd)'s
+`timing_overrides`, `Room.reap_orphaned_remnants()`,
+`Room._capture_glass_rain_timings()`, and `build_filmstrip.py --glass-rain`.
+
+**The scatter.** A pane projects onto a LINE of grid cells and until now that line
+was the whole pile. `plan_landings()` now scatters each shard first — per axis, an
+independent draw from `SCATTER_WEIGHTS` `[0.55, 0.30, 0.11, 0.04]`, so most stay on
+the column and a tail reaches `SCATTER_MAX_CELLS` (G-D41's "3 sub-GUs"). The
+symmetric draw covers "perpendicular both ways and along the run" for **any** face,
+so `GlassFall` never learns the pane orientation — it takes a grid-space `impulse`
+instead. Rows gain `origin_pos`; `spawn_glass_rain()` launches each shard from its
+own column and lands it at the scattered one (a now-diagonal fall) and keys the
+trajectory hash on the origin cell (unique per destroyed voxel — two shards
+scattering onto one cell must not collapse to one hash).
+
+⚠️ **THE OFFSET IS HASHED IN GRID SPACE, NOT BASE — and that is right, not a
+shortcut.** The scatter result becomes STATE at `commit()`: the G6 pile is
+recorded in base coords and only re-laid, never recomputed. That is exactly what
+the un-scattered landing already did. The hash only has to be stable across one
+event's many `build_plan()` calls, and the cursor is on one target throughout.
+
+**The impulse (G-D42).** The cook builds `{dir, strength, lift}` from
+`origin_v.grid_pos - epicenter` and `ring_multipliers[ring]` — no second force
+model. `strength` shifts the band's mean downrange, per-shard-scaled
+(`SCATTER_IMPULSE_MIN_FRAC` .. 1.0) so a near grenade lands it *"mais longe, mais
+espalhados"*, and the impulse is the one term allowed past `SCATTER_MAX_CELLS`.
+Bullet shatters pass no impulse and scatter symmetrically (§18.5). **`lift`** is
+authored (`SCATTER_LIFT_GAIN`, an isotropic extra spread) and **UNEXERCISED** —
+G-D16c/d is unbuilt, so `glass_fall_selftest` [9] is synthetic and says so.
+
+**G-D45 — the orphaned remnant.** `Room.reap_orphaned_remnants()` runs once per
+destruction event (the cook's `commit()` unconditionally — a frame the blast broke
+may hold an old remnant even when the delta has no glass — and the shot pipeline
+after its own base-record loop). For each base remnant it asks
+`GlassShatter.remnant_anchor_mask()` (which reads the live world); a 0 means the
+frame is gone, and the fragment becomes an ordinary DESTROYED voxel that joins the
+shard fall — cut atom erased, base record dropped, freed voxel base-recorded for
+VL-PERSIST. "Cai junto", not "some".
+
+#### The instruments
+
+| | |
+|---|---|
+| `glass_fall_selftest` | 6 → **10**. [6] rewritten (the old "one column → one deep pile" is now "a band, count preserved, concentrated"), [7] the scatter shape (monotone 0/1/2/3, none past 3, symmetric at zero impulse), [8] the shockwave (mean X −0.04 → 1.93 under a unit impulse, 167 shards past the symmetric tail, base clean), [9] `lift` widens (synthetic), [10] determinism |
+| `glass_shatter_selftest` [23] | G-D45's one load-bearing fact: `remnant_anchor_mask()` held (non-zero) → **0** the instant the concrete jamb is destroyed. The same call the reap makes, on the same geometry, before and after |
+| the real map | a grenade on the storefront pane: `[GLASS-FALL] 1152 of 1152 shard(s) landed, on 284 cell(s)` — up from the ~48-cell line the pane's foot is. `[GLASS-RAIN] 1152 flight(s) -> 2927 shard(s)` (2.54/voxel). No `[GLASS-REMNANT] G-D45` line — the storefront is free-standing, so the reap correctly found nothing |
+| the timing bench | `INFILTRAITOR_CAPTURE_ACTION=glass_rain_timings` — `RAIN_TIMING_PRESETS` (`snappy`/`default`/`floaty`/`heavy`/`raked`), `INFILTRAITOR_RAIN_IMPULSE`, `INFILTRAITOR_GLASS_BLAST_PANE` (`=framed` for a windowed pane). `build_filmstrip.py --glass-rain <preset|all>` encodes one MP4 each at `--fixed-fps 60` |
+
+#### 🟡 Open, unchanged from §18.13
+
+- **The z_index trade** (one band for the whole rain field) — the Director ruled
+  **(a) leave it** (2026-09-06): a 40-frame transient, only multi-storey panes,
+  performance is the standing priority. Option (b) — a MultiMesh per storey band —
+  stays available if a real map shows it is ugly.
+- **G6b-3** — the white dust puff on landing, on `DebrisOverlay`'s `CircleField`.
+- The reported shard-cell count drift across a flip (340 → 389) still belongs to
+  CRACK-04's `_respawn_base_openings()`, not here.

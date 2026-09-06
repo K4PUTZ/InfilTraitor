@@ -68,6 +68,19 @@ var tint: Color = Color(0.77, 0.91, 0.96, 0.95)
 ## dropping shards under budget is free, because none of them are state.
 var max_shards: int = 3000
 
+## ── CAPTURE-ONLY: a timing preset the Director compares on video ─────────────
+##
+## `Room._capture_glass_rain_timings()` sets this to one row of its preset table
+## before `spawn_glass_rain()`, and `spawn()` folds any key that matches a look
+## `var` above into `self`. Empty on every play path — the defaults ship.
+static var timing_overrides: Dictionary = {}
+
+
+func _apply_timing_overrides() -> void:
+	for k in timing_overrides:
+		if k in self:
+			set(k, timing_overrides[k])
+
 var _field = null
 var _shards: Array = []              ## [{from, to, arc, spin, size, shape, flip, flop, t0, fall}]
 var _frame: int = 0
@@ -102,6 +115,7 @@ func _ready() -> void:
 ## and the split happens here.
 func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 	_ensure_field()
+	_apply_timing_overrides()
 	for f in flights:
 		var key: Vector3i = f["key"]
 		var from: Vector2 = f["from"]

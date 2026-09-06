@@ -3150,8 +3150,19 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 		if glass_src < 0:
 			glass_src = _glass_frosted_source_id
 		if not apply:
-			return {"source_id": glass_src,
-				"atlas_coords": Vector2i.ZERO, "alternative_id": 0}
+			## ⚠️ `glass_sublayer` IS PART OF THE ANSWER, NOT A DECORATION — the id
+			## above belongs on `_glass_layers[level]`, and a caller that writes it
+			## to the OPAQUE layer gets a flat YELLOW rectangle with no error
+			## anywhere (GLASS-OLIVE, 2026-09-06). The glass atom's RGB is
+			## `(dim, dim, tint_index / 255)` — data `glass_pane.gdshader` decodes
+			## and `voxel_face_shading.gdshader` renders literally, so R == G and
+			## B ~= 0. Every resolve-only caller assumed "opaque layer" because the
+			## dict gave it no way to ask; this is that way. The routing rule stays
+			## in this one place — a caller re-deriving it from `is_glass()` would
+			## also have to re-derive `flat_baked` and `_glass_atom_source`, which
+			## is three copies of one decision.
+			return {"source_id": glass_src, "atlas_coords": Vector2i.ZERO,
+				"alternative_id": 0, "glass_sublayer": true}
 		_ensure_glass_sublayers(level)
 		(_glass_layers[level] as TileMapLayer).set_cell(grid_pos, glass_src, Vector2i.ZERO, 0)
 		## Clear any opaque cell a prior state left here (e.g. the calibration

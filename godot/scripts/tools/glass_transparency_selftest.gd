@@ -26,11 +26,18 @@
 ##   5. Intact glass dropped from `build_occupancy()` — the light field would
 ##      stop seeing the pane the moment G1 landed (this suite pins it BLOCKS
 ##      light exactly as before; whether it should transmit is a later call).
+##   6. A glass atom handed to a caller that writes the OPAQUE layer — test [12],
+##      GLASS-OLIVE. Test [1] proves the APPLY path routes glass correctly; the
+##      RESOLVE-ONLY path (`apply = false`) has no layer to be right about, so it
+##      hands back the id and the caller decides. DetonationPlanBuilder decided
+##      "opaque", and 720 pane atoms were stamped under the panes at every
+##      grenade, rendering flat yellow that the real pane MULTIPLIED to olive.
 
 extends SceneTree
 
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
+const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -53,6 +60,7 @@ func _init() -> void:
 	test_pane_size_ceiling_is_enforced()
 	test_two_glass_materials_are_two_panes()
 	test_every_family_member_has_its_own_tinted_atoms()
+	test_a_damaged_glass_voxel_yields_no_opaque_tile_entry()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -667,4 +675,86 @@ func test_every_family_member_has_its_own_tinted_atoms() -> void:
 	else:
 		_fail("the shader's glass_tint default is not %s — three copies of one colour and they have drifted"
 			% want_default)
+	print("")
+
+
+## ── [12] GLASS-OLIVE (2026-09-06) — THE RESOLVE-ONLY SEAM NAMES ITS LAYER ────
+##
+## Test [1] pins the APPLY path: `_set_voxel_cell(apply = true)` puts glass on
+## `_glass_layers` and erases the opaque cell. This one pins the half that has no
+## layer at all — `apply = false` RETURNS an id and lets the caller place it, and
+## for a decade of commits the returned dict gave the caller no way to learn that
+## the id belongs to a different TileMapLayer than every other id it hands out.
+##
+## ⚠️ THE FAILURE IS SILENT IN BOTH DIRECTIONS, WHICH IS WHY THIS IS ASSERTED AS
+## AN IDENTITY. A glass atom's RGB is `(dim, dim, tint_index / 255)` — an
+## instruction to `glass_pane.gdshader` and nothing else — so on the opaque layer
+## `voxel_face_shading.gdshader` renders it as a flat YELLOW rectangle with no
+## push_error anywhere; and the pane still drawing above it tints that yellow with
+## `PANE_TINT[0]`'s blue, which reads as OLIVE and looks like a lighting bug.
+## Asserting merely "the resolve is not the wrong id" would pass for the whole
+## life of the defect, so both sides are named: the marker must BE true for glass
+## and the plan-level resolve must BE empty, with a concrete control that must
+## still produce a real opaque tile.
+func test_a_damaged_glass_voxel_yields_no_opaque_tile_entry() -> void:
+	print("[12] a CRACKED glass voxel resolves to NO opaque tile (GLASS-OLIVE)\n")
+	var r := _fresh_renderer()
+	var level: int = GeometryCoords.PLAYABLE_LEVEL
+	var registry := EdgeRegistry.new()
+	var glass_slice := _make_slice("SLICE_GLASS_D", "glass", level)
+	var concrete_slice := _make_slice("SLICE_CONCRETE_D", "concrete", level)
+	registry.register_slice(glass_slice)
+	registry.register_slice(concrete_slice)
+	r.render(registry)
+
+	## The seam itself: the resolve-only dict says WHICH layer its id belongs to.
+	var glass_resolve: Dictionary = r._set_voxel_cell(Vector2i(26, 31), level, "glass",
+		null, Vector2i(2, 7), Face.SW, false, "", BakePolicy.SurfaceClass.SLICE, false)
+	var glass_ids := {}
+	for fc in [Face.SW, Face.SE, Face.NW, Face.NE]:
+		for m in range(4):
+			glass_ids[int(r._glass_atom_source.get(GlassMaterials.BASE, {}).get(fc, {}).get(m, -1))] = true
+	if bool(glass_resolve.get("glass_sublayer", false)) \
+			and glass_ids.has(int(glass_resolve.get("source_id", -1))):
+		_pass("resolve-only glass returns a glass ATOM id (%d) MARKED `glass_sublayer`"
+			% int(glass_resolve["source_id"]))
+	else:
+		_fail("resolve-only glass dict %s — an unmarked glass atom id is what a caller stamps on the opaque layer"
+			% [glass_resolve])
+
+	var concrete_resolve: Dictionary = r._set_voxel_cell(Vector2i(26, 31), level, "concrete",
+		null, Vector2i(2, 7), Face.SW, false, "", BakePolicy.SurfaceClass.SLICE, false)
+	if not bool(concrete_resolve.get("glass_sublayer", false)) \
+			and int(concrete_resolve.get("source_id", -1)) >= 0:
+		_pass("resolve-only concrete is UNMARKED and still returns a real opaque id (%d)"
+			% int(concrete_resolve["source_id"]))
+	else:
+		_fail("resolve-only concrete dict %s — the marker must be glass-only" % [concrete_resolve])
+
+	## The consumer: DetonationPlanBuilder's per-voxel tile resolve, which
+	## DetonationEntryWriter writes onto `voxel_renderer.get_layer(level)`.
+	var gv: Voxel = glass_slice.voxels[2]
+	gv.damage_state = Voxel.DamageState.CRACKED
+	gv.damage_is_blast = true
+	var glass_entry: Dictionary = DetonationPlanBuilderClass._resolve_damaged_tile(
+		gv, glass_slice, r)
+	if glass_entry.is_empty():
+		_pass("a CRACKED glass voxel yields NO opaque tile entry")
+	else:
+		_fail("a CRACKED glass voxel yielded opaque tile entry %s — it lands under the pane as flat yellow"
+			% [glass_entry])
+
+	var cv: Voxel = concrete_slice.voxels[2]
+	cv.damage_state = Voxel.DamageState.CRACKED
+	cv.damage_is_blast = true
+	var concrete_entry: Dictionary = DetonationPlanBuilderClass._resolve_damaged_tile(
+		cv, concrete_slice, r)
+	if not concrete_entry.is_empty() and int(concrete_entry.get("source_id", -1)) >= 0:
+		_pass("the concrete control still yields a real opaque tile entry (source %d)"
+			% int(concrete_entry["source_id"]))
+	else:
+		_fail("the concrete control yielded %s — the guard is eating non-glass damage"
+			% [concrete_entry])
+
+	r.queue_free()
 	print("")

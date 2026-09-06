@@ -4117,22 +4117,55 @@ fringe barely, which is the brief. Logged as `[GLASS-DUST]`.
   stays available if a real map shows it is ugly.
 - The reported shard-cell count drift across a flip (340 → 389) still belongs to
   CRACK-04's `_respawn_base_openings()`, not here.
-- 🟡 **AN OLIVE/YELLOW CAST ON CRAZED PANES NEAR A GRENADE, that vanishes on a
-  perspective rotation** — Director-reported 2026-09-06, PRE-EXISTING (he has seen
-  it "várias vezes"), NOT from this session's G4-4 work.
-  **→ Full audit: [`PROMPTS/AUDITS/GLASS_OLIVE_CAST_2026-09-06.md`](../AUDITS/GLASS_OLIVE_CAST_2026-09-06.md)**
-  (reproduced, isolated to *a yellow pane-shaped slab inside the `_voxel_renderer`
-  subtree, seen through the erased CRACKED-pane gap and MULTIPLY-tinted olive by the
-  plain-glass blue tint*; root not yet named; 6 committed evidence captures).
+- ✅ **THE OLIVE/YELLOW CAST ON CRAZED PANES NEAR A GRENADE — FIXED 2026-09-06.**
+  Director-reported, PRE-EXISTING (he had seen it "várias vezes"), never from
+  G4-4. **→ Audit, now closed:
+  [`PROMPTS/AUDITS/GLASS_OLIVE_CAST_2026-09-06.md`](../AUDITS/GLASS_OLIVE_CAST_2026-09-06.md).**
+
+  **Root: `DetonationPlanBuilder._resolve_damaged_tile()` stamped GLASS ATOMS onto
+  the OPAQUE voxel layer.** `_set_voxel_cell(apply = false)` is a resolve-only seam
+  — it returns a source id and lets the caller place it — and its glass branch
+  returned the `_glass_layers` pane atom with nothing in the dict to say so. Every
+  consumer assumed "opaque layer". `DetonationEntryWriter` writes the `dented` /
+  `cracked` waves to `voxel_renderer.get_layer(level)`, so every CRACKED glass voxel
+  got its own pane atom stamped on the opaque layer *underneath the still-intact
+  pane*. A glass atom's RGB is `(dim, dim, tint_index / 255)` — an instruction to
+  `glass_pane.gdshader`, not a colour — so `voxel_face_shading.gdshader` rendered it
+  as **flat yellow**, and the real pane above MULTIPLIED `PANE_TINT[0]`'s blue over
+  that yellow, which is **olive**. A rotation cleared it because the rebuild re-runs
+  `_set_voxel_cell(apply = true)`, whose glass branch erases the opaque cell.
+
+  **Fix — one authority, asked instead of re-derived.** The resolve-only return
+  gained `"glass_sublayer": true`, and `_resolve_damaged_tile()` returns `{}` (a real
+  answer: "this voxel has no opaque tile") on all three of its live-resolve branches.
+  The damage itself is untouched — `touched_voxels` still records it, VL-PERSIST
+  still replays it through a rotation — because for glass the craze web is the whole
+  visual (G-D27) and `damage_variant_material()` already returns the base glass name
+  for every state (D22/G-D26). Re-deriving the rule at the call site from
+  `is_glass()` was rejected: it would also have to re-derive `flat_baked` and
+  `_glass_atom_source`, i.e. three copies of one decision.
+
+  **Measured, red then green, same binary and same map** (GLASS, grenade gu 13,13):
+  stray glass atoms on opaque layers **720 → 0** (levels 80..103 — 24 of them, which
+  is exactly why the previous session's node sweep never killed the yellow by hiding
+  one `voxel_layer_N` at a time); olive pixels in the capture **92 779 → 1 754**, and
+  the residue is the dev HUD's own green text `(204,255,204)`, not glass. The crazed
+  pane now reads `(64,74,91)` — the audit's own recorded value for normal blue-grey
+  glass. `glass_olive_fix_{before,after}.png`.
+
+  **Pinned** as `glass_transparency_selftest` [12] (42 assertions, was 38), asserted
+  as an IDENTITY on both sides: the marker must BE true for glass and the plan-level
+  resolve must BE empty, with a concrete control that must still produce a real
+  opaque tile. Teeth checked — removing the three guards fails it with
+  `source_id 18`, the same atom id the audit's cell probe had recorded on the glass
+  sublayer.
+
   ⚠️ **The earlier diagnosis in this section (commit `03444a61`,
-  `INFILTRAITOR_GLASS_WARM_PROBE`) is SUPERSEDED and was wrong** — a deeper probe
-  showed hiding the `BackBufferCopy` changes the pane pixel *not at all*, the cast
-  is stable for 4 s (not a fading warm ramp), the floor crater renders correct dark
-  soot in the same frame, and the crazed panes are plain `glass`. The "warm blast
-  content sampled via `SCREEN_UV` / G-D18b z-bump / crater in the backbuffer" story
-  does not hold. Live leads (light-field warm alt on the wall behind the pane; a
-  variant tint index mis-written to a plain-glass atom's BLUE channel; a craze
-  mask/occupancy `ImageTexture` drawn raw) are in the audit's §5.
+  `INFILTRAITOR_GLASS_WARM_PROBE`) was WRONG and is superseded** — "warm blast
+  content sampled via `SCREEN_UV` / the G-D18b z-bump / the crater in the
+  backbuffer" was a story about a real mechanism that had nothing to do with this
+  cast. It survived because it was never falsified: hiding the `BackBufferCopy`
+  changes the pane pixel *not at all*.
 
 **§18 is now closed** — the shard rain is scattered, biased by the shockwave,
 lands as a band, leaves a readable pile, puffs dust, and a stranded remnant falls

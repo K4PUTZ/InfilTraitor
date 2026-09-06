@@ -1179,13 +1179,21 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				## persistence seam and needs the object, not a snapshot of it.
 				var resolved := _resolve_damaged_tile(
 					delta.project_voxel(voxel), container, voxel_renderer)
-				var alt := _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
-				var wave_key: String = "dented" if state == Voxel.DamageState.DENTED else "cracked"
-				_count(census, wave_key, container, resolved["baked"])
-				_append(waves[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
-					"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"],
-					"alt": alt, "soot": field.face_soot_code(voxel.grid_pos, voxel.level),
-					"r": _radius_of(voxel.grid_pos, epicenter)})
+				## GLASS-OLIVE — an empty resolve is "no opaque tile", not a miss.
+				## The damage itself is already recorded above (`touched_voxels` is
+				## the commit's persistence seam, and VL-PERSIST replays a CRACKED
+				## pane through a rotation from it); what is skipped here is only
+				## the TILE WRITE, which for glass would land on the wrong layer.
+				## The craze web — a sprite over the pane — is the whole visual for
+				## a cracked pane, exactly as G-D27 ratified.
+				if not resolved.is_empty():
+					var alt := _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
+					var wave_key: String = "dented" if state == Voxel.DamageState.DENTED else "cracked"
+					_count(census, wave_key, container, resolved["baked"])
+					_append(waves[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
+						"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"],
+						"alt": alt, "soot": field.face_soot_code(voxel.grid_pos, voxel.level),
+						"r": _radius_of(voxel.grid_pos, epicenter)})
 		since_check += 1
 		if since_check >= chunk:
 			since_check = 0
@@ -1837,6 +1845,27 @@ const EMBER_NEIGHBOURS: Array[Vector3i] = [
 ]
 
 
+## ⚠️ AN EMPTY RETURN MEANS "THIS VOXEL HAS NO OPAQUE TILE", AND THAT IS A REAL
+## ANSWER — GLASS-OLIVE, 2026-09-06.
+##
+## Every entry this builds is written by `DetonationEntryWriter` onto
+## `voxel_renderer.get_layer(level)`, the OPAQUE layer. A glass voxel does not
+## live there (CLAUDE.md rule 10 / G1: the pane is on `_glass_layers`), so the
+## three live-resolve branches below ask `_set_voxel_cell()` — the one authority
+## on that routing — whether the id it just handed back is a glass sublayer atom,
+## and return nothing rather than a cell for the wrong layer.
+##
+## What it cost while it was silent: `damage_variant_material()` already returns
+## the BASE glass name for every damage state (D22/G-D26 — a crazed pane must not
+## change material), so a CRACKED glass voxel resolved straight back to its own
+## pane atom and the writer stamped it on the opaque layer under the still-intact
+## pane. That atom's RGB is `(dim, dim, tint/255)`, which `voxel_face_shading`
+## renders as flat yellow; the real pane then MULTIPLIED its blue `PANE_TINT[0]`
+## over it and the Director saw OLIVE panes near every grenade. Measured on the
+## GLASS map at gu (13,13): **720** stray cells across levels 80..103 — which is
+## also why hiding one `voxel_layer_N` at a time never made the colour go away.
+## A rotation cleared it because the rebuild re-runs `_set_voxel_cell(apply=true)`,
+## whose glass branch erases the opaque cell.
 static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: VoxelRendererClass) -> Dictionary:
 	if container == null:
 		return {"source_id": 0, "atlas_coords": Vector2i.ZERO, "alternative_id": 0, "baked": false}
@@ -1852,6 +1881,8 @@ static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: Voxel
 			voxel.damage_carved_side, voxel.damage_variant)
 		var resolved := voxel_renderer._set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
 			null, voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, false)
+		if bool(resolved.get("glass_sublayer", false)):
+			return {}
 		return {"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"],
 			"alternative_id": resolved["alternative_id"], "baked": false}
 	## E-JUNCTION-01: a JunctionColumn is a diagonal wall segment, so it takes
@@ -1868,6 +1899,8 @@ static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: Voxel
 			voxel.damage_carved_side, voxel.damage_variant)
 		var resolved3 := voxel_renderer._set_voxel_cell(voxel.grid_pos, voxel.level, render_material3,
 			null, voxel_xy2, column.face_a, false, "", BakePolicyClass.SurfaceClass.SLICE, false)
+		if bool(resolved3.get("glass_sublayer", false)):
+			return {}
 		return {"source_id": resolved3["source_id"], "atlas_coords": resolved3["atlas_coords"],
 			"alternative_id": resolved3["alternative_id"], "baked": false}
 	## Slab (FLOOR/CEILING/INTERIOR) — mirrors render_slab_solid()'s own
@@ -1885,6 +1918,8 @@ static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: Voxel
 	var resolved2 := voxel_renderer._set_voxel_cell(voxel.grid_pos, voxel.level, render_material2,
 		null, voxel.grid_pos - slab.texture_anchor, 0, slab.role == Slab.Role.CEILING,
 		"", BakePolicyClass.SurfaceClass.SLICE, false)
+	if bool(resolved2.get("glass_sublayer", false)):
+		return {}
 	return {"source_id": resolved2["source_id"], "atlas_coords": resolved2["atlas_coords"],
 		"alternative_id": resolved2["alternative_id"], "baked": false}
 

@@ -56,6 +56,7 @@ const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coord
 const GlassOpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 ## B-2 [18] — the ring intensities the granularity split is measured against.
 const GlassShatterClass = preload("res://godot/scripts/systems/destruction/glass_shatter.gd")
+const GlassShardShapesClass = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 
 const CRACK_DECAL_TEMPLATE := "res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"
 ## ⛔ The RETIRED round-hole pair, kept only so [3] can assert they are GONE.
@@ -89,6 +90,7 @@ func _init() -> void:
 	test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon()
 	test_the_craze_field_covers_the_pane_and_tiles()
 	test_the_craze_field_is_cut_to_the_holes()
+	test_the_remnant_atom_keeps_only_its_fragment()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1937,3 +1939,110 @@ func test_the_craze_field_is_cut_to_the_holes() -> void:
 	renderer.free()
 	print("")
 
+
+
+## ── [20] G4-3 — THE REMNANT ATOM ─────────────────────────────────────────────
+##
+## ⚠️ PINS THE FRINGE, WHICH THE NUMBERS COULD NOT SEE AND THE ATOM SHEET COULD.
+## `_cut_glass_face_region()` SKIPS a pixel whose recovered (u, v) falls outside
+## [0, 1] instead of clearing it — the fill and the analytic inverse disagree by a
+## pixel along the edges. Harmless for an opening; for a remnant it left a dotted
+## outline of the voxel's own parallelogram on all 25 cuts of
+## `glass_remnant_atoms_2026-09-05.png`, which is precisely the square this
+## feature exists to remove, drawn faintly.
+##
+## Two claims, and the second is the one that matters: the cut REMOVED most of the
+## atom, and NOTHING opaque survives outside the fragment.
+func test_the_remnant_atom_keeps_only_its_fragment() -> void:
+	print("[20] G4-3 — the remnant atom keeps its fragment and nothing else\n")
+	var r = VoxelRendererClass.new()
+	## ⚠️ `Face.SW`, NEVER `0`. The enum is `{NW, NE, SE, SW}`, so a literal 0 is
+	## NW — a REAL face, eighty degrees from the one the comment claims, and
+	## nothing errors. The first version of this test wrote `0  ## Face.SW` and
+	## then hand-rolled the SW basis to check it, so the two halves disagreed
+	## about which wall they were looking at and 1 318 perfectly good pixels were
+	## reported as strays. Same shape as architecture Rule 9's literal level.
+	var face: int = Face.SW
+	var worst_kept: float = 0.0
+	var stray_total: int = 0
+	var checked: int = 0
+	for id in GlassShardShapesClass.ids():
+		for mask in [GlassShardShapesClass.ANCHOR_RUN_NEG,
+				GlassShardShapesClass.ANCHOR_LEVEL_NEG,
+				GlassShardShapesClass.ANCHOR_RUN_POS,
+				GlassShardShapesClass.ANCHOR_LEVEL_POS]:
+			var atom: Image = r._build_glass_pane_atom(face, false, false, 0)
+			if atom == null:
+				_fail("the pane atom did not build")
+				r.free()
+				return
+			var before: int = _opaque_px(atom)
+			var poly: PackedVector2Array = GlassShardShapesClass.anchored_polygon(
+				String(id), int(mask))
+			r._cut_glass_face_region(atom, face, func(off: Vector2) -> bool:
+				return not GlassShardShapesClass.contains(poly, off))
+			r._cut_glass_opening_slivers(atom, poly, Vector2.ZERO, face, true)
+			r._trim_glass_remnant_fringe(atom, face)
+			var after: int = _opaque_px(atom)
+			worst_kept = maxf(worst_kept, float(after) / maxf(float(before), 1.0))
+			## Every surviving pixel must map back INSIDE the fragment. No sliver is
+			## drawn here (want_top/want_side are false), so there is no legitimate
+			## geometry outside the main face at all.
+			stray_total += _stray_px_outside(atom, poly, face)
+			checked += 1
+	r.free()
+	if worst_kept > 0.0 and worst_kept < 0.55:
+		_pass("%d cuts: the heaviest keeps %.1f%% of the atom — a fragment, not a square"
+			% [checked, worst_kept * 100.0])
+	else:
+		_fail("the heaviest cut keeps %.1f%% of the atom (want well under 55%%)" % (worst_kept * 100.0))
+	if stray_total == 0:
+		_pass("and not one opaque pixel survives outside the fragment across all %d cuts" % checked)
+	else:
+		_fail("%d stray pixel(s) outside the fragment — the parallelogram's ghost is back" % stray_total)
+	print("")
+
+
+
+## Opaque pixels whose (u, v) puts them outside the fragment — including the ones
+## the face walk skips because their (u, v) is out of range, which is exactly the
+## class the fringe trim exists for.
+func _stray_px_outside(atom: Image, poly: PackedVector2Array, face: int) -> int:
+	var vn := Vector2(16.0, 0.0)
+	var ve := Vector2(32.0, 8.0)
+	var vs := Vector2(16.0, 16.0)
+	var vw := Vector2(0.0, 8.0)
+	var down := Vector2(0.0, GeometryCoordsClass.VOXEL_STEP_PX)
+	## The renderer's own table, by NAME — see the note in [20].
+	var ea: Vector2
+	var eb: Vector2
+	match face:
+		Face.SW: ea = vw; eb = vs
+		Face.SE: ea = ve; eb = vs
+		Face.NW: ea = vn; eb = vw
+		_: ea = vn; eb = ve
+	var e_u: Vector2 = eb - ea
+	var det: float = e_u.x * down.y - e_u.y * down.x
+	if absf(det) < 0.0001:
+		return 0
+	var stray: int = 0
+	for y in range(atom.get_height()):
+		for x in range(atom.get_width()):
+			if atom.get_pixel(x, y).a <= 0.0:
+				continue
+			var px: Vector2 = Vector2(float(x) + 0.5, float(y) + 0.5) - ea
+			var u: float = (px.x * down.y - px.y * down.x) / det
+			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
+			## A pixel with (u, v) out of range is outside the main face entirely
+			## and, with no slivers drawn, has nothing legitimate to be.
+			if u < -0.02 or u > 1.02 or v < -0.02 or v > 1.02:
+				stray += 1
+				continue
+			## Half a texel of slack: the polygon boundary and the atom's fill are
+			## rasterised by different code, so an exact test would count the
+			## boundary itself.
+			if not GlassShardShapesClass.contains(poly, Vector2(u - 0.5, 0.5 - v)):
+				var d: float = GlassOpeningClass.distance_to_edge(poly, Vector2(u - 0.5, 0.5 - v))
+				if d > 0.06:
+					stray += 1
+	return stray

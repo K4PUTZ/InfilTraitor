@@ -2,6 +2,9 @@ extends Node2D
 ## Tactical room controller: input, UI wiring, agent turns and scene setup.
 
 const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.gd")
+## G4-3 — preloaded rather than used by `class_name`: this file is parsed
+## before the global class cache exists in a headless lint run.
+const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
@@ -317,6 +320,14 @@ var _base_crazes: Array = []
 ## reads. Collapsing it to "there is glass here" would throw away the only
 ## distinction between a single round's worth and a whole pane coming down.
 var _base_shards: Dictionary = {}
+
+## ── G4-2 — THE REMNANTS, IN BASE COORDS ─────────────────────────────────────
+##
+## `Vector3i(base_x, base_y, level) -> true`. POSITION ONLY: the shape is a hash
+## of this key and the anchor is a READ of the live geometry, so nothing here is
+## in view space and a quarter turn cannot make any of it wrong. Checkpoint-scoped
+## like every other scenario mutation, and a fourth `SaveState` section.
+var _base_remnants: Dictionary = {}
 ## B-2b — the last claimed craze's view-invariant identity, for the flip demo's
 ## verdict. Diagnostic only; nothing reads it to make a decision.
 var _last_craze_identity: String = ""
@@ -632,6 +643,82 @@ func _respawn_base_shards() -> void:
 	## silently stops being drawn on a flip is a whole feature healing itself with
 	## nothing in any log to say so.
 	print_debug("[GLASS-SHARDS] perspective %s — %d pile(s) redrawn, %d had no layer"
+		% [_active_perspective, drawn, lost])
+
+
+## ── G4-2 / G4-3 — CLAIM THE GLASS THAT STAYED STUCK TO THE FRAME ────────────
+##
+## Called by `WorldDelta.commit()` for every entry the break proposed, and by the
+## shot path, which writes immediately rather than through a Delta.
+##
+## ⚠️ `record` is false on a rotation replay. The store already holds these; every
+## other claim on this track names the same trap, which is a record that grows by
+## one entry per camera turn, forever.
+##
+## Returns how many reached the board — which is not always how many were asked
+## for, and the difference is reported rather than swallowed (§16.6's discipline).
+func claim_glass_remnants(remnants: Array, record: bool = true) -> int:
+	if _voxel_renderer == null or remnants.is_empty():
+		return 0
+	var bsize := _base_voxel_size()
+	var drawn: int = 0
+	for r in remnants:
+		var cell: Vector2i = r["cell"]
+		var level: int = int(r["level"])
+		var base_xy := PerspectiveMapperClass.cell_to_base(cell, _active_perspective, bsize)
+		var bkey := Vector3i(base_xy.x, base_xy.y, level)
+		if _draw_remnant(cell, level, bkey):
+			drawn += 1
+		if record:
+			_base_remnants[bkey] = true
+	return drawn
+
+
+## One remnant onto one cell: ask the world for its anchor, hash the base key for
+## its shape and flop, stamp the cut atom.
+##
+## ⚠️ THE ANCHOR IS ASKED, NOT REMEMBERED (G4-2's own note on `glass_remnants`).
+## It can legitimately come back 0 — if the frame around a standing remnant was
+## itself destroyed later, the fragment now hangs from nothing — and that is a
+## real answer, reported and drawn as nothing rather than patched with a default
+## placement that would put a shard in mid-air.
+func _draw_remnant(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
+	var host = _glass_slice_at(cell, level)
+	if host == null or _edge_registry == null:
+		return false
+	var mask: int = GlassShatter.remnant_anchor_mask(
+		_pane_by_id(host.pane_id), host.face, _edge_registry.all_slices(), cell, level)
+	if mask == 0:
+		return false
+	## ⚠️ B4 FNV-1a ON THE BASE KEY, the same rule as the pile's decal and the
+	## craze's variant: keyed on anything the camera renumbers, a standing fragment
+	## would change shape on every quarter turn.
+	var salt := "remnant|%d,%d,%d" % [base_key.x, base_key.y, base_key.z]
+	var shape_id: String = GlassShardShapes.pick(salt)
+	var flop: bool = (FacadeSampler._fnv1a_hash(salt + "|flop") & 1) == 1
+	return _voxel_renderer.apply_glass_remnant_at(level, cell, shape_id, mask, flop)
+
+
+## G4-2 — restamp every recorded remnant for the perspective just entered. The
+## record survives the rebuild; the cut ATOM on the tilemap does not, because the
+## rebuild places plain glass from voxel state (CRACK-04 measured exactly this for
+## the rim: nothing is erased on a rebuild, so nothing is flagged, so nothing is
+## re-cut).
+func _respawn_base_remnants() -> void:
+	if _base_remnants.is_empty() or _voxel_renderer == null:
+		return
+	var bsize := _base_voxel_size()
+	var drawn: int = 0
+	var lost: int = 0
+	for bkey in _base_remnants:
+		var k: Vector3i = bkey
+		var vxy := PerspectiveMapperClass.cell_from_base(
+			Vector2i(k.x, k.y), _active_perspective, bsize)
+		if _draw_remnant(vxy, k.z, k):
+			drawn += 1
+		else:
+			lost += 1
+	print_debug("[GLASS-REMNANT] perspective %s — %d remnant(s) restamped, %d had no pane or no anchor"
 		% [_active_perspective, drawn, lost])
 
 
@@ -1442,6 +1529,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_openings.clear()      ## CRACK-04: nor any hole opened in it
 	_base_crazes.clear()        ## G-D35 B-2: nor any pane crazed by a blast
 	_base_shards.clear()        ## G6: and no glass has fallen on its floor
+	_base_remnants.clear()      ## G4: and none is stuck to a frame
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
@@ -2235,6 +2323,12 @@ func _set_perspective(direction: String) -> void:
 		## G6 — and the glass on the floor.
 		_voxel_renderer.clear_floor_shards()
 		_respawn_base_shards()
+		## G4-2 — and the glass still stuck to the frames. AFTER the openings, so a
+		## pane that has both a hole and remnants has its rim cut before the
+		## remnants are stamped: the opening walk skips any cell whose source is
+		## already a cut atom, so the other order would let the rim swap silently
+		## lose to a remnant that was there first.
+		_respawn_base_remnants()
 		## B-4b — the fields' hole masks, after the openings above have been
 		## re-applied (that is what refills the polygon log the mask reads).
 		_voxel_renderer.refresh_craze_opening_masks()

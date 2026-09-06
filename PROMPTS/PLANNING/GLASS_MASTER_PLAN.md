@@ -3629,8 +3629,8 @@ would have had to invent and defend.
 | | task | gate |
 |---|---|---|
 | ✅ **G4-1** | `glass_shard_shapes.gd` — the 5-member family + G-D44's "0.5-1.0 voxel, angular, never a filled cell" invariant. **BUILT 2026-09-05, §18.9** | ✅ `glass_shard_shapes_selftest` 10/10, `glass_shard_family_2026-09-05.png` |
-| **G4-2** | `plan_pane_shatter()` returns `spared`; Delta + room + SaveState + respawn chain | RED first: prove no remnant is reported today |
-| **G4-3** | the cut remnant atom, oriented by `anchor_mask`; minting measured | `INFILTRAITOR_TILESET_STATS`, real GLASS-map capture on W1-W4 |
+| ✅ **G4-2** | `plan_pane_shatter()` returns `spared`; Delta + room + SaveState + respawn chain. **BUILT 2026-09-05, §18.10** | ✅ `glass_shatter_selftest` [22], `save_state_selftest` |
+| 🟡 **G4-3** | the cut remnant atom, oriented by `anchor_mask`. **BUILT 2026-09-05, §18.10** | ✅ `glass_crack_selftest` [20] + `glass_remnant_atoms_2026-09-05.png` (real atoms, production cut path). ⛔ **the on-MAP capture is outstanding** — no windowed run completes on this machine right now (§18.11) |
 | **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set | a 0-instance-culled control, the P7b defect's own gate |
 | **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; fade-out over the pile decal, then free (G-D43) | filmstrip (`build_filmstrip.py`), which is the only instrument that can see a transient — and a CONTROL that kills the rain mid-flight and asserts the floor is identical, which is G-D43's own claim |
 | **G6b-3** | the dust puff on landing | capture |
@@ -3710,3 +3710,90 @@ anchor placements had a vertex past the cell edge. The free axis is recentred no
 where along the edge a fragment hangs is a free parameter, so centring it is not a
 compromise, and it is the only answer that does not need a second clip (a fragment
 clipped on three sides is a square again).
+
+
+### ✅ 18.10 G4-2 + G4-3 ARE BUILT (2026-09-05) — the remnant is a jagged voxel
+
+Built as ONE unit deliberately. G4-2 alone is a state chain with nothing on
+screen, which is precisely the failure §7.1 warns about and which this project
+has already shipped twice (the noise indicator, the exposure labels).
+
+**The chain, which is CRACK-04's chain with a different payload:**
+
+1. `plan_pane_shatter()` returns `{"destroyed", "remnants"}`. ⚠️ A Dictionary, not
+   a second out-parameter — an out-param is how the next caller quietly ignores
+   the half it did not ask for, which is the shape of the defect being fixed. The
+   compiler found all 13 call sites, which is the argument for the type change.
+2. `pane_frame_keys()` and `anchor_mask_for()` are lifted out, so "which keys are
+   this pane's own frame" and "which of the four neighbours hold it" each have ONE
+   implementation. `plan_pane_shatter()` and the room now ask the same function.
+3. The cook PROPOSES on `delta.glass_remnants`; the shot path claims directly, as
+   it already does for shard piles. Stamping a cut atom is a write and
+   `build_plan()` runs on every cursor move.
+4. `Room._base_remnants` in BASE coords, a fourth `SaveState` section, and
+   `_respawn_base_remnants()` on a perspective flip.
+5. `VoxelRenderer.apply_glass_remnant_at()` swaps the cell for an atom cut by
+   `GlassShardShapes.anchored_polygon()`, and registers it in the SAME
+   `_glass_shard_cells` the bullet-hole rim uses — so it inherits
+   `restamp_glass_shards()` instead of needing a second one.
+
+#### ⚠️ THE ANCHOR IS DERIVED, NEVER STORED — and that is what makes rotation free
+
+A stored mask would be in the PANE's (run, level) frame, and a pane's run axis is
+grid-X for SW/NE faces and grid-Y for SE/NW ones, so a quarter turn changes what
+`RUN_POS` means. The frame a fragment hangs from does not move, so
+`GlassShatter.remnant_anchor_mask()` asks the live world again at claim time and
+at every respawn. The store is POSITION ONLY, and there is nothing in it a
+rotation can make wrong.
+
+⚠️ It can legitimately return 0 — if the frame around a standing remnant is later
+destroyed, the fragment hangs from nothing. That is drawn as nothing and reported,
+not patched with a default placement that would leave a shard in mid-air.
+**Whether such a fragment should instead FALL is a real question and is left
+open**, because it is a behaviour decision.
+
+#### Two defects the instruments caught, one each
+
+⚠️ **The ghost of the parallelogram**, found by the atom sheet with every number
+green. `_cut_glass_face_region()` SKIPS a pixel whose recovered (u, v) falls
+outside [0, 1] instead of clearing it — the fill and the analytic inverse disagree
+by a pixel along the edges. Harmless for an OPENING (those pixels sit at the cell
+boundary where glass legitimately remains); for a REMNANT it left a dotted outline
+of the voxel's own parallelogram on all 25 cuts — the square this feature exists
+to remove, drawn faintly. `_trim_glass_remnant_fringe()` clears it, and only where
+it is outside the sliver quads too: the slivers are what make a voxel on a GU
+boundary read one voxel THICK and CRACK-03 paid for stripping them once.
+Pinned by `glass_crack_selftest` [20], which asserts **identity** — not one opaque
+pixel survives outside the fragment — rather than a count that would drift.
+
+⚠️ **`Face` is `{NW, NE, SE, SW}`, so a literal `0` is NW.** Both new tools wrote
+`var face: int = 0   ## Face.SW`. The cut stays SELF-CONSISTENT either way — the
+same face goes to the builder and to the cutter — which is exactly why it is
+silent; it only surfaced because [20] hand-rolled the SW basis to check the result
+and the two halves then disagreed about which wall they were looking at, reporting
+1 318 perfectly good pixels as strays. Same shape as architecture Rule 9's literal
+level: a wrong literal that resolves to a REAL thing.
+
+### ⛔ 18.11 THE ON-MAP CAPTURE IS OUTSTANDING, AND WHY
+
+**No windowed Godot run completes on this machine right now.** Measured
+2026-09-05, four attempts:
+
+| run | result |
+|---|---|
+| `glass_blast_demo` on GLASS, W3 | ~6 min at a steady 44% CPU, no PNG written, killed |
+| the same, second attempt | identical |
+| `level_census` on GLASS (a cheap action) | no output after 90 s |
+| `level_census` on PLAYGROUND (the control) | **also** no output after 90 s |
+
+⚠️ **It is NOT the GLASS map and it is NOT this change** — the PLAYGROUND control
+fails the same way, and the first failing run happened BEFORE a line of G4-2 was
+written. Headless Godot is fine: the whole 52-suite selftest run, the lint, and
+both new capture tools all complete in seconds.
+
+So the visual evidence here is the **atom sheet**, which is the production cut
+path photographed directly (`VoxelRenderer._build_glass_pane_atom()` plus the real
+cut helpers, at the real 32 x 36), not a re-implementation. What it CANNOT show is
+the standing lesson of this project: *a green selftest does not mean the feature
+fires on the real map.* **A blast on W1-W4 with a windowed run is still owed**, and
+until it happens G4-3 is 🟡 rather than ✅.

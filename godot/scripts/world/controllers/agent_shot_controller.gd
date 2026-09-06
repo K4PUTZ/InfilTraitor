@@ -908,8 +908,17 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	## EMPTY set means a free-standing pane, and then the whole thing goes.
 	var anchors: Dictionary = GlassShatter.collect_anchor_positions(
 		pane_slices, hit_slice.face, all_slices)
-	var plan: Array = GlassShatter.plan_pane_shatter(pane_slices, hit_slice.face,
+	var result: Dictionary = GlassShatter.plan_pane_shatter(pane_slices, hit_slice.face,
 		hv.grid_pos, hv.level, glass_punch, pick_salt, anchors)
+	var plan: Array = result["destroyed"]
+	## G4-2 — the survivors, kept for after the destruction below. ⚠️ A remnant is
+	## stamped LAST, once every erase and every rim cut on this pane has happened:
+	## the opening walk skips any cell whose source is already a cut atom, so
+	## stamping first would let the rim swap lose to it silently.
+	var remnants: Array = []
+	for r in result["remnants"]:
+		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+		remnants.append({"cell": rv.grid_pos, "level": rv.level})
 	var n: int = 0
 	var fallen: Array = []
 	for e in plan:
@@ -959,6 +968,13 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	## keeps part of itself). A binary break destroyed the lot and this is a no-op.
 	_craze_pane_around_hole(hit_slice, hv, hit_material, weapon_def,
 		cell_to_voxel, cell_to_material, cell_to_depth)
+
+	## G4-2 / G4-3 — and the glass that stayed stuck to the frame. LAST, after the
+	## erase batch and the craze, for the ordering reason noted where `remnants`
+	## is built.
+	if not remnants.is_empty():
+		var stuck: int = room.claim_glass_remnants(remnants)
+		print_debug("[GLASS-REMNANT] %d anchored survivor(s), %d stamped" % [remnants.size(), stuck])
 
 
 ## CRACK-02 (GLASS_MASTER_PLAN §13, G-D14 / G-D24 / G-D26 / G-D27) — a pane that

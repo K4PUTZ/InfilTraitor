@@ -11,6 +11,9 @@ class_name VoxelRenderer
 signal voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String)
 
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
+## G4-3 — preloaded rather than used by `class_name`: this file is parsed
+## before the global class cache exists in a headless lint run.
+const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 ## D33 Part 3a — the runtime decal compositor (Part 2) this file's
 ## _set_voxel_cell() now calls for full-voxel CRACKED impact marks.
 const DecalCompositorClass = preload("res://godot/scripts/geometry/decal_compositor.gd")
@@ -2414,8 +2417,12 @@ func _cut_glass_opening(atom: Image, opening_id: String, dr: int, dl: int, face:
 ## EDGE's own (run, level): the top sliver along the cell's top edge, the side
 ## sliver down the cell's front edge. Inside the opening it goes; outside it stays
 ## and the shard keeps its thickness.
+## `invert` is G4-3's one difference: an OPENING cuts what is inside the polygon,
+## a REMNANT cuts what is outside it. Everything else about the two is identical,
+## so this is a flag rather than a second copy of the sliver basis — a second copy
+## of that inversion is exactly how a shear bug gets in (CRACK-01 shipped one).
 func _cut_glass_opening_slivers(atom: Image, poly: PackedVector2Array, cell: Vector2,
-		face: int) -> void:
+		face: int, invert: bool = false) -> void:
 	var vn := Vector2(16.0, 0.0)
 	var ve := Vector2(32.0, 8.0)
 	var vs := Vector2(16.0, 16.0)
@@ -2461,7 +2468,7 @@ func _cut_glass_opening_slivers(atom: Image, poly: PackedVector2Array, cell: Vec
 			## the cell's front edge, level varies.
 			var off := Vector2(clampf(u, 0.0, 1.0) - 0.5, 0.5) if in_top \
 				else Vector2(0.5, 0.5 - clampf(v, 0.0, 1.0))
-			if GlassOpening.contains(poly, off + cell):
+			if GlassOpening.contains(poly, off + cell) != invert:
 				atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
 
 
@@ -2492,13 +2499,17 @@ func _cut_glass_opening_slivers(atom: Image, poly: PackedVector2Array, cell: Vec
 ## the opening's edge passes, is the same shade on both sides of any cell boundary
 ## it crosses, and an uncut voxel has none of it at all.
 func _shade_glass_cut_facet(atom: Image, poly: PackedVector2Array, cell: Vector2,
-		face: int) -> void:
+		face: int, invert: bool = false) -> void:
 	if GLASS_CUT_FACET_WIDTH <= 0.0:
 		return
 	_shade_glass_face_region(atom, face, func(off: Vector2) -> float:
 		var p: Vector2 = off + cell
-		if GlassOpening.contains(poly, p):
-			return -1.0    ## inside the hole — already cut away
+		## `invert` — for a REMNANT the glass that was cut away is OUTSIDE the
+		## polygon, so the side to skip is the other one. The facet still follows
+		## the CUT and not the cell, which is what keeps it out of G-D26's moldura
+		## rule in both directions.
+		if GlassOpening.contains(poly, p) != invert:
+			return -1.0    ## the side that was cut away — nothing to bevel
 		var d: float = GlassOpening.distance_to_edge(poly, p)
 		if d > GLASS_CUT_FACET_WIDTH:
 			return -1.0
@@ -5866,6 +5877,148 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 			"anchor": anchor, "opening": opening_id,
 			"run_is_x": (face == Face.SW or face == Face.NE)})
 	return swapped
+
+
+## ── G4-3 / G-D38 + G-D39 — THE REMNANT STUCK IN THE FRAME ───────────────────
+##
+## (Director, 2026-09-05: *"Os voxels que permanecem grudados no frame não podem
+## ser os mesmos quadradinhos."*)
+##
+## A remnant is a glass voxel that SURVIVED — `GlassShatter.plan_pane_shatter()`
+## spared it because one of its four orthogonal neighbours holds another material
+## — so it is still a live, visible voxel and destruction never touched it. All
+## that changes is its ATOM: the pane atom with everything OUTSIDE the shard
+## polygon cut away.
+##
+## ⚠️ THE SAME PATH AS THE BULLET HOLE'S RIM, DELIBERATELY. `_glass_rim_atom_source`
+## already builds "a pane atom cut by a polygon" and `_glass_shard_cells` already
+## keeps such a cell alive through re-render passes (`restamp_glass_shards()` —
+## the half CRACK-03 was missing). A remnant registers in the SAME dictionary, so
+## it inherits the restamp instead of needing a second one, and a later opening
+## walk skips it for free (the walk ignores any cell whose source is not in
+## `_glass_source_info`).
+##
+## ⚠️ AND THE ONE DIFFERENCE IS THE DIRECTION OF THE CUT, not the mechanism: an
+## opening removes the polygon's INTERIOR, a remnant keeps it. That is the `invert`
+## flag on the two sliver/facet helpers and nothing else.
+func _glass_remnant_atom_source(material_id: String, face: int, mask: int,
+		shape_id: String, anchor_mask: int, flop: bool) -> int:
+	var key := "R|%s|%d|%d|%s|%d|%d" % [material_id, face, mask, shape_id, anchor_mask,
+		1 if flop else 0]
+	if _glass_rim_sources.has(key):
+		return _glass_rim_sources[key]
+	var poly: PackedVector2Array = GlassShardShapes.anchored_polygon(shape_id, anchor_mask, flop)
+	if poly.size() < 3:
+		_glass_rim_sources[key] = -1
+		return -1
+	var atom := _build_glass_pane_atom(face, (mask & 0b10) != 0, (mask & 0b01) != 0,
+		GlassMaterials.tint_index(material_id))
+	if atom == null:
+		_glass_rim_sources[key] = -1
+		return -1
+	## Everything OUTSIDE the fragment goes — main face, then the slivers, then the
+	## bevel along what is left.
+	_cut_glass_face_region(atom, face, func(off: Vector2) -> bool:
+		return not GlassShardShapes.contains(poly, off))
+	_cut_glass_opening_slivers(atom, poly, Vector2.ZERO, face, true)
+	_trim_glass_remnant_fringe(atom, face)
+	_shade_glass_cut_facet(atom, poly, Vector2.ZERO, face, true)
+	var src := TileSetAtlasSource.new()
+	src.texture = ImageTexture.create_from_image(atom)
+	src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
+	src.separation = Vector2i.ZERO
+	src.margins = Vector2i.ZERO
+	src.create_tile(Vector2i.ZERO)
+	var id: int = _next_free_tileset_source_id()
+	_tileset.add_source(src, id)
+	var td: TileData = src.get_tile_data(Vector2i.ZERO, 0)
+	if td != null:
+		td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
+		td.set_custom_data("tile_name", material_id)
+	_glass_rim_sources[key] = id
+	return id
+
+
+## ⚠️ **THE GHOST OF THE PARALLELOGRAM, FOUND ON THE FIRST ATOM SHEET.**
+##
+## `_cut_glass_face_region()` SKIPS a pixel whose recovered (u, v) falls outside
+## [0, 1] rather than clearing it — the atom's fill and the analytic inverse
+## disagree by a pixel here and there along the edges. For an OPENING that is
+## harmless: those pixels sit at the cell boundary where glass legitimately
+## remains. For a REMNANT it is the one thing this whole feature exists to remove
+## — everything outside the fragment is supposed to be gone, so what survives is a
+## dotted outline of the voxel's own parallelogram. Measured on
+## `glass_remnant_atoms_2026-09-05.png`: a clean diagonal of stray pixels along
+## the top edge and another at the frontmost column, on every one of the 25 cuts.
+##
+## ⚠️ AND IT CANNOT SIMPLY CLEAR EVERYTHING OUTSIDE THE MAIN FACE. The top and
+## side SLIVERS are real geometry outside that parallelogram — they are what makes
+## a voxel on a GU boundary read one voxel THICK, and CRACK-03 paid for stripping
+## them once already. So a pixel goes only when it is outside the main face AND
+## outside both sliver quads; the slivers themselves were already cut against the
+## polygon by the pass above.
+func _trim_glass_remnant_fringe(atom: Image, face: int) -> void:
+	var vn := Vector2(16.0, 0.0)
+	var ve := Vector2(32.0, 8.0)
+	var vs := Vector2(16.0, 16.0)
+	var vw := Vector2(0.0, 8.0)
+	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
+	var f: float = GLASS_FACE_SLIVER_FRAC
+	var ea: Vector2
+	var eb: Vector2
+	var d_vec: Vector2
+	match face:
+		Face.SW: ea = vw; eb = vs; d_vec = (ve - vs) * f
+		Face.SE: ea = ve; eb = vs; d_vec = (vw - vs) * f
+		Face.NW: ea = vn; eb = vw; d_vec = (vs - vw) * f
+		Face.NE: ea = vn; eb = ve; d_vec = (vs - ve) * f
+		_: return
+	var face_q: PackedVector2Array = [ea, eb, eb + down, ea + down]
+	var top_q: PackedVector2Array = [ea, eb, eb + d_vec, ea + d_vec]
+	var side_q: PackedVector2Array = [eb, eb + d_vec, eb + d_vec + down, eb + down]
+	for y in range(atom.get_height()):
+		for x in range(atom.get_width()):
+			var c := atom.get_pixel(x, y)
+			if c.a <= 0.0:
+				continue
+			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
+			if _signed_dist_in_quad(p, face_q) >= 0.0:
+				continue
+			if _signed_dist_in_quad(p, top_q) >= 0.0 or _signed_dist_in_quad(p, side_q) >= 0.0:
+				continue
+			atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
+
+
+## Stamp one remnant onto its cell. Returns true when the board actually changed.## Stamp one remnant onto its cell. Returns true when the board actually changed.
+##
+## ⚠️ APPLIED, NEVER "CLAIMED" — and the difference is the one CRACK-04 measured.
+## A claim works when an ERASE is about to flag the cell; a remnant erases nothing
+## (the voxel survives), so there is no flag, no batch, and a claim would sit in a
+## dictionary nothing ever reads. The rebuild path has exactly the same shape,
+## which is why one function serves both the live break and the perspective flip.
+func apply_glass_remnant_at(level: int, cell: Vector2i, shape_id: String,
+		anchor_mask: int, flop: bool) -> bool:
+	if not GLASS_RIM_ENABLED or shape_id == "" or anchor_mask == 0:
+		return false
+	var layer := _glass_layers.get(level) as TileMapLayer
+	if layer == null:
+		return false
+	var sid: int = layer.get_cell_source_id(cell)
+	if sid == -1 or not _glass_source_info.has(sid):
+		## No glass here, or it is already a cut atom — a remnant is never
+		## recomputed, the same idempotence the rim swap has.
+		return false
+	var info: Dictionary = _glass_source_info[sid]
+	var rid: int = _glass_remnant_atom_source(String(info["material"]), int(info["face"]),
+		int(info["mask"]), shape_id, anchor_mask, flop)
+	if rid < 0:
+		return false
+	layer.set_cell(cell, rid, Vector2i.ZERO, 0)
+	## The SAME registry the rim shards use, so `restamp_glass_shards()` keeps a
+	## remnant on the board through every pass that re-places glass.
+	_glass_shard_cells[Vector3i(cell.x, cell.y, level)] = rid
+	note_external_write(level, cell)
+	return true
 
 
 ## CRACK-04 — claim a region's opening BEFORE the erase batch is flushed. Called

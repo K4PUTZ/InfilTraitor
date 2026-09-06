@@ -53,6 +53,10 @@ class_name GlassShatter
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 const ShotPunchTableClass = preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")
 const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
+## G4-2 — the anchor BITS are read from the shape family rather than restated
+## here. The mask this file produces is the mask that file consumes, so a second
+## copy of the four constants is a drift waiting to happen.
+const ShardShapesClass = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 
 static var SHATTER_K: float = 1.14       ## logistic steepness
 static var SHATTER_X0: float = 3.79      ## logistic midpoint, in glass_punch units
@@ -360,10 +364,12 @@ static func collect_anchor_positions(pane_slices: Array, face: int, all_slices: 
 ## row of shards along the bottom of exactly the free-standing pane this rule
 ## exists to empty. Stated because it is an assumption, not a derivation.
 ##
-## Returns Array[{"slice": Slice, "voxel_index": int}] — the voxels to DESTROY.
+## Returns `{"destroyed": Array[{"slice", "voxel_index"}],
+##            "remnants":  Array[{"slice", "voxel_index", "anchor_mask"}]}` —
+## G4-2. The second half used to be a discarded local; see the return itself.
 static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vector2i,
 		hit_level: int, glass_punch: float, salt: String,
-		anchor_positions: Dictionary = {}) -> Array:
+		anchor_positions: Dictionary = {}) -> Dictionary:
 	## Run axis of the pane: X for {SW, NE}, Y for {SE, NW} — matches
 	## GlassPaneGrouper's `Vector2i(absi(fd.y), absi(fd.x))`.
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
@@ -390,7 +396,11 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## so a sniper on the GLASS map's brick-capped window took 91 of its 96 brick
 	## voxels with it — measured by glass_shatter_selftest [11] before this fix.
 	var lattice: Dictionary = {}   ## Vector2i(col, level) -> {"slice", "voxel_index"} — GLASS only
-	var own_frame: Dictionary = {} ## Vector2i(col, level) -> true — this pane's non-glass bands
+	## ⚠️ ONE IMPLEMENTATION OF "WHICH KEYS ARE THIS PANE'S OWN FRAME", because the
+	## room needs the same answer at claim and respawn time (G4-2) and two walks
+	## that agree today are two walks that can disagree later. The extra pass over
+	## the pane's voxels is not worth a second copy of the rule.
+	var own_frame: Dictionary = pane_frame_keys(pane_slices, run_is_x)
 	for slice in pane_slices:
 		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
 		for vi in range(slice.voxels.size()):
@@ -401,7 +411,6 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 				continue
 			var key := _pane_key(v, run_is_x)
 			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
-				own_frame[key] = true
 				continue
 			## ⚠️ THE LATTICE KEY DROPS THE THICKNESS AXIS. `_pane_key()` is
 			## (col, level) — for an SW/NE pane that is (grid_pos.x, level), and the
@@ -417,10 +426,10 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 			## fail loudly at that seam instead of shattering half a wall.
 			if lattice.has(key):
 				push_error("[GlassShatter] pane %s has two glass voxels on lattice key %s — the (col, level) key drops the thickness axis and only holds for a HALF-THICKNESS pane. A full-thickness or block pane needs a 3-D key before it can shatter." % [slice.pane_id, key])
-				return []
+				return {"destroyed": [], "remnants": []}
 			lattice[key] = {"slice": slice, "voxel_index": vi}
 	if lattice.is_empty():
-		return []
+		return {"destroyed": [], "remnants": []}
 
 	var origin_col: int = hit_grid_pos.x if run_is_x else hit_grid_pos.y
 	var origin := Vector2i(origin_col, hit_level)
@@ -505,11 +514,8 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 		keep_prob *= SHATTER_REMNANT_ARMORED_SCALE
 	var anchored: Array = []
 	for k in flood.keys():
-		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var nb: Vector2i = k + d
-			if own_frame.has(nb) or anchor_positions.has(nb):
-				anchored.append(k)
-				break
+		if anchor_mask_for(k, own_frame, anchor_positions) != 0:
+			anchored.append(k)
 	var spared: Dictionary = {}
 	for k in anchored:
 		var u: float = float(FacadeSamplerClass._fnv1a_hash("%s:REMNANT:%d:%d" % [salt, k.x, k.y]) % 100000) / 100000.0
@@ -538,9 +544,89 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 				break
 			spared[k] = true
 
-	var out: Array = []
+	## ── G4-2 — THE SURVIVORS LEAVE THE FUNCTION ──────────────────────────────
+	##
+	## ⚠️ **THIS RETURN USED TO DISCARD `spared`.** It was a local with exactly one
+	## use — `if spared.has(k): continue` — so a remnant was not a thing the world
+	## knew about: it was a voxel that happened to be ABSENT from the destroy list,
+	## indistinguishable from one the blast never reached, and it drew as the
+	## ordinary square atom. The rule the Director stated for G4 was already
+	## implemented here in full; only its answer was thrown away.
+	##
+	## A Dictionary rather than a second out-parameter: an out-param is how the
+	## next caller quietly ignores the half it did not ask for, which is the shape
+	## of the defect this is fixing.
+	var destroyed: Array = []
+	var remnants: Array = []
 	for k in flood.keys():
 		if spared.has(k):
+			remnants.append({
+				"slice": lattice[k]["slice"],
+				"voxel_index": lattice[k]["voxel_index"],
+				"anchor_mask": anchor_mask_for(k, own_frame, anchor_positions),
+			})
 			continue
-		out.append(lattice[k])
+		destroyed.append(lattice[k])
+	return {"destroyed": destroyed, "remnants": remnants}
+
+
+## Which (col, level) keys of this pane hold its own NON-GLASS material — a G-D9
+## banded window's brick sill and head, and any other band the panel authors.
+##
+## Those voxels are FRAME, not pane: they are not flood candidates, the fracture
+## does not travel through them, and they ANCHOR the glass beside them.
+static func pane_frame_keys(pane_slices: Array, run_is_x: bool) -> Dictionary:
+	var out: Dictionary = {}
+	for slice in pane_slices:
+		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
+		for v in slice.voxels:
+			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
+				out[_pane_key(v, run_is_x)] = true
 	return out
+
+
+## G-D13b's four-neighbour test, as a MASK rather than a yes/no.
+##
+## The bits are `GlassShardShapes`' own, so the answer this file computes is the
+## answer that file places a fragment with (G-D39). Diagonals do not count — a
+## corner is not something a shard hangs from.
+static func anchor_mask_for(key: Vector2i, own_frame: Dictionary,
+		anchor_positions: Dictionary) -> int:
+	var mask: int = 0
+	for pair in [
+			[Vector2i(1, 0), ShardShapesClass.ANCHOR_RUN_POS],
+			[Vector2i(-1, 0), ShardShapesClass.ANCHOR_RUN_NEG],
+			[Vector2i(0, 1), ShardShapesClass.ANCHOR_LEVEL_POS],
+			[Vector2i(0, -1), ShardShapesClass.ANCHOR_LEVEL_NEG]]:
+		var nb: Vector2i = key + (pair[0] as Vector2i)
+		if own_frame.has(nb) or anchor_positions.has(nb):
+			mask |= int(pair[1])
+	return mask
+
+
+## ── G4-2 — THE MASK, ASKED OF THE LIVE WORLD ────────────────────────────────
+##
+## The room's entry point, used both when a remnant is claimed and when it is
+## replayed after a perspective flip.
+##
+## ⚠️ **THE MASK IS DERIVED, NEVER STORED**, and that is what makes a remnant
+## survive rotation for free. A stored mask would be in the PANE's (run, level)
+## frame, and a pane's run axis is grid-X for SW/NE faces and grid-Y for SE/NW
+## ones — so a quarter turn changes what `RUN_POS` means, and a record in view
+## space is a record rotation loses in silence (the standing rule). The frame the
+## fragment hangs from does not move, so asking the world again is both cheaper
+## and correct by construction.
+##
+## ⚠️ It can legitimately return 0: if the frame around a standing remnant is
+## later destroyed, the fragment now hangs from nothing. The caller must treat
+## that as the real answer it is, not as a lookup failure.
+static func remnant_anchor_mask(pane_slices: Array, face: int, all_slices: Array,
+		grid_pos: Vector2i, level: int) -> int:
+	if pane_slices.is_empty():
+		return 0
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	var key := Vector2i(grid_pos.x if run_is_x else grid_pos.y, level)
+	return anchor_mask_for(key, pane_frame_keys(pane_slices, run_is_x),
+		collect_anchor_positions(pane_slices, face, all_slices))

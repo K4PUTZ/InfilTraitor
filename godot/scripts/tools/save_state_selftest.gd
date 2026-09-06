@@ -29,6 +29,10 @@ class RoomStub extends RefCounted:
 	## depth. Same reasoning as the fields above: the stub models the real Room's
 	## persisted state, so a new one appears here the moment it exists.
 	var _base_shards: Dictionary = {}
+	## G4 — the glass that stayed stuck to a frame, in BASE coords. POSITION only:
+	## the shape is a hash of the key and the anchor is read from the live world,
+	## so there is deliberately no payload to lose here.
+	var _base_remnants: Dictionary = {}
 	var invalidated: int = 0
 	func invalidate_soot_index(_reason: String = "") -> void:
 		invalidated += 1
@@ -78,6 +82,9 @@ func _test_round_trip() -> void:
 	## G6 — a pile 17 deep on a negative cell, so the count and the sign are both
 	## on the wire.
 	a._base_shards[Vector3i(9, -4, 79)] = 17
+	## G4 — two remnants, one on a negative cell.
+	a._base_remnants[Vector3i(-7, 3, 84)] = true
+	a._base_remnants[Vector3i(2, 2, 84)] = true
 
 	var blob: Dictionary = SaveState.capture(a)
 	var b := RoomStub.new()
@@ -116,6 +123,15 @@ func _test_round_trip() -> void:
 	d._base_shards[Vector3i(1, 1, 79)] = 9
 	_check(SaveState.restore(d, pre_g6) and d._base_shards.is_empty(),
 		"floor_shards: a save written before G6 restores as no glass, not a refusal")
+	## ── G4 — THE REMNANTS ───────────────────────────────────────────────────
+	_check(b._base_remnants.size() == 2 and b._base_remnants.has(Vector3i(-7, 3, 84)),
+		"glass_remnants: both survive, negative cell included")
+	var pre_g4: Dictionary = SaveState.capture(a)
+	pre_g4.erase("glass_remnants")
+	var e := RoomStub.new()
+	e._base_remnants[Vector3i(5, 5, 84)] = true
+	_check(SaveState.restore(e, pre_g4) and e._base_remnants.is_empty(),
+		"glass_remnants: a save written before G4 restores as nothing stuck, not a refusal")
 	_check(blob["map_id"] == "TESTMAP", "map_id travels with the record")
 	## The cache is rebuilt, never restored — SaveState's own class note.
 	_check(b.invalidated == 1, "restore() invalidates the soot index exactly once")

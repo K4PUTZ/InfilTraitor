@@ -27,6 +27,14 @@ const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruct
 const WorldDeltaClass = preload("res://godot/scripts/systems/prediction/world_delta.gd")
 const BombDefClass = preload("res://godot/scripts/systems/destruction/bomb_def.gd")
 
+## G4-2 — `plan_pane_shatter()` returns {"destroyed", "remnants"} now. Every test
+## in this file was written about the destroyed half and still is; the remnant
+## half has its own assertions in [12] rather than being retrofitted onto tests
+## that were asking a different question.
+func _destroyed(result: Dictionary) -> Array:
+	return result.get("destroyed", [])
+
+
 var passed: int = 0
 var failed: int = 0
 
@@ -74,6 +82,7 @@ func _init() -> void:
 	test_only_rifle_class_pierces_armored_glass()
 	test_cook_proposes_the_opening_and_only_commit_claims_it()
 	test_a_pane_the_blast_does_not_take_crazes()
+	test_the_survivors_leave_the_function()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -346,8 +355,8 @@ func test_small_pane_is_binary_with_remnants() -> void:
 
 	## Free-standing: nothing to hang from, so nothing hangs.
 	var lone := _pane(4, 4, 1)
-	var lone_plan := GlassShatterClass.plan_pane_shatter(lone, Face.SW, hit, base + 3, 3.75,
-		"SMALL:1", GlassShatterClass.collect_anchor_positions(lone, Face.SW, lone))
+	var lone_plan := _destroyed(GlassShatterClass.plan_pane_shatter(lone, Face.SW, hit, base + 3, 3.75,
+		"SMALL:1", GlassShatterClass.collect_anchor_positions(lone, Face.SW, lone)))
 	_apply(lone, lone_plan)
 	var lone_left := _count_visible(lone)
 
@@ -357,8 +366,8 @@ func test_small_pane_is_binary_with_remnants() -> void:
 	var wall := _wall(5, 1)
 	var world: Array = framed.duplicate()
 	world.append(wall)
-	var framed_plan := GlassShatterClass.plan_pane_shatter(framed, Face.SW, hit, base + 3, 3.75,
-		"SMALL:1", GlassShatterClass.collect_anchor_positions(framed, Face.SW, world))
+	var framed_plan := _destroyed(GlassShatterClass.plan_pane_shatter(framed, Face.SW, hit, base + 3, 3.75,
+		"SMALL:1", GlassShatterClass.collect_anchor_positions(framed, Face.SW, world)))
 	_apply(framed, framed_plan)
 	var framed_left := _count_visible(framed)
 
@@ -379,11 +388,11 @@ func test_big_pane_partial_then_full() -> void:
 	var mid_lvl := GeometryCoords.storey_level_base(0) + 12
 
 	var weak := _pane(7, 12, 3)
-	var weak_plan := GlassShatterClass.plan_pane_shatter(weak, Face.SW,
-		Vector2i(mid_col, 0), mid_lvl, 2.63, "BIG:weak")
+	var weak_plan := _destroyed(GlassShatterClass.plan_pane_shatter(weak, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 2.63, "BIG:weak"))
 	var full := _pane(7, 12, 3)
-	var full_plan := GlassShatterClass.plan_pane_shatter(full, Face.SW,
-		Vector2i(mid_col, 0), mid_lvl, 5.25, "BIG:full")
+	var full_plan := _destroyed(GlassShatterClass.plan_pane_shatter(full, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 5.25, "BIG:full"))
 	print("      %d voxels: revolver win -> %d destroyed (%.0f%%);  sniper win -> %d destroyed (%.0f%%)" % [
 		total, weak_plan.size(), 100.0 * weak_plan.size() / total,
 		full_plan.size(), 100.0 * full_plan.size() / total])
@@ -410,9 +419,9 @@ func test_remnant_floor_never_leaves_zero_border() -> void:
 		var world: Array = slices.duplicate()
 		world.append(_wall(gu_hi + 1, storeys))
 		var anchors := GlassShatterClass.collect_anchor_positions(slices, Face.SW, world)
-		var plan := GlassShatterClass.plan_pane_shatter(slices, Face.SW,
+		var plan := _destroyed(GlassShatterClass.plan_pane_shatter(slices, Face.SW,
 			Vector2i(2 * 8 + 4, 0), GeometryCoords.storey_level_base(0) + storeys * 4, 6.0,
-			"REMNANT:%d" % trial, anchors)
+			"REMNANT:%d" % trial, anchors))
 		_apply(slices, plan)
 		worst = mini(worst, _count_visible(slices))
 	if worst >= GlassShatterClass.SHATTER_REMNANT_MIN_COUNT:
@@ -497,9 +506,9 @@ func test_banded_pane_never_destroys_its_own_frame_bands() -> void:
 		## Aim at the middle of the glass, with a radius big enough to reach both
 		## bands — a sniper takes the whole pane.
 		var hit_col: int = 20 * 8 + 4
-		var plan: Array = GlassShatterClass.plan_pane_shatter(
+		var plan: Array = _destroyed(GlassShatterClass.plan_pane_shatter(
 			slices, Face.SW, Vector2i(hit_col, 3 * 8 + 7), base + 12, 5.25,
-			"BANDED:%d" % trial)
+			"BANDED:%d" % trial))
 		_apply(slices, plan)
 		worst_survivors = mini(worst_survivors, _surviving_band_voxels(slices))
 
@@ -532,10 +541,10 @@ func test_unanchored_pane_keeps_nothing() -> void:
 		## pane, which reads as "remnants survived" and is nothing of the kind —
 		## the first version of this test made exactly that mistake.
 		var hit_col: int = 103
-		var plan: Array = GlassShatterClass.plan_pane_shatter(
+		var plan: Array = _destroyed(GlassShatterClass.plan_pane_shatter(
 			slices, Face.SW, Vector2i(hit_col, 3 * 8 + 7), base + 12, 5.78,
 			"UNANCHORED:%d" % trial,
-			GlassShatterClass.collect_anchor_positions(slices, Face.SW, slices))
+			GlassShatterClass.collect_anchor_positions(slices, Face.SW, slices)))
 		_apply(slices, plan)
 		left_standing += _count_visible(slices)
 
@@ -641,8 +650,8 @@ func test_local_hole_does_not_wall_off_the_flood() -> void:
 	## CONTROL — the same win with no pre-existing hole, so the assertion below
 	## compares against a measured number rather than a guessed one.
 	var intact := _pane(7, 12, 3)
-	var intact_plan := GlassShatterClass.plan_pane_shatter(intact, Face.SW,
-		Vector2i(mid_col, 0), mid_lvl, 5.25, "HOLE:control")
+	var intact_plan := _destroyed(GlassShatterClass.plan_pane_shatter(intact, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 5.25, "HOLE:control"))
 
 	## THE REAL SHAPE — the round's local hole, punched before the roll. Chebyshev
 	## radius 1 is all it takes (the real map measured 0 of 8 neighbours surviving)
@@ -654,8 +663,8 @@ func test_local_hole_does_not_wall_off_the_flood() -> void:
 			if absi(v.grid_pos.x - mid_col) <= 1 and absi(v.level - mid_lvl) <= 1:
 				v.set_damage(Voxel.DamageState.DESTROYED, false, 0, 0, 0)
 				punched += 1
-	var holed_plan := GlassShatterClass.plan_pane_shatter(holed, Face.SW,
-		Vector2i(mid_col, 0), mid_lvl, 5.25, "HOLE:control")
+	var holed_plan := _destroyed(GlassShatterClass.plan_pane_shatter(holed, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 5.25, "HOLE:control"))
 
 	print("      %d voxels, sniper win: intact origin -> %d flooded;  after a %d-voxel local hole -> %d flooded"
 		% [total, intact_plan.size(), punched, holed_plan.size()])
@@ -695,15 +704,15 @@ func test_armored_takes_the_whole_pane_and_leaves_fewer_remnants() -> void:
 	var plain_world: Array = plain.duplicate()
 	plain_world.append(_wall(13, 3))
 	var plain_anchors := GlassShatterClass.collect_anchor_positions(plain, Face.SW, plain_world)
-	var plain_plan := GlassShatterClass.plan_pane_shatter(plain, Face.SW,
-		Vector2i(mid_col, 0), mid_lvl, weak, "ARM:cmp", plain_anchors)
+	var plain_plan := _destroyed(GlassShatterClass.plan_pane_shatter(plain, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, weak, "ARM:cmp", plain_anchors))
 
 	var armored := _pane(7, 12, 3, "glass_armored")
 	var armored_world: Array = armored.duplicate()
 	armored_world.append(_wall(13, 3))
 	var armored_anchors := GlassShatterClass.collect_anchor_positions(armored, Face.SW, armored_world)
-	var armored_plan := GlassShatterClass.plan_pane_shatter(armored, Face.SW,
-		Vector2i(mid_col, 0), mid_lvl, weak, "ARM:cmp", armored_anchors)
+	var armored_plan := _destroyed(GlassShatterClass.plan_pane_shatter(armored, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, weak, "ARM:cmp", armored_anchors))
 
 	print("      %d voxels at glass_punch %.2f: plain -> %d destroyed (%.0f%%);  armoured -> %d (%.0f%%)"
 		% [total, weak, plain_plan.size(), 100.0 * plain_plan.size() / total,
@@ -722,14 +731,14 @@ func test_armored_takes_the_whole_pane_and_leaves_fewer_remnants() -> void:
 	var plain_full_world: Array = plain_full.duplicate()
 	plain_full_world.append(_wall(13, 3))
 	var pfa := GlassShatterClass.collect_anchor_positions(plain_full, Face.SW, plain_full_world)
-	_apply(plain_full, GlassShatterClass.plan_pane_shatter(plain_full, Face.SW,
-		Vector2i(mid_col, 0), mid_lvl, 9.0, "ARM:rem", pfa))
+	_apply(plain_full, _destroyed(GlassShatterClass.plan_pane_shatter(plain_full, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 9.0, "ARM:rem", pfa)))
 	var armored_full := _pane(7, 12, 3, "glass_armored")
 	var armored_full_world: Array = armored_full.duplicate()
 	armored_full_world.append(_wall(13, 3))
 	var afa := GlassShatterClass.collect_anchor_positions(armored_full, Face.SW, armored_full_world)
-	_apply(armored_full, GlassShatterClass.plan_pane_shatter(armored_full, Face.SW,
-		Vector2i(mid_col, 0), mid_lvl, 9.0, "ARM:rem", afa))
+	_apply(armored_full, _destroyed(GlassShatterClass.plan_pane_shatter(armored_full, Face.SW,
+		Vector2i(mid_col, 0), mid_lvl, 9.0, "ARM:rem", afa)))
 	var plain_left: int = _count_visible(plain_full)
 	var armored_left: int = _count_visible(armored_full)
 	print("      full win, same salt: plain leaves %d remnant(s), armoured leaves %d"
@@ -1183,4 +1192,81 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 			else:
 				_fail("ring 0 gave cracked=%d destroyed=%d crazes=%d"
 					% [cracked, destroyed, delta.glass_crazes.size()])
+	print("")
+
+
+## ── G4-2 ─────────────────────────────────────────────────────────────────────
+##
+## ⚠️ RED BEFORE GREEN, AND THE RED WAS STRUCTURAL. Before this task
+## `plan_pane_shatter()` returned a bare Array of voxels to destroy and `spared`
+## was a local with exactly one use — `if spared.has(k): continue`. There was no
+## channel for a remnant at ALL, so the count this test reads was not "low", it
+## was unaskable: a remnant was a voxel that happened to be absent from the
+## destroy list, indistinguishable from one the blast never reached.
+##
+## Both directions, on the same pane and the same roll, because a test that only
+## checked the anchored case would pass just as well if the function reported
+## every survivor everywhere.
+func test_the_survivors_leave_the_function() -> void:
+	print("[22] G4-2 — the anchored survivors LEAVE the function, with their anchor\n")
+	var base: int = GeometryCoords.storey_level_base(0)
+	var hit := Vector2i(4 * 8 + 4, 0)
+
+	var lone := _pane(4, 4, 1)
+	var lone_res: Dictionary = GlassShatterClass.plan_pane_shatter(lone, Face.SW, hit,
+		base + 3, 3.75, "SMALL:1",
+		GlassShatterClass.collect_anchor_positions(lone, Face.SW, lone))
+
+	var framed := _pane(4, 4, 1)
+	var world: Array = framed.duplicate()
+	world.append(_wall(5, 1))
+	var framed_res: Dictionary = GlassShatterClass.plan_pane_shatter(framed, Face.SW, hit,
+		base + 3, 3.75, "SMALL:1",
+		GlassShatterClass.collect_anchor_positions(framed, Face.SW, world))
+
+	var lone_r: Array = lone_res["remnants"]
+	var framed_r: Array = framed_res["remnants"]
+	print("      free-standing: %d destroyed, %d remnant(s);  wall at gu 5: %d destroyed, %d remnant(s)"
+		% [lone_res["destroyed"].size(), lone_r.size(),
+			framed_res["destroyed"].size(), framed_r.size()])
+	if lone_r.is_empty() and framed_r.size() >= GlassShatterClass.SHATTER_REMNANT_MIN_COUNT:
+		_pass("nothing to hang from -> 0 reported; a wall next to it -> %d reported" % framed_r.size())
+	else:
+		_fail("free-standing reported %d (want 0), framed reported %d (want >= %d)"
+			% [lone_r.size(), framed_r.size(), GlassShatterClass.SHATTER_REMNANT_MIN_COUNT])
+
+	## ⚠️ THE COUNT ALONE WOULD PASS FOR A REMNANT WITH NO ANCHOR, which is the one
+	## thing a remnant cannot be — G-D39 places the fragment AGAINST the material
+	## it hangs from, and mask 0 has no placement at all.
+	var maskless: int = 0
+	var bits: Dictionary = {}
+	for r in framed_r:
+		var m: int = int(r["anchor_mask"])
+		if m == 0:
+			maskless += 1
+		bits[m] = int(bits.get(m, 0)) + 1
+	if maskless == 0:
+		_pass("every reported remnant carries a non-zero anchor mask (masks seen: %s)" % [bits])
+	else:
+		_fail("%d of %d remnant(s) reported mask 0 — a fragment hanging from nothing" % [maskless, framed_r.size()])
+
+	## And the two halves partition the flood: a voxel is destroyed or it is a
+	## remnant, never both and never neither. Cheap, and it is what says the split
+	## did not quietly drop anything on the floor between the two arrays.
+	var seen: Dictionary = {}
+	var dupes: int = 0
+	for e in framed_res["destroyed"]:
+		var k := "%d:%d" % [e["slice"].get_instance_id(), int(e["voxel_index"])]
+		if seen.has(k):
+			dupes += 1
+		seen[k] = true
+	for r2 in framed_r:
+		var k2 := "%d:%d" % [r2["slice"].get_instance_id(), int(r2["voxel_index"])]
+		if seen.has(k2):
+			dupes += 1
+		seen[k2] = true
+	if dupes == 0:
+		_pass("the two halves partition the flood — %d voxels, no voxel in both" % seen.size())
+	else:
+		_fail("%d voxel(s) appear in BOTH halves" % dupes)
 	print("")

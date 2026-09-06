@@ -27,6 +27,11 @@ class_name SaveState
 ##   · `floor_shards` — G6: where broken glass came to rest, in BASE coords, with
 ##     its pile depth. Scenario state like the rest: it is what the level looks
 ##     like after a fight, and it dies with the checkpoint.
+##   · `glass_remnants` — G4: the glass that stayed stuck to a frame, in BASE
+##     coords. ⚠️ POSITION ONLY, and that is the whole design: the fragment's shape
+##     is a hash of this key and its anchor is a READ of the live geometry, so
+##     there is nothing view-space to save and nothing that a quarter turn can
+##     make wrong.
 ##   · `crater_floor_soot` — scorch on revealed crater-floor cells, which hang on
 ##     no Voxel and so cannot be re-derived from the board.
 ##
@@ -53,6 +58,9 @@ static func capture(room) -> Dictionary:
 	var shards: Array = []
 	for key in room._base_shards.keys():
 		shards.append([key.x, key.y, key.z, int(room._base_shards[key])])
+	var remnants: Array = []
+	for rk in room._base_remnants.keys():
+		remnants.append([rk.x, rk.y, rk.z])
 	for level in room._crater_floor_soot.keys():
 		for cell in room._crater_floor_soot[level].keys():
 			craters.append([int(level), cell.x, cell.y,
@@ -69,6 +77,12 @@ static func capture(room) -> Dictionary:
 		## a flag: it is what decides how heavy the pile reads, and a save that
 		## dropped it would restore every pile at a single shard's weight.
 		"floor_shards": shards,
+		## G4 — `[base_x, base_y, level]` per remnant. No fourth field on purpose:
+		## see the class note. ⚠️ FORMAT_VERSION is NOT bumped, for the same reason
+		## `pane_primed` did not bump it — an old save has no key, `get()` reads it
+		## as "nothing is stuck to a frame", and that is both true and the safe
+		## direction to be wrong in.
+		"glass_remnants": remnants,
 		## GLASS G-D15 / V-D — the panes a rifle round pierced without taking
 		## (`Room._pane_primed`). A flat array of pane_ids: the value is always
 		## `true`, so storing it would be storing a constant.
@@ -130,6 +144,10 @@ static func restore(room, data: Dictionary) -> bool:
 	room._base_shards.clear()
 	for sh in data.get("floor_shards", []):
 		room._base_shards[Vector3i(int(sh[0]), int(sh[1]), int(sh[2]))] = int(sh[3])
+	## G4 — same "an old save simply has no key" rule as the piles above it.
+	room._base_remnants.clear()
+	for rm in data.get("glass_remnants", []):
+		room._base_remnants[Vector3i(int(rm[0]), int(rm[1]), int(rm[2]))] = true
 	room._crater_floor_soot.clear()
 	for c in data.get("crater_floor_soot", []):
 		var level: int = int(c[0])

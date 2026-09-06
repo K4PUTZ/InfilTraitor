@@ -638,8 +638,15 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 		## function already walked to group the panes.
 		var anchors: Dictionary = GlassShatter.collect_anchor_positions(
 			pane_slices, face, all_slices)
-		var plan: Array = GlassShatter.plan_pane_shatter(pane_slices, face,
+		var result: Dictionary = GlassShatter.plan_pane_shatter(pane_slices, face,
 			origin_v.grid_pos, origin_v.level, glass_punch, salt, anchors)
+		var plan: Array = result["destroyed"]
+		## G4-2 — the survivors. PROPOSED, never claimed: stamping a cut atom is a
+		## write and `build_plan()` runs on every cursor move, so a remnant claimed
+		## here would stick jagged glass to every window the cursor passed over.
+		for r in result["remnants"]:
+			var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+			delta.glass_remnants.append({"cell": rv.grid_pos, "level": rv.level})
 		var entries: Array = []
 		var fallen: Array = []
 		for e in plan:

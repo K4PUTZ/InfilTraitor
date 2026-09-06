@@ -171,6 +171,24 @@ var glass_crazes: Array = []
 ## leave glass on the floor of every GU the cursor ever hovered.
 var glass_shard_piles: Dictionary = {}
 
+## ── G4-2 / G-D38 + G-D39 — THE GLASS THAT STAYED STUCK TO THE FRAME ─────────
+##
+## `Array[{"cell": Vector2i, "level": int}]`, in the CURRENT view's coords. Each
+## one is a voxel `GlassShatter.plan_pane_shatter()` SPARED because a neighbouring
+## non-glass material holds it (G-D13b, which is the Director's G4 rule verbatim).
+##
+## ⚠️ **POSITION ONLY — THE ANCHOR IS NOT CARRIED.** The mask is a READ of the
+## live geometry (`GlassShatter.remnant_anchor_mask()`), asked again at claim and
+## at every rebuild, and that is what makes a remnant survive a perspective flip
+## for nothing: a stored mask would be in the PANE's (run, level) frame, and a
+## pane's run axis is grid-X for SW/NE faces and grid-Y for SE/NW ones, so a
+## quarter turn changes what `RUN_POS` means. The frame the fragment hangs from
+## does not move; asking the world again is cheaper AND correct by construction.
+##
+## ⚠️ A PROPOSAL, like every field around it. Stamping a cut atom is a WRITE and
+## `build_plan()` runs on every cursor move.
+var glass_remnants: Array = []
+
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
 ##
 ## `{Vector3i: {"at": seconds, "ring": int}}`. Every one of these is also a
@@ -349,6 +367,11 @@ func commit(room = null) -> void:
 		## drawn on.
 		if not glass_shard_piles.is_empty():
 			room.record_glass_shards(glass_shard_piles)
+		## G4-2 — and the glass that did NOT fall. LAST: a remnant swaps the atom
+		## on a cell that survived, so every erase and every rim cut around it has
+		## to have happened first or the opening walk would overwrite it.
+		if not glass_remnants.is_empty():
+			room.claim_glass_remnants(glass_remnants)
 
 
 func is_empty() -> bool:

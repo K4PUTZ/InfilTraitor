@@ -3630,7 +3630,7 @@ would have had to invent and defend.
 |---|---|---|
 | ✅ **G4-1** | `glass_shard_shapes.gd` — the 5-member family + G-D44's "0.5-1.0 voxel, angular, never a filled cell" invariant. **BUILT 2026-09-05, §18.9** | ✅ `glass_shard_shapes_selftest` 10/10, `glass_shard_family_2026-09-05.png` |
 | ✅ **G4-2** | `plan_pane_shatter()` returns `spared`; Delta + room + SaveState + respawn chain. **BUILT 2026-09-05, §18.10** | ✅ `glass_shatter_selftest` [22], `save_state_selftest` |
-| 🟡 **G4-3** | the cut remnant atom, oriented by `anchor_mask`. **BUILT 2026-09-05, §18.10** | ✅ `glass_crack_selftest` [20] + `glass_remnant_atoms_2026-09-05.png` (real atoms, production cut path). ⛔ **the on-MAP capture is outstanding** — no windowed run completes on this machine right now (§18.11) |
+| ✅ **G4-3** | the cut remnant atom, oriented by `anchor_mask`. **BUILT 2026-09-05, §18.10** | ✅ `glass_crack_selftest` [20] · `glass_remnant_atoms_2026-09-05.png` (real atoms, production cut path) · **and the real map**: `glass_remnant_w3_2026-09-05.png`, W3, ring 0, 383 voxels, registry 49 = board 49 (§18.11) |
 | **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set | a 0-instance-culled control, the P7b defect's own gate |
 | **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; fade-out over the pile decal, then free (G-D43) | filmstrip (`build_filmstrip.py`), which is the only instrument that can see a transient — and a CONTROL that kills the rain mid-flight and asserts the floor is identical, which is G-D43's own claim |
 | **G6b-3** | the dust puff on landing | capture |
@@ -3774,26 +3774,49 @@ and the two halves then disagreed about which wall they were looking at, reporti
 1 318 perfectly good pixels as strays. Same shape as architecture Rule 9's literal
 level: a wrong literal that resolves to a REAL thing.
 
-### ⛔ 18.11 THE ON-MAP CAPTURE IS OUTSTANDING, AND WHY
+### ✅ 18.11 THE ON-MAP CONFIRMATION — AND A WRONG DIAGNOSIS, CORRECTED
 
-**No windowed Godot run completes on this machine right now.** Measured
-2026-09-05, four attempts:
+**G4-3 fires on the real map.** A frag grenade beside W3 (brick jambs, plywood
+transom), ring 0, 383 voxels flooded: the pane is gone and what is left hanging
+in the frame is a scatter of ANGULAR fragments, not squares.
+`glass_remnant_w3_2026-09-05.png` is the before/after, cropped from the real game
+frames and nearest-scaled 2x so the pieces are legible at 20 px.
 
-| run | result |
-|---|---|
-| `glass_blast_demo` on GLASS, W3 | ~6 min at a steady 44% CPU, no PNG written, killed |
-| the same, second attempt | identical |
-| `level_census` on GLASS (a cheap action) | no output after 90 s |
-| `level_census` on PLAYGROUND (the control) | **also** no output after 90 s |
+    [GLASS-SHATTER-BLAST] pane=PANE_SLICE_16_15_SW ring=0 glass_punch=8.50 flooded=383 voxel(s)
+    [GLASS-BLAST] shards: registry=49 board=49
+    [GLASS-BLAST] floor shards: 24 pile(s) recorded, 24 live
 
-⚠️ **It is NOT the GLASS map and it is NOT this change** — the PLAYGROUND control
-fails the same way, and the first failing run happened BEFORE a line of G4-2 was
-written. Headless Godot is fine: the whole 52-suite selftest run, the lint, and
-both new capture tools all complete in seconds.
+⚠️ **THE BOARD AND THE REGISTRY AGREE (49 = 49)** — CRACK-04's own rule, and the
+only reading that separates a claim that reached the tilemap from one that was
+merely issued.
 
-So the visual evidence here is the **atom sheet**, which is the production cut
-path photographed directly (`VoxelRenderer._build_glass_pane_atom()` plus the real
-cut helpers, at the real 32 x 36), not a re-implementation. What it CANNOT show is
-the standing lesson of this project: *a green selftest does not mean the feature
-fires on the real map.* **A blast on W1-W4 with a windowed run is still owed**, and
-until it happens G4-3 is 🟡 rather than ✅.
+#### ⛔ AND THE DIAGNOSIS THIS SECTION USED TO CARRY WAS WRONG
+
+It said *"no windowed Godot run completes on this machine"*, on four runs that
+each sat at a steady 44% CPU and wrote nothing. Every one of those runs was
+launched WITHOUT `INFILTRAITOR_AUTO_SCREENSHOT=1`, and that variable is the gate
+on `_run_auto_screenshot_capture()` — **the function that contains the entire
+`INFILTRAITOR_CAPTURE_ACTION` dispatch**. Nothing was hanging. The game booted
+into ordinary play and sat there, exactly as it is supposed to.
+
+⚠️ **Every symptom I read as evidence of a hang was evidence of a running game,
+and I read each one the wrong way round:**
+
+| what I saw | what I concluded | what it was |
+|---|---|---|
+| a steady 44% CPU | "a spin" | one core rendering a game |
+| the log stopping at 5 204 lines, twice | "the same hang point" | the last thing `_ready()` prints; play emits nothing |
+| PLAYGROUND failing identically | "not the map, not my change — the machine" | the same missing variable |
+| repeated `[GLASS-SHATTER-BLAST]` lines | (not noticed) | `build_plan()` previewing on cursor moves — **proof the game was live** |
+
+The control I ran was well chosen and its answer was correct — *it is not the map
+and not the change* — and I then attached it to a conclusion it did not support.
+The Director's *"não está travando aqui não, consegui rodar o game"* is what
+settled it: one report from outside the loop against four consistent readings from
+inside it.
+
+⚠️ **The general form, worth more than the incident:** a null result from a
+harness is a claim about the HARNESS first and about the machine last. Before
+blaming the environment, run the harness in the configuration that is known to
+work — here, one grep for what actually gates the entry point, which would have
+cost a minute against the half hour this took.

@@ -216,7 +216,7 @@ func test_scatter_conserves_and_concentrates() -> void:
 		var c: int = int(piles[key])
 		total += c
 		var cheb: int = maxi(absi(k.x - gp.x), absi(k.y - gp.y))
-		if cheb > GlassFallClass.SCATTER_MAX_CELLS:
+		if cheb > GlassFallClass.scatter_max_cells():
 			within_tail = false
 		if cheb <= 1:
 			core += c
@@ -229,7 +229,7 @@ func test_scatter_conserves_and_concentrates() -> void:
 
 	if conserved and within_tail and total == 24 and spread and concentrated and column_real:
 		_pass("24 shards -> %d cells, all within %d, %d in the 3x3 core (%d on the column itself)"
-			% [piles.size(), GlassFallClass.SCATTER_MAX_CELLS, core, on_column])
+			% [piles.size(), GlassFallClass.scatter_max_cells(), core, on_column])
 	else:
 		_fail("conserved=%s within_tail=%s total=%d spread=%s core=%d on_column=%d"
 			% [conserved, within_tail, total, spread, core, on_column])
@@ -250,7 +250,7 @@ func _offset_histogram(samples: int, impulse: Dictionary) -> Dictionary:
 		sum_x += float(dx)
 		for d in [dx, dy]:
 			hist[absi(d)] = int(hist.get(absi(d), 0)) + 1
-		if maxi(absi(dx), absi(dy)) > GlassFallClass.SCATTER_MAX_CELLS:
+		if maxi(absi(dx), absi(dy)) > GlassFallClass.scatter_max_cells():
 			beyond_tail += 1
 	return {"hist": hist, "mean_x": sum_x / float(samples), "beyond_tail": beyond_tail}
 
@@ -274,7 +274,7 @@ func test_the_scatter_shape() -> void:
 
 	if monotone and tail_present and capped and symmetric:
 		_pass("per-axis magnitudes 0/1/2/3 = %d/%d/%d/%d, none past %d, mean %.3f"
-			% [n0, n1, n2, n3, GlassFallClass.SCATTER_MAX_CELLS, r["mean_x"]])
+			% [n0, n1, n2, n3, GlassFallClass.scatter_max_cells(), r["mean_x"]])
 	else:
 		_fail("monotone=%s tail=%s capped=%s symmetric=%s (0/1/2/3 = %d/%d/%d/%d, over=%d, mean_x=%.3f)"
 			% [monotone, tail_present, capped, symmetric, n0, n1, n2, n3, n_over, r["mean_x"]])

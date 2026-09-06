@@ -20,7 +20,7 @@
 ## A pane is a vertical sheet, so its voxels project onto a LINE of grid cells —
 ## and until G4-4 that line was the whole pile. The scatter spreads it into a
 ## band: most shards on the pane's own column, fewer one cell out, a tail reaching
-## `SCATTER_MAX_CELLS` (G-D41's "3 sub-GUs"). A sub-GU is one voxel cell (G-D41),
+## `scatter_max_cells()` (G-D41's "3 sub-GUs"). A sub-GU is one voxel cell (G-D41),
 ## so every distance here is in cells, not GUs.
 ##
 ## The symmetric draw covers "perpendicular to the pane BOTH ways and along the
@@ -74,17 +74,16 @@ const NO_LANDING: int = -1
 
 ## P(|offset| == index) on ONE axis, drawn independently for each of grid-X and
 ## grid-Y. Index 0 is "stays on the pane's own column"; the last entry is the
-## tail. Must sum to 1.0 and its length fixes `SCATTER_MAX_CELLS`.
+## tail (G-D41's "até 3 sub-GUs" with the shipped four-entry table). Must sum to
+## 1.0; its length is the ONLY thing that sets how far the symmetric scatter can
+## reach — `scatter_max_cells()` reads it back rather than a second constant that
+## could drift ([[two-equal-constants-is-not-a-rule]]).
 static var SCATTER_WEIGHTS: Array[float] = [0.55, 0.30, 0.11, 0.04]
-
-## G-D41 — "até 3 sub-GUs de distância". Derived from the weight table's length so
-## the two cannot drift; kept as a named constant for the callers and the gate.
-const SCATTER_MAX_CELLS: int = 3
 
 ## Cells of downrange shift at `impulse.strength == 1.0`, before the per-shard
 ## fraction below. The shockwave BIASES the symmetric draw (G-D42), it does not
 ## replace it, and it is the one term allowed to carry a shard past
-## `SCATTER_MAX_CELLS` — that is "vencer mais longe".
+## `scatter_max_cells()` — that is "vencer mais longe".
 static var SCATTER_IMPULSE_GAIN: float = 3.0
 
 ## The least-pushed shard still moves this fraction of the full impulse; the rest
@@ -95,6 +94,13 @@ static var SCATTER_IMPULSE_MIN_FRAC: float = 0.30
 ## Extra isotropic spread (cells) at `impulse.lift == 1.0`. Skylights only, and no
 ## real map exercises it yet — see the class note and selftest [9].
 static var SCATTER_LIFT_GAIN: float = 2.0
+
+
+## The furthest a shard can scatter on one axis WITHOUT an impulse — the last
+## index `SCATTER_WEIGHTS` carries. Derived, never a literal, so growing the
+## weight table is the ONE place that moves the reach.
+static func scatter_max_cells() -> int:
+	return maxi(SCATTER_WEIGHTS.size() - 1, 0)
 
 
 ## Build the surface index for a set of columns: `grid_pos -> sorted levels that
@@ -218,7 +224,7 @@ static func scatter_target(src: Vector2i, from_level: int, impulse: Dictionary) 
 	return src + Vector2i(roundi(off.x), roundi(off.y))
 
 
-## One signed axis offset in [-SCATTER_MAX_CELLS, SCATTER_MAX_CELLS], drawn from
+## One signed axis offset in [-scatter_max_cells(), scatter_max_cells()], drawn from
 ## `SCATTER_WEIGHTS` and mirrored to a sign. FNV-1a via FacadeSampler, the same
 ## per-cell hash rule every other pick on this track uses — and safe here because
 ## each shard's salt is fully distinct (the "selected whole columns" failure in

@@ -3776,10 +3776,11 @@ at every respawn. The store is POSITION ONLY, and there is nothing in it a
 rotation can make wrong.
 
 ⚠️ It can legitimately return 0 — if the frame around a standing remnant is later
-destroyed, the fragment hangs from nothing. That is drawn as nothing and reported,
-not patched with a default placement that would leave a shard in mid-air.
-**Whether such a fragment should instead FALL is a real question and is left
-open**, because it is a behaviour decision.
+destroyed, the fragment hangs from nothing. ✅ **RESOLVED by G-D45 (§18.14): it
+FALLS.** `Room.reap_orphaned_remnants()` re-checks every base remnant's mask after
+each destruction event and turns a 0 into an ordinary DESTROYED voxel that joins
+the shard fall. Until G-D45 this mask-0 case was drawn as nothing and reported;
+now it is drawn as nothing because the voxel is genuinely gone.
 
 #### Two defects the instruments caught, one each
 
@@ -4083,6 +4084,30 @@ a `"spread"` flag — not a new particle system.
 spawns one puff per dense bucket, `reach` scaled `16 → 46 px` by how many shards
 hit there, capped at 12 puffs — so the pane's own foot puffs hardest and the
 fringe barely, which is the brief. Logged as `[GLASS-DUST]`.
+
+#### ✅ 18.14b — THE REVIEW PASS (2026-09-06)
+
+*"dar mais uma revisada no código, checar por fios desencapados e pontas soltas."*
+
+- ⚠️ **The dust puff broke `glass_rain_demo`'s G-D43 gate, and it was found in
+  review, not on screen.** That capture RE-lays a settled rain and asserts "0
+  differing pixels after the kill" — but it only frees the `GlassRainOverlay`, and
+  the puff goes into `_debris_overlay`, which would still be settling when the diff
+  is taken. `spawn_glass_rain()` gained a `with_dust` flag (default true); the demo
+  passes false. The real paths and the reap keep the dust.
+- **`GlassFall.SCATTER_MAX_CELLS` was a `const 3` with a comment claiming it was
+  "derived from the weight table's length".** It was not — the classic
+  [[two-equal-constants-is-not-a-rule]] trap. Now `scatter_max_cells()`, a `static
+  func` that reads `SCATTER_WEIGHTS.size() - 1`. Growing the table is the one place
+  the reach moves.
+- ✅ **G-D45 confirmed on the real map.** New instrument
+  `INFILTRAITOR_CAPTURE_ACTION=glass_reap_demo`: shatters a framed window weakly
+  (keeps 4 anchored remnants), destroys the 672-voxel brick jamb, calls
+  `reap_orphaned_remnants()`. Log: *"4 orphaned remnant(s) fell with their frame, 4
+  landed"*, store `4 → 0`, `[GLASS-REAP] PASS`. `glass_reap_{before,after}_2026-09-06.png`.
+- No dead code found — every helper the session added has a caller, and the four
+  unshipped `RAIN_TIMING_PRESETS` (`snappy`/`floaty`/`heavy`/`raked`) are the
+  comparison set the bench needs, kept like `glass_blast_demo` and its siblings.
 
 #### 🟡 Still open
 

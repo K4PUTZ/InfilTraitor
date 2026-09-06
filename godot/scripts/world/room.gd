@@ -665,8 +665,14 @@ func _respawn_base_shards() -> void:
 ## replay. Every other glass claim on this track does the opposite, so the absence
 ## is stated rather than left to be noticed.
 ##
+## `with_dust` (G6b-3) spawns the landing puffs into `_debris_overlay`. Default on;
+## `glass_rain_demo` passes false because it RE-lays an already-landed event to
+## test G-D43's disposability, and its "0 differing pixels after the kill" check
+## only frees the `GlassRainOverlay` — a dust puff it did not ask for would outlive
+## that and break the gate.
+##
 ## Returns how many shards are in flight.
-func spawn_glass_rain(flights: Array) -> int:
+func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 	if _voxel_renderer == null or flights.is_empty():
 		return 0
 	var bsize := _base_voxel_size()
@@ -724,7 +730,7 @@ func spawn_glass_rain(flights: Array) -> int:
 	## dense patch of landings, `reach` scaled by how many shards hit there — so the
 	## pane's own foot puffs hardest and the fringe barely. `DebrisOverlay`'s own
 	## `add_glass_dust`, additive `CircleField`, not a new particle system.
-	if _debris_overlay != null:
+	if with_dust and _debris_overlay != null:
 		var bucket_px: float = 44.0
 		var buckets: Dictionary = {}
 		for r in rows:
@@ -8832,7 +8838,11 @@ func _capture_glass_rain_demo() -> void:
 		for v in ps.voxels:
 			flights.append({"grid_pos": v.grid_pos, "from_level": v.level,
 				"landing_level": lo})
-	var n: int = spawn_glass_rain(flights)
+	## `with_dust = false` — G6b-3's puff goes into `_debris_overlay`, which step 5
+	## below does NOT free, so it would still be settling when the "0 differing
+	## pixels" diff is taken and the G-D43 gate would read non-zero for a reason
+	## that is not the rain.
+	var n: int = spawn_glass_rain(flights, false)
 
 	## ⚠️ A FILMSTRIP, BECAUSE A BEFORE/AFTER CANNOT SEE A TRANSIENT. The whole
 	## subject here is motion — the drop, the bounce, the fade — and any pair of
@@ -9086,6 +9096,97 @@ func _capture_glass_rain_timings() -> void:
 		tile.convert(Image.FORMAT_RGBA8)
 		tile.save_png("%s/frame_%03d.png" % [dir, i])
 	print("[GLASS-RAIN-T] wrote %d frame(s) (crop %s) to %s" % [frame_count, crop, dir])
+
+
+## ── G4-4 / G-D45 — THE ORPHANED-REMNANT REAP, ON THE REAL MAP ───────────────
+##
+## `INFILTRAITOR_CAPTURE_ACTION=glass_reap_demo` on the GLASS map. `[23]` pins the
+## one fact the reap turns on (`remnant_anchor_mask()` → 0 when the jamb falls);
+## this proves the whole loop fires end to end on real geometry, which a selftest
+## cannot (it has no room, no renderer, no `_base_remnants`).
+##
+##   1. shatter a FRAMED window — a weak roll, so it keeps anchored remnants;
+##   2. capture "before" — jagged glass stuck to the brick;
+##   3. DESTROY the pane's own frame keys (the brick jambs);
+##   4. `reap_orphaned_remnants()` — the remnants should now fall;
+##   5. capture "after", and assert the reap reported > 0 and the store shrank.
+func _capture_glass_reap_demo() -> void:
+	if _voxel_renderer == null or _edge_registry == null or _slab_registry == null:
+		push_error("[GLASS-REAP] no renderer / edge registry / slab registry")
+		return
+	var pane_slices: Array = _framed_glass_pane()
+	if pane_slices.is_empty():
+		push_error("[GLASS-REAP] no framed glass pane on this map")
+		return
+	var face: int = pane_slices[0].face
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	var mid: Vector2i = pane_slices[pane_slices.size() / 2].voxels[0].grid_pos
+	var pane_gu := Vector2i(mid.x >> 3, mid.y >> 3)
+	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(dir)
+
+	apply_glass_diagnostic_backdrop()
+	if _camera_controller != null and agent != null:
+		_camera_controller.set_zoom_for_capture(1.0)
+		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
+			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
+				* float(_voxel_renderer.relative_level(pane_slices[0].voxels[0].level))))
+	if _fow_controller != null:
+		_fow_controller.reveal_around(pane_gu, 30)
+	for _s in range(40):
+		await get_tree().process_frame
+
+	## ── 1. a weak shatter that keeps remnants ──────────────────────────────
+	var all_slices: Array = _edge_registry.all_slices()
+	var anchors: Dictionary = GlassShatter.collect_anchor_positions(pane_slices, face, all_slices)
+	var res: Dictionary = GlassShatter.plan_pane_shatter(pane_slices, face,
+		mid, pane_slices[0].voxels[0].level + 4, 2.2, "REAP_DEMO", anchors)
+	var remnant_cells: Array = []
+	for e in res["destroyed"]:
+		var dv: Voxel = e["slice"].voxels[int(e["voxel_index"])]
+		if dv.damage_state != Voxel.DamageState.DESTROYED:
+			dv.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+	for r in res["remnants"]:
+		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+		remnant_cells.append({"cell": rv.grid_pos, "level": rv.level})
+	await _voxel_renderer.process_dirty_async(_edge_registry)
+	var stuck: int = claim_glass_remnants(remnant_cells)
+	var before_store: int = _base_remnants.size()
+	for _f in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/glass_reap_before_2026-09-06.png" % dir)
+
+	## ── 3. destroy the pane's own frame (the brick jambs) ──────────────────
+	var frame_keys: Dictionary = GlassShatter.pane_frame_keys(pane_slices, run_is_x)
+	var frame_hit: int = 0
+	for sl in all_slices:
+		if sl.face != face:
+			continue
+		for v in sl.voxels:
+			if v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			var key := Vector2i(v.grid_pos.x if run_is_x else v.grid_pos.y, v.level)
+			if frame_keys.has(key):
+				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+				frame_hit += 1
+	await _voxel_renderer.process_dirty_async(_edge_registry)
+
+	## ── 4. the reap ───────────────────────────────────────────────────────
+	var reaped: Dictionary = reap_orphaned_remnants()
+	for _g in range(10):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/glass_reap_after_2026-09-06.png" % dir)
+
+	var after_store: int = _base_remnants.size()
+	print("[GLASS-REAP] %d remnant(s) stamped, store %d -> %d; %d frame voxel(s) destroyed; reap: %s"
+		% [stuck, before_store, after_store, frame_hit, reaped])
+	if int(reaped["reaped"]) > 0 and after_store < before_store:
+		print("[GLASS-REAP] PASS — the frame fell and its remnants fell with it (G-D45)")
+	else:
+		push_error("[GLASS-REAP] FAIL — reaped=%d store %d->%d (expected reaped>0 and the store to shrink)"
+			% [int(reaped["reaped"]), before_store, after_store])
 
 
 ## ── G6b-1 — THE SHARD FIELD, AND A GATE THAT CAN REACH ITS FAILURE ──────────
@@ -9830,6 +9931,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "glass_rain_timings":
 		await _capture_glass_rain_timings()
+		get_tree().quit(0)
+		return
+	elif capture_action == "glass_reap_demo":
+		await _capture_glass_reap_demo()
 		get_tree().quit(0)
 		return
 	elif capture_action == "escape_open_menu":

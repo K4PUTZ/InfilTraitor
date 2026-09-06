@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**239 scripts · 86129 lines total** (under `godot/scripts/`)
+**239 scripts · 86240 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2118,17 +2118,16 @@ extends `Node2D` · 43 lines
 
 ### `glass_fall.gd`
 
-`class_name GlassFall` · 254 lines
+`class_name GlassFall` · 260 lines
 
 `godot/scripts/systems/destruction/glass_fall.gd`
 
-> GLASS G-D16a — WHERE A SHARD LANDS. GLASS_MASTER_PLAN §5.4 / §18.5. G-D13b answers "does this shard survive where it is"; this answers the other half, "where does the glass that fell end up", and it is deliberately ONE rule rather than one feature per surface: A destroyed glass voxel SCATTERS a few cells from its own column and then falls until it meets the first horizontal surface, and lands there. Base pile, counter top, windowsill, and a skylight dropping a whole storey are then the same code with different geometry underneath — no per-case branch. ── G4-4 / G-D41 + G-D42 — THE SCATTER ────────────────────────────────────── (Director, 2026-09-05: *"A maior parte dos elementos fica na primeira sub-GU mais próxima […] Alguns cacos conseguem vencer até 3 sub-GUs de distância […] uma força vetor que desloca todo o conjunto de cacos mais pra longe, baseado na força e na distância da granada."*) A pane is a vertical sheet, so its voxels project onto a LINE of grid cells — and until G4-4 that line was the whole pile. The scatter spreads it into a band: most shards on the pane's own column, fewer one cell out, a tail reaching `SCATTER_MAX_CELLS` (G-D41's "3 sub-GUs"). A sub-GU is one voxel cell (G-D41), so every distance here is in cells, not GUs. The symmetric draw covers "perpendicular to the pane BOTH ways and along the run" by construction — for any pane orientation one grid axis is the run and the other is perpendicular, and an isotropic symmetric offset spreads both the same. So this file never needs the pane's face; it only needs a DIRECTION for the shockwave, and the caller hands that in `impulse`. `impulse` — `{dir: Vector2, strength: float, lift: float}` in GRID space, from the bomb's own `ring_multipliers` falloff (G-D42 — no second force model). At zero impulse the scatter is symmetric; a near grenade shifts the band's mean downrange and, per-shard-scaled, spreads it wider ("caírem mais longe, mais espalhados"). `lift` is the skylight term and is UNEXERCISED by any real map — G-D16c/d is unbuilt, CEILING glass renders opaque and has no `pane_id`, so no skylight can shatter yet. It is authored with a synthetic test rather than quietly, so it does not become a fourth built-but-never-triggered feature. ⚠️ THE SCATTER OFFSET IS HASHED IN GRID SPACE, NOT BASE SPACE, and that is correct here rather than a shortcut. The result becomes STATE at `commit()` — the G6 pile is recorded in base coords and never recomputed, only re-laid (`Room._respawn_base_shards()`) — exactly as the un-scattered landing already was. The hash only has to be stable across the many `build_plan()` calls of one event, and the cursor is on one target throughout, so the grid key is. PURE, and that is not decoration. It takes a surface INDEX, never the SlabRegistry, so the selftest can hand it a synthetic counter and prove the rule without building a map — the same contract PREDICTION_MASTER_PLAN holds `build_plan()` to, and the same one `GlassShatter.collect_anchor_positions()` already follows. ⚠️ This module decides WHERE, never WHETHER anything is drawn. G6 (`Room.record_glass_shards()`) turns a landing into a floor pile decal and G6b-2 (`Room.spawn_glass_rain()`) into the falling shards; both are BUILT and consume this file's output. This module stays pure and knows about neither.
+> GLASS G-D16a — WHERE A SHARD LANDS. GLASS_MASTER_PLAN §5.4 / §18.5. G-D13b answers "does this shard survive where it is"; this answers the other half, "where does the glass that fell end up", and it is deliberately ONE rule rather than one feature per surface: A destroyed glass voxel SCATTERS a few cells from its own column and then falls until it meets the first horizontal surface, and lands there. Base pile, counter top, windowsill, and a skylight dropping a whole storey are then the same code with different geometry underneath — no per-case branch. ── G4-4 / G-D41 + G-D42 — THE SCATTER ────────────────────────────────────── (Director, 2026-09-05: *"A maior parte dos elementos fica na primeira sub-GU mais próxima […] Alguns cacos conseguem vencer até 3 sub-GUs de distância […] uma força vetor que desloca todo o conjunto de cacos mais pra longe, baseado na força e na distância da granada."*) A pane is a vertical sheet, so its voxels project onto a LINE of grid cells — and until G4-4 that line was the whole pile. The scatter spreads it into a band: most shards on the pane's own column, fewer one cell out, a tail reaching `scatter_max_cells()` (G-D41's "3 sub-GUs"). A sub-GU is one voxel cell (G-D41), so every distance here is in cells, not GUs. The symmetric draw covers "perpendicular to the pane BOTH ways and along the run" by construction — for any pane orientation one grid axis is the run and the other is perpendicular, and an isotropic symmetric offset spreads both the same. So this file never needs the pane's face; it only needs a DIRECTION for the shockwave, and the caller hands that in `impulse`. `impulse` — `{dir: Vector2, strength: float, lift: float}` in GRID space, from the bomb's own `ring_multipliers` falloff (G-D42 — no second force model). At zero impulse the scatter is symmetric; a near grenade shifts the band's mean downrange and, per-shard-scaled, spreads it wider ("caírem mais longe, mais espalhados"). `lift` is the skylight term and is UNEXERCISED by any real map — G-D16c/d is unbuilt, CEILING glass renders opaque and has no `pane_id`, so no skylight can shatter yet. It is authored with a synthetic test rather than quietly, so it does not become a fourth built-but-never-triggered feature. ⚠️ THE SCATTER OFFSET IS HASHED IN GRID SPACE, NOT BASE SPACE, and that is correct here rather than a shortcut. The result becomes STATE at `commit()` — the G6 pile is recorded in base coords and never recomputed, only re-laid (`Room._respawn_base_shards()`) — exactly as the un-scattered landing already was. The hash only has to be stable across the many `build_plan()` calls of one event, and the cursor is on one target throughout, so the grid key is. PURE, and that is not decoration. It takes a surface INDEX, never the SlabRegistry, so the selftest can hand it a synthetic counter and prove the rule without building a map — the same contract PREDICTION_MASTER_PLAN holds `build_plan()` to, and the same one `GlassShatter.collect_anchor_positions()` already follows. ⚠️ This module decides WHERE, never WHETHER anything is drawn. G6 (`Room.record_glass_shards()`) turns a landing into a floor pile decal and G6b-2 (`Room.spawn_glass_rain()`) into the falling shards; both are BUILT and consume this file's output. This module stays pure and knows about neither.
 
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `NO_LANDING` = `-1`
-- `SCATTER_MAX_CELLS` = `3`
 
 ---
 
@@ -5352,7 +5351,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10690 lines
+extends `Node2D` · 10795 lines
 
 `godot/scripts/world/room.gd`
 

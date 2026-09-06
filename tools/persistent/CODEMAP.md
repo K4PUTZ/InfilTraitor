@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**239 scripts · 86109 lines total** (under `godot/scripts/`)
+**239 scripts · 86129 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1272,7 +1272,7 @@ extends `Node2D` · 143 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 222 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 242 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -1293,7 +1293,10 @@ extends `Node2D` · 143 lines
 - `var arc_px_max: float = 22.0`
 - `var spin_min: float = -0.16`
 - `var spin_max: float = 0.16`
-- `var tint: Color = Color(0.77, 0.91, 0.96, 0.80)`
+- `var tint: Color = Color(0.78, 0.92, 0.97, 0.55)`
+- `var air_alpha: float = 0.28`
+- `var alpha_var_min: float = 0.55`
+- `var pieces_low_bias: float = 1.6`
 - `var max_shards: int = 3000`
 
 **Public API**

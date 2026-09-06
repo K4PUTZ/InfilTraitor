@@ -389,6 +389,11 @@ func commit(room = null) -> void:
 		## the floor, which is what makes the fall safe to interrupt (G-D43).
 		if not glass_shard_flights.is_empty():
 			room.spawn_glass_rain(glass_shard_flights)
+		## G-D45 — a remnant this blast orphaned (its frame destroyed) falls with
+		## it. Unconditional: the frame that held an OLD remnant can be brick this
+		## delta broke with no glass of its own, so it is not gated on the glass
+		## fields above. Early-returns when nothing is stuck to a frame.
+		room.reap_orphaned_remnants()
 
 
 func is_empty() -> bool:

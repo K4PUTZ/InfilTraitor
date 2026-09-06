@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**239 scripts · 85357 lines total** (under `godot/scripts/`)
+**239 scripts · 85796 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2035,7 +2035,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2309 lines
+`class_name DetonationPlanBuilder` · 2320 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2102,15 +2102,17 @@ extends `Node2D` · 43 lines
 
 ### `glass_fall.gd`
 
-`class_name GlassFall` · 128 lines
+`class_name GlassFall` · 254 lines
 
 `godot/scripts/systems/destruction/glass_fall.gd`
 
-> GLASS G-D16a — WHERE A SHARD LANDS. GLASS_MASTER_PLAN §5.4. G-D13b answers "does this shard survive where it is"; this answers the other half, "where does the glass that fell end up", and it is deliberately ONE rule rather than one feature per surface: A destroyed glass voxel falls straight down its own column until it meets the first horizontal surface, and lands there. Base pile, counter top, windowsill, and a skylight dropping a whole storey are then the same code with different geometry underneath — no per-case branch. PURE, and that is not decoration. It takes a surface INDEX, never the SlabRegistry, so the selftest can hand it a synthetic counter and prove the rule without building a map — the same contract PREDICTION_MASTER_PLAN holds `build_plan()` to, and the same one `GlassShatter.collect_anchor_positions()` already follows. ⚠️ This module decides WHERE, never WHETHER anything is drawn. G6 (§7.1) is the consumer that turns a landing into a visible floor decal, and it is blocked on the `shard_floor` art. Until then the landings are computed and reported but nothing renders them — stated here rather than discovered later, because §7.1's own risk note is precisely that unseen state rots.
+> GLASS G-D16a — WHERE A SHARD LANDS. GLASS_MASTER_PLAN §5.4 / §18.5. G-D13b answers "does this shard survive where it is"; this answers the other half, "where does the glass that fell end up", and it is deliberately ONE rule rather than one feature per surface: A destroyed glass voxel SCATTERS a few cells from its own column and then falls until it meets the first horizontal surface, and lands there. Base pile, counter top, windowsill, and a skylight dropping a whole storey are then the same code with different geometry underneath — no per-case branch. ── G4-4 / G-D41 + G-D42 — THE SCATTER ────────────────────────────────────── (Director, 2026-09-05: *"A maior parte dos elementos fica na primeira sub-GU mais próxima […] Alguns cacos conseguem vencer até 3 sub-GUs de distância […] uma força vetor que desloca todo o conjunto de cacos mais pra longe, baseado na força e na distância da granada."*) A pane is a vertical sheet, so its voxels project onto a LINE of grid cells — and until G4-4 that line was the whole pile. The scatter spreads it into a band: most shards on the pane's own column, fewer one cell out, a tail reaching `SCATTER_MAX_CELLS` (G-D41's "3 sub-GUs"). A sub-GU is one voxel cell (G-D41), so every distance here is in cells, not GUs. The symmetric draw covers "perpendicular to the pane BOTH ways and along the run" by construction — for any pane orientation one grid axis is the run and the other is perpendicular, and an isotropic symmetric offset spreads both the same. So this file never needs the pane's face; it only needs a DIRECTION for the shockwave, and the caller hands that in `impulse`. `impulse` — `{dir: Vector2, strength: float, lift: float}` in GRID space, from the bomb's own `ring_multipliers` falloff (G-D42 — no second force model). At zero impulse the scatter is symmetric; a near grenade shifts the band's mean downrange and, per-shard-scaled, spreads it wider ("caírem mais longe, mais espalhados"). `lift` is the skylight term and is UNEXERCISED by any real map — G-D16c/d is unbuilt, CEILING glass renders opaque and has no `pane_id`, so no skylight can shatter yet. It is authored with a synthetic test rather than quietly, so it does not become a fourth built-but-never-triggered feature. ⚠️ THE SCATTER OFFSET IS HASHED IN GRID SPACE, NOT BASE SPACE, and that is correct here rather than a shortcut. The result becomes STATE at `commit()` — the G6 pile is recorded in base coords and never recomputed, only re-laid (`Room._respawn_base_shards()`) — exactly as the un-scattered landing already was. The hash only has to be stable across the many `build_plan()` calls of one event, and the cursor is on one target throughout, so the grid key is. PURE, and that is not decoration. It takes a surface INDEX, never the SlabRegistry, so the selftest can hand it a synthetic counter and prove the rule without building a map — the same contract PREDICTION_MASTER_PLAN holds `build_plan()` to, and the same one `GlassShatter.collect_anchor_positions()` already follows. ⚠️ This module decides WHERE, never WHETHER anything is drawn. G6 (`Room.record_glass_shards()`) turns a landing into a floor pile decal and G6b-2 (`Room.spawn_glass_rain()`) into the falling shards; both are BUILT and consume this file's output. This module stays pure and knows about neither.
 
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
+- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `NO_LANDING` = `-1`
+- `SCATTER_MAX_CELLS` = `3`
 
 ---
 
@@ -2732,7 +2734,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 395 lines
+`class_name WorldDelta` · extends `RefCounted` · 400 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3684,11 +3686,11 @@ extends `SceneTree` · 2048 lines
 
 ### `glass_fall_selftest.gd`
 
-extends `SceneTree` · 197 lines
+extends `SceneTree` · 352 lines
 
 `godot/scripts/tools/glass_fall_selftest.gd`
 
-> GLASS_MASTER_PLAN §5.4 / G-D16a — GlassFall selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_fall The whole claim of G-D16a is that ONE rule — fall to the first horizontal surface below — produces every case the Director named without a branch per case. So the tests are those cases, on the same function, with nothing changing but the geometry underneath: [1] a pane over bare floor            -> the base pile [2] the same pane over a counter      -> the counter top, not the floor [3] a skylight two storeys up         -> the floor below, a whole storey down [4] glass under glass                 -> falls THROUGH, does not rest on it [5] nothing underneath                -> NO_LANDING, dropped, not faked [6] pile density                      -> a tall column lands as one deep pile
+> GLASS_MASTER_PLAN §5.4 / §18.5 — GlassFall selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_fall G-D16a's claim is that ONE rule — fall to the first horizontal surface below — produces every case the Director named without a branch per case. G4-4 adds a second: the shard first SCATTERS a few cells from its own column (G-D41), and a grenade's shockwave BIASES that scatter downrange (G-D42). So the tests are those cases, on the same function, with nothing changing but the geometry underneath and the `impulse` on top: [1] a pane over bare floor            -> the base pile, count preserved [2] the same pane over a counter      -> the counter top, not the floor [3] a skylight two storeys up         -> the floor below, a whole storey down [4] glass under glass                 -> falls THROUGH, does not rest on it [5] nothing underneath                -> NO_LANDING, dropped, not faked [6] scatter conserves and concentrates -> 24 shards, a band near the column [7] the scatter shape                 -> mostly 0, a tail to 3, never past it [8] the shockwave biases downrange    -> the mean shifts, some clear the tail [9] lift widens the scatter           -> SYNTHETIC, no real map exercises it [10] determinism                       -> two identical plans, byte for byte
 
 **Constants / tuning**
 - `GlassFallClass` = `preload("res://godot/scripts/systems/destruction/glass_fall.gd")`
@@ -3703,7 +3705,11 @@ extends `SceneTree` · 197 lines
 - `func test_a_skylight_drops_a_whole_storey() -> void:`
 - `func test_glass_is_not_a_surface() -> void:`
 - `func test_nothing_underneath_is_no_landing() -> void:`
-- `func test_pile_density_counts_every_shard() -> void:`
+- `func test_scatter_conserves_and_concentrates() -> void:`
+- `func test_the_scatter_shape() -> void:`
+- `func test_the_shockwave_biases_downrange() -> void:`
+- `func test_lift_widens_the_scatter() -> void:`
+- `func test_determinism() -> void:`
 
 ---
 
@@ -3808,7 +3814,7 @@ extends `SceneTree` · 554 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 1272 lines
+extends `SceneTree` · 1328 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -4963,7 +4969,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1116 lines
+`class_name AgentShotController` · 1125 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -5330,7 +5336,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10387 lines
+extends `Node2D` · 10464 lines
 
 `godot/scripts/world/room.gd`
 

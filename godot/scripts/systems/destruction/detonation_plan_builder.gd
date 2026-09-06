@@ -678,7 +678,18 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			## G-D16a — the same landing report the shot path makes. Both paths or
 			## neither: a pane shattered by a grenade producing no shard state while a
 			## shot one does is exactly the asymmetry that gets found months later.
-			var landings: Array = GlassFall.plan_landings(fallen, slab_registry.all_slabs())
+			##
+			## G4-4 / G-D42 — the shockwave. `dir` points from the epicenter to the
+			## pane voxel it hit; `strength` is the bomb's own per-ring falloff, so
+			## this rides `ring_multipliers` and introduces no second force model. A
+			## near grenade (ring 0, strength 1.0) skews the pile downrange and wider.
+			## `lift` stays 0.0: a skylight would set it, and G-D16c/d is unbuilt.
+			var impulse: Dictionary = {
+				"dir": Vector2(origin_v.grid_pos - epicenter),
+				"strength": clampf(float(bomb_def.ring_multipliers[ring]), 0.0, 1.0),
+				"lift": 0.0,
+			}
+			var landings: Array = GlassFall.plan_landings(fallen, slab_registry.all_slabs(), impulse)
 			var piles: Dictionary = GlassFall.pile_by_cell(landings)
 			var deepest: int = 0
 			for c in piles.values():

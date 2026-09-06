@@ -687,6 +687,11 @@ func fire_at_active() -> void:
 		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
 			av.damage_is_blast, av.damage_carved_side, av.damage_variant, av.damage_substrate)
 
+	## G-D45 — if this shot destroyed the frame around an EARLIER remnant, the
+	## fragment falls with it. `reap_orphaned_remnants()` base-records its own
+	## felled voxels, so it is safe here after the loop above.
+	room.reap_orphaned_remnants()
+
 	cancel_active()
 	if cell_to_voxel.is_empty():
 		return
@@ -951,6 +956,8 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		## and never triggered, and a number in the shot's own log is the cheapest
 		## thing that cannot rot unnoticed. G6 is the consumer that makes it visible,
 		## and it is blocked on the `shard_floor` art.
+		## G4-4 — no `impulse`: a bullet carries no shockwave, so the scatter is
+		## symmetric (§18.5). The pile still spreads into a band rather than a line.
 		var landings: Array = GlassFall.plan_landings(fallen, room._slab_registry.all_slabs())
 		var piles: Dictionary = GlassFall.pile_by_cell(landings)
 		var deepest: int = 0
@@ -1043,6 +1050,8 @@ func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 		% [hit_slice.pane_id, res["crack_id"], "wide" if wide else "tight",
 		res["crazed"], res["crossed"]])
 	if not res["fallen"].is_empty():
+		## G4-4 — no `impulse` (a second bullet's crossing cracks, not a blast); the
+		## few drop-outs scatter symmetrically.
 		var landings: Array = GlassFall.plan_landings(res["fallen"], room._slab_registry.all_slabs())
 		## G6 — the G-D24 drop-outs land like any other broken glass. Both fall
 		## sites record, or a pane that lost pieces to crossed cracks would leave a

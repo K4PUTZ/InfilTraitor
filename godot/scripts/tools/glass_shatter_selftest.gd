@@ -83,6 +83,7 @@ func _init() -> void:
 	test_cook_proposes_the_opening_and_only_commit_claims_it()
 	test_a_pane_the_blast_does_not_take_crazes()
 	test_the_survivors_leave_the_function()
+	test_a_remnant_is_orphaned_when_its_frame_is_destroyed()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -975,6 +976,11 @@ class RoomStub:
 		return "STUB"
 	func absorb_scorch(_writes: Dictionary) -> void:
 		pass
+	## G-D45 — `commit()` now calls this UNCONDITIONALLY (a frame the blast broke
+	## may hold an old remnant even when this delta has no glass of its own), so
+	## the stub has to answer it. A no-op: the test's subject is the opening claim.
+	func reap_orphaned_remnants() -> Dictionary:
+		return {"reaped": 0, "landed": 0}
 
 
 ## CRACK-05 — THE COOK PROPOSES A HOLE'S SHAPE, AND ONLY `commit()` CLAIMS IT.
@@ -1269,4 +1275,54 @@ func test_the_survivors_leave_the_function() -> void:
 		_pass("the two halves partition the flood — %d voxels, no voxel in both" % seen.size())
 	else:
 		_fail("%d voxel(s) appear in BOTH halves" % dupes)
+	print("")
+
+
+## ── G4-4 / G-D45 ────────────────────────────────────────────────────────────
+##
+## Director, 2026-09-05: *"Se a moldura for destruída o caco grudado cai/some
+## junto."* `Room.reap_orphaned_remnants()` depends on ONE fact — that
+## `remnant_anchor_mask()`, which reads the live world, returns 0 once the frame a
+## fragment hung from is gone. This pins that fact without a room: it is the same
+## call the reap makes, on the same geometry, before and after the frame falls.
+func test_a_remnant_is_orphaned_when_its_frame_is_destroyed() -> void:
+	print("[23] G-D45 — remnant_anchor_mask() goes to 0 when the frame is destroyed\n")
+	var base: int = GeometryCoords.storey_level_base(0)
+	var hit := Vector2i(4 * 8 + 4, 0)
+
+	var pane := _pane(4, 4, 1)
+	var wall := _wall(5, 1)
+	var world: Array = pane.duplicate()
+	world.append(wall)
+	var res: Dictionary = GlassShatterClass.plan_pane_shatter(pane, Face.SW, hit,
+		base + 3, 3.75, "ORPHAN:1",
+		GlassShatterClass.collect_anchor_positions(pane, Face.SW, world))
+	var remnants: Array = res["remnants"]
+	if remnants.is_empty():
+		_fail("the framed pane produced no remnant to orphan")
+		print("")
+		return
+
+	## Pick the remnant nearest the wall — the one actually anchored to it.
+	var target = null
+	for r in remnants:
+		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+		if target == null or rv.grid_pos.x > target.grid_pos.x:
+			target = rv
+
+	var mask_before: int = GlassShatterClass.remnant_anchor_mask(
+		pane, Face.SW, world, target.grid_pos, target.level)
+
+	## The frame falls.
+	for v in wall.voxels:
+		v.set_damage(Voxel.DamageState.DESTROYED, false, 0, 0, 0)
+
+	var mask_after: int = GlassShatterClass.remnant_anchor_mask(
+		pane, Face.SW, world, target.grid_pos, target.level)
+
+	if mask_before != 0 and mask_after == 0:
+		_pass("held (mask %d) -> orphaned (mask 0) the instant the concrete jamb is destroyed" % mask_before)
+	else:
+		_fail("mask %d -> %d — reap's orphan test would not fire (before must be non-zero, after must be 0)"
+			% [mask_before, mask_after])
 	print("")

@@ -676,7 +676,11 @@ func spawn_glass_rain(flights: Array) -> int:
 		var gp: Vector2i = f["grid_pos"]
 		var from_level: int = int(f["from_level"])
 		var land_level: int = int(f["landing_level"])
-		var from: Vector2 = _voxel_renderer.voxel_world_position(gp, from_level)
+		## G4-4 — the shard launches from its OWN column and lands at the SCATTERED
+		## one (`grid_pos`), so the fall is now diagonal. `origin_pos` is absent on
+		## the synthetic capture path, which drops everything straight down.
+		var origin_gp: Vector2i = f.get("origin_pos", gp)
+		var from: Vector2 = _voxel_renderer.voxel_world_position(origin_gp, from_level)
 		var to: Vector2 = _voxel_renderer.voxel_world_position(gp, land_level)
 		if from == Vector2.ZERO or to == Vector2.ZERO:
 			## Rule 9 — a level this view does not build has no layer, and
@@ -686,8 +690,10 @@ func spawn_glass_rain(flights: Array) -> int:
 		## ⚠️ B4 — the hash key is BASE-space even though nothing here is stored.
 		## It costs one call and it is what lets a filmstrip of this event be
 		## compared across runs at all; a view-space key would reshuffle every
-		## shard on a camera turn mid-flight.
-		var base_xy := PerspectiveMapperClass.cell_to_base(gp, _active_perspective, bsize)
+		## shard on a camera turn mid-flight. Keyed on the ORIGIN cell + level,
+		## which is unique per destroyed voxel — two shards scattering onto one
+		## landing cell must not collapse to one hash.
+		var base_xy := PerspectiveMapperClass.cell_to_base(origin_gp, _active_perspective, bsize)
 		rows.append({
 			"from": from, "to": to,
 			"key": Vector3i(base_xy.x, base_xy.y, from_level),
@@ -788,6 +794,77 @@ func _respawn_base_remnants() -> void:
 			lost += 1
 	print_debug("[GLASS-REMNANT] perspective %s — %d remnant(s) restamped, %d had no pane or no anchor"
 		% [_active_perspective, drawn, lost])
+
+
+## ── G4-4 / G-D45 — A REMNANT WHOSE FRAME WAS DESTROYED FALLS WITH IT ─────────
+##
+## (Director, 2026-09-05: *"Se a moldura for destruída o caco grudado cai/some
+## junto."*)
+##
+## A remnant is a glass voxel `GlassShatter.plan_pane_shatter()` SPARED because a
+## neighbouring non-glass material held it (G-D13b). If a LATER event destroys that
+## neighbour, the fragment hangs from nothing: `remnant_anchor_mask()` returns 0,
+## `_draw_remnant()` already refuses to stamp it, and `_respawn_base_remnants()`
+## already reports it as "no anchor" on the next flip. G-D45 closes the gap in
+## between — it should fall in the SAME event as its frame, not wait for a
+## rotation.
+##
+## Called once per destruction event (the cook's `WorldDelta.commit()` and the
+## shot pipeline), AFTER that event's own new remnants are claimed: a remnant
+## claimed this event is anchored by definition and cannot be its own orphan.
+##
+## "Cai junto", not "some": an orphaned remnant becomes an ordinary DESTROYED
+## voxel and joins the shard fall — the cut atom is erased, the base record
+## dropped, the freed voxel base-recorded for VL-PERSIST and run through
+## `GlassFall` like any other break. No `impulse`: the triggering event's
+## shockwave is not threaded here and these are a handful of secondary pieces.
+##
+## Returns {"reaped": int, "landed": int}.
+func reap_orphaned_remnants() -> Dictionary:
+	if _base_remnants.is_empty() or _voxel_renderer == null or _edge_registry == null:
+		return {"reaped": 0, "landed": 0}
+	var bsize := _base_voxel_size()
+	var orphan_keys: Array = []
+	var fallen: Array = []
+	for bkey in _base_remnants:
+		var k: Vector3i = bkey
+		var cell := PerspectiveMapperClass.cell_from_base(Vector2i(k.x, k.y), _active_perspective, bsize)
+		var level: int = k.z
+		var host = _glass_slice_at(cell, level)
+		if host == null:
+			## No glass slice here any more — the pane itself is gone. Nothing live
+			## to fell; just drop the stale record.
+			orphan_keys.append(bkey)
+			continue
+		var mask: int = GlassShatter.remnant_anchor_mask(
+			_pane_by_id(host.pane_id), host.face, _edge_registry.all_slices(), cell, level)
+		if mask != 0:
+			continue   ## still held — nothing to do
+		orphan_keys.append(bkey)
+		for v in host.voxels:
+			if v.grid_pos == cell and v.level == level:
+				if v.damage_state != Voxel.DamageState.DESTROYED:
+					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+				fallen.append({"grid_pos": cell, "level": level})
+				## VL-PERSIST — the felled voxel has to survive a flip like any
+				## other destruction; the caller's own base-record loop has already
+				## run by the time reap is called.
+				record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state,
+					v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate)
+				break
+		_voxel_renderer.erase_glass_cell(level, cell)
+	for bkey in orphan_keys:
+		_base_remnants.erase(bkey)
+	var landed: int = 0
+	if not fallen.is_empty() and _slab_registry != null:
+		var landings: Array = GlassFall.plan_landings(fallen, _slab_registry.all_slabs())
+		landed = landings.size()
+		record_glass_shards(GlassFall.pile_by_cell(landings))
+		spawn_glass_rain(landings)
+	if not orphan_keys.is_empty():
+		print_debug("[GLASS-REMNANT] G-D45 — %d orphaned remnant(s) fell with their frame, %d landed"
+			% [orphan_keys.size(), landed])
+	return {"reaped": orphan_keys.size(), "landed": landed}
 
 
 ## The glass SLICE holding one voxel in this view, or null. Shared by the craze

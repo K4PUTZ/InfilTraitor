@@ -6793,6 +6793,90 @@ func _capture_glass_blast_demo() -> void:
 	if _blast_wireframe_overlay != null:
 		_blast_wireframe_overlay.clear()
 	_test_zone_controller.detonate_active()
+
+	## ── GLASS WARM-CAST PROBE (Director-reported, pre-existing defect) ───────
+	## `INFILTRAITOR_GLASS_WARM_PROBE=1` — a crazed pane near a grenade takes a
+	## yellow cast that fades over ~2 s and vanishes on a rotation, even with
+	## nothing behind the glass. Grab the pane at several points during the fade,
+	## then rotate once and grab again, so the sequence shows what the cast IS and
+	## whether the rotation is what clears it.
+	if OS.get_environment("INFILTRAITOR_GLASS_WARM_PROBE") == "1":
+		var pdir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+		## 1. let the craze commit and film the pane through the fade.
+		var elapsed_f: int = 0
+		for target in [6, 16, 32, 64, 120, 220]:
+			while elapsed_f < int(target):
+				await get_tree().process_frame
+				elapsed_f += 1
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(
+				"%s/glass_warm_probe_f%03d.png" % [pdir, int(target)])
+		print("[GLASS-WARM] wrote glass_warm_probe_f{006..220}.png — cracked glass %d, craze fields %d"
+			% [_count_cracked_glass(), _voxel_renderer.glass_craze_count()])
+		## 2. the CRACKED glass cells — which layer actually holds a source there.
+		if _edge_registry != null:
+			var dumped: int = 0
+			for sl in _edge_registry.all_slices():
+				if sl.pane_id == "" or not GlassMaterials.is_glass(sl.material):
+					continue
+				for gv in sl.voxels:
+					if gv.damage_state != Voxel.DamageState.CRACKED or dumped >= 4:
+						continue
+					dumped += 1
+					var op := _voxel_renderer.get_layer(gv.level)
+					var gp := _voxel_renderer._glass_layers.get(gv.level) as TileMapLayer
+					print("[GLASS-WARM-CELL] %s L%d  opaque_src=%d  glass_src=%d"
+						% [gv.grid_pos, gv.level,
+						op.get_cell_source_id(gv.grid_pos) if op != null else -99,
+						gp.get_cell_source_id(gv.grid_pos) if gp != null else -99])
+		## 3. isolate the culprit: hide one node group at a time, re-grab after the
+		##    craze is already on screen (`INFILTRAITOR_WARM_ISOLATE=1`).
+		##
+		## ⚠️ RESULT 2026-09-06: the yellow SURVIVES hiding the glass layers, the
+		## craze sprite AND the whole vision-controller subtree — it dies only when
+		## EVERYTHING behind the glass is hidden. It is warm blast content (the
+		## crater's exposed interior + floor damage + the consequence-light ramp) in
+		## the framebuffer at the pane's own screen pixels, which `glass_pane.gdshader`
+		## samples via `glass_screen` / `SCREEN_UV`. The pane draws at `agent.z_index
+		## + 1` (G-D18b), OVER a floor crater that is IN FRONT of it in world space,
+		## so the crater lands in the backbuffer and the glass tints it. The rotation
+		## clears it because the geometry reprojects and the transient warmth is
+		## re-derived neutral.
+		if OS.get_environment("INFILTRAITOR_WARM_ISOLATE") == "1":
+			var groups: Array = [
+				["glass_layers", func(v): for l in _voxel_renderer._glass_layers.values(): (l as TileMapLayer).visible = v],
+				["crack_root", func(v): if _voxel_renderer._glass_crack_root != null: _voxel_renderer._glass_crack_root.visible = v],
+				["opaque_layers", func(v): for l in _voxel_renderer._layers.values(): (l as TileMapLayer).visible = v],
+				["everything_behind_glass", func(v):
+					for c in _voxel_renderer.get_children():
+						if c is CanvasItem and c != _voxel_renderer._glass_crack_root \
+								and c != _voxel_renderer._glass_backbuffer \
+								and not (c in _voxel_renderer._glass_layers.values()):
+							(c as CanvasItem).visible = v
+					if floor_layer != null: floor_layer.visible = v],
+			]
+			for g in groups:
+				(g[1] as Callable).call(false)
+				for _iw in range(4):
+					await get_tree().process_frame
+				await RenderingServer.frame_post_draw
+				get_viewport().get_texture().get_image().save_png(
+					"%s/glass_warm_probe_hide_%s.png" % [pdir, g[0]])
+				(g[1] as Callable).call(true)
+				for _iw2 in range(2):
+					await get_tree().process_frame
+		## 4. rotate and re-grab.
+		_set_perspective("E")
+		for _rf in range(24):
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(
+			"%s/glass_warm_probe_after_rotation.png" % pdir)
+		print("[GLASS-WARM] rotated to E — cracked glass %d, craze fields %d"
+			% [_count_cracked_glass(), _voxel_renderer.glass_craze_count()])
+		get_tree().quit(0)
+		return
+
 	for _f in range(240):
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw

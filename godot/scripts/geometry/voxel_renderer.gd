@@ -5247,6 +5247,16 @@ var _floor_shards: Dictionary = {}      ## Vector3i(cell, level) -> Sprite2D
 var _floor_shard_root: Node2D = null
 var _floor_shard_textures: Array = []
 
+## G6 — a pile's opacity from how many voxels landed on the cell. Director,
+## 2026-09-06: *"queria deixar mais debris no lugar depois que eles sumirem. Ta
+## muito vazio."* G4-4's scatter thins the per-cell count (a pane empties onto a
+## band, not a line), so a formula tuned for ~24-per-cell left every scattered
+## cell near-invisible. `var` (Rule 1): the Director dials this against the map.
+static var FLOOR_SHARD_ALPHA_BASE: float = 0.34
+static var FLOOR_SHARD_ALPHA_GAIN: float = 0.055
+static var FLOOR_SHARD_ALPHA_MAX: float = 0.88
+static var FLOOR_SHARD_SCALE: float = 1.18    ## decals slightly larger than the cell, so a band reads continuous
+
 
 func _ensure_floor_shard_root() -> Node2D:
 	if _floor_shard_root != null and is_instance_valid(_floor_shard_root):
@@ -5294,14 +5304,15 @@ func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int
 		_ensure_floor_shard_root().add_child(sprite)
 		_floor_shards[key] = sprite
 	sprite.texture = tex
-	## One voxel of glass is 1/64th of a cell's worth, so a single shard is faint
-	## and a whole column's collapse is not. Capped well below 1 — a pile is glass
-	## on a floor, never a new floor.
-	sprite.modulate = Color(1.0, 1.0, 1.0,
-		clampf(0.18 + 0.03 * float(count), 0.18, 0.72))
+	## A single shard is faint, a whole column's collapse is not. Capped below 1 —
+	## a pile is glass on a floor, never a new floor. Tuned up 2026-09-06 (see the
+	## constants) because G4-4's scatter drops the per-cell count.
+	sprite.modulate = Color(1.0, 1.0, 1.0, clampf(
+		FLOOR_SHARD_ALPHA_BASE + FLOOR_SHARD_ALPHA_GAIN * float(count),
+		FLOOR_SHARD_ALPHA_BASE, FLOOR_SHARD_ALPHA_MAX))
 	sprite.position = layer.position + layer.map_to_local(cell)
 	## The decal is authored at 256 px square for a 32 px cell diamond.
-	sprite.scale = Vector2.ONE * (32.0 / maxf(float(tex.get_width()), 1.0))
+	sprite.scale = Vector2.ONE * (32.0 * FLOOR_SHARD_SCALE / maxf(float(tex.get_width()), 1.0))
 	sprite.z_index = layer.z_index + 1
 	return true
 

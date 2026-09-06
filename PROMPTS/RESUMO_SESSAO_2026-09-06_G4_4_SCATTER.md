@@ -1,19 +1,21 @@
-# Session 2026-09-06 — G4-4: the pile becomes a band, and a stranded remnant falls
+# Session 2026-09-06 — G4-4 + G6b-3: §18 closes
 
 Previous session:
 [`RESUMO_SESSAO_2026-09-05_G4_SHARDS.md`](RESUMO_SESSAO_2026-09-05_G4_SHARDS.md).
 This one opened with *"Vamos seguir com o vidro. Leia a documentação"* and ran
-**G4-4** (the scatter table + the shockwave impulse) and **G-D45** (a remnant
-whose frame is destroyed falls with it) end to end, then built the timing-video
-bench the Director asked for.
+**G4-4** (the scatter table + the shockwave impulse), **G-D45** (a remnant whose
+frame is destroyed falls with it), the timing-video bench, and — after the
+Director's review — the tuning and **G6b-3** (the dust puff). **§18 is closed.**
 
-`GLASS_MASTER_PLAN` v1.41 → **v1.42**, new **§18.14**, register gains **G-D45**
-and marks **G-D41 / G-D42** BUILT. Two code commits + this doc.
+`GLASS_MASTER_PLAN` v1.41 → **v1.43**, new **§18.14**, register gains **G-D45**
+and marks **G-D41 / G-D42** BUILT. Four commits + this doc.
 
 | | commit |
 |---|---|
 | the scatter, the impulse, and G-D45 | `7f836b56` |
 | the rain-timing bench (5 presets, one MP4 each) | `251d8636` |
+| this doc | `eaa459b9` |
+| `default` preset + 80% shard opacity + fuller pile + G6b-3 dust puff | *this session's last* |
 
 ---
 
@@ -119,15 +121,39 @@ command. Ran it backgrounded without `timeout` and it worked first try.
 | the real map | `[GLASS-FALL] 1152 of 1152 shard(s) landed, on 284 cell(s)` — up from the ~48-cell line the storefront's foot is. `[GLASS-RAIN] 1152 flight(s) -> 2927 shard(s)` (2.54/voxel). No `[GLASS-REMNANT] G-D45` line — the storefront is free-standing, so the reap correctly found nothing to fell |
 | the timing videos | `Screenshots/filmstrip_rain/rain_{snappy,default,floaty,heavy,raked}.mp4` (gitignored), spans 45 / 85 / 124 / 86 / 100 frames, all at `--fixed-fps 60` |
 
-## 5. 🟡 WHERE TO PICK UP
+## 5. The Director's review, and the close (2026-09-06)
 
-1. **The Director picks a timing preset** from the five videos (or asks for a
-   sixth / a tweak). `RAIN_TIMING_PRESETS` in `room.gd` and the look `var`s in
-   `glass_rain_overlay.gd` are where the winner lands. He may also want the shard
-   DENSITY down — a 6-GU storefront is 2927 shards and reads as a dense mass; a
-   framed window (`--glass-rain <preset> … INFILTRAITOR_GLASS_BLAST_PANE=framed`)
-   is a calmer picture.
-2. **G6b-3** — the white dust puff on landing, on `DebrisOverlay`'s existing
-   `CircleField` (`add_dust`), most on the pane's own cell. The last piece of §18.
-3. Then §18 is closed and glass rejoins the `MATERIALS_MASTER_PLAN` tail
-   (G-D25/plastic/S-4 art, M5 props, M6 fluids).
+*"O segundo me parece o melhor"* → **`default` is the shipped preset** (its
+`RAIN_TIMING_PRESETS` row is `{}` — the look `var`s already hold those values).
+Two tuning notes, both done:
+
+- *"tira um pouco da opacidade dos cacos, vamos começar já em 80%"* →
+  `GlassRainOverlay.tint` alpha `0.95 → 0.80`.
+- *"queria deixar mais debris no lugar depois que eles sumirem. Ta muito vazio"* →
+  the G6 pile decal's opacity formula was calibrated for ~24 shards/cell, and
+  G4-4's scatter drops that to ~4, so every scattered cell was near-invisible.
+  `VoxelRenderer.FLOOR_SHARD_ALPHA_{BASE,GAIN,MAX}` + `FLOOR_SHARD_SCALE` (`static
+  var`) rebalanced — the settled band now reads as continuous debris rather than
+  a thin dark line.
+
+### G6b-3 — the dust puff
+
+*"1 efeito de pozinho branco se espalha horizontalmente, saindo por baixo dos
+cacos."* `DebrisOverlay.add_glass_dust(center, reach, color)` — a GROUND puff, not
+a fall: each speck lerps to its own radial target (concentrated near the middle,
+flattened to an ellipse), on an ease-out, then holds and fades. Reuses `add_dust`'s
+machinery and its `CircleField` via a `"spread"` flag — not a new particle system.
+
+⚠️ **The glass puff ages in FRAMES**, `1/60` per `_process` call — it is spawned on
+the detonation's commit frame (the stall), and a `delta`-aged effect started there
+burns its whole life in one frame. Blast dust/chips keep `delta` (they fire on
+beat 3, not the stall). Same trap the rain and `EmberOverlay` already learned.
+
+`Room.spawn_glass_rain()` buckets the landings on a ~44 px grid and spawns one
+puff per dense bucket (`reach` 16→46 px by density, capped at 12) — the pane's
+foot puffs hardest, the fringe barely. On the storefront: `[GLASS-DUST] 12 puff(s)
+over 59 landing bucket(s), peak 65 shard(s)/bucket`.
+
+**§18 is closed.** Glass rejoins the `MATERIALS_MASTER_PLAN` tail — `plastic`
+screen backing and S-4's fracture art remain (G-D25's big shards were superseded
+by G-D44); M5 voxel props and M6 fluids are the milestone's last two parts.

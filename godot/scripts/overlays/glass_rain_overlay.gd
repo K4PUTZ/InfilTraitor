@@ -61,7 +61,10 @@ var arc_px_min: float = 6.0          ## lift at the top of the fall's parabola
 var arc_px_max: float = 22.0
 var spin_min: float = -0.16          ## radians per frame while airborne
 var spin_max: float = 0.16
-var tint: Color = Color(0.77, 0.91, 0.96, 0.95)
+## Director, 2026-09-06: *"tira um pouco da opacidade dos cacos, vamos começar já
+## em 80%."* The falling shards are a transient over the pile decal that stays;
+## less opaque reads as glass catching the light, not a solid sheet.
+var tint: Color = Color(0.77, 0.91, 0.96, 0.80)
 
 ## ⚠️ A CAP, AND IT IS HONEST ABOUT WHAT IT IS FOR. Instance buffer writes are
 ## per-frame DURING FLIGHT, and under G-D43 the flight is the only cost there is —

@@ -715,6 +715,40 @@ func spawn_glass_rain(flights: Array) -> int:
 		rain.z_index = layer.z_index + 2
 	_voxel_renderer.add_child(rain)
 	var n: int = rain.spawn(rows)
+
+	## ── G6b-3 — THE DUST PUFF ──────────────────────────────────────────────
+	##
+	## Director, 2026-09-05: *"1 efeito de pozinho branco se espalha
+	## horizontalmente, saindo por baixo dos cacos, com maior quantidade no ponto
+	## onde estava a vidraça e um pouco menos na segunda sub-GU."* One low puff per
+	## dense patch of landings, `reach` scaled by how many shards hit there — so the
+	## pane's own foot puffs hardest and the fringe barely. `DebrisOverlay`'s own
+	## `add_glass_dust`, additive `CircleField`, not a new particle system.
+	if _debris_overlay != null:
+		var bucket_px: float = 44.0
+		var buckets: Dictionary = {}
+		for r in rows:
+			var to_px: Vector2 = r["to"]
+			var bk := Vector2i((to_px / bucket_px).round())
+			buckets[bk] = int(buckets.get(bk, 0)) + 1
+		var peak: int = 1
+		for c in buckets.values():
+			peak = maxi(peak, int(c))
+		var keys: Array = buckets.keys()
+		keys.sort_custom(func(a, b) -> bool: return int(buckets[a]) > int(buckets[b]))
+		var dust_color := Color(0.88, 0.93, 0.98)
+		var puffs: int = 0
+		for bk in keys:
+			var cnt: int = int(buckets[bk])
+			if cnt < 2 or puffs >= 12:
+				break
+			var frac: float = float(cnt) / float(peak)
+			_debris_overlay.add_glass_dust((bk as Vector2) * bucket_px,
+				lerpf(16.0, 46.0, frac), dust_color)
+			puffs += 1
+		print_debug("[GLASS-DUST] %d puff(s) over %d landing bucket(s), peak %d shard(s)/bucket"
+			% [puffs, buckets.size(), peak])
+
 	print_debug("[GLASS-RAIN] %d flight(s) -> %d shard(s), %d frame(s) to settle"
 		% [rows.size(), n, rain.span_frames()])
 	return n

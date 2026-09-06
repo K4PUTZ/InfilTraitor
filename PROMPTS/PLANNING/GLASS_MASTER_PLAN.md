@@ -1,6 +1,6 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.42 — **G4 IS BUILT, THE RAIN FALLS, AND THE PILE IS A BAND (§18).**
+**Status:** 🟢 v1.43 — **§18 CLOSED. G4 IS BUILT, THE RAIN FALLS AS A BAND, PUFFS DUST, AND A STRANDED REMNANT FALLS.**
 G4-1 the shape family · G4-2 the survivors leave the function · G4-3 the cut
 remnant atom, **confirmed on the real map** (W3, ring 0, 383 voxels, registry 49 =
 board 49) · G6b-1 the field, one texture and one draw call · G6b-2 the fall, aged
@@ -8,9 +8,10 @@ in FRAMES · **G4-4 the scatter + the shockwave impulse + G-D45 (a stranded remn
 falls with its frame), 2026-09-06 §18.14** — on the GLASS map the pile went from a
 ~48-cell line to 284 cells.
 
-🟡 **The rain timings are still placeholders and now have their bench**
-(`build_filmstrip.py --glass-rain <preset|all>` — five presets, one MP4 each).
-The Director picks; then **G6b-3** (the dust puff) is the last piece of §18.
+✅ **§18 IS CLOSED (2026-09-06).** The Director picked the `default` timing preset
+from the five videos, asked for shard opacity 80% and a fuller floor pile (both
+tuned), and **G6b-3** (the dust puff) shipped. Glass now rejoins the
+`MATERIALS_MASTER_PLAN` tail.
 
 ⚠️ **The finding the whole task rested on: G4's RULE was already implemented and
 its answer was thrown away.** `plan_pane_shatter()` computed `spared` — G-D13b's
@@ -3662,7 +3663,7 @@ would have had to invent and defend.
 | ✅ **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set. **BUILT 2026-09-05, §18.12** | ✅ `glass_shard_shapes_selftest` [10]/[11] + the rendered control: **2 757 shard px with the box, 12 without** |
 | ✅ **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; fade-out over the pile decal, then free (G-D43). **BUILT 2026-09-05, §18.13** | ✅ `glass_shard_shapes_selftest` [12] · a filmstrip · and the control: **13 244 differing px mid-flight, 0 after the kill** |
 | ✅ **G4-4** | `plan_landings()` takes the impulse; the scatter table; `lift` authored + synthetic test; **plus G-D45** (an orphaned remnant falls). **BUILT 2026-09-06, §18.14** | ✅ `glass_fall_selftest` 6 → 10 · `glass_shatter_selftest` [23] · on the GLASS map the pile went from a ~48-cell line to 284 cells, 1152 flights → 2927 shards · timing videos via `build_filmstrip.py --glass-rain all` |
-| **G6b-3** | the dust puff on landing | capture |
+| ✅ **G6b-3** | the dust puff on landing — `DebrisOverlay.add_glass_dust()`, a ground puff, one per dense landing bucket. **BUILT 2026-09-06, §18.14** | capture |
 
 ⚠️ **G6b-2's gate is a filmstrip, not a screenshot, and that is not a preference.**
 A falling shard is a transient: a before/after capture cannot see it, and this
@@ -4043,12 +4044,49 @@ VL-PERSIST. "Cai junto", not "some".
 | the real map | a grenade on the storefront pane: `[GLASS-FALL] 1152 of 1152 shard(s) landed, on 284 cell(s)` — up from the ~48-cell line the pane's foot is. `[GLASS-RAIN] 1152 flight(s) -> 2927 shard(s)` (2.54/voxel). No `[GLASS-REMNANT] G-D45` line — the storefront is free-standing, so the reap correctly found nothing |
 | the timing bench | `INFILTRAITOR_CAPTURE_ACTION=glass_rain_timings` — `RAIN_TIMING_PRESETS` (`snappy`/`default`/`floaty`/`heavy`/`raked`), `INFILTRAITOR_RAIN_IMPULSE`, `INFILTRAITOR_GLASS_BLAST_PANE` (`=framed` for a windowed pane). `build_filmstrip.py --glass-rain <preset|all>` encodes one MP4 each at `--fixed-fps 60` |
 
-#### 🟡 Open, unchanged from §18.13
+#### ✅ The Director's review of the videos (2026-09-06)
+
+*"O segundo me parece o melhor"* → **`default` is the shipped preset** (its row in
+`RAIN_TIMING_PRESETS` is `{}` — the look `var`s are already those values). Plus two
+tuning notes, both done:
+
+- *"tira um pouco da opacidade dos cacos, vamos começar já em 80%"* →
+  `GlassRainOverlay.tint` alpha `0.95 → 0.80`.
+- *"queria deixar mais debris no lugar depois que eles sumirem. Ta muito vazio"* →
+  the G6 pile decal's opacity was tuned for ~24 shards/cell and G4-4's scatter
+  drops that to ~4, so every scattered cell was near-invisible.
+  `VoxelRenderer.FLOOR_SHARD_ALPHA_{BASE,GAIN,MAX}` (`static var`) rebalanced —
+  a 1-shard cell now reads (0.40 vs 0.21), and `FLOOR_SHARD_SCALE 1.18` makes the
+  band read continuous rather than as isolated diamonds.
+
+#### ✅ G6b-3 IS BUILT (2026-09-06) — the dust puff
+
+*"1 efeito de pozinho branco se espalha horizontalmente, saindo por baixo dos
+cacos, com maior quantidade no ponto onde estava a vidraça e um pouco menos na
+segunda sub-GU."*
+
+`DebrisOverlay.add_glass_dust(center, reach, color)` — a GROUND puff, not a fall:
+each speck lerps to its OWN radial target (concentrated near the middle by
+`u^glass_dust_concentration`, flattened to an ellipse because the iso floor is
+foreshortened), on an ease-out, then holds and fades. Reuses `add_dust`'s
+delay/spread/settle machinery and its `CircleField` (one draw call, additive) via
+a `"spread"` flag — not a new particle system.
+
+`Room.spawn_glass_rain()` buckets the landing positions on a ~44 px grid and
+spawns one puff per dense bucket, `reach` scaled `16 → 46 px` by how many shards
+hit there, capped at 12 puffs — so the pane's own foot puffs hardest and the
+fringe barely, which is the brief. Logged as `[GLASS-DUST]`.
+
+#### 🟡 Still open
 
 - **The z_index trade** (one band for the whole rain field) — the Director ruled
   **(a) leave it** (2026-09-06): a 40-frame transient, only multi-storey panes,
   performance is the standing priority. Option (b) — a MultiMesh per storey band —
   stays available if a real map shows it is ugly.
-- **G6b-3** — the white dust puff on landing, on `DebrisOverlay`'s `CircleField`.
 - The reported shard-cell count drift across a flip (340 → 389) still belongs to
   CRACK-04's `_respawn_base_openings()`, not here.
+
+**§18 is now closed** — the shard rain is scattered, biased by the shockwave,
+lands as a band, leaves a readable pile, puffs dust, and a stranded remnant falls
+with its frame. Glass rejoins the `MATERIALS_MASTER_PLAN` tail (G-D25 big shards
+were superseded by G-D44; `plastic` screen backing and S-4's fracture art remain).

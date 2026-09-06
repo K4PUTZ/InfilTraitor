@@ -187,7 +187,7 @@ def run_glass_rain_capture(root, godot, preset, impulse):
     combined = res.stdout + res.stderr
     for line in combined.splitlines():
         if line.startswith("[GLASS-RAIN-T]") or line.startswith("[GLASS-FALL]") \
-                or line.startswith("[GLASS-REMNANT]"):
+                or line.startswith("[GLASS-REMNANT]") or line.startswith("[GLASS-DUST]"):
             print("   " + line.strip())
     return combined
 

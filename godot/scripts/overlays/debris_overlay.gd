@@ -49,6 +49,25 @@ var dust_speck_radius: float = 2.6
 var dust_alpha_gain: float = 1.7          ## E-DUST-01 — the specks were near-background grey
 var dust_fade_power: float = 1.3
 
+## --- Glass dust (G6b-3, GLASS_MASTER_PLAN §18) ---
+## Director, 2026-09-05: *"1 efeito de pozinho branco se espalha horizontalmente,
+## saindo por baixo dos cacos, com maior quantidade no ponto onde estava a vidraça
+## e um pouco menos conseguem ir parar na segunda sub-GU mais próxima."* A ground
+## puff, not a fall: specks push OUTWARD from the centre, concentrated near it, on
+## an ellipse (flattened, because the isometric floor is foreshortened). All `var`.
+var glass_dust_count_min: int = 10
+var glass_dust_count_max: int = 18
+var glass_dust_delay_min: float = 0.04    ## it puffs as the shards hit, not after
+var glass_dust_delay_max: float = 0.16
+var glass_dust_spread_min: float = 0.28   ## seconds the cloud takes to reach full radius
+var glass_dust_spread_max: float = 0.46
+var glass_dust_settle_min: float = 0.5
+var glass_dust_settle_max: float = 0.9
+var glass_dust_speck_radius: float = 2.0
+var glass_dust_flatten: float = 0.5       ## vertical scale of the spread ellipse
+var glass_dust_concentration: float = 1.7 ## r = reach * u^this — higher packs more near the centre
+var glass_dust_alpha_gain: float = 1.35
+
 ## --- Wood chips ---
 var chip_arc_duration_min: float = 0.4    ## seconds of flight before landing
 var chip_arc_duration_max: float = 0.6
@@ -93,6 +112,31 @@ func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:
 	set_process(true)
 
 
+## G6b-3 — a horizontal puff of glass dust from under a settled pile. `center` is
+## the pile's world position, `reach` how far (px) the outermost specks push. The
+## specks lerp to their OWN target (radial, concentrated near the middle); the
+## delay/spread/settle machinery is `add_dust`'s, reused via the `"spread"` flag.
+func add_glass_dust(center: Vector2, reach: float, color: Color) -> void:
+	var speck_count: int = randi_range(glass_dust_count_min, glass_dust_count_max)
+	var specks: Array = []
+	for i in range(speck_count):
+		var ang: float = randf() * TAU
+		var r: float = reach * pow(randf(), glass_dust_concentration)
+		specks.append(Vector2(cos(ang) * r, sin(ang) * r * glass_dust_flatten))
+	_dust.append({
+		"origin": center,
+		"target": center,           ## the cloud does not translate; the specks do
+		"color": color,
+		"delay": randf_range(glass_dust_delay_min, glass_dust_delay_max),
+		"fall_duration": randf_range(glass_dust_spread_min, glass_dust_spread_max),
+		"settle_duration": randf_range(glass_dust_settle_min, glass_dust_settle_max),
+		"elapsed": 0.0,
+		"specks": specks,
+		"spread": true,
+	})
+	set_process(true)
+
+
 ## Queue `count` wood chips that fly from `origin` on a short ballistic arc
 ## timed to land at `target`, then settle/fade there.
 func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> void:
@@ -129,7 +173,12 @@ func _process(delta: float) -> void:
 
 	var alive_dust: Array = []
 	for d in _dust:
-		d["elapsed"] += delta
+		## G6b-3 — the GLASS puff ages in FRAMES, not seconds. It is spawned on the
+		## detonation's COMMIT frame (the stall), and a `delta`-aged effect started
+		## there burns its whole life inside one stalled frame — the same trap the
+		## shard rain and `EmberOverlay` learned. Blast dust/chips stay `delta`: they
+		## fire on beat 3, not the stall.
+		d["elapsed"] += (1.0 / 60.0) if d.get("spread", false) else delta
 		var total: float = d["delay"] + d["fall_duration"] + d["settle_duration"]
 		if d["elapsed"] < total:
 			alive_dust.append(d)
@@ -203,29 +252,39 @@ func _draw() -> void:
 		var settle_duration: float = d["settle_duration"]
 		if elapsed < delay:
 			continue
+		var is_spread: bool = d.get("spread", false)
 		var pos: Vector2
 		var alpha: float
+		var speck_scale: float = 1.0   ## G6b-3 — spread mode grows each speck's offset
 		if elapsed < delay + fall_duration:
 			var t: float = (elapsed - delay) / fall_duration
-			pos = lerp(d["origin"] as Vector2, d["target"] as Vector2, t)
+			if is_spread:
+				## The cloud stays put; the specks push OUTWARD on an ease-out.
+				pos = d["origin"]
+				speck_scale = 1.0 - (1.0 - t) * (1.0 - t)
+			else:
+				pos = lerp(d["origin"] as Vector2, d["target"] as Vector2, t)
 			## E-DUST-01: FULL alpha while falling. This used to be `alpha = t`,
 			## which meant the dust was invisible exactly when it was moving —
 			## the one part of its life the eye could have caught.
 			alpha = 1.0
 		else:
-			pos = d["target"]
+			pos = d["target"] if not is_spread else d["origin"]
 			var st: float = (elapsed - delay - fall_duration) / settle_duration
 			alpha = pow(1.0 - st, dust_fade_power)
 		var c: Color = d["color"]
-		c.a = minf(c.a * alpha * dust_alpha_gain, 1.0)
+		var gain: float = glass_dust_alpha_gain if is_spread else dust_alpha_gain
+		c.a = minf(c.a * alpha * gain, 1.0)
+		var radius: float = glass_dust_speck_radius if is_spread else dust_speck_radius
 		drawn += 1
 		cmds += (d["specks"] as Array).size()
 		for offset in d["specks"]:
+			var p: Vector2 = pos + (offset as Vector2) * speck_scale
 			if submit:
 				if mm != null:
-					mm.push(pos + offset, dust_speck_radius, c)
+					mm.push(p, radius, c)
 				else:
-					draw_circle(pos + offset, dust_speck_radius, c)
+					draw_circle(p, radius, c)
 	if mm != null:
 		mm.flush()
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**239 scripts · 86002 lines total** (under `godot/scripts/`)
+**239 scripts · 86109 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -878,7 +878,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 6810 lines
+`class_name VoxelRenderer` · extends `Node2D` · 6821 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1094,7 +1094,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 268 lines
+`class_name DebrisOverlay` · extends `Node2D` · 327 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
@@ -1111,6 +1111,18 @@ extends `ConfirmationDialog` · 64 lines
 - `var dust_speck_radius: float = 2.6`
 - `var dust_alpha_gain: float = 1.7`
 - `var dust_fade_power: float = 1.3`
+- `var glass_dust_count_min: int = 10`
+- `var glass_dust_count_max: int = 18`
+- `var glass_dust_delay_min: float = 0.04`
+- `var glass_dust_delay_max: float = 0.16`
+- `var glass_dust_spread_min: float = 0.28`
+- `var glass_dust_spread_max: float = 0.46`
+- `var glass_dust_settle_min: float = 0.5`
+- `var glass_dust_settle_max: float = 0.9`
+- `var glass_dust_speck_radius: float = 2.0`
+- `var glass_dust_flatten: float = 0.5`
+- `var glass_dust_concentration: float = 1.7`
+- `var glass_dust_alpha_gain: float = 1.35`
 - `var chip_arc_duration_min: float = 0.4`
 - `var chip_arc_duration_max: float = 0.6`
 - `var chip_settle_duration_min: float = 0.8`
@@ -1127,6 +1139,7 @@ extends `ConfirmationDialog` · 64 lines
 
 **Public API**
 - `func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:`
+- `func add_glass_dust(center: Vector2, reach: float, color: Color) -> void:`
 - `func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> void:`
 - `func clear() -> void:`
 
@@ -1259,7 +1272,7 @@ extends `Node2D` · 143 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 219 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 222 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -1280,7 +1293,7 @@ extends `Node2D` · 143 lines
 - `var arc_px_max: float = 22.0`
 - `var spin_min: float = -0.16`
 - `var spin_max: float = 0.16`
-- `var tint: Color = Color(0.77, 0.91, 0.96, 0.95)`
+- `var tint: Color = Color(0.77, 0.91, 0.96, 0.80)`
 - `var max_shards: int = 3000`
 
 **Public API**
@@ -5336,7 +5349,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10656 lines
+extends `Node2D` · 10690 lines
 
 `godot/scripts/world/room.gd`
 

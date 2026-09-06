@@ -61,10 +61,22 @@ var arc_px_min: float = 6.0          ## lift at the top of the fall's parabola
 var arc_px_max: float = 22.0
 var spin_min: float = -0.16          ## radians per frame while airborne
 var spin_max: float = 0.16
-## Director, 2026-09-06: *"tira um pouco da opacidade dos cacos, vamos começar já
-## em 80%."* The falling shards are a transient over the pile decal that stays;
-## less opaque reads as glass catching the light, not a solid sheet.
-var tint: Color = Color(0.77, 0.91, 0.96, 0.80)
+
+## ── OPACITY ────────────────────────────────────────────────────────────────
+## Director, 2026-09-06: *"tira mais opacidade dos cacos, e ir aumentando durante
+## a queda. Eu queria ver se dá pra eles ficarem mais translúcidos. Nosso
+## mecanismo atual eles parecem uma massa só."*
+##
+## The field is `blend_mix`, so N overlapping shards at one alpha stack toward
+## opaque fast — that is the "massa". Three levers, none of them the atlas:
+##   1. a low base `tint.a`;
+##   2. a RAMP over the fall — a tumbling shard high in the air is barely there,
+##      a shard about to land is the full tint. `alpha = lerp(air, 1, ease(t))`;
+##   3. per-shard variance, so the crowd is not one flat wash.
+var tint: Color = Color(0.78, 0.92, 0.97, 0.55)
+var air_alpha: float = 0.28          ## a shard's opacity at the TOP of its fall (× tint.a)
+var alpha_var_min: float = 0.55      ## per-shard multiplier, hashed to [this, 1.0]
+var pieces_low_bias: float = 1.6     ## >1 skews the 1..max piece count toward the low end
 
 ## ⚠️ A CAP, AND IT IS HONEST ABOUT WHAT IT IS FOR. Instance buffer writes are
 ## per-frame DURING FLIGHT, and under G-D43 the flight is the only cost there is —
@@ -115,7 +127,9 @@ func _ready() -> void:
 ##
 ## G-D44: one destroyed voxel yields 1 to 4 pieces (area is conserved, and a piece
 ## of edge 0.5-1.0 has area 0.25-1.0), so the caller passes one flight per VOXEL
-## and the split happens here.
+## and the split happens here. `pieces_low_bias > 1` skews the count toward the
+## LOW end of 1..max — fewer pieces means less overlap means less "massa só", and
+## it keeps G-D44's range intact rather than lowering the ceiling.
 func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 	_ensure_field()
 	_apply_timing_overrides()
@@ -123,7 +137,8 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 		var key: Vector3i = f["key"]
 		var from: Vector2 = f["from"]
 		var to: Vector2 = f["to"]
-		var n: int = 1 + int(_hash_unit(key, "count") * float(maxi(pieces_per_voxel_max, 1)) * 0.999)
+		var n: int = 1 + int(pow(_hash_unit(key, "count"), pieces_low_bias) \
+			* float(maxi(pieces_per_voxel_max, 1)) * 0.999)
 		for p in range(n):
 			if _shards.size() >= max_shards:
 				break
@@ -150,6 +165,7 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 				"flip": _hash_unit(key, "flip" + salt) < 0.5,
 				"flop": _hash_unit(key, "flop" + salt) < 0.5,
 				"rot0": _hash_unit(key, "rot" + salt) * TAU,
+				"avar": lerpf(alpha_var_min, 1.0, _hash_unit(key, "avar" + salt)),
 				"t0": t0,
 				"fall": maxi(fall, 1),
 			})
@@ -185,6 +201,10 @@ func _process(_delta: float) -> void:
 			var e: float = 1.0 - (1.0 - t) * (1.0 - t)
 			pos = (s["from"] as Vector2).lerp(s["to"], e) - Vector2(0.0, float(s["arc"]) * sin(PI * t))
 			rot += float(s["spin"]) * float(f)
+			## Director, 2026-09-06 — a shard is barely there at the top of its fall
+			## and reaches the full tint as it lands, so a still-airborne crowd does
+			## not stack into one wash.
+			alpha = lerpf(air_alpha, 1.0, e)
 		else:
 			## Landed. The spin is frozen — a shard skidding on the floor reads as
 			## a bug, not as physics.
@@ -201,7 +221,7 @@ func _process(_delta: float) -> void:
 				if alpha <= 0.0:
 					continue
 		var c: Color = tint
-		c.a *= alpha
+		c.a *= alpha * float(s["avar"])
 		_field.push(pos, float(s["size"]), rot, int(s["shape"]), c,
 			bool(s["flip"]), bool(s["flop"]))
 		live += 1

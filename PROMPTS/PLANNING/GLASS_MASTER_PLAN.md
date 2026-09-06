@@ -4050,8 +4050,15 @@ VL-PERSIST. "Cai junto", not "some".
 `RAIN_TIMING_PRESETS` is `{}` — the look `var`s are already those values). Plus two
 tuning notes, both done:
 
-- *"tira um pouco da opacidade dos cacos, vamos começar já em 80%"* →
-  `GlassRainOverlay.tint` alpha `0.95 → 0.80`.
+- *"tira um pouco da opacidade dos cacos, vamos começar já em 80%"*, then, on the
+  second look, *"tira mais opacidade… e ir aumentando durante a queda… mais
+  translúcidos… parecem uma massa só"* → three levers on the field (which is
+  `blend_mix`, so overlap stacks toward opaque): `tint` alpha `0.95 → 0.55`, an
+  `air_alpha` RAMP (`0.28 → 1.0` over the fall's own ease, so a tumbling shard
+  high up is barely there and a landing one is full tint), a per-shard `avar`
+  multiplier `[0.55, 1.0]` so the crowd is not one flat wash, and `pieces_low_bias`
+  `1.6` skewing the 1..4 piece count low (2927 → 2457 shards) — G-D44's range kept,
+  its ceiling untouched.
 - *"queria deixar mais debris no lugar depois que eles sumirem. Ta muito vazio"* →
   the G6 pile decal's opacity was tuned for ~24 shards/cell and G4-4's scatter
   drops that to ~4, so every scattered cell was near-invisible.

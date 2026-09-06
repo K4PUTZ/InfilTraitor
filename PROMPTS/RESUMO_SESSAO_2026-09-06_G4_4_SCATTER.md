@@ -127,8 +127,13 @@ command. Ran it backgrounded without `timeout` and it worked first try.
 `RAIN_TIMING_PRESETS` row is `{}` — the look `var`s already hold those values).
 Two tuning notes, both done:
 
-- *"tira um pouco da opacidade dos cacos, vamos começar já em 80%"* →
-  `GlassRainOverlay.tint` alpha `0.95 → 0.80`.
+- *"tira um pouco da opacidade dos cacos, vamos começar já em 80%"*, then a second
+  pass — *"tira mais opacidade… e ir aumentando durante a queda… mais translúcidos…
+  parecem uma massa só"*. The field is `blend_mix`, so overlap is what makes the
+  mass; four levers: `tint` alpha `0.95 → 0.55`, an `air_alpha` ramp (`0.28 → 1.0`
+  over the fall), a per-shard `avar` `[0.55, 1.0]`, and `pieces_low_bias 1.6`
+  (skews the 1..4 count low, 2927 → 2457 shards). A tumbling shard high up is now
+  see-through; the settled pile decal carries the lasting read.
 - *"queria deixar mais debris no lugar depois que eles sumirem. Ta muito vazio"* →
   the G6 pile decal's opacity formula was calibrated for ~24 shards/cell, and
   G4-4's scatter drops that to ~4, so every scattered cell was near-invisible.

@@ -1,7 +1,27 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.40 — **G4 + THE SHARD RAIN ARE PLANNED, NOT BUILT (§18), AND
-BOTH OPEN QUESTIONS ARE CLOSED (2026-09-05).**
+**Status:** 🟢 v1.41 — **G4 IS BUILT AND THE RAIN FALLS (§18, 2026-09-05).**
+G4-1 the shape family · G4-2 the survivors leave the function · G4-3 the cut
+remnant atom, **confirmed on the real map** (W3, ring 0, 383 voxels, registry 49 =
+board 49) · G6b-1 the field, one texture and one draw call · G6b-2 the fall, aged
+in FRAMES.
+
+⚠️ **The finding the whole task rested on: G4's RULE was already implemented and
+its answer was thrown away.** `plan_pane_shatter()` computed `spared` — G-D13b's
+anchored survivors, the Director's G4 rule word for word — and discarded the
+local. `if spared.has(k): continue` was its only use in the repository.
+
+**Both new gates run their own control in the same boot**, because P7b's culling
+defect shipped under a green gate that could not reach it: 2 757 shard px against
+**12** without `custom_aabb`; 13 244 differing px mid-flight against **0** after
+the rain is killed, which is G-D43's disposability proved rather than asserted.
+
+🟡 **Next is G4-4** — the impulse and the scatter table. Until the shards spread,
+a pane's rain lands on a LINE, because that is what the foot of a pane is. Every
+rain timing is a placeholder and wants the Director's eye AFTER that, not before.
+Session record: [`RESUMO_SESSAO_2026-09-05_G4_SHARDS.md`](../RESUMO_SESSAO_2026-09-05_G4_SHARDS.md).
+
+Earlier, v1.40 — **BOTH OPEN QUESTIONS CLOSED (2026-09-05).**
 
 **G-D43 — the pile is the only permanent thing; the rain is disposable.** The
 shards fall, fade out over the G6 pile decal already drawn beneath them, and are

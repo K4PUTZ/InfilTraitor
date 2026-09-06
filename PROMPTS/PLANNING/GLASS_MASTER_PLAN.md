@@ -4117,29 +4117,22 @@ fringe barely, which is the brief. Logged as `[GLASS-DUST]`.
   stays available if a real map shows it is ugly.
 - The reported shard-cell count drift across a flip (340 → 389) still belongs to
   CRACK-04's `_respawn_base_openings()`, not here.
-- 🟡 **A WARM/YELLOW CAST ON CRAZED (AND INTACT) PANES NEAR A GRENADE, that
-  vanishes on a perspective rotation** — Director-reported 2026-09-06, PRE-EXISTING
-  (he has seen it "várias vezes"), and NOT from this session's G4-4 work.
-  ✅ **DIAGNOSED 2026-09-06 by `INFILTRAITOR_GLASS_WARM_PROBE=1` (see
-  `_capture_glass_blast_demo`).** Measured: the pane region goes from `(90,90,91)`
-  to `(155,156,31)` when the blast lands — B crushed, R/G boosted, i.e. a warm
-  wash. The isolation grabs (`INFILTRAITOR_WARM_ISOLATE=1`) prove what it is: the
-  yellow SURVIVES hiding the glass layer, the craze sprite AND the entire
-  vision-controller overlay subtree, and dies ONLY when everything behind the glass
-  is hidden. So it is **warm blast content in the framebuffer at the pane's own
-  screen pixels** — the crater's exposed interior + floor damage + the
-  consequence-light ramp — which `glass_pane.gdshader` samples through
-  `glass_screen` / `SCREEN_UV` and tints. ⚠️ **The root is the G-D18b z-bump.** The
-  glass composite sits at `agent.z_index + 1` so a pane never hides the agent — but
-  that also puts it OVER a floor crater that is IN FRONT of the window in world
-  space, so the crater lands in the backbuffer and the glass shows it. A window
-  showing the floor crater between it and the camera is the bug. The rotation
-  clears it because the geometry reprojects and the transient warmth re-derives
-  neutral. **Fix needs the Director's call** — it is a G-D18b / screen-space
-  compositing tension, not a knob: (a) keep the glass composite below floor-plane
-  blast damage while still above the agent; (b) a warmth clamp in the glass shader
-  (band-aid); (c) tone down the crater's saturated exposed-interior render.
-  `glass_warm_probe_*` captures. Evidence lives in the probe's own `⚠️ RESULT` note.
+- 🟡 **AN OLIVE/YELLOW CAST ON CRAZED PANES NEAR A GRENADE, that vanishes on a
+  perspective rotation** — Director-reported 2026-09-06, PRE-EXISTING (he has seen
+  it "várias vezes"), NOT from this session's G4-4 work.
+  **→ Full audit: [`PROMPTS/AUDITS/GLASS_OLIVE_CAST_2026-09-06.md`](../AUDITS/GLASS_OLIVE_CAST_2026-09-06.md)**
+  (reproduced, isolated to *a yellow pane-shaped slab inside the `_voxel_renderer`
+  subtree, seen through the erased CRACKED-pane gap and MULTIPLY-tinted olive by the
+  plain-glass blue tint*; root not yet named; 6 committed evidence captures).
+  ⚠️ **The earlier diagnosis in this section (commit `03444a61`,
+  `INFILTRAITOR_GLASS_WARM_PROBE`) is SUPERSEDED and was wrong** — a deeper probe
+  showed hiding the `BackBufferCopy` changes the pane pixel *not at all*, the cast
+  is stable for 4 s (not a fading warm ramp), the floor crater renders correct dark
+  soot in the same frame, and the crazed panes are plain `glass`. The "warm blast
+  content sampled via `SCREEN_UV` / G-D18b z-bump / crater in the backbuffer" story
+  does not hold. Live leads (light-field warm alt on the wall behind the pane; a
+  variant tint index mis-written to a plain-glass atom's BLUE channel; a craze
+  mask/occupancy `ImageTexture` drawn raw) are in the audit's §5.
 
 **§18 is now closed** — the shard rain is scattered, biased by the shockwave,
 lands as a band, leaves a readable pile, puffs dust, and a stranded remnant falls

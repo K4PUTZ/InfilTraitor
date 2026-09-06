@@ -690,6 +690,9 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			for pk in piles:
 				delta.glass_shard_piles[pk] = int(delta.glass_shard_piles.get(pk, 0)) \
 					+ int(piles[pk])
+			## G6b-2 — and the FLIGHTS, so the rain knows where each shard started.
+			## Proposed like everything else here; the room spawns the overlay.
+			delta.glass_shard_flights.append_array(landings)
 			print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
 				% [landings.size(), entries.size(), piles.size(), deepest, entries.size() - landings.size()])
 

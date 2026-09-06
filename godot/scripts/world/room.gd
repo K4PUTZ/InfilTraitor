@@ -6,6 +6,7 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## before the global class cache exists in a headless lint run.
 const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const ShardField = preload("res://godot/scripts/overlays/shard_field.gd")
+const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overlay.gd")
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
@@ -645,6 +646,72 @@ func _respawn_base_shards() -> void:
 	## nothing in any log to say so.
 	print_debug("[GLASS-SHARDS] perspective %s — %d pile(s) redrawn, %d had no layer"
 		% [_active_perspective, drawn, lost])
+
+
+## ── G6b-2 / G-D43 — SPAWN ONE EVENT'S RAIN ──────────────────────────────────
+##
+## `flights` is `GlassFall.plan_landings()`'s own output — `{grid_pos, from_level,
+## landing_level}` per destroyed voxel — which is the one thing the pile record
+## cannot supply: it is keyed by LANDING cell, and a six-storey pane empties onto
+## one tile from twenty-four different heights.
+##
+## ⚠️ CALLED AFTER `record_glass_shards()`, ALWAYS. The pile decal has to be on the
+## floor before the first shard moves, because that is what makes the fall safe to
+## interrupt (G-D43): a rain cut short by a stall, an off-screen pane or a perf
+## budget still leaves the floor exactly right.
+##
+## ⚠️ NOTHING IS RECORDED. The rain is disposable — no base-space store, no
+## `SaveState` section, no rotation replay, because there is nothing left to
+## replay. Every other glass claim on this track does the opposite, so the absence
+## is stated rather than left to be noticed.
+##
+## Returns how many shards are in flight.
+func spawn_glass_rain(flights: Array) -> int:
+	if _voxel_renderer == null or flights.is_empty():
+		return 0
+	var bsize := _base_voxel_size()
+	var rows: Array = []
+	var top_level: int = -1
+	for f in flights:
+		var gp: Vector2i = f["grid_pos"]
+		var from_level: int = int(f["from_level"])
+		var land_level: int = int(f["landing_level"])
+		var from: Vector2 = _voxel_renderer.voxel_world_position(gp, from_level)
+		var to: Vector2 = _voxel_renderer.voxel_world_position(gp, land_level)
+		if from == Vector2.ZERO or to == Vector2.ZERO:
+			## Rule 9 — a level this view does not build has no layer, and
+			## `voxel_world_position()` answers ZERO. Skipped, and counted by the
+			## caller's own total rather than silently dropped.
+			continue
+		## ⚠️ B4 — the hash key is BASE-space even though nothing here is stored.
+		## It costs one call and it is what lets a filmstrip of this event be
+		## compared across runs at all; a view-space key would reshuffle every
+		## shard on a camera turn mid-flight.
+		var base_xy := PerspectiveMapperClass.cell_to_base(gp, _active_perspective, bsize)
+		rows.append({
+			"from": from, "to": to,
+			"key": Vector3i(base_xy.x, base_xy.y, from_level),
+		})
+		top_level = maxi(top_level, land_level)
+	if rows.is_empty():
+		return 0
+	var rain := GlassRainOverlay.new()
+	rain.name = "GlassRain"
+	## ⚠️ ONE z_index FOR THE WHOLE FIELD, and it is a real limitation of doing this
+	## in a single MultiMesh: a draw order cannot vary per instance. It sits just
+	## above the deepest landing plane's layer — the same band the pile decals take
+	## (`layer.z_index + 1`), one higher — so the rain reads as landing ON the floor
+	## rather than floating over the scenery. A rain spanning two storeys will have
+	## its upper shards drawn in the lower plane's band for the ~40 frames it lives;
+	## stated because it is a trade for the one draw call, not an oversight.
+	var layer := _voxel_renderer.get_layer(top_level)
+	if layer != null:
+		rain.z_index = layer.z_index + 2
+	_voxel_renderer.add_child(rain)
+	var n: int = rain.spawn(rows)
+	print_debug("[GLASS-RAIN] %d flight(s) -> %d shard(s), %d frame(s) to settle"
+		% [rows.size(), n, rain.span_frames()])
+	return n
 
 
 ## ── G4-2 / G4-3 — CLAIM THE GLASS THAT STAYED STUCK TO THE FRAME ────────────
@@ -8549,6 +8616,179 @@ func _capture_detonation_filmstrip() -> void:
 	print("[P-FILM] wrote %d frames to %s" % [frame_count, out_dir])
 
 
+## ── G6b-2 — THE RAIN, AND THE CONTROL FOR G-D43's OWN CLAIM ─────────────────
+##
+## `INFILTRAITOR_CAPTURE_ACTION=glass_rain_demo`
+##
+## G-D43 says the rain is DISPOSABLE: *"os cacos caem no chão, apagam e revelam um
+## sprite padrão por trás"*, and the consequence claimed for it is that a rain cut
+## short by a stall, an off-screen pane or a perf budget still leaves the floor
+## exactly right. **That is a claim about pixels and it is testable**, so it is
+## tested rather than asserted:
+##
+##   1. blast the pane and let EVERYTHING settle — the piles are drawn, the VFX
+##      are over, nothing on screen is moving;
+##   2. capture the settled floor;
+##   3. spawn the rain and let it get mid-flight;
+##   4. capture that (the filmstrip's one frame — proof the shards are in the air);
+##   5. KILL the rain outright and capture again;
+##   6. diff (5) against (2). **G-D43 holds iff that difference is zero.**
+##
+## ⚠️ Step 1 is what makes the diff meaningful. Run against a frame where the
+## blast's own fire and smoke are still playing, a zero would be impossible and a
+## non-zero would mean nothing.
+func _capture_glass_rain_demo() -> void:
+	if _voxel_renderer == null or _test_zone_controller == null:
+		push_error("[GLASS-RAIN] no renderer / test zone controller")
+		return
+	var pane_id_want := OS.get_environment("INFILTRAITOR_GLASS_BLAST_PANE")
+	var pane_slices: Array = _pane_by_id(pane_id_want) if pane_id_want != "" \
+		else _biggest_glass_pane("")
+	if pane_slices.is_empty():
+		push_error("[GLASS-RAIN] no panel pane to break")
+		return
+	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
+	DirAccess.make_dir_recursive_absolute(dir)
+
+	var face: int = pane_slices[0].face
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	var mid: Vector2i = pane_slices[pane_slices.size() / 2].voxels[0].grid_pos
+	var pane_gu := Vector2i(mid.x >> 3, mid.y >> 3)
+	var gu: Vector2i = pane_gu + (Vector2i(0, 1) if run_is_x else Vector2i(1, 0))
+
+	apply_glass_diagnostic_backdrop()
+	if _camera_controller != null and agent != null:
+		_camera_controller.set_zoom_for_capture(1.0)
+		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
+			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
+				* float(_voxel_renderer.relative_level(pane_slices[0].voxels[0].level))))
+	if _fow_controller != null:
+		_fow_controller.reveal_around(pane_gu, 30)
+	_test_zone_controller.add_grenade(gu)
+	var idx: int = _test_zone_controller._grenades.size() - 1
+	_test_zone_controller.open_menu_for(idx)
+	if _context_menu != null:
+		_context_menu.close()
+	if _blast_wireframe_overlay != null:
+		_blast_wireframe_overlay.clear()
+	_test_zone_controller.detonate_active()
+
+	## ── 1. let EVERYTHING settle, the rain included ─────────────────────────
+	for _f in range(420):
+		await get_tree().process_frame
+	for r in _voxel_renderer.get_children():
+		if r is GlassRainOverlay:
+			r.free()
+	for _g in range(6):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var settled: Image = get_viewport().get_texture().get_image()
+	settled.save_png("%s/glass_rain_settled_2026-09-05.png" % dir)
+
+	## ── 3. a fresh rain over that same settled floor ────────────────────────
+	var flights: Array = []
+	var lo: int = GeometryCoords.storey_level_base(pane_slices[0].start_storey)
+	for ps in pane_slices:
+		for v in ps.voxels:
+			flights.append({"grid_pos": v.grid_pos, "from_level": v.level,
+				"landing_level": lo})
+	var n: int = spawn_glass_rain(flights)
+
+	## ⚠️ A FILMSTRIP, BECAUSE A BEFORE/AFTER CANNOT SEE A TRANSIENT. The whole
+	## subject here is motion — the drop, the bounce, the fade — and any pair of
+	## stills is compatible with the shards teleporting. Frames are sampled from
+	## ONE boot: the trajectory is hashed (B4) rather than rolled, so this strip is
+	## reproducible, which is exactly what `glass_blast_demo` cannot claim.
+	var strip: Array = []
+	var midair: Image = null
+	var crop := Rect2i(300, 150, 640, 380)
+	for step in range(FILMSTRIP_FRAMES):
+		for _k in range(FILMSTRIP_STRIDE):
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		var shot: Image = get_viewport().get_texture().get_image()
+		if step == FILMSTRIP_MIDAIR_STEP:
+			midair = shot
+			midair.save_png("%s/glass_rain_midair_2026-09-05.png" % dir)
+		var tile: Image = shot.get_region(crop)
+		tile.resize(crop.size.x / 2, crop.size.y / 2, Image.INTERPOLATE_NEAREST)
+		## ⚠️ CONVERT, OR THE SHEET COMES OUT EMPTY AND NOTHING SAYS SO. A viewport
+		## image is not RGBA8, and `blit_rect()` between mismatched formats copies
+		## nothing and returns nothing — the first run of this strip wrote a
+		## perfectly valid PNG of pure background while the log reported 8 frames.
+		tile.convert(Image.FORMAT_RGBA8)
+		strip.append(tile)
+	_save_filmstrip(strip, "%s/glass_rain_filmstrip_2026-09-05.png" % dir)
+	if midair == null:
+		midair = get_viewport().get_texture().get_image()
+
+	## ── 5. kill it mid-flight ───────────────────────────────────────────────
+	var killed: int = 0
+	for r2 in _voxel_renderer.get_children():
+		if r2 is GlassRainOverlay:
+			killed += r2.live_count()
+			r2.free()
+	for _i in range(4):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var after: Image = get_viewport().get_texture().get_image()
+	after.save_png("%s/glass_rain_after_kill_2026-09-05.png" % dir)
+
+	## ── 6. the diff ─────────────────────────────────────────────────────────
+	var moved: int = _diff_pixels(settled, midair)
+	var left: int = _diff_pixels(settled, after)
+	print("[GLASS-RAIN] %d shard(s) spawned; %d were in the air when it was killed" % [n, killed])
+	print("[GLASS-RAIN] mid-flight vs settled: %d differing pixel(s)  <- the rain is visible" % moved)
+	print("[GLASS-RAIN] after the kill vs settled: %d differing pixel(s)  <- G-D43: must be 0" % left)
+	if moved == 0:
+		push_warning("[GLASS-RAIN] the rain changed NO pixels — this gate cannot see the thing it exists for")
+
+
+## How the strip is sampled. `STRIDE` frames apart, `FRAMES` of them, and the
+## MIDAIR one is the frame the G-D43 diff is taken from — chosen early enough that
+## shards are genuinely in the air rather than settling.
+const FILMSTRIP_FRAMES: int = 8
+const FILMSTRIP_STRIDE: int = 5
+const FILMSTRIP_MIDAIR_STEP: int = 2
+
+
+## Lay the sampled frames out in a 4-wide grid, reading left to right, top to
+## bottom — a strip 8 tiles long is unreadably wide at this crop.
+func _save_filmstrip(tiles: Array, path: String) -> void:
+	if tiles.is_empty():
+		return
+	var first: Image = tiles[0]
+	var cols: int = 4
+	var rows: int = int(ceil(float(tiles.size()) / float(cols)))
+	var pad: int = 4
+	var sheet := Image.create(
+		pad + cols * (first.get_width() + pad),
+		pad + rows * (first.get_height() + pad), false, Image.FORMAT_RGBA8)
+	sheet.fill(Color(0.086, 0.094, 0.110, 1.0))
+	for i in range(tiles.size()):
+		var t: Image = tiles[i]
+		sheet.blit_rect(t, Rect2i(Vector2i.ZERO, t.get_size()), Vector2i(
+			pad + (i % cols) * (t.get_width() + pad),
+			pad + (i / cols) * (t.get_height() + pad)))
+	sheet.save_png(path)
+	print("[GLASS-RAIN] filmstrip: %d frame(s), %d apart -> %s"
+		% [tiles.size(), FILMSTRIP_STRIDE, path])
+
+
+## Differing pixels between two frames of the same size. Exact, not perceptual:
+## the claim is "the floor is untouched", and a tolerance would let a faint
+## residue through, which is precisely the failure mode.
+func _diff_pixels(a: Image, b: Image) -> int:
+	if a.get_width() != b.get_width() or a.get_height() != b.get_height():
+		return -1
+	var n: int = 0
+	for y in range(a.get_height()):
+		for x in range(a.get_width()):
+			if a.get_pixel(x, y) != b.get_pixel(x, y):
+				n += 1
+	return n
+
+
 ## ── G6b-1 — THE SHARD FIELD, AND A GATE THAT CAN REACH ITS FAILURE ──────────
 ##
 ## `INFILTRAITOR_CAPTURE_ACTION=shard_field_demo`
@@ -9283,6 +9523,10 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "shard_field_demo":
 		await _capture_shard_field_demo()
+		get_tree().quit(0)
+		return
+	elif capture_action == "glass_rain_demo":
+		await _capture_glass_rain_demo()
 		get_tree().quit(0)
 		return
 	elif capture_action == "escape_open_menu":

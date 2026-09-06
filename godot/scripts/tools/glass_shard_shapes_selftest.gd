@@ -16,6 +16,7 @@ extends SceneTree
 const ShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const OpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 const ShardFieldClass = preload("res://godot/scripts/overlays/shard_field.gd")
+const RainClass = preload("res://godot/scripts/overlays/glass_rain_overlay.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -39,6 +40,7 @@ func _init() -> void:
 	test_an_empty_mask_invents_nothing()
 	test_the_atlas_holds_five_distinct_cells()
 	test_the_field_writes_the_buffer_it_claims()
+	test_the_rain_ages_in_frames_and_frees_itself()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -472,4 +474,81 @@ func test_the_field_writes_the_buffer_it_claims() -> void:
 	else:
 		_fail("clear() left %d instance(s)" % field.live_count())
 	host.queue_free()
+	print("")
+
+
+## ── [12] G6b-2 — THE RAIN ────────────────────────────────────────────────────
+##
+## ⛔ THE FIRST ASSERTION IS THE STANDING TRAP OF THIS WHOLE TRACK. The rain is
+## spawned on the detonation's COMMIT frame — the one that mints, applies the light
+## field and stalls. An animation aged in SECONDS plays its entire life inside that
+## one stalled frame and the player sees the settled floor with no fall at all;
+## the ember overlay and the strobe each learned it the same way. So `_process` is
+## driven here with a delta of ZERO, which is what a seconds-based animation cannot
+## survive and a frame-based one does not notice.
+func test_the_rain_ages_in_frames_and_frees_itself() -> void:
+	print("\n[12] G6b-2 — the rain ages in FRAMES, replays exactly, and frees itself\n")
+	var flights: Array = [
+		{"from": Vector2(100.0, 40.0), "to": Vector2(104.0, 300.0), "key": Vector3i(3, -4, 88)},
+		{"from": Vector2(140.0, 60.0), "to": Vector2(139.0, 300.0), "key": Vector3i(4, -4, 88)},
+		{"from": Vector2(180.0, 20.0), "to": Vector2(176.0, 300.0), "key": Vector3i(5, -4, 87)},
+	]
+	var a = RainClass.new()
+	root.add_child(a)
+	var n: int = a.spawn(flights)
+	if n >= flights.size():
+		_pass("%d flight(s) split into %d shard(s) — G-D44's 1 to 4 pieces per voxel" % [flights.size(), n])
+	else:
+		_fail("%d flight(s) produced only %d shard(s)" % [flights.size(), n])
+
+	## ⛔ delta = 0.0, over and over. A seconds-based rain never moves.
+	for _i in range(6):
+		a._process(0.0)
+	var early: PackedFloat32Array = a._field._mm.buffer.duplicate()
+	for _j in range(6):
+		a._process(0.0)
+	var later: PackedFloat32Array = a._field._mm.buffer.duplicate()
+	var moved: bool = false
+	for k in range(mini(early.size(), later.size())):
+		if absf(early[k] - later[k]) > 0.001:
+			moved = true
+			break
+	if moved:
+		_pass("six more _process(0.0) calls move the shards — it counts FRAMES, not seconds")
+	else:
+		_fail("nothing moved across 6 frames at delta 0 — the rain is aged in SECONDS and will play inside the stalled commit frame")
+
+	## Replays exactly: same flights, same buffer. `randf()` here would make a
+	## filmstrip of one event uncomparable to a filmstrip of the next, which is the
+	## hole `glass_blast_demo` has and this one must not.
+	var b = RainClass.new()
+	root.add_child(b)
+	b.spawn(flights)
+	for _m in range(12):
+		b._process(0.0)
+	var mirror: PackedFloat32Array = b._field._mm.buffer
+	var same: bool = mirror.size() == later.size()
+	if same:
+		for k2 in range(mirror.size()):
+			if absf(mirror[k2] - later[k2]) > 0.0001:
+				same = false
+				break
+	if same:
+		_pass("a second rain from the same flights writes a byte-identical buffer — the event is replayable")
+	else:
+		_fail("two rains from the same flights disagree — something here rolls instead of hashing")
+
+	## And it takes nothing with it.
+	var span: int = a.span_frames()
+	for _p in range(span + 8):
+		if not is_instance_valid(a):
+			break
+		a._process(0.0)
+	if not is_instance_valid(a) or a.is_queued_for_deletion():
+		_pass("the rain frees itself after its %d-frame span — G-D43: it is disposable" % span)
+	else:
+		_fail("the rain is still alive %d frames past its own span" % 8)
+	if is_instance_valid(a):
+		a.queue_free()
+	b.queue_free()
 	print("")

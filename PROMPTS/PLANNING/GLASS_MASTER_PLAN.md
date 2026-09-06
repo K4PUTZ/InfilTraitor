@@ -3632,7 +3632,7 @@ would have had to invent and defend.
 | ✅ **G4-2** | `plan_pane_shatter()` returns `spared`; Delta + room + SaveState + respawn chain. **BUILT 2026-09-05, §18.10** | ✅ `glass_shatter_selftest` [22], `save_state_selftest` |
 | ✅ **G4-3** | the cut remnant atom, oriented by `anchor_mask`. **BUILT 2026-09-05, §18.10** | ✅ `glass_crack_selftest` [20] · `glass_remnant_atoms_2026-09-05.png` (real atoms, production cut path) · **and the real map**: `glass_remnant_w3_2026-09-05.png`, W3, ring 0, 383 voxels, registry 49 = board 49 (§18.11) |
 | ✅ **G6b-1** | the shard atlas + the textured MultiMesh field, `custom_aabb` set. **BUILT 2026-09-05, §18.12** | ✅ `glass_shard_shapes_selftest` [10]/[11] + the rendered control: **2 757 shard px with the box, 12 without** |
-| **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; fade-out over the pile decal, then free (G-D43) | filmstrip (`build_filmstrip.py`), which is the only instrument that can see a transient — and a CONTROL that kills the rain mid-flight and asserts the floor is identical, which is G-D43's own claim |
+| ✅ **G6b-2** | the closed-form trajectory, aged in FRAMES; bounce; fade-out over the pile decal, then free (G-D43). **BUILT 2026-09-05, §18.13** | ✅ `glass_shard_shapes_selftest` [12] · a filmstrip · and the control: **13 244 differing px mid-flight, 0 after the kill** |
 | **G6b-3** | the dust puff on landing | capture |
 | **G4-4** | `plan_landings()` takes the impulse; the scatter table; `lift` authored + synthetic test | `glass_fall_selftest`, extended; the real pile counts on the GLASS map |
 
@@ -3878,3 +3878,79 @@ edges into each other.
 **Left for G6b-2:** the trajectory (closed form, aged in FRAMES), the bounce, the
 fade over the pile decal, and the freeing. The field draws with no z_index policy
 yet — in the demo the shards sit over the agent and the wall, which G6b-2 places.
+
+
+### ✅ 18.13 G6b-2 IS BUILT (2026-09-05) — the fall, and G-D43 proved rather than asserted
+
+[`glass_rain_overlay.gd`](../../godot/scripts/overlays/glass_rain_overlay.gd),
+`Room.spawn_glass_rain()`, `WorldDelta.glass_shard_flights`, and
+`INFILTRAITOR_CAPTURE_ACTION=glass_rain_demo`.
+
+`GlassFall.plan_landings()`'s own rows ride the Delta as FLIGHTS, because the pile
+record alone cannot say where a shard started: it is keyed by LANDING cell, and a
+six-storey pane empties onto one tile from twenty-four different heights. ⚠️
+Nothing about a flight is persisted — no base store, no `SaveState` section, no
+rotation replay — and the absence is stated in the code, because every other glass
+claim on this track does the opposite.
+
+Measured on the real blast: **383 flights → 976 shards**, 2.55 per voxel against
+G-D44's predicted ~2.3.
+
+#### ⛔ G-D43's CLAIM IS A CLAIM ABOUT PIXELS, SO IT IS TESTED AS ONE
+
+*"os cacos caem no chão, apagam e revelam um sprite padrão por trás"* — and what
+was claimed for it is that an interrupted rain still leaves the floor exactly
+right. `glass_rain_demo` blasts the pane, lets **everything** settle (that step is
+what makes the diff meaningful — against a frame where the fire is still playing,
+zero would be impossible), captures the floor, spawns a fresh rain, kills it
+outright mid-flight, and diffs:
+
+| | differing pixels vs the settled floor |
+|---|---|
+| mid-flight | **13 244** — the rain is visible, so the gate can see what it tests |
+| after the kill, 1 472 shards in the air | **0** |
+
+The demo `push_warning`s if the mid-flight number is ever 0 — i.e. if the gate
+stops being able to reach the thing it exists for, which is how P7b's culling
+defect shipped green.
+
+#### And a filmstrip, because a before/after cannot see a transient
+
+`glass_rain_filmstrip_2026-09-05.png` — 8 frames, 5 apart, from ONE boot. The
+trajectory is hashed (B4) rather than rolled, so unlike `glass_blast_demo` this
+event is reproducible and two runs can be compared at all. [12] asserts that
+directly: a second rain from the same flights writes a byte-identical buffer.
+
+⚠️ **[12]'s FIRST assertion is the standing trap of this track**, and it is written
+as the thing that catches it: `_process` is driven with a delta of **zero**. A
+seconds-based animation never moves under that, and the rain is spawned on the
+detonation's COMMIT frame — the one that mints, applies the light field and
+stalls — where a seconds-based fall plays its entire life inside one stalled frame
+and the player sees the settled floor with no fall at all.
+
+#### Three things that went wrong on the way, each caught by a different instrument
+
+⚠️ **The filmstrip's first sheet was pure background while the log reported 8
+frames.** A viewport image is not RGBA8 and `blit_rect()` between mismatched
+formats copies nothing and returns nothing. A perfectly valid PNG of the void.
+
+⚠️ **A SCRIPT ERROR while the suite printed "0 FAIL".** The overlay built its
+field only in `_ready()`, so a test that drives `spawn()` and `_process()` without
+waiting a frame hit a null. `run_selftests.py` failed the run; a bare
+`godot --script` would have reported success. Exactly the case CLAUDE.md's
+selftest rule describes, met in the wild. The field is lazy now.
+
+⚠️ **One `z_index` for the whole field, and it is a real trade for the one draw
+call.** A MultiMesh cannot vary draw order per instance, so the rain sits just
+above the deepest landing plane's layer — the pile decals' own band, one higher. A
+rain spanning two storeys draws its upper shards in the lower plane's band for the
+~40 frames it lives. Stated in the code as a trade, not left to be discovered.
+
+#### 🟡 WHAT THE DIRECTOR HAS NOT SEEN YET
+
+**Every timing is a placeholder** (`fall_frames_*`, `hold_frames`, `fade_frames`,
+`bounce_scale`, `arc_px_*` — all `var`, Rule 1). And in the demo the settle-and-fade
+phase is partly occluded: the synthetic flights all land on ONE level at the pane's
+foot, which the parapet in front hides. **The look of the landing wants G4-4's
+scatter first** — until the shards spread perpendicular to the pane and along the
+run, a pane's rain lands on a LINE, because that is what the foot of a pane is.

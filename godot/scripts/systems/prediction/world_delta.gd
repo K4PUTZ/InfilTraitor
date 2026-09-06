@@ -189,6 +189,19 @@ var glass_shard_piles: Dictionary = {}
 ## `build_plan()` runs on every cursor move.
 var glass_remnants: Array = []
 
+## ── G6b-2 / G-D43 — THE FLIGHTS, WHICH ARE NOT STATE ────────────────────────
+##
+## `GlassFall.plan_landings()`'s own rows — `{grid_pos, from_level, landing_level}`
+## — carried through so the rain knows where each shard STARTED. The pile record
+## alone cannot say: it is keyed by landing cell and a six-storey pane empties onto
+## one tile from twenty-four different heights.
+##
+## ⚠️ NOTHING HERE IS PERSISTED, and that is G-D43: the rain fades over the pile
+## decal and is freed. These rows exist for exactly one commit and are never
+## written to `SaveState`, never converted to BASE coords, and never replayed on a
+## rotation — because there is nothing left to replay.
+var glass_shard_flights: Array = []
+
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6) — WHICH VOXELS THE FIRE ATE.
 ##
 ## `{Vector3i: {"at": seconds, "ring": int}}`. Every one of these is also a
@@ -372,6 +385,10 @@ func commit(room = null) -> void:
 		## to have happened first or the opening walk would overwrite it.
 		if not glass_remnants.is_empty():
 			room.claim_glass_remnants(glass_remnants)
+		## G6b-2 — and the rain, LAST of all: the pile decals above are already on
+		## the floor, which is what makes the fall safe to interrupt (G-D43).
+		if not glass_shard_flights.is_empty():
+			room.spawn_glass_rain(glass_shard_flights)
 
 
 func is_empty() -> bool:

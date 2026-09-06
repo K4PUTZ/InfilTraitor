@@ -961,6 +961,8 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		## own risk note is that unseen state rots, and this is the line that
 		## stops it.
 		var drawn: int = room.record_glass_shards(piles)
+		## G6b-2 — the pile first, then the rain over it (G-D43's order).
+		room.spawn_glass_rain(landings)
 		print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world), %d pile(s) drawn"
 			% [landings.size(), n, piles.size(), deepest, n - landings.size(), drawn])
 

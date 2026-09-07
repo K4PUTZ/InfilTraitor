@@ -6387,6 +6387,15 @@ func glass_level_keys() -> Array:
 ## The shot path already handles this in `_process_dirty_slice_voxel`; this is
 ## the same erase for the cook, callable per destroyed cell. Returns true if a
 ## cell was actually removed. A no-op when the level has no glass sublayer.
+## True when the glass sublayer at `level` still paints `cell`. The instrument for
+## "a voxel is DESTROYED in the data and still on screen" — the G-D48 render gap
+## (Director, 2026-09-07: *"permanece uma parte da vidraça azul"*), which only a
+## rotation used to clear because the rebuild re-derives from `_base_damage`.
+func glass_cell_present(level: int, cell: Vector2i) -> bool:
+	var layer := _glass_layers.get(level) as TileMapLayer
+	return layer != null and layer.get_cell_source_id(cell) != -1
+
+
 func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 	if not _glass_layers.has(level):
 		return false

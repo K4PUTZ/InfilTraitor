@@ -39,6 +39,19 @@ zone. Both are calibration/reach on ratified mechanics, not new systems:
   crazed, so each successive hit takes more of it. `crazed_fraction()` is the arming
   test (a whole-pane blast craze ≈ 1.0; a lone bullet hole ≈ 0.05).
 
+- ⚠️ **G-D48's RENDER GAP, found and fixed 2026-09-07** (Director: *"uma parte das
+  vidraças é destruída […] mas permanece uma parte da vidraça azul […] Rotacionando
+  a tela, ela some"*). `_phase_slices` only walks the BOMB's narrow `affected`, and
+  `ring_of` is what PHASE_PACKAGE iterates — so a pane the shockwave took in an
+  EXTENDED ring was marked DESTROYED on the Delta and never packaged: no
+  `waves["destroy"]` entry, so `DetonationEntryWriter` never ran `erase_glass_cell()`
+  on it. Glass gone in the data, still painted; a rotation "fixed" it by rebuilding
+  from `_base_damage`. **Measured on GLASS from (18,11): 928 stale cells → 0.**
+  Fixed by registering the shattered voxel in `ring_of`/`container_of` at the
+  shatter, so PACKAGE owns the erase, the census and VL-PERSIST end to end — the
+  first patch only topped up persistence, which is why the pixels lied.
+  Instrument: `VoxelRenderer.glass_cell_present()` + the `[GLASS-BLAST] STALE glass
+  cells` line in `glass_blast_demo`.
 - **G-D46 (SUPERSEDED by G-D48) — glass feels the blast ONE GU further than anything
   else.** *"a shockwave do ar consegue afetar as janelas em uma zona mais ampla."*
   Was `SHATTER_BLAST_EXTRA_RINGS` = 1; G-D48 generalises it to the 5-GU shockwave

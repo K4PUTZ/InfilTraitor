@@ -484,11 +484,6 @@ static func _phase_setup(s: Dictionary) -> void:
 	## `_phase_smoke`'s tail. See that block for the measurement that made it
 	## necessary.
 	s["crazed_voxels"] = []
-	## G-D48 — glass panes the shockwave shattered that live in the EXTENDED
-	## glass-only rings (past the bomb's own flood), so PHASE_PACKAGE's `ring_of`
-	## walk never packaged them. Deduped into `touched_voxels` in the same tail
-	## block as `crazed_voxels`, for the same VL-PERSIST reason.
-	s["glass_shattered_voxels"] = []
 	s["census"] = {}
 	s["smoked_gus"] = {}
 	## D-4b — `{gu: [world_pos, level]}`, the HIGHEST damaged voxel of each GU the
@@ -700,17 +695,36 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			delta.glass_remnants.append({"cell": rv.grid_pos, "level": rv.level})
 		var entries: Array = []
 		var fallen: Array = []
-		var shattered_persist: Array = s.get("glass_shattered_voxels", [])
+		## ── G-D48 — THE EXTENDED RINGS MUST JOIN `ring_of`, NOT JUST THE DELTA ────
+		##
+		## `_phase_slices` only walks the slices in the BOMB's own narrow `affected`,
+		## and `ring_of` is what PHASE_PACKAGE iterates. A pane the shockwave takes in
+		## an extended ring was therefore marked DESTROYED on the Delta and never
+		## packaged: no `waves["destroy"]` entry, so `DetonationEntryWriter` never ran
+		## `erase_glass_cell()` on it. Director, 2026-09-07: *"uma parte das vidraças é
+		## destruída […] mas permanece uma parte da vidraça azul"* — glass that is gone
+		## in the data and still painted on screen, which a rotation then "fixed" by
+		## rebuilding from `_base_damage`.
+		##
+		## Registering the voxel here is what makes PACKAGE own it end to end — the
+		## erase, the census, `touched_voxels`/VL-PERSIST — instead of three parallel
+		## top-ups that can each be forgotten separately. `cell_to_voxel` already has
+		## it (PHASE_WALK is map-wide). Smoke/debris weights read the ring through a
+		## bounds-checked table, so an outer ring simply contributes none.
+		## `.get` with a throwaway default: a synthetic selftest caller hands in
+		## `affected` directly and has no packaging state to join.
+		var ring_of: Dictionary = s.get("ring_of", {})
+		var container_of: Dictionary = s.get("container_of", {})
 		for e in plan:
 			var pv: Voxel = e["slice"].voxels[int(e["voxel_index"])]
 			if pv.damage_state == Voxel.DamageState.DESTROYED:
 				continue
 			entries.append(BlastCalculatorClass.damage_entry(pv, Voxel.DamageState.DESTROYED, true))
 			fallen.append({"grid_pos": pv.grid_pos, "level": pv.level})
-			## G-D48 — a pane in the EXTENDED glass rings was never walked by
-			## `_phase_slices`, so PHASE_PACKAGE's `ring_of` will not carry these to
-			## `touched_voxels` / VL-PERSIST. Topped up in `_phase_smoke`'s tail.
-			shattered_persist.append(pv)
+			var pkey := Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)
+			if not ring_of.has(pkey):
+				ring_of[pkey] = ring
+				container_of[pkey] = e["slice"]
 		if not entries.is_empty():
 			delta.add_damage(entries)
 			## CRACK-05 / G-D34 — PROPOSE THIS HOLE'S OPENING. `origin_v` is the
@@ -1479,17 +1493,18 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 		## consumer of that dictionary, and a cell outside `affected` is exactly
 		## the kind it exists to catch. Deduped against the packaged set instead,
 		## once, after both are final.
-		## G-D35 B-1 crazed voxels AND G-D48 shattered voxels from the extended
-		## glass-only rings: both are outside the rings PHASE_PACKAGE walked, both
-		## must reach VL-PERSIST, deduped once against the packaged set.
-		var glass_persist: Array = (s["crazed_voxels"] as Array).duplicate()
-		glass_persist.append_array(s["glass_shattered_voxels"])
-		if not glass_persist.is_empty():
+		## §6.2 / G-D35 B-1 — a craze takes the WHOLE pane, including the half the
+		## blast never reached, so its voxels are outside the rings PHASE_PACKAGE
+		## walked. Deduped once against the packaged set.
+		## ⚠️ SHATTERED voxels are NOT here: G-D48 registers those in `ring_of` at the
+		## shatter, so PACKAGE owns them (and their erase) like any other.
+		var crazed: Array = s["crazed_voxels"]
+		if not crazed.is_empty():
 			var seen: Dictionary = {}
 			for tv in touched_voxels:
 				seen[Vector3i(tv.grid_pos.x, tv.grid_pos.y, tv.level)] = true
 			var added: int = 0
-			for cv in glass_persist:
+			for cv in crazed:
 				var ck := Vector3i(cv.grid_pos.x, cv.grid_pos.y, cv.level)
 				if seen.has(ck):
 					continue
@@ -1497,7 +1512,7 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 				touched_voxels.append(cv)
 				added += 1
 			if added > 0:
-				print_debug("[GLASS-PERSIST] %d glass voxel(s) were outside the packaged rings — added to the persistence set"
+				print_debug("[GLASS-CRAZE] %d crazed voxel(s) were outside the packaged rings — added to the persistence set"
 					% added)
 		delta.touched_voxels = touched_voxels
 		var touched_cells: Array[Vector3i] = []

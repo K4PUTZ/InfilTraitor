@@ -7020,6 +7020,19 @@ func _capture_glass_blast_demo() -> void:
 	var _opened := _blast_opened_edge_keys()
 	print("[GLASS-BLAST] wall-height edges: %d total, %d opened by the blast, dome now moulds on %d"
 		% [_wall_height_edges.size(), _opened.size(), _blast_wall_height_edges().size()])
+	## G-D48 render gap — glass that is DESTROYED in the data and still painted.
+	## Zero, or the pane keeps a blue strip until a rotation rebuilds it.
+	var _stale: int = 0
+	for _sl in _edge_registry.all_slices():
+		var _base: int = GeometryCoords.storey_level_base(_sl.start_storey)
+		for _v in _sl.voxels:
+			if _v.damage_state != Voxel.DamageState.DESTROYED:
+				continue
+			if not GlassMaterials.is_glass(_sl.material_at(_v.level - _base)):
+				continue
+			if _voxel_renderer.glass_cell_present(_v.level, _v.grid_pos):
+				_stale += 1
+	print("[GLASS-BLAST] STALE glass cells (destroyed in data, still painted): %d" % _stale)
 	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")
 
 	## ── §6.2 / G-D35 B-1 — DOES THE CRAZE SURVIVE A ROTATION? ────────────────

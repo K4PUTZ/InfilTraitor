@@ -7,6 +7,15 @@
 Phase A (detonation VFX) closed 2026-08-10. This plan describes the UI and
 interaction layer that feeds Phase A.
 
+**2026-09-07 — the targeting layer learned about the SCENERY (§5b, §5c).** Until
+then the throw was clamped by Euclidean distance alone (a grenade landed THROUGH
+walls) and both the aim dome and the blast flood read the COMPILED map, so a second
+grenade traced its bubble around glass a first one had already shattered. Three
+things landed: a LINE-OF-THROW clamp
+(`BlastCalculator.throw_line_clamp()`), `Room._blast_opened_edge_keys()` feeding
+both the dome and the flood, and `throw_range_skill_bonus_gu` — the seam for a
+coming "throw farther" skill. Details in §5b and §5c below.
+
 **Evidence (hand-named, so the 50-file rotation cannot eat them):**
 - `Screenshots/history/grenade_aim_dome.png` — dome, hatched footprint, grenade
   marker, up-arc and rays

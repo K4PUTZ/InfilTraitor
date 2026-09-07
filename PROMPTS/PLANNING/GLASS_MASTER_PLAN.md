@@ -21,8 +21,9 @@ zone. Both are calibration/reach on ratified mechanics, not new systems:
   `_shatter_glass_panes()` passes it (`GlassShatter.glass_blast_max_ring()` = 7),
   re-flooding + re-running `find_affected_containers()` for glass panes alone — the
   deliberate flood extension `SHATTER_BLAST_EXTRA_RINGS`'s note said was needed.
-  Every other container keeps the narrow flood's ring; a persistence top-up carries
-  the extended-ring glass voxels into VL-PERSIST. **Verified on the real map:** from
+  Every other container keeps the narrow flood's ring; a pane taken in an extended
+  ring joins `ring_of` at the shatter so PHASE_PACKAGE owns its erase, census and
+  VL-PERSIST together (see the render gap below). **Verified on the real map:** from
   (18,11) both target panes roll p=1.0 and shatter whole (1152 + 469 voxels); far
   panes craze out to ring 7. `glass_shatter_selftest` [10] rewritten; [21] and the
   partial-break probe moved to the outer ramp. ⚠️ The ramp values are the Director's
@@ -2030,13 +2031,24 @@ until 2026-09-06 and has been built since 2026-08-31.
 Written after a row-by-row audit of the table above, because four of its rows said
 something that had stopped being true and a reader would have got four wrong answers.
 
-**2026-09-07:** the CASE TESTING owed since 2026-09-06 began. It produced `G-D48`
-(the shockwave zone — destruction to 5 GU with a descending ramp, craze to 7 GU,
-via a real glass-only flood extension) and `G-D49` (re-damage on a crazed pane
-collapses locally). Both are BUILT and verified on the GLASS map; the ramp values in
+**2026-09-07 — the CASE TESTING owed since 2026-09-06 ran.** It produced `G-D48`
+(the shockwave zone — destruction to 5 GU with a descending ramp, craze to 7 GU, via
+a real glass-only flood extension) and `G-D49` (re-damage on a crazed pane collapses
+locally). Both are BUILT and verified on the GLASS map. ⛔ **The ramp values in
 `GLASS_SHOCKWAVE_FALLOFF` / `GLASS_CRAZE_FALLOFF` are placeholders awaiting the
-Director's on-screen calibration. Still no glass render or physics gap — this widened
-an existing zone and added an existing region-flood trigger.
+Director's on-screen calibration** — that is the one thing still owed on glass.
+
+It also surfaced three defects that were NOT glass physics, all of the same shape —
+*the world changed and something kept answering from the old state*:
+
+| defect | owner | fixed |
+|---|---|---|
+| an F2 map reload kept the previous mission's floor piles, crack webs and view-space hole rims (`load_map()` never ran the renderer clears `_set_perspective()` does) — and a stale rim was re-stamped onto whatever fresh pane landed on that cell | glass render | ✅ `6d16d2ff`, 462/11/3 → 0/0/0 |
+| G-D48's own render gap — a pane taken in an EXTENDED ring never joined `ring_of`, so PHASE_PACKAGE emitted no destroy entry and `erase_glass_cell()` never ran | the detonation pipeline | ✅ `65124a35`, 928 stale cells → 0 |
+| the grenade's aim dome and blast flood moulded/stopped on the COMPILED map, so a second grenade traced glass a first had shattered | `TARGETING_MASTER_PLAN` §5c | ✅ `4108e0ff`, 133 → 119 edges |
+
+Still no glass render or physics gap in the DESIGN — G-D48/G-D49 widened an existing
+zone and added an existing region-flood trigger; the three above were plumbing.
 
 | left | owner | why it is not a glass task |
 |---|---|---|

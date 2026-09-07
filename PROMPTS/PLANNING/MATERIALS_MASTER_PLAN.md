@@ -1,7 +1,19 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
-**Status:** 🟢 **v1.8 — 2026-09-06: M4 (GLASS) IS ESSENTIALLY DONE — the whole
+**Status:** 🟢 **v1.9 — 2026-09-07: M4's CASE TESTING ran, and glass took two more
+rulings.** `GLASS_MASTER_PLAN` v1.47: **G-D48** (the SHOCKWAVE ZONE — glass-only
+effective destruction out to 5 GU on a descending ramp, crazing 2 GU further, via a
+real glass-only re-flood; retires `SHATTER_BLAST_GAIN` / `SHATTER_BLAST_EXTRA_RINGS`
+and the bullet logistic on the cook path) and **G-D49** (re-damage on an
+already-crazed pane collapses a REGION from the impact instead of crazing again).
+⚠️ The ramp values are placeholders awaiting the Director's on-screen calibration.
+The same session closed G-D48's own render gap — a pane taken in an extended ring
+was destroyed in the data and still painted until a rotation rebuilt it (928 stale
+cells → 0); the fix was to join `ring_of` so PHASE_PACKAGE owns the erase.
+Nothing in M4 changed status: it is still glass, still essentially done.
+
+Earlier, v1.8 — **2026-09-06: M4 (GLASS) IS ESSENTIALLY DONE — the whole
 shard-rain track (`GLASS_MASTER_PLAN` §18) closed 2026-09-06.** `GLASS_MASTER_PLAN`
 v1.43: G1, G2, G7, G-MAP, G-D9, G3 (all four stages), G-VARIANT, G-ART, the CRACK
 (sprite over the pane, CRACK-02 — CRACK-01 in the voxel shader was rejected 3×),

@@ -318,6 +318,30 @@ a coming skill will *"atirar granadas mais distantes"*.
   future skill sets it (whole numbers only — the perimeter ellipse rule). Lives
   beside `throw_range_gu`; moves with it when the arsenal/skill system lands.
 
+## 5c. The aim bubble / blast flood follow the damage now (2026-09-07)
+
+Director: *"quando uma segunda granada é engatilhada, a bolha permanece mostrando o
+layout das vidraças"* after they broke. The aim DOME moulds against
+`room._wall_height_edges` and the wireframe FOOTPRINT / real detonation flood off
+`room._current_blocked_edges` — both the COMPILED map, which no destruction updates.
+
+- **`Room._blast_opened_edge_keys()`** — every wall edge a blast has opened to a
+  passage (`PassageQuery.passage_class(edge) != NONE` — a pane the round
+  shattered, a concrete wall breached past `PASSAGE_MIN_REMOVED_FRACTION`).
+  `{edge_key: true}`, walked on demand. A CRAZED pane is NOT listed — its glass
+  still stands.
+- **The dome:** `_set_targeting_target()` now passes `room._blast_wall_height_edges()`
+  (= `_wall_height_edges` minus the opened set) to `show_dome()`.
+- **The footprint + detonation flood:** `_blocked_edges_dict()` is
+  `_current_blocked_edges` minus the opened set. ⚠️ Intact glass is still NOT added
+  — a blast shatters through a window rather than being contained by it, and
+  G-D48's shockwave zone carries glass past the shrapnel radius.
+
+Verified on GLASS: a grenade at (14,11) shatters 4 panes; a second grenade aimed at
+the same spot sees **14 wall-height edges dropped** (133 → 119) and its dome draws
+as a clean hemisphere instead of tracing the gone glass (`ev_second_aim.png` via
+`INFILTRAITOR_CAPTURE_ACTION=throw_event INFILTRAITOR_EVENT_SECOND_GU=x,y`).
+
 ## 5. Questions for Director — ANSWERED 2026-08-10
 
 - **Throw range:** ~~derive from BombDef?~~ → a standalone `throw_range_gu` tuning

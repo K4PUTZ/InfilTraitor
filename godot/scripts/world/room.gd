@@ -3060,6 +3060,45 @@ func _movement_edge_set() -> Dictionary:
 		_current_blocked_edges, _edge_registry.glass_edge_keys(), _edge_registry)
 
 
+## Every wall edge a blast has OPENED to a passage — a pane the round shattered, a
+## concrete wall breached past `PASSAGE_MIN_REMOVED_FRACTION`. `{edge_key: true}`.
+##
+## The grenade's aim dome and its damage flood both start from the COMPILED map
+## (`_wall_height_edges` / `_current_blocked_edges`) which no destruction updates,
+## so a second grenade traced its bubble around glass that was already gone and
+## its footprint stopped at a wall that had a hole in it. Director, 2026-09-07:
+## *"quando uma segunda granada é engatilhada, a bolha permanece mostrando o
+## layout das vidraças"*.
+##
+## A CRAZED pane is NOT opened — its glass still stands (`PassageQuery` counts
+## CRACKED as present); only a real opening is listed. Recomputed on demand (the
+## aim dome rebuilds on hover): it walks a handful of edges, and `build_plan()`'s
+## revision counter is the wrong granularity for a per-hover overlay.
+func _blast_opened_edge_keys() -> Dictionary:
+	var opened: Dictionary = {}
+	if _edge_registry == null:
+		return opened
+	for edge in _edge_registry.all_edges():
+		if PassageQuery.passage_class(edge, _edge_registry) != PassageQuery.PassageClass.NONE:
+			opened[WallEdgeData.edge_key(edge.gu_a, edge.gu_b)] = true
+	return opened
+
+
+## `_wall_height_edges` (the compiled map) with every opened edge removed, so
+## `AimBubbleOverlay` stops moulding the dome around geometry that is no longer
+## there. See `_blast_opened_edge_keys()`.
+func _blast_wall_height_edges() -> Dictionary:
+	if _wall_height_edges.is_empty():
+		return _wall_height_edges
+	var opened: Dictionary = _blast_opened_edge_keys()
+	if opened.is_empty():
+		return _wall_height_edges
+	var out: Dictionary = _wall_height_edges.duplicate()
+	for key in opened:
+		out.erase(key)
+	return out
+
+
 func _refresh_tactical_state() -> void:
 	movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
 	movement_overlay.set_blocked_edge_keys(_movement_edge_set())
@@ -6975,6 +7014,12 @@ func _capture_glass_blast_demo() -> void:
 		% [_base_shards.size(), _voxel_renderer.floor_shard_pile_count()])
 	print("[GLASS-BLAST] craze fields: claimed=%d live=%d"
 		% [_base_crazes.size(), _voxel_renderer.glass_craze_count()])
+	## The aim dome / blast flood damage-awareness (Director, 2026-09-07): a pane the
+	## blast SHATTERED must drop out of `_wall_height_edges`, so a second grenade's
+	## bubble stops tracing glass that is gone.
+	var _opened := _blast_opened_edge_keys()
+	print("[GLASS-BLAST] wall-height edges: %d total, %d opened by the blast, dome now moulds on %d"
+		% [_wall_height_edges.size(), _opened.size(), _blast_wall_height_edges().size()])
 	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")
 
 	## ── §6.2 / G-D35 B-1 — DOES THE CRAZE SURVIVE A ROTATION? ────────────────
@@ -8835,6 +8880,31 @@ func _capture_throw_event_filmstrip() -> void:
 			shot += 1
 		await get_tree().process_frame
 	print("[EVENT-FILM] wrote %d frame(s) to %s (throw on frame %d)" % [shot, out_dir, throw_at])
+
+	## ── A SECOND GRENADE'S AIM BUBBLE, AFTER THE FIRST BLAST ────────────────────
+	##
+	## Director, 2026-09-07: *"quando uma segunda granada é engatilhada, a bolha
+	## permanece mostrando o layout das vidraças"* after they broke. Re-enter
+	## targeting with the HUD on, aimed at `INFILTRAITOR_EVENT_SECOND_GU`, and log
+	## how many wall-height edges the first blast opened out of the dome's set.
+	var second_env := OS.get_environment("INFILTRAITOR_EVENT_SECOND_GU")
+	if second_env.contains(","):
+		var sp := second_env.split(",")
+		if sp.size() == 2 and sp[0].is_valid_int() and sp[1].is_valid_int():
+			var second_gu := Vector2i(sp[0].to_int(), sp[1].to_int())
+			for _s in range(30):
+				await get_tree().process_frame
+			_test_zone_controller.enter_grenade_mode()
+			_test_zone_controller._set_targeting_target(second_gu)
+			var opened := _blast_opened_edge_keys()
+			print("[EVENT-FILM] SECOND aim at %s — wall-height edges: %d total, %d opened by the first blast, dome moulds on %d"
+				% [_test_zone_controller._targeting_target_gu, _wall_height_edges.size(),
+				opened.size(), _blast_wall_height_edges().size()])
+			for _s2 in range(30):
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("%s/ev_second_aim.png" % out_dir)
+			print("[EVENT-FILM] wrote ev_second_aim.png")
 
 
 func _capture_detonation_filmstrip() -> void:

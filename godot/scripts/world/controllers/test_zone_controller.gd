@@ -542,11 +542,14 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	## E-BUBBLE: the dome. A fixed geometric shape, NOT the predicted footprint —
 	## see aim_bubble_overlay.gd's header for why the Director ruled that out.
 	## The GU cell goes along with the screen position because the dome sections
-	## itself against nearby walls, and `room._wall_height_edges` is keyed by the
-	## cell PAIR each wall separates — a screen position cannot find them.
+	## itself against nearby walls, keyed by the cell PAIR each wall separates.
+	## ⚠️ `_blast_wall_height_edges()`, not the raw map dict: a pane the blast has
+	## SHATTERED (or a wall breached to a passage) stops moulding the dome, so a
+	## second grenade's bubble no longer traces glass that is gone. A CRAZED pane
+	## still moulds it — it is still a solid sheet.
 	if room._aim_bubble_overlay != null:
 		room._aim_bubble_overlay.show_dome(target_pos, aim_dome_radius_gu,
-			_targeting_target_gu, room._wall_height_edges)
+			_targeting_target_gu, room._blast_wall_height_edges())
 
 	## The throw leaves the agent's HANDS, not their feet — the perimeter is a
 	## ground shape but the arc is not.
@@ -1571,12 +1574,20 @@ func cancel_active() -> void:
 	cancel_preproduction()
 
 
-## room._current_blocked_edges entries are {"from": Vector2i, "to": Vector2i}
-## pairs (see map_geometry.gd's _wall_cell_blocked_edges()) — folds them into
-## the keyed Dictionary shape WallEdgeData.is_edge_blocked() queries, same
-## conversion MovementOverlay.set_blocked_edges() already does.
+## The edges the blast flood is stopped by: the compiled map's opaque walls
+## (`_current_blocked_edges`) MINUS any edge a prior blast has opened to a passage
+## (`Room._blast_opened_edge_keys()` — a shattered pane, a breached wall). Intact
+## glass is deliberately NOT added: a blast shatters through a window rather than
+## being contained by it, and G-D48's shockwave zone is what carries glass past
+## the shrapnel radius.
+##
+## Director, 2026-09-07: a broken wall / gone pane *"continua sendo considerada"* —
+## `_current_blocked_edges` is the compiled MAP, never updated by damage, and both
+## the wireframe footprint and the real detonation flooded off it.
 func _blocked_edges_dict() -> Dictionary:
 	var blocked: Dictionary = {}
 	for e in room._current_blocked_edges:
 		blocked[WallEdgeData.edge_key(e["from"], e["to"])] = true
+	for key in room._blast_opened_edge_keys():
+		blocked.erase(key)
 	return blocked

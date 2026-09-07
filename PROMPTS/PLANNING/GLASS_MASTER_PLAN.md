@@ -1,6 +1,27 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 **v1.45 — THE TRACK IS CLOSED (2026-09-06).** Two Director rulings
+**Status:** 🟢 **v1.46 — THE TRACK IS CLOSED (2026-09-06).** Three more Director
+rulings on the blast/glass seam, all on ratified mechanics:
+
+- **G-D46 — glass feels the blast ONE GU further than anything else.** *"a shockwave
+  do ar consegue afetar as janelas em uma zona mais ampla. Os demais materiais podem
+  continuar como estão."* The AREA grows; the falloff inside it does not move — rings
+  0..N keep the bomb's own multipliers and the last damaging one is HELD for
+  `SHATTER_BLAST_EXTRA_RINGS` = 1 ring further, so frag's `[1.0, 0.6, 0.25, 0.0]`
+  reads `[1.0, 0.6, 0.25, 0.25]` for glass alone. Costs no second flood: ring 3 was
+  already in `affected` and simply found a 0.0 there. Walls, slabs, junctions, roofs
+  and actor damage read the bomb's table directly and are untouched.
+- **G-D42 radial — each shard takes its OWN bearing off the bomb.** *"projetados em
+  um circulo radial, se afastando da bomba, e não todos retos na mesma direção."* The
+  impulse now carries a POINT (`from`, the epicenter) instead of a pre-normalised
+  `dir`, because a caller cannot pre-normalise a direction that differs per shard —
+  the old shape could not express the ask at all. 1152 shards off a 24-GU storefront
+  used to leave on 1152 parallel paths.
+- **G-D47 — what survives a PARTIAL break is CRACKED, never intact.** *"o que sobrar
+  da mesma superfície precisa ficar rachado."* The same `_craze_pane()` the lost roll
+  uses, called after a won one; self-limiting for a whole break.
+
+Earlier, v1.45 — **THE TRACK IS CLOSED (2026-09-06).** Two Director rulings
 landed after the close, both tuning on ratified mechanics rather than new work:
 **G-D42's shockwave gain 3.0 → 15.0** (`GlassFall.SCATTER_IMPULSE_GAIN`, picked from
 a four-video sweep — the shipped 3.0 pushed a shard 0.11..0.375 of a floor TILE,

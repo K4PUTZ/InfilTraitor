@@ -440,10 +440,32 @@ func test_blast_glass_punch_reliable_inside_zero_outside() -> void:
 	var p0: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 0))
 	var p1: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 1))
 	var p2: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 2))
-	var p3: float = GlassShatterClass.blast_glass_punch(frag, 3)
+	## G-D46 — ring 3 is GLASS'S EXTRA RING now: the bomb's own table says 0.0 there
+	## and every other material still reads that 0.0, but glass holds the last
+	## damaging multiplier one ring further. So the structural ZERO moved out by
+	## one, and this test moved with it.
+	var p3: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 3))
+	var p4: float = GlassShatterClass.blast_glass_punch(frag, 4)
 	var p_oob: float = GlassShatterClass.blast_glass_punch(frag, 9)
-	print("      frag rings: p_shatter(0)=%.0f%%  (1)=%.0f%%  (2)=%.0f%%  punch(3)=%.2f  punch(oob)=%.2f" % [
-		p0 * 100.0, p1 * 100.0, p2 * 100.0, p3, p_oob])
+	## ⚠️ THE EXTRA RING MUST BE INSIDE THE FLOOD, or it is a silently inert dial.
+	## `flood_gu_rings()` walks to `ring_multipliers.size() - 1`, so a pane further
+	## out than that is never in `affected` and glass's extra reach would be a
+	## number that changes nothing — the exact class of defect this project keeps
+	## paying for. The free ring exists only because frag's table ends in 0.0.
+	var last_damaging: int = -1
+	for i in range(frag.size()):
+		if float(frag[i]) > 0.0:
+			last_damaging = i
+	var flood_max: int = frag.size() - 1
+	var reach_ok: bool = last_damaging + GlassShatterClass.SHATTER_BLAST_EXTRA_RINGS <= flood_max
+	if reach_ok:
+		_pass("glass's extra reach (%d ring past ring %d) stays inside the flood's own ring %d"
+			% [GlassShatterClass.SHATTER_BLAST_EXTRA_RINGS, last_damaging, flood_max])
+	else:
+		_fail("SHATTER_BLAST_EXTRA_RINGS=%d reaches ring %d but flood_gu_rings() stops at %d — the extra ring is INERT, not wider"
+			% [GlassShatterClass.SHATTER_BLAST_EXTRA_RINGS, last_damaging + GlassShatterClass.SHATTER_BLAST_EXTRA_RINGS, flood_max])
+	print("      frag rings: p_shatter(0)=%.0f%%  (1)=%.0f%%  (2)=%.0f%%  (3)=%.0f%%  punch(4)=%.2f  punch(oob)=%.2f" % [
+		p0 * 100.0, p1 * 100.0, p2 * 100.0, p3 * 100.0, p4, p_oob])
 	## Inside (ring 0-1): RELIABLE. Fringe (ring 2): a real minority chance.
 	## Edge/OOB: impossible.
 	##
@@ -458,12 +480,16 @@ func test_blast_glass_punch_reliable_inside_zero_outside() -> void:
 	##
 	## ⚠️ `p1 >= 0.9` (was 0.6) is the other half of that ruling — one GU from the
 	## bubble is not a coin flip.
+	## G-D46 — ring 3 HOLDS ring 2's multiplier, so its odds must MATCH ring 2's,
+	## not merely be nonzero. That is the difference between "the area got wider"
+	## and "the falloff got stretched", and only the first was ruled.
 	if p0 >= 0.9 and p1 >= 0.9 and p2 >= 0.15 and p2 <= 0.45 \
-			and p3 == 0.0 and p_oob == 0.0:
-		_pass("ring 0 ~%.0f%%, ring 1 ~%.0f%%, ring 2 ~%.0f%% (in the 15-45%% band), ring 3 and beyond = 0" % [
-			p0 * 100.0, p1 * 100.0, p2 * 100.0])
+			and absf(p3 - p2) < 0.001 and p4 == 0.0 and p_oob == 0.0:
+		_pass("ring 0 ~%.0f%%, ring 1 ~%.0f%%, ring 2 ~%.0f%% (in the 15-45%% band), ring 3 HELD at ring 2's %.0f%%, ring 4 and beyond = 0" % [
+			p0 * 100.0, p1 * 100.0, p2 * 100.0, p3 * 100.0])
 	else:
-		_fail("blast falloff wrong: p0=%.2f p1=%.2f p2=%.2f (want 0.15..0.45) punch3=%.2f punchOOB=%.2f" % [p0, p1, p2, p3, p_oob])
+		_fail("blast falloff wrong: p0=%.2f p1=%.2f p2=%.2f (want 0.15..0.45) p3=%.2f (must equal p2) punch4=%.2f punchOOB=%.2f"
+			% [p0, p1, p2, p3, p4, p_oob])
 	print("")
 
 
@@ -1150,11 +1176,49 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 		_fail("plan_pane_craze returned %d voxel(s) of %d glass (expected %d), %d of them frame"
 			% [craze.size(), glass_total, glass_total - 2, frame_hits])
 
-	## ── The cook: a LOST roll crazes, a WON roll does not. ──────────────────
+	## ── The cook, REWRITTEN 2026-09-06 FOR G-D46 + G-D47 ────────────────────
 	##
-	## Ring 3 is the reliable loser — `blast_glass_punch` is 0 there because
-	## `ring_multipliers` ends in 0.0 — so this needs no salt fishing.
-	for ring in [3, 0]:
+	## ⚠️ THIS BLOCK USED TO SAY "ring 3 is the reliable loser, so this needs no
+	## salt fishing" AND "a won roll must not also craze". Both were true of the
+	## build that wrote them and BOTH are now the opposite of the ruling:
+	##   · **G-D46** gives glass one ring past the bomb's own reach, so ring 3 is a
+	##     ring glass can BREAK in — it is no longer anybody's reliable loser.
+	##   · **G-D47** says what survives a PARTIAL break must crack, so a won roll
+	##     that leaves glass standing crazes it, on purpose.
+	##
+	## So the outcome at ring 3 is genuinely probabilistic, and the test's job
+	## changed with it: pin BOTH outcomes, and prove both are REACHABLE rather than
+	## assuming it. The salts are searched, not hardcoded — a magic source_gu would
+	## rot the first time the curve moved.
+	var ring: int = 3
+	## ⚠️ THE PANE'S OWN ID, READ OFF THE FIXTURE. The cook salts the roll
+	## `"BLAST_x_y_<pane_id>"`, so a probe that guesses the id searches a DIFFERENT
+	## sequence and its "winning" source_gu loses for real — which is exactly how
+	## this test failed on its first run (`destroyed=0` from a gu picked as a win).
+	var probe_pane: Array = _pane(2, 7, 3)
+	var probe_pane_id: String = probe_pane[0].pane_id
+	var win_gu := Vector2i(-1, -1)
+	var lose_gu := Vector2i(-1, -1)
+	for probe in range(200):
+		var gu := Vector2i(2, probe)
+		var punch: float = GlassShatterClass.blast_glass_punch([1.0, 0.6, 0.25, 0.0], ring)
+		var won: bool = GlassShatterClass.rolls_shatter(punch, "BLAST_%d_%d_%s" % [gu.x, gu.y, probe_pane_id])
+		if won and win_gu.x < 0:
+			win_gu = gu
+		elif not won and lose_gu.x < 0:
+			lose_gu = gu
+		if win_gu.x >= 0 and lose_gu.x >= 0:
+			break
+	if win_gu.x >= 0 and lose_gu.x >= 0:
+		_pass("ring %d reaches BOTH outcomes — a won roll at %s and a lost one at %s"
+			% [ring, win_gu, lose_gu])
+	else:
+		_fail("ring %d never produced both outcomes in 200 probes (win %s, lose %s) — G-D46's extra ring has collapsed to one answer"
+			% [ring, win_gu, lose_gu])
+		print("")
+		return
+
+	for case in [["lost", lose_gu], ["won", win_gu]]:
 		var registry := EdgeRegistry.new()
 		var pane: Array = _pane(2, 7, 3)
 		for s in pane:
@@ -1173,7 +1237,7 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 		DetonationPlanBuilderClass._shatter_glass_panes({
 			"edge_registry": registry, "slab_registry": SlabRegistry.new(),
 			"affected": {"slices": affected}, "bomb_def": bomb, "delta": delta,
-			"epicenter": pane[0].voxels[0].grid_pos, "source_gu": Vector2i(2, 4),
+			"epicenter": pane[0].voxels[0].grid_pos, "source_gu": case[1],
 			"crazed_voxels": [],
 		})
 		var cracked: int = 0
@@ -1183,35 +1247,70 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 				cracked += 1
 			elif int(e["state"]) == Voxel.DamageState.DESTROYED:
 				destroyed += 1
-		if ring == 3:
-			## ⚠️ `destroyed == 0` IS THE POINT OF THIS LINE, AND IT WENT AWAY ONCE.
-			## G-D35 B-4 made a fraction of a crazed pane DESTROYED, so this read
-			## B-4's hole rate for one day; the Director abandoned the
-			## mechanic on the real pane (*"vamos usar o rachado sem furos"*) and
-			## the strong form is correct again. A crazed pane STANDS — G-D2, the
-			## intensity axis is granularity, never area — and one destroyed voxel
-			## here means something started taking glass off a pane that held.
+		if String(case[0]) == "lost":
+			## Unchanged claim: a pane the blast did not take STANDS, whole, and
+			## crazes. G-D2 — the intensity axis is granularity, never area — so one
+			## destroyed voxel here means something started taking glass off a pane
+			## that held.
 			if cracked > 0 and destroyed == 0 and delta.glass_openings.is_empty() \
 					and delta.glass_crazes.size() == 1 \
 					and float(delta.glass_crazes[0]["intensity"]) > 0.0:
-				_pass("ring 3 (outside the damage area): %d voxel(s) CRACKED, 0 destroyed, "
-					% cracked + "0 openings, 1 craze recorded at intensity %.2f"
-					% float(delta.glass_crazes[0]["intensity"]))
+				_pass("ring 3, roll LOST: %d voxel(s) CRACKED, 0 destroyed, 0 openings, 1 craze at intensity %.2f"
+					% [cracked, float(delta.glass_crazes[0]["intensity"])])
 			else:
-				_fail("ring 3 gave cracked=%d destroyed=%d openings=%d crazes=%d — the "
-					% [cracked, destroyed, delta.glass_openings.size(),
-					delta.glass_crazes.size()]
-					+ "pane should stand WHOLE and craze")
+				_fail("ring 3 LOST gave cracked=%d destroyed=%d openings=%d crazes=%d — the pane should stand WHOLE and craze"
+					% [cracked, destroyed, delta.glass_openings.size(), delta.glass_crazes.size()])
 		else:
-			## ⚠️ A WON ROLL MUST NOT ALSO CRAZE. The two are alternatives, and a
-			## pane that shattered AND recorded a craze would hand G-D35's art a
-			## field to draw over voxels that are gone.
-			if destroyed > 0 and cracked == 0 and delta.glass_crazes.is_empty():
-				_pass("ring 0 (a won roll): %d voxel(s) DESTROYED, 0 cracked, no craze "
-					% destroyed + "recorded — the two are alternatives")
+			## G-D47 — the new claim, and it is asserted as BOTH halves at once
+			## because either alone is satisfied by the old build: glass must be
+			## GONE (a real break) and glass must be CRACKED (the survivors of the
+			## same surface). A partial break that left its neighbours pristine
+			## would pass a "destroyed > 0" check perfectly.
+			if destroyed > 0 and cracked > 0 and delta.glass_openings.size() == 1 \
+					and delta.glass_crazes.size() == 1:
+				_pass("ring 3, roll WON: %d voxel(s) DESTROYED and the %d that survived the SAME pane are CRACKED (G-D47), 1 opening, 1 craze"
+					% [destroyed, cracked])
 			else:
-				_fail("ring 0 gave cracked=%d destroyed=%d crazes=%d"
-					% [cracked, destroyed, delta.glass_crazes.size()])
+				_fail("ring 3 WON gave destroyed=%d cracked=%d openings=%d crazes=%d — a partial break must crack what it leaves standing"
+					% [destroyed, cracked, delta.glass_openings.size(), delta.glass_crazes.size()])
+
+	## ⚠️ AND A WHOLE BREAK STILL RECORDS NO CRAZE. G-D47's call into
+	## `_craze_pane()` is unconditional, so the thing that keeps a pane that is
+	## entirely gone from claiming a craze field is the DESTROYED filter leaving
+	## `entries` empty — a behaviour, not a branch, and therefore worth a test.
+	var registry0 := EdgeRegistry.new()
+	var pane0: Array = _pane(2, 7, 3)
+	for s0 in pane0:
+		registry0.register_slice(s0)
+	var bomb0 := BombDefClass.from_json({
+		"id": "frag_grenade", "ring_multipliers": [1.0, 0.6, 0.25, 0.0],
+		"destroy_ring_weights": [0.85, 0.28, 0.06, 0.0],
+		"dent_ring_weights": [1.0, 0.8, 0.25, 0.0],
+		"crack_ring_weights": [0.0, 1.0, 0.6, 0.0],
+	})
+	var affected0: Dictionary = {}
+	for s0b in pane0:
+		affected0[s0b.id] = 0
+	var delta0 := WorldDeltaClass.new()
+	DetonationPlanBuilderClass._shatter_glass_panes({
+		"edge_registry": registry0, "slab_registry": SlabRegistry.new(),
+		"affected": {"slices": affected0}, "bomb_def": bomb0, "delta": delta0,
+		"epicenter": pane0[0].voxels[0].grid_pos, "source_gu": Vector2i(2, 4),
+		"crazed_voxels": [],
+	})
+	var cracked0: int = 0
+	var destroyed0: int = 0
+	for e0 in delta0.damage:
+		if int(e0["state"]) == Voxel.DamageState.CRACKED:
+			cracked0 += 1
+		elif int(e0["state"]) == Voxel.DamageState.DESTROYED:
+			destroyed0 += 1
+	if destroyed0 > 0 and cracked0 == 0 and delta0.glass_crazes.is_empty():
+		_pass("ring 0 (the pane taken WHOLE): %d voxel(s) DESTROYED, 0 cracked, no craze — nothing standing to crack"
+			% destroyed0)
+	else:
+		_fail("ring 0 gave cracked=%d destroyed=%d crazes=%d — a pane entirely gone must claim no craze field"
+			% [cracked0, destroyed0, delta0.glass_crazes.size()])
 	print("")
 
 

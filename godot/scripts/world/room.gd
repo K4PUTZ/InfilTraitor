@@ -9227,7 +9227,7 @@ func _capture_glass_rain_timings() -> void:
 
 	## ── G-D41 / G-D42 — the real scatter, with an impulse toward the room ───
 	var impulse := {
-		"dir": Vector2(mid - epicenter),
+		"from": Vector2(epicenter),
 		"strength": clampf(impulse_strength, 0.0, 1.0),
 		"lift": 0.0,
 	}

@@ -42,6 +42,7 @@ func _init() -> void:
 	test_the_shockwave_biases_downrange()
 	test_lift_widens_the_scatter()
 	test_determinism()
+	test_the_shockwave_is_radial_not_parallel()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -284,7 +285,10 @@ func test_the_scatter_shape() -> void:
 func test_the_shockwave_biases_downrange() -> void:
 	print("[8] the shockwave — the band's mean shifts downrange, some shards clear the tail\n")
 	var base := _offset_histogram(2000, {})
-	var pushed := _offset_histogram(2000, {"dir": Vector2(1, 0), "strength": 1.0, "lift": 0.0})
+	## G-D46/radial — the impulse carries the BOMB'S POSITION now, not a bearing.
+	## Due west of `_offset_histogram`'s src (20, 20), so the push is still +X and
+	## this test's claim is unchanged.
+	var pushed := _offset_histogram(2000, {"from": Vector2(10, 20), "strength": 1.0, "lift": 0.0})
 
 	## A grenade to the WEST of the pane throws the pile EAST: the mean X offset
 	## goes clearly positive, and — the only term allowed past SCATTER_MAX_CELLS —
@@ -314,7 +318,7 @@ func test_lift_widens_the_scatter() -> void:
 	var lifted: float = 0.0
 	for i in range(2000):
 		var a: Vector2i = GlassFallClass.scatter_target(src, i, {})
-		var b: Vector2i = GlassFallClass.scatter_target(src, i, {"dir": Vector2.ZERO, "strength": 0.0, "lift": 1.0})
+		var b: Vector2i = GlassFallClass.scatter_target(src, i, {"strength": 0.0, "lift": 1.0})
 		flat += Vector2(a - src).length()
 		lifted += Vector2(b - src).length()
 	var flat_mean: float = flat / 2000.0
@@ -334,7 +338,7 @@ func test_determinism() -> void:
 	var slabs_a := _surfaces(Vector2i(6, 6), ground, "concrete")
 	var slabs_b := _surfaces(Vector2i(6, 6), ground, "concrete")
 	var col := _falling_column(Vector2i(6 * 8 + 3, 6 * 8 + 5), GeometryCoords.storey_level_base(0), 24)
-	var imp := {"dir": Vector2(-2, 1), "strength": 0.6, "lift": 0.0}
+	var imp := {"from": Vector2(40, 30), "strength": 0.6, "lift": 0.0}
 	var a := GlassFallClass.plan_landings(col.duplicate(true), slabs_a, imp.duplicate(true))
 	var b := GlassFallClass.plan_landings(col.duplicate(true), slabs_b, imp.duplicate(true))
 
@@ -349,4 +353,73 @@ func test_determinism() -> void:
 		_pass("two independent runs of one impulse plan produced %d identical landings" % a.size())
 	else:
 		_fail("the plan is not deterministic: %d vs %d landings, or a row differs" % [a.size(), b.size()])
+	print("")
+
+
+## ── [11] G-D42 RADIAL (Director, 2026-09-06) ────────────────────────────────
+##
+## *"vamos tentar fazer os cacos serem projetados em um circulo radial, se
+## afastando da bomba, e não todos retos na mesma direção. Dependendo do angulo
+## eles podem ser projetados em diagonal."*
+##
+## ⚠️ THE OLD SHAPE COULD NOT EXPRESS THIS, and that is what this test is really
+## about. The impulse carried ONE pre-normalised `dir` for the whole pane, so 1152
+## shards off a 24-GU storefront left on 1152 parallel paths however wide the pane
+## was. Asserting "the mean shifts downrange" ([8]) passed perfectly for that — a
+## parallel field has a downrange mean too. The property that separates them is
+## whether two shards at DIFFERENT bearings from the bomb are pushed differently.
+##
+## ⚠️ ASSERTED AS AN ALIGNMENT, NOT AS "THE ANGLES DIFFER". Two shards could be
+## pushed on different bearings and still both be wrong; what has to hold is that
+## EACH shard's displacement points away from the bomb along ITS OWN radius. The
+## symmetric draw is noise on top of that, so the claim is about the mean over many
+## shards at one bearing, not about any single one.
+func test_the_shockwave_is_radial_not_parallel() -> void:
+	print("[11] the shockwave is RADIAL — each shard takes its own bearing off the bomb\n")
+	var bomb := Vector2(40.0, 40.0)
+	var imp := {"from": bomb, "strength": 1.0, "lift": 0.0}
+
+	## Three points on a wide pane, at plainly different bearings from the bomb.
+	var probes: Array = [Vector2i(60, 40), Vector2i(60, 60), Vector2i(40, 60)]
+	var bearings: Array = []
+	var worst_align: float = 1.0
+	for src in probes:
+		var acc := Vector2.ZERO
+		for i in range(2000):
+			acc += Vector2(GlassFallClass.scatter_target(src, i, imp) - src)
+		var mean_push: Vector2 = acc / 2000.0
+		var want: Vector2 = (Vector2(src) - bomb).normalized()
+		var align: float = mean_push.normalized().dot(want)
+		worst_align = minf(worst_align, align)
+		bearings.append(mean_push.normalized())
+		print("      %s: mean push %s, radius %s, alignment %.3f"
+			% [src, mean_push, want, align])
+
+	if worst_align > 0.95:
+		_pass("every probe's mean push points along its OWN radius from the bomb (worst alignment %.3f)"
+			% worst_align)
+	else:
+		_fail("a probe's push is not radial — worst alignment %.3f (1.0 is exact)" % worst_align)
+
+	## And the three bearings are genuinely different — the control that would have
+	## caught the parallel field.
+	var max_dot: float = -1.0
+	for a in range(bearings.size()):
+		for b in range(a + 1, bearings.size()):
+			max_dot = maxf(max_dot, (bearings[a] as Vector2).dot(bearings[b]))
+	if max_dot < 0.9:
+		_pass("the three bearings are distinct (closest pair dot %.3f) — not one parallel field"
+			% max_dot)
+	else:
+		_fail("two probes were pushed the same way (dot %.3f) — the field is parallel, not radial"
+			% max_dot)
+
+	## A shard sitting exactly on the bomb takes no push instead of dividing by zero.
+	var on_top: Vector2i = Vector2i(int(bomb.x), int(bomb.y))
+	var flat := GlassFallClass.scatter_target(on_top, 0, {})
+	var same := GlassFallClass.scatter_target(on_top, 0, imp)
+	if flat == same:
+		_pass("a shard ON the epicenter takes the symmetric draw only — no division by zero")
+	else:
+		_fail("a shard on the epicenter was pushed to %s (symmetric draw is %s)" % [same, flat])
 	print("")

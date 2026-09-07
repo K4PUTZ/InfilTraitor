@@ -684,11 +684,35 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			## this rides `ring_multipliers` and introduces no second force model. A
 			## near grenade (ring 0, strength 1.0) skews the pile downrange and wider.
 			## `lift` stays 0.0: a skylight would set it, and G-D16c/d is unbuilt.
+			## G-D42 — `from` is the epicenter itself, so every shard takes its OWN
+			## bearing off the bomb (radial, diagonal at the corners) instead of the
+			## pane sharing one vector. ⚠️ `strength` reads the GLASS multiplier, not
+			## the raw table: G-D46 gives glass one ring more than the bomb damages
+			## in, and the raw entry there is 0.0 — a pane broken in that extra ring
+			## would otherwise have been thrown by a shockwave of strength zero.
 			var impulse: Dictionary = {
-				"dir": Vector2(origin_v.grid_pos - epicenter),
-				"strength": clampf(float(bomb_def.ring_multipliers[ring]), 0.0, 1.0),
+				"from": Vector2(epicenter),
+				"strength": clampf(GlassShatter.glass_ring_multiplier(
+					bomb_def.ring_multipliers, ring), 0.0, 1.0),
 				"lift": 0.0,
 			}
+			## ── G-D47 — WHAT SURVIVES A PARTIAL BREAK IS CRACKED, NEVER INTACT ──
+			##
+			## (Director, 2026-09-06: *"quando a bomba destroi uma vidraça
+			## parcialmente, o que sobrar da mesma superfície precisa ficar rachado.
+			## Só pra não ficar o vidro intacto do lado da zona destruída."*)
+			##
+			## `region_radius()` scales with the punch (G-D12), so a won roll at the
+			## fringe takes a REGION and not the pane — and until now the glass
+			## beside that hole stood pristine, which is the one thing a shockwave
+			## that just removed its neighbour cannot leave behind.
+			##
+			## ⚠️ IT IS THE SAME `_craze_pane()` THE LOST ROLL USES, deliberately: a
+			## second crazing path would be a second authority on what a blast does
+			## to standing glass, and the two would drift. It is self-limiting for a
+			## WHOLE break — `plan_pane_craze()` returns the survivors, which is
+			## empty when there are none — so no branch is needed for that case.
+			_craze_pane(s, pid, pane_slices, ring, epicenter)
 			var landings: Array = GlassFall.plan_landings(fallen, slab_registry.all_slabs(), impulse)
 			var piles: Dictionary = GlassFall.pile_by_cell(landings)
 			var deepest: int = 0
@@ -744,11 +768,34 @@ static func _craze_pane(s: Dictionary, pane_id: String, pane_slices: Array,
 		## against it on the real pane (2026-09-05): *"abandona. Vamos usar o
 		## rachado sem furos."* So the craze is what B-1 made it again: the pane
 		## STANDS, whole, and only its state changes.
+		## ⚠️ SKIP ANYTHING THIS DELTA HAS ALREADY TAKEN, and ask the DELTA rather
+		## than the Voxel. `plan_pane_craze()` reads `v.damage_state` off the live
+		## object, and `build_plan()` is PURE — the shatter's DESTROYED entries are
+		## on the Delta and have not touched a Voxel yet, so the craze cannot see
+		## them there. `WorldDelta._fold()` folds a later entry ONTO the projection
+		## with `set_damage()`'s own semantics, so a CRACKED entry landing on a
+		## voxel already projected DESTROYED would RESURRECT it — visible again,
+		## whole, in the middle of the hole the same blast just made. Harmless
+		## before G-D47 because nothing crazed a pane it had also broken; the
+		## instant that became the point, this was the trap waiting.
+		if delta.state_of(v) == Voxel.DamageState.DESTROYED:
+			continue
 		entries.append(BlastCalculatorClass.damage_entry(v, Voxel.DamageState.CRACKED, true))
 		var d: float = Vector2(v.grid_pos - epicenter).length()
 		if d < best_d:
 			best_d = d
 			anchor = v
+	## ⚠️ NOTHING LEFT TO CRAZE IS A REAL OUTCOME, AND IT ARRIVES ONLY FROM G-D47.
+	## When the blast took the pane WHOLE, every voxel above is projected DESTROYED
+	## and skipped — `plan_pane_craze()` could not tell, because it reads the live
+	## Voxel and `build_plan()` has not touched one. Without this the loop leaves
+	## `anchor` null and the `anchor.grid_pos` below crashes the phase; and even if
+	## it did not, a craze FIELD anchored nowhere would be claimed for a pane that
+	## no longer exists.
+	if entries.is_empty() or anchor == null:
+		print_debug("[GLASS-CRAZE] pane=%s ring=%d — the blast took all of it; nothing standing to crack"
+			% [pane_id, ring])
+		return
 	delta.add_damage(entries)
 	## ⚠️ AND THEY MUST REACH `touched_voxels`, WHICH PACKAGE ALONE CANNOT DO.
 	## Measured on the GLASS map: the craze marked **1152** voxels and the census
@@ -758,9 +805,13 @@ static func _craze_pane(s: Dictionary, pane_id: String, pane_slices: Array,
 	## never packaged, never entered `touched_voxels`, and would therefore have been
 	## dropped by VL-PERSIST: **a perspective flip would have healed half of every
 	## blast-crazed pane.** Collected here, topped up after PACKAGE has run.
+	## ⚠️ THE VOXELS THAT ACTUALLY CRAZED, NOT EVERY CANDIDATE. `voxels` is what
+	## `plan_pane_craze()` offered; `entries` is what survived the DESTROYED filter
+	## above. Feeding the candidates would push voxels this blast destroyed into
+	## `touched_voxels`, i.e. into VL-PERSIST, and a rotation would restore them.
 	var crazed: Array = s["crazed_voxels"]
-	for v2 in voxels:
-		crazed.append(v2)
+	for e2 in entries:
+		crazed.append(e2["voxel"])
 	delta.glass_crazes.append({
 		"pane_id": pane_id, "cell": anchor.grid_pos, "level": anchor.level,
 		"ring": ring, "intensity": intensity,

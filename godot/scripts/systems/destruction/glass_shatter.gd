@@ -294,12 +294,64 @@ static func rolls_shatter(glass_punch: float, salt: String) -> bool:
 ## own arsenal table are unchanged by construction.
 static func blast_glass_punch(ring_multipliers: Array, ring: int,
 		material: String = GlassMaterials.BASE) -> float:
-	if ring < 0 or ring >= ring_multipliers.size():
+	if ring < 0:
 		return 0.0
-	var m: float = float(ring_multipliers[ring])
+	var m: float = glass_ring_multiplier(ring_multipliers, ring)
 	if m <= 0.0:
 		return 0.0
 	return SHATTER_BLAST_GAIN * m / maxf(ShotPunchTableClass.resistance(material), 0.001)
+
+
+## ── G-D46 — GLASS FEELS THE BLAST ONE GU FURTHER THAN ANYTHING ELSE ─────────
+##
+## (Director, 2026-09-06: *"eu queria que especificamente para o vidro, a área de
+## dano da granada fosse 1 GU maior, especialmente considerando que a shockwave do
+## ar consegue afetar as janelas em uma zona mais ampla. Os demais materiais podem
+## continuar como estão. Também não altera o dano sofrido pelos atores."*)
+##
+## ⚠️ THE AREA GROWS; THE FALLOFF INSIDE IT DOES NOT MOVE. The other reading —
+## "glass behaves as if it were one GU closer", i.e. `ring - 1` — would have lifted
+## ring 2 from the 25.9% the Director had ratified minutes earlier to ring 1's
+## 96.5%, silently superseding his own tuning. So rings 0..N keep the bomb's own
+## multipliers exactly, and the LAST DAMAGING one is held for
+## `SHATTER_BLAST_EXTRA_RINGS` further rings. For frag_grenade
+## `[1.0, 0.6, 0.25, 0.0]` glass reads `[1.0, 0.6, 0.25, 0.25]`.
+##
+## ⚠️ AND IT COSTS NO SECOND FLOOD, which is why it is this shape rather than a
+## glass-only BFS. `flood_gu_rings()` already walks out to
+## `ring_multipliers.size() - 1` = ring 3, so a ring-3 pane is ALREADY in
+## `affected` — it simply found a 0.0 multiplier there and could only craze. This
+## turns a ring the flood already paid for into a ring glass can break in.
+##
+## ⚠️ **THAT ALSO BOUNDS THIS CONSTANT AT 1 FOR TODAY'S BOMBS.** The free ring
+## exists because `frag_grenade`'s table ends in an explicit 0.0. A value of 2
+## would ask for ring 4, which `flood_gu_rings()` never reaches, and the extra ring
+## would be silently inert — the failure this project keeps paying for. Raising it
+## means extending the flood for glass, deliberately, not just this number.
+## `glass_shatter_selftest` [10] pins the bound rather than trusting this note.
+##
+## Nothing else calls this function: walls, slabs, junctions, roofs and the actor
+## damage all read `ring_multipliers` directly and see the unchanged 0.0 at ring 3.
+static var SHATTER_BLAST_EXTRA_RINGS: int = 1
+
+
+## The multiplier GLASS reads at `ring` — the bomb's own inside the table, the last
+## damaging one held for `SHATTER_BLAST_EXTRA_RINGS` rings past it, 0.0 beyond.
+static func glass_ring_multiplier(ring_multipliers: Array, ring: int) -> float:
+	if ring < 0:
+		return 0.0
+	if ring < ring_multipliers.size() and float(ring_multipliers[ring]) > 0.0:
+		return float(ring_multipliers[ring])
+	var last: int = -1
+	for i in range(ring_multipliers.size()):
+		if float(ring_multipliers[i]) > 0.0:
+			last = i
+	if last < 0:
+		return 0.0
+	var beyond: int = ring - last
+	if beyond <= 0 or beyond > SHATTER_BLAST_EXTRA_RINGS:
+		return 0.0
+	return float(ring_multipliers[last])
 
 
 ## G-D12 — the flood radius (in voxels, Chebyshev on the pane surface) for a won

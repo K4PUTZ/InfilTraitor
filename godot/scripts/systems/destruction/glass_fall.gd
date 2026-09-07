@@ -29,7 +29,7 @@
 ## same. So this file never needs the pane's face; it only needs a DIRECTION for
 ## the shockwave, and the caller hands that in `impulse`.
 ##
-## `impulse` — `{dir: Vector2, strength: float, lift: float}` in GRID space, from
+## `impulse` — `{from: Vector2, strength: float, lift: float}` in GRID space, from
 ## the bomb's own `ring_multipliers` falloff (G-D42 — no second force model). At
 ## zero impulse the scatter is symmetric; a near grenade shifts the band's mean
 ## downrange and, per-shard-scaled, spreads it wider ("caírem mais longe, mais
@@ -167,7 +167,7 @@ static func landing_level(grid_pos: Vector2i, from_level: int, surface_index: Di
 ## `destroyed` — Array of {"grid_pos": Vector2i, "level": int}, the voxels the
 ##   break removed (GlassShatter's plan, resolved to positions by the caller).
 ## `slabs` — every Slab in the world (`room._slab_registry.all_slabs()`).
-## `impulse` — `{dir: Vector2, strength: float, lift: float}` in GRID space, or
+## `impulse` — `{from: Vector2, strength: float, lift: float}` in GRID space, or
 ##   `{}` for a break with no shockwave (a bullet-shattered pane still scatters,
 ##   symmetrically — §18.5). See the class note.
 ##
@@ -218,14 +218,31 @@ static func scatter_target(src: Vector2i, from_level: int, impulse: Dictionary) 
 	var salt := "gd41|%d,%d,%d" % [src.x, src.y, from_level]
 	var off := Vector2(float(_axis_offset(salt + "|x")), float(_axis_offset(salt + "|y")))
 
-	## G-D42 — the shockwave biases the draw. `dir` points away from the epicenter,
-	## `strength` is the bomb's per-ring falloff; the per-shard fraction is what
-	## turns "further" into "further AND more spread".
-	var dir: Vector2 = impulse.get("dir", Vector2.ZERO)
+	## G-D42 — the shockwave biases the draw. `strength` is the bomb's per-ring
+	## falloff; the per-shard fraction is what turns "further" into "further AND
+	## more spread".
+	##
+	## ⚠️ **THE DIRECTION IS PER SHARD, RADIALLY FROM THE BOMB** (Director,
+	## 2026-09-06: *"vamos tentar fazer os cacos serem projetados em um circulo
+	## radial, se afastando da bomba, e não todos retos na mesma direção. Dependendo
+	## do angulo eles podem ser projetados em diagonal."*). It used to be ONE
+	## `dir` vector for the whole pane — the epicenter to the pane's nearest voxel —
+	## so 1152 shards left a 24-GU storefront on 1152 PARALLEL paths. A pane is
+	## WIDE: its far end sits at a completely different bearing from the grenade
+	## than its near end, and that spread is the whole read of a blast.
+	##
+	## ⚠️ SO THE IMPULSE CARRIES A POINT, NOT A VECTOR — `from`, the epicenter in
+	## the same voxel-cell space as `src`. A caller cannot pre-normalise a direction
+	## that is different for every shard, which is exactly why the old shape could
+	## not express this: the bug was in the DATA, not in the arithmetic. A shard
+	## sitting on the epicenter gets no push rather than a division by zero.
+	var from: Vector2 = impulse.get("from", Vector2.ZERO)
 	var strength: float = float(impulse.get("strength", 0.0))
-	if strength > 0.0 and dir.length() > 0.001:
-		var frac: float = lerpf(SCATTER_IMPULSE_MIN_FRAC, 1.0, _hash_unit(salt + "|push"))
-		off += dir.normalized() * strength * SCATTER_IMPULSE_GAIN * frac
+	if strength > 0.0 and impulse.has("from"):
+		var dir: Vector2 = Vector2(src) - from
+		if dir.length() > 0.001:
+			var frac: float = lerpf(SCATTER_IMPULSE_MIN_FRAC, 1.0, _hash_unit(salt + "|push"))
+			off += dir.normalized() * strength * SCATTER_IMPULSE_GAIN * frac
 
 	## `lift` — a skylight's shards are tossed up and land wider on the way down
 	## ("sobem um pouquinho mas sempre caem pra baixo"). UNEXERCISED — see the note.

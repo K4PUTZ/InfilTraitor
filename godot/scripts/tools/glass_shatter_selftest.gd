@@ -444,12 +444,26 @@ func test_blast_glass_punch_reliable_inside_zero_outside() -> void:
 	var p_oob: float = GlassShatterClass.blast_glass_punch(frag, 9)
 	print("      frag rings: p_shatter(0)=%.0f%%  (1)=%.0f%%  (2)=%.0f%%  punch(3)=%.2f  punch(oob)=%.2f" % [
 		p0 * 100.0, p1 * 100.0, p2 * 100.0, p3, p_oob])
-	## Inside (ring 0-1): reliable. Fringe (ring 2): unlikely. Edge/OOB: impossible.
-	if p0 >= 0.9 and p1 >= 0.6 and p2 <= 0.2 and p3 == 0.0 and p_oob == 0.0:
-		_pass("ring 0 ~%.0f%%, ring 1 ~%.0f%%, ring 2 ~%.0f%%, ring 3 and beyond = 0" % [
+	## Inside (ring 0-1): RELIABLE. Fringe (ring 2): a real minority chance.
+	## Edge/OOB: impossible.
+	##
+	## ⚠️ RING 2 IS A BAND, NOT A CEILING, AND IT GAINED ITS LOWER BOUND ON
+	## 2026-09-06. This used to assert `p2 <= 0.2` alone, which passed for the 5.9%
+	## the Director then reported as a defect — *"a granada está rachando vidraças
+	## muito próximas […] mesmo estando a 1 ou 2 GUs da bolha"*. A one-sided bound
+	## cannot tell "correctly unlikely" from "collapsed", so the ring the whole
+	## falloff's slope lives on had no floor under it at all. Now both sides are
+	## pinned: below 0.15 the cliff is back, above 0.45 ring 2 stops being a
+	## falloff and distance stops meaning anything.
+	##
+	## ⚠️ `p1 >= 0.9` (was 0.6) is the other half of that ruling — one GU from the
+	## bubble is not a coin flip.
+	if p0 >= 0.9 and p1 >= 0.9 and p2 >= 0.15 and p2 <= 0.45 \
+			and p3 == 0.0 and p_oob == 0.0:
+		_pass("ring 0 ~%.0f%%, ring 1 ~%.0f%%, ring 2 ~%.0f%% (in the 15-45%% band), ring 3 and beyond = 0" % [
 			p0 * 100.0, p1 * 100.0, p2 * 100.0])
 	else:
-		_fail("blast falloff wrong: p0=%.2f p1=%.2f p2=%.2f punch3=%.2f punchOOB=%.2f" % [p0, p1, p2, p3, p_oob])
+		_fail("blast falloff wrong: p0=%.2f p1=%.2f p2=%.2f (want 0.15..0.45) punch3=%.2f punchOOB=%.2f" % [p0, p1, p2, p3, p_oob])
 	print("")
 
 

@@ -1,6 +1,16 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 **v1.44 — THE TRACK IS CLOSED (2026-09-06).** §18 closed; the
+**Status:** 🟢 **v1.45 — THE TRACK IS CLOSED (2026-09-06).** Two Director rulings
+landed after the close, both tuning on ratified mechanics rather than new work:
+**G-D42's shockwave gain 3.0 → 15.0** (`GlassFall.SCATTER_IMPULSE_GAIN`, picked from
+a four-video sweep — the shipped 3.0 pushed a shard 0.11..0.375 of a floor TILE,
+which is why the projection read as absent) and **the cook's glass punch 3.4 → 5.0**
+(`GlassShatter.SHATTER_BLAST_GAIN` — *"a granada está rachando vidraças muito
+próximas […] mesmo estando a 1 ou 2 GUs da bolha"*; ring 1 78.6% → 96.5%, ring 2
+5.9% → 25.9%). Both constants carry their own note; `glass_shatter_selftest` [10]
+gained a LOWER bound on ring 2, which it never had.
+
+Earlier, v1.44 — **THE TRACK IS CLOSED (2026-09-06).** §18 closed; the
 GLASS-OLIVE cast fixed (§18.14b); CRACK-04's rotation drift fixed and the demo that
 could not see it made faithful (§16.13); and §10's task order given a truth pass —
 four of its rows had gone stale, one by three days and four stages. What remains is

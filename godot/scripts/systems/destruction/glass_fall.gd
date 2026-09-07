@@ -84,7 +84,21 @@ static var SCATTER_WEIGHTS: Array[float] = [0.55, 0.30, 0.11, 0.04]
 ## fraction below. The shockwave BIASES the symmetric draw (G-D42), it does not
 ## replace it, and it is the one term allowed to carry a shard past
 ## `scatter_max_cells()` — that is "vencer mais longe".
-static var SCATTER_IMPULSE_GAIN: float = 3.0
+##
+## ⚠️ **RULED AT 15.0 BY THE DIRECTOR, 2026-09-06, FROM VIDEO** (*"empurrar os cacos
+## que caem quando ele quebra com a força da explosão"* → *"vamos fechar com 15"*).
+## It shipped at 3.0, and the number nobody had converted was what it meant on
+## screen: 8 voxel cells make a floor TILE, so 3.0 was a push of 0.11..0.375 of a
+## tile — real, and invisible. The bench swept 0 / 3 / 12 / 30 as MP4s
+## (`build_filmstrip.py --glass-rain default --rain-gain N`, which prints the travel
+## it ACTUALLY got off the landings) and 15 is his pick between 12 and 30.
+##
+## ⚠️ THE FALL IS COUNTED IN FRAMES AND DOES NOT KNOW THE DISTANCE.
+## `GlassRainOverlay.fall_frames_min/max` are 14..26 whatever the shard has to
+## cross, so this constant sets horizontal SPEED, not flight time — raise it far
+## enough and a shard reads as a streak rather than a piece of glass. That coupling
+## is the thing to check on screen after any change here, not the landing pile.
+static var SCATTER_IMPULSE_GAIN: float = 15.0
 
 ## The least-pushed shard still moves this fraction of the full impulse; the rest
 ## is hashed per shard. This spread is what makes a near grenade land the pile

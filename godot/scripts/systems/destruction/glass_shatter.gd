@@ -99,12 +99,42 @@ static var SHATTER_REMNANT_ARMORED_SCALE: float = 0.35
 ## no per-projectile punch, so the pane's shatter roll runs off the blast's own
 ## per-ring falloff: `blast_glass_punch = SHATTER_BLAST_GAIN · ring_multipliers[ring]
 ## / RESISTANCE["glass"]`, fed to the same `p_shatter()` / `rolls_shatter()` as a
-## bullet. For frag_grenade (`ring_multipliers [1.0, 0.6, 0.25, 0.0]`) that is
-## ~98% at ring 0, ~78% at ring 1, ~6% at ring 2, 0% at ring 3 — reliable inside,
-## fading at the edge where G5's crack takes over. Glass PANEL slices are pulled
-## OUT of the cook's ring-scatter entirely (glass fractures, it does not deform —
-## a pane breaks whole or not at all); glass BLOCKS keep the ring model.
-static var SHATTER_BLAST_GAIN: float = 3.4
+## bullet. Glass PANEL slices are pulled OUT of the cook's ring-scatter entirely
+## (glass fractures, it does not deform — a pane breaks whole or not at all);
+## glass BLOCKS keep the ring model.
+##
+## ⚠️ **RAISED 3.4 → 5.0 ON 2026-09-06** (Director: *"a granada está rachando
+## vidraças muito próximas […] mesmo estando a 1 ou 2 GUs da bolha. Queremos
+## aumentar um pouco esse threshold"*). A ring IS a GU of Chebyshev distance from
+## the epicenter, so his "1 ou 2 GUs" is rings 1 and 2 exactly, and the shipped
+## curve had a cliff between them:
+##
+##       gain    ring 0    ring 1    ring 2    ring 3
+##       3.4      97.5%     78.6%      5.9%      0.0%   (was)
+##       5.0      98.0%     96.5%     25.9%      0.0%   (is)
+##
+## ⚠️ **THIS IS THE ONLY DIAL THAT MOVES GLASS ALONE.** `ring_multipliers` lives in
+## `frag_grenade.json` and is shared by dents, cracks, craters, soot, smoke AND
+## G-D42's shard impulse — retuning it to fix glass would rebalance the whole
+## detonation. `SHATTER_K`/`SHATTER_X0` are the logistic every BULLET rolls on too.
+## This constant is glass-only and cook-only, which is what it was split out for.
+##
+## ⚠️ IT MOSTLY MOVES RING 2, AND THAT IS THE POINT rather than a side effect: ring 0
+## is already against `SHATTER_P_MAX` and ring 1 is past the logistic's midpoint, so
+## the gain has almost nowhere to lift them. Ring 2 straddles `SHATTER_X0` and is
+## where the whole curve's slope lives.
+##
+## ⚠️ **RING 3 IS 0.0% AT ANY GAIN, BY CONSTRUCTION** — `blast_glass_punch()` returns
+## 0 for a multiplier of 0.0, and `frag_grenade`'s table ends in one. A pane 3 GUs out
+## can never be taken by this bomb however this constant moves; that would be a change
+## to the BOMB's reach, which is a different (and much wider) decision.
+##
+## ⚠️ AND THE ROLL IS DETERMINISTIC PER (source_gu, pane_id) — `_shatter_glass_panes()`
+## salts it `"BLAST_x_y_paneid"`. So a pane that loses its roll at one grenade spot
+## loses it EVERY time from that spot: what reads as "it always just cracks" can be one
+## fixed outcome sampled repeatedly, not a probability. Worth knowing before tuning
+## from a single test position.
+static var SHATTER_BLAST_GAIN: float = 5.0
 
 ## ── §6.2 / G-D35 B-1 — THE PANE THE BLAST DOES NOT TAKE ─────────────────────
 ##

@@ -5457,6 +5457,17 @@ func clear_glass_cracks() -> void:
 	_glass_applied_openings.clear()
 
 
+## A map reload (`Room.load_map()`) rebuilds every pane intact and clears the
+## base-space damage records, but `clear()` above only drops the tilemap cells —
+## it leaves `_glass_shard_cells` full of the PREVIOUS mission's rim atoms, keyed
+## in view space. `restamp_glass_shards()` would then stamp a cut rim onto any
+## fresh pane that lands on one of those cells: a broken-looking notch on intact
+## glass. `_set_perspective()` gets away without this because it immediately
+## rebuilds the rims from `_base_openings`; a reload has none to rebuild.
+func clear_glass_rim_cells() -> void:
+	_glass_shard_cells.clear()
+
+
 ## ── G-D30 — THE OCCUPANCY CUT ────────────────────────────────────────────────
 ##
 ## A crack's occupancy is a small R8 image in its PANE's own (run, level) space —

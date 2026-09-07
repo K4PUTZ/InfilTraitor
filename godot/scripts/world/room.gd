@@ -1766,6 +1766,16 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_shards.clear()        ## G6: and no glass has fallen on its floor
 	_base_remnants.clear()      ## G4: and none is stuck to a frame
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
+	## The base-space RECORDS above are cleared; the VoxelRenderer's own SPRITE
+	## decals for them are not touched by `build_from_layout()` (only `_set_perspective()`
+	## dropped them, and a reload stays in the same perspective). Without this an F2
+	## reload leaves the previous mission's glass piles and crack webs on screen —
+	## Director, 2026-09-07: *"seeing past debris from previous explosions […] between
+	## map loads (F2)"*.
+	if _voxel_renderer != null:
+		_voxel_renderer.clear_floor_shards()     ## G6: the glass-pile floor sprites
+		_voxel_renderer.clear_glass_cracks()     ## CRACK-02 / B-2: the crack + craze sprites
+		_voxel_renderer.clear_glass_rim_cells()  ## CRACK-04: stale hole-rim atoms, keyed in view space
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
 	if _smoke_spark_overlay != null:
@@ -7033,6 +7043,33 @@ func _capture_glass_blast_demo() -> void:
 					canary_px += 1
 		print("[GLASS-BLAST] floor_layer magenta canary after the flip: %d px (%s)"
 			% [canary_px, "OK" if canary_px < 20 else "LEAKING — crater re-reveal regressed"])
+
+	## ── A MAP RELOAD MUST WIPE THE GLASS DEBRIS ────────────────────────────────
+	##
+	## Director, 2026-09-07: *"seeing past debris from previous explosions […]
+	## between map loads (F2)"*. `_set_perspective()` drops the renderer's pile /
+	## crack / rim decals and rebuilds them from the base store; `load_map()` clears
+	## the base store but used to leave the decals on screen. This re-detonates,
+	## reloads the same map, and asserts every glass render store is back to zero.
+	if OS.get_environment("INFILTRAITOR_GLASS_BLAST_RELOAD") == "1":
+		var piles_before: int = _voxel_renderer.floor_shard_pile_count()
+		var cracks_before: int = _voxel_renderer.count_glass_shards()
+		var crazes_before: int = _voxel_renderer.glass_craze_count()
+		print("[GLASS-BLAST] before reload: %d floor pile(s), %d shard cell(s), %d craze field(s)"
+			% [piles_before, cracks_before, crazes_before])
+		load_map(map_id)
+		for _f in range(60):
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		var piles_after: int = _voxel_renderer.floor_shard_pile_count()
+		var cracks_after: int = _voxel_renderer.count_glass_shards()
+		var crazes_after: int = _voxel_renderer.glass_craze_count()
+		var rim_after: int = _voxel_renderer._glass_shard_cells.size()
+		var clean: bool = piles_after == 0 and cracks_after == 0 and crazes_after == 0 and rim_after == 0
+		print("[GLASS-BLAST] after reload: %d floor pile(s), %d shard cell(s), %d rim cell(s), %d craze field(s) — %s"
+			% [piles_after, cracks_after, rim_after, crazes_after,
+			"CLEAN" if clean else "LEAKED debris from the previous mission"])
+		get_viewport().get_texture().get_image().save_png("%s/glass_blast_demo_reload.png" % dir)
 
 
 ## Every CRACKED glass voxel standing in the world right now. Walks the registry

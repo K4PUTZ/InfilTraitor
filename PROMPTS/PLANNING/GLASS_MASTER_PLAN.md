@@ -1,16 +1,48 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 **v1.46 — THE TRACK IS CLOSED (2026-09-06).** Three more Director
-rulings on the blast/glass seam, all on ratified mechanics:
+**Status:** 🟢 **v1.47 — THE TRACK IS CLOSED.** Case testing (owed since 2026-09-06)
+began 2026-09-07 and produced two more rulings, `G-D48` and `G-D49` — the shockwave
+zone. Both are calibration/reach on ratified mechanics, not new systems:
 
-- **G-D46 — glass feels the blast ONE GU further than anything else.** *"a shockwave
-  do ar consegue afetar as janelas em uma zona mais ampla. Os demais materiais podem
-  continuar como estão."* The AREA grows; the falloff inside it does not move — rings
-  0..N keep the bomb's own multipliers and the last damaging one is HELD for
-  `SHATTER_BLAST_EXTRA_RINGS` = 1 ring further, so frag's `[1.0, 0.6, 0.25, 0.0]`
-  reads `[1.0, 0.6, 0.25, 0.25]` for glass alone. Costs no second flood: ring 3 was
-  already in `affected` and simply found a 0.0 there. Walls, slabs, junctions, roofs
-  and actor damage read the bomb's table directly and are untouched.
+- **G-D48 — the SHOCKWAVE ZONE (Director, 2026-09-07).** *"precisamos ampliar a area
+  de alcance do dano efetivo de granadas — somente sobre o vidro […] Podemos chamar
+  essa zona de shockwave […] estende a destruição para 5 GU no total, com rampa
+  descendente de dano, e estende também a zona onde os vidros racham, mais 2 GU pra
+  fora."* Tested from grenade GU (18,11) on the GLASS map: panes at ring 2 (16,10 /
+  20,10) merely crazed and ring 3 (15,10 / 21,10) was outside the flood entirely.
+  **Retires `SHATTER_BLAST_GAIN` + `SHATTER_BLAST_EXTRA_RINGS` + `glass_ring_multiplier`
+  + `blast_glass_punch` and the bullet logistic on the cook path.** The cook now reads
+  two GLASS-ONLY per-ring tables directly:
+  `GLASS_SHOCKWAVE_FALLOFF = [1.0, 1.0, 1.0, 0.90, 0.60, 0.35]` (index = ring; the
+  value IS the shatter probability AND scales the region radius across
+  `SHOCKWAVE_REGION_MIN..MAX` = 6..50 pane-lattice voxels) and
+  `GLASS_CRAZE_FALLOFF = [1.0, 0.90, 0.75, 0.60, 0.45, 0.30, 0.20, 0.12]` (2 GU
+  longer). `BlastCalculator.flood_gu_rings()` gained `min_max_ring`; only
+  `_shatter_glass_panes()` passes it (`GlassShatter.glass_blast_max_ring()` = 7),
+  re-flooding + re-running `find_affected_containers()` for glass panes alone — the
+  deliberate flood extension `SHATTER_BLAST_EXTRA_RINGS`'s note said was needed.
+  Every other container keeps the narrow flood's ring; a persistence top-up carries
+  the extended-ring glass voxels into VL-PERSIST. **Verified on the real map:** from
+  (18,11) both target panes roll p=1.0 and shatter whole (1152 + 469 voxels); far
+  panes craze out to ring 7. `glass_shatter_selftest` [10] rewritten; [21] and the
+  partial-break probe moved to the outer ramp. ⚠️ The ramp values are the Director's
+  to calibrate — `build_filmstrip.py`/`glass_blast_demo` with `INFILTRAITOR_GLASS_RING_DIAG=1`
+  prints the per-pane ring/probability/outcome.
+- **G-D49 — re-damage on a crazed pane collapses locally.** *"Qualquer dano novo num
+  painel ja rachado, como um tiro, colapsa as slices proximas a esse dano. Mas não
+  precisa necessariamente ser toda a vidraça de uma vez. Continua existindo uma
+  chance de sobrar uma area mais distante."* When ≥ `GLASS_RECRACK_COLLAPSE_FRAC`
+  (0.35) of a pane's standing glass is already CRACKED, the next damaging event
+  (grenade OR bullet) skips the roll and floods a region from the impact instead of
+  crazing again. Reuses `region_radius()` + G-D13b's anchored remnants — the "area
+  mais distante pode sobrar" for free. Not consumed like a prime: a crazed pane stays
+  crazed, so each successive hit takes more of it. `crazed_fraction()` is the arming
+  test (a whole-pane blast craze ≈ 1.0; a lone bullet hole ≈ 0.05).
+
+- **G-D46 (SUPERSEDED by G-D48) — glass feels the blast ONE GU further than anything
+  else.** *"a shockwave do ar consegue afetar as janelas em uma zona mais ampla."*
+  Was `SHATTER_BLAST_EXTRA_RINGS` = 1; G-D48 generalises it to the 5-GU shockwave
+  ramp + 2-GU craze skirt with a real glass-only flood.
 - **G-D42 radial — each shard takes its OWN bearing off the bomb.** *"projetados em
   um circulo radial, se afastando da bomba, e não todos retos na mesma direção."* The
   impulse now carries a POINT (`from`, the epicenter) instead of a pre-normalised
@@ -781,7 +813,10 @@ skips the caller's own preceding step cannot see a defect that lives in it.
 `build_plan()`/`WorldDelta` — G7 and the local hole are all direct
 `plan_point_impact` + `set_damage`, and Stage B matches that.
 
-✅ **BUILT 2026-09-01 (Stage C) — the grenade/cook path.**
+✅ **BUILT 2026-09-01 (Stage C) — the grenade/cook path.** ⚠️ **The formula below
+is SUPERSEDED by G-D48 (2026-09-07)** — the cook now reads `GLASS_SHOCKWAVE_FALLOFF`
+directly (see the status header) rather than deriving a punch and rolling the
+logistic. Kept for the history of how Stage C first shipped:
 `GlassShatter.blast_glass_punch(ring_multipliers, ring)` = `SHATTER_BLAST_GAIN(3.4)
 · ring_multipliers[ring] / RESISTANCE["glass"]` — the cook has no per-projectile
 punch, so the pane's roll runs off the blast's own per-ring falloff (frag_grenade:
@@ -1977,10 +2012,18 @@ him is built, the traversal is not) · `plastic` + screen art
 (`MATERIALS_MASTER_PLAN`). ⚠️ `PassageQuery` → `blocked_edges` was on this list
 until 2026-09-06 and has been built since 2026-08-31.
 
-### 10.1 What is left, and who owns it (2026-09-06)
+### 10.1 What is left, and who owns it (2026-09-06, amended 2026-09-07)
 
 Written after a row-by-row audit of the table above, because four of its rows said
 something that had stopped being true and a reader would have got four wrong answers.
+
+**2026-09-07:** the CASE TESTING owed since 2026-09-06 began. It produced `G-D48`
+(the shockwave zone — destruction to 5 GU with a descending ramp, craze to 7 GU,
+via a real glass-only flood extension) and `G-D49` (re-damage on a crazed pane
+collapses locally). Both are BUILT and verified on the GLASS map; the ramp values in
+`GLASS_SHOCKWAVE_FALLOFF` / `GLASS_CRAZE_FALLOFF` are placeholders awaiting the
+Director's on-screen calibration. Still no glass render or physics gap — this widened
+an existing zone and added an existing region-flood trigger.
 
 | left | owner | why it is not a glass task |
 |---|---|---|
@@ -4196,6 +4239,8 @@ VL-PERSIST. "Cai junto", not "some".
 |---|---|
 | `glass_fall_selftest` | 6 → **10**. [6] rewritten (the old "one column → one deep pile" is now "a band, count preserved, concentrated"), [7] the scatter shape (monotone 0/1/2/3, none past 3, symmetric at zero impulse), [8] the shockwave (mean X −0.04 → 1.93 under a unit impulse, 167 shards past the symmetric tail, base clean), [9] `lift` widens (synthetic), [10] determinism |
 | `glass_shatter_selftest` [23] | G-D45's one load-bearing fact: `remnant_anchor_mask()` held (non-zero) → **0** the instant the concrete jamb is destroyed. The same call the reap makes, on the same geometry, before and after |
+| `glass_shatter_selftest` [10] (G-D48, 2026-09-07) | the shockwave zone: `GLASS_SHOCKWAVE_FALLOFF` reliable to GU 3, tapering (not rising) to GU 5, 0 at GU 6; `GLASS_CRAZE_FALLOFF` reaching 2 GU further; and `flood_gu_rings(min_max_ring = glass_blast_max_ring())` actually placing a GU at ring 7. [21] and the partial-break probe moved to the outer ramp where the outcome is genuinely probabilistic |
+| the real map (G-D48) | grenade GU (18,11): `[GLASS-SHATTER-BLAST] pane=PANE_SLICE_16_10_SW ring=2 radius=50 flooded=1152` and `pane=PANE_SLICE_22_10_SW ring=2 flooded=469` — both target panes (15,10 / 16,10 / 20,10 / 21,10) gone; far panes craze to ring 7. `INFILTRAITOR_GLASS_RING_DIAG=1` prints per-pane ring / probability / outcome |
 | the real map | a grenade on the storefront pane: `[GLASS-FALL] 1152 of 1152 shard(s) landed, on 284 cell(s)` — up from the ~48-cell line the pane's foot is. `[GLASS-RAIN] 1152 flight(s) -> 2927 shard(s)` (2.54/voxel). No `[GLASS-REMNANT] G-D45` line — the storefront is free-standing, so the reap correctly found nothing |
 | the timing bench | `INFILTRAITOR_CAPTURE_ACTION=glass_rain_timings` — `RAIN_TIMING_PRESETS` (`snappy`/`default`/`floaty`/`heavy`/`raked`), `INFILTRAITOR_RAIN_IMPULSE`, `INFILTRAITOR_GLASS_BLAST_PANE` (`=framed` for a windowed pane). `build_filmstrip.py --glass-rain <preset|all>` encodes one MP4 each at `--fixed-fps 60` |
 

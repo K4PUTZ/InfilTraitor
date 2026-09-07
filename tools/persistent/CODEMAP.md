@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**239 scripts · 87067 lines total** (under `godot/scripts/`)
+**239 scripts · 87156 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1964,7 +1964,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1947 lines
+`class_name BlastCalculator` · 1955 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2051,7 +2051,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2406 lines
+`class_name DetonationPlanBuilder` · 2463 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2180,7 +2180,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 714 lines
+`class_name GlassShatter` · 724 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -3662,7 +3662,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 2197 lines
+extends `SceneTree` · 2198 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -3830,7 +3830,7 @@ extends `SceneTree` · 554 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 1441 lines
+extends `SceneTree` · 1442 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -4986,7 +4986,7 @@ extends `Node2D` · 34 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1125 lines
+`class_name AgentShotController` · 1137 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 

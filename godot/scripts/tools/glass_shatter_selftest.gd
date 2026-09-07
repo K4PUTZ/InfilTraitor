@@ -434,62 +434,64 @@ func test_remnant_floor_never_leaves_zero_border() -> void:
 
 
 func test_blast_glass_punch_reliable_inside_zero_outside() -> void:
-	print("[10] G3-C: a grenade breaks a pane inside its damage area, not one at the fringe\n")
-	## frag_grenade's real falloff.
-	var frag: Array = [1.0, 0.6, 0.25, 0.0]
-	var p0: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 0))
-	var p1: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 1))
-	var p2: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 2))
-	## G-D46 — ring 3 is GLASS'S EXTRA RING now: the bomb's own table says 0.0 there
-	## and every other material still reads that 0.0, but glass holds the last
-	## damaging multiplier one ring further. So the structural ZERO moved out by
-	## one, and this test moved with it.
-	var p3: float = GlassShatterClass.p_shatter(GlassShatterClass.blast_glass_punch(frag, 3))
-	var p4: float = GlassShatterClass.blast_glass_punch(frag, 4)
-	var p_oob: float = GlassShatterClass.blast_glass_punch(frag, 9)
-	## ⚠️ THE EXTRA RING MUST BE INSIDE THE FLOOD, or it is a silently inert dial.
-	## `flood_gu_rings()` walks to `ring_multipliers.size() - 1`, so a pane further
-	## out than that is never in `affected` and glass's extra reach would be a
-	## number that changes nothing — the exact class of defect this project keeps
-	## paying for. The free ring exists only because frag's table ends in 0.0.
-	var last_damaging: int = -1
-	for i in range(frag.size()):
-		if float(frag[i]) > 0.0:
-			last_damaging = i
-	var flood_max: int = frag.size() - 1
-	var reach_ok: bool = last_damaging + GlassShatterClass.SHATTER_BLAST_EXTRA_RINGS <= flood_max
-	if reach_ok:
-		_pass("glass's extra reach (%d ring past ring %d) stays inside the flood's own ring %d"
-			% [GlassShatterClass.SHATTER_BLAST_EXTRA_RINGS, last_damaging, flood_max])
+	print("[10] G-D48 — the shockwave zone: reliable destruction out to 5 GU, craze 2 GU further\n")
+	## ── G-D48 (Director, 2026-09-07). SUPERSEDES G3-C's `SHATTER_BLAST_GAIN`
+	## logistic and G-D46's held-multiplier. The cook reads two GLASS-ONLY per-ring
+	## tables directly: GLASS_SHOCKWAVE_FALLOFF is the destruction strength (== the
+	## shatter probability) and GLASS_CRAZE_FALLOFF the craze intensity, reaching
+	## 2 GU further. The Director's complaint that started this: a grenade at
+	## GU (18,11) on the GLASS map left panes at ring 2 (16,10 / 20,10) merely
+	## crazed and never reached ring 3 (15,10 / 21,10) at all.
+	var sw: Array[float] = GlassShatterClass.GLASS_SHOCKWAVE_FALLOFF
+	var cz: Array[float] = GlassShatterClass.GLASS_CRAZE_FALLOFF
+	print("      shockwave: %s" % str(sw))
+	print("      craze:     %s" % str(cz))
+
+	## Inside the shockwave zone — near rings are RELIABLE, the ramp only tapers.
+	var inside_ok: bool = GlassShatterClass.shockwave_strength(0) >= 0.95 \
+		and GlassShatterClass.shockwave_strength(1) >= 0.95 \
+		and GlassShatterClass.shockwave_strength(2) >= 0.95 \
+		and GlassShatterClass.shockwave_strength(3) >= 0.80
+	## A DESCENDING ramp — never rising with distance — that still bites at GU 5
+	## and is 0 at GU 6 (destruction stops at 5 GU total).
+	var monotonic: bool = true
+	for r in range(1, sw.size()):
+		if GlassShatterClass.shockwave_strength(r) > GlassShatterClass.shockwave_strength(r - 1):
+			monotonic = false
+	var ramp_ok: bool = monotonic \
+		and GlassShatterClass.shockwave_strength(5) > 0.0 \
+		and GlassShatterClass.shockwave_strength(5) < GlassShatterClass.shockwave_strength(3) \
+		and GlassShatterClass.shockwave_strength(6) == 0.0
+	## The craze zone reaches exactly 2 GU past the shockwave's last ring.
+	var last_sw: int = sw.size() - 1
+	var craze_ok: bool = GlassShatterClass.blast_craze_intensity(last_sw + 2) > 0.0 \
+		and GlassShatterClass.blast_craze_intensity(last_sw + 3) == 0.0 \
+		and GlassShatterClass.glass_blast_max_ring() == cz.size() - 1
+
+	## ⚠️ THE EXTENDED REACH MUST BE INSIDE A REAL FLOOD, or it is an inert dial —
+	## the exact class of defect this project keeps paying for. `flood_gu_rings()`
+	## with `min_max_ring = glass_blast_max_ring()` must actually place a GU at
+	## that ring. Walk it on an open grid (no blocked edges) from the origin.
+	var bomb := BombDefClass.from_json({
+		"id": "frag_grenade", "ring_multipliers": [1.0, 0.6, 0.25, 0.0],
+		"destroy_ring_weights": [0.85, 0.28, 0.06, 0.0],
+		"dent_ring_weights": [1.0, 0.8, 0.25, 0.0],
+		"crack_ring_weights": [0.0, 1.0, 0.6, 0.0],
+	})
+	var rings: Dictionary = BlastCalculatorClass.flood_gu_rings(
+		Vector2i(0, 0), bomb, {}, {}, GlassShatterClass.glass_blast_max_ring())
+	var reached: int = 0
+	for gu in rings:
+		reached = maxi(reached, int(rings[gu]))
+	var flood_ok: bool = reached >= GlassShatterClass.glass_blast_max_ring()
+
+	if inside_ok and ramp_ok and craze_ok and flood_ok:
+		_pass("shockwave reliable to GU %d, tapers to %.0f%% at GU 5, 0 at GU 6; craze to GU %d; the glass flood reaches ring %d"
+			% [3, GlassShatterClass.shockwave_strength(5) * 100.0,
+			last_sw + 2, reached])
 	else:
-		_fail("SHATTER_BLAST_EXTRA_RINGS=%d reaches ring %d but flood_gu_rings() stops at %d — the extra ring is INERT, not wider"
-			% [GlassShatterClass.SHATTER_BLAST_EXTRA_RINGS, last_damaging + GlassShatterClass.SHATTER_BLAST_EXTRA_RINGS, flood_max])
-	print("      frag rings: p_shatter(0)=%.0f%%  (1)=%.0f%%  (2)=%.0f%%  (3)=%.0f%%  punch(4)=%.2f  punch(oob)=%.2f" % [
-		p0 * 100.0, p1 * 100.0, p2 * 100.0, p3 * 100.0, p4, p_oob])
-	## Inside (ring 0-1): RELIABLE. Fringe (ring 2): a real minority chance.
-	## Edge/OOB: impossible.
-	##
-	## ⚠️ RING 2 IS A BAND, NOT A CEILING, AND IT GAINED ITS LOWER BOUND ON
-	## 2026-09-06. This used to assert `p2 <= 0.2` alone, which passed for the 5.9%
-	## the Director then reported as a defect — *"a granada está rachando vidraças
-	## muito próximas […] mesmo estando a 1 ou 2 GUs da bolha"*. A one-sided bound
-	## cannot tell "correctly unlikely" from "collapsed", so the ring the whole
-	## falloff's slope lives on had no floor under it at all. Now both sides are
-	## pinned: below 0.15 the cliff is back, above 0.45 ring 2 stops being a
-	## falloff and distance stops meaning anything.
-	##
-	## ⚠️ `p1 >= 0.9` (was 0.6) is the other half of that ruling — one GU from the
-	## bubble is not a coin flip.
-	## G-D46 — ring 3 HOLDS ring 2's multiplier, so its odds must MATCH ring 2's,
-	## not merely be nonzero. That is the difference between "the area got wider"
-	## and "the falloff got stretched", and only the first was ruled.
-	if p0 >= 0.9 and p1 >= 0.9 and p2 >= 0.15 and p2 <= 0.45 \
-			and absf(p3 - p2) < 0.001 and p4 == 0.0 and p_oob == 0.0:
-		_pass("ring 0 ~%.0f%%, ring 1 ~%.0f%%, ring 2 ~%.0f%% (in the 15-45%% band), ring 3 HELD at ring 2's %.0f%%, ring 4 and beyond = 0" % [
-			p0 * 100.0, p1 * 100.0, p2 * 100.0, p3 * 100.0])
-	else:
-		_fail("blast falloff wrong: p0=%.2f p1=%.2f p2=%.2f (want 0.15..0.45) p3=%.2f (must equal p2) punch4=%.2f punchOOB=%.2f"
-			% [p0, p1, p2, p3, p4, p_oob])
+		_fail("G-D48 zone wrong: inside_ok=%s ramp_ok=%s craze_ok=%s flood_ok=%s (flood reached ring %d, want %d)"
+			% [inside_ok, ramp_ok, craze_ok, flood_ok, reached, GlassShatterClass.glass_blast_max_ring()])
 	print("")
 
 
@@ -1060,6 +1062,7 @@ func test_cook_proposes_the_opening_and_only_commit_claims_it() -> void:
 		"delta": delta,
 		"epicenter": epicenter,
 		"source_gu": Vector2i(2, 4),
+		"crazed_voxels": [],
 	}
 	DetonationPlanBuilderClass._shatter_glass_panes(state)
 
@@ -1122,21 +1125,24 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 
 	## ── The intensity table. ────────────────────────────────────────────────
 	var ramp: Array = []
-	for r in range(5):
+	var cz_len: int = GlassShatterClass.GLASS_CRAZE_FALLOFF.size()
+	for r in range(cz_len + 1):
 		ramp.append("%d:%.2f" % [r, GlassShatterClass.blast_craze_intensity(r)])
 	print("      ring intensity — %s" % ", ".join(ramp))
 	var monotonic := true
-	for r in range(1, GlassShatterClass.CRAZE_RING_INTENSITY.size()):
+	for r in range(1, cz_len):
 		if GlassShatterClass.blast_craze_intensity(r) > GlassShatterClass.blast_craze_intensity(r - 1):
 			monotonic = false
-	## ⚠️ RING 3 MUST CARRY A CRAZE. frag_grenade's `ring_multipliers` ends in 0.0,
-	## so ring 3 is inside `affected` and takes NO damage — which is exactly
-	## §6.2's *"perto de uma explosão, mas não dentro da área de dano"*. A table
-	## that stopped at ring 2 would silently delete the case the feature is for.
-	if monotonic and GlassShatterClass.blast_craze_intensity(3) > 0.0 \
-			and GlassShatterClass.blast_craze_intensity(4) == 0.0:
-		_pass("intensity falls with the ring, still bites at ring 3 (the blast's own "
-			+ "damage stops at ring 2), and is 0 off the end of the table")
+	## ⚠️ THE CRAZE ZONE REACHES 2 GU PAST THE SHOCKWAVE (G-D48). A pane just
+	## outside the effective-destruction zone still cracks — *"perto de uma
+	## explosão, mas não dentro da área de dano"* (§6.2). The last shockwave ring
+	## plus 2 must still carry an intensity, and one ring past the table's end
+	## must be 0.
+	var last_sw: int = GlassShatterClass.GLASS_SHOCKWAVE_FALLOFF.size() - 1
+	if monotonic and GlassShatterClass.blast_craze_intensity(last_sw + 2) > 0.0 \
+			and GlassShatterClass.blast_craze_intensity(cz_len) == 0.0:
+		_pass("intensity falls with the ring, still bites 2 GU past the shockwave "
+			+ "(ring %d), and is 0 off the end of the table" % (last_sw + 2))
 	else:
 		_fail("the intensity ramp is wrong: %s" % ", ".join(ramp))
 
@@ -1176,33 +1182,28 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 		_fail("plan_pane_craze returned %d voxel(s) of %d glass (expected %d), %d of them frame"
 			% [craze.size(), glass_total, glass_total - 2, frame_hits])
 
-	## ── The cook, REWRITTEN 2026-09-06 FOR G-D46 + G-D47 ────────────────────
+	## ── The cook, REWRITTEN 2026-09-06 (G-D46 + G-D47), AGAIN 2026-09-07 (G-D48) ─
 	##
-	## ⚠️ THIS BLOCK USED TO SAY "ring 3 is the reliable loser, so this needs no
-	## salt fishing" AND "a won roll must not also craze". Both were true of the
-	## build that wrote them and BOTH are now the opposite of the ruling:
-	##   · **G-D46** gives glass one ring past the bomb's own reach, so ring 3 is a
-	##     ring glass can BREAK in — it is no longer anybody's reliable loser.
-	##   · **G-D47** says what survives a PARTIAL break must crack, so a won roll
-	##     that leaves glass standing crazes it, on purpose.
+	## G-D48 replaced the logistic with `GLASS_SHOCKWAVE_FALLOFF` read directly.
+	## The near rings are now RELIABLE by design, so the "both outcomes reachable"
+	## probe moves to an OUTER shockwave ring (strength < 1), which is also where
+	## G-D47's partial break — a region flood that leaves the far end of the pane
+	## standing to craze — actually happens. Ring 5 is the last shockwave ring.
 	##
-	## So the outcome at ring 3 is genuinely probabilistic, and the test's job
-	## changed with it: pin BOTH outcomes, and prove both are REACHABLE rather than
-	## assuming it. The salts are searched, not hardcoded — a magic source_gu would
-	## rot the first time the curve moved.
-	var ring: int = 3
+	## ⚠️ The salts are searched, not hardcoded — a magic source_gu would rot the
+	## first time the ramp moved.
+	var ring: int = GlassShatterClass.GLASS_SHOCKWAVE_FALLOFF.size() - 1
 	## ⚠️ THE PANE'S OWN ID, READ OFF THE FIXTURE. The cook salts the roll
 	## `"BLAST_x_y_<pane_id>"`, so a probe that guesses the id searches a DIFFERENT
-	## sequence and its "winning" source_gu loses for real — which is exactly how
-	## this test failed on its first run (`destroyed=0` from a gu picked as a win).
+	## sequence and its "winning" source_gu loses for real.
 	var probe_pane: Array = _pane(2, 7, 3)
 	var probe_pane_id: String = probe_pane[0].pane_id
 	var win_gu := Vector2i(-1, -1)
 	var lose_gu := Vector2i(-1, -1)
 	for probe in range(200):
 		var gu := Vector2i(2, probe)
-		var punch: float = GlassShatterClass.blast_glass_punch([1.0, 0.6, 0.25, 0.0], ring)
-		var won: bool = GlassShatterClass.rolls_shatter(punch, "BLAST_%d_%d_%s" % [gu.x, gu.y, probe_pane_id])
+		var won: bool = GlassShatterClass.shockwave_rolls_shatter(
+			ring, GlassMaterials.BASE, "BLAST_%d_%d_%s" % [gu.x, gu.y, probe_pane_id])
 		if won and win_gu.x < 0:
 			win_gu = gu
 		elif not won and lose_gu.x < 0:
@@ -1213,7 +1214,7 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 		_pass("ring %d reaches BOTH outcomes — a won roll at %s and a lost one at %s"
 			% [ring, win_gu, lose_gu])
 	else:
-		_fail("ring %d never produced both outcomes in 200 probes (win %s, lose %s) — G-D46's extra ring has collapsed to one answer"
+		_fail("ring %d never produced both outcomes in 200 probes (win %s, lose %s) — the outer shockwave ring has collapsed to one answer"
 			% [ring, win_gu, lose_gu])
 		print("")
 		return

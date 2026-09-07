@@ -868,17 +868,35 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	var glass_punch: float = ShotPunchTable.compute(
 		GlassShatter.punch_after_layers(weapon_def.punch, layer_depth), hit_material,
 		ShotPunchTable.SKILL_NEUTRAL, 1.0, pick_salt)
-	## ── G-D15 / V-D — PRIMED PANES ───────────────────────────────────────────
+	var all_slices: Array = room._edge_registry.all_slices()
+	var pane_slices: Array = []
+	for s in all_slices:
+		if s.pane_id == hit_slice.pane_id:
+			pane_slices.append(s)
+
+	## ── G-D15 / V-D — PRIMED PANES · G-D49 — RE-DAMAGE ON A CRAZED PANE ───────
 	##
 	## *"A primed pane's next hit of ANY type has P_shatter = 1.0."* The promise is
 	## consumed here whether or not this particular round could ever have taken the
 	## pane on its own — that is the point of it, and it is why the flag is cleared
 	## before the flood rather than after: a second pellet of the same burst must
 	## find an ordinary pane, not a second free shatter.
+	##
+	## G-D49 (Director, 2026-09-07): a pane already substantially crazed — a prior
+	## blast's whole-pane craze, or repeated fire — is structurally spent, so this
+	## hit skips the roll and floods a region from the impact. *"colapsa as slices
+	## proximas a esse dano […] Continua existindo uma chance de sobrar uma area
+	## mais distante"* — the ordinary `region_radius(glass_punch)` + G-D13b
+	## remnants already are exactly that. Not consumed like a prime: a crazed pane
+	## stays crazed, so every subsequent round keeps collapsing more of it.
+	var recracked: bool = GlassShatter.crazed_fraction(pane_slices) \
+		>= GlassShatter.GLASS_RECRACK_COLLAPSE_FRAC
 	var primed: bool = room._pane_primed.has(hit_slice.pane_id)
 	if primed:
 		room._pane_primed.erase(hit_slice.pane_id)
 		print_debug("[GLASS-PRIME] pane=%s was PRIMED — this hit auto-shatters it" % hit_slice.pane_id)
+	elif recracked:
+		print_debug("[GLASS-RECRACK] pane=%s is already crazed — this hit collapses a region (G-D49)" % hit_slice.pane_id)
 	elif not GlassShatter.rolls_shatter(glass_punch, pick_salt):
 		## The roll is lost. On ARMORED glass that is not necessarily nothing: if
 		## the round still opened a hole, the armour was breached locally and held,
@@ -900,12 +918,6 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		_craze_pane_around_hole(hit_slice, hv, hit_material, weapon_def,
 			cell_to_voxel, cell_to_material, cell_to_depth)
 		return
-
-	var all_slices: Array = room._edge_registry.all_slices()
-	var pane_slices: Array = []
-	for s in all_slices:
-		if s.pane_id == hit_slice.pane_id:
-			pane_slices.append(s)
 
 	## G-D13b — a shard survives only where it has something to hang from. The
 	## anchor set is every non-glass voxel in the pane's own plane: its G-D9

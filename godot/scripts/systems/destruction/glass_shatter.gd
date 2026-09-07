@@ -93,85 +93,152 @@ static var SHATTER_REMNANT_MIN_COUNT: int = 4
 ## so an ANCHORED armoured pane still cannot be stripped completely bare.
 static var SHATTER_REMNANT_ARMORED_SCALE: float = 0.35
 
-## STAGE C — the grenade/cook path. A pane INSIDE a blast's damage area breaks
-## effectively (Director: *"Quebrar efetivamente quando estiver [dentro da área
-## de dano]"*); one near it but outside only CRACKS (G5, deferred). The cook has
-## no per-projectile punch, so the pane's shatter roll runs off the blast's own
-## per-ring falloff: `blast_glass_punch = SHATTER_BLAST_GAIN · ring_multipliers[ring]
-## / RESISTANCE["glass"]`, fed to the same `p_shatter()` / `rolls_shatter()` as a
-## bullet. Glass PANEL slices are pulled OUT of the cook's ring-scatter entirely
-## (glass fractures, it does not deform — a pane breaks whole or not at all);
-## glass BLOCKS keep the ring model.
+## ── STAGE C — the grenade/cook path. GLASS_MASTER_PLAN §5.1 + §6.2 + G-D48 ───
 ##
-## ⚠️ **RAISED 3.4 → 5.0 ON 2026-09-06** (Director: *"a granada está rachando
-## vidraças muito próximas […] mesmo estando a 1 ou 2 GUs da bolha. Queremos
-## aumentar um pouco esse threshold"*). A ring IS a GU of Chebyshev distance from
-## the epicenter, so his "1 ou 2 GUs" is rings 1 and 2 exactly, and the shipped
-## curve had a cliff between them:
+## A pane fractures, it does not deform, so glass PANEL slices are pulled OUT of
+## the cook's ring-scatter entirely (a pane breaks whole/regionally or not at
+## all); glass BLOCKS keep the ring model. What a grenade does to a pane runs off
+## two GLASS-ONLY per-ring falloff tables, not the bomb's shared `ring_multipliers`
+## and not the bullet logistic:
 ##
-##       gain    ring 0    ring 1    ring 2    ring 3
-##       3.4      97.5%     78.6%      5.9%      0.0%   (was)
-##       5.0      98.0%     96.5%     25.9%      0.0%   (is)
+##   · GLASS_SHOCKWAVE_FALLOFF — the EFFECTIVE-DESTRUCTION zone. Index is the ring
+##     (a ring IS one GU of BlastCalculator's wall-aware flood); the value 0..1 is
+##     the destruction strength there. It IS the shatter probability directly (no
+##     logistic), and it scales the region radius — a near ring rips a big patch,
+##     a far ring a small one. Off the end: the pane only crazes.
+##   · GLASS_CRAZE_FALLOFF — the CRAZING zone, deliberately reaching 2 GU FURTHER.
+##     A pane the shockwave did not take crazes at this intensity. Off the end:
+##     nothing happens to the pane at all.
 ##
-## ⚠️ **THIS IS THE ONLY DIAL THAT MOVES GLASS ALONE.** `ring_multipliers` lives in
-## `frag_grenade.json` and is shared by dents, cracks, craters, soot, smoke AND
-## G-D42's shard impulse — retuning it to fix glass would rebalance the whole
-## detonation. `SHATTER_K`/`SHATTER_X0` are the logistic every BULLET rolls on too.
-## This constant is glass-only and cook-only, which is what it was split out for.
+## ── Why this shape (Director, 2026-09-07) ──
 ##
-## ⚠️ IT MOSTLY MOVES RING 2, AND THAT IS THE POINT rather than a side effect: ring 0
-## is already against `SHATTER_P_MAX` and ring 1 is past the logistic's midpoint, so
-## the gain has almost nowhere to lift them. Ring 2 straddles `SHATTER_X0` and is
-## where the whole curve's slope lives.
+## The old model reused the bullet logistic scaled by `SHATTER_BLAST_GAIN` and
+## `frag_grenade`'s `ring_multipliers`, which capped hard at ring 3 (the table's
+## last entry is 0.0) and gave ring 2/3 only ~26 %. The Director, testing from one
+## grenade spot on the GLASS map, saw two panes literally inside the bubble refuse
+## to break: *"precisamos ampliar a area de alcance do dano efetivo de granadas —
+## somente sobre o vidro […] Podemos chamar essa zona de shockwave. […] estende a
+## destruição para 5 GU no total, com rampa descendente de dano, e estende também
+## a zona onde os vidros racham, mais 2 GU pra fora."* — plus G-D46's earlier
+## justification: *"a shockwave do ar consegue afetar as janelas em uma zona mais
+## ampla"*. So: a direct ramp (near = certain, tapering out to GU 5), and a craze
+## skirt out to GU 7. The bullet logistic (`SHATTER_K/X0/C`, `p_shatter()`) is
+## UNCHANGED — it is still what every projectile rolls on; this split is
+## grenade-only / cook-only, exactly as `SHATTER_BLAST_GAIN` was.
 ##
-## ⚠️ **RING 3 IS 0.0% AT ANY GAIN, BY CONSTRUCTION** — `blast_glass_punch()` returns
-## 0 for a multiplier of 0.0, and `frag_grenade`'s table ends in one. A pane 3 GUs out
-## can never be taken by this bomb however this constant moves; that would be a change
-## to the BOMB's reach, which is a different (and much wider) decision.
+## ⚠️ THE FLOOD IS EXTENDED FOR GLASS. `BlastCalculator.flood_gu_rings()` normally
+## stops at `ring_multipliers.size() - 1`; `_shatter_glass_panes()` re-floods to
+## `glass_blast_max_ring()` for panes only. This is the deliberate flood change
+## `SHATTER_BLAST_EXTRA_RINGS`'s note said was required before the reach could
+## grow past the bomb's own table — G-D48 makes it.
 ##
-## ⚠️ AND THE ROLL IS DETERMINISTIC PER (source_gu, pane_id) — `_shatter_glass_panes()`
-## salts it `"BLAST_x_y_paneid"`. So a pane that loses its roll at one grenade spot
-## loses it EVERY time from that spot: what reads as "it always just cracks" can be one
-## fixed outcome sampled repeatedly, not a probability. Worth knowing before tuning
-## from a single test position.
-static var SHATTER_BLAST_GAIN: float = 5.0
+## ⚠️ "SHOCKWAVE" ALSO NAMES the shard-scatter bias in `glass_fall.gd`. It is the
+## SAME modelled air wave, seen once as "what breaks the pane" (here) and once as
+## "what pushes the falling shards downrange" (there). One phenomenon, two effects
+## — not two systems.
+##
+## ⚠️ THE ROLL IS DETERMINISTIC PER (source_gu, pane_id) — `_shatter_glass_panes()`
+## salts it `"BLAST_x_y_paneid"`. A pane that loses at one grenade spot loses
+## EVERY time from that spot; "it always just cracks" can be one fixed outcome
+## sampled repeatedly. Calibrate from several positions.
+##
+## Placeholders like every balance row here — calibrated against a GLASS-map
+## capture. All `static var` (architecture Rule 1) — dial without a rebuild.
+static var GLASS_SHOCKWAVE_FALLOFF: Array[float] = [1.0, 1.0, 1.0, 0.90, 0.60, 0.35]
+static var GLASS_CRAZE_FALLOFF: Array[float]    = [1.0, 0.90, 0.75, 0.60, 0.45, 0.30, 0.20, 0.12]
 
-## ── §6.2 / G-D35 B-1 — THE PANE THE BLAST DOES NOT TAKE ─────────────────────
+## G4-4 / G-D42 — the region-radius span the shockwave strength interpolates
+## across, in pane-lattice voxels (Chebyshev). At full strength a hit takes a
+## `SHOCKWAVE_REGION_MAX`-radius disc (enough to cover a maximum panel); at the
+## faint outer ring only `SHOCKWAVE_REGION_MIN`. G-D13b's anchored remnants still
+## spare a distant, framed area — a free-standing pane still goes whole.
+static var SHOCKWAVE_REGION_MIN: int = 6
+static var SHOCKWAVE_REGION_MAX: int = 50
+
+## ── G-D49 — a pane already substantially crazed is structurally spent ────────
 ##
-## *"Fazer o vidro rachar, se estiver perto de uma explosão, mas não dentro da
-## área de dano"* (§6.2), and, once the family had a shape, *"as explosões ou vão
-## destruir a vidraça toda, ou vão deixar rachado com maior ou menor intensidade,
-## dependendo da distância"* (G-D35).
-##
-## The two sentences describe ONE event, and reading them as one is what makes
-## this cheap: a pane the blast reaches and does not take goes CRACKED, whole,
-## with an INTENSITY from its ring. That covers both the pane inside the damage
-## area whose roll was lost and the pane outside it that was never at risk.
-##
-## ⚠️ **THE WHOLE PANE, NOT A REGION** — G-D2 (*"o vidro é uma coisa só, desde que
-## seja a mesma superfície contínua"*) and G-D35, whose intensity axis is
-## GRANULARITY, not area: a near blast crazes into small polygons and a far one
-## into large ones. A partial craze would be the shatter model wearing a second
-## name.
-##
-## ⚠️ **AND §6.2's PREDICTED NEW BFS IS NOT NEEDED.** It asked for *"a crack radius
-## one or two rings beyond the destruction radius, reusing the same BFS the soot
-## derivation already walks"*. Measured instead of assumed: `flood_gu_rings()`
-## already floods to `ring_multipliers.size() - 1`, and frag_grenade's last entry
-## is **0.0** — so ring 3 is in `affected` and takes no damage at all. The ring
-## beyond the damage radius is already there; nothing new walks anywhere.
-##
-## Placeholders like every balance row in this file — the Director calibrates
-## against a GLASS map capture. Index is the ring; off the end is no craze.
-static var CRAZE_RING_INTENSITY: Array[float] = [1.0, 0.80, 0.55, 0.30]
+## Director, 2026-09-07: *"Qualquer dano novo num painel ja rachado, como um tiro,
+## colapsa as slices proximas a esse dano. Mas não precisa necessariamente ser
+## toda a vidraça de uma vez. Continua existindo uma chance de sobrar uma area
+## mais distante."* — the next damaging event that reaches a crazed pane (grenade
+## OR bullet) SKIPS the roll and floods a region from the impact, instead of
+## crazing again. The trigger is a FRACTION of the pane's glass already CRACKED,
+## so a lone bullet hole's local craze (~5 %) does not arm it but a blast craze
+## (the whole pane, G-D35 B-1) does. Reuses the region flood + G-D13b remnants,
+## which is where the "area mais distante pode sobrar" comes from for free.
+static var GLASS_RECRACK_COLLAPSE_FRAC: float = 0.35
+
+
+## The effective-destruction strength (== shatter probability) at this ring.
+## 0.0 off the end of the table — a pane there only crazes.
+static func shockwave_strength(ring: int) -> float:
+	if ring < 0 or ring >= GLASS_SHOCKWAVE_FALLOFF.size():
+		return 0.0
+	return float(GLASS_SHOCKWAVE_FALLOFF[ring])
 
 
 ## How hard a blast crazes a pane it did not take, at this ring. 0.0 off the end
 ## of the table, which is the honest answer for a pane the flood never reached.
 static func blast_craze_intensity(ring: int) -> float:
-	if ring < 0 or ring >= CRAZE_RING_INTENSITY.size():
+	if ring < 0 or ring >= GLASS_CRAZE_FALLOFF.size():
 		return 0.0
-	return float(CRAZE_RING_INTENSITY[ring])
+	return float(GLASS_CRAZE_FALLOFF[ring])
+
+
+## The furthest ring either glass table still speaks to — the depth
+## `_shatter_glass_panes()` must re-flood the GU rings to.
+static func glass_blast_max_ring() -> int:
+	return maxi(GLASS_SHOCKWAVE_FALLOFF.size(), GLASS_CRAZE_FALLOFF.size()) - 1
+
+
+## Deterministic per-pane shockwave shatter roll for the cook. `material` divides
+## the strength by its resistance ratio vs base glass (an armoured pane is
+## harder for the air wave too). True → the pane is taken (regionally).
+static func shockwave_rolls_shatter(ring: int, material: String, salt: String) -> bool:
+	var p: float = shockwave_strength(ring)
+	if material != GlassMaterials.BASE:
+		p *= ShotPunchTableClass.resistance(GlassMaterials.BASE) \
+			/ maxf(ShotPunchTableClass.resistance(material), 0.001)
+	p = clampf(p, 0.0, 1.0)
+	if p <= 0.0:
+		return false
+	if p >= 1.0:
+		return true
+	var unit: float = float(FacadeSamplerClass._fnv1a_hash("%s:GLASS_SHATTER" % salt) % 100000) / 100000.0
+	return unit < p
+
+
+## The pane-lattice region radius (Chebyshev voxels) a shockwave win floods from
+## the impact, at this ring. Scales with the ring's strength; at least
+## SHOCKWAVE_REGION_MIN. 0 when the ring is off the shockwave table.
+static func shockwave_region_radius(ring: int) -> int:
+	var strength: float = shockwave_strength(ring)
+	if strength <= 0.0:
+		return 0
+	var r: float = float(SHOCKWAVE_REGION_MIN) \
+		+ float(SHOCKWAVE_REGION_MAX - SHOCKWAVE_REGION_MIN) * strength
+	return maxi(int(roundf(r)), SHOCKWAVE_REGION_MIN)
+
+
+## The share (0..1) of a pane's still-standing glass voxels that are CRACKED —
+## G-D49's arming test. A whole-pane blast craze reads ~1.0; a bullet hole's
+## local craze reads a few percent.
+static func crazed_fraction(pane_slices: Array) -> float:
+	var glass_total: int = 0
+	var cracked: int = 0
+	for slice in pane_slices:
+		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
+		for v in slice.voxels:
+			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
+				continue
+			glass_total += 1
+			if v.damage_state == Voxel.DamageState.CRACKED:
+				cracked += 1
+	if glass_total == 0:
+		return 0.0
+	return float(cracked) / float(glass_total)
 
 
 ## §6.2 / B-1 — the pane's standing GLASS voxels, as the `set_damage(CRACKED)`
@@ -284,74 +351,13 @@ static func rolls_shatter(glass_punch: float, salt: String) -> bool:
 	return unit < p
 
 
-## STAGE C — the effective `glass_punch` for a pane at ring `ring` of a blast
-## whose per-ring falloff is `ring_multipliers`. Off the table's end (or a 0.0
-## entry) it is 0 — the blast does not reach.
-## ⚠️ `material` was the literal `"glass"` until the family existed (V-A left it
-## as the last one standing), which quietly gave an ARMORED pane a common pane's
-## odds against a grenade — the entire point of its RESISTANCE row is that it
-## divides HERE. Defaulted to BASE so the pre-family callers and the selftest's
-## own arsenal table are unchanged by construction.
-static func blast_glass_punch(ring_multipliers: Array, ring: int,
-		material: String = GlassMaterials.BASE) -> float:
-	if ring < 0:
-		return 0.0
-	var m: float = glass_ring_multiplier(ring_multipliers, ring)
-	if m <= 0.0:
-		return 0.0
-	return SHATTER_BLAST_GAIN * m / maxf(ShotPunchTableClass.resistance(material), 0.001)
-
-
-## ── G-D46 — GLASS FEELS THE BLAST ONE GU FURTHER THAN ANYTHING ELSE ─────────
-##
-## (Director, 2026-09-06: *"eu queria que especificamente para o vidro, a área de
-## dano da granada fosse 1 GU maior, especialmente considerando que a shockwave do
-## ar consegue afetar as janelas em uma zona mais ampla. Os demais materiais podem
-## continuar como estão. Também não altera o dano sofrido pelos atores."*)
-##
-## ⚠️ THE AREA GROWS; THE FALLOFF INSIDE IT DOES NOT MOVE. The other reading —
-## "glass behaves as if it were one GU closer", i.e. `ring - 1` — would have lifted
-## ring 2 from the 25.9% the Director had ratified minutes earlier to ring 1's
-## 96.5%, silently superseding his own tuning. So rings 0..N keep the bomb's own
-## multipliers exactly, and the LAST DAMAGING one is held for
-## `SHATTER_BLAST_EXTRA_RINGS` further rings. For frag_grenade
-## `[1.0, 0.6, 0.25, 0.0]` glass reads `[1.0, 0.6, 0.25, 0.25]`.
-##
-## ⚠️ AND IT COSTS NO SECOND FLOOD, which is why it is this shape rather than a
-## glass-only BFS. `flood_gu_rings()` already walks out to
-## `ring_multipliers.size() - 1` = ring 3, so a ring-3 pane is ALREADY in
-## `affected` — it simply found a 0.0 multiplier there and could only craze. This
-## turns a ring the flood already paid for into a ring glass can break in.
-##
-## ⚠️ **THAT ALSO BOUNDS THIS CONSTANT AT 1 FOR TODAY'S BOMBS.** The free ring
-## exists because `frag_grenade`'s table ends in an explicit 0.0. A value of 2
-## would ask for ring 4, which `flood_gu_rings()` never reaches, and the extra ring
-## would be silently inert — the failure this project keeps paying for. Raising it
-## means extending the flood for glass, deliberately, not just this number.
-## `glass_shatter_selftest` [10] pins the bound rather than trusting this note.
-##
-## Nothing else calls this function: walls, slabs, junctions, roofs and the actor
-## damage all read `ring_multipliers` directly and see the unchanged 0.0 at ring 3.
-static var SHATTER_BLAST_EXTRA_RINGS: int = 1
-
-
-## The multiplier GLASS reads at `ring` — the bomb's own inside the table, the last
-## damaging one held for `SHATTER_BLAST_EXTRA_RINGS` rings past it, 0.0 beyond.
-static func glass_ring_multiplier(ring_multipliers: Array, ring: int) -> float:
-	if ring < 0:
-		return 0.0
-	if ring < ring_multipliers.size() and float(ring_multipliers[ring]) > 0.0:
-		return float(ring_multipliers[ring])
-	var last: int = -1
-	for i in range(ring_multipliers.size()):
-		if float(ring_multipliers[i]) > 0.0:
-			last = i
-	if last < 0:
-		return 0.0
-	var beyond: int = ring - last
-	if beyond <= 0 or beyond > SHATTER_BLAST_EXTRA_RINGS:
-		return 0.0
-	return float(ring_multipliers[last])
+## G-D48 SUPERSEDES `blast_glass_punch()` / `SHATTER_BLAST_EXTRA_RINGS` /
+## `glass_ring_multiplier()`. The cook no longer derives a `glass_punch` and rolls
+## the bullet logistic; it reads `shockwave_strength(ring)` (== the probability)
+## and `shockwave_region_radius(ring)` off GLASS_SHOCKWAVE_FALLOFF directly, and
+## the reach grows by a real glass-only re-flood in `_shatter_glass_panes()`
+## rather than by holding a multiplier one ring further. `glass_fall.gd`'s shard
+## impulse `strength` reads `shockwave_strength(ring)` too — same air wave.
 
 
 ## G-D12 — the flood radius (in voxels, Chebyshev on the pane surface) for a won
@@ -449,9 +455,13 @@ static func collect_anchor_positions(pane_slices: Array, face: int, all_slices: 
 ## Returns `{"destroyed": Array[{"slice", "voxel_index"}],
 ##            "remnants":  Array[{"slice", "voxel_index", "anchor_mask"}]}` —
 ## G4-2. The second half used to be a discarded local; see the return itself.
+## `radius_override` (G-D48) — the cook passes `shockwave_region_radius(ring)` so
+## the region flood follows the glass-only shockwave ramp instead of the bullet
+## `region_radius(glass_punch)`. -1 (the default) keeps the bullet behaviour for
+## every firearm caller. Ignored for a whole-pane (armoured) shatter.
 static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vector2i,
 		hit_level: int, glass_punch: float, salt: String,
-		anchor_positions: Dictionary = {}) -> Dictionary:
+		anchor_positions: Dictionary = {}, radius_override: int = -1) -> Dictionary:
 	## Run axis of the pane: X for {SW, NE}, Y for {SE, NW} — matches
 	## GlassPaneGrouper's `Vector2i(absi(fd.y), absi(fd.x))`.
 	var run_is_x: bool = (face == Face.SW or face == Face.NE)
@@ -543,7 +553,7 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## pane's own non-glass band (G-D9's brick sill and head), which was blocking
 	## the walk only as a side effect of not being in `lattice` and now says so
 	## outright. Pinned from both sides: [14] is the hole, [11] is the frame.
-	var radius: int = region_radius(glass_punch)
+	var radius: int = region_radius(glass_punch) if radius_override < 0 else radius_override
 	var flood: Dictionary = {}   ## Vector2i(col, level) -> true (voxels to destroy)
 
 	## G-D15 / V-C — ARMORED GLASS HAS NO REGION. Director: once breached it

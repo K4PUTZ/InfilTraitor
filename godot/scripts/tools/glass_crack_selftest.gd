@@ -1769,11 +1769,12 @@ func test_the_craze_field_covers_the_pane_and_tiles() -> void:
 
 	## ── 6. GRANULARITY RUNS THE RIGHT WAY (G-D37) ───────────────────────────
 	## ⚠️ THE ONE THING NO GEOMETRY TEST CAN SEE. §16.2: a NEAR blast crazes into
-	## small polygons and a far one into large ones, and `CRAZE_RING_INTENSITY`
-	## runs 1.0 at ring 0 down to 0.30 at ring 3 — so high intensity is the FINE
-	## mesh. Inverted, everything above still passes and every picture is wrong.
+	## small polygons and a far one into large ones, and `GLASS_CRAZE_FALLOFF`
+	## runs 1.0 at ring 0 down toward 0.12 at ring 7 (G-D48) — so high intensity is
+	## the FINE mesh. Inverted, everything above still passes and every picture is
+	## wrong.
 	var per_ring: Array = []
-	for r in range(GlassShatterClass.CRAZE_RING_INTENSITY.size()):
+	for r in range(GlassShatterClass.GLASS_CRAZE_FALLOFF.size()):
 		per_ring.append(GlassCrackClass.craze_bucket_for(
 			GlassShatterClass.blast_craze_intensity(r)))
 	var near: Array = per_ring[0]

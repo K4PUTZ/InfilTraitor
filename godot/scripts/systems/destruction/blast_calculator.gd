@@ -64,9 +64,17 @@ const FACE_SOOT_CLEAN := 4
 ## through the flooded cell's own edges (find_affected_containers() walks
 ## edges_touching_gu() of the FLOODED side). Trailing + defaulted so the
 ## pure-hash selftests are unaffected.
+## min_max_ring (G-D48) — glass feels the grenade's air shockwave in a wider,
+## glass-only zone than the shrapnel touches anything else. `_shatter_glass_panes()`
+## passes `GlassShatter.glass_blast_max_ring()` here so the flood reaches the panes
+## the shockwave breaks or crazes; every other caller leaves it 0 and the bomb's
+## own `ring_multipliers` length is the cap, unchanged. A wider flood is safe for
+## non-glass consumers — `simulate_container_damage()` skips any ring past its
+## weight table — but only glass reads the extra rings, so only glass pays for the
+## re-flood.
 static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Dictionary,
-		blocked_cells: Dictionary = {}) -> Dictionary:
-	var max_ring: int = bomb_def.ring_multipliers.size() - 1
+		blocked_cells: Dictionary = {}, min_max_ring: int = 0) -> Dictionary:
+	var max_ring: int = maxi(bomb_def.ring_multipliers.size() - 1, min_max_ring)
 	var rings: Dictionary = {source_gu: 0}
 	var frontier: Array[Vector2i] = [source_gu]
 

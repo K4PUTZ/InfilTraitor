@@ -1017,6 +1017,49 @@ func apply_glass_diagnostic_backdrop() -> void:
 ##
 ## The opening id is re-derived rather than stored: `pick()` is pure in the base
 ## key, so replaying the key reproduces the shape.
+## ⚠️ CRACK-04 — CLAIM BEFORE THE REPLAY FLUSHES, AND THE REASON CHANGED UNDER US.
+##
+## `_respawn_base_openings()`'s own note says a rebuild erases nothing, so a claim
+## would sit unused and the hole had to be APPLIED instead. That was measured on
+## 2026-09-04 and it stopped being true: `build_from_layout()` now renders the pane
+## INTACT first and `_reapply_base_damage()` erases the holes back out of it, so the
+## replay's own `process_dirty()` reaches `refresh_glass_rims()` with a full dirty
+## set and NO claims — and `_group_erased_into_regions()` step 2 does exactly what
+## it is meant to do for an unclaimed hole: it invents one. Measured 2026-09-06 on
+## the GLASS map, two recorded holes: **`2 region(s) [star_deep*, star_deep*], 22
+## cell(s) cut`** — the `*` is the log saying nobody claimed them — and then
+## `rebuilt 1 of 2 recorded hole(s), 2 shard(s)`, because the real openings arrived
+## to find their cells already cut and a shard is never recomputed.
+##
+## So after ONE camera turn every hole in the game wore `GLASS_OPENING_DEFAULT` at a
+## CENTROID instead of its own recorded polygon at its own impact — the entire point
+## of G-D34, discarded silently. It is silent because a default-shaped hole is still
+## a hole: nothing errors, nothing is missing, and the shape is only wrong.
+##
+## The fix is to remove the asymmetry rather than to suppress the flush: the live
+## path claims and then lets the flush shape the hole, so the rebuild does the same.
+## `record = false` — the record is already in the store and re-appending would grow
+## it by one hole per camera turn, forever.
+func _claim_base_openings() -> void:
+	if _base_openings.is_empty() or _voxel_renderer == null:
+		return
+	var base_size := _base_voxel_size()
+	var claimed: int = 0
+	for rec in _base_openings:
+		var key: Vector3i = rec["base"]
+		var vxy := PerspectiveMapperClass.cell_from_base(
+			Vector2i(key.x, key.y), _active_perspective, base_size)
+		if claim_glass_opening_for_hit(vxy, key.z, bool(rec["wide"]), false) != "":
+			claimed += 1
+	print_debug("[GLASS-OPENING] claimed %d of %d recorded hole(s) before the replay flush, perspective %s"
+		% [claimed, _base_openings.size(), _active_perspective])
+
+
+## ⚠️ AND THIS STILL RUNS, AS THE BELT TO THAT BRACE. `_claim_base_openings()` above
+## covers every hole whose glass the replay actually erased; a hole whose pane this
+## view does not build, or one the flush did not reach, is still applied here. It is
+## idempotent by the same rule the live path relies on — a cell already holding a
+## shard is never recomputed — so the two cannot fight over a cell.
 func _respawn_base_openings() -> void:
 	if _base_openings.is_empty() or _voxel_renderer == null:
 		return
@@ -2500,10 +2543,15 @@ func _set_perspective(direction: String) -> void:
 		## VL-PERSIST: stamp recorded destruction back onto the freshly rebuilt
 		## geometry BEFORE the lighting rebuild, so the repaint sees the holes and
 		## soot in this view (build_from_layout rebuilt every Voxel intact).
+		## CRACK-04 — claim every recorded hole's OPENING first, because the line
+		## below ends in a `process_dirty()` whose flush shapes the rims. Without
+		## this the replay's own erases arrive at `refresh_glass_rims()` unclaimed
+		## and every hole is re-cut with the DEFAULT opening at a centroid. See
+		## `_claim_base_openings()` for the measurement.
+		_claim_base_openings()
 		_reapply_base_damage()
-		## CRACK-04 — and the shard rims around every recorded hole. AFTER the
-		## stamp, because the walk reads the tilemap; see its own note for why a
-		## rebuild cannot use the claim path the shot path uses.
+		## CRACK-04 — and the shard rims around any recorded hole the flush above
+		## did not reach. AFTER the stamp, because the walk reads the tilemap.
 		_respawn_base_openings()
 		## CRACK-02 S-3 — and the webs, from the base-coord registry, on the
 		## geometry the line above just finished stamping.
@@ -6407,6 +6455,75 @@ func _save_glass_panel(out_dir: String, panel: int) -> void:
 ##   INFILTRAITOR_CRACK_DEMO_FLIP=<dir>  — S-3: rotate to that perspective after
 ##                                       the crack and save the frame, so "still
 ##                                       there, in the right place" is a picture
+## CRACK-02 / G-D24 — persist what a crack did to the pane's voxels.
+##
+## ⚠️ `GlassCrack.apply()` DESTROYS as well as crazes: a cell already covered by a
+## DIFFERENT crack drops out ("crossed cracks drop the piece"), which on a pane hit
+## twice is most of the overlap — 52 voxels in the GLASS map's gap-3 case. The real
+## shot path folds `res["voxels"]` into its own `cell_to_voxel` index and persists
+## every one of them (`agent_shot_controller.gd` ~687). This demo did not, so its
+## crossed pieces healed on the first rotation and its live-versus-rebuilt shard
+## counts were comparing a pane that had lost 52 voxels with one that had not.
+func _record_crack_voxels_to_base(res: Dictionary) -> void:
+	for v in res.get("voxels", []):
+		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state)
+
+
+## CRACK-04 — punch the bore ONE hit makes, exactly as destruction would.
+##
+## ⚠️ IT DESTROYS WHAT THE OPENING SWALLOWS WHOLE, and nothing else — the part
+## destruction owns on the real path. A fixed bore (1 voxel tight, 3x3 wide) is
+## not a smaller version of the truth but a different picture: a large member
+## covers cells the bore never touched, the renderer REFUSES to erase them
+## (destruction is the one authority on voxel existence) and warns, so half the
+## family photographed with standing glass sitting inside its own hole.
+##
+## ⚠️ ONE FUNCTION FOR BOTH HITS, DELIBERATELY. The second hit used to have no
+## bore at all; giving it a copy of this loop would put two authorities on "what
+## a demo bore is", and the whole point of the second hit is that it must be the
+## SAME event as the first, ten voxels over.
+func _punch_demo_bore(pane_slices: Array, run_is_x: bool, hit_gp: Vector2i,
+		hit_run: int, hit_level: int, wide: bool, armored_pane: bool) -> int:
+	if armored_pane:
+		return 0
+	var opening_pre: String = glass_opening_for(hit_gp, hit_level, wide)
+	var ob: Rect2i = GlassOpening.cell_bounds(opening_pre)
+	var holed: int = 0
+	for s2 in pane_slices:
+		for v in s2.voxels:
+			if v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			var r2: int = v.grid_pos.x if run_is_x else v.grid_pos.y
+			var dr2: int = r2 - hit_run
+			var dl2: int = v.level - hit_level
+			if dr2 < ob.position.x or dr2 >= ob.position.x + ob.size.x \
+					or dl2 < ob.position.y or dl2 >= ob.position.y + ob.size.y:
+				continue
+			if GlassOpening.coverage(opening_pre, dr2, dl2) != GlassOpening.Coverage.FULL:
+				continue
+			v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+			## ⚠️ AND IT IS RECORDED, because a bore that is not persisted makes
+			## this demo lie about the ONE thing the flip proof is for. Until
+			## 2026-09-06 it was not: on every rotation the bore voxel came back as
+			## intact glass, `_apply_opening_to_region()` then found standing glass
+			## inside a hole it was told to shape, and the "covers N cell(s) whole
+			## that still hold glass" warning fired after EVERY flip — a loud signal
+			## nobody was reading. Any shard count compared across a rotation was
+			## measuring the demo's missing persistence, not the rebuild.
+			record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED)
+			holed += 1
+	## A small opening can swallow nothing whole; the struck cell still goes.
+	if holed == 0:
+		for s2 in pane_slices:
+			for v in s2.voxels:
+				if v.grid_pos == hit_gp and v.level == hit_level \
+						and v.damage_state != Voxel.DamageState.DESTROYED:
+					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+					record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED)
+					holed += 1
+	return holed
+
+
 func _capture_glass_crack_demo() -> void:
 	if _voxel_renderer == null or _edge_registry == null:
 		push_error("[CRACK-DEMO] no renderer / edge registry")
@@ -6522,34 +6639,8 @@ func _capture_glass_crack_demo() -> void:
 			pane_slices[0].material, pane_slices[0].glass_class) \
 		or GlassMaterials.shatters_whole_pane(
 			pane_slices[0].material, pane_slices[0].glass_class)
-	var demo_opening_pre: String = "" if armored_pane \
-		else glass_opening_for(hit_gp, hit_level, wide)
-	var ob: Rect2i = Rect2i() if armored_pane else GlassOpening.cell_bounds(demo_opening_pre)
-	var holed: int = 0
-	for s2 in pane_slices:
-		if armored_pane:
-			break
-		for v in s2.voxels:
-			if v.damage_state == Voxel.DamageState.DESTROYED:
-				continue
-			var r2: int = v.grid_pos.x if run_is_x else v.grid_pos.y
-			var dr2: int = r2 - hit_run
-			var dl2: int = v.level - hit_level
-			if dr2 < ob.position.x or dr2 >= ob.position.x + ob.size.x \
-					or dl2 < ob.position.y or dl2 >= ob.position.y + ob.size.y:
-				continue
-			if GlassOpening.coverage(demo_opening_pre, dr2, dl2) != GlassOpening.Coverage.FULL:
-				continue
-			v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-			holed += 1
-	## A small opening can swallow nothing whole; the struck cell still goes.
-	if holed == 0 and not armored_pane:
-		for s2 in pane_slices:
-			for v in s2.voxels:
-				if v.grid_pos == hit_gp and v.level == hit_level \
-						and v.damage_state != Voxel.DamageState.DESTROYED:
-					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-					holed += 1
+	var holed: int = _punch_demo_bore(pane_slices, run_is_x, hit_gp, hit_run,
+		hit_level, wide, armored_pane)
 	## CRACK-04 — claim the opening BEFORE the dirty pass, exactly as the shot path
 	## does: that pass is what erases the glass, and the erase flush consumes the
 	## claim in the same call. Claiming after it would leave the demo's hole
@@ -6565,6 +6656,7 @@ func _capture_glass_crack_demo() -> void:
 	plan["opening"] = demo_opening   ## CRACK-04 — the sheet's void, same polygon
 	plan["variant"] = GlassCrack.pick_variant(glass_base_key(hit_gp, hit_level))
 	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
+	_record_crack_voxels_to_base(res)   ## G-D24 — the crossed pieces are gone for good
 	if int(res["crack_id"]) != 0:
 		record_glass_crack_to_base(hit_gp, hit_level, wide)   ## CRACK-02 S-3
 	print("[CRACK-DEMO] hit run=%d level=%d gp=%s wide=%s -> crazed=%d crossed=%d, sheet=%s"
@@ -6581,14 +6673,39 @@ func _capture_glass_crack_demo() -> void:
 		plan["pane_lo"].y, plan["pane_hi"].y])
 	_print_crack_quads(plan)
 
+	## ⚠️ THE SECOND HIT PUNCHES ITS OWN BORE, AND UNTIL 2026-09-06 IT DID NOT —
+	## which made this branch photograph the exact fiction this function's own
+	## header bans ("a crack without a hole is a state the game cannot produce").
+	## It also made the branch blind to the one thing two hits are for: a pane with
+	## TWO OVERLAPPING OPENINGS is the only reachable state in which the live rim
+	## and the rebuilt rim can disagree (GLASS §16.13), and a second crack with no
+	## second hole cuts no second rim.
+	##
+	## `INFILTRAITOR_CRACK_DEMO_SECOND_GAP` is the distance along the run in
+	## voxels — the default 10 clears the first opening, and a value inside the
+	## first opening's bounds is what makes the two rims overlap. It is a real
+	## scenario, not a rig: a shotgun puts several pellets through one pane in ONE
+	## batch, each claiming its own opening (`agent_shot_controller.gd` ~852).
 	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_SECOND") == "1":
-		var hit2 := Vector2i(hit_gp.x + (10 if run_is_x else 0), hit_gp.y + (0 if run_is_x else 10))
+		var gap_env := OS.get_environment("INFILTRAITOR_CRACK_DEMO_SECOND_GAP")
+		var gap: int = gap_env.to_int() if gap_env.is_valid_int() else 10
+		var hit2 := Vector2i(hit_gp.x + (gap if run_is_x else 0),
+			hit_gp.y + (0 if run_is_x else gap))
+		var holed2: int = _punch_demo_bore(pane_slices, run_is_x, hit2, hit_run + gap,
+			hit_level, wide, armored_pane)
+		var demo_opening2: String = "" if armored_pane \
+			else claim_glass_opening_for_hit(hit2, hit_level, wide)
+		await _voxel_renderer.process_dirty_async(_edge_registry)
 		var plan2: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit2, hit_level, wide)
+		plan2["opening"] = demo_opening2
+		plan2["variant"] = GlassCrack.pick_variant(glass_base_key(hit2, hit_level))
 		var res2: Dictionary = GlassCrack.apply(_voxel_renderer, plan2)
+		_record_crack_voxels_to_base(res2)
 		if int(res2["crack_id"]) != 0:
 			record_glass_crack_to_base(hit2, hit_level, wide)   ## CRACK-02 S-3
-		print("[CRACK-DEMO] second crack at %s -> crazed=%d crossed=%d (G-D24)"
-			% [hit2, res2["crazed"], res2["crossed"]])
+		print("[CRACK-DEMO] second hit at %s (gap %d): bore %d voxel(s), opening=%s -> crazed=%d crossed=%d (G-D24)"
+			% [hit2, gap, holed2, demo_opening2 if demo_opening2 != "" else "(none)",
+			res2["crazed"], res2["crossed"]])
 
 	await _voxel_renderer.process_dirty_async(_edge_registry)
 	for _c in range(10):
@@ -6705,8 +6822,28 @@ func _capture_glass_crack_demo() -> void:
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(
 				"%s/glass_crack_flip_%s_%s.png" % [dir, tag, flip_to])
-			print("[CRACK-DEMO] S-3 flip to %s -> glass_crack_flip_%s_%s.png · %d sprite(s) live"
-				% [flip_to, tag, flip_to, _voxel_renderer.glass_crack_count()])
+			## ⚠️ THE SHARD BOARD, NOT ONLY THE SPRITE — CRACK-04, GLASS §16.13.
+			## S-3's proof was always about the crack SPRITE's pixels, so the RIM
+			## could drift across the very rotation this line photographs and the
+			## demo would still report success. `_respawn_base_openings()` replays
+			## each recorded hole on its own; the live path lets one region's cut
+			## claim the cells a neighbouring opening would also have cut, so two
+			## OVERLAPPING openings are where the two can disagree. The number is
+			## read off the tilemap (`count_glass_shards()`), never off the counter.
+			## ⚠️ AND THEN THE FLUSH ANY LATER BATCH WILL RUN. A stale registry key
+			## is not inert: `restamp_glass_shards()` walks the registry and puts
+			## its atom back on any cell that does not already hold it, so a key
+			## left over from the PREVIOUS view is a shard waiting to be stamped
+			## onto whatever glass now occupies that cell. Reading the board twice
+			## — before and after the flush — is what separates "the rebuild is
+			## right" from "the rebuild is right until something else destroys a
+			## voxel". The two numbers must be equal.
+			var board_pre: int = _voxel_renderer.count_glass_shards()
+			_voxel_renderer.refresh_glass_rims()
+			var board_post: int = _voxel_renderer.count_glass_shards()
+			print("[CRACK-DEMO] S-3 flip to %s -> glass_crack_flip_%s_%s.png · %d sprite(s) live · shards registry=%d board=%d, after a flush board=%d"
+				% [flip_to, tag, flip_to, _voxel_renderer.glass_crack_count(),
+				_voxel_renderer._glass_shard_cells.size(), board_pre, board_post])
 
 	## §13.5 — "perf is a claim, not a fact". With INFILTRAITOR_FRAME_PROBE=1 the
 	## demo holds the finished board long enough for the standing probe to print,

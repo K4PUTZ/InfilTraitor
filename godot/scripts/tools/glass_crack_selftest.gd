@@ -43,6 +43,11 @@
 ##       that coverage() calls outside, or left whole that it calls PARTIAL — and
 ##       the shards NOT SURVIVING a later render pass, which is what kept
 ##       CRACK-03's rim off the screen for its entire life.
+##   [22] a rotation re-shaping every standing hole with the DEFAULT opening —
+##       CRACK-04, GLASS §16.13. The mechanism was never broken; the ORDER was.
+##       The perspective rebuild renders the pane intact, erases the recorded
+##       holes back out of it and flushes, so unless it CLAIMS first the flush
+##       sees a batch of unclaimed erases and invents a shape for each.
 
 extends SceneTree
 
@@ -91,6 +96,7 @@ func _init() -> void:
 	test_the_craze_field_covers_the_pane_and_tiles()
 	test_the_craze_field_is_cut_to_the_holes()
 	test_the_remnant_atom_keeps_only_its_fragment()
+	test_an_unclaimed_hole_is_reshaped_and_the_replay_claims_first()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -2046,3 +2052,146 @@ func _stray_px_outside(atom: Image, poly: PackedVector2Array, face: int) -> int:
 				if d > 0.06:
 					stray += 1
 	return stray
+
+
+## ── [22] CRACK-04 / GLASS §16.13 — THE REPLAY MUST CLAIM BEFORE IT FLUSHES ───
+##
+## Two halves, and they are asserted as IDENTITIES rather than as "the shapes
+## differ": an unclaimed erase does not produce a WRONG hole, it produces the
+## DEFAULT hole, and saying which one is what makes this a measurement.
+##
+## ⚠️ THE SECOND HALF IS A SOURCE-ORDER CHECK, AND THAT IS THE ONLY PLACE THE BUG
+## EVER LIVED. `refresh_glass_rims()` has always honoured a claim; `_group_erased_
+## into_regions()` has always fallen back to `GLASS_OPENING_DEFAULT` for a hole
+## nobody claimed, which is right for a live event. The defect was that the
+## perspective rebuild reached the flush with no claims at all, because
+## `_reapply_base_damage()` ends in `process_dirty()` and the claim was only made
+## afterwards. Measured on the GLASS map 2026-09-06, two recorded holes: the log
+## read `2 region(s) [star_deep*, star_deep*]` before, `[notch_v, star_wild]`
+## after. Nothing in the mechanism can catch an ordering mistake in its caller, so
+## the caller's order is what this pins.
+func test_an_unclaimed_hole_is_reshaped_and_the_replay_claims_first() -> void:
+	print("[22] an unclaimed erase takes the DEFAULT opening; the rotation replay claims first\n")
+
+	var default_id: String = VoxelRendererClass.GLASS_OPENING_DEFAULT
+	## A member that a one-cell bore reaches (so the unclaimed fallback picks the
+	## DEFAULT rather than the >2-member `star_deep_wide`) and whose cut set is not
+	## the default's — otherwise the two halves are the same picture and the test
+	## would pass for a build with no claim path at all.
+	var subject: String = ""
+	for opening in GlassOpeningClass.ids():
+		if opening == default_id:
+			continue
+		if _full_cells(opening) > 2:
+			continue
+		if _partial_set(opening) != _partial_set(default_id):
+			subject = opening
+			break
+	if subject == "":
+		_fail("no opening is both small-bored and shaped differently from '%s' — the fixture cannot see the defect" % default_id)
+		return
+	_pass("subject opening '%s' is reachable: <=2 whole cells, and its cut set differs from '%s'"
+		% [subject, default_id])
+
+	## CLAIMED — the cut must be the SUBJECT's own partial set.
+	var claimed: Dictionary = _cut_set_for(subject, true)
+	if claimed == _partial_set(subject):
+		_pass("claimed: the board holds exactly '%s'\u2019s %d PARTIAL cell(s)"
+			% [subject, claimed.size()])
+	else:
+		_fail("claimed: board %s, expected '%s' %s" % [claimed.keys(), subject, _partial_set(subject).keys()])
+
+	## UNCLAIMED — the cut must be the DEFAULT's partial set. This is what every
+	## hole in the game looked like after one camera turn.
+	var unclaimed: Dictionary = _cut_set_for(subject, false)
+	if unclaimed == _partial_set(default_id):
+		_pass("unclaimed: the board holds exactly '%s'\u2019s %d PARTIAL cell(s) — the shape is LOST, not merely wrong"
+			% [default_id, unclaimed.size()])
+	else:
+		_fail("unclaimed: board %s, expected the default '%s' %s"
+			% [unclaimed.keys(), default_id, _partial_set(default_id).keys()])
+
+	## THE ORDER, in the caller that actually rebuilds a perspective.
+	var src := FileAccess.get_file_as_string("res://godot/scripts/world/room.gd")
+	if src == "":
+		_fail("could not read room.gd to check the replay order")
+		return
+	var claim_at: int = src.find("\n\t\t_claim_base_openings()")
+	var reapply_at: int = src.find("\n\t\t_reapply_base_damage()")
+	if claim_at >= 0 and reapply_at >= 0 and claim_at < reapply_at:
+		_pass("room.gd: _claim_base_openings() precedes _reapply_base_damage() in the perspective rebuild")
+	else:
+		_fail("room.gd: claim at %d, reapply at %d — the replay flushes before it claims, so every hole takes '%s'"
+			% [claim_at, reapply_at, default_id])
+
+
+## The cells an opening SWALLOWS — destruction's part, which the fixture plays.
+func _full_cells(opening: String) -> int:
+	var bounds: Rect2i = GlassOpeningClass.cell_bounds(opening)
+	var n: int = 0
+	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
+		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
+			if GlassOpeningClass.coverage(opening, dr, dl) == GlassOpeningClass.Coverage.FULL:
+				n += 1
+	return n
+
+
+## The cells an opening only INTRUDES on — the ones that become shards.
+func _partial_set(opening: String) -> Dictionary:
+	var bounds: Rect2i = GlassOpeningClass.cell_bounds(opening)
+	var out: Dictionary = {}
+	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
+		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
+			if GlassOpeningClass.coverage(opening, dr, dl) == GlassOpeningClass.Coverage.PARTIAL:
+				out[Vector2i(dr, dl)] = true
+	return out
+
+
+## Erase `opening`\u2019s whole cells on a fresh one-pane board, optionally claim it,
+## flush, and return the offsets that came back as shards. Same fixture shape as
+## [15]; the ONE variable is whether the claim is made.
+func _cut_set_for(opening: String, claim: bool) -> Dictionary:
+	var r = VoxelRendererClass.new()
+	var base: int = GeometryCoordsClass.storey_level_base(0)
+	var cross := 7
+	var run0 := 0
+	var runs := 23
+	var levels := 17
+	var ts := _one_tile_tileset()
+	r._tileset = ts
+	for lvl in range(base, base + levels):
+		var layer := TileMapLayer.new()
+		layer.tile_set = ts
+		for run in range(run0, run0 + runs):
+			layer.set_cell(Vector2i(run, cross), 0, Vector2i.ZERO)
+		r._glass_layers[lvl] = layer
+	r._glass_source_info[0] = {"material": "glass", "face": Face.SW, "mask": 0}
+
+	var hit_run: int = run0 + runs / 2
+	var hit_level: int = base + levels / 2
+	var bounds: Rect2i = GlassOpeningClass.cell_bounds(opening)
+	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
+		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
+			if GlassOpeningClass.coverage(opening, dr, dl) == GlassOpeningClass.Coverage.FULL:
+				(r._glass_layers[hit_level + dl] as TileMapLayer).erase_cell(
+					Vector2i(hit_run + dr, cross))
+				r.note_glass_erased_for_rim(hit_level + dl, Vector2i(hit_run + dr, cross))
+	if r._glass_rim_dirty.is_empty():
+		(r._glass_layers[hit_level] as TileMapLayer).erase_cell(Vector2i(hit_run, cross))
+		r.note_glass_erased_for_rim(hit_level, Vector2i(hit_run, cross))
+	if claim:
+		r.claim_glass_opening(hit_level, Vector2i(hit_run, cross), opening)
+	r.refresh_glass_rims()
+
+	var out: Dictionary = {}
+	for lvl in r._glass_layers:
+		var layer := r._glass_layers[lvl] as TileMapLayer
+		for cell in layer.get_used_cells():
+			var sid: int = layer.get_cell_source_id(cell)
+			if sid != -1 and not r._glass_source_info.has(sid):
+				out[Vector2i(cell.x - hit_run, lvl - hit_level)] = true
+	for lvl2 in r._glass_layers:
+		(r._glass_layers[lvl2] as TileMapLayer).free()
+	r._glass_layers.clear()
+	r.free()
+	return out

@@ -1,6 +1,12 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 v1.43 — **§18 CLOSED. G4 IS BUILT, THE RAIN FALLS AS A BAND, PUFFS DUST, AND A STRANDED REMNANT FALLS.**
+**Status:** 🟢 **v1.44 — THE TRACK IS CLOSED (2026-09-06).** §18 closed; the
+GLASS-OLIVE cast fixed (§18.14b); CRACK-04's rotation drift fixed and the demo that
+could not see it made faithful (§16.13); and §10's task order given a truth pass —
+four of its rows had gone stale, one by three days and four stages. What remains is
+named in "What is left, and who owns it" below and none of it is render or physics.
+
+Earlier, v1.43 — **§18 CLOSED. G4 IS BUILT, THE RAIN FALLS AS A BAND, PUFFS DUST, AND A STRANDED REMNANT FALLS.**
 G4-1 the shape family · G4-2 the survivors leave the function · G4-3 the cut
 remnant atom, **confirmed on the real map** (W3, ring 0, 383 voxels, registry 49 =
 board 49) · G6b-1 the field, one texture and one draw call · G6b-2 the fall, aged
@@ -1923,19 +1929,41 @@ level→material override on the same half-thickness face:
 | 🟢 | **G-D9** — multi-material slices: `panels.bands` authoring (§9.6), `Slice.material_bands` + `material_at()`, the per-band bake page (extra `wall_descriptor`, NOT a run split — see §9.6), a lookup `material_override`. `GlassPaneGrouper` unions a banded panel by base-or-band glass. **BUILT 2026-08-31.** Acceptance: `glass_bands_wall_before/after_2026-08-31.png` (same-boot) — the WINDOWS.png wall gains a brick sill (rel 0-1) + head (rel 22-23) over a glass middle; `[BAKE] Composed sheet brick\|facade_brick` present on the GLASS map and absent pre-G-D9; `glass_transparency_selftest` test [7]; 39 selftests clean | — |
 | ✅ | **G-ART** — **DELIVERED 2026-09-02.** All five files on disk and green, authored PROCEDURALLY (`gen_fracture_sheet.py`, `gen_shard_decal.py`), plus §4's wiring (steps 2/4/5/6). Found §8.1 and §8.2. *(Below: the order and gate, done 2026-09-01.)* **the order and the gate are DONE 2026-09-01** ([`ART_ORDER_GLASS.md`](../ART_ORDER_GLASS.md); `check_decal.py` now carries per-material families + the fracture-sheet class, proven red on 7 modes with all 54 shipped decals unchanged). Five files asked for: two 1024×512 grayscale fracture sheets (tight/wide, G-D14) and three 256×256 shard decals. **What is left is the delivery** | — |
 | ✅ | **CRACK-01 / G5** — the crack, BUILT 2026-09-02, stages A–E (§8, §5). The CRACKED tier without `crack_factor`; the crack plane + groups strip; the event on the lost roll; the wall-face inverse; G-D26's additive light. Fires on the real map, state-correct. ⛔ Its RENDERER is superseded by CRACK-02 — the crack is drawn by the voxel shader and cannot stop looking like it | — |
-| 🟡 | **CRACK-02** — the crack leaves the voxel (**§13**, G-D27..G-D30). S-1 the sprite + pane clipping, S-2 the occupancy cut, S-3 rotation survival, S-4 the art order (`bullet_tight`/`bullet_wide`/`armored`/`blast`×3). **PLANNED 2026-09-02, UNBUILT.** ⚠️ §13.3: the resolver + gate contract must move in S-1's own commit or the new art drops silently | CRACK-01 |
-| 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** (open) G-D8's passage work: intact glass → the movement blocked-edge set (new split from vision's, per G-D7), broken glass → passage opens (`PassageQuery` → per-turn recompute) + detection +1 + light bump | G-MAP, G2, §5.1 |
-| 🟡 | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** ✅ the roster + the tint on screen — 4 material rows, per-member atoms carrying the tint index in the atom's free BLUE channel, a material-aware pane union, and the bake collapsed onto BASE's facade (§5.4b). **V-C** ✅ the class behaviour — `GlassMaterials.Class`, ARMORED's whole-pane break + sparser remnants, INDESTRUCTIBLE's CRACKED ceiling and the terminal `glass_stop_edge_keys()` set, and the cook made material-aware (§5.4c). **V-D** ✅ `pane_primed` (G-D15, checkpoint-scoped in `SaveState`) + the per-placement `glass_class` tag, and G-D3's no-DENTED rule made structural (§5.4d). **G-VARIANT IS COMPLETE** | — |
+| 🟢 | **CRACK-02** — the crack leaves the voxel (**§13**, G-D27..G-D30). **S-1 ✅** the sprite + pane clipping · **S-2 ✅** the occupancy cut · **S-3 ✅** rotation survival · **S-5 ✅** CRACK-03's shard rim — all four BUILT 2026-09-02, the same day this row was written. ⚠️ **This row read "PLANNED, UNBUILT" until 2026-09-06**, three days and four stages after it stopped being true; §13's own stage table had it right the whole time. Open: **S-4** (the `tight`/`wide` art, deliberately — see §13.6) and **S-6** (G-D32's hashed rim pool) | CRACK-01 |
+| 🟡 | **G3** — the break, per §5.1's REWRITTEN model. **Staged (Director "vamos seguir com G3", 2026-08-31):** **A** ✅ `GlassShatter` curve + arsenal selftest. **B** ✅ the roll in the shot path + region flood + G-D13 remnants + glass-VFX guard. **C** ✅ the grenade/cook path — `blast_glass_punch()`, panels out of the ring model, `_shatter_glass_panes()`, `VoxelRenderer.erase_glass_cell()` (see §5.1). **D** ✅ G-D8's passage work — intact glass joins the movement blocked-edge set (split from vision's, per G-D7) and a broken pane simply stops being added, recomputed in `_refresh_tactical_state()`; real map, one sniper shot: movement blocks 14 → 9 glass edges, 5 of 6 pane edges OPEN, pinned by `passage_query_selftest` [10]. ⚠️ This row said "(open)" until 2026-09-06. 🟡 **What is genuinely left of D is the THIRD part of G-D8** — the light bump and the +1 detection step when a passage opens, which need the opening to be an EVENT and not the per-turn recomputed SET that landed (§5.4a) | G-MAP, G2, §5.1 |
+| ✅ | **G-VARIANT** — `glass_class` + tint (G-D16). **Staged 2026-09-01, mirroring G3's arc:** **V-A** ✅ the FAMILY SEAM — `GlassMaterials.is_glass()` replaces 25 bare `== "glass"` comparisons across render, geometry, occlusion, the guard phase, the shot path and the cook, pinned by new invariant **L2**. **V-B** ✅ the roster + the tint on screen — 4 material rows, per-member atoms carrying the tint index in the atom's free BLUE channel, a material-aware pane union, and the bake collapsed onto BASE's facade (§5.4b). **V-C** ✅ the class behaviour — `GlassMaterials.Class`, ARMORED's whole-pane break + sparser remnants, INDESTRUCTIBLE's CRACKED ceiling and the terminal `glass_stop_edge_keys()` set, and the cook made material-aware (§5.4c). **V-D** ✅ `pane_primed` (G-D15, checkpoint-scoped in `SaveState`) + the per-placement `glass_class` tag, and G-D3's no-DENTED rule made structural (§5.4d). **G-VARIANT IS COMPLETE** | — |
 | 6 | **G4** — frame remnants: border ring, luck-driven survival, jagged half-voxel substrate. **G-D13 makes this a rule of G3, not a separate task** — it lands with G3 | G2, G-ART |
-| ✅ | **G6** — shards on the floor: BASE-coord store, the render, the `SaveState` section. **BUILT 2026-09-05**, §17. ⚠️ Drawn as a SPRITE, not composited into the floor's atom — §7.1 said the latter and the departure is argued in §17. 🟡 G-D25's big shards (a cut silhouette on 1–4 whole voxels) are still open and are a separate piece | ~~G-ART~~ (delivered) |
+| ✅ | **G6** — shards on the floor: BASE-coord store, the render, the `SaveState` section. **BUILT 2026-09-05**, §17. ⚠️ Drawn as a SPRITE, not composited into the floor's atom — §7.1 said the latter and the departure is argued in §17. ⛔ **G-D25's big shards are NOT open — G-D44 retired them 2026-09-05** (*"não precisam existir mais cacos grandes"*), and this row still listed them as pending until 2026-09-06. Nothing was built, so nothing was deleted; the PRIMITIVE G-D25 named (an alpha mask carving a voxel's own silhouette) is what CRACK-03/G-D31 shipped | ~~G-ART~~ (delivered) |
 | ✅ | **G-D4** — the bullet web on shot neighbours. ⚠️ **This row was stale until 2026-09-05: it was DELIVERED by CRACK-01/02.** `GlassCrack.plan_pane_crack()` crazes every glass cell within the crack radius around the bore and lays ONE sheet over the pane — the real shot path reports `crazed=80` on the GLASS map. §6.3's mechanism (a decal chosen by BEARING) is the part that died, superseded by G-D21; the requirement it carried was met by a different means, which is why nobody noticed the row | ~~G5~~, ~~G-ART~~ |
 | ⤴ | **`plastic`** (black backing material for screens, G-D17) + the paint-on-plastic layer + the screen-art pipeline — **`MATERIALS_MASTER_PLAN`, deferred.** A round DRILLS plastic (hole, no pass-through); fire MELTS it | MATERIALS |
 
 **Deferred, with owners:** the window's full *reveal* geometry (§9, scenario
 applications — the `bands` authoring itself is now G-D9, above) · shard noise
-(sound milestone) · the see-through roll G-D7 (applications) · the agent crossing
-a broken pane, and `PassageQuery` → `blocked_edges` (movement milestone) ·
-`plastic` + screen art (`MATERIALS_MASTER_PLAN`).
+(sound milestone) · the see-through roll G-D7 (applications) · **G-D8's light bump
+and +1 detection step** when a passage opens (its own piece, see the G3 row) · the
+agent actually CROSSING a broken pane (movement milestone — the edge set that lets
+him is built, the traversal is not) · `plastic` + screen art
+(`MATERIALS_MASTER_PLAN`). ⚠️ `PassageQuery` → `blocked_edges` was on this list
+until 2026-09-06 and has been built since 2026-08-31.
+
+### 10.1 What is left, and who owns it (2026-09-06)
+
+Written after a row-by-row audit of the table above, because four of its rows said
+something that had stopped being true and a reader would have got four wrong answers.
+
+| left | owner | why it is not a glass task |
+|---|---|---|
+| **S-4** — the `tight`/`wide` bullet fracture art | glass, deliberately parked | the generator produces the opposite distribution (§13.4) and the look has been rejected three times. `blast` shipped procedurally in §16.12 |
+| **S-6** — G-D32's hashed rim pool | glass, unblocked | the base-space key it waited for arrived with CRACK-04. Real work, not a correction — it needs the Director's go |
+| **G-D8 part three** — the light bump + the +1 detection step when a passage opens | applications | needs the opening to be an EVENT; what landed is a per-turn recomputed SET, deliberately memoryless |
+| the agent CROSSING a broken pane | movement milestone | the blocked-edge set that permits it is built; the traversal is not |
+| shard noise | sound milestone | — |
+| **`plastic`** — the black screen backing (drilled, not passed through; melts) | `MATERIALS_MASTER_PLAN` | a different material, listed here only because G-D17 named it |
+
+**Nothing on that list is glass RENDER or glass PHYSICS.** Seeing through a pane,
+breaking it non-locally, cracking it, holing it with a chosen polygon, shaping the
+rim, raining the shards, piling them on the floor and surviving a rotation are all
+built, on the real map, with the counts read off the board.
 
 ---
 
@@ -2044,9 +2072,9 @@ rewritten rather than moved.
 | **S-1 ✅** | **The sprite.** `GlassCrackSprite` + `glass_crack.gdshader`, one node per crack, parented into the glass composite so G-D18b still holds. ⚠️ **The wall-face basis changed job rather than being inverted**: the FORWARD basis is baked into the node's `Transform2D`, so the quad IS the pane's parallelogram and the shader has no inverse in it — UV is already the sheet. Additive by BLEND MODE (`blend_add`) rather than by arithmetic inside someone else's shader. §13.1's delete list is gone; G-D24 is geometric | `glass_crack_demo_c02_*` — a continuous web, no per-voxel variation, no quad seams. And **`glass_crack_demo_c02_edge_clip_*`**, which is the one that matters: a CENTRED hit cannot prove the clip, because the sheet is smaller than a big pane and the bounds never engage. An EDGE hit puts the sheet 22 voxels past the frame and it is cut dead on the boundary; the demo prints both quads in screen pixels so it is a measurement |
 | **S-2 ✅** | **The occupancy cut (G-D30).** ⚠️ **Not a plane — a READ of the glass tilemap.** `erase_cell()` on `_glass_layers` is what actually removes a glass voxel, and all three erase seams already go through it, so a parallel plane would be a third copy of the same fact, free to drift. The seams only FLAG; the rebuild is once per batch at the five seams `flush_damage_composite_pages()` already uses. §13.5's two side effects both confirmed: the brick band clips for free, and `armored` cannot be erased by the dial | `glass_crack_cut_triptych_2026-09-02.png` — one crack, one boot, 0.0 / 0.5 / 1.0 over a real hole punched through the real erase seam. **✅ RULED: 1.0.** `glass_crack_cut_shotgun_2026-09-02.png` is the consequence to keep in view |
 | **S-3 ✅** | **Rotation survival.** `_base_cracks` mirrors `_base_damage` and stores only what cannot be re-derived: the impact in base coords and the sheet id. ⚠️ **Rebuilds through `sprite_spec()`, never `apply()`** — re-applying would set the damage a second time and run G-D24 against the cracks it is rebuilding, so every crack would cross the one before it | a **round trip** N→E→N, which returns to the identity so the sprite must land on the pre-flip pixels: **5853 of 5855 bright pixels identical**. "A crack appeared somewhere" is what the eye would have accepted. ⚠️ The E/S/W half is blocked by the `panel_instances` defect in the header |
-| **S-6 🟡** | **The four shapes become a hashed POOL (G-D32).** Each cut cell draws its own from {spike-deep, spike-shallow, V-notch, 45° chamfer} — ratified from `glass_rim_shape_options_2026-09-02.png`, which renders the four hole silhouettes from the real atoms. ⚠️ B4 FNV-1a, never `randf()`; ⏳ the key must be BASE-space or a flip reshuffles the hole | UNBUILT — and the open sub-question is where the renderer gets a base-space key |
+| **S-6 🟡** | **The four shapes become a hashed POOL (G-D32).** Each cut cell draws its own from {spike-deep, spike-shallow, V-notch, 45° chamfer} — ratified from `glass_rim_shape_options_2026-09-02.png`, which renders the four hole silhouettes from the real atoms. ⚠️ B4 FNV-1a, never `randf()`; ⏳ the key must be BASE-space or a flip reshuffles the hole | UNBUILT. ⚠️ **Its blocker is GONE** — "where the renderer gets a base-space key" was answered by CRACK-04/G-D34: the room owns the conversion and hands one down (`glass_base_key()`), which is how the opening pick and the sheet variant are already hashed. S-6 is unblocked work, not a blocked design question |
 | **S-5 ✅** | **CRACK-03 — THE SHARD RIM (G-D31).** *"em vez de voxels cúbicos, a gente vai ter partes de voxel formando triângulos agudos apontando em direção ao centro do buraco […] estaríamos criando o verdadeiro caco com voxel atrás + adesivo complementando."* A hole is a rectangle of missing cells and reads as one however good the web over it is, so the cells that BORDER it stop being cubes: their alpha is cut to a wedge narrowing to a point aimed at the hole. **Eight directions, the Director's own budget** — four orthogonals plus four diagonals. ⚠️ Same primitive G-D25 ratified (an alpha mask carving a voxel's outline, the dented-ceiling mechanism), so no new art and no new render path. ⚠️ And it does NOT re-create G-D26's moldura: a cut is a SILHOUETTE, so the glass that survives is pixel-identical to its neighbours and only its outline moved — the same reason a DESTROYED voxel, a 100% cut, never framed anything | `glass_rim_ab_{pistol,rifle}_2026-09-02.png` — the A/B with `INFILTRAITOR_GLASS_RIM=0/1`, one camera, because a cut glass voxel reveals GLASS and the change has to be measured rather than squinted at. `glass_rim_atoms_2026-09-02.png` — the nine masks. Dials: `GLASS_RIM_TIP_HALF`, `GLASS_RIM_DEPTH` |
-| **S-4 🟡** | **The art order** — `tight`, `wide`, `armored`, `blast` ×3 (G-D28/G-D29). **Written**: [`ART_ORDER_GLASS_FRACTURE_CLASSES.md`](../ART_ORDER_GLASS_FRACTURE_CLASSES.md), including the free-size/aspect contract S-1 made real and the six wiring steps. **Art unbuilt on purpose** — §6 of that order: the generator would have to produce the opposite distribution (§13.4), `blast_*` has no caller yet (§6.2 is unbuilt), and the look has been rejected three times on this track already | `check_decal.py` green on the new classes, and each class visible on the GLASS map — neither yet |
+| **S-4 🟡** | **The art order** — `tight`, `wide`, `armored`, `blast` ×3 (G-D28/G-D29). **Written**: [`ART_ORDER_GLASS_FRACTURE_CLASSES.md`](../ART_ORDER_GLASS_FRACTURE_CLASSES.md), including the free-size/aspect contract S-1 made real and the six wiring steps. **Art unbuilt on purpose, and one of the three reasons has expired.** §6 of that order gave three: the generator would have to produce the opposite distribution (§13.4 — still true), the look has been rejected three times on this track (still true), and *"`blast_*` has no caller yet"* — ⚠️ **no longer true since §16.12**, where the blast class shipped as six PROCEDURAL craze patterns on one density ladder. So what is actually left of S-4 is the `tight`/`wide` bullet pair, and its blocker is the distribution, not the wiring | `check_decal.py` green on the new classes, and each class visible on the GLASS map — neither yet |
 
 ### 13.3 ✅ RESOLVED IN S-1's OWN COMMIT — the contract that had to move
 
@@ -3059,21 +3087,116 @@ asserted — `26 runs, 21 levels, worst run 4` against a red of `7 runs, worst r
 - The shipped shot path is **0 px** against the B-2 baseline.
 - 50 selftests clean, invariants OK.
 
-#### 🟡 REPORTED, NOT FIXED — the rim differs across a rotation, and it is CRACK-04's
+#### ✅ FIXED 2026-09-06 — the rim differed across a rotation, and the recorded diagnosis was wrong
 
-Shard cells on the board: **340 before a flip, 389 after.** Not lost — *more*. The
-live path groups adjacent erased cells into ONE region and applies ONE opening to
-it (`_group_erased_into_regions()`); the rebuild replays each recorded hole
-SEPARATELY, so two perforations whose rims overlap cut one rim live and two on the
-rebuild. It was invisible while a pane had one or two holes and B-4 is what made
-it visible.
+**What was recorded (2026-09-05):** *"Shard cells on the board: 340 before a flip,
+389 after. The live path groups adjacent erased cells into ONE region and applies
+ONE opening to it; the rebuild replays each recorded hole SEPARATELY, so two
+perforations whose rims overlap cut one rim live and two on the rebuild. Which
+number is right is a question."*
 
-⚠️ **Which number is right is a question, not an oversight** — the merged region
-may be under-cutting, or the replay over-cutting. The fix is to group the base
-records the way the live path groups the erases, in `_respawn_base_openings()`,
-and it belongs to CRACK-04's rebuild rather than to B-4. `rebuilt 16 of 38` in
-that log is the same effect on the counter and is NOT a loss: it counts a hole
-only when it swapped a NEW cell.
+**What it actually was.** The grouping was never the asymmetry —
+`_group_erased_into_regions()` step 1 already makes **one region per claim**, so
+two claimed holes are two regions on both paths. The defect was an **ORDER** in the
+caller:
+
+1. a perspective rebuild renders every pane INTACT (`build_from_layout()`), then
+2. `_reapply_base_damage()` erases the recorded holes back out of it — which flags
+   the rim on every one of those cells — and **ends in `process_dirty()`**, whose
+   tail is `refresh_glass_rims()`;
+3. that flush therefore ran with a full dirty set and **zero claims**, so step 2's
+   fallback did exactly what it exists to do for an unclaimed hole: it invented one,
+   `GLASS_OPENING_DEFAULT` centred on the region's CENTROID;
+4. `_respawn_base_openings()` then arrived with the real recorded openings and found
+   their cells already cut — and a shard is never recomputed — so it applied almost
+   nothing.
+
+**Measured on the GLASS map, two recorded holes, before the fix:**
+
+    [GLASS-OPENING] 2 region(s) [star_deep*, star_deep*], 22 cell(s) cut into shards
+    [GLASS-OPENING] rebuilt 1 of 2 recorded hole(s), 2 shard(s), perspective E
+
+The `*` is the log saying nobody claimed the region. **After ONE camera turn every
+hole in the game wore the default shape at a centroid instead of its own recorded
+polygon at its own impact — the entire point of G-D34, discarded.** It is silent
+because a default-shaped hole is still a hole: nothing errors, nothing is missing,
+and only the shape is wrong.
+
+**The fix removes the asymmetry instead of suppressing the flush.** The live path
+claims and *then* lets the flush shape the hole; so the rebuild does the same.
+`_claim_base_openings()` runs immediately before `_reapply_base_damage()`, with
+`record = false` (the records are already in the store — re-appending would grow it
+by one hole per camera turn, forever). `_respawn_base_openings()` stays as the belt
+to that brace, for a hole whose pane this view does not build; the two cannot fight
+over a cell, because a cell already holding a shard is never recomputed.
+
+    [GLASS-OPENING] claimed 2 of 2 recorded hole(s) before the replay flush, perspective E
+    [GLASS-OPENING] 2 region(s) [notch_v, star_wild], 24 cell(s) cut into shards
+
+#### ⚠️ AND THE INSTRUMENT WAS LYING, WHICH IS WHY THIS SAT OPEN
+
+`glass_crack_demo` could not measure rim persistence across a rotation, because it
+never persisted the destruction that made the hole. Two gaps, both now closed:
+
+- **The bore was not recorded to base.** On every flip the bore voxel came back as
+  intact glass, `_apply_opening_to_region()` found standing glass inside a hole it
+  was told to shape, and *"covers N cell(s) whole that still hold glass"* fired
+  after **every** flip — a loud warning nobody was reading.
+- **G-D24's crossed pieces were not recorded either.** `GlassCrack.apply()` DESTROYS
+  a cell already covered by a different crack (52 voxels in the gap-3 case); the
+  real shot path folds `res["voxels"]` into its own index and persists every one
+  (`agent_shot_controller.gd` ~687), the demo did not.
+
+Until both were fixed, any live-versus-rebuilt shard count was comparing a pane that
+had lost 53 voxels with one that had not. **The recorded 340 → 389 was measuring the
+demo's missing persistence at least as much as the rebuild.**
+
+The demo also gained the two things that let it see this at all: `SECOND` now punches
+a **real second bore and claims a real opening** (it used to lay a second crack over a
+pane with no second hole — the exact fiction this function's own header bans), with
+`INFILTRAITOR_CRACK_DEMO_SECOND_GAP` to control the overlap; and the S-3 flip proof
+reads the **shard board** back, before and after a flush, not just the sprite count.
+
+**Evidence — live board versus rebuilt board, GLASS map, round trip N→E→N:**
+
+| case | live | after E | after N |
+|---|---|---|---|
+| one hole (`notch_v`) | 12 | 12 | 12 |
+| two holes, gap 10 (`notch_v` + `star_shallow`, separate) | 20 | 20 | 20 |
+| two holes, gap 3 (`notch_v` + `star_wild`, overlapping — G-D24 drops 52) | 2 | 2 | 2 |
+
+Zero drift and zero `unswallowed` warnings in all three, with the region ids reading
+`[notch_v, star_wild]` / `[notch_v, star_shallow]` — the recorded shapes — instead of
+`[star_deep*, star_deep*]`.
+
+**And the pixel gate, which is the one that matters — because A COUNT COULD NEVER
+HAVE CAUGHT THIS.** On the gap-3 case the board holds **2** shards before the fix and
+**2** after; what changed is which cells and what shape. Diffed on the same
+instrument, the only difference being the two swapped lines, round trip N→E→N:
+
+| | live vs round-trip N |
+|---|---|
+| before | **185 px** differ — the rim came back a different shape |
+| after | **0 px** — the pane is pixel-identical to the frame before the rotation |
+
+The 185 pixels are exactly the difference between the two round-trip frames, so the
+fix restores those and nothing else. `glass_crack_demo` is the right home for a glass
+pixel gate — it measured 0 px between two runs where `glass_blast_demo` measured
+160 276 (§18's note). `crack04_rim_roundtrip_{before,after}.png`.
+
+**Pinned** as `glass_crack_selftest` **[22]**, in two halves and both as identities:
+a claimed erase cuts exactly the SUBJECT opening's PARTIAL set, an unclaimed one cuts
+exactly the DEFAULT's (so the failure is named — the shape is *lost*, not merely
+wrong), plus a source-order check that `_claim_base_openings()` precedes
+`_reapply_base_damage()` in room.gd. Nothing inside the mechanism can catch an
+ordering mistake in its caller, so the caller's order is what is pinned. Teeth
+checked: swapping the two lines fails it.
+
+**The lesson, and it is the one this track keeps re-teaching.** Two authorities had
+to agree about the shape of a hole, and the second one only ran *after* the first had
+already guessed. `rebuilt 16 of 38` in the B-4 log — read at the time as "not a loss,
+it counts a hole only when it swapped a NEW cell" — was this defect reporting itself
+in plain numbers a day early.
 
 ### 🟡 16.14 B-4b — the Director's last test on the perforation (2026-09-05)
 

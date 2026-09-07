@@ -67,7 +67,7 @@ Nine materials exist. Five arrived on 2026-08-21 and render correctly
 | **M1** | The five materials exist, render, and break | ✅ **DONE** |
 | **M2** | Decals — the marks each material takes | ✅ **DONE 2026-08-21** — 9 files, brick only |
 | **M3** | Fire that consumes and opens passages | **Large.** The milestone's centre |
-| **M4** | Glass: seeing through it, and breaking it non-locally | ✅ **ESSENTIALLY DONE 2026-09-06** — `GLASS_MASTER_PLAN` §18 (the shard rain) CLOSED. Left: `plastic` screen backing, S-4 fracture art |
+| **M4** | Glass: seeing through it, and breaking it non-locally | ✅ **CLOSED 2026-09-06** — the whole `GLASS_MASTER_PLAN` (v1.44), not just §18. Nothing left in it is glass render or physics; see that plan's §10.1 for the row-by-row of what remains and who owns it. The one item still on M4's own plate is **`plastic`** (the black screen backing, below) |
 | **M5** | Voxel props — the thing these materials are actually for | Medium, blocked on renderer v2 |
 | **M6** | Fluids (water/lava) | **Research first, unscoped** |
 
@@ -849,9 +849,13 @@ frame.
 > design (now G-D1…G-D45), the verified seam table and the task order; M4 keeps its
 > row in this milestone and nothing below is retracted.
 >
-> ✅ **M4 IS ESSENTIALLY DONE 2026-09-06** — `GLASS_MASTER_PLAN` §18 (the shard
-> rain) closed. Everything below reads as the design record; the live status is in
-> that plan's header. Left in M4: `plastic` (below) and S-4's fracture art. **Three things below are now
+> ✅ **M4 IS CLOSED 2026-09-06** — the whole `GLASS_MASTER_PLAN` (v1.44), not only
+> §18: the shard rain, then the GLASS-OLIVE cast, then CRACK-04's rotation drift,
+> then a truth pass over that plan's task order. Everything below reads as the
+> design record; the live status is in that plan's header, and its **§10.1** is the
+> audited list of what is left and who owns it. The only item still on M4's own
+> plate is `plastic` (below) — S-4's fracture art stays parked inside the glass plan
+> for the reasons §13.4 measured. **Three things below are now
 > ANSWERED there rather than open:** the *"what is a whole window"* question (the
 > grouping is `Slice.edge_id`, plus a `pane_id` derived at extraction — **G2 BUILT
 > 2026-08-31**), and both carried defects — the far shotgun pellet that CRACKS glass

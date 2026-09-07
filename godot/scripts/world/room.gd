@@ -9145,6 +9145,22 @@ func _capture_glass_rain_timings() -> void:
 		preset_name = "default"
 	var imp_env := OS.get_environment("INFILTRAITOR_RAIN_IMPULSE")
 	var impulse_strength: float = float(imp_env) if imp_env.is_valid_float() else 0.6
+	## G-D42 — THE GAIN, as a bench dial (Director, 2026-09-06: *"empurrar os cacos
+	## que caem quando ele quebra com a força da explosão"*).
+	##
+	## ⚠️ `INFILTRAITOR_RAIN_IMPULSE` alone cannot answer that question. It is the
+	## per-ring falloff and is clamped to 1.0, so the very strongest shockwave the
+	## shipped build can produce pushes a shard `SCATTER_IMPULSE_GAIN` = 3 voxel
+	## cells — **0.375 of a floor tile** — and the least-pushed one 0.9 cells, or
+	## 0.11 of a tile. The mechanic is real and its MAGNITUDE is sub-tile, which is
+	## why it reads as no projection at all. Sweeping the gain is what turns "is it
+	## there?" into "how far should it go?", and that is the Director's call.
+	##
+	## Restored below, because a static var is process-wide and this is a capture.
+	var gain_env := OS.get_environment("INFILTRAITOR_RAIN_IMPULSE_GAIN")
+	var gain_before: float = GlassFall.SCATTER_IMPULSE_GAIN
+	if gain_env.is_valid_float():
+		GlassFall.SCATTER_IMPULSE_GAIN = float(gain_env)
 
 	## The big storefront by default — its foot is right where the camera sits, so
 	## the fall fills the frame; a framed window (`INFILTRAITOR_GLASS_BLAST_PANE`,
@@ -9216,6 +9232,23 @@ func _capture_glass_rain_timings() -> void:
 		"lift": 0.0,
 	}
 	var landings: Array = GlassFall.plan_landings(fallen, _slab_registry.all_slabs(), impulse)
+	## ⚠️ HOW FAR IT ACTUALLY WENT, in tiles, read off the landings rather than
+	## computed from the constants — a shard pushed onto a column with no landable
+	## surface is DROPPED by `plan_landings()`, so the mean the eye sees is not the
+	## mean the gain asks for, and at a high gain the loss is the story.
+	var sum_push: float = 0.0
+	var max_push: float = 0.0
+	for lg in landings:
+		var d: float = Vector2(lg["grid_pos"] - lg["origin_pos"]).length()
+		sum_push += d
+		max_push = maxf(max_push, d)
+	var mean_push: float = sum_push / float(maxi(landings.size(), 1))
+	print("[GLASS-RAIN-T] gain=%.1f -> travel mean %.2f cell(s) (%.3f tile), max %.2f cell(s) (%.3f tile); %d of %d shard(s) kept"
+		% [GlassFall.SCATTER_IMPULSE_GAIN, mean_push,
+		mean_push / float(GeometryCoords.VOXELS_PER_UNIT_AXIS), max_push,
+		max_push / float(GeometryCoords.VOXELS_PER_UNIT_AXIS),
+		landings.size(), fallen.size()])
+	GlassFall.SCATTER_IMPULSE_GAIN = gain_before
 	record_glass_shards(GlassFall.pile_by_cell(landings))
 	for _g in range(8):
 		await get_tree().process_frame

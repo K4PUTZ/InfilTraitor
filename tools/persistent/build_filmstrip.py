@@ -158,7 +158,7 @@ def run_shot_capture(root, godot, frames, weapon, guard, focus, zoom):
 GLASS_RAIN_PRESETS = ["snappy", "default", "floaty", "heavy", "raked"]
 
 
-def run_glass_rain_capture(root, godot, preset, impulse):
+def run_glass_rain_capture(root, godot, preset, impulse, gain=None):
     """G4-4 — one timing preset of the shard rain, on the GLASS map, as MP4.
 
     Drives room.gd's `glass_rain_timings` capture. The pane is shattered for
@@ -174,10 +174,13 @@ def run_glass_rain_capture(root, godot, preset, impulse):
     env["INFILTRAITOR_CAPTURE_ACTION"] = "glass_rain_timings"
     env["INFILTRAITOR_RAIN_TIMING"] = preset
     env["INFILTRAITOR_RAIN_IMPULSE"] = str(impulse)
+    if gain is not None:
+        env["INFILTRAITOR_RAIN_IMPULSE_GAIN"] = str(gain)
     env["INFILTRAITOR_FREEZE_GUARD_TURN"] = "1"
     cmd = [godot, "--path", root, "--position", OFFSCREEN_POSITION,
            "--fixed-fps", "60", "--disable-vsync"]
-    print("[P-FILM] glass rain: preset=%s impulse=%s, --fixed-fps 60 ..." % (preset, impulse))
+    print("[P-FILM] glass rain: preset=%s impulse=%s gain=%s, --fixed-fps 60 ..."
+          % (preset, impulse, "shipped" if gain is None else gain))
     try:
         res = subprocess.run(cmd, cwd=root, env=env, capture_output=True,
                              text=True, timeout=PROCESS_TIMEOUT_SECONDS)
@@ -309,6 +312,11 @@ def main():
                          "(%s), or 'all' for every one" % "/".join(GLASS_RAIN_PRESETS))
     ap.add_argument("--rain-impulse", type=float, default=0.6,
                     help="glass-rain mode: shockwave bias 0.0 (symmetric) .. 1.0")
+    ap.add_argument("--rain-gain", type=float, action="append", default=None,
+                    metavar="CELLS",
+                    help="G-D42: cells of downrange push at impulse 1.0 (shipped: "
+                         "3.0 = 0.375 of a floor tile). Repeat the flag to sweep, "
+                         "one MP4 per value: --rain-gain 0 --rain-gain 3 --rain-gain 12")
     args = ap.parse_args()
 
     if args.glass_rain:
@@ -325,18 +333,23 @@ def main():
             return 1
         frame_dir = os.path.join(root, "Screenshots", "filmstrip_rain")
         fail = 0
+        # G-D42 — one run per (preset, gain). `None` means "leave the shipped
+        # SCATTER_IMPULSE_GAIN alone", so the no-flag behaviour is unchanged.
+        gains = args.rain_gain if args.rain_gain else [None]
         for p in presets:
-            if not args.stitch_only:
-                if run_glass_rain_capture(root, godot, p, args.rain_impulse) is None:
+            for g in gains:
+                if not args.stitch_only:
+                    if run_glass_rain_capture(root, godot, p, args.rain_impulse, g) is None:
+                        fail += 1
+                        continue
+                if not os.path.isdir(frame_dir):
+                    print("[P-FILM] %s does not exist — did the capture run?" % frame_dir)
                     fail += 1
                     continue
-            if not os.path.isdir(frame_dir):
-                print("[P-FILM] %s does not exist — did the capture run?" % frame_dir)
-                fail += 1
-                continue
-            vid = os.path.join(frame_dir, "rain_%s.mp4" % p)
-            if not build_video(frame_dir, vid, args.fps, "frame_"):
-                fail += 1
+                suffix = "" if g is None else "_gain%s" % str(g).replace(".", "p")
+                vid = os.path.join(frame_dir, "rain_%s%s.mp4" % (p, suffix))
+                if not build_video(frame_dir, vid, args.fps, "frame_"):
+                    fail += 1
         return 1 if fail else 0
 
     # A sheet is limited by how many tiles stay readable; a video is not, and the

@@ -98,6 +98,64 @@ static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Diction
 	return rings
 
 
+## TARGETING_MASTER_PLAN §5b — the wall-aware grenade THROW clamp.
+##
+## Walks the straight line `origin_gu -> target_gu` in GU space and returns the
+## last cell before a blocked edge, a solid GU block, or `reach` GU — whichever
+## comes first. A LINE-OF-THROW check, not a path search: a grenade arcs roughly
+## straight, so it does not curve around a wall to a gap off the line.
+##
+## Director, 2026-09-07: *"precisamos que ela tenha as mesmas limitações físicas de
+## deslocamento impostas pelo cenário ao agente"*. `edges` is keyed the way
+## `WallEdgeData.is_edge_blocked()` reads it (the same shape `Room._movement_edge_set()`
+## produces — walls + whole glass, opened passages removed), so a closed window
+## blocks the lob and a broken pane opens it. A diagonal step needs an open
+## orthogonal route through one of its two flank cells, so the throw cannot squeeze
+## the diagonal gap between two wall corners. Pure — lives here beside the other
+## wall-aware GU-space walks; `blast_calculator_selftest` drives it.
+static func throw_line_clamp(origin_gu: Vector2i, target_gu: Vector2i, reach: float,
+		edges: Dictionary, blocked_cells: Dictionary) -> Vector2i:
+	if target_gu == origin_gu:
+		return origin_gu
+	var to_target := Vector2(target_gu - origin_gu)
+	var span: float = to_target.length()
+	var dir: Vector2 = to_target / span
+	var walk_span: float = minf(span, reach)
+
+	var cur: Vector2i = origin_gu
+	var last_ok: Vector2i = origin_gu
+	var t: float = 0.0
+	const STEP: float = 0.2
+	while t <= walk_span + STEP:
+		t += STEP
+		var p := Vector2(origin_gu) + dir * minf(t, walk_span)
+		var cell := Vector2i(roundi(p.x), roundi(p.y))
+		if cell == cur:
+			continue
+		var d := cell - cur
+		if absi(d.x) + absi(d.y) == 1:
+			if WallEdgeData.is_edge_blocked(cur, cell, edges) or blocked_cells.has(cell):
+				break
+		else:
+			## Diagonal — open only if an L-route through one flank cell is clear.
+			if blocked_cells.has(cell):
+				break
+			var flank_a := cur + Vector2i(d.x, 0)
+			var flank_b := cur + Vector2i(0, d.y)
+			var a_open: bool = not blocked_cells.has(flank_a) \
+				and not WallEdgeData.is_edge_blocked(cur, flank_a, edges) \
+				and not WallEdgeData.is_edge_blocked(flank_a, cell, edges)
+			var b_open: bool = not blocked_cells.has(flank_b) \
+				and not WallEdgeData.is_edge_blocked(cur, flank_b, edges) \
+				and not WallEdgeData.is_edge_blocked(flank_b, cell, edges)
+			if not (a_open or b_open):
+				break
+		cur = cell
+		if Vector2(cur - origin_gu).length() <= reach + 0.001:
+			last_ok = cur
+	return last_ok
+
+
 ## WEAPON_MASTER_PLAN D1 / DESTRUCTION_MASTER_PLAN Part 5 — the CONE shape.
 ##
 ## Same wall-aware BFS as flood_gu_rings(), gated to a wedge around a facing.

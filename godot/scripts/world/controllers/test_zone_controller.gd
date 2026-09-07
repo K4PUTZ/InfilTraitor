@@ -89,14 +89,30 @@ var throw_range_penalty_gu: Dictionary = {
 	DebugAgent.Posture.PRONE: 4.0,
 }
 
+## ── THE SKILL SEAM (Director, 2026-09-07) ─────────────────────────────────────
+##
+## *"o agente vai ter uma skill que permite atirar granadas mais distantes, então
+## já precisamos deixar pronta a fundação desse parâmetro variável."* A single
+## additive bonus in GU that the future skill/loadout system writes; it stacks
+## with the base range and the posture penalty in `effective_throw_range_gu()`.
+##
+## ⚠️ KEEP IT A WHOLE NUMBER, for the reason `throw_range_gu`'s own note gives:
+## the perimeter ellipse only reads on the board at integer cell radii. A skill
+## granting "+2 GU" sets this to 2.0, never 1.5.
+##
+## Lives here beside `throw_range_gu` because that is where the throw range lives
+## today; it moves with the range when the arsenal/skill system arrives.
+var throw_range_skill_bonus_gu: float = 0.0
 
-## The reach this agent actually has right now. Floored at 1 GU: a prone agent
-## throwing a grenade badly is a design outcome, a prone agent unable to throw at
-## all is a silently disabled action.
+
+
+## The reach this agent actually has right now: base + skill bonus − posture
+## penalty. Floored at 1 GU: a prone agent throwing a grenade badly is a design
+## outcome, a prone agent unable to throw at all is a silently disabled action.
 func effective_throw_range_gu() -> float:
 	var penalty: float = float(throw_range_penalty_gu.get(
 		room.agent.posture, 0.0))
-	return maxf(throw_range_gu - penalty, 1.0)
+	return maxf(throw_range_gu + throw_range_skill_bonus_gu - penalty, 1.0)
 
 ## Radius of the aim dome, in GAME UNITS. Deliberately NOT derived from
 ## `bomb_def.ring_multipliers.size()`: the dome is the readable shape of the
@@ -677,26 +693,25 @@ func _damaging_rings(gu_rings: Dictionary, bomb_def) -> Dictionary:
 	return kept
 
 
-## T-BUBBLE: snap a target cell to the closest one within `throw_range_gu`.
+## Walk the straight throw line from `origin_gu` toward `target_gu` and return the
+## furthest cell the grenade can actually reach — it stops at the first blocked
+## edge, solid GU block, or `effective_throw_range_gu()`, whichever comes first.
 ##
-## Works in GU SPACE, not screen pixels. The first pass measured
-## `|dx| + 2·|dy| <= range` on projected positions, which is a DIAMOND inscribed
-## in the ellipse the perimeter draws — so the dome could never touch the line it
-## was being clamped to except on the two axes. A plain Euclidean test in grid
-## coordinates is the perimeter's own definition, and IsoProjection turns that
-## same circle into the ellipse on screen.
+## This is a LINE-OF-THROW check, NOT a path search: a grenade arcs roughly
+## straight, so it will not curve around a wall to a gap several tiles off the
+## line. Works in GU space; `IsoProjection` turns the range circle into the
+## ellipse the perimeter draws.
+##
+## Director, 2026-09-07: *"precisamos que ela tenha as mesmas limitações físicas de
+## deslocamento impostas pelo cenário ao agente"* — the edge set is
+## `Room._movement_edge_set()` (walls + whole glass, opened passages removed), so a
+## closed window blocks the lob and a broken pane opens it, exactly as the agent's
+## own movement. A diagonal step of the line needs an open orthogonal route
+## through one of its two flank cells, so the throw cannot squeeze the diagonal
+## gap between two wall corners.
 func _clamp_gu_to_throw_range(target_gu: Vector2i, origin_gu: Vector2i) -> Vector2i:
-	var delta := Vector2(target_gu - origin_gu)
-	var distance_gu: float = delta.length()
-	if distance_gu <= effective_throw_range_gu():
-		return target_gu
-	## The CLAMP has to scale by the EFFECTIVE range, not the base one. Reading
-	## `throw_range_gu` here while the test two lines up reads the effective range
-	## would let an out-of-range target snap to a cell the agent cannot reach —
-	## the penalty would shrink the ring and change nothing about where the
-	## grenade lands, which is the worst of both.
-	return origin_gu + Vector2i(
-		(delta / distance_gu * effective_throw_range_gu()).round())
+	return BlastCalculatorClass.throw_line_clamp(origin_gu, target_gu,
+		effective_throw_range_gu(), room._movement_edge_set(), room._blocked_cells)
 
 
 ## T-ARC: fly the grenade along its arc, then detonate where it lands.

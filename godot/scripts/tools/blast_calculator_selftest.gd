@@ -37,6 +37,8 @@ func _init() -> void:
 	test_flood_unobstructed_rings()
 	test_flood_stops_at_blocked_edge()
 	test_flood_capped_at_bomb_range()
+	## TARGETING_MASTER_PLAN §5b — the wall-aware grenade throw clamp.
+	test_throw_line_clamp_range_and_walls()
 	test_affected_slice_on_source_gu_boundary()
 	test_deterministic_selection_is_stable()
 	test_deterministic_selection_differs_by_salt_and_container()
@@ -213,6 +215,41 @@ func test_flood_stops_at_blocked_edge() -> void:
 		_pass("Open neighbor %s on the unblocked side still reached at ring 1" % open_neighbor)
 	else:
 		_fail("Open neighbor %s should be ring 1, got %s" % [open_neighbor, rings.get(open_neighbor, "MISSING")])
+	print("")
+
+
+## TARGETING_MASTER_PLAN §5b — `throw_line_clamp()`. A grenade obeys the scenery
+## the way the agent does: a clear line reaches the target (or the range), a wall
+## across the line stops it short, a wall off the line is irrelevant, a solid
+## block stops it, and the diagonal gap between two wall corners is closed.
+func test_throw_line_clamp_range_and_walls() -> void:
+	print("[3b] throw_line_clamp: range, a wall on the line, off the line, a block, the diagonal squeeze\n")
+	var o := Vector2i(5, 5)
+	var clear_hit := BlastCalculatorClass.throw_line_clamp(o, Vector2i(12, 5), 7.0, {}, {})
+	var range_hit := BlastCalculatorClass.throw_line_clamp(o, Vector2i(20, 5), 7.0, {}, {})
+	var wall_on := BlastCalculatorClass.throw_line_clamp(o, Vector2i(12, 5), 7.0,
+		{WallEdgeData.edge_key(Vector2i(8, 5), Vector2i(9, 5)): true}, {})
+	var wall_off := BlastCalculatorClass.throw_line_clamp(o, Vector2i(12, 5), 7.0,
+		{WallEdgeData.edge_key(Vector2i(8, 10), Vector2i(9, 10)): true}, {})
+	var block_hit := BlastCalculatorClass.throw_line_clamp(o, Vector2i(12, 5), 7.0, {},
+		{Vector2i(9, 5): true})
+	## Both flanks of the first diagonal step of a 45° line closed → no advance.
+	var squeeze_edges := {}
+	squeeze_edges.merge({WallEdgeData.edge_key(o, Vector2i(6, 5)): true})
+	squeeze_edges.merge({WallEdgeData.edge_key(o, Vector2i(5, 6)): true})
+	var squeezed := BlastCalculatorClass.throw_line_clamp(o, Vector2i(9, 9), 8.0, squeeze_edges, {})
+	## Only one flank closed → the diagonal still passes.
+	var one_flank := BlastCalculatorClass.throw_line_clamp(o, Vector2i(9, 9), 8.0,
+		{WallEdgeData.edge_key(o, Vector2i(6, 5)): true}, {})
+
+	var ok := clear_hit == Vector2i(12, 5) and range_hit == Vector2i(12, 5) \
+		and wall_on == Vector2i(8, 5) and wall_off == Vector2i(12, 5) \
+		and block_hit == Vector2i(8, 5) and squeezed == o and one_flank == Vector2i(9, 9)
+	if ok:
+		_pass("clear→(12,5), range→(12,5), wall-on→(8,5), wall-off→(12,5), block→(8,5), squeeze→origin, one-flank→(9,9)")
+	else:
+		_fail("throw_line_clamp wrong: clear=%s range=%s wall_on=%s wall_off=%s block=%s squeeze=%s one_flank=%s"
+			% [clear_hit, range_hit, wall_on, wall_off, block_hit, squeezed, one_flank])
 	print("")
 
 

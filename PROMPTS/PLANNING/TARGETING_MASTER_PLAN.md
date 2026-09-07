@@ -289,6 +289,35 @@ Its basis is asserted against the real TileSet by `iso_projection_selftest.gd`.
 
 ---
 
+## 5b. Wall-aware throw + the skill seam (2026-09-07)
+
+Director: the grenade was landing THROUGH walls — *"precisamos que ela tenha as
+mesmas limitações físicas de deslocamento impostas pelo cenário ao agente"* — and
+a coming skill will *"atirar granadas mais distantes"*.
+
+- **The clamp is a LINE-OF-THROW walk, not just distance.** `_clamp_gu_to_throw_range()`
+  → `BlastCalculator.throw_line_clamp(origin, target, reach, edges, blocked_cells)`
+  walks the straight segment `origin → target` in GU space and returns the last
+  cell before a blocked edge, a solid GU block, or `effective_throw_range_gu()` —
+  whichever comes first. `edges` is **`Room._movement_edge_set()`** (walls + whole
+  glass, opened passages removed — the AGENT's own set, per the Director's
+  wording). Aiming at a wall drops the grenade against its near face. Intact glass
+  blocks the lob; a broken pane opens it on the next recompute, for free.
+  ⚠️ It is a RAYCAST, not a path search — deliberately: a grenade arcs roughly
+  straight, so it does NOT curve around a wall to a gap several tiles off the line
+  (a BFS/Manhattan first pass did exactly that on the GLASS map and was rejected).
+  A diagonal step needs an open orthogonal route through one of its two flank
+  cells, so the throw can't squeeze the diagonal gap between two wall corners.
+  ⚠️ NOT arc-over-parapet — a low wall still blocks the throw for now; the
+  `_wall_height_edges` refinement can come later if the Director wants it.
+  Selftest: `blast_calculator_selftest` [3b]. Real map (GLASS): agent (14,14)
+  aiming (14,6) across the intact pane row → clamped to (14,11), in front; an
+  unobstructed (13,15)→(20,15) reaches (20,15) exactly.
+- **The skill seam:** `TestZoneController.throw_range_skill_bonus_gu` (`var`, 0.0),
+  additive, folded into `effective_throw_range_gu()` = base + skill − posture. A
+  future skill sets it (whole numbers only — the perimeter ellipse rule). Lives
+  beside `throw_range_gu`; moves with it when the arsenal/skill system lands.
+
 ## 5. Questions for Director — ANSWERED 2026-08-10
 
 - **Throw range:** ~~derive from BombDef?~~ → a standalone `throw_range_gu` tuning

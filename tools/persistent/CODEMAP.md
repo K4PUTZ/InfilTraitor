@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**239 scripts · 87204 lines total** (under `godot/scripts/`)
+**239 scripts · 87314 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1964,7 +1964,7 @@ extends `Node2D` · 43 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1955 lines
+`class_name BlastCalculator` · 2013 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -3166,7 +3166,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2632 lines
+extends `SceneTree` · 2669 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3188,6 +3188,7 @@ extends `SceneTree` · 2632 lines
 **Public API**
 - `func test_flood_unobstructed_rings() -> void:`
 - `func test_flood_stops_at_blocked_edge() -> void:`
+- `func test_throw_line_clamp_range_and_walls() -> void:`
 - `func test_flood_capped_at_bomb_range() -> void:`
 - `func test_affected_slice_on_source_gu_boundary() -> void:`
 - `func test_deterministic_selection_is_stable() -> void:`
@@ -5079,7 +5080,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1567 lines
+`class_name TestZoneController` · 1582 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5098,6 +5099,7 @@ extends `Node2D` · 34 lines
 - `var room: Node`
 - `var throw_range_gu: float = 7.0`
 - `var throw_range_penalty_gu: Dictionary = { DebugAgent.Posture.STANDING: 0.0, DebugAgent.Posture.CROUCHING: 2.0, DebugAgent.Posture.PRONE: 4.0, }`
+- `var throw_range_skill_bonus_gu: float = 0.0`
 - `var aim_dome_radius_gu: float = 2.0`
 - `var throw_duration_s: float = 0.6`
 - `var grenade_cook_s: float = 1.0`

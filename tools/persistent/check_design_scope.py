@@ -64,7 +64,11 @@ DESIGN_ALLOWED = [
     "PROMPTS/UI_*",
 ]
 
-# ── Files BOTH sides genuinely need, and why that is a defect ───────────────
+# ── The file BOTH sides genuinely need, and why that is a defect ────────────
+# room.tscn left this list when the HUD was extracted (UI-SPLIT-01) and room.gd
+# left it when the engine stopped naming widgets (UI-SPLIT-02) — it is now an
+# ordinary engine file, blocked because it is not in the allowlist, and invariant
+# L3 keeps it that way. project.godot is what remains.
 # These are not "engine files JAMES might touch by accident". They are files
 # the interface CANNOT be built without, that the engine also owns. Blocking
 # them is correct but it is not a solution — the solution is to un-share them,
@@ -76,12 +80,6 @@ CONTESTED = {
         "the [input] section is design's and every other section is the "
         "engine's, and Godot cannot split this file. Ask the Director to "
         "apply an input-map change on main rather than editing it here."
-    ),
-    "godot/scripts/world/room.gd": (
-        "11 107 lines of engine core — and it holds 21 hardcoded $HUD/... "
-        "node paths, so renaming or moving a HUD widget breaks it at RUNTIME "
-        "with a null @onready that no gate can catch. Never edit it from a "
-        "design branch; ask the Director to expose a signal instead."
     ),
 }
 

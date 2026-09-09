@@ -122,7 +122,18 @@ before being written down.
 
 `Screenshots/history/*.png` is real, tracked evidence (unlike the rest of
 `Screenshots/`, which is gitignored) — gated OFF by default, ~5–6s per
-capture (a real windowed Godot boot):
+capture (a real windowed Godot boot).
+
+⚠️ **The whole tree was wiped on 2026-09-09 (`cf48eb84`) and starts empty.**
+Director ruling: *"o material realmente importante está em REFERENCES. Os
+screenshots são só isso mesmo, screenshots."* **A receipt is not a reference** —
+a capture cited beside a ratified ruling proves a measurement happened, but the
+decision itself is in the prose next to it, so the picture answers nothing the
+reader still needs. All 164 captures still cited by live docs were receipts by
+that test, including an ART ORDER for art not yet made, which listed them under
+the literal word "Evidence:" while the spec the artist needs was the text above.
+Keep a capture only when a future reader must LOOK AT it to decide something
+still undecided. Nothing below changed except that the folder is empty:
 - Session toggle: `python3 tools/persistent/screenshot_toggle.py --on` /
   `--off` / `--status`.
 - One-off for a single commit: `INFILTRAITOR_SCREENSHOT_ONCE=1`.
@@ -154,7 +165,10 @@ capture (a real windowed Godot boot):
   citation in a master plan decays the moment 50 more captures land — measured
   2026-08-03: **16 of 23 captures cited across the docs were already gone**,
   while every hand-named one (`occ_view_N.png`, `shotgun_preview_*.png`)
-  survived. This is the rotation working, not data loss. Consequences: don't
+  survived. This is the rotation working, not data loss. ⚠️ A hand-name buys
+  survival against the *rotation* only — the 2026-09-09 wipe took the named
+  captures too, those two included, so neither file exists any more.
+  Consequences: don't
   "fix" a dead capture link by re-running something (the run will not reproduce
   the old frame), don't treat a missing file as evidence of a deleted commit,
   and **give a capture a non-`auto_` name when it is meant to be cited
@@ -283,6 +297,13 @@ and process learnings:
 - No hardcoded player-facing strings — `tr("domain.key")`.
 - No empirical pixel offsets on voxel layer positions — positions are
   analytically derived (Transform Canon, `QUICK_REFERENCE.md`).
+- **Claude is Engine-Only role** — Never modify visual layer scripts under
+  `godot/scripts/ui/` or canvas HUD setups in `room.tscn`, unless strictly
+  requested by the Director to expose a new engine signal or state container.
+  UI belongs to the parallel branch `feat/design-interface-hud`, operated by
+  JAMES (Qwen) from its own clone at `../INFILTRAITOR_DESIGN` — its process
+  doc is `.README_WORKSPACE.md` there, and its task list is
+  [`PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md`](PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md).
 
 ## Reference map
 

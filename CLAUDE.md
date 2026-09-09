@@ -316,8 +316,10 @@ and process learnings:
   `godot/scripts/ui/` or canvas HUD setups in `room.tscn`, unless strictly
   requested by the Director to expose a new engine signal or state container.
   UI belongs to the parallel branch `feat/design-interface-hud`, operated by
-  JAMES (Qwen) from its own clone at `../INFILTRAITOR_DESIGN` — its process
-  doc is `.README_WORKSPACE.md` there, and its task list is
+  JAMES (Qwen) from its own clone at `../INFILTRAITOR_DESIGN`. JAMES's charter
+  is [`QWEN.md`](QWEN.md) — Qwen Code auto-loads that name, not this file — the
+  shared process doc is [`.README_WORKSPACE.md`](.README_WORKSPACE.md), and the
+  task list is
   [`PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md`](PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md).
 
 ## Reference map

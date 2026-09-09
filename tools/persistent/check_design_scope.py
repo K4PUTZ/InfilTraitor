@@ -54,7 +54,9 @@ DESIGN_ALLOWED = [
     "godot/scripts/world/controllers/input_controller.gd.uid",
     # Player-facing strings are UI text.
     "godot/localization/translations/*",
-    # The design side's own documentation.
+    # The design side's own documentation, and JAMES's own context file —
+    # QWEN.md is what Qwen Code auto-loads from the workspace root.
+    "QWEN.md",
     ".README_WORKSPACE.md",
     "PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md",
     "docs/technical/INPUT_REFERENCE.md",

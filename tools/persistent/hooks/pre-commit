@@ -50,6 +50,23 @@ if [ -f "$SCOPE" ]; then
     fi
 fi
 
+# ── Gate 0.5: the HUD map snapshot in QWEN.md ──────────────────────────────
+# QWEN.md carries a generated map of hud.tscn so JAMES, on a 32K context, can do
+# a layout task without opening the scene (~1 300 tokens) at all. That snapshot
+# is the one part of his charter that can rot on its own, and it rots into a
+# CONFIDENT LIE — a map naming nodes that were renamed is worse than no map,
+# because he has no reason to doubt it. So it is only checked when the scene it
+# describes is actually being changed, and the fix is one command away.
+HUDMAP="$REPO_ROOT/tools/persistent/hud_map.py"
+if [ -f "$HUDMAP" ] && git diff --cached --name-only | grep -q '^godot/scenes/ui/hud\.tscn$'; then
+    if ! python3 "$HUDMAP" --check; then
+        echo ""
+        echo "✗ Commit aborted: hud.tscn changed, so QWEN.md's HUD map is stale."
+        echo "  Paste the output above into the \`\`\`hud-map block in QWEN.md."
+        exit 1
+    fi
+fi
+
 # ── Gate 1: inviolable-rule guard ───────────────────────────────────────────
 if [ -f "$CHECK" ]; then
     if ! python3 "$CHECK"; then

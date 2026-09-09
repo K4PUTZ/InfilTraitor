@@ -134,8 +134,21 @@ pad sits **bottom-right** and is visible only in dev vision. A new panel must
 not collide with either.
 
 ⚠️ **Never open `PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md` whole — it is
-~5 000 tokens, a sixth of your context.** Read only the section you need;
-Wave 3 is § Part 4.
+~5 000 tokens, a sixth of your context.** Read only the section you need.
+
+⛔ **And do not trust its Wave 3 status.** It says `PAUSE-MENU-01` is "not
+started"; it is BUILT, as `godot/scripts/ui/main_menu_panel.gd`, whose own first
+line reads *"PAUSE-MENU-01: First concrete menu built on WindowBase."* Escape
+(`ui_pause` → `InputController.pause_requested` → `room._on_pause_requested()`)
+already opens it and pauses the tree; closing it by any path unpauses, because
+`room.gd` hangs that off the panel's `closed` signal rather than the keypress.
+It has New Game, Load (disabled), Controls, Showcase, Options (disabled) and
+Quit — and `controls_panel.gd` (PAUSE-MENU-02) exists too.
+
+**So do not build a second pause menu.** Against the Part 4 spec what is
+genuinely missing is a **Resume button** — Escape closes it, but there is no
+button that does. Extend the panel you have; ask the Director before treating
+anything else in Part 4 as outstanding.
 
 ---
 

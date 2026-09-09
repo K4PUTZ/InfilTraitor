@@ -30,6 +30,25 @@ CHECK="$REPO_ROOT/tools/persistent/check_invariants.py"
 GEN="$REPO_ROOT/tools/persistent/gen_codemap.py"
 LINT="$REPO_ROOT/tools/persistent/project_lint.py"
 DOCS="$REPO_ROOT/tools/persistent/update_docs.py"
+SCOPE="$REPO_ROOT/tools/persistent/check_design_scope.py"
+
+# ── Gate 0: workspace scope ─────────────────────────────────────────────────
+# Runs first because it is the cheapest gate and the most fundamental: there is
+# no point compiling a change that does not belong in this branch at all.
+# ASYMMETRIC by design — it BLOCKS engine files on a design branch, and only
+# WARNS about UI files on main (the Director commits here too, and a hard block
+# would stop him working in his own repository). The path list is owned by the
+# tool, not duplicated here. Added 2026-09-09 at the Director's instruction to
+# make the two-workspace split enforce itself rather than rely on an agent
+# having read the charter.
+if [ -f "$SCOPE" ]; then
+    if ! python3 "$SCOPE"; then
+        echo ""
+        echo "✗ Commit aborted: this branch does not own those files (see above)."
+        echo "  Scope: python3 tools/persistent/check_design_scope.py --list"
+        exit 1
+    fi
+fi
 
 # ── Gate 1: inviolable-rule guard ───────────────────────────────────────────
 if [ -f "$CHECK" ]; then

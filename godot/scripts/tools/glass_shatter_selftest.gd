@@ -1036,7 +1036,13 @@ class RoomStub:
 func test_cook_proposes_the_opening_and_only_commit_claims_it() -> void:
 	print("[20] CRACK-05 — the cook PROPOSES a blast hole's opening; commit() claims it\n")
 	var registry := EdgeRegistry.new()
-	var pane: Array = _pane(2, 7, 3)
+	## A NORMAL-WINDOW pane (2 GU x 2 storeys), deliberately: since the 2026-09-09
+	## calibration `SHOCKWAVE_REGION_MAX` is 20 lattice voxels, and a bigger pane at
+	## ring 0 is now a PARTIAL break — which would make `commit()` claim a craze
+	## field as well, a call this test's RoomStub does not model. This path's
+	## subject is the OPENING claim's timing; a pane that goes whole keeps it to
+	## exactly that one call.
+	var pane: Array = _pane(2, 3, 2)
 	for s in pane:
 		registry.register_slice(s)
 	var bomb := BombDefClass.from_json({
@@ -1279,8 +1285,12 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 	## `_craze_pane()` is unconditional, so the thing that keeps a pane that is
 	## entirely gone from claiming a craze field is the DESTROYED filter leaving
 	## `entries` empty — a behaviour, not a branch, and therefore worth a test.
+	## A NORMAL-WINDOW pane (2 GU x 2 storeys): since the 2026-09-09 calibration
+	## `SHOCKWAVE_REGION_MAX` is 20 lattice voxels, a MAXIMUM pane at ring 0 is a
+	## partial break by design (the Director's *"não ficar binário"*) — the
+	## whole-break case this sub-test needs is now a smaller pane the disc covers.
 	var registry0 := EdgeRegistry.new()
-	var pane0: Array = _pane(2, 7, 3)
+	var pane0: Array = _pane(2, 3, 2)
 	for s0 in pane0:
 		registry0.register_slice(s0)
 	var bomb0 := BombDefClass.from_json({

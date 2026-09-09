@@ -142,18 +142,25 @@ static var SHATTER_REMNANT_ARMORED_SCALE: float = 0.35
 ## EVERY time from that spot; "it always just cracks" can be one fixed outcome
 ## sampled repeatedly. Calibrate from several positions.
 ##
-## Placeholders like every balance row here — calibrated against a GLASS-map
-## capture. All `static var` (architecture Rule 1) — dial without a rebuild.
-static var GLASS_SHOCKWAVE_FALLOFF: Array[float] = [1.0, 1.0, 1.0, 0.90, 0.60, 0.35]
+## Calibrated on the GLASS map, 2026-09-09 (Director: *"o dano [...] decrescente
+## por slice/slab, storey e distância [...] precisamos garantir que em vidraças
+## maiores também funcione, pra não ficar binário"*). Near rings certain; ring 3
+## almost always still reacts; rings 4-5 lean toward a pane that only cracks. The
+## value is the shatter probability AND scales the region radius below. All
+## `static var` (architecture Rule 1) — dial without a rebuild.
+static var GLASS_SHOCKWAVE_FALLOFF: Array[float] = [1.0, 1.0, 1.0, 0.85, 0.55, 0.30]
 static var GLASS_CRAZE_FALLOFF: Array[float]    = [1.0, 0.90, 0.75, 0.60, 0.45, 0.30, 0.20, 0.12]
 
 ## G4-4 / G-D42 — the region-radius span the shockwave strength interpolates
-## across, in pane-lattice voxels (Chebyshev). At full strength a hit takes a
-## `SHOCKWAVE_REGION_MAX`-radius disc (enough to cover a maximum panel); at the
-## faint outer ring only `SHOCKWAVE_REGION_MIN`. G-D13b's anchored remnants still
-## spare a distant, framed area — a free-standing pane still goes whole.
-static var SHOCKWAVE_REGION_MIN: int = 6
-static var SHOCKWAVE_REGION_MAX: int = 50
+## across, in pane-lattice voxels (Chebyshev: 8 per GU across, 8 per storey up).
+## MAX is deliberately BELOW a maximum panel's reach (2026-09-09): at full
+## strength the disc swallows a normal 1-2 GU window whole but leaves a cracked
+## margin on an oversized pane, so a big pane is never all-or-nothing — the
+## Director's *"não ficar binário"*. The horizontal AND vertical falloff a
+## slab / storey away from the impact IS this disc, not a per-slice roll.
+## G-D13b's anchored remnants still spare a distant, framed area.
+static var SHOCKWAVE_REGION_MIN: int = 5
+static var SHOCKWAVE_REGION_MAX: int = 20
 
 ## ── G-D49 — a pane already substantially crazed is structurally spent ────────
 ##

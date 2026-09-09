@@ -1,8 +1,10 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 **v1.47 — THE TRACK IS CLOSED.** Case testing (owed since 2026-09-06)
+**Status:** 🟢 **v1.48 — THE TRACK IS CLOSED.** Case testing (owed since 2026-09-06)
 began 2026-09-07 and produced two more rulings, `G-D48` and `G-D49` — the shockwave
-zone. Both are calibration/reach on ratified mechanics, not new systems:
+zone. Both are calibration/reach on ratified mechanics, not new systems. **The G-D48
+ramp was calibrated on screen 2026-09-09** (Director: *"a rampa me parece tudo ok"*)
+— see the values below.
 
 - **G-D48 — the SHOCKWAVE ZONE (Director, 2026-09-07).** *"precisamos ampliar a area
   de alcance do dano efetivo de granadas — somente sobre o vidro […] Podemos chamar
@@ -13,11 +15,12 @@ zone. Both are calibration/reach on ratified mechanics, not new systems:
   **Retires `SHATTER_BLAST_GAIN` + `SHATTER_BLAST_EXTRA_RINGS` + `glass_ring_multiplier`
   + `blast_glass_punch` and the bullet logistic on the cook path.** The cook now reads
   two GLASS-ONLY per-ring tables directly:
-  `GLASS_SHOCKWAVE_FALLOFF = [1.0, 1.0, 1.0, 0.90, 0.60, 0.35]` (index = ring; the
+  `GLASS_SHOCKWAVE_FALLOFF = [1.0, 1.0, 1.0, 0.85, 0.55, 0.30]` (index = ring; the
   value IS the shatter probability AND scales the region radius across
-  `SHOCKWAVE_REGION_MIN..MAX` = 6..50 pane-lattice voxels) and
-  `GLASS_CRAZE_FALLOFF = [1.0, 0.90, 0.75, 0.60, 0.45, 0.30, 0.20, 0.12]` (2 GU
-  longer). `BlastCalculator.flood_gu_rings()` gained `min_max_ring`; only
+  `SHOCKWAVE_REGION_MIN..MAX` = **5..20** pane-lattice voxels — MAX is deliberately
+  below a maximum panel's reach so a big pane keeps a cracked margin, 2026-09-09)
+  and `GLASS_CRAZE_FALLOFF = [1.0, 0.90, 0.75, 0.60, 0.45, 0.30, 0.20, 0.12]` (2 GU
+  longer, unchanged). `BlastCalculator.flood_gu_rings()` gained `min_max_ring`; only
   `_shatter_glass_panes()` passes it (`GlassShatter.glass_blast_max_ring()` = 7),
   re-flooding + re-running `find_affected_containers()` for glass panes alone — the
   deliberate flood extension `SHATTER_BLAST_EXTRA_RINGS`'s note said was needed.
@@ -26,9 +29,16 @@ zone. Both are calibration/reach on ratified mechanics, not new systems:
   VL-PERSIST together (see the render gap below). **Verified on the real map:** from
   (18,11) both target panes roll p=1.0 and shatter whole (1152 + 469 voxels); far
   panes craze out to ring 7. `glass_shatter_selftest` [10] rewritten; [21] and the
-  partial-break probe moved to the outer ramp. ⚠️ The ramp values are the Director's
-  to calibrate — `build_filmstrip.py`/`glass_blast_demo` with `INFILTRAITOR_GLASS_RING_DIAG=1`
-  prints the per-pane ring/probability/outcome.
+  partial-break probe moved to the outer ramp. ✅ **Calibrated on screen 2026-09-09**
+  (Director wanted damage decreasing per slice/storey/distance and *"que em vidraças
+  maiores também funcione, pra não ficar binário"*): `SHOCKWAVE_REGION_MAX` 50 → 20
+  is the lever — the destruction disc no longer auto-covers a maximum pane, so a big
+  pane at ring 2 goes 861 destroyed / 291 CRACKED instead of 1152 / 0. Probabilities
+  eased at rings 3-5 (0.90/0.60/0.35 → 0.85/0.55/0.30) so the outer ramp leans toward
+  a pane that only cracks. `INFILTRAITOR_GLASS_RING_DIAG=1` + `glass_blast_demo`
+  prints the per-pane ring/probability/outcome. `glass_shatter_selftest` [20] and
+  [21]'s whole-break probe now use a normal-window fixture (a max pane at ring 0 is
+  a partial break by design).
 - **G-D49 — re-damage on a crazed pane collapses locally.** *"Qualquer dano novo num
   painel ja rachado, como um tiro, colapsa as slices proximas a esse dano. Mas não
   precisa necessariamente ser toda a vidraça de uma vez. Continua existindo uma
@@ -2034,9 +2044,10 @@ something that had stopped being true and a reader would have got four wrong ans
 **2026-09-07 — the CASE TESTING owed since 2026-09-06 ran.** It produced `G-D48`
 (the shockwave zone — destruction to 5 GU with a descending ramp, craze to 7 GU, via
 a real glass-only flood extension) and `G-D49` (re-damage on a crazed pane collapses
-locally). Both are BUILT and verified on the GLASS map. ⛔ **The ramp values in
-`GLASS_SHOCKWAVE_FALLOFF` / `GLASS_CRAZE_FALLOFF` are placeholders awaiting the
-Director's on-screen calibration** — that is the one thing still owed on glass.
+locally). Both are BUILT and verified on the GLASS map. ✅ **The ramp was calibrated
+on screen 2026-09-09** (`SHOCKWAVE_REGION_MAX` 50 → 20, probabilities eased to
+`[1,1,1, .85,.55,.30]` — see the G-D48 bullet in the header). That clears the last
+balance debt on glass.
 
 It also surfaced three defects that were NOT glass physics, all of the same shape —
 *the world changed and something kept answering from the old state*:

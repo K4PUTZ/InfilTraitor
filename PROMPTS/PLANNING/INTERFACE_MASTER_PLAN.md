@@ -1,10 +1,32 @@
 # INTERFACE_MASTER_PLAN
-## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.0
+## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.1
 
-**Status:** 🟡 IN PROGRESS. Baseline: `verified/v0.6.4`. Wave 1 (`INPUT-01`,
+**Status:** 🟢 **v1.1 — 2026-09-09: WAVE 3 IS BUILT, and this header said it was
+not for almost two months.** `PAUSE-MENU-01` shipped on **2026-07-15** in
+`28cb79ad` ("Alpha Main Menu Foundation") as
+`godot/scripts/ui/main_menu_panel.gd` — whose own first line reads
+*"PAUSE-MENU-01: First concrete menu built on WindowBase."* It `extends
+WindowBase`, Escape reaches it through `ui_pause` →
+`InputController.pause_requested` → `room._on_pause_requested()`, it sets
+`get_tree().paused = true`, and closing it by ANY path unpauses, because
+`room.gd` hangs that off the panel's `closed` signal rather than off the
+keypress (ESC-STACK-01) — which is the §Part 4 `process_mode` discipline the
+task asked to establish. `controls_panel.gd` (PAUSE-MENU-02) landed in the same
+commit. It carries New Game, Load (disabled), Controls, Showcase, Options
+(disabled) and Quit.
+
+⚠️ **Against §Part 4 exactly one thing is genuinely outstanding: a RESUME
+button.** Escape closes the panel; nothing on screen does. Everything else in
+that section is satisfied.
+
+Found 2026-09-09 while checking whether JAMES could complete Wave 3 unaided —
+he could not have, because he would have rebuilt it: the plan told him to write
+a new `pause_menu_panel.gd`, and two menus would then have competed for Escape.
+`QWEN.md`, his charter, now warns him at the top of the section.
+
+Baseline: `verified/v0.6.4`. Wave 1 (`INPUT-01`,
 `PANEL-01`) ✅ CLOSED and Wave 2 (`HUD-PANEL-01`) ✅ **CLOSED 2026-07-11**, each
-after several evidence correctives (see §5 "As Executed"). Wave 3
-(`PAUSE-MENU-01`) not started. No `verified/` tag cut yet for this plan's
+after several evidence correctives (see §5 "As Executed"). No `verified/` tag cut yet for this plan's
 progress — `main` is ahead of the last tag (`v0.6.4`) with this work plus
 `SCREENSHOT-HOOK-01` (process infrastructure, not part of this plan) and the
 `TOP-JUNCTION-06` / `TEXTURES-3.0` work (separate plan). Director's call on

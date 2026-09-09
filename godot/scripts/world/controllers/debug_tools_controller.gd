@@ -27,14 +27,17 @@ func toggle_map_loader_panel() -> void:
 
 ## Create map loader toolbar button
 func create_map_loader_button() -> void:
-	if room.toolbar_row == null:
+	if room._hud_controller == null:
 		return
 	var btn_map := Button.new()
 	btn_map.text = "🗺️"
 	btn_map.add_theme_font_size_override("font_size", 16)
 	btn_map.custom_minimum_size = Vector2(40.0, 32.0)
 	btn_map.pressed.connect(toggle_map_loader_panel)
-	room.toolbar_row.add_child(btn_map)
+	## UI-SPLIT-02: the HUD decides where a toolbar button goes. Returns false
+	## when there is no toolbar, in which case the button is simply not built.
+	if not room._hud_controller.add_toolbar_button(btn_map):
+		btn_map.queue_free()
 
 
 ## Toggle voxel ruler grid overlay (F3)

@@ -15,6 +15,7 @@ Checks implemented:
   R5  `_alert_meter` is only *accumulated* inside `_apply_tic_result()`
   B1  Baking: voxel_renderer is the sole caller of set_cell() (branch exclusivity)
   B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
+  L3  HUD widgets are named only inside hud_controller.gd (UI-SPLIT-02)
   L1  LEVEL-RENUMBER: `get_layer(<integer literal>)` — a level is always
       derived (`ground_plane_level()` / `storey_level_base()`), never typed
 
@@ -107,6 +108,17 @@ def _glass_family() -> list[str] | None:
 
 
 _GLASS_MEMBERS = _glass_family()
+## L3 — the engine may not name a HUD widget. Two shapes: a node path into the
+## HUD subtree, and reaching a widget off room.gd by its @onready name.
+L3_HUD_WIDGET = re.compile(
+    r"""\$HUD/|\bget_node\w*\(\s*["']HUD/"""
+    ## The prefixes take \w+ rather than ending at a trailing \b: there is no
+    ## word boundary between the "_" of btn_ and the "v" of btn_view_h, so the
+    ## first version of this rule silently caught only half of what it claimed.
+    r"""|\b_?room\.(?:(?:btn|lbl|chk)_\w+|busted_dialog|enemy_turn_banner"""
+    r"""|toolbar_row|perspective_pad)\b"""
+)
+
 L2_GLASS_COMPARISON = re.compile(
     r"[=!]=\s*\"(%s)\"" % "|".join(re.escape(m) for m in _GLASS_MEMBERS)
 ) if _GLASS_MEMBERS else None
@@ -247,6 +259,25 @@ def check_file(path: Path) -> list[Violation]:
                 "member of the family (G-D16: glass_armored, glass_screen_*) and "
                 "fails SILENTLY — the new material renders as an opaque wall. "
                 "Ask GlassMaterials.is_glass(<id>) instead",
+            ))
+
+        # L3 — the HUD seam (UI-SPLIT-02, 2026-09-09).
+        # hud_controller.gd is the ONE file allowed to name a widget; it is the
+        # facade the design branch owns. Everything else asks it. This exists
+        # because the failure it prevents is INVISIBLE to every other gate:
+        # a renamed node leaves a null @onready that compiles, lints and only
+        # dies at runtime, and the design branch is where renames happen.
+        if (name != "hud_controller.gd"
+                and "/tools/" not in rel
+                and not line.lstrip().startswith("#")
+                and L3_HUD_WIDGET.search(line)):
+            out.append(Violation(
+                "L3 hud-widget-behind-the-facade",
+                rel, lineno,
+                "naming a HUD widget from the engine breaks at RUNTIME when the "
+                "design branch renames it, and no other gate can see that. Add a "
+                "signal (input) or a set_*/update_* method (output) to "
+                "HudController and ask it instead",
             ))
 
         # B1 — _voxel_layers (voxel grid) only modified via voxel_renderer._set_voxel_cell()

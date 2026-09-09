@@ -300,7 +300,10 @@ and process learnings:
 - **Claude is Engine-Only role** — Never modify visual layer scripts under
   `godot/scripts/ui/` or canvas HUD setups in `room.tscn`, unless strictly
   requested by the Director to expose a new engine signal or state container.
-  UI belongs to the parallel `design` branch operated by JAMES (Qwen).
+  UI belongs to the parallel branch `feat/design-interface-hud`, operated by
+  JAMES (Qwen) from its own clone at `../INFILTRAITOR_DESIGN` — its process
+  doc is `.README_WORKSPACE.md` there, and its task list is
+  [`PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md`](PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md).
 
 ## Reference map
 

@@ -136,6 +136,29 @@ def staged_files() -> list[str]:
     return [p for p in out.splitlines() if p]
 
 
+def resolve_ref(ref: str) -> str:
+    """Pick the ref that actually answers "what would I merge into REF".
+
+    A parallel workspace keeps a LOCAL `main` that nobody checks out and that
+    therefore never advances. Measured on the first real run, 2026-09-09: the
+    design clone's local `main` was SEVEN commits behind `origin/main`, so
+    `--against main` diffed against a fortnight-stale tree and reported 36
+    engine files — every one of them already merged in — as out of scope. A
+    tool that answers confidently and wrongly is worse than no tool, so prefer
+    the remote-tracking ref and always print which one was used.
+    """
+    if ref.startswith("origin/"):
+        return ref
+    remote = f"origin/{ref}"
+    if _run("rev-parse", "--verify", "--quiet", remote):
+        behind = _run("rev-list", "--count", f"{ref}..{remote}")
+        if behind and behind != "0":
+            print(f"· local '{ref}' is {behind} commit(s) behind {remote} — "
+                  f"using {remote}")
+        return remote
+    return ref
+
+
 def files_between(ref: str) -> list[str]:
     """Files HEAD would bring into `ref` — the pre-merge question."""
     out = _run("diff", "--name-only", "--diff-filter=ACMRT", f"{ref}...HEAD")
@@ -207,12 +230,12 @@ def main() -> int:
     branch = current_branch()
 
     if args.against:
-        paths = files_between(args.against)
+        ref = resolve_ref(args.against)
+        paths = files_between(ref)
         if not paths:
-            print(f"✓ nothing to merge into {args.against}")
+            print(f"✓ nothing to merge into {ref}")
             return 0
-        print(f"'{branch}' would bring {len(paths)} file(s) into "
-              f"{args.against}.")
+        print(f"'{branch}' would bring {len(paths)} file(s) into {ref}.")
         if not is_design_branch(branch):
             print("  (not a design branch — scope not enforced)")
             return 0

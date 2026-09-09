@@ -206,7 +206,13 @@ def main() -> int:
                     help="report what HEAD would bring into REF (pre-merge)")
     ap.add_argument("--list", action="store_true",
                     help="print the design scope and exit")
+    ap.add_argument("--is-design-branch", action="store_true",
+                    help="exit 0 when the current branch is a design branch "
+                         "(so the pre-push hook need not duplicate the globs)")
     args = ap.parse_args()
+
+    if args.is_design_branch:
+        return 0 if is_design_branch(current_branch()) else 1
 
     if args.list:
         print("Design branches:")

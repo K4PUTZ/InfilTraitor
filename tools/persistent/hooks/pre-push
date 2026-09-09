@@ -11,6 +11,40 @@
 # not "server accepted" — good enough for the notification's purpose.
 ################################################################################
 
+# ── Gate: a design branch may push ONLY itself ─────────────────────────────
+# Added 2026-09-09 so JAMES can push his own work without being able to reach
+# `main`. The check reads the REFS git is actually about to transfer, from the
+# stdin git hands every pre-push hook, rather than pattern-matching the command
+# line — `git push`, `git push -u origin main`, `git push origin HEAD:main` and
+# a configured upstream are all the same event here and all different strings
+# there, which is why the settings-file glob in his Qwen config is the
+# convenience and this is the guarantee.
+#
+# The branch globs live in check_design_scope.py, the single authority for what
+# a design branch is; this hook asks it rather than repeating them.
+REPO_ROOT_PP="$(git rev-parse --show-toplevel 2>/dev/null)"
+SCOPE_PP="$REPO_ROOT_PP/tools/persistent/check_design_scope.py"
+if [ -f "$SCOPE_PP" ] && python3 "$SCOPE_PP" --is-design-branch 2>/dev/null; then
+    CURRENT_PP="$(git rev-parse --abbrev-ref HEAD)"
+    BLOCKED_PP=""
+    # stdin: <local ref> <local sha> <remote ref> <remote sha>
+    while read -r _local_ref _local_sha remote_ref _remote_sha; do
+        [ -z "$remote_ref" ] && continue
+        if [ "$remote_ref" != "refs/heads/$CURRENT_PP" ]; then
+            BLOCKED_PP="$BLOCKED_PP  ✗ ${remote_ref#refs/heads/}\n"
+        fi
+    done
+    if [ -n "$BLOCKED_PP" ]; then
+        echo ""
+        echo "✗ Push refused: '$CURRENT_PP' is a design branch and may push only itself."
+        printf "%b" "$BLOCKED_PP"
+        echo ""
+        echo "  Interface work reaches main by the Director merging it, after:"
+        echo "    python3 tools/persistent/check_design_scope.py --against main"
+        exit 1
+    fi
+fi
+
 # Skip when the push comes through push.sh (it beeps on completion itself)
 if [ -n "${INFILTRAITOR_PUSH_SH:-}" ]; then
     exit 0

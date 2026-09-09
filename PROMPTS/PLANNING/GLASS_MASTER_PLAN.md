@@ -39,6 +39,18 @@ ramp was calibrated on screen 2026-09-09** (Director: *"a rampa me parece tudo o
   prints the per-pane ring/probability/outcome. `glass_shatter_selftest` [20] and
   [21]'s whole-break probe now use a normal-window fixture (a max pane at ring 0 is
   a partial break by design).
+  - **EDGE JITTER (Director, 2026-09-09, same session):** *"essas bordas muito retas
+    quando sobra vidro […] aplicar uma mascara nas arestas que sobram"*. A Chebyshev
+    ball is a SQUARE, so the cook's partial-break flood had dead-straight sides. Of
+    the two options put to him — jitter the flood itself (motor) vs. build S-6's
+    hashed rim pool (render) — he chose the flood: `SHOCKWAVE_EDGE_JITTER` (default
+    2) perturbs the BFS boundary per 2×2 lattice bucket, range `[-j, +1]` (biased
+    inward so the hole does not inflate), FNV-1a on the shatter salt so a rebuild
+    redraws it identically, capped at `radius/3`, **cook path only** (a bullet hole
+    keeps the clean disc — its rim is G-D34's designed polygon). `16_10` from (13,13)
+    went 861 → 817 destroyed / 291 → 335 CRACKED. Pinned by `glass_shatter_selftest`
+    [24]. S-6 (the hashed rim mask) stays the render-side follow-up if the voxel
+    raggedness is not enough on screen.
 - **G-D49 — re-damage on a crazed pane collapses locally.** *"Qualquer dano novo num
   painel ja rachado, como um tiro, colapsa as slices proximas a esse dano. Mas não
   precisa necessariamente ser toda a vidraça de uma vez. Continua existindo uma
@@ -2064,7 +2076,7 @@ zone and added an existing region-flood trigger; the three above were plumbing.
 | left | owner | why it is not a glass task |
 |---|---|---|
 | **S-4** — the `tight`/`wide` bullet fracture art | glass, deliberately parked | the generator produces the opposite distribution (§13.4) and the look has been rejected three times. `blast` shipped procedurally in §16.12 |
-| **S-6** — G-D32's hashed rim pool | glass, unblocked | the base-space key it waited for arrived with CRACK-04. Real work, not a correction — it needs the Director's go |
+| **S-6** — G-D32's hashed rim pool | glass, unblocked | the base-space key it waited for arrived with CRACK-04. ⚠️ **2026-09-09 — the Director hit the symptom S-6 addresses (*"bordas muito retas quando sobra vidro"*) and chose the cheaper fix first: `SHOCKWAVE_EDGE_JITTER` on the flood itself (see the G-D48 header bullet). S-6 stays the render-side follow-up — build it only if the voxel-level raggedness reads as not enough.** |
 | **G-D8 part three** — the light bump + the +1 detection step when a passage opens | applications | needs the opening to be an EVENT; what landed is a per-turn recomputed SET, deliberately memoryless |
 | the agent CROSSING a broken pane | movement milestone | the blocked-edge set that permits it is built; the traversal is not |
 | shard noise | sound milestone | — |
@@ -4276,6 +4288,7 @@ VL-PERSIST. "Cai junto", not "some".
 | `glass_fall_selftest` | 6 → **10**. [6] rewritten (the old "one column → one deep pile" is now "a band, count preserved, concentrated"), [7] the scatter shape (monotone 0/1/2/3, none past 3, symmetric at zero impulse), [8] the shockwave (mean X −0.04 → 1.93 under a unit impulse, 167 shards past the symmetric tail, base clean), [9] `lift` widens (synthetic), [10] determinism |
 | `glass_shatter_selftest` [23] | G-D45's one load-bearing fact: `remnant_anchor_mask()` held (non-zero) → **0** the instant the concrete jamb is destroyed. The same call the reap makes, on the same geometry, before and after |
 | `glass_shatter_selftest` [10] (G-D48, 2026-09-07) | the shockwave zone: `GLASS_SHOCKWAVE_FALLOFF` reliable to GU 3, tapering (not rising) to GU 5, 0 at GU 6; `GLASS_CRAZE_FALLOFF` reaching 2 GU further; and `flood_gu_rings(min_max_ring = glass_blast_max_ring())` actually placing a GU at ring 7. [21] and the partial-break probe moved to the outer ramp where the outcome is genuinely probabilistic |
+| `glass_shatter_selftest` [24] (G-D48 edge jitter, 2026-09-09) | the cook's partial-break edge WOBBLES (`SHOCKWAVE_EDGE_JITTER = 2` → the interior top edge spans ≥ 2 levels), is a FLAT line with jitter 0, and the same salt reproduces the identical flood — the three claims a Chebyshev-square boundary would each fail |
 | the real map (G-D48) | grenade GU (18,11): `[GLASS-SHATTER-BLAST] pane=PANE_SLICE_16_10_SW ring=2 radius=50 flooded=1152` and `pane=PANE_SLICE_22_10_SW ring=2 flooded=469` — both target panes (15,10 / 16,10 / 20,10 / 21,10) gone; far panes craze to ring 7. `INFILTRAITOR_GLASS_RING_DIAG=1` prints per-pane ring / probability / outcome |
 | the real map | a grenade on the storefront pane: `[GLASS-FALL] 1152 of 1152 shard(s) landed, on 284 cell(s)` — up from the ~48-cell line the pane's foot is. `[GLASS-RAIN] 1152 flight(s) -> 2927 shard(s)` (2.54/voxel). No `[GLASS-REMNANT] G-D45` line — the storefront is free-standing, so the reap correctly found nothing |
 | the timing bench | `INFILTRAITOR_CAPTURE_ACTION=glass_rain_timings` — `RAIN_TIMING_PRESETS` (`snappy`/`default`/`floaty`/`heavy`/`raked`), `INFILTRAITOR_RAIN_IMPULSE`, `INFILTRAITOR_GLASS_BLAST_PANE` (`=framed` for a windowed pane). `build_filmstrip.py --glass-rain <preset|all>` encodes one MP4 each at `--fixed-fps 60` |

@@ -162,6 +162,16 @@ static var GLASS_CRAZE_FALLOFF: Array[float]    = [1.0, 0.90, 0.75, 0.60, 0.45, 
 static var SHOCKWAVE_REGION_MIN: int = 5
 static var SHOCKWAVE_REGION_MAX: int = 20
 
+## The cook's hole edge is perturbed per 2x2 lattice bucket by roughly ±this many
+## voxels — Director 2026-09-09, on the *"bordas muito retas quando sobra vidro"*
+## a partial break leaves: a Chebyshev ball is a SQUARE, so the flood's sides are
+## dead straight. The perturbation is FNV-1a on the shatter salt, so a rebuild
+## (perspective flip, load) redraws the identical edge — never `randf()`, S-3's
+## rule. Biased inward (range [-j, +1]) so the survivor keeps ragged tabs and the
+## hole does not inflate. COOK PATH ONLY — a bullet hole is small and its rim is
+## a designed polygon (G-D34), which must not be jittered. 0 disables.
+static var SHOCKWAVE_EDGE_JITTER: int = 2
+
 ## ── G-D49 — a pane already substantially crazed is structurally spent ────────
 ##
 ## Director, 2026-09-07: *"Qualquer dano novo num painel ja rachado, como um tiro,
@@ -225,6 +235,18 @@ static func shockwave_region_radius(ring: int) -> int:
 	var r: float = float(SHOCKWAVE_REGION_MIN) \
 		+ float(SHOCKWAVE_REGION_MAX - SHOCKWAVE_REGION_MIN) * strength
 	return maxi(int(roundf(r)), SHOCKWAVE_REGION_MIN)
+
+
+## Per-bucket perturbation of the cook hole's edge, in [-j, +1] lattice voxels.
+## Bucketed 2x2 so the boundary steps in ~2-cell chunks (reads ragged, not
+## speckle); FNV-1a on the shatter salt so a rebuild redraws the identical edge.
+## `j` is the caller's cap already clamped to the region size.
+static func shockwave_edge_jitter(salt: String, key: Vector2i, j: int) -> int:
+	if j <= 0:
+		return 0
+	var span: int = j + 2   ## {-j .. +1}
+	var h: int = FacadeSamplerClass._fnv1a_hash("%s:EDGEJIT:%d:%d" % [salt, key.x >> 1, key.y >> 1])
+	return (h % span) - j
 
 
 ## The share (0..1) of a pane's still-standing glass voxels that are CRACKED —
@@ -580,6 +602,13 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 		for k in lattice.keys():
 			flood[k] = true
 	else:
+		## G-D48 (Director, 2026-09-09) — the COOK's hole edge is jittered per 2x2
+		## bucket so a partial break does not leave the dead-straight sides of a
+		## Chebyshev square. A bullet shatter (`radius_override < 0`) keeps the
+		## clean disc: its rim is a designed polygon (G-D34) that must not wobble.
+		## `jit` is capped at radius/3 so a small outer-ramp patch stays connected.
+		var jit: int = mini(SHOCKWAVE_EDGE_JITTER, int(radius / 3.0)) if radius_override >= 0 else 0
+		var reach: int = radius + maxi(jit, 0)
 		var queue: Array = [origin]
 		var dist: Dictionary = {origin: 0}
 		if lattice.has(origin):
@@ -587,7 +616,7 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 		while not queue.is_empty():
 			var cur: Vector2i = queue.pop_front()
 			var d: int = int(dist[cur])
-			if d >= radius:
+			if d >= reach:
 				continue
 			for dc in [-1, 0, 1]:
 				for dl in [-1, 0, 1]:
@@ -600,7 +629,9 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 						continue   ## a real frame stops the fracture; a hole does not
 					dist[nb] = d + 1
 					queue.append(nb)
-					if lattice.has(nb):
+					## The walk always expands to `reach`; whether a cell is TAKEN
+					## is its own bucket's jittered radius.
+					if lattice.has(nb) and (d + 1) <= radius + shockwave_edge_jitter(salt, nb, jit):
 						flood[nb] = true
 
 	## G-D13b — spare ANCHORED shards only. A flooded glass voxel is a candidate

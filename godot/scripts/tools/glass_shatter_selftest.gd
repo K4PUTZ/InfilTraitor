@@ -84,6 +84,7 @@ func _init() -> void:
 	test_a_pane_the_blast_does_not_take_crazes()
 	test_the_survivors_leave_the_function()
 	test_a_remnant_is_orphaned_when_its_frame_is_destroyed()
+	test_shockwave_edge_is_jittered()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1449,4 +1450,59 @@ func test_a_remnant_is_orphaned_when_its_frame_is_destroyed() -> void:
 	else:
 		_fail("mask %d -> %d — reap's orphan test would not fire (before must be non-zero, after must be 0)"
 			% [mask_before, mask_after])
+	print("")
+
+
+## G-D48 (Director, 2026-09-09): *"essas bordas muito retas quando sobra vidro"*.
+## A Chebyshev ball is a SQUARE, so the cook's partial-break flood had dead-straight
+## sides. `SHOCKWAVE_EDGE_JITTER` perturbs the edge per 2x2 bucket, COOK PATH ONLY,
+## by FNV-1a so a rebuild redraws it identically. This pins all three claims:
+## the edge wobbles, jitter 0 is a flat control, and the same salt repeats.
+func test_shockwave_edge_is_jittered() -> void:
+	print("[24] G-D48 — the cook's partial-break edge is jittered, not a Chebyshev square\n")
+	var saved: int = GlassShatterClass.SHOCKWAVE_EDGE_JITTER
+	var base: int = GeometryCoords.storey_level_base(0)
+	var lo: int = 2
+	var hi: int = 9
+	var storeys: int = 3
+	var mid_col: int = int((lo * 8 + hi * 8 + 7) / 2.0)
+	var mid_lvl: int = base + storeys * 4   ## room above AND below so neither edge clips the pane
+	var radius: int = 8
+
+	## Max flooded level per column, for the interior columns whose vertical reach
+	## is the full radius (a Chebyshev square, so that is every column within it).
+	var top_edge := func(salt: String) -> Dictionary:
+		var pane: Array = _pane(lo, hi, storeys)
+		var res: Dictionary = GlassShatterClass.plan_pane_shatter(pane, Face.SW,
+			Vector2i(mid_col, 3 * 8 + 7), mid_lvl, 0.0, salt, {}, radius)
+		var per_col: Dictionary = {}
+		for e in res["destroyed"]:
+			var v: Voxel = e["slice"].voxels[int(e["voxel_index"])]
+			var c: int = v.grid_pos.x
+			if absi(c - mid_col) <= radius - 1:
+				per_col[c] = maxi(int(per_col.get(c, -1)), v.level)
+		return per_col
+
+	GlassShatterClass.SHOCKWAVE_EDGE_JITTER = 2
+	var jittered: Dictionary = top_edge.call("EDGE:A")
+	var tops: Array = jittered.values()
+	var span: int = (tops.max() - tops.min()) if not tops.is_empty() else 0
+
+	GlassShatterClass.SHOCKWAVE_EDGE_JITTER = 0
+	var flat: Dictionary = top_edge.call("EDGE:A")
+	var flat_levels: Dictionary = {}
+	for c in flat:
+		flat_levels[int(flat[c])] = true
+
+	GlassShatterClass.SHOCKWAVE_EDGE_JITTER = 2
+	var det_a: Dictionary = top_edge.call("EDGE:DET")
+	var det_b: Dictionary = top_edge.call("EDGE:DET")
+	GlassShatterClass.SHOCKWAVE_EDGE_JITTER = saved
+
+	if span >= 2 and flat_levels.size() == 1 and det_a == det_b:
+		_pass("interior top edge spans %d levels with jitter, exactly 1 without, and the same salt repeats"
+			% span)
+	else:
+		_fail("span=%d (want >=2), flat distinct levels=%d (want 1), deterministic=%s"
+			% [span, flat_levels.size(), det_a == det_b])
 	print("")

@@ -82,7 +82,7 @@ replaced by a printed diagnostic and by the composite check below.
 A 90° head turn at the guard's own rate takes ~600 ms, so 15° steps show 6 images
 in that time — **10 Hz**, against D46's 30 Hz authoring rate. Whether that reads as
 a turn or as a stutter is a judgement, and
-[`Screenshots/p3_head_sweep/head_sweep_blind.gif`](../Screenshots/p3_head_sweep/head_sweep_blind.gif)
+`Screenshots/p3_head_sweep/head_sweep_blind.gif`
 is the bracket: three blind columns, the game's own exponential lerp, key in
 `head_sweep_key.txt`. Rebuild it with
 `python3 tools/asset_generation/p3_head_sweep_sheet.py`.

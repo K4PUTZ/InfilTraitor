@@ -324,7 +324,7 @@ is **constant across the quad** — which is what makes the answer per-TILE rath
 than per-pixel. The three faces of one voxel must resolve to ONE cell, and this
 is why they do.
 
-Evidence: [`Screenshots/history/spike_cell_index_parity_zoom.png`](../../Screenshots/history/spike_cell_index_parity_zoom.png)
+Evidence: `Screenshots/history/spike_cell_index_parity_zoom.png`
 — the recovered cell's parity painted red/blue. Every diamond is one cell, solid
 colour, alternating on the isometric lattice, seams exactly on voxel edges. A
 wrong recovery reads as noise or as bands that ignore the geometry; this reads as
@@ -332,7 +332,7 @@ neither.
 
 ### Gate 3 — does the per-cell fetch work, and what does writing cost?
 
-[`Screenshots/history/spike_cell_index_datatex_zoom.png`](../../Screenshots/history/spike_cell_index_datatex_zoom.png)
+`Screenshots/history/spike_cell_index_datatex_zoom.png`
 — a 512×512 nearest-filtered checkerboard sampled by cell and applied as a
 multiply over the real art. Per-voxel brightness modulation with **zero TileSet
 alternatives involved**.
@@ -1269,7 +1269,7 @@ CONTROL   P3 off  vs  committed HEAD :        0 px      <- the A/B is honest
 - Every delta is a **multiple of 3** — FACE-READ-03's residue snap — so nothing
   here is antialiasing or filtering.
 - The differences are on **WALL FACADES**, tracing the window rows.
-  [`p3_bucket_mismatch_mask.png`](../../Screenshots/history/p3_bucket_mismatch_mask.png)
+  `p3_bucket_mismatch_mask.png`
   (red = P3 brighter, 106 967 px; blue = darker, 58 787 px). The floor is almost
   entirely unchanged.
 - **The on/off RATIOS are ratios of `bucket_luminance` entries**: 2.12 = 0.85/0.40,
@@ -1371,11 +1371,11 @@ G=255 -> 75 119 px (10.83% of all drawn voxel fragments)   <-- NEVER WRITTEN
 **A drawn fragment belongs to a placed cell by construction, and all 205 704
 placed cells have a written bucket.** So those fragments recovered a cell that is
 not the cell that drew them.
-[`p3_unwritten_mask.png`](../../Screenshots/history/p3_unwritten_mask.png).
+`p3_unwritten_mask.png`.
 
 **5. And the recovery is not per-tile at all.** Debug paint mode 2 paints the
 recovered cell itself; adjacent opaque voxel fragments were then compared
-directly ([`p3_recovered_cells.png`](../../Screenshots/history/p3_recovered_cells.png)):
+directly (`p3_recovered_cells.png`):
 
 ```
 682 989 adjacent horizontal pairs, both voxel fragments
@@ -1817,7 +1817,7 @@ INFILTRAITOR_FILMSTRIP_SECOND_INDEX=1 \
 python3 tools/persistent/build_filmstrip.py --frames 120 --grenade 0 --cols 10
 ```
 
-[`twogrenade_filmstrip.png`](../../Screenshots/history/twogrenade_filmstrip.png) —
+`twogrenade_filmstrip.png` —
 kept under a non-`auto_` name so the rotation cannot take it.
 
 ⚠️ **The reported bug is NOT diagnosed yet.** The strip reads cleanly on the first
@@ -2002,7 +2002,7 @@ state is untouched:
 
 and the board diff agrees — with `INFILTRAITOR_VFX_DRAW_NOOP=1` to take the
 drifting smoke out of the picture, all 50 680 differing pixels sit in fire 2's own
-block ([`twofires_after_1.png`](../../Screenshots/history/twofires_after_1.png) /
+block (`twofires_after_1.png` /
 `_2`). Blast 1's region is bit-identical afterwards.
 
 **The report is about the FLIGHT, not the destination.** *"Toda a fuligem está

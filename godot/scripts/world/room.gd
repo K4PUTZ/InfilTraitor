@@ -83,28 +83,10 @@ const OcclusionWireframeOverlayClass = preload("res://godot/scripts/overlays/occ
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
 @onready var agent:               DebugAgent   = $Agent
 @onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
+## UI-SPLIT-02 (2026-09-09): the 21 @onready $HUD/... lookups that used to sit
+## here are gone. HudController resolves every widget from the HUD scene and the
+## engine talks to it through signals and intent methods — see hud_controller.gd.
 @onready var camera:              Camera2D     = $Camera2D
-@onready var btn_numbers:         Button       = $HUD/TopBar/Row/BtnNumbers
-@onready var btn_fullscreen:      Button       = $HUD/TopBar/Row/BtnFullscreen
-@onready var btn_viewport:        Button       = $HUD/TopBar/Row/BtnViewport
-@onready var btn_reset:           Button       = $HUD/TopBar/Row/BtnReset
-@onready var toolbar_row:         HBoxContainer = $HUD/TopBar/Row
-@onready var perspective_pad:     PanelContainer = $HUD/PerspectivePad
-@onready var btn_perspective_nw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNW
-@onready var btn_perspective_ne:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveNE
-@onready var btn_perspective_sw:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveSW
-@onready var btn_perspective_se:  Button       = $HUD/PerspectivePad/Grid/BtnPerspectiveSE
-@onready var btn_view_h:          Button       = $HUD/TopBar/Row/BtnViewH
-@onready var btn_view_l:          Button       = $HUD/TopBar/Row/BtnViewL
-@onready var btn_view_v:          Button       = $HUD/TopBar/Row/BtnViewV
-@onready var lbl_ap:              Label        = $HUD/TopBar/Row/LblAp
-@onready var chk_auto_end_turn:   CheckBox        = $HUD/TopBar/Row/BtnEndTurn/Content/ChkAutoEndTurn
-@onready var btn_end_turn:        Button          = $HUD/TopBar/Row/BtnEndTurn
-@onready var lbl_alert:           Label           = $HUD/TopBar/Row/LblAlert
-@onready var busted_dialog:       Label           = $HUD/BustedDialog
-@onready var enemy_turn_banner:   Control         = $HUD/EnemyTurnBanner
-@onready var lbl_end_turn:        Label           = $HUD/TopBar/Row/BtnEndTurn/Content/LblEndTurn
-@onready var lbl_enemy_turn:      Label           = $HUD/EnemyTurnBanner/LblEnemyTurn
 @onready var fog_of_war:          Node2D          = $FogOfWarOverlay
 @onready var _fog_rect:           ColorRect       = $VisionFogOverlay/FogRect
 
@@ -1884,7 +1866,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	tile_labels_overlay.room_w = room_size.x
 	tile_labels_overlay.room_h = room_size.y
 	tile_labels_overlay.visible = false
-	btn_numbers.modulate = Color(1.0, 1.0, 1.0, 0.35)
+	if _hud_controller:
+		_hud_controller.set_numbers_button_active(false)
 	camera.ignore_rotation = true
 	camera.rotation_degrees = 0.0
 
@@ -1892,7 +1875,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	selection_overlay.set_selected(agent.cell)
 	turn_manager.reset_player_turn()
 	_update_alert_label()
-	enemy_turn_banner.visible = false
+	if _hud_controller:
+		_hud_controller.hide_enemy_banner()
 
 	tile_labels_overlay.queue_redraw()
 	_lighting_controller.rebuild_all()
@@ -2112,20 +2096,9 @@ func _ready() -> void:
 	_hud_controller = HudControllerClass.new()
 	_hud_controller.name = "HudController"
 	add_child(_hud_controller)
-	_hud_controller.setup({
-		"btn_end_turn": btn_end_turn,
-		"btn_reset": btn_reset,
-		"btn_fullscreen": btn_fullscreen,
-		"btn_viewport": btn_viewport,
-		"btn_numbers": btn_numbers,
-		"chk_auto_end_turn": chk_auto_end_turn,
-		"lbl_ap": lbl_ap,
-		"lbl_alert": lbl_alert,
-		"busted_dialog": busted_dialog,
-		"enemy_turn_banner": enemy_turn_banner,
-		"lbl_end_turn": lbl_end_turn,
-		"lbl_enemy_turn": lbl_enemy_turn,
-	})
+	## UI-SPLIT-02: the controller resolves its own widgets from the HUD scene.
+	## room.gd hands over the layer and never names a button again.
+	_hud_controller.setup($HUD)
 
 	## Connect HudController signals to turn controller handlers
 	_hud_controller.end_turn_requested.connect(_turn_controller._on_hud_end_turn_requested)
@@ -2133,6 +2106,8 @@ func _ready() -> void:
 	_hud_controller.fullscreen_toggled.connect(_on_hud_fullscreen_toggled)
 	_hud_controller.viewport_toggled.connect(_on_hud_viewport_toggled)
 	_hud_controller.numbers_toggled.connect(_on_hud_numbers_toggled)
+	_hud_controller.perspective_requested.connect(_set_perspective)
+	_hud_controller.view_mode_toggled.connect(_on_hud_view_mode_toggled)
 
 	## MODULARIZE-04: Initialize CameraController (after camera ready)
 	_camera_controller = CameraControllerClass.new()
@@ -2629,12 +2604,8 @@ func _set_perspective(direction: String) -> void:
 
 
 func _update_perspective_button_state() -> void:
-	var active_mod := Color(1.0, 1.0, 1.0, 1.0)
-	var inactive_mod := Color(1.0, 1.0, 1.0, 0.45)
-	btn_perspective_nw.modulate = active_mod if _active_perspective == "W" else inactive_mod
-	btn_perspective_ne.modulate = active_mod if _active_perspective == "N" else inactive_mod
-	btn_perspective_sw.modulate = active_mod if _active_perspective == "S" else inactive_mod
-	btn_perspective_se.modulate = active_mod if _active_perspective == "E" else inactive_mod
+	if _hud_controller:
+		_hud_controller.set_perspective_active(_active_perspective)
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
@@ -2711,7 +2682,7 @@ func _on_hud_viewport_toggled() -> void:
 	DisplayServer.window_set_position(Vector2i(centered.round()))
 
 
-func _set_view_mode(which: String, btn: Button) -> void:
+func _set_view_mode(which: String) -> void:
 	if not _vision_controller:
 		return
 	match which:
@@ -2720,8 +2691,8 @@ func _set_view_mode(which: String, btn: Button) -> void:
 		"heat": _vision_controller.toggle_heat()
 	var enabled: bool = _vision_controller.dev_vision if which == "dev" \
 		else (_vision_controller.light_vision if which == "light" else _vision_controller.heat_vision)
-	btn.set_pressed_no_signal(enabled)
-	btn.modulate = Color(1.0, 1.0, 1.0, 1.0) if enabled else Color(1.0, 1.0, 1.0, 0.35)
+	if _hud_controller:
+		_hud_controller.set_view_mode_active(which, enabled)
 
 	## The agent and the probes both carry a second bake whose joints are yellow —
 	## the same toggle drives both, so there is one dev switch rather than three.
@@ -2738,16 +2709,9 @@ func _set_view_mode(which: String, btn: Button) -> void:
 		_test_zone_controller._update_grenade_targeting_display()
 
 
-func _on_view_h_toggled(_is_enabled: bool) -> void:
-	_set_view_mode("heat", btn_view_h)
-
-
-func _on_view_l_toggled(_is_enabled: bool) -> void:
-	_set_view_mode("light", btn_view_l)
-
-
-func _on_view_v_toggled(_is_enabled: bool) -> void:
-	_set_view_mode("dev", btn_view_v)
+## UI-SPLIT-02: one handler, because the signal now says WHICH mode it is.
+func _on_hud_view_mode_toggled(which: String, _is_pressed: bool) -> void:
+	_set_view_mode(which)
 
 
 func _update_guard_los_data() -> void:
@@ -10920,17 +10884,7 @@ func _on_posture_raise_requested() -> void:
 func _on_view_mode_requested(mode: String) -> void:
 	print_debug("[ROOM] Handler: view mode %s" % mode)
 	## V/L/H: switch view modes
-	var btn: Node = null
-	match mode:
-		"dev":
-			btn = btn_view_v
-		"light":
-			btn = btn_view_l
-		"heat":
-			btn = btn_view_h
-	
-	if btn:
-		_set_view_mode(mode, btn)
+	_set_view_mode(mode)
 
 
 func _on_peek_initiated() -> void:

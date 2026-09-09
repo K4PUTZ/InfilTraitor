@@ -26,15 +26,8 @@ var _touches: Dictionary = {}  ## finger_index → screen position
 var _pinch_last_dist: float = 0.0
 
 # UI buttons for perspective
-var _btn_perspective_nw: Button
-var _btn_perspective_ne: Button
-var _btn_perspective_sw: Button
-var _btn_perspective_se: Button
 
 # UI buttons for view toggles
-var _btn_view_h: Button
-var _btn_view_l: Button
-var _btn_view_v: Button
 
 
 func setup(camera_ref: Camera2D, room_ref: Node2D) -> void:
@@ -42,10 +35,9 @@ func setup(camera_ref: Camera2D, room_ref: Node2D) -> void:
 	_room = room_ref
 	# Get reference to VisionController after it's ready
 	call_deferred("_cache_vision_controller")
-	_cache_perspective_buttons()
-	_connect_perspective_buttons()
-	_cache_view_buttons()
-	_connect_view_buttons()
+	## UI-SPLIT-02: the perspective pad and the view-mode buttons are wired
+	## where they live, in HudController, and room.gd listens for the intent.
+	## This controller no longer reaches into the HUD at all.
 
 
 func _cache_vision_controller() -> void:
@@ -208,39 +200,6 @@ func stop_shake() -> void:
 	if _camera:
 		_camera.offset = Vector2.ZERO
 	set_process(false)
-
-
-func _cache_perspective_buttons() -> void:
-	_btn_perspective_nw = _room.btn_perspective_nw
-	_btn_perspective_ne = _room.btn_perspective_ne
-	_btn_perspective_sw = _room.btn_perspective_sw
-	_btn_perspective_se = _room.btn_perspective_se
-
-
-func _connect_perspective_buttons() -> void:
-	if _btn_perspective_nw:
-		_btn_perspective_nw.pressed.connect(func() -> void: _room._set_perspective("W"))
-	if _btn_perspective_ne:
-		_btn_perspective_ne.pressed.connect(func() -> void: _room._set_perspective("N"))
-	if _btn_perspective_sw:
-		_btn_perspective_sw.pressed.connect(func() -> void: _room._set_perspective("S"))
-	if _btn_perspective_se:
-		_btn_perspective_se.pressed.connect(func() -> void: _room._set_perspective("E"))
-
-
-func _cache_view_buttons() -> void:
-	_btn_view_h = _room.btn_view_h
-	_btn_view_l = _room.btn_view_l
-	_btn_view_v = _room.btn_view_v
-
-
-func _connect_view_buttons() -> void:
-	if _btn_view_h:
-		_btn_view_h.toggled.connect(func(is_pressed: bool) -> void: _room._on_view_h_toggled(is_pressed))
-	if _btn_view_l:
-		_btn_view_l.toggled.connect(func(is_pressed: bool) -> void: _room._on_view_l_toggled(is_pressed))
-	if _btn_view_v:
-		_btn_view_v.toggled.connect(func(is_pressed: bool) -> void: _room._on_view_v_toggled(is_pressed))
 
 
 ## BENCH-VIEW-01: dev-capture zoom override (INFILTRAITOR_CAPTURE_ZOOM). Goes

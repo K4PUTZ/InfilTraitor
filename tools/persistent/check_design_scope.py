@@ -72,13 +72,6 @@ DESIGN_ALLOWED = [
 # so whoever hits this gate learns the real state instead of just being told
 # "no".
 CONTESTED = {
-    "godot/scenes/game/room.tscn": (
-        "177 of its 254 lines are the HUD CanvasLayer (24 nodes), so the "
-        "interface cannot grow without editing it — but so is the whole "
-        "engine scene graph. The fix is to extract the HUD into "
-        "godot/scenes/ui/hud.tscn and instance it here in one line; until "
-        "that lands, this file stays engine-owned."
-    ),
     "project.godot": (
         "the [input] section is design's and every other section is the "
         "engine's, and Godot cannot split this file. Ask the Director to "

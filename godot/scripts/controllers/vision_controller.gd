@@ -109,8 +109,8 @@ func _apply_dev_vision() -> void:
 	## feature (ENGINE_PERFORMANCE_REVIEW.md §9) — the pad that drives
 	## _set_perspective() is gated the same way every other dev-only overlay
 	## already is here.
-	if _room.perspective_pad != null:
-		_room.perspective_pad.visible = dev_vision
+	if _room._hud_controller != null:
+		_room._hud_controller.set_perspective_pad_visible(dev_vision)
 
 	## Notify each guard of dev_vision state
 	for guard in _room._get_all_guards():

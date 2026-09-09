@@ -261,7 +261,22 @@ These must not be broken:
    the seam module and `godot/scripts/tools/` (where selftests assert on fixture
    and map DATA, not behaviour) are the two exemptions.
 
-**Enforcement:** rules 1–5, 9 and 10 are pre-commit-hook-checked
+11. **A HUD widget is named only inside `hud_controller.gd`.** UI-SPLIT-02
+   (2026-09-09) made that file the facade the DESIGN branch owns: it resolves
+   every widget out of `godot/scenes/ui/hud.tscn`, raises a signal for each
+   interaction, and exposes `set_*`/`update_*` for each thing the engine
+   changes. The engine asks; it never holds a Button. Before this, `room.gd`
+   carried 21 `$HUD/...` `@onready` lookups and three more controllers reached
+   through it, so renaming a button on the design branch broke the game at
+   RUNTIME with a null `@onready` — silent to the compiler, the linter and
+   every other gate, which is exactly why it needs one of its own. Adding
+   something the engine must drive means adding a signal or a method here,
+   never handing the node out. Hook-checked as **L3
+   `hud-widget-behind-the-facade`**; the seam's behaviour is pinned by
+   `hud_seam_selftest`, which runs against the real scene so a rename fails
+   there instead of on screen.
+
+**Enforcement:** rules 1–5, 9, 10 and 11 are pre-commit-hook-checked
 (`check_invariants.py`); 6–8 rely on review.
 
 **Banned terms & eliminated patterns** (`SUBCUBE_*`, `WallContainer`,

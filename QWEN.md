@@ -73,6 +73,72 @@ python3 tools/persistent/run_selftests.py --only hud_seam
 
 ---
 
+## Editing a layout — the fast path
+
+**The HUD as it stands.** A snapshot of the scene, so you do not have to open
+it: every path here is exactly what `hud_controller.setup()` resolves, and the
+numbers are what decide position and size. `off(l,t,r,b)` is the offsets,
+`min(w,h)` the minimum size, `preset` the anchors preset.
+
+```hud-map
+HUD                  CanvasLayer
+TopBar               PanelContainer  off(8.0,8.0,404.0,68.0)
+  Row                  HBoxContainer
+    BtnNumbers           Button          min(48, 48) text="#"
+    BtnFullscreen        Button          min(48, 48) text="[ ]"
+    BtnViewport          Button          min(48, 48) text="M"
+    BtnReset             Button          min(48, 48) text="↺"
+    BtnViewH             Button          min(48, 48) text="H"
+    BtnViewL             Button          min(48, 48) text="L"
+    BtnViewV             Button          min(48, 48) text="V"
+    LblAp                Label           min(78, 48) text="AP 2/2"
+    LblAlert             Label           min(126, 48) text="ALERT 0%"
+    BtnEndTurn           Button          min(136, 48)
+      Content              HBoxContainer   preset=15 off(10.0,·,-10.0,·)
+        ChkAutoEndTurn       CheckBox        min(24, 24)
+        LblEndTurn           Label           text="END"
+BustedDialog         Label           min(420, 80) preset=-1 hidden text="Busted"
+PerspectivePad       PanelContainer  preset=3 off(-144.0,-144.0,-12.0,-12.0)
+  Grid                 GridContainer
+    BtnPerspectiveNW     Button          min(56, 56) text="W"
+    BtnPerspectiveNE     Button          min(56, 56) text="N"
+    BtnPerspectiveSW     Button          min(56, 56) text="S"
+    BtnPerspectiveSE     Button          min(56, 56) text="E"
+EnemyTurnBanner      PanelContainer  preset=12 off(140.0,-66.0,-140.0,-12.0) hidden
+  LblEnemyTurn         Label           text="Enemy Turn"
+```
+
+**After you change the scene, refresh it** — a stale map lies about the one
+thing it exists to describe:
+
+```bash
+python3 tools/persistent/hud_map.py --check   # is the snapshot current?
+python3 tools/persistent/hud_map.py           # print the new one, paste it above
+```
+
+**The loop for a layout change:**
+
+1. Edit `godot/scenes/ui/hud.tscn` (or a panel under `godot/scripts/ui/`).
+2. If you renamed or moved a node, update the matching path in
+   `hud_controller.setup()` — that is the ONLY place a widget is named.
+3. See it, in a real window: `/Applications/Godot.app/Contents/MacOS/Godot --path .`
+   Unattended capture instead:
+   `INFILTRAITOR_AUTO_SCREENSHOT=1 /Applications/Godot.app/Contents/MacOS/Godot --path . --quit-after 400`
+   which writes a PNG into `Screenshots/history/` and prints its name.
+4. `python3 tools/persistent/run_selftests.py --only hud_seam`
+5. Commit. `git push origin feat/design-interface-hud` works; `main` does not.
+
+**Two things a layout must respect:** the enemy-phase banner is a bar across the
+**BOTTOM** (`EnemyTurnBanner`, hidden until an enemy turn) and the perspective
+pad sits **bottom-right** and is visible only in dev vision. A new panel must
+not collide with either.
+
+⚠️ **Never open `PROMPTS/PLANNING/INTERFACE_MASTER_PLAN.md` whole — it is
+~5 000 tokens, a sixth of your context.** Read only the section you need;
+Wave 3 is § Part 4.
+
+---
+
 ## Before you commit
 
 ```bash
@@ -92,8 +158,10 @@ should produce. A transient HUD state cannot be caught by a plain boot capture
 
 Commit tags: `[UI-WAVE1]`…`[UI-WAVE3]`, `[HUD]`, `[INPUT]`, `[DOCS]`.
 
-⚠️ **You cannot push** — `git push` is denied in your own settings. Commit
-locally and ask the Director to push and to merge into `main`.
+**Pushing:** `git push origin feat/design-interface-hud` is yours and works.
+You cannot reach `main` in any form — the pre-push hook reads the refs being
+transferred and refuses anything but your own branch. Interface work lands on
+`main` only when the Director merges it.
 
 ---
 

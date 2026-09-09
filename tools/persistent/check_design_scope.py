@@ -99,6 +99,26 @@ def _run(*args: str) -> str:
     ).stdout.strip()
 
 
+def merge_in_progress() -> bool:
+    """True while a merge (or a revert/cherry-pick) is being concluded.
+
+    A design branch pulling `main` is the DOCUMENTED, REQUIRED sync — it stages
+    every engine file that changed since the last sync, which looks exactly like
+    the violation this tool exists to block. Caught on the very first real sync
+    on 2026-09-09: the gate refused the merge commit and made the split
+    unusable. The scope rule is about what a branch AUTHORS, never about what it
+    RECEIVES from main, so a merge is exempt by construction rather than by
+    someone remembering `--no-verify`.
+    """
+    git_dir = _run("rev-parse", "--git-dir")
+    if not git_dir:
+        return False
+    from pathlib import Path
+    d = Path(git_dir)
+    return any((d / n).exists()
+               for n in ("MERGE_HEAD", "REVERT_HEAD", "CHERRY_PICK_HEAD"))
+
+
 def current_branch() -> str:
     return _run("rev-parse", "--abbrev-ref", "HEAD")
 
@@ -200,6 +220,11 @@ def main() -> int:
         if rc == 0:
             print("✓ every file is inside the design scope — safe to merge.")
         return rc
+
+    if merge_in_progress():
+        print("· scope gate skipped — merge in progress (a sync from main "
+              "stages engine files by design)")
+        return 0
 
     paths = staged_files()
     if not paths:

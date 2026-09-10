@@ -1,15 +1,18 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 **v1.49 — PHYSICS CLOSED; one RENDERING rework designed and pending.**
+**Status:** 🟢 **v1.50 — PHYSICS CLOSED; the one RENDERING task left this plan.**
 Case testing (owed since 2026-09-06) began 2026-09-07 and produced `G-D48` / `G-D49`
 (the shockwave zone) plus `CRACK-06` (rim shards on the torn edge, 2026-09-09) — all
 calibration / reach on ratified mechanics. **The G-D48 ramp was calibrated on screen
-2026-09-09** (Director: *"a rampa me parece tudo ok"*). ⚠️ **§19 THE GLASS MERGE is
-DESIGNED, not built** (2026-09-10): the 2026-09-09 finding that a back pane composites
-over a wall in front of it (`G-D18b`'s flat top-z, `OCCLUSION` `O5`) is fixed by
-putting glass tiles on the depth-sorted per-level voxel layers. Depends on
-`OCCLUSION` §7 (the X-ray phantom) and a per-level-backbuffer perf spike. `G-D18b`
-is relaxed for it — see its register row.
+2026-09-09** (Director: *"a rampa me parece tudo ok"*). ⚠️ **§19 THE GLASS MERGE was
+designed AND REJECTED on 2026-09-10** — a code audit found its central premise false
+(this project has never enabled Y-sorting) and its backbuffer scheme unable to hold
+the `G-D2` container. The problem it addressed is real and now belongs to
+[`RENDER_ORDER_MASTER_PLAN`](RENDER_ORDER_MASTER_PLAN.md), which is spike-gated and
+carries the Director-authorised fallback (glass stays on top, map-authoring warnings).
+§19 is kept below **as a rejected design with its post-mortem** — do not build from
+it. `G-D18b` stays relaxed (the ruling was the Director's, 2026-09-09, and it is
+independent of which design lands).
 
 - **G-D48 — the SHOCKWAVE ZONE (Director, 2026-09-07).** *"precisamos ampliar a area
   de alcance do dano efetivo de granadas — somente sobre o vidro […] Podemos chamar
@@ -2099,16 +2102,16 @@ It also surfaced three defects that were NOT glass physics, all of the same shap
 Still no glass render or physics gap in the DESIGN — G-D48/G-D49 widened an existing
 zone and added an existing region-flood trigger; the three above were plumbing.
 
-**2026-09-10 — one glass RENDER task is open and designed: §19 THE GLASS MERGE.**
-The `G-D18b` flat top-z makes a back pane composite over a wall in front of it; the
-fix is to put glass tiles on the depth-sorted per-level voxel layers. Depends on
-`OCCLUSION` §7 (the X-ray phantom) + a perf spike. This is the one live glass task
-that is not "someone else's plan" — it is a `voxel_renderer` rework, roughly the
-size the codebase already calls "renderer v2".
+**2026-09-10 — the one open glass RENDER task LEFT THIS PLAN.** The `G-D18b` flat
+top-z makes a back pane composite over a wall in front of it. §19 was designed as
+the fix and rejected the same day (see §19's header); the problem is now
+[`RENDER_ORDER_MASTER_PLAN`](RENDER_ORDER_MASTER_PLAN.md)'s, because the root cause
+(`O5`: `z_index` encodes HEIGHT, depth is independent) is not a glass concern — glass
+is the third system to hit it, after props and the occlusion wireframe.
 
 | left | owner | why it is not a glass task |
 |---|---|---|
-| **§19 — the glass merge** | glass RENDER, designed 2026-09-10, build pending | it IS a glass task; listed here so the row-audit is complete. Blocked on OCCLUSION §7 + a backbuffer perf spike |
+| **§19 — the glass merge** | ⛔ REJECTED 2026-09-10 → `RENDER_ORDER_MASTER_PLAN` | the SYMPTOM was glass; the cause (`O5`) is the board's, so the task moved out of this plan. §19 stays below as a post-mortem |
 | **S-4** — the `tight`/`wide` bullet fracture art | glass, deliberately parked | the generator produces the opposite distribution (§13.4) and the look has been rejected three times. `blast` shipped procedurally in §16.12 |
 | **S-6** — G-D32's hashed rim pool | glass, likely retired | the base-space key it waited for arrived with CRACK-04. ⚠️ **2026-09-09 — the Director hit the symptom S-6 addresses and it was answered by TWO cheaper fixes in the motor: `SHOCKWAVE_EDGE_JITTER` on the flood, then CRACK-06 (rim shards on the torn edge, the `GlassShardShapes` family). Both landed. S-6's sub-voxel wedge mask is now only worth building if the voxel-scale shards still read as too blocky after calibration — otherwise it is superseded.** |
 | **G-D8 part three** — the light bump + the +1 detection step when a passage opens | applications | needs the opening to be an EVENT; what landed is a per-turn recomputed SET, deliberately memoryless |
@@ -4458,7 +4461,30 @@ were superseded by G-D44; `plastic` screen backing and S-4's fracture art remain
 
 ---
 
-## 19. THE GLASS MERGE — one board with the walls (designed 2026-09-10, build pending)
+## 19. THE GLASS MERGE — ⛔ REJECTED 2026-09-10, kept as a post-mortem
+
+> ⛔ **DO NOT BUILD FROM THIS SECTION.** Designed and rejected the same day. The
+> problem statement in §19.1 is sound and still worth reading; the mechanism from
+> §19.2 down does not work. It now lives, correctly diagnosed and spike-gated, in
+> [`RENDER_ORDER_MASTER_PLAN`](RENDER_ORDER_MASTER_PLAN.md) (`F1`–`F5` there are
+> the full findings). The four reasons, in short:
+>
+> - **Y-sorting is not enabled anywhere in this project**, so §19.2's *"each
+>   per-level layer already y-sorts its own cells"* is false — `y_sort_origin`
+>   does nothing on its own. The plan silently also required turning it on across
+>   ~32 layers, uncosted.
+> - **A `BackBufferCopy` cannot capture the layer it precedes**, so merged glass
+>   would have lost every opaque wall *behind* it at the same level — the fix
+>   trades the front-wall bug for a back-wall bug.
+> - **One snapshot per level breaks the `G-D2` container inside a single pane**:
+>   the atom is 32×36 px and the level step 20 px, so a 3-storey pane gets 23
+>   double-tinted seams. `glass_transparency_selftest` would have had to be
+>   weakened.
+> - **The one risk it did declare was overstated**: `BackBufferCopy` has
+>   `COPY_MODE_RECT`, which changes the arithmetic by an order of magnitude and
+>   was never considered.
+>
+> Its dependency on `OCCLUSION` §7 was also false — see `RENDER_ORDER` §9.
 
 ### 19.1 Why
 

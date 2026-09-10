@@ -1,16 +1,21 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
-**Status:** ⏸️ MOSTLY PAUSED — but **§7 (the X-ray silhouette, Part 3b resumed) is
-DESIGNED and awaiting build, 2026-09-10.** The 2026-09-09 glass z-index finding
-(a back pane composites over a wall in front of it — `O5`'s exact failure mode,
-from G-D18b's flat top-z lift) needs glass merged onto the depth-sorted board
-(`GLASS_MASTER_PLAN` §"the glass merge"), and that needs the agent to stop
-*requiring* a place above everything. The Director's answer un-parks `O7`: a
-second, stylised actor instance (the "phantom") shows an X-ray effect on the
-portion behind geometry — additive to the wall-erase mechanism, which is
-**unchanged**, and the foundation for the coming X-ray / heat vision modes. Full
-design in §7. Everything below §7 is still paused.
+**Status:** ⏸️ MOSTLY PAUSED — and **§7 (the X-ray silhouette) is DECOUPLED and
+DEFERRED, 2026-09-10.** §7 was designed earlier the same day as the enabler of
+`GLASS_MASTER_PLAN` §19; the audit that rejected §19 also found the dependency
+was false — what §19 needed from §7 was the Director's *ruling* relaxing
+`G-D18b`, already given 2026-09-09, not code. Director's call, same day: *"vamos
+separar a feature de visão de raio x, visão térmica e etc, do real problema agora
+que é a ordem das coisas na tela. Mas vamos ter em mente que esses detalhes vão
+ser necessários no futuro, então o mecanismo precisa estar apto para lidar com
+eles."* So §7 is **not a dependency of anything and depends on nothing** — it
+waits for the gameplay vision modes, which are its real consumer. The screen
+order problem it was attached to now lives in
+[`RENDER_ORDER_MASTER_PLAN`](RENDER_ORDER_MASTER_PLAN.md), which owes §7 exactly
+one property and states it (`RENDER_ORDER` §9). ⚠️ §7's mask is specified in
+SCREEN space, which is a defect — see the note at the head of §7. Everything
+below §7 is still paused.
 
 The rest of the pause holds — "vamos fechar oclusão por
 enquanto, voltaremos depois quando os mapas tiverem objetos." Parts 1+2+3
@@ -224,11 +229,12 @@ there is nothing left to stroke. OCC-04 (the stroke prompt) is superseded, not
 built. Parked as a future possibility if a different occlusion treatment ever
 needs it again.
 
-### Part 3b — the X-ray silhouette *(O7 un-parked, 2026-09-10)* — **DESIGNED, see §7**
-A different occlusion treatment now does need it. Full design in §7: a stylised
+### Part 3b — the X-ray silhouette *(O7 un-parked, 2026-09-10)* — **DESIGNED, DEFERRED, see §7**
+A different occlusion treatment may yet need it. Full design in §7: a stylised
 "phantom" instance of the agent (and, gated on a vision mode, of guards), masked
-to the occluded portion. It replaces nothing — the wall-erase stays — and it is
-what makes it safe to relax G-D18b so glass can leave its flat top-z.
+to the occluded portion. It replaces nothing — the wall-erase stays. ⚠️ It is
+**no longer the enabler of the glass depth fix** (that claim was withdrawn
+2026-09-10, see the status header); it waits for the gameplay vision modes.
 
 ### Part 4 — Interior cutaway *(O8)* — **does not start until `Slab` exists**
 Ceiling Slab layer hidden when the agent is inside. Blocked on
@@ -622,7 +628,25 @@ every completion report must point at a real capture in `Screenshots/history/`.
 
 ---
 
-## 7. THE X-RAY SILHOUETTE — Part 3b, designed 2026-09-10 (build pending)
+## 7. THE X-RAY SILHOUETTE — Part 3b, designed 2026-09-10 (DEFERRED, build not scheduled)
+
+> ⚠️ **READ BEFORE BUILDING (2026-09-10, same day as the design).** Two things in
+> this section were withdrawn by the audit that rejected `GLASS_MASTER_PLAN` §19:
+>
+> 1. **§7.1's reason #2 is void.** The glass depth fix does not need the phantom.
+>    It needed the Director's ruling relaxing `G-D18b`, which was already given.
+>    The fix lives in [`RENDER_ORDER_MASTER_PLAN`](RENDER_ORDER_MASTER_PLAN.md)
+>    and completes without any of §7.
+> 2. **§7.2's mask must be WORLD space, not screen rects.** `X2` is right that
+>    the mask may only be recomputed on the occlusion cadence — but a screen-space
+>    rect is invalidated by the camera, and `camera_controller.gd` has drag,
+>    wheel zoom, pinch zoom and shake. The stripes would slide off the actor on
+>    the next frame. `glass_pane.gdshader`'s `v_glass_world` is the pattern to
+>    copy. (Secondary: a voxel's silhouette is the 32×36 atom, not a rectangle —
+>    a union of axis-aligned rects over-covers and will stripe visible pixels.)
+>
+> Everything else below stands. §7 is now scheduled by its real consumer — the
+> gameplay X-ray / heat vision modes — and by nothing else.
 
 ### 7.1 Why now
 

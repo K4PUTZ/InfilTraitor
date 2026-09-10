@@ -292,7 +292,7 @@ The `DEV_VISION` flag and debug code are mixed with the logic. Functional for de
 
 | Refactor | Priority | Target | ETA |
 |----------|----------|--------|-----|
-| **Glass onto the depth-sorted board** (a back pane composites over a wall in front of it — G-D18b's flat top-z; designed as `GLASS_MASTER_PLAN` §19 + `OCCLUSION` §7's X-ray phantom, 2026-09-10) | 🟠 renderer-v2 scale | voxel_renderer.gd + voxel_face_shading.gdshader + agent_sprite.gd | after OCCLUSION §7 + a perf spike |
+| **Depth on the isometric board** (a glass pane composites over an opaque wall in FRONT of it — `O5`: `z_index` encodes HEIGHT, depth is independent. The third system to hit it, after props and the occlusion wireframe) | 🟠 renderer scale, **spike-gated** | voxel_renderer.gd (glass layers + backbuffer) — the per-level `z_index` scheme itself is deliberately NOT touched | [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md) Task 1. ⛔ The 2026-09-10 design (`GLASS` §19 + `OCCLUSION` §7) was rejected the same day — do not build from it |
 | **Gradual detection escalation** | 🔴 Pre-playtest | guard_enemy.gd + room.gd | 1–2 weeks |
 | **FSM → Strategy/BTree** | Pre-GAME-01 | guard_enemy.gd | 1–2 weeks |
 | **Data-driven patrols** (now `MapSpec.patrols` in `world/maps/definitions/*_map.gd`; remaining: external resource authoring) | Pre-campaign | world/maps/ | 2–3 days |

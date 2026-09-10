@@ -1,9 +1,11 @@
 # RENDER ORDER MASTER PLAN — depth on the isometric board — v1.0
 
-**Status:** 🔵 **DESIGNED, SPIKE-GATED (2026-09-10).** Nothing here is built. Task 1
-is a measurement, and it decides whether the rest of the plan happens at all or
-whether the project takes the recorded fallback (§8) instead. Both outcomes are
-acceptable and both are specified.
+**Status:** 🟡 **TASK 1 PART-RUN, 2026-09-10 — Q1 YES, Q3 NO. One Director call open.**
+`RO1`/`RO2` (the depth fix) are **confirmed to work** on Godot 4.6.1. `RO3`/`RO4`
+(where the `G-D2` container lives) are **refuted**: with Y-sort on, a
+`BackBufferCopy` is hoisted out of the ordering entirely. Q2 (the perf gate) has
+not been run — it is common to both surviving options, so it waits on the ruling.
+Full numbers in §6.1. Nothing is built.
 
 **Owner:** engine. Touches `voxel_renderer.gd` and the glass render path only.
 **Explicitly does NOT touch** the opaque-wall occlusion mechanism (OCC-21 erase +
@@ -198,6 +200,85 @@ Y-sorting on with glass still at the flat top-`z` and prove the board is
 unchanged. If enabling Y-sort alone moves pixels, the change is not additive and
 `RO0` is already violated — stop and report. (A "before/after" that skips this
 cannot tell "Y-sort did nothing" from "Y-sort did two things that cancelled".)
+
+### 6.1 TASK 1 RESULTS — run 2026-09-10, `render_order_ysort_spike.gd`
+
+Godot **4.6.1.stable**, Metal / Forward Mobile, Apple M1. Every case rendered into
+a SubViewport and **classified by pixel count**, not looked at. Grid is the
+project's own Canon (32×16 ISOMETRIC DIAMOND_DOWN, atom 32×36, `texture_origin`
+(0,10)); cell (0,0) is FAR, cell (1,1) is NEAR, and the two layers are added
+opaque-first / glass-last **so tree order favours the wrong answer** — anything
+that reorders them has to be the Y-sort.
+
+| | result | counts |
+|---|---|---|
+| **Q1 CASE** — y-sort ON, near opaque vs far glass, same `z_index` | ✅ **the near opaque covers the far glass** | `opaque_clean=1152` (a whole atom) · `glass_over_opaque=0` |
+| **Q1 CONTROL** — y-sort OFF, identical scene | ✅ **the bug reproduces** — far glass covers the near wall | `glass_over_opaque=640` · `opaque_clean=512` |
+
+> **Q1 is YES.** Godot 4.6.1 merges the tiles of two sibling Y-sorted
+> `TileMapLayer`s at the same `z_index`, under a Y-sorted parent, into one depth
+> order. `RO1` and `RO2` are viable, and the control proves the probe can see the
+> failure it is claiming not to find.
+
+| | result | counts |
+|---|---|---|
+| **Q3 CASE** — y-sort ON, `BackBufferCopy` positioned between the far opaque and the near glass | ❌ **the glass saw nothing** | `probe_saw=0` · `probe_blind=1152` |
+| **Q3 CONTROL** — same, backbuffer sorted before everything | ✅ blind, as specified | `probe_saw=0` · `probe_blind=1152` |
+| **Q3 HARNESS-A** — y-sort OFF, tree order opaque→bb→glass, one `z` | ✅ **the glass SEES the opaque** | `probe_saw=640` · `probe_blind=512` |
+| **Q3 HARNESS-B** — y-sort OFF, `z` 10 / 15 / 20 (the shipping layout) | ✅ the glass SEES the opaque | `probe_saw=640` · `probe_blind=512` |
+
+> ⚠️ **The case and its control returned IDENTICAL numbers**, which is the
+> signature of a blind instrument, not of an answer — so the verdict was withheld
+> until two harness controls proved the rig can see a backbuffer at all. Both did,
+> at 640 px. **Q3 is therefore a real NO:** turning Y-sort on takes a
+> `BackBufferCopy` out of the ordering (the glass read the bare background
+> everywhere, while its *tile* was still correctly sorted in front — `opaque_clean`
+> fell to 512). **`RO3`/`RO4` as written cannot be built.**
+
+| | result |
+|---|---|
+| **Q4** — a `CanvasGroup` as the container, sorted by Y | ⚠️ **INCONCLUSIVE — not pursued.** Both case and control returned the raw un-shaded blend (`glass_over_opaque=640`, `probe_saw=0`, `probe_blind=0`), i.e. the group's material never ran. That is a statement about the rig, not about `CanvasGroup`. Dropped because the structural objection stands regardless: a group is ONE canvas item and therefore ONE sort key, while a pane spans 24 levels — one key per pane cannot be right against a 24-level wall, and one group per (pane, level) is 24 buffers, no better than what it replaces. |
+
+**Q5 — does a pane's glass actually overlap itself?** This is the question under
+the whole container: `G-D2` exists so overlapping glass fragments do not tint
+twice. `_build_glass_pane_atom()`'s header claims the geometry already prevents it
+(*"a sliver fills only where the main face is absent, so nothing double-covers"*).
+Measured on the real builder rather than believed:
+
+| | SW | SE |
+|---|---|---|
+| body atom (interior pane voxel: main face only) | 336 texels, rows 8..35 | 336 texels, rows 8..35 |
+| capped atom (top + side slivers) | 670 texels, rows 3..35 | 670 texels, rows 3..35 |
+| **two body atoms stacked one level (20 px) apart → texels carrying BOTH** | **16** | **16** |
+| capped atom with a body atom above it | 120 | 120 |
+
+> **The comment is right, and the number is small.** A pane's body atoms overlap
+> by **16 texels of 336 — 4.8%**, and that 16 is the shared antialiased edge, one
+> texel per column across the 16-column seam. The 120-texel case is the top
+> sliver under the atom above, a configuration that cannot occur (`want_top` is
+> only set when there IS no glass above). **So the container is buying almost
+> nothing WITHIN a pane** — which is what makes option B below thinkable at all.
+>
+> ⚠️ It is still buying something *between* panes: a near pane over a far one
+> overlaps arbitrarily, and today they read as one tint rather than two. That is a
+> `G-D1`/`G-D2` look question, and it is the Director's.
+
+### 6.2 What Q3 leaves on the table — the open Director call
+
+`RO1`/`RO2` fix the depth. The container has to go somewhere else, and there are
+exactly two places, which trade against each other:
+
+| | **Option A — backbuffer before the level band** | **Option B — no screen read at all** |
+|---|---|---|
+| how | one `BackBufferCopy` per glass level at `z = level_z − 1`; `z` ordering still works under Y-sort (HARNESS-B) | `glass_apply()` becomes two passes — `blend_mul` for the tint, `blend_add` for the sheen. The live framebuffer already holds everything behind the glass, because Y-sort put it there |
+| the front-wall bug | fixed | fixed |
+| an opaque wall **behind** a pane, same level | ⛔ **lost** — the snapshot only holds lower levels, so it vanishes through the glass. This is `F2` in a smaller form | ✅ correct, by construction |
+| `G-D2` "one surface" | preserved exactly | ⚠️ 16 texels per level seam tint twice — a faint 1 px line, 23 of them on a 3-storey pane. Fixable at the atom's edge, but a look call first |
+| `G-D1` (multiply + add, never plain alpha) | untouched | preserved, at two passes instead of one; the `max()` "not a black hole" floor (`glass_min_body`) has no fixed-function equivalent and would need re-designing |
+| cost | 24 rect copies (`RO3`'s arithmetic still applies) | zero backbuffers — **cheaper than today** — but 2× glass draw submission |
+
+Both are buildable. The choice is not an engineering one: it is which ratified
+ruling gives, so it is the Director's.
 
 ---
 

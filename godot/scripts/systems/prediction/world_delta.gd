@@ -189,6 +189,14 @@ var glass_shard_piles: Dictionary = {}
 ## `build_plan()` runs on every cursor move.
 var glass_remnants: Array = []
 
+## CRACK-06 — the same shape as `glass_remnants` (`{"cell", "level"}`, position
+## only, the anchor re-read live), but a RIM shard: a cook-break voxel on the
+## inner tear, held by the pane's OWN surviving glass rather than a batten. Its
+## own list because it is claimed on its own path (`room.claim_glass_rim_shards`)
+## and must never be reaped by the frame-remnant orphan test — a rim shard whose
+## glass edge is later destroyed drops out through `rim_shard_anchor_mask` = 0.
+var glass_rim_shards: Array = []
+
 ## ── G6b-2 / G-D43 — THE FLIGHTS, WHICH ARE NOT STATE ────────────────────────
 ##
 ## `GlassFall.plan_landings()`'s own rows — `{grid_pos, from_level, landing_level}`
@@ -385,6 +393,10 @@ func commit(room = null) -> void:
 		## to have happened first or the opening walk would overwrite it.
 		if not glass_remnants.is_empty():
 			room.claim_glass_remnants(glass_remnants)
+		## CRACK-06 — and the shards clinging to the torn glass edge, after the
+		## frame remnants and after the opening walk, for the same ordering reason.
+		if not glass_rim_shards.is_empty():
+			room.claim_glass_rim_shards(glass_rim_shards)
 		## G6b-2 — and the rain, LAST of all: the pile decals above are already on
 		## the floor, which is what makes the fall safe to interrupt (G-D43).
 		if not glass_shard_flights.is_empty():

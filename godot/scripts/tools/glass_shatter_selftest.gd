@@ -85,6 +85,7 @@ func _init() -> void:
 	test_the_survivors_leave_the_function()
 	test_a_remnant_is_orphaned_when_its_frame_is_destroyed()
 	test_shockwave_edge_is_jittered()
+	test_rim_shards_cling_to_the_torn_glass_edge()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -1461,6 +1462,13 @@ func test_a_remnant_is_orphaned_when_its_frame_is_destroyed() -> void:
 func test_shockwave_edge_is_jittered() -> void:
 	print("[24] G-D48 — the cook's partial-break edge is jittered, not a Chebyshev square\n")
 	var saved: int = GlassShatterClass.SHOCKWAVE_EDGE_JITTER
+	## This probe reads the DESTROYED set's top edge, and CRACK-06 rim shards pull
+	## voxels out of it too — so turn them off for the measurement: what is under
+	## test here is the jitter alone.
+	var saved_rim_scale: float = GlassShatterClass.SHATTER_RIM_KEEP_SCALE
+	var saved_rim_floor: int = GlassShatterClass.SHATTER_RIM_MIN_COUNT
+	GlassShatterClass.SHATTER_RIM_KEEP_SCALE = 0.0
+	GlassShatterClass.SHATTER_RIM_MIN_COUNT = 0
 	var base: int = GeometryCoords.storey_level_base(0)
 	var lo: int = 2
 	var hi: int = 9
@@ -1498,6 +1506,8 @@ func test_shockwave_edge_is_jittered() -> void:
 	var det_a: Dictionary = top_edge.call("EDGE:DET")
 	var det_b: Dictionary = top_edge.call("EDGE:DET")
 	GlassShatterClass.SHOCKWAVE_EDGE_JITTER = saved
+	GlassShatterClass.SHATTER_RIM_KEEP_SCALE = saved_rim_scale
+	GlassShatterClass.SHATTER_RIM_MIN_COUNT = saved_rim_floor
 
 	if span >= 2 and flat_levels.size() == 1 and det_a == det_b:
 		_pass("interior top edge spans %d levels with jitter, exactly 1 without, and the same salt repeats"
@@ -1505,4 +1515,74 @@ func test_shockwave_edge_is_jittered() -> void:
 	else:
 		_fail("span=%d (want >=2), flat distinct levels=%d (want 1), deterministic=%s"
 			% [span, flat_levels.size(), det_a == det_b])
+	print("")
+
+
+## CRACK-06 (Director, 2026-09-09): *"os mesmos cacos que sobram nos batentes e
+## frames, porém sobrando na moldura do próprio vidro que fica […] um fator x2 em
+## relação ao frame."* A cook partial break leaves shards clinging to the TORN
+## GLASS EDGE — their own list, their own anchor (surviving glass, never a
+## batten), at RIM_KEEP_SCALE× the frame rate. This pins: they appear, they carry
+## a real anchor, they never overlap the destroyed set, the scale is honoured,
+## and a bullet break has none.
+func test_rim_shards_cling_to_the_torn_glass_edge() -> void:
+	print("[25] CRACK-06 — a cook partial break leaves shards on the torn glass edge\n")
+	var saved_scale: float = GlassShatterClass.SHATTER_RIM_KEEP_SCALE
+	var saved_floor: int = GlassShatterClass.SHATTER_RIM_MIN_COUNT
+	var base: int = GeometryCoords.storey_level_base(0)
+	var lo: int = 2
+	var hi: int = 9                       ## 8 GU x 3 storeys = a long rim
+	var mid_col: int = int((lo * 8 + hi * 8 + 7) / 2.0)
+	var mid_lvl: int = base + 12
+	var radius: int = 12                  ## a genuine PARTIAL break on this pane
+
+	var cook := func(salt: String, scale: float) -> Dictionary:
+		GlassShatterClass.SHATTER_RIM_KEEP_SCALE = scale
+		GlassShatterClass.SHATTER_RIM_MIN_COUNT = 0   ## no floor: measure the rate itself
+		return GlassShatterClass.plan_pane_shatter(_pane(lo, hi, 3), Face.SW,
+			Vector2i(mid_col, 3 * 8 + 7), mid_lvl, 0.0, salt, {}, radius)
+
+	var res: Dictionary = cook.call("RIM:A", 2.0)
+	var rim: Array = res.get("rim_shards", [])
+	var destroyed_keys: Dictionary = {}
+	for e in res["destroyed"]:
+		var dv: Voxel = e["slice"].voxels[int(e["voxel_index"])]
+		destroyed_keys[Vector2i(dv.grid_pos.x, dv.level)] = true
+
+	var maskless: int = 0
+	var overlap: int = 0
+	for r in rim:
+		if int(r["anchor_mask"]) == 0:
+			maskless += 1
+		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+		if destroyed_keys.has(Vector2i(rv.grid_pos.x, rv.level)):
+			overlap += 1
+
+	## The x2 factor: half the scale, ~half the shards (loose — the hash is a
+	## Bernoulli field, and the pane still has to be a real partial break).
+	var half: Array = (cook.call("RIM:A", 1.0).get("rim_shards", []) as Array)
+	var scaled_ok: bool = rim.size() >= int(half.size() * 1.4) and not half.is_empty()
+
+	## Determinism, and a bullet break (`radius_override` = -1) has NO rim shards.
+	var det_a: int = (cook.call("RIM:DET", 2.0).get("rim_shards", []) as Array).size()
+	var det_b: int = (cook.call("RIM:DET", 2.0).get("rim_shards", []) as Array).size()
+	GlassShatterClass.SHATTER_RIM_KEEP_SCALE = 2.0
+	GlassShatterClass.SHATTER_RIM_MIN_COUNT = 0
+	var bullet: Array = GlassShatterClass.plan_pane_shatter(_pane(lo, hi, 3), Face.SW,
+		Vector2i(mid_col, 3 * 8 + 7), mid_lvl, 3.0, "RIM:BULLET",
+		GlassShatterClass.collect_anchor_positions(_pane(lo, hi, 3), Face.SW, _pane(lo, hi, 3))
+		).get("rim_shards", [])
+
+	GlassShatterClass.SHATTER_RIM_KEEP_SCALE = saved_scale
+	GlassShatterClass.SHATTER_RIM_MIN_COUNT = saved_floor
+
+	print("      %d rim shard(s) at scale 2.0, %d at scale 1.0; %d bullet-path; det %d==%d"
+		% [rim.size(), half.size(), bullet.size(), det_a, det_b])
+	if rim.size() > 0 and maskless == 0 and overlap == 0 and scaled_ok \
+			and det_a == det_b and bullet.is_empty():
+		_pass("%d rim shard(s), every one anchored, none in the destroyed set, ~2x scale 1.0 (%d), bullet path clean"
+			% [rim.size(), half.size()])
+	else:
+		_fail("rim=%d maskless=%d overlap=%d scaled_ok=%s det %d==%d bullet=%d"
+			% [rim.size(), maskless, overlap, scaled_ok, det_a, det_b, bullet.size()])
 	print("")

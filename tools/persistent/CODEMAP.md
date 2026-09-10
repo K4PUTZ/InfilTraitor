@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**240 scripts · 87753 lines total** (under `godot/scripts/`)
+**240 scripts · 88071 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2032,7 +2032,7 @@ extends `Node2D` · 43 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2478 lines
+`class_name DetonationPlanBuilder` · 2483 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2161,7 +2161,7 @@ extends `Node2D` · 43 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 762 lines
+`class_name GlassShatter` · 879 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -2730,7 +2730,7 @@ extends `Node2D` · 43 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 400 lines
+`class_name WorldDelta` · extends `RefCounted` · 412 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -2837,7 +2837,7 @@ extends `Node` · 156 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 212 lines
+`class_name SaveState` · extends `RefCounted` · 226 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -3812,7 +3812,7 @@ extends `SceneTree` · 554 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 1508 lines
+extends `SceneTree` · 1588 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -4445,7 +4445,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 182 lines
+extends `SceneTree` · 196 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -5350,7 +5350,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11061 lines
+extends `Node2D` · 11137 lines
 
 `godot/scripts/world/room.gd`
 

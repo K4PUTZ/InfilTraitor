@@ -312,6 +312,12 @@ var _base_shards: Dictionary = {}
 ## in view space and a quarter turn cannot make any of it wrong. Checkpoint-scoped
 ## like every other scenario mutation, and a fourth `SaveState` section.
 var _base_remnants: Dictionary = {}
+
+## CRACK-06 — THE RIM SHARDS, IN BASE COORDS. Same shape and rules as
+## `_base_remnants` (`Vector3i -> true`, position only, the anchor re-read live),
+## a separate store because a rim shard hangs from the pane's own torn glass, not
+## a batten, and is claimed and reaped on its own path.
+var _base_rim_shards: Dictionary = {}
 ## B-2b — the last claimed craze's view-invariant identity, for the flip demo's
 ## verdict. Diagnostic only; nothing reads it to make a decision.
 var _last_craze_identity: String = ""
@@ -815,6 +821,73 @@ func _respawn_base_remnants() -> void:
 		else:
 			lost += 1
 	print_debug("[GLASS-REMNANT] perspective %s — %d remnant(s) restamped, %d had no pane or no anchor"
+		% [_active_perspective, drawn, lost])
+
+
+## ── CRACK-06 — THE SHARDS CLINGING TO THE TORN GLASS EDGE ───────────────────
+##
+## (Director, 2026-09-09: *"os mesmos cacos que sobram nos batentes e frames,
+## porém sobrando na moldura do próprio vidro que fica […] um fator x2 em relação
+## ao frame."*)
+##
+## Structurally a twin of `claim_glass_remnants` / `_respawn_base_remnants`: the
+## same `GlassShardShapes` family, the same cut-atom render path, the same
+## base-space record. The one difference is the anchor — `rim_shard_anchor_mask`
+## reads the pane's OWN surviving glass, never a batten — which is why it is a
+## separate store and a separate claim: a frame remnant that loses its frame must
+## fall (G-D45), not silently re-anchor to whatever glass sits beside it.
+func claim_glass_rim_shards(shards: Array, record: bool = true) -> int:
+	if _voxel_renderer == null or shards.is_empty():
+		return 0
+	var bsize := _base_voxel_size()
+	var drawn: int = 0
+	for s in shards:
+		var cell: Vector2i = s["cell"]
+		var level: int = int(s["level"])
+		var base_xy := PerspectiveMapperClass.cell_to_base(cell, _active_perspective, bsize)
+		var bkey := Vector3i(base_xy.x, base_xy.y, level)
+		if _draw_rim_shard(cell, level, bkey):
+			drawn += 1
+		if record:
+			_base_rim_shards[bkey] = true
+	return drawn
+
+
+## One rim shard onto one cell: ask the live pane for its torn-edge anchor, hash
+## the base key for shape and flop, stamp the cut atom (the same one a frame
+## remnant uses — `apply_glass_remnant_at` is anchor-agnostic).
+func _draw_rim_shard(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
+	var host = _glass_slice_at(cell, level)
+	if host == null or _edge_registry == null:
+		return false
+	var mask: int = GlassShatter.rim_shard_anchor_mask(
+		_pane_by_id(host.pane_id), host.face, cell, level)
+	if mask == 0:
+		return false   ## the glass edge this shard hung from is gone — it falls / heals
+	var salt := "rimshard|%d,%d,%d" % [base_key.x, base_key.y, base_key.z]
+	var shape_id: String = GlassShardShapes.pick(salt)
+	var flop: bool = (FacadeSampler._fnv1a_hash(salt + "|flop") & 1) == 1
+	return _voxel_renderer.apply_glass_remnant_at(level, cell, shape_id, mask, flop)
+
+
+## CRACK-06 — restamp every recorded rim shard for the perspective just entered,
+## the same reason `_respawn_base_remnants()` exists (a rebuild places plain glass
+## from voxel state and never re-cuts the atom).
+func _respawn_base_rim_shards() -> void:
+	if _base_rim_shards.is_empty() or _voxel_renderer == null:
+		return
+	var bsize := _base_voxel_size()
+	var drawn: int = 0
+	var lost: int = 0
+	for bkey in _base_rim_shards:
+		var k: Vector3i = bkey
+		var vxy := PerspectiveMapperClass.cell_from_base(
+			Vector2i(k.x, k.y), _active_perspective, bsize)
+		if _draw_rim_shard(vxy, k.z, k):
+			drawn += 1
+		else:
+			lost += 1
+	print_debug("[GLASS-RIM-SHARD] perspective %s — %d restamped, %d had no pane or no glass edge"
 		% [_active_perspective, drawn, lost])
 
 
@@ -1747,6 +1820,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_crazes.clear()        ## G-D35 B-2: nor any pane crazed by a blast
 	_base_shards.clear()        ## G6: and no glass has fallen on its floor
 	_base_remnants.clear()      ## G4: and none is stuck to a frame
+	_base_rim_shards.clear()    ## CRACK-06: nor clinging to a torn glass edge
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	## The base-space RECORDS above are cleared; the VoxelRenderer's own SPRITE
 	## decals for them are not touched by `build_from_layout()` (only `_set_perspective()`
@@ -2554,6 +2628,8 @@ func _set_perspective(direction: String) -> void:
 		## already a cut atom, so the other order would let the rim swap silently
 		## lose to a remnant that was there first.
 		_respawn_base_remnants()
+		## CRACK-06 — and the shards clinging to the torn glass edge, same pattern.
+		_respawn_base_rim_shards()
 		## B-4b — the fields' hole masks, after the openings above have been
 		## re-applied (that is what refills the polygon log the mask reads).
 		_voxel_renderer.refresh_craze_opening_masks()

@@ -693,6 +693,11 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 		for r in result["remnants"]:
 			var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
 			delta.glass_remnants.append({"cell": rv.grid_pos, "level": rv.level})
+		## CRACK-06 — the shards clinging to the torn glass edge. Same proposal
+		## discipline; their own Delta list and claim path (`rim_shard_anchor_mask`).
+		for r in result.get("rim_shards", []):
+			var sv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+			delta.glass_rim_shards.append({"cell": sv.grid_pos, "level": sv.level})
 		var entries: Array = []
 		var fallen: Array = []
 		## ── G-D48 — THE EXTENDED RINGS MUST JOIN `ring_of`, NOT JUST THE DELTA ────

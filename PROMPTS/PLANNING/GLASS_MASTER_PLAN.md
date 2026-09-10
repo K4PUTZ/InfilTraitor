@@ -51,6 +51,27 @@ ramp was calibrated on screen 2026-09-09** (Director: *"a rampa me parece tudo o
     went 861 → 817 destroyed / 291 → 335 CRACKED. Pinned by `glass_shatter_selftest`
     [24]. S-6 (the hashed rim mask) stays the render-side follow-up if the voxel
     raggedness is not enough on screen.
+  - **CRACK-06 — RIM SHARDS ON THE TORN EDGE (Director, 2026-09-09, same session):**
+    the jitter alone still read as *"bordas muito retas […] areas blocadas,
+    retangulares"* and the claimed `star_*` opening was recognisable. Ruling:
+    *"vamos deixar os mesmos cacos que sobram nos batentes e frames, porém sobrando
+    na moldura do próprio vidro que fica […] aumentar um pouco a quantidade de cacos
+    que sobram no frame, e bastante a quantidade no próprio vidro. Pode fazer um
+    fator x2 em relação ao frame."* A flood voxel on the inner boundary — held
+    ONLY by the pane's own surviving glass, not a batten — is spared as a
+    `GlassShardShapes` shard, at `SHATTER_RIM_KEEP_SCALE` (2.0) × the frame's
+    luck-driven keep rate (`SHATTER_REMNANT_KEEP_*` bumped `.10/.40 → .13/.50`),
+    capped at `SHATTER_RIM_KEEP_CAP` (0.85), floor `SHATTER_RIM_MIN_COUNT` (6).
+    Its own Delta list (`glass_rim_shards`), claim (`Room.claim_glass_rim_shards`),
+    base store (`_base_rim_shards`, a 5th `SaveState` section) and anchor
+    (`GlassShatter.rim_shard_anchor_mask` — surviving glass, never a batten) —
+    separate from G4-3 so a frame remnant that loses its frame still ORPHANS
+    (G-D45) rather than re-anchoring. COOK PATH ONLY. `16_10` from (13,13): 138
+    shard cells on the board, up from 7. Pinned by `glass_shatter_selftest` [25]
+    (67 shards at scale 2.0, 33 at 1.0 — the x2 holds). ⚠️ Reintroduces per-shard
+    hashing that G-D34 removed FOR BULLET HOLES — deliberately, only for the
+    grenade region, where the polygon family has no member; a bullet break still
+    takes G-D34's designed polygon.
 - **G-D49 — re-damage on a crazed pane collapses locally.** *"Qualquer dano novo num
   painel ja rachado, como um tiro, colapsa as slices proximas a esse dano. Mas não
   precisa necessariamente ser toda a vidraça de uma vez. Continua existindo uma
@@ -2076,7 +2097,7 @@ zone and added an existing region-flood trigger; the three above were plumbing.
 | left | owner | why it is not a glass task |
 |---|---|---|
 | **S-4** — the `tight`/`wide` bullet fracture art | glass, deliberately parked | the generator produces the opposite distribution (§13.4) and the look has been rejected three times. `blast` shipped procedurally in §16.12 |
-| **S-6** — G-D32's hashed rim pool | glass, unblocked | the base-space key it waited for arrived with CRACK-04. ⚠️ **2026-09-09 — the Director hit the symptom S-6 addresses (*"bordas muito retas quando sobra vidro"*) and chose the cheaper fix first: `SHOCKWAVE_EDGE_JITTER` on the flood itself (see the G-D48 header bullet). S-6 stays the render-side follow-up — build it only if the voxel-level raggedness reads as not enough.** |
+| **S-6** — G-D32's hashed rim pool | glass, likely retired | the base-space key it waited for arrived with CRACK-04. ⚠️ **2026-09-09 — the Director hit the symptom S-6 addresses and it was answered by TWO cheaper fixes in the motor: `SHOCKWAVE_EDGE_JITTER` on the flood, then CRACK-06 (rim shards on the torn edge, the `GlassShardShapes` family). Both landed. S-6's sub-voxel wedge mask is now only worth building if the voxel-scale shards still read as too blocky after calibration — otherwise it is superseded.** |
 | **G-D8 part three** — the light bump + the +1 detection step when a passage opens | applications | needs the opening to be an EVENT; what landed is a per-turn recomputed SET, deliberately memoryless |
 | the agent CROSSING a broken pane | movement milestone | the blocked-edge set that permits it is built; the traversal is not |
 | shard noise | sound milestone | — |
@@ -4289,6 +4310,8 @@ VL-PERSIST. "Cai junto", not "some".
 | `glass_shatter_selftest` [23] | G-D45's one load-bearing fact: `remnant_anchor_mask()` held (non-zero) → **0** the instant the concrete jamb is destroyed. The same call the reap makes, on the same geometry, before and after |
 | `glass_shatter_selftest` [10] (G-D48, 2026-09-07) | the shockwave zone: `GLASS_SHOCKWAVE_FALLOFF` reliable to GU 3, tapering (not rising) to GU 5, 0 at GU 6; `GLASS_CRAZE_FALLOFF` reaching 2 GU further; and `flood_gu_rings(min_max_ring = glass_blast_max_ring())` actually placing a GU at ring 7. [21] and the partial-break probe moved to the outer ramp where the outcome is genuinely probabilistic |
 | `glass_shatter_selftest` [24] (G-D48 edge jitter, 2026-09-09) | the cook's partial-break edge WOBBLES (`SHOCKWAVE_EDGE_JITTER = 2` → the interior top edge spans ≥ 2 levels), is a FLAT line with jitter 0, and the same salt reproduces the identical flood — the three claims a Chebyshev-square boundary would each fail |
+| `glass_shatter_selftest` [25] (CRACK-06, 2026-09-09) | a cook partial break returns `rim_shards` — every one carrying a non-zero surviving-glass anchor, none overlapping the destroyed set, ~2× the count at `SHATTER_RIM_KEEP_SCALE` 2.0 vs 1.0, deterministic per salt, and EMPTY on the bullet path |
+| `save_state_selftest` | `glass_rim_shards` round-trips (negative cell included); a pre-CRACK-06 save restores as "nothing clinging", not a refusal |
 | the real map (G-D48) | grenade GU (18,11): `[GLASS-SHATTER-BLAST] pane=PANE_SLICE_16_10_SW ring=2 radius=50 flooded=1152` and `pane=PANE_SLICE_22_10_SW ring=2 flooded=469` — both target panes (15,10 / 16,10 / 20,10 / 21,10) gone; far panes craze to ring 7. `INFILTRAITOR_GLASS_RING_DIAG=1` prints per-pane ring / probability / outcome |
 | the real map | a grenade on the storefront pane: `[GLASS-FALL] 1152 of 1152 shard(s) landed, on 284 cell(s)` — up from the ~48-cell line the pane's foot is. `[GLASS-RAIN] 1152 flight(s) -> 2927 shard(s)` (2.54/voxel). No `[GLASS-REMNANT] G-D45` line — the storefront is free-standing, so the reap correctly found nothing |
 | the timing bench | `INFILTRAITOR_CAPTURE_ACTION=glass_rain_timings` — `RAIN_TIMING_PRESETS` (`snappy`/`default`/`floaty`/`heavy`/`raked`), `INFILTRAITOR_RAIN_IMPULSE`, `INFILTRAITOR_GLASS_BLAST_PANE` (`=framed` for a windowed pane). `build_filmstrip.py --glass-rain <preset|all>` encodes one MP4 each at `--fixed-fps 60` |

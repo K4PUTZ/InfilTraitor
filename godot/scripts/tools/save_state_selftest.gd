@@ -33,6 +33,9 @@ class RoomStub extends RefCounted:
 	## the shape is a hash of the key and the anchor is read from the live world,
 	## so there is deliberately no payload to lose here.
 	var _base_remnants: Dictionary = {}
+	## CRACK-06 — the same, clinging to the pane's own torn glass edge. A separate
+	## store for a separate anchor rule; models the real Room's field.
+	var _base_rim_shards: Dictionary = {}
 	var invalidated: int = 0
 	func invalidate_soot_index(_reason: String = "") -> void:
 		invalidated += 1
@@ -85,6 +88,8 @@ func _test_round_trip() -> void:
 	## G4 — two remnants, one on a negative cell.
 	a._base_remnants[Vector3i(-7, 3, 84)] = true
 	a._base_remnants[Vector3i(2, 2, 84)] = true
+	## CRACK-06 — a rim shard, also on a negative cell.
+	a._base_rim_shards[Vector3i(-4, 8, 82)] = true
 
 	var blob: Dictionary = SaveState.capture(a)
 	var b := RoomStub.new()
@@ -132,6 +137,15 @@ func _test_round_trip() -> void:
 	e._base_remnants[Vector3i(5, 5, 84)] = true
 	_check(SaveState.restore(e, pre_g4) and e._base_remnants.is_empty(),
 		"glass_remnants: a save written before G4 restores as nothing stuck, not a refusal")
+	## ── CRACK-06 — THE RIM SHARDS ───────────────────────────────────────────
+	_check(b._base_rim_shards.size() == 1 and b._base_rim_shards.has(Vector3i(-4, 8, 82)),
+		"glass_rim_shards: the shard survives, negative cell included")
+	var pre_c6: Dictionary = SaveState.capture(a)
+	pre_c6.erase("glass_rim_shards")
+	var f := RoomStub.new()
+	f._base_rim_shards[Vector3i(1, 1, 82)] = true
+	_check(SaveState.restore(f, pre_c6) and f._base_rim_shards.is_empty(),
+		"glass_rim_shards: a save written before CRACK-06 restores as nothing clinging, not a refusal")
 	_check(blob["map_id"] == "TESTMAP", "map_id travels with the record")
 	## The cache is rebuilt, never restored — SaveState's own class note.
 	_check(b.invalidated == 1, "restore() invalidates the soot index exactly once")

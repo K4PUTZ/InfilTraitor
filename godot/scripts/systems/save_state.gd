@@ -32,6 +32,9 @@ class_name SaveState
 ##     is a hash of this key and its anchor is a READ of the live geometry, so
 ##     there is nothing view-space to save and nothing that a quarter turn can
 ##     make wrong.
+##   · `glass_rim_shards` — CRACK-06: the same, but clinging to the pane's own
+##     torn glass edge rather than a batten. A separate list for a separate anchor
+##     rule, same POSITION-ONLY design.
 ##   · `crater_floor_soot` — scorch on revealed crater-floor cells, which hang on
 ##     no Voxel and so cannot be re-derived from the board.
 ##
@@ -61,6 +64,9 @@ static func capture(room) -> Dictionary:
 	var remnants: Array = []
 	for rk in room._base_remnants.keys():
 		remnants.append([rk.x, rk.y, rk.z])
+	var rim_shards: Array = []
+	for sk in room._base_rim_shards.keys():
+		rim_shards.append([sk.x, sk.y, sk.z])
 	for level in room._crater_floor_soot.keys():
 		for cell in room._crater_floor_soot[level].keys():
 			craters.append([int(level), cell.x, cell.y,
@@ -83,6 +89,10 @@ static func capture(room) -> Dictionary:
 		## as "nothing is stuck to a frame", and that is both true and the safe
 		## direction to be wrong in.
 		"glass_remnants": remnants,
+	## CRACK-06 — `[base_x, base_y, level]` per rim shard, same no-fourth-field,
+	## no-version-bump rule as `glass_remnants`: an old save has no key and `get()`
+	## reads it as "nothing clinging to a torn edge".
+	"glass_rim_shards": rim_shards,
 		## GLASS G-D15 / V-D — the panes a rifle round pierced without taking
 		## (`Room._pane_primed`). A flat array of pane_ids: the value is always
 		## `true`, so storing it would be storing a constant.
@@ -148,6 +158,10 @@ static func restore(room, data: Dictionary) -> bool:
 	room._base_remnants.clear()
 	for rm in data.get("glass_remnants", []):
 		room._base_remnants[Vector3i(int(rm[0]), int(rm[1]), int(rm[2]))] = true
+	## CRACK-06 — same rule as the remnants above.
+	room._base_rim_shards.clear()
+	for sh in data.get("glass_rim_shards", []):
+		room._base_rim_shards[Vector3i(int(sh[0]), int(sh[1]), int(sh[2]))] = true
 	room._crater_floor_soot.clear()
 	for c in data.get("crater_floor_soot", []):
 		var level: int = int(c[0])

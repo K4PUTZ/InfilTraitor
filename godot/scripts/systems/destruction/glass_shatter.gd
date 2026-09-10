@@ -82,9 +82,23 @@ static var SHATTER_REGION_PIVOT: float = 2.0
 ## and still replays exactly — and at least `MIN_COUNT` border voxels always
 ## survive. A pane left with zero surviving border voxels is a bug (pinned by the
 ## selftest).
-static var SHATTER_REMNANT_KEEP_MIN: float = 0.10
-static var SHATTER_REMNANT_KEEP_MAX: float = 0.40
+static var SHATTER_REMNANT_KEEP_MIN: float = 0.13
+static var SHATTER_REMNANT_KEEP_MAX: float = 0.50
 static var SHATTER_REMNANT_MIN_COUNT: int = 4
+
+## CRACK-06 (Director, 2026-09-09): *"vamos deixar os mesmos cacos que sobram nos
+## batentes e frames, porém sobrando na moldura do próprio vidro que fica […]
+## aumentar um pouco a quantidade de cacos que sobram no frame, e bastante a
+## quantidade de cacos que sobram no próprio vidro. Pode fazer um fator x2 em
+## relação ao frame."* A flood voxel on the INNER boundary of the break — one
+## whose only orthogonal hold is the pane's OWN surviving glass, not a frame — is
+## spared as a shard too, at RIM_KEEP_SCALE × the frame's luck-driven keep rate
+## (capped). Same `GlassShardShapes` family, same render path; the anchor is the
+## torn glass edge instead of a batten. COOK PATH ONLY (`radius_override >= 0`):
+## a bullet break is small and its rim is G-D34's designed polygon.
+static var SHATTER_RIM_KEEP_SCALE: float = 2.0
+static var SHATTER_RIM_KEEP_CAP: float = 0.85
+static var SHATTER_RIM_MIN_COUNT: int = 6
 
 ## G-D15 / V-C — armoured glass leaves FEWER hangers-on. Director: when it does
 ## go it *"usually shatters entirely at once, leaving many individual shards"* —
@@ -674,6 +688,43 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 				break
 			spared[k] = true
 
+	## ── CRACK-06 — RIM SHARDS ON THE TORN GLASS EDGE ───────────────────────────
+	##
+	## The frame ring above spares flood voxels a BATTEN holds. The break's inner
+	## boundary — flood voxels held only by the pane's OWN surviving glass — is the
+	## Director's *"moldura do próprio vidro que fica"*: the same shard family,
+	## `SHATTER_RIM_KEEP_SCALE`× the frame's luck-driven rate (capped), anchored to
+	## the tear. COOK PATH ONLY — a bullet break keeps G-D34's designed polygon.
+	var rim_shards: Dictionary = {}   ## key -> surviving-glass anchor mask
+	if radius_override >= 0:
+		var rim_keep: float = clampf(keep_prob * SHATTER_RIM_KEEP_SCALE, 0.0, SHATTER_RIM_KEEP_CAP)
+		var rim_candidates: Array = []
+		for k in flood.keys():
+			if spared.has(k):
+				continue   ## already a frame remnant
+			if anchor_mask_for(k, own_frame, anchor_positions) != 0:
+				continue   ## a batten holds it — that is a frame remnant, handled above
+			var gm: int = _surviving_glass_anchor_mask(k, flood, lattice)
+			## 0 → interior; 3+ bits → a near-isolated cell that would clip to a
+			## square and never read as a shard. 1–2 → a real boundary voxel.
+			if gm == 0 or _anchor_bit_count(gm) > 2:
+				continue
+			rim_candidates.append(k)
+		for k in rim_candidates:
+			var u: float = float(FacadeSamplerClass._fnv1a_hash("%s:RIMSHARD:%d:%d" % [salt, k.x, k.y]) % 100000) / 100000.0
+			if u < rim_keep:
+				rim_shards[k] = _surviving_glass_anchor_mask(k, flood, lattice)
+		## A modest floor, so a partial break always shows some rim. Ranked nearest
+		## the impact first, so the forced few sit deepest in the tear.
+		if rim_shards.size() < SHATTER_RIM_MIN_COUNT and not rim_candidates.is_empty():
+			var ranked_rim: Array = rim_candidates.duplicate()
+			ranked_rim.sort_custom(func(a, b) -> bool:
+				return Vector2(a - origin).length_squared() < Vector2(b - origin).length_squared())
+			for k in ranked_rim:
+				if rim_shards.size() >= SHATTER_RIM_MIN_COUNT:
+					break
+				rim_shards[k] = _surviving_glass_anchor_mask(k, flood, lattice)
+
 	## ── G4-2 — THE SURVIVORS LEAVE THE FUNCTION ──────────────────────────────
 	##
 	## ⚠️ **THIS RETURN USED TO DISCARD `spared`.** It was a local with exactly one
@@ -688,6 +739,7 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	## of the defect this is fixing.
 	var destroyed: Array = []
 	var remnants: Array = []
+	var rim_out: Array = []
 	for k in flood.keys():
 		if spared.has(k):
 			remnants.append({
@@ -696,8 +748,18 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 				"anchor_mask": anchor_mask_for(k, own_frame, anchor_positions),
 			})
 			continue
+		if rim_shards.has(k):
+			## CRACK-06 — a separate list, claimed on its own path: a rim shard
+			## hangs from the tear, never from a batten, and must not be reaped by
+			## the frame-remnant orphan test.
+			rim_out.append({
+				"slice": lattice[k]["slice"],
+				"voxel_index": lattice[k]["voxel_index"],
+				"anchor_mask": int(rim_shards[k]),
+			})
+			continue
 		destroyed.append(lattice[k])
-	return {"destroyed": destroyed, "remnants": remnants}
+	return {"destroyed": destroyed, "remnants": remnants, "rim_shards": rim_out}
 
 
 ## Which (col, level) keys of this pane hold its own NON-GLASS material — a G-D9
@@ -715,6 +777,47 @@ static func pane_frame_keys(pane_slices: Array, run_is_x: bool) -> Dictionary:
 			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
 				out[_pane_key(v, run_is_x)] = true
 	return out
+
+
+## CRACK-06 — the mirror of `pane_frame_keys`: the (col, level) keys still holding
+## VISIBLE glass (CRACKED counts — the sheet stands; DESTROYED does not). This is
+## what a RIM shard hangs from, the torn edge of the pane's own surviving glass.
+static func pane_glass_keys(pane_slices: Array, run_is_x: bool) -> Dictionary:
+	var out: Dictionary = {}
+	for slice in pane_slices:
+		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
+		for v in slice.voxels:
+			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+				continue
+			if GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
+				out[_pane_key(v, run_is_x)] = true
+	return out
+
+
+## CRACK-06 — the ANCHOR_* bits toward this flood key's own surviving glass: an
+## orthogonal neighbour that is a real pane voxel (`lattice`) the flood did NOT
+## take. Diagonals do not count, the same rule `anchor_mask_for` holds.
+static func _surviving_glass_anchor_mask(key: Vector2i, flood: Dictionary, lattice: Dictionary) -> int:
+	var mask: int = 0
+	for pair in [
+			[Vector2i(1, 0), ShardShapesClass.ANCHOR_RUN_POS],
+			[Vector2i(-1, 0), ShardShapesClass.ANCHOR_RUN_NEG],
+			[Vector2i(0, 1), ShardShapesClass.ANCHOR_LEVEL_POS],
+			[Vector2i(0, -1), ShardShapesClass.ANCHOR_LEVEL_NEG]]:
+		var nb: Vector2i = key + (pair[0] as Vector2i)
+		if lattice.has(nb) and not flood.has(nb):
+			mask |= int(pair[1])
+	return mask
+
+
+## How many of the four ANCHOR_* bits are set.
+static func _anchor_bit_count(mask: int) -> int:
+	var n: int = 0
+	for bit in [ShardShapesClass.ANCHOR_RUN_POS, ShardShapesClass.ANCHOR_RUN_NEG,
+			ShardShapesClass.ANCHOR_LEVEL_POS, ShardShapesClass.ANCHOR_LEVEL_NEG]:
+		if (mask & bit) != 0:
+			n += 1
+	return n
 
 
 ## G-D13b's four-neighbour test, as a MASK rather than a yes/no.
@@ -760,3 +863,17 @@ static func remnant_anchor_mask(pane_slices: Array, face: int, all_slices: Array
 	var key := Vector2i(grid_pos.x if run_is_x else grid_pos.y, level)
 	return anchor_mask_for(key, pane_frame_keys(pane_slices, run_is_x),
 		collect_anchor_positions(pane_slices, face, all_slices))
+
+
+## CRACK-06 — a RIM shard's anchor: the pane's OWN surviving glass, the torn edge.
+## A separate entry point from `remnant_anchor_mask` on purpose — a frame remnant
+## whose batten is later destroyed must ORPHAN and fall (G-D45), never silently
+## re-anchor to whatever glass happens to sit beside it. Same live-world rule: a
+## later break through this edge drops the mask to 0.
+static func rim_shard_anchor_mask(pane_slices: Array, face: int,
+		grid_pos: Vector2i, level: int) -> int:
+	if pane_slices.is_empty():
+		return 0
+	var run_is_x: bool = (face == Face.SW or face == Face.NE)
+	var key := Vector2i(grid_pos.x if run_is_x else grid_pos.y, level)
+	return anchor_mask_for(key, pane_glass_keys(pane_slices, run_is_x), {})

@@ -533,13 +533,78 @@ give pixel-identical boundaries and differ only in overdraw (8 186 / 8 844 / 9 4
 cells), so the reach is pinned at the cheapest. The sawtooth is the promotion's own
 voxel granularity at the boundary.
 
+### 7.2 T2-2 (partial) — the occlusion defect, found and fixed 2026-09-10
+
+**The Director asked whether the depth board interferes with occlusion. It did.**
+
+`apply_occlusion()` (OCC-21) erases an occluding column from `_layers[level]` and
+records it for restore. The front overlay holds a **copy** of those cells and was
+never told, so under the gate an occluding pillar stayed fully drawn while the
+opaque layer had correctly erased it — the agent stayed hidden behind a wall the
+game believed it had removed.
+
+Fixed by mirroring the erase on the same seam: `apply_occlusion()` erases the
+overlay's copy and records `front: true` on the restore record;
+`_restore_ghosted_cells()` puts it back only if it was there. ⚠️ Recorded at erase
+time rather than re-derived on restore — whether a cell belongs in front of the
+glass is a promotion decision, and re-running it there would be a second authority
+free to disagree with the one that built it. **OCC-21's erase and OCC-27's
+wireframe are untouched** (`RO0`); the overlay only follows them.
+
+Verified on GLASS, agent at `(13,12)`, `occluded_cells=8`, view N. In the pillar
+region, against the gate-OFF reference: **broken 19 381 px differing → fixed
+6 342**, and the 6 342 that remain are the depth board's *intended* change (the
+wood beam is solid instead of tinted).
+
+### 7.3 The sawtooth — the decision is proven CORRECT, the cause is still open
+
+Director, on his own capture: *"o que me incomoda mais é a inconsistência, alguns
+lugares fica regular, no outro serrilhado, com dentes faltando ou sobrando."*
+
+**Two wrong causes were proposed and killed by measurement before a third was:**
+
+1. **"The column reach is too short."** ❌ `COL_SPAN` 2 / 4 / 8 give pixel-identical
+   boundaries and differ only in overdraw (8 186 / 8 844 / 9 448 promoted cells).
+   ⚠️ This was first concluded from ONE crop, which is not enough to carry it — the
+   Director's own capture is a different view and region. It stands only because
+   the counts and the crop agree, and it should be re-tested full-frame if it ever
+   matters again.
+2. **"The per-column promotion is ragged."** ❌ `INFILTRAITOR_DEPTH_DIAG=dump`
+   prints the rule's actual input and output per screen column, and the decision is
+   right everywhere it disagrees: at `u=-47, glass_min_d=127`, the cells at
+   `d=61,63` are correctly NOT promoted (behind the glass) and `d=159,207,255,257`
+   correctly are. Columns with no glass of their own still promote off a neighbour
+   within reach. **The raggedness is not a wrong decision, so it is a RENDER
+   artifact.**
+3. **"Cross-level bleed"** — the standing hypothesis, ⚠️ **NOT confirmed.** The atom
+   is 36 px against a 20 px level step (Q5), so glass at level N+1 covers the top
+   16 px of a promoted wall cell at level N, and only a wall cell at N+1 covers it
+   back — which predicts teeth on a wall's exposed UPPER edge, which is where they
+   are.
+
+⚠️ **A retraction, recorded because the mistake is the kind this project keeps
+paying for.** Lifting the overlay to `z + 1` appeared to remove the teeth, and that
+reading was **void**: it compared two different BUILDS (a capture from before the
+occlusion fix against one after), not two configurations. The same-build A/B with
+the guard frozen is **0 pixels** — `z + 1` does nothing at all, because at `z(N+1)`
+the overlay still resolves against level N+1 by TREE ORDER and the rebuild loop has
+already placed `front(N)` before every level-N+1 node. The knob was removed rather
+than left in; the measurement is recorded at the line so nobody re-derives it.
+
+**The real test, not yet run:** a second pass re-parenting `front(N)` after
+`glass(N+1)`. That would also draw `front(N)` over `opaque(N+1)` in the 16 px
+overlap band — a trade that belongs to the Director, not to a knob.
+
+**Instruments left behind:** `INFILTRAITOR_DEPTH_DIAG=tint` (promoted cells painted
+red — the sawtooth stops being a silhouette to reason about), `=hide`, `=dump`.
+
 **Owed by T2-2, and the reason the gate is off:**
-1. **Invalidation.** `rebuild_depth_board()` currently fires only when a glass
-   sublayer is created. Destruction that removes a wall or a pane does not
-   invalidate the overlay, so a level's front set can go stale mid-event.
+1. **Invalidation.** ✅ OCCLUSION is done (§7.2). Still open: destruction that
+   removes a wall or a pane does not invalidate the overlay, so a level's front set
+   can go stale mid-event.
 2. **T2-3's re-homing is not done**, so under the gate a CRACK-02 craze sprite still
    rides `_glass_composite_z` and draws above the walls.
-3. The sawtooth look call.
+3. The sawtooth — cause narrowed, not closed (§7.3).
 4. `set_glass_over_z()` is a no-op under the gate rather than deleted, and
    `room.gd` still calls it.
 

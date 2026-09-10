@@ -3383,11 +3383,23 @@ func apply_occlusion(occluded: Dictionary) -> void:
 			## OCC-21 (2026-07-14): ERASE occluded cells entirely instead of ghosting.
 			## The wireframe fill is now the sole visual representation. Store full
 			## placement data (source, atlas, alt) for complete restoration later.
+			## OPTION C — THE FRONT OVERLAY HOLDS A COPY, SO IT MUST FOLLOW THE
+			## ERASE. Found on screen 2026-09-10 and it is the exact defect the
+			## Director asked about: with the depth board on, an occluding pillar
+			## stayed fully drawn while `_layers[level]` had correctly erased it,
+			## because the overlay's copy was never told. OCC-21's erase and OCC-27's
+			## wireframe are untouched — the overlay just mirrors them.
+			var front_had: bool = false
+			var front: TileMapLayer = _front_layers.get(level)
+			if front != null and front.get_cell_source_id(cell) != -1:
+				front_had = true
+				front.erase_cell(cell)
 			restore_records.append({
 				"level": level,
 				"source_id": source_id,
 				"atlas_coords": atlas_coords,
-				"prev_alt": prev_alt
+				"prev_alt": prev_alt,
+				"front": front_had
 			})
 			layer.erase_cell(cell)
 			note_external_write(level, cell)
@@ -3493,6 +3505,14 @@ func _restore_ghosted_cells() -> void:
 			## OCC-21: restore from saved placement data, not current layer state
 			## (the cell was erased, so layer queries would return -1)
 			layer.set_cell(cell, record["source_id"], record["atlas_coords"], record["prev_alt"])
+			## OPTION C — and put the overlay's copy back if it had one. Recorded at
+			## erase time rather than re-derived: whether this cell belongs in front
+			## of the glass is a promotion decision, and re-running it here would be
+			## a second authority free to disagree with the one that built it.
+			if record.get("front", false):
+				var front: TileMapLayer = _front_layers.get(level)
+				if front != null:
+					front.set_cell(cell, record["source_id"], record["atlas_coords"], record["prev_alt"])
 	_ghosted_cells.clear()
 
 
@@ -6567,6 +6587,16 @@ func _depth_board_rebuild() -> void:
 			if front == null:
 				front = _build_voxel_layer_node(level)
 				front.name = "front_overlay_%d" % level
+				## `INFILTRAITOR_DEPTH_DIAG=tint` paints the promoted cells red and
+				## `=hide` removes them, so WHICH cells were promoted stops being a
+				## thing to reason about from a silhouette and becomes a thing to
+				## look at. The sawtooth is a boundary question, and a boundary you
+				## cannot see is a boundary you will theorise about.
+				var diag := OS.get_environment("INFILTRAITOR_DEPTH_DIAG")
+				if diag == "tint":
+					front.modulate = Color(1.0, 0.25, 0.25, 1.0)
+				elif diag == "hide":
+					front.visible = false
 				_front_layers[level] = front
 			## A COPY, never a move — see the note on `depth_board_on`.
 			front.set_cell(cell, opaque.get_cell_source_id(cell),
@@ -6602,6 +6632,16 @@ func _depth_board_rebuild() -> void:
 		bb.z_index = z
 		glass.z_index = z
 		if front != null:
+			## ⚠️ LIFTING THIS ONE z IS A NO-OP, MEASURED — do not re-derive it.
+			## The suspected cause of the sawtooth is cross-level bleed: the atom is
+			## 36 px against a 20 px level step (Q5), so glass at level N+1 covers
+			## the top 16 px of a promoted wall cell at level N. `z + 1` looks like
+			## the fix and changes NOTHING: at `z(N+1)` the overlay still resolves
+			## against level N+1 by TREE ORDER, and this loop has already placed
+			## `front(N)` before every level-N+1 node. Same build, guard frozen,
+			## `z` vs `z + 1`: **0 pixels**. Moving it would take a second pass that
+			## re-parents `front(N)` after `glass(N+1)` — which then draws it over
+			## `opaque(N+1)`, a trade that needs the Director, not a knob.
 			front.z_index = z
 		move_child(opaque, -1)
 		move_child(bb, -1)
@@ -6611,6 +6651,59 @@ func _depth_board_rebuild() -> void:
 
 	print("[DEPTH-BOARD] %d glass level(s) · %d front-overlay cell(s) · %d container(s)"
 		% [levels.size(), total_front, _depth_board_bbs.size()])
+	if OS.get_environment("INFILTRAITOR_DEPTH_DIAG") == "dump":
+		_depth_board_dump(levels)
+
+
+## `INFILTRAITOR_DEPTH_DIAG=dump` — the promotion decision as DATA, per screen
+## column, for one level. Two rounds of reasoning about the sawtooth from a
+## silhouette produced two wrong causes; this prints what the rule actually saw.
+func _depth_board_dump(levels: Array) -> void:
+	if levels.is_empty():
+		return
+	var level: int = int(levels[0])
+	var glass := _glass_layers[level] as TileMapLayer
+	var opaque := _layers.get(level) as TileMapLayer
+	var front := _front_layers.get(level) as TileMapLayer
+	if glass == null or opaque == null:
+		return
+	var gmin: Dictionary = {}
+	for c in glass.get_used_cells():
+		var u: int = c.x - c.y
+		var d: int = c.x + c.y
+		if not gmin.has(u) or d < int(gmin[u]):
+			gmin[u] = d
+	## Per column: the glass floor, and the opaque cells that did / did not promote.
+	var rows: Dictionary = {}
+	for cell in opaque.get_used_cells():
+		var u2: int = cell.x - cell.y
+		var d2: int = cell.x + cell.y
+		var promoted: bool = front != null and front.get_cell_source_id(cell) != -1
+		if not rows.has(u2):
+			rows[u2] = {"yes": [], "no": []}
+		(rows[u2]["yes"] if promoted else rows[u2]["no"]).append(d2)
+	var cols: Array = rows.keys()
+	cols.sort()
+	print("[DEPTH-DUMP] level %d — column: glass_min_d | promoted d's | NOT promoted d's" % level)
+	var shown: int = 0
+	for u3 in cols:
+		var r = rows[u3]
+		## Only the columns that actually disagree are interesting — a column that
+		## is all-yes or all-no is the rule working.
+		if r["yes"].is_empty() or r["no"].is_empty():
+			continue
+		r["yes"].sort()
+		r["no"].sort()
+		var g = gmin.get(u3, null)
+		print("  u=%4d  glass=%s  yes=%s  no=%s" % [u3,
+			("-" if g == null else str(g)),
+			str(r["yes"].slice(0, 6)), str(r["no"].slice(0, 6))])
+		shown += 1
+		if shown >= 14:
+			print("  … (more columns disagree)")
+			break
+	if shown == 0:
+		print("  every column is uniformly promoted or uniformly not — the raggedness is NOT per column")
 
 
 ## GLASS G1 — one glass pane layer (one per level), a direct child of the

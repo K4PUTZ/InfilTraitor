@@ -1,7 +1,8 @@
 # RENDER ORDER MASTER PLAN — depth on the isometric board — v1.0
 
-**Status:** 🟡 **TASK 1 RUN, 2026-09-10 — and it replaced its own design. One
-Director call open.** Y-sort *works* (Q1) and **costs too much** (Q2: +244% draw
+**Status:** 🟢 **OPTION C APPROVED 2026-09-10, and its one open number is
+measured — the container is affordable with ~4× headroom (§6.4). Task 2 may
+start.** Earlier the same day: Task 1 replaced its own design. Y-sort *works* (Q1) and **costs too much** (Q2: +244% draw
 calls on GLASS, +511% on PLAYGROUND, on an IDLE board), so `RO1`/`RO2` are
 withdrawn as the mechanism. What the failure pointed at is measured and passes:
 **a pane is PLANAR, so a level's opaque cells split into `far` / `near` around it
@@ -368,9 +369,122 @@ three properties at once —
 ⚠️ **This is a NEW DESIGN, not a variant of what was signed off.** It needs the
 Director before Task 2 starts.
 
+### 6.4 THE CONTAINER'S PRICE — measured 2026-09-10 (Option C approved, this was its one open number)
+
+Director approved Option C and asked for this first. Gate `INFILTRAITOR_GLASS_BB`,
+default OFF (unset = today's single `COPY_MODE_VIEWPORT` copy, untouched):
+`none` = no copy · `rect` = one `COPY_MODE_RECT` per glass LEVEL · `rect<K>` = K
+per level, a stress knob.
+
+**A second instrument had to be built first.** `INFILTRAITOR_NO_VSYNC=1` disables
+vsync inside the frame probe. With vsync on, `ms/frame` reads 16.7 for anything
+that fits in a refresh, so a change costing 3 ms and one costing nothing print the
+SAME number — fine while the question is CPU (Q2's `render cpu` column still
+moved) and useless the moment the question is GPU, which a `BackBufferCopy` is
+almost entirely.
+
+**First sweep — and it was not an answer.** GLASS and PLAYGROUND, 0 / 1 / 24 / 48
+copies, all landed between 6.2 and 6.5 ms, and `none` (ZERO copies) came out
+*slower* than today on both maps. A floor that is not the lowest reading is not a
+floor: the whole spread was run-to-run noise, and "inside the noise" is not the
+same claim as "free".
+
+⚠️ **`none` is probably not a real zero and is NOT relied on here.** Godot inserts
+a backbuffer of its own for a material that declares `hint_screen_texture`, which
+`glass_pane.gdshader` does — so removing the NODE likely does not remove the COPY.
+Unverified, and the argument below is built so it does not matter.
+
+**So the count was driven until the curve bent.** GLASS, 1500 frames, vsync off,
+same binary, M1 / Metal, window 1280×720:
+
+| copies | ms/frame | render cpu | vs baseline |
+|---|---|---|---|
+| **1** (today, full viewport) | **6.3** | 3.1 ms | — |
+| **24** (one per glass level) | **6.4** | 3.1 ms | **+0.1 ms** |
+| **48** (two per level — the multi-band case) | **6.4** | 3.1 ms | **+0.1 ms** |
+| **192** | **12.4** | 3.3 ms | **+6.1 ms** |
+| **480** | **28.7** | 4.0 ms | **+22.4 ms** |
+| **960** | **54.5** | 4.6 ms | **+48.2 ms** |
+
+The shape: flat to ~50 copies, then linear at **0.042** ms/copy (48→192),
+**0.057** (192→480) and **0.054** (480→960). The first fifty are absorbed; after
+that every copy is charged, at a stable ~0.05 ms each. Three consistent slopes
+across a 20× range is what makes this a curve rather than four readings.
+
+> **Option C's container is affordable, with roughly 4× headroom over what it
+> needs.** 24 and 48 copies are indistinguishable from one; 192 costs most of a
+> frame. `render cpu` barely moves across the whole range (3.1 → 3.3), which
+> places the cost on the GPU side exactly where a blit belongs — and is why the
+> vsync instrument had to exist before the question could be asked at all.
+>
+> ⚠️ **The measurement is CONSERVATIVE, and by accident rather than design.** The
+> per-level rect is computed from `TileMapLayer.get_used_rect()`, which is the
+> union of ALL glass on that level — every pane on the map, not one. Average rect:
+> **6 453 675 world px²** against a **0.92 Mpx** viewport, so each "rect" copy was
+> clipped to the full screen. **What was priced is 24 and 48 FULL-VIEWPORT copies**,
+> not the bounded ones Option C would actually emit. The real design is cheaper
+> than this table, never more expensive.
+>
+> ⚠️ **This is an M1 at 1280×720, not a phone.** The `project.godot` base viewport
+> is 390×844 with `stretch/mode="canvas_items"`; the window under test ran at
+> 1280×720. A tile-based mobile GPU can charge a fixed tile-flush per copy that an
+> M1 absorbs, and nothing here measures that. **The headroom is the finding, not
+> the absolute number** — 4× between what the design needs and where the curve
+> bends is what makes it worth building; a device run is still owed before ship.
+
+**What this buys the design:** the band budget is a real number now. Option C
+emits one copy per glass DEPTH BAND per glass level, countable at map load — so
+the authoring check (§8) gains a second job: warn when a map's band count
+approaches the budget, long before anyone feels it.
+
 ---
 
-## 7. TASK 2 — the build, if the spike passes
+---
+
+## 7. TASK 2 — the build (Option C, Director-approved 2026-09-10)
+
+⛔ **Designs A and B below are HISTORY.** They both rode `RO1`'s Y-sort, which Q2
+priced out of the project (§6.1). The approved build is **Option C, §6.3** — the
+split-layer board — and its one open number came back affordable (§6.4). The
+steps:
+
+1. **The band split, at map load.** Per glass-bearing level, sort that level's
+   glass by view-space depth (`x + y`, `O5`'s canon) into bands. `N` bands ⇒ the
+   level emits, in tree order at ONE `z_index`:
+   `opaque(behind band 1) → bb → glass(band 1) → opaque(between 1 and 2) → bb → glass(band 2) → … → opaque(in front of the last)`.
+   Derived, never authored, and re-derived on a rotation with everything else in
+   view space (`RO0b`, `RO5`).
+2. **The opaque layer of a glass-bearing level splits into `N+1` layers.** A split
+   PARTITIONS that level's cells; it does not duplicate them. Levels with no glass
+   keep exactly one layer and are not touched.
+3. **One `COPY_MODE_RECT` `BackBufferCopy` per band**, bounded to that band's own
+   screen extent — ⚠️ **not** `TileMapLayer.get_used_rect()`, which is the union
+   of every pane on the level and is what made §6.4's measurement price
+   full-viewport copies. Bounding it properly is strictly cheaper than the number
+   that was approved.
+4. **`RO2`** — the glass layers leave the flat top-`z` for their level's own `z`;
+   delete `_glass_composite_z`, `_glass_composite_z_floor`, `set_glass_over_z()`
+   and the `room.gd` call. `G-D18b` stays relaxed.
+5. **Re-home what rides the composite `z`**: `_glass_crack_root` (G-D27 craze
+   sprites, `layer.z_index + 1`), the shard field, and the glass rain
+   (`room.gd:709`, `layer.z_index + 2`) — each into its own band.
+6. **The band count is a budget.** §6.4 measured flat to ~50 copies and linear
+   after; the authoring check (§8) reports a map's total band count so a map that
+   would cost is named at load, not felt in play.
+7. **`glass_transparency_selftest`** — the container assertion changes shape (one
+   copy per band, not one globally) and **must not weaken**: it still has to fail
+   if a pane can double-tint.
+8. **Retire the measurement gates** (`INFILTRAITOR_YSORT`, `INFILTRAITOR_GLASS_BB`)
+   or keep them deliberately, with a note saying which. `INFILTRAITOR_NO_VSYNC`
+   is worth keeping — it is the only way `ms/frame` answers a GPU question.
+
+⚠️ **Still owed before ship, and not by this plan:** a real device run. §6.4 is an
+M1 at 1280×720, and a tile-based mobile GPU can charge a fixed tile-flush per copy
+that an M1 absorbs.
+
+---
+
+## 7b. Designs A and B — superseded, kept for the trade they describe
 
 Design A (Q1 and Q3 both yes):
 

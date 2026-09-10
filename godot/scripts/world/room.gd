@@ -5676,6 +5676,17 @@ func _process(_delta: float) -> void:
 			## SCRIPTS. Off by default because measuring it costs a GPU sync.
 			RenderingServer.viewport_set_measure_render_time(
 				get_viewport().get_viewport_rid(), true)
+			## `INFILTRAITOR_NO_VSYNC=1` — RENDER_ORDER Task 2, and useful to every
+			## perf question after it. With vsync on, `ms/frame` reads 16.7 for
+			## anything that fits in a refresh, so a change that costs 3 ms and one
+			## that costs nothing print the SAME number. That is fine while the
+			## question is CPU (the `render cpu` column still moves) and useless
+			## the moment the question is GPU — which a BackBufferCopy is almost
+			## entirely. Off by default: it makes the machine spin.
+			if OS.get_environment("INFILTRAITOR_NO_VSYNC") == "1":
+				DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+				Engine.max_fps = 0
+				print("[FRAME-PROBE] vsync DISABLED — ms/frame is a real cost now")
 		if _frame_probe_last > 0:
 			_frame_probe_n += 1
 			_frame_probe_us += t_now - _frame_probe_last

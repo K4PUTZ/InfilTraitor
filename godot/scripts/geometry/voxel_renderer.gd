@@ -839,6 +839,9 @@ var _glass_layers: Dictionary = {}         ## level:int -> TileMapLayer (one per
 ## column a dim side sliver — all read the same snapshot, so there is no
 ## double-tint. Lazy.
 var _glass_backbuffer: BackBufferCopy = null
+## Task 2 pricing only — the per-level rect copies built under INFILTRAITOR_GLASS_BB.
+var _glass_bb_rects: Array = []
+var _glass_bb_refresh_queued: bool = false
 var _glass_composite_z: int = -9999        ## z for the backbuffer + every glass layer
 ## GLASS G-D18b (Director 2026-08-31: *"no caso do vidro ser transparente, acho
 ## que podemos deixar o agente ser renderizado atrás e ficar parcialmente coberto
@@ -1132,6 +1135,24 @@ var _diag_slice_count: int = 0
 ## where a storefront is a few levels out of thirty-odd, it is most of the cost.
 static var ysort_probe_on: bool = OS.get_environment("INFILTRAITOR_YSORT") == "1"
 static var ysort_probe_scoped: bool = OS.get_environment("INFILTRAITOR_YSORT") == "2"
+
+
+## RENDER_ORDER_MASTER_PLAN Task 2 gate — HOW MUCH DOES THE CONTAINER COST?
+## `INFILTRAITOR_GLASS_BB` — default (unset) is today's behaviour untouched.
+##
+##   none    no backbuffer at all — the FLOOR. The pane renders wrong; that is
+##           fine and it is the point: it prices the container by removing it,
+##           the same way INFILTRAITOR_HIDE_VOXELS prices the layers.
+##   rect    one COPY_MODE_RECT BackBufferCopy per glass LEVEL, each bounded to
+##           that level's own glass extent — Option C's shape.
+##   rect2   two per level. Option C needs one per glass DEPTH BAND, and GLASS has
+##           panes at y=9 AND y=6 on the same levels, so 1-per-level is the floor
+##           of the real count and this brackets the ceiling.
+##
+## ⚠️ The rects are for PRICING. A rect-mode pane composites against a snapshot
+## taken at the wrong point in the order, so it may look wrong — the number is the
+## deliverable here, not the picture.
+static var glass_bb_mode: String = OS.get_environment("INFILTRAITOR_GLASS_BB")
 
 
 ## Setup: builds tileset and prepares for rendering
@@ -6280,13 +6301,18 @@ func _ensure_glass_sublayers(level: int) -> void:
 	var z: int = maxi(maxi(get_max_voxel_z_index(), _wall_base_z_index), _glass_composite_z_floor)
 	if z > _glass_composite_z:
 		_glass_composite_z = z
-	if _glass_backbuffer == null:
-		_glass_backbuffer = BackBufferCopy.new()
-		_glass_backbuffer.name = "glass_backbuffer"
-		_glass_backbuffer.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
-		add_child(_glass_backbuffer)
-	_glass_backbuffer.z_index = _glass_composite_z
-	move_child(_glass_backbuffer, -1)
+	if glass_bb_mode == "":
+		if _glass_backbuffer == null:
+			_glass_backbuffer = BackBufferCopy.new()
+			_glass_backbuffer.name = "glass_backbuffer"
+			_glass_backbuffer.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
+			add_child(_glass_backbuffer)
+		_glass_backbuffer.z_index = _glass_composite_z
+		move_child(_glass_backbuffer, -1)
+	else:
+		## The measurement modes own the container instead. `none` builds nothing;
+		## the rect modes build per level, below, once the level's glass exists.
+		_glass_bb_refresh()
 	for l in _glass_layers.values():
 		(l as TileMapLayer).z_index = _glass_composite_z
 		move_child(l, -1)
@@ -6322,6 +6348,80 @@ func set_glass_over_z(z: int) -> void:
 		(l as TileMapLayer).z_index = _glass_composite_z
 		move_child(l, -1)
 	_lift_glass_crack_root()
+
+
+## Task 2 pricing — (re)build the per-level rect backbuffers. Coalesced through a
+## deferred call: `_ensure_glass_sublayers()` fires once per glass level, and a
+## rect can only be computed once that level's cells are actually placed.
+func _glass_bb_refresh() -> void:
+	if _glass_bb_refresh_queued:
+		return
+	_glass_bb_refresh_queued = true
+	call_deferred("_glass_bb_rebuild")
+
+
+func _glass_bb_rebuild() -> void:
+	_glass_bb_refresh_queued = false
+	for bb in _glass_bb_rects:
+		if is_instance_valid(bb):
+			bb.queue_free()
+	_glass_bb_rects.clear()
+	if not glass_bb_mode.begins_with("rect"):
+		return
+	## `rect` = 1 per level, `rect<K>` = K per level. K is a STRESS KNOB, not a
+	## design: the first sweep (1, 2) could not separate 0, 1, 24 and 48 copies
+	## from run-to-run noise, and "inside the noise" is not the same claim as
+	## "free". Driving K until the curve bends is what turns it into one.
+	var suffix := glass_bb_mode.substr(4)
+	var per_level: int = suffix.to_int() if suffix.is_valid_int() else 1
+	per_level = maxi(per_level, 1)
+	var area_total: float = 0.0
+	for level in _glass_layers:
+		var layer := _glass_layers[level] as TileMapLayer
+		if layer == null:
+			continue
+		var used: Rect2i = layer.get_used_rect()
+		if used.size.x <= 0 or used.size.y <= 0:
+			continue
+		## Cell bounds → this renderer's local space. Every corner, because an
+		## isometric rect's screen bounds are NOT its corner pair: the diamond's
+		## extremes are the other two.
+		var pts: Array[Vector2] = []
+		for c in [used.position, used.position + Vector2i(used.size.x, 0),
+				used.position + Vector2i(0, used.size.y), used.position + used.size]:
+			pts.append(layer.position + layer.map_to_local(c))
+		var mn := pts[0]
+		var mx := pts[0]
+		for pt in pts:
+			mn = mn.min(pt)
+			mx = mx.max(pt)
+		var atom := Vector2(float(GeometryCoords.VOXEL_ATOM_W), float(GeometryCoords.VOXEL_ATOM_H))
+		var r := Rect2(mn - atom, (mx - mn) + atom * 2.0)
+		area_total += r.size.x * r.size.y
+		for i in range(per_level):
+			var bb := BackBufferCopy.new()
+			bb.name = "glass_bb_%d_%d" % [level, i]
+			bb.copy_mode = BackBufferCopy.COPY_MODE_RECT
+			bb.rect = r
+			bb.z_index = _glass_composite_z
+			add_child(bb)
+			move_child(bb, -1)
+			_glass_bb_rects.append(bb)
+	## The glass layers must stay AFTER every backbuffer, exactly as the single
+	## viewport copy arranges them.
+	for l in _glass_layers.values():
+		move_child(l as TileMapLayer, -1)
+	_lift_glass_crack_root()
+	## The AREA is the number that matters, not the count — and it is in WORLD px,
+	## which the camera zoom then scales onto a 390x844 viewport. Printed so the
+	## comparison against one full-viewport copy is a measurement rather than the
+	## back-of-envelope arithmetic RO3 wrote down.
+	var vp_size := get_viewport().get_visible_rect().size
+	print("[GLASS-BB] mode=%s — %d rect backbuffer(s) over %d glass level(s) · avg rect %.0f px² · total %.2f Mpx² (world) · viewport %.0fx%.0f = %.2f Mpx"
+		% [glass_bb_mode, _glass_bb_rects.size(), _glass_layers.size(),
+			(area_total / maxf(float(_glass_layers.size()), 1.0)),
+			area_total * float(per_level) / 1000000.0,
+			vp_size.x, vp_size.y, vp_size.x * vp_size.y / 1000000.0])
 
 
 ## GLASS G1 — one glass pane layer (one per level), a direct child of the

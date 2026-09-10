@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**241 scripts · 88604 lines total** (under `godot/scripts/`)
+**241 scripts · 88715 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -859,7 +859,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 6893 lines
+`class_name VoxelRenderer` · extends `Node2D` · 6993 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -5365,7 +5365,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11137 lines
+extends `Node2D` · 11148 lines
 
 `godot/scripts/world/room.gd`
 

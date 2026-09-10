@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-09 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-10 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -69,7 +69,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 | `PERFORMANCE` | it *was* the explosion's cost | 🟠 **Its fire block is HISTORY, not status** — D-6 deleted the very subsystem F3–F8 optimized. P3 + P7b/P7c ship and default ON; P4, P6 and §14.3's broken `INFILTRAITOR_HIDE_VOXELS` stay open. **Read §12–§14, not the v2.3 header** |
 | `SOOT_STORAGE_REFORM` | nothing — the presentation reform took the session on 2026-08-27 | 🟡 **PAUSED at SS-3.** SS-4 (checkpoint persistence), SS-5 (subtraction), SS-6 (rotation) open; **§5.3 is an open DESIGN question for the Director** |
 | `MATERIALS` M3-6 (lateral fire propagation) | PERF P7 — *"do not judge a look through a frame time its own voxel count made worse"* | 🟢 **UNBLOCKED** — P7b/P7c shipped 2026-08-26 |
-| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ✅ **ESSENTIALLY DONE — case-tested 2026-09-07.** `GLASS_MASTER_PLAN` **v1.47.** Everything through §18 built (G1..G-D18b, G3, G-VARIANT, G-ART, CRACK-02, the blast CRAZE, G6 floor shards, G4-1..G4-4, G6b-1/2/3, G-D45), plus **G-D48** (the shockwave zone — 5 GU destruction ramp, 7 GU craze, glass-only re-flood; supersedes G-D46) and **G-D49** (re-damage on a crazed pane collapses locally). ⚠️ The G-D48 ramp values are placeholders awaiting Director calibration. Left in M4: `plastic` (screen backing) and S-4's fracture art (order written). |
+| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ✅ **PHYSICS DONE — calibrated 2026-09-10.** `GLASS_MASTER_PLAN` **v1.49.** Everything through §18 built, plus **G-D48** (the shockwave zone) and **G-D49** (re-damage collapses a region), both **calibrated on screen 2026-09-10** (`SHOCKWAVE_REGION_MAX` 50→20, edge jitter, CRACK-06 rim shards). ⚠️ **§19 THE GLASS MERGE is designed, not built** — glass onto the depth-sorted board (a back pane composites over a front wall today); needs `OCCLUSION` §7 + a perf spike. Left in M4: `plastic` + S-4's fracture art. |
 | `TARGETING` (grenade aim/throw) | — | ✅ Built; **2026-09-07 it learned about the scenery** — a LINE-OF-THROW clamp (the grenade no longer lands through walls), the aim dome and blast flood subtracting `Room._blast_opened_edge_keys()`, and `throw_range_skill_bonus_gu` as the seam for a coming range skill. §5b/§5c |
 | `MATERIALS` M5 (voxel props) | renderer v2 | 🔴 Still blocked — the real gate on `OCCLUSION` Part 4 too |
 | `TOP_TEXTURE` Part 3 (textured interiors) | *"the destruction system (no implementation plan exists yet)"* | 🟢 **UNBLOCKED** — that plan was written, shipped and closed. Unscheduled, not blocked |
@@ -81,21 +81,20 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 
 ### 3. What is genuinely open, ordered by how ready it is
 
-1. **GLASS — ✅ ESSENTIALLY DONE. Case-tested 2026-09-07.**
-   [`GLASS_MASTER_PLAN`](../../PROMPTS/PLANNING/GLASS_MASTER_PLAN.md) is at **v1.47**.
-   The case testing the close had left owed ran on 2026-09-07 and produced two more
-   rulings: **G-D48** — the SHOCKWAVE ZONE, glass-only effective destruction out to
-   5 GU on a descending ramp (`GLASS_SHOCKWAVE_FALLOFF`) with crazing 2 GU further
-   (`GLASS_CRAZE_FALLOFF`), via a real glass-only re-flood; it retires
-   `SHATTER_BLAST_GAIN`, `SHATTER_BLAST_EXTRA_RINGS` and the bullet logistic on the
-   cook path, and supersedes G-D46 — and **G-D49**, re-damage on an already-crazed
-   pane collapsing a REGION from the impact instead of crazing again.
-   ⚠️ **The ramp values are placeholders awaiting the Director's on-screen
-   calibration** (`INFILTRAITOR_GLASS_RING_DIAG=1` prints the readout). The same
-   session fixed G-D48's own render gap — a pane taken in an extended ring was
-   destroyed in the data and still painted until a rotation rebuilt it (928 stale
-   cells → 0). See
-   [`RESUMO_SESSAO_2026-09-07_SHOCKWAVE_AND_THE_STALE_WORLD.md`](../../PROMPTS/RESUMO_SESSAO_2026-09-07_SHOCKWAVE_AND_THE_STALE_WORLD.md).
+1. **GLASS — ✅ PHYSICS DONE. Calibrated 2026-09-10; one RENDER task designed, not built.**
+   [`GLASS_MASTER_PLAN`](../../PROMPTS/PLANNING/GLASS_MASTER_PLAN.md) is at **v1.49**.
+   G-D48 (the SHOCKWAVE ZONE — glass-only destruction to 5 GU on a descending ramp,
+   craze 2 GU further) and G-D49 (re-damage on a crazed pane collapses a region)
+   were case-tested 2026-09-07. ✅ **The ramp was calibrated on screen 2026-09-10**
+   — `SHOCKWAVE_REGION_MAX` 50 → 20 so a big pane is destroyed-core / cracked-margin
+   instead of all-or-nothing; `GLASS_SHOCKWAVE_FALLOFF` eased to `[1,1,1, .85,.55,.30]`.
+   The same day landed **`SHOCKWAVE_EDGE_JITTER`** (the Chebyshev-square edge is
+   jittered) and **CRACK-06** — rim shards on the torn glass edge at ×2 the frame
+   remnant rate. ⚠️ **`GLASS_MASTER_PLAN` §19 THE GLASS MERGE is designed, not
+   built**: a back pane composites over a wall in front of it (`G-D18b`'s flat
+   top-z, `OCCLUSION` `O5`) — the fix puts glass tiles on the depth-sorted per-level
+   voxel layers, depends on `OCCLUSION` §7 (the X-ray phantom) + a perf spike. See
+   [`RESUMO_SESSAO_2026-09-10_GLASS_RAMP_AND_THE_XRAY_PLAN.md`](../../PROMPTS/RESUMO_SESSAO_2026-09-10_GLASS_RAMP_AND_THE_XRAY_PLAN.md).
 
    Earlier, v1.43 — **§18 (the shard rain) CLOSED.** The track ran from G1 (the pane geometry) through
    G3 (the break — a per-projectile shatter roll, the cook path, the passage), the
@@ -148,11 +147,10 @@ number. If a total is ever quoted as current, it has to be re-measured first.
    the pane (not a per-voxel decal family), so `voxel_decal_selftest` [12] was
    never in the way. The whole glass track then ran to completion — §18 closed
    2026-09-06. Kept here only to mark the questions dead.
-2. **The G-D48 shockwave ramp — the numbers are the Director's.** ⛔ Open since
-   2026-09-07. `GLASS_SHOCKWAVE_FALLOFF` and `GLASS_CRAZE_FALLOFF` satisfy the one
-   case he reported and were verified there; the shape between is a guess. Every
-   value is a `static var`; `INFILTRAITOR_GLASS_RING_DIAG=1` prints the per-pane
-   ring / probability / outcome to calibrate against.
+2. ✅ **The G-D48 shockwave ramp — CALIBRATED 2026-09-10.** `SHOCKWAVE_REGION_MAX`
+   50 → 20 (a big pane is no longer all-or-nothing), `GLASS_SHOCKWAVE_FALLOFF`
+   `[1,1,1, .85,.55,.30]`, plus `SHOCKWAVE_EDGE_JITTER` and CRACK-06 (rim shards).
+   Director: *"a rampa me parece tudo ok"*. Kept here only to mark it closed.
 3. **Should a breached OPAQUE wall open a passage for MOVEMENT?** The machinery is
    built (`PassageQuery`, `PASSAGE_MIN_REMOVED_FRACTION`, and the Director's own
    *"3 granadas no mesmo lugar com concreto"* ruling), and as of 2026-09-07 a
@@ -160,10 +158,13 @@ number. If a total is ever quoted as current, it has to be re-measured first.
    still asks `PassageQuery` about GLASS edges only, so the agent cannot walk
    through the hole. Wiring it is a real behaviour change, not a correction.
 4. **What the next milestone is.** The explosion no longer picks it, and the glass
-   track is done. The two live candidates are the character/movement track and the
-   gameplay milestones (GAMEPLAY-01's non-combat turn, then GAME-01). `MATERIALS`
-   still has M3-6/M3-7 (lateral fire), M5 (voxel props, blocked on renderer v2) and
-   M6 (fluids research). Nothing technical orders them.
+   track's physics is done. The live candidates are the character/movement track,
+   the gameplay milestones (GAMEPLAY-01's non-combat turn, then GAME-01), and — new
+   2026-09-10 — the **glass depth-merge + X-ray silhouette** (`OCCLUSION` §7 +
+   `GLASS` §19), a designed `voxel_renderer` rework the size the codebase calls
+   "renderer v2" (which also unblocks `MATERIALS` M5 and `OCCLUSION` Part 4).
+   `MATERIALS` still has M3-6/M3-7 (lateral fire) and M6 (fluids). Nothing
+   technical orders them.
 5. **`SOOT_STORAGE_REFORM` §5.3 — should a wall's scorch outlive the wall?**
    Measured: 2 040 store-only cells after two fires, in a store whose lifetime is
    one level run. Both answers are defensible; it is a design call.
@@ -274,6 +275,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-06_GLASS_CLOSE.md
 - RESUMO_SESSAO_2026-09-07_SHOCKWAVE_AND_THE_STALE_WORLD.md
 - RESUMO_SESSAO_2026-09-09_THE_WORKSPACE_SPLIT.md
+- RESUMO_SESSAO_2026-09-10_GLASS_RAMP_AND_THE_XRAY_PLAN.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

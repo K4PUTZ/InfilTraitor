@@ -1,8 +1,10 @@
 # RENDER ORDER MASTER PLAN — depth on the isometric board — v1.0
 
-**Status:** 🟢 **OPTION C APPROVED 2026-09-10, and its one open number is
-measured — the container is affordable with ~4× headroom (§6.4). Task 2 may
-start.** Earlier the same day: Task 1 replaced its own design. Y-sort *works* (Q1) and **costs too much** (Q2: +244% draw
+**Status:** 🟢 **T2-1 BUILT 2026-09-10 behind `INFILTRAITOR_DEPTH_BOARD=1`, default
+OFF — the bug is fixed on screen and rotation re-derives it for free (§7.1).** Four
+things are owed before the gate can flip, listed there. Earlier the same day:
+Option C approved and its container priced (§6.4, ~4× headroom); Task 1 replaced
+its own design. Y-sort *works* (Q1) and **costs too much** (Q2: +244% draw
 calls on GLASS, +511% on PLAYGROUND, on an IDLE board), so `RO1`/`RO2` are
 withdrawn as the mechanism. What the failure pointed at is measured and passes:
 **a pane is PLANAR, so a level's opaque cells split into `far` / `near` around it
@@ -481,6 +483,67 @@ steps:
 ⚠️ **Still owed before ship, and not by this plan:** a real device run. §6.4 is an
 M1 at 1280×720, and a tile-based mobile GPU can charge a fixed tile-flush per copy
 that an M1 absorbs.
+
+### 7.1 T2-1 — BUILT 2026-09-10, behind `INFILTRAITOR_DEPTH_BOARD=1` (default OFF)
+
+Option C end to end for **one band per level**. The bug is fixed on screen; the
+gate stays off until the Director has looked.
+
+**⚠️ The overlay, not the split — and this is a deliberate departure from §7 step 2.**
+Partitioning a level's opaque cells into two `TileMapLayer`s is the literal reading
+and it is the wrong one here: **in this project the tilemap is the authoritative
+state, not a picture.** 28 internal sites read `_layers[level]` / `get_layer(level)`
+and `INFILTRAITOR_CELL_PROBE` answers "is there a voxel here" from it, so a migrated
+cell would silently vanish from every one of them. So `_layers[level]` keeps every
+cell it has and a **render-only overlay redraws only the NEAR ones after the glass**.
+Opaque pixels overwrite, so the result is identical — measured, not argued: spike
+**Q7** (overlay) returns the same counts as **Q6** (true split),
+`opaque_clean=1664 probe_saw=512 probe_blind=0`. Cost: near cells rasterise twice.
+
+**⚠️ Depth is per SCREEN COLUMN, not one scalar threshold.** `x + y` orders cells
+but only ORDERS ones that overlap on screen, and a pane is a long run whose cells
+span a wide range of `x + y`. A single split at the pane's nearest cell leaves a
+wall overlapping the pane's FAR end ~50 below the threshold and never promoted —
+most of the bug still on screen. So the level's glass is indexed by column
+`u = x - y` and compared per column. (This was caught by arithmetic before the
+first capture, not by looking.)
+
+**⚠️ `COPY_MODE_RECT` was tried and dropped.** It rendered every pane as a flat navy
+slab: `behind` came back black and `glass_apply()` fell to its `glass_min_body`
+floor. Isolated in ONE run by switching only the copy mode on the same tree at the
+same z — viewport correct, rect black — so the fault is the rect computation, not
+the ordering. Dropped rather than fixed, because §6.4 already priced 24 full-viewport
+copies at +0.1 ms and the curve does not bend until ~50. **Revisit only if a device
+run says otherwise**; a known-wrong path left armed behind an env var is a trap.
+
+**Evidence** (`Screenshots/history/depthboard_{before,after}_{N,E,S,W}.png`, named so
+the rotation cannot eat them):
+
+- The repro is FIXED. W view, the wood pillar and the concrete wall were washed
+  with the pane's blue tint and are now solid, with the glass behind them.
+- **Rotation re-derives it for free** (`RO0b`, `RO5`): the promoted-cell count moves
+  per view — 8 186 (N) · 7 162 (E) · 7 974 (S) — with no rotation-specific code.
+- Changed pixels vs the old board: N 67 118 · E 61 053 · S 87 362 · W 110 572.
+- Gate OFF prints nothing and builds nothing — verified on a clean boot.
+
+**⚠️ Open, and it is a look call rather than a bug hunt:** the promoted /
+not-promoted boundary shows a **per-voxel sawtooth** on a wall edge adjacent to a
+pane. The obvious suspect was the column reach and it is NOT: `COL_SPAN` 2, 4 and 8
+give pixel-identical boundaries and differ only in overdraw (8 186 / 8 844 / 9 448
+cells), so the reach is pinned at the cheapest. The sawtooth is the promotion's own
+voxel granularity at the boundary.
+
+**Owed by T2-2, and the reason the gate is off:**
+1. **Invalidation.** `rebuild_depth_board()` currently fires only when a glass
+   sublayer is created. Destruction that removes a wall or a pane does not
+   invalidate the overlay, so a level's front set can go stale mid-event.
+2. **T2-3's re-homing is not done**, so under the gate a CRACK-02 craze sprite still
+   rides `_glass_composite_z` and draws above the walls.
+3. The sawtooth look call.
+4. `set_glass_over_z()` is a no-op under the gate rather than deleted, and
+   `room.gd` still calls it.
+
+---
 
 ---
 

@@ -58,6 +58,7 @@ func _init() -> void:
 	await _q3()
 	_q5()
 	await _q6()
+	await _q7()
 
 	print("\n" + "=".repeat(78))
 	if _fail_count == 0:
@@ -140,6 +141,92 @@ func _q3() -> void:
 	_verdict("Q4 CONTROL same, y_sort OFF (tree order already favours it) → must SEE",
 		cg_off["probe_saw"] > 100,
 		cg_off)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Q7 — the OVERLAY form of Option C: split the DRAW without splitting the STATE
+# ─────────────────────────────────────────────────────────────────────────────
+##
+## Q6 proved the ordering. Building it the literal way — partition a level's opaque
+## cells into two TileMapLayers — would MOVE CELLS BETWEEN LAYERS, and in this
+## project the tilemap is not a picture, it is the authoritative state: 28 internal
+## sites read `_layers[level]` / `get_layer(level)`, `INFILTRAITOR_CELL_PROBE`
+## answers "is there a voxel here" from it, and anything enumerating a level would
+## silently stop seeing the cells that moved.
+##
+## So: do not move them. `_layers[level]` keeps EVERY cell it has today, and a
+## render-only overlay redraws just the near ones AFTER the glass:
+##
+##     opaque(all cells) → BackBufferCopy → glass → front_overlay(near cells only)
+##
+## Opaque pixels overwrite, so the second draw restores exactly what the glass
+## covered. Zero semantic change, zero migrated cells; the cost is that near cells
+## rasterise twice.
+##
+## ⚠️ The known imperfection this case must also expose: at a near cell's
+## ANTIALIASED silhouette edge the overlay only partially covers, so a 1 px fringe
+## of glass tint survives on the wall's outline. Counted here rather than
+## discovered on screen.
+func _q7() -> void:
+	print("\n── Q7: opaque(all) → bb → glass → front overlay(near only), no y-sort ──\n")
+	var r := await _render_overlay()
+	_verdict("Q7 CASE  near wall restored OVER the glass, and the glass still SEES the far wall",
+		r["opaque_clean"] > 1600 and r["probe_saw"] > 100,
+		r)
+
+
+func _render_overlay() -> Dictionary:
+	var vp := SubViewport.new()
+	vp.size = VIEW_SIZE
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(vp)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 1)
+	bg.size = Vector2(VIEW_SIZE)
+	bg.z_index = -100
+	vp.add_child(bg)
+
+	var board := Node2D.new()
+	board.position = ORIGIN
+	board.y_sort_enabled = false
+	vp.add_child(board)
+
+	var tileset := _make_tileset()
+
+	## ONE opaque layer holding BOTH cells — this is `_layers[level]`, untouched.
+	var all_layer := _make_layer(tileset, false, "opaque_all")
+	board.add_child(all_layer)
+	all_layer.set_cell(Vector2i(0, 0), 0, Vector2i(0, 0), 0)   ## far
+	all_layer.set_cell(Vector2i(2, 2), 0, Vector2i(0, 0), 0)   ## near
+
+	var bb := BackBufferCopy.new()
+	bb.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
+	bb.z_index = 10
+	board.add_child(bb)
+
+	var glass_layer := _make_layer(tileset, false, "glass_layer")
+	var mat := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = PROBE_SHADER
+	mat.shader = sh
+	glass_layer.material = mat
+	board.add_child(glass_layer)
+	glass_layer.set_cell(Vector2i(1, 1), 0, Vector2i(1, 0), 0)
+
+	## The overlay — a COPY of the near cell only, drawn last.
+	var front := _make_layer(tileset, false, "opaque_front")
+	board.add_child(front)
+	front.set_cell(Vector2i(2, 2), 0, Vector2i(0, 0), 0)
+
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+
+	var counts := _classify(vp.get_texture().get_image())
+	vp.queue_free()
+	return counts
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -842,6 +842,12 @@ var _glass_backbuffer: BackBufferCopy = null
 ## Task 2 pricing only — the per-level rect copies built under INFILTRAITOR_GLASS_BB.
 var _glass_bb_rects: Array = []
 var _glass_bb_refresh_queued: bool = false
+
+## OPTION C — per glass-bearing level, the render-only overlay that redraws the
+## opaque cells NEARER than that level's glass, and the level's own container.
+var _front_layers: Dictionary = {}      ## level:int -> TileMapLayer
+var _depth_board_bbs: Dictionary = {}   ## level:int -> BackBufferCopy
+var _depth_board_queued: bool = false
 var _glass_composite_z: int = -9999        ## z for the backbuffer + every glass layer
 ## GLASS G-D18b (Director 2026-08-31: *"no caso do vidro ser transparente, acho
 ## que podemos deixar o agente ser renderizado atrás e ficar parcialmente coberto
@@ -1153,6 +1159,35 @@ static var ysort_probe_scoped: bool = OS.get_environment("INFILTRAITOR_YSORT") =
 ## taken at the wrong point in the order, so it may look wrong — the number is the
 ## deliverable here, not the picture.
 static var glass_bb_mode: String = OS.get_environment("INFILTRAITOR_GLASS_BB")
+
+
+## RENDER_ORDER_MASTER_PLAN Task 2 — OPTION C, the depth board. `INFILTRAITOR_DEPTH_BOARD=1`.
+##
+## Default OFF: the shipping board is byte-identical until the Director has seen
+## this on screen. Turning it on switches ONE level band at a time from
+##
+##     [ every opaque cell ] … [ all glass, at a flat top z, above everything ]
+## to
+##     [ every opaque cell ] → [ BackBufferCopy ] → [ glass ] → [ front overlay ]
+##
+## all four at the LEVEL's own z_index (`RO1` — the per-level z scheme is not
+## touched, which is what leaves OCC-23's wireframe panels, OCC-03, the props and
+## the twelve overhead overlays working untouched).
+##
+## ⚠️ THE FRONT OVERLAY REDRAWS, IT DOES NOT MOVE. Splitting a level's opaque cells
+## into two layers is the literal reading of Option C and it is the wrong one HERE:
+## in this project the tilemap is the authoritative state, not a picture — 28
+## internal sites read `_layers[level]` / `get_layer(level)` and
+## `INFILTRAITOR_CELL_PROBE` answers "is there a voxel here" from it, so a migrated
+## cell would silently vanish from every one of them. So `_layers[level]` keeps
+## every cell it has today and the overlay redraws only the NEAR ones after the
+## glass. Opaque pixels overwrite, so the result is identical — measured, not
+## assumed: the spike's Q6 (true split) and Q7 (this overlay) return the same
+## pixel counts, `opaque_clean=1664 probe_saw=512 probe_blind=0`.
+##
+## The cost is that near cells rasterise twice; the benefit is that nothing else in
+## the renderer can tell this happened.
+static var depth_board_on: bool = OS.get_environment("INFILTRAITOR_DEPTH_BOARD") == "1"
 
 
 ## Setup: builds tileset and prepares for rendering
@@ -6301,6 +6336,18 @@ func _ensure_glass_sublayers(level: int) -> void:
 	var z: int = maxi(maxi(get_max_voxel_z_index(), _wall_base_z_index), _glass_composite_z_floor)
 	if z > _glass_composite_z:
 		_glass_composite_z = z
+	if depth_board_on:
+		## OPTION C owns the container and the z. No global backbuffer, and the
+		## glass layers do NOT get lifted — `_depth_board_rebuild()` puts each one
+		## at its own level's z with its own container.
+		## ⚠️ `_glass_composite_z` is still computed above, and deliberately: the
+		## CRACK-02 sprite root still rides it. Re-homing the craze sprites, the
+		## shard field and the rain into their level's band is T2-3, and until then
+		## a crack under this gate draws above the walls. Known, owed, gate is off.
+		if not _glass_layers.has(level):
+			_glass_layers[level] = _build_glass_sublayer_node(level)
+		rebuild_depth_board()
+		return
 	if glass_bb_mode == "":
 		if _glass_backbuffer == null:
 			_glass_backbuffer = BackBufferCopy.new()
@@ -6337,6 +6384,11 @@ func _ensure_glass_sublayers(level: int) -> void:
 ## agent stands behind draws OVER him (a faint tint) instead of him popping in
 ## front of it. Idempotent; a no-op when glass is already at or above `z`.
 func set_glass_over_z(z: int) -> void:
+	## OPTION C relaxes G-D18b: glass sits at its own level's z and the agent is no
+	## longer required to be under it. room.gd still calls this; under the gate it
+	## must not re-lift anything. The call site goes away for real in T2-2.
+	if depth_board_on:
+		return
 	_glass_composite_z_floor = maxi(_glass_composite_z_floor, z)
 	if _glass_composite_z_floor <= _glass_composite_z:
 		return
@@ -6422,6 +6474,143 @@ func _glass_bb_rebuild() -> void:
 			(area_total / maxf(float(_glass_layers.size()), 1.0)),
 			area_total * float(per_level) / 1000000.0,
 			vp_size.x, vp_size.y, vp_size.x * vp_size.y / 1000000.0])
+
+
+## OPTION C — schedule a depth-board rebuild. Coalesced: `_ensure_glass_sublayers()`
+## fires once per glass level and a band cannot be computed until that level's
+## cells are actually placed.
+##
+## ⚠️ T2-1 SCOPE: this is the only trigger. Destruction that removes a wall or a
+## pane does NOT yet invalidate the overlay, so a level's front set can go stale
+## mid-event. Wiring that to the real mutation seams is T2-2 — the gate is OFF by
+## default precisely because this is not finished.
+func rebuild_depth_board() -> void:
+	if not depth_board_on or _depth_board_queued:
+		return
+	_depth_board_queued = true
+	call_deferred("_depth_board_rebuild")
+
+
+## OPTION C — the whole mechanism, per glass-bearing level.
+##
+## `O5`'s canon depth: view-space `x + y`, greater sum = NEARER the camera. The
+## same rule `floating_collectible._apply_z_index()` already uses, and the reason
+## rotation needs no special handling — the renderer's cells ARE view-space, so a
+## flip re-derives this with everything else (`RO0b`, `RO5`).
+func _depth_board_rebuild() -> void:
+	_depth_board_queued = false
+	if not depth_board_on:
+		return
+
+	for f in _front_layers.values():
+		if is_instance_valid(f):
+			f.queue_free()
+	_front_layers.clear()
+	for b in _depth_board_bbs.values():
+		if is_instance_valid(b):
+			b.queue_free()
+	_depth_board_bbs.clear()
+
+	var levels: Array = _glass_layers.keys()
+	levels.sort()
+	var total_front: int = 0
+
+	for level in levels:
+		var glass := _glass_layers[level] as TileMapLayer
+		var opaque := _layers.get(level) as TileMapLayer
+		if glass == null or opaque == null:
+			continue
+		var glass_cells: Array[Vector2i] = glass.get_used_cells()
+		if glass_cells.is_empty():
+			continue
+
+		## ⚠️ NOT ONE SCALAR THRESHOLD. `x + y` is the depth order (`O5`) but it only
+		## ORDERS cells that actually overlap on screen, and a pane is a long run:
+		## its cells span a wide range of `x + y`. A single split at the pane's
+		## nearest cell is far too conservative — a wall overlapping the pane's FAR
+		## end sits ~50 below that maximum and would never be promoted, which is
+		## most of the bug still on screen.
+		##
+		## Screen position is `((x - y) * 16, (x + y) * 8)`, so `u = x - y` is the
+		## screen COLUMN and `d = x + y` is the depth. Index the level's glass by
+		## column, keeping the FARTHEST glass in each (the one a wall must beat to
+		## be in front), and compare per column. `COL_SPAN` is the reach in columns
+		## an atom can still overlap: the atom is 32 px wide against a 16 px column
+		## step, so a cell touches its immediate neighbours and no further.
+		## ⚠️ 2 IS MEASURED, NOT PICKED. The promoted/not-promoted boundary shows a
+		## per-voxel sawtooth on a wall edge adjacent to a pane, and the obvious
+		## suspect was this reach being too short. It is not: 2, 4 and 8 produce
+		## PIXEL-IDENTICAL boundaries on the W view and differ only in overdraw
+		## (8 186 / 8 844 / 9 448 promoted cells). The sawtooth is the promotion's
+		## own voxel granularity at the boundary, which is a T2-2 look call — so
+		## the reach stays at the smallest value that costs least.
+		const COL_SPAN: int = 2
+		var glass_by_col: Dictionary = {}
+		for c in glass_cells:
+			var u: int = c.x - c.y
+			var d: int = c.x + c.y
+			if not glass_by_col.has(u) or d < int(glass_by_col[u]):
+				glass_by_col[u] = d
+
+		var front: TileMapLayer = null
+		for cell in opaque.get_used_cells():
+			var cu: int = cell.x - cell.y
+			var cd: int = cell.x + cell.y
+			var in_front := false
+			for du in range(-COL_SPAN, COL_SPAN + 1):
+				var g = glass_by_col.get(cu + du)
+				if g != null and cd > int(g):
+					in_front = true
+					break
+			if not in_front:
+				continue
+			if front == null:
+				front = _build_voxel_layer_node(level)
+				front.name = "front_overlay_%d" % level
+				_front_layers[level] = front
+			## A COPY, never a move — see the note on `depth_board_on`.
+			front.set_cell(cell, opaque.get_cell_source_id(cell),
+				opaque.get_cell_atlas_coords(cell), opaque.get_cell_alternative_tile(cell))
+			total_front += 1
+
+		## The container for this level's band — one full-viewport copy.
+		##
+		## ⚠️ A BOUNDED `COPY_MODE_RECT` WAS TRIED FIRST AND IS DELIBERATELY NOT
+		## HERE. It rendered every pane as a flat dark rectangle: `behind` came back
+		## black, so `glass_apply()` fell to its `glass_min_body` floor and the panes
+		## read as navy slabs. Isolated in one run by switching ONLY the copy mode
+		## on the same tree at the same z — viewport correct, rect black — so the
+		## fault is the rect computation, not the ordering.
+		##
+		## It is dropped rather than fixed because the measurement says it buys
+		## nothing here: §6.4 priced 24 and 48 copies at +0.1 ms, and those were
+		## FULL-VIEWPORT copies (the pricing rect was so large it clipped to the
+		## screen). The curve does not bend until ~50. Bounding the rect is the
+		## first optimisation to revisit **if a real device says otherwise** — it is
+		## not needed on the evidence in hand, and a known-wrong path left armed
+		## behind an env var is a trap, not an option.
+		var bb := BackBufferCopy.new()
+		bb.name = "depth_bb_%d" % level
+		bb.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
+		add_child(bb)
+		_depth_board_bbs[level] = bb
+
+		## ONE z for all four — the level's own (`RO1`). Order is the TREE's job,
+		## which is the entire point of Option C: no Y-sort, nothing rediscovered
+		## per frame. Q6/Q7 measured this exact arrangement.
+		var z: int = opaque.z_index
+		bb.z_index = z
+		glass.z_index = z
+		if front != null:
+			front.z_index = z
+		move_child(opaque, -1)
+		move_child(bb, -1)
+		move_child(glass, -1)
+		if front != null:
+			move_child(front, -1)
+
+	print("[DEPTH-BOARD] %d glass level(s) · %d front-overlay cell(s) · %d container(s)"
+		% [levels.size(), total_front, _depth_board_bbs.size()])
 
 
 ## GLASS G1 — one glass pane layer (one per level), a direct child of the

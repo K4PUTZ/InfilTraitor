@@ -57,6 +57,7 @@ func _init() -> void:
 	await _q1()
 	await _q3()
 	_q5()
+	await _q6()
 
 	print("\n" + "=".repeat(78))
 	if _fail_count == 0:
@@ -139,6 +140,89 @@ func _q3() -> void:
 	_verdict("Q4 CONTROL same, y_sort OFF (tree order already favours it) → must SEE",
 		cg_off["probe_saw"] > 100,
 		cg_off)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Q6 — the split-layer design: correct depth with NO Y-sort at all
+# ─────────────────────────────────────────────────────────────────────────────
+##
+## Q2 measured what Y-sort costs on the real board and the answer was most of a
+## frame. But a pane is PLANAR: every opaque cell at its level is either nearer
+## than that plane or farther, and which one is a scalar comparison known at map
+## load. So the level's opaque cells can be split into two layers around the
+## glass —
+##
+##     opaque_far → BackBufferCopy → glass → opaque_near
+##
+## all at the SAME z_index, ordered by the TREE, with no Y-sort anywhere and no
+## batching given up. This case checks the tree delivers all three properties at
+## once: the near wall covers the glass, the glass composites the far wall, and
+## the container still works.
+func _q6() -> void:
+	print("\n── Q6: opaque_far → backbuffer → glass → opaque_near, one z, NO y-sort ──\n")
+	var r := await _render_split()
+	_verdict("Q6 CASE  the NEAR opaque must cover the glass, and the glass must SEE the far one",
+		r["opaque_clean"] > 100 and r["probe_saw"] > 100,
+		r)
+
+
+func _render_split() -> Dictionary:
+	var vp := SubViewport.new()
+	vp.size = VIEW_SIZE
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(vp)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 1)
+	bg.size = Vector2(VIEW_SIZE)
+	bg.z_index = -100
+	vp.add_child(bg)
+
+	var board := Node2D.new()
+	board.position = ORIGIN
+	board.y_sort_enabled = false          ## the whole point
+	vp.add_child(board)
+
+	var tileset := _make_tileset()
+
+	## FAR opaque at (0,0) — behind the pane, must show THROUGH it.
+	var far_layer := _make_layer(tileset, false, "opaque_far")
+	board.add_child(far_layer)
+	far_layer.set_cell(Vector2i(0, 0), 0, Vector2i(0, 0), 0)
+
+	var bb := BackBufferCopy.new()
+	bb.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
+	## ⚠️ The z_index is NOT optional and its default is a trap: a BackBufferCopy
+	## left at 0 sorts BEFORE layers at 10 and snapshots the bare background. The
+	## first run of this case read `probe_saw=0` for exactly that reason and it
+	## looked like a verdict on the design.
+	bb.z_index = 10
+	board.add_child(bb)
+
+	## The pane at (1,1).
+	var glass_layer := _make_layer(tileset, false, "glass_layer")
+	var mat := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = PROBE_SHADER
+	mat.shader = sh
+	glass_layer.material = mat
+	board.add_child(glass_layer)
+	glass_layer.set_cell(Vector2i(1, 1), 0, Vector2i(1, 0), 0)
+
+	## NEAR opaque at (2,2) — in front of the pane, must COVER it. This is the
+	## cell that is broken on the real board today.
+	var near_layer := _make_layer(tileset, false, "opaque_near")
+	board.add_child(near_layer)
+	near_layer.set_cell(Vector2i(2, 2), 0, Vector2i(0, 0), 0)
+
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+
+	var counts := _classify(vp.get_texture().get_image())
+	vp.queue_free()
+	return counts
 
 
 # ─────────────────────────────────────────────────────────────────────────────

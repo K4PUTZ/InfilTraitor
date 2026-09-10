@@ -1111,10 +1111,41 @@ var _diag_null_edge_cells: int = 0
 var _diag_slice_count: int = 0
 
 
+## RENDER_ORDER_MASTER_PLAN Task 1 Q2 — the Y-sort gate, DEFAULT OFF.
+##
+## `RO1` resolves glass-vs-wall depth INSIDE a level band by Y-sorting, which this
+## project has never enabled anywhere (`y_sort_origin` is set in three places and
+## does nothing on its own). Q1 proved the mechanism works on Godot 4.6.1; Q2 asks
+## what it COSTS on the real board, where Y-sorting a `TileMapLayer` gives up
+## quadrant batching and this renderer already reports ~12 000 draw calls.
+##
+## ⚠️ MEASUREMENT GATE, NOT A FEATURE. Default off, so the shipping board is
+## byte-identical. Turning it on alone must ALSO leave the board unchanged — glass
+## does not move until the plan says it does — and that control is the first thing
+## Q2 checks: a "before/after" that skips it cannot tell "Y-sort did nothing" from
+## "Y-sort did two things that cancelled".
+## `INFILTRAITOR_YSORT=1` — every level Y-sorted (the blunt form).
+## `INFILTRAITOR_YSORT=2` — SCOPED: only the levels that actually carry glass, set
+## retroactively in `_ensure_glass_sublayers()`. Depth only has to be resolved
+## where glass and opaque share a level band, so every other level keeps its
+## quadrant batching. On a glass test map that saves little; on a mission map,
+## where a storefront is a few levels out of thirty-odd, it is most of the cost.
+static var ysort_probe_on: bool = OS.get_environment("INFILTRAITOR_YSORT") == "1"
+static var ysort_probe_scoped: bool = OS.get_environment("INFILTRAITOR_YSORT") == "2"
+
+
 ## Setup: builds tileset and prepares for rendering
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	_visual_grid_offset = visual_grid_offset
 	_wall_base_z_index = wall_base_z_index
+	## The parent must be Y-sorted for sibling layers' tiles to merge into one
+	## order — per-layer `y_sort_enabled` alone still draws all of one, then all
+	## of the other (Q1's control).
+	y_sort_enabled = ysort_probe_on or ysort_probe_scoped
+	if ysort_probe_on:
+		print("[YSORT-PROBE] Y-sorting ENABLED on every voxel level (INFILTRAITOR_YSORT=1)")
+	elif ysort_probe_scoped:
+		print("[YSORT-PROBE] Y-sorting SCOPED to glass-bearing levels (INFILTRAITOR_YSORT=2)")
 	_build_voxel_tileset()
 
 
@@ -6161,6 +6192,7 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 
 	# Set rendering parameters
 	layer.y_sort_origin = 1
+	layer.y_sort_enabled = ysort_probe_on   ## Q2 gate — see setup()
 	# Z-index: positive (wall/roof) levels stack above _wall_base_z_index as
 	# before. Negative (D17 floor/background) levels render in the LEGACY FLOOR
 	# SLOT instead: the whole floor-painted overlay ecosystem (shadows z=1,
@@ -6263,6 +6295,14 @@ func _ensure_glass_sublayers(level: int) -> void:
 		return
 	var gl := _build_glass_sublayer_node(level)
 	_glass_layers[level] = gl
+	## Q2 SCOPED gate — glass just arrived on `level`, so THIS band is the one that
+	## has to resolve depth per cell. Applied to the pair, retroactively, because
+	## the opaque layer was built long before anything knew there was glass here.
+	if ysort_probe_scoped:
+		gl.y_sort_enabled = true
+		var opaque := _layers.get(level) as TileMapLayer
+		if opaque != null:
+			opaque.y_sort_enabled = true
 
 
 ## GLASS G-D18b — raise the whole glass composite (backbuffer + every pane layer)
@@ -6311,6 +6351,7 @@ func _build_glass_sublayer_node(level: int) -> TileMapLayer:
 		layer.visible = false
 
 	layer.y_sort_origin = 1
+	layer.y_sort_enabled = ysort_probe_on   ## Q2 gate — see setup()
 	layer.z_index = _glass_composite_z
 
 	add_child(layer)

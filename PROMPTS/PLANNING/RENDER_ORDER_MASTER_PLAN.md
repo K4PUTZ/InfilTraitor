@@ -1,11 +1,15 @@
 # RENDER ORDER MASTER PLAN — depth on the isometric board — v1.0
 
-**Status:** 🟡 **TASK 1 PART-RUN, 2026-09-10 — Q1 YES, Q3 NO. One Director call open.**
-`RO1`/`RO2` (the depth fix) are **confirmed to work** on Godot 4.6.1. `RO3`/`RO4`
-(where the `G-D2` container lives) are **refuted**: with Y-sort on, a
-`BackBufferCopy` is hoisted out of the ordering entirely. Q2 (the perf gate) has
-not been run — it is common to both surviving options, so it waits on the ruling.
-Full numbers in §6.1. Nothing is built.
+**Status:** 🟡 **TASK 1 RUN, 2026-09-10 — and it replaced its own design. One
+Director call open.** Y-sort *works* (Q1) and **costs too much** (Q2: +244% draw
+calls on GLASS, +511% on PLAYGROUND, on an IDLE board), so `RO1`/`RO2` are
+withdrawn as the mechanism. What the failure pointed at is measured and passes:
+**a pane is PLANAR, so a level's opaque cells split into `far` / `near` around it
+and the TREE does the ordering** — `opaque_far → BackBufferCopy → glass →
+opaque_near`, one `z_index`, no Y-sort anywhere, no batching given up (Q6). It
+also solves the case Option A could not: a wall BEHIND the glass still composites
+through it. Full numbers in §6.1, the design in §6.3. **Nothing is built** — §6.3
+is a new design and needs the Director's sign-off before Task 2.
 
 **Owner:** engine. Touches `voxel_renderer.gd` and the glass render path only.
 **Explicitly does NOT touch** the opaque-wall occlusion mechanism (OCC-21 erase +
@@ -263,6 +267,36 @@ Measured on the real builder rather than believed:
 > overlaps arbitrarily, and today they read as one tint rather than two. That is a
 > `G-D1`/`G-D2` look question, and it is the Director's.
 
+**Q2 — what Y-sort costs on the real board.** `INFILTRAITOR_YSORT=1` (every
+level) / `=2` (scoped to glass-bearing levels only), default OFF, measured with
+the project's own standing `INFILTRAITOR_FRAME_PROBE=1`. **Idle board, nothing
+happening**, 600 frames, same binary, M1 / Metal / Forward Mobile:
+
+| map | mode | ms/frame | render cpu | draw calls |
+|---|---|---|---|---|
+| GLASS | OFF | 16.7 | 3.6 ms | 8 307 |
+| GLASS | FULL | 19.0 | **11.9 ms** (+231%) | **28 573** (+244%) |
+| GLASS | SCOPED | 16.7 | 8.2 ms (+128%) | 16 466 (+98%) |
+| PLAYGROUND | OFF | 16.7 | 2.3 ms | 4 222 |
+| PLAYGROUND | FULL | **22.9** | **13.4 ms** (+483%) | **25 802** (+511%) |
+| PLAYGROUND | SCOPED | 16.7 | 5.5 ms (+139%) | 10 154 (+140%) |
+
+> **Q2 FAILS for the full form and is not worth it scoped.** PLAYGROUND under FULL
+> misses 60 Hz **with nothing happening on screen**, on an M1 — 22.9 ms on an idle
+> frame, before a single blast, on the machine this is developed on rather than on
+> the phone it ships to. This is a PERMANENT per-frame cost, not an event cost,
+> and it eats a large share of what the 2026-08-26 perf wave bought (worst frame
+> 267 → 31 ms). Performance is the standing priority and this is not close.
+>
+> SCOPED stays under the vsync cap but still doubles the draw calls, and the
+> reason it cannot do better is structural: **`y_sort_enabled` is a property of a
+> LAYER, not of a region.** One glass cell anywhere on a level forces that level's
+> entire 44×22 board to sort per tile. A storefront cannot pay only for itself.
+>
+> ⚠️ Not run, because the verdict did not need it: the pixel-identity control
+> (Y-sort on with glass unmoved). If Y-sort is ever revisited, that control comes
+> first — see §6.
+
 ### 6.2 What Q3 leaves on the table — the open Director call
 
 `RO1`/`RO2` fix the depth. The container has to go somewhere else, and there are
@@ -279,6 +313,60 @@ exactly two places, which trade against each other:
 
 Both are buildable. The choice is not an engineering one: it is which ratified
 ruling gives, so it is the Director's.
+
+⚠️ **Q2 then made both of them moot** — they share `RO1`'s Y-sort, which is what
+failed. They are kept above because the trade they describe is real and comes back
+the moment anything proposes reading the screen from inside the depth order.
+
+### 6.3 OPTION C — the split-layer board *(measured 2026-09-10, PASSES, needs sign-off)*
+
+Q2's failure has a shape: Y-sort pays to discover, per frame, an ordering that
+**is already known at map load and never changes until the map or the view does.**
+So do not discover it — author it.
+
+**A pane is planar.** Every opaque cell at a pane's level is either nearer than
+that plane or farther, and which one is a scalar comparison in view space
+(`x + y`, `O5`'s canon depth — the same rule `floating_collectible` already uses).
+So the level's opaque cells split into two layers around the glass, and the
+scene TREE does the ordering that Y-sort was being paid to redo every frame:
+
+```
+    opaque_far  →  BackBufferCopy  →  glass  →  opaque_near
+```
+
+all at the **same `z_index`** (the level's own, `RO1` intact), no Y-sort anywhere.
+
+**Q6, measured:** `opaque_clean=1664` · `probe_saw=512` · `probe_blind=0`. All
+three properties at once —
+
+| | |
+|---|---|
+| the near wall covers the pane | ✅ the bug is fixed |
+| a wall BEHIND the pane composites THROUGH it | ✅ — **Option A could not do this** (`F2`), and this is better than the design that was rejected this morning |
+| the `G-D2` container | ✅ preserved exactly — one snapshot, tree-ordered, `G-D1` untouched, no two-pass shader, no atom rework |
+| draw-call cost | one extra `TileMapLayer` per glass-bearing level. A split PARTITIONS a level's cells, it does not duplicate them — nothing like Q2's +244% |
+
+**What it costs and what is still open:**
+
+- **Backbuffers: one per glass DEPTH BAND per glass level.** `RO3`'s
+  `COPY_MODE_RECT` arithmetic applies unchanged and is still unmeasured — that is
+  the one number Task 2 owes.
+- **More than one pane depth on a level generalises it, and the generalisation is
+  small.** GLASS has panes at `y=9` and `y=6` on the same levels, so that level
+  needs bands, not a single split: sort the level's glass by depth, and emit
+  `opaque | backbuffer | glass` once per band. `N` is the number of distinct glass
+  depths at that level — 1 to 3 in practice, and it is **countable at map load**,
+  so a map that would be expensive is a map the authoring check (§8) can name
+  before anyone plays it.
+- **Rotation is safe and this is why it is the right shape** (`RO0b`): the split
+  is a view-space depth comparison, and the board is already rebuilt on a flip, so
+  the bands are re-derived exactly where every other view-space fact already is.
+  Nothing is cached across a rotation.
+- **X-ray / thermal stay possible** (`RO0d`): per-level `z` is untouched, so
+  `get_max_voxel_z_index()` still anchors a top-`z` actor instance.
+
+⚠️ **This is a NEW DESIGN, not a variant of what was signed off.** It needs the
+Director before Task 2 starts.
 
 ---
 

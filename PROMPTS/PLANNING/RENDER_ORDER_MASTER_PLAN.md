@@ -903,6 +903,41 @@ judges the cut on screen.
 
 ---
 
+### 10b.6 `RENDER_ORDER` — this track's own map (created 2026-09-10)
+
+Director: *"vamos com a 2, cria o mapa de teste de render"*. `maps/RENDER_ORDER.map.json`,
+16 × 12, discovered automatically by `MapCatalog` (file maps need no code change).
+
+**It exists so GLASS does not have to carry a third job.** GLASS is the physics map;
+putting render geometry in it SPLIT its main pane (the crack demo's lattice went
+48 × 24 → 32 × 24), and its patrolling guards were already contaminating every
+before/after pixel diff — that is how a wrong reading got published and retracted
+the same day. **This map has no guards, deliberately.**
+
+The four cases, each on purpose:
+
+| | case | geometry |
+|---|---|---|
+| 1 | **an occluder CROSSING a pane** — the case GLASS does not contain, and the reason the map exists | concrete pillar `gu (7,8)`, 3 storeys, 2 GU nearer than the front pane. ⚠️ **Tall on purpose:** `screen_y = (x+y)*8 - level*20`, so 2 GU nearer draws 128 px LOWER and only reaches the pane once it is ~6.4 levels taller. The 1-storey pillar at `(10,8)` is the control — it reaches the pane's foot and no further, so covered and uncovered are both in one frame |
+| 2 | **a wall BEHIND a pane at the same levels** — must stay visible THROUGH the glass; losing it is finding `F2` | brick `(6..8, 4)`, 3 storeys |
+| 3 | **two pane depths on one level** — a level's glass needs bands, not one split | front pane `(4..11, 6)` 3 storeys + back pane `(5..10, 3)` 2 storeys |
+| 4 | **a wall in front, same levels, not crossing** — the plain z bug | concrete `(2..3, 9)`, 3 storeys |
+
+**It worked immediately.** The clip, which found only the pane's bottom row on
+GLASS, reports **502 of 1536 cells hidden, `i=0..63 j=2..23`** here — occlusion
+across the pane's middle. Clip OFF vs ON is **23 567 px**, where GLASS was 0.
+
+⚠️ **First look, and it is not a pass.** `renderorder_clip_where.png` paints the
+removed web red over the clip-OFF frame: the cut is a **wedge on the pane's left
+with a sawtooth upper edge**, and no occluder is identifiable there — so the cut
+appears to OVER-REMOVE. 502 of 1536 is 33% of the pane, which is high for one
+1-GU pillar. **The granularity question the whole track has been waiting on is now
+visible and measurable for the first time**; answering it needs the clip's own
+decision rendered (the `DEPTH_DIAG=tint` treatment, for the clip), not more
+inference from a silhouette.
+
+---
+
 ---
 
 ## 11. Open

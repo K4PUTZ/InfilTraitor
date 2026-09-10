@@ -1,0 +1,271 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "RENDER_ORDER",
+ "meta": {
+  "title": "Render Order Test Fixture",
+  "description": "RENDER_ORDER_MASTER_PLAN's own fixture, created 2026-09-10. ⚠️ IT EXISTS SO THE GLASS MAP DOES NOT HAVE TO CARRY A THIRD JOB. GLASS is the physics map; adding render geometry to it split its main pane (the crack demo's lattice went 48x24 to 32x24) and its patrolling guards were already contaminating every before/after pixel diff. Director: \"vamos com a 2, cria o mapa de teste de render\". THE FOUR CASES, and each is here on purpose: (1) OCCLUDER CROSSING A PANE — the concrete pillar at gu (7,8), 3 storeys. This is the case GLASS does not contain and the reason this map exists. It is 2 GU NEARER than the front pane and tall, which is what makes it cross: screen_y = (x+y)*8 - level*20, so a wall 2 GU nearer (Δd=16) draws 128 px LOWER and only reaches the pane once it is about ΔL≈6.4 levels taller. A short pillar cannot do it, which is why the second one at (10,8) is 1 storey — it reaches the pane's foot and no further, so covered and uncovered are both in one capture. (2) WALL BEHIND A PANE AT THE SAME LEVELS — brick at (6..8,4). It must stay VISIBLE THROUGH the glass; losing it is finding F2, the trap that killed the first merge design. (3) TWO PANE DEPTHS ON ONE LEVEL — the back pane at (5..10,3) against the front at (4..11,6), so a level's glass needs bands rather than one split. (4) WALL IN FRONT, SAME LEVELS, NOT CROSSING — concrete at (2..3,9), the plain z bug. ⚠️ NO GUARDS, DELIBERATELY: a patrolling guard moves between two boots and shows up as noise in every pixel diff. That is not hypothetical — it is how a wrong reading got published on 2026-09-10 and had to be retracted. Keep this map still. ⚠️ agent_start is (9,9) FOR FRAMING, not for gameplay: the camera centres on the agent, and from further south the pane and the pillar sit at the top edge of the capture."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    16,
+    12
+   ],
+   "buffer": 1,
+   "floor_tile": "floor_SE"
+  },
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    9,
+    9
+   ],
+   "guards": []
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": [
+    {
+     "x": 8,
+     "y": 9,
+     "height_class": 4,
+     "radius": 12,
+     "intensity": 1.1
+    },
+    {
+     "x": 7,
+     "y": 4,
+     "height_class": 4,
+     "radius": 10,
+     "intensity": 1.0
+    }
+   ]
+  },
+  "floor_zones": {
+   "v": 2,
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      16,
+      12
+     ],
+     "material": "concrete"
+    }
+   ]
+  },
+  "blocks": {
+   "v": 1,
+   "items": [
+    {
+     "gu": [
+      7,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      10,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 1
+    }
+   ]
+  },
+  "panels": {
+   "v": 1,
+   "items": [
+    {
+     "gu": [
+      4,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      5,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      6,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      7,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      8,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      9,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      10,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      11,
+      6
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      5,
+      3
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      6,
+      3
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      7,
+      3
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      3
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      9,
+      3
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      3
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      6,
+      4
+     ],
+     "face": "SW",
+     "material": "brick",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      7,
+      4
+     ],
+     "face": "SW",
+     "material": "brick",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      8,
+      4
+     ],
+     "face": "SW",
+     "material": "brick",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      2,
+      9
+     ],
+     "face": "SW",
+     "material": "concrete",
+     "storeys": 3
+    },
+    {
+     "gu": [
+      3,
+      9
+     ],
+     "face": "SW",
+     "material": "concrete",
+     "storeys": 3
+    }
+   ]
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "glass",
+    "brick",
+    "concrete"
+   ]
+  }
+ }
+}

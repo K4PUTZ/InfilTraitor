@@ -938,6 +938,42 @@ inference from a silhouette.
 
 ---
 
+### 10b.7 The clip's DECISION, rendered — and it retracts §10b.6's suspicion
+
+`INFILTRAITOR_GLASS_CLIP=diag` repaints every glass cell the rule calls hidden, in
+red, on top. No crack needed: this is the RULE's picture, not one sprite's.
+`renderorder_clip_decision.png`.
+
+**On `RENDER_ORDER`: 925 hidden cells across 22 levels — and they are the two
+pillars' SHADOW VOLUMES.** The red runs out from behind each pillar as a band
+climbing to the upper right, which is exactly the correct shape: in this projection
+the cells a pillar covers are the ones sharing its screen position, and that set is
+a line rising to the right in the world. Two pillars 8 voxels wide over 24 levels is
+~16 shadow columns; 925 cells over 22 levels is ~42 per level. The arithmetic agrees
+with the picture.
+
+⚠️ **§10b.6 called this over-removal. That was wrong, and it was wrong the same way
+three earlier calls this session were wrong: inferred from a silhouette.** The wedge
+on the pane's left with the sawtooth edge was the left pillar's shadow, doing its
+job. **The clip's rule is behaving correctly on the first real fixture.**
+
+⚠️ **Reading the instrument:** the diagnostic draws at `get_max_voxel_z_index() + 3`,
+so a hidden cell shows even where a wall is in front of it — the bands look like
+they float over the scene. That is the instrument, not the data.
+
+⚠️ **The first cut of this diagnostic drew NOTHING while the counter cheerfully
+reported 925 hidden cells** — a glass sublayer with `modulate` set. `glass_pane.gdshader`
+WRITES `COLOR` outright, so an incoming modulate is discarded before it can tint
+anything. A diagnostic that borrows a shader inherits that shader's opinions; this
+one has a material of its own.
+
+**Where that leaves Option A:** its one piece of new machinery is now proven twice
+over — complete in isolation (Q9) and *correct* on a real fixture. What is still
+unjudged is the LOOK: whether a per-cell cut of a continuous web reads acceptably,
+which is the Director's call on screen, and `G-D1`'s wash, which is the other one.
+
+---
+
 ---
 
 ## 11. Open

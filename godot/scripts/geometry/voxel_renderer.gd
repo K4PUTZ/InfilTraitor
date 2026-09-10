@@ -1193,7 +1193,18 @@ static var depth_board_on: bool = OS.get_environment("INFILTRAITOR_DEPTH_BOARD")
 ## OPTION A's clip, `INFILTRAITOR_GLASS_CLIP=1` — cut the per-pane crack sprite
 ## where a nearer opaque wall covers the pane. Default OFF. See the occupancy
 ## builder for why this needs no shader change: the sprite already cuts on `gone`.
-static var glass_clip_on: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP") == "1"
+static var glass_clip_on: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP") in ["1", "diag"]
+## `INFILTRAITOR_GLASS_CLIP=diag` also RENDERS THE DECISION: every glass cell the
+## rule calls hidden is repainted red, on top, so which cells were chosen stops
+## being a thing to infer from a silhouette.
+##
+## ⚠️ This exists because inferring from silhouettes failed three times in one day
+## on this track — the overlay's sawtooth, the `z + 1` reading that had to be
+## retracted, and the clip's own wedge. Each was settled only by drawing what the
+## code decided instead of looking at what it produced.
+static var glass_clip_diag: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP") == "diag"
+var _clip_diag_layers: Dictionary = {}
+var _clip_diag_queued: bool = false
 
 
 ## Setup: builds tileset and prepares for rendering
@@ -5735,6 +5746,55 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 		Vector2(lo.x, hi.y))
 
 
+## `INFILTRAITOR_GLASS_CLIP=diag` — paint the clip's decision on the board.
+##
+## For every glass cell in the map, ask the same `_screen_hidden_by_opaque()` the
+## crack's occupancy asks, and repaint the ones it calls hidden in red at top z.
+## No crack needed: this is the RULE's picture, not one sprite's.
+func _clip_diag_rebuild() -> void:
+	_clip_diag_queued = false
+	for l in _clip_diag_layers.values():
+		if is_instance_valid(l):
+			l.queue_free()
+	_clip_diag_layers.clear()
+
+	var idx: Dictionary = _build_screen_occluder_index()
+	var top_z: int = get_max_voxel_z_index() + 3
+	var total: int = 0
+	var levels: Array = _glass_layers.keys()
+	levels.sort()
+	for level in levels:
+		var glass := _glass_layers[level] as TileMapLayer
+		if glass == null:
+			continue
+		var dbg: TileMapLayer = null
+		for cell in glass.get_used_cells():
+			if not _screen_hidden_by_opaque(cell, level, idx):
+				continue
+			if dbg == null:
+				## ⚠️ NOT a glass sublayer with `modulate` — that was the first cut
+				## and it drew NOTHING AT ALL while the counter happily reported 925
+				## hidden cells. `glass_pane.gdshader` WRITES `COLOR` outright, so an
+				## incoming modulate is discarded before it can tint anything. A
+				## diagnostic that borrows a shader inherits the shader's opinions.
+				dbg = _build_glass_sublayer_node(level)
+				dbg.name = "clip_diag_%d" % level
+				var dm := ShaderMaterial.new()
+				var dsh := Shader.new()
+				dsh.code = """shader_type canvas_item;\nrender_mode blend_mix;\nvoid fragment() { COLOR = vec4(1.0, 0.10, 0.10, texture(TEXTURE, UV).a); }\n"""
+				dm.shader = dsh
+				dbg.material = dm
+				dbg.z_index = top_z
+				_clip_diag_layers[level] = dbg
+			dbg.set_cell(cell, glass.get_cell_source_id(cell),
+				glass.get_cell_atlas_coords(cell), glass.get_cell_alternative_tile(cell))
+			total += 1
+		if dbg != null:
+			move_child(dbg, -1)
+	print("[GLASS-CLIP-DIAG] %d glass cell(s) the rule calls HIDDEN, across %d level(s)"
+		% [total, _clip_diag_layers.size()])
+
+
 ## OPTION A's CLIP — the index a per-pane sprite is cut against.
 ##
 ## ⚠️ THE OCCLUDER IS ALMOST NEVER AT THE SAME LEVEL, and assuming it was is what
@@ -6428,6 +6488,9 @@ func _ensure_glass_sublayers(level: int) -> void:
 	var z: int = maxi(maxi(get_max_voxel_z_index(), _wall_base_z_index), _glass_composite_z_floor)
 	if z > _glass_composite_z:
 		_glass_composite_z = z
+	if glass_clip_diag and not _clip_diag_queued:
+		_clip_diag_queued = true
+		call_deferred("_clip_diag_rebuild")
 	if depth_board_on:
 		## OPTION C owns the container and the z. No global backbuffer, and the
 		## glass layers do NOT get lifted — `_depth_board_rebuild()` puts each one

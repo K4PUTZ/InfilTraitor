@@ -1,10 +1,15 @@
 # GLASS MASTER PLAN — the physics of glass
 
-**Status:** 🟢 **v1.48 — THE TRACK IS CLOSED.** Case testing (owed since 2026-09-06)
-began 2026-09-07 and produced two more rulings, `G-D48` and `G-D49` — the shockwave
-zone. Both are calibration/reach on ratified mechanics, not new systems. **The G-D48
-ramp was calibrated on screen 2026-09-09** (Director: *"a rampa me parece tudo ok"*)
-— see the values below.
+**Status:** 🟢 **v1.49 — PHYSICS CLOSED; one RENDERING rework designed and pending.**
+Case testing (owed since 2026-09-06) began 2026-09-07 and produced `G-D48` / `G-D49`
+(the shockwave zone) plus `CRACK-06` (rim shards on the torn edge, 2026-09-09) — all
+calibration / reach on ratified mechanics. **The G-D48 ramp was calibrated on screen
+2026-09-09** (Director: *"a rampa me parece tudo ok"*). ⚠️ **§19 THE GLASS MERGE is
+DESIGNED, not built** (2026-09-10): the 2026-09-09 finding that a back pane composites
+over a wall in front of it (`G-D18b`'s flat top-z, `OCCLUSION` `O5`) is fixed by
+putting glass tiles on the depth-sorted per-level voxel layers. Depends on
+`OCCLUSION` §7 (the X-ray phantom) and a per-level-backbuffer perf spike. `G-D18b`
+is relaxed for it — see its register row.
 
 - **G-D48 — the SHOCKWAVE ZONE (Director, 2026-09-07).** *"precisamos ampliar a area
   de alcance do dano efetivo de granadas — somente sobre o vidro […] Podemos chamar
@@ -600,7 +605,7 @@ just not the target case.
 | **G-D32** | ⛔ **SUPERSEDED BY G-D34, UNBUILT.** Under an opening the silhouette is stated outright, so per-shard hashing is not what makes it irregular — the polygon is. Original entry: **THE FOUR RIM SHAPES ARE ALL FOUR, HASHED PER SHARD — NOT ONE CHOSEN.** *(Director, 2026-09-02, on the rendered options: "gostei muito dessas 4 opções que você mostrou. Se a gente puder randomizar todas elas para cada pedaço do buraco, melhor ainda.")* The four candidates — **A** a deep spike into the hole, **B** the same spike recessed half a voxel, **C** a V notch that keeps the two corners, **D** a 45° chamfer — stop being a menu and become a POOL: each of a hole's cut cells draws its own. This also retires the "borda ligeiramente irregular" he had ruled *preciosismo*, because the draw IS the irregularity, at no extra authoring. ⚠️ **IT MUST BE THE B4 FNV-1a, NEVER `randf()`** — the shard set is rebuilt on a perspective flip (S-3) and on a load, so an RNG would reshuffle a hole's shape every time the camera turned, which is the exact failure S-3 exists to prevent. Same rule G-D29 already uses for the `blast` patterns, for the same reason. ⏳ **One sub-question open, and it is plumbing rather than design:** the hash key must be in BASE coordinates or the shapes still reshuffle on a flip — a view-space cell is renumbered by the rotation — and the renderer has no base-space knowledge today (the room owns the conversion). Cost: the mask table goes from 8 directions to 8 × 4 per (material, face, mask); composition is lazy, so a real map materialises on the order of 16–32 atoms, not the product | ✅ Ratified 2026-09-02 · **UNBUILT** |
 | **G-D31** | **THE HOLE'S RIM IS SHARDS, NOT CUBES — AND THE SPRITE'S OPACITY IS 80%.** *(Director, 2026-09-02: "eu vou propor a criação de um conjunto de voxels especiais, derivados do vidro intacto, mas que tem um recorte em alfa, formando arestas pontiagudas em direção ao centro do buraco […] dessa forma a gente estaria na verdade criando o verdadeiro caco com voxel atrás + adesivo complementando"; and "vamos tentar botar ele com 90% de opacidade" → "pode até reduzir um pouco mais, de 90% pra 80%".)* Tirar 1, 3 ou 18 voxels does not help — the hole is a rectangle either way. So the cells bordering it take an alpha wedge that narrows to a point aimed at the hole, and the shard is the glass that survives. **Eight shapes, his own budget** — the four orthogonals plus the four diagonals — *"e isso já cobre praticamente todos os buracos"*; the rifle reuses the same eight. He explicitly ruled the irregular-edge refinement **preciosismo**: *"nosso mecanismo já é suficientemente bem aleatório"*. ⚠️ It is G-D25's primitive (an alpha mask carving a voxel's outline, the dented-ceiling mechanism) applied to the rim, so it needs no art. ⚠️ It does not re-create G-D26's moldura, and the distinction matters: a cut is a SILHOUETTE, so the surviving glass is identical to its neighbours and only its outline moved | ✅ Ratified + **BUILT 2026-09-02** (§13 S-5) |
 | **G-D30** | **A DESTROYED VOXEL CUTS THE SPRITE, BY A PER-LEVEL OCCUPANCY PLANE — AND HOW MUCH IT CUTS IS THE DIRECTOR'S, DECIDED BY LOOKING.** *(Director, 2026-09-02: "possivelmente, tirar o voxel de trás e deixar o adesivo pode ser que não incomode, representa de fato os estilhaços. Mas precisamos ver acontecendo pra confirmar. Talvez seja necessário remover um pedaço do sprite em runtime […] dá pra fazer isso?")* **Yes, and cheaply.** The sprite's shader already recovers `(run, level)` per fragment for G-D27's pane clipping, so it can sample one per-level R8 "is there still glass at this cell" plane and multiply alpha by it. The data has three writers and no more — `erase_glass_cell()` (the cook) and the two dirty-render passes (`voxel_renderer.gd:3583` slices, `:3724` slabs) — and because the sprite reads LIVE state, **a second event re-cuts every existing crack for free**; there is no "update the old sprites" pass. It also cuts a G-D9 banded pane's brick sill out of the web as a side effect. ⚠️ **The remaining question is fiction, not engineering, and stays open:** cutting says *the crack lives on glass that exists*; not cutting says *the crack is the shard cloud, and it outlives the pane*. So `glass_crack_hole_cut` is a CONTINUOUS 0..1 dial, not a boolean, and it is settled by a same-boot capture of both ends plus the middle — the Director's own *"precisamos ver acontecendo"* | ✅ **BUILT AND RULED 2026-09-02** (§13 S-2). **The value is 1.0** — Director, on the capture set: *"as versões com o adesivo sem voxels atrás não funcionam, podemos descartar"*. The crack lives on glass that exists; 0.0 and 0.5 are out. The DIAL stays (it is how the ends were compared, and `INFILTRAITOR_GLASS_CRACK_CUT` is how they can be compared again), the DEFAULT was already 1.0, so nothing moved. Mechanism: Built as a READ of the glass tilemap rather than a second plane — `erase_cell()` is the live authority all three seams already go through, and a parallel plane would be a third copy free to drift. The triptych that settled it: `glass_crack_cut_triptych_2026-09-02.png`. ⚠️ **The ruling has a consequence worth keeping in view:** on the real SHOTGUN path cut 1.0 leaves no web at all, because G-D24 turns every overlapping pellet crack into a hole and the shot ends `cracked=0 destroyed=279` — there is no standing glass under any of the webs (`glass_crack_cut_shotgun_2026-09-02.png`). That is the rule behaving, not a bug, but it means a shotgun's signature on glass is holes and shards rather than a web |
-| **G-D18b** | **The agent renders BEHIND a glass pane he stands behind.** *(Director, 2026-08-31: "no caso do vidro ser transparente, acho que podemos deixar o agente ser renderizado atrás e ficar parcialmente coberto pelo vidro.")* OCC-03 bumps the agent one z above the tallest OPAQUE layer so a wall never hides him. Glass hides nothing, so the whole glass composite (backbuffer + every pane layer) is now lifted one z above the agent (`VoxelRenderer.set_glass_over_z(agent.z_index + 1)`, called from room.gd) — a pane the agent stands behind tints him, exactly as it already did for a guard (`enemies_root.z_index = 10`, never bumped). An agent standing IN FRONT of a pane is unaffected: the isometric projection draws his sprite below the pane's screen footprint, so they do not overlap | ✅ **BUILT 2026-08-31** |
+| **G-D18b** | ⚠️ **RELAXED 2026-09-10 — see §"the glass merge" and OCCLUSION §7.** The flat top-z lift this row built (`set_glass_over_z(agent.z_index + 1)`) is exactly what makes a back pane composite over a wall IN FRONT of it (`O5`: depth is not z_index) — the 2026-09-09 finding on the GLASS map. The fix is to merge glass onto the depth-sorted board, and that needs the agent to stop *requiring* a slot above everything. Director, 2026-09-09: the agent may render *in front of* a pane he stands behind *"em último caso"*; OCCLUSION §7's phantom (X-ray silhouette) guarantees he is never truly lost, so the overlap is legible without the lift. **Original ruling, now history:** *(Director, 2026-08-31: "no caso do vidro ser transparente, acho que podemos deixar o agente ser renderizado atrás e ficar parcialmente coberto pelo vidro.")* OCC-03 bumps the agent one z above the tallest OPAQUE layer so a wall never hides him; glass hid nothing, so the whole glass composite was lifted one z above the agent, a pane he stands behind tinting him. | ✅ Built 2026-08-31 · ⚠️ **relaxed 2026-09-10** |
 
 ---
 
@@ -2094,8 +2099,16 @@ It also surfaced three defects that were NOT glass physics, all of the same shap
 Still no glass render or physics gap in the DESIGN — G-D48/G-D49 widened an existing
 zone and added an existing region-flood trigger; the three above were plumbing.
 
+**2026-09-10 — one glass RENDER task is open and designed: §19 THE GLASS MERGE.**
+The `G-D18b` flat top-z makes a back pane composite over a wall in front of it; the
+fix is to put glass tiles on the depth-sorted per-level voxel layers. Depends on
+`OCCLUSION` §7 (the X-ray phantom) + a perf spike. This is the one live glass task
+that is not "someone else's plan" — it is a `voxel_renderer` rework, roughly the
+size the codebase already calls "renderer v2".
+
 | left | owner | why it is not a glass task |
 |---|---|---|
+| **§19 — the glass merge** | glass RENDER, designed 2026-09-10, build pending | it IS a glass task; listed here so the row-audit is complete. Blocked on OCCLUSION §7 + a backbuffer perf spike |
 | **S-4** — the `tight`/`wide` bullet fracture art | glass, deliberately parked | the generator produces the opposite distribution (§13.4) and the look has been rejected three times. `blast` shipped procedurally in §16.12 |
 | **S-6** — G-D32's hashed rim pool | glass, likely retired | the base-space key it waited for arrived with CRACK-04. ⚠️ **2026-09-09 — the Director hit the symptom S-6 addresses and it was answered by TWO cheaper fixes in the motor: `SHOCKWAVE_EDGE_JITTER` on the flood, then CRACK-06 (rim shards on the torn edge, the `GlassShardShapes` family). Both landed. S-6's sub-voxel wedge mask is now only worth building if the voxel-scale shards still read as too blocky after calibration — otherwise it is superseded.** |
 | **G-D8 part three** — the light bump + the +1 detection step when a passage opens | applications | needs the opening to be an EVENT; what landed is a per-turn recomputed SET, deliberately memoryless |
@@ -4442,3 +4455,82 @@ fringe barely, which is the brief. Logged as `[GLASS-DUST]`.
 lands as a band, leaves a readable pile, puffs dust, and a stranded remnant falls
 with its frame. Glass rejoins the `MATERIALS_MASTER_PLAN` tail (G-D25 big shards
 were superseded by G-D44; `plastic` screen backing and S-4's fracture art remain).
+
+---
+
+## 19. THE GLASS MERGE — one board with the walls (designed 2026-09-10, build pending)
+
+### 19.1 Why
+
+`G-D18b` lifted the whole glass composite (backbuffer + every pane layer) to a
+**single flat `z_index` above every opaque voxel layer**, so the agent reads as
+behind a pane he stands behind. The side effect, found on the GLASS map
+2026-09-09 (four views, no blast): a **back pane composites over a wall that is
+in front of it** — a wood pillar, a concrete wall, the floor. `OCCLUSION` `O5`
+already names the root cause: **"depth is not `z_index`"** — a per-level z shares
+one value for a wall in front of the agent and a wall behind him on the same
+storey, and glass at a flat top-z is *always* in front of all of them.
+
+**Any scheme with glass in a SEPARATE `TileMapLayer` from the opaque voxels
+cannot fix this** — two sibling `CanvasItem`s at the same `z_index` resolve by
+tree order (all of one, then all of the other), never by screen depth. The pillar
+(front) and the pane (back) at the same storey are in different layers, so
+whichever draws last wins regardless of depth.
+
+Director, 2026-09-09: *"os vidros e as paredes definitivamente precisam estar no
+mesmo tabuleiro pra não ter essa discrepância."*
+
+### 19.2 The fix — glass tiles ON the per-level voxel layers
+
+Glass atoms go into `_layers[level]` (the opaque per-level `TileMapLayer`), not a
+separate `_glass_layers[level]`. Each per-level layer already y-sorts its own
+cells (`y_sort_origin = 1`) — so a glass cell and a wall cell **at the same
+level** now interleave by screen Y, which is depth. The pillar draws over the
+pane because it is nearer, by construction.
+
+- **Unified shader.** `voxel_face_shading.gdshader` gains a **glass branch**,
+  selected by a per-tile custom-data flag (`is_glass`) on `TileData`: the opaque
+  path is unchanged; the glass path runs the `hint_screen_texture` tint / sheen
+  blend that `glass_pane.gdshader` does today. `glass_shading.gdshaderinc` is
+  already the shared body.
+- **Backbuffer per glass-bearing level.** A `BackBufferCopy` in the tree *before*
+  each level's layer, so a pane at level N blends everything drawn so far —
+  levels below N, and (because it y-sorts inside its own layer) the opaque cells
+  of level N that sit *behind* it. ⚠️ **This is the one real unknown.** Today
+  there is ONE backbuffer; this is up to ~24, and a `BackBufferCopy` is a
+  full-viewport blit. `PERFORMANCE_MASTER_PLAN`'s standing lesson is that cost is
+  *submission*. **A perf spike gates the commit** — prototype on a branch, measure
+  a fire frame and a rotation on GLASS against the worst-frame budget.
+- **Craze webs and rim / remnant shard atoms** re-home from `_glass_layers` to
+  `_layers`: `glass_crack.gdshader` sprites parent into the per-level layer's
+  space; `_glass_shard_cells` / `restamp_glass_shards()` write to `_layers`.
+- **Deleted:** `_glass_layers`, `_glass_backbuffer`, `_glass_composite_z`,
+  `_glass_composite_z_floor`, `_ensure_glass_sublayers()`, `set_glass_over_z()`,
+  and the `room.gd` call to it.
+
+### 19.3 What does NOT change
+
+- **`G-D18` (glass does not occlude) is untouched.** `OcclusionSet` filters
+  glass-base slices by policy (`O7`), independent of which layer glass renders on.
+- **`G-D18b` is relaxed, not deleted** — see its register row. The agent stops
+  requiring a slot above all glass; OCC-03 still bumps him above the *opaque*
+  walls, and OCCLUSION `§7`'s phantom (the X-ray silhouette) carries the rest, so
+  "agent in front of a pane he stands behind" is now acceptable and legible.
+- **The wall-occlusion mechanism (OCC-21 erase + OCC-27 wireframe) is untouched.**
+
+### 19.4 Dependency and fallback
+
+- **Depends on OCCLUSION `§7`** landing first — the phantom is what makes it safe
+  to drop the flat top-z lift.
+- **If the per-level-backbuffer spike fails the budget:** fall back to per-level
+  glass layers interleaved in the tree at their correct z. That fixes the
+  cross-*level* inversion (a 1-storey pane no longer floats over a 3-storey wall)
+  but leaves the same-level-adjacent-GU case as "tinted wall instead of hidden
+  wall" — a smaller robustness win, recorded as the compromise it is.
+
+### 19.5 Verify
+
+The `zidx_bug` repro — GLASS, views S/E, no blast: the wood pillar and the
+concrete wall render **solid** in front of the panes. `glass_blast_demo` +
+rotation: panes, craze, rim shards all correct at their true depth, surviving F2
+and a flip. Full selftest suite, lint + invariants + CODEMAP.

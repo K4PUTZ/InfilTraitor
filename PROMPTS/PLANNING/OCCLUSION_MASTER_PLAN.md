@@ -1,7 +1,18 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
-**Status:** ⏸️ PAUSED (2026-07-21, Director's call) — "vamos fechar oclusão por
+**Status:** ⏸️ MOSTLY PAUSED — but **§7 (the X-ray silhouette, Part 3b resumed) is
+DESIGNED and awaiting build, 2026-09-10.** The 2026-09-09 glass z-index finding
+(a back pane composites over a wall in front of it — `O5`'s exact failure mode,
+from G-D18b's flat top-z lift) needs glass merged onto the depth-sorted board
+(`GLASS_MASTER_PLAN` §"the glass merge"), and that needs the agent to stop
+*requiring* a place above everything. The Director's answer un-parks `O7`: a
+second, stylised actor instance (the "phantom") shows an X-ray effect on the
+portion behind geometry — additive to the wall-erase mechanism, which is
+**unchanged**, and the foundation for the coming X-ray / heat vision modes. Full
+design in §7. Everything below §7 is still paused.
+
+The rest of the pause holds — "vamos fechar oclusão por
 enquanto, voltaremos depois quando os mapas tiverem objetos." Parts 1+2+3
 (occlusion set + visual + agent-on-top) are all closed and considered done for
 now; Part 4 (interior cutaway) is still blocked on `DESTRUCTION_MASTER_PLAN`'s
@@ -42,7 +53,7 @@ them is occlusion. Separating them is most of the work:
 
 | # | The complaint | The actual fix | Touches voxels? |
 |---|---|---|---|
-| **(a)** | "I can't see my agent behind a wall." | Draw the agent **on top of everything**, with a **stroke on the part of his silhouette that is behind geometry** — the whole silhouette behind a wall, legs-to-waist behind a crate. Reveals exactly one thing: your own guy. | ❌ No |
+| **(a)** | "I can't see my agent behind a wall." | Draw the agent **on top of everything**, with an **X-ray effect on the part of his silhouette that is behind geometry** — the whole silhouette behind a wall, legs-to-waist behind a crate. Reveals exactly one thing: your own guy. **The 2026-09-10 design of this is §7** (the phantom); it also carries the X-ray / heat vision modes and lets glass drop to its true depth. | ❌ No |
 | **(b)** | "I can't see inside a building." | **Slab cutaway by level** — the ceiling Slab's layer is hidden. Here the reveal is *intentional*: entering the building is the reward for infiltrating it. | ❌ No |
 | **(c)** | "Foreground geometry is covering the agent." | **This is real occlusion.** Ghost the geometry between the agent and the camera. | ❌ No (see O1) |
 
@@ -212,6 +223,12 @@ layers (OCC-03). ~~Stroke only over the portion actually behind geometry.~~ Drop
 there is nothing left to stroke. OCC-04 (the stroke prompt) is superseded, not
 built. Parked as a future possibility if a different occlusion treatment ever
 needs it again.
+
+### Part 3b — the X-ray silhouette *(O7 un-parked, 2026-09-10)* — **DESIGNED, see §7**
+A different occlusion treatment now does need it. Full design in §7: a stylised
+"phantom" instance of the agent (and, gated on a vision mode, of guards), masked
+to the occluded portion. It replaces nothing — the wall-erase stays — and it is
+what makes it safe to relax G-D18b so glass can leave its flat top-z.
 
 ### Part 4 — Interior cutaway *(O8)* — **does not start until `Slab` exists**
 Ceiling Slab layer hidden when the agent is inside. Blocked on
@@ -605,7 +622,109 @@ every completion report must point at a real capture in `Screenshots/history/`.
 
 ---
 
-## 7. Open questions
+## 7. THE X-RAY SILHOUETTE — Part 3b, designed 2026-09-10 (build pending)
+
+### 7.1 Why now
+
+O7's silhouette stroke was parked in 2026-07-13 because O6′'s full-hide left
+nothing partly covering the agent — with the occluding wall *erased*, there was
+no "occluded portion" to draw. Three things changed:
+
+1. **Glass exposed `O5`.** `GLASS_MASTER_PLAN` G-D18b lifted the whole glass
+   composite to a flat `z_index` above every opaque layer (so the agent reads as
+   behind a pane he stands behind). That dragged glass above walls *in front of
+   it* too — a back pane composites over a nearer wood pillar / concrete wall
+   (confirmed on the GLASS map, 2026-09-09, four views). `O5` already names this:
+   a per-level z cannot separate front from back on one storey.
+2. **The fix is to merge glass onto the depth-sorted board** (`GLASS_MASTER_PLAN`
+   §"the glass merge"). That needs the agent to stop *requiring* a slot above
+   everything — i.e. G-D18b relaxed. Director, 2026-09-09: the agent may render
+   *in front of* a pane he stands behind *"em último caso"*.
+3. **X-ray / heat vision modes are coming** (`room.gd`'s own note, line ~175;
+   VOXEL_LIGHT_MASTER_PLAN). Those *require* seeing actors — guards especially —
+   through walls. The mechanism that does that is the same one O7 described.
+
+So O7 is un-parked and generalised: from a stroke to a full stylised fill.
+
+### 7.2 The phantom
+
+**A second `AgentSprite` instance per actor**, driven in lockstep with the real
+one. `AgentSprite` already centralises "which frame am I showing" in `_apply()`
+(posture / facing / walk phase / head yaw / grip), and `GuardEnemy`
+(`guard_enemy.gd:1131`) owns an `AgentSprite` exactly as `agent.gd` (`:306`)
+does — so one `AgentSprite.make_phantom()` serves both, wired symmetrically.
+
+- **Shared textures** — the phantom reuses the real sprite's `Texture2D` frames,
+  so it costs ~4 extra `Sprite2D` nodes and **no texture RAM** (RAM is the
+  constraint, D42).
+- **`z_index` above every voxel layer** — the slot the real agent occupies today
+  via OCC-03. Once §7 ships and G-D18b relaxes, the *real* agent's z can come
+  down (OCC-03 still bumps him above opaque walls; the phantom carries the rest).
+- **Its own `ShaderMaterial`** — `agent_xray.gdshader` (new, ~30 lines): a flat
+  colour multiply + an animated diagonal stripe pattern. Every tunable a
+  `static var` (Rule 1) — tint, stripe width / angle / speed, alpha.
+- **Masked to the occluded portion.** The phantom's fragment shader multiplies
+  its alpha by an **occluder mask** and discards outside it. The mask is the
+  occluding cells' screen-space rects, passed as a `uniform` array (cap ~24 —
+  real sets run under 20, `occluded_cells=8` is typical). Source is
+  `OcclusionSet.get_occluded_cells()` — `room.gd::_recompute_occlusion()` already
+  computes exactly "the cells between the camera and this actor", per agent step
+  and per view change (`OCC-FIX-02`'s no-per-frame discipline). Each cell →
+  screen rect via the renderer's own transform (`occlusion_overlay.gd` already
+  has `_voxel_to_screen()`). ⚠️ The mask reads the occlusion **set**, not the
+  live tilemap — so it is non-empty even though `apply_occlusion()` has erased
+  those cells.
+- **Default hidden** — empty mask ⇒ nothing drawn. Step behind geometry and the
+  covered pixels light up with the effect; the uncovered pixels are the real
+  sprite, revealed as it is now.
+
+### 7.3 Guards
+
+Same phantom, from `enemies_root`'s `GuardEnemy` children. Guards currently just
+*vanish* behind walls (`enemies_root.z_index = 10`, never bumped). Their phantom
+is **gated on the vision mode** — visible only while X-ray / heat vision is
+active. A guard seen through a wall with no vision mode on would break stealth
+and violate `O2` ("actors are hidden by knowledge, never by geometry" — a guard
+the agent does not know about is not drawn at all). The agent's own phantom can
+be always-on: you never lose your own guy. Until the gameplay vision modes exist,
+§7 ships behind a **dev toggle** on `_vision_controller` (which already owns
+`dev_vision` / `light_vision`); the real modes wire into the same `visible` flag
+with no rework.
+
+### 7.4 Decisions
+
+| # | Decision |
+|---|---|
+| **X1** | **The X-ray effect is a SECOND actor instance, not a shader branch on the real one.** The real sprite must keep its exact relit look where it is visible; a branch risks bleeding the effect into the un-occluded portion. Two instances, one masked. |
+| **X2** | **The mask comes from the occlusion SET, per `_recompute_occlusion` cadence — never per frame.** `OCC-FIX-02`. The set already exists and already tracks the four views (`O4′`). |
+| **X3** | **Additive, not a replacement.** OCC-21's wall-erase + OCC-27's wireframe stay exactly as they are. The Director, 2026-09-09: *"não vamos abolir nosso mecanismo de oclusão das paredes… Apenas acrescentamos o esquema do raio x."* |
+| **X4** | **Guards get it too, gated on the vision mode** (X-ray / heat). Agent's phantom always-on. `O2` still holds — the phantom draws only actors the knowledge system already draws. |
+| **X5** | **G-D18b is relaxed by this** (recorded in `GLASS_MASTER_PLAN`). With the phantom guaranteeing the agent is never truly lost, "agent in front of a pane he stands behind" is acceptable, which is the precondition for the glass merge. |
+
+### 7.5 Open calibration point
+
+With the agent's occluding walls *erased* (OCC-21), the real agent is already
+fully visible, so the phantom would draw stripes over a plainly-visible sprite
+with no wall around it — which may read oddly. Options, all a **look call** for
+the Director once it is on screen, none of them architectural: the agent phantom
+only where the erase is not run; a fainter effect on the agent than on guards;
+or accept the redundancy (it does reinforce "he is behind something"). The
+mask works the same either way.
+
+### 7.6 Build outline
+
+`AgentSprite.make_phantom()` + `mirror_from()` · `agent_xray.gdshader` ·
+`agent.gd` / `guard_enemy.gd` own and drive the phantom · `occlusion_set.gd`
+exposes occluded cells keyed by origin · `_recompute_occlusion()` hands each
+actor its occluder screen-rects · a new selftest pins mask-rects ≡ occluded set
+and phantom-frame ≡ source-frame · `docs/systems/occlusion.md` "Visual Occlusion"
+section updated. Verify on GLASS: `INFILTRAITOR_CAPTURE_AGENT_CELL` behind a
+wall + a forced vision mode, four views (`INFILTRAITOR_CAPTURE_VIEWS=1`) — the
+mask tracks each rotation; guard phantom only with the mode on.
+
+---
+
+## 8. Open questions
 
 1. ~~**Does the ghost alternative compose with per-cell transform flags?**~~
    **ANSWERED 2026-07-12 by the code pass: it cannot bite in v1, because nothing
@@ -629,7 +748,7 @@ every completion report must point at a real capture in `Screenshots/history/`.
 
 ---
 
-## 8. Future ideas (parking lot)
+## 9. Future ideas (parking lot)
 
 Not scheduled, not blocking anything — logged here so a good idea raised in
 passing doesn't get lost or re-litigated from scratch later. Promote an entry to

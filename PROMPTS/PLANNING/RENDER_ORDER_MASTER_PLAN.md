@@ -748,6 +748,163 @@ Two notes carried forward for whoever builds §7:
 
 ---
 
+## 10b. THE MACRO-SYSTEM — what glass actually is, and why the order fights it
+
+Written 2026-09-10 at the Director's request: *"não consigo visualizar o
+macrosistema pra tomar essa decisão, preciso que você faça essa avaliação e mostre
+as possibilidades."*
+
+### 10b.1 Two headaches, two fixes — and only one of them is at risk
+
+The Director remembered the container as the thing that made the decals work. It
+was not, and the distinction decides what a change costs:
+
+| | the problem | the fix |
+|---|---|---|
+| **CRACK-01, rejected 3×** | the crack was drawn INSIDE the voxel shader, so it inherited the atom's per-plane `dim`, the per-fragment `cover` and the quad seams — *"ainda dá pra ver muita diferença entre voxels"* | lift it out of the voxel: **CRACK-02, one sprite whose quad IS the pane** |
+| **G-D2, 2026-08-30** | overlapping voxel FACES tinted twice — *"as opacidades das faces não conflitem"* | the **`BackBufferCopy` container**: every glass fragment reads one snapshot |
+
+They are independent. Dropping the container does not re-open CRACK-01.
+
+### 10b.2 The inventory, and the rule that falls out of it
+
+| piece | granularity |
+|---|---|
+| intact pane voxels | **per CELL** (`_glass_layers[level]`) |
+| rim shards (CRACK-03 / CRACK-06) | **per CELL** |
+| the crack web (CRACK-02) | **per PANE — one quad** (`GlassCrackSprite`, the pane's parallelogram baked into its `Transform2D`) |
+| the blast craze (B-2) | **per PANE — one quad**, same node in field mode |
+| the shard rain | free-floating `ShardField` MultiMesh |
+| the floor pile | **per CELL** |
+
+**Q8 (measured 2026-09-10): a `TileMapLayer`'s own internal draw order IS isometric
+depth order.** Two cells in ONE layer, no Y-sort, plain `blend_mix`: a near opaque
+cell covers a far translucent one, and a near translucent one tints a far opaque
+one. Both hold.
+
+```
+        [ one opaque layer, level N ]
+              far wall
+              GLASS            ← per-CELL sorts itself, FREE, measured
+              near wall
+                                    ┌─ ONE quad has ONE place in the order,
+        [ crack sprite ] ───────────┤  and a pane spans MANY depths.
+                                    └─ there is no "its turn" to take.
+```
+
+**Anything per-CELL orders itself for free. A per-PANE quad cannot.** That is the
+whole reason the composite, the flat top-z and everything downstream of them exist
+— not an engine limitation, and not the container's doing.
+
+### 10b.3 The four possibilities
+
+| | what it is | what it costs |
+|---|---|---|
+| **A — per-cell glass + clipped sprites** | the pane's cells move into the opaque layer (depth free, container gone, cheaper than today); the per-pane sprites stay sprites but are **cut where a nearer wall covers them**, extending the occupancy mask `set_occupancy()` (G-D30's cut) already samples | **`G-D1` for the intact pane**: one layer has one blend mode, so glass sharing the wall's layer inherits plain alpha and the coloured MULTIPLY is not expressible. A grey multiply is (black at alpha `1-m`); a coloured one is not |
+| **B — the front overlay** (built, §7.1) | walls in front are redrawn LAST, so they cover everything glass-shaped regardless of granularity — the only option that treats both granularities identically | the artifacts of §7.3, and near cells rasterise twice |
+| **C — baked glass decals** (Director's idea) | the crack becomes per-CELL atoms, so everything sorts for free: no container, no sprite, no overlay. The fracture sheet is **already 64 × 32 voxels**, so cutting it into atoms reproduces the web exactly with no tiling repetition. ⚠️ It does NOT re-open CRACK-01 — that failed because the crack was COMPUTED per fragment inside the voxel shader; a baked atom carries final texels | **minting.** Per-cell state lives in TileSet alternatives and this project has already measured a single shot at **412 `create_alternative_tile()` calls landing on the impact frame**. A crack over N cells mints N atoms on that same frame — the exact class of cost the 2026-08-26 perf wave fought |
+| **D — status quo** | — | the `z_index` bug that started all this |
+
+**Reading: A is the right architecture and C is the optimisation it may later need.**
+A removes the sawtooth, the edge gaps and the wrong-toned walls **by construction**,
+because every one of those is a consequence of the overlay or the snapshot. Its two
+risks are a look call (`G-D1`'s wash) and one piece of new machinery (the clip) —
+neither structural.
+
+⚠️ **The clip is the piece that can bite, and the Director said so before the code
+did** (*"acho que vai dar problema"*). A cell-granular mask cuts at cell
+granularity while a wall's atom is 32 × 36 px and covers parts of several pane
+cells, so the cut is an approximation. **That is what §10b.4 tests, isolated,
+before anything else moves.** Director's note in its favour: the decals are
+procedural (§16.12's craze ladder) or sampled luma→alpha from a sheet, so the mask
+is a uniform and a texture read inside a shader that is already doing both.
+
+### 10b.4 The clip, tested isolated — 2026-09-10
+
+Director: *"testa o recorte do sprite isolado. Me parece que os decals de vidro são
+procedurais, então podemos facilitar a etapa do recorte."*
+
+Spike **Q9**: one layer, no Y-sort — a glass run plus an opaque wall cell nearer
+than part of it, and a sprite (additive) spanning the run. The sprite samples a
+per-cell mask marking "a nearer opaque cell shares this cell's screen column"
+(`O5`'s rule, asked per pane cell instead of per wall) and discards.
+
+| | sprite on the wall | sprite on the glass | wall clean |
+|---|---|---|---|
+| **mask OFF** (control — the defect) | **1 152** | 3 648 | 0 |
+| **mask ON** | **0** | 2 400 | **1 152** |
+
+> ✅ **The cut is COMPLETE.** The wall goes from fully painted over to fully clean,
+> and the web still reads on the glass. The mechanism Option A needs works, and the
+> control proves the probe can see the failure it reports as absent.
+>
+> ⚠️ **HOW MUCH WEB IT OVER-REMOVES IS NOT MEASURABLE IN THIS RIG** — and the
+> number is deliberately not reported. The real `GlassCrackSprite` bakes the pane's
+> PARALLELOGRAM into its `Transform2D`, so its UV already IS sheet space; the
+> spike's quad is axis-aligned, so `UV.x` does not map to a run position. A sweep
+> over pane length (4 / 8 / 16 / 32 cells) was run and **discarded**: it returned a
+> flat ~30% at every length, which is the signature of a constant rig error, not of
+> a mechanism. Granularity is a question for the real sprite on the real map, and
+> that is the next test rather than a number to quote now.
+
+**The Director's note makes the clip cheaper than feared:** the decals are
+procedural (§16.12's craze ladder) or luma→alpha from a sheet, so the mask is one
+more `uniform sampler2D` in a shader already doing both — and `set_occupancy()`
+proves the plumbing, because G-D30's hole cut is the same read with different data.
+
+---
+
+### 10b.5 Test 1 — the REAL sprite on the REAL map, 2026-09-10
+
+Director: *"faz o teste 1. Preciso ver pra poder decidir."* Gate
+`INFILTRAITOR_GLASS_CLIP=1`, default OFF.
+
+**✅ The clip needs NO new machinery, and that is the headline.** The occupancy
+image `_build_crack_occupancy()` already writes IS the pane's (run × level)
+lattice, and `glass_crack.gdshader` already cuts wherever it reads `gone` — that
+is G-D30's hole cut. So a cell hidden by a nearer wall is simply reported as gone.
+**Zero shader changes, zero new uniforms, zero new textures.**
+
+**⚠️ THE RULE HAD TO MOVE TO SCREEN SPACE, and two wrong versions died first:**
+
+| | rule | result |
+|---|---|---|
+| 1 | "a nearer opaque cell shares this screen column" | ❌ **ate the entire web.** On GLASS the front wall shares columns with the big pane but sits ~400 px lower, so it covers nothing — yet every pane cell was marked hidden |
+| 2 | + "and within 5 depth steps", searched at the SAME level | ❌ **found nothing at all** — 0 cells, render pixel-identical |
+| 3 | bucket every opaque cell in the map by (screen column, screen row) and ask the neighbourhood | ✅ finds real occlusion |
+
+The reason 2 could not work is structural and worth keeping:
+
+```
+    screen_y = (x + y) * 8  -  level * 20
+```
+
+A wall that is NEARER in depth draws **lower** on screen unless it is also **higher
+in level**: covering a pane cell needs `ΔL ≈ 0.4 · Δd`. On GLASS the wall in front
+of the big pane is 9 depth steps nearer, which puts the cell that actually covers
+it about **4 levels up**. A same-level search cannot see it, ever.
+
+**⚠️ WHAT THE TEST DID NOT PRODUCE: the granularity answer.** With the correct rule,
+GLASS reports **48 of 1152 cells hidden — `i=0..47, j=23..23`, the pane's entire
+bottom row and nothing else**, i.e. its foot against the ground. The web has no ink
+there, so clip ON and clip OFF render **pixel-identical** (0 px, centre hit and
+wide edge hit alike). **The map does not contain the case**: no wall crosses the
+middle of a crackable pane.
+
+⚠️ An occluder pillar at `gu (12,10)` was added to create the case and **reverted**:
+it SPLIT the big pane (the demo's lattice went 48×24 → 32×24), which changes the
+map's main physics fixture — out of scope for a render test, and the Director's
+call to make deliberately.
+
+**So Option A's clip is proven as a MECHANISM and unproven as a LOOK.** The last
+mile is one authored case — a pillar that crosses a pane without splitting it, or
+aiming the crack at a pane an existing wall already covers — and then the Director
+judges the cut on screen.
+
+---
+
+---
+
 ## 11. Open
 
 - **The rotation call itself is deferred**, by the Director, until the materials

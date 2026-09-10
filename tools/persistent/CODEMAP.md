@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**241 scripts · 89124 lines total** (under `godot/scripts/`)
+**241 scripts · 89406 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -859,7 +859,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7315 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7387 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -4303,7 +4303,7 @@ extends `Node` · 405 lines
 
 ### `render_order_ysort_spike.gd`
 
-extends `SceneTree` · 579 lines
+extends `SceneTree` · 789 lines
 
 `godot/scripts/tools/render_order_ysort_spike.gd`
 
@@ -4313,6 +4313,7 @@ extends `SceneTree` · 579 lines
 - `VIEW_SIZE` = `Vector2i(160, 160)`
 - `ORIGIN` = `Vector2(70.0, 40.0)`
 - `PROBE_SHADER` = `"""`
+- `CLIP_SHADER` = `"""`
 
 ---
 

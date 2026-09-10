@@ -1190,6 +1190,12 @@ static var glass_bb_mode: String = OS.get_environment("INFILTRAITOR_GLASS_BB")
 static var depth_board_on: bool = OS.get_environment("INFILTRAITOR_DEPTH_BOARD") == "1"
 
 
+## OPTION A's clip, `INFILTRAITOR_GLASS_CLIP=1` — cut the per-pane crack sprite
+## where a nearer opaque wall covers the pane. Default OFF. See the occupancy
+## builder for why this needs no shader change: the sprite already cuts on `gone`.
+static var glass_clip_on: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP") == "1"
+
+
 ## Setup: builds tileset and prepares for rendering
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	_visual_grid_offset = visual_grid_offset
@@ -5681,6 +5687,12 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 	var run_is_x: bool = int(c["run_axis"]) == 0
 	var cross: Vector2i = c["impact_cell"]
 	var img := Image.create(w, h, false, Image.FORMAT_R8)
+	var clipped_count: int = 0
+	var clip_i0: int = 9999
+	var clip_i1: int = -1
+	var clip_j0: int = 9999
+	var clip_j1: int = -1
+	var occ_index: Dictionary = _build_screen_occluder_index() if glass_clip_on else {}
 	var solid := Color8(255, 0, 0, 255)
 	var gone := Color8(0, 0, 0, 255)
 	for j in range(h):
@@ -5694,7 +5706,14 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 		for i in range(w):
 			var run: int = run0 + i
 			var cell := Vector2i(run, cross.y) if run_is_x else Vector2i(cross.x, run)
-			img.set_pixel(i, j, solid if layer.get_cell_source_id(cell) != -1 else gone)
+			var present: bool = layer.get_cell_source_id(cell) != -1
+			if present and glass_clip_on:
+				present = not _screen_hidden_by_opaque(cell, level, occ_index)
+			if glass_clip_on and layer.get_cell_source_id(cell) != -1 and not present:
+				clipped_count += 1
+				clip_i0 = mini(clip_i0, i); clip_i1 = maxi(clip_i1, i)
+				clip_j0 = mini(clip_j0, j); clip_j1 = maxi(clip_j1, j)
+			img.set_pixel(i, j, solid if present else gone)
 	var tex = c.get("occ_texture")
 	if tex != null and tex is ImageTexture \
 			and (tex as ImageTexture).get_size() == Vector2(float(w), float(h)):
@@ -5707,8 +5726,61 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 	## reflect an `update()` yet — a diagnostic that asked the texture would read
 	## the crack's occupancy one event stale and say the cut had not followed.
 	c["occ_image"] = img
+	if glass_clip_on:
+		print("[GLASS-CLIP] pane lattice %dx%d — %d cell(s) hidden by a nearer wall · i=%d..%d j=%d..%d (impact i=%d j=%d)"
+			% [w, h, clipped_count, clip_i0, clip_i1, clip_j0, clip_j1,
+				(cross.x if run_is_x else cross.y) - run0, lvl1 - int(c["impact_level"])])
+	c["occ_image"] = img
 	sprite.set_occupancy(tex, Vector2(float(w), float(h)),
 		Vector2(lo.x, hi.y))
+
+
+## OPTION A's CLIP — the index a per-pane sprite is cut against.
+##
+## ⚠️ THE OCCLUDER IS ALMOST NEVER AT THE SAME LEVEL, and assuming it was is what
+## made the first two cuts of this rule wrong (one ate the entire web, the next
+## found nothing at all). Screen position is
+##
+##     screen_y = (x + y) * VOXEL_STEP_XY - level * VOXEL_STEP_PX      (8 and 20)
+##
+## so a wall that is NEARER in depth draws LOWER on screen unless it is also
+## HIGHER in level: covering a pane cell needs `ΔL ≈ 0.4 · Δd`. On the GLASS map
+## the wall in front of the big pane is 9 depth steps nearer, which puts the cell
+## that actually covers it **about 4 levels up**. A same-level search cannot see it.
+##
+## So the test is done where it belongs — in SCREEN space. Every opaque cell in the
+## map is bucketed by (screen column, screen row / 8) with the nearest depth in
+## each bucket; a pane cell then asks its own neighbourhood.
+func _build_screen_occluder_index() -> Dictionary:
+	var idx: Dictionary = {}
+	for level in _layers:
+		var lay := _layers[level] as TileMapLayer
+		if lay == null:
+			continue
+		var lvl_off: int = int(GeometryCoords.VOXEL_STEP_PX) * int(level)
+		for c in lay.get_used_cells():
+			var d: int = c.x + c.y
+			var key := Vector2i(c.x - c.y, (d * 8 - lvl_off) >> 3)
+			if not idx.has(key) or d > int(idx[key]):
+				idx[key] = d
+	return idx
+
+
+## True when an opaque cell shares this cell's screen neighbourhood AND is nearer.
+## The reach is the atom: 32 px wide against a 16 px column step (±1 column), and
+## 36 px tall against 8 px per screen-row bucket (±5 buckets).
+func _screen_hidden_by_opaque(cell: Vector2i, level: int, idx: Dictionary) -> bool:
+	if idx.is_empty():
+		return false
+	var d: int = cell.x + cell.y
+	var u: int = cell.x - cell.y
+	var row: int = (d * 8 - int(GeometryCoords.VOXEL_STEP_PX) * int(level)) >> 3
+	for du in range(-1, 2):
+		for dr in range(-5, 6):
+			var m = idx.get(Vector2i(u + du, row + dr))
+			if m != null and int(m) > d:
+				return true
+	return false
 
 
 ## ── CRACK-03 — APPLYING THE RIM ──────────────────────────────────────────────

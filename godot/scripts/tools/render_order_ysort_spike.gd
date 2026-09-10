@@ -59,6 +59,8 @@ func _init() -> void:
 	_q5()
 	await _q6()
 	await _q7()
+	await _q8()
+	await _q9()
 
 	print("\n" + "=".repeat(78))
 	if _fail_count == 0:
@@ -141,6 +143,214 @@ func _q3() -> void:
 	_verdict("Q4 CONTROL same, y_sort OFF (tree order already favours it) → must SEE",
 		cg_off["probe_saw"] > 100,
 		cg_off)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Q9 — Option A's one piece of new machinery: can a per-PANE sprite be CLIPPED?
+# ─────────────────────────────────────────────────────────────────────────────
+##
+## Q8 says per-CELL glass orders itself for free. What it cannot help is the crack
+## web, which is ONE quad over the whole pane (CRACK-02) — one place in the draw
+## order against many depths. Option A's answer is to stop fighting the order and
+## CUT the sprite where a nearer wall covers it, extending the occupancy mask the
+## sprite already samples for G-D30's hole cut.
+##
+## The Director called this the piece that would bite, before any code did:
+## *"acho que vai dar problema"*. It might, and the reason is granularity — the
+## mask is per CELL while a wall's atom is 32x36 px and covers parts of several
+## pane cells, so the cut is an approximation, not a silhouette.
+##
+## Scene: one layer, no y-sort — a glass run, plus an opaque wall cell NEARER than
+## part of it. A sprite (additive green) spans the run.
+##   · mask OFF → the sprite paints over the wall. That is the defect, and the
+##     control has to show it or the test proves nothing.
+##   · mask ON  → no sprite on the wall, and the sprite still reads on the glass.
+## The residual is the number that matters: how much wall the cell-granular cut
+## misses, and how much glass it eats.
+const CLIP_SHADER := """
+shader_type canvas_item;
+render_mode blend_add;
+uniform sampler2D pane_mask : filter_nearest;
+uniform float mask_on = 0.0;
+void fragment() {
+	if (mask_on > 0.5 && texture(pane_mask, vec2(UV.x, 0.5)).r > 0.5) { discard; }
+	COLOR = vec4(0.0, 0.8, 0.0, 1.0);
+}
+"""
+
+
+func _q9() -> void:
+	print("\n── Q9: clipping a per-pane sprite with a per-cell mask ──\n")
+	var off := await _render_sprite_clip(false)
+	_verdict("Q9 CONTROL mask OFF → the sprite MUST paint over the near wall (the defect)",
+		off["sprite_on_wall"] > 50, off)
+	var on := await _render_sprite_clip(true)
+	_verdict("Q9 CASE    mask ON  → no sprite on the wall, and the web still reads on the glass",
+		on["sprite_on_wall"] == 0 and on["sprite_on_glass"] > 50, on)
+	if off["sprite_on_glass"] > 0:
+		print("        web kept on glass: %d of %d px (%.0f%%)"
+			% [on["sprite_on_glass"], off["sprite_on_glass"],
+				100.0 * float(on["sprite_on_glass"]) / float(off["sprite_on_glass"])])
+
+	## ⚠️ HOW MUCH WEB THE CUT OVER-REMOVES IS **NOT MEASURABLE IN THIS RIG**, and a
+	## number from it would be a number about the rig. The real `GlassCrackSprite`
+	## bakes the pane's PARALLELOGRAM into its `Transform2D`, so its UV already IS
+	## sheet space; the quad here is axis-aligned, so UV.x does not map to a run
+	## position and any over-removal figure is measuring that mismatch. A sweep over
+	## pane length was run and discarded for exactly this reason — it returned a
+	## flat ~30% for 4, 8, 16 and 32 cells, which is the signature of a constant rig
+	## error rather than of a mechanism that scales.
+	##
+	## What this case DOES establish, and it is the part that was in doubt: the cut
+	## is COMPLETE (`sprite_on_wall` 1152 → 0, `wall_clean` 0 → 1152) and the web
+	## survives on the glass. Granularity is a question for the real sprite on the
+	## real map.
+
+
+func _render_sprite_clip(mask_on: bool) -> Dictionary:
+	var vp := SubViewport.new()
+	vp.size = VIEW_SIZE
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(vp)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 1)
+	bg.size = Vector2(VIEW_SIZE)
+	bg.z_index = -100
+	vp.add_child(bg)
+
+	var board := Node2D.new()
+	board.position = ORIGIN
+	board.y_sort_enabled = false
+	vp.add_child(board)
+
+	var layer := _make_layer(_make_tileset(), false, "one_layer")
+	board.add_child(layer)
+
+	## A pane run along x, and one wall cell NEARER than part of it.
+	var run: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]
+	for c in run:
+		layer.set_cell(c, 0, Vector2i(1, 0), 0)      ## translucent glass
+	var wall := Vector2i(1, 1)                        ## u=0 d=2 — nearer than run[0..1]
+	layer.set_cell(wall, 0, Vector2i(0, 0), 0)        ## opaque
+
+	## THE MASK — one texel per run position, 1 where a nearer opaque cell shares
+	## this cell's screen column. Exactly the rule the depth board already uses
+	## (`O5`: greater x+y is nearer), just asked per pane cell instead of per wall.
+	var mimg := Image.create(run.size(), 1, false, Image.FORMAT_RGBA8)
+	for i in range(run.size()):
+		var c2: Vector2i = run[i]
+		var blocked := absi((wall.x - wall.y) - (c2.x - c2.y)) <= 1 \
+			and (wall.x + wall.y) > (c2.x + c2.y)
+		mimg.set_pixel(i, 0, Color(1, 1, 1, 1) if blocked else Color(0, 0, 0, 1))
+
+	## The sprite's quad: the run's screen extent, one atom of margin.
+	var p0 := layer.position + layer.map_to_local(run[0])
+	var p1 := layer.position + layer.map_to_local(run[run.size() - 1])
+	var atom := Vector2(float(GeometryCoords.VOXEL_ATOM_W), float(GeometryCoords.VOXEL_ATOM_H))
+	var mn := p0.min(p1) - atom * 0.5
+	var mx := p0.max(p1) + atom * 0.5
+
+	var quad := Sprite2D.new()
+	var white := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	white.fill(Color(1, 1, 1, 1))
+	quad.texture = ImageTexture.create_from_image(white)
+	quad.centered = false
+	quad.position = mn
+	quad.scale = (mx - mn) / 2.0
+	var mat := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = CLIP_SHADER
+	mat.shader = sh
+	mat.set_shader_parameter("pane_mask", ImageTexture.create_from_image(mimg))
+	mat.set_shader_parameter("mask_on", 1.0 if mask_on else 0.0)
+	quad.material = mat
+	quad.z_index = 10
+	board.add_child(quad)
+
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+
+	var img: Image = vp.get_texture().get_image()
+	var c := {"sprite_on_wall": 0, "sprite_on_glass": 0, "wall_clean": 0}
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var px := img.get_pixel(x, y)
+			if px.r > 0.5 and px.g > 0.5 and px.b < 0.3:
+				c["sprite_on_wall"] += 1          ## additive green ON the red wall
+			elif px.g > 0.5 and px.r < 0.3:
+				c["sprite_on_glass"] += 1         ## the web where it belongs
+			elif px.r > 0.5 and px.g < 0.2:
+				c["wall_clean"] += 1
+	vp.queue_free()
+	return c
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Q8 — the Director's question: can glass just be an ordinary transparent tile?
+# ─────────────────────────────────────────────────────────────────────────────
+##
+## Director, 2026-09-10: *"por que o vidro não pode ser um objeto do cenário comum,
+## com transparência, no depth certo, que é renderizado na vez dele, depois que o
+## que está atrás já foi renderizado e antes das paredes que estão na frente dele?"*
+##
+## Everything built so far assumes the answer is no. That assumption rests on a
+## premise nobody in this project has ever tested: **that a TileMapLayer's own
+## internal draw order is NOT isometric depth order.** If it IS, then glass placed
+## as an ordinary alpha-blended tile in the SAME layer as the walls would order
+## itself correctly with no Y-sort, no backbuffer, no front overlay and none of the
+## artifacts those cost — and most of today's machinery is unnecessary.
+##
+## Two cells in ONE layer, no Y-sort, no shader, plain `blend_mix` transparency:
+##   A) translucent FAR + opaque NEAR  → the wall must cover the glass
+##   B) opaque FAR + translucent NEAR  → the glass must tint the wall
+## Both must hold. If only one does, the layer is drawing in cell order rather than
+## depth order and the answer really is no.
+func _q8() -> void:
+	print("\n── Q8: glass as a plain transparent tile in the SAME layer, no y-sort ──\n")
+	## A: glass at (0,0) FAR, opaque at (1,1) NEAR.
+	var a := await _render_same_layer(Vector2i(0, 0), Vector2i(1, 1))
+	_verdict("Q8-A  far glass + NEAR opaque → the wall must cover the glass",
+		a["opaque_clean"] > 100 and a["glass_over_opaque"] == 0, a)
+	## B: opaque at (0,0) FAR, glass at (1,1) NEAR.
+	var b := await _render_same_layer(Vector2i(1, 1), Vector2i(0, 0))
+	_verdict("Q8-B  FAR opaque + near glass → the glass must tint the wall",
+		b["glass_over_opaque"] > 100, b)
+
+
+func _render_same_layer(glass_cell: Vector2i, opaque_cell: Vector2i) -> Dictionary:
+	var vp := SubViewport.new()
+	vp.size = VIEW_SIZE
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(vp)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 1)
+	bg.size = Vector2(VIEW_SIZE)
+	bg.z_index = -100
+	vp.add_child(bg)
+
+	var board := Node2D.new()
+	board.position = ORIGIN
+	board.y_sort_enabled = false
+	vp.add_child(board)
+
+	## ONE layer holding both, exactly as the Director describes it.
+	var layer := _make_layer(_make_tileset(), false, "one_layer")
+	board.add_child(layer)
+	layer.set_cell(opaque_cell, 0, Vector2i(0, 0), 0)
+	layer.set_cell(glass_cell, 0, Vector2i(1, 0), 0)
+
+	await process_frame
+	await process_frame
+	await RenderingServer.frame_post_draw
+
+	var counts := _classify(vp.get_texture().get_image())
+	vp.queue_free()
+	return counts
 
 
 # ─────────────────────────────────────────────────────────────────────────────

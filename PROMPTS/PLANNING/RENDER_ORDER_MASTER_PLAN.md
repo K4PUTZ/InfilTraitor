@@ -591,9 +591,42 @@ the overlay still resolves against level N+1 by TREE ORDER and the rebuild loop 
 already placed `front(N)` before every level-N+1 node. The knob was removed rather
 than left in; the measurement is recorded at the line so nobody re-derives it.
 
-**The real test, not yet run:** a second pass re-parenting `front(N)` after
-`glass(N+1)`. That would also draw `front(N)` over `opaque(N+1)` in the 16 px
-overlap band — a trade that belongs to the Director, not to a knob.
+**The real test — RUN 2026-09-10, `INFILTRAITOR_DEPTH_FRONT_LIFT=1`.** A second
+ordering pass (`_depth_board_order()`) re-parents `front(N)` to just after
+`glass(N+1)` and gives it level N+1's z. **Both are needed** — the z alone is the
+measured no-op above, because tree order decides inside a band.
+
+⚠️ **The guards were parked on GLASS first** (Director: *"tira os guardas do GLASS
+por enquanto, estão só atrapalhando as medições"*). A patrolling guard MOVES between
+two boots, so every before/after pixel diff on this map was carrying his position as
+noise — which is exactly how the retracted `z + 1` reading got past me. Routes
+`[[13,6],[12,6]]` and `[[20,5],[21,5]]` are recorded in the map's own meta for when
+G7 / G-D7 come back.
+
+**Result — same build, same promoted set (8 186 cells), only the ordering differs:**
+
+| view | pixels the lift changes |
+|---|---|
+| N | 25 526 |
+| E | 3 252 |
+| S | 4 285 |
+| W | 27 845 |
+
+- ✅ **The sawtooth is gone.** `sawtooth_lift_{W,N}.png`: the wood beam's lower edge,
+  the brick pillar's right edge and the concrete wall's top all go from a stepped,
+  toothed boundary to a clean straight one. **So cross-level bleed WAS the cause** —
+  now confirmed by a test that actually varies only the thing under test.
+- ✅ **The occlusion fix survives it.** Pillar region against the gate-OFF
+  reference: 6 342 px without the lift, 6 962 with — the occluding column is still
+  erased either way.
+- ⚠️ **The predicted side effect is real and visible.** `front(N)` now also draws
+  over `opaque(N+1)` in the same 16 px band, which shows up as a level's top-cap
+  band changing tone where the structure above is not a continuation of the same
+  wall. Where the wall does continue upward it self-corrects, because `front(N+1)`
+  draws later still.
+
+**This is a look call and it is the Director's** — a known artifact traded for a
+narrower one, judged on the pair rather than argued.
 
 **Instruments left behind:** `INFILTRAITOR_DEPTH_DIAG=tint` (promoted cells painted
 red — the sawtooth stops being a silhouette to reason about), `=hide`, `=dump`.

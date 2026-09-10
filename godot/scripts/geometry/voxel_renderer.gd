@@ -6534,6 +6534,7 @@ func _depth_board_rebuild() -> void:
 	var levels: Array = _glass_layers.keys()
 	levels.sort()
 	var total_front: int = 0
+	var band: Dictionary = {}
 
 	for level in levels:
 		var glass := _glass_layers[level] as TileMapLayer
@@ -6627,32 +6628,71 @@ func _depth_board_rebuild() -> void:
 
 		## ONE z for all four — the level's own (`RO1`). Order is the TREE's job,
 		## which is the entire point of Option C: no Y-sort, nothing rediscovered
-		## per frame. Q6/Q7 measured this exact arrangement.
+		## per frame. Q6/Q7 measured this exact arrangement. The ordering itself is
+		## deferred to `_depth_board_order()` so the LIFT variant can be expressed
+		## as a different pass over the same nodes rather than a second code path.
 		var z: int = opaque.z_index
 		bb.z_index = z
 		glass.z_index = z
 		if front != null:
-			## ⚠️ LIFTING THIS ONE z IS A NO-OP, MEASURED — do not re-derive it.
-			## The suspected cause of the sawtooth is cross-level bleed: the atom is
-			## 36 px against a 20 px level step (Q5), so glass at level N+1 covers
-			## the top 16 px of a promoted wall cell at level N. `z + 1` looks like
-			## the fix and changes NOTHING: at `z(N+1)` the overlay still resolves
-			## against level N+1 by TREE ORDER, and this loop has already placed
-			## `front(N)` before every level-N+1 node. Same build, guard frozen,
-			## `z` vs `z + 1`: **0 pixels**. Moving it would take a second pass that
-			## re-parents `front(N)` after `glass(N+1)` — which then draws it over
-			## `opaque(N+1)`, a trade that needs the Director, not a knob.
 			front.z_index = z
-		move_child(opaque, -1)
-		move_child(bb, -1)
-		move_child(glass, -1)
-		if front != null:
-			move_child(front, -1)
+		band[level] = {"opaque": opaque, "bb": bb, "glass": glass, "front": front}
 
-	print("[DEPTH-BOARD] %d glass level(s) · %d front-overlay cell(s) · %d container(s)"
-		% [levels.size(), total_front, _depth_board_bbs.size()])
+	_depth_board_order(levels, band)
+
+	print("[DEPTH-BOARD] %d glass level(s) · %d front-overlay cell(s) · %d container(s)%s"
+		% [levels.size(), total_front, _depth_board_bbs.size(),
+			("  [FRONT-LIFT]" if front_lift_on else "")])
 	if OS.get_environment("INFILTRAITOR_DEPTH_DIAG") == "dump":
 		_depth_board_dump(levels)
+
+
+## THE SAWTOOTH TEST — `INFILTRAITOR_DEPTH_FRONT_LIFT=1`.
+##
+## The teeth on a wall's exposed upper edge are suspected to be CROSS-LEVEL BLEED:
+## the atom is 36 px against a 20 px level step (Q5), so glass at level N+1 covers
+## the top 16 px of a promoted wall cell at level N, and only a wall cell at N+1
+## covers it back — so wherever the wall stops going up, the bleed is exposed.
+##
+## ⚠️ `front.z_index = z + 1` IS NOT THIS TEST AND IS A MEASURED NO-OP (0 px, same
+## build, guard frozen). At `z(N+1)` the overlay still resolves against level N+1
+## by TREE ORDER, and the default pass has already placed `front(N)` before every
+## level-N+1 node. Moving it takes BOTH: the z of level N+1 *and* a tree position
+## after `glass(N+1)`. That is what the lift does.
+##
+## The trade it buys, and the reason it is a gate rather than a fix: `front(N)`
+## then also draws over `opaque(N+1)` in that same 16 px band. Where the wall
+## continues upward this self-corrects (`front(N+1)` draws later still); where the
+## neighbour above is a different structure that should cover it, it does not.
+static var front_lift_on: bool = OS.get_environment("INFILTRAITOR_DEPTH_FRONT_LIFT") == "1"
+
+
+## Places the band nodes in the scene tree. Default: `opaque → bb → glass → front`
+## per level, ascending. Lift: `front(N)` moves to just after `glass(N+1)` and takes
+## level N+1's z, so it draws after the glass one level up.
+func _depth_board_order(levels: Array, band: Dictionary) -> void:
+	for level in levels:
+		var b: Dictionary = band[level]
+		move_child(b["opaque"] as TileMapLayer, -1)
+		move_child(b["bb"] as BackBufferCopy, -1)
+		move_child(b["glass"] as TileMapLayer, -1)
+		if not front_lift_on:
+			if b["front"] != null:
+				move_child(b["front"] as TileMapLayer, -1)
+			continue
+		## LIFT — the PREVIOUS level's overlay lands here, after this level's glass.
+		var prev = band.get(level - 1)
+		if prev != null and prev["front"] != null:
+			var pf := prev["front"] as TileMapLayer
+			pf.z_index = (b["opaque"] as TileMapLayer).z_index
+			move_child(pf, -1)
+	if not front_lift_on:
+		return
+	## The topmost glass level has no level above to be lifted past, so its overlay
+	## keeps the default slot rather than being dropped on the floor.
+	var top = band.get(int(levels[levels.size() - 1]))
+	if top != null and top["front"] != null:
+		move_child(top["front"] as TileMapLayer, -1)
 
 
 ## `INFILTRAITOR_DEPTH_DIAG=dump` — the promotion decision as DATA, per screen

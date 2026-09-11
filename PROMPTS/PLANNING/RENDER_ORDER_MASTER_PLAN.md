@@ -9,9 +9,10 @@ the side sliver is painted by EXPOSURE, which removed the GU-boundary seams
 (§10b.9). `INFILTRAITOR_GLASS_TILE=0` / `GLASS_CLIP=0` / `GLASS_SEAM_CULL=0` restore
 the old path for comparison only.
 
-**Option B** (the front overlay, `INFILTRAITOR_DEPTH_BOARD=1`) stays built behind its
-gate, default OFF — it lost on cost (+3.3 ms/frame over A, M1, vsync off) and on an
-undiagnosed regression of the OCC-27 wireframe (§10b.8–9). Everything from §1 to
+**Option B** (the front overlay, `INFILTRAITOR_DEPTH_BOARD=1`) lost on cost (+3.3
+ms/frame over A, M1, vsync off) and on an undiagnosed regression of the OCC-27
+wireframe (§10b.8–9); **its code was removed the same day** (Director: *"pode remover
+o código do B"*). §6.3 and §7 describe it as history — there is no gate to turn on. Everything from §1 to
 §10b.7 is the history of how the alternatives lost, kept because each one records a
 trap: Y-sort *works* and costs +244% / +511% draw calls on an idle board (Q2), and
 a `BackBufferCopy` cannot capture the layer it precedes (§3).
@@ -1092,8 +1093,9 @@ pos-7 voxel beside a later hole keeps no side sliver until the next full render.
 Director: *"Excelente, o A fica mais bonito mesmo. Vamos com a A, liga os três gates
 por padrão."* `INFILTRAITOR_GLASS_TILE`, `INFILTRAITOR_GLASS_CLIP` and
 `INFILTRAITOR_GLASS_SEAM_CULL` are now ON unless set to `0`; `=0` restores the old
-path for comparison only. Option B stays built behind `INFILTRAITOR_DEPTH_BOARD=1`,
-default OFF.
+path for comparison only. Option B's code — the depth board, the front overlay and
+its occlusion mirror, `FRONT_LIFT`, `DEPTH_DIAG` — was removed (Director: *"pode
+remover o código do B"*); `render_order_ysort_spike.gd` keeps its Q6/Q7 record.
 
 **The selftest that pinned the retired design.** `glass_transparency_selftest` [1]
 asserted the container — the exact failure observed with the new defaults was
@@ -1113,6 +1115,7 @@ it ran. An absence check passing for the wrong reason, again.
 | 1 | the clip's occluder index walked EVERY opaque cell, once per crack: **40 ms × 11 = ~440 ms on one grenade** | GLASS `glass_blast_demo` | skip levels below the lowest glass (exact — see 2); one index per flush batch; reused within a frame for the spawns | **13 ms, once per grenade** |
 | 2 | the floor in front of a pane "hid" its whole bottom row — 48 of 48 foot cells on GLASS | GLASS `glass_crack_demo` | an occluder must draw AFTER the glass cell, i.e. sit at a level ≥ it. The bucket's max depth already encodes its level exactly (`8d − 20L ∈ [8r, 8r+7]`), so no extra storage | 0 false foot cells; `RENDER_ORDER` 502 → 475 |
 | 3 | `reap_orphaned_remnants()` — ON THE PLAY PATH (`agent_shot_controller.gd:693`, `world_delta.gd:408`) — erases glass with no flush after it, so the mirror would have kept a felled remnant painted | code read, then `glass_reap_demo` | `erase_glass_cell()` queues the sync itself | reap PASS, mirror removed 59 + 244 cells |
+| 4 | **the Director's report** (*"uma parte do vidro que não ficou rachada"*, a brick-framed window on GLASS). The clip's reach is a BOX, so an opaque cell of the SAME wall — the next brick along the run, the window's head/sill band — counted as "nearer": one depth step, one column over, sharing an edge and covering nothing. 225 of 480 cells hidden with nothing in front. The Director suspected the multi-material slice; the bands are what put coplanar opaque cells next to the glass, but the defect was the clip's | `glass_blast_demo` drawn with `GLASS_CLIP=diag`, against a `GLASS_CLIP=0` control that showed the whole web | the occluder must stand IN FRONT of the pane's plane (`y` for SW/NE, `x` for SE/NW). Exact from the same max-depth cell: with the column fixed, `x`, `y` and the level all grow with depth | 225 → 120 — the remaining 120 are the pane's bottom 5 rows, where the room's front wall stands nearer (read from the picture, not verified cell by cell); head-band pane 46 → 0; `RENDER_ORDER` **0 px** different |
 
 **Cost on the real map** (GLASS, vsync off, M1 1280×720 — not a phone): grenade frame
 A 3.1 ms / 1 386 draw calls vs the old path 3.3 ms / 1 632; the reap scene A 17.9 ms vs
@@ -1134,7 +1137,8 @@ compounds (ratified as correct: *"é pra ser mais escuro mesmo"*).
 - A device run — every number here is M1.
 - The hidden glass STATE layer holds a second copy of every glass cell. Memory cost
   unmeasured; RAM is the mobile constraint.
-- Option B's code is still in the tree, gated off. Deleting it is the Director's call.
+- The clip is a per-CELL box test, so a cell half-covered by a wall edge is cut whole —
+  the granularity the Director judged acceptable on `RENDER_ORDER`.
 
 ---
 

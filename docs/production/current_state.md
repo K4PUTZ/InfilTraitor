@@ -297,6 +297,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-10_GLASS_RAMP_AND_THE_XRAY_PLAN.md
 - RESUMO_SESSAO_2026-09-10_OPTION_A_SHIPPED.md
 - RESUMO_SESSAO_2026-09-10_RENDER_ORDER.md
+- RESUMO_SESSAO_2026-09-11_MOBILE_TEST.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

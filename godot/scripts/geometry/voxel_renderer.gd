@@ -2786,6 +2786,10 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 	_diag_null_edge_cells = 0
 
 	_diag_slice_count = 0
+	## RENDER_ORDER seam cull — the exposure the side sliver asks about, built from
+	## geometry BEFORE any slice is placed, so the answer never depends on the order.
+	if glass_seam_cull_on:
+		_build_glass_seam_index(registry)
 	# Iterate all slices and render their voxels
 	for slice in registry.all_slices():
 		_diag_slice_count += 1
@@ -2918,9 +2922,64 @@ func _glass_face_mask(grid_pos: Vector2i, level: int, face: int, top_level: int)
 		mask |= 0b10
 	var pos: int = posmod(grid_pos.y, 8) if (face == Face.NW or face == Face.SE) \
 		else posmod(grid_pos.x, 8)
-	if pos == GeometryCoords.VOXELS_PER_UNIT_AXIS - 1:
+	if pos == GeometryCoords.VOXELS_PER_UNIT_AXIS - 1 and not glass_no_side_test \
+			and not (glass_seam_cull_on and _glass_side_covered(grid_pos, level, face)):
 		mask |= 0b01
 	return mask
+
+
+## RENDER_ORDER seam test, `INFILTRAITOR_GLASS_NO_SIDE=1` — no side sliver anywhere.
+## A KILL SWITCH, not a fix: it also strips the real end of a pane. It exists to
+## answer one question before anything is built — are the GU-boundary bands (A) and
+## triangles (B) the side sliver of `pos == 7` overlapping the next panel?
+static var glass_no_side_test: bool = OS.get_environment("INFILTRAITOR_GLASS_NO_SIDE") == "1"
+
+
+## RENDER_ORDER seam cull, `INFILTRAITOR_GLASS_SEAM_CULL=1` — the fix the kill switch
+## above pointed at. Default OFF until the Director has seen it.
+##
+## The ratified rule (G1 GEOMETRY, Director's diagrams 2026-08-31) is an EXPOSED-FACE
+## cull: a glass voxel paints its side face only where that face is exposed. The code
+## approximated "exposed" as `pos == 7` — the frontmost column of EVERY GU — which is
+## only right for a one-GU pane. On a pane of N panels the side face at each internal
+## GU boundary is hidden by the next panel's glass, and painting it anyway put a
+## translucent sliver over the neighbour's first voxel: two glass fragments on one
+## pixel. That is A's dark band (no container) and B's triangles (the sliver slants
+## across a level band into the next container). Measured: with no side sliver at all
+## both are gone, and so is today's faint GU line.
+##
+## Asked of GEOMETRY, not of the tilemap: the neighbour GU may not be placed yet when
+## this voxel is, so a tilemap answer would depend on render order.
+##
+## ⚠️ The index is built in `render()` and not refreshed by the dirty passes. A pos-7
+## voxel whose neighbour is later DESTROYED is not re-rendered either way, so it keeps
+## no side sliver beside the hole until the next full render (rotation, reload). Owed
+## if this is ratified: re-mask the pos-7 neighbour when a pos-0 glass voxel dies.
+static var glass_seam_cull_on: bool = OS.get_environment("INFILTRAITOR_GLASS_SEAM_CULL") == "1"
+## Vector3i(grid x, grid y, level) -> the slice FACE of the standing glass voxel there.
+var _glass_seam_index: Dictionary = {}
+
+
+func _build_glass_seam_index(registry: EdgeRegistry) -> void:
+	_glass_seam_index.clear()
+	if registry == null:
+		return
+	for slice in registry.all_slices():
+		if not _slice_is_glassy(slice):
+			continue
+		var base: int = GeometryCoords.storey_level_base(slice.start_storey)
+		for v in slice.voxels:
+			if v.visible and GlassMaterials.is_glass(slice.material_at(v.level - base)):
+				_glass_seam_index[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = slice.face
+
+
+## True when the next cell along the run, at the same level, holds standing glass of
+## the SAME face — the pane continues, so this voxel's side face is not exposed. A
+## different face there (an L-corner) leaves the side exposed, as before.
+func _glass_side_covered(grid_pos: Vector2i, level: int, face: int) -> bool:
+	var step := Vector2i(0, 1) if (face == Face.NW or face == Face.SE) else Vector2i(1, 0)
+	var n: Vector2i = grid_pos + step
+	return int(_glass_seam_index.get(Vector3i(n.x, n.y, level), -1)) == face
 
 
 ## Render a junction column (BAKE-FIX-02: mirror-at-the-column implementation)

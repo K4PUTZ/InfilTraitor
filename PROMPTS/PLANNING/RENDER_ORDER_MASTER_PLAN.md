@@ -1037,6 +1037,54 @@ seams (G-D2) and the wash; B has the sawtooth and a regression on wall occlusion
 A does that B does not: the crack web is cut correctly, and the case-4 wall is
 untouched.
 
+### 10b.9 The seam — the Director's diagnosis, confirmed and fixed (gated) — 2026-09-10
+
+Director, on seeing §10b.8: today is clearly the worst; B works once it has the clip;
+the seams are the only thing left, and *"como os painéis são feitos de voxels
+sobrepostos, a área dos voxels do fim de um painel se encontram e acabam se somando
+... se a gente der um crop nessa lateral do painel que está por cima ... só vai ter um
+voxel visível por posição"*. Glass pane-over-pane darkening is ratified as correct
+(*"é pra ser mais escuro mesmo"*).
+
+**The code agrees, read from the rule rather than the picture.** `_glass_face_mask()`
+set the side-sliver bit on `pos == 7` — the frontmost column of EVERY GU. The ratified
+G1 rule (Director's diagrams, 2026-08-31) is an EXPOSED-face cull; `pos == 7` is only
+"exposed" for a one-GU pane. On a pane of N panels each internal boundary painted a
+translucent sliver over the next panel's first voxel.
+
+**Two tests, the second only after the first:**
+
+| | what it removes | A's bands | B's triangles | today's faint line | real pane end |
+|---|---|---|---|---|---|
+| `INFILTRAITOR_GLASS_NO_SIDE=1` — kill switch | every side sliver | gone | gone | gone | ❌ loses its thickness |
+| **`INFILTRAITOR_GLASS_SEAM_CULL=1` — the fix** | side sliver where the next cell along the run holds standing glass of the same face | **gone** | **gone** | **gone** | ✅ kept |
+
+`renderorder_seam_fix.png` (rows D / A / B+clip, columns as-was / kill switch / fix).
+The exposure is asked of GEOMETRY (`_build_glass_seam_index()` in `render()`, from the
+registry, before any slice is placed) — the tilemap would answer by render order.
+
+**Cost, vsync OFF (`INFILTRAITOR_NO_VSYNC=1`), crack on screen, M1 1280×720 — not a
+phone:**
+
+| | ms/frame | draw calls |
+|---|---|---|
+| D + fix | 4.1–4.2 | 6 888 |
+| **A + fix** | **4.6** | 7 709 |
+| **B + clip + fix** | **7.9** | 7 146 |
+
+B costs +3.3 ms/frame over A with FEWER draw calls — the vsync-capped runs of §10b.8
+could not see it. Where it goes (24 containers vs the overlay's double raster) is not
+split; the total is what was measured. Draw calls fell ~480 in every configuration with
+the fix; not explained, not claimed.
+
+**Still open against the Director's criteria:** B's case-4 wall keeps its jagged edge
+and loses the OCC-27 wireframe with the fix on (`glass_crack_demo_ro_Bclip_seam_after.png`)
+— the opaque path, which the seam fix does not touch; still undiagnosed. A has no
+open defect on this fixture.
+
+⚠️ Owed if the fix is ratified: the index is not refreshed by the dirty passes, so a
+pos-7 voxel beside a later hole keeps no side sliver until the next full render.
+
 ---
 
 ## 11. Open

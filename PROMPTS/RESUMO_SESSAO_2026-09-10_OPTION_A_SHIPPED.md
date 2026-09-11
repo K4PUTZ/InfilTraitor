@@ -24,8 +24,9 @@ What is owed, in the order it would bite (plan §10b.10):
 1. ✅ ~~The clip ignores OPAQUE destruction~~ — fixed the same session (plan §10b.10
    row 6: red 441 hidden / green 68), together with the clip's reach over-reaching its
    own atom (row 5). Its cost on a detonation cook is still unmeasured.
-2. The seam index is built in `render()` and not refreshed by dirty passes: a pos-7
-   voxel beside a NEW hole keeps no side sliver until the next full render.
+2. ✅ ~~The seam index is not refreshed by dirty passes~~ — fixed 2026-09-11,
+   locally at the glass erase seam (plan §10b.10). A full render after a grenade was
+   ruled out: it would repaint the map outside the pre-cooked plan.
 3. A device run — every number in this session is M1 at 1280×720.
 4. The hidden glass STATE layer holds a second copy of every glass cell; memory cost
    unmeasured (RAM is the mobile constraint).

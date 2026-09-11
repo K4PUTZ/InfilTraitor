@@ -2923,10 +2923,10 @@ static var glass_no_side_test: bool = OS.get_environment("INFILTRAITOR_GLASS_NO_
 ## Asked of GEOMETRY, not of the tilemap: the neighbour GU may not be placed yet when
 ## this voxel is, so a tilemap answer would depend on render order.
 ##
-## ⚠️ The index is built in `render()` and not refreshed by the dirty passes. A pos-7
-## voxel whose neighbour is later DESTROYED is not re-rendered either way, so it keeps
-## no side sliver beside the hole until the next full render (rotation, reload). Owed
-## if this is ratified: re-mask the pos-7 neighbour when a pos-0 glass voxel dies.
+## The index is built in `render()` and kept current by `_expose_seam_neighbour()` on
+## every glass erase — which also gives a pos-7 voxel its side sliver back when its
+## pos-0 neighbour dies, locally. Not by a full render: the only ones are map load and
+## rotation, and one after a grenade would repaint the map outside the pre-cooked plan.
 static var glass_seam_cull_on: bool = OS.get_environment("INFILTRAITOR_GLASS_SEAM_CULL") != "0"
 ## Vector3i(grid x, grid y, level) -> the slice FACE of the standing glass voxel there.
 var _glass_seam_index: Dictionary = {}
@@ -6087,6 +6087,100 @@ func note_glass_erased_for_rim(level: int, cell: Vector2i) -> void:
 	if not _glass_rim_dirty.has(level):
 		_glass_rim_dirty[level] = []
 	(_glass_rim_dirty[level] as Array).append(cell)
+	## RENDER_ORDER seam — every glass erase seam already passes through here.
+	if glass_seam_cull_on:
+		_expose_seam_neighbour(level, cell)
+
+
+## RENDER_ORDER §10b.9 — a glass cell just went. Drop it from the seam index, and if
+## it was the FIRST column of a GU, the previous GU's frontmost column (pos 7) of the
+## same pane now has an exposed side: give it the side sliver back, locally.
+##
+## Here and not at a full render: the only full renders are map load and rotation,
+## and one at the end of a grenade would repaint the whole map outside the
+## pre-cooked plan (Director, 2026-09-11). Every glass erase seam calls this — both
+## dirty passes and `erase_glass_cell()` (the cook's destroy, the remnant reap) — and
+## it runs BEFORE the flush's rim cut, so a neighbour the opening then turns into a
+## shard is cut from a mask that already carries its side.
+##
+## Leaving the destroyed cell in the index would undo this on the next re-render of
+## the neighbour (a CRACKED ring re-places it through `_glass_face_mask()`).
+func _expose_seam_neighbour(level: int, cell: Vector2i) -> void:
+	var key := Vector3i(cell.x, cell.y, level)
+	if not _glass_seam_index.has(key):
+		return
+	var face: int = int(_glass_seam_index[key])
+	_glass_seam_index.erase(key)
+	var run_is_x: bool = face == Face.SW or face == Face.NE
+	var run: int = cell.x if run_is_x else cell.y
+	if posmod(run, GeometryCoords.VOXELS_PER_UNIT_AXIS) != 0:
+		return
+	var n: Vector2i = cell - (Vector2i(1, 0) if run_is_x else Vector2i(0, 1))
+	if int(_glass_seam_index.get(Vector3i(n.x, n.y, level), -1)) != face:
+		return
+	var layer := _glass_layers.get(level) as TileMapLayer
+	if layer == null:
+		return
+	var sid: int = layer.get_cell_source_id(n)
+	if sid == -1:
+		return
+	var want: int = _glass_with_side(sid)
+	if want < 0 or want == sid:
+		return
+	layer.set_cell(n, want, Vector2i.ZERO, 0)
+	note_external_write(level, n)
+	## A shard already on the board is re-stamped from the registry every flush, so
+	## the registry has to learn the new id or the restamp puts the old one back.
+	var nk := Vector3i(n.x, n.y, level)
+	if _glass_shard_cells.has(nk):
+		_glass_shard_cells[nk] = want
+	if glass_tile_on:
+		_queue_glass_tile_sync()
+
+
+## The same glass atom with the side-sliver bit set — a pane atom, a rim shard or a
+## remnant, each through the composer that made it, so the result is exactly the atom
+## a fresh placement or cut would have produced. -1 if the id is not one of ours.
+func _glass_with_side(sid: int) -> int:
+	if _glass_source_info.has(sid):
+		var info: Dictionary = _glass_source_info[sid]
+		var faces: Dictionary = _glass_atom_source.get(String(info["material"]), {})
+		var masks: Dictionary = faces.get(int(info["face"]), {})
+		return int(masks.get(int(info["mask"]) | 0b01, -1))
+	var key = _glass_rim_sources.find_key(sid)
+	if key == null:
+		return -1
+	var p: PackedStringArray = String(key).split("|")
+	if p.size() == 7 and p[0] == "R":
+		return _glass_remnant_atom_source(p[1], p[2].to_int(), p[3].to_int() | 0b01,
+			p[4], p[5].to_int(), p[6] == "1")
+	if p.size() == 6:
+		return _glass_rim_atom_source(p[0], p[1].to_int(), p[2].to_int() | 0b01,
+			p[3], p[4].to_int(), p[5].to_int())
+	return -1
+
+
+## The face mask a placed glass cell renders with — from its pane atom, or from the
+## key its rim shard / remnant atom was composed under ("m|f|MASK|..." and
+## "R|m|f|MASK|..."). -1 when the cell holds no glass atom this renderer made.
+## Asked by the seam selftest instead of an atom id: a hole's neighbour is often cut
+## into a shard in the same flush, and it is the MASK that says whether it kept its
+## side sliver.
+func glass_cell_mask(level: int, cell: Vector2i) -> int:
+	var layer := _glass_layers.get(level) as TileMapLayer
+	if layer == null:
+		return -1
+	var sid: int = layer.get_cell_source_id(cell)
+	if sid == -1:
+		return -1
+	if _glass_source_info.has(sid):
+		return int(_glass_source_info[sid]["mask"])
+	var key = _glass_rim_sources.find_key(sid)
+	if key == null:
+		return -1
+	var parts: PackedStringArray = String(key).split("|")
+	var at: int = 3 if parts[0] == "R" else 2
+	return parts[at].to_int() if parts.size() > at and parts[at].is_valid_int() else -1
 
 
 ## Is there still glass drawn at this (level, cell)? The live authority, the same

@@ -6751,6 +6751,12 @@ func _capture_glass_crack_demo() -> void:
 	await _voxel_renderer.process_dirty_async(_edge_registry)
 	print("[CRACK-DEMO] bore: %d voxel(s) destroyed through the real erase seam (G-D14), opening=%s, armored=%s"
 		% [holed, demo_opening if demo_opening != "" else "(none)", armored_pane])
+	## RENDER_ORDER seam — a bore on a GU's FIRST column exposes the previous column's
+	## side. Read back what the board says that neighbour renders with now.
+	if posmod(hit_run, GeometryCoords.VOXELS_PER_UNIT_AXIS) == 0:
+		var seam_n: Vector2i = hit_gp - (Vector2i(1, 0) if run_is_x else Vector2i(0, 1))
+		print("[CRACK-DEMO] seam neighbour %s of the bore, level %d: mask %d (bit 0 = side sliver)"
+			% [seam_n, hit_level, _voxel_renderer.glass_cell_mask(hit_level, seam_n)])
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	plan["opening"] = demo_opening   ## CRACK-04 — the sheet's void, same polygon

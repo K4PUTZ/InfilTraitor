@@ -1085,8 +1085,8 @@ and loses the OCC-27 wireframe with the fix on (`glass_crack_demo_ro_Bclip_seam_
 — the opaque path, which the seam fix does not touch; still undiagnosed. A has no
 open defect on this fixture.
 
-⚠️ Owed if the fix is ratified: the index is not refreshed by the dirty passes, so a
-pos-7 voxel beside a later hole keeps no side sliver until the next full render.
+✅ The owed refresh (a pos-7 voxel beside a later hole) was fixed on 2026-09-11 —
+see §10b.10's owed list.
 
 ### 10b.10 RATIFIED — Option A ships, all three gates default ON — 2026-09-10
 
@@ -1142,7 +1142,15 @@ compounds (ratified as correct: *"é pra ser mais escuro mesmo"*).
 - ✅ ~~The clip does not react to OPAQUE destruction~~ — FIXED, row 6 above. Its cost
   on a detonation cook was not measured; it is bounded by one index build per flush
   and paid only when a destroyed cell lies inside a live crack's `occ_bounds`.
-- The seam index is not refreshed by dirty passes (a pos-7 voxel beside a new hole).
+- ✅ ~~The seam index is not refreshed by dirty passes~~ — FIXED 2026-09-11, locally:
+  every glass erase drops its cell from the index, and a destroyed pos-0 voxel gives
+  its pos-7 neighbour the side sliver back through the atom's own composer (pane,
+  rim shard or remnant), before the flush's rim cut. NOT a full render — the only
+  ones are map load and rotation, and one after a grenade would repaint the map
+  outside the pre-cooked plan (the Director's objection, and the reason). Red/green:
+  `glass_transparency_selftest` [1b] (2 FAIL → pass), and on `RENDER_ORDER` the
+  crack demo's bore lands on a GU's first column — its neighbour `(71, 63)` reads
+  mask 0 on the red build, mask 1 on the green.
 - A device run — every number here is M1.
 - The hidden glass STATE layer holds a second copy of every glass cell. Memory cost
   unmeasured; RAM is the mobile constraint.

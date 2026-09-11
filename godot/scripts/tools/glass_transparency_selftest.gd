@@ -238,6 +238,24 @@ func test_side_sliver_only_where_exposed() -> void:
 		_pass("the pane's real end (x39) keeps its side sliver")
 	else:
 		_fail("pane end x39 source %d, expected main+side %d — the pane lost its thickness" % [end_src, side_src])
+
+	## A HOLE ON THE SEAM. Destroying the second panel's FIRST voxel (x32) exposes
+	## x31's side, so x31 must get its sliver back — locally, through the real dirty
+	## pass, with no full render. The MASK is asked, not the atom id: the rim cut may
+	## turn x31 into a shard in the same flush, and a shard carries the mask it was
+	## cut from.
+	var b0: Voxel = b.voxels[0]   ## x32, pos 0 of the second panel
+	b0.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+	r.process_dirty(registry)
+	if not r._glass_seam_index.has(Vector3i(32, 31, level)):
+		_pass("the destroyed x32 left the seam index")
+	else:
+		_fail("x32 is destroyed but still in the seam index — a later re-render of x31 would strip its side again")
+	var m31: int = r.glass_cell_mask(level, Vector2i(31, 31))
+	if m31 >= 0 and (m31 & 0b01) != 0:
+		_pass("x31 got its side sliver back beside the hole (mask %d)" % m31)
+	else:
+		_fail("x31 mask %d after x32 was destroyed — the hole edge on the seam has no thickness until the next full render" % m31)
 	r.queue_free()
 	print("")
 

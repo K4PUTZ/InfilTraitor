@@ -312,9 +312,8 @@ func _update_light_uniform() -> void:
 ## CLI-baked PNGs never went through the editor's import scan, so plain load()
 ## fails with "No loader found". Same fix floating_collectible.gd uses.
 static func _load_texture_raw(path: String) -> Texture2D:
-	var img := Image.new()
-	var err := img.load(path)
-	if err != OK:
-		push_error("[AgentProbeProp] failed to load %s (error %d)" % [path, err])
-		return null
-	return ImageTexture.create_from_image(img)
+	var err: Array = []
+	var tex: Texture2D = ImageSource.load_texture(path, err)
+	if tex == null:
+		push_error("[AgentProbeProp] failed to load %s (error %d)" % [path, err[0]])
+	return tex

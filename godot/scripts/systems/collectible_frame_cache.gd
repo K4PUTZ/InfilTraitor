@@ -50,13 +50,13 @@ func request(frames_dir: String, indices: Array) -> Dictionary:
 			continue
 		for p in PASSES:
 			var path := "%sframe_%02d_%s.png" % [frames_dir, idx, p]
-			## Image.load(), never plain load(): bake output is written by
+			## ImageSource, never plain load(): bake output is written by
 			## `--script` CLI runs and has never been through the Godot editor's
-			## import scan, so load() fails with "No loader found" for it.
-			## Image.load() reads the file directly, sidestepping the import
-			## cache; ImageTexture wraps it as an ordinary Texture2D from there.
-			var img := Image.new()
-			if img.load(path) != OK:
+			## import scan, so load() fails with "No loader found" for it —
+			## while an export ships only the import. ImageSource reads
+			## whichever exists; ImageTexture wraps it from there.
+			var img: Image = ImageSource.load_image(path)
+			if img == null:
 				push_error("[CollectibleFrameCache] failed to load %s" % path)
 				continue
 			if p == "color":

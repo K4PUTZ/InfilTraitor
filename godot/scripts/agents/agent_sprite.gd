@@ -561,7 +561,7 @@ func preload_grip(name: String) -> bool:
 	var previous: String = grip
 	grip = name
 	var ok: bool = false
-	if DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(_posture_root(_dev_vision))):
+	if DirAccess.open(_posture_root(_dev_vision)) != null:
 		ok = _ensure_posture(_posture, _dev_vision)
 		## The head and hat sets are keyed by grip too (see _layer_set_key), so the
 		## body alone would leave half the cost on the click.
@@ -569,8 +569,8 @@ func preload_grip(name: String) -> bool:
 			var group := _layer_group_for_posture(_posture)
 			if group != "":
 				for layer: String in LAYERS_BY_FAMILY.get(frame_family, LAYERS_DEFAULT):
-					if DirAccess.dir_exists_absolute(
-							ProjectSettings.globalize_path(_layer_root(layer, _dev_vision))):
+					if DirAccess.open(
+							_layer_root(layer, _dev_vision)) != null:
 						_ensure_layer_set(layer, group, _dev_vision)
 	grip = previous
 	return ok
@@ -1117,13 +1117,15 @@ func _layer_root(layer: String, dev: bool) -> String:
 	return String(LAYER_ROOTS[layer]) + frame_family + weapon + grip + "/"
 
 
-## Which layers this family has ON DISK. Whether a given FRAME uses them is a
+## Which layers this family has ON DISK. Probed with `DirAccess.open()`, never
+## `dir_exists_absolute()`: inside an exported `.pck` the latter answers false
+## for a `res://` directory that is there, and the character ships headless. Whether a given FRAME uses them is a
 ## separate question, answered per frame set in `_apply_layers` — see there.
 func _resolve_layers() -> bool:
 	_layers.clear()
 	for layer: String in LAYERS_BY_FAMILY.get(frame_family, LAYERS_DEFAULT):
-		if DirAccess.dir_exists_absolute(
-				ProjectSettings.globalize_path(_layer_root(layer, _dev_vision))):
+		if DirAccess.open(
+				_layer_root(layer, _dev_vision)) != null:
 			_layers.append(layer)
 	for layer: String in _layer_nodes:
 		(_layer_nodes[layer] as Sprite2D).visible = false
@@ -1446,9 +1448,8 @@ func _set_light_uniforms(dir_view: Vector3, intensity: float) -> void:
 ## CLI-baked PNGs never went through the editor's import scan, so plain load()
 ## fails with "No loader found". Same fix floating_collectible.gd uses.
 static func _load_texture_raw(path: String) -> Texture2D:
-	var img := Image.new()
-	var err := img.load(path)
-	if err != OK:
-		push_error("[AgentSprite] failed to load %s (error %d)" % [path, err])
-		return null
-	return ImageTexture.create_from_image(img)
+	var err: Array = []
+	var tex: Texture2D = ImageSource.load_texture(path, err)
+	if tex == null:
+		push_error("[AgentSprite] failed to load %s (error %d)" % [path, err[0]])
+	return tex

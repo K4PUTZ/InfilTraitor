@@ -116,10 +116,10 @@ func _try_load_and_validate(path: String, tier_name: String) -> Image:
 		return null
 	
 	# Try to load the image
-	var img := Image.new()
-	var err := img.load(path)
-	if err != OK:
-		_log("  [%s] Decode failed (%s): %s" % [tier_name, error_string(err), path])
+	var load_err: Array = []
+	var img: Image = ImageSource.load_image(path, load_err)
+	if img == null:
+		_log("  [%s] Decode failed (%s): %s" % [tier_name, error_string(load_err[0]), path])
 		return null
 	
 	# Check file size (use a heuristic: image memory footprint)

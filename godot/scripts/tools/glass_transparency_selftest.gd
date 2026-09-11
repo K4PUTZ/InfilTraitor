@@ -49,7 +49,8 @@ func _init() -> void:
 	print("GLASS G1 — TRANSPARENCY ROUTING SELFTEST")
 	print("=".repeat(70) + "\n")
 
-	test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer()
+	test_glass_voxel_is_a_tile_in_the_opaque_layer()
+	test_side_sliver_only_where_exposed()
 	test_sublayers_are_lazy_only_glass_levels_get_them()
 	test_concrete_is_untouched_by_the_glass_gate()
 	test_destroyed_glass_clears_the_pane()
@@ -102,29 +103,45 @@ func _fresh_renderer() -> VoxelRenderer:
 	return r
 
 
-func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
-	print("[1] a glass voxel is on the MUL+ADD sublayers and NOT on `_layers`\n")
+## RENDER_ORDER Option A (Director-ratified 2026-09-10). This test used to pin G1's
+## routing — glass OFF the opaque layer, onto sublayers behind a BackBufferCopy.
+## That is the path that drew a pane over the wall standing in front of it, and it
+## was retired; what is pinned now is its replacement, by IDENTITY.
+func test_glass_voxel_is_a_tile_in_the_opaque_layer() -> void:
+	print("[1] Option A: glass is an ordinary tile IN the opaque layer, mirrored from the glass state layer\n")
 	var r := _fresh_renderer()
 	var level: int = GeometryCoords.PLAYABLE_LEVEL
 	var registry := EdgeRegistry.new()
 	registry.register_slice(_make_slice("SLICE_GLASS", "glass", level))
 	r.render(registry)
-
-	var opaque: TileMapLayer = r.get_layer(level)
-	var opaque_glass_cells: int = 0
-	if opaque != null:
-		opaque_glass_cells = opaque.get_used_cells().size()
-	if opaque_glass_cells == 0:
-		_pass("opaque layer at the glass level holds ZERO cells")
-	else:
-		_fail("opaque layer still holds %d glass cell(s) — G1 undone" % opaque_glass_cells)
+	## The mirror is DEFERRED to the end of the frame and this suite has no frame, so
+	## it runs here. ⚠️ Asserting before it is how the old "opaque layer holds ZERO
+	## cells" check went on passing against Option A — for the wrong reason.
+	r._glass_tile_sync()
 
 	var gpane: TileMapLayer = r._glass_layers.get(level)
 	var pane_cells: int = gpane.get_used_cells().size() if gpane != null else -1
 	if pane_cells == 8:
-		_pass("the glass pane layer holds all 8 glass cells")
+		_pass("the glass STATE layer holds all 8 glass cells")
 	else:
-		_fail("glass pane layer cell count %d (expected 8)" % pane_cells)
+		_fail("glass state layer cell count %d (expected 8)" % pane_cells)
+	if gpane != null and not gpane.visible:
+		_pass("the glass state layer is HIDDEN — it is state, not a picture")
+	else:
+		_fail("the glass state layer is visible — every pane would draw twice")
+
+	## Identity, not a count: each opaque cell must hold the glass layer's OWN atom.
+	var opaque: TileMapLayer = r.get_layer(level)
+	var same: int = 0
+	if opaque != null and gpane != null:
+		for c in gpane.get_used_cells():
+			if opaque.get_cell_source_id(c) == gpane.get_cell_source_id(c):
+				same += 1
+	var opaque_total: int = opaque.get_used_cells().size() if opaque != null else -1
+	if same == 8 and opaque_total == 8:
+		_pass("the opaque layer holds exactly the 8 glass cells, each with the glass layer's own atom id")
+	else:
+		_fail("opaque layer: %d of 8 glass cells mirrored with the right id, %d cell(s) total — Option A undone" % [same, opaque_total])
 
 	if gpane != null:
 		## GLASS G1 GEOMETRY — an INTERIOR SW voxel (pos 2, not the front column,
@@ -167,12 +184,60 @@ func test_glass_voxel_lands_on_the_sublayers_not_the_opaque_layer() -> void:
 		else:
 			_fail("_glass_face_mask masks wrong: interior %d front %d top %d corner %d" % [m_interior, m_front, m_top, m_corner])
 
-	## The rasterising container: a BackBufferCopy sits over the glass.
-	if r._glass_backbuffer != null and r._glass_backbuffer is BackBufferCopy:
-		_pass("a BackBufferCopy container was built for the glass")
-	else:
-		_fail("no BackBufferCopy container — the pane would double-tint on overlap")
+		## The tile brings its OWN material into the opaque layer. Without it the atom
+		## renders through voxel_face_shading as its literal RGB `(dim, dim, tint)` —
+		## the flat yellow GLASS-OLIVE was named for.
+		var main_td: TileData = null
+		var main_as := r._tileset.get_source(main_src) as TileSetAtlasSource if main_src >= 0 else null
+		if main_as != null:
+			main_td = main_as.get_tile_data(Vector2i.ZERO, 0)
+		if main_td != null and main_td.material != null and main_td.material == r._glass_tile_material:
+			_pass("the glass atom carries the glass tile material (glass_tile.gdshader)")
+		else:
+			_fail("the glass atom has no glass tile material — it would render flat yellow in the opaque layer")
 
+	## No container: Option A exists to drop it. A BackBufferCopy here means the
+	## flat-top-z path is live again, and glass would draw over the wall in front.
+	if r._glass_backbuffer == null:
+		_pass("no BackBufferCopy — glass takes its turn in the layer's own depth order")
+	else:
+		_fail("a BackBufferCopy was built — the flat-top-z container path is live again")
+
+	r.queue_free()
+	print("")
+
+
+## RENDER_ORDER §10b.9 — the side sliver is painted by EXPOSURE. Two SW panels in a
+## row are one pane: the first panel's pos 7 faces the second panel's glass, so it
+## must carry NO side sliver (painting it double-covered the neighbour's first voxel —
+## Option A's dark bands, Option B's triangles). The pane's real end keeps it.
+func test_side_sliver_only_where_exposed() -> void:
+	print("[1b] seam cull: no side sliver at an internal GU boundary, kept at the pane end\n")
+	var r := _fresh_renderer()
+	var level: int = GeometryCoords.PLAYABLE_LEVEL
+	var registry := EdgeRegistry.new()
+	registry.register_slice(_make_slice("SLICE_SEAM_A", "glass", level))   ## x 24..31
+	var b := Slice.new("SLICE_SEAM_B", Vector2i(4, 3), Face.SW, "", 1, "glass")
+	for pos in range(8):
+		b.voxels.append(Voxel.new(Vector2i(32 + pos, 31), level, b))
+	_fixtures.append(b)
+	registry.register_slice(b)
+	r.render(registry)
+
+	var gpane: TileMapLayer = r._glass_layers.get(level)
+	var sw: Dictionary = r._glass_atom_source.get(GlassMaterials.BASE, {}).get(Face.SW, {})
+	var main_src: int = int(sw.get(0, -1))
+	var side_src: int = int(sw.get(1, -1))
+	var seam_src: int = gpane.get_cell_source_id(Vector2i(31, 31)) if gpane != null else -2
+	var end_src: int = gpane.get_cell_source_id(Vector2i(39, 31)) if gpane != null else -2
+	if seam_src == main_src and seam_src >= 0:
+		_pass("the internal GU boundary (x31) carries the main-only atom — nothing over the next panel")
+	else:
+		_fail("internal boundary x31 source %d, expected main-only %d — the seam is back" % [seam_src, main_src])
+	if end_src == side_src and end_src >= 0:
+		_pass("the pane's real end (x39) keeps its side sliver")
+	else:
+		_fail("pane end x39 source %d, expected main+side %d — the pane lost its thickness" % [end_src, side_src])
 	r.queue_free()
 	print("")
 
@@ -244,6 +309,17 @@ func test_destroyed_glass_clears_the_pane() -> void:
 		_pass("the other 7 glass cells are untouched")
 	else:
 		_fail("expected 7 surviving glass cells, got %d" % remaining)
+
+	## Option A — the MIRROR must lose it too, or the shot-out cell stays painted in
+	## the opaque layer while the data says it is gone (G-D48's render gap, again).
+	r._glass_tile_sync()
+	var opaque: TileMapLayer = r.get_layer(level)
+	var mirrored: int = opaque.get_cell_source_id(target.grid_pos) if opaque != null else 999
+	var opaque_left: int = opaque.get_used_cells().size() if opaque != null else -1
+	if mirrored == -1 and opaque_left == 7:
+		_pass("the destroyed cell is gone from the opaque mirror as well, 7 left")
+	else:
+		_fail("opaque mirror after destruction: cell src=%d, %d cell(s) left (expected -1, 7)" % [mirrored, opaque_left])
 	r.queue_free()
 	print("")
 

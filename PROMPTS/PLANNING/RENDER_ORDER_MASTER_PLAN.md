@@ -1,18 +1,20 @@
-# RENDER ORDER MASTER PLAN — depth on the isometric board — v1.0
+# RENDER ORDER MASTER PLAN — depth on the isometric board — v1.1
 
-**Status:** 🟢 **T2-1 BUILT 2026-09-10 behind `INFILTRAITOR_DEPTH_BOARD=1`, default
-OFF — the bug is fixed on screen and rotation re-derives it for free (§7.1).** Four
-things are owed before the gate can flip, listed there. Earlier the same day:
-Option C approved and its container priced (§6.4, ~4× headroom); Task 1 replaced
-its own design. Y-sort *works* (Q1) and **costs too much** (Q2: +244% draw
-calls on GLASS, +511% on PLAYGROUND, on an IDLE board), so `RO1`/`RO2` are
-withdrawn as the mechanism. What the failure pointed at is measured and passes:
-**a pane is PLANAR, so a level's opaque cells split into `far` / `near` around it
-and the TREE does the ordering** — `opaque_far → BackBufferCopy → glass →
-opaque_near`, one `z_index`, no Y-sort anywhere, no batching given up (Q6). It
-also solves the case Option A could not: a wall BEHIND the glass still composites
-through it. Full numbers in §6.1, the design in §6.3. **Nothing is built** — §6.3
-is a new design and needs the Director's sign-off before Task 2.
+**Status:** 🟢 **v1.1 · OPTION A RATIFIED AND DEFAULT ON, 2026-09-10 (§10b.10).**
+Director: *"o A fica mais bonito mesmo. Vamos com a A, liga os três gates por
+padrão."* Glass is an ordinary tile in its level's opaque layer — the layer's own
+draw order IS iso depth order (Q8), so no container, no flat top z, no Y-sort; the
+per-pane crack sprite is CLIPPED where a nearer wall covers the pane (§10b.4–7); and
+the side sliver is painted by EXPOSURE, which removed the GU-boundary seams
+(§10b.9). `INFILTRAITOR_GLASS_TILE=0` / `GLASS_CLIP=0` / `GLASS_SEAM_CULL=0` restore
+the old path for comparison only.
+
+**Option B** (the front overlay, `INFILTRAITOR_DEPTH_BOARD=1`) stays built behind its
+gate, default OFF — it lost on cost (+3.3 ms/frame over A, M1, vsync off) and on an
+undiagnosed regression of the OCC-27 wireframe (§10b.8–9). Everything from §1 to
+§10b.7 is the history of how the alternatives lost, kept because each one records a
+trap: Y-sort *works* and costs +244% / +511% draw calls on an idle board (Q2), and
+a `BackBufferCopy` cannot capture the layer it precedes (§3).
 
 **Owner:** engine. Touches `voxel_renderer.gd` and the glass render path only.
 **Explicitly does NOT touch** the opaque-wall occlusion mechanism (OCC-21 erase +
@@ -1084,6 +1086,55 @@ open defect on this fixture.
 
 ⚠️ Owed if the fix is ratified: the index is not refreshed by the dirty passes, so a
 pos-7 voxel beside a later hole keeps no side sliver until the next full render.
+
+### 10b.10 RATIFIED — Option A ships, all three gates default ON — 2026-09-10
+
+Director: *"Excelente, o A fica mais bonito mesmo. Vamos com a A, liga os três gates
+por padrão."* `INFILTRAITOR_GLASS_TILE`, `INFILTRAITOR_GLASS_CLIP` and
+`INFILTRAITOR_GLASS_SEAM_CULL` are now ON unless set to `0`; `=0` restores the old
+path for comparison only. Option B stays built behind `INFILTRAITOR_DEPTH_BOARD=1`,
+default OFF.
+
+**The selftest that pinned the retired design.** `glass_transparency_selftest` [1]
+asserted the container — the exact failure observed with the new defaults was
+`✗ no BackBufferCopy container — the pane would double-tint on overlap`, 41 PASS / 1
+FAIL. It now asserts Option A by IDENTITY: every opaque cell holds the glass layer's
+own atom id, the glass state layer is hidden, the atom carries the glass tile
+material, and there is no `BackBufferCopy`. [1b] pins the seam (no side sliver at an
+internal GU boundary, kept at the pane end); [4] now also asserts the mirror loses a
+destroyed cell. ⚠️ The old "opaque layer holds ZERO cells" check went on PASSING
+against Option A — only because the mirror is deferred and the suite asserted before
+it ran. An absence check passing for the wrong reason, again.
+
+**Turning it on exposed three defects on the real map, all fixed before the flip:**
+
+| | defect | found on | fix | after |
+|---|---|---|---|---|
+| 1 | the clip's occluder index walked EVERY opaque cell, once per crack: **40 ms × 11 = ~440 ms on one grenade** | GLASS `glass_blast_demo` | skip levels below the lowest glass (exact — see 2); one index per flush batch; reused within a frame for the spawns | **13 ms, once per grenade** |
+| 2 | the floor in front of a pane "hid" its whole bottom row — 48 of 48 foot cells on GLASS | GLASS `glass_crack_demo` | an occluder must draw AFTER the glass cell, i.e. sit at a level ≥ it. The bucket's max depth already encodes its level exactly (`8d − 20L ∈ [8r, 8r+7]`), so no extra storage | 0 false foot cells; `RENDER_ORDER` 502 → 475 |
+| 3 | `reap_orphaned_remnants()` — ON THE PLAY PATH (`agent_shot_controller.gd:693`, `world_delta.gd:408`) — erases glass with no flush after it, so the mirror would have kept a felled remnant painted | code read, then `glass_reap_demo` | `erase_glass_cell()` queues the sync itself | reap PASS, mirror removed 59 + 244 cells |
+
+**Cost on the real map** (GLASS, vsync off, M1 1280×720 — not a phone): grenade frame
+A 3.1 ms / 1 386 draw calls vs the old path 3.3 ms / 1 632; the reap scene A 17.9 ms vs
+old 18.2 ms (the scene's own cost). `RENDER_ORDER` A 4.6 ms.
+
+**Accepted costs, all known before the ruling:** `G-D1`'s coloured multiply becomes a
+plain-alpha fit; `G-D18b` stays relaxed — an agent behind a pane is no longer tinted
+by it (visible in the grenade demo); `G-D2`'s container is gone, so pane-over-pane
+compounds (ratified as correct: *"é pra ser mais escuro mesmo"*).
+
+**Owed:**
+- **The clip does not react to OPAQUE destruction.** The crack occupancy rebuilds only
+  when GLASS is erased, so destroying the wall that covered part of a pane leaves the
+  web cut where the wall was, until the next glass erase. True of the gated version
+  too, shipping now. Dirtying it on opaque erases costs one index build (~13 ms on
+  GLASS) per flush while any crack exists — to be measured on a detonation cook
+  before it is chosen.
+- The seam index is not refreshed by dirty passes (a pos-7 voxel beside a new hole).
+- A device run — every number here is M1.
+- The hidden glass STATE layer holds a second copy of every glass cell. Memory cost
+  unmeasured; RAM is the mobile constraint.
+- Option B's code is still in the tree, gated off. Deleting it is the Director's call.
 
 ---
 

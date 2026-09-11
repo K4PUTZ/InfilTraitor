@@ -1190,10 +1190,13 @@ static var glass_bb_mode: String = OS.get_environment("INFILTRAITOR_GLASS_BB")
 static var depth_board_on: bool = OS.get_environment("INFILTRAITOR_DEPTH_BOARD") == "1"
 
 
-## OPTION A's clip, `INFILTRAITOR_GLASS_CLIP=1` — cut the per-pane crack sprite
-## where a nearer opaque wall covers the pane. Default OFF. See the occupancy
-## builder for why this needs no shader change: the sprite already cuts on `gone`.
-static var glass_clip_on: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP") in ["1", "diag"]
+## OPTION A's clip — cut the per-pane crack sprite where a nearer opaque wall covers
+## the pane. See the occupancy builder for why this needs no shader change: the
+## sprite already cuts on `gone`.
+## DEFAULT ON since 2026-09-10 — the Director ratified Option A (*"Vamos com a A,
+## liga os três gates por padrão"*). `INFILTRAITOR_GLASS_CLIP=0` restores the uncut
+## sprite, for comparison only.
+static var glass_clip_on: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP") != "0"
 ## `INFILTRAITOR_GLASS_CLIP=diag` also RENDERS THE DECISION: every glass cell the
 ## rule calls hidden is repainted red, on top, so which cells were chosen stops
 ## being a thing to infer from a silhouette.
@@ -1207,8 +1210,10 @@ var _clip_diag_layers: Dictionary = {}
 var _clip_diag_queued: bool = false
 
 
-## OPTION A's other half, `INFILTRAITOR_GLASS_TILE=1` — glass as an ORDINARY tile
-## in its level's opaque layer (RENDER_ORDER_MASTER_PLAN §10b.3). Default OFF.
+## OPTION A's other half — glass as an ORDINARY tile in its level's opaque layer
+## (RENDER_ORDER_MASTER_PLAN §10b.3). DEFAULT ON since 2026-09-10, Director-ratified
+## (§10b.10). `INFILTRAITOR_GLASS_TILE=0` restores the flat-top-z container path,
+## for comparison only — it is the path that drew glass over walls in front of it.
 ##
 ##     [ one opaque layer, level N ]  far wall · GLASS · near wall   ← sorted by the
 ##                                                                     layer itself (Q8)
@@ -1232,7 +1237,7 @@ var _clip_diag_queued: bool = false
 ## a tile has a fixed blend, and without a snapshot of what is behind it the
 ## coloured MULTIPLY cannot be expressed. `glass_tile.gdshader` approximates it with
 ## plain alpha, exact over one reference grey — see its header.
-static var glass_tile_on: bool = OS.get_environment("INFILTRAITOR_GLASS_TILE") == "1"
+static var glass_tile_on: bool = OS.get_environment("INFILTRAITOR_GLASS_TILE") != "0"
 var _glass_tile_material: ShaderMaterial = null
 ## level:int -> { cell:Vector2i -> source_id:int } — what the last sync copied into
 ## `_layers[level]`, so a cell the glass layer lost can be taken back out without
@@ -2935,8 +2940,9 @@ func _glass_face_mask(grid_pos: Vector2i, level: int, face: int, top_level: int)
 static var glass_no_side_test: bool = OS.get_environment("INFILTRAITOR_GLASS_NO_SIDE") == "1"
 
 
-## RENDER_ORDER seam cull, `INFILTRAITOR_GLASS_SEAM_CULL=1` — the fix the kill switch
-## above pointed at. Default OFF until the Director has seen it.
+## RENDER_ORDER seam cull — the fix the kill switch above pointed at. DEFAULT ON since
+## 2026-09-10, Director-ratified with Option A. `INFILTRAITOR_GLASS_SEAM_CULL=0`
+## restores the pos-7-of-every-GU sliver, for comparison only.
 ##
 ## The ratified rule (G1 GEOMETRY, Director's diagrams 2026-08-31) is an EXPOSED-FACE
 ## cull: a glass voxel paints its side face only where that face is exposed. The code
@@ -2955,7 +2961,7 @@ static var glass_no_side_test: bool = OS.get_environment("INFILTRAITOR_GLASS_NO_
 ## voxel whose neighbour is later DESTROYED is not re-rendered either way, so it keeps
 ## no side sliver beside the hole until the next full render (rotation, reload). Owed
 ## if this is ratified: re-mask the pos-7 neighbour when a pos-0 glass voxel dies.
-static var glass_seam_cull_on: bool = OS.get_environment("INFILTRAITOR_GLASS_SEAM_CULL") == "1"
+static var glass_seam_cull_on: bool = OS.get_environment("INFILTRAITOR_GLASS_SEAM_CULL") != "0"
 ## Vector3i(grid x, grid y, level) -> the slice FACE of the standing glass voxel there.
 var _glass_seam_index: Dictionary = {}
 
@@ -5751,8 +5757,18 @@ func refresh_glass_crack_occupancy() -> int:
 	if not _glass_crack_occ_dirty:
 		return 0
 	_glass_crack_occ_dirty = false
+	## ONE occluder index for the whole batch. It walks every opaque cell at or
+	## above the lowest glass level, and building it per crack was measured at ~40 ms
+	## x 11 on one grenade on GLASS.
+	var shared_idx: Dictionary = {}
+	if glass_clip_on and not _glass_cracks.is_empty():
+		## Always FRESH at the flush — and it becomes this frame's cache, so a craze
+		## spawned later in the same frame reuses it.
+		shared_idx = _build_screen_occluder_index()
+		_occ_index_cache = shared_idx
+		_occ_index_frame = Engine.get_process_frames()
 	for c in _glass_cracks:
-		_build_crack_occupancy(c)
+		_build_crack_occupancy(c, shared_idx if glass_clip_on else null)
 		## B-4b — a field's hole mask changes for exactly the same reason its
 		## occupancy does, so it is rebuilt on the same seam rather than on one of
 		## its own that could fall out of step.
@@ -5776,7 +5792,7 @@ func refresh_craze_opening_masks() -> int:
 ## One crack's occupancy image, walked over its pane's (run, level) rectangle.
 ## Row 0 is the HIGHEST level, so the image reads the way the pane does on screen
 ## and the shader's `crack_occ_origin` is (run_min, level_max).
-func _build_crack_occupancy(c: Dictionary) -> void:
+func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void:
 	var sprite = c["sprite"]
 	if sprite == null or not is_instance_valid(sprite):
 		return
@@ -5804,7 +5820,15 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 	var clip_i1: int = -1
 	var clip_j0: int = 9999
 	var clip_j1: int = -1
-	var occ_index: Dictionary = _build_screen_occluder_index() if glass_clip_on else {}
+	## ⚠️ The index walks EVERY opaque cell of the map, once per crack rebuild — so
+	## its cost is timed and printed rather than assumed small. RENDER_ORDER is a
+	## 16 x 12 fixture; a mission map is not.
+	var occ_t0: int = Time.get_ticks_usec()
+	var occ_index: Dictionary = {}
+	if glass_clip_on:
+		occ_index = shared_index if shared_index is Dictionary \
+			else _occluder_index_this_frame()
+	var occ_us: int = Time.get_ticks_usec() - occ_t0
 	var solid := Color8(255, 0, 0, 255)
 	var gone := Color8(0, 0, 0, 255)
 	for j in range(h):
@@ -5839,9 +5863,10 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 	## the crack's occupancy one event stale and say the cut had not followed.
 	c["occ_image"] = img
 	if glass_clip_on:
-		print("[GLASS-CLIP] pane lattice %dx%d — %d cell(s) hidden by a nearer wall · i=%d..%d j=%d..%d (impact i=%d j=%d)"
+		print_debug("[GLASS-CLIP] pane lattice %dx%d — %d cell(s) hidden by a nearer wall · i=%d..%d j=%d..%d (impact i=%d j=%d) · occluder index %d cell bucket(s) in %.2f ms"
 			% [w, h, clipped_count, clip_i0, clip_i1, clip_j0, clip_j1,
-				(cross.x if run_is_x else cross.y) - run0, lvl1 - int(c["impact_level"])])
+				(cross.x if run_is_x else cross.y) - run0, lvl1 - int(c["impact_level"]),
+				occ_index.size(), float(occ_us) / 1000.0])
 	c["occ_image"] = img
 	sprite.set_occupancy(tex, Vector2(float(w), float(h)),
 		Vector2(lo.x, hi.y))
@@ -5918,7 +5943,18 @@ func _build_screen_occluder_index() -> Dictionary:
 	## (rule 10) — left in, a pane's own next cell along the run is one depth step
 	## nearer and one screen column over, so every pane would hide itself.
 	var glass_ids: Dictionary = _glass_tile_source_ids() if glass_tile_on else {}
+	## A level BELOW the lowest glass draws before every pane (`z_index` encodes
+	## height), so nothing on it can cover one — and that is the whole floor stack,
+	## most of a map's cells. Measured on GLASS before this skip: 40 ms per build.
+	## Skipping it is EXACT, not an approximation: see `_screen_hidden_by_opaque()` —
+	## within a bucket the higher level always holds the larger depth, so a lower
+	## level's cell is never the bucket's answer to a pane above it.
+	var min_glass_level: int = 1 << 30
+	for gl in _glass_layers:
+		min_glass_level = mini(min_glass_level, int(gl))
 	for level in _layers:
+		if int(level) < min_glass_level:
+			continue
 		var lay := _layers[level] as TileMapLayer
 		if lay == null:
 			continue
@@ -5933,6 +5969,23 @@ func _build_screen_occluder_index() -> Dictionary:
 	return idx
 
 
+## A blast spawns a craze on every pane it reaches, in ONE frame, and each spawn used
+## to build its own index — measured 6 x 13 ms on GLASS for one grenade. So the index
+## is reused within a frame.
+## ⚠️ Stale within that frame if an opaque cell is erased AFTER the first spawn; the
+## batch refresh at the flush always builds fresh, so the window is one flush.
+var _occ_index_cache: Dictionary = {}
+var _occ_index_frame: int = -1
+
+
+func _occluder_index_this_frame() -> Dictionary:
+	var f: int = Engine.get_process_frames()
+	if f != _occ_index_frame:
+		_occ_index_cache = _build_screen_occluder_index()
+		_occ_index_frame = f
+	return _occ_index_cache
+
+
 ## True when an opaque cell shares this cell's screen neighbourhood AND is nearer.
 ## The reach is the atom: 32 px wide against a 16 px column step (±1 column), and
 ## 36 px tall against 8 px per screen-row bucket (±5 buckets).
@@ -5945,7 +5998,19 @@ func _screen_hidden_by_opaque(cell: Vector2i, level: int, idx: Dictionary) -> bo
 	for du in range(-1, 2):
 		for dr in range(-5, 6):
 			var m = idx.get(Vector2i(u + du, row + dr))
-			if m != null and int(m) > d:
+			if m == null or int(m) <= d:
+				continue
+			## ⚠️ NEARER IS NOT ENOUGH — it must also draw AFTER this cell, which
+			## means a level at or above it (a lower level's layer is drawn first).
+			## Without this the floor in front of a pane "hid" its whole bottom row:
+			## 48 of 48 foot cells on GLASS, every one a false positive.
+			##
+			## The bucket stores only the max depth, and that is enough: in one
+			## bucket `8d - 20L` lies in [8r, 8r + 7], so the level is recoverable
+			## from (d, r) exactly and a higher level always has the larger d — the
+			## max-depth cell IS the highest-level cell.
+			var occ_level: int = int(floor(float(8 * (int(m) - (row + dr))) / 20.0))
+			if occ_level >= level:
 				return true
 	return false
 
@@ -7210,6 +7275,11 @@ func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 	forget_ghost_record(cell, level)
 	note_glass_erased()   ## G-D30, seam 3 of 3 (the cook)
 	note_glass_erased_for_rim(level, cell)   ## CRACK-03
+	## OPTION A — queued HERE and not only at the batch flush: `reap_orphaned_remnants()`
+	## erases through this seam with no flush after it, and a mirror that missed the
+	## erase would keep a felled remnant painted in the opaque layer.
+	if glass_tile_on:
+		_queue_glass_tile_sync()
 	return was_there
 
 

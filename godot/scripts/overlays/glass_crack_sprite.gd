@@ -97,6 +97,15 @@ func setup_field(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int
 	var mat := material as ShaderMaterial
 	if mat == null:
 		return
+	## ⚠️ THE SHADER'S `repeat_enable` IS NOT ENOUGH ON ITS OWN. Field mode drives
+	## `sheet_uv` outside [0,1] BY CONSTRUCTION — that is what makes the sheet tile
+	## across the pane. Under the Compatibility renderer (every web and mobile
+	## build) the GL sampler takes its wrap from the CanvasItem's own
+	## `texture_repeat`, not from the shader hint, and the default resolves to
+	## DISABLED at the root: the sheet then CLAMPS, and the page's edge texels
+	## stretch across the whole pane as straight lines. Forward+ honours the hint,
+	## which is why a desktop run cannot see this.
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 	mat.set_shader_parameter("crack_field", true)
 	mat.set_shader_parameter("crack_tile_span", tile_span)
 	## ⚠️ `field_origin` IS NOT `pane_lo`, AND IT USED TO BE. B-2 anchored the

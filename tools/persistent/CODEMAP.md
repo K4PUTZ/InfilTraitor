@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**242 scripts · 89939 lines total** (under `godot/scripts/`)
+**242 scripts · 89948 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1232,7 +1232,7 @@ extends `Node2D` · 143 lines
 
 ### `glass_crack_sprite.gd`
 
-`class_name GlassCrackSprite` · extends `Sprite2D` · 153 lines
+`class_name GlassCrackSprite` · extends `Sprite2D` · 162 lines
 
 `godot/scripts/overlays/glass_crack_sprite.gd`
 

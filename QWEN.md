@@ -82,15 +82,15 @@ numbers are what decide position and size. `off(l,t,r,b)` is the offsets,
 
 ```hud-map
 HUD                  CanvasLayer
-TopBar               PanelContainer  off(8.0,8.0,404.0,68.0)
-  Row                  HBoxContainer
-    BtnNumbers           Button          min(48, 48) text="#"
-    BtnFullscreen        Button          min(48, 48) text="[ ]"
-    BtnViewport          Button          min(48, 48) text="M"
-    BtnReset             Button          min(48, 48) text="↺"
-    BtnViewH             Button          min(48, 48) text="H"
-    BtnViewL             Button          min(48, 48) text="L"
-    BtnViewV             Button          min(48, 48) text="V"
+TopBar               PanelContainer  off(8.0,8.0,-8.0,124.0)
+  Row                  FlowContainer
+    BtnNumbers           Button          min(40, 40) text="#"
+    BtnFullscreen        Button          min(40, 40) text="[ ]"
+    BtnViewport          Button          min(40, 40) text="M"
+    BtnReset             Button          min(40, 40) text="↺"
+    BtnViewH             Button          min(40, 40) text="H"
+    BtnViewL             Button          min(40, 40) text="L"
+    BtnViewV             Button          min(40, 40) text="V"
     LblAp                Label           min(78, 48) text="AP 2/2"
     LblAlert             Label           min(126, 48) text="ALERT 0%"
     BtnEndTurn           Button          min(136, 48)

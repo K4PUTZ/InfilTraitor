@@ -41,7 +41,9 @@ var _enemy_turn_banner: Control
 var _lbl_end_turn: Label
 var _lbl_enemy_turn: Label
 ## UI-SPLIT-02: taken over from room.gd's @onready block.
-var _toolbar_row: BoxContainer
+## Container, not BoxContainer: the top bar wraps to two rows on a phone, which
+## makes it a FlowContainer, and FlowContainer is not a BoxContainer.
+var _toolbar_row: Container
 var _perspective_pad: Control
 var _btn_perspective: Dictionary = {}   ## "W"/"N"/"S"/"E" → Button
 var _btn_view: Dictionary = {}          ## "heat"/"light"/"dev" → Button

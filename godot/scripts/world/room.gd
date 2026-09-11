@@ -2179,6 +2179,13 @@ func _ready() -> void:
 	_hud_controller.reset_requested.connect(_on_hud_reset_requested)
 	_hud_controller.fullscreen_toggled.connect(_on_hud_fullscreen_toggled)
 	_hud_controller.viewport_toggled.connect(_on_hud_viewport_toggled)
+
+	## A phone boots in the mobile layout, not the desktop one. The DESKTOP branch
+	## is deliberately left alone: it resizes and re-centres the OS window, which
+	## on a handheld is either ignored (browser) or actively wrong (Android), and
+	## the label alone would then disagree with the board. Detection is the touch
+	## screen OR the mobile feature tag, because the web export on a phone reports
+	## a touch screen while `OS.has_feature("mobile")` covers the native APK.
 	_hud_controller.numbers_toggled.connect(_on_hud_numbers_toggled)
 	_hud_controller.perspective_requested.connect(_set_perspective)
 	_hud_controller.view_mode_toggled.connect(_on_hud_view_mode_toggled)
@@ -2483,7 +2490,7 @@ func _ready() -> void:
 
 	## Centering camera/setup initial state
 	_update_guard_los_data()
-	_on_hud_viewport_toggled()
+	_apply_boot_viewport()
 
 	## Initialize debug views (S1: FIX-BAKE-06)
 	_initialize_debug_views()
@@ -2740,6 +2747,34 @@ func _on_hud_reset_requested() -> void:
 
 func _on_hud_viewport_toggled() -> void:
 	_is_desktop_viewport = not _is_desktop_viewport
+	_apply_viewport_mode()
+
+
+## Which viewport the game STARTS in, by device.
+##
+## This used to be a bare `_on_hud_viewport_toggled()`, whose only effect was to
+## flip the boot state to DESKTOP — so a phone booted into the 1280x720 desktop
+## canvas, the board drew as a landscape band inside the portrait screen, and the
+## button read "D". Measured on the web export: `scale_size=(1280, 720)` a few
+## frames after a boot that started at (390, 844).
+##
+## The HANDHELD branch deliberately does not resize the OS window the way the
+## desktop one does: on the web the browser owns the canvas, and on Android the
+## window is the screen, so the resize is at best ignored. Detection takes the
+## touch screen OR the mobile feature tag, because the web export on a phone
+## reports a touch screen while `OS.has_feature("mobile")` covers the native APK.
+func _apply_boot_viewport() -> void:
+	if DisplayServer.is_touchscreen_available() or OS.has_feature("mobile"):
+		_is_desktop_viewport = false
+		_hud_controller.set_viewport_button_text("M")
+		get_tree().root.content_scale_size = Vector2i(390, 844)
+		return
+	_is_desktop_viewport = true
+	_apply_viewport_mode()
+
+
+## The D/M state made visible, split out of the toggle so the boot can reach it.
+func _apply_viewport_mode() -> void:
 	var target := Vector2i(1280, 720) if _is_desktop_viewport else Vector2i(390, 844)
 	_hud_controller.set_viewport_button_text("D" if _is_desktop_viewport else "M")
 

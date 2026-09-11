@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**242 scripts · 89900 lines total** (under `godot/scripts/`)
+**242 scripts · 89939 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -96,7 +96,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1453 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1455 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -314,7 +314,7 @@ extends `Node` · 108 lines
 
 ### `hud_controller.gd`
 
-extends `Node` · 283 lines
+extends `Node` · 285 lines
 
 `godot/scripts/controllers/hud_controller.gd`
 
@@ -5377,7 +5377,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11247 lines
+extends `Node2D` · 11282 lines
 
 `godot/scripts/world/room.gd`
 

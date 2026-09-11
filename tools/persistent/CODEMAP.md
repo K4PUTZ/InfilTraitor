@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**241 scripts · 89823 lines total** (under `godot/scripts/`)
+**241 scripts · 89858 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -5016,7 +5016,7 @@ extends `Node2D` · 34 lines
 
 ### `debug_tools_controller.gd`
 
-`class_name DebugToolsController` · 192 lines
+`class_name DebugToolsController` · 225 lines
 
 `godot/scripts/world/controllers/debug_tools_controller.gd`
 
@@ -5028,6 +5028,7 @@ extends `Node2D` · 34 lines
 **Public API**
 - `func toggle_map_loader_panel() -> void:`
 - `func create_map_loader_button() -> void:`
+- `func create_grenade_button() -> void:`
 - `func toggle_voxel_ruler_overlay() -> void:`
 - `func toggle_nudge_mode() -> void:`
 - `func toggle_bake_mode() -> void:`
@@ -5366,7 +5367,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11245 lines
+extends `Node2D` · 11247 lines
 
 `godot/scripts/world/room.gd`
 

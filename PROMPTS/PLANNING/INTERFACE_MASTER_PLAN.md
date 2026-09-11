@@ -1,5 +1,10 @@
 # INTERFACE_MASTER_PLAN
-## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.1
+## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.2
+
+> **v1.2 — 2026-09-11: Part 5 `ACTION-BAR-01` added (Director).** The first phone
+> test found that a touch player cannot throw a grenade at all — the only way in is
+> the G key. The player's action bar is the answer, and it is JAMES's to build; a
+> temporary dev-toolbar "G" button covers the gap until then. See §4 Part 5.
 
 **Status:** 🟢 **v1.1 — 2026-09-09: WAVE 3 IS BUILT, and this header said it was
 not for almost two months.** `PAUSE-MENU-01` shipped on **2026-07-15** in
@@ -225,6 +230,56 @@ key to open a menu is the one place both meet, and that wiring belongs in
 - Acceptance includes visible proof (screenshot) — Director visual
   ratification, same as every UI-facing prompt in this project's history.
 
+### Part 5 — Action bar (ACTION-BAR-01) — *added 2026-09-11, Director-approved*
+
+**Why:** on the first phone test (web build) the Director could not throw a
+grenade — grenade mode is reachable only through the `ui_grenade_mode` key (G / 4),
+and every other context action (Detonar, Atirar) only through right-click. A touch
+player has neither. Director: *"Precisamos de um botão G ou de um menu contextual"*;
+the recommendation he approved is the genre's own answer (XCOM, Phoenix Point): a
+bar of the agent's ACTIONS, not a lone button and not a menu on every tap.
+
+**What it is — read against canon, not invented beside it (`docs/DESIGN_MASTER_PLAN.md`):**
+
+- **§3.1** — *"Each AP buys: move, gadget/skill, attack, interact, or wait."* Those
+  are the bar's categories. Move stays the default (tap / double-tap, unchanged).
+- **§8.7** — attack enters AIM MODE; *"choosing and firing are two separate acts"*.
+  The grenade's flow is the model and is already built: first tap aims, a second tap
+  on the same GU throws (T-TAP, `TestZoneController.handle_targeting_click()`).
+- **§10.2 / `WEAPON_MASTER_PLAN` D37** — the agent carries the WHOLE arsenal and *"any
+  weapon-selection UI has to survive the carried set growing, so it cannot be N fixed
+  slots."* So "Grenade" is NOT a dedicated button: the gadget/weapon entry opens the
+  list of what the agent carries, and the grenade is one row of it.
+- **A visible CANCEL** while any aim mode is active — the phone's Esc.
+- **Keyboard shortcuts drive the SAME buttons** (G / 4 → grenade), never a parallel
+  path (D-IF1 / D-IF2: the action is canon, the key is one binding of it).
+- **Long-press is reserved for INSPECT** (tooltips, hit chance, a guard's state) —
+  what mobile XCOM uses it for, and the right reading for a game whose primary
+  resource is information. It is not a second way to act.
+
+**Acceptance (3–5, per the prompt-sizing rule):**
+
+1. On a touch device, the grenade can be aimed and thrown with no keyboard, through
+   the bar's gadget entry → list → grenade → aim → second tap.
+2. A visible Cancel leaves any aim mode; the agent's arm lowers (the existing
+   `cancel_targeting()` path runs — not a UI-only hide).
+3. G / 4 on desktop produce exactly the same state transitions as the buttons.
+4. The gadget list is a list, not slots: adding a carried item adds a row with no
+   layout change.
+5. Visible proof on a phone-sized viewport (portrait), Director-ratified.
+
+**⚠️ Engine side — NOT built yet, and JAMES must not build it** (he may not touch
+`room.gd`; `.README_WORKSPACE.md`): the HUD facade needs, from CLAUDE on `main`,
+(a) a signal or method per action the bar raises, wired in `room.gd` to the existing
+`_on_grenade_mode_requested()` / `_on_grenade_cancel_requested()` / the §6c shot
+flow; (b) `set_*` calls telling the HUD when aim mode starts and ends, so Cancel can
+appear; (c) the carried-item list as data. Ask the Director to have CLAUDE expose
+these before wiring widgets to anything.
+
+**Temporary stand-in to DELETE when this lands:** a dev-toolbar "G" button,
+`DebugToolsController.create_grenade_button()` (called from `room.gd` next to the
+map-loader button). Press = grenade mode, press again = cancel.
+
 ## 5. Prompt Sequence
 
 ```
@@ -239,6 +294,9 @@ Wave 3 (depends on Wave 2 landing + verified):
                                                                     benefits from HUD-PANEL-01 landing
                                                                     first so pause doesn't fight HUD
                                                                     input, but not strictly blocked by it]
+Wave 4 (added 2026-09-11):
+  ACTION-BAR-01 — the player's action bar (§4 Part 5)         [depends on the ENGINE seam in
+                                                                  Part 5 being exposed on main first]
 ```
 
 Wave 1's two prompts are independent of each other (different files, no

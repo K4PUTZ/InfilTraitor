@@ -2256,6 +2256,8 @@ func _ready() -> void:
 	## Initialize debug tools controller
 	_debug_tools_controller = DebugToolsControllerClass.new(self)
 	_debug_tools_controller.create_map_loader_button()
+	## TEMPORARY touch route into grenade mode — see create_grenade_button().
+	_debug_tools_controller.create_grenade_button()
 
 	## INPUT-01: Create and setup input controller
 	set_meta("_camera_controller", _camera_controller)

@@ -40,6 +40,39 @@ func create_map_loader_button() -> void:
 		btn_map.queue_free()
 
 
+## ⚠️ TEMPORARY, DEV-ONLY — the touch route into grenade mode (Director,
+## 2026-09-11: *"não tenho o G disponível no celular"*). The real answer is the
+## player's ACTION BAR, INTERFACE_MASTER_PLAN Part 5 (ACTION-BAR-01, JAMES's
+## branch); DELETE this button when that lands. Press = enter grenade mode,
+## press again while aiming = cancel (the phone has no Esc). The throw itself is
+## the existing T-TAP — a second tap on the aimed GU.
+##
+## Same seam as the map button: the engine builds it, the HUD places it. Goes
+## through room's own handlers so the PERF-F7 `is_resolving_action()` guard holds.
+func create_grenade_button() -> void:
+	if room._hud_controller == null:
+		return
+	var btn := Button.new()
+	btn.text = "G"
+	btn.add_theme_font_size_override("font_size", 16)
+	btn.custom_minimum_size = Vector2(40.0, 32.0)
+	## ⚠️ Never focusable. A focused Button consumes `ui_accept` — so after a
+	## desktop click on it, Enter (which THROWS) would press this button again and
+	## CANCEL the aim instead.
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.pressed.connect(_on_grenade_button_pressed)
+	if not room._hud_controller.add_toolbar_button(btn):
+		btn.queue_free()
+
+
+func _on_grenade_button_pressed() -> void:
+	var tz = room._test_zone_controller
+	if tz != null and tz.is_in_targeting_mode():
+		room._on_grenade_cancel_requested()
+	else:
+		room._on_grenade_mode_requested()
+
+
 ## Toggle voxel ruler grid overlay (F3)
 func toggle_voxel_ruler_overlay() -> void:
 	if _voxel_ruler_overlay == null:

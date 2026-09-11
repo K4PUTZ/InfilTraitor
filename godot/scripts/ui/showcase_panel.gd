@@ -151,17 +151,27 @@ func _build_3d_scene() -> void:
 	_sub_viewport.add_child(_cam)
 	_cam.current = true
 
-	## Same runtime GLTFDocument load shotgun_preview_spike.gd already
-	## proved (D12's imported-mesh path) — no editor import step needed.
-	var doc := GLTFDocument.new()
-	var state := GLTFState.new()
-	var err := doc.append_from_file(MODEL_PATH, state)
-	if err != OK:
-		push_error("[ShowcasePanel] failed to load %s (error %d)" % [MODEL_PATH, err])
-		return
-	var model_root: Node = doc.generate_scene(state)
+	## TWO SOURCES, THE SAME CHOICE ImageSource MAKES FOR A PNG. An export ships
+	## the IMPORTED scene and never the source .glb (read out of the pack index:
+	## it holds the .scn and the .import, no .glb), so the runtime GLTFDocument
+	## load — which reads the raw file — fails in every build with error 7. The
+	## raw path still earns its place for `--script` CLI runs, whose models have
+	## never been through the editor's import scan.
+	var model_root: Node = null
+	if FileAccess.file_exists(MODEL_PATH):
+		var doc := GLTFDocument.new()
+		var state := GLTFState.new()
+		var err := doc.append_from_file(MODEL_PATH, state)
+		if err != OK:
+			push_error("[ShowcasePanel] failed to load %s (error %d)" % [MODEL_PATH, err])
+			return
+		model_root = doc.generate_scene(state)
+	elif ResourceLoader.exists(MODEL_PATH):
+		var packed := load(MODEL_PATH) as PackedScene
+		if packed != null:
+			model_root = packed.instantiate()
 	if model_root == null:
-		push_error("[ShowcasePanel] generate_scene returned null for %s" % MODEL_PATH)
+		push_error("[ShowcasePanel] no model for %s — neither the source file nor the import" % MODEL_PATH)
 		return
 	_sub_viewport.add_child(model_root)
 

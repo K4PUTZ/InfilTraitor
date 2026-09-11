@@ -9805,7 +9805,7 @@ func _capture_screenshot_to_file() -> void:
 
 	var short_name := filename.get_file()
 	print("Screenshot saved: %s" % filename)
-	_show_screenshot_toast("💾 %s" % short_name)
+	_show_screenshot_toast("SAVED %s" % short_name)
 
 
 ## SCREENSHOT-HOOK-01: entry point for the pre-commit hook's dedicated,

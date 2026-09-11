@@ -80,32 +80,32 @@ func _update_display() -> void:
 	lines.append("MAP: %s | VIEW: %s" % [_room.map_id, _room._active_perspective])
 	
 	# ── BAKE STATE ─────────────────────────────────────────────────────────────
-	var bake_status = "✗ OFF"
+	var bake_status = "- OFF"
 	if _bake_config_class.enabled:
 		var blend_mode_name = _bake_config_class.BlendMode.keys()[_bake_config_class.blend_mode]
-		bake_status = "✓ %s" % blend_mode_name
+		bake_status = "+ %s" % blend_mode_name
 	
 	# ── BAKE FEATURES ──────────────────────────────────────────────────────────
-	var facade_str = "✓" if _bake_config_class.facade_enabled else "✗"
-	var tops_str = "✓" if _bake_config_class.facade_tops else "✗"
-	var pattern_str = "✓" if _bake_config_class.material_pattern_enabled else "✗"
-	var dump_str = "✓" if _bake_config_class.debug_bake_set_dump else "✗"
+	var facade_str = "+" if _bake_config_class.facade_enabled else "-"
+	var tops_str = "+" if _bake_config_class.facade_tops else "-"
+	var pattern_str = "+" if _bake_config_class.material_pattern_enabled else "-"
+	var dump_str = "+" if _bake_config_class.debug_bake_set_dump else "-"
 	
 	lines.append("BAKE: %s | facade%s tops%s pattern%s dump%s" % [bake_status, facade_str, tops_str, pattern_str, dump_str])
 	
 	# ── VISION SYSTEMS ─────────────────────────────────────────────────────────
-	var dev_str = "✓" if _vision_controller.dev_vision else "·"
-	var light_str = "✓" if _vision_controller.light_vision else "·"
-	var heat_str = "✓" if _vision_controller.heat_vision else "·"
+	var dev_str = "+" if _vision_controller.dev_vision else "·"
+	var light_str = "+" if _vision_controller.light_vision else "·"
+	var heat_str = "+" if _vision_controller.heat_vision else "·"
 	
 	lines.append("VISION: dev%s light%s heat%s" % [dev_str, light_str, heat_str])
 	
 	# ── FOG & SHADOW STATE ─────────────────────────────────────────────────────
 	# Fog is visible when dev_vision is OFF (negated)
-	var fog_str = "·" if _room.fog_of_war.visible else "✓"  ## ✓ = hidden (dev mode), · = visible (normal)
+	var fog_str = "·" if _room.fog_of_war.visible else "+"  ## ✓ = hidden (dev mode), · = visible (normal)
 	
 	# Shadow overlay state — follows light_vision
-	var shadow_str = "✓" if _vision_controller.is_shadow_overlay_visible() else "·"
+	var shadow_str = "+" if _vision_controller.is_shadow_overlay_visible() else "·"
 	
 	lines.append("FOG: %s | SHADOW: %s" % [fog_str, shadow_str])
 	

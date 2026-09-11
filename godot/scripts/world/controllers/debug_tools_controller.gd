@@ -30,8 +30,8 @@ func create_map_loader_button() -> void:
 	if room._hud_controller == null:
 		return
 	var btn_map := Button.new()
-	btn_map.text = "🗺️"
-	btn_map.add_theme_font_size_override("font_size", 16)
+	btn_map.text = "MAP"
+	btn_map.add_theme_font_size_override("font_size", 12)
 	btn_map.custom_minimum_size = Vector2(40.0, 32.0)
 	btn_map.pressed.connect(toggle_map_loader_panel)
 	## UI-SPLIT-02: the HUD decides where a toolbar button goes. Returns false

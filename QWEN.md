@@ -87,7 +87,7 @@ TopBar               PanelContainer  off(8.0,8.0,-8.0,124.0)
     BtnNumbers           Button          min(40, 40) text="#"
     BtnFullscreen        Button          min(40, 40) text="[ ]"
     BtnViewport          Button          min(40, 40) text="M"
-    BtnReset             Button          min(40, 40) text="↺"
+    BtnReset             Button          min(40, 40) text="R"
     BtnViewH             Button          min(40, 40) text="H"
     BtnViewL             Button          min(40, 40) text="L"
     BtnViewV             Button          min(40, 40) text="V"

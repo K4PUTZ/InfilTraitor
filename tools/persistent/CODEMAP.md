@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**242 scripts · 89948 lines total** (under `godot/scripts/`)
+**242 scripts · 89958 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -4905,7 +4905,7 @@ extends `Node2D` · 34 lines
 
 ### `showcase_panel.gd`
 
-`class_name ShowcasePanel` · extends `WindowBase` · 211 lines
+`class_name ShowcasePanel` · extends `WindowBase` · 221 lines
 
 `godot/scripts/ui/showcase_panel.gd`
 

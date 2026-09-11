@@ -683,7 +683,7 @@ func _update_debug_label() -> void:
 	)
 
 	if _comms_label_timer > 0.0:
-		_debug_label.text += "\n📡 COMMS"
+		_debug_label.text += "\nCOMMS"
 
 
 func _facing_name() -> String:

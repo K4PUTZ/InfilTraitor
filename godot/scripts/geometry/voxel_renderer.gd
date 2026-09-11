@@ -1207,6 +1207,40 @@ var _clip_diag_layers: Dictionary = {}
 var _clip_diag_queued: bool = false
 
 
+## OPTION A's other half, `INFILTRAITOR_GLASS_TILE=1` — glass as an ORDINARY tile
+## in its level's opaque layer (RENDER_ORDER_MASTER_PLAN §10b.3). Default OFF.
+##
+##     [ one opaque layer, level N ]  far wall · GLASS · near wall   ← sorted by the
+##                                                                     layer itself (Q8)
+##
+## No BackBufferCopy, no flat top z, no overlay: a `TileMapLayer`'s own draw order IS
+## iso depth order, so a glass cell placed among the walls takes its turn for free.
+##
+## ⚠️ MIRRORED, NOT MOVED — the same reason T2-1 redraws instead of splitting.
+## `_glass_layers[level]` stays the authority every glass system reads (the crack's
+## occupancy, the rim, the shard registry, `count_glass_shards()`); it is kept and
+## HIDDEN, and `_glass_tile_sync()` copies its cells into `_layers[level]`. Nothing
+## glass-shaped has to learn a new layer, which is what keeps this a gate.
+##
+## ⚠️ THE GLASS TILE CARRIES ITS OWN MATERIAL (`TileData.material`), not a branch
+## in the opaque shader. The layer splits into a new canvas item wherever the
+## material changes, in the layer's own sorted order, so the depth order survives;
+## and nothing has to guess "is this texel glass" from colour — a glass atom's RGB is
+## `(dim, dim, tint/255)`, which a yellow texel of coloured art would also match.
+##
+## ⚠️ THIS IS WHERE G-D1 IS LOST, and it is one of the two things to judge on screen:
+## a tile has a fixed blend, and without a snapshot of what is behind it the
+## coloured MULTIPLY cannot be expressed. `glass_tile.gdshader` approximates it with
+## plain alpha, exact over one reference grey — see its header.
+static var glass_tile_on: bool = OS.get_environment("INFILTRAITOR_GLASS_TILE") == "1"
+var _glass_tile_material: ShaderMaterial = null
+## level:int -> { cell:Vector2i -> source_id:int } — what the last sync copied into
+## `_layers[level]`, so a cell the glass layer lost can be taken back out without
+## touching an opaque cell that a later write put in the same place.
+var _glass_tile_mirror: Dictionary = {}
+var _glass_tile_sync_queued: bool = false
+
+
 ## Setup: builds tileset and prepares for rendering
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	_visual_grid_offset = visual_grid_offset
@@ -2256,6 +2290,11 @@ func _build_voxel_tileset() -> void:
 				if td != null:
 					td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
 					td.set_custom_data("tile_name", material_id)
+					## OPTION A — the tile brings its own material into the opaque
+					## layer. Off the gate this is never set, and the glass sublayer's
+					## layer material is what shades it, exactly as before.
+					if glass_tile_on:
+						td.material = _get_glass_tile_material()
 				((_glass_atom_source[material_id] as Dictionary)[face] as Dictionary)[mask] = next_id
 				## CRACK-03 — the inverse. A placed glass cell carries only its
 				## source id, and this is what turns that id back into
@@ -2475,6 +2514,9 @@ func _glass_rim_atom_source(material_id: String, face: int, mask: int,
 		## pixel off would read as a seam along every hole.
 		td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
 		td.set_custom_data("tile_name", material_id)
+		## OPTION A — a shard is a glass tile too; see the pane atoms.
+		if glass_tile_on:
+			td.material = _get_glass_tile_material()
 	_glass_rim_sources[key] = id
 	return id
 
@@ -5813,12 +5855,18 @@ func _clip_diag_rebuild() -> void:
 ## each bucket; a pane cell then asks its own neighbourhood.
 func _build_screen_occluder_index() -> Dictionary:
 	var idx: Dictionary = {}
+	## OPTION A puts glass cells in `_layers` too, and glass is not an occluder
+	## (rule 10) — left in, a pane's own next cell along the run is one depth step
+	## nearer and one screen column over, so every pane would hide itself.
+	var glass_ids: Dictionary = _glass_tile_source_ids() if glass_tile_on else {}
 	for level in _layers:
 		var lay := _layers[level] as TileMapLayer
 		if lay == null:
 			continue
 		var lvl_off: int = int(GeometryCoords.VOXEL_STEP_PX) * int(level)
 		for c in lay.get_used_cells():
+			if not glass_ids.is_empty() and glass_ids.has(lay.get_cell_source_id(c)):
+				continue
 			var d: int = c.x + c.y
 			var key := Vector2i(c.x - c.y, (d * 8 - lvl_off) >> 3)
 			if not idx.has(key) or d > int(idx[key]):
@@ -5903,6 +5951,10 @@ func refresh_glass_rims() -> int:
 	## where nothing happened. Putting the re-stamp behind the early return left
 	## `registry=12 board=0` on the real map with the repair code already written
 	## and simply never reached.
+	## OPTION A — every batch seam ends here, after its erases and before its rim
+	## swaps, so the mirror is queued once for all of them.
+	if glass_tile_on:
+		_queue_glass_tile_sync()
 	var restamped: int = restamp_glass_shards()
 	if _glass_rim_dirty.is_empty():
 		return restamped
@@ -6207,6 +6259,9 @@ func _glass_remnant_atom_source(material_id: String, face: int, mask: int,
 	if td != null:
 		td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
 		td.set_custom_data("tile_name", material_id)
+		## OPTION A — a shard is a glass tile too; see the pane atoms.
+		if glass_tile_on:
+			td.material = _get_glass_tile_material()
 	_glass_rim_sources[key] = id
 	return id
 
@@ -6491,6 +6546,20 @@ func _ensure_glass_sublayers(level: int) -> void:
 	if glass_clip_diag and not _clip_diag_queued:
 		_clip_diag_queued = true
 		call_deferred("_clip_diag_rebuild")
+	if glass_tile_on:
+		## OPTION A — no container, no lifted pane layer. The sublayer is still built,
+		## because it is the STATE every glass system reads, and it is HIDDEN: its
+		## cells reach the screen through `_layers[level]`, mirrored at the end of the
+		## frame. `_glass_composite_z` above still matters — the crack sprite root
+		## rides it, and `INFILTRAITOR_GLASS_CLIP=1` is what cuts that sprite where a
+		## nearer wall covers the pane.
+		if not _glass_layers.has(level):
+			var gl_state := _build_glass_sublayer_node(level)
+			gl_state.visible = false
+			_glass_layers[level] = gl_state
+		_lift_glass_crack_root()
+		_queue_glass_tile_sync()
+		return
 	if depth_board_on:
 		## OPTION C owns the container and the z. No global backbuffer, and the
 		## glass layers do NOT get lifted — `_depth_board_rebuild()` puts each one
@@ -6969,6 +7038,84 @@ func set_glass_shader_param(name: String, value) -> void:
 	_glass_shader_params[name] = value
 	for l in _glass_layers.values():
 		(l as TileMapLayer).material.set_shader_parameter(name, value)
+	if _glass_tile_material != null:
+		_glass_tile_material.set_shader_parameter(name, value)
+
+
+## OPTION A — the one material every glass tile carries into the opaque layer.
+## Seeded by COPYING a freshly built pane material's parameters rather than by a
+## second list of them: the calibration knobs, the family's tints and the frost
+## texture all have one author (`_make_glass_material()`), and the tile shader
+## shares its include, so every name lines up.
+func _get_glass_tile_material() -> ShaderMaterial:
+	if _glass_tile_material != null:
+		return _glass_tile_material
+	var shader = load("res://godot/shaders/glass_tile.gdshader")
+	var pane := _make_glass_material()
+	if shader == null or pane == null:
+		push_error("[VoxelRenderer] RENDER-ORDER-A: glass_tile.gdshader or the pane material failed to load — glass tiles will render through the opaque layer's shader as flat yellow")
+		return null
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	for u in (pane.shader as Shader).get_shader_uniform_list():
+		var value = pane.get_shader_parameter(String(u["name"]))
+		if value != null:
+			mat.set_shader_parameter(String(u["name"]), value)
+	_glass_tile_material = mat
+	return mat
+
+
+func _queue_glass_tile_sync() -> void:
+	if _glass_tile_sync_queued:
+		return
+	_glass_tile_sync_queued = true
+	call_deferred("_glass_tile_sync")
+
+
+## OPTION A — copy every glass cell into its level's opaque layer, and take back out
+## the ones the glass layer has lost since the last pass.
+##
+## Checked against the BOARD, not against the record, so it heals: a re-render that
+## cleared `_layers[level]` is repaired by the next pass. And it only removes a cell
+## that still holds the glass id it copied — a later opaque write in the same place
+## is never erased by a stale glass record.
+func _glass_tile_sync() -> void:
+	_glass_tile_sync_queued = false
+	var placed: int = 0
+	var removed: int = 0
+	for level in _glass_layers:
+		var glass := _glass_layers[level] as TileMapLayer
+		var opaque := _layers.get(level) as TileMapLayer
+		if glass == null or opaque == null:
+			continue
+		var prev: Dictionary = _glass_tile_mirror.get(level, {})
+		var now: Dictionary = {}
+		for c in glass.get_used_cells():
+			var sid: int = glass.get_cell_source_id(c)
+			now[c] = sid
+			if opaque.get_cell_source_id(c) != sid:
+				opaque.set_cell(c, sid, Vector2i.ZERO, 0)
+				placed += 1
+		for c in prev:
+			if not now.has(c) and opaque.get_cell_source_id(c) == int(prev[c]):
+				opaque.erase_cell(c)
+				removed += 1
+		_glass_tile_mirror[level] = now
+	if placed > 0 or removed > 0:
+		print_debug("[GLASS-TILE] mirrored %d glass cell(s) into the opaque layers, removed %d"
+			% [placed, removed])
+
+
+## Every source id that draws glass: the pane atoms and every rim shard composed so
+## far. What `_build_screen_occluder_index()` must not count as an occluder.
+func _glass_tile_source_ids() -> Dictionary:
+	var ids: Dictionary = {}
+	for sid in _glass_source_info:
+		ids[int(sid)] = true
+	for sid in _glass_rim_sources.values():
+		if int(sid) >= 0:
+			ids[int(sid)] = true
+	return ids
 
 
 ## GLASS G1 — levels that currently hold a glass sublayer pair. Sorted, for the

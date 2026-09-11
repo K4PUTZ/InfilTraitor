@@ -974,6 +974,69 @@ which is the Director's call on screen, and `G-D1`'s wash, which is the other on
 
 ---
 
+### 10b.8 Option A built, and the four candidates rendered side by side — 2026-09-10
+
+Director: *"Preciso ver as duas opções renderizadas."* Option A's missing half is built
+behind `INFILTRAITOR_GLASS_TILE=1` (default OFF — the shipping board is untouched; 52
+selftests clean with the gate off):
+
+- glass cells are **mirrored** into `_layers[level]` by `_glass_tile_sync()`;
+  `_glass_layers[level]` stays the authority every glass system reads and is hidden —
+  the same "redraw, don't migrate" reasoning as T2-1 (§5.5 of the session summary);
+- no `BackBufferCopy`, no lifted pane layer;
+- the glass tile carries its own material (`TileData.material` →
+  `glass_tile.gdshader`) instead of an `is_glass` branch in the opaque shader: the
+  layer splits a canvas item where the material changes, in its own sorted order, and
+  nothing has to guess glass from texel colour;
+- `_build_screen_occluder_index()` skips glass ids under the gate — otherwise a pane's
+  own next cell (one depth step nearer, one column over) hides it.
+
+**One crack, one view, `RENDER_ORDER`, `INFILTRAITOR_CRACK_DEMO_WIDE=1`.** Sheets:
+`renderorder_options_{before,after}.png`, `renderorder_zoom_{pillar,stripes,leftwall,dimtest}.png`;
+raw frames `glass_crack_demo_ro_{D,A,B,Bclip,A_nodim}_{before,after}.png`.
+
+| | pillar in front of the pane | crack web over the pillar | pane over pane | column seams | case 4 wall (occluded) | draw calls |
+|---|---|---|---|---|---|---|
+| **D** today | ❌ glass over it — the pillar disappears | ❌ over it | tinted ONCE | faint | wireframe ✅ | **7 368** |
+| **A** tile + clip | ✅ | ✅ cut at the pillar | tinted TWICE | ❌ **dark blue band at every GU boundary** | wireframe ✅ (identical to D) | **8 039 (+9%)** |
+| **B** board + lift | ✅ | ❌ over it (T2-3 owed) | tinted ~once | ❌ sawtooth triangles, same columns | ❌ **wireframe gone, jagged edge** | **7 626 (+3.5%)** |
+| **B + clip** | ✅ | ✅ cut | as B | as B | as B | 7 626 |
+
+Draw calls from `INFILTRAITOR_FRAME_PROBE=1` with the crack on screen, vsync on (so
+ms/frame reads 16.7 for all four and is NOT evidence); primitives and objects are
+identical between D and A (47 798 / 26 022), so A's extra calls are canvas-item splits.
+
+> ⚠️ **§10b.3 predicted A "cheaper than today". Measured, it is +9% draw calls.** The
+> container's removal is real but smaller than the split cost of a per-tile material
+> interleaved with walls in the layer's sort order.
+
+**A's column band is double coverage, not the dim — tested, not read off the picture.**
+The two candidates give the same silhouette: (a) atoms overlapping with no container
+(G-D2 lost), (b) the dimmed side sliver (`GLASS_DIM_SIDE` 0.78) through the new
+shader's approximation. `INFILTRAITOR_GLASS_DIM_SIDE=1.0 DIM_TOP=1.0` removes (b) and the
+bands stay (`renderorder_zoom_dimtest.png`). So it is structural for A as built: every
+GU boundary is a panel-slice boundary, the end voxel exposes its side, and its sliver
+now composites over the neighbour instead of reading one snapshot. **Not yet
+established:** which atoms overlap there and by how much — the next instrument is the
+`DEPTH_DIAG`/`GLASS_CLIP=diag` treatment for masks (paint every cell whose mask carries
+`+side`), not another silhouette.
+
+**Pane over pane is a mechanism, not a picture:** today's single `BackBufferCopy` sits
+before every glass layer, so every glass fragment reads the glass-free scene — the back
+pane is never tinted again through the front one. A has no snapshot, so two sheets
+compound. Physically two panes should darken more; whether that reads right is a look
+call.
+
+**B's case-4 wall: observed, cause NOT diagnosed.** With the board on, the OCC-27
+wireframe's dashed edge and dots are gone and the erased wall shows a serrated edge;
+D and A are pixel-identical there. This touches the Director's hard constraint (do not
+modify opaque-wall occlusion), so it needs the decision rendered before any claim.
+
+**Against the Director's four criteria, neither option passes as built:** A has the
+seams (G-D2) and the wash; B has the sawtooth and a regression on wall occlusion. What
+A does that B does not: the crack web is cut correctly, and the case-4 wall is
+untouched.
+
 ---
 
 ## 11. Open

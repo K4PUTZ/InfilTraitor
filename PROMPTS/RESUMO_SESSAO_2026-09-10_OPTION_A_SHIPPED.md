@@ -21,11 +21,9 @@ B's code to go. The live record is
 **The depth track is closed as a mechanism.** Nothing is waiting on a Director call.
 What is owed, in the order it would bite (plan §10b.10):
 
-1. **The clip ignores OPAQUE destruction.** The crack occupancy rebuilds only when
-   GLASS is erased, so destroying the wall that covered part of a pane leaves the web
-   cut where the wall was, until the next glass erase. The fix costs one occluder
-   index (~13 ms on GLASS) per flush while any crack exists — measure it on a
-   detonation cook before choosing.
+1. ✅ ~~The clip ignores OPAQUE destruction~~ — fixed the same session (plan §10b.10
+   row 6: red 441 hidden / green 68), together with the clip's reach over-reaching its
+   own atom (row 5). Its cost on a detonation cook is still unmeasured.
 2. The seam index is built in `render()` and not refreshed by dirty passes: a pos-7
    voxel beside a NEW hole keeps no side sliver until the next full render.
 3. A device run — every number in this session is M1 at 1280×720.

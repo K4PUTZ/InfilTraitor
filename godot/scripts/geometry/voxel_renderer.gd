@@ -4214,6 +4214,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 			var already_gone: bool = _vlayer.get_cell_source_id(voxel.grid_pos) == -1
 			_vlayer.erase_cell(voxel.grid_pos)
 			note_external_write(voxel.level, voxel.grid_pos)
+			note_opaque_erased(voxel.level, voxel.grid_pos)   ## the crack clip may un-cut
 			## See forget_ghost_record(): a destroyed voxel must not be restorable.
 			forget_ghost_record(voxel.grid_pos, voxel.level)
 			if not already_gone:
@@ -4345,6 +4346,7 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zon
 			var was_there: bool = layer.get_cell_source_id(voxel.grid_pos) != -1
 			layer.erase_cell(voxel.grid_pos)
 			note_external_write(voxel.level, voxel.grid_pos)
+			note_opaque_erased(voxel.level, voxel.grid_pos)   ## the crack clip may un-cut
 			## See forget_ghost_record(): a destroyed voxel must not be restorable.
 			forget_ghost_record(voxel.grid_pos, voxel.level)
 			if was_there:
@@ -5695,6 +5697,30 @@ func note_glass_erased() -> void:
 		_glass_crack_occ_dirty = true
 
 
+## RENDER_ORDER — an OPAQUE cell was destroyed. If it could have been cutting a
+## crack's web, the occupancy is re-cut at the batch flush, exactly as a glass erase
+## already does; before this, destroying the wall in front of a cracked pane left the
+## web cut where the wall had been, until some glass happened to break.
+##
+## Rare by nature (Director: *"vai ser raro"*), so it must cost nothing when it does
+## not apply: a few integer compares against each crack's `occ_bounds`, and the ~13 ms
+## index rebuild (GLASS) only when a destroyed cell falls inside one. A grenade far
+## from any cracked pane never pays it. Called from the three destruction erase
+## seams — the slice and slab dirty passes and the cook's `destroy` entry — and NOT
+## from `note_external_write()`, which also fires for damage-variant swaps and for
+## occlusion on every agent step.
+func note_opaque_erased(level: int, cell: Vector2i) -> void:
+	if not glass_clip_on or _glass_crack_occ_dirty or _glass_cracks.is_empty():
+		return
+	var p := Vector2i(cell.x - cell.y,
+		((cell.x + cell.y) * 8 - int(GeometryCoords.VOXEL_STEP_PX) * level) >> 3)
+	for c in _glass_cracks:
+		var b = c.get("occ_bounds")
+		if b is Rect2i and (b as Rect2i).has_point(p):
+			_glass_crack_occ_dirty = true
+			return
+
+
 ## Rebuild the occupancy of every live crack, if any glass was erased since the
 ## last call. Returns how many were rebuilt. Called at the four dirty-pass ends
 ## and from DetonationEntryWriter.flush() — the same five batch seams
@@ -5766,6 +5792,14 @@ func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void
 	var clip_i1: int = -1
 	var clip_j0: int = 9999
 	var clip_j1: int = -1
+	## `INFILTRAITOR_GLASS_CLIP_WHY=1` — name the occluder of a sample of hidden cells.
+	var clip_why: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP_WHY") == "1"
+	var why: Array = []
+	## The screen buckets this crack's glass occupies — see `occ_bounds` below.
+	var ob_u0: int = 1 << 30
+	var ob_u1: int = -(1 << 30)
+	var ob_r0: int = 1 << 30
+	var ob_r1: int = -(1 << 30)
 	## ⚠️ The index walks EVERY opaque cell of the map, once per crack rebuild — so
 	## its cost is timed and printed rather than assumed small. RENDER_ORDER is a
 	## 16 x 12 fixture; a mission map is not.
@@ -5789,8 +5823,24 @@ func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void
 			var run: int = run0 + i
 			var cell := Vector2i(run, cross.y) if run_is_x else Vector2i(cross.x, run)
 			var present: bool = layer.get_cell_source_id(cell) != -1
+			if present:
+				var bu: int = cell.x - cell.y
+				var br: int = ((cell.x + cell.y) * 8 - int(GeometryCoords.VOXEL_STEP_PX) * level) >> 3
+				ob_u0 = mini(ob_u0, bu)
+				ob_u1 = maxi(ob_u1, bu)
+				ob_r0 = mini(ob_r0, br)
+				ob_r1 = maxi(ob_r1, br)
 			if present and glass_clip_on:
-				present = not _screen_hidden_by_opaque(cell, level, occ_index, run_is_x)
+				var occ: Vector3i = _screen_occluder_of(cell, level, occ_index, run_is_x)
+				present = occ.z < 0
+				if not present and clip_why and why.size() < 16 and i % 8 == 0:
+					var olay := _layers.get(occ.z) as TileMapLayer
+					var otd: TileData = olay.get_cell_tile_data(Vector2i(occ.x, occ.y)) if olay != null else null
+					why.append("(i%d j%d)<-%s[%s vis=%s tree=%s a=%.2f]" % [i, j, occ,
+						String(otd.get_custom_data("tile_name")) if otd != null else "?",
+						olay.visible if olay != null else false,
+						olay.is_visible_in_tree() if olay != null else false,
+						olay.modulate.a if olay != null else -1.0])
 			if glass_clip_on and layer.get_cell_source_id(cell) != -1 and not present:
 				clipped_count += 1
 				clip_i0 = mini(clip_i0, i); clip_i1 = maxi(clip_i1, i)
@@ -5813,7 +5863,15 @@ func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void
 			% [w, h, clipped_count, clip_i0, clip_i1, clip_j0, clip_j1,
 				(cross.x if run_is_x else cross.y) - run0, lvl1 - int(c["impact_level"]),
 				occ_index.size(), float(occ_us) / 1000.0])
+		if clip_why and not why.is_empty():
+			print_debug("[GLASS-CLIP-WHY] hidden <- occluder (x, y, level): %s" % " ".join(why))
 	c["occ_image"] = img
+	## RENDER_ORDER — every screen bucket an opaque cell could sit in and still cut
+	## this crack: the glass's own (column, row) box, grown by the reach
+	## `_screen_hidden_by_opaque()` searches (±1 column, ±5 rows). What
+	## `note_opaque_erased()` asks before it re-cuts anything.
+	c["occ_bounds"] = Rect2i(ob_u0 - 1, ob_r0 - 5, ob_u1 - ob_u0 + 3, ob_r1 - ob_r0 + 11) \
+		if ob_u1 >= ob_u0 else Rect2i()
 	sprite.set_occupancy(tex, Vector2(float(w), float(h)),
 		Vector2(lo.x, hi.y))
 
@@ -5952,8 +6010,17 @@ func _occluder_index_this_frame() -> Dictionary:
 ## +y, SE/NW run along y and face +x.
 func _screen_hidden_by_opaque(cell: Vector2i, level: int, idx: Dictionary,
 		run_is_x: bool) -> bool:
+	return _screen_occluder_of(cell, level, idx, run_is_x).z >= 0
+
+
+## The opaque cell `_screen_hidden_by_opaque()` found, as (x, y, level) — or z = -1
+## when nothing hides this glass cell. Returned rather than a bool so a diagnostic
+## can NAME the occluder (`INFILTRAITOR_GLASS_CLIP_WHY=1`): the clip's decision has
+## been misread from silhouettes more than once on this track.
+func _screen_occluder_of(cell: Vector2i, level: int, idx: Dictionary,
+		run_is_x: bool) -> Vector3i:
 	if idx.is_empty():
-		return false
+		return Vector3i(0, 0, -1)
 	var d: int = cell.x + cell.y
 	var u: int = cell.x - cell.y
 	var row: int = (d * 8 - int(GeometryCoords.VOXEL_STEP_PX) * int(level)) >> 3
@@ -5974,6 +6041,18 @@ func _screen_hidden_by_opaque(cell: Vector2i, level: int, idx: Dictionary,
 			var occ_level: int = int(floor(float(8 * (int(m) - (row + dr))) / 20.0))
 			if occ_level < level:
 				continue
+			## ⚠️ AND THE TWO ATOMS MUST ACTUALLY OVERLAP ON SCREEN. The bucket search
+			## reaches ±5 rows of 8 px — up to 47 px — and an atom is only
+			## `VOXEL_ATOM_H` (36) tall, so the outer buckets hold cells whose atom
+			## never touches this one. Found by naming the occluders: on
+			## `RENDER_ORDER` most of the pane's "hidden" cells were blamed on the
+			## tall pillar's roof cap, 40 px below them on screen — which is why
+			## destroying the pillar changed nothing. Exact, because d' and L' are:
+			## a cell's screen y is `8d - 20L` (the same formula the buckets use).
+			var dy: int = (8 * int(m) - int(GeometryCoords.VOXEL_STEP_PX) * occ_level) \
+				- (8 * d - int(GeometryCoords.VOXEL_STEP_PX) * level)
+			if absi(dy) >= GeometryCoords.VOXEL_ATOM_H:
+				continue
 			## ⚠️ AND IT MUST STAND IN FRONT OF THE PANE'S PLANE. The reach is a box,
 			## not a silhouette, so an opaque cell of the SAME wall — the next brick
 			## along the run, a head or sill band of a framed window — lands in it: one
@@ -5989,8 +6068,8 @@ func _screen_hidden_by_opaque(cell: Vector2i, level: int, idx: Dictionary,
 			var in_front: bool = ((int(m) - ou) >> 1) > cell.y if run_is_x \
 				else ((int(m) + ou) >> 1) > cell.x
 			if in_front:
-				return true
-	return false
+				return Vector3i((int(m) + ou) >> 1, (int(m) - ou) >> 1, occ_level)
+	return Vector3i(0, 0, -1)
 
 
 ## ── CRACK-03 — APPLYING THE RIM ──────────────────────────────────────────────

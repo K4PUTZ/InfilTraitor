@@ -93,6 +93,9 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 				return 0
 			layer.erase_cell(entry["cell"])
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+			## RENDER_ORDER — the cook's destroy seam: a wall that covered part of a
+			## cracked pane has to un-cut the web. Flags only; `flush()` below re-cuts.
+			voxel_renderer.note_opaque_erased(int(entry["level"]), entry["cell"])
 			## GLASS G3 — a shattered glass voxel lives on `_glass_layers`, which
 			## `get_layer()` above does not reach; erase it there too. A no-op for
 			## every non-glass cell (no glass sublayer at that level).

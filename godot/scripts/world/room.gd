@@ -6819,6 +6819,97 @@ func _capture_glass_crack_demo() -> void:
 	print("[CRACK-DEMO] shards: registry=%d board=%d"
 		% [_voxel_renderer._glass_shard_cells.size(), _voxel_renderer.count_glass_shards()])
 
+	## RENDER_ORDER — the crack's clip must FOLLOW the destruction of the wall that
+	## covered the pane. `INFILTRAITOR_CRACK_DEMO_DESTROY_GU=x,y` (a GRID GU, i.e.
+	## `grid_pos >> 3`, buffer included) destroys every standing opaque voxel of that
+	## GU at or above the ground plane — slices and slabs — through the SAME seams a
+	## round uses (`set_damage` → dirty pass, recorded to base like the bore), then
+	## saves `_destroyed.png`. Where that wall cut the web, the web must now be drawn.
+	var destroy_env := OS.get_environment("INFILTRAITOR_CRACK_DEMO_DESTROY_GU")
+	if destroy_env != "":
+		var dparts := destroy_env.split(",")
+		if dparts.size() != 2 or not dparts[0].is_valid_int() or not dparts[1].is_valid_int():
+			push_warning("[CRACK-DEMO] INFILTRAITOR_CRACK_DEMO_DESTROY_GU=%s — expected \"x,y\"" % destroy_env)
+		else:
+			var dgu := Vector2i(dparts[0].to_int(), dparts[1].to_int())
+			var ground: int = _voxel_renderer.ground_plane_level()
+			var killed_slice: int = 0
+			var killed_slab: int = 0
+			## Every slice of every EDGE of that GU — BOTH sides. A block's wall is two
+			## slices per edge (`sibling_slice()`) and the outer one's voxels sit in the
+			## NEIGHBOUR GU: taking only the voxels inside the GU left the pillar's
+			## outer shell standing (board: 32 cells per level around it), and that
+			## shell went on cutting the web — correctly.
+			var dslices: Dictionary = {}
+			for e in _edge_registry.edges_touching_gu(dgu):
+				for s in _edge_registry.slices_of_edge(e.id):
+					dslices[s.id] = s
+			for s in dslices.values():
+				if GlassMaterials.is_glass(s.material):
+					continue
+				for v in s.voxels:
+					if v.level >= ground and v.damage_state != Voxel.DamageState.DESTROYED:
+						v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+						record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED)
+						killed_slice += 1
+			## A block's roof cap OVERHANGS its footprint by one voxel (RENDER_ORDER's
+			## tall pillar: 10 x 10 on level 104), so a slab is taken WHOLE if any of
+			## its voxels above the ground stands in the GU. The first cut of this test
+			## left the cap as a ring outside the 8 x 8, the ring went on cutting the
+			## web, and the run proved nothing about the fix it was written for.
+			if _slab_registry != null:
+				for slab in _slab_registry.all_slabs():
+					if GlassMaterials.is_glass(slab.material):
+						continue
+					var touches: bool = false
+					for v in slab.voxels:
+						if Vector2i(v.grid_pos.x >> 3, v.grid_pos.y >> 3) == dgu and v.level >= ground:
+							touches = true
+							break
+					if not touches:
+						continue
+					for v in slab.voxels:
+						if v.level >= ground and v.damage_state != Voxel.DamageState.DESTROYED:
+							v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+							record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED)
+							killed_slab += 1
+			await _voxel_renderer.process_dirty_async(_edge_registry)
+			if _slab_registry != null:
+				_voxel_renderer.process_dirty_slabs(_slab_registry)
+			## `INFILTRAITOR_CRACK_DEMO_DESTROY_WAIT=<frames>` (default 10). 896 voxels
+			## destroyed at once leave a pillar-shaped cloud of dust that reads as the
+			## pillar still standing; wait it out before judging the web behind it.
+			var dwait_env := OS.get_environment("INFILTRAITOR_CRACK_DEMO_DESTROY_WAIT")
+			var dwait: int = dwait_env.to_int() if dwait_env.is_valid_int() else 10
+			for _c in range(dwait):
+				await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_destroyed.png" % [dir, tag])
+			print("[CRACK-DEMO] destroyed GU %s through the dirty pass: %d slice + %d slab voxel(s) -> glass_crack_demo_%s_destroyed.png"
+				% [dgu, killed_slice, killed_slab, tag])
+			## ⚠️ THE BOARD, NOT THE COUNTER. The first run reported 896 voxels
+			## destroyed and photographed the pillar still standing. What is left in
+			## the GU's voxel rect, per level, read back from the tilemap:
+			var left_total: int = 0
+			var left_levels: Array = []
+			for lvl in _voxel_renderer.level_keys():
+				if int(lvl) < ground:
+					continue
+				var lay: TileMapLayer = _voxel_renderer.get_layer(int(lvl))
+				if lay == null:
+					continue
+				var n_left: int = 0
+				## One voxel of margin: the cap's overhang lives there.
+				for cx in range(dgu.x * 8 - 1, dgu.x * 8 + 9):
+					for cy in range(dgu.y * 8 - 1, dgu.y * 8 + 9):
+						if lay.get_cell_source_id(Vector2i(cx, cy)) != -1:
+							n_left += 1
+				if n_left > 0:
+					left_total += n_left
+					left_levels.append("%d:%d" % [lvl, n_left])
+			print("[CRACK-DEMO] board after the destroy: %d cell(s) still in GU %s — %s"
+				% [left_total, dgu, " ".join(left_levels) if not left_levels.is_empty() else "none"])
+
 	## G-D30 — ONE crack, ONE boot, three values of the dial. Separate boots would
 	## not answer the question: the pane, the light and the shot would all be the
 	## same by intent and different in fact, and the Director would be comparing

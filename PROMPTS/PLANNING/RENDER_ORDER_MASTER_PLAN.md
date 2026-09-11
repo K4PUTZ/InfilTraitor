@@ -1116,6 +1116,18 @@ it ran. An absence check passing for the wrong reason, again.
 | 2 | the floor in front of a pane "hid" its whole bottom row — 48 of 48 foot cells on GLASS | GLASS `glass_crack_demo` | an occluder must draw AFTER the glass cell, i.e. sit at a level ≥ it. The bucket's max depth already encodes its level exactly (`8d − 20L ∈ [8r, 8r+7]`), so no extra storage | 0 false foot cells; `RENDER_ORDER` 502 → 475 |
 | 3 | `reap_orphaned_remnants()` — ON THE PLAY PATH (`agent_shot_controller.gd:693`, `world_delta.gd:408`) — erases glass with no flush after it, so the mirror would have kept a felled remnant painted | code read, then `glass_reap_demo` | `erase_glass_cell()` queues the sync itself | reap PASS, mirror removed 59 + 244 cells |
 | 4 | **the Director's report** (*"uma parte do vidro que não ficou rachada"*, a brick-framed window on GLASS). The clip's reach is a BOX, so an opaque cell of the SAME wall — the next brick along the run, the window's head/sill band — counted as "nearer": one depth step, one column over, sharing an edge and covering nothing. 225 of 480 cells hidden with nothing in front. The Director suspected the multi-material slice; the bands are what put coplanar opaque cells next to the glass, but the defect was the clip's | `glass_blast_demo` drawn with `GLASS_CLIP=diag`, against a `GLASS_CLIP=0` control that showed the whole web | the occluder must stand IN FRONT of the pane's plane (`y` for SW/NE, `x` for SE/NW). Exact from the same max-depth cell: with the column fixed, `x`, `y` and the level all grow with depth | 225 → 120 — the remaining 120 are the pane's bottom 5 rows, where the room's front wall stands nearer (read from the picture, not verified cell by cell); head-band pane 46 → 0; `RENDER_ORDER` **0 px** different |
+| 5 | the clip's REACH over-reached its own atom: ±5 screen rows of 8 px is up to 47 px, and an atom is `VOXEL_ATOM_H` = 36. On `RENDER_ORDER` most of the pane's "hidden" cells were blamed on the tall pillar's roof cap sitting 40 px below them — which is why the first destruction test changed nothing. Found only by NAMING the occluders (`INFILTRAITOR_GLASS_CLIP_WHY=1`) | `RENDER_ORDER`, `GLASS_CLIP_WHY` | the atoms must overlap: `|Δy| < VOXEL_ATOM_H` with `Δy = (8d' − 20L') − (8d − 20L)`, exact from the recovered (d', L') | `RENDER_ORDER` 475 → 441; the framed window on GLASS 120 → 96 |
+| 6 | **the clip did not follow OPAQUE destruction** — the owed item below, Director: *"é importante a gente fazer o conserto do corte quando o bloco da frente for destruído"*. The occupancy rebuilt only on GLASS erasure, so destroying the wall in front of a cracked pane left the web cut where the wall had been | red/green on `RENDER_ORDER` with `INFILTRAITOR_CRACK_DEMO_DESTROY_GU=8,9` (the tall pillar, destroyed through `set_damage` → dirty pass), the RED build being the same code minus the two hook lines | `note_opaque_erased()` at the three destruction erase seams (slice + slab dirty passes, the cook's `destroy`), flagging a re-cut only when the cell falls in a crack's `occ_bounds` — a few integer compares otherwise, never from `note_external_write()` | **red: 441 hidden, no rebuild; green: 441 → 68**, the remaining 68 named on the short pillar, which still stands |
+
+⚠️ **The destruction test needed three cuts before it could prove anything**, each
+refuted by reading the BOARD rather than the counter: (1) "896 voxels destroyed" with
+the pillar still in the picture — a 10-frame wait photographed the dust, not the
+pillar; (2) destroying the GU's voxels left the roof cap's one-voxel OVERHANG as a ring
+outside the 8 × 8 (census: 10 × 10 on level 104); (3) a block's wall is TWO slices per
+edge (`sibling_slice()`) and the outer one lives in the neighbour GU, so the shell
+stood (board: 32 cells per level). The demo now takes every slice of every edge of the
+GU and any slab touching it whole. ⚠️ The capture harness, not the fix, was wrong all
+three times.
 
 **Cost on the real map** (GLASS, vsync off, M1 1280×720 — not a phone): grenade frame
 A 3.1 ms / 1 386 draw calls vs the old path 3.3 ms / 1 632; the reap scene A 17.9 ms vs
@@ -1127,12 +1139,9 @@ by it (visible in the grenade demo); `G-D2`'s container is gone, so pane-over-pa
 compounds (ratified as correct: *"é pra ser mais escuro mesmo"*).
 
 **Owed:**
-- **The clip does not react to OPAQUE destruction.** The crack occupancy rebuilds only
-  when GLASS is erased, so destroying the wall that covered part of a pane leaves the
-  web cut where the wall was, until the next glass erase. True of the gated version
-  too, shipping now. Dirtying it on opaque erases costs one index build (~13 ms on
-  GLASS) per flush while any crack exists — to be measured on a detonation cook
-  before it is chosen.
+- ✅ ~~The clip does not react to OPAQUE destruction~~ — FIXED, row 6 above. Its cost
+  on a detonation cook was not measured; it is bounded by one index build per flush
+  and paid only when a destroyed cell lies inside a live crack's `occ_bounds`.
 - The seam index is not refreshed by dirty passes (a pos-7 voxel beside a new hole).
 - A device run — every number here is M1.
 - The hidden glass STATE layer holds a second copy of every glass cell. Memory cost

@@ -657,6 +657,86 @@ and `--mem-poll` is how it gets sampled.
 
 ---
 
+## 10.8 🔴 THE GALAXY REPLICATES IT — a 2× faster CPU bought 8%
+
+Same battery on a **Galaxy A16 5G** (SM-A166W, Exynos 1330 / `s5e8535`, Android
+16, **3.37 GB** — less RAM than the G04s — 1080×2340 @450 dpi, 8 GB of swap).
+
+### 10.8.1 The comparison that settles it
+
+| | Moto G04s (T606) | Galaxy A16 5G (Exynos 1330) | ratio |
+|---|---|---|---|
+| boot → map loaded | ~51 s | **24.5 s** | **2.08× faster** |
+| playback mean (3rd run) | 104.5 ms | **95.9 ms** | **1.09× faster** |
+| playback worst frame | 486.1 ms | **2 134.8 ms** | **4.4× worse** |
+| GL mtrack at load | 734 MB | **746 MB** | — |
+| GL mtrack after 3 blasts | 1.05 GB | **1.04 GB** | — |
+| TOTAL PSS at load | 2.22 GB | **2.24 GB** | — |
+| swap at idle | 817 MB | **1.42 GB** | — |
+| RSS resident, steady | 1.47 GB | **840 MB** | — |
+
+**A CPU that halves the boot time moves playback by 8%.** That is the finding.
+Whatever the detonation is waiting on, it is not arithmetic.
+
+### 10.8.2 The footprint is architectural, and the screen proves it
+
+Graphics memory is **746 MB vs 734 MB** — a 1.6% difference — on a screen with
+**2.2× the pixels** (1080×2340 vs 720×1612). If any meaningful part of that
+figure were framebuffer, resolution-dependent surfaces, or render targets, the
+Galaxy would be far higher. It is not.
+
+The same holds after three detonations: **1.04 GB vs 1.05 GB**. Two different
+SoCs, two different GPU vendors, two different Android versions, two different
+screen resolutions — and the same footprint to within 1%. **It is our board,
+and it is hardware-independent.**
+
+The `MEM_CENSUS` numbers are byte-identical on both: 135 sources, 32 987 tiles,
+163.8 MB of atlas, 32 opaque + 16 glass layers, 145 448 placed cells.
+
+**The damage-variant bake is exonerated a second time**, independently:
+GL mtrack 463.0 MB before it and 465.2 MB after, on a different SoC and OS.
+
+### 10.8.3 ⚠️ Where the prediction was WRONG, and what it teaches
+
+§10.7 predicted the Galaxy would be *"equal or worse"*. On the mean it was
+right — 8% is equal, not the 2× a doubled CPU would imply. **On the worst frame
+it was wrong in an informative direction.**
+
+The two handsets trend in OPPOSITE directions across three detonations:
+
+```
+Moto G04s    worst frame   4728.7  ->  3746.5  ->   486.1 ms    (warms up)
+Galaxy A16   worst frame    672.6  ->  2059.6  ->  2134.8 ms    (degrades)
+```
+
+The G04s warms: pages faulted in by the first blast are still resident for the
+third. The Galaxy cannot — it has **450 MB less RAM** and is already 1.42 GB in
+swap at idle with only 840 MB of 2.24 GB resident. Each detonation evicts what
+the last one faulted in, so there is no warm state to reach.
+
+**That is the mechanism confirmed from the other side.** §10.5 read the
+G04s's 4728 → 486 as one-time costs being paid; the Galaxy shows the same
+memory story producing the opposite curve when the headroom is smaller. A
+reading that explains both is stronger than one that explained the first.
+
+⚠️ It also retires a convenience: **"take the third run, it is warm" is not a
+general rule.** It was a property of that handset's headroom. Report the curve.
+
+### 10.8.4 The verdict on the priority question
+
+Against §0.5's ratified budget (30 fps / 33.3 ms on playback frames), on the
+better of the two target handsets:
+
+- playback mean **95.9 ms — 2.9× over**, ~10.4 fps;
+- worst playback frame **2 134.8 ms — 64× over**;
+- the 24–25 fps floor is missed by **2.4×**.
+
+**The detonation is not viable on either target device, and the cause is not
+the device.** Two handsets that differ in CPU class, GPU vendor, OS version,
+screen resolution and RAM produce the same 2.2 GB board and the same verdict.
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).

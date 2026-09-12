@@ -17,12 +17,29 @@ ngrok http 8080
 
 ### Testing on Mobile
 
-| Access | URL | Use Case |
-|--------|-----|----------|
-| **Same WiFi (LAN)** | `http://<your-mac-ip>:8080` | Fast, low latency |
-| **Any network (ngrok)** | `https://...ngrok-free.dev` | Remote testing, sharing |
+| Access | URL | Verdict |
+|--------|-----|---------|
+| **Any network (ngrok)** | `https://...ngrok-free.dev` | ✅ The only route that runs the game |
+| **Same WiFi (LAN)** | `http://<your-mac-ip>:8080` | ⛔ Loads the page, refuses to RUN — see below |
 
-**Find your Mac IP:**
+⚠️ **THE LAN URL CANNOT RUN THE GAME, AND THE PAGE STILL LOADS** (measured
+2026-09-12). Godot web requires a **secure context**, which is HTTPS *or*
+`localhost` — never a LAN IP over `http://`. The phone shows:
+
+```
+The following features required to run Godot projects on the Web are missing:
+Secure Context - Check web server configuration (use HTTPS)
+```
+
+So the HTTPS tunnel is not a convenience for remote testing; it is how a phone
+runs this build at all. Two related traps: a phone browser silently upgrades a
+typed IP to `https://`, which reaches the plain `http.server` as a TLS handshake
+and is logged as `code 400, message Bad request version` — and if a server is
+already on 8080 (a previous session's, or the agent's), a second one dies with
+`Address already in use` while the first keeps answering fine.
+
+**Find your Mac IP** (for anything other than running the game — the LAN route
+above cannot satisfy the secure-context requirement):
 ```bash
 ipconfig getifaddr en0
 ```
@@ -51,8 +68,11 @@ cd "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR"
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Web" export/web/index.html
 ```
 
-The web preset has `thread_support=false`, so plain `http.server` works — no
-cross-origin headers, no HTTPS needed on the LAN.
+The web preset has `thread_support=false`, so plain `http.server` is enough — no
+`SharedArrayBuffer`, so no COOP/COEP cross-origin headers to configure.
+⚠️ **That removes the HEADER requirement, NOT the HTTPS one.** Secure context is
+required regardless of threads, so serve it through the ngrok tunnel for a phone;
+`http.server` alone only works in a desktop browser on `localhost`.
 
 ### ⚠️ Three export traps, found 2026-09-11 (all fixed in `export_presets.cfg`)
 

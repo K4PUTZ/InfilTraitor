@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-11 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-12 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -297,6 +297,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-10_GLASS_RAMP_AND_THE_XRAY_PLAN.md
 - RESUMO_SESSAO_2026-09-10_OPTION_A_SHIPPED.md
 - RESUMO_SESSAO_2026-09-10_RENDER_ORDER.md
+- RESUMO_SESSAO_2026-09-11_EXPORT_FIXES.md
 - RESUMO_SESSAO_2026-09-11_MOBILE_TEST.md
 <!-- AUTO:END pending_prompts -->
 

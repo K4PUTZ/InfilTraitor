@@ -286,6 +286,9 @@ def main() -> int:
     ap.add_argument("--device", default=None,
                     help="adb serial (or a substring of one) — required when "
                          "more than one handset is attached")
+    ap.add_argument("--leave-running", action="store_true",
+                    help="do NOT force-stop the game when the capture ends "
+                         "(default is to stop it)")
     ap.add_argument("--mem-poll", type=float, default=0.0, metavar="SECONDS",
                     help="sample `dumpsys meminfo` every SECONDS during the run. "
                          "VmRSS from inside the app cannot see graphics driver "
@@ -325,6 +328,15 @@ def main() -> int:
         return 1
 
     lines = _capture(adb, args.seconds, args.mem_poll)
+
+    ## Director, 2026-09-12: "Lembra de finalizar o game quando terminar os
+    ## testes." Made structural rather than remembered — a measurement run that
+    ## walks away leaving the game resident holds ~2.2 GB on a 3.8 GB handset,
+    ## which is both rude to the device and a contaminant: the NEXT run's
+    ## baseline would start from whatever this one left behind.
+    if not args.leave_running:
+        _sh(adb, ["shell", "am", "force-stop", PACKAGE])
+        print("[DIAG-02] force-stopped %s" % PACKAGE)
 
     if args.save:
         out = Path(args.save)

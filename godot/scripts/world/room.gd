@@ -9065,6 +9065,17 @@ func _capture_throw_event_filmstrip() -> void:
 		if _blast_wireframe_overlay != null:
 			_blast_wireframe_overlay.clear()
 
+	## D-1's per-frame number CANNOT be read off a strip. The GPU readback plus the
+	## PNG write put a floor of ~196 ms under EVERY frame of the event, so what a
+	## strip run measures is the capture, not the blast: two boots agreed at mean
+	## 202 ms / worst 432 ms against the ratified 19.1 / 201.9. With
+	## `INFILTRAITOR_EVENT_NO_STRIP=1` the same event, the same throw and the same
+	## awaits run with only the saving skipped, and `[E-FRAME]` reports the event's
+	## own frames.
+	## ⚠️ THE LOOP ITSELF MUST STAY. Shortening it instead (via
+	## `INFILTRAITOR_EVENT_FRAMES_TOTAL`) ends the capture — and the capture quits
+	## the process — so the throw never plays out and the probe never reports.
+	var no_strip := OS.get_environment("INFILTRAITOR_EVENT_NO_STRIP") == "1"
 	var shot := 0
 	var threw := false
 	for i in range(maxi(total, 1)):
@@ -9072,10 +9083,11 @@ func _capture_throw_event_filmstrip() -> void:
 			threw = true
 			_test_zone_controller.execute_grenade_throw()
 		await RenderingServer.frame_post_draw
-		var img := get_viewport().get_texture().get_image()
-		if img != null:
-			img.save_png("%s/ev_%03d.png" % [out_dir, shot])
-			shot += 1
+		if not no_strip:
+			var img := get_viewport().get_texture().get_image()
+			if img != null:
+				img.save_png("%s/ev_%03d.png" % [out_dir, shot])
+				shot += 1
 		await get_tree().process_frame
 	print("[EVENT-FILM] wrote %d frame(s) to %s (throw on frame %d)" % [shot, out_dir, throw_at])
 

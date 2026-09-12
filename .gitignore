@@ -155,3 +155,8 @@ docs/github-recovery-codes.txt
 *.pem
 *.key
 .env
+
+# DIAG-01 — a local DevFlags override file must never be committed: res:// is a
+# candidate path, so a committed one would silently override the environment for
+# everyone, in every build.
+dev_flags.cfg

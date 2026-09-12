@@ -150,7 +150,42 @@ keep channel A as the fallback if Godot refuses the path.
 
 ---
 
-## 4. DIAG-01 — `DevFlags`, the one seam
+## 4. DIAG-01 — `DevFlags`, the one seam ✅ BUILT 2026-09-12 (01a + 01b)
+
+**Verified on the handset, which was the one step §3.1 left unproven:**
+
+```
+[DevFlags] 3 override(s) from /sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg
+           — EVENT_FRAMES=1, MAP=PLAYGROUND, NO_VSYNC=0
+```
+
+Release APK, no declared permission, no debuggable build, 84 bytes pushed in
+0.000 s. Godot reads the absolute external path; the channel-A fallback is not
+needed.
+
+**01b migrated ten sites in `room.gd`** — `EVENT_FRAMES`, `EVENT_FRAMES_TOTAL`,
+`EVENT_THROW_AT`, `EVENT_NO_STRIP`, `FRAME_PROBE` (×2), `NO_VSYNC`, `MAP` (×2).
+The other ~195 are untouched, per the staged policy below.
+
+**Two traps found while migrating, both recorded in the code:**
+
+- **The autoload is absent under `godot --script`**, which is how several tools
+  and selftests instantiate `room.gd`. `room.gd` therefore asks through
+  `_dev_flag()`, which uses `get_node_or_null("/root/DevFlags")` — the project's
+  established idiom (`Localization`) — and falls back to the literal
+  pre-DIAG-01 expression, so a `--script` context behaves exactly as before.
+- **`_frame_probe` could not stay a member initialiser.** Those run before the
+  node is in the tree, so `/root/DevFlags` is unreachable and every device run
+  would have fallen silently through to the environment — which on Android is
+  empty. It resolves in `_ready()` now.
+
+`dev_flags_selftest.tscn` pins the seam and was proven RED before green:
+inverting the resolution order (file before environment) fails TEST 2 with
+`environment not honoured — on()=false value()='0'`. `dev_flags.cfg` is
+gitignored, because `res://` is a candidate path and a committed one would
+silently override the environment for everyone in every build.
+
+### 4.1 The original design (unchanged)
 
 An autoload exposing the diagnostic switch, with a strict resolution order:
 
@@ -388,7 +423,7 @@ DIAG-06  export_android.py           ✅ BUILT 2026-09-12
 DIAG-00  flag-channel spike          ✅ RESOLVED 2026-09-12 (channel B′)
 DIAG-02  device_run.py + preconditions  ✅ BUILT 2026-09-12
 DIAG-05  emulator install            (parallel — unblocks harness work)
-DIAG-01  DevFlags seam + 01b         ← NEXT, and the last thing in the way
+DIAG-01  DevFlags seam + 01b         ✅ BUILT 2026-09-12
 DIAG-02b logcat parser
 DIAG-03  scripted scenario on device
          ── first real number here ──

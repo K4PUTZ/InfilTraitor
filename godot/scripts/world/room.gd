@@ -1798,7 +1798,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## GLASS G-MAP — `INFILTRAITOR_MAP` is a capture-only override; it must NOT
 	## rewrite the persisted cfg, or a capture run leaves the editor on a
 	## different map on its next boot.
-	if OS.get_environment("INFILTRAITOR_MAP") == "":
+	if _dev_flag("MAP") == "":
 		var current_map_config := ConfigFile.new()
 		current_map_config.set_value("state", "map_id", new_map_id)
 		if new_map_id == "PROCEDURAL":
@@ -1971,6 +1971,9 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 
 func _ready() -> void:
+	## DIAG-01 — see `_dev_flag()`: this cannot be a member initialiser.
+	_frame_probe = _dev_flag_on("FRAME_PROBE")
+
 	## §12.11 — A DETERMINISTIC RNG, so a VFX pixel gate can exist at all.
 	##
 	## §8.6 asks P7b for "0 differing pixels against a same-binary control", and
@@ -2253,7 +2256,7 @@ func _ready() -> void:
 	## GLASS G-MAP — a one-shot override for capture tooling: `INFILTRAITOR_MAP=GLASS`
 	## boots straight into that map without touching the persisted cfg, so a
 	## capture run does not leave the editor on a different map afterwards.
-	var env_map := OS.get_environment("INFILTRAITOR_MAP")
+	var env_map := _dev_flag("MAP")
 	if env_map != "":
 		map_id = env_map
 
@@ -5696,7 +5699,31 @@ func _collect_all_voxel_cells() -> Array:
 ## and are the only way to split what is left into DRAWING and OTHER SCRIPTS —
 ## note that a CanvasItem's `_draw()` is NOT counted in render cpu (measured: the
 ## VFX overlays cost 25 ms/frame and moved it by nothing).
-var _frame_probe: bool = OS.get_environment("INFILTRAITOR_FRAME_PROBE") == "1"
+## DIAG-01 — every diagnostic switch below is asked through `DevFlags`, which
+## resolves `OS.get_environment` FIRST and only then the overrides file an APK
+## can actually be given (env vars do not reach an Android app).
+##
+## ⚠️ THE AUTOLOAD IS ABSENT UNDER `godot --script`, which is how several tools
+## and selftests instantiate this scene. `get_node_or_null("/root/DevFlags")` is
+## the project's established idiom for exactly that (see `Localization`), and the
+## fallback here is the literal pre-DIAG-01 expression, so a `--script` context
+## behaves precisely as it did before this seam existed.
+func _dev_flag(flag_name: String, fallback: String = "") -> String:
+	var flags: Node = get_node_or_null("/root/DevFlags")
+	if flags == null:
+		var from_env: String = OS.get_environment("INFILTRAITOR_" + flag_name)
+		return from_env if not from_env.is_empty() else fallback
+	return flags.value(flag_name, fallback)
+
+
+func _dev_flag_on(flag_name: String) -> bool:
+	return _dev_flag(flag_name, "") == "1"
+
+
+## ⚠️ Resolved in `_ready()`, NOT here. A member initialiser runs before the node
+## is in the tree, so `/root/DevFlags` is not reachable yet and every device run
+## would silently fall through to the environment — which on Android is empty.
+var _frame_probe: bool = false
 var _frame_probe_n: int = 0
 var _frame_probe_us: int = 0
 var _frame_probe_last: int = 0
@@ -5720,7 +5747,7 @@ func _process(_delta: float) -> void:
 			## question is CPU (the `render cpu` column still moves) and useless
 			## the moment the question is GPU — which a BackBufferCopy is almost
 			## entirely. Off by default: it makes the machine spin.
-			if OS.get_environment("INFILTRAITOR_NO_VSYNC") == "1":
+			if _dev_flag_on("NO_VSYNC"):
 				DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 				Engine.max_fps = 0
 				print("[FRAME-PROBE] vsync DISABLED — ms/frame is a real cost now")
@@ -5834,7 +5861,7 @@ var _event_probe_marks: Array = []
 ## Opens the window and names the first beat. Called where the event begins, so a
 ## boot, a map load and the seconds the player spends aiming are all outside it.
 func event_probe_arm(beat: String) -> void:
-	_event_probe_on = OS.get_environment("INFILTRAITOR_EVENT_FRAMES") == "1"
+	_event_probe_on = _dev_flag_on("EVENT_FRAMES")
 	if not _event_probe_on:
 		return
 	_event_probe_gaps = PackedInt32Array()
@@ -7084,7 +7111,7 @@ func _capture_glass_crack_demo() -> void:
 	## so the LOADED side of CRACK-02 (N extra sprite quads on screen) is a
 	## measurement on the same map as the idle side. Run it with --disable-vsync
 	## or every number under 16.7 ms is the 60 Hz pace, not the work.
-	if OS.get_environment("INFILTRAITOR_FRAME_PROBE") == "1":
+	if _dev_flag_on("FRAME_PROBE"):
 		print("[CRACK-DEMO] holding for the frame probe (%d crack sprite(s) on screen)"
 			% _voxel_renderer.glass_crack_count())
 		for _p in range(420):
@@ -8995,9 +9022,9 @@ func _capture_throw_event_filmstrip() -> void:
 		if tp.size() == 2 and tp[0].is_valid_int() and tp[1].is_valid_int():
 			target_gu = Vector2i(tp[0].to_int(), tp[1].to_int())
 
-	var total_env := OS.get_environment("INFILTRAITOR_EVENT_FRAMES_TOTAL")
+	var total_env := _dev_flag("EVENT_FRAMES_TOTAL")
 	var total: int = total_env.to_int() if total_env.is_valid_int() else 620
-	var throw_at_env := OS.get_environment("INFILTRAITOR_EVENT_THROW_AT")
+	var throw_at_env := _dev_flag("EVENT_THROW_AT")
 	var throw_at: int = throw_at_env.to_int() if throw_at_env.is_valid_int() else 40
 	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
 	var zoom: float = zoom_env.to_float() if zoom_env.is_valid_float() else 0.85
@@ -9075,7 +9102,7 @@ func _capture_throw_event_filmstrip() -> void:
 	## ⚠️ THE LOOP ITSELF MUST STAY. Shortening it instead (via
 	## `INFILTRAITOR_EVENT_FRAMES_TOTAL`) ends the capture — and the capture quits
 	## the process — so the throw never plays out and the probe never reports.
-	var no_strip := OS.get_environment("INFILTRAITOR_EVENT_NO_STRIP") == "1"
+	var no_strip := _dev_flag_on("EVENT_NO_STRIP")
 	var shot := 0
 	var threw := false
 	for i in range(maxi(total, 1)):

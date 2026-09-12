@@ -280,6 +280,66 @@ these before wiring widgets to anything.
 `DebugToolsController.create_grenade_button()` (called from `room.gd` next to the
 map-loader button). Press = grenade mode, press again = cancel.
 
+### Part 6 — Hamburger → main menu (MENU-BTN-01) — *added 2026-09-12, Director-requested*
+
+**Why:** from the first real handset session (Moto G04s, native APK). Director:
+*"uma coisa faltando que já fica importante é botão sanduíche logo no começo da
+barra de ferramentas, pra abrir o menu principal."* On a phone there is no key
+to press and no right-click; the main menu is currently unreachable by touch.
+
+**What exists already:** `godot/scripts/ui/main_menu_panel.gd` — the panel is
+built. This is a way IN to it, not a new menu.
+
+**Where it lives:** first slot of `godot/scripts/ui/top_bar_panel.gd`. Both files
+are in `godot/scripts/ui/`, so this is entirely DESIGN-branch work — CLAUDE is
+Engine-Only and must not touch either.
+
+**Engine side:** likely nothing. If the panel needs a state or a signal the
+engine owns, ask CLAUDE to expose it through `hud_controller.gd` (Invariant 11 —
+the engine never holds a Button).
+
+---
+
+### Part 7 — Orientation drives M/D (ORIENT-01) — *added 2026-09-12, Director-requested*
+
+**Why:** Director, from the same handset session: *"precisamos atualizar o
+formato da tela conforme a orientação do acelerômetro do aparelho usando retrato
+ou paisagem (M/D) ... basicamente a mesma coisa que clicar no botão."*
+
+**The ruling, in full:** portrait stays the DEFAULT and stays LOCKED. Landscape is
+wanted for **debug** and *possibly* as a real mode later — it is not being opened
+up by this task. Director: *"a proposta é bloquear verticalmente por default, mas
+também queremos debug e possivelmente um modo paisagem disponíveis."*
+
+**What the M/D system already is** (engine side, `room.gd` — CLAUDE's):
+
+| | viewport | set by |
+|---|---|---|
+| **M** | `content_scale_size` 390×844 | `_apply_boot_viewport()` forces this on any handheld |
+| **D** | 1280×720 | `_apply_viewport_mode()` |
+
+The toggle arrives as `HudController.viewport_toggled`; the button's label is set
+through `set_viewport_button_text("M"/"D")` — already correctly behind the facade.
+
+**⚠️ The trap for whoever builds this.** `_apply_viewport_mode()` also calls
+`DisplayServer.window_set_size()`, and `room.gd:2765` already records why that is
+wrong on a handheld: *"on the web the browser owns the canvas, and on Android the
+window is the screen, so the resize is at best ignored."* An orientation-driven
+switch must move `content_scale_size` **only**. Reusing the button's code path
+whole will appear to work on desktop and do the wrong thing on the phone.
+
+**Split of work:**
+- **Engine (CLAUDE):** `display/window/handheld/orientation` in `project.godot`
+  (absent today, so the Godot default applies), the orientation signal, and the
+  `content_scale_size`-only switch. Gated so portrait stays locked by default.
+- **Design (JAMES):** the HUD reflowing at 844×390 — a genuinely different shape,
+  not a stretch of the portrait layout. This is the larger half.
+
+⚠️ **This amends project canon.** `CLAUDE.md` states the game is *"mobile-first
+(iOS/Android), portrait orientation"*. Landscape as a debug affordance does not
+overturn that; landscape as a supported play mode would, and needs its own
+ratification before anyone builds toward it.
+
 ## 5. Prompt Sequence
 
 ```

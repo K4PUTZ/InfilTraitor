@@ -967,6 +967,18 @@ func is_in_targeting_mode() -> bool:
 ## DUST / SPARK / CHIP debris of that same dispatch. It is not blocked by
 ## anything any more (destroy entries could take a material the same way smoke
 ## did) — it is simply out of the scope that was requested.
+## DIAG-10 — TRUE until the presenter has finished the whole blast.
+##
+## ⚠️ NOT the same as `Room.is_resolving_action()`, and the difference cost a
+## benchmark run. That flag is the ACTION LOCK, released by D-6 once every smoke
+## entry is dispatched — measured 2026-09-12 as 114 frames into a ~210-frame
+## blast. A harness that waits on it and then quits kills the process before
+## `event_probe_report()` fires, and the run produces no `[E-FRAME]` line at all
+## while looking like it completed.
+func is_blast_playing() -> bool:
+	return _active_presenter != null
+
+
 func detonate_active() -> void:
 	if _active_index < 0 or _active_index >= _grenades.size():
 		return

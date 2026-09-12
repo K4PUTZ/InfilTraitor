@@ -46,6 +46,10 @@ static var debug_marker_facade: bool = false
 ## After boot completes, this flag is reset to false (one-shot behavior).
 static var debug_clear_bake_cache: bool = false
 
+## DIAG-10 ablation, set by `DevFlags._ready()` from the `NO_BAKE` flag. See
+## `load_config()` for why this exists next to `INFILTRAITOR_FAST_BOOT`.
+static var force_no_bake: bool = false
+
 
 static func load_config() -> void:
 	# Load from config file if it exists
@@ -65,5 +69,21 @@ static func load_config() -> void:
 	if OS.get_environment("INFILTRAITOR_FAST_BOOT") == "1":
 		enabled = false
 		print("[BakeConfig] ⚡ FAST BOOT — INFILTRAITOR_FAST_BOOT=1, baking forced OFF")
+
+	## DIAG-10 — the same kill-switch, reachable INSIDE AN APK. `FAST_BOOT` above
+	## reads the environment directly, which is inert on Android, so the one
+	## ablation the device measurements most want could not be run there.
+	## `force_no_bake` is set by `DevFlags._ready()` (which runs before any scene)
+	## from the `NO_BAKE` flag, and is honoured last so it wins over the config
+	## file and the dev default alike.
+	##
+	## ⚠️ This is an ABLATION SWITCH, not a fix. On desktop, turning the bake off
+	## was measured as a REGRESSION (`PERFORMANCE_MASTER_PLAN` — off = +243%), so
+	## a faster number here would not by itself be an argument for shipping
+	## without it. What it answers is narrower and worth knowing: how much of the
+	## 2.2 GB board is the bake.
+	if force_no_bake:
+		enabled = false
+		print("[BakeConfig] ⚡ NO_BAKE — DevFlags ablation, baking forced OFF")
 
 	print("[BakeConfig] Enabled: %s, Blend Mode: %d, Facade Tops: %s" % [enabled, blend_mode, facade_tops])

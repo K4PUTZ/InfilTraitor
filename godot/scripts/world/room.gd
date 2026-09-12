@@ -1977,6 +1977,20 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	if _dev_flag_on("MEM_CENSUS"):
 		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)
 
+	## DIAG-10 — the benchmark gets its OWN entry point, deliberately not the
+	## capture-action dispatch. That dispatch lives inside
+	## `_run_auto_screenshot_capture()`, which only runs when screenshot capture
+	## is enabled — so a benchmark hung off it would silently do nothing unless
+	## an unrelated flag happened to be set, which is how it behaved when first
+	## written. A measurement that quietly does not run is worse than one that
+	## fails.
+	##
+	## `_benchmark_started` guards against a map RELOAD (F2) starting a second
+	## one on top of the first.
+	if _dev_flag_on("BENCHMARK") and not _benchmark_started:
+		_benchmark_started = true
+		_start_benchmark_deferred()
+
 
 func _ready() -> void:
 	## DIAG-01 — see `_dev_flag()`: this cannot be a member initialiser.
@@ -11130,8 +11144,129 @@ func begin_blast_lock() -> void:
 	VfxDrawProbe.reset()
 func end_blast_lock() -> void:
 	_blast_resolving = false
+## DIAG-10 — set once so an F2 reload cannot start a second benchmark.
+var _benchmark_started: bool = false
+
+
 func is_resolving_action() -> bool:
 	return _blast_resolving
+
+## DIAG-10 — THE DETONATION BENCHMARK, identical every time it runs.
+##
+## Director, 2026-09-12: *"vale a pena automatizar pra repetir os testes sempre
+## sob as mesmas condições, porque eu posso demorar ou clicar em alguma coisa
+## errada."* Exactly right, and the three hand-played detonations that produced
+## §10.5 and §10.8 are the evidence: each one was thrown at a GU the hand chose,
+## after a pause the hand chose, which is fine for "is it 3× or 30× over budget"
+## and useless for "did this change help".
+##
+## WHAT IS PINNED, and why each one has to be:
+##
+##  - **The grenade.** `_seed_dev_grenades_if_empty()` places the dev set at fixed
+##    GUs, and the benchmark detonates them BY INDEX. A blast against different
+##    geometry is a different blast; the census counts prove how much the board
+##    varies from cell to cell.
+##  - **The RNG.** `spawn_blast_burst()` places embers with `randf_range()`, so
+##    without `RNG_SEED` two runs of identical code differ. §12.11 already
+##    established this for the pixel gate; it matters here for the same reason.
+##  - **The spacing.** Each run waits for `is_resolving_action()` to clear and
+##    then a fixed settle, rather than a fixed sleep. A fixed sleep would silently
+##    overlap two detonations on a slow device and not on a fast one, which is the
+##    exact comparison this exists to make.
+##
+## ⚠️ **IT REPORTS EVERY RUN, NEVER A MEAN.** The Galaxy/G04s pair (§10.8.3)
+## settled this: the two handsets trend in OPPOSITE directions across three
+## detonations — one warms, the other degrades — so a single averaged number
+## would have hidden the finding that explained both. The per-run `[E-FRAME]`
+## lines are the result; `[BENCH]` only frames them.
+##
+## Flags: `CAPTURE_ACTION=benchmark`, `BENCH_RUNS` (default 3),
+## `BENCH_SETTLE_FRAMES` (default 60), `BENCH_GRENADE` (default 0),
+## `RNG_SEED`. Quits the process when done, so a harness can wait on the exit.
+func _start_benchmark_deferred() -> void:
+	## One frame so `load_map()` has fully returned before the first grenade is
+	## opened — the benchmark is measuring detonations, not the tail of a load.
+	await get_tree().process_frame
+	await _run_detonation_benchmark()
+	## Quitting is what makes this scriptable: the harness waits on the process
+	## rather than on a guessed duration.
+	get_tree().quit(0)
+
+
+func _run_detonation_benchmark() -> void:
+	var runs: int = maxi(_dev_flag_num("BENCH_RUNS", 3), 1)
+	var settle: int = maxi(_dev_flag_num("BENCH_SETTLE_FRAMES", 60), 0)
+	var grenade_index: int = maxi(_dev_flag_num("BENCH_GRENADE", 0), 0)
+	## The dev set is finite, so ask for no more runs than there are grenades
+	## rather than silently reporting empty ones.
+	const DEV_GRENADE_COUNT: int = 4
+	if grenade_index + runs > DEV_GRENADE_COUNT:
+		push_warning("[BENCH] %d run(s) from grenade #%d needs %d grenades but the "
+			% [runs, grenade_index, grenade_index + runs]
+			+ "dev set has %d — the surplus runs will measure nothing."
+			% DEV_GRENADE_COUNT)
+
+	if _test_zone_controller == null:
+		push_error("[BENCH] no TestZoneController — the benchmark needs the "
+			+ "dev grenade set, which only PLAYGROUND seeds.")
+		return
+
+	_seed_dev_grenades_if_empty("BENCH")
+	## Let the board settle before the first run, so run 1 is not measuring the
+	## tail of the map load.
+	for _i in range(settle):
+		await get_tree().process_frame
+
+	print("[BENCH] === %d run(s), grenade #%d, settle %d frame(s) ==="
+		% [runs, grenade_index, settle])
+	MemStage.mark("50 benchmark starts")
+
+	for run in range(runs):
+		## ⚠️ A GRENADE IS CONSUMED BY DETONATING IT. Re-using index 0 made runs
+		## 2 and 3 return instantly having done nothing, while still printing as
+		## "resolved" — the benchmark reported three runs and measured one.
+		## Each run takes the next grenade in the dev set.
+		var index: int = grenade_index + run
+		print("[BENCH] --- run %d of %d (grenade #%d) ---" % [run + 1, runs, index])
+		_test_zone_controller.open_menu_for(index)
+		_test_zone_controller.detonate_active()
+
+		## Wait for the blast to actually finish rather than for a guessed number
+		## of frames. The cap is a safety net, not the expected exit: a run that
+		## hits it is reported as suspect instead of being averaged in silently.
+		var waited: int = 0
+		const MAX_WAIT_FRAMES: int = 3600
+		## `is_blast_playing()`, NOT `is_resolving_action()` — see that method's
+		## own comment. The action lock clears roughly halfway through the blast.
+		while (is_resolving_action() or _test_zone_controller.is_blast_playing()) \
+				and waited < MAX_WAIT_FRAMES:
+			await get_tree().process_frame
+			waited += 1
+		## One more frame so `event_probe_report()`, which fires in the
+		## presenter's `finished` callback, has certainly printed before the next
+		## run starts or the process quits.
+		await get_tree().process_frame
+		if waited >= MAX_WAIT_FRAMES:
+			push_warning("[BENCH] run %d hit the %d-frame cap while still "
+				% [run + 1, MAX_WAIT_FRAMES] + "resolving — treat it as suspect")
+		print("[BENCH] run %d resolved after %d frame(s)" % [run + 1, waited])
+		MemStage.mark("5%d after run %d" % [run + 1, run + 1])
+
+		for _i in range(settle):
+			await get_tree().process_frame
+
+	print("[BENCH] === done: %d run(s). Read the [E-FRAME] lines above — one per "
+		% runs + "run, reported individually and never averaged. ===")
+
+
+## `DevFlags.num()` through the same fallback `_dev_flag()` uses, so a `--script`
+## context behaves as it did before DIAG-01.
+func _dev_flag_num(flag_name: String, fallback: int) -> int:
+	var raw: String = _dev_flag(flag_name, "")
+	if raw.is_empty() or not raw.is_valid_int():
+		return fallback
+	return int(raw)
+
 
 
 func _on_posture_lower_requested() -> void:

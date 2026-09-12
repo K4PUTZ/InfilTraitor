@@ -74,6 +74,9 @@ func _ready() -> void:
 	## flag can be read at all, so stage 00 is as close to "engine up, nothing
 	## of ours built yet" as the project can observe.
 	MemStage.enabled = on("MEM_STAGES")
+	## Armed here because autoloads run before any scene, so this lands before
+	## `BakeConfig.load_config()`.
+	BakeConfig.force_no_bake = on("NO_BAKE")
 	MemStage.mark("00 boot — flags resolved")
 	if _overrides.is_empty():
 		## Deliberately quiet-but-present: a device log that says nothing about

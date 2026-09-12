@@ -493,6 +493,80 @@ steady state (third detonation onward), reading `[E-FRAME]` and `meminfo` togeth
 
 ---
 
+## 10.6 🔴 DIAG-09 §1 ANSWERED — the blast is a victim, and the map is the cost
+
+`MEM_CENSUS=1`, Moto G04s, PLAYGROUND, release APK, **nothing detonated**.
+
+```
+[MEM-CENSUS] tileset: 135 source(s), 32987 tile(s), 0 minted alternative(s)
+[MEM-CENSUS] atlas upper bound (RGBA8): 163.8 MB
+[MEM-CENSUS] layers: 32 opaque, 16 glass · placed cells: 145448
+```
+
+and `dumpsys meminfo` at that exact moment, against the same reading taken after
+the three detonations of §10.5:
+
+| | **at load, nothing detonated** | after 3 detonations | delta |
+|---|---|---|---|
+| GL mtrack (graphics) | **733 760 kB — 734 MB** | 1 055 556 kB — 1.05 GB | **+322 MB** |
+| Native Heap, resident | **804 464 kB — 804 MB** | 194 956 kB — 195 MB | **−609 MB, paged out** |
+| TOTAL PSS | **2 221 914 kB — 2.22 GB** | 2 589 208 kB — 2.59 GB | +367 MB |
+| TOTAL SWAP PSS | 625 705 kB — 626 MB | 1 181 411 kB — 1.18 GB | **+555 MB** |
+| device MemAvailable | **589 MB** | — | — |
+
+### 10.6.1 The mechanism, now measured rather than suspected
+
+**The map alone costs 2.22 GB on a 3.83 GB phone, leaving 589 MB available
+before anything happens.** A detonation then asks for ~322 MB more graphics
+memory, and the only way the OS can find it is to page out 555 MB more of our
+native heap — 804 MB resident becomes 195 MB. Every subsequent frame that
+touches that heap pays to bring it back.
+
+That is the 4 728 ms first COMMIT, and it is why the third detonation cost
+486 ms: by then the pages it needed were resident again.
+
+**The §10.5.2 hypothesis is confirmed, and the consequence is a re-scoping.** The
+detonation is not 3.1× over budget because its arithmetic is slow. It is over
+budget because it runs in 589 MB of headroom. **Optimising the blast would be
+optimising the wrong thing.**
+
+### 10.6.2 ⚠️ 570 MB of graphics memory is NOT the tileset
+
+This is the open question, and the census is what made it askable. Our own atlas
+sources total **163.8 MB** as an RGBA8 upper bound — a bound, so the real figure
+is that or less. Graphics memory at the same instant is **734 MB**.
+
+**The gap is ~570 MB and we do not know what it is.** Candidates, none measured:
+- the 48 `TileMapLayer`s' own rendering data across 145 448 placed cells;
+- the agent sprite bakes (24 yaws × layers × postures × facings, all built at
+  load — the boot log shows them);
+- the damage-variant bake (264 atoms) and its composite pages.
+
+⚠️ **Do not act on that list.** It is three guesses, and the session that just
+ended contains two separate cases of a plausible reading being wrong (a
+screensaver that read as a Vulkan driver failure; a detonation cost that was
+really a paging cost). Measure which one it is first.
+
+### 10.6.3 Two instruments returned null, and both are recorded as such
+
+- `RenderingServer.get_rendering_info(...)` — texture, buffer and video memory
+  all read **0.0 MB**, on desktop Forward+ *and* on the device, at a moment when
+  the atlas is provably 163.8 MB. The census prints a warning when all three are
+  zero rather than reporting a zero.
+- `OS.get_static_memory_usage()` — 1 340.3 MB on the desktop editor build,
+  **0.0 MB in the release APK**. It is debug-only.
+
+Neither is evidence about the machine. `dumpsys meminfo` is the working
+instrument on device.
+
+### 10.6.4 What comes next
+
+DIAG-09 §2–4 (dev overlays, renderer, the A16) are **not superseded**, but they
+are now second-order: they are questions about frame cost, and the finding above
+says the constraint is footprint. The next measurement should locate the 570 MB.
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).

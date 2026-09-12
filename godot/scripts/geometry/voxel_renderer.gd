@@ -2145,6 +2145,104 @@ func get_placed_cell_count() -> int:
 	return _diag_total_cells
 
 
+## DIAG-09 §1 — THE MEMORY CENSUS, at load, before anything detonates.
+##
+## The first device measurement (Moto G04s, 2026-09-12) put the detonation 3.1×
+## over the ratified playback budget, and the two instruments read straight after
+## pointed AWAY from the blast: thermal was flat (`mStatus=0` on every zone) while
+## `dumpsys meminfo` reported **1.05 GB of graphics memory and 1.18 GB of the
+## process paged out** on a 3.83 GB handset. A frame that touches swapped memory
+## pays decompression or flash I/O, which is exactly the shape that was measured —
+## a 4.7 s first COMMIT falling to 486 ms once the pages were resident.
+##
+## This function exists to answer the cheapest falsifying question: **is the
+## graphics memory already near a gigabyte with the map merely LOADED?** If it is,
+## the blast is a victim and optimising its arithmetic would be work aimed at the
+## wrong target.
+##
+## ⚠️ It reports two independent numbers for the same thing on purpose — the
+## atlas bytes counted from OUR OWN sources, and the engine's own
+## `RENDERING_INFO_TEXTURE_MEM_USED`. A census that agreed with itself by
+## construction could not detect the case where the cost is in textures this
+## renderer does not own. When they disagree, the gap IS the finding.
+## Sources at or above this are listed individually; the rest are summarised.
+## 256x256 = one damage-decal-sized atlas, comfortably below the sources that
+## actually carry the map and comfortably above the 32x36 singletons.
+const HEAVY_SOURCE_PIXELS: int = 256 * 256
+
+
+func memory_census(label: String) -> void:
+	var sources: int = 0
+	var tiles: int = 0
+	var alternatives: int = 0
+	var atlas_bytes: int = 0
+	var atlas_lines: PackedStringArray = PackedStringArray()
+
+	if _tileset != null:
+		sources = _tileset.get_source_count()
+		for i in range(sources):
+			var source_id: int = _tileset.get_source_id(i)
+			var source: TileSetSource = _tileset.get_source(source_id)
+			var atlas: TileSetAtlasSource = source as TileSetAtlasSource
+			if atlas == null:
+				continue
+			var source_tiles: int = atlas.get_tiles_count()
+			var source_alts: int = 0
+			for t in range(source_tiles):
+				var coords: Vector2i = atlas.get_tile_id(t)
+				## Every tile has alternative 0 (itself); only the extras are minted.
+				source_alts += maxi(atlas.get_alternative_tiles_count(coords) - 1, 0)
+			tiles += source_tiles
+			alternatives += source_alts
+
+			var size: Vector2i = Vector2i.ZERO
+			if atlas.texture != null:
+				size = atlas.texture.get_size()
+				## RGBA8 upper bound. Deliberately NOT trying to guess the
+				## compressed footprint: an upper bound that is honest about being
+				## one is more useful than a precise-looking number built on an
+				## assumption about the import settings.
+				atlas_bytes += size.x * size.y * 4
+			## ⚠️ Only the heavy sources are listed. PLAYGROUND has 135, and 98 of
+			## them are a single 32x36 tile — printing all of them costs 135 log
+			## lines on a handset whose logcat already emits an unrelated line
+			## every ~10 ms, which is how the line that mattered would be the one
+			## dropped.
+			if size.x * size.y >= HEAVY_SOURCE_PIXELS:
+				atlas_lines.append("      src %-4d %5dx%-5d  %6d tile(s), %6d alt(s)"
+					% [source_id, size.x, size.y, source_tiles, source_alts])
+
+	var tex_used: int = RenderingServer.get_rendering_info(
+		RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED)
+	var buf_used: int = RenderingServer.get_rendering_info(
+		RenderingServer.RENDERING_INFO_BUFFER_MEM_USED)
+	var vid_used: int = RenderingServer.get_rendering_info(
+		RenderingServer.RENDERING_INFO_VIDEO_MEM_USED)
+
+	var mb: float = 1024.0 * 1024.0
+	print("[MEM-CENSUS] === %s ===" % label)
+	print("[MEM-CENSUS]   tileset: %d source(s), %d tile(s), %d minted alternative(s)"
+		% [sources, tiles, alternatives])
+	for line in atlas_lines:
+		print("[MEM-CENSUS] %s" % line)
+	print("[MEM-CENSUS]   (%d source(s) below %d px not listed)"
+		% [sources - atlas_lines.size(), HEAVY_SOURCE_PIXELS])
+	print("[MEM-CENSUS]   atlas upper bound (RGBA8): %.1f MB" % [float(atlas_bytes) / mb])
+	## ⚠️ MEASURED 2026-09-12: all three of these read 0.0 MB under the desktop
+	## Forward+ renderer, where the atlas above is provably 163.8 MB. A zero here
+	## is the INSTRUMENT, not the machine — do not quote it as evidence of
+	## anything, and check whether it populates under the renderer actually in
+	## use before trusting a non-zero one either.
+	print("[MEM-CENSUS]   engine texture mem: %.1f MB · buffers %.1f MB · video total %.1f MB%s"
+		% [float(tex_used) / mb, float(buf_used) / mb, float(vid_used) / mb,
+		"   ⚠️ ALL ZERO — instrument unavailable on this renderer"
+			if tex_used == 0 and buf_used == 0 and vid_used == 0 else ""])
+	print("[MEM-CENSUS]   lazy-minted light alts: %d · layers: %d opaque, %d glass · placed cells: %d"
+		% [_minted_light_alts.size(), _layers.size(), _glass_layers.size(), _diag_total_cells])
+	print("[MEM-CENSUS]   script static memory: %.1f MB"
+		% [float(OS.get_static_memory_usage()) / mb])
+
+
 ## DEBUG-02: Apply real-time positional offset to all voxel layers.
 ## Accumulates nudges and shifts existing layers; new layers inherit the offset.
 func apply_debug_nudge(delta: Vector2) -> void:

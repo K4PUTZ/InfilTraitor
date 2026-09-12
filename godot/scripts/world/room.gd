@@ -1969,6 +1969,13 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_update_guard_los_data()
 	_populate_test_zone_if_playground()
 
+	## DIAG-09 §1 — the cheapest question that could falsify the memory
+	## hypothesis: how much graphics memory is already committed with the map
+	## merely LOADED, before a single voxel has been destroyed. Deferred by one
+	## frame so the renderer has actually submitted what the load queued.
+	if _dev_flag_on("MEM_CENSUS"):
+		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)
+
 
 func _ready() -> void:
 	## DIAG-01 — see `_dev_flag()`: this cannot be a member initialiser.
@@ -5886,8 +5893,25 @@ func _event_frame_sample() -> void:
 	_event_probe_last_us = now_us
 
 
+## DIAG-09 §1 — a census one frame later. The load queues work the renderer has
+## not submitted yet, so reading the counters in the same frame reports the state
+## BEFORE the thing being measured exists.
+func _census_after_a_frame(label: String) -> void:
+	if _voxel_renderer == null:
+		return
+	await get_tree().process_frame
+	if _voxel_renderer == null:
+		return
+	_voxel_renderer.memory_census(label)
+
+
 ## Closes the window and prints the timeline. Silent when the probe is off.
 func event_probe_report(label: String) -> void:
+	## DIAG-09 §1 — the same census AFTER an event, so the load figure has a
+	## comparison and alternative growth per detonation is visible. Paired with
+	## the "AT LOAD" line, not a substitute for it.
+	if _dev_flag_on("MEM_CENSUS"):
+		_census_after_a_frame("AFTER %s" % label)
 	if not _event_probe_on:
 		return
 	_event_probe_on = false

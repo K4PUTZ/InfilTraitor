@@ -53,7 +53,29 @@ A primeira build levará ~3–5 minutos (Godot gera um keystore de debug automat
 
 ## Export (A cada nova versão)
 
-### Opção A: Export com nome automático
+### Opção A (RECOMENDADA): `export_android.py`
+
+```bash
+python3 tools/persistent/export_android.py --install
+```
+
+Exporta, **assina**, verifica o conteúdo e instala via `adb`. Sai com código
+diferente de zero se o build não presta, então pode ser encadeado antes de uma
+medição.
+
+⚠️ **Não use `--export-release` direto** (Opção B abaixo) sem entender isto:
+medido em 2026-09-12, sem keystore de release o Godot imprime
+`Could not find release keystore, unable to export.`, **sai com código 1 — e
+mesmo assim deixa um APK completo, com o conteúdo certo e SEM NENHUMA
+assinatura** no disco. Ele não instala em lugar nenhum, e nada no arquivo
+denuncia isso. O script checa `META-INF` justamente por causa disso.
+
+A assinatura sai pelas variáveis `GODOT_ANDROID_KEYSTORE_RELEASE_{PATH,USER,PASSWORD}`
+(o script acha a debug keystore do próprio Godot sozinho). Escrever
+`keystore/release=` no `export_presets.cfg` **não funciona** — foi testado, e
+além disso colocaria a senha no git.
+
+### Opção B: chamada crua no Godot
 
 ```bash
 cd "/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR"

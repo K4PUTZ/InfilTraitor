@@ -405,6 +405,94 @@ fire the event more than once in a boot before concluding anything about cost.
 
 ---
 
+## 10.5 🔴 THE FIRST REAL NUMBER — 2026-09-12, Moto G04s
+
+Three hand-played detonations on PLAYGROUND, release APK, vsync ON, no capture
+harness, `EVENT_FRAMES=1` through the DIAG-00 channel.
+
+```
+detonation — 233 frame(s), 32076 ms wall clock, mean 137.7 ms · WORST 4728.7 ms on frame 110
+detonation — 239 frame(s), 31127 ms wall clock, mean 130.2 ms · WORST 3746.5 ms on frame 117
+detonation — 235 frame(s), 23935 ms wall clock, mean 101.9 ms · WORST  486.1 ms on frame 113
+```
+
+### 10.5.1 The verdict against §0.5's budget
+
+Read the THIRD run — the first two pay one-time costs and the worst frame falls
+4728 → 3746 → 486 ms across them, which is the standing "expensive vs expensive
+ONCE" lesson behaving exactly as documented. Steady state, split at the beat the
+Director's ruling splits at:
+
+| span | frames | wall | mean/frame | vs 33.3 ms |
+|---|---|---|---|---|
+| fuse + PUMP (pre-cook, **allowed** to lag) | 113 | 11 190.7 ms | 99.0 ms | — |
+| **playback (COMMIT → WAVES end)** | **122** | **12 744.3 ms** | **104.5 ms** | **3.1× over** |
+| worst single playback frame (COMMIT) | 1 | 486.1 ms | 486.1 ms | **14.6× over** |
+| worst single playback frame, COLD | 1 | 4 728.7 ms | 4 728.7 ms | **142× over** |
+
+**The detonation is not viable on this handset today.** Playback runs at ~9.6 fps
+against a 30 fps target, and misses even the 24–25 fps floor by 2.6×. No reading
+of the ruling rescues it: the over-budget frames are all after COMMIT, which is
+play, not cook.
+
+⚠️ One honest note on the fuse: the 11.2 s PUMP span **is** the pre-cook and is
+therefore inside the allowance — but it is also 113 frames the player spends
+watching a lit grenade at ~10 fps. It is not a budget violation; whether it is
+acceptable is a separate Director question.
+
+### 10.5.2 ⚠️ The cause is probably NOT the blast — read this before optimising
+
+Two instruments were read immediately after, and they point somewhere else.
+
+**Thermal is exonerated.** SoC 41.3 °C, battery 30.3 °C, `mStatus=0` on every
+zone — no throttling at all. §10's thermal hypothesis is not what happened here.
+
+**Memory is not.** `dumpsys meminfo`, same session:
+
+```
+GL mtrack:       1 055 556 kB   (1.05 GB of graphics memory)
+TOTAL PSS:       2 589 208 kB   (2.59 GB)
+TOTAL RSS:       1 467 940 kB
+TOTAL SWAP PSS:  1 181 411 kB   (1.18 GB SWAPPED OUT)
+```
+
+**On a 3.83 GB device, 1.18 GB of our process is paged out.** Every frame that
+touches swapped memory pays decompression or flash I/O, and that is precisely
+the shape of what was measured: a 4.7 s first COMMIT falling to 486 ms once the
+pages are resident, with no thermal component.
+
+This is a **hypothesis with strong evidence, not a conclusion.** What it predicts
+and how to falsify it is DIAG-09 below. What it should stop immediately is anyone
+optimising the detonation's arithmetic on the strength of §10.5.1 alone — the
+3.1× may not be in the blast at all, and 1.05 GB of GL memory on a phone is a
+number that needs explaining regardless of what it is costing.
+
+Prior art that makes this more likely, not less: `PERFORMANCE_MASTER_PLAN`'s
+standing finding that per-cell visual state lives in TileSet alternatives, and
+that minting one alternative rebuilds every layer's TileSet. A large alternative
+population is exactly how a 2D tile game arrives at a gigabyte of texture memory.
+
+### 10.5.3 DIAG-09 — falsify the memory hypothesis before optimising anything
+
+In this order, cheapest first. Each is an A/B on the same handset, same map,
+steady state (third detonation onward), reading `[E-FRAME]` and `meminfo` together:
+
+1. **Count the TileSet alternatives** and the atlas memory at load, before any
+   detonation. If graphics memory is already near 1 GB at idle, the blast is a
+   victim.
+2. **Dev overlays off** (`CAPTURE_NO_DEV` and friends, now reachable on device
+   via DevFlags). The occlusion wireframe and the DEV VISION panel are live in
+   these runs; on desktop the VFX overlays were once measured at 25 ms/frame.
+   ⚠️ A control run is mandatory — a number that improves is not proof the
+   overlay was the cause unless the same run shows the overlay gone.
+3. **`gl_compatibility` vs `mobile`** (§7), unchanged in intent but now
+   third in line, because thermal is out and memory is in.
+4. **The same three detonations on the Galaxy A16 5G**, which has a different
+   SoC and a different memory size. If playback scales with available memory
+   rather than with CPU class, the hypothesis holds.
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).

@@ -3287,3 +3287,84 @@ this plan is the one that keeps producing them.
 **The cheap guard for all three: diff each frame against the settled END state
 rather than thresholding on colour.** Static scenery cancels for free, no mask
 tuning, and it needs no change to the map.
+
+---
+
+## 15. 🟡 SYS-CHECK-01 — the game checks the device before it blames itself
+
+**Director, 2026-09-12, from the first native handset session:** *"vamos deixar
+um aviso na milestone de otimização, para informar ao usuário (preferencialmente
+oferecer pra ajustar os settings automaticamente) quando houver impedimentos
+passíveis de melhoria, como este. Basicamente fazer um checkup básico do sistema
+antes de rodar a primeira vez."*
+
+**Status: 🟡 captured, not designed and not built.** Recorded here so the idea
+survives the session it came from. Nothing below is ratified.
+
+### 15.1 What prompted it
+
+The Moto G04s arrived at the first measurement with **1.36 GB available of
+3.83 GB**, other apps resident, and **2.88 GB of swap with 1.39 GB already in
+use**. Closing apps moved available memory to 1.68 GB, and a reboot to 2.14 GB —
+**a 57% swing in the machine's condition, before a single line of our code ran
+differently.**
+
+That is the entire argument. A frame-time number taken in the first state and
+one taken in the third are not measurements of the same thing, and **the player
+will never know which state they are in.** A stutter caused by the device paging
+our textures back out of compressed swap is indistinguishable, from the player's
+seat, from a stutter we wrote.
+
+### 15.2 ⚠️ The honest limit on "ajustar automaticamente"
+
+The Director's preference is for the game to fix what it finds. It can, for
+**its own** settings. It cannot, for the device's — and the distinction has to be
+built in from the start rather than discovered late:
+
+| | can the game change it? |
+|---|---|
+| our own quality tier, effect density, resolution scale | ✅ yes, directly |
+| RAM Boost / extended swap, Developer Options, animation scale, battery mode | ⛔ **no.** Android forbids an app writing another app's or the system's settings. |
+
+What is available for the second column is **detect, explain, and deep-link** —
+open the relevant Settings screen with an `Intent` so the player is one tap from
+the toggle, having been told in plain language what it does and why it matters
+here. Promising more than that in the UI copy would be a lie the OS enforces.
+
+⚠️ **Do not let "offer to adjust" become "silently adjust".** Changing what a
+player's device does, without asking, is not ours to do even where the API allows
+it.
+
+### 15.3 What a first-run checkup would actually read
+
+All of these were read from the handset this session with plain `adb`, so none
+of them is speculative — the equivalent Godot/Android calls need confirming, but
+the values exist:
+
+- **Available memory** vs. total (`MemAvailable`, `MemTotal`).
+- **Swap in use** (`SwapTotal` / `SwapFree`) — ⚠️ and note the measurement that
+  complicates this: after the Director turned RAM Boost off and rebooted,
+  `SwapTotal` was **byte-identical** at 2 875 728 kB. Either the toggle did not
+  take, or Motorola's feature is not the zRAM the name suggests. **The checkup
+  must not tell a player to change a setting until we can prove the setting moves
+  the number** — that is the difference between advice and superstition.
+- **Thermal state before we start** (`dumpsys thermalservice`) — a phone already
+  throttled at launch will produce a bad first impression that is not ours.
+- **Our own swapped-out footprint**, once running. A detonation number taken
+  while the process is being paged is a measurement of the memory system, not of
+  the blast.
+
+### 15.4 Where this must NOT go
+
+The checkup reports on the *device*. It is not a licence to ship a slow
+detonation and blame the handset for it. The ratified budget (30 fps / 33.3 ms
+on playback frames, `DEVICE_DIAGNOSTICS_MASTER_PLAN` §0.5) is a budget for **our**
+code on a **clean** device; SYS-CHECK-01 exists to make sure the device IS clean
+when we judge ourselves against it, and to be honest with the player when it is
+not. Full harness and device facts:
+[`DEVICE_DIAGNOSTICS_MASTER_PLAN`](DEVICE_DIAGNOSTICS_MASTER_PLAN.md).
+
+**Open, all of it:** when it runs (first launch only, or every launch behind a
+threshold), whether it is a blocking screen or a dismissible notice, how a player
+who declines is remembered, and whether any of it ships before Alpha. Player-facing
+strings are `tr("domain.key")`, and the UI is DESIGN-branch work.

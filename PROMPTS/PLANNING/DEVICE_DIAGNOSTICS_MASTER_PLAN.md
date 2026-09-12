@@ -28,6 +28,33 @@ FIX belongs in one of the two plans above, and is cited there — not here.
 
 ---
 
+## 0.5 THE RATIFIED BUDGET (Director, 2026-09-12)
+
+> *"O nosso sonho é 60 fps, mas se a gente conseguir 24/25 já estamos no lucro.
+> A meta é 30fps. Lembrando que podemos demorar/lag no load do game, no load do
+> mapa, e no pre-cook, mas NÃO durante o play do evento da explosão."*
+
+| | fps | ms/frame |
+|---|---|---|
+| dream | 60 | 16.7 |
+| **target** | **30** | **33.3** |
+| floor ("no lucro") | 24–25 | 40–41.7 |
+
+**The budget applies to the detonation's PLAYBACK frames only.** Game load, map
+load and the pre-cook are explicitly allowed to be slow. This is not a loophole
+— it is a scoping instruction the instrument can honour exactly, because
+`[E-FRAME]` records beats as MARKS on the frame timeline: the cook beats are
+identifiable, so the worst *playback* frame can be reported separately from the
+worst frame overall. **Report both, and never let a cook frame be quoted as the
+verdict.**
+
+⚠️ This also settles what a first device run must not do: quoting a boot or bake
+number as the answer. Measured on the Moto G04s, 2026-09-12: 46 s from launch to
+`OnGodotMainLoopStarted`, of which the damage-variant bake is 6 227 ms. **Under
+this ruling, none of that is a defect.**
+
+---
+
 ## 1. The question, stated so it can be answered
 
 > On a Moto G04s and a Galaxy A16 **5G**, does a full detonation on PLAYGROUND stay
@@ -87,23 +114,39 @@ That is the single thing to fix. Everything else in this plan is assembly.
 
 ---
 
-## 3. DIAG-00 — the flag-channel spike (BLOCKING, do this first)
+## 3. DIAG-00 — the flag-channel spike ✅ RESOLVED 2026-09-12
 
-⚠️ **Nothing else may be designed until this is measured**, because the answer
-decides the shape of `DevFlags`. Three candidate channels, none of them yet
-verified on this project:
+Run on the real handset. **The winner is the app's EXTERNAL files directory**,
+and it is better than any option this plan originally listed.
 
-| # | Channel | Cost per flag change | Risk |
-|---|---|---|---|
-| **A** | `command_line/extra_args` in the Android preset (`export_presets.cfg:.. command_line/extra_args=""` — the field exists) | a full re-export | Baked at build time. Fine for a fixed harness build, useless for iterating. |
-| **B** | A flags file pushed with `adb`, read at `user://dev_flags.cfg` | seconds | `user://` on Android is the app's private files dir. A **release** APK is not debuggable, so `adb push` / `run-as` cannot write there. Making it debuggable to win the push **changes the perf being measured** — a debug template is not a release template. This tension is the whole reason the spike exists. |
-| **C** | An intent extra on `am start` (`--es command_line_args ...`) | seconds | **UNVERIFIED.** Godot's Android launcher may or may not accept this. Must be tested, never assumed. |
+| # | Channel | Verdict |
+|---|---|---|
+| **A** | `command_line/extra_args` in the Android preset | Works (it is how `--xr-mode off --fullscreen …` already reach the engine), but costs a full re-export + install ≈ 40 s per flag change. Kept as a fallback, not the primary. |
+| **B** | `adb push` to `user://` (app-private internal storage) | ⛔ Needs a debuggable build, and a debug template is not a release template — it would change the perf being measured. Rejected. |
+| **C** | Intent extra `--esa command_line_args` on `am start` | ⛔ **MEASURED DEAD.** The extra is accepted by Android (`Intent { … (has extras) }`) and **never reaches Godot**: `InitEngine with params:` came back byte-identical, and `--verbose` produced zero extra engine output. Assumed working in v0.1 of this plan; it is not. |
+| **B′** | **`adb push` to `/sdcard/Android/data/<pkg>/files/`** | ✅ **THE ANSWER.** |
 
-**Spike deliverable:** one paragraph naming the winning channel with the command
-that proves it, plus the measured cost of one flag change. If C works, it wins
-outright. If not, the likely answer is **A for the release measurement build and
-B for a separate debuggable iteration build**, with the plan stating in writing
-that B's numbers are never quoted as device performance.
+### 3.1 Why B′ wins outright
+
+```
+adb push dev_flags.cfg /sdcard/Android/data/com.example.infiltraitor/files/
+```
+
+15 bytes in 0.001 s. The directory is owned by the app's own uid
+(`u0_a314`, group `ext_data_rw`), so **the app can read it with no permission
+declared** — Android 11+ gives every app free access to its own external files
+directory. Consequences, all of which matter:
+
+- **No debuggable build.** The APK measured is the APK shipped: release
+  template, release renderer, release performance.
+- **No manifest permission**, so nothing about the build changes to enable
+  diagnostics.
+- **Seconds per flag change**, against 40 s for channel A.
+
+`DevFlags` therefore resolves: `OS.get_environment` → this file → default.
+⚠️ Godot reading that absolute path is the one step not yet proven on device
+(it needs DevFlags to exist). DIAG-01 must verify it against a real read and
+keep channel A as the fallback if Godot refuses the path.
 
 ---
 
@@ -141,7 +184,45 @@ un-migrated sites is a gate that gets bypassed, which is its own standing lesson
 
 ---
 
-## 5. DIAG-02 — results out of the device
+## 4.5 ✅ THE GAME RUNS ON THE MOTO G04s (2026-09-12)
+
+The prior question to every number in this plan, and it is answered: the release
+APK boots, loads a map, bakes the agent and renders, under the **Vulkan Mobile**
+renderer, with no fatal error. Hardware recorded by `device_run.py`:
+
+```
+motorola moto g04s (Spreadtrum T606), Android 14 / SDK 34,
+3834312 kB, 720x1612 @ 280 dpi, arm64-v8a, GPU Mali
+```
+
+⚠️ **The first launch said otherwise, and it was lying.** With the phone's
+screen off, the log read:
+
+```
+E vulkan : native_window_api_connect() failed: No such device (-19)
+ERROR: Failed to create vulkan window.
+ERROR: Unable to create DisplayServer, all display drivers failed.
+```
+
+That is **not** a Vulkan driver failure on a cheap SoC, which is exactly what it
+looks like and what §7 had primed everyone to expect. The activity took
+`OnResume` and then `OnPause` 33 ms later because the device was dozing and
+locked, so there was no surface to attach to. **A screensaver was one report away
+from being recorded as a renderer verdict.** `device_run.py` checks wakefulness
+and lock state before it will launch, for this reason and no other.
+
+Two more device facts the harness needed:
+
+- `am start -n <pkg>/com.godot.game.GodotApp` is **denied** — Godot's main
+  activity is `exported=false`. The launchable entry is the alias
+  **`com.godot.game.GodotAppLauncher`**.
+- Logcat on this handset emits `audio_hw_record_nr` and `BLASTBufferQueue` lines
+  roughly every 10 ms, permanently. §5's "logcat drops lines under load" risk is
+  real and present at idle; the capture filters by tag.
+
+---
+
+## 5. DIAG-02 — results out of the device ✅ BUILT 2026-09-12 (`device_run.py`)
 
 `print()` on Android goes to logcat, so the existing probes need no output
 change. The harness reads them with:
@@ -304,10 +385,11 @@ fire the event more than once in a boot before concluding anything about cost.
 
 ```
 DIAG-06  export_android.py           ✅ BUILT 2026-09-12
-DIAG-00  flag-channel spike          BLOCKING
+DIAG-00  flag-channel spike          ✅ RESOLVED 2026-09-12 (channel B′)
+DIAG-02  device_run.py + preconditions  ✅ BUILT 2026-09-12
 DIAG-05  emulator install            (parallel — unblocks harness work)
-DIAG-01  DevFlags seam + 01b
-DIAG-02  logcat capture + parser
+DIAG-01  DevFlags seam + 01b         ← NEXT, and the last thing in the way
+DIAG-02b logcat parser
 DIAG-03  scripted scenario on device
          ── first real number here ──
 DIAG-04  renderer control run
@@ -324,10 +406,8 @@ DIAG-08  gates + docs
    in this project.
 2. **Which handset is the reference target** for a pass/fail verdict — the
    harsher one, or both independently?
-3. **What frame budget counts as "factível"?** Without a ratified number, the
-   harness reports and nobody can close the question. A proposal: the worst
-   single frame of a detonation, on the reference handset, under some ratified
-   ceiling in ms.
+3. ~~What frame budget counts as "factível"?~~ ✅ **ANSWERED 2026-09-12 — see
+   §0.5.** 30 fps target / 33.3 ms, 24–25 fps floor, playback frames only.
 4. **Does the blast get a device-specific quality tier** if it fails, or does
    the detonation get optimized until it passes everywhere? This decides whether
    a failure re-opens the other two plans or opens a new one.

@@ -95,17 +95,55 @@ def _find_adb():
     return None
 
 
+## Set once the serial is known, and prefixed to every adb invocation after.
+## ⚠️ With two handsets attached, a bare `adb shell` fails with "more than one
+## device" — but `adb devices` still succeeds, so a harness that only checks for
+## presence looks fine and then misreports. Worse: it could silently measure the
+## WRONG PHONE. Every result this tool prints names its serial for that reason.
+_SERIAL: list = []
+
+
 def _sh(adb, args, timeout=30):
-    proc = subprocess.run([adb] + args, capture_output=True, text=True, timeout=timeout)
+    prefix = ["-s", _SERIAL[0]] if _SERIAL else []
+    proc = subprocess.run([adb] + prefix + args, capture_output=True, text=True,
+                          timeout=timeout)
     return (proc.stdout or "").replace("\r", "")
 
 
-def _device(adb) -> str | None:
-    out = _sh(adb, ["devices"])
-    rows = [l for l in out.splitlines()[1:] if l.strip().endswith("device")]
-    if not rows:
+def _attached(adb) -> list:
+    """Every serial currently in the `device` state."""
+    proc = subprocess.run([adb, "devices"], capture_output=True, text=True, timeout=30)
+    out = (proc.stdout or "").replace("\r", "")
+    return [l.split()[0] for l in out.splitlines()[1:] if l.strip().endswith("device")]
+
+
+def _resolve_device(adb, wanted: str | None) -> str | None:
+    serials = _attached(adb)
+    if not serials:
+        print("[DIAG-02] FAIL — no device. Check, in this order: the cable "
+              "carries data, the USB mode is File Transfer, Developer Options "
+              "-> USB debugging is on, and the 'Allow USB debugging?' dialog "
+              "has been accepted on the phone.")
         return None
-    return rows[0].split()[0]
+    if wanted:
+        ## Accept a substring so a model name works as well as a full serial.
+        matches = [s for s in serials if wanted == s or wanted in s]
+        if len(matches) == 1:
+            return matches[0]
+        print("[DIAG-02] FAIL — %r matches %d of the attached device(s): %s"
+              % (wanted, len(matches), ", ".join(serials)))
+        return None
+    if len(serials) == 1:
+        return serials[0]
+    print("[DIAG-02] FAIL — %d devices attached; name one with --device:"
+          % len(serials))
+    for s in serials:
+        model = subprocess.run([adb, "-s", s, "shell", "getprop", "ro.product.model"],
+                               capture_output=True, text=True).stdout.strip()
+        print("[DIAG-02]   --device %-18s %s" % (s, model))
+    print("[DIAG-02] ⚠️  Refusing to guess: a measurement attributed to the "
+          "wrong handset is worse than no measurement.")
+    return None
 
 
 def _specs(adb) -> dict:
@@ -153,20 +191,48 @@ def _launch(adb) -> bool:
     return True
 
 
-def _capture(adb, seconds: int) -> list[str]:
+## ⚠️ The in-app marker and this poll see DIFFERENT HALVES of the footprint.
+## `/proc/self/status` VmRSS, which MemStage reads, does not include graphics
+## driver memory — the `GL mtrack` figure that grew 734 MB -> 1.05 GB across
+## three detonations. A boot stage that allocates only GPU-side moves VmRSS
+## hardly at all. A stage invisible to BOTH instruments is genuinely not where
+## the memory went; a stage visible to only one names which half it is in.
+MEMINFO_KEYS = ("TOTAL PSS", "TOTAL RSS", "TOTAL SWAP", "GL mtrack", "Native Heap")
+
+
+def _poll_meminfo(adb, serial: str) -> str:
+    prefix = ["-s", serial] if serial else []
+    proc = subprocess.run(
+        [adb] + prefix + ["shell", "dumpsys", "meminfo", PACKAGE],
+        capture_output=True, text=True, timeout=30)
+    out = (proc.stdout or "").replace("\r", "")
+    picked = [l.strip() for l in out.splitlines()
+              if any(k in l for k in MEMINFO_KEYS)]
+    return " | ".join(picked) if picked else "(not running)"
+
+
+def _capture(adb, seconds: int, mem_poll: float = 0.0) -> list[str]:
     """Stream the filtered log for `seconds`, then stop.
 
     Note the shape: `logcat` is left running and killed on a deadline rather than
     dumped afterwards with `-d`, so a run longer than the ring buffer cannot lose
     its early lines.
     """
-    cmd = [adb, "logcat", "-v", "time"] + LOG_TAGS + ["*:S"]
+    prefix = ["-s", _SERIAL[0]] if _SERIAL else []
+    cmd = [adb] + prefix + ["logcat", "-v", "time"] + LOG_TAGS + ["*:S"]
     lines: list[str] = []
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, bufsize=1)
     deadline = time.time() + seconds
+    next_poll = time.time() + mem_poll if mem_poll > 0 else None
     try:
         while time.time() < deadline:
+            if next_poll is not None and time.time() >= next_poll:
+                stamp = time.strftime("%H:%M:%S")
+                mem_line = "[MEM-POLL] %s  %s" % (stamp, _poll_meminfo(adb, _SERIAL[0] if _SERIAL else ""))
+                lines.append(mem_line)
+                print(mem_line)
+                next_poll = time.time() + mem_poll
             line = proc.stdout.readline()
             if not line:
                 break
@@ -189,6 +255,13 @@ def main() -> int:
     ap.add_argument("--save", default=None, help="also write the captured log to this file")
     ap.add_argument("--no-stayon", action="store_true",
                     help="do not ask the device to stay awake while on USB")
+    ap.add_argument("--device", default=None,
+                    help="adb serial (or a substring of one) — required when "
+                         "more than one handset is attached")
+    ap.add_argument("--mem-poll", type=float, default=0.0, metavar="SECONDS",
+                    help="sample `dumpsys meminfo` every SECONDS during the run. "
+                         "VmRSS from inside the app cannot see graphics driver "
+                         "memory; this is the half that can.")
     args = ap.parse_args()
 
     adb = _find_adb()
@@ -196,13 +269,10 @@ def main() -> int:
         print("[DIAG-02] FAIL — adb not found.")
         return 1
 
-    serial = _device(adb)
+    serial = _resolve_device(adb, args.device)
     if not serial:
-        print("[DIAG-02] FAIL — no device. Check, in this order: the cable "
-              "carries data, the USB mode is File Transfer, Developer Options "
-              "-> USB debugging is on, and the 'Allow USB debugging?' dialog "
-              "has been accepted on the phone.")
         return 1
+    _SERIAL.append(serial)
 
     specs = _specs(adb)
     print("[DIAG-02] device %s — %s %s (%s %s), Android %s / SDK %s, %s, %s @ %s dpi"
@@ -226,7 +296,7 @@ def main() -> int:
     if not _launch(adb):
         return 1
 
-    lines = _capture(adb, args.seconds)
+    lines = _capture(adb, args.seconds, args.mem_poll)
 
     if args.save:
         out = Path(args.save)

@@ -1973,6 +1973,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## hypothesis: how much graphics memory is already committed with the map
 	## merely LOADED, before a single voxel has been destroyed. Deferred by one
 	## frame so the renderer has actually submitted what the load queued.
+	MemStage.mark("40 map loaded — %s" % map_id)
 	if _dev_flag_on("MEM_CENSUS"):
 		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)
 

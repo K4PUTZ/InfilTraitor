@@ -1106,6 +1106,7 @@ func _initialize_damage_variant_registry(declared_materials: Array, floor_materi
 				% [pages, int(float(Time.get_ticks_usec() - flush_t0) / 1000.0)])
 	room._voxel_renderer.set_damage_variant_registry(registry)
 	print("[ROOM] Initialized damage variant registry (%d atoms)" % registry.size())
+	MemStage.mark("20 damage variants baked")
 
 
 ## VL-PERF-BAKE: force the next _bake_textures() to do a full rebake instead of

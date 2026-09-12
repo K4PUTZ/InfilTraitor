@@ -70,6 +70,11 @@ const FLAGS_BASENAME: String = "dev_flags.cfg"
 
 func _ready() -> void:
 	_load_overrides()
+	## DIAG-09 §1b — armed here because this is the earliest point at which a
+	## flag can be read at all, so stage 00 is as close to "engine up, nothing
+	## of ours built yet" as the project can observe.
+	MemStage.enabled = on("MEM_STAGES")
+	MemStage.mark("00 boot — flags resolved")
 	if _overrides.is_empty():
 		## Deliberately quiet-but-present: a device log that says nothing about
 		## DevFlags is indistinguishable from a build that has no DevFlags.

@@ -725,6 +725,7 @@ func _ensure_walk(dev: bool) -> bool:
 			push_error("[AgentSprite] %s holds no phase directories" % root)
 			return false
 		print_debug("[AgentSprite] walk cycle: %d phases baked" % _walk_phases)
+	MemStage.mark("30 agent sprite baked")
 	for i in range(_walk_phases):
 		if not _ensure_set(_walk_key(i, dev), root + "phase%02d/" % i):
 			return false

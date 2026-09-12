@@ -1225,6 +1225,7 @@ func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	elif ysort_probe_scoped:
 		print("[YSORT-PROBE] Y-sorting SCOPED to glass-bearing levels (INFILTRAITOR_YSORT=2)")
 	_build_voxel_tileset()
+	MemStage.mark("10 voxel TileSet built")
 
 
 ## Set baked lookup (called by room_builder after baking completes)

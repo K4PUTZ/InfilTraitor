@@ -265,23 +265,39 @@ def _verify_contents(apk: Path, show: bool) -> bool:
     return ok
 
 
-def _install(apk: Path) -> bool:
+def _install(apk: Path, wanted: str | None = None) -> bool:
     adb = _find(ADB_CANDIDATES, "adb")
     if not adb:
         return False
     devices = subprocess.run([adb, "devices"], capture_output=True, text=True)
-    attached = [l for l in devices.stdout.splitlines()[1:] if l.strip().endswith("device")]
-    if not attached:
+    serials = [l.split()[0] for l in devices.stdout.replace("\r", "").splitlines()[1:]
+               if l.strip().endswith("device")]
+    if not serials:
         print("[DIAG-06] FAIL — no device. Check, in this order: the cable "
               "carries data, the phone's USB mode is File Transfer (not "
               "Charging), Developer Options -> USB debugging is on, and the "
               "'Allow USB debugging?' dialog on the phone has been accepted.")
         return False
-    print("[DIAG-06] device: %s" % attached[0].split()[0])
+
+    ## ⚠️ With two handsets attached a bare `adb install` fails outright, and
+    ## picking one silently would install a measurement build on whichever the
+    ## cable order happened to enumerate first. Name it or be told.
+    if wanted:
+        serials = [s for s in serials if wanted == s or wanted in s]
+    if len(serials) != 1:
+        print("[DIAG-06] FAIL — %d device(s) match%s; name one with --device:"
+              % (len(serials), " %r" % wanted if wanted else ""))
+        for s in serials:
+            model = subprocess.run([adb, "-s", s, "shell", "getprop", "ro.product.model"],
+                                   capture_output=True, text=True).stdout.strip()
+            print("[DIAG-06]   --device %-18s %s" % (s, model))
+        return False
+    serial = serials[0]
+    print("[DIAG-06] device: %s" % serial)
 
     # -r reinstalls in place, keeping the package; -d allows a version downgrade,
     # which matters because the preset pins version/code=1 on every build.
-    proc = subprocess.run([adb, "install", "-r", "-d", str(apk)],
+    proc = subprocess.run([adb, "-s", serial, "install", "-r", "-d", str(apk)],
                           capture_output=True, text=True)
     out = (proc.stdout or "") + (proc.stderr or "")
     print(out.strip())
@@ -302,6 +318,9 @@ def main() -> int:
                          "(e.g. gl_compatibility) — DIAG-04's control run")
     ap.add_argument("--verify-only", action="store_true",
                     help="skip the export, just assert the existing APK")
+    ap.add_argument("--device", default=None,
+                    help="adb serial (or a substring) for --install — required "
+                         "when more than one handset is attached")
     args = ap.parse_args()
 
     apk = Path(args.out)
@@ -322,7 +341,7 @@ def main() -> int:
         print("[DIAG-06] BUILD REJECTED — do not measure with this APK.")
         return 1
 
-    if args.install and not _install(apk):
+    if args.install and not _install(apk, args.device):
         return 1
 
     print("[DIAG-06] done.")

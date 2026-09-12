@@ -567,6 +567,96 @@ says the constraint is footprint. The next measurement should locate the 570 MB.
 
 ---
 
+## 10.7 🔴 THE 570 MB IS THE BOARD ITSELF — boot decomposed, 2026-09-12
+
+`MEM_STAGES=1` markers correlated against `device_run.py --mem-poll 5`. Moto
+G04s, PLAYGROUND, release APK.
+
+| stage | at | GL mtrack | TOTAL PSS |
+|---|---|---|---|
+| 00 flags resolved | 18:14:26 | 67.5 MB | 322 MB |
+| 10 voxel TileSet built | 18:14:27 | 67.5 MB | — |
+| 11 room build starts | 18:14:27 | 67.5 MB | 582 → 1053 MB |
+| 12 wall/facade bake complete | 18:14:45 | **→ 198.8 MB** | 1251 MB |
+| (room build continues) | 18:14:52 | **→ 461.5 MB** | 1529 MB |
+| 19 before damage bake | 18:14:56 | 461.5 MB | 1599 MB |
+| 20 damage variants baked | 18:14:58 | **461.5 MB — unchanged** | 1638 MB |
+| 40 map loaded | 18:15:18 | **→ 728.8 MB** | 2210 MB |
+
+### 10.7.1 Two of the three candidates are eliminated
+
+**The damage-variant bake is EXONERATED.** It runs 18:14:56.8 → 18:14:58.4 —
+1 586 ms for 447 atoms — and graphics memory across it is **461.5 MB before and
+461.5 MB after**. It was the candidate that looked most likely from the desktop
+side; it costs essentially no graphics memory.
+
+**The agent sprite bake is exonerated too.** Its frames load between stages 20
+and 40 (its own log lines are in the same timeline) while GL mtrack sits flat at
+461.5 MB until the final submission.
+
+**What is left is the board.** Graphics memory arrives in three steps, none of
+them a bake of ours:
+
+| | |
+|---|---|
+| voxel TileSet | 67.5 MB |
+| wall/facade bake | +131 MB |
+| room build / voxel placement | +263 MB |
+| final map-load submission | +267 MB |
+| **total** | **728.8 MB** |
+
+**~530 MB of the 734 MB is room build, voxel placement and submission** — the
+**32 opaque + 16 glass `TileMapLayer`s carrying 145 448 placed cells**. Our atlas
+sources are 163.8 MB of it; the rest is what the engine allocates to DRAW that
+many cells across that many layers.
+
+⚠️ Attribution is bounded by a 5-second poll interval. Each step above is
+bracketed by stage markers, but a cost could sit anywhere inside its bracket.
+The three conclusions that do NOT depend on the interval are the two
+exonerations (GL mtrack is flat across both bakes, at samples on either side)
+and the totals.
+
+### 10.7.2 ⚠️ The board is evicted at IDLE, before the blast is thrown
+
+After "40 map loaded", with nobody touching the game:
+
+```
+18:15:18  PSS 2210 MB   swap   128 MB
+18:15:40  PSS 2232 MB   swap   622 MB
+18:16:11  PSS 2240 MB   swap   817 MB
+```
+
+**817 MB of our process is paged out within a minute of loading, at idle.** The
+detonation does not arrive at a healthy process and then overload it — it
+arrives at one the OS has already been evicting for a minute. That is why the
+first COMMIT cost 4 728 ms and the third 486 ms, and it reframes §10.5 one more
+step: the blast's cost is largely the cost of faulting the board back in.
+
+### 10.7.3 What this makes the real question
+
+Not "why is the detonation slow" but **"why does a 44×22 board cost 2.2 GB"**.
+That question belongs to `PERFORMANCE_MASTER_PLAN`, whose standing finding —
+per-cell visual state living in TileSet alternatives, one mint rebuilding every
+layer's TileSet — is about the same subsystem this measurement just named.
+
+Two shapes of answer, neither investigated, both out of this plan's scope:
+fewer layers, or fewer live cells per layer. ⚠️ **Do not pick one from this
+paragraph.** Three candidate causes were written down before this measurement
+and two of them were wrong.
+
+### 10.7.4 Instruments, honestly
+
+A third null to add to §10.6.4: `FileAccess.open("/proc/self/status")` returns
+**null with error 1 on Android** — the engine's path sandbox admits `/sdcard/...`
+(DevFlags reads its overrides there) but not `/proc`, and there is no stock
+Godot API for per-process memory in a release build. `MemStage` therefore prints
+the stage LABEL regardless, so the timeline survives for correlation:
+**losing the numbers is a degraded measurement, losing the timeline is no
+measurement at all.** `dumpsys meminfo` from the host is the working instrument,
+and `--mem-poll` is how it gets sampled.
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).

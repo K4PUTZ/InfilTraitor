@@ -146,6 +146,7 @@ func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileS
 
 
 func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
+	MemStage.mark("11 room build starts")
 	_room_size = room_size
 	floor_layer.clear()
 	structure_layer.clear()
@@ -986,6 +987,7 @@ func _bake_textures(extraction: Dictionary, _edge_registry: EdgeRegistry, _junct
 	var elapsed = Time.get_ticks_msec() - start
 
 	print("[ROOM] Bake complete: %.0f ms, %d pages" % [elapsed, baked_atlas.atom_pages.size()])
+	MemStage.mark("12 wall/facade bake complete")
 
 	if _bt_diag_on:
 		var sample_keys: Array = baked_atlas.lookup.keys()
@@ -1072,6 +1074,7 @@ func _initialize_damage_variant_registry(declared_materials: Array, floor_materi
 		var floors: Array[String] = []
 		for m in floor_materials:
 			floors.append(String(m))
+		MemStage.mark("19 before damage bake")
 		var baker = DamageVariantBakerClass.new(
 			room._voxel_renderer, registry, _get_material_registry(), _bake_compositor)
 		baker.bake_all(declared, floors)

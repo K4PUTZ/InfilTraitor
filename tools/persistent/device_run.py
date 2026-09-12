@@ -48,6 +48,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -214,38 +215,65 @@ def _poll_meminfo(adb, serial: str) -> str:
 def _capture(adb, seconds: int, mem_poll: float = 0.0) -> list[str]:
     """Stream the filtered log for `seconds`, then stop.
 
-    Note the shape: `logcat` is left running and killed on a deadline rather than
-    dumped afterwards with `-d`, so a run longer than the ring buffer cannot lose
-    its early lines.
+    ⚠️ LOGCAT IS WRITTEN STRAIGHT TO A FILE AND THE PARENT WATCHES THE CLOCK.
+    The obvious version — `for line in proc.stdout` with a deadline test in the
+    loop — hangs, and hangs in the worst way: the deadline is only ever checked
+    when a line ARRIVES, so a quiet app (which is exactly what a loaded, idle
+    game is) blocks in readline() forever and the run never ends. Measured
+    2026-09-12: a 125 s capture was still running minutes later with an empty
+    output file, because the filter is narrow and the game had stopped logging.
+
+    Writing to a file and polling the clock separates "how long to capture" from
+    "how chatty the app happens to be", which are not the same question.
     """
     prefix = ["-s", _SERIAL[0]] if _SERIAL else []
     cmd = [adb] + prefix + ["logcat", "-v", "time"] + LOG_TAGS + ["*:S"]
+
+    tmp = tempfile.NamedTemporaryFile(mode="w+", suffix=".logcat", delete=False)
+    tmp_path = tmp.name
+    tmp.close()
+
     lines: list[str] = []
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, bufsize=1)
-    deadline = time.time() + seconds
-    next_poll = time.time() + mem_poll if mem_poll > 0 else None
-    try:
-        while time.time() < deadline:
-            if next_poll is not None and time.time() >= next_poll:
-                stamp = time.strftime("%H:%M:%S")
-                mem_line = "[MEM-POLL] %s  %s" % (stamp, _poll_meminfo(adb, _SERIAL[0] if _SERIAL else ""))
-                lines.append(mem_line)
-                print(mem_line)
-                next_poll = time.time() + mem_poll
-            line = proc.stdout.readline()
-            if not line:
-                break
-            line = line.rstrip("\n")
-            lines.append(line)
-            print("[dev] %s" % line)
-    finally:
-        proc.terminate()
+    with open(tmp_path, "w") as sink:
+        proc = subprocess.Popen(cmd, stdout=sink, stderr=subprocess.STDOUT, text=True)
+        deadline = time.time() + seconds
+        next_poll = time.time() + mem_poll if mem_poll > 0 else None
         try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-    return lines
+            while time.time() < deadline:
+                if next_poll is not None and time.time() >= next_poll:
+                    stamp = time.strftime("%H:%M:%S")
+                    mem_line = "[MEM-POLL] %s  %s" % (
+                        stamp, _poll_meminfo(adb, _SERIAL[0] if _SERIAL else ""))
+                    lines.append(mem_line)
+                    print(mem_line, flush=True)
+                    next_poll = time.time() + mem_poll
+                if proc.poll() is not None:
+                    break
+                time.sleep(0.5)
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+
+    with open(tmp_path, "r", errors="replace") as f:
+        log_lines = [l.rstrip("\n") for l in f if l.strip()]
+    os.unlink(tmp_path)
+
+    for line in log_lines:
+        print("[dev] %s" % line, flush=True)
+
+    ## The poll samples are interleaved by timestamp rather than appended, so the
+    ## saved log reads as one timeline — which is the whole point of having two
+    ## instruments that each see half the footprint.
+    return sorted(lines + log_lines, key=_sort_key)
+
+
+def _sort_key(line: str) -> str:
+    """Order by the HH:MM:SS both line shapes carry, whatever else differs."""
+    m = re.search(r"(\d{2}:\d{2}:\d{2})", line)
+    return m.group(1) if m else ""
 
 
 def main() -> int:

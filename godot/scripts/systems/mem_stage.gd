@@ -38,6 +38,13 @@ extends RefCounted
 ## gate costs one bool test at every marker rather than a tree lookup.
 static var enabled: bool = false
 
+## Why the last read failed, for the one-time warning. A null instrument has to
+## say WHICH null it is, or the next person re-runs the same failing thing.
+static var _read_failure: String = "not attempted"
+
+## System-wide available bytes at the previous marker, for the Android path.
+static var _last_available: int = 0
+
 static var _last_rss_kb: int = 0
 static var _first_rss_kb: int = 0
 static var _stage_n: int = 0
@@ -50,12 +57,46 @@ static func mark(label: String) -> void:
 		return
 	var stats: Dictionary = _read_proc_self_status()
 	if stats.is_empty():
-		## Loud once, then quiet: on a platform without /proc this instrument does
-		## not exist, and a silent no-op would read as "this stage costs nothing".
+		## ⚠️ ANDROID CANNOT USE THE PER-PROCESS READER, measured 2026-09-12:
+		## `FileAccess.open("/proc/self/status")` returns null with error 1. The
+		## engine's path sandbox allows `/sdcard/...` — DevFlags reads its
+		## overrides from there — but not `/proc`, and there is no stock Godot
+		## API for per-process memory in a release build (`get_static_memory_usage`
+		## is debug-only, `get_rendering_info` reads 0).
+		##
+		## `OS.get_memory_info()` DOES work there, and answers a different but
+		## genuinely useful question: how much memory the SYSTEM has left. On a
+		## handset with 589 MB of headroom that curve is most of the story, and
+		## the per-process half is covered by `device_run.py --mem-poll` reading
+		## `dumpsys meminfo` from the host. Neither is a substitute for the other;
+		## printed together they bracket the truth.
+		var sys_info: Dictionary = OS.get_memory_info()
+		var available: int = int(sys_info.get("available", -1))
+		if available > 0:
+			var mb_sys: float = 1024.0 * 1024.0
+			var delta_avail: float = 0.0
+			if _last_available > 0:
+				delta_avail = float(available - _last_available) / mb_sys
+			_last_available = available
+			print("[MEM-STAGE] %-34s system available %8.1f MB   Δ %+8.1f MB   %s"
+				% [label, float(available) / mb_sys, delta_avail,
+				"(per-process unreadable here — see [MEM-POLL])"])
+			_stage_n += 1
+			return
+		## ⚠️ THE LABEL STILL PRINTS. Measured 2026-09-12: the first version
+		## returned here, and on Android — where the read failed for a reason
+		## that took another build to find — that silently removed the entire
+		## TIMELINE as well as the numbers. The timeline is half the instrument:
+		## `device_run.py --mem-poll` samples `dumpsys meminfo` from the host,
+		## and correlating those samples to the boot stages needs the stage
+		## timestamps to exist in the log. Losing the numbers is a degraded
+		## measurement; losing the timeline is no measurement at all.
+		print("[MEM-STAGE] %-34s (process memory unreadable — correlate with "
+			% label + "[MEM-POLL] by timestamp)")
 		if _stage_n == 0:
-			push_warning("[MEM-STAGE] /proc/self/status unavailable on %s — "
-				% OS.get_name() + "stage markers will not report")
-			_stage_n = 1
+			push_warning("[MEM-STAGE] /proc/self/status unreadable on %s: %s"
+				% [OS.get_name(), _read_failure])
+		_stage_n += 1
 		return
 
 	var rss_kb: int = int(stats.get("VmRSS", 0))
@@ -77,10 +118,33 @@ static func mark(label: String) -> void:
 static func _read_proc_self_status() -> Dictionary:
 	var file: FileAccess = FileAccess.open("/proc/self/status", FileAccess.READ)
 	if file == null:
+		_read_failure = "FileAccess.open returned null, error %d" % FileAccess.get_open_error()
 		return {}
+
+	## ⚠️ procfs FILES REPORT A LENGTH OF ZERO. They are generated on read, so
+	## `stat()` cannot know their size — and Godot's FileAccess derives
+	## `eof_reached()` from that length, so a `while not eof_reached()` loop over
+	## this file exits before reading a single byte. That is what produced
+	## "unavailable on Android" on a file the process can plainly read.
+	## `get_buffer()` reads from the stream itself and is not bound by the
+	## stat size, so it gets the real content.
+	var reported_length: int = file.get_length()
+	var text: String = ""
+	while true:
+		var chunk: PackedByteArray = file.get_buffer(4096)
+		if chunk.size() == 0:
+			break
+		text += chunk.get_string_from_utf8()
+	file.close()
+	if text.is_empty():
+		## Read BEFORE the close — `get_length()` on a closed handle is not a
+		## number, and a diagnostic that lies about why is worse than none.
+		_read_failure = "opened, but read 0 bytes (stat length %d)" % reported_length
+		return {}
+	_read_failure = ""
+
 	var out: Dictionary = {}
-	while not file.eof_reached():
-		var line: String = file.get_line()
+	for line in text.split("\n"):
 		for key in ["VmRSS", "VmSwap", "VmSize", "VmHWM"]:
 			if not line.begins_with(key + ":"):
 				continue

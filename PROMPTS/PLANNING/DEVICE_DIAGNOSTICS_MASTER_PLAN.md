@@ -987,6 +987,28 @@ it is a Director decision (a mobile shader tier), not an engineering one.
   different sides of one fix.
 - Memory is unchanged: 2.1–2.2 GB PSS, ~0.6–1.0 GB swap.
 
+### 10.11.7 The remaining ~7 ms of non-voxel GPU is NOT in the obvious nodes
+
+On the fixed binary, `HIDE_NON_VOXEL=1` still takes render gpu 19.0 → 12.0 and
+objects 25 535 → 12 729. Bisected by name (`HIDE_NODES`), same binary:
+
+| hidden | idle ms · render gpu | objects | detonation 1 / 2 mean |
+|---|---|---|---|
+| nothing (§10.11.4 last row) | 21.0 · 19.0 | 25 535 | 27.4 / 34.3 |
+| `VisionSmooth` (9 cones) | 20.2 · 18.9 | 25 533 | 27.4 / 34.1 |
+| `HUD` | 19.6 · 18.4 | 25 090 | 26.6 / 33.2 |
+| `Enemies` | 20.0 · 18.8 | 25 527 | 38.1 ⚠️ / 34.7 |
+| `Agent` | 20.1 · 18.9 | 25 530 | 27.4 / 34.1 |
+
+**None of them is it** — the HUD is worth ~0.5 ms and nothing else registers
+(the 38.1 ms run is one outlier against a 34.7 ms second run on the same flags,
+not a finding). What `HIDE_NON_VOXEL` also hides and this table does not:
+`FloorLayer` (1 104 256×128 tiles under the whole board), `ShadowFullLayer`,
+`ShadowPartialLayer`, `StructureLayer`, and the code-built `@Node2D@N` overlays.
+⚠️ **12 800 objects cannot come from ~130 non-voxel nodes**, so one of those
+holds far more drawn items than its node count says — that is the next
+`NODE_CENSUS` / `HIDE_NODES` question, not a guess to act on.
+
 ---
 
 ## 11. DIAG-08 — gates and documentation

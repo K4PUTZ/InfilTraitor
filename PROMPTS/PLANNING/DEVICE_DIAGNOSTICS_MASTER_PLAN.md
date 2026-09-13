@@ -877,6 +877,118 @@ no case for guessing at the fourth when the instrument to decide it now exists.
 
 ---
 
+## 10.11 🟢 DIAG-12 — ON THE MOTO THE IDLE FRAME WAS SCRIPT, AND ONE CALL SITE WAS 27 ms OF IT
+
+**Director, 2026-09-12:** *"desabilitando features, reduzindo efeitos e outros
+elementos que possam estar consumindo memória. Um bom candidato é o sistema de
+iluminação procedural em tempo real. Se chegar proximo do nosso piso de 24 fps
+pode parar."*
+
+Moto g04s, release APK, bake ON, PLAYGROUND, `BENCHMARK=1 BENCH_RUNS=2
+RNG_SEED=1234`. Every row in a table below ran the SAME binary unless marked.
+
+### 10.11.1 Seven things were wrong before any number could be trusted
+
+| defect | how it showed | fix |
+|---|---|---|
+| `device_run.py` force-stopped the game when the `adb logcat` child exited on its own (code 255) | a 250 s run ended **55 s in, mid map-load**, reporting "no fatal error"; `dumpsys activity exit-info` said **FORCE STOP** from the script | reattach + dedupe; the capture now ends when the game exits by itself (benchmark runs self-terminate) |
+| `export_android.py --renderer` never changed the renderer | the "Compatibility" APK's `assets/project.binary` said `mobile` | override `project.godot` for the export only, restore in `finally`, assert the packed binary — the old APK is now REJECTED |
+| `HIDE_VOXELS` was inert | applied before `layer.visible = true` in the same function | moved after it |
+| vsync cannot be disabled on this handset | `The requested V-Sync mode Disabled is not available. Falling back to V-Sync mode Enabled.` | none possible under Vulkan — **ms/frame is always 90 Hz-quantised here; `render gpu` is the independent column** |
+| `Performance.TIME_PROCESS` is a held maximum, not a mean | read **246 ms inside a window whose frame mean was 92 ms** | report it as such; attribute with `FrameSplit` clocks |
+| the APK on the Moto predated the benchmark | the first baseline ran zero detonations | reinstalled |
+| `NO_LIGHT` is degenerate on this build | LIGHT beat 2.6 s → **17.4 s**, first frame 2.9 s | none — it predates D-7's cooked light. **Not a valid ablation; do not quote it** |
+
+### 10.11.2 The ablation table — the GPU was not what paced the frame
+
+| config | idle ms/frame | render cpu | render gpu | objects | det 1 mean | det 2 mean |
+|---|---|---|---|---|---|---|
+| control | 40.3 | 6.0 | 19.0 | 25 535 | 60.8 | 63.0 |
+| `NO_FACE_SHADER=1` | 40.3 | 5.7 | 14.4 | 25 535 | 54.5 | 63.3 |
+| `STRETCH_VIEWPORT=1` ⚠️ older binary | 40.2 | 6.0 | 24.1 | 25 535 | 52.7 | 63.3 |
+| `HIDE_VOXELS=1` | 34.8 | 1.9 | 10.5 | 12 811 | 50.7 | 51.0 |
+| **`HIDE_NON_VOXEL=1`** | **15.1** | 4.1 | 12.0 | 12 729 | **21.0** | **29.5** |
+
+Three GPU-side ablations moved `render gpu` by up to 5 ms and the frame by
+**nothing**; rendering 3.5× fewer pixels moved nothing (fill is not the bound).
+Removing the voxel board entirely bought 5.5 ms. Removing everything OUTSIDE it
+bought 25 ms. **The frame was paced by the main thread.**
+
+### 10.11.3 `FrameSplit` named it in one run
+
+```
+[FRAME-SPLIT] per frame: guard cone smooth draw 26.87 ms (9/f) · sprite light+throw 0.45 ms (10/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.05 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+```
+
+`GuardEnemy._process()` queued a redraw of itself and both cone nodes **every
+frame**, and `_draw_vision_smooth()` casts 33 rays through `can_see_cell()` —
+**~3 ms per guard on a T606, nine guards, for cones that had not moved.**
+`VisionSmooth` is always visible, so hiding dev vision never stopped it.
+
+### 10.11.4 The fix, measured
+
+The cone redraws only when what it draws changed: `vision_angle` beyond
+`CONE_REDRAW_ANGLE_EPS`, `facing_angle_deg`, `cell`, `state`, or the LOS
+revision/sizes. `CONE_REDRAW_ALWAYS=1` restores the old path in the same binary.
+
+| | `CONE_REDRAW_ALWAYS=1` | on change |
+|---|---|---|
+| guard cone draw | 26.8–27.8 ms/frame | 0 once settled |
+| idle ms/frame | 40.4 | **20.1** |
+| detonation 1 mean / worst | 52.8 / 279.9 ms | **26.9 / 260.6 ms** |
+| detonation 2 mean / worst | 62.1 / 1 684.5 ms | **34.4 / 1 692.6 ms** |
+| same, `FRAME_PROBE=0` | — | **27.7 / 34.4 ms** |
+| **committed binary** (EPS 1e-5), probe / no probe | — | **27.4 / 34.3 · 27.3 / 34.1 ms**, idle 21.0 |
+
+The rows above the last were measured at `EPS = 1e-3`; the committed binary
+reproduces them. In it the cone settles within two probe windows:
+`guard cone smooth draw 28.10 ms (9/f)` → `1.96 ms (1/f)` → absent.
+
+Against §0.5: **36 and 29 fps** — above the 24–25 fps floor on both runs, the
+second just under the 30 fps target. The probe's GPU sync costs nothing
+measurable (26.9 vs 27.7, 34.4 vs 34.4).
+
+**Look.** A desktop same-map capture, OLD vs NEW, two runs of each. At
+`EPS = 1e-3` the new path differed from the old beyond the old path's own
+run-to-run spread (rim pixels up to 123 levels on ~2 000 px against ~450), so EPS
+went to **1e-5**. At 1e-5 the OLD×NEW pairs (42 833 and 27 843 px, delta>1 on
+10 557 and 2 192) sit inside the spread of the same-code pairs (31 186 and
+41 258 px, delta>1 on 2 727 and 8 606). ⚠️ **That is "no difference detectable",
+not "pixel-identical"** — the harness is not deterministic in the cones (the
+capture lands at different points of the angle's convergence), so a 0-px gate
+was never earned. Every differing pixel in every pair lies inside a vision cone.
+
+### 10.11.5 With the script bound gone, the face shader now shows
+
+Same fixed binary:
+
+| | control | `NO_FACE_SHADER=1` |
+|---|---|---|
+| idle ms/frame · render gpu | 20.1 · 19.0 | **16.8 · 12.8** |
+| detonation 1 / 2 mean | 26.9 / 34.4 | **22.9 / 30.3** |
+
+`voxel_face_shading.gdshader` — per-face tone, soot plane, P3 light bucket,
+residue quantisation — costs **~4 ms of every frame** on the Mali-G57. It is the
+largest remaining single lever measured, and removing it changes the picture, so
+it is a Director decision (a mobile shader tier), not an engineering one.
+
+### 10.11.6 ⚠️ What this does NOT fix — read before quoting 29 fps as done
+
+- **The single-frame freezes are untouched.** COMMIT 257–312 ms and the first
+  SOOT FADE frame **1.7 s on the second detonation** (235 ms on the first) are
+  the same with and without the fix. They are playback frames under §0.5.
+- **The cone cost returns whenever guards turn.** The fix removes the IDLE cost,
+  not the per-redraw one — nine guards rotating in the enemy phase is ~27 ms
+  again. `_draw_vision_smooth()` is O(rays × range²) LOS walks.
+- **Hand play is still not measured** (DIAG-11), and the Galaxy was not re-run.
+- **§10.10's "the idle board is GPU" was a Galaxy reading.** On the Moto the
+  binding constraint was script; once removed, the Moto frame sits near render
+  gpu 19 + render cpu 6, which is §10.10's picture again. Both are true, on
+  different sides of one fix.
+- Memory is unchanged: 2.1–2.2 GB PSS, ~0.6–1.0 GB swap.
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).

@@ -68,6 +68,10 @@ LAUNCH_COMPONENT = "%s/com.godot.game.GodotAppLauncher" % PACKAGE
 ## (the Java side, capitalised). Everything else on this handset is noise.
 LOG_TAGS = ["godot:V", "Godot:V", "vulkan:E", "AndroidRuntime:E"]
 
+## How often the capture asks whether the game is still running, so a run that
+## quits by itself (the benchmark) ends the capture instead of idling it out.
+ALIVE_CHECK_SECONDS = 2.0
+
 ## The properties that identify the hardware a number came from. A result with
 ## no hardware block is an orphan number.
 SPEC_PROPS = [
@@ -238,6 +242,8 @@ def _capture(adb, seconds: int, mem_poll: float = 0.0) -> list[str]:
         proc = subprocess.Popen(cmd, stdout=sink, stderr=subprocess.STDOUT, text=True)
         deadline = time.time() + seconds
         next_poll = time.time() + mem_poll if mem_poll > 0 else None
+        next_alive_check = time.time() + ALIVE_CHECK_SECONDS
+        seen_alive = False
         try:
             while time.time() < deadline:
                 if next_poll is not None and time.time() >= next_poll:
@@ -247,8 +253,36 @@ def _capture(adb, seconds: int, mem_poll: float = 0.0) -> list[str]:
                     lines.append(mem_line)
                     print(mem_line, flush=True)
                     next_poll = time.time() + mem_poll
+                ## ⚠️ THE LOGCAT CHILD CAN EXIT ON ITS OWN, AND THAT IS NOT THE END
+                ## OF THE RUN. This used to `break`, and `main()` then force-stops
+                ## the game. Measured 2026-09-12 on the Moto g04s: a 250 s capture
+                ## ended 55 s in, mid map-load, and reported "captured 854 line(s),
+                ## no fatal error" — `dumpsys activity exit-info` named the cause as
+                ## FORCE STOP from this script. Reattach instead; the new stream
+                ## re-dumps the ring buffer, and the duplicates are dropped below.
                 if proc.poll() is not None:
-                    break
+                    note = ("[DIAG-02] ⚠️  logcat exited on its own (code %s) at %s — reattaching"
+                            % (proc.returncode, time.strftime("%H:%M:%S")))
+                    print(note, flush=True)
+                    lines.append(note)
+                    sink.flush()
+                    proc = subprocess.Popen(cmd, stdout=sink, stderr=subprocess.STDOUT, text=True)
+                ## A run that quits by itself (the benchmark does) ends the capture
+                ## there instead of idling out the rest of `--seconds`.
+                if time.time() >= next_alive_check:
+                    next_alive_check = time.time() + ALIVE_CHECK_SECONDS
+                    alive = _sh(adb, ["shell", "pidof", PACKAGE]).strip() != ""
+                    if alive:
+                        seen_alive = True
+                    elif seen_alive:
+                        note = ("[DIAG-02] %s exited on its own at %s — capture ends"
+                                % (PACKAGE, time.strftime("%H:%M:%S")))
+                        print(note, flush=True)
+                        lines.append(note)
+                        ## The last lines are already in logd; give the stream a
+                        ## moment to deliver them.
+                        time.sleep(2.0)
+                        break
                 time.sleep(0.5)
         finally:
             proc.terminate()
@@ -257,8 +291,17 @@ def _capture(adb, seconds: int, mem_poll: float = 0.0) -> list[str]:
             except subprocess.TimeoutExpired:
                 proc.kill()
 
+    seen: set = set()
+    log_lines: list[str] = []
     with open(tmp_path, "r", errors="replace") as f:
-        log_lines = [l.rstrip("\n") for l in f if l.strip()]
+        for raw in f:
+            line = raw.rstrip("\n")
+            ## Every logcat line carries a millisecond stamp and a pid, so an exact
+            ## repeat is a reattach re-dump, never a second event.
+            if not line.strip() or line in seen:
+                continue
+            seen.add(line)
+            log_lines.append(line)
     os.unlink(tmp_path)
 
     for line in log_lines:

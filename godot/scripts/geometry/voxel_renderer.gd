@@ -6750,10 +6750,36 @@ func apply_glass_opening_at(level: int, cell: Vector2i, opening_id: String) -> i
 	})
 
 
+## PERF-DEV — `DevFlags` when the autoload is reachable, the environment otherwise
+## (`godot --script` contexts), the same resolution as `Room._dev_flag()`. Every
+## read below used `OS.get_environment` directly, which never reaches an APK.
+func _dev_flag(flag_name: String) -> String:
+	if is_inside_tree():
+		var flags: Node = get_node_or_null("/root/DevFlags")
+		if flags != null:
+			return flags.value(flag_name, "")
+	return OS.get_environment("INFILTRAITOR_" + flag_name)
+
+
+## PERF-DEV — `NO_FACE_SHADER=1` prices `voxel_face_shading.gdshader` on the GPU:
+## per-face tone, the soot plane fetch, the P3 light bucket and the residue
+## quantisation, every fragment of every layer. The material object is KEPT and
+## only its shader is swapped for one that does nothing, because consumers read
+## `layer.material as ShaderMaterial` and set parameters on it. The board renders
+## unlit and unsooted under it — an instrument, never a look mode.
+static var _no_op_layer_shader: Shader = null
+
+
 func _get_layer_material(level: int) -> ShaderMaterial:
 	if _layer_materials.has(level):
 		return _layer_materials[level]
 	var shader = load("res://godot/shaders/voxel_face_shading.gdshader")
+	if _dev_flag("NO_FACE_SHADER") == "1":
+		if _no_op_layer_shader == null:
+			_no_op_layer_shader = Shader.new()
+			_no_op_layer_shader.code = "shader_type canvas_item;\n"
+			print("[PERF-DEV] NO_FACE_SHADER — voxel layers draw with a no-op shader")
+		shader = _no_op_layer_shader
 	if shader == null:
 		## B6 loud-fail: silently rendering undifferentiated voxels is exactly
 		## the class of bug this project keeps paying for.
@@ -6821,11 +6847,9 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	## measurement predates P3, which removed the minting and most of the writes,
 	## so the trade-off is worth RE-measuring rather than assuming. It is a sweep,
 	## not a fix, until a number says otherwise.
-	var quad_env := OS.get_environment("INFILTRAITOR_QUADRANT")
+	var quad_env := _dev_flag("QUADRANT")
 	if quad_env.is_valid_int():
 		layer.rendering_quadrant_size = maxi(quad_env.to_int(), 1)
-	if OS.get_environment("INFILTRAITOR_HIDE_VOXELS") == "1":
-		layer.visible = false
 
 	# Set rendering parameters
 	layer.y_sort_origin = 1
@@ -6846,6 +6870,18 @@ func _build_voxel_layer_node(level: int) -> TileMapLayer:
 	var rel: int = level - _ground_plane_level
 	layer.z_index = (_wall_base_z_index + rel) if rel >= 0 else (rel + 1)
 	layer.visible = true
+
+	## PERF-DEV — layer ablations, all after the line above. ⚠️ `HIDE_VOXELS` used
+	## to be applied BEFORE `layer.visible = true`, which silently undid it: the
+	## instrument hid nothing and priced nothing. `HIDE_LEVELS_ABOVE=<rel>` /
+	## `HIDE_LEVELS_BELOW=<rel>` price the layer COUNT by hiding every layer whose
+	## relative level is outside the range (0 = wall base, -1 = walkable floor top).
+	var above_raw: String = _dev_flag("HIDE_LEVELS_ABOVE")
+	var below_raw: String = _dev_flag("HIDE_LEVELS_BELOW")
+	if _dev_flag("HIDE_VOXELS") == "1" \
+			or (above_raw.is_valid_int() and rel > above_raw.to_int()) \
+			or (below_raw.is_valid_int() and rel < below_raw.to_int()):
+		layer.visible = false
 
 	## FLOOR-DEPTH-02: one tone step per level down. Positive (wall) levels are
 	## never touched — depth is a ground concept, and a wall's own stack already

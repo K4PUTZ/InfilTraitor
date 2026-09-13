@@ -57,6 +57,29 @@ var enemy_id: String = ""
 var _vision_tiles_node: Node2D = null
 var _vision_smooth_node: Node2D = null
 
+## PERF-DEV (2026-09-12) — the cone is redrawn only when what it draws changed.
+## `_process()` used to `queue_redraw()` this guard and both cone nodes EVERY
+## frame, and `_draw_vision_smooth()` casts 33 rays through `can_see_cell()` each
+## time — ~130 LOS walks per guard per frame on a board where nothing moves. On
+## the Moto g04s the idle frame was measured process-bound (TIME_PROCESS ~42 ms
+## against render gpu 19 ms), so a per-frame GDScript cost is exactly what paces
+## it. `CONE_REDRAW_ALWAYS=1` restores the old per-frame redraw for the A/B.
+## 1e-5 rad, not 1e-3: `vision_angle` converges asymptotically (`lerp_angle`), so
+## the drawn cone lags the live angle by up to this much. Measured 2026-09-12 on a
+## same-map capture: at 1e-3 the rim differed by up to 123 levels on ~2 000 px
+## against ~450 px between two runs of the OLD path. 1e-5 is ~0.004 px at a
+## 400 px rim, and only lengthens the redraw tail after a turn by a few dozen frames.
+const CONE_REDRAW_ANGLE_EPS: float = 0.00001
+var _cone_redraw_always: bool = false
+var _cone_drawn_angle: float = INF
+var _cone_drawn_facing: float = INF
+var _cone_drawn_cell: Vector2i = Vector2i(-99999, -99999)
+var _cone_drawn_state: String = ""
+var _cone_drawn_los: Vector3i = Vector3i(-1, -1, -1)
+## Bumped by `set_los_data()`. The dictionary SIZES ride along in the key too, in
+## case a caller mutates the same dictionaries in place instead of passing new ones.
+var _los_revision: int = 0
+
 var cell: Vector2i = Vector2i.ZERO
 var patrol_route: Array[Vector2i] = []
 var patrol_index: int = 0
@@ -155,6 +178,7 @@ func set_los_data(blocked_cells: Dictionary, blocked_edges: Dictionary, room_siz
 	_los_blocked_cells = blocked_cells
 	_los_blocked_edges = blocked_edges
 	_shadow_tiles      = shadow_tiles
+	_los_revision += 1
 	if room_size != Vector2i.ZERO:
 		_room_size_cached = room_size
 
@@ -205,13 +229,20 @@ func _ready() -> void:
 	add_child(_vision_smooth_node)
 	_vision_smooth_node.draw.connect(_draw_vision_smooth)
 
+	var flags: Node = get_node_or_null("/root/DevFlags")
+	_cone_redraw_always = flags.on("CONE_REDRAW_ALWAYS") if flags != null \
+			else OS.get_environment("INFILTRAITOR_CONE_REDRAW_ALWAYS") == "1"
+
 
 func _rotate_towards(current: float, target: float, speed: float, delta: float) -> float:
 	return lerp_angle(current, target, clampf(speed * delta, 0.0, 1.0))
 
 
 func _process(delta: float) -> void:
+	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	attention.update(delta)
+	if FrameSplit.enabled:
+		FrameSplit.add("guard attention", Time.get_ticks_usec() - _fs0)
 
 	if _comms_label_timer > 0.0:
 		_comms_label_timer -= delta
@@ -267,9 +298,29 @@ func _process(delta: float) -> void:
 	if sprite != null:
 		sprite.set_head_yaw_grid_deg(rad_to_deg(vision_angle))
 
+	if not _cone_redraw_always and not _cone_inputs_changed():
+		return
 	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
 	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
 	queue_redraw()
+
+
+## Everything `_draw()`, `_draw_vision_smooth()` and `_draw_vision_tiles()` read
+## that can change frame to frame. Explicit redraw requests elsewhere (dev vision,
+## state entry, search queue) still call `queue_redraw()` themselves.
+func _cone_inputs_changed() -> bool:
+	var los_key := Vector3i(_los_revision, _los_blocked_cells.size(), _los_blocked_edges.size())
+	if absf(angle_difference(_cone_drawn_angle, vision_angle)) <= CONE_REDRAW_ANGLE_EPS \
+			and _cone_drawn_facing == facing_angle_deg \
+			and _cone_drawn_cell == cell and _cone_drawn_state == state \
+			and _cone_drawn_los == los_key:
+		return false
+	_cone_drawn_angle = vision_angle
+	_cone_drawn_facing = facing_angle_deg
+	_cone_drawn_cell = cell
+	_cone_drawn_state = state
+	_cone_drawn_los = los_key
+	return true
 
 
 func setup(
@@ -1023,6 +1074,13 @@ func _step_toward(
 
 
 func _draw_vision_tiles() -> void:
+	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
+	_draw_vision_tiles_body()
+	if FrameSplit.enabled:
+		FrameSplit.add("guard cone tiles draw", Time.get_ticks_usec() - _fs0)
+
+
+func _draw_vision_tiles_body() -> void:
 	## Vision cone colored by probability — tile-by-tile (MUL blending)
 	var params: Dictionary = _get_cone_visual_params()
 	## CONE-ANGLE-01: no `+ 90.0`. `vision_angle` is a grid angle and
@@ -1061,6 +1119,13 @@ func _draw_vision_tiles() -> void:
 
 
 func _draw_vision_smooth() -> void:
+	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
+	_draw_vision_smooth_body()
+	if FrameSplit.enabled:
+		FrameSplit.add("guard cone smooth draw", Time.get_ticks_usec() - _fs0)
+
+
+func _draw_vision_smooth_body() -> void:
 	var params: Dictionary = _get_cone_visual_params()
 	var v_fov: float  = params["fov"]
 	var visual_facing_deg := wrapf(rad_to_deg(vision_angle), 0.0, 360.0)  ## CONE-ANGLE-01

@@ -77,6 +77,10 @@ func _ready() -> void:
 	## Armed here because autoloads run before any scene, so this lands before
 	## `BakeConfig.load_config()`.
 	BakeConfig.force_no_bake = on("NO_BAKE")
+	## PERF-DEV — the light ablation, reachable in the APK. Same standing as
+	## NO_BAKE: an instrument, never a look mode. OR-ed so a desktop env var keeps
+	## working exactly as it did.
+	VoxelRenderer.LIGHT_DISABLED = VoxelRenderer.LIGHT_DISABLED or on("NO_LIGHT")
 	MemStage.mark("00 boot — flags resolved")
 	if _overrides.is_empty():
 		## Deliberately quiet-but-present: a device log that says nothing about

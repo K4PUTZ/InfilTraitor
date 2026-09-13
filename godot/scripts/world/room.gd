@@ -1987,6 +1987,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	##
 	## `_benchmark_started` guards against a map RELOAD (F2) starting a second
 	## one on top of the first.
+	_apply_perf_ablations()
 	if _dev_flag_on("BENCHMARK") and not _benchmark_started:
 		_benchmark_started = true
 		_start_benchmark_deferred()
@@ -1995,6 +1996,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 func _ready() -> void:
 	## DIAG-01 — see `_dev_flag()`: this cannot be a member initialiser.
 	_frame_probe = _dev_flag_on("FRAME_PROBE")
+	FrameSplit.enabled = _frame_probe
 
 	## §12.11 — A DETERMINISTIC RNG, so a VFX pixel gate can exist at all.
 	##
@@ -5750,6 +5752,8 @@ var _frame_probe_n: int = 0
 var _frame_probe_us: int = 0
 var _frame_probe_last: int = 0
 var _frame_probe_armed: bool = false
+var _frame_probe_process_s: float = 0.0
+var _frame_probe_physics_s: float = 0.0
 
 
 func _process(_delta: float) -> void:
@@ -5776,16 +5780,32 @@ func _process(_delta: float) -> void:
 		if _frame_probe_last > 0:
 			_frame_probe_n += 1
 			_frame_probe_us += t_now - _frame_probe_last
+			## PERF-DEV — the main thread's share, accumulated per frame because the
+			## monitor holds only the LAST frame. Measured 2026-09-12 on the Moto
+			## g04s: 40 ms/frame against render cpu 5.7 + render gpu 14.2 — half the
+			## frame sat outside both columns, and nothing in this line could say
+			## whether it was script, physics or vsync pacing.
+			_frame_probe_process_s += Performance.get_monitor(Performance.TIME_PROCESS)
+			_frame_probe_physics_s += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
 		_frame_probe_last = t_now
 		if _frame_probe_n >= 60:
 			var vrid: RID = get_viewport().get_viewport_rid()
-			print("[FRAME-PROBE] %.1f ms/frame · render cpu %.1f ms · render gpu %.1f ms · %d draw call(s) · %d primitive(s) · %d object(s)"
+			## New columns go at the END so every parser of the older line still matches.
+			print("[FRAME-PROBE] %.1f ms/frame · render cpu %.1f ms · render gpu %.1f ms · %d draw call(s) · %d primitive(s) · %d object(s) · process %.1f ms · physics %.1f ms · %d node(s)"
 				% [float(_frame_probe_us) / 1000.0 / float(_frame_probe_n),
 				RenderingServer.viewport_get_measured_render_time_cpu(vrid),
 				RenderingServer.viewport_get_measured_render_time_gpu(vrid),
 				int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 				int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
-				int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))])
+				int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
+				_frame_probe_process_s * 1000.0 / float(_frame_probe_n),
+				_frame_probe_physics_s * 1000.0 / float(_frame_probe_n),
+				int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))])
+			_frame_probe_process_s = 0.0
+			_frame_probe_physics_s = 0.0
+			var split_line: String = FrameSplit.take_line(_frame_probe_n)
+			if split_line != "":
+				print(split_line)
 			## PERF-P7a — the VFX `_draw` split, printed beside the frame time it is
 			## a share of. Empty unless INFILTRAITOR_VFX_DRAW_PROBE=1; see
 			## VfxDrawProbe for what the FULL/NOOP difference does and does not mean.
@@ -5797,11 +5817,19 @@ func _process(_delta: float) -> void:
 
 	_event_frame_sample()
 
+	var fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	# Update temporal lighting effects (flicker, pulse, rotation)
 	_update_temporal_lights(_delta)
+	var fs1: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	_update_vision_fog()
+	var fs2: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	if _has_moving_guards():
 		_update_enemy_visibility()
+	if FrameSplit.enabled:
+		var fs3: int = Time.get_ticks_usec()
+		FrameSplit.add("room temporal lights", fs1 - fs0)
+		FrameSplit.add("room vision fog", fs2 - fs1)
+		FrameSplit.add("room enemy visibility", fs3 - fs2)
 
 
 ## §13.3 — THE CONSEQUENCE BEAT (Director, 2026-08-26).
@@ -11266,6 +11294,85 @@ func _dev_flag_num(flag_name: String, fallback: int) -> int:
 	if raw.is_empty() or not raw.is_valid_int():
 		return fallback
 	return int(raw)
+
+
+## PERF-DEV (2026-09-12) — view-side ablations for the device track. All default
+## absent, all reachable in the APK through DevFlags, applied once the map is
+## loaded. Instruments, not settings: a board under any of them is wrong on
+## purpose, and no pixel gate taken under one means anything.
+##
+##   STRETCH_VIEWPORT=1  render the 2D at the project's base size and upscale —
+##                       ~3.5x fewer pixels on a 720x1612 handset, same framing.
+##                       If the frame falls with it, the cost is FILL (per
+##                       fragment), not submission.
+##   ZOOM=<f>            camera zoom through the game's own clamp; smaller sees
+##                       more of the board, which is what a pinching hand does.
+##   HIDE_NON_VOXEL=1    hide every CanvasItem/CanvasLayer outside the voxel
+##                       renderer, HUD included — the board's own cost alone.
+##   NODE_CENSUS=1       print, per subtree, its CanvasItems (and how many are
+##                       visible), the cells of any TileMapLayer in it, and whether
+##                       it processes — the inventory HIDE_NODES bisects over.
+##   HIDE_NODES=a,b*     hide every CanvasItem/CanvasLayer whose NAME matches (the
+##                       `String.match` wildcards), anywhere in the tree. Measured
+##                       2026-09-12 on the Moto g04s: HIDE_NON_VOXEL took the idle
+##                       frame 40.3 -> 15.1 ms and half the drawn objects with it,
+##                       so the next question is WHICH of the non-voxel nodes —
+##                       answerable by name, without a rebuild per candidate.
+func _apply_perf_ablations() -> void:
+	if _dev_flag_on("STRETCH_VIEWPORT"):
+		get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+		print("[PERF-DEV] STRETCH_VIEWPORT — 2D renders at %s, upscaled to %s"
+			% [get_window().content_scale_size, get_window().size])
+	var zoom_raw: String = _dev_flag("ZOOM", "")
+	if zoom_raw.is_valid_float() and _camera_controller != null:
+		_camera_controller.set_zoom_for_capture(zoom_raw.to_float())
+		print("[PERF-DEV] ZOOM — camera zoom %.2f" % camera.zoom.x)
+	if _dev_flag_on("HIDE_NON_VOXEL"):
+		_debug_hide_all_but_voxels(get_tree().root)
+		print("[PERF-DEV] HIDE_NON_VOXEL — everything outside the voxel renderer hidden")
+	var hide_raw: String = _dev_flag("HIDE_NODES", "")
+	for pattern in hide_raw.split(",", false):
+		var hits: int = 0
+		for n in get_tree().root.find_children(pattern.strip_edges(), "", true, false):
+			if n is CanvasItem:
+				(n as CanvasItem).visible = false
+				hits += 1
+			elif n is CanvasLayer:
+				(n as CanvasLayer).visible = false
+				hits += 1
+		print("[PERF-DEV] HIDE_NODES — '%s' hid %d node(s)" % [pattern.strip_edges(), hits])
+	if _dev_flag_on("NODE_CENSUS"):
+		print("[NODE-CENSUS] name (class) · canvas items, visible · tile cells · process")
+		_print_node_census(get_tree().root, 0)
+
+
+## x = CanvasItems in the subtree, y = those visible in the tree, z = used cells of
+## every TileMapLayer in it (a layer's drawn objects are its rendering quadrants,
+## which no node count can see — the cell count is the proxy).
+func _census_subtree(node: Node) -> Vector3i:
+	var out := Vector3i.ZERO
+	if node is CanvasItem:
+		out.x += 1
+		if (node as CanvasItem).is_visible_in_tree():
+			out.y += 1
+		if node is TileMapLayer:
+			out.z += (node as TileMapLayer).get_used_cells().size()
+	for child in node.get_children():
+		out += _census_subtree(child)
+	return out
+
+
+func _print_node_census(node: Node, depth: int) -> void:
+	for child in node.get_children():
+		var c: Vector3i = _census_subtree(child)
+		if c.x == 0 and not (child is CanvasLayer):
+			continue
+		print("[NODE-CENSUS] %s%s (%s) · %d, %d visible · %d cell(s)%s"
+			% ["  ".repeat(depth), child.name, child.get_class(), c.x, c.y, c.z,
+			" · process" if child.is_processing() else ""])
+		## The voxel renderer's 48 layers are already priced by HIDE_VOXELS.
+		if depth < 4 and (c.x >= 4 or c.z > 0) and child != _voxel_renderer:
+			_print_node_census(child, depth + 1)
 
 
 

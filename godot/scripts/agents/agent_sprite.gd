@@ -1378,8 +1378,11 @@ func _apply_layers() -> void:
 
 
 func _process(delta: float) -> void:
+	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	_advance_throw(delta)
 	_update_light_uniform()
+	if FrameSplit.enabled:
+		FrameSplit.add("sprite light+throw", Time.get_ticks_usec() - _fs0)
 
 
 ## Verbatim in behaviour from AgentProbeProp/GrenadeProp (D22's fix): de-rotate

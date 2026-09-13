@@ -135,16 +135,61 @@ def _find(candidates, what):
     return None
 
 
+PROJECT_FILE = REPO / "project.godot"
+RENDERER_LINE = re.compile(r'^renderer/rendering_method="[^"]*"$', re.M)
+RENDERER_OVERRIDE_KEY = "rendering_method.mobile"
+
+
+## ⚠️ `--rendering-method` ON THE EXPORT COMMAND LINE IS NOT PACKED. The first
+## version of this script passed it and claimed the export "honours it". Measured
+## 2026-09-12: the APK built that way carried `rendering_method` = `mobile` in its
+## `assets/project.binary`, identical to the default build — the flag changes the
+## renderer of the EDITOR process doing the export, not the exported settings.
+## Every DIAG-04 control run made with it would have measured Vulkan twice.
+##
+## What is packed is `project.godot`, so the override goes there, as the `.mobile`
+## feature override (the key an Android runtime resolves), for the duration of the
+## export only. Returns the original bytes to restore, or None when the file does
+## not have the shape this expects — refusing is better than patching blind.
+def _patch_renderer(renderer: str) -> bytes | None:
+    original = PROJECT_FILE.read_bytes()
+    text = original.decode("utf-8")
+    if RENDERER_OVERRIDE_KEY in text:
+        print("[DIAG-06] FAIL — project.godot already has a %s override; not "
+              "stacking a second one." % RENDERER_OVERRIDE_KEY)
+        return None
+    m = RENDERER_LINE.search(text)
+    if m is None:
+        print("[DIAG-06] FAIL — no renderer/rendering_method line in project.godot.")
+        return None
+    patched = (text[:m.end()] + '\nrenderer/%s="%s"' % (RENDERER_OVERRIDE_KEY, renderer)
+               + text[m.end():])
+    PROJECT_FILE.write_bytes(patched.encode("utf-8"))
+    print("[DIAG-06] project.godot temporarily overridden: renderer/%s=\"%s\""
+          % (RENDERER_OVERRIDE_KEY, renderer))
+    return original
+
+
 def _run_export(godot: str, apk: Path, renderer: str | None) -> bool:
     apk.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
         godot, "--headless", "--path", str(REPO),
         "--export-release", PRESET_NAME, str(apk),
     ]
+    original_project = None
     if renderer:
-        # Godot accepts the renderer as a run-time flag; the export honours it
-        # for the packed project settings override.
-        cmd[1:1] = ["--rendering-method", renderer]
+        original_project = _patch_renderer(renderer)
+        if original_project is None:
+            return False
+    try:
+        return _run_export_command(cmd, apk)
+    finally:
+        if original_project is not None:
+            PROJECT_FILE.write_bytes(original_project)
+            print("[DIAG-06] project.godot restored")
+
+
+def _run_export_command(cmd: list, apk: Path) -> bool:
     env = dict(os.environ)
     if "GODOT_ANDROID_KEYSTORE_RELEASE_PATH" not in env:
         keystore = next((k for k in KEYSTORE_CANDIDATES if k.exists()), None)
@@ -201,7 +246,7 @@ def _run_export(godot: str, apk: Path, renderer: str | None) -> bool:
     return True
 
 
-def _verify_contents(apk: Path, show: bool) -> bool:
+def _verify_contents(apk: Path, show: bool, renderer: str | None = None) -> bool:
     """The whole point of the script. Assert what came out, not what was asked."""
     size_mb = apk.stat().st_size / (1024.0 * 1024.0)
     print("[DIAG-06] %s — %.1f MB" % (apk.name, size_mb))
@@ -249,6 +294,28 @@ def _verify_contents(apk: Path, show: bool) -> bool:
                   "silently wrong." % label)
         else:
             print("[DIAG-06] ok   — %d %s" % (len(hits), label))
+
+    ## The renderer is asserted from the packed settings, never from what was
+    ## asked for — asking is exactly what failed the first time (`_patch_renderer`).
+    try:
+        with zipfile.ZipFile(apk) as z:
+            settings = z.read("assets/project.binary")
+    except KeyError:
+        settings = b""
+    has_override = RENDERER_OVERRIDE_KEY.encode() in settings
+    if renderer:
+        if has_override and renderer.encode() in settings:
+            print("[DIAG-06] ok   — renderer override packed: %s" % renderer)
+        else:
+            ok = False
+            print("[DIAG-06] FAIL — --renderer %s was asked for and is NOT in the "
+                  "packed project.binary. This APK runs the project default." % renderer)
+    elif has_override:
+        ok = False
+        print("[DIAG-06] FAIL — a %s override is packed but none was asked for; "
+              "project.godot was left patched by an interrupted export." % RENDERER_OVERRIDE_KEY)
+    else:
+        print("[DIAG-06] ok   — renderer: project default (no override packed)")
 
     if size_mb >= SUSPICIOUS_SIZE_MB:
         ok = False
@@ -337,7 +404,7 @@ def main() -> int:
         print("[DIAG-06] FAIL — nothing at %s to verify." % apk)
         return 1
 
-    if not _verify_contents(apk, args.contents):
+    if not _verify_contents(apk, args.contents, args.renderer):
         print("[DIAG-06] BUILD REJECTED — do not measure with this APK.")
         return 1
 

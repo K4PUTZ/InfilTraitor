@@ -817,6 +817,66 @@ chosen on.
 
 ---
 
+## 10.10 🔴 DIAG-11 — THE IDLE BOARD IS THE CONSTRAINT, AND IT IS GPU
+
+`FRAME_PROBE=1` alongside the benchmark, Galaxy A16 5G, release APK, bake ON.
+The board **settling with nothing happening**:
+
+```
+[FRAME-PROBE] 22.2 ms/frame · render cpu 2.5 ms · render gpu 15.9 ms · 1379 draw call(s) · 41082 primitive(s) · 25535 object(s)
+[FRAME-PROBE] 17.7 ms/frame · render cpu 2.6 ms · render gpu 14.3 ms · 1379 draw call(s) · 41082 primitive(s) · 25535 object(s)
+[FRAME-PROBE] 24.2 ms/frame · render cpu 2.9 ms · render gpu 19.8 ms · 1379 draw call(s) · 41082 primitive(s) · 25535 object(s)
+[FRAME-PROBE] 16.5 ms/frame · render cpu 2.4 ms · render gpu 14.3 ms · 1379 draw call(s) · 41082 primitive(s) · 25535 object(s)
+```
+
+**A static board, no detonation, nothing moving, costs 17–24 ms/frame — of a
+33.3 ms budget.** And the split names the half: **render gpu 14–20 ms against
+render cpu 2.4–3.3 ms.** It is not script. It is **1 379 draw calls and 25 535
+objects**, every frame, to draw a board that is not changing.
+
+⚠️ vsync is ON in this run, so readings at ~16.7 ms are the refresh cap, not the
+work. `render gpu` is measured independently of it and is the honest signal —
+and it never drops below **14.3 ms**.
+
+### 10.10.1 What this does to every earlier number
+
+**The detonation adds roughly 10 ms to a frame that already costs 20.** The
+benchmark's 24–29 ms playback mean is an idle board of ~20 ms plus a blast of
+~5–10 ms. That is the whole story of §10.9's "inside budget" reading, and it was
+never a statement about the blast being cheap.
+
+It also reframes the hand-played 78–88 ms: the blast cannot account for it, so
+**that session's IDLE frame must have been far more expensive than this one's**.
+DIAG-11's gap is therefore not something the scripted path does differently
+*during* the detonation — it is the steady-state cost of the board in that
+situation. ⚠️ Still not named: what raises it. Now measurable directly, because
+`FRAME_PROBE` reports draw calls and object count, so the next hand-played
+session can be compared against these exact figures rather than argued about.
+
+### 10.10.2 The three findings finally agree
+
+Every measurement this session pointed at the same subsystem, from a different
+side each time:
+
+| finding | what it saw |
+|---|---|
+| §10.7 memory | ~530 MB of graphics is room build / placement / submission |
+| §10.9 bake ablation | the bake takes the TileSet 98 → 32 987 tiles; off = half the memory, 2.3× slower |
+| §10.10 frame probe | 1 379 draw calls and 25 535 objects, 14–20 ms of GPU, on a board doing nothing |
+
+**32 opaque + 16 glass `TileMapLayer`s over 145 448 placed cells** is the cost —
+in memory, in draw calls, and in GPU time. The detonation was never the problem;
+it is the thing that happens to run on top of a board that already consumes most
+of the frame.
+
+⚠️ **And this is where the session stops, deliberately.** The fix is an
+architecture decision (fewer layers, or fewer live cells per layer) and it
+belongs to the Director and to `PERFORMANCE_MASTER_PLAN`. Three candidate lists
+in this plan were written before their measurements and two were wrong; there is
+no case for guessing at the fourth when the instrument to decide it now exists.
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).

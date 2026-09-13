@@ -737,6 +737,86 @@ screen resolution and RAM produce the same 2.2 GB board and the same verdict.
 
 ---
 
+## 10.9 🔴 DIAG-10 — THE BAKE IS THE TRADE-OFF AXIS, and the benchmark has a fidelity gap
+
+Automated benchmark (`BENCHMARK=1`, `BENCH_RUNS=3`, `RNG_SEED=1234`), Galaxy
+A16 5G, release APK, three runs each side.
+
+| | bake ON | bake OFF (`NO_BAKE=1`) |
+|---|---|---|
+| playback mean, runs 1/2/3 | **24.1 / 29.3 / 23.9 ms** | **58.2 / 53.5 / 54.9 ms** |
+| worst frame, runs 1/2/3 | 135.8 / 861.1 / 139.4 ms | 923.7 / 795.8 / 819.0 ms |
+| GL mtrack | 736 MB | **312 MB** |
+| TOTAL PSS | 2.19 GB | **1.15 GB** |
+| swap | 1.31 GB | **358 MB** |
+| boot → map loaded | 22.2 s | **8.4 s** |
+| TileSet | 135 sources, **32 987 tiles**, 163.8 MB atlas | 98 sources, **98 tiles**, 0.4 MB atlas |
+
+### 10.9.1 The bake buys speed with memory, and the exchange rate is now known
+
+**Turning the bake off halves the footprint** — 2.19 GB → 1.15 GB, graphics
+−424 MB, swap −950 MB, boot 2.6× faster — **and makes the detonation 2.3×
+slower**, 24 → 55 ms mean.
+
+The census says exactly why: the bake takes the TileSet from **98 tiles to
+32 987**. That is the 163.8 MB of atlas, and it is most of the ~424 MB of
+graphics memory that goes with it. §10.7 found the board was the cost and
+named "room build / voxel placement" — **this locates it one level further:
+it is the baked tile population those layers are placed FROM.**
+
+This also confirms, on device, the desktop finding that the bake is a *saving*
+in frame cost (measured there as off = +243%; here +130%). **It was never a
+question of the bake being waste. It is a trade: ~1 GB of RAM for 2.3× blast
+speed** — and on a 3.4 GB handset that is a trade worth re-pricing, which is a
+Director decision, not an engineering one.
+
+### 10.9.2 ⚠️ THE BENCHMARK DOES NOT REPRODUCE HAND PLAY — 3.5× apart
+
+**Do not quote 24.1 ms as the player's experience.** On the same handset, the
+same map, the same day:
+
+| | hand-played | automated |
+|---|---|---|
+| playback mean | 78.5 / 85.4 / 88.1 ms | 24.1 / 29.3 / 23.9 ms |
+| COMMIT frame | 2 134.8 ms | 112.7 ms |
+| SOOT FADE | 1 679.9 ms | 71.8 ms |
+| LIGHT, 60 frames both | 4 145 ms | 1 161 ms |
+| fuse/PUMP per frame | 71.9 ms | 35.6 ms |
+
+Every beat is cheaper in the scripted path, including the FUSE — which runs
+before anything is destroyed, so this is not simply "the blast hit less
+geometry".
+
+**The obvious explanation was tested and failed.** Memory state was nearly
+identical: 1.31 GB of swap during the automated run against 1.42 GB during the
+hand-played one. Paging does not account for it.
+
+So the scripted path is missing something the real one does, and **until that
+is named the benchmark is a COMPARATOR, not a measurement.** Its A/B above is
+valid — both sides ran the identical path — while its absolute numbers are not
+the player's. This is the standing "instrument fidelity before symptom" trap:
+a demo that skips what the real path does measures its own gap.
+
+**DIAG-11, open:** name the gap. Candidates, unranked and none tested — the
+targeting/throw flow the benchmark bypasses by calling `detonate_active()`
+directly; HUD and dev overlays live during play; the agent's own per-frame work
+while selected. ⚠️ Two of three candidate lists in this plan have already been
+wrong; measure, do not pick.
+
+### 10.9.3 What the budget says, with that caveat attached
+
+Against §0.5 (30 fps / 33.3 ms, playback frames), on the Galaxy:
+
+- **hand-played, bake ON: 78–88 ms — 2.4–2.6× over.** This is the number that
+  reflects a player, and it is the honest verdict until DIAG-11 closes.
+- benchmark, bake ON: 24 ms — inside budget, but see §10.9.2.
+- benchmark, bake OFF: 55 ms — 1.65× over, at half the memory.
+
+**Nothing here overturns §10.8's verdict.** It adds the axis the fix will be
+chosen on.
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).

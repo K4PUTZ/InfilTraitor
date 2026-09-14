@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 93314 lines total** (under `godot/scripts/`)
+**254 scripts · 93428 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1818,7 +1818,7 @@ extends `Node2D` · 43 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 436 lines
+extends `Node3D` · 530 lines
 
 `godot/scripts/spikes/board3d_live.gd`
 
@@ -1836,6 +1836,9 @@ extends `Node3D` · 436 lines
 
 **Public API**
 - `func build(room: Node, cell_to_world: Callable) -> void:`
+- `func on_blast_commit(delta) -> void:`
+- `func on_blast_soot() -> void:`
+- `func on_blast_light(delta) -> void:`
 
 ---
 
@@ -2102,7 +2105,7 @@ extends `Node3D` · 362 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 388 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 403 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -5586,7 +5589,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11878 lines
+extends `Node2D` · 11883 lines
 
 `godot/scripts/world/room.gd`
 

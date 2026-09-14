@@ -2928,6 +2928,11 @@ func _world_render_scale_value() -> float:
 	return _world_render_scale.current_scale() if _world_render_scale != null else 1.0
 
 
+## DIAG-21 step 2 — the live 3D board, or null when `RENDER3D` did not build one.
+func board3d() -> Node:
+	return get_node_or_null("Board3DLive")
+
+
 ## DIAG-21 — the 3D board over the real registries. The 2D board is hidden, not
 ## removed: every 2D system keeps running, so only its drawing leaves the frame.
 func _start_board3d_live() -> void:

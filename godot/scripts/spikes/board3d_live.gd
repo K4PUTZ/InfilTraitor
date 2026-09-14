@@ -107,7 +107,11 @@ var _camera: Camera3D = null
 var _ground_level: int = 0
 ## Vector3i(grid x, level, grid y) → index into _material_ids.
 var _occ: Dictionary = {}
-var _by_chunk: Dictionary = {}  ## Vector2i → Array[Vector3i]
+var _by_chunk: Dictionary = {}  ## Vector2i → {Vector3i: true}
+var _chunk_nodes: Dictionary = {}  ## Vector2i → MeshInstance3D
+## DIAG-21 step 2 — the chunks the last blast commit touched, so the soot and light
+## beats that follow recolour the same geometry.
+var _blast_chunks: Dictionary = {}
 var _material_ids: PackedStringArray = PackedStringArray()
 var _material_index: Dictionary = {}
 var _material_glass: Array[bool] = []
@@ -203,8 +207,8 @@ func _put(grid: Vector2i, level: int, material_id: String) -> void:
 		var chunk := Vector2i(floori(float(grid.x) / float(CHUNK_VOXELS)),
 			floori(float(grid.y) / float(CHUNK_VOXELS)))
 		if not _by_chunk.has(chunk):
-			_by_chunk[chunk] = []
-		(_by_chunk[chunk] as Array).append(key)
+			_by_chunk[chunk] = {}
+		(_by_chunk[chunk] as Dictionary)[key] = true
 	_occ[key] = _material_index[material_id]
 
 
@@ -233,17 +237,26 @@ func _read_look() -> void:
 			_tone[i] = tone
 
 
+## The light and soot of one face. DIAG-21 step 2: read from the 2D renderer's cell
+## plane — the bucket and soot code the 2D board is showing at this instant — because
+## a detonation's cooked light is applied to that plane (`apply_light_field_cells`),
+## not to `Room._voxel_light_field`, which stays pre-blast. The field is the fallback
+## for a cell the plane has never written. While the 2D path still runs underneath,
+## this is what keeps the two boards showing the same thing.
 func _face_colour(key: Vector3i, dir: int) -> int:
 	var cell := Vector2i(key.x, key.z)
+	var renderer: VoxelRenderer = _room._voxel_renderer
 	var f: float = _tone[dir]
+	var bucket: int = renderer.cell_bucket_at(key.y, cell)
 	var field: VoxelLightField = _light_field()
-	if field != null:
-		f *= _light_ladder[clampi(field.bucket_for(cell, key.y), 0, _light_ladder.size() - 1)]
-		var soot: Vector3i = VoxelLightField.decode_face_soot(field.face_soot_code(cell, key.y))
-		var ring: int = [soot.x, soot.y, soot.z][dir]
-		if ring < BlastCalculator.FACE_SOOT_CLEAN:
-			f *= _soot_mult[ring]
-	var rel: int = (_room._voxel_renderer as VoxelRenderer).relative_level(key.y)
+	if bucket == VoxelRenderer.BUCKET_UNWRITTEN:
+		bucket = field.bucket_for(cell, key.y) if field != null else _light_ladder.size() - 1
+	f *= _light_ladder[clampi(bucket, 0, _light_ladder.size() - 1)]
+	var soot: Vector3i = VoxelLightField.decode_face_soot(renderer.cell_soot_at(key.y, cell))
+	var ring: int = [soot.x, soot.y, soot.z][dir]
+	if ring < BlastCalculator.FACE_SOOT_CLEAN:
+		f *= _soot_mult[ring]
+	var rel: int = renderer.relative_level(key.y)
 	if rel < 0:
 		f *= VoxelRenderer.FLOOR_DEPTH_DIM[mini(-rel - 1, VoxelRenderer.FLOOR_DEPTH_DIM.size() - 1)]
 	return clampi(roundi(f * 255.0), 0, 255)
@@ -259,13 +272,89 @@ func _count_2d_cells() -> int:
 	return cells
 
 
+# ── detonation (DIAG-21 step 2) ───────────────────────────────────────────────
+
+## The presenter's commit frame: the frame the 2D board shows the blast's damage.
+## Folds every touched voxel's new visibility into the occupancy and rebuilds the
+## chunks whose faces can have changed.
+func on_blast_commit(delta) -> void:
+	var t0: int = Time.get_ticks_usec()
+	_blast_chunks = {}
+	for voxel: Voxel in delta.touched_voxels:
+		var key := Vector3i(voxel.grid_pos.x, voxel.level, voxel.grid_pos.y)
+		var chunk: Vector2i = _chunk_of(key)
+		if voxel.visible:
+			var material_id: String = _material_for(voxel)
+			if material_id.is_empty():
+				continue
+			_put(voxel.grid_pos, voxel.level, material_id)
+		elif _occ.has(key):
+			_occ.erase(key)
+			(_by_chunk.get(chunk, {}) as Dictionary).erase(key)
+		_blast_chunks[chunk] = true
+		## An emptied cell exposes the +X face of its −X neighbour and the +Z face of
+		## its −Z neighbour, which live in the previous chunk at a chunk boundary.
+		_blast_chunks[_chunk_of(key - Vector3i(1, 0, 0))] = true
+		_blast_chunks[_chunk_of(key - Vector3i(0, 0, 1))] = true
+	var t1: int = Time.get_ticks_usec()
+	_remesh(_blast_chunks, "commit", delta.touched_voxels.size(), float(t1 - t0) / 1000.0)
+
+
+## After the soot fade: the same geometry, recoloured with the settled scorch.
+func on_blast_soot() -> void:
+	_remesh(_blast_chunks, "soot", 0, 0.0)
+
+
+## After the consequence light: every chunk holding a cell whose light moved, plus the
+## blast's own chunks.
+func on_blast_light(delta) -> void:
+	var chunks: Dictionary = _blast_chunks.duplicate()
+	if delta != null:
+		for k: Vector3i in delta.light_changed_cells:
+			## light_changed_cells keys are (cell.x, cell.y, level).
+			chunks[_chunk_of(Vector3i(k.x, k.z, k.y))] = true
+	_remesh(chunks, "light", 0, 0.0)
+
+
+func _remesh(chunks: Dictionary, reason: String, voxels: int, fold_ms: float) -> void:
+	var t0: int = Time.get_ticks_usec()
+	var quads: int = 0
+	for chunk: Vector2i in chunks:
+		quads += _build_chunk(chunk).y
+	var mesh_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	print("[BOARD3D] remesh %s — %d chunk(s), %d quad(s), %d voxel(s) folded in %.1f ms, mesh %.1f ms"
+		% [reason, chunks.size(), quads, voxels, fold_ms, mesh_ms])
+	Telemetry.event("board3d.remesh", {"reason": reason, "chunks": chunks.size(),
+		"quads": quads, "voxels": voxels, "fold_ms": fold_ms, "mesh_ms": mesh_ms})
+
+
+func _chunk_of(key: Vector3i) -> Vector2i:
+	return Vector2i(floori(float(key.x) / float(CHUNK_VOXELS)),
+		floori(float(key.z) / float(CHUNK_VOXELS)))
+
+
+## A voxel's material through its container — the same answer `_collect()` gave.
+func _material_for(voxel: Voxel) -> String:
+	var container: Object = instance_from_id(voxel.container_id())
+	if container is Slice:
+		var slice: Slice = container
+		return slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
+	if container is Slab:
+		return (container as Slab).material
+	if container is JunctionResolver.JunctionColumn:
+		var column: JunctionResolver.JunctionColumn = container
+		return column.override_material if column.override_material != "" else column.material
+	push_warning("[Board3DLive] voxel %s has no known container — not drawn" % voxel)
+	return ""
+
+
 # ── meshing ───────────────────────────────────────────────────────────────────
 
 ## Returns Vector2i(faces emitted, quads after merging).
 func _build_chunk(chunk: Vector2i) -> Vector2i:
 	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material * 256 + colour}
 	var faces: int = 0
-	for key: Vector3i in _by_chunk[chunk]:
+	for key: Vector3i in (_by_chunk.get(chunk, {}) as Dictionary):
 		var material: int = _occ[key]
 		var glass: bool = _material_glass[material]
 		for dir: int in range(3):
@@ -306,12 +395,17 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 		arrays[Mesh.ARRAY_INDEX] = surface.indices
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, _shader_materials[material])
+	var previous: Node = _chunk_nodes.get(chunk)
+	if previous != null:
+		previous.queue_free()
+		_chunk_nodes.erase(chunk)
 	if mesh.get_surface_count() > 0:
 		var instance := MeshInstance3D.new()
 		instance.name = "Chunk_%d_%d" % [chunk.x, chunk.y]
 		instance.mesh = mesh
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(instance)
+		_chunk_nodes[chunk] = instance
 	return Vector2i(faces, quads)
 
 

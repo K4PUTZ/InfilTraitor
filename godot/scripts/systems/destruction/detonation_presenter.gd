@@ -100,7 +100,12 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	_writer.soot_clean = false
 	var ramp: Array = _collect_soot_ramp(plan, voxel_renderer)
 	_commit_frame(plan, voxel_renderer)
+	var board3d: Node = _board3d()
+	if board3d != null and consequence_delta != null:
+		board3d.on_blast_commit(consequence_delta)
 	await _fade_soot_plane(ramp, voxel_renderer, tree)
+	if board3d != null and is_instance_valid(board3d):
+		board3d.on_blast_soot()
 	await _run_consequence(plan, voxel_renderer, smoke_overlay, tree)
 	## D-6 — the smoke is all instanced and rising, so the world may resume
 	## (Director, 2026-08-29). The light ramp below runs with the agent already
@@ -145,6 +150,8 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	if consequence_room != null and consequence_room.consequence_beat:
 		consequence_room.event_probe_beat("LIGHT")
 		await consequence_room.play_consequence_light(consequence_delta)
+		if board3d != null and is_instance_valid(board3d):
+			board3d.on_blast_light(consequence_delta)
 	finished.emit()
 
 
@@ -258,6 +265,14 @@ func _collect_soot_ramp(plan: Dictionary, voxel_renderer) -> Array:
 
 ## The DevFlags NODE, not the global name: this RefCounted is also built by tools
 ## that run without autoloads, where it simply reads as off.
+## DIAG-21 step 2 — the 3D board, when `RENDER3D=1` built one. It follows the same
+## three beats the 2D board changes on: the commit frame, the settled soot, the light.
+func _board3d() -> Node:
+	if consequence_room == null or not consequence_room.has_method("board3d"):
+		return null
+	return consequence_room.board3d()
+
+
 static func _no_soot() -> bool:
 	var tree := Engine.get_main_loop() as SceneTree
 	var flags: Node = tree.root.get_node_or_null("DevFlags") if tree != null else null

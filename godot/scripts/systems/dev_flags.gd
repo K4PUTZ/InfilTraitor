@@ -143,19 +143,37 @@ func source_path() -> String:
 	return _source
 
 
-## Every location an overrides file is accepted from, most specific first.
+## A copy of what the overrides FILE asked for. The environment is never in it,
+## so a telemetry session header can report exactly which flags the file set.
+func overrides() -> Dictionary:
+	return _overrides.duplicate()
+
+
+## The app's own external files directory on Android, `""` everywhere else (or
+## when the package name cannot be derived). The overrides file is read from
+## here, and `Telemetry` (TEL-01) writes its file sink here, because it is the
+## one place a release APK and `adb` can both reach.
 ##
-## The Android path is DERIVED, never hardcoded: `OS.get_user_data_dir()` is
+## The path is DERIVED, never hardcoded: `OS.get_user_data_dir()` is
 ## `/data/user/0/<package>/files` there, so the package name is already in hand
 ## and the external twin is `/sdcard/Android/data/<package>/files`. Hardcoding
 ## the package would silently stop working the moment `package/unique_name`
 ## changes in the export preset.
+func external_files_dir() -> String:
+	if OS.get_name() != "Android":
+		return ""
+	var package: String = _android_package_name()
+	if package.is_empty():
+		return ""
+	return "/sdcard/Android/data/%s/files" % package
+
+
+## Every location an overrides file is accepted from, most specific first.
 func _candidate_paths() -> PackedStringArray:
 	var paths: PackedStringArray = PackedStringArray()
-	if OS.get_name() == "Android":
-		var package: String = _android_package_name()
-		if not package.is_empty():
-			paths.append("/sdcard/Android/data/%s/files/%s" % [package, FLAGS_BASENAME])
+	var external: String = external_files_dir()
+	if not external.is_empty():
+		paths.append("%s/%s" % [external, FLAGS_BASENAME])
 	paths.append("user://" + FLAGS_BASENAME)
 	paths.append("res://" + FLAGS_BASENAME)
 	return paths

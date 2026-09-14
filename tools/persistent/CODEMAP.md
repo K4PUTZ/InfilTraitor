@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**246 scripts · 91096 lines total** (under `godot/scripts/`)
+**248 scripts · 91584 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,8 +18,8 @@
 - **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, voxel_variant_registry.gd, wood_pattern.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -2259,7 +2259,7 @@ extends `Node2D` · 43 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 209 lines
+extends `Node` · 227 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -2275,6 +2275,8 @@ extends `Node` · 209 lines
 - `func num(flag_name: String, fallback: int = 0) -> int:`
 - `func real(flag_name: String, fallback: float = 0.0) -> float:`
 - `func source_path() -> String:`
+- `func overrides() -> Dictionary:`
+- `func external_files_dir() -> String:`
 
 ---
 
@@ -2908,6 +2910,34 @@ extends `Node` · 156 lines
 
 **Public API**
 - `func shade(voxel_xy: Vector2i, _face: int, seed_val: int) -> float:`
+
+---
+
+### `telemetry.gd`
+
+extends `Node` · 297 lines
+
+`godot/scripts/systems/telemetry.gd`
+
+> Telemetry — the one timeline every diagnostic run writes into. TEL-01 (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). Autoload singleton, registered as `Telemetry` after `DevFlags` (which arms it) and `VersionInfo` (which it reports). WHY THIS EXISTS The device track lost sessions to numbers read without their context. DIAG-15 tied a ×6.6 jump in draw calls to a grenade throw because the log held the counters and nothing else; DIAG-16 found the jump came with a change of framing and zoom that no line recorded (plan §10.16). A counter is only comparable with the view, the command and the phase it was read under, so each of those becomes an EVENT on one clock here, and "what happened when the counter moved" becomes a join instead of a guess. THE RECORD — every event carries, in this order: seq   per-session sequence number. logcat drops lines under load (plan §5), so a gap in `seq` is a dropped line — counted, never silently absent. f     `Engine.get_process_frames()` t_us  `Time.get_ticks_usec()` — the clock `FrameSplit` and the frame probe read, so their windows join against events exactly. kind  `<channel>.<name>` — `input.tap`, `view.framing`, `frame.window` ... ...   the event's own fields. TWO SINKS, because neither is enough alone: - logcat: `[TEL] <seq> <f> <t_us> <kind> k=v ...` — lands in the capture `device_run.py` already takes, but is lossy under load. - a JSONL file, one record per line — lossless. On Android it goes to the app's EXTERNAL files dir (where `DevFlags` already reads its overrides from, and `adb pull` reaches without a debuggable build); elsewhere to `user://`. If it cannot be opened the run says so and continues on logcat alone. FLAGS (through `DevFlags`, so every one of them reaches a release APK): TELEMETRY=1        arm it. Disarmed, every call costs one bool test. TEL_CHANNELS=a,b   only these channels (default: all). `session` always. TEL_FILE=0         no file sink. TEL_LOGCAT=0       no logcat lines (the file only). ⚠️ PRICED, NOT FREE. `stats()` reports the events written, their bytes and the microseconds spent writing them. §14.2 #4 requires that cost to be measured on the Moto before a telemetry-on number is quoted beside a telemetry-off one.
+
+**Constants / tuning**
+- `FILE_DIR_NAME` = `"telemetry"`
+- `FLUSH_INTERVAL_USEC` = `500_000`
+
+**Public vars**
+- `var enabled: bool = false`
+
+**Public API**
+- `func start(channels: PackedStringArray, sink_path: String, to_logcat: bool) -> void:`
+- `func stop() -> void:`
+- `func wants(kind: String) -> bool:`
+- `func event(kind: String, fields: Dictionary = {}) -> void:`
+- `func count(counter: String, amount: int = 1) -> void:`
+- `func take_counters() -> Dictionary:`
+- `func stats() -> Dictionary:`
+- `func file_path() -> String:`
+- `func session_fields() -> Dictionary:`
 
 ---
 
@@ -4607,6 +4637,16 @@ extends `SceneTree` · 257 lines
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+---
+
+### `telemetry_selftest.gd`
+
+extends `Node` · 173 lines
+
+`godot/scripts/tools/telemetry_selftest.gd`
+
+> TEL-01 Test: the Telemetry timeline. ⚠️ RUNS AS A SCENE, not as a `--script` SceneTree — `Telemetry`, `DevFlags` and `VersionInfo` are autoloads, which exist as globals only when a MAIN SCENE runs (see `dev_flags_selftest` for the same warning). `run_selftests.py` launches `telemetry_selftest.tscn` that way. ⚠️ `SceneTree.quit(code)` is DEFERRED, so every failing branch also returns. WHAT THIS PINS, and why each one is here rather than assumed: 1. Disarmed by default. A build without `TELEMETRY=1` must write nothing — otherwise every measurement ever taken without the flag carries its cost. 2. The logcat line's exact shape. `bench_analyze.py` (TEL-07) splits on spaces, so a value with a space in it, or a vector printed as `(3, 4)`, silently shifts every field after it. 3. The file sink round-trips: the session header comes first, `seq` has no gaps, the clock never runs backwards, and a vector arrives as an array. A gap in `seq` is how the analyzer counts DROPPED lines, so a sink that skips numbers on its own would report losses that never happened. 4. A channel filter drops what it should and never drops `session`. 5. Counters belong to one window: taking them resets them.
 
 ---
 

@@ -118,8 +118,16 @@ def segments(session: list[dict]) -> list[dict]:
         kind = record["kind"]
         if kind == "scenario.mark":
             current = {"label": str(record.get("label", "?")), "t_us": record["t_us"],
-                       "windows": [], "straddling": 0}
+                       "windows": [], "straddling": 0, "touched": 0}
             segs.append(current)
+        elif kind in ("camera.pan_end", "camera.zoom_end") and record.get("via") != "scenario" \
+                and current is not None:
+            ## A camera gesture the scenario did not issue is a finger on the screen.
+            ## DIAG-21's first Moto run: three drags inside one stop moved the camera
+            ## off the agent for the rest of the ladder, and every later row compared
+            ## a different view with its control. The segment is kept but flagged;
+            ## its rows cannot be paired.
+            current["touched"] = current.get("touched", 0) + 1
         elif kind in ("scenario.end", "scenario.abort", "view.framing", "camera.zoom_end"):
             ## Any of these changes what the next window measures, so it closes
             ## the segment; the next mark opens a new one.
@@ -168,8 +176,11 @@ def report(path: str, session: list[dict]) -> int:
     columns = " | ".join(title for _, title, _ in WINDOW_COLUMNS)
     print("| segment | framing | visible | zoom | windows | %s |" % columns)
     print("|---|---|---|---|---|%s|" % "|".join("---" for _ in WINDOW_COLUMNS))
+    touched_labels = []
     for seg in segs:
         ws = seg["windows"]
+        if seg.get("touched", 0):
+            touched_labels.append("%s (%d gesture(s))" % (seg["label"], seg["touched"]))
         if not ws:
             print("| %s | — | — | — | 0 (%d straddling) | %s |"
                   % (seg["label"], seg["straddling"], " | ".join("—" for _ in WINDOW_COLUMNS)))
@@ -182,9 +193,13 @@ def report(path: str, session: list[dict]) -> int:
         for key, _, fmt in WINDOW_COLUMNS:
             med = _median(ws, key)
             cells.append("—" if med is None else fmt % med)
-        print("| %s | %s | %s | %.2f | %d (+%d straddling) | %s |"
-              % (seg["label"], last.get("framing", "?"), visible_text,
+        print("| %s%s | %s | %s | %.2f | %d (+%d straddling) | %s |"
+              % (seg["label"], " ⚠️ touched" if seg.get("touched", 0) else "",
+                 last.get("framing", "?"), visible_text,
                  float(last.get("zoom", 0.0)), len(ws), seg["straddling"], " | ".join(cells)))
+    if touched_labels:
+        print("\n⚠️ camera gestures the scenario did not issue (a finger on the screen) in: %s — "
+              "those rows measured a view their control did not" % ", ".join(touched_labels))
     return status
 
 

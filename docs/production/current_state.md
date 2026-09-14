@@ -301,6 +301,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-11_MOBILE_TEST.md
 - RESUMO_SESSAO_2026-09-12_DEVICE.md
 - RESUMO_SESSAO_2026-09-12_PERF_DEVICE.md
+- RESUMO_SESSAO_2026-09-13_FACE_SHADER.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

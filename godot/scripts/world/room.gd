@@ -2807,11 +2807,14 @@ const FRAMING_PORTRAIT_CANVAS: Vector2i = Vector2i(390, 844)
 const FRAMING_LANDSCAPE_CANVAS: Vector2i = Vector2i(844, 390)
 const FRAMING_DESKTOP_CANVAS: Vector2i = Vector2i(1280, 720)
 var _framing: String = ""
-## TEL-UI-02 (Director, 2026-09-14: *"Pode seguir com o TEL-UI-02, escala 0,75"*) — the
+## TEL-UI-02 — built at 0.75 (Director, 2026-09-14: *"Pode seguir com o TEL-UI-02, escala
+## 0,75"*), then set back to 1.0 after the paired Moto captures (same day: *"eu acho que
+## não vale a pena piorar o jogo por causa disso. Vamos manter 1.0"*). The mechanism stays,
+## off by default — the
 ## fraction of the screen's pixels M's WORLD renders at; the HUD stays native, and D
 ## renders at 1.0 (§13 Q8). `RENDER_SCALE=<f>` overrides it for a test. See
 ## WorldRenderScale for the mechanism and DEVICE_DIAGNOSTICS §10.17.4 for why.
-var render_scale_m: float = 0.75
+var render_scale_m: float = 1.0
 var _world_render_scale: Node = null
 
 

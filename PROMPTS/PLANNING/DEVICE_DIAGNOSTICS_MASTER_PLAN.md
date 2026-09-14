@@ -1728,7 +1728,14 @@ where one says "superseded", §14 is the only authority for that task.
    `canvas_items` stretch already renders at the screen's native resolution —
    full HD on a full HD screen. M's restrictions are the (a) canvas scale and the
    zoom floor Q6 will set.
-9. ✅ **ANSWERED 2026-09-14 — 0.75, the world only.** Director: *"Pode seguir com
+9. ✅ **RULED 2026-09-14 — 1.0 (native). The world render scale stays OFF by
+   default.** After the six paired Moto captures (§10.18), the Director ruled:
+   *"eu acho que não vale a pena piorar o jogo por causa disso. Vamos manter
+   1.0"*. `render_scale_m` is 1.0; the TEL-UI-02 mechanism stays in the build,
+   reachable only through `RENDER_SCALE=<f>`, as an instrument. ⚠️ So the verdict
+   frame is §10.18's 1.0 column — 60 ms idle at the default zoom — not its 0.75
+   column.
+   Superseded ruling, kept for the record: **0.75, the world only.** Director: *"Pode seguir com
    o TEL-UI-02, escala 0,75"*, after seeing the paired Moto captures. Built as
    TEL-UI-02: `WorldRenderScale` renders the world into a SubViewport at 0.75× the
    screen's pixels (540×1209 on the Moto, 1.78× fewer), sharing the root

@@ -4762,10 +4762,19 @@ func debug_set_cell_paint(on: bool) -> void:
 ## 0 = off (the shipping value), 1 = paint the plane byte at the recovered cell,
 ## 2 = paint the recovered cell itself (x and y mod 256), 3 = paint the plane's
 ## G channel, i.e. the LIGHT BUCKET as the SAMPLER sees it (PERF-P3).
+##
+## DIAG-14 — the paint branches are not in the shipping build, so any mode above 0
+## swaps every layer onto the FACE_DEBUG_PAINT build and 0 swaps it back. The
+## plane, the ladder and `layer_origin` are material parameters and are meant to
+## survive the swap; the gate paints the plane through them, so it is what says
+## whether they did.
 func debug_set_cell_paint_mode(mode: float) -> void:
+	var shader: Shader = _face_shader_variant(mode > 0.0)
 	for level in _layer_materials.keys():
-		(_layer_materials[level] as ShaderMaterial).set_shader_parameter(
-			"cell_debug_paint", mode)
+		var mat := _layer_materials[level] as ShaderMaterial
+		if shader != null and mat.shader != shader:
+			mat.shader = shader
+		mat.set_shader_parameter("cell_debug_paint", mode)
 
 
 ## The rect one cell's quad occupies in LAYER-LOCAL space, taken from Godot's
@@ -6773,22 +6782,12 @@ static var _no_op_layer_shader: Shader = null
 func _get_layer_material(level: int) -> ShaderMaterial:
 	if _layer_materials.has(level):
 		return _layer_materials[level]
-	var shader = load("res://godot/shaders/voxel_face_shading.gdshader")
-	if _dev_flag("NO_FACE_SHADER") == "1":
-		if _no_op_layer_shader == null:
-			_no_op_layer_shader = Shader.new()
-			_no_op_layer_shader.code = "shader_type canvas_item;\n"
-			print("[PERF-DEV] NO_FACE_SHADER — voxel layers draw with a no-op shader")
-		shader = _no_op_layer_shader
+	var shader: Shader = _face_shader_variant(false)
 	if shader == null:
 		## B6 loud-fail: silently rendering undifferentiated voxels is exactly
 		## the class of bug this project keeps paying for.
 		push_error("[VoxelRenderer] FACE-READ-01: voxel_face_shading.gdshader failed to load — voxel faces will render flat")
 		return null
-	var strip_raw: String = _dev_flag("FACE_SHADER_STRIP")
-	var per_quad: bool = _dev_flag("FACE_PLANE_PER_QUAD") == "1"
-	if (not strip_raw.is_empty() or per_quad) and shader != _no_op_layer_shader:
-		shader = _face_shader_with_strips(shader, strip_raw, per_quad)
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	_soot_image_for(level)
@@ -6806,61 +6805,76 @@ func _get_layer_material(level: int) -> ShaderMaterial:
 	return mat
 
 
-## DIAG-13 (PERF-DEV) — `FACE_SHADER_STRIP=<STAGE,...>` prices the face shader ONE
-## STAGE AT A TIME. `NO_FACE_SHADER` removes all of it at once, and on the Moto
-## that ~6 ms of render gpu cannot say whether it is the light, the soot, the
-## face tone, the residue snap, the second TEXTURE sample or the debug branches.
+## THE FACE SHADER BUILD — one place decides which build every voxel layer draws.
 ##
-## The stages are `#ifndef` guards in the shipped shader itself, and this only
-## adds `#define FACE_STRIP_<STAGE>` lines after its `shader_type` line — so a run
-## without the flag compiles the exact file, and a run with it strips that file,
-## not a copy. An unknown stage is a configuration error and leaves the shader
-## whole, loudly: a typo must not price a different ladder than the log claims.
+## DIAG-14, ratified 2026-09-14 (Director: "Liga as duas: debug fora e cálculo por
+## voxel"): the SHIPPING build reads the cell plane once per quad and has no debug
+## paint branches in it. Moto g04s, render gpu 19.0 -> 16.9 ms, picture unchanged
+## (DEVICE_DIAGNOSTICS_MASTER_PLAN §10.13). With no flag set and no debug paint
+## asked for, this returns the shader FILE itself — no injection, no copy.
 ##
-## DIAG-14 (SPIKE) — `FACE_PLANE_PER_QUAD=1` rides the same injection and defines
-## `FACE_PLANE_PER_QUAD`: the cell recovery, plane fetch, bucket lookup and soot
-## decode move to the vertex stage, once per quad (see the shader's `v_quad_a`).
-## Default absent until it is gated and ratified.
+## `debug_paint` asks for the FACE_DEBUG_PAINT build. Only
+## `debug_set_cell_paint_mode()` asks, so the P3 gate and the §12.8 instruments get
+## the branches they paint with and nothing that ships pays for them.
+##
+## Instruments, all absent by default, all `#define`s injected after the file's
+## `shader_type` line so the variant is that file and not a copy:
+##   - `NO_FACE_SHADER=1` — a no-op shader (unlit, unsooted — never a look mode);
+##   - `FACE_SHADER_STRIP=<STAGE,...>` — DIAG-13's ladder. An unknown stage is a
+##     configuration error and strips nothing, loudly: a typo must not price a
+##     different ladder than the log claims;
+##   - `FACE_PLANE_PER_QUAD=0` — the per-fragment plane path, for comparison only.
 const FACE_SHADER_STRIP_STAGES: PackedStringArray = [
-	"DEBUG", "TEXA", "RESIDUE", "FACE", "SOOT", "LIGHT"]
-static var _stripped_face_shader: Shader = null
-static var _stripped_face_shader_key: String = ""
+	"TEXA", "RESIDUE", "FACE", "SOOT", "LIGHT"]
+const FACE_SHADER_PATH: String = "res://godot/shaders/voxel_face_shading.gdshader"
+static var _face_shader_variants: Dictionary = {}   ## sorted define list -> Shader
 
 
-func _face_shader_with_strips(base: Shader, raw: String, per_quad: bool = false) -> Shader:
-	var stages: PackedStringArray = PackedStringArray()
-	for token: String in raw.to_upper().split(",", false):
+func _face_shader_variant(debug_paint: bool) -> Shader:
+	if _dev_flag("NO_FACE_SHADER") == "1":
+		if _no_op_layer_shader == null:
+			_no_op_layer_shader = Shader.new()
+			_no_op_layer_shader.code = "shader_type canvas_item;\n"
+			print("[PERF-DEV] NO_FACE_SHADER — voxel layers draw with a no-op shader")
+		return _no_op_layer_shader
+	var base: Shader = load(FACE_SHADER_PATH)
+	if base == null:
+		return null
+	var defines: PackedStringArray = PackedStringArray()
+	for token: String in _dev_flag("FACE_SHADER_STRIP").to_upper().split(",", false):
 		var stage: String = token.strip_edges()
 		if not FACE_SHADER_STRIP_STAGES.has(stage):
-			push_error("[VoxelRenderer] FACE_SHADER_STRIP: unknown stage '%s' (known: %s) — shader left whole"
+			push_error("[VoxelRenderer] FACE_SHADER_STRIP: unknown stage '%s' (known: %s) — no stage stripped"
 				% [stage, ", ".join(FACE_SHADER_STRIP_STAGES)])
-			return base
-		if not stages.has(stage):
-			stages.append(stage)
-	stages.sort()
-	var key: String = ",".join(stages) + ("|PER_QUAD" if per_quad else "")
-	if _stripped_face_shader != null and _stripped_face_shader_key == key:
-		return _stripped_face_shader
+			defines.clear()
+			break
+		if not defines.has("FACE_STRIP_" + stage):
+			defines.append("FACE_STRIP_" + stage)
+	if _dev_flag("FACE_PLANE_PER_QUAD") == "0":
+		defines.append("FACE_PLANE_PER_FRAGMENT")
+	if debug_paint:
+		defines.append("FACE_DEBUG_PAINT")
+	if defines.is_empty():
+		return base
+	defines.sort()
+	var key: String = ",".join(defines)
+	if _face_shader_variants.has(key):
+		return _face_shader_variants[key]
 	const HEADER: String = "shader_type canvas_item;"
 	var code: String = base.code
 	var at: int = code.find(HEADER)
 	if at < 0:
-		push_error("[VoxelRenderer] FACE_SHADER_STRIP: '%s' not in the shader source (%d chars) — shader left whole"
-			% [HEADER, code.length()])
+		push_error("[VoxelRenderer] face shader: '%s' not in the source (%d chars) — the %s build cannot be made"
+			% [HEADER, code.length(), key])
 		return base
-	var defines: String = ""
-	for stage: String in stages:
-		defines += "\n#define FACE_STRIP_%s" % stage
-	if per_quad:
-		defines += "\n#define FACE_PLANE_PER_QUAD"
-	var stripped := Shader.new()
-	stripped.code = code.insert(at + HEADER.length(), defines)
-	_stripped_face_shader = stripped
-	_stripped_face_shader_key = key
-	print("[PERF-DEV] face shader variant — strip: %s · plane: %s (source %d chars)"
-		% [",".join(stages) if not stages.is_empty() else "none",
-		"PER-QUAD" if per_quad else "per-fragment", code.length()])
-	return stripped
+	var lines: String = ""
+	for define_name: String in defines:
+		lines += "\n#define " + define_name
+	var variant := Shader.new()
+	variant.code = code.insert(at + HEADER.length(), lines)
+	_face_shader_variants[key] = variant
+	print("[VoxelRenderer] face shader variant — %s (source %d chars)" % [key, code.length()])
+	return variant
 
 
 func _build_voxel_layer_node(level: int) -> TileMapLayer:

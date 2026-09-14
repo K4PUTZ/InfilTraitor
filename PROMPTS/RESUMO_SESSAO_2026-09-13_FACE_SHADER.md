@@ -123,3 +123,36 @@ would then ask for a debug build of the shader explicitly.
 - Nothing defaults on. The shader compiles exactly as before without flags.
 - The Moto runs the committed code with a neutral `dev_flags.cfg`.
 - Logs: `docs/measurements/device_2026-09-13_moto_g04s_diag13_{d,x,y,e}*.log` (local).
+
+---
+
+# PART 3 — 2026-09-14: both shipped
+
+**Director:** *"Liga as duas: debug fora e cálculo por voxel"*. Full record:
+DEVICE_DIAGNOSTICS_MASTER_PLAN §10.14.
+
+## 12. What changed
+
+- The voxel face shader now reads the cell plane **once per quad** by default, and
+  its debug paint branches are **compiled out** of the build that ships.
+- `VoxelRenderer._face_shader_variant()` is the one place that picks the build;
+  `debug_set_cell_paint_mode()` swaps to the debug build when a paint mode is
+  asked for, so the P3 cell gate keeps working.
+- `FACE_PLANE_PER_QUAD=0` brings back the per-fragment path for comparison.
+  `FACE_SHADER_STRIP` no longer accepts `DEBUG`.
+
+## 13. Verified
+
+Desktop, this exact code: 0 px against the gated per-quad build (blast close-up,
+wide frame, Compatibility renderer); the cell gate at 100.000% on the default, on
+`=0` and on Compatibility, with the gate log showing the debug build being
+swapped in; lint, invariants, CODEMAP; 53 selftests clean; the APK's shader is
+byte-identical to the repo's.
+
+## 14. ⚠️ Not verified
+
+**The shipped APK was not measured on the Moto** — the phone was locked and a
+three-hour wait for an unlock expired, and by 04:11 it was no longer attached. The expected result (19.0 → 16.9 ms of idle
+render gpu) is the measurement of a near-identical build from part 2, not of this
+one. The flags for the check are prepared (plan §10.14.3); it needs the phone
+unlocked by hand.

@@ -8,7 +8,8 @@ shader is 6.3 ms of the idle GPU frame and has no cheap look tier — 4.5 ms of 
 is light + soot, paid per fragment for per-quad data; three Director decisions
 open. **DIAG-14 (§10.13, 2026-09-14):** the per-quad spike is pixel-exact and buys
 nothing on its own — the debug branches eat it; with them compiled out it is
-19.0 → 16.9 ms of idle render gpu. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
+19.0 → 16.9 ms of idle render gpu. **Both SHIPPED the same day (§10.14)** —
+desktop-gated; ⚠️ the shipped APK is not yet measured on the Moto. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
 freezes are untouched. Sections below that
 still read as proposals (§6–§8, §12) predate the measured sections and are kept
 as written.
@@ -1239,6 +1240,64 @@ uses) instead of finding the modes compiled in. Both halves are still flags toda
 
 Logs (local only): `docs/measurements/device_2026-09-13_moto_g04s_diag13_{d0–d3,
 x5–x7, y1–y3, e0–e3}_*.log` — named for the session's start, run on 2026-09-14.
+
+---
+
+## 10.14 🟢 DIAG-14 SHIPPED — the per-quad plane path is ON and the debug paint is compiled out
+
+**Director, 2026-09-14:** *"Liga as duas: debug fora e cálculo por voxel"* —
+§10.13.6, as one change.
+
+### 10.14.1 What changed
+
+- **The shader's default build** takes the per-quad plane path, and the six debug
+  paint branches exist only under `FACE_DEBUG_PAINT`.
+- **`VoxelRenderer._face_shader_variant(debug_paint)`** is the one place that
+  decides which build a voxel layer draws. With no flag set and no paint mode it
+  returns the shader FILE itself — no injection, no copy.
+- **`debug_set_cell_paint_mode(mode)`** swaps every layer onto the
+  `FACE_DEBUG_PAINT` build for any mode above 0, and back for 0. It is the only
+  writer of `cell_debug_paint` in the repo (the P3 cell gate and the
+  `CELL_PAINT_MODE` capture both call it), so no instrument lost its branches.
+- **Instruments:** `FACE_PLANE_PER_QUAD=0` is the per-fragment path, for
+  comparison only (the `GLASS_TILE` convention). `FACE_SHADER_STRIP` no longer has
+  a `DEBUG` stage — a flags file that still names it now errors loudly and strips
+  nothing. `NO_FACE_SHADER` is unchanged.
+
+### 10.14.2 The gates — desktop, this exact code
+
+| check | result |
+|---|---|
+| new default vs the gated per-quad build (debug compiled in), blast close-up | **0 px** |
+| new default vs per-quad with the `DEBUG` strip, close-up / wide frame | **0 px** / **0 px** |
+| new default vs the previous default, wide frame | 32 px, max 5 — the pixels DIAG-13's `DEBUG` strip already moved |
+| `FACE_PLANE_PER_QUAD=0` vs the previous default, close-up | **0 px** |
+| Compatibility renderer, new default vs the gated per-quad build | **0 px** |
+| cell gate at the metal wall, 16 levels, 921 600 px judged — default / `=0` / Compatibility | **100.000%** · **100.000%** · **100.000%** |
+| cell gate, floor view, 827 924 px judged | **100.000%** |
+| gate plain frame and recovered-cell map vs the gated per-quad build | **0 px** |
+
+Each gate log prints `face shader variant — FACE_DEBUG_PAINT` when painting
+starts, so the swap happened; and the plane, the ladder and `layer_origin`
+survived it, because the gate paints the plane THROUGH those parameters and every
+judged pixel still lands inside its own quad. Lint clean, invariants OK, CODEMAP
+regenerated, **53 selftests clean**. The APK was exported and installed, and its
+packed shader is byte-identical to the repo's.
+
+### 10.14.3 ⚠️ NOT MEASURED ON THE MOTO
+
+The ABAB of this exact APK did not run. The handset was locked with a secure lock
+and `device_run.py` refuses to run locked (correctly — a locked run fails as a
+Vulkan surface error that reads like a driver fault); a three-hour wait for a
+hand unlock expired, and by 04:11 the handset was no longer attached over USB.
+
+What stands in for it is an **expectation, not a result for this APK**: §10.13.4's
+per-quad row with the `DEBUG` strip, 16.9 ms against the 19.0 control, measured on
+a build that differs from this one only in that `v_cell_a` is no longer written
+outside the debug build. To close it, unlock the handset and run the prepared
+flags: `f0_default` / `f2_default` (no face flags) against `f1_perfrag` /
+`f3_perfrag` (`FACE_PLANE_PER_QUAD=0`). Note that `=0` is per-fragment WITH the
+debug branches already out, so its expected value is §10.13's 18.4, not 19.0.
 
 ---
 

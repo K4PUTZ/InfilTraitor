@@ -39,29 +39,34 @@ shader_type canvas_item;
 // cannot say which stage is paying: the light bucket, the soot decode, the face
 // tone, the residue snap, the second TEXTURE sample and the six debug branches
 // all left together. VoxelRenderer injects the defines when
-// `FACE_SHADER_STRIP=<STAGE,...>` is set; see `_face_shader_with_strips()`.
+// `FACE_SHADER_STRIP=<STAGE,...>` is set; see `_face_shader_variant()`.
 //
 // The ablation runs on THIS file rather than a copy for the reason the P3 gate
 // gives below: a copy proves things about the copy. Instrument, never a look mode.
 //
+// DIAG-14 (2026-09-14) — the debug branches are no longer a strip stage: they are
+// OUT of every build unless `FACE_DEBUG_PAINT` is defined (see the note above the
+// first of them).
+//
 // PLANE is derived, never injected: the cell recovery and the plane fetch only
-// die when every stage that reads them (light, soot, debug mode 3) is gone.
+// die when every reader of them (light, soot, the debug paint modes) is gone.
 #ifdef FACE_STRIP_LIGHT
 #ifdef FACE_STRIP_SOOT
-#ifdef FACE_STRIP_DEBUG
+#ifndef FACE_DEBUG_PAINT
 #define FACE_STRIP_PLANE
 #endif
 #endif
 #endif
 
-// DIAG-14 — which plane path compiles. `FACE_PLANE_PER_QUAD` is injected by
-// VoxelRenderer when `FACE_PLANE_PER_QUAD=1` (see `v_quad_a` below); exactly one
-// of the two paths is built, and neither once the ladder has stripped the plane.
+// DIAG-14 — which plane path compiles. The PER-QUAD path (see `v_quad_a` below)
+// is the shipping one since 2026-09-14; `FACE_PLANE_PER_FRAGMENT` is injected by
+// VoxelRenderer only when `FACE_PLANE_PER_QUAD=0`, to compare against. Exactly
+// one of the two is built, and neither once the ladder has stripped the plane.
 #ifndef FACE_STRIP_PLANE
-#ifdef FACE_PLANE_PER_QUAD
-#define FACE_QUAD_TERMS
-#else
+#ifdef FACE_PLANE_PER_FRAGMENT
 #define FACE_FRAGMENT_PLANE
+#else
+#define FACE_QUAD_TERMS
 #endif
 #endif
 
@@ -236,6 +241,8 @@ uniform vec2 quad_to_map = vec2(0.0, 20.0);
 // mistaken for a marked voxel), and alpha is hard 0 or 1 — an antialiased edge
 // blending a code with what is behind it would read back as a value that was
 // never written, which is a false answer rather than a missing one.
+// ⚠️ DIAG-14: read only by the FACE_DEBUG_PAINT build — see the note above the
+// first debug branch in fragment().
 uniform float cell_debug_paint : hint_range(0.0, 1.0) = 0.0;
 
 // PERF-P3 — THE LIGHT BUCKET, READ FROM THE PLANE'S G CHANNEL.
@@ -278,7 +285,11 @@ varying vec2 v_vertex;
 varying flat vec2 v_corner;
 
 #ifdef FACE_QUAD_TERMS
-// DIAG-14 (SPIKE) — THE PLANE READ ONCE PER QUAD, NOT ONCE PER FRAGMENT.
+// DIAG-14 — THE PLANE READ ONCE PER QUAD, NOT ONCE PER FRAGMENT. SHIPPING since
+// 2026-09-14 (Director: "Liga as duas: debug fora e cálculo por voxel"). Together
+// with the debug branches leaving the build it took the Moto g04s's idle render
+// gpu from 19.0 to 16.9 ms with the picture unchanged; on its own, with those
+// branches compiled in, it bought nothing (DEVICE_DIAGNOSTICS_MASTER_PLAN §10.13).
 //
 // DEVICE_DIAGNOSTICS_MASTER_PLAN §10.12 priced the fragment's plane path — cell
 // recovery, plane fetch, bucket lookup and the base-5 soot decode — at 4.5 ms of
@@ -298,7 +309,10 @@ varying flat vec2 v_corner;
 // Flat varyings pass their value bit-exact and the fragment multiplies in the
 // per-fragment path's own order, so the picture is MEANT to be identical. A pixel
 // diff against that path decides it, not this comment.
+#ifdef FACE_DEBUG_PAINT
+// Only the debug paint modes read the chosen cell itself.
 varying flat vec2 v_cell_a;
+#endif
 varying flat vec4 v_quad_a;
 varying flat vec4 v_quad_b;
 
@@ -362,7 +376,9 @@ void vertex() {
 			? p : p - vec2(0.0, atom_size.y);
 	vec2 cell_a = floor(vec2(dot(inv_basis_row0, tl + quad_to_map),
 			dot(inv_basis_row1, tl + quad_to_map)) + 0.5);
+#ifdef FACE_DEBUG_PAINT
 	v_cell_a = cell_a;
+#endif
 	v_quad_a = quad_plane_terms(cell_a);
 	v_quad_b = quad_plane_terms(cell_a + vec2(-1.0, 1.0));
 #endif
@@ -407,7 +423,9 @@ void fragment() {
 	// vertex already read. A left-corner provoking vertex is candidate A.
 	bool quad_right = (v_vertex.x - v_corner.x) < 0.0;
 	vec4 quad = quad_right ? v_quad_b : v_quad_a;
+#ifdef FACE_DEBUG_PAINT
 	vec2 cell = quad_right ? v_cell_a + vec2(-1.0, 1.0) : v_cell_a;
+#endif
 #endif
 
 	// Top diamond: |dx|/halfW + |dy|/halfH <= 1 about the diamond's own centre.
@@ -509,7 +527,14 @@ void fragment() {
 	// Alpha carried data, not transparency — hand back the real silhouette.
 	COLOR.a = tex_a;
 
-#ifndef FACE_STRIP_DEBUG
+#ifdef FACE_DEBUG_PAINT
+	// DIAG-14 — EVERYTHING FROM HERE TO THE END OF fragment() EXISTS ONLY IN THE
+	// DEBUG BUILD. Six branches that never run in play measured 0.6 ms of render gpu
+	// on the per-fragment path and 2.2 ms on the per-quad path on the Moto g04s's
+	// Mali, and explicit-LOD fetches inside them changed nothing — so they are out,
+	// not merely off. `VoxelRenderer.debug_set_cell_paint_mode()` swaps every layer
+	// onto the build that has them; nothing else may set `cell_debug_paint` and
+	// expect a picture.
 	// PERF-P3 GATE (see the uniform above). LAST, and as an overwrite rather
 	// than an early exit, because Godot rejects `return` inside fragment().
 	// Reads the plane RAW — no clamp to the 0..124 soot range — since the gate

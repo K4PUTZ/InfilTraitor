@@ -9,7 +9,9 @@ is light + soot, paid per fragment for per-quad data; three Director decisions
 open. **DIAG-14 (§10.13, 2026-09-14):** the per-quad spike is pixel-exact and buys
 nothing on its own — the debug branches eat it; with them compiled out it is
 19.0 → 16.9 ms of idle render gpu. **Both SHIPPED the same day (§10.14)**, and
-the shipped APK measures exactly that on the Moto: 16.9 ms, idle frame 20.2 → 18.7. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
+the shipped APK measures exactly that on the Moto: 16.9 ms, idle frame 20.2 → 18.7. **DIAG-15 (§10.15):** hand play on
+that build — the board is the benchmark's until the grenade comes out, then draw
+calls go 1 370 → ~9 000 and the frame sits at ~88 ms. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
 freezes are untouched. Sections below that
 still read as proposals (§6–§8, §12) predate the measured sections and are kept
 as written.
@@ -1307,6 +1309,74 @@ exported from this commit's code.
 - Draw calls 1 370 in all four runs; 0 shader errors; the `=0` runs log
   `FACE_PLANE_PER_FRAGMENT` and the default runs log no variant — they draw the
   shader file itself. The handset's `dev_flags.cfg` is reset.
+
+---
+
+## 10.15 🔴 DIAG-15 — HAND PLAY ON THE SHIPPED BUILD: FINE UNTIL THE GRENADE COMES OUT, THEN DRAW CALLS GO ×6.6
+
+**Director, 2026-09-14:** *"Agora mede o jogo manual no Moto"*.
+
+Moto g04s, the shipped APK (§10.14), PLAYGROUND, `EVENT_FRAMES=1 FRAME_PROBE=1
+MAP=PLAYGROUND NO_VSYNC=0` — 2026-09-12's hand-session flags plus the frame
+probe. The Director played by hand: three grenade detonations and one end of
+turn. Log (local): `docs/measurements/device_2026-09-14_moto_g04s_diag15_hand.log`.
+
+### 10.15.1 The idle board by hand IS the benchmark's idle board
+
+13:49:20–13:50:30, nothing happening: **1 370 draw calls · 25 535 objects ·
+render gpu 16.8–17.0 ms · 18.6 ms/frame** — against the benchmark's 16.9 / 18.7
+on the same APK. §10.10.1's inference that hand play's IDLE frame "must have been
+far more expensive" is false for an untouched board; the gap opens later.
+
+### 10.15.2 The moment the grenade comes out
+
+| time | what the log says | draw calls | objects | render cpu · gpu | ms/frame |
+|---|---|---|---|---|---|
+| 13:50:30 | idle | 1 370 | 25 535 | 6.0 · 16.9 | 18.6 |
+| 13:50:34 | the throw — `[AgentSprite] throw 'standing_raise'` and `[BombRegistry] Registered: frag_grenade` within the next second | **9 070** | **50 505** | **19.9 · 85.9** | 65.0 |
+| 13:52:06–16 | between detonations 2 and 3, nothing exploding | 9 466 | 50 378 | 20.8 · 87.0 | **88** |
+| 13:53:04 | after the last detonation, guards acting (cone redraw logged) | 12 424 | 54 756 | 22.9 · 91.8 | 79.8 |
+| 13:53:08–12 | after the guards' turn | 4 902 | 45 449 | 13.3–32.9 · 60.5–63.8 | 62–67 |
+
+- **About +7 700 draw calls and +25 000 objects appear at the throw** — the objects
+  roughly double, by almost exactly the voxel board's own count — and **render gpu
+  goes 17 → 86 ms, render cpu 6 → 20 ms.**
+- **It is rendering, not script:** `FRAME-SPLIT` is the same on both sides of the
+  jump (sprite light 0.46 ms, no cone redraw).
+- Draw calls creep up per detonation (9 070 → 9 282 → 9 468 → 9 800), fall to
+  4 902 after the guards' turn, and never return to 1 370 in this session.
+- ⚠️ **The log records no input**, so whether the throw-targeting UI stayed open
+  between throws is not known — "a state that persists" and "open while aiming"
+  cannot be told apart from this run.
+
+### 10.15.3 The detonations
+
+| detonation | mean | worst frame (COMMIT) | SOOT FADE, first frame |
+|---|---|---|---|
+| 1 (cold) | 124.9 ms | 3 939 ms | 3 561 ms |
+| 2 | 95.9 ms | 534 ms | 378 ms |
+| 3 | 120.5 ms | 3 489 ms | 3 386 ms |
+
+2026-09-12's hand session on this handset: 137.7 / 130.2 / 101.9 ms. Over the same
+span the benchmark went 52.8 → 26.9 ms; **hand play moved ~10%**, because every
+hand-played frame sits on §10.15.2's ~88 ms board and the blast is 10–35 ms on
+top of it — §10.10.1's shape, with the expensive part now located. ⚠️ The third
+detonation's COMMIT (3.5 s) is as slow as the cold first, unlike 2026-09-12's
+third (486 ms); unexplained.
+
+Memory: PSS 2.21 GB idle → 2.26–2.36 GB after the throw; GL mtrack 742 → 747–824 MB;
+swap about 1.0 GB throughout.
+
+### 10.15.4 What this locates, and what it does not name
+
+**DIAG-11's gap is LOCATED:** not the idle board, not the blast, not script — a
+render state that switches on with the grenade throw and adds ~7 700 draw calls
+and ~25 000 objects. It is also why the benchmark never saw it: the benchmark
+calls `detonate_active()` and never enters the throw flow (§10.9.2's first
+candidate). **It is NOT named** — which node draws those items is the next
+question. `FRAME_PROBE`'s counters read the same on the desktop, and
+`NODE_CENSUS` / `HIDE_NODES` exist, but both are applied at map load and would
+have to run at the moment of the throw.
 
 ---
 

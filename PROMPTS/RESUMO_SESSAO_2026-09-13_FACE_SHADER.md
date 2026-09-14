@@ -162,3 +162,20 @@ handset verified by SHA-256 against this commit's export, ABAB:
 
 Exactly the predicted numbers. Detonation 1 stays within its run-to-run spread, so
 no gain is claimed there. The phone's flags are neutral again.
+
+---
+
+# PART 4 — 2026-09-14: hand play on the shipped build
+
+**Director:** *"Agora mede o jogo manual no Moto"*. Full record:
+DEVICE_DIAGNOSTICS_MASTER_PLAN §10.15.
+
+**Answer: the board by hand is as cheap as the benchmark's — until the grenade
+comes out.** At the throw, draw calls go 1 370 → 9 070, objects nearly double, and
+render gpu goes 17 → 86 ms. The frame then sits at ~88 ms, and the three
+detonations averaged 124.9 / 95.9 / 120.5 ms (2026-09-12 by hand: 137.7 / 130.2 /
+101.9). It is rendering, not script. Which node draws the extra ~7 700 items is
+not yet named.
+
+⚠️ The log does not record input, so it cannot say whether the aiming UI was open
+between throws.

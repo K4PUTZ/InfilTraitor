@@ -179,3 +179,23 @@ not yet named.
 
 ⚠️ The log does not record input, so it cannot say whether the aiming UI was open
 between throws.
+
+---
+
+# Where to resume
+
+1. **Name what the grenade throw draws** (plan §10.15.4): reproduce the throw on
+   the desktop with `FRAME_PROBE=1` and take a node census at the moment the
+   draw-call counter jumps. The Director was asked whether the aiming UI stayed
+   open between throws; no answer is recorded, so ask again first.
+2. **The COMMIT and SOOT FADE freezes:** 3.5–3.9 s by hand on the 1st and 3rd
+   detonations (534 / 378 ms on the 2nd).
+3. **Open and unexplained:** why six untaken debug branches cost 0.6–2.2 ms on the
+   Mali; whether the per-quad path's extra varyings cost what §10.13.4 suspects.
+4. **Not re-measured:** the Galaxy A16.
+
+The device cycle is `export_android.py --install --device ZF524T5TG5`, then
+`device_run.py --device ZF524T5TG5 --save <log>`. ⚠️ The phone has a secure lock:
+it must be unlocked by hand, and the harness refuses to run while it is locked.
+The Moto's `dev_flags.cfg` is neutral and the installed APK is the shipped build.
+

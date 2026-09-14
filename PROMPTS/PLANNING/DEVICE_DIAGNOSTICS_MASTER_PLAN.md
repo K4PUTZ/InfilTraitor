@@ -1,20 +1,20 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.1
+## Measuring the real build on a real entry-tier phone — v1.2
 
-**Status:** 🟢 **v1.1 — the harness is built and measuring (2026-09-12).** The
-Moto g04s reaches the 24–25 fps floor on the automated benchmark after DIAG-12
-(§10.11): detonations 27.3 / 34.1 ms. **DIAG-13 (§10.12, 2026-09-13):** the face
-shader is 6.3 ms of the idle GPU frame and has no cheap look tier — 4.5 ms of it
-is light + soot, paid per fragment for per-quad data; three Director decisions
-open. **DIAG-14 (§10.13, 2026-09-14):** the per-quad spike is pixel-exact and buys
-nothing on its own — the debug branches eat it; with them compiled out it is
-19.0 → 16.9 ms of idle render gpu. **Both SHIPPED the same day (§10.14)**, and
-the shipped APK measures exactly that on the Moto: 16.9 ms, idle frame 20.2 → 18.7. **DIAG-15 (§10.15):** hand play on
-that build — the board is the benchmark's until the grenade comes out, then draw
-calls go 1 370 → ~9 000 and the frame sits at ~88 ms. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
-freezes are untouched. Sections below that
-still read as proposals (§6–§8, §12) predate the measured sections and are kept
-as written.
+**Status:** 🟢 **v1.2 — measuring (2026-09-14).** Where the Moto g04s stands:
+
+- **Benchmark:** idle frame 18.7 ms, render gpu 16.9 ms, detonations ~26–29 /
+  ~32–33 ms — above the 24–25 fps floor (DIAG-12 §10.11, DIAG-14 §10.14).
+- **Hand play (DIAG-15, §10.15):** the same board until the grenade is thrown;
+  then draw calls go 1 370 → ~9 000, render gpu 17 → 86 ms, the frame sits at
+  ~88 ms and detonations average 96–125 ms. **Located, not yet named** — the
+  next question.
+- **The voxel face shader (DIAG-13/14, §10.12–§10.14):** priced stage by stage;
+  the per-quad plane path shipped with the debug paint compiled out.
+
+⚠️ Not re-measured: the Galaxy A16. Untouched: the COMMIT and SOOT FADE freezes
+(3.5–3.9 s by hand). Sections below that still read as proposals (§6–§8, §12)
+predate the measured sections and are kept as written.
 
 **Director, 2026-09-12:** *"A prioridade máxima é a gente testar se a explosão
 vai ser factível num celular comum. O resto não serve pra nada se o jogo não

@@ -312,6 +312,15 @@ and process learnings:
 - No hardcoded player-facing strings — `tr("domain.key")`.
 - No empirical pixel offsets on voxel layer positions — positions are
   analytically derived (Transform Canon, `QUICK_REFERENCE.md`).
+- ⏸ **The Engine-Only rule below is SUSPENDED since 2026-09-14, until the
+  performance milestone closes** (Director: *"vamos suspender o JAMES até
+  terminar o milestone de performance - você faz tudo, sem divisão de
+  tarefas"*). Meanwhile Claude owns the interface too — `godot/scripts/ui/`,
+  `godot/scenes/ui/`, `hud_controller.gd`, `input_controller.gd`. Rule 11 / L3
+  still holds: the HUD seam is architecture, not staffing. On `main`,
+  `check_design_scope.py` only warns. Recorded in
+  `DEVICE_DIAGNOSTICS_MASTER_PLAN` §14.6, including what JAMES's branch must do
+  before he resumes.
 - **Claude is Engine-Only role** — Never modify visual layer scripts under
   `godot/scripts/ui/` or canvas HUD setups in `room.tscn`, unless strictly
   requested by the Director to expose a new engine signal or state container.

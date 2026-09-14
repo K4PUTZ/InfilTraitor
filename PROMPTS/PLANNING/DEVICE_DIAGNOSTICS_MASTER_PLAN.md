@@ -1,16 +1,27 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.2
+## Measuring the real build on a real entry-tier phone — v1.3
 
-**Status:** 🟢 **v1.2 — measuring (2026-09-14).** Where the Moto g04s stands:
+**Status:** 🟢 **v1.3 — measuring, and the instruments come next (2026-09-14).**
+Where the Moto g04s stands:
 
 - **Benchmark:** idle frame 18.7 ms, render gpu 16.9 ms, detonations ~26–29 /
   ~32–33 ms — above the 24–25 fps floor (DIAG-12 §10.11, DIAG-14 §10.14).
-- **Hand play (DIAG-15, §10.15):** the same board until the grenade is thrown;
-  then draw calls go 1 370 → ~9 000, render gpu 17 → 86 ms, the frame sits at
-  ~88 ms and detonations average 96–125 ms. **Located, not yet named** — the
-  next question.
+  ⚠️ **It runs in the 390×844 portrait band at zoom 0.5** — a framing nobody
+  plays in, not the player's frame (§10.16.1).
+- **Hand play (DIAG-15 §10.15, re-read by DIAG-16 §10.16):** draw calls go
+  1 370 → ~9 000, render gpu 17 → 86 ms, the frame sits at ~88 ms and
+  detonations average 96–125 ms. **Most likely the VIEW, not the grenade:** the
+  jump came with the "D" framing (1280×720, ~2.8× the world area) and the zoom.
+  On the desktop the pinch minimum alone takes an untouched board 4 209 → 49 688
+  draw calls. Not yet closed on the phone.
 - **The voxel face shader (DIAG-13/14, §10.12–§10.14):** priced stage by stage;
   the per-quad plane path shipped with the debug paint compiled out.
+- **§14 — the TEL suite, PROPOSED:** event timeline, command and view telemetry,
+  runtime render attribution, frame percentiles and hitches, a scenario-driven
+  benchmark that runs the human sequence, and an analyzer. §13 Q5–Q7 are open.
+- **Director rulings (§14.6):** the framing follows the phone's orientation;
+  JAMES is suspended until the performance milestone closes — Claude does
+  everything, interface included.
 
 ⚠️ Not re-measured: the Galaxy A16. Untouched: the COMMIT and SOOT FADE freezes
 (3.5–3.9 s by hand). Sections below that still read as proposals (§6–§8, §12)
@@ -1378,6 +1389,84 @@ question. `FRAME_PROBE`'s counters read the same on the desktop, and
 `NODE_CENSUS` / `HIDE_NODES` exist, but both are applied at map load and would
 have to run at the moment of the throw.
 
+> ⚠️ **SUPERSEDED THE SAME DAY by §10.16.** The ~7 700 extra draw calls most
+> likely came with the Director's "D" framing and zoom, not with the throw, and
+> "the counters read the same on the desktop" holds only at the same canvas and
+> zoom — the desktop boots in D, the phone in the portrait band. The table above
+> stands as measured; its attribution to the grenade does not.
+
+---
+
+## 10.16 🟡 DIAG-16 — THE ×6.6 WAS PROBABLY THE VIEW, NOT THE GRENADE
+
+**Director, 2026-09-14:** *"O problema do teste manual é que eu faço mais coisas,
+tipo mudar a orientação pra preencher toda a tela, centralizar a cena, escolher a
+GU, clicar de novo, etc."* — and, on what the phone shows: *"Quando o jogo inicia,
+ele começa em 'paisagem' porém com janela vertical [...] Quando eu abro, clico em
+'D' pra que ele fique realmente paisagem (desktop), e preencha toda a tela.
+Consigo aumentar ou diminuir o zoom, reposicionar, etc."*
+
+### 10.16.1 What the phone actually shows — two framings, and the benchmark ran in one
+
+- **The APK is landscape-locked.** `aapt dump xmltree export/Infiltraitor.apk
+  AndroidManifest.xml` → `android:screenOrientation=0x0` (landscape).
+  `project.godot` sets no `display/window/handheld/orientation`, so Godot's
+  default (landscape) is what ships. The canon says portrait.
+- **A touch boot draws a portrait band.** `_apply_boot_viewport()` sets
+  `content_scale_size = 390×844` on any touch device, so the landscape screen
+  shows a vertical strip between two black bars — the Director's description.
+- **"D" fills the screen.** `_apply_viewport_mode()` sets the canvas to
+  **1280×720**: ~2.8× the world area of the 390×844 band at the same zoom
+  (921 600 vs 329 160 canvas px).
+- **The benchmark ran in the band, at the scene's default zoom 0.5**
+  (`room.tscn`). Hand play ran in D, with pinch and pan.
+
+### 10.16.2 The counts follow the view — measured on the desktop
+
+macOS desktop, windowed, PLAYGROUND, `FRAME_PROBE=1`, board untouched, 75 s per
+boot, **613 nodes in all three**. The desktop boots in D (1280×720). `render gpu`
+reads 0.0 on this machine, so only the counts and `render cpu` are read here.
+Log (local): `docs/measurements/desktop_2026-09-14_diag16_zoom.log`.
+
+| boot | draw calls | primitives | objects | render cpu |
+|---|---|---|---|---|
+| control (zoom 0.5 from the scene) | 4 209 | 81 372 | 45 613 | 3.7 ms |
+| `ZOOM=0.5` | 4 200 | 80 774 | 45 366 | 3.7 ms |
+| **`ZOOM=0.2`** (the pinch minimum, `ZOOM_MIN`) | **49 688** | **323 942** | **166 188** | **15.3 ms** |
+
+Control and `ZOOM=0.5` agree within 0.6%, so the counter is reproducible. At the
+pinch minimum, with nothing on the board changed, the same scene submits
+**11.8× the draw calls and 3.6× the objects**, and `render cpu` quadruples on a
+far faster CPU than the Moto's.
+
+### 10.16.3 DIAG-15's log, re-read with that
+
+- **The node count does not move across the jump** — 606 before, 606 after.
+  Nothing was created; the same nodes drew more.
+- **The jump precedes the throw.** The probe window ending 13:50:34.349 already
+  reads 9 070 draws; the first throw line (`[AgentSprite] throw 'standing_raise'`)
+  is at 13:50:35.092. That window also carries `physics 19.5 ms` (a held maximum,
+  0.1 everywhere else) — a one-off event, consistent with a canvas change.
+- **The enemy phase moved the count down.** 9 800 → 4 902 draws / 45 449 objects
+  while `_focus_camera_for_enemy_phase()` tweened the camera to each guard (its
+  zoom cap, 2.0, is above `ZOOM_MAX` 1.2, so it only pans). Desktop D at zoom 0.5
+  reads 4 209 / 45 613.
+
+### 10.16.4 What changes, and what is still open
+
+- **§10.15.4's attribution is withdrawn:** the evidence no longer points at the
+  throw. It is not refuted on the phone either — see below.
+- **DIAG-11's benchmark-vs-hand gap (§10.9.2) has a leading explanation that is
+  not the throw flow: framing.** The benchmark measured the band at zoom 0.5; the
+  hand measured D plus whatever zoom the hand chose. Until re-run with the
+  framing recorded, §10.9.2's table compares two framings, not two paths.
+- **The board's cost scales with the board area on screen.** A budget verdict
+  must name its framing and zoom (§13 Q5–Q7).
+- **NOT closed on the Moto.** It needs a run with no grenade: band idle → D idle
+  → pinch out → pan, with the framing in the log (§14 TEL-02/TEL-03). The
+  ~4 800 draws between desktop D at zoom 0.5 (4 209) and the hand's 9 070 are
+  unattributed: zoom, pan, aim overlays and glass shards are all candidates.
+
 ---
 
 ## 11. DIAG-08 — gates and documentation
@@ -1399,13 +1488,16 @@ DIAG-00  flag-channel spike          ✅ RESOLVED 2026-09-12 (channel B′)
 DIAG-02  device_run.py + preconditions  ✅ BUILT 2026-09-12
 DIAG-05  emulator install            (parallel — unblocks harness work)
 DIAG-01  DevFlags seam + 01b         ✅ BUILT 2026-09-12
-DIAG-02b logcat parser
-DIAG-03  scripted scenario on device
-         ── first real number here ──
+DIAG-02b logcat parser               → superseded by TEL-07 (§14)
+DIAG-03  scripted scenario on device → superseded by TEL-06 (§14)
+         ── first real number here ── ✅ 2026-09-12 (§10.5)
 DIAG-04  renderer control run
-DIAG-07  sustained / thermal run
-DIAG-08  gates + docs
+DIAG-07  sustained / thermal run     → instrumented by TEL-08 (§14)
+DIAG-08  gates + docs                → TEL-09 carries the suite's share
 ```
+
+**From 2026-09-14 the order is §14.4's.** The lines above are kept as history;
+where one says "superseded", §14 is the only authority for that task.
 
 ---
 
@@ -1421,3 +1513,233 @@ DIAG-08  gates + docs
 4. **Does the blast get a device-specific quality tier** if it fails, or does
    the detonation get optimized until it passes everywhere? This decides whether
    a failure re-opens the other two plans or opens a new one.
+5. **The landscape canvas: what world scale?** (TEL-UI-01) The board's cost
+   follows the board area on screen (§10.16.2). With the portrait canvas at
+   390×844, landscape can be **(a) 844×390** — the same canvas area, the same
+   world scale, the view simply turned; or **(b) 1280×720**, today's "D", which
+   shows ~2.8× the world area at the same zoom and submits roughly that much more
+   board. Recommended: (a) — the player can already see more by pinching, and the
+   pinch is where §Q6 prices it. It is a look and gameplay decision, not an
+   engineering one.
+6. **The pinch floor on a phone.** `ZOOM_MIN = 0.20` took an untouched board to
+   11.8× the draw calls on the desktop (§10.16.2). Must the budget hold at the
+   floor, or does the handheld floor rise (a limit the player can feel)? A
+   verdict needs a named worst-case zoom either way.
+7. **Which framing does a pass/fail verdict require** — portrait, landscape, or
+   both independently? It decides how large TEL-06's scenario matrix must be
+   before a number is quoted as the verdict.
+
+---
+
+## 14. TEL — the telemetry and benchmark-analysis suite
+
+**Status:** 📋 **PROPOSED 2026-09-14 — nothing built.** TEL-UI-01 waits on §13 Q5;
+the rest can start once the Director ratifies the section.
+
+**Director, 2026-09-14:** *"Precisamos na realidade melhorar nosso benchmark pra
+ser mais realista, executando as sequencias como um humano faria, e também
+melhorar nossa telemetria, precisamos saber quando um comando é pressionado"* —
+*"Precisamos capacitar o nosso sistema para ele ter mais ferramentas e mecanismos
+de diagnósticos, com ênfase na otimização para mobile."* — and, on whether the
+detail is worth chasing: *"precisamos determinar quem é o(s) vilão(ões), pra
+poder fazer escolhas educadas e conscientes."*
+
+This is inside §0's boundary: it is the harness, and nothing else. A fix the
+suite points at still belongs to `PERFORMANCE` or `DETONATION_PERFORMANCE`.
+
+### 14.1 Why — every row is a session this plan already lost
+
+| what went wrong | measured cost | the suite's answer |
+|---|---|---|
+| a count read without its view (§10.16) | the ×6.6 blamed on the grenade for a day | every probe window carries the framing — **TEL-03** |
+| no input in the log (§10.15.2) | "aiming UI open" vs "a state that persists" could not be told apart | semantic command events — **TEL-02** |
+| the benchmark skips the human path (§10.9.2) | 24 ms scripted vs 78–88 ms by hand, three sessions unexplained | a scenario runner that issues the commands a hand does — **TEL-06** |
+| census and ablations only at map load (§10.15.4) | nothing could be named at the moment it happened | runtime-triggered census and ablation — **TEL-04** |
+| means and held maxima (§10.11.1) | `TIME_PROCESS` read 246 ms inside a 92 ms window; the freezes hide inside means | per-frame ring buffer, percentiles, hitch records — **TEL-05** |
+| logcat drops lines and its child exits (§5, DIAG-02) | a 250 s run ended 55 s in and reported success | sequence numbers on every event, plus a lossless file sink — **TEL-00/01** |
+| APIs that return 0 on Android release | three memory APIs read as zero | "unavailable", enforced by the analyzer's schema — **TEL-07** |
+| one run quoted as the verdict (§10.8.3) | two handsets trend in opposite directions | every run reported, same-build spread before any delta — **TEL-07** |
+
+### 14.2 Principles — binding on every TEL task
+
+1. **A number travels with its context:** build, device, resolved flags, framing
+   (canvas, window, orientation, zoom, camera centre, visible GU rect) and phase.
+   A number without its context is not comparable, and the analyzer says so.
+2. **A timeline, not snapshots.** Every event carries `frame`
+   (`Engine.get_process_frames()`) and `t_us` (`Time.get_ticks_usec()`), one
+   clock. "What happened when the counter jumped" becomes a join, not a guess.
+3. **Machine-readable first, human lines kept.** One structured line shape for
+   the analyzer. `[FRAME-PROBE]`, `[FRAME-SPLIT]` and `[E-FRAME]` stay
+   byte-compatible, with new columns appended at the end, so every earlier log in
+   this plan still parses.
+4. **Off costs nothing; on is priced.** Each channel is measured on and off on
+   the Moto before its numbers are quoted. `FRAME_PROBE`'s render timing already
+   forces a GPU sync, which is the precedent.
+5. **One channel into the shipped APK: `DevFlags`.** No debuggable build and no
+   second flag path.
+6. **Loud on absence.** A run missing an expected event fails its analysis; a
+   null API reports "unavailable", never a number.
+7. **Seams, not sprinkles.** Events are emitted where a command or mode is
+   DECIDED (the `room.gd` HUD handlers, `CameraController`, `TestZoneController`,
+   `TurnController`), never as a print per call site.
+
+### 14.3 The tasks
+
+**TEL-00 — spike: a lossless sink on the phone.** `DevFlags` proves the release
+APK can READ `/sdcard/Android/data/<pkg>/files/`. WRITING there, and `adb pull`
+from it, are unproven on Android 14 (Moto) and 16 (Galaxy). Also measure the
+write cost per 1 000 events on the Moto. The result decides whether TEL-01 gets a
+file sink or stays logcat-only with drop detection.
+
+**TEL-01 — the `Telemetry` autoload.** `Telemetry.event(kind, fields)`, a
+per-session sequence number (a gap is a dropped line, counted), and two sinks: a
+compact logcat line `[TEL] <seq> <frame> <t_us> <kind> k=v …` and JSONL to the
+TEL-00 file. It opens with a session header: version and commit, device model,
+GPU adapter/vendor/API version (`RenderingServer`), screen size and refresh rate,
+and every flag `DevFlags` resolved. Flags: `TELEMETRY=1`, and `TEL_CHANNELS=` to
+pick channels. A selftest pins the schema.
+
+**TEL-02 — command events.** Semantic events, not raw touches:
+`input.tap cell`, `menu.open target`, `menu.choice action`, `aim.enter weapon`,
+`aim.select gu`, `aim.confirm gu`, `aim.cancel`, `view.framing M|D|auto`,
+`view.fullscreen`, `view.orientation`, `camera.zoom_end zoom` (at gesture end,
+not per drag event), `camera.pan_end centre`, `turn.end`, `turn.enemy_phase
+start|end`, `view.mode dev|light|heat`. Raw touches are one counter per probe
+window.
+
+**TEL-03 — the view context.** A `view` event on every change, plus a trailing
+`view=` column on each `[FRAME-PROBE]` window: canvas (`content_scale_size`),
+window size, orientation, stretch aspect, camera zoom and centre, the visible
+world rect, and the visible GU rect with its GU count. **TEL-02 plus TEL-03 is the
+smallest thing that would have answered DIAG-15 and DIAG-16 in one run.**
+
+**TEL-04 — render attribution at runtime.**
+(a) A census on a trigger: `CENSUS_ON=draws_jump:50%` fires `NODE_CENSUS` when
+the draw calls jump between windows; `CENSUS_ON=aim.enter` fires it on a TEL-02
+event; a scenario can call it as a step.
+(b) A per-`TileMapLayer` estimate of visible quadrants (quadrants intersecting
+the visible rect that hold cells), printed with the census, because Godot counts
+draw calls per viewport, not per node.
+(c) `AUTO_ABLATE=<groups>`: hide a group for one probe window, record the
+delta, restore. Bisection without a rebuild, runnable inside a scenario.
+⚠️ Estimates are labelled estimates; only hide-deltas are measurements.
+
+**TEL-05 — the frame timeline.** A per-frame ring buffer (frame ms, plus process
+ms from `FrameSplit` clocks rather than `TIME_PROCESS`'s held maximum). Each
+window reports p50 / p95 / p99 / max and the frames over 33.3 and 41.7 ms. Each
+phase reports the same — idle, aiming, flight, playback, enemy phase, load — cut
+by TEL-02 events and the existing `[E-FRAME]` beat marks. Any frame over 100 ms is
+a hitch record, with every event of the preceding 500 ms attached. That aims
+straight at the open COMMIT and SOOT FADE freezes. The playback verdict honours
+§0.5: a cook frame is never the verdict.
+
+**TEL-06 — the scenario runner (benchmark v2).** A scenario is DATA, a step list
+pushed through the `DevFlags` channel or bundled:
+
+```
+framing D · zoom 0.35 · centre_on gu(26,9) · wait 2
+open_grenade · aim gu(28,10) · dwell 3 · confirm · await blast_end
+end_turn · await enemy_phase_end · census · ablate HUD
+```
+
+Steps run through the SAME entry points the input path calls (the functions
+TEL-02 instruments), never a shortcut such as `detonate_active()`. So a scenario
+run and a hand run emit the same stream, and one analyzer reads both. Pinned by
+`RNG_SEED`, map, grenade GU, framing and zoom. It ships with three scenarios:
+- `hand_throw_v1` — the Director's sequence: D, zoom, centre, aim, confirm ×3,
+  end the turn.
+- `idle_matrix` — {band, D} × zoom {0.5, 0.35, 0.2}, 20 s each, no action.
+- `BENCHMARK=1`, kept unchanged as a COMPARATOR for A/B continuity with
+  §10.9–§10.14.
+
+Dwell times come from a recorded hand session's TEL-02 stream, not from a guess.
+**Not now:** turning a recorded stream into a scenario automatically (record →
+replay). That stays deferred until the step format has survived real use.
+
+**TEL-07 — the analyzer, `tools/persistent/bench_analyze.py`.** It reads the
+logcat capture or the JSONL file, plus TEL-08's host samples. It writes a per-run
+report: session header, framing, phases, percentiles, the budget verdict per
+phase, hitches with their preceding events, counter jumps joined to the nearest
+TEL-02/03 event, and the memory and thermal tracks. `--compare A B` refuses a
+delta whose pair has no same-build control. It fails loudly on missing expected
+events and reports sequence gaps as dropped lines with a count. Markdown goes to
+stdout, with an optional HTML chart page. A selftest runs it on a stored real
+log. Every run is reported, never only a mean.
+
+**TEL-08 — host-side device sampling in `device_run.py`.** `--thermal-poll`
+(`dumpsys thermalservice` status and temperatures), battery temperature, per-core
+CPU frequency (`/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq`, reported
+"unavailable" if a release build cannot read it), refresh rate, and the existing
+`--mem-poll`. All are stamped with the device clock so they join the logcat
+stream. This is DIAG-07's instrument.
+
+**TEL-09 — gates and docs.** A schema selftest and an analyzer fixture selftest,
+both registered with `run_selftests.py`. The overhead is measured on the Moto
+(`TELEMETRY=0` vs `1`, same scenario) and recorded here.
+`docs/pipelines/device_telemetry.md` becomes the operating doc (flags, scenario
+format, analyzer), cross-linked from `MobileTesting.md`. ⚠️ §11's rule applies:
+verify no gate blocks the daily workflow.
+
+**TEL-UI-01 — the framing follows the phone** (Director: *"O ideal é que a
+orientação da tela retrato x paisagem siga automaticamente a orientação do
+celular, salvo quando queremos fazer algum teste específico."*) The benchmark
+cannot be realistic while the shipped build shows a band nobody plays in.
+- `display/window/handheld/orientation` becomes `6` (sensor).
+- On a window size change, the logical canvas follows the aspect, so
+  `_apply_boot_viewport()` stops being boot-only. Its landscape size waits on
+  §13 Q5.
+- "M/D" stays as the test override, joined by `FRAMING=auto|portrait|landscape`
+  in `DevFlags`.
+- On a handheld the override changes only the canvas. Today
+  `_apply_viewport_mode()` also calls `window_set_mode(WINDOWED)`,
+  `window_set_size()` and `window_set_position()`, whose effect on Android is
+  unmeasured.
+- The web preset sets `progressive_web_app/orientation=2` and the APK ships
+  landscape; the two exports were never aligned, and this task sets both.
+
+### 14.4 Order
+
+```
+TEL-00  file-sink spike on the Moto (and the Galaxy)
+TEL-01  Telemetry autoload
+TEL-02  command events      ┐ together — the smallest thing that
+TEL-03  view context        ┘ would have answered DIAG-15/16
+        ── close DIAG-16 on the Moto by hand: band → D → pinch → pan, no grenade ──
+TEL-UI-01  framing follows the phone          (after §13 Q5)
+TEL-05  frame timeline, percentiles, hitches
+TEL-07  analyzer
+TEL-06  scenario runner — hand_throw_v1 with dwell times from the recorded session
+TEL-04  runtime census / auto-ablation
+TEL-08  host-side thermal / CPU sampling → DIAG-07 sustained run
+TEL-09  gates + docs
+```
+
+**Why this order.** Telemetry comes before the benchmark because the scenario's
+dwell times and framing come from a recorded hand session. The analyzer comes
+before the runner so the runner's first output lands in a tool rather than in
+scrollback.
+
+### 14.5 What stays out
+
+- No input record → replay system (TEL-06 note).
+- No on-screen telemetry HUD: the phone's screen is what is being measured, and
+  a readout there changes the frame it reports.
+- No second flag channel and no debuggable build (§14.2 #5).
+
+### 14.6 Director rulings of 2026-09-14
+
+- **The framing follows the phone's orientation**; a forced framing is a test
+  tool (TEL-UI-01).
+- **The benchmark must run the sequence a human runs** (TEL-06).
+- **JAMES is suspended until the performance milestone closes:** *"vamos
+  suspender o JAMES até terminar o milestone de performance - você faz tudo, sem
+  divisão de tarefas."*
+  - Claude does both engine and interface work on `main`: `godot/scripts/ui/`,
+    `godot/scenes/ui/`, `hud_controller.gd`, `input_controller.gd`.
+  - The L3 seam stays; it is architecture, not staffing.
+  - `check_design_scope.py` only warns on `main`, so no gate changes.
+  - **Before JAMES resumes, `feat/design-interface-hud` must merge `main`** —
+    interface files changed here in the interval conflict otherwise.
+  - Recorded in `CLAUDE.md` and `.README_WORKSPACE.md`.
+  - Assumption, stated: "the performance milestone" closes when the Director
+    declares §0.5's budget met. No written definition of that milestone exists.

@@ -2282,3 +2282,59 @@ does not divide and overruns its 14 ms budget. It also disappears with
 5. **"Standardised explosions" would help only by writing fewer cells.** The lever
    is the footprint (ring, damage volume) and how a write reaches the renderer —
    not the arithmetic that plans it.
+
+### 15.6 ✅ DIAG-20 MEASURED — the same board in 3D costs 2.2–7.5× less on the Moto, and is not free
+
+Moto g04s, 2026-09-14 19:01–19:05, APK from commit `7c0ec152`, `SPIKE=board3d`.
+- Log (local): `docs/measurements/device_2026-09-14_moto_g04s_diag20_spike3d.log` —
+  185 records, 0 dropped.
+- Captures (local): `Screenshots/spike3d_2026-09-14/`.
+- **Both modes put 95 GUs on screen at zoom 0.5, the 2D board's own count**, so the
+  world area matches.
+
+| zoom | 2D board, world 1.0 (§10.17.2): ms · gpu · cpu | 3D `voxel` — 73 024 faces, 135 296 primitives, 6–7 draws | 3D `merged` — 160 faces |
+|---|---|---|---|
+| 0.50 | 60.0 · 58.6 · 6.5 | **27.6** · 26.1 · 0.4 | **22.3** · 20.8 · 0.4 |
+| 0.42 | 70.3 · 69.0 · 9.1 | 29.3 · 28.0 · 0.4 | 22.2 · 20.6 · 0.4 |
+| 0.35 | 89.2 · 87.7 · 14.0 | 30.5 · 29.2 · 0.4 | 22.2 · 20.7 · 0.4 |
+| 0.30 | 107.6 · 106.2 · 22.7 | 30.7 · 29.4 · 0.4 | 20.9 · 19.4 · 0.4 |
+| 0.25 | 125.2 · 123.4 · 31.5 | 29.8 · 28.4 · 0.4 | 19.9 · 18.4 · 0.4 |
+| 0.20 | 135.1 · 132.9 · 39.4 | 27.9 · 26.5 · 0.5 | 17.9 · 16.5 · 0.4 |
+
+**What it says:**
+- **The representation is a major anchor.** The same board costs 2.2× (the voxel
+  worst case) to 2.7× (merged) less at the default zoom, and 4.8–7.5× less at the
+  pinch floor. `render cpu` is 0.4 ms against 6.5–39.4. In 3D the cost barely
+  moves with zoom, so the zoom-out penalty behind §13 Q6 disappears.
+- **It is not free on this GPU.** 160 lit, textured faces still take ~20 ms of GPU
+  at 720×1612 — the fill of a per-pixel lit, textured full screen. The 135 000
+  extra primitives of the voxel mode add only 5–8 ms. ⚠️ The merged ms/frame
+  (22.2) sits on the 90 Hz grid, two intervals; `render gpu` is the cost column.
+- **What the spike leaves out would sit on top of ~22–28 ms:** actors, HUD, fog,
+  the 12-bucket light, soot, decals, destruction. So 3D is not a finished answer to
+  the 33.3 ms budget. A production 3D path would have to price its lighting and its
+  materials; the spike used a stock lit material with mipmapped facades.
+- **Destruction in 3D would be chunk remeshing.** The spike's only data point: the
+  whole board's 73 024 faces built in **1 956 ms in GDScript on the Moto** (139 ms
+  for the merged board). A remesh scales with the chunk, not the board; the cost
+  per chunk is not measured.
+
+**The decision rule (§15.3, written before measuring):** ≤ ~15 ms means the
+representation is the anchor; ≥ ~35 ms means it is not the villain; in between,
+report both numbers and decide together. **Outcome: in between.** 22.3 ms (best
+case) and 27.6 ms (worst case) at the default zoom — both inside the 33.3 ms budget,
+where the 2D board idles at 60 ms. Per the rule, it goes to the Director.
+
+**The options, and what each still has to prove.** The decision belongs to
+`PERFORMANCE_MASTER_PLAN`.
+- **(a) Stay 2D and attack the costs §15.5 named:** the damage-footprint stalls
+  (cell writes and tile alternatives) and the per-frame board (layers, shader).
+  §10.17–§10.18 put the default zoom at 60 ms and hold the zoom floor at 0.5; how
+  far 2D can go is not measured.
+- **(b) A 3D render layer inside Godot that keeps the game logic** (turns, TIC, AI,
+  maps, prediction, telemetry). The board measured 22–28 ms before the rest of the
+  look. The next spikes would price, on the Moto: the lighting model, actors, and a
+  chunk remesh after a blast.
+- **(c) Unity or Unreal.** Nothing measured here says the engine is the limit:
+  Godot's own 3D path already shows the representation gain. A migration adds a
+  full code rewrite on top of the same 3D work.

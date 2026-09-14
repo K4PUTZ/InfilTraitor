@@ -2035,3 +2035,154 @@ scrollback.
   - Recorded in `CLAUDE.md` and `.README_WORKSPACE.md`.
   - Assumption, stated: "the performance milestone" closes when the Director
     declares §0.5's budget met. No written definition of that milestone exists.
+
+---
+
+## 15. The two decisive experiments — where the detonation's anchor is, and whether it is the 2D representation
+
+**Status:** 📋 **REGISTERED 2026-09-14 — Director: *"Ok, deixa o plano registrado e
+vamos seguir."*** Nothing built yet.
+
+**The questions, in the Director's words:**
+- *"Se a gente deixar de fazer cálculos e usar explosões padronizadas […] ficaria
+  mais leve? Se fizer a mesma coisa com as paredes […] Desligar a fumaça, desligar a
+  fuligem, desligar a luz, diminuir o tamanho do ring […] Aonde está nossa âncora? Ou
+  é tudo junto?"*
+- *"Será que estamos pagando um preço muito alto por tentar simular um mundo 3D num
+  engine 2D, e ficando com o pior das duas situações? […] Precisamos considerar a
+  possibilidade de migrar para Unreal ou Unity."*
+
+Both are answered by measurement, not by picking. Two of this plan's three earlier
+suspect lists were wrong before they were measured.
+
+### 15.1 What the logs already say — two anchors of different kinds
+
+The Moto, hand play, first detonation of DIAG-15 (§10.15; D framing): **28.7 s** from
+the start of the event to its end.
+
+| beat | on the Moto | what paces it |
+|---|---|---|
+| PUMP — the pre-cook | 106 frames, **9.8 s** | **the frame.** `[P-COOK] cooked 107 frame(s) at 14.0 ms`: the cook gets a 14 ms budget per frame, and each frame took ~92 ms. On a 16 ms frame it would be ~1.7 s |
+| COMMIT — damage written into the board | **one frame, 3.9 s** (0.5 s on the second detonation) | the detonation itself |
+| SOOT FADE — its first frame | **one frame, 3.6 s** (0.4 s on the second) | the detonation itself |
+| CONSEQUENCE + LIGHT | ~112 frames at ~90 ms ≈ 10 s | the board again |
+
+1. **The board** costs every frame, grenade or not. It stretches the pre-cook and the
+   long beats, and in the verdict framing it is already **60 ms idle** (§10.18.1,
+   §13 Q9 ruled the world at 1.0).
+2. **Two single-frame stalls** belong to the detonation itself: COMMIT and the first
+   SOOT FADE frame. Those are the "lags enormes".
+
+What each proposed simplification is EXPECTED to touch — expectations, not
+measurements. §15.2 replaces them with numbers.
+- **Standardised explosions** remove the prediction's arithmetic, but the arithmetic
+  is not what is slow; painting the voxels and the per-frame board are. The gain
+  should be small unless the pattern also caps how many voxels change.
+- **A smaller ring or less damage** means fewer voxels written, so COMMIT and the
+  soot stall should shrink together.
+- **No soot / no light** aim at the second stall and at the long beats.
+- **Blockier walls or a smaller baked atlas** are already measured: bake off halves
+  the memory and makes the blast **2.3× slower** (§10.9.1). A trade, not waste.
+
+### 15.2 DIAG-19 — the detonation ablation matrix (Moto, portrait M, world 1.0)
+
+**The question:** which subsystem owns the detonation's wall clock and its spikes,
+and how much of that time the board's pacing adds.
+
+**Prerequisites:**
+- **Route the blast knobs through `DevFlags`.** Today they are `OS.get_environment`
+  only, so they are inert on the APK: `NO_LIGHT_COOK`, `LIGHT_SECONDS` (`room.gd`),
+  `SMOKE_CHANCE` (`material_resistance_table.gd`), `VFX_DRAW_NOOP`
+  (`vfx_draw_probe.gd`).
+- **New knobs, instruments only:**
+  - `NO_SOOT` — no soot written or faded;
+  - `BLAST_MAX_RING=<n>` — truncates the bomb's `ring_multipliers`
+    (`bombs/frag_grenade.json`, `[1.0, 0.6, 0.25, 0.0]`).
+- **A working "no consequence light" instrument.** `NO_LIGHT` is degenerate since
+  the cooked light (§10.11.1) and must not be quoted; the row uses whichever
+  instrument the code reading shows is valid.
+- **TEL-06b, first slice:** a `detonate <index>` scenario step. It centres the camera
+  on a dev grenade, detonates through the menu path (`open_menu_for()` +
+  `detonate_active()`) and waits for the blast to end. The blast is then ON SCREEN in
+  the verdict framing; the benchmark's blast ran off screen.
+- **TEL-07b:** `bench_analyze.py` reads `[E-FRAME]` reports — per detonation: wall
+  clock, mean, worst frame, PUMP frames and wall clock, the COMMIT frame, the first
+  SOOT FADE frame, and the ms per frame of CONSEQUENCE and LIGHT.
+
+**The rows.** One boot each, two detonations per boot (dev grenades #0 and #1, so the
+geometry is identical across rows), `RNG_SEED` fixed, one APK for all rows with its
+SHA recorded:
+
+| row | flags | isolates |
+|---|---|---|
+| control (run twice, for the spread) | `RENDER_SCALE=1` | the baseline, and the noise any delta must exceed |
+| cheap board | `RENDER_SCALE=0.5` | how much of the wall clock the board paces |
+| no soot | `NO_SOOT=1` | the SOOT FADE stall and the soot work |
+| no light | the valid instrument | the CONSEQUENCE and LIGHT beats |
+| no smoke / VFX | `SMOKE_CHANCE=0`, `VFX_DRAW_NOOP=1` | particle submission |
+| small blast | `BLAST_MAX_RING=1` | how COMMIT and soot scale with the voxels touched |
+| all off | the four subsystem rows together | "é tudo junto?" |
+
+### 15.3 DIAG-20 — the 3D representation spike, in Godot itself
+
+**The question:** is the 2D representation the anchor? The suspicion rests on two
+measurements:
+- The idle portrait board is ~42 000 primitives — trivial for this GPU in 3D — yet it
+  costs 60 ms.
+- 36–47 ms of that is pixel shading (§10.17.4). 48 stacked `TileMapLayer`s are drawn
+  back to front with no depth buffer, and the face shader runs on every covered pixel
+  of every layer.
+
+A 3D pipeline shades each opaque pixel about once, never shades hidden faces, and
+turns destruction into rebuilding a chunk mesh instead of minting tile variants per
+cell — the COMMIT stall.
+
+**Why Godot 3D, and not Unity or Unreal, first:**
+- It is the renderer this project already ships (Vulkan Mobile).
+- The game logic survives: turns, TIC, AI, maps, the prediction pipeline, telemetry.
+- Unity or Unreal means rewriting all of that code. Only design, data and assets carry
+  over.
+- Unreal on a 3.8 GB Mali-G57 handset is a heavy bet on its own.
+
+A migration is on the table only if Godot 3D fails this test.
+
+**What gets built** — a spike scene, reachable in the shipped APK through
+`SPIKE=board3d` (no second APK):
+- The static board read from `maps/PLAYGROUND.map.json` (board, blocks, panels) and
+  built as 3D meshes, in chunks.
+- **Two meshing modes, because the answer depends on them:** per-voxel faces with
+  hidden-face culling (the destructible granularity — the worst case), and faces
+  merged per block surface (intact geometry — the best case).
+- The materials' own facade textures on a simple material; glass as a transparent
+  material.
+- An orthographic `Camera3D` at the 2D projection's angle, framed like portrait M,
+  with zoom stops that show the same world area as the 2D ladder (§10.17.2).
+- `Telemetry` `frame.window` records and scenario marks, so `bench_analyze.py` reads
+  it exactly like the 2D ladder.
+
+**Not in the spike** — stated so nobody reads it as parity: the 12-bucket light,
+soot, damage decals, destruction, actors and fog. It prices the REPRESENTATION, not
+the finished look.
+
+**Decision rule — proposed, and written down before measuring.** On the Moto, portrait
+720×1612, at the zoom 0.5 world area:
+- **≤ ~15 ms idle** (against 60 ms in 2D): the representation is the anchor. A 3D
+  render layer inside Godot that keeps the game logic is proposed as a
+  `PERFORMANCE_MASTER_PLAN` decision.
+- **≥ ~35 ms:** the representation is not the villain; optimise within 2D (layers,
+  cells, shader).
+- **In between:** report both numbers and decide together.
+
+### 15.4 Order
+
+```
+DIAG-19 prerequisites   knobs through DevFlags · NO_SOOT · BLAST_MAX_RING ·
+                        detonate step · E-FRAME in the analyzer
+DIAG-19 runs            the matrix on the Moto, in the background ─┐
+DIAG-20 spike           built on the desktop meanwhile              │
+DIAG-20 on the Moto     after the matrix frees the phone ◄──────────┘
+report                  both tables together
+```
+
+This plan measures. What either experiment decides belongs to
+`PERFORMANCE_MASTER_PLAN` or `DETONATION_PERFORMANCE_MASTER_PLAN` (§0).

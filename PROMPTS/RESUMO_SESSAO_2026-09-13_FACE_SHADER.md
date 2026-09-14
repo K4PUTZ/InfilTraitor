@@ -149,10 +149,16 @@ wide frame, Compatibility renderer); the cell gate at 100.000% on the default, o
 swapped in; lint, invariants, CODEMAP; 53 selftests clean; the APK's shader is
 byte-identical to the repo's.
 
-## 14. ⚠️ Not verified
+## 14. Measured on the Moto — the shipped APK
 
-**The shipped APK was not measured on the Moto** — the phone was locked and a
-three-hour wait for an unlock expired, and by 04:11 it was no longer attached. The expected result (19.0 → 16.9 ms of idle
-render gpu) is the measurement of a near-identical build from part 2, not of this
-one. The flags for the check are prepared (plan §10.14.3); it needs the phone
-unlocked by hand.
+After a hand unlock (the first attempt found the phone locked), the APK on the
+handset verified by SHA-256 against this commit's export, ABAB:
+
+| | render gpu | idle frame | detonation 2 |
+|---|---|---|---|
+| previous default (part 2) | 19.0 ms | 20.1–20.2 ms | 34.1–34.3 ms |
+| **shipped default** | **16.9 / 16.9** | **18.7 / 18.6** | **32.9 / 32.4** |
+| `FACE_PLANE_PER_QUAD=0` | 18.4 / 18.4 | 19.6 / 19.6 | 33.8 / 33.7 |
+
+Exactly the predicted numbers. Detonation 1 stays within its run-to-run spread, so
+no gain is claimed there. The phone's flags are neutral again.

@@ -8,8 +8,8 @@ shader is 6.3 ms of the idle GPU frame and has no cheap look tier — 4.5 ms of 
 is light + soot, paid per fragment for per-quad data; three Director decisions
 open. **DIAG-14 (§10.13, 2026-09-14):** the per-quad spike is pixel-exact and buys
 nothing on its own — the debug branches eat it; with them compiled out it is
-19.0 → 16.9 ms of idle render gpu. **Both SHIPPED the same day (§10.14)** —
-desktop-gated; ⚠️ the shipped APK is not yet measured on the Moto. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
+19.0 → 16.9 ms of idle render gpu. **Both SHIPPED the same day (§10.14)**, and
+the shipped APK measures exactly that on the Moto: 16.9 ms, idle frame 20.2 → 18.7. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
 freezes are untouched. Sections below that
 still read as proposals (§6–§8, §12) predate the measured sections and are kept
 as written.
@@ -1284,20 +1284,29 @@ judged pixel still lands inside its own quad. Lint clean, invariants OK, CODEMAP
 regenerated, **53 selftests clean**. The APK was exported and installed, and its
 packed shader is byte-identical to the repo's.
 
-### 10.14.3 ⚠️ NOT MEASURED ON THE MOTO
+### 10.14.3 ✅ MEASURED ON THE MOTO — 19.0 → 16.9 ms, as predicted
 
-The ABAB of this exact APK did not run. The handset was locked with a secure lock
-and `device_run.py` refuses to run locked (correctly — a locked run fails as a
-Vulkan surface error that reads like a driver fault); a three-hour wait for a
-hand unlock expired, and by 04:11 the handset was no longer attached over USB.
+The ABAB of this exact APK, 2026-09-14 13:33–13:41, after a hand unlock (the first
+attempt found the handset locked; a three-hour wait expired and it was detached
+by 04:11). The APK on the handset has the same SHA-256 as `export/Infiltraitor.apk`,
+exported from this commit's code.
 
-What stands in for it is an **expectation, not a result for this APK**: §10.13.4's
-per-quad row with the `DEBUG` strip, 16.9 ms against the 19.0 control, measured on
-a build that differs from this one only in that `v_cell_a` is no longer written
-outside the debug build. To close it, unlock the handset and run the prepared
-flags: `f0_default` / `f2_default` (no face flags) against `f1_perfrag` /
-`f3_perfrag` (`FACE_PLANE_PER_QUAD=0`). Note that `=0` is per-fragment WITH the
-debug branches already out, so its expected value is §10.13's 18.4, not 19.0.
+| run | render gpu (8 windows) | idle ms/frame | detonation 1 / 2 mean |
+|---|---|---|---|
+| default — per-quad, no debug | **16.9** | 18.7 | 28.9 / 32.9 |
+| `FACE_PLANE_PER_QUAD=0` | 18.4 | 19.6 | 27.2 / 33.8 |
+| default | **16.9** | 18.6 | 26.3 / 32.4 |
+| `FACE_PLANE_PER_QUAD=0` | 18.4 | 19.6 | 27.0 / 33.7 |
+
+- **Both predictions land exactly:** §10.13.4's 16.9 (per-quad) and 18.4
+  (per-fragment with the debug branches out).
+- **Against the previous default** (render gpu 19.0, idle 20.1–20.2 ms, §10.13.3):
+  **−2.1 ms of render gpu, and the idle frame −1.5 ms.**
+- **Detonation 2: 34.1–34.3 → 32.4–32.9 ms.** Detonation 1 spreads 26.3–28.9 here
+  and 26.8–29.2 across §10.13's controls, so no change is claimed for it.
+- Draw calls 1 370 in all four runs; 0 shader errors; the `=0` runs log
+  `FACE_PLANE_PER_FRAGMENT` and the default runs log no variant — they draw the
+  shader file itself. The handset's `dev_flags.cfg` is reset.
 
 ---
 

@@ -54,8 +54,13 @@ func handle_input(event: InputEvent) -> bool:
 		var st := event as InputEventScreenTouch
 		if st.pressed:
 			_touches[st.index] = st.position
+			Telemetry.count("touch")
 		else:
 			_touches.erase(st.index)
+			## TEL-02: a pinch ends when a finger lifts while the distance was being
+			## tracked — one event per gesture, carrying the zoom it settled on.
+			if _pinch_last_dist > 0.0:
+				Telemetry.event("camera.zoom_end", {"zoom": _camera.zoom.x, "via": "pinch"})
 			_pinch_last_dist = 0.0
 		if _touches.size() >= 2:
 			_left_down = false
@@ -81,10 +86,13 @@ func handle_input(event: InputEvent) -> bool:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
 			_apply_zoom(clampf(_camera.zoom.x + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))
+			## TEL-02: a wheel notch is a discrete gesture of its own.
+			Telemetry.event("camera.zoom_end", {"zoom": _camera.zoom.x, "via": "wheel"})
 			get_viewport().set_input_as_handled()
 			return true
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
 			_apply_zoom(clampf(_camera.zoom.x - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX))
+			Telemetry.event("camera.zoom_end", {"zoom": _camera.zoom.x, "via": "wheel"})
 			get_viewport().set_input_as_handled()
 			return true
 
@@ -115,6 +123,7 @@ func handle_input(event: InputEvent) -> bool:
 		else:
 			_left_down = false
 			if _drag_started:
+				Telemetry.event("camera.pan_end", {"centre": _camera.get_screen_center_position()})
 				## Drag ended, input was handled
 				get_viewport().set_input_as_handled()
 				return true

@@ -389,6 +389,7 @@ func open_menu_for(index: int) -> void:
 		return
 	_active_index = index
 	var g: Dictionary = _grenades[index]
+	Telemetry.event("menu.open", {"target": "grenade", "index": index, "gu": g["gu_cell"]})
 	## WEAPON-FIRE-01: the menu is shared with the weapons bench now, so the
 	## verb and its handler are passed per open instead of being wired once in
 	## room.gd. Same button, same signal, different action.
@@ -443,6 +444,7 @@ func enter_grenade_mode() -> void:
 		return
 	_targeting_mode = true
 	_targeting_target_gu = room.agent.cell + DEFAULT_TARGET_OFFSET
+	Telemetry.event("aim.enter", {"weapon": "grenade", "index": _targeting_grenade_index})
 	## Director, 2026-08-19: *"Quando o jogador selecionar a GU [...] o agente já
 	## mira."* The arm comes up the moment targeting opens and HOLDS there for the
 	## whole aim — `hold: true` freezes the raise on its last frame, which is the
@@ -491,6 +493,7 @@ func handle_targeting_click(cell: Vector2i) -> bool:
 		execute_grenade_throw()
 	else:
 		_set_targeting_target(cell)
+		Telemetry.event("aim.select", {"gu": _targeting_target_gu})
 	return true
 
 
@@ -615,6 +618,7 @@ func execute_grenade_throw() -> void:
 	## cannot disagree, because there is only one cell and the preview set it.
 	var target_gu: Vector2i = _targeting_target_gu
 	var grenade: Dictionary = _grenades[_targeting_grenade_index]
+	Telemetry.event("aim.confirm", {"gu": target_gu})
 
 	## Leave targeting BEFORE the animation awaits its first frame: the throw is
 	## in flight from here on, and an ESC during it must not try to cancel a mode
@@ -646,6 +650,7 @@ func cancel_targeting() -> void:
 		return
 	_targeting_mode = false
 	_targeting_grenade_index = -1
+	Telemetry.event("aim.cancel")
 	## Director: *"cancelar a granada [...] bem rapidinho, só pra não sumir de
 	## repente."* The arm comes back down along the same path it went up, because
 	## this IS the raise sequence played backwards — see AgentSprite's THROW_ROOT
@@ -983,6 +988,7 @@ func detonate_active() -> void:
 	if _active_index < 0 or _active_index >= _grenades.size():
 		return
 	var g: Dictionary = _grenades[_active_index]
+	Telemetry.event("menu.choice", {"action": "detonate", "index": _active_index, "gu": g["gu_cell"]})
 	if not g["detonated"]:
 		## The anchor is read while the grenade is still on the ground; the sprite
 		## is hidden at the BOOM (beat 2), so the fuse beat has a grenade to burn.
@@ -1305,6 +1311,7 @@ func cancel_preproduction() -> void:
 ## ownership `_active_presenter` exists for.
 func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		anchor: Vector2, grenade: Dictionary = {}) -> void:
+	Telemetry.event("blast.start", {"gu": gu})
 	## Beat 1 — THE FUSE. The grenade is on the ground, pin pulled, INTACT
 	## (Director, 2026-08-29: *"This is where in real life we pull the pin, throw
 	## it, and wait for the boom."*). Nothing explodes yet — this beat exists to be
@@ -1507,6 +1514,7 @@ func _start_waves(delta) -> void:
 	var presenter := DetonationPresenterClass.new()
 	_active_presenter = presenter
 	presenter.finished.connect(func():
+		Telemetry.event("blast.end")
 		_prof("WAVES end — the blast is over")
 		room.event_probe_report("detonation")
 		_active_presenter = null)
@@ -1580,6 +1588,8 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 
 
 func cancel_active() -> void:
+	if _active_index >= 0:
+		Telemetry.event("menu.cancel", {"index": _active_index})
 	_active_index = -1
 	if room._blast_wireframe_overlay != null:
 		room._blast_wireframe_overlay.clear()

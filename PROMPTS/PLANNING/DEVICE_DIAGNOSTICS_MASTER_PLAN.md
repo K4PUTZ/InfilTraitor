@@ -1513,28 +1513,52 @@ where one says "superseded", §14 is the only authority for that task.
 4. **Does the blast get a device-specific quality tier** if it fails, or does
    the detonation get optimized until it passes everywhere? This decides whether
    a failure re-opens the other two plans or opens a new one.
-5. **The landscape canvas: what world scale?** (TEL-UI-01) The board's cost
-   follows the board area on screen (§10.16.2). With the portrait canvas at
-   390×844, landscape can be **(a) 844×390** — the same canvas area, the same
-   world scale, the view simply turned; or **(b) 1280×720**, today's "D", which
-   shows ~2.8× the world area at the same zoom and submits roughly that much more
-   board. Recommended: (a) — the player can already see more by pinching, and the
-   pinch is where §Q6 prices it. It is a look and gameplay decision, not an
-   engineering one.
-6. **The pinch floor on a phone.** `ZOOM_MIN = 0.20` took an untouched board to
-   11.8× the draw calls on the desktop (§10.16.2). Must the budget hold at the
-   floor, or does the handheld floor rise (a limit the player can feel)? A
-   verdict needs a named worst-case zoom either way.
-7. **Which framing does a pass/fail verdict require** — portrait, landscape, or
-   both independently? It decides how large TEL-06's scenario matrix must be
-   before a number is quoted as the verdict.
+5. ~~**The landscape canvas: what world scale?**~~ ✅ **ANSWERED 2026-09-14 —
+   (a) 844×390.** Director: *"A escala do canvas pode ser limitada, vamos com
+   (a)."* The same canvas area as portrait, the view turned. Landscape is not a
+   default (Q7), so (a) is the size any landscape M framing uses when one is
+   asked for.
+6. **The pinch floor on a phone — becomes a MEASUREMENT.** Director: *"Vamos
+   estabelecer alguns pontos de zoom e verificar o quanto isso pesa, e até onde
+   dá pra chegar."* `ZOOM_MIN = 0.20` took an untouched board to 11.8× the draw
+   calls on the desktop (§10.16.2). The Moto measures a ladder of zoom stops in
+   the portrait M framing; the M floor is then chosen from that table. It is not
+   picked before the table exists.
+7. ~~**Which framing does a pass/fail verdict require?**~~ ✅ **ANSWERED
+   2026-09-14 — portrait.** Director: *"A princípio não vamos ter a versão
+   horizontal por default, então vamos fazer os testes verticalmente. Mas
+   precisamos preencher toda a tela de verdade."* So the verdict framing is
+   portrait M, and it must FILL the screen — no black bars at any aspect ratio.
+8. ✅ **RULED 2026-09-14 — M carries the restrictions, D does not.** Director:
+   *"Mantemos a qualidade FULL HD no modo Desktop, mas no modo M usamos as
+   restrições."* ⚠️ Assumption, stated: D keeps today's 1280×720 canvas, which
+   `canvas_items` stretch already renders at the screen's native resolution —
+   full HD on a full HD screen. M's restrictions are the (a) canvas scale and the
+   zoom floor Q6 will set.
 
 ---
 
 ## 14. TEL — the telemetry and benchmark-analysis suite
 
-**Status:** 📋 **PROPOSED 2026-09-14 — nothing built.** TEL-UI-01 waits on §13 Q5;
-the rest can start once the Director ratifies the section.
+**Status:** 🟢 **RATIFIED 2026-09-14 — building** (Director: *"Pode seguir com a
+implementação."*). TEL-01 ✅, TEL-02 ✅, TEL-03 ✅. §14.4 is reordered by §13
+Q5–Q8.
+
+**Built so far (2026-09-14):**
+- `Telemetry` autoload (`godot/scripts/systems/telemetry.gd`) with
+  `telemetry_selftest`.
+- `ViewContext` (`godot/scripts/systems/view_context.gd`), feeding the
+  `[FRAME-PROBE]` view column and the `frame.window` / `view.settled` events.
+- Command events at the seams:
+  - HUD handlers and board taps in `room.gd`.
+  - Pinch, wheel and pan ends plus touch counts in `CameraController`.
+  - Menu, aim and blast in `TestZoneController`.
+  - End-turn and the enemy phase in `TurnController`.
+
+The desktop run (`TELEMETRY=1 FRAME_PROBE=1 BENCHMARK=1 BENCH_RUNS=1 ZOOM=0.35`)
+wrote, in this order, `session`, `view.settled` (D 1280×720, zoom 0.35, 450 of
+1 104 floor cells on screen), `menu.open`, `menu.choice`, `blast.start`,
+`blast.end` and 8 `frame.window` records, with the file sink open.
 
 **Director, 2026-09-14:** *"Precisamos na realidade melhorar nosso benchmark pra
 ser mais realista, executando as sequencias como um humano faria, e também
@@ -1680,39 +1704,57 @@ both registered with `run_selftests.py`. The overhead is measured on the Moto
 format, analyzer), cross-linked from `MobileTesting.md`. ⚠️ §11's rule applies:
 verify no gate blocks the daily workflow.
 
-**TEL-UI-01 — the framing follows the phone** (Director: *"O ideal é que a
-orientação da tela retrato x paisagem siga automaticamente a orientação do
-celular, salvo quando queremos fazer algum teste específico."*) The benchmark
-cannot be realistic while the shipped build shows a band nobody plays in.
-- `display/window/handheld/orientation` becomes `6` (sensor).
-- On a window size change, the logical canvas follows the aspect, so
-  `_apply_boot_viewport()` stops being boot-only. Its landscape size waits on
-  §13 Q5.
-- "M/D" stays as the test override, joined by `FRAMING=auto|portrait|landscape`
-  in `DevFlags`.
-- On a handheld the override changes only the canvas. Today
+**TEL-UI-01 — portrait M fills the screen; D stays unrestricted.** The benchmark
+cannot be realistic while the shipped build shows a band nobody plays in. First
+direction (Director: *"O ideal é que a orientação da tela retrato x paisagem siga
+automaticamente a orientação do celular"*), then narrowed by §13 Q5–Q8: portrait
+is the default and the test framing, and landscape is not a default.
+- `display/window/handheld/orientation` becomes `1` (portrait). Sensor rotation
+  is deferred until a landscape version exists.
+- **M fills the screen:** the 390×844 canvas takes `CONTENT_SCALE_ASPECT_EXPAND`,
+  so a taller phone gets a taller canvas instead of black bars (Moto 720×1612 →
+  390×873).
+- **D is today's 1280×720**, unrestricted. On a handheld it turns the screen to
+  landscape through `DisplayServer.screen_set_orientation()`, so the Director's
+  test habit keeps working on a portrait-locked APK.
+- `FRAMING=portrait|landscape|desktop` in `DevFlags` forces the boot framing for a
+  test; `landscape` is M at (a) 844×390.
+- On a handheld the framing changes only the canvas and the orientation. Today
   `_apply_viewport_mode()` also calls `window_set_mode(WINDOWED)`,
   `window_set_size()` and `window_set_position()`, whose effect on Android is
   unmeasured.
-- The web preset sets `progressive_web_app/orientation=2` and the APK ships
-  landscape; the two exports were never aligned, and this task sets both.
+- The web preset already sets `progressive_web_app/orientation=2`; the APK
+  shipped landscape. This task aligns the APK.
 
 ### 14.4 Order
 
 ```
-TEL-00  file-sink spike on the Moto (and the Galaxy)
-TEL-01  Telemetry autoload
+TEL-01  Telemetry autoload                               ✅ 2026-09-14
 TEL-02  command events      ┐ together — the smallest thing that
 TEL-03  view context        ┘ would have answered DIAG-15/16
-        ── close DIAG-16 on the Moto by hand: band → D → pinch → pan, no grenade ──
-TEL-UI-01  framing follows the phone          (after §13 Q5)
+TEL-UI-01  portrait M fills the screen · D unrestricted  (§13 Q5–Q8)
+TEL-06a scenario core: framing · zoom · centre · wait · quit
+        ── Moto: the zoom ladder in portrait M, and D at the same stops.
+           TEL-00 is answered by the same run (see below). Closes DIAG-16
+           and gives §13 Q6 its table ──
 TEL-05  frame timeline, percentiles, hitches
 TEL-07  analyzer
-TEL-06  scenario runner — hand_throw_v1 with dwell times from the recorded session
+TEL-06b action steps — hand_throw_v1 with dwell times from a recorded session
 TEL-04  runtime census / auto-ablation
 TEL-08  host-side thermal / CPU sampling → DIAG-07 sustained run
 TEL-09  gates + docs
 ```
+
+**Reordered 2026-09-14.**
+- **TEL-00 folded into the first Moto run.** An isolated spike would need its own
+  export anyway, and TEL-01's file sink already warns and falls back to logcat
+  when it cannot write. That run answers both of TEL-00's questions: does the
+  write succeed, and does `adb pull` reach the file.
+- **TEL-UI-01 moved ahead of the device run.** The Director's verdict framing is
+  portrait M filling the screen (Q7), so measuring the old band would measure a
+  framing nobody plays in.
+- **TEL-06 splits.** The view steps come first, because the zoom ladder needs no
+  finger. The action steps come after the analyzer.
 
 **Why this order.** Telemetry comes before the benchmark because the scenario's
 dwell times and framing come from a recorded hand session. The analyzer comes

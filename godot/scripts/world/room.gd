@@ -42,6 +42,8 @@ const AimBubbleOverlayClass = preload("res://godot/scripts/overlays/aim_bubble_o
 const ThrowPerimeterOverlayClass = preload("res://godot/scripts/overlays/throw_perimeter_overlay.gd")
 const ThrowArcOverlayClass = preload("res://godot/scripts/overlays/throw_arc_overlay.gd")
 const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")
+## TEL-03 — preloaded like the overlays above, so no global class cache is needed.
+const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
@@ -2544,6 +2546,7 @@ func _set_perspective(direction: String) -> void:
 		_update_perspective_button_state()
 		return
 
+	Telemetry.event("view.perspective", {"from": _active_perspective, "to": direction})
 	var prev_direction := _active_perspective
 	var base_agent := _cell_to_base(agent.cell, prev_direction)
 	var has_selected := _selected_cell != INVALID_CELL
@@ -2727,10 +2730,12 @@ func _center_camera(focus_cell: Vector2i) -> void:
 
 func _on_hud_numbers_toggled() -> void:
 	tile_labels_overlay.visible = not tile_labels_overlay.visible
+	Telemetry.event("view.numbers", {"on": tile_labels_overlay.visible})
 	_hud_controller.set_numbers_button_active(tile_labels_overlay.visible)
 
 
 func _on_hud_fullscreen_toggled(enabled: bool) -> void:
+	Telemetry.event("view.fullscreen", {"on": enabled})
 	var target_mode := DisplayServer.WINDOW_MODE_FULLSCREEN if enabled else DisplayServer.WINDOW_MODE_WINDOWED
 	DisplayServer.window_set_mode(target_mode)
 
@@ -2746,6 +2751,7 @@ func _on_hud_reset_requested() -> void:
 	if agent.is_moving or turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
 	_pending_auto_end_turn = false
+	Telemetry.event("turn.reset")
 	_hud_controller.hide_enemy_banner()
 	agent.set_cell(_agent_start_cell)
 	for guard in _guards:
@@ -2775,6 +2781,7 @@ func _on_hud_reset_requested() -> void:
 func _on_hud_viewport_toggled() -> void:
 	_is_desktop_viewport = not _is_desktop_viewport
 	_apply_viewport_mode()
+	Telemetry.event("view.framing", {"framing": "D" if _is_desktop_viewport else "M", "via": "hud"})
 
 
 ## Which viewport the game STARTS in, by device.
@@ -2833,6 +2840,7 @@ func _set_view_mode(which: String) -> void:
 		else (_vision_controller.light_vision if which == "light" else _vision_controller.heat_vision)
 	if _hud_controller:
 		_hud_controller.set_view_mode_active(which, enabled)
+	Telemetry.event("view.mode", {"mode": which, "on": enabled})
 
 	## The agent and the probes both carry a second bake whose joints are yellow —
 	## the same toggle drives both, so there is one dev switch rather than three.
@@ -5755,6 +5763,56 @@ var _frame_probe_armed: bool = false
 var _frame_probe_process_s: float = 0.0
 var _frame_probe_physics_s: float = 0.0
 
+## TEL-03 — the visible-cell count is cached per view signature (see ViewContext).
+var _view_count_sig: String = ""
+var _view_counts: Dictionary = {}
+## TEL-03 — `view.settled` debounce: the last signature emitted, and the one
+## waiting to hold still long enough to be emitted.
+var _view_emitted_sig: String = ""
+var _view_pending_sig: String = ""
+var _view_pending_since_usec: int = 0
+const VIEW_CHECK_EVERY_FRAMES: int = 10
+const VIEW_SETTLE_USEC: int = 250_000
+
+
+## TEL-03 — the view this frame is drawing, for the frame probe and the timeline.
+## The visible-cell count is the expensive half, so it is recounted only when
+## the view's signature changed.
+func view_context() -> Dictionary:
+	var fields: Dictionary = ViewContextClass.read(get_viewport(), camera,
+		"D" if _is_desktop_viewport else "M")
+	var sig: String = ViewContextClass.signature(fields)
+	if sig != _view_count_sig:
+		_view_count_sig = sig
+		_view_counts = ViewContextClass.count_visible_cells(get_viewport(), floor_layer,
+			VISUAL_GRID_OFFSET, _tile_to_screen_center)
+	fields.merge(_view_counts)
+	return fields
+
+
+## TEL-03 — a `view.settled` event each time the view changes and then holds still
+## for VIEW_SETTLE_USEC. A pinch or a camera tween changes the view every frame;
+## one event per frame would bury the timeline, and what a measurement window needs
+## is the view it actually sat in.
+func _telemetry_view_tick() -> void:
+	if Engine.get_process_frames() % VIEW_CHECK_EVERY_FRAMES != 0:
+		return
+	var sig: String = ViewContextClass.signature(ViewContextClass.read(get_viewport(), camera,
+		"D" if _is_desktop_viewport else "M"))
+	if sig == _view_emitted_sig:
+		_view_pending_sig = ""
+		return
+	var now: int = Time.get_ticks_usec()
+	if sig != _view_pending_sig:
+		_view_pending_sig = sig
+		_view_pending_since_usec = now
+		return
+	if now - _view_pending_since_usec < VIEW_SETTLE_USEC:
+		return
+	_view_emitted_sig = sig
+	_view_pending_sig = ""
+	Telemetry.event("view.settled", view_context())
+
 
 func _process(_delta: float) -> void:
 	if _frame_probe:
@@ -5791,16 +5849,33 @@ func _process(_delta: float) -> void:
 		if _frame_probe_n >= 60:
 			var vrid: RID = get_viewport().get_viewport_rid()
 			## New columns go at the END so every parser of the older line still matches.
-			print("[FRAME-PROBE] %.1f ms/frame · render cpu %.1f ms · render gpu %.1f ms · %d draw call(s) · %d primitive(s) · %d object(s) · process %.1f ms · physics %.1f ms · %d node(s)"
-				% [float(_frame_probe_us) / 1000.0 / float(_frame_probe_n),
-				RenderingServer.viewport_get_measured_render_time_cpu(vrid),
-				RenderingServer.viewport_get_measured_render_time_gpu(vrid),
-				int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
-				int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
-				int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
-				_frame_probe_process_s * 1000.0 / float(_frame_probe_n),
-				_frame_probe_physics_s * 1000.0 / float(_frame_probe_n),
-				int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))])
+			var frame_ms: float = float(_frame_probe_us) / 1000.0 / float(_frame_probe_n)
+			var render_cpu: float = RenderingServer.viewport_get_measured_render_time_cpu(vrid)
+			var render_gpu: float = RenderingServer.viewport_get_measured_render_time_gpu(vrid)
+			var draws: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+			var primitives: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
+			var objects: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
+			var process_ms: float = _frame_probe_process_s * 1000.0 / float(_frame_probe_n)
+			var physics_ms: float = _frame_probe_physics_s * 1000.0 / float(_frame_probe_n)
+			var nodes: int = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+			## TEL-03 — the view goes on the END of the line, so every parser of the older
+			## columns still matches (§14.2 #3). DIAG-16: a count without it is not comparable.
+			var view: Dictionary = view_context()
+			var visible_size: Vector2 = view["visible"]
+			print("[FRAME-PROBE] %.1f ms/frame · render cpu %.1f ms · render gpu %.1f ms · %d draw call(s) · %d primitive(s) · %d object(s) · process %.1f ms · physics %.1f ms · %d node(s) · view %s %dx%d zoom %.2f gu %s/%s"
+				% [frame_ms, render_cpu, render_gpu, draws, primitives, objects, process_ms,
+				physics_ms, nodes, view["framing"], roundi(visible_size.x), roundi(visible_size.y),
+				float(view["zoom"]), str(view["gu_visible"]), str(view["gu_total"])])
+			if Telemetry.wants("frame.window"):
+				## `process_held` / `physics_held` are means of HELD MAXIMA, not means of the
+				## frame (see TIME_PROCESS above) — named so nobody reads them as a share.
+				var window_fields: Dictionary = {"frames": _frame_probe_n, "ms": frame_ms,
+					"render_cpu": render_cpu, "render_gpu": render_gpu, "draws": draws,
+					"primitives": primitives, "objects": objects, "process_held": process_ms,
+					"physics_held": physics_ms, "nodes": nodes}
+				window_fields.merge(view)
+				window_fields.merge(Telemetry.take_counters())
+				Telemetry.event("frame.window", window_fields)
 			_frame_probe_process_s = 0.0
 			_frame_probe_physics_s = 0.0
 			var split_line: String = FrameSplit.take_line(_frame_probe_n)
@@ -5816,6 +5891,8 @@ func _process(_delta: float) -> void:
 			_frame_probe_us = 0
 
 	_event_frame_sample()
+	if Telemetry.enabled:
+		_telemetry_view_tick()
 
 	var fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	# Update temporal lighting effects (flicker, pulse, rotation)
@@ -6428,6 +6505,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		var move_target := _screen_to_tile(mb.position)
+		Telemetry.event("input.move", {"cell": move_target})
 		if move_target != INVALID_CELL:
 			_selection_controller.handle_move_click(move_target)
 		get_viewport().set_input_as_handled()
@@ -6440,6 +6518,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not mb.pressed:
 		## Left mouse released: check if it was just a click (not a drag handled by CameraController)
 		var cell := _screen_to_tile(mb.position)
+		Telemetry.event("input.tap", {"cell": cell, "aiming": _test_zone_controller != null
+			and _test_zone_controller.is_targeting()})
 
 		## UI-02 / INPUT-SPLIT-01: on TOUCH devices the (emulated) left tap
 		## drives the full mobile flow — first tap selects, tapping the

@@ -121,6 +121,7 @@ func _on_hud_end_turn_requested() -> void:
 	if agent.is_moving or turn_manager.is_enemy_phase or _actor_end_pause_active:
 		return
 	_pending_auto_end_turn = false
+	Telemetry.event("turn.end", {"via": "hud"})
 	turn_manager.end_turn()
 
 
@@ -138,7 +139,11 @@ func _on_player_turn_started() -> void:
 
 
 func _on_enemy_phase_started() -> void:
+	## TEL-02: the enemy phase moves the camera to each guard, so every frame-probe
+	## window inside it reads a different view — the timeline has to say so.
+	Telemetry.event("turn.enemy_start", {"guards": _guards.size()})
 	if _guards.is_empty():
+		Telemetry.event("turn.enemy_end")
 		if turn_manager != null:
 			turn_manager.finish_enemy_phase()
 		return
@@ -178,6 +183,7 @@ func _on_enemy_phase_started() -> void:
 	if agent != null:
 		_center_camera(agent.cell)
 	
+	Telemetry.event("turn.enemy_end")
 	if turn_manager != null:
 		turn_manager.finish_enemy_phase()
 

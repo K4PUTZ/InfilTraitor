@@ -251,7 +251,8 @@ func _open_file(path: String) -> void:
 		return
 	_file_path = path
 	_last_flush_usec = Time.get_ticks_usec()
-	print("[TEL] file sink: %s" % path)
+	## `[Telemetry]`, not `[TEL]`: every `[TEL]` line is a record the analyzer parses.
+	print("[Telemetry] file sink: %s" % path)
 
 
 ## A field value as logcat text: compact, no spaces, so a line splits on spaces.

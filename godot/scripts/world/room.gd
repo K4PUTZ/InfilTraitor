@@ -45,6 +45,7 @@ const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapn
 ## TEL-03 — preloaded like the overlays above, so no global class cache is needed.
 const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
+const Board3DLiveClass = preload("res://godot/scripts/spikes/board3d_live.gd")
 const WorldRenderScaleClass = preload("res://godot/scripts/systems/world_render_scale.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
@@ -1977,6 +1978,11 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## hypothesis: how much graphics memory is already committed with the map
 	## merely LOADED, before a single voxel has been destroyed. Deferred by one
 	## frame so the renderer has actually submitted what the load queued.
+	## DIAG-21 (DEVICE_DIAGNOSTICS §15.7) — `RENDER3D=1` draws the loaded board as 3D
+	## meshes read from the live registries and hides the 2D voxel board. An
+	## instrument: the 2D path still runs underneath, and nothing here writes game state.
+	if _dev_flag("RENDER3D") == "1":
+		_start_board3d_live()
 	MemStage.mark("40 map loaded — %s" % map_id)
 	if _dev_flag_on("MEM_CENSUS"):
 		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)
@@ -2920,6 +2926,22 @@ func _apply_world_render_scale() -> void:
 
 func _world_render_scale_value() -> float:
 	return _world_render_scale.current_scale() if _world_render_scale != null else 1.0
+
+
+## DIAG-21 — the 3D board over the real registries. The 2D board is hidden, not
+## removed: every 2D system keeps running, so only its drawing leaves the frame.
+func _start_board3d_live() -> void:
+	var existing: Node = get_node_or_null("Board3DLive")
+	if existing != null:
+		existing.queue_free()
+	_voxel_renderer.visible = false
+	floor_layer.visible = false
+	structure_layer.visible = false
+	var live: Node3D = Board3DLiveClass.new()
+	live.name = "Board3DLive"
+	add_child(live)
+	live.build(self, func(cell: Vector2i) -> Vector2:
+		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 
 
 ## TEL-06b — emitted when `scenario_detonate()` has finished, successfully or not. The

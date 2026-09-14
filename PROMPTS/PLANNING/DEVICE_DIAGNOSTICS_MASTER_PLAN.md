@@ -1647,7 +1647,20 @@ where one says "superseded", §14 is the only authority for that task.
    `canvas_items` stretch already renders at the screen's native resolution —
    full HD on a full HD screen. M's restrictions are the (a) canvas scale and the
    zoom floor Q6 will set.
-9. **The render scale of M — a look decision the measurements now force.**
+9. ✅ **ANSWERED 2026-09-14 — 0.75, the world only.** Director: *"Pode seguir com
+   o TEL-UI-02, escala 0,75"*, after seeing the paired Moto captures. Built as
+   TEL-UI-02: `WorldRenderScale` renders the world into a SubViewport at 0.75× the
+   screen's pixels (540×1209 on the Moto, 1.78× fewer), sharing the root
+   `World2D`. The root viewport's `canvas_cull_mask` keeps only the HUD, the fog
+   and the displayed world texture, so the HUD stays native. D renders at 1.0,
+   with the mechanism OFF; `RENDER_SCALE=<f>` overrides it for a test.
+   - Proven first by a standalone spike on this engine build: world content on
+     the same pixel with the scale on and off; a HUD rect's box identical; with
+     the texture hidden, 0 world pixels left in the root viewport.
+   - The frame probe sums both viewports' render time, so it cannot report a
+     saving that did not happen.
+   - Original question, kept:
+   **The render scale of M — a look decision the measurements now force.**
    (§10.17.4–§10.17.5) On the Moto at the default zoom, 36 of the 58.6 ms of GPU
    is pixel fill. Rendering the 2D at the canvas size (390×873, upscaled 1.85×)
    takes the idle frame from 60.0 to 23.8 ms. Options: native (720 wide), an

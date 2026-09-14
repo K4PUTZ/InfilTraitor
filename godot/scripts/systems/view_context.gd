@@ -42,12 +42,13 @@ static func read(viewport: Viewport, camera: Camera2D, framing: String) -> Dicti
 
 
 ## A string that changes whenever the view does, at the resolution that matters:
-## zoom to 0.01, the camera centre to 8 world px.
+## zoom to 0.01, the camera centre to 8 world px, the world render scale (TEL-UI-02)
+## to 0.01 — the caller adds `render_scale`, which this class cannot read itself.
 static func signature(fields: Dictionary) -> String:
 	var centre: Vector2 = fields.get("centre", Vector2.ZERO)
-	return "%s|%s|%s|%s|%.2f|%d,%d" % [fields.get("framing", ""), fields.get("window", ""),
+	return "%s|%s|%s|%s|%.2f|%d,%d|%.2f" % [fields.get("framing", ""), fields.get("window", ""),
 		fields.get("canvas", ""), fields.get("visible", ""), float(fields.get("zoom", 0.0)),
-		roundi(centre.x / 8.0), roundi(centre.y / 8.0)]
+		roundi(centre.x / 8.0), roundi(centre.y / 8.0), float(fields.get("render_scale", 1.0))]
 
 
 ## How much board is on screen: floor cells whose centre lies inside the visible

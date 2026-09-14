@@ -45,12 +45,12 @@ func _ready() -> void:
 
 func _test_ladder_parses() -> bool:
 	var text: String = "framing portrait; centre agent\nzoom 0.5; wait 20; mark z 050;" \
-		+ " centre 12,7; frames 3; window 360x806; quit;"
+		+ " centre 12,7; frames 3; window 360x806; capture shot_1; quit;"
 	var result: Dictionary = ScenarioRunnerClass.parse(text)
 	var steps: Array = result["steps"]
 	var ops: Array = steps.map(func(s: Dictionary) -> String: return str(s["op"]))
 	var expected_ops: Array = ["framing", "centre", "zoom", "wait", "mark", "centre",
-		"frames", "window", "quit"]
+		"frames", "window", "capture", "quit"]
 	if not str(result["error"]).is_empty() or ops != expected_ops:
 		print("[TEST 1] ❌ ladder — error '%s', ops %s" % [result["error"], ops])
 		return false
@@ -58,11 +58,11 @@ func _test_ladder_parses() -> bool:
 		and typeof(steps[2]["zoom"]) == TYPE_FLOAT and is_equal_approx(steps[2]["zoom"], 0.5) \
 		and is_equal_approx(steps[3]["seconds"], 20.0) and steps[4]["label"] == "z_050" \
 		and steps[5]["cell"] == Vector2i(12, 7) and steps[6]["frames"] == 3 \
-		and steps[7]["size"] == Vector2i(360, 806)
+		and steps[7]["size"] == Vector2i(360, 806) and steps[8]["name"] == "shot_1"
 	if not typed:
 		print("[TEST 1] ❌ ladder arguments not typed as written: %s" % [steps])
 		return false
-	print("[TEST 1] ✅ a 9-step ladder parses in order with typed arguments")
+	print("[TEST 1] ✅ a 10-step ladder parses in order with typed arguments")
 	return true
 
 
@@ -90,6 +90,7 @@ func _test_each_argument_check() -> bool:
 		"window 360by806": "window takes WxH in pixels",
 		"quit now": "'quit' takes 0 argument(s), got 1",
 		"mark": "mark takes a label",
+		"capture a.b": "capture takes a file name (letters, digits, _ or -)",
 	}
 	for text: String in cases:
 		var error: String = ScenarioRunnerClass.parse(text)["error"]

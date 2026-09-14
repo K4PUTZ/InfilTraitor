@@ -18,6 +18,8 @@
 ##   frames <n>                           rendered frames
 ##   mark <label>                         a `scenario.mark` boundary for the analyzer
 ##   window <W>x<H>                       desktop only: emulate a phone's aspect
+##   capture <name>                       the root viewport to captures/<name>.png
+##                                        (the external files dir on Android)
 ##   quit                                 end the process (the harness waits on it)
 ##
 ## EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer
@@ -34,7 +36,7 @@ extends Node
 ## op -> how many arguments it takes. `mark` takes the rest of the line.
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
-	"mark": -1, "window": 1, "quit": 0,
+	"mark": -1, "window": 1, "capture": 1, "quit": 0,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 
@@ -119,6 +121,10 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
+		"capture":
+			if not arg.is_valid_filename() or arg.contains("."):
+				return "capture takes a file name (letters, digits, _ or -)"
+			step["name"] = arg
 	return ""
 
 
@@ -150,6 +156,19 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			else:
 				DisplayServer.window_set_size(step["size"])
 				await room.get_tree().process_frame
+		"capture":
+			await RenderingServer.frame_post_draw
+			var image: Image = room.get_viewport().get_texture().get_image()
+			var dir: String = DevFlags.external_files_dir()
+			if dir.is_empty():
+				dir = ProjectSettings.globalize_path("user://")
+			var path: String = "%s/captures/%s.png" % [dir.trim_suffix("/"), step["name"]]
+			DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+			var err: int = image.save_png(path)
+			if err != OK:
+				return _fail(step, "could not save %s (error %d)" % [path, err])
+			Telemetry.event("scenario.capture", {"path": path})
+			print("[SCENARIO] captured %s" % path)
 		"quit":
 			## `quit()` is deferred, so `run()` still reaches its own `scenario.end`
 			## after this step — emitting one here as well wrote it twice.

@@ -45,6 +45,7 @@ const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapn
 ## TEL-03 — preloaded like the overlays above, so no global class cache is needed.
 const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
+const WorldRenderScaleClass = preload("res://godot/scripts/systems/world_render_scale.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
@@ -2806,6 +2807,12 @@ const FRAMING_PORTRAIT_CANVAS: Vector2i = Vector2i(390, 844)
 const FRAMING_LANDSCAPE_CANVAS: Vector2i = Vector2i(844, 390)
 const FRAMING_DESKTOP_CANVAS: Vector2i = Vector2i(1280, 720)
 var _framing: String = ""
+## TEL-UI-02 (Director, 2026-09-14: *"Pode seguir com o TEL-UI-02, escala 0,75"*) — the
+## fraction of the screen's pixels M's WORLD renders at; the HUD stays native, and D
+## renders at 1.0 (§13 Q8). `RENDER_SCALE=<f>` overrides it for a test. See
+## WorldRenderScale for the mechanism and DEVICE_DIAGNOSTICS §10.17.4 for why.
+var render_scale_m: float = 0.75
+var _world_render_scale: Node = null
 
 
 func set_framing(framing: String, via: String = "code") -> void:
@@ -2832,6 +2839,7 @@ func set_framing(framing: String, via: String = "code") -> void:
 	var root: Window = get_tree().root
 	root.content_scale_aspect = aspect
 	root.content_scale_size = canvas
+	_apply_world_render_scale()
 	if _is_handheld():
 		DisplayServer.screen_set_orientation(orientation)
 	else:
@@ -2842,7 +2850,8 @@ func set_framing(framing: String, via: String = "code") -> void:
 		var screen_size := DisplayServer.screen_get_size()
 		var centered := Vector2(screen_size - canvas) / 2.0
 		DisplayServer.window_set_position(Vector2i(centered.round()))
-	Telemetry.event("view.framing", {"framing": framing, "via": via})
+	Telemetry.event("view.framing", {"framing": framing, "via": via,
+		"render_scale": _world_render_scale_value()})
 
 
 ## Which framing the game STARTS in: `portrait` on a handheld, `desktop` anywhere
@@ -2867,6 +2876,26 @@ func _apply_boot_viewport() -> void:
 
 func _is_handheld() -> bool:
 	return DisplayServer.is_touchscreen_available() or OS.has_feature("mobile")
+
+
+## TEL-UI-02 — M renders its world at `render_scale_m` (or `RENDER_SCALE`), D at 1.0.
+## Under `STRETCH_VIEWPORT` the instrument owns the resolution, so this stays off.
+func _apply_world_render_scale() -> void:
+	if _world_render_scale == null:
+		_world_render_scale = WorldRenderScaleClass.new()
+		_world_render_scale.name = "WorldRenderScale"
+		add_child(_world_render_scale)
+		_world_render_scale.set_measure(_frame_probe)
+	var render_scale: float = 1.0
+	if _framing != "desktop":
+		render_scale = DevFlags.real("RENDER_SCALE", render_scale_m)
+	if get_window().content_scale_mode == Window.CONTENT_SCALE_MODE_VIEWPORT:
+		render_scale = 1.0
+	_world_render_scale.apply(render_scale)
+
+
+func _world_render_scale_value() -> float:
+	return _world_render_scale.current_scale() if _world_render_scale != null else 1.0
 
 
 ## TEL-06a — a zoom through the camera's own clamp, on the timeline like a pinch.
@@ -5842,6 +5871,7 @@ const VIEW_SETTLE_USEC: int = 250_000
 func view_context() -> Dictionary:
 	var fields: Dictionary = ViewContextClass.read(get_viewport(), camera,
 		_framing)
+	fields["render_scale"] = _world_render_scale_value()
 	var sig: String = ViewContextClass.signature(fields)
 	if sig != _view_count_sig:
 		_view_count_sig = sig
@@ -5858,8 +5888,9 @@ func view_context() -> Dictionary:
 func _telemetry_view_tick() -> void:
 	if Engine.get_process_frames() % VIEW_CHECK_EVERY_FRAMES != 0:
 		return
-	var sig: String = ViewContextClass.signature(ViewContextClass.read(get_viewport(), camera,
-		_framing))
+	var tick_fields: Dictionary = ViewContextClass.read(get_viewport(), camera, _framing)
+	tick_fields["render_scale"] = _world_render_scale_value()
+	var sig: String = ViewContextClass.signature(tick_fields)
 	if sig == _view_emitted_sig:
 		_view_pending_sig = ""
 		return
@@ -5913,6 +5944,13 @@ func _process(_delta: float) -> void:
 			var frame_ms: float = float(_frame_probe_us) / 1000.0 / float(_frame_probe_n)
 			var render_cpu: float = RenderingServer.viewport_get_measured_render_time_cpu(vrid)
 			var render_gpu: float = RenderingServer.viewport_get_measured_render_time_gpu(vrid)
+			## TEL-UI-02 — with the world in its own SubViewport, the root viewport's time no
+			## longer contains the world. Summed, so `render gpu` keeps meaning "GPU spent
+			## drawing this frame" on both paths, and a probe cannot report a false saving.
+			if _world_render_scale != null and _world_render_scale.is_active():
+				var wrid: RID = _world_render_scale.viewport_rid()
+				render_cpu += RenderingServer.viewport_get_measured_render_time_cpu(wrid)
+				render_gpu += RenderingServer.viewport_get_measured_render_time_gpu(wrid)
 			var draws: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
 			var primitives: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))
 			var objects: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME))
@@ -5923,10 +5961,10 @@ func _process(_delta: float) -> void:
 			## columns still matches (§14.2 #3). DIAG-16: a count without it is not comparable.
 			var view: Dictionary = view_context()
 			var visible_size: Vector2 = view["visible"]
-			print("[FRAME-PROBE] %.1f ms/frame · render cpu %.1f ms · render gpu %.1f ms · %d draw call(s) · %d primitive(s) · %d object(s) · process %.1f ms · physics %.1f ms · %d node(s) · view %s %dx%d zoom %.2f gu %s/%s"
+			print("[FRAME-PROBE] %.1f ms/frame · render cpu %.1f ms · render gpu %.1f ms · %d draw call(s) · %d primitive(s) · %d object(s) · process %.1f ms · physics %.1f ms · %d node(s) · view %s %dx%d zoom %.2f gu %s/%s scale %.2f"
 				% [frame_ms, render_cpu, render_gpu, draws, primitives, objects, process_ms,
 				physics_ms, nodes, view["framing"], roundi(visible_size.x), roundi(visible_size.y),
-				float(view["zoom"]), str(view["gu_visible"]), str(view["gu_total"])])
+				float(view["zoom"]), str(view["gu_visible"]), str(view["gu_total"]), float(view["render_scale"])])
 			if Telemetry.wants("frame.window"):
 				## `process_held` / `physics_held` are means of HELD MAXIMA, not means of the
 				## frame (see TIME_PROCESS above) — named so nobody reads them as a share.
@@ -11481,6 +11519,7 @@ func _dev_flag_num(flag_name: String, fallback: int) -> int:
 func _apply_perf_ablations() -> void:
 	if _dev_flag_on("STRETCH_VIEWPORT"):
 		get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+		_apply_world_render_scale()
 		print("[PERF-DEV] STRETCH_VIEWPORT — 2D renders at %s, upscaled to %s"
 			% [get_window().content_scale_size, get_window().size])
 	var zoom_raw: String = _dev_flag("ZOOM", "")

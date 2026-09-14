@@ -81,6 +81,13 @@ func _ready() -> void:
 	## NO_BAKE: an instrument, never a look mode. OR-ed so a desktop env var keeps
 	## working exactly as it did.
 	VoxelRenderer.LIGHT_DISABLED = VoxelRenderer.LIGHT_DISABLED or on("NO_LIGHT")
+	## DIAG-19 (§15.2) — detonation ablation knobs, reachable in the APK. Both are
+	## static switches their classes read from the environment alone at class load;
+	## OR-ed / overridden here, so a desktop env var keeps working exactly as before.
+	VfxDrawProbe.noop = VfxDrawProbe.noop or on("VFX_DRAW_NOOP")
+	var smoke_chance: float = real("SMOKE_CHANCE", -1.0)
+	if smoke_chance >= 0.0:
+		MaterialResistanceTable._smoke_chance_override = smoke_chance
 	MemStage.mark("00 boot — flags resolved")
 	if _overrides.is_empty():
 		## Deliberately quiet-but-present: a device log that says nothing about

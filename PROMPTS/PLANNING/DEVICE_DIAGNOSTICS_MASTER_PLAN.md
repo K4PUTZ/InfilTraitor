@@ -2041,7 +2041,24 @@ scrollback.
 ## 15. The two decisive experiments — where the detonation's anchor is, and whether it is the 2D representation
 
 **Status:** 📋 **REGISTERED 2026-09-14 — Director: *"Ok, deixa o plano registrado e
-vamos seguir."*** Nothing built yet.
+vamos seguir."***
+
+**DIAG-19 prerequisites BUILT (2026-09-14).**
+- **Knobs through `DevFlags`, so they reach the APK:** `SMOKE_CHANCE`,
+  `VFX_DRAW_NOOP`, `LIGHT_SECONDS`, `NO_LIGHT_COOK`.
+- **New instruments:**
+  - `NO_SOOT` — the writer's own `soot_clean`, and no fade;
+  - `NO_CONSEQUENCE_LIGHT` — the light beat is not played;
+  - `BLAST_MAX_RING=<n>` — all six per-ring tables are cut.
+- **`detonate <index>`** scenario step (`Room.scenario_detonate()`): the camera on
+  the grenade, the menu path, waits for the blast's end.
+- **`bench_analyze.py`** reads `[E-FRAME]` reports into a per-detonation table.
+- **Desktop, real path**, grenade #0:
+  - control: 6.5 s, COMMIT 1 915 cells in 23 ms, soot fade 1 645 cells;
+  - every knob on: `frag_grenade cut to 2 ring(s)`, COMMIT 914 cells, no fade.
+- **On the DIAG-15 hand log**, the analyzer reproduced its three detonations
+  (PUMP 106–111 frames ≈ 10 s; COMMIT 3 939 / 534 / 3 489 ms).
+- **Selftests:** 55 clean. **The matrix is running on the Moto.**
 
 **The questions, in the Director's words:**
 - *"Se a gente deixar de fazer cálculos e usar explosões padronizadas […] ficaria

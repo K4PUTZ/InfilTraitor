@@ -11,6 +11,7 @@ var registry: Dictionary = {}  # id → BombDef
 
 ## Register a bomb definition
 func register(bomb_def) -> void:
+	_apply_ring_cap(bomb_def)
 	registry[bomb_def.id] = bomb_def
 	print("[BombRegistry] Registered: %s (rings: %d)" %
 		[bomb_def.id, bomb_def.ring_multipliers.size()])
@@ -53,3 +54,25 @@ func _scan_dir(dir_path: String) -> void:
 					if not bomb_def.id.is_empty():
 						register(bomb_def)
 		fname = dir.get_next()
+
+
+## DIAG-19 (DEVICE_DIAGNOSTICS §15.2) — `BLAST_MAX_RING=<n>`, an instrument: every
+## per-ring table of the bomb is cut to rings 0..n, so a detonation touches fewer
+## voxels with the same falloff shape. The flag is read through the DevFlags NODE,
+## not the global name, so a `--script` tool that loads this registry without
+## autoloads still parses and simply gets no cap.
+func _apply_ring_cap(bomb_def) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var flags: Node = tree.root.get_node_or_null("DevFlags") if tree != null else null
+	if flags == null:
+		return
+	var cap: int = flags.num("BLAST_MAX_RING", -1)
+	if cap < 0:
+		return
+	var keep: int = cap + 1
+	for field: String in ["ring_multipliers", "destroy_ring_weights", "dent_ring_weights",
+			"crack_ring_weights", "soot_ring_tones", "smoke_ring_weights"]:
+		var rings: Array = bomb_def.get(field)
+		if rings.size() > keep:
+			rings.resize(keep)
+	print("[BombRegistry] BLAST_MAX_RING=%d — %s cut to %d ring(s)" % [cap, bomb_def.id, keep])

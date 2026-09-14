@@ -2004,6 +2004,11 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 func _ready() -> void:
 	## DIAG-01 — see `_dev_flag()`: this cannot be a member initialiser.
 	_frame_probe = _dev_flag_on("FRAME_PROBE")
+	## DIAG-19 — `LIGHT_SECONDS` reaches the APK too; the member initialiser reads the
+	## environment alone, which an Android app never has.
+	var light_seconds_raw: String = _dev_flag("LIGHT_SECONDS", "")
+	if light_seconds_raw.is_valid_float():
+		consequence_light_seconds = light_seconds_raw.to_float()
 	FrameSplit.enabled = _frame_probe
 
 	## §12.11 — A DETERMINISTIC RNG, so a VFX pixel gate can exist at all.
@@ -2899,6 +2904,47 @@ func _apply_world_render_scale() -> void:
 
 func _world_render_scale_value() -> float:
 	return _world_render_scale.current_scale() if _world_render_scale != null else 1.0
+
+
+## TEL-06b — emitted when `scenario_detonate()` has finished, successfully or not. The
+## runner awaits this signal rather than the coroutine itself, and starts the
+## detonation deferred, so a failure that returns at once cannot fire before it waits.
+signal scenario_detonation_done(ok: bool)
+
+
+## TEL-06b (DEVICE_DIAGNOSTICS §15.2) — a dev grenade detonated through the menu path
+## (`open_menu_for()` + `detonate_active()`, as the benchmark does), with the camera
+## ON the grenade, returning once the blast has finished playing. DIAG-19 needs the
+## blast on screen in the verdict framing; the benchmark's never was.
+func scenario_detonate(index: int) -> void:
+	if _test_zone_controller == null:
+		push_error("[Room] scenario_detonate: no TestZoneController — dev grenades exist on PLAYGROUND only")
+		scenario_detonation_done.emit(false)
+		return
+	_seed_dev_grenades_if_empty("SCENARIO")
+	var grenades: Array = _test_zone_controller._grenades
+	if index < 0 or index >= grenades.size() or bool(grenades[index]["detonated"]):
+		push_error("[Room] scenario_detonate: dev grenade #%d does not exist or is spent" % index)
+		scenario_detonation_done.emit(false)
+		return
+	centre_camera_on(grenades[index]["gu_cell"])
+	await get_tree().process_frame
+	Telemetry.event("blast.request", {"index": index, "gu": grenades[index]["gu_cell"]})
+	_test_zone_controller.open_menu_for(index)
+	_test_zone_controller.detonate_active()
+	## `is_blast_playing()`, not only `is_resolving_action()` — the action lock clears
+	## about halfway through the blast (see the benchmark).
+	var waited: int = 0
+	const MAX_WAIT_FRAMES: int = 3600
+	while (is_resolving_action() or _test_zone_controller.is_blast_playing()) \
+			and waited < MAX_WAIT_FRAMES:
+		await get_tree().process_frame
+		waited += 1
+	## One more frame, so `event_probe_report()` has certainly printed.
+	await get_tree().process_frame
+	if waited >= MAX_WAIT_FRAMES:
+		push_warning("[Room] scenario_detonate: grenade #%d still playing after %d frames" % [index, waited])
+	scenario_detonation_done.emit(waited < MAX_WAIT_FRAMES)
 
 
 ## TEL-06a — a zoom through the camera's own clamp, on the timeline like a pinch.
@@ -6233,10 +6279,14 @@ func report_blast_passage(delta) -> void:
 func play_consequence_light(delta = null) -> void:
 	if not is_instance_valid(_voxel_renderer):
 		return
+	## DIAG-19 (§15.2) — an instrument, never a look: the consequence light is not
+	## played at all and the board keeps its pre-blast light. Prices the LIGHT beat.
+	if _dev_flag("NO_CONSEQUENCE_LIGHT") == "1":
+		return
 	var cooked: bool = (delta != null and delta.light_field_usable
 		and delta.light_field != null
 		and not delta.light_changed_cells.is_empty()
-		and OS.get_environment("INFILTRAITOR_NO_LIGHT_COOK") != "1")
+		and _dev_flag("NO_LIGHT_COOK") != "1")
 
 	## §13.4 — THE LIGHT ARRIVES OVER ~2 s, and the trick is to let the existing
 	## repaint compute the answer and then REPLAY the transition.

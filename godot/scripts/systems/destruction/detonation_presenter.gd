@@ -235,6 +235,13 @@ var soot_fade_frames: int = 5
 ## here is also what keeps them out of `soot_ramp_cells`, so the commit writes them
 ## at their real value and they never go clean at all.
 func _collect_soot_ramp(plan: Dictionary, voxel_renderer) -> Array:
+	## DIAG-19 (DEVICE_DIAGNOSTICS §15.2) — `NO_SOOT=1`, an instrument: the commit writes
+	## every scorch clean (`soot_clean`, the writer's own switch) and there is no fade.
+	## The cells still get their light alternatives — only the scorch is priced.
+	if _no_soot():
+		_writer.soot_clean = true
+		_writer.soot_ramp_cells = {}
+		return []
 	var out: Array = []
 	var ramp_cells: Dictionary = {}
 	for kind: String in ["dented", "cracked", "soot"]:
@@ -247,6 +254,14 @@ func _collect_soot_ramp(plan: Dictionary, voxel_renderer) -> Array:
 				_note_ramp(reveal, voxel_renderer, out, ramp_cells)
 	_writer.soot_ramp_cells = ramp_cells
 	return out
+
+
+## The DevFlags NODE, not the global name: this RefCounted is also built by tools
+## that run without autoloads, where it simply reads as off.
+static func _no_soot() -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	var flags: Node = tree.root.get_node_or_null("DevFlags") if tree != null else null
+	return flags != null and flags.on("NO_SOOT")
 
 
 func _note_ramp(entry: Dictionary, voxel_renderer, out: Array,

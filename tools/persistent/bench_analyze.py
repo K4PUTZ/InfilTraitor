@@ -188,6 +188,63 @@ def report(path: str, session: list[dict]) -> int:
     return status
 
 
+## TEL-07b — the detonation probe's report (`EVENT_FRAMES=1`). One summary line per
+## detonation, then one line per beat mark on its frame timeline.
+EFRAME_SUMMARY_RE = re.compile(
+    r"\[E-FRAME\] (\S+) \S+ (\d+) frame\(s\), (\d+) ms wall clock, mean ([\d.]+) ms"
+    r" \S+ WORST ([\d.]+) ms on frame (\d+)")
+EFRAME_BEAT_RE = re.compile(
+    r"\[E-FRAME\]\s+f(\d+)\s+(.+?)\s+its frame\s+([\d.]+) ms \S+ then\s+(\d+) f,"
+    r"\s+([\d.]+) ms, max\s+([\d.]+) ms")
+
+
+def detonations(lines: list[str]) -> list[dict]:
+    """Every `[E-FRAME]` report in file order, each tagged with the scenario mark and
+    the `detonate` step that preceded it, so a matrix row names its own blasts."""
+    out: list[dict] = []
+    mark = step = ""
+    for line in lines:
+        record = parse_line(line)
+        if record is not None:
+            if record["kind"] == "scenario.mark":
+                mark = str(record.get("label", ""))
+            elif record["kind"] == "scenario.step" and "detonate" in str(record.get("step", "")):
+                step = str(record.get("step", ""))
+            continue
+        summary = EFRAME_SUMMARY_RE.search(line)
+        if summary:
+            out.append({"label": summary[1], "frames": int(summary[2]), "wall_ms": int(summary[3]),
+                        "mean": float(summary[4]), "worst": float(summary[5]),
+                        "mark": mark, "step": step, "beats": {}})
+            continue
+        beat = EFRAME_BEAT_RE.search(line)
+        if beat and out:
+            ## A beat name can repeat (BEAT 1, BEAT 1 ends); the first of each wins.
+            out[-1]["beats"].setdefault(beat[2].strip(), {
+                "frame": int(beat[1]), "its_ms": float(beat[3]), "then_f": int(beat[4]),
+                "then_ms": float(beat[5]), "max_ms": float(beat[6])})
+    return out
+
+
+def detonation_table(dets: list[dict]) -> None:
+    def beat(d, name, fmt):
+        b = d["beats"].get(name)
+        return "—" if b is None else fmt(b)
+    print("| # | mark | step | frames | wall s | mean ms | worst ms | PUMP f · s | COMMIT frame ms"
+          " | SOOT FADE 1st frame ms | CONSEQUENCE ms/f | LIGHT ms/f |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|")
+    for i, d in enumerate(dets, 1):
+        per_frame = lambda b: "%.1f" % (b["then_ms"] / b["then_f"]) if b["then_f"] else "—"
+        print("| %d | %s | %s | %d | %.1f | %.1f | %.1f | %s | %s | %s | %s | %s |" % (
+            i, d["mark"] or "—", d["step"] or "—", d["frames"], d["wall_ms"] / 1000.0,
+            d["mean"], d["worst"],
+            beat(d, "PUMP ends", lambda b: "%d · %.1f" % (b["then_f"], b["then_ms"] / 1000.0)),
+            beat(d, "COMMIT", lambda b: "%.0f" % b["its_ms"]),
+            beat(d, "SOOT FADE", lambda b: "%.0f" % b["its_ms"]),
+            beat(d, "CONSEQUENCE", per_frame),
+            beat(d, "LIGHT", per_frame)))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("paths", nargs="+", help="logcat capture, stdout log or JSONL file")
@@ -195,13 +252,19 @@ def main() -> int:
     status = 0
     for path in args.paths:
         with open(path, encoding="utf-8", errors="replace") as handle:
-            records = [r for r in (parse_line(line) for line in handle) if r is not None]
-        if not records:
-            print("## %s\n❌ no [TEL] records in this file" % path)
+            lines = handle.readlines()
+        records = [r for r in (parse_line(line) for line in lines) if r is not None]
+        dets = detonations(lines)
+        if not records and not dets:
+            print("## %s\n❌ no [TEL] records and no [E-FRAME] reports in this file" % path)
             status = 1
             continue
         for session in sessions(records):
             status = max(status, report(path, session))
+            print()
+        if dets:
+            print("### detonations — %s" % path)
+            detonation_table(dets)
             print()
     return status
 

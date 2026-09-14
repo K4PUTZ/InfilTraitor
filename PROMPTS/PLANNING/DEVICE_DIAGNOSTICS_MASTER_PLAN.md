@@ -2338,3 +2338,105 @@ where the 2D board idles at 60 ms. Per the rule, it goes to the Director.
 - **(c) Unity or Unreal.** Nothing measured here says the engine is the limit:
   Godot's own 3D path already shows the representation gain. A migration adds a
   full code rewrite on top of the same 3D work.
+
+### 15.7 ✅ DIAG-21 step 1 MEASURED — the LIVE board in 3D: 60 → 18 ms at the default zoom, flat with zoom
+
+**Director, 2026-09-14:** *"Certo vamos então fazer isso e montar o protótipo em 3D. Mas
+aí no caso a gente continuaria usando voxels (reais), e mantendo toda a arquitetura do
+baking system?"* — answered in the same session.
+- **The simulation layer stays as it is.** Edge, Slice, Slab, Voxel, the registries,
+  `JunctionResolver`, the glass physics, the damage tables, `VoxelLightField`,
+  prediction, TIC, turns and AI hold no `TileMapLayer` / `set_cell` / atlas reference
+  — checked file by file.
+- **The bake keeps its logic, loses its atlas.** `TextureResolver`, `MaterialRegistry`
+  and `FacadeSampler`'s FNV-1a window origins carry over; the pre-projected isometric
+  atoms do not, because a 3D face has UVs.
+- **The 2D drawing layer is what is replaced:** `VoxelRenderer` and the detonation
+  writer.
+- **The real refactor is the detonation plan.** Its entries carry
+  `source_id` / `atlas_coords` / `alt` and read live layer cells; it has to become
+  render-neutral.
+- Canon rules 2, 8, part of 9 and B1/B3/B5 are 2D-drawing rules. They retire only at
+  parity, on the Director's ratification.
+
+**What was built** — commits `76658423`, `ae8440cf`, `625b8158`. `RENDER3D=1`
+(`godot/scripts/spikes/board3d_live.gd`): after a real map load, depth-tested meshes
+of the game's own data replace the drawing of the 2D voxel board, which is hidden,
+not removed. Actors, fog, overlays and HUD still draw in 2D on top.
+- **Data:** every visible Voxel of every Slice (`material_at`), every junction
+  column, every floor, deep-floor and roof Slab — 215 432 voxels on PLAYGROUND
+  (the 2D board holds 151 240 cells).
+- **Faces:** the three the camera can see (top, SE, SW); a glass neighbour does not
+  hide an opaque face.
+- **Look:** the 2D face shader's own terms per face, read live — bucket luminance ×
+  face tone × per-face soot × floor depth dim — as vertex colour; material =
+  base colour × facade luminance. The maths is done in sRGB and the product is
+  decoded once.
+- **Meshing:** greedy merge of coplanar faces with the same material and colour, per
+  32×32-voxel chunk → 1 617 quads in 72 chunks. On the Moto: collect 2.4 s + mesh
+  2.2 s, at load only.
+- **Camera:** follows the 2D camera every frame through an affine map of GU centres
+  measured from Room, so sprites and board stay aligned on the ground plane.
+
+**The table** — Moto g04s, portrait 720×1612, same binary (APK `cfd967c2…`), same
+ladder, both runs re-centred on the agent at every stop. Cells on screen match at
+every stop (95 / 115 / 173 / 235 / 354); no stop touched; 0 dropped lines.
+Logs (local): `docs/measurements/device_2026-09-14_moto_g04s_diag21b_r3d_on.log`,
+`…_diag21b_r3d_off_control.log`.
+
+| zoom | 2D board: ms · gpu · cpu · draws | **3D board + 2D on top: ms · gpu · cpu · draws** |
+|---|---|---|
+| 0.50 | 60.0 · 58.5 · 6.6 · 1 641 | **17.9 · 16.3 · 2.2 · 225** |
+| 0.42 | 70.3 · 68.8 · 9.0 · 3 091 | **18.1 · 16.5 · 2.3 · 263** |
+| 0.35 | 89.0 · 87.5 · 14.0 · 5 603 | **17.9 · 16.3 · 2.3 · 267** |
+| 0.30 | 107.5 · 106.1 · 22.6 · 10 531 | **18.1 · 16.4 · 2.3 · 270** |
+| 0.20 | 134.5 · 133.0 · 39.4 · 20 670 | **17.1 · 15.6 · 2.4 · 285** |
+
+**What it says:**
+- **The idle game frame is inside the 33.3 ms budget at every zoom in 3D** — 3.4× cheaper
+  than 2D at the default zoom, 7.9× at the pinch floor. The zoom-out penalty behind §13 Q6
+  is gone: the frame is flat from 0.5 to 0.2.
+- **This is the real game frame, not a board in isolation:** actors, fog, cones,
+  movement overlay and HUD are all drawn. DIAG-20's lit, board-only spike cost 20.8 ms of
+  GPU; the unshaded vertex-colour board with the whole 2D game on top costs 16.3.
+- ⚠️ **The first ladder was contaminated, and TEL-02 caught it.** Three drags inside the
+  zoom 0.5 stop moved the camera off the agent for the rest of that run; its later stops
+  read fewer cells on screen than the control, and its closing capture framed the wrong
+  area. `bench_analyze.py` now flags such a segment (`625b8158`). That run also predates
+  the sRGB decode, and read 14.5 ms of GPU at zoom 0.5 against the clean run's 16.3. The
+  +1.8 ms coincides with the per-fragment decode, but the two runs also differed in view,
+  so the cost is not isolated. A cheaper form exists if it matters: linearise vertex and
+  base colour on the CPU and let the sampler decode the facade. That is exact only under
+  a pure power law.
+
+**The look** — paired Moto screencaps (local): `Screenshots/diag21b_2026-09-14/pair_z050.png`,
+`pair_glass.png`.
+- **Matches 2D:** light falloff, floor zones, brick and wood, framing, and the agent on
+  its selection diamond.
+- **Differs:**
+  - no per-voxel atom detail — the 2D floor shows its 8×8 grid per GU, the 3D floor is
+    the smooth facade;
+  - glass is a pale tint where 2D glass is a strong blue with facets;
+  - a 2D overlay the voxel floor used to cover (a dark diamond under the agent) now
+    shows;
+  - actors are not occluded by walls;
+  - no damage decals;
+  - facade continuity is world-space, not per wall run.
+
+**Not measured, and why:** memory. In `RENDER3D` mode the 2D board is still built
+underneath (PSS ~2.2–2.3 GB in both runs), so no memory figure means anything until a 3D
+path skips the tile placement.
+
+### 15.8 Proposed next steps for the 3D track
+
+1. **Remesh on detonation** — the question DIAG-19 left: after `WorldDelta.commit()`, mark
+   the chunks holding `touched_voxels` dirty and rebuild only those, with the light and
+   soot the cook already produced. Measure the commit frame and the whole event on the
+   Moto against DIAG-19's 1.9 s stalls and 28.8 s wall clock.
+2. **Actors and occlusion** — sprites as depth-tested billboards, so walls cover them
+   (D35/D44 untouched).
+3. **Look gaps** — glass, atom detail and decals, each priced as it lands.
+4. **The render-neutral detonation plan** — entries as voxel + damage state + light
+   bucket + soot code; each renderer resolves its own representation.
+5. **Memory** — a 3D path that skips the 2D tile placement, measured against the 2.2 GB
+   board.

@@ -158,6 +158,17 @@ Vector-based, per-tile, color-coded by detection probability (red = high risk �
 | Alert | 7 tiles | 100° | 0.95 | Orange (high) |
 | Chase | 7 tiles | 110° | 1.00 | Red (highest) |
 
+**Redraw contract (DIAG-12, 2026-09-12).** The cone is redrawn only when what it
+draws changed — `GuardEnemy._cone_inputs_changed()` keys on `vision_angle` (beyond
+`CONE_REDRAW_ANGLE_EPS`, 1e-5 rad, because `lerp_angle` never settles), `facing_angle_deg`,
+`cell`, `state` and the LOS data (`_los_revision` plus the dictionary sizes).
+Redrawing every frame cost **~27 ms/frame** on the Moto g04s with nine idle guards
+(`DEVICE_DIAGNOSTICS_MASTER_PLAN` §10.11). ⚠️ **Anything new that the cone draw
+functions read must be added to that key, or the cone freezes on screen while the
+simulation moves on.** Explicit redraw requests (dev vision, state entry, search
+queue) still call `queue_redraw()` directly. `INFILTRAITOR_CONE_REDRAW_ALWAYS=1`
+restores the per-frame path for comparison.
+
 ---
 
 ## Auditory Detection (NoiseSystem + TicSystem.evaluate_audio)

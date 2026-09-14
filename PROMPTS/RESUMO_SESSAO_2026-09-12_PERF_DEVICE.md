@@ -63,6 +63,11 @@ predates the cooked light and must not be quoted.
    frame 20.1 → 16.8 ms. Removing it changes the picture — **a Director decision**
    (a cheaper mobile shader tier), not an engineering one.
 2. **Non-voxel rendering: ~7 ms of GPU** (render gpu 19.0 → 12.0 with it hidden).
+   Bisected by name afterwards: hiding the nine cones, the HUD, the enemies or the
+   agent moves it by at most ~0.5 ms (the HUD). The cost is in something else that
+   `HIDE_NON_VOXEL` also hides — `FloorLayer`, the shadow/structure layers or the
+   code-built overlays — and 12 800 drawn objects cannot come from ~130 nodes, so
+   one of them draws far more than its node count says (plan §10.11.7).
 3. **Single-frame freezes during playback, unchanged by anything above:** COMMIT
    ~260–310 ms, and the first SOOT FADE frame **1.7 s on the second detonation**.
 4. **The cone cost comes back whenever guards turn** — nine guards rotating in the
@@ -88,7 +93,20 @@ predates the cooked light and must not be quoted.
 `HIDE_NODES=<name*>` · `NODE_CENSUS` · `CONE_REDRAW_ALWAYS` · `NO_LIGHT`
 (degenerate, see §3).
 
-## 7. Where to resume
+## 7. Left in a clean state
+
+- **The Moto's `dev_flags.cfg` is reset** to a comment-only file: the game opens
+  normally by hand. The benchmark flags are not armed.
+- **`export/Infiltraitor.apk` is the committed code** (the build installed on the
+  Moto). `export/Infiltraitor_compat.apk` is a verified Compatibility build (the
+  override is asserted in its packed settings), ready for the renderer control run
+  that was never made. The intermediate builds were deleted.
+- Logs of every run are in `docs/measurements/device_2026-09-12_moto_g04s_perfdev_*.log`
+  (local only — `*.log` is gitignored).
+- Commits: `0232d62a` (code + tools), `5d06dc75` and `c9e7fed9` (plan + summary),
+  plus this closing documentation commit.
+
+## 8. Where to resume
 
 The device cycle is two commands and every ablation above is a flags file, no
 rebuild:

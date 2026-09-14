@@ -1,8 +1,12 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v0.1
+## Measuring the real build on a real entry-tier phone — v1.1
 
-**Status:** 🟡 **v0.1 — a captured brief, awaiting Director sign-off.**
-Nothing here is built. The task IDs are proposals, not a landed sequence.
+**Status:** 🟢 **v1.1 — the harness is built and measuring (2026-09-12).** The
+Moto g04s reaches the 24–25 fps floor on the automated benchmark after DIAG-12
+(§10.11): detonations 27.3 / 34.1 ms. ⚠️ Hand play and the Galaxy are not
+re-measured; the COMMIT and SOOT FADE freezes are untouched. Sections below that
+still read as proposals (§6–§8, §12) predate the measured sections and are kept
+as written.
 
 **Director, 2026-09-12:** *"A prioridade máxima é a gente testar se a explosão
 vai ser factível num celular comum. O resto não serve pra nada se o jogo não
@@ -184,6 +188,14 @@ inverting the resolution order (file before environment) fails TEST 2 with
 `environment not honoured — on()=false value()='0'`. `dev_flags.cfg` is
 gitignored, because `res://` is a candidate path and a committed one would
 silently override the environment for everyone in every build.
+
+**DIAG-12 (2026-09-12) added, all default absent and asked through `DevFlags`:**
+`NO_FACE_SHADER`, `HIDE_VOXELS` (fixed — it was inert), `HIDE_LEVELS_ABOVE` /
+`HIDE_LEVELS_BELOW`, `QUADRANT`, `STRETCH_VIEWPORT`, `ZOOM`, `HIDE_NON_VOXEL`,
+`HIDE_NODES=<name*>`, `NODE_CENSUS`, `CONE_REDRAW_ALWAYS`, and `NO_LIGHT` now
+reaching the APK (degenerate on this build — §10.11.1). `FRAME_PROBE` gained
+`process` / `physics` / node columns (held maxima, not means) and a `[FRAME-SPLIT]`
+line from `FrameSplit`. What each one measured is §10.11.
 
 ### 4.1 The original design (unchanged)
 

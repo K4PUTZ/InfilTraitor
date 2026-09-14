@@ -29,8 +29,9 @@ reading this plan:
   gate-proven at 0 of 206 096 cells different.
 - **What is genuinely still open here:** **P4** (retire the alternative-id
   encoding and the mint cache), **P6** (MAT-PERF-03's 198 stale floor cells), and
-  **§14.3 — `INFILTRAITOR_HIDE_VOXELS` does not work, and §12 used it**, so any
-  conclusion that rested on it needs re-measuring. Optional and cheap: a
+  **§14.3's consequence** — `INFILTRAITOR_HIDE_VOXELS` was broken until 2026-09-12
+  (cause and fix in §14.3), so §12.4's conclusion that rested on it still needs
+  re-measuring on desktop. Optional and cheap: a
   base-occupancy cache in `VoxelRenderer`, which removes D-7's 45 ms cook step and
   speeds up every room repaint.
 - **What ships and defaults ON:** P3 (the cell plane, recovery 100.000%) and
@@ -3257,7 +3258,20 @@ final frame vs control:  0 differing px
 Fixed in `037ea0e5`. The destination is provably untouched — a control run with
 only that fix reverted produced a pixel-identical final frame.
 
-## 14.3 ⚠️ `INFILTRAITOR_HIDE_VOXELS` DOES NOT WORK, and §12 used it
+## 14.3 ✅ `INFILTRAITOR_HIDE_VOXELS` DID NOT WORK, and §12 used it — FIXED 2026-09-12
+
+**Cause, found by `DEVICE_DIAGNOSTICS` DIAG-12:** `_build_voxel_layer_node()` set
+`layer.visible = false` for the flag and then, nineteen lines further down the
+same function, `layer.visible = true` — so every layer was shown again before it
+was ever drawn. The hide now runs after that line (commit `0232d62a`), and the
+flag is asked through `DevFlags`, so it also reaches an APK. First valid reading,
+Moto g04s: hiding all voxel layers takes the idle frame 40.3 -> 34.8 ms and render
+gpu 19.0 -> 10.5 ms (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §10.11.2).
+
+⚠️ **§12.4's "hiding all 32 moves the frame by nothing" is still unverified** — it
+was measured with the broken flag, on desktop, and this fix does not re-measure
+it. What follows is the original note, kept as written.
+
 
 It sets `layer.visible = false` inside `VoxelRenderer._build_voxel_layer_node()`.
 In a real PLAYGROUND capture with `INFILTRAITOR_HIDE_VOXELS=1`, **the walls,

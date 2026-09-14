@@ -6785,6 +6785,9 @@ func _get_layer_material(level: int) -> ShaderMaterial:
 		## the class of bug this project keeps paying for.
 		push_error("[VoxelRenderer] FACE-READ-01: voxel_face_shading.gdshader failed to load — voxel faces will render flat")
 		return null
+	var strip_raw: String = _dev_flag("FACE_SHADER_STRIP")
+	if not strip_raw.is_empty() and shader != _no_op_layer_shader:
+		shader = _face_shader_with_strips(shader, strip_raw)
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	_soot_image_for(level)
@@ -6800,6 +6803,55 @@ func _get_layer_material(level: int) -> ShaderMaterial:
 	mat.set_shader_parameter("p3_enabled", 1.0 if P3_CELL_BUCKET else 0.0)
 	_layer_materials[level] = mat
 	return mat
+
+
+## DIAG-13 (PERF-DEV) — `FACE_SHADER_STRIP=<STAGE,...>` prices the face shader ONE
+## STAGE AT A TIME. `NO_FACE_SHADER` removes all of it at once, and on the Moto
+## that ~6 ms of render gpu cannot say whether it is the light, the soot, the
+## face tone, the residue snap, the second TEXTURE sample or the debug branches.
+##
+## The stages are `#ifndef` guards in the shipped shader itself, and this only
+## adds `#define FACE_STRIP_<STAGE>` lines after its `shader_type` line — so a run
+## without the flag compiles the exact file, and a run with it strips that file,
+## not a copy. An unknown stage is a configuration error and leaves the shader
+## whole, loudly: a typo must not price a different ladder than the log claims.
+const FACE_SHADER_STRIP_STAGES: PackedStringArray = [
+	"DEBUG", "TEXA", "RESIDUE", "FACE", "SOOT", "LIGHT"]
+static var _stripped_face_shader: Shader = null
+static var _stripped_face_shader_key: String = ""
+
+
+func _face_shader_with_strips(base: Shader, raw: String) -> Shader:
+	var stages: PackedStringArray = PackedStringArray()
+	for token: String in raw.to_upper().split(",", false):
+		var stage: String = token.strip_edges()
+		if not FACE_SHADER_STRIP_STAGES.has(stage):
+			push_error("[VoxelRenderer] FACE_SHADER_STRIP: unknown stage '%s' (known: %s) — shader left whole"
+				% [stage, ", ".join(FACE_SHADER_STRIP_STAGES)])
+			return base
+		if not stages.has(stage):
+			stages.append(stage)
+	stages.sort()
+	var key: String = ",".join(stages)
+	if _stripped_face_shader != null and _stripped_face_shader_key == key:
+		return _stripped_face_shader
+	const HEADER: String = "shader_type canvas_item;"
+	var code: String = base.code
+	var at: int = code.find(HEADER)
+	if at < 0:
+		push_error("[VoxelRenderer] FACE_SHADER_STRIP: '%s' not in the shader source (%d chars) — shader left whole"
+			% [HEADER, code.length()])
+		return base
+	var defines: String = ""
+	for stage: String in stages:
+		defines += "\n#define FACE_STRIP_%s" % stage
+	var stripped := Shader.new()
+	stripped.code = code.insert(at + HEADER.length(), defines)
+	_stripped_face_shader = stripped
+	_stripped_face_shader_key = key
+	print("[PERF-DEV] FACE_SHADER_STRIP — %s stripped from voxel_face_shading (source %d chars)"
+		% [key, code.length()])
+	return stripped
 
 
 func _build_voxel_layer_node(level: int) -> TileMapLayer:

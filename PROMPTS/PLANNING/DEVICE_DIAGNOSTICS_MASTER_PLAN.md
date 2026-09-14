@@ -3,8 +3,11 @@
 
 **Status:** 🟢 **v1.1 — the harness is built and measuring (2026-09-12).** The
 Moto g04s reaches the 24–25 fps floor on the automated benchmark after DIAG-12
-(§10.11): detonations 27.3 / 34.1 ms. ⚠️ Hand play and the Galaxy are not
-re-measured; the COMMIT and SOOT FADE freezes are untouched. Sections below that
+(§10.11): detonations 27.3 / 34.1 ms. **DIAG-13 (§10.12, 2026-09-13):** the face
+shader is 6.3 ms of the idle GPU frame and has no cheap look tier — 4.5 ms of it
+is light + soot, paid per fragment for per-quad data; three Director decisions
+open. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
+freezes are untouched. Sections below that
 still read as proposals (§6–§8, §12) predate the measured sections and are kept
 as written.
 
@@ -984,6 +987,11 @@ residue quantisation — costs **~4 ms of every frame** on the Mali-G57. It is t
 largest remaining single lever measured, and removing it changes the picture, so
 it is a Director decision (a mobile shader tier), not an engineering one.
 
+⚠️ **Superseded by §10.12.** The no-op shader also removes the P3 LIGHT and the
+per-face SOOT, so this row priced the lighting system, not a look tier. Priced
+stage by stage, most of the cost is the light and soot path, and the lever is
+engineering after all.
+
 ### 10.11.6 ⚠️ What this does NOT fix — read before quoting 29 fps as done
 
 - **The single-frame freezes are untouched.** COMMIT 257–312 ms and the first
@@ -1020,6 +1028,112 @@ not a finding). What `HIDE_NON_VOXEL` also hides and this table does not:
 ⚠️ **12 800 objects cannot come from ~130 non-voxel nodes**, so one of those
 holds far more drawn items than its node count says — that is the next
 `NODE_CENSUS` / `HIDE_NODES` question, not a guess to act on.
+
+---
+
+## 10.12 🟢 DIAG-13 — THE FACE SHADER, PRICED STAGE BY STAGE: THERE IS NO CHEAP LOOK TIER
+
+**Director, 2026-09-13:** chose the face shader (§10.11.5) as the next target on
+the Moto, over hand play, the non-voxel GPU and the freezes.
+
+**§10.11.5's framing was incomplete, and the measurement below is why.**
+`NO_FACE_SHADER` swaps in `shader_type canvas_item;` and nothing else, so its
+~6 ms removed the LIGHT (PERF-P3 moved the bucket multiply into this shader), the
+per-face SOOT, the face tone, the residue snap, a second `TEXTURE` sample and six
+debug branches, all at once. "Removing it changes the picture" was true — it
+priced the lighting system, not a cheaper look.
+
+### 10.12.1 The instrument
+
+`FACE_SHADER_STRIP=<STAGE,...>`, stages `DEBUG`, `TEXA`, `RESIDUE`, `FACE`,
+`SOOT`, `LIGHT`. They are `#ifndef FACE_STRIP_*` guards in the SHIPPED shader;
+`VoxelRenderer._face_shader_with_strips()` injects the `#define`s after its
+`shader_type` line, so no flag compiles the exact file and a flag strips that
+file, not a copy. `PLANE` is derived (LIGHT + SOOT + DEBUG all gone) and removes
+the cell recovery and the plane fetch. An unknown stage is a `push_error` and
+leaves the shader whole. It reaches the APK through `DevFlags`: every device log
+below prints its own strip line, and the 8 logs contain 0 shader errors.
+
+### 10.12.2 The cost — Moto g04s, one APK, stages removed cumulatively
+
+Release APK, bake ON, PLAYGROUND, `BENCHMARK=1 BENCH_RUNS=2
+BENCH_SETTLE_FRAMES=240 RNG_SEED=1234 FRAME_PROBE=1 NO_VSYNC=1 EVENT_FRAMES=1`.
+Idle = median of the 8 settled probe windows after the two runs; within every
+row those 8 samples sit inside ±0.2 ms (apart from one warm-up window each in
+the FACE and no-op rows).
+
+| removed (cumulative) | idle ms · render gpu | Δ render gpu | detonation 1 / 2 mean |
+|---|---|---|---|
+| nothing (control) | 20.1 · **19.0** | — | 30.7 / 34.6 |
+| `DEBUG` | 19.6 · 18.4 | **−0.6** | 27.8 / 34.0 |
+| + `TEXA` | 19.6 · 18.5 | 0 | 27.2 / 33.5 |
+| + `RESIDUE` | 18.7 · 17.3 | **−1.2** | 26.8 / 33.2 |
+| + `FACE` | 18.7 · 17.2 | −0.1 | 25.6 / 32.6 |
+| + `SOOT` | 17.9 · 15.3 | **−1.9** | 24.1 / 31.0 |
+| + `LIGHT` (→ `PLANE`) | 16.8 · **12.7** | **−2.6** | 23.0 / 29.3 |
+| `NO_FACE_SHADER` (floor) | 16.9 · 12.6 | −0.1 | 23.5 / 29.1 |
+
+**The ladder closes:** every stage stripped (12.7) lands on the no-op (12.6), so
+the six stages account for the whole shader — **6.3 ms, a third of the idle GPU
+frame.** Split: light + cell recovery + plane fetch 2.6 (41%), soot decode 1.9
+(30%), residue snap 1.2 (19%), debug branches 0.6 (10%), face tone 0.1, second
+sample 0.
+
+⚠️ A cumulative ladder charges an interaction to the LATER stage (SOOT's 1.9 was
+measured with RESIDUE and FACE already gone). ⚠️ The control's detonation 1
+(30.7 ms, worst 465) is above §10.11.4's 27.4 on the same code: event means carry
+run-to-run spread that the idle `render gpu` column does not, so that column is
+the one that separates stages; the detonation means move the same way but no
+single step of them is significant at n = 1.
+
+### 10.12.3 The look — desktop captures, one binary, pixel diffs
+
+The harness was earned first: two control captures (PLAYGROUND,
+`test_zone_detonate`, 400-frame wait, `--fixed-fps 60`, cones hidden) differ by
+**0 px**.
+
+| variant | differs from | result |
+|---|---|---|
+| `DEBUG` | control, wide frame | 32 px of 921 600, max 5 levels — isolated pixels at REPEATING atom-relative positions (pairs 16 px apart): face-classification boundary pixels re-rounded by the recompiled shader |
+| `DEBUG,TEXA` | `DEBUG`, wide frame | **0 px** — exact, and it buys nothing, so it is not proposed |
+| `DEBUG,TEXA` | control, close-up on the blast | **0 px** |
+| + `RESIDUE` | `DEBUG,TEXA`, close-up | 70.9% of the frame, **max 3 levels** |
+| + `FACE` | same | 66.5%, max 9 |
+| + `RESIDUE,FACE` | same | 91.0%, max 10 |
+| + `SOOT` | same | 32.3%, max 84 — the scorch is gone |
+| + `LIGHT` | same | 31.0%, max 81 |
+
+Sheets (crater crop at 2×, difference ×16), kept because the decision they serve
+is still open: `Screenshots/history/diag13_face_shader_look_residue_face.png`
+and `Screenshots/history/diag13_face_shader_look_soot_light.png`.
+⚠️ **Substitution, stated:** the look was captured on the desktop (macOS), not on
+the Mali. What a stage does to a pixel is the shader's arithmetic; the COST is
+the part only the device could answer, and that is what the device measured.
+
+### 10.12.4 What it means — the lever is engineering, not look
+
+- **The stages that ARE the look — light and soot — are 4.5 of the 6.3 ms**, and
+  neither can leave the game.
+- **What can leave buys little:** debug branches 0.6 (zero look), the residue
+  snap 1.2 (≤3 levels, but it is FACE-READ-03's unconditional "never three
+  identical faces" guarantee, which is Director canon), the face tone 0.1.
+- **The 4.5 ms is paid per FRAGMENT for data that is constant per QUAD.** The
+  shader's own header says all three faces of a voxel resolve to one cell; the
+  cell recovery, the plane fetch, the bucket lookup and the base-5 soot decode
+  run again on every fragment of that quad. Doing them once per quad and passing
+  flat varyings would keep the picture and remove most of the cost. **Upper bound
+  4.5 ms, unmeasured.** ⚠️ The cell recovery took PERFORMANCE §12.8–§12.9 to make
+  exact, and what fixed it — the per-fragment corner test on `v_corner` — is
+  exactly what a vertex stage cannot see. That makes it a spike with a gate,
+  not an edit.
+
+### 10.12.5 Open for the Director
+
+1. **Compile the debug modes out of the shipping shader** (−0.6 ms, zero look)?
+   The gates that set `cell_debug_paint` would then have to request the define —
+   it touches the PERF-P3 / §12.8 gate path, which is why it was not done here.
+2. **The residue snap** (−1.2 ms): keep FACE-READ-03's guarantee, or trade it?
+3. **Spike the per-quad plane path** (up to −4.5 ms, zero look intended)?
 
 ---
 

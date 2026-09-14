@@ -32,6 +32,28 @@ shader_type canvas_item;
 // every tile modulate survive untouched underneath — this shader only decides
 // how much darker one face is than another, never absolute brightness.
 
+// DIAG-13 (PERF-DEV) — THE STAGE LADDER. Every `FACE_STRIP_*` below is ABSENT in
+// a normal build, so this file compiles to exactly the shader it was. They
+// exist because `NO_FACE_SHADER=1` priced the WHOLE shader at ~6 ms of render gpu
+// on the Moto g04s (DEVICE_DIAGNOSTICS_MASTER_PLAN §10.11.5) and that number
+// cannot say which stage is paying: the light bucket, the soot decode, the face
+// tone, the residue snap, the second TEXTURE sample and the six debug branches
+// all left together. VoxelRenderer injects the defines when
+// `FACE_SHADER_STRIP=<STAGE,...>` is set; see `_face_shader_with_strips()`.
+//
+// The ablation runs on THIS file rather than a copy for the reason the P3 gate
+// gives below: a copy proves things about the copy. Instrument, never a look mode.
+//
+// PLANE is derived, never injected: the cell recovery and the plane fetch only
+// die when every stage that reads them (light, soot, debug mode 3) is gone.
+#ifdef FACE_STRIP_LIGHT
+#ifdef FACE_STRIP_SOOT
+#ifdef FACE_STRIP_DEBUG
+#define FACE_STRIP_PLANE
+#endif
+#endif
+#endif
+
 // Atom geometry — canon, not tuning. Changing these means the tiles moved.
 uniform vec2 atom_size = vec2(32.0, 36.0);
 uniform float top_face_h = 16.0;
@@ -293,6 +315,7 @@ void fragment() {
 	// neither the lattice nor the atlas — which matters, because the lattice
 	// CANNOT decide it: (32, 0) is `e1 - e2`, a legitimate cell step of (+1, -1),
 	// and that is precisely the ambiguity the old `mod` was losing to.
+#ifndef FACE_STRIP_PLANE
 	vec2 corner_shift = vec2(
 		(v_vertex.x - v_corner.x) < 0.0 ? atom_size.x : 0.0,
 		(v_vertex.y - v_corner.y) < 0.0 ? atom_size.y : 0.0);
@@ -300,6 +323,7 @@ void fragment() {
 	vec2 cell = floor(vec2(
 		dot(inv_basis_row0, quad_tl + quad_to_map),
 		dot(inv_basis_row1, quad_tl + quad_to_map)) + 0.5);
+#endif
 
 	// Top diamond: |dx|/halfW + |dy|/halfH <= 1 about the diamond's own centre.
 	vec2 half_top = vec2(atom_size.x * 0.5, top_face_h * 0.5);
@@ -318,9 +342,21 @@ void fragment() {
 		f = face_se;
 		sep_index = 1.0;
 	}
+#ifdef FACE_STRIP_FACE
+	f = 1.0;
+#endif
 
+#ifdef FACE_STRIP_TEXA
+	// COLOR.a is texture alpha x every modulate alpha, and every modulate in play
+	// is opaque since soot left the alternative's alpha (PERF-P2) — so this is
+	// the same value without a second sample IF that still holds. A pixel diff
+	// decides it, not this comment.
+	float tex_a = COLOR.a;
+#else
 	float tex_a = texture(TEXTURE, UV).a;
+#endif
 
+#ifndef FACE_STRIP_PLANE
 	// PERF-P3 — the plane fetch, hoisted out of the soot branch below because the
 	// LIGHT applies to every fragment while soot only applies above the alpha
 	// floor. One texture() call now serves both channels.
@@ -330,7 +366,9 @@ void fragment() {
 	vec2 plane = in_plane
 			? texture(cell_soot, (pcell + vec2(0.5)) / cell_soot_size).rg
 			: vec2(1.0, 1.0);
+#endif
 
+#ifndef FACE_STRIP_LIGHT
 	if (p3_enabled > 0.5) {
 		// A cell outside the plane reads FULL LIT, matching the fill and matching
 		// what an unwritten cell meant under the alternative path (the base tile).
@@ -340,7 +378,9 @@ void fragment() {
 		int b = in_plane ? int(floor(plane.g * 255.0 + 0.5)) : 255;
 		f *= bucket_lum[clamp(b, 0, 11)];
 	}
+#endif
 
+#ifndef FACE_STRIP_SOOT
 	float ring = 4.0;  // clean
 	if (tex_a > soot_alpha_floor) {
 		// A cell outside the data texture reads CLEAN rather than wrapping —
@@ -359,19 +399,23 @@ void fragment() {
 		}
 	}
 	f *= (ring < 3.5) ? soot_face_mult[int(ring)] : soot_clean_mult;
+#endif
 	COLOR.rgb = max(COLOR.rgb * f, vec3(0.0));
 
 	// FACE-READ-03: force this face onto its own residue class mod 3, LAST, so
 	// nothing downstream can re-merge two faces. See the uniform's note above.
+#ifndef FACE_STRIP_RESIDUE
 	if (face_residue_sep > 0.0) {
 		vec3 q = floor(COLOR.rgb * 255.0 + 0.5);
 		vec3 adj = q - mod(q - sep_index, 3.0);
 		adj += step(adj, vec3(-0.5)) * 3.0;
 		COLOR.rgb = adj / 255.0;
 	}
+#endif
 	// Alpha carried data, not transparency — hand back the real silhouette.
 	COLOR.a = tex_a;
 
+#ifndef FACE_STRIP_DEBUG
 	// PERF-P3 GATE (see the uniform above). LAST, and as an overwrite rather
 	// than an early exit, because Godot rejects `return` inside fragment().
 	// Reads the plane RAW — no clamp to the 0..124 soot range — since the gate
@@ -449,4 +493,5 @@ void fragment() {
 		COLOR = vec4(clamp(res.x * 2.0, 0.0, 1.0), clamp(res.y * 2.0, 0.0, 1.0),
 			1.0, step(0.99, tex_a));
 	}
+#endif
 }

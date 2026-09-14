@@ -44,6 +44,7 @@ const ThrowArcOverlayClass = preload("res://godot/scripts/overlays/throw_arc_ove
 const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")
 ## TEL-03 — preloaded like the overlays above, so no global class cache is needed.
 const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
+const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
@@ -1993,6 +1994,10 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	if _dev_flag_on("BENCHMARK") and not _benchmark_started:
 		_benchmark_started = true
 		_start_benchmark_deferred()
+	## TEL-06a — same guard against a map reload starting a second run.
+	if not _dev_flag("SCENARIO", "").is_empty() and not _scenario_started:
+		_scenario_started = true
+		_start_scenario_deferred()
 
 
 func _ready() -> void:
@@ -2779,54 +2784,110 @@ func _on_hud_reset_requested() -> void:
 
 
 func _on_hud_viewport_toggled() -> void:
-	_is_desktop_viewport = not _is_desktop_viewport
-	_apply_viewport_mode()
-	Telemetry.event("view.framing", {"framing": "D" if _is_desktop_viewport else "M", "via": "hud"})
+	set_framing("portrait" if _is_desktop_viewport else "desktop", "hud")
 
 
-## Which viewport the game STARTS in, by device.
+## TEL-UI-01 (Director, 2026-09-14) — the three framings, by name.
 ##
-## This used to be a bare `_on_hud_viewport_toggled()`, whose only effect was to
-## flip the boot state to DESKTOP — so a phone booted into the 1280x720 desktop
-## canvas, the board drew as a landscape band inside the portrait screen, and the
-## button read "D". Measured on the web export: `scale_size=(1280, 720)` a few
-## frames after a boot that started at (390, 844).
+##  - `portrait`  M: the phone framing, and the one a verdict is measured in
+##                (DEVICE_DIAGNOSTICS §13 Q7). 390×844 with EXPAND, so the canvas
+##                grows along the long side and FILLS any phone — *"precisamos
+##                preencher toda a tela de verdade"* — instead of letterboxing. M
+##                carries the restrictions (§13 Q8): this canvas scale now, and the
+##                zoom floor once §13 Q6's table exists.
+##  - `landscape` M turned: 844×390 with EXPAND (§13 Q5 (a)). Not a default.
+##  - `desktop`   D: today's 1280×720, unrestricted — *"Mantemos a qualidade FULL
+##                HD no modo Desktop"*.
 ##
-## The HANDHELD branch deliberately does not resize the OS window the way the
-## desktop one does: on the web the browser owns the canvas, and on Android the
-## window is the screen, so the resize is at best ignored. Detection takes the
-## touch screen OR the mobile feature tag, because the web export on a phone
-## reports a touch screen while `OS.has_feature("mobile")` covers the native APK.
-func _apply_boot_viewport() -> void:
-	if DisplayServer.is_touchscreen_available() or OS.has_feature("mobile"):
-		_is_desktop_viewport = false
-		_hud_controller.set_viewport_button_text("M")
-		get_tree().root.content_scale_size = Vector2i(390, 844)
-		return
-	_is_desktop_viewport = true
-	_apply_viewport_mode()
+## On a handheld a framing sets the SCREEN orientation and the canvas, never the
+## OS window: on Android the window is the screen and resizing it is at best
+## ignored. Everywhere else the OS window is resized and re-centred as before.
+const FRAMING_PORTRAIT_CANVAS: Vector2i = Vector2i(390, 844)
+const FRAMING_LANDSCAPE_CANVAS: Vector2i = Vector2i(844, 390)
+const FRAMING_DESKTOP_CANVAS: Vector2i = Vector2i(1280, 720)
+var _framing: String = ""
 
 
-## The D/M state made visible, split out of the toggle so the boot can reach it.
-func _apply_viewport_mode() -> void:
-	var target := Vector2i(1280, 720) if _is_desktop_viewport else Vector2i(390, 844)
+func set_framing(framing: String, via: String = "code") -> void:
+	var canvas: Vector2i = FRAMING_PORTRAIT_CANVAS
+	var aspect: Window.ContentScaleAspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	var orientation: DisplayServer.ScreenOrientation = DisplayServer.SCREEN_PORTRAIT
+	match framing:
+		"portrait":
+			pass
+		"landscape":
+			canvas = FRAMING_LANDSCAPE_CANVAS
+			orientation = DisplayServer.SCREEN_LANDSCAPE
+		"desktop":
+			canvas = FRAMING_DESKTOP_CANVAS
+			aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+			orientation = DisplayServer.SCREEN_LANDSCAPE
+		_:
+			push_error("[Room] set_framing: unknown framing '%s' (portrait, landscape, desktop)"
+				% framing)
+			return
+	_framing = framing
+	_is_desktop_viewport = framing == "desktop"
 	_hud_controller.set_viewport_button_text("D" if _is_desktop_viewport else "M")
+	var root: Window = get_tree().root
+	root.content_scale_aspect = aspect
+	root.content_scale_size = canvas
+	if _is_handheld():
+		DisplayServer.screen_set_orientation(orientation)
+	else:
+		## Exit fullscreen first — can't resize while in fullscreen.
+		if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		DisplayServer.window_set_size(canvas)
+		var screen_size := DisplayServer.screen_get_size()
+		var centered := Vector2(screen_size - canvas) / 2.0
+		DisplayServer.window_set_position(Vector2i(centered.round()))
+	Telemetry.event("view.framing", {"framing": framing, "via": via})
 
-	## Exit fullscreen first — can't resize while in fullscreen.
-	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 
-	## Resize the OS window.
-	DisplayServer.window_set_size(target)
+## Which framing the game STARTS in: `portrait` on a handheld, `desktop` anywhere
+## else. Handheld = a touch screen OR the mobile feature tag, because the web
+## export on a phone reports a touch screen while `OS.has_feature("mobile")`
+## covers the native APK. `FRAMING=portrait|landscape|desktop` forces one for a
+## test.
+##
+## History: a phone used to boot at a 390×844 KEEP canvas inside whatever the OS
+## window was. On the landscape-locked APK that was a portrait band between two
+## black bars — and it is what the benchmark measured (DEVICE_DIAGNOSTICS §10.16.1).
+func _apply_boot_viewport() -> void:
+	var forced: String = _dev_flag("FRAMING", "")
+	if forced in ["portrait", "landscape", "desktop"]:
+		set_framing(forced, "flag")
+		return
+	if not forced.is_empty():
+		push_warning("[Room] FRAMING=%s is not portrait, landscape or desktop — booting the default"
+			% forced)
+	set_framing("portrait" if _is_handheld() else "desktop", "boot")
 
-	## Change the logical canvas resolution so the camera sees the right world area.
-	## Without this, canvas_items stretch just scales the fixed 390×844 base to fill the window.
-	get_tree().root.content_scale_size = target
 
-	## Center on screen after resize.
-	var screen_size := DisplayServer.screen_get_size()
-	var centered := Vector2(screen_size - target) / 2.0
-	DisplayServer.window_set_position(Vector2i(centered.round()))
+func _is_handheld() -> bool:
+	return DisplayServer.is_touchscreen_available() or OS.has_feature("mobile")
+
+
+## TEL-06a — a zoom through the camera's own clamp, on the timeline like a pinch.
+func set_camera_zoom(zoom_level: float, via: String = "code") -> void:
+	if _camera_controller == null:
+		push_error("[Room] set_camera_zoom: no CameraController")
+		return
+	_camera_controller.set_zoom_for_capture(zoom_level)
+	Telemetry.event("camera.zoom_end", {"zoom": camera.zoom.x, "via": via})
+
+
+## TEL-06a — the camera onto the agent (`"agent"`) or onto a GU.
+func centre_camera_on(target: Variant) -> void:
+	var cell: Vector2i = agent.cell
+	if target is Vector2i:
+		cell = target
+	elif not (target is String and target == "agent"):
+		push_error("[Room] centre_camera_on: expected \"agent\" or a Vector2i, got %s" % [target])
+		return
+	_center_camera(cell)
+	Telemetry.event("camera.pan_end", {"centre": camera.get_screen_center_position(), "via": "scenario"})
 
 
 func _set_view_mode(which: String) -> void:
@@ -5780,7 +5841,7 @@ const VIEW_SETTLE_USEC: int = 250_000
 ## the view's signature changed.
 func view_context() -> Dictionary:
 	var fields: Dictionary = ViewContextClass.read(get_viewport(), camera,
-		"D" if _is_desktop_viewport else "M")
+		_framing)
 	var sig: String = ViewContextClass.signature(fields)
 	if sig != _view_count_sig:
 		_view_count_sig = sig
@@ -5798,7 +5859,7 @@ func _telemetry_view_tick() -> void:
 	if Engine.get_process_frames() % VIEW_CHECK_EVERY_FRAMES != 0:
 		return
 	var sig: String = ViewContextClass.signature(ViewContextClass.read(get_viewport(), camera,
-		"D" if _is_desktop_viewport else "M"))
+		_framing))
 	if sig == _view_emitted_sig:
 		_view_pending_sig = ""
 		return
@@ -11291,6 +11352,25 @@ func is_resolving_action() -> bool:
 ## Flags: `CAPTURE_ACTION=benchmark`, `BENCH_RUNS` (default 3),
 ## `BENCH_SETTLE_FRAMES` (default 60), `BENCH_GRENADE` (default 0),
 ## `RNG_SEED`. Quits the process when done, so a harness can wait on the exit.
+var _scenario_started: bool = false
+
+
+## TEL-06a — run the `SCENARIO` flag's steps once the map is loaded. A scenario
+## that does not parse is reported and never started: a ladder that stops halfway
+## is a table that looks complete.
+func _start_scenario_deferred() -> void:
+	var parsed: Dictionary = ScenarioRunnerClass.parse(_dev_flag("SCENARIO", ""))
+	if not str(parsed["error"]).is_empty():
+		push_error("[Room] SCENARIO rejected — %s" % parsed["error"])
+		return
+	await get_tree().process_frame
+	var runner := ScenarioRunnerClass.new()
+	runner.name = "ScenarioRunner"
+	add_child(runner)
+	await runner.run(self, parsed["steps"])
+	runner.queue_free()
+
+
 func _start_benchmark_deferred() -> void:
 	## One frame so `load_map()` has fully returned before the first grenade is
 	## opened — the benchmark is measuring detonations, not the tail of a load.

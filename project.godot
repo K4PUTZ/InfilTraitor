@@ -30,6 +30,7 @@ Registries="*res://godot/scripts/systems/registries_autoload.gd"
 window/size/viewport_width=390
 window/size/viewport_height=844
 window/stretch/mode="canvas_items"
+window/handheld/orientation=1
 
 [input]
 

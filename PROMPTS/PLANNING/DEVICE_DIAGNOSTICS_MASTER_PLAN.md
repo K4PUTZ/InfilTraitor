@@ -1541,8 +1541,24 @@ where one says "superseded", §14 is the only authority for that task.
 ## 14. TEL — the telemetry and benchmark-analysis suite
 
 **Status:** 🟢 **RATIFIED 2026-09-14 — building** (Director: *"Pode seguir com a
-implementação."*). TEL-01 ✅, TEL-02 ✅, TEL-03 ✅. §14.4 is reordered by §13
-Q5–Q8.
+implementação."*). TEL-01 ✅, TEL-02 ✅, TEL-03 ✅, TEL-UI-01 ✅ (desktop),
+TEL-06a ✅. §14.4 is reordered by §13 Q5–Q8. **Next: the Moto zoom ladder.**
+
+**TEL-UI-01 + TEL-06a, verified on the desktop (2026-09-14):**
+- `Room.set_framing(portrait|landscape|desktop)`. The HUD M/D button, the boot
+  and `FRAMING=` all go through it.
+- `project.godot` now ships portrait: `window/handheld/orientation=1`.
+- A scenario of `framing portrait; window 360x806` (the Moto's aspect) read
+  `visible=390×873 aspect=expand`: the canvas filled the window with no bars.
+- Floor cells on screen: 95 of 1 104 at zoom 0.5 in portrait, 354 at zoom 0.2,
+  and 909 in desktop D at zoom 0.2.
+- `SCENARIO=zoom 0.5; zoom abc; quit` was refused before any step ran:
+  `[Room] SCENARIO rejected — step 2 'zoom abc': zoom takes a positive number`.
+- A `quit` step ends the process with exit 0 and exactly one `scenario.end`
+  (the first run wrote two; fixed).
+- ⚠️ Portrait "fills the screen" is proven here only as the canvas matching the
+  window. The phone's real screen is the evidence that counts, and the Moto run
+  captures it.
 
 **Built so far (2026-09-14):**
 - `Telemetry` autoload (`godot/scripts/systems/telemetry.gd`) with

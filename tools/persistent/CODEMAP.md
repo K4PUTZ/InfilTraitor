@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**251 scripts · 92046 lines total** (under `godot/scripts/`)
+**251 scripts · 92127 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2902,7 +2902,7 @@ extends `Node` · 156 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 161 lines
+extends `Node` · 162 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
@@ -5516,7 +5516,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11668 lines
+extends `Node2D` · 11748 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5553,6 +5553,7 @@ extends `Node2D` · 11668 lines
 - `ThrowArcOverlayClass` = `preload("res://godot/scripts/overlays/throw_arc_overlay.gd")`
 - `ShrapnelPreviewOverlayClass` = `preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")`
 - `ViewContextClass` = `preload("res://godot/scripts/systems/view_context.gd")`
+- `ScenarioRunnerClass` = `preload("res://godot/scripts/systems/scenario_runner.gd")`
 - `TargetCursorOverlayClass` = `preload("res://godot/scripts/overlays/target_cursor_overlay.gd")`
 - `EmberOverlayClass` = `preload("res://godot/scripts/overlays/ember_overlay.gd")`
 - `SmokeSparkOverlayClass` = `preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")`

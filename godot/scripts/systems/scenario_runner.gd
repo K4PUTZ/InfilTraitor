@@ -151,7 +151,8 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				DisplayServer.window_set_size(step["size"])
 				await room.get_tree().process_frame
 		"quit":
-			Telemetry.event("scenario.end")
+			## `quit()` is deferred, so `run()` still reaches its own `scenario.end`
+			## after this step — emitting one here as well wrote it twice.
 			room.get_tree().quit(0)
 	return true
 

@@ -2221,3 +2221,64 @@ report                  both tables together
 
 This plan measures. What either experiment decides belongs to
 `PERFORMANCE_MASTER_PLAN` or `DETONATION_PERFORMANCE_MASTER_PLAN` (§0).
+
+### 15.5 ✅ DIAG-19 MEASURED — the stalls are the damage footprint, the duration is the board
+
+Moto g04s, 2026-09-14 18:42–19:01. One APK for all rows (sha256 `0c8d25216a5a102d…`,
+commit `31b4be42`), portrait M, world 1.0, zoom 0.5, blast on screen:
+`detonate 0` (grenade #0, GU 3,5, the concrete row), then `detonate 1` (grenade #1,
+GU 8,5, the metal row). Logs (local):
+`docs/measurements/device_2026-09-14_moto_g04s_diag19_m0*.log`. Each value is the row
+against the mean of the two controls; `~` marks a delta no larger than the controls'
+own spread.
+
+**Grenade #1 — the one with the multi-second stalls:**
+
+| row | wall s | mean ms | worst ms | PUMP s | COMMIT ms | frame of the presenter's cell write ms | CONSEQUENCE ms/f | LIGHT ms/f |
+|---|---|---|---|---|---|---|---|---|
+| controls (±half-spread) | 28.8 (±0.1) | 116.6 (±0.1) | 1 937 (±92) | 14.7 (±0.2) | 348 (±1) | 1 757 (±9) | 103.1 | 101.4 |
+| cheap board (`RENDER_SCALE=0.5`) | 18.5 (−36%) | 62.2 (−47%) | 1 727 (−11%) | 8.4 (−43%) | 293 (−16%) | 1 699 (−3%) | 47.8 (−54%) | 47.8 (−53%) |
+| no soot | 28.4 (−1%) | 117.3 (+1%) | 2 084 (~+8%) | 14.8 (~0) | 346 (−1%) | — (no fade mark; the stall is still in the frame) | 138.6 | 101.5 |
+| no light | 22.4 (−22%) | 120.9 (+4%) | 1 800 (~−7%) | 14.4 (~−2%) | 343 (−1%) | 1 753 (~0) | 103.0 | 101.9 |
+| no smoke / VFX | 28.8 (~0) | 116.4 (~0) | 1 982 (~+2%) | 14.7 (~0) | 346 (−1%) | 1 758 (~0) | 101.3 | 101.3 |
+| **small blast (`BLAST_MAX_RING=1`)** | 23.9 (−17%) | 100.2 (−14%) | **294 (−85%)** | 11.8 (−20%) | 294 (−15%) | **176 (−90%)** | 99.7 | 99.1 |
+| all off | 17.4 (−40%) | 99.8 (−14%) | 298 (−85%) | 11.6 (−21%) | 298 (−14%) | — | 98.9 | 98.4 |
+
+**Grenade #0** (concrete, no multi-second stall: worst 375 ms in the controls) says the
+same with smaller numbers:
+- cheap board: wall −37%, mean −47%, PUMP −47%;
+- no light: wall −28%;
+- small blast: wall −12%, PUMP −20%, COMMIT −14%;
+- no soot and no smoke/VFX: within ±4%.
+
+⚠️ **The column the table used to call "SOOT FADE 1st frame" is not soot.** The fade's
+beat is marked on the same frame as the presenter's `_commit_frame()`, which writes
+~1 800 damaged cells into the TileMapLayers (`set_cell` + alternative minting +
+flush; `[E-PRESENT] commit frame — 1783 cell(s) in 74.003 ms of apply`). With
+`NO_SOOT=1` the fade and its mark disappear, but that frame still takes 1.77 s — now
+under the CONSEQUENCE mark. The remaining ~1.7 s of that frame, beyond the 74 ms of
+apply, is its render after those writes. That is inferred from the marks and the
+logcat stamps; the split inside the frame is not measured yet (TEL-05). The other
+~1.8 s frame of grenade #1 sits INSIDE the PUMP (frame 117 of 127): a cook step that
+does not divide and overruns its 14 ms budget. It also disappears with
+`BLAST_MAX_RING=1`.
+
+**What it answers:**
+1. **The multi-second stalls are the damage footprint written into the 2D board,**
+   and they scale far faster than the footprint. `BLAST_MAX_RING=1` roughly halves
+   the cells (desktop: 1 915 → 914) and takes grenade #1's worst frame from 1.9 s to
+   0.3 s. Grenade #0 writes about as many cells as #1 but stalls ~0.3 s, so the cost
+   depends on WHAT is written — which layers and which tile alternatives are new —
+   not on the count alone. This is the per-cell-state-in-TileSet-alternatives defect
+   `PERFORMANCE_MASTER_PLAN` already names.
+2. **Soot and smoke/VFX are not villains on this handset.** Removing them moves no
+   stall and at most 4% of the wall clock.
+3. **The consequence light is DURATION, not cost.** Its 60-frame beat is 22–28% of
+   the event; no frame gets cheaper without it. It is a look constant
+   (`consequence_light_seconds`), not an optimisation.
+4. **The board paces everything else.** The cheap board cuts the pre-cook 43–47% and
+   the long beats ~50%. With every blast knob off, the event's mean frame is still
+   ~90–100 ms, because the board idles at 60 ms (§10.18.1).
+5. **"Standardised explosions" would help only by writing fewer cells.** The lever
+   is the footprint (ring, damage volume) and how a write reaches the renderer —
+   not the arithmetic that plans it.

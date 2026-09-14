@@ -1469,6 +1469,118 @@ far faster CPU than the Moto's.
 
 ---
 
+## 10.17 🔴 DIAG-17 — THE ZOOM LADDER ON THE MOTO: FILLING THE SCREEN COSTS MORE THAN ZOOMING OUT
+
+**Director, 2026-09-14:** *"Vamos estabelecer alguns pontos de zoom e verificar o
+quanto isso pesa, e até onde dá pra chegar."* (§13 Q6)
+
+Moto g04s, the TEL build (commits `85da2f45` + `b3808ba7`; APK manifest
+`screenOrientation=0x1`), PLAYGROUND, board untouched, no finger. The run was
+driven entirely by `SCENARIO=` (TEL-06a) and analysed by `bench_analyze.py`
+(TEL-07a).
+- Logs (local): `docs/measurements/device_2026-09-14_moto_g04s_tel_zoom_ladder.log`
+  and `docs/measurements/tel_2026-09-14_moto_ladder/tel_2026-09-14_15-39-11.jsonl`.
+- Each row is the median of the windows that started after the segment's mark;
+  the one window per segment that straddled the change is excluded.
+- ⚠️ Vsync cannot be disabled on this handset (90 Hz FIFO, §10.11.1), so
+  ms/frame is refresh-quantised. Read `render gpu` / `render cpu` for cost.
+
+### 10.17.1 TEL-00 is answered — the file sink works on a release APK
+
+- The release APK wrote
+  `/sdcard/Android/data/com.example.infiltraitor/files/telemetry/tel_2026-09-14_15-39-11.jsonl`,
+  and `adb pull` read it with no debuggable build.
+- The file and the logcat capture each hold **105 records, 0 dropped lines**, and
+  analyse to the same table (one float rounds differently in its last digit).
+- The session header read: Android 14, Mali-G57, Vulkan 1.3.225, renderer
+  `mobile`, screen 720×1612 at 90 Hz.
+
+### 10.17.2 The table
+
+| framing | zoom | cells on screen | draws | objects | render cpu | render gpu | ms/frame |
+|---|---|---|---|---|---|---|---|
+| portrait M 390×873 | 0.50 | 95 | 1 641 | 25 989 | 6.5 | **58.6** | 60.0 |
+| portrait M | 0.42 | 115 | 3 091 | 30 726 | 9.1 | 69.0 | 70.3 |
+| portrait M | 0.35 | 173 | 5 603 | 43 944 | 14.0 | 87.7 | 89.1 |
+| portrait M | 0.30 | 235 | 10 531 | 55 231 | 22.7 | 106.2 | 107.6 |
+| portrait M | 0.25 | 303 | 15 738 | 71 032 | 31.5 | 123.4 | 125.2 |
+| portrait M | 0.20 | 354 | 20 670 | 80 397 | 39.4 | 132.9 | 135.1 |
+| desktop D 1280×720 | 0.50 | 230 | 4 200 | 45 366 | 12.1 | 60.7 | 61.9 |
+| desktop D | 0.35 | 450 | 12 686 | 77 138 | 27.5 | 101.7 | 102.8 |
+| desktop D | 0.20 | 909 | 49 688 | 166 188 | 89.8 | 207.4 | 222.8 |
+
+Every count matches the desktop's for the same framing and zoom (§10.16.2,
+TEL-07a's cross-check), so the counts depend on the view, not the device.
+
+### 10.17.3 What it says — two costs, and the first one is new
+
+- **Filling the screen is the bigger cost.** The benchmark read 18.7 ms/frame
+  and 16.9 ms of GPU at 1 370 draws (§10.14.3), but it ran in the old portrait
+  band, ~333×720 px ≈ 240 000 pixels on the landscape screen (§10.16.1).
+  Portrait M now covers 720×1612 = 1 160 640 pixels, **4.8× more**. The draws
+  barely moved (1 370 → 1 641) while the GPU went **16.9 → 58.6 ms**.
+  ⚠️ That is the reading, not yet the proof — §10.17.4 is the ablation that
+  separates pixels from board.
+- **Zooming out costs submission and primitives, at fixed pixels.** From zoom
+  0.5 to 0.2 in portrait:
+  - cells on screen 95 → 354 (×3.7), draws 1 641 → 20 670 (×12.6)
+  - render cpu 6.5 → 39.4 ms, render gpu 58.6 → 132.9 ms
+  - The pixel count never changed along the ladder, so the GPU growth there is
+    per primitive (vertex work and tile binning), not per pixel.
+- **No zoom stop is inside the 33.3 ms budget, idle, in the verdict framing.**
+  §13 Q6's floor cannot be chosen from this table until the fill cost is
+  understood, because it sits under every row.
+
+### 10.17.4 The ablation — the fill is proven, and at the default zoom it is the largest single cost
+
+Same APK and scenario shape, at three of the ladder's stops, with
+`STRETCH_VIEWPORT=1`: the 2D renders at the canvas size and is upscaled. That is
+390×873 = 340 470 pixels instead of 1 160 640 (3.4× fewer), with the same board
+and framing. Log (local):
+`docs/measurements/device_2026-09-14_moto_g04s_diag17_stretch_ablation.log` —
+63 records, 0 dropped; `[PERF-DEV] STRETCH_VIEWPORT — 2D renders at (390, 844),
+upscaled to (720, 1612)`.
+
+| zoom | draws · objects · cells | render cpu, full · stretch | render gpu, full | render gpu, stretch | **GPU the pixels cost** | ms/frame, full → stretch |
+|---|---|---|---|---|---|---|
+| 0.50 | 1 641 · 25 989 · 95 | 6.5 · 6.4 | 58.6 | 22.3 | **36.3** | 60.0 → **23.8** |
+| 0.35 | 5 603 · 43 944 · 173 | 14.0 · 14.0 | 87.7 | 41.0 | **46.7** | 89.1 → 42.6 |
+| 0.20 | 20 670 · 80 397 · 354 | 39.4 · 39.4 | 132.9 | 86.9 | **46.0** | 135.1 → 88.4 |
+
+- **The ablation changed only the pixels.** At every stop the counts and
+  `render cpu` are identical to the ladder's.
+- **At the default zoom, 36 of the 58.6 ms of GPU is pixel fill (62%).**
+  Rendering at the canvas resolution puts idle portrait M at **23.8 ms/frame,
+  inside the 33.3 ms budget.**
+- **What follows the zoom is not fill.** With the fill removed, GPU still goes
+  22.3 → 86.9 ms and `render cpu` 6.4 → 39.4 ms from zoom 0.5 to 0.2. That is
+  §10.17.3's per-primitive cost, now isolated from the pixels.
+- **§10.11.2 does not carry over.** Its "fill is not the bound"
+  (`STRETCH_VIEWPORT` moved nothing) was measured in the ~240 000-pixel band, on
+  a frame that script then paced. In a filled portrait screen, fill is the
+  biggest single cost.
+
+### 10.17.5 The villains, named — and what each lever costs the game
+
+| villain | measured | lever | what the lever costs |
+|---|---|---|---|
+| **pixel fill** — 720×1612 shaded through the stacked `TileMapLayer`s and the face shader | 36–47 ms of GPU at every zoom | render M below native resolution; `STRETCH_VIEWPORT` is the 3.4× extreme | sharpness — **a look decision** (§13 Q9) |
+| **board on screen** — per primitive: submission and tile binning | +64 ms GPU and +33 ms cpu from zoom 0.5 to 0.2, with the fill removed | an M zoom floor (§13 Q6); fewer layers or fewer live cells (`PERFORMANCE_MASTER_PLAN`) | how far out the player sees; or engineering |
+| **the blast** | ~10–35 ms on top of whatever frame it lands on (§10.14.3, §10.15.3) | `DETONATION_PERFORMANCE_MASTER_PLAN` | — |
+
+**With the fill at canvas resolution,** zoom 0.5 reads 23.8 ms ✅, zoom 0.35
+reads 42.6 ms (just past the 41.7 ms floor) and zoom 0.2 reads 88.4 ms. So an
+idle M zoom floor that fits the budget sits between 0.5 and 0.35, before any
+blast is added. ⚠️ That is interpolated between two stops, not measured. The
+next measurement is a finer ladder under whichever render scale the Director
+chooses.
+
+⚠️ **`STRETCH_VIEWPORT` is an instrument, not a setting.** It upscales a 390-wide
+canvas 1.85× on the Moto. Whether that, or an intermediate scale, keeps enough
+sharpness has to be judged on the phone's real screen, not from this table.
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).
@@ -1535,6 +1647,15 @@ where one says "superseded", §14 is the only authority for that task.
    `canvas_items` stretch already renders at the screen's native resolution —
    full HD on a full HD screen. M's restrictions are the (a) canvas scale and the
    zoom floor Q6 will set.
+9. **The render scale of M — a look decision the measurements now force.**
+   (§10.17.4–§10.17.5) On the Moto at the default zoom, 36 of the 58.6 ms of GPU
+   is pixel fill. Rendering the 2D at the canvas size (390×873, upscaled 1.85×)
+   takes the idle frame from 60.0 to 23.8 ms. Options: native (720 wide), an
+   intermediate scale, or the canvas size. The choice has to be made on the
+   phone's real screen, from paired captures of the same view — not from the
+   table. D is unaffected (Q8). ⚠️ `STRETCH_VIEWPORT` only reaches the extreme,
+   so pricing an intermediate scale needs a render-scale mechanism of its own.
+   That is proposed as TEL-UI-02 once the Director has seen the two ends.
 
 ---
 
@@ -1542,7 +1663,19 @@ where one says "superseded", §14 is the only authority for that task.
 
 **Status:** 🟢 **RATIFIED 2026-09-14 — building** (Director: *"Pode seguir com a
 implementação."*). TEL-01 ✅, TEL-02 ✅, TEL-03 ✅, TEL-UI-01 ✅ (desktop),
-TEL-06a ✅. §14.4 is reordered by §13 Q5–Q8. **Next: the Moto zoom ladder.**
+TEL-06a ✅, TEL-07a ✅ (`bench_analyze.py`: session header, dropped lines, one
+row per `scenario.mark` segment). §14.4 is reordered by §13 Q5–Q8. **The Moto
+zoom ladder is measured (DIAG-17, §10.17), and TEL-00 is answered by it.**
+Portrait M filling the screen is confirmed on the Moto's own screen:
+`adb exec-out screencap` gave 720×1612, board edge to edge, no bars.
+**Next: §13 Q9 (M render scale), then TEL-05.**
+
+**TEL-07a cross-check (desktop).** On a ladder-shaped scenario, the analyzer
+dropped exactly one straddling window per segment. Its `D_z020` row read 49 688
+draws, 166 188 objects and 323 942 primitives — identical to the DIAG-16 boot at
+`ZOOM=0.2`, which was taken with no telemetry at all (§10.16.2). Portrait M at
+390×873 read 1 632 draws (95 cells on screen) at zoom 0.5 and 20 661 (354 cells)
+at zoom 0.2.
 
 **TEL-UI-01 + TEL-06a, verified on the desktop (2026-09-14):**
 - `Room.set_framing(portrait|landscape|desktop)`. The HUD M/D button, the boot

@@ -1,8 +1,14 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.3
+## Measuring the real build on a real entry-tier phone — v1.4
 
-**Status:** 🟢 **v1.3 — measuring, and the instruments come next (2026-09-14).**
+**Status:** 🟢 **v1.4 — the TEL instruments are built and measuring (2026-09-14).**
 Where the Moto g04s stands:
+
+- **Portrait M, the verdict framing, filling the screen (DIAG-17/18, §10.17–§10.18):**
+  pixel fill was the biggest cost (36–47 ms of GPU). The world now renders at
+  0.75 with the HUD native (TEL-UI-02), and the idle frame at the default zoom is
+  **40.8 ms** — inside the 24 fps floor, outside the 30 fps target. Every zoom
+  below 0.5 is past the floor. The next lever is per-primitive: layers and cells.
 
 - **Benchmark:** idle frame 18.7 ms, render gpu 16.9 ms, detonations ~26–29 /
   ~32–33 ms — above the 24–25 fps floor (DIAG-12 §10.11, DIAG-14 §10.14).
@@ -1581,6 +1587,76 @@ sharpness has to be judged on the phone's real screen, not from this table.
 
 ---
 
+## 10.18 🟡 DIAG-18 — TEL-UI-02 ON THE MOTO: 0.75 BUYS 19 ms AT THE DEFAULT ZOOM, AND ONLY THE DEFAULT ZOOM REACHES THE FLOOR
+
+**Director, 2026-09-14:** *"Pode seguir com o TEL-UI-02, escala 0,75"*.
+
+Every row below comes from one binary: commit `bfd1b346`, APK exported at 16:59
+with the portrait manifest.
+- PLAYGROUND, untouched board; driven by `SCENARIO=` and read by
+  `bench_analyze.py`.
+- The control is `RENDER_SCALE=1`, which turns the mechanism off.
+- Logs (local):
+  `docs/measurements/device_2026-09-14_moto_g04s_telui02_rs100_control.log` and
+  `…_telui02_rs075_ladder.log` — 46 and 89 records, 0 dropped.
+
+### 10.18.1 The control reproduces DIAG-17 to the tenth
+
+`RENDER_SCALE=1` at zoom 0.5 / 0.42 / 0.35 read 60.0 / 70.3 / 89.2 ms/frame and
+58.6 / 69.0 / 87.7 ms of GPU. That is §10.17.2's table, measured on the previous
+APK. So the scale-1.0 path is untouched, and a ladder is repeatable across
+installs.
+
+### 10.18.2 The table
+
+| zoom | cells on screen | draws | render cpu | GPU, world 1.0 | **GPU, world 0.75** | GPU, whole 2D at canvas size (§10.17.4) | ms/frame, 1.0 → 0.75 |
+|---|---|---|---|---|---|---|---|
+| 0.50 | 95 | 1 642 | 6.4 | 58.6 | **39.5** | 22.3 | 60.0 → **40.8** |
+| 0.45 | 109 | 2 498 | 8.1 | — | 43.2 | — | — → 44.5 |
+| 0.42 | 115 | 3 092 | 9.1 | 69.0 | 47.5 | — | 70.3 → 49.0 |
+| 0.38 | 157 | 4 604 | 12.3 | — | 56.4 | — | — → 57.8 |
+| 0.35 | 173 | 5 604 | 14.2 | 87.7 | 62.2 | 41.0 | 89.2 → 63.7 |
+| 0.30 | 235 | 10 532 | 22.6 | 106.2 (§10.17.2) | 78.8 | — | 107.6 → 80.2 |
+
+At every stop, draws, objects and `render cpu` match the control's within 0.1 ms
+or one draw. The mechanism changed pixels only.
+
+### 10.18.3 What it says
+
+- **0.75 saves 19.1 ms of GPU at zoom 0.5 (−33%)**, 21.5 ms at 0.42 and 25.5 ms at
+  0.35. The world's pixels fell 44% (1.78×), so the saving is less than
+  proportional. Part of the frame does not follow the world's pixels:
+  - the root pass still draws the HUD and the fog at native resolution;
+  - the upscale adds a full-screen quad;
+  - the per-primitive work does not change.
+
+  ⚠️ An estimate by pixel ratio predicted ~36 ms at zoom 0.5; the phone measured
+  39.5.
+- **Idle portrait M at the default zoom reads 40.8 ms/frame.** That is inside the
+  41.7 ms floor and outside the 33.3 ms target. Every stop below 0.5 is past the
+  floor: 0.45 already reads 44.5 ms.
+- **The look** is in `Screenshots/history/moto_m_world_scale_100_vs_075_2026-09-14.png`,
+  two real Moto screencaps of the same view from this binary:
+  - the HUD is identical and the world is marginally softer;
+  - the thin selection rectangle keeps all four sides, where the canvas extreme
+    (§10.17) lost two.
+
+### 10.18.4 What is left — and it is no longer the pixels
+
+With the world at 0.75, the default-zoom frame is ~40 ms before any blast, and a
+blast adds 10–35 ms on top (§10.14.3, §10.15.3). The remaining levers, ranked by
+these numbers:
+
+1. **The per-primitive cost of the board on screen.** From zoom 0.5 to 0.3,
+   `render cpu` goes 6.4 → 22.6 ms and GPU gains another 39 ms. The lever is fewer
+   layers or fewer live cells — `PERFORMANCE_MASTER_PLAN`, and the architecture
+   decision already open for the Director.
+2. **An M zoom floor (§13 Q6).** On this build, only 0.5 itself is inside the
+   floor.
+3. **The blast** (`DETONATION_PERFORMANCE_MASTER_PLAN`).
+
+---
+
 ## 11. DIAG-08 — gates and documentation
 
 - `L4 dev-flag-behind-the-seam` invariant (see §4 — deferred until 01c).
@@ -1636,6 +1712,11 @@ where one says "superseded", §14 is the only authority for that task.
    calls on the desktop (§10.16.2). The Moto measures a ladder of zoom stops in
    the portrait M framing; the M floor is then chosen from that table. It is not
    picked before the table exists.
+   **Measured under the ratified 0.75 world scale (§10.18.2):** zoom 0.5 reads
+   40.8 ms (inside the 41.7 ms floor), 0.45 reads 44.5, 0.42 reads 49.0. On this
+   build, the only M floor inside the budget is 0.5 itself — no pinch-out at all —
+   until the per-primitive cost falls (§10.18.4). The decision stays the
+   Director's: hold the floor at 0.5, or accept a known cost below it.
 7. ~~**Which framing does a pass/fail verdict require?**~~ ✅ **ANSWERED
    2026-09-14 — portrait.** Director: *"A princípio não vamos ter a versão
    horizontal por default, então vamos fazer os testes verticalmente. Mas
@@ -1681,7 +1762,7 @@ row per `scenario.mark` segment). §14.4 is reordered by §13 Q5–Q8. **The Mot
 zoom ladder is measured (DIAG-17, §10.17), and TEL-00 is answered by it.**
 Portrait M filling the screen is confirmed on the Moto's own screen:
 `adb exec-out screencap` gave 720×1612, board edge to edge, no bars.
-**Next: §13 Q9 (M render scale), then TEL-05.**
+**§13 Q9 is answered and built (TEL-UI-02), and measured on the Moto in §10.18: idle portrait M at the default zoom is 40.8 ms. Next: TEL-05, and §13 Q6 for the Director, with §10.18.2's table.**
 
 **TEL-07a cross-check (desktop).** On a ladder-shaped scenario, the analyzer
 dropped exactly one straddling window per segment. Its `D_z020` row read 49 688

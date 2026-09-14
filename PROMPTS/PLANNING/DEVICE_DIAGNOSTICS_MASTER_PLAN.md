@@ -2060,6 +2060,24 @@ vamos seguir."***
   (PUMP 106–111 frames ≈ 10 s; COMMIT 3 939 / 534 / 3 489 ms).
 - **Selftests:** 55 clean. **The matrix is running on the Moto.**
 
+**DIAG-20 spike BUILT (2026-09-14).** `SPIKE=board3d` hands `Room._ready()` over to
+`godot/scenes/spikes/board3d_spike.tscn` before any map is built. The spike builds
+PLAYGROUND's floor zones, blocks and panels at the 2D geometry (8 voxels per GU, 8
+levels per storey, a storey as tall as a GU) and measures them.
+- **Desktop, the real path:**
+  - `voxel` mode: 73 024 exposed faces, 135 296 primitives, 6–7 draw calls, built
+    in 320 ms;
+  - `merged` mode: 160 faces;
+  - **95 GUs on screen at zoom 0.5 in both — the 2D board's own count**, so the
+    world area matches;
+  - a real capture shows the same layout as the 2D default view.
+- ⚠️ **One mesh per material, no chunking,** so every primitive is submitted every
+  frame. The voxel row is an upper bound for this representation.
+- **Fixed on the way:** `_draw()` still ran once before the deferred scene change
+  (three SCRIPT ERRORs), so the hook now hides the room — 0 SCRIPT ERRORs after.
+  The spike emits `camera.zoom_end`, so the analyzer's segments close at each
+  zoom change.
+
 **The questions, in the Director's words:**
 - *"Se a gente deixar de fazer cálculos e usar explosões padronizadas […] ficaria
   mais leve? Se fizer a mesma coisa com as paredes […] Desligar a fumaça, desligar a

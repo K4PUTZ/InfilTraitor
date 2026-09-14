@@ -2002,6 +2002,22 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 
 func _ready() -> void:
+	## DIAG-20 (DEVICE_DIAGNOSTICS §15.3) — `SPIKE=board3d` hands the process to the 3D
+	## representation spike BEFORE any map is built (the map alone is ~50 s on the Moto).
+	## An instrument, never a mode: nothing of the game runs, so its frames measure the
+	## spike's board and nothing else.
+	if _dev_flag("SPIKE") == "board3d":
+		set_process(false)
+		set_physics_process(false)
+		set_process_input(false)
+		set_process_unhandled_input(false)
+		## `set_process(false)` does not stop `_draw()`, which still runs once before the
+		## deferred scene change and reads controllers `_ready()` never built — measured:
+		## three SCRIPT ERRORs (`_draw_spawn_marker`, `_draw_playable_boundary`,
+		## `draw_shadow_debug`). A hidden CanvasItem is not drawn.
+		hide()
+		get_tree().change_scene_to_file.call_deferred("res://godot/scenes/spikes/board3d_spike.tscn")
+		return
 	## DIAG-01 — see `_dev_flag()`: this cannot be a member initialiser.
 	_frame_probe = _dev_flag_on("FRAME_PROBE")
 	## DIAG-19 — `LIGHT_SECONDS` reaches the APK too; the member initialiser reads the

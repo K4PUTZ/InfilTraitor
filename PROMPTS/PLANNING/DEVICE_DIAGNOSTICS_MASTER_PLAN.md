@@ -6,7 +6,9 @@ Moto g04s reaches the 24–25 fps floor on the automated benchmark after DIAG-12
 (§10.11): detonations 27.3 / 34.1 ms. **DIAG-13 (§10.12, 2026-09-13):** the face
 shader is 6.3 ms of the idle GPU frame and has no cheap look tier — 4.5 ms of it
 is light + soot, paid per fragment for per-quad data; three Director decisions
-open. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
+open. **DIAG-14 (§10.13, 2026-09-14):** the per-quad spike is pixel-exact and buys
+nothing on its own — the debug branches eat it; with them compiled out it is
+19.0 → 16.9 ms of idle render gpu. ⚠️ Hand play and the Galaxy are not re-measured; the COMMIT and SOOT FADE
 freezes are untouched. Sections below that
 still read as proposals (§6–§8, §12) predate the measured sections and are kept
 as written.
@@ -1134,6 +1136,109 @@ the part only the device could answer, and that is what the device measured.
    it touches the PERF-P3 / §12.8 gate path, which is why it was not done here.
 2. **The residue snap** (−1.2 ms): keep FACE-READ-03's guarantee, or trade it?
 3. **Spike the per-quad plane path** (up to −4.5 ms, zero look intended)?
+
+---
+
+## 10.13 🟡 DIAG-14 — THE PER-QUAD SPIKE: EXACT, AND WORTH NOTHING UNTIL THE DEBUG BRANCHES LEAVE
+
+**Director, 2026-09-14:** *"Faz o spike do cálculo por voxel"* — §10.12.5 item 3.
+
+### 10.13.1 What was built
+
+`FACE_PLANE_PER_QUAD=1`, default absent, riding the same `#define` injection as
+`FACE_SHADER_STRIP` (the two combine). The VERTEX stage recovers the quad's cell,
+fetches the plane and decodes the light and the three soot multipliers; the
+fragment receives them as flat varyings.
+
+The corner problem, solved without assuming a provoking vertex: a vertex can
+decide Y by lattice membership (a bottom corner inverts to +2.25, never a whole
+cell) but not X, because (32, 0) is `e1 − e2`. So it reads BOTH candidates —
+A, the cell it would be as a left corner, and B = A + (−1, +1) — and the fragment
+picks with §12.9's own `v_vertex.x − v_corner.x < 0` test. Debug modes 1–3 read
+the cell the per-quad path chose, so the cell gate audits the path under test.
+
+### 10.13.2 It is exact — and both gates were shown to fail
+
+Desktop, same binary, harness earned (control vs control 0 px):
+
+| check | Metal (Forward Mobile) | Compatibility (GL) |
+|---|---|---|
+| blast close-up, per-fragment vs per-quad | **0 px** | **0 px** |
+| wide frame | **0 px** | — |
+| cell gate, floor view | 100.000%, both paths | 100.000%, both paths |
+| cell gate at the metal wall — L79–L94, 16 levels, 921 600 px | **100.000%**, both paths | **100.000%**, both paths |
+| gate plain frame and recovered-cell map, per-fragment vs per-quad | 0 px | 0 px |
+
+Metal control against Compatibility control differs by 131 582 px, so the second
+renderer genuinely rasterises another way — the other provoking-vertex convention
+is covered, not assumed.
+
+**Teeth.** The two candidates were swapped on purpose: the cell gate went to
+**FAIL, 0.271% inside** (689 770 px outside), the close-up differed by 413 004 px
+(max 126) and the plain frame by 370 758 px. The shader was restored byte-identical
+(`cmp`) and the selftests re-run on the restored file: 53 clean.
+
+### 10.13.3 On the Moto it buys nothing — as the shader stands
+
+ABAB, one APK:
+
+| run | render gpu (8 windows) | detonation 1 / 2 mean |
+|---|---|---|
+| control | 18.9 | 26.9 / 34.1 |
+| per-quad | 19.1 | 27.2 / 34.5 |
+| control | 19.0 | 29.2 / 34.3 |
+| per-quad | 19.1 | 28.0 / 34.7 |
+
+Draw calls, primitives and objects are identical in all four (1 370 / 41 082 /
+25 535), so it is shader work, not batching.
+
+### 10.13.4 The decomposition — the debug branches eat it
+
+Same APK, idle render gpu:
+
+| stripped | per-fragment | per-quad | Δ |
+|---|---|---|---|
+| nothing | 19.0 | 19.1 | +0.1 |
+| `DEBUG` | 18.4 | **16.9** | **−1.5** |
+| `DEBUG,TEXA,RESIDUE,FACE` (soot alive) | 17.2 | 15.9 | −1.3 |
+| `DEBUG,TEXA,RESIDUE,SOOT` (face tone alive) | 16.1 | 14.1 | −2.0 |
+| `DEBUG,TEXA,RESIDUE,FACE,SOOT` | 15.3 (repeated: 15.3) | 14.0 | −1.3 |
+
+- **Per-quad saves 1.3–2.0 ms in every configuration without the debug branches,
+  and nothing with them.** Those branches cost 0.6 ms on the per-fragment path and
+  **2.2 ms** on the per-quad path.
+- **Per-quad with the debug modes compiled out: 19.0 → 16.9 ms, −2.1 ms, picture
+  unchanged** — blast close-up 0 px; wide frame 32 px (max 5), which are exactly the
+  pixels DIAG-13's `DEBUG` strip already moved (that capture against this one: 0 px).
+- ⚠️ **§10.12's stage names over-claim.** Its "SOOT" step also killed the face
+  classification, which is 0.8 of its 1.9 ms (face tone kept: 16.1 against 15.3);
+  its "LIGHT" step also killed the `v_vertex`/`v_corner` varyings, and per-quad
+  recovers only 1.3 of its 2.6 ms (14.0 against 12.7).
+- ⚠️ The per-quad soot SELECT costs more than the per-fragment decode it replaced
+  (15.9 − 14.1 = 1.8 against 17.2 − 16.1 = 1.1). Suspected: the six extra varying
+  floats it keeps alive. Not measured further.
+
+### 10.13.5 A hypothesis tested and killed: hoisted debug fetches
+
+An implicit-LOD `texture()` inside a branch needs derivatives, so a compiler may
+sample it on every fragment. Both debug-branch fetches were changed to
+`textureLod(…, 0.0)` — the same value for `cell_soot`, which has no mipmaps and
+filters nearest. Desktop gates unchanged (100%, 0 px). On the Moto, ABAB: control
+18.9 / 19.0, per-quad 18.9 / 18.9. **No change, so that is not the mechanism, or
+not the only one; the edit was reverted.** Why six untaken branches cost 0.6–2.2 ms
+on this GPU is unexplained.
+
+### 10.13.6 Open for the Director
+
+Per-quad pays only together with §10.12.5 item 1, so the candidate is ONE change:
+**compile the debug modes out of the shipping shader and take the per-quad path**
+— idle render gpu 19.0 → 16.9 ms, detonation 1 at 25.6 ms in the one run measured,
+picture unchanged. Its cost: the P3 cell gate and the §12.8 instruments would
+request a debug build of the shader explicitly (the injection this track already
+uses) instead of finding the modes compiled in. Both halves are still flags today.
+
+Logs (local only): `docs/measurements/device_2026-09-13_moto_g04s_diag13_{d0–d3,
+x5–x7, y1–y3, e0–e3}_*.log` — named for the session's start, run on 2026-09-14.
 
 ---
 

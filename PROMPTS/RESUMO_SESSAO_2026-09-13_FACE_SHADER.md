@@ -71,3 +71,55 @@ Sheets: `Screenshots/history/diag13_face_shader_look_residue_face.png`,
 
 Hand play, the Galaxy A16, the ~7 ms of non-voxel GPU (§10.11.7) and the
 COMMIT / SOOT FADE freezes are unchanged and unmeasured today.
+
+---
+
+# PART 2 — 2026-09-14: the per-quad spike
+
+**Director:** *"Faz o spike do cálculo por voxel"* (decision 3 above). Full record:
+DEVICE_DIAGNOSTICS_MASTER_PLAN §10.13.
+
+**Answer: it is exact, and on its own it buys nothing.** Together with compiling
+the debug modes out, it takes the Moto's idle GPU frame from 19.0 to 16.9 ms with
+the picture unchanged.
+
+## 7. What was built
+
+`FACE_PLANE_PER_QUAD=1` (default absent): the vertex stage reads the cell plane and
+decodes light and soot once per quad. A vertex cannot tell whether it is a left
+or right corner, so it reads both candidate cells and the fragment picks with the
+already-proven §12.9 test.
+
+## 8. Correctness — every gate passed, and every gate was shown able to fail
+
+- Pixel diff, per-fragment vs per-quad: **0 px** on the blast close-up (Metal and
+  Compatibility) and on the wide frame.
+- Cell gate: **100.000%** on 16 levels at the metal wall, both renderers.
+- Fault injected on purpose (candidates swapped): gate **FAIL at 0.271%**, close-up
+  413 004 px different. Restored byte-identical; selftests 53 clean.
+
+## 9. Cost on the Moto
+
+| | render gpu |
+|---|---|
+| control (two runs) | 18.9 / 19.0 |
+| per-quad (two runs) | 19.1 / 19.1 |
+| debug modes compiled out, per-fragment | 18.4 |
+| **debug modes compiled out, per-quad** | **16.9** |
+
+Without the debug branches per-quad saves 1.3–2.0 ms in every configuration tried;
+with them, nothing. A fix aimed at the suspected cause (explicit-LOD fetches in the
+debug branches) changed nothing on the device and was reverted — why those
+untaken branches cost so much on this GPU is still unexplained.
+
+## 10. Decision waiting for the Director
+
+One change, both halves already flags: **debug modes compiled out of the shipping
+shader + per-quad path → −2.1 ms of idle GPU, same picture.** The P3 cell gate
+would then ask for a debug build of the shader explicitly.
+
+## 11. State
+
+- Nothing defaults on. The shader compiles exactly as before without flags.
+- The Moto runs the committed code with a neutral `dev_flags.cfg`.
+- Logs: `docs/measurements/device_2026-09-13_moto_g04s_diag13_{d,x,y,e}*.log` (local).

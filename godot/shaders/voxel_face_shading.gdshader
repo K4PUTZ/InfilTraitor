@@ -54,6 +54,17 @@ shader_type canvas_item;
 #endif
 #endif
 
+// DIAG-14 — which plane path compiles. `FACE_PLANE_PER_QUAD` is injected by
+// VoxelRenderer when `FACE_PLANE_PER_QUAD=1` (see `v_quad_a` below); exactly one
+// of the two paths is built, and neither once the ladder has stripped the plane.
+#ifndef FACE_STRIP_PLANE
+#ifdef FACE_PLANE_PER_QUAD
+#define FACE_QUAD_TERMS
+#else
+#define FACE_FRAGMENT_PLANE
+#endif
+#endif
+
 // Atom geometry — canon, not tuning. Changing these means the tiles moved.
 uniform vec2 atom_size = vec2(32.0, 36.0);
 uniform float top_face_h = 16.0;
@@ -266,6 +277,58 @@ varying vec2 v_vertex;
 // fragment's own position rather than assumed — see fragment().
 varying flat vec2 v_corner;
 
+#ifdef FACE_QUAD_TERMS
+// DIAG-14 (SPIKE) — THE PLANE READ ONCE PER QUAD, NOT ONCE PER FRAGMENT.
+//
+// DEVICE_DIAGNOSTICS_MASTER_PLAN §10.12 priced the fragment's plane path — cell
+// recovery, plane fetch, bucket lookup and the base-5 soot decode — at 4.5 ms of
+// the Moto g04s's 19 ms idle GPU frame, and every input to it is constant across
+// the quad: all three faces of a voxel resolve to ONE cell (the PERF-P2 note
+// above). So the vertex stage reads it and the fragment only picks.
+//
+// WHY TWO CANDIDATES AND NOT ONE: a vertex cannot tell which corner of its quad
+// it is. The Y half it CAN decide — a bottom corner sits 36 px below its quad's
+// top, which the inverse basis maps to (+2.25, +2.25), never a whole cell. The X
+// half it cannot, because (32, 0) is `e1 - e2`, a legitimate cell step (§12.9).
+// So it reads the cell it would be as a LEFT corner (A) and as a RIGHT corner
+// (B = A + (-1, +1)), and the fragment's §12.9 test — the one already gated at
+// 100.000% — chooses. Nothing here assumes which vertex provokes, so first-vertex
+// (Vulkan) and last-vertex (GL) conventions are both covered.
+//
+// Flat varyings pass their value bit-exact and the fragment multiplies in the
+// per-fragment path's own order, so the picture is MEANT to be identical. A pixel
+// diff against that path decides it, not this comment.
+varying flat vec2 v_cell_a;
+varying flat vec4 v_quad_a;
+varying flat vec4 v_quad_b;
+
+float quad_soot_mult(float ring) {
+	return (ring < 3.5) ? soot_face_mult[int(ring)] : soot_clean_mult;
+}
+
+// (light, soot top, soot SE, soot SW) for one cell — the per-fragment path's own
+// arithmetic, moved rather than rewritten.
+vec4 quad_plane_terms(vec2 c) {
+	vec2 pc = c + cell_plane_origin;
+	bool inside = pc.x >= 0.0 && pc.y >= 0.0
+			&& pc.x < cell_soot_size.x && pc.y < cell_soot_size.y;
+	vec2 plane = inside
+			? textureLod(cell_soot, (pc + vec2(0.5)) / cell_soot_size, 0.0).rg
+			: vec2(1.0, 1.0);
+	float light = 1.0;
+	if (p3_enabled > 0.5) {
+		int b = inside ? int(floor(plane.g * 255.0 + 0.5)) : 255;
+		light = bucket_lum[clamp(b, 0, 11)];
+	}
+	float code = inside ? floor(plane.r * 255.0 + 0.5) : 124.0;
+	code = clamp(code, 0.0, 124.0);
+	return vec4(light,
+		quad_soot_mult(floor(code / 25.0)),
+		quad_soot_mult(floor(mod(code, 25.0) / 5.0)),
+		quad_soot_mult(mod(code, 5.0)));
+}
+#endif
+
 void vertex() {
 	// ⚠️ `VERTEX` ALONE IS NOT LAYER-LOCAL, and the whole cell recovery below
 	// depends on a coordinate that is.
@@ -288,6 +351,21 @@ void vertex() {
 	v_vertex = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy - layer_origin;
 	// Same value, taken flat — see the varying's note.
 	v_corner = v_vertex;
+#ifdef FACE_QUAD_TERMS
+	// DIAG-14 — see the note on `v_quad_a`. The snap is the per-fragment path's
+	// own `floor(v_corner - corner_shift + 0.5)`, taken before any shift.
+	vec2 p = floor(v_vertex + 0.5);
+	vec2 as_top = vec2(dot(inv_basis_row0, p + quad_to_map),
+			dot(inv_basis_row1, p + quad_to_map));
+	vec2 off_lattice = abs(as_top - floor(as_top + 0.5));
+	vec2 tl = (off_lattice.x < 0.125 && off_lattice.y < 0.125)
+			? p : p - vec2(0.0, atom_size.y);
+	vec2 cell_a = floor(vec2(dot(inv_basis_row0, tl + quad_to_map),
+			dot(inv_basis_row1, tl + quad_to_map)) + 0.5);
+	v_cell_a = cell_a;
+	v_quad_a = quad_plane_terms(cell_a);
+	v_quad_b = quad_plane_terms(cell_a + vec2(-1.0, 1.0));
+#endif
 }
 
 void fragment() {
@@ -315,7 +393,7 @@ void fragment() {
 	// neither the lattice nor the atlas — which matters, because the lattice
 	// CANNOT decide it: (32, 0) is `e1 - e2`, a legitimate cell step of (+1, -1),
 	// and that is precisely the ambiguity the old `mod` was losing to.
-#ifndef FACE_STRIP_PLANE
+#ifdef FACE_FRAGMENT_PLANE
 	vec2 corner_shift = vec2(
 		(v_vertex.x - v_corner.x) < 0.0 ? atom_size.x : 0.0,
 		(v_vertex.y - v_corner.y) < 0.0 ? atom_size.y : 0.0);
@@ -323,6 +401,13 @@ void fragment() {
 	vec2 cell = floor(vec2(
 		dot(inv_basis_row0, quad_tl + quad_to_map),
 		dot(inv_basis_row1, quad_tl + quad_to_map)) + 0.5);
+#endif
+#ifdef FACE_QUAD_TERMS
+	// DIAG-14 — the §12.9 test, now only choosing between the two cells the
+	// vertex already read. A left-corner provoking vertex is candidate A.
+	bool quad_right = (v_vertex.x - v_corner.x) < 0.0;
+	vec4 quad = quad_right ? v_quad_b : v_quad_a;
+	vec2 cell = quad_right ? v_cell_a + vec2(-1.0, 1.0) : v_cell_a;
 #endif
 
 	// Top diamond: |dx|/halfW + |dy|/halfH <= 1 about the diamond's own centre.
@@ -356,7 +441,7 @@ void fragment() {
 	float tex_a = texture(TEXTURE, UV).a;
 #endif
 
-#ifndef FACE_STRIP_PLANE
+#ifdef FACE_FRAGMENT_PLANE
 	// PERF-P3 — the plane fetch, hoisted out of the soot branch below because the
 	// LIGHT applies to every fragment while soot only applies above the alpha
 	// floor. One texture() call now serves both channels.
@@ -369,6 +454,9 @@ void fragment() {
 #endif
 
 #ifndef FACE_STRIP_LIGHT
+#ifdef FACE_QUAD_TERMS
+	f *= quad.x;
+#else
 	if (p3_enabled > 0.5) {
 		// A cell outside the plane reads FULL LIT, matching the fill and matching
 		// what an unwritten cell meant under the alternative path (the base tile).
@@ -379,8 +467,13 @@ void fragment() {
 		f *= bucket_lum[clamp(b, 0, 11)];
 	}
 #endif
+#endif
 
 #ifndef FACE_STRIP_SOOT
+#ifdef FACE_QUAD_TERMS
+	float quad_soot = sep_index < 0.5 ? quad.y : (sep_index < 1.5 ? quad.z : quad.w);
+	f *= (tex_a > soot_alpha_floor) ? quad_soot : soot_clean_mult;
+#else
 	float ring = 4.0;  // clean
 	if (tex_a > soot_alpha_floor) {
 		// A cell outside the data texture reads CLEAN rather than wrapping —
@@ -399,6 +492,7 @@ void fragment() {
 		}
 	}
 	f *= (ring < 3.5) ? soot_face_mult[int(ring)] : soot_clean_mult;
+#endif
 #endif
 	COLOR.rgb = max(COLOR.rgb * f, vec3(0.0));
 
@@ -436,6 +530,14 @@ void fragment() {
 	// and still not answer whether the sampler agrees, which is the only question
 	// when the data is right and the picture is not.
 	if (cell_debug_paint > 2.5) {
+#ifdef FACE_QUAD_TERMS
+		vec2 pcell = cell + cell_plane_origin;
+		bool in_plane = pcell.x >= 0.0 && pcell.y >= 0.0
+				&& pcell.x < cell_soot_size.x && pcell.y < cell_soot_size.y;
+		vec2 plane = in_plane
+				? texture(cell_soot, (pcell + vec2(0.5)) / cell_soot_size).rg
+				: vec2(1.0, 1.0);
+#endif
 		float g = in_plane ? floor(plane.g * 255.0 + 0.5) : 255.0;
 		COLOR = vec4(g / 255.0, 0.0, 1.0, step(0.99, tex_a));
 	}

@@ -1,8 +1,18 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.7
+## Measuring the real build on a real entry-tier phone — v1.8
 
-**Status:** 🟢 **v1.7 — the render decision is taken (2026-09-15).**
+**Status:** 🟢 **v1.8 — the RENDER3D baseline is measured (2026-09-15).**
 Where the Moto g04s stands:
+
+- **RENDER3D R3D-0 (§15.18):** one APK re-ran DIAG-21/22/23 as the migration's
+  baseline, and every row landed inside the earlier measurements.
+  - **A `Voxel` object costs ~925 B on the Moto:** 215 432 objects add +190 MB of
+    native heap in both runs. PLAYGROUND's 216 104 voxels therefore cost ~191 MB, not
+    §15.17's desktop-debug 316 MB.
+  - The instrument calibrates itself: the same count packed reads +1 MB, and a known
+    190.7 MB array reads +191 MB.
+  - The desktop half, `BoardProbe` and its identity gate, is recorded in
+    `RENDER3D_MASTER_PLAN` R3D-0.
 
 - **The decision (§15.17):** the Director ratified moving the board to Godot 3D, over a
   packed voxel store. The migration is planned in
@@ -2829,8 +2839,156 @@ runs:
 - **For the data half, a packed store instead of materialised zones.** It keeps one
   representation, prediction stays per voxel, and floors and roofs account for 145 992 of
   the 215 432 voxels.
+  - ⚠️ Corrected by R3D-0 (§15.18): 215 432 is the prototype's count of distinct CELLS.
+    PLAYGROUND holds **216 104 voxels**, because 672 corner cells are claimed by two
+    slices.
 
 **The plan:** [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), R3D-0 → R3D-9.
 - This plan stays its measurement harness.
 - §15.14 item 1 (the cook's LIGHT step) folds into R3D-2.
 - §15.14 item 2 (the 3D commit frame) folds into R3D-3.
+
+### 15.18 ✅ RENDER3D R3D-0 MEASURED — the baseline on one APK, and what a `Voxel` costs on the Moto
+
+**Why.** `RENDER3D_MASTER_PLAN` R3D-0: nothing moves until the gates that judge the moves
+exist. This section is the device half. The desktop half — `BoardProbe` and its identity
+gate — is recorded in the plan itself.
+
+**The APK.** Commit `5988234f`, `export/Infiltraitor.apk` sha256 `fb867845…`. It passed
+`export_android.py --verify-only`: signed, no source textures, 7 map JSON, 2 CSV, the
+project renderer.
+- Moto g04s, portrait, world render scale 1.0, `RNG_SEED=1`.
+- 16 boots, interleaved a / b.
+- Logs (local): `docs/measurements/device_2026-09-15_moto_g04s_r3d0_*.log`.
+- Captures (local): `Screenshots/r3d0_2026-09-15/`. All 16 boots exited cleanly.
+
+#### 15.18.1 The `Voxel` object cost — ~925 B on the Moto, not ~1 540
+
+**Instrument:** the scenario step `alloc objects|packed|bytes <count>`.
+- It holds N `Voxel` objects in arrays of 64 (the way `Slice` and `Slab` hold them), the
+  same count as a `PackedInt32Array`, or N bytes.
+- It holds them until `quit`, with `device_run.py --mem-poll 5`, one allocation per
+  segment.
+- `bytes` is the **positive control**. `packed`'s 0.8 MB sits inside PSS noise, so it can
+  only show that the instrument does not invent memory; a known size shows that it sees
+  memory at all.
+
+3D `NO_BAKE` (no swap at idle). Medians per segment, MB:
+
+| step · runs a / b | native heap alloc | TOTAL PSS | RSS | swap PSS |
+|---|---|---|---|---|
+| BASE (idle) | 748 / 748 | 1 094 / 1 088 | 1 160 / 1 164 | 1 / 0 |
+| → `alloc packed 215432` (0.82 MB expected) | **+1 / +1** | −2 / +2 | −5 / +2 | +5 / 0 |
+| → `alloc objects 215432` | **+190 / +190** | +178 / +181 | +174 / +183 | +3 / 0 |
+| → `alloc bytes 200000000` (190.7 MB, the control) | **+191 / +191** | +188 / +189 | +7 / +186 | +178 / 0 |
+
+The allocations took 1 ms (packed), 958 / 987 ms (objects) and 632 / 567 ms (bytes).
+
+**What it says:**
+- **A `Voxel` costs ~925 B on the Moto's release build** (190 MB ÷ 215 432 objects,
+  ±5 B from the whole-MB medians) — not the ~1 540 B of §15.17's desktop debug build.
+  - That figure includes the arrays of 64 that hold the objects, which the real
+    containers pay too.
+  - **PLAYGROUND's 216 104 voxels cost ~191 MB on the device**, not 316 MB.
+- **The instrument is calibrated.**
+  - The known 190.7 MB reads +191 MB of heap alloc in both runs, and the 0.82 MB packed
+    array reads +1.
+  - TOTAL PSS lands within 3 MB of heap alloc for the control and within 12 MB for the
+    objects.
+- **The native heap alloc column is the reading, not RSS.** In run a the control's
+  pages — all one value, so they compress — went to zram (swap +178 MB, RSS +7). In
+  run b they stayed in RAM (RSS +186, swap 0). Heap alloc and TOTAL PSS followed the
+  allocation both times.
+- **R3D-1's saving is smaller than §15.17 estimated, but still large.** On the Moto the
+  packed store replaces ~190 MB of objects with ~1 MB of state. That is 3.2× the 59 MB
+  the 2D board's cells free (§15.15).
+- `OS.get_static_memory_usage()` printed "unavailable (reads 0)" in every step, as
+  expected on an Android release build.
+
+#### 15.18.2 Grenades — 2D vs 3D with the 2D writes skipped
+
+Scenario as DIAG-21c / 22c, plus two close-ups after grenade #1 for the R3D-6 look set.
+
+| | 2D a / b | **3D + skip a / b** |
+|---|---|---|
+| #0 · wall clock | 24.0 / 24.0 s | **10.9 / 10.9 s** |
+| #0 · mean · worst | 90.8 / 91.8 · 320 / 408 ms | **27.7 / 28.4 · 257 / 261 ms** |
+| #0 · commit frame · first soot-fade frame | 320 / 299 · 289 / 331 ms | **251 / 260 · 202 / 228 ms** |
+| #1 · wall clock | 27.1 / 27.2 s | **11.2 / 11.3 s** |
+| #1 · mean · worst | 110.0 / 110.5 · 1 922 / 2 024 ms | **29.1 / 29.2 · 280 / 308 ms** |
+| #1 · commit frame · first soot-fade frame | 345 / 346 · 1 922 / 2 024 ms | **280 / 262 · 209 / 201 ms** |
+| consequence · light (ms/frame) | 90.5–103.1 · 90.1–101.5 | **24.8–26.2 · 23.6–24.8** |
+
+- `[BOARD3D]` commit remesh: grenade #0 folds 460 voxels into 5 chunks and 350 quads in
+  113–138 ms; grenade #1 folds 494 voxels into 6 chunks and 414 quads in 123–125 ms.
+- **460 is the same count** `BoardProbe`'s desktop control reads for grenade #0: two
+  independent instruments agree.
+- **Captures, run a vs run b:** 0 px in 6 of 8 pairs. The exceptions are 15 px (2D, after
+  #1) and 9 px (3D, after #0), both 3 s after a blast. The cause is not isolated.
+- **Every number is within DIAG-21c / 22c's range**, so this is the baseline, not a
+  change.
+- ⚠️ **Every capture of this scenario carries the `Detonate / Cancel` menu and the dev
+  panel** — identically in 2D and 3D and in runs a and b, so the pairs stay comparable.
+
+#### 15.18.3 The idle ladder — one boot each
+
+| zoom | 2D: ms · gpu · cpu · draws | **3D: ms · gpu · cpu · draws** | DIAG-21b 2D / 3D ms |
+|---|---|---|---|
+| 0.50 | 60.0 · 58.5 · 6.6 · 1 641 | **23.1 · 21.6 · 4.1 · 225** | 60.0 / 17.9 |
+| 0.42 | 70.4 · 68.9 · 9.2 · 3 091 | **23.3 · 21.9 · 2.2 · 263** | 70.3 / 18.1 |
+| 0.35 | 89.2 · 87.7 · 14.0 · 5 603 | **23.3 · 21.9 · 2.2 · 267** | 89.0 / 17.9 |
+| 0.30 | 107.7 · 106.4 · 36.8 · 10 531 | **23.4 · 22.0 · 2.2 · 270** | 107.5 / 18.1 |
+| 0.20 | 134.6 · 133.0 · 39.3 · 20 670 | **21.6 · 20.1 · 2.3 · 285** | 134.5 / 17.1 |
+
+- Cells on screen match at every stop (95 / 115 / 173 / 235 / 354).
+- **2D repeats DIAG-21b within 0.2 ms.** The one column that moved is render cpu at 0.30:
+  36.8 ms against 22.6 ms. It is not isolated.
+- **3D sits at 21.6–23.4 ms against 21b's 17.1–18.1.** That is §15.15's 22.9 ms after
+  step 2c's per-fragment plane fetch — the current code, not a regression from today.
+
+#### 15.18.4 Memory — as DIAG-23
+
+Scenario and flags as §15.15: portrait zoom 0.5, settle 45 s, idle 60 s, then `drop2d`
+in the 3D row, then 75 s. `--mem-poll 5`, medians per segment, MB.
+
+| runs a / b | 2D, bake ON (shipped look) · IDLE | **3D `NO_BAKE` · IDLE → after `drop2d`** | DIAG-23 a / b, same rows |
+|---|---|---|---|
+| TOTAL PSS | 2 200 / 2 176 | **1 094 / 1 084 → 1 094 / 1 088** | 2 201 / 2 171 · 1 090 / 1 089 → 1 099 / 1 036 |
+| GL mtrack | 734 / 734 | **276 / 272 → 272 / 271** | 734 · 272 → 277 / 272 |
+| swap PSS | 739 / 1 246 | **0 / 0** | 721 / 1 395 · 0 |
+| native heap alloc · free | 1 413 · 79 | **749 / 748 · 77 → 689 · 136** | 1 413 · 78 · 748 · 77 → 689 · 135 |
+| boot → map loaded | 53.5 / 52.7 s | **23.0 / 23.0 s** | 54.0 / 52.2 · 22.9 / 22.8 s |
+| idle frame · draws | 60.0 ms · 1 641 | **22.9 ms · 225** | 60.0 · 1 641 · 22.9 · 225 |
+
+- `drop2d` cleared 205 704 opaque and 2 240 glass cells in 107 ms (run a).
+- **Every row repeats DIAG-23.** At the shipped look, 3D is about half the memory, with
+  nothing swapped.
+- Dropping the 2D cells frees ~60 MB of native heap in both runs. It stays in the process
+  as free heap (77 → 136 MB), and PSS does not move — both as in DIAG-23 run a.
+- Swap on the 2D row again varies run to run (739 vs 1 246 MB) while PSS and heap hold.
+
+#### 15.18.5 The R3D-6 reference captures
+
+Paired 2D / 3D captures, same APK, for `RENDER3D` R3D-6. The 3D side of the grenade and
+look runs skips the 2D writes; the ladder's 3D side does not. §15.11 showed that the skip
+changes no pixel. Files (local): `Screenshots/r3d0_2026-09-15/`.
+
+| R3D-6 item | captures | what the pair shows |
+|---|---|---|
+| 2 · glass | `r3d0_lad_*_glass`, `r3d0_lad_*_z050`, `r3d0_look_gl_*` (GLASS: idle, the variant row, and after both grenades) | **2D:** a strong blue with facets and a grid; the variant row in saturated purple, green, red and amber; crack and craze art on every cracked pane. **3D:** a pale, translucent cyan; the variant tints washed out; **no crack or craze on any pane**; shattered panes leave pale remnant chunks. |
+| 3 · decals | `r3d0_g_*_close_concrete`, `…_close_metal`, `r3d0_look_pg_*_wood_burn_*` | 2D: detailed crack and dent art per voxel. 3D: flat, darker squares. |
+| 4 · dents | the same close-ups | Carved voxels have the same extent. 2D insets read as art, and 3D draws no inset. |
+| 5 · whole facades | `r3d0_lad_*_z050`, `r3d0_look_pg_*_wood_idle` | The 2D floor shows its 8×8 voxel grid per GU; the 3D floor is the smooth facade. Brick and wood read alike. |
+| 6 · soot, burnt voxels | `r3d0_look_pg_*_wood_burn_0/4/12/32` | Same scorched extent. 2D is darker and varies per voxel. |
+| R3D-5 rows seen | `r3d0_lad_3d_z050`, `r3d0_look_pg_3ds_roofs` | The dark diamond under the agent, and a red line, show only in 3D. The line is probably a 2D overlay the board used to cover; not identified. It shows on GLASS too (`r3d0_look_gl_3ds_glass_after0`). |
+
+**Two gaps — R3D-0's capture set does not yet cover every item:**
+- **Item 1, roof tops dark in 3D, is not isolated.** The `roofs` framing (`centre 13,4`,
+  zoom 0.8) shows a wall face and floor. Its 3D side has a dark rhombus over the wall
+  that 2D does not, but nothing in the frame identifies it as a roof top.
+- **Embers (item 6) were not captured.** `detonate` waits for the blast to finish, and
+  the wood burn's first capture already comes after the fire. All four burn frames are
+  nearly the same.
+
+**Caveat on every scenario capture:** the `Detonate / Cancel` menu and the dev panel stay
+on screen, identically in both renderers and in both runs.

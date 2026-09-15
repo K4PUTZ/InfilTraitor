@@ -1,7 +1,13 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.0
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.1
 
-**Status:** 📋 **PLANNED 2026-09-15 — direction ratified by the Director, no stage started.**
+**Status:** 🟡 **R3D-0 MEASURED 2026-09-15 — not yet closed.** The direction was ratified
+by the Director the same day.
+- **Built and gated:** `BoardProbe` and its identity gate; the `Voxel` cost on the Moto
+  (~925 B); the baseline re-run on one APK.
+- **Open, so R3D-0 is not closed:** paired captures for R3D-6 item 1 (roof tops) and for
+  embers.
+- **Next:** those two captures, then R3D-1a.
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -39,7 +45,9 @@ drawing, and of the voxel storage underneath it.
    the tenth-shot rule, prediction, glass physics, the light field, TIC, passages and AI.
    Nothing about what the game computes changes.
 3. **Voxels stop being objects.** Each `Voxel` is a GDScript object of ~1.5 KB, and
-   PLAYGROUND holds 215 432 of them: **316 MB** measured on desktop (§1). A packed store
+   PLAYGROUND holds 216 104 of them in 215 432 cells (R3D-0). 215 432 objects measured
+   **316 MB** on a desktop debug build and **~190 MB on the Moto's release build**
+   (§1). PLAYGROUND's voxels therefore cost ~191 MB on the device. A packed store
    holds the same facts in a few bytes per voxel. It is the only authority, and every
    system reads it.
 4. **The 2D board retires at parity, and only then.**
@@ -96,10 +104,12 @@ Moto g04s, portrait, world render scale 1.0, release APK, unless marked desktop.
 | boot → map loaded | 52–54 s | 22.8–22.9 s | §15.15 |
 | the 2D board's own cells | 205 704 opaque + 2 240 glass → 59 MB native heap, 0 graphics | — | §15.15 |
 | `Voxel` objects (desktop debug, 2 runs) | 215 432 × ~1 540 B = **316.4 MB** | the same count as `PackedInt32Array`: 0.8 MB | §15.17 |
+| `Voxel` objects on the Moto (release APK, R3D-0, 2 runs) | 215 432 × **~925 B = +190 MB** native heap alloc | 0.82 MB packed reads +1 MB; a 190.7 MB control reads +191 | DEVICE §15.18 |
+| voxels vs cells on PLAYGROUND (R3D-0 `BoardProbe`) | 216 104 voxels in 2 713 containers | 215 432 distinct cells — 672 cells claimed by two slices | R3D-0 |
 | the cook's LIGHT step (shared) | 234–408 ms | same | §15.13 |
 
 **Not yet measured, and each has a stage:**
-- the `Voxel` cost on the Moto (R3D-0);
+- ~~the `Voxel` cost on the Moto~~ — measured at R3D-0: ~925 B per object (§15.18);
 - a 3D-only load and its peak (after R3D-2);
 - the web export's Compatibility renderer running the 3D board (R3D-3);
 - the Galaxy A16 (R3D-8).
@@ -182,6 +192,121 @@ Nothing moves until the gates that judge the moves exist and are proven determin
     after both grenades (earn the gate first);
   - the Moto `Voxel` number is recorded;
   - the baseline tables are recorded.
+
+#### R3D-0 — what was built, and the gate it earned (2026-09-15, commit `5988234f`)
+
+**`BoardProbe`** (`godot/scripts/systems/board_probe.gd`), reached through the scenario
+step `probe <name>`:
+- It writes every container's voxels to a text dump: slices, junction columns and slabs.
+  Per voxel it records the coordinates, `visible`, `damage_state`, `damage_is_blast`,
+  the carved side, variant, substrate and material (bands resolved per level).
+- It also writes every cell plane, level by level, as its raw RG8 bytes.
+- It reads the containers and the planes, never a tile, so it outlives the 2D board.
+- ⚠️ **It stores values, not the hashes this section asked for.** A hash says *that* two
+  runs differ, never *where*, and the whole PLAYGROUND board is a few MB of text.
+  `dirty` is left out on purpose (TIC bookkeeping, cleared within the frame), and so is
+  `face_atlas_rect`, which retires with the atlas.
+- Every packed field is range-checked. A value a byte cannot hold aborts the write and
+  leaves no file, because a wrapped byte would match a voxel it does not match.
+- `board_probe_selftest` pins the format: one damaged voxel moves exactly its
+  container's line, and its bytes decode to the damage written.
+
+**`tools/persistent/board_probe.py`** — the only place two dumps are compared.
+- `diff A B` compares per voxel and per plane texel, grouped by container kind and by
+  level, and prints the first N differences.
+- `gate` boots each map twice through
+  `probe load; detonate 0; probe g0; detonate 1; probe g1; quit`. It requires every
+  probe to be identical across boots, and a **control**: `load` and `g0` must differ,
+  or the probe cannot see a grenade.
+- `--env KEY=VALUE` flips a flag on every boot, so each later stage runs the same gate
+  with its own switch.
+- GLASS ships no dev grenades, so the gate seeds two: `GRENADE_GUS=14,12;5,12`, at the
+  big pane and at the small pane beside the variant row. `GRENADE_GUS` now reaches the
+  APK through DevFlags.
+
+**The gate, earned on the unchanged simulation** — desktop, 2 boots per map. It was run
+before the commit, and again on `5988234f` with the same numbers.
+
+| map | voxels · containers · plane levels | run 1 vs run 2 at load · g0 · g1 | control, load vs g0 |
+|---|---|---|---|
+| PLAYGROUND | 216 104 · 2 713 · 32 | **0 · 0 · 0** voxels, 0 plane bytes | 460 voxels, 2 246 plane bytes |
+| GLASS | 114 280 · 1 363 · 32 | **0 · 0 · 0** voxels, 0 plane bytes | 3 867 voxels, 8 063 plane bytes |
+
+- PLAYGROUND grenade #0 moves 460 voxels (380 floor-slab, 80 wall), inside §0.2's
+  ~460–500.
+- GLASS grenade #0 cracks the big pane (`SLICE_11_10_SW`…). Grenade #1 moves 1 252
+  voxels in 36 containers around the small pane.
+
+**What the probe found on its first read** — findings only, nothing changed:
+
+1. **215 432 is the count of cells, not voxels.** PLAYGROUND holds **216 104 voxels**;
+   the prototype's figure was its occupancy dictionary's size, which merges cells two
+   containers claim. §0.1 and §1 now say so.
+2. **The collision census R3D-1a asks for has its first number.**
+   - PLAYGROUND has **672 cells claimed twice** and GLASS has 160.
+   - Every one is a **slice × slice** pair at the corner where two faces of one GU meet
+     — for example cell (8, 8) at levels 80+, claimed by `SLICE_1_1_NW` and
+     `SLICE_1_1_NE`.
+   - The two claims carry the same material in every case.
+   - No slab or column collides.
+   - Whether the two claims can take DIFFERENT damage, and which one a cell then shows,
+     is the rule R3D-1a still has to write down.
+3. **A junction column's id is not unique.**
+   - On PLAYGROUND, 8 ids name two different columns each (`JCOL_26_2`, `JCOL_26_4`,
+     `JCOL_30_2`, `JCOL_30_4`, `JCOL_34_2`, `JCOL_34_4`, `JCOL_38_2`, `JCOL_38_4`). In
+     each pair the two columns are 7 cells apart, 16 voxels each.
+   - `"JCOL_%d_%d" % gu_cell` assumes one column per GU, and those GUs hold two.
+   - Any lookup by that id finds one of the pair. The probe compares them by
+     occurrence.
+   - R3D-1's container reference must not key by this id.
+
+#### R3D-0 — the device half (2026-09-15, APK `fb867845…` from `5988234f`)
+
+Full tables: `DEVICE_DIAGNOSTICS` §15.18. Moto g04s, 16 boots interleaved a / b.
+
+**The `Voxel` cost** — scenario step `alloc objects|packed|bytes <count>`, read by
+`device_run.py --mem-poll`, in the 3D `NO_BAKE` build so nothing swaps at idle:
+- **215 432 objects add +190 MB of native heap in both runs: ~925 B per `Voxel`.**
+  PLAYGROUND's 216 104 voxels cost ~191 MB on the device.
+- §15.17's desktop-debug figure (~1 540 B, 316 MB) overstated the device by ~65 %.
+- The instrument calibrates itself. The same count packed reads +1 MB (0.82 MB
+  expected), and a known 190.7 MB byte array reads +191 MB in both runs.
+- R3D-1's saving is smaller than §1 first said, but it still dominates the board's other
+  per-cell costs: ~190 MB of objects against ~1 MB packed, and 3.2× the 59 MB the 2D
+  board's cells free.
+
+**The baseline tables** — one APK re-running DIAG-21/22/23. Every row lands inside the
+earlier measurements, so later stages compare against these:
+
+| | 2D (shipped) | 3D (2D writes skipped where noted) |
+|---|---|---|
+| idle frame, zoom 0.5 → 0.2 | 60.0 → 134.6 ms | 23.1 → 21.6 ms (flat) |
+| grenade #0 · #1 wall clock (a / b) | 24.0 / 24.0 · 27.1 / 27.2 s | 10.9 / 10.9 · 11.2 / 11.3 s (skip) |
+| grenade #1 worst frame | 1 922 / 2 024 ms (soot fade) | 280 / 308 ms (skip) |
+| commit remesh #0 · #1 | — | 113–138 · 123–125 ms |
+| memory at idle, PSS · swap | 2 176–2 200 MB · 739–1 246 MB | 1 084–1 094 MB · 0 (`NO_BAKE`) |
+| boot → map loaded | 52.7–53.5 s | 23.0 s (`NO_BAKE`) |
+
+- Grenade #0's commit remesh folds **460 voxels** on the device — the same count
+  `BoardProbe` reads for that grenade on desktop.
+- Run-a against run-b captures of the grenade scenario differ by 0 px in 6 of 8 pairs,
+  and by 15 px and 9 px in two frames taken 3 s after a blast.
+
+**The reference captures** — 2D and 3D pairs from the same APK, listed item by item in
+`DEVICE_DIAGNOSTICS` §15.18.5:
+- **Covered:** item 2 (glass — the PLAYGROUND trio and the GLASS map), 3 (decals), 4
+  (dents), 5 (facades and the floor grid), and 6's soot and burnt voxels.
+- **Two R3D-5 rows showed up on their own:**
+  - the dark diamond under the agent;
+  - a red line drawn only in 3D, probably a 2D overlay the board used to cover — not
+    identified.
+- ⛔ **Not covered, so the capture item of this stage's gate is open:**
+  - **Item 1, roof tops dark in 3D.** The `roofs` framing shows a wall face. Its 3D side
+    has a dark shape the 2D side does not, but nothing in the frame identifies it as a
+    roof.
+  - **Embers.** The `detonate` step waits for the blast to end, so the wood burn's first
+    capture already comes after the fire.
+  - Both need a framing, or a capture step inside the blast, before R3D-0 closes.
 
 ### R3D-1 — The packed voxel store (the data half)
 
@@ -519,3 +644,12 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
 
 - **v1.0, 2026-09-15.** Opened on the Director's ratification. Stages R3D-0 to R3D-9,
   written from `DEVICE_DIAGNOSTICS` §15 and the `Voxel` object measurement.
+- **v1.1, 2026-09-15.** R3D-0 measured.
+  - `BoardProbe` and `board_probe.py gate` were built, and the gate was earned at 0
+    differences on PLAYGROUND and GLASS (commit `5988234f`).
+  - A `Voxel` object costs ~925 B on the Moto, and the baseline was re-run on one APK.
+  - Corrections: PLAYGROUND holds 216 104 voxels in 215 432 cells, and the §0.1 and §1
+    figures say so.
+  - Findings for R3D-1a: 672 corner cells claimed by two slices, and non-unique
+    junction column ids.
+  - Open before R3D-0 closes: captures for roof tops and embers.

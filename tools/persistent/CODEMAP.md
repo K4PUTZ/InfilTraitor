@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 93428 lines total** (under `godot/scripts/`)
+**254 scripts · 93570 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -861,7 +861,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7820 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7846 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1818,11 +1818,11 @@ extends `Node2D` · 43 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 530 lines
+extends `Node3D` · 627 lines
 
 `godot/scripts/spikes/board3d_live.gd`
 
-> Board3DLive — the LIVE board, as depth-tested 3D meshes under the 2D game. DIAG-21 step 1 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7). An instrument, never a mode: `RENDER3D=1` builds it after a real map load and hides the 2D voxel board. Actors, fog, overlays and the HUD keep drawing in 2D, on top of it. WHAT IT PROVES THAT DIAG-20's SPIKE COULD NOT: the spike rebuilt PLAYGROUND from its JSON. This reads the game's own data after the real load — every visible Voxel of every Slice (half thickness and material bands included), every junction corner column, and every floor, deep-floor and roof Slab. The light and the soot come from the live `VoxelLightField`, one value per exposed face, with the 2D face shader's own terms: bucket luminance × face tone × per-face soot × floor depth dim. Nothing here is a second authority. It reads, it never writes. THE LOOK, and how it maps from 2D: - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a GU is one world unit and a storey one unit tall (the 30° camera's cube); - only the three faces the camera can see are emitted — top (+Y), SE (+X) and SW (+Z) — the same three `VoxelLightField.surface_factor()` names; - a material is `base_color × facade luminance`, the bake's MULTIPLY, sampled in world space at 16 texels per voxel with mirrored repeat; - coplanar faces with the same material and the same quantised colour are merged into one quad (greedy), per chunk of 32×32 voxels. ⚠️ NOT PARITY — stated so no capture is read as one: no damage decals, no bake window origins (facade continuity is world-space, not per wall run), glass is a flat translucent tint, actors are not occluded by walls, and the 2D storey is 158 px where this 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect). The camera follows the 2D camera every frame, so the 2D game stays aligned on the ground plane.
+> Board3DLive — the LIVE board, as depth-tested 3D meshes under the 2D game. DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10). An instrument, never a mode: `RENDER3D=1` builds it after a real map load and hides the 2D voxel board. Actors, fog, overlays and the HUD keep drawing in 2D, on top of it. WHAT IT READS: every visible Voxel of every Slice (half thickness and material bands included), every junction corner column, every floor, deep-floor and roof Slab — the game's own registries after the real load. It reads, it never writes game state. THE LOOK, and how it maps from 2D: - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a GU is one world unit and a storey one unit tall (the 30° camera's cube); - only the three faces the camera can see are emitted — top (+Y), SE (+X) and SW (+Z) — the same three `VoxelLightField.surface_factor()` names; - a material is `base_color × facade luminance`, the bake's MULTIPLY, sampled in world space at 16 texels per voxel with mirrored repeat; - LIGHT AND SOOT ARE PER CELL, NOT PER VERTEX (step 2c). The fragment finds its own voxel from its world position and reads bucket and soot code from a `Texture2DArray` holding the 2D renderer's own cell planes, one layer per level — the same RG8 data the 2D face shader reads. So faces merge by MATERIAL only, and a soot or light change is a layer upload instead of a remesh. Step 2 rebuilt geometry for colour changes and paid ~240 ms per rebuild on the Moto (§15.9); - the 2D face shader's terms are applied in the same order: face tone × bucket luminance × per-face soot × floor depth dim, all in sRGB, the product decoded once. ⚠️ NOT PARITY — stated so no capture is read as one: no damage decals, no bake window origins (facade continuity is world-space, not per wall run), glass is a flat translucent tint, actors are not occluded by walls, the soot fade and the light ramp land at their ends instead of stepping, and the 2D storey is 158 px where this 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect).
 
 **Constants / tuning**
 - `CHUNK_VOXELS` = `32`
@@ -2055,7 +2055,7 @@ extends `Node3D` · 362 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 267 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 282 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -2309,7 +2309,7 @@ extends `Node3D` · 362 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 234 lines
+extends `Node` · 236 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -5589,7 +5589,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11883 lines
+extends `Node2D` · 11885 lines
 
 `godot/scripts/world/room.gd`
 

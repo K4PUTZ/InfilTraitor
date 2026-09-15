@@ -1983,6 +1983,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## instrument: the 2D path still runs underneath, and nothing here writes game state.
 	if _dev_flag("RENDER3D") == "1":
 		_start_board3d_live()
+	elif VoxelRenderer.SKIP_BOARD_WRITES:
+		push_warning("[Room] SKIP_2D_BOARD_WRITES=1 without RENDER3D=1 — the 2D board will not show any blast damage")
 	MemStage.mark("40 map loaded — %s" % map_id)
 	if _dev_flag_on("MEM_CENSUS"):
 		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)

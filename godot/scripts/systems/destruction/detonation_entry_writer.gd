@@ -91,6 +91,11 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			var layer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
 			if layer == null:
 				return 0
+			if VoxelRenderer.SKIP_BOARD_WRITES:
+				## DIAG-21 2c: the voxel is already gone in the data; only the hidden
+				## 2D cell would change. The light apply still needs to visit it.
+				voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+				return 1
 			layer.erase_cell(entry["cell"])
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			## RENDER_ORDER — the cook's destroy seam: a wall that covered part of a
@@ -107,6 +112,10 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			var elayer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
 			if elayer == null:
 				return 0
+			if VoxelRenderer.SKIP_BOARD_WRITES:
+				voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
+				voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+				return 1
 			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], entry["alt"])
 			elayer.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
 			## PERF-P2b: the alt carries bucket and flip; the scorch travels beside it.
@@ -121,6 +130,10 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			var layer2: TileMapLayer = voxel_renderer.get_layer(entry["level"])
 			if layer2 == null:
 				return 0
+			if VoxelRenderer.SKIP_BOARD_WRITES:
+				voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
+				voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+				return 1
 			## _ensure_light_alt() mints the (source_id, atlas_coords, alt)
 			## TileData alternative if it doesn't exist yet — the SAME call
 			## VoxelRenderer._apply_light_to_layer() makes right before its own
@@ -250,6 +263,8 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 ## contract, fewer calls, and still a cheap no-op when nothing composited
 ## (flush_dirty_pages() checks an empty dirty-page set itself).
 func flush(voxel_renderer) -> void:
+	if VoxelRenderer.SKIP_BOARD_WRITES:
+		return  ## DIAG-21 2c: every step below only serves the hidden 2D board
 	voxel_renderer.flush_damage_composite_pages()
 	## PERF-P2b: one soot upload per flushed frame, never one per cell.
 	voxel_renderer.flush_cell_soot()

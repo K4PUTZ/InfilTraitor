@@ -1,16 +1,12 @@
 ## Board3DLive — the LIVE board, as depth-tested 3D meshes under the 2D game.
 ##
-## DIAG-21 step 1 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7). An instrument, never a
-## mode: `RENDER3D=1` builds it after a real map load and hides the 2D voxel board.
-## Actors, fog, overlays and the HUD keep drawing in 2D, on top of it.
+## DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10). An instrument, never a mode:
+## `RENDER3D=1` builds it after a real map load and hides the 2D voxel board. Actors,
+## fog, overlays and the HUD keep drawing in 2D, on top of it.
 ##
-## WHAT IT PROVES THAT DIAG-20's SPIKE COULD NOT: the spike rebuilt PLAYGROUND from
-## its JSON. This reads the game's own data after the real load — every visible
-## Voxel of every Slice (half thickness and material bands included), every junction
-## corner column, and every floor, deep-floor and roof Slab. The light and the soot
-## come from the live `VoxelLightField`, one value per exposed face, with the 2D face
-## shader's own terms: bucket luminance × face tone × per-face soot × floor depth dim.
-## Nothing here is a second authority. It reads, it never writes.
+## WHAT IT READS: every visible Voxel of every Slice (half thickness and material bands
+## included), every junction corner column, every floor, deep-floor and roof Slab — the
+## game's own registries after the real load. It reads, it never writes game state.
 ##
 ## THE LOOK, and how it maps from 2D:
 ##  - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a
@@ -19,15 +15,20 @@
 ##    SW (+Z) — the same three `VoxelLightField.surface_factor()` names;
 ##  - a material is `base_color × facade luminance`, the bake's MULTIPLY, sampled in
 ##    world space at 16 texels per voxel with mirrored repeat;
-##  - coplanar faces with the same material and the same quantised colour are merged
-##    into one quad (greedy), per chunk of 32×32 voxels.
+##  - LIGHT AND SOOT ARE PER CELL, NOT PER VERTEX (step 2c). The fragment finds its own
+##    voxel from its world position and reads bucket and soot code from a
+##    `Texture2DArray` holding the 2D renderer's own cell planes, one layer per level —
+##    the same RG8 data the 2D face shader reads. So faces merge by MATERIAL only, and
+##    a soot or light change is a layer upload instead of a remesh. Step 2 rebuilt
+##    geometry for colour changes and paid ~240 ms per rebuild on the Moto (§15.9);
+##  - the 2D face shader's terms are applied in the same order: face tone × bucket
+##    luminance × per-face soot × floor depth dim, all in sRGB, the product decoded once.
 ##
 ## ⚠️ NOT PARITY — stated so no capture is read as one: no damage decals, no bake
 ## window origins (facade continuity is world-space, not per wall run), glass is a
-## flat translucent tint, actors are not occluded by walls, and the 2D storey is 158 px
-## where this 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect).
-## The camera follows the 2D camera every frame, so the 2D game stays aligned on the
-## ground plane.
+## flat translucent tint, actors are not occluded by walls, the soot fade and the light
+## ramp land at their ends instead of stepping, and the 2D storey is 158 px where this
+## 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect).
 extends Node3D
 
 const CHUNK_VOXELS: int = 32
@@ -42,27 +43,63 @@ const FALLBACK_SOOT_MULT: Array[float] = [0.33, 0.47, 0.69, 0.84]
 const FALLBACK_TONE: Array[float] = [1.0, 0.975, 0.945]
 
 ## ⚠️ THE MATHS HAPPENS IN sRGB, AND ONLY THE PRODUCT IS LINEARISED. The 2D path
-## multiplies base colour × facade luminance (the bake) and then × light × soot × tone
-## (the face shader) on sRGB-encoded values, because a 2D canvas never converts. A
-## spatial shader's ALBEDO is LINEAR and gets encoded on output, so feeding it those
-## same numbers raw lifts every mid-tone — measured on the first desktop capture: the
-## board came out pale grey where 2D is dark. So the product is computed exactly as 2D
-## does, then decoded once. The facade sampler carries no `source_color` hint for the
-## same reason: its luminance is a multiplier in sRGB space, not a colour to decode.
+## multiplies on sRGB-encoded values because a 2D canvas never converts; a spatial
+## shader's ALBEDO is linear. Measured on the first desktop capture: fed raw, the board
+## came out pale grey where 2D is dark. The facade sampler carries no `source_color`
+## hint for the same reason — its luminance is a multiplier in sRGB space.
 const OPAQUE_SHADER: String = """
 shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform sampler2D facade : filter_nearest_mipmap, repeat_disable;
 uniform vec3 base_color = vec3(0.6);
 uniform float has_facade = 0.0;
+uniform sampler2DArray cell_plane : filter_nearest, repeat_disable;
+uniform int level_base = 0;
+uniform int level_count = 1;
+uniform int mesh_ground_level = 80;
+uniform int rel_offset = -80;
+uniform ivec2 plane_origin = ivec2(64, 64);
+uniform int plane_size = 512;
+uniform float bucket_lum[12];
+uniform vec4 soot_mult = vec4(0.33, 0.47, 0.69, 0.84);
+uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
+uniform float depth_dim[5];
+varying vec3 v_world;
+varying vec3 v_normal;
 vec3 srgb_to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
 }
+void vertex() {
+	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	v_normal = NORMAL;
+}
 void fragment() {
-	vec2 f = mod(UV, 2.0);
-	vec2 mirrored = mix(f, 2.0 - f, step(1.0, f));
+	// The voxel this pixel belongs to: half a voxel back along the face normal.
+	ivec3 v = ivec3(floor(v_world * 8.0 - v_normal * 0.5));
+	int level = v.y + mesh_ground_level;
+	ivec2 pc = ivec2(v.x, v.z) + plane_origin;
+	int layer = level - level_base;
+	float code = 124.0;
+	int bucket = 255;
+	if (layer >= 0 && layer < level_count && pc.x >= 0 && pc.y >= 0
+			&& pc.x < plane_size && pc.y < plane_size) {
+		vec4 t = texelFetch(cell_plane, ivec3(pc, layer), 0);
+		code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 124.0);
+		bucket = int(floor(t.g * 255.0 + 0.5));
+	}
+	int face = v_normal.y > 0.5 ? 0 : (v_normal.x > 0.5 ? 1 : 2);
+	float ring = face == 0 ? floor(code / 25.0)
+			: (face == 1 ? floor(mod(code, 25.0) / 5.0) : mod(code, 5.0));
+	float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];
+	f *= ring < 3.5 ? soot_mult[int(ring)] : 1.0;
+	int rel = level + rel_offset;
+	if (rel < 0) {
+		f *= depth_dim[min(-rel - 1, 4)];
+	}
+	vec2 fr = mod(UV, 2.0);
+	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
-	ALBEDO = srgb_to_linear(base_color * lum * COLOR.rgb);
+	ALBEDO = srgb_to_linear(base_color * lum * f);
 }
 """
 const GLASS_SHADER: String = """
@@ -73,7 +110,7 @@ vec3 srgb_to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
 }
 void fragment() {
-	ALBEDO = srgb_to_linear(base_color * COLOR.rgb);
+	ALBEDO = srgb_to_linear(base_color);
 	ALPHA = 0.35;
 }
 """
@@ -85,17 +122,15 @@ void fragment() {
 class SurfaceData:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
-	var colours := PackedColorArray()
 	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 
-	func add_quad(corners: Array[Vector3], unit: float, normal: Vector3, shade: float,
+	func add_quad(corners: Array[Vector3], unit: float, normal: Vector3,
 			face_uvs: Array[Vector2]) -> void:
 		var base_index: int = vertices.size()
 		for i: int in range(4):
 			vertices.append(corners[i] * unit)
 			normals.append(normal)
-			colours.append(Color(shade, shade, shade, 1.0))
 			uvs.append(face_uvs[i])
 		for offset: int in [0, 1, 2, 0, 2, 3]:
 			indices.append(base_index + offset)
@@ -109,9 +144,10 @@ var _ground_level: int = 0
 var _occ: Dictionary = {}
 var _by_chunk: Dictionary = {}  ## Vector2i → {Vector3i: true}
 var _chunk_nodes: Dictionary = {}  ## Vector2i → MeshInstance3D
-## DIAG-21 step 2 — the chunks the last blast commit touched, so the soot and light
-## beats that follow recolour the same geometry.
+## The chunks and levels the last blast commit touched, so the soot and light beats
+## that follow re-upload the same levels.
 var _blast_chunks: Dictionary = {}
+var _blast_levels: Dictionary = {}
 var _material_ids: PackedStringArray = PackedStringArray()
 var _material_index: Dictionary = {}
 var _material_glass: Array[bool] = []
@@ -122,6 +158,13 @@ var _tone: Array[float] = []
 var _px_per_unit: float = 1.0
 var _origin_2d: Vector2 = Vector2.ZERO
 var _to_gu: Transform2D = Transform2D.IDENTITY
+var _plane: Texture2DArray = null
+var _level_min: int = 0
+var _level_max: int = -1
+## Per-remesh phase clocks (usec), reset by _remesh().
+var _t_collect: int = 0
+var _t_merge: int = 0
+var _t_commit: int = 0
 
 
 ## Build the whole board. `cell_to_world` is Room's own GU-centre → 2D world point
@@ -134,6 +177,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	var counts: Dictionary = _collect()
 	var t1: int = Time.get_ticks_usec()
 	_read_look()
+	_build_plane()
 	_make_camera()
 	var quads: int = 0
 	var faces: int = 0
@@ -148,13 +192,14 @@ func build(room: Node, cell_to_world: Callable) -> void:
 		"column_voxels": counts["columns"], "slab_voxels": counts["slabs"],
 		"cells_2d": cells_2d, "faces": faces, "quads": quads, "chunks": _by_chunk.size(),
 		"materials": _material_ids.size(), "collect_ms": float(t1 - t0) / 1000.0,
-		"mesh_ms": float(t2 - t1) / 1000.0,
-		"light": "field" if _light_field() != null else "unavailable",
+		"mesh_ms": float(t2 - t1) / 1000.0, "plane_levels": _level_max - _level_min + 1,
+		"skip_2d_writes": VoxelRenderer.SKIP_BOARD_WRITES,
 	}
-	print("[BOARD3D] %d voxel(s) (slices %d, columns %d, slabs %d; the 2D board holds %d cell(s)) → %d face(s) → %d quad(s) in %d chunk(s), %d material(s); collect %.0f ms, mesh %.0f ms, light %s"
+	print("[BOARD3D] %d voxel(s) (slices %d, columns %d, slabs %d; the 2D board holds %d cell(s)) → %d face(s) → %d quad(s) in %d chunk(s), %d material(s), plane levels %d..%d; collect %.0f ms, mesh %.0f ms; skip 2D writes %s"
 		% [fields["voxels"], fields["slice_voxels"], fields["column_voxels"],
 		fields["slab_voxels"], cells_2d, faces, quads, fields["chunks"],
-		fields["materials"], fields["collect_ms"], fields["mesh_ms"], fields["light"]])
+		fields["materials"], _level_min, _level_max, fields["collect_ms"],
+		fields["mesh_ms"], VoxelRenderer.SKIP_BOARD_WRITES])
 	Telemetry.event("board3d.built", fields)
 
 
@@ -204,16 +249,17 @@ func _put(grid: Vector2i, level: int, material_id: String) -> void:
 		_shader_materials.append(_make_material(material_id))
 	var key := Vector3i(grid.x, level, grid.y)
 	if not _occ.has(key):
-		var chunk := Vector2i(floori(float(grid.x) / float(CHUNK_VOXELS)),
-			floori(float(grid.y) / float(CHUNK_VOXELS)))
+		var chunk: Vector2i = _chunk_of(key)
 		if not _by_chunk.has(chunk):
 			_by_chunk[chunk] = {}
 		(_by_chunk[chunk] as Dictionary)[key] = true
+		if _level_max < _level_min:
+			_level_min = level
+			_level_max = level
+		else:
+			_level_min = mini(_level_min, level)
+			_level_max = maxi(_level_max, level)
 	_occ[key] = _material_index[material_id]
-
-
-func _light_field() -> VoxelLightField:
-	return _room._voxel_light_field
 
 
 ## The 2D path's own look terms, read from the live renderer and its face shader.
@@ -237,29 +283,63 @@ func _read_look() -> void:
 			_tone[i] = tone
 
 
-## The light and soot of one face. DIAG-21 step 2: read from the 2D renderer's cell
-## plane — the bucket and soot code the 2D board is showing at this instant — because
-## a detonation's cooked light is applied to that plane (`apply_light_field_cells`),
-## not to `Room._voxel_light_field`, which stays pre-blast. The field is the fallback
-## for a cell the plane has never written. While the 2D path still runs underneath,
-## this is what keeps the two boards showing the same thing.
-func _face_colour(key: Vector3i, dir: int) -> int:
-	var cell := Vector2i(key.x, key.z)
+## One Texture2DArray layer per occupied level, filled from the 2D renderer's cell
+## plane for that level (or a clean, unwritten plane when the renderer has none), and
+## every opaque material pointed at it.
+func _build_plane() -> void:
 	var renderer: VoxelRenderer = _room._voxel_renderer
-	var f: float = _tone[dir]
-	var bucket: int = renderer.cell_bucket_at(key.y, cell)
-	var field: VoxelLightField = _light_field()
-	if bucket == VoxelRenderer.BUCKET_UNWRITTEN:
-		bucket = field.bucket_for(cell, key.y) if field != null else _light_ladder.size() - 1
-	f *= _light_ladder[clampi(bucket, 0, _light_ladder.size() - 1)]
-	var soot: Vector3i = VoxelLightField.decode_face_soot(renderer.cell_soot_at(key.y, cell))
-	var ring: int = [soot.x, soot.y, soot.z][dir]
-	if ring < BlastCalculator.FACE_SOOT_CLEAN:
-		f *= _soot_mult[ring]
-	var rel: int = renderer.relative_level(key.y)
-	if rel < 0:
-		f *= VoxelRenderer.FLOOR_DEPTH_DIM[mini(-rel - 1, VoxelRenderer.FLOOR_DEPTH_DIM.size() - 1)]
-	return clampi(roundi(f * 255.0), 0, 255)
+	var images: Array[Image] = []
+	for level in range(_level_min, _level_max + 1):
+		images.append(_plane_image(level))
+	_plane = Texture2DArray.new()
+	var err: int = _plane.create_from_images(images)
+	if err != OK:
+		push_error("[Board3DLive] Texture2DArray.create_from_images failed (%s) — faces will read full light, no soot" % error_string(err))
+	var ladder := PackedFloat32Array(_light_ladder)
+	var dims := PackedFloat32Array(VoxelRenderer.FLOOR_DEPTH_DIM)
+	var rel_offset: int = renderer.relative_level(_ground_level) - _ground_level
+	for i: int in range(_shader_materials.size()):
+		if _material_glass[i]:
+			continue
+		var m: ShaderMaterial = _shader_materials[i]
+		m.set_shader_parameter("cell_plane", _plane)
+		m.set_shader_parameter("level_base", _level_min)
+		m.set_shader_parameter("level_count", _level_max - _level_min + 1)
+		m.set_shader_parameter("mesh_ground_level", _ground_level)
+		m.set_shader_parameter("rel_offset", rel_offset)
+		m.set_shader_parameter("plane_origin", VoxelRenderer.SOOT_PLANE_ORIGIN)
+		m.set_shader_parameter("plane_size", VoxelRenderer.SOOT_TEX_SIZE)
+		m.set_shader_parameter("bucket_lum", ladder)
+		m.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
+		m.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
+		m.set_shader_parameter("depth_dim", dims)
+
+
+func _plane_image(level: int) -> Image:
+	var image: Image = (_room._voxel_renderer as VoxelRenderer).cell_plane_image(level)
+	if image != null:
+		return image
+	var blank := Image.create(VoxelRenderer.SOOT_TEX_SIZE, VoxelRenderer.SOOT_TEX_SIZE,
+		false, Image.FORMAT_RG8)
+	blank.fill(Color8(VoxelRenderer.FACE_SOOT_CODE_CLEAN, VoxelRenderer.BUCKET_UNWRITTEN, 0, 255))
+	return blank
+
+
+## Re-upload the plane layers for these levels — the whole cost of a soot or light
+## change on this board.
+func _sync_levels(levels: Dictionary, reason: String) -> void:
+	if _plane == null:
+		return
+	var t0: int = Time.get_ticks_usec()
+	var uploaded: int = 0
+	for level: int in levels:
+		if level < _level_min or level > _level_max:
+			continue
+		_plane.update_layer(_plane_image(level), level - _level_min)
+		uploaded += 1
+	var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	print("[BOARD3D] recolour %s — %d level(s) uploaded in %.1f ms" % [reason, uploaded, ms])
+	Telemetry.event("board3d.recolour", {"reason": reason, "levels": uploaded, "ms": ms})
 
 
 func _count_2d_cells() -> int:
@@ -272,17 +352,19 @@ func _count_2d_cells() -> int:
 	return cells
 
 
-# ── detonation (DIAG-21 step 2) ───────────────────────────────────────────────
+# ── detonation (DIAG-21 step 2 / 2c) ──────────────────────────────────────────
 
 ## The presenter's commit frame: the frame the 2D board shows the blast's damage.
-## Folds every touched voxel's new visibility into the occupancy and rebuilds the
-## chunks whose faces can have changed.
+## Folds every touched voxel's new visibility into the occupancy, rebuilds the chunks
+## whose faces can have changed, and uploads the levels the commit wrote soot into.
 func on_blast_commit(delta) -> void:
 	var t0: int = Time.get_ticks_usec()
 	_blast_chunks = {}
+	_blast_levels = {}
 	for voxel: Voxel in delta.touched_voxels:
 		var key := Vector3i(voxel.grid_pos.x, voxel.level, voxel.grid_pos.y)
 		var chunk: Vector2i = _chunk_of(key)
+		_blast_levels[voxel.level] = true
 		if voxel.visible:
 			var material_id: String = _material_for(voxel)
 			if material_id.is_empty():
@@ -296,36 +378,46 @@ func on_blast_commit(delta) -> void:
 		## its −Z neighbour, which live in the previous chunk at a chunk boundary.
 		_blast_chunks[_chunk_of(key - Vector3i(1, 0, 0))] = true
 		_blast_chunks[_chunk_of(key - Vector3i(0, 0, 1))] = true
+	## The deep floor a blast reveals sits one level down; its plane row was written too.
+	for level: int in _blast_levels.keys():
+		_blast_levels[level - 1] = true
 	var t1: int = Time.get_ticks_usec()
 	_remesh(_blast_chunks, "commit", delta.touched_voxels.size(), float(t1 - t0) / 1000.0)
+	_sync_levels(_blast_levels, "commit")
 
 
-## After the soot fade: the same geometry, recoloured with the settled scorch.
+## After the soot fade: the same levels, re-uploaded with the settled scorch.
 func on_blast_soot() -> void:
-	_remesh(_blast_chunks, "soot", 0, 0.0)
+	_sync_levels(_blast_levels, "soot")
 
 
-## After the consequence light: every chunk holding a cell whose light moved, plus the
-## blast's own chunks.
+## After the consequence light: the blast's levels plus every level holding a cell
+## whose light moved.
 func on_blast_light(delta) -> void:
-	var chunks: Dictionary = _blast_chunks.duplicate()
+	var levels: Dictionary = _blast_levels.duplicate()
 	if delta != null:
 		for k: Vector3i in delta.light_changed_cells:
 			## light_changed_cells keys are (cell.x, cell.y, level).
-			chunks[_chunk_of(Vector3i(k.x, k.z, k.y))] = true
-	_remesh(chunks, "light", 0, 0.0)
+			levels[k.z] = true
+	_sync_levels(levels, "light")
 
 
 func _remesh(chunks: Dictionary, reason: String, voxels: int, fold_ms: float) -> void:
+	_t_collect = 0
+	_t_merge = 0
+	_t_commit = 0
 	var t0: int = Time.get_ticks_usec()
 	var quads: int = 0
 	for chunk: Vector2i in chunks:
 		quads += _build_chunk(chunk).y
 	var mesh_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
-	print("[BOARD3D] remesh %s — %d chunk(s), %d quad(s), %d voxel(s) folded in %.1f ms, mesh %.1f ms"
-		% [reason, chunks.size(), quads, voxels, fold_ms, mesh_ms])
+	print("[BOARD3D] remesh %s — %d chunk(s), %d quad(s), %d voxel(s) folded in %.1f ms, mesh %.1f ms (faces %.1f · merge %.1f · upload %.1f)"
+		% [reason, chunks.size(), quads, voxels, fold_ms, mesh_ms,
+		float(_t_collect) / 1000.0, float(_t_merge) / 1000.0, float(_t_commit) / 1000.0])
 	Telemetry.event("board3d.remesh", {"reason": reason, "chunks": chunks.size(),
-		"quads": quads, "voxels": voxels, "fold_ms": fold_ms, "mesh_ms": mesh_ms})
+		"quads": quads, "voxels": voxels, "fold_ms": fold_ms, "mesh_ms": mesh_ms,
+		"faces_ms": float(_t_collect) / 1000.0, "merge_ms": float(_t_merge) / 1000.0,
+		"upload_ms": float(_t_commit) / 1000.0})
 
 
 func _chunk_of(key: Vector3i) -> Vector2i:
@@ -352,7 +444,8 @@ func _material_for(voxel: Voxel) -> String:
 
 ## Returns Vector2i(faces emitted, quads after merging).
 func _build_chunk(chunk: Vector2i) -> Vector2i:
-	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material * 256 + colour}
+	var t0: int = Time.get_ticks_usec()
+	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material}
 	var faces: int = 0
 	for key: Vector3i in (_by_chunk.get(chunk, {}) as Dictionary):
 		var material: int = _occ[key]
@@ -375,13 +468,15 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 				uv = Vector2i(key.x, key.y)
 			if not planes.has(plane_key):
 				planes[plane_key] = {}
-			(planes[plane_key] as Dictionary)[uv] = material * 256 + _face_colour(key, dir)
+			(planes[plane_key] as Dictionary)[uv] = material
 			faces += 1
+	var t1: int = Time.get_ticks_usec()
 
 	var surfaces: Dictionary = {}  ## material → SurfaceData
 	var quads: int = 0
 	for plane_key: Vector2i in planes:
 		quads += _merge_plane(plane_key.x, plane_key.y, planes[plane_key], surfaces)
+	var t2: int = Time.get_ticks_usec()
 
 	var mesh := ArrayMesh.new()
 	for material: int in surfaces:
@@ -390,7 +485,6 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = surface.vertices
 		arrays[Mesh.ARRAY_NORMAL] = surface.normals
-		arrays[Mesh.ARRAY_COLOR] = surface.colours
 		arrays[Mesh.ARRAY_TEX_UV] = surface.uvs
 		arrays[Mesh.ARRAY_INDEX] = surface.indices
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
@@ -406,11 +500,15 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(instance)
 		_chunk_nodes[chunk] = instance
+	var t3: int = Time.get_ticks_usec()
+	_t_collect += t1 - t0
+	_t_merge += t2 - t1
+	_t_commit += t3 - t2
 	return Vector2i(faces, quads)
 
 
 ## Greedy rectangles over one plane's faces: grow along u, then along v, while every
-## cell carries the same material and quantised colour.
+## cell carries the same material.
 func _merge_plane(dir: int, plane: int, cells: Dictionary, surfaces: Dictionary) -> int:
 	var keys: Array = cells.keys()
 	keys.sort()
@@ -436,14 +534,13 @@ func _merge_plane(dir: int, plane: int, cells: Dictionary, surfaces: Dictionary)
 		for j: int in range(h):
 			for i: int in range(w):
 				done[start + Vector2i(i, j)] = true
-		@warning_ignore("integer_division")
-		_emit_quad(dir, plane, start, w, h, value / 256, value % 256, surfaces)
+		_emit_quad(dir, plane, start, w, h, value, surfaces)
 		quads += 1
 	return quads
 
 
 func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material: int,
-		colour: int, surfaces: Dictionary) -> void:
+		surfaces: Dictionary) -> void:
 	if not surfaces.has(material):
 		surfaces[material] = SurfaceData.new()
 	var surface: SurfaceData = surfaces[material]
@@ -483,7 +580,7 @@ func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material:
 		else:
 			uv = Vector2(corner.x, -corner.y)
 		face_uvs.append(uv / FACADE_SPAN_VOXELS)
-	surface.add_quad(corners, unit, DIR_NORMAL[dir], float(colour) / 255.0, face_uvs)
+	surface.add_quad(corners, unit, DIR_NORMAL[dir], face_uvs)
 
 
 # ── look ──────────────────────────────────────────────────────────────────────

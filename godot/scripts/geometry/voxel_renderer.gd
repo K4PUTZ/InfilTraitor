@@ -661,6 +661,15 @@ static func _initial_bucket_luminance() -> Array[float]:
 ## change and re-running, and every future light-path measurement wants it.
 static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") != "0"
 
+## DIAG-21 step 2c (DEVICE_DIAGNOSTICS §15.10) — `SKIP_2D_BOARD_WRITES=1`, an
+## INSTRUMENT that is only meaningful with `RENDER3D=1`: a detonation keeps writing the
+## cell planes (the soot/bucket images the 3D board reads its colours from) and skips
+## everything that only the hidden 2D board would draw — `set_cell` / `erase_cell`,
+## tile-alternative minting, the plane texture uploads and the glass refreshes. Set by
+## DevFlags. ⚠️ The 2D layers go stale around a crater, so a later cook that reads
+## live layer cells for render information reads the pre-blast board there.
+static var SKIP_BOARD_WRITES: bool = false
+
 
 ## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.
 ##
@@ -3988,6 +3997,12 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 		if layer == null:
 			continue
 		var cell := Vector2i(key.x, key.y)
+		if SKIP_BOARD_WRITES:
+			## DIAG-21 2c: the planes only. The layer was never updated by the commit, so
+			## its source id says nothing about the cell — write every visited key.
+			_write_cell_soot(level, cell, field.face_soot_code(cell, level))
+			_write_cell_bucket(level, cell, field.bucket_for(cell, level))
+			continue
 		var source_id: int = layer.get_cell_source_id(cell)
 		if source_id == -1:
 			continue   ## erased — destroyed, or ghosted and handled below
@@ -4727,6 +4742,13 @@ func cell_bucket_at(level: int, cell: Vector2i) -> int:
 ## What the plane currently says about one cell. The plan builder needs it to
 ## decide whether a blast changes a cell's scorch at all, now that the answer is
 ## no longer visible in the alternative id.
+## DIAG-21 — the RG8 cell plane image of one level (R = face soot code, G = light
+## bucket), or null when the level has none. The 3D board uploads these into its
+## Texture2DArray; read-only by contract.
+func cell_plane_image(level: int) -> Image:
+	return _soot_images.get(level)
+
+
 func cell_soot_at(level: int, cell: Vector2i) -> int:
 	var p := cell + SOOT_PLANE_ORIGIN
 	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
@@ -5016,6 +5038,10 @@ func debug_layer_origin_drift() -> Array:
 
 
 func flush_cell_soot() -> int:
+	if SKIP_BOARD_WRITES:
+		## DIAG-21 2c: no 2D board draws these textures; the images stay written.
+		_soot_dirty.clear()
+		return 0
 	if _soot_dirty.is_empty():
 		return 0
 	var n: int = 0

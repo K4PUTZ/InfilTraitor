@@ -24,6 +24,12 @@
 ##                                        (the external files dir on Android)
 ##   drop2d                               DIAG-23 instrument: clear the hidden 2D
 ##                                        board's cells under a 3D board (RENDER3D=1)
+##   probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the
+##                                        voxel state to probes/<name>.txt (same dir
+##                                        as capture); compare with board_probe.py
+##   alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count>
+##                                        `Voxel` objects / packed int32 cells / bytes
+##                                        until quit, for --mem-poll to read
 ##   quit                                end the process (the harness waits on it)
 ##
 ## EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer
@@ -41,8 +47,10 @@ extends Node
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
+	"probe": 1, "alloc": 2,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
+const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
 
 
 ## `{"steps": Array, "error": String}` — `error` is empty exactly when the whole
@@ -125,14 +133,21 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture":
+		"capture", "probe":
 			if not arg.is_valid_filename() or arg.contains("."):
-				return "capture takes a file name (letters, digits, _ or -)"
+				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
 		"detonate":
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "detonate takes a dev grenade index >= 0"
 			step["index"] = int(arg)
+		"alloc":
+			if not ALLOC_KINDS.has(arg):
+				return "alloc takes objects, packed or bytes"
+			if not tokens[2].is_valid_int() or int(tokens[2]) <= 0:
+				return "alloc takes a count > 0"
+			step["kind"] = arg
+			step["count"] = int(tokens[2])
 	return ""
 
 
@@ -167,16 +182,21 @@ func _execute(room: Node, step: Dictionary) -> bool:
 		"capture":
 			await RenderingServer.frame_post_draw
 			var image: Image = room.get_viewport().get_texture().get_image()
-			var dir: String = DevFlags.external_files_dir()
-			if dir.is_empty():
-				dir = ProjectSettings.globalize_path("user://")
-			var path: String = "%s/captures/%s.png" % [dir.trim_suffix("/"), step["name"]]
-			DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+			var path: String = _output_path("captures", "%s.png" % step["name"])
 			var err: int = image.save_png(path)
 			if err != OK:
 				return _fail(step, "could not save %s (error %d)" % [path, err])
 			Telemetry.event("scenario.capture", {"path": path})
 			print("[SCENARIO] captured %s" % path)
+		"probe":
+			if not room.has_method("scenario_board_probe"):
+				return _fail(step, "Room has no scenario_board_probe()")
+			var probe_path: String = _output_path("probes", "%s.txt" % step["name"])
+			var summary: Dictionary = room.call("scenario_board_probe", probe_path, step["name"])
+			if summary.is_empty():
+				return _fail(step, "no dump was written (see the error above)")
+		"alloc":
+			_alloc(step)
 		"detonate":
 			if not room.has_signal("scenario_detonation_done") or not room.has_method("scenario_detonate"):
 				return _fail(step, "Room has no scenario_detonate()")
@@ -203,3 +223,70 @@ func _execute(room: Node, step: Dictionary) -> bool:
 func _fail(step: Dictionary, detail: String) -> bool:
 	push_error("[ScenarioRunner] step '%s': %s" % [step["text"], detail])
 	return false
+
+
+## Where a step's file goes, its directory created: the app's external files dir on
+## Android (the one place `adb pull` and a release APK both reach), `user://` elsewhere.
+func _output_path(subdir: String, file_name: String) -> String:
+	var dir: String = DevFlags.external_files_dir()
+	if dir.is_empty():
+		dir = ProjectSettings.globalize_path("user://")
+	var path: String = "%s/%s/%s" % [dir.trim_suffix("/"), subdir, file_name]
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	return path
+
+
+## What `alloc` allocated, held for the life of the runner, so the memory stays in the
+## process through every later `wait` and `mark` until `quit`.
+var _held: Array = []
+
+
+## RENDER3D R3D-0 — the per-object cost of a `Voxel`, measured on the device.
+##
+## - `objects` holds N real `Voxel`s in typed arrays of 64, the way `Slice` and `Slab`
+##   hold them.
+## - `packed` holds the same count as one `PackedInt32Array`, written — what a packed
+##   store pays for a 4-byte cell.
+## - `bytes` holds N bytes, written: the POSITIVE control. PSS moves in pages and a poll
+##   is noisy, and `packed`'s ~0.8 MB for PLAYGROUND sits inside that noise, so it can
+##   only show the instrument does not invent memory. A known size shows it sees memory
+##   at all.
+##
+## ⚠️ `OS.get_static_memory_usage()` reads 0 on an Android release build — a null
+## instrument, not a zero — so it is printed only when it reads something. On the
+## device the number is `device_run.py --mem-poll` across the step's marks.
+func _alloc(step: Dictionary) -> void:
+	var count: int = int(step["count"])
+	var static_before: int = OS.get_static_memory_usage()
+	var t0: int = Time.get_ticks_usec()
+	match str(step["kind"]):
+		"objects":
+			var chunk: Array[Voxel] = []
+			for i in range(count):
+				chunk.append(Voxel.new(Vector2i(i, 0), 0, null))
+				if chunk.size() == 64:
+					_held.append(chunk)
+					chunk = []
+			if not chunk.is_empty():
+				_held.append(chunk)
+		"packed":
+			var cells := PackedInt32Array()
+			cells.resize(count)
+			cells.fill(1)
+			_held.append(cells)
+		"bytes":
+			var raw := PackedByteArray()
+			raw.resize(count)
+			raw.fill(1)
+			_held.append(raw)
+	var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+	var static_after: int = OS.get_static_memory_usage()
+	var delta: int = -1
+	var delta_text: String = "static memory unavailable (reads 0)"
+	if static_before > 0 or static_after > 0:
+		delta = static_after - static_before
+		delta_text = "static memory %+.1f MB, %.0f B per item" \
+			% [float(delta) / 1048576.0, float(delta) / float(count)]
+	print("[SCENARIO] alloc %s %d — %.0f ms, %s" % [step["kind"], count, ms, delta_text])
+	Telemetry.event("scenario.alloc",
+		{"kind": step["kind"], "count": count, "ms": ms, "static_delta": delta})

@@ -4765,6 +4765,15 @@ func cell_plane_image(level: int) -> Image:
 	return _soot_images.get(level)
 
 
+## RENDER3D R3D-0 — every level that holds a cell plane, sorted. `BoardProbe` dumps
+## them all; `level_keys()` lists LAYERS, and a plane is created by its writers, not by
+## a layer, so the two sets are not assumed to be the same.
+func cell_plane_levels() -> Array:
+	var out: Array = _soot_images.keys()
+	out.sort()
+	return out
+
+
 ## DIAG-23 (DEVICE_DIAGNOSTICS §15.15) — an INSTRUMENT for the 2D-vs-3D memory
 ## comparison, reached only through `Room.scenario_drop_2d_board()` with a 3D board
 ## built. Every cell of every opaque and glass layer is cleared, so the memory the

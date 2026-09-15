@@ -46,6 +46,7 @@ const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapn
 const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
 const Board3DLiveClass = preload("res://godot/scripts/spikes/board3d_live.gd")
+const BoardProbeClass = preload("res://godot/scripts/systems/board_probe.gd")
 const WorldRenderScaleClass = preload("res://godot/scripts/systems/world_render_scale.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
 const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd")
@@ -2957,6 +2958,36 @@ func scenario_drop_2d_board() -> bool:
 		dropped["ms"]])
 	Telemetry.event("board2d.dropped", dropped)
 	return true
+
+
+## RENDER3D R3D-0 — the `probe` scenario step: a `BoardProbe` dump of every voxel
+## container and every cell plane, written to `path`. Returns the summary, or `{}`
+## after the error is reported. Reads the simulation's own record, never a tile, so it
+## judges both boards and outlives the 2D one.
+func scenario_board_probe(path: String, label: String) -> Dictionary:
+	if _voxel_renderer == null or _edge_registry == null or _slab_registry == null:
+		push_error("[Room] scenario_board_probe: the board is not built (renderer %s, edges %s, slabs %s)"
+			% [_voxel_renderer != null, _edge_registry != null, _slab_registry != null])
+		return {}
+	var planes: Dictionary = {}
+	for level: Variant in _voxel_renderer.cell_plane_levels():
+		planes[level] = _voxel_renderer.cell_plane_image(int(level))
+	var meta: Dictionary = {
+		"map": _dev_flag("MAP", "default"),
+		"perspective": _active_perspective,
+		"world_revision": _world_revision,
+		"board3d": board3d() != null,
+	}
+	var summary: Dictionary = BoardProbeClass.write(path, label, _edge_registry, _slab_registry,
+		_junction_columns, planes, VoxelRenderer.SOOT_PLANE_ORIGIN, meta)
+	if summary.is_empty():
+		return {}
+	print("[BOARD-PROBE] %s — %d voxel(s) in %d container(s) (slice %d, column %d, slab %d), %d plane level(s), %d material(s), %.1f MB, %.0f ms → %s"
+		% [label, summary["voxels"], summary["containers"], summary["slice_voxels"],
+		summary["column_voxels"], summary["slab_voxels"], summary["levels"],
+		summary["materials"], float(summary["bytes"]) / 1048576.0, summary["ms"], path])
+	Telemetry.event("board.probe", summary)
+	return summary
 
 
 ## DIAG-21 — the 3D board over the real registries. The 2D board is hidden, not
@@ -7870,7 +7901,9 @@ func _seed_dev_grenades_if_empty(tag: String) -> void:
 	if _test_zone_controller == null or not _test_zone_controller._grenades.is_empty():
 		return
 	var cells: Array = TEST_ZONE_GRENADE_GUS
-	var env := OS.get_environment("INFILTRAITOR_GRENADE_GUS")
+	## RENDER3D R3D-0 — through DevFlags so the GLASS reference captures can seed their
+	## grenades in the APK too; the environment still wins on desktop.
+	var env := _dev_flag("GRENADE_GUS")
 	if env != "":
 		var parsed: Array = []
 		for pair in env.split(";", false):

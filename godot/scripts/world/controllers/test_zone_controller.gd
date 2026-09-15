@@ -1365,7 +1365,9 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## single frame the prediction actually cost. §4.4's budget can only honestly
 	## be judged on the REAL map (the two unsuspendable phases are both cheap on a
 	## synthetic fixture), so this is the seam that measurement goes through.
-	if OS.get_environment("INFILTRAITOR_PREDICTION_PROFILE") == "1":
+	## DIAG-22 — through DevFlags, so the per-phase profile reaches a release APK (an
+	## environment variable never does). The profile itself is always collected.
+	if room._dev_flag_on("PREDICTION_PROFILE"):
 		print("[P-SLICE] %d step(s) · worst step %.1f ms (phase %s) · total %.1f ms"
 			% [job.steps, job.worst_step_ms, job.worst_step_phase, job.delta.cost_ms])
 		for line in job.profile_lines():

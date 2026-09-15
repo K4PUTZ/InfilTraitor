@@ -1527,6 +1527,19 @@ clock cannot tell a slow frame from an extra one.
 **§4.4's budget question is moot in practice**: the prediction finishes at
 ~+765 ms against a fuse ending ~+2030 ms, and beat 0 (cooking) runs zero frames.
 
+> **⚠️ 2026-09-14 (DEVICE_DIAGNOSTICS §15.13) — two corrections from the Moto g04s.**
+> - **The moot budget question is a desktop result.** On the Moto the cook runs 126–145
+>   frames past the throw, and the scenario path interrupts the pump before
+>   `_warm_prediction()` can run.
+> - **The TileSet rule above has a second caller.** `DamageCompositeCache.store()`, reached
+>   from PHASE_PACKAGE through `resolve_damage_voxel_swap()`, used to `create_tile()` on a
+>   source already in the TileSet. ONE composite stored in a 14.8 ms step made that frame
+>   cost 1 734 ms in 2D and 809 ms with the 2D board hidden. Tiles are now created when the
+>   page is registered, at load (740 ms once on the Moto), and the store is pixels only:
+>   189 ms and 97–115 ms. `COMPOSITE_TILES_UP_FRONT=0` is the old path.
+>   `INFILTRAITOR_THROW_PROFILE=1` now prints a `[T-COOK]` line per slow cook frame, with
+>   what its step did to the TileSet.
+
 ---
 
 ## 11. Verification contract

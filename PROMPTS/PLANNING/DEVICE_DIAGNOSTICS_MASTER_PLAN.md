@@ -1,14 +1,22 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.4
+## Measuring the real build on a real entry-tier phone — v1.5
 
-**Status:** 🟢 **v1.4 — the TEL instruments are built and measuring (2026-09-14).**
+**Status:** 🟢 **v1.5 — the grenade's prediction-cook stall is named and removed (2026-09-14).**
 Where the Moto g04s stands:
 
+- **The cook stall (DIAG-22, §15.13):** one damage composite stored mid-cook created a
+  tile on the TileSet every TileMapLayer shares, and the next frame rebuilt them all —
+  hidden layers included. Tiles are now created when the page is registered at load.
+  Grenade #1's cook frame: **809 → 97–115 ms** (3D, 2D writes skipped) and
+  **1 734 → 189 ms** (2D). Load pays 740 ms once.
+- **The 3D prototype (DIAG-20/21, §15.6–§15.11):** the live board as Godot 3D meshes
+  over the real voxel registries idles at 18 ms against 60 ms in 2D, and with the hidden
+  2D writes skipped grenade #1 plays in 11.2 s against 28.6 s. What is left: the LIGHT
+  step of the cook (234–408 ms) and the commit frame (~270 ms). The render decision is
+  the Director's (§15.12 item 4).
 - **Portrait M, the verdict framing, filling the screen (DIAG-17/18, §10.17–§10.18):**
-  pixel fill was the biggest cost (36–47 ms of GPU). The world now renders at
-  0.75 with the HUD native (TEL-UI-02), and the idle frame at the default zoom is
-  **40.8 ms** — inside the 24 fps floor, outside the 30 fps target. Every zoom
-  below 0.5 is past the floor. The next lever is per-primitive: layers and cells.
+  pixel fill was the biggest cost (36–47 ms of GPU). The world render scale is **1.0**
+  by Director ruling (§10.18 — 0.75 measured 40.8 ms idle but was not kept).
 
 - **Benchmark:** idle frame 18.7 ms, render gpu 16.9 ms, detonations ~26–29 /
   ~32–33 ms — above the 24–25 fps floor (DIAG-12 §10.11, DIAG-14 §10.14).
@@ -2585,3 +2593,76 @@ boot. Six boots interleaved 2D / 3D / 3D+skip, twice; no segment touched. Logs (
    render path retires the 2D board's writes, and with them canon rule 8, B1/B3/B5 and the
    detonation plan's tile-shaped entries (§15.7). That is the Director's call, and these
    tables are its evidence.
+
+### 15.13 ✅ DIAG-22 MEASURED — the cook stall was one TileSet mutation, and it is gone
+
+**The question (§15.12 item 1):** grenade #1's worst frame on the Moto sat inside the
+prediction cook, but no step of the cook was that long.
+
+**DIAG-22 — the per-phase profile on the APK** (`PREDICTION_PROFILE` through DevFlags,
+commit `84bd063f`, APK `1388e819…`, boots p1–p3). Grenade #1's worst frame is **always
+cook frame 117**: 1 866 ms in 2D, 682–709 ms in 3D with the 2D writes skipped. Its
+worst STEP is LIGHT at 234–305 ms, and the other late phases' worst visits are SOOT
+200 ms and PACKAGE 98 ms. So most of that frame is paid outside `job.step()`.
+
+Two suspects fell on the logs, not on reasoning:
+- **The warm-up (`_warm_prediction`) is not in this path.** The scenario's pump is
+  interrupted at `blast.start` (`PUMP ends` at f0), so the warm never runs and the
+  126 frames that follow are the cook loop in `_start_detonation_sequence`.
+- **The `[BAKE] Disk cache HIT` lines are boot**, 40 s before `detonate 0`.
+
+**DIAG-22b — the trace that names it (desktop).** `THROW_PROFILE` now reaches the APK,
+and the cook loop prints `[T-COOK]` for every slow frame, with the step's phases and what
+the step did to the shared TileSet: composites stored, composite pages, light
+alternatives. On grenade #1 one PACKAGE step stores **ONE** damage composite, in 14.8 ms.
+`DamageCompositeCache.store()` then calls `create_tile()` on a source that is already in
+the TileSet — a TileSet mutation — and the frame that follows rebuilds every TileMapLayer,
+hidden ones included. That frame: **217.8 ms in 2D, 86.3 ms in 3D+skip**. Grenade #0
+stores none and has no slow cook frame.
+
+**The fix:** `register_damage_composite_page()` creates every slot's tile (3 584 on a
+2048² page) BEFORE the source joins the TileSet, so a later `store()` only blits
+pixels. `COMPOSITE_TILES_UP_FRONT=0` is the old lazy path, kept so one APK measures
+both sides. `damage_composite_cache_selftest` [8] pins the property against a control:
+the lazy path's store changes the TileSet 2 times, the up-front store 0 times.
+
+**DIAG-22c — the matrix.** Moto g04s, APK `09803093…`, portrait zoom 0.5, two
+detonations per boot, five boots interleaved. Logs (local):
+`docs/measurements/device_2026-09-14_moto_g04s_diag22c_*.log`.
+
+| grenade #1 | 3D+skip · up front (a / b) | 3D+skip · lazy | 2D · up front | 2D · lazy |
+|---|---|---|---|---|
+| the cook frame that stores the composite | **96.6 / 114.5 ms** | 809.1 ms | **189.0 ms** | 1 733.5 ms |
+| … of it outside the step | 17.5 / 16.6 ms | 711.3 ms | 30.1 ms | 1 586.5 ms |
+| worst cook frame | 250.1 / 248.0 ms | 821.9 ms | 288.5 ms | 1 800.1 ms |
+| worst frame of the event | 265.3 / 278.9 ms | 821.9 ms | 1 812.9 ms (f134) | 1 800.1 ms |
+| wall clock | 11.1 / 11.2 s | 12.0 s | 26.8 s | 28.6 s |
+
+- **Grenade #0 stores no composite** and is unchanged: its worst frame is the LIGHT step,
+  239–408 ms in every row.
+- **Load cost:** the 3 584 tiles take **740–743 ms** on the Moto (168 ms on desktop),
+  once, inside a 15.3 s bake.
+
+**What it says:**
+- **The lazy tile was the whole cook stall:** ~700 ms with the 2D board hidden, ~1.6 s with
+  it drawn. In 3D+skip, grenade #1's worst frame drops **822 → 265–279 ms (−66%)**.
+- **In 2D the event's worst frame does not move** (1 800 → 1 813 ms). The cook stall is
+  gone, but the post-cook 2D rebuild on the soot-fade frame (§15.11) was always the same
+  size, and it is now the worst frame. That is the 2D board, which §15.11 already priced.
+- **A cook frame that stores nothing still costs ~15 ms outside its step in 3D+skip and
+  ~30 ms in 2D.** That is the render, not the cook.
+- ⚠️ **The fix covers one page.** PLAYGROUND loads 447 atoms into 3 584 slots. A map whose
+  blasts overflow into a second page would still add a source mid-game, and that is a
+  TileSet mutation. Nothing measured reaches it.
+
+### 15.14 Proposed next — what remains in the detonation, in order of size
+
+1. **The LIGHT step of the cook (234–408 ms, both grenades).** It is not divisible, and
+   it rebuilds occupancy map-wide per blast (`voxel_renderer.build_occupancy(predict_destroyed)`).
+   `VoxelLightField` reads occupancy only through `.has(cell)`, in `surface_factor`,
+   `_face_occlusion` and `_stale_cells`. So a cached occupancy with an overlay of the
+   predicted-destroyed cells answers the same questions without the rebuild. This is
+   `PREDICTION_MASTER_PLAN` territory.
+2. **The commit frame in 3D (~265–280 ms):** remesh ~125 ms off-thread (§15.12 item 2),
+   then the recolour uploads (item 3).
+3. **The decision (§15.12 item 4)** is unchanged and is the Director's.

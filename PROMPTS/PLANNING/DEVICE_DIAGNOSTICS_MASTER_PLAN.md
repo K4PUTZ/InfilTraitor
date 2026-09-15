@@ -2440,3 +2440,80 @@ path skips the tile placement.
    bucket + soot code; each renderer resolves its own representation.
 5. **Memory** — a 3D path that skips the 2D tile placement, measured against the 2.2 GB
    board.
+
+### 15.9 ✅ DIAG-21 step 2 MEASURED — remesh on detonation: the event halves, and the remesh is the new stall
+
+**Director, 2026-09-14:** *"Vamos seguir."* (§15.8 item 1)
+
+**What was built** (commit `1db0efc0`). The presenter tells the 3D board when the 2D
+board changes, on three beats:
+- **commit frame:** every touched voxel's visibility is folded into the occupancy,
+  with its material read through its container. Its chunk is rebuilt, plus the
+  −X/−Z neighbour chunk where an emptied boundary cell exposes a face;
+- **soot settled:** the same chunks, recoloured;
+- **consequence light:** those chunks plus every chunk holding a light-changed cell.
+
+Face light and soot come from the renderer's cell plane, the state the 2D board shows
+at that instant: the cooked light is applied there, not to `Room._voxel_light_field`.
+⚠️ **The hidden 2D board still does all its writes.** The 3D rows pay for them *and*
+for the remesh.
+
+**The matrix** — Moto g04s, APK `c4d3be35…`, portrait zoom 0.5, blast on screen, two
+detonations per boot. Rows interleaved 2D, 3D, 2D, 3D so thermal drift cannot favour
+a side; no segment touched. Logs (local):
+`docs/measurements/device_2026-09-14_moto_g04s_diag21s2_*.log`.
+
+| | 2D, runs a / b | **3D + remesh, runs a / b** |
+|---|---|---|
+| grenade #0 · wall clock | 23.2 / 23.3 s | **11.0 / 11.3 s** |
+| #0 · mean frame | 90.8 / 92.5 ms | **25.1 / 25.5 ms** |
+| #0 · worst frame | 315 / 322 ms | ⚠️ 428 / 504 ms |
+| #0 · pre-cook (PUMP) | 130 f · 11.5 / 11.4 s | **131–133 f · 3.8 / 4.0 s** |
+| grenade #1 · wall clock | 28.3 / 29.0 s | **12.2 / 12.2 s** |
+| #1 · mean frame | 115.7 / 116.1 ms | **28.3 / 28.2 ms** |
+| #1 · worst frame | 1 811 / 1 857 ms | **961 / 989 ms** |
+| CONSEQUENCE · LIGHT | 91–103 · 90–102 ms/f | **20.6–21.2 · 20.5–21.6 ms/f** |
+
+`[BOARD3D] remesh`, every 3D run — commit / soot / light:
+- grenade #0 (5 chunks): 227–289 / 239–249 / 241 ms;
+- grenade #1 (6 chunks): 238–254 / 238–239 / 235–238 ms.
+
+The two 3D runs' closing captures are pixel-identical: the path is deterministic.
+
+**What it says:**
+- **The whole event is 2.1–2.4× shorter and the mean frame 3.6–4.1× cheaper.** The
+  pre-cook runs the same ~130 frames at the same 14 ms budget, but those frames now
+  cost ~30 ms instead of ~90: 11.5 s becomes 3.9 s. The consequence and light beats
+  sit at ~21 ms per frame, inside the budget.
+- **The remesh is the new single-frame stall.** Each rebuild of 5–6 chunks in GDScript
+  costs ~240 ms on the Moto, three times per blast.
+  - On grenade #0 that made the worst frame *worse*: 315 → 428–504 ms. The commit
+    remesh lands on the same frame as the hidden 2D commit apply (151 ms).
+  - On grenade #1 the old 1.8 s frame fell to ~0.97 s. The hidden 2D TileSet
+    rebuild is still in it.
+- **The look matches.** Paired Moto captures (local):
+  `Screenshots/diag21s2_2026-09-14/pair_after0.png`, `pair_after1.png`. The crater
+  shape, the scorch and the holes in the metal block's wall match 2D.
+  - **Gaps:** no per-voxel rubble detail (decals), a 2D overlay line the voxel floor
+    used to cover now shows, and some roof top faces read dark in 3D where 2D reads
+    them lit. That last one was already visible in step 1's desktop captures;
+    unexplained.
+
+### 15.10 Proposed next — take the two remaining stalls out, in order of certainty
+
+1. **Recolour without rebuilding.** The soot and light beats change no geometry. Give
+   each quad's colour a slot the board can rewrite in place (vertex colours on the
+   existing arrays, or a per-chunk colour texture), so two of the three ~240 ms remeshes
+   become a colour upload.
+2. **Make the one real remesh cheap and non-blocking:** build the chunk's arrays on a
+   `WorkerThreadPool` task from a snapshot of the occupancy, and swap the mesh in on the
+   main thread when it lands. Smaller chunks (16×16 voxels) cut the work per rebuild 4×
+   either way.
+3. **Skip the hidden 2D writes (instrument first).** `SKIP_2D_BOARD_WRITES=1` keeps the
+   cell-plane image writes the 3D colours read from, and skips `set_cell` / `erase_cell`,
+   tile-alternative minting, the soot texture upload and the glass refreshes.
+   - ⚠️ A second detonation's cook reads live layer cells for render information, so
+     near an earlier crater that read would be stale. The damage itself comes from the
+     voxels. The two dev grenades are 5 GU apart; the overlap is small and must be
+     stated with any number.
+4. Then re-run this matrix. The target is a worst detonation frame under 100 ms.

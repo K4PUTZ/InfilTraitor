@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 93570 lines total** (under `godot/scripts/`)
+**254 scripts · 93681 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -505,7 +505,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `damage_composite_cache.gd`
 
-`class_name DamageCompositeCache` · extends `RefCounted` · 175 lines
+`class_name DamageCompositeCache` · extends `RefCounted` · 186 lines
 
 `godot/scripts/geometry/damage_composite_cache.gd`
 
@@ -861,7 +861,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7846 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7862 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2309,7 +2309,7 @@ extends `Node3D` · 362 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 236 lines
+extends `Node` · 240 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3520,7 +3520,7 @@ extends `SceneTree` · 421 lines
 
 ### `damage_composite_cache_selftest.gd`
 
-extends `SceneTree` · 251 lines
+extends `SceneTree` · 291 lines
 
 `godot/scripts/tools/damage_composite_cache_selftest.gd`
 
@@ -3535,6 +3535,7 @@ extends `SceneTree` · 251 lines
 - `var failed: int = 0`
 
 **Public API**
+- `func test_store_leaves_the_tileset_alone() -> void:`
 - `func test_empty_cache_reports_nothing() -> void:`
 - `func test_store_registers_a_real_tile_and_is_idempotent() -> void:`
 - `func test_two_distinct_keys_land_in_distinct_slots_with_correct_pixels() -> void:`
@@ -5314,7 +5315,7 @@ extends `Node2D` · 34 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1615 lines
+`class_name TestZoneController` · 1655 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

@@ -26,6 +26,16 @@ const ATOM_H: int = 36
 const DEFAULT_PAGE_W: int = 2048
 const DEFAULT_PAGE_H: int = 2048
 
+## DIAG-22 — every slot's tile is created when its page is registered, so a later
+## store() blits pixels and marks the page dirty and never touches the TileSet.
+## Creating a tile on a source that is already in the TileSet is a TileSet
+## mutation, and every TileMapLayer (hidden ones included) rebuilds on the frame
+## that follows. Measured on desktop, PLAYGROUND, grenade #1: the prediction cook
+## created ONE composite tile in a 14.8 ms PACKAGE step, and that frame cost
+## 218 ms with the 2D board drawn and 86 ms with it hidden. False is the old lazy
+## path (`COMPOSITE_TILES_UP_FRONT=0`), for measuring both sides in one build.
+static var TILES_UP_FRONT: bool = true
+
 var _renderer: VoxelRenderer
 var _page_w: int
 var _page_h: int
@@ -158,7 +168,8 @@ func get_page_image(page_idx: int) -> Image:
 
 func _add_page() -> void:
 	var page := Image.create(_page_w, _page_h, false, Image.FORMAT_RGBA8)
-	var source_id: int = _renderer.register_damage_composite_page(page)
+	var source_id: int = _renderer.register_damage_composite_page(page,
+		Vector2i(_cols, _rows) if TILES_UP_FRONT else Vector2i.ZERO)
 	_pages.append(page)
 	_source_ids.append(source_id)
 	_next_slot = 0

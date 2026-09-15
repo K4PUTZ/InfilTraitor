@@ -27,6 +27,7 @@ func _init() -> void:
 	test_page_overflow_allocates_a_second_page()
 	test_reset_clears_everything_and_next_store_starts_fresh()
 	test_prune_baked_sources_drives_the_reset_for_real()
+	test_store_leaves_the_tileset_alone()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -38,6 +39,45 @@ func _init() -> void:
 	else:
 		print("✗ DAMAGE COMPOSITE CACHE SELFTEST FAILED\n")
 		quit(1)
+
+
+## DIAG-22 — the property the device measurement needs, not only the bookkeeping: a
+## store() onto a page that already exists must not change the TileSet, because a
+## TileSet change rebuilds every TileMapLayer on the frame that follows. The old lazy
+## path runs first as the control, so a counter that can never fire cannot pass.
+func test_store_leaves_the_tileset_alone() -> void:
+	print("[8] store() onto an existing page leaves the TileSet unchanged (DIAG-22)\n")
+	var saved: bool = DamageCompositeCacheClass.TILES_UP_FRONT
+	for up_front: bool in [false, true]:
+		DamageCompositeCacheClass.TILES_UP_FRONT = up_front
+		var renderer := _new_renderer()
+		var cache := renderer.get_damage_composite_cache()
+		cache.store("first", _solid_atom(Color.RED))
+		var changes: Array[int] = [0]
+		var on_changed := func() -> void: changes[0] += 1
+		renderer._tileset.changed.connect(on_changed)
+		var entry := cache.store("second", _solid_atom(Color.GREEN))
+		renderer._tileset.changed.disconnect(on_changed)
+		var source := renderer._tileset.get_source(int(entry["source_id"])) as TileSetAtlasSource
+		var tile_there: bool = source != null \
+			and source.get_tile_at_coords(entry["atlas_coords"]) == entry["atlas_coords"]
+		if up_front:
+			if changes[0] == 0 and tile_there and cache.page_count() == 1:
+				_pass("up front: the second store() changed the TileSet 0 times, and its tile exists at %s"
+					% entry["atlas_coords"])
+			else:
+				_fail("up front: the second store() changed the TileSet %d time(s), tile at %s exists=%s"
+					% [changes[0], entry["atlas_coords"], tile_there])
+		else:
+			if changes[0] > 0 and tile_there:
+				_pass("control, lazy path: the second store() changed the TileSet %d time(s), so the counter sees a mutation"
+					% changes[0])
+			else:
+				_fail("control, lazy path: the second store() changed the TileSet %d time(s), tile exists=%s; the counter cannot tell the two paths apart"
+					% [changes[0], tile_there])
+		renderer.queue_free()
+	DamageCompositeCacheClass.TILES_UP_FRONT = saved
+	print("")
 
 
 func _pass(msg: String) -> void:

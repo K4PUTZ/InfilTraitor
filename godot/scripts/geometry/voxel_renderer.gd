@@ -1309,10 +1309,26 @@ func get_damage_composite_cache() -> DamageCompositeCache:
 ## facade page (one per build_from_layout() pass) and prune_baked_sources()
 ## already removes everything in that list — no second cleanup path to keep
 ## in sync.
-func register_damage_composite_page(page_image: Image) -> int:
+##
+## DIAG-22: `slot_grid` (columns x rows) creates every slot's tile HERE, before the
+## source joins the TileSet, so no store() into this page mutates the TileSet
+## afterwards (DamageCompositeCache.TILES_UP_FRONT has the measurement).
+## Vector2i.ZERO leaves the page empty for create_damage_composite_tile().
+func register_damage_composite_page(page_image: Image, slot_grid: Vector2i = Vector2i.ZERO) -> int:
 	var source := TileSetAtlasSource.new()
 	source.texture = ImageTexture.create_from_image(page_image)
 	source.texture_region_size = Vector2i(32, 36)  # DamageCompositeCache.ATOM_W/H
+	var tiles_t0: int = Time.get_ticks_usec()
+	for row in range(slot_grid.y):
+		for col in range(slot_grid.x):
+			var coords := Vector2i(col, row)
+			source.create_tile(coords)
+			var tile_data: TileData = source.get_tile_data(coords, 0)
+			if tile_data != null:
+				tile_data.texture_origin = GeometryCoords.voxel_texture_origin()
+	if slot_grid.x * slot_grid.y > 0:
+		print_debug("[D33] composite page: %d tile(s) created up front in %.1f ms"
+			% [slot_grid.x * slot_grid.y, float(Time.get_ticks_usec() - tiles_t0) / 1000.0])
 
 	var source_id := _tileset.get_next_source_id()
 	_tileset.add_source(source, source_id)

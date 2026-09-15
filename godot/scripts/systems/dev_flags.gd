@@ -83,6 +83,10 @@ func _ready() -> void:
 	VoxelRenderer.LIGHT_DISABLED = VoxelRenderer.LIGHT_DISABLED or on("NO_LIGHT")
 	## DIAG-21 2c — only meaningful with RENDER3D=1; Room warns otherwise.
 	VoxelRenderer.SKIP_BOARD_WRITES = on("SKIP_2D_BOARD_WRITES")
+	## DIAG-22 — `=0` is the old lazy path (one TileSet mutation per new composite),
+	## kept only so one APK can measure both sides.
+	if value("COMPOSITE_TILES_UP_FRONT", "") == "0":
+		DamageCompositeCache.TILES_UP_FRONT = false
 	## DIAG-19 (§15.2) — detonation ablation knobs, reachable in the APK. Both are
 	## static switches their classes read from the environment alone at class load;
 	## OR-ed / overridden here, so a desktop env var keeps working exactly as before.

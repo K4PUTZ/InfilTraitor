@@ -304,6 +304,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-13_FACE_SHADER.md
 - RESUMO_SESSAO_2026-09-14_PERF_3D.md
 - RESUMO_SESSAO_2026-09-15_MEMORY_2D3D.md
+- RESUMO_SESSAO_2026-09-15_R3D0.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -311,8 +312,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 179
-- Test scripts: 55
+- GDScript modules: 180
+- Test scripts: 56
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

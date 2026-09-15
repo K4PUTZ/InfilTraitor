@@ -2517,3 +2517,71 @@ The two 3D runs' closing captures are pixel-identical: the path is deterministic
      voxels. The two dev grenades are 5 GU apart; the overlap is small and must be
      stated with any number.
 4. Then re-run this matrix. The target is a worst detonation frame under 100 ms.
+
+### 15.11 ✅ DIAG-21 step 2c MEASURED — per-cell colour and skipped 2D writes: the commit is no longer the worst frame
+
+**Director, 2026-09-14:** *"Vamos seguir"* (§15.10 items 1–3). Commit `15ed5890`.
+
+**What changed.**
+- **Light and soot per cell.** The 3D board reads light and soot from a
+  `Texture2DArray` of the 2D renderer's own RG8 cell planes, one layer per level. The
+  fragment finds its voxel from its world position.
+- **Material-only merging.** Faces merge by material alone: 1 617 → 367 quads. The
+  soot and light beats became layer uploads.
+- **`SKIP_2D_BOARD_WRITES=1`, an instrument, only with `RENDER3D=1`.** It keeps the
+  cell-plane image writes and skips `set_cell`/`erase_cell`, alternative minting,
+  texture uploads and the glass refreshes.
+- **Desktop gates:** lint 0 errors, 55 selftests clean. The default 2D path is
+  untouched.
+
+**The matrix** — Moto g04s, APK `633c7c38…`, portrait zoom 0.5, two detonations per
+boot. Six boots interleaved 2D / 3D / 3D+skip, twice; no segment touched. Logs (local):
+`docs/measurements/device_2026-09-14_moto_g04s_diag21c_*.log`.
+
+| | 2D (a / b) | 3D (a / b) | **3D + skip 2D writes (a / b)** |
+|---|---|---|---|
+| #0 · wall clock | 23.1 / 23.0 s | 11.2 / 11.3 s | **11.7 / 11.3 s** |
+| #0 · mean · worst | 90.5 / 90.7 · 318 / 317 ms | 28.4 / 28.7 · 333 / 342 ms | **28.7 / 28.3 · 419 / 313 ms** |
+| #1 · wall clock | 28.5 / 28.4 s | 12.8 / 12.5 s | **11.8 / 11.9 s** |
+| #1 · mean · worst | 116 / 116 · 1 800 / 1 805 ms | 32.7 / 32.4 · 911 / 904 ms | **30.7 / 30.8 · 825 / 781 ms** |
+| #1 · where the worst frame is | soot-fade frame (2D rebuild) | soot-fade frame | **inside PUMP — one cook step** |
+| #1 · commit frame · first soot-fade frame | 346 · 1 762 ms | 278 · 911 ms | **262–277 · 202–220 ms** |
+| CONSEQUENCE · LIGHT | ~91–103 ms/f | ~25 · 25 ms/f | ~25 · 24 ms/f |
+
+`[BOARD3D]` on the Moto, every 3D run:
+- **commit remesh 118–146 ms** (faces 84–103 · merge 28–30 · upload 2–11), down from
+  227–289 ms in step 2;
+- **each recolour 10–22 ms** for 18 levels;
+- commit apply 65–153 ms in 3D and 24–41 ms with the skip.
+
+**What it says:**
+- **The hidden 2D board's writes cost ~700 ms on grenade #1's soot-fade frame**
+  (911 → 202–220 ms with the skip). That is the 2D TileSet rebuild; no 3D work is in it.
+- **With the 2D writes gone, the detonation's worst frame is not the render anymore.** On
+  grenade #1 it is a single step of the prediction cook inside PUMP (781–825 ms) — the
+  non-divisible step DIAG-19 already saw at ~1.8 s in 2D. The commit frame is now
+  262–277 ms: remesh ~125 ms + apply ~30 ms + recolour ~15 ms.
+- **The picture is unchanged by the skip on this pair:** 3D and 3D+skip captures after
+  grenade #1 are pixel-identical, and run A equals run B. The stale 2D layers the second
+  cook read did not change the damage. Paired capture (local):
+  `Screenshots/diag21c_2026-09-14/pair_skip_after1.png`.
+- ⚠️ **Consequence frames cost ~25 ms against step 2's ~21.** That is the price of the
+  per-fragment plane fetch — inside budget, and not isolated further.
+
+### 15.12 Proposed next — the three stalls left, each already named
+
+1. **The cook step (781–825 ms).** Route `PREDICTION_PROFILE` through `DevFlags`. It
+   prints `[P-SLICE] worst step … (phase X)` and is env-only today, so it is inert on the
+   APK. Then subdivide or pre-compute the phase it names. This is
+   `PREDICTION_MASTER_PLAN` territory: the pipeline is resumable by design, one of its
+   phases is not.
+2. **The commit remesh (~125 ms).** Build the chunk arrays on a `WorkerThreadPool` task
+   from a snapshot and swap the mesh in when it lands. The main thread then pays only the
+   upload, ~2 ms.
+3. **The recolour upload (10–22 ms).** Upload only the rows a blast touched, or keep the
+   plane for the playable levels in one smaller texture.
+4. **The decision this all feeds** (`PERFORMANCE_MASTER_PLAN`). The 3D numbers
+   above still run the full 2D bookkeeping except where the instrument skips it. A real 3D
+   render path retires the 2D board's writes, and with them canon rule 8, B1/B3/B5 and the
+   detonation plan's tile-shaped entries (§15.7). That is the Director's call, and these
+   tables are its evidence.

@@ -238,6 +238,8 @@ def _capture(adb, seconds: int, mem_poll: float = 0.0) -> list[str]:
     tmp.close()
 
     lines: list[str] = []
+    start = time.localtime()
+    start_s = start.tm_hour * 3600 + start.tm_min * 60 + start.tm_sec
     with open(tmp_path, "w") as sink:
         proc = subprocess.Popen(cmd, stdout=sink, stderr=subprocess.STDOUT, text=True)
         deadline = time.time() + seconds
@@ -310,13 +312,25 @@ def _capture(adb, seconds: int, mem_poll: float = 0.0) -> list[str]:
     ## The poll samples are interleaved by timestamp rather than appended, so the
     ## saved log reads as one timeline — which is the whole point of having two
     ## instruments that each see half the footprint.
-    return sorted(lines + log_lines, key=_sort_key)
+    return sorted(lines + log_lines, key=lambda line: _sort_key(line, start_s))
 
 
-def _sort_key(line: str) -> str:
-    """Order by the HH:MM:SS both line shapes carry, whatever else differs."""
-    m = re.search(r"(\d{2}:\d{2}:\d{2})", line)
-    return m.group(1) if m else ""
+def _sort_key(line: str, start_s: int = 0) -> int:
+    """Order by the HH:MM:SS both line shapes carry, whatever else differs.
+
+    ⚠️ A CAPTURE CAN CROSS MIDNIGHT. The key used to be the HH:MM:SS string, so
+    23:59:56 sorted after 00:03:21: DIAG-23's m3 row (2026-09-14) booted at 23:59:56
+    and its whole boot, session header and first memory poll landed at the END of
+    the saved file, inside the last scenario segment. A time more than a minute
+    before the capture started (`start_s`, seconds of the day) belongs to the next
+    day; a run is far shorter than a day, so that is exact. A line with no time
+    still sorts first, as before.
+    """
+    m = re.search(r"(\d{2}):(\d{2}):(\d{2})", line)
+    if not m:
+        return -1
+    s = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + int(m.group(3))
+    return s + 86400 if s < start_s - 60 else s
 
 
 def main() -> int:

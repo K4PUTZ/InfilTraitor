@@ -291,6 +291,10 @@ def memory_polls(lines: list[str]) -> list[dict]:
         if record is not None:
             if record["kind"] == "scenario.mark":
                 mark = str(record.get("label", "?"))
+            elif record["kind"] in ("scenario.end", "scenario.abort"):
+                ## `quit` follows: a poll from here on reads a process tearing down
+                ## (DIAG-23: the last 2D sample fell 90 MB after the quit step).
+                mark = "(after the scenario)"
             continue
         poll = MEM_POLL_RE.search(line)
         if not poll:

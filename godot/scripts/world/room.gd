@@ -2935,6 +2935,30 @@ func board3d() -> Node:
 	return get_node_or_null("Board3DLive")
 
 
+## DIAG-23 (DEVICE_DIAGNOSTICS §15.15) — the `drop2d` scenario step: with a 3D board
+## built, clear the hidden 2D board's cells so `dumpsys meminfo` reads the process
+## before and after in ONE boot. The voxel and glass layers and the structure layer are
+## cleared; the floor layer keeps its cells, because selection, the movement overlay and
+## `ViewContext` read them. An instrument, and one-way — see
+## `VoxelRenderer.debug_drop_board_cells()`.
+func scenario_drop_2d_board() -> bool:
+	if board3d() == null:
+		push_error("[Room] scenario_drop_2d_board: no 3D board — drop2d needs RENDER3D=1, or nothing would draw the board")
+		return false
+	var t0: int = Time.get_ticks_usec()
+	var dropped: Dictionary = _voxel_renderer.debug_drop_board_cells()
+	dropped["structure_cells"] = structure_layer.get_used_cells().size()
+	structure_layer.clear()
+	dropped["floor_cells_kept"] = floor_layer.get_used_cells().size()
+	dropped["ms"] = float(Time.get_ticks_usec() - t0) / 1000.0
+	print("[BOARD3D] dropped the hidden 2D board — %d opaque cell(s) in %d layer(s), %d glass cell(s) in %d layer(s), %d structure cell(s); floor layer keeps %d; %.0f ms"
+		% [dropped["opaque_cells"], dropped["opaque_layers"], dropped["glass_cells"],
+		dropped["glass_layers"], dropped["structure_cells"], dropped["floor_cells_kept"],
+		dropped["ms"]])
+	Telemetry.event("board2d.dropped", dropped)
+	return true
+
+
 ## DIAG-21 — the 3D board over the real registries. The 2D board is hidden, not
 ## removed: every 2D system keeps running, so only its drawing leaves the frame.
 func _start_board3d_live() -> void:

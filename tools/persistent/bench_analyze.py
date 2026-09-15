@@ -17,6 +17,9 @@ WHAT IT REPORTS, and why each one is there:
     free sequence number, so a gap is a counted loss rather than a silent one.
   * One row per `scenario.mark` segment: the median of each `frame.window` column
     inside it, with the framing and the zoom it was read under.
+  * DIAG-23 — one row per segment of `[MEM-POLL]` samples (`device_run.py
+    --mem-poll`): first · median · last, never the median alone, because the OS
+    keeps paging an idle process out and a median would hide that drift.
 
 ⚠️ THE WINDOW THAT STRADDLES A CHANGE IS DROPPED BY ARITHMETIC, NOT BY HABIT. A
 `frame.window` record is written when its window CLOSES and says how many frames
@@ -260,6 +263,72 @@ def detonation_table(dets: list[dict]) -> None:
             beat(d, "LIGHT", per_frame)))
 
 
+## DIAG-23 — `device_run.py --mem-poll` writes `dumpsys meminfo` samples into the same
+## saved log, in time order with the logcat lines, so each `[MEM-POLL]` belongs to the
+## scenario mark last seen above it. Values are kB. The Native Heap row's columns are
+## Pss, Private Dirty, Private Clean, SwapPss Dirty, Rss, Heap Size, Heap Alloc, Heap
+## Free — the summary's `Native Heap:` (with a colon) is a different row.
+MEM_POLL_RE = re.compile(r"\[MEM-POLL\] (\d\d:\d\d:\d\d)")
+NATIVE_HEAP_RE = re.compile(r"Native Heap" + r"\s+(\d+)" * 8)
+## key, pattern (None = from the Native Heap row), column title
+MEM_COLUMNS = [
+    ("pss", re.compile(r"TOTAL PSS:\s+(\d+)"), "TOTAL PSS"),
+    ("gl", re.compile(r"GL mtrack\s+(\d+)"), "GL mtrack"),
+    ("swap", re.compile(r"TOTAL SWAP PSS:\s+(\d+)"), "swap PSS"),
+    ("rss", re.compile(r"TOTAL RSS:\s+(\d+)"), "RSS"),
+    ("heap_alloc", None, "native heap alloc"),
+    ("heap_free", None, "native heap free"),
+]
+
+
+def memory_polls(lines: list[str]) -> list[dict]:
+    """Every readable `[MEM-POLL]` sample in file order, tagged with its mark. A poll
+    taken while the game was not running carries no numbers and is left out."""
+    out: list[dict] = []
+    mark = "(before the first mark)"
+    for line in lines:
+        record = parse_line(line)
+        if record is not None:
+            if record["kind"] == "scenario.mark":
+                mark = str(record.get("label", "?"))
+            continue
+        poll = MEM_POLL_RE.search(line)
+        if not poll:
+            continue
+        sample: dict = {"at": poll[1], "mark": mark}
+        for key, pattern, _ in MEM_COLUMNS:
+            if pattern is not None:
+                found = pattern.search(line)
+                if found:
+                    sample[key] = int(found[1])
+        native = NATIVE_HEAP_RE.search(line)
+        if native:
+            sample["heap_alloc"] = int(native[7])
+            sample["heap_free"] = int(native[8])
+        if "pss" in sample:
+            out.append(sample)
+    return out
+
+
+def memory_table(polls: list[dict]) -> None:
+    groups: list[list[dict]] = []
+    for sample in polls:
+        if not groups or groups[-1][0]["mark"] != sample["mark"]:
+            groups.append([])
+        groups[-1].append(sample)
+    print("| segment | polls | from · to | %s |"
+          % " | ".join("%s MB first · median · last" % title for _, _, title in MEM_COLUMNS))
+    print("|---|---|---|%s|" % "|".join("---" for _ in MEM_COLUMNS))
+    for group in groups:
+        cells = []
+        for key, _, _ in MEM_COLUMNS:
+            values = [s[key] / 1024.0 for s in group if key in s]
+            cells.append("—" if not values else "%.0f · %.0f · %.0f"
+                         % (values[0], statistics.median(values), values[-1]))
+        print("| %s | %d | %s · %s | %s |" % (group[0]["mark"], len(group), group[0]["at"],
+                                            group[-1]["at"], " | ".join(cells)))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("paths", nargs="+", help="logcat capture, stdout log or JSONL file")
@@ -270,8 +339,10 @@ def main() -> int:
             lines = handle.readlines()
         records = [r for r in (parse_line(line) for line in lines) if r is not None]
         dets = detonations(lines)
-        if not records and not dets:
-            print("## %s\n❌ no [TEL] records and no [E-FRAME] reports in this file" % path)
+        polls = memory_polls(lines)
+        if not records and not dets and not polls:
+            print("## %s\n❌ no [TEL] records, no [E-FRAME] reports and no [MEM-POLL] samples"
+                  " in this file" % path)
             status = 1
             continue
         for session in sessions(records):
@@ -280,6 +351,10 @@ def main() -> int:
         if dets:
             print("### detonations — %s" % path)
             detonation_table(dets)
+            print()
+        if polls:
+            print("### memory — %s" % path)
+            memory_table(polls)
             print()
     return status
 

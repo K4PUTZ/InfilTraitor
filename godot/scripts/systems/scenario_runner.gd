@@ -22,7 +22,9 @@
 ##                                        waits for the blast to end (TEL-06b)
 ##   capture <name>                       the root viewport to captures/<name>.png
 ##                                        (the external files dir on Android)
-##   quit                                 end the process (the harness waits on it)
+##   drop2d                               DIAG-23 instrument: clear the hidden 2D
+##                                        board's cells under a 3D board (RENDER3D=1)
+##   quit                                end the process (the harness waits on it)
 ##
 ## EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer
 ## cut windows out of a scripted run and a hand run the same way.
@@ -38,7 +40,7 @@ extends Node
 ## op -> how many arguments it takes. `mark` takes the rest of the line.
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
-	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
+	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 
@@ -183,6 +185,14 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			var detonated: bool = await done
 			if not detonated:
 				return _fail(step, "the detonation did not complete (see the error above)")
+		"drop2d":
+			if not room.has_method("scenario_drop_2d_board"):
+				return _fail(step, "Room has no scenario_drop_2d_board()")
+			if not bool(room.call("scenario_drop_2d_board")):
+				return _fail(step, "the 2D board was not dropped (see the error above)")
+			## One drawn frame, so the cleared quadrants have left the renderer before
+			## the next step measures anything.
+			await RenderingServer.frame_post_draw
 		"quit":
 			## `quit()` is deferred, so `run()` still reaches its own `scenario.end`
 			## after this step — emitting one here as well wrote it twice.

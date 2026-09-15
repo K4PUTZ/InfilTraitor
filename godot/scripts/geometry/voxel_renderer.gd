@@ -4765,6 +4765,30 @@ func cell_plane_image(level: int) -> Image:
 	return _soot_images.get(level)
 
 
+## DIAG-23 (DEVICE_DIAGNOSTICS §15.15) — an INSTRUMENT for the 2D-vs-3D memory
+## comparison, reached only through `Room.scenario_drop_2d_board()` with a 3D board
+## built. Every cell of every opaque and glass layer is cleared, so the memory the
+## engine holds to DRAW the hidden 2D board leaves the process, while the cell planes
+## the 3D board reads its colours from stay written.
+## - What stays: the layer nodes (every `_layers` reader still finds a layer), the
+##   TileSet, the planes and their textures, `_placed_index`. What it frees is therefore
+##   a LOWER bound on the 2D board's own cost, and the process after it an UPPER bound
+##   on a 3D-only one.
+## ⚠️ One-way for the rest of the session: `build_occupancy()` and the detonation plan
+## read these layers, so any light or blast after it describes an empty board.
+func debug_drop_board_cells() -> Dictionary:
+	var opaque_cells: int = 0
+	var glass_cells: int = 0
+	for layer in _layers.values():
+		opaque_cells += (layer as TileMapLayer).get_used_cells().size()
+		(layer as TileMapLayer).clear()
+	for layer in _glass_layers.values():
+		glass_cells += (layer as TileMapLayer).get_used_cells().size()
+		(layer as TileMapLayer).clear()
+	return {"opaque_layers": _layers.size(), "opaque_cells": opaque_cells,
+		"glass_layers": _glass_layers.size(), "glass_cells": glass_cells}
+
+
 func cell_soot_at(level: int, cell: Vector2i) -> int:
 	var p := cell + SOOT_PLANE_ORIGIN
 	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:

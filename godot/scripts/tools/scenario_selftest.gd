@@ -45,12 +45,12 @@ func _ready() -> void:
 
 func _test_ladder_parses() -> bool:
 	var text: String = "framing portrait; centre agent\nzoom 0.5; wait 20; mark z 050;" \
-		+ " centre 12,7; frames 3; window 360x806; capture shot_1; detonate 1; quit;"
+		+ " centre 12,7; frames 3; window 360x806; capture shot_1; detonate 1; drop2d; quit;"
 	var result: Dictionary = ScenarioRunnerClass.parse(text)
 	var steps: Array = result["steps"]
 	var ops: Array = steps.map(func(s: Dictionary) -> String: return str(s["op"]))
 	var expected_ops: Array = ["framing", "centre", "zoom", "wait", "mark", "centre",
-		"frames", "window", "capture", "detonate", "quit"]
+		"frames", "window", "capture", "detonate", "drop2d", "quit"]
 	if not str(result["error"]).is_empty() or ops != expected_ops:
 		print("[TEST 1] ❌ ladder — error '%s', ops %s" % [result["error"], ops])
 		return false
@@ -63,7 +63,7 @@ func _test_ladder_parses() -> bool:
 	if not typed:
 		print("[TEST 1] ❌ ladder arguments not typed as written: %s" % [steps])
 		return false
-	print("[TEST 1] ✅ an 11-step ladder parses in order with typed arguments")
+	print("[TEST 1] ✅ a 12-step ladder parses in order with typed arguments")
 	return true
 
 
@@ -93,6 +93,7 @@ func _test_each_argument_check() -> bool:
 		"mark": "mark takes a label",
 		"capture a.b": "capture takes a file name (letters, digits, _ or -)",
 		"detonate -1": "detonate takes a dev grenade index >= 0",
+		"drop2d now": "'drop2d' takes 0 argument(s), got 1",
 	}
 	for text: String in cases:
 		var error: String = ScenarioRunnerClass.parse(text)["error"]

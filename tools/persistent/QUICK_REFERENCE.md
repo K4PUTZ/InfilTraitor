@@ -2,6 +2,14 @@
 
 Fast lookup for grid geometry, voxel constants, inviolable rules, and common patterns.
 
+> **⏭️ 2026-09-15:** the Transform Canon below is the geometry of the **2D** board, and it
+> stays binding while that board ships.
+> - The 3D board ([`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md))
+>   uses an orthographic camera at D26's 30° down / 45° around, which reproduces the 2:1
+>   diamond exactly (sin 30° = 0.5).
+> - One difference is still open, and R3D-3 settles it by measurement: a true cube projects
+>   **19.6 px** per level, where `VOXEL_STEP_PX` is **20**.
+
 ---
 
 ## Grid & Screen Coordinates

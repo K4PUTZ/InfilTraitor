@@ -1,6 +1,14 @@
 # MOVEMENT_MASTER_PLAN
 ## How the Agent Moves — Situations, Poses, Transitions and the Motion-Design Pipeline — v0.1 (BRIEF CAPTURED, NOT YET A PLAN)
 
+> **⏸ Status check, 2026-09-15:**
+> - This is still a brief. The milestone has not opened, and nothing has been committed to
+>   this plan since 2026-08-16.
+> - The dev-only bake mode it prepared is OFF: `AgentSprite.DEV_ONLY_MILESTONE := false`
+>   since 2026-08-17. Flip it when the milestone opens.
+> - The board is moving to Godot 3D (`RENDER3D_MASTER_PLAN`). The figure's pipeline and
+>   D26's camera are unchanged by that, so nothing here needs re-planning.
+>
 > **Status: 🟡 OPENED 2026-08-16. This is the Director's brief, recorded, plus
 > the questions that have to be answered before it becomes executable.**
 >

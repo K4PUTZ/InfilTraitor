@@ -1,5 +1,15 @@
 # RENDER ORDER MASTER PLAN — depth on the isometric board — v1.1
 
+> **⏭️ 2026-09-15 — the 3D render path is ratified ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).**
+> Everything here solves depth for a board drawn as stacked `TileMapLayer`s. In the 3D
+> board a depth buffer decides what covers what by construction.
+> - **Until R3D-8** retires the 2D board, this plan's mechanism is the shipping path:
+>   glass as a tile in its level's layer, the crack clip, the seam cull.
+> - **At R3D-8** it becomes history.
+> - **What does not carry over:** the traps it records, Y-sort's cost and a
+>   `BackBufferCopy` that cannot capture its own layer.
+> - **What carries over:** `RO0`, depth kept apart from occlusion, binds R3D-7.
+
 **Status:** 🟢 **v1.1 · OPTION A RATIFIED AND DEFAULT ON, 2026-09-10 (§10b.10).**
 Director: *"o A fica mais bonito mesmo. Vamos com a A, liga os três gates por
 padrão."* Glass is an ordinary tile in its level's opaque layer — the layer's own

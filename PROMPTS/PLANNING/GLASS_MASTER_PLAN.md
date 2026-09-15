@@ -1,5 +1,13 @@
 # GLASS MASTER PLAN — the physics of glass
 
+⏭️ **2026-09-15:** the 3D render decision ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md))
+leaves this plan's physics canon untouched, and moves its rendering.
+- **What is 2D-board machinery:** glass tiles, `_glass_layers` as the occupancy every glass
+  system reads, and the crack and craze sprites.
+- **R3D-2** moves that occupancy to the packed voxel store.
+- **R3D-6** rebuilds the look on the 3D board: the strong blue, the facets, the crack and
+  the craze. DIAG-21's prototype drew glass as a pale tint.
+
 **Status:** 🟢 **v1.50 — PHYSICS CLOSED; the one RENDERING task left this plan.**
 Case testing (owed since 2026-09-06) began 2026-09-07 and produced `G-D48` / `G-D49`
 (the shockwave zone) plus `CRACK-06` (rim shards on the torn edge, 2026-09-09) — all

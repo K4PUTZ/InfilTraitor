@@ -1,6 +1,13 @@
 # TOP_TEXTURE_MASTER_PLAN
 ## Horizontal Facades, Textured Interiors & Bake Persistence — Master Plan v1.0
 
+⏭️ **2026-09-15:** Part 3 (textured interiors) is absorbed by
+[`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) R3D-6.
+- **Why:** in the 3D board an interior is a face that samples its facade through UVs.
+  Building Part 3 on the 2D atlas now would mean building it twice.
+- **What stays authoritative:** Parts 1–2's as-built bake canon, for as long as the 2D
+  board ships.
+
 **Status:** Parts 1 & 2 ✅ CLOSED 2026-07-11 (Director visual ratification,
 "ALPHA TOP TEXTURE" checkpoint). Part 1 was **reopened and re-closed the same
 day** for the junction-column regression — see "Part 1 reopening" below.

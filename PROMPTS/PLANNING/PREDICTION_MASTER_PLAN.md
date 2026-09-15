@@ -5,6 +5,17 @@
 **Status:** ✅ **ALL SIX TASKS SHIPPED 2026-08-09** — §8.1, §8.6, §8.7, §8.8,
 §8.9, §8.10.
 
+⏭️ **2026-09-15 — [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) R3D-2 changes this
+plan's entries, not its machine.**
+- **Stays:** the pure `build_plan()` → `WorldDelta` → `commit()` spine, the resumable 11
+  phases and `PredictionCache`.
+- **Changes, plan entries:** they stop carrying `source_id` / `atlas_coords` / `alt` /
+  `prev_alt`, and carry a voxel key, the target state, the light bucket and the soot code.
+- **Changes, occupancy:** `build_occupancy(predict_destroyed)` becomes a read of the packed
+  voxel store plus the predicted overlay. That is also the fix for the cook's 234–408 ms
+  LIGHT step (`DEVICE_DIAGNOSTICS` §15.14).
+- **R3D-1c** moves the plan builder onto the store behind a 0-difference gate.
+
 The blast is paced by frame count and its front is visible (P-PLAY); the two
 blast mutators are `commit(simulate(…))` (P-PURE); `build_plan()` is **pure** and
 returns a `WorldDelta` (P-DELTA); the pipeline is a resumable, cancellable state

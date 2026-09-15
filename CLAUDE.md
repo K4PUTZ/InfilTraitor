@@ -13,7 +13,10 @@ file existing does not make the others stale.
 ## The project
 
 Turn-based tactical stealth, mobile-first (iOS/Android), portrait
-orientation. Godot 4.6, GDScript, isometric 2.5D voxels via `TileMapLayer`.
+orientation. Godot 4.6, GDScript, isometric 2.5D voxels via `TileMapLayer` — **moving to
+a Godot 3D board over a packed voxel store** (ratified 2026-09-15,
+[`RENDER3D_MASTER_PLAN`](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)); the 2D board ships
+until that plan's R3D-8.
 No deadline — architecture and code quality outrank speed.
 
 Repo: https://github.com/K4PUTZ/InfilTraitor
@@ -215,6 +218,11 @@ immediately; the files above are the live source.
 
 These must not be broken:
 
+> **2026-09-15 — the 3D render path is ratified** (`RENDER3D_MASTER_PLAN`). Rules 2 and 8,
+> the L1 hook and B1–B6 describe the 2D board and **stay in force until R3D-8** retires
+> them on the Director's ratification. A 3D stage that needs to bend one stops and asks;
+> it never works around it.
+
 1. Stats = `var`, never `const` (future difficulty scaling).
 2. `VISUAL_GRID_OFFSET` always via parameter, never hardcoded.
 3. `WallEdgeData` is the only source of edge keys — never recreate
@@ -340,7 +348,7 @@ Read the linked doc before modifying that system.
 | **Game design canon** (any gameplay-facing proposal) | [`docs/DESIGN_MASTER_PLAN.md`](docs/DESIGN_MASTER_PLAN.md) | Every ratified mechanic in one place. Confrontation/cover, 3-layer resistance + the tenth-shot rule, the 3 equipment classes, enemy factions and hierarchy, segment map structure and Freelance escalation are **designed and unbuilt** — extend that design, never invent a parallel one. §19 = the six architecture rules an endless game depends on; §20 = where the build already diverges |
 | Grid, screen coords, voxel constants | [`tools/persistent/QUICK_REFERENCE.md`](tools/persistent/QUICK_REFERENCE.md) | `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)`; `TILE_OFFSET = (112, 64)`; two-plane model (gameplay grid vs. geometry/render grid) — never a per-height lookup table |
 | Directions, faces, banned terms | [`docs/DIRECTION_GLOSSARY.md`](docs/DIRECTION_GLOSSARY.md) | Vertex-aligned compass, N = top diamond vertex; always qualify axes explicitly |
-| Voxel wall system | [`docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md`](docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | 1 voxel = 1 Godot tile via `set_cell()`; no image compositing |
+| Voxel wall system | [`docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md`](docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | 1 voxel = 1 Godot tile via `set_cell()`; no image compositing — that is the 2D drawing rule, which retires at `RENDER3D` R3D-8; the geometry stays canon |
 | Baking system | [`docs/technical/BAKE_SYSTEM_REFERENCE.md`](docs/technical/BAKE_SYSTEM_REFERENCE.md) | `BakedTileLookup.resolve()` is the only placement seam; `BakeConfig.enabled` defaults `false`; B1–B6 above |
 | Voxel FACE lighting | [`PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md`](PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md) | 12-bucket directional brightness; blast soot/crater/ember visuals; destruction persists through rotation |
 | Actor/object bakes, digital twin | [`PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md`](PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md) | **The decision register (D1–D58)** — twin (showcase) vs. simplification (gameplay, D16); normal-map relighting (D17); the character decisions are D32–D58 |
@@ -348,6 +356,8 @@ Read the linked doc before modifying that system.
 | **The player character** (model, rig, poses, animation, layering) | [`PROMPTS/PLANNING/CHARACTER_MASTER_PLAN.md`](PROMPTS/PLANNING/CHARACTER_MASTER_PLAN.md) | **Owns the build; ACTOR owns the decisions — cite D-rows, never restate them.** Rigged low-poly mesh (D35); four facings, permanently (D44); only archetype × silhouette class multiplies, everything else is additive or a free shader uniform (D34); RAM is the constraint, not CPU (D42). **Part 2 is CLOSED (2026-08-16) — the vector placeholder is gone and the pipeline is Director-ratified (D62)**; the step is 0.56 s per GU (D61) and a faction is a palette on one mesh (D63); Alpha closes mechanics, finish is Beta (D54); the hand bar is pose-capable, not anatomically correct (D56); CC0 is a licence filter, not a preference (D57, shortlist in §5.1) |
 | Destruction | [`PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md`](PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md) | Sole writer of `Voxel.visible`; dirty-flag/TIC machinery other systems (actor damage) reuse |
 | **Draw order / depth on the board** (anything about what covers what on screen) | [`PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md`](PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md) | 🟢 v1.1 — **Option A RATIFIED and default ON 2026-09-10.** **`z_index` in this project encodes HEIGHT (`WALL_BASE_Z_INDEX + relative_level`), and depth is independent of it** (`OCCLUSION` `O5`). **A `TileMapLayer`'s own draw order IS iso depth order** (Q8), so glass is an ordinary tile in its level's opaque layer: cells are MIRRORED from `_glass_layers` (still the authority every glass system reads, hidden) into `_layers` by `_glass_tile_sync()`, each glass tile carries `TileData.material` → `glass_tile.gdshader`, and there is no `BackBufferCopy`. The per-pane crack sprite is clipped where a nearer wall covers it, and the side sliver is painted by exposure, not `pos == 7`. `=0` on `INFILTRAITOR_GLASS_TILE` / `GLASS_CLIP` / `GLASS_SEAM_CULL` = old path, comparison only. **Y-sorting has never been enabled anywhere in this project** — measured and rejected on cost. ⛔ `GLASS` §19 and its dependency on `OCCLUSION` §7 were rejected 2026-09-10 — do not build from either |
+| **The 3D board migration** (anything that renders the board, stores voxel state, or retires a 2D-board rule) | [`PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md`](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) | 📋 v1.0 PLANNED 2026-09-15, direction ratified by the Director. Voxels stay the unit of simulation but become a **packed store** — one authority, where a `Voxel` object costs ~1.5 KB (316 MB on PLAYGROUND). The board is drawn by Godot 3D: D26 camera, merged faces, per-cell planes. The 2D board and its canon retire at **R3D-8** only. Every stage runs shadow → flip → delete, with `BoardProbe` identity gates and a Moto A/B. Zones materialised on damage were considered and not taken (§0.2) |
+| **Device measurement** (Android handsets, memory, frame budget, `DevFlags`, telemetry, scenarios) | [`PROMPTS/PLANNING/DEVICE_DIAGNOSTICS_MASTER_PLAN.md`](PROMPTS/PLANNING/DEVICE_DIAGNOSTICS_MASTER_PLAN.md) | 🟢 v1.7. Budget: 30 fps / 33.3 ms on playback frames (§0.5), on the Moto g04s and the Galaxy A16. The chain is `export_android.py` → `device_run.py --mem-poll` → `bench_analyze.py`. A flag reaches the APK only through `DevFlags` (`adb push` of `dev_flags.cfg`). §15 holds the 2D-vs-3D evidence |
 | **Prediction / simulate-without-committing** (any preview, estimate, or "what if") | [`PROMPTS/PLANNING/PREDICTION_MASTER_PLAN.md`](PROMPTS/PLANNING/PREDICTION_MASTER_PLAN.md) | ✅ **BUILT 2026-08-09, all 6 tasks.** `build_plan()` is PURE — it returns a `WorldDelta` and `delta.commit()` is the only writer; the pipeline is an 11-phase resumable state machine (`begin()`/`step(budget)`/`cancel()`); `PredictionCache` keys on `(signature, room._world_revision)`. **Bump the revision from any new committed mutation** (`room.bump_world_revision()`) or predictions go stale. §2 is the authoritative mutation inventory (7 `set_damage()` sites, all behind `commit_damage()`); the soot layer was always pure; firearms use `apply_point_impact()` and share neither. **§8.8 supersedes §1.1's phase table** — the map-wide voxel walk is 66% of the cost, not the soot BFS or the light field |
 | Weapons & arsenal catalog | [`PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`](PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md) | Four delivery shapes (RADIAL/CONE/LINE/NONE) + step falloff; owns *what* a weapon emits, never *how* voxels break; facing constants are measured from baked frames, never reasoned |
 | AI & guard behavior | [`docs/systems/AI_MASTER_PLAN.md`](docs/systems/AI_MASTER_PLAN.md) | FSM via Rule 4; alert meter via Rule 5; guard↔guard only via signals in `room.gd` |

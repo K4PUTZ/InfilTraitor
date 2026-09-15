@@ -6,6 +6,11 @@ closed the design (*"isso conclui nosso design da explosão, com exceção do
 vidro… Fica pendente a limpeza e a otimização do código + cook da luz"*); the
 limpeza and the cook da luz then shipped. **Nothing is pending in this plan.**
 
+⏭️ *2026-09-15:* the presenter's commit frame writes the 2D board.
+[`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) R3D-2/R3D-3 replace that writer; the 3D
+board already remeshes on the same three beats (`DEVICE_DIAGNOSTICS` §15.9). The event's
+shape is not reopened: cook → fuse → boom → one commit → consequence → light.
+
 **DONE and shipped (§8.1–§8.16):** D-0…D-5, the fuse/boom pre-pass (§8.10),
 D-6 **complete** — the presenter is the only path (part 1, §8.11) and the
 choreographer + `BurnScheduler` + `FireGlowOverlay` + ~3 000 lines of dead burn

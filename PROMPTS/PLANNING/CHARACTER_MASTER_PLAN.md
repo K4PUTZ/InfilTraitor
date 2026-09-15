@@ -11,8 +11,13 @@ and 4, which were stubs, not designs.
 |---|---|
 | **Part 0** — the two spikes | ✅ **CLOSED.** S1: ASTC yes, ETC2 no. S2: turn settled (D46), corner settled (D47) |
 | **Part 1** — base model + rig | ✅ **BUILT 2026-08-15.** 20 bones, 36 parts, verified exact T-pose, 7 sockets (**8 with `head`, added by D53**). Its ART is superseded; its RIG is the base |
-| **Part 2** — minimum viable agent | 🟡 **IN PROGRESS.** Grip spike RUN and the **MOCKUP CLOSED 2026-08-16** — the agent stands in PLAYGROUND at a gated 10.0 voxels, near-black, relit by the room, four facings in one frame. `agent.gd`'s placeholder is still there, so §10's definition of done is explicitly NOT claimed. Unblocks firearm aim mode + W-PRECOOK |
+| **Part 2** — minimum viable agent | ✅ **CLOSED 2026-08-16** (§"THE SWAP"). The vector placeholder is gone (`agent.gd`'s own header records it): the baked figure draws at three postures and four facings under room light. Firearm aim mode (`WEAPON` §6c) and W-PRECOOK shipped on it on 2026-08-19/20. *This row read "IN PROGRESS" until 2026-09-15, a month after the body of this plan closed the Part.* |
 | **Part 8** — showcase model | ⏸ **DEFERRED by D55**, and may ship as 2D. Its preparation stands: start scene BUILT, D49/D50/D51 unchanged |
+
+⏭️ **2026-09-15:** the board moves to Godot 3D
+([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)). The figure's pipeline is unchanged,
+and D26's bake camera is that board's camera. How the figure gets depth against walls is
+decided in R3D-4.
 
 **Phase rule (D54):** Alpha closes the character's **mechanics**; detail and
 finish are Beta. A deliverable is complete when the mechanic reads on screen —

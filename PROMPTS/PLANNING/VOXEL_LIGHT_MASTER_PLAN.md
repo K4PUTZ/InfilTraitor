@@ -1,5 +1,17 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
+> **⏭️ 2026-09-15 — two notes before the header.**
+> 1. **§1 records the ratified 6 buckets; the code runs 12**
+>    (`VoxelRenderer.LIGHT_BUCKET_COUNT = 12`, and `CLAUDE.md` / `docs/README.md` quote 12).
+>    Read §1's number as the original ratification, not the value in force.
+> 2. **The 3D render path is ratified ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).**
+>    - **Carries over unchanged:** the light field, the buckets and PERF-P3's per-cell
+>      planes. The 3D board already reads the planes through a `Texture2DArray`
+>      (`DEVICE_DIAGNOSTICS` §15.11).
+>    - **Retires at R3D-8:** the 2D delivery — `voxel_face_shading.gdshader`, light
+>      alternatives, and the tile writes in `apply_light_field*()`.
+>    - **R3D-2** moves the plane writes off `layer.get_used_cells()`.
+
 > **Status:** ✅ SHIPPED (VL-01 → VL-D5, 2026-07-23 → 2026-07-26) — "Alpha
 > Temporal Light Foundation"; extended by FACE-READ-01 (2026-07-31) and
 > FACE-READ-02, FACE-SOOT-01 and FACE-READ-03 (2026-08-01) — "Alpha Face Light

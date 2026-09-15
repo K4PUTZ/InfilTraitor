@@ -1,6 +1,13 @@
 # SOOT_STORAGE_REFORM
 ## The soot map becomes the source of truth — plan, 2026-08-27
 
+⏭️ **2026-09-15:** the 3D render decision ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md))
+keeps this plan's store.
+- The 3D board already reads the cell planes (`DEVICE_DIAGNOSTICS` §15.11).
+- §2.1b's base-space faces are exactly what rotation needs on that board.
+- SS-6, the proof under rotation, now runs on the 3D board at R3D-9.
+- SS-4 and SS-5 are unchanged.
+
 **Status:** 🟡 **PAUSED AT SS-3 SINCE 2026-08-27 — resumable, nothing blocking it.**
 The detonation's presentation reform took every session from 2026-08-27 to
 2026-08-29 and that track is now closed, so SS-4 (checkpoint persistence),

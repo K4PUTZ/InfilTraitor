@@ -1,6 +1,16 @@
 # ACTOR_MASTER_PLAN
 ## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v2.2
 
+> ## ⏭️ 2026-09-15 — the board moves to 3D; no decision here changes
+>
+> [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) draws the board in Godot 3D.
+> - **D26's camera, 30° down and 45° around, is that board's camera.** It is the angle
+>   every bake is taken at, so a baked sprite and the 3D board share one projection.
+> - **How sprites get depth against walls is R3D-4:** billboards against depth-composited
+>   2D, measured, with the look call to the Director.
+> - **D17's normal-map relight, D44's four facings and D47's snap** are constraints on
+>   that choice, not open questions.
+
 > ## 🟢 THE LIVING-BEINGS TRACK IS OPEN (Director, 2026-08-13)
 >
 > *"Agora chegou a hora de produzir realmente o personagem. Vamos discutir

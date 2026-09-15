@@ -1,5 +1,18 @@
 # INFILTRAITOR — Bake System Reference
 
+> **⏭️ 2026-09-15 — the 3D render path is ratified ([`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)),
+> and it splits this system in two.**
+> - **The logic carries over.** A 3D face samples the same facade through UVs, so these
+>   survive: `TextureResolver`'s tier ladder, `MaterialRegistry`, `FacadeSampler`'s FNV-1a
+>   window origins, grayscale facades (B2), determinism (B4) and loud failure (B6).
+> - **The atlas does not.** It exists to feed `TileMapLayer`s: pre-projected isometric
+>   pages, `BakedTileLookup`, damage composite pages and TileSet alternatives.
+>   `DEVICE_DIAGNOSTICS` §15.15 measured it as half of the 2D board's memory on the
+>   Moto: 2.17–2.20 GB with the bake, 1.10 GB without.
+> - **B1, B3 and B5 are atlas invariants.** They stay in force while the 2D board ships,
+>   and retire at R3D-8 on the Director's ratification. Until then `BakeConfig` and
+>   everything below stay authoritative.
+
 **Extracted 2026-07-08 from `tools/persistent/OPERATOR_CONTEXT.md`** (v0.5.0
 context restructure). This document holds the full bake-pipeline architecture,
 module checklist, file locations, closure evidence, and process learnings.

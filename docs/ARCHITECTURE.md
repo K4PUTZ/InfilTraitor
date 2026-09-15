@@ -3,13 +3,24 @@
 > **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from earlier design specs (`docs/systems/*`), the **code is authoritative**.
 
 **Source of truth:** `godot/scripts/`
-**Last reconciled with code:** 2026-07-20 (date/line-count refresh only; see gaps below)
+**Last reconciled with code:** 2026-07-20 (date/line-count refresh only; see gaps below) · **status-tag pass 2026-09-15** (the voxel plane's tags, container classes, line counts, status matrix and file map — not a rewrite)
 **Engine:** Godot 4.x · **Main scene:** `res://godot/scenes/game/room.tscn`
 
-**Not yet covered since the last full reconciliation (2026-07-03):** B3/bake
-closure, the SCREENSHOT-HOOK system, `OCCLUSION_MASTER_PLAN`, and
-`DESTRUCTION_MASTER_PLAN`. This document was not rewritten to incorporate
-those systems — treat sections touching them as unreconciled.
+**Not yet covered since the last full reconciliation (2026-07-03):**
+- B3 and the bake closure, and the SCREENSHOT-HOOK system;
+- `OCCLUSION_MASTER_PLAN` and `DESTRUCTION_MASTER_PLAN`;
+- added since: the prediction layer (`PREDICTION_MASTER_PLAN`), the detonation presenter,
+  glass (`GLASS_MASTER_PLAN`), render order, `DevFlags` / `Telemetry` / `ScenarioRunner`,
+  and the live 3D board prototype.
+
+This document was not rewritten to incorporate those systems. Treat any section touching
+them as unreconciled, and read their master plans (`docs/README.md`).
+
+> **⏭️ 2026-09-15 — the render architecture is changing.** The Director ratified drawing the
+> board in Godot 3D over a packed voxel store
+> ([`RENDER3D_MASTER_PLAN`](../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)). The "Voxel Render
+> Plane" section below describes the 2D `TileMapLayer` path that ships today, and it stays in
+> force until that plan's R3D-8.
 
 ---
 
@@ -45,7 +56,7 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 > - ✅ **VOXEL-05:** Junction detection + extra voxels; `_build_voxel_junction_extras()`, corner-fill logic
 > - ✅ **VOXEL-06:** VoxelRegistry centralized container index; `VoxelRegistry.new()`, lookup API
 > - ✅ **VOXEL-07:** Dirty flag + TIC loop; `_tic_voxel_system()`, per-voxel state updates
-> - ⏳ **VOXEL-08..11:** Baking system, destructibility, codemap integration pending
+> - ✅ **VOXEL-08..11:** shipped — baking (`BAKE_SYSTEM_REFERENCE.md`), destructibility (`DESTRUCTION_MASTER_PLAN.md`), CODEMAP integration. *(This line read ⏳ pending until 2026-09-15.)*
 
 The engine uses two coordinate planes. The **gameplay plane** (`CELL_SIZE 256×128`) is
 unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. The
@@ -88,12 +99,18 @@ No `FACE_CENTER_OFFSET`. No `is_x_varying`. No empirical offsets.
 ### Container hierarchy
 
 ```
-WallSlice              primary container: 1 direction × 1 adjacent GU × N storeys (8 × 8N voxels)
-HighWall               secondary container: named group of WallSlices; unit of secondary baking
-VoxelRef               per-voxel state: visible, dirty, damage_state, face_atlas_rect
+Edge            one wall between two GUs (EdgeRegistry, keyed through WallEdgeData)
+Slice           one face of an edge: 8 positions × 8 levels per storey, index = level*8 + position;
+                two per edge, indexed identically (D16)
+Slab            a horizontal plane at one level — FLOOR / CEILING / INTERIOR (SlabRegistry), 64 voxels per level
+JunctionColumn  the diagonal column that closes a wall elbow (JunctionResolver), one Voxel per level
+Voxel           per-voxel state: visible, dirty, damage_state (+ blast flag, carved side, variant, substrate)
 ```
 
-Voxels are addressable as: `HIGHWALL_012.WALL_NW_03_S0.VOXEL_034.visible = false`
+*Corrected 2026-09-15.* This block used to show `WallSlice` / `HighWall` / `VoxelRef`, the
+VOXEL-03 design names. The shipped classes are the ones above, in `godot/scripts/geometry/`.
+`RENDER3D_MASTER_PLAN` R3D-1 replaces the `Voxel` objects (~1.5 KB each) with a packed store
+behind the same container API.
 
 ### Junction rules
 
@@ -101,20 +118,20 @@ Voxels are addressable as: `HIGHWALL_012.WALL_NW_03_S0.VOXEL_034.visible = false
 - **T junction** (3 walls): no extra — 3rd wall's outer slice covers the diagonal
 - **X junction** (4 walls): no extra — all 4 diagonals covered by outer slices
 
-### Baking System (Planned — VOXEL-08..09)
+### Baking System (Implemented — `BAKE_SYSTEM_REFERENCE.md` is the spec; the text below is the original VOXEL-08..09 plan)
 
 Load-time pipeline: per-voxel Crop + Multiply blend applied from a `TextureCatalog` texture
 keyed on `(map_id, theme, player_level)`. Supports **primary baking** (per `WallSlice`) and
 **secondary baking** (per `HighWall`, single large texture spanning all constituent voxels).
 Result stored as `VoxelRef.face_atlas_rect`; rendering path unchanged between primary/secondary.
 
-### Dirty Flag + TIC (Planned — VOXEL-07)
+### Dirty Flag + TIC (Implemented — VOXEL-07, `room._tic_voxel_system()`)
 
 Per-voxel `dirty: bool`. State changes propagate `dirty_count` upward through the hierarchy.
 TIC loop skips containers with `dirty_count == 0` — O(container_count) cost at idle. Runtime
 destructibility: `ref.visible = false` + `ref.dirty = true` → next TIC calls `erase_cell()`.
 
-### Implementation sequence
+### Implementation sequence (historical — every step shipped)
 
 ```
 ✅ VOXEL-00 (docs)  → VOXEL-01 (generate_voxel.py)  → VOXEL-02 (TileSet + constants)
@@ -124,7 +141,9 @@ destructibility: `ref.visible = false` + `ref.dirty = true` → next TIC calls `
 ⏳ VOXEL-10 (destructibility)  → VOXEL-11 (CODEMAP update)
 ```
 
-### Files modified / created (VOXEL series)
+### Files modified / created (VOXEL series) — historical
+
+⚠️ `world/voxel_ref.gd`, `world/wall_slice.gd` and `world/high_wall.gd` do not exist (checked 2026-09-15); the Appendix has the real files.
 
 | File | Phase | Change | Status |
 |------|-------|--------|--------|
@@ -379,7 +398,7 @@ Seven controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series,
 - **Events/signals:** emits `guard_whistled`, `guard_radioed`, `alarm_raised`, `all_guards_alerted`. Connects each guard's `whistled`/`radioed` signals in `register_guard`.
 - **Room integration:** tight. It owns no state; it is effectively a method-bag operating on room's arrays. `_on_guard_alarmed` and `_on_guard_emits_noise` are invoked directly from room's tic logic and enemy phase.
 
-### 2.7 TurnController — `controllers/turn_controller.gd`
+### 2.7 TurnController — `world/controllers/turn_controller.gd`
 
 - **Responsibilities:** orchestrates turn phases, enemy AI execution, detection/alert system. Centralizes alert meter accumulation (Rule 5), detection decay, camera focus during enemy phase, and noise processing. Extracted in **ENHANCE-08**.
 - **Dependencies:** `turn_manager`, `enemy_phase_controller`, `agent`, `camera`, `floor_layer`, `_fow_controller`, `_hud_controller`, `_vision_controller`, `_guard_coordinator`, `_noise_system`, `_noise_overlay`. Operates on `_guards`, `_blocked_cells`, `_current_blocked_edges`, `_room_size`.
@@ -391,7 +410,7 @@ Seven controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series,
 
 ## 3. Guard AI
 
-**Status: Implemented** · file: `agents/guard_enemy.gd` (~1,114 lines — see §13)
+**Status: Implemented** · file: `agents/guard_enemy.gd` (1 302 lines on 2026-09-15 — see §15.2)
 
 A finite-state machine driven once per enemy phase plus continuous visual interpolation.
 
@@ -625,11 +644,11 @@ All coordination operates directly on `room._guards`; the coordinator stores no 
 
 This section is descriptive, not aspirational. These are real properties of the code today.
 
-### 15.1 `room.gd` is a residual God Object (~2,380 lines)
+### 15.1 `room.gd` is a residual God Object (11 909 lines on 2026-09-15 — ~2,380 when this section was written)
 
 Despite the `MODULARIZE-01..06` extractions, `room.gd` still owns: input routing, turn handlers, agent move callbacks, tic application and escalation thresholds, audio detection, alert metering, busted/reset flows, perspective rotation math, isometric picking, guard spawning, LOS data fan-out, navigation blocked-cell assembly, temporal-light pumping, and most overlay creation. The controllers orbit it rather than replacing it.
 
-### 15.2 `guard_enemy.gd` is oversized (~1,114 lines)
+### 15.2 `guard_enemy.gd` is oversized (1 302 lines on 2026-09-15)
 
 A single class mixes: FSM logic, A* movement + caching, detection math, attention, organic patrol, active search, comms emission, audio reaction, and three separate `_draw` routines (body, cone tiles, smooth cone, dev HUD). The detection/geometry core and the rendering/visual-interpolation concerns are strong candidates for separation.
 
@@ -681,6 +700,11 @@ The most significant integration gap: ShadowProjector → ExposureSystem produce
 | Turn system | Implemented | Functional | AP economy, deterministic sequential enemy phase |
 | Guard coordination | Implemented | Functional | whistle / radio / alarm / noise routing |
 | **Voxel Render Plane** | **Implemented** | Functional | Shipped; it is what every wall, roof and floor renders through today. This row read "Planned" until 2026-08-03, contradicting this document's own opening section. Spec: `VOXEL_MASTER_PLAN.md` |
+| Destruction (tiers, blasts, firearm impacts) | Implemented | Functional | `DESTRUCTION_MASTER_PLAN` (closed), `systems/destruction/` — *row added 2026-09-15* |
+| Prediction (simulate → `WorldDelta` → commit) | Implemented | Functional | `PREDICTION_MASTER_PLAN`, `systems/prediction/` |
+| Glass (physics, shatter, crack, shards) | Implemented | Functional | `GLASS_MASTER_PLAN` |
+| Device harness (`DevFlags`, `Telemetry`, `ScenarioRunner`) | Implemented | Functional | `DEVICE_DIAGNOSTICS_MASTER_PLAN` |
+| 3D board (`RENDER3D=1`) | Partial | Experimental | a prototype drawn under the 2D game (`spikes/board3d_live.gd`); the production migration is `RENDER3D_MASTER_PLAN` |
 | Light/semantic authoring & serialization | Planned | — | specced (LIGHT-03), no runtime code path |
 
 ---
@@ -741,7 +765,7 @@ This architecture deliberately separates **visual depth** from **gameplay depth*
 | Concern | File |
 |---|---|
 | Orchestrator | `world/room.gd` |
-| Controllers | `controllers/{vision,hud,lighting,camera,fow}_controller.gd`, `controllers/guard_coordinator.gd` |
+| Controllers | `controllers/{vision,hud,lighting,camera,fow}_controller.gd`, `controllers/guard_coordinator.gd`, `world/controllers/turn_controller.gd` |
 | Guard AI | `agents/guard_enemy.gd`, `agents/guard_attention.gd` |
 | Agent | `agents/agent.gd` |
 | Detection | `systems/tic_system.gd` |
@@ -752,10 +776,13 @@ This architecture deliberately separates **visual depth** from **gameplay depth*
 | Map pipeline | `world/maps/{map_geometry,map_compiler,map_catalog}.gd`, `world/maps/definitions/{playground,sigma_01,procedural}_map.gd` |
 | Navigation | `navigation/{guard_pathfinder,movement_overlay,path_preview}.gd` |
 | Overlays | `overlays/*.gd`, `ui/fog_of_war_overlay.gd` |
-| **Voxel system (Planned)** | |
-| Voxel data classes | `world/voxel_ref.gd`, `world/wall_slice.gd`, `world/high_wall.gd` |
-| Voxel registry | `world/voxel_registry.gd` |
-| Baking system | `systems/bake_system.gd`, `systems/texture_catalog.gd` |
+| **Voxel system** — *rows corrected 2026-09-15; the files this table named never shipped under those names* | |
+| Voxel data classes | `geometry/{voxel,slice,slab,edge}.gd`, `geometry/junction_resolver.gd` (`JunctionColumn`) |
+| Registries & generators | `geometry/{edge_registry,slab_registry,slice_generator,slab_generator}.gd` |
+| Voxel renderer (the 2D board) | `geometry/voxel_renderer.gd` (7 886 lines) |
+| Baking system | `systems/{bake_config,bake_compositor,baked_tile_lookup,texture_resolver,facade_sampler,damage_variant_baker}.gd` |
+| Destruction & prediction | `systems/destruction/`, `systems/prediction/` |
+| 3D board prototype | `spikes/board3d_live.gd` |
 | Archived | `world/_archive/wall_container.gd` |
 
 > Legacy specification docs (`docs/systems/*`, `docs/pipelines/*`) describe intended design and use phase tags (`L-IMP/L-ARCH/M2`). Treat them as design intent; treat **this document and the code** as the description of current behavior.

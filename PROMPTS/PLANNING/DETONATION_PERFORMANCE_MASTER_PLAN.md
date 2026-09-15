@@ -1,6 +1,17 @@
 # DETONATION_PERFORMANCE_MASTER_PLAN
 ## Closing the post-detonation stall — v1.0
 
+**Status (2026-09-15):** ✅ **SHIPPED — no open tasks.** PERF-01 and PERF-02 landed, and the
+two §6 ideas stay deferred by the Director.
+- **Two plans overtook this one in practice:**
+  - `DETONATION_PRESENTATION_MASTER_PLAN` owns the event's shape (closed 2026-08-29);
+  - `DEVICE_DIAGNOSTICS_MASTER_PLAN` owns its cost on the target phones.
+- **Its central finding describes the 2D board:** the cost is per FRAME that writes to a
+  `TileMapLayer`, not per cell. [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) retires
+  that board at R3D-8.
+
+Earlier status, as written:
+
 **Status:** 🟢 **PERF-01 SHIPPED (commit `5c533d1`). PERF-02 SHIPPED
 2026-08-04 — A1/A2/A3 + B1/B2/B3/B4 all landed, measured 3717ms → 1251ms on
 the same real detonation.** Two ideas (colored-flash choreography,

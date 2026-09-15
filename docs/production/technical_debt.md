@@ -2,6 +2,17 @@
 
 > **Known limitations, architectural issues, and maintenance requirements.**
 
+> **⏭️ 2026-09-15 — the largest debt item is now a plan.**
+> - **The debt:** the 2D board's cost on the target phones, measured in
+>   `DEVICE_DIAGNOSTICS_MASTER_PLAN` §10–§15.
+>   - memory 2.17–2.20 GB, with 0.7–1.4 GB swapped out;
+>   - a 60 ms idle frame;
+>   - multi-second detonation stalls.
+> - **The plan:** move the board to Godot 3D over a packed voxel store —
+>   [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
+> - **Before working an item below that is a property of `TileMapLayer`s** (overlay and
+>   tile performance), read it against that plan.
+
 ---
 
 ## 📋 Reconciliation Note (2026-06-14)

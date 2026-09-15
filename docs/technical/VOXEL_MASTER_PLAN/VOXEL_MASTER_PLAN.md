@@ -1,5 +1,15 @@
 # INFILTRAITOR — VOXEL SYSTEM MASTER PLAN
 
+> **⏭️ 2026-09-15 — the 3D render path is ratified ([`RENDER3D_MASTER_PLAN`](../../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)),
+> and two parts of this document now age differently.**
+> - **The geometry stays canon:** 8 voxels per GU axis, 8 levels per storey, slices,
+>   edges, junction columns, D16's two-voxel wall.
+> - **"1 VOXEL = 1 Godot Tile" (§1) is the 2D drawing rule.** It holds while the 2D board
+>   ships and retires at R3D-8, on the Director's ratification.
+> - **The `Voxel` object itself also changes.** R3D-1 replaces PLAYGROUND's 215 432
+>   objects (~316 MB, desktop debug build) with a packed store behind the same container
+>   API.
+>
 > **Status:** ✅ **SHIPPED** — VOXEL-01..11 landed. This is the **geometry reference**
 > for the voxel plane (atoms, slices, edges, junctions, the coordinate math), and that
 > part is still canon. Read it for *why the geometry is the way it is*.

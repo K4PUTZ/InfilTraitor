@@ -1,6 +1,11 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
+⏭️ **2026-09-15:** M5's blocker, "renderer v2", is now
+[`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md). M5 follows its R3D-3: from there, thin
+and half-thickness geometry — the awning, hoarding and scaffolding of §8 — is an ordinary
+mesh, not a new tile class.
+
 **Status:** 🟢 **v1.9 — 2026-09-07: M4's CASE TESTING ran, and glass took two more
 rulings.** `GLASS_MASTER_PLAN` v1.47: **G-D48** (the SHOCKWAVE ZONE — glass-only
 effective destruction out to 5 GU on a descending ramp, crazing 2 GU further, via a

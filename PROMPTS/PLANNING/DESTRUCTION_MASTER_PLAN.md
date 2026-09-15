@@ -1,6 +1,17 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
+> ## ⏭️ 2026-09-15 — two items in the block below have moved
+>
+> - **"On-device GPU cost of many TileMapLayers"** was measured
+>   (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §10–§15) and answered by a decision: the board moves
+>   to Godot 3D ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).
+> - **"Sole writer of `Voxel.visible`"** carries over as the sole writer of the packed voxel
+>   store that replaces the `Voxel` objects (R3D-1).
+>
+> Damage tiers, D22's DENTED, D25's carved side and the dirty/TIC contract keep their
+> meaning. Only their storage changes.
+
 > ## ✅ CLOSED 2026-08-13, Director-ratified
 >
 > *"Pode fechar como won't do e fechar os dois planos."* Explosive destruction

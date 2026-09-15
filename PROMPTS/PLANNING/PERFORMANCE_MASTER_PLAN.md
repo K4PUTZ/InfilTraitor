@@ -1,6 +1,21 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
+**Status:** ⏭️ **v2.5 — 2026-09-15: the render architecture decision moves this plan's
+open items.** The Director ratified the 3D render path
+([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).
+- **P4 and P6 are properties of the 2D `TileMapLayer` board.**
+  - P4: retire the alternative-id encoding and the mint cache.
+  - P6: MAT-PERF-03's stale floor cells.
+  - Build either only if the 2D board has to ship before R3D-8; otherwise both go with
+    the board.
+- **P3's cell plane is the piece that survives** — the 3D board reads it.
+- **The "base-occupancy cache" named below becomes R3D-2's read of the packed voxel
+  store.**
+- **Performance on the target phones is measured in `DEVICE_DIAGNOSTICS_MASTER_PLAN`.**
+
+The v2.4 block below still holds for everything else.
+
 **Status:** ⛔ **v2.4 — READ THIS BEFORE THE HEADER BELOW (2026-08-30).**
 
 **The fire block (F1→F8, §9) is HISTORY, not status.** On 2026-08-29,

@@ -1,6 +1,16 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
+⏭️ **2026-09-15 — "renderer v2" now exists as a plan.** The resume trigger below waits on
+`MATERIALS` M5, which is "blocked on renderer v2". That renderer is
+[`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), and its R3D-7:
+- replaces OCC-21's cell erase and OCC-27's wireframe, both 2D-board mechanisms, with a 3D
+  cutaway;
+- resumes Part 4 on the 3D board;
+- makes §7's mask world-space by construction.
+
+O1 (occlusion is VIEW, not STATE) binds it.
+
 **Status:** ⏸️ MOSTLY PAUSED — and **§7 (the X-ray silhouette) is DECOUPLED and
 DEFERRED, 2026-09-10.** §7 was designed earlier the same day as the enabler of
 `GLASS_MASTER_PLAN` §19; the audit that rejected §19 also found the dependency

@@ -4,6 +4,17 @@
 
 Lighting is core gameplay, not visual decoration. This document defines how light exposure affects guard detection probability and stealth mechanics.
 
+> **Status (2026-09-15): a SPECIFICATION of tactical visibility.** The implementation is
+> partial, and one link is still missing.
+> - `ShadowProjector` → `ExposureSystem` compute a graduated exposure map on every rebuild.
+> - **Detection does not consume it.** `TicSystem.evaluate()` is still called without an
+>   `exposure_system` (verified 2026-09-15 in `room.gd`), so light drives visualization only
+>   (`docs/ARCHITECTURE.md` §15.4).
+> - The class table below is the spec. `ExposureSystem` carries its own `CLASS_NAMES`, not
+>   reconciled against it here.
+> - The VISUAL half, voxel face brightness, is `VOXEL_LIGHT_MASTER_PLAN`, and it carries into
+>   the 3D board unchanged (`RENDER3D_MASTER_PLAN`).
+
 ---
 
 ## Overview & Philosophy
@@ -247,7 +258,7 @@ func is_cell_in_shadow(cell: Vector2i) -> bool
 
 ## Related Documentation
 
-- **OPERATOR_CONTEXT** — Development handbook with architectural invariants
+- **`CLAUDE.md`** (repo root) — architectural invariants and workflow (it replaced the retired OPERATOR_CONTEXT on 2026-07-27)
 - **ARCHITECTURE.md** — High-level system relationships
 - **docs/systems/lighting_runtime_pipeline.md** — Runtime flow and invalidation rules
 - **docs/systems/occlusion.md** — LoS and structural blocking

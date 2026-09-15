@@ -1,6 +1,16 @@
 # INTERFACE_MASTER_PLAN
 ## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.2
 
+> **⏸ 2026-09-14 — JAMES is suspended until the performance milestone closes.** Director:
+> *"vamos suspender o JAMES até terminar o milestone de performance - você faz tudo, sem
+> divisão de tarefas"*.
+> - Meanwhile Claude owns this plan's tasks, `ACTION-BAR-01` included.
+> - Canon rule 11 / L3 (the HUD facade) still holds.
+> - The record and the conditions for resuming: `DEVICE_DIAGNOSTICS_MASTER_PLAN` §14.6.
+>
+> ⏭️ *2026-09-15:* the 3D render path leaves the HUD untouched. Picking and the
+> ground-plane overlays move in `RENDER3D_MASTER_PLAN` R3D-5.
+
 > **v1.2 — 2026-09-11: Part 5 `ACTION-BAR-01` added (Director).** The first phone
 > test found that a touch player cannot throw a grenade at all — the only way in is
 > the G key. The player's action bar is the answer, and it is JAMES's to build; a

@@ -4,6 +4,24 @@
 
 The map system is completely data-driven. `room.gd` is a renderer that consumes a `layout` dictionary; it does not know how the map was produced. Permanent (hardcoded) maps and future procedural generators share the same vocabulary and compiler.
 
+> **Status (2026-09-15) — the contract and Rule 7 below still hold; three parts of the
+> pipeline description had drifted, and are corrected in place.**
+>
+> - **Maps load from JSON first.** `MapCatalog.get_spec()` asks
+>   `Registries.ensure_file_map_source().get_runtime_spec(map_id)` for `maps/<ID>.map.json`
+>   (`user://maps` wins over `res://maps` on an id collision). The code specs are the
+>   **fallback**: PLAYGROUND, CALIB, SIGMA_01, PROCEDURAL. An unknown id errors and returns
+>   an empty spec. Schema: `docs/technical/MAPFILE_REFERENCE.md`.
+> - **The room is built by `RoomBuilder.build_from_layout(layout, room_size)`**
+>   (`world/builders/room_builder.gd`), not `room._build_room()`. Walls are voxel slices
+>   drawn by `VoxelRenderer` (`VOXEL_MASTER_PLAN`), not per-storey wall `TileMapLayer`s.
+> - **Rotation** is `room._set_perspective(direction: String)`. It re-lays the view from
+>   `_base_layout` through `RoomBuilder.layout_with_perspective()` →
+>   `world/utilities/perspective_mapper.gd`, and rebuilds the board. It was suspended for
+>   performance and is meant to return; `RENDER3D_MASTER_PLAN` R3D-9 turns it into a camera
+>   yaw.
+> - `OPERATOR_CONTEXT` (retired 2026-07-27) is replaced by `CLAUDE.md` in the links below.
+
 ---
 
 ## Architecture Overview
@@ -14,6 +32,8 @@ room.gd  @export map_id ("PLAYGROUND" | "SIGMA_01" | "PROCEDURAL")
    ├─ LevelGraph.generate(seed) ─► connections   (only for access_from_graph specs)
    │
    ├─ MapCatalog.get_spec(map_id, {connections, segment_grid_pos, seed})
+   │        maps/<ID>.map.json  → FileMapSource.get_runtime_spec(map_id)   ◄ first (user:// wins)
+   │        fallback code specs:
    │        PLAYGROUND → PlaygroundMap.spec()
    │        SIGMA_01   → Sigma01Map.spec()
    │        PROCEDURAL → ProceduralMap.generate(seed)
@@ -27,8 +47,7 @@ room.gd  @export map_id ("PLAYGROUND" | "SIGMA_01" | "PROCEDURAL")
    │        props + lights + patrols + exits
    │              │  layout dict (raw/grid coords)
    │
-   └─ _build_room(layout)
-      └─ _cache_blocked_cells(layout)         ◄ renderer (unchanged)
+   └─ RoomBuilder.build_from_layout(layout, room_size)   ◄ was room._build_room(layout) (corrected 2026-09-15)
 ```
 
 **Key principle:** `MapCompiler` is the **sole owner** of the buffer offset (`+ buffer`). This offset is applied in exactly **one place** and never duplicated in map definitions or overlays.
@@ -117,7 +136,7 @@ exit_cells: Array[Vector2i]             # map exit cells (rotated by perspective
   - `[0]` = ground course (with door gaps + dividers)
   - `[k≥1]` for k > 0 = solid perimeter ring (no door gaps, walls stack)
 
-**Renderer behavior (`room._build_room`):**
+**Renderer behavior** — ⚠️ *historical, superseded by the voxel render plane (`VOXEL_MASTER_PLAN`); kept for the storey-stacking intent only:*
 - Level 0 rendered on `StructureWallLayer` (z=10)
 - Each level `k≥1` rendered on dynamic `TileMapLayer` offset by `-WALL_FLOOR_STEP_PX` (=158px) at `z=10+k`
   - Result: top level occludes sprites below
@@ -157,6 +176,8 @@ On perspective change, `_layout_with_perspective()` rotates `light_sources` alon
 
 ## Perspective Rotation Coherence
 
+> ⚠️ *2026-09-15:* the functions below were renamed and moved — see the status block at the top (`_set_perspective(direction: String)`, `RoomBuilder.layout_with_perspective()`). The principle stands.
+
 `_layout_with_perspective()` rotates ALL per-cell data atomically:
 
 ```gdscript
@@ -185,7 +206,12 @@ _set_perspective(perspective: int)
 
 ## Adding a Permanent Map
 
-1. Create file: `godot/scenes/definitions/{name}_map.gd`
+> **2026-09-15:** the normal way is a `maps/<ID>.map.json` file (schema:
+> `docs/technical/MAPFILE_REFERENCE.md`), which `FileMapSource` finds on its own. The code
+> path below is the fallback, and its specs live in `godot/scripts/world/maps/definitions/`,
+> not in `godot/scenes/definitions/`.
+
+1. Create file: `godot/scripts/world/maps/definitions/{name}_map.gd`
 2. Implement `static func spec() -> Dictionary`:
    ```gdscript
    static func spec(context: Dictionary = {}) -> Dictionary:
@@ -240,7 +266,7 @@ This rule ensures:
 
 ## Related Documentation
 
-- **OPERATOR_CONTEXT** — Development handbook with architectural invariants
+- **`CLAUDE.md`** (repo root) — architectural invariants and workflow (it replaced the retired OPERATOR_CONTEXT on 2026-07-27)
 - **ARCHITECTURE.md** — High-level system relationships
 - **docs/systems/rendering.md** — Visual rendering and map display
 - **docs/systems/movement.md** — Grid navigation and A\* pathfinding on layout data

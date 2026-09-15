@@ -1,5 +1,13 @@
 # INFILTRAITOR — Rendering & Overlay System
 
+> **⚠️ 2026-09-15 — a dated document, last touched 2026-07-12, whose subject is moving.**
+> - **What it describes:** the 2D overlay layer over a `TileMapLayer` floor.
+> - **What changed:** the board itself is drawn by the voxel renderer (`docs/ARCHITECTURE.md`),
+>   and the Director ratified moving it to Godot 3D
+>   ([`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)).
+> - **Overlays and picking** are re-decided there, one overlay at a time (R3D-5).
+> - Check any constant here against the code before relying on it.
+
 > **Unified tile overlay architecture for shadows, detection cones, and navigation markers. Multiply and mix blend modes for visual clarity.**
 
 ---

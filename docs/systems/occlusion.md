@@ -1,5 +1,11 @@
 # INFILTRAITOR — Occlusion Semantics & Structural Blocking Model
 
+> **⏭️ 2026-09-15:** the structural and gameplay model here does not depend on rendering
+> and is unchanged: what blocks light, line of sight and sound. The "Visual Occlusion"
+> section describes the 2D board's mechanism, the OCC-21 erase and the OCC-27 wireframe.
+> [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) R3D-7 replaces
+> that mechanism on the 3D board.
+
 > **Formal specification of how structures block light and line of sight. Establishes semantic foundation for occlusion before advanced stealth, ballistics, and AI integration.**
 
 **Related Documents:**

@@ -1357,3 +1357,44 @@ explosion stopped being the thing everything else waits behind.**
    2 040 store-only cells after two fires, in a store whose lifetime is one level
    run. Both answers are defensible.
 3. **AI-02 resume timing** — open since 2026-07-26, never re-raised.
+
+---
+
+## Next Steps — superseding update (2026-09-15)
+
+**Read this section, not the three above.** Between 2026-08-30 and 2026-09-15 the work went
+somewhere none of those lists pointed: glass closed, and the performance milestone opened on
+real phones.
+
+### What happened
+
+- **M4 glass is essentially done.** `GLASS_MASTER_PLAN` v1.50 closed the physics on
+  2026-09-10. Its one rendering task moved to `RENDER_ORDER_MASTER_PLAN`, where Option A is
+  default ON.
+- **The performance milestone opened on devices** (`DEVICE_DIAGNOSTICS_MASTER_PLAN`,
+  2026-09-12 → 15), on the Moto g04s and the Galaxy A16.
+  - The ratified budget is 30 fps / 33.3 ms on playback frames.
+  - The 2D board was measured as the cost: 60 ms idle at the default portrait zoom,
+    multi-second detonation stalls, and 2.2 GB of memory with up to 1.4 GB swapped out.
+- **The render decision was taken on 2026-09-15.** The board moves to Godot 3D over a packed
+  voxel store: `RENDER3D_MASTER_PLAN`, stages R3D-0 → R3D-9. The prototype already idles at
+  18–23 ms and plays grenade #1 in 11.8 s, against 28.5 s in 2D.
+- **JAMES, the design-branch agent, is suspended** until the performance milestone closes.
+  Claude owns the UI meanwhile.
+
+### What is next
+
+1. **`RENDER3D_MASTER_PLAN` R3D-0 → R3D-3** — the spine of the performance milestone. R3D-1
+   and R3D-2 also improve the 2D build that ships: memory, and the cook's LIGHT step.
+2. **The 2026-08-30 list stays valid as unscheduled work,** with three moves:
+   - `TOP_TEXTURE` Part 3 now lives inside `RENDER3D` R3D-6;
+   - `OCCLUSION` Part 4 now lives inside `RENDER3D` R3D-7;
+   - `MATERIALS` M5's "renderer v2" is `RENDER3D`.
+
+### Open Director calls
+
+1. **`RENDER3D_MASTER_PLAN` §8's seven questions:** the look of floors, actors, rotation, the
+   web export, decals, the cutaway, and the vertical scale. Each is asked at the stage that
+   needs it.
+2. **The 2026-08-30 calls above are unchanged:** `SOOT_STORAGE_REFORM` §5.3 and the AI-02
+   timing.

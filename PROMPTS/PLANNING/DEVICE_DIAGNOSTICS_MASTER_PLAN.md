@@ -1,8 +1,15 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.6
+## Measuring the real build on a real entry-tier phone — v1.7
 
-**Status:** 🟢 **v1.6 — 2D vs 3D memory measured (2026-09-15).**
+**Status:** 🟢 **v1.7 — the render decision is taken (2026-09-15).**
 Where the Moto g04s stands:
+
+- **The decision (§15.17):** the Director ratified moving the board to Godot 3D, over a
+  packed voxel store. The migration is planned in
+  [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), stages R3D-0 to R3D-9.
+  - Measured on the way: one `Voxel` object costs ~1 540 bytes, so PLAYGROUND's 215 432
+    voxels cost **316 MB** on a desktop debug build, against 0.8 MB packed.
+  - This plan stays the measurement harness for that track.
 
 - **Memory, 2D vs 3D (DIAG-23, §15.15):**
   - At the look the game ships, 2D idles at **2.17–2.20 GB**, with 0.7–1.4 GB swapped
@@ -2792,3 +2799,38 @@ the three looks (local): `Screenshots/diag23_2026-09-14/pair_memory_rows.png`.
    swap behaviour. §10.8 measured it swapping 1.42 GB at idle.
 5. **Memory growth per detonation in 3D** is not measurable with this instrument, because
    the plan reads 2D cells. It waits for item 2.
+
+### 15.17 ✅ The decision — the board moves to Godot 3D, over a packed voxel store (2026-09-15)
+
+**Director, 2026-09-15**, after §15.15: *"Me parece que o 3D é o caminho mais efetivo. E aí
+nesse caso, precisamos reconfirmar a arquitetura. Não seria melhor fazer as paredes maciças
+com fachadas inteiras, e somente substituir zonas menores por voxels conforme elas ficam
+sujas?"* Shown the two measurements below, the Director answered: *"Certo então vamos fazer
+isso. Faça o planejamento de todas as etapas e deixe documentado."*
+
+**Measured to answer the question** — desktop debug build, a scratch script, two identical
+runs:
+- 215 432 real `Voxel.new()` objects, held in arrays of 64 the way `Slice` and `Slab` hold
+  them, raise `OS.get_static_memory_usage()` by **316.4 MB — about 1 540 bytes per voxel**.
+- The same count as a `PackedInt32Array` raises it by 0.8 MB, which is exactly the array's
+  size, so the instrument calibrates itself.
+- ⚠️ This is not yet measured on the Moto. A release build on ARM can differ, and measuring
+  it is `RENDER3D` R3D-0.
+
+**Read from the logs already on disk:**
+- The 3D board merges PLAYGROUND's 108 772 visible faces into **367 quads**. After grenade
+  #1 the 5 touched chunks hold 350.
+- So an intact wall is already one facade quad, and voxel granularity appears only around
+  damage. Soot and light need no geometry (§15.11).
+
+**What was ratified:**
+- **The render half of the proposal** — whole facades, with detail spent near damage — as
+  the 3D board already draws it.
+- **For the data half, a packed store instead of materialised zones.** It keeps one
+  representation, prediction stays per voxel, and floors and roofs account for 145 992 of
+  the 215 432 voxels.
+
+**The plan:** [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), R3D-0 → R3D-9.
+- This plan stays its measurement harness.
+- §15.14 item 1 (the cook's LIGHT step) folds into R3D-2.
+- §15.14 item 2 (the 3D commit frame) folds into R3D-3.

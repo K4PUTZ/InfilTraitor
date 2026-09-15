@@ -2,7 +2,22 @@
 
 > **Canonical specification for guard FSM, detection, and communication.**
 
-This is the definitive reference for guard artificial intelligence, perception, and inter-guard communication. See OPERATOR_CONTEXT for architectural invariants and development workflow.
+> **Status (2026-09-15): a SPECIFICATION, partly built.**
+> - **In code:**
+>   - the five-state FSM in `agents/guard_enemy.gd` (`STATE_PATROL` / `STATE_SUSPICIOUS` /
+>     `STATE_ALERT` / `STATE_CHASE` / `STATE_SEARCH`);
+>   - transitions only through `_enter_state()` (canon rule 4);
+>   - the alert meter accumulated only in `_apply_tic_result()` (rule 5).
+>
+>   Both rules are hook-checked.
+> - **Not re-verified in this pass:** the tuning tables below (multipliers, durations,
+>   probabilities) are the spec's intent. `docs/ARCHITECTURE.md` §3–§4 and
+>   `docs/production/technical_debt.md` carry real values where they were audited.
+> - **The AI track** has been deferred since 2026-06-18 (`docs/production/milestones.md`),
+>   and its resume timing (AI-02) is an open Director call.
+> - **The 3D render path** (`RENDER3D_MASTER_PLAN`) does not change guard logic.
+
+This is the definitive reference for guard artificial intelligence, perception, and inter-guard communication. See `CLAUDE.md` (repo root) for architectural invariants and development workflow.
 
 ---
 
@@ -361,7 +376,7 @@ ENEMY PHASE
 
 ## Related Documentation
 
-- **OPERATOR_CONTEXT** — Development handbook with architectural invariants
+- **`CLAUDE.md`** (repo root) — architectural invariants and workflow (it replaced the retired OPERATOR_CONTEXT on 2026-07-27)
 - **ARCHITECTURE.md** — High-level system relationships
 - **docs/systems/perception.md** — Visual detection details (FOV, LOS, geometry)
 - **docs/systems/noise.md** — Audio propagation mechanics

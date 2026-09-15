@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-14 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-15 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -302,6 +302,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-12_DEVICE.md
 - RESUMO_SESSAO_2026-09-12_PERF_DEVICE.md
 - RESUMO_SESSAO_2026-09-13_FACE_SHADER.md
+- RESUMO_SESSAO_2026-09-14_PERF_3D.md
+- RESUMO_SESSAO_2026-09-15_MEMORY_2D3D.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

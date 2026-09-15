@@ -1,8 +1,16 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.5
+## Measuring the real build on a real entry-tier phone — v1.6
 
-**Status:** 🟢 **v1.5 — the grenade's prediction-cook stall is named and removed (2026-09-14).**
+**Status:** 🟢 **v1.6 — 2D vs 3D memory measured (2026-09-15).**
 Where the Moto g04s stands:
+
+- **Memory, 2D vs 3D (DIAG-23, §15.15):**
+  - At the look the game ships, 2D idles at **2.17–2.20 GB**, with 0.7–1.4 GB swapped
+    out. The 3D path costs **at most 1.04–1.10 GB**, with nothing swapped.
+  - The saving is the bake atlas, which the 2D look needs and a 3D face does not: 2D
+    without it is 1.10 GB but loses the facade look.
+  - The 2D board's 207 944 cells themselves free 59 MB of native heap and no graphics
+    memory.
 
 - **The cook stall (DIAG-22, §15.13):** one damage composite stored mid-cook created a
   tile on the TileSet every TileMapLayer shares, and the next frame rebuilt them all —
@@ -2666,3 +2674,121 @@ detonations per boot, five boots interleaved. Logs (local):
 2. **The commit frame in 3D (~265–280 ms):** remesh ~125 ms off-thread (§15.12 item 2),
    then the recolour uploads (item 3).
 3. **The decision (§15.12 item 4)** is unchanged and is the Director's.
+
+### 15.15 ✅ DIAG-23 MEASURED — memory: the 3D path is about half, and the half it saves is the bake atlas
+
+**Director, 2026-09-14:** *"Vamos seguir com a comparação 2D x 3D"*, then chose the
+memory axis — the one axis with no number (§15.7: in `RENDER3D` mode the 2D board is still
+built underneath, so both runs read ~2.2 GB).
+
+**Why the instrument is not a 3D-only load.** Skipping 2D placement at the source is not
+possible yet, for two reasons read in the code:
+- the load-time light apply (`_apply_light_to_layer`) writes the cell planes the 3D board
+  reads its light and soot from, but only for cells present in a layer
+  (`layer.get_used_cells()`);
+- the detonation plan skips a cell whose `source_id` is −1.
+
+**So the measurement is split in two, inside one process each** (commit `b6b0b17c`):
+- **The atlas** is removed at the source with the existing `NO_BAKE` flag. The 3D board
+  never read the bake: it samples the facades through `TextureResolver`.
+- **The cells:** a scenario step, `drop2d` (`Room.scenario_drop_2d_board()` →
+  `VoxelRenderer.debug_drop_board_cells()`), clears every opaque and glass layer and the
+  structure layer, 105 s into idle. It keeps the floor layer, which selection, the
+  movement overlay and `ViewContext` read, and it keeps the layer nodes, the TileSet, the
+  planes and `_placed_index`.
+- What `drop2d` frees is therefore a lower bound on the cells' cost, and the process after
+  it is an **upper bound** on a 3D-only one.
+
+Desktop, before the phone: 205 704 opaque + 2 240 glass cells cleared in 12 ms. The
+captures before and after the drop differ by 0 px, and the capture shows the whole board
+drawn. Without `RENDER3D` the step errors and the scenario aborts.
+
+**The matrix** — Moto g04s, APK `d137542f…`, portrait zoom 0.5, nothing detonated.
+- Six boots interleaved 2D / 2D `NO_BAKE` / 3D `NO_BAKE` + `drop2d`, twice.
+- `device_run.py --mem-poll 5`. `bench_analyze.py` now tabulates the polls per scenario
+  segment.
+- Values are medians of 8–15 polls per segment; MB = kB / 1024.
+- Logs (local): `docs/measurements/device_2026-09-14_moto_g04s_diag23_*.log`.
+
+| runs a / b | 2D, bake ON (shipped look) | 2D, `NO_BAKE` | 3D `NO_BAKE`, 2D board hidden | **3D `NO_BAKE`, 2D board dropped** |
+|---|---|---|---|---|
+| TOTAL PSS | 2 201 / 2 171 | 1 107 / 1 101 | 1 090 / 1 089 | **1 099 / 1 036** |
+| GL mtrack | 734 / 734 | 318 / 318 | 272 / 272 | **277 / 272** |
+| swap PSS | **721 / 1 395** | 0 / 0 | 0 / 0 | **0 / 0** |
+| native heap alloc · free | 1 413 · 78 | 705 · 91 | 748 · 77 | **689 · 135** |
+| TileSet (`MEM_CENSUS`) | 135 sources · 36 178 tiles | 98 · 98 | 98 · 98 | 98 · 98 |
+| boot → map loaded | 54.0 / 52.2 s | 19.1 / 19.6 s | 22.9 / 22.8 s | — |
+| idle frame · render gpu · draws | 60.0 · 58.6 · 1 641 | 76.0 · 74.5 · 11 308 | 22.9 · 21.5 · 225 | 22.9 · 21.5 · 225 |
+
+`drop2d` took 106–111 ms on the Moto. The closing captures are pixel-identical run a vs
+run b in both `NO_BAKE` rows, and differ by 13 px in the baked 2D row. A paired capture of
+the three looks (local): `Screenshots/diag23_2026-09-14/pair_memory_rows.png`.
+
+**What it says:**
+- **At the look the game ships, 2D costs 2.17–2.20 GB with 0.7–1.4 GB of it swapped out;
+  the 3D path costs at most 1.04–1.10 GB with nothing swapped.** That is about half, and
+  §10.7.2's mechanism — the board evicted at idle and faulted back in by the blast — is
+  absent from the 3D rows.
+- **The saving is the atlas, not the representation.** Removing the bake takes 2D from
+  2.17–2.20 GB to 1.10 GB (graphics −416 MB, native heap −708 MB, TileSet 36 178 → 98
+  tiles). Dropping 207 944 cells then frees **59 MB of native heap in both runs and no
+  graphics memory at all**.
+- **2D cannot take that saving at the same look.** In the paired capture, 2D without its
+  atlas draws the concrete floor as a generic brown checker; 3D without it draws the
+  concrete facade. The atlas exists because the 2D look is pre-projected isometric atoms,
+  and a 3D face reads the same facade through its UVs. §10.9 had already priced the bake
+  as a trade — ~1 GB for blast speed. In 3D it stops being a trade, because the 3D path
+  has no atlas to hold.
+- **The bake is also a draw-call saving in 2D:** without it the idle board issues 11 308
+  draws instead of 1 641, and the frame costs 76 ms instead of 60.
+- **The 3D board's own footprint is small.** Against 2D `NO_BAKE` it has 46 MB less
+  graphics memory and 43 MB more native heap.
+  - The graphics difference is between drawing the 2D board and not drawing it: dropping
+    its cells moved no graphics memory, so holding them costs none. Which buffers, not
+    measured.
+  - The native heap includes the prototype's GDScript dictionaries (215 432 entries), so
+    it is not production-shaped.
+
+**Caveats, stated with the numbers:**
+- ⚠️ **An upper bound, and retention is visible.** The 59 MB freed stayed in the native
+  heap as free space in both runs (77 → 135 MB). PSS fell 54 MB in run b and not in run a.
+- ⚠️ **The peak at load is not measured.** The drop runs after the load.
+- **Neither side is production-shaped.**
+  - The 3D rows still carry the 2D renderer's bookkeeping and empty layer nodes.
+  - A 3D path with decals or per-voxel atom detail would add texture memory this row
+    does not hold.
+  - The look gaps of §15.7 are unchanged.
+- **Both sides share a floor of ~1.1 GB**, with ~690–705 MB of native heap and no atlas.
+  It is not decomposed.
+- **The 3D idle frame reads 22.9 ms here, against §15.7's 17.9.** The difference coincides
+  with step 2c's per-fragment plane fetch (§15.11) and is not isolated.
+
+**Two harness defects surfaced by this run, both fixed** (commit `e588cdb8`):
+- **`device_run.py` sorted the saved log on the HH:MM:SS string.** Run a of the 3D row
+  booted at 23:59:56, so its boot, session header and first poll were written at the end
+  of the file, inside the last segment. The key is now seconds of the day and handles
+  midnight.
+  - Red-before-green on that log: the old key puts the boot at line 637, after "map
+    loaded" at line 141; the fixed key puts it at line 16, before line 215.
+  - That log was re-sorted with the fixed key.
+- **The poll taken after `quit` read a process tearing down**, 72 MB below idle in run a
+  of the baked 2D row. `bench_analyze` now closes the memory segment at `scenario.end`.
+  - ⚠️ The host and device clocks differ by ~1 s, so in two rows one teardown poll still
+    sorts inside the last segment. It moves those segments' *last* value, never the
+    median quoted above.
+
+### 15.16 Proposed next
+
+1. **The decision (§15.12 item 4) now has its memory row.** At the shipped look, 2D needs
+   an atlas that the 3D path does not.
+2. **A clean 3D-only number, if one is wanted, is the refactor itself:**
+   - the light apply writes the planes from the registries instead of from layer cells;
+   - the detonation plan stops reading layer cells (§15.8 item 4);
+   - load then never places a 2D cell, and the peak at load becomes measurable.
+3. **The shared ~1.1 GB floor:** §10.7's boot decomposition (`MEM_STAGES` + `--mem-poll`)
+   on a `NO_BAKE` boot, now that the atlas no longer hides it. ⚠️ Candidates are not
+   named here.
+4. **The Galaxy A16 5G (3.37 GB):** the same six boots, to see whether 1.1 GB changes its
+   swap behaviour. §10.8 measured it swapping 1.42 GB at idle.
+5. **Memory growth per detonation in 3D** is not measurable with this instrument, because
+   the plan reads 2D cells. It waits for item 2.

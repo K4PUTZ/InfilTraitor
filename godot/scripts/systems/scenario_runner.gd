@@ -22,6 +22,18 @@
 ##                                        waits for the blast to end (TEL-06b)
 ##   capture <name>                       the root viewport to captures/<name>.png
 ##                                        (the external files dir on Android)
+##   capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the
+##                                        next blast — taken <offset> after the Room
+##                                        names <beat> (`Room.blast_beat`). The beat
+##                                        is written with `_` for a space
+##                                        (`SOOT_FADE`); the offset is frames (`2f`)
+##                                        or seconds of process delta (`1.5s`) — the
+##                                        clock the consequence channel and the
+##                                        embers age on, so a 2D and a 3D run at
+##                                        very different frame times photograph the
+##                                        same moment of the effect. Arm it BEFORE
+##                                        `detonate`, which returns only once the
+##                                        blast is over.
 ##   drop2d                               DIAG-23 instrument: clear the hidden 2D
 ##                                        board's cells under a 3D board (RENDER3D=1)
 ##   probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the
@@ -47,10 +59,11 @@ extends Node
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
-	"probe": 1, "alloc": 2,
+	"probe": 1, "alloc": 2, "capture_at": 3,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
+const BEAT_TOKEN_PATTERN: String = "^[A-Za-z0-9_]+$"
 
 
 ## `{"steps": Array, "error": String}` — `error` is empty exactly when the whole
@@ -137,6 +150,21 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
+		"capture_at":
+			if RegEx.create_from_string(BEAT_TOKEN_PATTERN).search(arg) == null:
+				return "capture_at takes a beat name (letters, digits, _ for a space)"
+			var offset: String = tokens[2].to_lower()
+			var amount: String = offset.left(-1)
+			if offset.ends_with("f") and amount.is_valid_int() and int(amount) >= 0:
+				step["frames"] = int(amount)
+			elif offset.ends_with("s") and amount.is_valid_float() and float(amount) >= 0.0:
+				step["seconds"] = float(amount)
+			else:
+				return "capture_at takes an offset in frames (2f) or seconds (1.5s), >= 0"
+			if not tokens[3].is_valid_filename() or tokens[3].contains("."):
+				return "capture_at takes a file name (letters, digits, _ or -)"
+			step["beat"] = arg.to_upper().replace("_", " ")
+			step["name"] = tokens[3]
 		"detonate":
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "detonate takes a dev grenade index >= 0"
@@ -181,13 +209,18 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				await room.get_tree().process_frame
 		"capture":
 			await RenderingServer.frame_post_draw
-			var image: Image = room.get_viewport().get_texture().get_image()
-			var path: String = _output_path("captures", "%s.png" % step["name"])
-			var err: int = image.save_png(path)
-			if err != OK:
-				return _fail(step, "could not save %s (error %d)" % [path, err])
-			Telemetry.event("scenario.capture", {"path": path})
-			print("[SCENARIO] captured %s" % path)
+			var problem: String = _save_capture(room, str(step["name"]))
+			if not problem.is_empty():
+				return _fail(step, problem)
+		"capture_at":
+			if not room.has_signal("blast_beat"):
+				return _fail(step, "Room has no blast_beat signal")
+			## Once per runner: the listener is bound, so `is_connected()` against the
+			## unbound method would never match and a second arm would connect twice.
+			if not _listening:
+				room.connect("blast_beat", _on_blast_beat.bind(room))
+				_listening = true
+			_armed.append({"step": step, "state": "armed"})
 		"probe":
 			if not room.has_method("scenario_board_probe"):
 				return _fail(step, "Room has no scenario_board_probe()")
@@ -214,10 +247,76 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			## the next step measures anything.
 			await RenderingServer.frame_post_draw
 		"quit":
+			## Loud, not skipped: a capture that never fired is a missing picture a
+			## pair would otherwise be compared against in silence.
+			for arm: Dictionary in _armed:
+				if str(arm["state"]) != "taken":
+					push_error("[ScenarioRunner] '%s' was %s at quit — beat '%s' %s" % [
+						arm["step"]["text"], arm["state"], arm["step"]["beat"],
+						"never named" if str(arm["state"]) == "armed" else "named, capture not taken"])
 			## `quit()` is deferred, so `run()` still reaches its own `scenario.end`
 			## after this step — emitting one here as well wrote it twice.
 			room.get_tree().quit(0)
 	return true
+
+
+## The root viewport as it was last drawn, to captures/<name>.png. Returns why it was
+## not saved, or "" when it was. Call after `RenderingServer.frame_post_draw`.
+func _save_capture(room: Node, file_stem: String) -> String:
+	var image: Image = room.get_viewport().get_texture().get_image()
+	var path: String = _output_path("captures", "%s.png" % file_stem)
+	var err: int = image.save_png(path)
+	if err != OK:
+		return "could not save %s (error %d)" % [path, err]
+	Telemetry.event("scenario.capture", {"path": path})
+	print("[SCENARIO] captured %s" % path)
+	return ""
+
+
+## `capture_at` steps, in the order armed: `{"step": Dictionary, "state": "armed" |
+## "counting" | "taken" | "failed"}`. Each fires once, on the first matching beat
+## after it was armed.
+var _armed: Array = []
+var _listening: bool = false
+
+
+func _on_blast_beat(beat: String, room: Node) -> void:
+	for arm: Dictionary in _armed:
+		if str(arm["state"]) == "armed" and beat.to_upper() == str(arm["step"]["beat"]):
+			arm["state"] = "counting"
+			_take_armed(room, arm)
+
+
+## Not awaited by the beat: it counts frames or process delta alongside the blast and
+## whatever step the runner is on, then captures the frame it lands on.
+func _take_armed(room: Node, arm: Dictionary) -> void:
+	var step: Dictionary = arm["step"]
+	var tree: SceneTree = room.get_tree()
+	var frames: int = 0
+	var elapsed: float = 0.0
+	if step.has("frames"):
+		while frames < int(step["frames"]):
+			await tree.process_frame
+			frames += 1
+			elapsed += tree.root.get_process_delta_time()
+	else:
+		while elapsed < float(step["seconds"]):
+			await tree.process_frame
+			frames += 1
+			elapsed += tree.root.get_process_delta_time()
+	await RenderingServer.frame_post_draw
+	if not is_instance_valid(room):
+		arm["state"] = "failed"
+		push_error("[ScenarioRunner] '%s': the Room went away before the capture" % step["text"])
+		return
+	var problem: String = _save_capture(room, str(step["name"]))
+	if not problem.is_empty():
+		arm["state"] = "failed"
+		push_error("[ScenarioRunner] '%s': %s" % [step["text"], problem])
+		return
+	arm["state"] = "taken"
+	print("[SCENARIO] %s — %d frame(s), %.3f s after '%s'" % [
+		step["name"], frames, elapsed, step["beat"]])
 
 
 func _fail(step: Dictionary, detail: String) -> bool:

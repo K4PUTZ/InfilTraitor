@@ -3011,6 +3011,12 @@ func _start_board3d_live() -> void:
 ## detonation deferred, so a failure that returns at once cannot fire before it waits.
 signal scenario_detonation_done(ok: bool)
 
+## RENDER3D R3D-0 — every beat a blast names (`event_probe_beat()`), emitted whether
+## or not the frame probe is on, so a scenario's `capture_at` can photograph INSIDE a
+## blast: `detonate` only returns once the blast is over, and the embers are gone by
+## then.
+signal blast_beat(beat: String)
+
 
 ## TEL-06b (DEVICE_DIAGNOSTICS §15.2) — a dev grenade detonated through the menu path
 ## (`open_menu_for()` + `detonate_active()`, as the benchmark does), with the camera
@@ -6237,16 +6243,16 @@ var _event_probe_marks: Array = []
 ## boot, a map load and the seconds the player spends aiming are all outside it.
 func event_probe_arm(beat: String) -> void:
 	_event_probe_on = _dev_flag_on("EVENT_FRAMES")
-	if not _event_probe_on:
-		return
-	_event_probe_gaps = PackedInt32Array()
-	_event_probe_marks = []
-	_event_probe_last_us = 0
+	if _event_probe_on:
+		_event_probe_gaps = PackedInt32Array()
+		_event_probe_marks = []
+		_event_probe_last_us = 0
 	event_probe_beat(beat)
 
 
 ## Marks the timeline. Cheap enough to call per beat: two array appends.
 func event_probe_beat(beat: String) -> void:
+	blast_beat.emit(beat)
 	if not _event_probe_on:
 		return
 	_event_probe_marks.append([beat, _event_probe_gaps.size()])

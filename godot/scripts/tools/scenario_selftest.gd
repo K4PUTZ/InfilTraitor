@@ -46,12 +46,14 @@ func _ready() -> void:
 func _test_ladder_parses() -> bool:
 	var text: String = "framing portrait; centre agent\nzoom 0.5; wait 20; mark z 050;" \
 		+ " centre 12,7; frames 3; window 360x806; capture shot_1; detonate 1; drop2d;" \
-		+ " probe after_0; alloc objects 64; alloc bytes 1048576; quit;"
+		+ " probe after_0; alloc objects 64; alloc bytes 1048576;" \
+		+ " capture_at soot_fade 2f fade_2; capture_at CONSEQUENCE 1.5s embers_15; quit;"
 	var result: Dictionary = ScenarioRunnerClass.parse(text)
 	var steps: Array = result["steps"]
 	var ops: Array = steps.map(func(s: Dictionary) -> String: return str(s["op"]))
 	var expected_ops: Array = ["framing", "centre", "zoom", "wait", "mark", "centre",
-		"frames", "window", "capture", "detonate", "drop2d", "probe", "alloc", "alloc", "quit"]
+		"frames", "window", "capture", "detonate", "drop2d", "probe", "alloc", "alloc",
+		"capture_at", "capture_at", "quit"]
 	if not str(result["error"]).is_empty() or ops != expected_ops:
 		print("[TEST 1] ❌ ladder — error '%s', ops %s" % [result["error"], ops])
 		return false
@@ -62,11 +64,16 @@ func _test_ladder_parses() -> bool:
 		and steps[7]["size"] == Vector2i(360, 806) and steps[8]["name"] == "shot_1" \
 		and steps[9]["index"] == 1 and steps[11]["name"] == "after_0" \
 		and steps[12]["kind"] == "objects" and steps[12]["count"] == 64 \
-		and steps[13]["kind"] == "bytes" and steps[13]["count"] == 1048576
+		and steps[13]["kind"] == "bytes" and steps[13]["count"] == 1048576 \
+		and steps[14]["beat"] == "SOOT FADE" and steps[14]["frames"] == 2 \
+		and not steps[14].has("seconds") and steps[14]["name"] == "fade_2" \
+		and steps[15]["beat"] == "CONSEQUENCE" and typeof(steps[15]["seconds"]) == TYPE_FLOAT \
+		and is_equal_approx(steps[15]["seconds"], 1.5) and not steps[15].has("frames") \
+		and steps[15]["name"] == "embers_15"
 	if not typed:
 		print("[TEST 1] ❌ ladder arguments not typed as written: %s" % [steps])
 		return false
-	print("[TEST 1] ✅ a 15-step ladder parses in order with typed arguments")
+	print("[TEST 1] ✅ a 17-step ladder parses in order with typed arguments")
 	return true
 
 
@@ -102,6 +109,12 @@ func _test_each_argument_check() -> bool:
 		"alloc objects": "'alloc' takes 2 argument(s), got 1",
 		"alloc voxels 10": "alloc takes objects, packed or bytes",
 		"alloc packed 0": "alloc takes a count > 0",
+		"capture_at LIGHT 2f": "'capture_at' takes 3 argument(s), got 2",
+		"capture_at SOOT-FADE 2f x": "capture_at takes a beat name (letters, digits, _ for a space)",
+		"capture_at LIGHT 2 x": "capture_at takes an offset in frames (2f) or seconds (1.5s), >= 0",
+		"capture_at LIGHT 1.5f x": "capture_at takes an offset in frames (2f) or seconds (1.5s), >= 0",
+		"capture_at LIGHT -1s x": "capture_at takes an offset in frames (2f) or seconds (1.5s), >= 0",
+		"capture_at LIGHT 2f a.b": "capture_at takes a file name (letters, digits, _ or -)",
 	}
 	for text: String in cases:
 		var error: String = ScenarioRunnerClass.parse(text)["error"]

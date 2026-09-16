@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**256 scripts · 94282 lines total** (under `godot/scripts/`)
+**256 scripts · 94400 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2968,16 +2968,17 @@ extends `Node` · 156 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 292 lines
+extends `Node` · 391 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
-> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) drop2d                               DIAG-23 instrument: clear the hidden 2D board's cells under a 3D board (RENDER3D=1) probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
+> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. drop2d                               DIAG-23 instrument: clear the hidden 2D board's cells under a 3D board (RENDER3D=1) probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0, "probe": 1, "alloc": 2, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, }`
 - `FRAMINGS` = `["portrait", "landscape", "desktop"]`
 - `ALLOC_KINDS` = `["objects", "packed", "bytes"]`
+- `BEAT_TOKEN_PATTERN` = `"^[A-Za-z0-9_]+$"`
 
 **Public API**
 - `func run(room: Node, steps: Array) -> void:`
@@ -4712,7 +4713,7 @@ extends `SceneTree` · 196 lines
 
 ### `scenario_selftest.gd`
 
-extends `Node` · 112 lines
+extends `Node` · 125 lines
 
 `godot/scripts/tools/scenario_selftest.gd`
 
@@ -5633,7 +5634,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11942 lines
+extends `Node2D` · 11948 lines
 
 `godot/scripts/world/room.gd`
 

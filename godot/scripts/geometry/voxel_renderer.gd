@@ -670,13 +670,15 @@ static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") != "0"
 ## live layer cells for render information reads the pre-blast board there.
 static var SKIP_BOARD_WRITES: bool = false
 
-## RENDER3D R3D-1c — `STORE_OCCUPANCY=1` (with `VOXEL_STORE=1`): `build_occupancy()` answers
-## from the shadow `VoxelStore` (visible claims) instead of the placed tiles. Set by
-## DevFlags. ⚠️ NOT a 0-difference flip: the tiles hold geometry no voxel holds (the map
-## buffer's L72–78 columns), draw the deep floor only where a crater reveals it, and erase
-## a corner cell when one of its two claims is destroyed — see `RENDER3D_MASTER_PLAN`
-## R3D-1c. A comparison instrument until the Director rules on those three.
-static var STORE_OCCUPANCY: bool = false
+## RENDER3D R3D-1c step 1 — `build_occupancy()` answers from the `VoxelStore` (visible
+## claims) instead of the placed tiles. DEFAULT ON (DevFlags); `STORE_OCCUPANCY=0` is the
+## old tile read, for comparison only. NOT pixel-identical, and ratified as such (the
+## Director, option A, 2026-09-16: *"pode seguir com a opção A"*): the voxels are the truth,
+## so the three places where the drawn board disagreed with them change — the map
+## buffer's L72–77 tile columns (no voxel: now air), the undrawn deep floor (a voxel: now
+## solid), and a corner cell whose other claim still stands (now solid). Measured at max
+## 6/255 on screen. `RENDER3D_MASTER_PLAN` R3D-1c.
+static var STORE_OCCUPANCY: bool = true
 
 
 ## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.

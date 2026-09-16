@@ -5,13 +5,14 @@
 ## contiguous per container, plus a derived dense grid that answers "is this cell
 ## occupied, and by which claim".
 ##
-## SHADOW MEANS NOTHING READS IT YET. It is built from the registries after every board
+## SHADOW MEANT NOTHING READ IT (R3D-1b); R3D-1c moves readers onto it one at a time. It is built from the registries after every board
 ## build (`Room._rebuild_voxel_store()`), and every state change a `Voxel` makes is
 ## mirrored into it from the one seam that makes them (`Voxel.set_damage()` /
 ## `set_visible()`). `BoardProbe.write_store()` dumps it in the objects' own format, so
 ## `board_probe.py shadow` can require the two to be identical, value by value. Readers
 ## move onto it one subsystem at a time in R3D-1c; the objects go in R3D-1d.
-## Behind `VOXEL_STORE=1` (DevFlags); off, `active` stays null and nothing is built.
+## On by default since R3D-1c step 1 (`VOXEL_STORE=0` turns it off, and `active` stays
+## null). Its first reader is the light field's occupancy (`VoxelRenderer.build_occupancy()`).
 ##
 ## A CLAIM is one `Voxel` in one container. PLAYGROUND holds 216 104 claims in 215 432
 ## cells: where two slices of one GU meet at a corner, both claim the cell, and under a
@@ -299,18 +300,33 @@ func grid_mismatches() -> int:
 ## read from the claims: a cell is occupied when any of its claims is visible. Every level
 ## the store spans gets an entry, empty or not. `predict_destroyed` omits cells, keyed
 ## Vector3i(x, y, level), exactly as the tile-based version does.
+##
+## ⚠️ WRITTEN FOR THE COOK'S LIGHT STEP, which calls it once per detonation over the whole
+## map. The first version tested every claim against `predict_destroyed` (a `Vector3i`
+## built and looked up 216 104 times) and fetched its level's set by key per claim: the
+## LIGHT step went 45 → 82 ms on desktop against the tile read. So the predicted cells —
+## a few hundred — are erased AFTER the pass, and a level's set is found by index.
 func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
-	for li in range(PAD, nl - PAD):
-		out[l0 + li] = {}
+	var sets: Array = []
+	sets.resize(nl)
+	for li in range(nl):
+		var level_set: Dictionary = {}
+		sets[li] = level_set
+		if li >= PAD and li < nl - PAD:
+			out[l0 + li] = level_set
+	var st: PackedByteArray = state
+	var p: PackedInt32Array = xyz
+	var base: int = l0
+	var i: int = 0
 	for claim in range(claims):
-		if not (state[claim] & 1):
-			continue
-		var level: int = xyz[claim * 3 + 2]
-		if not predict_destroyed.is_empty() \
-				and predict_destroyed.has(Vector3i(xyz[claim * 3], xyz[claim * 3 + 1], level)):
-			continue
-		(out[level] as Dictionary)[Vector2i(xyz[claim * 3], xyz[claim * 3 + 1])] = true
+		if st[claim] & 1:
+			sets[p[i + 2] - base][Vector2i(p[i], p[i + 1])] = true
+		i += 3
+	for key: Vector3i in predict_destroyed:
+		var li: int = key.z - base
+		if li >= 0 and li < nl:
+			(sets[li] as Dictionary).erase(Vector2i(key.x, key.y))
 	return out
 
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**259 scripts · 96264 lines total** (under `godot/scripts/`)
+**259 scripts · 96287 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -861,7 +861,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7905 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7907 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2352,7 +2352,7 @@ extends `RefCounted` · 941 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 242 lines
+extends `Node` · 244 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3166,11 +3166,11 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 353 lines
+`class_name VoxelStore` · extends `RefCounted` · 369 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
-> VoxelStore — the packed voxel store, in SHADOW beside the `Voxel` objects. RENDER3D R3D-1b (`RENDER3D_MASTER_PLAN` §4). R3D-1a measured the layouts and the Director confirmed B (2026-09-16): every claim's state in flat per-voxel arrays, contiguous per container, plus a derived dense grid that answers "is this cell occupied, and by which claim". SHADOW MEANS NOTHING READS IT YET. It is built from the registries after every board build (`Room._rebuild_voxel_store()`), and every state change a `Voxel` makes is mirrored into it from the one seam that makes them (`Voxel.set_damage()` / `set_visible()`). `BoardProbe.write_store()` dumps it in the objects' own format, so `board_probe.py shadow` can require the two to be identical, value by value. Readers move onto it one subsystem at a time in R3D-1c; the objects go in R3D-1d. Behind `VOXEL_STORE=1` (DevFlags); off, `active` stays null and nothing is built. A CLAIM is one `Voxel` in one container. PLAYGROUND holds 216 104 claims in 215 432 cells: where two slices of one GU meet at a corner, both claim the cell, and under a blast their states diverge (R3D-1a). The store keeps both, exactly as the objects do. THE ARRAYS, per claim, in container order (slices, slabs, junction columns — the prediction WALK's order): state  bit 0 visible · bits 1-2 damage · bit 3 blast · bits 4-6 carved side (`BoardProbe`'s packing) aux    variant (low nibble) · substrate (high nibble) mat    index into `material_ids`, band-resolved on a slice, the override on a column xyz    grid x, grid y, level THE DERIVED GRID, per cell of the padded bounds (2 cells and 2 levels of air on every side, as R3D-1a measured it, so a reader's ±1/±2 neighbour read needs no bounds check): occ    1 when ANY claim of the cell is visible owner  the first visible claim, else the first claim, else -1 A cell more than one claim holds is listed in `_multi`, so a write can recompute it. FINDING A CLAIM FROM A VOXEL costs no field on `Voxel`. Each container's voxels are laid out in a regular box — level, then y, then x — so the claim is the container's offset plus arithmetic on the voxel's own cell. That is VERIFIED for every voxel when the store is built; a container whose order breaks it gets a lookup table instead, and is counted, so the arithmetic is never trusted blind.
+> VoxelStore — the packed voxel store, in SHADOW beside the `Voxel` objects. RENDER3D R3D-1b (`RENDER3D_MASTER_PLAN` §4). R3D-1a measured the layouts and the Director confirmed B (2026-09-16): every claim's state in flat per-voxel arrays, contiguous per container, plus a derived dense grid that answers "is this cell occupied, and by which claim". SHADOW MEANT NOTHING READ IT (R3D-1b); R3D-1c moves readers onto it one at a time. It is built from the registries after every board build (`Room._rebuild_voxel_store()`), and every state change a `Voxel` makes is mirrored into it from the one seam that makes them (`Voxel.set_damage()` / `set_visible()`). `BoardProbe.write_store()` dumps it in the objects' own format, so `board_probe.py shadow` can require the two to be identical, value by value. Readers move onto it one subsystem at a time in R3D-1c; the objects go in R3D-1d. On by default since R3D-1c step 1 (`VOXEL_STORE=0` turns it off, and `active` stays null). Its first reader is the light field's occupancy (`VoxelRenderer.build_occupancy()`). A CLAIM is one `Voxel` in one container. PLAYGROUND holds 216 104 claims in 215 432 cells: where two slices of one GU meet at a corner, both claim the cell, and under a blast their states diverge (R3D-1a). The store keeps both, exactly as the objects do. THE ARRAYS, per claim, in container order (slices, slabs, junction columns — the prediction WALK's order): state  bit 0 visible · bits 1-2 damage · bit 3 blast · bits 4-6 carved side (`BoardProbe`'s packing) aux    variant (low nibble) · substrate (high nibble) mat    index into `material_ids`, band-resolved on a slice, the override on a column xyz    grid x, grid y, level THE DERIVED GRID, per cell of the padded bounds (2 cells and 2 levels of air on every side, as R3D-1a measured it, so a reader's ±1/±2 neighbour read needs no bounds check): occ    1 when ANY claim of the cell is visible owner  the first visible claim, else the first claim, else -1 A cell more than one claim holds is listed in `_multi`, so a write can recompute it. FINDING A CLAIM FROM A VOXEL costs no field on `Voxel`. Each container's voxels are laid out in a regular box — level, then y, then x — so the claim is the container's offset plus arithmetic on the voxel's own cell. That is VERIFIED for every voxel when the store is built; a container whose order breaks it gets a lookup table instead, and is counted, so the arithmetic is never trusted blind.
 
 **Constants / tuning**
 - `PAD` = `2`
@@ -4794,7 +4794,7 @@ extends `SceneTree` · 196 lines
 
 ### `scenario_selftest.gd`
 
-extends `Node` · 135 lines
+extends `Node` · 136 lines
 
 `godot/scripts/tools/scenario_selftest.gd`
 
@@ -5740,7 +5740,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12154 lines
+extends `Node2D` · 12156 lines
 
 `godot/scripts/world/room.gd`
 

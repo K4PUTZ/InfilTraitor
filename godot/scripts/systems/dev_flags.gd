@@ -83,6 +83,8 @@ func _ready() -> void:
 	VoxelRenderer.LIGHT_DISABLED = VoxelRenderer.LIGHT_DISABLED or on("NO_LIGHT")
 	## DIAG-21 2c — only meaningful with RENDER3D=1; Room warns otherwise.
 	VoxelRenderer.SKIP_BOARD_WRITES = on("SKIP_2D_BOARD_WRITES")
+	## RENDER3D R3D-1c — the light field's occupancy from the shadow VoxelStore.
+	VoxelRenderer.STORE_OCCUPANCY = on("STORE_OCCUPANCY")
 	## DIAG-22 — `=0` is the old lazy path (one TileSet mutation per new composite),
 	## kept only so one APK can measure both sides.
 	if value("COMPOSITE_TILES_UP_FRONT", "") == "0":

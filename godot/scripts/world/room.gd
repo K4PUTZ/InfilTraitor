@@ -3068,6 +3068,91 @@ func scenario_board_probe_store(path: String, label: String) -> Dictionary:
 	return summary
 
 
+## RENDER3D R3D-1c instrument — the light field's occupancy two ways, compared per level:
+## `VoxelRenderer.build_occupancy()` (placed tiles + ghosted cells + glass sublayers, what
+## the field reads today) against `VoxelStore.occupancy_dict()` (visible claims). Prints
+## the counts and the first differing cells; returns the total difference.
+func scenario_occupancy_compare(label: String) -> int:
+	var store: VoxelStore = VoxelStore.active
+	if store == null or _voxel_renderer == null:
+		push_error("[Room] scenario_occupancy_compare: no shadow store (VOXEL_STORE=1?) or no renderer")
+		return -1
+	var tiles: Dictionary = _voxel_renderer.build_occupancy()
+	var claims: Dictionary = store.occupancy_dict()
+	var levels: Dictionary = {}
+	for level in tiles:
+		levels[level] = true
+	for level in claims:
+		levels[level] = true
+	var sorted_levels: Array = levels.keys()
+	sorted_levels.sort()
+	var total: int = 0
+	var lines: PackedStringArray = []
+	var examples: PackedStringArray = []
+	for level in sorted_levels:
+		var a: Dictionary = tiles.get(level, {})
+		var b: Dictionary = claims.get(level, {})
+		var only_tiles: int = 0
+		var only_store: int = 0
+		for cell in a:
+			if not b.has(cell):
+				only_tiles += 1
+				if examples.size() < 12:
+					examples.append("L%d %s tile-only" % [level, cell])
+		for cell in b:
+			if not a.has(cell):
+				only_store += 1
+				if examples.size() < 12:
+					examples.append("L%d %s store-only" % [level, cell])
+		if only_tiles > 0 or only_store > 0:
+			lines.append("L%d tiles %d store %d (tile-only %d, store-only %d)"
+				% [level, a.size(), b.size(), only_tiles, only_store])
+		total += only_tiles + only_store
+	print("[OCC-COMPARE] %s — %d cell(s) differ over %d level(s)%s" % [label, total,
+		sorted_levels.size(), "" if lines.is_empty() else ": " + "; ".join(lines)])
+	for e in examples:
+		print("[OCC-COMPARE]   %s" % e)
+	_compare_light_buckets(label, tiles, claims)
+	return total
+
+
+## What the occupancy difference does to the LIGHT: one field per occupancy, same lights,
+## shadows and soot, and every placed opaque cell's bucket compared. This is the number
+## the R3D-1c flip is judged on — occupancy only matters where a bucket reads it.
+func _compare_light_buckets(label: String, tiles: Dictionary, claims: Dictionary) -> void:
+	if _lighting_controller == null or _lighting_controller.get_light_registry() == null:
+		print("[OCC-COMPARE] %s — no lighting controller, buckets not compared" % label)
+		return
+	var registry = _lighting_controller.get_light_registry()
+	var lights: Array = registry.get_active_lights()
+	var shadows = _lighting_controller.get_shadow_results()
+	var top: int = _voxel_renderer.top_wall_level()
+	var faces_a: Dictionary = {}
+	var soot_a: Dictionary = _build_soot_snapshot(faces_a)
+	var field_tiles := VoxelLightField.new()
+	field_tiles.build(lights, shadows, top, tiles, soot_a, _under_structure, faces_a)
+	var field_claims := VoxelLightField.new()
+	field_claims.build(lights, shadows, top, claims, soot_a, _under_structure, faces_a)
+	var compared: int = 0
+	var differ: int = 0
+	var by_level: Dictionary = {}
+	var examples: PackedStringArray = []
+	for level in _voxel_renderer.level_keys():
+		for cell in (_voxel_renderer.get_layer(level) as TileMapLayer).get_used_cells():
+			compared += 1
+			var a: int = field_tiles.bucket_for(cell, level)
+			var b: int = field_claims.bucket_for(cell, level)
+			if a != b:
+				differ += 1
+				by_level[level] = int(by_level.get(level, 0)) + 1
+				if examples.size() < 12:
+					examples.append("L%d %s bucket %d (tiles) vs %d (store)" % [level, cell, a, b])
+	print("[OCC-COMPARE] %s — light buckets: %d of %d placed cell(s) differ, by level %s"
+		% [label, differ, compared, by_level])
+	for e in examples:
+		print("[OCC-COMPARE]   %s" % e)
+
+
 ## RENDER3D R3D-1b gate steps. Each drives the path a player (or a load) takes, so the
 ## shadow store is judged on the writes the game really makes.
 

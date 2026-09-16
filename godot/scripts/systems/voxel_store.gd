@@ -295,6 +295,25 @@ func grid_mismatches() -> int:
 	return mismatches
 
 
+## RENDER3D R3D-1c — `VoxelRenderer.build_occupancy()`'s shape (level -> {Vector2i: true}),
+## read from the claims: a cell is occupied when any of its claims is visible. Every level
+## the store spans gets an entry, empty or not. `predict_destroyed` omits cells, keyed
+## Vector3i(x, y, level), exactly as the tile-based version does.
+func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	for li in range(PAD, nl - PAD):
+		out[l0 + li] = {}
+	for claim in range(claims):
+		if not (state[claim] & 1):
+			continue
+		var level: int = xyz[claim * 3 + 2]
+		if not predict_destroyed.is_empty() \
+				and predict_destroyed.has(Vector3i(xyz[claim * 3], xyz[claim * 3 + 1], level)):
+			continue
+		(out[level] as Dictionary)[Vector2i(xyz[claim * 3], xyz[claim * 3 + 1])] = true
+	return out
+
+
 func container_count() -> int:
 	return container_ids.size()
 

@@ -670,6 +670,14 @@ static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") != "0"
 ## live layer cells for render information reads the pre-blast board there.
 static var SKIP_BOARD_WRITES: bool = false
 
+## RENDER3D R3D-1c — `STORE_OCCUPANCY=1` (with `VOXEL_STORE=1`): `build_occupancy()` answers
+## from the shadow `VoxelStore` (visible claims) instead of the placed tiles. Set by
+## DevFlags. ⚠️ NOT a 0-difference flip: the tiles hold geometry no voxel holds (the map
+## buffer's L72–78 columns), draw the deep floor only where a crater reveals it, and erase
+## a corner cell when one of its two claims is destroyed — see `RENDER3D_MASTER_PLAN`
+## R3D-1c. A comparison instrument until the Director rules on those three.
+static var STORE_OCCUPANCY: bool = false
+
 
 ## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.
 ##
@@ -3729,6 +3737,8 @@ func _restore_ghosted_cells() -> void:
 ## A WRONG prediction costs nothing but a cache miss — `_ensure_light_alt()`
 ## still mints on demand — which is why this is safe to do speculatively.
 func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
+	if STORE_OCCUPANCY and VoxelStore.active != null:
+		return VoxelStore.active.occupancy_dict(predict_destroyed)
 	var occupancy: Dictionary = {}
 	## ⚠️ ONE loop, and the prediction now reaches FLOOR levels too. The paired
 	## version applied `predict_destroyed` to positive levels only and rebuilt

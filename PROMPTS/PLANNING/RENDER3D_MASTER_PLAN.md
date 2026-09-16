@@ -1,10 +1,13 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.4
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.5
 
-**Status:** 🟡 **R3D-1a MEASURED 2026-09-16: the rule picks layout B.** B stores per-voxel
-arrays, contiguous per container, plus a derived occupancy and owner grid. R3D-1b waits on
-the Director confirming that pick. R3D-0 closed on its gate the same day, and the
-direction was ratified by the Director on 2026-09-15.
+**Status:** 🟡 **R3D-1b GATED 2026-09-16: the packed `VoxelStore` runs in shadow and holds
+exactly what the objects hold.** It is behind `VOXEL_STORE=1`, and `board_probe.py shadow`
+passes on PLAYGROUND (10 stages) and GLASS (9). The Director confirmed layout B (R3D-1a)
+the same day. R3D-0 closed on its gate that day too, and the direction was ratified on
+2026-09-15.
+- **R3D-1b:** at every stage the objects' dump and the store's are identical. The derived
+  grid matches, no write is lost, and the flag changes 0 px.
 - **R3D-1a:** on the Moto, B is fastest on all three hot readers, and uses 13.5 MB against
   the objects' 191 MB.
   - A (the dense grid) fails the speed gate: its full walk is 16 % slower than the
@@ -15,7 +18,10 @@ direction was ratified by the Director on 2026-09-15.
 - **Found while closing it:** R3D-6 item 1's dark "roof tops" are not roofs. They are 2D
   shadow overlays drawn over the 3D board. The Director moved the item to R3D-5
   (2026-09-16).
-- **Next:** the Director's confirmation of B, then R3D-1b (the store in shadow).
+- **Found by R3D-1b's controls (not caused by the store):** a rotation round trip, and the
+  SaveState restore, lose the damage of 21 voxels on PLAYGROUND — junction columns and
+  box corners (see R3D-1b). Offered as a separate task.
+- **Next:** R3D-1c — readers move onto the store, one subsystem per flag.
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -590,7 +596,8 @@ claims.
     visible claim. That is what gate 1 checked.
 
 **What the rule picks: B.** A fails gate 3. Ac and B pass gates 1–3, and B's score is the
-lowest by 69 %. ⏳ **The Director confirms the pick before R3D-1b.**
+lowest by 69 %. ✅ **Confirmed by the Director, 2026-09-16:** *"pode confirmar o B e
+seguir com o R3D-1b"*.
 
 **What B carries into R3D-1b, as measured:**
 - **Variant and substrate never exceed 2 on any dump** (3 values;
@@ -625,6 +632,78 @@ from the data, not assumed.
 - `BoardProbe` compares the store against the objects on PLAYGROUND and GLASS: both
   grenades, a shot, a pane shatter, F2 reload, `SaveState` restore, and
   `_capture_all_four_views()`.
+
+#### R3D-1b — built and gated (2026-09-16, commit `eaa191e8`)
+
+**`VoxelStore`** (`godot/scripts/systems/voxel_store.gd`), behind `VOXEL_STORE=1`
+(DevFlags):
+- **The arrays, per claim** in the WALK's container order (slices, slabs, junction
+  columns): `state`, `aux` (variant and substrate nibbles), `mat` and `xyz`.
+- **The derived grid** over the bounds, padded by 2: `occ` (any claim visible) and `owner`
+  (the first visible claim, else the first). A cell with several claims is listed, so a
+  write can resolve it again.
+- **Finding a claim adds no field to `Voxel`.** The claim comes from the container's box
+  geometry (offset + level/y/x arithmetic), and that is VERIFIED for every voxel at
+  build.
+  - A container that breaks the order gets a lookup table and is counted. PLAYGROUND and
+    GLASS have 0 such containers.
+- **Writes it cannot place are counted, never dropped silently:** an unknown container, or
+  a claim whose cell disagrees. A container-less `WorldDelta` projection is not a claim.
+- **The one write seam:** `Voxel.set_damage()` and `set_visible()` mirror into
+  `VoxelStore.active` (nothing else writes voxel state; the only other field writes are
+  `WorldDelta.project_voxel()`'s container-less copies).
+- **When it is built:** `Room._rebuild_voxel_store()` runs right after both
+  `build_from_layout()` calls (map load and rotation). Both callers clear
+  `VoxelStore.active` first, so a write during a build never lands in the previous
+  board's store.
+- **Its size:** PLAYGROUND 216 104 claims, 672 multi-claim cells, 13.59 MB, built in
+  ~560 ms on desktop.
+
+**The instrument:**
+- `BoardProbe.write_store()` writes the objects' dump format from the store, in
+  `write()`'s container order, so the existing `board_probe.py diff` compares the two
+  directly.
+- Scenario steps: `probe_store`, `shoot`, `reload`, `save_restore` and `perspective`.
+- `board_probe.py shadow` boots each map once and dumps objects and store together at
+  every stage.
+- **The `save_restore` step's path, stated because the game has no load flow yet:**
+  SaveState is plumbing, so the step takes the path a rotation already runs — capture, a
+  fresh `load_map()`, `SaveState.restore()`, then `_reapply_base_damage()`.
+
+**The gate:**
+
+| map | stages, each objects vs store | result |
+|---|---|---|
+| PLAYGROUND | load · grenade #0 and #1 beside four box corners · a shot · views E, S, W, N · SaveState round trip · F2 reload | **IDENTICAL at all 10**: 216 104 voxels and every plane texel; grid mismatches 0; unknown and misplaced writes 0 (up to 1 222 writes mirrored) |
+| GLASS | load · grenades #0 and #1 (pane shatter: shards fell) · views E, S, W, N · SaveState round trip · F2 reload | **IDENTICAL at all 9**: 114 280 voxels; grid mismatches 0; unknown and misplaced writes 0 (up to 5 120 writes mirrored) |
+
+- **The controls, so the identity is not empty:** the objects changed between load and
+  grenade #0 (611 and 3 867 voxels), and between grenade #1 and the shot (19).
+- **`voxel_store_selftest`**, 5 tests, each checked against `BoardProbe`'s dump of the
+  objects: a build with a banded slice, slabs, a column, a shared cell and an out-of-order
+  slab; a mirrored write; ownership moving between two claims; a write through the lookup
+  table; unplaceable writes counted.
+  - With the mirror sabotaged, 4 of 5 fail.
+- **Pixels** (desktop, `--fixed-fps 60`, framed on the corner crater 400 frames after both
+  grenades): the flag off vs on differs by **0 px**, and a control of off vs off by 0 px.
+- Lint 0 errors, 57 selftests clean, invariants OK.
+
+**What the gate did NOT cover:**
+- no Moto run — the desktop is the arbiter of correctness (principle 4);
+- the store's build time on the Moto;
+- a shot on GLASS, which has no guards.
+
+**Found by the controls, and not caused by the store:**
+- Rotating PLAYGROUND away and back (shot → E → S → W → N) **loses the damage of 21
+  voxels**:
+  - 11 in junction columns, e.g. `JCOL_26_2~2` at (215, 23), DESTROYED → INTACT;
+  - 10 at box corners, e.g. `SLICE_27_3_NW` at (216, 24).
+- The SaveState round trip loses the same 21.
+- The store mirrors the loss faithfully.
+- Read from the code, not yet confirmed: `_reapply_base_damage()` indexes only slices and
+  slabs, and keys by cell, so a corner cell gets one claim's damage back and a column none.
+  Rotation is suspended but coming back, and the save path depends on the same function.
+- Offered to the Director as a separate task.
 
 **R3D-1c — readers move one subsystem at a time**, each behind a flag and a 0-difference
 gate:
@@ -960,3 +1039,10 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
   - On the Moto, A fails the speed gate (T3 +16 %), and B beats Ac by 69 %.
   - The rule picks B, pending the Director.
   - Corner collisions diverge under a blast; B keeps both claims.
+- **v1.5, 2026-09-16.** The Director confirmed B. R3D-1b built and gated.
+  - `VoxelStore` in shadow behind `VOXEL_STORE=1`, mirrored from `Voxel.set_damage()`
+    (commit `eaa191e8`).
+  - `board_probe.py shadow` PASS: PLAYGROUND 10 stages and GLASS 9, identical per voxel.
+    The flag changes 0 px.
+  - Found: rotation and SaveState restore lose junction-column and corner damage (21
+    voxels on PLAYGROUND).

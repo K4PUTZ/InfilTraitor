@@ -1,5 +1,5 @@
 # SESSION SUMMARY — 2026-09-16
-## RENDER3D R3D-0 closed (embers, roof tops, the "dark roofs"), the `RNG_SEED` fix, and R3D-1a measured
+## RENDER3D R3D-0 closed, the `RNG_SEED` fix, R3D-1a measured (layout B), and R3D-1b gated (the store in shadow)
 
 **Director's request:** *"Vamos seguir com a sessão de ontem."* Yesterday ended with R3D-0
 measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) and embers.
@@ -105,8 +105,39 @@ measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) an
   damaged corner cells after one grenade. R3D-0's "0 divergences" had no damaged corner
   in it. B keeps both claims, so the choice of B needs no ruling on this.
 
-## 6. Next session
+## 6. R3D-1b — the store in shadow (Director: *"pode confirmar o B e seguir com o R3D-1b"*)
 
-1. **The Director's confirmation of B**, then **R3D-1b** — the store in shadow, with
-   `BoardProbe` gates.
-2. **The junction column id task** (from R3D-0), if the Director starts it.
+- **Built (commit `eaa191e8`):**
+  - `VoxelStore` (layout B), behind `VOXEL_STORE=1`.
+  - It is rebuilt right after both `build_from_layout()` calls, and mirrored from
+    `Voxel.set_damage()` / `set_visible()`, the only writers of voxel state.
+  - A claim is found from the container's box geometry, VERIFIED per voxel at build
+    (0 irregular containers).
+  - Unplaceable writes are counted.
+- **Instruments:**
+  - `BoardProbe.write_store()` writes the objects' dump format;
+  - scenario steps `probe_store`, `shoot`, `reload`, `save_restore` and `perspective`;
+  - `board_probe.py shadow`;
+  - `voxel_store_selftest` — 5 tests, and 4 fail with the mirror sabotaged.
+- **The gate: SHADOW PASS.**
+  - PLAYGROUND: load, corner grenades ×2, a shot, views E/S/W/N, a SaveState round trip
+    and an F2 reload — IDENTICAL at all 10 stages.
+  - GLASS: the same stages without the shot, with a pane shatter from the grenades — all 9
+    identical.
+  - Both maps: grid mismatches 0, lost writes 0.
+  - Controls: 611 / 3 867 / 19 voxels.
+  - Pixels: flag off vs on 0 px on a crater frame, control 0 px.
+  - Lint 0 errors, 57 selftests clean, invariants OK.
+- **Found by the controls, NOT caused by the store:**
+  - A rotation round trip on PLAYGROUND loses the damage of 21 voxels (11 junction-column,
+    10 box-corner), and the SaveState restore loses the same.
+  - Likely `_reapply_base_damage()`, which indexes only slices and slabs, and keys by
+    cell.
+  - Offered as a separate task.
+
+## 7. Next session
+
+1. **R3D-1c** — readers move onto the store one subsystem per flag, starting with the
+   light field's occupancy, each flip keeping `board_probe.py shadow` green.
+2. **The rotation / SaveState damage-loss task**, if the Director starts it.
+3. **The junction column id task** (from R3D-0), if the Director starts it.

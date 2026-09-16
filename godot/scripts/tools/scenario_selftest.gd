@@ -47,13 +47,13 @@ func _test_ladder_parses() -> bool:
 	var text: String = "framing portrait; centre agent\nzoom 0.5; wait 20; mark z 050;" \
 		+ " centre 12,7; frames 3; window 360x806; capture shot_1; detonate 1; drop2d;" \
 		+ " probe after_0; alloc objects 64; alloc bytes 1048576;" \
-		+ " capture_at soot_fade 2f fade_2; capture_at CONSEQUENCE 1.5s embers_15; quit;"
+		+ " capture_at soot_fade 2f fade_2; capture_at CONSEQUENCE 1.5s embers_15; store_spike 5; quit;"
 	var result: Dictionary = ScenarioRunnerClass.parse(text)
 	var steps: Array = result["steps"]
 	var ops: Array = steps.map(func(s: Dictionary) -> String: return str(s["op"]))
 	var expected_ops: Array = ["framing", "centre", "zoom", "wait", "mark", "centre",
 		"frames", "window", "capture", "detonate", "drop2d", "probe", "alloc", "alloc",
-		"capture_at", "capture_at", "quit"]
+		"capture_at", "capture_at", "store_spike", "quit"]
 	if not str(result["error"]).is_empty() or ops != expected_ops:
 		print("[TEST 1] ❌ ladder — error '%s', ops %s" % [result["error"], ops])
 		return false
@@ -69,11 +69,11 @@ func _test_ladder_parses() -> bool:
 		and not steps[14].has("seconds") and steps[14]["name"] == "fade_2" \
 		and steps[15]["beat"] == "CONSEQUENCE" and typeof(steps[15]["seconds"]) == TYPE_FLOAT \
 		and is_equal_approx(steps[15]["seconds"], 1.5) and not steps[15].has("frames") \
-		and steps[15]["name"] == "embers_15"
+		and steps[15]["name"] == "embers_15" and steps[16]["reps"] == 5
 	if not typed:
 		print("[TEST 1] ❌ ladder arguments not typed as written: %s" % [steps])
 		return false
-	print("[TEST 1] ✅ a 17-step ladder parses in order with typed arguments")
+	print("[TEST 1] ✅ an 18-step ladder parses in order with typed arguments")
 	return true
 
 
@@ -115,6 +115,8 @@ func _test_each_argument_check() -> bool:
 		"capture_at LIGHT 1.5f x": "capture_at takes an offset in frames (2f) or seconds (1.5s), >= 0",
 		"capture_at LIGHT -1s x": "capture_at takes an offset in frames (2f) or seconds (1.5s), >= 0",
 		"capture_at LIGHT 2f a.b": "capture_at takes a file name (letters, digits, _ or -)",
+		"store_spike 0": "store_spike takes a repetition count >= 1",
+		"store_spike": "'store_spike' takes 1 argument(s), got 0",
 	}
 	for text: String in cases:
 		var error: String = ScenarioRunnerClass.parse(text)["error"]

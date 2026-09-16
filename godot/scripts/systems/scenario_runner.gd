@@ -42,6 +42,10 @@
 ##   alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count>
 ##                                        `Voxel` objects / packed int32 cells / bytes
 ##                                        until quit, for --mem-poll to read
+##   store_spike <reps>                   RENDER3D R3D-1a: build every candidate voxel store
+##                                        layout from the live registries, check each
+##                                        against today's objects, and time the three hot
+##                                        readers `reps` times (`StoreLayoutSpike`)
 ##   quit                                end the process (the harness waits on it)
 ##
 ## EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer
@@ -59,11 +63,12 @@ extends Node
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
-	"probe": 1, "alloc": 2, "capture_at": 3,
+	"probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
 const BEAT_TOKEN_PATTERN: String = "^[A-Za-z0-9_]+$"
+const StoreLayoutSpikeClass = preload("res://godot/scripts/spikes/store_layout_spike.gd")
 
 
 ## `{"steps": Array, "error": String}` — `error` is empty exactly when the whole
@@ -169,6 +174,10 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "detonate takes a dev grenade index >= 0"
 			step["index"] = int(arg)
+		"store_spike":
+			if not arg.is_valid_int() or int(arg) < 1:
+				return "store_spike takes a repetition count >= 1"
+			step["reps"] = int(arg)
 		"alloc":
 			if not ALLOC_KINDS.has(arg):
 				return "alloc takes objects, packed or bytes"
@@ -230,6 +239,10 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "no dump was written (see the error above)")
 		"alloc":
 			_alloc(step)
+		"store_spike":
+			var summary: Dictionary = StoreLayoutSpikeClass.new().run(room, int(step["reps"]))
+			if summary.is_empty():
+				return _fail(step, "the spike built nothing (see the error above)")
 		"detonate":
 			if not room.has_signal("scenario_detonation_done") or not room.has_method("scenario_detonate"):
 				return _fail(step, "Room has no scenario_detonate()")

@@ -147,20 +147,24 @@ static func _open_positions(faces: Array, storey: int) -> Dictionary:
 	var per_storey: int = GeometryCoords.LEVELS_PER_STOREY
 	var intact: Dictionary = {}
 	var present: Dictionary = {}
+	## R3D-1c step 4 — level and damage from `VoxelStore.cells_of()` (the store when it holds
+	## the slice), one read per face per pass.
+	var cells_by_face: Array = []
 	for slice in faces:
-		for i in range(slice.voxels.size()):
-			var voxel: Voxel = slice.voxels[i]
-			if int(floor(float(voxel.level) / float(per_storey))) != storey:
+		cells_by_face.append(VoxelStore.cells_of(slice, VoxelStore.STORE_BLAST))
+	for cells: PackedInt32Array in cells_by_face:
+		for i in range(cells.size() >> 2):
+			var o: int = i * VoxelStore.CELL_STRIDE
+			if int(floor(float(cells[o + 2]) / float(per_storey))) != storey:
 				continue
 			var position: int = i % width
 			present[position] = int(present.get(position, 0)) + 1
-			if voxel.damage_state != Voxel.DamageState.DESTROYED:
+			if ((cells[o + 3] >> 1) & 3) != Voxel.DamageState.DESTROYED:
 				intact[i] = true
 	var gone: Dictionary = {}
-	for slice in faces:
-		for i in range(slice.voxels.size()):
-			var voxel: Voxel = slice.voxels[i]
-			if int(floor(float(voxel.level) / float(per_storey))) != storey:
+	for cells: PackedInt32Array in cells_by_face:
+		for i in range(cells.size() >> 2):
+			if int(floor(float(cells[i * VoxelStore.CELL_STRIDE + 2]) / float(per_storey))) != storey:
 				continue
 			if not intact.has(i):
 				var position: int = i % width
@@ -262,14 +266,15 @@ static func _storey_table(faces: Array) -> Dictionary:
 	var present: Dictionary = {}  ## storey -> {index: true}
 	var per_storey: int = GeometryCoords.LEVELS_PER_STOREY
 	for slice in faces:
-		for i in range(slice.voxels.size()):
-			var voxel: Voxel = slice.voxels[i]
-			var storey: int = int(floor(float(voxel.level) / float(per_storey)))
+		var cells: PackedInt32Array = VoxelStore.cells_of(slice, VoxelStore.STORE_BLAST)
+		for i in range(cells.size() >> 2):
+			var o: int = i * VoxelStore.CELL_STRIDE
+			var storey: int = int(floor(float(cells[o + 2]) / float(per_storey)))
 			if not present.has(storey):
 				present[storey] = {}
 				intact[storey] = {}
 			(present[storey] as Dictionary)[i] = true
-			if voxel.damage_state != Voxel.DamageState.DESTROYED:
+			if ((cells[o + 3] >> 1) & 3) != Voxel.DamageState.DESTROYED:
 				(intact[storey] as Dictionary)[i] = true
 	var out: Dictionary = {}
 	for storey in present:

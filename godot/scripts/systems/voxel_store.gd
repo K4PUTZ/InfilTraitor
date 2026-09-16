@@ -57,6 +57,10 @@ static var active: VoxelStore = null
 ## `=0` reads the objects, for comparison). Without an active store holding the container
 ## (a selftest fixture), they read the objects.
 static var STORE_GLASS: bool = true
+## RENDER3D R3D-1c step 4 — `PassageQuery` and `BlastCalculator.plan_point_impact()` read
+## voxel state through the same seam. DEFAULT ON (DevFlags `STORE_BLAST`; `=0` reads the
+## objects). The soot BFS stays on the objects — see `derive_soot_rings()`.
+static var STORE_BLAST: bool = true
 const CELL_STRIDE: int = 4
 
 var claims: int = 0
@@ -373,10 +377,10 @@ func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:
 ## x, y, level and state byte of every voxel of `container`, in the container's own order
 ## (stride `CELL_STRIDE`). From the active store when it holds the container, else off the
 ## objects. State: bit 0 visible, bits 1–2 damage — `state_byte()`'s packing.
-static func cells_of(container: Object) -> PackedInt32Array:
+static func cells_of(container: Object, use_store: bool = STORE_GLASS) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	var store: VoxelStore = active
-	if STORE_GLASS and store != null:
+	if use_store and store != null:
 		var ci: int = store._by_instance.get(container.get_instance_id(), -1)
 		if ci >= 0:
 			var g: int = ci * GEOM_STRIDE
@@ -404,9 +408,9 @@ static func cells_of(container: Object) -> PackedInt32Array:
 
 
 ## A voxel's damage state, from the active store when it holds the voxel.
-static func damage_of(v: Voxel) -> int:
+static func damage_of(v: Voxel, use_store: bool = STORE_GLASS) -> int:
 	var store: VoxelStore = active
-	if STORE_GLASS and store != null:
+	if use_store and store != null:
 		var claim: int = store.claim_of(v)
 		if claim >= 0:
 			return (store.state[claim] >> 1) & 3

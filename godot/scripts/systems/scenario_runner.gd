@@ -48,6 +48,8 @@
 ##   reload                               R3D-1b gate: F2's `load_map()` on the current map
 ##   save_restore                         R3D-1b gate: SaveState capture → reload → restore
 ##   perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()`
+##   passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a
+##                                        count and a digest
 ##   occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from
 ##                                        placed tiles vs from the store, per level
 ##   store_spike <reps>                   RENDER3D R3D-1a: build every candidate voxel store
@@ -73,7 +75,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1,
-	"occupancy_compare": 1,
+	"occupancy_compare": 1, "passages": 1,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
@@ -161,7 +163,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "occupancy_compare":
+		"capture", "probe", "probe_store", "occupancy_compare", "passages":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -263,6 +265,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			var store_path: String = _output_path("probes", "%s.txt" % step["name"])
 			if (room.call("scenario_board_probe_store", store_path, step["name"]) as Dictionary).is_empty():
 				return _fail(step, "no store dump was written (see the error above)")
+		"passages":
+			if not room.has_method("scenario_passages"):
+				return _fail(step, "Room has no scenario_passages()")
+			if not bool(room.call("scenario_passages", str(step["name"]))):
+				return _fail(step, "no passages were computed (see the error above)")
 		"occupancy_compare":
 			if not room.has_method("scenario_occupancy_compare"):
 				return _fail(step, "Room has no scenario_occupancy_compare()")

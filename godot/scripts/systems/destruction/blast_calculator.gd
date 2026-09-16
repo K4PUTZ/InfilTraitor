@@ -643,7 +643,7 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		## path. The sibling still pays depth 1's penetration multiplier, which is
 		## conservative — a round crossing air should arguably keep its punch — and
 		## is left as the ratified ladder rather than retuned here.
-		if voxel.damage_state == Voxel.DamageState.DESTROYED:
+		if VoxelStore.damage_of(voxel, VoxelStore.STORE_BLAST) == Voxel.DamageState.DESTROYED:
 			current_slice = edge_registry.sibling_slice(current_slice.id)
 			continue
 		## W-TUNE-02: the BREACH threshold is the material's, not a global one, and
@@ -1497,6 +1497,10 @@ static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
 				var voxel = cell_to_voxel.get(ncell)
 				## Only surviving voxels take soot — a destroyed cell is a hole
 				## (already a seed) and an absent one is empty air.
+				## ⚠️ R3D-1c step 4 left this on the OBJECTS, on purpose: read through the
+				## store it cost the SOOT phase +11–16 % on desktop (a claim lookup per
+				## neighbour), and it removed no dependency — `cell_to_voxel` is a map of
+				## objects. It moves with that map (R3D-2 / R3D-1d).
 				if voxel == null or voxel.damage_state == Voxel.DamageState.DESTROYED:
 					continue
 				## ...and only ones that will be ON SCREEN. `also_visible` is how a

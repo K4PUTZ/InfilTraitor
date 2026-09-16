@@ -3155,6 +3155,25 @@ func _compare_light_buckets(label: String, tiles: Dictionary, claims: Dictionary
 		print("[OCC-COMPARE]   %s" % e)
 
 
+## RENDER3D R3D-1c step 4 instrument — `PassageQuery.passage_class()` for EVERY edge,
+## printed as a per-class count and an MD5 over the sorted "edge_key=class" lines, so two
+## runs (store vs objects) compare in one line. `BoardProbe` cannot see a passage.
+func scenario_passages(label: String) -> bool:
+	if _edge_registry == null:
+		push_error("[Room] scenario_passages: no edge registry")
+		return false
+	var lines: PackedStringArray = []
+	var tally: Dictionary = {}
+	for edge in _edge_registry.all_edges():
+		var pc: String = PassageQuery.class_name_of(PassageQuery.passage_class(edge, _edge_registry))
+		tally[pc] = int(tally.get(pc, 0)) + 1
+		lines.append("%s=%s" % [edge.id, pc])
+	lines.sort()
+	print("[PASSAGES] %s — %d edge(s) %s digest %s"
+		% [label, lines.size(), tally, "\n".join(lines).md5_text()])
+	return true
+
+
 ## RENDER3D R3D-1b gate steps. Each drives the path a player (or a load) takes, so the
 ## shadow store is judged on the writes the game really makes.
 

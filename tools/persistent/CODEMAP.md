@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**256 scripts · 94400 lines total** (under `godot/scripts/`)
+**256 scripts · 94405 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -5634,7 +5634,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11948 lines
+extends `Node2D` · 11953 lines
 
 `godot/scripts/world/room.gd`
 

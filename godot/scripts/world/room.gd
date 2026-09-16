@@ -2049,10 +2049,15 @@ func _ready() -> void:
 	## anything can consume a number, or the seed describes a different point in
 	## the stream than it did last run. Dev instrument, default absent — a shipped
 	## build must keep its variety.
-	var seed_env := OS.get_environment("INFILTRAITOR_RNG_SEED")
-	if seed_env.is_valid_int():
-		seed(seed_env.to_int())
-		print("[RNG] seeded %d — particle rolls are reproducible this boot" % seed_env.to_int())
+	##
+	## ⚠️ THROUGH `_dev_flag()`, NOT `OS.get_environment()`. Until 2026-09-16 this read
+	## the environment alone, which an Android app never has, so every device table that
+	## set `RNG_SEED` in `dev_flags.cfg` ran unseeded — none of 20 Moto logs printed the
+	## line below. The environment still wins on desktop (`DevFlags` asks it first).
+	var seed_raw: String = _dev_flag("RNG_SEED", "")
+	if seed_raw.is_valid_int():
+		seed(seed_raw.to_int())
+		print("[RNG] seeded %d — particle rolls are reproducible this boot" % seed_raw.to_int())
 
 	## ESC-STACK-01: created before any modal (menu panels, context menu) so
 	## every wiring below can push/pop into it unconditionally.

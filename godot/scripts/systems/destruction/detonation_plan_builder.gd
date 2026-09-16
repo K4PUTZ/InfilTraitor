@@ -247,6 +247,14 @@ const PHASE_NAMES: Array[String] = [
 ## The clock-read saving is real but tiny (49 reads instead of 195, ~20 µs on a
 ## 126 ms phase) and it is not what the budget is judged on.
 static var WALK_CHUNK: int = 512
+
+## RENDER3D R3D-1c step 2 — the WALK reads voxel state from the `VoxelStore` instead of the
+## `Voxel` objects. DEFAULT ON (DevFlags `STORE_WALK`; `=0` is the object walk, kept for
+## comparison). Falls back to the object walk, loudly once, whenever the active store does
+## not hold exactly this plan's containers — a selftest fixture, or a store built for
+## another board.
+static var STORE_WALK: bool = true
+static var _store_walk_mismatch_warned: bool = false
 static var PACKAGE_CHUNK: int = 256
 static var SOOTWAVE_CHUNK: int = 512
 
@@ -1037,6 +1045,11 @@ static func _phase_floors(s: Dictionary, deadline: int) -> void:
 ## ~600 000 extra lookups, which is the same order as the cost this phase exists
 ## to remove. Readability lost here is bought back in the header's phase table.
 static func _phase_walk(s: Dictionary, deadline: int) -> void:
+	if not s.has("walk_store"):
+		s["walk_store"] = _walk_store_for(s["walk_containers"])
+	if s["walk_store"] != null:
+		_phase_walk_store(s, deadline, s["walk_store"])
+		return
 	var containers: Array = s["walk_containers"]
 	var delta: WorldDelta = s["delta"]
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
@@ -1111,6 +1124,118 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 			## consumer in this walk that wants the world BEFORE the blast.
 			if is_slice and derive_us and v.visible:
 				under_structure[v.grid_pos] = true
+
+			since_check += 1
+			if since_check >= chunk:
+				since_check = 0
+				if _out_of_time(deadline):
+					s["cursor"] = ci
+					s["sub"] = vi
+					return
+		vi = 0
+		ci += 1
+	s["cursor"] = ci
+	s["sub"] = 0
+	_enter_phase(s, PHASE_BURN)
+
+
+## The active store when it holds exactly `containers`, in order and with the same claim
+## counts, else null. Checked once per plan, at the WALK's first visit.
+static func _walk_store_for(containers: Array) -> VoxelStore:
+	var store: VoxelStore = VoxelStore.active
+	if not STORE_WALK or store == null:
+		return null
+	var matches: bool = store.container_count() == containers.size()
+	if matches:
+		for ci in range(containers.size()):
+			var container: Object = containers[ci][0]
+			if store.container_ids[ci] != str(container.get("id")) \
+					or store.container_claims(ci).y != (container.voxels as Array).size():
+				matches = false
+				break
+	if not matches:
+		if not _store_walk_mismatch_warned:
+			_store_walk_mismatch_warned = true
+			push_warning("[DetonationPlanBuilder] STORE_WALK: the active VoxelStore does not hold this plan's %d containers (it holds %d) — the WALK reads the objects"
+				% [containers.size(), store.container_count()])
+		return null
+	return store
+
+
+## Phase 4, read from the store. The SAME outputs as `_phase_walk()`, in the same order,
+## with three differences in how they are reached:
+##  - state, visible, blast and the cell come from the store's packed arrays;
+##  - the Delta's projection is looked up by claim, re-keyed once from
+##    `WorldDelta.projections()`;
+##  - `occupancy` is not built. Its last reader, the LIGHT phase, has built its own
+##    map-wide occupancy since D-7, and the one other touch — `_commit_burn_to_delta()`
+##    erasing burnt cells from it — was never read afterwards.
+## The `Voxel` object is still fetched per claim: `cell_to_voxel`, `damaged_voxels` and the
+## phases after this one hand objects to `BlastCalculator`, which the room's repaint shares.
+static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -> void:
+	var containers: Array = s["walk_containers"]
+	var delta: WorldDelta = s["delta"]
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var blast_cells: Array = s["blast_cells"]
+	var weapon_cells: Array = s["weapon_cells"]
+	var damaged_voxels: Array = s["damaged_voxels"]
+	var under_structure: Dictionary = s["under_structure"]
+	var derive_us: bool = bool(s["derive_under_structure"])
+	var flammable_cells: Dictionary = s["flammable_cells"]
+	var burn_cells: Dictionary = s["burn_cells"]
+	if not s.has("walk_projection"):
+		var by_claim: Dictionary = {}
+		var projections: Dictionary = delta.projections()
+		for voxel in projections:
+			var claim: int = store.claim_of(voxel)
+			if claim >= 0:
+				by_claim[claim] = projections[voxel]
+		s["walk_projection"] = by_claim
+	var by_claim_projection: Dictionary = s["walk_projection"]
+	var state: PackedByteArray = store.state
+	var xyz: PackedInt32Array = store.xyz
+	var chunk: int = WALK_CHUNK
+	var ci: int = int(s["cursor"])
+	var vi: int = int(s["sub"])
+	var since_check: int = 0
+
+	while ci < containers.size():
+		var entry: Array = containers[ci]
+		var voxels: Array = entry[0].voxels
+		var is_slice: bool = bool(entry[1])
+		var offset: int = store.container_claims(ci).x
+		var flammability: float = MaterialResistanceTable.flammability(
+			_material_name(entry[0]))
+		var consumption: float = MaterialResistanceTable.burn_consumption(
+			_material_name(entry[0]))
+		while vi < voxels.size():
+			var claim: int = offset + vi
+			var v: Voxel = voxels[vi]
+			vi += 1
+			var real: int = state[claim]
+			var p: Array = by_claim_projection.get(claim, []) if not by_claim_projection.is_empty() else []
+			var touched: bool = not p.is_empty()
+			var damage: int = int(p[WorldDelta.P_STATE]) if touched else (real >> 1) & 3
+			var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else (real & 1) == 1
+
+			var k: int = claim * 3
+			var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
+			cell_to_voxel[key] = v
+			if flammability > 0.0:
+				flammable_cells[key] = flammability
+				if consumption > 0.0:
+					burn_cells[key] = consumption
+			if not vis or damage == Voxel.DamageState.DESTROYED:
+				var from_blast: bool = bool(p[WorldDelta.P_BLAST]) if touched else (real & 8) != 0
+				if from_blast:
+					blast_cells.append(key)
+				else:
+					weapon_cells.append(key)
+			elif damage == Voxel.DamageState.DENTED or damage == Voxel.DamageState.CRACKED:
+				damaged_voxels.append(delta.project_voxel(v) if touched else v)
+
+			if is_slice and derive_us and (real & 1) == 1:
+				under_structure[Vector2i(xyz[k], xyz[k + 1])] = true
 
 			since_check += 1
 			if since_check >= chunk:

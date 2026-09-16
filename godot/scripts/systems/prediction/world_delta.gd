@@ -278,6 +278,13 @@ func _fold(e: Dictionary) -> void:
 		e["substrate"], vis]
 
 
+## RENDER3D R3D-1c step 2 — every projected tuple, keyed by its Voxel, READ-ONLY. The
+## store-backed WALK re-keys the few thousand a blast touches by claim, once, instead of
+## asking `projection_of()` for each of the map's ~216 000 voxels.
+func projections() -> Dictionary:
+	return _by_voxel
+
+
 ## True when this Delta would change anything about `voxel`.
 func changes(voxel) -> bool:
 	return _by_voxel.has(voxel)

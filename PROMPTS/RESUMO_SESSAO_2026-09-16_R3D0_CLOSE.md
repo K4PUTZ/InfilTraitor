@@ -135,9 +135,31 @@ measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) an
     cell.
   - Offered as a separate task.
 
-## 7. Next session
+## 7. R3D-1c step 1 — the light field's occupancy onto the store
 
-1. **R3D-1c** — readers move onto the store one subsystem per flag, starting with the
-   light field's occupancy, each flip keeping `board_probe.py shadow` green.
+- **Measured first** (`07194b55`): today the light reads the DRAWN 2D board, not the
+  voxels, and they differ in three ways:
+  - the map buffer's L72–77 tile strata (no voxels);
+  - the deep floor, drawn only where a crater reveals it;
+  - a corner cell erased while its other claim stands.
+- **On screen:** max 6/255.
+- **The Director ratified option A:** the voxels are the truth.
+- **Flipped** (`c511af14`): `VOXEL_STORE` and `STORE_OCCUPANCY` default ON, `=0` for
+  comparison.
+  - Voxels are identical, and light changes only in the three classes.
+  - The gate, shadow and selftests are all green.
+- **Two regressions caught and fixed before closing:**
+  - the cook's LIGHT step, 45 → 82 ms, fixed to 38–40 ms (below the old 44–46);
+  - the store build at load, 3.26 s on the Moto, fixed to 1.25 s (`3b7a5655`).
+- **Moto:**
+  - idle frame, grenades and LIGHT step: the same or slightly better;
+  - boot to map: **+0.9–1.0 s**;
+  - native heap: **+15–18 MB**.
+  Both last until R3D-1d removes the objects.
+
+## 8. Next session
+
+1. **R3D-1c step 2** — the prediction plan builder reads the store, keeping
+   `board_probe.py shadow` and the cook's plan identical.
 2. **The rotation / SaveState damage-loss task**, if the Director starts it.
 3. **The junction column id task** (from R3D-0), if the Director starts it.

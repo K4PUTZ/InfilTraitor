@@ -21,9 +21,12 @@ the same day. R3D-0 closed on its gate that day too, and the direction was ratif
 - **Found by R3D-1b's controls (not caused by the store):** a rotation round trip, and the
   SaveState restore, lose the damage of 21 voxels on PLAYGROUND — junction columns and
   box corners (see R3D-1b). Offered as a separate task.
-- **Next:** R3D-1c. Step 1 (the light field's occupancy) is measured and waits on the
-  Director: today's light reads the DRAWN 2D board, which differs from the voxels in three
-  ways (see R3D-1c).
+- **R3D-1c step 1 FLIPPED** (Director, option A): the light field's occupancy reads the
+  store by default. The voxels are identical, and the light changes only in the three
+  ratified classes.
+  - On the Moto: play costs the same, the load +0.9–1.0 s and the native heap +15–18 MB,
+    until R3D-1d.
+- **Next:** R3D-1c step 2 — the prediction plan builder.
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -736,12 +739,53 @@ two differ for three reasons, and each is a draw decision, not a simulation fact
 - a crater's corner: 130 px, 3/255;
 - a wide framing: 33 px.
 
-⏳ **The Director rules before this step flips.** The options:
+**The options put to the Director:**
 - **(A)** the voxels are the truth: accept these three differences, ratified from captures;
 - **(B)** teach the store the drawn set, for 0 px: static claims for the buffer strata, a
   "revealed" bit on the deep floor, and the corner erase;
 - **(C)** the buffer strata become real geometry in the store, and classes 2 and 3 are
   accepted.
+
+✅ **Ratified: option A** — *"pode seguir com a opção A"* (Director, 2026-09-16).
+
+#### R3D-1c step 1 — flipped (2026-09-16, commits `c511af14`, `3b7a5655`)
+
+**The flip:** `VOXEL_STORE` and `STORE_OCCUPANCY` default ON. `=0` on either is the old
+path, kept for comparison only.
+
+**Desktop, both maps:**
+- `board_probe.py gate` PASSES on the new default.
+- New vs `STORE_OCCUPANCY=0`:
+  - the voxels are identical at load, g0 and g1;
+  - only light(G) differs;
+  - at load, exactly the measured classes: PLAYGROUND 49 648 (L72–77 and L78), GLASS
+    33 254;
+  - after the grenades, plus the revealed deep floor (L78) and 2–6 cells at L79.
+- `board_probe.py shadow` PASSES, and all 57 selftests are clean.
+
+**Two regressions found and fixed before the flip closed:**
+1. **The cook's LIGHT step.** `occupancy_dict()` first cost 45 → 82 ms on desktop. It is
+   now 38–40 ms, against the tile read's 44–46: predicted cells are erased after the pass,
+   and a level's set is found by index. The output is IDENTICAL to the first version at
+   every gate stage.
+2. **The store build at load.** It took 3.26 s on the Moto. It is now 555 → 192 ms on
+   desktop and 1.25–1.27 s on the Moto: one box pass, a material once per container,
+   inlined packing, and the grid filled in the same pass.
+
+**The Moto, same APK per pair, 3D board, `NO_BAKE`:**
+
+| | old path (`=0`) | new default |
+|---|---|---|
+| idle frame | 23.1 · 23.3 ms | 23.1 · 23.1 ms |
+| grenade #0 · #1, wall clock | 19.6 · 16.3 s (both boots) | 19.6 · 16.3–16.4 s |
+| the cook's LIGHT step | 242 · 235 / 237 · 232 ms | 236 · 229 / 230 · 227 ms |
+| boot → map loaded (after the build fix) | 22.8 · 23.0 s | 23.8 · 23.9 s (**+0.9–1.0 s**) |
+| native heap at idle | 749 · 749 MB | 764 · 767 MB (**+15–18 MB**) |
+
+- The load and memory costs are the store existing BESIDE the objects. They are paid back
+  at R3D-1d, when the objects (~191 MB on the Moto) go.
+- Logs (local): `docs/measurements/device_2026-09-16_moto_g04s_r3d1c_*.log`. APKs:
+  `a97b1213…` (grenade A/B), `241b53de…` (the load re-measure).
 
 **R3D-1d — the objects go.**
 - `Slice`, `Slab` and `JunctionColumn` answer per-voxel questions from the store; the

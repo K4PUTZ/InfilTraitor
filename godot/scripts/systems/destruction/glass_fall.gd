@@ -135,14 +135,15 @@ static func build_surface_index(slabs: Array, columns: Dictionary) -> Dictionary
 	for slab in slabs:
 		if GlassMaterials.is_glass(slab.material):
 			continue
-		for v in slab.voxels:
-			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+		var packed: PackedInt32Array = VoxelStore.cells_of(slab)
+		for o in range(0, packed.size(), VoxelStore.CELL_STRIDE):
+			if (packed[o + 3] & 1) == 0 or ((packed[o + 3] >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
-			if not columns.has(v.grid_pos):
+			if not columns.has(Vector2i(packed[o], packed[o + 1])):
 				continue
-			if not index.has(v.grid_pos):
-				index[v.grid_pos] = []
-			index[v.grid_pos].append(v.level)
+			if not index.has(Vector2i(packed[o], packed[o + 1])):
+				index[Vector2i(packed[o], packed[o + 1])] = []
+			index[Vector2i(packed[o], packed[o + 1])].append(packed[o + 2])
 	for key in index:
 		index[key].sort()
 	return index

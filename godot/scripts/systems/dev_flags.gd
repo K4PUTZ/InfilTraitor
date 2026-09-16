@@ -89,6 +89,8 @@ func _ready() -> void:
 	VoxelRenderer.STORE_OCCUPANCY = value("STORE_OCCUPANCY", "1") != "0"
 	## RENDER3D R3D-1c step 2 — the prediction WALK reads the VoxelStore. `=0` = object walk.
 	DetonationPlanBuilder.STORE_WALK = value("STORE_WALK", "1") != "0"
+	## RENDER3D R3D-1c step 3 — glass reads voxel state from the VoxelStore. `=0` = objects.
+	VoxelStore.STORE_GLASS = value("STORE_GLASS", "1") != "0"
 	## DIAG-22 — `=0` is the old lazy path (one TileSet mutation per new composite),
 	## kept only so one APK can measure both sides.
 	if value("COMPOSITE_TILES_UP_FRONT", "") == "0":

@@ -944,7 +944,7 @@ func reap_orphaned_remnants() -> Dictionary:
 		orphan_keys.append(bkey)
 		for v in host.voxels:
 			if v.grid_pos == cell and v.level == level:
-				if v.damage_state != Voxel.DamageState.DESTROYED:
+				if VoxelStore.damage_of(v) != Voxel.DamageState.DESTROYED:
 					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 				fallen.append({"grid_pos": cell, "level": level})
 				## VL-PERSIST — the felled voxel has to survive a flip like any
@@ -1225,7 +1225,7 @@ func _respawn_base_cracks() -> void:
 		## CRACK-04 — and the sheet's void, re-derived from the same base key that
 		## `_respawn_base_openings()` used moments ago, so the rebuilt sheet is cut
 		## to the very opening the rebuilt voxels were.
-		if found_voxel != null and found_voxel.damage_state == Voxel.DamageState.DESTROYED:
+		if found_voxel != null and VoxelStore.damage_of(found_voxel) == Voxel.DamageState.DESTROYED:
 			plan["opening"] = glass_opening_for(vxy, key.z, bool(rec["wide"]))
 		## The variant rides the same base key, so a flip redraws the sheet it had.
 		plan["variant"] = GlassCrack.pick_variant(glass_base_key(vxy, key.z))
@@ -3160,12 +3160,22 @@ func _compare_light_buckets(label: String, tiles: Dictionary, claims: Dictionary
 
 ## A shot at guard `index`, through the same menu entry points a right-click reaches
 ## (`open_menu_for()` + `fire_at_active()`), then frames until the destruction render
-## has settled.
+## has settled. `SHOT_AGENT_CELL` / `SHOT_GUARD_CELL` ("x,y", DevFlags — the names
+## `_capture_agent_shot()` already reads) pin both ends, so a gate can put a round
+## through a chosen pane (R3D-1c step 3).
 func scenario_shoot(index: int) -> bool:
 	if _agent_shot_controller == null or index < 0 or index >= _guards.size():
 		push_error("[Room] scenario_shoot: no shot controller or no guard #%d (%d on the map)"
 			% [index, _guards.size()])
 		return false
+	var agent_xy: PackedStringArray = _dev_flag("SHOT_AGENT_CELL", "").split(",")
+	if agent_xy.size() == 2 and agent_xy[0].is_valid_int() and agent_xy[1].is_valid_int():
+		agent.set_cell(Vector2i(agent_xy[0].to_int(), agent_xy[1].to_int()))
+	var guard_xy: PackedStringArray = _dev_flag("SHOT_GUARD_CELL", "").split(",")
+	if guard_xy.size() == 2 and guard_xy[0].is_valid_int() and guard_xy[1].is_valid_int():
+		var guard = _guards[index]
+		guard.cell = Vector2i(guard_xy[0].to_int(), guard_xy[1].to_int())
+		guard.position = guard._cell_to_world(guard.cell)
 	_agent_shot_controller.open_menu_for(index)
 	for _f in range(10):
 		await get_tree().process_frame
@@ -7965,10 +7975,11 @@ func _count_cracked_glass() -> int:
 	var n: int = 0
 	for sl in _edge_registry.all_slices():
 		var base: int = GeometryCoords.storey_level_base(sl.start_storey)
-		for v in sl.voxels:
-			if v.damage_state != Voxel.DamageState.CRACKED:
+		var cells: PackedInt32Array = VoxelStore.cells_of(sl)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			if ((cells[o + 3] >> 1) & 3) != Voxel.DamageState.CRACKED:
 				continue
-			if GlassMaterials.is_glass(sl.material_at(v.level - base)):
+			if GlassMaterials.is_glass(sl.material_at(cells[o + 2] - base)):
 				n += 1
 	return n
 

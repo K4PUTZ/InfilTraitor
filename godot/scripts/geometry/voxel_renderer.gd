@@ -3074,9 +3074,10 @@ func _build_glass_seam_index(registry: EdgeRegistry) -> void:
 		if not _slice_is_glassy(slice):
 			continue
 		var base: int = GeometryCoords.storey_level_base(slice.start_storey)
-		for v in slice.voxels:
-			if v.visible and GlassMaterials.is_glass(slice.material_at(v.level - base)):
-				_glass_seam_index[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = slice.face
+		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			if (cells[o + 3] & 1) == 1 and GlassMaterials.is_glass(slice.material_at(cells[o + 2] - base)):
+				_glass_seam_index[Vector3i(cells[o], cells[o + 1], cells[o + 2])] = slice.face
 
 
 ## True when the next cell along the run, at the same level, holds standing glass of

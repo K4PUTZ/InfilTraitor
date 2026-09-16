@@ -271,13 +271,16 @@ static func crazed_fraction(pane_slices: Array) -> float:
 	var cracked: int = 0
 	for slice in pane_slices:
 		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
-		for v in slice.voxels:
-			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			var st: int = cells[o + 3]
+			var damage: int = (st >> 1) & 3
+			if (st & 1) == 0 or damage == Voxel.DamageState.DESTROYED:
 				continue
-			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
+			if not GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
 				continue
 			glass_total += 1
-			if v.damage_state == Voxel.DamageState.CRACKED:
+			if damage == Voxel.DamageState.CRACKED:
 				cracked += 1
 	if glass_total == 0:
 		return 0.0
@@ -320,14 +323,19 @@ static func plan_pane_craze(pane_slices: Array) -> Array:
 	var out: Array = []
 	for slice in pane_slices:
 		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
-		for v in slice.voxels:
-			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			var st: int = cells[o + 3]
+			var damage: int = (st >> 1) & 3
+			if (st & 1) == 0 or damage == Voxel.DamageState.DESTROYED:
 				continue
-			if v.damage_state == Voxel.DamageState.CRACKED:
+			if damage == Voxel.DamageState.CRACKED:
 				continue
-			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
+			if not GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
 				continue
-			out.append(v)
+			## The object is still what a caller writes through (`set_damage`); only the
+			## decision is read from the store.
+			out.append(slice.voxels[_entry_index(o)])
 	return out
 
 ## ── G-D17 — THE LAYER MODIFIER ───────────────────────────────────────────────
@@ -410,9 +418,16 @@ static func region_radius(glass_punch: float) -> int:
 	return maxi(int(roundf(r)), int(roundf(SHATTER_REGION_BASE)))
 
 
-## Lattice key of a voxel within its pane: (col, level), col along the run axis.
-static func _pane_key(v: Voxel, run_is_x: bool) -> Vector2i:
-	return Vector2i(v.grid_pos.x if run_is_x else v.grid_pos.y, v.level)
+## Lattice key of a voxel within its pane: (col, level), col along the run axis — for
+## the `VoxelStore.cells_of()` entry at offset `o`. (`_pane_key(v)`, its Voxel-object
+## twin, went with R3D-1c step 3.)
+static func _cell_key(cells: PackedInt32Array, o: int, run_is_x: bool) -> Vector2i:
+	return Vector2i(cells[o] if run_is_x else cells[o + 1], cells[o + 2])
+
+
+## The voxel index of the `cells_of()` entry at offset `o`.
+static func _entry_index(o: int) -> int:
+	return o >> 2
 
 
 ## G-D13b — every lattice position, ANYWHERE in the world, that holds NON-GLASS
@@ -447,15 +462,17 @@ static func collect_anchor_positions(pane_slices: Array, face: int, all_slices: 
 		if s_plane != plane_coord:
 			continue
 		var s_base: int = GeometryCoordsMod.storey_level_base(s.start_storey)
-		for v in s.voxels:
-			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+		var cells: PackedInt32Array = VoxelStore.cells_of(s)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			var st: int = cells[o + 3]
+			if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
 			## A half-thickness element has ONE slice instead of two and is just as
 			## much a frame — nothing here asks how thick the neighbour is, which
 			## is what makes "half slices inclusive" true by construction.
-			if GlassMaterials.is_glass(s.material_at(v.level - s_base)):
+			if GlassMaterials.is_glass(s.material_at(cells[o + 2] - s_base)):
 				continue
-			anchors[_pane_key(v, run_is_x)] = true
+			anchors[_cell_key(cells, o, run_is_x)] = true
 	return anchors
 
 
@@ -538,16 +555,18 @@ static func plan_pane_shatter(pane_slices: Array, face: int, hit_grid_pos: Vecto
 	var own_frame: Dictionary = pane_frame_keys(pane_slices, run_is_x)
 	for slice in pane_slices:
 		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
+		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
 		for vi in range(slice.voxels.size()):
-			var v: Voxel = slice.voxels[vi]
+			var o: int = vi * VoxelStore.CELL_STRIDE
+			var st: int = cells[o + 3]
 			## Already a hole (this shot's own local hole, or an earlier one) — not
 			## a flood candidate, and nothing left to anchor.
-			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+			if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
-			var key := _pane_key(v, run_is_x)
-			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
+			var key := _cell_key(cells, o, run_is_x)
+			if not GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
 				continue
-			## ⚠️ THE LATTICE KEY DROPS THE THICKNESS AXIS. `_pane_key()` is
+			## ⚠️ THE LATTICE KEY DROPS THE THICKNESS AXIS. `_cell_key()` is
 			## (col, level) — for an SW/NE pane that is (grid_pos.x, level), and the
 			## row (grid_pos.y) is gone. Today that is safe and load-bearing: a glass
 			## PANEL is half-thickness and has exactly ONE slice per GU (G7's own
@@ -771,11 +790,13 @@ static func pane_frame_keys(pane_slices: Array, run_is_x: bool) -> Dictionary:
 	var out: Dictionary = {}
 	for slice in pane_slices:
 		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
-		for v in slice.voxels:
-			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			var st: int = cells[o + 3]
+			if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
-			if not GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
-				out[_pane_key(v, run_is_x)] = true
+			if not GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
+				out[_cell_key(cells, o, run_is_x)] = true
 	return out
 
 
@@ -786,11 +807,13 @@ static func pane_glass_keys(pane_slices: Array, run_is_x: bool) -> Dictionary:
 	var out: Dictionary = {}
 	for slice in pane_slices:
 		var slice_base: int = GeometryCoordsMod.storey_level_base(slice.start_storey)
-		for v in slice.voxels:
-			if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			var st: int = cells[o + 3]
+			if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
-			if GlassMaterials.is_glass(slice.material_at(v.level - slice_base)):
-				out[_pane_key(v, run_is_x)] = true
+			if GlassMaterials.is_glass(slice.material_at(cells[o + 2] - slice_base)):
+				out[_cell_key(cells, o, run_is_x)] = true
 	return out
 
 

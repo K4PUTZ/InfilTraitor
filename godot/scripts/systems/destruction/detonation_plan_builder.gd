@@ -678,13 +678,15 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 		var origin_v: Voxel = null
 		var best_d: float = INF
 		for ps in pane_slices:
-			for v in ps.voxels:
-				if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
+			var cells: PackedInt32Array = VoxelStore.cells_of(ps)
+			for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+				var st: int = cells[o + 3]
+				if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
 					continue
-				var d: float = Vector2(v.grid_pos - epicenter).length()
+				var d: float = Vector2(Vector2i(cells[o], cells[o + 1]) - epicenter).length()
 				if d < best_d:
 					best_d = d
-					origin_v = v
+					origin_v = ps.voxels[o >> 2]
 		if origin_v == null:
 			continue
 		## G-D13b — same anchor rule as the shot path: remnants only where the pane
@@ -730,7 +732,7 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 		var container_of: Dictionary = s.get("container_of", {})
 		for e in plan:
 			var pv: Voxel = e["slice"].voxels[int(e["voxel_index"])]
-			if pv.damage_state == Voxel.DamageState.DESTROYED:
+			if VoxelStore.damage_of(pv) == Voxel.DamageState.DESTROYED:
 				continue
 			entries.append(BlastCalculatorClass.damage_entry(pv, Voxel.DamageState.DESTROYED, true))
 			fallen.append({"grid_pos": pv.grid_pos, "level": pv.level})

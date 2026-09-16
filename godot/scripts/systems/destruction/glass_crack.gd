@@ -304,28 +304,29 @@ static func plan_pane_field(pane_slices: Array, face: int, intensity: float) -> 
 		if pane_id == "":
 			pane_id = s.pane_id
 		var s_base: int = GeometryCoordsMod.storey_level_base(s.start_storey)
-		for v in s.voxels:
+		var packed: PackedInt32Array = VoxelStore.cells_of(s)
+		for o in range(0, packed.size(), VoxelStore.CELL_STRIDE):
 			## ⚠️ `material_at()`, never `slice.material` — a G-D9 banded window
 			## keeps its brick sill and head in these same slices, and the field
 			## must not reach across them. Same rule `plan_pane_crack()` walks.
-			if not GlassMaterials.is_glass(s.material_at(v.level - s_base)):
+			if not GlassMaterials.is_glass(s.material_at(packed[o + 2] - s_base)):
 				continue
-			var run: int = v.grid_pos.x if run_is_x else v.grid_pos.y
+			var run: int = packed[o] if run_is_x else packed[o + 1]
 			## The EXTENT counts DESTROYED glass, exactly as the crack's does: a
 			## hole is still part of the pane, and clipping the field to the
 			## standing glass would shrink it every time the pane took a hit.
 			if not seen:
 				run_lo = run
 				run_hi = run
-				lvl_lo = v.level
-				lvl_hi = v.level
-				cross = v.grid_pos.y if run_is_x else v.grid_pos.x
+				lvl_lo = packed[o + 2]
+				lvl_hi = packed[o + 2]
+				cross = packed[o + 1] if run_is_x else packed[o]
 				seen = true
 			else:
 				run_lo = mini(run_lo, run)
 				run_hi = maxi(run_hi, run)
-				lvl_lo = mini(lvl_lo, v.level)
-				lvl_hi = maxi(lvl_hi, v.level)
+				lvl_lo = mini(lvl_lo, packed[o + 2])
+				lvl_hi = maxi(lvl_hi, packed[o + 2])
 	if not seen:
 		return {}
 	var c_run: int = (run_lo + run_hi) / 2
@@ -401,28 +402,29 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 		if pane_id == "":
 			pane_id = s.pane_id
 		var s_base: int = GeometryCoordsMod.storey_level_base(s.start_storey)
-		for v in s.voxels:
+		var packed: PackedInt32Array = VoxelStore.cells_of(s)
+		for o in range(0, packed.size(), VoxelStore.CELL_STRIDE):
 			## A G-D9 banded pane keeps its brick sill/head in these same slices —
 			## a fracture does not cross the frame, and neither does the pane's own
 			## extent.
-			if not GlassMaterials.is_glass(s.material_at(v.level - s_base)):
+			if not GlassMaterials.is_glass(s.material_at(packed[o + 2] - s_base)):
 				continue
-			var run: int = v.grid_pos.x if run_is_x else v.grid_pos.y
+			var run: int = packed[o] if run_is_x else packed[o + 1]
 			## ⚠️ The EXTENT counts destroyed glass; the WEB does not. A hole the
 			## round already made is still part of the pane, so clipping the sprite
 			## to the standing glass would shrink the web every time the pane takes
 			## a second hit.
 			run_lo = mini(run_lo, run)
 			run_hi = maxi(run_hi, run)
-			lvl_lo = mini(lvl_lo, v.level)
-			lvl_hi = maxi(lvl_hi, v.level)
-			if v.damage_state == Voxel.DamageState.DESTROYED:
+			lvl_lo = mini(lvl_lo, packed[o + 2])
+			lvl_hi = maxi(lvl_hi, packed[o + 2])
+			if ((packed[o + 3] >> 1) & 3) == Voxel.DamageState.DESTROYED:
 				continue
 			if absi(run - impact_run) > radius.x:
 				continue
-			if absi(v.level - hit_level) > radius.y:
+			if absi(packed[o + 2] - hit_level) > radius.y:
 				continue
-			cells.append({"level": v.level, "cell": v.grid_pos, "voxel": v})
+			cells.append({"level": packed[o + 2], "cell": Vector2i(packed[o], packed[o + 1]), "voxel": s.voxels[o >> 2]})
 	return {
 		"cells": cells,
 		"run_axis": 0 if run_is_x else 1,
@@ -497,7 +499,7 @@ static func apply(renderer, plan: Dictionary) -> Dictionary:
 	var fallen: Array = []
 	for c in plan["cells"]:
 		var v: Voxel = c["voxel"]
-		if v.damage_state == Voxel.DamageState.DESTROYED:
+		if VoxelStore.damage_of(v) == Voxel.DamageState.DESTROYED:
 			continue
 		var run: int = v.grid_pos.x if run_is_x else v.grid_pos.y
 		if renderer.glass_crack_covering(pane_id, run, int(c["level"])) != 0:
@@ -506,7 +508,7 @@ static func apply(renderer, plan: Dictionary) -> Dictionary:
 			fallen.append({"grid_pos": v.grid_pos, "level": v.level})
 			crossed += 1
 		else:
-			if v.damage_state != Voxel.DamageState.CRACKED:
+			if VoxelStore.damage_of(v) != Voxel.DamageState.CRACKED:
 				v.set_damage(Voxel.DamageState.CRACKED, false, Voxel.CarvedSide.NONE, 0, 0)
 			crazed += 1
 		touched.append(v)

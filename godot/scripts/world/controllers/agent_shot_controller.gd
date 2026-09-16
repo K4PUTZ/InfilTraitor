@@ -848,7 +848,7 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	##
 	## ⚠️ The room makes the pick, not this controller and not the renderer: the
 	## key has to be BASE-space or the shape reshuffles on a camera turn.
-	if hv.damage_state == Voxel.DamageState.DESTROYED:
+	if VoxelStore.damage_of(hv) == Voxel.DamageState.DESTROYED:
 		room.claim_glass_opening_for_hit(hv.grid_pos, hv.level,
 			GlassCrack.wide_for_blowout(weapon_def.blowout))
 
@@ -910,7 +910,7 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 		## and smg (0.83) merely craze it. One number, one place, and the two
 		## cannot drift apart the way a second threshold would.
 		if GlassMaterials.shatters_whole_pane(hit_material, hit_slice.glass_class) \
-				and hv.damage_state == Voxel.DamageState.DESTROYED:
+				and VoxelStore.damage_of(hv) == Voxel.DamageState.DESTROYED:
 			room._pane_primed[hit_slice.pane_id] = true
 			print_debug("[GLASS-PRIME] pane=%s PIERCED but held (punch %.2f) — primed; the next hit takes it"
 				% [hit_slice.pane_id, glass_punch])
@@ -941,7 +941,7 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 	for e in plan:
 		var s2: Slice = e["slice"]
 		var pv: Voxel = s2.voxels[int(e["voxel_index"])]
-		if pv.damage_state == Voxel.DamageState.DESTROYED:
+		if VoxelStore.damage_of(pv) == Voxel.DamageState.DESTROYED:
 			continue
 		pv.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 		var pkey := Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)
@@ -1041,7 +1041,7 @@ func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 	## threshold — there is no hole, and the sheet must keep its whole centre.
 	## That is G-D33's rule ("the sheet draws a centre exactly when the geometry
 	## has no hole to show") arriving as a consequence rather than as a branch.
-	if hv.damage_state == Voxel.DamageState.DESTROYED:
+	if VoxelStore.damage_of(hv) == Voxel.DamageState.DESTROYED:
 		plan["opening"] = room.glass_opening_for(hv.grid_pos, hv.level, wide)
 	## The variant is picked whether or not there is a hole: a crazed pane draws a
 	## sheet too, and it should not always be the same one.

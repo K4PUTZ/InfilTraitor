@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**259 scripts · 96454 lines total** (under `godot/scripts/`)
+**259 scripts · 96556 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -861,7 +861,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7907 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7908 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2126,7 +2126,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2608 lines
+`class_name DetonationPlanBuilder` · 2610 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2179,7 +2179,7 @@ extends `RefCounted` · 941 lines
 
 ### `glass_crack.gd`
 
-`class_name GlassCrack` · 517 lines
+`class_name GlassCrack` · 519 lines
 
 `godot/scripts/systems/destruction/glass_crack.gd`
 
@@ -2193,7 +2193,7 @@ extends `RefCounted` · 941 lines
 
 ### `glass_fall.gd`
 
-`class_name GlassFall` · 291 lines
+`class_name GlassFall` · 292 lines
 
 `godot/scripts/systems/destruction/glass_fall.gd`
 
@@ -2255,7 +2255,7 @@ extends `RefCounted` · 941 lines
 
 ### `glass_shatter.gd`
 
-`class_name GlassShatter` · 879 lines
+`class_name GlassShatter` · 902 lines
 
 `godot/scripts/systems/destruction/glass_shatter.gd`
 
@@ -2352,7 +2352,7 @@ extends `RefCounted` · 941 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 246 lines
+extends `Node` · 248 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3166,7 +3166,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 402 lines
+`class_name VoxelStore` · extends `RefCounted` · 462 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3179,6 +3179,7 @@ extends `Node` · 54 lines
 - `KIND_COLUMN` = `2`
 - `KIND_NAMES` = `["slice", "slab", "column"]`
 - `GEOM_STRIDE` = `7`
+- `CELL_STRIDE` = `4`
 
 **Public vars**
 - `var claims: int = 0`
@@ -5728,7 +5729,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12156 lines
+extends `Node2D` · 12167 lines
 
 `godot/scripts/world/room.gd`
 

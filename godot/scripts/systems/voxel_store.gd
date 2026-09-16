@@ -52,6 +52,13 @@ const GEOM_STRIDE: int = 7
 ## like `Voxel.soot_dirty`: a `Voxel` holds no reference to anything that could reach it.
 static var active: VoxelStore = null
 
+## RENDER3D R3D-1c step 3 — glass's voxel-state reads go through `cells_of()`, `damage_of()`
+## and `visible_of()`, which answer from the store. DEFAULT ON (DevFlags `STORE_GLASS`;
+## `=0` reads the objects, for comparison). Without an active store holding the container
+## (a selftest fixture), they read the objects.
+static var STORE_GLASS: bool = true
+const CELL_STRIDE: int = 4
+
 var claims: int = 0
 var state := PackedByteArray()
 var aux := PackedByteArray()
@@ -361,6 +368,59 @@ func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:
 		if li >= 0 and li < nl:
 			(sets[li] as Dictionary).erase(Vector2i(key.x, key.y))
 	return out
+
+
+## x, y, level and state byte of every voxel of `container`, in the container's own order
+## (stride `CELL_STRIDE`). From the active store when it holds the container, else off the
+## objects. State: bit 0 visible, bits 1–2 damage — `state_byte()`'s packing.
+static func cells_of(container: Object) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var store: VoxelStore = active
+	if STORE_GLASS and store != null:
+		var ci: int = store._by_instance.get(container.get_instance_id(), -1)
+		if ci >= 0:
+			var g: int = ci * GEOM_STRIDE
+			var offset: int = store._geom[g]
+			var n: int = store._geom[g + 1]
+			out.resize(n * CELL_STRIDE)
+			for i in range(n):
+				var claim: int = offset + i
+				var o: int = i * CELL_STRIDE
+				out[o] = store.xyz[claim * 3]
+				out[o + 1] = store.xyz[claim * 3 + 1]
+				out[o + 2] = store.xyz[claim * 3 + 2]
+				out[o + 3] = store.state[claim]
+			return out
+	var voxels: Array = container.voxels
+	out.resize(voxels.size() * CELL_STRIDE)
+	for i in range(voxels.size()):
+		var v: Voxel = voxels[i]
+		var o: int = i * CELL_STRIDE
+		out[o] = v.grid_pos.x
+		out[o + 1] = v.grid_pos.y
+		out[o + 2] = v.level
+		out[o + 3] = state_byte(v)
+	return out
+
+
+## A voxel's damage state, from the active store when it holds the voxel.
+static func damage_of(v: Voxel) -> int:
+	var store: VoxelStore = active
+	if STORE_GLASS and store != null:
+		var claim: int = store.claim_of(v)
+		if claim >= 0:
+			return (store.state[claim] >> 1) & 3
+	return v.damage_state
+
+
+## A voxel's visibility, from the active store when it holds the voxel.
+static func visible_of(v: Voxel) -> bool:
+	var store: VoxelStore = active
+	if STORE_GLASS and store != null:
+		var claim: int = store.claim_of(v)
+		if claim >= 0:
+			return (store.state[claim] & 1) == 1
+	return v.visible
 
 
 func container_count() -> int:

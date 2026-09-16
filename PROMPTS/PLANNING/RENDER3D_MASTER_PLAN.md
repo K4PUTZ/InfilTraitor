@@ -21,7 +21,9 @@ the same day. R3D-0 closed on its gate that day too, and the direction was ratif
 - **Found by R3D-1b's controls (not caused by the store):** a rotation round trip, and the
   SaveState restore, lose the damage of 21 voxels on PLAYGROUND — junction columns and
   box corners (see R3D-1b). Offered as a separate task.
-- **Next:** R3D-1c — readers move onto the store, one subsystem per flag.
+- **Next:** R3D-1c. Step 1 (the light field's occupancy) is measured and waits on the
+  Director: today's light reads the DRAWN 2D board, which differs from the voxels in three
+  ways (see R3D-1c).
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -712,6 +714,34 @@ gate:
 3. glass (shatter, crack, fall, occupancy);
 4. `BlastCalculator`, `PassageQuery`, the occlusion set;
 5. `Board3DLive`.
+
+#### R3D-1c step 1 — the light field's occupancy: NOT a 0-difference flip (2026-09-16, commit `07194b55`)
+
+**Built, off by default:** `VoxelStore.occupancy_dict()`, the flag `STORE_OCCUPANCY=1`
+(`build_occupancy()` answers from the store), and the scenario step
+`occupancy_compare`. That step compares tile and store occupancy per level, then builds
+one light field per occupancy and compares every placed cell's bucket.
+
+**Measured, desktop:** today the field reads what the 2D board DREW, not the voxels. The
+two differ for three reasons, and each is a draw decision, not a simulation fact.
+
+| class | tiles vs store | light buckets that differ (PLAYGROUND · GLASS) |
+|---|---|---|
+| 1 · the map buffer's L72–77 columns: tiles with no voxel (8 704 cells per level on PLAYGROUND = exactly the buffer ring) | tile-only | ~8 490 per level · ~5 600 per level |
+| 2 · the deep floor, L78: the store holds all 70 656 claims visible; the 2D board draws it only in the buffer and where a crater reveals it (D18) | store-only 61 952 | 248–293 · 112–196 |
+| 3 · a corner cell whose two claims diverged: one claim's destroy erased the tile while the other still stands | store-only 1–2 per wall level | 1–5 per wall level after the grenades · 0 |
+
+**On screen** (paired desktop captures, `--fixed-fps 60`):
+- the map-edge strata: 16 103 px, max delta 6/255;
+- a crater's corner: 130 px, 3/255;
+- a wide framing: 33 px.
+
+⏳ **The Director rules before this step flips.** The options:
+- **(A)** the voxels are the truth: accept these three differences, ratified from captures;
+- **(B)** teach the store the drawn set, for 0 px: static claims for the buffer strata, a
+  "revealed" bit on the deep floor, and the corner erase;
+- **(C)** the buffer strata become real geometry in the store, and classes 2 and 3 are
+  accepted.
 
 **R3D-1d — the objects go.**
 - `Slice`, `Slab` and `JunctionColumn` answer per-voxel questions from the store; the

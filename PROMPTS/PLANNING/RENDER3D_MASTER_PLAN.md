@@ -32,7 +32,10 @@ the same day. R3D-0 closed on its gate that day too, and the direction was ratif
 - **R3D-1c step 3 DONE:** glass reads its voxel state from the store, identical on/off.
   This is proven live by a sabotage, because the probe alone could not see a path
   difference that ended in the same voxel set.
-- **Next:** R3D-1c step 4 — `BlastCalculator`, `PassageQuery` and the occlusion set.
+- **R3D-1c step 4 DONE:** `PassageQuery` and the point impact read the store,
+  identically. The soot BFS was measured +11–16 % through the store and stays on the
+  objects until its input map is keyed by claim.
+- **Next:** R3D-1c step 5 — `Board3DLive` reads the store directly.
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -867,6 +870,39 @@ inside `cells_of()`:
 
 **No Moto run:** these are per-pane reads on a shot or blast, not per-frame or map-wide
 work.
+
+#### R3D-1c step 4 — blast, passage and occlusion (2026-09-16, commit `c4c6c6e2`)
+
+**Moved:**
+- `PassageQuery` reads level and damage through `VoxelStore.cells_of()`.
+- `BlastCalculator.plan_point_impact()`'s destroyed check reads through `damage_of()`.
+- `STORE_BLAST` defaults on; `=0` reads the objects.
+
+**Moved, measured, and put back on the objects:** `derive_soot_rings()` and
+`apply_self_soot()`.
+- A claim lookup per BFS neighbour cost the SOOT phase **+11–16 %** on desktop
+  (34.2 → 39.5 and 68.7 → 79.6 ms).
+- It removed no dependency: `cell_to_voxel` is a map of objects.
+- They move with that map, keyed by claim (R3D-2 / R3D-1d).
+
+**Nothing to move:** `OcclusionSet` reads edges and tiles, never voxel state.
+
+**New instrument:** the scenario step `passages <label>` gives every edge's passage class,
+counted and digested. `BoardProbe` cannot see a passage.
+
+**Identity (desktop), `STORE_BLAST` on vs off:**
+- PLAYGROUND with corner grenades, two shots through a pane, and a rotation E and back:
+  every probe IDENTICAL.
+  - The glass, shot and consequence log lines are identical, apart from frame counts.
+  - The passages are identical: an edge opens to CROUCH at g1, and another with the shots.
+- GLASS with both grenades: probes and passages identical (STANDING 5 → 7, CROUCH
+  1 → 8).
+- **Live-path control:** with the store's damage bits sabotaged in `cells_of()`, every
+  edge reads NONE.
+
+**Cost:**
+- SOOT and SLICES are unchanged (28.7/57.8 vs 28.2/58.0 ms).
+- SETUP is +2.3 ms on PLAYGROUND's first grenade only.
 
 **R3D-1d — the objects go.**
 - `Slice`, `Slab` and `JunctionColumn` answer per-voxel questions from the store; the

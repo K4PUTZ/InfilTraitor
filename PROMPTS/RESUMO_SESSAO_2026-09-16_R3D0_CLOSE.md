@@ -189,9 +189,20 @@ measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) an
   crossings) but NOT the probe, because the final voxel set was the same. The log digest
   is part of this step's gate.
 
-## 10. Next session
+## 10. R3D-1c step 4 — passage and point impact onto the store (`c4c6c6e2`)
 
-1. **R3D-1c step 4** — `BlastCalculator`, `PassageQuery` and the occlusion set read the
-   store.
+- **What moved:** `PassageQuery` and `plan_point_impact`'s check (`STORE_BLAST`, default
+  on). `OcclusionSet` reads no voxel state.
+- **What went back:** the soot BFS moved, then returned to the objects. Through the store
+  it cost SOOT +11–16 %, and it removed no dependency, because its input map is objects.
+- **New instrument:** the scenario step `passages`, which digests every edge's passage
+  class.
+- **Identity:** on/off identical on both maps (probes, logs, passages). A sabotage turns
+  every passage to NONE, which proves the path is live.
+
+## 11. Next session
+
+1. **R3D-1c step 5** — `Board3DLive` reads the store directly, instead of collecting
+   objects into dictionaries at load.
 2. **The rotation / SaveState damage-loss task**, if the Director starts it.
 3. **The junction column id task** (from R3D-0), if the Director starts it.

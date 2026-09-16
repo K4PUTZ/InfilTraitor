@@ -108,7 +108,16 @@ static func build(edge_registry: EdgeRegistry, slab_registry: SlabRegistry,
 	return store
 
 
+## ⚠️ WRITTEN FOR THE LOAD. The first version made three passes over every voxel, resolved
+## each voxel's material by string (`material_at()` + a Dictionary lookup, 216 104 times)
+## and called four helper functions per voxel: 3.26 s of the Moto's map load, +3.0–3.2 s
+## boot to map (R3D-1c's A/B). This one reads each voxel's fields once per pass, resolves a
+## material once per container (once per level on a banded slice), inlines the packing and
+## the cell index, and fills the derived grid in the same pass.
 func _fill(containers: Array) -> bool:
+	## Pass 1 — each container's box, and the map's from the boxes.
+	var boxes := PackedInt32Array()
+	boxes.resize(containers.size() * 6)
 	var total: int = 0
 	var min_x: int = 1 << 30
 	var min_y: int = 1 << 30
@@ -116,15 +125,37 @@ func _fill(containers: Array) -> bool:
 	var max_x: int = -(1 << 30)
 	var max_y: int = -(1 << 30)
 	var max_l: int = -(1 << 30)
-	for entry: Array in containers:
-		for v: Voxel in entry[0].voxels:
+	for ci in range(containers.size()):
+		var bx: int = 1 << 30
+		var by: int = 1 << 30
+		var bl: int = 1 << 30
+		var ex: int = -(1 << 30)
+		var ey: int = -(1 << 30)
+		var el: int = -(1 << 30)
+		for v: Voxel in containers[ci][0].voxels:
+			var gp: Vector2i = v.grid_pos
+			var lv: int = v.level
+			if gp.x < bx: bx = gp.x
+			if gp.x > ex: ex = gp.x
+			if gp.y < by: by = gp.y
+			if gp.y > ey: ey = gp.y
+			if lv < bl: bl = lv
+			if lv > el: el = lv
 			total += 1
-			min_x = mini(min_x, v.grid_pos.x)
-			max_x = maxi(max_x, v.grid_pos.x)
-			min_y = mini(min_y, v.grid_pos.y)
-			max_y = maxi(max_y, v.grid_pos.y)
-			min_l = mini(min_l, v.level)
-			max_l = maxi(max_l, v.level)
+		var g: int = ci * 6
+		boxes[g] = bx
+		boxes[g + 1] = by
+		boxes[g + 2] = bl
+		boxes[g + 3] = ex
+		boxes[g + 4] = ey
+		boxes[g + 5] = el
+		if ex >= bx:
+			min_x = mini(min_x, bx)
+			max_x = maxi(max_x, ex)
+			min_y = mini(min_y, by)
+			max_y = maxi(max_y, ey)
+			min_l = mini(min_l, bl)
+			max_l = maxi(max_l, el)
 	claims = total
 	state.resize(total)
 	aux.resize(total)
@@ -143,44 +174,57 @@ func _fill(containers: Array) -> bool:
 	owner.resize(plane * nl)
 	owner.fill(-1)
 
+	## Pass 2 — the claims and the grid.
 	var claim: int = 0
 	for ci in range(containers.size()):
 		var container: Object = containers[ci][0]
-		var kind: int = containers[ci][1]
 		var voxels: Array = container.voxels
+		var n: int = voxels.size()
 		container_ids.append(str(container.get("id")))
-		container_kinds.append(kind)
+		container_kinds.append(containers[ci][1])
 		_by_instance[container.get_instance_id()] = ci
-		var bx: int = 1 << 30
-		var by: int = 1 << 30
-		var bl: int = 1 << 30
-		var ex: int = -(1 << 30)
-		var ey: int = -(1 << 30)
-		var el: int = -(1 << 30)
-		for v: Voxel in voxels:
-			bx = mini(bx, v.grid_pos.x)
-			ex = maxi(ex, v.grid_pos.x)
-			by = mini(by, v.grid_pos.y)
-			ey = maxi(ey, v.grid_pos.y)
-			bl = mini(bl, v.level)
-			el = maxi(el, v.level)
-		var nx: int = ex - bx + 1 if not voxels.is_empty() else 0
-		var ny: int = ey - by + 1 if not voxels.is_empty() else 0
-		var regular: bool = nx * ny * (el - bl + 1) == voxels.size() or voxels.is_empty()
-		_geom.append_array(PackedInt32Array([claim, voxels.size(), bx, by, bl, nx, ny]))
-		for i in range(voxels.size()):
+		var g: int = ci * 6
+		var bx: int = boxes[g]
+		var by: int = boxes[g + 1]
+		var bl: int = boxes[g + 2]
+		var nx: int = boxes[g + 3] - bx + 1 if n > 0 else 0
+		var ny: int = boxes[g + 4] - by + 1 if n > 0 else 0
+		var regular: bool = n == 0 or nx * ny * (boxes[g + 5] - bl + 1) == n
+		_geom.append_array(PackedInt32Array([claim, n, bx, by, bl, nx, ny]))
+		## The material once for the container, or once per level on a banded slice.
+		var fixed_material: int = -1
+		var banded: Slice = null
+		var band_base: int = 0
+		var by_level: Dictionary = {}
+		if container is Slice and (container as Slice).has_material_bands():
+			banded = container
+			band_base = GeometryCoords.storey_level_base(banded.start_storey)
+		elif n > 0:
+			fixed_material = _material(_voxel_material(container, voxels[0]))
+		for i in range(n):
 			var v: Voxel = voxels[i]
-			if regular and ((v.level - bl) * ny + (v.grid_pos.y - by)) * nx + (v.grid_pos.x - bx) != i:
+			var gp: Vector2i = v.grid_pos
+			var lv: int = v.level
+			if regular and ((lv - bl) * ny + (gp.y - by)) * nx + (gp.x - bx) != i:
 				regular = false
-			state[claim] = state_byte(v)
-			aux[claim] = aux_byte(v)
-			mat[claim] = _material(_voxel_material(container, v))
-			xyz[claim * 3] = v.grid_pos.x
-			xyz[claim * 3 + 1] = v.grid_pos.y
-			xyz[claim * 3 + 2] = v.level
-			var cell: int = cell_index(v.grid_pos.x, v.grid_pos.y, v.level)
+			var visible: int = 1 if v.visible else 0
+			state[claim] = visible | (v.damage_state << 1) | ((1 if v.damage_is_blast else 0) << 3) \
+				| (v.damage_carved_side << 4)
+			aux[claim] = (v.damage_variant & 15) | ((v.damage_substrate & 15) << 4)
+			if banded == null:
+				mat[claim] = fixed_material
+			else:
+				if not by_level.has(lv):
+					by_level[lv] = _material(banded.material_at(lv - band_base))
+				mat[claim] = by_level[lv]
+			var k: int = claim * 3
+			xyz[k] = gp.x
+			xyz[k + 1] = gp.y
+			xyz[k + 2] = lv
+			var cell: int = ((lv - l0) * h + (gp.y - y0)) * w + (gp.x - x0)
 			if owner[cell] == -1:
 				owner[cell] = claim
+				occ[cell] = visible
 			elif _multi.has(cell):
 				## A packed array read out of a Dictionary is a copy: grow it, then store it back.
 				var list: PackedInt32Array = _multi[cell]
@@ -191,27 +235,16 @@ func _fill(containers: Array) -> bool:
 			claim += 1
 		if not regular:
 			var table: Dictionary = {}
-			for i in range(voxels.size()):
+			for i in range(n):
 				var v2: Voxel = voxels[i]
 				table[Vector3i(v2.grid_pos.x, v2.grid_pos.y, v2.level)] = _geom[ci * GEOM_STRIDE] + i
 			_irregular[ci] = table
 	if _material_index.size() > 256:
 		push_error("[VoxelStore] build: %d materials — a byte holds 256" % _material_index.size())
 		return false
-	_rebuild_grid()
-	return true
-
-
-## The derived grid, from the claims alone.
-func _rebuild_grid() -> void:
-	for claim in range(claims):
-		var cell: int = cell_index(xyz[claim * 3], xyz[claim * 3 + 1], xyz[claim * 3 + 2])
-		if _multi.has(cell):
-			continue
-		owner[cell] = claim
-		occ[cell] = state[claim] & 1
 	for cell: int in _multi:
 		_resolve_cell(cell)
+	return true
 
 
 func _resolve_cell(cell: int) -> void:

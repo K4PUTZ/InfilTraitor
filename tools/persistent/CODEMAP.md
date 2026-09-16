@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**259 scripts · 96287 lines total** (under `godot/scripts/`)
+**259 scripts · 96320 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3166,7 +3166,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 369 lines
+`class_name VoxelStore` · extends `RefCounted` · 402 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3202,18 +3202,6 @@ extends `Node` · 54 lines
 - `var writes_unknown_container: int = 0`
 - `var writes_misplaced: int = 0`
 - `var build_ms: float = 0.0`
-
-**Public API**
-- `func cell_index(x: int, y: int, level: int) -> int:`
-- `func claim_of(v: Voxel) -> int:`
-- `func mirror(v: Voxel) -> void:`
-- `func grid_mismatches() -> int:`
-- `func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:`
-- `func container_count() -> int:`
-- `func container_claims(ci: int) -> Vector2i:`
-- `func irregular_containers() -> int:`
-- `func multi_cells() -> int:`
-- `func bytes() -> int:`
 
 ---
 

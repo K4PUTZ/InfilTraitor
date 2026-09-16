@@ -1789,7 +1789,9 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	var view_layout := _room_builder.layout_with_perspective(layout, _active_perspective)
 	room_size = view_layout.get("size", room_size)
 	_map_buffer = view_layout.get("buffer", 0)
+	VoxelStore.active = null
 	_room_builder.build_from_layout(view_layout, room_size)
+	_rebuild_voxel_store("map load: %s" % new_map_id)
 	## VL-D3: floor columns under structure, from the intact just-built geometry.
 	_under_structure = _voxel_renderer.columns_with_structure()
 	_room_size = room_size
@@ -2604,7 +2606,9 @@ func _set_perspective(direction: String) -> void:
 	if not _base_layout.is_empty():
 		var view_layout := _room_builder.layout_with_perspective(_base_layout, _active_perspective)
 		var room_size: Vector2i = view_layout.get("size", _room_size)
+		VoxelStore.active = null
 		_room_builder.build_from_layout(view_layout, room_size)
+		_rebuild_voxel_store("perspective %s" % direction)
 		_room_size = room_size
 		_assert_geometry_rendered()
 		_refresh_gu_grid_overlay()
@@ -3009,6 +3013,118 @@ func _start_board3d_live() -> void:
 	add_child(live)
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
+
+
+## RENDER3D R3D-1b — the packed store in SHADOW (`VoxelStore`), rebuilt from the
+## registries right after every board build, so every write the rebuilt board makes
+## afterwards — `_reapply_base_damage()` included — is mirrored into it. `VoxelStore.active`
+## is cleared BEFORE the build by both callers: a set_damage() during the build must not
+## land in the previous board's store. Off unless `VOXEL_STORE=1`.
+func _rebuild_voxel_store(reason: String) -> void:
+	VoxelStore.active = null
+	if not _dev_flag_on("VOXEL_STORE"):
+		return
+	var store: VoxelStore = VoxelStore.build(_edge_registry, _slab_registry, _junction_columns)
+	if store == null:
+		push_error("[Room] VOXEL_STORE=1 but the store could not be built (%s) — the shadow is OFF for this board" % reason)
+		return
+	VoxelStore.active = store
+	print("[VOXEL-STORE] built (%s) — %d claim(s) in %d container(s), %d irregular, %d multi-claim cell(s), %.2f MB, %.0f ms"
+		% [reason, store.claims, store.container_count(), store.irregular_containers(),
+		store.multi_cells(), float(store.bytes()) / 1048576.0, store.build_ms])
+
+
+## RENDER3D R3D-1b — `scenario_board_probe()`, read from the shadow store instead of the
+## objects, in the same format, so `board_probe.py diff` compares the two directly. The
+## planes are the renderer's, as in the objects' dump.
+func scenario_board_probe_store(path: String, label: String) -> Dictionary:
+	var store: VoxelStore = VoxelStore.active
+	if store == null or _voxel_renderer == null:
+		push_error("[Room] scenario_board_probe_store: no shadow store (VOXEL_STORE=1?) or no renderer")
+		return {}
+	var planes: Dictionary = {}
+	for level: Variant in _voxel_renderer.cell_plane_levels():
+		planes[level] = _voxel_renderer.cell_plane_image(int(level))
+	var meta: Dictionary = {
+		"map": _dev_flag("MAP", "default"),
+		"perspective": _active_perspective,
+		"world_revision": _world_revision,
+		"board3d": board3d() != null,
+		"source": "store",
+	}
+	var summary: Dictionary = BoardProbeClass.write_store(path, label, store, planes,
+		VoxelRenderer.SOOT_PLANE_ORIGIN, meta)
+	if summary.is_empty():
+		return {}
+	var mismatches: int = store.grid_mismatches()
+	print("[BOARD-PROBE] %s (store) — %d voxel(s) in %d container(s), %.0f ms → %s"
+		% [label, summary["voxels"], summary["containers"], summary["ms"], path])
+	print("[VOXEL-STORE] %s — grid mismatches %d, writes mirrored %d, unknown container %d, misplaced %d"
+		% [label, mismatches, store.writes_mirrored, store.writes_unknown_container,
+		store.writes_misplaced])
+	if mismatches != 0 or store.writes_unknown_container != 0 or store.writes_misplaced != 0:
+		push_error("[Room] the shadow store has drifted at '%s': grid mismatches %d, unknown-container writes %d, misplaced writes %d"
+			% [label, mismatches, store.writes_unknown_container, store.writes_misplaced])
+	return summary
+
+
+## RENDER3D R3D-1b gate steps. Each drives the path a player (or a load) takes, so the
+## shadow store is judged on the writes the game really makes.
+
+## A shot at guard `index`, through the same menu entry points a right-click reaches
+## (`open_menu_for()` + `fire_at_active()`), then frames until the destruction render
+## has settled.
+func scenario_shoot(index: int) -> bool:
+	if _agent_shot_controller == null or index < 0 or index >= _guards.size():
+		push_error("[Room] scenario_shoot: no shot controller or no guard #%d (%d on the map)"
+			% [index, _guards.size()])
+		return false
+	_agent_shot_controller.open_menu_for(index)
+	for _f in range(10):
+		await get_tree().process_frame
+	_agent_shot_controller.fire_at_active()
+	var waited: int = 0
+	while (_destruction_render_busy or is_resolving_action()) and waited < 1800:
+		await get_tree().process_frame
+		waited += 1
+	for _f in range(30):
+		await get_tree().process_frame
+	return waited < 1800
+
+
+## F2's map reload: the same `load_map()` the debug panel calls, on the current map.
+func scenario_reload() -> bool:
+	load_map(map_id)
+	for _f in range(10):
+		await get_tree().process_frame
+	return _edge_registry != null
+
+
+## SAVE-01's round trip. No production load flow exists yet (SaveState is plumbing), so
+## this takes the one a rotation already runs: capture, a fresh `load_map()` (which clears
+## the run state), `SaveState.restore()`, then `_reapply_base_damage()` to stamp the
+## restored records back onto the rebuilt voxels.
+func scenario_save_restore() -> bool:
+	var data: Dictionary = SaveState.capture(self)
+	load_map(map_id)
+	if not SaveState.restore(self, data):
+		return false
+	_reapply_base_damage()
+	for _f in range(10):
+		await get_tree().process_frame
+	return true
+
+
+## A perspective rotation, through `_set_perspective()` — the rebuild and base-damage
+## replay `_capture_all_four_views()` runs, without its captures into Screenshots/history.
+func scenario_perspective(direction: String) -> bool:
+	if not PerspectiveMapperClass.is_valid_direction(direction):
+		push_error("[Room] scenario_perspective: '%s' is not N, E, S or W" % direction)
+		return false
+	_set_perspective(direction)
+	for _f in range(10):
+		await get_tree().process_frame
+	return _active_perspective == direction
 
 
 ## TEL-06b — emitted when `scenario_detonate()` has finished, successfully or not. The

@@ -112,6 +112,8 @@ func set_visible(v: bool) -> void:
 	if visible == v:
 		return
 	visible = v
+	if VoxelStore.active != null:
+		VoxelStore.active.mirror(self)
 	_set_dirty()
 
 
@@ -166,6 +168,10 @@ func set_damage(new_state: int, from_blast: bool = false,
 	damage_substrate = substrate
 	if new_state == DamageState.DESTROYED:
 		visible = false
+	## RENDER3D R3D-1b — the shadow store sees every state change from the one place
+	## that makes them. Null unless `VOXEL_STORE=1`.
+	if VoxelStore.active != null:
+		VoxelStore.active.mirror(self)
 	_set_dirty()
 
 

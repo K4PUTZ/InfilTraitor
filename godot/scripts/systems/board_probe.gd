@@ -66,26 +66,11 @@ static func write(path: String, label: String, edge_registry: EdgeRegistry,
 		push_error("[BoardProbe] write: a registry is missing (edges %s, slabs %s)"
 			% [edge_registry != null, slab_registry != null])
 		return {}
-	if label.is_empty() or label.contains(" "):
-		push_error("[BoardProbe] write: the label must be one non-empty word, got '%s'" % label)
-		return {}
-	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
-	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	var file: FileAccess = _open(path, label, meta)
 	if file == null:
-		push_error("[BoardProbe] write: cannot open %s (error %d)"
-			% [path, FileAccess.get_open_error()])
 		return {}
-	file.store_line("BOARDPROBE %d %s" % [FORMAT_VERSION, label])
-	var meta_keys: Array = meta.keys()
-	meta_keys.sort()
-	for key: Variant in meta_keys:
-		file.store_line("META %s %s" % [str(key), str(meta[key]).replace("\n", " ")])
-
 	var materials: Dictionary = {}
-	var containers: int = 0
-	var slice_voxels: int = 0
-	var column_voxels: int = 0
-	var slab_voxels: int = 0
+	var counts: Dictionary = {"containers": 0, KIND_SLICE: 0, KIND_COLUMN: 0, KIND_SLAB: 0}
 	var error: String = ""
 	for slice: Slice in edge_registry.all_slices():
 		var banded: Slice = slice if slice.has_material_bands() else null
@@ -93,8 +78,7 @@ static func write(path: String, label: String, edge_registry: EdgeRegistry,
 			slice.material, banded, GeometryCoords.storey_level_base(slice.start_storey))
 		if not error.is_empty():
 			break
-		slice_voxels += slice.voxels.size()
-		containers += 1
+		_tally(counts, KIND_SLICE, slice.voxels.size())
 	if error.is_empty():
 		for column: JunctionResolver.JunctionColumn in junction_columns:
 			var column_material: String = column.override_material \
@@ -103,17 +87,77 @@ static func write(path: String, label: String, edge_registry: EdgeRegistry,
 				column_material, null, 0)
 			if not error.is_empty():
 				break
-			column_voxels += column.voxels.size()
-			containers += 1
+			_tally(counts, KIND_COLUMN, column.voxels.size())
 	if error.is_empty():
 		for slab: Slab in slab_registry.all_slabs():
 			error = _store_container(file, materials, KIND_SLAB, slab.id, slab.voxels,
 				slab.material, null, 0)
 			if not error.is_empty():
 				break
-			slab_voxels += slab.voxels.size()
-			containers += 1
+			_tally(counts, KIND_SLAB, slab.voxels.size())
+	return _finish(file, path, error, materials, counts, planes, plane_origin, t0)
 
+
+## RENDER3D R3D-1b — the same dump, read from a `VoxelStore` instead of the objects. The
+## containers are written in `write()`'s order (slices, columns, slabs), so the `M` lines
+## number the materials the same way and a store that matches its objects diffs as
+## IDENTICAL, down to the junction columns whose ids repeat (compared by occurrence).
+static func write_store(path: String, label: String, store: VoxelStore, planes: Dictionary,
+		plane_origin: Vector2i, meta: Dictionary) -> Dictionary:
+	var t0: int = Time.get_ticks_usec()
+	if store == null:
+		push_error("[BoardProbe] write_store: no store")
+		return {}
+	var file: FileAccess = _open(path, label, meta)
+	if file == null:
+		return {}
+	var materials: Dictionary = {}
+	var counts: Dictionary = {"containers": 0, KIND_SLICE: 0, KIND_COLUMN: 0, KIND_SLAB: 0}
+	var error: String = ""
+	var passes: Array = [[VoxelStore.KIND_SLICE, KIND_SLICE], [VoxelStore.KIND_COLUMN, KIND_COLUMN],
+		[VoxelStore.KIND_SLAB, KIND_SLAB]]
+	for pass_kinds: Array in passes:
+		for ci in range(store.container_count()):
+			if store.container_kinds[ci] != int(pass_kinds[0]):
+				continue
+			var span: Vector2i = store.container_claims(ci)
+			error = _store_claims(file, materials, str(pass_kinds[1]), store.container_ids[ci],
+				store, span.x, span.y)
+			if not error.is_empty():
+				break
+			_tally(counts, str(pass_kinds[1]), span.y)
+		if not error.is_empty():
+			break
+	return _finish(file, path, error, materials, counts, planes, plane_origin, t0)
+
+
+static func _open(path: String, label: String, meta: Dictionary) -> FileAccess:
+	if label.is_empty() or label.contains(" "):
+		push_error("[BoardProbe] write: the label must be one non-empty word, got '%s'" % label)
+		return null
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_error("[BoardProbe] write: cannot open %s (error %d)"
+			% [path, FileAccess.get_open_error()])
+		return null
+	file.store_line("BOARDPROBE %d %s" % [FORMAT_VERSION, label])
+	var meta_keys: Array = meta.keys()
+	meta_keys.sort()
+	for key: Variant in meta_keys:
+		file.store_line("META %s %s" % [str(key), str(meta[key]).replace("\n", " ")])
+	return file
+
+
+static func _tally(counts: Dictionary, kind: String, voxels: int) -> void:
+	counts[kind] = int(counts[kind]) + voxels
+	counts["containers"] = int(counts["containers"]) + 1
+
+
+## The planes and the `END` line, or the removal of a half-written file.
+static func _finish(file: FileAccess, path: String, error_in: String, materials: Dictionary,
+		counts: Dictionary, planes: Dictionary, plane_origin: Vector2i, t0: int) -> Dictionary:
+	var error: String = error_in
 	var levels: Array = planes.keys()
 	levels.sort()
 	if error.is_empty():
@@ -126,23 +170,49 @@ static func write(path: String, label: String, edge_registry: EdgeRegistry,
 			file.store_line("P %d %d %d %d %d %d %s" % [int(level), image.get_width(),
 				image.get_height(), image.get_format(), plane_origin.x, plane_origin.y,
 				Marshalls.raw_to_base64(packed)])
-
 	if not error.is_empty():
 		file.close()
 		DirAccess.remove_absolute(path)
 		push_error("[BoardProbe] write %s: %s — no dump written" % [path, error])
 		return {}
-	var voxels: int = slice_voxels + column_voxels + slab_voxels
+	var voxels: int = int(counts[KIND_SLICE]) + int(counts[KIND_COLUMN]) + int(counts[KIND_SLAB])
 	file.store_line("END voxels=%d containers=%d materials=%d levels=%d"
-		% [voxels, containers, materials.size(), levels.size()])
+		% [voxels, int(counts["containers"]), materials.size(), levels.size()])
 	var bytes: int = file.get_position()
 	file.close()
 	return {
-		"voxels": voxels, "containers": containers, "slice_voxels": slice_voxels,
-		"column_voxels": column_voxels, "slab_voxels": slab_voxels,
-		"materials": materials.size(), "levels": levels.size(), "bytes": bytes,
+		"voxels": voxels, "containers": int(counts["containers"]),
+		"slice_voxels": int(counts[KIND_SLICE]), "column_voxels": int(counts[KIND_COLUMN]),
+		"slab_voxels": int(counts[KIND_SLAB]), "materials": materials.size(),
+		"levels": levels.size(), "bytes": bytes,
 		"ms": float(Time.get_ticks_usec() - t0) / 1000.0,
 	}
+
+
+## One `C` line from a store's claims `offset .. offset + n`.
+static func _store_claims(file: FileAccess, materials: Dictionary, kind: String,
+		container_id: String, store: VoxelStore, offset: int, n: int) -> String:
+	if container_id.is_empty() or container_id.contains(" "):
+		return "%s id '%s' is not one word" % [kind, container_id]
+	if n == 0:
+		file.store_line("C %s %s 0 - -" % [kind, container_id])
+		return ""
+	var coords: PackedInt32Array = store.xyz.slice(offset * 3, (offset + n) * 3)
+	var state := PackedByteArray()
+	state.resize(n * 4)
+	for i in range(n):
+		var claim: int = offset + i
+		var material_index: int = _material_index(file, materials,
+			store.material_ids[store.mat[claim]])
+		if material_index < 0:
+			return "more than 256 materials"
+		state[i * 4] = store.state[claim]
+		state[i * 4 + 1] = store.aux[claim] & 15
+		state[i * 4 + 2] = store.aux[claim] >> 4
+		state[i * 4 + 3] = material_index
+	file.store_line("C %s %s %d %s %s" % [kind, container_id, n,
+		Marshalls.raw_to_base64(coords.to_byte_array()), Marshalls.raw_to_base64(state)])
+	return ""
 
 
 ## One `C` line. Returns "" on success, or what made the container unwritable.

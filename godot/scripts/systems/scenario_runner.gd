@@ -42,6 +42,12 @@
 ##   alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count>
 ##                                        `Voxel` objects / packed int32 cells / bytes
 ##                                        until quit, for --mem-poll to read
+##   probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the
+##                                        shadow `VoxelStore` (`VOXEL_STORE=1`)
+##   shoot <guard index>                  R3D-1b gate: a shot through the menu entry points
+##   reload                               R3D-1b gate: F2's `load_map()` on the current map
+##   save_restore                         R3D-1b gate: SaveState capture → reload → restore
+##   perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()`
 ##   store_spike <reps>                   RENDER3D R3D-1a: build every candidate voxel store
 ##                                        layout from the live registries, check each
 ##                                        against today's objects, and time the three hot
@@ -64,6 +70,7 @@ const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1,
+	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
@@ -151,7 +158,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe":
+		"capture", "probe", "probe_store":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -174,6 +181,14 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "detonate takes a dev grenade index >= 0"
 			step["index"] = int(arg)
+		"shoot":
+			if not arg.is_valid_int() or int(arg) < 0:
+				return "shoot takes a guard index >= 0"
+			step["index"] = int(arg)
+		"perspective":
+			if not ["N", "E", "S", "W"].has(arg.to_upper()):
+				return "perspective takes N, E, S or W"
+			step["direction"] = arg.to_upper()
 		"store_spike":
 			if not arg.is_valid_int() or int(arg) < 1:
 				return "store_spike takes a repetition count >= 1"
@@ -239,6 +254,26 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "no dump was written (see the error above)")
 		"alloc":
 			_alloc(step)
+		"probe_store":
+			if not room.has_method("scenario_board_probe_store"):
+				return _fail(step, "Room has no scenario_board_probe_store()")
+			var store_path: String = _output_path("probes", "%s.txt" % step["name"])
+			if (room.call("scenario_board_probe_store", store_path, step["name"]) as Dictionary).is_empty():
+				return _fail(step, "no store dump was written (see the error above)")
+		"shoot", "reload", "save_restore", "perspective":
+			var method: String = "scenario_" + str(step["op"])
+			if not room.has_method(method):
+				return _fail(step, "Room has no %s()" % method)
+			var ok: bool = false
+			match str(step["op"]):
+				"shoot":
+					ok = await room.call(method, int(step["index"]))
+				"perspective":
+					ok = await room.call(method, str(step["direction"]))
+				_:
+					ok = await room.call(method)
+			if not ok:
+				return _fail(step, "%s() did not complete (see the error above)" % method)
 		"store_spike":
 			var summary: Dictionary = await StoreLayoutSpikeClass.new().run(room, int(step["reps"]))
 			if summary.is_empty():

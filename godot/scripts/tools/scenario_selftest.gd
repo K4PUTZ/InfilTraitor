@@ -47,13 +47,15 @@ func _test_ladder_parses() -> bool:
 	var text: String = "framing portrait; centre agent\nzoom 0.5; wait 20; mark z 050;" \
 		+ " centre 12,7; frames 3; window 360x806; capture shot_1; detonate 1; drop2d;" \
 		+ " probe after_0; alloc objects 64; alloc bytes 1048576;" \
-		+ " capture_at soot_fade 2f fade_2; capture_at CONSEQUENCE 1.5s embers_15; store_spike 5; quit;"
+		+ " capture_at soot_fade 2f fade_2; capture_at CONSEQUENCE 1.5s embers_15; store_spike 5;" \
+		+ " probe_store s_0; shoot 1; reload; save_restore; perspective e; quit;"
 	var result: Dictionary = ScenarioRunnerClass.parse(text)
 	var steps: Array = result["steps"]
 	var ops: Array = steps.map(func(s: Dictionary) -> String: return str(s["op"]))
 	var expected_ops: Array = ["framing", "centre", "zoom", "wait", "mark", "centre",
 		"frames", "window", "capture", "detonate", "drop2d", "probe", "alloc", "alloc",
-		"capture_at", "capture_at", "store_spike", "quit"]
+		"capture_at", "capture_at", "store_spike", "probe_store", "shoot", "reload",
+		"save_restore", "perspective", "quit"]
 	if not str(result["error"]).is_empty() or ops != expected_ops:
 		print("[TEST 1] ❌ ladder — error '%s', ops %s" % [result["error"], ops])
 		return false
@@ -69,11 +71,13 @@ func _test_ladder_parses() -> bool:
 		and not steps[14].has("seconds") and steps[14]["name"] == "fade_2" \
 		and steps[15]["beat"] == "CONSEQUENCE" and typeof(steps[15]["seconds"]) == TYPE_FLOAT \
 		and is_equal_approx(steps[15]["seconds"], 1.5) and not steps[15].has("frames") \
-		and steps[15]["name"] == "embers_15" and steps[16]["reps"] == 5
+		and steps[15]["name"] == "embers_15" and steps[16]["reps"] == 5 \
+		and steps[17]["name"] == "s_0" and steps[18]["index"] == 1 \
+		and steps[21]["direction"] == "E"
 	if not typed:
 		print("[TEST 1] ❌ ladder arguments not typed as written: %s" % [steps])
 		return false
-	print("[TEST 1] ✅ an 18-step ladder parses in order with typed arguments")
+	print("[TEST 1] ✅ a 23-step ladder parses in order with typed arguments")
 	return true
 
 
@@ -117,6 +121,10 @@ func _test_each_argument_check() -> bool:
 		"capture_at LIGHT 2f a.b": "capture_at takes a file name (letters, digits, _ or -)",
 		"store_spike 0": "store_spike takes a repetition count >= 1",
 		"store_spike": "'store_spike' takes 1 argument(s), got 0",
+		"probe_store a.b": "probe_store takes a file name (letters, digits, _ or -)",
+		"shoot -1": "shoot takes a guard index >= 0",
+		"reload now": "'reload' takes 0 argument(s), got 1",
+		"perspective up": "perspective takes N, E, S or W",
 	}
 	for text: String in cases:
 		var error: String = ScenarioRunnerClass.parse(text)["error"]

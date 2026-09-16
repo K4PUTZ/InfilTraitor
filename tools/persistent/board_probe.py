@@ -24,6 +24,18 @@
 ##       `--env` passes a flag to every boot (the `INFILTRAITOR_` prefix is added when
 ##       missing), so a later stage runs the same gate with its own flag flipped.
 ##
+##   shadow [--maps PLAYGROUND,GLASS] [--env KEY=VALUE ...] [--out DIR]
+##       RENDER3D R3D-1b: the packed `VoxelStore` in shadow must hold exactly what the
+##       `Voxel` objects hold. Boots each map ONCE with `VOXEL_STORE=1` and, at every
+##       stage — load, both grenades, a shot (PLAYGROUND), all four views and back, a
+##       SaveState round trip, an F2 reload — writes the objects' dump (`o_<stage>`) and
+##       the store's (`s_<stage>`) in the same frame. Requires, per map:
+##         1. IDENTITY — `o_<stage>` and `s_<stage>` identical at every stage;
+##         2. NO DRIFT — every `[VOXEL-STORE]` stage line reads grid mismatches 0,
+##            unknown-container writes 0, misplaced writes 0;
+##         3. THE CONTROLS — the objects changed where the scenario changed them
+##            (load vs g0, and g1 vs shot), so (1) is not an empty agreement.
+##
 ## ⚠️ THE GATE IS EARNED ON THE UNCHANGED CODE FIRST (R3D-0). A 0-difference claim
 ## from a nondeterministic run is noise wearing a number — the pixel-diff lesson of
 ## 2026-08-09, which measured 36 733 px between two identical captures.
@@ -66,6 +78,30 @@ PROBE_LINE = re.compile(r"^\[BOARD-PROBE\] (\S+) .*→ (.+)$")
 FATAL_MARKERS = ("SCRIPT ERROR", "[ScenarioRunner] step", "SCENARIO rejected",
                  "[BoardProbe]", "scenario_detonate:")
 RUN_TIMEOUT_S = 900
+
+## R3D-1b — the shadow gate's stages: (label, the step that produces it). PLAYGROUND's
+## grenades sit beside four boxes' corners, where two slices claim one cell and their
+## states diverge under a blast (R3D-1a) — the case a packed store is most likely to get
+## wrong. GLASS ships no guards, so it takes no shot; its grenades shatter panes.
+SHADOW_STAGES = {
+    "PLAYGROUND": [("load", ""), ("g0", "detonate 0"), ("g1", "detonate 1"), ("shot", "shoot 0"),
+                   ("view_e", "perspective E"), ("view_s", "perspective S"),
+                   ("view_w", "perspective W"), ("view_n", "perspective N"),
+                   ("restore", "save_restore"), ("reload", "reload")],
+    "GLASS": [("load", ""), ("g0", "detonate 0"), ("g1", "detonate 1"),
+              ("view_e", "perspective E"), ("view_s", "perspective S"),
+              ("view_w", "perspective W"), ("view_n", "perspective N"),
+              ("restore", "save_restore"), ("reload", "reload")],
+}
+SHADOW_ENV = {
+    "PLAYGROUND": {"INFILTRAITOR_GRENADE_GUS": "25,2;37,2"},
+    "GLASS": {"INFILTRAITOR_GRENADE_GUS": "14,12;5,12"},
+}
+SHADOW_CONTROLS = {"PLAYGROUND": [("load", "g0"), ("g1", "shot")], "GLASS": [("load", "g0")]}
+STORE_LINE = re.compile(r"^\[VOXEL-STORE\] (s_\S+) — grid mismatches (\d+), writes mirrored (\d+), "
+                        r"unknown container (\d+), misplaced (\d+)$")
+SHADOW_FATAL = ("[Room] the shadow store has drifted", "[Room] VOXEL_STORE=1 but",
+                "[VoxelStore]", "scenario_shoot:", "scenario_perspective:")
 
 
 class DumpError(Exception):
@@ -280,11 +316,12 @@ def find_godot():
     return None
 
 
-def run_once(godot, map_id, run_dir, extra_env):
+def run_once(godot, map_id, run_dir, extra_env, scenario=GATE_SCENARIO, labels=GATE_LABELS,
+             map_env=None, fatal=FATAL_MARKERS):
     env = os.environ.copy()
     env.update({"INFILTRAITOR_MAP": map_id, "INFILTRAITOR_RNG_SEED": "1",
-                "INFILTRAITOR_SCENARIO": GATE_SCENARIO})
-    env.update(MAP_ENV.get(map_id, {}))
+                "INFILTRAITOR_SCENARIO": scenario})
+    env.update(MAP_ENV.get(map_id, {}) if map_env is None else map_env)
     env.update(extra_env)
     run_dir.mkdir(parents=True, exist_ok=True)
     cmd = [godot, "--path", str(REPO), "--position", "4000,4000"]
@@ -302,7 +339,7 @@ def run_once(godot, map_id, run_dir, extra_env):
     problems = [] if code == 0 else ["exit %s" % code]
     probes = {}
     for line in output.splitlines():
-        if any(marker in line for marker in FATAL_MARKERS):
+        if any(marker in line for marker in fatal):
             problems.append(line.strip())
         match = PROBE_LINE.match(line.strip())
         if match:
@@ -313,10 +350,95 @@ def run_once(godot, map_id, run_dir, extra_env):
                 probes[match.group(1)] = dst
             else:
                 problems.append("probe %s reported at %s, which does not exist" % (match.group(1), src))
-    missing = [label for label in GATE_LABELS if label not in probes]
+    missing = [label for label in labels if label not in probes]
     if missing:
         problems.append("probe(s) never written: %s" % ", ".join(missing))
     return probes, problems, time.time() - t0
+
+
+def shadow(args):
+    godot = find_godot()
+    if godot is None:
+        print("%s ERROR: no Godot binary (looked in %s)" % (GATE_TAG, GODOT_CANDIDATES))
+        return 2
+    extra_env = {"INFILTRAITOR_VOXEL_STORE": "1"}
+    for pair in args.env:
+        if "=" not in pair:
+            print("%s ERROR: --env takes KEY=VALUE, got %r" % (GATE_TAG, pair))
+            return 2
+        key, value = pair.split("=", 1)
+        extra_env[key if key.startswith("INFILTRAITOR_") else "INFILTRAITOR_" + key] = value
+    out_root = Path(args.out) if args.out else Path(tempfile.mkdtemp(prefix="board_probe_shadow_"))
+    maps = [m.strip() for m in args.maps.split(",") if m.strip()]
+    print("%s shadow: %d map(s), env %s → %s" % (GATE_TAG, len(maps), extra_env, out_root))
+    failures = []
+    for map_id in maps:
+        if map_id not in SHADOW_STAGES:
+            failures.append("%s has no shadow scenario" % map_id)
+            continue
+        stages = SHADOW_STAGES[map_id]
+        steps, labels = [], []
+        for label, step in stages:
+            if step:
+                steps.append(step)
+            steps += ["probe o_%s" % label, "probe_store s_%s" % label]
+            labels += ["o_%s" % label, "s_%s" % label]
+        scenario = "; ".join(steps + ["quit"])
+        run_dir = out_root / map_id
+        probes, problems, seconds = run_once(godot, map_id, run_dir, extra_env, scenario, labels,
+                                             SHADOW_ENV.get(map_id, {}), FATAL_MARKERS + SHADOW_FATAL)
+        print("%s %s: %d probe(s) in %.0f s%s" % (GATE_TAG, map_id, len(probes), seconds,
+              "" if not problems else " — %d problem(s)" % len(problems)))
+        for line in problems[:8]:
+            print("%s     %s" % (GATE_TAG, line))
+        if problems:
+            failures.append("%s did not run cleanly" % map_id)
+        log = (run_dir / "godot.log").read_text(encoding="utf-8", errors="replace")
+        store_lines = {}
+        for line in log.splitlines():
+            match = STORE_LINE.match(line.strip())
+            if match:
+                store_lines[match.group(1)] = [int(match.group(k)) for k in range(2, 6)]
+        for line in log.splitlines():
+            if line.startswith("[VOXEL-STORE] built"):
+                print("%s %s   %s" % (GATE_TAG, map_id, line.strip()))
+        quiet = [] if args.verbose else None
+        sink = print if quiet is None else quiet.append
+        for label, _step in stages:
+            o, s_ = "o_%s" % label, "s_%s" % label
+            if o not in probes or s_ not in probes:
+                continue
+            result = diff(load(probes[o]), load(probes[s_]), args.first, sink)
+            counters = store_lines.get(s_)
+            drift = counters is None or counters[0] != 0 or counters[2] != 0 or counters[3] != 0
+            print("%s %s %-8s objects vs store %s — voxels %d/%d, plane texels %d; grid mismatches %s, writes mirrored %s, unknown %s, misplaced %s"
+                  % (GATE_TAG, map_id, label, "IDENTICAL" if result["identical"] else "DIFFERENT",
+                     result["voxel_diffs"], result["voxels_compared"], result["texel_diffs"],
+                     *(counters if counters else ["?"] * 4)))
+            if not result["identical"]:
+                failures.append("%s %s: objects and store differ" % (map_id, label))
+                if quiet is not None:
+                    for line in quiet:
+                        print(line)
+            if drift:
+                failures.append("%s %s: the store line is missing or reports drift" % (map_id, label))
+            if quiet is not None:
+                quiet.clear()
+        for a, b in SHADOW_CONTROLS.get(map_id, []):
+            if "o_%s" % a not in probes or "o_%s" % b not in probes:
+                continue
+            control = diff(load(probes["o_%s" % a]), load(probes["o_%s" % b]), args.first, sink)
+            if quiet is not None:
+                quiet.clear()
+            print("%s %s control: objects %s vs %s — voxels %d%s" % (GATE_TAG, map_id, a, b,
+                  control["voxel_diffs"], "" if control["voxel_diffs"] else " — ⛔ the stage changed nothing"))
+            if control["voxel_diffs"] == 0:
+                failures.append("%s control %s→%s changed no voxel" % (map_id, a, b))
+    if failures:
+        print("%s SHADOW FAIL — %s" % (GATE_TAG, "; ".join(failures)))
+        return 1
+    print("%s SHADOW PASS — dumps and logs in %s" % (GATE_TAG, out_root))
+    return 0
 
 
 def gate(args):
@@ -394,7 +516,19 @@ def main():
     p_gate.add_argument("--out", default=None, help="where dumps and logs go (default: a new temp dir)")
     p_gate.add_argument("--first", type=int, default=20)
     p_gate.add_argument("--verbose", action="store_true", help="print every diff in full")
+    p_shadow = sub.add_parser("shadow", help="R3D-1b: require the shadow VoxelStore to equal the objects")
+    p_shadow.add_argument("--maps", default="PLAYGROUND,GLASS")
+    p_shadow.add_argument("--env", action="append", default=[], metavar="KEY=VALUE")
+    p_shadow.add_argument("--out", default=None)
+    p_shadow.add_argument("--first", type=int, default=20)
+    p_shadow.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
+    if args.command == "shadow":
+        try:
+            return shadow(args)
+        except DumpError as exc:
+            print("%s ERROR: %s" % (GATE_TAG, exc))
+            return 2
     if args.command == "diff":
         try:
             result = diff(load(args.a), load(args.b), args.first)

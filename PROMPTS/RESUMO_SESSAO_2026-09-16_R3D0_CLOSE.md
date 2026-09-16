@@ -157,9 +157,26 @@ measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) an
   - native heap: **+15–18 MB**.
   Both last until R3D-1d removes the objects.
 
-## 8. Next session
+## 8. R3D-1c step 2 — the prediction WALK onto the store (`3b298025`)
 
-1. **R3D-1c step 2** — the prediction plan builder reads the store, keeping
-   `board_probe.py shadow` and the cook's plan identical.
+- **What changed:**
+  - state, visible, blast and the cell now come from the store, with the Delta's
+    projection re-keyed by claim;
+  - the WALK's dead `occupancy` is no longer built;
+  - `STORE_WALK` defaults on, `=0` for comparison.
+- **Identity:** IDENTICAL on/off on both maps (voxels and planes), including corner
+  grenades plus a shot; the cook's counts match.
+- **On the Moto:**
+  - the WALK drops from 1 651–1 662 to 941–956 ms (−43 %);
+  - grenades take 18.2 · 15.0 s instead of 19.7 · 16.3 s;
+  - the commit frame drops from ~250 to ~190 ms;
+  - the idle frame is the same.
+- **Found for R3D-2:** the cook's PACKAGE phase costs ~7.9 s per grenade on the Moto,
+  resolving 2D atlas tiles even on the 3D board. It is the cook's largest cost on the
+  device.
+
+## 9. Next session
+
+1. **R3D-1c step 3** — glass reads the store (shatter, crack, fall, occupancy).
 2. **The rotation / SaveState damage-loss task**, if the Director starts it.
 3. **The junction column id task** (from R3D-0), if the Director starts it.

@@ -26,7 +26,10 @@ the same day. R3D-0 closed on its gate that day too, and the direction was ratif
   ratified classes.
   - On the Moto: play costs the same, the load +0.9–1.0 s and the native heap +15–18 MB,
     until R3D-1d.
-- **Next:** R3D-1c step 2 — the prediction plan builder.
+- **R3D-1c step 2 DONE:** the prediction WALK reads the store.
+  - The plans are identical.
+  - On the Moto: the WALK is −43 % and each grenade is 1.3–1.5 s shorter.
+- **Next:** R3D-1c step 3 — glass (shatter, crack, fall, occupancy).
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -786,6 +789,43 @@ path, kept for comparison only.
   at R3D-1d, when the objects (~191 MB on the Moto) go.
 - Logs (local): `docs/measurements/device_2026-09-16_moto_g04s_r3d1c_*.log`. APKs:
   `a97b1213…` (grenade A/B), `241b53de…` (the load re-measure).
+
+#### R3D-1c step 2 — the prediction WALK reads the store (2026-09-16, commit `3b298025`)
+
+**What moved:**
+- `DetonationPlanBuilder._phase_walk_store()` reads state, visible, blast and cell from
+  the store. The Delta's projection is re-keyed by claim once
+  (`WorldDelta.projections()`).
+- **The WALK's `occupancy` is no longer built.** Its only reader since D-7 was
+  `_commit_burn_to_delta()`, erasing burnt cells from a dictionary nothing read
+  afterwards.
+- `STORE_WALK` defaults on; `=0` is the object walk. The object walk also runs, with one
+  warning, when the active store does not hold exactly the plan's containers.
+- **Still objects:** `cell_to_voxel` and `damaged_voxels`, which later phases hand to
+  `BlastCalculator` (shared with the room's repaint). They move with the soot derivation
+  (step 4) and the Delta's keys (R3D-2).
+
+**Identity (desktop), `STORE_WALK` on vs off:**
+- `board_probe.py gate` passes both ways.
+- PLAYGROUND and GLASS are IDENTICAL at load, g0 and g1 (voxels and plane texels).
+- PLAYGROUND with corner grenades and a shot: IDENTICAL at g0, g1 and the shot.
+- The cook's printed counts match: commit cells and effects by kind.
+
+**Cost:**
+
+| | objects (`=0`) | store |
+|---|---|---|
+| WALK, desktop PLAYGROUND · GLASS | 256/248 · 138/125 ms | 157/152 · 90/78 ms |
+| WALK, Moto (APK `f1344d64…`, 2 boots per side) | 1 651–1 662 ms | **941–956 ms (−43 %)** |
+| the cook's total, #0 · #1, Moto | 10.2–10.3 · 7.7 s | 9.5 · 7.0 s |
+| grenade wall clock, #0 · #1, Moto | 19.7 · 16.3 s | **18.2 · 15.0–15.1 s** |
+| commit frame, #0 · #1, Moto | 245–258 · 279–280 ms | 176–198 · 196–208 ms |
+| idle frame, Moto | 22.9–23.3 ms | 22.9–23.1 ms |
+
+⚠️ **Found for R3D-2:** the cook's PACKAGE phase costs **~7.9 s** per grenade on the Moto
+(worst visit 2.07 s), even on the 3D board. It resolves 2D atlas tiles for every entry.
+That is R3D-2's "tile-shaped plan entries", and it is now the cook's largest cost on the
+device.
 
 **R3D-1d — the objects go.**
 - `Slice`, `Slab` and `JunctionColumn` answer per-voxel questions from the store; the

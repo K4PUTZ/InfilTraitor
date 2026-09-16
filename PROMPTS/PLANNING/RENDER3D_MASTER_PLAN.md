@@ -1,13 +1,14 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.1
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.2
 
-**Status:** 🟡 **R3D-0 MEASURED 2026-09-15 — not yet closed.** The direction was ratified
-by the Director the same day.
+**Status:** 🟢 **R3D-0 CLOSED on its gate, 2026-09-16.** The direction was ratified by the
+Director on 2026-09-15.
 - **Built and gated:** `BoardProbe` and its identity gate; the `Voxel` cost on the Moto
-  (~925 B); the baseline re-run on one APK.
-- **Open, so R3D-0 is not closed:** paired captures for R3D-6 item 1 (roof tops) and for
-  embers.
-- **Next:** those two captures, then R3D-1a.
+  (~925 B); the baseline re-run on one APK; a paired Moto capture for every R3D-6 item.
+- **Found while closing it:** R3D-6 item 1's dark "roof tops" are not roofs. They are 2D
+  shadow overlays drawn over the 3D board, which makes them an R3D-5 row. The move waits
+  on the Director.
+- **Next:** R3D-1a.
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -308,6 +309,97 @@ earlier measurements, so later stages compare against these:
     capture already comes after the fire.
   - Both need a framing, or a capture step inside the blast, before R3D-0 closes.
 
+#### R3D-0 — the two missing pairs, and the gate closed (2026-09-16, commit `13562fba`)
+
+**The instrument: `capture_at`.** The `detonate` step returns only once the blast is over,
+so no step could photograph inside one.
+- `capture_at <beat> <offset> <name>` arms a capture, taken `<offset>` after the Room names
+  `<beat>`. The Room announces beats through the new `Room.blast_beat` signal, whether or
+  not the frame probe is on.
+- The offset is in frames (`2f`) or in seconds of process delta (`1.5s`).
+  - Seconds are the clock the consequence channel and the embers age on.
+  - So a 2D run and a 3D run photograph the same moment of the effect, even though their
+    frames cost very different times.
+- A capture still armed at `quit` is a `push_error`. A `NEVER_NAMED` arm proved that on
+  desktop.
+
+**The Moto run.** Full record: `DEVICE_DIAGNOSTICS` §15.18.6.
+- The APK was built from `13562fba`; the installed APK's sha256 is `c3a1a6d3…`.
+- 4 boots in order 2D a, 3D a, 2D b, 3D b. The 3D boots skip the 2D writes.
+- PLAYGROUND, grenade #3 on the wood trio. When each capture landed:
+
+| step | 2D, a / b | 3D, a / b |
+|---|---|---|
+| `SOOT_FADE 2f` | 0.269 / 0.241 s | 0.231 / 0.201 s |
+| `CONSEQUENCE 0.4s` | 5 / 5 frames · 0.469 / 0.463 s | 10 / 9 frames · 0.419 / 0.408 s |
+| `CONSEQUENCE 1s` | 12 / 12 · 1.048 / 1.066 s | 23 / 24 · 1.008 / 1.012 s |
+| `CONSEQUENCE 2s` | 24 / 24 · 2.050 / 2.040 s | 51 / 53 · 2.011 / 2.008 s |
+
+- **Framings with no blast running repeat exactly from run a to run b.**
+  - The roof frames differ by 0 px in both renderers, except 1 px in 3D's close framing.
+  - The closing frame differs by 0 px in 2D and by 0.37 % in 3D.
+- **The frames inside the blast differ by 31–85 % of pixels from run a to run b**, in both
+  renderers.
+  - Every ember, smoke puff and spark rolls its own values with `randf_range()`.
+  - ⚠️ **And `RNG_SEED` has never reached the APK.** `Room._ready()` reads it with
+    `OS.get_environment()`, not through `DevFlags`. `[RNG] seeded` prints in the desktop
+    log and in none of the 20 Moto logs from 2026-09-15 and 2026-09-16. Every device run
+    that set it ran unseeded.
+- **What repeats inside the blast is the stage of the effect.** It is the same in runs
+  a and b, and in 2D and 3D:
+  - yellow-hot at 0.4 s;
+  - orange at 1.0 s;
+  - mostly dark coals at 2.0 s.
+
+**What the new pairs show:**
+- **Embers (item 6).** The 3D board shows them as 2D does: they are a 2D overlay, drawn
+  over either board.
+  - One difference: only in 3D, small brown flecks and clusters of white dots sit on top
+    of them. In 2D the voxel layers cover those.
+  - Their source is not identified. The debris overlay (z −8) is the first candidate.
+    This is an R3D-5 row.
+- **The soot fade (item 6).** Two frames into the fade, 2D is part-way through darkening,
+  and 3D shows no scorch at all.
+  - The 3D board recolours soot once, after the fade: `[BOARD3D] recolour soot` logs just
+    after the capture.
+  - The spike's header already says so: its soot fade lands at the end instead of
+    stepping. The pair is now on record.
+- **Floor depth dim (item 6).** Only the crater frames show it: `r3d0_g_*_after0/1` and
+  `r3d0b_pg_*_after`. It has no framing of its own.
+- **Item 1: the dark "roof tops" are not roofs.**
+  - **What a block is.** A PLAYGROUND material "block" is a hollow box: walls two storeys
+    tall (levels 80–95) under a CEILING slab at levels 96–97. The R3D-0 dump holds 54 such
+    slabs, over 27 GUs.
+  - **The new framing** is `centre 8,-1; zoom 0.5`, over the metal box and the stone box.
+    Both roofs read lit in 3D, as in 2D, on the Moto and on desktop.
+  - **The dark rhombus** is the size of a box's footprint, and it sits at ground level:
+    the box's own interior floor, which no light reaches. In 2D the walls and the roof
+    draw over it. In 3D it is drawn over them.
+  - **Desktop bisection**, 3D, same framing, using a temporary patch that hid named Room
+    nodes (reverted, never committed):
+    - hiding `shadow_full_layer` changes nothing;
+    - hiding `_tile_shadow` removes the fill;
+    - hiding `_shadow_boundary_overlay` as well removes the outline, and the rhombus is
+      gone;
+    - the GU grid lines drawn across the walls leave with the group holding
+      `_gu_grid_overlay` and `_tile_game`;
+    - **the red line survives hiding 11 overlay nodes**, and is still not identified.
+  - **So item 1 is an R3D-5 row:** a 2D ground-plane overlay drawn over 3D geometry. It is
+    not a face-lighting defect. Moving it is the Director's call. Until then it stays
+    listed under R3D-6, with this explanation.
+
+**The gate:**
+- ✅ `BoardProbe` reads 0 differences between two runs, on both maps and after both
+  grenades (2026-09-15).
+- ✅ The Moto `Voxel` number is recorded: ~925 B.
+- ✅ The baseline tables are recorded: `DEVICE_DIAGNOSTICS` §15.18.2–15.18.4.
+- ✅ Paired Moto captures exist for every R3D-6 item:
+  - 1: this section;
+  - 2–5: §15.18.5;
+  - 6: soot and burnt voxels in §15.18.5; embers, the fade and the depth dim in this
+    section;
+  - 7: the rows found are listed under R3D-5.
+
 ### R3D-1 — The packed voxel store (the data half)
 
 **R3D-1a, the spike that picks the layout, with its decision rule written first:**
@@ -484,6 +576,14 @@ The screen flash and the negative strobe stay screen-space.
     selection diamond, the aim dome, the throw perimeter and arc, the noise rings, fog of
     war.
   - The dark diamond under the agent that DIAG-21 showed is one of these rows.
+  - **Rows R3D-0 found on the Moto (2026-09-16).** On the 3D board each of these is drawn
+    over geometry that covers it in 2D:
+    - `_tile_shadow` (fill) and `_shadow_boundary_overlay` (outline) over hollow boxes —
+      R3D-6 item 1's "dark roofs";
+    - the GU grid lines across wall faces;
+    - brown flecks and white dots over the embers, not identified (debris overlay, z −8,
+      is the first candidate);
+    - a red line, not identified; it survives hiding 11 overlay nodes.
   - Dev and debug overlays may stay 2D.
 - **The HUD does not move** (rule 11).
 
@@ -497,7 +597,11 @@ The screen flash and the negative strobe stay screen-space.
 Each item below stays behind a flag until the Director ratifies it from paired Moto
 captures, 2D against 3D.
 
-1. **Roof tops read dark** in 3D where 2D reads them lit. Seen since step 1, unexplained.
+1. **Roof tops read dark** in 3D where 2D reads them lit. Seen since step 1.
+   - **Explained at R3D-0 (2026-09-16):** the roofs read lit. The dark shape is a hollow
+     box's interior floor: `_tile_shadow` gives the fill and `_shadow_boundary_overlay`
+     the outline, both drawn over the 3D walls.
+   - That makes it an R3D-5 row. It is proposed to move there, on the Director's word.
 2. **Glass:** the strong blue with facets, pane edges, the crack sprite and the craze
    family, and a pane's side sliver.
 3. **Damage decals** from `ART_SPECIFICATIONS` §7 families, per voxel: a decal/variant
@@ -653,3 +757,10 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
   - Findings for R3D-1a: 672 corner cells claimed by two slices, and non-unique
     junction column ids.
   - Open before R3D-0 closes: captures for roof tops and embers.
+- **v1.2, 2026-09-16.** R3D-0 closed on its gate.
+  - The scenario step `capture_at` photographs inside a blast; commit `13562fba`.
+  - The Moto pairs for embers, the soot fade and roof tops are recorded.
+  - Item 1's dark shape was bisected to `_tile_shadow` and `_shadow_boundary_overlay`
+    drawn over the 3D board. It is proposed as an R3D-5 row, and new R3D-5 rows are
+    listed.
+  - Found: `RNG_SEED` never reaches the APK.

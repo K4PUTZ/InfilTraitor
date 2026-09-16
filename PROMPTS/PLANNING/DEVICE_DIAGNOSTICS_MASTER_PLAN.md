@@ -1,8 +1,16 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.8
+## Measuring the real build on a real entry-tier phone — v1.9
 
-**Status:** 🟢 **v1.8 — the RENDER3D baseline is measured (2026-09-15).**
+**Status:** 🟢 **v1.9 — the RENDER3D baseline is closed (2026-09-16).**
 Where the Moto g04s stands:
+
+- **RENDER3D R3D-0 closed (§15.18.6):** the last two reference pairs, embers and roof
+  tops, were captured inside the blast by the new scenario step `capture_at`.
+  - The dark "roof tops" in 3D are 2D shadow overlays drawn over the 3D board, not roofs.
+  - ⚠️ **`RNG_SEED` has never reached an APK.** `Room._ready()` reads it with
+    `OS.get_environment()`, not `DevFlags`. No Moto log from 2026-09-15 or 2026-09-16
+    prints `[RNG] seeded`. Every device table here that lists `RNG_SEED` ran with its
+    particle rolls unseeded: §10.9–§10.11, the benchmark, and the TEL scenarios.
 
 - **RENDER3D R3D-0 (§15.18):** one APK re-ran DIAG-21/22/23 as the migration's
   baseline, and every row landed inside the earlier measurements.
@@ -355,6 +363,8 @@ the same scenario.
 
 Pinned by `INFILTRAITOR_RNG_SEED` so two runs are comparable, and by a fixed
 grenade GU so the blast hits identical geometry every time.
+⚠️ **The seed half holds on desktop only** (§15.18.6): in an APK the environment is
+empty, and the seed is not read through `DevFlags`.
 
 ---
 
@@ -2992,3 +3002,102 @@ changes no pixel. Files (local): `Screenshots/r3d0_2026-09-15/`.
 
 **Caveat on every scenario capture:** the `Detonate / Cancel` menu and the dev panel stay
 on screen, identically in both renderers and in both runs.
+
+#### 15.18.6 The last two pairs — embers and roof tops (2026-09-16)
+
+**Why.** §15.18.5 left two R3D-6 items without a pair:
+- The `detonate` step waits for the blast to end, so the embers were gone before any
+  capture.
+- The `roofs` framing did not show a roof.
+
+**The instrument.** `capture_at <beat> <offset> <name>` (`RENDER3D` R3D-0, commit
+`13562fba`) arms a capture.
+- The capture is taken `<offset>` after the Room names a blast beat.
+- The offset is counted in frames, or in seconds of process delta — the clock the embers
+  age on.
+
+**The APK.**
+- Commit `13562fba`, built with `export_android.py --install`. The installed APK's
+  sha256 is `c3a1a6d3…`.
+- ⚠️ A `--contents` pass after the install re-exported the APK on disk (`5394bbb1…`).
+  Its code is the same, but it is not the file on the phone.
+
+**The runs.**
+- Moto g04s, portrait, world render scale 1.0, PLAYGROUND, grenade #3 on the wood trio.
+- 4 boots, interleaved: 2D a, 3D a, 2D b, 3D b. The 3D boots set
+  `SKIP_2D_BOARD_WRITES=1`. All four exited cleanly, with 7 captures each.
+- Logs (local): `docs/measurements/device_2026-09-16_moto_g04s_r3d0b_pg_*.log`.
+- Captures (local): `Screenshots/r3d0_2026-09-16/`.
+
+The scenario:
+
+```
+framing portrait; centre 8,-1; zoom 0.5; wait 12; capture <run>_roofs;
+centre 11,-1; zoom 0.8; wait 2; capture <run>_roofs_close; centre 18,4; zoom 1.0; wait 2;
+capture_at SOOT_FADE 2f <run>_fade_2; capture_at CONSEQUENCE 0.4s <run>_embers_04;
+capture_at CONSEQUENCE 1s <run>_embers_10; capture_at CONSEQUENCE 2s <run>_embers_20;
+detonate 3; capture <run>_after; quit
+```
+
+**Where each armed capture landed:**
+
+| step | 2D, a / b | 3D, a / b |
+|---|---|---|
+| `SOOT_FADE 2f` | 0.269 / 0.241 s | 0.231 / 0.201 s |
+| `CONSEQUENCE 0.4s` | 5 / 5 frames · 0.469 / 0.463 s | 10 / 9 frames · 0.419 / 0.408 s |
+| `CONSEQUENCE 1s` | 12 / 12 · 1.048 / 1.066 s | 23 / 24 · 1.008 / 1.012 s |
+| `CONSEQUENCE 2s` | 24 / 24 · 2.050 / 2.040 s | 51 / 53 · 2.011 / 2.008 s |
+
+- The consequence channel ran 15 frames in 2D (4.1 s wall) and 27–29 frames in 3D
+  (3.5 s wall). Its 586 effects were the same count in all four boots: 228 smoke, 304
+  ember and 54 debris.
+- A 2D frame lands up to ~0.07 s later than the offset asked for, because 2D frames here
+  are long. A 3D frame lands within 0.02 s.
+
+**Run a against run b, per capture:**
+
+| capture | 2D | 3D |
+|---|---|---|
+| roofs · roofs_close | 0 · 0 px | 0 · 1 px |
+| fade_2 | 67.5 % | 85.3 % |
+| embers 0.4 · 1.0 · 2.0 s | 33.5 · 39.3 · 41.4 % | 31.1 · 37.9 · 42.0 % |
+| after | 0 px | 4 286 px (0.37 %) |
+
+- **The frames with no blast running repeat.**
+- **The in-blast frames do not repeat pixel for pixel.** Every ember, puff and spark rolls
+  its own values with `randf_range()`, and `RNG_SEED` never reaches the APK (see the
+  status).
+  - Seeding would not make them identical either. The cook is budgeted in milliseconds,
+    so the number of draws before the blast varies from run to run (`room.gd`,
+    `_capture_circle_gate`).
+- **What does repeat is the stage of the effect.** It matches in a and b, and in 2D and
+  3D: yellow-hot at 0.4 s, orange at 1.0 s, mostly dark coals at 2.0 s.
+
+**What the pairs show:**
+
+| R3D-6 item | captures | what the pair shows |
+|---|---|---|
+| 6 · embers | `r3d0b_pg_*_embers_04/10/20` | The same stage at each instant in 2D and 3D: the embers are a 2D overlay over either board. Only in 3D, small brown flecks and clusters of white dots sit on top; in 2D the voxel layers cover them. Not identified (the debris overlay, z −8, is the first candidate). |
+| 6 · soot fade | `r3d0b_pg_*_fade_2` | 2D is part-way through darkening. 3D shows no scorch yet: its board recolours soot once, after the fade (`[BOARD3D] recolour soot` logs 65–70 ms after the capture). |
+| 6 · floor depth dim | `r3d0b_pg_*_after`, `r3d0_g_*_after0/1` | Only inside crater frames, never framed on its own. |
+| 1 · roof tops | `r3d0b_pg_*_roofs`, `…_roofs_close` | The metal and stone roofs (CEILING slabs, levels 96–97) read lit in both renderers. The dark rhombus the size of a box's footprint is at ground level: the hollow box's unlit interior floor, drawn over the 3D walls. |
+
+**Item 1, bisected on desktop.**
+- The setup: 3D board, the same framing in a 360×806 window, and a temporary patch that
+  hid named Room nodes after the board was built. The patch was reverted and never
+  committed.
+- The results, step by step:
+  - hiding `shadow_full_layer` changes nothing;
+  - hiding `_tile_shadow` removes the fill;
+  - hiding `_shadow_boundary_overlay` as well removes the outline, and the rhombus is
+    gone;
+  - the GU grid lines drawn across the walls leave with the group holding
+    `_gu_grid_overlay` and `_tile_game`;
+  - the red line survives hiding 11 overlay nodes (the shadow layers, the game, grid,
+    movement, ray, boundary, path, selection and label overlays), and is still not
+    identified.
+- So it is an R3D-5 row (a 2D overlay drawn over 3D geometry), not a lighting defect.
+  The move is proposed in `RENDER3D`.
+
+**Caveat, as in §15.18.5:** the `Detonate / Cancel` menu and the dev panel are on screen in
+every frame.

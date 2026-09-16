@@ -58,22 +58,25 @@ measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) an
   - `_shadow_boundary_overlay`: removes the outline.
 - The GU grid over the walls is the same kind of row. The **red line survives hiding 11
   overlay nodes**, and is still unidentified.
-- **Proposed:** move R3D-6 item 1 to R3D-5 (overlays). ⏳ Director's call.
+- **Director:** *"pode mover o item 1"*. R3D-6 item 1 moved to R3D-5; its number is kept so
+  items 2–7 keep theirs.
 
-## 4. Found, not fixed
+## 4. `RNG_SEED` never reached an APK — fixed (commit `9740116a`)
 
-- ⚠️ **`RNG_SEED` has never reached an APK.**
-  - `Room._ready()` reads it with `OS.get_environment()`, not `DevFlags`, and none of the
-    20 Moto logs prints `[RNG] seeded`.
-  - Every device table that lists `RNG_SEED` ran with its particle rolls unseeded.
-  - The fix is one read through `DevFlags`. ⏳ Awaiting the Director.
-  - Seeding still would not make in-blast frames identical, because the cook's ms budget
-    varies how many draws come before the blast.
+- **Before:** `Room._ready()` read it with `OS.get_environment()`, not `DevFlags`, and none
+  of the 20 Moto logs from 2026-09-15/16 prints `[RNG] seeded`. Every earlier device table
+  that lists `RNG_SEED` ran with its particle rolls unseeded.
+- **The fix** (Director: *"corrigir o RNG_SEED"*): it is read through `_dev_flag()`, which
+  still asks the environment first.
+  - Desktop: `=7` prints `seeded 7`, and no variable prints nothing.
+  - 56 selftests are clean.
+- **On the Moto:** the APK (sha256 `e9ede4ab…`, on disk and on the phone) was re-run as the
+  same 4 boots (`r3d0c_*`), and **all 4 print `[RNG] seeded 1`**.
+- **What the seed did not do:** the in-blast frames still differ by 32–42 % from run a to
+  run b. Only 3D's fade frame moved, from 85 % to 18 %. The remaining variation is not
+  attributed.
 
 ## 5. Next session
 
 1. **R3D-1a** — the store layout spike (dense per-level grid vs per-container arrays).
-2. **The Director's calls:**
-   - item 1 → R3D-5;
-   - the `RNG_SEED` fix.
-3. **The junction column id task** (from R3D-0), if the Director starts it.
+2. **The junction column id task** (from R3D-0), if the Director starts it.

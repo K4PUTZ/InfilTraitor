@@ -7,10 +7,15 @@ Where the Moto g04s stands:
 - **RENDER3D R3D-0 closed (§15.18.6):** the last two reference pairs, embers and roof
   tops, were captured inside the blast by the new scenario step `capture_at`.
   - The dark "roof tops" in 3D are 2D shadow overlays drawn over the 3D board, not roofs.
-  - ⚠️ **`RNG_SEED` has never reached an APK.** `Room._ready()` reads it with
-    `OS.get_environment()`, not `DevFlags`. No Moto log from 2026-09-15 or 2026-09-16
-    prints `[RNG] seeded`. Every device table here that lists `RNG_SEED` ran with its
-    particle rolls unseeded: §10.9–§10.11, the benchmark, and the TEL scenarios.
+  - ⚠️ **`RNG_SEED` did not reach an APK before commit `9740116a`.** `Room._ready()` read
+    it with `OS.get_environment()`, not `DevFlags`, and none of 20 Moto logs from
+    2026-09-15/16 prints `[RNG] seeded`. So every earlier device table that lists
+    `RNG_SEED` ran with its particle rolls unseeded: §10.9–§10.11, the benchmark and the
+    TEL scenarios.
+    - It is fixed (Director, 2026-09-16), and all 4 Moto boots after the fix print
+      `[RNG] seeded 1`.
+    - A seed does not make in-blast frames repeat: seeded, they still differ by 32–42 %
+      from run to run (§15.18.6).
 
 - **RENDER3D R3D-0 (§15.18):** one APK re-ran DIAG-21/22/23 as the migration's
   baseline, and every row landed inside the earlier measurements.
@@ -363,8 +368,8 @@ the same scenario.
 
 Pinned by `INFILTRAITOR_RNG_SEED` so two runs are comparable, and by a fixed
 grenade GU so the blast hits identical geometry every time.
-⚠️ **The seed half holds on desktop only** (§15.18.6): in an APK the environment is
-empty, and the seed is not read through `DevFlags`.
+⚠️ **Before commit `9740116a` the seed half held on desktop only** (§15.18.6): the seed was
+read from the environment, which an APK does not have. It is read through `DevFlags` now.
 
 ---
 
@@ -3065,11 +3070,24 @@ detonate 3; capture <run>_after; quit
 
 - **The frames with no blast running repeat.**
 - **The in-blast frames do not repeat pixel for pixel.** Every ember, puff and spark rolls
-  its own values with `randf_range()`, and `RNG_SEED` never reaches the APK (see the
-  status).
-  - Seeding would not make them identical either. The cook is budgeted in milliseconds,
-    so the number of draws before the blast varies from run to run (`room.gd`,
-    `_capture_circle_gate`).
+  its own values with `randf_range()`, and these 4 boots ran unseeded: `RNG_SEED` was not
+  yet read through `DevFlags` (see the status).
+- **Seeded, they still do not repeat.** After the fix (commit `9740116a`, APK sha256
+  `e9ede4ab…` on disk and on the phone), the same 4 boots were re-run as `r3d0c_*`. All 4
+  logs print `[RNG] seeded 1`.
+
+  | a vs b | roofs · close | fade_2 | embers 0.4 · 1.0 · 2.0 s | after |
+  |---|---|---|---|---|
+  | 2D, unseeded | 0 · 0 % | 67.5 % | 33.5 · 39.3 · 41.4 % | 0 % |
+  | 2D, seeded | 0 · 0 % | 67.4 % | 32.7 · 37.9 · 39.7 % | 0 % |
+  | 3D, unseeded | 0 · 0 % | 85.3 % | 31.1 · 37.9 · 42.0 % | 0.37 % |
+  | 3D, seeded | 0 · 0 % | **17.7 %** | 32.0 · 38.0 · 42.3 % | 0.14 % |
+
+  - Only 3D's fade frame moved much. What else varies between boots is not attributed.
+    Two candidates:
+    - the number of draws before the blast (the cook is budgeted in milliseconds);
+    - the capture landing tens of milliseconds apart in a and b: up to 0.03 s for the
+      embers, and 0.07 s for 2D's fade frame (0.204 vs 0.274 s).
 - **What does repeat is the stage of the effect.** It matches in a and b, and in 2D and
   3D: yellow-hot at 0.4 s, orange at 1.0 s, mostly dark coals at 2.0 s.
 
@@ -3097,7 +3115,7 @@ detonate 3; capture <run>_after; quit
     movement, ray, boundary, path, selection and label overlays), and is still not
     identified.
 - So it is an R3D-5 row (a 2D overlay drawn over 3D geometry), not a lighting defect.
-  The move is proposed in `RENDER3D`.
+  The Director moved it to `RENDER3D` R3D-5 the same day.
 
 **Caveat, as in §15.18.5:** the `Detonate / Cancel` menu and the dev panel are on screen in
 every frame.

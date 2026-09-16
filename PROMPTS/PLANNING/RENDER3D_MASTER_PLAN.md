@@ -1,13 +1,13 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.2
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.3
 
 **Status:** 🟢 **R3D-0 CLOSED on its gate, 2026-09-16.** The direction was ratified by the
 Director on 2026-09-15.
 - **Built and gated:** `BoardProbe` and its identity gate; the `Voxel` cost on the Moto
   (~925 B); the baseline re-run on one APK; a paired Moto capture for every R3D-6 item.
 - **Found while closing it:** R3D-6 item 1's dark "roof tops" are not roofs. They are 2D
-  shadow overlays drawn over the 3D board, which makes them an R3D-5 row. The move waits
-  on the Director.
+  shadow overlays drawn over the 3D board. The Director moved the item to R3D-5
+  (2026-09-16).
 - **Next:** R3D-1a.
 
 **Authority:**
@@ -341,10 +341,14 @@ so no step could photograph inside one.
 - **The frames inside the blast differ by 31–85 % of pixels from run a to run b**, in both
   renderers.
   - Every ember, smoke puff and spark rolls its own values with `randf_range()`.
-  - ⚠️ **And `RNG_SEED` has never reached the APK.** `Room._ready()` reads it with
-    `OS.get_environment()`, not through `DevFlags`. `[RNG] seeded` prints in the desktop
-    log and in none of the 20 Moto logs from 2026-09-15 and 2026-09-16. Every device run
-    that set it ran unseeded.
+  - ⚠️ **And `RNG_SEED` never reached the APK.** `Room._ready()` read it with
+    `OS.get_environment()`, not through `DevFlags`. `[RNG] seeded` printed in the desktop
+    log and in none of the 20 Moto logs from 2026-09-15 and 2026-09-16, so every device
+    run that set it ran unseeded.
+    - **Fixed in `9740116a`** (Director, 2026-09-16), and all 4 re-run boots print
+      `[RNG] seeded 1`.
+    - Seeded, the in-blast frames still differ by 32–42 % from run a to run b.
+      `DEVICE_DIAGNOSTICS` §15.18.6 has the table.
 - **What repeats inside the blast is the stage of the effect.** It is the same in runs
   a and b, and in 2D and 3D:
   - yellow-hot at 0.4 s;
@@ -385,8 +389,8 @@ so no step could photograph inside one.
       `_gu_grid_overlay` and `_tile_game`;
     - **the red line survives hiding 11 overlay nodes**, and is still not identified.
   - **So item 1 is an R3D-5 row:** a 2D ground-plane overlay drawn over 3D geometry. It is
-    not a face-lighting defect. Moving it is the Director's call. Until then it stays
-    listed under R3D-6, with this explanation.
+    not a face-lighting defect. The Director moved it there the same day: *"pode mover o
+    item 1"*.
 
 **The gate:**
 - ✅ `BoardProbe` reads 0 differences between two runs, on both maps and after both
@@ -578,8 +582,8 @@ The screen flash and the negative strobe stay screen-space.
   - The dark diamond under the agent that DIAG-21 showed is one of these rows.
   - **Rows R3D-0 found on the Moto (2026-09-16).** On the 3D board each of these is drawn
     over geometry that covers it in 2D:
-    - `_tile_shadow` (fill) and `_shadow_boundary_overlay` (outline) over hollow boxes —
-      R3D-6 item 1's "dark roofs";
+    - `_tile_shadow` (fill) and `_shadow_boundary_overlay` (outline) over hollow boxes:
+      the "dark roof tops", moved here from R3D-6 item 1 by the Director (2026-09-16);
     - the GU grid lines across wall faces;
     - brown flecks and white dots over the embers, not identified (debris overlay, z −8,
       is the first candidate);
@@ -597,11 +601,12 @@ The screen flash and the negative strobe stay screen-space.
 Each item below stays behind a flag until the Director ratifies it from paired Moto
 captures, 2D against 3D.
 
-1. **Roof tops read dark** in 3D where 2D reads them lit. Seen since step 1.
-   - **Explained at R3D-0 (2026-09-16):** the roofs read lit. The dark shape is a hollow
-     box's interior floor: `_tile_shadow` gives the fill and `_shadow_boundary_overlay`
-     the outline, both drawn over the 3D walls.
-   - That makes it an R3D-5 row. It is proposed to move there, on the Director's word.
+1. ~~**Roof tops read dark** in 3D where 2D reads them lit.~~ **Moved to R3D-5 by the
+   Director, 2026-09-16.**
+   - The roofs read lit (R3D-0). The dark shape is a hollow box's interior floor:
+     `_tile_shadow` and `_shadow_boundary_overlay`, drawn over the 3D walls.
+   - The number stays, so items 2–7 keep theirs; the captures and `DEVICE_DIAGNOSTICS`
+     cite them.
 2. **Glass:** the strong blue with facets, pane edges, the crack sprite and the craze
    family, and a pane's side sliver.
 3. **Damage decals** from `ART_SPECIFICATIONS` §7 families, per voxel: a decal/variant
@@ -764,3 +769,7 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
     drawn over the 3D board. It is proposed as an R3D-5 row, and new R3D-5 rows are
     listed.
   - Found: `RNG_SEED` never reaches the APK.
+- **v1.3, 2026-09-16.** The Director's two calls from v1.2.
+  - R3D-6 item 1 moved to R3D-5. Its number stays, so items 2–7 keep theirs.
+  - `RNG_SEED` is read through `DevFlags` (`9740116a`), and the fix was verified on the
+    Moto. Seeded, the in-blast frames still do not repeat.

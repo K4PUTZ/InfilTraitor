@@ -29,7 +29,10 @@ the same day. R3D-0 closed on its gate that day too, and the direction was ratif
 - **R3D-1c step 2 DONE:** the prediction WALK reads the store.
   - The plans are identical.
   - On the Moto: the WALK is −43 % and each grenade is 1.3–1.5 s shorter.
-- **Next:** R3D-1c step 3 — glass (shatter, crack, fall, occupancy).
+- **R3D-1c step 3 DONE:** glass reads its voxel state from the store, identical on/off.
+  This is proven live by a sabotage, because the probe alone could not see a path
+  difference that ended in the same voxel set.
+- **Next:** R3D-1c step 4 — `BlastCalculator`, `PassageQuery` and the occlusion set.
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -826,6 +829,44 @@ path, kept for comparison only.
 (worst visit 2.07 s), even on the 3D board. It resolves 2D atlas tiles for every entry.
 That is R3D-2's "tile-shaped plan entries", and it is now the cook's largest cost on the
 device.
+
+#### R3D-1c step 3 — glass reads the store (2026-09-16, commit `386d122b`)
+
+**The seam:** `VoxelStore.cells_of(container)` returns x, y, level and state per voxel.
+`damage_of(v)` and `visible_of(v)` answer for one voxel.
+- They read the store when it holds the container, and the objects otherwise (selftest
+  fixtures).
+- `STORE_GLASS` defaults on; `=0` reads the objects.
+
+**What moved:** every glass state read.
+- `GlassShatter`: the craze and anchors, the shatter lattice, and the frame and glass
+  keys.
+- `GlassCrack`: the field, the crack plan, and the checks in `apply`.
+- `GlassFall`'s surface index.
+- The room's crack count, its remnant reaper and its crack respawn.
+- The shot controller's pane checks, and the plan builder's shatter origin and entries.
+- The renderer's glass seam index.
+
+**What did not move:**
+- Writes still go through the objects, which mirror into the store.
+- Reads that only re-read a voxel just written, to record `_base_damage`, stay with the
+  write seam until R3D-1d.
+
+**Identity, `STORE_GLASS` on vs off (desktop):**
+- PLAYGROUND with corner grenades (one beside the glass box), two shots through
+  `PANE_SLICE_26_9_SE` (crack, shatter, G-D24 crossings), and a rotation E and back: every
+  probe IDENTICAL, and the 31 `[GLASS-*]` log lines identical.
+- GLASS with both grenades and the rotation: IDENTICAL, and the 105 lines identical.
+
+⚠️ **The probe alone is not this step's gate.** With the store's visible bit sabotaged
+inside `cells_of()`:
+- the pane did not shatter, and the crossings went 19 → 52;
+- that is the SAME final voxel set (33 + 19), so `BoardProbe` read IDENTICAL, and only the
+  log digest changed;
+- so the gate is both checks, and the sabotage proves the store path is live.
+
+**No Moto run:** these are per-pane reads on a shot or blast, not per-frame or map-wide
+work.
 
 **R3D-1d — the objects go.**
 - `Slice`, `Slab` and `JunctionColumn` answer per-voxel questions from the store; the

@@ -175,8 +175,23 @@ measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) an
   resolving 2D atlas tiles even on the 3D board. It is the cook's largest cost on the
   device.
 
-## 9. Next session
+## 9. R3D-1c step 3 — glass onto the store (`386d122b`)
 
-1. **R3D-1c step 3** — glass reads the store (shatter, crack, fall, occupancy).
+- **What changed:**
+  - `VoxelStore.cells_of()`, `damage_of()` and `visible_of()` were added behind
+    `STORE_GLASS` (default on).
+  - Every glass state read moved: shatter, crack, fall, the room's glass bookkeeping, the
+    shot controller, the plan builder and the renderer's seam index.
+  - The `shoot` step takes `SHOT_AGENT_CELL` / `SHOT_GUARD_CELL`.
+- **Identity:** on/off IDENTICAL on PLAYGROUND (corner grenades, 2 shots through a pane,
+  rotation) and GLASS (grenades, rotation), with identical `[GLASS-*]` log lines.
+- **Live-path proof:** a sabotaged store read changed the glass log (no shatter; 19 → 52
+  crossings) but NOT the probe, because the final voxel set was the same. The log digest
+  is part of this step's gate.
+
+## 10. Next session
+
+1. **R3D-1c step 4** — `BlastCalculator`, `PassageQuery` and the occlusion set read the
+   store.
 2. **The rotation / SaveState damage-loss task**, if the Director starts it.
 3. **The junction column id task** (from R3D-0), if the Director starts it.

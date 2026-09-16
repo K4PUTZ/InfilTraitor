@@ -1,8 +1,13 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.9
+## Measuring the real build on a real entry-tier phone — v1.10
 
-**Status:** 🟢 **v1.9 — the RENDER3D baseline is closed (2026-09-16).**
+**Status:** 🟢 **v1.10 — RENDER3D R3D-1a measured (2026-09-16).**
 Where the Moto g04s stands:
+
+- **R3D-1a, the voxel store's layout (§15.19):** in GDScript on the Moto, per-container
+  packed arrays (B) read the three hot readers **1.9–2.8× faster than today's objects**:
+  light 481 vs 1 364–1 382 ms, mesher 417 vs 788–803, walk 134 vs 362. They cost
+  13.5 MB against 191 MB. The decision rule picks B, pending the Director.
 
 - **RENDER3D R3D-0 closed (§15.18.6):** the last two reference pairs, embers and roof
   tops, were captured inside the blast by the new scenario step `capture_at`.
@@ -3119,3 +3124,45 @@ detonate 3; capture <run>_after; quit
 
 **Caveat, as in §15.18.5:** the `Detonate / Cancel` menu and the dev panel are on screen in
 every frame.
+
+### 15.19 ✅ RENDER3D R3D-1a MEASURED — which packed layout holds the voxel store
+
+**Why.** `RENDER3D_MASTER_PLAN` R3D-1a. That section holds the decision rule (committed
+before the run, `43af4062`), the layouts, the identity checks on desktop and the memory
+table. This section is the device half.
+
+**The APK.** Commit `8c7b2e55`, sha256 `908934e5…`, the same file on disk and on the
+phone.
+- Moto g04s, portrait, 3D board with the 2D writes skipped, `NO_BAKE=1`, `RNG_SEED=1`
+  (`[RNG] seeded 1` in both logs).
+- The scenario: `detonate 0; detonate 1; store_spike 5` on PLAYGROUND, with
+  `GRENADE_GUS=25,2;37,2` beside four boxes' corners.
+- 2 boots, both exited cleanly.
+- Logs (local): `docs/measurements/device_2026-09-16_moto_g04s_r3d1a_pg_{a,b}.log`.
+
+**Identity on the device:** every layout's T1, T2 and T3 answer equals O's, in both boots,
+and equals desktop's (T1 214 718 · 2 637 094; T2 109 219 faces; T3 736 blast seeds, 467
+damaged).
+
+**Medians of 5, ms, boot a / boot b.** The layouts were interleaved inside each
+repetition. Every repetition lies within ±6 % of its median.
+
+| | T1 light occupancy reads | T2 mesher scan | T3 walk reads |
+|---|---|---|---|
+| O — objects and today's dictionaries | 1 363.9 / 1 381.7 | 787.6 / 802.6 | 362.0 / 362.0 |
+| A — dense grid | 480.9 / 481.4 | 593.0 / 604.7 | **421.8 / 421.1** |
+| Ac — dense per allocated chunk | 1 044.8 / 1 044.1 | 640.8 / 640.3 | 292.3 / 292.0 |
+| B — per-container arrays + derived grid | 481.1 / 480.4 | 417.0 / 415.2 | 134.1 / 134.5 |
+
+- **The Moto runs the kernels 4.6–7.9× slower than desktop.**
+  - O's object walk slows the most: T3 is 7.9× slower on the phone, where every packed
+    layout is 4.6–4.8×.
+  - So A's T3 penalty SHRINKS on the device: 2.0× O on desktop, 1.16× on the Moto.
+  - Ac's T3 goes from slower than O on desktop (63 vs 46 ms) to faster on the Moto
+    (292 vs 362).
+  - T1 and T2 rank the layouts the same way on both.
+- **A fails the rule's speed gate** on T3, 16 % above O. Its walk visits all 2.19 M
+  padded cells.
+- **B's T2 + T3 is 550 ms against Ac's 933**, so the rule picks B.
+- **The spike's own setup** — collecting 216 104 claims and building O's dictionaries plus
+  three layouts — took 532–538 ms and 8.6–8.8 s. Not separated per layout.

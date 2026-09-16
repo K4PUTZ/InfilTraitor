@@ -1,5 +1,5 @@
 # SESSION SUMMARY — 2026-09-16
-## RENDER3D R3D-0 closed: the embers and roof-top pairs, and what the "dark roofs" really are
+## RENDER3D R3D-0 closed (embers, roof tops, the "dark roofs"), the `RNG_SEED` fix, and R3D-1a measured
 
 **Director's request:** *"Vamos seguir com a sessão de ontem."* Yesterday ended with R3D-0
 measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) and embers.
@@ -76,7 +76,37 @@ measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) an
   run b. Only 3D's fade frame moved, from 85 % to 18 %. The remaining variation is not
   attributed.
 
-## 5. Next session
+## 5. R3D-1a — the store layout, measured (Director: *"pode seguir com o R3D-1a"*)
 
-1. **R3D-1a** — the store layout spike (dense per-level grid vs per-container arrays).
+- **The rule came first, in commit `43af4062`.**
+  - Candidates:
+    - O, today's objects, as the reference;
+    - A, the dense grid;
+    - Ac, A per allocated chunk (added because A grows with map volume, and §14.1's mission
+      map is 54×108 GU);
+    - B, per-container arrays plus a derived grid.
+  - The gates, in order: identity with O; memory ≤ 10 % of O; no hot reader more than
+    10 % slower than O on the Moto; lowest T2 + T3 wins.
+- **The spike:** `StoreLayoutSpike`, reached through the scenario step `store_spike <reps>`
+  (`54b98629`, `8c7b2e55`).
+- **Identity:** every kernel on every layout equals O on 5 maps. That includes PLAYGROUND
+  after two grenades beside box corners, and it held on the Moto.
+- **Memory:** all layouts are under 10 % of O everywhere. On PLAYGROUND, A is 14.6 MB,
+  Ac 7.9 MB and B 13.5 MB, against O's 191 MB. For the §14.1 mission map the ESTIMATE is
+  A ~80, Ac ~40 and B ~74 MB, against O ~1 064 MB.
+- **On the Moto, medians in ms, in the order T1 · T2 · T3:**
+  - O: 1 364 · 788 · 362;
+  - A: 481 · 593 · **422** — fails the speed gate;
+  - Ac: 1 045 · 641 · 292;
+  - B: 481 · 417 · 134.
+- **The rule picks B.** Its T2 + T3 is 550 ms against Ac's 933. ⏳ The Director confirms
+  it before R3D-1b.
+- **Collisions:** the two claims of a corner cell DIVERGE under a blast — 16 of the 18
+  damaged corner cells after one grenade. R3D-0's "0 divergences" had no damaged corner
+  in it. B keeps both claims, so the choice of B needs no ruling on this.
+
+## 6. Next session
+
+1. **The Director's confirmation of B**, then **R3D-1b** — the store in shadow, with
+   `BoardProbe` gates.
 2. **The junction column id task** (from R3D-0), if the Director starts it.

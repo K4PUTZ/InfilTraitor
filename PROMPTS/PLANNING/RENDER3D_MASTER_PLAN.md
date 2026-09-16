@@ -1,14 +1,21 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.3
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.4
 
-**Status:** 🟢 **R3D-0 CLOSED on its gate, 2026-09-16.** The direction was ratified by the
-Director on 2026-09-15.
+**Status:** 🟡 **R3D-1a MEASURED 2026-09-16: the rule picks layout B.** B stores per-voxel
+arrays, contiguous per container, plus a derived occupancy and owner grid. R3D-1b waits on
+the Director confirming that pick. R3D-0 closed on its gate the same day, and the
+direction was ratified by the Director on 2026-09-15.
+- **R3D-1a:** on the Moto, B is fastest on all three hot readers, and uses 13.5 MB against
+  the objects' 191 MB.
+  - A (the dense grid) fails the speed gate: its full walk is 16 % slower than the
+    objects.
+  - Ac (chunked A) passes every gate, but scores 69 % worse than B.
 - **Built and gated:** `BoardProbe` and its identity gate; the `Voxel` cost on the Moto
   (~925 B); the baseline re-run on one APK; a paired Moto capture for every R3D-6 item.
 - **Found while closing it:** R3D-6 item 1's dark "roof tops" are not roofs. They are 2D
   shadow overlays drawn over the 3D board. The Director moved the item to R3D-5
   (2026-09-16).
-- **Next:** R3D-1a.
+- **Next:** the Director's confirmation of B, then R3D-1b (the store in shadow).
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -490,6 +497,113 @@ This rule was committed before the spike ran, so its order is in git.
      to the Director before R3D-1b.
 6. **If no layout passes gates 1–3, nothing is picked.** The numbers go to the Director.
 
+#### R3D-1a — measured, and what the rule picks (2026-09-16)
+
+**The spike:** `godot/scripts/spikes/store_layout_spike.gd`, reached through the scenario
+step `store_spike <reps>`. Commits `54b98629` and `8c7b2e55`.
+- It reads the registries after a real load and builds O's dictionaries, A, Ac and B
+  beside the objects.
+- It checks every kernel against O, then times each kernel. The layouts are interleaved
+  inside every repetition, with a yielded frame between kernels outside the timed window.
+- **What the spike measured differently from the rule's text, and why:**
+  - **A is one flat array with a level stride**, not one array per level: the same bytes,
+    without a per-level fetch in the hot loop.
+  - **A and Ac keep a cell's second claim in an overflow table** (6 ints per entry), so
+    they can answer per claim, as T3 asks.
+  - **B's per-container arrays are one flat array per field**, contiguous per container,
+    with an offset table.
+  - **Every grid is padded by 2 cells and 2 levels**, so no kernel carries a bounds check.
+    The memory below includes the padding.
+
+**Gate 1 — identity: every kernel on every layout equals O.**
+- On desktop:
+  - PLAYGROUND, after two grenades placed beside box corners, where the two claims of a
+    cell diverge: T1 214 718 cells; T2 109 219 faces; T3 736 blast seeds and 467 damaged;
+  - GLASS, after its two grenades, including a weapon seed and banded slices;
+  - SIGMA_01, TEXTURES and RENDER_ORDER, at load.
+- On the Moto: the same PLAYGROUND answers, in both boots.
+- ⚠️ **What the checks do not cover:**
+  - No scenario put a shot into T3's weapon bucket on PLAYGROUND.
+  - At load, T2's 108 772 faces equal `Board3DLive`'s own count. After damage, T2 is
+    compared with O's kernel only.
+
+**Gate 2 — memory**, computed from the arrays the spike builds:
+
+| map | cells, unpadded | O objects (925 B) | A | Ac | B (without xyz) |
+|---|---|---|---|---|---|
+| PLAYGROUND | 1 837 056 | 190.6 MB | 14.62 MB | 7.94 MB | 13.54 (11.07) MB |
+| GLASS | 931 840 | 100.8 MB | 7.49 MB | 5.30 MB | 6.99 (5.69) MB |
+| **SIGMA_01** (largest shipped, by cell volume) | 2 143 232 | 191.3 MB | 16.99 MB | 6.26 MB | 15.26 (12.78) MB |
+| TEXTURES | 1 404 928 | 181.1 MB | 11.19 MB | 6.52 MB | 10.89 (8.54) MB |
+| §14.1 mission map, **ESTIMATE** | 11 987 040 padded | ~1 064 MB | ~80.0 MB | ~39.6 MB | ~74.4 (60.6) MB |
+
+- Every layout is under 10 % of O on every map. A comes closest: 16.99 MB against
+  SIGMA_01's 19.1 MB.
+- **How the estimate was made:** 54×108 GU plus a 1-GU buffer, with PLAYGROUND's densities
+  — 195.7 claims per GU, 45.9 % of chunk-levels allocated, and 30 padded levels.
+  PLAYGROUND is a test zone full of walls, so the estimate is high where walls are
+  sparse.
+- Most of B is its derived grid: an occupancy byte and an `int32` owner per cell, 10.4 MB
+  on PLAYGROUND. The claims themselves are 0.64 MB.
+
+**Gate 3 and the score — the Moto.**
+- Release APK sha256 `908934e5…` (commit `8c7b2e55`), 3D board, `NO_BAKE`, `RNG_SEED=1`.
+- Each boot ran after the two corner grenades. Times are medians of 5, in ms, run a / run b.
+
+| | T1 light reads | T2 mesher scan | T3 walk reads | T2 + T3 |
+|---|---|---|---|---|
+| O (today) | 1 364 / 1 382 | 788 / 803 | 362 / 362 | — |
+| A | 481 / 481 | 593 / 605 | **422 / 421 · +16 % — fails gate 3** | — |
+| Ac | 1 045 / 1 044 | 641 / 640 | 292 / 292 | 933 / 932 |
+| **B** | **481 / 480** | **417 / 415** | **134 / 135** | **551 / 550** |
+
+- Desktop, for the record, decides nothing. In ms: T1 O 261, A 106, Ac 219, B 105; T2 O 138,
+  A 129, Ac 137, B 83; T3 O 46, A 92, Ac 63, B 28.
+- **A fails gate 3 on T3.** Its walk visits every one of the 2.19 M padded cells to find
+  216 104 claims.
+- **Ac passes every gate**, but its T2 + T3 is 69 % above B's, far outside the 10 % tie
+  band.
+- **§7's risk, measured:** packed access in GDScript is not slower than object fields.
+  Only A's full-grid scan loses, and it loses to the number of cells it visits, not to
+  the reads.
+
+**Collisions (gate 5), measured.** It does not decide the pick, because B keeps both
+claims.
+- **The census:** 672 cells on PLAYGROUND (40 corner columns) and 160 on GLASS.
+  - Every such cell is claimed by two slices of one GU, where two faces meet.
+  - Both claims always hold the same material.
+  - TEXTURES holds 3 880 extra claims. Whether any of its cells has three is not
+    counted.
+- **The two claims DIVERGE under a blast.** With grenades at internal GUs (25,2) and
+  (37,2), beside the brick, cardboard, plywood and glass boxes:
+  - after #0, 16 of the 18 damaged corner cells hold two different states;
+  - after #1, 24 of 29.
+  - Example: cell (207, 24, 83) is intact and visible in `SLICE_25_3_NE`, and destroyed
+    in `SLICE_25_3_SE`.
+- ⚠️ R3D-0's grenades never reached a corner, so their "0 divergences" read nothing.
+- **What each reader shows at such a cell today:**
+  - light occupancy, the WALK and `Board3DLive` treat it as occupied while either claim
+    is visible;
+  - the 2D renderer erases the cell when one claim is destroyed, and does not re-place the
+    other until a repaint does (read from the code, not captured).
+  - B reproduces the first group by construction: the derived grid's owner is the first
+    visible claim. That is what gate 1 checked.
+
+**What the rule picks: B.** A fails gate 3. Ac and B pass gates 1–3, and B's score is the
+lowest by 69 %. ⏳ **The Director confirms the pick before R3D-1b.**
+
+**What B carries into R3D-1b, as measured:**
+- **Variant and substrate never exceed 2 on any dump** (3 values;
+  `IMPACT_DECAL_VARIANTS` = `DAMAGE_SUBSTRATE_VARIANTS` = 3). They share one aux byte as
+  two 4-bit fields, because the two counts are independent.
+- **Coordinates:** stored as `xyz` in the spike (2.47 MB on PLAYGROUND). Every container
+  has regular geometry, so R3D-1b decides whether to compute them instead (−2.47 MB).
+- **Every write must update the derived grid.** That is B's cost under principle 1, and
+  R3D-1b's `BoardProbe` gate is where it gets checked.
+- **The spike's load cost on the Moto:** it collected 216 104 claims in 532–538 ms, and
+  built O's dictionaries plus all three layouts in 8.6–8.8 s. B's own share of that time
+  was not separated, so R3D-1b has to time it alone.
+
 **The state per voxel**, from `voxel.gd`. The widths of variant and substrate are measured
 from the data, not assumed.
 
@@ -500,7 +614,7 @@ from the data, not assumed.
 | `damage_state` | INTACT, CRACKED, DESTROYED, DENTED | 2 |
 | `damage_is_blast` | bool | 1 |
 | `damage_carved_side` | NONE, TOP, BOTTOM, LEFT, RIGHT | 3 |
-| `damage_variant`, `damage_substrate` | measured in R3D-1a | measured |
+| `damage_variant`, `damage_substrate` | 0–2 each on every R3D-1a dump (3 values today, independent counts) | 4 + 4 (one aux byte) |
 | material | index into `MaterialRegistry` | 8 |
 | container ref + index | replaces `_parent_container_id` | 32 |
 | `face_atlas_rect` | 2D bake only | **not carried** — retires with the atlas |
@@ -838,3 +952,11 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
   - R3D-6 item 1 moved to R3D-5. Its number stays, so items 2–7 keep theirs.
   - `RNG_SEED` is read through `DevFlags` (`9740116a`), and the fix was verified on the
     Moto. Seeded, the in-blast frames still do not repeat.
+- **v1.4, 2026-09-16.** R3D-1a measured.
+  - The decision rule was committed first (`43af4062`), then `StoreLayoutSpike`
+    (`54b98629`, `8c7b2e55`).
+  - Every layout reproduces O on 5 maps and after corner grenades. All are under 10 % of
+    O's memory.
+  - On the Moto, A fails the speed gate (T3 +16 %), and B beats Ac by 69 %.
+  - The rule picks B, pending the Director.
+  - Corner collisions diverge under a blast; B keeps both claims.

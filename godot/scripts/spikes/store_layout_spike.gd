@@ -113,6 +113,10 @@ var _b_owner: PackedInt32Array = []         ## derived: first visible claim, els
 
 
 ## Builds every layout, checks identity, times the kernels. Returns the summary.
+##
+## A COROUTINE: it yields one frame between kernels, OUTSIDE every timed window. On the
+## Moto the whole run is a minute or more, and one blocked frame that long is a frame the
+## OS may treat as a hung app.
 func run(room: Node, reps: int) -> Dictionary:
 	_room = room
 	var t0: int = Time.get_ticks_usec()
@@ -120,9 +124,14 @@ func run(room: Node, reps: int) -> Dictionary:
 		return {}
 	var t_collect: float = float(Time.get_ticks_usec() - t0) / 1000.0
 	_build_o()
+	await room.get_tree().process_frame
 	_build_a()
+	await room.get_tree().process_frame
 	_build_c()
+	await room.get_tree().process_frame
 	_build_b()
+	await room.get_tree().process_frame
+	## Wall time, so it includes the four yielded frames.
 	var t_build: float = float(Time.get_ticks_usec() - t0) / 1000.0 - t_collect
 	_say("map %s — %d claim(s), %d container(s), %d material(s); bounds x %d+%d y %d+%d levels %d+%d (padded %d); collect %.0f ms, build %.0f ms" % [
 		str(room.get("map_id")), _claims, _containers.size(), _material_ids.size(),
@@ -143,6 +152,7 @@ func run(room: Node, reps: int) -> Dictionary:
 	for rep in range(reps + 1):
 		for kernel in kernels:
 			for layout in layouts:
+				await room.get_tree().process_frame
 				var t: int = Time.get_ticks_usec()
 				var answer: Array = _run_kernel(layout, kernel)
 				var ms: float = float(Time.get_ticks_usec() - t) / 1000.0

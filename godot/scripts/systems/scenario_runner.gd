@@ -240,7 +240,7 @@ func _execute(room: Node, step: Dictionary) -> bool:
 		"alloc":
 			_alloc(step)
 		"store_spike":
-			var summary: Dictionary = StoreLayoutSpikeClass.new().run(room, int(step["reps"]))
+			var summary: Dictionary = await StoreLayoutSpikeClass.new().run(room, int(step["reps"]))
 			if summary.is_empty():
 				return _fail(step, "the spike built nothing (see the error above)")
 		"detonate":

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 95351 lines total** (under `godot/scripts/`)
+**257 scripts · 95361 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1865,7 +1865,7 @@ extends `Node3D` · 362 lines
 
 ### `store_layout_spike.gd`
 
-extends `RefCounted` · 931 lines
+extends `RefCounted` · 941 lines
 
 `godot/scripts/spikes/store_layout_spike.gd`
 

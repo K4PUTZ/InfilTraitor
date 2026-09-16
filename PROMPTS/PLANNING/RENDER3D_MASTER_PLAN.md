@@ -425,6 +425,71 @@ The rule weighs:
 - (A) makes the store and the occupancy one thing, which is why it is the favourite. It
   does not win until the numbers say so.
 
+#### R3D-1a — the decision rule, written before any measurement (2026-09-16)
+
+This rule was committed before the spike ran, so its order is in git.
+
+**Candidates:**
+- **O — today's `Voxel` objects.** The reference, not a candidate.
+- **A — a dense per-level grid over the map's cell bounds.** Per cell: a state byte, an
+  aux byte (variant and substrate), a material byte and an `int32` container reference.
+- **A-c — A allocated per (level, 32×32-cell chunk), only where a voxel exists.**
+  - The spike adds this variant: A's memory grows with the map's VOLUME, not its voxel
+    count.
+  - `DESIGN_MASTER_PLAN` §14.1's mission map is a 3×3 grid of 18×36 GU segments, 54×108
+    GU: 5.3× PLAYGROUND's inner area.
+- **B — per-container packed arrays** (state and aux per voxel, material per container
+  or band), plus a derived dense grid holding the container reference per cell.
+  - Every layout needs cell → voxel: `cell_to_voxel`, point impacts, glass.
+
+**What is measured:**
+- **M — memory.** Bytes computed from the sizes of the arrays the spike builds:
+  - on PLAYGROUND, GLASS and the largest shipped map (by cell volume);
+  - on the §14.1 mission map, as a labelled ESTIMATE at PLAYGROUND's per-GU occupancy.
+  - R3D-0 showed that a packed array costs its size on the Moto: 0.82 MB read as +1 MB.
+- **T1 — the light field's occupancy reads.** `bucket_for()`'s pattern, once per
+  visible voxel over the whole map: `surface_factor()`'s 3 neighbour reads, then
+  `_face_occlusion()`'s ring for the chosen face.
+- **T2 — the mesher's scan.** Every chunk: 3 neighbour reads and a material read per
+  occupied cell, faces collected into a flat array.
+  - Merging and mesh upload are the same for every layout, so they are left out.
+- **T3 — the prediction WALK's reads.** Every voxel's cell, visible flag, damage state,
+  blast flag and material, classified into the WALK's buckets: blast seed, weapon seed,
+  damaged, occupied.
+  - The Delta projection and the dictionaries the WALK builds today are left out. They
+    exist because there is no store.
+- **Where the timings count:** in GDScript on the Moto's release APK, over 2 boots, each
+  timing the median of 5 repetitions after 1 warm-up. Desktop timings are recorded, and
+  decide nothing.
+- **C — collisions.** How many cells two containers claim, and whether the two claims
+  ever DIVERGE in state. Read from `BoardProbe` dumps at load, after grenades #0 and #1,
+  and after a shot, on PLAYGROUND and GLASS.
+
+**The rule:**
+1. **Identity first.** On every map, each kernel must reproduce O's answer:
+   - T1's per-voxel neighbour-read results;
+   - T2's face count (108 772 on PLAYGROUND);
+   - T3's bucket counts.
+
+   A layout whose kernel does not reproduce O is fixed or dropped, and never timed.
+2. **Memory gate.** A layout must cost ≤ 10 % of O's objects on the same map, on every
+   measured map. The §14.1 estimate counts too, against O at the same occupancy.
+3. **Speed gate (§7's risk).** On the Moto, a layout is out if any of T1, T2 or T3 is more
+   than 10 % slower than O's same kernel.
+4. **The score.** Among layouts that pass, the lowest T2 + T3 on PLAYGROUND on the Moto
+   wins: the mesher and the walk are the per-event costs a player waits on.
+   - If another passing layout is within 10 % of that score, the preference order is A,
+     then A-c, then B. It counts the structures that must be kept in sync: A is one
+     authority; A-c adds a chunk directory; B adds a derived grid that every write must
+     update (principle 1).
+5. **Collisions.** Only A and A-c are affected, since B keeps both claims.
+   - If the two claims never diverge in any scenario above, the cell is stored once and
+     written through either claim. The spike writes that rule down.
+   - If they diverge, A and A-c need a written rule for which claim a cell shows, plus a
+     `BoardProbe` check that it reproduces today's outcome. Failing that, the choice goes
+     to the Director before R3D-1b.
+6. **If no layout passes gates 1–3, nothing is picked.** The numbers go to the Director.
+
 **The state per voxel**, from `voxel.gd`. The widths of variant and substrate are measured
 from the data, not assumed.
 

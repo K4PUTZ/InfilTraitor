@@ -200,9 +200,26 @@ measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) an
 - **Identity:** on/off identical on both maps (probes, logs, passages). A sabotage turns
   every passage to NONE, which proves the path is live.
 
-## 11. Next session
+## 11. R3D-1c step 5 — `Board3DLive` from the store (`8f47fc6a`), and R3D-1c CLOSED
 
-1. **R3D-1c step 5** — `Board3DLive` reads the store directly, instead of collecting
-   objects into dictionaries at load.
+- **What changed:** claims are indexed by world chunk with a counting sort, faces come
+  from the owner claim and the `occ` grid, and a blast commit only marks chunks.
+  `STORE_BOARD3D` defaults on.
+- **Identity:** faces, quads and chunks identical, and 0 px on PLAYGROUND and GLASS. The
+  only difference is the ratified corner cell (option A), which is no longer erased
+  while its other claim stands.
+- **On the Moto:**
+  - 3D collect: 2.3–2.4 s → 0.95 s;
+  - boot to map: 24.4 → 22.8 s;
+  - commit remesh: 124 → 100 ms.
+- **R3D-1c is closed.** Light, WALK, glass, passage and the 3D board all read the store.
+- **Still on objects:** writes, the plan/Delta keys, and the soot BFS input.
+
+## 12. Next session
+
+1. **R3D-1d** — the objects go: writes through the store, the plan/Delta keyed by claim,
+   and the soot BFS on claims, then the `Voxel` objects deleted and memory re-measured on
+   the Moto (~191 MB to recover).
+2. **The rotation / SaveState damage-loss task** (R3D-1b finding), if started.
 2. **The rotation / SaveState damage-loss task**, if the Director starts it.
 3. **The junction column id task** (from R3D-0), if the Director starts it.

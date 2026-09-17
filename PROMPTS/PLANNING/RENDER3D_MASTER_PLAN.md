@@ -35,7 +35,11 @@ the same day. R3D-0 closed on its gate that day too, and the direction was ratif
 - **R3D-1c step 4 DONE:** `PassageQuery` and the point impact read the store,
   identically. The soot BFS was measured +11–16 % through the store and stays on the
   objects until its input map is keyed by claim.
-- **Next:** R3D-1c step 5 — `Board3DLive` reads the store directly.
+- **R3D-1c CLOSED:** all five readers are on the store.
+  - Moto, from the step 5 A/B: load 24.4 → 22.8 s, commit remesh −20 %.
+  - Moto, from step 2: grenades −1.3–1.5 s.
+- **Next:** R3D-1d — the objects go. The writes, the plan/Delta keys and the soot BFS
+  inputs move first (see R3D-1c "still on the objects").
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -903,6 +907,60 @@ counted and digested. `BoardProbe` cannot see a passage.
 **Cost:**
 - SOOT and SLICES are unchanged (28.7/57.8 vs 28.2/58.0 ms).
 - SETUP is +2.3 ms on PLAYGROUND's first grenade only.
+
+#### R3D-1c step 5 — `Board3DLive` meshes straight from the store (2026-09-16, commit `8f47fc6a`)
+
+**What moved:**
+- **The load index:** the store's claims grouped by WORLD chunk with one counting sort
+  into packed arrays. There is no `Vector3i` dictionary.
+- **The chunk faces:** each cell is drawn by its owner claim, with neighbours read from
+  `occ` and the glass rule applied through the owner's material.
+- **The blast commit:** nothing is folded, only the chunks to rebuild are marked.
+- `STORE_BOARD3D` is read at `build()` through the Room's DevFlags: default on, `=0` for
+  the objects.
+
+**Identity (desktop, `--fixed-fps 60`):**
+- PLAYGROUND: faces, quads and chunks identical, and the default grenades' remesh
+  identical. Captures differ by 0 px at load, after both grenades, and on the crater.
+- GLASS: identical, and 0 px.
+- **The ratified difference (option A),** seen only with corner grenades. The object path
+  erased a corner cell whose other claim stood — a one-voxel "hole" column at the glass
+  box. The store keeps it solid: 1 364 px, max delta 16, and quads 363/474 → 360/467.
+
+**The Moto, APK `329c69d8…`, 2 boots per side:**
+
+| | objects (`=0`) | store |
+|---|---|---|
+| 3D board collect at load | 2 397 / 2 285 ms | **953 / 966 ms** |
+| 3D board mesh at load | 1 349 / 1 319 ms | 1 069 / 1 060 ms |
+| boot → map loaded | 24.4 / 24.5 s | **22.8 / 22.8 s** |
+| commit remesh | 122–126 ms | 100–101 ms |
+| grenades · idle frame | 18.4·15.1 s / 18.1·15.0 s · 23.1 ms | 18.3·15.0 s / 18.0·15.0 s · 22.9–23.3 ms |
+
+- The load is 1.6 s shorter. It now sits under even the pre-store baseline (22.8–23.0 s,
+  step 1), so the store's +1 s build is paid back.
+
+#### R3D-1c — CLOSED (2026-09-16)
+
+All five readers now read the store by default, each behind its own `=0`, each gated
+against the objects.
+
+| step | reader | result |
+|---|---|---|
+| 1 | the light field's occupancy | ratified look change (option A); Moto: play equal, LIGHT −3 % |
+| 2 | the prediction WALK | identical plans; Moto WALK −43 %, each grenade −1.3–1.5 s |
+| 3 | glass | identical (probe and glass log); proven live by sabotage |
+| 4 | `PassageQuery`, the point impact | identical (probe, log, passages); the soot BFS stays on objects (+11–16 % through the store) |
+| 5 | `Board3DLive` | identical except the ratified corner cells; Moto load −1.6 s |
+
+**Still on the objects, and why:**
+- the soot BFS and self-soot, whose input map is objects;
+- the plan's entries and the `WorldDelta`, which are keyed by `Voxel`;
+- every write — `set_damage` on the object, mirrored into the store;
+- the reads that re-read a just-written voxel for `_base_damage`.
+
+R3D-1d has to move these, or R3D-2 absorbs the plan/Delta keys. The rotation/SaveState
+damage loss found at R3D-1b is still open, as a separate task.
 
 **R3D-1d — the objects go.**
 - `Slice`, `Slab` and `JunctionColumn` answer per-voxel questions from the store; the

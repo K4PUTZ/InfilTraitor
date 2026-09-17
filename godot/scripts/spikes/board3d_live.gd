@@ -32,6 +32,16 @@
 extends Node3D
 
 const CHUNK_VOXELS: int = 32
+
+## RENDER3D R3D-1c step 5 — the board meshes straight from the `VoxelStore` (DevFlags
+## `STORE_BOARD3D`, read at `build()` through the Room; DEFAULT ON; `=0` collects the objects
+## into `_occ` as before). Without an active store the object path runs.
+##
+## One semantic difference, ratified: a cell two claims hold stays occupied while EITHER
+## stands (the store's `occ`). The object path erased the cell when a destroyed claim was
+## folded in, even with the other claim standing — the Director's option A (2026-09-16,
+## "the voxels are the truth") for the same corner cells in the light's occupancy.
+static var STORE_BOARD3D: bool = true
 ## Facade texels per voxel is ART_SPECIFICATIONS' TEX_AUTHORING_N (16), so a
 ## 1024×512 facade spans 64×32 voxels.
 const FACADE_SPAN_VOXELS: Vector2 = Vector2(64.0, 32.0)
@@ -162,6 +172,17 @@ var _plane: Texture2DArray = null
 var _level_min: int = 0
 var _level_max: int = -1
 ## Per-remesh phase clocks (usec), reset by _remesh().
+var _store: VoxelStore = null
+## Claims grouped by chunk: `_chunk_claims[_chunk_start[c] .. _chunk_start[c + 1]]`, chunk
+## c = cy * _chunk_cols + cx over the store's padded bounds.
+var _chunk_claims := PackedInt32Array()
+var _chunk_start := PackedInt32Array()
+var _chunk_cols: int = 0
+var _chunk_rows: int = 0
+var _chunk_x0: int = 0
+var _chunk_y0: int = 0
+## Store material index → this board's material index.
+var _store_material := PackedInt32Array()
 var _t_collect: int = 0
 var _t_merge: int = 0
 var _t_commit: int = 0
@@ -174,32 +195,36 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_cell_to_world = cell_to_world
 	_ground_level = GeometryCoords.PLAYABLE_LEVEL
 	var t0: int = Time.get_ticks_usec()
-	var counts: Dictionary = _collect()
+	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
+	_store = VoxelStore.active if STORE_BOARD3D else null
+	var counts: Dictionary = _collect_store(_store) if _store != null else _collect()
 	var t1: int = Time.get_ticks_usec()
 	_read_look()
 	_build_plane()
 	_make_camera()
 	var quads: int = 0
 	var faces: int = 0
-	for chunk: Vector2i in _by_chunk:
+	for chunk: Vector2i in (_store_chunks() if _store != null else _by_chunk.keys()):
 		var built: Vector2i = _build_chunk(chunk)
 		faces += built.x
 		quads += built.y
 	var t2: int = Time.get_ticks_usec()
 	var cells_2d: int = _count_2d_cells()
 	var fields: Dictionary = {
-		"voxels": _occ.size(), "slice_voxels": counts["slices"],
+		"voxels": int(counts.get("cells", _occ.size())), "slice_voxels": counts["slices"],
 		"column_voxels": counts["columns"], "slab_voxels": counts["slabs"],
-		"cells_2d": cells_2d, "faces": faces, "quads": quads, "chunks": _by_chunk.size(),
+		"cells_2d": cells_2d, "faces": faces, "quads": quads,
+		"chunks": int(counts.get("chunks", _by_chunk.size())),
 		"materials": _material_ids.size(), "collect_ms": float(t1 - t0) / 1000.0,
 		"mesh_ms": float(t2 - t1) / 1000.0, "plane_levels": _level_max - _level_min + 1,
 		"skip_2d_writes": VoxelRenderer.SKIP_BOARD_WRITES,
 	}
-	print("[BOARD3D] %d voxel(s) (slices %d, columns %d, slabs %d; the 2D board holds %d cell(s)) → %d face(s) → %d quad(s) in %d chunk(s), %d material(s), plane levels %d..%d; collect %.0f ms, mesh %.0f ms; skip 2D writes %s"
+	print("[BOARD3D] %d voxel(s) (slices %d, columns %d, slabs %d; the 2D board holds %d cell(s)) → %d face(s) → %d quad(s) in %d chunk(s), %d material(s), plane levels %d..%d; collect %.0f ms, mesh %.0f ms; skip 2D writes %s; source %s"
 		% [fields["voxels"], fields["slice_voxels"], fields["column_voxels"],
 		fields["slab_voxels"], cells_2d, faces, quads, fields["chunks"],
 		fields["materials"], _level_min, _level_max, fields["collect_ms"],
-		fields["mesh_ms"], VoxelRenderer.SKIP_BOARD_WRITES])
+		fields["mesh_ms"], VoxelRenderer.SKIP_BOARD_WRITES,
+		"store" if _store != null else "objects"])
 	Telemetry.event("board3d.built", fields)
 
 
@@ -241,12 +266,18 @@ func _collect() -> Dictionary:
 	return {"slices": slices, "columns": columns, "slabs": slabs}
 
 
-func _put(grid: Vector2i, level: int, material_id: String) -> void:
+## This board's index for a material, registering it (and its shader material) on first use.
+func _material(material_id: String) -> int:
 	if not _material_index.has(material_id):
 		_material_index[material_id] = _material_ids.size()
 		_material_ids.append(material_id)
 		_material_glass.append(GlassMaterials.is_glass(material_id))
 		_shader_materials.append(_make_material(material_id))
+	return int(_material_index[material_id])
+
+
+func _put(grid: Vector2i, level: int, material_id: String) -> void:
+	_material(material_id)
 	var key := Vector3i(grid.x, level, grid.y)
 	if not _occ.has(key):
 		var chunk: Vector2i = _chunk_of(key)
@@ -365,6 +396,13 @@ func on_blast_commit(delta) -> void:
 		var key := Vector3i(voxel.grid_pos.x, voxel.level, voxel.grid_pos.y)
 		var chunk: Vector2i = _chunk_of(key)
 		_blast_levels[voxel.level] = true
+		if _store != null:
+			## R3D-1c step 5 — the store already holds the commit (every write mirrors), so
+			## there is nothing to fold: only which chunks to rebuild.
+			_blast_chunks[chunk] = true
+			_blast_chunks[_chunk_of(key - Vector3i(1, 0, 0))] = true
+			_blast_chunks[_chunk_of(key - Vector3i(0, 0, 1))] = true
+			continue
 		if voxel.visible:
 			var material_id: String = _material_for(voxel)
 			if material_id.is_empty():
@@ -425,6 +463,89 @@ func _chunk_of(key: Vector3i) -> Vector2i:
 		floori(float(key.z) / float(CHUNK_VOXELS)))
 
 
+## R3D-1c step 5 — the store's claims, grouped by chunk with one counting sort, and its
+## materials mapped onto this board's. Chunks are `_chunk_of()`'s WORLD chunks
+## (floor(x / 32), floor(y / 32)), so a blast's dirty-chunk keys mean the same thing on
+## both paths. Every claim is listed, visible or not: a claim hidden at load can only
+## become visible through a rebuild, but the list must not depend on that.
+## Reports `_collect()`'s counts from the claims' visible bits; `cells` counts each
+## occupied cell once, by its owner.
+func _collect_store(store: VoxelStore) -> Dictionary:
+	_store_material.resize(store.material_ids.size())
+	for i in range(store.material_ids.size()):
+		_store_material[i] = _material(store.material_ids[i])
+	var n: int = store.claims
+	var xyz: PackedInt32Array = store.xyz
+	var state: PackedByteArray = store.state
+	_chunk_x0 = floori(float(store.x0) / float(CHUNK_VOXELS))
+	_chunk_y0 = floori(float(store.y0) / float(CHUNK_VOXELS))
+	_chunk_cols = floori(float(store.x0 + store.w - 1) / float(CHUNK_VOXELS)) - _chunk_x0 + 1
+	_chunk_rows = floori(float(store.y0 + store.h - 1) / float(CHUNK_VOXELS)) - _chunk_y0 + 1
+	var chunk_of_claim := PackedInt32Array()
+	chunk_of_claim.resize(n)
+	_chunk_start.resize(_chunk_cols * _chunk_rows + 1)
+	_chunk_start.fill(0)
+	## Per-kind visible claims, then occupied cells: plain ints, no Dictionary write per claim.
+	var by_kind := PackedInt32Array([0, 0, 0])
+	var cells: int = 0
+	var owner: PackedInt32Array = store.owner
+	var x0: int = store.x0
+	var y0: int = store.y0
+	var l0: int = store.l0
+	var w: int = store.w
+	var h: int = store.h
+	var lo: int = 1 << 30
+	var hi: int = -(1 << 30)
+	for ci in range(store.container_count()):
+		var span: Vector2i = store.container_claims(ci)
+		var kind: int = store.container_kinds[ci]
+		var visible_here: int = 0
+		for claim in range(span.x, span.x + span.y):
+			var k: int = claim * 3
+			var x: int = xyz[k]
+			var y: int = xyz[k + 1]
+			var c: int = ((y >> 5) - _chunk_y0) * _chunk_cols + ((x >> 5) - _chunk_x0)
+			chunk_of_claim[claim] = c
+			_chunk_start[c + 1] += 1
+			if not (state[claim] & 1):
+				continue
+			visible_here += 1
+			var level: int = xyz[k + 2]
+			if owner[((level - l0) * h + (y - y0)) * w + (x - x0)] == claim:
+				cells += 1
+			if level < lo:
+				lo = level
+			if level > hi:
+				hi = level
+		by_kind[kind] += visible_here
+	if hi >= lo:
+		_level_min = lo
+		_level_max = hi
+	var used: int = 0
+	for c in range(_chunk_cols * _chunk_rows):
+		if _chunk_start[c + 1] > 0:
+			used += 1
+		_chunk_start[c + 1] += _chunk_start[c]
+	var fill := PackedInt32Array(_chunk_start)
+	_chunk_claims.resize(n)
+	for claim in range(n):
+		var c: int = chunk_of_claim[claim]
+		_chunk_claims[fill[c]] = claim
+		fill[c] += 1
+	return {"slices": by_kind[VoxelStore.KIND_SLICE], "slabs": by_kind[VoxelStore.KIND_SLAB],
+		"columns": by_kind[VoxelStore.KIND_COLUMN], "cells": cells, "chunks": used}
+
+
+## The chunks that hold any claim, as `_by_chunk`'s keys would be.
+func _store_chunks() -> Array:
+	var out: Array = []
+	for c in range(_chunk_cols * _chunk_rows):
+		if _chunk_start[c + 1] > _chunk_start[c]:
+			var cy: int = floori(float(c) / float(_chunk_cols))
+			out.append(Vector2i(c - cy * _chunk_cols + _chunk_x0, cy + _chunk_y0))
+	return out
+
+
 ## A voxel's material through its container — the same answer `_collect()` gave.
 func _material_for(voxel: Voxel) -> String:
 	var container: Object = instance_from_id(voxel.container_id())
@@ -447,7 +568,9 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 	var t0: int = Time.get_ticks_usec()
 	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material}
 	var faces: int = 0
-	for key: Vector3i in (_by_chunk.get(chunk, {}) as Dictionary):
+	if _store != null:
+		faces = _collect_chunk_faces_store(chunk, planes)
+	for key: Vector3i in ({} if _store != null else (_by_chunk.get(chunk, {}) as Dictionary)):
 		var material: int = _occ[key]
 		var glass: bool = _material_glass[material]
 		for dir: int in range(3):
@@ -505,6 +628,60 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 	_t_merge += t2 - t1
 	_t_commit += t3 - t2
 	return Vector2i(faces, quads)
+
+
+## R3D-1c step 5 — `_build_chunk()`'s face pass, read from the store: a cell is drawn by
+## its owner claim, a neighbour hides a face when the store's `occ` holds it (unless it is
+## glass and this is not), and materials map through `_store_material`. Returns the faces
+## added to `planes`, in `_build_chunk()`'s (dir, plane) → {uv: material} shape.
+func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary) -> int:
+	var cidx: int = (chunk.y - _chunk_y0) * _chunk_cols + (chunk.x - _chunk_x0)
+	if chunk.x < _chunk_x0 or chunk.y < _chunk_y0 or chunk.x - _chunk_x0 >= _chunk_cols \
+			or chunk.y - _chunk_y0 >= _chunk_rows:
+		return 0
+	var store: VoxelStore = _store
+	var state: PackedByteArray = store.state
+	var xyz: PackedInt32Array = store.xyz
+	var occ: PackedByteArray = store.occ
+	var owner: PackedInt32Array = store.owner
+	var mat: PackedByteArray = store.mat
+	var steps: PackedInt32Array = [store.plane, 1, store.w]
+	var faces: int = 0
+	for i in range(_chunk_start[cidx], _chunk_start[cidx + 1]):
+		var claim: int = _chunk_claims[i]
+		if not (state[claim] & 1):
+			continue
+		var k: int = claim * 3
+		var x: int = xyz[k]
+		var y: int = xyz[k + 1]
+		var level: int = xyz[k + 2]
+		var cell: int = store.cell_index(x, y, level)
+		if owner[cell] != claim:
+			continue
+		var material: int = _store_material[mat[claim]]
+		var glass: bool = _material_glass[material]
+		for dir: int in range(3):
+			var n: int = cell + steps[dir]
+			if occ[n]:
+				## Hidden by a neighbour, unless that neighbour is glass and this is not.
+				if not (_material_glass[_store_material[mat[owner[n]]]] and not glass):
+					continue
+			var plane_key: Vector2i
+			var uv: Vector2i
+			if dir == Dir.TOP:
+				plane_key = Vector2i(dir, level)
+				uv = Vector2i(x, y)
+			elif dir == Dir.SE:
+				plane_key = Vector2i(dir, x)
+				uv = Vector2i(y, level)
+			else:
+				plane_key = Vector2i(dir, y)
+				uv = Vector2i(x, level)
+			if not planes.has(plane_key):
+				planes[plane_key] = {}
+			(planes[plane_key] as Dictionary)[uv] = material
+			faces += 1
+	return faces
 
 
 ## Greedy rectangles over one plane's faces: grow along u, then along v, while every

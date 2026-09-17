@@ -1,5 +1,5 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.5
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.6
 
 **Status:** 🟡 **R3D-1b GATED 2026-09-16: the packed `VoxelStore` runs in shadow and holds
 exactly what the objects hold.** It is behind `VOXEL_STORE=1`, and `board_probe.py shadow`
@@ -38,8 +38,32 @@ the same day. R3D-0 closed on its gate that day too, and the direction was ratif
 - **R3D-1c CLOSED:** all five readers are on the store.
   - Moto, from the step 5 A/B: load 24.4 → 22.8 s, commit remesh −20 %.
   - Moto, from step 2: grenades −1.3–1.5 s.
-- **Next:** R3D-1d — the objects go. The writes, the plan/Delta keys and the soot BFS
-  inputs move first (see R3D-1c "still on the objects").
+- **R3D-1d step 1 DONE (2026-09-17, commit `75b97af6`):** `VoxelStore` is the writer
+  (`set_damage()`/`set_visible()`), and `Voxel` is a thin wrapper (`claim:int` + the
+  store) — the seven duplicated damage/visibility fields are gone from every real
+  voxel. A detached `WorldDelta` projection (no claim) still works through a lazy
+  `_LocalState` side object that costs nothing on a real voxel. 57/57 selftests,
+  `board_probe.py gate`, `check_invariants` and `gen_codemap --check` all pass.
+- **R3D-1d steps 2-4 DEFERRED to R3D-2** (Director, 2026-09-17). Once `Voxel` is thin,
+  its properties already dispatch through `VoxelStore` by claim — reading
+  `voxel.damage_state` off a `Voxel` held in `cell_to_voxel`/`damaged_voxels` already
+  *is* a claim-keyed read, wearing a clean accessor. Migrating those dicts' VALUES from
+  `Voxel` to a bare `claim:int` would only move the bit-unpacking into every call site
+  by hand, for memory that is not where PLAYGROUND's ~191 MB was (that dict holds tens
+  of entries per shot/detonation, not 215 432). Worse, `detonation_plan_builder.gd`'s
+  `damaged_voxels` can legitimately hold claim==-1 detached projections
+  (`WorldDelta.project_voxel()`, W-PRECOOK-02) that have no claim to read from at all —
+  migrating it would need either a claim→Voxel resolver on `VoxelStore` or a small
+  struct carrying the projected fields, for a stage whose own header already says "so a
+  repaint and a detonation cannot disagree" (i.e. `BlastCalculator`'s
+  `derive_soot_rings()`/`apply_self_soot()` must stay one shared implementation, not
+  fork per caller). `WorldDelta`'s own plan/Delta keys (Step 3's actual target) are the
+  same story: R3D-2 re-keys the plan and `WorldDelta` around a render-neutral store
+  read anyway, so this rides along with that redesign instead of doing it twice.
+- **Next:** R3D-1d step 5 — remeasure the Moto against §1's baseline now that the
+  objects are thin wrappers, and time the light field build / prediction WALK
+  before/after. **Blocked in an agent session with no `adb`/device access** — needs the
+  Director to run `device_run.py --mem-poll` (or hand the session a connected device).
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -967,6 +991,43 @@ damage loss found at R3D-1b is still open, as a separate task.
   `Voxel` class becomes an index or a transient view, or is deleted, as R3D-1a decides.
 - Memory is re-measured on the Moto against §1.
 
+**Step 1 DONE (2026-09-17, commit `75b97af6`).** `VoxelStore.set_damage()`/
+`set_visible()` write the packed arrays directly (range-validated, never a silent wrap
+into the packing) — THE write seam. `Voxel` is now `claim:int` + a `VoxelStore`
+reference; its public surface (`grid_pos`, `visible`, `damage_state`, ...,
+`set_damage()`, `set_visible()`) is unchanged, so every caller (`room.gd`,
+`agent_shot_controller.gd`, `blast_calculator.gd`, `glass_crack.gd`, `Slice`/`Slab`/
+`JunctionColumn`) needed no change. The Director's call: a thin wrapper, not deletion —
+see the open question this closed, below. A detached `WorldDelta` projection (no
+container, no claim) reads/writes a lazy `_LocalState` side object instead, so the
+~216 000 real voxels pay nothing for it. 10 of the ~20 selftests named above turned out
+to be 16 once counted precisely (`Voxel.new(` grep undercounted fixtures built through
+real generators); every one moved in this same step, never batched — each now builds a
+`VoxelStore` over its own fixture before calling `set_damage()`/`set_visible()`, since a
+`Voxel` with no store/claim has nothing to write into and refuses loudly (matching the
+project's loud-fail contract) rather than silently no-opping.
+
+**Steps 2-4 (the soot BFS's input map, the plan/`WorldDelta` keys) DEFERRED to R3D-2**
+(Director, 2026-09-17). Once `Voxel` is thin, its properties already dispatch through
+`VoxelStore` by claim — reading `voxel.damage_state` off a `Voxel` held in
+`cell_to_voxel`/`damaged_voxels` already *is* a claim-keyed read, wearing a clean
+accessor instead of hand-unpacked bits. Migrating those dicts' VALUES to a bare
+`claim:int` would only move that unpacking into every call site, for memory that was
+never there (tens of entries per shot/detonation, not 215 432). It would also have to
+solve a real problem for no gain right now:
+`detonation_plan_builder.gd`'s `damaged_voxels` can legitimately hold claim==-1
+detached projections (`WorldDelta.project_voxel()`, W-PRECOOK-02's precook path) that
+have no claim to read a bare int from at all, and `BlastCalculator`'s
+`derive_soot_rings()`/`apply_self_soot()` are explicitly ONE shared implementation
+("so a repaint and a detonation cannot disagree") — forking their input shape per
+caller is exactly the drift risk that file's own header warns against. R3D-2 re-keys
+the plan and `WorldDelta` around a render-neutral store read anyway, so this rides
+along with that redesign instead of paying for it twice.
+
+**Step 5 — the Moto remeasure — is next, and is BLOCKED in an agent session with no
+`adb`/device access.** Needs `device_run.py --mem-poll` run by the Director, or a
+connected device handed to the session.
+
 **Risks, and how each is caught:**
 - **Packed-array access in GDScript can be slower than an object field read in a hot
   loop.** The light field build and the prediction WALK are timed before and after, on
@@ -1295,3 +1356,16 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
     The flag changes 0 px.
   - Found: rotation and SaveState restore lose junction-column and corner damage (21
     voxels on PLAYGROUND).
+- **v1.6, 2026-09-17.** R3D-1d step 1 done (commit `75b97af6`): `VoxelStore` is the
+  writer, `Voxel` is a thin `claim:int` wrapper. 57/57 selftests, `board_probe.py gate`,
+  `check_invariants` and `gen_codemap --check` pass.
+  - The Director's call on `Voxel`'s fate: a thin index wrapper, not deletion and not a
+    transient view — §4's R3D-1d text was open on this ("as R3D-1a decides").
+  - Steps 2-4 (the soot BFS's input map, the plan/`WorldDelta` keys) DEFERRED to R3D-2
+    on the Director's call, once implementation showed `Voxel`'s properties already
+    dispatch through the store by claim, so migrating `cell_to_voxel`/`damaged_voxels`
+    to a bare int now would trade a clean accessor for hand-unpacked bits at every call
+    site, for memory that was never in that dict (tens of entries, not 215 432) — and
+    would have to solve `detonation_plan_builder.gd`'s claim==-1 detached-projection
+    case for no gain right now.
+  - Step 5 (the Moto remeasure) is next, blocked on device access in this session.

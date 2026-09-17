@@ -115,8 +115,16 @@ objects themselves. Full narrative below and in the revision history.
   placement/atom masks — they test the 2D renderer, not simulation/prediction, so they stay
   until R3D-8 retires that renderer. Step 1 already removed the one real occupancy read
   (`build_occupancy()`'s old fallback). No commit for this step — nothing to change.
-- **Next:** Step 3 — cell planes (`_soot_images`/`_soot_textures`/`_soot_dirty`) move out of
-  `VoxelRenderer` into a render-neutral owner.
+- **Step 3 CLOSED (commit `bc8e1ca9`) — cell planes moved to `CellPlaneStore`.**
+  `_soot_images`/`_soot_textures`/`_soot_dirty` and their read/write API relocated
+  verbatim to `godot/scripts/systems/cell_plane_store.gd`, domain-agnostic by
+  construction (its owner supplies the clean-fill/max-bucket values, so no reference
+  back to `VoxelRenderer` and no circular class dependency). `VoxelRenderer` keeps
+  every public method name as a thin forwarder — zero external caller changed.
+  `board_probe.py gate` reported the same 3867 voxel / 8063 plane-texel counts as
+  Step 1's baseline, confirming the move is behaviour-neutral.
+- **Next:** Step 4 — the plan-entry rekey (`source_id`/`atlas_coords`/`alt`/`prev_alt` →
+  voxel key + target damage state + light bucket + soot code), the largest and last step.
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director

@@ -543,6 +543,9 @@ func test_intact_glass_still_blocks_light() -> void:
 	var registry := EdgeRegistry.new()
 	registry.register_slice(_make_slice("SLICE_GLASS_OCC", "glass", level))
 	r.render(registry)
+	## RENDER3D R3D-2: build_occupancy() reads VoxelStore.active alone now — needs a
+	## store built over this fixture's registry, same as test_side_sliver_only_where_exposed.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 
 	var occ: Dictionary = r.build_occupancy()
 	var at_level: Dictionary = occ.get(level, {})
@@ -551,6 +554,7 @@ func test_intact_glass_still_blocks_light() -> void:
 	else:
 		_fail("build_occupancy() reports %d cells at the glass level, expected 8" % at_level.size())
 	r.queue_free()
+	VoxelStore.active = null
 	print("")
 
 

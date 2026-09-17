@@ -670,17 +670,6 @@ static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") != "0"
 ## live layer cells for render information reads the pre-blast board there.
 static var SKIP_BOARD_WRITES: bool = false
 
-## RENDER3D R3D-1c step 1 — `build_occupancy()` answers from the `VoxelStore` (visible
-## claims) instead of the placed tiles. DEFAULT ON (DevFlags); `STORE_OCCUPANCY=0` is the
-## old tile read, for comparison only. NOT pixel-identical, and ratified as such (the
-## Director, option A, 2026-09-16: *"pode seguir com a opção A"*): the voxels are the truth,
-## so the three places where the drawn board disagreed with them change — the map
-## buffer's L72–77 tile columns (no voxel: now air), the undrawn deep floor (a voxel: now
-## solid), and a corner cell whose other claim still stands (now solid). Measured at max
-## 6/255 on screen. `RENDER3D_MASTER_PLAN` R3D-1c.
-static var STORE_OCCUPANCY: bool = true
-
-
 ## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.
 ##
 ## Director, 2026-08-26: *"eu queria testar desligando essas duas features por
@@ -3739,45 +3728,19 @@ func _restore_ghosted_cells() -> void:
 ## the impact frame, and an alternative minted early is one not minted late.
 ## A WRONG prediction costs nothing but a cache miss — `_ensure_light_alt()`
 ## still mints on demand — which is why this is safe to do speculatively.
+##
+## RENDER3D R3D-2 step 1 — answers from the `VoxelStore` alone (visible claims), never the
+## placed tiles. Ghosted cells and glass need no separate fold-in here: occlusion never
+## marks a claim invisible (O1 — occlusion is VIEW, not STATE) and glass voxels are
+## ordinary claims in the store regardless of which sublayer they render on, so
+## `occupancy_dict()` already reports both. Verified 0 differences against the old
+## tile-walk (`Room.scenario_occupancy_compare`) at load and across both PLAYGROUND
+## grenades before the tile fallback below was deleted.
 func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
-	if STORE_OCCUPANCY and VoxelStore.active != null:
-		return VoxelStore.active.occupancy_dict(predict_destroyed)
-	var occupancy: Dictionary = {}
-	## ⚠️ ONE loop, and the prediction now reaches FLOOR levels too. The paired
-	## version applied `predict_destroyed` to positive levels only and rebuilt
-	## negative ones verbatim — so a predicted crater floor stayed solid in the
-	## predicted occupancy. Harmless while the prediction only ever named wall
-	## cells; a latent wrong answer the moment it did not.
-	for level in level_keys():
-		var level_set: Dictionary = {}
-		for cell in (_layers[level] as TileMapLayer).get_used_cells():
-			if predict_destroyed.has(Vector3i(cell.x, cell.y, level)):
-				continue
-			level_set[cell] = true
-		occupancy[level] = level_set
-	## Cells hidden by occlusion are erased from the tilemap but are still SOLID
-	## geometry — omitting them would make every ghosted column read as a cavity
-	## and light up its neighbours the moment the agent walked past.
-	for cell in _ghosted_cells.keys():
-		for record in _ghosted_cells[cell]:
-			var lvl: int = record["level"]
-			if not occupancy.has(lvl):
-				occupancy[lvl] = {}
-			occupancy[lvl][cell] = true
-	## GLASS G1 — glass cells left `_layers` for their own blend sublayers, but
-	## intact glass still BLOCKS light exactly as it did before G1: whether an
-	## intact pane should transmit light is a separate decision (G-D8 touches only
-	## the BROKEN pane). Adding the sublayer cells back here keeps the light field
-	## byte-identical to the opaque era.
-	for level in _glass_layers:
-		var gmul := _glass_layers[level] as TileMapLayer
-		for cell in gmul.get_used_cells():
-			if predict_destroyed.has(Vector3i(cell.x, cell.y, level)):
-				continue
-			if not occupancy.has(level):
-				occupancy[level] = {}
-			occupancy[level][cell] = true
-	return occupancy
+	if VoxelStore.active == null:
+		push_error("[VoxelRenderer] build_occupancy: no VoxelStore.active — returning empty occupancy")
+		return {}
+	return VoxelStore.active.occupancy_dict(predict_destroyed)
 
 
 ## VL-D3 — columns (x,y) covered by any wall/block/roof voxel (positive levels).

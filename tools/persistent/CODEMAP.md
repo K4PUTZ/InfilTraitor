@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**259 scripts · 97064 lines total** (under `godot/scripts/`)
+**259 scripts · 97027 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -880,7 +880,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7908 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7871 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2371,7 +2371,7 @@ extends `RefCounted` · 941 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 250 lines
+extends `Node` · 246 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -4190,7 +4190,7 @@ extends `SceneTree` · 1606 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 861 lines
+extends `SceneTree` · 865 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 

@@ -83,10 +83,6 @@ func _ready() -> void:
 	VoxelRenderer.LIGHT_DISABLED = VoxelRenderer.LIGHT_DISABLED or on("NO_LIGHT")
 	## DIAG-21 2c — only meaningful with RENDER3D=1; Room warns otherwise.
 	VoxelRenderer.SKIP_BOARD_WRITES = on("SKIP_2D_BOARD_WRITES")
-	## RENDER3D R3D-1c — the light field's occupancy from the VoxelStore. DEFAULT ON since
-	## the Director ratified option A (2026-09-16); `=0` is the old tile read, kept for
-	## comparison only.
-	VoxelRenderer.STORE_OCCUPANCY = value("STORE_OCCUPANCY", "1") != "0"
 	## RENDER3D R3D-1c step 2 — the prediction WALK reads the VoxelStore. `=0` = object walk.
 	DetonationPlanBuilder.STORE_WALK = value("STORE_WALK", "1") != "0"
 	## RENDER3D R3D-1c step 3 — glass reads voxel state from the VoxelStore. `=0` = objects.

@@ -43,6 +43,7 @@ func _init() -> void:
 
 	_cleanup()
 	Voxel.reset_soot_dirty()
+	VoxelStore.active = null
 	print("\nBoardProbe SELFTEST: %s (%d passed, %d failed)\n"
 		% ["PASS" if failed == 0 else "FAIL", passed, failed])
 	quit(1 if failed > 0 else 0)
@@ -72,6 +73,9 @@ func _build_fixture() -> Dictionary:
 
 	var plane := Image.create(4, 4, false, Image.FORMAT_RG8)
 	plane.fill(Color8(124, 255, 0, 255))
+	## RENDER3D R3D-1d: Voxel has no state of its own any more — a VoxelStore over this
+	## fixture is what test_one_damage_moves_one_line()'s set_damage() call writes into.
+	VoxelStore.active = VoxelStore.build(edge_registry, slab_registry, [])
 	return {"slabs": slabs, "slab_registry": slab_registry, "slice": slice,
 		"edge_registry": edge_registry, "planes": {80: plane}}
 
@@ -147,15 +151,17 @@ func test_plane_texel_moves_its_line(fixture: Dictionary, dump_c: String) -> voi
 
 
 func test_out_of_range_aborts(fixture: Dictionary) -> void:
+	## RENDER3D R3D-1d: `Voxel` no longer holds a raw, unbounded `damage_variant` field —
+	## VoxelStore.set_damage() is the only writer, and it aborts loudly on an
+	## out-of-range value instead of ever storing one (see its own docstring). That is
+	## the seam this test now exercises directly.
 	var voxel: Voxel = (fixture["slabs"][1] as Slab).voxels[0]
-	voxel.damage_variant = 300
-	print("  (an ERROR from [BoardProbe] follows — expected)")
-	var path: String = ProjectSettings.globalize_path("%s/bad.txt" % OUT_DIR)
-	var summary: Dictionary = BoardProbeClass.write(path, "bad", fixture["edge_registry"],
-		fixture["slab_registry"], [], fixture["planes"], Vector2i(64, 64), {})
-	voxel.damage_variant = 0
-	_check(summary.is_empty() and not FileAccess.file_exists(path),
-		"[TEST 5] variant 300 aborts the write and leaves no file")
+	print("  (an ERROR from [VoxelStore] follows — expected)")
+	var store: VoxelStore = VoxelStore.active
+	var rejected: bool = not store.set_damage(voxel.claim, Voxel.DamageState.DENTED,
+		false, Voxel.CarvedSide.NONE, 300, 0)
+	_check(rejected and voxel.damage_variant == 0,
+		"[TEST 5] variant 300 is rejected and the claim is unchanged")
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────

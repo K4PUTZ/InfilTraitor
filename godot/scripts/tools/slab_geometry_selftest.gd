@@ -43,6 +43,19 @@ func _fail(msg: String) -> void:
 	failed += 1
 
 
+## RENDER3D R3D-1d: `Voxel` has no state of its own — every `set_damage()`/
+## `set_visible()` call in this file needs an active `VoxelStore` built over the exact
+## fixture containers it wrote voxels into.
+func _activate_store(slices: Array, slabs: Array) -> void:
+	var edge_registry := EdgeRegistry.new()
+	for slice in slices:
+		edge_registry.register_slice(slice)
+	var slab_registry := SlabRegistry.new()
+	for slab in slabs:
+		slab_registry.register_slab(slab)
+	VoxelStore.active = VoxelStore.build(edge_registry, slab_registry, [])
+
+
 ## D1: a Slab identifies a GU's horizontal voxel layer for one role (floor/
 ## ceiling/interior) at one level, and holds VOXELS_PER_UNIT_AXIS² voxels —
 ## same 64-voxel granularity as one storey-level of a Slice.
@@ -82,6 +95,7 @@ func test_voxel_dirty_propagates_to_slab() -> void:
 	var slab := Slab.new("SLAB_0_0_CEILING_8", gu, Slab.Role.CEILING, 8, "stone")
 	var voxel := Voxel.new(Vector2i(0, 0), 8, slab)
 	slab.voxels.append(voxel)
+	_activate_store([], [slab])
 
 	voxel.set_visible(false)
 
@@ -115,6 +129,7 @@ func test_clear_all_dirty_resets_count_and_flags() -> void:
 	var slab := Slab.new("SLAB_1_1_FLOOR_0", gu, Slab.Role.FLOOR, 0, "wood")
 	for voxel_pos in GeometryCoords.gu_voxels(gu):
 		slab.voxels.append(Voxel.new(voxel_pos, 0, slab))
+	_activate_store([], [slab])
 
 	# Damage 5 voxels (DESTROYED forces visible=false, same as Slice's contract)
 	for i in range(5):
@@ -164,6 +179,7 @@ func test_voxel_reuse_across_slice_and_slab() -> void:
 	var floor_voxel := Voxel.new(Vector2i(0, 0), 0, slab)
 	slice.voxels.append(wall_voxel)
 	slab.voxels.append(floor_voxel)
+	_activate_store([slice], [slab])
 
 	wall_voxel.set_visible(false)
 	floor_voxel.set_visible(false)
@@ -202,6 +218,10 @@ func test_registry_dirty_skip_contract() -> void:
 	registry.register_slab(clean_slab)
 	registry.register_slab(dirty_slab)
 
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — set_damage() below needs an
+	## active store built over this fixture.
+	VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), registry, [])
+
 	if registry.dirty_slabs().is_empty():
 		_pass("All-clean registry reports zero dirty slabs")
 	else:
@@ -220,4 +240,5 @@ func test_registry_dirty_skip_contract() -> void:
 	else:
 		_fail("all_slabs() size mismatch: %d" % registry.all_slabs().size())
 
+	VoxelStore.active = null
 	print("")

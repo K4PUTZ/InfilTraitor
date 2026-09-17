@@ -1,18 +1,17 @@
-## VoxelStore — the packed voxel store, in SHADOW beside the `Voxel` objects.
+## VoxelStore — the packed voxel store, THE writer and the only place voxel state lives.
 ##
-## RENDER3D R3D-1b (`RENDER3D_MASTER_PLAN` §4). R3D-1a measured the layouts and the
-## Director confirmed B (2026-09-16): every claim's state in flat per-voxel arrays,
-## contiguous per container, plus a derived dense grid that answers "is this cell
-## occupied, and by which claim".
+## RENDER3D R3D-1b (`RENDER3D_MASTER_PLAN` §4) built this as a SHADOW beside the `Voxel`
+## objects: every claim's state in flat per-voxel arrays, contiguous per container, plus
+## a derived dense grid that answers "is this cell occupied, and by which claim". R3D-1c
+## moved every reader onto it, one subsystem at a time, gated against the objects.
 ##
-## SHADOW MEANT NOTHING READ IT (R3D-1b); R3D-1c moves readers onto it one at a time. It is built from the registries after every board
-## build (`Room._rebuild_voxel_store()`), and every state change a `Voxel` makes is
-## mirrored into it from the one seam that makes them (`Voxel.set_damage()` /
-## `set_visible()`). `BoardProbe.write_store()` dumps it in the objects' own format, so
-## `board_probe.py shadow` can require the two to be identical, value by value. Readers
-## move onto it one subsystem at a time in R3D-1c; the objects go in R3D-1d.
-## On by default since R3D-1c step 1 (`VOXEL_STORE=0` turns it off, and `active` stays
-## null). Its first reader is the light field's occupancy (`VoxelRenderer.build_occupancy()`).
+## R3D-1d removed the objects. `Voxel` is now a thin wrapper (`claim: int` + this store) —
+## it holds no state of its own, so there is nothing left to mirror. `set_damage()` /
+## `set_visible()` below ARE the write seam; `Voxel.set_damage()` / `set_visible()` just
+## forward to them and record dirty/soot-seed bookkeeping.
+##
+## Built from the registries after every board build (`Room._rebuild_voxel_store()`).
+## `BoardProbe.write_store()` dumps it for `board_probe.py gate`.
 ##
 ## A CLAIM is one `Voxel` in one container. PLAYGROUND holds 216 104 claims in 215 432
 ## cells: where two slices of one GU meet at a corner, both claim the cell, and under a
@@ -48,18 +47,16 @@ const KIND_NAMES: PackedStringArray = ["slice", "slab", "column"]
 ## Per-container geometry record: offset, count, xmin, ymin, lmin, nx, ny.
 const GEOM_STRIDE: int = 7
 
-## The store every `Voxel` write mirrors into, or null when the shadow is off. Static,
+## The active store — every `Voxel` wrapper reads and writes through this one. Static,
 ## like `Voxel.soot_dirty`: a `Voxel` holds no reference to anything that could reach it.
 static var active: VoxelStore = null
 
-## RENDER3D R3D-1c step 3 — glass's voxel-state reads go through `cells_of()`, `damage_of()`
-## and `visible_of()`, which answer from the store. DEFAULT ON (DevFlags `STORE_GLASS`;
-## `=0` reads the objects, for comparison). Without an active store holding the container
-## (a selftest fixture), they read the objects.
+## RENDER3D R3D-1c step 3/4 flags. Since R3D-1d, `Voxel` has no state of its own — both
+## branches of `cells_of()`/`damage_of()`/`visible_of()` now read the same store either
+## way (the "objects" branch reads it through a `Voxel` wrapper's getters instead of
+## directly). Kept as a comparison switch for `DevFlags`; collapsing them is a candidate
+## follow-up, not required by this stage's gate.
 static var STORE_GLASS: bool = true
-## RENDER3D R3D-1c step 4 — `PassageQuery` and `BlastCalculator.plan_point_impact()` read
-## voxel state through the same seam. DEFAULT ON (DevFlags `STORE_BLAST`; `=0` reads the
-## objects). The soot BFS stays on the objects — see `derive_soot_rings()`.
 static var STORE_BLAST: bool = true
 const CELL_STRIDE: int = 4
 
@@ -218,10 +215,16 @@ func _fill(containers: Array) -> bool:
 			var lv: int = v.level
 			if regular and ((lv - bl) * ny + (gp.y - by)) * nx + (gp.x - bx) != i:
 				regular = false
-			var visible: int = 1 if v.visible else 0
-			state[claim] = visible | (v.damage_state << 1) | ((1 if v.damage_is_blast else 0) << 3) \
-				| (v.damage_carved_side << 4)
-			aux[claim] = (v.damage_variant & 15) | ((v.damage_substrate & 15) << 4)
+			## RENDER3D R3D-1d: this container's voxels are freshly generated here, every
+			## build — `Room._rebuild_voxel_store()` nulls `VoxelStore.active` before
+			## calling `build()`, so `v` cannot be reading a PREVIOUS store's claim. A
+			## fresh voxel is always INTACT and visible; any real damage is replayed from
+			## `room._base_damage` after this build finishes, through `set_damage()`,
+			## which is the only place `state`/`aux` change again.
+			var visible: int = 1
+			state[claim] = visible | (Voxel.DamageState.INTACT << 1)
+			aux[claim] = 0
+			v.claim = claim
 			if banded == null:
 				mat[claim] = fixed_material
 			else:
@@ -282,16 +285,12 @@ static func aux_byte(v: Voxel) -> int:
 	return (v.damage_variant & 15) | ((v.damage_substrate & 15) << 4)
 
 
-## The claim a voxel is, or -1 when the store does not hold its container.
+## The claim a voxel is, or -1 when the store does not hold its container. RENDER3D
+## R3D-1d: `_fill()` assigns `v.claim` directly at build time, so this is now a plain
+## accessor — kept named for every existing caller (`mirror()`, the selftests, glass and
+## the WALK) rather than inlining `v.claim` everywhere.
 func claim_of(v: Voxel) -> int:
-	var ci: int = _by_instance.get(v.container_id(), -1)
-	if ci < 0:
-		return -1
-	if _irregular.has(ci):
-		return int((_irregular[ci] as Dictionary).get(Vector3i(v.grid_pos.x, v.grid_pos.y, v.level), -1))
-	var g: int = ci * GEOM_STRIDE
-	return _geom[g] + ((v.level - _geom[g + 4]) * _geom[g + 6] + (v.grid_pos.y - _geom[g + 3])) \
-		* _geom[g + 5] + (v.grid_pos.x - _geom[g + 2])
+	return v.claim
 
 
 ## Called by `Voxel` after every state change. A voxel with no container (a
@@ -315,6 +314,64 @@ func mirror(v: Voxel) -> void:
 	else:
 		occ[cell] = state[claim] & 1
 	writes_mirrored += 1
+
+
+## Writes a claim's visibility. Returns false (no-op) if unchanged — same early-return
+## `Voxel.set_visible()` always had. THE write seam since R3D-1d; `Voxel.set_visible()`
+## forwards here and then does its own dirty-flag bookkeeping.
+func set_visible(claim: int, v: bool) -> bool:
+	if claim < 0 or claim >= claims:
+		push_error("[VoxelStore] set_visible: claim %d out of range (%d claims)" % [claim, claims])
+		return false
+	var new_bit: int = 1 if v else 0
+	if (state[claim] & 1) == new_bit:
+		return false
+	state[claim] = (state[claim] & ~1) | new_bit
+	_recompute_cell(claim)
+	return true
+
+
+## Writes a claim's damage state. Returns false (no-op) if `new_state` matches the
+## current one — same early-return `Voxel.set_damage()` always had (also why `variant`/
+## `carved_side`/`substrate` are read-once: a repeated call on an already-damaged claim
+## never reaches this far). DESTROYED forces visible=false. THE write seam since R3D-1d.
+##
+## `variant`/`substrate` pack into one nibble each (real callers only ever need 0-4, per
+## D32/D3 §3.3), and `carved_side` into 3 bits — R3D-1d made this the PERMANENT
+## representation (it used to be a lossy shadow mirror beside the real, unbounded
+## `Voxel` field). A value the packing cannot hold must abort loudly, never wrap silently
+## into a different, valid-looking value — the exact failure `board_probe_selftest.gd`'s
+## TEST 5 exists to catch.
+func set_damage(claim: int, new_state: int, from_blast: bool, carved_side: int,
+		variant: int, substrate: int) -> bool:
+	if claim < 0 or claim >= claims:
+		push_error("[VoxelStore] set_damage: claim %d out of range (%d claims)" % [claim, claims])
+		return false
+	if new_state < 0 or new_state > 3 or carved_side < 0 or carved_side > 7 \
+			or variant < 0 or variant > 15 or substrate < 0 or substrate > 15:
+		push_error("[VoxelStore] set_damage: claim %d holds a value the packing cannot: state %d, carved %d, variant %d, substrate %d"
+			% [claim, new_state, carved_side, variant, substrate])
+		return false
+	var cur_state: int = (state[claim] >> 1) & 3
+	if cur_state == new_state:
+		return false
+	var new_visible: int = 0 if new_state == Voxel.DamageState.DESTROYED else state[claim] & 1
+	state[claim] = new_visible | (new_state << 1) | ((1 if from_blast else 0) << 3) \
+		| (carved_side << 4)
+	aux[claim] = (variant & 15) | ((substrate & 15) << 4)
+	_recompute_cell(claim)
+	return true
+
+
+## Shared by `set_visible()`/`set_damage()`: refreshes the derived grid cell a claim's
+## write may have changed — `_resolve_cell()` when other claims share the cell, else a
+## direct `occ` write, exactly as `mirror()` (the R3D-1b/c shadow write) already did.
+func _recompute_cell(claim: int) -> void:
+	var cell: int = cell_index(xyz[claim * 3], xyz[claim * 3 + 1], xyz[claim * 3 + 2])
+	if _multi.has(cell):
+		_resolve_cell(cell)
+	else:
+		occ[cell] = state[claim] & 1
 
 
 ## How many cells of the derived grid disagree with a grid rebuilt from the claims now.

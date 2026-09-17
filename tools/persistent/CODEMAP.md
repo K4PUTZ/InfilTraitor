@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**259 scripts · 96775 lines total** (under `godot/scripts/`)
+**259 scripts · 97064 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -851,11 +851,30 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 193 lines
+`class_name Voxel` · 229 lines
 
 `godot/scripts/geometry/voxel.gd`
 
-> Geometry Module — Voxel: single 32×32 voxel in a wall slice Port from voxel_ref.gd with damage state tracking
+> Geometry Module — Voxel: thin index wrapper over one claim in VoxelStore RENDER3D R3D-1d: Voxel used to duplicate every field VoxelStore now packs. Since R3D-1c closed with all five readers on the store, that duplication was ~191 MB on the Moto for nothing the store didn't already answer. Voxel keeps its exact public surface (grid_pos, level, visible, damage_state, ..., set_damage(), set_visible()) so every existing caller (room.gd, agent_shot_controller.gd, blast_calculator.gd, glass_crack.gd, Slice/Slab/JunctionColumn) is unchanged — only what sits behind that surface moved to VoxelStore's packed arrays, addressed by `claim`.
+
+**Public vars**
+- `var grid_pos: Vector2i`
+- `var level: int`
+- `var dirty: bool = false`
+- `var face_atlas_rect: Rect2i`
+- `var claim: int = -1`
+- `var visible: bool:`
+- `var damage_state: int:`
+- `var damage_is_blast: bool:`
+- `var damage_carved_side: int:`
+- `var damage_variant: int:`
+- `var damage_substrate: int:`
+
+**Public API**
+- `func container_id() -> int:`
+- `func set_visible(v: bool) -> void:`
+- `func set_damage(new_state: int, from_blast: bool = false, carved_side: int = CarvedSide.NONE, variant: int = 0, substrate: int = 0) -> void:`
+- `func clear_dirty() -> void:`
 
 ---
 
@@ -3166,11 +3185,11 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 466 lines
+`class_name VoxelStore` · extends `RefCounted` · 523 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
-> VoxelStore — the packed voxel store, in SHADOW beside the `Voxel` objects. RENDER3D R3D-1b (`RENDER3D_MASTER_PLAN` §4). R3D-1a measured the layouts and the Director confirmed B (2026-09-16): every claim's state in flat per-voxel arrays, contiguous per container, plus a derived dense grid that answers "is this cell occupied, and by which claim". SHADOW MEANT NOTHING READ IT (R3D-1b); R3D-1c moves readers onto it one at a time. It is built from the registries after every board build (`Room._rebuild_voxel_store()`), and every state change a `Voxel` makes is mirrored into it from the one seam that makes them (`Voxel.set_damage()` / `set_visible()`). `BoardProbe.write_store()` dumps it in the objects' own format, so `board_probe.py shadow` can require the two to be identical, value by value. Readers move onto it one subsystem at a time in R3D-1c; the objects go in R3D-1d. On by default since R3D-1c step 1 (`VOXEL_STORE=0` turns it off, and `active` stays null). Its first reader is the light field's occupancy (`VoxelRenderer.build_occupancy()`). A CLAIM is one `Voxel` in one container. PLAYGROUND holds 216 104 claims in 215 432 cells: where two slices of one GU meet at a corner, both claim the cell, and under a blast their states diverge (R3D-1a). The store keeps both, exactly as the objects do. THE ARRAYS, per claim, in container order (slices, slabs, junction columns — the prediction WALK's order): state  bit 0 visible · bits 1-2 damage · bit 3 blast · bits 4-6 carved side (`BoardProbe`'s packing) aux    variant (low nibble) · substrate (high nibble) mat    index into `material_ids`, band-resolved on a slice, the override on a column xyz    grid x, grid y, level THE DERIVED GRID, per cell of the padded bounds (2 cells and 2 levels of air on every side, as R3D-1a measured it, so a reader's ±1/±2 neighbour read needs no bounds check): occ    1 when ANY claim of the cell is visible owner  the first visible claim, else the first claim, else -1 A cell more than one claim holds is listed in `_multi`, so a write can recompute it. FINDING A CLAIM FROM A VOXEL costs no field on `Voxel`. Each container's voxels are laid out in a regular box — level, then y, then x — so the claim is the container's offset plus arithmetic on the voxel's own cell. That is VERIFIED for every voxel when the store is built; a container whose order breaks it gets a lookup table instead, and is counted, so the arithmetic is never trusted blind.
+> VoxelStore — the packed voxel store, THE writer and the only place voxel state lives. RENDER3D R3D-1b (`RENDER3D_MASTER_PLAN` §4) built this as a SHADOW beside the `Voxel` objects: every claim's state in flat per-voxel arrays, contiguous per container, plus a derived dense grid that answers "is this cell occupied, and by which claim". R3D-1c moved every reader onto it, one subsystem at a time, gated against the objects. R3D-1d removed the objects. `Voxel` is now a thin wrapper (`claim: int` + this store) — it holds no state of its own, so there is nothing left to mirror. `set_damage()` / `set_visible()` below ARE the write seam; `Voxel.set_damage()` / `set_visible()` just forward to them and record dirty/soot-seed bookkeeping. Built from the registries after every board build (`Room._rebuild_voxel_store()`). `BoardProbe.write_store()` dumps it for `board_probe.py gate`. A CLAIM is one `Voxel` in one container. PLAYGROUND holds 216 104 claims in 215 432 cells: where two slices of one GU meet at a corner, both claim the cell, and under a blast their states diverge (R3D-1a). The store keeps both, exactly as the objects do. THE ARRAYS, per claim, in container order (slices, slabs, junction columns — the prediction WALK's order): state  bit 0 visible · bits 1-2 damage · bit 3 blast · bits 4-6 carved side (`BoardProbe`'s packing) aux    variant (low nibble) · substrate (high nibble) mat    index into `material_ids`, band-resolved on a slice, the override on a column xyz    grid x, grid y, level THE DERIVED GRID, per cell of the padded bounds (2 cells and 2 levels of air on every side, as R3D-1a measured it, so a reader's ±1/±2 neighbour read needs no bounds check): occ    1 when ANY claim of the cell is visible owner  the first visible claim, else the first claim, else -1 A cell more than one claim holds is listed in `_multi`, so a write can recompute it. FINDING A CLAIM FROM A VOXEL costs no field on `Voxel`. Each container's voxels are laid out in a regular box — level, then y, then x — so the claim is the container's offset plus arithmetic on the voxel's own cell. That is VERIFIED for every voxel when the store is built; a container whose order breaks it gets a lookup table instead, and is counted, so the arithmetic is never trusted blind.
 
 **Constants / tuning**
 - `PAD` = `2`
@@ -3420,7 +3439,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2669 lines
+extends `SceneTree` · 2742 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3504,7 +3523,7 @@ extends `SceneTree` · 2669 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 684 lines
+extends `SceneTree` · 689 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
@@ -3534,7 +3553,7 @@ extends `SceneTree` · 684 lines
 
 ### `board_probe_selftest.gd`
 
-extends `SceneTree` · 198 lines
+extends `SceneTree` · 204 lines
 
 `godot/scripts/tools/board_probe_selftest.gd`
 
@@ -3606,7 +3625,7 @@ extends `SceneTree` · 213 lines
 
 ### `damage_atom_bake_selftest.gd`
 
-extends `SceneTree` · 421 lines
+extends `SceneTree` · 425 lines
 
 `godot/scripts/tools/damage_atom_bake_selftest.gd`
 
@@ -3809,7 +3828,7 @@ extends `SceneTree` · 173 lines
 
 ### `fixed_floor_selftest.gd`
 
-extends `SceneTree` · 186 lines
+extends `SceneTree` · 191 lines
 
 `godot/scripts/tools/fixed_floor_selftest.gd`
 
@@ -3958,7 +3977,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 2198 lines
+extends `SceneTree` · 2214 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -4126,7 +4145,7 @@ extends `SceneTree` · 554 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 1588 lines
+extends `SceneTree` · 1606 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -4171,7 +4190,7 @@ extends `SceneTree` · 1588 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 854 lines
+extends `SceneTree` · 861 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
@@ -4227,7 +4246,7 @@ extends `SceneTree` · 227 lines
 
 ### `half_thickness_selftest.gd`
 
-extends `SceneTree` · 307 lines
+extends `SceneTree` · 310 lines
 
 `godot/scripts/tools/half_thickness_selftest.gd`
 
@@ -4543,7 +4562,7 @@ extends `SceneTree` · 177 lines
 
 ### `passage_query_selftest.gd`
 
-extends `SceneTree` · 405 lines
+extends `SceneTree` · 414 lines
 
 `godot/scripts/tools/passage_query_selftest.gd`
 
@@ -4690,7 +4709,7 @@ extends `SceneTree` · 495 lines
 
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 269 lines
+extends `SceneTree` · 273 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -4714,7 +4733,7 @@ extends `SceneTree` · 269 lines
 
 ### `roof_slab_selftest.gd`
 
-extends `SceneTree` · 325 lines
+extends `SceneTree` · 329 lines
 
 `godot/scripts/tools/roof_slab_selftest.gd`
 
@@ -4814,7 +4833,7 @@ extends `SceneTree` · 141 lines
 
 ### `slab_geometry_selftest.gd`
 
-extends `SceneTree` · 223 lines
+extends `SceneTree` · 244 lines
 
 `godot/scripts/tools/slab_geometry_selftest.gd`
 
@@ -4835,7 +4854,7 @@ extends `SceneTree` · 223 lines
 
 ### `slab_render_selftest.gd`
 
-extends `SceneTree` · 303 lines
+extends `SceneTree` · 311 lines
 
 `godot/scripts/tools/slab_render_selftest.gd`
 
@@ -4962,7 +4981,7 @@ extends `Node` · 74 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 659 lines
+extends `SceneTree` · 656 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 
@@ -5062,7 +5081,7 @@ extends `SceneTree` · 162 lines
 
 ### `voxel_store_selftest.gd`
 
-extends `SceneTree` · 210 lines
+extends `SceneTree` · 226 lines
 
 `godot/scripts/tools/voxel_store_selftest.gd`
 

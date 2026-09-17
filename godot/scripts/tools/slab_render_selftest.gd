@@ -179,6 +179,10 @@ func test_d13_two_layer_floor_independent_containers() -> void:
 	var top_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry)
 	var bottom_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, "earth", registry)
 
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — set_damage() below needs an
+	## active store built over this fixture's registry.
+	VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), registry, [])
+
 	if top_slab.id != bottom_slab.id:
 		_pass("Top and bottom Slabs at the same GU have distinct ids (%s vs %s)" % [top_slab.id, bottom_slab.id])
 	else:
@@ -249,6 +253,10 @@ func test_floor_dent_places_carved_asset_on_both_branches() -> void:
 		var registry := SlabRegistry.new()
 		var slab := SlabGenerator.generate(Vector2i(0, 0), Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, material, registry)
 		renderer.render_slab(slab)
+
+		## RENDER3D R3D-1d: `Voxel` has no state of its own — set_damage() below needs
+		## an active store built over this fixture's registry.
+		VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), registry, [])
 
 		var placed: Array[Vector3i] = []   # (source_id, atlas_x, atlas_y) per variant
 		for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):

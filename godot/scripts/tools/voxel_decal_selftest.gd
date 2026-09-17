@@ -337,10 +337,17 @@ func test_variant_selects_distinct_names() -> void:
 
 	## Round-trip through the Voxel, which is what the renderer actually reads.
 	## LEAK-CYCLE-01: the stub needs its own local. Voxel holds its container by
-	## instance id, so an inline _StubContainer.new() would be freed the moment
-	## the constructor returned and set_damage() would call into a dead object.
-	var stub := _StubContainer.new()
+	## instance id, so an inline Slab.new() would be freed the moment the
+	## constructor returned and set_damage() would call into a dead object.
+	## RENDER3D R3D-1d: a real `Slab` (not `_StubContainer`) so `VoxelStore.build()`
+	## has a real container to claim the voxel from — `Voxel` has no state of its own
+	## any more, so set_damage() below needs an active store.
+	var stub := Slab.new("STUB", Vector2i(0, 0), Slab.Role.FLOOR, 2, "concrete")
 	var voxel := Voxel.new(Vector2i(3, 4), 2, stub)
+	stub.voxels.append(voxel)
+	var stub_registry := SlabRegistry.new()
+	stub_registry.register_slab(stub)
+	VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), stub_registry, [])
 	voxel.set_damage(Voxel.DamageState.DENTED, false, Voxel.CarvedSide.RIGHT, 2)
 	if voxel.damage_variant == 2:
 		_pass("Voxel.set_damage() stored variant 2")
@@ -530,16 +537,6 @@ func test_hole_only_materials_get_no_decal_family() -> void:
 		_fail("a hole-only material composed a variant decal name: %s" % ", ".join(composed))
 
 	print("")
-
-
-## Voxel needs a container for dirty propagation; this is the minimum contract
-## it actually calls (see Voxel._parent_container_id's own doc). LEAK-CYCLE-01:
-## a Voxel does NOT keep its container alive, so callers must hold the stub in a
-## named local for as long as they touch the voxel.
-class _StubContainer:
-	var id: String = "STUB"
-	func increment_dirty() -> void: pass
-	func decrement_dirty() -> void: pass
 
 
 ## MAT-COHERENCE-01 (Director, 2026-09-01: *"tem alguns materiais que não ficam

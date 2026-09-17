@@ -28,6 +28,7 @@ func _init() -> void:
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
 	print("=".repeat(70) + "\n")
 
+	VoxelStore.active = null
 	if failed == 0:
 		print("✓ FIXED FLOOR SELFTEST PASS\n")
 		quit(0)
@@ -160,6 +161,10 @@ func test_full_d13_stack_top_destructible_rest_fixed() -> void:
 	# Top: real Slab, destructible.
 	var top_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, stack_top, "earth", registry)
 	renderer.render_slab(top_slab)
+
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — the `set_damage()` call below
+	## needs an active store built over this fixture's registry.
+	VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), registry, [])
 
 	# The other 7: fixed, no Slab.
 	for level in range(stack_bottom, stack_top):

@@ -141,6 +141,10 @@ func test_each_roof_level_independently_destructible() -> void:
 	var roof_mid := SlabGenerator.generate(gu, Slab.Role.CEILING, CEILING_LEVEL + 1, "concrete", registry)
 	var roof_hi := SlabGenerator.generate(gu, Slab.Role.CEILING, CEILING_LEVEL + 2, "concrete", registry)
 
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — set_damage() below needs an
+	## active store built over this fixture's registry.
+	VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), registry, [])
+
 	roof_mid.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
 
 	if roof_mid.dirty_count == 1 and roof_lo.dirty_count == 0 and roof_hi.dirty_count == 0:

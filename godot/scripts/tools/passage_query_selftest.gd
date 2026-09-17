@@ -70,6 +70,9 @@ func _wall(storeys: int) -> Dictionary:
 	var edge := Edge.between(Vector2i(0, 0), Vector2i(0, 1), storeys, "concrete")
 	SliceGenerator.generate([edge], registry)
 	_fixtures.append(registry)
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — `_clear_storey_face()`'s
+	## set_damage() needs an active store built over this fixture's registry.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	return {"edge": edge, "registry": registry}
 
 
@@ -290,6 +293,9 @@ func test_half_thickness_edge_opens_on_its_only_face() -> void:
 	var edge := Edge.between(Vector2i(0, 0), Vector2i(0, 1), 2, "fabric")
 	SliceGenerator.generate([edge], registry)
 	_fixtures.append(registry)
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — `_clear_storey_face()`'s
+	## set_damage() needs an active store built over this fixture's registry.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var lone: Slice = registry.get_slice(edge.slice_a_id)
 	registry._slices.erase(edge.slice_b_id)
 	edge.slice_b_id = ""
@@ -358,6 +364,9 @@ func test_glass_blocks_the_body_until_it_breaks() -> void:
 	var edge := Edge.between(Vector2i(0, 0), Vector2i(0, 1), 1, "glass")
 	SliceGenerator.generate([edge], registry)
 	_fixtures.append(registry)
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — `_clear_storey_face()`'s
+	## set_damage() needs an active store built over this fixture's registry.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	for sl in registry.slices_of_edge(edge.id):
 		sl.pane_id = "PANE_TEST"
 

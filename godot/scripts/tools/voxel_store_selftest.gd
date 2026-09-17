@@ -128,6 +128,10 @@ func test_build_matches_objects(fixture: Dictionary, store: VoxelStore) -> void:
 
 
 func test_write_mirrors(fixture: Dictionary, store: VoxelStore) -> void:
+	## RENDER3D R3D-1d: `Voxel.set_damage()` writes straight into `VoxelStore` now —
+	## there is no separate shadow-mirror step to count, so this no longer checks
+	## `writes_mirrored` (that counter now only moves through `store.mirror()` called
+	## directly, exercised below in test_unplaceable_writes_counted).
 	var slab: Slab = fixture["slab"]
 	var v: Voxel = slab.voxels[3]
 	v.set_damage(Voxel.DamageState.DESTROYED, true, Voxel.CarvedSide.NONE, 2, 1)
@@ -135,11 +139,11 @@ func test_write_mirrors(fixture: Dictionary, store: VoxelStore) -> void:
 	var claim: int = store.claim_of(v)
 	var ok: bool = claim >= 0 and store.state[claim] == VoxelStore.state_byte(v) \
 		and store.aux[claim] == (2 | (1 << 4)) and store.occ[cell] == 0 \
-		and store.writes_mirrored == 1 and store.grid_mismatches() == 0 \
+		and store.grid_mismatches() == 0 \
 		and _dumps_identical(fixture, store, "t2")
-	_check(ok, "[TEST 2] a destroy lands in the store: state %d, aux %d, occupied %d, mirrored %d — dump identical"
+	_check(ok, "[TEST 2] a destroy lands in the store: state %d, aux %d, occupied %d — dump identical"
 		% [store.state[claim] if claim >= 0 else -1, store.aux[claim] if claim >= 0 else -1,
-		store.occ[cell], store.writes_mirrored])
+		store.occ[cell]])
 
 
 func test_collision_ownership(fixture: Dictionary, store: VoxelStore) -> void:
@@ -177,18 +181,30 @@ func test_irregular_write(fixture: Dictionary, store: VoxelStore) -> void:
 
 
 func test_unplaceable_writes_counted(store: VoxelStore) -> void:
+	## RENDER3D R3D-1d: `Voxel.set_damage()` is no longer how a write reaches
+	## `mirror()` — it writes through `claim` directly and refuses (push_error, no
+	## state change) when `claim < 0`, exactly what `lost` and `projection` are.
+	## `mirror()` itself is exercised directly here — the entry point the OLD shadow
+	## write path used, kept as `BoardProbe`'s own drift check, still countable on
+	## demand.
 	var stranger := Slab.new("SLAB_9_9_FLOOR_79", Vector2i(9, 9), Slab.Role.FLOOR, 79, "concrete")
 	var lost := Voxel.new(Vector2i(72, 72), 79, stranger)
 	stranger.voxels.append(lost)
-	## A projection has no container, and `set_damage()` on one dies on the null container
-	## by design (voxel.gd) — so the store's own entry point is called, as the setter would.
+	var lost_claim_before: int = lost.claim
+	lost.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+	var refused: bool = lost.claim == lost_claim_before and lost.claim < 0 \
+		and lost.damage_state == Voxel.DamageState.INTACT
+
+	## A projection has no container, and `mirror()` skips it without counting
+	## (voxel.gd's container_id() == 0 guard) — never a "we lost this write" case.
 	var projection := Voxel.new(Vector2i(8, 8), 79, null)
 	projection.damage_state = Voxel.DamageState.DESTROYED
 	var mirrored_before: int = store.writes_mirrored
-	lost.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+	store.mirror(lost)
 	store.mirror(projection)
-	var ok: bool = store.writes_unknown_container == 1 and store.writes_mirrored == mirrored_before
-	_check(ok, "[TEST 5] a voxel of an unknown container is counted (%d); a projection is skipped (mirrored %d → %d)"
+	var ok: bool = refused and store.writes_unknown_container == 1 \
+		and store.writes_mirrored == mirrored_before
+	_check(ok, "[TEST 5] set_damage() on an unclaimed voxel refuses loudly (no state change); mirror() still counts it (%d); a projection is skipped (mirrored %d → %d)"
 		% [store.writes_unknown_container, mirrored_before, store.writes_mirrored])
 
 

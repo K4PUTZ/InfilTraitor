@@ -327,6 +327,16 @@ func _pane(gx_lo: int, gx_hi: int, storeys: int, material: String = "glass") -> 
 	return slices
 
 
+## RENDER3D R3D-1d: `Voxel` has no state of its own — every `set_damage()`/
+## `set_visible()` call in this file needs an active `VoxelStore` built over the exact
+## fixture slices it wrote voxels into.
+func _activate_store(slices: Array) -> void:
+	var edge_registry := EdgeRegistry.new()
+	for slice in slices:
+		edge_registry.register_slice(slice)
+	VoxelStore.active = VoxelStore.build(edge_registry, SlabRegistry.new(), [])
+
+
 func test_plan_pane_crack_marks_standing_glass_in_radius() -> void:
 	print("[4] plan_pane_crack marks the standing glass inside the crack radius\n")
 
@@ -378,6 +388,9 @@ func test_plan_pane_crack_skips_destroyed_and_banded_frame() -> void:
 
 	var full: int = GlassCrackClass.plan_pane_crack(pane, Face.SW, hit, hit_level, true).cells.size()
 
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — set_damage() below needs
+	## an active store built over this fixture.
+	_activate_store(pane)
 	## Punch a hole: DESTROY a 3×3 block around the hit.
 	for s in pane:
 		for v in s.voxels:
@@ -572,6 +585,9 @@ func test_apply_spawns_a_sprite_and_gd24_crosses() -> void:
 	print("[9] GlassCrack.apply spawns ONE crack; a covered cell is DESTROYED (G-D24)\n")
 
 	var pane := _pane(4, 9, 3)
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — `GlassCrack.apply()`'s
+	## set_damage() calls below need an active store built over this fixture.
+	_activate_store(pane)
 	var base: int = GeometryCoordsClass.storey_level_base(0)
 	var mock := MockRenderer.new()
 

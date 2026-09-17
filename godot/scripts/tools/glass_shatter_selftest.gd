@@ -302,7 +302,18 @@ func _count_visible(slices: Array) -> int:
 	return n
 
 
+## RENDER3D R3D-1d: `Voxel` has no state of its own — every `set_damage()`/
+## `set_visible()` call in this file needs an active `VoxelStore` built over the exact
+## fixture slices it wrote voxels into.
+func _activate_store(slices: Array) -> void:
+	var edge_registry := EdgeRegistry.new()
+	for slice in slices:
+		edge_registry.register_slice(slice)
+	VoxelStore.active = VoxelStore.build(edge_registry, SlabRegistry.new(), [])
+
+
 func _apply(slices: Array, plan: Array) -> void:
+	_activate_store(slices)
 	for e in plan:
 		var s: Slice = e["slice"]
 		s.voxels[int(e["voxel_index"])].set_damage(Voxel.DamageState.DESTROYED, false, 0, 0, 0)
@@ -702,6 +713,7 @@ func test_local_hole_does_not_wall_off_the_flood() -> void:
 	## radius 1 is all it takes (the real map measured 0 of 8 neighbours surviving)
 	## and it is the SMALLEST hole a rifle-class round makes.
 	var holed := _pane(7, 12, 3)
+	_activate_store(holed)
 	var punched: int = 0
 	for s in holed:
 		for v in s.voxels:
@@ -772,19 +784,23 @@ func test_armored_takes_the_whole_pane_and_leaves_fewer_remnants() -> void:
 	## Remnants: same salt, same anchors, so only the class differs. Compared on
 	## a FULL win for both, or the plain pane's survivors would include everything
 	## its smaller region never reached.
+	## RENDER3D R3D-1d: `Voxel` reads through the ONE active `VoxelStore` — two
+	## fixtures cannot stay live at once, so each is applied AND counted before the
+	## other's `_apply()` swaps `VoxelStore.active` out from under it.
 	var plain_full := _pane(7, 12, 3)
 	var plain_full_world: Array = plain_full.duplicate()
 	plain_full_world.append(_wall(13, 3))
 	var pfa := GlassShatterClass.collect_anchor_positions(plain_full, Face.SW, plain_full_world)
 	_apply(plain_full, _destroyed(GlassShatterClass.plan_pane_shatter(plain_full, Face.SW,
 		Vector2i(mid_col, 0), mid_lvl, 9.0, "ARM:rem", pfa)))
+	var plain_left: int = _count_visible(plain_full)
+
 	var armored_full := _pane(7, 12, 3, "glass_armored")
 	var armored_full_world: Array = armored_full.duplicate()
 	armored_full_world.append(_wall(13, 3))
 	var afa := GlassShatterClass.collect_anchor_positions(armored_full, Face.SW, armored_full_world)
 	_apply(armored_full, _destroyed(GlassShatterClass.plan_pane_shatter(armored_full, Face.SW,
 		Vector2i(mid_col, 0), mid_lvl, 9.0, "ARM:rem", afa)))
-	var plain_left: int = _count_visible(plain_full)
 	var armored_left: int = _count_visible(armored_full)
 	print("      full win, same salt: plain leaves %d remnant(s), armoured leaves %d"
 		% [plain_left, armored_left])
@@ -1163,6 +1179,7 @@ func test_a_pane_the_blast_does_not_take_crazes() -> void:
 			if GlassMaterials.is_glass(s.material_at(v.level - base)):
 				glass_total += 1
 	## One voxel destroyed and one already cracked — neither may be returned.
+	_activate_store(banded)
 	banded[0].voxels[40].set_damage(Voxel.DamageState.DESTROYED, false, 0, 0, 0)
 	banded[0].voxels[41].set_damage(Voxel.DamageState.CRACKED, false, 0, 0, 0)
 	var craze: Array = GlassShatterClass.plan_pane_craze(banded)
@@ -1420,6 +1437,7 @@ func test_a_remnant_is_orphaned_when_its_frame_is_destroyed() -> void:
 	var wall := _wall(5, 1)
 	var world: Array = pane.duplicate()
 	world.append(wall)
+	_activate_store(world)
 	var res: Dictionary = GlassShatterClass.plan_pane_shatter(pane, Face.SW, hit,
 		base + 3, 3.75, "ORPHAN:1",
 		GlassShatterClass.collect_anchor_positions(pane, Face.SW, world))

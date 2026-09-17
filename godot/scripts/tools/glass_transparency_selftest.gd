@@ -223,6 +223,9 @@ func test_side_sliver_only_where_exposed() -> void:
 	_fixtures.append(b)
 	registry.register_slice(b)
 	r.render(registry)
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — `b0.set_damage()` below
+	## needs an active store built over this fixture's registry.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 
 	var gpane: TileMapLayer = r._glass_layers.get(level)
 	var sw: Dictionary = r._glass_atom_source.get(GlassMaterials.BASE, {}).get(Face.SW, {})
@@ -257,6 +260,10 @@ func test_side_sliver_only_where_exposed() -> void:
 	else:
 		_fail("x31 mask %d after x32 was destroyed — the hole edge on the seam has no thickness until the next full render" % m31)
 	r.queue_free()
+	## RENDER3D R3D-1d: `VoxelStore.active` is process-global — leaving this
+	## fixture's store active would feed later tests' `build_occupancy()` calls
+	## stale claims from a different registry.
+	VoxelStore.active = null
 	print("")
 
 

@@ -358,6 +358,8 @@ func test_metal_container_produces_cracked_not_destroyed() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 1, "metal")]
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var slice: Slice = registry.get_slice("SLICE_0_0_SE")
 	if slice == null:
 		_fail("Could not resolve synthetic metal Slice (id lookup mismatch — check Face/Edge canon)")
@@ -398,6 +400,8 @@ func test_damage_tiers_are_mutually_exclusive() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 1, "concrete")]
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var slice: Slice = registry.get_slice("SLICE_0_0_SE")
 	if slice == null:
 		_fail("Could not resolve synthetic concrete Slice (id lookup mismatch — check Face/Edge canon)")
@@ -433,6 +437,8 @@ func test_wood_container_mostly_destroyed_at_ring_zero() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 1, "wood")]
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var slice: Slice = registry.get_slice("SLICE_0_0_SE")
 	if slice == null:
 		_fail("Could not resolve synthetic wood Slice")
@@ -487,6 +493,8 @@ func test_ring_beyond_range_untouched() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 3, "wood")]  # 3 storeys tall
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var slice: Slice = registry.get_slice("SLICE_0_0_SE")
 
 	# base_ring=0, is_roof=false -> storey 0 is ring 0, storey 2 is ring 2.
@@ -683,6 +691,7 @@ func test_crater_core_solid_rim_ragged_beyond_intact() -> void:
 	var voxels: Array = []
 	for x in range(25):
 		voxels.append(VoxelClass.new(Vector2i(x, 0), 0, slab))
+	_activate_store_over({slab: voxels})
 	var epicenter := Vector2i(0, 0)
 	BlastCalculatorClass.apply_crater_damage(voxels, slab.id, epicenter, 7.0, 17.0)
 
@@ -736,6 +745,9 @@ func test_crater_dents_rim_and_band_by_material() -> void:
 		for x in range(28):
 			for y in range(28):
 				out.append(VoxelClass.new(Vector2i(x, y), 0, slab))
+		## RENDER3D R3D-1d: a fresh store per patch — each call is a brand new
+		## dummy Slab, and `apply_crater_damage()` below needs an active claim.
+		_activate_store_over({slab: out})
 		return out
 
 	var count_states := func(voxels: Array) -> Dictionary:
@@ -797,11 +809,14 @@ func test_crater_dents_rim_and_band_by_material() -> void:
 	## values — this stays property-based anyway, because it is the stronger
 	## assertion and the tie case is a real invariant of the hash selection,
 	## not a workaround for one table.
+	## RENDER3D R3D-1d: `Voxel` reads through the ONE active `VoxelStore` — each
+	## `make_patch.call()` swaps it, so metal must be counted before concrete's
+	## patch activates its own store underneath it.
 	var metal: Array = make_patch.call()
 	BlastCalculatorClass.apply_crater_damage(metal, "DENT_PATCH", epicenter, CORE, MAX_R, "metal")
+	var m: int = count_states.call(metal)["dents"]
 	var concrete: Array = make_patch.call()
 	BlastCalculatorClass.apply_crater_damage(concrete, "DENT_PATCH", epicenter, CORE, MAX_R, "concrete")
-	var m: int = count_states.call(metal)["dents"]
 	var e: int = earth_stats["dents"]
 	var c: int = count_states.call(concrete)["dents"]
 	var mf: float = MaterialResistanceTableClass.dent_factor("metal")
@@ -1086,6 +1101,8 @@ func test_ring3_reached_but_zero_weighted() -> void:
 	## 4 storeys tall (32 levels) so vertical_ring reaches exactly 3 at levels 24..31.
 	var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 4, "concrete")]
 	SliceGenerator.generate(edges, edge_registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(edge_registry, SlabRegistry.new(), [])
 	var slice: Slice = edge_registry.get_slice("SLICE_0_0_SE")
 	if slice == null:
 		_fail("Could not resolve synthetic concrete Slice")
@@ -1130,6 +1147,8 @@ func test_vertical_falloff_identical_for_wall_and_roof() -> void:
 		var registry := EdgeRegistry.new()
 		var edges: Array = [Edge.between(Vector2i(0, 0), Vector2i(1, 0), 2, "concrete")]
 		SliceGenerator.generate(edges, registry)
+		## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+		VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 		var slice: Slice = registry.get_slice("SLICE_0_0_SE")
 		if slice == null:
 			_fail("Could not resolve synthetic concrete Slice (is_roof=%s)" % is_roof)
@@ -1168,10 +1187,17 @@ func test_roof_two_levels_same_ring_group() -> void:
 	var slab_a := Slab.new("ROOF_TEST_L0", Vector2i(9, 9), Slab.Role.CEILING, 0, "concrete")
 	var slab_b := Slab.new("ROOF_TEST_L1", Vector2i(9, 9), Slab.Role.CEILING, 1, "concrete")
 	var voxels: Array = []
+	var voxels_a: Array = []
+	var voxels_b: Array = []
 	for x in range(10):
 		for y in range(10):
-			voxels.append(VoxelClass.new(Vector2i(x, y), 0, slab_a))
-			voxels.append(VoxelClass.new(Vector2i(x, y), 1, slab_b))
+			var va := VoxelClass.new(Vector2i(x, y), 0, slab_a)
+			var vb := VoxelClass.new(Vector2i(x, y), 1, slab_b)
+			voxels.append(va)
+			voxels.append(vb)
+			voxels_a.append(va)
+			voxels_b.append(vb)
+	_activate_store_over({slab_a: voxels_a, slab_b: voxels_b})
 
 	## ring_multipliers/weights sized 2: ring 0 destroys everything, ring 1
 	## destroys nothing — a real roof's two levels must land ENTIRELY in
@@ -1214,16 +1240,18 @@ func test_crater_dent_varies_by_real_floor_material_wood_vs_concrete() -> void:
 		for x in range(28):
 			for y in range(28):
 				out.append(VoxelClass.new(Vector2i(x, y), 0, slab))
+		_activate_store_over({slab: out})
 		return out
 
+	## RENDER3D R3D-1d: each make_patch.call() swaps the one active store, so
+	## wood must be counted before concrete's patch activates its own.
 	var wood: Array = make_patch.call("wood")
 	BlastCalculatorClass.apply_crater_damage(wood, "WOOD_FLOOR_TEST", epicenter, CORE, MAX_R, "wood")
-	var concrete: Array = make_patch.call("concrete")
-	BlastCalculatorClass.apply_crater_damage(concrete, "WOOD_FLOOR_TEST", epicenter, CORE, MAX_R, "concrete")
-
 	var w: int = 0
 	for v in wood:
 		if v.damage_state == Voxel.DamageState.DENTED: w += 1
+	var concrete: Array = make_patch.call("concrete")
+	BlastCalculatorClass.apply_crater_damage(concrete, "WOOD_FLOOR_TEST", epicenter, CORE, MAX_R, "concrete")
 	var c: int = 0
 	for v in concrete:
 		if v.damage_state == Voxel.DamageState.DENTED: c += 1
@@ -1257,6 +1285,7 @@ func test_deep_layer_gate_blocks_floor_deep_level() -> void:
 		for x in range(10):
 			for y in range(10):
 				out.append(VoxelClass.new(Vector2i(x, y), GeometryCoords.FLOOR_DEEP_LEVEL, slab))
+		_activate_store_over({slab: out})
 		return out
 
 	var locked: Array = make_deep_patch.call()
@@ -1300,14 +1329,16 @@ func test_slab_pierce_multiplier_scales_destruction() -> void:
 		for x in range(20):
 			for y in range(20):
 				out.append(VoxelClass.new(Vector2i(x, y), 0, slab))
+		_activate_store_over({slab: out})
 		return out
 
+	## RENDER3D R3D-1d: each make_patch.call() swaps the one active store, so
+	## base must be counted before pierced's patch activates its own.
 	var base: Array = make_patch.call()
 	BlastCalculatorClass.apply_crater_damage(base, "PIERCE_TEST", epicenter, 4.0, 14.0, "", false, 1.0)
+	var base_destroyed := _count_destroyed(base)
 	var pierced: Array = make_patch.call()
 	BlastCalculatorClass.apply_crater_damage(pierced, "PIERCE_TEST", epicenter, 4.0, 14.0, "", false, 3.0)
-
-	var base_destroyed := _count_destroyed(base)
 	var pierced_destroyed := _count_destroyed(pierced)
 
 	if pierced_destroyed > base_destroyed:
@@ -1334,12 +1365,36 @@ func _count_destroyed(voxels: Array) -> int:
 	return n
 
 
+## RENDER3D R3D-1d: `Voxel` has no state of its own — every `set_damage()`/
+## `set_visible()` call on a hand-built fixture needs an active store built over the
+## real container(s) those voxels claim. `slabs` maps each dummy `Slab` to the exact
+## voxel array this test constructed for it (which this also copies into
+## `slab.voxels`, since most of these fixtures never did).
+func _activate_store_over(slabs: Dictionary) -> void:
+	var registry := SlabRegistry.new()
+	for slab: Slab in slabs:
+		var voxels: Array = slabs[slab]
+		if slab.voxels.is_empty():
+			for v in voxels:
+				slab.voxels.append(v)
+		registry.register_slab(slab)
+	VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), registry, [])
+
+
 func _synthetic_voxels(count: int) -> Array:
 	var voxels: Array = []
 	var slab := Slab.new("DUMMY", Vector2i.ZERO, Slab.Role.FLOOR, -1, "earth")
 	_fixture_slabs.append(slab)
 	for i in range(count):
-		voxels.append(Voxel.new(Vector2i(i, 0), i, slab))
+		var v := Voxel.new(Vector2i(i, 0), i, slab)
+		slab.voxels.append(v)
+		voxels.append(v)
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — every `set_damage()`/
+	## `set_visible()` call on these synthetic voxels needs an active store built
+	## over this one-off dummy Slab.
+	var registry := SlabRegistry.new()
+	registry.register_slab(slab)
+	VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), registry, [])
 	return voxels
 
 
@@ -1366,6 +1421,8 @@ func _wide_wall_registry(row_near: int, row_far: int, x_from: int, x_to: int, ma
 	for x in range(x_from, x_to + 1):
 		edges.append(Edge.between(Vector2i(x, row_near), Vector2i(x, row_far), 1, material))
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	return registry
 
 
@@ -1428,6 +1485,8 @@ func test_pellet_does_not_detour_around_narrow_obstacle() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "metal")]
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 
 	var edge_blocked: Dictionary = {WallEdgeData.edge_key(Vector2i(5, 2), Vector2i(5, 1)): true}
 	var picks_edge := BlastCalculatorClass.select_cone_pellet_impacts(
@@ -1454,6 +1513,8 @@ func test_point_impact_marks_only_the_impact_voxel() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "wood")]
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var slice: Slice = registry.get_slice("SLICE_5_2_NE")
 	if slice == null:
 		_fail("Could not resolve synthetic wood Slice (id lookup mismatch)")
@@ -1490,6 +1551,8 @@ func test_point_impact_neighbour_ladder() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "wood")]
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var counts: Array = []
 	for punch in [0.8, 1.0, 1.5, 2.0, 2.5, 4.0]:
 		var slice: Slice = registry.get_slice("SLICE_5_2_NE")
@@ -1522,6 +1585,8 @@ func test_point_impact_cascades_only_on_full_destroy() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "metal")]
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var slice: Slice = registry.get_slice("SLICE_5_2_NE")
 	var sib := registry.sibling_slice(slice.id)
 	if slice == null or sib == null:
@@ -1602,6 +1667,8 @@ func test_point_impact_never_re_marks_an_existing_hole() -> void:
 	var registry := EdgeRegistry.new()
 	var edges: Array = [Edge.between(Vector2i(9, 1), Vector2i(9, 2), 1, "wood")]
 	SliceGenerator.generate(edges, registry)
+	## RENDER3D R3D-1d: Voxel has no state of its own; set_damage() below needs an active store.
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 	var slice: Slice = registry.get_slice("SLICE_9_2_NE")
 	var sib := registry.sibling_slice(slice.id)
 	if slice == null or sib == null:
@@ -2180,6 +2247,7 @@ func test_apply_self_soot_fills_in_when_nothing_stronger_exists() -> void:
 
 	var slab := Slab.new("SOOT_SELF_LONE", Vector2i.ZERO, Slab.Role.FLOOR, 0, "metal")
 	var v := VoxelClass.new(Vector2i(5, 5), 0, slab)
+	_activate_store_over({slab: [v]})
 	v.set_damage(Voxel.DamageState.DENTED, false, Voxel.CarvedSide.RIGHT, 0)
 
 	var snapshot: Dictionary = {}
@@ -2423,6 +2491,11 @@ func _crater_patch(slab_id: String, material: String) -> Array:
 	for x in range(28):
 		for y in range(28):
 			out.append(VoxelClass.new(Vector2i(x, y), 0, slab))
+	## RENDER3D R3D-1d: a fresh store per patch — each call is a brand new dummy
+	## Slab, and callers apply damage right after this returns. Any caller that
+	## builds TWO patches before reading either must count the first before
+	## calling this again (it swaps the one active store).
+	_activate_store_over({slab: out})
 	return out
 
 

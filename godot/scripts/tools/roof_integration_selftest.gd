@@ -257,6 +257,10 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 	var sample_slab_id := "SLAB_%d_%d_%s_%d" % [sample_gu.x, sample_gu.y, Slab.role_name(Slab.Role.CEILING), sample_level]
 	var sample_slab: Slab = room._slab_registry.get_slab(sample_slab_id)
 	if sample_slab != null:
+		## RENDER3D R3D-1d: `Voxel` has no state of its own — set_damage() below needs
+		## an active store built over the real registries `builder` just filled.
+		VoxelStore.active = VoxelStore.build(room._edge_registry, room._slab_registry,
+			room._junction_columns)
 		sample_slab.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
 		if sample_slab.dirty_count == 1 and room._slab_registry.dirty_slabs().size() == 1:
 			_pass("A real roof Slab from the actual map is independently destructible (damaged 1/64 voxels, dirty_count=1)")

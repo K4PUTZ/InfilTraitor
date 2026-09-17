@@ -115,6 +115,10 @@ func _build_playground() -> Dictionary:
 	builder.setup(floor_layer, structure_layer, TileSet.new())
 	builder.build_registry(floor_tileset)
 	builder.build_from_layout(layout, layout.get("size", Vector2i.ZERO))
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — the `set_damage()` calls in
+	## test [2] and [5] below need an active store built over these real registries.
+	VoxelStore.active = VoxelStore.build(room._edge_registry, room._slab_registry,
+		room._junction_columns)
 	return {"room": room, "renderer": voxel_renderer, "builder": builder, "layout": layout}
 
 

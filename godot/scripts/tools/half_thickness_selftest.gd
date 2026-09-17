@@ -228,6 +228,9 @@ func test_passage_opens_on_the_only_face() -> void:
 	else:
 		_fail("intact panel → %s" % PassageQueryClass.class_name_of(before))
 
+	## RENDER3D R3D-1d: `Voxel` has no state of its own — set_damage() below needs an
+	## active store built over this fixture's registry.
+	VoxelStore.active = VoxelStore.build(fx["registry"], SlabRegistry.new(), [])
 	for voxel in lone.voxels:
 		if int(floor(float(voxel.level) / float(GeometryCoords.LEVELS_PER_STOREY))) \
 				== GeometryCoords.PLAYABLE_STOREY:

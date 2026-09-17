@@ -1,11 +1,11 @@
 # RENDER3D_MASTER_PLAN
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.6
 
-**Status:** 🟡 **R3D-1b GATED 2026-09-16: the packed `VoxelStore` runs in shadow and holds
-exactly what the objects hold.** It is behind `VOXEL_STORE=1`, and `board_probe.py shadow`
-passes on PLAYGROUND (10 stages) and GLASS (9). The Director confirmed layout B (R3D-1a)
-the same day. R3D-0 closed on its gate that day too, and the direction was ratified on
-2026-09-15.
+**Status:** 🟡 **R3D-1d CLOSED 2026-09-17: `VoxelStore` is the writer, `Voxel` is a thin
+`claim:int` wrapper, and the Moto remeasure confirms the win.** R3D-0/1a/1b/1c closed in
+turn from 2026-09-15 to 2026-09-16 (packed store built, layout B confirmed, shadow
+gated, all five readers moved onto the store); R3D-1d step 1 (2026-09-17) removed the
+objects themselves. Full narrative below and in the revision history.
 - **R3D-1b:** at every stage the objects' dump and the store's are identical. The derived
   grid matches, no write is lost, and the flag changes 0 px.
 - **R3D-1a:** on the Moto, B is fastest on all three hot readers, and uses 13.5 MB against
@@ -60,10 +60,38 @@ the same day. R3D-0 closed on its gate that day too, and the direction was ratif
   fork per caller). `WorldDelta`'s own plan/Delta keys (Step 3's actual target) are the
   same story: R3D-2 re-keys the plan and `WorldDelta` around a render-neutral store
   read anyway, so this rides along with that redesign instead of doing it twice.
-- **Next:** R3D-1d step 5 — remeasure the Moto against §1's baseline now that the
-  objects are thin wrappers, and time the light field build / prediction WALK
-  before/after. **Blocked in an agent session with no `adb`/device access** — needs the
-  Director to run `device_run.py --mem-poll` (or hand the session a connected device).
+- **R3D-1d step 5 MEASURED (2026-09-17), Moto g04s, `com.example.infiltraitor`, the
+  same `alloc objects|packed|bytes <count>` scenario instrument R3D-0 used
+  (§15.18.1).** 3 single boots (not R3D-0's 16 interleaved — the Director connected the
+  device mid-session; a tight median would need more runs):
+
+  | run | `alloc packed 215432` (control, ~0.82 MB expected) | `alloc objects 215432` |
+  |---|---|---|
+  | b | +0.83 MB | **+87.2 MB** |
+  | c | +0.85 MB | **+140.2 MB** |
+  | d | +0.84 MB | **+100.4 MB** |
+
+  - The control reads +0.83–0.85 MB every run — the instrument is calibrated, same as
+    R3D-0.
+  - **215 432 thin `Voxel` wrappers cost 87–140 MB, median ~100 MB (~424–682 B each,
+    median ~465 B) — against R3D-0's ~190 MB / ~925 B for the old object.** Roughly
+    half. PLAYGROUND's 216 104 voxels now cost an estimated ~90–100 MB on the device
+    instead of ~191 MB, which is the real number R3D-1a's decision rested on.
+  - The spread (87–140 MB) is real run-to-run variance on a single boot each, not
+    measurement error in either direction — R3D-0 hit the same zram-compression
+    confound (§15.18.1's own note) and used 16 interleaved boots to median through it.
+    This is a confirmatory remeasure, not a new headline number to re-cite elsewhere.
+  - **Hot-loop risk (packed-array access vs. object field read) not adversely
+    measured:** one PLAYGROUND grenade detonation (`RNG_SEED=1`, 4 dev-seeded
+    grenades, `EVENT_FRAMES=1`) ran 220 frames / 20.1 s wall clock, mean 91.3 ms, worst
+    298.3 ms — same order as R3D-1c step 5's closing table (18.0–18.4 s per grenade,
+    22.9–23.3 ms idle), not an exact A/B (different grenade seed/count, one boot, no
+    interleaving) so not diffable line-for-line against that table, but no regression
+    signal.
+  - Logs (local, not tracked): `/tmp/r3d1d_step1_memcheck_{b,c,d}.log`,
+    `/tmp/r3d1d_step1_grenade2.log`.
+- **Next:** R3D-1d is closed at step 1 (steps 2-4 deferred to R3D-2, step 5 measured
+  above) — proceed to R3D-2.
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -1024,9 +1052,12 @@ caller is exactly the drift risk that file's own header warns against. R3D-2 re-
 the plan and `WorldDelta` around a render-neutral store read anyway, so this rides
 along with that redesign instead of paying for it twice.
 
-**Step 5 — the Moto remeasure — is next, and is BLOCKED in an agent session with no
-`adb`/device access.** Needs `device_run.py --mem-poll` run by the Director, or a
-connected device handed to the session.
+**Step 5 — the Moto remeasure — MEASURED (2026-09-17), device connected mid-session.**
+See the status block above for the full table. 215 432 thin `Voxel` wrappers cost
+87–140 MB (median ~100 MB) against R3D-0's ~190 MB for the old object — roughly half,
+across 3 single boots (not R3D-0's 16 interleaved). One PLAYGROUND grenade detonation
+showed no hot-loop regression signal against R3D-1c step 5's numbers. **R3D-1d is
+closed** at this point — steps 2-4 stay deferred to R3D-2 (see the status block).
 
 **Risks, and how each is caught:**
 - **Packed-array access in GDScript can be slower than an object field read in a hot
@@ -1368,4 +1399,7 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
     site, for memory that was never in that dict (tens of entries, not 215 432) — and
     would have to solve `detonation_plan_builder.gd`'s claim==-1 detached-projection
     case for no gain right now.
-  - Step 5 (the Moto remeasure) is next, blocked on device access in this session.
+  - Step 5 (the Moto remeasure), same session, device connected mid-session: 3 boots,
+    thin `Voxel` costs 87–140 MB (median ~100 MB) for 215 432 wrappers, against R3D-0's
+    ~190 MB — roughly half. One grenade detonation showed no hot-loop regression
+    signal. **R3D-1d closed.** Next: R3D-2.

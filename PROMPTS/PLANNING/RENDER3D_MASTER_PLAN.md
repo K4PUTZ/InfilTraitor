@@ -1176,7 +1176,24 @@ After this stage, no simulation or prediction code reads a tile.
     chunk means less unaffected geometry gets re-merged alongside the cells a blast
     actually touched. `CHUNK_VOXELS` default is now 16;
   - the remesh builds from a store snapshot on a `WorkerThreadPool` task and swaps in on
-    the main thread;
+    the main thread — **BUILT (2026-09-17).** `_collect_and_merge_chunk()` (pure data:
+    `SurfaceData` is a plain GDScript class of `Packed*Array`s, not a `Resource`, so
+    building it off-thread is safe) runs in the task; `_commit_chunk_mesh()`
+    (`ArrayMesh`/`MeshInstance3D`, scene-tree touch) stays on the main thread, polled from
+    `_process()`. Only one task is ever in flight — a request that arrives mid-task
+    coalesces into a queue instead of starting a second concurrent reader of `_store`.
+    Measured on the Moto: the background work itself is genuinely cheap (30.6 ms then
+    0.5 ms across both PLAYGROUND grenades) — the real win, since the old synchronous path
+    measured 108.4/104.4 ms (chunk 32) and 38.9/0.2 ms (chunk 16) added IN-LINE to
+    whichever frame ran it. ⚠️ **First pass conflated background compute time with poll
+    latency** (an 1100 ms "merge" that was actually the main thread not polling
+    `_process()` until a slow unrelated frame — this scene's own smoke/ember consequence
+    effects run 100–500 ms/frame independent of board3d) — fixed by timing merge inside
+    the task itself and reporting `poll-latency`/`background` separately in the
+    `[BOARD3D] remesh` line. The remaining poll latency (up to ~1 s in the worst sample)
+    is real but is the SAME pre-existing per-frame cost the synchronous path also ran
+    inside — threading does not fix that scene's own smoke/ember cost, it only stops
+    board3d's own remesh from adding to it inline;
   - recolour uploads only the levels and rows a change touched.
 - **Camera:** orthographic, D26's 30° down and 45° around.
   - An orthographic view pitched θ below the horizon foreshortens the ground by sin θ,

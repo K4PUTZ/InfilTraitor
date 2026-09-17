@@ -214,6 +214,21 @@ var _t_collect: int = 0
 var _t_merge: int = 0
 var _t_commit: int = 0
 
+## RENDER3D R3D-3 step 4 — the remesh's collect+merge phase (pure data, no scene-tree or
+## RenderingServer touch) runs on a `WorkerThreadPool` task; only the mesh commit (making
+## `ArrayMesh`/`MeshInstance3D` and adding them under `_geometry_root`) stays on the main
+## thread, in `_process()`. `-1` = idle. Only ONE remesh task is ever in flight: a request
+## that arrives while one is running is coalesced into `_remesh_queue` instead of starting
+## a second task, since both would read `_store`'s arrays while nothing else in this
+## turn-based model writes them mid-remesh — a second concurrent WRITER is the actual
+## hazard this avoids, not a second reader.
+var _remesh_task_id: int = -1
+var _remesh_result: Array = []  ## [{chunk, surfaces, faces, quads}], written by the task
+var _remesh_task_end_us: int = 0  ## set by the task itself, off-thread, when its loop ends
+var _remesh_meta: Dictionary = {}
+var _remesh_queue: Dictionary = {}  ## chunk -> true, merged into the next task on completion
+var _remesh_queue_meta: Dictionary = {}
+
 
 ## Build the whole board. `cell_to_world` is Room's own GU-centre → 2D world point
 ## (it carries VISUAL_GRID_OFFSET, which this file must never know).
@@ -223,7 +238,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_ground_level = GeometryCoords.PLAYABLE_LEVEL
 	var t0: int = Time.get_ticks_usec()
 	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
-	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "32")))
+	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
 	VERTICAL_SCALE = _read_vertical_scale(room)
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
 	_geometry_root = Node3D.new()
@@ -293,7 +308,19 @@ func _add_vscale_marker() -> void:
 	_geometry_root.add_child(marker)
 
 
+## Guards against the node leaving the tree (a map reload/rotation freeing this board to
+## build a fresh one) while a remesh task is still reading `self` on a background thread —
+## a background task holding an implicit `self` reference outliving this Node's free would
+## be a use-after-free. Blocks briefly only in that rare case; a normal frame never hits it.
+func _exit_tree() -> void:
+	if _remesh_task_id != -1:
+		WorkerThreadPool.wait_for_task_completion(_remesh_task_id)
+		_remesh_task_id = -1
+
+
 func _process(_delta: float) -> void:
+	if _remesh_task_id != -1 and WorkerThreadPool.is_task_completed(_remesh_task_id):
+		_finish_remesh_task()
 	if _camera == null or _room == null:
 		return
 	var cam2d: Camera2D = _room.camera
@@ -505,22 +532,91 @@ func on_blast_light(delta) -> void:
 	_sync_levels(levels, "light")
 
 
+## RENDER3D R3D-3 step 4 — queues a remesh on the `WorkerThreadPool`; never blocks the
+## caller. If a task is already in flight, the requested chunks are coalesced into
+## `_remesh_queue` and picked up the moment the running task finishes — never a second
+## concurrent task, since both would read `_store`'s arrays while this turn-based game
+## never writes them mid-remesh (a second concurrent WRITER is the hazard avoided, not a
+## second reader).
 func _remesh(chunks: Dictionary, reason: String, voxels: int, fold_ms: float) -> void:
+	if _remesh_task_id != -1:
+		for chunk: Vector2i in chunks:
+			_remesh_queue[chunk] = true
+		_remesh_queue_meta = {"reason": reason, "voxels": voxels, "fold_ms": fold_ms}
+		return
+	_start_remesh_task(chunks, reason, voxels, fold_ms)
+
+
+func _start_remesh_task(chunks: Dictionary, reason: String, voxels: int, fold_ms: float) -> void:
+	_remesh_meta = {"reason": reason, "voxels": voxels, "fold_ms": fold_ms,
+		"t0": Time.get_ticks_usec()}
+	_remesh_result = []
+	var chunk_list: Array = chunks.keys()
+	_remesh_task_id = WorkerThreadPool.add_task(
+		func() -> void: _remesh_task_body(chunk_list))
+
+
+## Runs OFF the main thread. Writes into `_remesh_result` (this `Board3DLive` instance
+## isn't touched by anything else while a task is in flight — `_remesh_task_id != -1`
+## blocks a second task, and nothing else in this turn-based model mutates the store mid-
+## remesh) and never touches the scene tree or a `RenderingServer` resource.
+func _remesh_task_body(chunk_list: Array) -> void:
+	for chunk: Vector2i in chunk_list:
+		var collected: Dictionary = _collect_and_merge_chunk(chunk)
+		_remesh_result.append({"chunk": chunk, "surfaces": collected["surfaces"],
+			"faces": collected["faces"], "quads": collected["quads"],
+			"collect_us": collected["collect_us"], "merge_us": collected["merge_us"]})
+	## Measured OFF-thread, so `_finish_remesh_task()` can tell real background work
+	## apart from however long the main thread took to notice `is_task_completed()` —
+	## the two were conflated the first time this shipped and made an ordinary poll
+	## delay read as an 1100 ms merge on the Moto (2026-09-17).
+	_remesh_task_end_us = Time.get_ticks_usec()
+
+
+## Called from `_process()` once `WorkerThreadPool.is_task_completed()` is true. Commits
+## every collected chunk's mesh on the main thread, prints the same line and records the
+## same telemetry event the synchronous path always has, then starts the queued
+## follow-up task if one coalesced while this one ran.
+func _finish_remesh_task() -> void:
+	WorkerThreadPool.wait_for_task_completion(_remesh_task_id)
+	_remesh_task_id = -1
 	_t_collect = 0
 	_t_merge = 0
 	_t_commit = 0
-	var t0: int = Time.get_ticks_usec()
 	var quads: int = 0
-	for chunk: Vector2i in chunks:
-		quads += _build_chunk(chunk).y
-	var mesh_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
-	print("[BOARD3D] remesh %s — %d chunk(s), %d quad(s), %d voxel(s) folded in %.1f ms, mesh %.1f ms (faces %.1f · merge %.1f · upload %.1f)"
-		% [reason, chunks.size(), quads, voxels, fold_ms, mesh_ms,
-		float(_t_collect) / 1000.0, float(_t_merge) / 1000.0, float(_t_commit) / 1000.0])
-	Telemetry.event("board3d.remesh", {"reason": reason, "chunks": chunks.size(),
+	var t_commit_start: int = Time.get_ticks_usec()
+	for entry: Dictionary in _remesh_result:
+		_commit_chunk_mesh(entry["chunk"], entry["surfaces"])
+		quads += int(entry["quads"])
+		_t_collect += int(entry["collect_us"])
+		_t_merge += int(entry["merge_us"])
+	var t3: int = Time.get_ticks_usec()
+	_t_commit = t3 - t_commit_start
+	## The background work's own span (accurate, timed on its own thread) vs however
+	## long the main thread took to poll and notice — reported separately so a busy
+	## main thread's poll delay is never mistaken for background cost.
+	var background_ms: float = float(_remesh_task_end_us - int(_remesh_meta["t0"])) / 1000.0
+	var poll_latency_ms: float = float(t_commit_start - _remesh_task_end_us) / 1000.0
+	var mesh_ms: float = float(t3 - int(_remesh_meta["t0"])) / 1000.0
+	var reason: String = str(_remesh_meta["reason"])
+	var voxels: int = int(_remesh_meta["voxels"])
+	var fold_ms: float = float(_remesh_meta["fold_ms"])
+	print("[BOARD3D] remesh %s — %d chunk(s), %d quad(s), %d voxel(s) folded in %.1f ms, mesh %.1f ms (faces %.1f · merge %.1f · upload %.1f · poll-latency %.1f) [threaded, background %.1f ms]"
+		% [reason, _remesh_result.size(), quads, voxels, fold_ms, mesh_ms,
+		float(_t_collect) / 1000.0, float(_t_merge) / 1000.0, float(_t_commit) / 1000.0,
+		poll_latency_ms, background_ms])
+	Telemetry.event("board3d.remesh", {"reason": reason, "chunks": _remesh_result.size(),
 		"quads": quads, "voxels": voxels, "fold_ms": fold_ms, "mesh_ms": mesh_ms,
 		"faces_ms": float(_t_collect) / 1000.0, "merge_ms": float(_t_merge) / 1000.0,
-		"upload_ms": float(_t_commit) / 1000.0})
+		"upload_ms": float(_t_commit) / 1000.0, "poll_latency_ms": poll_latency_ms,
+		"background_ms": background_ms, "threaded": true})
+	if not _remesh_queue.is_empty():
+		var next_chunks: Dictionary = _remesh_queue
+		var next_meta: Dictionary = _remesh_queue_meta
+		_remesh_queue = {}
+		_remesh_queue_meta = {}
+		_start_remesh_task(next_chunks, str(next_meta.get("reason", "commit")),
+			int(next_meta.get("voxels", 0)), float(next_meta.get("fold_ms", 0.0)))
 
 
 func _chunk_of(key: Vector3i) -> Vector2i:
@@ -628,8 +724,27 @@ func _material_for(voxel: Voxel) -> String:
 
 # ── meshing ───────────────────────────────────────────────────────────────────
 
+## Synchronous collect+merge+commit — used by the initial full build (`build()`'s own
+## loop over every chunk at load, not latency-sensitive the way a mid-game blast is).
 ## Returns Vector2i(faces emitted, quads after merging).
 func _build_chunk(chunk: Vector2i) -> Vector2i:
+	var collected: Dictionary = _collect_and_merge_chunk(chunk)
+	var t2: int = Time.get_ticks_usec()
+	_commit_chunk_mesh(chunk, collected["surfaces"])
+	var t3: int = Time.get_ticks_usec()
+	_t_collect += int(collected["collect_us"])
+	_t_merge += int(collected["merge_us"])
+	_t_commit += t3 - t2
+	return Vector2i(collected["faces"], collected["quads"])
+
+
+## RENDER3D R3D-3 step 4 — the thread-safe half: face collection and greedy-rectangle
+## merging, touching only `_store`/`_occ`/`_by_chunk`/`_material_glass` (read-only here)
+## and producing plain data (`SurfaceData`, a GDScript class of `Packed*Array`s — not a
+## `Resource`, so building it off the main thread is safe). No `ArrayMesh`, no
+## `MeshInstance3D`, no scene-tree touch — those need the main thread and live in
+## `_commit_chunk_mesh()`.
+func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 	var t0: int = Time.get_ticks_usec()
 	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material}
 	var faces: int = 0
@@ -665,7 +780,13 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 	for plane_key: Vector2i in planes:
 		quads += _merge_plane(plane_key.x, plane_key.y, planes[plane_key], surfaces)
 	var t2: int = Time.get_ticks_usec()
+	return {"surfaces": surfaces, "faces": faces, "quads": quads,
+		"collect_us": t1 - t0, "merge_us": t2 - t1}
 
+
+## The main-thread-only half: turn `SurfaceData` into a real `ArrayMesh`/`MeshInstance3D`
+## and swap it into `_geometry_root`.
+func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 	var mesh := ArrayMesh.new()
 	for material: int in surfaces:
 		var surface: SurfaceData = surfaces[material]
@@ -688,11 +809,6 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_geometry_root.add_child(instance)
 		_chunk_nodes[chunk] = instance
-	var t3: int = Time.get_ticks_usec()
-	_t_collect += t1 - t0
-	_t_merge += t2 - t1
-	_t_commit += t3 - t2
-	return Vector2i(faces, quads)
 
 
 ## R3D-1c step 5 — `_build_chunk()`'s face pass, read from the store: a cell is drawn by

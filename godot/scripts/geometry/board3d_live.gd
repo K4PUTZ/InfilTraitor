@@ -44,6 +44,20 @@ const CHUNK_VOXELS: int = 32
 ## folded in, even with the other claim standing — the Director's option A (2026-09-16,
 ## "the voxels are the truth") for the same corner cells in the light's occupancy.
 static var STORE_BOARD3D: bool = true
+
+## RENDER3D R3D-3 step 2 — the vertical-scale spike. A true cube in this camera projects
+## 32 px/√2 × cos 30° = 19.6 px/level (156.8 px/storey), but the 2D board's sprites and
+## bakes expect `WALL_FLOOR_STEP_PX` = 158 px/storey — a ~0.8% gap. `VERTICAL_SCALE`
+## stretches the mesh (not the camera — see `_geometry_root`) by this ratio when set to
+## `VERTICAL_SCALE_MATCHED`; `1.0` (default) is the true-cube variant. DevFlags
+## `RENDER3D_VSCALE`, read at `build()`. A Director look-call, not a code decision — see
+## `RENDER3D_MASTER_PLAN` R3D-3 step 2.
+static var VERTICAL_SCALE: float = 1.0
+const VERTICAL_SCALE_MATCHED: float = 158.0 / 156.8
+## Dev-only, off by default (DevFlags `RENDER3D_VSCALE_MARKER`) — a bright box spanning
+## exactly one storey (8 levels) at a fixed cell, so the look-call has a fixed reference
+## that stretches WITH the board instead of a bespoke overlay.
+static var VSCALE_MARKER: bool = false
 ## Facade texels per voxel is ART_SPECIFICATIONS' TEX_AUTHORING_N (16), so a
 ## 1024×512 facade spans 64×32 voxels.
 const FACADE_SPAN_VOXELS: Vector2 = Vector2(64.0, 32.0)
@@ -151,6 +165,10 @@ class SurfaceData:
 var _room: Node = null
 var _cell_to_world: Callable
 var _camera: Camera3D = null
+## RENDER3D R3D-3 step 2 — every chunk mesh (and the vscale marker) parents here, not
+## directly under `self`, so `VERTICAL_SCALE` stretches only the geometry: `_camera` stays
+## a direct child of `self` and is unaffected by this node's non-uniform scale.
+var _geometry_root: Node3D = null
 var _ground_level: int = 0
 ## Vector3i(grid x, level, grid y) → index into _material_ids.
 var _occ: Dictionary = {}
@@ -198,6 +216,12 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_ground_level = GeometryCoords.PLAYABLE_LEVEL
 	var t0: int = Time.get_ticks_usec()
 	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
+	VERTICAL_SCALE = _read_vertical_scale(room)
+	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
+	_geometry_root = Node3D.new()
+	_geometry_root.name = "Geometry"
+	_geometry_root.scale.y = VERTICAL_SCALE
+	add_child(_geometry_root)
 	_store = VoxelStore.active if STORE_BOARD3D else null
 	var counts: Dictionary = _collect_store(_store) if _store != null else _collect()
 	var t1: int = Time.get_ticks_usec()
@@ -210,6 +234,8 @@ func build(room: Node, cell_to_world: Callable) -> void:
 		var built: Vector2i = _build_chunk(chunk)
 		faces += built.x
 		quads += built.y
+	if VSCALE_MARKER:
+		_add_vscale_marker()
 	var t2: int = Time.get_ticks_usec()
 	var cells_2d: int = _count_2d_cells()
 	var fields: Dictionary = {
@@ -228,6 +254,35 @@ func build(room: Node, cell_to_world: Callable) -> void:
 		fields["mesh_ms"], VoxelRenderer.SKIP_BOARD_WRITES,
 		"store" if _store != null else "objects"])
 	Telemetry.event("board3d.built", fields)
+
+
+## RENDER3D R3D-3 step 2 — `RENDER3D_VSCALE=matched` (or any float string) selects the
+## vertical-scale variant for the look-call; anything else (including unset) is the
+## true-cube default.
+func _read_vertical_scale(room: Node) -> float:
+	var raw: String = str(room.call("_dev_flag", "RENDER3D_VSCALE", "1.0"))
+	if raw == "matched":
+		return VERTICAL_SCALE_MATCHED
+	var parsed: float = raw.to_float()
+	return parsed if parsed > 0.0 else 1.0
+
+
+## A bright, unshaded box spanning exactly one storey (8 levels, one world Y-unit in
+## `_geometry_root`'s local space, so it stretches with `VERTICAL_SCALE` exactly like the
+## board's own geometry) at a fixed, open PLAYGROUND cell — the Director's fixed reference
+## for the look-call, standing in for a baked agent this stage doesn't have wired in yet.
+func _add_vscale_marker() -> void:
+	var marker := MeshInstance3D.new()
+	marker.name = "VScaleMarker"
+	var box := BoxMesh.new()
+	box.size = Vector3(0.06, 1.0, 0.06)
+	marker.mesh = box
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 0.0, 1.0)
+	marker.material_override = mat
+	marker.position = Vector3(5.5, 0.5, 5.5)
+	_geometry_root.add_child(marker)
 
 
 func _process(_delta: float) -> void:
@@ -623,7 +678,7 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 		instance.name = "Chunk_%d_%d" % [chunk.x, chunk.y]
 		instance.mesh = mesh
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(instance)
+		_geometry_root.add_child(instance)
 		_chunk_nodes[chunk] = instance
 	var t3: int = Time.get_ticks_usec()
 	_t_collect += t1 - t0

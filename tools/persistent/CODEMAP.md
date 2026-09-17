@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**260 scripts · 97131 lines total** (under `godot/scripts/`)
+**260 scripts · 97186 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -505,7 +505,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 806 lines
+extends `Node3D` · 861 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -513,6 +513,7 @@ extends `Node3D` · 806 lines
 
 **Constants / tuning**
 - `CHUNK_VOXELS` = `32`
+- `VERTICAL_SCALE_MATCHED` = `158.0 / 156.8`
 - `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
 - `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`
 - `DIR_NORMAL` = `[Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]`
@@ -523,9 +524,6 @@ extends `Node3D` · 806 lines
 
 **Public API**
 - `func build(room: Node, cell_to_world: Callable) -> void:`
-- `func on_blast_commit(delta) -> void:`
-- `func on_blast_soot() -> void:`
-- `func on_blast_light(delta) -> void:`
 
 ---
 

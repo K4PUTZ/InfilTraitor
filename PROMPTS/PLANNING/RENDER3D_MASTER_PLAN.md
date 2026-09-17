@@ -1185,6 +1185,17 @@ After this stage, no simulation or prediction code reads a tile.
   - The actor bakes were taken at the true 30°. So compare a cube board and a
     2D-matched board against the baked agent's feet and head, and let the Director pick
     from paired captures.
+  - **RATIFIED (Director, 2026-09-17): the true-cube variant, `VERTICAL_SCALE = 1.0`.**
+    Paired captures (`Screenshots/history/render3d_vscale_cube_A.png` /
+    `..._matched_B.png`, a fixed 1-storey magenta marker standing in for the baked agent,
+    which isn't wired into the 3D scene yet) showed the two ~0.8% apart and visually
+    close. The Director's call: *"Me parece que as duas versões estão baixas, se
+    considerarmos o chapéu. Mas vamos trabalhar de novo no modelo então acho que tanto
+    faz. Usa o valor mais inteiro, que facilita o cálculo."* — both read a little short
+    once you account for the hat, the character model is getting reworked anyway, so the
+    round number wins. `VERTICAL_SCALE` stays `1.0` (the code's existing default);
+    `VERTICAL_SCALE_MATCHED` (158/156.8) stays defined in `board3d_live.gd` for a future
+    A/B if the reworked model needs it, but is not the active value.
 - **The hidden 2D board stops being built** when the 3D board is on (a flag for the A/B,
   removed at R3D-8).
 - **The web export is checked NOW, not at R3D-8.** The Compatibility renderer must boot

@@ -8,17 +8,17 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**260 scripts · 97128 lines total** (under `godot/scripts/`)
+**260 scripts · 97131 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — board3d_live.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **spikes/** — board3d_live.gd, board3d_spike.gd, store_layout_spike.gd
+- **spikes/** — board3d_spike.gd, store_layout_spike.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
@@ -502,6 +502,32 @@ extends `ConfirmationDialog` · 64 lines
 ---
 
 ## geometry/
+
+### `board3d_live.gd`
+
+extends `Node3D` · 806 lines
+
+`godot/scripts/geometry/board3d_live.gd`
+
+> Board3DLive — the LIVE board, as depth-tested 3D meshes under the 2D game. DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10) built this as a spike under `spikes/`. RENDER3D R3D-3 (2026-09-17) moved it here — production code, not an instrument, though it still runs behind `RENDER3D=1` until R3D-8 retires the 2D board: `RENDER3D=1` builds it after a real map load and hides the 2D voxel board. Actors, fog, overlays and the HUD keep drawing in 2D, on top of it. WHAT IT READS: every visible Voxel of every Slice (half thickness and material bands included), every junction corner column, every floor, deep-floor and roof Slab — the game's own registries after the real load. It reads, it never writes game state. THE LOOK, and how it maps from 2D: - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a GU is one world unit and a storey one unit tall (the 30° camera's cube); - only the three faces the camera can see are emitted — top (+Y), SE (+X) and SW (+Z) — the same three `VoxelLightField.surface_factor()` names; - a material is `base_color × facade luminance`, the bake's MULTIPLY, sampled in world space at 16 texels per voxel with mirrored repeat; - LIGHT AND SOOT ARE PER CELL, NOT PER VERTEX (step 2c). The fragment finds its own voxel from its world position and reads bucket and soot code from a `Texture2DArray` holding the 2D renderer's own cell planes, one layer per level — the same RG8 data the 2D face shader reads. So faces merge by MATERIAL only, and a soot or light change is a layer upload instead of a remesh. Step 2 rebuilt geometry for colour changes and paid ~240 ms per rebuild on the Moto (§15.9); - the 2D face shader's terms are applied in the same order: face tone × bucket luminance × per-face soot × floor depth dim, all in sRGB, the product decoded once. ⚠️ NOT PARITY — stated so no capture is read as one: no damage decals, no bake window origins (facade continuity is world-space, not per wall run), glass is a flat translucent tint, actors are not occluded by walls, the soot fade and the light ramp land at their ends instead of stepping, and the 2D storey is 158 px where this 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect).
+
+**Constants / tuning**
+- `CHUNK_VOXELS` = `32`
+- `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
+- `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`
+- `DIR_NORMAL` = `[Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]`
+- `FALLBACK_SOOT_MULT` = `[0.33, 0.47, 0.69, 0.84]`
+- `FALLBACK_TONE` = `[1.0, 0.975, 0.945]`
+- `OPAQUE_SHADER` = `"""`
+- `GLASS_SHADER` = `"""`
+
+**Public API**
+- `func build(room: Node, cell_to_world: Callable) -> void:`
+- `func on_blast_commit(delta) -> void:`
+- `func on_blast_soot() -> void:`
+- `func on_blast_light(delta) -> void:`
+
+---
 
 ### `damage_composite_cache.gd`
 
@@ -1834,32 +1860,6 @@ extends `Node2D` · 43 lines
 ---
 
 ## spikes/
-
-### `board3d_live.gd`
-
-extends `Node3D` · 804 lines
-
-`godot/scripts/spikes/board3d_live.gd`
-
-> Board3DLive — the LIVE board, as depth-tested 3D meshes under the 2D game. DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10). An instrument, never a mode: `RENDER3D=1` builds it after a real map load and hides the 2D voxel board. Actors, fog, overlays and the HUD keep drawing in 2D, on top of it. WHAT IT READS: every visible Voxel of every Slice (half thickness and material bands included), every junction corner column, every floor, deep-floor and roof Slab — the game's own registries after the real load. It reads, it never writes game state. THE LOOK, and how it maps from 2D: - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a GU is one world unit and a storey one unit tall (the 30° camera's cube); - only the three faces the camera can see are emitted — top (+Y), SE (+X) and SW (+Z) — the same three `VoxelLightField.surface_factor()` names; - a material is `base_color × facade luminance`, the bake's MULTIPLY, sampled in world space at 16 texels per voxel with mirrored repeat; - LIGHT AND SOOT ARE PER CELL, NOT PER VERTEX (step 2c). The fragment finds its own voxel from its world position and reads bucket and soot code from a `Texture2DArray` holding the 2D renderer's own cell planes, one layer per level — the same RG8 data the 2D face shader reads. So faces merge by MATERIAL only, and a soot or light change is a layer upload instead of a remesh. Step 2 rebuilt geometry for colour changes and paid ~240 ms per rebuild on the Moto (§15.9); - the 2D face shader's terms are applied in the same order: face tone × bucket luminance × per-face soot × floor depth dim, all in sRGB, the product decoded once. ⚠️ NOT PARITY — stated so no capture is read as one: no damage decals, no bake window origins (facade continuity is world-space, not per wall run), glass is a flat translucent tint, actors are not occluded by walls, the soot fade and the light ramp land at their ends instead of stepping, and the 2D storey is 158 px where this 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect).
-
-**Constants / tuning**
-- `CHUNK_VOXELS` = `32`
-- `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
-- `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`
-- `DIR_NORMAL` = `[Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]`
-- `FALLBACK_SOOT_MULT` = `[0.33, 0.47, 0.69, 0.84]`
-- `FALLBACK_TONE` = `[1.0, 0.975, 0.945]`
-- `OPAQUE_SHADER` = `"""`
-- `GLASS_SHADER` = `"""`
-
-**Public API**
-- `func build(room: Node, cell_to_world: Callable) -> void:`
-- `func on_blast_commit(delta) -> void:`
-- `func on_blast_soot() -> void:`
-- `func on_blast_light(delta) -> void:`
-
----
 
 ### `board3d_spike.gd`
 
@@ -5775,7 +5775,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12186 lines
+extends `Node2D` · 12187 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5813,7 +5813,7 @@ extends `Node2D` · 12186 lines
 - `ShrapnelPreviewOverlayClass` = `preload("res://godot/scripts/overlays/shrapnel_preview_overlay.gd")`
 - `ViewContextClass` = `preload("res://godot/scripts/systems/view_context.gd")`
 - `ScenarioRunnerClass` = `preload("res://godot/scripts/systems/scenario_runner.gd")`
-- `Board3DLiveClass` = `preload("res://godot/scripts/spikes/board3d_live.gd")`
+- `Board3DLiveClass` = `preload("res://godot/scripts/geometry/board3d_live.gd")`
 - `BoardProbeClass` = `preload("res://godot/scripts/systems/board_probe.gd")`
 - `WorldRenderScaleClass` = `preload("res://godot/scripts/systems/world_render_scale.gd")`
 - `TargetCursorOverlayClass` = `preload("res://godot/scripts/overlays/target_cursor_overlay.gd")`

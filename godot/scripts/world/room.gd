@@ -45,7 +45,8 @@ const ShrapnelPreviewOverlayClass = preload("res://godot/scripts/overlays/shrapn
 ## TEL-03 — preloaded like the overlays above, so no global class cache is needed.
 const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
-const Board3DLiveClass = preload("res://godot/scripts/spikes/board3d_live.gd")
+## RENDER3D R3D-3 step 1 — moved out of spikes/, the 3D board is production code now.
+const Board3DLiveClass = preload("res://godot/scripts/geometry/board3d_live.gd")
 const BoardProbeClass = preload("res://godot/scripts/systems/board_probe.gd")
 const WorldRenderScaleClass = preload("res://godot/scripts/systems/world_render_scale.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")

@@ -93,6 +93,31 @@ objects themselves. Full narrative below and in the revision history.
 - **Next:** R3D-1d is closed at step 1 (steps 2-4 deferred to R3D-2, step 5 measured
   above) — proceed to R3D-2.
 
+**R3D-2 progress (2026-09-17, commit `a6436cd1`):**
+- **Step 1 CLOSED — `build_occupancy()` is store-only.** The `STORE_OCCUPANCY` flag and its
+  tile-walk fallback (`get_used_cells()` + `_ghosted_cells` + `_glass_layers` unions) are
+  deleted; the function now always answers from `VoxelStore.occupancy_dict()`. Confirmed 0
+  differences against the old tile-walk (`Room.scenario_occupancy_compare`) at load and
+  across both PLAYGROUND grenades before deleting the fallback. Neither ghosted cells nor
+  glass needed a separate fold-in: occlusion never marks a claim invisible (O1) and glass
+  voxels are ordinary claims in the store regardless of render sublayer, so the store
+  already reported both. One selftest fixture that never built a `VoxelStore` over its
+  registry was fixed the same way R3D-1d fixed its own casualties.
+- **Step 2 ("glass occupancy leaves `_glass_layers`") is ALREADY SATISFIED, no code
+  change.** Grepped every non-renderer reader named by the plan text:
+  `detonation_plan_builder.gd`/`detonation_entry_writer.gd` only *mention* `_glass_layers`
+  in comments or *write* to it (`erase_glass_cell()`, keeping the 2D board's own draw layer
+  in sync per the destroy entry — legitimate until R3D-8) — neither reads it as an
+  occupancy authority. `occlusion_set.gd`'s O7 exclusion already checks
+  `GlassMaterials.is_glass(slice.material)` on the geometry directly, never `_glass_layers`.
+  The remaining `_glass_layers` readers (`glass_transparency_selftest.gd`,
+  `glass_crack_selftest.gd`, `glass_rim_capture.gd`) inspect the 2D board's own tile
+  placement/atom masks — they test the 2D renderer, not simulation/prediction, so they stay
+  until R3D-8 retires that renderer. Step 1 already removed the one real occupancy read
+  (`build_occupancy()`'s old fallback). No commit for this step — nothing to change.
+- **Next:** Step 3 — cell planes (`_soot_images`/`_soot_textures`/`_soot_dirty`) move out of
+  `VoxelRenderer` into a render-neutral owner.
+
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
   wrote: *"Me parece que o 3D é o caminho mais efetivo. E aí nesse caso, precisamos

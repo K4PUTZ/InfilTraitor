@@ -33,7 +33,14 @@
 ## 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect).
 extends Node3D
 
-const CHUNK_VOXELS: int = 32
+## RENDER3D R3D-3 step 3 — 16 vs 32, chosen by measurement on the Moto (DevFlags
+## `RENDER3D_CHUNK`, read at `build()`, before any chunk math runs). 16 wins: initial
+## load is a wash (collect/mesh ~1013-1056 ms either way — dominated by the store walk,
+## not chunk count), but a blast's remesh — the part that stalls the main thread on the
+## impact frame, before R3D-3 step 4 threads it — dropped from 108.4/104.4 ms (32) to
+## 38.9/0.2 ms (16) across both PLAYGROUND grenades: a smaller chunk means less
+## unaffected geometry gets re-merged alongside the cells a blast actually touched.
+static var CHUNK_VOXELS: int = 16
 
 ## RENDER3D R3D-1c step 5 — the board meshes straight from the `VoxelStore` (DevFlags
 ## `STORE_BOARD3D`, read at `build()` through the Room; DEFAULT ON; `=0` collects the objects
@@ -216,6 +223,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_ground_level = GeometryCoords.PLAYABLE_LEVEL
 	var t0: int = Time.get_ticks_usec()
 	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
+	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "32")))
 	VERTICAL_SCALE = _read_vertical_scale(room)
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
 	_geometry_root = Node3D.new()

@@ -1168,7 +1168,13 @@ After this stage, no simulation or prediction code reads a tile.
   dictionary collect (2.2 s on the Moto) is gone.
 - **Geometry:**
   - faces merge by material, and light and soot come per voxel from the planes (§15.11);
-  - chunk size (16 vs 32 voxels) is chosen by measurement;
+  - chunk size (16 vs 32 voxels) is chosen by measurement — **MEASURED (Moto g04s,
+    2026-09-17): 16 wins.** Initial load is a wash either way (collect/mesh ~1013-1056 ms,
+    dominated by the store walk, not chunk count), but a blast's remesh — the part that
+    stalls the main thread on the impact frame until step 4 threads it — dropped from
+    108.4/104.4 ms (32) to 38.9/0.2 ms (16) across both PLAYGROUND grenades: a smaller
+    chunk means less unaffected geometry gets re-merged alongside the cells a blast
+    actually touched. `CHUNK_VOXELS` default is now 16;
   - the remesh builds from a store snapshot on a `WorkerThreadPool` task and swaps in on
     the main thread;
   - recolour uploads only the levels and rows a change touched.

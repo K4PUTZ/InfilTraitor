@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**260 scripts · 97186 lines total** (under `godot/scripts/`)
+**260 scripts · 97194 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -505,14 +505,13 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 861 lines
+extends `Node3D` · 869 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
 > Board3DLive — the LIVE board, as depth-tested 3D meshes under the 2D game. DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10) built this as a spike under `spikes/`. RENDER3D R3D-3 (2026-09-17) moved it here — production code, not an instrument, though it still runs behind `RENDER3D=1` until R3D-8 retires the 2D board: `RENDER3D=1` builds it after a real map load and hides the 2D voxel board. Actors, fog, overlays and the HUD keep drawing in 2D, on top of it. WHAT IT READS: every visible Voxel of every Slice (half thickness and material bands included), every junction corner column, every floor, deep-floor and roof Slab — the game's own registries after the real load. It reads, it never writes game state. THE LOOK, and how it maps from 2D: - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a GU is one world unit and a storey one unit tall (the 30° camera's cube); - only the three faces the camera can see are emitted — top (+Y), SE (+X) and SW (+Z) — the same three `VoxelLightField.surface_factor()` names; - a material is `base_color × facade luminance`, the bake's MULTIPLY, sampled in world space at 16 texels per voxel with mirrored repeat; - LIGHT AND SOOT ARE PER CELL, NOT PER VERTEX (step 2c). The fragment finds its own voxel from its world position and reads bucket and soot code from a `Texture2DArray` holding the 2D renderer's own cell planes, one layer per level — the same RG8 data the 2D face shader reads. So faces merge by MATERIAL only, and a soot or light change is a layer upload instead of a remesh. Step 2 rebuilt geometry for colour changes and paid ~240 ms per rebuild on the Moto (§15.9); - the 2D face shader's terms are applied in the same order: face tone × bucket luminance × per-face soot × floor depth dim, all in sRGB, the product decoded once. ⚠️ NOT PARITY — stated so no capture is read as one: no damage decals, no bake window origins (facade continuity is world-space, not per wall run), glass is a flat translucent tint, actors are not occluded by walls, the soot fade and the light ramp land at their ends instead of stepping, and the 2D storey is 158 px where this 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect).
 
 **Constants / tuning**
-- `CHUNK_VOXELS` = `32`
 - `VERTICAL_SCALE_MATCHED` = `158.0 / 156.8`
 - `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
 - `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`

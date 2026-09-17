@@ -1220,9 +1220,27 @@ After this stage, no simulation or prediction code reads a tile.
     `VERTICAL_SCALE_MATCHED` (158/156.8) stays defined in `board3d_live.gd` for a future
     A/B if the reworked model needs it, but is not the active value.
 - **The hidden 2D board stops being built** when the 3D board is on (a flag for the A/B,
-  removed at R3D-8).
+  removed at R3D-8). **NOT STARTED.**
 - **The web export is checked NOW, not at R3D-8.** The Compatibility renderer must boot
-  the 3D board: `Texture2DArray`, the custom spatial shaders, `MultiMesh`.
+  the 3D board: `Texture2DArray`, the custom spatial shaders, `MultiMesh`. **NOT STARTED.**
+
+**Progress (2026-09-17):** steps 1 (relocate), 2 (vertical scale, ratified 1.0) and 3
+(chunk size, 16) closed — commits `9ed0f809`, `642a2d9f`, `a54b804a`. Step 4 (`WorkerThreadPool`
+remesh) closed — commit `73fa10dc`; background collect+merge measured at 30.6/0.5 ms on the
+Moto (both PLAYGROUND grenades) against the old synchronous path's 108.4/104.4 ms (chunk 32)
+or 38.9/0.2 ms (chunk 16) added in-line to whichever frame ran it. Steps 5 (skip the hidden
+2D build), 6 (web export check) and 7 (the full Moto gate above) remain.
+
+**Idea flagged for later, not started:** the Director asked whether detonating a HIDDEN
+blast during load (never shown) could pre-warm whatever the first real detonation pays for
+cold — the same trick this project already uses for the 2D board's TileSet alternative
+cache during the aim window (`voxel_renderer.gd`'s own comment: *"an alternative minted
+early is one not minted late"*). For the 3D board the analogous cold cost is shader
+COMPILATION on first use of a `ShaderMaterial` (invisible in this session's headless
+captures, real on a device GPU) — a hidden warm-up blast would only pre-pay for whichever
+materials/cells it touched, not a general win, and costs real load time to buy it. Not
+measured; a candidate for whenever R3D-3's steps 5-7 (or R3D-4's VFX work) make first-
+detonation cost visible enough to be worth it.
 
 **Gate (Moto):**
 - the idle frame against 22.9 ms;

@@ -123,8 +123,37 @@ objects themselves. Full narrative below and in the revision history.
   every public method name as a thin forwarder — zero external caller changed.
   `board_probe.py gate` reported the same 3867 voxel / 8063 plane-texel counts as
   Step 1's baseline, confirming the move is behaviour-neutral.
-- **Next:** Step 4 — the plan-entry rekey (`source_id`/`atlas_coords`/`alt`/`prev_alt` →
-  voxel key + target damage state + light bucket + soot code), the largest and last step.
+- **Step 4 DEFERRED (Director, 2026-09-17) — the plan-entry rekey buys nothing today.**
+  Mapped both sides before touching code:
+  - **Every current reader of `source_id`/`atlas_coords`/`alt` is 2D-board-internal.**
+    `DetonationEntryWriter.apply()` is confirmed the ONLY place that turns them into
+    `_ensure_light_alt()` + `set_cell()`/`erase_cell()` calls; the only other reader is
+    `test_zone_controller.gd`'s `_plan_light_alt_triples()`, a read-only diagnostic. No
+    simulation, prediction, AI or occupancy code reads these fields — R3D-2's stated goal
+    ("no simulation or prediction code reads a tile") was already satisfied by steps 1-3.
+  - **The fields exist in the PLAN, not just the writer, for a documented perf reason:**
+    `voxel_renderer.gd`'s own comment on `build_occupancy()`'s neighbour, the alternative-
+    tile warm-up: *"the measured cost of a shot is 412 `create_alternative_tile()` calls
+    landing on the impact frame, and an alternative minted early is one not minted late."*
+    Resolving the material/atom during the PLAN build (aim window) and minting/writing
+    only at APPLY time is deliberate, validated architecture — not an accident the rekey
+    would just be tidying up.
+  - **A full rekey would either reintroduce that impact-frame stall or double the resolve
+    cost for no present benefit.** Removing `source_id`/`atlas_coords` from the entry
+    means `DetonationEntryWriter.apply()` would have to re-run `_resolve_damaged_tile()`'s
+    material/atom resolution itself, at apply time — the exact frame the pre-warm exists to
+    protect. The alternative (build still resolves+warms, apply re-resolves from the
+    voxel key to get a writable id) computes the same resolution twice per cell for zero
+    consumer that needs the new shape: no 3D reader exists yet.
+  - **Deferred to whenever R3D-3/R3D-4 build the actual 3D consumer** of per-voxel target
+    state — that stage will say precisely what shape it needs (voxel key + damage state +
+    bucket + soot, or something else), instead of this stage guessing ahead of a reader
+    and paying a real performance cost to guess right.
+- **R3D-2 CLOSED, 2026-09-17.** Step 1 (store-only occupancy) and step 3 (cell planes to
+  `CellPlaneStore`) shipped; step 2 (glass occupancy) was already satisfied by step 1;
+  step 4 (plan-entry rekey) is deferred with the reasoning above, same call the Director
+  made on R3D-1d's own steps 2-4. **Next: R3D-3 — the 3D board becomes the production
+  renderer** (master plan line ~1103).
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director

@@ -1,5 +1,5 @@
 # SESSION SUMMARY — 2026-09-16
-## RENDER3D R3D-0 closed, the `RNG_SEED` fix, R3D-1a measured (layout B), and R3D-1b gated (the store in shadow)
+## RENDER3D: R3D-0 closed, the `RNG_SEED` fix, R3D-1a (layout B), R3D-1b (the store in shadow) and R3D-1c CLOSED (five readers on the store)
 
 **Director's request:** *"Vamos seguir com a sessão de ontem."* Yesterday ended with R3D-0
 measured but not closed. Two R3D-6 items had no Moto pair: roof tops (item 1) and embers.

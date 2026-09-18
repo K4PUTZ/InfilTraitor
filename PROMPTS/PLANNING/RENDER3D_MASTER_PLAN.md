@@ -1690,6 +1690,29 @@ itself.**
 - the Moto frame cost of a rotation is recorded;
 - `SOOT_STORAGE_REFORM` SS-6's rotation proof runs on this renderer.
 
+### To investigate at the end of R3D — real 3D objects in the scene
+
+**Not a stage. A question the Director raised on 2026-09-18, parked until R3D-9 closes.**
+Now that the board is a Godot 3D scene, can imported 3D meshes (GLB) stand in it as real
+geometry, instead of baked frames on billboards? Technically yes: a `MeshInstance3D` under
+`Board3DLive` is depth-tested, covered by walls and tinted by glass with no extra work, and
+`Board3DLive.ground_point()` already maps a grid cell to the world. What the investigation
+has to answer before anyone builds it:
+
+- **Light.** The board has no 3D lights: light and soot come from per-cell planes read by
+  the board's own shader. A real mesh needs a shader that reads the same planes, or it will
+  not match the scene.
+- **Cost on the Moto.** One mesh with its own material per prop is a new bill. R3D-4b and
+  R3D-4c billboards cost +0.2 ms each on the Moto g04s; a mesh has not been measured.
+- **Direction.** The actor register (D35 rigged low-poly mesh, D42 RAM is the constraint,
+  D44 four baked facings) chose baked frames. Replacing them at runtime changes that
+  direction and needs the Director's ratification.
+- **Where it likely pays first:** static scenery with no destruction (furniture, decoration),
+  not the moving props R3D-4d covers.
+
+Suggested shape: a short spike — one GLB, lit from the board's planes, measured on the Moto
+against the billboard it would replace — before any decision.
+
 ---
 
 ## 5. Order, dependencies, and what folds in

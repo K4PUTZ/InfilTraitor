@@ -1514,6 +1514,27 @@ detonation cost visible enough to be worth it.
 
 ### R3D-4 — Actors, props and in-world VFX in depth
 
+**Status 2026-09-18 — R3D-4a CLOSED (Director ratified A, billboards); R3D-4b BUILT.**
+
+- **R3D-4a** (`spikes/r3d4a_actor_spike.gd`, `SPIKE=r3d4a`). Wall, column and roof-edge fixtures:
+  A and B agree. Glass: only A tints an actor standing behind a pane. Moto g04s medians, 6 agents:
+  none 21.8 ms, A 22.2 ms, **B 31.7 ms**; B's depth pass also decoded 0.235 units off on the Mali
+  (0.005 on desktop), cause not investigated. Captures:
+  `Screenshots/history/r3d4a_sheet_{wall,glass}_bias0.png`.
+- **R3D-4b — the agent.** `ActorBillboard3D` mirrors the `AgentSprite` (body + every layer) into
+  world-vertical quads, `actor_billboard3d.gdshader` is D17's relight ported to spatial. The 2D
+  actor keeps deciding what is shown; `ACTORS3D=0` keeps the 2D figure. Moto, PLAYGROUND,
+  `RENDER3D=1`: **23.1 ms vs 22.9 ms** (+0.2 ms), 0 script errors; the on-device LOOK was not
+  captured, only the desktop one.
+  - **A camera-parallel quad (R3D-4a's shape) was wrong in the live board and was replaced.** One
+    depth for the whole figure let a glass pane BEHIND the actor tint his hat, and the tilted floor
+    cut his shoes off. The quad now stands vertical (stretched 1/cos 30° to stay 1:1 on screen) so
+    depth is right at every height, plus a 0.15-unit lift along the view axis (`ACTORS3D_BIAS`).
+  - **Known, owned elsewhere:** (1) 2D overlays (movement-range outline) now draw OVER the actor —
+    R3D-5's overlay table; (2) on the GLASS map a glass roof between the camera and the actor tints
+    him — the 3D board has no cutaway yet, R3D-7 (row above: OCC-21/OCC-27).
+  - Not done here: guards and their cones (4c), props (4d), VFX (4e).
+
 **R3D-4a, a spike with its decision rule written before measuring:**
 
 - **(A) Billboards in the 3D scene.** Quads carry the baked frames, with D17's normal-map

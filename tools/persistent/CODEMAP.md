@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**261 scripts · 97997 lines total** (under `godot/scripts/`)
+**262 scripts · 98181 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — board3d_live.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
@@ -503,9 +503,28 @@ extends `ConfirmationDialog` · 64 lines
 
 ## geometry/
 
+### `actor_billboard3d.gd`
+
+`class_name ActorBillboard3D` · extends `Node3D` · 158 lines
+
+`godot/scripts/geometry/actor_billboard3d.gd`
+
+> ActorBillboard3D — one AgentSprite, drawn as depth-tested billboards in the 3D board. RENDER3D R3D-4b. R3D-4a (2026-09-18) measured the billboard against a depth-composited 2D sprite and the Director ratified the billboard: on the Moto g04s it costs +0.4 ms against +9.9 ms, and it is the only one of the two that lets glass tint an actor standing behind it. A MIRROR, NOT A REWRITE. `AgentSprite` keeps deciding WHAT is shown — facing, posture, walk and throw frame, head layer, grip, and the light uniforms the room's lights drive. This node only changes WHERE THE PIXELS LAND: each frame it reads the body `Sprite2D` and every layer child, and places one quad per visible one. Nothing in the 2D actor's logic knows this exists, which is what keeps D44's four facings and D47's GU-boundary snap intact: they are decisions of the source, and the quad is placed from the source's own resolved offset and anchor. PLACEMENT. The source's `global_position` is the actor's FEET (the sprite's offset is `-anchor`). That 2D point becomes a 3D ground point through the board's own 2D→GU map, and every quad is offset from it in the CAMERA's plane by its pixel distance from the feet, so the figure keeps the bake's exact pixel geometry at every zoom (the camera's ortho size already carries it). DEPTH — A VERTICAL PLANE, NOT A CAMERA-PARALLEL ONE. R3D-4a measured a quad parallel to the camera, whose depth is the feet's at every height. It fails in two ways the first live capture showed: a glass pane BEHIND the actor tints his hat (at head height the pane is nearer the camera than his feet plane), and the tilted floor cuts his shoes off (below the anchor row the floor is nearer than the quad). So each quad stands in the world — vertical, facing the camera's azimuth — and is stretched by 1/cos(30°) so its pixels stay 1:1 on screen; depth is then correct at every height, the head nearer than the feet by height × sin(30°), as a body's is. FEET LIFT. A vertical plane still puts the sole a few pixels BELOW the anchor row under the floor (the shoes reach forward). The quad is slid toward the camera along the view axis, which moves it in depth and not at all on screen; the slope of the view raises it by lift × sin(30°). Default 0.15 units, `ACTORS3D_BIAS` to tune. Too much and legs show through a wall the actor stands behind (R3D-4a: 0.5 did). Layers (head, hat, weapon) sit a hair in front of the body in index order, because Godot draws a child after its parent and a coplanar alpha-scissor quad would z-fight instead. The 2D source is hidden (`visible = false` on the AgentSprite ONLY) and keeps processing: it still owns the frame state. Its parent's visibility is honoured here, so a guard the fog hides in 2D is hidden in 3D too.
+
+**Constants / tuning**
+- `SHADER_PATH` = `"res://godot/shaders/actor_billboard3d.gdshader"`
+- `LAYER_EPSILON` = `0.002`
+- `MIRRORED_PARAMS` = `[ "light_dir", "light_intensity", "ambient", "specular_strength", "saturation", "contrast", ]`
+- `COS_ELEVATION` = `0.8660254`
+
+**Public API**
+- `func setup(board: Node3D, source: AgentSprite, lift: float = 0.15) -> void:`
+
+---
+
 ### `board3d_live.gd`
 
-extends `Node3D` · 985 lines
+extends `Node3D` · 1002 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -523,6 +542,9 @@ extends `Node3D` · 985 lines
 
 **Public API**
 - `func build(room: Node, cell_to_world: Callable) -> void:`
+- `func ground_point(point_2d: Vector2) -> Vector3:`
+- `func camera_basis() -> Basis:`
+- `func px_per_unit() -> float:`
 
 ---
 
@@ -5796,7 +5818,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12199 lines
+extends `Node2D` · 12208 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5835,6 +5857,7 @@ extends `Node2D` · 12199 lines
 - `ViewContextClass` = `preload("res://godot/scripts/systems/view_context.gd")`
 - `ScenarioRunnerClass` = `preload("res://godot/scripts/systems/scenario_runner.gd")`
 - `Board3DLiveClass` = `preload("res://godot/scripts/geometry/board3d_live.gd")`
+- `ActorBillboard3DClass` = `preload("res://godot/scripts/geometry/actor_billboard3d.gd")`
 - `BoardProbeClass` = `preload("res://godot/scripts/systems/board_probe.gd")`
 - `WorldRenderScaleClass` = `preload("res://godot/scripts/systems/world_render_scale.gd")`
 - `TargetCursorOverlayClass` = `preload("res://godot/scripts/overlays/target_cursor_overlay.gd")`

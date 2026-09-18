@@ -47,6 +47,7 @@ const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
 ## RENDER3D R3D-3 step 1 — moved out of spikes/, the 3D board is production code now.
 const Board3DLiveClass = preload("res://godot/scripts/geometry/board3d_live.gd")
+const ActorBillboard3DClass = preload("res://godot/scripts/geometry/actor_billboard3d.gd")
 const BoardProbeClass = preload("res://godot/scripts/systems/board_probe.gd")
 const WorldRenderScaleClass = preload("res://godot/scripts/systems/world_render_scale.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
@@ -3026,6 +3027,14 @@ func _start_board3d_live() -> void:
 	add_child(live)
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
+	## R3D-4b — the agent as a depth-tested billboard. `ACTORS3D=0` keeps the 2D figure.
+	if _dev_flag("ACTORS3D", "1") != "0":
+		if agent != null and agent.sprite != null:
+			var billboard: Node3D = ActorBillboard3DClass.new()
+			live.add_child(billboard)
+			billboard.setup(live, agent.sprite, float(_dev_flag("ACTORS3D_BIAS", "0.15")))
+		else:
+			push_warning("[Room] ACTORS3D is on but the agent has no baked sprite — the agent stays 2D")
 
 
 ## RENDER3D R3D-1b — the packed store in SHADOW (`VoxelStore`), rebuilt from the

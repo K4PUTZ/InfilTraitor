@@ -279,6 +279,23 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	Telemetry.event("board3d.built", fields)
 
 
+## RENDER3D R3D-4b — what an actor's billboard needs from the board, and nothing else. The 2D
+## world point is the same one Room hands `build()` (VISUAL_GRID_OFFSET included), so an actor's
+## `global_position` lands on the ground exactly where its 2D feet do.
+func ground_point(point_2d: Vector2) -> Vector3:
+	var gu: Vector2 = _to_gu * (point_2d - _origin_2d)
+	return Vector3(gu.x + 0.5, 0.0, gu.y + 0.5)
+
+
+func camera_basis() -> Basis:
+	return _camera.global_transform.basis
+
+
+## Screen pixels per world unit at 2D zoom 1: the scale every baked actor frame was drawn at.
+func px_per_unit() -> float:
+	return _px_per_unit
+
+
 ## RENDER3D R3D-3 step 2 — `RENDER3D_VSCALE=matched` (or any float string) selects the
 ## vertical-scale variant for the look-call; anything else (including unset) is the
 ## true-cube default.

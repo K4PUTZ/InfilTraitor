@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**269 scripts · 99480 lines total** (under `godot/scripts/`)
+**269 scripts · 99488 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -857,7 +857,7 @@ extends `Node3D` · 1010 lines
 
 ### `quad_field3d.gd`
 
-`class_name QuadField3D` · extends `RefCounted` · 142 lines
+`class_name QuadField3D` · extends `RefCounted` · 147 lines
 
 `godot/scripts/geometry/quad_field3d.gd`
 
@@ -883,7 +883,7 @@ extends `Node3D` · 1010 lines
 
 ### `shard_field3d.gd`
 
-`class_name ShardField3D` · extends `RefCounted` · 131 lines
+`class_name ShardField3D` · extends `RefCounted` · 134 lines
 
 `godot/scripts/geometry/shard_field3d.gd`
 

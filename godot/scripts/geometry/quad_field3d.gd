@@ -53,6 +53,7 @@ func _attach_shader(parent: Node3D, shader_path: String, feather: float, priorit
 	_node.multimesh = _mm
 	_node.material_override = mat
 	_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_node.visible = false  ## shown by the first flush() that has something to draw
 	parent.add_child(_node)
 
 
@@ -120,6 +121,9 @@ func _write(b: Basis, p: Vector3, color: Color) -> void:
 func flush() -> void:
 	if _mm == null:
 		return
+	## An empty field is HIDDEN, not just empty: measured on the Moto, each idle MultiMesh with zero
+	## instances still cost a draw call (+6 draws across the VFX fields).
+	_node.visible = _count > 0
 	if _count == 0:
 		_mm.instance_count = 0
 		return
@@ -131,6 +135,7 @@ func clear() -> void:
 	_count = 0
 	if _mm != null:
 		_mm.instance_count = 0
+		_node.visible = false
 
 
 func live_count() -> int:

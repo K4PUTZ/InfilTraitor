@@ -1567,7 +1567,9 @@ detonation cost visible enough to be worth it.
   - **No production instance exists today:** `TEST_ZONE_COLLECTIBLES_ENABLED` is `false` and
     `TEST_ZONE_AGENT_PROBE_BRACKET` is empty, so the collectible was verified by flipping the constant
     locally (not committed) and the `AgentProbeProp` path is NOT verified by any capture.
-- **R3D-4e — in-world VFX. ⛔ PENDING — BLOCKING, NOT BUILT (Director, 2026-09-18).**
+- **R3D-4e — in-world VFX. ✅ BUILT 2026-09-18 for the 3D board (was: PENDING — BLOCKING).** The five
+  systems draw in world space, depth-tested (`VFX3D=0` keeps them 2D). The rows below are the ruling,
+  the spec and the history; the residuals are the last item of this block.
   Ruling: *particles cannot draw over a wall* — "sem condições de ficar por cima do muro". When it is
   built (now or later) is open; that it is built is not, and R3D-4 is not closed without it.
   - **The defect, measured.** A grenade detonated at gu (3,1), BEHIND the 2-storey concrete wall at
@@ -1606,7 +1608,26 @@ detonation cost visible enough to be worth it.
     under `RENDER3D=1` the 2D rain never drew at all** (its overlay is a child of the hidden
     `_voxel_renderer`): the demo measured 0 differing pixels mid-flight in 2D against 90 246 in 3D. The
     G-D43 control still holds (after the kill, 0 differing pixels). Capture:
-    `Screenshots/history/r3d4e4_glass_rain_3d_midair.png`. **4e-4b — the crack sprite — is next.**
+    `Screenshots/history/r3d4e4_glass_rain_3d_midair.png`.
+  - **4e-4b — the crack sprite — MOVED TO R3D-6 (glass look).** Measured under `RENDER3D=1`: the
+    `glass_crack_demo` capture, before vs after the crack is applied, differs by **0 of 921 600 px**.
+    The sprite is a child of the hidden `_voxel_renderer`, so it draws nothing today; there is no depth
+    defect to fix, only a look to build (a 252-line canvas shader with occupancy, opening and hole-cut
+    textures to port to a pane-plane quad).
+  - **4e-5 GATE — PASSED.** (1) The blast behind the 2-storey wall no longer paints its face, particles
+    behind it but above its silhouette still show, and particles in front show
+    (`Screenshots/history/r3d4e5_vfx_wall_face_clean_top_visible.png`). (2) **Moto g04s, one detonation,
+    PLAYGROUND, `RENDER3D=1` (`docs/measurements/device_2026-09-18_moto_g04s_r3d4e_vfx{0,1,1b}.log`):
+    3D VFX mean 30.2 ms vs 32.3 ms in 2D (−2.1 ms), 350 vs 372 frames and 10.6 s vs 12.0 s wall clock,
+    idle primitives 17 156 vs 21 072; 0 script errors.** The worst frame (~0.98–1.13 s) is the same in
+    both: it is the light/consequence cost, not the VFX. (3) Measuring found idle MultiMeshes with zero
+    instances still cost a draw call (+6); an empty field is now hidden (233 = 233 draws at idle).
+  - **RESIDUALS, none blocking:** the 2D overlay nodes still exist and their `_draw()` is where the 3D
+    frame is published (a hidden 2D node would stop the 3D VFX; retire together with the 2D board at
+    R3D-8); the muzzle flash's floor is an ESTIMATE (`muzzle_floor_drop_px`); shrapnel has no capture of
+    its own; four-view agreement is moot until rotation returns (R3D-9), where the anchors must be
+    re-derived per view.
+  - *Original ruling and spec, kept:*
   - **⚠️ A latent Rule-9 bug found and fixed on the way.** The VFX asked for the floor under a voxel
     with `voxel_world_position(grid, 0)`. Level `0` stopped existing at the level renumber, so it
     answered `Vector2.ZERO` and every caller took its "unbuilt column" fallback: **330 of 330** on a

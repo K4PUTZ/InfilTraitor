@@ -56,6 +56,7 @@ func attach(parent: Node3D, priority: int = 0) -> void:
 	_node.multimesh = _mm
 	_node.material_override = mat
 	_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_node.visible = false  ## shown by the first flush() that has something to draw
 	parent.add_child(_node)
 
 
@@ -114,6 +115,7 @@ func push(pos: Vector3, size_px: float, rot: float, shape_index: int, color: Col
 func flush() -> void:
 	if _mm == null:
 		return
+	_node.visible = _count > 0  ## an empty field is hidden: see QuadField3D.flush()
 	if _count == 0:
 		_mm.instance_count = 0
 		return
@@ -129,3 +131,4 @@ func clear() -> void:
 	_count = 0
 	if _mm != null:
 		_mm.instance_count = 0
+		_node.visible = false

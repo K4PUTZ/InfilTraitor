@@ -1599,6 +1599,14 @@ detonation cost visible enough to be worth it.
     on the pixels the 2D draw would (worst error 0.0004 px). An isolated control (red in front of the
     wall, blue behind; `Screenshots/r3d4e/e3_synth_N.png`, local) draws the red sparks and chips and
     none of the blue. **Shrapnel has no capture of its own**; it uses the two fields proven here.
+  - **4e-4a BUILT — the glass rain.** `ShardField3D` (a MultiMesh with the shape's atlas cell in the
+    custom data, `glass_shard_field3d.gdshader`); each shard travels between its two REAL 3D ends
+    (pane voxel and landing, from `from_floor`/`to_floor`) with the arc lifted by height, instead of a
+    carried 2D displacement, so a scattered landing stays on the floor it lands on. **Found on the way:
+    under `RENDER3D=1` the 2D rain never drew at all** (its overlay is a child of the hidden
+    `_voxel_renderer`): the demo measured 0 differing pixels mid-flight in 2D against 90 246 in 3D. The
+    G-D43 control still holds (after the kill, 0 differing pixels). Capture:
+    `Screenshots/history/r3d4e4_glass_rain_3d_midair.png`. **4e-4b — the crack sprite — is next.**
   - **⚠️ A latent Rule-9 bug found and fixed on the way.** The VFX asked for the floor under a voxel
     with `voxel_world_position(grid, 0)`. Level `0` stopped existing at the level renumber, so it
     answered `Vector2.ZERO` and every caller took its "unbuilt column" fallback: **330 of 330** on a

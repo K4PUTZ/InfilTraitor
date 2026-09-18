@@ -701,9 +701,13 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 		## which is unique per destroyed voxel — two shards scattering onto one
 		## landing cell must not collapse to one hash.
 		var base_xy := PerspectiveMapperClass.cell_to_base(origin_gp, _active_perspective, bsize)
+		var ground: int = _voxel_renderer.ground_plane_level()
 		rows.append({
 			"from": from, "to": to,
 			"key": Vector3i(base_xy.x, base_xy.y, from_level),
+			## R3D-4e-4 — the floor under each end, so the 3D rain can place both in the world.
+			"from_floor": _voxel_renderer.voxel_world_position(origin_gp, ground),
+			"to_floor": _voxel_renderer.voxel_world_position(gp, ground),
 		})
 		top_level = maxi(top_level, land_level)
 	if rows.is_empty():
@@ -721,6 +725,8 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 	if layer != null:
 		rain.z_index = layer.z_index + 2
 	_voxel_renderer.add_child(rain)
+	if _dev_flag("VFX3D", "1") != "0":
+		rain.set_board3d(board3d())
 	var n: int = rain.spawn(rows)
 
 	## ── G6b-3 — THE DUST PUFF ──────────────────────────────────────────────

@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**268 scripts · 99296 lines total** (under `godot/scripts/`)
+**269 scripts · 99480 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
@@ -881,6 +881,31 @@ extends `Node3D` · 1010 lines
 
 ---
 
+### `shard_field3d.gd`
+
+`class_name ShardField3D` · extends `RefCounted` · 131 lines
+
+`godot/scripts/geometry/shard_field3d.gd`
+
+> ShardField3D — the glass rain's shards on the 3D board, in ONE draw call, depth-tested. RENDER3D R3D-4e-4. The 3D twin of `ShardField`: a MultiMesh of quads, each carrying its shape's atlas cell in the instance custom data, so 3000 shards are one draw call. Unlike the other 3D fields it takes a WORLD position per shard, not an anchor + a 2D displacement: a shard travels between two real 3D points (its pane and its landing), and interpolating them in 3D puts it at the right depth all the way, where carrying a 2D displacement would drift a scattered landing off the floor it lands on. `custom_aabb` is set for the reason `CircleField3D`'s header gives: culling bounds come from the base mesh, so without the box every shard far from the origin is culled.
+
+**Constants / tuning**
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+- `ShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
+- `SHADER_PATH` = `"res://godot/shaders/glass_shard_field3d.gdshader"`
+- `FLOATS_PER_INSTANCE` = `20`
+
+**Public API**
+- `func attach(parent: Node3D, priority: int = 0) -> void:`
+- `func detach() -> void:`
+- `func begin_on_board(capacity: int) -> void:`
+- `func push(pos: Vector3, size_px: float, rot: float, shape_index: int, color: Color, flip: bool = false, flop: bool = false) -> void:`
+- `func flush() -> void:`
+- `func live_count() -> int:`
+- `func clear() -> void:`
+
+---
+
 ### `slab.gd`
 
 `class_name Slab` · 111 lines
@@ -1430,12 +1455,14 @@ extends `Node2D` · 143 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 242 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 289 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
 **Constants / tuning**
 - `ShardFieldClass` = `preload("res://godot/scripts/overlays/shard_field.gd")`
+- `ShardField3DRef` = `preload("res://godot/scripts/geometry/shard_field3d.gd")`
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `ShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 
@@ -1458,6 +1485,7 @@ extends `Node2D` · 143 lines
 - `var max_shards: int = 3000`
 
 **Public API**
+- `func set_board3d(board: Node3D) -> void:`
 - `func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:`
 - `func live_count() -> int:`
 - `func span_frames() -> int:`
@@ -5967,7 +5995,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12299 lines
+extends `Node2D` · 12305 lines
 
 `godot/scripts/world/room.gd`
 

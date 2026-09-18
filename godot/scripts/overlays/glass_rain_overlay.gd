@@ -46,6 +46,8 @@ class_name GlassRainOverlay
 ## embers with `randf_range`).
 
 const ShardFieldClass = preload("res://godot/scripts/overlays/shard_field.gd")
+const ShardField3DRef = preload("res://godot/scripts/geometry/shard_field3d.gd")
+const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 const ShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 
@@ -97,6 +99,10 @@ func _apply_timing_overrides() -> void:
 			set(k, timing_overrides[k])
 
 var _field = null
+## RENDER3D R3D-4e-4 — while a 3D board is set the shards are drawn by a depth-tested `ShardField3D`
+## and the 2D field stays empty. One rain event, one overlay: the 3D field is freed with it.
+var _board: Node3D = null
+var _field3d: RefCounted = null
 var _shards: Array = []              ## [{from, to, arc, spin, size, shape, flip, flop, t0, fall}]
 var _frame: int = 0
 var _span: int = 0                   ## the last frame any shard is still visible
@@ -108,6 +114,20 @@ var _span: int = 0                   ## the last frame any shard is still visibl
 ## a null and raised a SCRIPT ERROR that left the suite printing "0 FAIL". (The
 ## runner caught it, which is the entire reason `run_selftests.py` is the arbiter
 ## and a bare `godot --script` run is not.)
+## Hand this event the 3D board BEFORE `spawn()` (the room creates one overlay per event).
+func set_board3d(board: Node3D) -> void:
+	_board = board
+	if board != null and _field3d == null:
+		_field3d = ShardField3DRef.new()
+		_field3d.attach(board, 5)
+
+
+func _exit_tree() -> void:
+	if _field3d != null:
+		_field3d.detach()
+		_field3d = null
+
+
 func _ensure_field():
 	if _field == null:
 		_field = ShardFieldClass.new()
@@ -137,6 +157,9 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 		var key: Vector3i = f["key"]
 		var from: Vector2 = f["from"]
 		var to: Vector2 = f["to"]
+		## R3D-4e-4 — the two real 3D ends of the fall: the pane's voxel and the landing.
+		var from3: Vector3 = ParticleMathRef.anchor(_board, from, f.get("from_floor", ParticleMathRef.NO_FLOOR))
+		var to3: Vector3 = ParticleMathRef.anchor(_board, to, f.get("to_floor", ParticleMathRef.NO_FLOOR))
 		var n: int = 1 + int(pow(_hash_unit(key, "count"), pieces_low_bias) \
 			* float(maxi(pieces_per_voxel_max, 1)) * 0.999)
 		for p in range(n):
@@ -157,6 +180,9 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 				(_hash_unit(key, "jy" + salt) - 0.5) * 11.0)
 			_shards.append({
 				"from": from,
+				"from3": from3,
+				"to3": to3,
+				"jitter": jitter,
 				"to": to + jitter,
 				"arc": lerpf(arc_px_min, arc_px_max, _hash_unit(key, "arc" + salt)),
 				"spin": lerpf(spin_min, spin_max, _hash_unit(key, "spin" + salt)),
@@ -183,9 +209,16 @@ func _hash_unit(key: Vector3i, what: String) -> float:
 
 
 func _process(_delta: float) -> void:
-	## ⚠️ FRAMES. `_delta` is deliberately ignored — see the class note.
 	_frame += 1
-	_ensure_field().begin(_shards.size())
+	var f3: RefCounted = _field3d
+	var cam: Basis = Basis.IDENTITY
+	var ppu: float = 1.0
+	if f3 != null:
+		f3.begin_on_board(_shards.size())
+		cam = _board.call("camera_basis")
+		ppu = _board.call("px_per_unit")
+	else:
+		_ensure_field().begin(_shards.size())
 	var live: int = 0
 	for s in _shards:
 		var f: int = _frame - int(s["t0"])
@@ -195,44 +228,58 @@ func _process(_delta: float) -> void:
 		var pos: Vector2
 		var rot: float = float(s["rot0"])
 		var alpha: float = 1.0
+		## The same fall, read two ways: `pos` is the 2D screen position; `base3` and `lift_px` are its
+		## world equivalent — the point on the way between the two 3D ends, plus the arc's height (a
+		## screen-up lift of `lift_px` px is world-up by `lift_px / (ppu * cos 30)`).
+		var base3: Vector3
+		var lift_px: float = 0.0
+		var jitter3: Vector3 = Vector3.ZERO
+		if f3 != null:
+			jitter3 = ParticleMathRef.displace(s["jitter"], cam, ppu)
 		if f <= fall:
-			## The drop: eased along the line, lifted by half a sine.
 			var t: float = float(f) / float(fall)
 			var e: float = 1.0 - (1.0 - t) * (1.0 - t)
 			pos = (s["from"] as Vector2).lerp(s["to"], e) - Vector2(0.0, float(s["arc"]) * sin(PI * t))
+			if f3 != null:
+				base3 = (s["from3"] as Vector3).lerp((s["to3"] as Vector3) + jitter3, e)
+				lift_px = float(s["arc"]) * sin(PI * t)
 			rot += float(s["spin"]) * float(f)
-			## Director, 2026-09-06 — a shard is barely there at the top of its fall
-			## and reaches the full tint as it lands, so a still-airborne crowd does
-			## not stack into one wash.
 			alpha = lerpf(air_alpha, 1.0, e)
 		else:
-			## Landed. The spin is frozen — a shard skidding on the floor reads as
-			## a bug, not as physics.
 			rot += float(s["spin"]) * float(fall)
 			pos = s["to"]
+			if f3 != null:
+				base3 = (s["to3"] as Vector3) + jitter3
 			var b: int = f - fall
 			if b < bounce_frames:
 				var bt: float = float(b) / float(bounce_frames)
 				pos -= Vector2(0.0, float(s["arc"]) * bounce_scale * sin(PI * bt))
+				lift_px = float(s["arc"]) * bounce_scale * sin(PI * bt)
 			var age: int = b - bounce_frames - hold_frames
 			if age > 0:
-				## G-D43 — it fades over the pile decal that is already beneath it.
 				alpha = clampf(1.0 - float(age) / float(maxi(fade_frames, 1)), 0.0, 1.0)
 				if alpha <= 0.0:
 					continue
 		var c: Color = tint
 		c.a *= alpha * float(s["avar"])
-		_field.push(pos, float(s["size"]), rot, int(s["shape"]), c,
-			bool(s["flip"]), bool(s["flop"]))
+		if f3 != null:
+			f3.push(base3 + Vector3.UP * (lift_px / (ppu * ParticleMathRef.COS_ELEVATION)),
+				float(s["size"]), rot, int(s["shape"]), c, bool(s["flip"]), bool(s["flop"]))
+		else:
+			_field.push(pos, float(s["size"]), rot, int(s["shape"]), c,
+				bool(s["flip"]), bool(s["flop"]))
 		live += 1
-	_field.flush()
-	## Done: the rain is disposable and takes nothing with it.
+	if f3 != null:
+		f3.flush()
+	else:
+		_field.flush()
 	if _frame > _span and live == 0:
 		queue_free()
 
 
-## How many shards are on screen this frame — the board, not the counter.
 func live_count() -> int:
+	if _field3d != null:
+		return _field3d.live_count()
 	return 0 if _field == null else _field.live_count()
 
 

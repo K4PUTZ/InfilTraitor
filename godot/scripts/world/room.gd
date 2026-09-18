@@ -3048,7 +3048,7 @@ func _start_board3d_live() -> void:
 ## instead of over it. `VFX3D=0` keeps them 2D, for comparison.
 func _attach_vfx_to_board(live: Node3D) -> void:
 	var on: bool = _dev_flag("VFX3D", "1") != "0"
-	for overlay in [_smoke_spark_overlay, _ember_overlay, _debris_overlay]:
+	for overlay in [_smoke_spark_overlay, _ember_overlay, _debris_overlay, _shrapnel_overlay]:
 		if overlay != null and is_instance_valid(overlay):
 			overlay.set_board3d(live if on else null)
 
@@ -4146,7 +4146,8 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 				1.0, 0.0, 1.0, 1.0, true,
 				start + Vector2(0.0, blast_burst_dust_drop_px))  ## R3D-4e-2: the floor under it
 	if _smoke_spark_overlay != null:
-		_smoke_spark_overlay.add_sparks(world_pos, blast_burst_spark_count, blast_burst_spark_color)
+		_smoke_spark_overlay.add_sparks(world_pos, blast_burst_spark_count, blast_burst_spark_color,
+			1.0, 1.0, world_pos + Vector2(0.0, blast_burst_dust_drop_px))
 	if _debris_overlay != null:
 		## Dust falls toward the floor under the blast, the same origin→target
 		## shape VFX-01's per-voxel dust already uses.
@@ -4289,9 +4290,9 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 		for i in range(muzzle_spark_count):
 			var a: float = deg_to_rad(randf_range(-muzzle_spark_cone_deg, muzzle_spark_cone_deg))
 			var spread: Vector2 = dir.rotated(a)
-			_smoke_spark_overlay.add_sparks(
-				muzzle_pos + spread * randf_range(2.0, muzzle_flash_forward_px * 1.6),
-				1, muzzle_spark_color)
+			var spark_at: Vector2 = muzzle_pos + spread * randf_range(2.0, muzzle_flash_forward_px * 1.6)
+			_smoke_spark_overlay.add_sparks(spark_at, 1, muzzle_spark_color, 1.0, 1.0,
+				spark_at + Vector2(0.0, muzzle_floor_drop_px))
 		for j in range(muzzle_smoke_puffs):
 			_smoke_spark_overlay.add_smoke(
 				muzzle_pos + dir * randf_range(
@@ -4333,7 +4334,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String) ->
 			1.0 - vfx_impact_spark_jitter, 1.0 + vfx_impact_spark_jitter))))
 		_smoke_spark_overlay.add_sparks(origin, jittered,
 			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color,
-			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale)
+			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale, floor_pos)
 	if bool(profile.get("smoke", false)):
 		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
 			1.0, 1.0, 0, 1.0, 0.0, floor_pos)
@@ -4369,9 +4370,9 @@ func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: Stri
 		_debris_overlay.add_dust(origin, floor_pos, dust_color)
 
 	if material_id == "metal" and randf() < vfx_spark_chance:
-		_smoke_spark_overlay.add_sparks(origin, randi_range(vfx_metal_spark_count_min, vfx_metal_spark_count_max), vfx_metal_spark_color)
+		_smoke_spark_overlay.add_sparks(origin, randi_range(vfx_metal_spark_count_min, vfx_metal_spark_count_max), vfx_metal_spark_color, 1.0, 1.0, floor_pos)
 	elif material_id == "stone" and randf() < vfx_spark_chance:
-		_smoke_spark_overlay.add_sparks(origin, vfx_stone_spark_count, vfx_stone_spark_color)
+		_smoke_spark_overlay.add_sparks(origin, vfx_stone_spark_count, vfx_stone_spark_color, 1.0, 1.0, floor_pos)
 
 	if material_id == "wood" and randf() < vfx_chip_chance:
 		var wood_color: Color = _vfx_material_base_color(material_id)

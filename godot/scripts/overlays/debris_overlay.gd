@@ -155,6 +155,8 @@ func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> vo
 		var size_jitter: float = randf_range(chip_size_jitter_min, chip_size_jitter_max)
 		_chips.append({
 			"pos": origin,
+			"a2": origin,
+			"a3": ParticleMathRef.anchor(_board, origin, target),  ## `target` is the floor beneath it
 			"vel": vel,
 			"arc_duration": arc_duration,
 			"settle_duration": randf_range(chip_settle_duration_min, chip_settle_duration_max),
@@ -221,15 +223,20 @@ const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 var _board: Node3D = null
 var _dust_field3d: RefCounted = null
+var _chip_field3d: RefCounted = null  ## R3D-4e-3: the rotated chips
+const QuadField3DRef = preload("res://godot/scripts/geometry/quad_field3d.gd")
 
 
 func set_board3d(board: Node3D) -> void:
 	_board = board
 	_dust_field3d = null
+	_chip_field3d = null
 	if _dust_field != null:
 		_dust_field.clear()
 	if board == null:
 		return
+	_chip_field3d = QuadField3DRef.new()
+	_chip_field3d.attach_rect(board, 1)
 	_dust_field3d = CircleField3DRef.new()
 	_dust_field3d.attach(board, false, 0.75, 0)
 
@@ -317,6 +324,9 @@ func _draw() -> void:
 	elif mm != null:
 		mm.flush()
 
+	var cf3: RefCounted = _chip_field3d
+	if cf3 != null:
+		cf3.begin_on_board(_chips.size())
 	for chip in _chips:
 		var pos: Vector2 = chip["pos"]
 		var alpha: float = 1.0
@@ -329,12 +339,21 @@ func _draw() -> void:
 		var half_w: float = chip["half_w"]
 		var half_h: float = chip["half_h"]
 		var rot: float = chip["rotation"]
+		if cf3 != null:
+			drawn += 1
+			cmds += 1
+			if submit:
+				cf3.push_axes(chip["a3"], chip["a2"], pos,
+					Vector2(half_w, 0.0).rotated(rot), Vector2(0.0, half_h).rotated(rot), c)
+			continue
 		for corner in [Vector2(-half_w, -half_h), Vector2(half_w, -half_h), Vector2(half_w, half_h), Vector2(-half_w, half_h)]:
 			points.append(pos + corner.rotated(rot))
 		drawn += 1
 		cmds += 1
 		if submit:
 			draw_colored_polygon(points, c)
+	if cf3 != null:
+		cf3.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
 		## overlay's own row, so the split can never disagree with the total.
@@ -348,6 +367,8 @@ func _draw() -> void:
 ## Discard every in-flight dust/chip (map load/reload) — same reasoning as
 ## EmberOverlay.clear(): nothing here is state a reload needs to restore.
 func clear() -> void:
+	if _chip_field3d != null:
+		_chip_field3d.clear()
 	if _dust_field3d != null:
 		_dust_field3d.clear()
 	if _dust_field != null:

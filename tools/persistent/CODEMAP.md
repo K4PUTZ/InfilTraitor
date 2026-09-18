@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**267 scripts · 99080 lines total** (under `godot/scripts/`)
+**268 scripts · 99296 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
@@ -554,27 +554,19 @@ extends `Node3D` · 1010 lines
 
 ### `circle_field3d.gd`
 
-`class_name CircleField3D` · extends `RefCounted` · 124 lines
+`class_name CircleField3D` · extends `"res://godot/scripts/geometry/quad_field3d.gd"` · 24 lines
 
 `godot/scripts/geometry/circle_field3d.gd`
 
-> CircleField3D — many camera-facing discs on the 3D board, in ONE draw call, depth-tested. RENDER3D R3D-4e-1. The 3D twin of `CircleField` (PERF-P7b): the same clients, the same begin/push/flush/clear frame, but each disc has a WORLD position (`ParticleMath`), so a wall in front of it hides it. The disc mesh is one quad built once; a frame ships only a transform and a colour per instance, exactly as the 2D field does with its circle fan — the cost P7b measured (CPU submission per vertex) stays solved, and a quad is four vertices where the fan was 192. ⚠️ `custom_aabb` IS SET, AND FOR THE SAME REASON AS THE 2D FIELD. Godot derives a MultiMesh's culling bounds from its BASE MESH, here a 2×2 quad at the origin; the instances carry the real positions and are not in that box, so without this box every disc far from the origin is culled and whole effects vanish silently (P7b lost particles that way for weeks). ⚠️ DRAW ORDER. Instances draw in push order (as the 2D field's do), which under MIX blending IS part of the picture. Between FIELDS the order is the node's distance to the camera, which is not what the 2D z-order meant, so each field takes a `priority` (material render priority) that stands in for it.
+> CircleField3D — many camera-facing discs on the 3D board, in ONE draw call, depth-tested. RENDER3D R3D-4e-1. The 3D twin of `CircleField` (PERF-P7b): the same clients, the same begin/push/flush/clear frame, but each disc has a WORLD position (`ParticleMath`), so a wall in front of it hides it. Built on `QuadField3D` (R3D-4e-3): the disc is a quad whose shader discards outside the unit circle and feathers the rim — a frame ships only a transform and a colour per instance, exactly as the 2D field does with its circle fan, and a quad is four vertices where the fan was 192. `QuadField3D`'s header carries the `custom_aabb` and draw-order warnings that apply here too.
 
 **Constants / tuning**
-- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `SHADER_MIX` = `"res://godot/shaders/particle_disc3d.gdshader"`
 - `SHADER_ADD` = `"res://godot/shaders/particle_disc3d_add.gdshader"`
-- `FLOATS_PER_INSTANCE` = `16`
 
 **Public API**
 - `func attach(parent: Node3D, additive: bool, feather: float = 0.0, priority: int = 0) -> void:`
-- `func begin(capacity: int, cam: Basis, px_per_unit: float) -> void:`
-- `func begin_on_board(capacity: int) -> void:`
 - `func push(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2, radius_px: float, color: Color) -> void:`
-- `func flush() -> void:`
-- `func clear() -> void:`
-- `func live_count() -> int:`
-- `func buffer() -> PackedFloat32Array:`
 
 ---
 
@@ -814,7 +806,7 @@ extends `Node3D` · 1010 lines
 
 ### `particle_math.gd`
 
-`class_name ParticleMath` · extends `RefCounted` · 67 lines
+`class_name ParticleMath` · extends `RefCounted` · 79 lines
 
 `godot/scripts/geometry/particle_math.gd`
 
@@ -860,6 +852,32 @@ extends `Node3D` · 1010 lines
 
 **Public API**
 - `func setup(board: Node3D, source: Node2D) -> void:`
+
+---
+
+### `quad_field3d.gd`
+
+`class_name QuadField3D` · extends `RefCounted` · 142 lines
+
+`godot/scripts/geometry/quad_field3d.gd`
+
+> QuadField3D — many camera-facing rectangles on the 3D board, in ONE draw call, depth-tested. RENDER3D R3D-4e-3. The base of `CircleField3D` (discs) and the field for everything the VFX draw as a line or a polygon: spark and shrapnel streaks, rotated debris chips. A rectangle is a centre and two half-extent vectors in 2D SCREEN space; `ParticleMath` carries all three into the world, so a line is a thin rectangle and a chip is a rotated one, with no per-shape code. Everything `CircleField3D`'s header says holds here: one quad built once, only a transform and a colour per instance per frame, `custom_aabb` set (a MultiMesh's bounds come from its base mesh, and without the box every instance far from the origin is culled), instances draw in push order, and `priority` stands in for the 2D z-order between fields.
+
+**Constants / tuning**
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+- `SHADER_RECT` = `"res://godot/shaders/particle_quad3d.gdshader"`
+- `FLOATS_PER_INSTANCE` = `16`
+
+**Public API**
+- `func attach_rect(parent: Node3D, priority: int = 0) -> void:`
+- `func begin(capacity: int, cam: Basis, px_per_unit: float) -> void:`
+- `func begin_on_board(capacity: int) -> void:`
+- `func push_axes(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2, ax_2d: Vector2, ay_2d: Vector2, color: Color) -> void:`
+- `func push_line(anchor_3d: Vector3, anchor_2d: Vector2, p0_2d: Vector2, p1_2d: Vector2, width_px: float, color: Color) -> void:`
+- `func flush() -> void:`
+- `func clear() -> void:`
+- `func live_count() -> int:`
+- `func buffer() -> PackedFloat32Array:`
 
 ---
 
@@ -1228,13 +1246,14 @@ extends `Node3D` · 1010 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 358 lines
+`class_name DebrisOverlay` · extends `Node2D` · 379 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
 **Constants / tuning**
 - `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
 - `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+- `QuadField3DRef` = `preload("res://godot/scripts/geometry/quad_field3d.gd")`
 
 **Public vars**
 - `var dust_delay_min: float = 0.25`
@@ -1748,9 +1767,14 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_overlay.gd`
 
-`class_name ShrapnelOverlay` · extends `Node2D` · 185 lines
+`class_name ShrapnelOverlay` · extends `Node2D` · 230 lines
 
 `godot/scripts/overlays/shrapnel_overlay.gd`
+
+**Constants / tuning**
+- `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
+- `QuadField3DRef` = `preload("res://godot/scripts/geometry/quad_field3d.gd")`
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 
 **Public vars**
 - `var glow_radius: float = 16.0`
@@ -1766,7 +1790,8 @@ extends `Node2D` · 94 lines
 - `var trail_width: float = 5.0`
 
 **Public API**
-- `func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
+- `func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -1801,7 +1826,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 376 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 400 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -2280,7 +2305,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 285 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 286 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -4726,7 +4751,7 @@ extends `SceneTree` · 177 lines
 
 ### `particle_space_selftest.gd`
 
-extends `SceneTree` · 154 lines
+extends `SceneTree` · 224 lines
 
 `godot/scripts/tools/particle_space_selftest.gd`
 
@@ -4734,6 +4759,7 @@ extends `SceneTree` · 154 lines
 
 **Constants / tuning**
 - `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+- `QuadField3DRef` = `preload("res://godot/scripts/geometry/quad_field3d.gd")`
 - `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
 - `PPU` = `256.0 / sqrt(2.0)`
 - `EPS_PX` = `0.05`
@@ -4748,6 +4774,8 @@ extends `SceneTree` · 154 lines
 - `func test_origin_from_floor_reads_the_height() -> void:`
 - `func test_field_buffer_layout() -> void:`
 - `func test_field_survives_an_empty_frame() -> void:`
+- `func test_line_ends_land_on_their_pixels() -> void:`
+- `func test_rotated_chip_corners_land_on_their_pixels() -> void:`
 
 ---
 
@@ -5939,7 +5967,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12298 lines
+extends `Node2D` · 12299 lines
 
 `godot/scripts/world/room.gd`
 

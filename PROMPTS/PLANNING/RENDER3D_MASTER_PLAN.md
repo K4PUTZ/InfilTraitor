@@ -1592,6 +1592,13 @@ detonation cost visible enough to be worth it.
     longer paints the wall's face; open-floor blasts match the 2D ones; an isolated control (red puffs
     in front of the wall, blue behind) shows the front ones and none of the back ones. 4e-3 (sparks,
     shrapnel, chips), 4e-4 (glass) and 4e-5 (retire the 2D draw, Moto) remain — **4e stays PENDING.**
+  - **4e-3 BUILT** — spark streaks, shrapnel glows and trails, rotated debris chips. One new
+    primitive, `QuadField3D` (a rectangle from a centre and two 2D half-extent vectors, carried into
+    the world by the same `ParticleMath`): a line is a thin rectangle, a chip a rotated one; the disc
+    field now extends it. The selftest proves a line's two ends and a rotated chip's four corners land
+    on the pixels the 2D draw would (worst error 0.0004 px). An isolated control (red in front of the
+    wall, blue behind; `Screenshots/r3d4e/e3_synth_N.png`, local) draws the red sparks and chips and
+    none of the blue. **Shrapnel has no capture of its own**; it uses the two fields proven here.
   - **⚠️ A latent Rule-9 bug found and fixed on the way.** The VFX asked for the floor under a voxel
     with `voxel_world_position(grid, 0)`. Level `0` stopped existing at the level renumber, so it
     answered `Vector2.ZERO` and every caller took its "unbuilt column" fallback: **330 of 330** on a

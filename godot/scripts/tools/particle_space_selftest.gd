@@ -10,6 +10,7 @@
 extends SceneTree
 
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
+const QuadField3DRef = preload("res://godot/scripts/geometry/quad_field3d.gd")
 const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
 const PPU: float = 256.0 / sqrt(2.0)
 const EPS_PX: float = 0.05
@@ -51,6 +52,8 @@ func _init() -> void:
 	test_origin_from_floor_reads_the_height()
 	test_field_buffer_layout()
 	test_field_survives_an_empty_frame()
+	test_line_ends_land_on_their_pixels()
+	test_rotated_chip_corners_land_on_their_pixels()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -151,4 +154,71 @@ func test_field_survives_an_empty_frame() -> void:
 	field.flush()
 	field.clear()
 	_check(field.live_count() == 0, "no discs, no error")
+	holder.queue_free()
+
+
+## [6] A line is a thin rectangle: its two ends, carried into the world and projected, are the two
+## screen points the 2D `draw_line` was given, and its thickness is the line width on screen.
+func test_line_ends_land_on_their_pixels() -> void:
+	print("[6] a QuadField3D line lands on the pixels the 2D draw_line would")
+	var holder := Node3D.new()
+	root.add_child(holder)
+	var field: RefCounted = QuadField3DRef.new()
+	field.attach_rect(holder)
+	var basis: Basis = _cam.global_transform.basis
+	field.begin(1, basis, PPU)
+	var a := Vector3(4.0, 0.5, 5.0)
+	var a2: Vector2 = _cam.unproject_position(a)
+	var p0: Vector2 = a2 + Vector2(-12.0, -30.0)
+	var p1: Vector2 = a2 + Vector2(40.0, 18.0)
+	field.push_line(a, a2, p0, p1, 4.0, Color.WHITE)
+	var buf: PackedFloat32Array = field.buffer()
+	var centre := Vector3(buf[3], buf[7], buf[11])
+	var bx := Vector3(buf[0], buf[4], buf[8])
+	var by := Vector3(buf[1], buf[5], buf[9])
+	var c2: Vector2 = _cam.unproject_position(centre)
+	var end0: Vector2 = _cam.unproject_position(centre - bx)
+	var end1: Vector2 = _cam.unproject_position(centre + bx)
+	_check((c2 - (p0 + p1) * 0.5).length() < EPS_PX, "centre is the segment's midpoint (%.4f px off)" % (c2 - (p0 + p1) * 0.5).length())
+	_check((end0 - p0).length() < EPS_PX and (end1 - p1).length() < EPS_PX,
+		"both ends land on their pixels (%.4f, %.4f px off)" % [(end0 - p0).length(), (end1 - p1).length()])
+	var thickness: float = (_cam.unproject_position(centre + by) - _cam.unproject_position(centre - by)).length()
+	_check(absf(thickness - 4.0) < EPS_PX, "thickness %.4f px, wanted 4.0" % thickness)
+	## A zero-length line (a resting spark) is a square of the line's width, not a degenerate quad.
+	field.begin(1, basis, PPU)
+	field.push_line(a, a2, a2, a2, 2.0, Color.WHITE)
+	var d: PackedFloat32Array = field.buffer()
+	var dx := Vector3(d[0], d[4], d[8])
+	_check(dx.length() > 1e-6, "a zero-length line still has extent")
+	holder.queue_free()
+
+
+## [7] A rotated chip: the four corners the 2D `draw_colored_polygon` was given.
+func test_rotated_chip_corners_land_on_their_pixels() -> void:
+	print("[7] a rotated chip's corners land on the pixels the 2D polygon would")
+	var holder := Node3D.new()
+	root.add_child(holder)
+	var field: RefCounted = QuadField3DRef.new()
+	field.attach_rect(holder)
+	var basis: Basis = _cam.global_transform.basis
+	field.begin(1, basis, PPU)
+	var a := Vector3(1.0, 0.2, 2.0)
+	var a2: Vector2 = _cam.unproject_position(a)
+	var pos: Vector2 = a2 + Vector2(7.0, -25.0)
+	var half_w: float = 3.0
+	var half_h: float = 2.0
+	var rot: float = 0.9
+	field.push_axes(a, a2, pos, Vector2(half_w, 0.0).rotated(rot), Vector2(0.0, half_h).rotated(rot), Color.WHITE)
+	var buf: PackedFloat32Array = field.buffer()
+	var centre := Vector3(buf[3], buf[7], buf[11])
+	var bx := Vector3(buf[0], buf[4], buf[8])
+	var by := Vector3(buf[1], buf[5], buf[9])
+	var worst: float = 0.0
+	for corner: Vector2 in [Vector2(-half_w, -half_h), Vector2(half_w, -half_h), Vector2(half_w, half_h), Vector2(-half_w, half_h)]:
+		var want: Vector2 = pos + corner.rotated(rot)
+		var sx: float = signf(corner.x)
+		var sy: float = signf(corner.y)
+		var got: Vector2 = _cam.unproject_position(centre + bx * sx + by * sy)
+		worst = maxf(worst, (got - want).length())
+	_check(worst < EPS_PX, "worst corner error %.4f px" % worst)
 	holder.queue_free()

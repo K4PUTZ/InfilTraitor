@@ -244,7 +244,8 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 					## through here.
 					smoke_overlay.add_sparks(entry["world_pos"],
 						int(entry.get("count", 1)), color,
-						SURFACE_SPARK_SPEED_SCALE, SURFACE_SPARK_DURATION_SCALE)
+						SURFACE_SPARK_SPEED_SCALE, SURFACE_SPARK_DURATION_SCALE,
+						entry.get("floor_pos", ParticleMathRef.NO_FLOOR))
 					return 1
 			return 0
 	return 0

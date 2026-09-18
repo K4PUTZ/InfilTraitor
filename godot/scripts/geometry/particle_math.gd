@@ -27,8 +27,20 @@ const NO_ANCHOR: Vector3 = Vector3(INF, INF, INF)
 ## World position of a particle whose 2D position is `pos_2d`, given the anchor pair.
 static func to_world(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2,
 		cam: Basis, px_per_unit: float) -> Vector3:
-	var d: Vector2 = pos_2d - anchor_2d
-	return anchor_3d + cam.x * (d.x / px_per_unit) - Vector3.UP * (d.y / (px_per_unit * COS_ELEVATION))
+	return anchor_3d + displace(pos_2d - anchor_2d, cam, px_per_unit)
+
+
+## A 2D screen displacement as a world displacement: horizontal along the camera's right, vertical
+## straight up (÷ cos 30°). Linear, so it maps a shape's EXTENTS the same way it maps a position.
+static func displace(d: Vector2, cam: Basis, px_per_unit: float) -> Vector3:
+	return cam.x * (d.x / px_per_unit) - Vector3.UP * (d.y / (px_per_unit * COS_ELEVATION))
+
+
+## A rectangle of half-extents `ax_2d` and `ay_2d` (2D screen vectors, so rotation is free): the basis
+## whose x and y are those extents carried into the world, z the camera's. Lines, streaks and rotated
+## chips are all this. The 2D drawing is symmetric about the centre, so the axis signs do not matter.
+static func quad_basis(ax_2d: Vector2, ay_2d: Vector2, cam: Basis, px_per_unit: float) -> Basis:
+	return Basis(displace(ax_2d, cam, px_per_unit), displace(ay_2d, cam, px_per_unit), cam.z)
 
 
 ## The 3D point an emission at `world_pos` (2D) comes from, given the ground point beneath it. The

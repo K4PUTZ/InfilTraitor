@@ -26,6 +26,7 @@ class_name SmokeSparkOverlay
 ## Earned on the static `circle_gate`: 0 of 921 600 px differ between the two
 ## paths. The opt-out stays for the same one-binary A/B reason P3's does.
 const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
+const QuadField3DRef = preload("res://godot/scripts/geometry/quad_field3d.gd")
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 static var P7B_MULTIMESH: bool = OS.get_environment("INFILTRAITOR_P7B") != "0"
 
@@ -35,6 +36,7 @@ var _puff_field: CircleField = null
 ## draw in 2D until R3D-4e-3.
 var _board: Node3D = null
 var _puff_field3d: RefCounted = null
+var _spark_field3d: RefCounted = null  ## R3D-4e-3: the streaks, as thin rectangles
 
 
 func _ready() -> void:
@@ -63,10 +65,13 @@ func _ready() -> void:
 func set_board3d(board: Node3D) -> void:
 	_board = board
 	_puff_field3d = null
+	_spark_field3d = null
 	if _puff_field != null:
 		_puff_field.clear()
 	if board == null:
 		return
+	_spark_field3d = QuadField3DRef.new()
+	_spark_field3d.attach_rect(board, 3)
 	var feather_env := OS.get_environment("INFILTRAITOR_SMOKE_FEATHER")
 	var feather: float = feather_env.to_float() if feather_env.is_valid_float() else 0.75
 	_puff_field3d = CircleField3DRef.new()
@@ -209,12 +214,17 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 ## right in order to fix the thing that was not. Same reasoning, same idiom, as
 ## `add_smoke()`'s own `drift_scale`.
 func add_sparks(pos: Vector2, count: int, color: Color,
-		speed_scale: float = 1.0, duration_scale: float = 1.0) -> void:
+		speed_scale: float = 1.0, duration_scale: float = 1.0,
+		floor_pos: Vector2 = ParticleMathRef.NO_FLOOR,
+		anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR) -> void:
+	var a3: Vector3 = ParticleMathRef.anchor(_board, pos, floor_pos, anchor_3d)
 	for i in range(count):
 		var angle: float = randf_range(0.0, TAU)
 		var speed: float = randf_range(spark_speed_min, spark_speed_max) * speed_scale
 		_sparks.append({
 			"pos": pos,
+			"a2": pos,
+			"a3": a3,
 			"vel": Vector2(cos(angle), sin(angle)) * speed,
 			"elapsed": 0.0,
 			"duration": randf_range(spark_duration_min, spark_duration_max) * duration_scale,
@@ -313,6 +323,9 @@ func _draw() -> void:
 	if probing:
 		puff_us = Time.get_ticks_usec() - puff_t0
 		puff_cmds = cmds
+	var sf3: RefCounted = _spark_field3d
+	if sf3 != null:
+		sf3.begin_on_board(_sparks.size() * maxi(spark_trail_segments, 1))
 	for p in _sparks:
 		var t: float = p["elapsed"] / p["duration"]
 		var alpha: float = pow(1.0 - t, spark_fade_power)
@@ -323,7 +336,10 @@ func _draw() -> void:
 			drawn += 1
 			cmds += 1
 			if submit:
-				draw_line(p["pos"], p["pos"], c, spark_width)
+				if sf3 != null:
+					sf3.push_line(p["a3"], p["a2"], p["pos"], p["pos"], spark_width, c)
+				else:
+					draw_line(p["pos"], p["pos"], c, spark_width)
 			continue
 		## E-SPARK-02: the streak is walked back from the head in segments, each
 		## dimmer and thinner than the last. Length follows SPEED, so a fast
@@ -342,8 +358,14 @@ func _draw() -> void:
 			var seg := c
 			seg.a = c.a * alpha * lerpf(1.0, spark_trail_tail_alpha, a0)
 			if submit:
-				draw_line(p["pos"] - dir * reach * a0, p["pos"] - dir * reach * a1,
-					seg, spark_width * lerpf(1.0, 0.35, a0))
+				if sf3 != null:
+					sf3.push_line(p["a3"], p["a2"], p["pos"] - dir * reach * a0,
+						p["pos"] - dir * reach * a1, spark_width * lerpf(1.0, 0.35, a0), seg)
+				else:
+					draw_line(p["pos"] - dir * reach * a0, p["pos"] - dir * reach * a1,
+						seg, spark_width * lerpf(1.0, 0.35, a0))
+	if sf3 != null:
+		sf3.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
 		## overlay's own row, so the split can never disagree with the total.
@@ -366,6 +388,8 @@ func smoke_count() -> int:
 ## Discard every in-flight puff/spark (map load/reload) — same reasoning as
 ## EmberOverlay.clear(): nothing here is state a reload needs to restore.
 func clear() -> void:
+	if _spark_field3d != null:
+		_spark_field3d.clear()
 	if _puff_field3d != null:
 		_puff_field3d.clear()
 	if _puff_field != null:

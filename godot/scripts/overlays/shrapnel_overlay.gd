@@ -75,7 +75,30 @@ func _ready() -> void:
 ## Sample `frag_count` fragments from the damage cells and launch them.
 ## `blast_center` is the epicenter in world coords; `plan` is the
 ## DetonationPlan; `voxel_renderer` resolves cell→world coords.
-func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer) -> void:
+## RENDER3D R3D-4e-3 — hand this overlay the 3D board (or null to go back to 2D): fragments then fly in
+## world space, so a wall in front of them hides them.
+const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
+const QuadField3DRef = preload("res://godot/scripts/geometry/quad_field3d.gd")
+const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
+var _board: Node3D = null
+var _glow_field3d: RefCounted = null
+var _trail_field3d: RefCounted = null
+
+
+func set_board3d(board: Node3D) -> void:
+	_board = board
+	_glow_field3d = null
+	_trail_field3d = null
+	if board == null:
+		return
+	_glow_field3d = CircleField3DRef.new()
+	_glow_field3d.attach(board, false, 0.0, 4)
+	_trail_field3d = QuadField3DRef.new()
+	_trail_field3d.attach_rect(board, 4)
+
+
+func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer,
+		floor_pos: Vector2 = ParticleMathRef.NO_FLOOR) -> void:
 	if voxel_renderer == null:
 		return
 
@@ -93,6 +116,8 @@ func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer) -> 
 		return
 
 	## Sample frag_count random cells (with replacement if needed)
+	## Every fragment leaves the blast centre: one anchor for the whole burst.
+	var a3: Vector3 = ParticleMathRef.anchor(_board, blast_center, floor_pos)
 	for _i in range(mini(frag_count, cells.size())):
 		var idx: int = randi_range(0, cells.size() - 1)
 		var target_pos: Vector2 = cells[idx]
@@ -102,6 +127,8 @@ func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer) -> 
 
 		_frags.append({
 			"pos": blast_center,
+			"a2": blast_center,
+			"a3": a3,
 			"vel": velocity,
 			"elapsed": 0.0,
 			"lifetime": lifetime,
@@ -139,6 +166,11 @@ func _draw() -> void:
 	var probe_t0: int = Time.get_ticks_usec() if probing else 0
 	var drawn: int = 0
 	var cmds: int = 0
+	var gf3: RefCounted = _glow_field3d
+	var tf3: RefCounted = _trail_field3d
+	if gf3 != null:
+		gf3.begin_on_board(_frags.size())
+		tf3.begin_on_board(_frags.size() * maxi(trail_segments, 1))
 	for frag in _frags:
 		var t: float = frag["elapsed"] / frag["lifetime"]
 		var alpha: float = 1.0 - t  ## linear fade
@@ -147,7 +179,10 @@ func _draw() -> void:
 		drawn += 1
 		cmds += 1
 		if submit:
-			draw_circle(frag["pos"], glow_radius, c)
+			if gf3 != null:
+				gf3.push(frag["a3"], frag["a2"], frag["pos"], glow_radius, c)
+			else:
+				draw_circle(frag["pos"], glow_radius, c)
 		## E-FRAG-02 — the subtle trail. Drawn AFTER the head so the head stays
 		## the darkest point of the fragment, and skipped entirely once the
 		## fragment has slowed or nearly died, where a streak would read as a
@@ -166,9 +201,16 @@ func _draw() -> void:
 					var a1: float = float(i + 1) / float(trail_segments)
 					var seg := c
 					seg.a = c.a * lerpf(trail_head_alpha, trail_tail_alpha, a0)
-					draw_line(frag["pos"] - dir * reach * a0,
-						frag["pos"] - dir * reach * a1,
-						seg, trail_width * lerpf(1.0, 0.25, a0))
+					if tf3 != null:
+						tf3.push_line(frag["a3"], frag["a2"], frag["pos"] - dir * reach * a0,
+							frag["pos"] - dir * reach * a1, trail_width * lerpf(1.0, 0.25, a0), seg)
+					else:
+						draw_line(frag["pos"] - dir * reach * a0,
+							frag["pos"] - dir * reach * a1,
+							seg, trail_width * lerpf(1.0, 0.25, a0))
+	if gf3 != null:
+		gf3.flush()
+		tf3.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
 		## overlay's own row, so the split can never disagree with the total.
@@ -180,6 +222,9 @@ func _draw() -> void:
 
 
 func clear() -> void:
+	if _glow_field3d != null:
+		_glow_field3d.clear()
+		_trail_field3d.clear()
 	_frags.clear()
 	set_process(false)
 	queue_redraw()

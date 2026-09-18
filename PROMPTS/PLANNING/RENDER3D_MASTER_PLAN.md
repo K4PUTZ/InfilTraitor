@@ -1265,8 +1265,94 @@ its own session: research found the load-time placement path
 `SKIP_2D_BOARD_WRITES` instrument, which only gates per-cell light writes and the plane
 flush) is what actually builds the hidden 2D geometry, and two real readers would break
 silently if it stopped: the whole glass subsystem (`_glass_layers` reads — cracks,
-shatter, remnants, rim) and `columns_with_structure()` (VL-D3 sun exposure). Both are
-R3D-5 migration scope, not a same-session toggle.
+shatter, remnants, rim) and `columns_with_structure()` (VL-D3 sun exposure).
+
+**Step 5 planning session (2026-09-17) — a second, deeper pass superseded the "both are
+R3D-5 scope" call above.** Read `_set_voxel_cell()`, `apply_damage_voxel_swap()`,
+`columns_with_structure()`, `VoxelStore.occupancy_dict()`/`cell_index()`, and every
+render-time glass function (`_glass_cell_present`, `_glass_face_mask`,
+`_glass_side_covered`, `erase_glass_cell`, the crack/rim/remnant family), file by file,
+to find exactly which reader needs what. The scope is smaller than first assessed:
+
+- **`columns_with_structure()` is NOT a blocker — it's a five-minute fix, ready now.** It
+  currently scans `get_used_cells()` per opaque `TileMapLayer`
+  (`voxel_renderer.gd:3751`) for VL-D3 sun exposure. `VoxelStore.occupancy_dict()`
+  (`voxel_store.gd:410`) already returns the exact same shape — `level -> {Vector2i:
+  true}` — built from the store's own claims, no tile involved. Swap the body to flatten
+  `VoxelStore.active.occupancy_dict()`'s levels into one dict and this reader stops caring
+  whether a single tile was ever placed. **Land this on its own, ahead of the rest** — it
+  de-risks everything else and needs no A/B flag.
+- **Glass PLACEMENT never read the opaque layer — checked, not assumed.** `_glass_face_mask()`
+  → `_glass_side_covered()` reads `_glass_seam_index` (its own dict, built as glass voxels
+  place) to decide which side faces are exposed, never `_layers`. So the glass branch inside
+  `_set_voxel_cell()` (the `GlassMaterials.is_glass(material_name) and not flat_baked` block
+  that writes `_glass_layers[level]`) can keep running **completely unchanged** — it has zero
+  dependency on the opaque branch executing first, in the same function or otherwise.
+- **The real blocker is narrower than "the whole glass subsystem": it's specifically the
+  render-time "is glass still here" query, `_glass_cell_present()` /
+  `glass_cell_present()`** (`voxel_renderer.gd:6258`, `:7319`) — its own docstring calls
+  `_glass_layers` "the live authority". Everything downstream of it (`erase_glass_cell`,
+  `refresh_glass_rims`, `refresh_glass_crack_occupancy`, `restamp_glass_shards`,
+  `spawn_glass_crack`/`spawn_glass_craze`, `apply_glass_remnant_at`/`apply_glass_opening_at`)
+  asks this question or writes the same sublayer directly — none of it touches the OPAQUE
+  layer this step wants to stop building. **So skipping the opaque placement does not
+  require migrating glass at all** — glass keeps its own tilemap regardless of what this
+  step does, because R3D-6 (glass look parity in 3D) hasn't given the 3D board real glass
+  rendering yet anyway. The R3D-2 note that "glass occupancy leaves `_glass_layers`,
+  satisfied by step 1" was about the PREDICTION/plan-builder's read of glass state
+  (`STORE_GLASS`, already store-backed) — a different consumer from this render-time query,
+  which the plan text conflated. Migrating `_glass_cell_present()` itself to
+  `VoxelStore.active.occ[cell_index(...)]` looks mechanically straightforward (the store
+  already tracks visibility per (x,y,level) for every voxel, glass included) but is
+  genuinely **R3D-5/R3D-6 scope** (it needs an A/B selftest proving 0 differences against
+  the tile read, including the ~160 multi-claim cells on PLAYGROUND where `owner[cell]`
+  picks one claim and a caller asking about a *specific* glass voxel could get the wrong
+  answer) — **not required for step 5, so left alone.**
+- **`apply_damage_voxel_swap()` is a pure opaque-layer `set_cell()`** (`voxel_renderer.gd:7741`)
+  — no glass path, no side bookkeeping beyond the layer write. Skippable outright under the
+  same guard as the main opaque branch.
+- **The bookkeeping calls riding along the opaque erase/set
+  (`note_external_write`, `forget_ghost_record`, `note_opaque_erased`) are all 2D-only
+  housekeeping** — ghost records exist for the (currently suspended, `[[rotation-suspended-for-perf]]`)
+  2D rotation restore; `note_opaque_erased` only feeds the glass-crack-clip overlay, a
+  render-order trick with no 3D counterpart. Skippable along with the branch they sit in.
+
+**Revised step 5 plan for the dedicated session:**
+1. Land `columns_with_structure()` → `VoxelStore.occupancy_dict()` first, alone, verified by
+   a same-map A/B (`INFILTRAITOR_STORE_WALK`-style: old vs new body, 0 differences on
+   PLAYGROUND) — this is safe to ship even before the rest starts.
+2. Add a guard at the top of the opaque branch in `_process_dirty_slice_voxel()` and
+   `_process_dirty_slab_voxel()` (before the `apply_damage_voxel_swap()` call, and before
+   the `_set_voxel_cell()` fallback) that returns early when `RENDER3D=1` and a new A/B
+   override flag (name TBD, mirroring `SKIP_2D_BOARD_WRITES`'s "instrument only meaningful
+   with RENDER3D=1" convention) is NOT forcing the old path. The glass branch inside
+   `_set_voxel_cell()` is unaffected either way — this guard sits before it in the caller,
+   not inside the shared function, so a glass voxel still reaches `_set_voxel_cell()`
+   normally.
+3. Confirm `voxel_destroyed` still emits on the skipped path where VFX depends on it
+   (`_process_dirty_slice_voxel()`'s erase branch) — the signal, not the tile write, is
+   what downstream listeners need; keep the emit, drop only the tile calls around it.
+4. Verify the 21 selftests that read `get_layer()`/tile cells (`tools/persistent/`) build
+   their own isolated `VoxelRenderer` + `process_dirty()` fixtures rather than going through
+   `Room` with `RENDER3D=1` — spot-checked several during this session (`slab_render_selftest.gd`,
+   `roof_integration_selftest.gd`) and found no `RENDER3D` reference in any of them, so they
+   should be unaffected by a flag-gated change; **confirm this for all 21 in the dedicated
+   session rather than assuming it holds project-wide**, since a selftest calling
+   `process_dirty()` directly never routes through this guard regardless (the guard lives in
+   `Room`'s dev-flag read, not in `VoxelRenderer` itself, unless the flag is read as a static
+   the way `SKIP_BOARD_WRITES` is — the exact wiring point is an implementation decision for
+   that session, not fixed here).
+5. Gate: an A/B Moto run (`RENDER3D=1` skip-on vs skip-off) measuring the load-time gap
+   this session's step 7 data already flagged (~15 s between `VOXEL-STORE built` and
+   `BOARD3D` ready, consistent with the hidden 2D build still running in between) — expect
+   it to shrink substantially; `BoardProbe` diffed 0 against the skip-off run (the 3D mesh
+   reads the store either way, so skipping the 2D placement must not change it); glass
+   mechanics (crack, shatter, a bullet through a pane) exercised live and unaffected.
+
+**Left alone, explicitly out of step 5's scope:** migrating `_glass_cell_present()` and the
+rest of the render-time glass query surface off `_glass_layers` (R3D-5/R3D-6 — glass still
+needs its own 3D look and a store-backed per-cell state richer than a visibility bit before
+that migration is worth doing).
 
 **Step 7 — Moto gate, PARTIAL (2026-09-17).** Ran on the physical Moto g04s (serial
 `ZF524T5TG5`), package `com.example.infiltraitor`, `MAP=PLAYGROUND` (which now seeds

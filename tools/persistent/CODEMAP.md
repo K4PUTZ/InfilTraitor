@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**262 scripts · 98181 lines total** (under `godot/scripts/`)
+**263 scripts · 98308 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
@@ -183,7 +183,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1302 lines
+`class_name GuardEnemy` · extends `Node2D` · 1317 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -191,6 +191,7 @@
 - `signal move_started(from_cell: Vector2i, to_cell: Vector2i)`
 - `signal step_finished(cell: Vector2i)`
 - `signal move_finished(cell: Vector2i)`
+- `signal vision_smooth_ready(points: PackedVector2Array, colors: PackedColorArray)`
 - `signal whistled(origin_cell: Vector2i, last_known: Vector2i)`
 - `signal radioed(origin_cell: Vector2i, last_known: Vector2i)`
 
@@ -228,6 +229,7 @@
 - `var floor_layer: TileMapLayer = null`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var enemy_id: String = ""`
+- `var vision_3d: bool = false`
 - `var cell: Vector2i = Vector2i.ZERO`
 - `var patrol_route: Array[Vector2i] = []`
 - `var patrol_index: int = 0`
@@ -505,7 +507,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_billboard3d.gd`
 
-`class_name ActorBillboard3D` · extends `Node3D` · 158 lines
+`class_name ActorBillboard3D` · extends `Node3D` · 160 lines
 
 `godot/scripts/geometry/actor_billboard3d.gd`
 
@@ -891,6 +893,22 @@ extends `Node3D` · 1002 lines
 `godot/scripts/geometry/slice_generator.gd`
 
 > Geometry Module — Slice Generator: creates Slices and Voxels from Edges Port from room.gd _place_wall_voxels() and _voxel_slice_positions() logic
+
+---
+
+### `vision_cone3d.gd`
+
+`class_name VisionCone3D` · extends `MeshInstance3D` · 78 lines
+
+`godot/scripts/geometry/vision_cone3d.gd`
+
+> VisionCone3D — a guard's smooth vision cone, drawn on the 3D board's ground plane. RENDER3D R3D-4c. The 2D cone was painted at z −4 under everything the 2D board drew above it, so a wall covered it. Under `RENDER3D=1` the 2D canvas draws over the 3D board, so left in 2D the cone would paint across walls and over the actors. Here it is a triangle fan on the ground, a hair above it, depth-tested: geometry covers it, actors stand over it. ONE AUTHORITY. The polygon is the guard's own (`_draw_vision_smooth_body` — LOS cuts, fov, range, the fade to alpha 0 at the rim). The guard publishes it through `vision_smooth_ready` while `vision_3d` is on; this only re-expresses each 2D point on the ground.
+
+**Constants / tuning**
+- `GROUND_LIFT` = `0.02`
+
+**Public API**
+- `func setup(board: Node3D, guard: Node2D) -> void:`
 
 ---
 
@@ -5818,7 +5836,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12208 lines
+extends `Node2D` · 12240 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5858,6 +5876,7 @@ extends `Node2D` · 12208 lines
 - `ScenarioRunnerClass` = `preload("res://godot/scripts/systems/scenario_runner.gd")`
 - `Board3DLiveClass` = `preload("res://godot/scripts/geometry/board3d_live.gd")`
 - `ActorBillboard3DClass` = `preload("res://godot/scripts/geometry/actor_billboard3d.gd")`
+- `VisionCone3DClass` = `preload("res://godot/scripts/geometry/vision_cone3d.gd")`
 - `BoardProbeClass` = `preload("res://godot/scripts/systems/board_probe.gd")`
 - `WorldRenderScaleClass` = `preload("res://godot/scripts/systems/world_render_scale.gd")`
 - `TargetCursorOverlayClass` = `preload("res://godot/scripts/overlays/target_cursor_overlay.gd")`

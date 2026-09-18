@@ -8,6 +8,9 @@ signal step_finished(cell: Vector2i)
 signal move_finished(cell: Vector2i)
 
 ## Emitted in _enter_state() at the right moments
+## RENDER3D R3D-4c — the smooth vision cone's polygon (guard-local 2D points, one colour each), handed
+## to a `VisionCone3D` instead of being drawn when `vision_3d` is on. Same maths, one authority.
+signal vision_smooth_ready(points: PackedVector2Array, colors: PackedColorArray)
 signal whistled(origin_cell: Vector2i, last_known: Vector2i)
 signal radioed(origin_cell: Vector2i, last_known: Vector2i)
 
@@ -56,6 +59,9 @@ var enemy_id: String = ""
 
 var _vision_tiles_node: Node2D = null
 var _vision_smooth_node: Node2D = null
+## True while a `VisionCone3D` owns the smooth cone: the 2D node still computes it (so every existing
+## redraw trigger keeps working) but publishes the polygon instead of painting it.
+var vision_3d: bool = false
 
 ## PERF-DEV (2026-09-12) — the cone is redrawn only when what it draws changed.
 ## `_process()` used to `queue_redraw()` this guard and both cone nodes EVERY
@@ -1176,7 +1182,16 @@ func _draw_vision_smooth_body() -> void:
 		edge_color.a = 0.0
 		colors.append(edge_color)
 
+	if vision_3d:
+		vision_smooth_ready.emit(points, colors)
+		return
 	_vision_smooth_node.draw_polygon(points, colors)
+
+
+## Asks the smooth cone to compute again, for a consumer that attaches after the last redraw.
+func refresh_vision_smooth() -> void:
+	if _vision_smooth_node != null:
+		_vision_smooth_node.queue_redraw()
 
 
 ## CHARACTER Part 7 — the enemy is the SAME figure in another faction's palette.

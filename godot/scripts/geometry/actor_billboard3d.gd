@@ -72,7 +72,9 @@ func setup(board: Node3D, source: AgentSprite, lift: float = 0.15) -> void:
 
 
 func _exit_tree() -> void:
-	if is_instance_valid(_source):
+	## Only if this billboard is still the source's owner: on a reload the NEW board's billboard has
+	## already hidden the source, and the old one leaving must not show it again.
+	if is_instance_valid(_source) and _source.has_meta("billboard3d") and _source.get_meta("billboard3d") == self:
 		_source.visible = true
 
 

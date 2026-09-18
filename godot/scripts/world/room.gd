@@ -48,6 +48,7 @@ const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner
 ## RENDER3D R3D-3 step 1 — moved out of spikes/, the 3D board is production code now.
 const Board3DLiveClass = preload("res://godot/scripts/geometry/board3d_live.gd")
 const ActorBillboard3DClass = preload("res://godot/scripts/geometry/actor_billboard3d.gd")
+const VisionCone3DClass = preload("res://godot/scripts/geometry/vision_cone3d.gd")
 const BoardProbeClass = preload("res://godot/scripts/systems/board_probe.gd")
 const WorldRenderScaleClass = preload("res://godot/scripts/systems/world_render_scale.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
@@ -3027,14 +3028,44 @@ func _start_board3d_live() -> void:
 	add_child(live)
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
-	## R3D-4b — the agent as a depth-tested billboard. `ACTORS3D=0` keeps the 2D figure.
-	if _dev_flag("ACTORS3D", "1") != "0":
-		if agent != null and agent.sprite != null:
-			var billboard: Node3D = ActorBillboard3DClass.new()
-			live.add_child(billboard)
-			billboard.setup(live, agent.sprite, float(_dev_flag("ACTORS3D_BIAS", "0.15")))
-		else:
-			push_warning("[Room] ACTORS3D is on but the agent has no baked sprite — the agent stays 2D")
+	_attach_actor_billboards(live)
+
+
+## RENDER3D R3D-4b/4c — every actor with a baked figure (the agent and each guard) as a depth-tested
+## billboard on the 3D board, and each guard's smooth vision cone on its ground. `ACTORS3D=0` keeps
+## the 2D figures. IDEMPOTENT: it runs when the board is built AND when guards are spawned, in
+## whichever order they happen, and skips an actor that already has a billboard on THIS board (a
+## previous board's is queued for deletion, not gone, so validity alone is not the test).
+func _attach_actor_billboards(board: Node3D = null) -> void:
+	## `board` is passed by the caller that just built it: on a reload the previous board is only
+	## queued for deletion and a lookup by name could still find it.
+	var live: Node3D = board if board != null else board3d()
+	if live == null or _dev_flag("ACTORS3D", "1") == "0":
+		return
+	var lift: float = float(_dev_flag("ACTORS3D_BIAS", "0.15"))
+	var actors: Array = []
+	if agent != null:
+		actors.append(agent)
+	for guard in _guards:
+		if is_instance_valid(guard):
+			actors.append(guard)
+	for actor in actors:
+		var source: AgentSprite = actor.sprite
+		if source == null:
+			push_warning("[Room] ACTORS3D is on but '%s' has no baked sprite — it stays 2D" % actor.name)
+			continue
+		var existing: Variant = source.get_meta("billboard3d") if source.has_meta("billboard3d") else null
+		if is_instance_valid(existing) and (existing as Node).get_parent() == live:
+			continue  ## already on this board (its cone, if any, came with it)
+		var billboard: Node3D = ActorBillboard3DClass.new()
+		live.add_child(billboard)
+		billboard.setup(live, source, lift)
+		source.set_meta("billboard3d", billboard)
+		if actor.has_signal("vision_smooth_ready"):
+			var cone: MeshInstance3D = VisionCone3DClass.new()
+			live.add_child(cone)
+			cone.setup(live, actor)
+			actor.set_meta("cone3d", cone)
 
 
 ## RENDER3D R3D-1b — the packed store in SHADOW (`VoxelStore`), rebuilt from the
@@ -3857,6 +3888,7 @@ func _spawn_guards(enemy_defs: Array) -> void:
 		_guards.append(guard)
 
 	_update_enemy_visibility()
+	_attach_actor_billboards()
 
 
 func _build_navigation_blocked_cells() -> Array[Vector2i]:

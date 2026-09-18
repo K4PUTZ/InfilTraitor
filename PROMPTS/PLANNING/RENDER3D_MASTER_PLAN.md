@@ -1533,7 +1533,17 @@ detonation cost visible enough to be worth it.
   - **Known, owned elsewhere:** (1) 2D overlays (movement-range outline) now draw OVER the actor —
     R3D-5's overlay table; (2) on the GLASS map a glass roof between the camera and the actor tints
     him — the 3D board has no cutaway yet, R3D-7 (row above: OCC-21/OCC-27).
-  - Not done here: guards and their cones (4c), props (4d), VFX (4e).
+- **R3D-4c — guards and their vision cones. BUILT.** Each guard reuses `ActorBillboard3D`;
+  `Room._attach_actor_billboards()` is idempotent and runs both when the board is built and when guards
+  spawn. The smooth cone is now a `VisionCone3D` on the ground (depth-tested, so walls cover it): the
+  guard's own `_draw_vision_smooth_body` still computes the polygon and, while `vision_3d` is on,
+  publishes it through `vision_smooth_ready` instead of painting it — one authority for LOS, fov and
+  range. The dev `tiles` cone stays 2D (dev overlay). Moto, PLAYGROUND, `RENDER3D=1`, 3 guards:
+  **23.3 ms vs 23.1 ms** with everything 2D (+0.2 ms), 0 script errors; on-device look not captured.
+  Captures: `Screenshots/history/r3d4c_playground_guards_cones_{3d,2d}.png`.
+  - **Look difference, Director's call:** the 3D cone reads more saturated than the 2D one (alpha
+    blends in linear space in 3D, in sRGB on the canvas). Not tuned.
+  - Not done: props (4d), VFX (4e).
 
 **R3D-4a, a spike with its decision rule written before measuring:**
 

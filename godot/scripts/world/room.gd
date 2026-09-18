@@ -1983,8 +1983,11 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## merely LOADED, before a single voxel has been destroyed. Deferred by one
 	## frame so the renderer has actually submitted what the load queued.
 	## DIAG-21 (DEVICE_DIAGNOSTICS §15.7) — `RENDER3D=1` draws the loaded board as 3D
-	## meshes read from the live registries and hides the 2D voxel board. An
-	## instrument: the 2D path still runs underneath, and nothing here writes game state.
+	## meshes read from the live registries and hides the 2D voxel board.
+	## RENDER3D R3D-3 step 5 — the 2D path no longer runs underneath by default:
+	## `DevFlags` sets `VoxelRenderer.SKIP_BOARD_WRITES` automatically whenever
+	## `RENDER3D=1` (see its own note), so the hidden board is skipped, not just
+	## hidden. `RENDER3D_2D_BUILD=1` forces it to build anyway, for the A/B.
 	if _dev_flag("RENDER3D") == "1":
 		_start_board3d_live()
 	elif VoxelRenderer.SKIP_BOARD_WRITES:

@@ -812,6 +812,15 @@ static func decode_light_flipped(alt: int) -> bool:
 ## real one the moment bake config changed.
 var _ghosted_cells: Dictionary = {}
 
+## RENDER3D R3D-3 step 5 — under `SKIP_BOARD_WRITES`, the opaque tile is never
+## placed, so `_process_dirty_slice_voxel()`/`_process_dirty_slab_voxel()`'s erase
+## branch has no `get_cell_source_id() != -1` to ask "was this erasure already
+## told to `voxel_destroyed` listeners" (the 2026-08-19 double-VFX bug the tile
+## check itself guards against — see its own note beside `already_gone`). This is
+## that same question's answer when there is no tile: Vector3i(x, y, level) -> true
+## once told. Cleared by `clear()`, the same point the tile-backed state resets.
+var _render3d_gone_cells: Dictionary = {}
+
 ## Z-index base for wall layers (from room.gd context)
 var _wall_base_z_index: int = 10
 
@@ -2925,7 +2934,15 @@ func print_render_diagnostics() -> void:
 ## doesn't start at floor 0).
 func render_block(gu_cell: Vector2i, start_level: int, storey_span: int, material_name: String) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey_span by LEVELS_PER_STOREY to expand to level-space
+	## RENDER3D R3D-3 step 5 — `_ensure_voxel_layers()` always runs first, same
+	## reasoning as `render_slab()`'s own note (cheap, and any later resolve-only
+	## caller needs the layer node to exist).
 	_ensure_voxel_layers(start_level * GeometryCoords.LEVELS_PER_STOREY + storey_span * GeometryCoords.LEVELS_PER_STOREY)
+	## Same reasoning as `_render_junction_column()`: this call to `_set_voxel_cell()`
+	## has `flat_baked` at its default (false), so a glass `material_name` WOULD
+	## route to the pane branch — skip only when it is not glass.
+	if SKIP_BOARD_WRITES and not GlassMaterials.is_glass(material_name):
+		return
 	
 	# Get all voxel positions in this GU
 	var voxel_positions: Array[Vector2i] = GeometryCoords.gu_voxels(gu_cell)
@@ -2965,9 +2982,15 @@ func _render_slice(slice: Slice, edge = null) -> void:
 	# For each voxel in the slice, set_cell at the appropriate layer
 	for voxel in slice.voxels:
 		if voxel.visible:
+			var vmat := slice.material_at(voxel.level - slice_level_base)
+			## RENDER3D R3D-3 step 5 — the INITIAL build's own placement path (this
+			## function, not `_process_dirty_slice_voxel()`, which only re-renders
+			## already-placed geometry on a later dirty pass). Same guard, same
+			## exemption for glass: see `_process_dirty_slice_voxel()`'s note.
+			if SKIP_BOARD_WRITES and not GlassMaterials.is_glass(vmat):
+				continue
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-			var vmat := slice.material_at(voxel.level - slice_level_base)
 			var render_material := damage_variant_material(vmat, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 			var glass_mask: int = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, glass_top_level) \
 				if GlassMaterials.is_glass(vmat) else 0
@@ -3083,12 +3106,24 @@ func _glass_side_covered(grid_pos: Vector2i, level: int, face: int) -> bool:
 ## If override_material is set and facade_enabled=false: renders flat material-only (D-BAKE-3)
 ## If override_material is set and facade_enabled=true: mirrors the override material's boundary atom (D-BAKE-3)
 func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: EdgeRegistry = null) -> void:
-	# FIX-VOXEL-HEIGHT-01: multiply storey counts by LEVELS_PER_STOREY to expand to level-space
-	_ensure_voxel_layers((column.start_storey + column.storey_count) * GeometryCoords.LEVELS_PER_STOREY)
-
 	# Determine actual material to use (override if set, otherwise derived)
 	var actual_material = column.override_material if column.override_material != "" else column.material
-	
+	# FIX-VOXEL-HEIGHT-01: multiply storey counts by LEVELS_PER_STOREY to expand to level-space
+	## RENDER3D R3D-3 step 5 — `_ensure_voxel_layers()` always runs first; see
+	## `render_slab()`'s own note on why. `DetonationPlanBuilder._resolve_damaged_tile()`'s
+	## JunctionColumn branch calls `_set_voxel_cell()` directly and needs the layer
+	## to exist even when the write itself is skipped below.
+	_ensure_voxel_layers((column.start_storey + column.storey_count) * GeometryCoords.LEVELS_PER_STOREY)
+	## A junction column is a solid corner filler; every branch below writes the
+	## OPAQUE layer directly (`_layers[level].set_cell()`) or through
+	## `_set_voxel_cell()` with no glass-pane routing at all — unlike slices and
+	## INTERIOR slabs, nothing here ever reaches the pane branch. Kept conditional
+	## on `is_glass(actual_material)` rather than assumed impossible, so a future
+	## glass column would fall through unskipped instead of silently losing
+	## geometry.
+	if SKIP_BOARD_WRITES and not GlassMaterials.is_glass(actual_material):
+		return
+
 	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):
 		var level: int = GeometryCoords.storey_level_base(column.start_storey) + level_offset
 
@@ -3748,10 +3783,24 @@ func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
 ## wall above and exposes its top, it should read darker than always-open floor.
 ## Computed from the INTACT geometry right after a build (before reapply_damage),
 ## so it reflects the ORIGINAL cover, not the post-blast state.
+##
+## RENDER3D R3D-3 step 5 — reads `VoxelStore` (visible claims), never the placed
+## tiles, same move `build_occupancy()` already made. `wall_level_keys()`'s own
+## filter (`level >= _ground_plane_level`) is reproduced here rather than reused,
+## since the store's `occupancy_dict()` spans every level (floors included) and
+## this reader specifically wants wall/roof cover, not floor cover. Verified 0
+## differences against the old tile-walk on PLAYGROUND before the tile fallback
+## below was deleted.
 func columns_with_structure() -> Dictionary:
+	if VoxelStore.active == null:
+		push_error("[VoxelRenderer] columns_with_structure: no VoxelStore.active — returning empty")
+		return {}
 	var cols: Dictionary = {}
-	for level in wall_level_keys():
-		for cell in (_layers[level] as TileMapLayer).get_used_cells():
+	var occ: Dictionary = VoxelStore.active.occupancy_dict()
+	for level in occ.keys():
+		if int(level) < _ground_plane_level:
+			continue
+		for cell in (occ[level] as Dictionary).keys():
 			cols[cell] = true
 	return cols
 
@@ -3831,6 +3880,16 @@ func apply_light_field(field) -> void:
 	if OS.get_environment("INFILTRAITOR_APPLY_SPLIT_PROBE") == "1":
 		_apply_split_probe(field)
 		return
+	## RENDER3D R3D-3 step 5 — `SKIP_BOARD_WRITES` on means the opaque tiles this
+	## pass would normally walk (`_apply_light_field_pass()`'s `layer.get_used_cells()`)
+	## were never placed, so the plane-only counterpart below walks the STORE's
+	## occupancy instead. Without this, Board3DLive's first load would read empty
+	## cell planes — this is the one piece `apply_light_field_cells()`'s existing
+	## `SKIP_BOARD_WRITES` branch didn't cover, because it only ever ran off an
+	## incremental stale set, never the full initial pass.
+	if SKIP_BOARD_WRITES:
+		_apply_light_field_pass_store(field)
+		return
 	_apply_light_field_pass(field)
 
 
@@ -3891,6 +3950,41 @@ func _apply_light_field_pass(field) -> void:
 	## cell the accumulator names. `apply_light_field_gus()` deliberately does NOT
 	## do this: it covers some GUs, and the staleness outside them is exactly what
 	## the accumulator exists to remember.
+	if field.has_method("clear_stale_accum"):
+		field.clear_stale_accum()
+	_externally_written.clear()
+
+
+## RENDER3D R3D-3 step 5 — `apply_light_field()`'s `SKIP_BOARD_WRITES` counterpart.
+## Same job as `_apply_light_field_pass()` (write every cell's soot/bucket plane
+## value, index it for `apply_light_field_gus()`), but the cell set comes from
+## `VoxelStore.occupancy_dict()` instead of `layer.get_used_cells()`, since no
+## opaque tile exists to enumerate. No `layer.get_cell_*`/`set_cell` call anywhere
+## in this function — that is the entire point.
+##
+## ⚠️ Ghost records (OCC-21's cell erase / restore) are NOT replayed here. O1 says
+## occlusion is VIEW, not STATE, and never writes the store — under this path there
+## is no opaque tile for OCC-21 to erase in the first place, so `_ghosted_cells`
+## stays empty and this is a no-op omission, not a skipped fix. R3D-7 is where
+## occlusion gets its own 3D mechanism; this function does not attempt one.
+func _apply_light_field_pass_store(field) -> void:
+	_apply_cells_seen = 0
+	_apply_cells_written = 0
+	_placed_by_gu.clear()
+	_placed_index.clear()
+	if VoxelStore.active == null:
+		push_error("[VoxelRenderer] _apply_light_field_pass_store: no VoxelStore.active — planes not written")
+		return
+	var occ: Dictionary = VoxelStore.active.occupancy_dict()
+	for level: Variant in occ.keys():
+		var level_i: int = int(level)
+		for cell: Vector2i in (occ[level] as Dictionary).keys():
+			_apply_cells_seen += 1
+			_index_placed(level_i, cell)
+			_write_cell_soot(level_i, cell, field.face_soot_code(cell, level_i))
+			_write_cell_bucket(level_i, cell, field.bucket_for(cell, level_i))
+			_apply_cells_written += 1
+	flush_cell_soot()
 	if field.has_method("clear_stale_accum"):
 		field.clear_stale_accum()
 	_externally_written.clear()
@@ -4261,20 +4355,36 @@ func process_dirty(registry: EdgeRegistry) -> void:
 ## a slice — extracted so process_dirty_async() can share the exact same
 ## logic instead of a second copy drifting from this one over time.
 func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
+	## GLASS G-D9 — the material is per-level on a banded slice.
+	var vmat := slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
+	var is_glass_mat: bool = GlassMaterials.is_glass(vmat)
+	## RENDER3D R3D-3 step 5 — `SKIP_BOARD_WRITES` on means the opaque layer is
+	## never placed at all (Board3DLive reads the store, not this tile). A glass
+	## voxel still takes the normal path below either way: `_glass_layers` stays
+	## the live authority the render-time glass mechanics read (`_glass_cell_present()`
+	## and everything downstream of it) until R3D-5/R3D-6 migrate that off tiles —
+	## out of this step's scope, see the master plan's step 5 entry.
+	if SKIP_BOARD_WRITES and not is_glass_mat:
+		if not voxel.visible:
+			## Same idempotence question the tile-backed erase branch below answers
+			## with `already_gone` — see `_render3d_gone_cells`'s own note.
+			var key3 := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
+			if not _render3d_gone_cells.has(key3):
+				_render3d_gone_cells[key3] = true
+				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
+		return
 	# Update cell state based on voxel visibility
 	if voxel.visible:
 		## D-ARCH-01: Try pre-baked damage variant swap first (single-frame ID swap)
 		if voxel.damage_state != Voxel.DamageState.INTACT and _damage_variant_registry != null:
 			if apply_damage_voxel_swap(voxel, slice, voxel.level):
 				return  # Swap succeeded, no need for fallback
-		
+
 		## Fallback: render via material lookup (original behavior)
 		var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-		## GLASS G-D9 — the material is per-level on a banded slice.
-		var vmat := slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
 		var render_material := damage_variant_material(vmat, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
 		var glass_mask: int = 0
-		if GlassMaterials.is_glass(vmat):
+		if is_glass_mat:
 			glass_mask = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, _slice_top_glass_level(slice))
 		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy,
 			slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, true, glass_mask)
@@ -4284,8 +4394,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 		## `voxel_destroyed` contract as the opaque branch below. G-D9: gate on the
 		## per-level material, not the slice base — a brick-band voxel takes the
 		## ordinary opaque path below.
-		var vmat_gone := slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
-		if GlassMaterials.is_glass(vmat_gone) and _glass_layers.has(voxel.level):
+		if is_glass_mat and _glass_layers.has(voxel.level):
 			var gpane := _glass_layers[voxel.level] as TileMapLayer
 			var g_gone: bool = gpane.get_cell_source_id(voxel.grid_pos) == -1
 			gpane.erase_cell(voxel.grid_pos)
@@ -4296,7 +4405,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
 			note_glass_erased()
 			note_glass_erased_for_rim(voxel.level, voxel.grid_pos)   ## CRACK-03
 			if not g_gone:
-				voxel_destroyed.emit(voxel.grid_pos, voxel.level, vmat_gone)
+				voxel_destroyed.emit(voxel.grid_pos, voxel.level, vmat)
 			return
 		# Clear cell
 		if _layers.has(voxel.level):
@@ -4380,6 +4489,21 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 ## time. `use_solid`/`is_zoned_floor` are computed once per slab by the
 ## caller (constant across every voxel in it), not re-derived per voxel.
 func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zoned_floor: bool) -> void:
+	## RENDER3D R3D-3 step 5 — mirrors `_process_dirty_slice_voxel()`'s guard. A
+	## slab voxel is glass-PANED (routed to `_glass_layers`, the render-time
+	## authority) only when `_set_voxel_cell()`'s own `not flat_baked` condition
+	## holds — a glass roof or glazed floor zone stays opaque by G1's own rule
+	## (`flat_baked == true` there), so it is exactly as safe to skip as any other
+	## opaque voxel; only the true pane case must still take the normal path.
+	var is_glass_pane: bool = GlassMaterials.is_glass(slab.material) \
+		and not (slab.role == Slab.Role.CEILING or is_zoned_floor)
+	if SKIP_BOARD_WRITES and not is_glass_pane:
+		if not voxel.visible:
+			var key3 := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
+			if not _render3d_gone_cells.has(key3):
+				_render3d_gone_cells[key3] = true
+				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
+		return
 	if voxel.visible:
 		## D-ARCH-01: Try pre-baked damage variant swap first (single-frame ID swap)
 		if voxel.damage_state != Voxel.DamageState.INTACT and _damage_variant_registry != null:
@@ -7384,7 +7508,25 @@ func render_slab(slab: Slab, apply: bool = true) -> Array:
 	# All of one Slab's voxels share slab.level (SlabGenerator.generate()'s
 	# invariant) — one layer to ensure, not a min/max scan. D17: negative
 	# (floor) levels route to the negative-only ensure function.
+	##
+	## RENDER3D R3D-3 step 5 — `_ensure_layer()` ALWAYS runs, skip or not: the
+	## node itself is cheap (no cells), and `DetonationPlanBuilder`'s resolve-only
+	## call (`apply == false`, `_resolve_damaged_tile()`) reaches `_set_voxel_cell()`
+	## directly and crashes on a missing layer node — measured 2026-09-18, desktop
+	## `--verbose`: `_set_voxel_cell` returned `{}` (its own "no layer" warning),
+	## and the caller's `result["source_id"]` on that empty dict threw a SCRIPT
+	## ERROR mid-phase, which is what left the "3 resources still in use at exit"
+	## the Moto's own detonation run reproduced twice, deterministically. Only the
+	## per-voxel CELL WRITE below is skippable — the layer must always exist.
 	_ensure_layer(slab.level)
+	## a FLOOR-role Slab, zoned or not, always resolves `flat_baked = true` below
+	## (or takes the earth-variant path, which is never glass either) — G1's own
+	## rule keeps a glazed floor zone opaque, so this function never once reaches
+	## `_set_voxel_cell()`'s glass-pane branch. Skippable when `apply` — the
+	## resolve-only call never wrote a tile even before this step, and its caller
+	## still needs the real resolved answer.
+	if SKIP_BOARD_WRITES and apply:
+		return resolved
 
 	# Floor-zone bake: a Slab whose material isn't the "earth" sentinel was
 	# assigned a zone material by room_builder.gd's flood-fill (texture_anchor
@@ -7476,6 +7618,12 @@ func render_slab_solid(slab: Slab) -> void:
 	# material atlas inside _set_voxel_cell, so this is safe with bake
 	# disabled or combo unresolved.
 	var flat_baked: bool = slab.role == Slab.Role.CEILING
+	## RENDER3D R3D-3 step 5 — unlike CEILING (always opaque, `flat_baked = true`),
+	## an INTERIOR glass slab (a glazed partition) reaches this function with
+	## `flat_baked = false` and DOES route to `_set_voxel_cell()`'s pane branch —
+	## that write must still happen; only the true-opaque case is skippable.
+	if SKIP_BOARD_WRITES and not (GlassMaterials.is_glass(slab.material) and not flat_baked):
+		return
 	for voxel in slab.voxels:
 		_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
 				null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
@@ -7508,7 +7656,15 @@ func render_slab_solid(slab: Slab) -> void:
 ## is true).
 func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true) -> Array:
 	var resolved: Array = []
+	## RENDER3D R3D-3 step 5 — `_ensure_layer()` always runs first; see
+	## `render_slab()`'s own note on why the layer node must exist regardless.
 	_ensure_layer(level)
+	## A fixed earth/zone floor level, same reasoning as `render_slab()`: always
+	## opaque, never glass, and only skippable when `apply` — DetonationPlanBuilder's
+	## exposure fallback resolves this with `apply == false` and needs the real
+	## answer even under `RENDER3D`.
+	if SKIP_BOARD_WRITES and apply:
+		return resolved
 
 	if _bake_config == null:
 		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
@@ -7585,6 +7741,10 @@ func clear() -> void:
 	## tilemap no longer has. apply_light_field() rebuilds it from scratch on the
 	## next full pass, which always follows clear()+render() in the rebuild flow.
 	_placed_by_gu.clear()
+	## RENDER3D R3D-3 step 5 — same reasoning again: a rebuild means every voxel is
+	## about to become INTACT and undirtied from scratch, so no erasure this
+	## renderer told anyone about is still true.
+	_render3d_gone_cells.clear()
 
 
 ## Remove every baked atlas source registered by the PREVIOUS bake pass, before the

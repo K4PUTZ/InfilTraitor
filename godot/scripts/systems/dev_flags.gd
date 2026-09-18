@@ -82,7 +82,13 @@ func _ready() -> void:
 	## working exactly as it did.
 	VoxelRenderer.LIGHT_DISABLED = VoxelRenderer.LIGHT_DISABLED or on("NO_LIGHT")
 	## DIAG-21 2c — only meaningful with RENDER3D=1; Room warns otherwise.
-	VoxelRenderer.SKIP_BOARD_WRITES = on("SKIP_2D_BOARD_WRITES")
+	## RENDER3D R3D-3 step 5 (2026-09-18) — the hidden 2D board now stops building
+	## itself automatically once the 3D board is on, so `SKIP_2D_BOARD_WRITES` no
+	## longer needs setting by hand alongside `RENDER3D=1`. `RENDER3D_2D_BUILD=1` is
+	## the A/B override: forces the 2D board to build anyway, in the same binary,
+	## for a same-map comparison. Removed at R3D-8 along with the 2D board itself.
+	VoxelRenderer.SKIP_BOARD_WRITES = on("SKIP_2D_BOARD_WRITES") \
+		or (on("RENDER3D") and not on("RENDER3D_2D_BUILD"))
 	## RENDER3D R3D-1c step 2 — the prediction WALK reads the VoxelStore. `=0` = object walk.
 	DetonationPlanBuilder.STORE_WALK = value("STORE_WALK", "1") != "0"
 	## RENDER3D R3D-1c step 3 — glass reads voxel state from the VoxelStore. `=0` = objects.

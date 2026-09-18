@@ -152,8 +152,14 @@ objects themselves. Full narrative below and in the revision history.
 - **R3D-2 CLOSED, 2026-09-17.** Step 1 (store-only occupancy) and step 3 (cell planes to
   `CellPlaneStore`) shipped; step 2 (glass occupancy) was already satisfied by step 1;
   step 4 (plan-entry rekey) is deferred with the reasoning above, same call the Director
-  made on R3D-1d's own steps 2-4. **Next: R3D-3 — the 3D board becomes the production
-  renderer** (master plan line ~1103).
+  made on R3D-1d's own steps 2-4.
+- **R3D-3 CLOSED, 2026-09-18.** All 7 steps built and measured on the Moto — production
+  renderer relocated out of `spikes/`, vertical scale ratified (true-cube, `VERTICAL_SCALE
+  = 1.0`), chunk size (16), threaded remesh, the web export checked on the real
+  Compatibility renderer, the hidden 2D board now skips its own build under `RENDER3D=1`
+  (a ~24% cut in load-to-3D-ready time), and the full device gate (idle frame, commit
+  frame, both grenades' worst frame, load time, memory, pixel-identity). **Next: R3D-4
+  and R3D-5 can run in either order** (§5's own dependency graph).
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -1354,6 +1360,75 @@ rest of the render-time glass query surface off `_glass_layers` (R3D-5/R3D-6 —
 needs its own 3D look and a store-backed per-cell state richer than a visibility bit before
 that migration is worth doing).
 
+**Step 5 BUILT and CLOSED (2026-09-18).** Implemented the plan above, in order:
+
+1. **`columns_with_structure()`** now reads `VoxelStore.active.occupancy_dict()`, filtered
+   to `level >= _ground_plane_level` (the same threshold `wall_level_keys()` uses) instead
+   of scanning `get_used_cells()`.
+2. **`VoxelRenderer.SKIP_BOARD_WRITES`** auto-engages whenever `RENDER3D=1` (unless
+   `RENDER3D_2D_BUILD=1` forces the old build back on, for the A/B) — wired in
+   `dev_flags.gd`, replacing the old "set both by hand" contract.
+3. **Every opaque-placement call site now guards on `SKIP_BOARD_WRITES`**, glass routed
+   around it exactly as scoped: `_process_dirty_slice_voxel()`, `_process_dirty_slab_voxel()`
+   (the dirty-reprocess path) and — found only by actually profiling the load, not assumed —
+   `_render_slice()`, `render_slab()`, `render_slab_solid()`, `render_fixed_earth_level()`,
+   `render_block()`, `_render_junction_column()` (the INITIAL BUILD path, a completely
+   separate set of functions `process_dirty()` never touches). **`voxel_destroyed`
+   idempotence** (previously read off the tile's `get_cell_source_id()`) has a tile-free
+   equivalent, `_render3d_gone_cells` (Vector3i → bool, cleared by `clear()`), so a
+   stale-dirty-flag double-emit stays impossible under `RENDER3D` too — the exact class the
+   2026-08-19 bug fixed on the tile side.
+4. **`apply_light_field()`'s full/initial pass** got a store-backed counterpart,
+   `_apply_light_field_pass_store()` — without it, Board3DLive's first load would have read
+   empty cell planes, since the existing `apply_light_field_cells()`'s `SKIP_BOARD_WRITES`
+   branch only ever ran off an incremental stale set, never the full pass this step also
+   needed. Same soot/bucket writes, sourced from `occupancy_dict()` instead of
+   `layer.get_used_cells()`.
+
+**A real bug, found and fixed before closing.** The first version of steps 2–3 moved each
+guard's early-return *before* that function's `_ensure_layer()`/`_ensure_voxel_layers()`
+call, on the reasoning that skipping the write meant nothing needed the layer *node*.
+Wrong: `DetonationPlanBuilder._resolve_damaged_tile()` (the render-neutral plan's own
+resolve-only seam — R3D-2's step 4, "plan-entry rekey," was explicitly *deferred*, so
+`source_id`/`atlas_coords` are still load-bearing there) calls `_set_voxel_cell()` directly,
+bypassing every guarded wrapper, and needs the layer node to exist even though it never
+writes to it. Reproduced **deterministically** on the Moto — `RENDER3D=1` + two grenades on
+PLAYGROUND produced `WARNING: ObjectDB instances leaked at exit` and `ERROR: 3 resources
+still in use at exit` on both of two separate runs — and root-caused on desktop with
+`--verbose` in minutes once moved there: `VoxelRenderer._set_voxel_cell: level 79 has no
+layer` followed by `SCRIPT ERROR: Invalid access to property or key 'source_id' on a base
+object of type 'Dictionary'` at `detonation_plan_builder.gd:2178`, aborting a cook phase
+mid-execution and leaving state (and resources) partially built — the "3 resources"'s
+plausible cause, though this session did not trace the exact objects. **Fix:** every
+`_ensure_layer()`/`_ensure_voxel_layers()` call now runs unconditionally, first, in all six
+guarded functions; only the per-voxel cell write is skippable. Re-verified after the fix:
+0 `SCRIPT ERROR`/leak lines on desktop `--verbose`, 0 on the Moto across two repeat runs,
+57/57 selftests clean, invariants clean.
+
+**Moto evidence (`ZF524T5TG5`, PLAYGROUND, `NO_BAKE=1`):**
+- **The 2D board shrinks from 151 240 cells to 64** (`[BOARD3D]` log line's own count) — the
+  64 is glass-adjacent residue, not a miss (glass keeps building by design).
+- **The mesh is byte-for-byte the same work either way**: 108 772 faces → 367 quads in 72
+  chunks, both with and without the skip — `BoardProbe` diffs 0 real differences (the only
+  diff is 6 cosmetically-present-but-empty plane levels, 72–77, the D13 fixed-bedrock
+  levels neither the old nor the new Board3DLive mesh ever reads — confirmed by both runs'
+  `[BOARD3D]` line reporting the identical `plane levels 78..103`).
+- **The real win is in the segment before `VOXEL-STORE built`, not after it** — this
+  session's step 7 write-up guessed wrong about where the ~15 s gap was. Measured: `DevFlags`
+  read → `VOXEL-STORE built` drops from **~11.0 s to ~4.4 s** (skip on vs the `RENDER3D_2D_BUILD=1`
+  control, same binary) — that segment is `_room_builder.build_from_layout()`, which runs
+  the INITIAL BUILD functions this step guards, *before* the voxel store even exists. The
+  segment *after* `VOXEL-STORE built` (~15 s either way) is the full light/soot apply pass —
+  real cost, but not this step's target; a future perf pass, not R3D-3 step 5.
+- **Total DevFlags-to-3D-ready time: ~19.8 s (skip) vs ~26.1 s (forced old)** — a real
+  ~6.3 s / ~24% cut for this map, from eliminating exactly the work step 5 named.
+- Two grenades detonated live, glass mechanics exercised, both clean (0 script errors, 0
+  leaked-resource warnings) after the fix.
+
+Logs (local, gitignored): `docs/measurements/device_2026-09-18_moto_g04s_r3d3_step5_*.log`.
+
+R3D-3 is now fully closed: steps 1–7 all built, measured and verified.
+
 **Step 7 — Moto gate, PARTIAL (2026-09-17).** Ran on the physical Moto g04s (serial
 `ZF524T5TG5`), package `com.example.infiltraitor`, `MAP=PLAYGROUND` (which now seeds
 4 dev grenades, not 2 — `scenario_runner.gd`'s own log line: *"seeded 4 dev grenade(s) —
@@ -1412,8 +1487,11 @@ without `NO_BAKE=1`. Logs (local, gitignored):
 **Step 7 CLOSED (2026-09-17).** Commit frame, both grenades' worst frame (with the PUMP
 spike traced to a pre-existing, cross-renderer cause — not a 3D defect), load time,
 memory, the idle-frame number (exact match to the reference table) and the pixel-identity
-check (0 px) are all in hand. **R3D-3 as a whole is not closed** — step 5 (skip the hidden
-2D build) remains, scoped above as its own session.
+check (0 px) are all in hand.
+
+**R3D-3 fully CLOSED (2026-09-18).** Step 5 (skip the hidden 2D build) built and verified
+the same day — see its own entry above, right after the step 5 planning section, for the
+implementation, the bug found and fixed, and the Moto evidence.
 
 **Idea flagged for later, not started:** the Director asked whether detonating a HIDDEN
 blast during load (never shown) could pre-warm whatever the first real detonation pays for

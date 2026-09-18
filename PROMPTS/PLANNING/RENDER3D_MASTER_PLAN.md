@@ -1567,7 +1567,29 @@ detonation cost visible enough to be worth it.
   - **No production instance exists today:** `TEST_ZONE_COLLECTIBLES_ENABLED` is `false` and
     `TEST_ZONE_AGENT_PROBE_BRACKET` is empty, so the collectible was verified by flipping the constant
     locally (not committed) and the `AgentProbeProp` path is NOT verified by any capture.
-  - Not done: VFX (4e).
+- **R3D-4e — in-world VFX. ⛔ PENDING — BLOCKING, NOT BUILT (Director, 2026-09-18).**
+  Ruling: *particles cannot draw over a wall* — "sem condições de ficar por cima do muro". When it is
+  built (now or later) is open; that it is built is not, and R3D-4 is not closed without it.
+  - **The defect, measured.** A grenade detonated at gu (3,1), BEHIND the 2-storey concrete wall at
+    row 2, with `RENDER3D=1`: the smoke puffs, dust and embers draw over the wall's faces, because
+    every VFX overlay is a 2D `CanvasItem` on top of the 3D board. Only the plume above the wall's top
+    is right. Capture: `Screenshots/history/r3d4e_vfx_over_wall_2d_particles.png`.
+  - **Why a port is not a perf item:** the VFX are already `MultiMesh` 2D (P7b/P7c, `ShardField`), so
+    CPU submission is solved; the fill is the same in 3D. This is a CORRECTNESS item, and the reason
+    it must precede tall pieces and parallax: every particle simulates in 2D screen pixels with its
+    "height" folded into screen y, so it has no world position to depth-test or to parallax with.
+  - **What it needs:** particle state in WORLD space (ground point + height) for the five systems —
+    `SmokeSparkOverlay` (puffs, sparks), `EmberOverlay`, `DebrisOverlay` (dust, chips),
+    `ShrapnelOverlay`, `GlassRainOverlay`/`ShardField` — drawn as depth-tested `MultiMesh` in 3D;
+    `CircleField` becomes the 3D helper and keeps the `custom_aabb` lesson (a MultiMesh's bounds
+    come from its base mesh). The screen flash and the negative strobe stay screen-space.
+  - **Interim option considered, NOT taken:** one depth per emitter (the blast's origin). Cheap, but a
+    nearby wall would cut the whole plume where it rises above it — worse for the common case.
+  - **Rule in force from now:** any NEW VFX or particle code stores world-space state (ground +
+    height), never screen pixels, so the debt does not grow.
+  - **Done when:** the capture above, repeated, shows no particle on the wall's face; a plume
+    rising above the wall's top still shows; the four-view captures agree; Moto frame cost recorded
+    for a detonation against the 2D baseline.
 
 **R3D-4a, a spike with its decision rule written before measuring:**
 

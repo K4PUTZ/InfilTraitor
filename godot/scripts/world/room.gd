@@ -3040,6 +3040,7 @@ func _start_board3d_live() -> void:
 		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	_attach_actor_billboards(live)
 	_attach_vfx_to_board(live)
+	_attach_ground_overlays(live)
 	## R3D-4d — props are created by the test-zone controller at any time, so they are caught as they
 	## enter the tree; the ones that already exist are caught here.
 	if not get_tree().node_added.is_connected(_on_tree_node_added):
@@ -3048,6 +3049,17 @@ func _start_board3d_live() -> void:
 		_on_tree_node_added(existing_prop)
 	if _dev_flag("SEED_GRENADES", "0") == "1":
 		_seed_dev_grenades_if_empty.call_deferred("R3D-4d")
+
+
+## RENDER3D R3D-5b — the ground-plane gameplay overlays draw on the 3D board's ground (depth-tested), not
+## over everything: a wall hides the tiles behind it, and an actor standing on a tile covers it.
+## `GROUND3D=0` keeps them 2D, for comparison.
+func _attach_ground_overlays(live: Node3D) -> void:
+	var on: bool = _dev_flag("GROUND3D", "1") != "0"
+	for overlay in [movement_overlay, path_preview, selection_overlay, _throw_perimeter_overlay,
+			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game]:
+		if overlay != null and is_instance_valid(overlay) and overlay.has_method("set_board3d"):
+			overlay.set_board3d(live if on else null)
 
 
 ## RENDER3D R3D-4e-2 — the VFX overlays draw their particles in the 3D board's world (depth-tested)

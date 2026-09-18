@@ -1692,6 +1692,56 @@ The screen flash and the negative strobe stay screen-space.
   - Dev and debug overlays may stay 2D.
 - **The HUD does not move** (rule 11).
 
+**R3D-5b — STATUS 2026-09-18: BUILT for the ground overlays.** One mechanism, `GroundCanvas3D`: it has
+the four `CanvasItem` calls the ground overlays use (`draw_colored_polygon`, `draw_line`,
+`draw_polyline`, `draw_circle`), tessellates each in 2D (a line is a quad `width` px thick ON SCREEN),
+carries every vertex onto the ground plane by the board's own 2D→ground affine, and publishes one
+`ArrayMesh` per redraw, depth-tested, at a per-overlay `lift` and `render_priority` (which stand in
+for the 2D `z_index`). The overlay's own drawing code is unchanged (`_draw()` → `_draw_into()` with the
+draw target swapped); `GROUND3D=0` keeps them 2D. **Why the look is unchanged:** the ground plane maps to
+the screen affinely, so a vertex placed on the ground from a 2D point projects back to that pixel —
+`ground_canvas3d_selftest` proves it through a real `Camera3D` (worst error 0.005 px; line thickness
+3.9999 of 4.0). What changes is depth.
+
+Captures (`GROUND3D` 1 vs 0, PLAYGROUND, `RENDER3D=1`): the movement outline no longer cuts the agent's
+hat, the pink selection diamond passes behind his legs, and **the two defects R3D-0 found on the Moto
+are gone — the dark "roof tops" (`_tile_shadow` + `_shadow_boundary_overlay`) and the GU grid lines no
+longer paint across the block's faces.**
+
+**Decision table** (every script that draws in 2D; `G` = ground overlay → `GroundCanvas3D`,
+`S` = stays screen-space, `D` = dev/debug, stays 2D, `V` = world VFX (R3D-4e, done), `→` = owned by
+another stage):
+
+| script | class | decision |
+|---|---|---|
+| `navigation/movement_overlay` (reachable bands) | G | **done** |
+| `navigation/path_preview` | G | **done** |
+| `ui/selection_overlay` (pink diamond) | G | **done** |
+| `overlays/throw_perimeter_overlay` | G | **done** (built; not separately captured) |
+| `overlays/noise_overlay` (rings) | G | **done** (built; not separately captured) |
+| `overlays/gu_grid_overlay` | G | **done** |
+| `overlays/shadow_boundary_overlay` | G | **done** |
+| `overlays/tile_overlay` ×2 (shadow = MULTIPLY, gameplay = mix) | G | **done** (MUL as `blend_mul`) |
+| `overlays/aim_bubble_overlay` (blast dome) | S | stays: a volumetric aiming affordance around the agent, not on the floor |
+| `overlays/throw_arc_overlay` | S | stays: an in-air trajectory |
+| `overlays/shrapnel_preview_overlay` | S | stays: aiming rays in the air |
+| `overlays/tracer_overlay` | S | stays: an in-air projectile (z 4000, above everything) |
+| `overlays/guard_noise_indicator` | S | stays: floating sound icons |
+| `overlays/target_cursor_overlay` | S | stays: a cursor, not scenery |
+| `overlays/explosion_flash_overlay` | S | stays screen-space (plan) |
+| `ui/tile_labels_overlay`, `debug/voxel_ruler_overlay`, `debug/circle_gate_probe` | D | stay 2D |
+| `overlays/height_overlay`, `temporal_overlay`, `light_overlay`, `shadow_overlay`, `exposure_overlay`, `elite_exposure_overlay`, `tile_risk_overlay`, `trail_overlay`, `blast_wireframe_overlay`, `occlusion_overlay` | D | stay 2D (dev visualisations) |
+| `overlays/light_ray_overlay` (golden shafts) | → R3D-6 | light look, hidden by default |
+| `overlays/ceiling_prop_overlay` (overhead layer) | → R3D-7 | cutaway/roof |
+| `overlays/occlusion_slice_panel` (OCC-27) | → R3D-7 | replaced by the 3D cutaway |
+| `ui/fog_of_war_overlay` | → R3D-5c | next |
+| `smoke_spark`, `ember`, `debris`, `shrapnel`, `glass_rain`, `shard_field`, `glass_crack_sprite` | V | R3D-4e |
+| `agents/agent.gd`, `agents/guard_enemy.gd` (`_draw`: vector fallback, dev cones) | — | actors are billboards (R3D-4b/c); the dev `tiles` cone stays 2D |
+| `world/room.gd` `_draw` (spawn marker, playable boundary, shadow debug) | D | stay 2D |
+
+**Known, not built:** the 2D aliasing of a 1–2 px line differs slightly (the 2D lines were antialiased,
+the ground quads are not); the aim dome and the throw arc still draw over actors, by decision.
+
 **Gate:**
 - the inventory table is complete, with a capture per row;
 - touch, pinch and pan run on the Moto through the TEL scenarios;

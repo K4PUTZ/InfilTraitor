@@ -36,7 +36,39 @@ func set_room_size(room_size: Vector2i) -> void:
 	queue_redraw()
 
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 0, 0.008, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if _floor_layer == null or _room_size == Vector2i.ZERO:
 		return
 	for gu_x in range(_room_size.x):
@@ -50,7 +82,7 @@ func _draw_gu_outline(cell: Vector2i) -> void:
 	var bottom := top + Vector2(0.0, 128.0)
 	var left := top + Vector2(-128.0, 64.0)
 
-	draw_line(top, right, COLOR_BLACK, LINE_WIDTH)
-	draw_line(right, bottom, COLOR_BLACK, LINE_WIDTH)
-	draw_line(bottom, left, COLOR_BLACK, LINE_WIDTH)
-	draw_line(left, top, COLOR_BLACK, LINE_WIDTH)
+	_c.draw_line(top, right, COLOR_BLACK, LINE_WIDTH)
+	_c.draw_line(right, bottom, COLOR_BLACK, LINE_WIDTH)
+	_c.draw_line(bottom, left, COLOR_BLACK, LINE_WIDTH)
+	_c.draw_line(left, top, COLOR_BLACK, LINE_WIDTH)

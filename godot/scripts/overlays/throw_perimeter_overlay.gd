@@ -38,13 +38,45 @@ func show_perimeter(center: Vector2, radius_gu: float) -> void:
 	queue_redraw()
 
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 3, 0.016, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if not _visible or _radius_gu < 0.001:
 		return
 	var axes: Vector2 = IsoProjection.floor_circle_semi_axes(_radius_gu)
 	var points := IsoProjection.ellipse_arc(_center, axes, 0.0, TAU, arc_segments)
 	var c := perimeter_color
-	draw_polyline(points, Color(c.r, c.g, c.b, line_alpha), line_width)
+	_c.draw_polyline(points, Color(c.r, c.g, c.b, line_alpha), line_width)
 
 
 func clear() -> void:

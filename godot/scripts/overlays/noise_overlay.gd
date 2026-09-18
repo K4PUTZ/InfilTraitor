@@ -21,7 +21,39 @@ func setup(
 	z_index = 140   ## below the trail (150) but above the movement overlay
 
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 4, 0.018, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if _noise_system == null:
 		return
 
@@ -39,17 +71,17 @@ func _draw() -> void:
 		## Wave 1: largest, most faded
 		var r1 := base_radius + 6.0
 		var c1 := Color(0.4, 0.9, 1.0, 0.15 * alpha_mult)
-		draw_circle(world_pos, r1, c1)
+		_c.draw_circle(world_pos, r1, c1)
 
 		## Wave 2: medium
 		var r2 := base_radius + 3.0
 		var c2 := Color(0.2, 0.8, 1.0, 0.35 * alpha_mult)
-		draw_circle(world_pos, r2, c2)
+		_c.draw_circle(world_pos, r2, c2)
 
 		## Wave 3: smallest, brightest (core)
 		var r3 := base_radius
 		var c3 := Color(0.0, 0.7, 1.0, 0.55 * alpha_mult)
-		draw_circle(world_pos, r3, c3)
+		_c.draw_circle(world_pos, r3, c3)
 
 
 func _cell_to_world(cell: Vector2i) -> Vector2:

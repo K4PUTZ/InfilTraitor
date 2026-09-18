@@ -154,7 +154,35 @@ func _get_fill_alpha(cell: Vector2i) -> float:
 	return clampf(float(dist - 1) * 0.05, 0.0, 0.40)
 
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 0, 0.01, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_draw_into(self)
+		return
+	_ground.begin(self)
+	_draw_into(_ground)
+	_ground.end()
+
+
+func _draw_into(c: Object) -> void:
 	if floor_layer == null or _costs.is_empty():
 		return
 
@@ -181,7 +209,7 @@ func _draw() -> void:
 		if alpha > 0.0:
 			var fill_color := line_color
 			fill_color.a = alpha
-			draw_colored_polygon(_diamond_points(cell), fill_color)
+			c.draw_colored_polygon(_diamond_points(cell), fill_color)
 
 	# 2. Draw Perimeters (External edges or blocked internal edges)
 	for cell in target_cells:
@@ -192,19 +220,19 @@ func _draw() -> void:
 
 		# Top-Right edge (V0 -> V1): Neighbor UP
 		if _should_draw_edge(cell, Vector2i.UP):
-			draw_line(diamond_inset[0], diamond_inset[1], line_color, 3.0, true)
+			c.draw_line(diamond_inset[0], diamond_inset[1], line_color, 3.0, true)
 
 		# Bottom-Right edge (V1 -> V2): Neighbor RIGHT
 		if _should_draw_edge(cell, Vector2i.RIGHT):
-			draw_line(diamond_inset[1], diamond_inset[2], line_color, 3.0, true)
+			c.draw_line(diamond_inset[1], diamond_inset[2], line_color, 3.0, true)
 
 		# Bottom-Left edge (V2 -> V3): Neighbor DOWN
 		if _should_draw_edge(cell, Vector2i.DOWN):
-			draw_line(diamond_inset[2], diamond_inset[3], line_color, 3.0, true)
+			c.draw_line(diamond_inset[2], diamond_inset[3], line_color, 3.0, true)
 
 		# Top-Left edge (V3 -> V0): Neighbor LEFT
 		if _should_draw_edge(cell, Vector2i.LEFT):
-			draw_line(diamond_inset[3], diamond_inset[0], line_color, 3.0, true)
+			c.draw_line(diamond_inset[3], diamond_inset[0], line_color, 3.0, true)
 
 
 func _should_draw_edge(cell: Vector2i, step: Vector2i) -> bool:

@@ -295,6 +295,17 @@ func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:
 		ground_point(floor_pos), floor_pos, world_pos, camera_basis(), _px_per_unit)
 
 
+## RENDER3D R3D-5b — the 2D→ground map itself, for a `GroundCanvas3D` that carries thousands of vertices
+## and cannot afford a method call each: ground_point(p) = (gu.x + 0.5, 0, gu.y + 0.5) with
+## gu = ground_affine() * (p - ground_origin()).
+func ground_affine() -> Transform2D:
+	return _to_gu
+
+
+func ground_origin() -> Vector2:
+	return _origin_2d
+
+
 func camera_basis() -> Basis:
 	return _camera.global_transform.basis
 

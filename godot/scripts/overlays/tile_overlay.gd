@@ -185,7 +185,43 @@ func _tile_diamond(world: Vector2) -> PackedVector2Array:
 	])
 
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	## Two instances share this script: the shadow one MULTIPLIES the floor and must apply first, on
+	## the floor itself; the gameplay one draws normally above it.
+	var multiply: bool = material is CanvasItemMaterial \
+		and (material as CanvasItemMaterial).blend_mode == CanvasItemMaterial.BLEND_MODE_MUL
+	_ground.attach(board, -1 if multiply else 0, 0.006 if multiply else 0.009, multiply)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if _entries.is_empty() or _floor_layer == null:
 		return
 	## Sort by priority (lower prio drawn first → ends up below)
@@ -205,4 +241,4 @@ func _draw() -> void:
 
 		var world := _tile_center(cell)
 		var diamond := _tile_diamond(world)
-		draw_colored_polygon(diamond, color)
+		_c.draw_colored_polygon(diamond, color)

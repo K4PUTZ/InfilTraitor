@@ -32,19 +32,47 @@ func clear_path() -> void:
 	queue_redraw()
 
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 1, 0.012, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_draw_into(self)
+		return
+	_ground.begin(self)
+	_draw_into(_ground)
+	_ground.end()
+
+
+func _draw_into(c: Object) -> void:
 	if floor_layer == null or _cells.size() < 2:
 		return
 
 	var centers := PackedVector2Array()
 	for cell in _cells:
 		centers.append(_cell_to_center(cell))
-		draw_colored_polygon(_diamond_points(cell), PREVIEW_FILL)
+		c.draw_colored_polygon(_diamond_points(cell), PREVIEW_FILL)
 
-	draw_polyline(centers, PREVIEW_LINE, 6.0, true)
+	c.draw_polyline(centers, PREVIEW_LINE, 6.0, true)
 
 	var target := _diamond_points(_cells.back())
-	draw_polyline(target + PackedVector2Array([target[0]]), TARGET_LINE, 3.0, true)
+	c.draw_polyline(target + PackedVector2Array([target[0]]), TARGET_LINE, 3.0, true)
 
 
 func _diamond_points(cell: Vector2i) -> PackedVector2Array:

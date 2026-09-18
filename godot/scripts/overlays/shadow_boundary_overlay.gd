@@ -47,7 +47,39 @@ func set_lite_shadow_cells(cells: Array[Vector2i]) -> void:
 		_lite_shadow_cells[cell] = true
 	queue_redraw()
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 1, 0.011, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	## Draw full shadows first (darker, behind)
 	for cell in _full_shadow_cells.keys():
 		_draw_shadow_tile(cell, _full_shadow_fill, _full_shadow_line)
@@ -73,11 +105,11 @@ func _draw_internal_boundaries(cell: Vector2i) -> void:
 			## Draw line between full and lite shadow
 			var v1 = diamond[edge_indices[i]]
 			var v2 = diamond[edge_indices[(i + 1) % 4]]
-			draw_line(v1, v2, _internal_boundary_line, _line_width, true)
+			_c.draw_line(v1, v2, _internal_boundary_line, _line_width, true)
 
 func _draw_shadow_tile(cell: Vector2i, fill_color: Color, line_color: Color) -> void:
 	var diamond := _diamond_points(cell)
-	draw_colored_polygon(diamond, fill_color)
+	_c.draw_colored_polygon(diamond, fill_color)
 	_draw_external_boundaries(cell, line_color)
 
 func _draw_external_boundaries(cell: Vector2i, line_color: Color) -> void:
@@ -90,7 +122,7 @@ func _draw_external_boundaries(cell: Vector2i, line_color: Color) -> void:
 		if not (_full_shadow_cells.has(neighbor) or _lite_shadow_cells.has(neighbor)):
 			var v1 = diamond[i]
 			var v2 = diamond[(i + 1) % 4]
-			draw_line(v1, v2, line_color, _line_width, true)
+			_c.draw_line(v1, v2, line_color, _line_width, true)
 
 func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 	var top := _floor_layer.map_to_local(cell) + visual_offset

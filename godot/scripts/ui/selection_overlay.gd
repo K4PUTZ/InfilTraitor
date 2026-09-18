@@ -15,7 +15,35 @@ func set_selected(cell: Vector2i) -> void:
 	queue_redraw()
 
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 2, 0.014, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_draw_into(self)
+		return
+	_ground.begin(self)
+	_draw_into(_ground)
+	_ground.end()
+
+
+func _draw_into(c: Object) -> void:
 	if floor_layer == null:
 		return
 	if _cell == Vector2i(-9999, -9999):
@@ -28,7 +56,7 @@ func _draw() -> void:
 	var bottom := top + Vector2(0.0, 128.0)
 	var left := top + Vector2(-128.0, 64.0)
 
-	draw_line(top, right, COLOR_PINK, LINE_W)
-	draw_line(right, bottom, COLOR_PINK, LINE_W)
-	draw_line(bottom, left, COLOR_PINK, LINE_W)
-	draw_line(left, top, COLOR_PINK, LINE_W)
+	c.draw_line(top, right, COLOR_PINK, LINE_W)
+	c.draw_line(right, bottom, COLOR_PINK, LINE_W)
+	c.draw_line(bottom, left, COLOR_PINK, LINE_W)
+	c.draw_line(left, top, COLOR_PINK, LINE_W)

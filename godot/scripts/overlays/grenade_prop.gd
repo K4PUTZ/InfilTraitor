@@ -179,6 +179,11 @@ func _build_shadow() -> void:
 	add_child(_shadow)
 
 
+## RENDER3D R3D-4d — the height a `PropBillboard3D` raises the body above its ground point.
+func billboard_height_px() -> float:
+	return _flight_height_px
+
+
 ## Feed the shadow the body's height above its own ground point, in world px.
 ## Called every frame of the throw; 0 once the grenade settles.
 func set_flight_height_px(px: float) -> void:

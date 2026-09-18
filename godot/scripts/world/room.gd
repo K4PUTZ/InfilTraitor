@@ -49,6 +49,9 @@ const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner
 const Board3DLiveClass = preload("res://godot/scripts/geometry/board3d_live.gd")
 const ActorBillboard3DClass = preload("res://godot/scripts/geometry/actor_billboard3d.gd")
 const VisionCone3DClass = preload("res://godot/scripts/geometry/vision_cone3d.gd")
+const PropBillboard3DClass = preload("res://godot/scripts/geometry/prop_billboard3d.gd")
+const GrenadePropRef = preload("res://godot/scripts/overlays/grenade_prop.gd")
+const AgentProbePropRef = preload("res://godot/scripts/overlays/agent_probe_prop.gd")
 const BoardProbeClass = preload("res://godot/scripts/systems/board_probe.gd")
 const WorldRenderScaleClass = preload("res://godot/scripts/systems/world_render_scale.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
@@ -3029,6 +3032,39 @@ func _start_board3d_live() -> void:
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	_attach_actor_billboards(live)
+	## R3D-4d — props are created by the test-zone controller at any time, so they are caught as they
+	## enter the tree; the ones that already exist are caught here.
+	if not get_tree().node_added.is_connected(_on_tree_node_added):
+		get_tree().node_added.connect(_on_tree_node_added)
+	for existing_prop in find_children("*", "Sprite2D", true, false):
+		_on_tree_node_added(existing_prop)
+	if _dev_flag("SEED_GRENADES", "0") == "1":
+		_seed_dev_grenades_if_empty.call_deferred("R3D-4d")
+
+
+## RENDER3D R3D-4d — a prop that joins the tree while the 3D board is up gets a `PropBillboard3D`.
+## Deferred: the prop's own `setup()` has run by the time it is in the tree, but its children
+## (a grenade's shadow) may still be added in the same frame.
+func _on_tree_node_added(node: Node) -> void:
+	if not (node is GrenadePropRef or node is AgentProbePropRef):
+		return
+	if _dev_flag("ACTORS3D", "1") == "0":
+		return
+	_attach_prop_billboard.call_deferred(node)
+
+
+func _attach_prop_billboard(prop: Sprite2D) -> void:
+	var live: Node3D = board3d()
+	if live == null or not is_instance_valid(prop) or not prop.is_inside_tree():
+		return
+	if prop.has_meta("prop_billboard3d") and is_instance_valid(prop.get_meta("prop_billboard3d")):
+		var current: Node = prop.get_meta("prop_billboard3d")
+		if current.get_parent() == live:
+			return
+	var billboard: Node3D = PropBillboard3DClass.new()
+	live.add_child(billboard)
+	billboard.setup(live, prop)
+	prop.set_meta("prop_billboard3d", billboard)
 
 
 ## RENDER3D R3D-4b/4c — every actor with a baked figure (the agent and each guard) as a depth-tested

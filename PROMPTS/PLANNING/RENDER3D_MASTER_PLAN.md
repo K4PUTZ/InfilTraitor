@@ -1543,7 +1543,21 @@ detonation cost visible enough to be worth it.
   Captures: `Screenshots/history/r3d4c_playground_guards_cones_{3d,2d}.png`.
   - **Look difference, Director's call:** the 3D cone reads more saturated than the 2D one (alpha
     blends in linear space in 3D, in sRGB on the canvas). Not tuned.
-  - Not done: props (4d), VFX (4e).
+- **R3D-4d — props. PART 1 BUILT: the grenade (rest, flight, tumble, ground shadow).**
+  `PropBillboard3D` mirrors a 2D prop's sprites; props are caught as they enter the tree
+  (`node_added`), so no creation site is touched. A body is a quad PARALLEL to the camera (it rotates
+  in the screen plane, and its centre is raised by the flight height); a shadow is a quad ON THE GROUND
+  built from its three screen corners, so walls cover it. The 2D sprites are hidden by swapping their
+  material for `hidden_2d.gdshader`, not by `visible = false` — the throw code uses `visible` as logic.
+  Dev seam `SEED_GRENADES=1` (+ `GRENADE_GUS`) seeds grenades on the board, on the Moto too.
+  Moto, PLAYGROUND, `RENDER3D=1`, 4 seeded grenades: **23.3 ms vs 22.9 ms** (+0.4 ms, +3 draws),
+  0 script errors. Capture: `Screenshots/history/r3d4d_grenade_flight_3d_vs_2d.png`.
+  - **Imperfect:** the flight shadow is fainter in 3D than in 2D and is not visible in one frame
+    where it falls under a glass pane. Not tuned.
+  - **Attached but NOT verified by capture:** `AgentProbeProp` (the showcase prop).
+  - **Still to do in 4d:** `FloatingCollectible` — needs the outline branch of the relight shader
+    (not ported), the bob-height crossfade of its layers and two baked shadow sprites.
+  - Not done: VFX (4e).
 
 **R3D-4a, a spike with its decision rule written before measuring:**
 

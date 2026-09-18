@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**263 scripts · 98308 lines total** (under `godot/scripts/`)
+**264 scripts · 98540 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, prop_billboard3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
@@ -794,6 +794,30 @@ extends `Node3D` · 1002 lines
 
 ---
 
+### `prop_billboard3d.gd`
+
+`class_name PropBillboard3D` · extends `Node3D` · 191 lines
+
+`godot/scripts/geometry/prop_billboard3d.gd`
+
+> PropBillboard3D — a 2D prop's sprites (a body and, optionally, its ground shadow), drawn in the 3D board. RENDER3D R3D-4d. The sibling of `ActorBillboard3D` for objects that are not a standing figure: the thrown grenade, which tumbles in the screen plane and flies above its ground point, and the showcase props. A MIRROR again — the prop's own script keeps deciding what is shown and where. THE TWO KINDS OF QUAD, chosen per sprite by the shader its own material uses: - a BODY is a quad PARALLEL TO THE CAMERA. An actor is tall and needs true depth at every height (ActorBillboard3D); a grenade is small, and what it does is rotate in the screen plane, which a camera-parallel quad does exactly. Its centre sits above its ground point by the flight height, so it passes walls by real depth. - a SHADOW (`object_ground_shadow.gdshader`) is a quad ON THE GROUND. The ground plane maps to the screen affinely, so the shadow's three screen corners become three ground points and the quad is exact, squash and all; walls cover it, and it never needs a lift over the floor. HIDING THE 2D. Not `visible = false`: the game uses a prop's `visible` as logic (the throw code hides a detonated grenade with it), so it must keep meaning that. Each sprite's material is swapped for `hidden_2d.gdshader` (its original is kept, and read here for the light uniforms) and put back when this leaves the tree — but only if no newer billboard has taken the sprite over.
+
+**Constants / tuning**
+- `BODY_SHADER` = `"res://godot/shaders/actor_billboard3d.gdshader"`
+- `SHADOW_SHADER` = `"res://godot/shaders/prop_shadow3d.gdshader"`
+- `HIDDEN_SHADER` = `"res://godot/shaders/hidden_2d.gdshader"`
+- `SHADOW_SHADER_ID` = `"object_ground_shadow"`
+- `COS_ELEVATION` = `0.8660254`
+- `BODY_LIFT` = `0.05`
+- `GROUND_LIFT` = `0.02`
+- `LAYER_EPSILON` = `0.002`
+- `MIRRORED_PARAMS` = `[ "light_dir", "light_intensity", "ambient", "specular_strength", "saturation", "contrast", ]`
+
+**Public API**
+- `func setup(board: Node3D, source: Sprite2D) -> void:`
+
+---
+
 ### `slab.gd`
 
 `class_name Slab` · 111 lines
@@ -1373,7 +1397,7 @@ extends `Node2D` · 143 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 372 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 377 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -1403,6 +1427,7 @@ extends `Node2D` · 143 lines
 
 **Public API**
 - `func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:`
+- `func billboard_height_px() -> float:`
 - `func set_flight_height_px(px: float) -> void:`
 - `func update_cell(p_gu_cell: Vector2i) -> void:`
 - `func set_airborne(airborne: bool) -> void:`
@@ -5836,7 +5861,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12240 lines
+extends `Node2D` · 12276 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5877,6 +5902,9 @@ extends `Node2D` · 12240 lines
 - `Board3DLiveClass` = `preload("res://godot/scripts/geometry/board3d_live.gd")`
 - `ActorBillboard3DClass` = `preload("res://godot/scripts/geometry/actor_billboard3d.gd")`
 - `VisionCone3DClass` = `preload("res://godot/scripts/geometry/vision_cone3d.gd")`
+- `PropBillboard3DClass` = `preload("res://godot/scripts/geometry/prop_billboard3d.gd")`
+- `GrenadePropRef` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
+- `AgentProbePropRef` = `preload("res://godot/scripts/overlays/agent_probe_prop.gd")`
 - `BoardProbeClass` = `preload("res://godot/scripts/systems/board_probe.gd")`
 - `WorldRenderScaleClass` = `preload("res://godot/scripts/systems/world_render_scale.gd")`
 - `TargetCursorOverlayClass` = `preload("res://godot/scripts/overlays/target_cursor_overlay.gd")`

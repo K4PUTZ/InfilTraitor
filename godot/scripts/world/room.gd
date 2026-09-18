@@ -2033,6 +2033,15 @@ func _ready() -> void:
 		hide()
 		get_tree().change_scene_to_file.call_deferred("res://godot/scenes/spikes/board3d_spike.tscn")
 		return
+	## RENDER3D R3D-4a — the actor-in-depth spike, same hand-over as `board3d` above.
+	if _dev_flag("SPIKE") == "r3d4a":
+		set_process(false)
+		set_physics_process(false)
+		set_process_input(false)
+		set_process_unhandled_input(false)
+		hide()
+		get_tree().change_scene_to_file.call_deferred("res://godot/scenes/spikes/r3d4a_actor_spike.tscn")
+		return
 	## DIAG-01 — see `_dev_flag()`: this cannot be a member initialiser.
 	_frame_probe = _dev_flag_on("FRAME_PROBE")
 	## DIAG-19 — `LIGHT_SECONDS` reaches the APK too; the member initialiser reads the

@@ -3057,7 +3057,7 @@ func _start_board3d_live() -> void:
 func _attach_ground_overlays(live: Node3D) -> void:
 	var on: bool = _dev_flag("GROUND3D", "1") != "0"
 	for overlay in [movement_overlay, path_preview, selection_overlay, _throw_perimeter_overlay,
-			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game]:
+			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game, fog_of_war]:
 		if overlay != null and is_instance_valid(overlay) and overlay.has_method("set_board3d"):
 			overlay.set_board3d(live if on else null)
 

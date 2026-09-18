@@ -1734,10 +1734,14 @@ another stage):
 | `overlays/light_ray_overlay` (golden shafts) | → R3D-6 | light look, hidden by default |
 | `overlays/ceiling_prop_overlay` (overhead layer) | → R3D-7 | cutaway/roof |
 | `overlays/occlusion_slice_panel` (OCC-27) | → R3D-7 | replaced by the 3D cutaway |
-| `ui/fog_of_war_overlay` | → R3D-5c | next |
+| `ui/fog_of_war_overlay` | G | **done (R3D-5c)**: `draw_polygon` with per-vertex colours added to the canvas; the feathered diamonds land on their pixels (selftest [6]); capture 3D vs 2D shows the same gradient (mean luminance 76.4 vs 74.8). The `VisionFogOverlay/FogRect` is a separate screen-space rect and stays. |
 | `smoke_spark`, `ember`, `debris`, `shrapnel`, `glass_rain`, `shard_field`, `glass_crack_sprite` | V | R3D-4e |
 | `agents/agent.gd`, `agents/guard_enemy.gd` (`_draw`: vector fallback, dev cones) | — | actors are billboards (R3D-4b/c); the dev `tiles` cone stays 2D |
 | `world/room.gd` `_draw` (spawn marker, playable boundary, shadow debug) | D | stay 2D |
+
+**Layering.** The 2D `z_index` order is kept as `render_priority`: tile_shadow (MULTIPLY) 0, GU grid 1, fog 2,
+tile_game 3, shadow boundary 4, movement 5, path 6, selection 7, throw perimeter 8, noise 9; each at its own
+`lift` above the floor (0.004 … 0.022 units).
 
 **Known, not built:** the 2D aliasing of a 1–2 px line differs slightly (the 2D lines were antialiased,
 the ground quads are not); the aim dome and the throw arc still draw over actors, by decision.

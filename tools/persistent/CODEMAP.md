@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**271 scripts · 100117 lines total** (under `godot/scripts/`)
+**271 scripts · 100192 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -757,7 +757,7 @@ extends `Node3D` · 1021 lines
 
 ### `ground_canvas3d.gd`
 
-`class_name GroundCanvas3D` · extends `RefCounted` · 175 lines
+`class_name GroundCanvas3D` · extends `RefCounted` · 196 lines
 
 `godot/scripts/geometry/ground_canvas3d.gd`
 
@@ -4500,7 +4500,7 @@ extends `SceneTree` · 227 lines
 
 ### `ground_canvas3d_selftest.gd`
 
-extends `SceneTree` · 183 lines
+extends `SceneTree` · 205 lines
 
 `godot/scripts/tools/ground_canvas3d_selftest.gd`
 
@@ -4521,6 +4521,7 @@ extends `SceneTree` · 183 lines
 - `func test_circle_and_polyline() -> void:`
 - `func test_owner_transform_is_applied() -> void:`
 - `func test_empty_draw_publishes_nothing() -> void:`
+- `func test_per_vertex_colours_and_positions() -> void:`
 
 ---
 
@@ -5489,7 +5490,7 @@ extends `SceneTree` · 306 lines
 
 ### `fog_of_war_overlay.gd`
 
-`class_name FogOfWarOverlay` · extends `Node2D` · 154 lines
+`class_name FogOfWarOverlay` · extends `Node2D` · 186 lines
 
 `godot/scripts/ui/fog_of_war_overlay.gd`
 
@@ -5497,6 +5498,7 @@ extends `SceneTree` · 306 lines
 - `TILE_HALF_W` = `128.0`
 - `TILE_HALF_H` = `64.0`
 - `FOG_COLOR` = `Color(0.04, 0.04, 0.09, 0.93)`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public API**
 - `func setup(floor_layer: TileMapLayer, visual_offset: Vector2, room_size: Vector2i) -> void:`
@@ -5505,6 +5507,7 @@ extends `SceneTree` · 306 lines
 - `func add_peek_reveal(cell: Vector2i) -> void:`
 - `func reset_peek_reveals() -> void:`
 - `func is_cell_revealed(cell: Vector2i) -> bool:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 

@@ -102,7 +102,39 @@ func _fog_alpha_for(cell: Vector2i) -> float:
 	return FOG_COLOR.a
 
 
+## RENDER3D R3D-5b — when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D` (the same
+## calls, on the ground plane, depth-tested) instead of to the 2D canvas. See ground_canvas3d.gd.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 2, 0.008, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if _floor_layer == null:
 		return
 	## Pre-compute alpha for every unrevealed cell, including 1-tile virtual ring
@@ -151,4 +183,4 @@ func _draw() -> void:
 				centre + Vector2(        0.0,  TILE_HALF_H),   ## bottom
 				centre + Vector2(-TILE_HALF_W,         0.0),   ## left
 			])
-			draw_polygon(pts, v_colors)
+			_c.draw_polygon(pts, v_colors)

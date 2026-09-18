@@ -113,6 +113,10 @@ func vertices() -> PackedVector3Array:
 	return _verts
 
 
+func colors() -> PackedColorArray:
+	return _cols
+
+
 func detach() -> void:
 	if _node != null and is_instance_valid(_node):
 		_node.queue_free()
@@ -129,6 +133,23 @@ func draw_colored_polygon(points: PackedVector2Array, color: Color) -> void:
 		_add_vertex(p, color)
 	if points.size() == 3 or points.size() == 4:
 		## A triangle or a convex quad (every diamond): a fan, no triangulation needed.
+		for i: int in range(1, points.size() - 1):
+			_idx.append_array(PackedInt32Array([base, base + i, base + i + 1]))
+		return
+	var tri: PackedInt32Array = Geometry2D.triangulate_polygon(points)
+	for i: int in tri:
+		_idx.append(base + i)
+
+
+## The per-vertex-colour polygon (the fog's feathered diamonds): each vertex carries its own colour, and
+## the GPU interpolates it across the triangle exactly as the 2D canvas did.
+func draw_polygon(points: PackedVector2Array, colors: PackedColorArray) -> void:
+	if points.size() < 3 or colors.size() != points.size():
+		return
+	var base: int = _verts.size()
+	for i: int in range(points.size()):
+		_add_vertex(points[i], colors[i])
+	if points.size() <= 4:
 		for i: int in range(1, points.size() - 1):
 			_idx.append_array(PackedInt32Array([base, base + i, base + i + 1]))
 		return

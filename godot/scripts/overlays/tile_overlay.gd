@@ -204,7 +204,7 @@ func set_board3d(board: Node3D) -> void:
 	## the floor itself; the gameplay one draws normally above it.
 	var multiply: bool = material is CanvasItemMaterial \
 		and (material as CanvasItemMaterial).blend_mode == CanvasItemMaterial.BLEND_MODE_MUL
-	_ground.attach(board, -1 if multiply else 0, 0.006 if multiply else 0.009, multiply)
+	_ground.attach(board, 0 if multiply else 3, 0.004 if multiply else 0.010, multiply)
 	_ground.follow_visibility_of(self)
 	queue_redraw()
 

@@ -29,7 +29,7 @@ func set_board3d(board: Node3D) -> void:
 		queue_redraw()
 		return
 	_ground = GroundCanvas3DRef.new()
-	_ground.attach(board, 2, 0.014, false)
+	_ground.attach(board, 7, 0.018, false)
 	_ground.follow_visibility_of(self)
 	queue_redraw()
 

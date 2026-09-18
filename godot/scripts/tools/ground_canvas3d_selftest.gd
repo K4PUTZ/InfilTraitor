@@ -67,6 +67,7 @@ func _init() -> void:
 	test_circle_and_polyline()
 	test_owner_transform_is_applied()
 	test_empty_draw_publishes_nothing()
+	test_per_vertex_colours_and_positions()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -180,4 +181,25 @@ func test_empty_draw_publishes_nothing() -> void:
 	c.end()
 	c.clear()
 	_check(c.vertices().is_empty(), "cleared: no vertices")
+	owner_node.queue_free()
+
+
+## [6] The fog's feathered diamond: four vertices, four colours, on the 2D points it was given.
+func test_per_vertex_colours_and_positions() -> void:
+	print("[6] draw_polygon keeps each vertex's colour and lands on its pixel")
+	var owner_node := Node2D.new()
+	root.add_child(owner_node)
+	var c: RefCounted = _canvas()
+	c.begin(owner_node)
+	var centre := Vector2(320.0, 240.0)
+	var pts := PackedVector2Array([centre + Vector2(0, -64), centre + Vector2(128, 0), centre + Vector2(0, 64), centre + Vector2(-128, 0)])
+	var cols := PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.3), Color(0, 0, 0, 0.6), Color(0, 0, 0, 0.9)])
+	c.draw_polygon(pts, cols)
+	var worst: float = _worst_error(c, [pts[0], pts[1], pts[2], pts[3]])
+	_check(worst < EPS_PX, "worst vertex error %.5f px" % worst)
+	c.end()
+	var mesh_cols: PackedColorArray = c.colors()
+	_check(mesh_cols.size() == 4 and absf(mesh_cols[3].a - 0.9) < 1e-6 and absf(mesh_cols[0].a) < 1e-6, "each vertex keeps its own alpha")
+	c.draw_polygon(pts, PackedColorArray([Color.WHITE]))
+	_check(c.vertices().size() == 4, "a colour array of the wrong size draws nothing (still 4 vertices)")
 	owner_node.queue_free()

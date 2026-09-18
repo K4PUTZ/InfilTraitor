@@ -1222,14 +1222,96 @@ After this stage, no simulation or prediction code reads a tile.
 - **The hidden 2D board stops being built** when the 3D board is on (a flag for the A/B,
   removed at R3D-8). **NOT STARTED.**
 - **The web export is checked NOW, not at R3D-8.** The Compatibility renderer must boot
-  the 3D board: `Texture2DArray`, the custom spatial shaders, `MultiMesh`. **NOT STARTED.**
+  the 3D board: `Texture2DArray`, the custom spatial shaders, `MultiMesh`. **✅ CHECKED
+  (2026-09-17).**
 
 **Progress (2026-09-17):** steps 1 (relocate), 2 (vertical scale, ratified 1.0) and 3
 (chunk size, 16) closed — commits `9ed0f809`, `642a2d9f`, `a54b804a`. Step 4 (`WorkerThreadPool`
 remesh) closed — commit `73fa10dc`; background collect+merge measured at 30.6/0.5 ms on the
 Moto (both PLAYGROUND grenades) against the old synchronous path's 108.4/104.4 ms (chunk 32)
-or 38.9/0.2 ms (chunk 16) added in-line to whichever frame ran it. Steps 5 (skip the hidden
-2D build), 6 (web export check) and 7 (the full Moto gate above) remain.
+or 38.9/0.2 ms (chunk 16) added in-line to whichever frame ran it.
+
+**Step 6 CHECKED (2026-09-17).** Re-exported `export/web` (`--export-release "Web"`,
+no code changes at export time), served it locally and booted it in a real browser
+(Chromium via the Claude Code browser pane). No `MultiMesh` yet at this stage (that's
+R3D-4 scope), so the check covers `Texture2DArray` and the custom spatial shader only.
+Console (the pasted literal, not a description):
+
+```
+[BOARD3D] 114120 voxel(s) (slices 41920, columns 160, slabs 72200; the 2D board holds
+77928 cell(s)) → 61454 face(s) → 232 quad(s) in 35 chunk(s), 9 material(s), plane levels
+78..103; collect 108 ms, mesh 142 ms; skip 2D writes false; source store
+```
+
+No shader-compile or WebGL errors in the console. `MobileTesting.md` already documents that
+the web export always runs the Compatibility (WebGL2) renderer regardless of
+`renderer/rendering_method` in `project.godot` (currently `"mobile"`) — so this is the
+renderer R3D-6/R3D-8's web gate will always exercise, confirmed rather than assumed.
+
+⚠️ **Side finding, not fixed here (out of step 6's scope):** `DevFlags`
+(`godot/scripts/systems/dev_flags.gd`) resolves `OS.get_environment()` → the Android
+overrides file → the caller's default — and neither of the first two exists on the Web
+platform (no env, no filesystem at that path), so **no `INFILTRAITOR_*` flag, including
+`RENDER3D`, can be toggled on a web build today.** This check only ran with `RENDER3D`
+forced on by temporarily editing `room.gd`'s call-site fallback to `"1"`, exporting,
+testing, then reverting the source and re-exporting the real build (`git diff` on
+`room.gd` came back clean before the final export). A third resolution branch reading
+the URL query string (mirroring the Android overrides-file precedent) would fix this
+generally; flagged for whoever next needs to toggle a flag on web, not scheduled here.
+
+Steps 5 (skip the hidden 2D build) and 7 (the full Moto gate above) remain. Step 5 needs
+its own session: research found the load-time placement path
+(`VoxelRenderer._process_dirty_slice_voxel()` / `_set_voxel_cell()`, not the existing
+`SKIP_2D_BOARD_WRITES` instrument, which only gates per-cell light writes and the plane
+flush) is what actually builds the hidden 2D geometry, and two real readers would break
+silently if it stopped: the whole glass subsystem (`_glass_layers` reads — cracks,
+shatter, remnants, rim) and `columns_with_structure()` (VL-D3 sun exposure). Both are
+R3D-5 migration scope, not a same-session toggle.
+
+**Step 7 — Moto gate, PARTIAL (2026-09-17).** Ran on the physical Moto g04s (serial
+`ZF524T5TG5`), package `com.example.infiltraitor`, `MAP=PLAYGROUND` (which now seeds
+4 dev grenades, not 2 — `scenario_runner.gd`'s own log line: *"seeded 4 dev grenade(s) —
+PLAYGROUND no longer ships them"*), `SCENARIO=wait 3; mark boot; detonate 0; wait 3;
+mark g1; detonate 1; wait 3; mark g2; quit`, `device_run.py --mem-poll 5`, both with and
+without `NO_BAKE=1`. Logs (local, gitignored):
+`docs/measurements/device_2026-09-17_moto_g04s_r3d3_step7*.log`.
+
+- **Commit frame ✅ within budget.** `NO_BAKE=1`, `RENDER3D=1`: grenade 1 COMMIT
+  181 ms, grenade 2 COMMIT 219 ms — both under the 262–279 ms reference. The
+  `BOARD3D` remesh commit itself: grenade 1 background 133.6 ms (poll-latency 494.2 ms),
+  grenade 2 background 116.5 ms (poll-latency 479.6 ms) — the same "background is cheap,
+  poll can land on an expensive unrelated frame" pattern step 4 already documented, not a
+  new cost.
+- **⚠️ Both grenades' WORST frame is enormous — 2934.9 ms (grenade 1) and 944.8 ms
+  (grenade 2), both in the PUMP phase** (`TestZoneController._pump_prediction()`'s
+  pre-production loop, which runs BEFORE the board ever touches a voxel). **Isolated with
+  a same-scenario 2D control run (`RENDER3D` unset, `NO_BAKE=1`): WORST 3548.1 ms, also in
+  PUMP, on grenade 1** — so this is a **pre-existing cost shared by both renderers, not a
+  3D regression.** `PREDICTION_MASTER_PLAN`'s own `P-COOK` log line names it directly:
+  *"pre-production was short by 1218 ms"* — the pump loop's per-frame budget (14 ms) ran
+  out before the scenario's `wait` gave it enough real frames, so the cook finishes the
+  rest synchronously in one big catch-up frame. Real, but out of R3D-3's scope — flagged
+  for whoever owns `PREDICTION_MASTER_PLAN`'s pump/cook budget, not fixed here.
+- **Load time.** `VOXEL-STORE built` (voxel data ready): ~10.7 s after `DevFlags` read on
+  both 2D and 3D. **3D's own mesh isn't ready until ~15 s later** (`BOARD3D` log line),
+  which is consistent with the hidden 2D board (`skip 2D writes false` in the log — step 5
+  not done yet) still being built underneath in that gap — corroborating evidence, not
+  proof, that step 5's win is real and roughly this size.
+- **Memory.** `NO_BAKE=1` + `RENDER3D=1`: TOTAL PSS 321 → 1230 → 1403 MB across the run
+  (median 1230). The 2D control (`NO_BAKE=1`, no `RENDER3D`): 328 → 1171 → 1225 MB (median
+  1171). Close, not identical — a real per-material-count comparison needs the same
+  ablation table DIAG-23 built, not this scenario, which was tuned for frame timing.
+- **NOT measured this session — no instrument found:** the idle-frame-specific number
+  against 22.9 ms (DIAG-21/23's idle-frame table came from a different capture mechanism
+  than logcat text; `bench_analyze.py` and `device_run.py --mem-poll` don't surface it,
+  and no `SCENARIO=` step in `scenario_runner.gd` prints one either) and the 3D run-a vs
+  run-b pixel-identity check (needs a capture-diff harness, not wired into this recipe).
+  Both need either locating the original DIAG-21 idle-frame tool or building a
+  `SCENARIO=` step for it — a small follow-up, not started.
+
+**Step 7 is not closed** — the commit frame and both grenades' worst-frame numbers are in
+hand and clean (with the PUMP spike traced to a pre-existing, cross-renderer cause), but
+the idle-frame number and the pixel-identity check are still open.
 
 **Idea flagged for later, not started:** the Director asked whether detonating a HIDDEN
 blast during load (never shown) could pre-warm whatever the first real detonation pays for

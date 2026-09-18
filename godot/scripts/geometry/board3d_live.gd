@@ -50,6 +50,7 @@ static var CHUNK_VOXELS: int = 16
 ## stands (the store's `occ`). The object path erased the cell when a destroyed claim was
 ## folded in, even with the other claim standing — the Director's option A (2026-09-16,
 ## "the voxels are the truth") for the same corner cells in the light's occupancy.
+const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 static var STORE_BOARD3D: bool = true
 
 ## RENDER3D R3D-3 step 2 — the vertical-scale spike. A true cube in this camera projects
@@ -285,6 +286,13 @@ func build(room: Node, cell_to_world: Callable) -> void:
 func ground_point(point_2d: Vector2) -> Vector3:
 	var gu: Vector2 = _to_gu * (point_2d - _origin_2d)
 	return Vector3(gu.x + 0.5, 0.0, gu.y + 0.5)
+
+
+## RENDER3D R3D-4e-1 — the 3D point a VFX emission at `world_pos` (2D) comes from. `floor_pos` is the 2D
+## point of the ground beneath it (the detonation calls carry both); the difference is the height.
+func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:
+	return ParticleMathRef.origin_from_floor(
+		ground_point(floor_pos), floor_pos, world_pos, camera_basis(), _px_per_unit)
 
 
 func camera_basis() -> Basis:

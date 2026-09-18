@@ -8,19 +8,19 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**264 scripts · 98576 lines total** (under `godot/scripts/`)
+**267 scripts · 98896 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, passage_query.gd, prop_billboard3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -526,13 +526,14 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1002 lines
+extends `Node3D` · 1010 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
 > Board3DLive — the LIVE board, as depth-tested 3D meshes under the 2D game. DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10) built this as a spike under `spikes/`. RENDER3D R3D-3 (2026-09-17) moved it here — production code, not an instrument, though it still runs behind `RENDER3D=1` until R3D-8 retires the 2D board: `RENDER3D=1` builds it after a real map load and hides the 2D voxel board. Actors, fog, overlays and the HUD keep drawing in 2D, on top of it. WHAT IT READS: every visible Voxel of every Slice (half thickness and material bands included), every junction corner column, every floor, deep-floor and roof Slab — the game's own registries after the real load. It reads, it never writes game state. THE LOOK, and how it maps from 2D: - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a GU is one world unit and a storey one unit tall (the 30° camera's cube); - only the three faces the camera can see are emitted — top (+Y), SE (+X) and SW (+Z) — the same three `VoxelLightField.surface_factor()` names; - a material is `base_color × facade luminance`, the bake's MULTIPLY, sampled in world space at 16 texels per voxel with mirrored repeat; - LIGHT AND SOOT ARE PER CELL, NOT PER VERTEX (step 2c). The fragment finds its own voxel from its world position and reads bucket and soot code from a `Texture2DArray` holding the 2D renderer's own cell planes, one layer per level — the same RG8 data the 2D face shader reads. So faces merge by MATERIAL only, and a soot or light change is a layer upload instead of a remesh. Step 2 rebuilt geometry for colour changes and paid ~240 ms per rebuild on the Moto (§15.9); - the 2D face shader's terms are applied in the same order: face tone × bucket luminance × per-face soot × floor depth dim, all in sRGB, the product decoded once. ⚠️ NOT PARITY — stated so no capture is read as one: no damage decals, no bake window origins (facade continuity is world-space, not per wall run), glass is a flat translucent tint, actors are not occluded by walls, the soot fade and the light ramp land at their ends instead of stepping, and the 2D storey is 158 px where this 30° camera draws 156.8 (walls ~0.8% shorter than the sprites expect).
 
 **Constants / tuning**
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `VERTICAL_SCALE_MATCHED` = `158.0 / 156.8`
 - `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
 - `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`
@@ -545,8 +546,34 @@ extends `Node3D` · 1002 lines
 **Public API**
 - `func build(room: Node, cell_to_world: Callable) -> void:`
 - `func ground_point(point_2d: Vector2) -> Vector3:`
+- `func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:`
 - `func camera_basis() -> Basis:`
 - `func px_per_unit() -> float:`
+
+---
+
+### `circle_field3d.gd`
+
+`class_name CircleField3D` · extends `RefCounted` · 117 lines
+
+`godot/scripts/geometry/circle_field3d.gd`
+
+> CircleField3D — many camera-facing discs on the 3D board, in ONE draw call, depth-tested. RENDER3D R3D-4e-1. The 3D twin of `CircleField` (PERF-P7b): the same clients, the same begin/push/flush/clear frame, but each disc has a WORLD position (`ParticleMath`), so a wall in front of it hides it. The disc mesh is one quad built once; a frame ships only a transform and a colour per instance, exactly as the 2D field does with its circle fan — the cost P7b measured (CPU submission per vertex) stays solved, and a quad is four vertices where the fan was 192. ⚠️ `custom_aabb` IS SET, AND FOR THE SAME REASON AS THE 2D FIELD. Godot derives a MultiMesh's culling bounds from its BASE MESH, here a 2×2 quad at the origin; the instances carry the real positions and are not in that box, so without this box every disc far from the origin is culled and whole effects vanish silently (P7b lost particles that way for weeks). ⚠️ DRAW ORDER. Instances draw in push order (as the 2D field's do), which under MIX blending IS part of the picture. Between FIELDS the order is the node's distance to the camera, which is not what the 2D z-order meant, so each field takes a `priority` (material render priority) that stands in for it.
+
+**Constants / tuning**
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+- `SHADER_MIX` = `"res://godot/shaders/particle_disc3d.gdshader"`
+- `SHADER_ADD` = `"res://godot/shaders/particle_disc3d_add.gdshader"`
+- `FLOATS_PER_INSTANCE` = `16`
+
+**Public API**
+- `func attach(parent: Node3D, additive: bool, feather: float = 0.0, priority: int = 0) -> void:`
+- `func begin(capacity: int, cam: Basis, px_per_unit: float) -> void:`
+- `func push(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2, radius_px: float, color: Color) -> void:`
+- `func flush() -> void:`
+- `func clear() -> void:`
+- `func live_count() -> int:`
+- `func buffer() -> PackedFloat32Array:`
 
 ---
 
@@ -781,6 +808,19 @@ extends `Node3D` · 1002 lines
 `godot/scripts/geometry/junction_resolver.gd`
 
 > Geometry Module — Junction Resolver: fills V-junction corner columns. Rewritten (JUNCTION-02): the previous version reconstructed GU cells from voxel-index vertex coordinates and divided them back down by 8. That broke whenever a vertex used the "+7" near-edge offset (true for one axis of almost every vertex _get_edge_vertices produced) instead of a clean multiple of 8 — integer division silently floored into the wrong bucket, so the resolver picked a cell adjacent to the elbow instead of the true diagonal notch. This version never touches voxel coordinates for the detection step: it stays in GU-cell space the whole time, using the faces already recorded on each Edge. Scope: V-junctions (2 walls) and free-standing wall ends (3 walls, all genuinely open — e.g. a divider stopping next to a gate) both get filler columns, one per adjacent (non-opposite) pair of occupied faces at the cell. A true T-junction (a wall butting flush into another, already-solid wall) also presents as 3 faces on a naive count, but EdgeExtractor's exposure culling (see edge_extractor.gd) already removes the spurious flush-contact face before this ever sees it, so it correctly reduces to 2 opposite (straight-through) faces — 0 columns, nothing to fill. This only works because that culling fix landed first; see JUNCTION-01b prompt. X-junctions (4 walls) are intentionally skipped — assumed already covered by surrounding wall geometry; revisit only if a real gap is reported there.
+
+---
+
+### `particle_math.gd`
+
+`class_name ParticleMath` · extends `RefCounted` · 41 lines
+
+`godot/scripts/geometry/particle_math.gd`
+
+> ParticleMath — the one place a 2D particle's screen displacement becomes a world displacement. RENDER3D R3D-4e-1. Every VFX overlay simulates in 2D canvas pixels, and folds a particle's height into screen y (smoke "rises" by decreasing y). That is fine on a 2D board and wrong on a 3D one: with no world position a particle cannot be depth-tested, so it draws over a wall it is behind. The fix does NOT rewrite the simulation. A particle keeps its 2D state; it also remembers the 3D point it was emitted from (its ANCHOR) and the 2D point that anchor projects to. Its world position is then the anchor plus its 2D displacement carried across EXACTLY: - horizontal screen displacement → along the camera's right axis, ÷ px-per-unit; - vertical screen displacement   → straight UP in the world, ÷ (px-per-unit × cos 30°), because a vertical extent projects to cos(elevation) of its length on screen. Projected back through the camera the particle lands on the pixel the 2D path would have drawn, so the look is unchanged and only the DEPTH is new: a puff at the foot of a wall is behind the wall, and a plume that climbs above its top is in front of what is behind it.
+
+**Constants / tuning**
+- `COS_ELEVATION` = `0.8660254`
 
 ---
 
@@ -4672,6 +4712,33 @@ extends `SceneTree` · 177 lines
 - `func test_background_swap_simple() -> void:`
 - `func assert_eq(actual: Variant, expected: Variant, message: String) -> void:`
 - `func assert_true(condition: bool, message: String) -> void:`
+
+---
+
+### `particle_space_selftest.gd`
+
+extends `SceneTree` · 154 lines
+
+`godot/scripts/tools/particle_space_selftest.gd`
+
+> Particle-space selftest — RENDER3D R3D-4e-1. Run: python3 tools/persistent/run_selftests.py --only particle_space_selftest The claim under test is the one the whole of R3D-4e rests on: a particle carried into the world by `ParticleMath` projects, through the REAL board camera's own projection, to the pixel its 2D simulation put it on. If that holds, moving the VFX into 3D changes their depth and nothing else. The projection is asked of a real `Camera3D` configured the way `Board3DLive._make_camera()` configures it — a self-comparison against `ParticleMath` would pass whatever the constants said.
+
+**Constants / tuning**
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
+- `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
+- `PPU` = `256.0 / sqrt(2.0)`
+- `EPS_PX` = `0.05`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_displacement_projects_to_the_same_pixels() -> void:`
+- `func test_rise_is_world_up() -> void:`
+- `func test_origin_from_floor_reads_the_height() -> void:`
+- `func test_field_buffer_layout() -> void:`
+- `func test_field_survives_an_empty_frame() -> void:`
 
 ---
 

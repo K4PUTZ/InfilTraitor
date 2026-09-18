@@ -1772,6 +1772,39 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
   stopped there, the game would still be better.
 - **R3D-4 and R3D-5 can run in either order** once R3D-3 exists.
 
+### Sequencing decided 2026-09-18 (the Director delegated the order and the steps)
+
+Order: **R3D-4e → R3D-5b → R3D-5a → R3D-5c → R3D-6.** Each step is its own commit, gated by a
+capture of the real path and by lint, selftests and invariants; the Moto is run when a step could
+move frame cost or memory, not as a ritual (`[[r3d-focus-system-quality-not-cosmetics]]`).
+
+Why this order:
+1. **4e first.** The Director ruled particles over walls unacceptable, and world-space particle
+   state is the prerequisite of tall pieces and parallax.
+2. **5b before 5a.** Ground overlays as depth-tested ground quads reuse what 4c and 4d already
+   proved (`VisionCone3D`, the ground shadow), and it removes the defect the Director has now seen
+   three times (a 2D overlay drawn over an actor or a prop). Picking (5a) is the structural,
+   riskiest step — it retires `floor_layer` from input — so it goes after the visible wins, with
+   the input and HUD seam selftests as its net.
+3. **5c last in R3D-5:** fog of war depends on what 5b decides for the other ground overlays.
+
+**R3D-4e in steps** (the spec is in that section):
+- **4e-1 — the space.** `ParticleSpace` on `Board3DLive`: `origin_3d(world_pos, floor_pos)` (height
+  from the pair — the detonation calls already carry both) and `to_world()`, which maps a 2D
+  screen displacement onto the world exactly (horizontal → camera right, vertical → up ÷ cos 30°),
+  so the simulation stays as it is and only the projection changes. `CircleField3D`: a 3D
+  `MultiMesh` of camera-facing discs, depth-tested, `custom_aabb` set. A selftest proves a particle
+  at its origin lands on the same screen pixel as in 2D.
+- **4e-2 — the CircleField users.** Smoke puffs, embers, dust (the three `CircleField` clients).
+- **4e-3 — lines and quads.** Spark streaks, shrapnel lines and glows, debris chips.
+- **4e-4 — glass.** `ShardField` and the rain: its atlas shader ported to spatial.
+- **4e-5 — retire the 2D draw under `RENDER3D=1`, and gate.** The behind-the-wall capture repeated,
+  the four views, the Moto detonation frame against the 2D baseline.
+
+**R3D-5 in steps:** **5b** the ground overlays (movement range, path preview, selection diamond,
+aim dome, throw perimeter and arc, noise rings) each with a row in the decision table; **5a**
+picking by camera ray, `floor_layer` readers moved to the store or the grid; **5c** fog of war.
+
 **Open items elsewhere that this plan absorbs, so they are not built twice:**
 
 | item | now lives in |

@@ -1301,17 +1301,33 @@ without `NO_BAKE=1`. Logs (local, gitignored):
   (median 1230). The 2D control (`NO_BAKE=1`, no `RENDER3D`): 328 → 1171 → 1225 MB (median
   1171). Close, not identical — a real per-material-count comparison needs the same
   ablation table DIAG-23 built, not this scenario, which was tuned for frame timing.
-- **NOT measured this session — no instrument found:** the idle-frame-specific number
-  against 22.9 ms (DIAG-21/23's idle-frame table came from a different capture mechanism
-  than logcat text; `bench_analyze.py` and `device_run.py --mem-poll` don't surface it,
-  and no `SCENARIO=` step in `scenario_runner.gd` prints one either) and the 3D run-a vs
-  run-b pixel-identity check (needs a capture-diff harness, not wired into this recipe).
-  Both need either locating the original DIAG-21 idle-frame tool or building a
-  `SCENARIO=` step for it — a small follow-up, not started.
+- **Idle frame ✅ found and matches, exactly.** The instrument is `FRAME_PROBE=1`
+  (`room.gd`'s `_process()`, §PERF — a standing frame probe already in the codebase,
+  not something new): prints `[FRAME-PROBE] … ms/frame · render cpu … · render gpu … ·
+  N draw call(s) …` every 60 frames — this is where DIAG-21/23's "idle frame · gpu ·
+  cpu · draws" column always came from. `SCENARIO=framing portrait; zoom 0.5; wait 20;
+  mark idle; quit`, `NO_BAKE=1`, portrait zoom 0.5:
+  - **3D (`RENDER3D=1`): 22.9 ms/frame · render cpu 4.2–4.4 ms · render gpu 21.3–21.6 ms
+    · 225 draw calls** — matches §15.15's reference table (22.9 · 21.5 · 225) to within
+    rounding.
+  - **2D control (no `RENDER3D`): 76.0 ms/frame · render cpu 20.5–20.6 ms · render gpu
+    74.5–74.6 ms · 11 308 draw calls** — matches §15.15's own 2D row (76.0 · 74.5 ·
+    11 308) exactly.
+  - Logs (local): `docs/measurements/device_2026-09-17_moto_g04s_r3d3_idleframe_3d.log`,
+    `..._idleframe_2d.log`.
+- **Pixel-identity run-a vs run-b ✅ 0 px.** Two independent cold boots, identical
+  `SCENARIO=framing portrait; zoom 0.5; wait 3; capture run_a/run_b; quit`,
+  `RENDER3D=1 NO_BAKE=1 MAP=PLAYGROUND`. Both PNGs pulled off the device
+  (`/sdcard/Android/data/com.example.infiltraitor/files/captures/`), byte-identical file
+  size (1 176 788 B) and a literal pixel diff (`PIL.ImageChops.difference`, RGB, no
+  alpha): **`diff bbox: None`, 0 of 1 160 640 pixels differ, max channel delta 0.** The 3D
+  board is deterministic across boots at this configuration.
 
-**Step 7 is not closed** — the commit frame and both grenades' worst-frame numbers are in
-hand and clean (with the PUMP spike traced to a pre-existing, cross-renderer cause), but
-the idle-frame number and the pixel-identity check are still open.
+**Step 7 CLOSED (2026-09-17).** Commit frame, both grenades' worst frame (with the PUMP
+spike traced to a pre-existing, cross-renderer cause — not a 3D defect), load time,
+memory, the idle-frame number (exact match to the reference table) and the pixel-identity
+check (0 px) are all in hand. **R3D-3 as a whole is not closed** — step 5 (skip the hidden
+2D build) remains, scoped above as its own session.
 
 **Idea flagged for later, not started:** the Director asked whether detonating a HIDDEN
 blast during load (never shown) could pre-warm whatever the first real detonation pays for

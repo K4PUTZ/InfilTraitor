@@ -1,5 +1,6 @@
 ## PropBillboard3D — a 2D prop's sprites (a body and, optionally, its ground shadow), drawn in the 3D
-## board.
+## board. The source is a `Sprite2D` (the grenade, the probe) or a `Node2D` whose children are the
+## sprites (the floating collectible).
 ##
 ## RENDER3D R3D-4d. The sibling of `ActorBillboard3D` for objects that are not a standing figure: the
 ## thrown grenade, which tumbles in the screen plane and flies above its ground point, and the
@@ -10,7 +11,9 @@
 ##    (ActorBillboard3D); a grenade is small, and what it does is rotate in the screen plane, which a
 ##    camera-parallel quad does exactly. Its centre sits above its ground point by the flight height,
 ##    so it passes walls by real depth.
-##  - a SHADOW (`object_ground_shadow.gdshader`) is a quad ON THE GROUND. The ground plane maps to the
+##  - a SHADOW is a quad ON THE GROUND. It is a sprite using `object_ground_shadow.gdshader`, or one the
+##    prop marks with the `ground_shadow` meta (the collectible's baked shadows: a black `modulate`, no
+##    material — its alpha is the strength). The ground plane maps to the
 ##    screen affinely, so the shadow's three screen corners become three ground points and the quad
 ##    is exact, squash and all; walls cover it, and it never needs a lift over the floor.
 ##
@@ -22,6 +25,7 @@ class_name PropBillboard3D
 extends Node3D
 
 const BODY_SHADER := "res://godot/shaders/actor_billboard3d.gdshader"
+const OUTLINE_SHADER := "res://godot/shaders/actor_billboard3d_outline.gdshader"
 const SHADOW_SHADER := "res://godot/shaders/prop_shadow3d.gdshader"
 const HIDDEN_SHADER := "res://godot/shaders/hidden_2d.gdshader"
 const SHADOW_SHADER_ID := "object_ground_shadow"
@@ -34,23 +38,26 @@ const LAYER_EPSILON := 0.002
 const MIRRORED_PARAMS: Array[String] = [
 	"light_dir", "light_intensity", "ambient", "specular_strength", "saturation", "contrast",
 ]
+const OUTLINE_PARAMS: Array[String] = ["outline_color", "outline_width", "outline_threshold"]
 
 var _board: Node3D = null
-var _source: Sprite2D = null
+var _source: Node2D = null
 var _hidden: ShaderMaterial = null
 var _body_mesh: QuadMesh = null
 var _ground_mesh: ArrayMesh = null
 var _body_shader: Shader = null
 var _shadow_shader: Shader = null
+var _outline_shader: Shader = null
 ## Sprite2D instance id -> {"node", "orig": Material, "shadow": bool, "mesh", "mat", "tex"}.
 var _entries: Dictionary = {}
 
 
-func setup(board: Node3D, source: Sprite2D) -> void:
+func setup(board: Node3D, source: Node2D) -> void:
 	_board = board
 	_source = source
 	_body_shader = load(BODY_SHADER)
 	_shadow_shader = load(SHADOW_SHADER)
+	_outline_shader = load(OUTLINE_SHADER)
 	_hidden = ShaderMaterial.new()
 	_hidden.shader = load(HIDDEN_SHADER)
 	_body_mesh = QuadMesh.new()
@@ -94,15 +101,18 @@ func _process(_delta: float) -> void:
 			continue
 		var xf: Transform2D = node.global_transform
 		var size: Vector2 = tex.get_size()
+		## Where the texture's top-left sits in the node's own space: `offset`, less half the texture
+		## when the sprite is centred (the collectible's are, the grenade's are not).
+		var origin: Vector2 = node.offset - (size * 0.5 if node.centered else Vector2.ZERO)
 		if entry["shadow"]:
-			var top_left: Vector3 = _board.call("ground_point", xf * node.offset)
-			var top_right: Vector3 = _board.call("ground_point", xf * (node.offset + Vector2(size.x, 0.0)))
-			var bottom_left: Vector3 = _board.call("ground_point", xf * (node.offset + Vector2(0.0, size.y)))
+			var top_left: Vector3 = _board.call("ground_point", xf * origin)
+			var top_right: Vector3 = _board.call("ground_point", xf * (origin + Vector2(size.x, 0.0)))
+			var bottom_left: Vector3 = _board.call("ground_point", xf * (origin + Vector2(0.0, size.y)))
 			mesh.global_transform = Transform3D(
 				Basis(top_right - top_left, bottom_left - top_left, Vector3.UP),
 				top_left + Vector3.UP * GROUND_LIFT)
 		else:
-			var centre_2d: Vector2 = xf * (node.offset + size * 0.5)
+			var centre_2d: Vector2 = xf * (origin + size * 0.5)
 			var d: Vector2 = (centre_2d - anchor_2d) / ppu
 			var centre: Vector3 = ground + Vector3.UP * (height_px / (ppu * COS_ELEVATION)) \
 				+ cam.x * d.x - cam.y * d.y + toward * (BODY_LIFT + LAYER_EPSILON * float(index))
@@ -115,16 +125,22 @@ func _process(_delta: float) -> void:
 		_mirror_material(entry)
 
 
-## The body and every Sprite2D child, in draw order.
+## Every sprite of the source in draw order. A `Sprite2D` source: its behind-parent children, itself,
+## then its other children. A plain `Node2D`: its Sprite2D children in tree order.
 func _sprite_nodes() -> Array[Sprite2D]:
 	var out: Array[Sprite2D] = []
-	for child: Node in _source.get_children():
-		if child is Sprite2D and (child as Sprite2D).show_behind_parent:
-			out.append(child as Sprite2D)  ## behind the body: the shadow
-	out.append(_source)
-	for child: Node in _source.get_children():
-		if child is Sprite2D and not (child as Sprite2D).show_behind_parent:
-			out.append(child as Sprite2D)
+	if _source is Sprite2D:
+		for child: Node in _source.get_children():
+			if child is Sprite2D and (child as Sprite2D).show_behind_parent:
+				out.append(child as Sprite2D)
+		out.append(_source as Sprite2D)
+		for child: Node in _source.get_children():
+			if child is Sprite2D and not (child as Sprite2D).show_behind_parent:
+				out.append(child as Sprite2D)
+	else:
+		for child: Node in _source.get_children():
+			if child is Sprite2D:
+				out.append(child as Sprite2D)
 	return out
 
 
@@ -136,17 +152,21 @@ func _entry_for(node: Sprite2D) -> Dictionary:
 	var shader_path: String = ""
 	if orig is ShaderMaterial and (orig as ShaderMaterial).shader != null:
 		shader_path = (orig as ShaderMaterial).shader.resource_path
-	var is_shadow: bool = shader_path.contains(SHADOW_SHADER_ID)
+	var is_shadow: bool = shader_path.contains(SHADOW_SHADER_ID) or node.has_meta("ground_shadow")
+	var outlined: bool = false
+	if orig is ShaderMaterial and not is_shadow:
+		var width: Variant = (orig as ShaderMaterial).get_shader_parameter("outline_width")
+		outlined = width != null and float(width) > 0.0
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = _ground_mesh if is_shadow else _body_mesh
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var mat := ShaderMaterial.new()
-	mat.shader = _shadow_shader if is_shadow else _body_shader
+	mat.shader = _shadow_shader if is_shadow else (_outline_shader if outlined else _body_shader)
 	mesh.material_override = mat
 	add_child(mesh)
 	node.material = _hidden
 	var entry: Dictionary = {"node": node, "orig": orig, "shadow": is_shadow,
-		"mesh": mesh, "mat": mat, "tex": null, "normal": null}
+		"mesh": mesh, "mat": mat, "tex": null, "normal": null, "outlined": outlined}
 	_entries[key] = entry
 	return entry
 
@@ -158,6 +178,11 @@ func _mirror_material(entry: Dictionary) -> void:
 	if entry["tex"] != node.texture:
 		entry["tex"] = node.texture
 		mat.set_shader_parameter("tex" if entry["shadow"] else "albedo_tex", node.texture)
+	if entry["shadow"] and src == null:
+		## A marked shadow with no material: black modulate, its alpha is the strength.
+		if mat.get_shader_parameter("strength") != node.modulate.a:
+			mat.set_shader_parameter("strength", node.modulate.a)
+		return
 	if src == null:
 		return
 	if entry["shadow"]:
@@ -170,7 +195,10 @@ func _mirror_material(entry: Dictionary) -> void:
 	if normal != null and entry["normal"] != normal:
 		entry["normal"] = normal
 		mat.set_shader_parameter("normal_tex", normal)
-	for param: String in MIRRORED_PARAMS:
+	var params: Array[String] = MIRRORED_PARAMS
+	if entry["outlined"]:
+		params = MIRRORED_PARAMS + OUTLINE_PARAMS
+	for param: String in params:
 		var value: Variant = src.get_shader_parameter(param)
 		if value != null and mat.get_shader_parameter(param) != value:
 			mat.set_shader_parameter(param, value)

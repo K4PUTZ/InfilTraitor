@@ -1552,11 +1552,21 @@ detonation cost visible enough to be worth it.
   Dev seam `SEED_GRENADES=1` (+ `GRENADE_GUS`) seeds grenades on the board, on the Moto too.
   Moto, PLAYGROUND, `RENDER3D=1`, 4 seeded grenades: **23.3 ms vs 22.9 ms** (+0.4 ms, +3 draws),
   0 script errors. Capture: `Screenshots/history/r3d4d_grenade_flight_3d_vs_2d.png`.
+  - **The movement-range outline (and any 2D overlay) draws OVER a 3D prop, as it does over the actor**
+    (Director saw it on the grenade, 2026-09-18). R3D-5's overlay table owns it; not fixed in 4d.
   - **Imperfect:** the flight shadow is fainter in 3D than in 2D and is not visible in one frame
     where it falls under a glass pane. Not tuned.
   - **Attached but NOT verified by capture:** `AgentProbeProp` (the showcase prop).
-  - **Still to do in 4d:** `FloatingCollectible` — needs the outline branch of the relight shader
-    (not ported), the bob-height crossfade of its layers and two baked shadow sprites.
+- **R3D-4d part 2 — `FloatingCollectible`. BUILT.** `PropBillboard3D` now takes a `Node2D` root and
+  centred sprites; the collectible's two baked shadows carry a `ground_shadow` meta (a black
+  `modulate`, no material) and are drawn on the ground with their alpha as strength; its body uses
+  `actor_billboard3d_outline.gdshader` (the silhouette stroke, alpha-scissored). The relight moved to
+  `actor_relight.gdshaderinc`, shared by both shaders so the maths exists once; **the ratified actor
+  is pixel-identical after the refactor (0 of 25 600 px differ).** Desktop capture of real
+  collectibles shows them placed, outlined and shadowed.
+  - **No production instance exists today:** `TEST_ZONE_COLLECTIBLES_ENABLED` is `false` and
+    `TEST_ZONE_AGENT_PROBE_BRACKET` is empty, so the collectible was verified by flipping the constant
+    locally (not committed) and the `AgentProbeProp` path is NOT verified by any capture.
   - Not done: VFX (4e).
 
 **R3D-4a, a spike with its decision rule written before measuring:**

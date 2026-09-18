@@ -464,11 +464,13 @@ func _ready() -> void:
 	## earlier mirrored version measured 46° RMS angle error and spun
 	## opposite the object; verified via real baked-frame PCA measurement).
 	_shadow_soft = Sprite2D.new()
+	_shadow_soft.set_meta("ground_shadow", true)  ## R3D-4d: a PropBillboard3D draws it on the ground
 	_shadow_soft.texture = _shadow_soft_frames[first_index]
 	_shadow_soft.centered = true
 	add_child(_shadow_soft)
 
 	_shadow_sharp = Sprite2D.new()
+	_shadow_sharp.set_meta("ground_shadow", true)
 	_shadow_sharp.texture = _shadow_sharp_frames[first_index]
 	_shadow_sharp.centered = true
 	add_child(_shadow_sharp)
@@ -505,6 +507,11 @@ func _ready() -> void:
 	_apply_z_index()
 
 	set_process(true)
+
+
+## RENDER3D R3D-4d — how far the body hovers above its floor point, for a `PropBillboard3D`.
+func billboard_height_px() -> float:
+	return _floor_y - position.y
 
 
 func _process(delta: float) -> void:

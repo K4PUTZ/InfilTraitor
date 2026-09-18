@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**267 scripts · 98896 lines total** (under `godot/scripts/`)
+**267 scripts · 99080 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -554,7 +554,7 @@ extends `Node3D` · 1010 lines
 
 ### `circle_field3d.gd`
 
-`class_name CircleField3D` · extends `RefCounted` · 117 lines
+`class_name CircleField3D` · extends `RefCounted` · 124 lines
 
 `godot/scripts/geometry/circle_field3d.gd`
 
@@ -569,6 +569,7 @@ extends `Node3D` · 1010 lines
 **Public API**
 - `func attach(parent: Node3D, additive: bool, feather: float = 0.0, priority: int = 0) -> void:`
 - `func begin(capacity: int, cam: Basis, px_per_unit: float) -> void:`
+- `func begin_on_board(capacity: int) -> void:`
 - `func push(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2, radius_px: float, color: Color) -> void:`
 - `func flush() -> void:`
 - `func clear() -> void:`
@@ -813,7 +814,7 @@ extends `Node3D` · 1010 lines
 
 ### `particle_math.gd`
 
-`class_name ParticleMath` · extends `RefCounted` · 41 lines
+`class_name ParticleMath` · extends `RefCounted` · 67 lines
 
 `godot/scripts/geometry/particle_math.gd`
 
@@ -821,6 +822,8 @@ extends `Node3D` · 1010 lines
 
 **Constants / tuning**
 - `COS_ELEVATION` = `0.8660254`
+- `NO_FLOOR` = `Vector2(INF, INF)`
+- `NO_ANCHOR` = `Vector3(INF, INF, INF)`
 
 ---
 
@@ -1225,9 +1228,13 @@ extends `Node3D` · 1010 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 327 lines
+`class_name DebrisOverlay` · extends `Node2D` · 358 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
+
+**Constants / tuning**
+- `CircleField3DRef` = `preload("res://godot/scripts/geometry/circle_field3d.gd")`
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 
 **Public vars**
 - `var dust_delay_min: float = 0.25`
@@ -1272,6 +1279,7 @@ extends `Node3D` · 1010 lines
 - `func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:`
 - `func add_glass_dust(center: Vector2, reach: float, color: Color) -> void:`
 - `func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -1314,7 +1322,7 @@ extends `Node2D` · 233 lines
 
 ### `ember_overlay.gd`
 
-`class_name EmberOverlay` · extends `Node2D` · 398 lines
+`class_name EmberOverlay` · extends `Node2D` · 432 lines
 
 `godot/scripts/overlays/ember_overlay.gd`
 
@@ -1793,7 +1801,7 @@ extends `Node2D` · 94 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 340 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 376 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -2272,13 +2280,14 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 282 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 285 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
 > DetonationEntryWriter — ONE plan entry's real work, and the only place in the whole pipeline that calls `layer.set_cell()`/`erase_cell()` or hands a puff to an overlay. Extracted from `DetonationChoreographer._apply_entry()` on 2026-08-28 for D-3 (`DETONATION_PRESENTATION_MASTER_PLAN` §3), unchanged in behaviour. It exists because the reform replaces the choreographer's PACING, not its writing: §3's table says the cell writes "survive as one loop inside the commit" and the VFX dispatch "survives and MOVES". Two paths now need this code and they have to run from one binary (D-3's gate), so copying it would have created exactly the second place for them to drift — and D-6 would then have to reconcile two versions instead of deleting one file. ⚠️ **KIND IS THE ONLY THING THAT DECIDES WHAT HAPPENS HERE — there is no ordering, no pacing and no frame in this class.** That is what makes it shared: everything the reform is removing lives in the caller. The two families are worth naming because the reform separates them: - **cells** (`destroy`, `expose`, `dented`, `cracked`, `soot`) — mutate the board, and after D-3 they all land in ONE frame; - **VFX** (`smoke`, `ember`, `debris`) — write nothing, and are what the consequence channel animates afterwards. `is_cell_kind()` is that split, in code, so a caller cannot get it wrong by listing kinds by hand.
 
 **Constants / tuning**
+- `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `SMOKE_COLOR` = `Color(0.62, 0.60, 0.57, 0.2)`
 - `DEBRIS_FALLBACK_COLOR` = `Color(0.6, 0.6, 0.6)`
 - `SURFACE_SPARK_SPEED_SCALE` = `1.3`
@@ -2300,7 +2309,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2610 lines
+`class_name DetonationPlanBuilder` · 2636 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -5930,7 +5939,7 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12277 lines
+extends `Node2D` · 12298 lines
 
 `godot/scripts/world/room.gd`
 

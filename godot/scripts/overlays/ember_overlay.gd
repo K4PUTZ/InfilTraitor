@@ -145,6 +145,11 @@ var _smoke_overlay: SmokeSparkOverlay = null  ## optional — puff-on-extinguish
 ## `_draw()` before the puffs moved and 64.3% after. Same `CircleField` the smoke
 ## uses; opt IN with `INFILTRAITOR_P7B=1`.
 var _field: CircleField = null
+## RENDER3D R3D-4e-2 — see SmokeSparkOverlay.set_board3d().
+const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
+const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
+var _board: Node3D = null
+var _field3d: RefCounted = null
 
 
 func _ready() -> void:
@@ -158,6 +163,19 @@ func _ready() -> void:
 		## and halo-then-core produce the same pixels — which is also why the two
 		## can share ONE instance buffer instead of needing two passes.
 		_field.attach(self, CanvasItemMaterial.BLEND_MODE_ADD)
+
+
+## R3D-4e-2 — hand this overlay the 3D board (or null to go back to 2D). Embers then glow in world
+## space, so a wall in front of them hides them. ADD blend, as the 2D field.
+func set_board3d(board: Node3D) -> void:
+	_board = board
+	_field3d = null
+	if _field != null:
+		_field.clear()
+	if board == null:
+		return
+	_field3d = CircleField3DRef.new()
+	_field3d.attach(board, true, 0.0, 1)
 
 
 ## Wire the overlay that receives a small puff when an ember burns out.
@@ -221,7 +239,8 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 		velocity: Vector2 = Vector2.ZERO, drag: float = 0.0,
 		rise: float = 0.0, duration_scale: float = 1.0,
 		delay: float = 0.0, radius_scale: float = 1.0, cool_rate: float = 1.0,
-		smoke_on_death: bool = true) -> void:
+		smoke_on_death: bool = true, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR,
+		anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR) -> void:
 	## PERF-P7a §8.4 — `_height_bias()` walks every ember already alive, so
 	## spawning N of them is O(N^2). Timed here rather than inferred: it is a
 	## one-off at the spawn frame, which is exactly why §3.4's per-frame hiding
@@ -234,6 +253,8 @@ func add_ember(world_pos: Vector2, duration: float = -1.0,
 		VfxDrawProbe.spawn_n += 1
 	_embers.append({
 		"pos": world_pos,
+		"a2": world_pos,
+		"a3": ParticleMathRef.anchor(_board, world_pos, floor_pos, anchor_3d),
 		"vel": velocity,
 		"drag": drag,
 		"rise": rise,
@@ -333,7 +354,10 @@ func _process(delta: float) -> void:
 			## of a big coal reads bigger than the death of a small one.
 			_smoke_overlay.add_smoke(e["pos"], ember_smoke_color,
 				ember_smoke_scale * (1.0 + ember_smoke_radius_gain
-					* (float(e["radius"]) / maxf(glow_radius, 0.001) - 1.0)))
+					* (float(e["radius"]) / maxf(glow_radius, 0.001) - 1.0)),
+				1.0, 0, 1.0, 0.0, ParticleMathRef.NO_FLOOR,
+				ParticleMathRef.world_of(_board, e["a3"], e["a2"], e["pos"]) if _board != null
+				else ParticleMathRef.NO_ANCHOR)
 	_embers = alive
 	queue_redraw()
 
@@ -350,7 +374,10 @@ func _draw() -> void:
 	var probe_t0: int = Time.get_ticks_usec() if probing else 0
 	var drawn: int = 0
 	var mm: CircleField = _field
-	if mm != null:
+	var mm3: RefCounted = _field3d
+	if mm3 != null:
+		mm3.begin_on_board(_embers.size() * 2)
+	elif mm != null:
 		mm.begin(_embers.size() * 2)
 	for e in _embers:
 		## E-EMBER-02: an ember still counting down its delay is not on fire yet
@@ -369,13 +396,18 @@ func _draw() -> void:
 		halo.a *= alpha * halo_alpha_factor
 		drawn += 1
 		if submit:
-			if mm != null:
+			if mm3 != null:
+				mm3.push(e["a3"], e["a2"], e["pos"], e["radius"], core)
+				mm3.push(e["a3"], e["a2"], e["pos"], e["radius"] * e["halo_scale"], halo)
+			elif mm != null:
 				mm.push(e["pos"], e["radius"], core)
 				mm.push(e["pos"], e["radius"] * e["halo_scale"], halo)
 			else:
 				draw_circle(e["pos"], e["radius"], core)
 				draw_circle(e["pos"], e["radius"] * e["halo_scale"], halo)
-	if mm != null:
+	if mm3 != null:
+		mm3.flush()
+	elif mm != null:
 		mm.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
@@ -391,6 +423,8 @@ func _draw() -> void:
 ## is state a reload needs to restore, but stale positions from the PREVIOUS
 ## map would be meaningless in the new one).
 func clear() -> void:
+	if _field3d != null:
+		_field3d.clear()
 	if _field != null:
 		_field.clear()
 	_embers.clear()

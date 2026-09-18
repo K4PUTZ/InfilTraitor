@@ -25,6 +25,7 @@ const SHADER_ADD := "res://godot/shaders/particle_disc3d_add.gdshader"
 ## expects with `use_colors` on.
 const FLOATS_PER_INSTANCE: int = 16
 
+var _board: Node3D = null
 var _node: MultiMeshInstance3D = null
 var _mm: MultiMesh = null
 var _buf: PackedFloat32Array = PackedFloat32Array()
@@ -36,6 +37,7 @@ var _ppu: float = 1.0
 func attach(parent: Node3D, additive: bool, feather: float = 0.0, priority: int = 0) -> void:
 	if _node != null:
 		return
+	_board = parent
 	var quad := QuadMesh.new()
 	quad.size = Vector2(2.0, 2.0)  ## a unit-radius disc: an instance's scale IS its radius
 	_mm = MultiMesh.new()
@@ -63,6 +65,11 @@ func begin(capacity: int, cam: Basis, px_per_unit: float) -> void:
 	var need: int = capacity * FLOATS_PER_INSTANCE
 	if _buf.size() < need:
 		_buf.resize(need)
+
+
+## Start a frame on the board this field was attached to: its camera and scale, read once.
+func begin_on_board(capacity: int) -> void:
+	begin(capacity, _board.call("camera_basis"), _board.call("px_per_unit"))
 
 
 ## One disc. `anchor_3d`/`anchor_2d` are where the particle was emitted (3D, and the 2D point that

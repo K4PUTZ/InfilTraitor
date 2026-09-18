@@ -100,6 +100,8 @@ func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:
 		specks.append(Vector2(randf_range(-dust_speck_spread, dust_speck_spread),
 			randf_range(-dust_speck_spread, dust_speck_spread)))
 	_dust.append({
+		"a2": origin,
+		"a3": ParticleMathRef.anchor(_board, origin, target),  ## `target` is the floor beneath it
 		"origin": origin,
 		"target": target,
 		"color": color,
@@ -124,6 +126,8 @@ func add_glass_dust(center: Vector2, reach: float, color: Color) -> void:
 		var r: float = reach * pow(randf(), glass_dust_concentration)
 		specks.append(Vector2(cos(ang) * r, sin(ang) * r * glass_dust_flatten))
 	_dust.append({
+		"a2": center,
+		"a3": ParticleMathRef.anchor(_board, center),  ## no floor point: on the ground (R3D-4e-4 refines)
 		"origin": center,
 		"target": center,           ## the cloud does not translate; the specks do
 		"color": color,
@@ -211,6 +215,23 @@ func _process(delta: float) -> void:
 ## No `material` on this node, so MIX — and `behind` keeps the dust under the
 ## chips, which is the order `_draw()` has always used.
 var _dust_field: CircleField = null
+## RENDER3D R3D-4e-2 — see SmokeSparkOverlay.set_board3d(). Only the dust specks (the CircleField
+## population) move to 3D here; the rotated chips are R3D-4e-3.
+const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
+const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
+var _board: Node3D = null
+var _dust_field3d: RefCounted = null
+
+
+func set_board3d(board: Node3D) -> void:
+	_board = board
+	_dust_field3d = null
+	if _dust_field != null:
+		_dust_field.clear()
+	if board == null:
+		return
+	_dust_field3d = CircleField3DRef.new()
+	_dust_field3d.attach(board, false, 0.75, 0)
 
 
 func _ready() -> void:
@@ -238,13 +259,17 @@ func _draw() -> void:
 	var drawn: int = 0
 	var cmds: int = 0
 	var mm: CircleField = _dust_field
-	if mm != null:
+	var mm3: RefCounted = _dust_field3d
+	if mm3 != null or mm != null:
 		## Upper bound: every dust entry's specks. Over-reserving costs one resize
 		## on the first big frame and nothing afterwards.
 		var cap: int = 0
 		for d0 in _dust:
 			cap += (d0["specks"] as Array).size()
-		mm.begin(cap)
+		if mm3 != null:
+			mm3.begin_on_board(cap)
+		else:
+			mm.begin(cap)
 	for d in _dust:
 		var elapsed: float = d["elapsed"]
 		var delay: float = d["delay"]
@@ -281,11 +306,15 @@ func _draw() -> void:
 		for offset in d["specks"]:
 			var p: Vector2 = pos + (offset as Vector2) * speck_scale
 			if submit:
-				if mm != null:
+				if mm3 != null:
+					mm3.push(d["a3"], d["a2"], p, radius, c)
+				elif mm != null:
 					mm.push(p, radius, c)
 				else:
 					draw_circle(p, radius, c)
-	if mm != null:
+	if mm3 != null:
+		mm3.flush()
+	elif mm != null:
 		mm.flush()
 
 	for chip in _chips:
@@ -319,6 +348,8 @@ func _draw() -> void:
 ## Discard every in-flight dust/chip (map load/reload) — same reasoning as
 ## EmberOverlay.clear(): nothing here is state a reload needs to restore.
 func clear() -> void:
+	if _dust_field3d != null:
+		_dust_field3d.clear()
 	if _dust_field != null:
 		_dust_field.clear()
 	_dust.clear()

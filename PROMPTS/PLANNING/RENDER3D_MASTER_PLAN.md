@@ -1585,6 +1585,19 @@ detonation cost visible enough to be worth it.
     come from its base mesh). The screen flash and the negative strobe stay screen-space.
   - **Interim option considered, NOT taken:** one depth per emitter (the blast's origin). Cheap, but a
     nearby wall would cut the whole plume where it rises above it — worse for the common case.
+  - **STATUS (2026-09-18):** 4e-1 BUILT (`ParticleMath`, `CircleField3D`, `particle_space_selftest`:
+    worst screen error 0.0005 px through a real `Camera3D`); **4e-2 BUILT** — smoke puffs, embers and
+    dust specks draw in world space, depth-tested (`VFX3D=0` keeps them 2D). Evidence
+    (`Screenshots/history/r3d4e2_vfx_depth_before_after_control.png`): the blast behind the wall no
+    longer paints the wall's face; open-floor blasts match the 2D ones; an isolated control (red puffs
+    in front of the wall, blue behind) shows the front ones and none of the back ones. 4e-3 (sparks,
+    shrapnel, chips), 4e-4 (glass) and 4e-5 (retire the 2D draw, Moto) remain — **4e stays PENDING.**
+  - **⚠️ A latent Rule-9 bug found and fixed on the way.** The VFX asked for the floor under a voxel
+    with `voxel_world_position(grid, 0)`. Level `0` stopped existing at the level renumber, so it
+    answered `Vector2.ZERO` and every caller took its "unbuilt column" fallback: **330 of 330** on a
+    detonation. Four sites (two in `room.gd`, two in `DetonationPlanBuilder`) now use
+    `ground_plane_level()`. Side effect, intended by the original design: the 2D dust now actually
+    falls to the floor (it had not since the renumber), so a 2D detonation looks different from before.
   - **Rule in force from now:** any NEW VFX or particle code stores world-space state (ground +
     height), never screen pixels, so the debt does not grow.
   - **Done when:** the capture above, repeated, shows no particle on the wall's face; a plume

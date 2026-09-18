@@ -3033,6 +3033,7 @@ func _start_board3d_live() -> void:
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	_attach_actor_billboards(live)
+	_attach_vfx_to_board(live)
 	## R3D-4d — props are created by the test-zone controller at any time, so they are caught as they
 	## enter the tree; the ones that already exist are caught here.
 	if not get_tree().node_added.is_connected(_on_tree_node_added):
@@ -3041,6 +3042,15 @@ func _start_board3d_live() -> void:
 		_on_tree_node_added(existing_prop)
 	if _dev_flag("SEED_GRENADES", "0") == "1":
 		_seed_dev_grenades_if_empty.call_deferred("R3D-4d")
+
+
+## RENDER3D R3D-4e-2 — the VFX overlays draw their particles in the 3D board's world (depth-tested)
+## instead of over it. `VFX3D=0` keeps them 2D, for comparison.
+func _attach_vfx_to_board(live: Node3D) -> void:
+	var on: bool = _dev_flag("VFX3D", "1") != "0"
+	for overlay in [_smoke_spark_overlay, _ember_overlay, _debris_overlay]:
+		if overlay != null and is_instance_valid(overlay):
+			overlay.set_board3d(live if on else null)
 
 
 ## RENDER3D R3D-4d — a prop that joins the tree while the 3D board is up gets a `PropBillboard3D`.
@@ -4132,7 +4142,9 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 				blast_burst_ember_drag,
 				blast_burst_ember_rise_px_s * randf_range(
 					1.0 - blast_burst_ember_rise_jitter,
-					1.0 + blast_burst_ember_rise_jitter))
+					1.0 + blast_burst_ember_rise_jitter),
+				1.0, 0.0, 1.0, 1.0, true,
+				start + Vector2(0.0, blast_burst_dust_drop_px))  ## R3D-4e-2: the floor under it
 	if _smoke_spark_overlay != null:
 		_smoke_spark_overlay.add_sparks(world_pos, blast_burst_spark_count, blast_burst_spark_color)
 	if _debris_overlay != null:
@@ -4247,6 +4259,11 @@ var muzzle_flash_radius_scale: float = 2.0
 ## Fire one muzzle flash at `muzzle_pos`, pointing along `direction` (a screen/
 ## world-space vector; it is normalized here). Purely visual, same contract as
 ## every other overlay call in this file.
+## R3D-4e-2 — how far below the barrel the floor is, in 2D world px, for the 3D origin of a muzzle
+## flash. The shot has only the muzzle's own 2D point, not its shooter's feet, so this is an ESTIMATE of
+## a rifle held at about waist height on the ~200 px baked figure; a flash placed by it sits at roughly
+## the right depth. Exact would mean passing the shooter's feet down from the shot controller.
+var muzzle_floor_drop_px: float = 96.0
 func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 	var dir: Vector2 = direction.normalized() if direction.length() > 0.001 else Vector2.RIGHT
 	if _ember_overlay != null:
@@ -4262,7 +4279,8 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 			## smoke_on_death FALSE: a flash leaves powder smoke (spawned below,
 			## pale and forward), never a coal's dark burn-out puff.
 			_ember_overlay.add_ember(at, muzzle_flash_life * randf_range(0.7, 1.3),
-				Vector2.ZERO, 0.0, 0.0, 1.0, 0.0, muzzle_flash_radius_scale, 0.0, false)
+				Vector2.ZERO, 0.0, 0.0, 1.0, 0.0, muzzle_flash_radius_scale, 0.0, false,
+				at + Vector2(0.0, muzzle_floor_drop_px))
 	if _smoke_spark_overlay != null:
 		## The forward spray. add_sparks() throws a full circle, so the cone is
 		## built here by placing each spark's own start point along the barrel
@@ -4280,7 +4298,8 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 					muzzle_flash_forward_px, muzzle_smoke_forward_px),
 				muzzle_smoke_color, muzzle_smoke_scale,
 				muzzle_smoke_duration_scale, 0, muzzle_smoke_drift_scale,
-				muzzle_flash_life * muzzle_smoke_delay_factor)
+				muzzle_flash_life * muzzle_smoke_delay_factor,
+				muzzle_pos + Vector2(0.0, muzzle_floor_drop_px))
 
 
 ## E-SPARK-01 — VFX for a voxel that was HIT but survived (DENTED/CRACKED).
@@ -4304,7 +4323,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String) ->
 	if profile.is_empty():
 		return
 	var origin: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, level)
-	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, 0)
+	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, _voxel_renderer.ground_plane_level())
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
 
@@ -4316,7 +4335,8 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String) ->
 			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color,
 			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale)
 	if bool(profile.get("smoke", false)):
-		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id))
+		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
+			1.0, 1.0, 0, 1.0, 0.0, floor_pos)
 	if bool(profile.get("dust", false)) and randf() < vfx_dust_chance:
 		_debris_overlay.add_dust(origin, floor_pos, _vfx_material_base_color(material_id))
 	var chips: int = int(profile.get("chips", 0))
@@ -4337,11 +4357,12 @@ func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: Stri
 	if GlassMaterials.is_glass(material_id):
 		return
 	var origin: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, level)
-	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, 0)
+	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, _voxel_renderer.ground_plane_level())
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
 
-	_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id))
+	_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
+		1.0, 1.0, 0, 1.0, 0.0, floor_pos)
 
 	if vfx_dust_materials.has(material_id) and randf() < vfx_dust_chance:
 		var dust_color: Color = _vfx_material_base_color(material_id)

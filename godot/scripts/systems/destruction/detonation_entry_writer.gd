@@ -25,6 +25,7 @@
 class_name DetonationEntryWriter
 extends RefCounted
 
+const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 const SMOKE_COLOR := Color(0.62, 0.60, 0.57, 0.2)
 const DEBRIS_FALLBACK_COLOR := Color(0.6, 0.6, 0.6)
 const SURFACE_SPARK_SPEED_SCALE: float = 1.3
@@ -180,7 +181,8 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			## in every explosion rose at exactly the same rate.
 			smoke_overlay.add_smoke(entry["world_pos"], puff_color,
 				float(entry.get("scale", 1.0)), entry["duration"],
-				int(entry.get("blobs", 0)), float(entry.get("drift", 1.0)))
+				int(entry.get("blobs", 0)), float(entry.get("drift", 1.0)), 0.0,
+				entry.get("floor_pos", ParticleMathRef.NO_FLOOR))
 			return 1
 		"ember":
 			## E-EMBER-01. No duration is passed: the overlay's own 1.5-4.0 roll
@@ -209,7 +211,8 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			var cool: float = ember_overlay.burnt_ember_cool_rate if burnt else 1.0
 			ember_overlay.add_ember(entry["world_pos"], -1.0, Vector2.ZERO, 0.0, 0.0,
 				float(entry.get("duration_scale", 1.0)) * life_gain,
-				float(entry.get("delay", 0.0)), radius_gain, cool)
+				float(entry.get("delay", 0.0)), radius_gain, cool, true,
+				entry.get("floor_pos", ParticleMathRef.NO_FLOOR))
 			return 1
 		"debris":
 			## E-DEBRIS-01. The plan already decided WHICH effect this voxel

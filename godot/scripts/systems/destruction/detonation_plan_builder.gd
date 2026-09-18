@@ -1594,9 +1594,11 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 		if weight <= 0.0:
 			continue
 		var gu_center: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
+		var gu_smoke_pos: Vector2 = voxel_renderer.voxel_world_position(
+			gu_center, BlastCalculatorClass.GRENADE_LEVEL)
 		_append(waves["smoke"], ring, {
-			"world_pos": voxel_renderer.voxel_world_position(
-				gu_center, BlastCalculatorClass.GRENADE_LEVEL),
+			"world_pos": gu_smoke_pos,
+			"floor_pos": _floor_of(voxel_renderer, gu_center, gu_smoke_pos),
 			"duration": weight, "scale": weight, "alpha": weight, "blobs": 0,
 			"r": _radius_of(gu_center, epicenter),
 			## E-ORDER-01 — see `_append_voxel_smoke()`. This is the GU-level
@@ -1846,6 +1848,8 @@ static func _build_ember_wave(s: Dictionary) -> void:
 				"level": neighbour.level,
 				"world_pos": voxel_renderer.voxel_world_position(
 					neighbour.grid_pos, neighbour.level),
+				"floor_pos": _floor_of(voxel_renderer, neighbour.grid_pos,
+					voxel_renderer.voxel_world_position(neighbour.grid_pos, neighbour.level)),
 				"duration_scale": flammability,
 				## E-EMBER-02 tuning pass: a small per-cell stagger. Without it
 				## every seed in a crater ignites on the SAME frame at the same
@@ -1919,6 +1923,8 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 			"cell": voxel.grid_pos,
 			"level": voxel.level,
 			"world_pos": voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
+			"floor_pos": _floor_of(voxel_renderer, voxel.grid_pos,
+				voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level)),
 			"duration_scale": flammability * pow(EMBER_CLIMB_LIFE_DECAY, float(step)),
 			"delay": EMBER_CLIMB_DELAY_S * float(step)
 				* (1.0 - EMBER_CLIMB_DELAY_JITTER + 2.0 * EMBER_CLIMB_DELAY_JITTER * jitter),
@@ -2412,6 +2418,8 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 		* (1.0 - SMOKE_DURATION_JITTER + 2.0 * SMOKE_DURATION_JITTER * time_roll), 0.05)
 	_append(smoke_by_ring, ring, {
 		"world_pos": voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
+		"floor_pos": _floor_of(voxel_renderer, voxel.grid_pos,
+			voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level)),
 		"duration": duration,
 		"scale": scale,
 		"alpha": clampf(strength * (0.6 + 0.8 * size_roll) * SMOKE_ALPHA_GAIN, 0.05, 4.0),
@@ -2508,12 +2516,14 @@ static func _append_plumes(s: Dictionary) -> void:
 		var level: int = int(seed_row[1])
 		var ring: int = int(seed_row[2])
 		var gu_center: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
+		var plume_floor: Vector2 = _floor_of(s["voxel_renderer"], gu_center, origin)
 		var jitter: float = _hash_unit("PLUMEAT", gu, level)
 		var size_roll: float = _hash_unit("PLUMESIZE", gu, level)
 		for k in range(maxi(PLUME_PUFFS, 1)):
 			var t: float = float(k) / float(maxi(PLUME_PUFFS - 1, 1))
 			_append(waves["smoke"], ring, {
 				"world_pos": origin,
+				"floor_pos": plume_floor,
 				"at": PLUME_FIRST_S + (PLUME_SPAN_S - PLUME_FIRST_S) * t
 					+ PLUME_JITTER_S * jitter,
 				"duration": PLUME_DURATION,
@@ -2534,6 +2544,22 @@ static func _append_plumes(s: Dictionary) -> void:
 		% [made, plume_gus.size(), PLUME_SPAN_S + PLUME_JITTER_S])
 
 
+## RENDER3D R3D-4e-2 — the floor under a voxel, for the VFX entries that need a 3D origin: the world
+## position of the same column at level 0, falling back to `origin` when that level has no cell there —
+## the rule `_append_voxel_debris()` and VFX-01's own dispatch already use. Entries carry it beside
+## `world_pos`, so the particle's height is the difference between the two.
+##
+## ⚠️ THE FLOOR LEVEL IS `ground_plane_level()`, NEVER A LITERAL (CLAUDE.md Rule 9). This asked for level
+## `0` until 2026-09-18 — a level that stopped existing at the level renumber (the ground plane is 80).
+## `get_layer(0)` is null, `voxel_world_position()` answered `Vector2.ZERO`, and EVERY call fell into
+## the "unbuilt column" fallback: measured 330 of 330 on a detonation. The dust never fell (its floor
+## was its own origin) and, once the particles got a 3D origin from it, every wall voxel's puff was
+## anchored on the ground behind the wall and hidden by it.
+static func _floor_of(voxel_renderer: VoxelRendererClass, grid_pos: Vector2i, origin: Vector2) -> Vector2:
+	var floor_pos: Vector2 = voxel_renderer.voxel_world_position(grid_pos, voxel_renderer.ground_plane_level())
+	return origin if floor_pos == Vector2.ZERO else floor_pos
+
+
 static func _append_voxel_debris(debris_by_ring: Dictionary, voxel: Voxel, ring: int,
 		material: String, policy: Dictionary, voxel_renderer: VoxelRendererClass,
 		epicenter: Vector2i) -> void:
@@ -2543,7 +2569,7 @@ static func _append_voxel_debris(debris_by_ring: Dictionary, voxel: Voxel, ring:
 	## Where dust settles and chips land — the floor under this voxel, the same
 	## point VFX-01's own dispatch uses. Falls back to the origin when level 0 has
 	## no cell there (an unbuilt column), matching that dispatch exactly.
-	var floor_pos: Vector2 = voxel_renderer.voxel_world_position(voxel.grid_pos, 0)
+	var floor_pos: Vector2 = voxel_renderer.voxel_world_position(voxel.grid_pos, voxel_renderer.ground_plane_level())
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
 	var r: float = _radius_of(voxel.grid_pos, epicenter)

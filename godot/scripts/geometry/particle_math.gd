@@ -18,6 +18,10 @@ extends RefCounted
 
 ## cos(30°): the camera's elevation is fixed (D26).
 const COS_ELEVATION: float = 0.8660254
+## "No floor point was given" / "no 3D anchor was given" — the trailing-parameter sentinels of the
+## emitters, so every pre-existing caller keeps compiling and behaving as it did.
+const NO_FLOOR: Vector2 = Vector2(INF, INF)
+const NO_ANCHOR: Vector3 = Vector3(INF, INF, INF)
 
 
 ## World position of a particle whose 2D position is `pos_2d`, given the anchor pair.
@@ -39,3 +43,25 @@ static func origin_from_floor(ground_3d: Vector3, floor_pos: Vector2, world_pos:
 static func disc_basis(cam: Basis, radius_px: float, px_per_unit: float) -> Basis:
 	var r: float = radius_px / px_per_unit
 	return Basis(cam.x * r, cam.y * r, cam.z)
+
+
+## The anchor for an emission at `pos` (2D): an explicit 3D anchor wins; otherwise the height comes from
+## `floor_pos`; with neither, the emission is taken to be ON THE GROUND at `pos` (a puff on a wall face
+## would then sit at the wall's foot, which is why the detonation calls pass their `floor_pos`).
+## Vector3.ZERO when there is no board — nothing reads it then.
+static func anchor(board: Node3D, pos: Vector2, floor_pos: Vector2 = NO_FLOOR,
+		anchor_3d: Vector3 = NO_ANCHOR) -> Vector3:
+	if board == null:
+		return Vector3.ZERO
+	if anchor_3d != NO_ANCHOR:
+		return anchor_3d
+	var floor_2d: Vector2 = pos if floor_pos == NO_FLOOR else floor_pos
+	return board.call("particle_origin", pos, floor_2d)
+
+
+## The current world position of a live particle (its anchor pair and its 2D position), for a
+## consumer that has to spawn something AT it — an ember's burn-out puff.
+static func world_of(board: Node3D, anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2) -> Vector3:
+	if board == null:
+		return Vector3.ZERO
+	return to_world(anchor_3d, anchor_2d, pos_2d, board.call("camera_basis"), board.call("px_per_unit"))

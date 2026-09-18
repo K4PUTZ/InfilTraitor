@@ -25,9 +25,16 @@ class_name SmokeSparkOverlay
 ## §12.13 — DEFAULT ON since 2026-08-26. Opt OUT with `INFILTRAITOR_P7B=0`.
 ## Earned on the static `circle_gate`: 0 of 921 600 px differ between the two
 ## paths. The opt-out stays for the same one-binary A/B reason P3's does.
+const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
+const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 static var P7B_MULTIMESH: bool = OS.get_environment("INFILTRAITOR_P7B") != "0"
 
 var _puff_field: CircleField = null
+## RENDER3D R3D-4e-2 — while a 3D board is up the puffs are drawn by a depth-tested `CircleField3D`
+## (see ParticleMath) and the 2D field stays empty; puffs the 3D field does not carry (sparks) still
+## draw in 2D until R3D-4e-3.
+var _board: Node3D = null
+var _puff_field3d: RefCounted = null
 
 
 func _ready() -> void:
@@ -49,6 +56,21 @@ func _ready() -> void:
 		var feather_env := OS.get_environment("INFILTRAITOR_SMOKE_FEATHER")
 		var feather: float = feather_env.to_float() if feather_env.is_valid_float() else 0.75
 		_puff_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true, feather)
+
+
+## R3D-4e-2 — hand this overlay the 3D board (or null to go back to 2D). Puffs then draw in world
+## space, so a wall in front of them hides them.
+func set_board3d(board: Node3D) -> void:
+	_board = board
+	_puff_field3d = null
+	if _puff_field != null:
+		_puff_field.clear()
+	if board == null:
+		return
+	var feather_env := OS.get_environment("INFILTRAITOR_SMOKE_FEATHER")
+	var feather: float = feather_env.to_float() if feather_env.is_valid_float() else 0.75
+	_puff_field3d = CircleField3DRef.new()
+	_puff_field3d.attach(board, false, feather, 2)
 
 
 ## Tuning — all `var` (Rule 1).
@@ -152,9 +174,12 @@ var _sparks: Array = [] ## [{"pos","vel","elapsed","duration","color"}]
 ## it — so the puff now simply waits for the flash to finish.
 func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: float = 1.0,
 		blob_count_override: int = 0, drift_scale: float = 1.0,
-		delay: float = 0.0) -> void:
+		delay: float = 0.0, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR,
+		anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR) -> void:
 	var blob_count: int = blob_count_override if blob_count_override > 0 \
 		else randi_range(smoke_blob_count_min, smoke_blob_count_max)
+	## R3D-4e-2 — the emission's 3D anchor: where the particle is in the world when it is born.
+	var a3: Vector3 = ParticleMathRef.anchor(_board, pos, floor_pos, anchor_3d)
 	for i in range(blob_count):
 		var offset := Vector2(randf_range(-smoke_spawn_jitter, smoke_spawn_jitter),
 			randf_range(-smoke_spawn_jitter, smoke_spawn_jitter)) * scale
@@ -162,6 +187,8 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 			-randf_range(smoke_drift_y_min, smoke_drift_y_max) * drift_scale)
 		_smoke.append({
 			"pos": pos + offset,
+			"a2": pos,
+			"a3": a3,
 			"vel": vel,
 			"elapsed": 0.0,
 			"delay": maxf(delay, 0.0),
@@ -253,7 +280,10 @@ func _draw() -> void:
 	var puff_cmds: int = 0
 	var puff_t0: int = Time.get_ticks_usec() if probing else 0
 	var mm: CircleField = _puff_field
-	if mm != null:
+	var mm3: RefCounted = _puff_field3d
+	if mm3 != null:
+		mm3.begin_on_board(_smoke.size())
+	elif mm != null:
 		mm.begin(_smoke.size())
 	for s in _smoke:
 		if float(s.get("delay", 0.0)) > 0.0:
@@ -266,14 +296,18 @@ func _draw() -> void:
 		drawn += 1
 		cmds += 1
 		if submit:
-			if mm != null:
+			if mm3 != null:
+				mm3.push(s["a3"], s["a2"], s["pos"], radius, c)
+			elif mm != null:
 				mm.push(s["pos"], radius, c)
 			else:
 				draw_circle(s["pos"], radius, c)
 	## ONE engine call for every puff pushed. Outside the loop by definition —
 	## flushing per particle would reintroduce exactly the per-particle cost this
 	## replaces, with a buffer upload instead of a canvas command.
-	if mm != null:
+	if mm3 != null:
+		mm3.flush()
+	elif mm != null:
 		mm.flush()
 
 	if probing:
@@ -332,6 +366,8 @@ func smoke_count() -> int:
 ## Discard every in-flight puff/spark (map load/reload) — same reasoning as
 ## EmberOverlay.clear(): nothing here is state a reload needs to restore.
 func clear() -> void:
+	if _puff_field3d != null:
+		_puff_field3d.clear()
 	if _puff_field != null:
 		_puff_field.clear()
 	_smoke.clear()

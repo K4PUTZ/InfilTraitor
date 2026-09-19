@@ -2,7 +2,7 @@
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.7
 
 **2026-09-19 update:** R3D-6 item 2 (glass) built, ratification pending; see the item and
-`PROMPTS/RESUMO_SESSAO_2026-09-19_R3D6_GLASS.md`. Open: `delta.touched_voxels` is incomplete.
+`PROMPTS/RESUMO_SESSAO_2026-09-19_R3D6_GLASS.md`. The "incomplete `touched_voxels`" was a chunk-size mismatch (`>> 5` vs 16), fixed.
 
 **Status (2026-09-18, v1.7):** 🟡 **R3D-0 to R3D-5 are built. Everything that draws in the game world now
 draws in the 3D board's world, depth-tested: the board (R3D-3), the actors, props and every
@@ -1847,12 +1847,15 @@ captures, 2D against 3D.
      thickness is a face; the 2D sliver existed to fill a tile seam that 3D does not have.
    - **NOT built: the CRACK-03/04 rim wedge** (the torn silhouette around a hole); a hole in 3D is
      rectangular. It needs a per-hole alpha discard on the pane.
-   - **Found on the Moto: the 3D board drew the pane and the crater the blast destroyed.**
-     `on_blast_commit` remeshes `delta.touched_voxels`, which named 3 692 voxels while 3 867
-     changed in the store, and the shattered glass and the floor crater were among the missing
-     (glass 176 vertices after the commit, 968 after a full remesh). Fix: every chunk is rebuilt when
-     the beat ends (`on_blast_consequence`, `CONSEQUENCE_REMESH=0` = old). Full remesh at the beat
-     end equals a forced one at 0 px. **Open: the delta's `touched_voxels` is still incomplete.**
+   - **Found on the Moto: the 3D board drew the pane and the crater the blast destroyed.** FIXED
+     2026-09-19 at the root, and the diagnosis below the first attempt was wrong: `delta.touched_voxels`
+     was never incomplete. `_collect_store` grouped claims into chunks with a hard-coded `>> 5` (32)
+     while `_chunk_of()` uses `CHUNK_VOXELS` (16, since R3D-3 step 3), so the commit remeshed the wrong
+     chunks (5 chunks left stale: 2,2 · 3,1 · 3,2 · 3,3 · 4,2). Measured on the total vertex count of every
+     chunk mesh, commit vs a full remesh: 928 vs 2 896 before; **3 808 vs 3 808 (GLASS, blast in the
+     demo), 3 348 vs 3 348 (GLASS, `detonate 0`) and 4 172 vs 4 172 (PLAYGROUND)** after. The
+     end-of-beat full remesh (`on_blast_consequence`, `CONSEQUENCE_REMESH`) is deleted.
+     The Moto A/B below measured that workaround, which no longer exists.
    - **Moto g04s, GLASS + grenade #0, RENDER3D=1, the same APK, remesh on vs off:** mean 41.5 / 40.5
      ms against 41.4 / 41.2 ms, worst frame 2 556 / 2 513 ms against 2 504 / 2 530 ms (the
      cook, frames 62–63) — no difference. The remesh is 566 ms in the background, 6.4 ms of upload on

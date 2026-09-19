@@ -61,8 +61,6 @@ static var STORE_BOARD3D: bool = true
 ## `RENDER3D_VSCALE`, read at `build()`. A Director look-call, not a code decision — see
 ## `RENDER3D_MASTER_PLAN` R3D-3 step 2.
 static var VERTICAL_SCALE: float = 1.0
-## `CONSEQUENCE_REMESH=0` skips the full remesh at the end of the blast's beat: comparison only.
-static var CONSEQUENCE_REMESH: bool = true
 const VERTICAL_SCALE_MATCHED: float = 158.0 / 156.8
 ## Dev-only, off by default (DevFlags `RENDER3D_VSCALE_MARKER`) — a bright box spanning
 ## exactly one storey (8 levels) at a fixed cell, so the look-call has a fixed reference
@@ -250,7 +248,6 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
 	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
 	VERTICAL_SCALE = _read_vertical_scale(room)
-	CONSEQUENCE_REMESH = str(room.call("_dev_flag", "CONSEQUENCE_REMESH", "1")) != "0"
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
 	_geometry_root = Node3D.new()
 	_geometry_root.name = "Geometry"
@@ -600,21 +597,6 @@ func on_blast_soot() -> void:
 	_sync_levels(_blast_levels, "soot")
 
 
-## R3D-6 item 2 — the blast's remesh reads `delta.touched_voxels`, and that set is INCOMPLETE:
-## on GLASS with a grenade at the big pane it named 3 692 voxels while 3 867 changed in the store
-## (`board_probe.py` load vs g0), and the shattered glass and the floor crater were among the ones it
-## missed — a full remesh 1.5 s later took the glass from 176 to 968 vertices and showed the crater
-## the picture had lacked, while the 2D board had both. Until the delta names every voxel it
-## changes, the beat's end rebuilds EVERY chunk, once per blast, on the worker thread.
-func on_blast_consequence() -> void:
-	if _store == null or not CONSEQUENCE_REMESH:
-		return
-	var all: Dictionary = {}
-	for chunk: Vector2i in _store_chunks():
-		all[chunk] = true
-	_remesh(all, "consequence", 0, 0.0)
-
-
 ## After the consequence light: the blast's levels plus every level holding a cell
 ## whose light moved.
 func on_blast_light(delta) -> void:
@@ -759,7 +741,10 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 			var k: int = claim * 3
 			var x: int = xyz[k]
 			var y: int = xyz[k + 1]
-			var c: int = ((y >> 5) - _chunk_y0) * _chunk_cols + ((x >> 5) - _chunk_x0)
+			## `_chunk_of()`'s own division: a hard-coded `>> 5` (32) here outlived the 16-voxel
+			## chunk (R3D-3 step 3), so a blast's dirty-chunk keys named the wrong chunks.
+			var c: int = (floori(float(y) / float(CHUNK_VOXELS)) - _chunk_y0) * _chunk_cols \
+				+ (floori(float(x) / float(CHUNK_VOXELS)) - _chunk_x0)
 			chunk_of_claim[claim] = c
 			_chunk_start[c + 1] += 1
 			if not (state[claim] & 1):

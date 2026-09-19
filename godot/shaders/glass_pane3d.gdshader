@@ -40,7 +40,7 @@ varying float v_face;
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_glass_world = px_per_gu_x * w.x + px_per_gu_z * w.z - vec2(0.0, px_per_level_y * w.y);
-	v_face = abs(NORMAL.y) > 0.5 ? face_top : (abs(NORMAL.x) > 0.5 ? face_se : face_sw);
+	v_face = (abs(NORMAL.y) > 0.5 ? face_top : (abs(NORMAL.x) > 0.5 ? face_se : face_sw)) * COLOR.r;
 }
 
 void fragment() {

@@ -157,15 +157,19 @@ class SurfaceData:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()
+	## Glass only: COLOR.r is the per-plane dim (R3D-6 item 2). Empty for every other material.
+	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
 
 	func add_quad(corners: Array[Vector3], unit: float, normal: Vector3,
-			face_uvs: Array[Vector2]) -> void:
+			face_uvs: Array[Vector2], dim: float = -1.0) -> void:
 		var base_index: int = vertices.size()
 		for i: int in range(4):
 			vertices.append(corners[i] * unit)
 			normals.append(normal)
 			uvs.append(face_uvs[i])
+			if dim >= 0.0:
+				colors.append(Color(dim, 1.0, 1.0, 1.0))
 		for offset: int in [0, 1, 2, 0, 2, 3]:
 			indices.append(base_index + offset)
 
@@ -867,6 +871,8 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 		arrays[Mesh.ARRAY_VERTEX] = surface.vertices
 		arrays[Mesh.ARRAY_NORMAL] = surface.normals
 		arrays[Mesh.ARRAY_TEX_UV] = surface.uvs
+		if surface.colors.size() == surface.vertices.size():
+			arrays[Mesh.ARRAY_COLOR] = surface.colors
 		arrays[Mesh.ARRAY_INDEX] = surface.indices
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, _shader_materials[material])
@@ -969,6 +975,20 @@ func _merge_plane(dir: int, plane: int, cells: Dictionary, surfaces: Dictionary)
 	return quads
 
 
+## R3D-6 item 2 — the 2D glass dims a pane's CAPS, not its main face (`GLASS_DIM_TOP` 0.60 on the
+## top, `GLASS_DIM_SIDE` 0.78 on the thickness), so a pane reads as one surface with an edge.
+## A face is a cap when it is at most `GLASS_CAP_VOXELS` across the direction a pane is thin in:
+## the top's short side, or a side face's width. The 2D atom knows its pane; the mesher only
+## knows the merged quad, so this is a size test, and a glass FLOOR (both sides large) stays main.
+const GLASS_CAP_VOXELS: int = 2
+
+
+func _glass_plane_dim(dir: int, w: int, h: int) -> float:
+	if dir == Dir.TOP:
+		return VoxelRenderer.GLASS_DIM_TOP if mini(w, h) <= GLASS_CAP_VOXELS else 1.0
+	return VoxelRenderer.GLASS_DIM_SIDE if w <= GLASS_CAP_VOXELS else 1.0
+
+
 func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material: int,
 		surfaces: Dictionary) -> void:
 	if not surfaces.has(material):
@@ -1010,7 +1030,8 @@ func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material:
 		else:
 			uv = Vector2(corner.x, -corner.y)
 		face_uvs.append(uv / FACADE_SPAN_VOXELS)
-	surface.add_quad(corners, unit, DIR_NORMAL[dir], face_uvs)
+	surface.add_quad(corners, unit, DIR_NORMAL[dir], face_uvs,
+		_glass_plane_dim(dir, w, h) if _material_glass[material] else -1.0)
 
 
 # ── look ──────────────────────────────────────────────────────────────────────

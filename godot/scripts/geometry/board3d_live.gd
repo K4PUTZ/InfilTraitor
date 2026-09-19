@@ -109,7 +109,7 @@ void vertex() {
 }
 void fragment() {
 	// The voxel this pixel belongs to: half a voxel back along the face normal.
-	ivec3 v = ivec3(floor(v_world * 8.0 - v_normal * 0.5));
+	ivec3 v = ivec3(floor(v_world * 8.0 - v_normal * 0.01));
 	int level = v.y + mesh_ground_level;
 	ivec2 pc = ivec2(v.x, v.z) + plane_origin;
 	int layer = level - level_base;
@@ -830,8 +830,9 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 	var t0: int = Time.get_ticks_usec()
 	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material}
 	var faces: int = 0
+	var dents: Array = []  ## [dir, x, y, level, material] — faces emitted as a recess, unmerged
 	if _store != null:
-		faces = _collect_chunk_faces_store(chunk, planes)
+		faces = _collect_chunk_faces_store(chunk, planes, dents)
 	for key: Vector3i in ({} if _store != null else (_by_chunk.get(chunk, {}) as Dictionary)):
 		var material: int = _occ[key]
 		var glass: bool = _material_glass[material]
@@ -861,6 +862,8 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 	var quads: int = 0
 	for plane_key: Vector2i in planes:
 		quads += _merge_plane(plane_key.x, plane_key.y, planes[plane_key], surfaces)
+	for d: Array in dents:
+		quads += _emit_dent(int(d[0]), int(d[1]), int(d[2]), int(d[3]), int(d[4]), surfaces)
 	var t2: int = Time.get_ticks_usec()
 	return {"surfaces": surfaces, "faces": faces, "quads": quads,
 		"collect_us": t1 - t0, "merge_us": t2 - t1}
@@ -899,7 +902,7 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 ## its owner claim, a neighbour hides a face when the store's `occ` holds it (unless it is
 ## glass and this is not), and materials map through `_store_material`. Returns the faces
 ## added to `planes`, in `_build_chunk()`'s (dir, plane) → {uv: material} shape.
-func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary) -> int:
+func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Array = []) -> int:
 	var cidx: int = (chunk.y - _chunk_y0) * _chunk_cols + (chunk.x - _chunk_x0)
 	if chunk.x < _chunk_x0 or chunk.y < _chunk_y0 or chunk.x - _chunk_x0 >= _chunk_cols \
 			or chunk.y - _chunk_y0 >= _chunk_rows:
@@ -925,12 +928,20 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary) -> int:
 			continue
 		var material: int = _store_material[mat[claim]]
 		var glass: bool = _material_glass[material]
+		## R3D-6 item 4 — a DENTED voxel's carved side is a real recess, not a flat face.
+		var dent_dir: int = -1
+		if not glass and ((state[claim] >> 1) & 3) == Voxel.DamageState.DENTED:
+			dent_dir = DENT_DIR_OF_CARVED_SIDE.get((state[claim] >> 4) & 7, -1)
 		for dir: int in range(3):
 			var n: int = cell + steps[dir]
 			if occ[n]:
 				## Hidden by a neighbour, unless that neighbour is glass and this is not.
 				if not (_material_glass[_store_material[mat[owner[n]]]] and not glass):
 					continue
+			if dir == dent_dir:
+				dents.append([dir, x, y, level, material])
+				faces += 1
+				continue
 			var plane_key: Vector2i
 			var uv: Vector2i
 			if dir == Dir.TOP:
@@ -993,6 +1004,85 @@ func _glass_plane_dim(dir: int, w: int, h: int) -> float:
 	if dir == Dir.TOP:
 		return VoxelRenderer.GLASS_DIM_TOP if mini(w, h) <= GLASS_CAP_VOXELS else 1.0
 	return VoxelRenderer.GLASS_DIM_SIDE if w <= GLASS_CAP_VOXELS else 1.0
+
+
+## Voxel.CarvedSide (VIEW space, view N) → the face it carved: LEFT is the SW face, RIGHT the SE face,
+## TOP the top. BOTTOM (a roof's underside) is never seen from above and keeps the flat mesh.
+const DENT_DIR_OF_CARVED_SIDE: Dictionary = {
+	Voxel.CarvedSide.TOP: Dir.TOP, Voxel.CarvedSide.LEFT: Dir.SW, Voxel.CarvedSide.RIGHT: Dir.SE,
+}
+## The recess: a frame this wide is left on the face, and the floor of the pit sits this deep.
+const DENT_MARGIN: float = 0.2
+const DENT_DEPTH: float = 0.3
+
+
+## One DENTED voxel's carved face as geometry: four frame strips on the face plane, the recessed
+## floor, and the four walls joining them. Unmerged (a merged plane cannot hold a fractional
+## depth) and never on glass. Returns the quads emitted.
+func _emit_dent(dir: int, x: int, y: int, level: int, material: int, surfaces: Dictionary) -> int:
+	if not surfaces.has(material):
+		surfaces[material] = SurfaceData.new()
+	var surface: SurfaceData = surfaces[material]
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var ly: float = float(level) - float(_ground_level)
+	## Voxel-space origin, the face's normal, and the two tangents (u, v) of the face.
+	var origin: Vector3 = Vector3(float(x), ly, float(y))
+	var normal: Vector3 = DIR_NORMAL[dir]
+	var tu: Vector3
+	var tv: Vector3
+	if dir == Dir.TOP:
+		tu = Vector3(1, 0, 0)
+		tv = Vector3(0, 0, 1)
+	elif dir == Dir.SE:
+		tu = Vector3(0, 0, 1)
+		tv = Vector3(0, 1, 0)
+	else:
+		tu = Vector3(1, 0, 0)
+		tv = Vector3(0, 1, 0)
+	var face_at: Vector3 = origin + normal  ## the voxel's corner on the carved face
+	var m: float = DENT_MARGIN
+	var d: float = DENT_DEPTH
+	var quads: int = 0
+	# (u0, v0, u1, v1) rectangles on the face plane, and the pit floor.
+	var frame: Array = [[0.0, 0.0, 1.0, m], [0.0, 1.0 - m, 1.0, 1.0], [0.0, m, m, 1.0 - m], [1.0 - m, m, 1.0, 1.0 - m]]
+	for r: Array in frame:
+		_dent_quad(surface, unit, [face_at + tu * r[0] + tv * r[1], face_at + tu * r[2] + tv * r[1],
+			face_at + tu * r[2] + tv * r[3], face_at + tu * r[0] + tv * r[3]], normal)
+		quads += 1
+	var fl: Vector3 = face_at - normal * d
+	var c00: Vector3 = fl + tu * m + tv * m
+	var c10: Vector3 = fl + tu * (1.0 - m) + tv * m
+	var c11: Vector3 = fl + tu * (1.0 - m) + tv * (1.0 - m)
+	var c01: Vector3 = fl + tu * m + tv * (1.0 - m)
+	_dent_quad(surface, unit, [c00, c10, c11, c01], normal)
+	quads += 1
+	# Walls: each joins a floor edge to the same edge on the face plane, facing the pit's centre.
+	var up: Vector3 = normal * d
+	_dent_quad(surface, unit, [c00, c10, c10 + up, c00 + up], tv)    ## the u-low... edge at v = m faces +v
+	_dent_quad(surface, unit, [c01, c11, c11 + up, c01 + up], -tv)
+	_dent_quad(surface, unit, [c00, c01, c01 + up, c00 + up], tu)
+	_dent_quad(surface, unit, [c10, c11, c11 + up, c10 + up], -tu)
+	return quads + 4
+
+
+## A quad wound so its front faces `normal`, with the facade UVs of the axis it faces.
+func _dent_quad(surface: SurfaceData, unit: float, corners: Array, normal: Vector3) -> void:
+	var c: Array[Vector3] = []
+	c.assign(corners)
+	if (c[1] - c[0]).cross(c[2] - c[0]).dot(normal) < 0.0:
+		c = [c[0], c[3], c[2], c[1]]
+	var uvs: Array[Vector2] = []
+	var ax: Vector3 = normal.abs()
+	for p: Vector3 in c:
+		var uv: Vector2
+		if ax.y > 0.5:
+			uv = Vector2(p.x, p.z)
+		elif ax.x > 0.5:
+			uv = Vector2(p.z, -p.y)
+		else:
+			uv = Vector2(p.x, -p.y)
+		uvs.append(uv / FACADE_SPAN_VOXELS)
+	surface.add_quad(c, unit, normal, uvs, -1.0)
 
 
 func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material: int,

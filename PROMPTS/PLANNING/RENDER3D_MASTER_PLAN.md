@@ -1876,6 +1876,12 @@ captures, 2D against 3D.
 3. **Damage decals** from `ART_SPECIFICATIONS` §7 families, per voxel: a decal/variant
    channel beside the planes, and a texture array per material family.
 4. **Dents:** a DENTED voxel's carved side becomes a real inset in the mesh.
+   - **BUILT 2026-09-19 (`[R3D-6i]`), ratification pending.** `_emit_dent`: the carved face (LEFT = SW,
+     RIGHT = SE, TOP = top; BOTTOM is never seen and stays flat; glass is exempt) leaves the greedy
+     merge and becomes a 0.2-voxel frame, a floor 0.3 deep and four walls. Unmerged, so it cannot merge
+     with its neighbours. The opaque shader's voxel lookup now offsets by 0.01 along the normal instead
+     of 0.5, because an interior face is not on the voxel boundary. Capture: PLAYGROUND `detonate 0`
+     (`dent3d.png`, floor pits with visible walls). Depth/margin are look numbers, not measured.
 5. **Whole facades on intact surfaces**, per wall run. `FacadeSampler`'s window origins
    replace the prototype's world-space UVs. Floors per §9 Q1.
 6. **Floor depth dim, embers and burnt voxels, the soot fade's look.**

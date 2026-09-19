@@ -1014,6 +1014,8 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	var definition = Registries.get_material_registry().get_material(material_id)
 	var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
 	if GlassMaterials.is_glass(material_id):
+		if OS.get_environment("INFILTRAITOR_GLASS3D_FLAT") != "1":
+			return _make_glass_material(material_id)
 		shader.code = GLASS_SHADER
 		shader_material.shader = shader
 		shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
@@ -1027,6 +1029,19 @@ func _make_material(material_id: String) -> ShaderMaterial:
 		image.generate_mipmaps()
 		shader_material.set_shader_parameter("facade", ImageTexture.create_from_image(image))
 		shader_material.set_shader_parameter("has_facade", 1.0)
+	return shader_material
+
+
+## R3D-6 item 2 — the 2D glass look, one pass that reads the scene behind the pane.
+## `INFILTRAITOR_GLASS3D_FLAT=1` keeps the R3D-3 flat blue, for comparison only.
+func _make_glass_material(material_id: String) -> ShaderMaterial:
+	var tint: Color = GlassMaterials.pane_tint(material_id)
+	var shader_material := ShaderMaterial.new()
+	shader_material.shader = load("res://godot/shaders/glass_pane3d.gdshader") as Shader
+	shader_material.set_shader_parameter("glass_tint", Vector3(tint.r, tint.g, tint.b))
+	var frost: Texture2D = load("res://ASSETS/materials/glass/facade_glass.png") as Texture2D
+	if frost != null:
+		shader_material.set_shader_parameter("glass_frost_tex", frost)
 	return shader_material
 
 

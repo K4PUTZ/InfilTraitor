@@ -107,6 +107,8 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	if board3d != null and is_instance_valid(board3d):
 		board3d.on_blast_soot()
 	await _run_consequence(plan, voxel_renderer, smoke_overlay, tree)
+	if board3d != null and is_instance_valid(board3d):
+		board3d.on_blast_consequence()
 	## D-6 — the smoke is all instanced and rising, so the world may resume
 	## (Director, 2026-08-29). The light ramp below runs with the agent already
 	## unlocked; only the turn advance waits for it to land.

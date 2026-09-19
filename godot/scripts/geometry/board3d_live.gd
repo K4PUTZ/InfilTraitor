@@ -597,6 +597,21 @@ func on_blast_soot() -> void:
 	_sync_levels(_blast_levels, "soot")
 
 
+## R3D-6 item 2 — the blast's remesh reads `delta.touched_voxels`, and that set is INCOMPLETE:
+## on GLASS with a grenade at the big pane it named 3 692 voxels while 3 867 changed in the store
+## (`board_probe.py` load vs g0), and the shattered glass and the floor crater were among the ones it
+## missed — a full remesh 1.5 s later took the glass from 176 to 968 vertices and showed the crater
+## the picture had lacked, while the 2D board had both. Until the delta names every voxel it
+## changes, the beat's end rebuilds EVERY chunk, once per blast, on the worker thread.
+func on_blast_consequence() -> void:
+	if _store == null:
+		return
+	var all: Dictionary = {}
+	for chunk: Vector2i in _store_chunks():
+		all[chunk] = true
+	_remesh(all, "consequence", 0, 0.0)
+
+
 ## After the consequence light: the blast's levels plus every level holding a cell
 ## whose light moved.
 func on_blast_light(delta) -> void:

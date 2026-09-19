@@ -1875,6 +1875,16 @@ captures, 2D against 3D.
      shader, the floor shards the 2D draws as tiles (absent in 3D), and no selftest was run.
 3. **Damage decals** from `ART_SPECIFICATIONS` §7 families, per voxel: a decal/variant
    channel beside the planes, and a texture array per material family.
+   - **BUILT 2026-09-19 (`[R3D-6j]`), ratification pending.** The variant already rides the store's
+     `aux` nibble, so no new channel was needed. One `Texture2DArray` of the 42 decals on disk
+     (bullet/dent/crack × concrete, metal, stone, wood, brick, earth; missing files are absent, never an
+     error) and a pseudo-material `__decals__` whose shader is the opaque face shader's lighting and soot
+     with the colour replaced by the decal (layer in vertex `COLOR.r`). Faces per `VoxelRenderer._decal_material()`'s
+     table: blast CRACKED = all three visible faces of a crack-capable material; bullet = the one lateral
+     face; DENTED = the carved face, on the pit floor. Quads sit 0.02 voxel off the face, unmerged.
+     `INFILTRAITOR_DECALS3D=0` = none. A/B on PLAYGROUND `detonate 0`: 8 666 px changed; marks visible in the
+     pits. **Not verified:** a bullet decal (no firearm scenario run), a crack decal on a wall (the captured
+     blast dented the floor), the 20/16 lateral stretch the 2D applies.
 4. **Dents:** a DENTED voxel's carved side becomes a real inset in the mesh.
    - **BUILT 2026-09-19 (`[R3D-6i]`), ratification pending.** `_emit_dent`: the carved face (LEFT = SW,
      RIGHT = SE, TOP = top; BOTTOM is never seen and stays flat; glass is exempt) leaves the greedy

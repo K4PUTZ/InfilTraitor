@@ -136,6 +136,27 @@ void fragment() {
 	ALBEDO = srgb_to_linear(base_color * lum * f);
 }
 """
+## R3D-6 item 3 — damage decals: the opaque face shader's lighting and soot, with the face's colour
+## replaced by one layer of the decal array (COLOR.r * 255 = the layer). The quad sits 0.02 voxel off
+## its face, so the voxel lookup steps back 0.06 instead of 0.01 to stay in the voxel it decorates.
+const DECAL_TAIL: String = """
+	vec4 d = texture(decals, vec3(UV, v_layer));
+	ALBEDO = srgb_to_linear(d.rgb * f);
+	ALPHA = d.a;
+}
+"""
+static var DECAL_SHADER: String = OPAQUE_SHADER \
+	.replace("render_mode unshaded, cull_disabled;", "render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;") \
+	.replace("varying vec3 v_normal;", "varying vec3 v_normal;\nvarying float v_layer;\nuniform sampler2DArray decals : filter_linear_mipmap, repeat_disable;") \
+	.replace("	v_normal = NORMAL;", "	v_normal = NORMAL;\n	v_layer = floor(COLOR.r * 255.0 + 0.5);") \
+	.replace("v_normal * 0.01", "v_normal * 0.06") \
+	.replace("""	vec2 fr = mod(UV, 2.0);
+	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
+	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
+	ALBEDO = srgb_to_linear(base_color * lum * f);
+}
+""", DECAL_TAIL)
+
 const GLASS_SHADER: String = """
 shader_type spatial;
 render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
@@ -194,6 +215,14 @@ var _chunk_nodes: Dictionary = {}  ## Vector2i → MeshInstance3D
 var _blast_chunks: Dictionary = {}
 var _blast_levels: Dictionary = {}
 var _material_ids: PackedStringArray = PackedStringArray()
+## R3D-6 item 3 — "family|material|variant" → layer of `_decal_array`; the pseudo-material that draws them.
+const DECAL_MATERIAL_ID: String = "__decals__"
+const DECAL_LIFT_VOXELS: float = 0.02
+## `INFILTRAITOR_DECALS3D=0` draws no damage decals: comparison only.
+static var DECAL_FLAG: bool = OS.get_environment("INFILTRAITOR_DECALS3D") != "0"
+var _decal_layer: Dictionary = {}
+var _decal_array: Texture2DArray = null
+var _decal_material_index: int = -1
 var _material_index: Dictionary = {}
 var _material_glass: Array[bool] = []
 var _shader_materials: Array[ShaderMaterial] = []
@@ -435,6 +464,39 @@ func _collect() -> Dictionary:
 				_put(voxel.grid_pos, voxel.level, slab.material)
 				slabs += 1
 	return {"slices": slices, "columns": columns, "slabs": slabs}
+
+
+## Every damage decal on disk as one Texture2DArray (`ART_SPECIFICATIONS` §7: 256x256 RGBA, three
+## variants per family per material). Missing files are simply absent from `_decal_layer`, so a
+## material without a family (metal has no `crack`) draws nothing instead of erroring.
+func _build_decal_catalog() -> void:
+	var images: Array[Image] = []
+	for family: String in ["bullet", "dent", "crack"]:
+		for material_id: String in VoxelRenderer.IMPACT_DECAL_MATERIALS + [VoxelRenderer.IMPACT_FLOOR_MATERIAL]:
+			for variant: int in range(VoxelRenderer.IMPACT_DECAL_VARIANTS):
+				var path: String = "res://ASSETS/materials/%s/decals/decal_%s_%s_%d.png" % [
+					material_id, family, material_id, variant]
+				if not ResourceLoader.exists(path):
+					continue
+				var texture: Texture2D = load(path) as Texture2D
+				if texture == null:
+					continue
+				var image: Image = texture.get_image()
+				if image == null or image.get_size() != Vector2i(256, 256):
+					continue
+				image.convert(Image.FORMAT_RGBA8)
+				image.generate_mipmaps()
+				_decal_layer["%s|%s|%d" % [family, material_id, variant]] = images.size()
+				images.append(image)
+	if images.is_empty() or images.size() > 255:
+		_decal_layer.clear()
+		return
+	_decal_array = Texture2DArray.new()
+	var err: int = _decal_array.create_from_images(images)
+	if err != OK:
+		push_error("[Board3DLive] decal Texture2DArray failed (%s) — no damage decals" % error_string(err))
+		_decal_layer.clear()
+		_decal_array = null
 
 
 ## This board's index for a material, registering it (and its shader material) on first use.
@@ -714,6 +776,10 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 	_store_material.resize(store.material_ids.size())
 	for i in range(store.material_ids.size()):
 		_store_material[i] = _material(store.material_ids[i])
+	if DECAL_FLAG and _decal_array == null:
+		_build_decal_catalog()
+	if _decal_array != null:
+		_decal_material_index = _material(DECAL_MATERIAL_ID)
 	var n: int = store.claims
 	var xyz: PackedInt32Array = store.xyz
 	var state: PackedByteArray = store.state
@@ -831,8 +897,9 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material}
 	var faces: int = 0
 	var dents: Array = []  ## [dir, x, y, level, material] — faces emitted as a recess, unmerged
+	var decals: Array = []  ## [dir, x, y, level, layer, on_recess] — damage marks, unmerged
 	if _store != null:
-		faces = _collect_chunk_faces_store(chunk, planes, dents)
+		faces = _collect_chunk_faces_store(chunk, planes, dents, decals)
 	for key: Vector3i in ({} if _store != null else (_by_chunk.get(chunk, {}) as Dictionary)):
 		var material: int = _occ[key]
 		var glass: bool = _material_glass[material]
@@ -862,6 +929,8 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 	var quads: int = 0
 	for plane_key: Vector2i in planes:
 		quads += _merge_plane(plane_key.x, plane_key.y, planes[plane_key], surfaces)
+	for d: Array in decals:
+		_emit_decal(int(d[0]), int(d[1]), int(d[2]), int(d[3]), int(d[4]), bool(d[5]), surfaces)
 	for d: Array in dents:
 		quads += _emit_dent(int(d[0]), int(d[1]), int(d[2]), int(d[3]), int(d[4]), surfaces)
 	var t2: int = Time.get_ticks_usec()
@@ -902,7 +971,8 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 ## its owner claim, a neighbour hides a face when the store's `occ` holds it (unless it is
 ## glass and this is not), and materials map through `_store_material`. Returns the faces
 ## added to `planes`, in `_build_chunk()`'s (dir, plane) → {uv: material} shape.
-func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Array = []) -> int:
+func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Array = [],
+		decals: Array = []) -> int:
 	var cidx: int = (chunk.y - _chunk_y0) * _chunk_cols + (chunk.x - _chunk_x0)
 	if chunk.x < _chunk_x0 or chunk.y < _chunk_y0 or chunk.x - _chunk_x0 >= _chunk_cols \
 			or chunk.y - _chunk_y0 >= _chunk_rows:
@@ -932,12 +1002,22 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 		var dent_dir: int = -1
 		if not glass and ((state[claim] >> 1) & 3) == Voxel.DamageState.DENTED:
 			dent_dir = DENT_DIR_OF_CARVED_SIDE.get((state[claim] >> 4) & 7, -1)
+		var decal_dirs: Array = []
+		var decal_layers: Array = []
+		if _decal_array != null and not glass:
+			var damage: int = (state[claim] >> 1) & 3
+			if damage == Voxel.DamageState.CRACKED or damage == Voxel.DamageState.DENTED:
+				_decal_faces(store.material_ids[mat[claim]], damage, ((state[claim] >> 3) & 1) == 1,
+					(state[claim] >> 4) & 7, store.aux[claim] & 15, decal_dirs, decal_layers)
 		for dir: int in range(3):
 			var n: int = cell + steps[dir]
 			if occ[n]:
 				## Hidden by a neighbour, unless that neighbour is glass and this is not.
 				if not (_material_glass[_store_material[mat[owner[n]]]] and not glass):
 					continue
+			var di: int = decal_dirs.find(dir)
+			if di != -1:
+				decals.append([dir, x, y, level, int(decal_layers[di]), dir == dent_dir])
 			if dir == dent_dir:
 				dents.append([dir, x, y, level, material])
 				faces += 1
@@ -1085,6 +1165,70 @@ func _dent_quad(surface: SurfaceData, unit: float, corners: Array, normal: Vecto
 	surface.add_quad(c, unit, normal, uvs, -1.0)
 
 
+## Which faces of a damaged voxel carry which decal (`VoxelRenderer._decal_material()`'s table, as
+## faces): a blast's CRACKED mark covers all three visible faces of a crack-capable material; a
+## bullet's mark is the ONE lateral face it struck; a DENTED voxel marks its carved face. LEFT is the
+## SW face and RIGHT the SE face in view N. The variant is the one chosen at damage time.
+func _decal_faces(material_id: String, damage: int, blast: bool, carved: int, variant: int,
+		out_dirs: Array, out_layers: Array) -> void:
+	var v: int = posmod(variant, VoxelRenderer.IMPACT_DECAL_VARIANTS)
+	var base: String = material_id
+	var carved_dir: int = int(DENT_DIR_OF_CARVED_SIDE.get(carved, -1))
+	if not VoxelRenderer.IMPACT_DECAL_MATERIALS.has(base):
+		if damage == Voxel.DamageState.DENTED and blast and carved_dir == Dir.TOP:
+			base = VoxelRenderer.IMPACT_FLOOR_MATERIAL
+		else:
+			return
+	if damage == Voxel.DamageState.CRACKED:
+		if blast:
+			var layer: int = int(_decal_layer.get("crack|%s|%d" % [base, v], -1))
+			if layer != -1:
+				for dir: int in range(3):
+					out_dirs.append(dir)
+					out_layers.append(layer)
+		elif carved_dir == Dir.SW or carved_dir == Dir.SE:
+			var bullet: int = int(_decal_layer.get("bullet|%s|%d" % [base, v], -1))
+			if bullet != -1:
+				out_dirs.append(carved_dir)
+				out_layers.append(bullet)
+	elif carved_dir != -1:
+		var family: String = "dent" if blast else "bullet"
+		if not blast and carved_dir == Dir.TOP:
+			return
+		var layer: int = int(_decal_layer.get("%s|%s|%d" % [family, base, v], -1))
+		if layer != -1:
+			out_dirs.append(carved_dir)
+			out_layers.append(layer)
+
+
+## One decal quad: over the whole face, or over the pit floor when the face is a DENTED recess.
+func _emit_decal(dir: int, x: int, y: int, level: int, layer: int, on_recess: bool,
+		surfaces: Dictionary) -> void:
+	if _decal_material_index < 0:
+		return
+	if not surfaces.has(_decal_material_index):
+		surfaces[_decal_material_index] = SurfaceData.new()
+	var surface: SurfaceData = surfaces[_decal_material_index]
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var origin: Vector3 = Vector3(float(x), float(level) - float(_ground_level), float(y))
+	var normal: Vector3 = DIR_NORMAL[dir]
+	var tu: Vector3 = Vector3(0, 0, 1) if dir == Dir.SE else Vector3(1, 0, 0)
+	var tv: Vector3 = Vector3(0, 0, 1) if dir == Dir.TOP else Vector3(0, 1, 0)
+	var lo: float = DENT_MARGIN if on_recess else 0.0
+	var hi: float = 1.0 - lo
+	var depth: float = (DENT_DEPTH - DECAL_LIFT_VOXELS) if on_recess else -DECAL_LIFT_VOXELS
+	var at: Vector3 = origin + normal - normal * depth
+	var corners: Array[Vector3] = [at + tu * lo + tv * lo, at + tu * hi + tv * lo,
+		at + tu * hi + tv * hi, at + tu * lo + tv * hi]
+	var uvs: Array[Vector2] = [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
+	if dir == Dir.TOP:
+		uvs = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+	if (corners[1] - corners[0]).cross(corners[2] - corners[0]).dot(normal) < 0.0:
+		corners = [corners[0], corners[3], corners[2], corners[1]]
+		uvs = [uvs[0], uvs[3], uvs[2], uvs[1]]
+	surface.add_quad(corners, unit, normal, uvs, float(layer) / 255.0)
+
+
 func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material: int,
 		surfaces: Dictionary) -> void:
 	if not surfaces.has(material):
@@ -1133,6 +1277,13 @@ func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material:
 # ── look ──────────────────────────────────────────────────────────────────────
 
 func _make_material(material_id: String) -> ShaderMaterial:
+	if material_id == DECAL_MATERIAL_ID:
+		var decal_material := ShaderMaterial.new()
+		var decal_shader := Shader.new()
+		decal_shader.code = DECAL_SHADER
+		decal_material.shader = decal_shader
+		decal_material.set_shader_parameter("decals", _decal_array)
+		return decal_material
 	var shader := Shader.new()
 	var shader_material := ShaderMaterial.new()
 	var definition = Registries.get_material_registry().get_material(material_id)

@@ -1904,28 +1904,24 @@ captures, 2D against 3D.
 
 ### R3D-7 — Occlusion and cutaway in 3D
 
-**SPIKE BUILT 2026-09-19 (`[R3D-7a]`) — candidate 1, the world-space dither. LOOK CALL PENDING (Director).**
-The opaque shader (and the decals, which derive from it) discards a fragment when it is nearer the
-camera than the agent's plane, above the agent's feet, and within a cylinder of radius 1.4 world units
-around the camera ray through the agent; a 4x4 Bayer threshold against a smoothstep falloff (solid core
-0.55 R) makes the dither. VIEW only: `Board3DLive._update_cutaway()` writes four shader uniforms and
-nothing else, so `OCCLUSION` O1 holds. `INFILTRAITOR_CUTAWAY=0` = off, `CUTAWAY_RADIUS` = size.
-Capture: `Screenshots/history/r3d7_cutaway_dither_spike.png` (agent behind a PLAYGROUND concrete block; in
-open ground nothing is cut, 8 px). **Known limits:** glass panes are not cut; the hole shows the wall's
-back faces; a fixed radius (no per-agent-height or per-storey rule yet); guards behind walls are not
-revealed (only the agent); the 2D wireframe overlay is still what draws under `RENDER3D=0`.
-
-- **`OCCLUSION` O1 holds:** occlusion is VIEW, not STATE, and it never writes the store.
-- **OCC-21's cell erase and OCC-27's wireframe are replaced by a 3D mechanism**, chosen
-  from a spike and the Director's look call. The candidates:
-  - a world-space clip or dither of the geometry between camera and agent;
-  - a storey cutaway for roofs;
-  - an outline.
-- **`OCCLUSION` §7's X-ray mask becomes world-space by construction** (depth), which
-  resolves the defect recorded at the head of §7.
-- **`OCCLUSION` Part 4 (interior cutaway) resumes on this renderer.**
-
-**Gate:** the fixture captures, the Moto frame cost, and the Director's look call.
+**SPIKE 2026-09-19 (`[R3D-7a/b]`) — two candidates built, LOOK CALL PENDING (Director).** Both are VIEW only
+(`Board3DLive._update_cutaway()` writes shader uniforms, nothing else — `OCCLUSION` O1 holds).
+`INFILTRAITOR_CUTAWAY_MODE = dither (default) | storey | both`, `CUTAWAY=0` off, `CUTAWAY_RADIUS`, `CUTAWAY_LINES=0`.
+- **Dither (Director: "gosto muito desse dither").** The opaque shader (decals derive from it) dithers what is
+  nearer the camera than the agent's plane, above the feet, inside a cylinder (R 1.4) along the camera ray:
+  three states from two Bayer thresholds — kept, discarded, or a **ghost diamond** (flat tint, face contrast
+  top 1.0 / SE 0.80 / SW 0.60) so the vanished wall stays readable. Only geometry NEARER than the agent is
+  cut; the wall behind is never touched. **White edge lines:** every merged quad also emits its four edges as a
+  line surface (`LINE_KEY`, 8 vertices per quad), and the line shader decides per QUAD (its bounds ride in
+  CUSTOM0/1; the camera ray is intersected with the quad's plane and clamped into it) so the whole outline of
+  a wall that is being ghosted shows, not just the part inside the circle. Capture:
+  `Screenshots/history/r3d7_cutaway_dither_spike.png`.
+- **Storey cut.** Everything above the agent's storey (feet + 1 unit) is discarded. Capture:
+  `r3d7_cutaway_storey_spike.png` — the cut walls are hollow (no cap on the cut plane yet).
+- **Known limits:** glass is not cut; a fixed radius; only the agent is revealed, not guards; the ghost fills only
+  the cylinder, while the outline covers the whole quad, so a long wall reads as a box; the storey cut is
+  map-wide, not per room; the 2D wireframe overlay remains what draws under `RENDER3D=0`. Cost of the lines:
+  8 vertices per merged quad and one extra draw surface per chunk — NOT measured on the Moto.
 
 ### R3D-8 — Retire the 2D board (the canon change)
 

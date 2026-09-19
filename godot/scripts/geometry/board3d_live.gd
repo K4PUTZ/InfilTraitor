@@ -100,26 +100,41 @@ uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
 varying vec3 v_world;
 varying vec3 v_normal;
-// R3D-7 spike — the cutaway: what stands between the camera and the agent dithers away.
+// R3D-7 — the cutaway. Mode 1, the dither: what stands between the camera and the agent (nearer the
+// camera than the agent's plane, above the feet, inside a cylinder along the camera ray) is dithered
+// into THREE states — kept, discarded, or a ghost diamond (a flat tint with a per-face contrast) that
+// keeps the shape of what went away readable. Mode 2, the storey cut: everything above `cut_top`.
 uniform vec3 cut_pos = vec3(0.0);
 uniform vec3 cut_dir = vec3(0.0, 0.0, -1.0);
 uniform float cut_radius = 0.0;
 uniform float cut_floor = 0.1;
-bool cut_out(vec3 w, vec2 frag) {
+uniform float cut_top = 100000.0;
+float cut_bayer(vec2 frag) {
+	int bx = int(mod(frag.x, 4.0));
+	int by = int(mod(frag.y, 4.0));
+	float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+	return (bayer[by * 4 + bx] + 0.5) / 16.0;
+}
+// 0 = keep, 1 = discard, 2 = ghost.
+int cut_state(vec3 w, vec2 frag) {
+	if (w.y > cut_top) {
+		return 1;
+	}
 	if (cut_radius <= 0.0 || w.y < cut_pos.y + cut_floor) {
-		return false;
+		return 0;
 	}
 	vec3 a = w - cut_pos;
 	float along = dot(a, cut_dir);
 	if (along > -0.02) {
-		return false;
+		return 0;
 	}
 	float r = length(a - along * cut_dir);
 	float s = 1.0 - smoothstep(0.55 * cut_radius, cut_radius, r);
-	int bx = int(mod(frag.x, 4.0));
-	int by = int(mod(frag.y, 4.0));
-	float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-	return s > (bayer[by * 4 + bx] + 0.5) / 16.0;
+	if (s <= cut_bayer(frag)) {
+		return 0;
+	}
+	float g = 0.10 + 0.42 * smoothstep(0.25 * cut_radius, 0.85 * cut_radius, r);
+	return g > cut_bayer(frag + vec2(2.0, 1.0)) ? 2 : 1;
 }
 vec3 srgb_to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
@@ -129,9 +144,11 @@ void vertex() {
 	v_normal = NORMAL;
 }
 void fragment() {
-	if (cut_out(v_world, FRAGCOORD.xy)) {
+	int cs = cut_state(v_world, FRAGCOORD.xy);
+	if (cs == 1) {
 		discard;
 	}
+	bool ghost = cs == 2; // GHOST_TOP
 	// The voxel this pixel belongs to: half a voxel back along the face normal.
 	ivec3 v = ivec3(floor(v_world * 8.0 - v_normal * 0.01));
 	int level = v.y + mesh_ground_level;
@@ -158,6 +175,10 @@ void fragment() {
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
+	if (ghost) {
+		float tone = v_normal.y > 0.5 ? 1.0 : (v_normal.x > 0.5 ? 0.80 : 0.60);
+		ALBEDO = srgb_to_linear(vec3(0.70, 0.83, 1.0) * tone * 0.85);
+	}
 }
 """
 ## R3D-6 item 3 — damage decals: the opaque face shader's lighting and soot, with the face's colour
@@ -174,13 +195,58 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 	.replace("varying vec3 v_normal;", "varying vec3 v_normal;\nvarying float v_layer;\nuniform sampler2DArray decals : filter_linear_mipmap, repeat_disable;") \
 	.replace("	v_normal = NORMAL;", "	v_normal = NORMAL;\n	v_layer = floor(COLOR.r * 255.0 + 0.5);") \
 	.replace("v_normal * 0.01", "v_normal * 0.06") \
+	.replace("	bool ghost = cs == 2; // GHOST_TOP\n", "	if (cs == 2) {\n		discard;\n	}\n") \
 	.replace("""	vec2 fr = mod(UV, 2.0);
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
+	if (ghost) {
+		float tone = v_normal.y > 0.5 ? 1.0 : (v_normal.x > 0.5 ? 0.80 : 0.60);
+		ALBEDO = srgb_to_linear(vec3(0.70, 0.83, 1.0) * tone * 0.85);
+	}
 }
 """, DECAL_TAIL)
 
+## R3D-7 — the edges of every merged quad, drawn only where the cutaway is ghosting the wall (the 2D
+## wireframe's white arista lines, on the 3D geometry). Depth-tested, so a line behind a nearer solid stays hidden.
+const LINE_SHADER: String = """
+shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform vec3 cut_pos = vec3(0.0);
+uniform vec3 cut_dir = vec3(0.0, 0.0, -1.0);
+uniform float cut_radius = 0.0;
+uniform float cut_floor = 0.1;
+uniform float cut_top = 100000.0;
+varying flat float v_on;
+void vertex() {
+	v_on = 0.0;
+	if (cut_radius > 0.0) {
+		vec3 lo = CUSTOM0.xyz;
+		vec3 hi = vec3(CUSTOM0.w, CUSTOM1.x, CUSTOM1.y);
+		vec3 size = hi - lo;
+		int axis = size.x <= size.y && size.x <= size.z ? 0 : (size.y <= size.z ? 1 : 2);
+		float dn = cut_dir[axis];
+		if (abs(dn) > 0.05) {
+			// Where the camera ray through the agent pierces the quad's plane, clamped into the quad.
+			float t = (lo[axis] - cut_pos[axis]) / dn;
+			vec3 q = clamp(cut_pos + t * cut_dir, lo, hi);
+			vec3 a = q - cut_pos;
+			float along = dot(a, cut_dir);
+			float r = length(a - along * cut_dir);
+			// The quad is worth outlining when it overlaps the ghosted zone and is nearer the camera.
+			if (along < -0.02 && r < 0.9 * cut_radius && hi.y >= cut_pos.y + cut_floor) {
+				v_on = 1.0;
+			}
+		}
+	}
+}
+void fragment() {
+	if (v_on < 0.5) {
+		discard;
+	}
+	ALBEDO = vec3(1.0);
+}
+"""
 const GLASS_SHADER: String = """
 shader_type spatial;
 render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
@@ -205,6 +271,9 @@ class SurfaceData:
 	## Glass only: COLOR.r is the per-plane dim (R3D-6 item 2). Empty for every other material.
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
+	## Lines only: the quad's world-space bounds, (min.xyz, max.x) and (max.y, max.z), per vertex.
+	var custom0 := PackedFloat32Array()
+	var custom1 := PackedFloat32Array()
 
 	func add_quad(corners: Array[Vector3], unit: float, normal: Vector3,
 			face_uvs: Array[Vector2], dim: float = -1.0) -> void:
@@ -467,28 +536,43 @@ func _process(_delta: float) -> void:
 ## R3D-7 spike — the dither cutaway. `INFILTRAITOR_CUTAWAY=0` turns it off, `CUTAWAY_RADIUS` (world
 ## units, default 1.4) sizes it. VIEW, never state: it writes shader uniforms and nothing else.
 static var CUTAWAY_ON: bool = OS.get_environment("INFILTRAITOR_CUTAWAY") != "0"
+const LINE_KEY: int = -2
+## `INFILTRAITOR_CUTAWAY_LINES=0` leaves the ghost without the edge lines.
+static var CUTAWAY_LINES: bool = OS.get_environment("INFILTRAITOR_CUTAWAY_LINES") != "0"
+## `INFILTRAITOR_CUTAWAY_MODE`: dither (default) | storey | both.
+static var CUTAWAY_MODE: String = OS.get_environment("INFILTRAITOR_CUTAWAY_MODE") if OS.get_environment("INFILTRAITOR_CUTAWAY_MODE") != "" else "dither"
+var _line_material: ShaderMaterial = null
 var _cut_last: Array = []
 
 
 func _update_cutaway() -> void:
 	var agent: Node = _room.agent if "agent" in _room else null
 	var radius: float = 0.0
+	var top: float = 100000.0
 	var feet := Vector3.ZERO
 	if CUTAWAY_ON and agent != null and is_instance_valid(agent) and agent.get("sprite") != null:
-		radius = float(OS.get_environment("INFILTRAITOR_CUTAWAY_RADIUS")) if OS.get_environment("INFILTRAITOR_CUTAWAY_RADIUS") != "" else 1.4
 		feet = ground_point((agent.sprite as Node2D).global_position)
+		if CUTAWAY_MODE == "dither" or CUTAWAY_MODE == "both":
+			radius = float(OS.get_environment("INFILTRAITOR_CUTAWAY_RADIUS")) if OS.get_environment("INFILTRAITOR_CUTAWAY_RADIUS") != "" else 1.4
+		if CUTAWAY_MODE == "storey" or CUTAWAY_MODE == "both":
+			## One storey is 8 levels of 1/8 unit: everything above the agent's own storey goes.
+			top = feet.y + 1.0
 	var forward: Vector3 = -_camera.global_transform.basis.z
-	var state: Array = [radius, feet, forward]
+	var state: Array = [radius, feet, forward, top]
 	if state == _cut_last:
 		return
 	_cut_last = state
+	var targets: Array = []
 	for i: int in range(_shader_materials.size()):
-		if _material_glass[i]:
-			continue
-		var m: ShaderMaterial = _shader_materials[i]
+		if not _material_glass[i]:
+			targets.append(_shader_materials[i])
+	if _line_material != null:
+		targets.append(_line_material)
+	for m: ShaderMaterial in targets:
 		m.set_shader_parameter("cut_radius", radius)
 		m.set_shader_parameter("cut_pos", feet)
 		m.set_shader_parameter("cut_dir", forward)
+		m.set_shader_parameter("cut_top", top)
 
 
 # ── data ──────────────────────────────────────────────────────────────────────
@@ -832,6 +916,11 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 		_build_decal_catalog()
 	if _decal_array != null:
 		_decal_material_index = _material(DECAL_MATERIAL_ID)
+	if CUTAWAY_LINES and _line_material == null:
+		_line_material = ShaderMaterial.new()
+		var line_shader := Shader.new()
+		line_shader.code = LINE_SHADER
+		_line_material.shader = line_shader
 	var n: int = store.claims
 	var xyz: PackedInt32Array = store.xyz
 	var state: PackedByteArray = store.state
@@ -995,6 +1084,19 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 	var mesh := ArrayMesh.new()
 	for material: int in surfaces:
+		if material == LINE_KEY:
+			if _line_material != null:
+				var line_arrays: Array = []
+				line_arrays.resize(Mesh.ARRAY_MAX)
+				line_arrays[Mesh.ARRAY_VERTEX] = (surfaces[material] as SurfaceData).vertices
+				line_arrays[Mesh.ARRAY_INDEX] = (surfaces[material] as SurfaceData).indices
+				line_arrays[Mesh.ARRAY_CUSTOM0] = (surfaces[material] as SurfaceData).custom0
+				line_arrays[Mesh.ARRAY_CUSTOM1] = (surfaces[material] as SurfaceData).custom1
+				var line_flags: int = (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) \
+					| (Mesh.ARRAY_CUSTOM_RG_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT)
+				mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, line_arrays, [], {}, line_flags)
+				mesh.surface_set_material(mesh.get_surface_count() - 1, _line_material)
+			continue
 		var surface: SurfaceData = surfaces[material]
 		var arrays: Array = []
 		arrays.resize(Mesh.ARRAY_MAX)
@@ -1324,6 +1426,24 @@ func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material:
 		face_uvs.append(uv / FACADE_SPAN_VOXELS)
 	surface.add_quad(corners, unit, DIR_NORMAL[dir], face_uvs,
 		_glass_plane_dim(dir, w, h) if _material_glass[material] else -1.0)
+	if CUTAWAY_LINES and not _material_glass[material]:
+		if not surfaces.has(LINE_KEY):
+			surfaces[LINE_KEY] = SurfaceData.new()
+		var lines: SurfaceData = surfaces[LINE_KEY]
+		var lift: Vector3 = DIR_NORMAL[dir] * 0.03
+		var base_index: int = lines.vertices.size()
+		var lo := Vector3(INF, INF, INF)
+		var hi := Vector3(-INF, -INF, -INF)
+		for corner: Vector3 in corners:
+			lo = lo.min(corner * unit)
+			hi = hi.max(corner * unit)
+		for corner: Vector3 in corners:
+			lines.vertices.append((corner + lift) * unit)
+			lines.custom0.append_array([lo.x, lo.y, lo.z, hi.x])
+			lines.custom1.append_array([hi.y, hi.z])
+		for k: int in range(4):
+			lines.indices.append(base_index + k)
+			lines.indices.append(base_index + (k + 1) % 4)
 
 
 # ── look ──────────────────────────────────────────────────────────────────────

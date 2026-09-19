@@ -1,6 +1,9 @@
 # RENDER3D_MASTER_PLAN
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.7
 
+**2026-09-19 update:** R3D-6 item 2 (glass) built, ratification pending; see the item and
+`PROMPTS/RESUMO_SESSAO_2026-09-19_R3D6_GLASS.md`. Open: `delta.touched_voxels` is incomplete.
+
 **Status (2026-09-18, v1.7):** 🟡 **R3D-0 to R3D-5 are built. Everything that draws in the game world now
 draws in the 3D board's world, depth-tested: the board (R3D-3), the actors, props and every
 in-world VFX (R3D-4), and the ground overlays, the fog and the picking (R3D-5).** The 2D board

@@ -297,6 +297,14 @@ func _fade_soot_plane(ramp: Array, voxel_renderer, tree: SceneTree) -> void:
 		return
 	if consequence_room != null:
 		consequence_room.event_probe_beat("SOOT FADE")
+	if VoxelRenderer.SKIP_BOARD_WRITES:
+		## R3D-6: the 3D board uploads the planes once, when the beat ends, so the fade's frames
+		## would write into an image nobody reads. One write of the settled value.
+		for row: Array in ramp:
+			voxel_renderer._write_cell_soot(int(row[0]), row[1],
+				VoxelLightField.encode_face_soot(row[2]))
+			voxel_renderer.note_external_write(int(row[0]), row[1])
+		return
 	var steps: int = maxi(soot_fade_frames, 1)
 	var t0: int = Time.get_ticks_usec()
 	## Starts at step 1: step 0 is "fully lightened", which the commit frame has

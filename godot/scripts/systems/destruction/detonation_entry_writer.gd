@@ -90,12 +90,17 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 	match kind:
 		"destroy":
 			var layer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			if layer == null:
+			## R3D-6: a plane-only write needs no tile, and a level with no 2D layer (the floor's) has none.
+			if layer == null and not VoxelRenderer.SKIP_BOARD_WRITES:
 				return 0
 			if VoxelRenderer.SKIP_BOARD_WRITES:
 				## DIAG-21 2c: the voxel is already gone in the data; only the hidden
 				## 2D cell would change. The light apply still needs to visit it.
 				voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+				## R3D-6: glass is NOT a 2D-only write — `_glass_layers` is still the authority
+				## the crack occupancy, the rims and the craze masks read, so a shattered pane
+				## has to leave it or the 3D board keeps drawing cracks over a hole.
+				voxel_renderer.erase_glass_cell(int(entry["level"]), entry["cell"])
 				return 1
 			layer.erase_cell(entry["cell"])
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
@@ -111,7 +116,8 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			## §2's exposure fallback (B5). Its own step since E-ORGANIC-01 —
 			## see flatten_plan() for why nesting these was the spike.
 			var elayer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			if elayer == null:
+			## R3D-6: a plane-only write needs no tile, and a level with no 2D layer (the floor's) has none.
+			if elayer == null and not VoxelRenderer.SKIP_BOARD_WRITES:
 				return 0
 			if VoxelRenderer.SKIP_BOARD_WRITES:
 				voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
@@ -129,7 +135,8 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 			return 1
 		"dented", "cracked", "soot":
 			var layer2: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			if layer2 == null:
+			## R3D-6: a plane-only write needs no tile, and a level with no 2D layer (the floor's) has none.
+			if layer2 == null and not VoxelRenderer.SKIP_BOARD_WRITES:
 				return 0
 			if VoxelRenderer.SKIP_BOARD_WRITES:
 				voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
@@ -267,11 +274,11 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 ## contract, fewer calls, and still a cheap no-op when nothing composited
 ## (flush_dirty_pages() checks an empty dirty-page set itself).
 func flush(voxel_renderer) -> void:
-	if VoxelRenderer.SKIP_BOARD_WRITES:
-		return  ## DIAG-21 2c: every step below only serves the hidden 2D board
-	voxel_renderer.flush_damage_composite_pages()
-	## PERF-P2b: one soot upload per flushed frame, never one per cell.
-	voxel_renderer.flush_cell_soot()
+	if not VoxelRenderer.SKIP_BOARD_WRITES:
+		## DIAG-21 2c: these two only serve the hidden 2D board.
+		voxel_renderer.flush_damage_composite_pages()
+		## PERF-P2b: one soot upload per flushed frame, never one per cell.
+		voxel_renderer.flush_cell_soot()
 	## G-D30 — the cook's own batch seam. `erase_glass_cell()` above only flags;
 	## this is where a blast that took glass out from under a standing crack
 	## re-cuts it, once, instead of once per erased cell.

@@ -1527,6 +1527,26 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 		var ring: int = int((snapshot[level] as Dictionary)[cell])
 		if ring < BlastCalculatorClass.FACE_SOOT_CLEAN \
 				and not touched_this_blast.has(Vector3i(cell.x, cell.y, level)):
+			if VoxelRendererClass.SKIP_BOARD_WRITES:
+				## R3D-6: no tile says whether the cell exists — the STORE does. Without this the wave
+				## read an empty tilemap and came out empty: none of the blast's soot halo reached the
+				## 3D board (823 floor cells of GLASS grenade #0). Planes only, so the entry carries
+				## no tile fields.
+				var store: VoxelStore = VoxelStore.active
+				if store != null and store.has_cell(cell.x, cell.y, level):
+					var soot_only: int = field.face_soot_code(cell, level)
+					if soot_only != voxel_renderer.cell_soot_at(level, cell) \
+							or field.bucket_for(cell, level) != voxel_renderer.cell_bucket_at(level, cell):
+						_append(waves["soot"], ring, {"cell": cell, "level": level,
+							"source_id": -1, "atlas_coords": Vector2i.ZERO, "alt": 0,
+							"soot": soot_only, "r": _radius_of(cell, epicenter)})
+						s["delta"].light_changed_cells[Vector3i(cell.x, cell.y, level)] = true
+				since_check += 1
+				if since_check >= chunk:
+					since_check = 0
+					if _out_of_time(deadline):
+						break
+				continue
 			var layer: TileMapLayer = voxel_renderer.get_layer(level)
 			if layer != null:
 				var source_id: int = layer.get_cell_source_id(cell)

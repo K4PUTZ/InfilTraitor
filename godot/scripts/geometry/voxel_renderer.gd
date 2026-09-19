@@ -4080,7 +4080,7 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 	for key in visit.keys():
 		var level: int = key.z
 		var layer: TileMapLayer = get_layer(level)
-		if layer == null:
+		if layer == null and not SKIP_BOARD_WRITES:
 			continue
 		var cell := Vector2i(key.x, key.y)
 		if SKIP_BOARD_WRITES:
@@ -4146,7 +4146,19 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			var level: int = entry["level"]
 			var cell: Vector2i = entry["cell"]
 			var layer: TileMapLayer = get_layer(level)
-			if layer == null:
+			if layer == null and not SKIP_BOARD_WRITES:
+				continue
+			if SKIP_BOARD_WRITES:
+				## R3D-6: the planes only, like `apply_light_field_cells()`'s branch. No opaque tile
+				## exists to say whether the cell is still there, and without this the blast's
+				## consequence pass wrote NO soot and NO light into the planes (2D wrote soot on 823
+				## more floor cells of GLASS grenade #0 than the 3D board did).
+				var plane_soot: int = field.face_soot_code(cell, level)
+				if soot_lighten > 0:
+					plane_soot = VoxelLightField.encode_face_soot(_lighten_faces(
+						VoxelLightField.decode_face_soot(plane_soot), soot_lighten))
+				_write_cell_soot(level, cell, plane_soot)
+				_write_cell_bucket(level, cell, field.bucket_for(cell, level))
 				continue
 			var source_id: int = layer.get_cell_source_id(cell)
 			if source_id == -1:

@@ -276,6 +276,14 @@ func cell_index(x: int, y: int, level: int) -> int:
 	return ((level - l0) * h + (y - y0)) * w + (x - x0)
 
 
+## True when a visible voxel occupies the cell. Bounds-checked: a flood can name a cell the
+## store's box does not hold.
+func has_cell(x: int, y: int, level: int) -> bool:
+	if x < x0 or y < y0 or level < l0 or x >= x0 + w or y >= y0 + h or level >= l0 + nl:
+		return false
+	return occ[cell_index(x, y, level)] != 0
+
+
 static func state_byte(v: Voxel) -> int:
 	return (1 if v.visible else 0) | (v.damage_state << 1) \
 		| ((1 if v.damage_is_blast else 0) << 3) | (v.damage_carved_side << 4)

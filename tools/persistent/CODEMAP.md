@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**274 scripts · 100643 lines total** (under `godot/scripts/`)
+**274 scripts · 100702 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1114,7 +1114,7 @@ extends `Node3D` · 1096 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7949 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7961 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2434,7 +2434,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 286 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 293 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -2463,7 +2463,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2636 lines
+`class_name DetonationPlanBuilder` · 2656 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2485,7 +2485,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 403 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 411 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2689,7 +2689,7 @@ extends `RefCounted` · 941 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 252 lines
+extends `Node` · 256 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3503,7 +3503,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 523 lines
+`class_name VoxelStore` · extends `RefCounted` · 531 lines
 
 `godot/scripts/systems/voxel_store.gd`
 

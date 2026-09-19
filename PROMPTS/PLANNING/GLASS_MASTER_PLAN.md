@@ -1,5 +1,12 @@
 # GLASS MASTER PLAN — the physics of glass
 
+> ⏭️ **2026-09-18 (`RENDER3D` R3D-4e):** measured under `RENDER3D=1` — the **crack sprite draws nothing**
+> (`glass_crack_demo` before/after: 0 of 921 600 px differ; it is a child of the hidden 2D renderer), so
+> its 3D look is an R3D-6 item; the **glass rain now draws** in world space (`ShardField3D`; it never drew
+> in 2D under `RENDER3D`), with G-D43's control intact (0 differing pixels after the kill). An actor
+> standing behind a glass pane is tinted by it (billboard depth), which is the behaviour the 2D board
+> could not give.
+
 ⏭️ **2026-09-15:** the 3D render decision ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md))
 leaves this plan's physics canon untouched, and moves its rendering.
 - **What is 2D-board machinery:** glass tiles, `_glass_layers` as the occupancy every glass

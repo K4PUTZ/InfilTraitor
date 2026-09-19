@@ -1,7 +1,31 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.6
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.7
 
-**Status:** 🟡 **R3D-1d CLOSED 2026-09-17: `VoxelStore` is the writer, `Voxel` is a thin
+**Status (2026-09-18, v1.7):** 🟡 **R3D-0 to R3D-5 are built. Everything that draws in the game world now
+draws in the 3D board's world, depth-tested: the board (R3D-3), the actors, props and every
+in-world VFX (R3D-4), and the ground overlays, the fog and the picking (R3D-5).** The 2D board
+still ships underneath, behind `RENDER3D=1`, until R3D-8. **Next: R3D-6 (look parity, ratified per
+item from paired captures), R3D-7 (the 3D cutaway), R3D-8 (retire the 2D board and its canon),
+R3D-9 (rotation returns).**
+
+**The register of what is still OPEN** (each is written up in its own section; nothing here blocks
+starting R3D-6):
+- **R3D-4:** `AgentProbePropRef` has no production instance and no capture; the collectible was
+  verified by flipping `TEST_ZONE_COLLECTIBLES_ENABLED` locally; the muzzle flash's floor is an
+  estimate (`muzzle_floor_drop_px`); shrapnel has no capture of its own; the glass **crack sprite**
+  moved to R3D-6 (it draws nothing under `RENDER3D=1`).
+- **R3D-5:** `floor_layer` is NOT retired — it still owns TILE DATA (walkable, used cells,
+  `set_cell`), which retires with the 2D board at R3D-8; picking a WALL by ray is not built and needs
+  the Director's call; the movement/picking checks on the Moto (and touch/pinch/pan through the TEL
+  scenarios) were not run — no device was connected.
+- **By decision, staying in screen space:** the aim dome, the throw arc, the shrapnel preview rays,
+  the tracer, the noise icons and the cursor.
+- **Measured, not from these stages:** the detonation's worst frame is ~1 s on the Moto in both the 2D
+  and the 3D VFX (the light/consequence cost).
+- **Rules set on the way:** any new VFX stores world-space state (ground + height); a level is asked of
+  `ground_plane_level()`, never a literal (a literal `0` had silently broken four VFX callers).
+
+*Earlier status (kept):* 🟡 **R3D-1d CLOSED 2026-09-17: `VoxelStore` is the writer, `Voxel` is a thin
 `claim:int` wrapper, and the Moto remeasure confirms the win.** R3D-0/1a/1b/1c closed in
 turn from 2026-09-15 to 2026-09-16 (packed store built, layout B confirmed, shadow
 gated, all five readers moved onto the store); R3D-1d step 1 (2026-09-17) removed the
@@ -160,6 +184,20 @@ objects themselves. Full narrative below and in the revision history.
   (a ~24% cut in load-to-3D-ready time), and the full device gate (idle frame, commit
   frame, both grenades' worst frame, load time, memory, pixel-identity). **Next: R3D-4
   and R3D-5 can run in either order** (§5's own dependency graph).
+- **R3D-4 BUILT, 2026-09-18.** The agent and the guards as depth-tested billboards (`ActorBillboard3D`,
+  D17's relight ported to a spatial shader; +0.2 ms on the Moto), the guards' vision cones on the
+  ground (`VisionCone3D`), the props (`PropBillboard3D`: the grenade with flight and ground shadow, the
+  floating collectible with its outline), and every in-world VFX in world space (`ParticleMath`,
+  `CircleField3D` / `QuadField3D` / `ShardField3D`): a blast behind a wall no longer paints its face, and
+  the Moto detonation is 2.1 ms lighter than the 2D VFX (30.2 ms vs 32.3 ms). R3D-4a's spike chose the
+  billboard over a depth-composited sprite (Director ratified). Sections below.
+- **R3D-5 BUILT, 2026-09-18.** **5b** the ground overlays on the ground plane through one mechanism
+  (`GroundCanvas3D`): the movement outline no longer cuts the agent, and the "dark roof tops" and GU grid
+  lines no longer paint across block faces; **5c** the fog of war; **5a** picking by camera ray
+  (`PICK_CHECK`: 35 840 points, 0 disagreements) and the cell lattice without a TileMapLayer
+  (`GroundGrid`). The per-overlay decision table is in the R3D-5 section.
+- **Parked, to investigate after R3D-9:** real 3D objects (GLB meshes) in the scene — see "To
+  investigate at the end of R3D".
 
 **Authority:**
 - **The render path.** After DIAG-23 (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §15.15), the Director
@@ -2042,3 +2080,14 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
     thin `Voxel` costs 87–140 MB (median ~100 MB) for 215 432 wrappers, against R3D-0's
     ~190 MB — roughly half. One grenade detonation showed no hot-loop regression
     signal. **R3D-1d closed.** Next: R3D-2.
+- **v1.7, 2026-09-18.** R3D-4 and R3D-5 built (the Director delegated the order and the steps, and
+  ratified: R3D-4a's billboard, the agent's and the guards' look, R3D-4e as a blocking item).
+  R3D-4a spike (A billboard vs B depth composite; Moto: none 21.8 ms, A 22.2 ms, B 31.7 ms, and B's depth
+  pass decoded 0.235 units off on the Mali). R3D-4b the agent, R3D-4c the guards and cones, R3D-4d props
+  (grenade, collectible), R3D-4e in-world VFX in five steps (1 the particle space and its selftest, 2
+  smoke/embers/dust, 3 sparks/shrapnel/chips via `QuadField3D`, 4a the glass rain via `ShardField3D`, 5
+  the gate; 4e-4b, the crack sprite, moved to R3D-6). R3D-5b ground overlays and the decision table, R3D-5c
+  the fog, R3D-5a picking and `GroundGrid`. Found on the way and fixed: four callers asked for the floor
+  with a literal level `0` (330 of 330 fell back — Rule 9); the 2D glass rain never drew under
+  `RENDER3D=1`; empty MultiMeshes cost a draw call on the Moto (hidden now). Parked: real 3D objects.
+  Selftests 57 → 60; the register of what is still open is at the top of this file.

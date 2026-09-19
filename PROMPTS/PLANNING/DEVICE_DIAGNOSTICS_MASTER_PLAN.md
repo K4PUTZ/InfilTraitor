@@ -1,6 +1,13 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
 ## Measuring the real build on a real entry-tier phone — v1.10
 
+> ⏭️ **2026-09-18 — R3D-4 and R3D-5 measured on the Moto g04s** (`docs/measurements/device_2026-09-18_*`;
+> chain: `export_android.py --install` → `dev_flags.cfg` → `device_run.py --save` → `bench_analyze.py`,
+> with `TELEMETRY=1`). Billboard actor spike: none 21.8 ms, A 22.2 ms, B 31.7 ms. Actors/guards/props in the
+> real game: +0.2 to +0.4 ms. VFX in world space: detonation 30.2 ms vs 32.3 ms. New dev seams:
+> `SPIKE=r3d4a` (+ `R3D4A_BENCH=1`), `ACTORS3D`, `VFX3D`, `GROUND3D`, `PICK3D`, `PICK_CHECK`, `SEED_GRENADES`.
+> Not run: the R3D-5a pick check on the device (none connected).
+
 **Status:** 🟢 **v1.10 — RENDER3D R3D-1a measured (2026-09-16).**
 Where the Moto g04s stands:
 

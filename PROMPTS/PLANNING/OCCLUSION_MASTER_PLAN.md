@@ -1,6 +1,12 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
+> ⏭️ **2026-09-18 — what R3D-7 inherits from `RENDER3D` R3D-4/5.** The 3D board has no cutaway yet, so a
+> glass roof between the camera and the agent tints him (seen on the GLASS map; a glass pane behind him
+> already tints correctly). Actors are depth-tested billboards (`ActorBillboard3D`), so a wall in front
+> now covers them, and the 2D overlays no longer paint across them (`GroundCanvas3D`); the cutaway is
+> what is left to make him readable behind geometry.
+
 ⏭️ **2026-09-15 — "renderer v2" now exists as a plan.** The resume trigger below waits on
 `MATERIALS` M5, which is "blocked on renderer v2". That renderer is
 [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), and its R3D-7:

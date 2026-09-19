@@ -1,6 +1,12 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
+> ⏭️ **2026-09-18 — the VFX left the 2D canvas (`RENDER3D` R3D-4e).** P7b/P7c's `CircleField` and the shard
+> field now have 3D twins (`CircleField3D`, `QuadField3D`, `ShardField3D`) that draw depth-tested in the 3D
+> board; the CPU-submission fix stands (one `MultiMesh` per population). Moto, one detonation, PLAYGROUND:
+> 30.2 ms mean vs 32.3 ms in 2D; idle primitives 17 156 vs 21 072. An empty MultiMesh still costs a draw call
+> on the Mali, so an idle field is hidden.
+
 **Status:** ⏭️ **v2.5 — 2026-09-15: the render architecture decision moves this plan's
 open items.** The Director ratified the 3D render path
 ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).

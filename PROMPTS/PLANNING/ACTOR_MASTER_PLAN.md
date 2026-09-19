@@ -1,6 +1,15 @@
 # ACTOR_MASTER_PLAN
 ## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v2.2
 
+> ## ⏭️ 2026-09-18 — actors and props are now billboards in the 3D board (`RENDER3D` R3D-4)
+>
+> No decision here changed. The baked frames, D17's normal-map relight, D44's four facings and D47's
+> GU-boundary snap are exactly as decided; what changed is WHERE the pixels land. `AgentSprite` still
+> decides what is shown and `ActorBillboard3D` mirrors it into depth-tested world-vertical quads (R3D-4a:
+> billboard +0.4 ms vs +9.9 ms for a depth-composited sprite on the Moto; the Director ratified the
+> billboard). `PropBillboard3D` does the same for the grenade and the floating collectible. Real 3D meshes
+> in the scene are parked for after R3D-9 (see `RENDER3D_MASTER_PLAN`).
+
 > ## ⏭️ 2026-09-15 — the board moves to 3D; no decision here changes
 >
 > [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) draws the board in Godot 3D.

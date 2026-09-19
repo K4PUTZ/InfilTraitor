@@ -1904,24 +1904,26 @@ captures, 2D against 3D.
 
 ### R3D-7 — Occlusion and cutaway in 3D
 
-**SPIKE 2026-09-19 (`[R3D-7a/b]`) — two candidates built, LOOK CALL PENDING (Director).** Both are VIEW only
-(`Board3DLive._update_cutaway()` writes shader uniforms, nothing else — `OCCLUSION` O1 holds).
-`INFILTRAITOR_CUTAWAY_MODE = dither (default) | storey | both`, `CUTAWAY=0` off, `CUTAWAY_RADIUS`, `CUTAWAY_LINES=0`.
-- **Dither (Director: "gosto muito desse dither").** The opaque shader (decals derive from it) dithers what is
-  nearer the camera than the agent's plane, above the feet, inside a cylinder (R 1.4) along the camera ray:
-  three states from two Bayer thresholds — kept, discarded, or a **ghost diamond** (flat tint, face contrast
-  top 1.0 / SE 0.80 / SW 0.60) so the vanished wall stays readable. Only geometry NEARER than the agent is
-  cut; the wall behind is never touched. **White edge lines:** every merged quad also emits its four edges as a
-  line surface (`LINE_KEY`, 8 vertices per quad), and the line shader decides per QUAD (its bounds ride in
-  CUSTOM0/1; the camera ray is intersected with the quad's plane and clamped into it) so the whole outline of
-  a wall that is being ghosted shows, not just the part inside the circle. Capture:
-  `Screenshots/history/r3d7_cutaway_dither_spike.png`.
-- **Storey cut.** Everything above the agent's storey (feet + 1 unit) is discarded. Capture:
-  `r3d7_cutaway_storey_spike.png` — the cut walls are hollow (no cap on the cut plane yet).
-- **Known limits:** glass is not cut; a fixed radius; only the agent is revealed, not guards; the ghost fills only
-  the cylinder, while the outline covers the whole quad, so a long wall reads as a box; the storey cut is
-  map-wide, not per room; the 2D wireframe overlay remains what draws under `RENDER3D=0`. Cost of the lines:
-  8 vertices per merged quad and one extra draw surface per chunk — NOT measured on the Moto.
+**BUILT 2026-09-19 (`[R3D-7c]`) — the ORIGINAL 2D mechanism, on 3D. LOOK CALL PENDING (Director).** The
+Director's diagram (2026-09-19) is the spec: an occluded EDGE keeps its bottom 2 voxels solid (a fixed
+8x2x2 block across the edge), and everything above it becomes a wireframe taking the shape of the slices
+above, with a fill whose opacity varies (ring). Two earlier spikes were REJECTED and deleted: a
+cylinder around the camera ray (it also cut the back wall, because the camera looks down and a wall
+behind the agent counts as nearer in view depth), and a map-wide storey cut ("the player cannot know what
+is behind the wall").
+- **The set is the 2D board's own** (`OcclusionSet`, O1 — view, never state; nothing new decides what is
+  occluded): `Room._recompute_occlusion()` hands it to `Board3DLive.on_occlusion()`, which writes one texel per
+  grid column (min level, max level, ring + 1) and rebuilds the wireframe lines.
+- **Fill:** the face shader ghosts a voxel whose column is in the set and whose level is in [min, max]:
+  Bayer-dithered into discarded pixels and ghost diamonds, the diamonds' density the ring's opacity
+  (0.14 / 0.24 / 0.36), a flat periwinkle tint with per-face contrast (top 1.0 / SE 0.80 / SW 0.60). The levels
+  below min (the base) are untouched. Decals inherit it.
+- **Lines:** `OcclusionSet.get_wireframe_by_level()` is already merged across walls and hidden-face culled, so
+  its lattice lines become one line mesh (white, depth-tested); nothing is emitted per edge.
+- The 2D wireframe overlay is hidden while the 3D board is live. `INFILTRAITOR_CUTAWAY=0` = off.
+- Capture: `Screenshots/history/r3d7_cutaway_dither_spike.png` (agent behind a PLAYGROUND block: 260 columns
+  occluded; in open ground 0). **Not verified:** guards behind walls; glass (not ghosted); roofs and
+  interiors; the Moto cost; the flat fill has no separate top tint yet.
 
 ### R3D-8 — Retire the 2D board (the canon change)
 

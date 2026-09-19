@@ -6358,6 +6358,9 @@ func _recompute_occlusion() -> void:
 	if _voxel_renderer != null:
 		_voxel_renderer.apply_occlusion(_occlusion_set.get_occluded_cells())
 
+	var live_board: Node = board3d()
+	if live_board != null:
+		live_board.on_occlusion(_occlusion_set)
 	if _occlusion_overlay != null:
 		_occlusion_overlay.queue_redraw()
 	if _occlusion_wireframe_overlay != null:

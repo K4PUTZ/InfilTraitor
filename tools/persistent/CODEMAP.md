@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**274 scripts · 101183 lines total** (under `godot/scripts/`)
+**274 scripts · 101139 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -529,7 +529,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1512 lines
+extends `Node3D` · 1465 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -544,6 +544,10 @@ extends `Node3D` · 1512 lines
 - `FALLBACK_SOOT_MULT` = `[0.33, 0.47, 0.69, 0.84]`
 - `FALLBACK_TONE` = `[1.0, 0.975, 0.945]`
 - `OPAQUE_SHADER` = `"""`
+- `GLASS_SHADER` = `"""`
+- `GlassCrackMirror3DClass` = `preload("res://godot/scripts/geometry/glass_crack_mirror3d.gd")`
+- `DECAL_MATERIAL_ID` = `"__decals__"`
+- `DECAL_LIFT_VOXELS` = `0.02`
 - `INVALID_PICK` = `Vector2i(-9999, -9999)`
 - `GLASS_CAP_VOXELS` = `2`
 
@@ -6159,7 +6163,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12382 lines
+extends `Node2D` · 12385 lines
 
 `godot/scripts/world/room.gd`
 

@@ -61,6 +61,8 @@ static var STORE_BOARD3D: bool = true
 ## `RENDER3D_VSCALE`, read at `build()`. A Director look-call, not a code decision — see
 ## `RENDER3D_MASTER_PLAN` R3D-3 step 2.
 static var VERTICAL_SCALE: float = 1.0
+## `CONSEQUENCE_REMESH=0` skips the full remesh at the end of the blast's beat: comparison only.
+static var CONSEQUENCE_REMESH: bool = true
 const VERTICAL_SCALE_MATCHED: float = 158.0 / 156.8
 ## Dev-only, off by default (DevFlags `RENDER3D_VSCALE_MARKER`) — a bright box spanning
 ## exactly one storey (8 levels) at a fixed cell, so the look-call has a fixed reference
@@ -248,6 +250,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
 	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
 	VERTICAL_SCALE = _read_vertical_scale(room)
+	CONSEQUENCE_REMESH = str(room.call("_dev_flag", "CONSEQUENCE_REMESH", "1")) != "0"
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
 	_geometry_root = Node3D.new()
 	_geometry_root.name = "Geometry"
@@ -604,7 +607,7 @@ func on_blast_soot() -> void:
 ## the picture had lacked, while the 2D board had both. Until the delta names every voxel it
 ## changes, the beat's end rebuilds EVERY chunk, once per blast, on the worker thread.
 func on_blast_consequence() -> void:
-	if _store == null:
+	if _store == null or not CONSEQUENCE_REMESH:
 		return
 	var all: Dictionary = {}
 	for chunk: Vector2i in _store_chunks():

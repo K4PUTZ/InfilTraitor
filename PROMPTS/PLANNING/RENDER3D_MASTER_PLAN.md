@@ -1829,6 +1829,38 @@ captures, 2D against 3D.
      cite them.
 2. **Glass:** the strong blue with facets, pane edges, the crack sprite and the craze
    family, and a pane's side sliver.
+   - **BUILT 2026-09-19 (`[R3D-6a..d]`), RATIFICATION PENDING — the Director's line goes here.**
+   - One back-reading pass, `glass_pane3d.gdshader`: tint MULTIPLY with the body floor, frost,
+     sheen, per-member tint. **The maths runs in sRGB** — the 3D screen texture is linear and
+     ALBEDO is encoded on the way out, so the raw formula applied tint^(1/2.2) (measured effective
+     multiply 0.81/0.87/0.96 against the asked 0.61/0.72/0.91). Force 0.60 → 0.68 on the 3D board
+     only (Director: slightly more blue).
+   - Pane caps: top 0.60 and thickness 0.78 through vertex `COLOR.r`; a face is a cap when it is
+     at most 2 voxels across (`_glass_plane_dim`). A glass floor stays a main face.
+   - Crack sprite: `GlassCrackMirror3D` mirrors every 2D `GlassCrackSprite` onto the pane plane;
+     the shader is `glass_crack.gdshader`'s fragment. Crack before/after: 5 494 px in 3D (0 before),
+     6 002 px in 2D. Only the SW face was captured; the blast craze field goes through the same mirror.
+   - **Side sliver: no code.** A pane is real geometry, the mesher hides shared faces, and the
+     thickness is a face; the 2D sliver existed to fill a tile seam that 3D does not have.
+   - **NOT built: the CRACK-03/04 rim wedge** (the torn silhouette around a hole); a hole in 3D is
+     rectangular. It needs a per-hole alpha discard on the pane.
+   - **Found on the Moto: the 3D board drew the pane and the crater the blast destroyed.**
+     `on_blast_commit` remeshes `delta.touched_voxels`, which named 3 692 voxels while 3 867
+     changed in the store, and the shattered glass and the floor crater were among the missing
+     (glass 176 vertices after the commit, 968 after a full remesh). Fix: every chunk is rebuilt when
+     the beat ends (`on_blast_consequence`, `CONSEQUENCE_REMESH=0` = old). Full remesh at the beat
+     end equals a forced one at 0 px. **Open: the delta's `touched_voxels` is still incomplete.**
+   - **Moto g04s, GLASS + grenade #0, RENDER3D=1, the same APK, remesh on vs off:** mean 41.5 / 40.5
+     ms against 41.4 / 41.2 ms, worst frame 2 556 / 2 513 ms against 2 504 / 2 530 ms (the
+     cook, frames 62–63) — no difference. The remesh is 566 ms in the background, 6.4 ms of upload on
+     the main thread. 2D on the same scenario: mean 120.6 ms, worst 3 998 ms, 23.3 s wall against
+     11.9 s.
+   - Captures: `Screenshots/history/glass_crack_demo_r3d6_{2d,3d_flat,3d_sat}_before.png`,
+     `glass_crack_demo_r3d6c_{2d,3d}_after.png`, `glass_crack_demo_r3d6d_3d_before.png`,
+     `r3d6e_blast_2d_after.png`, `r3d6e_blast_3d_after.png` (before the fix),
+     `r3d6g_blast_3d_after.png`, and on the handset `moto_r3d6_glass_{2d,3d,3d_fix}.png`.
+   - Not verified: the craze on a face other than SW, glass on a fixed unit-test of the new
+     shader, the floor shards the 2D draws as tiles (absent in 3D), and no selftest was run.
 3. **Damage decals** from `ART_SPECIFICATIONS` §7 families, per voxel: a decal/variant
    channel beside the planes, and a texture array per material family.
 4. **Dents:** a DENTED voxel's carved side becomes a real inset in the mesh.

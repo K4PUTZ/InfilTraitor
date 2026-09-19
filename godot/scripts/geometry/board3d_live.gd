@@ -177,6 +177,9 @@ var _camera: Camera3D = null
 ## directly under `self`, so `VERTICAL_SCALE` stretches only the geometry: `_camera` stays
 ## a direct child of `self` and is unaffected by this node's non-uniform scale.
 var _geometry_root: Node3D = null
+## R3D-6 item 2 — one quad per live 2D crack sprite.
+const GlassCrackMirror3DClass = preload("res://godot/scripts/geometry/glass_crack_mirror3d.gd")
+var _crack_mirror: Node3D = null
 var _ground_level: int = 0
 ## Vector3i(grid x, level, grid y) → index into _material_ids.
 var _occ: Dictionary = {}
@@ -252,6 +255,10 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_read_look()
 	_build_plane()
 	_make_camera()
+	_crack_mirror = GlassCrackMirror3DClass.new()
+	_crack_mirror.name = "GlassCracks"
+	_geometry_root.add_child(_crack_mirror)
+	_crack_mirror.call("setup", room._voxel_renderer, _ground_level)
 	var quads: int = 0
 	var faces: int = 0
 	for chunk: Vector2i in (_store_chunks() if _store != null else _by_chunk.keys()):

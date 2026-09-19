@@ -5338,6 +5338,7 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 		"impact_run": int(spec["impact_run"]),
 		"impact_level": int(spec["impact_level"]),
 		"impact_cell": spec["impact_cell"],
+		"face": int(spec.get("face", Face.SW)),
 		"radius": spec["radius"],
 		"pane_lo": spec["pane_lo"],
 		"pane_hi": spec["pane_hi"],
@@ -5433,6 +5434,7 @@ func spawn_glass_craze(spec: Dictionary) -> int:
 		"impact_run": int(spec["centre_run"]),
 		"impact_level": centre_level,
 		"impact_cell": centre_cell,
+		"face": int(spec.get("face", Face.SW)),
 		"radius": Vector2i.ZERO,
 		"pane_lo": spec["pane_lo"],
 		"pane_hi": spec["pane_hi"],
@@ -5799,6 +5801,11 @@ func count_glass_shards() -> int:
 ## How many crack sprites are live. Diagnostics and the selftest.
 ## B-2: IMPACT cracks only, so the number keeps meaning what every existing caller
 ## reads it as. `glass_craze_count()` answers for the fields.
+## The live crack and craze records, read-only: the 3D board mirrors each one (R3D-6).
+func glass_crack_records() -> Array:
+	return _glass_cracks
+
+
 func glass_crack_count() -> int:
 	var n: int = 0
 	for c in _glass_cracks:

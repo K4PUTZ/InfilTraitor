@@ -36,14 +36,47 @@ vec3 to_linear(vec3 c) {
 
 varying vec2 v_glass_world;
 varying float v_face;
+varying vec3 v_world;
+varying vec3 v_normal;
+
+// CRACK-03/04 on the 3D pane: each applied opening is a polygon mask (one layer of open_masks, in a
+// square frame of +-open_half voxels around its struck cell). A fragment inside one is discarded, so
+// the cells the hole touches are torn along the polygon instead of ending in a rectangle.
+uniform int open_count = 0;
+uniform vec4 open_a[16]; // (anchor.x, anchor.y, anchor level, 1 = runs along X)
+uniform sampler2DArray open_masks : filter_linear, repeat_disable;
+uniform float open_half = 4.0;
+uniform int mesh_ground_level = 80;
 
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_glass_world = px_per_gu_x * w.x + px_per_gu_z * w.z - vec2(0.0, px_per_level_y * w.y);
+	v_world = w;
+	v_normal = NORMAL;
 	v_face = (abs(NORMAL.y) > 0.5 ? face_top : (abs(NORMAL.x) > 0.5 ? face_se : face_sw)) * COLOR.r;
 }
 
 void fragment() {
+	if (open_count > 0) {
+		vec3 p = v_world * 8.0;
+		vec3 pn = p - v_normal * 0.5;
+		float level_c = p.y + float(mesh_ground_level);
+		for (int i = 0; i < open_count; i++) {
+			vec4 a = open_a[i];
+			bool run_x = a.w > 0.5;
+			float cross_v = floor(run_x ? pn.z : pn.x);
+			if (cross_v != (run_x ? a.y : a.x)) {
+				continue;
+			}
+			float dr = (run_x ? p.x - (a.x + 0.5) : p.z - (a.y + 0.5));
+			float dl = level_c - (a.z + 0.5);
+			vec2 uv = vec2((dr + open_half) / (2.0 * open_half), (open_half - dl) / (2.0 * open_half));
+			if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0
+					&& texture(open_masks, vec3(uv, float(i))).r > 0.5) {
+				discard;
+			}
+		}
+	}
 	vec3 behind = to_srgb(texture(glass_screen, SCREEN_UV).rgb);
 	float frost = texture(glass_frost_tex, v_glass_world * glass_frost_scale).r;
 	vec3 tinted = glass_tint * (0.82 + 0.30 * frost) * v_face;

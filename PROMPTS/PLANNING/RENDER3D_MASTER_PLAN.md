@@ -1845,8 +1845,14 @@ captures, 2D against 3D.
      6 002 px in 2D. Only the SW face was captured; the blast craze field goes through the same mirror.
    - **Side sliver: no code.** A pane is real geometry, the mesher hides shared faces, and the
      thickness is a face; the 2D sliver existed to fill a tile seam that 3D does not have.
-   - **NOT built: the CRACK-03/04 rim wedge** (the torn silhouette around a hole); a hole in 3D is
-     rectangular. It needs a per-hole alpha discard on the pane.
+   - **Rim wedge BUILT 2026-09-19 (`[R3D-6h]`).** `GlassCrackMirror3D` rasterises each applied opening
+     (`_glass_applied_openings`, last 16) into one layer of a `Texture2DArray`, and `glass_pane3d.gdshader`
+     discards a fragment inside one, so the cells a hole touches are torn along its polygon.
+     Proven on a synthetic opening at the crack demo's impact (1 526 px changed, all inside the star);
+     `INFILTRAITOR_GLASS_OPENINGS3D=0` = rectangular, comparison only. On a real blast the voxel hole is
+     usually larger than the polygon, so the cut barely shows there.
+   - **Open (Director, 2026-09-19): a light jump at the end of every blast** — the forced light/soot
+     refresh at the beat's end. Fine adjustment deferred until the port is complete.
    - **Found on the Moto: the 3D board drew the pane and the crater the blast destroyed.** FIXED
      2026-09-19 at the root, and the diagnosis below the first attempt was wrong: `delta.touched_voxels`
      was never incomplete. `_collect_store` grouped claims into chunks with a hard-coded `>> 5` (32)

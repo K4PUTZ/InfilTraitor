@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**274 scripts · 100702 lines total** (under `godot/scripts/`)
+**274 scripts · 100770 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -529,7 +529,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1096 lines
+extends `Node3D` · 1099 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -752,7 +752,7 @@ extends `Node3D` · 1096 lines
 
 ### `glass_crack_mirror3d.gd`
 
-`class_name GlassCrackMirror3D` · extends `Node3D` · 125 lines
+`class_name GlassCrackMirror3D` · extends `Node3D` · 184 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 
@@ -762,6 +762,11 @@ extends `Node3D` · 1096 lines
 - `SHADER_PATH` = `"res://godot/shaders/glass_crack3d.gdshader"`
 - `MIRRORED` = `[ "crack_sheet", "crack_span", "crack_pane_lo", "crack_pane_hi", "crack_field", "crack_tile_span", "crack_field_origin", "crack_field_dir", "crack_occupancy", "crack_occ_size", "crack_occ_origin", "crack_hole_cut", "crack_opening", "crack_opening_origin", "crack_opening_size", "crack_opacity", ]`
 - `FACE_LIFT_VOXELS` = `0.05`
+- `OPEN_MAX` = `16`
+- `OPEN_TEXELS_PER_VOXEL` = `12`
+
+**Public vars**
+- `var pane_materials: Array = []`
 
 **Public API**
 - `func setup(renderer: VoxelRenderer, ground_level: int) -> void:`
@@ -1114,7 +1119,7 @@ extends `Node3D` · 1096 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7961 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7967 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 

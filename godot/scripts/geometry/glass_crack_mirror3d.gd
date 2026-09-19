@@ -35,6 +35,14 @@ var _shader: Shader = null
 ## crack record id -> {"mesh": MeshInstance3D, "mat": ShaderMaterial, "sprite": GlassCrackSprite}
 var _twins: Dictionary = {}
 
+## CRACK-03/04 on the pane: the glass ShaderMaterials the applied openings are pushed into.
+var pane_materials: Array = []
+## `INFILTRAITOR_GLASS_OPENINGS3D=0` leaves the pane rectangular: comparison only.
+static var OPENINGS_ON: bool = OS.get_environment("INFILTRAITOR_GLASS_OPENINGS3D") != "0"
+const OPEN_MAX: int = 16
+const OPEN_TEXELS_PER_VOXEL: int = 12
+var _open_seen: int = -1
+
 
 func setup(renderer: VoxelRenderer, ground_level: int) -> void:
 	_renderer = renderer
@@ -48,6 +56,7 @@ func setup(renderer: VoxelRenderer, ground_level: int) -> void:
 func _process(_delta: float) -> void:
 	if _renderer == null or _shader == null:
 		return
+	_sync_openings()
 	var live: Dictionary = {}
 	for rec: Dictionary in _renderer.glass_crack_records():
 		var sprite: Node = rec.get("sprite") as Node
@@ -123,3 +132,53 @@ func _mirror(twin: Dictionary) -> void:
 		var value: Variant = src.get_shader_parameter(param)
 		if value != null and mat.get_shader_parameter(param) != value:
 			mat.set_shader_parameter(param, value)
+
+
+## The applied openings as pane cuts. Rebuilt only when the renderer's log grew (or was cleared by a
+## reload); the masks are rasterised in one common frame so a single Texture2DArray serves them all.
+func _sync_openings() -> void:
+	var recs: Array = _renderer.glass_applied_openings()
+	if recs.size() == _open_seen or pane_materials.is_empty() or not OPENINGS_ON:
+		return
+	_open_seen = recs.size()
+	var used: Array = recs.slice(maxi(0, recs.size() - OPEN_MAX))
+	if recs.size() > OPEN_MAX:
+		push_warning("[GlassCrackMirror3D] %d applied openings, the pane shader cuts the last %d" % [recs.size(), OPEN_MAX])
+	var half: float = 1.0
+	var polys: Array = []
+	for rec: Dictionary in used:
+		var poly: PackedVector2Array = GlassOpening.polygon(String(rec["opening"]))
+		polys.append(poly)
+		for pt: Vector2 in poly:
+			half = maxf(half, maxf(absf(pt.x), absf(pt.y)))
+	half = ceilf(half + 0.25)
+	var n: int = int(half * 2.0) * OPEN_TEXELS_PER_VOXEL
+	var images: Array[Image] = []
+	var params := PackedVector4Array()
+	params.resize(OPEN_MAX)
+	for i: int in range(used.size()):
+		var rec: Dictionary = used[i]
+		var a: Vector3i = rec["anchor"]
+		params[i] = Vector4(float(a.x), float(a.y), float(a.z), 1.0 if bool(rec["run_is_x"]) else 0.0)
+		var img := Image.create(n, n, false, Image.FORMAT_R8)
+		var poly: PackedVector2Array = polys[i]
+		if not poly.is_empty():
+			for y: int in range(n):
+				for x: int in range(n):
+					var p := Vector2(-half + (float(x) + 0.5) / float(n) * 2.0 * half,
+						half - (float(y) + 0.5) / float(n) * 2.0 * half)
+					if Geometry2D.is_point_in_polygon(p, poly):
+						img.set_pixel(x, y, Color(1.0, 0.0, 0.0))
+		images.append(img)
+	var array := Texture2DArray.new()
+	if not images.is_empty():
+		var err: int = array.create_from_images(images)
+		if err != OK:
+			push_error("[GlassCrackMirror3D] opening masks: create_from_images failed (%s)" % error_string(err))
+			return
+	for m: ShaderMaterial in pane_materials:
+		m.set_shader_parameter("open_a", params)
+		m.set_shader_parameter("open_half", half)
+		m.set_shader_parameter("open_masks", array)
+		m.set_shader_parameter("open_count", images.size())
+		m.set_shader_parameter("mesh_ground_level", _ground_level)

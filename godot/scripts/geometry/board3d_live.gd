@@ -263,6 +263,9 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_crack_mirror.name = "GlassCracks"
 	_geometry_root.add_child(_crack_mirror)
 	_crack_mirror.call("setup", room._voxel_renderer, _ground_level)
+	for i: int in range(_shader_materials.size()):
+		if _material_glass[i] and _shader_materials[i].shader.resource_path.ends_with("glass_pane3d.gdshader"):
+			_crack_mirror.pane_materials.append(_shader_materials[i])
 	var quads: int = 0
 	var faces: int = 0
 	for chunk: Vector2i in (_store_chunks() if _store != null else _by_chunk.keys()):

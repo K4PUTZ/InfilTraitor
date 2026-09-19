@@ -5818,6 +5818,12 @@ func glass_crack_records() -> Array:
 	return _glass_cracks
 
 
+## R3D-6 — the polygons `refresh_glass_rims()` applied, {anchor, opening, run_is_x}. Read-only view
+## for the 3D board, which cuts the pane with them.
+func glass_applied_openings() -> Array:
+	return _glass_applied_openings
+
+
 func glass_crack_count() -> int:
 	var n: int = 0
 	for c in _glass_cracks:

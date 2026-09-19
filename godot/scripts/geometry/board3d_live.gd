@@ -554,6 +554,50 @@ func _occ_segment(points: PackedVector3Array, a: Vector3, b: Vector3, solid: boo
 		t += dash * 2.0
 
 
+const OCC_CAP_TOP: Color = Color(0.36, 0.33, 0.56)
+
+
+## A visible, non-glass voxel at (x, y, level) in the store.
+func _solid_non_glass(x: int, y: int, level: int) -> bool:
+	if _store == null or not _store.has_cell(x, y, level):
+		return false
+	var claim: int = _store.owner[_store.cell_index(x, y, level)]
+	return not _material_glass[_store_material[_store.mat[claim]]]
+
+
+## One filled side of the volume: the face of `column` toward `dir`, from level `lo` to `hi` inclusive, shaded
+## by which way it faces (the same contrast the ghost diamonds use).
+func _occ_side_quad(tris: PackedVector3Array, colors: PackedColorArray, column: Vector2i, dir: Vector2i,
+		lo: int, hi: int, unit: float, ground: float) -> void:
+	var y0: float = (float(lo) - ground) * unit
+	var y1: float = (float(hi + 1) - ground) * unit
+	var p0: Vector3
+	var p1: Vector3
+	var p2: Vector3
+	var p3: Vector3
+	if dir.x != 0:
+		var x: float = float(column.x + (1 if dir.x == 1 else 0)) * unit
+		var z0: float = float(column.y) * unit
+		var z1: float = float(column.y + 1) * unit
+		p0 = Vector3(x, y0, z0)
+		p1 = Vector3(x, y0, z1)
+		p2 = Vector3(x, y1, z1)
+		p3 = Vector3(x, y1, z0)
+	else:
+		var z: float = float(column.y + (1 if dir.y == 1 else 0)) * unit
+		var x0: float = float(column.x) * unit
+		var x1: float = float(column.x + 1) * unit
+		p0 = Vector3(x0, y0, z)
+		p1 = Vector3(x1, y0, z)
+		p2 = Vector3(x1, y1, z)
+		p3 = Vector3(x0, y1, z)
+	var tone: float = 0.85 if dir.x == 1 else (0.70 if dir.y == 1 else 0.55)
+	var colour := Color(OCC_CAP_TOP.r * tone, OCC_CAP_TOP.g * tone, OCC_CAP_TOP.b * tone)
+	tris.append_array([p0, p1, p2, p0, p2, p3])
+	for k: int in range(6):
+		colors.append(colour)
+
+
 func _rebuild_occlusion_lines(occ_set) -> void:
 	if _occ_lines != null and is_instance_valid(_occ_lines):
 		_occ_lines.queue_free()
@@ -572,6 +616,24 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 				Vector3(float(b.x), float(int(line["level_b"])) - ground, float(b.y)) * unit,
 				bool(line["solid"]))
 	var cap := PackedVector3Array()
+	var cap_colors := PackedColorArray()
+	## Which faces of the ghosted volume are painted: a side face is filled wherever the cell across it holds a
+	## SOLID, non-glass voxel (a wall that carries on behind it, a frame), per level, and left transparent
+	## where it holds glass or nothing. The mesher hid that neighbour's own face under the ghosted voxel.
+	for column: Vector2i in cells:
+		var entry: Dictionary = cells[column]
+		for dir: Vector2i in OCC_FACE_DIRS:
+			if not occ_set._is_exposed(cells, column, dir):
+				continue
+			var across: Vector2i = column + dir
+			var run_start: int = -1
+			for level: int in range(int(entry["min_level"]), int(entry["max_level"]) + 2):
+				var solid: bool = level <= int(entry["max_level"]) and _solid_non_glass(across.x, across.y, level)
+				if solid and run_start < 0:
+					run_start = level
+				elif not solid and run_start >= 0:
+					_occ_side_quad(cap, cap_colors, column, dir, run_start, level - 1, unit, ground)
+					run_start = -1
 	for column: Vector2i in cells:
 		var entry: Dictionary = cells[column]
 		## Only a WALL has a base to cap: its ghosting starts 2 levels above the storey's base. A roof slab
@@ -585,6 +647,8 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 		var z1: float = float(column.y + 1) * unit
 		cap.append_array([Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1),
 			Vector3(x0, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)])
+		for k: int in range(6):
+			cap_colors.append(OCC_CAP_TOP)
 		## The bottom rim of the volume, on the base's top, along each exposed side.
 		for dir: Vector2i in OCC_FACE_DIRS:
 			if not occ_set._is_exposed(cells, column, dir):
@@ -614,12 +678,13 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 		_cap_material = StandardMaterial3D.new()
 		_cap_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_cap_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_cap_material.albedo_color = Color(0.36, 0.33, 0.56)
+		_cap_material.vertex_color_use_as_albedo = true
 	var mesh := ArrayMesh.new()
 	if not cap.is_empty():
 		var cap_arrays: Array = []
 		cap_arrays.resize(Mesh.ARRAY_MAX)
 		cap_arrays[Mesh.ARRAY_VERTEX] = cap
+		cap_arrays[Mesh.ARRAY_COLOR] = cap_colors
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, cap_arrays)
 		mesh.surface_set_material(mesh.get_surface_count() - 1, _cap_material)
 	if not points.is_empty():

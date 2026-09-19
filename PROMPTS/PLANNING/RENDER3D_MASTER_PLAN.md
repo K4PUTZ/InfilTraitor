@@ -1925,6 +1925,11 @@ is behind the wall").
   quad on each wall column's base top, walls only: `min_level - ground` is 2 mod 8, a roof slab starts on a
   storey boundary); the white outline now also runs along the bottom of the volume; and every line that is not
   near-facing (the far edges and the junctions) is dashed, 1.5 voxels on and 1.5 off.
+- **Sides (Director, 2026-09-19):** a side face of the volume is filled where the cell across it holds a SOLID,
+  non-glass voxel (a wall that carries on behind, a frame), per level, and left transparent where it holds glass
+  or nothing — so a window slab is painted where it touches its frames and clear where it touches the pane.
+  Read from the store at each occlusion change (`_solid_non_glass`), shaded by facing (SE 0.85 / SW 0.70 / far 0.55).
+  Capture: `Screenshots/history/r3d7_cutaway_glass_map.png` (GLASS, agent at 16,15).
 - The 2D wireframe overlay is hidden while the 3D board is live. `INFILTRAITOR_CUTAWAY=0` = off.
 - Capture: `Screenshots/history/r3d7_cutaway_dither_spike.png` (agent behind a PLAYGROUND block: 260 columns
   occluded; in open ground 0). **Not verified:** guards behind walls; glass (not ghosted); roofs and

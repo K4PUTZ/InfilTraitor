@@ -1883,8 +1883,10 @@ captures, 2D against 3D.
      table: blast CRACKED = all three visible faces of a crack-capable material; bullet = the one lateral
      face; DENTED = the carved face, on the pit floor. Quads sit 0.02 voxel off the face, unmerged.
      `INFILTRAITOR_DECALS3D=0` = none. A/B on PLAYGROUND `detonate 0`: 8 666 px changed; marks visible in the
-     pits. **Not verified:** a bullet decal (no firearm scenario run), a crack decal on a wall (the captured
-     blast dented the floor), the 20/16 lateral stretch the 2D applies.
+     pits. Wall marks: with synthetic store damage (CRACKED blast, CRACKED bullet, DENTED) on one column of a
+     PLAYGROUND block, dark bullet/dent marks appear on its SW face (before/after crop). **Not verified:** the crack
+     art itself reads on a wall (only its layer choice was checked), a real firearm shot, and the 20/16
+     lateral stretch the 2D applies.
 4. **Dents:** a DENTED voxel's carved side becomes a real inset in the mesh.
    - **BUILT 2026-09-19 (`[R3D-6i]`), ratification pending.** `_emit_dent`: the carved face (LEFT = SW,
      RIGHT = SE, TOP = top; BOTTOM is never seen and stays flat; glass is exempt) leaves the greedy

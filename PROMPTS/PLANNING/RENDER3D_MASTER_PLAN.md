@@ -1920,6 +1920,11 @@ is behind the wall").
   below min (the base) are untouched. Decals inherit it.
 - **Lines:** `OcclusionSet.get_wireframe_by_level()` is already merged across walls and hidden-face culled, so
   its lattice lines become one line mesh (white, depth-tested); nothing is emitted per edge.
+- **Look approved by the Director (2026-09-19)**, with three completions built the same day: the base's TOP is
+  capped (the mesher hides those faces under the ghosted voxels, so the base read hollow — a flat periwinkle
+  quad on each wall column's base top, walls only: `min_level - ground` is 2 mod 8, a roof slab starts on a
+  storey boundary); the white outline now also runs along the bottom of the volume; and every line that is not
+  near-facing (the far edges and the junctions) is dashed, 1.5 voxels on and 1.5 off.
 - The 2D wireframe overlay is hidden while the 3D board is live. `INFILTRAITOR_CUTAWAY=0` = off.
 - Capture: `Screenshots/history/r3d7_cutaway_dither_spike.png` (agent behind a PLAYGROUND block: 260 columns
   occluded; in open ground 0). **Not verified:** guards behind walls; glass (not ghosted); roofs and

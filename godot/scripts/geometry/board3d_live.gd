@@ -523,40 +523,111 @@ func on_occlusion(occ_set) -> void:
 			continue
 		(_shader_materials[i] as ShaderMaterial).set_shader_parameter("occ_tex", _occ_texture)
 		(_shader_materials[i] as ShaderMaterial).set_shader_parameter("occ_on", 1 if not cells.is_empty() else 0)
-	_rebuild_occlusion_lines(occ_set.get_wireframe_by_level())
+	_rebuild_occlusion_lines(occ_set)
 	## The 2D wireframe panels are the same information drawn a second time, in the wrong place.
 	var overlay: Variant = _room.get("_occlusion_wireframe_overlay")
 	if overlay != null and is_instance_valid(overlay):
 		(overlay as CanvasItem).visible = false
 
 
-## The wireframe's lattice lines (`a`/`b` are voxel-grid corners, `level_a`/`level_b` their heights) as one
-## line mesh. The set already merged them across walls and dropped the hidden ones, so nothing is per edge.
-func _rebuild_occlusion_lines(by_level: Dictionary) -> void:
+## The occlusion volume's geometry, in one mesh with two surfaces: the wireframe as lines, and a cap on the
+## base. Lines: the set's own lattice lines (already merged across walls and hidden-face culled) plus the rim
+## the 2D wireframe never drew, along the bottom of the ghosted volume; a line that is not near-facing is
+## dashed (the far edges and the junctions). The cap: the top of the 2-voxel base, whose faces the mesher
+## hides under the ghosted voxels above, so without it the base reads hollow.
+const OCC_DASH_VOXELS: float = 1.5
+const OCC_FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+var _cap_material: StandardMaterial3D = null
+
+
+func _occ_segment(points: PackedVector3Array, a: Vector3, b: Vector3, solid: bool) -> void:
+	if solid:
+		points.append(a)
+		points.append(b)
+		return
+	var length: float = a.distance_to(b)
+	var dash: float = OCC_DASH_VOXELS / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var t: float = 0.0
+	while t < length:
+		points.append(a.lerp(b, t / length))
+		points.append(a.lerp(b, minf(t + dash, length) / length))
+		t += dash * 2.0
+
+
+func _rebuild_occlusion_lines(occ_set) -> void:
 	if _occ_lines != null and is_instance_valid(_occ_lines):
 		_occ_lines.queue_free()
 	_occ_lines = null
-	var points := PackedVector3Array()
+	var by_level: Dictionary = occ_set.get_wireframe_by_level()
+	var cells: Dictionary = occ_set.get_occluded_cells()
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var ground: float = float(_ground_level)
+	var points := PackedVector3Array()
 	for level: int in by_level:
 		for line: Dictionary in (by_level[level] as Dictionary)["lines"]:
 			var a: Vector2i = line["a"]
 			var b: Vector2i = line["b"]
-			points.append(Vector3(float(a.x), float(int(line["level_a"])) - ground, float(a.y)) * unit)
-			points.append(Vector3(float(b.x), float(int(line["level_b"])) - ground, float(b.y)) * unit)
-	if points.is_empty():
+			_occ_segment(points,
+				Vector3(float(a.x), float(int(line["level_a"])) - ground, float(a.y)) * unit,
+				Vector3(float(b.x), float(int(line["level_b"])) - ground, float(b.y)) * unit,
+				bool(line["solid"]))
+	var cap := PackedVector3Array()
+	for column: Vector2i in cells:
+		var entry: Dictionary = cells[column]
+		## Only a WALL has a base to cap: its ghosting starts 2 levels above the storey's base. A roof slab
+		## starts at a storey boundary itself and has nothing solid under it.
+		if posmod(int(entry["min_level"]) - _ground_level, 8) != 2:
+			continue
+		var y: float = (float(int(entry["min_level"])) - ground) * unit
+		var x0: float = float(column.x) * unit
+		var x1: float = float(column.x + 1) * unit
+		var z0: float = float(column.y) * unit
+		var z1: float = float(column.y + 1) * unit
+		cap.append_array([Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1),
+			Vector3(x0, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)])
+		## The bottom rim of the volume, on the base's top, along each exposed side.
+		for dir: Vector2i in OCC_FACE_DIRS:
+			if not occ_set._is_exposed(cells, column, dir):
+				continue
+			var p1: Vector2i
+			var p2: Vector2i
+			if dir.x == 1:
+				p1 = Vector2i(column.x + 1, column.y)
+				p2 = Vector2i(column.x + 1, column.y + 1)
+			elif dir.x == -1:
+				p1 = Vector2i(column.x, column.y)
+				p2 = Vector2i(column.x, column.y + 1)
+			elif dir.y == 1:
+				p1 = Vector2i(column.x, column.y + 1)
+				p2 = Vector2i(column.x + 1, column.y + 1)
+			else:
+				p1 = Vector2i(column.x, column.y)
+				p2 = Vector2i(column.x + 1, column.y)
+			_occ_segment(points, Vector3(float(p1.x) * unit, y, float(p1.y) * unit),
+				Vector3(float(p2.x) * unit, y, float(p2.y) * unit), dir.x == 1 or dir.y == 1)
+	if points.is_empty() and cap.is_empty():
 		return
 	if _line_material == null:
 		_line_material = StandardMaterial3D.new()
 		_line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_line_material.albedo_color = Color(1, 1, 1)
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = points
+		_cap_material = StandardMaterial3D.new()
+		_cap_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_cap_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_cap_material.albedo_color = Color(0.36, 0.33, 0.56)
 	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
-	mesh.surface_set_material(0, _line_material)
+	if not cap.is_empty():
+		var cap_arrays: Array = []
+		cap_arrays.resize(Mesh.ARRAY_MAX)
+		cap_arrays[Mesh.ARRAY_VERTEX] = cap
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, cap_arrays)
+		mesh.surface_set_material(mesh.get_surface_count() - 1, _cap_material)
+	if not points.is_empty():
+		var line_arrays: Array = []
+		line_arrays.resize(Mesh.ARRAY_MAX)
+		line_arrays[Mesh.ARRAY_VERTEX] = points
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, line_arrays)
+		mesh.surface_set_material(mesh.get_surface_count() - 1, _line_material)
 	_occ_lines = MeshInstance3D.new()
 	_occ_lines.name = "OcclusionLines"
 	_occ_lines.mesh = mesh

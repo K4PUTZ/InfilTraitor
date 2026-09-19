@@ -1904,6 +1904,17 @@ captures, 2D against 3D.
 
 ### R3D-7 — Occlusion and cutaway in 3D
 
+**SPIKE BUILT 2026-09-19 (`[R3D-7a]`) — candidate 1, the world-space dither. LOOK CALL PENDING (Director).**
+The opaque shader (and the decals, which derive from it) discards a fragment when it is nearer the
+camera than the agent's plane, above the agent's feet, and within a cylinder of radius 1.4 world units
+around the camera ray through the agent; a 4x4 Bayer threshold against a smoothstep falloff (solid core
+0.55 R) makes the dither. VIEW only: `Board3DLive._update_cutaway()` writes four shader uniforms and
+nothing else, so `OCCLUSION` O1 holds. `INFILTRAITOR_CUTAWAY=0` = off, `CUTAWAY_RADIUS` = size.
+Capture: `Screenshots/history/r3d7_cutaway_dither_spike.png` (agent behind a PLAYGROUND concrete block; in
+open ground nothing is cut, 8 px). **Known limits:** glass panes are not cut; the hole shows the wall's
+back faces; a fixed radius (no per-agent-height or per-storey rule yet); guards behind walls are not
+revealed (only the agent); the 2D wireframe overlay is still what draws under `RENDER3D=0`.
+
 - **`OCCLUSION` O1 holds:** occlusion is VIEW, not STATE, and it never writes the store.
 - **OCC-21's cell erase and OCC-27's wireframe are replaced by a 3D mechanism**, chosen
   from a spike and the Director's look call. The candidates:

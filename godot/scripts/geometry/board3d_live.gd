@@ -100,6 +100,27 @@ uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
 varying vec3 v_world;
 varying vec3 v_normal;
+// R3D-7 spike — the cutaway: what stands between the camera and the agent dithers away.
+uniform vec3 cut_pos = vec3(0.0);
+uniform vec3 cut_dir = vec3(0.0, 0.0, -1.0);
+uniform float cut_radius = 0.0;
+uniform float cut_floor = 0.1;
+bool cut_out(vec3 w, vec2 frag) {
+	if (cut_radius <= 0.0 || w.y < cut_pos.y + cut_floor) {
+		return false;
+	}
+	vec3 a = w - cut_pos;
+	float along = dot(a, cut_dir);
+	if (along > -0.02) {
+		return false;
+	}
+	float r = length(a - along * cut_dir);
+	float s = 1.0 - smoothstep(0.55 * cut_radius, cut_radius, r);
+	int bx = int(mod(frag.x, 4.0));
+	int by = int(mod(frag.y, 4.0));
+	float bayer[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+	return s > (bayer[by * 4 + bx] + 0.5) / 16.0;
+}
 vec3 srgb_to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
 }
@@ -108,6 +129,9 @@ void vertex() {
 	v_normal = NORMAL;
 }
 void fragment() {
+	if (cut_out(v_world, FRAGCOORD.xy)) {
+		discard;
+	}
 	// The voxel this pixel belongs to: half a voxel back along the face normal.
 	ivec3 v = ivec3(floor(v_world * 8.0 - v_normal * 0.01));
 	int level = v.y + mesh_ground_level;
@@ -437,6 +461,34 @@ func _process(_delta: float) -> void:
 	var target := Vector3(gu.x + 0.5, 0.0, gu.y + 0.5)
 	_camera.size = get_viewport().get_visible_rect().size.y / cam2d.zoom.y / _px_per_unit
 	_camera.position = target + _camera.basis.z * 200.0
+	_update_cutaway()
+
+
+## R3D-7 spike — the dither cutaway. `INFILTRAITOR_CUTAWAY=0` turns it off, `CUTAWAY_RADIUS` (world
+## units, default 1.4) sizes it. VIEW, never state: it writes shader uniforms and nothing else.
+static var CUTAWAY_ON: bool = OS.get_environment("INFILTRAITOR_CUTAWAY") != "0"
+var _cut_last: Array = []
+
+
+func _update_cutaway() -> void:
+	var agent: Node = _room.agent if "agent" in _room else null
+	var radius: float = 0.0
+	var feet := Vector3.ZERO
+	if CUTAWAY_ON and agent != null and is_instance_valid(agent) and agent.get("sprite") != null:
+		radius = float(OS.get_environment("INFILTRAITOR_CUTAWAY_RADIUS")) if OS.get_environment("INFILTRAITOR_CUTAWAY_RADIUS") != "" else 1.4
+		feet = ground_point((agent.sprite as Node2D).global_position)
+	var forward: Vector3 = -_camera.global_transform.basis.z
+	var state: Array = [radius, feet, forward]
+	if state == _cut_last:
+		return
+	_cut_last = state
+	for i: int in range(_shader_materials.size()):
+		if _material_glass[i]:
+			continue
+		var m: ShaderMaterial = _shader_materials[i]
+		m.set_shader_parameter("cut_radius", radius)
+		m.set_shader_parameter("cut_pos", feet)
+		m.set_shader_parameter("cut_dir", forward)
 
 
 # ── data ──────────────────────────────────────────────────────────────────────

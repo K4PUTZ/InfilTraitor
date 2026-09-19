@@ -8,6 +8,7 @@
 ## Updated whenever lighting rebuilds via set_shadow_cells().
 
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 @export var tile_size: Vector2 = Vector2(128, 64)
 @export var visual_offset: Vector2 = Vector2(0, 0)
@@ -125,7 +126,7 @@ func _draw_external_boundaries(cell: Vector2i, line_color: Color) -> void:
 			_c.draw_line(v1, v2, line_color, _line_width, true)
 
 func _diamond_points(cell: Vector2i) -> PackedVector2Array:
-	var top := _floor_layer.map_to_local(cell) + visual_offset
+	var top := GroundGridRef.map_to_local(cell) + visual_offset
 	return PackedVector2Array([
 		top,
 		top + Vector2(128.0, 64.0),
@@ -135,7 +136,7 @@ func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 
 func _diamond_points_inset(cell: Vector2i) -> PackedVector2Array:
 	## Shrink the diamond inward by _inset_distance to avoid overlapping movement perimeter
-	var center := _floor_layer.map_to_local(cell) + visual_offset + Vector2(0.0, 64.0)
+	var center := GroundGridRef.map_to_local(cell) + visual_offset + Vector2(0.0, 64.0)
 
 	## Scale factor: reduce diamond size by moving vertices toward center
 	var scale_factor := 1.0 - (_inset_distance / 128.0)  ## Normalize to tile half-width
@@ -148,5 +149,5 @@ func _diamond_points_inset(cell: Vector2i) -> PackedVector2Array:
 	return PackedVector2Array([top, right, bottom, left])
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
-	return _floor_layer.map_to_local(cell) + visual_offset
+	return GroundGridRef.map_to_local(cell) + visual_offset
 

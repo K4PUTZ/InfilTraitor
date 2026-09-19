@@ -3,6 +3,7 @@
 ## Handles tactical state updates, detection/alert accumulation, and camera control.
 
 class_name TurnController
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## Constants for detection thresholds (from former room.gd ID-01)
 const DETECTION_THRESHOLD_SUSPICIOUS: float = 0.25
@@ -344,7 +345,7 @@ func _focus_camera_for_enemy_phase(target_cell: Vector2i, duration: float = ENEM
 func _world_center_for_cell(cell: Vector2i) -> Vector2:
 	if floor_layer == null:
 		return Vector2.ZERO
-	return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 
 
 func _center_camera(cell: Vector2i) -> void:

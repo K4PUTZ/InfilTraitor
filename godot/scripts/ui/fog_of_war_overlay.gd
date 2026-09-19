@@ -1,5 +1,6 @@
 extends Node2D
 class_name FogOfWarOverlay
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Segment-scoped fog of war.
 ## All tiles start hidden; revealed progressively as the agent explores.
 ## Uses _draw() to paint isometric diamonds over every unrevealed cell.
@@ -173,7 +174,7 @@ func _draw_into() -> void:
 				v_colors.append(Color(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b,
 						(cell_a + nb_a) * 0.5))
 			var centre: Vector2 = (
-				_floor_layer.map_to_local(cell)
+				GroundGridRef.map_to_local(cell)
 				+ Vector2(0.0, TILE_HALF_H)
 				+ _visual_offset
 			)

@@ -14,6 +14,7 @@ extends Node2D
 ## directly, so the other 3 corners are a fixed offset away — no re-derivation
 ## of the isometric projection needed.
 class_name GuGridOverlay
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## Floor tile 256×128 → half-width 128, half-height 64 (Transform Canon).
 const COLOR_BLACK := Color(0.0, 0.0, 0.0, 0.35)
@@ -77,7 +78,7 @@ func _draw_into() -> void:
 
 
 func _draw_gu_outline(cell: Vector2i) -> void:
-	var top := _floor_layer.map_to_local(cell) + _visual_grid_offset
+	var top := GroundGridRef.map_to_local(cell) + _visual_grid_offset
 	var right := top + Vector2(128.0, 64.0)
 	var bottom := top + Vector2(0.0, 128.0)
 	var left := top + Vector2(-128.0, 64.0)

@@ -11,6 +11,7 @@
 ## - Dark Blue/Black: DEEP_SHADOW (hidden)
 
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## Preload ExposureSystem script to access visibility class constants (rename to avoid shadowing)
 const EXPOSURE_SYSTEM_CLASS = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
@@ -125,7 +126,7 @@ func _draw_label(cell: Vector2i, _vis_class: int) -> void:
 ## Convert grid cell to screen position (dimetric projection).
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	if floor_layer != null:
-		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
+		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 	var x = float(cell.x)
 	var y = float(cell.y)
 	var screen_x = (x - y) * tile_size.x * 0.5

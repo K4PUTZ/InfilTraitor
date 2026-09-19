@@ -1,5 +1,6 @@
 extends Node2D
 class_name ShrapnelPreviewOverlay
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## ShrapnelPreviewOverlay — the aiming preview's shrapnel rays.
 ##
@@ -220,7 +221,7 @@ func _hash01(cell: Vector2i, k: int) -> float:
 
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
-	return _floor_layer.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset
+	return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset
 
 
 func clear() -> void:

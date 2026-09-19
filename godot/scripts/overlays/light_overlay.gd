@@ -9,6 +9,7 @@
 ## Only visible in DEV_VISION mode.
 
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
@@ -112,7 +113,7 @@ func _draw_light_label(light, _world_pos: Vector2, _color: Color) -> void:
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	# Canonical projection (matches lamps & floor) when floor_layer is available
 	if floor_layer != null:
-		return floor_layer.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
+		return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
 	# Fallback: legacy manual isometric projection (half-scale; only if floor_layer unset)
 	var x = float(cell.x)
 	var y = float(cell.y)

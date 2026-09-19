@@ -4,6 +4,7 @@
 ## Purely visual — never feeds gameplay (ExposureSystem reads raw geometry).
 
 class_name WorldMarkersOverlayController
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## Shadow spill constants: reach, density, and color falloff parameters.
 const SHADOW_SPILL_RADIUS := 2
@@ -150,7 +151,7 @@ func draw_shadow_debug() -> void:
 		return
 	for shadow_cell in _shadow_tiles.keys():
 		var mult: float = _shadow_tiles[shadow_cell]
-		var world_pos: Vector2 = floor_layer.map_to_local(shadow_cell) + _visual_grid_offset
+		var world_pos: Vector2 = GroundGridRef.map_to_local(shadow_cell) + _visual_grid_offset
 		var hw := 128.0   ## 256 / 2
 		var hh := 64.0    ## 128 / 2
 		var diamond := PackedVector2Array([

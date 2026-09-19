@@ -1,5 +1,6 @@
 extends Node2D
 class_name CeilingPropOverlay
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## CeilingPropOverlay — overhead (5th-floor) ceiling layer.
 ##
@@ -33,7 +34,7 @@ func _draw() -> void:
 		return
 	for light in _lights:
 		var cell := Vector2i(int(light.get("x", 0)), int(light.get("y", 0)))
-		var pos: Vector2 = _floor_layer.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset
+		var pos: Vector2 = GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset
 		pos.y -= _ceiling_lift
 		_draw_lamp(pos, float(light.get("intensity", 1.0)), float(light.get("radius", 6)))
 

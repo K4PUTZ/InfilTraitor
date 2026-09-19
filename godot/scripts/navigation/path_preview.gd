@@ -1,5 +1,6 @@
 extends Node2D
 class_name PathPreview
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Visual preview of the currently hovered movement path.
 
 var floor_layer: TileMapLayer = null
@@ -76,7 +77,7 @@ func _draw_into(c: Object) -> void:
 
 
 func _diamond_points(cell: Vector2i) -> PackedVector2Array:
-	var top := floor_layer.map_to_local(cell) + visual_offset
+	var top := GroundGridRef.map_to_local(cell) + visual_offset
 	return PackedVector2Array([
 		top,
 		top + Vector2(128.0, 64.0),
@@ -86,4 +87,4 @@ func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 
 
 func _cell_to_center(cell: Vector2i) -> Vector2:
-	return floor_layer.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
+	return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset

@@ -11,6 +11,7 @@
 ## - Occlusion boundaries (red outline)
 
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 const ShadowResultClass = preload("res://godot/scripts/systems/lighting/shadow_result.gd")
 
@@ -87,7 +88,7 @@ func _draw_result(result) -> void:
 ## Convert grid cell to screen isometric position (canonical — matches lamps & floor)
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	if floor_layer != null:
-		return floor_layer.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
+		return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
 	# Fallback: legacy manual isometric projection (half-scale; only if floor_layer unset)
 	var x := float(cell.x)
 	var y := float(cell.y)

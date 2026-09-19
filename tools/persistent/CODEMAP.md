@@ -8,19 +8,19 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**271 scripts · 100192 lines total** (under `godot/scripts/`)
+**273 scripts · 100465 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, ground_canvas3d.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_integration_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -30,7 +30,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 497 lines
+`class_name DebugAgent` · extends `Node2D` · 498 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -41,6 +41,7 @@
 - `signal posture_changed(new_posture: Posture)`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `POSTURE_CHANGE_AP` = `1`
 - `POSTURE_DETECTION_MULT` = `{ Posture.STANDING:  1.00, Posture.CROUCHING: 0.55, Posture.PRONE:     0.20, }`
 - `POSTURE_MOVE_AP_COST` = `{ Posture.STANDING:  0, Posture.CROUCHING: 1,   ## each tile costs +1 extra AP Posture.PRONE:     99,  ## cannot move (99 = effective block) }`
@@ -183,7 +184,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1317 lines
+`class_name GuardEnemy` · extends `Node2D` · 1318 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -196,6 +197,7 @@
 - `signal radioed(origin_cell: Vector2i, last_known: Vector2i)`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TileOverlayClass` = `preload("res://godot/scripts/overlays/tile_overlay.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `STEP_DURATION_BASE` = `0.13`
@@ -482,11 +484,12 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_ruler_overlay.gd`
 
-`class_name VoxelRulerOverlay` · extends `Node2D` · 103 lines
+`class_name VoxelRulerOverlay` · extends `Node2D` · 104 lines
 
 `godot/scripts/debug/voxel_ruler_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `VOXEL_TILE_SIZE` = `Vector2i(32, 16)`
 - `FLOOR_TILE_SIZE` = `Vector2i(256, 128)`
 - `VOXELS_PER_AXIS` = `8`
@@ -526,7 +529,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1021 lines
+extends `Node3D` · 1050 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -542,6 +545,7 @@ extends `Node3D` · 1021 lines
 - `FALLBACK_TONE` = `[1.0, 0.975, 0.945]`
 - `OPAQUE_SHADER` = `"""`
 - `GLASS_SHADER` = `"""`
+- `INVALID_PICK` = `Vector2i(-9999, -9999)`
 
 **Public API**
 - `func build(room: Node, cell_to_world: Callable) -> void:`
@@ -549,6 +553,9 @@ extends `Node3D` · 1021 lines
 - `func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:`
 - `func ground_affine() -> Transform2D:`
 - `func ground_origin() -> Vector2:`
+- `func pick_ground(screen_pos: Vector2) -> Vector3:`
+- `func pick_cell(screen_pos: Vector2) -> Vector2i:`
+- `func cell_screen_center(cell: Vector2i) -> Vector2:`
 - `func camera_basis() -> Basis:`
 - `func px_per_unit() -> float:`
 
@@ -767,6 +774,20 @@ extends `Node3D` · 1021 lines
 - `SHADER_MIX` = `"res://godot/shaders/ground_overlay3d.gdshader"`
 - `SHADER_MUL` = `"res://godot/shaders/ground_overlay3d_mul.gdshader"`
 - `CIRCLE_SEGMENTS` = `48`
+
+---
+
+### `ground_grid.gd`
+
+`class_name GroundGrid` · extends `RefCounted` · 45 lines
+
+`godot/scripts/geometry/ground_grid.gd`
+
+> GroundGrid — the game's isometric cell lattice as closed-form maths, with no TileMapLayer in it. RENDER3D R3D-5a. Until now every "which cell is here" and "where is this cell" went through `floor_layer.map_to_local()` / `local_to_map()`: a floor TileMapLayer was being asked a question that has one answer, fixed by the TileSet's 256×128 diamond. That kept a 2D tilemap in the middle of INPUT and of every actor's placement, which is what R3D-5 exists to remove. This is the same lattice, measured rather than assumed (2026-09-18, `tileset_blocks.tres`, tile_shape ISOMETRIC, layout DIAMOND_DOWN): map_to_local(c) = ((c.x − c.y) · 128 + 128, (c.x + c.y) · 64 + 64) and `ground_grid_selftest` asserts it against a REAL TileMapLayer on the game's own TileSet, for a range of cells and for random points, so this can never quietly disagree with the tilemap it replaces. Coordinates here are FLOOR-LAYER-LOCAL, exactly as `map_to_local()` returns them; the caller applies the layer's transform and the room's `VISUAL_GRID_OFFSET`, as it always did.
+
+**Constants / tuning**
+- `HALF_W` = `128.0`
+- `HALF_H` = `64.0`
 
 ---
 
@@ -1107,11 +1128,12 @@ extends `Node3D` · 1021 lines
 
 ### `movement_overlay.gd`
 
-`class_name MovementOverlay` · extends `Node2D` · 300 lines
+`class_name MovementOverlay` · extends `Node2D` · 301 lines
 
 `godot/scripts/navigation/movement_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `BLUE_LINE` = `Color(0.25, 0.70, 1.0, 0.90)`
 - `ORANGE_LINE` = `Color(1.0, 0.60, 0.20, 0.95)`
@@ -1144,11 +1166,12 @@ extends `Node3D` · 1021 lines
 
 ### `path_preview.gd`
 
-`class_name PathPreview` · extends `Node2D` · 89 lines
+`class_name PathPreview` · extends `Node2D` · 90 lines
 
 `godot/scripts/navigation/path_preview.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `PREVIEW_LINE` = `Color(1.0, 0.79, 0.18, 0.95)`
 - `PREVIEW_FILL` = `Color(1.0, 0.76, 0.20, 0.22)`
@@ -1237,11 +1260,12 @@ extends `Node3D` · 1021 lines
 
 ### `blast_wireframe_overlay.gd`
 
-`class_name BlastWireframeOverlay` · extends `Node2D` · 121 lines
+`class_name BlastWireframeOverlay` · extends `Node2D` · 122 lines
 
 `godot/scripts/overlays/blast_wireframe_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `LINE_COLOR` = `Color(1.0, 0.15, 0.15, 0.9)`
 - `LINE_WIDTH` = `3.0`
 - `PERIMETER_INSET_DISTANCE` = `6.0`
@@ -1258,11 +1282,12 @@ extends `Node3D` · 1021 lines
 
 ### `ceiling_prop_overlay.gd`
 
-`class_name CeilingPropOverlay` · extends `Node2D` · 45 lines
+`class_name CeilingPropOverlay` · extends `Node2D` · 46 lines
 
 `godot/scripts/overlays/ceiling_prop_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **Public API**
@@ -1351,13 +1376,14 @@ extends `Node3D` · 1021 lines
 
 ### `elite_exposure_overlay.gd`
 
-extends `Node2D` · 233 lines
+extends `Node2D` · 234 lines
 
 `godot/scripts/overlays/elite_exposure_overlay.gd`
 
 > EliteExposureOverlay — Advanced Tactical Vision for Stealth Mastery Displays sophisticated shadow semantics: - Shadow depth (gradient 0-6) - Exposure confidence (reliability of darkness) - Structural vs temporal shadows - Risk contours and safe corridors - Temporal instability zones NOT visible in normal gameplay. Appears in: - DEV_VISION overlay - Spectator modes - Future elite HUD (equipment unlock) Purpose: Enable high-skill stealth mastery and tactical reading.
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `ExposureSystemClass` = `preload("res://godot/scripts/systems/lighting/exposure_system.gd")`
 
 **Public vars**
@@ -1417,13 +1443,14 @@ extends `Node2D` · 233 lines
 
 ### `exposure_overlay.gd`
 
-extends `Node2D` · 143 lines
+extends `Node2D` · 144 lines
 
 `godot/scripts/overlays/exposure_overlay.gd`
 
 > ExposureOverlay — Tactical Visibility Classification Visualization Displays the semantic stealth visibility of each tile as computed by ExposureSystem. This overlay shows tactical exposure, NOT visual brightness. Colors represent stealth risk: - Yellow: FULL_LIT (high risk) - Orange: DIM (moderate risk) - Blue: PENUMBRA (low risk) - Purple: SHADOW (minimal risk) - Dark Blue/Black: DEEP_SHADOW (hidden)
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `EXPOSURE_SYSTEM_CLASS` = `preload("res://godot/scripts/systems/lighting/exposure_system.gd")`
 
 **Public vars**
@@ -1554,11 +1581,12 @@ extends `Node2D` · 143 lines
 
 ### `gu_grid_overlay.gd`
 
-`class_name GuGridOverlay` · extends `Node2D` · 88 lines
+`class_name GuGridOverlay` · extends `Node2D` · 89 lines
 
 `godot/scripts/overlays/gu_grid_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `COLOR_BLACK` = `Color(0.0, 0.0, 0.0, 0.35)`
 - `LINE_WIDTH` = `1.5`
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
@@ -1592,13 +1620,14 @@ extends `Node2D` · 83 lines
 
 ### `height_overlay.gd`
 
-extends `Node2D` · 258 lines
+extends `Node2D` · 259 lines
 
 `godot/scripts/overlays/height_overlay.gd`
 
 > HeightOverlay — DEV visualization of height classes and structural semantics Displays: - Height classes (FLOOR, LOW_COVER, HUMAN, TALL, OVERHEAD) - Structural categories - Occluders and light blockers - Light anchor sockets - Subfloor hazards Color coding makes semantic information immediately readable. Shows the "worldbuilding reality" independent of sprite appearance.
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 - `LightAnchorClass` = `preload("res://godot/scripts/systems/lighting/light_anchor.gd")`
 
@@ -1625,13 +1654,14 @@ extends `Node2D` · 258 lines
 
 ### `light_overlay.gd`
 
-extends `Node2D` · 121 lines
+extends `Node2D` · 122 lines
 
 `godot/scripts/overlays/light_overlay.gd`
 
 > LightOverlay — Visual debug overlay for light sources Shows: - Light position and radius - Light type and height class - Direction vectors (for cone/directional types) - Active/inactive state Only visible in DEV_VISION mode.
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 - `LightRegistryClass` = `preload("res://godot/scripts/systems/lighting/light_registry.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
@@ -1650,11 +1680,12 @@ extends `Node2D` · 121 lines
 
 ### `light_ray_overlay.gd`
 
-extends `Node2D` · 101 lines
+extends `Node2D` · 102 lines
 
 `godot/scripts/overlays/light_ray_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **@export**
@@ -1675,11 +1706,12 @@ extends `Node2D` · 101 lines
 
 ### `noise_overlay.gd`
 
-extends `Node2D` · 90 lines
+extends `Node2D` · 91 lines
 
 `godot/scripts/overlays/noise_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public API**
@@ -1757,13 +1789,14 @@ extends `Node2D` · 160 lines
 
 ### `shadow_boundary_overlay.gd`
 
-extends `Node2D` · 152 lines
+extends `Node2D` · 153 lines
 
 `godot/scripts/overlays/shadow_boundary_overlay.gd`
 
 > ShadowBoundaryOverlay — Always-visible shadow region visualization Renders two passes on shadow cells: 1. Semi-transparent fill (vignette effect) inside shadow tiles 2. Dark lines on boundaries where shadow meets non-shadow Uses pure drawing (no blend mode) so lines are not overridden by multiply blend. Updated whenever lighting rebuilds via set_shadow_cells().
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **@export**
@@ -1780,13 +1813,14 @@ extends `Node2D` · 152 lines
 
 ### `shadow_overlay.gd`
 
-extends `Node2D` · 94 lines
+extends `Node2D` · 95 lines
 
 `godot/scripts/overlays/shadow_overlay.gd`
 
 > ShadowOverlay — Debug visualization of shadow projection Shows computed shadow topology from ShadowProjector. Only visible in DEV_VISION mode. Display includes: - Directly lit tiles (bright green) - Penumbra/dim zone (yellow) - Shadow tiles (dark blue) - Deep shadow tiles (very dark) - Occlusion boundaries (red outline)
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `ShadowResultClass` = `preload("res://godot/scripts/systems/lighting/shadow_result.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
@@ -1857,11 +1891,12 @@ extends `Node2D` · 94 lines
 
 ### `shrapnel_preview_overlay.gd`
 
-`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 233 lines
+`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 234 lines
 
 `godot/scripts/overlays/shrapnel_preview_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **Public vars**
@@ -1915,13 +1950,14 @@ extends `Node2D` · 94 lines
 
 ### `temporal_overlay.gd`
 
-extends `Node2D` · 262 lines
+extends `Node2D` · 263 lines
 
 `godot/scripts/overlays/temporal_overlay.gd`
 
 > TemporalOverlay — DEV Visualization of Temporal Lighting Effects Displays: - Light positions and temporal states (ON/OFF/FLICKER/PULSE) - Energy levels and multipliers - Rotation directions for spotlights - Frequency information (flicker intervals, pulse speeds) Updated every frame to show real-time temporal animation. Purpose: Validate stealth temporal behavior, debug timing, ensure auditability.
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
@@ -1988,11 +2024,12 @@ extends `Node2D` · 262 lines
 
 ### `tile_overlay.gd`
 
-extends `Node2D` · 244 lines
+extends `Node2D` · 245 lines
 
 `godot/scripts/overlays/tile_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_HALF_W` = `128.0`
 - `TILE_HALF_H` = `64.0`
 - `PRIO_SHADOW` = `1`
@@ -2019,11 +2056,14 @@ extends `Node2D` · 244 lines
 
 ### `tile_risk_overlay.gd`
 
-extends `Node2D` · 110 lines
+extends `Node2D` · 111 lines
 
 `godot/scripts/overlays/tile_risk_overlay.gd`
 
 > TileRiskOverlay — Tactical Threat Heatmap Visualization Displays per-tile risk/threat assessment based on tactical exposure. Shows detection probability heatmap (red = danger, blue = safe). Color gradient: Blue (safe) → Green → Yellow → Orange → Red (danger)
+
+**Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 
 **Public vars**
 - `var exposure_system`
@@ -2052,9 +2092,12 @@ extends `Node2D` · 110 lines
 
 ### `trail_overlay.gd`
 
-extends `Node2D` · 43 lines
+extends `Node2D` · 44 lines
 
 `godot/scripts/overlays/trail_overlay.gd`
+
+**Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 
 **Public API**
 - `func setup(room_ref: Node2D, floor_layer: TileMapLayer, visual_offset: Vector2) -> void:`
@@ -4525,6 +4568,30 @@ extends `SceneTree` · 205 lines
 
 ---
 
+### `ground_grid_selftest.gd`
+
+extends `SceneTree` · 108 lines
+
+`godot/scripts/tools/ground_grid_selftest.gd`
+
+> GroundGrid selftest — RENDER3D R3D-5a. Run: python3 tools/persistent/run_selftests.py --only ground_grid_selftest The claim: `GroundGrid` IS the lattice the floor TileMapLayer gives, so replacing the layer's `map_to_local()` with it in input and in every actor's placement changes nothing. Asserted against a real TileMapLayer on the game's own TileSet — not against the formula's own output — for a range of cells (negative ones included) and for random points, including the exact algorithm `Room` uses to pick a tile under a click (`_screen_to_tile`).
+
+**Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
+- `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
+- `OFFSET` = `Vector2(-37.0, 21.0)`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+**Public API**
+- `func test_map_to_local_matches_the_tilemap() -> void:`
+- `func test_cell_containing_matches_the_room_pick() -> void:`
+- `func test_cell_center_round_trips() -> void:`
+
+---
+
 ### `half_thickness_selftest.gd`
 
 extends `SceneTree` · 310 lines
@@ -5490,11 +5557,12 @@ extends `SceneTree` · 306 lines
 
 ### `fog_of_war_overlay.gd`
 
-`class_name FogOfWarOverlay` · extends `Node2D` · 186 lines
+`class_name FogOfWarOverlay` · extends `Node2D` · 187 lines
 
 `godot/scripts/ui/fog_of_war_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_HALF_W` = `128.0`
 - `TILE_HALF_H` = `64.0`
 - `FOG_COLOR` = `Color(0.04, 0.04, 0.09, 0.93)`
@@ -5570,11 +5638,12 @@ extends `SceneTree` · 306 lines
 
 ### `selection_overlay.gd`
 
-extends `Node2D` · 62 lines
+extends `Node2D` · 63 lines
 
 `godot/scripts/ui/selection_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `COLOR_PINK` = `Color(0.90, 0.10, 0.45, 1.0)`
 - `LINE_W` = `4.0`
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
@@ -5606,11 +5675,12 @@ extends `Node2D` · 62 lines
 
 ### `tile_labels_overlay.gd`
 
-extends `Node2D` · 34 lines
+extends `Node2D` · 35 lines
 
 `godot/scripts/ui/tile_labels_overlay.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `FONT_SIZE` = `40`
 - `COLOR_LABEL` = `Color(0.0, 0.0, 0.0, 1.0)`
 - `COLOR_SHADOW` = `Color(1.0, 1.0, 1.0, 0.60)`
@@ -5821,13 +5891,14 @@ extends `Node2D` · 34 lines
 
 ### `turn_controller.gd`
 
-`class_name TurnController` · 387 lines
+`class_name TurnController` · 388 lines
 
 `godot/scripts/world/controllers/turn_controller.gd`
 
 > TurnController Orchestrates turn phases, enemy AI execution, and alert meter management. Handles tactical state updates, detection/alert accumulation, and camera control.
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `DETECTION_THRESHOLD_SUSPICIOUS` = `0.25`
 - `DETECTION_THRESHOLD_ALERT` = `0.50`
 - `DETECTION_THRESHOLD_CHASE` = `0.75`
@@ -5891,13 +5962,14 @@ extends `Node2D` · 34 lines
 
 ### `world_markers_overlay_controller.gd`
 
-`class_name WorldMarkersOverlayController` · 165 lines
+`class_name WorldMarkersOverlayController` · 166 lines
 
 `godot/scripts/world/controllers/world_markers_overlay_controller.gd`
 
 > WorldMarkersOverlayController Manages shadow spill cosmetics and marker overlays (shadow boundary, light rays). Shadow spill is a cosmetic halo that bleeds from full-shadow tiles onto neighbours. Purely visual — never feeds gameplay (ExposureSystem reads raw geometry).
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `SHADOW_SPILL_RADIUS` = `2`
 - `SHADOW_SPILL_MAX_RADIUS` = `4`
 - `SHADOW_SPILL_DENSITY_STEP` = `2`
@@ -6063,11 +6135,12 @@ extends `Node2D` · 34 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12317 lines
+extends `Node2D` · 12382 lines
 
 `godot/scripts/world/room.gd`
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `GlassShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
 - `ShardField` = `preload("res://godot/scripts/overlays/shard_field.gd")`

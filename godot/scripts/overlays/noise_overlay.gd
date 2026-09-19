@@ -1,4 +1,5 @@
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Shows persistent noise on the grid as sound waves.
 ## Always visible (not only in DEV_VISION) — it is gameplay information.
 
@@ -87,4 +88,4 @@ func _draw_into() -> void:
 func _cell_to_world(cell: Vector2i) -> Vector2:
 	if _floor_layer == null:
 		return Vector2.ZERO
-	return _floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + _visual_offset
+	return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + _visual_offset

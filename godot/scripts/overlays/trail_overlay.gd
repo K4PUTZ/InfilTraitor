@@ -1,4 +1,5 @@
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Trail overlay for DEV_VISION — displays yellow diamond trail of last 5 tiles walked.
 
 var _room_ref: Node2D = null
@@ -40,4 +41,4 @@ func _draw() -> void:
 
 
 func _world_center_for_cell(cell: Vector2i) -> Vector2:
-	return _floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + _visual_offset
+	return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + _visual_offset

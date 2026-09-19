@@ -11,6 +11,7 @@
 ## Shows the "worldbuilding reality" independent of sprite appearance.
 
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const LightAnchorClass = preload("res://godot/scripts/systems/lighting/light_anchor.gd")
@@ -239,7 +240,7 @@ func _draw_direction_arrow(center: Vector2, direction: Vector2i, color: Color) -
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	if floor_layer != null:
-		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
+		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 	var x = float(cell.x)
 	var y = float(cell.y)
 	var screen_x = (x - y) * tile_size.x * 0.5

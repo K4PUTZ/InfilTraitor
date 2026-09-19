@@ -15,6 +15,7 @@
 ## Purpose: Enable high-skill stealth mastery and tactical reading.
 
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 const ExposureSystemClass = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
 
@@ -190,7 +191,7 @@ func toggle_mode(mode: String) -> void:
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	if floor_layer != null:
-		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
+		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 	# Isometric projection: (x-y)*256/2, (x+y)*128/2
 	var x: float = float(cell.x)
 	var y: float = float(cell.y)

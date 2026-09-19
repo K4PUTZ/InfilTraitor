@@ -1,4 +1,5 @@
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Draws (x,y) coordinate labels at the visual centre of every tile.
 ## Visibility is toggled by the HUD button via node.visible.
 
@@ -22,7 +23,7 @@ func _draw() -> void:
 		for y in range(room_h):
 			var cell := Vector2i(x, y)
 			## map_to_local → TOP vertex; +Vector2(0,64) → visual centre.
-			var center := floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
+			var center := GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 			var label := "%d,%d" % [x, y]
 			var sw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 			var origin := center + Vector2(-sw * 0.5, FONT_SIZE * 0.35)

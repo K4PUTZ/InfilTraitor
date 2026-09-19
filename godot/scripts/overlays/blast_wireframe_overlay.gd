@@ -19,6 +19,7 @@ extends Node2D
 ## middle of each cell instead of closing cleanly. See gu_grid_overlay.gd's
 ## own header for the same warning.
 class_name BlastWireframeOverlay
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 const LINE_COLOR := Color(1.0, 0.15, 0.15, 0.9)
 const LINE_WIDTH := 3.0
@@ -101,7 +102,7 @@ func _draw() -> void:
 ## from MovementOverlay._diamond_points() for the same reason the inset version
 ## below was: that one is already proven correct in this codebase.
 func _diamond_points(cell: Vector2i) -> PackedVector2Array:
-	var top := _floor_layer.map_to_local(cell) + _visual_grid_offset
+	var top := GroundGridRef.map_to_local(cell) + _visual_grid_offset
 	return PackedVector2Array([
 		top,
 		top + Vector2(128.0, 64.0),
@@ -111,7 +112,7 @@ func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 
 
 func _diamond_points_inset(cell: Vector2i) -> PackedVector2Array:
-	var center := _floor_layer.map_to_local(cell) + _visual_grid_offset + Vector2(0.0, 64.0)
+	var center := GroundGridRef.map_to_local(cell) + _visual_grid_offset + Vector2(0.0, 64.0)
 	var scale_factor := 1.0 - (PERIMETER_INSET_DISTANCE / 128.0)
 	return PackedVector2Array([
 		center + Vector2(0.0, -64.0) * scale_factor,

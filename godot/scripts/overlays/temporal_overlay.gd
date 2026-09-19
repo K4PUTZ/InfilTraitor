@@ -11,6 +11,7 @@
 ## Purpose: Validate stealth temporal behavior, debug timing, ensure auditability.
 
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 
@@ -217,7 +218,7 @@ func _cell_to_screen(cell: Vector2i) -> Vector2:
 	# Canonical projection (matches lamps & floor); raise by fixture_lift so the
 	# knob reads just above the lifted lamp glyph.
 	if floor_layer != null:
-		return floor_layer.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset - Vector2(0.0, fixture_lift)
+		return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset - Vector2(0.0, fixture_lift)
 	# Fallback: legacy manual isometric projection (only if floor_layer unset)
 	var x: float = float(cell.x)
 	var y: float = float(cell.y)

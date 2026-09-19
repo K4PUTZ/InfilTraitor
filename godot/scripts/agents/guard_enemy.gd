@@ -1,5 +1,6 @@
 extends Node2D
 class_name GuardEnemy
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 ## Patrol guard placeholder: draw-based enemy with directional vision checks.
 
@@ -540,7 +541,7 @@ func _step_next() -> void:
 func _cell_to_world(map_cell: Vector2i) -> Vector2:
 	if floor_layer == null:
 		return Vector2.ZERO
-	return floor_layer.map_to_local(map_cell) + TILE_CENTER_OFFSET + visual_offset
+	return GroundGridRef.map_to_local(map_cell) + TILE_CENTER_OFFSET + visual_offset
 
 
 func _set_facing_from_route() -> void:

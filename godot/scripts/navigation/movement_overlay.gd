@@ -1,5 +1,6 @@
 extends Node2D
 class_name MovementOverlay
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Reachable movement bands for the current player turn.
 ## Computes a simple Dijkstra flood over 4-directional walkable cells.
 
@@ -248,7 +249,7 @@ func _should_draw_edge(cell: Vector2i, step: Vector2i) -> bool:
 
 
 func _diamond_points(cell: Vector2i) -> PackedVector2Array:
-	var top := floor_layer.map_to_local(cell) + visual_offset
+	var top := GroundGridRef.map_to_local(cell) + visual_offset
 	return PackedVector2Array([
 		top,
 		top + Vector2(128.0, 64.0),
@@ -259,7 +260,7 @@ func _diamond_points(cell: Vector2i) -> PackedVector2Array:
 
 func _diamond_points_inset(cell: Vector2i) -> PackedVector2Array:
 	## Shrink diamond inward to avoid overlapping with shadow boundary lines
-	var center := floor_layer.map_to_local(cell) + visual_offset + TILE_CENTER_OFFSET
+	var center := GroundGridRef.map_to_local(cell) + visual_offset + TILE_CENTER_OFFSET
 
 	## Scale factor: reduce diamond size by moving vertices toward center
 	var scale_factor := 1.0 - (PERIMETER_INSET_DISTANCE / 128.0)  ## Normalize to tile half-width

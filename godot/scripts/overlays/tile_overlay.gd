@@ -1,4 +1,5 @@
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## TileOverlay — unified tile painting system using multiply blend.
 ##
 ## Used by: shadows, detection cone, exits/entrances, objectives, light (DEV).
@@ -173,7 +174,7 @@ static func detect_color_for(probability: float) -> Color:
 ## ─── Drawing ───────────────────────────────────────────────────────────────
 
 func _tile_center(cell: Vector2i) -> Vector2:
-	return _floor_layer.map_to_local(cell) + Vector2(0.0, TILE_HALF_H) + _visual_offset
+	return GroundGridRef.map_to_local(cell) + Vector2(0.0, TILE_HALF_H) + _visual_offset
 
 
 func _tile_diamond(world: Vector2) -> PackedVector2Array:

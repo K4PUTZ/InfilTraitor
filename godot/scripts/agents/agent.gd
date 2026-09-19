@@ -1,5 +1,6 @@
 extends Node2D
 class_name DebugAgent
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## The playable agent: owns its grid cell, converts cell → world position, and
 ## animates step-by-step.
 ##
@@ -441,7 +442,7 @@ func _step_next() -> void:
 func _cell_to_world(map_cell: Vector2i) -> Vector2:
 	if floor_layer == null:
 		return Vector2.ZERO
-	return floor_layer.map_to_local(map_cell) + TILE_CENTER_OFFSET + visual_offset
+	return GroundGridRef.map_to_local(map_cell) + TILE_CENTER_OFFSET + visual_offset
 
 
 ## PART 2 §10: the three posture diamonds and the head circle that used to be

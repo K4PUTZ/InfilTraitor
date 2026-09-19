@@ -5,6 +5,7 @@ extends Node2D
 ## Toggled F3, z_index above walls for visibility.
 
 class_name VoxelRulerOverlay
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## Voxel tile dimensions (from Transform Canon)
 const VOXEL_TILE_SIZE := Vector2i(32, 16)
@@ -58,7 +59,7 @@ func _draw_gu_voxel_grid(gu_x: int, gu_y: int) -> void:
 	var gu_cell := Vector2i(gu_x, gu_y)
 
 	## Get the canonical GU center in world space
-	var floor_origin := _floor_layer.map_to_local(gu_cell)
+	var floor_origin := GroundGridRef.map_to_local(gu_cell)
 	var floor_half := Vector2(FLOOR_TILE_SIZE) / 2.0
 
 	## Canonical GU NW corner (top of diamond) in world space

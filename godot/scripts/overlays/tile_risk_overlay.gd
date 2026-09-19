@@ -6,6 +6,7 @@
 ## Color gradient: Blue (safe) → Green → Yellow → Orange → Red (danger)
 
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## References
 var exposure_system
@@ -93,7 +94,7 @@ func _get_risk_color(risk: float) -> Color:
 ## Convert grid cell to screen position (isometric projection).
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	if floor_layer != null:
-		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
+		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 	var x = float(cell.x)
 	var y = float(cell.y)
 	var screen_x = (x - y) * tile_size.x * 0.5

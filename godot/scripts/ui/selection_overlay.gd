@@ -1,4 +1,5 @@
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Draws a pink diamond outline on the currently selected tile.
 ## Lives in world space as a sibling of FloorLayer — no camera or UI involved.
 
@@ -51,7 +52,7 @@ func _draw_into(c: Object) -> void:
 
 	## map_to_local returns the TOP vertex of the DIAMOND_DOWN diamond.
 	## Tile size 256×128 → half-width = 128, half-height = 64.
-	var top := floor_layer.map_to_local(_cell) + visual_offset
+	var top := GroundGridRef.map_to_local(_cell) + visual_offset
 	var right := top + Vector2(128.0, 64.0)
 	var bottom := top + Vector2(0.0, 128.0)
 	var left := top + Vector2(-128.0, 64.0)

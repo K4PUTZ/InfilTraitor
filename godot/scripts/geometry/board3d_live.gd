@@ -306,6 +306,35 @@ func ground_origin() -> Vector2:
 	return _origin_2d
 
 
+## RENDER3D R3D-5a — PICKING. The cell under a screen position, by a camera ray against the ground plane.
+## The world's ground unit IS the room's cell (`ground_point()` puts cell (i, j) at (i + 0.5, j + 0.5)), so
+## the cell is `(floor(x), floor(z))` of where the ray meets y = 0: no lattice, no tilemap, and no 2D canvas
+## transform in the picking path. `screen_pos` is in viewport coordinates, as an input event carries it.
+## Returns `INVALID` (-9999, -9999) when the ray does not reach the plane (a camera looking away from it).
+const INVALID_PICK := Vector2i(-9999, -9999)
+
+
+func pick_ground(screen_pos: Vector2) -> Vector3:
+	var origin: Vector3 = _camera.project_ray_origin(screen_pos)
+	var dir: Vector3 = _camera.project_ray_normal(screen_pos)
+	if absf(dir.y) < 1e-6:
+		return Vector3(INF, INF, INF)
+	var t: float = -origin.y / dir.y
+	return origin + dir * t
+
+
+func pick_cell(screen_pos: Vector2) -> Vector2i:
+	var hit: Vector3 = pick_ground(screen_pos)
+	if not is_finite(hit.x):
+		return INVALID_PICK
+	return Vector2i(floori(hit.x), floori(hit.z))
+
+
+## The inverse of `pick_cell()`: where cell `cell`'s centre is on screen, in viewport coordinates.
+func cell_screen_center(cell: Vector2i) -> Vector2:
+	return _camera.unproject_position(Vector3(float(cell.x) + 0.5, 0.0, float(cell.y) + 0.5))
+
+
 func camera_basis() -> Basis:
 	return _camera.global_transform.basis
 

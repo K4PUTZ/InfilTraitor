@@ -1743,6 +1743,33 @@ another stage):
 tile_game 3, shadow boundary 4, movement 5, path 6, selection 7, throw perimeter 8, noise 9; each at its own
 `lift` above the floor (0.004 … 0.022 units).
 
+**R3D-5a — STATUS 2026-09-18: BUILT for picking and for the cell lattice; `floor_layer` is NOT retired.**
+- **Picking by camera ray.** `Board3DLive.pick_cell(screen)` intersects the camera ray with the ground
+  plane and takes `(floor(x), floor(z))` — the world's ground unit is the room's cell, so there is no
+  lattice, no tilemap and no 2D canvas transform in the path. `Room._screen_to_tile()` and
+  `_tile_to_screen_center()` use it under a 3D board; `PICK3D=0` keeps the 2D pick, and the 2D
+  functions stay as the reference. **Differential check in the real game (`PICK_CHECK=1`): 35 840 screen
+  points over 16 framings (4 zooms × 4 camera centres), pick AND its inverse, 0 disagreements.**
+- **`GroundGrid` — the lattice without a TileMapLayer.** `map_to_local(c) = (128·(x−y)+128, 64·(x+y)+64)`,
+  measured on `tileset_blocks.tres`. `ground_grid_selftest` asserts it against a REAL `TileMapLayer`:
+  0 of 12 100 cells differ, and 0 of 20 000 random points pick a different cell than the room's own
+  algorithm. **41 `floor_layer.map_to_local()` calls in 27 files** (actors, overlays, controllers, the
+  room) now use it. Capture before/after (git stash): 37 px differ against a same-code control noise of
+  2 100 px (flickering lights, top-right); **0 px differ outside that noise region**, so nothing moved.
+- **What still reads `floor_layer` in production — all TILE DATA, none geometry:**
+  `get_cell_source_id` / the TileSet's `walkable` custom data (`room`, `selection_controller`,
+  `movement_overlay`, `view_context`), `get_used_cells`/`get_used_rect` (`room`, `view_context`),
+  `to_local`/`to_global` (`room`, `view_context`), `local_to_map` (the 2D reference pick and
+  `view_context`), and `set_cell` (`room_builder`, which builds the floor). Retiring the NODE means moving
+  walkability and the floor's cell set into grid data; that belongs with R3D-8's deletion of the 2D
+  board, not here.
+- **Not built, on purpose:** picking a WALL by ray against the store. Nothing consumes it, and it raises a
+  design question (should a click on a wall face select the wall's cell, or the floor cell behind it, as
+  today?) that is the Director's. Today's behaviour is kept exactly.
+- **NOT RUN:** the same `PICK_CHECK` on the Moto (no device connected at the time), and touch, pinch and
+  pan through the TEL scenarios. Pan and pinch move the 2D camera the 3D camera follows; they do not go
+  through the pick.
+
 **Known, not built:** the 2D aliasing of a 1–2 px line differs slightly (the 2D lines were antialiased,
 the ground quads are not); the aim dome and the throw arc still draw over actors, by decision.
 

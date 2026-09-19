@@ -1,4 +1,5 @@
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
 ## LightRayOverlay — Golden light shafts from each lamp to the vertices of its lit tiles.
 ##
@@ -98,4 +99,4 @@ func _draw_ray(from: Vector2, to: Vector2, alpha: float) -> void:
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	if floor_layer == null:
 		return Vector2.ZERO
-	return floor_layer.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
+	return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset

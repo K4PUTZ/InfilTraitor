@@ -1,4 +1,5 @@
 extends Node2D
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Tactical room controller: input, UI wiring, agent turns and scene setup.
 
 const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.gd")
@@ -2794,7 +2795,7 @@ func _update_perspective_button_state() -> void:
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
-	var centre_world := floor_layer.map_to_local(focus_cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	var centre_world := GroundGridRef.map_to_local(focus_cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 	camera.global_position = centre_world
 
 
@@ -3037,10 +3038,12 @@ func _start_board3d_live() -> void:
 	live.name = "Board3DLive"
 	add_child(live)
 	live.build(self, func(cell: Vector2i) -> Vector2:
-		return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
+		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	_attach_actor_billboards(live)
 	_attach_vfx_to_board(live)
 	_attach_ground_overlays(live)
+	if _dev_flag("PICK_CHECK", "0") == "1":
+		_pick_check.call_deferred()
 	## R3D-4d — props are created by the test-zone controller at any time, so they are caught as they
 	## enter the tree; the ones that already exist are caught here.
 	if not get_tree().node_added.is_connected(_on_tree_node_added):
@@ -3049,6 +3052,47 @@ func _start_board3d_live() -> void:
 		_on_tree_node_added(existing_prop)
 	if _dev_flag("SEED_GRENADES", "0") == "1":
 		_seed_dev_grenades_if_empty.call_deferred("R3D-4d")
+
+
+## RENDER3D R3D-5a — DIFFERENTIAL PICK CHECK (`PICK_CHECK=1`). Over a grid of screen points the 3D ray pick
+## and the 2D lattice pick must name the same cell. Points whose 2D pick is INVALID (outside the lattice's
+## reach) are counted apart. Prints one summary line and a few disagreements.
+func _pick_check() -> void:
+	for _f in range(30):
+		await get_tree().process_frame
+	var live: Node = board3d()
+	if live == null or _camera_controller == null:
+		return
+	var size: Vector2 = get_viewport().get_visible_rect().size
+	var grand_total: int = 0
+	var grand_bad: int = 0
+	## Several zooms and several centres: a disagreement of transforms shows up off the default framing.
+	for zoom in [1.0, 0.5, 0.3, 2.0]:
+		for focus in [Vector2i(27, 9), Vector2i(8, 4), Vector2i(35, 15), Vector2i(2, 20)]:
+			_camera_controller.set_zoom_for_capture(zoom)
+			_camera_controller.focus_on(agent._cell_to_world(focus))
+			for _f in range(6):
+				await get_tree().process_frame
+			var total: int = 0
+			var bad: int = 0
+			for ix in range(8, int(size.x), 12):
+				for iy in range(8, int(size.y), 12):
+					var p := Vector2(ix, iy)
+					var a: Vector2i = _screen_to_tile_2d(p)
+					var b: Vector2i = live.call("pick_cell", p)
+					total += 1
+					## The inverse, on the cell just picked: 2D and 3D must put its centre on the same pixel.
+					if a != INVALID_CELL and (_tile_to_screen_center_2d(a) - live.call("cell_screen_center", a)).length() > 0.5:
+						bad += 1
+						if grand_bad + bad <= 5:
+							print("[PICK-CHECK] centre of %s: 2D %s, 3D %s" % [a, _tile_to_screen_center_2d(a), live.call("cell_screen_center", a)])
+					if a != b:
+						bad += 1
+						if grand_bad + bad <= 5:
+							print("[PICK-CHECK] zoom %s focus %s screen %s: 2D %s, 3D %s" % [zoom, focus, p, a, b])
+			grand_total += total
+			grand_bad += bad
+	print("[PICK-CHECK] TOTAL %d point(s) over 16 framing(s), %d disagreement(s)" % [grand_total, grand_bad])
 
 
 ## RENDER3D R3D-5b — the ground-plane gameplay overlays draw on the 3D board's ground (depth-tested), not
@@ -3532,10 +3576,10 @@ func _draw_playable_boundary() -> void:
 	var size:   Vector2i = pr.size
 	var off:    Vector2  = VISUAL_GRID_OFFSET
 
-	var n: Vector2 = floor_layer.map_to_local(origin) + off
-	var e: Vector2 = floor_layer.map_to_local(origin + Vector2i(size.x, 0)) + off
-	var s: Vector2 = floor_layer.map_to_local(origin + size) + off
-	var w: Vector2 = floor_layer.map_to_local(origin + Vector2i(0, size.y)) + off
+	var n: Vector2 = GroundGridRef.map_to_local(origin) + off
+	var e: Vector2 = GroundGridRef.map_to_local(origin + Vector2i(size.x, 0)) + off
+	var s: Vector2 = GroundGridRef.map_to_local(origin + size) + off
+	var w: Vector2 = GroundGridRef.map_to_local(origin + Vector2i(0, size.y)) + off
 
 	draw_polyline(
 		PackedVector2Array([n, e, s, w, n]),
@@ -3979,7 +4023,7 @@ func _is_guard_cell(cell: Vector2i) -> bool:
 
 ## Utility: converts a cell coordinate to world position
 func _world_center_for_cell(cell: Vector2i) -> Vector2:
-	return floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 
 
 ## Wrapper: updates the HUD alert label from alert meter value
@@ -6052,7 +6096,7 @@ func _debug_probe_voxel_alignment() -> void:
 	var voxel_half_size = Vector2(voxel_tile_size) / 2.0
 
 	## Corrected formula: adjusted = map_to_local - half_tile_size
-	var floor_map = floor_layer.map_to_local(floor_cell)
+	var floor_map = GroundGridRef.map_to_local(floor_cell)
 	var floor_adjusted = floor_map - floor_half_size
 
 	var voxel_cell = floor_cell * 8
@@ -6175,6 +6219,18 @@ func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i =
 ## (map_to_local + Vector2(0,64)) finds the diamond that truly contains the
 ## click — this corrects the other three quadrants.
 func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
+	## RENDER3D R3D-5a — under a 3D board the cell comes from a camera ray against the ground plane; the
+	## 2D lattice below is the reference it is proven against (`PICK_CHECK=1`, ground_grid_selftest).
+	## `PICK3D=0` keeps the 2D pick.
+	var live: Node = board3d()
+	if live != null and _dev_flag("PICK3D", "1") != "0":
+		var picked: Vector2i = live.call("pick_cell", screen_pos)
+		return INVALID_CELL if picked == Vector2i(-9999, -9999) else picked
+	return _screen_to_tile_2d(screen_pos)
+
+
+## The 2D pick: screen → canvas → floor-layer lattice. See `_screen_to_tile()`.
+func _screen_to_tile_2d(screen_pos: Vector2) -> Vector2i:
 	var ct: Transform2D = get_viewport().get_canvas_transform()
 	var lp: Vector2 = floor_layer.to_local(ct.affine_inverse() * screen_pos)
 	var logical_lp := lp - VISUAL_GRID_OFFSET
@@ -6185,7 +6241,7 @@ func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	for dc: int in [-1, 0, 1]:
 		for dr: int in [-1, 0, 1]:
 			var c := tile_seed + Vector2i(dc, dr)
-			var center := floor_layer.map_to_local(c) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+			var center := GroundGridRef.map_to_local(c) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 			var d := lp - center
 			var dist := absf(d.x) / 128.0 + absf(d.y) / 64.0
 			if dist <= 1.0 and dist < best_dist:
@@ -6205,7 +6261,16 @@ func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 ## this, not a sprite-derived screen position, or it silently misses the
 ## object's own hit_test().
 func _tile_to_screen_center(cell: Vector2i) -> Vector2:
-	var local_center: Vector2 = floor_layer.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
+	## RENDER3D R3D-5a — the 3D board's own projection of the cell centre (`PICK3D=0` keeps the 2D one).
+	var live: Node = board3d()
+	if live != null and _dev_flag("PICK3D", "1") != "0":
+		return live.call("cell_screen_center", cell)
+	return _tile_to_screen_center_2d(cell)
+
+
+## The 2D inverse of `_screen_to_tile_2d()`. See `_tile_to_screen_center()`.
+func _tile_to_screen_center_2d(cell: Vector2i) -> Vector2:
+	var local_center: Vector2 = GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 	var global_pos: Vector2 = floor_layer.to_global(local_center)
 	return get_viewport().get_canvas_transform() * global_pos
 

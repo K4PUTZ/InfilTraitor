@@ -134,6 +134,10 @@ func value(flag_name: String, fallback: String = "") -> String:
 		return from_env
 	if _overrides.has(flag_name):
 		return String(_overrides[flag_name])
+	## RENDER3D is ON by default since 2026-09-19 (Director: see the port as it stands);
+	## `RENDER3D=0` is the 2D board, until R3D-8 deletes it.
+	if flag_name == "RENDER3D":
+		return "1"
 	return fallback
 
 

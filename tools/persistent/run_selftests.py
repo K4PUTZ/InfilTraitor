@@ -103,6 +103,9 @@ def run_one(godot: str, script_rel: str) -> dict:
         proc = subprocess.run(
             argv,
             cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=TIMEOUT_S,
+            # RENDER3D is the game's default since 2026-09-19; the suites that read 2D tilemap
+            # cells need the 2D board written, until R3D-8 migrates them.
+            env={**os.environ, "INFILTRAITOR_RENDER3D": os.environ.get("INFILTRAITOR_RENDER3D", "0")},
         )
         output = proc.stdout + proc.stderr
         exit_code = proc.returncode

@@ -131,6 +131,17 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   so the case that matters is covered; an agent standing ON an upper storey does not exist in the game. Roofs feed
   the same set (the `roof` phase runs on NEST's towers, 1.4 ms on the Galaxy). NOT covered: an agent inside an enclosed
   roofed room (no map has one; SIGMA_01 is open-topped).
+- **Agent INSIDE a room, 2026-09-20 — DEFECT FOUND (open).** New dev fixture `maps/OCCLUSION_ROOM.map.json`: a closed
+  5x5 GU ring of 3-storey blocks, agent in the middle at (12,12). The map format only generates roofs over SOLID
+  BLOCKS (`room_builder`, `solid_block_instances`), so a roof over walkable floor is not expressible; the ring blocks
+  carry their own roofs and the interior is open. On the Moto (`Screenshots/history/r3d7_moto_cutaway_room.png`) the
+  near walls are ghosted correctly (912 occluded columns; wall spans 82..103, roof spans 104..105), **but the agent's
+  body is hidden by a grey plane: the roofs of the walls nearest the camera.** Cause, from the set itself: those roofs
+  are OUTSIDE it (blocks (15,12)..(15,15) and (12,15)..(14,15) in buffered GU: 0 of 64 roof columns ghosted each),
+  because a roof ghosts only within `MAX_RING = 2` stripes of the origin. In the 2D the same roofs are unghosted too and
+  the agent is still seen, because the 2D agent is always drawn ON TOP of the scenery (OCC-03); the 3D billboard is
+  depth-tested, so an unghosted roof hides him. Cost on the Moto for 912 columns: set recompute 51.8 ms, cutaway
+  57.7 ms, step 349 ms (alternating 912 / 672 columns, so per step these are the real figures).
 - **Glass in the cutaway: DECIDED 2026-09-20 — stays whole** (Director). Glass never joins the occlusion set (as in
   the 2D: glass is not an occluder) and is never dithered, so a pane inside a ghosted wall volume stays drawn; the
   volume's side fill is left clear where the cell across is glass (2026-09-19). Not a defect; nothing to build.

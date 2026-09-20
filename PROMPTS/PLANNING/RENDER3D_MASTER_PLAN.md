@@ -74,6 +74,18 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   voxel instead of `_level_max`) was tested and does not exist on GLASS (both are level 103, the roofs), so what is
   left in the march is an algorithmic change (a per-column height table), not a micro-optimisation. Not addressed:
   one mesh-build spike of ~46 ms per run (first build). 60/60 selftests.
+- **Revealed actors behind walls, 2026-09-20 (Director's spec, built).** Guard visibility is GAMEPLAY (vision by
+  skills and progress; today the vision radius that `_update_enemy_visibility` already applies), not physics, so the
+  renderer never infers "revealed": `Room._guard_revealed_by_gameplay()` is the one place that answers it and
+  `ActorBillboard3D.reveal_behind_walls` is what it drives. A revealed actor is drawn, wherever an opaque wall is
+  NEARER than it, as its own silhouette filled with alternating diagonal stripes that scroll (`actor_silhouette3d.gdshader`:
+  the scene depth texture against the fragment's, 0.03 bias, a 1-texel outline); where it stands in the clear the
+  normal billboard shows. The silhouette reads the sprite's CURRENT frame every frame, so a future idle loop reshapes
+  it for free (noted in `MOVEMENT_MASTER_PLAN` §6.4). **OFF by default: `GUARD_REVEAL=1`** until gameplay asks for it.
+  Verified: PLAYGROUND, guard placed behind a concrete block, desktop and Moto g04s
+  (`Screenshots/history/r3d7_moto_guard_silhouette.png`) — the covered body is striped, the head above the wall is
+  the normal sprite, and with the flag off only the hat shows. Scenario step `place_guard <i> <x,y>`. Not measured: the
+  frame cost with several revealed guards; the look tuning (colours, stripe width, speed) is the defaults.
 - **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
   selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
   cutaway ONLY when it is inside the agent's field of view.

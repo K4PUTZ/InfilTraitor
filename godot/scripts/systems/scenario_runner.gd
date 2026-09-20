@@ -59,6 +59,7 @@
 ##   occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps>
 ##                                        times through the real occlusion path (`_recompute_occlusion`),
 ##                                        one frame apart, and print the set / 3D cutaway / total cost
+##   place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed
 ##   quit                                end the process (the harness waits on it)
 ##
 ## EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer
@@ -78,7 +79,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1,
-	"occupancy_compare": 1, "passages": 1, "occ_bench": 3,
+	"occupancy_compare": 1, "passages": 1, "occ_bench": 3, "place_guard": 2,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
@@ -170,6 +171,14 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
+		"place_guard":
+			if not arg.is_valid_int() or int(arg) < 0:
+				return "place_guard takes a guard index >= 0 and a cell x,y"
+			var gxy: PackedStringArray = tokens[2].split(",")
+			if gxy.size() != 2 or not gxy[0].is_valid_int() or not gxy[1].is_valid_int():
+				return "place_guard takes a guard index >= 0 and a cell x,y"
+			step["index"] = int(arg)
+			step["cell"] = Vector2i(int(gxy[0]), int(gxy[1]))
 		"occ_bench":
 			for k: int in [1, 2]:
 				var xy: PackedStringArray = tokens[k].split(",")
@@ -313,6 +322,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			var detonated: bool = await done
 			if not detonated:
 				return _fail(step, "the detonation did not complete (see the error above)")
+		"place_guard":
+			if not room.has_method("scenario_place_guard"):
+				return _fail(step, "Room has no scenario_place_guard()")
+			if not bool(room.call("scenario_place_guard", int(step["index"]), step["cell"])):
+				return _fail(step, "the guard was not placed (see the error above)")
 		"occ_bench":
 			if not room.has_method("scenario_occ_bench"):
 				return _fail(step, "Room has no scenario_occ_bench()")

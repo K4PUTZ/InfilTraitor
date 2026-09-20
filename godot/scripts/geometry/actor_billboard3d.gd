@@ -40,6 +40,9 @@ class_name ActorBillboard3D
 extends Node3D
 
 const SHADER_PATH := "res://godot/shaders/actor_billboard3d.gdshader"
+const SILHOUETTE_SHADER_PATH := "res://godot/shaders/actor_silhouette3d.gdshader"
+## Draws after the world's opaque geometry and the cutaway fill (10), before the cutaway lines (127).
+const SILHOUETTE_PRIORITY := 20
 ## Per layer, toward the camera, in world units. Far below one texel (1/181) and far above the depth
 ## buffer's resolution over the board's range.
 const LAYER_EPSILON := 0.002
@@ -55,6 +58,21 @@ var _board: Node3D = null
 var _source: AgentSprite = null
 var _quad_mesh: QuadMesh = null
 var _shader: Shader = null
+var _silhouette_shader: Shader = null
+
+## Gameplay decides WHO is revealed (vision, skills and progress are gameplay, not physics); this node only
+## draws it. When true, every part of the actor that an opaque wall covers is drawn as a striped silhouette.
+## Off, nothing extra exists: the second quads are created the first time this is turned on.
+var reveal_behind_walls: bool = false:
+	set(value):
+		reveal_behind_walls = value
+		if not value:
+			for entry: Dictionary in _quads.values():
+				if entry.has("ghost"):
+					(entry["ghost"] as MeshInstance3D).visible = false
+## Added to the silhouette's stripe scroll, in stripes. The plumbing for the idle animation planned in the
+## movement milestone (the silhouette already follows the sprite's current frame).
+var silhouette_phase: float = 0.0
 ## Sprite2D instance id -> {"mesh": MeshInstance3D, "mat": ShaderMaterial, "tex": Texture2D}.
 var _quads: Dictionary = {}
 
@@ -102,6 +120,8 @@ func _process(_delta: float) -> void:
 		var shown: bool = actor_visible and tex != null and (node == _source or node.visible)
 		mesh.visible = shown
 		if not shown:
+			if entry.has("ghost"):
+				(entry["ghost"] as MeshInstance3D).visible = false
 			continue
 		var xf: Transform2D = node.global_transform
 		var size_px: Vector2 = tex.get_size() * xf.get_scale()
@@ -112,6 +132,8 @@ func _process(_delta: float) -> void:
 		mesh.global_transform = Transform3D(
 			Basis(right * (size_px.x / ppu), up * (size_px.y / (ppu * COS_ELEVATION)), facing), centre)
 		_mirror_material(node, entry)
+		if reveal_behind_walls:
+			_sync_ghost(node, entry, mesh)
 		index += 1
 
 
@@ -158,3 +180,31 @@ func _mirror_material(node: Sprite2D, entry: Dictionary) -> void:
 		var value: Variant = src.get_shader_parameter(param)
 		if value != null and mat.get_shader_parameter(param) != value:
 			mat.set_shader_parameter(param, value)
+
+
+## The silhouette quad of one sprite: the same quad, transform and texture as the body's, drawn by
+## `actor_silhouette3d.gdshader` (only where something opaque is nearer than the actor).
+func _sync_ghost(node: Sprite2D, entry: Dictionary, body: MeshInstance3D) -> void:
+	if not entry.has("ghost"):
+		if _silhouette_shader == null:
+			_silhouette_shader = load(SILHOUETTE_SHADER_PATH)
+		var ghost := MeshInstance3D.new()
+		ghost.name = "Silhouette_%s" % node.name
+		ghost.mesh = _quad_mesh
+		var mat := ShaderMaterial.new()
+		mat.shader = _silhouette_shader
+		mat.render_priority = SILHOUETTE_PRIORITY
+		ghost.material_override = mat
+		ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(ghost)
+		entry["ghost"] = ghost
+		entry["ghost_tex"] = null
+	var quad: MeshInstance3D = entry["ghost"]
+	quad.visible = true
+	quad.global_transform = body.global_transform
+	var mat: ShaderMaterial = quad.material_override as ShaderMaterial
+	if entry["ghost_tex"] != node.texture:
+		entry["ghost_tex"] = node.texture
+		mat.set_shader_parameter("albedo_tex", node.texture)
+	if mat.get_shader_parameter("phase") != silhouette_phase:
+		mat.set_shader_parameter("phase", silhouette_phase)

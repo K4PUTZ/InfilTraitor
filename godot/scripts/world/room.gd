@@ -6036,6 +6036,7 @@ func _update_enemy_visibility() -> void:
 			if not is_instance_valid(guard):
 				continue
 			guard.modulate = Color.WHITE
+		_apply_guard_reveal()
 		queue_redraw()
 		return
 
@@ -6053,7 +6054,40 @@ func _update_enemy_visibility() -> void:
 			guard.modulate = Color(0.65, 0.65, 0.65, 0.5)
 		else:
 			guard.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	_apply_guard_reveal()
 	queue_redraw()
+
+
+## Whether gameplay says this guard is seen. TODAY that is the vision radius `_update_enemy_visibility()` just
+## applied (the guard is not faded out); it is the one place where the deterministic vision by skills and
+## progress plugs in when it exists. Vision is gameplay, not physics: a wall does not change the answer.
+func _guard_revealed_by_gameplay(guard: Node) -> bool:
+	return guard.modulate.a > 0.0
+
+
+## R3D-7 — a guard gameplay reveals is drawn through the walls that cover it (a striped silhouette, see
+## `ActorBillboard3D.reveal_behind_walls`). OFF until gameplay asks for it: `GUARD_REVEAL=1`.
+func _apply_guard_reveal() -> void:
+	var on: bool = _dev_flag_on("GUARD_REVEAL")
+	for guard in _guards:
+		if not is_instance_valid(guard) or guard.sprite == null or not guard.sprite.has_meta("billboard3d"):
+			continue
+		var billboard: Variant = guard.sprite.get_meta("billboard3d")
+		if is_instance_valid(billboard):
+			(billboard as ActorBillboard3D).reveal_behind_walls = on and _guard_revealed_by_gameplay(guard)
+
+
+## Scenario step `place_guard`: put guard `index` on `cell` (position and cell, nothing else) and refresh what
+## the vision radius says about it.
+func scenario_place_guard(index: int, cell: Vector2i) -> bool:
+	if index < 0 or index >= _guards.size() or not is_instance_valid(_guards[index]):
+		push_error("[Room] scenario_place_guard: no guard #%d (%d on the map)" % [index, _guards.size()])
+		return false
+	var guard = _guards[index]
+	guard.cell = cell
+	guard.position = guard._cell_to_world(cell)
+	_update_enemy_visibility()
+	return true
 
 
 func _draw() -> void:

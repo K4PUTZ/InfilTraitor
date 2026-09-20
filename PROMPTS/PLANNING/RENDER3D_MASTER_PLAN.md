@@ -124,13 +124,20 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   cutaway 5.1 (mesh-build spike 31 ms once), step 54. Digests identical to the Moto and the desktop (set `378660785` /
   `2910099765`, cutaway geometry `49194435` / `2453924741`). On the Galaxy the worst case is ~12 ms (cutaway) + ~11 ms
   (set) per occluded step: inside the 33 ms budget. The Moto is the constraint.
+- **Cutaway on a real level, 2026-09-20:** SIGMA_01 (dividers, guards, a light cone), agent at (9,34): 64-176 occluded
+  columns depending on the cell, a divider ghosted with its solid base, dither and dashed outline, a guard visible
+  behind it (`Screenshots/history/r3d7_cutaway_sigma_level.png`, desktop). "Upper storey": the game only plays the
+  ground storey, and the multi-storey walls of OCCLUSION_NEST (3, 5 and 7 storeys) are ghosted through every storey,
+  so the case that matters is covered; an agent standing ON an upper storey does not exist in the game. Roofs feed
+  the same set (the `roof` phase runs on NEST's towers, 1.4 ms on the Galaxy). NOT covered: an agent inside an enclosed
+  roofed room (no map has one; SIGMA_01 is open-topped).
 - **Glass in the cutaway: DECIDED 2026-09-20 — stays whole** (Director). Glass never joins the occlusion set (as in
   the 2D: glass is not an occluder) and is never dithered, so a pane inside a ghosted wall volume stays drawn; the
   volume's side fill is left clear where the cell across is glass (2026-09-19). Not a defect; nothing to build.
 - **Open register additions (updated 2026-09-20):** guards behind walls are revealed by the striped silhouette when
   gameplay says so (built, `GUARD_REVEAL`, see above), not by the cutaway; the cutaway's Moto cost is MEASURED and cut
-  (see above; the R3D-6 decals and dents are still desktop-only); NOT yet verified: the cutaway on
-  the upper storey. (Three-deep nesting: verified, above.)
+  (see above; the R3D-6 decals and dents are still desktop-only); three-deep nesting and a real level verified; NOT
+  covered: an agent inside an enclosed roofed room (no such map).
 
 **Status (2026-09-18, v1.7):** 🟡 **R3D-0 to R3D-5 are built. Everything that draws in the game world now
 draws in the 3D board's world, depth-tested: the board (R3D-3), the actors, props and every

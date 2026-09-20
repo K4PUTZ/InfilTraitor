@@ -99,8 +99,12 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   caps 1.9), whole step 149 ms; digests: set `378660785`, cutaway geometry `49194435`, identical on desktop and Moto,
   memo pass equal to the reference. So the cutaway cost scales with the volumes' perimeter: ~43 ms per occluded
   step here against the 33 ms budget; the ray march is the term that grows. Found on the way, NOT fixed (separate
-  task): `Room._assert_geometry_rendered()` raises a false "render path broken" for opaque-only maps under the 3D
-  default (TEXTURES, TEST_BLOCKS, this fixture), because it counts 2D placed cells.
+  task): `Room._assert_geometry_rendered()` raised a false "render path broken" for opaque-only maps under the 3D
+  default (TEXTURES, TEST_BLOCKS, this fixture), because it counted 2D placed cells. **Fixed the same day:** the
+  renderer also counts the cells it walked and skipped on purpose (`_diag_skipped_cells`, three `SKIP_BOARD_WRITES`
+  sites in the initial build), and the check reads placed + skipped (`get_walked_cell_count()`); the three maps went
+  from 1 error each to 0, in 3D and in 2D, PLAYGROUND and GLASS stay 0. Not exercised: a build aborted before
+  `render()` (both counts stay 0 there, so it should still fail, but no such build was run).
 - **Glass in the cutaway: DECIDED 2026-09-20 — stays whole** (Director). Glass never joins the occlusion set (as in
   the 2D: glass is not an occluder) and is never dithered, so a pane inside a ghosted wall volume stays drawn; the
   volume's side fill is left clear where the cell across is glass (2026-09-19). Not a defect; nothing to build.

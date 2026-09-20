@@ -6413,7 +6413,9 @@ func _assert_geometry_rendered() -> void:
 	var slice_count: int = _edge_registry.all_slices().size()
 	if slice_count == 0:
 		return  ## a genuinely wall-less map is legal
-	var placed: int = _voxel_renderer.get_placed_cell_count()
+	## Under a 3D board the 2D board is not written (SKIP_BOARD_WRITES), so what counts is that the renderer WALKED the
+	## geometry: cells it placed plus cells it skipped on purpose. A build aborted before render() leaves both at 0.
+	var placed: int = _voxel_renderer.get_walked_cell_count()
 	if placed > 0:
 		return
 	push_error(

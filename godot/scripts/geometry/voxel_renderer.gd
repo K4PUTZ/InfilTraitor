@@ -1126,6 +1126,10 @@ var _baked_source_image_cache: Dictionary = {}
 
 ## BAKE-DIAG-01: placement counters, reset at the top of each render() call
 var _diag_total_cells: int = 0
+## Cells (a slice voxel, a junction column, a slab GU) this pass walked but did NOT write because
+## `SKIP_BOARD_WRITES` leaves them to the 3D board. `_assert_geometry_rendered()` needs them: under a 3D board
+## `_diag_total_cells` is 0 for a map whose walls are all opaque, and that is not a broken render path.
+var _diag_skipped_cells: int = 0
 var _diag_baked_hits: int = 0
 var _diag_generic_fallbacks: int = 0
 var _diag_null_edge_cells: int = 0
@@ -2179,6 +2183,12 @@ func get_placed_cell_count() -> int:
 	return _diag_total_cells
 
 
+## Placed plus deliberately skipped: how many cells the last render() walked. What the "did the render path run at
+## all" check asks (see `_diag_skipped_cells`).
+func get_walked_cell_count() -> int:
+	return _diag_total_cells + _diag_skipped_cells
+
+
 ## DIAG-09 §1 — THE MEMORY CENSUS, at load, before anything detonates.
 ##
 ## The first device measurement (Moto G04s, 2026-09-12) put the detonation 3.1×
@@ -2884,6 +2894,7 @@ func _signed_dist_in_quad(p: Vector2, q: PackedVector2Array) -> float:
 func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 	# BAKE-DIAG-01: reset placement counters for this render pass
 	_diag_total_cells = 0
+	_diag_skipped_cells = 0
 	_diag_baked_hits = 0
 	_diag_generic_fallbacks = 0
 	_diag_null_edge_cells = 0
@@ -2942,6 +2953,7 @@ func render_block(gu_cell: Vector2i, start_level: int, storey_span: int, materia
 	## has `flat_baked` at its default (false), so a glass `material_name` WOULD
 	## route to the pane branch — skip only when it is not glass.
 	if SKIP_BOARD_WRITES and not GlassMaterials.is_glass(material_name):
+		_diag_skipped_cells += 1
 		return
 	
 	# Get all voxel positions in this GU
@@ -2988,6 +3000,7 @@ func _render_slice(slice: Slice, edge = null) -> void:
 			## already-placed geometry on a later dirty pass). Same guard, same
 			## exemption for glass: see `_process_dirty_slice_voxel()`'s note.
 			if SKIP_BOARD_WRITES and not GlassMaterials.is_glass(vmat):
+				_diag_skipped_cells += 1
 				continue
 			# Derive local voxel position within 8×8 quad from grid position
 			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
@@ -3122,6 +3135,7 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 	## glass column would fall through unskipped instead of silently losing
 	## geometry.
 	if SKIP_BOARD_WRITES and not GlassMaterials.is_glass(actual_material):
+		_diag_skipped_cells += 1
 		return
 
 	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):

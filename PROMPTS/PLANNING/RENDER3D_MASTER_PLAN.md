@@ -1930,12 +1930,17 @@ is behind the wall").
   or nothing — so a window slab is painted where it touches its frames and clear where it touches the pane.
   Read from the store at each occlusion change (`_solid_non_glass`), shaded by facing (SE 0.85 / SW 0.70 / far 0.55).
   Capture: `Screenshots/history/r3d7_cutaway_glass_map.png` (GLASS, agent at 16,15).
-- **Draw order (Director, 2026-09-19):** the fill (caps and sides) is opaque, draws AFTER the world (`render_priority`
-  +5 — a higher value draws later, so -10 let the floor paint over it and made the sides transparent) and WRITES
-  depth, so the ground overlays (the hovered cell's outline), drawn later still, do not show through a painted face
-  (they did while the fill wrote no depth). The lines (+10) ignore depth (`no_depth_test`), so the far dashed edges
-  show over the fill: the set only names walls between the camera and the agent, so nothing in front of them is worth
-  hiding a line behind. A transparent-pass attempt left the sides speckled and was dropped.
+- **Fill and lines are two nodes (Director, 2026-09-19).** The fill (base caps and painted sides) is an opaque mesh that
+  draws after the world (`render_priority` +10 — higher draws later) and WRITES depth, so the ground overlays (the hovered
+  cell's outline) do not show through it. The lines are their own mesh, drawn over everything (`no_depth_test`, priority
+  127), and WHICH pieces to draw is decided when the outline is built, not by the depth buffer: `_occ_hidden` marches a ray
+  from each piece toward the camera through the store (half a voxel a step; ghosted voxels and glass do not stop it), and a
+  piece behind a real solid voxel is dropped; a far edge (not near-facing: the back of the volume) keeps only its dashes; a
+  near edge stays full. Unit edges are first joined into runs (`_occ_merge_edges`) because a dash (1.5 voxels) is longer
+  than the 1-voxel edges the set emits, and a corner shared by two faces is one edge, near-facing if either face is. Tried and
+  dropped: a transparent-pass fill (speckled sides), a stencil to protect the lines (a material that reads stencil must
+  be in the alpha queue), depth-tested lines (the fill covered them), depth-less lines with no classification (they showed
+  through real walls).
 - **Nested occlusion (two volumes, one inside the other's screen area):** each volume has its own cap and sides; the
   nearer one's opaque fill hides the farther one's fill (correct), and both sets of lines are drawn over everything.
   Seen on GLASS with the agent at 16,15 (`r3d7_cutaway_glass_map.png`). Not exercised: three or more levels of nesting.

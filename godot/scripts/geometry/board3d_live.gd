@@ -498,6 +498,7 @@ static var CUTAWAY_ON: bool = OS.get_environment("INFILTRAITOR_CUTAWAY") != "0"
 var _occ_image: Image = null
 var _occ_texture: ImageTexture = null
 var _occ_lines: MeshInstance3D = null
+var _occ_fill: MeshInstance3D = null
 var _line_material: StandardMaterial3D = null
 
 
@@ -540,18 +541,94 @@ const OCC_FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2
 var _cap_material: StandardMaterial3D = null
 
 
-func _occ_segment(points: PackedVector3Array, a: Vector3, b: Vector3, solid: bool) -> void:
-	if solid:
-		points.append(a)
-		points.append(b)
+func _occ_add_edge(edges: Dictionary, p: Vector3i, q: Vector3i, solid: bool) -> void:
+	if p == q:
 		return
+	var lo: Vector3i = p
+	var hi: Vector3i = q
+	if q.x < p.x or (q.x == p.x and (q.y < p.y or (q.y == p.y and q.z < p.z))):
+		lo = q
+		hi = p
+	var key: Array = [lo, hi]
+	if edges.has(key):
+		edges[key] = bool(edges[key]) or solid
+	else:
+		edges[key] = solid
+
+
+## Joins collinear unit edges that touch end to start (same axis, same nearness) into runs: [start, end, solid].
+func _occ_merge_edges(edges: Dictionary) -> Array:
+	var groups: Dictionary = {}
+	for key: Array in edges:
+		var lo: Vector3i = key[0]
+		var hi: Vector3i = key[1]
+		var d: Vector3i = hi - lo
+		var axis: int = 0 if d.x != 0 else (1 if d.y != 0 else 2)
+		var fixed: Vector3i = lo
+		fixed[axis] = 0
+		var gk: Array = [axis, fixed, bool(edges[key])]
+		if not groups.has(gk):
+			groups[gk] = []
+		(groups[gk] as Array).append([lo, hi])
+	var out: Array = []
+	for gk: Array in groups:
+		var axis: int = gk[0]
+		var list: Array = groups[gk]
+		list.sort_custom(func(a: Array, b: Array) -> bool: return (a[0] as Vector3i)[axis] < (b[0] as Vector3i)[axis])
+		var start: Vector3i = list[0][0]
+		var end: Vector3i = list[0][1]
+		for k: int in range(1, list.size()):
+			var seg: Array = list[k]
+			if seg[0] == end:
+				end = seg[1]
+			else:
+				out.append([start, end, gk[2]])
+				start = seg[0]
+				end = seg[1]
+		out.append([start, end, gk[2]])
+	return out
+
+
+## True when a real, solid, non-ghosted voxel stands between `world` and the camera. The ray is marched through
+## the store half a voxel at a time; ghosted voxels (the volume itself) and glass do not stop it.
+func _occ_hidden(world: Vector3, toward: Vector3, cells: Dictionary) -> bool:
+	if _store == null:
+		return false
+	var p := Vector3(world.x * 8.0, world.y * 8.0 + float(_ground_level), world.z * 8.0) + toward * 0.75
+	for _i: int in range(160):
+		p += toward * 0.5
+		var level: int = floori(p.y)
+		if level > _level_max + 1:
+			return false
+		var column := Vector2i(floori(p.x), floori(p.z))
+		if not _solid_non_glass(column.x, column.y, level):
+			continue
+		var entry: Variant = cells.get(column)
+		if entry != null and level >= int((entry as Dictionary)["min_level"]) and level <= int((entry as Dictionary)["max_level"]):
+			continue  ## part of the ghosted volume: the ray passes through it
+		return true
+	return false
+
+
+## One edge of the outline, cut into pieces; a piece is dropped when a real wall hides it, and a far edge (not
+## `solid`) keeps only its dashes. Each piece is tested on its own, so an edge half behind a wall is half drawn.
+func _occ_segment(points: PackedVector3Array, a: Vector3, b: Vector3, solid: bool, cells: Dictionary,
+		toward: Vector3) -> void:
 	var length: float = a.distance_to(b)
-	var dash: float = OCC_DASH_VOXELS / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	if length <= 0.0:
+		return
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var piece: float = (2.0 if solid else OCC_DASH_VOXELS) * unit
+	var step: float = piece if solid else piece * 2.0
 	var t: float = 0.0
 	while t < length:
-		points.append(a.lerp(b, t / length))
-		points.append(a.lerp(b, minf(t + dash, length) / length))
-		t += dash * 2.0
+		var t1: float = minf(t + piece, length)
+		var p0: Vector3 = a.lerp(b, t / length)
+		var p1: Vector3 = a.lerp(b, t1 / length)
+		if not _occ_hidden((p0 + p1) * 0.5, toward, cells):
+			points.append(p0)
+			points.append(p1)
+		t += step
 
 
 const OCC_CAP_TOP: Color = Color(0.36, 0.33, 0.56)
@@ -599,21 +676,26 @@ func _occ_side_quad(tris: PackedVector3Array, colors: PackedColorArray, column: 
 
 
 func _rebuild_occlusion_lines(occ_set) -> void:
-	if _occ_lines != null and is_instance_valid(_occ_lines):
-		_occ_lines.queue_free()
+	for node: MeshInstance3D in [_occ_lines, _occ_fill]:
+		if node != null and is_instance_valid(node):
+			node.queue_free()
 	_occ_lines = null
+	_occ_fill = null
 	var by_level: Dictionary = occ_set.get_wireframe_by_level()
 	var cells: Dictionary = occ_set.get_occluded_cells()
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var ground: float = float(_ground_level)
+	var toward: Vector3 = _camera.global_transform.basis.z.normalized() if _camera != null else Vector3.UP
 	var points := PackedVector3Array()
+	## Every unit edge of the outline, on the integer voxel lattice as (x, level, grid y). A corner is emitted once
+	## per face that shares it, so equal edges merge (near-facing if any of them is); collinear neighbours are joined
+	## into runs afterwards, because a dash is longer than one voxel and would otherwise never break a line.
+	var edges: Dictionary = {}
 	for level: int in by_level:
 		for line: Dictionary in (by_level[level] as Dictionary)["lines"]:
 			var a: Vector2i = line["a"]
 			var b: Vector2i = line["b"]
-			_occ_segment(points,
-				Vector3(float(a.x), float(int(line["level_a"])) - ground, float(a.y)) * unit,
-				Vector3(float(b.x), float(int(line["level_b"])) - ground, float(b.y)) * unit,
+			_occ_add_edge(edges, Vector3i(a.x, int(line["level_a"]), a.y), Vector3i(b.x, int(line["level_b"]), b.y),
 				bool(line["solid"]))
 	var cap := PackedVector3Array()
 	var cap_colors := PackedColorArray()
@@ -667,46 +749,59 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 			else:
 				p1 = Vector2i(column.x, column.y)
 				p2 = Vector2i(column.x + 1, column.y)
-			_occ_segment(points, Vector3(float(p1.x) * unit, y, float(p1.y) * unit),
-				Vector3(float(p2.x) * unit, y, float(p2.y) * unit), dir.x == 1 or dir.y == 1)
+			var base_level: int = int(entry["min_level"])
+			_occ_add_edge(edges, Vector3i(p1.x, base_level, p1.y), Vector3i(p2.x, base_level, p2.y),
+				dir.x == 1 or dir.y == 1)
+	for run: Array in _occ_merge_edges(edges):
+		_occ_segment(points,
+			Vector3(float(run[0].x), float(run[0].y) - ground, float(run[0].z)) * unit,
+			Vector3(float(run[1].x), float(run[1].y) - ground, float(run[1].z)) * unit,
+			bool(run[2]), cells, toward)
 	if points.is_empty() and cap.is_empty():
 		return
 	if _line_material == null:
 		_line_material = StandardMaterial3D.new()
 		_line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_line_material.albedo_color = Color(1, 1, 1)
-		## Lines go on top of the fill and of the world's depth: the occlusion set only names the walls between the
-		## camera and the agent, so nothing in front of them is worth hiding a line behind.
-		_line_material.render_priority = 10
+		## The lines are their own node, drawn over everything and independent of the fill: which pieces to draw
+		## (front = full, back of the volume = dashed, hidden behind a real wall = none) is decided when the
+		## outline is built (`_occ_segment`), not by the depth buffer.
 		_line_material.no_depth_test = true
+		_line_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_line_material.render_priority = 127
 		_line_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_cap_material = StandardMaterial3D.new()
 		_cap_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_cap_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_cap_material.vertex_color_use_as_albedo = true
-		## Opaque pass, AFTER the world (a higher `render_priority` draws later, so the floor cannot paint over it),
-		## and it WRITES depth: the ground overlays (the hovered cell's outline) are drawn later and must not show
-		## through a painted face. The lines below ignore depth instead, so the far edges still show over it.
-		_cap_material.render_priority = 5
-	var mesh := ArrayMesh.new()
+		## Opaque pass, after the world (a higher `render_priority` draws later), writing depth so the ground overlays
+		## (the hovered cell's outline) do not show through it.
+		_cap_material.render_priority = 10
 	if not cap.is_empty():
 		var cap_arrays: Array = []
 		cap_arrays.resize(Mesh.ARRAY_MAX)
 		cap_arrays[Mesh.ARRAY_VERTEX] = cap
 		cap_arrays[Mesh.ARRAY_COLOR] = cap_colors
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, cap_arrays)
-		mesh.surface_set_material(mesh.get_surface_count() - 1, _cap_material)
+		var fill_mesh := ArrayMesh.new()
+		fill_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, cap_arrays)
+		fill_mesh.surface_set_material(0, _cap_material)
+		_occ_fill = MeshInstance3D.new()
+		_occ_fill.name = "OcclusionFill"
+		_occ_fill.mesh = fill_mesh
+		_occ_fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_geometry_root.add_child(_occ_fill)
 	if not points.is_empty():
 		var line_arrays: Array = []
 		line_arrays.resize(Mesh.ARRAY_MAX)
 		line_arrays[Mesh.ARRAY_VERTEX] = points
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, line_arrays)
-		mesh.surface_set_material(mesh.get_surface_count() - 1, _line_material)
-	_occ_lines = MeshInstance3D.new()
-	_occ_lines.name = "OcclusionLines"
-	_occ_lines.mesh = mesh
-	_occ_lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_geometry_root.add_child(_occ_lines)
+		var line_mesh := ArrayMesh.new()
+		line_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, line_arrays)
+		line_mesh.surface_set_material(0, _line_material)
+		_occ_lines = MeshInstance3D.new()
+		_occ_lines.name = "OcclusionLines"
+		_occ_lines.mesh = line_mesh
+		_occ_lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_geometry_root.add_child(_occ_lines)
 
 
 # ── data ──────────────────────────────────────────────────────────────────────

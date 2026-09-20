@@ -89,9 +89,13 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
 - **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
   selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
   cutaway ONLY when it is inside the agent's field of view.
-- **Open register additions:** guards behind walls are not
-  revealed by the cutaway and glass is not ghosted; the cutaway's Moto cost (mesh rebuild per agent step, a
-  half-voxel ray march per line piece) is unmeasured; the R3D-6 decal/dent/cutaway captures are desktop only.
+- **Glass in the cutaway: DECIDED 2026-09-20 — stays whole** (Director). Glass never joins the occlusion set (as in
+  the 2D: glass is not an occluder) and is never dithered, so a pane inside a ghosted wall volume stays drawn; the
+  volume's side fill is left clear where the cell across is glass (2026-09-19). Not a defect; nothing to build.
+- **Open register additions (updated 2026-09-20):** guards behind walls are revealed by the striped silhouette when
+  gameplay says so (built, `GUARD_REVEAL`, see above), not by the cutaway; the cutaway's Moto cost is MEASURED and cut
+  (see above; the R3D-6 decals and dents are still desktop-only); NOT yet verified: the cutaway on an upper storey, and
+  three or more levels of nesting.
 
 **Status (2026-09-18, v1.7):** 🟡 **R3D-0 to R3D-5 are built. Everything that draws in the game world now
 draws in the 3D board's world, depth-tested: the board (R3D-3), the actors, props and every

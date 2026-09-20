@@ -53,6 +53,19 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   (GLASS) / `813133776` (PLAYGROUND), unchanged from before any of this, and equal between the memo and reference
   passes on the desktop and the Moto; the cutaway digest is unchanged. 60/60 selftests. Left in the set on a miss:
   the wireframe build 12.7 ms (1.7 on the desktop) and the roof 2.4 ms.
+- **Wireframe and the hidden 2D overlay, 2026-09-20.** Two findings. (1) `_recompute_occlusion` also ends with
+  `_occlusion_wireframe_overlay.refresh()`, which rebuilds one Node2D panel per level from the FULL wireframe, and it
+  was outside every clock: **25.0 ms per agent step on the Moto**, for an overlay that `Board3DLive.on_occlusion`
+  hides. It is now skipped while the 3D board draws the cutaway (`draws_cutaway()`); 2D is untouched. (2) The
+  wireframe built one fill dictionary per column, face and level, and only the 2D overlay reads fills; the 3D cutaway
+  reads lines. `get_wireframe_lines_by_level()` (built with every changed set) is what the cutaway reads;
+  `get_wireframe_by_level()` (lines + fills) is built on first ask per set. **Moto: wireframe 12.7 -> 7.4 ms, set
+  recompute 16.3 -> 11.0 ms, overlay refresh 25.0 -> 0.01 ms.** Identity, desktop and Moto: set digest `2910099765`,
+  full wireframe digest `1841344489` (lazy path == the old eager one), cutaway geometry digest `2453924741`, all
+  unchanged; PLAYGROUND `813133776` / `3767969204`. A first attempt that skipped the levels without lines changed the
+  cutaway digest to `244375840` (level creation order feeds the edge order) and was reverted before measuring.
+  Timing note: the whole-step figure moved between runs of the same code (84 -> 127 ms), so compare only within a
+  run. 60/60 selftests.
 - **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
   selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
   cutaway ONLY when it is inside the agent's field of view.

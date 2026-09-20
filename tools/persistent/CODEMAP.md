@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**274 scripts · 101610 lines total** (under `godot/scripts/`)
+**274 scripts · 101639 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -529,7 +529,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1755 lines
+extends `Node3D` · 1760 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -3135,7 +3135,7 @@ extends `Node` · 256 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 993 lines
+`class_name OcclusionSet` · 1009 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -3155,6 +3155,7 @@ extends `Node` · 256 lines
 **Public API**
 - `func get_occluded_cells() -> Dictionary:`
 - `func get_wireframe_by_level() -> Dictionary:`
+- `func get_wireframe_lines_by_level() -> Dictionary:`
 - `func get_recompute_count() -> int:`
 - `func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = [], ceiling_slabs: Array = []) -> void:`
 
@@ -6166,7 +6167,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12463 lines
+extends `Node2D` · 12471 lines
 
 `godot/scripts/world/room.gd`
 

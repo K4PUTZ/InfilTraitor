@@ -82,6 +82,7 @@ var _occluded_cells: Dictionary = {}
 ## roofs already all merge into that one dictionary) — not one independent box
 ## per wall Edge / roof GU / junction column any more. See that function's
 ## header for why.
+var _wireframe_full: Dictionary = {}  ## with fills, built lazily by get_wireframe_by_level()
 var _wireframe_by_level: Dictionary = {}
 
 ## Recomputation counter (for verification of cadence)
@@ -102,6 +103,15 @@ func get_occluded_cells() -> Dictionary:
 
 ## Wireframe geometry, keyed by level — see _wireframe_by_level.
 func get_wireframe_by_level() -> Dictionary:
+	## The 2D overlay's view: lines AND fills. The fills are one dictionary per column, face and level, so they are
+	## built on the first ask for this set (`_wireframe_full`), not on every recompute.
+	if _wireframe_full.is_empty() and not _occluded_cells.is_empty():
+		_wireframe_full = _build_wireframe_geometry(_occluded_cells, true)
+	return _wireframe_full.duplicate()
+
+
+## The outline only: what the 3D cutaway draws. Built with every recompute that changes the set.
+func get_wireframe_lines_by_level() -> Dictionary:
 	return _wireframe_by_level.duplicate()
 
 ## Get the recomputation counter for verification.
@@ -155,6 +165,7 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		if hit[0] != _occluded_cells:
 			_occluded_cells = hit[0]
 			_wireframe_by_level = hit[1]
+			_wireframe_full = {}
 			_recompute_count += 1
 		last_phase_usec = PackedInt64Array([ph1 - ph0, 0, 0, 0, 0])
 		return
@@ -237,7 +248,8 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	# Only update if the set changed
 	if new_occluded != _occluded_cells:
 		_occluded_cells = new_occluded
-		_wireframe_by_level = _build_wireframe_geometry(new_occluded)
+		_wireframe_by_level = _build_wireframe_geometry(new_occluded, false)
+		_wireframe_full = {}
 		ph5 = Time.get_ticks_usec()
 		_recompute_count += 1
 		if _recompute_count % 10 == 0 or new_occluded.size() > 0:
@@ -337,7 +349,7 @@ static func _is_exposed(occluded: Dictionary, column: Vector2i, dir: Vector2i) -
 	return not (int(n["min_level"]) <= int(entry["max_level"]) and int(n["max_level"]) >= int(entry["min_level"]))
 
 
-func _build_wireframe_geometry(occluded: Dictionary) -> Dictionary:
+func _build_wireframe_geometry(occluded: Dictionary, with_fills: bool) -> Dictionary:
 	var by_level: Dictionary = {}
 
 	for column: Vector2i in occluded:
@@ -395,7 +407,8 @@ func _build_wireframe_geometry(occluded: Dictionary) -> Dictionary:
 				if run_end:
 					level_data["lines"].append({"a": p2, "b": p2, "level_a": level, "level_b": level + 1, "solid": near_facing})
 
-				level_data["fills"].append({"kind": "side", "a": p1, "b": p2, "level": level, "ring": ring})
+				if with_fills:
+					level_data["fills"].append({"kind": "side", "a": p1, "b": p2, "level": level, "ring": ring})
 
 				if is_top:
 					## Flat-top rim edge: always solid — nothing overhangs the
@@ -416,6 +429,9 @@ func _build_wireframe_geometry(occluded: Dictionary) -> Dictionary:
 	## (same row-run + vertical-merge technique ROOF-OCC-02 used, generalized
 	## to any occluded column, not just roof GUs) collapses the common flat
 	## case to one polygon — no internal seam left to antialias.
+	if not with_fills:
+		return by_level
+
 	var top_groups: Dictionary = {}  ## "level|ring" -> Array[Vector2i]
 	for column: Vector2i in occluded:
 		var entry: Dictionary = occluded[column]

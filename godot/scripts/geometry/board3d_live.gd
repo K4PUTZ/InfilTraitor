@@ -509,6 +509,11 @@ var last_occ_digest: int = 0
 var last_occ_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0, 0, 0])
 
 
+## True when this board draws the cutaway itself; the 2D wireframe overlay is then hidden and needs no rebuilding.
+func draws_cutaway() -> bool:
+	return CUTAWAY_ON
+
+
 func on_occlusion(occ_set) -> void:
 	if not CUTAWAY_ON or occ_set == null or _geometry_root == null:
 		return
@@ -717,7 +722,7 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 	_occ_lines = null
 	_occ_fill = null
 	var oc1: int = Time.get_ticks_usec()
-	var by_level: Dictionary = occ_set.get_wireframe_by_level()
+	var by_level: Dictionary = occ_set.get_wireframe_lines_by_level()
 	var cells: Dictionary = occ_set.get_occluded_cells()
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var ground: float = float(_ground_level)

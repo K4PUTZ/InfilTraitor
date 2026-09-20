@@ -80,7 +80,7 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   `ActorBillboard3D.reveal_behind_walls` is what it drives. A revealed actor is drawn, wherever an opaque wall is
   NEARER than it, as its own silhouette filled with alternating diagonal stripes that scroll (`actor_silhouette3d.gdshader`:
   the scene depth texture against the fragment's, 0.03 bias, a 1-texel outline); where it stands in the clear the
-  normal billboard shows. The silhouette reads the sprite's CURRENT frame every frame, so a future idle loop reshapes
+  normal billboard shows. Two layers (Director, same day): every part's fill (priority 20) first, then every part's purple outline, 2 texels thick (priority 30), so no fill covers a line; one shared include, two thin shaders. The silhouette reads the sprite's CURRENT frame every frame, so a future idle loop reshapes
   it for free (noted in `MOVEMENT_MASTER_PLAN` §6.4). **OFF by default: `GUARD_REVEAL=1`** until gameplay asks for it.
   Verified: PLAYGROUND, guard placed behind a concrete block, desktop and Moto g04s
   (`Screenshots/history/r3d7_moto_guard_silhouette.png`) — the covered body is striped, the head above the wall is

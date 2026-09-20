@@ -117,6 +117,13 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   never lets a rising ray skip. Going further means fewer rays or another algorithm (a camera-direction depth
   buffer of the solid voxels), not a finer table; not built. Worst case (3 nested volumes) is still ~38 ms per
   occluded step for the cutaway alone.
+- **Galaxy A16 (SM-A166W, Android 16) baseline for the cutaway, 2026-09-20**, same build (HEAD `ed056f37`), same
+  `occ_bench`, agent alternating a volume / none (per occluded step roughly double the means). **The Galaxy is 3-4x
+  FASTER than the Moto g04s on this work, not slower.** OCCLUSION_NEST (3 nested volumes, 300 columns): set recompute
+  5.6 ms (Moto 15.7), cutaway 6.0 ms (Moto 19.1; ray march 2.7 vs 9.2), whole step 49 ms (Moto 143). GLASS: set 4.8,
+  cutaway 5.1 (mesh-build spike 31 ms once), step 54. Digests identical to the Moto and the desktop (set `378660785` /
+  `2910099765`, cutaway geometry `49194435` / `2453924741`). On the Galaxy the worst case is ~12 ms (cutaway) + ~11 ms
+  (set) per occluded step: inside the 33 ms budget. The Moto is the constraint.
 - **Glass in the cutaway: DECIDED 2026-09-20 — stays whole** (Director). Glass never joins the occlusion set (as in
   the 2D: glass is not an occluder) and is never dithered, so a pane inside a ghosted wall volume stays drawn; the
   volume's side fill is left clear where the cell across is glass (2026-09-19). Not a defect; nothing to build.

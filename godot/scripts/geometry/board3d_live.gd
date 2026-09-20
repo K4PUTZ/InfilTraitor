@@ -502,9 +502,17 @@ var _occ_fill: MeshInstance3D = null
 var _line_material: StandardMaterial3D = null
 
 
+## Instrument (R3D-7 Moto): usec of the last `on_occlusion()` by phase — column texture + uniforms, outline edges,
+## side fills, caps + rims, merge, segment ray march, mesh build.
+## Digest of the last outline + cap geometry (identity gate for changes to how it is built).
+var last_occ_digest: int = 0
+var last_occ_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0, 0, 0])
+
+
 func on_occlusion(occ_set) -> void:
 	if not CUTAWAY_ON or occ_set == null or _geometry_root == null:
 		return
+	var oc0: int = Time.get_ticks_usec()
 	var size: int = VoxelRenderer.SOOT_TEX_SIZE
 	if _occ_image == null:
 		_occ_image = Image.create(size, size, false, Image.FORMAT_RGBA8)
@@ -524,6 +532,7 @@ func on_occlusion(occ_set) -> void:
 			continue
 		(_shader_materials[i] as ShaderMaterial).set_shader_parameter("occ_tex", _occ_texture)
 		(_shader_materials[i] as ShaderMaterial).set_shader_parameter("occ_on", 1 if not cells.is_empty() else 0)
+	last_occ_usec[0] = Time.get_ticks_usec() - oc0
 	_rebuild_occlusion_lines(occ_set)
 	## The 2D wireframe panels are the same information drawn a second time, in the wrong place.
 	var overlay: Variant = _room.get("_occlusion_wireframe_overlay")
@@ -595,14 +604,40 @@ func _occ_hidden(world: Vector3, toward: Vector3, cells: Dictionary) -> bool:
 	if _store == null:
 		return false
 	var p := Vector3(world.x * 8.0, world.y * 8.0 + float(_ground_level), world.z * 8.0) + toward * 0.75
+	## R3D-7 (Moto): this loop ran ~9 000 steps per rebuild, each through three calls into the store. The reads are
+	## inlined below with the same arithmetic (`p` stays a Vector3: float32 rounding decides the floors), and a ray
+	## that has been inside the store's box and left it is done, because a straight line cannot re-enter a box.
+	var store: VoxelStore = _store
+	var occ: PackedByteArray = store.occ
+	var owner: PackedInt32Array = store.owner
+	var mat: PackedByteArray = store.mat
+	var x0: int = store.x0
+	var y0: int = store.y0
+	var l0: int = store.l0
+	var w: int = store.w
+	var h: int = store.h
+	var x1: int = x0 + w
+	var y1: int = y0 + h
+	var l1: int = l0 + store.nl
+	var top: int = _level_max + 1
+	var step: Vector3 = toward * 0.5
+	var entered: bool = false
 	for _i: int in range(160):
-		p += toward * 0.5
+		p += step
 		var level: int = floori(p.y)
-		if level > _level_max + 1:
+		if level > top:
 			return false
-		var column := Vector2i(floori(p.x), floori(p.z))
-		if not _solid_non_glass(column.x, column.y, level):
+		var cx: int = floori(p.x)
+		var cy: int = floori(p.z)
+		if cx < x0 or cy < y0 or level < l0 or cx >= x1 or cy >= y1 or level >= l1:
+			if entered:
+				return false
 			continue
+		entered = true
+		var idx: int = ((level - l0) * h + (cy - y0)) * w + (cx - x0)
+		if occ[idx] == 0 or _material_glass[_store_material[mat[owner[idx]]]]:
+			continue
+		var column := Vector2i(cx, cy)
 		var entry: Variant = cells.get(column)
 		if entry != null and level >= int((entry as Dictionary)["min_level"]) and level <= int((entry as Dictionary)["max_level"]):
 			continue  ## part of the ghosted volume: the ray passes through it
@@ -681,6 +716,7 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 			node.queue_free()
 	_occ_lines = null
 	_occ_fill = null
+	var oc1: int = Time.get_ticks_usec()
 	var by_level: Dictionary = occ_set.get_wireframe_by_level()
 	var cells: Dictionary = occ_set.get_occluded_cells()
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
@@ -697,6 +733,7 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 			var b: Vector2i = line["b"]
 			_occ_add_edge(edges, Vector3i(a.x, int(line["level_a"]), a.y), Vector3i(b.x, int(line["level_b"]), b.y),
 				bool(line["solid"]))
+	var oc2: int = Time.get_ticks_usec()
 	var cap := PackedVector3Array()
 	var cap_colors := PackedColorArray()
 	## Which faces of the ghosted volume are painted: a side face is filled wherever the cell across it holds a
@@ -716,6 +753,7 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 				elif not solid and run_start >= 0:
 					_occ_side_quad(cap, cap_colors, column, dir, run_start, level - 1, unit, ground)
 					run_start = -1
+	var oc3: int = Time.get_ticks_usec()
 	for column: Vector2i in cells:
 		var entry: Dictionary = cells[column]
 		## Only a WALL has a base to cap: its ghosting starts 2 levels above the storey's base. A roof slab
@@ -752,11 +790,22 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 			var base_level: int = int(entry["min_level"])
 			_occ_add_edge(edges, Vector3i(p1.x, base_level, p1.y), Vector3i(p2.x, base_level, p2.y),
 				dir.x == 1 or dir.y == 1)
-	for run: Array in _occ_merge_edges(edges):
+	var oc4: int = Time.get_ticks_usec()
+	var merged: Array = _occ_merge_edges(edges)
+	var oc5: int = Time.get_ticks_usec()
+	for run: Array in merged:
 		_occ_segment(points,
 			Vector3(float(run[0].x), float(run[0].y) - ground, float(run[0].z)) * unit,
 			Vector3(float(run[1].x), float(run[1].y) - ground, float(run[1].z)) * unit,
 			bool(run[2]), cells, toward)
+	var oc6: int = Time.get_ticks_usec()
+	last_occ_usec[1] = oc2 - oc1
+	last_occ_usec[2] = oc3 - oc2
+	last_occ_usec[3] = oc4 - oc3
+	last_occ_usec[4] = oc5 - oc4
+	last_occ_usec[5] = oc6 - oc5
+	last_occ_usec[6] = 0
+	last_occ_digest = hash([points.to_byte_array().hex_encode(), cap.to_byte_array().hex_encode()])
 	if points.is_empty() and cap.is_empty():
 		return
 	if _line_material == null:
@@ -802,6 +851,7 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 		_occ_lines.mesh = line_mesh
 		_occ_lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_geometry_root.add_child(_occ_lines)
+	last_occ_usec[6] = Time.get_ticks_usec() - oc6
 
 
 # ── data ──────────────────────────────────────────────────────────────────────

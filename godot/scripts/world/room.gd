@@ -3358,6 +3358,9 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 	var cells: Array[int] = []
 	var digest: int = 0
 	var phases: Array = [[], [], [], [], []]
+	var live: Node = board3d()
+	var cut_phases: Array = [[], [], [], [], [], [], []]
+	var geo_digest: int = 0
 	for i: int in range(reps):
 		agent.set_cell(a if i % 2 == 0 else b)
 		var t0: int = Time.get_ticks_usec()
@@ -3368,6 +3371,10 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 		digest = hash([digest, str(occluded)])
 		for k: int in range(5):
 			(phases[k] as Array).append(float(_occlusion_set.last_phase_usec[k]) / 1000.0)
+		if live != null:
+			geo_digest = hash([geo_digest, live.last_occ_digest])
+			for k: int in range(7):
+				(cut_phases[k] as Array).append(float(live.last_occ_usec[k]) / 1000.0)
 		paints2d.append(float(_occ_last_usec[1]) / 1000.0)
 		paints3d.append(float(_occ_last_usec[2]) / 1000.0)
 		await get_tree().process_frame
@@ -3379,6 +3386,14 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 		for v: float in phases[k]:
 			total_ms += v
 		print("[OCC-BENCH]   phase %s: mean %.2f ms, max %.2f ms" % [phase_names[k], total_ms / float(reps), (phases[k] as Array).max()])
+	if live != null:
+		print("[OCC-BENCH] cutaway geometry digest %d" % geo_digest)
+		var cut_names: PackedStringArray = ["texture+uniforms", "outline edges", "side fills", "caps+rims", "merge", "segment ray march", "mesh build"]
+		for k: int in range(7):
+			var cut_total: float = 0.0
+			for v: float in cut_phases[k]:
+				cut_total += v
+			print("[OCC-BENCH]   cutaway %s: mean %.2f ms, max %.2f ms" % [cut_names[k], cut_total / float(reps), (cut_phases[k] as Array).max()])
 	for row: Array in [["set recompute", sets], ["2D ghost apply", paints2d], ["3D cutaway (on_occlusion)", paints3d], ["step incl. next frame", frames]]:
 		var values: Array[float] = row[1]
 		var total: float = 0.0

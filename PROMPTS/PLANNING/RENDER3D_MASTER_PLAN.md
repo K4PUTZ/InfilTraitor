@@ -33,6 +33,15 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   2910099765, PLAYGROUND 813133776), and the digest is unchanged after `reload`; after a rotation the cache rebuilds
   (different view, different digest, as expected). 60/60 selftests. What is left per step on the Moto: 3D cutaway 27 ms
   (max 96), wireframe build 13 ms, expand-to-columns 8 ms, roof 2.5 ms.
+- **Cutaway 3D cost cut, 2026-09-20.** `on_occlusion` phase clocks (`Board3DLive.last_occ_usec`, printed by
+  `occ_bench`) on the Moto: segment ray march 14.2 of 27.9 ms, side fills 6.0, merge 2.1, outline edges 1.8, mesh
+  build 1.3 (max 45), caps 1.2, texture 1.1. The march ran ~9 000 half-voxel steps per rebuild (4 368 rays over 41
+  steps, 44 steps each, 6% blocked), each through three store calls; `_occ_hidden` now reads the store inline with the
+  same float32 arithmetic and stops a ray once it has left the store's box (a line cannot re-enter a box).
+  **Moto: march 14.2 -> 4.8 ms, cutaway 27.9 -> 18.5 ms, whole agent step 101 -> 90 ms (195 before the OcclusionSet
+  cache).** Identity: `last_occ_digest` (hash of the outline + cap vertex arrays over 41 steps) is `2453924741`
+  before and after, on the desktop AND the Moto (PLAYGROUND `3767969204`, unchanged). 60/60 selftests. Next in the
+  cutaway: side fills 6 ms (same per-cell store calls), then the set's wireframe build 13 ms and expand 8 ms.
 - **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
   selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
   cutaway ONLY when it is inside the agent's field of view.

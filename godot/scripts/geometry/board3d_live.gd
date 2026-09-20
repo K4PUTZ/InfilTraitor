@@ -677,12 +677,16 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 		_line_material.albedo_color = Color(1, 1, 1)
 		## The fill goes first and writes no depth; the lines go on top of it, so the far edges show through it.
 		_line_material.render_priority = 10
+		_line_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_cap_material = StandardMaterial3D.new()
 		_cap_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_cap_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_cap_material.vertex_color_use_as_albedo = true
+		## Opaque pass, but AFTER the world (a higher `render_priority` draws later): the world cannot paint
+		## over the fill, it still depth-tests against the world, and it writes no depth, so the far lines,
+		## drawn after it, show through.
 		_cap_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
-		_cap_material.render_priority = -10
+		_cap_material.render_priority = 5
 	var mesh := ArrayMesh.new()
 	if not cap.is_empty():
 		var cap_arrays: Array = []

@@ -536,7 +536,7 @@ func on_occlusion(occ_set) -> void:
 ## the 2D wireframe never drew, along the bottom of the ghosted volume; a line that is not near-facing is
 ## dashed (the far edges and the junctions). The cap: the top of the 2-voxel base, whose faces the mesher
 ## hides under the ghosted voxels above, so without it the base reads hollow.
-const OCC_DASH_VOXELS: float = 1.5
+const OCC_DASH_VOXELS: float = 1.0
 const OCC_FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 var _cap_material: StandardMaterial3D = null
 

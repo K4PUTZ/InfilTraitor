@@ -1,8 +1,21 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.7
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.8
 
-**2026-09-19 update:** R3D-6 item 2 (glass) built, ratification pending; see the item and
-`PROMPTS/RESUMO_SESSAO_2026-09-19_R3D6_GLASS.md`. The "incomplete `touched_voxels`" was a chunk-size mismatch (`>> 5` vs 16), fixed.
+**2026-09-19 update (v1.8) — `RENDER3D` IS NOW THE DEFAULT** (`RENDER3D=0` = the 2D board, until R3D-8; the selftest
+harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary:
+`PROMPTS/RESUMO_SESSAO_2026-09-19_R3D6_R3D7.md`.
+- **R3D-6 item 2 (glass): look RATIFIED by the Director** (the pane, the crack decals, their removal with the
+  destroyed glass). The rim wedge is built (`[R3D-6h]`). Root causes found and fixed this session: a chunk-size
+  mismatch (`>> 5` vs 16) that left the blast's remesh on the wrong chunks (it was NEVER `touched_voxels`), the glass
+  erase and crack re-cut skipped under `SKIP_BOARD_WRITES`, and a soot wave that read the empty tilemap.
+- **R3D-6 items 3 (decals) and 4 (dents): BUILT, ratification pending.** Items 5 (whole facades), 6 (embers, burnt
+  voxels, floor shards) and the floor-light jump at the end of a blast are look tuning: **deferred by the Director until
+  the port is complete** ("o ajuste fino só importa quando toda a mecânica já existir").
+- **R3D-7 (cutaway): BUILT and APPROVED** ("Maravilha tudo certo"), with the ORIGINAL 2D mechanism (see R3D-7).
+  Not measured on the Moto.
+- **Open register additions:** wall picking by ray still needs the Director's call; guards behind walls are not
+  revealed by the cutaway and glass is not ghosted; the cutaway's Moto cost (mesh rebuild per agent step, a
+  half-voxel ray march per line piece) is unmeasured; the R3D-6 decal/dent/cutaway captures are desktop only.
 
 **Status (2026-09-18, v1.7):** 🟡 **R3D-0 to R3D-5 are built. Everything that draws in the game world now
 draws in the 3D board's world, depth-tested: the board (R3D-3), the actors, props and every
@@ -1924,7 +1937,7 @@ is behind the wall").
   capped (the mesher hides those faces under the ghosted voxels, so the base read hollow — a flat periwinkle
   quad on each wall column's base top, walls only: `min_level - ground` is 2 mod 8, a roof slab starts on a
   storey boundary); the white outline now also runs along the bottom of the volume; and every line that is not
-  near-facing (the far edges and the junctions) is dashed, 1.5 voxels on and 1.5 off.
+  near-facing (the far edges and the junctions) is dashed, 1 voxel on and 1 off.
 - **Sides (Director, 2026-09-19):** a side face of the volume is filled where the cell across it holds a SOLID,
   non-glass voxel (a wall that carries on behind, a frame), per level, and left transparent where it holds glass
   or nothing — so a window slab is painted where it touches its frames and clear where it touches the pane.
@@ -1936,7 +1949,7 @@ is behind the wall").
   127), and WHICH pieces to draw is decided when the outline is built, not by the depth buffer: `_occ_hidden` marches a ray
   from each piece toward the camera through the store (half a voxel a step; ghosted voxels and glass do not stop it), and a
   piece behind a real solid voxel is dropped; a far edge (not near-facing: the back of the volume) keeps only its dashes; a
-  near edge stays full. Unit edges are first joined into runs (`_occ_merge_edges`) because a dash (1.5 voxels) is longer
+  near edge stays full. Unit edges are first joined into runs (`_occ_merge_edges`) because a dash (1 voxel) is as long as
   than the 1-voxel edges the set emits, and a corner shared by two faces is one edge, near-facing if either face is. Tried and
   dropped: a transparent-pass fill (speckled sides), a stencil to protect the lines (a material that reads stencil must
   be in the alpha queue), depth-tested lines (the fill covered them), depth-less lines with no classification (they showed

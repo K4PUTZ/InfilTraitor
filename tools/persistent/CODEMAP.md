@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**274 scripts · 101771 lines total** (under `godot/scripts/`)
+**274 scripts · 101784 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -510,7 +510,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_billboard3d.gd`
 
-`class_name ActorBillboard3D` · extends `Node3D` · 210 lines
+`class_name ActorBillboard3D` · extends `Node3D` · 223 lines
 
 `godot/scripts/geometry/actor_billboard3d.gd`
 
@@ -519,7 +519,9 @@ extends `ConfirmationDialog` · 64 lines
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_billboard3d.gdshader"`
 - `SILHOUETTE_SHADER_PATH` = `"res://godot/shaders/actor_silhouette3d.gdshader"`
-- `SILHOUETTE_PRIORITY` = `20`
+- `SILHOUETTE_OUTLINE_SHADER_PATH` = `"res://godot/shaders/actor_silhouette3d_outline.gdshader"`
+- `SILHOUETTE_FILL_PRIORITY` = `20`
+- `SILHOUETTE_OUTLINE_PRIORITY` = `30`
 - `LAYER_EPSILON` = `0.002`
 - `MIRRORED_PARAMS` = `[ "light_dir", "light_intensity", "ambient", "specular_strength", "saturation", "contrast", ]`
 - `COS_ELEVATION` = `0.8660254`

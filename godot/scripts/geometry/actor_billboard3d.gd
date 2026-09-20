@@ -41,8 +41,11 @@ extends Node3D
 
 const SHADER_PATH := "res://godot/shaders/actor_billboard3d.gdshader"
 const SILHOUETTE_SHADER_PATH := "res://godot/shaders/actor_silhouette3d.gdshader"
-## Draws after the world's opaque geometry and the cutaway fill (10), before the cutaway lines (127).
-const SILHOUETTE_PRIORITY := 20
+const SILHOUETTE_OUTLINE_SHADER_PATH := "res://godot/shaders/actor_silhouette3d_outline.gdshader"
+## Draws after the world's opaque geometry and the cutaway fill (10), before the cutaway lines (127). Two layers:
+## every part's fill first, then every part's outline, so no fill covers a line.
+const SILHOUETTE_FILL_PRIORITY := 20
+const SILHOUETTE_OUTLINE_PRIORITY := 30
 ## Per layer, toward the camera, in world units. Far below one texel (1/181) and far above the depth
 ## buffer's resolution over the board's range.
 const LAYER_EPSILON := 0.002
@@ -59,6 +62,7 @@ var _source: AgentSprite = null
 var _quad_mesh: QuadMesh = null
 var _shader: Shader = null
 var _silhouette_shader: Shader = null
+var _silhouette_outline_shader: Shader = null
 
 ## Gameplay decides WHO is revealed (vision, skills and progress are gameplay, not physics); this node only
 ## draws it. When true, every part of the actor that an opaque wall covers is drawn as a striped silhouette.
@@ -68,8 +72,9 @@ var reveal_behind_walls: bool = false:
 		reveal_behind_walls = value
 		if not value:
 			for entry: Dictionary in _quads.values():
-				if entry.has("ghost"):
-					(entry["ghost"] as MeshInstance3D).visible = false
+				for key: String in ["ghost", "ghost_outline"]:
+					if entry.has(key):
+						(entry[key] as MeshInstance3D).visible = false
 ## Added to the silhouette's stripe scroll, in stripes. The plumbing for the idle animation planned in the
 ## movement milestone (the silhouette already follows the sprite's current frame).
 var silhouette_phase: float = 0.0
@@ -120,8 +125,9 @@ func _process(_delta: float) -> void:
 		var shown: bool = actor_visible and tex != null and (node == _source or node.visible)
 		mesh.visible = shown
 		if not shown:
-			if entry.has("ghost"):
-				(entry["ghost"] as MeshInstance3D).visible = false
+			for key: String in ["ghost", "ghost_outline"]:
+				if entry.has(key):
+					(entry[key] as MeshInstance3D).visible = false
 			continue
 		var xf: Transform2D = node.global_transform
 		var size_px: Vector2 = tex.get_size() * xf.get_scale()
@@ -182,29 +188,36 @@ func _mirror_material(node: Sprite2D, entry: Dictionary) -> void:
 			mat.set_shader_parameter(param, value)
 
 
-## The silhouette quad of one sprite: the same quad, transform and texture as the body's, drawn by
-## `actor_silhouette3d.gdshader` (only where something opaque is nearer than the actor).
+## The silhouette quads of one sprite: the same quad, transform and texture as the body's, one for the fill and one
+## for the outline (`actor_silhouette3d*.gdshader`; each draws only where something opaque is nearer than the actor).
 func _sync_ghost(node: Sprite2D, entry: Dictionary, body: MeshInstance3D) -> void:
 	if not entry.has("ghost"):
 		if _silhouette_shader == null:
 			_silhouette_shader = load(SILHOUETTE_SHADER_PATH)
-		var ghost := MeshInstance3D.new()
-		ghost.name = "Silhouette_%s" % node.name
-		ghost.mesh = _quad_mesh
-		var mat := ShaderMaterial.new()
-		mat.shader = _silhouette_shader
-		mat.render_priority = SILHOUETTE_PRIORITY
-		ghost.material_override = mat
-		ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(ghost)
-		entry["ghost"] = ghost
+			_silhouette_outline_shader = load(SILHOUETTE_OUTLINE_SHADER_PATH)
+		entry["ghost"] = _make_ghost(node, _silhouette_shader, SILHOUETTE_FILL_PRIORITY, "Silhouette")
+		entry["ghost_outline"] = _make_ghost(node, _silhouette_outline_shader, SILHOUETTE_OUTLINE_PRIORITY, "Outline")
 		entry["ghost_tex"] = null
-	var quad: MeshInstance3D = entry["ghost"]
-	quad.visible = true
-	quad.global_transform = body.global_transform
-	var mat: ShaderMaterial = quad.material_override as ShaderMaterial
-	if entry["ghost_tex"] != node.texture:
-		entry["ghost_tex"] = node.texture
-		mat.set_shader_parameter("albedo_tex", node.texture)
-	if mat.get_shader_parameter("phase") != silhouette_phase:
-		mat.set_shader_parameter("phase", silhouette_phase)
+	for key: String in ["ghost", "ghost_outline"]:
+		var quad: MeshInstance3D = entry[key]
+		quad.visible = true
+		quad.global_transform = body.global_transform
+		var mat: ShaderMaterial = quad.material_override as ShaderMaterial
+		if entry["ghost_tex"] != node.texture:
+			mat.set_shader_parameter("albedo_tex", node.texture)
+		if mat.get_shader_parameter("phase") != silhouette_phase:
+			mat.set_shader_parameter("phase", silhouette_phase)
+	entry["ghost_tex"] = node.texture
+
+
+func _make_ghost(node: Sprite2D, shader: Shader, priority: int, prefix: String) -> MeshInstance3D:
+	var ghost := MeshInstance3D.new()
+	ghost.name = "%s_%s" % [prefix, node.name]
+	ghost.mesh = _quad_mesh
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.render_priority = priority
+	ghost.material_override = mat
+	ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ghost)
+	return ghost

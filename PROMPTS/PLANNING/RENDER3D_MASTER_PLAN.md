@@ -13,7 +13,9 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   the port is complete** ("o ajuste fino só importa quando toda a mecânica já existir").
 - **R3D-7 (cutaway): BUILT and APPROVED** ("Maravilha tudo certo"), with the ORIGINAL 2D mechanism (see R3D-7).
   Not measured on the Moto.
-- **Open register additions:** wall picking by ray still needs the Director's call; guards behind walls are not
+- **Wall picking: DECIDED 2026-09-20 — not built.** A click on a wall face keeps picking the ground plane
+  (identical to the 2D); no ray against the store. Reopen only when an action needs a wall as its target.
+- **Open register additions:** guards behind walls are not
   revealed by the cutaway and glass is not ghosted; the cutaway's Moto cost (mesh rebuild per agent step, a
   half-voxel ray march per line piece) is unmeasured; the R3D-6 decal/dent/cutaway captures are desktop only.
 

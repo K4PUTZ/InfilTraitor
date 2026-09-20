@@ -495,6 +495,9 @@ func _process(_delta: float) -> void:
 ## only draws it: a column texture the face shader ghosts by, and the wireframe's edges as white lines.
 ## `INFILTRAITOR_CUTAWAY=0` = off.
 static var CUTAWAY_ON: bool = OS.get_environment("INFILTRAITOR_CUTAWAY") != "0"
+const OCC_BLOCK: int = 4
+var _solid_top := PackedInt32Array()
+var _solid_top_bw: int = 0
 var _occ_image: Image = null
 var _occ_texture: ImageTexture = null
 var _occ_lines: MeshInstance3D = null
@@ -640,7 +643,16 @@ func _occ_hidden(world: Vector3, toward: Vector3, cells: Dictionary) -> bool:
 	var top: int = _level_max + 1
 	var step: Vector3 = toward * 0.5
 	var entered: bool = false
-	for _i: int in range(160):
+	## Empty-space skip: above the highest solid cell of the OCC_BLOCK-wide block of columns it is in, the ray cannot hit
+	## anything until it leaves the block, so it only adds `step` (the same float32 sequence) that many times. Needs the
+	## ray to rise, or "above the block" would stop being true.
+	var rising: bool = step.y > 0.0
+	var sx: float = absf(step.x)
+	var sz: float = absf(step.z)
+	var bw: int = _solid_top_bw
+	var i: int = 0
+	while i < 160:
+		i += 1
 		p += step
 		var level: int = floori(p.y)
 		if level > top:
@@ -652,6 +664,21 @@ func _occ_hidden(world: Vector3, toward: Vector3, cells: Dictionary) -> bool:
 				return false
 			continue
 		entered = true
+		if rising:
+			var bx: int = (cx - x0) / OCC_BLOCK
+			var by: int = (cy - y0) / OCC_BLOCK
+			if level > _solid_top[by * bw + bx]:
+				var n: int = 160 - i
+				if sx > 0.0001:
+					var edge_x: float = float(x0 + (bx + 1) * OCC_BLOCK) - p.x if step.x > 0.0 else p.x - float(x0 + bx * OCC_BLOCK)
+					n = mini(n, int(edge_x / sx) - 1)
+				if sz > 0.0001:
+					var edge_z: float = float(y0 + (by + 1) * OCC_BLOCK) - p.z if step.z > 0.0 else p.z - float(y0 + by * OCC_BLOCK)
+					n = mini(n, int(edge_z / sz) - 1)
+				for _k: int in range(n):
+					p += step
+				i += maxi(n, 0)
+				continue
 		var idx: int = ((level - l0) * h + (cy - y0)) * w + (cx - x0)
 		if occ[idx] == 0 or _material_glass[_store_material[mat[owner[idx]]]]:
 			continue
@@ -1256,6 +1283,12 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 	var h: int = store.h
 	var lo: int = 1 << 30
 	var hi: int = -(1 << 30)
+	## The highest solid non-glass cell of every OCC_BLOCK x OCC_BLOCK block of columns (by the cell's owner, the very claim
+	## `_occ_hidden` reads). Only ever an upper bound after a blast: destruction removes cells, never adds one.
+	_solid_top_bw = (w + OCC_BLOCK - 1) / OCC_BLOCK
+	_solid_top.resize(_solid_top_bw * ((h + OCC_BLOCK - 1) / OCC_BLOCK))
+	_solid_top.fill(-1)
+	var s_mat: PackedByteArray = store.mat
 	for ci in range(store.container_count()):
 		var span: Vector2i = store.container_claims(ci)
 		var kind: int = store.container_kinds[ci]
@@ -1276,6 +1309,10 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 			var level: int = xyz[k + 2]
 			if owner[((level - l0) * h + (y - y0)) * w + (x - x0)] == claim:
 				cells += 1
+				if not _material_glass[_store_material[s_mat[claim]]]:
+					var block: int = ((y - y0) / OCC_BLOCK) * _solid_top_bw + (x - x0) / OCC_BLOCK
+					if level > _solid_top[block]:
+						_solid_top[block] = level
 			if level < lo:
 				lo = level
 			if level > hi:

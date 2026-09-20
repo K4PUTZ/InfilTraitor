@@ -105,6 +105,18 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   sites in the initial build), and the check reads placed + skipped (`get_walked_cell_count()`); the three maps went
   from 1 error each to 0, in 3D and in 2D, PLAYGROUND and GLASS stay 0. Not exercised: a build aborted before
   `render()` (both counts stay 0 there, so it should still fail, but no such build was run).
+- **Ray march: empty-space skip, 2026-09-20.** On OCCLUSION_NEST the march is 2 640 rays / 276 276 steps (105 per
+  ray; 1 584 rays run the 160-step cap) with ZERO blocked, and 82% of the steps (93% on GLASS) are above the highest
+  solid cell of their OWN column. `_collect_store` now keeps the highest solid non-glass cell (by owner, the claim the
+  ray reads) of every 4 x 4 block of columns (`_solid_top`; only ever an upper bound after a blast); a rising ray
+  above its block's top adds `step` the number of times it certainly stays in the block instead of running the body,
+  so the float32 sequence is the same. Steps that still run the body, no skip / 8-block / 4-block / 2-block: NEST
+  274k / 134k / 127k / 167k, GLASS 114k / 66k / 48k / 67k. **Moto: NEST march 11.5 -> 9.2 ms, GLASS 4.8 -> 3.8 ms
+  (about -20% on both), cutaway NEST 21.5 -> 19.1, GLASS 13.8 -> 12.6.** Geometry digests unchanged (GLASS
+  `2453924741`, NEST `49194435`, PLAYGROUND `3767969204`). The limit is the tall walls: a block that holds one
+  never lets a rising ray skip. Going further means fewer rays or another algorithm (a camera-direction depth
+  buffer of the solid voxels), not a finer table; not built. Worst case (3 nested volumes) is still ~38 ms per
+  occluded step for the cutaway alone.
 - **Glass in the cutaway: DECIDED 2026-09-20 — stays whole** (Director). Glass never joins the occlusion set (as in
   the 2D: glass is not an occluder) and is never dithered, so a pane inside a ghosted wall volume stays drawn; the
   volume's side fill is left clear where the cell across is glass (2026-09-19). Not a defect; nothing to build.

@@ -24,6 +24,15 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   hitches to 110 ms. A CUTAWAY=0 A/B was attempted and is INVALID: `CUTAWAY_ON` reads the OS environment, not
   `DevFlags`, so the flag never reached the APK (both captures identical). The cutaway does draw on the handset
   (`Screenshots/history/r3d7_moto_cutaway_on.png`). Instrument: scenario step `occ_bench`.
+- **OcclusionSet recompute investigated and cut, 2026-09-20.** Per-phase clocks (`OcclusionSet.last_phase_usec`,
+  printed by `occ_bench`) put **98.8 of the 124 ms in `compute_edge_occlusion`'s geometry pass**, which walks every
+  voxel of every wall on every agent step although it reads only the slices. It and the slice grouping are now kept
+  while the slices are the same objects (a rebuilt registry makes new ones; the selftests pass fresh dictionaries and
+  still recompute). **Moto: set recompute 124.4 -> 24.3 ms, whole step 195 -> 101 ms; desktop edge phase 14.3 -> 0.07
+  ms.** Identity: the digest of the occluded set over 41 steps is byte-equal with the cache forced off (GLASS
+  2910099765, PLAYGROUND 813133776), and the digest is unchanged after `reload`; after a rotation the cache rebuilds
+  (different view, different digest, as expected). 60/60 selftests. What is left per step on the Moto: 3D cutaway 27 ms
+  (max 96), wireframe build 13 ms, expand-to-columns 8 ms, roof 2.5 ms.
 - **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
   selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
   cutaway ONLY when it is inside the agent's field of view.

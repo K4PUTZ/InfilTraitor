@@ -105,6 +105,11 @@ func get_wireframe_by_level() -> Dictionary:
 	return _wireframe_by_level.duplicate()
 
 ## Get the recomputation counter for verification.
+## Instrument (R3D-7 Moto): usec of the last recompute() by phase — group slices, edge occlusion, expand to voxel
+## columns (+ junctions), roof, wireframe (0 when the set did not change).
+var last_phase_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0])
+
+
 func get_recompute_count() -> int:
 	return _recompute_count
 
@@ -138,8 +143,11 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		push_error("[OCC-HOVER-01] recompute() expects Vector2i or Array[Vector2i], got %s" % type_string(typeof(agent_cells)))
 		return
 	
-	var slices_by_edge := _group_slices_by_edge(slices)
+	var ph0: int = Time.get_ticks_usec()
+	var slices_by_edge := _grouped_slices(slices)
+	var ph1: int = Time.get_ticks_usec()
 	var occlusion := compute_edge_occlusion(origins, slices_by_edge, room_size)
+	var ph2: int = Time.get_ticks_usec()
 	var edges: Array = occlusion["edges"]
 
 	var new_occluded: Dictionary = {}
@@ -200,7 +208,10 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	## after walls/junctions so a cell shared with a wall column (the roof's
 	## 1-voxel border row) widens that entry's vertical span instead of
 	## replacing it.
+	var ph3: int = Time.get_ticks_usec()
 	var roof := _compute_roof_occlusion(origins, ceiling_slabs, ring_by_edge_id, slices_by_edge)
+	var ph4: int = Time.get_ticks_usec()
+	var ph5: int = ph4
 	for cell in roof["cells"].keys():
 		var r_entry: Dictionary = roof["cells"][cell]
 		if new_occluded.has(cell):
@@ -216,6 +227,7 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	if new_occluded != _occluded_cells:
 		_occluded_cells = new_occluded
 		_wireframe_by_level = _build_wireframe_geometry(new_occluded)
+		ph5 = Time.get_ticks_usec()
 		_recompute_count += 1
 		if _recompute_count % 10 == 0 or new_occluded.size() > 0:
 			var line_count := 0
@@ -224,6 +236,7 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 			print_debug("[OcclusionSet] Recomputed: %d cells, %d wireframe lines (count=%d)" % [
 				_occluded_cells.size(), line_count, _recompute_count
 			])
+	last_phase_usec = PackedInt64Array([ph1 - ph0, ph2 - ph1, ph3 - ph2, ph4 - ph3, ph5 - ph4])
 
 ## ============================================================================
 ## OCC-27 (2026-07-21) — unified wireframe: hidden-face culling over the
@@ -557,6 +570,25 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ##     together, by _build_wireframe_geometry() over the merged
 ##     _occluded_cells set — see that function's header for why the old
 ##     per-edge box was the actual source of the reported seam artifacts.
+## `_group_slices_by_edge()` of the same slices, kept while the slices are the same objects (a rebuilt registry
+## makes new ones). Keyed on the count and every slice's instance id.
+var _group_key: int = -1
+var _grouped: Dictionary = {}
+var _geom_source: Dictionary = {}
+var _geom_by_edge: Dictionary = {}
+var _geom_vertices: Dictionary = {}
+
+
+func _grouped_slices(slices: Array) -> Dictionary:
+	var key: int = slices.size()
+	for slice in slices:
+		key = key * 1000003 + int(slice.get_instance_id())
+	if key != _group_key:
+		_group_key = key
+		_grouped = _group_slices_by_edge(slices)
+	return _grouped
+
+
 func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:
 	var half_gu := int(GeometryCoordsMod.VOXELS_PER_UNIT_AXIS / 2.0)
 	
@@ -582,10 +614,17 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 
 	## One geometry pass per edge: real footprint + screen-X/Y span, from its own
 	## voxels across every storey it has (never a generic per-cell guess).
+	## R3D-7 (Moto): this pass reads only the slices, never the agent, and walks every voxel of every wall
+	## (99 of 124 ms per agent step on the Moto g04s), so it is kept for as long as `slices_by_edge` is the
+	## very same Dictionary it was built from. A caller passing a fresh one (the selftests) recomputes.
 	var edge_geom: Dictionary = {}        ## edge_id -> geometry dict (see below)
 	var vertex_to_edges: Dictionary = {}  ## Vector2i vertex -> Array[String edge_id]
+	var reuse: bool = is_same(_geom_source, slices_by_edge) and not slices_by_edge.is_empty()
+	if reuse:
+		edge_geom = _geom_by_edge
+		vertex_to_edges = _geom_vertices
 
-	for edge_id in slices_by_edge.keys():
+	for edge_id in ([] if reuse else slices_by_edge.keys()):
 		var edge_slices: Array = slices_by_edge[edge_id]
 
 		var min_gx: int = edge_slices[0].voxels[0].grid_pos.x
@@ -648,6 +687,11 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 			if not vertex_to_edges.has(v):
 				vertex_to_edges[v] = []
 			vertex_to_edges[v].append(edge_id)
+
+	if not reuse:
+		_geom_source = slices_by_edge
+		_geom_by_edge = edge_geom
+		_geom_vertices = vertex_to_edges
 
 	## Trigger test: camera-side + real 2D (screen-X and screen-Y) overlap with the
 	## agent's own silhouette rectangle. Uses the edge's UNCLIPPED y_bottom — the

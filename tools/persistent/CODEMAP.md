@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**274 scripts · 101430 lines total** (under `godot/scripts/`)
+**274 scripts · 101486 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3135,7 +3135,7 @@ extends `Node` · 256 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 906 lines
+`class_name OcclusionSet` · 950 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -3148,6 +3148,9 @@ extends `Node` · 256 lines
 - `BASE_VISIBLE_LEVELS` = `2`
 - `SMALL_ROOF_MAX_STRIPES` = `5`
 - `_FACE_DIRS` = `[Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]`
+
+**Public vars**
+- `var last_phase_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0])`
 
 **Public API**
 - `func get_occluded_cells() -> Dictionary:`
@@ -6163,7 +6166,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12420 lines
+extends `Node2D` · 12432 lines
 
 `godot/scripts/world/room.gd`
 

@@ -3356,17 +3356,29 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 	var paints3d: Array[float] = []
 	var frames: Array[float] = []
 	var cells: Array[int] = []
+	var digest: int = 0
+	var phases: Array = [[], [], [], [], []]
 	for i: int in range(reps):
 		agent.set_cell(a if i % 2 == 0 else b)
 		var t0: int = Time.get_ticks_usec()
 		_recompute_occlusion()
 		sets.append(float(_occ_last_usec[0]) / 1000.0)
-		cells.append(_occlusion_set.get_occluded_cells().size())
+		var occluded: Dictionary = _occlusion_set.get_occluded_cells()
+		cells.append(occluded.size())
+		digest = hash([digest, str(occluded)])
+		for k: int in range(5):
+			(phases[k] as Array).append(float(_occlusion_set.last_phase_usec[k]) / 1000.0)
 		paints2d.append(float(_occ_last_usec[1]) / 1000.0)
 		paints3d.append(float(_occ_last_usec[2]) / 1000.0)
 		await get_tree().process_frame
 		frames.append(float(Time.get_ticks_usec() - t0) / 1000.0)
-	print("[OCC-BENCH] occluded columns per step: min %d, max %d" % [cells.min(), cells.max()])
+	print("[OCC-BENCH] occluded columns per step: min %d, max %d, digest %d" % [cells.min(), cells.max(), digest])
+	var phase_names: PackedStringArray = ["group slices", "edge occlusion", "expand to columns", "roof", "wireframe"]
+	for k: int in range(5):
+		var total_ms: float = 0.0
+		for v: float in phases[k]:
+			total_ms += v
+		print("[OCC-BENCH]   phase %s: mean %.2f ms, max %.2f ms" % [phase_names[k], total_ms / float(reps), (phases[k] as Array).max()])
 	for row: Array in [["set recompute", sets], ["2D ghost apply", paints2d], ["3D cutaway (on_occlusion)", paints3d], ["step incl. next frame", frames]]:
 		var values: Array[float] = row[1]
 		var total: float = 0.0

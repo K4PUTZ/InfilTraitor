@@ -1930,10 +1930,15 @@ is behind the wall").
   or nothing — so a window slab is painted where it touches its frames and clear where it touches the pane.
   Read from the store at each occlusion change (`_solid_non_glass`), shaded by facing (SE 0.85 / SW 0.70 / far 0.55).
   Capture: `Screenshots/history/r3d7_cutaway_glass_map.png` (GLASS, agent at 16,15).
-- **Draw order (Director, 2026-09-19):** the fill (caps and sides) is opaque, writes NO depth and draws AFTER the world
-  (`render_priority` +5 — a higher value draws later, so -10 let the floor paint over it and made the sides transparent);
-  every line goes on top of it (+10). The far edges therefore show through the fill, and lines stay depth-tested against
-  the world. A transparent-pass attempt left the sides speckled and was dropped.
+- **Draw order (Director, 2026-09-19):** the fill (caps and sides) is opaque, draws AFTER the world (`render_priority`
+  +5 — a higher value draws later, so -10 let the floor paint over it and made the sides transparent) and WRITES
+  depth, so the ground overlays (the hovered cell's outline), drawn later still, do not show through a painted face
+  (they did while the fill wrote no depth). The lines (+10) ignore depth (`no_depth_test`), so the far dashed edges
+  show over the fill: the set only names walls between the camera and the agent, so nothing in front of them is worth
+  hiding a line behind. A transparent-pass attempt left the sides speckled and was dropped.
+- **Nested occlusion (two volumes, one inside the other's screen area):** each volume has its own cap and sides; the
+  nearer one's opaque fill hides the farther one's fill (correct), and both sets of lines are drawn over everything.
+  Seen on GLASS with the agent at 16,15 (`r3d7_cutaway_glass_map.png`). Not exercised: three or more levels of nesting.
 - The 2D wireframe overlay is hidden while the 3D board is live. `INFILTRAITOR_CUTAWAY=0` = off.
 - Capture: `Screenshots/history/r3d7_cutaway_dither_spike.png` (agent behind a PLAYGROUND block: 260 columns
   occluded; in open ground 0). **Not verified:** guards behind walls; glass (not ghosted); roofs and

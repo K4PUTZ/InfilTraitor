@@ -675,17 +675,18 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 		_line_material = StandardMaterial3D.new()
 		_line_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_line_material.albedo_color = Color(1, 1, 1)
-		## The fill goes first and writes no depth; the lines go on top of it, so the far edges show through it.
+		## Lines go on top of the fill and of the world's depth: the occlusion set only names the walls between the
+		## camera and the agent, so nothing in front of them is worth hiding a line behind.
 		_line_material.render_priority = 10
+		_line_material.no_depth_test = true
 		_line_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_cap_material = StandardMaterial3D.new()
 		_cap_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_cap_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_cap_material.vertex_color_use_as_albedo = true
-		## Opaque pass, but AFTER the world (a higher `render_priority` draws later): the world cannot paint
-		## over the fill, it still depth-tests against the world, and it writes no depth, so the far lines,
-		## drawn after it, show through.
-		_cap_material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		## Opaque pass, AFTER the world (a higher `render_priority` draws later, so the floor cannot paint over it),
+		## and it WRITES depth: the ground overlays (the hovered cell's outline) are drawn later and must not show
+		## through a painted face. The lines below ignore depth instead, so the far edges still show over it.
 		_cap_material.render_priority = 5
 	var mesh := ArrayMesh.new()
 	if not cap.is_empty():

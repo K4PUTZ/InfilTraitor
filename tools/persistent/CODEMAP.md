@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**274 scripts · 101551 lines total** (under `godot/scripts/`)
+**274 scripts · 101610 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3135,7 +3135,7 @@ extends `Node` · 256 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 950 lines
+`class_name OcclusionSet` · 993 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -6166,7 +6166,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12447 lines
+extends `Node2D` · 12463 lines
 
 `godot/scripts/world/room.gd`
 

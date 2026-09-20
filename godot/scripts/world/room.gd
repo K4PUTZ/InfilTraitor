@@ -3359,6 +3359,7 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 	var digest: int = 0
 	var phases: Array = [[], [], [], [], []]
 	var live: Node = board3d()
+	_occlusion_set.memo_enabled = false  ## the first pass measures the path that recomputes every step
 	var cut_phases: Array = [[], [], [], [], [], [], []]
 	var geo_digest: int = 0
 	for i: int in range(reps):
@@ -3394,6 +3395,21 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 			for v: float in cut_phases[k]:
 				cut_total += v
 			print("[OCC-BENCH]   cutaway %s: mean %.2f ms, max %.2f ms" % [cut_names[k], cut_total / float(reps), (cut_phases[k] as Array).max()])
+	## Second pass, memo on: the same steps again (the agent or the hover returning to cells it has seen).
+	_occlusion_set.memo_enabled = true
+	var memo_digest: int = 0
+	var memo_ms: Array[float] = []
+	for i: int in range(reps):
+		agent.set_cell(a if i % 2 == 0 else b)
+		_recompute_occlusion()
+		memo_ms.append(float(_occ_last_usec[0]) / 1000.0)
+		memo_digest = hash([memo_digest, str(_occlusion_set.get_occluded_cells())])
+		await get_tree().process_frame
+	var memo_total: float = 0.0
+	for v: float in memo_ms:
+		memo_total += v
+	print("[OCC-BENCH] memoised set recompute: mean %.2f ms, max %.2f ms, digest %d (%s the reference pass)" % [
+		memo_total / float(reps), memo_ms.max(), memo_digest, "==" if memo_digest == digest else "DIFFERS FROM"])
 	for row: Array in [["set recompute", sets], ["2D ghost apply", paints2d], ["3D cutaway (on_occlusion)", paints3d], ["step incl. next frame", frames]]:
 		var values: Array[float] = row[1]
 		var total: float = 0.0

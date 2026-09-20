@@ -146,6 +146,18 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	var ph0: int = Time.get_ticks_usec()
 	var slices_by_edge := _grouped_slices(slices)
 	var ph1: int = Time.get_ticks_usec()
+	## R3D-7 (Moto): the whole result is a pure function of these inputs (geometry is static between rebuilds), so
+	## the last few are kept — the hover cell and the agent come back to cells they have already been on.
+	var memo_key: Array = [origins.duplicate(), _group_key, _objects_key(ceiling_slabs), _objects_key(junction_columns),
+		room_size, silhouette_half_width_px, silhouette_height_px]
+	if memo_enabled and _memo.has(memo_key):
+		var hit: Array = _memo[memo_key]
+		if hit[0] != _occluded_cells:
+			_occluded_cells = hit[0]
+			_wireframe_by_level = hit[1]
+			_recompute_count += 1
+		last_phase_usec = PackedInt64Array([ph1 - ph0, 0, 0, 0, 0])
+		return
 	var occlusion := compute_edge_occlusion(origins, slices_by_edge, room_size)
 	var ph2: int = Time.get_ticks_usec()
 	var edges: Array = occlusion["edges"]
@@ -154,27 +166,26 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	var ring_by_edge_id: Dictionary = {}
 	for e in edges:
 		ring_by_edge_id[e["edge_id"]] = e["ring"]
-		for slice in slices_by_edge.get(e["edge_id"], []):
-			for voxel in slice.voxels:
-				## OCC-09/OCC-10: min_level travels WITH the cell — a column key
-				## alone would leave VoxelRenderer.apply_occlusion() unable to tell
-				## which of a column's levels are the always-visible base versus
-				## the ghosted rest above it.
-				## OCC-26 (2026-07-18): max_level travels too. The erase used to run
-				## to the top of every layer, which also ate the ROOF's 1-voxel
-				## border row sitting in the wall's own columns (levels above the
-				## wall's top) — the visible roof edge then fell back one voxel
-				## deeper, reading as a ~4-screen-px seam between the roofline and
-				## the wireframe's top cap (Director's "wireframe shifted 3-4 px",
-				## erase-diff measured). A cell claimed by two edges keeps the
-				## wider vertical span.
-				var span_min: int = e["min_level"]
-				var span_max: int = e["max_level"]
-				if new_occluded.has(voxel.grid_pos):
-					var prev: Dictionary = new_occluded[voxel.grid_pos]
-					span_min = mini(span_min, prev["min_level"])
-					span_max = maxi(span_max, prev["max_level"])
-				new_occluded[voxel.grid_pos] = {"ring": e["ring"], "min_level": span_min, "max_level": span_max}
+		for column in _edge_columns(e["edge_id"], slices_by_edge):
+			## OCC-09/OCC-10: min_level travels WITH the cell — a column key
+			## alone would leave VoxelRenderer.apply_occlusion() unable to tell
+			## which of a column's levels are the always-visible base versus
+			## the ghosted rest above it.
+			## OCC-26 (2026-07-18): max_level travels too. The erase used to run
+			## to the top of every layer, which also ate the ROOF's 1-voxel
+			## border row sitting in the wall's own columns (levels above the
+			## wall's top) — the visible roof edge then fell back one voxel
+			## deeper, reading as a ~4-screen-px seam between the roofline and
+			## the wireframe's top cap (Director's "wireframe shifted 3-4 px",
+			## erase-diff measured). A cell claimed by two edges keeps the
+			## wider vertical span.
+			var span_min: int = e["min_level"]
+			var span_max: int = e["max_level"]
+			if new_occluded.has(column):
+				var prev: Dictionary = new_occluded[column]
+				span_min = mini(span_min, prev["min_level"])
+				span_max = maxi(span_max, prev["max_level"])
+			new_occluded[column] = {"ring": e["ring"], "min_level": span_min, "max_level": span_max}
 
 	## OCC-10/OCC-13/OCC-14 (2026-07-14): junction filler columns aren't part of
 	## any Slice/Edge of their own — Director's rule, confirmed on annotated
@@ -236,6 +247,10 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 			print_debug("[OcclusionSet] Recomputed: %d cells, %d wireframe lines (count=%d)" % [
 				_occluded_cells.size(), line_count, _recompute_count
 			])
+	if memo_enabled:
+		if _memo.size() >= MEMO_MAX:
+			_memo.erase(_memo.keys()[0])
+		_memo[memo_key] = [_occluded_cells, _wireframe_by_level]
 	last_phase_usec = PackedInt64Array([ph1 - ph0, ph2 - ph1, ph3 - ph2, ph4 - ph3, ph5 - ph4])
 
 ## ============================================================================
@@ -580,13 +595,41 @@ var _geom_vertices: Dictionary = {}
 
 
 func _grouped_slices(slices: Array) -> Dictionary:
-	var key: int = slices.size()
-	for slice in slices:
-		key = key * 1000003 + int(slice.get_instance_id())
+	var key: int = _objects_key(slices)
 	if key != _group_key:
 		_group_key = key
 		_grouped = _group_slices_by_edge(slices)
+		_columns_by_edge.clear()
+		_memo.clear()
 	return _grouped
+
+
+func _objects_key(objects: Array) -> int:
+	var key: int = objects.size()
+	for object in objects:
+		key = key * 1000003 + int(object.get_instance_id())
+	return key
+
+
+## The distinct voxel columns of one edge, in the order their first voxel appears. Static per set of slices, and
+## exact to use in place of walking every voxel: within one edge every write to a column stores the same entry.
+var _columns_by_edge: Dictionary = {}
+
+
+func _edge_columns(edge_id: String, slices_by_edge: Dictionary) -> Array:
+	if not _columns_by_edge.has(edge_id):
+		var seen: Dictionary = {}
+		for slice in slices_by_edge.get(edge_id, []):
+			for voxel in slice.voxels:
+				seen[voxel.grid_pos] = true
+		_columns_by_edge[edge_id] = seen.keys()
+	return _columns_by_edge[edge_id]
+
+
+## The last few results by input (see `recompute()`); `memo_enabled = false` is the reference path.
+const MEMO_MAX: int = 16
+var memo_enabled: bool = true
+var _memo: Dictionary = {}
 
 
 func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _room_size: Vector2i) -> Dictionary:

@@ -42,6 +42,17 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   cache).** Identity: `last_occ_digest` (hash of the outline + cap vertex arrays over 41 steps) is `2453924741`
   before and after, on the desktop AND the Moto (PLAYGROUND `3767969204`, unchanged). 60/60 selftests. Next in the
   cutaway: side fills 6 ms (same per-cell store calls), then the set's wireframe build 13 ms and expand 8 ms.
+- **OcclusionSet: expansion deduplicated and results memoised, 2026-09-20.** Correction to the plan for this step:
+  the wireframe and the expansion are NOT per-view work — they change whenever the set does (every agent step and
+  every hover cell, which is an origin). What is exact: (1) `recompute()` expanded each edge voxel by voxel, rewriting
+  the same column once per level; the distinct columns of an edge are static per set of slices and every write within
+  an edge stores the same entry, so they are listed once (`_edge_columns`); (2) the result is a pure function of
+  (origins, slices, ceiling slabs, junction columns, room size, silhouette), so the last 16 are kept (`_memo`,
+  `memo_enabled = false` is the reference path). **Moto: expansion 8.0 -> 0.4 ms, set recompute 24.3 -> 16.3 ms on a
+  miss, 0.5 ms on a memo hit; whole step 90 -> 84 ms.** Identity: the set digest over 41 steps is `2910099765`
+  (GLASS) / `813133776` (PLAYGROUND), unchanged from before any of this, and equal between the memo and reference
+  passes on the desktop and the Moto; the cutaway digest is unchanged. 60/60 selftests. Left in the set on a miss:
+  the wireframe build 12.7 ms (1.7 on the desktop) and the roof 2.4 ms.
 - **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
   selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
   cutaway ONLY when it is inside the agent's field of view.

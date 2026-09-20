@@ -56,6 +56,9 @@
 ##                                        layout from the live registries, check each
 ##                                        against today's objects, and time the three hot
 ##                                        readers `reps` times (`StoreLayoutSpike`)
+##   occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps>
+##                                        times through the real occlusion path (`_recompute_occlusion`),
+##                                        one frame apart, and print the set / 3D cutaway / total cost
 ##   quit                                end the process (the harness waits on it)
 ##
 ## EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer
@@ -75,7 +78,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1,
-	"occupancy_compare": 1, "passages": 1,
+	"occupancy_compare": 1, "passages": 1, "occ_bench": 3,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
@@ -167,6 +170,15 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
+		"occ_bench":
+			for k: int in [1, 2]:
+				var xy: PackedStringArray = tokens[k].split(",")
+				if xy.size() != 2 or not xy[0].is_valid_int() or not xy[1].is_valid_int():
+					return "occ_bench takes two cells as x,y"
+				step["cell%d" % k] = Vector2i(int(xy[0]), int(xy[1]))
+			if not tokens[3].is_valid_int() or int(tokens[3]) < 1:
+				return "occ_bench takes a repetition count >= 1"
+			step["reps"] = int(tokens[3])
 		"capture_at":
 			if RegEx.create_from_string(BEAT_TOKEN_PATTERN).search(arg) == null:
 				return "capture_at takes a beat name (letters, digits, _ for a space)"
@@ -301,6 +313,10 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			var detonated: bool = await done
 			if not detonated:
 				return _fail(step, "the detonation did not complete (see the error above)")
+		"occ_bench":
+			if not room.has_method("scenario_occ_bench"):
+				return _fail(step, "Room has no scenario_occ_bench()")
+			await room.call("scenario_occ_bench", step["cell1"], step["cell2"], int(step["reps"]))
 		"drop2d":
 			if not room.has_method("scenario_drop_2d_board"):
 				return _fail(step, "Room has no scenario_drop_2d_board()")

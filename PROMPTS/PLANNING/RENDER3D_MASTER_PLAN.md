@@ -15,6 +15,18 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   Not measured on the Moto.
 - **Wall picking: DECIDED 2026-09-20 — not built.** A click on a wall face keeps picking the ground plane
   (identical to the 2D); no ray against the store. Reopen only when an action needs a wall as its target.
+- **R3D-7 measured on the Moto g04s, 2026-09-20** (`docs/measurements/device_2026-09-20_moto_g04s_r3d7_occ_bench.log`,
+  release APK, GLASS, `occ_bench 16,15 13,13 41`: the agent alternates between a cell with 104 occluded columns and
+  one with none, so every mean below is over both). Per agent step: **the occlusion SET's recompute 122.8 ms
+  (max 177)**, the 2D ghost apply 2.6 ms, **the 3D cutaway 27.9 ms (max 110)**, whole step incl. next frame 196 ms.
+  The set is the 2D board's own code, unchanged by R3D and 15 ms on the desktop: it is the dominant cost and the
+  one that needs work, not the cutaway. Against the 33 ms budget the cutaway alone is about a frame per step, with
+  hitches to 110 ms. A CUTAWAY=0 A/B was attempted and is INVALID: `CUTAWAY_ON` reads the OS environment, not
+  `DevFlags`, so the flag never reached the APK (both captures identical). The cutaway does draw on the handset
+  (`Screenshots/history/r3d7_moto_cutaway_on.png`). Instrument: scenario step `occ_bench`.
+- **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
+  selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
+  cutaway ONLY when it is inside the agent's field of view.
 - **Open register additions:** guards behind walls are not
   revealed by the cutaway and glass is not ghosted; the cutaway's Moto cost (mesh rebuild per agent step, a
   half-voxel ray march per line piece) is unmeasured; the R3D-6 decal/dent/cutaway captures are desktop only.

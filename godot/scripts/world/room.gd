@@ -3344,6 +3344,37 @@ func scenario_passages(label: String) -> bool:
 ## has settled. `SHOT_AGENT_CELL` / `SHOT_GUARD_CELL` ("x,y", DevFlags — the names
 ## `_capture_agent_shot()` already reads) pin both ends, so a gate can put a round
 ## through a chosen pane (R3D-1c step 3).
+## Duration of the last `_recompute_occlusion()`: [the set's recompute, the 2D ghost apply, the 3D cutaway], usec.
+var _occ_last_usec: Array = [0, 0, 0]
+
+
+## R3D-7 instrument (`occ_bench`): the agent alternates between two cells through the real occlusion path, one
+## rendered frame per step, and the per-phase cost is printed as mean / max over the run.
+func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
+	var sets: Array[float] = []
+	var paints2d: Array[float] = []
+	var paints3d: Array[float] = []
+	var frames: Array[float] = []
+	var cells: Array[int] = []
+	for i: int in range(reps):
+		agent.set_cell(a if i % 2 == 0 else b)
+		var t0: int = Time.get_ticks_usec()
+		_recompute_occlusion()
+		sets.append(float(_occ_last_usec[0]) / 1000.0)
+		cells.append(_occlusion_set.get_occluded_cells().size())
+		paints2d.append(float(_occ_last_usec[1]) / 1000.0)
+		paints3d.append(float(_occ_last_usec[2]) / 1000.0)
+		await get_tree().process_frame
+		frames.append(float(Time.get_ticks_usec() - t0) / 1000.0)
+	print("[OCC-BENCH] occluded columns per step: min %d, max %d" % [cells.min(), cells.max()])
+	for row: Array in [["set recompute", sets], ["2D ghost apply", paints2d], ["3D cutaway (on_occlusion)", paints3d], ["step incl. next frame", frames]]:
+		var values: Array[float] = row[1]
+		var total: float = 0.0
+		for v: float in values:
+			total += v
+		print("[OCC-BENCH] %s: mean %.2f ms, max %.2f ms over %d" % [row[0], total / float(values.size()), values.max(), values.size()])
+
+
 func scenario_shoot(index: int) -> bool:
 	if _agent_shot_controller == null or index < 0 or index >= _guards.size():
 		push_error("[Room] scenario_shoot: no shot controller or no guard #%d (%d on the map)"
@@ -6352,15 +6383,19 @@ func _recompute_occlusion() -> void:
 			if slab.role == Slab.Role.CEILING:
 				ceiling_slabs.append(slab)
 
+	var occ_t0: int = Time.get_ticks_usec()
 	_occlusion_set.recompute(origins, slices, _room_size, _junction_columns, ceiling_slabs)
+	var occ_t1: int = Time.get_ticks_usec()
 
 	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
 	if _voxel_renderer != null:
 		_voxel_renderer.apply_occlusion(_occlusion_set.get_occluded_cells())
+	var occ_t2: int = Time.get_ticks_usec()
 
 	var live_board: Node = board3d()
 	if live_board != null:
 		live_board.on_occlusion(_occlusion_set)
+	_occ_last_usec = [occ_t1 - occ_t0, occ_t2 - occ_t1, Time.get_ticks_usec() - occ_t2]
 	if _occlusion_overlay != null:
 		_occlusion_overlay.queue_redraw()
 	if _occlusion_wireframe_overlay != null:

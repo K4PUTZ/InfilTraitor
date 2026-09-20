@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**274 scripts · 101639 lines total** (under `godot/scripts/`)
+**274 scripts · 101673 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -529,7 +529,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1760 lines
+extends `Node3D` · 1794 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -549,7 +549,6 @@ extends `Node3D` · 1760 lines
 - `DECAL_MATERIAL_ID` = `"__decals__"`
 - `DECAL_LIFT_VOXELS` = `0.02`
 - `INVALID_PICK` = `Vector2i(-9999, -9999)`
-- `GLASS_CAP_VOXELS` = `2`
 
 **Public API**
 - `func build(room: Node, cell_to_world: Callable) -> void:`

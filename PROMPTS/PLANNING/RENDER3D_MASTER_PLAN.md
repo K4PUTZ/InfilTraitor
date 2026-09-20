@@ -66,6 +66,14 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   cutaway digest to `244375840` (level creation order feeds the edge order) and was reverted before measuring.
   Timing note: the whole-step figure moved between runs of the same code (84 -> 127 ms), so compare only within a
   run. 60/60 selftests.
+- **Cutaway side fills and merge, 2026-09-20.** Side fills read the store inline from the across column's base
+  (one index per level) instead of three calls per level; the merge groups by one integer key and sorts packed
+  integers instead of Array keys and a `sort_custom` lambda. **Moto: side fills 6.0 -> 1.9 ms, merge 2.1 -> 1.4 ms,
+  cutaway 18.5 -> 13.8 ms.** Cutaway geometry digest `2453924741` (GLASS) / `3767969204` (PLAYGROUND) unchanged, on
+  the desktop and the Moto. The ray march stays at 4.8 ms: a tighter ceiling for the ray (highest solid non-glass
+  voxel instead of `_level_max`) was tested and does not exist on GLASS (both are level 103, the roofs), so what is
+  left in the march is an algorithmic change (a per-column height table), not a micro-optimisation. Not addressed:
+  one mesh-build spike of ~46 ms per run (first build). 60/60 selftests.
 - **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
   selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
   cutaway ONLY when it is inside the agent's field of view.

@@ -571,35 +571,48 @@ func _occ_add_edge(edges: Dictionary, p: Vector3i, q: Vector3i, solid: bool) -> 
 
 
 ## Joins collinear unit edges that touch end to start (same axis, same nearness) into runs: [start, end, solid].
+## Same result and order as the original (groups in first-seen order, runs ascending along the axis). The group key
+## is one integer (axis, nearness and the two fixed coordinates) and the sort is a packed-integer sort, because the
+## Array keys and the `sort_custom` lambda were what cost time on the Moto.
 func _occ_merge_edges(edges: Dictionary) -> Array:
-	var groups: Dictionary = {}
+	const OFFSET: int = 1024
+	const SPAN: int = 4096
+	var groups: Dictionary = {}  ## int group key -> [axis, solid, Array of [lo, hi]]
 	for key: Array in edges:
 		var lo: Vector3i = key[0]
 		var hi: Vector3i = key[1]
 		var d: Vector3i = hi - lo
 		var axis: int = 0 if d.x != 0 else (1 if d.y != 0 else 2)
+		var solid: bool = bool(edges[key])
 		var fixed: Vector3i = lo
 		fixed[axis] = 0
-		var gk: Array = [axis, fixed, bool(edges[key])]
+		var gk: int = ((((fixed.x + OFFSET) * SPAN + (fixed.y + OFFSET)) * SPAN + (fixed.z + OFFSET)) * 3 + axis) * 2 \
+			+ (1 if solid else 0)
 		if not groups.has(gk):
-			groups[gk] = []
-		(groups[gk] as Array).append([lo, hi])
+			groups[gk] = [axis, solid, []]
+		((groups[gk] as Array)[2] as Array).append([lo, hi])
 	var out: Array = []
-	for gk: Array in groups:
-		var axis: int = gk[0]
-		var list: Array = groups[gk]
-		list.sort_custom(func(a: Array, b: Array) -> bool: return (a[0] as Vector3i)[axis] < (b[0] as Vector3i)[axis])
-		var start: Vector3i = list[0][0]
-		var end: Vector3i = list[0][1]
-		for k: int in range(1, list.size()):
-			var seg: Array = list[k]
+	for gk: int in groups:
+		var group: Array = groups[gk]
+		var axis: int = group[0]
+		var list: Array = group[2]
+		var order := PackedInt64Array()
+		order.resize(list.size())
+		for k: int in range(list.size()):
+			order[k] = (int((list[k][0] as Vector3i)[axis]) + OFFSET) * 1048576 + k
+		order.sort()
+		var first: Array = list[int(order[0]) & 1048575]
+		var start: Vector3i = first[0]
+		var end: Vector3i = first[1]
+		for k: int in range(1, order.size()):
+			var seg: Array = list[int(order[k]) & 1048575]
 			if seg[0] == end:
 				end = seg[1]
 			else:
-				out.append([start, end, gk[2]])
+				out.append([start, end, group[1]])
 				start = seg[0]
 				end = seg[1]
-		out.append([start, end, gk[2]])
+		out.append([start, end, group[1]])
 	return out
 
 
@@ -744,15 +757,36 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 	## Which faces of the ghosted volume are painted: a side face is filled wherever the cell across it holds a
 	## SOLID, non-glass voxel (a wall that carries on behind it, a frame), per level, and left transparent
 	## where it holds glass or nothing. The mesher hid that neighbour's own face under the ghosted voxel.
+	## The store is read inline (one index per level from the across column's base), as in `_occ_hidden`.
+	var store: VoxelStore = _store
+	var s_occ: PackedByteArray = store.occ
+	var s_owner: PackedInt32Array = store.owner
+	var s_mat: PackedByteArray = store.mat
+	var s_x0: int = store.x0
+	var s_y0: int = store.y0
+	var s_l0: int = store.l0
+	var s_w: int = store.w
+	var s_h: int = store.h
+	var s_l1: int = s_l0 + store.nl
+	var layer: int = s_w * s_h
 	for column: Vector2i in cells:
 		var entry: Dictionary = cells[column]
+		var lo_level: int = entry["min_level"]
+		var hi_level: int = entry["max_level"]
 		for dir: Vector2i in OCC_FACE_DIRS:
 			if not occ_set._is_exposed(cells, column, dir):
 				continue
-			var across: Vector2i = column + dir
+			var ax: int = column.x + dir.x
+			var ay: int = column.y + dir.y
+			if ax < s_x0 or ay < s_y0 or ax >= s_x0 + s_w or ay >= s_y0 + s_h:
+				continue  ## the column across lies outside the store: nothing solid there, at any level
+			var base: int = (ay - s_y0) * s_w + (ax - s_x0)
 			var run_start: int = -1
-			for level: int in range(int(entry["min_level"]), int(entry["max_level"]) + 2):
-				var solid: bool = level <= int(entry["max_level"]) and _solid_non_glass(across.x, across.y, level)
+			for level: int in range(lo_level, hi_level + 2):
+				var solid: bool = false
+				if level <= hi_level and level >= s_l0 and level < s_l1:
+					var idx: int = (level - s_l0) * layer + base
+					solid = s_occ[idx] != 0 and not _material_glass[_store_material[s_mat[s_owner[idx]]]]
 				if solid and run_start < 0:
 					run_start = level
 				elif not solid and run_start >= 0:

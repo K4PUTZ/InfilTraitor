@@ -89,13 +89,25 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
 - **Director, 2026-09-20:** wall-mounted interactive objects (switches, control panels) will act on click with no
   selection step, so wall picking is reopened when the first one exists. A guard behind a wall is revealed by the
   cutaway ONLY when it is inside the agent's field of view.
+- **Three-deep nesting VERIFIED, 2026-09-20** on a new dev fixture, `maps/OCCLUSION_NEST.map.json` (three 1x1 GU
+  walls on one diagonal of the depth axis, (6,6) 3 storeys, (8,8) 5, (10,10) 7, agent at (4,4)). A nearer wall sits
+  LOWER on screen, so only a taller one still reaches the agent's silhouette: that is why the heights grow, and why an
+  earlier draft with equal 3-storey towers ghosted nothing. Result: 300 occluded columns, three separate volumes each
+  with its own opaque base and fill, the wireframes stacked in one screen column, no line showing through a base
+  (`Screenshots/history/r3d7_cutaway_triple_nest.png`). **Moto g04s, agent alternating 300 columns / 0 (so per
+  occluded step roughly double the means):** set recompute 15.7 ms, cutaway 21.5 ms (ray march 11.5, side fills 3.9,
+  caps 1.9), whole step 149 ms; digests: set `378660785`, cutaway geometry `49194435`, identical on desktop and Moto,
+  memo pass equal to the reference. So the cutaway cost scales with the volumes' perimeter: ~43 ms per occluded
+  step here against the 33 ms budget; the ray march is the term that grows. Found on the way, NOT fixed (separate
+  task): `Room._assert_geometry_rendered()` raises a false "render path broken" for opaque-only maps under the 3D
+  default (TEXTURES, TEST_BLOCKS, this fixture), because it counts 2D placed cells.
 - **Glass in the cutaway: DECIDED 2026-09-20 — stays whole** (Director). Glass never joins the occlusion set (as in
   the 2D: glass is not an occluder) and is never dithered, so a pane inside a ghosted wall volume stays drawn; the
   volume's side fill is left clear where the cell across is glass (2026-09-19). Not a defect; nothing to build.
 - **Open register additions (updated 2026-09-20):** guards behind walls are revealed by the striped silhouette when
   gameplay says so (built, `GUARD_REVEAL`, see above), not by the cutaway; the cutaway's Moto cost is MEASURED and cut
-  (see above; the R3D-6 decals and dents are still desktop-only); NOT yet verified: the cutaway on an upper storey, and
-  three or more levels of nesting.
+  (see above; the R3D-6 decals and dents are still desktop-only); NOT yet verified: the cutaway on
+  the upper storey. (Three-deep nesting: verified, above.)
 
 **Status (2026-09-18, v1.7):** 🟡 **R3D-0 to R3D-5 are built. Everything that draws in the game world now
 draws in the 3D board's world, depth-tested: the board (R3D-3), the actors, props and every

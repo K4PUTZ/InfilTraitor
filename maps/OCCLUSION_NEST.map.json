@@ -1,0 +1,88 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "OCCLUSION_NEST",
+ "meta": {
+  "title": "Occlusion Nesting Fixture",
+  "description": "Three 1x1 GU walls on one diagonal of the view's depth axis, each nearer to the camera one taller than the last ((6,6) 3 storeys, (8,8) 5, (10,10) 7), with the agent behind them at (4,4): the cutaway's three-deep nesting case (RENDER3D R3D-7). A nearer wall sits LOWER on screen, so only a taller one still reaches the agent's silhouette. Dev fixture, not a level."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    26,
+    26
+   ],
+   "buffer": 1,
+   "floor_tile": "floor_SE"
+  },
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    4,
+    4
+   ],
+   "guards": []
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": []
+  },
+  "blocks": {
+   "v": 2,
+   "items": [
+    {
+     "comment": "wall 0",
+     "gu": [
+      6,
+      6
+     ],
+     "material": "concrete",
+     "storeys": 3,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "wall 1",
+     "gu": [
+      8,
+      8
+     ],
+     "material": "concrete",
+     "storeys": 5,
+     "size": [
+      1,
+      1
+     ]
+    },
+    {
+     "comment": "wall 2",
+     "gu": [
+      10,
+      10
+     ],
+     "material": "concrete",
+     "storeys": 7,
+     "size": [
+      1,
+      1
+     ]
+    }
+   ]
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "concrete",
+    "metal",
+    "stone",
+    "wood"
+   ]
+  }
+ }
+}

@@ -1930,6 +1930,9 @@ is behind the wall").
   or nothing — so a window slab is painted where it touches its frames and clear where it touches the pane.
   Read from the store at each occlusion change (`_solid_non_glass`), shaded by facing (SE 0.85 / SW 0.70 / far 0.55).
   Capture: `Screenshots/history/r3d7_cutaway_glass_map.png` (GLASS, agent at 16,15).
+- **Draw order (Director, 2026-09-19):** the fill (caps and sides) is drawn FIRST and writes no depth
+  (`render_priority` -10), and every line goes on top of it (`+10`), so the dashed far edges show through the fill.
+  Lines stay depth-tested against the world.
 - The 2D wireframe overlay is hidden while the 3D board is live. `INFILTRAITOR_CUTAWAY=0` = off.
 - Capture: `Screenshots/history/r3d7_cutaway_dither_spike.png` (agent behind a PLAYGROUND block: 260 columns
   occluded; in open ground 0). **Not verified:** guards behind walls; glass (not ghosted); roofs and

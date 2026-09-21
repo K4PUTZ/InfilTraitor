@@ -872,11 +872,12 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 ## feeds the SAME unified _occluded_cells set walls and junctions merge into,
 ## and _build_wireframe_geometry() derives wireframe geometry for all three
 ## together from that shared set — see its header for why.
-func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_id: Dictionary, slices_by_edge: Dictionary) -> Dictionary:
-	var result := {"cells": {}}
-	if ceiling_slabs.is_empty():
-		return result
+var _roof_key: int = -1
+var _roof_geometry: Dictionary = {"gu_info": {}, "component_of": {}, "components": []}
 
+
+## One geometry record per roofed GU, and the connected components of roofed GUs (see the comments in the body).
+func _build_roof_geometry(ceiling_slabs: Array) -> Dictionary:
 	## One geometry record per roofed GU, aggregated over its (usually 2) slab
 	## levels: real voxel cells, real footprint bounds, real level span.
 	var gu_info: Dictionary = {}   ## gu -> {min_level, max_level, rect_min, rect_max, cells: Array[Vector2i]}
@@ -902,9 +903,6 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 			info["rect_max"] = Vector2i(
 				maxi(info["rect_max"].x, voxel.grid_pos.x), maxi(info["rect_max"].y, voxel.grid_pos.y))
 
-	if gu_info.is_empty():
-		return result
-
 	## Connected components over roofed GUs (4-adjacency, level- and
 	## material-blind — contiguous roofs read as one surface, the same rule
 	## ROOF-BAKE-02c uses for texture anchors).
@@ -926,6 +924,26 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 					component_of[neighbour] = idx
 					stack.append(neighbour)
 		components.append(members)
+
+	return {"gu_info": gu_info, "component_of": component_of, "components": components}
+
+
+func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_id: Dictionary, slices_by_edge: Dictionary) -> Dictionary:
+	var result := {"cells": {}}
+	if ceiling_slabs.is_empty():
+		return result
+
+	## The roofs' own geometry (per roofed GU: cells, footprint, level span; and the connected components) reads only
+	## the slabs, never an origin, so it is kept while the slabs are the same objects (R3D-7, Moto: 25 ms per step).
+	var roof_key: int = _objects_key(ceiling_slabs)
+	if roof_key != _roof_key:
+		_roof_key = roof_key
+		_roof_geometry = _build_roof_geometry(ceiling_slabs)
+	var gu_info: Dictionary = _roof_geometry["gu_info"]
+	if gu_info.is_empty():
+		return result
+	var component_of: Dictionary = _roof_geometry["component_of"]
+	var components: Array = _roof_geometry["components"]
 
 	## Activation set — trigger (a): containment.
 	var active: Dictionary = {}   ## component index -> true

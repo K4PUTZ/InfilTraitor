@@ -145,6 +145,17 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   the old stripe rule. Tests: `roof_occlusion_selftest` (red on the old occluder: 9 failures), `roof_entity_selftest`
   (real path on OCCLUSION_ROOM: read, compile, rotate N/E/S/W, 18 CEILING slabs at level 104), `mapfile_roundtrip`
   case 5. 62/62 selftests. Moto capture with the agent inside: `Screenshots/history/r3d7_moto_cutaway_room_roof.png`.
+- **Cost of the roof reveal on the Moto (OCCLUSION_ROOM, 1 764 columns, the agent under the 3x3 roof), 2026-09-20.**
+  First measure: set recompute 64.9 ms (roof phase 25.4, wireframe 35.9), cutaway 49.7 ms, step 314 ms. The roofs'
+  own geometry (per-GU cells, level span, connected components) reads only the slabs, so it is now kept while the
+  slabs are the same objects: **roof phase 25.4 -> 9.3 ms, set recompute 64.9 -> 48.6 ms**, digests unchanged
+  (set `1370605722`, cutaway `726968376`, NEST `378660785`/`49194435`, PLAYGROUND `813133776`/`3767969204`). What is
+  left is per-column work that grows with the revealed area: wireframe 35.7 ms, cutaway side fills 26.4, texture
+  8, caps 5.9. **That is about 55 us per revealed column on the Moto. A reveal of the full 13x13 GU disc the reach allows
+  on a large roof is ~10 800 columns: extrapolated (NOT measured) at several hundred ms per step.** The next
+  levers, not built: exposure computed once per set and shared by the wireframe, side fills and caps (each walks
+  every column x 4 directions with its own calls), and skipping the interior columns of a uniformly ghosted roof GU
+  (only a GU's 28 border columns can be exposed).
 - **Agent INSIDE a room, 2026-09-20 — DEFECT FOUND, fixed by the item above.** New dev fixture `maps/OCCLUSION_ROOM.map.json`: a closed
   5x5 GU ring of 3-storey blocks, agent in the middle at (12,12). The map format only generates roofs over SOLID
   BLOCKS (`room_builder`, `solid_block_instances`), so a roof over walkable floor is not expressible; the ring blocks

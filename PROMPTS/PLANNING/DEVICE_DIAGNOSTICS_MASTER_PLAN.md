@@ -15,6 +15,8 @@
 > A 46 s boot is still the dominant cost of a measurement cycle; a detonation run is ~100 s. Not run: shots.
 > Details: `RENDER3D_MASTER_PLAN` R3D-7, `PROMPTS/RESUMO_SESSAO_2026-09-20_R3D7_CUTAWAY_ROOFS.md`.
 
+> ⏭️ **2026-09-21 — the R3D-7 tail measured on the Moto g04s and the Galaxy A16** (`docs/measurements/device_2026-09-21_*`, local; `RENDER3D_MASTER_PLAN` v1.11/v1.12). Real shots: post-flight tail 593-611 ms on the Moto 3D (2D 745), 572-585 of it the shared light repaint; on the Galaxy 3D brick 357 ms vs 2D 214 (opposite direction, one boot). `GUARD_REVEAL` x8: +12 draw calls, GPU not slower. Touch (`input tap`/`swipe` work; a two-finger pinch cannot be automated: SELinux blocks `/dev/input` writes for `shell`). DevFlags additions: `SHOT_WEAPON` now reaches an APK, `SHOT_SETTLE_FRAMES`. Harness traps: boot 55-70 s so `device_run.py --seconds` >= 150; script-started `logcat` piles up; clear `dev_flags.cfg` after a session.
+
 > ⏭️ **2026-09-18 — R3D-4 and R3D-5 measured on the Moto g04s** (`docs/measurements/device_2026-09-18_*`;
 > chain: `export_android.py --install` → `dev_flags.cfg` → `device_run.py --save` → `bench_analyze.py`,
 > with `TELEMETRY=1`). Billboard actor spike: none 21.8 ms, A 22.2 ms, B 31.7 ms. Actors/guards/props in the

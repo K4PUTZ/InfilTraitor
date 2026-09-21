@@ -1,6 +1,8 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
+> ⏭️ **2026-09-21 — nothing changed here; R3D-7 (incl. its tail: shots, decals, touch, second map) is fully closed in `RENDER3D_MASTER_PLAN` v1.12.** Roofs of a `kind` other than "flat" are now covered by `roof_entity_selftest` (skipped loudly, builds nothing).
+
 > ⏭️ **2026-09-20 — R3D-7 is CLOSED in `RENDER3D_MASTER_PLAN`; what it changed here.** (1) **A roof opens by
 > ADJACENCY of its slabs, not by screen-horizontal stripes** (Director): only the roof ABOVE the agent (and the hover
 > cell) triggers it; the slab above the origin is ring 0 and every roof slab N steps away by adjacency (corner-touching

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-17 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-21 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -306,6 +306,16 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-15_MEMORY_2D3D.md
 - RESUMO_SESSAO_2026-09-15_R3D0.md
 - RESUMO_SESSAO_2026-09-16_R3D0_CLOSE.md
+- RESUMO_SESSAO_2026-09-17_R3D1D.md
+- RESUMO_SESSAO_2026-09-17_R3D2.md
+- RESUMO_SESSAO_2026-09-17_R3D3_PART1.md
+- RESUMO_SESSAO_2026-09-18_R3D3_CLOSE.md
+- RESUMO_SESSAO_2026-09-18_R3D4_R3D5.md
+- RESUMO_SESSAO_2026-09-19_R3D6_GLASS.md
+- RESUMO_SESSAO_2026-09-19_R3D6_R3D7.md
+- RESUMO_SESSAO_2026-09-20_R3D7_CUTAWAY_ROOFS.md
+- RESUMO_SESSAO_2026-09-21_R3D7_MOTO.md
+- RESUMO_SESSAO_2026-09-21_R3D7_SHOTS.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -313,8 +323,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 182
-- Test scripts: 57
+- GDScript modules: 194
+- Test scripts: 62
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

@@ -241,7 +241,7 @@ than an assumption.
 
 ### 3.1 Three concepts, named once
 
-**`WorldDelta`** — a plain, inspectable description of *what would change*.
+**`WorldDelta`** — a plain, inspectable description of *what would change*. (2026-09-21: `reaped_voxels` was added, the glass voxels the G-D45 reap fells at commit, kept OUT of `touched_voxels` so its consumers are unchanged; only `Board3DLive` reads it.)
 Never a mutation. Carries per-voxel damage field changes, the soot
 snapshot/faces, the resolved tile triples, and the VFX descriptors (smoke,
 expose). Today's `DetonationPlan` is already ~80% of this — it is a Delta that

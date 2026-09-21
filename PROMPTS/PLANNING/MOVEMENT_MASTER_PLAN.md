@@ -271,7 +271,7 @@ This document resumes when §6's items close.
 While an entity stands still it will play a looping idle (the agent breathing a little, a soft movement in place),
 and the guards the same. **The striped silhouette a revealed actor gets behind a wall (`RENDER3D_MASTER_PLAN` R3D-7,
 `actor_silhouette3d.gdshader`) is not a mask of its own: it is drawn from the sprite's CURRENT frame, mirrored every
-frame from the same `Sprite2D` the body billboard reads.** So the idle needs no silhouette work of its own — as long
+frame from the same `Sprite2D` the body billboard reads.** (Measured 2026-09-21 on the Moto g04s: 8 revealed guards cost +12 draw calls and no measurable GPU time.) So the idle needs no silhouette work of its own — as long
 as the idle is frames on that sprite. If an idle is ever built any other way (a shader deformation, a bone pose that
 does not change the sprite's texture), the silhouette will NOT follow it, and that is the thing to check. Two knobs
 exist for driving it: `ActorBillboard3D.silhouette_phase` (stripes) and the shader's `scroll_px_per_s`.

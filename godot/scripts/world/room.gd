@@ -3477,7 +3477,9 @@ func scenario_shoot(index: int) -> bool:
 	while (_destruction_render_busy or is_resolving_action()) and waited < 1800:
 		await get_tree().process_frame
 		waited += 1
-	for _f in range(30):
+	## `SHOT_SETTLE_FRAMES` (default 30): a capture of the impact's own sparks and smoke needs a few frames, not
+	## thirty, because they are gone by then (R3D-7 sparks check).
+	for _f in range(_dev_flag_num("SHOT_SETTLE_FRAMES", 30)):
 		await get_tree().process_frame
 	return waited < 1800
 

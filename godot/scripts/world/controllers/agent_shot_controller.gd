@@ -137,7 +137,11 @@ var _weapon_id: String = WEAPON_ID
 
 func _init(room_ref) -> void:
 	room = room_ref
-	var env := OS.get_environment("INFILTRAITOR_SHOT_WEAPON")
+	## Through DevFlags so a device run can name the weapon: the environment alone never reaches an APK
+	## (R3D-7 Moto shot run). The bare environment stays the fallback for a --script selftest with no autoload.
+	var flags: Node = room.get_node_or_null("/root/DevFlags") if room is Node else null
+	var env: String = flags.value("SHOT_WEAPON", "") if flags != null \
+			else OS.get_environment("INFILTRAITOR_SHOT_WEAPON")
 	if env != "":
 		_weapon_id = env
 		print("[AGENT-SHOT] weapon overridden to '%s' by INFILTRAITOR_SHOT_WEAPON" % env)

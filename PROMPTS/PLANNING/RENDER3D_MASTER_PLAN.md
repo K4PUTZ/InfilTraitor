@@ -1,5 +1,56 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.10
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.11
+
+**2026-09-21 update (v1.11) — THE R3D-7 TAIL, TESTED ON THE MOTO g04s.** Release APK exported from `083ce9b6` plus two harness knobs
+(below), `RNG_SEED=1`, PLAYGROUND, portrait 720x1612, 3D board unless a line says 2D. Logs: `docs/measurements/device_2026-09-21_moto_*.log`
+(local). Nothing here changes the game; two DEV knobs were added and a suspicion is recorded, not fixed.
+- **A real firearm shot reaches the 3D board on the device.** Brick / pistol, 3D against the 2D control: the `[AGENT-SHOT]` line and the tier
+  tally are IDENTICAL (`voxels=2 tiers={ 2: 1, 3: 1 }`), no script error; the wall band changed **11 626 px on 3D, 18 924 px on 2D**; hooks
+  `[BOARD3D] remesh shot` 22 quads, mesh 45.0 ms (threaded, background 31.9 ms) and `recolour shot soot` 7 levels in 5.2 ms. 3D only, same
+  outcome (hook lines present, no script error, no skipped tracer): metal / pistol (1 297 px, the small dent), glass / pistol (6 098 px, the
+  shatter star), concrete / **shotgun** (68 365 px, 26 voxels, 216 quads, remesh 51.0 ms, soot 11 levels in 8.7 ms), wood / pistol (1 298 px;
+  remesh 132.5 ms and soot 30.5 ms, the largest of the set: ONE boot, not repeated), concrete / pistol **from the east** (16 949 px, the mark is on
+  the SE face: the east-face fix holds on the device). Before/after captures were read by eye for all five (dent frame on metal and wood, star on
+  glass, the shotgun's crater with smoke, the Y-shaped hole on the SE face).
+- **The shot's cost on the Moto.** `[AGENT-SHOT-PROF]` post-flight tail **593 and 611 ms on 3D (2 boots), 745 ms on 2D**: resolve 5.1-5.5,
+  apply+vfx 1.0-2.1, render-pass 9.1-10.1, **light repaint 572-585 ms** (2D 715). The repaint is the scoped light apply the shot has always paid
+  (desktop 74-82 ms, same on both boards: the field is built map-wide on purpose, D24), so nothing in it is 3D-specific and the new hooks add
+  about 9 + 6 ms on the main thread and ~30 ms threaded. Settled frame after the shot: 28.1-28.7 ms/frame, GPU 25-27 ms, 108 draw calls
+  (zoom 2.2, a wall filling the screen; the idle 23.3 ms figure is a different framing). Inside 33.3 ms. Lead not taken: 0.57 s per shot is the
+  repaint, not the render.
+- **Sparks (the v1.10 "not seen"): SEEN, both boards, both machines.** Desktop, metal / pistol, a capture every 4 frames: the burst is in frame 2
+  on 3D and 2D and flies out in frame 3-4; on 3D it starts ~30 px lower-left of the dent (the 0.25 GU anchor in front of the SW face), on 2D
+  ~10 px from it. Moto: frame 2 shows the tracer (skipped tracers are gone), frame 4 the burst around the impact, frame 5 the dent. New DEV knob
+  `SHOT_SETTLE_FRAMES` (default 30) sets how many frames the `shoot` step waits AFTER the round; with 1 the step returns before the round
+  resolves, so find the impact frames by capturing every 2-4 frames.
+- **`GUARD_REVEAL` with several revealed guards (was UNMEASURED): no cost.** 8 guards behind the first two wall trios, `GUARD_REVEAL` on against
+  off, FRAME_PROBE windows over 14 s, 6 boots (first pair 0 then 1, then 1, 0, 1, 0): draw calls 116 -> 128 (+12), primitives 14 770 -> 14 794
+  (+24), GPU **22.4-23.5 ms on vs 25.1-25.2 ms off**, frame 24.1-27.0 vs 27.0-28.9 ms. The ON side was FASTER in every boot; UNEXPLAINED (do not
+  attribute it to the feature), the point is that it is not slower. The Director's look (striped purple silhouette) draws on the device.
+- **Touch on the Moto (R3D-5's "movement/picking/touch not run"): tap, select, walk and drag-pan VERIFIED; pinch NOT.** A real `input tap` at
+  (480, 863) logs `input.tap cell=29,10` (the agent stands on 28,10), the selection diamond is drawn exactly under the tap and the panel reads
+  `tile 29 , 10`; the same tap again walks him onto it (the mobile flow); a drag logs `camera.pan_end`; frame time stays 23-24 ms while idle.
+  The 2D board on the same taps gives the same cell and the same walk. **Pinch could not be automated:** SELinux denies the `shell` user writes
+  to `/dev/input/event4` (`sendevent: Permission denied` although the group `input` owns it) and `adb shell input` is single-touch. It needs
+  a hand on the device (the run prints `camera.zoom_end via=pinch` with `TELEMETRY=1`).
+- **Not a defect: the dark diamond left on the agent's start cell** after a walk (3D only) is `Room._draw_spawn_marker()` (DEV_VISION, "dark
+  diamond on the spawn point"), the same family as the boundary line: the 2D board draws it under its tiles, the 3D board shows the Room's canvas.
+- **`reap_orphaned_remnants()` (the v1.10 suspicion): analysed, NOT reproduced, NOT fixed.** The dev demo `glass_reap_demo` runs the real chain on
+  both boards (4 reaped, 4 landed, store 4 -> 0), but it mutates with `set_damage` + `process_dirty_async` and never calls `Board3DLive`, so on
+  3D the frame and the remnants stay drawn: that is the demo, not gameplay. On the real paths the reap runs BEFORE the remesh (`WorldDelta.commit`,
+  `AgentShotController`), the store already holds the reaped voxels, and the shot/blast hands `Board3DLive` only ITS OWN touched voxels
+  (`cell_to_voxel.values()`, `delta.touched_voxels`), so a reaped remnant is drawn stale only when its chunk (or the -x/-z neighbour of a touched
+  one) holds no touched voxel: possible at a chunk boundary, not shown. To reproduce it needs a two-blast pane scenario on GLASS (blast 1
+  leaves remnants, blast 2 destroys the brick jambs next to a chunk edge). The safe fix, if it ever shows, is for the reap to return the fallen
+  voxels and for both callers to add them to the touched set.
+- **Harness.** `SHOT_WEAPON` now reads through `DevFlags` (it read the OS environment only, inert on an APK, so a device run could only fire the
+  declared default, the shotgun; the `[AGENT-SHOT] weapon overridden to 'pistol'` line is in every pistol log above); `SHOT_SETTLE_FRAMES` as above. Traps met: boot on the Moto is 55-70 s, so `device_run.py --seconds`
+  must be >= 150 for a scenario with a shot (75 cut the run before the `after` capture); `logcat` processes started by a script pile up unless
+  killed; macOS has no `timeout`.
+- **Still open in R3D-7:** the pinch (by hand); the reap suspicion; the CRACKED bullet art on a lit wall; a second map; the Galaxy A16 for the
+  shot path; roofs of `kind` other than "flat" (logged and skipped, never exercised); the ray march (4-9 ms). Next: **R3D-8** (irreversible,
+  needs ratification). The v1.10 block below is the previous state, kept as history.
+
 
 **2026-09-21 update (v1.10) — DECALS AND SHOTS ON MATERIALS TESTED (the R3D-7 tail).** Found and fixed a defect that
 no identity gate could see; two more are open and need the Director.

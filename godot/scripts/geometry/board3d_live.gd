@@ -1193,10 +1193,30 @@ func _count_2d_cells() -> int:
 ## Folds every touched voxel's new visibility into the occupancy, rebuilds the chunks
 ## whose faces can have changed, and uploads the levels the commit wrote soot into.
 func on_blast_commit(delta) -> void:
+	_commit_touched(delta.touched_voxels, "commit", false)
+
+
+## A firearm round's commit (R3D-7, 2026-09-21). `AgentShotController` mutates the voxels
+## and drives the 2D board's own render pass, but it never told this board: a shot on a
+## wall left the 3D wall intact (holes, dents, bullet decals and scorch all absent) while the
+## packed store and the 2D board agreed with each other, so no identity gate could see it. The
+## same fold as a blast, on the exact set the shot wrote. Its scorch and light reach the planes
+## at every level from the floor stack up to the highest voxel it touched, not only the touched
+## levels: a round into a wall base sooted the floor rows beneath it.
+func on_shot_commit(touched: Array) -> void:
+	_commit_touched(touched, "shot", true)
+
+
+## After the shot's deferred soot pass: the same levels, re-uploaded with the scorch.
+func on_shot_soot() -> void:
+	_sync_levels(_blast_levels, "shot soot")
+
+
+func _commit_touched(touched: Array, reason: String, whole_stack: bool) -> void:
 	var t0: int = Time.get_ticks_usec()
 	_blast_chunks = {}
 	_blast_levels = {}
-	for voxel: Voxel in delta.touched_voxels:
+	for voxel: Voxel in touched:
 		var key := Vector3i(voxel.grid_pos.x, voxel.level, voxel.grid_pos.y)
 		var chunk: Vector2i = _chunk_of(key)
 		_blast_levels[voxel.level] = true
@@ -1220,12 +1240,19 @@ func on_blast_commit(delta) -> void:
 		## its −Z neighbour, which live in the previous chunk at a chunk boundary.
 		_blast_chunks[_chunk_of(key - Vector3i(1, 0, 0))] = true
 		_blast_chunks[_chunk_of(key - Vector3i(0, 0, 1))] = true
-	## The deep floor a blast reveals sits one level down; its plane row was written too.
-	for level: int in _blast_levels.keys():
-		_blast_levels[level - 1] = true
+	if whole_stack:
+		var top_touched: int = _level_min
+		for level: int in _blast_levels.keys():
+			top_touched = maxi(top_touched, level)
+		for level in range(_level_min, top_touched + 1):
+			_blast_levels[level] = true
+	else:
+		## The deep floor a blast reveals sits one level down; its plane row was written too.
+		for level: int in _blast_levels.keys():
+			_blast_levels[level - 1] = true
 	var t1: int = Time.get_ticks_usec()
-	_remesh(_blast_chunks, "commit", delta.touched_voxels.size(), float(t1 - t0) / 1000.0)
-	_sync_levels(_blast_levels, "commit")
+	_remesh(_blast_chunks, reason, touched.size(), float(t1 - t0) / 1000.0)
+	_sync_levels(_blast_levels, reason)
 
 
 ## After the soot fade: the same levels, re-uploaded with the settled scorch.

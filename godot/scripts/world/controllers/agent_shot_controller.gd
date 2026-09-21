@@ -730,6 +730,12 @@ func fire_at_active() -> void:
 	elif room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
 	var prof_repaint_ms: float = float(Time.get_ticks_usec() - prof_repaint0) / 1000.0
+	## RENDER3D (R3D-7): the 3D board is redrawn from the packed store, which already holds
+	## the shot; only WHICH chunks to remesh has to be handed over. The 2D board's render
+	## pass above is what made a shot visible there, and nothing else reaches this board.
+	var board3d: Node = room.board3d()
+	if board3d != null:
+		board3d.on_shot_commit(cell_to_voxel.values())
 	room._destruction_render_busy = false
 	## W-PROF-01, on the AGENT path this time. §0's routes are chosen from these
 	## two numbers, so they are printed rather than assumed — the figures it was

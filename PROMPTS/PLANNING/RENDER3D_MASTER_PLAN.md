@@ -1,5 +1,50 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.9
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.10
+
+**2026-09-21 update (v1.10) — DECALS AND SHOTS ON MATERIALS TESTED (the R3D-7 tail).** Found and fixed a defect that
+no identity gate could see; two more are open and need the Director.
+- **Found: a real firearm shot never reached the 3D board** (since R3D-1c). `Board3DLive.on_blast_commit` and
+  `on_blast_soot` were called only by `DetonationPresenter`; `AgentShotController` mutated the voxels and ran the 2D
+  board's render pass, and nothing told the 3D one. The packed store mirrors every write, so `board_probe.py` gate and
+  shadow were green: the shot's voxel state is IDENTICAL on the 2D and 3D boards (0 differences over 216 104 voxels)
+  while the 3D wall was untouched (PLAYGROUND brick, pistol: **0 changed pixels in the wall band on 3D, 5 220 on 2D**).
+  (A 2D-vs-3D probe diff also shows 116 416 light-plane texels differing already BEFORE the shot: not investigated, and
+  not what any gate compares.)
+  No hole, no dent, no bullet decal, no scorch. It is the R3D-6 register's "NOT covered: a bullet decal or crack from a
+  real SHOT", and it is why that item was open.
+- **Fixed:** `Board3DLive.on_shot_commit(touched)` and `on_shot_soot()` (the blast's fold is now `_commit_touched`, the
+  blast's own reasons unchanged: 9 grenades still log 9 `remesh commit` / `recolour commit` / `recolour soot`), called
+  by `AgentShotController` after its scoped light repaint and by `Room.apply_scoped_soot` / `fade_in_scoped_soot` (the
+  3D board takes the settled scorch only, no per-rung fade). A shot's plane levels run from the floor stack up to the
+  highest voxel it touched, because a round into a wall base sooted the floor rows under it. Desktop: 2-4 chunks,
+  20-240 quads, background remesh 3-7 ms, 11-26 plane levels in 1-2 ms. **Not measured on the Moto.**
+- **The gate that would have caught it: `tools/persistent/shot_3d_gate.py`** (a real shot per material, the hook line,
+  the wall band's pixels, and the 2D board as the control). Red on the unfixed code, green on the fixed one.
+- **Matrix, all real shots through the `shoot` scenario step (`SHOT_AGENT_CELL`, `SHOT_GUARD_CELL`, one boot each), 2D
+  against 3D: 19 pairs, the `[AGENT-SHOT]` line and every tier tally IDENTICAL, zero script errors.** Pistol x all nine
+  materials, SMG x concrete/metal/stone/brick, shotgun x concrete/metal, sniper x concrete/glass, pistol and rifle at a
+  glass block. Marks land where the 2D puts them: hole plus scorch on concrete/brick/cardboard/fabric/plywood, a carved
+  dent on metal/stone/wood (clearer than the 2D's), the shatter star on glass. **Through a thin pane** (`panels`, guard
+  behind it; pistol, rifle, shotgun; north through the SW pane and west through the SE one): the pane takes the star and
+  the craze (pistol: 71 cracked + 1 destroyed glass voxels) on both boards, and the round arrives weakened at the far
+  wall (shotgun: concrete cracked 1-2, dented 20; pistol: dented 1). Evidence was scratch captures, not committed.
+- **Open, needs the Director:**
+  1. **Impact smoke and sparks are invisible in 3D.** `Room.dispatch_impact_vfx` emits them from the struck voxel,
+     which a shot leaves SOLID (dented), so they are born inside the wall and the depth-tested 3D VFX cull them. With
+     `VFX3D=0` they appear. A metal shot is sparks only, so it has no feedback in 3D at all. It is a look decision (the
+     anchor moves out along the struck face: how far, and rising smoke moves along the camera's up, which goes INTO the
+     wall).
+  2. **The tracer is skipped and the muzzle flash aims at the world origin, on both boards.** `MUZZLE_LEVEL = 4`
+     (`agent_shot_controller.gd`; the bench has 3) is a LEVEL LITERAL handed to `voxel_world_position`, so `get_layer(4)`
+     is null and the answer is `Vector2.ZERO` (`tracer skipped, GU has no world position`, once per pellet, 2D and 3D
+     alike since the 2026-09-01 renumber). Rule 9; L1 does not see it because the literal is a `const` passed to
+     `voxel_world_position`, not to `get_layer`.
+- **Not verified:** the CRACKED bullet decal's art on a LIT wall (a real shot makes CRACKED only after a pane, and the
+  walls behind in this map are dark), the 20/16 lateral stretch, a second map, the Galaxy. A blast's marks on a lit
+  wall read weaker than the 2D's (look tuning, deferred as before). A red diagonal line crosses every 3D capture of
+  this map, before and after shots (not investigated).
+- The v1.9 block below is the previous state, kept as history.
+
 
 **2026-09-20 update (v1.9) — R3D-7 IS CLOSED.** Session summary: `PROMPTS/RESUMO_SESSAO_2026-09-20_R3D7_CUTAWAY_ROOFS.md`.
 - **Built:** the cutaway's cost cut on the Moto (an agent step with a wall volume 195 → 42 ms, three nested volumes
@@ -13,8 +58,8 @@
   3-4x faster here).
 - **The gate for changes to the occlusion set / cutaway geometry is CANONICAL** (order-independent):
   `python3 tools/persistent/occ_canonical_gate.py` (7 cases, all identical on the desktop and the Moto).
-- **Next (Director): decals and shots on materials (the bullet decal, the crack from a real shot, a shot through a
-  pane) BEFORE R3D-8;** then R3D-8 (the 2D board and its canon retire; irreversible, needs ratification).
+- **Next (Director): decals and shots on materials: DONE 2026-09-21 (see v1.10);** then R3D-8 (the 2D board and its
+  canon retire; irreversible, needs ratification).
 - **Still open:** `GUARD_REVEAL` cost with several revealed guards; roofs of `kind` other than "flat"; a roof activated
   only by its own occluded walls keeps the old stripe rule; the ray march (4-9 ms on the Moto); the Galaxy for the roof
   cases. The v1.8 block below is the previous state, kept as history.
@@ -2136,6 +2181,8 @@ captures, 2D against 3D.
      PLAYGROUND block, dark bullet/dent marks appear on its SW face (before/after crop). **Not verified:** the crack
      art itself reads on a wall (only its layer choice was checked), a real firearm shot, and the 20/16
      lateral stretch the 2D applies.
+   - **2026-09-21:** a real firearm shot, all nine materials, marks on the wall and the pane craze verified on 3D against
+     2D; the shot never reached the 3D board until this date (v1.10 above). The crack art on a lit wall is still not verified.
 4. **Dents:** a DENTED voxel's carved side becomes a real inset in the mesh.
    - **BUILT 2026-09-19 (`[R3D-6i]`), ratification pending.** `_emit_dent`: the carved face (LEFT = SW,
      RIGHT = SE, TOP = top; BOTTOM is never seen and stays flat; glass is exempt) leaves the greedy

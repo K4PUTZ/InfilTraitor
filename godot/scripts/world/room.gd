@@ -4831,6 +4831,14 @@ var shot_soot_fade_frames_per_step: int = 2
 ## PRESENTED before this runs. Deferring the work and then doing it in the same
 ## frame would move the stall, not remove it; that mistake was made once already
 ## in this file's history.
+## RENDER3D: the shot's scorch was written into the cell planes; the 3D board reads them
+## from its own uploaded copy, so they have to be re-sent (R3D-7, `Board3DLive.on_shot_commit`).
+func _sync_3d_shot_soot() -> void:
+	var board: Node = board3d()
+	if board != null:
+		board.on_shot_soot()
+
+
 func apply_scoped_soot(gus: Array) -> void:
 	if gus.is_empty() or _voxel_renderer == null:
 		return
@@ -4839,6 +4847,7 @@ func apply_scoped_soot(gus: Array) -> void:
 	if not is_instance_valid(_voxel_renderer):
 		return
 	_repaint_voxel_light_buckets_scoped(gus, true, 0)
+	_sync_3d_shot_soot()
 
 
 func fade_in_scoped_soot(gus: Array) -> void:
@@ -4861,6 +4870,8 @@ func fade_in_scoped_soot(gus: Array) -> void:
 		## line above built, so each rung is a scoped set_cell pass and not a
 		## second map-wide snapshot.
 		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, step)
+	## The 3D board takes the settled scorch only: it has no per-rung fade of its own.
+	_sync_3d_shot_soot()
 	## THE END-STATE GATE. Deferring soot is only legitimate if the board ENDS
 	## where a full, immediate repaint would have put it — a fade that settles on
 	## the wrong picture is worse than a stall. Same probe as the scoped apply's,

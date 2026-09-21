@@ -44,6 +44,18 @@ no identity gate could see; two more are open and need the Director.
   walls behind in this map are dark), the 20/16 lateral stretch, a second map, the Galaxy. A blast's marks on a lit
   wall read weaker than the 2D's (look tuning, deferred as before). A red diagonal line crosses every 3D capture of
   this map, before and after shots (not investigated).
+- **Marks compared on more situations (2026-09-21, real shots, 2D vs 3D).** CRACKED (a test-only `weak_pistol`, punch 0.10,
+  in `user://weapons`), DENTED, DESTROYED; faces SW and SE; concrete, metal, stone, wood, brick, cardboard, fabric, plywood, glass:
+  every `[AGENT-SHOT]` line and tier tally identical in 22 S-face pairs and 9 SE pairs, zero errors, zero skipped tracers.
+  Look: same place and size; the 3D dent is a dark recessed frame where the 2D is a light chip (metal/stone: the 2D one is
+  nearly invisible), the 3D CRACKED is a dark diamond with the round crater where the 2D is a thin slit with the crater
+  (3D dimmer on metal). Hole scorch (cardboard/fabric/plywood/wood) matches in shape; the 3D cross has fewer squares.
+  Glass: star on both, without the 2D's dark centre square.
+- **FOUND, both boards, NOT fixed (needs the Director): a shot from the EAST marks the wrong face.** `plan_point_impact` calls
+  `carved_side_for(voxel.grid_pos, false, shooter_gu)` with the voxel in VOXEL units and the shooter in GU units, so
+  `epi_screen_x < vox_screen_x` is almost always true and the mark is carved LEFT (SW), an end-on sliver: a round from +x
+  leaves NO visible mark on the SE face on either board. Verified with a temporary patch (shooter_gu * 8 + 4): the SE-face
+  marks then appear on both boards, same look as above. Not committed (it changes 2D behaviour and `voxel_decal_selftest`).
 - The v1.9 block below is the previous state, kept as history.
 
 

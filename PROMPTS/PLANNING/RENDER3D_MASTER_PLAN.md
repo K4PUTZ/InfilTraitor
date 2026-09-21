@@ -1,5 +1,24 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.8
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.9
+
+**2026-09-20 update (v1.9) — R3D-7 IS CLOSED.** Session summary: `PROMPTS/RESUMO_SESSAO_2026-09-20_R3D7_CUTAWAY_ROOFS.md`.
+- **Built:** the cutaway's cost cut on the Moto (an agent step with a wall volume 195 → 42 ms, three nested volumes
+  149 → 52, an agent inside a roofed room 314 → 39, a floating 15x15 roof 652 → 42); **revealed actors behind walls**
+  (Director's spec: the striped silhouette, gameplay-driven, `GUARD_REVEAL`, off by default); **roofs as an entity**
+  (`roofs` map section, opened by adjacency of slabs: reach 6, fade 2) **stored per GU** (a per-GU texture next to the
+  per-column one). The R3D-6 decals, dents and rim wedge are **measured on the Moto** (a few percent of frame time, no
+  memory, idle identical).
+- **Decided by the Director:** wall picking NOT built (reopens with the first wall-mounted interactive object); glass
+  stays whole in the cutaway; no depth buffer for the ray march; the Moto is the measuring device (the Galaxy A16 is
+  3-4x faster here).
+- **The gate for changes to the occlusion set / cutaway geometry is CANONICAL** (order-independent):
+  `python3 tools/persistent/occ_canonical_gate.py` (7 cases, all identical on the desktop and the Moto).
+- **Next (Director): decals and shots on materials (the bullet decal, the crack from a real shot, a shot through a
+  pane) BEFORE R3D-8;** then R3D-8 (the 2D board and its canon retire; irreversible, needs ratification).
+- **Still open:** `GUARD_REVEAL` cost with several revealed guards; roofs of `kind` other than "flat"; a roof activated
+  only by its own occluded walls keeps the old stripe rule; the ray march (4-9 ms on the Moto); the Galaxy for the roof
+  cases. The v1.8 block below is the previous state, kept as history.
+
 
 **2026-09-19 update (v1.8) — `RENDER3D` IS NOW THE DEFAULT** (`RENDER3D=0` = the 2D board, until R3D-8; the selftest
 harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary:
@@ -2416,3 +2435,13 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
   with a literal level `0` (330 of 330 fell back — Rule 9); the 2D glass rain never drew under
   `RENDER3D=1`; empty MultiMeshes cost a draw call on the Moto (hidden now). Parked: real 3D objects.
   Selftests 57 → 60; the register of what is still open is at the top of this file.
+- **v1.8, 2026-09-19.** `RENDER3D` is the default. R3D-6 glass ratified (the pane, the crack decals, the rim wedge), decals
+  and dents built; R3D-7 (cutaway) built and approved with the ORIGINAL 2D mechanism (a cylinder and a storey cut were
+  rejected). Root causes found: a chunk-size mismatch (`>> 5` vs 16) that left a blast's remesh on the wrong chunks, and
+  three `SKIP_BOARD_WRITES` gaps (glass authority, the crack re-cut, the soot wave). Items 5-6 and the end-of-blast light
+  jump deferred as look tuning by the Director. Session: `RESUMO_SESSAO_2026-09-19_R3D6_R3D7.md`.
+- **v1.9, 2026-09-20.** R3D-7 closed. Cutaway cost cut on the Moto (per-edge geometry, result memo, ray march, exposure
+  shared, the hidden 2D overlay and `apply_occlusion` skipped under the 3D board); revealed actors behind walls (the
+  Director's silhouette spec); `roofs` as an entity, opened by slab adjacency (reach 6, fade 2, corner-touching counts),
+  stored per GU; the R3D-6 items measured on the Moto; wall picking and glass decided; canonical identity gate. Selftests
+  60 → 62. Session: `RESUMO_SESSAO_2026-09-20_R3D7_CUTAWAY_ROOFS.md`.

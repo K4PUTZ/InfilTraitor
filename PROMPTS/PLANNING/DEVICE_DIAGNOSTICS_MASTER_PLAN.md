@@ -1,6 +1,20 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
 ## Measuring the real build on a real entry-tier phone — v1.10
 
+> ⏭️ **2026-09-20 — R3D-7's cutaway and R3D-6's decals/dents/rim wedge measured on the Moto g04s and, for the
+> cutaway baseline, the Galaxy A16 (SM-A166W, Android 16)** (`docs/measurements/device_2026-09-20_*`, git-ignored).
+> **The Galaxy is 3-4x FASTER than the Moto on this workload; the Moto is the constraint.** New instruments: the
+> scenario step `occ_bench <a> <b> <reps>` (per-phase clocks for the occlusion set and the cutaway, canonical
+> digests; `tools/persistent/occ_canonical_gate.py` is its desktop gate) and `place_guard`; new device flags
+> `GUARD_REVEAL`, `DECALS3D`, `DENTS3D`, `GLASS_OPENINGS3D` (the first three static switches only read the OS
+> environment, which an APK never gets, until `Board3DLive.build()` and `GlassCrackMirror3D.setup()` were made to read
+> `DevFlags`; `CUTAWAY_ON` STILL reads the environment only). Results: an agent step with a wall volume 195 → 42 ms,
+> three nested volumes 149 → 52, an agent inside a roofed room 314 → 39, a floating 15x15 roof (7 744 revealed columns)
+> 652 → 42; the decals, dents and rim wedge cost +1.8 ms mean frame over a blast (+1.2 ms GPU settled), nothing at
+> idle, no memory. **Lesson: the two biggest costs were hidden 2D-board work under the 3D board, outside every clock.**
+> A 46 s boot is still the dominant cost of a measurement cycle; a detonation run is ~100 s. Not run: shots.
+> Details: `RENDER3D_MASTER_PLAN` R3D-7, `PROMPTS/RESUMO_SESSAO_2026-09-20_R3D7_CUTAWAY_ROOFS.md`.
+
 > ⏭️ **2026-09-18 — R3D-4 and R3D-5 measured on the Moto g04s** (`docs/measurements/device_2026-09-18_*`;
 > chain: `export_android.py --install` → `dev_flags.cfg` → `device_run.py --save` → `bench_analyze.py`,
 > with `TELEMETRY=1`). Billboard actor spike: none 21.8 ms, A 22.2 ms, B 31.7 ms. Actors/guards/props in the

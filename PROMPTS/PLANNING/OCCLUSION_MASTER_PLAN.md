@@ -1,6 +1,20 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
+> ⏭️ **2026-09-20 — R3D-7 is CLOSED in `RENDER3D_MASTER_PLAN`; what it changed here.** (1) **A roof opens by
+> ADJACENCY of its slabs, not by screen-horizontal stripes** (Director): only the roof ABOVE the agent (and the hover
+> cell) triggers it; the slab above the origin is ring 0 and every roof slab N steps away by adjacency (corner-touching
+> counts) is one ring further, to `OcclusionSet.ROOF_REACH` = 6, the last `ROOF_FADE` = 2 fading. A roof that is only
+> activated by an occluded wall of its own structure (a block's) keeps the old stripe rule (`MAX_RING`). (2) **Roofs are
+> an entity of their own** (`roofs` map section, `MAPFILE_REFERENCE`), not only the top of a block. (3) **The set is
+> stored per GU for roofs** (`get_roof_gus()`) and per column for everything else (`get_column_entries()`);
+> `get_occluded_cells()` still returns the merged per-column view, built on demand, for the 2D and the tests. (4) **§7
+> THE X-RAY SILHOUETTE has a first consumer, for a different actor and by a different mechanism than designed here:** a
+> revealed GUARD (revealed by GAMEPLAY, never by physics) is drawn through the walls as its own silhouette filled with
+> scrolling diagonal stripes and a purple outline (`ActorBillboard3D.reveal_behind_walls`, `actor_silhouette3d*.gdshader`),
+> not as a mask of the agent; it reads the sprite's CURRENT frame, so a future idle loop reshapes it. `GUARD_REVEAL=1`
+> until gameplay asks. (5) Glass never joins the set and is never ghosted (Director). O1 stands: occlusion is VIEW.
+
 > ⏭️ **2026-09-18 — what R3D-7 inherits from `RENDER3D` R3D-4/5.** The 3D board has no cutaway yet, so a
 > glass roof between the camera and the agent tints him (seen on the GLASS map; a glass pane behind him
 > already tints correctly). Actors are depth-tested billboards (`ActorBillboard3D`), so a wall in front

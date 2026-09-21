@@ -62,7 +62,9 @@ const PELLET_FLOOD_MAX_STEPS: int = 40
 ## Where the muzzle flash and the tracers originate vertically, in the voxel
 ## level the shot is treated as leaving from. Matches the bench's chest-height
 ## convention (D18: shots are chest-height and horizontal).
-const MUZZLE_LEVEL: int = 4
+## Levels ABOVE THE GROUND PLANE, never an absolute level (rule 9): the literal this replaces was a
+## pre-renumber level, `get_layer()` answered null for it, and every tracer was skipped.
+const MUZZLE_LEVELS_ABOVE_GROUND: int = 4
 
 ## How far above a guard's own origin the menu anchors, in pixels. Deliberately
 ## NOT DebugAgent.SILHOUETTE_HEIGHT: that constant measures the BAKED figure, and
@@ -607,7 +609,7 @@ func fire_at_active() -> void:
 			if pv.damage_state != Voxel.DamageState.DESTROYED:
 				if not _impact_vfx_done.has(pkey):
 					_impact_vfx_done[pkey] = true
-					room.dispatch_impact_vfx(pv.grid_pos, pv.level, slice.material)
+					room.dispatch_impact_vfx(pv.grid_pos, pv.level, slice.material, pv.damage_carved_side)
 
 		## GLASS G3 (G-D11/G-D12/G-D13) — on top of the local hole, this pellet
 		## rolls its OWN chance to take the whole pane (or a region larger than
@@ -1140,4 +1142,6 @@ func _gu_centre_world(gu: Vector2i) -> Vector2:
 		return Vector2.ZERO
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
 	var centre: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
-	return room._voxel_renderer.voxel_world_position(centre, MUZZLE_LEVEL)
+	var renderer: VoxelRenderer = room._voxel_renderer
+	return renderer.voxel_world_position(centre,
+		renderer.ground_plane_level() + MUZZLE_LEVELS_ABOVE_GROUND)

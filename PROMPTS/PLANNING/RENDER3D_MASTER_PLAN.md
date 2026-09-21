@@ -28,17 +28,18 @@ no identity gate could see; two more are open and need the Director.
   behind it; pistol, rifle, shotgun; north through the SW pane and west through the SE one): the pane takes the star and
   the craze (pistol: 71 cracked + 1 destroyed glass voxels) on both boards, and the round arrives weakened at the far
   wall (shotgun: concrete cracked 1-2, dented 20; pistol: dented 1). Evidence was scratch captures, not committed.
-- **Open, needs the Director:**
-  1. **Impact smoke and sparks are invisible in 3D.** `Room.dispatch_impact_vfx` emits them from the struck voxel,
-     which a shot leaves SOLID (dented), so they are born inside the wall and the depth-tested 3D VFX cull them. With
-     `VFX3D=0` they appear. A metal shot is sparks only, so it has no feedback in 3D at all. It is a look decision (the
-     anchor moves out along the struck face: how far, and rising smoke moves along the camera's up, which goes INTO the
-     wall).
-  2. **The tracer is skipped and the muzzle flash aims at the world origin, on both boards.** `MUZZLE_LEVEL = 4`
-     (`agent_shot_controller.gd`; the bench has 3) is a LEVEL LITERAL handed to `voxel_world_position`, so `get_layer(4)`
-     is null and the answer is `Vector2.ZERO` (`tracer skipped, GU has no world position`, once per pellet, 2D and 3D
-     alike since the 2026-09-01 renumber). Rule 9; L1 does not see it because the literal is a `const` passed to
-     `voxel_world_position`, not to `get_layer`.
+- **Both open items CLOSED the same day (Director: "corrige o MUZZLE_LEVEL", "a fumaça precisa sair do ponto de impacto").**
+  1. `MUZZLE_LEVEL` was a level literal (`get_layer(4)` null -> `Vector2.ZERO`: every tracer skipped, flash aimed at the
+     origin, both boards). It is now `MUZZLE_LEVELS_ABOVE_GROUND` added to `ground_plane_level()` (shot controller 4,
+     bench 3). Real shot, 2D and 3D: `tracer skipped` 24 -> 0.
+  2. Impact smoke and sparks were born inside the dented (solid) voxel and culled by the 3D depth test. `Room.dispatch_impact_vfx`
+     takes the voxel's `carved_side` and, on the 3D board, anchors the emission `vfx_impact_face_offset_gu` (0.25 GU, a
+     tuning value) in front of the struck face (LEFT/SW +z, RIGHT/SE +x, TOP up). The 2D simulation is untouched (rise,
+     drift and per-material profile are the 2D ones): a vertical screen displacement maps to straight UP in the world,
+     so it does not run into the wall, contrary to the first hypothesis. Verified concrete and wood, 2D vs 3D at +0 and
+     +30 frames: the plume leaves the impact and climbs on both. **Sparks (metal) not seen:** they end before the first
+     capture (~35 frames after the shot) on either board; they share the anchor. Dust and chips are unchanged (no anchor
+     parameter; chips already showed).
 - **Not verified:** the CRACKED bullet decal's art on a LIT wall (a real shot makes CRACKED only after a pane, and the
   walls behind in this map are dark), the 20/16 lateral stretch, a second map, the Galaxy. A blast's marks on a lit
   wall read weaker than the 2D's (look tuning, deferred as before). A red diagonal line crosses every 3D capture of

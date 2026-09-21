@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**276 scripts · 102707 lines total** (under `godot/scripts/`)
+**276 scripts · 102743 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -5834,7 +5834,7 @@ extends `Node2D` · 35 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1143 lines
+`class_name AgentShotController` · 1147 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -5997,7 +5997,7 @@ extends `Node2D` · 35 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 494 lines
+`class_name WeaponBenchController` · 498 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -6014,7 +6014,7 @@ extends `Node2D` · 35 lines
 - `PELLET_FLOOD_MAX_STEPS` = `40`
 - `MUZZLE_OFFSET_GU_FRACTION` = `0.42`
 - `MUZZLE_HEIGHT_PX` = `-18.0`
-- `MUZZLE_LEVEL` = `3`
+- `MUZZLE_LEVELS_ABOVE_GROUND` = `3`
 
 **Public vars**
 - `var room: Node`
@@ -6205,7 +6205,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12550 lines
+extends `Node2D` · 12578 lines
 
 `godot/scripts/world/room.gd`
 

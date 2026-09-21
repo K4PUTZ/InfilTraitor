@@ -54,7 +54,9 @@ const PELLET_FLOOD_MAX_STEPS: int = 40
 ## the grenade sprite.
 const MUZZLE_OFFSET_GU_FRACTION: float = 0.42
 const MUZZLE_HEIGHT_PX: float = -18.0
-const MUZZLE_LEVEL: int = 3
+## Levels ABOVE THE GROUND PLANE, never an absolute level (rule 9): the literal this replaces was a
+## pre-renumber level, `get_layer()` answered null for it, and every tracer was skipped.
+const MUZZLE_LEVELS_ABOVE_GROUND: int = 3
 
 var room: Node
 var _weapons: Array[Dictionary] = []
@@ -491,4 +493,6 @@ func _spawn_muzzle_flash(weapon: Dictionary, facing_delta: Vector2i) -> void:
 func _gu_centre_world(gu: Vector2i) -> Vector2:
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
 	var centre: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
-	return room._voxel_renderer.voxel_world_position(centre, MUZZLE_LEVEL)
+	var renderer: VoxelRenderer = room._voxel_renderer
+	return renderer.voxel_world_position(centre,
+		renderer.ground_plane_level() + MUZZLE_LEVELS_ABOVE_GROUND)

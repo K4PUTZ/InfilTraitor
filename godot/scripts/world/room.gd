@@ -1553,6 +1553,10 @@ var vfx_impact_profiles: Dictionary = {
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
 ## fan. Multiplies the profile's own count.
 var vfx_impact_spark_jitter: float = 0.35
+## RENDER3D: how far in front of the struck face (grid units) a wall impact's smoke and sparks are born. A shot
+## leaves its voxel SOLID (dented), and the 3D VFX are depth-tested, so an emission at the voxel's centre was
+## inside the wall and culled. Smoke discs are camera-facing and wider than the voxel, so this is a tuning value.
+var vfx_impact_face_offset_gu: float = 0.25
 ## E-SPARK-04 (Director): a spark thrown off a struck SURFACE flies out and is
 ## gone faster than the muzzle's own, which stays as it is. Per-call overrides on
 ## add_sparks(), never edits to the shared spark tunables — see that function.
@@ -4487,7 +4491,8 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 ## it. No new signal: a signal would have to be emitted from the render pass,
 ## which re-renders dirty voxels for reasons that have nothing to do with being
 ## freshly shot.
-func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String) -> void:
+func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
+		carved_side: int = Voxel.CarvedSide.NONE) -> void:
 	if _voxel_renderer == null or _smoke_spark_overlay == null or _debris_overlay == null:
 		return
 	var profile: Dictionary = vfx_impact_profiles.get(material_id, {})
@@ -4498,22 +4503,45 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String) ->
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
 
+	## On the 3D board the emission is anchored in FRONT of the struck face; the 2D simulation (rise, drift,
+	## per-material profile) is unchanged, so the look is the 2D one. NO_ANCHOR keeps the old derivation.
+	var anchor_3d: Vector3 = _impact_anchor_3d(origin, floor_pos, carved_side)
+
 	var spark_count: int = int(profile.get("sparks", 0))
 	if spark_count > 0:
 		var jittered: int = maxi(1, int(round(float(spark_count) * randf_range(
 			1.0 - vfx_impact_spark_jitter, 1.0 + vfx_impact_spark_jitter))))
 		_smoke_spark_overlay.add_sparks(origin, jittered,
 			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color,
-			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale, floor_pos)
+			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale, floor_pos, anchor_3d)
 	if bool(profile.get("smoke", false)):
 		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
-			1.0, 1.0, 0, 1.0, 0.0, floor_pos)
+			1.0, 1.0, 0, 1.0, 0.0, floor_pos, anchor_3d)
 	if bool(profile.get("dust", false)) and randf() < vfx_dust_chance:
 		_debris_overlay.add_dust(origin, floor_pos, _vfx_material_base_color(material_id))
 	var chips: int = int(profile.get("chips", 0))
 	if chips > 0:
 		_debris_overlay.add_chips(origin, floor_pos, chips,
 			_vfx_material_base_color(material_id))
+
+
+## The 3D point in front of the face a round struck, or NO_ANCHOR (no 3D board, or the face is unknown).
+## LEFT is the SW face (+grid y = +z), RIGHT the SE face (+grid x), TOP is up.
+func _impact_anchor_3d(origin: Vector2, floor_pos: Vector2, carved_side: int) -> Vector3:
+	var board: Node = board3d()
+	if board == null:
+		return ParticleMath.NO_ANCHOR
+	var normal := Vector3.ZERO
+	match carved_side:
+		Voxel.CarvedSide.LEFT:
+			normal = Vector3(0.0, 0.0, 1.0)
+		Voxel.CarvedSide.RIGHT:
+			normal = Vector3(1.0, 0.0, 0.0)
+		Voxel.CarvedSide.TOP:
+			normal = Vector3.UP
+		_:
+			return ParticleMath.NO_ANCHOR
+	return (board.particle_origin(origin, floor_pos) as Vector3) + normal * vfx_impact_face_offset_gu
 
 
 func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: String) -> void:

@@ -349,7 +349,7 @@ func fire_active() -> void:
 				var vkey := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 				if not _impact_vfx_done.has(vkey):
 					_impact_vfx_done[vkey] = true
-					room.dispatch_impact_vfx(v.grid_pos, v.level, slice.material)
+					room.dispatch_impact_vfx(v.grid_pos, v.level, slice.material, v.damage_carved_side)
 
 	print_debug("[SHOT] weapon=%s delivery=%s gu=%s facing=%s landed=%d/%d punch=%s" %
 		[w["weapon_id"], weapon_def.delivery, w["gu_cell"], w["facing"],

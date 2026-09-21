@@ -51,11 +51,19 @@ no identity gate could see; two more are open and need the Director.
   nearly invisible), the 3D CRACKED is a dark diamond with the round crater where the 2D is a thin slit with the crater
   (3D dimmer on metal). Hole scorch (cardboard/fabric/plywood/wood) matches in shape; the 3D cross has fewer squares.
   Glass: star on both, without the 2D's dark centre square.
-- **FOUND, both boards, NOT fixed (needs the Director): a shot from the EAST marks the wrong face.** `plan_point_impact` calls
-  `carved_side_for(voxel.grid_pos, false, shooter_gu)` with the voxel in VOXEL units and the shooter in GU units, so
-  `epi_screen_x < vox_screen_x` is almost always true and the mark is carved LEFT (SW), an end-on sliver: a round from +x
-  leaves NO visible mark on the SE face on either board. Verified with a temporary patch (shooter_gu * 8 + 4): the SE-face
-  marks then appear on both boards, same look as above. Not committed (it changes 2D behaviour and `voxel_decal_selftest`).
+- **FOUND AND FIXED (Director: "aplica a correcao e ajusta o selftest"): a shot from the EAST marked the wrong face, on both
+  boards.** `plan_point_impact` called `carved_side_for(voxel.grid_pos, false, shooter_gu)` with the voxel in VOXEL units and the
+  shooter in GU units, so `epi_screen_x < vox_screen_x` was almost always true and the mark was carved LEFT (the SW end-on
+  sliver): a round from +x left NO visible mark on the SE face. The shooter is now converted to the centre of its cell in voxel
+  space. `blast_calculator_selftest` gained `test_point_impact_side_follows_the_shooters_gu` (east -> RIGHT, south/west -> LEFT):
+  RED on the old code (east marked side 3, expected 4), green after (98 PASS / 0 FAIL). Real shots, 2D and 3D: brick
+  `carved NONE->RIGHT` on both boards, SE-face marks visible for concrete/metal/stone/wood on both. Soft materials (cardboard,
+  fabric, plywood) only ever get a hole from a pistol, so they carry no side. Visually confirmed with the agent NOT parked at
+  the face (he covers it): the 1-cell-gap materials were verified by the voxel dump only.
+- **The red diagonal line in the 3D captures is `Room._draw_playable_boundary()`** (the playable-area outline, DEV_VISION
+  only): the 2D board draws it under the tiles, the 3D board shows the Room's 2D canvas over the walls. A debug aid, not a defect.
+- **Suspected, NOT verified:** `reap_orphaned_remnants()` (a glass fragment that falls when a later shot destroys its frame)
+  writes voxels that are not in the shot's touched set, so the 3D board may not remesh them. Needs a two-shot pane scenario.
 - The v1.9 block below is the previous state, kept as history.
 
 

@@ -605,6 +605,12 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		step_multipliers: Array = [],
 		shooter_gu: Vector2i = NO_EPICENTER_BIAS,
 		blowout: float = 1.0) -> Array:
+	## carved_side_for() compares in VOXEL space and the shooter arrives as a GU: unconverted, nearly every shooter
+	## read as "to the screen-left" and a round from the east marked the SW sliver (fixed 2026-09-21). The centre of
+	## the shooter's cell is the point the round leaves from.
+	var shooter_bias: Vector2i = NO_EPICENTER_BIAS if shooter_gu == NO_EPICENTER_BIAS \
+		else shooter_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS \
+			+ Vector2i.ONE * int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
 	var plan: Array = []
 	var current_slice := slice
 	for depth in range(2):  ## a wall is exactly 2 voxels thick (D16): outer + inner
@@ -663,7 +669,7 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 			## (D32.4), with one of the three authored decals (D32.5).
 			plan.append({"voxel": voxel, "container": current_slice, "depth": depth,
 				"state": state, "is_blast": false,
-				"carved_side": carved_side_for(voxel.grid_pos, false, shooter_gu),
+				"carved_side": carved_side_for(voxel.grid_pos, false, shooter_bias),
 				"variant": decal_variant_for(salt, voxel_index, depth),
 				"substrate": substrate_for(salt, voxel_index, depth)})
 			break

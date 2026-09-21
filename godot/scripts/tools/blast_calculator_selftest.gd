@@ -73,6 +73,7 @@ func _init() -> void:
 	test_pellet_impacts_count_matches_projectile_count()
 	test_pellet_does_not_detour_around_narrow_obstacle()
 	test_point_impact_marks_only_the_impact_voxel()
+	test_point_impact_side_follows_the_shooters_gu()
 	test_point_impact_neighbour_ladder()
 	test_point_impact_cascades_only_on_full_destroy()
 	test_point_impact_never_re_marks_an_existing_hole()
@@ -1543,6 +1544,42 @@ func test_point_impact_marks_only_the_impact_voxel() -> void:
 	else:
 		_fail("marked_strays=%d (must be 0), destroyed_strays=%d (must be >0 at punch 2.5)" %
 			[marked_strays, destroyed_strays])
+	print("")
+
+
+func test_point_impact_side_follows_the_shooters_gu() -> void:
+	print("TEST: D32.4 - a round marks the face the SHOOTER's GU is on (east -> RIGHT, south/west -> LEFT)")
+	## plan_point_impact() takes the shooter in GU and carved_side_for() compares in VOXEL space. The two
+	## were handed over unconverted, so `epi_screen_x < vox_screen_x` was true for nearly every shooter
+	## and a round from the east marked LEFT (the SW end-on sliver): no visible mark on the SE face on
+	## either board (2026-09-21). carved_side_for()'s own test passes both in one unit, so it never saw it.
+	var registry := EdgeRegistry.new()
+	SliceGenerator.generate([Edge.between(Vector2i(5, 1), Vector2i(5, 2), 1, "wood")], registry)
+	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
+	var slice: Slice = registry.get_slice("SLICE_5_2_NE")
+	if slice == null:
+		_fail("Could not resolve synthetic wood Slice (id lookup mismatch)")
+		print("")
+		return
+	## A punch far below the dent threshold: the impact voxel is CRACKED, so the entry carries a side.
+	var cases := [["east", Vector2i(9, 2), Voxel.CarvedSide.RIGHT],
+		["south", Vector2i(5, 8), Voxel.CarvedSide.LEFT],
+		["west", Vector2i(1, 2), Voxel.CarvedSide.LEFT]]
+	for c in cases:
+		var plan := BlastCalculatorClass.plan_point_impact(
+			slice, 12, 0.05, registry, "SIDE_TEST_" + str(c[0]), [], c[1])
+		var mark: Dictionary = {}
+		for entry in plan:
+			if int(entry["state"]) != Voxel.DamageState.DESTROYED:
+				mark = entry
+				break
+		if mark.is_empty():
+			_fail("%s shooter: the plan holds no CRACKED/DENTED mark (%d entries)" % [c[0], plan.size()])
+		elif int(mark["carved_side"]) == int(c[2]):
+			_pass("a shooter to the %s marks side %d" % [c[0], c[2]])
+		else:
+			_fail("a shooter to the %s marked side %d, expected %d (LEFT=%d, RIGHT=%d)" % [
+				c[0], int(mark["carved_side"]), c[2], Voxel.CarvedSide.LEFT, Voxel.CarvedSide.RIGHT])
 	print("")
 
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**276 scripts · 102743 lines total** (under `godot/scripts/`)
+**276 scripts · 102786 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2381,7 +2381,7 @@ extends `RefCounted` · 941 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 2017 lines
+`class_name BlastCalculator` · 2023 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -3774,7 +3774,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2742 lines
+extends `SceneTree` · 2779 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3832,6 +3832,7 @@ extends `SceneTree` · 2742 lines
 - `func test_pellet_impacts_count_matches_projectile_count() -> void:`
 - `func test_pellet_does_not_detour_around_narrow_obstacle() -> void:`
 - `func test_point_impact_marks_only_the_impact_voxel() -> void:`
+- `func test_point_impact_side_follows_the_shooters_gu() -> void:`
 - `func test_point_impact_neighbour_ladder() -> void:`
 - `func test_point_impact_cascades_only_on_full_destroy() -> void:`
 - `func test_point_impact_never_re_marks_an_existing_hole() -> void:`

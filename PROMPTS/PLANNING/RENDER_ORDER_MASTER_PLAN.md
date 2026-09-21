@@ -1,5 +1,7 @@
 # RENDER ORDER MASTER PLAN — depth on the isometric board — v1.1
 
+> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+
 > **⏭️ 2026-09-15 — the 3D render path is ratified ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).**
 > Everything here solves depth for a board drawn as stacked `TileMapLayer`s. In the 3D
 > board a depth buffer decides what covers what by construction.

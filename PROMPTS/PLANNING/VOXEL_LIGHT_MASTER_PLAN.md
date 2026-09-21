@@ -1,5 +1,7 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
+> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+
 > **⏭️ 2026-09-15 — two notes before the header.**
 > 1. **§1 records the ratified 6 buckets; the code runs 12**
 >    (`VoxelRenderer.LIGHT_BUCKET_COUNT = 12`, and `CLAUDE.md` / `docs/README.md` quote 12).

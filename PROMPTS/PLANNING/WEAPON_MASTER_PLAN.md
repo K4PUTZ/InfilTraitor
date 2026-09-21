@@ -1,6 +1,8 @@
 # WEAPON_MASTER_PLAN
 ## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.2
 
+> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+
 **v1.2 (2026-08-20) — W-PRECOOK is BUILT; §0 carries what it found.** The
 deferral below did its job and is now history, not status: §6c supplied the
 shooter and the aim window D30 was waiting for, and the pre-production shipped in

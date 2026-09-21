@@ -1,6 +1,8 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
+> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+
 > ⏭️ **2026-09-18 — the VFX left the 2D canvas (`RENDER3D` R3D-4e).** P7b/P7c's `CircleField` and the shard
 > field now have 3D twins (`CircleField3D`, `QuadField3D`, `ShardField3D`) that draw depth-tested in the 3D
 > board; the CPU-submission fix stands (one `MultiMesh` per population). Moto, one detonation, PLAYGROUND:

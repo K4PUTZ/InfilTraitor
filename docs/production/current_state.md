@@ -8,6 +8,25 @@
 
 ---
 
+## Where the project stands — 2026-09-21 (newest; the 2026-08-30 handover below is kept as history)
+
+**Version 0.9.107 · the game renders on a Godot 3D board by default (`RENDER3D`), the 2D board still ships underneath until the last stage.**
+- **Done this arc (2026-09-15 → 09-21), all in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md):** the packed voxel store, the 3D board, actors and props
+  as billboards, every in-world VFX in world space, the ground overlays and fog, ray picking (R3D-0 to R3D-5); glass, decals, dents, rim wedge (R3D-6); the cutaway with the
+  original 2D mechanism, revealed actors behind walls, roofs as an entity opened by adjacency and stored per GU (R3D-7). **R3D-7 is fully closed (2026-09-21):** real shots
+  reach the 3D board (found, fixed, gated by `shot_3d_gate.py`), tested on the Moto g04s and the Galaxy A16, sparks, `GUARD_REVEAL` x8, touch (tap, walk, pan, pinch by hand),
+  the glass reap hardened, a second map, an unknown roof kind. Suite: 62 selftests clean; gates: `board_probe.py`, `shot_3d_gate.py`, `occ_canonical_gate.py`.
+- **New since 2026-09-21:** blast scorch now darkens AFTER the crater in 4 timed steps (`detonation_presenter.gd`, from a video on the Moto); the DEV VISION text panels, the playable-area
+  line and the spawn diamond are hidden by default (`DEV_PANELS=1` shows them); video of the game on a handset in one command (`tools/persistent/device_record.py`,
+  [`docs/pipelines/device_video_recording.md`](../pipelines/device_video_recording.md)); `videos/` is git-ignored.
+- **The plan from here (Director, 2026-09-21):** "identical" means the SYSTEM (9/10 closeness to the 2D feature is enough). Next session: grade the look register on paired 2D/3D
+  captures, fix the system defects first (the FIRE and the EMBERS under 3D, the end-of-blast light jump, 116 416 light-plane texels that differ at load), then the items graded
+  below 9, measure on the Moto, and only then **R3D-8** (retire the 2D board and its canon; irreversible, needs ratification) as the LAST stage.
+- **Open and honest:** the fire is not exercised under 3D at all; the embers show unidentified flecks under 3D; the Galaxy's 3D brick shot tail (357 ms) is slower than 2D (214 ms), one boot;
+  the per-step soot upload is not measured on the Moto; `reap_orphaned_remnants()` was hardened but its original failure was never reproduced.
+
+---
+
 ## Where the project stands — 2026-08-30
 
 **The nine days from 2026-08-21 to 2026-08-29 are one continuous arc — materials →

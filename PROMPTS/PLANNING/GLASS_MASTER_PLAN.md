@@ -1,5 +1,7 @@
 # GLASS MASTER PLAN — the physics of glass
 
+> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+
 > ⏭️ **2026-09-18 (`RENDER3D` R3D-4e):** measured under `RENDER3D=1` — the **crack sprite draws nothing**
 > (`glass_crack_demo` before/after: 0 of 921 600 px differ; it is a child of the hidden 2D renderer), so
 > its 3D look is an R3D-6 item; the **glass rain now draws** in world space (`ShardField3D`; it never drew

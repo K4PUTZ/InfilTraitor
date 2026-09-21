@@ -1,6 +1,8 @@
 # DETONATION_PERFORMANCE_MASTER_PLAN
 ## Closing the post-detonation stall — v1.0
 
+> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+
 **Status (2026-09-15):** ✅ **SHIPPED — no open tasks.** PERF-01 and PERF-02 landed, and the
 two §6 ideas stay deferred by the Director.
 - **Two plans overtook this one in practice:**

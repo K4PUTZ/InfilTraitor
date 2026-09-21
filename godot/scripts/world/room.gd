@@ -934,13 +934,15 @@ func _respawn_base_rim_shards() -> void:
 ## `GlassFall` like any other break. No `impulse`: the triggering event's
 ## shockwave is not threaded here and these are a handful of secondary pieces.
 ##
-## Returns {"reaped": int, "landed": int}.
+## Returns {"reaped": int, "landed": int, "voxels": Array[Voxel]}. `voxels` are the glass voxels felled here: they are written
+## outside the caller's own touched set, so the 3D board (which remeshes only the chunks it is told about) needs them handed over.
 func reap_orphaned_remnants() -> Dictionary:
 	if _base_remnants.is_empty() or _voxel_renderer == null or _edge_registry == null:
-		return {"reaped": 0, "landed": 0}
+		return {"reaped": 0, "landed": 0, "voxels": []}
 	var bsize := _base_voxel_size()
 	var orphan_keys: Array = []
 	var fallen: Array = []
+	var fallen_voxels: Array = []
 	for bkey in _base_remnants:
 		var k: Vector3i = bkey
 		var cell := PerspectiveMapperClass.cell_from_base(Vector2i(k.x, k.y), _active_perspective, bsize)
@@ -961,6 +963,7 @@ func reap_orphaned_remnants() -> Dictionary:
 				if VoxelStore.damage_of(v) != Voxel.DamageState.DESTROYED:
 					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 				fallen.append({"grid_pos": cell, "level": level})
+				fallen_voxels.append(v)
 				## VL-PERSIST — the felled voxel has to survive a flip like any
 				## other destruction; the caller's own base-record loop has already
 				## run by the time reap is called.
@@ -979,7 +982,7 @@ func reap_orphaned_remnants() -> Dictionary:
 	if not orphan_keys.is_empty():
 		print_debug("[GLASS-REMNANT] G-D45 — %d orphaned remnant(s) fell with their frame, %d landed"
 			% [orphan_keys.size(), landed])
-	return {"reaped": orphan_keys.size(), "landed": landed}
+	return {"reaped": orphan_keys.size(), "landed": landed, "voxels": fallen_voxels}
 
 
 ## The glass SLICE holding one voxel in this view, or null. Shared by the craze

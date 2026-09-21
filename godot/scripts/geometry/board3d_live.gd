@@ -1193,7 +1193,7 @@ func _count_2d_cells() -> int:
 ## Folds every touched voxel's new visibility into the occupancy, rebuilds the chunks
 ## whose faces can have changed, and uploads the levels the commit wrote soot into.
 func on_blast_commit(delta) -> void:
-	_commit_touched(delta.touched_voxels, "commit", false)
+	_commit_touched(delta.touched_voxels + delta.reaped_voxels, "commit", false)
 
 
 ## A firearm round's commit (R3D-7, 2026-09-21). `AgentShotController` mutates the voxels

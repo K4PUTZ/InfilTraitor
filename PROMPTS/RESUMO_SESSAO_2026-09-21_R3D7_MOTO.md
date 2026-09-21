@@ -31,3 +31,9 @@ Full record with the numbers: `RENDER3D_MASTER_PLAN` v1.11. No `verified/` tag w
   `Library INFILTRAITOR alias`; `docs/measurements/` is untracked (the Moto logs of this session are in it).
 - Harness traps met (in the plan): boot on the Moto is 55-70 s so `device_run.py --seconds` >= 150; script-started `logcat` processes pile up;
   macOS has no `timeout`.
+
+## Addendum — the last pending items (same day, Galaxy connected)
+Galaxy A16 shot path (identical lines; 3D brick tail 357.5 ms vs 2D 213.9, opposite of the Moto, one boot each, not investigated); the reap
+HARDENED (returns its felled voxels, `WorldDelta.reaped_voxels`, both callers hand them to `Board3DLive`; a real two-blast GLASS run fires a
+real reap without errors); CRACKED art on a lit wall compared; second map SIGMA_01 identical; unknown roof kind tested in `roof_entity_selftest`.
+Nothing R3D-7 is open except what is by decision. Next: R3D-8. Full record: `RENDER3D_MASTER_PLAN` v1.12.

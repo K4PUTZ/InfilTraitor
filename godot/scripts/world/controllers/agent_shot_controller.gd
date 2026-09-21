@@ -696,7 +696,7 @@ func fire_at_active() -> void:
 	## G-D45 — if this shot destroyed the frame around an EARLIER remnant, the
 	## fragment falls with it. `reap_orphaned_remnants()` base-records its own
 	## felled voxels, so it is safe here after the loop above.
-	room.reap_orphaned_remnants()
+	var reaped_voxels: Array = room.reap_orphaned_remnants().get("voxels", [])
 
 	cancel_active()
 	if cell_to_voxel.is_empty():
@@ -741,7 +741,7 @@ func fire_at_active() -> void:
 	## pass above is what made a shot visible there, and nothing else reaches this board.
 	var board3d: Node = room.board3d()
 	if board3d != null:
-		board3d.on_shot_commit(cell_to_voxel.values())
+		board3d.on_shot_commit(cell_to_voxel.values() + reaped_voxels)
 	room._destruction_render_busy = false
 	## W-PROF-01, on the AGENT path this time. §0's routes are chosen from these
 	## two numbers, so they are printed rather than assumed — the figures it was

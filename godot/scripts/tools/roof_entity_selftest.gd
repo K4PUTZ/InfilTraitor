@@ -53,6 +53,7 @@ func _init() -> void:
 		_check(roof["gu_cell"] != Vector2i(11, 11), "gu_cell is offset by the board buffer (%s, not the file's (11, 11))" % str(roof["gu_cell"]))
 		_rotation(layout)
 		_builder(layout, roof)
+		_unknown_kind(layout, roof)
 	bake_config.enabled = bake_was_enabled
 	if _failures == 0:
 		print("\n[SUCCESS] ROOF ENTITY SELFTEST PASS — all checks")
@@ -125,4 +126,43 @@ func _builder(layout: Dictionary, roof: Dictionary) -> void:
 		if g.x >= origin.x and g.x < origin.x + 3 and g.y >= origin.y and g.y < origin.y + 3:
 			blocked = true
 	_check(not blocked, "no block stands under the roof (it is free-standing)")
+	room.queue_free()
+
+
+## A roof of a `kind` the builder does not know is skipped LOUDLY and builds nothing: no slabs, no crash, and the rest of the
+## map (the ring of blocks and their own roofs) still builds. Its `push_error` is the designed loud-fail, so the harness
+## prints one "[RoomBuilder] roof kind 'pointed'" error line for this case.
+func _unknown_kind(layout: Dictionary, roof: Dictionary) -> void:
+	print("\n[unknown roof kind]")
+	var bent: Dictionary = layout.duplicate(true)
+	var bent_roofs: Array = bent["roof_instances"]
+	(bent_roofs[0] as Dictionary)["kind"] = "pointed"
+	var room := MinimalRoom.new()
+	root.add_child(room)
+	var tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
+	var floor_layer := TileMapLayer.new()
+	var structure_layer := TileMapLayer.new()
+	floor_layer.tile_set = tileset
+	structure_layer.tile_set = tileset
+	room.add_child(floor_layer)
+	room.add_child(structure_layer)
+	var renderer := VoxelRendererClass.new()
+	room.add_child(renderer)
+	renderer.setup(Vector2.ZERO)
+	room._voxel_renderer = renderer
+	var builder := RoomBuilderClass.new(room)
+	builder.setup(floor_layer, structure_layer, TileSet.new())
+	builder.build_registry(tileset)
+	builder.build_from_layout(bent, bent.get("size", Vector2i.ZERO))
+	var base_level: int = GeometryCoordsClass.storey_level_base(int(roof["storeys"]))
+	var origin: Vector2i = roof["gu_cell"]
+	var found: int = 0
+	for dx: int in range(3):
+		for dy: int in range(3):
+			for level_offset: int in range(2):
+				var slab: Slab = room._slab_registry.get_slab(Slab.make_id(origin + Vector2i(dx, dy), Slab.Role.CEILING, base_level + level_offset))
+				if slab != null:
+					found += 1
+	_check(found == 0, "a 'pointed' roof builds no slab over its 3x3 GUs (found %d)" % found)
+	_check(room._slab_registry.all_slabs().size() > 0, "the rest of the map still builds its slabs (the ring blocks' own roofs)")
 	room.queue_free()

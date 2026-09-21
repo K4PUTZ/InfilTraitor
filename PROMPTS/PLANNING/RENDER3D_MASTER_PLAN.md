@@ -1,5 +1,33 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.11
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.12
+
+**2026-09-21 update (v1.12) — THE LAST R3D-7 PENDING ITEMS CLOSED (Director: "terminar tudo que está pendente antes da migração final").**
+- **Pinch on the Moto: VERIFIED by hand** (v1.11's last block). Tap, select, walk, drag-pan and pinch all work on the device.
+- **Galaxy A16 (SM-A166W, 1080x2340), the shot path, same APK, ONE boot each:** brick / pistol 3D and 2D: identical `[AGENT-SHOT]`
+  line and tiers, wall band 25 965 px (3D) vs 40 002 px (2D); concrete / shotgun 3D: 26 voxels, 216 quads, 160 926 px; glass / pistol 3D: 13 694 px;
+  no script error. Post-flight tail: 3D brick **357.5 ms** (render-pass 41.5, repaint 295.1), **2D brick 213.9 ms** (render-pass 10.8, repaint 195.9),
+  shotgun 3D 298.1 ms (repaint 268.6, 26 voxels), glass 3D 386.1 ms (render-pass 124.8, repaint 248.4). NOTE the direction is the OPPOSITE of the
+  Moto's (3D 593-611 ms vs 2D 745 ms): on the Galaxy 3D brick is ~144 ms SLOWER than 2D, mostly render-pass and repaint; one boot per case, not
+  repeated, cause not investigated. Also seen: a shotgun `remesh shot` with `mesh 1 414.9 ms` of which `poll-latency 1 366 ms` (background work 40.7 ms):
+  the main thread polled the result late, the work itself was cheap.
+- **`reap_orphaned_remnants()` HARDENED (the v1.11 suspicion).** Not reproduced, but the safe fix from the analysis is built: the reap now
+  returns the glass voxels it felled (`"voxels"`), `WorldDelta.reaped_voxels` (a NEW field, deliberately NOT `touched_voxels`, so the light and
+  base-record consumers of that set are unchanged) and the shot controller hand them to `Board3DLive` with their own touched set, so a
+  reaped remnant's chunk is always remeshed. Verified: a real two-blast run on GLASS (`GRENADE_GUS=14,12;5,12`, `detonate 0; detonate 1`) fires
+  a real reap (`1 orphaned remnant(s) fell with their frame, 1 landed`) with no script error; the `glass_reap_demo` still PASSES (4 reaped, 4 landed,
+  store 4 -> 0) and returns 4 voxels; 62/62 selftests; `shot_3d_gate.py` PASSED. What was NOT shown: the chunk-boundary case that made the old
+  code stale (never reproduced, so there is no red-before-green for it).
+- **CRACKED bullet art on a LIT wall: compared.** `weak_pistol` (punch 0.10) on the PLAYGROUND brick wall, 3D and 2D, real shot, `cracked=1` on both:
+  the mark is in the same place and size on both boards; 3D is a darker diamond, 2D a fainter patch with a thin slit (the difference already
+  recorded as look tuning, deferred).
+- **A second map: SIGMA_01** (real guard, real walls; agent (14,39), guard (7,33), pistol, 3D and 2D): identical `[AGENT-SHOT]` line and tier
+  (`concrete:s1 dented=1`), hooks fire, both boards change pixels (2 253 / 3 904 px, lights flicker on this map).
+- **Roofs of a `kind` other than "flat": TESTED.** `roof_entity_selftest` gained `[unknown roof kind]`: the same roof declared `pointed` builds
+  NO slab over its 3x3 GUs and the rest of the map still builds. The `push_error` stays (the designed loud-fail); the harness prints it.
+- **Ray march (4-9 ms on the Moto): left as the Director decided** (no camera-direction depth buffer).
+- **Nothing R3D-7 is open now** except what is by decision: wall picking (reopens with the first wall-mounted object), the ray march, the
+  look tuning deferred to the end of the port. Next: **R3D-8** (irreversible, needs ratification). The v1.11 block below is the previous state.
+
 
 **2026-09-21 update (v1.11) — THE R3D-7 TAIL, TESTED ON THE MOTO g04s.** Release APK exported from `083ce9b6` plus two harness knobs
 (below), `RNG_SEED=1`, PLAYGROUND, portrait 720x1612, 3D board unless a line says 2D. Logs: `docs/measurements/device_2026-09-21_moto_*.log`

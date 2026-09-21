@@ -93,6 +93,9 @@ var touched: Array[Vector3i] = []
 ## seam (`room.record_voxel_damage_to_base()`), which needs the objects and runs
 ## immediately after the commit. See the class doc on lifetime.
 var touched_voxels: Array = []
+## Glass voxels `reap_orphaned_remnants()` felled at commit (G-D45). NOT in `touched_voxels` on purpose: the light and base-record
+## consumers of that set are unchanged; only the 3D board reads this, to remesh their chunks.
+var reaped_voxels: Array = []
 
 ## §3.4 / §5.4 — what computing this Delta cost, in milliseconds. Set by the
 ## producer; the budget in §4.4 is measured against it.
@@ -412,7 +415,7 @@ func commit(room = null) -> void:
 		## it. Unconditional: the frame that held an OLD remnant can be brick this
 		## delta broke with no glass of its own, so it is not gated on the glass
 		## fields above. Early-returns when nothing is stuck to a frame.
-		room.reap_orphaned_remnants()
+		reaped_voxels = room.reap_orphaned_remnants().get("voxels", [])
 
 
 func is_empty() -> bool:

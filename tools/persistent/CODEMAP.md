@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**276 scripts · 102792 lines total** (under `godot/scripts/`)
+**276 scripts · 102838 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3231,7 +3231,7 @@ extends `Node` · 256 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 419 lines
+`class_name WorldDelta` · extends `RefCounted` · 422 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3252,6 +3252,7 @@ extends `Node` · 256 lines
 - `var census: Dictionary = {}`
 - `var touched: Array[Vector3i] = []`
 - `var touched_voxels: Array = []`
+- `var reaped_voxels: Array = []`
 - `var cost_ms: float = 0.0`
 - `var scorch_writes: Dictionary = {}`
 - `var glass_openings: Array = []`
@@ -5126,7 +5127,7 @@ extends `SceneTree` · 495 lines
 
 ### `roof_entity_selftest.gd`
 
-extends `SceneTree` · 128 lines
+extends `SceneTree` · 168 lines
 
 `godot/scripts/tools/roof_entity_selftest.gd`
 
@@ -6206,7 +6207,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12580 lines
+extends `Node2D` · 12583 lines
 
 `godot/scripts/world/room.gd`
 

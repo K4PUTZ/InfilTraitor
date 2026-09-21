@@ -509,6 +509,11 @@ var _line_material: StandardMaterial3D = null
 ## side fills, caps + rims, merge, segment ray march, mesh build.
 ## Digest of the last outline + cap geometry (identity gate for changes to how it is built).
 var last_occ_digest: int = 0
+## Same geometry, order-independent: every outline segment and every cap vertex (with its colour) sorted, then hashed. What
+## a change that reorders the emission (a different set representation) is judged by. Both digests are only computed
+## when `occ_digest_on` is set (the `occ_bench` scenario step): they cost a `hex_encode` of the arrays otherwise.
+var last_occ_canon: int = 0
+var occ_digest_on: bool = false
 var last_occ_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0, 0, 0])
 
 
@@ -885,7 +890,19 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 	last_occ_usec[4] = oc5 - oc4
 	last_occ_usec[5] = oc6 - oc5
 	last_occ_usec[6] = 0
-	last_occ_digest = hash([points.to_byte_array().hex_encode(), cap.to_byte_array().hex_encode()])
+	if occ_digest_on:
+		last_occ_digest = hash([points.to_byte_array().hex_encode(), cap.to_byte_array().hex_encode()])
+		var pieces: PackedStringArray = PackedStringArray()
+		for k: int in range(0, points.size() - 1, 2):
+			var a: String = str(points[k])
+			var b: String = str(points[k + 1])
+			pieces.append(a + "|" + b if a < b else b + "|" + a)
+		pieces.sort()
+		var verts: PackedStringArray = PackedStringArray()
+		for k: int in range(cap.size()):
+			verts.append("%s %s" % [str(cap[k]), str(cap_colors[k])])
+		verts.sort()
+		last_occ_canon = hash([hash(pieces), hash(verts)])
 	if points.is_empty() and cap.is_empty():
 		return
 	if _line_material == null:

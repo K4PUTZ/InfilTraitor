@@ -3351,6 +3351,16 @@ var _occ_last_usec: Array = [0, 0, 0, 0]
 
 ## R3D-7 instrument (`occ_bench`): the agent alternates between two cells through the real occlusion path, one
 ## rendered frame per step, and the per-phase cost is printed as mean / max over the run.
+## Order-independent digest of a per-column occlusion dictionary: every column with its ring and level span, sorted.
+func _canonical_set_digest(occluded: Dictionary) -> int:
+	var rows: PackedStringArray = PackedStringArray()
+	for column: Vector2i in occluded:
+		var entry: Dictionary = occluded[column]
+		rows.append("%d,%d,%d,%d,%d" % [column.x, column.y, int(entry["ring"]), int(entry["min_level"]), int(entry["max_level"])])
+	rows.sort()
+	return hash(rows)
+
+
 func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 	var sets: Array[float] = []
 	var paints2d: Array[float] = []
@@ -3366,28 +3376,38 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 	_occlusion_set.memo_enabled = false  ## the first pass measures the path that recomputes every step
 	var cut_phases: Array = [[], [], [], [], [], [], []]
 	var geo_digest: int = 0
+	var canon_digest: int = 0
+	var canon_geo: int = 0
+	if live != null:
+		live.occ_digest_on = true
 	for i: int in range(reps):
 		agent.set_cell(a if i % 2 == 0 else b)
 		var t0: int = Time.get_ticks_usec()
 		_recompute_occlusion()
+		var step_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
 		sets.append(float(_occ_last_usec[0]) / 1000.0)
+		## Digests are read AFTER the step's own time is taken: building the full per-column set is not part of the step.
 		var occluded: Dictionary = _occlusion_set.get_occluded_cells()
 		cells.append(occluded.size())
 		digest = hash([digest, str(occluded)])
+		canon_digest = hash([canon_digest, _canonical_set_digest(occluded)])
 		wire_digest = hash([wire_digest, str(_occlusion_set.get_wireframe_by_level())])
 		for k: int in range(5):
 			(phases[k] as Array).append(float(_occlusion_set.last_phase_usec[k]) / 1000.0)
 			(tails[k] as Array).append(float(_occlusion_set.last_tail_usec[k]) / 1000.0)
 		if live != null:
 			geo_digest = hash([geo_digest, live.last_occ_digest])
+			canon_geo = hash([canon_geo, live.last_occ_canon])
 			for k: int in range(7):
 				(cut_phases[k] as Array).append(float(live.last_occ_usec[k]) / 1000.0)
 		paints2d.append(float(_occ_last_usec[1]) / 1000.0)
 		paints3d.append(float(_occ_last_usec[2]) / 1000.0)
 		refreshes.append(float(_occ_last_usec[3]) / 1000.0)
+		var frame_t0: int = Time.get_ticks_usec()
 		await get_tree().process_frame
-		frames.append(float(Time.get_ticks_usec() - t0) / 1000.0)
+		frames.append(step_ms + float(Time.get_ticks_usec() - frame_t0) / 1000.0)
 	print("[OCC-BENCH] occluded columns per step: min %d, max %d, digest %d, wireframe digest %d" % [cells.min(), cells.max(), digest, wire_digest])
+	print("[OCC-BENCH] canonical set digest %d" % canon_digest)
 	var tail_names: PackedStringArray = ["roof merge", "set compare", "interior cells", "exposure", "wireframe lines"]
 	for k: int in range(5):
 		var tail_total: float = 0.0
@@ -3401,7 +3421,7 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 			total_ms += v
 		print("[OCC-BENCH]   phase %s: mean %.2f ms, max %.2f ms" % [phase_names[k], total_ms / float(reps), (phases[k] as Array).max()])
 	if live != null:
-		print("[OCC-BENCH] cutaway geometry digest %d" % geo_digest)
+		print("[OCC-BENCH] cutaway geometry digest %d, canonical %d" % [geo_digest, canon_geo])
 		var cut_names: PackedStringArray = ["texture+uniforms", "outline edges", "side fills", "caps+rims", "merge", "segment ray march", "mesh build"]
 		for k: int in range(7):
 			var cut_total: float = 0.0

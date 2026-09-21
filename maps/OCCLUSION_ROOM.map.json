@@ -4,7 +4,7 @@
  "id": "OCCLUSION_ROOM",
  "meta": {
   "title": "Occlusion Room Fixture",
-  "description": "A closed 5x5 GU ring of 3-storey concrete blocks around a 3x3 GU interior, the agent standing in the middle at (12,12): the cutaway with the agent INSIDE a room (RENDER3D R3D-7). Every ring block carries its own roof; the INTERIOR has no ceiling, because the map format only generates roofs over solid blocks (room_builder, solid_block_instances) - a roof over walkable floor is not expressible yet. Dev fixture, not a level."
+  "description": "A closed 5x5 GU ring of 3-storey concrete blocks around a 3x3 GU interior, the agent standing in the middle at (12,12), and a free-standing 3x3 roof over the interior (the `roofs` section, R3D-7): the cutaway with the agent INSIDE a roofed room. Every ring block also carries its own roof. Dev fixture, not a level."
  },
  "sections": {
   "board": {
@@ -251,6 +251,25 @@
     "metal",
     "stone",
     "wood"
+   ]
+  },
+  "roofs": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "ceiling over the interior",
+     "gu": [
+      11,
+      11
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "storeys": 3,
+     "material": "concrete",
+     "kind": "flat"
+    }
    ]
   }
  }

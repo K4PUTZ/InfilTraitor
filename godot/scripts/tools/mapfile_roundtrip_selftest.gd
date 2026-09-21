@@ -26,6 +26,8 @@ func _init() -> void:
 		all_pass = false
 	if not _test_nested_directory_save():
 		all_pass = false
+	if not _test_roofs_section():
+		all_pass = false
 
 	print("\n" + "=".repeat(70))
 	if all_pass:
@@ -34,6 +36,49 @@ func _init() -> void:
 		print("MAPFILE ROUNDTRIP: SOME TESTS FAILED")
 	print("=".repeat(70) + "\n")
 	quit(0 if all_pass else 1)
+
+## Test 5 (R3D-7): the `roofs` section is REGISTERED, not merely tolerated. An unregistered section round-trips
+## verbatim too, so a plain round-trip cannot tell the two apart: what only a registered owner does is give the section
+## a version and a default when the file has none, and hand back the items it saved.
+func _test_roofs_section() -> bool:
+	print("[TEST 5] roofs: registered owner (version, default, items round-trip)\n")
+	var registry = MapSectionRegistryClass.new()
+	MapSectionsV1Class.register_all(registry)
+	var owner = registry.get_owner("roofs")
+	if owner == null:
+		print("  ✗ no owner is registered for 'roofs'")
+		return false
+	if owner.current_version != 1 or (owner.default_value.call() as Dictionary).get("items", null) != []:
+		print("  ✗ 'roofs' owner has version %s / default %s" % [owner.current_version, owner.default_value.call()])
+		return false
+	var service = MapFileServiceClass.new(registry)
+	var spec = {
+		"id": "ROOFS_MAP", "meta": {"title": "Roofs"},
+		"sections": {
+			"board": {"inner_size": [20, 15], "buffer": 1, "floor_tile": "floor_SE"},
+			"roofs": {"v": 1, "items": [{"gu": [3, 4], "size": [3, 2], "storeys": 3, "material": "concrete", "kind": "flat"}]},
+			"actors": {"agent_start": [1, 1], "guards": []},
+		},
+		"procedural": null, "patches": [],
+	}
+	var path = "user://test_roofs_roundtrip.map.json"
+	var saved = service.save_file(path, spec)
+	if not saved["ok"]:
+		print("  ✗ save failed: %s" % saved["errors"])
+		return false
+	var loaded = service.load_file(path)
+	DirAccess.remove_absolute(path)
+	if not loaded["ok"]:
+		print("  ✗ load failed: %s" % loaded["errors"])
+		return false
+	var items: Array = loaded["spec"]["sections"]["roofs"]["items"]
+	if items.size() != 1 or int(items[0]["storeys"]) != 3 or String(items[0]["kind"]) != "flat" \
+			or int(items[0]["size"][0]) != 3 or int(items[0]["gu"][1]) != 4:
+		print("  ✗ the roof did not survive the round-trip: %s" % str(items))
+		return false
+	print("  PASS: roofs_section\n")
+	return true
+
 
 ## Test 1: Basic round-trip
 func _test_basic_roundtrip() -> bool:

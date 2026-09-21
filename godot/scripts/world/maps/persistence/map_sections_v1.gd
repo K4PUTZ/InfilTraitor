@@ -8,6 +8,7 @@ static func register_all(registry) -> void:
 	register_walls(registry)
 	register_blocks(registry)
 	register_floor_zones(registry)
+	register_roofs(registry)
 	register_damage_materials(registry)
 	register_panels(registry)
 	register_props(registry)
@@ -122,6 +123,24 @@ static func register_floor_zones(registry) -> void:
 		func(raw: Dictionary) -> Dictionary:
 			return { "items": raw.get("items", []) },
 		migrations,
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
+## roofs (R3D-7, 2026-09-20): free-standing roofs, an entity of their own. `{gu, size, storeys, material, kind}` is a
+## rectangle of ceiling slabs sitting on top of `storeys` storeys of height, with NO walls beneath it (a roof over
+## a room's floor, a floating canopy). A solid block still carries its own roof; this is the same roof without the
+## block. `kind` is "flat" today and is the seam for the pointed and diagonal roofs planned later.
+static func register_roofs(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"roofs",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "items": fragment.get("items", []) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "items": raw.get("items", []) },
+		{},
 		func() -> Dictionary:
 			return { "items": [] }
 	))

@@ -231,6 +231,21 @@ static func layout_with_perspective(layout: Dictionary, direction: String) -> Di
 		rotated_blocks.append(out)
 	mapped["solid_block_instances"] = rotated_blocks
 
+	## roof_instances (R3D-7): the same {gu_cell, size} rectangle as a block. It has to rotate explicitly, for the
+	## reason ROOF-BAKE-02a paid for: duplicate(true) alone leaves it unrotated and the roof lands on the wrong GUs
+	## in the E/S/W views.
+	var rotated_roofs: Array[Dictionary] = []
+	for roof in layout.get("roof_instances", []):
+		var out := (roof as Dictionary).duplicate(true)
+		var base_gu: Vector2i = out.get("gu_cell", Vector2i.ZERO)
+		var roof_size: Vector2i = out.get("size", Vector2i.ONE)
+		var c0 := cell_from_base(base_gu, direction, base_size)
+		var c1 := cell_from_base(base_gu + roof_size - Vector2i.ONE, direction, base_size)
+		out["gu_cell"] = Vector2i(mini(c0.x, c1.x), mini(c0.y, c1.y))
+		out["size"] = rotated_size(roof_size, direction)
+		rotated_roofs.append(out)
+	mapped["roof_instances"] = rotated_roofs
+
 	## floor_zone_instances: identical {gu_cell, size} rectangle shape as
 	## solid_block_instances above — same ROOF-BAKE-02a lesson applies (must
 	## rotate explicitly, duplicate(true) alone would leave it unrotated and

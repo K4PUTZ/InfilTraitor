@@ -44,6 +44,13 @@ var silhouette_height_px: float = 222.0
 ## from a triggering edge. Ring alphas themselves live in VoxelRenderer.GHOST_ALPHAS
 ## (3 entries) — this must stay one less than that array's size.
 const MAX_RING: int = 2
+## R3D-7: how many adjacent roof slabs an origin under a roof opens (the slab above it counts as the first), and how
+## many of the last of them fade.
+const ROOF_REACH: int = 6
+const ROOF_FADE: int = 2
+## Whether two roof slabs that only touch at a corner count as adjacent (square rings around the agent) or only
+## slabs that share an edge do (diamond rings). Square: a rectangular room opens whole, corners included.
+const ROOF_ADJACENT_CORNERS: bool = true
 
 ## OCC-10 (2026-07-14): superseded the OCC-09 pixel-threshold reveal cutoff.
 ## Director's call after seeing it live: the OCC-09 reveal (lower storeys popping
@@ -922,18 +929,22 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 
 	## Activation set — trigger (a): containment.
 	var active: Dictionary = {}   ## component index -> true
+	var contained: Dictionary = {}   ## component index -> true when an origin stands under it
 	for origin: Vector2i in origins:
 		if component_of.has(origin):
 			active[component_of[origin]] = true
+			contained[component_of[origin]] = true
 
 	## Trigger (b): wall-coupling. An occluded edge belongs to a structure when
 	## either GU beside it is roofed — slices_by_edge anchors carry (gu_cell,
 	## face); the face's outward neighbour is the other side.
+	var coupled: Dictionary = {}   ## component index -> true when an occluded wall belongs to it
 	for edge_id in ring_by_edge_id.keys():
 		var anchor = slices_by_edge[edge_id][0]
 		for gu in [anchor.gu_cell, anchor.gu_cell + _face_neighbour_delta(anchor.face)]:
 			if component_of.has(gu):
 				active[component_of[gu]] = true
+				coupled[component_of[gu]] = true
 
 	if active.is_empty():
 		return result
@@ -949,14 +960,32 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 			stripe_depths[gu.x + gu.y] = true
 		var is_small: bool = stripe_depths.size() <= SMALL_ROOF_MAX_STRIPES
 
+		## R3D-7 (Director, 2026-09-20): a roof an origin stands UNDER opens like a wall does, by ADJACENCY: the slab
+		## above the origin is ring 0 and every roof slab that many steps away (4-adjacency) is one ring further,
+		## up to ROOF_REACH slabs, the last ROOF_FADE of them fading (rings 1 and 2). A whole ordinary room opens; an
+		## immense roof opens a disc around the agent only. A roof activated only by an occluded wall of its own
+		## structure keeps the stripe rule below.
+		var slab_rings: Dictionary = {}   ## gu -> ring, only for a contained component
+		if contained.has(idx):
+			slab_rings = _roof_slab_rings(origins, gu_info, component_of, int(idx))
+
 		for gu: Vector2i in members:
 			var ring := MAX_RING + 1
-			for d in origin_depths:
-				ring = mini(ring, absi((gu.x + gu.y) - d))
-			if is_small:
-				ring = mini(ring, MAX_RING)
-			elif ring > MAX_RING:
-				continue   ## large roof: stripe out of reveal range stays solid
+			var revealed: bool = false
+			if slab_rings.has(gu):
+				ring = int(slab_rings[gu])
+				revealed = true
+			if coupled.has(idx) or not contained.has(idx):
+				var stripe_ring: int = MAX_RING + 1
+				for d in origin_depths:
+					stripe_ring = mini(stripe_ring, absi((gu.x + gu.y) - d))
+				if is_small:
+					stripe_ring = mini(stripe_ring, MAX_RING)
+				if stripe_ring <= MAX_RING:
+					ring = mini(ring, stripe_ring) if revealed else stripe_ring
+					revealed = true
+			if not revealed:
+				continue   ## out of reveal range: stays solid
 
 			var info: Dictionary = gu_info[gu]
 
@@ -971,6 +1000,38 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 					}
 				result["cells"][cell] = entry
 	return result
+
+
+## The roof slabs an origin opens by adjacency: multi-source breadth-first search from every origin that stands under
+## this component, over roofed GUs (edge-sharing or, with ROOF_ADJACENT_CORNERS, corner-touching), to ROOF_REACH slabs. Returns gu -> ring (0 = fully open ... 2 = the faintest of the
+## fade). See the comment where it is called.
+const _ROOF_NEIGHBOURS_4: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]
+const _ROOF_NEIGHBOURS_8: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
+	Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]
+
+
+func _roof_slab_rings(origins: Array, gu_info: Dictionary, component_of: Dictionary, component: int) -> Dictionary:
+	var rings: Dictionary = {}
+	var frontier: Array[Vector2i] = []
+	var distance: Dictionary = {}
+	for origin: Vector2i in origins:
+		if component_of.get(origin, -1) == component and not distance.has(origin):
+			distance[origin] = 0
+			frontier.append(origin)
+	var hop: int = 0
+	while not frontier.is_empty() and hop < ROOF_REACH:
+		var fade_start: int = ROOF_REACH - ROOF_FADE
+		var next_frontier: Array[Vector2i] = []
+		for gu: Vector2i in frontier:
+			rings[gu] = maxi(0, hop - fade_start + 1)
+			for delta: Vector2i in (_ROOF_NEIGHBOURS_8 if ROOF_ADJACENT_CORNERS else _ROOF_NEIGHBOURS_4):
+				var neighbour: Vector2i = gu + delta
+				if gu_info.has(neighbour) and not distance.has(neighbour):
+					distance[neighbour] = hop + 1
+					next_frontier.append(neighbour)
+		frontier = next_frontier
+		hop += 1
+	return rings
 
 
 ## Outward neighbour GU across a face — the other side of a (gu_cell, face)

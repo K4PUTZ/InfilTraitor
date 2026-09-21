@@ -462,8 +462,18 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## growing into it would double-write Slice-owned cells). Grow toward a
 		## LOWER neighbour (an eave over its roof; levels never collide, the
 		## height difference is ≥ LEVELS_PER_STOREY > ROOF_LEVEL_COUNT).
+		## Everything that carries a roof: the blocks' own, plus the free-standing roofs of the map's `roofs`
+		## section (R3D-7). Both are {gu_cell, size, storeys, material}; only `kind` "flat" exists so far.
+		var roof_sources: Array = []
+		for source: Dictionary in layout.get("solid_block_instances", []):
+			roof_sources.append(source)
+		for source: Dictionary in layout.get("roof_instances", []):
+			if String(source.get("kind", "flat")) != "flat":
+				push_error("[RoomBuilder] roof kind '%s' at %s is not implemented (only \"flat\"); skipped" % [source.get("kind"), source.get("gu_cell")])
+				continue
+			roof_sources.append(source)
 		var roof_level_by_gu: Dictionary = {}
-		for block_instance: Dictionary in layout.get("solid_block_instances", []):
+		for block_instance: Dictionary in roof_sources:
 			var occ_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
 			var occ_size: Vector2i = block_instance.get("size", Vector2i.ONE)
 			var occ_level: int = GeometryCoords.storey_level_base(maxi(1, int(block_instance.get("storeys", 1))))
@@ -498,7 +508,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 				roof_anchor_by_gu[gu] = anchor
 
 		var roof_slabs: Array[Slab] = []
-		for block_instance: Dictionary in layout.get("solid_block_instances", []):
+		for block_instance: Dictionary in roof_sources:
 			var block_gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
 			var block_size: Vector2i = block_instance.get("size", Vector2i.ONE)
 			var block_storeys: int = int(block_instance.get("storeys", 1))

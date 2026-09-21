@@ -153,6 +153,23 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 					wall_levels[storey].append({"cell": cell, "tile_name": "solidblock_%s" % material})
 				blocked_map[cell] = true
 
+	## --- free-standing roofs (R3D-7): a roof is an entity of its own ----------
+	## Same {gu, size, storeys, material} rectangle as a block, without the walls: `storeys` is the height the roof
+	## sits on top of. Forwarded as `roof_instances`; room_builder generates their slabs through the very code a
+	## block's roof uses. `kind` ("flat" today) is the seam for pointed and diagonal roofs.
+	var roof_instances: Array[Dictionary] = []
+	for roof: Dictionary in spec.get("roofs", []):
+		var roof_gu: Vector2i = Vector2i(roof.get("gu", Vector2i.ZERO))
+		var roof_size_raw = roof.get("size", [1, 1])
+		var roof_size: Vector2i = roof_size_raw if roof_size_raw is Vector2i else Vector2i(int(roof_size_raw[0]), int(roof_size_raw[1]))
+		roof_instances.append({
+			"gu_cell": roof_gu + offset,
+			"size": roof_size,
+			"storeys": maxi(1, int(roof.get("storeys", 1))),
+			"material": String(roof.get("material", "concrete")),
+			"kind": String(roof.get("kind", "flat")),
+		})
+
 	## --- floor-zone bake regions (author-declared ground material rects) -----
 	## Mirrors solid_block_instances' shape exactly (gu_cell + size + one
 	## property), kept as a rectangle list — not pre-expanded per-GU — so
@@ -285,6 +302,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"structure_tiles":  structure_tiles,
 		"voxel_prop_instances": voxel_prop_instances,  ## PropDef-driven voxel props (PROP-01)
 		"solid_block_instances": solid_block_instances,  ## Original per-GU block declarations, offset-adjusted (DESTRUCTION D1-ROOF)
+		"roof_instances": roof_instances,  ## R3D-7: free-standing roofs (an entity of their own), offset-adjusted
 		"floor_zone_instances": floor_zone_instances,  ## Author-declared floor material rects, offset-adjusted (floor-zone bake)
 		"panel_instances":  panel_instances,   ## M3-2b: half-thickness elements, offset-adjusted
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list

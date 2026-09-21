@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**276 scripts · 102284 lines total** (under `godot/scripts/`)
+**276 scripts · 102416 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -533,7 +533,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1831 lines
+extends `Node3D` · 1845 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -3138,7 +3138,7 @@ extends `Node` · 256 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 1088 lines
+`class_name OcclusionSet` · 1169 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -3151,9 +3151,11 @@ extends `Node` · 256 lines
 - `BASE_VISIBLE_LEVELS` = `2`
 - `SMALL_ROOF_MAX_STRIPES` = `5`
 - `_FACE_DIRS` = `[Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]`
+- `FACE_DIRS` = `_FACE_DIRS`
 
 **Public vars**
 - `var last_phase_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0])`
+- `var last_tail_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0])`
 
 **Public API**
 - `func get_occluded_cells() -> Dictionary:`
@@ -3161,6 +3163,7 @@ extends `Node` · 256 lines
 - `func get_wireframe_lines_by_level() -> Dictionary:`
 - `func get_recompute_count() -> int:`
 - `func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns: Array = [], ceiling_slabs: Array = []) -> void:`
+- `func get_exposure() -> Dictionary:`
 
 ---
 
@@ -5164,7 +5167,7 @@ extends `SceneTree` · 273 lines
 
 ### `roof_occlusion_selftest.gd`
 
-extends `SceneTree` · 128 lines
+extends `SceneTree` · 154 lines
 
 `godot/scripts/tools/roof_occlusion_selftest.gd`
 
@@ -6202,7 +6205,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12507 lines
+extends `Node2D` · 12518 lines
 
 `godot/scripts/world/room.gd`
 

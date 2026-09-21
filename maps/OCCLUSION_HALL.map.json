@@ -1,0 +1,67 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "OCCLUSION_HALL",
+ "meta": {
+  "title": "Occlusion Hall Fixture",
+  "description": "A free-standing 15x15 GU roof (the `roofs` section) floating over open floor, no walls, the agent standing under its middle at (12,12): the largest reveal the roof rule allows (reach 6 slabs = a 13x13 GU disc). RENDER3D R3D-7 cost fixture. Dev fixture, not a level."
+ },
+ "sections": {
+  "board": {
+   "v": 1,
+   "inner_size": [
+    26,
+    26
+   ],
+   "buffer": 1,
+   "floor_tile": "floor_SE"
+  },
+  "actors": {
+   "v": 1,
+   "agent_start": [
+    12,
+    12
+   ],
+   "guards": []
+  },
+  "legacy_compiler": {
+   "v": 1,
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "lights": []
+  },
+  "blocks": {
+   "v": 2,
+   "items": []
+  },
+  "damage_materials": {
+   "v": 1,
+   "materials": [
+    "concrete",
+    "metal",
+    "stone",
+    "wood"
+   ]
+  },
+  "roofs": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "floating hall roof",
+     "gu": [
+      5,
+      5
+     ],
+     "size": [
+      15,
+      15
+     ],
+     "storeys": 3,
+     "material": "concrete",
+     "kind": "flat"
+    }
+   ]
+  }
+ }
+}

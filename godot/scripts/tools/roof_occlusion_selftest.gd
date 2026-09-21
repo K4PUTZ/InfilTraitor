@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_test_outside_stays_solid()
 	_test_hover_origin_adds_its_own_disc()
 	_test_a_disconnected_roof_is_left_alone()
+	_test_exposure_skip_is_exact()
 	if _failures == 0:
 		print("\n[SUCCESS] ROOF OCCLUSION SELFTEST PASS — all tests")
 		quit(0)
@@ -126,3 +127,28 @@ func _test_a_disconnected_roof_is_left_alone() -> void:
 	occ.recompute(_origins([Vector2i(0, 0)]), [], Vector2i(20, 20), [], _roof_slabs(gus))
 	_check(_ring_of(occ, Vector2i(3, 0)) == 0, "the connected roof opens")
 	_check(_ring_of(occ, Vector2i(10, 0)) == -1 and _ring_of(occ, Vector2i(11, 0)) == -1, "the separate roof stays solid")
+
+
+## The set's exposure skips the interior cells of a uniformly ghosted roof GU without looking at their neighbours. That is
+## only right if looking would have found nothing exposed, so the shared exposure must equal the one computed the long
+## way, cell by cell, with no skip at all: on a room-sized roof, on the fading disc of a big one, and with two origins.
+func _test_exposure_skip_is_exact() -> void:
+	print("[6] exposure with the interior skip == exposure computed cell by cell")
+	var square: Array = []
+	for x: int in range(13):
+		for y: int in range(13):
+			square.append(Vector2i(x, y))
+	var cases: Array = [
+		["a row", _origins([Vector2i(0, 0)]), _roof_slabs(_row(12))],
+		["a 13x13 roof, origin at its centre", _origins([Vector2i(6, 6)]), _roof_slabs(square)],
+		["a 13x13 roof, two origins", _origins([Vector2i(1, 1), Vector2i(11, 10)]), _roof_slabs(square)],
+	]
+	for c: Array in cases:
+		var occ = OcclusionSetMod.new()
+		occ.recompute(c[1], [], Vector2i(30, 30), [], c[2])
+		var shared: Dictionary = occ.get_exposure()
+		var long_way: Dictionary = occ._build_exposure(occ.get_occluded_cells(), {})
+		_check(shared == long_way and not long_way.is_empty(),
+			"%s: %d exposed columns, identical to the unskipped result" % [c[0], long_way.size()])
+		var skipped: int = occ.get_occluded_cells().size() - long_way.size()
+		_check(skipped > 0, "%s: %d columns are fully hidden and never looked at" % [c[0], skipped])

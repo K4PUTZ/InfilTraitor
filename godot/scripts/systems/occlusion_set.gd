@@ -113,7 +113,7 @@ func get_wireframe_by_level() -> Dictionary:
 	## The 2D overlay's view: lines AND fills. The fills are one dictionary per column, face and level, so they are
 	## built on the first ask for this set (`_wireframe_full`), not on every recompute.
 	if _wireframe_full.is_empty() and not _occluded_cells.is_empty():
-		_wireframe_full = _build_wireframe_geometry(_occluded_cells, true)
+		_wireframe_full = _build_wireframe_geometry(_occluded_cells, _exposure, true)
 	return _wireframe_full.duplicate()
 
 
@@ -125,6 +125,9 @@ func get_wireframe_lines_by_level() -> Dictionary:
 ## Instrument (R3D-7 Moto): usec of the last recompute() by phase — group slices, edge occlusion, expand to voxel
 ## columns (+ junctions), roof, wireframe (0 when the set did not change).
 var last_phase_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0])
+## The last phase split further (usec): merge the roof into the set, compare with the previous set, interior cells,
+## exposure, wireframe lines.
+var last_tail_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0])
 
 
 func get_recompute_count() -> int:
@@ -172,6 +175,7 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		if hit[0] != _occluded_cells:
 			_occluded_cells = hit[0]
 			_wireframe_by_level = hit[1]
+			_exposure = hit[2]
 			_wireframe_full = {}
 			_recompute_count += 1
 		last_phase_usec = PackedInt64Array([ph1 - ph0, 0, 0, 0, 0])
@@ -241,6 +245,11 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	var roof := _compute_roof_occlusion(origins, ceiling_slabs, ring_by_edge_id, slices_by_edge)
 	var ph4: int = Time.get_ticks_usec()
 	var ph5: int = ph4
+	var tl0: int = Time.get_ticks_usec()
+	var tl1: int = tl0
+	var tl2: int = tl0
+	var tl3: int = tl0
+	var tl4: int = tl0
 	for cell in roof["cells"].keys():
 		var r_entry: Dictionary = roof["cells"][cell]
 		if new_occluded.has(cell):
@@ -253,9 +262,16 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		new_occluded[cell] = r_entry
 
 	# Only update if the set changed
-	if new_occluded != _occluded_cells:
+	tl1 = Time.get_ticks_usec()
+	var changed: bool = new_occluded != _occluded_cells
+	tl2 = Time.get_ticks_usec()
+	if changed:
 		_occluded_cells = new_occluded
-		_wireframe_by_level = _build_wireframe_geometry(new_occluded, false)
+		var untouched: Dictionary = _interior_untouched(new_occluded, roof["uniform"])
+		tl3 = Time.get_ticks_usec()
+		_exposure = _build_exposure(new_occluded, untouched)
+		tl4 = Time.get_ticks_usec()
+		_wireframe_by_level = _build_wireframe_geometry(new_occluded, _exposure, false)
 		_wireframe_full = {}
 		ph5 = Time.get_ticks_usec()
 		_recompute_count += 1
@@ -269,8 +285,9 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	if memo_enabled:
 		if _memo.size() >= MEMO_MAX:
 			_memo.erase(_memo.keys()[0])
-		_memo[memo_key] = [_occluded_cells, _wireframe_by_level]
+		_memo[memo_key] = [_occluded_cells, _wireframe_by_level, _exposure]
 	last_phase_usec = PackedInt64Array([ph1 - ph0, ph2 - ph1, ph3 - ph2, ph4 - ph3, ph5 - ph4])
+	last_tail_usec = PackedInt64Array([tl1 - tl0, tl2 - tl1, tl3 - tl2, tl4 - tl3, ph5 - tl4 if tl4 > tl0 else 0])
 
 ## ============================================================================
 ## OCC-27 (2026-07-21) — unified wireframe: hidden-face culling over the
@@ -356,10 +373,58 @@ static func _is_exposed(occluded: Dictionary, column: Vector2i, dir: Vector2i) -
 	return not (int(n["min_level"]) <= int(entry["max_level"]) and int(n["max_level"]) >= int(entry["min_level"]))
 
 
-func _build_wireframe_geometry(occluded: Dictionary, with_fills: bool) -> Dictionary:
+## Public: the order of `_FACE_DIRS`, which is the bit order of every exposure mask.
+const FACE_DIRS: Array[Vector2i] = _FACE_DIRS
+var _exposure: Dictionary = {}   ## column -> bitmask of exposed faces (bit i = FACE_DIRS[i]); columns with none are absent
+
+
+## Which faces of each occluded column are EXPOSED (see `_is_exposed`), computed once per set and read by the wireframe,
+## the 3D cutaway's side fills and its caps, which used to recompute it three times over. Read-only: do not modify.
+func get_exposure() -> Dictionary:
+	return _exposure
+
+
+## The mask `_is_exposed` gives for each direction, for every column of `occluded` that has any exposed face, in the
+## set's own order. `unexposed` names columns known to have none (interior cells of a uniformly ghosted roof GU).
+func _build_exposure(occluded: Dictionary, unexposed: Dictionary) -> Dictionary:
+	var exposure: Dictionary = {}
+	for column: Vector2i in occluded:
+		if unexposed.has(column):
+			continue
+		var entry: Dictionary = occluded[column]
+		var lo: int = entry["min_level"]
+		var hi: int = entry["max_level"]
+		var mask: int = 0
+		for dir_index: int in range(4):
+			var neighbour: Variant = occluded.get(column + _FACE_DIRS[dir_index])
+			if neighbour == null or not (int((neighbour as Dictionary)["min_level"]) <= hi and int((neighbour as Dictionary)["max_level"]) >= lo):
+				mask |= 1 << dir_index
+		if mask != 0:
+			exposure[column] = mask
+	return exposure
+
+
+## Interior cells of a roof GU that this recompute left exactly as the roof made them (the GU's shared entry, not merged
+## with a wall or another roof): all four neighbours are cells of the same GU with the same entry, so the column has no
+## exposed face and `_build_exposure` need not look.
+func _interior_untouched(occluded: Dictionary, uniform: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var gu_info: Dictionary = _roof_geometry["gu_info"]
+	for gu: Vector2i in uniform:
+		var shared: Dictionary = uniform[gu]
+		for cell: Vector2i in (gu_info[gu] as Dictionary)["interior"]:
+			if is_same(occluded[cell], shared):
+				out[cell] = true
+	return out
+
+
+func _build_wireframe_geometry(occluded: Dictionary, exposure: Dictionary, with_fills: bool) -> Dictionary:
 	var by_level: Dictionary = {}
 
-	for column: Vector2i in occluded:
+	## Only the columns with at least one exposed face (`exposure`, in the set's own order) can contribute a line
+	## or a side fill, so the loop is over those; the exposure of a column is read, not recomputed.
+	for column: Vector2i in exposure:
+		var mask: int = exposure[column]
 		var entry: Dictionary = occluded[column]
 		var min_level: int = entry["min_level"]
 		var max_level: int = entry["max_level"]
@@ -369,9 +434,10 @@ func _build_wireframe_geometry(occluded: Dictionary, with_fills: bool) -> Dictio
 		var cx: int = column.x
 		var cy: int = column.y
 
-		for dir: Vector2i in _FACE_DIRS:
-			if not _is_exposed(occluded, column, dir):
+		for dir_index: int in range(4):
+			if not (mask & (1 << dir_index)):
 				continue  ## hidden-face culling: bordered by more occluded volume
+			var dir: Vector2i = _FACE_DIRS[dir_index]
 
 			## Width axis: perpendicular to dir, the direction ALONG which many
 			## contiguous exposed voxels of the SAME face read as one boundary
@@ -381,8 +447,8 @@ func _build_wireframe_geometry(occluded: Dictionary, with_fills: bool) -> Dictio
 			## once per run, which is what made a wide wall face look like a
 			## picket fence of parallel dotted lines instead of one clean edge.
 			var width_step: Vector2i = Vector2i(0, 1) if dir.x != 0 else Vector2i(1, 0)
-			var run_start: bool = not (occluded.has(column - width_step) and _is_exposed(occluded, column - width_step, dir))
-			var run_end: bool = not (occluded.has(column + width_step) and _is_exposed(occluded, column + width_step, dir))
+			var run_start: bool = not (exposure.get(column - width_step, 0) & (1 << dir_index))
+			var run_end: bool = not (exposure.get(column + width_step, 0) & (1 << dir_index))
 
 			var p1: Vector2i
 			var p2: Vector2i
@@ -906,6 +972,17 @@ func _build_roof_geometry(ceiling_slabs: Array) -> Dictionary:
 	## Connected components over roofed GUs (4-adjacency, level- and
 	## material-blind — contiguous roofs read as one surface, the same rule
 	## ROOF-BAKE-02c uses for texture anchors).
+	## The cells of a roofed GU whose four neighbours are all cells of the SAME GU: while the GU is uniformly ghosted
+	## nothing can be exposed there, so exposure never has to look at them (see `_interior_untouched()`).
+	for info: Dictionary in gu_info.values():
+		var own: Dictionary = info["cells"]
+		var interior: Array[Vector2i] = []
+		for cell: Vector2i in own:
+			if own.has(cell + Vector2i(1, 0)) and own.has(cell + Vector2i(-1, 0)) \
+					and own.has(cell + Vector2i(0, 1)) and own.has(cell + Vector2i(0, -1)):
+				interior.append(cell)
+		info["interior"] = interior
+
 	var component_of: Dictionary = {}   ## gu -> component index
 	var components: Array = []          ## index -> Array[Vector2i]
 	for start_gu: Vector2i in gu_info:
@@ -929,7 +1006,7 @@ func _build_roof_geometry(ceiling_slabs: Array) -> Dictionary:
 
 
 func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_id: Dictionary, slices_by_edge: Dictionary) -> Dictionary:
-	var result := {"cells": {}}
+	var result := {"cells": {}, "uniform": {}}
 	if ceiling_slabs.is_empty():
 		return result
 
@@ -1007,14 +1084,18 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 
 			var info: Dictionary = gu_info[gu]
 
+			## One entry for the whole GU, shared by every cell that is only this GU's: nothing writes into an entry
+			## (a merge makes a new one), and `recompute()` tells the untouched cells apart by identity.
+			var shared := {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
+			result["uniform"][gu] = shared
 			for cell: Vector2i in info["cells"]:
-				var entry := {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
+				var entry: Dictionary = shared
 				if result["cells"].has(cell):
 					var prev: Dictionary = result["cells"][cell]
 					entry = {
 						"ring": mini(int(prev["ring"]), ring),
-						"min_level": mini(int(prev["min_level"]), int(entry["min_level"])),
-						"max_level": maxi(int(prev["max_level"]), int(entry["max_level"])),
+						"min_level": mini(int(prev["min_level"]), int(shared["min_level"])),
+						"max_level": maxi(int(prev["max_level"]), int(shared["max_level"])),
 					}
 				result["cells"][cell] = entry
 	return result

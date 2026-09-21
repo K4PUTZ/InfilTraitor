@@ -3361,6 +3361,7 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 	var digest: int = 0
 	var wire_digest: int = 0
 	var phases: Array = [[], [], [], [], []]
+	var tails: Array = [[], [], [], [], []]
 	var live: Node = board3d()
 	_occlusion_set.memo_enabled = false  ## the first pass measures the path that recomputes every step
 	var cut_phases: Array = [[], [], [], [], [], [], []]
@@ -3376,6 +3377,7 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 		wire_digest = hash([wire_digest, str(_occlusion_set.get_wireframe_by_level())])
 		for k: int in range(5):
 			(phases[k] as Array).append(float(_occlusion_set.last_phase_usec[k]) / 1000.0)
+			(tails[k] as Array).append(float(_occlusion_set.last_tail_usec[k]) / 1000.0)
 		if live != null:
 			geo_digest = hash([geo_digest, live.last_occ_digest])
 			for k: int in range(7):
@@ -3386,6 +3388,12 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 		await get_tree().process_frame
 		frames.append(float(Time.get_ticks_usec() - t0) / 1000.0)
 	print("[OCC-BENCH] occluded columns per step: min %d, max %d, digest %d, wireframe digest %d" % [cells.min(), cells.max(), digest, wire_digest])
+	var tail_names: PackedStringArray = ["roof merge", "set compare", "interior cells", "exposure", "wireframe lines"]
+	for k: int in range(5):
+		var tail_total: float = 0.0
+		for v: float in tails[k]:
+			tail_total += v
+		print("[OCC-BENCH]     tail %s: mean %.2f ms" % [tail_names[k], tail_total / float(reps)])
 	var phase_names: PackedStringArray = ["group slices", "edge occlusion", "expand to columns", "roof", "wireframe"]
 	for k: int in range(5):
 		var total_ms: float = 0.0
@@ -6472,11 +6480,14 @@ func _recompute_occlusion() -> void:
 	var occ_t1: int = Time.get_ticks_usec()
 
 	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
-	if _voxel_renderer != null:
+	## While the 3D board draws the cutaway this erases tiles of a hidden 2D board (there are none to erase under
+	## SKIP_BOARD_WRITES, and `_ghosted_cells` stays empty): 68 ms per step on the Moto for the 5x5 room fixture and
+	## 291 ms for a 15x15 hall, for nothing anyone sees. The 2D board (RENDER3D=0) still calls it.
+	var live_board: Node = board3d()
+	if _voxel_renderer != null and not (live_board != null and live_board.draws_cutaway()):
 		_voxel_renderer.apply_occlusion(_occlusion_set.get_occluded_cells())
 	var occ_t2: int = Time.get_ticks_usec()
 
-	var live_board: Node = board3d()
 	if live_board != null:
 		live_board.on_occlusion(_occlusion_set)
 	var occ_t3: int = Time.get_ticks_usec()

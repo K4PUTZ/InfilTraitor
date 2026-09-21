@@ -525,15 +525,22 @@ func on_occlusion(occ_set) -> void:
 	if _occ_image == null:
 		_occ_image = Image.create(size, size, false, Image.FORMAT_RGBA8)
 		_occ_texture = ImageTexture.create_from_image(_occ_image)
-	_occ_image.fill(Color8(0, 0, 0, 0))
 	var cells: Dictionary = occ_set.get_occluded_cells()
+	## The texture is built as bytes (four per column: min level, max level, ring + 1, 255) and handed over once,
+	## which is what `set_pixel` per column did with a Color8 allocation each.
+	var bytes := PackedByteArray()
+	bytes.resize(size * size * 4)
 	for column: Vector2i in cells:
 		var entry: Dictionary = cells[column]
 		var px: Vector2i = column + VoxelRenderer.SOOT_PLANE_ORIGIN
 		if px.x < 0 or px.y < 0 or px.x >= size or px.y >= size:
 			continue
-		_occ_image.set_pixel(px.x, px.y, Color8(clampi(int(entry["min_level"]), 0, 255),
-			clampi(int(entry["max_level"]), 0, 255), clampi(int(entry["ring"]) + 1, 1, 255), 255))
+		var at: int = (px.y * size + px.x) * 4
+		bytes[at] = clampi(int(entry["min_level"]), 0, 255)
+		bytes[at + 1] = clampi(int(entry["max_level"]), 0, 255)
+		bytes[at + 2] = clampi(int(entry["ring"]) + 1, 1, 255)
+		bytes[at + 3] = 255
+	_occ_image.set_data(size, size, false, Image.FORMAT_RGBA8, bytes)
 	_occ_texture.update(_occ_image)
 	for i: int in range(_shader_materials.size()):
 		if _material_glass[i]:
@@ -796,13 +803,18 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 	var s_h: int = store.h
 	var s_l1: int = s_l0 + store.nl
 	var layer: int = s_w * s_h
-	for column: Vector2i in cells:
+	## The set's own exposure, computed once per set (see `OcclusionSet.get_exposure`): bit i is OCC_FACE_DIRS[i].
+	var exposure: Dictionary = occ_set.get_exposure()
+	assert(OCC_FACE_DIRS == occ_set.FACE_DIRS)
+	for column: Vector2i in exposure:
+		var mask: int = exposure[column]
 		var entry: Dictionary = cells[column]
 		var lo_level: int = entry["min_level"]
 		var hi_level: int = entry["max_level"]
-		for dir: Vector2i in OCC_FACE_DIRS:
-			if not occ_set._is_exposed(cells, column, dir):
+		for dir_index: int in range(4):
+			if not (mask & (1 << dir_index)):
 				continue
+			var dir: Vector2i = OCC_FACE_DIRS[dir_index]
 			var ax: int = column.x + dir.x
 			var ay: int = column.y + dir.y
 			if ax < s_x0 or ay < s_y0 or ax >= s_x0 + s_w or ay >= s_y0 + s_h:
@@ -836,9 +848,11 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 		for k: int in range(6):
 			cap_colors.append(OCC_CAP_TOP)
 		## The bottom rim of the volume, on the base's top, along each exposed side.
-		for dir: Vector2i in OCC_FACE_DIRS:
-			if not occ_set._is_exposed(cells, column, dir):
+		var rim_mask: int = exposure.get(column, 0)
+		for dir_index: int in range(4):
+			if not (rim_mask & (1 << dir_index)):
 				continue
+			var dir: Vector2i = OCC_FACE_DIRS[dir_index]
 			var p1: Vector2i
 			var p2: Vector2i
 			if dir.x == 1:

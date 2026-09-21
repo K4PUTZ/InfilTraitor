@@ -156,6 +156,27 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   levers, not built: exposure computed once per set and shared by the wireframe, side fills and caps (each walks
   every column x 4 directions with its own calls), and skipping the interior columns of a uniformly ghosted roof GU
   (only a GU's 28 border columns can be exposed).
+- **Exposure shared, interior skip, and the hidden 2D apply, 2026-09-20 (Moto).** (1) `OcclusionSet` computes the
+  exposed faces of every column ONCE per set (`get_exposure()`, a mask per column, only columns with a face, in the
+  set's own order) and the wireframe, the cutaway's side fills and its caps read it (they each walked every column x
+  4 directions before). (2) The interior cells of a roof GU that a recompute left exactly as the roof made them (one
+  shared entry per GU, told apart by identity; interior cells computed once in the roof-geometry cache) skip the neighbour
+  lookups; `roof_occlusion_selftest` [6] proves the skipped exposure equals the cell-by-cell one on a room-sized roof, a
+  13x13 roof and two origins (a 13x13 roof: 348 exposed of ~7 700 revealed columns). (3) FOUND WHILE MEASURING, and the
+  biggest of the three: `_recompute_occlusion` also called `VoxelRenderer.apply_occlusion()`, which erases tiles of the
+  hidden 2D board (none exist under `SKIP_BOARD_WRITES`, `_ghosted_cells` stays empty): **68.5 ms per step on the Moto
+  for OCCLUSION_ROOM and 290.7 ms for OCCLUSION_HALL**. Skipped while the 3D board draws the cutaway (like the overlay
+  refresh, 25 ms, before it); the 2D board still calls it. The 3D capture is pixel-identical (0 of 328 320 px differ
+  at >24) and the 2D capture still ghosts. Also: occlusion texture built as bytes. **Digests unchanged everywhere**
+  (ROOM `1370605722`/`3661185292`/`726968376`, NEST, GLASS, PLAYGROUND, HALL `794478716`/`2445323057`).
+  **Moto, whole step incl. the next frame: ROOM 297 -> 141 ms (side fills 26.4 -> 1.8, wireframe phase 35.7 -> ~20,
+  cutaway 49.6 -> 19.5); OCCLUSION_HALL (new fixture: a floating 15x15 GU roof, 7 744 revealed columns, the LARGEST
+  reveal the reach allows, measured not extrapolated) 652 -> 359 ms: set 90.9 ms (exposure 41.2, roof merge 13.7,
+  interior cells 7.7, lines 7.5), cutaway 53.5 ms (occlusion texture 25.3, caps 8.0, side fills 4.4).** What is left
+  is per-COLUMN work at the size of the set (a Dictionary of 7 744 entries built, compared, walked and uploaded every
+  step), which a GU-granular representation of roof reveals (the roof cells of a GU share one entry, and roofs need no
+  column resolution) would cut ~64x; that is a redesign of the roof half of the cutaway (a per-GU texture next to
+  the per-column one), not built. The other lever is the reach itself.
 - **Agent INSIDE a room, 2026-09-20 — DEFECT FOUND, fixed by the item above.** New dev fixture `maps/OCCLUSION_ROOM.map.json`: a closed
   5x5 GU ring of 3-storey blocks, agent in the middle at (12,12). The map format only generates roofs over SOLID
   BLOCKS (`room_builder`, `solid_block_instances`), so a roof over walkable floor is not expressible; the ring blocks

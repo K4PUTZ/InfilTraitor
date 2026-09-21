@@ -23,7 +23,7 @@ Full record with the numbers: `RENDER3D_MASTER_PLAN` v1.11. No `verified/` tag w
 `shot_3d_gate.py` (see the commit message for its result).
 
 ## Open / next
-- **Pinch** on the Moto: needs a hand. Run with `TELEMETRY=1` and read `camera.zoom_end via=pinch`.
+- **Pinch: DONE by the Director's hand** (`camera.zoom_end via=pinch` 0.259 ... 1.200 ... 0.200, both clamps hit).
 - **R3D-8** (Director's ratification). Still open in R3D-7: the reap suspicion, the CRACKED art on a lit wall, a second map, the Galaxy A16 for
   the shot path, roofs of `kind` other than "flat" (logged and skipped), the ray march (4-9 ms).
 - A lead not taken: a shot costs 0.57 s of light repaint on the Moto (the field is built map-wide by design, D24), not a render cost.

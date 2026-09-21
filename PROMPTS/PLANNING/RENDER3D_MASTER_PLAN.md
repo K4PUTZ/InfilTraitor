@@ -27,7 +27,7 @@
   off, FRAME_PROBE windows over 14 s, 6 boots (first pair 0 then 1, then 1, 0, 1, 0): draw calls 116 -> 128 (+12), primitives 14 770 -> 14 794
   (+24), GPU **22.4-23.5 ms on vs 25.1-25.2 ms off**, frame 24.1-27.0 vs 27.0-28.9 ms. The ON side was FASTER in every boot; UNEXPLAINED (do not
   attribute it to the feature), the point is that it is not slower. The Director's look (striped purple silhouette) draws on the device.
-- **Touch on the Moto (R3D-5's "movement/picking/touch not run"): tap, select, walk and drag-pan VERIFIED; pinch NOT.** A real `input tap` at
+- **Touch on the Moto (R3D-5's "movement/picking/touch not run"): tap, select, walk, drag-pan and PINCH VERIFIED (the pinch by the Director's hand, see the last line of this item).** A real `input tap` at
   (480, 863) logs `input.tap cell=29,10` (the agent stands on 28,10), the selection diamond is drawn exactly under the tap and the panel reads
   `tile 29 , 10`; the same tap again walks him onto it (the mobile flow); a drag logs `camera.pan_end`; frame time stays 23-24 ms while idle.
   The 2D board on the same taps gives the same cell and the same walk. **Pinch could not be automated:** SELinux denies the `shell` user writes
@@ -47,7 +47,8 @@
   declared default, the shotgun; the `[AGENT-SHOT] weapon overridden to 'pistol'` line is in every pistol log above); `SHOT_SETTLE_FRAMES` as above. Traps met: boot on the Moto is 55-70 s, so `device_run.py --seconds`
   must be >= 150 for a scenario with a shot (75 cut the run before the `after` capture); `logcat` processes started by a script pile up unless
   killed; macOS has no `timeout`.
-- **Still open in R3D-7:** the pinch (by hand); the reap suspicion; the CRACKED bullet art on a lit wall; a second map; the Galaxy A16 for the
+- **Pinch VERIFIED by hand on the Moto (Director, 2026-09-21):** `camera.zoom_end via=pinch` at 0.259, 0.634, 1.033, 1.200 (the clamp), 0.903, 0.657, 0.396, 0.200 (the clamp) interleaved with `camera.pan_end`; frame time stayed 24.2-24.4 ms while idle at zoom out.
+- **Still open in R3D-7:** the reap suspicion; the CRACKED bullet art on a lit wall; a second map; the Galaxy A16 for the
   shot path; roofs of `kind` other than "flat" (logged and skipped, never exercised); the ray march (4-9 ms). Next: **R3D-8** (irreversible,
   needs ratification). The v1.10 block below is the previous state, kept as history.
 

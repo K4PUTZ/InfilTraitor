@@ -1468,7 +1468,8 @@ var _peek_pending: bool = false
 ## Dev 03: tile hover info
 var _dev_hover_label: Label = null
 ## The two DEV VISION TEXT panels (tile info under the top bar, systems status under it). Off by default so captures and
-## recordings are clean; DEV VISION itself (FOW off, overlays, agent tint) is unaffected. `DEV_PANELS=1` shows them.
+## recordings are clean; DEV VISION itself (FOW off, overlays, agent tint) is unaffected. `DEV_PANELS=1` shows them, and with
+## them the red playable-area line and the dark spawn diamond, which are DEV VISION drawings of the same kind.
 var _dev_panels_on: bool = false
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
 
@@ -3668,8 +3669,8 @@ func _draw_exit_markers() -> void:
 
 func _draw_spawn_marker() -> void:
 	## Dark diamond on the spawn point — DEV_VISION only.
-	## Lets you quickly identify the AGENT_START_CELL when testing maps.
-	if not _vision_controller.dev_vision:
+	## Lets you quickly identify the AGENT_START_CELL when testing maps. Also needs `DEV_PANELS=1`.
+	if not _vision_controller.dev_vision or not _dev_panels_on:
 		return
 	if _agent_start_cell == INVALID_CELL:
 		return
@@ -3691,8 +3692,8 @@ func _draw_spawn_marker() -> void:
 
 func _draw_playable_boundary() -> void:
 	## Linha vermelha fina ao redor da área JOGÁVEL (excluindo o buffer ring).
-	## Visível apenas em DEV_VISION.
-	if not _vision_controller.dev_vision:
+	## Visível apenas em DEV_VISION e com `DEV_PANELS=1` (fora disso poluía capturas e gravações).
+	if not _vision_controller.dev_vision or not _dev_panels_on:
 		return
 	if floor_layer == null or _base_layout.is_empty():
 		return

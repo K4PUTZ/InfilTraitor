@@ -32,6 +32,7 @@ def main() -> int:
     ap.add_argument("--size", default="720x1600", help="recording size (default 720x1600)")
     ap.add_argument("--bit-rate", default="8000000")
     ap.add_argument("--skip", type=float, default=0.0, help="seconds to trim off the start (the boot)")
+    ap.add_argument("--trim-end", type=float, default=4.0, help="seconds to trim off the end (the home screen after `quit`)")
     args = ap.parse_args()
 
     def adb(*a):
@@ -48,12 +49,17 @@ def main() -> int:
     rec.terminate()
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    raw = out if args.skip <= 0 else out.with_suffix(".raw.mp4")
+    raw = out if (args.skip <= 0 and args.trim_end <= 0) else out.with_suffix(".raw.mp4")
     adb("pull", REMOTE, str(raw))
     adb("shell", "rm", "-f", REMOTE)
-    if args.skip > 0:
-        subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(args.skip), "-i", str(raw), "-c", "copy", str(out)])
+    if args.skip > 0 or args.trim_end > 0:
+        dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(raw)],
+                                   capture_output=True, text=True).stdout.strip() or 0)
+        trimmed = out.with_suffix(".trim.mp4")
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(args.skip), "-i", str(raw),
+                        "-t", str(max(1.0, dur - args.skip - args.trim_end)), "-c:v", "libx264", "-preset", "fast", "-crf", "20", str(trimmed)])
         raw.unlink(missing_ok=True)
+        trimmed.replace(out)
     print("[DEVICE-RECORD] %s (%d bytes)" % (out, out.stat().st_size if out.exists() else 0))
     return 0 if out.exists() else 1
 

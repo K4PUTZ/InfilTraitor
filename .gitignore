@@ -160,3 +160,6 @@ docs/github-recovery-codes.txt
 # candidate path, so a committed one would silently override the environment for
 # everyone, in every build.
 dev_flags.cfg
+
+# Recordings of the game on a handset (tools/persistent/device_record.py); local only
+videos/

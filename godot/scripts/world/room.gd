@@ -3557,6 +3557,13 @@ func scenario_detonate(index: int) -> void:
 	await get_tree().process_frame
 	Telemetry.event("blast.request", {"index": index, "gu": grenades[index]["gu_cell"]})
 	_test_zone_controller.open_menu_for(index)
+	## The real click closes the menu BEFORE the action's visuals (DetonateContextMenu._on_action_pressed()); a direct
+	## `detonate_active()` never reaches that handler, so without this the "Detonate / Cancel" popup and the red preview
+	## stay over the whole blast in every capture and recording.
+	if _context_menu != null:
+		_context_menu.close()
+	if _blast_wireframe_overlay != null:
+		_blast_wireframe_overlay.clear()
 	_test_zone_controller.detonate_active()
 	## `is_blast_playing()`, not only `is_resolving_action()` — the action lock clears
 	## about halfway through the blast (see the benchmark).

@@ -45,6 +45,7 @@ var _open_seen: int = -1
 
 
 func setup(renderer: VoxelRenderer, ground_level: int) -> void:
+	OPENINGS_ON = OPENINGS_ON and DevFlags.value("GLASS_OPENINGS3D", "1") != "0"  ## reaches the APK (see Board3DLive.DENT_FLAG)
 	_renderer = renderer
 	_ground_level = ground_level
 	_unit = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)

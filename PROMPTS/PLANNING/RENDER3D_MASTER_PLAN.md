@@ -156,6 +156,23 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   levers, not built: exposure computed once per set and shared by the wireframe, side fills and caps (each walks
   every column x 4 directions with its own calls), and skipping the interior columns of a uniformly ghosted roof GU
   (only a GU's 28 border columns can be exposed).
+- **R3D-6 decals, dents and the rim wedge MEASURED on the Moto g04s, 2026-09-20** (release APK, one APK for every
+  side, GLASS + `detonate 0` with `RNG_SEED=1`, `GRENADE_GUS=14,12;5,12`; median of 3 runs each, ranges in brackets;
+  the switches are `DECALS3D=0`, `DENTS3D=0` (new: a dented voxel's carved side emitted flat) and `GLASS_OPENINGS3D=0` in
+  the device flags file: the static initialisers only saw the OS environment, which an APK does not get, so
+  `Board3DLive.build()` and `GlassCrackMirror3D.setup()` now read `DevFlags` too). Blast remesh ([BOARD3D] remesh commit,
+  threaded): all on 1 382 quads, background 138.3 ms (137-144); no decals 1 382 / 130.4; no dents **509** / 122.9;
+  no openings 1 382 / 137.3; all off 509 / 112.9. **Dents add 873 quads and ~15 ms of background remesh per blast,
+  decals ~8 ms and no quads counted (their quads are a separate array), the rim wedge nothing measurable.** The
+  detonation itself: worst frame 2 486 ms on vs 2 517 all off (each within its own 2 458-2 584 spread: NOT these
+  features, it is the light/consequence commit); mean frame 50.1 vs 48.3 ms over 268 frames (+1.8, 3.7%, tight
+  ranges), the consequence phase 45.0 vs 41.7 ms/frame (+3.3: decals 1.7, openings 1.2, dents 0.4). **Memory:
+  none** (PSS 1 509 vs 1 513 MB, GL mtrack 565 vs 565). **Idle, no damage (`FRAME_PROBE`, 2 runs each):
+  identical**, 23.3 ms/frame, GPU 21.9, 91 draw calls, PSS 1 432 vs 1 432 MB. **Settled scene after the blast, damage
+  on screen: 25.9 ms/frame (GPU 24.5, 10 138 primitives) with all three, 24.7 (GPU 23.2, 8 046) with none: +1.2 ms
+  GPU per frame, +2 092 primitives.** All inside 33.3 ms. NOT covered: a bullet decal or crack from a real SHOT
+  (GLASS has no guard), the rim wedge on a shot through a pane (a blast's voxel hole is usually larger than the polygon,
+  so it barely draws there: the "nothing" for the rim wedge is for that case only), any second map, the Galaxy.
 - **Roofs stored per GU (Director, 2026-09-20: "representacao por GU para os tetos") — BUILT.** The occlusion set is
   now TWO parts (`OcclusionSet`): `_column_entries` (wall and junction columns, the 1-voxel border a roof grows past its
   GU, and any column where those overlap a revealed roof core: merged entry, smaller ring, union of spans) and
@@ -214,7 +231,7 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   volume's side fill is left clear where the cell across is glass (2026-09-19). Not a defect; nothing to build.
 - **Open register additions (updated 2026-09-20):** guards behind walls are revealed by the striped silhouette when
   gameplay says so (built, `GUARD_REVEAL`, see above), not by the cutaway; the cutaway's Moto cost is MEASURED and cut
-  (see above; the R3D-6 decals and dents are still desktop-only); three-deep nesting and a real level verified; NOT
+  (see above; the R3D-6 decals, dents and rim wedge are measured on the Moto); three-deep nesting and a real level verified; NOT
   covered: an agent inside an enclosed roofed room (no such map).
 
 **Status (2026-09-18, v1.7):** 🟡 **R3D-0 to R3D-5 are built. Everything that draws in the game world now

@@ -282,6 +282,8 @@ const DECAL_MATERIAL_ID: String = "__decals__"
 const DECAL_LIFT_VOXELS: float = 0.02
 ## `INFILTRAITOR_DECALS3D=0` draws no damage decals: comparison only.
 static var DECAL_FLAG: bool = OS.get_environment("INFILTRAITOR_DECALS3D") != "0"
+## `INFILTRAITOR_DENTS3D=0` (or `DENTS3D=0` in the device flags file) emits a dented voxel's carved side as a flat face: comparison only.
+static var DENT_FLAG: bool = OS.get_environment("INFILTRAITOR_DENTS3D") != "0"
 var _decal_layer: Dictionary = {}
 var _decal_array: Texture2DArray = null
 var _decal_material_index: int = -1
@@ -337,6 +339,10 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_ground_level = GeometryCoords.PLAYABLE_LEVEL
 	var t0: int = Time.get_ticks_usec()
 	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
+	## The comparison switches reach the APK through the device flags file; the static initialisers above only see the OS
+	## environment, which an Android application does not get.
+	DECAL_FLAG = DECAL_FLAG and str(room.call("_dev_flag", "DECALS3D", "1")) != "0"
+	DENT_FLAG = DENT_FLAG and str(room.call("_dev_flag", "DENTS3D", "1")) != "0"
 	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
 	VERTICAL_SCALE = _read_vertical_scale(room)
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
@@ -1575,7 +1581,7 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 		var glass: bool = _material_glass[material]
 		## R3D-6 item 4 — a DENTED voxel's carved side is a real recess, not a flat face.
 		var dent_dir: int = -1
-		if not glass and ((state[claim] >> 1) & 3) == Voxel.DamageState.DENTED:
+		if DENT_FLAG and not glass and ((state[claim] >> 1) & 3) == Voxel.DamageState.DENTED:
 			dent_dir = DENT_DIR_OF_CARVED_SIDE.get((state[claim] >> 4) & 7, -1)
 		var decal_dirs: Array = []
 		var decal_layers: Array = []

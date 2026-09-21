@@ -37,3 +37,5 @@ Galaxy A16 shot path (identical lines; 3D brick tail 357.5 ms vs 2D 213.9, oppos
 HARDENED (returns its felled voxels, `WorldDelta.reaped_voxels`, both callers hand them to `Board3DLive`; a real two-blast GLASS run fires a
 real reap without errors); CRACKED art on a lit wall compared; second map SIGMA_01 identical; unknown roof kind tested in `roof_entity_selftest`.
 Nothing R3D-7 is open except what is by decision. Next: R3D-8. Full record: `RENDER3D_MASTER_PLAN` v1.12.
+
+**Resume point for the next session:** start R3D-8 (irreversible). First step, before touching code: list what R3D-8 deletes (the 2D board, `floor_layer` tile data, rules 2/8, L1, B1-B6) and what the identity gate (`board_probe.py gate`, `shot_3d_gate.py`, `occ_canonical_gate.py`) must cover; then ask the Director to ratify. Open lead (not R3D-7): the Galaxy 3D brick shot tail (357 ms) was slower than 2D (214 ms), one boot.

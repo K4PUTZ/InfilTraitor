@@ -1467,6 +1467,9 @@ var _peek_pending: bool = false
 
 ## Dev 03: tile hover info
 var _dev_hover_label: Label = null
+## The two DEV VISION TEXT panels (tile info under the top bar, systems status under it). Off by default so captures and
+## recordings are clean; DEV VISION itself (FOW off, overlays, agent tint) is unaffected. `DEV_PANELS=1` shows them.
+var _dev_panels_on: bool = false
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
 
 ## DEV-HUD-01: dev vision status panel
@@ -2584,6 +2587,7 @@ func _ready() -> void:
 	_dev_hover_label.z_index = 200
 	_dev_hover_label.visible = false
 	$HUD.add_child(_dev_hover_label)
+	_dev_panels_on = _dev_flag_on("DEV_PANELS")
 
 	## DEV-HUD-01: Create and setup dev vision status panel
 	_dev_vision_status_panel = DevVisionStatusPanelClass.new()
@@ -4043,9 +4047,9 @@ func _update_dev_hover_label() -> void:
 	if _dev_hover_label == null:
 		return
 
-	_dev_hover_label.visible = _vision_controller.dev_vision
+	_dev_hover_label.visible = _vision_controller.dev_vision and _dev_panels_on
 
-	if not _vision_controller.dev_vision or _hovered_cell == INVALID_CELL:
+	if not _vision_controller.dev_vision or not _dev_panels_on or _hovered_cell == INVALID_CELL:
 		return
 
 	var cell := _hovered_cell

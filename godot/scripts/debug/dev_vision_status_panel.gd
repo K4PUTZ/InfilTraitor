@@ -61,7 +61,7 @@ func setup(room_ref: Node) -> void:
 func _process(delta: float) -> void:
 	# Update panel visibility: visible when dev_vision is active
 	if _vision_controller:
-		visible = _vision_controller.dev_vision
+		visible = _vision_controller.dev_vision and bool(_room._dev_panels_on)
 	
 	# Refresh display on timer
 	_update_timer -= delta

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**276 scripts · 102416 lines total** (under `godot/scripts/`)
+**276 scripts · 102656 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -533,7 +533,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1845 lines
+extends `Node3D` · 1915 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -548,10 +548,6 @@ extends `Node3D` · 1845 lines
 - `FALLBACK_SOOT_MULT` = `[0.33, 0.47, 0.69, 0.84]`
 - `FALLBACK_TONE` = `[1.0, 0.975, 0.945]`
 - `OPAQUE_SHADER` = `"""`
-- `GLASS_SHADER` = `"""`
-- `GlassCrackMirror3DClass` = `preload("res://godot/scripts/geometry/glass_crack_mirror3d.gd")`
-- `DECAL_MATERIAL_ID` = `"__decals__"`
-- `DECAL_LIFT_VOXELS` = `0.02`
 - `INVALID_PICK` = `Vector2i(-9999, -9999)`
 
 **Public API**
@@ -3138,7 +3134,7 @@ extends `Node` · 256 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 1169 lines
+`class_name OcclusionSet` · 1268 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -3159,6 +3155,10 @@ extends `Node` · 256 lines
 
 **Public API**
 - `func get_occluded_cells() -> Dictionary:`
+- `func get_column_entries() -> Dictionary:`
+- `func get_roof_gus() -> Dictionary:`
+- `func is_empty() -> bool:`
+- `func entry_at(column: Vector2i) -> Variant:`
 - `func get_wireframe_by_level() -> Dictionary:`
 - `func get_wireframe_lines_by_level() -> Dictionary:`
 - `func get_recompute_count() -> int:`
@@ -5167,7 +5167,7 @@ extends `SceneTree` · 273 lines
 
 ### `roof_occlusion_selftest.gd`
 
-extends `SceneTree` · 154 lines
+extends `SceneTree` · 204 lines
 
 `godot/scripts/tools/roof_occlusion_selftest.gd`
 
@@ -6205,7 +6205,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12518 lines
+extends `Node2D` · 12539 lines
 
 `godot/scripts/world/room.gd`
 

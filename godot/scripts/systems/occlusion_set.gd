@@ -78,7 +78,18 @@ const SMALL_ROOF_MAX_STRIPES: int = 5
 
 ## The set of voxel cells that occlude the agent, mapped to ring index (0/1/2).
 ## Key: Vector2i voxel cell (voxel-grid coordinate space)
-var _occluded_cells: Dictionary = {}
+## R3D-7 (Director, 2026-09-20: "representacao por GU para os tetos"): the set is TWO things, not one column dictionary.
+##  · `_column_entries`: column -> {ring, min_level, max_level} for what needs column resolution: wall and junction columns,
+##    the 1-voxel border a roof grows past its GU, and any column where those overlap a revealed roof GU (merged entry:
+##    ring = the smaller, span = the union, exactly as when everything was one dictionary).
+##  · `_roof_gus`: gu -> one shared entry for every roof GU that is revealed, covering that GU's 8x8 core columns.
+## A revealed 15x15 roof is 121 entries instead of 7 744, and everything that used to walk it (the change test, the
+## exposure, the texture) walks GUs. `get_occluded_cells()` still returns the merged per-column dictionary, built on demand
+## for the 2D board and the tests.
+var _column_entries: Dictionary = {}
+var _roof_gus: Dictionary = {}
+var _expanded: Dictionary = {}
+var _expanded_valid: bool = false
 
 ## OCC-27 (2026-07-21): wireframe geometry, keyed by LEVEL — supersedes the old
 ## per-structural-unit "_occluded_edges" segment list. Each entry:
@@ -106,14 +117,63 @@ var _recompute_count: int = 0
 ## VoxelRenderer.apply_occlusion() which of ITS levels are the always-visible
 ## base versus the ghosted rest, so the level floor has to travel with the cell.
 func get_occluded_cells() -> Dictionary:
-	return _occluded_cells.duplicate()
+	return _expand().duplicate()
+
+
+## The merged per-column dictionary (see `_column_entries` / `_roof_gus`), built on the first ask after a change.
+func _expand() -> Dictionary:
+	if _expanded_valid:
+		return _expanded
+	var out: Dictionary = _column_entries.duplicate()
+	var gu_info: Dictionary = _roof_geometry["gu_info"]
+	for gu: Vector2i in _roof_gus:
+		var entry: Dictionary = _roof_gus[gu]
+		for cell: Vector2i in (gu_info[gu] as Dictionary)["core"]:
+			if not out.has(cell):
+				out[cell] = entry
+	_expanded = out
+	_expanded_valid = true
+	return out
+
+
+## The columns that need column resolution: wall / junction columns, roof borders, and their merges with revealed roofs.
+## Read-only: do not modify.
+func get_column_entries() -> Dictionary:
+	return _column_entries
+
+
+## Every revealed roof GU -> its shared entry. Read-only: do not modify.
+func get_roof_gus() -> Dictionary:
+	return _roof_gus
+
+
+func is_empty() -> bool:
+	return _column_entries.is_empty() and _roof_gus.is_empty()
+
+
+## The entry of one column, or null when it is not occluded: a column entry, else the roof GU whose core holds it.
+func entry_at(column: Vector2i) -> Variant:
+	var entry: Variant = _column_entries.get(column)
+	if entry != null:
+		return entry
+	return _roof_gus.get(Vector2i(column.x >> 3, column.y >> 3))
+
+
+static func _merged(a: Dictionary, b: Dictionary) -> Dictionary:
+	return {
+		"ring": mini(int(a["ring"]), int(b["ring"])),
+		"min_level": mini(int(a["min_level"]), int(b["min_level"])),
+		"max_level": maxi(int(a["max_level"]), int(b["max_level"])),
+	}
+
 
 ## Wireframe geometry, keyed by level — see _wireframe_by_level.
 func get_wireframe_by_level() -> Dictionary:
 	## The 2D overlay's view: lines AND fills. The fills are one dictionary per column, face and level, so they are
 	## built on the first ask for this set (`_wireframe_full`), not on every recompute.
-	if _wireframe_full.is_empty() and not _occluded_cells.is_empty():
-		_wireframe_full = _build_wireframe_geometry(_occluded_cells, _exposure, true)
+	if _wireframe_full.is_empty() and not is_empty():
+		var merged: Dictionary = _expand()
+		_wireframe_full = _build_wireframe_geometry(merged, _build_exposure(merged, {}), true)
 	return _wireframe_full.duplicate()
 
 
@@ -172,11 +232,13 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		room_size, silhouette_half_width_px, silhouette_height_px]
 	if memo_enabled and _memo.has(memo_key):
 		var hit: Array = _memo[memo_key]
-		if hit[0] != _occluded_cells:
-			_occluded_cells = hit[0]
-			_wireframe_by_level = hit[1]
+		if hit[0] != _column_entries or hit[1] != _roof_gus:
+			_column_entries = hit[0]
+			_roof_gus = hit[1]
 			_exposure = hit[2]
+			_wireframe_by_level = hit[3]
 			_wireframe_full = {}
+			_expanded_valid = false
 			_recompute_count += 1
 		last_phase_usec = PackedInt64Array([ph1 - ph0, 0, 0, 0, 0])
 		return
@@ -250,42 +312,50 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	var tl2: int = tl0
 	var tl3: int = tl0
 	var tl4: int = tl0
-	for cell in roof["cells"].keys():
-		var r_entry: Dictionary = roof["cells"][cell]
-		if new_occluded.has(cell):
-			var prev: Dictionary = new_occluded[cell]
-			r_entry = {
-				"ring": mini(int(prev["ring"]), int(r_entry["ring"])),
-				"min_level": mini(int(prev["min_level"]), int(r_entry["min_level"])),
-				"max_level": maxi(int(prev["max_level"]), int(r_entry["max_level"])),
-			}
-		new_occluded[cell] = r_entry
+	## Roof GUs stay GUs. What is per COLUMN is only the border a roof grows past its GU (its outer 1-voxel row, which
+	## reaches the wall's outer slice) and the columns where a wall, a junction, another roof's border or a revealed roof
+	## core overlap: those get the merged entry (smaller ring, union of spans), the same value the one big dictionary held.
+	var roof_gus: Dictionary = roof["gus"]
+	var gu_info: Dictionary = _roof_geometry["gu_info"]
+	for gu: Vector2i in roof_gus:
+		var gu_entry: Dictionary = roof_gus[gu]
+		for cell: Vector2i in (gu_info[gu] as Dictionary)["border"]:
+			var prev: Variant = new_occluded.get(cell)
+			new_occluded[cell] = gu_entry if prev == null else _merged(prev, gu_entry)
+	for cell: Vector2i in new_occluded.keys():
+		var covering: Variant = roof_gus.get(Vector2i(cell.x >> 3, cell.y >> 3))
+		if covering != null and not is_same(new_occluded[cell], covering):
+			new_occluded[cell] = _merged(new_occluded[cell], covering)
 
 	# Only update if the set changed
 	tl1 = Time.get_ticks_usec()
-	var changed: bool = new_occluded != _occluded_cells
+	var changed: bool = new_occluded != _column_entries or roof_gus != _roof_gus
 	tl2 = Time.get_ticks_usec()
+	tl3 = tl2
 	if changed:
-		_occluded_cells = new_occluded
-		var untouched: Dictionary = _interior_untouched(new_occluded, roof["uniform"])
-		tl3 = Time.get_ticks_usec()
-		_exposure = _build_exposure(new_occluded, untouched)
+		_column_entries = new_occluded
+		_roof_gus = roof_gus
+		_expanded_valid = false
+		_exposure = _build_exposure_by_gu()
 		tl4 = Time.get_ticks_usec()
-		_wireframe_by_level = _build_wireframe_geometry(new_occluded, _exposure, false)
+		var edge_entries: Dictionary = {}
+		for column: Vector2i in _exposure:
+			edge_entries[column] = entry_at(column)
+		_wireframe_by_level = _build_wireframe_geometry(edge_entries, _exposure, false)
 		_wireframe_full = {}
 		ph5 = Time.get_ticks_usec()
 		_recompute_count += 1
-		if _recompute_count % 10 == 0 or new_occluded.size() > 0:
+		if _recompute_count % 10 == 0 or not is_empty():
 			var line_count := 0
 			for level in _wireframe_by_level:
 				line_count += _wireframe_by_level[level]["lines"].size()
-			print_debug("[OcclusionSet] Recomputed: %d cells, %d wireframe lines (count=%d)" % [
-				_occluded_cells.size(), line_count, _recompute_count
+			print_debug("[OcclusionSet] Recomputed: %d column entries, %d roof GUs, %d wireframe lines (count=%d)" % [
+				_column_entries.size(), _roof_gus.size(), line_count, _recompute_count
 			])
 	if memo_enabled:
 		if _memo.size() >= MEMO_MAX:
 			_memo.erase(_memo.keys()[0])
-		_memo[memo_key] = [_occluded_cells, _wireframe_by_level, _exposure]
+		_memo[memo_key] = [_column_entries, _roof_gus, _exposure, _wireframe_by_level]
 	last_phase_usec = PackedInt64Array([ph1 - ph0, ph2 - ph1, ph3 - ph2, ph4 - ph3, ph5 - ph4])
 	last_tail_usec = PackedInt64Array([tl1 - tl0, tl2 - tl1, tl3 - tl2, tl4 - tl3, ph5 - tl4 if tl4 > tl0 else 0])
 
@@ -404,18 +474,52 @@ func _build_exposure(occluded: Dictionary, unexposed: Dictionary) -> Dictionary:
 	return exposure
 
 
-## Interior cells of a roof GU that this recompute left exactly as the roof made them (the GU's shared entry, not merged
-## with a wall or another roof): all four neighbours are cells of the same GU with the same entry, so the column has no
-## exposed face and `_build_exposure` need not look.
-func _interior_untouched(occluded: Dictionary, uniform: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	var gu_info: Dictionary = _roof_geometry["gu_info"]
-	for gu: Vector2i in uniform:
-		var shared: Dictionary = uniform[gu]
-		for cell: Vector2i in (gu_info[gu] as Dictionary)["interior"]:
-			if is_same(occluded[cell], shared):
-				out[cell] = true
-	return out
+## The same exposure `_build_exposure(_expand(), {})` gives, without expanding: a column entry is evaluated as before
+## (its four neighbours through `entry_at`); a revealed roof GU can only have an exposed face on the columns along its
+## four sides, and only on a side whose neighbouring GU is not a revealed roof with an overlapping span, so those, 8
+## columns a side, are the only roof columns ever looked at. The interior of a roof, and every side shared with another
+## revealed roof of the same height, costs nothing. A merged entry always spans at least what the roof does, which is
+## why a column entry across a shared side cannot un-hide it.
+func _build_exposure_by_gu() -> Dictionary:
+	var exposure: Dictionary = {}
+	for column: Vector2i in _column_entries:
+		var entry: Dictionary = _column_entries[column]
+		var lo: int = entry["min_level"]
+		var hi: int = entry["max_level"]
+		var mask: int = 0
+		for dir_index: int in range(4):
+			var neighbour: Variant = entry_at(column + _FACE_DIRS[dir_index])
+			if neighbour == null or not (int((neighbour as Dictionary)["min_level"]) <= hi and int((neighbour as Dictionary)["max_level"]) >= lo):
+				mask |= 1 << dir_index
+		if mask != 0:
+			exposure[column] = mask
+	var per_axis: int = GeometryCoordsMod.VOXELS_PER_UNIT_AXIS
+	for gu: Vector2i in _roof_gus:
+		var roof: Dictionary = _roof_gus[gu]
+		var lo: int = roof["min_level"]
+		var hi: int = roof["max_level"]
+		var origin: Vector2i = GeometryCoordsMod.gu_to_voxel_origin(gu)
+		for dir_index: int in range(4):
+			var dir: Vector2i = _FACE_DIRS[dir_index]
+			var across: Variant = _roof_gus.get(gu + dir)
+			if across != null and int((across as Dictionary)["min_level"]) <= hi and int((across as Dictionary)["max_level"]) >= lo:
+				continue
+			for k: int in range(per_axis):
+				var column: Vector2i
+				if dir.x == 1:
+					column = origin + Vector2i(per_axis - 1, k)
+				elif dir.x == -1:
+					column = origin + Vector2i(0, k)
+				elif dir.y == 1:
+					column = origin + Vector2i(k, per_axis - 1)
+				else:
+					column = origin + Vector2i(k, 0)
+				if _column_entries.has(column):
+					continue  ## evaluated above, with its own (merged) entry
+				var neighbour: Variant = entry_at(column + dir)
+				if neighbour == null or not (int((neighbour as Dictionary)["min_level"]) <= hi and int((neighbour as Dictionary)["max_level"]) >= lo):
+					exposure[column] = int(exposure.get(column, 0)) | (1 << dir_index)
+	return exposure
 
 
 func _build_wireframe_geometry(occluded: Dictionary, exposure: Dictionary, with_fills: bool) -> Dictionary:
@@ -972,16 +1076,23 @@ func _build_roof_geometry(ceiling_slabs: Array) -> Dictionary:
 	## Connected components over roofed GUs (4-adjacency, level- and
 	## material-blind — contiguous roofs read as one surface, the same rule
 	## ROOF-BAKE-02c uses for texture anchors).
-	## The cells of a roofed GU whose four neighbours are all cells of the SAME GU: while the GU is uniformly ghosted
-	## nothing can be exposed there, so exposure never has to look at them (see `_interior_untouched()`).
-	for info: Dictionary in gu_info.values():
+	## The 8x8 core columns of each roofed GU, and the cells its slabs cover PAST that core (the border roofs grow to reach
+	## a wall's outer slice). The core is what a revealed roof GU stands for; the border is what stays per column.
+	for gu: Vector2i in gu_info:
+		var info: Dictionary = gu_info[gu]
 		var own: Dictionary = info["cells"]
-		var interior: Array[Vector2i] = []
+		var core: Array[Vector2i] = []
+		var border: Array[Vector2i] = []
+		var origin: Vector2i = GeometryCoordsMod.gu_to_voxel_origin(gu)
 		for cell: Vector2i in own:
-			if own.has(cell + Vector2i(1, 0)) and own.has(cell + Vector2i(-1, 0)) \
-					and own.has(cell + Vector2i(0, 1)) and own.has(cell + Vector2i(0, -1)):
-				interior.append(cell)
-		info["interior"] = interior
+			var local: Vector2i = cell - origin
+			if local.x >= 0 and local.y >= 0 and local.x < GeometryCoordsMod.VOXELS_PER_UNIT_AXIS \
+					and local.y < GeometryCoordsMod.VOXELS_PER_UNIT_AXIS:
+				core.append(cell)
+			else:
+				border.append(cell)
+		info["core"] = core
+		info["border"] = border
 
 	var component_of: Dictionary = {}   ## gu -> component index
 	var components: Array = []          ## index -> Array[Vector2i]
@@ -1006,7 +1117,7 @@ func _build_roof_geometry(ceiling_slabs: Array) -> Dictionary:
 
 
 func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_id: Dictionary, slices_by_edge: Dictionary) -> Dictionary:
-	var result := {"cells": {}, "uniform": {}}
+	var result := {"gus": {}}
 	if ceiling_slabs.is_empty():
 		return result
 
@@ -1084,20 +1195,8 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 
 			var info: Dictionary = gu_info[gu]
 
-			## One entry for the whole GU, shared by every cell that is only this GU's: nothing writes into an entry
-			## (a merge makes a new one), and `recompute()` tells the untouched cells apart by identity.
-			var shared := {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
-			result["uniform"][gu] = shared
-			for cell: Vector2i in info["cells"]:
-				var entry: Dictionary = shared
-				if result["cells"].has(cell):
-					var prev: Dictionary = result["cells"][cell]
-					entry = {
-						"ring": mini(int(prev["ring"]), ring),
-						"min_level": mini(int(prev["min_level"]), int(shared["min_level"])),
-						"max_level": maxi(int(prev["max_level"]), int(shared["max_level"])),
-					}
-				result["cells"][cell] = entry
+			## One entry per revealed GU (read-only; a merge makes a new one).
+			result["gus"][gu] = {"ring": ring, "min_level": info["min_level"], "max_level": info["max_level"]}
 	return result
 
 

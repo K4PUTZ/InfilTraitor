@@ -156,6 +156,27 @@ harness pins `RENDER3D=0` because 19 suites read tilemap cells). Session summary
   levers, not built: exposure computed once per set and shared by the wireframe, side fills and caps (each walks
   every column x 4 directions with its own calls), and skipping the interior columns of a uniformly ghosted roof GU
   (only a GU's 28 border columns can be exposed).
+- **Roofs stored per GU (Director, 2026-09-20: "representacao por GU para os tetos") — BUILT.** The occlusion set is
+  now TWO parts (`OcclusionSet`): `_column_entries` (wall and junction columns, the 1-voxel border a roof grows past its
+  GU, and any column where those overlap a revealed roof core: merged entry, smaller ring, union of spans) and
+  `_roof_gus` (one shared entry per revealed roof GU, standing for its 8x8 core). A revealed 15x15 roof is 121 entries
+  instead of 7 744. `get_occluded_cells()` still returns the merged per-column dictionary, built on demand (the 2D board
+  and the tests); `entry_at(column)` answers per column. Exposure is computed per GU (only the 8 columns along a GU's
+  sides that no same-height revealed neighbour covers are looked at). The cutaway reads two textures: the column one and a
+  64x64 per-GU one (`roof_tex`); a column with its own texel wins, only one without asks the GU (a new shader branch,
+  guarded by `roof_on`). **Identity gate, changed because the emission ORDER changed** (the old digests are
+  order-dependent): canonical digests (sorted columns with ring and span; sorted outline segments and cap vertices with
+  their colours), recorded on the previous code for 7 cases and equal after, on the desktop AND the Moto: ROOM
+  `2201133523`/`3573030843`, HALL `3470714229`/`4185238883`, NEST `1707281572`/`3233347217`, GLASS
+  `243118410`/`3887353741`, PLAYGROUND `2691998715`/`163057982`, SIGMA_01 `2010404612`/`3597628886`, ROOM (11,11)
+  `3552638026`/`1722610149`; 3D captures pixel-identical (0 of ~330 000 px differ at >24 on ROOM, HALL, NEST, GLASS; 1 on
+  SIGMA_01, whose lights flicker). `roof_occlusion_selftest` [6] (per-GU exposure == exposure of the merged view) and
+  [7] (121 GU entries and no column entry for a 13x13 roof, `entry_at` == merged view on every column, two roofs of
+  different height keep their border per column). 62/62. **Moto, whole step incl. the next frame: OCCLUSION_HALL 652 ->
+  42 ms (7 744 revealed columns: set 90.9 -> 14.6, cutaway 53.5 -> 13.7), OCCLUSION_ROOM 297 -> 39 ms (set 15.6, cutaway
+  11.8); GLASS 42, NEST 52.** So set + cutaway is ~28 ms for both roof cases, inside the 33 ms budget. Measurement note:
+  the bench's own canonical digest (sorting strings) was inside the timed window and read as a 29 ms "mesh build"; it now
+  runs after the step is timed (`finish_occ_digests()`). Capture: `Screenshots/history/r3d7_moto_cutaway_hall.png`.
 - **Exposure shared, interior skip, and the hidden 2D apply, 2026-09-20 (Moto).** (1) `OcclusionSet` computes the
   exposed faces of every column ONCE per set (`get_exposure()`, a mask per column, only columns with a face, in the
   set's own order) and the wireframe, the cutaway's side fills and its caps read it (they each walked every column x

@@ -3396,6 +3396,7 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 			(phases[k] as Array).append(float(_occlusion_set.last_phase_usec[k]) / 1000.0)
 			(tails[k] as Array).append(float(_occlusion_set.last_tail_usec[k]) / 1000.0)
 		if live != null:
+			live.finish_occ_digests()
 			geo_digest = hash([geo_digest, live.last_occ_digest])
 			canon_geo = hash([canon_geo, live.last_occ_canon])
 			for k: int in range(7):
@@ -3408,7 +3409,7 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 		frames.append(step_ms + float(Time.get_ticks_usec() - frame_t0) / 1000.0)
 	print("[OCC-BENCH] occluded columns per step: min %d, max %d, digest %d, wireframe digest %d" % [cells.min(), cells.max(), digest, wire_digest])
 	print("[OCC-BENCH] canonical set digest %d" % canon_digest)
-	var tail_names: PackedStringArray = ["roof merge", "set compare", "interior cells", "exposure", "wireframe lines"]
+	var tail_names: PackedStringArray = ["roof borders + merge", "set compare", "(unused)", "exposure (per GU)", "wireframe lines"]
 	for k: int in range(5):
 		var tail_total: float = 0.0
 		for v: float in tails[k]:

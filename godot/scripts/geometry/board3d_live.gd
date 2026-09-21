@@ -106,6 +106,10 @@ varying vec3 v_normal;
 // diamonds, the diamonds' density being the ring's fill opacity.
 uniform sampler2D occ_tex : filter_nearest, repeat_disable;
 uniform int occ_on = 0;
+// Roof GUs (R3D-7): the same texel, one per GU (8 x 8 columns), for a revealed roof's core. A column that has its own
+// texel above (a wall, a roof's border, or their merge with a roof) wins; only a column without one asks the GU.
+uniform sampler2D roof_tex : filter_nearest, repeat_disable;
+uniform int roof_on = 0;
 float cut_bayer(vec2 frag) {
 	int bx = int(mod(frag.x, 4.0));
 	int by = int(mod(frag.y, 4.0));
@@ -124,7 +128,18 @@ int cut_state(ivec3 v, vec2 frag) {
 	vec4 t = texelFetch(occ_tex, pc, 0);
 	int ring = int(floor(t.b * 255.0 + 0.5)) - 1;
 	if (ring < 0) {
-		return 0;
+		if (roof_on == 0) {
+			return 0;
+		}
+		ivec2 gc = ivec2(floor(vec2(float(v.x), float(v.z)) / 8.0)) + plane_origin / 8;
+		if (gc.x < 0 || gc.y < 0 || gc.x >= plane_size / 8 || gc.y >= plane_size / 8) {
+			return 0;
+		}
+		t = texelFetch(roof_tex, gc, 0);
+		ring = int(floor(t.b * 255.0 + 0.5)) - 1;
+		if (ring < 0) {
+			return 0;
+		}
 	}
 	int lvl = v.y + mesh_ground_level;
 	if (lvl < int(floor(t.r * 255.0 + 0.5)) || lvl > int(floor(t.g * 255.0 + 0.5))) {
@@ -499,6 +514,8 @@ const OCC_BLOCK: int = 4
 var _solid_top := PackedInt32Array()
 var _solid_top_bw: int = 0
 var _occ_image: Image = null
+var _roof_image: Image = null
+var _roof_texture: ImageTexture = null
 var _occ_texture: ImageTexture = null
 var _occ_lines: MeshInstance3D = null
 var _occ_fill: MeshInstance3D = null
@@ -514,6 +531,27 @@ var last_occ_digest: int = 0
 ## when `occ_digest_on` is set (the `occ_bench` scenario step): they cost a `hex_encode` of the arrays otherwise.
 var last_occ_canon: int = 0
 var occ_digest_on: bool = false
+var _digest_points := PackedVector3Array()
+var _digest_cap := PackedVector3Array()
+var _digest_cap_colors := PackedColorArray()
+
+
+## Computes `last_occ_digest` and `last_occ_canon` from the geometry of the last rebuild (bench only; see `occ_digest_on`).
+func finish_occ_digests() -> void:
+	var points: PackedVector3Array = _digest_points
+	var cap: PackedVector3Array = _digest_cap
+	last_occ_digest = hash([points.to_byte_array().hex_encode(), cap.to_byte_array().hex_encode()])
+	var pieces: PackedStringArray = PackedStringArray()
+	for k: int in range(0, points.size() - 1, 2):
+		var a: String = str(points[k])
+		var b: String = str(points[k + 1])
+		pieces.append(a + "|" + b if a < b else b + "|" + a)
+	pieces.sort()
+	var verts: PackedStringArray = PackedStringArray()
+	for k: int in range(cap.size()):
+		verts.append("%s %s" % [str(cap[k]), str(_digest_cap_colors[k])])
+	verts.sort()
+	last_occ_canon = hash([hash(pieces), hash(verts)])
 var last_occ_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0, 0, 0])
 
 
@@ -530,13 +568,13 @@ func on_occlusion(occ_set) -> void:
 	if _occ_image == null:
 		_occ_image = Image.create(size, size, false, Image.FORMAT_RGBA8)
 		_occ_texture = ImageTexture.create_from_image(_occ_image)
-	var cells: Dictionary = occ_set.get_occluded_cells()
-	## The texture is built as bytes (four per column: min level, max level, ring + 1, 255) and handed over once,
-	## which is what `set_pixel` per column did with a Color8 allocation each.
+	## Two textures (R3D-7): one texel per COLUMN for what needs column resolution (walls, junctions, a roof's border and
+	## their merges), one texel per GU for a revealed roof's core. Built as bytes and handed over once.
+	var columns: Dictionary = occ_set.get_column_entries()
 	var bytes := PackedByteArray()
 	bytes.resize(size * size * 4)
-	for column: Vector2i in cells:
-		var entry: Dictionary = cells[column]
+	for column: Vector2i in columns:
+		var entry: Dictionary = columns[column]
 		var px: Vector2i = column + VoxelRenderer.SOOT_PLANE_ORIGIN
 		if px.x < 0 or px.y < 0 or px.x >= size or px.y >= size:
 			continue
@@ -547,11 +585,34 @@ func on_occlusion(occ_set) -> void:
 		bytes[at + 3] = 255
 	_occ_image.set_data(size, size, false, Image.FORMAT_RGBA8, bytes)
 	_occ_texture.update(_occ_image)
+	var gu_size: int = size / 8
+	if _roof_image == null:
+		_roof_image = Image.create(gu_size, gu_size, false, Image.FORMAT_RGBA8)
+		_roof_texture = ImageTexture.create_from_image(_roof_image)
+	var roof_gus: Dictionary = occ_set.get_roof_gus()
+	var roof_bytes := PackedByteArray()
+	roof_bytes.resize(gu_size * gu_size * 4)
+	var gu_origin: Vector2i = VoxelRenderer.SOOT_PLANE_ORIGIN / 8
+	for gu: Vector2i in roof_gus:
+		var roof_entry: Dictionary = roof_gus[gu]
+		var gp: Vector2i = gu + gu_origin
+		if gp.x < 0 or gp.y < 0 or gp.x >= gu_size or gp.y >= gu_size:
+			continue
+		var gat: int = (gp.y * gu_size + gp.x) * 4
+		roof_bytes[gat] = clampi(int(roof_entry["min_level"]), 0, 255)
+		roof_bytes[gat + 1] = clampi(int(roof_entry["max_level"]), 0, 255)
+		roof_bytes[gat + 2] = clampi(int(roof_entry["ring"]) + 1, 1, 255)
+		roof_bytes[gat + 3] = 255
+	_roof_image.set_data(gu_size, gu_size, false, Image.FORMAT_RGBA8, roof_bytes)
+	_roof_texture.update(_roof_image)
 	for i: int in range(_shader_materials.size()):
 		if _material_glass[i]:
 			continue
-		(_shader_materials[i] as ShaderMaterial).set_shader_parameter("occ_tex", _occ_texture)
-		(_shader_materials[i] as ShaderMaterial).set_shader_parameter("occ_on", 1 if not cells.is_empty() else 0)
+		var material: ShaderMaterial = _shader_materials[i] as ShaderMaterial
+		material.set_shader_parameter("occ_tex", _occ_texture)
+		material.set_shader_parameter("roof_tex", _roof_texture)
+		material.set_shader_parameter("occ_on", 1 if not occ_set.is_empty() else 0)
+		material.set_shader_parameter("roof_on", 1 if not roof_gus.is_empty() else 0)
 	last_occ_usec[0] = Time.get_ticks_usec() - oc0
 	_rebuild_occlusion_lines(occ_set)
 	## The 2D wireframe panels are the same information drawn a second time, in the wrong place.
@@ -633,7 +694,7 @@ func _occ_merge_edges(edges: Dictionary) -> Array:
 
 ## True when a real, solid, non-ghosted voxel stands between `world` and the camera. The ray is marched through
 ## the store half a voxel at a time; ghosted voxels (the volume itself) and glass do not stop it.
-func _occ_hidden(world: Vector3, toward: Vector3, cells: Dictionary) -> bool:
+func _occ_hidden(world: Vector3, toward: Vector3, occ_set) -> bool:
 	if _store == null:
 		return false
 	var p := Vector3(world.x * 8.0, world.y * 8.0 + float(_ground_level), world.z * 8.0) + toward * 0.75
@@ -695,7 +756,7 @@ func _occ_hidden(world: Vector3, toward: Vector3, cells: Dictionary) -> bool:
 		if occ[idx] == 0 or _material_glass[_store_material[mat[owner[idx]]]]:
 			continue
 		var column := Vector2i(cx, cy)
-		var entry: Variant = cells.get(column)
+		var entry: Variant = occ_set.entry_at(column)
 		if entry != null and level >= int((entry as Dictionary)["min_level"]) and level <= int((entry as Dictionary)["max_level"]):
 			continue  ## part of the ghosted volume: the ray passes through it
 		return true
@@ -704,7 +765,7 @@ func _occ_hidden(world: Vector3, toward: Vector3, cells: Dictionary) -> bool:
 
 ## One edge of the outline, cut into pieces; a piece is dropped when a real wall hides it, and a far edge (not
 ## `solid`) keeps only its dashes. Each piece is tested on its own, so an edge half behind a wall is half drawn.
-func _occ_segment(points: PackedVector3Array, a: Vector3, b: Vector3, solid: bool, cells: Dictionary,
+func _occ_segment(points: PackedVector3Array, a: Vector3, b: Vector3, solid: bool, occ_set,
 		toward: Vector3) -> void:
 	var length: float = a.distance_to(b)
 	if length <= 0.0:
@@ -717,7 +778,7 @@ func _occ_segment(points: PackedVector3Array, a: Vector3, b: Vector3, solid: boo
 		var t1: float = minf(t + piece, length)
 		var p0: Vector3 = a.lerp(b, t / length)
 		var p1: Vector3 = a.lerp(b, t1 / length)
-		if not _occ_hidden((p0 + p1) * 0.5, toward, cells):
+		if not _occ_hidden((p0 + p1) * 0.5, toward, occ_set):
 			points.append(p0)
 			points.append(p1)
 		t += step
@@ -775,7 +836,7 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 	_occ_fill = null
 	var oc1: int = Time.get_ticks_usec()
 	var by_level: Dictionary = occ_set.get_wireframe_lines_by_level()
-	var cells: Dictionary = occ_set.get_occluded_cells()
+	var columns: Dictionary = occ_set.get_column_entries()
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var ground: float = float(_ground_level)
 	var toward: Vector3 = _camera.global_transform.basis.z.normalized() if _camera != null else Vector3.UP
@@ -813,7 +874,7 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 	assert(OCC_FACE_DIRS == occ_set.FACE_DIRS)
 	for column: Vector2i in exposure:
 		var mask: int = exposure[column]
-		var entry: Dictionary = cells[column]
+		var entry: Dictionary = occ_set.entry_at(column)
 		var lo_level: int = entry["min_level"]
 		var hi_level: int = entry["max_level"]
 		for dir_index: int in range(4):
@@ -837,8 +898,8 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 					_occ_side_quad(cap, cap_colors, column, dir, run_start, level - 1, unit, ground)
 					run_start = -1
 	var oc3: int = Time.get_ticks_usec()
-	for column: Vector2i in cells:
-		var entry: Dictionary = cells[column]
+	for column: Vector2i in columns:
+		var entry: Dictionary = columns[column]
 		## Only a WALL has a base to cap: its ghosting starts 2 levels above the storey's base. A roof slab
 		## starts at a storey boundary itself and has nothing solid under it.
 		if posmod(int(entry["min_level"]) - _ground_level, 8) != 2:
@@ -882,7 +943,7 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 		_occ_segment(points,
 			Vector3(float(run[0].x), float(run[0].y) - ground, float(run[0].z)) * unit,
 			Vector3(float(run[1].x), float(run[1].y) - ground, float(run[1].z)) * unit,
-			bool(run[2]), cells, toward)
+			bool(run[2]), occ_set, toward)
 	var oc6: int = Time.get_ticks_usec()
 	last_occ_usec[1] = oc2 - oc1
 	last_occ_usec[2] = oc3 - oc2
@@ -891,18 +952,10 @@ func _rebuild_occlusion_lines(occ_set) -> void:
 	last_occ_usec[5] = oc6 - oc5
 	last_occ_usec[6] = 0
 	if occ_digest_on:
-		last_occ_digest = hash([points.to_byte_array().hex_encode(), cap.to_byte_array().hex_encode()])
-		var pieces: PackedStringArray = PackedStringArray()
-		for k: int in range(0, points.size() - 1, 2):
-			var a: String = str(points[k])
-			var b: String = str(points[k + 1])
-			pieces.append(a + "|" + b if a < b else b + "|" + a)
-		pieces.sort()
-		var verts: PackedStringArray = PackedStringArray()
-		for k: int in range(cap.size()):
-			verts.append("%s %s" % [str(cap[k]), str(cap_colors[k])])
-		verts.sort()
-		last_occ_canon = hash([hash(pieces), hash(verts)])
+		## Only the arrays are kept; the digests are computed by `finish_occ_digests()`, after the step is timed.
+		_digest_points = points
+		_digest_cap = cap
+		_digest_cap_colors = cap_colors
 	if points.is_empty() and cap.is_empty():
 		return
 	if _line_material == null:

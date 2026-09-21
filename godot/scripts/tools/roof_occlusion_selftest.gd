@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_test_hover_origin_adds_its_own_disc()
 	_test_a_disconnected_roof_is_left_alone()
 	_test_exposure_skip_is_exact()
+	_test_roofs_are_stored_by_gu()
 	if _failures == 0:
 		print("\n[SUCCESS] ROOF OCCLUSION SELFTEST PASS — all tests")
 		quit(0)
@@ -129,11 +130,11 @@ func _test_a_disconnected_roof_is_left_alone() -> void:
 	_check(_ring_of(occ, Vector2i(10, 0)) == -1 and _ring_of(occ, Vector2i(11, 0)) == -1, "the separate roof stays solid")
 
 
-## The set's exposure skips the interior cells of a uniformly ghosted roof GU without looking at their neighbours. That is
-## only right if looking would have found nothing exposed, so the shared exposure must equal the one computed the long
-## way, cell by cell, with no skip at all: on a room-sized roof, on the fading disc of a big one, and with two origins.
+## The set's exposure is computed per GU for roofs (only the columns along a GU's sides are ever looked at). That is only
+## right if looking at the rest would have found nothing exposed, so it must equal the exposure computed the long way,
+## column by column on the merged view: on a room-sized roof, on the fading disc of a big one, and with two origins.
 func _test_exposure_skip_is_exact() -> void:
-	print("[6] exposure with the interior skip == exposure computed cell by cell")
+	print("[6] the per-GU exposure == the exposure computed column by column on the merged view")
 	var square: Array = []
 	for x: int in range(13):
 		for y: int in range(13):
@@ -152,3 +153,52 @@ func _test_exposure_skip_is_exact() -> void:
 			"%s: %d exposed columns, identical to the unskipped result" % [c[0], long_way.size()])
 		var skipped: int = occ.get_occluded_cells().size() - long_way.size()
 		_check(skipped > 0, "%s: %d columns are fully hidden and never looked at" % [c[0], skipped])
+
+
+## The roof half of the set is stored per GU (R3D-7): a revealed 13x13 roof with the origin at its centre is 121 GU entries
+## and NO column entry at all (a roof only grows a border past its GU on a side no neighbour of the same height covers),
+## and `entry_at()` / `get_occluded_cells()` still answer per column, agreeing with each other on every column.
+func _test_roofs_are_stored_by_gu() -> void:
+	print("[7] the set is per GU for roofs, per column for the rest, and answers per column")
+	var square: Array = []
+	for x: int in range(13):
+		for y: int in range(13):
+			square.append(Vector2i(x, y))
+	var occ = OcclusionSetMod.new()
+	occ.recompute(_origins([Vector2i(6, 6)]), [], Vector2i(30, 30), [], _roof_slabs(square))
+	var gus: Dictionary = occ.get_roof_gus()
+	_check(gus.size() == 121, "11x11 GUs are revealed: 121 roof GU entries (found %d)" % gus.size())
+	_check(occ.get_column_entries().is_empty(), "no column needed its own entry (found %d)" % occ.get_column_entries().size())
+	var merged: Dictionary = occ.get_occluded_cells()
+	_check(merged.size() == 121 * 64, "the merged view is the 121 x 64 = 7744 columns (found %d)" % merged.size())
+	var agree: bool = true
+	for column: Vector2i in merged:
+		if occ.entry_at(column) != merged[column]:
+			agree = false
+			break
+	_check(agree, "entry_at(column) equals the merged view on every occluded column")
+	_check(occ.entry_at(Vector2i(-5, -5)) == null and occ.entry_at(Vector2i(6 * 8 + 200, 5)) == null,
+		"a column outside every revealed roof is not occluded")
+	## A revealed GU whose neighbour is another height has a border: its edge is a real column entry.
+	var registry := SlabRegistry.new()
+	var low: int = GeometryCoordsMod.storey_level_base(2)
+	var high: int = GeometryCoordsMod.storey_level_base(3)
+	for level_offset: int in range(2):
+		SlabGenerator.generate_with_border(Vector2i(0, 0), Slab.Role.CEILING, high + level_offset, "concrete", registry, 1, 0, 1, 1)
+		SlabGenerator.generate_with_border(Vector2i(1, 0), Slab.Role.CEILING, low + level_offset, "concrete", registry, 1, 1, 1, 1)
+	var uneven: Array = []
+	for slab in registry.all_slabs():
+		if slab.role == Slab.Role.CEILING:
+			uneven.append(slab)
+	var occ2 = OcclusionSetMod.new()
+	occ2.recompute(_origins([Vector2i(0, 0)]), [], Vector2i(30, 30), [], uneven)
+	_check(occ2.get_roof_gus().size() == 2 and not occ2.get_column_entries().is_empty(),
+		"two roofs of different heights: 2 GU entries, and the border of the lower one is per column (%d columns)" % occ2.get_column_entries().size())
+	var expanded2: Dictionary = occ2.get_occluded_cells()
+	var same2: bool = true
+	for column: Vector2i in expanded2:
+		if occ2.entry_at(column) != expanded2[column]:
+			same2 = false
+			break
+	_check(same2 and occ2.get_exposure() == occ2._build_exposure(expanded2, {}),
+		"and its per-GU exposure equals the exposure of the merged view")

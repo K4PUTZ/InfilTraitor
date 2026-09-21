@@ -54,3 +54,8 @@ Nothing R3D-7 is open except what is by decision. Next: R3D-8. Full record: `REN
 ## Addendum 3 — the plan is reordered (Director)
 The fine look adjustment is no longer deferred: the full switch needs the 3D identical to the 2D. Order now: **look-parity pass (register in `RENDER3D_MASTER_PLAN` v1.14) -> embers and fire port -> R3D-8 last.**
 Resume point: propose the paired 2D/3D capture matrix (one command) to the Director, get the order of the register, then rule item by item.
+
+## Addendum 4 — the parity bar and the plan for the next session (nothing built)
+"Identical" = the SYSTEM; tone/hue differences are fine; an item closes at **9 out of 10** closeness to the 2D feature (Director's grade). Next session, in order: (1) the paired 2D/3D
+capture matrix and the Director's grades, (2) system defects first (FIRE under 3D, EMBERS port, the end-of-blast light jump, the 116 416 light-plane texels), (3) items graded below 9 (values before code),
+(4) Moto measurements of what was added, (5) R3D-8 last. Details: `RENDER3D_MASTER_PLAN` v1.15.

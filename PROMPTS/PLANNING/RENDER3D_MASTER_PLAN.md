@@ -1,6 +1,32 @@
 # RENDER3D_MASTER_PLAN
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.15
 
+**2026-09-21 (end of session) update (v1.15) — THE PARITY BAR, AND THE PLAN FOR THE NEXT SESSION (nothing was built after v1.14).**
+- **The bar (Director, 2026-09-21): "idêntico" means the SYSTEM, not the pixels.** Every feature the 2D has must exist and behave the same in the 3D
+  (what is drawn, when, in what order, from which state, what it reacts to). The look need not be pixel-perfect: a difference of tone, hue or
+  brightness is acceptable. **The acceptance test for an item is "9 out of 10" closeness to the 2D feature**, judged by the Director on a paired 2D/3D
+  capture (or a recording for a flow): at 9/10 the item is CLOSED and the plan moves on. Consequences for the v1.14 register: (a) an item is either a
+  MISSING or WRONG-BEHAVIOUR defect (fix it) or a LOOK difference (rule it against 9/10; items 5-7 are probably already there); (b) do not chase a look
+  difference the Director has not marked below 9; (c) a system defect found while judging (a feature that does not fire, fires at another time, or
+  ignores a state) is never waved through as "tone".
+- **Plan for the next session, in this order (each step ends with the Director's ruling; nothing starts without the previous one):**
+  1. **Grade the register.** Build the paired-capture matrix (one command: each situation captured on the 2D and the 3D board with the same seed and
+     framing, laid side by side; flows recorded with `device_record.py`) for the register's situations: a blast on concrete and on wood (burn), the shot
+     marks on the nine materials, sparks, the reveal silhouette, the end-of-blast light, facades, floor shards. The Director gives each item a grade out
+     of 10; **items at 9 or more close without work.**
+  2. **Fix the system defects first** (not graded on tone): the FIRE under 3D (not exercised at all: first a real wood burn 2D vs 3D and the
+     `board_probe.py` gate, to list what is missing), the EMBERS (the unidentified flecks over them; the port of `EmberOverlay` to world-space state per the
+     R3D-4 rule), the light jump at the end of a blast, and the 116 416 texels of the light plane that differ at load (a real behaviour difference, or a
+     plane the 2D never reads?).
+  3. **Then the items graded below 9**, cheapest first, values before code (marks, spark anchor, silhouette defaults, the shot's soot ladder in the same
+     seconds-based steps as the blast's).
+  4. **Measure on the Moto** what this pass adds (the per-step soot upload, the ember/fire cost) and explain the Galaxy's 3D shot tail.
+  5. **Only then R3D-8** (list what it deletes and what the gates must cover, ask for ratification).
+- **For the first minutes of the next session:** `python3 tools/persistent/device_record.py --device ZF524T5TG5 --preset blast --out videos/<name>.mp4`
+  (`docs/pipelines/device_video_recording.md`), `shot_3d_gate.py`, `board_probe.py gate`, `occ_canonical_gate.py`, `run_selftests.py`; unlock the phone by hand
+  before any device run; `videos/` is git-ignored. The v1.14 block below is the previous state.
+
+
 **2026-09-21 (end of session) update (v1.14) — THE LOOK-PARITY PASS IS NOW; R3D-8 MOVES TO THE VERY LAST STAGE (Director).**
 - **Ruling (Director, 2026-09-21):** the deferral of the fine look adjustment ("o ajuste fino só importa quando toda a mecânica já existir",
   2026-09-19) was ambiguous, and it is withdrawn. **The full switch to the 3D board depends on the whole system being identical to the 2D one, so

@@ -97,6 +97,9 @@ var smoke_duration_min: float = 1.8       ## seconds
 var smoke_duration_max: float = 3.2
 var smoke_start_radius: float = 6.0
 var smoke_end_radius: float = 16.0
+## 3D board only (Director, 2026-09-21: the puffs read a little large next to the 2D board).
+## Applied where the radius reaches the world-space field; the 2D draw is untouched.
+var smoke_3d_radius_scale: float = 0.8
 var smoke_drift_x: float = 10.0           ## px/sec horizontal jitter range
 var smoke_drift_y_min: float = 48.0       ## px/sec upward drift range
 var smoke_drift_y_max: float = 82.0
@@ -307,7 +310,7 @@ func _draw() -> void:
 		cmds += 1
 		if submit:
 			if mm3 != null:
-				mm3.push(s["a3"], s["a2"], s["pos"], radius, c)
+				mm3.push(s["a3"], s["a2"], s["pos"], radius * smoke_3d_radius_scale, c)
 			elif mm != null:
 				mm.push(s["pos"], radius, c)
 			else:

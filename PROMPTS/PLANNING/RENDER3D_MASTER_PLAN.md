@@ -1,5 +1,5 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.14
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.15
 
 **2026-09-21 (end of session) update (v1.14) — THE LOOK-PARITY PASS IS NOW; R3D-8 MOVES TO THE VERY LAST STAGE (Director).**
 - **Ruling (Director, 2026-09-21):** the deferral of the fine look adjustment ("o ajuste fino só importa quando toda a mecânica já existir",

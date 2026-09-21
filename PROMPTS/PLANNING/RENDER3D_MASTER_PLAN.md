@@ -1,5 +1,23 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.12
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.13
+
+**2026-09-21 (end of session) update (v1.13) — WHAT COMES BEFORE R3D-8, AND THE BLAST TIMING.**
+- **Director: "ainda fica faltando fazer o port das brasas e do fogo antes do R3D-8."** The EMBERS and the FIRE are ported to the 3D board BEFORE R3D-8
+  retires the 2D one. What this plan records about them today, so the next session starts from facts and not from memory: the embers are a 2D overlay
+  (`EmberOverlay`) that draws over either board, and R3D-6 item 6 saw brown flecks and white dots on top of them under 3D that were never identified
+  (the debris overlay at z -8 was the first candidate; "an R3D-5 row"); embers, burnt voxels and floor shards were deferred as look tuning "until the
+  port is complete". The FIRE (the burn, `FIRE_REBUILD` / `DETONATION_PRESENTATION`) was NOT exercised under 3D this session. First step of that work:
+  a real wood burn and a real ember, 2D and 3D, `board_probe.py gate` and captures, to list what is actually missing. The rule set in R3D-4 stands: a NEW
+  world-space VFX stores ground + height, never screen pixels.
+- **Blast soot timing (Director, from a video recorded on the Moto).** The scorch arrived in the same frame as the crater, before the smoke read.
+  `DetonationPresenter` now writes the crater clean and darkens the scorch afterwards: `soot_fade_frames` - 1 = 4 steps of `soot_step_s` = 0.075 s
+  (about 0.3 s), from `soot_start_s` = 0 after the commit; SECONDS, at most one step per frame, so a slow frame delays the ladder instead of
+  jump-cutting it. On the 3D board each step is one `on_blast_soot()` plane upload (18 levels, ~1 ms on the desktop; NOT measured per step on the
+  Moto). The old frame-based `_fade_soot_plane` is gone. `DETONATION_PRESENTATION` §3/§7 ("soot lands in the commit") is superseded for the look.
+- **Video on the handset:** `tools/persistent/device_record.py`, see `docs/pipelines/device_video_recording.md` (cost on the Moto +1 to +2 ms/frame).
+  New look aids for captures: `DEV_PANELS` (the DEV VISION text panels, the playable-area line and the spawn diamond are hidden by default) and a
+  scenario `detonate` that closes the Detonate menu like the real click.
+- **Next: the port of the embers and the fire, then R3D-8** (irreversible, needs ratification). The v1.12 block below is the previous state.
 
 **2026-09-21 (later) — BLAST SOOT TIMING (Director, from a video recorded on the Moto).** The scorch used to arrive in the same frame as the crater, before the smoke read. `DetonationPresenter` now writes the crater CLEAN (the commit frame already lightened the ramp cells) and darkens the scorch afterwards in `soot_fade_frames` - 1 = 4 steps of `soot_step_s` = 0.075 s (about 0.3 s in all), starting at `soot_start_s` = 0 after the commit; the steps are SECONDS, one per frame at most, so a slow frame delays the ladder instead of jump-cutting it. On the 3D board every step is one `on_blast_soot()` plane upload (18 levels, ~1 ms on the desktop). The old `_fade_soot_plane` (frames, 2D only, a single write under 3D) is gone. Filmstrip on the desktop and a Moto video (`videos/explosao_moto_fuligem.mp4`, local): flash, clean crater, smoke rising, then the walls and floor darken in steps. Not measured: the per-step upload cost on the Moto. Look knobs: `soot_start_s`, `soot_step_s`.
 

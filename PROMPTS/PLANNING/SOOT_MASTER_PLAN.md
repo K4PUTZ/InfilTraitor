@@ -1,6 +1,8 @@
 # SOOT_MASTER_PLAN
 ## One soot mechanism for explosives and firearms — study, 2026-08-12
 
+> ⏭️ **2026-09-21 — blast scorch timing changed:** it now darkens AFTER the crater in 4 timed steps (0.075 s each), see `DETONATION_PRESENTATION_MASTER_PLAN` (top note) and `RENDER3D_MASTER_PLAN` v1.13. The store and the ladder's tones are unchanged.
+
 **Status:** 🟢 **FIVE OF SIX TASKS BUILT 2026-08-12/13** — see §5. S-LOCAL was
 dropped on its own measurement, not deferred. **The fade's mid-ramp is now
 proven** — `Screenshots/history/soot_fade_beat_2026-08-13.png` (44-frame

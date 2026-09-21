@@ -1,6 +1,10 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
+> ⏭️ **2026-09-21 — the scorch no longer rides in the commit frame's look.** Director, from a video of the blast on the Moto: the soot arrived before the crater
+> and the smoke read. The commit frame still writes the cells, but the ramp cells are written CLEAN and `DetonationPresenter` darkens them afterwards in 4 timed steps
+> (`soot_step_s` 0.075 s, `soot_start_s` 0; seconds, at most one step per frame). This supersedes §3/§7's "soot lands in the commit" for what is SEEN. See `RENDER3D_MASTER_PLAN` v1.13.
+
 **Status:** ✅ **FULLY CLOSED — design AND engineering, 2026-08-29.** The Director
 closed the design (*"isso conclui nosso design da explosão, com exceção do
 vidro… Fica pendente a limpeza e a otimização do código + cook da luz"*); the

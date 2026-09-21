@@ -39,3 +39,14 @@ real reap without errors); CRACKED art on a lit wall compared; second map SIGMA_
 Nothing R3D-7 is open except what is by decision. Next: R3D-8. Full record: `RENDER3D_MASTER_PLAN` v1.12.
 
 **Resume point for the next session:** start R3D-8 (irreversible). First step, before touching code: list what R3D-8 deletes (the 2D board, `floor_layer` tile data, rules 2/8, L1, B1-B6) and what the identity gate (`board_probe.py gate`, `shot_3d_gate.py`, `occ_canonical_gate.py`) must cover; then ask the Director to ratify. Open lead (not R3D-7): the Galaxy 3D brick shot tail (357 ms) was slower than 2D (214 ms), one boot.
+
+## Addendum 2 — video, DEV panels, blast soot (end of the session)
+- **Video mechanism:** `tools/persistent/device_record.py` (presets `blast` / `blast100`, `--scenario`, trims from the game's own log, removes the flags from the
+  handset); `videos/` git-ignored; guide `docs/pipelines/device_video_recording.md`. Recording costs +1 to +2 ms/frame on the Moto.
+- **`DEV_PANELS`** hides the DEV VISION text panels, the playable-area line and the spawn diamond by default (DEV VISION itself unchanged); a scenario
+  `detonate` closes the Detonate menu; `SHOT_WEAPON` reaches an APK; `SHOT_SETTLE_FRAMES`.
+- **Blast soot** now darkens after the crater in 4 timed steps (0.075 s each, `soot_step_s` / `soot_start_s` in `detonation_presenter.gd`). Decided by the Director from
+  `videos/explosao_moto_fuligem.mp4`.
+- **Resume point:** port the EMBERS and the FIRE to the 3D board BEFORE R3D-8 (Director). First: a real wood burn and a real ember, 2D vs 3D, `board_probe.py gate` and
+  captures, to list what is actually missing (R3D-6 item 6 saw unidentified flecks over the embers under 3D). Then R3D-8 (list what it deletes and what the gates
+  must cover, then ask for ratification). Per-step soot upload cost on the Moto is not measured.

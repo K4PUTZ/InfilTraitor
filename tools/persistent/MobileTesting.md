@@ -92,3 +92,6 @@ rather than trusting the preset — that is how all three were found.
 ⚠️ The web build runs the **Compatibility** (WebGL2) renderer, not the native
 **Mobile** one: colour, lighting and cost can differ. For a device performance number
 of the real target, use the Android APK (`EXPORT_ANDROID.md`).
+
+---
+**Recording the game on a handset (APK, not the web export):** `python3 tools/persistent/device_record.py --device <serial> --preset blast --out videos/<name>.mp4` — see `docs/pipelines/device_video_recording.md`.

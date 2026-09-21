@@ -49,8 +49,14 @@ def main():
     ap.add_argument("--grenade", type=int, default=2)
     ap.add_argument("--frames", type=int, default=270)
     ap.add_argument("--step", type=int, default=30)
+    ap.add_argument("--name", default="",
+                    help="file prefix (default g<grenade>); pair with INFILTRAITOR_GRENADE_GUS to pick the spot")
+    ap.add_argument("--map", default="",
+                    help="INFILTRAITOR_MAP; the filmstrip default map is NOT PLAYGROUND, so a material test must pass PLAYGROUND")
     ap.add_argument("--no-crop", action="store_true")
     args = ap.parse_args()
+    if args.map:
+        os.environ["INFILTRAITOR_MAP"] = args.map
 
     os.makedirs(OUT_DIR, exist_ok=True)
     picks = list(range(0, args.frames, args.step))
@@ -61,7 +67,7 @@ def main():
         for i in picks:
             if i not in raw:
                 continue
-            dst = os.path.join(OUT_DIR, "g%d_%s_f%03d.png" % (args.grenade, label, i))
+            dst = os.path.join(OUT_DIR, "%s_%s_f%03d.png" % (args.name or "g%d" % args.grenade, label, i))
             shutil.copy(raw[i], dst)
             keep[i] = dst
         rows[label] = keep
@@ -84,7 +90,7 @@ def main():
                 continue
             sheet.paste(Image.open(p).convert("RGB").crop(box), (ci * w, ri * (h + lab) + lab))
             d.text((ci * w + 4, ri * (h + lab) + 5), "%s  frame %d" % (label, i), fill=(230, 230, 230))
-    out = os.path.join(OUT_DIR, "blast_g%d_paired.png" % args.grenade)
+    out = os.path.join(OUT_DIR, "%s_paired.png" % (args.name or "blast_g%d" % args.grenade))
     sheet.save(out)
     print("[PAIRED] sheet: %s  (%dx%d)" % (out, sheet.width, sheet.height))
 

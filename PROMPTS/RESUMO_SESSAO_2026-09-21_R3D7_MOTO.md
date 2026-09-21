@@ -50,3 +50,7 @@ Nothing R3D-7 is open except what is by decision. Next: R3D-8. Full record: `REN
 - **Resume point:** port the EMBERS and the FIRE to the 3D board BEFORE R3D-8 (Director). First: a real wood burn and a real ember, 2D vs 3D, `board_probe.py gate` and
   captures, to list what is actually missing (R3D-6 item 6 saw unidentified flecks over the embers under 3D). Then R3D-8 (list what it deletes and what the gates
   must cover, then ask for ratification). Per-step soot upload cost on the Moto is not measured.
+
+## Addendum 3 — the plan is reordered (Director)
+The fine look adjustment is no longer deferred: the full switch needs the 3D identical to the 2D. Order now: **look-parity pass (register in `RENDER3D_MASTER_PLAN` v1.14) -> embers and fire port -> R3D-8 last.**
+Resume point: propose the paired 2D/3D capture matrix (one command) to the Director, get the order of the register, then rule item by item.

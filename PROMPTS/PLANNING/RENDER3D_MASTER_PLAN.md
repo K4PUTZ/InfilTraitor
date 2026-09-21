@@ -1,5 +1,35 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.13
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.14
+
+**2026-09-21 (end of session) update (v1.14) — THE LOOK-PARITY PASS IS NOW; R3D-8 MOVES TO THE VERY LAST STAGE (Director).**
+- **Ruling (Director, 2026-09-21):** the deferral of the fine look adjustment ("o ajuste fino só importa quando toda a mecânica já existir",
+  2026-09-19) was ambiguous, and it is withdrawn. **The full switch to the 3D board depends on the whole system being identical to the 2D one, so
+  the fine visual adjustment is done NOW, before R3D-8.** Order from here: **(1) the look-parity pass, item by item, on paired 2D/3D captures and
+  the Director's eye, on the Moto (§R3D-6's rule: no look change without paired Moto captures and the Director's eye); (2) the port of the embers
+  and the fire (v1.13); (3) R3D-8, the retirement of the 2D board and its canon, as the last stage of the plan.** "Parity" is the bar the 2D
+  retires at (principle 4); everything below is what the 2D does that the 3D does not do identically yet.
+- **Register of what is NOT identical yet** (collected from this plan; every item is a claim to verify on paired captures, none is a verdict):
+  1. **R3D-6 item 5, whole facades** (deferred).
+  2. **R3D-6 item 6, embers, burnt voxels and floor shards** (deferred): the embers are a 2D overlay that draws over either board; under 3D brown flecks
+     and white dots sit on top of them (source not identified, the debris overlay at z -8 first suspect); burnt voxels and floor shards not compared.
+  3. **The fire (the burn):** not exercised under 3D at all this session. Port pending (v1.13).
+  4. **The light jump at the end of every blast** (the forced light/soot refresh at the beat's end, R3D-6 item 2 note) and the 116 416 light-plane texels
+     that differ between the 2D and the 3D board at load (not investigated, not compared by any gate).
+  5. **Marks:** a blast's marks on a LIT wall read weaker than the 2D's; the 3D dent is a dark recessed frame where the 2D is a light chip (metal and
+     stone: the 2D one is nearly invisible); the 3D CRACKED is a darker diamond with the crater where the 2D is a thin slit with the crater; the 3D
+     hole scorch cross has fewer squares; the glass star has no dark centre square on 3D; the rim wedge barely draws on a real blast.
+  6. **Impact VFX:** the spark burst starts ~30 px lower-left of the dent on 3D (the `vfx_impact_face_offset_gu` 0.25 GU anchor, a tuning value) against
+     ~10 px on 2D.
+  7. **The guard reveal silhouette** runs on its defaults (colours, stripe width, scroll speed): the Director's spec is met, the tuning was never done.
+  8. **The new blast soot ladder** (4 x 0.075 s, `soot_step_s`) is the reference look for the scorch: its per-step upload cost on the Moto is not measured,
+     and the SHOT's soot (`shot_soot_fade_frames_per_step`, frames, settled-only on 3D) has NOT been given the same treatment.
+  9. **Cost differences to explain, not look:** the Galaxy's 3D brick shot tail is 357 ms against 214 ms on 2D (one boot).
+- **Proposed way to run it (for the Director's ratification, nothing built):** first a paired-capture matrix in one command (each situation captured
+  2D and 3D with the same seed/framing and laid side by side, with `device_record.py` for the flows), so every ruling is made on a picture; then walk the
+  register in the Director's order, one ruling per item, each closed by the same pair. Items 3-4 (fire, the light jump) are the ones most likely to need
+  code, item 5-7 tuning of values.
+- **Next: the look-parity pass (Director to set the order), the embers and fire port, then R3D-8 last.** The v1.13 block below is the previous state.
+
 
 **2026-09-21 (end of session) update (v1.13) — WHAT COMES BEFORE R3D-8, AND THE BLAST TIMING.**
 - **Director: "ainda fica faltando fazer o port das brasas e do fogo antes do R3D-8."** The EMBERS and the FIRE are ported to the 3D board BEFORE R3D-8
@@ -658,7 +688,7 @@ drawing, and of the voxel storage underneath it.
    (§1). PLAYGROUND's voxels therefore cost ~191 MB on the device. A packed store
    holds the same facts in a few bytes per voxel. It is the only authority, and every
    system reads it.
-4. **The 2D board retires at parity, and only then.**
+4. **The 2D board retires at parity, and only then.** (2026-09-21, Director: parity includes the fine look, so R3D-8 is the LAST stage, after the look pass and the embers/fire port.)
    - The rules that describe drawing with tiles stay in force for as long as the 2D path
      is the one that ships: canon rule 8, B1/B3/B5, and VOXEL_MASTER_PLAN's "1 voxel = 1
      tile".
@@ -2235,6 +2265,8 @@ the ground quads are not); the aim dome and the throw arc still draw over actors
 - the input and HUD seam selftests run clean.
 
 ### R3D-6 — Look parity
+
+> **2026-09-21: R3D-6 REOPENS (Director).** The "deferred until the port is complete" lines below are withdrawn: the fine look adjustment is done before R3D-8 (see v1.14 at the top for the register).
 
 Each item below stays behind a flag until the Director ratifies it from paired Moto
 captures, 2D against 3D.

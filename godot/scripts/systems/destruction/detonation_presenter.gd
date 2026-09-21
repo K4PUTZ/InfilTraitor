@@ -103,10 +103,12 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	var board3d: Node = _board3d()
 	if board3d != null and consequence_delta != null:
 		board3d.on_blast_commit(consequence_delta)
-	await _fade_soot_plane(ramp, voxel_renderer, tree)
-	if board3d != null and is_instance_valid(board3d):
-		board3d.on_blast_soot()
+	## Director, 2026-09-21 (a video of the blast on the Moto): the scorch was arriving BEFORE the crater and the smoke read.
+	## It now arrives AFTER the crater is drawn, in steps: the ramp is armed here, `_run_consequence` steps it from `soot_start_s`
+	## (0 = right after the commit), and whatever is left after the channel is finished by `_finish_soot`.
+	_soot_begin(ramp)
 	await _run_consequence(plan, voxel_renderer, smoke_overlay, tree)
+	await _finish_soot(voxel_renderer, tree, board3d)
 	## D-6 — the smoke is all instanced and rising, so the world may resume
 	## (Director, 2026-08-29). The light ramp below runs with the agent already
 	## unlocked; only the turn advance waits for it to land.
@@ -231,6 +233,17 @@ func _commit_frame(plan: Dictionary, voxel_renderer) -> void:
 ## uniform dissolve.
 var soot_fade_frames: int = 5
 
+## When the scorch starts to darken, counted from the start of the consequence channel, and the time between its steps. SECONDS,
+## not frames (a step per N frames would run 4x slower on the Moto than on the desktop). 4 steps (`soot_fade_frames` - 1) of
+## 0.075 s: about 0.3 s of darkening that starts as soon as the crater is formed (Director, 2026-09-21: shorter, and no need to wait for the smoke). Both `var`: the Director tunes them on a video.
+var soot_start_s: float = 0.0
+var soot_step_s: float = 0.075
+
+var _soot_ramp: Array = []
+var _soot_next_k: int = 1
+var _soot_next_t: float = 0.0
+var _channel_elapsed: float = 0.0
+
 
 ## Which cells will ramp, and what to. Runs BEFORE the commit, because it has to
 ## read the scorch each cell carries NOW.
@@ -292,37 +305,53 @@ func _note_ramp(entry: Dictionary, voxel_renderer, out: Array,
 	out.append([level, cell, VoxelLightField.decode_face_soot(target)])
 
 
-func _fade_soot_plane(ramp: Array, voxel_renderer, tree: SceneTree) -> void:
-	if ramp.is_empty():
+func _soot_begin(ramp: Array) -> void:
+	_soot_ramp = ramp
+	_soot_next_k = 1
+	_soot_next_t = soot_start_s
+	_channel_elapsed = 0.0
+
+
+## One ladder step, when its time has come. Step 0 is what the commit frame wrote (fully lightened); the last step is the
+## settled scorch. Each call writes ONE step, so a slow frame delays the ladder instead of collapsing it into a jump cut.
+func _soot_tick(elapsed: float, voxel_renderer) -> void:
+	var steps: int = maxi(soot_fade_frames, 1)
+	if _soot_ramp.is_empty() or _soot_next_k >= steps or elapsed < _soot_next_t:
 		return
-	if consequence_room != null:
+	if _soot_next_k == 1 and consequence_room != null:
 		consequence_room.event_probe_beat("SOOT FADE")
+	var lighten: int = steps - 1 - _soot_next_k
+	for row: Array in _soot_ramp:
+		voxel_renderer._write_cell_soot(int(row[0]), row[1],
+			VoxelLightField.encode_face_soot(DetonationEntryWriter.lightened(row[2], lighten)))
+		voxel_renderer.note_external_write(int(row[0]), row[1])
 	if VoxelRenderer.SKIP_BOARD_WRITES:
-		## R3D-6: the 3D board uploads the planes once, when the beat ends, so the fade's frames
-		## would write into an image nobody reads. One write of the settled value.
-		for row: Array in ramp:
-			voxel_renderer._write_cell_soot(int(row[0]), row[1],
-				VoxelLightField.encode_face_soot(row[2]))
-			voxel_renderer.note_external_write(int(row[0]), row[1])
-		return
+		## R3D-6: the 3D board reads the plane when it is told to upload it; every step is one upload of the levels the blast touched.
+		var board3d: Node = _board3d()
+		if board3d != null:
+			board3d.on_blast_soot()
+	else:
+		voxel_renderer.flush_cell_soot()
+	_soot_next_k += 1
+	_soot_next_t = elapsed + soot_step_s
+
+
+## Whatever the channel did not get to: the ladder finishes on its own clock. An empty ramp (nothing sooted, or `NO_SOOT`)
+## still tells the 3D board once, as before.
+func _finish_soot(voxel_renderer, tree: SceneTree, board3d: Node) -> void:
 	var steps: int = maxi(soot_fade_frames, 1)
 	var t0: int = Time.get_ticks_usec()
-	## Starts at step 1: step 0 is "fully lightened", which the commit frame has
-	## already written for exactly these cells (`soot_ramp_cells`). Repeating it
-	## would spend a frame drawing what is already on screen.
-	for step: int in range(1, steps):
+	var clock: float = _channel_elapsed
+	while not _soot_ramp.is_empty() and _soot_next_k < steps:
 		await tree.process_frame
 		if not is_instance_valid(voxel_renderer):
 			return
-		var lighten: int = steps - 1 - step
-		for row: Array in ramp:
-			voxel_renderer._write_cell_soot(int(row[0]), row[1],
-				VoxelLightField.encode_face_soot(
-					DetonationEntryWriter.lightened(row[2], lighten)))
-			voxel_renderer.note_external_write(int(row[0]), row[1])
-		voxel_renderer.flush_cell_soot()
-	print("[E-PRESENT] soot fade — %d cell(s) over %d frame(s), %.2f ms of writes" % [
-		ramp.size(), steps - 1, float(Time.get_ticks_usec() - t0) / 1000.0])
+		clock += tree.root.get_process_delta_time()
+		_soot_tick(clock, voxel_renderer)
+	if _soot_ramp.is_empty() and board3d != null and is_instance_valid(board3d):
+		board3d.on_blast_soot()
+	print("[E-PRESENT] soot fade — %d cell(s) in %d step(s) from %.2fs, finished %.2fs after the channel (%.2f ms in the tail)" % [
+		_soot_ramp.size(), steps - 1, soot_start_s, maxf(clock - _channel_elapsed, 0.0), float(Time.get_ticks_usec() - t0) / 1000.0])
 
 
 ## Beat 3 — the channel. Every VFX entry gets a release time; frames pass; each
@@ -356,6 +385,8 @@ func _run_consequence(plan: Dictionary, voxel_renderer, smoke_overlay,
 			return
 		frames += 1
 		elapsed += tree.root.get_process_delta_time()
+		_soot_tick(elapsed, voxel_renderer)
+		_channel_elapsed = elapsed
 		while next < scheduled.size() and float(scheduled[next][0]) <= elapsed:
 			_writer.apply(String(scheduled[next][1]), scheduled[next][2],
 				voxel_renderer, smoke_overlay)

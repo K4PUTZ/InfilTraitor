@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**276 scripts · 102849 lines total** (under `godot/scripts/`)
+**276 scripts · 102881 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2491,7 +2491,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 411 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 442 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2513,6 +2513,8 @@ extends `RefCounted` · 941 lines
 - `var light_smoke_slack: int = 4`
 - `var light_smoke_max_s: float = 3.5`
 - `var soot_fade_frames: int = 5`
+- `var soot_start_s: float = 0.0`
+- `var soot_step_s: float = 0.075`
 
 **Public API**
 - `func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {}, debris_overlay: DebrisOverlay = null, debris_colors: Dictionary = {}) -> void:`
@@ -6207,7 +6209,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12594 lines
+extends `Node2D` · 12595 lines
 
 `godot/scripts/world/room.gd`
 

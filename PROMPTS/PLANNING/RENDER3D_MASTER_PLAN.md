@@ -1,6 +1,8 @@
 # RENDER3D_MASTER_PLAN
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.12
 
+**2026-09-21 (later) — BLAST SOOT TIMING (Director, from a video recorded on the Moto).** The scorch used to arrive in the same frame as the crater, before the smoke read. `DetonationPresenter` now writes the crater CLEAN (the commit frame already lightened the ramp cells) and darkens the scorch afterwards in `soot_fade_frames` - 1 = 4 steps of `soot_step_s` = 0.075 s (about 0.3 s in all), starting at `soot_start_s` = 0 after the commit; the steps are SECONDS, one per frame at most, so a slow frame delays the ladder instead of jump-cutting it. On the 3D board every step is one `on_blast_soot()` plane upload (18 levels, ~1 ms on the desktop). The old `_fade_soot_plane` (frames, 2D only, a single write under 3D) is gone. Filmstrip on the desktop and a Moto video (`videos/explosao_moto_fuligem.mp4`, local): flash, clean crater, smoke rising, then the walls and floor darken in steps. Not measured: the per-step upload cost on the Moto. Look knobs: `soot_start_s`, `soot_step_s`.
+
 **2026-09-21 update (v1.12) — THE LAST R3D-7 PENDING ITEMS CLOSED (Director: "terminar tudo que está pendente antes da migração final").**
 - **Pinch on the Moto: VERIFIED by hand** (v1.11's last block). Tap, select, walk, drag-pan and pinch all work on the device.
 - **Galaxy A16 (SM-A166W, 1080x2340), the shot path, same APK, ONE boot each:** brick / pistol 3D and 2D: identical `[AGENT-SHOT]`

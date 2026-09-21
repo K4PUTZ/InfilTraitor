@@ -5657,6 +5657,8 @@ func _build_craze_opening_mask(c: Dictionary) -> void:
 ## the same origin `glass_crack_face_centre()` offsets AWAY from for a wall face.
 var _floor_shards: Dictionary = {}      ## Vector3i(cell, level) -> Sprite2D
 var _floor_shard_root: Node2D = null
+const FloorPile3DRef = preload("res://godot/scripts/geometry/floor_pile3d.gd")
+var _pile3d: RefCounted = null          ## RENDER3D — the same piles drawn on the 3D board's floor
 var _floor_shard_textures: Array = []
 
 ## G6 — a pile's opacity from how many voxels landed on the cell. Director,
@@ -5726,7 +5728,30 @@ func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int
 	## The decal is authored at 256 px square for a 32 px cell diamond.
 	sprite.scale = Vector2.ONE * (32.0 * FLOOR_SHARD_SCALE / maxf(float(tex.get_width()), 1.0))
 	sprite.z_index = layer.z_index + 1
+	sprite.set_meta("pile_variant", variant)
+	if _pile3d != null:
+		_pile3d.set_pile(key, variant, sprite.position,
+			float(tex.get_width()) * sprite.scale.x, sprite.modulate.a)
 	return true
+
+
+## RENDER3D — draw the shard piles on the 3D board too (this renderer is hidden under it). Piles that
+## already exist are handed over, so a board built after a blast still shows them. `null` detaches.
+func set_pile_board3d(board: Node3D) -> void:
+	if _pile3d != null:
+		_pile3d.detach()
+		_pile3d = null
+	if board == null:
+		return
+	var textures: Array = []
+	for i in range(3):
+		textures.append(_floor_shard_texture(i))
+	_pile3d = FloorPile3DRef.new()
+	_pile3d.attach(board, textures, 3, 0.02)
+	for key in _floor_shards:
+		var sp = _floor_shards[key]
+		if sp != null and is_instance_valid(sp) and sp.texture != null:
+			_pile3d.set_pile(key, int(sp.get_meta("pile_variant", 0)), sp.position, float(sp.texture.get_width()) * sp.scale.x, sp.modulate.a)
 
 
 ## Drop every pile. A perspective flip rebuilds the renderer, so this is what
@@ -5737,6 +5762,8 @@ func clear_floor_shards() -> void:
 		if sp != null and is_instance_valid(sp):
 			sp.queue_free()
 	_floor_shards.clear()
+	if _pile3d != null:
+		_pile3d.clear()
 
 
 ## How many piles are live. Diagnostics and the selftest.

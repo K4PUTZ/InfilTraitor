@@ -159,7 +159,11 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 		var to: Vector2 = f["to"]
 		## R3D-4e-4 — the two real 3D ends of the fall: the pane's voxel and the landing.
 		var from3: Vector3 = ParticleMathRef.anchor(_board, from, f.get("from_floor", ParticleMathRef.NO_FLOOR))
-		var to3: Vector3 = ParticleMathRef.anchor(_board, to, f.get("to_floor", ParticleMathRef.NO_FLOOR))
+		## A landing voxel's position is its BASE; a shard lies on its TOP, one voxel step up. The 2D board never
+		## saw the difference (no depth test); on the 3D board a shard at the base is inside the slab, and the
+		## floor hides it (measured: to3.y = -0.1276, 20 px under the floor surface).
+		var to_top: Vector2 = to - Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
+		var to3: Vector3 = ParticleMathRef.anchor(_board, to_top, f.get("to_floor", ParticleMathRef.NO_FLOOR))
 		var n: int = 1 + int(pow(_hash_unit(key, "count"), pieces_low_bias) \
 			* float(maxi(pieces_per_voxel_max, 1)) * 0.999)
 		for p in range(n):

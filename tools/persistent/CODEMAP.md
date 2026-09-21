@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**276 scripts · 102881 lines total** (under `godot/scripts/`)
+**277 scripts · 103041 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
@@ -726,6 +726,26 @@ extends `Node3D` · 1948 lines
 
 ---
 
+### `floor_pile3d.gd`
+
+`class_name FloorPile3D` · extends `RefCounted` · 124 lines
+
+`godot/scripts/geometry/floor_pile3d.gd`
+
+> FloorPile3D — the glass-shard piles on the 3D board's floor. RENDER3D R3D-6 (item 6). The 2D board draws a landed pane's piles as one `Sprite2D` per cell (`VoxelRenderer.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles — the white band that stays on the floor after a pane is shot out — were not drawn at all. HOW: the sprite's four screen corners are carried onto the ground plane by the board's own 2D → ground map (`ground_point`), which is affine, so the decal re-projects to the very pixels the sprite covered. One `ArrayMesh` per decal variant (three), rebuilt once per frame at most when a pile changes, so a whole pane's ~650 piles are three draw calls. Depth-tested: a wall in front hides a pile. State stays where it always was (`Room._base_shards`, base-space); this only draws it.
+
+**Constants / tuning**
+- `SHADER_PATH` = `"res://godot/shaders/floor_decal3d.gdshader"`
+
+**Public API**
+- `func attach(board: Node3D, textures: Array, priority: int, lift: float) -> void:`
+- `func detach() -> void:`
+- `func set_pile(key: Vector3i, variant: int, pos_2d: Vector2, size_px: float, alpha: float) -> void:`
+- `func clear() -> void:`
+- `func pile_count() -> int:`
+
+---
+
 ### `geometry_coords.gd`
 
 `class_name GeometryCoords` · 121 lines
@@ -1120,7 +1140,7 @@ extends `Node3D` · 1948 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7981 lines
+`class_name VoxelRenderer` · extends `Node2D` · 8008 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1530,7 +1550,7 @@ extends `Node2D` · 144 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 289 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 293 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -1947,7 +1967,7 @@ extends `Node2D` · 95 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 400 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 403 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -6209,7 +6229,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12595 lines
+extends `Node2D` · 12597 lines
 
 `godot/scripts/world/room.gd`
 

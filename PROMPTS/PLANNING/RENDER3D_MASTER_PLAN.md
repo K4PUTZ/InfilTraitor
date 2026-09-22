@@ -1,5 +1,46 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.15
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.16
+
+**2026-09-21 (continued session) update (v1.16) — STEP 2 OF THE v1.15 PLAN: THE FOUR SYSTEM DEFECTS, THREE CLOSED.**
+- **Paired-capture matrix built:** `tools/persistent/build_paired_matrix.py` (`--map`, `--grenade`/`INFILTRAITOR_GRENADE_GUS`, `--name`, `--frames`/`--step`) —
+  one blast, captured on the 2D and the 3D board at the same frames, two rows on one sheet. Used for every item below.
+- **Glass shards and floor piles — FIXED.** A landed rain shard was anchored at the BASE of its landing voxel
+  (`to3.y = -0.1276`, 20 px under the floor surface); the floor's own depth test hid it on the 3D board (the 2D board
+  never had a depth test, so it never showed). Landing point moved one `VOXEL_STEP_PX` up, onto the voxel's top
+  (`glass_rain_overlay.gd`). The pile decals (the pane's "stayed on the floor" band) were `Sprite2D`s on the hidden 2D
+  renderer, never drawn at all under 3D; `FloorPile3D` (new: `godot/scripts/geometry/floor_pile3d.gd`,
+  `godot/shaders/floor_decal3d.gdshader`) carries each sprite's corners onto the ground plane, 3 draw calls per pane.
+  Director's ruling on the paired capture: matches. Cost on the Moto not measured yet.
+- **Smoke puff size — TUNED.** Director: the 3D puffs read a little large next to the 2D board's. `smoke_3d_radius_scale
+  = 0.8`, applied only where the radius reaches the 3D field (`smoke_spark_overlay.gd`); the 2D draw is untouched.
+- **The end-of-blast light jump — FIXED.** `play_consequence_light()` ramps the 2D board's light buckets over 12 steps
+  (~1s), but `Board3DLive.on_blast_light()` was called once, after the whole ramp finished — the 3D board held the
+  pre-blast light for the entire ramp and then snapped to the final value in one frame. Fixed by uploading the 3D
+  light plane once per ramp step, the same precedent `on_blast_soot()` already set for the soot ladder
+  (`room.gd`, `play_consequence_light()`). Verified: `on_blast_light` now fires ~6+ times across one event instead of
+  once. Measured on the Moto (ZF524T5TG5, `device_record.py`): each `[BOARD3D] recolour light` upload costs ~11-12 ms,
+  the same order as the already-shipped `recolour soot` (~10-15 ms) — the device run's log window cut off before all
+  12 steps logged, so the full-ramp total is not measured, only the per-call cost. Accepted on that precedent.
+- **The 116 416 light-plane texels differing at load — DIAGNOSED, LEFT AS IS (Director).** Reproduced directly
+  (`board_probe.py diff` on a `load` dump from `RENDER3D=0` against one from `RENDER3D=1`, PLAYGROUND, same seed):
+  0 voxel/container differences, only the light plane's G channel, always a real 2D bucket → `255` (unwritten) on 3D.
+  Root cause: `RoomBuilder`'s dev-only eager build of the map's outer BORDER row/column (`room_builder.gd` ~L391-394,
+  its own comment calls it "temporary scaffolding for development... not permanent scope") paints 7 cosmetic
+  non-destructible floor levels there via `render_fixed_earth_level()`. That call early-returns under
+  `SKIP_BOARD_WRITES` (`voxel_renderer.gd` ~L7729) and these fixed levels never become a `Voxel`/`Slab` (D18) — so
+  they never enter `VoxelStore`, and the 3D light pass (`_apply_light_field_pass_store`, store-occupancy-driven) never
+  visits them. The border row is the camera-buffer zone the player never sees in the shipped game, and the 3D board
+  draws no geometry there at all (nothing in `VoxelStore`), so the unwritten plane texels shade no face — inert.
+  **Director (2026-09-21): the playable-area buffer is going to grow (~4-5 GUs, XCOM-style — the camera stays centred
+  on the playable area so the map's edge is never seen), which will make this border visible eventually. Left
+  unfixed for now; revisit when that buffer change lands.**
+- **Embers — already ported**, no change needed; `EmberOverlay.set_board3d()` was already wired into
+  `_attach_vfx_to_board()`. Director's ruling on a paired fabric-burn capture: matches (already closed earlier this
+  session alongside the fire).
+- **Still open from the v1.15 plan:** the FIRE under 3D was exercised this session (fabric burn, ember, crater — all
+  matched on the Director's paired capture) but not against `board_probe.py gate`'s own pass/fail; step 3 (items
+  graded below 9 — none graded yet, since grading happened informally per-item rather than as one register pass);
+  step 4's full Moto measurement (only the light ramp's per-call cost is in hand); step 5, R3D-8.
 
 **2026-09-21 (end of session) update (v1.15) — THE PARITY BAR, AND THE PLAN FOR THE NEXT SESSION (nothing was built after v1.14).**
 - **The bar (Director, 2026-09-21): "idêntico" means the SYSTEM, not the pixels.** Every feature the 2D has must exist and behave the same in the 3D

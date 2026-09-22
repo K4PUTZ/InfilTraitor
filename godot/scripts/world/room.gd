@@ -4812,11 +4812,28 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 	## No caller does that TODAY: the fire is folded into the commit frame (D-2)
 	## and no longer runs a per-frame soot-free scoped repaint at all. That is a
 	## reason to write the guard, not a reason to skip it.
+	## SHOT_SOOT_PERF probe (temporary): how many sooted plane cells in the scope
+	## does THIS apply turn clean? `INFILTRAITOR_SOOT_FLICKER_PROBE=1`.
+	var _fp: bool = OS.get_environment("INFILTRAITOR_SOOT_FLICKER_PROBE") == "1"
+	var _fp_before: Dictionary = {}
+	if _fp:
+		for gu in gus:
+			for entry in _voxel_renderer._placed_by_gu.get(gu, []):
+				var code: int = _voxel_renderer.cell_soot_at(int(entry["level"]), entry["cell"])
+				if code != VoxelRenderer.FACE_SOOT_CODE_CLEAN:
+					_fp_before[Vector3i(entry["cell"].x, entry["cell"].y, int(entry["level"]))] = code
 	if include_soot and soot_lighten == 0 and _voxel_light_field.has_stale_subset():
 		_voxel_renderer.apply_light_field_cells(_voxel_light_field,
 			_voxel_light_field.stale_cells())
 	else:
 		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, soot_lighten)
+	if _fp:
+		var _cleaned: int = 0
+		for k in _fp_before:
+			if _voxel_renderer.cell_soot_at(k.z, Vector2i(k.x, k.y)) == VoxelRenderer.FACE_SOOT_CODE_CLEAN:
+				_cleaned += 1
+		print("[SOOT-FLICKER] soot=%s: %d sooted plane cell(s) in scope before, %d turned CLEAN by this apply"
+			% [include_soot, _fp_before.size(), _cleaned])
 	if _sp:
 		print("[SCOPED-PROF] soot %.1f · occupancy %.1f · field.build %.1f · apply %.1f ms (%d GUs, soot=%s)"
 			% [float(_s1 - _s0) / 1000.0, float(_s2 - _s1) / 1000.0,
@@ -5469,9 +5486,21 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	## precise failure SOOT_MASTER_PLAN §1.2 documents, and it is invisible until
 	## someone looks at the right voxel.
 	_soot_walk_dupes = {}
+	## SHOT_SOOT_PERF experiment: a PREDICTION pass reads the committed index
+	## (read-only, predicted seeds appended to copies) instead of throwing it away.
+	## `INFILTRAITOR_SOOT_PREDICT_REUSE=1` turns it on; default is the old path.
+	var _predicting: bool = not (predict_weapon_cells.is_empty() and predict_damaged.is_empty())
 	var _reuse: bool = (_soot_index_cache_valid
 		and not _soot_index_cache.is_empty()
-		and predict_weapon_cells.is_empty() and predict_damaged.is_empty())
+		and (not _predicting
+			or OS.get_environment("INFILTRAITOR_SOOT_PREDICT_REUSE") == "1"))
+	## SHOT_SOOT_PERF audit step 1: which path ran, and why. The voxel count the
+	## split prints cannot tell a fresh walk from a served cache (it is the dict's
+	## size either way), so the path is named instead of inferred.
+	var _path: String = ("FAST%s (index reused, %d dirty)"
+			% [" prediction" if _predicting else "", Voxel.soot_dirty.size()]) if _reuse \
+		else ("SLOW (prediction pass)" if _predicting
+		else ("SLOW (index invalid)" if not _soot_index_cache_valid else "SLOW (index empty)"))
 	if _reuse:
 		_soot_fold_dirty()
 	else:
@@ -5582,10 +5611,13 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	## into the same claim.
 	var _ss2: int = Time.get_ticks_usec()
 	if _ss:
-		print("[SOOT-SPLIT] index walk %.1f ms (%d voxel(s) indexed · seeds: %d blast, %d weapon, %d damaged) · build_soot_field %.1f ms (%d cell(s) out)"
-			% [float(_ss1 - _ss0) / 1000.0, cell_to_voxel.size(),
+		var _out_cells: int = 0
+		for _lv in snapshot:
+			_out_cells += (snapshot[_lv] as Dictionary).size()
+		print("[SOOT-SPLIT] %s · index walk %.1f ms (%d voxel(s) indexed · seeds: %d blast, %d weapon, %d damaged) · build_soot_field %.1f ms (%d cell(s) out)"
+			% [_path, float(_ss1 - _ss0) / 1000.0, cell_to_voxel.size(),
 			blast_cells.size(), weapon_cells.size(), damaged_voxels.size(),
-			float(_ss2 - _ss1) / 1000.0, snapshot.size()])
+			float(_ss2 - _ss1) / 1000.0, _out_cells])
 	if OS.get_environment("INFILTRAITOR_SOOT_GATE") == "1":
 		_soot_gate_check()
 	for level in _crater_floor_soot.keys():
@@ -5614,7 +5646,9 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	if is_prediction:
 		return snapshot
 
+	var _ss3: int = Time.get_ticks_usec()
 	absorb_scorch(out_full)
+	var _ss4: int = Time.get_ticks_usec()
 	## SS-1 — THE GATE RUNS AFTER THE ABSORB. See `_soot_store_gate_check()`; the
 	## first version of this ran BEFORE, on the reasoning that comparing the store
 	## against the dictionary that just filled it would be a tautology, and a real
@@ -5637,7 +5671,19 @@ func _build_soot_snapshot(out_faces: Dictionary = {},
 	if OS.get_environment("INFILTRAITOR_SOOT_STORE_READ") == "0":
 		return snapshot
 	out_faces.clear()
-	return soot_store_projection(out_faces)
+	var projected: Dictionary = soot_store_projection(out_faces)
+	if _ss:
+		var _t_proj: float = float(Time.get_ticks_usec() - _ss4) / 1000.0
+		## Order-independent digest of the store, so two runs can be compared for
+		## identity rather than only for size.
+		var _dig: int = 0
+		for _lv in _soot_map:
+			for _bc in _soot_map[_lv]:
+				_dig = (_dig + hash([int(_lv), _bc, int(_soot_map[_lv][_bc])])) & 0x7FFFFFFF
+		print("[SOOT-SPLIT]   crater replay %.1f · absorb %.1f ms · store projection %.1f ms (%d stored cell(s), digest %d)"
+			% [float(_ss3 - _ss2) / 1000.0, float(_ss4 - _ss3) / 1000.0,
+			_t_proj, _soot_store_cell_count(), _dig])
+	return projected
 
 
 ## §13.2 — THE INCREMENTAL SOOT INDEX.

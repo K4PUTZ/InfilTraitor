@@ -1278,6 +1278,7 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 static func _phase_soot(s: Dictionary, deadline: int) -> void:
 	var ctx: Dictionary = s["ctx"]
 	var delta = s["delta"]
+	var _t0: int = Time.get_ticks_usec()
 	BlastCalculatorClass.build_soot_field(
 		s["cell_to_voxel"], s["blast_cells"], s["weapon_cells"], s["damaged_voxels"],
 		ctx.get("blast_soot_rings", 4), ctx.get("weapon_soot_rings", 3),
@@ -1285,6 +1286,13 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		delta.scorch_writes)
 	_scorch_revealed_fixed_cells(s, s["soot_snapshot"], s["soot_faces"],
 		delta.scorch_writes)
+	if OS.get_environment("INFILTRAITOR_SOOT_SPLIT") == "1":
+		var _n: int = 0
+		for _lv in delta.scorch_writes:
+			_n += (delta.scorch_writes[_lv] as Dictionary).size()
+		print("[SOOT-SPLIT] blast cook SOOT phase %.1f ms (one un-budgeted call) · seeds %d blast, %d weapon, %d damaged · %d scorch write(s) on the Delta"
+			% [float(Time.get_ticks_usec() - _t0) / 1000.0, (s["blast_cells"] as Array).size(),
+			(s["weapon_cells"] as Array).size(), (s["damaged_voxels"] as Array).size(), _n])
 	_enter_phase(s, PHASE_LIGHT)
 
 

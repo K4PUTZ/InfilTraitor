@@ -1,6 +1,14 @@
 # AUDIT — the shotgun's "monster stutter" traces to `_build_soot_snapshot()`'s index walk, not to decals, minting, or scope size
 
-> **STATUS: OPEN — dedicated session needed.** Director, 2026-09-22, on closing this
+> **UPDATE 2026-09-22 (dedicated session) — ANALYSED, NOTHING SHIPPED YET.** The open
+> questions below are answered by measurement in **§ Dedicated session** at the end of
+> this file: the reuse-guard ambiguity (a bug: the aim's prediction pass wipes the
+> index), how the cost grows with accumulated damage (linearly, in the shot AND in the
+> blast's cook), and a side defect (the impact frame writes old scorch CLEAN). The
+> recommended direction (finish `SOOT_STORAGE_REFORM` with event-local scorch) waits
+> for the Director's ruling.
+>
+> **STATUS (original): OPEN — dedicated session needed.** Director, 2026-09-22, on closing this
 > investigation: *"eu acho que eu criei um defeito, eu sugeri essa proposta de 'derivar' a
 > fuligem dos buracos, crente que ia ajudar alguma coisa, mas isso está arruinando o
 > projeto porque fica interferindo em cada cálculo."* This document is the handoff — every
@@ -161,3 +169,154 @@ standing voxel next to a hole need to darken."
   (`Screenshots/filmstrip_shot/materials/filmstrip_<material>_2D.png`) for the shot-VFX
   bench — not yet repeated on the 3D board (RENDER3D default) or cross-checked against
   the register in `RENDER3D_MASTER_PLAN` items 5-7.
+
+---
+
+## Dedicated session (2026-09-22, later) — what the soot actually costs, measured
+
+The Director's question: *is it possible at all to derive soot from the holes without
+interfering with the whole scene?* The Director's working model when asking was
+"81 GUs are repainted every frame". That is not where the time goes (the scoped apply
+was already measured at 0.5 ms above, and is re-measured below); the time goes into
+four MAP-WIDE steps that run once per event. Every number below is from one desktop
+editor build, map `PLAYGROUND_2`, shotgun at guard 2, `RENDER3D` default (3D board),
+read off the engine's own clocks. The shot is deterministic across runs (same
+`[AGENT-SHOT]` impacts, voxel counts and tiers in every run below), which is the
+control for comparing them.
+
+### Instruments added (all env-gated, default behaviour unchanged)
+
+- `INFILTRAITOR_SOOT_SPLIT=1` now NAMES the path per call (`FAST` = index reused,
+  `SLOW (prediction pass)`, `SLOW (index invalid)`), and prints absorb / store
+  projection time plus an **order-independent digest of the soot store**, so two runs
+  compare for identity, not only for size. It also times the blast cook's `SOOT`
+  phase (`detonation_plan_builder.gd` `_phase_soot`).
+- `INFILTRAITOR_SOOT_PREDICT_REUSE=1` — the experiment: a prediction pass reads the
+  committed index (predicted seeds appended to copies) instead of wiping it.
+- `INFILTRAITOR_SOOT_FLICKER_PROBE=1` — counts sooted plane cells in a scoped repaint's
+  GUs before the apply and how many the apply turned CLEAN.
+
+Harnesses: `shot_filmstrip` with `INFILTRAITOR_SHOT_FILM_SECOND_AT=25` (two shots, per-frame
+wall times, images NOT saved so the times are valid), and a scenario
+`wait 2; detonate 0..4; shoot 2; shoot 2` with `SEED_GRENADES=1`,
+`GRENADE_GUS="3,3;8,3;13,3;23,3;43,3"` (concrete, metal, stone, brick, glass).
+
+### 1. The reuse guard: a BUG, and it costs two full walks per shot
+
+```
+[SOOT-SPLIT] SLOW (prediction pass) · index walk 379.7 ms (173128 voxel(s) indexed · seeds: 0 blast, 2 weapon, 0 damaged)
+[SHOT-FILM] frame 02    458.2 ms   <-- the frame after MENU (the aim's W-PRECOOK)
+[SOOT-SPLIT] SLOW (index invalid) · index walk 373.4 ms (173128 voxel(s) indexed · seeds: 0 blast, 2 weapon, 21 damaged)
+[SHOT-SOOT] single-pass repaint 414.60 ms · 109 GUs
+[SHOT-FILM] frame 16    424.5 ms   <-- the soot frame, 2 frames after the impact
+```
+
+`_build_soot_snapshot()`'s `else` branch (`_soot_index_cache = {}`) runs for EVERY
+prediction pass, so the aim's precook throws the index away and the post-impact soot
+pass finds it invalid and walks again. The index was built to walk once per map; it
+walks twice per shot.
+
+**Red → green, same binary, same shots** (`INFILTRAITOR_SOOT_PREDICT_REUSE=1`):
+
+| | aim frame | impact frame | soot frame | store digest after shot 1 / shot 2 |
+|---|---|---|---|---|
+| today | 458.2 ms | 115.9 ms | 424.5 ms | 260317595 / 1110915410 |
+| prediction reuses the index | 75.3 ms | 122.8 ms | 52.8 ms | 260317595 / 1110915410 |
+
+`INFILTRAITOR_SOOT_GATE=1` on the green run: **PASS, 0 disagreement(s) against a full
+walk** on every call of both shots (the gate's own full walk shows up as the
+~420 ms "crater replay" on those lines, expected). Bit-identical scorch.
+
+### 2. The design cost: every event re-derives the WHOLE LEVEL's scorch
+
+After five grenades, the same shot (index fix ON, so the walk is gone):
+
+```
+[SOOT-SPLIT] FAST (index reused, 22 dirty) · index walk 1.1 ms (seeds: 2005 blast, 2 weapon, 1906 damaged) · build_soot_field 192.7 ms (14778 cell(s) out)
+[SOOT-SPLIT]   crater replay 0.1 · absorb 53.9 ms · store projection 44.6 ms (16785 stored cell(s), digest 55353797)
+[SCOPED-PROF] soot 297.9 · occupancy 30.0 · field.build 23.0 · apply 142.3 ms (109 GUs, soot=true)
+[SHOT-SOOT] single-pass repaint 494.17 ms · 109 GUs      (today, without the fix: 887.34 ms, same digest)
+```
+
+The BFS itself is local (it only walks surviving visible voxels within the ring reach
+of its seeds), but it is fed EVERY hole on the level, so a shot that adds ~100 scorched
+cells re-derives 14 778, re-absorbs them into the store, and re-projects all 16 785
+stored cells. On a virgin map the same three steps cost 0.8 + 0.3 + 0.3 ms.
+
+**The blast's cook has the same shape**, inside one un-budgeted call (`_phase_soot`
+ignores its `deadline`):
+
+```
+grenade 1  SOOT phase  44.7 ms · seeds  385 blast,  378 damaged ·  3368 scorch write(s) on the Delta
+grenade 2  SOOT phase  79.5 ms · seeds  611 blast,  882 damaged ·  6123
+grenade 3  SOOT phase 123.2 ms · seeds  946 blast, 1306 damaged ·  9021
+grenade 4  SOOT phase 164.2 ms · seeds 1369 blast, 1743 damaged · 12299
+grenade 5  SOOT phase 212.3 ms · seeds 2005 blast, 1886 damaged · 15403
+```
+
+Linear in the level's accumulated damage; each grenade re-writes every earlier
+grenade's scorch onto its Delta (`absorb_scorch()` at commit). The blast's final
+repaint does NOT call `_build_soot_snapshot()` (cooked path, D-7) — confirmed: no
+`[SOOT-SPLIT]` line during any detonation.
+
+Since `SOOT_STORAGE_REFORM` SS-2/SS-3 (2026-08-27) the store is the source of truth and
+is min-wins, so re-deriving an old hole's scorch can only write what is already there.
+The re-derivation is the step that plan's **SS-5 ("subtraction") was scheduled to
+remove and never did.**
+
+### 3. Side defect: the impact frame writes old scorch CLEAN (measured on the plane)
+
+The impact repaint runs soot-free on purpose (Director, 2026-08-19: soot after the
+impact). A soot-free field answers CLEAN for every cell, and the GU-scoped apply writes
+that into the soot plane for EVERY placed cell in the 7x7-per-impact scope — including
+scorch an earlier event left there:
+
+```
+[SOOT-FLICKER] soot=false: 4199 sooted plane cell(s) in scope before, 4199 turned CLEAN by this apply
+[BOARD3D] recolour shot — 18 level(s) uploaded in 1.3 ms
+... two frames later ...
+[BOARD3D] recolour shot soot — 18 level(s) uploaded in 0.8 ms
+```
+
+The 3D board uploads the cleaned planes in the impact frame and the restored ones two
+frames later: an earlier crater inside the shot's scope goes clean and comes back.
+`room.gd`'s own note on this branch says a soot-free field is *"right for the caller's
+OWN GUs"* — it is not, when those GUs already carry older scorch. **Not yet confirmed
+by a screen capture** — the plane state and the uploads are measured, the pixels are not.
+It also explains most of the soot frame's `field.build` 23 ms / `apply` 142 ms on the
+damaged map: every sooted cell in scope changes twice (clean, then back), so the stale
+set holds thousands of cells instead of ~100.
+
+### 4. Not soot, in the same frames (flagged, not analysed)
+
+- `build_occupancy()` is ~30 ms map-wide on EVERY scoped repaint (three per shot: aim,
+  impact, soot).
+- The impact frame's scoped apply is 57-78 ms over 93-109 GUs with `cells written: 0`
+  — the hidden 2D board walked under the 3D board (plane writes only).
+
+### What this answers
+
+- **Is deriving soot from holes inherently scene-wide? No.** The derivation is local;
+  the scene-wide parts are the INPUT (the index walk, and every hole on the level as a
+  seed), the OUTPUT (re-absorb and re-project the whole store), and the soot-free
+  intermediate repaint.
+- **Splitting across frames** would spread work that is ~99% redundant (14 778 cells
+  re-derived to add ~100) and add a resumable state machine that must survive the world
+  changing mid-spread. Useful only for a residual, not as the fix.
+- **Delaying the soot entirely** is what the shot already does (2 frames later); measured,
+  it moves the stall instead of removing it (425 / 887 ms soot frame), and the delay is
+  what forces the soot-free repaint that erases older scorch (§3).
+- **Remodelling = finishing `SOOT_STORAGE_REFORM`**: each event proposes scorch from its
+  OWN holes only (the shot already holds them in `cell_to_voxel`; the blast's cook in its
+  plan), min-wins into the store; the repaint stops deriving (SS-5) and only the cells the
+  event changed reach the field and the planes; the impact repaint keeps the store's
+  existing scorch instead of writing CLEAN. Expected shape (NOT measured, an estimate from
+  the virgin-map components above): the shot's soot work ~1-3 ms whatever the level's
+  history, the blast's SOOT phase ~45 ms per grenade instead of growing.
+- **Difference to review under the Director's eye before switching:** under global
+  re-derivation a LATER event can change an older crater's scorch (a surface revealed
+  later is scorched retroactively by an old hole; a later hole that cuts a BFS path can
+  lighten old scorch). Event-local scorch keeps what was deposited, which is the
+  2026-08-27 ruling (*"de forma permanente"*), but it is a visible difference in edge
+  cases and needs a paired capture. `SOOT_STORAGE_REFORM` §5.3 (scorch of voxels that no
+  longer exist) stays open and is the Director's.

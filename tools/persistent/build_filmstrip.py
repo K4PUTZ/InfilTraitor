@@ -122,9 +122,17 @@ def run_capture(root, godot, frames, grenade):
     return combined
 
 
-def run_shot_capture(root, godot, frames, weapon, guard, focus, zoom):
+def run_shot_capture(root, godot, frames, weapon, guard, focus, zoom, map_id="PLAYGROUND"):
     env = os.environ.copy()
     env["INFILTRAITOR_AUTO_SCREENSHOT"] = "1"
+    ## Without this, the map is whatever `user://current_map.cfg` last persisted —
+    ## ambient state from an earlier run, not this one. `_capture_shot_filmstrip()`
+    ## needs `_guards` non-empty and fails LOUD when it isn't ("[SHOT-FILM] needs a
+    ## guard"), but that error lands in `res.stderr`, which nothing here prints —
+    ## so the capture "succeeds" (exit 0), writes zero frames, and `build_sheet()`
+    ## reports a plain "no frames found" with no hint why. Pin the map explicitly,
+    ## the same precedent `run_glass_rain_capture()` already sets for GLASS.
+    env["INFILTRAITOR_MAP"] = map_id
     env["INFILTRAITOR_CAPTURE_ACTION"] = "shot_filmstrip"
     env["INFILTRAITOR_SHOT_FILM_SAVE"] = "1"
     env["INFILTRAITOR_SHOT_FILM_FRAMES"] = str(frames)
@@ -150,8 +158,9 @@ def run_shot_capture(root, godot, frames, weapon, guard, focus, zoom):
         return None
     combined = res.stdout + res.stderr
     for line in combined.splitlines():
-        if line.startswith("[AGENT-SHOT-TIER]") or line.startswith("[AGENT-SHOT]"):
-            print("   " + line.strip()[:150])
+        if (line.startswith("[AGENT-SHOT-TIER]") or line.startswith("[AGENT-SHOT]")
+                or line.startswith("ERROR:") or "[SHOT-FILM]" in line):
+            print("   " + line.strip()[:200])
     return combined
 
 
@@ -307,6 +316,11 @@ def main():
                          "simulated fps, so a lower value here is SLOW MOTION")
     ap.add_argument("--zoom", type=float, default=0.5,
                     help="shot mode: capture zoom")
+    ap.add_argument("--map", default="PLAYGROUND",
+                    help="shot mode: INFILTRAITOR_MAP (default PLAYGROUND, which ships a guard "
+                         "per material) — unset otherwise leaves the map to whatever "
+                         "user://current_map.cfg last persisted, and a guardless map fails "
+                         "silently (zero frames, no obvious reason)")
     ap.add_argument("--glass-rain", metavar="PRESET",
                     help="G4-4 rain-timing mode: one MP4 per preset "
                          "(%s), or 'all' for every one" % "/".join(GLASS_RAIN_PRESETS))
@@ -375,7 +389,7 @@ def main():
             return 1
         if args.shot:
             ok = run_shot_capture(root, godot, args.frames, args.shot,
-                                  args.guard, args.focus, args.zoom)
+                                  args.guard, args.focus, args.zoom, args.map)
         else:
             ok = run_capture(root, godot, args.frames, args.grenade)
         if ok is None:

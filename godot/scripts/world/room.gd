@@ -4859,7 +4859,12 @@ const SHOT_REPAINT_SOOT_RINGS: int = 3
 ## have been taken first. `INFILTRAITOR_SHOT_SOOT_DEFER=1` turns it back on.
 var shot_soot_deferred: bool = OS.get_environment("INFILTRAITOR_SHOT_SOOT_DEFER") == "1"
 var shot_soot_fade_steps: int = 4
+## R3D-6 item 8 — SECONDS, not frames, same reason `DetonationPresenter.soot_step_s`
+## moved off `soot_fade_frames_per_step` (frames run 4x slower on the Moto than on
+## desktop; a frame count times out at a different real speed on every device).
+## `shot_soot_fade_frames_per_step` (2) is kept only as the fallback below.
 var shot_soot_fade_frames_per_step: int = 2
+var shot_soot_step_s: float = 0.075
 
 
 ## Bring the deferred soot in, across frames, WITHOUT blocking the shot.
@@ -4908,17 +4913,32 @@ func fade_in_scoped_soot(gus: Array) -> void:
 	_repaint_voxel_light_buckets_scoped(gus, true, steps - 1)
 	print_debug("[SHOT-SOOT] fade starts — %d step(s) over %d GUs"
 		% [steps, gus.size()])
-	for step in range(steps - 2, -1, -1):
-		for _f in range(maxi(shot_soot_fade_frames_per_step, 1)):
+	## R3D-6 item 8 — elapsed SECONDS since this fade started, at most one rung per
+	## frame (a slow frame delays the ladder instead of collapsing it), the same
+	## `soot_step_s` shape the blast's own soot fade uses. `board3d_node` is null
+	## when there is no 3D board, so the extra upload below costs nothing under 2D.
+	var elapsed: float = 0.0
+	var next_t: float = shot_soot_step_s
+	var board3d_node: Node = board3d()
+	var ramp: Array = range(steps - 2, -1, -1)
+	if ramp.is_empty() and board3d_node != null and is_instance_valid(board3d_node):
+		_sync_3d_shot_soot()  ## steps <= 1 — the faintest rung above IS the only rung
+	for step in ramp:
+		while elapsed < next_t:
 			await get_tree().process_frame
-		if not is_instance_valid(_voxel_renderer):
-			return
+			if not is_instance_valid(_voxel_renderer):
+				return
+			elapsed += get_process_delta_time()
+		next_t += shot_soot_step_s
 		## Re-APPLY only. `_voxel_light_field` still holds the sooty field the
 		## line above built, so each rung is a scoped set_cell pass and not a
 		## second map-wide snapshot.
 		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, step)
-	## The 3D board takes the settled scorch only: it has no per-rung fade of its own.
-	_sync_3d_shot_soot()
+		## R3D-6 item 8 — the 3D board used to take the settled scorch only (one
+		## upload after this whole loop, the same "jump" the end-of-blast light had
+		## before it was fixed); it now sees each rung, same as the blast's soot.
+		if board3d_node != null and is_instance_valid(board3d_node):
+			_sync_3d_shot_soot()
 	## THE END-STATE GATE. Deferring soot is only legitimate if the board ENDS
 	## where a full, immediate repaint would have put it — a fade that settles on
 	## the wrong picture is worse than a stall. Same probe as the scoped apply's,

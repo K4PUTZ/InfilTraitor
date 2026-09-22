@@ -759,7 +759,7 @@ func fire_at_active() -> void:
 	## NOT awaited, and deliberately LAST. The tiles have swapped and the smoke is
 	## out; the soot is the only thing left. SOOT-STAMP: a stamp around the voxels
 	## this shot touched (~1 ms), two frames later, into the soot map and the plane.
-	room.apply_shot_soot(cell_to_voxel.values())
+	room.apply_shot_soot(cell_to_voxel.values(), weapon_def.soot_radius)
 
 
 ## The grid-axis step whose direction best matches `aim`. Four candidates and a

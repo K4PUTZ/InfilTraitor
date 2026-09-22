@@ -401,7 +401,7 @@ func fire_active() -> void:
 	var repaint_ms: float = float(Time.get_ticks_usec() - repaint_us) / 1000.0
 	room._destruction_render_busy = false
 	## SOOT-STAMP: the same stamp the agent's shot makes, around what this one touched.
-	room.apply_shot_soot(cell_to_voxel.values())
+	room.apply_shot_soot(cell_to_voxel.values(), weapon_def.soot_radius)
 	## W-PROF-01: the firearm path has no pre-production (P-COOK/P-WARM cover the
 	## grenade only), so unlike a blast it pays everything at the trigger — worth
 	## PRINTING rather than assuming, the same reason `[E-PLAN] census cost=`

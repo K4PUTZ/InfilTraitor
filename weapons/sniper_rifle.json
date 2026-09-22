@@ -6,5 +6,6 @@
   "punch": 0.7,
   "projectile_count": 1,
   "gameplay": { "class": "firearm", "range_band": "long" },
-  "tags": ["firearm", "rifle", "sniper"]
+  "tags": ["firearm", "rifle", "sniper"],
+  "soot_radius": 4
 }

@@ -1456,19 +1456,47 @@ static func crater_ring_for(d: float, max_radius: float, rim_span: float) -> int
 ## instead of a clean band. `var` (Rule 1): tuning numbers.
 static var SOOT_LIGHTEN_CHANCE: Array[float] = [0.15, 0.3, 0.45, 0.6]
 
+## SOOT-VARY (Director, 2026-09-22 plan, "more tones") — given the cell lightens
+## at all, the extra chance it jumps two tones instead of one, and the flat chance
+## (any ring past the darkest) it darkens by one instead. Both `var` (Rule 1).
+static var SOOT_TWO_STEP_CHANCE: float = 0.2
+static var SOOT_DARKEN_CHANCE: float = 0.08
+
+## SOOT-VARY ("more tones") — at the outermost ring only, the chance an otherwise-
+## stamped cell is dropped outright, so the faint edge of a scorch reads as
+## scattered flecks instead of a solid last band.
+static var SOOT_EDGE_DROP_CHANCE: float = 0.12
+
 ## L1 balls by radius, built once: `[offset: Vector3i, distance: int]` rows.
 static var _soot_balls: Dictionary = {}
 
 
+## SOOT-VARY 1's per-cell distance shift, -1/0/+1, deterministic and independent of
+## soot_jitter()'s own roll (a different hash salt). Exposed so a caller — or a
+## selftest — can reproduce `stamp_around()`'s exact ring for a given cell.
+static func soot_edge_offset(cell: Vector2i, level: int) -> int:
+	return int(hash(Vector3i(cell.x + 4111, cell.y + 4111, level)) % 3) - 1
+
+
 ## The jittered tone for one cell, or -1 when it comes out clean. Deterministic: the
 ## roll is `hash(Vector3i)` (murmur3 in the engine), so the same cell always rolls
-## the same way — no RNG, nothing stored, identical across runs and reloads.
+## the same way — no RNG, nothing stored, identical across runs and reloads. Two
+## independent bits of the same hash drive the lighten roll and the two-step/drop
+## rolls, so they vary independently instead of moving together.
 static func soot_jitter(cell: Vector2i, level: int, ring: int) -> int:
 	if ring < 0 or ring >= FACE_SOOT_CLEAN:
 		return -1
-	var roll: float = float(hash(Vector3i(cell.x, cell.y, level)) & 0xFFFF) / 65536.0
+	var h: int = hash(Vector3i(cell.x, cell.y, level))
+	var roll: float = float(h & 0xFFFF) / 65536.0
+	var roll2: float = float((h >> 16) & 0xFFFF) / 65536.0
+	if ring == FACE_SOOT_CLEAN - 1 and roll2 < SOOT_EDGE_DROP_CHANCE:
+		return -1
 	var chance: float = SOOT_LIGHTEN_CHANCE[mini(ring, SOOT_LIGHTEN_CHANCE.size() - 1)]
-	var out: int = ring + (1 if roll < chance else 0)
+	var out: int = ring
+	if roll < chance:
+		out += 2 if roll2 < SOOT_TWO_STEP_CHANCE else 1
+	elif ring > 0 and roll2 > 1.0 - SOOT_DARKEN_CHANCE:
+		out -= 1
 	return out if out < FACE_SOOT_CLEAN else -1
 
 
@@ -1519,7 +1547,14 @@ static func stamp_around(seeds: Array, radius: int, store: VoxelStore) -> Dictio
 	for k: Vector3i in best:
 		if store != null and not store.has_solid(k.x, k.y, k.z):
 			continue
-		var ring: int = soot_jitter(Vector2i(k.x, k.y), k.z, maxi(int(best[k]) - 1, 0))
+		## SOOT-VARY 1 ("irregular edge") — a per-cell roll shifts the distance by
+		## -1..+1 before the ring is picked, so the scorch's outline is ragged
+		## instead of a perfect L1 diamond. A cell pushed past `radius` is simply
+		## dropped (no soot), which is what makes the edge ragged rather than wider.
+		var dist: int = int(best[k]) + soot_edge_offset(Vector2i(k.x, k.y), k.z)
+		if dist < 0 or dist > radius:
+			continue
+		var ring: int = soot_jitter(Vector2i(k.x, k.y), k.z, maxi(dist - 1, 0))
 		if ring < 0:
 			continue
 		if not out.has(k.z):

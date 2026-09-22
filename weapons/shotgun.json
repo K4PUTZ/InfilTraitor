@@ -20,5 +20,6 @@
     "firearm",
     "shotgun"
   ],
-  "blowout": 0.0
+  "blowout": 0.0,
+  "soot_radius": 2
 }

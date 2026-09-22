@@ -74,6 +74,10 @@ var projectile_count: int = 1
 ## second. Default 1.0 keeps every definition written before this field exactly
 ## as destructive as it was.
 var blowout: float = 1.0
+## SOOT-VARY 3 (Director, 2026-09-22 plan): how far this weapon's scorch reaches
+## from each voxel it touched, in voxel steps (L1). Falls back to Room's old flat
+## default (3) so a definition written before this field keeps its old spread.
+var soot_radius: int = 3
 var gameplay: Dictionary = {}
 var tags: Array[String] = []
 
@@ -99,6 +103,7 @@ static func from_json(data: Dictionary) -> WeaponDef:
 	def.punch = float(data.get("punch", def.destroy_multiplier))
 	def.projectile_count = int(data.get("projectile_count", 1))
 	def.blowout = float(data.get("blowout", 1.0))
+	def.soot_radius = int(data.get("soot_radius", 3))
 	def.gameplay = data.get("gameplay", {})
 
 	def.tags = []

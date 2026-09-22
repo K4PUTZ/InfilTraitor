@@ -5147,7 +5147,10 @@ func cell_probe_report() -> void:
 ## every event, growing with the level's history) is in
 ## `PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`.
 
-## How far a firearm's scorch reaches from each voxel it touched, in voxel steps (L1).
+## Fallback radius when a caller has no WeaponDef to hand (e.g. the dev bench's
+## older callers): how far a firearm's scorch reaches from each voxel it touched,
+## in voxel steps (L1). A real shot passes its own WeaponDef.soot_radius instead
+## (SOOT-VARY 3, Director's 2026-09-22 plan).
 var weapon_soot_radius: int = 3
 
 
@@ -5230,9 +5233,10 @@ func project_soot_store() -> void:
 ## plane, uploaded once. The stamp is ~1 ms whatever the level's history; it lands
 ## two frames after the impact only for the look (the Director's 2026-08-19 order:
 ## soot after the tiles swap and the smoke is out).
-func apply_shot_soot(touched: Array) -> void:
+func apply_shot_soot(touched: Array, radius: int = -1) -> void:
 	if touched.is_empty() or _voxel_renderer == null:
 		return
+	var use_radius: int = radius if radius >= 0 else weapon_soot_radius
 	var seeds: Array = []
 	for v in touched:
 		seeds.append(Vector3i(v.grid_pos.x, v.grid_pos.y, v.level))
@@ -5243,7 +5247,7 @@ func apply_shot_soot(touched: Array) -> void:
 		return
 	var t0: int = Time.get_ticks_usec()
 	var changed: Dictionary = stamp_soot(BlastCalculator.stamp_around(
-		seeds, weapon_soot_radius, VoxelStore.active))
+		seeds, use_radius, VoxelStore.active))
 	_paint_soot(changed, "shot soot")
 	var n: int = 0
 	for level in changed:

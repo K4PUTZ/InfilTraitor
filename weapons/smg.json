@@ -5,5 +5,6 @@
   "destroy_multiplier": 0.2,
   "punch": 0.22,
   "gameplay": { "class": "firearm", "range_band": "medium" },
-  "tags": ["firearm", "smg", "automatic"]
+  "tags": ["firearm", "smg", "automatic"],
+  "soot_radius": 2
 }

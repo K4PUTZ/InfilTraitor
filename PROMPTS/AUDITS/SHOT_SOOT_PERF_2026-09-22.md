@@ -1,5 +1,9 @@
 # AUDIT — the shotgun's "monster stutter" traces to `_build_soot_snapshot()`'s index walk, not to decals, minting, or scope size
 
+> **✅ RESOLVED 2026-09-22 — SOOT-STAMP shipped (Director: *"Faz todas as correções, não importa o
+> visual. Queremos máxima performance e eficiência do código"*).** Soot is stamped once per event and
+> never derived; numbers in **§ Resolution** at the end.
+>
 > **UPDATE 2026-09-22 (dedicated session) — ANALYSED, NOTHING SHIPPED YET.** The open
 > questions below are answered by measurement in **§ Dedicated session** at the end of
 > this file: the reuse-guard ambiguity (a bug: the aim's prediction pass wipes the
@@ -320,3 +324,45 @@ set holds thousands of cells instead of ~100.
   2026-08-27 ruling (*"de forma permanente"*), but it is a visible difference in edge
   cases and needs a paired capture. `SOOT_STORAGE_REFORM` §5.3 (scorch of voxels that no
   longer exist) stays open and is the Director's.
+
+---
+
+## Resolution — SOOT-STAMP (2026-09-22, same day)
+
+**The Director's ruling, after the analysis above:** *"Faz todas as correções, não importa o visual. Queremos
+máxima performance e eficiência do código. Se tiver uma sugestão mais simples, a fuligem é meramente um efeito a
+mais, não é pra sugar CPU. (...) embutir 3 a 5 estados de fuligem permanentes pra cada voxel (...) Sorteamos os
+layers em volta do buraco pra ligar ou desligar esses 5 estados conforme a distância do anel, e pronto."*
+
+**Built:** one tone 0..3 per cell in `Room._soot_map` (base-keyed), the same on every face, stamped once:
+- a shot: an L1 ball of radius 3 around the voxels it touched (`BlastCalculator.stamp_around()`), two frames after
+  the impact, into the map and the plane, one upload;
+- a blast: every surviving voxel of the flood by 3D distance to the epicentre, in four bands from the crater edge
+  to the flood edge (`DetonationPlanBuilder._soot_ring_by_distance()`). ⚠️ NOT `ring_of`'s GU ring: a per-GU stamp is
+  what the Director rejected in 2026-08 (*"um monte de quadradinhos (...) muito forte por GUs"*, `BombDef`'s note);
+- a fire: the six neighbours of each burnt cell;
+- the "sorteio": `soot_jitter()` lightens a cell one tone with a per-ring chance, seeded by `hash(Vector3i)`.
+Deleted: the derivation (`derive_soot_rings`, `build_soot_field`, faces, six-direction format, self-soot), the map
+index and its cache/gate, `Voxel.soot_dirty`, `_crater_floor_soot`, the shot's soot fade, and every soot write in
+the light applies (so the side defect of §3 cannot happen). The map-wide repaint resets the planes and
+re-projects the map; `SaveState` v2 saves it. A new `soot_stamp_selftest` pins the rules; 17 selftests of the
+derivation were deleted with it.
+
+**Before -> after, same harnesses, same binary conditions (desktop editor build):**
+
+| | before | after |
+|---|---|---|
+| shotgun, virgin map — aim frame | 458 ms | 58 ms |
+| — impact frame | 116 ms | 52 ms |
+| — soot frame | 425 ms | 13.5 ms (the stamp itself 3.7–4.3 ms) |
+| shotgun after 5 grenades — soot work | 876 / 836 ms | 3.9 / 3.6 ms |
+| blast cook SOOT phase, grenades 1..5 | 44.5 / 79 / 119 / 160 / 206 ms (one call) | 19 / 16 / 16 / 16 / 15 ms (chunked) |
+| blast SOOTWAVE, grenades 1..5 | 10 / 30 / 49 / 70 / 92 ms | 16 / 12 / 13 / 14 / 15 ms |
+| blast cook, worst single step | 53 / 92 / 124 / 171 / 218 ms | 36 / 58 / 32 / 36 / 38 ms |
+| map load, full repaint | soot 407 + apply 1 164–1 192 ms | apply 888 ms (reset + re-projection included) |
+
+Seen on screen (scenario captures, 3D board, not kept): the blast's scorch is a dithered darkening around the
+crater on floor and walls with no GU blocks; the shot's scorch lands on the struck face and the floor at its
+base; an older blast's scorch beside the shot survives the shot. `shot_3d_gate.py`: PASSED (brick 6 997 px vs 2D
+control 7 441 px, concrete 10 015 vs 11 635). **Not measured on the Moto.**
+

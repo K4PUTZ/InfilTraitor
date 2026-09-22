@@ -46,35 +46,6 @@ var face_enclosed_factor: float = 0.30     ## nothing exposed (interior fill)
 ## the recessed ones behind them fall away, and the hole reads as depth.
 var ao_strength: float = 0.55              ## 0 = no AO, 1 = full darkening at 4/4
 
-## VL-D1 — blast soot. A per-voxel scorch that MULTIPLIES the light term, so a
-## sooted face still reads brighter in light than in shadow (soot modulates, it
-## doesn't paint flat black). Ring 0 (touching the hole) is darkest. The values
-## push a lit voxel down into the reserved dark buckets (bucket_luminance 0..1),
-## which is what makes the crater halo read; tune against a real capture.
-## Director 2026-07-24: soot need not go near-black — let a bit of texture show
-## through. Lifted from [0.10,0.28,0.55]; paired with the raised dark buckets.
-## Director 2026-07-26: one more small step the same direction — stone's own
-## dark, high-detail texture already reads as "scorched enough" at full
-## strength (VL-D5 finding: the mechanism is materially strong, up to 84%
-## darkening at ring 0, correct and confirmed by probe — the ask was to ease
-## the overall opacity a touch, not to fix a broken effect).
-## FACE-SOOT-01 (Director, 2026-08-01): soot is no longer folded into the light
-## BUCKET — it is delivered per FACE and applied in the shader (see
-## encode_face_soot() below and voxel_face_shading.gdshader). It had to move: a
-## bucket is ONE scalar per cell, so as long as soot lived inside it the three
-## faces of a voxel could not carry different amounts of scorch by construction.
-## This array therefore no longer reaches the renderer — it stays here as the
-## canonical ring→darkening curve that the shader's `soot_face_mult` is
-## calibrated against, and as the value `soot_factor()` still reports to probes,
-## selftests and (future) vision modes.
-## PERF-02 B3-2: ring 0/1/2/3 multiplier. The first three are UNCHANGED, so a
-## firearm's 3-ring scorch renders exactly as it did; ring 3 is new and only a
-## blast reaches it (see Room.blast_soot_rings), which is what makes the bomb's
-## extra distance a real gradient step instead of a flat band of the faintest
-## tone. Isotropic reference curve — the shader's per-face multipliers are
-## calibrated against it, not derived from it.
-var soot_darkening: Array[float] = [0.20, 0.40, 0.63, 0.80]
-
 ## VL-D3 — floor voxels that sat under a wall/block never saw the sun, so when a
 ## blast exposes their top they read darker than always-open floor. A gentle
 ## multiplier (Director: "uma sombrinha um pouco mais forte pra diferenciar").
@@ -132,13 +103,6 @@ var _lights: Array = []                    ## Array[LightSource] (active set)
 var _shadow_by_light: Dictionary = {}      ## light instance_id -> ShadowResult
 var _top_wall_level: int = 0               ## highest built voxel layer (OVERHEAD anchor)
 var _occupancy: Dictionary = {}            ## level:int -> {Vector2i: true}
-var _soot: Dictionary = {}                 ## level:int -> {Vector2i: ring}
-## FACE-SOOT-01 — level -> {Vector2i: Vector3i(ring_top, ring_se, ring_sw)},
-## from BlastCalculator.derive_soot_rings()'s out_faces. Empty = no directional
-## data, in which case face_soot_code() falls back to the voxel's own ring on all
-## three faces (exactly the pre-FACE-SOOT-01 behaviour), which is what keeps the
-## crater-floor cells merged by room._build_soot_snapshot() rendering correctly.
-var _face_soot: Dictionary = {}
 var _under_structure: Dictionary = {}      ## {Vector2i: true} floor cols under structure (VL-D3)
 var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> int
 
@@ -162,9 +126,9 @@ var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) ->
 var _stale_accum: Dictionary = {}          ## Vector3i -> true, since the last full apply
 var _stale_total: bool = true              ## true = no subset is valid; walk everything
 var _lamp_cache: Dictionary = {}           ## Vector3i(gu.x, gu.y, level) -> float (VL-PERF)
-## VL-03 — surface_factor × soot_factor × under_structure_factor for one voxel,
+## VL-03 — surface_factor × under_structure_factor for one voxel,
 ## cached SEPARATELY from the lamp term and NOT cleared by clear_caches(). None
-## of those three terms depend on which lights are on — only geometry/soot/cover
+## of those terms depend on which lights are on — only geometry/cover
 ## do — so a temporal light toggle (which changes ONLY energy_multiplier) can
 ## reuse every one of these across the toggle. Measured need: a single flicker
 ## toggle over a 149-GU/29k-voxel influence set cost ~84ms recomputing this
@@ -182,13 +146,10 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 ## far above the real walls and zero out every contribution via vertical falloff.
 ## occupancy: level -> set of occupied cells, supplied by VoxelRenderer (it owns
 ## the tilemaps). Drives the surface/AO terms above; empty = shading disabled.
-## soot: level -> {cell: ring}, from the blast (VL-D1); empty = no scorch.
 ## under_structure: {cell: true} floor columns that had a wall above at load
 ## (VL-D3); their floor voxels read darker once exposed.
-## face_soot: level -> {cell: Vector3i(top, se, sw)} (FACE-SOOT-01); optional,
-## and absent entries fall back to the voxel's own isotropic ring.
 ## PERF-03 — `geometry_only` says: LIGHTS, SHADOWS, top_wall_level and cover are
-## unchanged since the last build; only occupancy and soot moved. That is
+## unchanged since the last build; only occupancy moved. That is
 ## exactly a detonation (TestZoneController.detonate_active() repaints directly
 ## and never re-runs the shadow projector), and it is what lets this keep the
 ## caches instead of dropping them. Defaults FALSE, so every other caller —
@@ -202,12 +163,14 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 ## longer has to invalidate the light bucket of every voxel it scorches") — the
 ## wholesale clear here is what defeated it.
 func build(lights: Array, shadow_results: Array, top_wall_level: int,
-		occupancy: Dictionary = {}, soot: Dictionary = {},
-		under_structure: Dictionary = {}, face_soot: Dictionary = {},
+		occupancy: Dictionary = {}, under_structure: Dictionary = {},
 		geometry_only: bool = false) -> void:
+	## SOOT-STAMP (2026-09-22): soot is not an input any more. It lives in
+	## `Room._soot_map` and the renderer's soot plane, written only by the events
+	## that make it; a light build never reads it and a light apply never writes it.
 	var stale: Dictionary = {}
 	if geometry_only:
-		stale = _stale_cells(occupancy, soot, face_soot)
+		stale = _stale_cells(occupancy)
 		for skey in stale:
 			_stale_accum[skey] = true
 	else:
@@ -218,8 +181,6 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 	_lights = lights
 	_top_wall_level = maxi(top_wall_level, 0)
 	_occupancy = occupancy
-	_soot = soot
-	_face_soot = face_soot
 	_under_structure = under_structure
 	_shadow_by_light.clear()
 	if geometry_only:
@@ -231,13 +192,13 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 	else:
 		_bucket_cache.clear()
 		_lamp_cache.clear()
-		_static_factor_cache.clear()  ## geometry/soot/cover may have changed — see build() callers
+		_static_factor_cache.clear()  ## geometry/cover may have changed — see build() callers
 	for result in shadow_results:
 		if result != null and result.source_light != null:
 			_shadow_by_light[result.source_light.get_instance_id()] = result
 
 
-## PERF-03 — every cached key the incoming occupancy/soot invalidate, and NOT
+## PERF-03 — every cached key the incoming occupancy invalidates, and NOT
 ## one more. Both halves are derived from what the cached values actually read,
 ## traced in the code rather than guessed:
 ##
@@ -248,11 +209,7 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 ##    ±1, and the widest level offset is +2. INVERTING that: a change at
 ##    (c, L) can invalidate any cell within Chebyshev 1 in XY and levels
 ##    L-2 .. L+1. That is the neighbourhood expanded below.
-##  - the soot term enters only through _compute_bucket()'s micro-jitter
-##    exemption, at exactly (cell, level) with no neighbourhood — soot has not
-##    been part of _static_factor since FACE-SOOT-01.
-func _stale_cells(occupancy: Dictionary, soot: Dictionary,
-		face_soot: Dictionary = {}) -> Dictionary:
+func _stale_cells(occupancy: Dictionary) -> Dictionary:
 	var stale: Dictionary = {}
 	for level in _union_keys(_occupancy, occupancy):
 		var before: Variant = _occupancy.get(level)
@@ -264,30 +221,6 @@ func _stale_cells(occupancy: Dictionary, soot: Dictionary,
 				for dx in range(-1, 2):
 					for dy in range(-1, 2):
 						stale[Vector3i(cell.x + dx, cell.y + dy, level + dz)] = true
-	for level in _union_keys(_soot, soot):
-		var before_soot: Variant = _soot.get(level)
-		var after_soot: Variant = soot.get(level)
-		if before_soot == after_soot:
-			continue
-		for cell in _symmetric_difference(before_soot, after_soot):
-			stale[Vector3i(cell.x, cell.y, level)] = true
-	## PERF-10 — ⚠️ AND THE FACE TRIPLES, WHICH THIS USED TO MISS ENTIRELY.
-	##
-	## The paragraph above is right that soot reaches the BUCKET only through the
-	## jitter exemption. But `VoxelRenderer` does not write a bucket alone — it
-	## writes `field.face_soot_code(cell, level)`, which reads `_face_soot`, and a
-	## cell whose per-face triple moves while its isotropic RING stays put was
-	## invisible here. Harmless while every apply was map-wide and re-derived
-	## every cell anyway; the moment an apply is driven by this set, those cells
-	## are silently skipped. Measured: exactly 7 of them survived the union with
-	## the choreographer's own writes, every one a clean-to-sooted face change.
-	for level in _union_keys(_face_soot, face_soot):
-		var before_faces: Variant = _face_soot.get(level)
-		var after_faces: Variant = face_soot.get(level)
-		if before_faces == after_faces:
-			continue
-		for cell in _symmetric_difference(before_faces, after_faces):
-			stale[Vector3i(cell.x, cell.y, level)] = true
 	return stale
 
 
@@ -387,17 +320,10 @@ func _compute_bucket(cell: Vector2i, level: int) -> int:
 	intensity *= _static_factor(cell, level)
 	## FACE-READ-01: nudge the QUANTISED bucket, after rounding — nudging the
 	## continuous value before it was measured to be swallowed by the rounding
-	## (see micro_jitter_buckets). Sooted voxels are deliberately EXEMPT: their
-	## read comes from the ring gradient, which lives in this same 12-bucket
-	## channel and only spans buckets 0-2, so noise there does not enrich it, it
-	## eats it. Measured 2026-07-31 on the real crater: jittering sooted voxels
-	## too dropped the region's mean luminance 41.1 → 26.6 and emptied the
-	## mid-tone band (9% → 0% of pixels), i.e. it flattened the very gradient the
-	## Director asked to preserve ("mais perto do centro da explosão, mais escura
-	## a face; quanto mais distante, menos opacidade").
+	## (see micro_jitter_buckets). SOOT-STAMP: sooted voxels are no longer exempt —
+	## the field does not know about soot any more.
 	var bucket: int = roundi(intensity * float(top_bucket))
-	if is_equal_approx(soot_factor(cell, level), 1.0):
-		bucket += micro_jitter_offset(cell, level)
+	bucket += micro_jitter_offset(cell, level)
 	return clampi(bucket, 0, top_bucket)
 
 
@@ -427,7 +353,7 @@ func _static_factor(cell: Vector2i, level: int) -> float:
 
 ## FACE-READ-01 — deterministic per-voxel bucket offset in
 ## [-micro_jitter_buckets, +micro_jitter_buckets]. Public so a capture/probe can
-## read it directly, same as soot_factor() and surface_factor().
+## read it directly, same as surface_factor().
 func micro_jitter_offset(cell: Vector2i, level: int) -> int:
 	if micro_jitter_buckets <= 0:
 		return 0
@@ -469,41 +395,6 @@ func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> float:
 	return intensity
 
 
-## FACE-SOOT-01 — the per-face scorch for one voxel, packed into the 6-bit code
-## the renderer hands to the shader through the cell's modulate ALPHA.
-##
-## Layout: `top * 16 + se * 4 + sw`, each ring 0..2 with 3 = clean, so an
-## untouched voxel is 63 — which maps to alpha 1.0 and therefore to the SAME
-## alternative tile it uses today. That is deliberate: the whole clean map keeps
-## its existing 12 light alternatives and only scorched voxels ever mint more.
-##
-## Why alpha and not the R/G/B packing VOXEL_LIGHT_MASTER_PLAN proposed: that
-## plan assumed `modulate` was "a grayscale multiply" with three free channels.
-## It is not — on the baked path (BakeConfig.enabled, the live default) the pages
-## are grayscale by B2 and the MATERIAL'S COLOUR lives in exactly those RGB
-## channels (`BakeCompositor._modulate_for_mode()` returns `material.base_color`
-## for MULTIPLY), while on the material path the colour lives in the texture.
-## Packing three luminances into RGB destroys the material colour on the first
-## path and splats it to one channel on the second. Alpha is genuinely free —
-## occlusion stopped placing ghost alternatives at OCC-21 — and it leaves both
-## colour paths untouched.
-func face_soot_code(cell: Vector2i, level: int) -> int:
-	var level_faces = _face_soot.get(level)
-	if level_faces != null:
-		var faces = level_faces.get(cell)
-		if faces != null:
-			return encode_face_soot(faces)
-	## No directional data (crater-floor cells, or a caller that supplied only the
-	## isotropic snapshot): fall back to the voxel's own ring on all three faces.
-	var level_soot = _soot.get(level)
-	if level_soot == null:
-		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
-	var ring: int = int(level_soot.get(cell, -1))
-	if ring < 0 or ring >= BlastCalculator.FACE_SOOT_CLEAN:
-		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
-	return encode_face_soot(Vector3i(ring, ring, ring))
-
-
 ## The code layout lives on VoxelRenderer (it owns the alternative-id space this
 ## packs into) and is referenced from function bodies only — a `const` here
 ## pointing at it and back would be a parse-time cycle between the two classes.
@@ -530,20 +421,6 @@ static func decode_face_soot(code: int) -> Vector3i:
 	return Vector3i(top, se, c % FACE_SOOT_BASE)
 
 
-## VL-D1 — soot multiplier for a voxel (1.0 = clean). Public for vision modes /
-## tests. Ring 0 (touching a hole) is darkest; missing = clean.
-##
-## FACE-SOOT-01: this no longer feeds the light bucket (see _static_factor) — it
-## is the isotropic reference curve the shader's per-face multipliers are
-## calibrated against, and what probes/selftests read to reason about scorch.
-func soot_factor(cell: Vector2i, level: int) -> float:
-	var level_soot = _soot.get(level)
-	if level_soot == null:
-		return 1.0
-	var ring = level_soot.get(cell, -1)
-	if ring < 0:
-		return 1.0
-	return soot_darkening[clampi(ring, 0, soot_darkening.size() - 1)]
 
 
 ## VL-02b — per-voxel surface shading from neighbour occupancy: axis factor for

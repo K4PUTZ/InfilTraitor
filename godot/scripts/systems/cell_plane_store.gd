@@ -184,6 +184,17 @@ func ensure_level(level: int) -> void:
 ## it came from) and it needs the fill to actually land. Only ever called from
 ## `Room._capture_cell_index_gate()`; leaves the plane meaningless for soot — the
 ## gate boot is a throwaway process and never renders a real frame after running.
+## SOOT-STAMP — every level back to a fresh plane (soot clean, bucket unwritten).
+## Only a MAP-WIDE light apply may follow this, because that is what writes every
+## occupied cell's bucket again; the soot store is re-projected after it. It exists
+## because a rotation or a map load reuses these images, and since 2026-09-22 no
+## light apply writes soot, so nothing else would clear a stale view's scorch.
+func reset_all() -> void:
+	for level in _images:
+		(_images[level] as Image).fill(Color8(_clean_r, BUCKET_UNWRITTEN, 0, 255))
+		_dirty[level] = true
+
+
 func debug_fill(level: int, value: int) -> void:
 	var img := _image_for(level)
 	img.fill(Color8(clampi(value, 0, 255), BUCKET_UNWRITTEN, 0, 255))

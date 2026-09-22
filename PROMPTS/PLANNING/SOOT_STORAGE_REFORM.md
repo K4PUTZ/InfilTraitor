@@ -1,6 +1,32 @@
 # SOOT_STORAGE_REFORM
 ## The soot map becomes the source of truth — plan, 2026-08-27
 
+⛔ **2026-09-22 — SOOT-STAMP (Director): soot is STAMPED once per event and never derived again.**
+*"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do
+código. (...) a fuligem é meramente um efeito a mais, não é pra sugar CPU. Ela existe pra não
+ficar tudo limpinho parecido."* What the code does now:
+- **One state:** `Room._soot_map`, `level -> {base_cell: tone}`, one tone 0..3 per cell (0 darkest),
+  the SAME tone on every visible face. The six-direction store format, the per-face scorch
+  (FACE-SOOT-01), the self-soot table (D33-SOOT-01), S-DEEP's `also_visible` and the incremental
+  index (§13.2) are gone.
+- **Writers:** a shot stamps an L1 ball (radius 3) around the voxels it touched; a blast stamps
+  every surviving voxel its flood reaches by 3D distance to the epicentre (bands from the crater
+  edge to the flood edge — per VOXEL, never per GU, so the rejected "quadradinhos por GU" look
+  cannot come back); a fire stamps the burnt cells' six neighbours. A hash-seeded roll lightens a
+  cell by one tone (`BlastCalculator.SOOT_LIGHTEN_CHANCE`) — the "sorteio" that dithers the edge.
+  Tones only darken (min-wins).
+- **No light apply writes the soot plane.** The map-wide repaint resets the planes and re-projects
+  the soot map; `SaveState` v2 saves it.
+- Measured (desktop, `PLAYGROUND_2`): a shotgun blast's soot 422–887 ms -> 3.6–4.3 ms; the blast
+  cook's SOOT phase 45 -> 206 ms over five grenades -> 15–19 ms each. Full record:
+  `PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`.
+
+For this plan: the store stayed (it IS `_soot_map`) and its format became one tone; **SS-4
+(persistence) and SS-5 (subtraction) are DONE** by that change; **SS-6** shrinks to "the
+base-keyed map re-projects after a rotation" (an isotropic tone has no direction to map, so
+§2.1b's problem is gone); **§5.3** is answered by construction — a stamp never writes a
+destroyed voxel, and a tone stored before a cell burns stays stored and undrawn.
+
 ⏭️ **2026-09-15:** the 3D render decision ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md))
 keeps this plan's store.
 - The 3D board already reads the cell planes (`DEVICE_DIAGNOSTICS` §15.11).

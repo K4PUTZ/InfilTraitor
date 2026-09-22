@@ -45,7 +45,6 @@ func _init() -> void:
 		test_unplaceable_writes_counted(store)
 	VoxelStore.active = null
 	_cleanup()
-	Voxel.reset_soot_dirty()
 	print("\nVoxelStore SELFTEST: %s (%d passed, %d failed)\n"
 		% ["PASS" if failed == 0 else "FAIL", passed, failed])
 	quit(1 if failed > 0 else 0)

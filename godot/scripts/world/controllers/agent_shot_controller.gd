@@ -267,14 +267,14 @@ func _begin_precook(guard) -> void:
 	var plan := _build_shot_plan(agent.cell, guard.cell, weapon_def)
 	if plan.is_empty():
 		return
-	room.begin_shot_precook(plan["destroyed"], plan["damaged"],
+	room.begin_shot_precook(plan["destroyed"],
 		room.shot_repaint_scope(plan["impact_gus"]), plan["variant_cells"])
 
 
 ## PURE. The shot that WOULD be fired, as data, writing nothing:
 ##   "destroyed"     Dictionary[Vector3i] — every voxel the ladder would remove
 ##   "damaged"       Array of plan_point_impact() entries — the DENTED/CRACKED
-##                   ones, tuple included, for the predicted self-soot
+##                   ones, tuple included
 ##   "variant_cells" Array of {"level","cell","source_id","atlas_coords"} — the
 ##                   atoms those damaged voxels will MOVE to
 ##   "impact_gus"    Array[Vector2i]
@@ -727,12 +727,11 @@ func fire_at_active() -> void:
 	## is ~400 ms of the shot's ~581, for 23 voxels of actual damage.
 	var repaint_scope: Array = room.shot_repaint_scope(impact_gus.keys())
 	if room.has_method("_repaint_voxel_light_buckets_scoped"):
-		## ⚠️ NO SOOT HERE, EVER. Director, 2026-08-19: *"A fuligem vamos tirar da
-		## conta totalmente. Só vamos começar a calcular a fuligem depois que o
-		## impacto já foi, os tiles trocaram, e a fumacinha está saindo da
-		## parede."* The map-wide snapshot is ~140 ms and this frame already
-		## carries the tile swap and the smoke; soot has no business in it.
-		room._repaint_voxel_light_buckets_scoped(repaint_scope, false)
+		## Light only: a light repaint never touches soot (SOOT-STAMP). The soot is
+		## `apply_shot_soot()` below — Director, 2026-08-19: *"Só vamos começar a
+		## calcular a fuligem depois que o impacto já foi, os tiles trocaram, e a
+		## fumacinha está saindo da parede."*
+		room._repaint_voxel_light_buckets_scoped(repaint_scope)
 	elif room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
 	var prof_repaint_ms: float = float(Time.get_ticks_usec() - prof_repaint0) / 1000.0
@@ -758,21 +757,9 @@ func fire_at_active() -> void:
 		cell_to_voxel.size()])
 
 	## NOT awaited, and deliberately LAST. The tiles have swapped and the smoke is
-	## out; the soot is the only thing left, and the Director has ruled that a lag
-	## here is acceptable — *"Se der lag nesse momento, OK."* It is a SINGLE pass,
-	## not a fade: each fade rung writes a different soot code, so each rung mints
-	## a fresh set of alternatives, and the TileSet rebuild is charged per FRAME
-	## THAT MINTS. A four-step fade therefore costs four rebuilds — measured at
-	## 240-420 ms each, which is how the fade turned one stall into five.
-	## The A/B the last session left behind, ACTUALLY WIRED. `shot_soot_deferred`
-	## was declared, documented as *"INFILTRAITOR_SHOT_SOOT_DEFER=1 turns it back
-	## on"*, and read by nobody — so the switch did nothing and the fade it names
-	## was unreachable code. A lever that silently does nothing is worse than no
-	## lever: the next person to try it concludes the fade is harmless.
-	if room.shot_soot_deferred:
-		room.fade_in_scoped_soot(repaint_scope)
-	else:
-		room.apply_scoped_soot(repaint_scope)
+	## out; the soot is the only thing left. SOOT-STAMP: a stamp around the voxels
+	## this shot touched (~1 ms), two frames later, into the soot map and the plane.
+	room.apply_shot_soot(cell_to_voxel.values())
 
 
 ## The grid-axis step whose direction best matches `aim`. Four candidates and a

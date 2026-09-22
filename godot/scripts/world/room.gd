@@ -188,39 +188,11 @@ var _current_light_sources: Array = []  ## Active (rotated) map lights for Light
 ## member (not a local) because it is the query seam future vision modes
 ## (thermal / night / X-ray) consume — see VOXEL_LIGHT_MASTER_PLAN.
 var _voxel_light_field: VoxelLightField = null
-## VL-D2: soot on the revealed CRATER FLOOR (level → {cell: ring}). Separate from
-## the Voxel-borne soot because the revealed level has no Voxel objects
-## (render_fixed_earth_level places cells directly). Cleared on map load.
-var _crater_floor_soot: Dictionary = {}
-
-## SS-1 (`SOOT_STORAGE_REFORM`) — THE STORE, RUNNING IN SHADOW. Nothing reads it
-## for rendering; `_soot_store_gate_check()` is its only consumer today.
-##
-## `level -> { base_cell: packed five-direction code }`. **Sparse:** only scorched
-## cells appear, and absent means clean — which is also what the RG8 soot plane
-## fills with (`FACE_SOOT_CODE_CLEAN`), so the two agree by default rather than by
-## a conversion.
-##
-## ⚠️ **BASE coords and BASE directions, for the same reason `_base_damage` is**
-## (§3.4): rotation was disabled for PERFORMANCE and is meant to return, so a
-## store keyed to the current view would be scorch that a rotation silently loses.
-## The five components are `BlastCalculator.FULL_*` re-expressed against base
-## axes — see `_view_full_to_base()` for the one conversion, which reuses
-## `PerspectiveMapper` exactly the way `record_voxel_damage_to_base()` does.
+## SOOT-STAMP (Director, 2026-09-22) — THE SOOT MAP: `level -> {base_cell: tone}`,
+## tone 0..3 (0 darkest), sparse, absent = clean, min-wins. The only soot state; the
+## renderer's soot plane is its projection. BASE coords for the reason `_base_damage`
+## is (rotation is coming back). Written by `stamp_soot()`; see the SOOT-STAMP section.
 var _soot_map: Dictionary = {}
-## The view→base direction map for `_active_perspective`, built once per
-## perspective rather than per cell: the conversion is a difference of two
-## rotated points, so the affine offsets cancel and it does not depend on WHICH
-## cell (the same argument `_carved_side_to_base_dir()`'s note makes).
-var _soot_dir_map_perspective: String = ""
-var _soot_dir_map: Dictionary = {}
-## How many events the store has absorbed. The SS-1 gate needs it to tell the
-## FIRST population ("the store is empty because nothing has written it yet")
-## apart from a real loss ("the store was written and does not have this cell").
-## Measured on a real agent shot: without this the very first snapshot reports
-## every derived cell as missing, which is noise that would train the reader to
-## ignore the one line that matters.
-var _soot_store_absorbs: int = 0
 
 ## VL-PERSIST: authoritative destruction state in BASE (N-frame) voxel coords, so
 ## it survives a perspective rotation (which rebuilds every Voxel from the
@@ -229,10 +201,7 @@ var _soot_store_absorbs: int = 0
 ## rebuild (base→view). Cleared on map load. See VOXEL_LIGHT_MASTER_PLAN
 ## VL-PERSIST — this is also the shared prerequisite for the deferred 4-view
 ## prebuild (which would apply this same registry to all 4 copies).
-## D24 (2026-07-30): soot has no base-coord counterpart any more — it derives
-## fresh every repaint from whichever voxels damage_state already marks
-## destroyed, so persisting it separately would just be a second copy of the
-## same fact.
+## SOOT-STAMP (2026-09-22): soot keeps its own base-keyed store, `_soot_map`.
 ## D23/D25 (2026-07-31): the value is no longer a bare damage_state. A blast
 ## mark also has to remember that it CAME from a blast, and which side of the
 ## voxel the blast ate — neither of which survived a rotation before, because
@@ -408,9 +377,8 @@ func _base_voxel_size() -> Vector2i:
 
 ## VL-PERSIST — record one voxel's destruction state in base coords. grid_pos is
 ## in the CURRENT view; convert to base so it re-applies correctly under any
-## later rotation. damage_state 0 means "nothing to persist". D24: no soot
-## parameter any more — soot derives fresh from damage_state at repaint time,
-## see BlastCalculator.derive_soot_rings().
+## later rotation. damage_state 0 means "nothing to persist". Soot has its own
+## base-keyed store (`_soot_map`, SOOT-STAMP).
 ## D23/D25: is_blast and carved_side ride along now — see _base_damage's doc for
 ## why storing damage_state alone silently downgraded every blast mark to a
 ## bullet mark on the first rotation. carved_side is VIEW-space
@@ -1278,8 +1246,7 @@ func _carved_side_from_base(base_xy: Vector2i, dir: Vector3i) -> int:
 ## rebuilt geometry after a perspective rotation. build_from_layout() rebuilt
 ## every Voxel intact from the MapSpec; this stamps the recorded damage back
 ## on, converting each base key to the current view. Must run after the build
-## (registries fresh) and before the light-field repaint (so it sees the holes
-## that _build_soot_snapshot() needs to derive soot from).
+## (registries fresh) and before the light-field repaint (so it sees the holes).
 func _reapply_base_damage() -> void:
 	if _base_damage.is_empty():
 		return
@@ -1297,7 +1264,6 @@ func _reapply_base_damage() -> void:
 		for v in slab.voxels:
 			index[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = v
 
-	_crater_floor_soot.clear()   ## rebuilt below for this view's coords
 	## FLOOR-DEPTH-01: two reveal buckets, because the level under a holed floor
 	## plane is now sometimes a real Slab (FLOOR_DEEP_LEVEL, generated by this very
 	## rebuild but not rendered) and sometimes D13's fixed direct-cell ground. One
@@ -1344,19 +1310,11 @@ func _reapply_base_damage() -> void:
 			var gu := Vector2i(v.grid_pos.x >> 3, v.grid_pos.y >> 3)
 			var below_level: int = v.level - 1
 			if below_level >= GeometryCoords.FLOOR_DEEP_LEVEL:
-				## The deep Slab draws itself; its exposed surface's soot is
-				## derived the ordinary way at the next repaint (D24), on its
-				## own now-restored Voxels — nothing to replay here for it.
 				reveal_slab_gus[gu] = true
 			else:
 				reveal_fixed[gu] = below_level
-				## FLOOR-DEPTH-02: the SAME cap the detonation wrote — a rotation
-				## re-derives this side map from scratch, so a different ring here
-				## would repaint the crater floor a different shade every time the
-				## map turned. (The deep plane needs no equivalent: D24 re-derives
-				## its soot from its own restored Voxels at the next repaint.)
-				add_crater_floor_soot(below_level, v.grid_pos,
-						BlastCalculator.EXPOSED_FLOOR_SOOT_RING)
+				## SOOT-STAMP: its scorch is in `_soot_map` (base-keyed) and is
+				## re-projected by the repaint that follows the rotation.
 
 	## Reveal AFTER the damage loop, never during it: reveal_floor_slab() skips
 	## destroyed voxels, so the deep plane must already know which of its own
@@ -1536,8 +1494,9 @@ var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 ##
 ## — metal and stone under a shotgun structurally never reach DESTROYED, so they
 ## produced NO vfx at all while wood got the full dispatch. Exactly inverted.
-## Same structural gap D33-SOOT-01 found for soot on 2026-08-03 and closed with
-## `apply_self_soot()`; this is the VFX half of that finding.
+## Same structural gap D33-SOOT-01 found for soot on 2026-08-03 (a dent scorches
+## too; the SOOT-STAMP keeps that, a surviving seed takes tone 0); this is the VFX
+## half of that finding.
 ##
 ## A round that DENTS steel and bounces off should throw more sparks than one
 ## that punches through, not fewer — so the impact profile is deliberately not a
@@ -1777,7 +1736,6 @@ const WHISTLE_RADIUS := 3
 func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## §13.2 — a new board means new Voxel objects; every key the index holds
 	## points at the old ones. FIRST, before anything can consult it.
-	invalidate_soot_index("map load: %s" % new_map_id)
 	map_id = new_map_id
 	if new_map_id == "PROCEDURAL":
 		level_seed = new_seed
@@ -1845,8 +1803,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_prop_heights = _room_builder.get_prop_heights()
 	_exit_cells = _room_builder.get_exit_cells()
 	_current_light_sources = _room_builder.get_light_sources()
-	_crater_floor_soot.clear()  ## VL-D2: fresh map, no crater floor scorch yet
-	_soot_map.clear()           ## SS-1: the scorch store dies with the board too
+	_soot_map.clear()           ## SOOT-STAMP: the soot map dies with the board
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
 	_base_cracks.clear()        ## CRACK-02 S-3: and no glass has been crazed on it
 	_base_openings.clear()      ## CRACK-04: nor any hole opened in it
@@ -2635,7 +2592,6 @@ func _set_perspective(direction: String) -> void:
 
 	## §13.2 — a rotation re-projects every cell, so both the keys AND the Voxel
 	## objects behind them change. The index cannot survive it.
-	invalidate_soot_index("perspective -> %s" % direction)
 	_active_perspective = direction
 	## §2.4 lists the active perspective as a real input: carved sides and every
 	## other screen-space read resolve differently after a rotation, and the
@@ -3294,8 +3250,8 @@ func scenario_occupancy_compare(label: String) -> int:
 	return total
 
 
-## What the occupancy difference does to the LIGHT: one field per occupancy, same lights,
-## shadows and soot, and every placed opaque cell's bucket compared. This is the number
+## What the occupancy difference does to the LIGHT: one field per occupancy, same lights
+## and shadows, and every placed opaque cell's bucket compared. This is the number
 ## the R3D-1c flip is judged on — occupancy only matters where a bucket reads it.
 func _compare_light_buckets(label: String, tiles: Dictionary, claims: Dictionary) -> void:
 	if _lighting_controller == null or _lighting_controller.get_light_registry() == null:
@@ -3305,12 +3261,10 @@ func _compare_light_buckets(label: String, tiles: Dictionary, claims: Dictionary
 	var lights: Array = registry.get_active_lights()
 	var shadows = _lighting_controller.get_shadow_results()
 	var top: int = _voxel_renderer.top_wall_level()
-	var faces_a: Dictionary = {}
-	var soot_a: Dictionary = _build_soot_snapshot(faces_a)
 	var field_tiles := VoxelLightField.new()
-	field_tiles.build(lights, shadows, top, tiles, soot_a, _under_structure, faces_a)
+	field_tiles.build(lights, shadows, top, tiles, _under_structure)
 	var field_claims := VoxelLightField.new()
-	field_claims.build(lights, shadows, top, claims, soot_a, _under_structure, faces_a)
+	field_claims.build(lights, shadows, top, claims, _under_structure)
 	var compared: int = 0
 	var differ: int = 0
 	var by_level: Dictionary = {}
@@ -4004,9 +3958,7 @@ func _reset_room_state() -> void:
 	## etc"*). A reset restores voxels to intact, and every seed the index holds
 	## describes damage that no longer exists. The crater-floor soot goes with it
 	## for the same reason.
-	invalidate_soot_index("room reset")
-	_crater_floor_soot.clear()
-	_soot_map.clear()   ## SS-1 — same reason: the scorch describes damage a reset undid
+	_soot_map.clear()   ## the scorch describes damage a reset undid
 	## Zero the global alert
 	_alert_meter = 0
 
@@ -4630,7 +4582,7 @@ func blast_smoke_tints() -> Dictionary:
 ## E-DEBRIS-01 — which materials throw what, and how often, as plain DATA for
 ## `DetonationPlanBuilder` to gate on. The material→effect mapping is room
 ## policy, not builder knowledge, so it travels in `ctx` exactly the way
-## `blast_soot_rings` does; the builder stays generic and testable.
+## the lights and the shadow results do; the builder stays generic and testable.
 ##
 ## Rates are the firearm ones scaled — see `blast_debris_rate_scale` for why
 ## that unit conversion is the whole point rather than a tidy-up.
@@ -4736,14 +4688,9 @@ func _vfx_smoke_color_for_material(material_id: String) -> Color:
 ## This does. `_placed_by_gu` is built by the last full pass, which the boot
 ## always runs, and a GU it does not know about is a silent no-op there by
 ## design — so the scope must be generous, and the soot reach is why it is.
-## `include_soot=false` skips `_build_soot_snapshot()` entirely — the map-wide
-## walk that measured 141 ms of the shot's remaining ~210. It is skippable at all
-## only because of the Director's 2026-08-19 ruling: *"a fuligem pode ser
-## processada depois do fato, desde que apareça com fade in, e não de repente."*
-## Geometry and lighting are still exact; only the soot is missing, and
-## `fade_in_scoped_soot()` below brings it in afterwards.
-func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
-		soot_lighten: int = 0) -> void:
+## SOOT-STAMP (2026-09-22): a pure LIGHT repaint. The field does not take soot and
+## no apply writes the soot plane any more; a shot's soot is `apply_shot_soot()`.
+func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 	## ABLATION — see VoxelRenderer.LIGHT_DISABLED. Gated HERE, above the
 	## delegation to the map-wide sibling, so the scoped path cannot reach it and
 	## pay a full repaint on an ablation run.
@@ -4759,95 +4706,42 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 		return
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
-	var top_wall_level: int = _voxel_renderer.top_wall_level()
-	var soot_faces: Dictionary = {}
-	## The FIELD is still built map-wide, and that is not laziness: D24 derives
-	## soot from which voxels are absent ANYWHERE, so a scoped snapshot would be
-	## a second soot producer — the exact drift SOOT_MASTER_PLAN §1.2 found
-	## between two of them. Only the APPLY is scoped, which is where the time is.
-	## The FIELD is still built map-wide when soot is included, and that is not
-	## laziness: D24 derives soot from which voxels are absent ANYWHERE, so a
-	## scoped snapshot would be a second soot producer — the exact drift
-	## SOOT_MASTER_PLAN §1.2 found between two of them. Only the APPLY is scoped.
 	var _sp: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
-	var _s0: int = Time.get_ticks_usec()
-	var soot: Dictionary = _build_soot_snapshot(soot_faces) if include_soot else {}
 	var _s1: int = Time.get_ticks_usec()
 	var occ: Dictionary = _voxel_renderer.build_occupancy()
 	var _s2: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
 			registry.get_active_lights(),
 			_lighting_controller.get_shadow_results(),
-			top_wall_level,
+			_voxel_renderer.top_wall_level(),
 			occ,
-			soot,
 			_under_structure,
-			soot_faces,
 			true)
 	var _s3: int = Time.get_ticks_usec()
-	## W-TUNE-01: the same readout the map-wide repaint has always had, on the
-	## path a SHOT actually takes. Without it the diagnostic answered a question
-	## nobody was asking — it ran at boot, where there is no damage, and reported
-	## "sooted voxels=0" for every shot ever fired through here.
-	if include_soot and OS.get_environment("INFILTRAITOR_FACE_SOOT_DIAG") == "1":
-		_print_face_soot_diagnostics(soot_faces)
-	## PERF-10 §10.5 — the SHOT takes the fire's route too, and for correctness
-	## before speed. `INFILTRAITOR_SHOT_SCOPE_PROBE=1` measured this path leaving
-	## **3 144 cells** disagreeing with a full apply: a GU scope answers "repaint
-	## where I hit", and the board's staleness is not confined to where anything
-	## was hit — §9.11c watched a blast move a crater's light eight GUs away.
-	##
-	## The stale set answers the right question instead, and `soot_lighten` is the
-	## one case it cannot serve: a fade rung re-applies the SAME field at a
-	## different tone over the shot's own GUs, which is a look mechanic rather than
-	## a correction, and the set does not describe it. That path keeps the GU walk.
-	##
-	## ⚠️ AND `include_soot` IS A PRECONDITION, NOT A DETAIL. A soot-free field
-	## answers "clean" for every cell, which is right for the caller's OWN GUs (it
-	## deliberately defers their scorch) and catastrophic anywhere else: driven by
-	## the stale set it would assert clean across every sooted cell on the board
-	## and wipe the map's scorch until the next sooty repaint — the Director's
-	## §9.11a symptom exactly, rebuilt from the other end.
-	##
-	## No caller does that TODAY: the fire is folded into the commit frame (D-2)
-	## and no longer runs a per-frame soot-free scoped repaint at all. That is a
-	## reason to write the guard, not a reason to skip it.
-	## SHOT_SOOT_PERF probe (temporary): how many sooted plane cells in the scope
-	## does THIS apply turn clean? `INFILTRAITOR_SOOT_FLICKER_PROBE=1`.
-	var _fp: bool = OS.get_environment("INFILTRAITOR_SOOT_FLICKER_PROBE") == "1"
-	var _fp_before: Dictionary = {}
-	if _fp:
-		for gu in gus:
-			for entry in _voxel_renderer._placed_by_gu.get(gu, []):
-				var code: int = _voxel_renderer.cell_soot_at(int(entry["level"]), entry["cell"])
-				if code != VoxelRenderer.FACE_SOOT_CODE_CLEAN:
-					_fp_before[Vector3i(entry["cell"].x, entry["cell"].y, int(entry["level"]))] = code
-	if include_soot and soot_lighten == 0 and _voxel_light_field.has_stale_subset():
+	## PERF-10 §10.5 — the STALE SET answers the right question ("which cells did
+	## this geometry change move"), where a GU scope does not: it measured 3 144
+	## cells disagreeing with a full apply, and a blast has moved a crater's light
+	## eight GUs away. It is also far less work than walking every placement of
+	## every scoped GU. The GU walk used to be forced whenever the field was
+	## soot-free, because the stale path would then have written CLEAN over sooted
+	## cells anywhere on the board; no light apply writes soot now, so that
+	## precondition is gone.
+	var stale_path: bool = _voxel_light_field.has_stale_subset()
+	if stale_path:
 		_voxel_renderer.apply_light_field_cells(_voxel_light_field,
 			_voxel_light_field.stale_cells())
 	else:
-		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, soot_lighten)
-	if _fp:
-		var _cleaned: int = 0
-		for k in _fp_before:
-			if _voxel_renderer.cell_soot_at(k.z, Vector2i(k.x, k.y)) == VoxelRenderer.FACE_SOOT_CODE_CLEAN:
-				_cleaned += 1
-		print("[SOOT-FLICKER] soot=%s: %d sooted plane cell(s) in scope before, %d turned CLEAN by this apply"
-			% [include_soot, _fp_before.size(), _cleaned])
+		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus)
 	if _sp:
-		print("[SCOPED-PROF] soot %.1f · occupancy %.1f · field.build %.1f · apply %.1f ms (%d GUs, soot=%s)"
-			% [float(_s1 - _s0) / 1000.0, float(_s2 - _s1) / 1000.0,
-			float(_s3 - _s2) / 1000.0,
-			float(Time.get_ticks_usec() - _s3) / 1000.0, gus.size(), include_soot])
+		print("[SCOPED-PROF] occupancy %.1f · field.build %.1f · apply %.1f ms (%s, %d GUs)"
+			% [float(_s2 - _s1) / 1000.0, float(_s3 - _s2) / 1000.0,
+			float(Time.get_ticks_usec() - _s3) / 1000.0,
+			"stale set" if stale_path else "GU walk", gus.size()])
 		print("[SCOPED-PROF]   cells written: %d · TileSet alternatives minted: %d"
 			% [_voxel_renderer._scoped_writes, _voxel_renderer._alts_minted])
 	## THE SCOPE GATE. A scoped repaint is only correct if it leaves the board in
-	## the state a full one would have — the same class of claim PERF-03's
-	## equivalence probe guards for incremental invalidation, and the same class
-	## of drift SOOT_MASTER_PLAN §1.2 caught between two soot producers. This is
-	## how the 581 -> 210 ms win is EARNED rather than asserted: snapshot every
-	## cell's alternative, force the full apply, snapshot again, count. Env-gated
-	## because it costs a full repaint on top of the scoped one.
+	## the state a full one would have. Env-gated because it costs a full repaint
+	## on top of the scoped one.
 	if OS.get_environment("INFILTRAITOR_SHOT_SCOPE_PROBE") == "1":
 		var before: Dictionary = _perf_snapshot_alts()
 		_voxel_renderer.apply_light_field(_voxel_light_field)
@@ -4860,119 +4754,10 @@ func _repaint_voxel_light_buckets_scoped(gus: Array, include_soot: bool = true,
 			% [after.size(), differ, gus.size()])
 
 
-## How far a shot's repaint has to reach past the GUs it actually hit. D24
-## derives soot up to 3 rings from an absent voxel, so a hole changes the look of
-## cells three GUs away and a scope tighter than this leaves a visible seam.
+## How far a shot's GU scope reaches past the GUs it actually hit: the pre-cook's
+## warm and the scoped repaint's fallback walk cover it. (Named for the soot reach it
+## used to follow; soot no longer depends on it.)
 const SHOT_REPAINT_SOOT_RINGS: int = 3
-
-
-## How many rungs the deferred soot fades in over, and how many frames each rung
-## holds. Mirrors DetonationChoreographer's `soot_fade_steps` /
-## `soot_fade_frames_per_step` so a bullet's soot and a blast's arrive at the
-## same rate — two fades at different speeds read as two different materials.
-## A/B SWITCH, and it exists because the first answer was wrong. Deferring the
-## soot cut the trigger frame's CPU but ADDED five stalls of 240-420 ms behind
-## it — measured by frame, not by function, which is the measurement that should
-## have been taken first. `INFILTRAITOR_SHOT_SOOT_DEFER=1` turns it back on.
-var shot_soot_deferred: bool = OS.get_environment("INFILTRAITOR_SHOT_SOOT_DEFER") == "1"
-var shot_soot_fade_steps: int = 4
-## R3D-6 item 8 — SECONDS, not frames, same reason `DetonationPresenter.soot_step_s`
-## moved off `soot_fade_frames_per_step` (frames run 4x slower on the Moto than on
-## desktop; a frame count times out at a different real speed on every device).
-## `shot_soot_fade_frames_per_step` (2) is kept only as the fallback below.
-var shot_soot_fade_frames_per_step: int = 2
-var shot_soot_step_s: float = 0.075
-
-
-## Bring the deferred soot in, across frames, WITHOUT blocking the shot.
-##
-## The field is built ONCE here (the expensive map-wide snapshot) and then
-## applied `steps` times at descending `soot_lighten`. Rebuilding per step would
-## cost more than never deferring, which is the trap this shape avoids.
-##
-## The first build is awaited on its own frame so the shot's own repaint has
-## already been presented — deferring the work and then doing it in the same
-## frame would move the stall, not remove it.
-## The soot, once, after everything else. See the caller's note for why this is
-## a single pass rather than a fade.
-##
-## The first frame is yielded first so the impact — tile swap, smoke — has been
-## PRESENTED before this runs. Deferring the work and then doing it in the same
-## frame would move the stall, not remove it; that mistake was made once already
-## in this file's history.
-## RENDER3D: the shot's scorch was written into the cell planes; the 3D board reads them
-## from its own uploaded copy, so they have to be re-sent (R3D-7, `Board3DLive.on_shot_commit`).
-func _sync_3d_shot_soot() -> void:
-	var board: Node = board3d()
-	if board != null:
-		board.on_shot_soot()
-
-
-func apply_scoped_soot(gus: Array) -> void:
-	if gus.is_empty() or _voxel_renderer == null:
-		return
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if not is_instance_valid(_voxel_renderer):
-		return
-	var t0: int = Time.get_ticks_usec()
-	_repaint_voxel_light_buckets_scoped(gus, true, 0)
-	_sync_3d_shot_soot()
-	print_debug("[SHOT-SOOT] single-pass repaint %.2f ms · %d GUs"
-		% [float(Time.get_ticks_usec() - t0) / 1000.0, gus.size()])
-
-
-func fade_in_scoped_soot(gus: Array) -> void:
-	if gus.is_empty() or _voxel_renderer == null:
-		return
-	await get_tree().process_frame
-	if not is_instance_valid(_voxel_renderer):
-		return
-	var steps: int = maxi(shot_soot_fade_steps, 1)
-	## Build once, at the FAINTEST rung, then walk down to full strength.
-	_repaint_voxel_light_buckets_scoped(gus, true, steps - 1)
-	print_debug("[SHOT-SOOT] fade starts — %d step(s) over %d GUs"
-		% [steps, gus.size()])
-	## R3D-6 item 8 — elapsed SECONDS since this fade started, at most one rung per
-	## frame (a slow frame delays the ladder instead of collapsing it), the same
-	## `soot_step_s` shape the blast's own soot fade uses. `board3d_node` is null
-	## when there is no 3D board, so the extra upload below costs nothing under 2D.
-	var elapsed: float = 0.0
-	var next_t: float = shot_soot_step_s
-	var board3d_node: Node = board3d()
-	var ramp: Array = range(steps - 2, -1, -1)
-	if ramp.is_empty() and board3d_node != null and is_instance_valid(board3d_node):
-		_sync_3d_shot_soot()  ## steps <= 1 — the faintest rung above IS the only rung
-	for step in ramp:
-		while elapsed < next_t:
-			await get_tree().process_frame
-			if not is_instance_valid(_voxel_renderer):
-				return
-			elapsed += get_process_delta_time()
-		next_t += shot_soot_step_s
-		## Re-APPLY only. `_voxel_light_field` still holds the sooty field the
-		## line above built, so each rung is a scoped set_cell pass and not a
-		## second map-wide snapshot.
-		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus, step)
-		## R3D-6 item 8 — the 3D board used to take the settled scorch only (one
-		## upload after this whole loop, the same "jump" the end-of-blast light had
-		## before it was fixed); it now sees each rung, same as the blast's soot.
-		if board3d_node != null and is_instance_valid(board3d_node):
-			_sync_3d_shot_soot()
-	## THE END-STATE GATE. Deferring soot is only legitimate if the board ENDS
-	## where a full, immediate repaint would have put it — a fade that settles on
-	## the wrong picture is worse than a stall. Same probe as the scoped apply's,
-	## run at the bottom of the ladder where `soot_lighten` is 0.
-	if OS.get_environment("INFILTRAITOR_SHOT_SCOPE_PROBE") == "1":
-		var before: Dictionary = _perf_snapshot_alts()
-		_voxel_renderer.apply_light_field(_voxel_light_field)
-		var after: Dictionary = _perf_snapshot_alts()
-		var differ: int = 0
-		for k in after:
-			if before.get(k, PERF_SNAPSHOT_MISSING) != after[k]:
-				differ += 1
-		print("[SHOT-SOOT] settled: %d cells checked, %d differ from a full apply"
-			% [after.size(), differ])
 
 
 ## --- W-PRECOOK: the shot's pre-production --------------------------------
@@ -5000,11 +4785,11 @@ var _shot_precook_minted: int = 0
 
 
 ## Begin warming. Returns immediately; `await shot_precook_ready()` to join.
-func begin_shot_precook(predict_destroyed: Dictionary, predict_damaged: Array,
+func begin_shot_precook(predict_destroyed: Dictionary,
 		scope_gus: Array, variant_cells: Array = []) -> void:
 	_shot_precook_token += 1
 	_shot_precook_done = false
-	_run_shot_precook(_shot_precook_token, predict_destroyed, predict_damaged,
+	_run_shot_precook(_shot_precook_token, predict_destroyed,
 		scope_gus, variant_cells)
 
 
@@ -5023,7 +4808,7 @@ func shot_precook_ready() -> void:
 
 
 func _run_shot_precook(token: int, predict_destroyed: Dictionary,
-		predict_damaged: Array, scope_gus: Array, variant_cells: Array = []) -> void:
+		scope_gus: Array, variant_cells: Array = []) -> void:
 	if _voxel_renderer == null or _lighting_controller == null or scope_gus.is_empty():
 		_shot_precook_done = true
 		return
@@ -5050,37 +4835,23 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
 	var field = _voxel_light_field
-	var soot_faces: Dictionary = {}
 	var top_wall_level: int = _voxel_renderer.top_wall_level()
 	var occupancy: Dictionary = _voxel_renderer.build_occupancy(predict_destroyed)
 	var lights: Array = registry.get_active_lights()
 	var shadows = _lighting_controller.get_shadow_results()
 
-	## ⚠️ TWO WORLDS ARE WARMED, NOT ONE, AND BOTH IN THIS SAME FRAME.
-	##
-	## The shot now paints in two stages — the impact repaint runs WITHOUT soot
-	## (the Director took it out of that frame entirely) and a later pass adds it.
-	## Those two stages need DIFFERENT alternatives, because soot is part of the
-	## alternative id. Warming only the sooty world left the impact minting 40 of
-	## its own: a warm that predicts the wrong world is no warm at all.
-	##
-	## Both are minted here because the TileSet rebuild is charged once per FRAME
-	## THAT MINTS — so two worlds in one frame cost one rebuild, and splitting
-	## them across two frames would cost two.
-	_shot_precook_minted = 0
-	for with_soot in [false, true]:
-		field.build(lights, shadows, top_wall_level, occupancy,
-				_build_soot_snapshot(soot_faces, predict_destroyed.keys(),
-					predict_damaged) if with_soot else {},
-				_under_structure, soot_faces, true)
-		if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
-			return
-		_shot_precook_minted += _voxel_renderer.warm_light_alts_for_gus(
-			field, scope_gus, variant_cells)
+	## SOOT-STAMP (2026-09-22): ONE world. Soot left the alternative id with PERF-P2
+	## and left the light field altogether with SOOT-STAMP, so the soot-free world
+	## this used to warm next to a sooty one is the only world there is.
+	field.build(lights, shadows, top_wall_level, occupancy, _under_structure, true)
+	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
+		return
+	_shot_precook_minted = _voxel_renderer.warm_light_alts_for_gus(
+		field, scope_gus, variant_cells)
 	if token != _shot_precook_token:
 		return
 	_shot_precook_done = true
-	print_debug("[W-PRECOOK] warm complete — %d TileSet alternative(s) minted ahead of the shot (soot-free + sooty)"
+	print_debug("[W-PRECOOK] warm complete — %d TileSet alternative(s) minted ahead of the shot"
 		% _shot_precook_minted)
 
 
@@ -5097,9 +4868,9 @@ func shot_repaint_scope(impact_gus: Array) -> Array:
 func _repaint_voxel_light_buckets(geometry_only: bool = false,
 		stale_driven: bool = false) -> void:
 	## ABLATION — see VoxelRenderer.LIGHT_DISABLED. The apply entries return on
-	## their own, but the three map-wide DERIVATIONS below (build_occupancy,
-	## _build_soot_snapshot, VoxelLightField.build) are callers, not callees, and
-	## would still run. This is where they stop.
+	## their own, but the map-wide DERIVATIONS below (build_occupancy,
+	## VoxelLightField.build) are callers, not callees, and would still run. This
+	## is where they stop.
 	if VoxelRenderer.LIGHT_DISABLED:
 		return
 	if _voxel_renderer == null or _lighting_controller == null:
@@ -5112,10 +4883,6 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## OVERHEAD lamps anchor at the top of the ACTUAL built wall stack, not the
 	## 8-storey ceiling-fixture height — see VoxelLightField.build().
 	var top_wall_level: int = _voxel_renderer.top_wall_level()
-	## FACE-SOOT-01: one derivation feeds both — the isotropic ring map (probes,
-	## vision modes, selftests) and the per-face triples the renderer packs into
-	## each cell's modulate alpha.
-	var soot_faces: Dictionary = {}
 	## W-PRECOOK profiling seam, env-gated like every other standing dev probe in
 	## this function. §0's routes are chosen from WHERE the repaint's time goes,
 	## and the only figures on record are from the retired bench in August.
@@ -5123,16 +4890,12 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	var _t0: int = Time.get_ticks_usec()
 	var occupancy: Dictionary = _voxel_renderer.build_occupancy()
 	var _t1: int = Time.get_ticks_usec()
-	var soot: Dictionary = _build_soot_snapshot(soot_faces)
-	var _t2: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
 			registry.get_active_lights(),
 			_lighting_controller.get_shadow_results(),
 			top_wall_level,
 			occupancy,
-			soot,
 			_under_structure,
-			soot_faces,
 			geometry_only)
 	var _t3: int = Time.get_ticks_usec()
 	## PERF-10 — WALK THE WORK, NOT THE BOARD.
@@ -5143,18 +4906,25 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## valid this walks it instead. `has_stale_subset()` false means a cache-clearing
 	## build just happened and no subset describes the work — the map-wide pass is
 	## then the correct answer, not a fallback.
+	## SOOT-STAMP — a map-wide repaint (map load, rotation, a real light change)
+	## resets the cell planes and re-projects the soot map after its apply: no light
+	## apply writes soot any more, so nothing else would clear a stale view's
+	## scorch. A geometry_only repaint touches neither.
+	if not geometry_only:
+		_voxel_renderer.reset_cell_planes()
 	if stale_driven and _voxel_light_field.has_stale_subset():
 		_voxel_renderer.apply_light_field_cells(_voxel_light_field,
 			_voxel_light_field.stale_cells())
 	else:
 		_voxel_renderer.apply_light_field(_voxel_light_field)
+	if not geometry_only:
+		project_soot_store()
 	if _prof:
-		print("[REPAINT-PROF] occupancy %.1f · soot %.1f · field.build %.1f · apply %.1f ms (geometry_only=%s)"
-			% [float(_t1 - _t0) / 1000.0, float(_t2 - _t1) / 1000.0,
-			float(_t3 - _t2) / 1000.0,
+		print("[REPAINT-PROF] occupancy %.1f · field.build %.1f · apply %.1f ms (geometry_only=%s)"
+			% [float(_t1 - _t0) / 1000.0, float(_t3 - _t1) / 1000.0,
 			float(Time.get_ticks_usec() - _t3) / 1000.0, geometry_only])
 	## PERF-03 equivalence probe — env-gated (INFILTRAITOR_LIGHT_EQUIV_PROBE=1),
-	## same standing-dev-tool precedent as INFILTRAITOR_FACE_SOOT_DIAG above.
+	## same standing-dev-tool precedent as the other env-gated probes here.
 	## Snapshots every cell's alternative, forces a full rebuild, and reports
 	## how many cells disagree; 0 means the incremental invalidation left
 	## nothing stale. Kept rather than deleted after it did its job once,
@@ -5173,8 +4943,6 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 			if _snap_a.get(k, PERF_SNAPSHOT_MISSING) != _snap_b[k]:
 				_diff += 1
 		print("[LIGHT-EQUIV] %d cells, %d differ" % [_snap_b.size(), _diff])
-	if OS.get_environment("INFILTRAITOR_FACE_SOOT_DIAG") == "1":
-		_print_face_soot_diagnostics(soot_faces)
 
 
 ## PERF-03 — every placed cell's current alternative id, for the equivalence
@@ -5364,812 +5132,124 @@ func cell_probe_report() -> void:
 		print("[CELL-PROBE] VERDICT: ⛔ %d restored + %d vanished-after-appearing" % [restored_cells, _cell_probe_vanished])
 
 
-## FACE-SOOT-01 diagnostics — env-gated (INFILTRAITOR_FACE_SOOT_DIAG=1). Reports
-## what the REAL map actually produced, because a selftest on a synthetic patch
-## cannot catch a feature made inert by real data (the floor-dent lesson,
-## 2026-08-01: 69 dents on a fixture, zero on PLAYGROUND).
-func _print_face_soot_diagnostics(soot_faces: Dictionary) -> void:
-	var total: int = 0
-	var directional: int = 0        ## faces genuinely differ from each other
-	## PERF-02 B3-2: one slot per real ring plus clean — sized off the constant
-	## so a further tone change cannot silently drop counts off the end.
-	var histogram_slots: int = BlastCalculator.FACE_SOOT_CLEAN + 1
-	var per_face_rings := {}
-	for face_idx in range(3):
-		var row: Array = []
-		for _slot in range(histogram_slots):
-			row.append(0)
-		per_face_rings[face_idx] = row
-	for level in soot_faces:
-		for cell in soot_faces[level]:
-			var f: Vector3i = soot_faces[level][cell]
-			total += 1
-			if f.x != f.y or f.y != f.z:
-				directional += 1
-			per_face_rings[0][clampi(f.x, 0, histogram_slots - 1)] += 1
-			per_face_rings[1][clampi(f.y, 0, histogram_slots - 1)] += 1
-			per_face_rings[2][clampi(f.z, 0, histogram_slots - 1)] += 1
-	print("[FACE-SOOT-DIAG] sooted voxels=%d directional=%d (%.1f%%)"
-			% [total, directional, 100.0 * float(directional) / maxf(float(total), 1.0)])
-	print("[FACE-SOOT-DIAG] ring histogram [r0..r%d,clean] top=%s se=%s sw=%s"
-			% [BlastCalculator.FACE_SOOT_CLEAN - 1,
-			per_face_rings[0], per_face_rings[1], per_face_rings[2]])
-	## Lazily minted (source, atlas_coords, alt) triples across the whole tileset —
-	## NOT comparable to the 1536-wide alternative-id space, which is per TILE.
-	## This is the number that costs memory on a phone.
-	print("[FACE-SOOT-DIAG] minted tile alternatives=%d" % _voxel_renderer.minted_alt_count())
-
-
-## VL-D1/D24 — level → {cell: soot_ring}, DERIVED fresh from which voxels are
-## currently absent (BlastCalculator.derive_soot_rings()) rather than read off
-## a stored field. *(Director, 2026-07-30: "queremos o sistema de derivar a
-## fuligem de acordo com os voxels faltantes, em vez de guardar a informação
-## de cada um.")* Rebuilt on every repaint from the two registries — same cost
-## baseline the old per-voxel read already paid (one pass over every voxel),
-## plus one bounded BFS from this map's current holes. A destroyed voxel's
-## absence already survives rotation via _base_damage, so nothing about soot
-## itself needs to persist separately any more. Empty when nothing is holed.
-## PERF-02 B3 (Director, 2026-08-04): "a fuligem não é mais forte, é mais
-## distante... só pra bombas." A bomb's scorch reaches further than a firearm's;
-## it is not darker. Two separate BFS passes (see _build_soot_snapshot()),
-## because BlastCalculator.derive_soot_rings()' internal min-ring merge does not
-## compose across two calls into the same snapshot — a second call cannot lower
-## an already-recorded ring — so they run into scratch dictionaries and merge
-## externally. `var`, not `const` (Rule 1): both are tuning numbers.
-## PERF-02 B3-2: 4, not 5 — one cell of reach per available tone, so the bomb's
-## extra distance reads as a real gradient step rather than a flat band of the
-## faintest tone. Four is the ceiling, not a preference: see
-## VoxelRenderer.FACE_SOOT_CODE_COUNT for the measured alternative-id limit.
-var weapon_soot_rings: int = 3
-var blast_soot_rings: int = 4
-
-## S-FEATHER (Director, 2026-08-12): *"poderia ter um pouco de fuligem bem
-## levinha expandindo pra fora, como um feather."*
+## --- SOOT-STAMP: the soot map (Director, 2026-09-22) ---------------------------
 ##
-## Extra BFS reach BEYOND the graded rings above, at no extra tone. Every
-## distance past `intensity_rings` is capped by `derive_soot_rings()` at the
-## faintest real tone, so these rings come out as one flat, faint tail — which is
-## precisely the feather, and precisely what `blast_soot_rings` was pinned at 4
-## to AVOID: *"one cell of reach per available tone, so the bomb's extra distance
-## reads as a real gradient step rather than a flat band of the faintest tone"*
-## (PERF-02 B3-2, the note directly above).
-##
-## That reasoning is not wrong, it was answering a different question. It was
-## about where the GRADIENT should end, and this is about what happens after it
-## ends. Kept as two numbers rather than one raised number so the two ideas stay
-## separately tunable, and so the older note keeps meaning what it said.
-##
-## Only the falloff face survives out here: `_face_rings_for()` sends every
-## non-facing face to CLEAN once `ring + falloff` reaches the intensity count, so
-## the tail is directional — the faces that saw the blast, and nothing else.
-var blast_soot_feather_rings: int = 2
+## *"Faz todas as correções, não importa o visual. Queremos máxima performance e
+## eficiência do código."* Soot is a stored tone per cell, written ONCE by the event
+## that makes it and never derived again (the tone rules are `BlastCalculator`'s
+## SOOT-STAMP block):
+##   - a shot: `apply_shot_soot()`, around the voxels it touched;
+##   - a blast: its plan stamps the ring every voxel already has, `commit()` stores it
+##     through `absorb_scorch()`, and the presenter's waves paint it with the fade.
+## `_soot_map` is the truth and the soot plane is its projection. No light apply
+## writes the plane; a map-wide repaint resets the planes and re-projects the map
+## (`project_soot_store()`). What this replaced and why (a map-wide re-derivation on
+## every event, growing with the level's history) is in
+## `PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`.
 
-## out_faces, when supplied, additionally receives the FACE-SOOT-01 per-face
-## triples for every voxel this pass scorches (see BlastCalculator).
-## `predict_weapon_cells` (W-PRECOOK, 2026-08-19): extra Vector3i seeds treated
-## as firearm-made holes that do not exist yet. Same purpose as
-## `build_occupancy(predict_destroyed)` — see its note — and the same safety: a
-## wrong guess only costs a cache miss.
-## `predict_damaged` are Voxels the shot will DENT or CRACK. They matter to the
-## warm even though they are not holes: D33-SOOT-01 feeds dented/cracked voxels
-## into the soot derivation, so leaving them out of the prediction changed 13
-## cells' soot codes — and 13 misses cost a whole TileSet rebuild, exactly as
-## much as 412 would.
-func _build_soot_snapshot(out_faces: Dictionary = {},
-		predict_weapon_cells: Array = [],
-		predict_damaged: Array = []) -> Dictionary:
-	## §13.1 — WHICH HALF OF THIS COSTS? `INFILTRAITOR_SOOT_SPLIT=1`.
-	##
-	## The final repaint's 283 ms is occupancy 39 · soot 154 · field.build 66 ·
-	## apply 24, and "soot 154" is this function. It does two very different
-	## things: an INDEX WALK over every voxel on the map, and a BFS ring
-	## propagation from the seeds that walk found. An incremental soot map is a
-	## different design depending on which one is the 154 — caching the index is
-	## small, replacing the propagation is not — so the split is measured before
-	## anything is rewritten.
-	var _ss: bool = OS.get_environment("INFILTRAITOR_SOOT_SPLIT") == "1"
-	var _ss0: int = Time.get_ticks_usec()
-	## §13.2 — THE INCREMENTAL INDEX.
-	##
-	## Measured: the walk below is **126 ms of the final repaint's 283**, and it
-	## visits 215 432 voxels to find ~2 000 seeds. Neither half of what it produces
-	## actually changes every frame:
-	##
-	##   · `cell_to_voxel` is the MAP. It changes when geometry is rebuilt — a map
-	##     load or a perspective rotation — and not when anything is damaged.
-	##   · the SEEDS change only when a voxel's damage state changes, which is
-	##     exactly what `Voxel.soot_dirty` now records (see its note).
-	##
-	## So the walk runs once per board, and after that only the dirty cells are
-	## re-classified. `INFILTRAITOR_SOOT_GATE=1` re-derives everything the slow way
-	## and compares — because a soot producer that drifts from the real one is the
-	## precise failure SOOT_MASTER_PLAN §1.2 documents, and it is invisible until
-	## someone looks at the right voxel.
-	_soot_walk_dupes = {}
-	## SHOT_SOOT_PERF experiment: a PREDICTION pass reads the committed index
-	## (read-only, predicted seeds appended to copies) instead of throwing it away.
-	## `INFILTRAITOR_SOOT_PREDICT_REUSE=1` turns it on; default is the old path.
-	var _predicting: bool = not (predict_weapon_cells.is_empty() and predict_damaged.is_empty())
-	var _reuse: bool = (_soot_index_cache_valid
-		and not _soot_index_cache.is_empty()
-		and (not _predicting
-			or OS.get_environment("INFILTRAITOR_SOOT_PREDICT_REUSE") == "1"))
-	## SHOT_SOOT_PERF audit step 1: which path ran, and why. The voxel count the
-	## split prints cannot tell a fresh walk from a served cache (it is the dict's
-	## size either way), so the path is named instead of inferred.
-	var _path: String = ("FAST%s (index reused, %d dirty)"
-			% [" prediction" if _predicting else "", Voxel.soot_dirty.size()]) if _reuse \
-		else ("SLOW (prediction pass)" if _predicting
-		else ("SLOW (index invalid)" if not _soot_index_cache_valid else "SLOW (index empty)"))
-	if _reuse:
-		_soot_fold_dirty()
-	else:
-		_soot_index_cache = {}
-		_soot_index_cache_valid = false
-	var cell_to_voxel: Dictionary = {}   ## Vector3i -> Voxel, every voxel (destroyed included)
-	## PERF-02 B3: seeds split by what made the hole. Voxel.damage_is_blast
-	## already carries that distinction — nothing new has to be recorded.
-	var blast_cells: Array = []          ## Vector3i seeds, bomb-made holes
-	var weapon_cells: Array = []         ## Vector3i seeds, firearm-made holes
-	var damaged_voxels: Array = []       ## D33-SOOT-01: DENTED/CRACKED, not destroyed
-	if _reuse:
-		cell_to_voxel = _soot_index_cache["cells"]
-		blast_cells = (_soot_index_cache["blast"] as Dictionary).keys()
-		weapon_cells = (_soot_index_cache["weapon"] as Dictionary).keys()
-		for k in (_soot_index_cache["damaged"] as Dictionary).keys():
-			var dv = cell_to_voxel.get(k)
-			if dv != null:
-				damaged_voxels.append(dv)
-	else:
-		if _edge_registry != null:
-			for slice in _edge_registry.all_slices():
-				for v in slice.voxels:
-					_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells,
-						damaged_voxels, v, _soot_walk_dupes)
-		if _slab_registry != null:
-			for slab in _slab_registry.all_slabs():
-				for v in slab.voxels:
-					_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells,
-						damaged_voxels, v, _soot_walk_dupes)
-	for predicted in predict_weapon_cells:
-		if not weapon_cells.has(predicted):
-			weapon_cells.append(predicted)
-	## W-PRECOOK-02: `predict_damaged` carries plan_point_impact() ENTRIES, not
-	## Voxels, and it has to. The voxel a shot is about to dent is still INTACT
-	## right now, and `apply_self_soot()` reads the tuple off the object — so the
-	## previous version of this loop, which appended live Voxels, contributed
-	## nothing at all and left the predicted world un-sooted exactly where the
-	## shot was going to scorch it. Any voxel the prediction covers is dropped
-	## from the live list, so a re-hit voxel scorches from its FUTURE face rather
-	## than merging its old one in.
-	var predicted_keys: Dictionary = {}
-	for entry in predict_damaged:
-		var pv: Voxel = entry["voxel"]
-		predicted_keys[Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)] = true
-	if not predicted_keys.is_empty():
-		damaged_voxels = damaged_voxels.filter(func(dv):
-			return not predicted_keys.has(Vector3i(dv.grid_pos.x, dv.grid_pos.y, dv.level)))
-	## E-JUNCTION-01 (2026-08-13): wall-junction corner columns. Explosions
-	## already dent/crack/destroy them (see DetonationPlanBuilder's own
-	## PHASE_JUNCTIONS); firearms deliberately still don't (a shot's aim
-	## resolves to a Slice face, never the diagonal notch a column owns — the
-	## Director's own call, since there is no way for a player to aim at a
-	## corner on purpose). But soot is a PROXIMITY read, not a hit test — a
-	## column standing right next to a hole either weapon opened should scorch
-	## like its neighbours, or it reads as an untouched island inside a
-	## blackened room. Indexing it here is what lets derive_soot_rings() see
-	## it at all, regardless of which weapon made the nearby hole.
-	if not _reuse:
-		for column in _junction_columns:
-			for v in column.voxels:
-				_index_soot_voxel(cell_to_voxel, blast_cells, weapon_cells,
-					damaged_voxels, v, _soot_walk_dupes)
-		## The walk just produced the authoritative answer — keep it, and from here
-		## on maintain it instead of recomputing it.
-		##
-		## ⚠️ NOT when a PREDICTION is folded in. `predict_weapon_cells` and
-		## `predict_damaged` describe holes and dents that DO NOT EXIST YET; the
-		## appends and the filter above have already mixed them into these lists,
-		## and storing that as the authoritative index would cache a guess about
-		## the future as if it were the board. `_reuse` is already false on those
-		## passes; this is the other half of the same rule.
-		if predict_weapon_cells.is_empty() and predict_damaged.is_empty():
-			_soot_store_index(cell_to_voxel, blast_cells, weapon_cells, damaged_voxels)
-
-	## S-DEDUP: the sequence lives in BlastCalculator.build_soot_field() now —
-	## the same call the detonation path makes, so a repaint and a detonation
-	## cannot disagree about what soot IS. `also_visible` is deliberately not
-	## passed: by repaint time the crater floor is genuinely visible, so there is
-	## nothing to promise about the future.
-	var _ss1: int = Time.get_ticks_usec()
-	var snapshot: Dictionary = {}
-	## SS-1 — `out_full` is the five-direction record, produced in parallel and
-	## consumed only by the store below. A caller that does not want it passes
-	## nothing and the default dict is discarded, the same idiom `out_faces`
-	## already uses.
-	var out_full: Dictionary = {}
-	BlastCalculator.build_soot_field(cell_to_voxel, blast_cells, weapon_cells,
-			damaged_voxels, blast_soot_rings + blast_soot_feather_rings,
-			weapon_soot_rings, snapshot, out_faces, {}, predict_damaged, out_full)
-
-	## VL-D2: the revealed crater-floor soot (non-Voxel cells), through the same
-	## helper the detonation path uses for the same kind of cell.
-	##
-	## S-DEDUP changed two things here, both strictly toward the detonation
-	## path's behaviour: this used to OVERWRITE the snapshot (so a cell already
-	## carrying darker soot could be LIGHTENED by the crater ring) and it never
-	## wrote `out_faces` at all, leaving those cells on
-	## `face_soot_code()`'s isotropic fallback. Min-wins can now only darken, and
-	## the faces are written top-only — which renders identically for a floor
-	## cell, since a floor cell has exactly one visible face.
-	##
-	## THE ONE PIECE OF THIS TASK WITH NO CAPTURE PATH: `_crater_floor_soot` is
-	## only populated by the rotation replay (see add_crater_floor_soot()'s
-	## caller), and no capture action rotates the view. The rest of this function
-	## is exercised by a real firearm shot and was pixel-diffed; this block was
-	## reasoned about, not measured, and is flagged as such rather than folded
-	## into the same claim.
-	var _ss2: int = Time.get_ticks_usec()
-	if _ss:
-		var _out_cells: int = 0
-		for _lv in snapshot:
-			_out_cells += (snapshot[_lv] as Dictionary).size()
-		print("[SOOT-SPLIT] %s · index walk %.1f ms (%d voxel(s) indexed · seeds: %d blast, %d weapon, %d damaged) · build_soot_field %.1f ms (%d cell(s) out)"
-			% [_path, float(_ss1 - _ss0) / 1000.0, cell_to_voxel.size(),
-			blast_cells.size(), weapon_cells.size(), damaged_voxels.size(),
-			float(_ss2 - _ss1) / 1000.0, _out_cells])
-	if OS.get_environment("INFILTRAITOR_SOOT_GATE") == "1":
-		_soot_gate_check()
-	for level in _crater_floor_soot.keys():
-		for cell in _crater_floor_soot[level].keys():
-			BlastCalculator.scorch_floor_cell(snapshot, out_faces, level, cell,
-					int(_crater_floor_soot[level][cell]), out_full)
-
-	## ⚠️ **A PREDICTION MUST NEITHER WRITE THE STORE NOR READ IT.** Found while
-	## building SS-2, and it was a real defect shipped by SS-1: `_shot_precook()`
-	## calls this with `predict_destroyed` / `predict_damaged` to mint the
-	## alternatives a shot WILL need, and that shot may miss, may be cancelled, and
-	## has certainly not been committed. SS-1 absorbed it anyway — harmless only
-	## because nothing read the store yet, and the exact class of bug SS-3's commit
-	## seam exists to make impossible.
-	##
-	## The READ half matters just as much and in the opposite direction: the warm
-	## has to see the world as it WILL be, so a prediction keeps deriving. Handing
-	## it the committed store would warm the wrong world, which the two-worlds note
-	## in `_shot_precook()` already explains at length.
-	##
-	## The test is the one this function's own cache-reuse guard already uses —
-	## non-empty predict arguments mean "speculative" — rather than a second notion
-	## of the same thing.
-	var is_prediction: bool = not (predict_weapon_cells.is_empty()
-		and predict_damaged.is_empty())
-	if is_prediction:
-		return snapshot
-
-	var _ss3: int = Time.get_ticks_usec()
-	absorb_scorch(out_full)
-	var _ss4: int = Time.get_ticks_usec()
-	## SS-1 — THE GATE RUNS AFTER THE ABSORB. See `_soot_store_gate_check()`; the
-	## first version of this ran BEFORE, on the reasoning that comparing the store
-	## against the dictionary that just filled it would be a tautology, and a real
-	## two-fire capture showed that ordering measures the wrong thing entirely.
-	if OS.get_environment("INFILTRAITOR_SOOT_STORE_GATE") == "1":
-		_soot_store_gate_check(out_faces)
-
-	## SS-2 — **THE FLIP. The store is the answer from here.**
-	##
-	## The derivation above still runs, and still feeds the store — removing it
-	## from the repaint path is SS-5's subtraction, deliberately a separate step so
-	## that this one changes exactly one thing: WHO ANSWERS. That is the whole
-	## ruling (*"o mapa de fuligem passa a ser a fonte da verdade"*); the cost
-	## follows later.
-	##
-	## `INFILTRAITOR_SOOT_STORE_READ=0` returns the derivation instead, so the
-	## before/after pixel diff runs off ONE binary rather than a stash — the same
-	## idiom `INFILTRAITOR_P3` uses, and a strictly better instrument than
-	## rebuilding to compare.
-	if OS.get_environment("INFILTRAITOR_SOOT_STORE_READ") == "0":
-		return snapshot
-	out_faces.clear()
-	var projected: Dictionary = soot_store_projection(out_faces)
-	if _ss:
-		var _t_proj: float = float(Time.get_ticks_usec() - _ss4) / 1000.0
-		## Order-independent digest of the store, so two runs can be compared for
-		## identity rather than only for size.
-		var _dig: int = 0
-		for _lv in _soot_map:
-			for _bc in _soot_map[_lv]:
-				_dig = (_dig + hash([int(_lv), _bc, int(_soot_map[_lv][_bc])])) & 0x7FFFFFFF
-		print("[SOOT-SPLIT]   crater replay %.1f · absorb %.1f ms · store projection %.1f ms (%d stored cell(s), digest %d)"
-			% [float(_ss3 - _ss2) / 1000.0, float(_ss4 - _ss3) / 1000.0,
-			_t_proj, _soot_store_cell_count(), _dig])
-	return projected
+## How far a firearm's scorch reaches from each voxel it touched, in voxel steps (L1).
+var weapon_soot_radius: int = 3
 
 
-## §13.2 — THE INCREMENTAL SOOT INDEX.
-##
-## `cells` is the board (Vector3i -> Voxel); `blast`, `weapon` and `damaged` are
-## SETS of Vector3i rather than the Arrays the walk produces, because membership
-## has to move both ways: a voxel that was DENTED and is now DESTROYED leaves one
-## set and joins another, and an Array cannot un-append.
-var _soot_index_cache: Dictionary = {}
-var _soot_index_cache_valid: bool = false
-## Collision keys found by the last full walk — see `_index_soot_voxel()`.
-var _soot_walk_dupes: Dictionary = {}
-
-
-## Anything that throws the board away invalidates this: a map load, a reset, a
-## death, a perspective rotation that rebuilds geometry. Called rather than
-## inferred — a cache that decides for itself when it is stale is how a second
-## soot producer gets born (SOOT_MASTER_PLAN §1.2).
-func invalidate_soot_index(reason: String = "") -> void:
-	_soot_index_cache = {}
-	_soot_index_cache_valid = false
-	Voxel.reset_soot_dirty()
-	if reason != "" and OS.get_environment("INFILTRAITOR_SOOT_SPLIT") == "1":
-		print("[SOOT-INDEX] invalidated — %s" % reason)
-
-
-func _soot_store_index(cell_to_voxel: Dictionary, blast_cells: Array,
-		weapon_cells: Array, damaged_voxels: Array) -> void:
-	var blast: Dictionary = {}
-	for k in blast_cells:
-		blast[k] = true
-	var weapon: Dictionary = {}
-	for k in weapon_cells:
-		weapon[k] = true
-	var damaged: Dictionary = {}
-	for v in damaged_voxels:
-		damaged[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
-	_soot_index_cache = {"cells": cell_to_voxel, "blast": blast,
-		"weapon": weapon, "damaged": damaged, "dupes": _soot_walk_dupes}
-	_soot_index_cache_valid = true
-	Voxel.reset_soot_dirty()
-
-
-## Re-classify only the cells whose damage state actually moved. Same predicate
-## as `_index_soot_voxel()` — deliberately the same three lines rather than a
-## paraphrase, because a paraphrase is how two producers drift.
-func _soot_fold_dirty() -> void:
-	if Voxel.soot_dirty.is_empty():
-		return
-	var cells: Dictionary = _soot_index_cache["cells"]
-	var blast: Dictionary = _soot_index_cache["blast"]
-	var weapon: Dictionary = _soot_index_cache["weapon"]
-	var damaged: Dictionary = _soot_index_cache["damaged"]
-	var dupes: Dictionary = _soot_index_cache.get("dupes", {})
-	for key in Voxel.soot_dirty.keys():
-		var v = cells.get(key)
-		if v == null:
-			## A cell the index has never seen — geometry built after the walk.
-			## Cannot be classified without the Voxel, so the cache is no longer
-			## a complete answer and says so instead of guessing.
-			_soot_index_cache_valid = false
-			continue
-		blast.erase(key)
-		weapon.erase(key)
-		damaged.erase(key)
-		## EVERY voxel at this key, not just the one the map kept — see
-		## `_index_soot_voxel()`'s note. Membership is the OR over all of them,
-		## which is exactly what the walk's per-voxel appends produce.
-		for w in (dupes.get(key, [v]) as Array):
-			if not w.visible or w.damage_state == Voxel.DamageState.DESTROYED:
-				if w.damage_is_blast:
-					blast[key] = true
-				else:
-					weapon[key] = true
-			elif w.damage_state == Voxel.DamageState.DENTED or w.damage_state == Voxel.DamageState.CRACKED:
-				damaged[key] = true
-	Voxel.reset_soot_dirty()
-
-
-## §13.2 GATE — `INFILTRAITOR_SOOT_GATE=1`.
-##
-## Re-derives the seeds the slow way and compares them to what the incremental
-## index holds. This is the only thing standing between "faster" and "a second
-## soot producer", which is the exact defect SOOT_MASTER_PLAN §1.2 records, and
-## it is invisible in a picture until someone looks at the right voxel.
-##
-## Costs a full walk while enabled, hence the gate.
-func _soot_gate_check() -> void:
-	if not _soot_index_cache_valid or _soot_index_cache.is_empty():
-		print("[SOOT-GATE] index not valid this pass — nothing to compare")
-		return
-	var c2v: Dictionary = {}
-	var b: Array = []
-	var w: Array = []
-	var d: Array = []
-	if _edge_registry != null:
-		for slice in _edge_registry.all_slices():
-			for v in slice.voxels:
-				_index_soot_voxel(c2v, b, w, d, v)
-	if _slab_registry != null:
-		for slab in _slab_registry.all_slabs():
-			for v in slab.voxels:
-				_index_soot_voxel(c2v, b, w, d, v)
-	for column in _junction_columns:
-		for v in column.voxels:
-			_index_soot_voxel(c2v, b, w, d, v)
-	var want_b: Dictionary = {}
-	for k in b:
-		want_b[k] = true
-	var want_w: Dictionary = {}
-	for k in w:
-		want_w[k] = true
-	var want_d: Dictionary = {}
-	for v in d:
-		want_d[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
-	var diffs: int = _soot_gate_diff("blast", _soot_index_cache["blast"], want_b) \
-		+ _soot_gate_diff("weapon", _soot_index_cache["weapon"], want_w) \
-		+ _soot_gate_diff("damaged", _soot_index_cache["damaged"], want_d) \
-		+ _soot_gate_diff("cells", _soot_index_cache["cells"], c2v)
-	print("[SOOT-GATE] %s — %d disagreement(s) against a full walk (%d cells, %d/%d/%d seeds)"
-		% ["PASS" if diffs == 0 else "FAIL", diffs, c2v.size(),
-		want_b.size(), want_w.size(), want_d.size()])
-
-
-## Which of the incremental index's three sets currently claims a cell, if any.
-func _soot_gate_where(k: Vector3i) -> String:
-	var parts: Array = []
-	for name in ["blast", "weapon", "damaged"]:
-		if (_soot_index_cache[name] as Dictionary).has(k):
-			parts.append(name)
-	if not (_soot_index_cache["cells"] as Dictionary).has(k):
-		parts.append("NOT IN cells")
-	return "nothing" if parts.is_empty() else ", ".join(parts)
-
-
-## What the real Voxel says right now, so a disagreement can be read against the
-## predicate rather than guessed at.
-func _soot_gate_state(k: Vector3i) -> String:
-	var v = (_soot_index_cache["cells"] as Dictionary).get(k)
-	if v == null:
-		return "no voxel in the index"
-	return "state=%d blast=%s visible=%s dirty_pending=%s" % [
-		v.damage_state, v.damage_is_blast, v.visible,
-		Voxel.soot_dirty.has(k)]
-
-
-func _soot_gate_diff(name: String, have: Dictionary, want: Dictionary) -> int:
-	var n: int = 0
-	for k in want.keys():
-		if not have.has(k):
-			n += 1
-			if n <= 3:
-				## WHERE the cell actually sits matters more than that it is
-				## absent: missing-from-blast but present-in-weapon is a
-				## classification bug, missing everywhere is a MISSED WRITE, and
-				## the fix is different for each.
-				print("[SOOT-GATE]   %s MISSING %s — incremental has it in: %s · voxel now: %s"
-					% [name, k, _soot_gate_where(k), _soot_gate_state(k)])
-	for k in have.keys():
-		if not want.has(k):
-			n += 1
-			if n <= 6:
-				print("[SOOT-GATE]   %s EXTRA %s" % [name, k])
-	return n
-
-
-## ⚠️ §13.2 — A CELL KEY IS NOT UNIQUE, and that cost the incremental index a
-## wrong answer before the gate caught it.
-##
-## A junction column's voxel can occupy the same (grid_pos, level) as a slice's.
-## This function has always tolerated that: `cell_to_voxel[key]` keeps whichever
-## voxel is walked LAST, while the seed lists get an append for EVERY qualifying
-## voxel — so a key can be a blast seed because of voxel A while the map holds
-## voxel B. The first incremental index stored one voxel per key and re-classified
-## from it, which silently answered for the wrong object: measured, **3 destroyed
-## junction voxels reported as intact**, found by `INFILTRAITOR_SOOT_GATE=1`.
-##
-## `dupes` records every voxel at a key that already had one, so the fold can
-## re-classify from ALL of them. Only collision keys are stored, so it is a
-## handful of entries rather than a second copy of the board.
-func _index_soot_voxel(cell_to_voxel: Dictionary, blast_cells: Array,
-		weapon_cells: Array, damaged_voxels: Array, v: Voxel,
-		dupes: Dictionary = {}) -> void:
-	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
-	if cell_to_voxel.has(key) and cell_to_voxel[key] != v:
-		var lst: Array = dupes.get(key, [])
-		if not lst.has(cell_to_voxel[key]):
-			lst.append(cell_to_voxel[key])
-		lst.append(v)
-		dupes[key] = lst
-	cell_to_voxel[key] = v
-	if not v.visible or v.damage_state == Voxel.DamageState.DESTROYED:
-		if v.damage_is_blast:
-			blast_cells.append(key)
-		else:
-			weapon_cells.append(key)
-	elif v.damage_state == Voxel.DamageState.DENTED or v.damage_state == Voxel.DamageState.CRACKED:
-		damaged_voxels.append(v)
-
-
-## VL-D2 — record soot on a revealed crater-floor cell (no Voxel to hang it on).
-## Min ring wins, same as the Voxel path.
-func add_crater_floor_soot(level: int, cell: Vector2i, ring: int) -> void:
-	if not _crater_floor_soot.has(level):
-		_crater_floor_soot[level] = {}
-	var existing = _crater_floor_soot[level].get(cell, 99)
-	if ring < existing:
-		_crater_floor_soot[level][cell] = ring
-
-
-## --- SS-1: the soot store, in shadow -------------------------------------
-##
-## `SOOT_STORAGE_REFORM` §2.1/§2.1b. Read the plan before changing any of this;
-## the short version is that the store is BASE-keyed with BASE-space directions
-## so a returning perspective rotation does not silently lose scorch, and that
-## the five-direction format exists because `Vector3i(top, SE, SW)` is a
-## VIEW-space triple that drops the two faces turned away from the camera.
-
-## Base-direction slots. `BlastCalculator.FULL_TOP` is shared (up is up in every
-## perspective); the four horizontals are re-expressed against base axes here.
-const SOOT_BASE_TOP: int = 0
-const SOOT_BASE_XP: int = 1
-const SOOT_BASE_XN: int = 2
-const SOOT_BASE_YP: int = 3
-const SOOT_BASE_YN: int = 4
-## Down. Vertical, so rotation-invariant exactly like TOP, and it maps straight
-## through. It exists because the ISOTROPIC ring depends on it — see
-## `BlastCalculator.full_faces_to_ring()`.
-const SOOT_BASE_ZN: int = 5
-
-
-## view slot -> base slot for the perspective the room is in NOW, built once and
-## reused until the perspective changes.
-##
-## The conversion is `cell_to_base(cell + delta) - cell_to_base(cell)`, which is
-## the identical technique `BlastCalculator.carved_side_to_base_dir()` uses, for
-## the identical reason its note gives: taking the difference of two rotated
-## points keeps the affine offsets cancelling, so **there is no second rotation
-## formula here to drift out of sync with PerspectiveMapper.**
-func _soot_dir_map_current() -> Dictionary:
-	if _soot_dir_map_perspective == _active_perspective and not _soot_dir_map.is_empty():
-		return _soot_dir_map
+## Min-wins stamp of `level -> {view_cell: tone}` into the soot map. Returns the cells
+## whose stored tone actually got darker, in the same shape.
+func stamp_soot(writes: Dictionary) -> Dictionary:
+	var changed: Dictionary = {}
 	var base_size := _base_voxel_size()
-	## Any cell will do — the mapping does not depend on which, which is exactly
-	## what makes caching it per perspective legitimate rather than a shortcut.
-	var probe := Vector2i(0, 0)
-	var origin := PerspectiveMapperClass.cell_to_base(probe, _active_perspective, base_size)
-	var slots := {
-		BlastCalculator.FULL_XP: Vector2i(1, 0),
-		BlastCalculator.FULL_XN: Vector2i(-1, 0),
-		BlastCalculator.FULL_YP: Vector2i(0, 1),
-		BlastCalculator.FULL_YN: Vector2i(0, -1),
-	}
-	## The two VERTICAL directions map straight through: up is up and down is down
-	## in every perspective, which is the same reason `carved_side_to_base_dir()`
-	## returns TOP/BOTTOM without consulting the mapper at all.
-	var out := {
-		BlastCalculator.FULL_TOP: SOOT_BASE_TOP,
-		BlastCalculator.FULL_ZN: SOOT_BASE_ZN,
-	}
-	for view_slot in slots:
-		var d: Vector2i = PerspectiveMapperClass.cell_to_base(
-			probe + slots[view_slot], _active_perspective, base_size) - origin
-		var base_slot: int = -1
-		if d == Vector2i(1, 0):
-			base_slot = SOOT_BASE_XP
-		elif d == Vector2i(-1, 0):
-			base_slot = SOOT_BASE_XN
-		elif d == Vector2i(0, 1):
-			base_slot = SOOT_BASE_YP
-		elif d == Vector2i(0, -1):
-			base_slot = SOOT_BASE_YN
-		if base_slot < 0:
-			## B6 — a unit step in view space that does not land on a unit step in
-			## base space means the projection is not what this code assumes, and
-			## every scorch written afterwards would be attributed to the wrong
-			## face. Refuse rather than store a guess.
-			push_error("[SS-1] view step %s under perspective %s maps to base delta %s — not a unit direction; the soot store cannot be keyed"
-				% [slots[view_slot], _active_perspective, d])
-			_soot_dir_map = {}
-			_soot_dir_map_perspective = ""
-			return {}
-		out[view_slot] = base_slot
-	_soot_dir_map = out
-	_soot_dir_map_perspective = _active_perspective
-	return out
+	for level in writes:
+		if not _soot_map.has(level):
+			_soot_map[level] = {}
+		var stored: Dictionary = _soot_map[level]
+		var level_writes: Dictionary = writes[level]
+		var out_level: Dictionary = {}
+		for view_cell: Vector2i in level_writes:
+			var tone: int = int(level_writes[view_cell])
+			if tone < 0 or tone >= BlastCalculator.FACE_SOOT_CLEAN:
+				continue
+			var base_xy := PerspectiveMapperClass.cell_to_base(
+				view_cell, _active_perspective, base_size)
+			if tone < int(stored.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN)):
+				stored[base_xy] = tone
+				out_level[view_cell] = tone
+		if not out_level.is_empty():
+			changed[level] = out_level
+	return changed
 
 
-## One cell's five-direction record, view space -> base space.
-func _view_full_to_base(view_full: PackedInt32Array) -> PackedInt32Array:
-	var dir_map := _soot_dir_map_current()
-	var out := BlastCalculator.full_faces_clean()
-	if dir_map.is_empty():
-		return out
-	for view_slot in dir_map:
-		out[int(dir_map[view_slot])] = view_full[int(view_slot)]
-	return out
-
-
-## ...and back, for the perspective the room is in NOW. The inverse of the map
-## above rather than a second table, so the two cannot disagree.
-func _base_full_to_view(base_full: PackedInt32Array) -> PackedInt32Array:
-	var dir_map := _soot_dir_map_current()
-	var out := BlastCalculator.full_faces_clean()
-	if dir_map.is_empty():
-		return out
-	for view_slot in dir_map:
-		out[int(view_slot)] = base_full[int(dir_map[view_slot])]
-	return out
-
-
-## The single writer (§2.2). Min-wins per direction, so writing into an
-## already-scorched cell resolves to the tone it would have produced on a clean
-## one — **permanent but NOT accumulating**, which is `SOOT_MASTER_PLAN` §6 Q3's
-## answer and is the half of Option B the Director's ruling did NOT take.
-func scorch_cell(level: int, view_cell: Vector2i, view_full: PackedInt32Array) -> void:
-	var base_xy := PerspectiveMapperClass.cell_to_base(
-		view_cell, _active_perspective, _base_voxel_size())
-	var incoming := _view_full_to_base(view_full)
-	if not _soot_map.has(level):
-		_soot_map[level] = {}
-	var level_map: Dictionary = _soot_map[level]
-	var prev_code = level_map.get(base_xy)
-	if prev_code == null:
-		level_map[base_xy] = BlastCalculator.encode_full_faces(incoming)
+## `WorldDelta.commit()`'s seam: a blast's proposal into the soot map. Drawn cells are
+## painted by the presenter's waves (with the fade); a hidden one has nothing to
+## animate, so its plane is written here and shows once something reveals it.
+func absorb_scorch(writes: Dictionary) -> void:
+	var changed: Dictionary = stamp_soot(writes)
+	var store: VoxelStore = VoxelStore.active
+	if _voxel_renderer == null or store == null:
 		return
-	var prev := BlastCalculator.decode_full_faces(int(prev_code))
-	var merged := BlastCalculator.full_faces_clean()
-	for i: int in range(BlastCalculator.FULL_FACE_COUNT):
-		merged[i] = mini(prev[i], incoming[i])
-	level_map[base_xy] = BlastCalculator.encode_full_faces(merged)
+	for level in changed:
+		var level_cells: Dictionary = changed[level]
+		for view_cell: Vector2i in level_cells:
+			if not store.has_cell(view_cell.x, view_cell.y, int(level)):
+				_voxel_renderer._write_cell_soot(int(level), view_cell,
+					BlastCalculator.soot_code(int(level_cells[view_cell])))
 
 
-## Bulk write of one event's proposal — `level -> {view_cell: PackedInt32Array}`,
-## the shape `BlastCalculator.build_soot_field()`'s `out_full` produces.
-func absorb_scorch(full: Dictionary) -> void:
-	if full.is_empty():
+## `level -> {view_cell: tone}` into the soot plane, and the levels it touched up to
+## whichever board draws them. `reason` names the 3D board's upload log line.
+func _paint_soot(cells: Dictionary, reason: String) -> void:
+	if cells.is_empty() or _voxel_renderer == null:
 		return
-	_soot_store_absorbs += 1
-	for level in full:
-		for cell in full[level]:
-			scorch_cell(int(level), cell, full[level][cell])
+	for level in cells:
+		var level_cells: Dictionary = cells[level]
+		for view_cell: Vector2i in level_cells:
+			_voxel_renderer._write_cell_soot(int(level), view_cell,
+				BlastCalculator.soot_code(int(level_cells[view_cell])))
+	_voxel_renderer.flush_cell_soot()
+	var board: Node = board3d()
+	if board != null:
+		board.sync_soot_levels(cells, reason)
 
 
-## The store projected back into the `level -> {view_cell: Vector3i(top, SE, SW)}`
-## shape the rest of the pipeline speaks. This is what SS-2 will hand to
-## `VoxelLightField.build()` in place of a fresh derivation; today only the gate
-## calls it.
-func soot_store_view_faces() -> Dictionary:
-	var faces: Dictionary = {}
-	soot_store_projection(faces)
-	return faces
-
-
-## SS-2 — THE STORE, ANSWERING BOTH SHAPES THE PIPELINE ASKS FOR.
-##
-## Fills `out_faces` with `level -> {view_cell: Vector3i(top, SE, SW)}` and
-## returns the isotropic `level -> {view_cell: ring}` snapshot: exactly the pair
-## `_build_soot_snapshot()` has always produced, because from SS-2 on this is what
-## produces it.
-##
-## ⚠️ **THE TWO ARE NOT DERIVED FROM EACH OTHER.** The triple is three of the six
-## stored components; the ring is the minimum over all six, which is a different
-## quantity whenever the hole that scorched a cell turns no drawable face toward
-## the camera (`BlastCalculator.full_faces_to_ring()` carries the argument, and
-## the −Z component exists for exactly this). Recovering one from the other is the
-## bug this function is shaped to avoid.
-func soot_store_projection(out_faces: Dictionary) -> Dictionary:
-	var snapshot: Dictionary = {}
+## The whole soot map into the soot plane: after `VoxelRenderer.reset_cell_planes()`
+## (the map-wide repaint) and after a save restore. Costs the stored cell count,
+## not the map.
+func project_soot_store() -> void:
+	if _voxel_renderer == null:
+		return
 	var base_size := _base_voxel_size()
+	var cells: Dictionary = {}
 	for level in _soot_map:
-		var level_faces: Dictionary = {}
-		var level_rings: Dictionary = {}
-		for base_xy in _soot_map[level]:
-			var view_cell := PerspectiveMapperClass.cell_from_base(
-				base_xy, _active_perspective, base_size)
-			var stored := BlastCalculator.decode_full_faces(
-				int(_soot_map[level][base_xy]))
-			level_faces[view_cell] = BlastCalculator.full_faces_to_view(
-				_base_full_to_view(stored))
-			## The ring is direction-agnostic, so it comes off the STORED record
-			## with no base→view step — one less place for the mapping to be
-			## applied twice, or applied to something that does not rotate.
-			level_rings[view_cell] = BlastCalculator.full_faces_to_ring(stored)
-		out_faces[int(level)] = level_faces
-		snapshot[int(level)] = level_rings
-	return snapshot
+		var stored: Dictionary = _soot_map[level]
+		var view: Dictionary = {}
+		for base_xy: Vector2i in stored:
+			view[PerspectiveMapperClass.cell_from_base(
+				base_xy, _active_perspective, base_size)] = stored[base_xy]
+		cells[level] = view
+	_paint_soot(cells, "soot store")
 
 
-## SS-1's GATE — `INFILTRAITOR_SOOT_STORE_GATE=1`.
-##
-## ⚠️ **THE FIRST VERSION OF THIS RAN BEFORE THE ABSORB AND MEASURED THE WRONG
-## THING. Recorded because the reasoning was plausible and wrong.** The argument
-## was that comparing the store against the dictionary that had just filled it
-## would be a self-comparison of the kind B3 forbids, so the gate should ask what
-## EARLIER events left behind. A real two-fire capture killed it:
-##
-##     absorbs 1 · store 2 782 vs derived 5 731 — 2 949 DERIVED-ONLY, 20 LIGHTER
-##
-## Not one of those was a loss. The 2 949 were fire 2's own new scorch, which the
-## gate was reading *before* fire 2 was absorbed; the 20 lighter were cells fire 2
-## had just darkened by adding holes near them, compared against a store that
-## still held fire 1's honest answer. **The before-absorb ordering cannot tell "the
-## store lost this" from "the store has not been shown this yet"**, which is the
-## only distinction the gate exists to make.
-##
-## After the absorb the comparison is still not a tautology, and this is the part
-## worth being precise about: `out_faces` is compared against
-## `full_faces_to_view(base→view(decode(encode(view→base(out_full)))))`. Every
-## step of the store's format — the five-direction record, the base-5 pack, and
-## the view↔base direction mapping — sits between the two sides. Equality proves
-## the format is LOSSLESS, which is exactly SS-1's claim.
-##
-## So, after the absorb:
-##   · `DERIVED-ONLY` and `LIGHTER` must be **ZERO**. Either means the store failed
-##     to record something the producer handed it one line earlier — a bug in the
-##     format or the plumbing.
-##   · `store-only` and `darker` are INFORMATIONAL and are the reform working:
-##     scorch an older event recorded that this derivation has since lost (§1.3's
-##     deep layer) or would now paint lighter. Under permanence the store is right.
-##
-## ⚠️ What this gate CANNOT prove is §2.1b — the store is projected back into the
-## perspective it was written in, so the two extra directions are never read.
-## That is SS-6's job and it needs a rotated capture.
-func _soot_store_gate_check(derived_faces: Dictionary) -> void:
-	var projected := soot_store_view_faces()
-	var store_only: int = 0
-	var derived_only: int = 0
-	var darker: int = 0
-	var lighter: int = 0
-	var sample: String = ""
-	for level in derived_faces:
-		var d_level: Dictionary = derived_faces[level]
-		var p_level: Dictionary = projected.get(level, {})
-		for cell in d_level:
-			if not p_level.has(cell):
-				derived_only += 1
-				if sample == "":
-					sample = "derived-only L%d %s = %s" % [level, cell, d_level[cell]]
-				continue
-			var d: Vector3i = d_level[cell]
-			var p: Vector3i = p_level[cell]
-			if p == d:
-				continue
-			if p.x <= d.x and p.y <= d.y and p.z <= d.z:
-				darker += 1
-			else:
-				lighter += 1
-				if sample == "" or not sample.begins_with("LIGHTER"):
-					sample = "LIGHTER L%d %s store %s vs derived %s" % [level, cell, p, d]
-	## Store-only cells, histogrammed BY LEVEL. The count alone cannot say whether
-	## the store is keeping something legitimate or hoarding something wrong, and
-	## the level is what tells them apart at a glance: the revealed crater floor
-	## sits on one deep level, while a scatter across wall levels would mean
-	## something else entirely.
-	var store_only_by_level: Dictionary = {}
-	for level in projected:
-		var d_level: Dictionary = derived_faces.get(level, {})
-		for cell in projected[level]:
-			if not d_level.has(cell):
-				store_only += 1
-				store_only_by_level[level] = int(store_only_by_level.get(level, 0)) + 1
-	print("[SS-1-GATE] absorbs %d · store %d cell(s) vs derived %d — %d store-only (expected: permanence), %d darker (expected), %d DERIVED-ONLY, %d LIGHTER  %s"
-		% [_soot_store_absorbs, _soot_store_cell_count(),
-		_derived_cell_count(derived_faces),
-		store_only, darker, derived_only, lighter,
-		("· e.g. " + sample) if sample != "" else ""])
-	if store_only > 0:
-		print("[SS-1-GATE]   store-only by level: %s" % [store_only_by_level])
-	if derived_only > 0 or lighter > 0:
-		push_warning("[SS-1-GATE] %d derived-only + %d lighter — the store did NOT record something the producer handed it (SOOT_STORAGE_REFORM SS-1)"
-			% [derived_only, lighter])
-
-
-func _soot_store_cell_count() -> int:
+## A shot's soot: stamped around every voxel it touched, into the soot map and the
+## plane, uploaded once. The stamp is ~1 ms whatever the level's history; it lands
+## two frames after the impact only for the look (the Director's 2026-08-19 order:
+## soot after the tiles swap and the smoke is out).
+func apply_shot_soot(touched: Array) -> void:
+	if touched.is_empty() or _voxel_renderer == null:
+		return
+	var seeds: Array = []
+	for v in touched:
+		seeds.append(Vector3i(v.grid_pos.x, v.grid_pos.y, v.level))
+	var renderer: VoxelRenderer = _voxel_renderer
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_instance_valid(renderer) or renderer != _voxel_renderer:
+		return
+	var t0: int = Time.get_ticks_usec()
+	var changed: Dictionary = stamp_soot(BlastCalculator.stamp_around(
+		seeds, weapon_soot_radius, VoxelStore.active))
+	_paint_soot(changed, "shot soot")
 	var n: int = 0
-	for level in _soot_map:
-		n += (_soot_map[level] as Dictionary).size()
-	return n
-
-
-func _derived_cell_count(faces: Dictionary) -> int:
-	var n: int = 0
-	for level in faces:
-		n += (faces[level] as Dictionary).size()
-	return n
+	for level in changed:
+		n += (changed[level] as Dictionary).size()
+	print_debug("[SHOT-SOOT] %d cell(s) on %d level(s) in %.2f ms"
+		% [n, changed.size(), float(Time.get_ticks_usec() - t0) / 1000.0])
 
 
 func _update_alert_label() -> void:
@@ -7096,7 +6176,7 @@ func report_blast_passage(delta) -> void:
 ## built this board's post-blast `VoxelLightField` and, in `_phase_soot_wave`,
 ## computed the bucket of every cell this blast changes (`light_changed_cells`).
 ## The cooked path applies that field to exactly those cells — no `build_occupancy`,
-## no `_build_soot_snapshot`, no `field.build` — turning the ~158 ms freeze into
+## no `field.build` — turning the ~158 ms freeze into
 ## an ~18 ms apply. Null delta or a temporal light falls back to the full
 ## re-derivation, unchanged. Proven cell-for-cell by `INFILTRAITOR_LIGHT_COOK_GATE=1`.
 func play_consequence_light(delta = null) -> void:
@@ -7198,7 +6278,7 @@ func play_consequence_light(delta = null) -> void:
 	var t0: int = Time.get_ticks_usec()
 	if cooked:
 		## The cook's field, applied to exactly the cells it changed. No
-		## `build_occupancy()`, no `_build_soot_snapshot()`, no `field.build()` —
+		## `build_occupancy()`, no `field.build()` —
 		## the buckets were computed by `_phase_soot_wave` and cached in the field.
 		## `_voxel_light_field` is deliberately NOT touched: nothing reads it before
 		## the next `lighting_rebuilt` (temporal lights are excluded by

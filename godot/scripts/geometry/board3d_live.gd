@@ -1207,9 +1207,11 @@ func on_shot_commit(touched: Array) -> void:
 	_commit_touched(touched, "shot", true)
 
 
-## After the shot's deferred soot pass: the same levels, re-uploaded with the scorch.
-func on_shot_soot() -> void:
-	_sync_levels(_blast_levels, "shot soot")
+## SOOT-STAMP: the levels a soot write touched (`Room._paint_soot()`: a shot's stamp, a
+## re-projection of the soot map), re-uploaded. `levels` is keyed by level. `reason`
+## names the log line (`tools/persistent/shot_3d_gate.py` reads "shot soot").
+func sync_soot_levels(levels: Dictionary, reason: String) -> void:
+	_sync_levels(levels, reason)
 
 
 func _commit_touched(touched: Array, reason: String, whole_stack: bool) -> void:

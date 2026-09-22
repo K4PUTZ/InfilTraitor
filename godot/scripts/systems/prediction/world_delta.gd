@@ -103,10 +103,10 @@ var cost_ms: float = 0.0
 
 ## SS-3 (`SOOT_STORAGE_REFORM` §3.1) — THE SCORCH THIS BLAST PROPOSES, as data.
 ##
-## `level -> {view_cell: PackedInt32Array}`, the six-direction record
-## `BlastCalculator.build_soot_field()`'s `out_full` produces. Filled by
-## `DetonationPlanBuilder._phase_soot()` while the plan is still PURE, and written
-## to `Room._soot_map` by `commit()` and nowhere else.
+## `level -> {view_cell: tone}` (SOOT-STAMP, 2026-09-22: one tone 0..3 per cell,
+## only cells this blast makes darker). Filled by `DetonationPlanBuilder._phase_soot()`
+## while the plan is still PURE, and written to `Room._soot_map` by `commit()` and
+## nowhere else.
 ##
 ## ⚠️ **NOT `waves["soot"]`, AND THE TWO MUST NEVER BE MERGED.** That one is a
 ## VISUAL bucket — the ordered list of cells the choreographer will paint, with
@@ -364,7 +364,7 @@ func project_voxel(voxel) -> Voxel:
 ## construction.
 ## SS-3 — `room` is optional so the purity selftest and any caller with nothing to
 ## scorch keep working unchanged. When it is supplied, the proposed scorch lands
-## through `Room.scorch_cell()`'s min-wins, which is the store's ONLY writer.
+## through `Room.absorb_scorch()` (min-wins, the store's only writer besides a shot).
 ##
 ## ⚠️ The world revision does NOT get bumped here. `TestZoneController` already
 ## calls `room.bump_world_revision()` after this returns, and adding a second bump

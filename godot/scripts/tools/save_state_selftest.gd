@@ -7,23 +7,19 @@ extends SceneTree
 ## silently. A selftest is what makes "prepared" mean something.
 ##
 ## Uses a STUB rather than a real Room. What is under test is the serialisation
-## contract — key packing, version refusal, and that the soot index is treated as
-## a cache — none of which needs a built map, and all of which a real Room would
+## contract — key packing, version refusal, and that the soot map travels and is
+## re-projected — none of which needs a built map, and all of which a real Room would
 ## make slower and harder to assert on.
 
 class RoomStub extends RefCounted:
 	var map_id: String = "TESTMAP"
 	var _base_damage: Dictionary = {}
-	var _crater_floor_soot: Dictionary = {}
 	## GLASS G-D15 / V-D — the primed-pane store. The stub models the real Room's
 	## persisted fields, so a new one has to appear here too; that is the point of
 	## a stub rather than a mock.
 	var _pane_primed: Dictionary = {}
-	## SS-1 (SOOT_STORAGE_REFORM) — the scorch store. Present here from the moment
-	## the field exists, not from the moment it is SAVED (that is SS-4), because
-	## `clear_run_state()` already has to forget it: the Director's save model
-	## discards scenario state with the level, so a store left behind comes back as
-	## the previous level's crater.
+	## SOOT-STAMP (2026-09-22) — the soot map, `level -> {base_cell: tone}`. Saved:
+	## soot is stamped once and cannot be re-derived from the damage any more.
 	var _soot_map: Dictionary = {}
 	## G6 (§7.1) — where broken glass came to rest, in BASE coords, with its pile
 	## depth. Same reasoning as the fields above: the stub models the real Room's
@@ -36,9 +32,9 @@ class RoomStub extends RefCounted:
 	## CRACK-06 — the same, clinging to the pane's own torn glass edge. A separate
 	## store for a separate anchor rule; models the real Room's field.
 	var _base_rim_shards: Dictionary = {}
-	var invalidated: int = 0
-	func invalidate_soot_index(_reason: String = "") -> void:
-		invalidated += 1
+	var projected: int = 0
+	func project_soot_store() -> void:
+		projected += 1
 
 
 var _fails: int = 0
@@ -80,7 +76,8 @@ func _test_round_trip() -> void:
 	var a := RoomStub.new()
 	a._base_damage[Vector3i(3, -4, 80)] = [2, 1, 0, 1, 0, 5, 2]
 	a._base_damage[Vector3i(-9, 12, 79)] = [1, 0, 0, 0, 0, 0, 0]
-	a._crater_floor_soot[79] = {Vector2i(5, 6): 2, Vector2i(-1, 0): 3}
+	a._soot_map[79] = {Vector2i(5, 6): 2, Vector2i(-1, 0): 3}
+	a._soot_map[96] = {Vector2i(40, 3): 0}
 	a._pane_primed["PANE_SLICE_6_10_SW"] = true
 	## G6 — a pile 17 deep on a negative cell, so the count and the sign are both
 	## on the wire.
@@ -112,8 +109,20 @@ func _test_round_trip() -> void:
 	c._pane_primed["STALE"] = true
 	_check(SaveState.restore(c, legacy) and c._pane_primed.is_empty(),
 		"pane_primed: a save written before V-D restores as nothing primed, not a refusal")
-	_check(b._crater_floor_soot.get(79, {}).get(Vector2i(-1, 0), -1) == 3,
-		"crater_floor_soot: a negative cell round-trips")
+	## SOOT-STAMP — the TONE travels, per cell and per level, negative cell included.
+	_check(int(b._soot_map.get(79, {}).get(Vector2i(-1, 0), -1)) == 3
+		and int(b._soot_map.get(79, {}).get(Vector2i(5, 6), -1)) == 2
+		and int(b._soot_map.get(96, {}).get(Vector2i(40, 3), -1)) == 0,
+		"soot: every cell's tone round-trips, negative cell and a second level included")
+	## A v1 save (before SOOT-STAMP) still restores — as no scorch, not a refusal.
+	var v1: Dictionary = SaveState.capture(a)
+	v1["version"] = 1
+	v1.erase("soot")
+	v1["crater_floor_soot"] = [[79, 5, 6, 2]]
+	var g := RoomStub.new()
+	g._soot_map[80] = {Vector2i(1, 1): 1}
+	_check(SaveState.restore(g, v1) and g._soot_map.is_empty(),
+		"soot: a v1 save restores with no scorch rather than refusing")
 	## ── G6 — THE PILE DEPTH TRAVELS, NOT A FLAG ─────────────────────────────
 	## ⚠️ Asserted as the VALUE, not as presence. A save that restored every pile
 	## at 1 would round-trip "there is glass here" perfectly and quietly flatten
@@ -147,15 +156,15 @@ func _test_round_trip() -> void:
 	_check(SaveState.restore(f, pre_c6) and f._base_rim_shards.is_empty(),
 		"glass_rim_shards: a save written before CRACK-06 restores as nothing clinging, not a refusal")
 	_check(blob["map_id"] == "TESTMAP", "map_id travels with the record")
-	## The cache is rebuilt, never restored — SaveState's own class note.
-	_check(b.invalidated == 1, "restore() invalidates the soot index exactly once")
+	## The soot map is state, and the plane is its projection: a restore re-projects.
+	_check(b.projected == 1, "restore() re-projects the soot map exactly once")
 
 
 ## B6: a version it does not know must be refused, not partially applied.
 func _test_version_refusal() -> void:
 	var r := RoomStub.new()
 	r._base_damage[Vector3i(1, 1, 1)] = [1, 0, 0, 0, 0, 0, 0]
-	var bad := {"version": 999, "base_damage": [], "crater_floor_soot": []}
+	var bad := {"version": 999, "base_damage": [], "soot": []}
 	## `validate()` rather than `restore()`: the refusal path push_errors by
 	## design (B6), and run_selftests.py reads any push_error as a suite failure.
 	## See SaveState.validate()'s note.
@@ -168,7 +177,7 @@ func _test_version_refusal() -> void:
 func _test_malformed_refusal() -> void:
 	var r := RoomStub.new()
 	var bad := {"version": SaveState.FORMAT_VERSION,
-		"base_damage": [[1, 2]], "crater_floor_soot": []}
+		"base_damage": [[1, 2]], "soot": []}
 	_check(SaveState.validate(bad) != "", "a truncated base_damage entry is REFUSED")
 	## And the refusal must be TOTAL — validation runs before anything is cleared,
 	## so a half-applied file cannot exist.
@@ -181,16 +190,14 @@ func _test_malformed_refusal() -> void:
 func _test_clear() -> void:
 	var r := RoomStub.new()
 	r._base_damage[Vector3i(0, 0, 0)] = [1, 0, 0, 0, 0, 0, 0]
-	r._crater_floor_soot[79] = {Vector2i(0, 0): 1}
 	## G-D15 / V-D — a primed pane is a promise made to THIS run: a fresh mission
 	## must not inherit a window that shatters to the first pistol shot.
 	r._pane_primed["PANE_X"] = true
-	r._soot_map[79] = {Vector2i(0, 0): 1234}
+	r._soot_map[79] = {Vector2i(0, 0): 1}
 	SaveState.clear_run_state(r)
 	_check(r._base_damage.is_empty(), "clear_run_state empties base_damage")
-	_check(r._crater_floor_soot.is_empty(), "clear_run_state empties crater soot")
-	## SS-1 — the silent half. Nothing on screen would report a store that
-	## survived a level change; it would simply be last level's scorch.
-	_check(r._soot_map.is_empty(), "clear_run_state empties the SS-1 scorch store")
+	## The silent half. Nothing on screen would report a soot map that survived a
+	## level change; it would simply be last level's scorch.
+	_check(r._soot_map.is_empty(), "clear_run_state empties the soot map")
 	_check(r._pane_primed.is_empty(), "clear_run_state empties the primed-pane store")
-	_check(r.invalidated == 1, "clear_run_state invalidates the soot index")
+

@@ -1,5 +1,21 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.17
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.18
+
+**2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**
+- *"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do código."* Soot is one
+  tone 0..3 per cell in `Room._soot_map` (base-keyed), written only by the event that makes it; no light apply writes
+  the soot plane any more. Full account: `SOOT_MASTER_PLAN`'s top note and `PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`.
+- **What it changes here:** the shot's soot is ONE stamp two frames after the impact (`Room.apply_shot_soot()`,
+  3.6–4.3 ms on the desktop) uploaded through `Board3DLive.sync_soot_levels()` — the log line is still `recolour shot
+  soot`, so `shot_3d_gate.py` still sees it (re-run: PASSED, brick and concrete). **v1.17's shot soot LADDER is gone**
+  (`fade_in_scoped_soot()` and its A/B flag were deleted with the derivation); the blast's own ladder
+  (`DetonationPresenter`, `soot_step_s`) is untouched. The shot's impact repaint now takes the field's stale set
+  instead of walking every scoped GU (impact frame 116 -> 52 ms on a virgin map), which was blocked only because a
+  soot-free field would have written CLEAN over older scorch — measured doing exactly that to 4 199 cells beside a
+  crater, uploaded to the 3D board and restored two frames later.
+- Blast cook: the SOOT phase is a resumable per-voxel loop (15–19 ms per grenade, flat) instead of one un-budgeted
+  BFS over every hole on the level (45 -> 206 ms over five grenades); SOOTWAVE 10 -> 92 ms growing became 12–15 ms.
+- **Not measured on the Moto.** Desktop only; the Moto runs 3–4x slower.
 
 **2026-09-22 (session close) update (v1.17) — SHOT SOOT LADDER FIXED; THE SPARK-ANCHOR TOOLING FIXED, THE GRADE ITSELF NOT TAKEN.**
 - **The shot's soot ladder — FIXED**, closing the other half of R3D-6 item 8. `fade_in_scoped_soot()` used to walk

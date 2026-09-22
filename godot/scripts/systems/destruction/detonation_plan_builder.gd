@@ -166,30 +166,28 @@ static var SMOKE_ALPHA_GAIN: float = _env_float("INFILTRAITOR_SMOKE_ALPHA_GAIN",
 ##   2 ROOFS      the same, for roof slabs                         per slab
 ##   3 FLOORS     crater damage + soot + expose resolution         per slab
 ##   4 WALK       the ONE map-wide voxel walk (see below)          per voxel chunk
-##   5 SOOT       derive rings x2 + merge + self-soot              ATOMIC
+##   5 SOOT       the SOOT-STAMP: a tone per voxel by distance      per cell chunk
 ##   6 LIGHT      VoxelLightField.build()                          ATOMIC
 ##   7 PACKAGE    destroy/dent/crack entries + census + smoke      per voxel chunk
 ##   8 EXPOSE     reveal-below wiring                              per ring
 ##   9 SOOTWAVE   the soot-only wave                               per cell chunk
 ##  10 SMOKE      the GU-level smoke remainder                     per GU
 ##
-## **Phases 5 and 6 are honestly atomic, and that is a real limit rather than
-## an omission** — recorded with its measurement in §8.8.
-## `BlastCalculator.derive_soot_rings()` is a multi-source BFS and
-## `VoxelLightField.build()` is one call into another system; neither can be
-## suspended without being rewritten, which is a different job with a different
-## risk profile and does not belong inside a task whose gate is "changes
-## nothing".
+## **Phase 6 is honestly atomic, and that is a real limit rather than an
+## omission** — recorded with its measurement in §8.8. `VoxelLightField.build()`
+## is one call into another system and cannot be suspended without being
+## rewritten. (Phase 5 was atomic too while soot was a multi-source BFS; the
+## SOOT-STAMP of 2026-09-22 made it a resumable loop.)
 ##
-## **THE THREE MAP-WIDE WALKS BECAME ONE.** `_columns_with_structure()`,
-## `_index_soot_voxel()`'s loop and `_voxel_occupancy()` each traversed every
+## **THE THREE MAP-WIDE WALKS BECAME ONE.** `_columns_with_structure()`, the
+## old soot index's loop and `_voxel_occupancy()` each traversed every
 ## voxel in the map separately — and after P-DELTA each wanted its own
 ## dictionary lookup against the Delta's projection. Phase 4 does all three in
 ## a single pass off a single lookup. This is the fix Task 3 measured and named
 ## (§8.7) and this task was told to collect.
 ##
 ## Note phase 4 reads BOTH projected and real state, deliberately: occupancy and
-## the soot index want the world as it WOULD be, while `under_structure` (VL-D3,
+## the hole index want the world as it WOULD be, while `under_structure` (VL-D3,
 ## "never saw the sun") wants the geometry that stood there before the blast.
 ## Same voxel, same lookup, two questions.
 ## ===========================================================================
@@ -439,6 +437,8 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["affected"] = affected
 	s["epicenter"] = source_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS + Vector2i(half, half)
 	s["crater_max"] = crater_max
+	## SOOT-STAMP: how far the flood reaches, in voxels — the far edge of the soot bands.
+	s["gu_reach_voxels"] = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	s["crater_core"] = crater_max * CRATER_CORE_FACTOR
 	s["crater_rim_span"] = maxf(crater_max - crater_max * CRATER_CORE_FACTOR, 0.001)
 
@@ -452,8 +452,7 @@ static func _phase_setup(s: Dictionary) -> void:
 		junction_by_id[column.id] = column
 	s["junction_by_id"] = junction_by_id
 
-	s["soot_snapshot"] = {}
-	s["soot_faces"] = {}
+	s["soot_codes"] = {}       ## SOOT-STAMP: Vector3i -> the tone this blast stamps
 	s["ring_of"] = {}
 	s["container_of"] = {}
 	s["exposed_by_ring"] = {}
@@ -476,7 +475,7 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["burnt"] = {}
 	## E-DEBRIS-01: which materials throw dust/sparks/chips and how often, as
 	## plain data from the caller (`Room.blast_debris_policy()`). It travels in
-	## `ctx` for the same reason `blast_soot_rings` does — the material→effect
+	## `ctx` for the same reason the lights do — the material→effect
 	## mapping is room POLICY, and a builder that hardcoded it would be a second
 	## place for the two weapon families to drift apart. Absent (every selftest
 	## that predates this, and every non-explosion caller) means no debris at all,
@@ -484,7 +483,6 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["debris_policy"] = ctx.get("debris", {})
 	s["blast_cells"] = []
 	s["weapon_cells"] = []
-	s["damaged_voxels"] = []
 	s["occupancy"] = {}
 	s["touched_this_blast"] = {}
 	s["touched_voxels"] = []
@@ -1057,7 +1055,6 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
 	var blast_cells: Array = s["blast_cells"]
 	var weapon_cells: Array = s["weapon_cells"]
-	var damaged_voxels: Array = s["damaged_voxels"]
 	var occupancy: Dictionary = s["occupancy"]
 	var under_structure: Dictionary = s["under_structure"]
 	var derive_us: bool = bool(s["derive_under_structure"])
@@ -1090,9 +1087,8 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 			var state: int = int(p[WorldDelta.P_STATE]) if touched else v.damage_state
 			var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else v.visible
 
-			## (a) the soot index — mirrors room._index_soot_voxel()'s three
-			## buckets exactly (absent -> blast/weapon seed by provenance,
-			## visible+damaged -> self-soot), classified through the projection.
+			## (a) the hole index (absent -> blast/weapon by provenance), classified
+			## through the projection; the LIGHT phase reads it as predicted occupancy.
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 			cell_to_voxel[key] = v
 			if flammability > 0.0:
@@ -1105,14 +1101,6 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 					blast_cells.append(key)
 				else:
 					weapon_cells.append(key)
-			elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
-				## PROJECTED, and this one is a trap worth naming: the only
-				## consumer, apply_self_soot(), reads damage_state/is_blast/
-				## carved_side off these objects. Real Voxels would read INTACT
-				## here and the self-soot on every fresh mark would vanish with no
-				## error at all. project_voxel() returns the original when nothing
-				## changed, so untouched voxels cost no allocation.
-				damaged_voxels.append(delta.project_voxel(v) if touched else v)
 
 			## (b) occupancy for the light field — PROJECTED, so the fresh crater
 			## lights as a hole rather than as solid rock (the live TileMapLayer
@@ -1172,7 +1160,7 @@ static func _walk_store_for(containers: Array) -> VoxelStore:
 ##  - `occupancy` is not built. Its last reader, the LIGHT phase, has built its own
 ##    map-wide occupancy since D-7, and the one other touch — `_commit_burn_to_delta()`
 ##    erasing burnt cells from it — was never read afterwards.
-## The `Voxel` object is still fetched per claim: `cell_to_voxel`, `damaged_voxels` and the
+## The `Voxel` object is still fetched per claim: `cell_to_voxel` and the
 ## phases after this one hand objects to `BlastCalculator`, which the room's repaint shares.
 static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -> void:
 	var containers: Array = s["walk_containers"]
@@ -1180,7 +1168,6 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
 	var blast_cells: Array = s["blast_cells"]
 	var weapon_cells: Array = s["weapon_cells"]
-	var damaged_voxels: Array = s["damaged_voxels"]
 	var under_structure: Dictionary = s["under_structure"]
 	var derive_us: bool = bool(s["derive_under_structure"])
 	var flammable_cells: Dictionary = s["flammable_cells"]
@@ -1233,8 +1220,6 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 					blast_cells.append(key)
 				else:
 					weapon_cells.append(key)
-			elif damage == Voxel.DamageState.DENTED or damage == Voxel.DamageState.CRACKED:
-				damaged_voxels.append(delta.project_voxel(v) if touched else v)
 
 			if is_slice and derive_us and (real & 1) == 1:
 				under_structure[Vector2i(xyz[k], xyz[k + 1])] = true
@@ -1253,86 +1238,114 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 	_enter_phase(s, PHASE_BURN)
 
 
-## --- Phase 5: ATOMIC. Whole-map soot, derived from holes. ------------------
+## --- Phase 5: SOOT-STAMP (Director, 2026-09-22) --------------------------------
 ##
-## Scope is the whole map (matching room._build_soot_snapshot()), not just this
-## blast's containers, so a pre-existing hole elsewhere keeps its scorch.
+## The blast's scorch is a STAMP, not a derivation. Every surviving voxel this blast
+## reaches (`ring_of`'s keys: the wall-aware flood, so soot does not cross a wall) takes
+## a tone from its 3D distance to the epicentre (`_soot_ring_by_distance()`), dithered by
+## `BlastCalculator.soot_jitter()`. No BFS, no map-wide seeds, no old holes: the cost is
+## this blast's own voxels whatever the level went through before (the derivation this
+## replaces measured 45 -> 212 ms over five grenades, in ONE un-budgeted call).
 ##
-## Cannot be sliced as written: derive_soot_rings() is a multi-source BFS whose
-## frontier IS its state, and suspending it would mean turning that frontier
-## into resumable state inside BlastCalculator. Flagged, measured in §8.8, not
-## silently accepted.
-## Split across three VISITS at the natural call boundaries — the two BFS runs
-## and the merge/self-soot tail. That is as fine as this phase gets without
-## reaching inside `derive_soot_rings()` to make its frontier resumable, which
-## would mean changing a BlastCalculator function that `room.gd`'s repaint path
-## also calls. Measured, named and deliberately not done — §8.8.
+## ⚠️ DISTANCE PER VOXEL, NOT `ring_of`'s RING. `ring_of` is a GU ring, flat across a
+## whole GU, and a per-GU stamp is what the Director rejected on sight in 2026-08 (see
+## `BombDef`'s note): *"a fuligem parece um monte de quadradinhos (...) fica muito forte
+## por GUs, mas de repente na GU do lado não tem nada"*.
 ##
-## `sub` is the cursor: 0 = blast rings, 1 = weapon rings, 2 = merge + self-soot.
-## SS-3 (`SOOT_STORAGE_REFORM` §3.1) — this phase now also produces the blast's
-## scorch as a PROPOSAL on the Delta (`delta.scorch_writes`), which `commit()`
-## writes to the store. Nothing here mutates: the phase stays as pure as it has
-## always been, which is the whole reason the soot layer was chosen as *"a model
-## to copy"* by `PREDICTION_MASTER_PLAN` §2.2. What changes is that the proposal
-## now has somewhere to go other than the animation.
+## Also stamped: the cells this blast reveals (their exposure ring) and the six
+## neighbours of every cell the fire burns (ring 1). Hidden voxels are stamped too,
+## so a face revealed later comes up already scorched.
+##
+## Tones only DARKEN: a cell the soot plane already shows at least as dark is left
+## alone, so an earlier scorch is never lightened and the waves carry only real
+## changes. The plane is `Room._soot_map`'s projection, so reading it is reading the
+## store without a base-coord conversion per cell.
+##
+## Resumable on `cursor`. Output: `s["soot_codes"]` (Vector3i -> tone, what the waves
+## paint) and `delta.scorch_writes` (`level -> {cell: tone}`, what `commit()` stores).
 static func _phase_soot(s: Dictionary, deadline: int) -> void:
-	var ctx: Dictionary = s["ctx"]
-	var delta = s["delta"]
-	var _t0: int = Time.get_ticks_usec()
-	BlastCalculatorClass.build_soot_field(
-		s["cell_to_voxel"], s["blast_cells"], s["weapon_cells"], s["damaged_voxels"],
-		ctx.get("blast_soot_rings", 4), ctx.get("weapon_soot_rings", 3),
-		s["soot_snapshot"], s["soot_faces"], _cells_this_blast_reveals(s), [],
-		delta.scorch_writes)
-	_scorch_revealed_fixed_cells(s, s["soot_snapshot"], s["soot_faces"],
-		delta.scorch_writes)
-	if OS.get_environment("INFILTRAITOR_SOOT_SPLIT") == "1":
-		var _n: int = 0
-		for _lv in delta.scorch_writes:
-			_n += (delta.scorch_writes[_lv] as Dictionary).size()
-		print("[SOOT-SPLIT] blast cook SOOT phase %.1f ms (one un-budgeted call) · seeds %d blast, %d weapon, %d damaged · %d scorch write(s) on the Delta"
-			% [float(Time.get_ticks_usec() - _t0) / 1000.0, (s["blast_cells"] as Array).size(),
-			(s["weapon_cells"] as Array).size(), (s["damaged_voxels"] as Array).size(), _n])
+	if not s.has("soot_todo"):
+		s["soot_todo"] = _soot_todo(s)
+	var todo: Array = s["soot_todo"]
+	var soot_codes: Dictionary = s["soot_codes"]
+	var writes: Dictionary = (s["delta"] as WorldDelta).scorch_writes
+	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var i: int = int(s["cursor"])
+	var since_check: int = 0
+	while i < todo.size():
+		var row: Array = todo[i]
+		i += 1
+		var key: Vector3i = row[0]
+		var cell := Vector2i(key.x, key.y)
+		var tone: int = BlastCalculatorClass.soot_jitter(cell, key.z, int(row[1]))
+		if tone >= 0 and (not soot_codes.has(key) or tone < int(soot_codes[key])):
+			var shown: int = -1 if voxel_renderer == null else \
+				BlastCalculatorClass.soot_ring_of_code(voxel_renderer.cell_soot_at(key.z, cell))
+			if shown < 0 or tone < shown:
+				soot_codes[key] = tone
+				if not writes.has(key.z):
+					writes[key.z] = {}
+				(writes[key.z] as Dictionary)[cell] = tone
+		since_check += 1
+		if since_check >= SOOTWAVE_CHUNK:
+			since_check = 0
+			if _out_of_time(deadline):
+				s["cursor"] = i
+				return
 	_enter_phase(s, PHASE_LIGHT)
 
 
-## S-DEEP part 1 — every cell this blast is about to REVEAL, as the BFS's
-## `also_visible` set. Reads `exposed_by_ring`, which `_phase_floors` has already
-## filled by the time this phase runs (phase order: FLOORS, WALK, SOOT).
-static func _cells_this_blast_reveals(s: Dictionary) -> Dictionary:
-	var revealed: Dictionary = {}
-	for ring in s["exposed_by_ring"].keys():
-		for e in s["exposed_by_ring"][ring]:
-			var pos: Vector2i = e["grid_pos"]
-			revealed[Vector3i(pos.x, pos.y, e["level"])] = true
-	return revealed
-
-
-## S-DEEP part 2 — the revealed cells that are not Voxels at all.
-##
-## `_resolve_expose_below()` has two outcomes: a real deep Slab
-## (`reveal_floor_slab()`, real Voxel objects the BFS can reach once told they
-## are about to be visible) or the FIXED earth level
-## (`render_fixed_earth_level()`, cells with no Voxel behind them). The BFS walks
-## `cell_to_voxel`, so the second kind is unreachable by construction, no matter
-## what it is told about visibility.
-##
-## `room.gd`'s repaint has always handled exactly this, via
-## `add_crater_floor_soot()` at `EXPOSED_FLOOR_SOOT_RING` — and the detonation
-## path never did. That asymmetry is SOOT_MASTER_PLAN §1.2's predicted defect:
-## the same crater reading clean right after the blast and sooted after a
-## rotation. Both sides now write the same constant through the same helper.
-static func _scorch_revealed_fixed_cells(s: Dictionary, out_snapshot: Dictionary,
-		out_faces: Dictionary, out_full: Dictionary = {}) -> void:
+## `[key, ring]` rows for the SOOT phase: surviving voxels in `ring_of`, the revealed
+## cells, and the burnt cells' neighbours. Built once, at the phase's first visit.
+static func _soot_todo(s: Dictionary) -> Array:
+	var delta: WorldDelta = s["delta"]
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
-	for ring_key in s["exposed_by_ring"].keys():
-		for e in s["exposed_by_ring"][ring_key]:
+	var ring_of: Dictionary = s["ring_of"]
+	var todo: Array = []
+	for key: Vector3i in ring_of:
+		var v: Voxel = cell_to_voxel.get(key)
+		if v != null and delta.state_of(v) == Voxel.DamageState.DESTROYED:
+			continue
+		todo.append([key, _soot_ring_by_distance(s, key)])
+	var exposed: Dictionary = s["exposed_by_ring"]
+	for ring in exposed:
+		for e in exposed[ring]:
 			var pos: Vector2i = e["grid_pos"]
-			var level: int = e["level"]
-			if cell_to_voxel.has(Vector3i(pos.x, pos.y, level)):
-				continue   ## a real Voxel — the BFS already owns it
-			BlastCalculatorClass.scorch_floor_cell(out_snapshot, out_faces,
-				level, pos, BlastCalculatorClass.EXPOSED_FLOOR_SOOT_RING, out_full)
+			var ekey := Vector3i(pos.x, pos.y, int(e["level"]))
+			todo.append([ekey, _soot_ring_by_distance(s, ekey)])
+	for key: Vector3i in s["burnt"]:
+		for d: Vector3i in EMBER_NEIGHBOURS:
+			var nv: Voxel = cell_to_voxel.get(key + d)
+			if nv != null and delta.state_of(nv) != Voxel.DamageState.DESTROYED:
+				todo.append([key + d, 1])
+	return todo
+
+
+## A voxel's blast soot tone from its 3D distance (voxel units; a level is one voxel
+## tall) to the epicentre on the ground plane: tone 0 out to one band past the crater's
+## edge, then one tone per band, clean past the flood's reach. The four bands split
+## crater edge -> flood edge, both numbers the blast already has.
+static func _soot_ring_by_distance(s: Dictionary, key: Vector3i) -> int:
+	var epicenter: Vector2i = s["epicenter"]
+	var crater_max: float = float(s["crater_max"])
+	var reach: float = float(s["gu_reach_voxels"])
+	var band: float = maxf((reach - crater_max) / float(BlastCalculatorClass.FACE_SOOT_CLEAN), 1.0)
+	var dz: float = float(key.z - GeometryCoords.PLAYABLE_LEVEL)
+	var dxy := Vector2(Vector2i(key.x, key.y) - epicenter)
+	var r: float = sqrt(dxy.length_squared() + dz * dz)
+	return int(maxf(r - crater_max, 0.0) / band)
+
+
+## The soot code an entry carries for `key`: the tone this blast stamps there, or what
+## the plane already shows (a dent outside the stamped set keeps its scorch).
+static func _soot_code_at(s: Dictionary, key: Vector3i) -> int:
+	var codes: Dictionary = s["soot_codes"]
+	if codes.has(key):
+		return BlastCalculatorClass.soot_code(int(codes[key]))
+	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	if voxel_renderer == null:
+		return VoxelRendererClass.FACE_SOOT_CODE_CLEAN
+	return voxel_renderer.cell_soot_at(key.z, Vector2i(key.x, key.y))
 
 
 ## --- Phase 6: ATOMIC. The single map-wide light-field query (§2). ----------
@@ -1357,8 +1370,7 @@ static func _phase_light(s: Dictionary) -> void:
 		predict_destroyed[k] = true
 	field.build(lights, ctx.get("shadow_results", []),
 		voxel_renderer.top_wall_level(),
-		voxel_renderer.build_occupancy(predict_destroyed),
-		s["soot_snapshot"], s["under_structure"], s["soot_faces"])
+		voxel_renderer.build_occupancy(predict_destroyed), s["under_structure"])
 	s["field"] = field
 	s["ring_keys"] = s["ring_of"].keys()
 	## D-7 (§7.4) — carry the field to the Delta. `_phase_soot_wave` fills
@@ -1450,7 +1462,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 					_count(census, wave_key, container, resolved["baked"])
 					_append(waves[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 						"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"],
-						"alt": alt, "soot": field.face_soot_code(voxel.grid_pos, voxel.level),
+						"alt": alt, "soot": _soot_code_at(s, key),
 						"r": _radius_of(voxel.grid_pos, epicenter)})
 		since_check += 1
 		if since_check >= chunk:
@@ -1480,7 +1492,7 @@ static func _phase_expose(s: Dictionary, deadline: int) -> void:
 			var alt := _alt_for(field, e["grid_pos"], e["level"], e["alternative_id"])
 			lit_expose.append({"cell": e["grid_pos"], "level": e["level"],
 				"source_id": e["source_id"], "atlas_coords": e["atlas_coords"], "alt": alt,
-				"soot": field.face_soot_code(e["grid_pos"], e["level"]),
+				"soot": _soot_code_at(s, Vector3i(e["grid_pos"].x, e["grid_pos"].y, int(e["level"]))),
 				"r": _radius_of(e["grid_pos"], epicenter)})
 		if not waves["destroy"].has(ring):
 			waves["destroy"][ring] = []
@@ -1501,97 +1513,115 @@ static func _phase_expose(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= rings.size():
-		## Flattened here rather than iterated nested, so the phase below has a
-		## single cursor to suspend on. Cheap: this is the sooted-cell count, not
-		## the map.
-		var flat: Array = []
-		var snapshot: Dictionary = s["soot_snapshot"]
-		for level in snapshot.keys():
-			for cell in (snapshot[level] as Dictionary).keys():
-				flat.append([level, cell])
-		s["soot_cells"] = flat
+		## One flat key list, so the phase below has a single cursor to suspend on.
+		## This blast's stamped cells only, never the map.
+		s["soot_cells"] = (s["soot_codes"] as Dictionary).keys()
 		_enter_phase(s, PHASE_SOOTWAVE)
 
 
 ## --- Phase 9: the soot-only wave. -----------------------------------------
-## Every surviving voxel whose soot changed and isn't already carried by a
-## destroy/dent/crack entry. Ring is whatever the merged snapshot assigned.
+## Every DRAWN cell this blast stamps that no destroy/dent/crack entry already
+## carries. Hidden ones are not waves: `Room.absorb_scorch()` writes their plane at
+## commit, since there is nothing on screen to animate.
 static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 	var cells: Array = s["soot_cells"]
-	var snapshot: Dictionary = s["soot_snapshot"]
+	var soot_codes: Dictionary = s["soot_codes"]
 	var waves: Dictionary = s["waves"]
 	var field: VoxelLightFieldClass = s["field"]
 	var touched_this_blast: Dictionary = s["touched_this_blast"]
 	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
 	var epicenter: Vector2i = s["epicenter"]
+	var changed: Dictionary = s["delta"].light_changed_cells
 	var chunk: int = SOOTWAVE_CHUNK
 	var i: int = int(s["cursor"])
 	var since_check: int = 0
 	while i < cells.size():
-		var pair: Array = cells[i]
+		var key: Vector3i = cells[i]
 		i += 1
-		var level: int = pair[0]
-		var cell: Vector2i = pair[1]
-		var ring: int = int((snapshot[level] as Dictionary)[cell])
-		if ring < BlastCalculatorClass.FACE_SOOT_CLEAN \
-				and not touched_this_blast.has(Vector3i(cell.x, cell.y, level)):
+		if not touched_this_blast.has(key):
+			var level: int = key.z
+			var cell := Vector2i(key.x, key.y)
+			var ring: int = int(soot_codes[key])
+			var soot_code: int = BlastCalculatorClass.soot_code(ring)
 			if VoxelRendererClass.SKIP_BOARD_WRITES:
-				## R3D-6: no tile says whether the cell exists — the STORE does. Without this the wave
-				## read an empty tilemap and came out empty: none of the blast's soot halo reached the
-				## 3D board (823 floor cells of GLASS grenade #0). Planes only, so the entry carries
-				## no tile fields.
+				## R3D-6: no tile says whether the cell exists — the STORE does. Planes
+				## only, so the entry carries no tile fields.
 				var store: VoxelStore = VoxelStore.active
 				if store != null and store.has_cell(cell.x, cell.y, level):
-					var soot_only: int = field.face_soot_code(cell, level)
-					if soot_only != voxel_renderer.cell_soot_at(level, cell) \
-							or field.bucket_for(cell, level) != voxel_renderer.cell_bucket_at(level, cell):
-						_append(waves["soot"], ring, {"cell": cell, "level": level,
-							"source_id": -1, "atlas_coords": Vector2i.ZERO, "alt": 0,
-							"soot": soot_only, "r": _radius_of(cell, epicenter)})
-						s["delta"].light_changed_cells[Vector3i(cell.x, cell.y, level)] = true
-				since_check += 1
-				if since_check >= chunk:
-					since_check = 0
-					if _out_of_time(deadline):
-						break
-				continue
-			var layer: TileMapLayer = voxel_renderer.get_layer(level)
-			if layer != null:
-				var source_id: int = layer.get_cell_source_id(cell)
-				## -1 = erased elsewhere (occlusion/older destruction) — nothing to
-				## relight.
-				if source_id != -1:
-					var prev_alt: int = layer.get_cell_alternative_tile(cell)
-					var alt := _alt_for(field, cell, level, prev_alt)
-					var soot_code: int = field.face_soot_code(cell, level)
-					## ⚠️ PERF-P2b — THE COMPARISON HAD TO GROW A SECOND HALF.
-					## It used to read "equal alt = nothing this blast changes
-					## here", and that was true only while the alt carried soot.
-					## With scorch in its own plane, a cell whose SOOT changes and
-					## whose bucket does not now compares equal — which is every
-					## cell this wave exists for. Left alone, the soot wave would
-					## have come out EMPTY with no error anywhere.
-					if alt != prev_alt \
-							or soot_code != voxel_renderer.cell_soot_at(level, cell):
+					_append(waves["soot"], ring, {"cell": cell, "level": level,
+						"source_id": -1, "atlas_coords": Vector2i.ZERO, "alt": 0,
+						"soot": soot_code, "r": _radius_of(cell, epicenter)})
+					changed[key] = true
+			else:
+				var layer: TileMapLayer = voxel_renderer.get_layer(level)
+				if layer != null:
+					var source_id: int = layer.get_cell_source_id(cell)
+					## -1 = not drawn (hidden, erased elsewhere) — the plane is
+					## written at commit instead.
+					if source_id != -1:
 						_append(waves["soot"], ring, {"cell": cell, "level": level,
 							"source_id": source_id,
 							"atlas_coords": layer.get_cell_atlas_coords(cell),
-							"alt": alt, "soot": soot_code,
-							"r": _radius_of(cell, epicenter)})
+							"alt": _alt_for(field, cell, level, layer.get_cell_alternative_tile(cell)),
+							"soot": soot_code, "r": _radius_of(cell, epicenter)})
 						## D-7 (§7.4) — the same set, keyed for `apply_light_field_cells()`.
-						## Every cell whose displayed light or soot this blast moves and
-						## that is not a damaged cell (those carry their alt in the
-						## commit's own destroy/dent/crack entry).
-						s["delta"].light_changed_cells[Vector3i(cell.x, cell.y, level)] = true
+						changed[key] = true
 		since_check += 1
 		if since_check >= chunk:
 			since_check = 0
 			if _out_of_time(deadline):
 				break
 	s["cursor"] = i
-	if i >= cells.size():
-		s["smoke_gus"] = s["gu_rings"].keys()
-		_enter_phase(s, PHASE_SMOKE)
+	if i < cells.size():
+		return
+	## D-7 — then the cells whose LIGHT this blast moves without a soot change: the
+	## occupancy neighbourhood of every hole it opens, the exact reach of
+	## `VoxelLightField._stale_cells()`. Under the derived soot these rode in on the
+	## map-wide soot set by accident; with the stamp they have to be named, or a wall
+	## next to a hole keeps its pre-blast bucket. Buckets only, no wave entry.
+	if not s.has("relight_cells"):
+		s["relight_cells"] = _hole_neighbourhood(s)
+	var relight: Array = s["relight_cells"]
+	var store: VoxelStore = VoxelStore.active
+	var j: int = int(s["sub"])
+	while j < relight.size():
+		var key: Vector3i = relight[j]
+		j += 1
+		if not changed.has(key) and not touched_this_blast.has(key):
+			var cell := Vector2i(key.x, key.y)
+			var drawn: bool = false
+			if VoxelRendererClass.SKIP_BOARD_WRITES:
+				drawn = store != null and store.has_cell(cell.x, cell.y, key.z)
+			else:
+				var rlayer: TileMapLayer = voxel_renderer.get_layer(key.z)
+				drawn = rlayer != null and rlayer.get_cell_source_id(cell) != -1
+			if drawn and field.bucket_for(cell, key.z) != voxel_renderer.cell_bucket_at(key.z, cell):
+				changed[key] = true
+		since_check += 1
+		if since_check >= chunk:
+			since_check = 0
+			if _out_of_time(deadline):
+				s["sub"] = j
+				return
+	s["smoke_gus"] = s["gu_rings"].keys()
+	_enter_phase(s, PHASE_SMOKE)
+
+
+## Every cell within `VoxelLightField._stale_cells()`'s reach (Chebyshev 1 in XY,
+## levels -2..+1) of a voxel this blast destroys.
+static func _hole_neighbourhood(s: Dictionary) -> Array:
+	var delta: WorldDelta = s["delta"]
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var out: Dictionary = {}
+	for key: Vector3i in s["touched_this_blast"]:
+		var v: Voxel = cell_to_voxel.get(key)
+		if v == null or delta.state_of(v) != Voxel.DamageState.DESTROYED:
+			continue
+		for dz in range(-2, 2):
+			for dx in range(-1, 2):
+				for dy in range(-1, 2):
+					out[Vector3i(key.x + dx, key.y + dy, key.z + dz)] = true
+	return out.keys()
 
 
 ## --- Phase 10: smoke, the GU-level remainder (E-SMOKE-01). -----------------
@@ -1860,8 +1890,7 @@ static func _build_ember_wave(s: Dictionary) -> void:
 			var neighbour: Voxel = cell_to_voxel.get(ncell)
 			if neighbour == null:
 				continue
-			## PROJECTED, not live — the same trap phase 4 names for
-			## `damaged_voxels`. The real Voxel still reads INTACT/visible
+			## PROJECTED, not live. The real Voxel still reads INTACT/visible
 			## here (nothing has committed yet), so a voxel this very blast
 			## destroys would light up as if it had survived.
 			var p: Array = delta.projection_of(neighbour)

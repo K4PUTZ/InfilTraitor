@@ -8,7 +8,7 @@
 ## R3D-1d removed the objects. `Voxel` is now a thin wrapper (`claim: int` + this store) —
 ## it holds no state of its own, so there is nothing left to mirror. `set_damage()` /
 ## `set_visible()` below ARE the write seam; `Voxel.set_damage()` / `set_visible()` just
-## forward to them and record dirty/soot-seed bookkeeping.
+## forward to them and record dirty bookkeeping.
 ##
 ## Built from the registries after every board build (`Room._rebuild_voxel_store()`).
 ## `BoardProbe.write_store()` dumps it for `board_probe.py gate`.
@@ -47,8 +47,8 @@ const KIND_NAMES: PackedStringArray = ["slice", "slab", "column"]
 ## Per-container geometry record: offset, count, xmin, ymin, lmin, nx, ny.
 const GEOM_STRIDE: int = 7
 
-## The active store — every `Voxel` wrapper reads and writes through this one. Static,
-## like `Voxel.soot_dirty`: a `Voxel` holds no reference to anything that could reach it.
+## The active store — every `Voxel` wrapper reads and writes through this one. Static:
+## a `Voxel` holds no reference to anything that could reach it.
 static var active: VoxelStore = null
 
 ## RENDER3D R3D-1c step 3/4 flags. Since R3D-1d, `Voxel` has no state of its own — both
@@ -282,6 +282,17 @@ func has_cell(x: int, y: int, level: int) -> bool:
 	if x < x0 or y < y0 or level < l0 or x >= x0 + w or y >= y0 + h or level >= l0 + nl:
 		return false
 	return occ[cell_index(x, y, level)] != 0
+
+
+## SOOT-STAMP — a voxel that is not DESTROYED holds this cell, visible or not. Soot is
+## stamped onto hidden voxels too, so a wall face a later event reveals comes up
+## already scorched instead of needing a special case. `owner` prefers the visible
+## claim of a shared cell, so a shared cell answers for its visible voxel first.
+func has_solid(x: int, y: int, level: int) -> bool:
+	if x < x0 or y < y0 or level < l0 or x >= x0 + w or y >= y0 + h or level >= l0 + nl:
+		return false
+	var claim: int = owner[cell_index(x, y, level)]
+	return claim >= 0 and ((state[claim] >> 1) & 3) != Voxel.DamageState.DESTROYED
 
 
 static func state_byte(v: Voxel) -> int:

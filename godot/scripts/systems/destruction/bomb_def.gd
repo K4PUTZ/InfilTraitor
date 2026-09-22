@@ -29,7 +29,8 @@ var crack_ring_weights: Array[float] = []
 ## rejected the stamp on sight: *"a fuligem parece um monte de quadradinhos (...)
 ## fica muito forte por GUs, mas de repente na GU do lado não tem nada"* — which
 ## is structural, since the stamp ran once per container and so once per GU. Soot
-## comes from `derive_soot_rings()` + `apply_self_soot()` only.
+## is a per-VOXEL stamp by distance since 2026-09-22 (SOOT-STAMP,
+## `DetonationPlanBuilder._soot_ring_by_distance()`), and does not read this either.
 ##
 ## KEPT, not deleted, and the distinction is deliberate: this is authored tuning
 ## data sitting in every bomb's JSON, and dropping the field would be a data

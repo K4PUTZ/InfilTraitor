@@ -365,13 +365,6 @@ func fire_active() -> void:
 	## neighbours only) — this is what actually fixes "desde o chão até o
 	## teto," not a parameter tweak on the old ring model.
 
-	## D24: no explicit soot call here any more -- room._build_soot_snapshot()
-	## derives it fresh (up to 3 rings) for the whole map from whichever
-	## voxels are currently destroyed, every time _repaint_voxel_light_buckets()
-	## runs below. An isolated bullet hole naturally reads as ~1 ring (nothing
-	## further out is ALSO absent); a wide breach reads deeper on its own, no
-	## bullet/blast distinction needed for this part.
-
 	## VL-PERSIST: record into base coords so the damage survives a perspective
 	## flip, which rebuilds every Voxel from the MapSpec.
 	for key in cell_to_voxel:
@@ -401,12 +394,14 @@ func fire_active() -> void:
 	var render_wall_ms: float = float(Time.get_ticks_usec() - render_us) / 1000.0
 	var render_frames: int = Engine.get_frames_drawn() - shot_frame
 	## PERF-03: same contract as TestZoneController's own repaint — a shot
-	## changes geometry and soot only, never a light or a shadow result.
+	## changes geometry only, never a light or a shadow result.
 	var repaint_us := Time.get_ticks_usec()
 	if room.has_method("_repaint_voxel_light_buckets"):
 		room._repaint_voxel_light_buckets(true)
 	var repaint_ms: float = float(Time.get_ticks_usec() - repaint_us) / 1000.0
 	room._destruction_render_busy = false
+	## SOOT-STAMP: the same stamp the agent's shot makes, around what this one touched.
+	room.apply_shot_soot(cell_to_voxel.values())
 	## W-PROF-01: the firearm path has no pre-production (P-COOK/P-WARM cover the
 	## grenade only), so unlike a blast it pays everything at the trigger — worth
 	## PRINTING rather than assuming, the same reason `[E-PLAN] census cost=`
@@ -429,10 +424,8 @@ func fire_active() -> void:
 	_active_index = -1
 
 
-## D24: soot no longer needs a destroyed_cells seed list here -- room's own
-## repaint-time derivation (BlastCalculator.derive_soot_rings()) walks the
-## whole map fresh. This just indexes which voxels THIS shot touched, for the
-## VL-PERSIST loop above.
+## Indexes which voxels THIS shot touched, for the VL-PERSIST loop and the soot stamp
+## above.
 ## D30.3 — the agent's skill term of the punch coefficient. Director: *"Skill do
 ## agente. Vamos implementar futuramente boosts e outros tipos de modificações."*
 ## No actor carries a skill stat yet, so this is the SINGLE seam that will read

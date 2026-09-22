@@ -42,7 +42,6 @@ func _init() -> void:
 	test_out_of_range_aborts(fixture)
 
 	_cleanup()
-	Voxel.reset_soot_dirty()
 	VoxelStore.active = null
 	print("\nBoardProbe SELFTEST: %s (%d passed, %d failed)\n"
 		% ["PASS" if failed == 0 else "FAIL", passed, failed])

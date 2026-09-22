@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**277 scripts · 103140 lines total** (under `godot/scripts/`)
+**278 scripts · 101167 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -20,7 +20,7 @@
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, store_layout_spike.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -533,7 +533,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1948 lines
+extends `Node3D` · 1950 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1111,7 +1111,7 @@ extends `Node3D` · 1948 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 229 lines
+`class_name Voxel` · 214 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -1140,7 +1140,7 @@ extends `Node3D` · 1948 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 8008 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7956 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2322,7 +2322,7 @@ extends `RefCounted` · 941 lines
 
 ### `cell_plane_store.gd`
 
-`class_name CellPlaneStore` · extends `RefCounted` · 190 lines
+`class_name CellPlaneStore` · extends `RefCounted` · 201 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
@@ -2343,6 +2343,7 @@ extends `RefCounted` · 941 lines
 - `func flush(skip_writes: bool) -> int:`
 - `func texture_for(level: int) -> ImageTexture:`
 - `func ensure_level(level: int) -> void:`
+- `func reset_all() -> void:`
 - `func debug_fill(level: int, value: int) -> void:`
 
 ---
@@ -2401,7 +2402,7 @@ extends `RefCounted` · 941 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 2023 lines
+`class_name BlastCalculator` · 1528 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2416,7 +2417,7 @@ extends `RefCounted` · 941 lines
 
 ### `bomb_def.gd`
 
-`class_name BombDef` · 83 lines
+`class_name BombDef` · 84 lines
 
 `godot/scripts/systems/destruction/bomb_def.gd`
 
@@ -2489,7 +2490,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2664 lines
+`class_name DetonationPlanBuilder` · 2693 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2660,7 +2661,7 @@ extends `RefCounted` · 941 lines
 
 ### `shot_punch_table.gd`
 
-`class_name ShotPunchTable` · 429 lines
+`class_name ShotPunchTable` · 427 lines
 
 `godot/scripts/systems/destruction/shot_punch_table.gd`
 
@@ -3034,7 +3035,7 @@ extends `Node` · 256 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 675 lines
+`class_name VoxelLightField` · extends `RefCounted` · 552 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -3050,6 +3051,7 @@ extends `Node` · 256 lines
 - `var face_sw_factor: float = 0.48`
 - `var face_enclosed_factor: float = 0.30`
 - `var ao_strength: float = 0.55`
+- `var under_structure_factor: float = 0.68`
 
 ---
 
@@ -3361,12 +3363,13 @@ extends `Node` · 156 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 226 lines
+`class_name SaveState` · extends `RefCounted` · 219 lines
 
 `godot/scripts/systems/save_state.gd`
 
 **Constants / tuning**
-- `FORMAT_VERSION` = `1`
+- `FORMAT_VERSION` = `2`
+- `OLDEST_READABLE_VERSION` = `1`
 
 ---
 
@@ -3543,11 +3546,11 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 531 lines
+`class_name VoxelStore` · extends `RefCounted` · 542 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
-> VoxelStore — the packed voxel store, THE writer and the only place voxel state lives. RENDER3D R3D-1b (`RENDER3D_MASTER_PLAN` §4) built this as a SHADOW beside the `Voxel` objects: every claim's state in flat per-voxel arrays, contiguous per container, plus a derived dense grid that answers "is this cell occupied, and by which claim". R3D-1c moved every reader onto it, one subsystem at a time, gated against the objects. R3D-1d removed the objects. `Voxel` is now a thin wrapper (`claim: int` + this store) — it holds no state of its own, so there is nothing left to mirror. `set_damage()` / `set_visible()` below ARE the write seam; `Voxel.set_damage()` / `set_visible()` just forward to them and record dirty/soot-seed bookkeeping. Built from the registries after every board build (`Room._rebuild_voxel_store()`). `BoardProbe.write_store()` dumps it for `board_probe.py gate`. A CLAIM is one `Voxel` in one container. PLAYGROUND holds 216 104 claims in 215 432 cells: where two slices of one GU meet at a corner, both claim the cell, and under a blast their states diverge (R3D-1a). The store keeps both, exactly as the objects do. THE ARRAYS, per claim, in container order (slices, slabs, junction columns — the prediction WALK's order): state  bit 0 visible · bits 1-2 damage · bit 3 blast · bits 4-6 carved side (`BoardProbe`'s packing) aux    variant (low nibble) · substrate (high nibble) mat    index into `material_ids`, band-resolved on a slice, the override on a column xyz    grid x, grid y, level THE DERIVED GRID, per cell of the padded bounds (2 cells and 2 levels of air on every side, as R3D-1a measured it, so a reader's ±1/±2 neighbour read needs no bounds check): occ    1 when ANY claim of the cell is visible owner  the first visible claim, else the first claim, else -1 A cell more than one claim holds is listed in `_multi`, so a write can recompute it. FINDING A CLAIM FROM A VOXEL costs no field on `Voxel`. Each container's voxels are laid out in a regular box — level, then y, then x — so the claim is the container's offset plus arithmetic on the voxel's own cell. That is VERIFIED for every voxel when the store is built; a container whose order breaks it gets a lookup table instead, and is counted, so the arithmetic is never trusted blind.
+> VoxelStore — the packed voxel store, THE writer and the only place voxel state lives. RENDER3D R3D-1b (`RENDER3D_MASTER_PLAN` §4) built this as a SHADOW beside the `Voxel` objects: every claim's state in flat per-voxel arrays, contiguous per container, plus a derived dense grid that answers "is this cell occupied, and by which claim". R3D-1c moved every reader onto it, one subsystem at a time, gated against the objects. R3D-1d removed the objects. `Voxel` is now a thin wrapper (`claim: int` + this store) — it holds no state of its own, so there is nothing left to mirror. `set_damage()` / `set_visible()` below ARE the write seam; `Voxel.set_damage()` / `set_visible()` just forward to them and record dirty bookkeeping. Built from the registries after every board build (`Room._rebuild_voxel_store()`). `BoardProbe.write_store()` dumps it for `board_probe.py gate`. A CLAIM is one `Voxel` in one container. PLAYGROUND holds 216 104 claims in 215 432 cells: where two slices of one GU meet at a corner, both claim the cell, and under a blast their states diverge (R3D-1a). The store keeps both, exactly as the objects do. THE ARRAYS, per claim, in container order (slices, slabs, junction columns — the prediction WALK's order): state  bit 0 visible · bits 1-2 damage · bit 3 blast · bits 4-6 carved side (`BoardProbe`'s packing) aux    variant (low nibble) · substrate (high nibble) mat    index into `material_ids`, band-resolved on a slice, the override on a column xyz    grid x, grid y, level THE DERIVED GRID, per cell of the padded bounds (2 cells and 2 levels of air on every side, as R3D-1a measured it, so a reader's ±1/±2 neighbour read needs no bounds check): occ    1 when ANY claim of the cell is visible owner  the first visible claim, else the first claim, else -1 A cell more than one claim holds is listed in `_multi`, so a write can recompute it. FINDING A CLAIM FROM A VOXEL costs no field on `Voxel`. Each container's voxels are laid out in a regular box — level, then y, then x — so the claim is the container's offset plus arithmetic on the voxel's own cell. That is VERIFIED for every voxel when the store is built; a container whose order breaks it gets a lookup table instead, and is counted, so the arithmetic is never trusted blind.
 
 **Constants / tuning**
 - `PAD` = `2`
@@ -3797,7 +3800,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2779 lines
+extends `SceneTree` · 2268 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3828,11 +3831,6 @@ extends `SceneTree` · 2779 lines
 - `func test_damage_tiers_are_mutually_exclusive() -> void:`
 - `func test_wood_container_mostly_destroyed_at_ring_zero() -> void:`
 - `func test_ring_beyond_range_untouched() -> void:`
-- `func test_soot_rings_spread_by_distance() -> void:`
-- `func test_soot_min_ring_wins_between_two_holes() -> void:`
-- `func test_face_soot_points_at_the_hole() -> void:`
-- `func test_face_soot_merges_at_a_corner() -> void:`
-- `func test_face_soot_leaves_isotropic_result_untouched() -> void:`
 - `func test_crater_core_solid_rim_ragged_beyond_intact() -> void:`
 - `func test_crater_dents_rim_and_band_by_material() -> void:`
 - `func test_bias_prefers_epicenter_facing_side() -> void:`
@@ -3868,13 +3866,6 @@ extends `SceneTree` · 2779 lines
 - `func test_pellet_selection_is_deterministic() -> void:`
 - `func test_carved_side_faces_the_blast() -> void:`
 - `func test_carved_side_survives_rotation() -> void:`
-- `func test_self_soot_faces_dented_lateral_sides() -> void:`
-- `func test_self_soot_faces_dented_top_and_bottom() -> void:`
-- `func test_self_soot_faces_cracked_blast_hits_all_three() -> void:`
-- `func test_self_soot_faces_cracked_bullet_no_side_falls_back_to_top() -> void:`
-- `func test_self_soot_faces_intact_and_destroyed_get_none() -> void:`
-- `func test_apply_self_soot_fills_in_when_nothing_stronger_exists() -> void:`
-- `func test_apply_self_soot_never_weakens_an_existing_stronger_ring() -> void:`
 - `func test_crater_crack_absent_without_weights() -> void:`
 - `func test_crater_crack_bands_and_severity_ladder() -> void:`
 
@@ -3912,7 +3903,7 @@ extends `SceneTree` · 689 lines
 
 ### `board_probe_selftest.gd`
 
-extends `SceneTree` · 204 lines
+extends `SceneTree` · 203 lines
 
 `godot/scripts/tools/board_probe_selftest.gd`
 
@@ -5266,7 +5257,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 196 lines
+extends `SceneTree` · 203 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -5359,6 +5350,14 @@ extends `SceneTree` · 257 lines
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
+
+---
+
+### `soot_stamp_selftest.gd`
+
+extends `SceneTree` · 121 lines
+
+`godot/scripts/tools/soot_stamp_selftest.gd`
 
 ---
 
@@ -5553,7 +5552,7 @@ extends `SceneTree` · 162 lines
 
 ### `voxel_store_selftest.gd`
 
-extends `SceneTree` · 226 lines
+extends `SceneTree` · 225 lines
 
 `godot/scripts/tools/voxel_store_selftest.gd`
 
@@ -5858,7 +5857,7 @@ extends `Node2D` · 35 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1151 lines
+`class_name AgentShotController` · 1138 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -5952,7 +5951,7 @@ extends `Node2D` · 35 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1655 lines
+`class_name TestZoneController` · 1647 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -6021,7 +6020,7 @@ extends `Node2D` · 35 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 498 lines
+`class_name WeaponBenchController` · 491 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -6229,7 +6228,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12678 lines
+extends `Node2D` · 11758 lines
 
 `godot/scripts/world/room.gd`
 

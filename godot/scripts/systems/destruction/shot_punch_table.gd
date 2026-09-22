@@ -276,10 +276,8 @@ static func cascade_min(material: String) -> float:
 
 ## D30.4 — luck is a spread on DESTRUCTION, never on hit/miss (that is a
 ## separate roll the Director explicitly told us not to conflate). Its job is to
-## stop every hole from looking identical; because soot is DERIVED from which
-## voxels are absent (D24), varying destruction varies the scorch for free —
-## derive_soot_rings() itself is a deterministic BFS with no randomness of its
-## own.
+## stop every hole from looking identical; the shot's soot is stamped around the
+## voxels it touched (SOOT-STAMP), so varying destruction varies the scorch for free.
 static var LUCK_MIN: float = 0.85
 static var LUCK_MAX: float = 1.20
 

@@ -1,6 +1,28 @@
 # SOOT_MASTER_PLAN
 ## One soot mechanism for explosives and firearms — study, 2026-08-12
 
+⛔ **2026-09-22 — SOOT-STAMP (Director): soot is STAMPED once per event and never derived again.**
+*"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do
+código. (...) a fuligem é meramente um efeito a mais, não é pra sugar CPU. Ela existe pra não
+ficar tudo limpinho parecido."* What the code does now:
+- **One state:** `Room._soot_map`, `level -> {base_cell: tone}`, one tone 0..3 per cell (0 darkest),
+  the SAME tone on every visible face. The six-direction store format, the per-face scorch
+  (FACE-SOOT-01), the self-soot table (D33-SOOT-01), S-DEEP's `also_visible` and the incremental
+  index (§13.2) are gone.
+- **Writers:** a shot stamps an L1 ball (radius 3) around the voxels it touched; a blast stamps
+  every surviving voxel its flood reaches by 3D distance to the epicentre (bands from the crater
+  edge to the flood edge — per VOXEL, never per GU, so the rejected "quadradinhos por GU" look
+  cannot come back); a fire stamps the burnt cells' six neighbours. A hash-seeded roll lightens a
+  cell by one tone (`BlastCalculator.SOOT_LIGHTEN_CHANCE`) — the "sorteio" that dithers the edge.
+  Tones only darken (min-wins).
+- **No light apply writes the soot plane.** The map-wide repaint resets the planes and re-projects
+  the soot map; `SaveState` v2 saves it.
+- Measured (desktop, `PLAYGROUND_2`): a shotgun blast's soot 422–887 ms -> 3.6–4.3 ms; the blast
+  cook's SOOT phase 45 -> 206 ms over five grenades -> 15–19 ms each. Full record:
+  `PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`.
+
+Everything below is the history of the derived design.
+
 > ⏭️ **2026-09-21 — blast scorch timing changed:** it now darkens AFTER the crater in 4 timed steps (0.075 s each), see `DETONATION_PRESENTATION_MASTER_PLAN` (top note) and `RENDER3D_MASTER_PLAN` v1.13. The store and the ladder's tones are unchanged.
 
 **Status:** 🟢 **FIVE OF SIX TASKS BUILT 2026-08-12/13** — see §5. S-LOCAL was

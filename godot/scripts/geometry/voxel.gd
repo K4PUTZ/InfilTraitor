@@ -170,20 +170,6 @@ var damage_substrate: int:
 			_local_state().damage_substrate = v
 
 
-## §13.2 — every damage change, as a cell key. `Room._build_soot_snapshot()` used to find
-## its seeds by walking all 215 432 voxels on the board (126 ms of a 283 ms repaint) —
-## this records the answer instead, at the one place it can change.
-##
-## ⚠️ KEYS, NEVER VOXEL REFERENCES — a static Array of Voxels here would resurrect
-## LEAK-CYCLE-01. A `Vector3i` retains nothing. Cleared by the consumer (`Room`), not
-## here; `reset_soot_dirty()` on map load/reset/death/perspective rebuild.
-static var soot_dirty: Dictionary = {}
-
-
-static func reset_soot_dirty() -> void:
-	soot_dirty.clear()
-
-
 ## Set visibility; no-op if unchanged; propagates dirty upward.
 func set_visible(v: bool) -> void:
 	var store: VoxelStore = _store()
@@ -206,7 +192,6 @@ func set_damage(new_state: int, from_blast: bool = false,
 		return
 	if not store.set_damage(claim, new_state, from_blast, carved_side, variant, substrate):
 		return
-	soot_dirty[Vector3i(grid_pos.x, grid_pos.y, level)] = true
 	_set_dirty()
 
 

@@ -685,8 +685,7 @@ static var SKIP_BOARD_WRITES: bool = false
 ## not one microsecond of the work. This removes the work:
 ##
 ##   · `Room._repaint_voxel_light_buckets()` and its scoped sibling return at the
-##     top, so `build_occupancy()`, `_build_soot_snapshot()` and
-##     `VoxelLightField.build()` never run;
+##     top, so `build_occupancy()` and `VoxelLightField.build()` never run;
 ##   · all three `apply_light_field*()` entries return, so the walk over every
 ##     placed cell — 609 ms of the 646 ms measured in §10.1 — never happens;
 ##   · `_ensure_light_alt()` returns, so no light alternative is ever minted and
@@ -3944,10 +3943,6 @@ func _apply_light_field_pass(field) -> void:
 	for cell in _ghosted_cells.keys():
 		for record in _ghosted_cells[cell]:
 			var flipped: bool = decode_light_flipped(record["prev_alt"])
-			var ghost_soot: int = field.face_soot_code(cell, record["level"])
-			## PERF-P2: the cell is erased right now, but un-ghosting restores it
-			## from this record — and the soot plane is where its scorch lives.
-			_write_cell_soot(int(record["level"]), cell, ghost_soot)
 			## PERF-P3: and its light, for the same reason. §5.1 named the ghost
 			## store as the reader with real teeth — it remembers `prev_alt` to
 			## restore a cell EXACTLY. Once the id stops carrying the bucket, the
@@ -3995,7 +3990,6 @@ func _apply_light_field_pass_store(field) -> void:
 		for cell: Vector2i in (occ[level] as Dictionary).keys():
 			_apply_cells_seen += 1
 			_index_placed(level_i, cell)
-			_write_cell_soot(level_i, cell, field.face_soot_code(cell, level_i))
 			_write_cell_bucket(level_i, cell, field.bucket_for(cell, level_i))
 			_apply_cells_written += 1
 	flush_cell_soot()
@@ -4014,16 +4008,6 @@ func _apply_light_field_pass_store(field) -> void:
 ## more open-area light touches far fewer voxels and costs proportionally
 ## less. Silently no-ops for a GU the index doesn't know about (nothing was
 ## ever placed there).
-## `soot_lighten` (W-SOOT-01, 2026-08-19) tones every face DOWN by that many
-## rungs before writing, clamped at clean — the same ladder
-## DetonationChoreographer._lightened() walks for the blast's soot fade.
-##
-## It exists so soot can arrive AFTER the fact without arriving suddenly, which
-## is the Director's own condition: *"a fuligem pode ser processada depois do
-## fato, desde que apareça com fade in, e não de repente."* Stepping it from
-## `steps-1` down to 0 fades soot in from a field built ONCE, instead of
-## rebuilding the field per step — the rebuild is the expensive half (a map-wide
-## soot snapshot), and doing it N times would cost more than not deferring at all.
 ## Cells actually written by the last scoped apply. The CPU inside this function
 ## is not the whole cost — every `set_cell` also makes the TileMapLayer resubmit,
 ## and that lands in the frame outside any profiler scope here. Counting the
@@ -4100,7 +4084,6 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 		if SKIP_BOARD_WRITES:
 			## DIAG-21 2c: the planes only. The layer was never updated by the commit, so
 			## its source id says nothing about the cell — write every visited key.
-			_write_cell_soot(level, cell, field.face_soot_code(cell, level))
 			_write_cell_bucket(level, cell, field.bucket_for(cell, level))
 			continue
 		var source_id: int = layer.get_cell_source_id(cell)
@@ -4109,11 +4092,8 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 		_apply_cells_seen += 1
 		_index_placed(level, cell)
 		var prev_alt: int = layer.get_cell_alternative_tile(cell)
-		var full_soot: int = field.face_soot_code(cell, level)
-		## PERF-P2/P3 — both writes BEFORE the alt comparison, for the reason
-		## `apply_light_field_gus()` spells out: once soot and bucket left the
-		## alternative id, a change in either leaves `alt_id == prev_alt`.
-		_write_cell_soot(level, cell, full_soot)
+		## PERF-P3 — the bucket write goes BEFORE the alt comparison: once the bucket
+		## left the alternative id, a change in it leaves `alt_id == prev_alt`.
 		var full_bucket: int = field.bucket_for(cell, level)
 		_write_cell_bucket(level, cell, full_bucket)
 		var alt_id: int = encode_light_alt(full_bucket,
@@ -4133,8 +4113,6 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 			if not visit.has(Vector3i(gcell.x, gcell.y, glevel)):
 				continue
 			var flipped: bool = decode_light_flipped(record["prev_alt"])
-			var ghost_soot: int = field.face_soot_code(gcell, glevel)
-			_write_cell_soot(glevel, gcell, ghost_soot)
 			var ghost_bucket: int = field.bucket_for(gcell, glevel)
 			_write_cell_bucket(glevel, gcell, ghost_bucket)
 			record["prev_alt"] = encode_light_alt(ghost_bucket, flipped)
@@ -4143,7 +4121,7 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 	_externally_written.clear()
 
 
-func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
+func apply_light_field_gus(field, gus: Array) -> void:
 	if LIGHT_DISABLED:
 		return
 	if field == null or gus.is_empty():
@@ -4167,32 +4145,15 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 				## exists to say whether the cell is still there, and without this the blast's
 				## consequence pass wrote NO soot and NO light into the planes (2D wrote soot on 823
 				## more floor cells of GLASS grenade #0 than the 3D board did).
-				var plane_soot: int = field.face_soot_code(cell, level)
-				if soot_lighten > 0:
-					plane_soot = VoxelLightField.encode_face_soot(_lighten_faces(
-						VoxelLightField.decode_face_soot(plane_soot), soot_lighten))
-				_write_cell_soot(level, cell, plane_soot)
 				_write_cell_bucket(level, cell, field.bucket_for(cell, level))
 				continue
 			var source_id: int = layer.get_cell_source_id(cell)
 			if source_id == -1:
 				continue  ## erased — destroyed, or currently ghosted (handled below)
 			var prev_alt: int = layer.get_cell_alternative_tile(cell)
-			## FACE-SOOT-01: the whole id is the comparison now — the same light bucket
-			## with different per-face soot is a different tile.
-			var soot_code: int = field.face_soot_code(cell, level)
-			if soot_lighten > 0:
-				soot_code = VoxelLightField.encode_face_soot(_lighten_faces(
-					VoxelLightField.decode_face_soot(soot_code), soot_lighten))
-			## PERF-P2 — BEFORE the alt comparison, deliberately. Once soot stops
-			## riding in the alternative id, a soot-only change leaves `alt_id`
-			## equal to `prev_alt`, and a write placed after the `continue` would
-			## be skipped exactly when it is the only thing that changed.
-			_write_cell_soot(level, cell, soot_code)
-			## PERF-P3 — the bucket, for the identical reason and in the same
-			## place: once it leaves the alternative id, a light-only change
-			## leaves `alt_id` equal to `prev_alt` and the `continue` below
-			## fires. The write has to be on this side of it.
+			## PERF-P3 — the bucket is written BEFORE the alt comparison: once it
+			## left the alternative id, a light-only change leaves `alt_id` equal
+			## to `prev_alt` and the `continue` below fires.
 			var bucket: int = field.bucket_for(cell, level)
 			_write_cell_bucket(level, cell, bucket)
 			var alt_id: int = encode_light_alt(bucket,
@@ -4211,10 +4172,6 @@ func apply_light_field_gus(field, gus: Array, soot_lighten: int = 0) -> void:
 			continue
 		for record in _ghosted_cells[cell]:
 			var flipped: bool = decode_light_flipped(record["prev_alt"])
-			var ghost_soot: int = field.face_soot_code(cell, record["level"])
-			## PERF-P2: the cell is erased right now, but un-ghosting restores it
-			## from this record — and the soot plane is where its scorch lives.
-			_write_cell_soot(int(record["level"]), cell, ghost_soot)
 			## PERF-P3: and its light, for the same reason. §5.1 named the ghost
 			## store as the reader with real teeth — it remembers `prev_alt` to
 			## restore a cell EXACTLY. Once the id stops carrying the bucket, the
@@ -4313,27 +4270,12 @@ func warm_light_alts_for_gus(field, gus: Array, extra_placements: Array = []) ->
 	return minted
 
 
-## One rung down the soot ladder: every face `by` tones fainter, clamped at
-## clean. A face already clean stays clean, so a cell only fades on the faces it
-## is actually going to be dirty on. Deliberately identical in behaviour to
-## DetonationChoreographer._lightened() — the blast and the firearm must fade the
-## same way or the two look like different materials.
-static func _lighten_faces(faces: Vector3i, by: int) -> Vector3i:
-	var clean: int = BlastCalculator.FACE_SOOT_CLEAN
-	return Vector3i(mini(faces.x + by, clean), mini(faces.y + by, clean),
-		mini(faces.z + by, clean))
-
-
 func _apply_light_to_layer(layer: TileMapLayer, level: int, field, do_index: bool = false) -> void:
 	for cell in layer.get_used_cells():
 		_apply_cells_seen += 1
 		if do_index:
 			_index_placed(level, cell)
 		var prev_alt: int = layer.get_cell_alternative_tile(cell)
-		## FACE-SOOT-01: see apply_light_field_gus() — compare the whole id.
-		var full_soot: int = field.face_soot_code(cell, level)
-		## PERF-P2 — before the comparison, for apply_light_field_gus()'s reason.
-		_write_cell_soot(level, cell, full_soot)
 		## PERF-P3 — see apply_light_field_gus(): before the comparison.
 		var full_bucket: int = field.bucket_for(cell, level)
 		_write_cell_bucket(level, cell, full_bucket)
@@ -4808,6 +4750,12 @@ var _cell_planes = _CellPlaneStoreScript.new(FACE_SOOT_CODE_CLEAN, LIGHT_BUCKET_
 ## Record one cell's soot code. Thin forwarder — see `CellPlaneStore.write_soot()`.
 func _write_cell_soot(level: int, cell: Vector2i, code: int) -> void:
 	_cell_planes.write_soot(level, cell, code)
+
+
+## SOOT-STAMP — see `CellPlaneStore.reset_all()`. Called by the map-wide repaint
+## before its apply, which then rewrites every bucket; the soot store follows.
+func reset_cell_planes() -> void:
+	_cell_planes.reset_all()
 
 
 ## Record one cell's light bucket. Thin forwarder — see `CellPlaneStore.write_bucket()`.

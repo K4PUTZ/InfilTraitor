@@ -703,9 +703,8 @@ static func _destroyed_plan_entry(voxel: Voxel, container, depth: int) -> Dictio
 ## The up-to-8 face-plane neighbours of `voxel_index` inside its own Slice,
 ## ranked by hash so the hole's SHAPE varies shot to shot instead of always
 ## being the same cross or the same full square (D30.4 — *"pra não ficar o mesmo
-## buraco repetitivo"*). Soot needs no equivalent knob: derive_soot_rings() is a
-## deterministic BFS over whichever voxels are absent, so varying the hole
-## varies the scorch for free.
+## buraco repetitivo"*). Soot needs no equivalent knob: it is stamped around the
+## voxels a shot touched (SOOT-STAMP), so varying the hole varies the scorch.
 ##
 ## A Slice's voxels are a row-major grid of VOXELS_PER_UNIT_AXIS columns
 ## (index = row * 8 + col), so neighbours are the 3x3 patch minus the centre —
@@ -1412,339 +1411,6 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 	return ranked.slice(0, mini(n, ranked.size()))
 
 
-## VL-D1/D24 — Soot rings around holes, DERIVED fresh every repaint from
-## which voxels are currently absent — never stored on the Voxel itself.
-## *(Director, 2026-07-30, confirming S3's closure: "queremos o sistema de
-## derivar a fuligem de acordo com os voxels faltantes, em vez de guardar a
-## informação de cada um.")*
-##
-## A multi-source BFS outward from every currently-DESTROYED cell tags
-## surviving neighbours with a ring index (0 = touching the hole, darkest;
-## rising outward, fainter) into `out_snapshot` — the exact
-## `{level: {grid_pos: ring}}` shape `VoxelLightField.build()` already
-## consumed when this lived on `Voxel.soot_ring`, so nothing downstream of
-## the snapshot changed. Called once per repaint from `room._build_soot_snapshot()`
-## over the WHOLE map's current voxels (not one blast's affected set) — a
-## destroyed voxel's absence already survives rotation via `_base_damage`, so
-## re-deriving from it fresh needs no separate soot persistence at all.
-##
-## cell_to_voxel: Vector3i(x, y, level) → Voxel, over every SURVIVING voxel to
-## consider (destroyed ones are seeds, not entries — see destroyed_cells).
-## n_rings: how many rings to paint (Director: up to 3, bullets effectively
-## self-limit to ~1 since an isolated hole has no further-out neighbours that
-## are ALSO absent). min-ring wins, so a voxel near two holes takes the
-## darker scorch.
-##
-## FACE-SOOT-01 (Director, 2026-08-01) — `out_faces`, when supplied, additionally
-## receives `{level: {grid_pos: Vector3i(ring_top, ring_se, ring_sw)}}`: the same
-## scorch resolved PER VISIBLE FACE instead of one value for the whole voxel.
-## `FACE_SOOT_CLEAN` (3) means that face takes no soot at all.
-##
-## Where the direction comes from, and why it costs nothing: the BFS already
-## knows the step `d` it reached a voxel through, so `-d` points back at the hole
-## — the face pointing that way is the one that faced the blast. That face keeps
-## the voxel's own ring; the other two fall `face_soot_falloff` rings back
-## (fainter), and past the last ring they come out clean. A voxel reached from
-## BELOW or from BEHIND (-X/-Y/-Z) has NO visible face turned toward the hole, so
-## all three of its faces take the fainter value — correct, and the reason a
-## crater's outer slope reads lighter than its inner wall.
-##
-## Ties are merged, not raced: a voxel equidistant from two holes (a crater
-## corner) takes the strong ring on BOTH the faces that see them, because the
-## same-ring branch mins per face instead of keeping whichever direction the
-## frontier happened to visit first. That is also what makes the result
-## order-independent, hence stable across rebuilds and rotations.
-## PERF-02 B3 (Director, 2026-08-04) — `intensity_rings` separates HOW FAR the
-## scorch reaches (`n_rings`, a BFS distance) from HOW MANY distinct soot
-## intensities exist (`intensity_rings`, a hard property of the encoding, not a
-## tuning knob: `VoxelLightField.encode_face_soot()` packs each face into TWO
-## BITS — 0/1/2 are real rings and 3 is FACE_SOOT_CLEAN, so a fourth intensity
-## is not representable and would silently clamp to "clean", i.e. render as no
-## soot at all). Capping the ring rather than widening the format is what makes
-## the Director's "a fuligem não é mais forte, é mais distante" implementable:
-## the same three tones cover 5 cells of distance instead of 3, with the
-## faintest one simply reaching further out.
-##
-## Defaults to n_rings, which reproduces today's behaviour bit-for-bit for every
-## pre-existing caller (with intensity == n_rings the cap is never binding).
-## `also_visible` (S-DEEP, 2026-08-12) — cells that are NOT visible yet but will
-## be by the time this soot is drawn, so the BFS must scorch them anyway.
-##
-## The case that forced it, reported by the Director: throwing twice on one GU
-## unlocks D2's deep floor layer, and the revealed voxels came up pristine inside
-## a blackened crater. They are still hidden at the moment soot is derived — the
-## expose path reveals them afterwards — so `voxel.visible` is false and the
-## check below skipped them, and `_alt_for()` then read a clean face code.
-## Measured: on a second blast every other kind roughly doubles (destroy 244 ->
-## 482, expose 640 -> 1280, smoke 484 -> 887) while soot HALVED, 512 -> 240.
-##
-## Empty by default, so every pre-existing caller — including room.gd's repaint,
-## where those voxels are genuinely visible by then — is byte-for-byte unchanged.
-static func derive_soot_rings(cell_to_voxel: Dictionary, destroyed_cells: Array,
-		n_rings: int, out_snapshot: Dictionary, out_faces: Dictionary = {},
-		face_soot_falloff: int = 1, intensity_rings: int = 0,
-		also_visible: Dictionary = {}, out_full: Dictionary = {}) -> void:
-	if destroyed_cells.is_empty() or n_rings <= 0:
-		return
-	var intensity: int = intensity_rings if intensity_rings > 0 else n_rings
-	## Frontier BFS. Seeds are the holes themselves (they have no surviving voxel
-	## to tag); their SURVIVING neighbours become ring 0, and so on outward.
-	var frontier: Array = destroyed_cells.duplicate()
-	const NEIGHBOURS: Array = [
-		Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
-		Vector3i(0, 1, 0), Vector3i(0, -1, 0),
-		Vector3i(0, 0, 1), Vector3i(0, 0, -1),
-	]
-	for ring in range(n_rings):
-		var next_frontier: Array = []
-		for cell in frontier:
-			for d in NEIGHBOURS:
-				var ncell: Vector3i = cell + d
-				var voxel = cell_to_voxel.get(ncell)
-				## Only surviving voxels take soot — a destroyed cell is a hole
-				## (already a seed) and an absent one is empty air.
-				## ⚠️ R3D-1c step 4 left this on the OBJECTS, on purpose: read through the
-				## store it cost the SOOT phase +11–16 % on desktop (a claim lookup per
-				## neighbour), and it removed no dependency — `cell_to_voxel` is a map of
-				## objects. It moves with that map (R3D-2 / R3D-1d).
-				if voxel == null or voxel.damage_state == Voxel.DamageState.DESTROYED:
-					continue
-				## ...and only ones that will be ON SCREEN. `also_visible` is how a
-				## caller says "this one is about to be", see the parameter's note.
-				if not voxel.visible and not also_visible.has(ncell):
-					continue
-				if not out_snapshot.has(voxel.level):
-					out_snapshot[voxel.level] = {}
-				var level_map: Dictionary = out_snapshot[voxel.level]
-				var existing: int = int(level_map.get(voxel.grid_pos, -1))
-				## PERF-02 B3: the INTENSITY this distance paints — identical to
-				## `ring` whenever intensity == n_rings, which is every
-				## pre-existing caller. Compared and stored instead of `ring` so
-				## the two branches below keep meaning "a nearer hole already
-				## claimed this" and "same tone, another direction" once
-				## distances beyond the last intensity all share the faintest one.
-				var capped: int = mini(ring, intensity - 1)
-				## A nearer hole already claimed this voxel — its own ring wins, and
-				## so do its faces. (This also replaces the old `visited` set: a voxel
-				## is enqueued exactly once, on the pass that first tags it.)
-				if existing >= 0 and existing < capped:
-					continue
-				var faces := _face_rings_for(capped, -d, intensity, face_soot_falloff)
-				## SS-1 — the same tag in the five-direction format, written in
-				## PARALLEL and read by nothing yet. The two are produced from the
-				## identical `(capped, -d, intensity, falloff)` so a divergence
-				## between them can only be a bug in one of the two functions,
-				## which is exactly what the SS-1 gate looks for.
-				var full := _full_faces_for(capped, -d, intensity, face_soot_falloff)
-				if existing < 0:
-					level_map[voxel.grid_pos] = capped
-					_write_face_rings(out_faces, voxel.level, voxel.grid_pos, faces, false)
-					_write_full_faces(out_full, voxel.level, voxel.grid_pos, full, false)
-					next_frontier.append(ncell)
-				else:
-					## Same ring, another direction: merge (min per face) so a corner
-					## voxel scorches on every side that actually saw a hole.
-					_write_face_rings(out_faces, voxel.level, voxel.grid_pos, faces, true)
-					_write_full_faces(out_full, voxel.level, voxel.grid_pos, full, true)
-		frontier = next_frontier
-		if frontier.is_empty():
-			break
-
-
-## FACE-SOOT-01 — per-face rings for a voxel tagged at `ring`, reached from the
-## direction `toward` (the offset from the voxel back to the cell the BFS came
-## from, i.e. pointing at the hole).
-##
-## Only three faces can ever be seen at once with this camera (VL-02b, and the
-## same three the shader classifies): +Z is the top diamond, +X the SE face, +Y
-## the SW face. Any other `toward` means the hole is behind or below the voxel,
-## and no visible face is turned toward it.
-static func _face_rings_for(ring: int, toward: Vector3i, n_rings: int,
-		falloff: int) -> Vector3i:
-	var faint: int = ring + maxi(falloff, 0)
-	if faint >= n_rings:
-		faint = FACE_SOOT_CLEAN
-	var out := Vector3i(faint, faint, faint)
-	if toward == Vector3i(0, 0, 1):
-		out.x = ring        ## top
-	elif toward == Vector3i(1, 0, 0):
-		out.y = ring        ## SE
-	elif toward == Vector3i(0, 1, 0):
-		out.z = ring        ## SW
-	return out
-
-
-## A caller that does not want per-face data passes nothing and the default dict
-## is simply discarded — cheaper than branching on it at every write.
-static func _write_face_rings(out_faces: Dictionary, level: int, cell: Vector2i,
-		faces: Vector3i, merge: bool) -> void:
-	if not out_faces.has(level):
-		out_faces[level] = {}
-	var level_faces: Dictionary = out_faces[level]
-	if merge and level_faces.has(cell):
-		var prev: Vector3i = level_faces[cell]
-		level_faces[cell] = Vector3i(
-			mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
-		return
-	level_faces[cell] = faces
-
-
-## SS-1 / `SOOT_STORAGE_REFORM` §2.1b — THE FIVE-DIRECTION SCORCH RECORD.
-##
-## `Vector3i(top, SE, SW)` above is a VIEW-space triple: `_face_rings_for()`'s own
-## header says so — *"+Z is the top diamond, +X the SE face, +Y the SW face"* — and
-## a direction that is not one of those three leaves every component on the
-## isotropic `faint` fallback, because it cannot be drawn. Derived per view that is
-## exactly right and costs nothing. **Stored, it is a hole in the record:** after a
-## perspective rotation, two faces that were never written become visible, and the
-## value they present was a placeholder for "not drawn", not a measurement.
-##
-## So the reform's store keeps SIX components instead of three — every neighbour
-## the BFS can reach a voxel through — and the extra three carry the rings the
-## triple discards.
-##
-## ⚠️ **SIX, NOT FIVE, AND THE SIXTH IS BOTTOM.** This started as five on the
-## reasoning that −Z is never drawn from any perspective, so storing it could not
-## change a picture. True, and beside the point: the ISOTROPIC ring
-## (`out_snapshot`, what `VoxelLightField.soot_factor()` and `_stale_cells()`
-## read) is `capped` for a voxel reached from BELOW, while every drawable face
-## falls to `faint`. Without a −Z component, `min` over the record loses that
-## case and the isotropic map could not be recovered from the store at all —
-## which SS-2 needs, because SS-2 makes the store answer BOTH shapes. Found by
-## working out SS-2's projection, not by a test failing.
-##
-## ⚠️ **THESE ARE STILL VIEW-SPACE DIRECTIONS.** The BFS has no business knowing
-## about perspectives, and `carved_side_to_base_dir()`'s note is explicit that
-## there must be no second rotation formula in this file. `Room.scorch_cell()`
-## converts view → base on the way into the store, exactly where
-## `record_voxel_damage_to_base()` already does it for damage.
-##
-## The layout is base-`FACE_SOOT_BASE` (5) over 5 digits = 3 125 values, which does
-## NOT fit the RG8 soot plane's one byte and does not need to: the plane keeps the
-## unchanged 125-code view triple, and this format only ever lives in a plain int
-## in the store.
-const FULL_FACE_COUNT: int = 6
-const FULL_TOP: int = 0   ## +Z, rotation-invariant
-const FULL_XP:  int = 1   ## view +X — the SE face in this perspective
-const FULL_XN:  int = 2   ## view −X — never drawn in this perspective
-const FULL_YP:  int = 3   ## view +Y — the SW face in this perspective
-const FULL_YN:  int = 4   ## view −Y — never drawn in this perspective
-## −Z. Never drawn from ANY perspective, and stored anyway: it is the only way
-## the isotropic ring survives the round trip — see `full_faces_to_ring()`.
-const FULL_ZN:  int = 5
-
-
-static func full_faces_clean() -> PackedInt32Array:
-	var out := PackedInt32Array()
-	out.resize(FULL_FACE_COUNT)
-	out.fill(FACE_SOOT_CLEAN)
-	return out
-
-
-## Base-5 pack, most-significant digit first, mirroring
-## `VoxelLightField.encode_face_soot()`'s layout so the two read the same way.
-static func encode_full_faces(faces: PackedInt32Array) -> int:
-	var base: int = FACE_SOOT_CLEAN + 1
-	var code: int = 0
-	for i: int in range(FULL_FACE_COUNT):
-		var v: int = clampi(faces[i] if i < faces.size() else FACE_SOOT_CLEAN,
-			0, FACE_SOOT_CLEAN)
-		code = code * base + v
-	return code
-
-
-static func decode_full_faces(code: int) -> PackedInt32Array:
-	var base: int = FACE_SOOT_CLEAN + 1
-	var out := PackedInt32Array()
-	out.resize(FULL_FACE_COUNT)
-	var c: int = maxi(code, 0)
-	for i: int in range(FULL_FACE_COUNT - 1, -1, -1):
-		out[i] = c % base
-		@warning_ignore("integer_division")
-		c = c / base
-	return out
-
-
-## The five-direction record, seen from the perspective it was written in — the
-## exact `Vector3i(top, SE, SW)` the rest of the pipeline speaks.
-##
-## ⚠️ **THIS IS THE ROUND-TRIP SS-1 GATES.** For every direction the BFS can reach
-## a voxel from, `full_faces_to_view(_full_faces_for(...))` must equal
-## `_face_rings_for(...)` component for component, or the store is not a superset
-## of what ships today. Proven per case in `blast_calculator_selftest.gd`.
-static func full_faces_to_view(faces: PackedInt32Array) -> Vector3i:
-	return Vector3i(faces[FULL_TOP], faces[FULL_XP], faces[FULL_YP])
-
-
-## The ISOTROPIC ring — `out_snapshot`'s value, which is a different quantity from
-## `min` of the three drawable faces and must not be confused with it.
-##
-## `derive_soot_rings()` writes `capped` into the snapshot for EVERY direction it
-## reaches a voxel through, including the two horizontals that turn no face toward
-## the camera and including BELOW, where all three drawable faces fall to `faint`.
-## Taken over all six components the minimum is exactly that `capped`, because the
-## reached direction holds `ring` and every other holds `faint >= ring`.
-##
-## Min also commutes with the per-component merge, so an accumulated record yields
-## the same ring the snapshot's own "a nearer hole already claimed this" rule
-## produces.
-static func full_faces_to_ring(faces: PackedInt32Array) -> int:
-	var lo: int = faces[0]
-	for i: int in range(1, FULL_FACE_COUNT):
-		lo = mini(lo, faces[i])
-	return lo
-
-
-## The five-direction counterpart of `_face_rings_for()`, and deliberately written
-## beside it rather than derived from it: the two are checked against each other,
-## so one expressing the other would make the check tautological (B3's rule).
-static func _full_faces_for(ring: int, toward: Vector3i, n_rings: int,
-		falloff: int) -> PackedInt32Array:
-	var faint: int = ring + maxi(falloff, 0)
-	if faint >= n_rings:
-		faint = FACE_SOOT_CLEAN
-	var out := PackedInt32Array()
-	out.resize(FULL_FACE_COUNT)
-	out.fill(faint)
-	if toward == Vector3i(0, 0, 1):
-		out[FULL_TOP] = ring
-	elif toward == Vector3i(1, 0, 0):
-		out[FULL_XP] = ring
-	elif toward == Vector3i(-1, 0, 0):
-		out[FULL_XN] = ring
-	elif toward == Vector3i(0, 1, 0):
-		out[FULL_YP] = ring
-	elif toward == Vector3i(0, -1, 0):
-		out[FULL_YN] = ring
-	elif toward == Vector3i(0, 0, -1):
-		## The hole is BELOW. No drawable face turns toward it from any
-		## perspective — `_face_rings_for()` correctly leaves every visible face
-		## on `faint`, and `full_faces_to_view()` reproduces that — but the
-		## ISOTROPIC ring is still `ring`, and this component is what carries it.
-		out[FULL_ZN] = ring
-	return out
-
-
-## Min-wins per component, the same rule and the same signature shape as
-## `_write_face_rings()`. `merge = false` still merges when an entry exists —
-## `derive_soot_rings()` calls it that way only on the write that also seeds the
-## snapshot, where no entry can exist yet.
-static func _write_full_faces(out_full: Dictionary, level: int, cell: Vector2i,
-		faces: PackedInt32Array, merge: bool) -> void:
-	if not out_full.has(level):
-		out_full[level] = {}
-	var level_faces: Dictionary = out_full[level]
-	if merge and level_faces.has(cell):
-		var prev: PackedInt32Array = level_faces[cell]
-		var merged := PackedInt32Array()
-		merged.resize(FULL_FACE_COUNT)
-		for i: int in range(FULL_FACE_COUNT):
-			merged[i] = mini(prev[i], faces[i])
-		level_faces[cell] = merged
-		return
-	level_faces[cell] = faces
-
-
 ## Which numbered ring a floor voxel at distance `d` falls in. Floor voxels are
 ## damaged RADIALLY (apply_crater_damage(), no discrete ring), so this derives an
 ## equivalent numbered ring from the exact same distance unit that function
@@ -1769,255 +1435,94 @@ static func crater_ring_for(d: float, max_radius: float, rim_span: float) -> int
 	return 0 if d <= max_radius else int(ceil((d - max_radius) / rim_span))
 
 
-## S-DEDUP (2026-08-12) — THE soot field, and the only place its sequence exists.
+## --- SOOT-STAMP (Director, 2026-09-22) -------------------------------------------
 ##
-## Blast BFS, then firearm BFS, then min-wins merge, then self-soot. That order
-## is load-bearing (self-soot must not beat a real hole's stronger ring) and it
-## used to be written out twice: once in `DetonationPlanBuilder._phase_soot()`
-## for detonations and once in `room._build_soot_snapshot()` for repaints. The
-## two had already drifted apart in two measurable ways before this landed — the
-## detonation path read its own literal ring count instead of room's, and only
-## the repaint path scorched the revealed crater floor — so this is not tidying,
-## it is removing the seam those bugs grew in.
+## *"A fuligem é meramente um efeito a mais, não é pra sugar CPU. Ela existe pra não
+## ficar tudo limpinho parecido."* Soot is a STORED tone per cell, stamped ONCE by
+## the event that makes it and never derived again: nothing walks the map, nothing
+## re-reads old holes, a light repaint never touches it. It replaces the D24
+## derivation (a BFS from every hole on the level, per-face scorch, a six-direction
+## store format, self-soot), which the 2026-09-22 audit measured growing with the
+## level's history: 45 -> 212 ms of one un-budgeted cook call over five grenades, and
+## an 887 ms frame for one shotgun blast after them
+## (`PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`).
 ##
-## The two BFS passes run into SCRATCH dictionaries and merge afterwards rather
-## than sharing one accumulator, and that is not an accident of style:
-## `derive_soot_rings()`'s internal min-ring merge cannot compose across two
-## calls into the same snapshot, because a second call can never LOWER a ring the
-## first already recorded (PERF-02 B3's own finding).
-##
-## `also_visible` is passed only to the BLAST pass: it means "this blast is about
-## to reveal these", which is a statement about the explosion in flight, not
-## about old firearm holes. See derive_soot_rings() for the case that forced it.
-##
-## Callers keep their own indexing, because they genuinely differ — the plan
-## builder folds it into its map-wide walk, room walks the two registries — and
-## their own handling of non-Voxel cells, which have no entry in `cell_to_voxel`
-## for any BFS to reach.
-static func build_soot_field(cell_to_voxel: Dictionary, blast_cells: Array,
-		weapon_cells: Array, damaged_voxels: Array,
-		blast_rings: int, weapon_rings: int,
-		out_snapshot: Dictionary, out_faces: Dictionary,
-		also_visible: Dictionary = {}, predicted_damaged: Array = [],
-		out_full: Dictionary = {}) -> void:
-	var blast_snapshot: Dictionary = {}
-	var blast_faces: Dictionary = {}
-	var blast_full: Dictionary = {}
-	derive_soot_rings(cell_to_voxel, blast_cells, blast_rings,
-		blast_snapshot, blast_faces, 1, FACE_SOOT_CLEAN, also_visible, blast_full)
-	var weapon_snapshot: Dictionary = {}
-	var weapon_faces: Dictionary = {}
-	var weapon_full: Dictionary = {}
-	derive_soot_rings(cell_to_voxel, weapon_cells, weapon_rings,
-		weapon_snapshot, weapon_faces, 1, 0, {}, weapon_full)
-	merge_soot_field(out_snapshot, out_faces, blast_snapshot, blast_faces,
-		out_full, blast_full)
-	merge_soot_field(out_snapshot, out_faces, weapon_snapshot, weapon_faces,
-		out_full, weapon_full)
-	apply_self_soot(damaged_voxels, out_snapshot, out_faces, out_full)
-	## W-PRECOOK-02: damage the caller knows is coming but has not written yet.
-	apply_self_soot_predicted(predicted_damaged, out_snapshot, out_faces, out_full)
+## A tone is a ring 0..3 (0 darkest; `FACE_SOOT_CLEAN` is the "no soot" value past
+## the last one) and every visible face of a cell takes the same one. A stamp is
+## `ring` -> `soot_jitter()` -> min-wins into `Room._soot_map`.
+
+## Chance, per ring, that a stamped cell comes out one tone lighter (past the last
+## tone it stays clean). The Director's "sorteio": the edge of a scorch is dithered
+## instead of a clean band. `var` (Rule 1): tuning numbers.
+static var SOOT_LIGHTEN_CHANCE: Array[float] = [0.15, 0.3, 0.45, 0.6]
+
+## L1 balls by radius, built once: `[offset: Vector3i, distance: int]` rows.
+static var _soot_balls: Dictionary = {}
 
 
-## Merges one scratch soot pass into a snapshot/face pair, min-wins per cell and
-## per face component — the same rule `derive_soot_rings()` applies internally,
-## needed separately because that rule cannot compose across two calls.
-##
-## Was `DetonationPlanBuilder._merge_soot()` AND `room._merge_soot_into()`,
-## byte-identical 23-line copies of each other (verified line by line before
-## either was deleted).
-static func merge_soot_field(out_snapshot: Dictionary, out_faces: Dictionary,
-		src_snapshot: Dictionary, src_faces: Dictionary,
-		out_full: Dictionary = {}, src_full: Dictionary = {}) -> void:
-	## SS-1 — the five-direction record merges by the SAME min-wins rule, and it
-	## must: `min` commutes with the view projection (`full_faces_to_view()` picks
-	## three components out of five, and a per-component minimum of a projection is
-	## the projection of the per-component minimum), which is the only reason the
-	## two representations can be merged independently and still agree.
-	for level in src_full:
-		for cell in src_full[level]:
-			_write_full_faces(out_full, level, cell, src_full[level][cell], true)
-	for level in src_snapshot:
-		if not out_snapshot.has(level):
-			out_snapshot[level] = {}
-		var level_map: Dictionary = out_snapshot[level]
-		for cell in src_snapshot[level]:
-			var ring: int = int(src_snapshot[level][cell])
-			var existing: int = int(level_map.get(cell, -1))
-			if existing < 0 or ring < existing:
-				level_map[cell] = ring
-	for level in src_faces:
-		if not out_faces.has(level):
-			out_faces[level] = {}
-		var level_faces: Dictionary = out_faces[level]
-		for cell in src_faces[level]:
-			var faces: Vector3i = src_faces[level][cell]
-			if level_faces.has(cell):
-				var prev: Vector3i = level_faces[cell]
-				level_faces[cell] = Vector3i(
-					mini(prev.x, faces.x), mini(prev.y, faces.y), mini(prev.z, faces.z))
-			else:
-				level_faces[cell] = faces
+## The jittered tone for one cell, or -1 when it comes out clean. Deterministic: the
+## roll is `hash(Vector3i)` (murmur3 in the engine), so the same cell always rolls
+## the same way — no RNG, nothing stored, identical across runs and reloads.
+static func soot_jitter(cell: Vector2i, level: int, ring: int) -> int:
+	if ring < 0 or ring >= FACE_SOOT_CLEAN:
+		return -1
+	var roll: float = float(hash(Vector3i(cell.x, cell.y, level)) & 0xFFFF) / 65536.0
+	var chance: float = SOOT_LIGHTEN_CHANCE[mini(ring, SOOT_LIGHTEN_CHANCE.size() - 1)]
+	var out: int = ring + (1 if roll < chance else 0)
+	return out if out < FACE_SOOT_CLEAN else -1
 
 
-## One floor cell scorched at `ring`, isotropic top-only — a floor cell has
-## exactly one visible face. Shared by the two places that scorch cells with no
-## Voxel behind them: the detonation's revealed FIXED earth level, and room's
-## persistent `_crater_floor_soot` replay.
-static func scorch_floor_cell(out_snapshot: Dictionary, out_faces: Dictionary,
-		level: int, cell: Vector2i, ring: int, out_full: Dictionary = {}) -> void:
-	if not out_snapshot.has(level):
-		out_snapshot[level] = {}
-	var level_map: Dictionary = out_snapshot[level]
-	if ring < int(level_map.get(cell, FACE_SOOT_CLEAN)):
-		level_map[cell] = ring
-	_write_face_rings(out_faces, level, cell,
-		Vector3i(ring, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN), true)
-	## SS-1 — a floor cell has exactly one visible face and it is the TOP, which is
-	## the one direction that is rotation-invariant. This entry is therefore
-	## complete rather than partial: there is nothing a rotation could reveal.
-	var full := full_faces_clean()
-	full[FULL_TOP] = ring
-	_write_full_faces(out_full, level, cell, full, true)
+## The soot plane's code for a tone: the same value on all three drawn faces.
+static func soot_code(ring: int) -> int:
+	if ring < 0 or ring >= FACE_SOOT_CLEAN:
+		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
+	return VoxelLightField.encode_face_soot(Vector3i(ring, ring, ring))
 
 
-## D33-SOOT-01 (Director, 2026-08-03): "algumas armas... deixam tudo limpo.
-## Precisamos adicionar um pouquinho de fuligem, só pra diferenciar do resto
-## da parede." Measured root cause: derive_soot_rings() only ever seeds from
-## DESTROYED voxels (holes) — a DENTED or CRACKED voxel that never happens to
-## sit next to a hole gets no soot at all, regardless of weapon or material.
-## Confirmed structural, not incidental: pistol/metal, pistol/stone and
-## shotgun/metal can never cross PUNCH_DESTROY_MIN given RESISTANCE's current
-## values (always land DENTED/CRACKED), so those combinations NEVER produced
-## a hole to seed from.
-##
-## This is a deliberate, small extension of D17/D24's "a bullet marks its
-## impact; it does not blacken the wall" — not a reversal. It adds a single
-## FAINT ring (SELF_SOOT_RING, the lightest of the three — 0.63× brightness,
-## `VoxelLightField.soot_darkening[2]`) directly on the struck face of the
-## damaged voxel ITSELF. No propagation, no BFS: a dent/crack never darkens
-## its neighbours, only its own mark reads as slightly scorched instead of
-## pristine. Merged into whatever derive_soot_rings() already produced with
-## min-wins (_write_face_rings' own semantics), so a voxel that ALSO happens
-## to sit beside a real hole keeps that stronger ring — self-soot only fills
-## in where nothing stronger already applies.
-static var SELF_SOOT_RING: int = 2
-
-## W-TUNE-01 (Director, 2026-08-20): a BULLET's own-face soot is one rung darker
-## than a blast's. *"[o metal] está com zero fuligem, seria legal ter uma
-## lembrança de fuligem também."*
-##
-## It was not zero — measured, a shotgun on metal scorches 18 voxels — but all 18
-## sat at ring 2, the faintest tone there is, on a bright metal facade, and the
-## Director read that as nothing at all. Ring 1 is the "lembrança": still faint,
-## now legible.
-##
-## SPLIT from the blast's value rather than sharing it, because the blast was not
-## what was being judged and a grenade's rim marks have no reason to change. The
-## two are one line apart so the asymmetry is impossible to miss.
-##
-## It matters more after the ladder change above than it would have before: with
-## concrete and stone no longer breaking, self-soot is now the ONLY soot those
-## materials get, so this rung is what a shotgun's mark on a wall looks like.
-static var SELF_SOOT_RING_BULLET: int = 1
+## The tone a plane code shows (its darkest face), or -1 for clean.
+static func soot_ring_of_code(code: int) -> int:
+	var f: Vector3i = VoxelLightField.decode_face_soot(code)
+	var ring: int = mini(f.x, mini(f.y, f.z))
+	return ring if ring < FACE_SOOT_CLEAN else -1
 
 
-## Which face(s) a damaged (DENTED/CRACKED, not DESTROYED) voxel's own faint
-## soot lands on. Mirrors the SAME face-selection rules
-## VoxelRenderer's decal plan parsers encode for the visual mark itself
-## (kept independent rather than importing VoxelRenderer here — this module
-## already owns face-ring resolution, via _face_rings_for() above):
-##  - a blast CRACKED voxel marks all three visible faces (D32.3 — "não
-##    existe voxel rachado só em uma face");
-##  - a bullet (CRACKED or DENTED) marks the one lateral face it struck;
-##  - a DENTED voxel's carved_side IS the exposed/cut face, except BOTTOM
-##    (ceiling) — no visible face ever faces the camera there, matching
-##    derive_soot_rings()'s own reasoning for why a hole reached from below
-##    scorches no single face preferentially;
-##  - no resolvable side (the pre-D25/D32 fallback) marks the top face, same
-##    as the flat mark itself.
-static func _self_soot_faces(damage_state: int, blast_sourced: bool, carved_side: int) -> Vector3i:
-	var clean := Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)
-	if damage_state != Voxel.DamageState.DENTED and damage_state != Voxel.DamageState.CRACKED:
-		return clean
-	if damage_state == Voxel.DamageState.CRACKED and blast_sourced:
-		return Vector3i(SELF_SOOT_RING, SELF_SOOT_RING, SELF_SOOT_RING)
-	## W-TUNE-01: a bullet scorches its own face one rung darker than a blast rim.
-	var ring: int = SELF_SOOT_RING if blast_sourced else SELF_SOOT_RING_BULLET
-	match carved_side:
-		Voxel.CarvedSide.LEFT:
-			return Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, ring)   ## SW
-		Voxel.CarvedSide.RIGHT:
-			return Vector3i(FACE_SOOT_CLEAN, ring, FACE_SOOT_CLEAN)   ## SE
-		Voxel.CarvedSide.TOP:
-			return Vector3i(ring, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)   ## top (floor)
-		Voxel.CarvedSide.BOTTOM:
-			return clean   ## ceiling underside — never visible
-		_:
-			return Vector3i(ring, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN)   ## NONE -> top, matches the flat mark
+static func soot_ball(radius: int) -> Array:
+	if _soot_balls.has(radius):
+		return _soot_balls[radius]
+	var out: Array = []
+	for dz in range(-radius, radius + 1):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				var dist: int = absi(dx) + absi(dy) + absi(dz)
+				if dist <= radius:
+					out.append([Vector3i(dx, dy, dz), dist])
+	_soot_balls[radius] = out
+	return out
 
 
-## Applies _self_soot_faces() for every voxel in `voxels` (expected: every
-## DENTED/CRACKED, currently-visible voxel this room holds — see
-## room.gd's _index_soot_voxel()), merging into both out-params exactly like
-## derive_soot_rings() populates them: out_faces per-face (render-facing),
-## out_snapshot the isotropic min-of-faces ring (soot_factor()/probes/tests).
-## Call AFTER derive_soot_rings() so a stronger nearby-hole ring always wins.
-static func apply_self_soot(voxels: Array, out_snapshot: Dictionary,
-		out_faces: Dictionary, out_full: Dictionary = {}) -> void:
-	for v in voxels:
-		_write_self_soot(v.level, v.grid_pos, v.damage_state, v.damage_is_blast,
-			v.damage_carved_side, out_snapshot, out_faces, out_full)
-
-
-## W-PRECOOK-02 (2026-08-19) — the same thing for damage that has NOT HAPPENED
-## YET, from plan_point_impact() entries rather than from live Voxels.
-##
-## It exists because the shot's warm has to predict the SOOTY world, and reading
-## the tuple off the Voxel is exactly what cannot work before the shot: the
-## voxel is still INTACT, `_self_soot_faces()` returns clean for INTACT, and the
-## whole prediction silently degrades to "no self-soot anywhere". That is not a
-## hypothetical — `room._build_soot_snapshot()`'s `predict_damaged` list was
-## being fed live Voxels and contributed exactly nothing for that reason, which
-## is why the soot pass still minted 19 alternatives of its own.
-static func apply_self_soot_predicted(entries: Array, out_snapshot: Dictionary,
-		out_faces: Dictionary, out_full: Dictionary = {}) -> void:
-	for e in entries:
-		var v: Voxel = e["voxel"]
-		_write_self_soot(v.level, v.grid_pos, int(e["state"]), bool(e["is_blast"]),
-			int(e["carved_side"]), out_snapshot, out_faces, out_full)
-
-
-## One damaged voxel's faint own-face soot, merged into the pair of out-params
-## min-wins. Shared by the live and the predicted entry points above so the two
-## can only ever scorch a mark the same way.
-static func _write_self_soot(level: int, grid_pos: Vector2i, damage_state: int,
-		blast_sourced: bool, carved_side: int,
-		out_snapshot: Dictionary, out_faces: Dictionary,
-		out_full: Dictionary = {}) -> void:
-	var faces := _self_soot_faces(damage_state, blast_sourced, carved_side)
-	if faces == Vector3i(FACE_SOOT_CLEAN, FACE_SOOT_CLEAN, FACE_SOOT_CLEAN):
-		return
-	_write_face_rings(out_faces, level, grid_pos, faces, true)
-	## SS-1 — self-soot is genuinely ONE-SIDED: it marks the face a bullet or a
-	## carve actually struck, and `_self_soot_faces()` models exactly the three
-	## drawable ones. The two view-space directions it never speaks about stay
-	## CLEAN rather than being filled with a guess, and CLEAN is the identity for
-	## min-wins, so a later BFS write into the same cell decides them instead.
-	##
-	## ⚠️ Whether a ROTATED view should show a bullet's scorch on the far side of
-	## the voxel is a look question this task deliberately does not answer — SS-6
-	## is where it gets asked with a rotated capture in hand. Recording it as an
-	## open semantic rather than inventing a value is the point.
-	var full := full_faces_clean()
-	full[FULL_TOP] = faces.x
-	full[FULL_XP] = faces.y
-	full[FULL_YP] = faces.z
-	_write_full_faces(out_full, level, grid_pos, full, true)
-	var ring: int = mini(faces.x, mini(faces.y, faces.z))
-	if not out_snapshot.has(level):
-		out_snapshot[level] = {}
-	var level_map: Dictionary = out_snapshot[level]
-	var existing: int = int(level_map.get(grid_pos, 99))
-	if ring < existing:
-		level_map[grid_pos] = ring
+## The firearm's stamp: tones around `seeds` (Vector3i(x, y, level) of every voxel
+## the event touched) out to `radius` voxel steps (L1). A neighbour at distance d
+## takes ring d - 1, a surviving seed itself (a dent) ring 0. Only cells holding a
+## solid voxel (`VoxelStore.has_solid()`, hidden ones included) are kept; with no
+## store every cell is. Returns `level -> {cell: ring}`, jitter already applied.
+static func stamp_around(seeds: Array, radius: int, store: VoxelStore) -> Dictionary:
+	var best: Dictionary = {}
+	var ball: Array = soot_ball(radius)
+	for seed: Vector3i in seeds:
+		for row: Array in ball:
+			var k: Vector3i = seed + (row[0] as Vector3i)
+			var dist: int = row[1]
+			if best.has(k) and int(best[k]) <= dist:
+				continue
+			best[k] = dist
+	var out: Dictionary = {}
+	for k: Vector3i in best:
+		if store != null and not store.has_solid(k.x, k.y, k.z):
+			continue
+		var ring: int = soot_jitter(Vector2i(k.x, k.y), k.z, maxi(int(best[k]) - 1, 0))
+		if ring < 0:
+			continue
+		if not out.has(k.z):
+			out[k.z] = {}
+		(out[k.z] as Dictionary)[Vector2i(k.x, k.y)] = ring
+	return out

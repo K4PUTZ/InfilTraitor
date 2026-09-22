@@ -7177,6 +7177,14 @@ func play_consequence_light(delta = null) -> void:
 		% [changed, moved.size(), steps, frames_per_step, derive_ms,
 		"cook field, §7.4" if cooked else "full re-derivation"])
 
+	## R3D-6 item 2 — the 3D board's light plane was only re-uploaded once this whole
+	## ramp finished (`on_blast_light()` at the caller, after `await`), so the board
+	## held the PRE-blast light for the whole ~2s ramp and then snapped straight to
+	## the final value — "the light jump" the plan named. One upload per step, same
+	## as the soot ladder's own `on_blast_soot()` precedent, fixes it at the source:
+	## the plane the shader reads now carries the ramp, not just its two endpoints.
+	var board3d_node: Node = board3d() if VoxelRenderer.SKIP_BOARD_WRITES else null
+
 	for step in range(steps):
 		var t: float = float(step) / float(steps)
 		for k in moved.keys():
@@ -7191,6 +7199,8 @@ func play_consequence_light(delta = null) -> void:
 			_voxel_renderer._write_cell_bucket(k.z, Vector2i(k.x, k.y),
 				int(round(lerpf(float(f), float(to), t))))
 		_voxel_renderer.flush_cell_soot()
+		if board3d_node != null and is_instance_valid(board3d_node):
+			board3d_node.on_blast_light(delta)
 		for _h in range(frames_per_step):
 			await get_tree().process_frame
 		if not is_instance_valid(_voxel_renderer):
@@ -7202,6 +7212,8 @@ func play_consequence_light(delta = null) -> void:
 	for k in moved.keys():
 		_voxel_renderer._write_cell_bucket(k.z, Vector2i(k.x, k.y), int(to_bucket[k]))
 	_voxel_renderer.flush_cell_soot()
+	if board3d_node != null and is_instance_valid(board3d_node):
+		board3d_node.on_blast_light(delta)
 	print("[CONSEQUENCE] light landed")
 
 

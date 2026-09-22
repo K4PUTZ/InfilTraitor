@@ -1,0 +1,548 @@
+{
+  "format": "infiltraitor-map",
+  "schema_version": 3,
+  "id": "PLAYGROUND_2",
+  "meta": {
+    "title": "Material Bench (uniform)",
+    "description": "Weapon/VFX bench: 9 materials (concrete, metal, stone, wood, brick, cardboard, fabric, plywood, glass), each an identical cell \u2014 3-wide/2-storey wall at gu y=2, matching 3x3 floor zone at y=4..6, one guard patrolling a 2-cell route at y=5 across the block's own x-span, one overhead light centred over the block at y=3. Spacing is a uniform 5 GU per material (x=2,7,12,17,22,27,32,37,42), unlike PLAYGROUND where the first four materials sit at Director-calibrated DIFFERENT distances (2026-08-19 ruling, concrete/metal/stone/wood at 2/4/6/9 GU) for impact-angle testing \u2014 that design intent is deliberate and this map does not replace or touch it (docs/... PLAYGROUND stays canon for calibration). PLAYGROUND_2 exists so every material can be captured/compared with the exact same geometry, guard offset and light, for the R3D-6 shot-VFX-flow bench (sparks, decals, soot) \u2014 INFILTRAITOR_AGENT_START_GU slides the capture along x (agent y stays 9 for every material) and the camera frames each one identically."
+  },
+  "sections": {
+    "board": {
+      "inner_size": [
+        48,
+        14
+      ],
+      "buffer": 1,
+      "floor_tile": "floor_SE",
+      "v": 1
+    },
+    "actors": {
+      "agent_start": [
+        3,
+        9
+      ],
+      "guards": [
+        [
+          [
+            2,
+            5
+          ],
+          [
+            4,
+            5
+          ]
+        ],
+        [
+          [
+            7,
+            5
+          ],
+          [
+            9,
+            5
+          ]
+        ],
+        [
+          [
+            12,
+            5
+          ],
+          [
+            14,
+            5
+          ]
+        ],
+        [
+          [
+            17,
+            5
+          ],
+          [
+            19,
+            5
+          ]
+        ],
+        [
+          [
+            22,
+            5
+          ],
+          [
+            24,
+            5
+          ]
+        ],
+        [
+          [
+            27,
+            5
+          ],
+          [
+            29,
+            5
+          ]
+        ],
+        [
+          [
+            32,
+            5
+          ],
+          [
+            34,
+            5
+          ]
+        ],
+        [
+          [
+            37,
+            5
+          ],
+          [
+            39,
+            5
+          ]
+        ],
+        [
+          [
+            42,
+            5
+          ],
+          [
+            44,
+            5
+          ]
+        ]
+      ],
+      "v": 1
+    },
+    "blocks": {
+      "items": [
+        {
+          "gu": [
+            2,
+            2
+          ],
+          "material": "concrete",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            3,
+            2
+          ],
+          "material": "concrete",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            4,
+            2
+          ],
+          "material": "concrete",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            7,
+            2
+          ],
+          "material": "metal",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            8,
+            2
+          ],
+          "material": "metal",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            9,
+            2
+          ],
+          "material": "metal",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            12,
+            2
+          ],
+          "material": "stone",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            13,
+            2
+          ],
+          "material": "stone",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            14,
+            2
+          ],
+          "material": "stone",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            17,
+            2
+          ],
+          "material": "wood",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            18,
+            2
+          ],
+          "material": "wood",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            19,
+            2
+          ],
+          "material": "wood",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            22,
+            2
+          ],
+          "material": "brick",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            23,
+            2
+          ],
+          "material": "brick",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            24,
+            2
+          ],
+          "material": "brick",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            27,
+            2
+          ],
+          "material": "cardboard",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            28,
+            2
+          ],
+          "material": "cardboard",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            29,
+            2
+          ],
+          "material": "cardboard",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            32,
+            2
+          ],
+          "material": "fabric",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            33,
+            2
+          ],
+          "material": "fabric",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            34,
+            2
+          ],
+          "material": "fabric",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            37,
+            2
+          ],
+          "material": "plywood",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            38,
+            2
+          ],
+          "material": "plywood",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            39,
+            2
+          ],
+          "material": "plywood",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            42,
+            2
+          ],
+          "material": "glass",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            43,
+            2
+          ],
+          "material": "glass",
+          "storeys": 2
+        },
+        {
+          "gu": [
+            44,
+            2
+          ],
+          "material": "glass",
+          "storeys": 2
+        }
+      ],
+      "v": 1
+    },
+    "props": {
+      "items": [],
+      "v": 1
+    },
+    "floor_zones": {
+      "items": [
+        {
+          "gu": [
+            0,
+            0
+          ],
+          "size": [
+            48,
+            14
+          ],
+          "material": "concrete"
+        },
+        {
+          "gu": [
+            2,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "concrete"
+        },
+        {
+          "gu": [
+            7,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "metal"
+        },
+        {
+          "gu": [
+            12,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "stone"
+        },
+        {
+          "gu": [
+            17,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "wood"
+        },
+        {
+          "gu": [
+            22,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "brick"
+        },
+        {
+          "gu": [
+            27,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "cardboard"
+        },
+        {
+          "gu": [
+            32,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "fabric"
+        },
+        {
+          "gu": [
+            37,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "plywood"
+        },
+        {
+          "gu": [
+            42,
+            4
+          ],
+          "size": [
+            3,
+            3
+          ],
+          "material": "glass"
+        }
+      ],
+      "v": 2
+    },
+    "damage_materials": {
+      "materials": [
+        "concrete",
+        "metal",
+        "stone",
+        "wood",
+        "brick",
+        "cardboard",
+        "fabric",
+        "plywood",
+        "glass"
+      ],
+      "v": 1
+    },
+    "legacy_compiler": {
+      "wall_height": 1,
+      "access_points": [],
+      "dividers": [],
+      "v": 1,
+      "lights": [
+        {
+          "x": 3,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        },
+        {
+          "x": 8,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        },
+        {
+          "x": 13,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        },
+        {
+          "x": 18,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        },
+        {
+          "x": 23,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        },
+        {
+          "x": 28,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        },
+        {
+          "x": 33,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        },
+        {
+          "x": 38,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        },
+        {
+          "x": 43,
+          "y": 3,
+          "height_class": 4,
+          "radius": 7,
+          "intensity": 1.05
+        }
+      ]
+    },
+    "panels": {
+      "items": [],
+      "v": 1
+    }
+  }
+}

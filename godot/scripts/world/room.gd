@@ -1567,7 +1567,7 @@ var vfx_impact_face_offset_gu: float = 0.25
 ## E-SPARK-04 (Director): a spark thrown off a struck SURFACE flies out and is
 ## gone faster than the muzzle's own, which stays as it is. Per-call overrides on
 ## add_sparks(), never edits to the shared spark tunables — see that function.
-var vfx_surface_spark_speed_scale: float = 1.3
+var vfx_surface_spark_speed_scale: float = 2.2
 var vfx_surface_spark_duration_scale: float = 0.6
 
 ## E-DEBRIS-01 (Director, 2026-08-13) — the last piece of VFX-01 that never
@@ -4898,8 +4898,11 @@ func apply_scoped_soot(gus: Array) -> void:
 	await get_tree().process_frame
 	if not is_instance_valid(_voxel_renderer):
 		return
+	var t0: int = Time.get_ticks_usec()
 	_repaint_voxel_light_buckets_scoped(gus, true, 0)
 	_sync_3d_shot_soot()
+	print_debug("[SHOT-SOOT] single-pass repaint %.2f ms · %d GUs"
+		% [float(Time.get_ticks_usec() - t0) / 1000.0, gus.size()])
 
 
 func fade_in_scoped_soot(gus: Array) -> void:

@@ -80,6 +80,16 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	var actors = sections.get("actors", {})
 	var agent_start = actors.get("agent_start", [1, 1])
 	runtime["agent_start"] = Vector2i(int(agent_start[0]), int(agent_start[1]))
+	## Dev-only: reposition the spawn (and so the camera's initial centre, room.gd
+	## `_center_camera()`) without editing the map file — same idiom as
+	## INFILTRAITOR_GRENADE_GUS / INFILTRAITOR_EVENT_TARGET_GU. `"x,y"`.
+	var start_env := OS.get_environment("INFILTRAITOR_AGENT_START_GU")
+	if start_env != "":
+		var parts := start_env.split(",")
+		if parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int():
+			runtime["agent_start"] = Vector2i(int(parts[0]), int(parts[1]))
+		else:
+			push_warning("[FileMapSource] INFILTRAITOR_AGENT_START_GU: cannot parse %r — expected \"x,y\"" % start_env)
 
 	# guards -> patrols: actors.guards[i] is an Array (each route is array of waypoints).
 	# When loaded from JSON, waypoints are [x, y] arrays. MapCompiler._build_enemy_defs()

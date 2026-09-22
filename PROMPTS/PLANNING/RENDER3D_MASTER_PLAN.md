@@ -1,5 +1,34 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.16
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.17
+
+**2026-09-22 (session close) update (v1.17) — SHOT SOOT LADDER FIXED; THE SPARK-ANCHOR TOOLING FIXED, THE GRADE ITSELF NOT TAKEN.**
+- **The shot's soot ladder — FIXED**, closing the other half of R3D-6 item 8. `fade_in_scoped_soot()` used to walk
+  `shot_soot_fade_steps` at `shot_soot_fade_frames_per_step` FRAMES/step (device-speed-dependent, the exact trap
+  `DetonationPresenter.soot_step_s` was already moved off of for the blast) and synced the 3D board once, after the
+  whole fade — the 3D board never saw the fade, only the settled end state. Now elapsed-seconds-paced
+  (`shot_soot_step_s = 0.075`, same cadence as the blast) and `on_shot_soot()` fires per rung. Verified on both boards
+  in one boot each (2D and 3D both log the same per-step elapsed clock); 62 selftests + invariants + lint clean.
+- **`board_probe.py gate` run on the fire — PASS.** `--maps PLAYGROUND --env GRENADE_GUS=31,5;27,5` (fabric, cardboard):
+  two boots under 3D produce an identical dump. Closes the one still-open piece of step 2 from v1.16.
+- **`build_filmstrip.py --shot` — FIXED, a real tool bug, not a look item.** `run_shot_capture()` never set
+  `INFILTRAITOR_MAP`, so the capture ran on whatever `user://current_map.cfg` last persisted from an unrelated run;
+  `_capture_shot_filmstrip()` needs a guard and `push_error`s loudly when there is none, but that line lands in
+  `stderr`, which the wrapper never printed — the capture exits 0, writes zero frames, and `build_sheet()` reports a
+  bare "no frames found" with no clue why. Now pins `PLAYGROUND` by default (`--map` to override, matching
+  `run_glass_rain_capture`'s own precedent for GLASS) and surfaces `ERROR:`/`[SHOT-FILM]` lines from the child.
+- **The spark-anchor grade (R3D-6 item 6, `vfx_impact_face_offset_gu`) — NOT TAKEN.** Framing a real firearm impact for
+  a paired screenshot proved harder than a grenade's: the dev capture's shot is a FORCED MISS (by design, W-TUNE-01's
+  own precedent), FOW only reveals around the agent's own cell (radius 26) so a far impact renders unlit with nothing
+  to see, and the default shooter/target pair in this map lands the impact right at the guard's own cell, which its
+  sprite/vision-cone overlay covers in every framing tried. A temporary debug print (removed before commit) confirmed
+  the MECHANISM fires identically on both boards — `_impact_anchor_3d()` returns a real (non-`NO_ANCHOR`) Vector3 under
+  3D, not `inf` — so the spark IS anchored somewhere real; only a clean, well-framed picture of it was not produced
+  this session, so the "~30px vs ~10px" claim from the v1.14 register is still just a claim, not re-verified.
+- **Next session: grade item 6 directly in the editor** (fastest path — press play, fire a real shot, look), or pin an
+  agent/guard cell pair against a wall FACE the camera actually sees front-on (not a corner) before trying the
+  filmstrip route again. Items 5 and 7 (marks on a lit wall, the reveal silhouette's untuned defaults) are also still
+  ungraded — same paired-capture approach as the rest of this session's register, once a clean impact framing exists.
+
 
 **2026-09-21 (continued session) update (v1.16) — STEP 2 OF THE v1.15 PLAN: THE FOUR SYSTEM DEFECTS, THREE CLOSED.**
 - **Paired-capture matrix built:** `tools/persistent/build_paired_matrix.py` (`--map`, `--grenade`/`INFILTRAITOR_GRENADE_GUS`, `--name`, `--frames`/`--step`) —

@@ -366,3 +366,13 @@ crater on floor and walls with no GU blocks; the shot's scorch lands on the stru
 base; an older blast's scorch beside the shot survives the shot. `shot_3d_gate.py`: PASSED (brick 6 997 px vs 2D
 control 7 441 px, concrete 10 015 vs 11 635). **Not measured on the Moto.**
 
+
+## Next session — soot variation (Director, 2026-09-22: "deixa as 3 planejadas pra próxima sessão")
+
+Paired 3D/2D captures of every weapon and a grenade (`Screenshots/soot_compare/soot_3d_vs_2d.png`, gitignored)
+showed the two boards identical, but the single-shot weapons all leave the same L1 diamond. Planned, zero CPU
+cost (one hash roll per cell inside the existing loops):
+1. **Irregular edge** — a per-voxel roll shifts the distance by -1..+1 before the tone is picked.
+2. **More tones** — the roll may darken or lighten up to two steps, and may drop isolated cells near the edge.
+3. **Radius per weapon** — e.g. pistol 2, rifle 3, sniper 4 (a `WeaponDef` field, Rule 1 `var`).
+Recommended together: 1 + 3. Judge on the same paired sheet.

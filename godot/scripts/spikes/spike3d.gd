@@ -15,7 +15,10 @@
 class_name Spike3D
 extends Node3D
 
-const AGENT_GLB := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_base.glb"
+## `tools/asset_generation/r3d_live_rig_export.py`: one joined mesh, the rig, and the real walk as the `walk` action.
+const AGENT_GLB := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live_walk.glb"
+## D61: one walk cycle per GU at 0.56 s; the action is 32 frames at 30 fps.
+const WALK_SPEED: float = (32.0 / 30.0) / 0.56
 const NEAR_SHADOWS: int = 4
 ## A lamp hangs just under one storey (one world unit).
 const LAMP_HEIGHT: float = 0.9
@@ -102,6 +105,15 @@ func _build(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> v
 			meshes += 1
 			if (mi as MeshInstance3D).mesh != null:
 				surfaces += (mi as MeshInstance3D).mesh.get_surface_count()
+		var players := body.find_children("*", "AnimationPlayer", true, false)
+		if not players.is_empty():
+			var player := players[0] as AnimationPlayer
+			var anim_name: StringName = &"walk" if player.has_animation(&"walk") else player.get_animation_list()[0]
+			player.get_animation(anim_name).loop_mode = Animation.LOOP_LINEAR
+			player.speed_scale = WALK_SPEED
+			player.play(anim_name)
+			player.seek(float(i) * 0.1, true)
+			continue
 		for sk in body.find_children("*", "Skeleton3D", true, false):
 			var skeleton := sk as Skeleton3D
 			var picked: Array = []
@@ -115,7 +127,7 @@ func _build(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> v
 					picked.append(b)
 			_skeletons.append(skeleton)
 			_bones.append(picked)
-	print("[SPIKE3D] actor meshes: %d instance(s), %d MeshInstance3D, %d surface(s), %d skeleton(s), %d bone(s) swung each" % [
+	print("[SPIKE3D] actor meshes: %d instance(s), %d MeshInstance3D, %d surface(s), %d procedurally swung skeleton(s), %d bone(s) each (0 = the real walk plays)" % [
 		mesh_count, meshes, surfaces, _skeletons.size(), (_bones[0] as Array).size() if not _bones.is_empty() else 0])
 
 

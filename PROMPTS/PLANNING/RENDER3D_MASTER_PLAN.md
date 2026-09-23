@@ -99,7 +99,20 @@
     materials are plain white: the look was not judged. RAM against the atlases: not measured.
   - Desktop captures (not kept): the board lit by 3D lamps reads plausibly; the rigs stand in T-pose beside the
     billboards.
-  - **Awaiting the Director's decision on each question.**
+  - **S1 closed by the Director (2026-09-23): the board keeps the CPU light buckets** ("se as luzes atuais são melhores pra
+    performance mantemos assim mesmo"). The remaining light-side stalls are cut the SOOT-STAMP way (an event recomputes
+    its own neighbourhood only).
+  - **S2 with the real walk (same day, Director: "daria pra importar, junto com o mesh combinado?").** No `.blend` holds
+    an action: the walk exists only as `p3_walk_export.py`'s 32 posed phases. `tools/asset_generation/r3d_live_rig_export.py`
+    poses those same phases (the same `make_walk_posture()` and arm IK) and KEYS them into a `walk` action, joins the 62
+    meshes into one (all bound by an Armature modifier, so the skin survives) and exports
+    `agent_live_walk.glb` (7 608 tris, 11 materials, 859 KB). The weapon is left out, so the hands hold the grip in the
+    air. Moto, same APK, one boot each: **base 19.0–19.6 ms/frame (gpu 17.5–17.6, 91 draws), 9 walking rigs 21.6–21.8
+    (gpu 20.2–20.4, 93 draws): +2.4 ms**, and the joined mesh takes the draw calls from +124 to +2. One earlier boot of
+    the rig APK exited on its own during the load with nothing in the crash or kill logs; the rerun was clean (not
+    reproduced, not explained). Desktop capture: the live figure walks beside its billboard at the same size, with its
+    real materials; it reads flatter than the sprite (lit only by the actor-layer lamps, no D17 relight tuning).
+  - **Awaiting the Director's decision on S2** (live actors; it reopens `ACTOR` D17, D34, D42, D44, D62).
 - **Next: the Director's call on S1 and S2; R3D-8 meanwhile.** The v1.18 block below is the previous state.
 
 **2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**

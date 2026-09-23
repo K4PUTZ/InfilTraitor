@@ -80,7 +80,27 @@
     cost, RAM against the atlases, the look at the device's resolution.
   - Runs beside R3D-8; R3D-9 and R3D-10 wait for it (they would build light-bucket plumbing a GPU light discards), and
     R3D-WORLD's actor half, R3D-LIGHT and R3D-GLB fold into it. A yes on S2 reopens `ACTOR` D17, D34, D42, D44, D62.
-- **Next: R3D-SPIKE-3D, beside R3D-8.** The v1.18 block below is the previous state.
+- **R3D-SPIKE-3D MEASURED (2026-09-23), Moto g04s, one release APK, PLAYGROUND, portrait, zoom 0.5, `FRAME_PROBE`,
+  one boot per row** (`Spike3D`, `godot/scripts/spikes/spike3d.gd`; logs `docs/measurements/device_2026-09-23_moto_spike3d_*.log`):
+
+  | configuration | ms/frame | render gpu | draw calls |
+  |---|---|---|---|
+  | today (CPU light buckets) | 19.4–19.6 | 17.9–18.1 | 91 |
+  | S1 12 `OmniLight3D`, no shadows | 43.6–43.8 | 42.1–43.0 | 91 |
+  | S1 + 4 shadowed (nearest) | 58.2–58.5 | 56.7–57.2 | 91 |
+  | S1 + 12 shadowed | 66.0–73.2 | 64.3–68.1 | 91 |
+  | S2 9 live rigs (lamps on the actor layer only) | 22.0–22.2 | 20.7–20.9 | 215 |
+
+  - **S1 fails the budget on its own:** per-pixel lighting from 12 lamps, with NO shadow, costs +24 ms of GPU and puts the
+    idle frame at 43.6 ms against 33.3; shadows add 14–22 ms more. Nothing tuned (range, light count per object, a
+    single cheaper light model), so the finding is "not as a drop-in", not "never".
+  - **S2 passes:** 9 skinned rigs, 8 bones driven per frame, cost +2.6–2.8 ms/frame and +124 draw calls, with the rig as
+    authored for the bake (62 mesh parts per figure). The rig has NO animation and no useful rest pose (T-pose), and its
+    materials are plain white: the look was not judged. RAM against the atlases: not measured.
+  - Desktop captures (not kept): the board lit by 3D lamps reads plausibly; the rigs stand in T-pose beside the
+    billboards.
+  - **Awaiting the Director's decision on each question.**
+- **Next: the Director's call on S1 and S2; R3D-8 meanwhile.** The v1.18 block below is the previous state.
 
 **2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**
 - *"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do código."* Soot is one

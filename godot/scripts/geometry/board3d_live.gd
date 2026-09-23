@@ -219,6 +219,13 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 }
 """, DECAL_TAIL)
 
+## R3D-SPIKE-3D S1 (`LIGHT3D`, spike only) — the opaque faces lit by real 3D lights: not unshaded, and the CPU
+## light bucket leaves the product (face tone, soot and depth dim stay). Set before `build()`.
+static var LIT3D: bool = false
+static var LIT_SHADER: String = OPAQUE_SHADER \
+	.replace("render_mode unshaded, cull_disabled;", "render_mode cull_disabled, specular_disabled;") \
+	.replace("float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];", "float f = face_tone[face];")
+
 const GLASS_SHADER: String = """
 shader_type spatial;
 render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
@@ -1905,7 +1912,7 @@ func _make_material(material_id: String) -> ShaderMaterial:
 		shader_material.shader = shader
 		shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
 		return shader_material
-	shader.code = OPAQUE_SHADER
+	shader.code = LIT_SHADER if LIT3D else OPAQUE_SHADER
 	shader_material.shader = shader
 	shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
 	var resolved = TextureResolver.new().resolve("facade_%s" % material_id, material_id)

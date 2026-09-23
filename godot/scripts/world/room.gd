@@ -3015,8 +3015,14 @@ func _start_board3d_live() -> void:
 	var live: Node3D = Board3DLiveClass.new()
 	live.name = "Board3DLive"
 	add_child(live)
+	## R3D-SPIKE-3D (spike only): LIGHT3D lights the board with real 3D lamps, ACTOR_MESH adds live rigs.
+	var spike_light: String = _dev_flag("LIGHT3D", "")
+	Board3DLiveClass.LIT3D = spike_light != ""
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
+	var spike_meshes: int = int(_dev_flag("ACTOR_MESH", "0"))
+	if spike_light != "" or spike_meshes > 0:
+		Spike3D.apply(self, live, spike_light, spike_meshes)
 	_attach_actor_billboards(live)
 	_attach_vfx_to_board(live)
 	_attach_ground_overlays(live)

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**279 scripts · 101531 lines total** (under `godot/scripts/`)
+**279 scripts · 101570 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2200,7 +2200,7 @@ extends `Node3D` · 509 lines
 
 ### `spike3d.gd`
 
-`class_name Spike3D` · extends `Node3D` · 195 lines
+`class_name Spike3D` · extends `Node3D` · 234 lines
 
 `godot/scripts/spikes/spike3d.gd`
 
@@ -2213,6 +2213,7 @@ extends `Node3D` · 509 lines
 - `LAMP_HEIGHT` = `0.9`
 - `METRES_TO_UNITS` = `1.0 / 1.6`
 - `ACTOR_LAYER` = `2`
+- `PLANES_SHADER` = `"res://godot/shaders/spike_mesh_planes.gdshader"`
 - `PROP_LIGHT` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Assault Rifle.glb"`
 - `PROP_HEAVY` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_posed_shotgun_lowered.glb"`
 

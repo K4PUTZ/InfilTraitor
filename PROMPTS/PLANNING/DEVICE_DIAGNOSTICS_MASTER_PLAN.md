@@ -1,6 +1,9 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
 ## Measuring the real build on a real entry-tier phone — v1.10
 
+> ⏭️ **2026-09-22 — SOOT-STAMP measured on the Moto g04s** (release APKs before/after, `PLAYGROUND_2`, 5 grenades + 2 shotgun shots): shot soot 5.2 s -> 19 ms; blast cook SOOT phase 257 -> 1 142 ms growing -> 225–282 ms flat; detonation MEAN frame 31.2–32.9 ms on all five grenades (3 of 5 were over 33.3 ms). Still over, not soot: the commit frame ~190 ms, the cook's atomic LIGHT phase ~190 ms, the first shot after blasts (719 ms tail), grenade 5's glass (919 ms). APKs: `export/soot_before.apk` / `soot_after.apk`; table: `PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`.
+
+
 > ⏭️ **2026-09-20 — R3D-7's cutaway and R3D-6's decals/dents/rim wedge measured on the Moto g04s and, for the
 > cutaway baseline, the Galaxy A16 (SM-A166W, Android 16)** (`docs/measurements/device_2026-09-20_*`, git-ignored).
 > **The Galaxy is 3-4x FASTER than the Moto on this workload; the Moto is the constraint.** New instruments: the

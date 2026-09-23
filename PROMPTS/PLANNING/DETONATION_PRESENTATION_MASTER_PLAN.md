@@ -1,6 +1,9 @@
 # DETONATION_PRESENTATION_MASTER_PLAN
 ## One commit, then only drawing — the choreographer's reform, 2026-08-27
 
+> ⏭️ **2026-09-22 — SOOT-STAMP:** the waves' `soot` codes now come from the plan's stamp (per-voxel distance, tone 0 beside the holes), hidden cells are written straight to the plane at commit, and `light_changed_cells` also names the hole neighbourhood (formerly covered by accident by the map-wide soot set). The presenter's soot ladder (`soot_step_s`) is unchanged. See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
+
+
 > ⏭️ **2026-09-21 — the scorch no longer rides in the commit frame's look.** Director, from a video of the blast on the Moto: the soot arrived before the crater
 > and the smoke read. The commit frame still writes the cells, but the ramp cells are written CLEAN and `DetonationPresenter` darkens them afterwards in 4 timed steps
 > (`soot_step_s` 0.075 s, `soot_start_s` 0; seconds, at most one step per frame). This supersedes §3/§7's "soot lands in the commit" for what is SEEN. See `RENDER3D_MASTER_PLAN` v1.13.

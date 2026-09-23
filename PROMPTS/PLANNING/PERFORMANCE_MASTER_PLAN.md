@@ -1,6 +1,9 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
+> ⏭️ **2026-09-22 — SOOT-STAMP: soot left the light pipeline entirely.** It is a stored tone per cell (`Room._soot_map`) stamped once by the event; `VoxelLightField` no longer takes soot, no `apply_light_field*()` writes the soot plane, and the map-wide repaint resets the planes and re-projects the map. Everything here about `_build_soot_snapshot()`, the soot index (§13.x) or soot in the stale set is history. The shot's scoped repaint now uses the stale set (impact frame 116 -> 52 ms desktop). See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
+
+
 > ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
 
 > ⏭️ **2026-09-18 — the VFX left the 2D canvas (`RENDER3D` R3D-4e).** P7b/P7c's `CircleField` and the shard

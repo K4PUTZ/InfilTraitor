@@ -1,6 +1,9 @@
 # PREDICTION_MASTER_PLAN
 ## Simulate without committing: the engine's pure-prediction, pre-production and cache layer — v1.0
 
+> ⏭️ **2026-09-22 — SOOT-STAMP:** the plan's SOOT phase no longer runs a BFS over every hole on the level; it stamps this blast's own voxels (3D distance to the epicentre, resumable) and still only PROPOSES (`delta.scorch_writes`, level -> {cell: tone}), written by `commit()` through `Room.absorb_scorch()`. The shot pre-cook warms one world (no sooty world) and never touches soot. `blast_purity_selftest` [8] still passes (406 proposed, 0 stored before commit). See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
+
+
 **Date opened:** 2026-08-09
 **Status:** ✅ **ALL SIX TASKS SHIPPED 2026-08-09** — §8.1, §8.6, §8.7, §8.8,
 §8.9, §8.10.

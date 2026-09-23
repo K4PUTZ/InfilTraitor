@@ -1,6 +1,9 @@
 # WEAPON_MASTER_PLAN
 ## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.2
 
+> ⏭️ **2026-09-22 — SOOT-STAMP:** a firearm's scorch is an L1 ball of `WeaponDef.soot_radius` voxels (weapons JSON, default 3) around the voxels the shot touched, stamped once ~2 frames after the impact (~4 ms desktop, 15–19 ms Moto). The darkest tone lands only on voxels touching a hole. D24's derived soot is superseded. See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
+
+
 > ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
 
 **v1.2 (2026-08-20) — W-PRECOOK is BUILT; §0 carries what it found.** The

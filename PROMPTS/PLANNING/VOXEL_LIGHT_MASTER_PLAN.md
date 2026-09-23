@@ -1,5 +1,8 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
+
+> ⏭️ **2026-09-22 — SOOT-STAMP: soot is no longer a light-field input.** `VoxelLightField.build()` lost its soot/face_soot arguments, `soot_factor()`/`face_soot_code()` and the sooted-voxel jitter exemption are gone; the light apply writes only buckets. Soot is one tone per cell stamped by the event (tone 0 only beside a hole; `soot_face_mult` 0.38/0.60/0.76/0.90). Light is still 12 buckets per voxel — the Director's open question for the next session is whether light should follow the same "limited states" model or move to 3D lights. See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
+
 > ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
 
 > **⏭️ 2026-09-15 — two notes before the header.**

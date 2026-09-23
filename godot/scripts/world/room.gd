@@ -2750,6 +2750,12 @@ func _set_perspective(direction: String) -> void:
 		if _camera_controller != null:
 			_camera_controller.stop_shake()
 
+		## A rotation re-lays the whole map out and rebuilds the store, so the 3D board's meshes and
+		## planes describe the OLD view: rebuild it from the new store, after the damage, glass and
+		## light above are stamped, and before the occlusion below hands it the new set.
+		if board3d() != null:
+			_start_board3d_live()
+
 		## OCC-01: Recompute occlusion set on perspective change
 		_recompute_occlusion()
 
@@ -2998,6 +3004,10 @@ func scenario_board_probe(path: String, label: String) -> Dictionary:
 func _start_board3d_live() -> void:
 	var existing: Node = get_node_or_null("Board3DLive")
 	if existing != null:
+		## Out of the tree NOW, not at the end of the frame: the new board takes the same name,
+		## and a queued node still holding it would push the new one to "@Board3DLive@N" —
+		## `board3d()` would then keep answering with the board being freed.
+		remove_child(existing)
 		existing.queue_free()
 	_voxel_renderer.visible = false
 	floor_layer.visible = false

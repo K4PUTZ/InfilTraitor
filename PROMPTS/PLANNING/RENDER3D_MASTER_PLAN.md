@@ -59,6 +59,15 @@
 - **The procedural per-player materials direction survives the bake's retirement.** Its carrier on the 3D board is
   `TextureResolver` (the `user://textures/<material>/` override is looked up before the shipped facade on every load, visible
   in the same log) plus the material's shader uniforms, not `BakeCompositor`'s atlas pages.
+- **Decided the same day (Director):** the web export is no longer needed, the APK is the phone test (§8 Q4); the 2D
+  reference set goes to `ARCHIVE/`.
+- **Fixed the same day, before R3D-8 (Director: "tem alguns problemas acontecendo durante a rotação"):** a rotation rebuilt
+  the store with the rotated layout but never the 3D board, so the walls stayed in the old view while the agent, the guards,
+  their cones, the lamps and the fog moved to the rotated cells (the agent stood on a wall top). `_set_perspective()` now
+  rebuilds `Board3DLive` after the damage, glass and light are re-stamped and before the occlusion recompute, and
+  `_start_board3d_live()` takes the old board out of the tree at once (a queued node keeping the name would have pushed
+  the new one to `@Board3DLive@N`). Verified on PLAYGROUND, W → S → N: one board build per rotation (collect 212–310 ms,
+  mesh 276–278 ms on the desktop), actors on the floor in every view; 63 selftests clean. Not measured on the Moto.
 - **Next: R3D-8.** The v1.18 block below is the previous state.
 
 **2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**
@@ -2621,13 +2630,14 @@ Why first: every later stage moves or deletes code, and today the suites watch t
    - Fix the 21-voxel loss (junction columns and box corners) of a rotation round trip and of a `SaveState` restore, with
      red-before-green on the real PLAYGROUND case. `_reapply_base_damage()` is R3D-1b's lead.
    - `save_restore` and `reload` then become 0-diff stages of the gate.
-5. **The web export, checked again** on the Compatibility renderer: boot, a grenade, a shot at glass (screen texture) and a
-   revealed guard (depth texture). A failure is a finding for the Director (§8 Q4), not something to paper over.
+5. ~~**The web export, checked again.**~~ **Dropped (Director, 2026-09-23): the web export is no longer needed; the APK is
+   the phone test from here on** (§8 Q4 closed).
 6. **The 2D reference set, archived once, while both boards exist.**
    - One `build_paired_matrix.py` pass over the situations the look register names: a blast on concrete, a wood burn,
      shots on the nine materials on the SW and SE faces, sparks, the glass crack, craze, rain and piles, the end-of-blast
      light, and the soot.
-   - The files are hand-named (never `auto_`, so the rotation cannot take them) and kept in one tracked folder.
+   - The files are hand-named (never `auto_`, so the rotation cannot take them) and kept under `ARCHIVE/` (Director,
+     2026-09-23: it is not used in production any more).
    - These are references in CLAUDE.md's sense, not receipts: R3D-LOOK will have to LOOK at them to decide items still
      undecided, after the 2D that made them is gone.
 
@@ -2635,7 +2645,7 @@ Why first: every later stage moves or deletes code, and today the suites watch t
 - the suite runs on the 3D board, and every remaining 2D pin is listed with its reason;
 - the 3D pixel gate reads 0 across two runs;
 - the round trip is 0-diff;
-- the web result is recorded.
+- the reference set is in `ARCHIVE/`.
 
 ### R3D-9 — The 3D board reads nothing from the 2D renderer
 
@@ -2775,7 +2785,6 @@ is not an entry condition (Director, 2026-09-23).
 
 **Gate:**
 - the R3D-13 matrix on the Moto and the Galaxy A16, with no regression;
-- the web export plays a grenade, unless §8 Q4's answer says otherwise;
 - every selftest is clean on the only board; invariants, CODEMAP, `board_probe.py gate` and the 3D pixel gate all pass.
 
 ### After R3D-END — the 3D track continues
@@ -2957,8 +2966,7 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
 3. **Rotation** (open, for R3D-ROT).
    - Four fixed views as today, or a free orbit?
    - Does the gameplay layout keep rotating with the view, or does only the camera turn?
-4. **The web export** (open, needed by R3D-8 and R3D-END's gate). Must it run the 3D board at parity,
-   or is the APK the phone test now? The device runs since 2026-09-14 are all APKs.
+4. ~~**The web export.**~~ **CLOSED 2026-09-23: not needed any more; the APK is the phone test (Director).**
 5. ~~**Decals and dents in 3D.**~~ **Built from the 2D atoms (R3D-6, 2026-09-19); their tuning is R3D-LOOK.**
 6. ~~**The cutaway style in 3D.**~~ **CLOSED 2026-09-19: the original 2D mechanism, approved (R3D-7).**
 7. ~~**The vertical scale.**~~ **CLOSED 2026-09-17: true cubes, `VERTICAL_SCALE = 1.0` (R3D-3).**

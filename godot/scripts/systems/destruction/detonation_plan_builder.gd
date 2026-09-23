@@ -437,8 +437,15 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["affected"] = affected
 	s["epicenter"] = source_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS + Vector2i(half, half)
 	s["crater_max"] = crater_max
-	## SOOT-STAMP: how far the flood reaches, in voxels — the far edge of the soot bands.
-	s["gu_reach_voxels"] = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	## SOOT-STAMP: the far edge of the soot bands — the circle INSCRIBED in the flood.
+	## ⚠️ Not the flood's own reach. The flood is a 4-neighbour diamond of whole GUs, so
+	## bands running out to its edge left the last flooded GU's slices/slabs sooted and the
+	## GU beside it (outside the flood, never stamped) clean: the per-GU cut the Director
+	## reported on 2026-09-22 with a capture. Every point within this radius lies in a GU
+	## the flood reached (open floor), so the scorch reaches clean before any GU boundary.
+	var half_rings: int = int(floor(float(n_rings - 1) / 2.0))
+	s["gu_reach_voxels"] = (float(half_rings * GeometryCoords.VOXELS_PER_UNIT_AXIS) \
+		+ float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0) * sqrt(2.0)
 	s["crater_core"] = crater_max * CRATER_CORE_FACTOR
 	s["crater_rim_span"] = maxf(crater_max - crater_max * CRATER_CORE_FACTOR, 0.001)
 

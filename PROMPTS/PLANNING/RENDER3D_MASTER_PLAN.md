@@ -68,7 +68,19 @@
   `_start_board3d_live()` takes the old board out of the tree at once (a queued node keeping the name would have pushed
   the new one to `@Board3DLive@N`). Verified on PLAYGROUND, W → S → N: one board build per rotation (collect 212–310 ms,
   mesh 276–278 ms on the desktop), actors on the floor in every view; 63 selftests clean. Not measured on the Moto.
-- **Next: R3D-8.** The v1.18 block below is the previous state.
+- **R3D-SPIKE-3D — real 3D lights and live actor meshes, measured before R3D-9 (Director, 2026-09-23: "Aprovado").** The
+  Director asked whether the board should move to fully 3D lights and actors to real 3D models, since sprites and the CPU
+  light field are 2D-era workarounds. Facts that framed it: the stealth reads its own per-tile system (`ExposureSystem`),
+  never `VoxelLightField`, so the visual light can move without touching determinism; every remaining Moto CPU overrun is
+  light-side; but the Moto is GPU-bound already (3D idle 22.9 ms, render gpu 21.3–21.6 ms). Two questions, each decided by
+  the Director on Moto numbers and captures:
+  - **S1 — the board lit by 3D lights:** PLAYGROUND's 12 lamps as `OmniLight3D` — no shadows / shadows on the nearest /
+    all shadowed — GPU on the Moto at the standard framings against today, a blast hole to see light through it, captures.
+  - **S2 — an actor as a live mesh:** the real agent rig with an animation, ×9, lit by 3D lights on its own layer; Moto
+    cost, RAM against the atlases, the look at the device's resolution.
+  - Runs beside R3D-8; R3D-9 and R3D-10 wait for it (they would build light-bucket plumbing a GPU light discards), and
+    R3D-WORLD's actor half, R3D-LIGHT and R3D-GLB fold into it. A yes on S2 reopens `ACTOR` D17, D34, D42, D44, D62.
+- **Next: R3D-SPIKE-3D, beside R3D-8.** The v1.18 block below is the previous state.
 
 **2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**
 - *"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do código."* Soot is one

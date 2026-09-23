@@ -81,6 +81,8 @@ const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 ## (D6), not a researched constant — expect it to move again after a capture.
 const CRATER_MAX_FACTOR: float = 0.40
 const CRATER_CORE_FACTOR: float = 0.30
+## SOOT-STAMP: blast soot reach past the flood's inscribed circle. `static var` (Rule 1).
+static var SOOT_REACH_SCALE: float = 1.25
 
 ## E-SMOKE-01 (Director, 2026-08-08) — "intensidades diferentes". A puff's base
 ## strength comes from how hard its voxel was actually hit, so the smoke reads as
@@ -444,8 +446,10 @@ static func _phase_setup(s: Dictionary) -> void:
 	## reported on 2026-09-22 with a capture. Every point within this radius lies in a GU
 	## the flood reached (open floor), so the scorch reaches clean before any GU boundary.
 	var half_rings: int = int(floor(float(n_rings - 1) / 2.0))
+	## x SOOT_REACH_SCALE (Director, 2026-09-22: "aumenta um pouco a área"): a little past
+	## the inscribed circle; only the faintest tone can land beyond it, where a cut does not read.
 	s["gu_reach_voxels"] = (float(half_rings * GeometryCoords.VOXELS_PER_UNIT_AXIS) \
-		+ float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0) * sqrt(2.0)
+		+ float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0) * sqrt(2.0) * SOOT_REACH_SCALE
 	s["crater_core"] = crater_max * CRATER_CORE_FACTOR
 	s["crater_rim_span"] = maxf(crater_max - crater_max * CRATER_CORE_FACTOR, 0.001)
 

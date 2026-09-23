@@ -181,7 +181,7 @@ uniform float face_residue_sep : hint_range(0.0, 1.0) = 1.0;
 // VoxelLightField.FACE_SOOT_BASE); voxel_face_separation_selftest.gd parses
 // these uniforms out of this file precisely so a change here cannot drift.
 //
-uniform vec4 soot_face_mult = vec4(0.60, 0.72, 0.83, 0.92);  // SOOT-STAMP 2026-09-22: lighter, Director ("mais clara e suave")
+uniform vec4 soot_face_mult = vec4(0.38, 0.72, 0.83, 0.92);  // SOOT-STAMP 2026-09-22: lighter, Director ("mais clara e suave")
 // Ring 4 = clean. Split out of the vec4 above because there are now five
 // entries; must be 1.0 or an untouched voxel would be tinted by a table it is
 // not supposed to be subject to at all.

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**278 scripts · 101262 lines total** (under `godot/scripts/`)
+**278 scripts · 101266 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -545,7 +545,7 @@ extends `Node3D` · 1950 lines
 - `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
 - `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`
 - `DIR_NORMAL` = `[Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]`
-- `FALLBACK_SOOT_MULT` = `[0.60, 0.72, 0.83, 0.92]`
+- `FALLBACK_SOOT_MULT` = `[0.38, 0.72, 0.83, 0.92]`
 - `FALLBACK_TONE` = `[1.0, 0.975, 0.945]`
 - `OPAQUE_SHADER` = `"""`
 - `INVALID_PICK` = `Vector2i(-9999, -9999)`
@@ -2490,7 +2490,7 @@ extends `RefCounted` · 941 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2700 lines
+`class_name DetonationPlanBuilder` · 2704 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 

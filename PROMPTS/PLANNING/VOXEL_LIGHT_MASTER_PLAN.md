@@ -1,5 +1,10 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
+> ⏭️ **2026-09-23 — the per-voxel light field STAYS (Director, `RENDER3D_MASTER_PLAN` R3D-SPIKE-3D S1).** The board lit by 12 real `OmniLight3D`
+> lamps cost +24 ms of GPU on the Moto with no shadow (43.6 vs 19.5 ms/frame), 58-73 ms with shadows. The buckets keep the
+> look and gain consumers: actors and static props (`ACTOR` D64, D65) read the same `cell_plane` array. What remains is the
+> light's CPU cost (`RENDER3D` R3D-LIGHT: an event recomputes its own neighbourhood only).
+
 
 > ⏭️ **2026-09-22 — SOOT-STAMP: soot is no longer a light-field input.** `VoxelLightField.build()` lost its soot/face_soot arguments, `soot_factor()`/`face_soot_code()` and the sooted-voxel jitter exemption are gone; the light apply writes only buckets. Soot is one tone per cell stamped by the event (tone 0 only beside a hole; `soot_face_mult` 0.38/0.60/0.76/0.90). Light is still 12 buckets per voxel — the Director's open question for the next session is whether light should follow the same "limited states" model or move to 3D lights. See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
 

@@ -1,6 +1,12 @@
 # MOVEMENT_MASTER_PLAN
 ## How the Agent Moves — Situations, Poses, Transitions and the Motion-Design Pipeline — v0.1 (BRIEF CAPTURED, NOT YET A PLAN)
 
+> ⏭️ **2026-09-23 — motion becomes ACTIONS on a live mesh (`ACTOR` D64).** The key-poses-first method stands, but the output is
+> a keyed action on the rig (in-betweens are interpolation, blends and transitions happen in the engine), not a baked frame
+> sequence; the dev-only bake mode below matters only until `RENDER3D` R3D-ACTORS. D44's four facings lost their rendering
+> reason: whether gameplay keeps four facings is now a design question.
+
+
 > **⏸ Status check, 2026-09-15:**
 > - This is still a brief. The milestone has not opened, and nothing has been committed to
 >   this plan since 2026-08-16.

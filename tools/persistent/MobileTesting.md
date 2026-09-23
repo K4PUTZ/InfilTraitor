@@ -1,5 +1,8 @@
 ## Mobile Testing — Local Server + ngrok
 
+> ⏭️ **2026-09-23 — HISTORY. The web export is no longer needed (Director): the phone test is the release APK**
+> (`tools/persistent/export_android.py` → `device_run.py` / `device_record.py`, flags through `dev_flags.cfg`).
+
 ### Quick Start (Two Terminal Tabs)
 
 **Tab 1: Local HTTP Server**

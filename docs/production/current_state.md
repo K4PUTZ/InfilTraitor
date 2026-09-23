@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-22 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-23 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -24,7 +24,11 @@
   safety net on the 3D path (selftests on the 3D board, a 3D pixel gate, the persistence round trip, the web export, the 2D
   reference set), **R3D-9** the 3D board reads nothing of the 2D renderer, **R3D-10** the simulation writes no tiles, **R3D-11**
   gameplay off `floor_layer`, **R3D-12** the load builds no 2D board, **R3D-13** one path and the last Moto + Galaxy baseline.
-  After the end: the look (R3D-LOOK), world-space models, rotation (R3D-ROT), the lighting direction, and more.
+  After the end: the look (R3D-LOOK), world-space models, rotation (R3D-ROT), the light's CPU cost, and more.
+- **R3D-SPIKE-3D (2026-09-23, Moto):** real Godot lamps cost +24 ms of GPU, so the board keeps its CPU light buckets; actors
+  become live skinned meshes and static props become meshes, both lit by the board's cell planes (+1.0 ms for 9 walking rigs,
+  +1.5 ms for 20 props) — `ACTOR` D64/D65, built at R3D-ACTORS / R3D-PROPS. Rotation now rebuilds the 3D board (it did not).
+  The web export is retired: the APK is the phone test.
 - **Open and honest (the 2026-09-23 legacy audit):** the Moto's 3D boot still spends ~20.3 s of its 53.3 s baking 2D atlases;
   the cook still resolves 2D tiles on the 3D board; the 3D board reads its look constants from the 2D face shader; the
   selftests run on the 2D board; a rotation or `SaveState` round trip loses 21 voxels of damage; the Galaxy's 3D brick shot tail
@@ -347,7 +351,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 195
+- GDScript modules: 196
 - Test scripts: 63
 - Known maps: 3
 - Shipped facade files: 0

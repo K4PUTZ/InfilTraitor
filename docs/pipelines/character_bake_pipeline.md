@@ -1,5 +1,10 @@
 # Character Bake Pipeline
 
+> ⏭️ **2026-09-23 — this pipeline retires for gameplay at `RENDER3D` R3D-ACTORS (`ACTOR` D64).** Actors become live skinned
+> meshes lit by the board's cell planes; the model and rig stages below stay the source, and
+> `tools/asset_generation/r3d_live_rig_export.py` replaces the posed-GLB → frame-bake stages with a keyed action export.
+> Until R3D-ACTORS lands, the game still draws these baked frames.
+
 **How a character goes from a Python-described model to the PNG frames
 `AgentSprite` draws.** Written 2026-08-17 so the pipeline can be executed by
 someone who did not build it. Everything here is measured off the scripts, not

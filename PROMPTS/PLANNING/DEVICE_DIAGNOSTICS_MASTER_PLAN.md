@@ -1,6 +1,13 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
 ## Measuring the real build on a real entry-tier phone — v1.10
 
+> ⏭️ **2026-09-23 — `RENDER3D_MASTER_PLAN` R3D-SPIKE-3D on the Moto g04s** (PLAYGROUND, portrait, zoom 0.5, `FRAME_PROBE`, one boot per row,
+> `docs/measurements/device_2026-09-23_moto_spike3d_*.log`): base 19.0-19.6 ms/frame (gpu 17.5-18.1). The board lit by 12 real
+> lamps 43.6 (no shadow) / 58.4 (4 shadowed) / 66-73 (12 shadowed). 9 walking rigs +2.4 ms with actor-layer lamps, **+1.0 with
+> the cell-plane shader**; 20 static props +9.7 with lamps, **+1.5 with the shader**, +4.3 for 200k-tri stand-ins. Real Godot
+> lights are what cost on this Mali; geometry is cheap. One boot of the rig APK exited during the load with nothing in the crash
+> or kill logs (not reproduced).
+
 > ⏭️ **2026-09-22 — SOOT-STAMP measured on the Moto g04s** (release APKs before/after, `PLAYGROUND_2`, 5 grenades + 2 shotgun shots): shot soot 5.2 s -> 19 ms; blast cook SOOT phase 257 -> 1 142 ms growing -> 225–282 ms flat; detonation MEAN frame 31.2–32.9 ms on all five grenades (3 of 5 were over 33.3 ms). Still over, not soot: the commit frame ~190 ms, the cook's atomic LIGHT phase ~190 ms, the first shot after blasts (719 ms tail), grenade 5's glass (919 ms). APKs: `export/soot_before.apk` / `soot_after.apk`; table: `PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`.
 
 

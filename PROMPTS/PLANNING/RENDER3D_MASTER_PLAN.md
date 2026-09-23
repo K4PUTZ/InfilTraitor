@@ -1,5 +1,24 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.19
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.20
+
+**2026-09-23 (session close) update (v1.20) — S2 AND S3 APPROVED: ACTORS AND STATIC PROPS BECOME MESHES LIT BY THE CELL PLANES; THE PLAN IS COMPLETE (Director).**
+- **Rulings (Director, 2026-09-23):** S1 closed — the board keeps its CPU light buckets (*"se as luzes atuais são melhores pra
+  performance mantemos assim mesmo"*); **S2 and S3 approved** (*"Aprovado S2 e S3"*). Recorded as `ACTOR_MASTER_PLAN` **D64**
+  (actors are live skinned meshes; the frame bake retires for gameplay; D17, D34, D42, D44, D62 reopened, each row says how)
+  and **D65** (static props are meshes, destructible props are voxels).
+- **The mechanism that makes both cheap:** a mesh is lit the board's way — `spike_mesh_planes.gdshader` reads the floor cell's
+  light bucket from the board's own `cell_plane` array and ladder; no Godot light anywhere. Moto: 9 walking rigs **+1.0 ms**, 20
+  static props **+1.5 ms**; with 12 real lamps the same were +2.4 and +9.7, and the board itself lit by them +24 ms.
+- **Where they go (§4, "After R3D-END"):** two new stages, **R3D-ACTORS** and **R3D-PROPS**. They touch actors and props, not the
+  board, so they may start any time after R3D-8 (the safety net) without waiting for the road. R3D-WORLD shrinks to the ground
+  overlays and the VFX (its actor half is R3D-ACTORS); R3D-GLB is absorbed by R3D-PROPS; R3D-LIGHT becomes the light's CPU cost
+  (an event recomputes its own neighbourhood only, the SOOT-STAMP way), since the direction question is closed.
+- **The spike's code stays until R3D-ACTORS** (`Spike3D`, `Board3DLive.LIT3D`, flags `LIGHT3D`, `ACTOR_MESH`, `PROP_MESH`,
+  `PROP_KIND`, `PROP_NOLAMPS`, `MESH_PLANES`): R3D-ACTORS promotes the planes shader and the rig export into production and
+  deletes the rest, including the rejected `LIT3D` board variant.
+- **The plan is complete:** every stage from here to the end of the track is written (R3D-8 → R3D-13 → R3D-END, then R3D-ACTORS,
+  R3D-PROPS, R3D-WORLD, R3D-ROT, R3D-LOOK, R3D-LIGHT, R3D-CLAIMS, R3D-BUFFER). Nothing on the road is built yet. **Next: R3D-8.**
+  Session: `PROMPTS/RESUMO_SESSAO_2026-09-23_R3D_END_PLAN.md`.
 
 **2026-09-23 update (v1.19) — THE END OF THE PLAN REWRITTEN: R3D-8 IS NOW R3D-END, INDEPENDENCE FROM THE 2D IS THE GOAL, THE LOOK IS NOT A GATE (Director).**
 - **Ruling (Director, 2026-09-23):** *"mesmo que aparência não esteja ratificada, o importante é a gente não depender mais do
@@ -112,7 +131,7 @@
     the rig APK exited on its own during the load with nothing in the crash or kill logs; the rerun was clean (not
     reproduced, not explained). Desktop capture: the live figure walks beside its billboard at the same size, with its
     real materials; it reads flatter than the sprite (lit only by the actor-layer lamps, no D17 relight tuning).
-  - **Awaiting the Director's decision on S2** (live actors; it reopens `ACTOR` D17, D34, D42, D44, D62).
+  - ~~Awaiting the Director's decision on S2~~ **APPROVED 2026-09-23 (v1.20; `ACTOR` D64).**
   - **S3 — static props as meshes (Director, same day: "mede os props estáticos no Moto antes de decidir").** No prop
     asset exists, so two stand-ins bracket it: `light` = a single-mesh CC0 rifle at ~1 GU (1 304 tris each), `heavy` =
     the posed static agent statue (~10 000 tris in 64 parts each), 20 of each around the agent (`PROP_MESH`,
@@ -147,8 +166,8 @@
 
     **9 live walking actors cost +1.0 ms, 20 static props +1.5 ms**, against +2.4 and +9.7 with real lamps. The heavy
     stand-in's +4.3 ms is its asset (200k tris, 768 extra draws). Not done: soot and the cutaway on meshes, the weapon
-    in the hand, RAM against the atlases. **Awaiting the Director's decision on S2 (live actors) and S3 (props as meshes).**
-- **Next: the Director's call on S1 and S2; R3D-8 meanwhile.** The v1.18 block below is the previous state.
+    in the hand, RAM against the atlases. **S2 and S3 APPROVED 2026-09-23 (v1.20; `ACTOR` D64, D65).**
+- **Next: R3D-8** (S1 closed, S2 and S3 approved — see v1.20 above). The v1.18 block below is the previous state.
 
 **2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**
 - *"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do código."* Soot is one
@@ -2870,7 +2889,24 @@ is not an entry condition (Director, 2026-09-23).
 ### After R3D-END — the 3D track continues
 
 These are not retirement steps: they are the work the end frees. Each opens on the Director's call; the order below is a
-proposal.
+proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the board: they may start any time after R3D-8.**
+
+- **R3D-ACTORS — the actors as live meshes (`ACTOR` D64, approved 2026-09-23).**
+  1. **Promote the spike:** `spike_mesh_planes.gdshader` becomes the actor/prop shader (named at build time) and reads the
+     light ladder from R3D-9's neutral owner; `r3d_live_rig_export.py` becomes the rig export. `Spike3D`, `Board3DLive.LIT3D`
+     and the spike flags are deleted.
+  2. **Motion as actions:** every motion the game plays (walk, turn, postures, raise, throw, shoot, idle) keyed from the p3
+     scripts the way the walk was — no `.blend` holds an action today; D61's 0.56 s per GU drives the walk speed.
+  3. **The bridge:** `AgentSprite`'s decisions (facing, posture, walk and throw frame, grip, head layer) drive the mesh's
+     yaw and animation instead of a frame index; D47's GU-boundary snap stays.
+  4. **The weapon in the hand** (a bone attachment), soot and the cutaway on a mesh, glass tint and the `GUARD_REVEAL`
+     silhouette from the mesh's depth.
+  5. **Retire:** `ActorBillboard3D` and the gameplay frame bake (atlases, normal maps, D17's relight).
+  - **Gate:** the Moto frame for the agent and 8 guards against the billboard baseline; RAM against the atlases (first time);
+    the Director's look call; the touch run (tap, select, walk).
+- **R3D-PROPS — static props as meshes, destructible ones as voxels (`ACTOR` D65).** `PropBillboard3D` (grenade,
+  collectible) moves to meshes with the same shader; an asset budget is set (one mesh per prop, a triangle cap measured on
+  the Moto); a breakable prop is a voxel container (`MATERIALS` M5). Absorbs R3D-GLB.
 
 - **R3D-LOOK — the look, on the 3D board's own terms.** The v1.14 register as it stands:
   - the marks on a lit wall: dent, CRACKED, hole scorch, glass star, rim wedge;
@@ -2881,8 +2917,8 @@ proposal.
   - the golden light shafts (`light_ray_overlay`, R3D-5's table).
 
   The Director grades them at 9/10, against the R3D-8 reference set where the 2D is the reference.
-- **R3D-WORLD — world-space models.** Three things are exact under the fixed D26 camera and wrong under a yaw:
-  - the actors: `ActorBillboard3D` reads `AgentSprite`'s screen position;
+- **R3D-WORLD — world-space models.** Two things are exact under the fixed D26 camera and wrong under a yaw (the third, the
+  actors, is R3D-ACTORS since v1.20):
   - the ground overlays: `GroundCanvas3D` re-issues 2D canvas calls through the 2D → ground affine;
   - the VFX: `ParticleMath.to_world()` maps screen displacements.
 
@@ -2896,18 +2932,20 @@ proposal.
 
   Gate: the four views agree by identity, the Moto cost of a rotation is recorded, and `SOOT_STORAGE_REFORM` SS-6's proof
   runs.
-- **R3D-LIGHT — the lighting direction** (the Director's question of 2026-09-22: more voxel light levels, or real 3D lights
-  with a deterministic stealth shade). A measured Moto spike of each comes before any choice. Related, and independent of
-  the choice: the Moto's remaining over-budget frames are all on the light side (the commit frame ~190 ms, the cook's LIGHT
-  phase ~190 ms, the first shot after blasts 719 ms, grenade 5's consequence frame 919 ms).
+- **R3D-LIGHT — the light's CPU cost.** The direction is CLOSED (R3D-SPIKE-3D S1, 2026-09-23): the board keeps the CPU
+  light buckets, because 12 real lamps cost +24 ms of GPU on the Moto without a single shadow. What remains is cost: the
+  Moto's over-budget frames are all light-side (the commit frame ~190 ms, the cook's LIGHT phase ~190 ms, the first shot
+  after blasts 719 ms, grenade 5's consequence frame 919 ms). An event recomputes its own neighbourhood only and never
+  re-reads the map (the SOOT-STAMP lesson).
 - **R3D-CLAIMS — the `Voxel` wrappers go** (~100 MB on the Moto, R3D-1d): the plan and the `WorldDelta` are keyed by claim.
 - **R3D-BUFFER — the playable buffer grows** (~4–5 GUs, XCOM-style, Director 2026-09-21). The border strata become real
   store geometry, which settles v1.16's 116 416 light texels.
-- **R3D-GLB — real 3D objects in the scene** (below).
+- **R3D-GLB — real 3D objects in the scene:** absorbed by R3D-PROPS (v1.20); the question below is answered by D65.
 
-### R3D-GLB — real 3D objects in the scene (to investigate)
+### R3D-GLB — real 3D objects in the scene (ANSWERED 2026-09-23 → R3D-PROPS, `ACTOR` D65)
 
-**Not a stage. A question the Director raised on 2026-09-18, parked until R3D-ROT closes.**
+**Kept as history.** The Light and Cost questions below were measured by R3D-SPIKE-3D: a mesh lit by the board's planes costs
++1.5 ms for 20 props on the Moto; real lamps are what cost. **Not a stage. A question the Director raised on 2026-09-18, parked until R3D-ROT closes.**
 Now that the board is a Godot 3D scene, can imported 3D meshes (GLB) stand in it as real
 geometry, instead of baked frames on billboards? Technically yes: a `MeshInstance3D` under
 `Board3DLive` is depth-tested, covered by walls and tinted by glass with no extra work, and
@@ -2941,7 +2979,8 @@ R3D-8 ─► R3D-9 ─► R3D-10 ─► R3D-11 ─► R3D-12 ─► R3D-13 ─�
  net     3D reads  no tiles  gameplay  load      one path   delete +
          no 2D     in sim    off tiles no 2D     baseline   canon
 
-after R3D-END:  R3D-LOOK · R3D-WORLD ─► R3D-ROT · R3D-LIGHT · R3D-CLAIMS · R3D-BUFFER · R3D-GLB
+after R3D-8 (in parallel):  R3D-ACTORS ─► R3D-PROPS
+after R3D-END:  R3D-WORLD ─► R3D-ROT · R3D-LOOK · R3D-LIGHT · R3D-CLAIMS · R3D-BUFFER
 ```
 
 ### Sequencing decided 2026-09-23 (the Director delegated the order)
@@ -2959,6 +2998,8 @@ Why this order:
 4. **R3D-13 last before the end:** each stage deletes its own flag, and R3D-13 sweeps what predates the
    road. The baseline is taken last because it must measure the shape R3D-END will keep.
 5. **R3D-WORLD before R3D-ROT:** the screen-space models are exact only under the fixed camera.
+6. **R3D-ACTORS and R3D-PROPS beside the road (v1.20):** they replace actor and prop drawing, not the board, so they wait only
+   for R3D-8's net; R3D-ACTORS also removes the actors from R3D-WORLD's list, which is why it comes first.
 
 - **R3D-1 and R3D-2 pay the 2D build too**, in memory and in the LIGHT step. If the track
   stopped there, the game would still be better.
@@ -3042,7 +3083,8 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
 1. ~~**Floors.** Should an intact floor show its whole facade the way walls will?~~ **CLOSED 2026-09-23:
    floors and slabs show the whole facade (Director), unless a measurement says it costs; the 3D board
    already draws them so.**
-2. ~~**Actors.** Billboards or depth-composited 2D?~~ **CLOSED 2026-09-18: billboards (R3D-4a, ratified).**
+2. ~~**Actors.** Billboards or depth-composited 2D?~~ **CLOSED 2026-09-18: billboards (R3D-4a, ratified); superseded
+   2026-09-23: live meshes lit by the cell planes (`ACTOR` D64, R3D-ACTORS).**
 3. **Rotation** (open, for R3D-ROT).
    - Four fixed views as today, or a free orbit?
    - Does the gameplay layout keep rotating with the view, or does only the camera turn?
@@ -3136,3 +3178,7 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
   R3D-9 is R3D-ROT, after the end, with R3D-WORLD, R3D-LIGHT, R3D-CLAIMS, R3D-BUFFER and R3D-GLB. §8 Q1 closed (floors
   and slabs show the whole facade). The legacy audit is in the v1.19 block (the Moto load bakes ~20.3 s of 2D atlases
   under the 3D board; the cook still resolves 2D tiles; the 3D board reads its look constants from the 2D shader).
+- **v1.20, 2026-09-23.** R3D-SPIKE-3D measured on the Moto and ruled: S1 (3D lights on the board) closed — the board keeps
+  the CPU buckets; S2 (live actor meshes) and S3 (static props as meshes) approved, both lit by the board's cell planes
+  (+1.0 ms for 9 walking rigs, +1.5 ms for 20 props). New stages R3D-ACTORS and R3D-PROPS; R3D-WORLD, R3D-LIGHT and R3D-GLB
+  re-scoped. `ACTOR` D64, D65. The rotation defect (the 3D board never rebuilt on a view change) fixed the same day.

@@ -1,6 +1,6 @@
 # GLASS MASTER PLAN — the physics of glass
 
-> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+> ⏭️ **2026-09-23 — the end of RENDER3D rewritten (Director):** the 2D board retires when nothing depends on it, not when the look matches. R3D-8 is renamed **R3D-END**, with six stages before it (R3D-8 to R3D-13); the look register moves after the end (R3D-LOOK), and rotation becomes R3D-ROT. See `RENDER3D_MASTER_PLAN` v1.19.
 
 > ⏭️ **2026-09-18 (`RENDER3D` R3D-4e):** measured under `RENDER3D=1` — the **crack sprite draws nothing**
 > (`glass_crack_demo` before/after: 0 of 921 600 px differ; it is a child of the hidden 2D renderer), so

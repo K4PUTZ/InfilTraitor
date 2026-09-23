@@ -4,7 +4,7 @@
 > ⏭️ **2026-09-22 — SOOT-STAMP: soot left the light pipeline entirely.** It is a stored tone per cell (`Room._soot_map`) stamped once by the event; `VoxelLightField` no longer takes soot, no `apply_light_field*()` writes the soot plane, and the map-wide repaint resets the planes and re-projects the map. Everything here about `_build_soot_snapshot()`, the soot index (§13.x) or soot in the stale set is history. The shot's scoped repaint now uses the stale set (impact frame 116 -> 52 ms desktop). See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
 
 
-> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+> ⏭️ **2026-09-23 — the end of RENDER3D rewritten (Director):** the 2D board retires when nothing depends on it, not when the look matches. R3D-8 is renamed **R3D-END**, with six stages before it (R3D-8 to R3D-13); the look register moves after the end (R3D-LOOK), and rotation becomes R3D-ROT. See `RENDER3D_MASTER_PLAN` v1.19.
 
 > ⏭️ **2026-09-18 — the VFX left the 2D canvas (`RENDER3D` R3D-4e).** P7b/P7c's `CircleField` and the shard
 > field now have 3D twins (`CircleField3D`, `QuadField3D`, `ShardField3D`) that draw depth-tested in the 3D
@@ -18,7 +18,7 @@ open items.** The Director ratified the 3D render path
 - **P4 and P6 are properties of the 2D `TileMapLayer` board.**
   - P4: retire the alternative-id encoding and the mint cache.
   - P6: MAT-PERF-03's stale floor cells.
-  - Build either only if the 2D board has to ship before R3D-8; otherwise both go with
+  - Build either only if the 2D board has to ship before R3D-END; otherwise both go with
     the board.
 - **P3's cell plane is the piece that survives** — the 3D board reads it.
 - **The "base-occupancy cache" named below becomes R3D-2's read of the packed voxel

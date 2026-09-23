@@ -10,7 +10,7 @@
 >   `DEVICE_DIAGNOSTICS` §15.15 measured it as half of the 2D board's memory on the
 >   Moto: 2.17–2.20 GB with the bake, 1.10 GB without.
 > - **B1, B3 and B5 are atlas invariants.** They stay in force while the 2D board ships,
->   and retire at R3D-8 on the Director's ratification. Until then `BakeConfig` and
+>   and retire at R3D-END on the Director's ratification. Until then `BakeConfig` and
 >   everything below stay authoritative.
 
 **Extracted 2026-07-08 from `tools/persistent/OPERATOR_CONTEXT.md`** (v0.5.0

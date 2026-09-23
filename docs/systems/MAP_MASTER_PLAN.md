@@ -18,7 +18,7 @@ The map system is completely data-driven. `room.gd` is a renderer that consumes 
 > - **Rotation** is `room._set_perspective(direction: String)`. It re-lays the view from
 >   `_base_layout` through `RoomBuilder.layout_with_perspective()` →
 >   `world/utilities/perspective_mapper.gd`, and rebuilds the board. It was suspended for
->   performance and is meant to return; `RENDER3D_MASTER_PLAN` R3D-9 turns it into a camera
+>   performance and is meant to return; `RENDER3D_MASTER_PLAN` R3D-ROT turns it into a camera
 >   yaw.
 > - `OPERATOR_CONTEXT` (retired 2026-07-27) is replaced by `CLAUDE.md` in the links below.
 

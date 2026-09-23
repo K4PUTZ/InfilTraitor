@@ -2,7 +2,7 @@
 ##
 ## DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10) built this as a spike under
 ## `spikes/`. RENDER3D R3D-3 (2026-09-17) moved it here — production code, not an
-## instrument, though it still runs behind `RENDER3D=1` until R3D-8 retires the 2D
+## instrument, though it still runs behind `RENDER3D=1` until R3D-END retires the 2D
 ## board: `RENDER3D=1` builds it after a real map load and hides the 2D voxel board.
 ## Actors, fog, overlays and the HUD keep drawing in 2D, on top of it.
 ##

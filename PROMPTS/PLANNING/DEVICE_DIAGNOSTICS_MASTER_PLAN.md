@@ -62,7 +62,7 @@ Where the Moto g04s stands:
 
 - **The decision (§15.17):** the Director ratified moving the board to Godot 3D, over a
   packed voxel store. The migration is planned in
-  [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), stages R3D-0 to R3D-9.
+  [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), stages R3D-0 to R3D-END.
   - Measured on the way: one `Voxel` object costs ~1 540 bytes, so PLAYGROUND's 215 432
     voxels cost **316 MB** on a desktop debug build, against 0.8 MB packed.
   - This plan stays the measurement harness for that track.
@@ -2891,7 +2891,7 @@ runs:
     PLAYGROUND holds **216 104 voxels**, because 672 corner cells are claimed by two
     slices.
 
-**The plan:** [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), R3D-0 → R3D-9.
+**The plan:** [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), R3D-0 → R3D-END.
 - This plan stays its measurement harness.
 - §15.14 item 1 (the cook's LIGHT step) folds into R3D-2.
 - §15.14 item 2 (the 3D commit frame) folds into R3D-3.

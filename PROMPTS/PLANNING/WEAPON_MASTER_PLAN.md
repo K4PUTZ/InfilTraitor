@@ -4,7 +4,7 @@
 > ⏭️ **2026-09-22 — SOOT-STAMP:** a firearm's scorch is an L1 ball of `WeaponDef.soot_radius` voxels (weapons JSON, default 3) around the voxels the shot touched, stamped once ~2 frames after the impact (~4 ms desktop, 15–19 ms Moto). The darkest tone lands only on voxels touching a hole. D24's derived soot is superseded. See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
 
 
-> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+> ⏭️ **2026-09-23 — the end of RENDER3D rewritten (Director):** the 2D board retires when nothing depends on it, not when the look matches. R3D-8 is renamed **R3D-END**, with six stages before it (R3D-8 to R3D-13); the look register moves after the end (R3D-LOOK), and rotation becomes R3D-ROT. See `RENDER3D_MASTER_PLAN` v1.19.
 
 **v1.2 (2026-08-20) — W-PRECOOK is BUILT; §0 carries what it found.** The
 deferral below did its job and is now history, not status: §6c supplied the

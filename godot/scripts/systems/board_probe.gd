@@ -8,7 +8,7 @@
 ## this is the instrument that says so.
 ##
 ## WHY NOT THE CELL PROBE. `INFILTRAITOR_CELL_PROBE` answers "did a voxel come back" by
-## reading the TileMapLayer, which is exactly what R3D-8 deletes: a gate built on it
+## reading the TileMapLayer, which is exactly what R3D-END deletes: a gate built on it
 ## would die with the thing it judges. This reads the voxel containers and the cell
 ## planes — the simulation's own record — and never a tile.
 ##

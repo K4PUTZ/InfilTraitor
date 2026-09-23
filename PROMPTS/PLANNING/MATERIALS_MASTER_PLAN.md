@@ -1,7 +1,7 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
-> ⏭️ **2026-09-21 — order change (Director):** R3D-8 is now the LAST stage. Before it: the look-parity pass ("identical" = the system, 9/10 closeness is enough), the embers and fire port. See `RENDER3D_MASTER_PLAN` v1.15.
+> ⏭️ **2026-09-23 — the end of RENDER3D rewritten (Director):** the 2D board retires when nothing depends on it, not when the look matches. R3D-8 is renamed **R3D-END**, with six stages before it (R3D-8 to R3D-13); the look register moves after the end (R3D-LOOK), and rotation becomes R3D-ROT. See `RENDER3D_MASTER_PLAN` v1.19.
 
 ⏭️ **2026-09-15:** M5's blocker, "renderer v2", is now
 [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md). M5 follows its R3D-3: from there, thin

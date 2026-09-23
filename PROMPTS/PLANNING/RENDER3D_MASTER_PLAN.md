@@ -1,5 +1,65 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.18
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.19
+
+**2026-09-23 update (v1.19) — THE END OF THE PLAN REWRITTEN: R3D-8 IS NOW R3D-END, INDEPENDENCE FROM THE 2D IS THE GOAL, THE LOOK IS NOT A GATE (Director).**
+- **Ruling (Director, 2026-09-23):** *"mesmo que aparência não esteja ratificada, o importante é a gente não depender mais do
+  sistema anterior pra continuar (...) na prática só queremos ficar livres pra trabalhar no 3D sem depender de nada."* The 2D
+  board retires when nothing depends on it any more, not when the 3D look matches it. This supersedes the order of v1.14/v1.15
+  (the look pass first, R3D-8 last): the look register stays open and moves AFTER the retirement, as 3D work in its own right
+  (`R3D-LOOK`). Comparison runs against the 2D are welcome while it exists, as a check that nothing broke, never as a look gate.
+- **Renamed (Director):** R3D-8 is **R3D-END**. The stages before it are numbered in order, **R3D-8 to R3D-13** (§4, "The road
+  to R3D-END"); the old R3D-9 (rotation) is **R3D-ROT**, after the end. **Everywhere in this file written before 2026-09-23,
+  "R3D-8" means R3D-END and "R3D-9" means R3D-ROT;** those passages stay verbatim as history.
+- **Floors and slabs show the whole facade (Director, 2026-09-23), unless a measurement says it costs** — §8 Q1 closed. It is
+  already what the 3D board draws: every face samples its material's 1024×512 facade in world space at 16 texels per voxel
+  (`Board3DLive`, a top face on the X/Z axes), one sample per fragment, the same as a wall. Walls keep that world-space
+  continuity; the 2D's per-run window origins (`FacadeSampler`, FNV-1a) are a look option for R3D-LOOK, not a retirement step.
+- **The legacy audit (2026-09-23): what the 3D default still takes from the 2D.** Each item has a stage in §4.
+  1. **The load still bakes the 2D atlases.** Moto g04s, 3D default (`skip 2D writes true`),
+     `docs/measurements/device_2026-09-21_moto_sparks.log`: `[ROOM] Bake complete: 15508 ms, 36 pages`, `[D33] composite
+     page: 3584 tile(s) created up front in 740.0 ms`, `[DamageVariantBaker] Baked 447 atoms ... in 4048 ms` — **~20.3 s of
+     the 53.3 s between `[RNG] seeded` and `_ready() complete`**, spent on pages only the 2D board reads. `room_builder.gd`
+     runs `BakeCompositor.bake()` and `DamageVariantBaker.bake_all()` with no render-path check. Their memory under the 3D
+     board was never measured. → R3D-12.
+  2. **The cook still resolves 2D tiles.** PHASE_PACKAGE calls `_resolve_damaged_tile()` (`resolve_damage_voxel_swap()`, then
+     `_set_voxel_cell()` in resolve-only mode) and `_alt_for()` for every DENTED/CRACKED voxel, and PHASE_EXPOSE carries
+     `source_id`/`atlas_coords`/`alt`, on the 3D board too, where `DetonationEntryWriter` discards the tile fields. Only the
+     soot wave was taught the store (R3D-6). This is R3D-2's step 4, deferred on 2026-09-17 because "no 3D reader exists
+     yet"; the reader exists now. → R3D-10.
+  3. **The 3D board reads its look constants from the 2D face shader.** `Board3DLive._read_look()` takes `soot_face_mult` and
+     the three face tones from the ShaderMaterial of the 2D ground layer (`get_layer(ground_plane_level())`); without that
+     shader it falls back to its own copies with a `push_warning`. The light ladder is `VoxelRenderer.bucket_luminance`. The
+     SOOT-EDGE tones already live in three places (the 2D shader, the fallback, an inline default). → R3D-9.
+  4. **The 3D board mirrors sprites the 2D renderer creates.** `GlassCrackMirror3D` reads the `GlassCrackSprite`s that
+     `VoxelRenderer.spawn_glass_crack()`/`spawn_glass_craze()` hang off the hidden 2D renderer; `FloorPile3D` carries the
+     screen corners of the `Sprite2D` piles that `VoxelRenderer.spawn_floor_shard_pile()` makes (the state itself is
+     `Room._base_shards`). → R3D-9.
+  5. **`floor_layer` is still the gameplay grid:** 168 references in 38 non-test files — walkability and the used-cell set
+     (tile data), and `map_to_local`/`local_to_map` for visibility, turns, agents and most overlays. Only picking moved to
+     `GroundGrid` (R3D-5a). → R3D-11.
+  6. **The selftests test the board that no longer ships.** `run_selftests.py` pins `RENDER3D=0`. Of 63 suites, 3 touch an
+     R3D-era class (`particle_space`, `ground_canvas3d`, `ground_grid`, all camera or lattice maths) and none exercises the
+     board's mesh, uploads or cutaway; 24 reference the tile API or `floor_layer`. The shipped path is guarded by
+     `board_probe.py`, `shot_3d_gate.py` and `occ_canonical_gate.py` only. → R3D-8.
+  7. **The web export was last checked on 2026-09-17** (R3D-3), before `MultiMesh`, the billboards,
+     `glass_pane3d.gdshader` (screen texture) and `actor_silhouette3d.gdshaderinc` (depth texture). → R3D-8.
+  8. **A rotation round trip and a `SaveState` restore lose the damage of 21 voxels** (junction columns and box corners,
+     PLAYGROUND), found at R3D-1b on 2026-09-16 and never fixed. Not a 2D dependency, but the round-trip gate every later
+     stage leans on cannot be earned while it loses voxels. → R3D-8.
+  9. **Tools, flags and spikes on the 2D control:** `shot_3d_gate.py` and `build_paired_matrix.py` use the 2D board as their
+     control; `CELL_PROBE` reads the TileMapLayer; `check_facade.py`, `check_decal.py` and `ART_SPECIFICATIONS` describe the
+     2D failure mode (Tier.NONE, the generic atlas); the `=0` comparison flags (`STORE_*`, `VOXEL_STORE`, `ACTORS3D`,
+     `VFX3D`, `GROUND3D`, `PICK3D`, `CUTAWAY`, `DECALS3D`, `DENTS3D`, `GLASS_OPENINGS3D`, `GLASS3D_FLAT`, among others);
+     three finished spikes (`board3d_spike`, `r3d4a_actor_spike`, `store_layout_spike`, with a scene switch in `room.gd` and
+     the `store_spike` scenario step). → R3D-13.
+  10. **Stale text:** `CLAUDE.md` says `BakeConfig.enabled` defaults `false` (the code says `true`); `Board3DLive`'s header
+      still lists as "NOT PARITY" things built since (decals, glass, actor occlusion, the stepped soot and light). → R3D-END.
+  - Found on the way, not 2D, scheduled after the end: the `Voxel` wrappers (~100 MB on the Moto, R3D-1d) → R3D-CLAIMS; the
+    playable buffer's growth, which will expose the 116 416 border texels of v1.16 → R3D-BUFFER.
+- **The procedural per-player materials direction survives the bake's retirement.** Its carrier on the 3D board is
+  `TextureResolver` (the `user://textures/<material>/` override is looked up before the shipped facade on every load, visible
+  in the same log) plus the material's shader uniforms, not `BakeCompositor`'s atlas pages.
+- **Next: R3D-8.** The v1.18 block below is the previous state.
 
 **2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**
 - *"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do código."* Soot is one
@@ -803,11 +863,12 @@ drawing, and of the voxel storage underneath it.
    (§1). PLAYGROUND's voxels therefore cost ~191 MB on the device. A packed store
    holds the same facts in a few bytes per voxel. It is the only authority, and every
    system reads it.
-4. **The 2D board retires at parity, and only then.** (2026-09-21, Director: parity includes the fine look, so R3D-8 is the LAST stage, after the look pass and the embers/fire port.)
+4. **The 2D board retires when nothing depends on it** (Director, 2026-09-23). This supersedes "at parity, and only
+   then" and the look-first order of 2026-09-21: the look is not a gate (v1.19).
    - The rules that describe drawing with tiles stay in force for as long as the 2D path
-     is the one that ships: canon rule 8, B1/B3/B5, and VOXEL_MASTER_PLAN's "1 voxel = 1
+     exists: canon rule 8, B1/B3/B5, and VOXEL_MASTER_PLAN's "1 voxel = 1
      tile".
-   - They retire at **R3D-8**, on the Director's ratification.
+   - They retire at **R3D-END**, on the Director's ratification.
 
 ### 0.2 The proposal that was not taken, and the half of it that was
 
@@ -865,7 +926,7 @@ Moto g04s, portrait, world render scale 1.0, release APK, unless marked desktop.
 - ~~the `Voxel` cost on the Moto~~ — measured at R3D-0: ~925 B per object (§15.18);
 - a 3D-only load and its peak (after R3D-2);
 - the web export's Compatibility renderer running the 3D board (R3D-3);
-- the Galaxy A16 (R3D-8).
+- the Galaxy A16 (the shot path measured 2026-09-21; the full matrix at R3D-13).
 
 ---
 
@@ -878,13 +939,13 @@ Moto g04s, portrait, world render scale 1.0, release APK, unless marked desktop.
 | `VoxelLightField`, the prediction pipeline (`build_plan` → `WorldDelta` → `commit`), TIC, turns, AI | **stay** — their occupancy comes from the store, not from layer cells | R3D-1, R3D-2 |
 | the cell planes (`_soot_images`: R = face soot code, G = light bucket) | **stay** — move to a render-neutral owner that both renderers read | R3D-2 |
 | `TextureResolver`, `MaterialRegistry`, `FacadeSampler` (FNV-1a window origins), facades | **stay** — a 3D face samples the facade through UVs | R3D-3, R3D-6 |
-| the prediction plan's tile-shaped entries (`source_id` / `atlas_coords` / `alt` / `prev_alt`) | **change** to voxel key + target state + light bucket + soot code | R3D-2 |
+| the prediction plan's tile-shaped entries (`source_id` / `atlas_coords` / `alt` / `prev_alt`) | **change** to voxel key + target state + light bucket + soot code | R3D-10 (deferred from R3D-2) |
 | `_glass_layers` as the occupancy authority glass systems read | **changes** to the store | R3D-2 |
 | `Board3DLive` (a spike under `RENDER3D=1`) | **becomes** the production renderer | R3D-3 |
 | agent, guards, props, in-world VFX (2D nodes) | **replaced** by depth-correct equivalents (spike first) | R3D-4 |
-| ground-plane overlays, picking, `floor_layer` | **re-expressed** per overlay; picking by camera ray | R3D-5 |
+| ground-plane overlays, picking, `floor_layer` | **re-expressed** per overlay; picking by camera ray; `floor_layer`'s tile data and coordinates go to the grid | R3D-5, R3D-11 |
 | OCC-21 erase, OCC-27 wireframe | **replaced** by a 3D cutaway mechanism | R3D-7 |
-| `VoxelRenderer` tile placement and layers, TileSet atlas pages, `BakedTileLookup`, damage composite pages, light alternatives and the mint cache, glass tiles, render-order clip / seam cull, the voxel face shader | **retire** | R3D-8 |
+| `VoxelRenderer` tile placement and layers, TileSet atlas pages, `BakedTileLookup`, damage composite pages, light alternatives and the mint cache, glass tiles, render-order clip / seam cull, the voxel face shader, the 2D atlas and damage bakes at load | **retire** | R3D-END (the load stops building them at R3D-12) |
 | HUD (`CanvasLayer`, `hud_controller.gd`, canon rule 11) | **untouched** | — |
 | the camera angle D26 (30° down / 45° around), four facings D44, the character bake pipeline | **untouched** — D26 is the 3D camera | — |
 
@@ -902,8 +963,8 @@ Moto g04s, portrait, world render scale 1.0, release APK, unless marked desktop.
 3. **Assert identity, not absence.** Gates compare per voxel and per cell, and print the
    first differences. "No errors" is not a gate.
 4. **The Moto is the arbiter of cost; the desktop is the arbiter of correctness.** Every
-   stage closes with a same-APK A/B on the Moto. From R3D-8, the Galaxy A16 and the web
-   export join.
+   stage that moves cost closes with a same-APK A/B on the Moto. The web export joins at
+   R3D-8 and the Galaxy A16 at R3D-13.
 5. **A green selftest is not the feature on the real map.** Every gate runs PLAYGROUND and
    GLASS: two dev grenades, a shot, a pane shatter, an F2 reload, a `SaveState` restore.
 6. **Staged migration, never a sweep.** `.voxels` has 135 call sites in 15 runtime files,
@@ -911,10 +972,11 @@ Moto g04s, portrait, world render scale 1.0, release APK, unless marked desktop.
    subsystem by subsystem.
 7. **Rotation must not be foreclosed.** Every key that outlives a frame is base-space
    (`rotation-is-coming-back`).
-8. **Canon retires only on ratification, at R3D-8.** Until then rule 8, the L1 hook and
+8. **Canon retires only on ratification, at R3D-END.** Until then rule 8, the L1 hook and
    B1–B6 hold for the 2D path, and a 3D stage that needs to bend one stops and asks.
-9. **No look change without paired Moto captures and the Director's eye.** A look item
-   stays behind a flag until it is ratified.
+9. **No look change without the Director's eye**: on paired captures while both boards
+   exist, on the R3D-8 reference set after. A look item stays behind a flag until it is
+   ratified, and the look never gates the road to R3D-END (Director, 2026-09-23).
 
 ---
 
@@ -1827,8 +1889,8 @@ After this stage, no simulation or prediction code reads a tile.
     `VERTICAL_SCALE_MATCHED` (158/156.8) stays defined in `board3d_live.gd` for a future
     A/B if the reworked model needs it, but is not the active value.
 - **The hidden 2D board stops being built** when the 3D board is on (a flag for the A/B,
-  removed at R3D-8). **NOT STARTED.**
-- **The web export is checked NOW, not at R3D-8.** The Compatibility renderer must boot
+  removed at R3D-END). **NOT STARTED.**
+- **The web export is checked NOW, not at R3D-END.** The Compatibility renderer must boot
   the 3D board: `Texture2DArray`, the custom spatial shaders, `MultiMesh`. **✅ CHECKED
   (2026-09-17).**
 
@@ -1853,7 +1915,7 @@ Console (the pasted literal, not a description):
 No shader-compile or WebGL errors in the console. `MobileTesting.md` already documents that
 the web export always runs the Compatibility (WebGL2) renderer regardless of
 `renderer/rendering_method` in `project.godot` (currently `"mobile"`) — so this is the
-renderer R3D-6/R3D-8's web gate will always exercise, confirmed rather than assumed.
+renderer R3D-6/R3D-END's web gate will always exercise, confirmed rather than assumed.
 
 ⚠️ **Side finding, not fixed here (out of step 6's scope):** `DevFlags`
 (`godot/scripts/systems/dev_flags.gd`) resolves `OS.get_environment()` → the Android
@@ -2225,8 +2287,8 @@ detonation cost visible enough to be worth it.
     instances still cost a draw call (+6); an empty field is now hidden (233 = 233 draws at idle).
   - **RESIDUALS, none blocking:** the 2D overlay nodes still exist and their `_draw()` is where the 3D
     frame is published (a hidden 2D node would stop the 3D VFX; retire together with the 2D board at
-    R3D-8); the muzzle flash's floor is an ESTIMATE (`muzzle_floor_drop_px`); shrapnel has no capture of
-    its own; four-view agreement is moot until rotation returns (R3D-9), where the anchors must be
+    R3D-END); the muzzle flash's floor is an ESTIMATE (`muzzle_floor_drop_px`); shrapnel has no capture of
+    its own; four-view agreement is moot until rotation returns (R3D-ROT), where the anchors must be
     re-derived per view.
   - *Original ruling and spec, kept:*
   - **⚠️ A latent Rule-9 bug found and fixed on the way.** The VFX asked for the floor under a voxel
@@ -2362,8 +2424,8 @@ tile_game 3, shadow boundary 4, movement 5, path 6, selection 7, throw perimeter
   `movement_overlay`, `view_context`), `get_used_cells`/`get_used_rect` (`room`, `view_context`),
   `to_local`/`to_global` (`room`, `view_context`), `local_to_map` (the 2D reference pick and
   `view_context`), and `set_cell` (`room_builder`, which builds the floor). Retiring the NODE means moving
-  walkability and the floor's cell set into grid data; that belongs with R3D-8's deletion of the 2D
-  board, not here.
+  walkability and the floor's cell set into grid data; that is R3D-11 (v1.19), and the node itself goes
+  at R3D-END, not here.
 - **Not built, on purpose:** picking a WALL by ray against the store. Nothing consumes it, and it raises a
   design question (should a click on a wall face select the wall's cell, or the floor cell behind it, as
   today?) that is the Director's. Today's behaviour is kept exactly.
@@ -2381,7 +2443,7 @@ the ground quads are not); the aim dome and the throw arc still draw over actors
 
 ### R3D-6 — Look parity
 
-> **2026-09-21: R3D-6 REOPENS (Director).** The "deferred until the port is complete" lines below are withdrawn: the fine look adjustment is done before R3D-8 (see v1.14 at the top for the register).
+> **2026-09-23: R3D-6 gates nothing (Director).** Its open items and the v1.14 register move, as they stand, to R3D-LOOK after R3D-END; item 2 (glass) is ratified. The 2026-09-21 reopening ("the look before R3D-8") is superseded: the 2D board retires on independence, not on look (v1.19).
 
 Each item below stays behind a flag until the Director ratifies it from paired Moto
 captures, 2D against 3D.
@@ -2513,59 +2575,250 @@ is behind the wall").
   occluded; in open ground 0). **Not verified:** guards behind walls; glass (not ghosted); roofs and
   interiors; the Moto cost; the flat fill has no separate top tint yet.
 
-### R3D-8 — Retire the 2D board (the canon change)
+### The road to R3D-END (2026-09-23)
 
-**Entry condition:** R3D-4 to R3D-7 are ratified. **The Director ratifies the retirement
-itself.**
+**The goal (Director, 2026-09-23): nothing the game runs depends on the 2D board, so the work on the 3D can go on without
+it.** Each stage below cuts one dependency and keeps the game identical on the 3D board. The 2D stays runnable behind
+`RENDER3D=0` as a comparison until R3D-END deletes it. **The look is not a gate anywhere on this road:** the open look items
+wait in R3D-LOOK, after the end.
+
+**Rules for R3D-8 to R3D-13:**
+- **The 3D path is the one gated.** Identity is checked by `board_probe.py gate` and the stage's own digest, plus the 3D
+  pixel gate once R3D-8 has earned it (CLAUDE.md: a pixel-diff gate is EARNED by diffing two runs of the same code first).
+- **A same-binary flag A/B while the stage is open** (principle 2). The stage deletes its own flag when it closes; it is not
+  left for R3D-END.
+- **A run against the 2D board is a welcome check** (did the system change?), never a look gate.
+- **The Moto measures every stage that moves load, memory or frame cost**, and only those
+  (`r3d-focus-system-quality-not-cosmetics`).
+- **Consumers are cut before producers.** A stage never stops making something a later stage still reads; that is why the
+  load (R3D-12) comes after everything that reads what it builds.
+- **Before deleting anything, grep the whole repo for its readers** (CLAUDE.md, `0f55cae`): a cross-file write is invisible
+  to the linter.
+
+### R3D-8 — The safety net watches the 3D path
+
+Why first: every later stage moves or deletes code, and today the suites watch the 2D board.
+
+1. **The selftests run on the 3D board.**
+   - `run_selftests.py` stops pinning `RENDER3D=0`.
+   - Each of the 24 suites that touch the tile API or `floor_layer` gets a written line in one of three classes:
+     - (a) it tests SIMULATION through tiles: migrated to the store or `BoardProbe` now;
+     - (b) it tests the 2D RENDERER itself (glass tile placement, atom masks, bake tiers, render order): it stays pinned
+       to 2D and is deleted with its subject at R3D-END;
+     - (c) it reads `floor_layer` for coordinates: migrated at R3D-11, and pinned to 2D until then.
+   - The first 3D run is expected to fail somewhere. Each failure is read and classified before anything changes.
+   - A migrated suite is proven live by a sabotage (red, then green), so a suite that stopped reaching its subject cannot
+     pass silently.
+2. **3D coverage for what only the external gates see today:**
+   - a real shot reaching the board (`shot_3d_gate.py`'s check);
+   - the blast's commit, soot and light uploads (the `on_blast_*` hook counts);
+   - the cutaway digest (`occ_canonical_gate.py`);
+   - the crack and pile mirrors.
+3. **The 3D pixel gate, earned.** Two runs of the same code on PLAYGROUND and GLASS (a grenade, a shot, a pane) must read
+   0 px (`--fixed-fps 60`, a long settle). It then replaces the 2D board as the control in `shot_3d_gate.py` and
+   `build_paired_matrix.py`.
+4. **The persistence round trip becomes identity.**
+   - Fix the 21-voxel loss (junction columns and box corners) of a rotation round trip and of a `SaveState` restore, with
+     red-before-green on the real PLAYGROUND case. `_reapply_base_damage()` is R3D-1b's lead.
+   - `save_restore` and `reload` then become 0-diff stages of the gate.
+5. **The web export, checked again** on the Compatibility renderer: boot, a grenade, a shot at glass (screen texture) and a
+   revealed guard (depth texture). A failure is a finding for the Director (§8 Q4), not something to paper over.
+6. **The 2D reference set, archived once, while both boards exist.**
+   - One `build_paired_matrix.py` pass over the situations the look register names: a blast on concrete, a wood burn,
+     shots on the nine materials on the SW and SE faces, sparks, the glass crack, craze, rain and piles, the end-of-blast
+     light, and the soot.
+   - The files are hand-named (never `auto_`, so the rotation cannot take them) and kept in one tracked folder.
+   - These are references in CLAUDE.md's sense, not receipts: R3D-LOOK will have to LOOK at them to decide items still
+     undecided, after the 2D that made them is gone.
+
+**Gate:**
+- the suite runs on the 3D board, and every remaining 2D pin is listed with its reason;
+- the 3D pixel gate reads 0 across two runs;
+- the round trip is 0-diff;
+- the web result is recorded.
+
+### R3D-9 — The 3D board reads nothing from the 2D renderer
+
+1. **The look constants get one neutral owner** (name decided at build time).
+   - It holds the soot tones (`soot_face_mult`), the three face tones and the light ladder (`bucket_luminance`).
+   - `Board3DLive._read_look()` stops reading the 2D ground layer's ShaderMaterial.
+   - The 2D face shader takes its uniforms from the same owner until R3D-END.
+   - One authority instead of today's three copies of the SOOT-EDGE tones.
+2. **Glass cracks and crazes become records.**
+   - The glass system produces each one as data: the centre voxel, the face, the run axis, the span, the shader
+     parameters, the occupancy cut and the opening void. That is everything `GlassCrackMirror3D` copies from the sprite
+     today.
+   - The 3D board draws from the records.
+   - The 2D `GlassCrackSprite` becomes a consumer of the same record until R3D-END.
+3. **The floor shard piles draw from `Room._base_shards`**, not from the sprites' screen corners.
+4. **The Room's dev canvas under the 3D board** (the playable-area line, the spawn diamond, `_tile_shadow`): these DEV_VISION
+   aids paint over the 3D walls today. Each is routed through `GroundCanvas3D` or hidden under 3D.
+5. **`Board3DLive._count_2d_cells()` goes.** It is a diagnostic that reads the 2D layers.
+
+**Gate:**
+- `board_probe.py gate` and the 3D pixel gate read identical on a flag A/B;
+- the glass demo and a real two-blast GLASS run pass;
+- afterwards, a grep finds no `get_layer(`, `TileMapLayer` or `Sprite2D` read in `board3d_live.gd` or
+  `godot/scripts/geometry/*3d*.gd`.
+
+### R3D-10 — The simulation writes no tiles
+
+This is R3D-2's step 4 (the plan-entry rekey); its 3D consumer now exists.
+
+1. **Plan entries carry the voxel key, the target state, the light bucket and the soot code.**
+   - PHASE_PACKAGE and PHASE_EXPOSE stop calling `_resolve_damaged_tile()` and `_alt_for()` on the 3D board.
+   - Under `RENDER3D=0`, the 2D writer resolves its own tiles from the entry until R3D-END, as R3D-2 prescribed.
+   - The 2026-09-17 objection (a resolve at apply time lands on the impact frame) does not apply to a board that needs no
+     tile at all.
+2. **The shot's pre-production skips entirely on the 3D board:** W-PRECOOK's alternative warm-up (it mints 0 alternatives
+   there, 2026-09-22) and every `_ensure_light_alt()` / `encode_light_alt()` path.
+3. **The diagnostics that read tile triples** (`test_zone_controller._plan_light_alt_triples()`) read the new entry, or go.
+
+**Gate:**
+- the plan census is identical with the resolve on and off (voxel sets, tiers, soot, buckets);
+- `board_probe.py gate`;
+- the Moto: the cook's PACKAGE step and the five-grenade detonation table, against the SOOT-STAMP baseline (`20d110f8`).
+
+### R3D-11 — Gameplay leaves the tile layer
+
+1. **Walkability and the used-cell set** move from `floor_layer`'s tile data to one grid authority: `GroundGrid` or the
+   store's floor claims, decided at build time from the readers' shapes.
+2. **The coordinate conversions** (`map_to_local`, `local_to_map` and their kin) in the 38 files go through `GroundGrid`, the
+   lattice without a TileMapLayer that picking already uses. The maths is the same, so each conversion is identity-checked,
+   not eyeballed.
+3. **After this stage the `floor_layer` node is written by nothing and read by nothing on the 3D board.**
+
+**Gate:**
+- a per-cell identity over the whole map: each cell's walkability and screen point, both paths;
+- a path and movement digest over a scripted walk;
+- `PICK_CHECK`, `hud_seam_selftest` and the input selftests;
+- the Moto tap / select / walk run (the harness automates them).
+
+### R3D-12 — The load builds no 2D board
+
+This comes after its consumers (R3D-9 to R3D-11).
+
+1. **On the 3D board the load skips everything that only the 2D board reads:**
+   - `BakeCompositor.bake()` (15.5 s on the Moto);
+   - the D33 composite page (0.74 s);
+   - `DamageVariantBaker.bake_all()` (4.0 s);
+   - the voxel atoms and the TileSet;
+   - every cell still written to a 2D layer: the 64 left, and `render_fixed_earth_level()`'s border.
+2. **`TextureResolver` stays.** It is what the 3D board samples, and the carrier of the per-player materials direction.
+
+**Gate:**
+- `board_probe.py gate` and the 3D pixel gate read identical;
+- on the Moto, same APK, flag A/B: boot → ready and PSS / native heap, against the 2026-09-21 boot (53.3 s from
+  `[RNG] seeded` to `_ready()`).
+
+### R3D-13 — One path: flags, tools, instruments, and the last baseline
+
+1. **The 3D comparison flags collapse.** Every `=0` that selects an older path on the 3D board goes (`STORE_*`, `VOXEL_STORE`,
+   `ACTORS3D`, `VFX3D`, `GROUND3D`, `PICK3D`, `CUTAWAY`, `DECALS3D`, `DENTS3D`, `GLASS_OPENINGS3D`, `GLASS3D_FLAT`, …). The
+   list comes from a grep; each removal is its own commit, with the whole repo grepped for readers.
+2. **The tools move off the 2D control.**
+   - `shot_3d_gate.py` and `build_paired_matrix.py` use the 3D control (R3D-8 step 3).
+   - `CELL_PROBE` reads the store.
+   - `check_facade.py` and `check_decal.py` check what the 3D board does with a bad file (today a coloured facade is read by
+     its `.r` channel), not the 2D Tier.NONE.
+3. **The finished spikes** (`board3d_spike`, `r3d4a_actor_spike`, `store_layout_spike`, their scenes, the `room.gd` switch
+   and the `store_spike` scenario step) go, on a deletion list for the Director.
+4. **The last baseline.**
+   - The full matrix on the Moto and the Galaxy A16: idle ladder, both grenades, a shot, memory and load, on the 3D board,
+     with one last 2D row for the record.
+   - The Galaxy's 3D shot tail (357 ms against 214 ms on 2D, one boot) is explained while the 2D control still exists.
+
+**Gate:**
+- no 3D comparison flag is left;
+- the matrix is recorded in `DEVICE_DIAGNOSTICS` as the R3D-END baseline.
+
+### R3D-END — Retire the 2D board (the canon change)
+
+**Entry condition:** R3D-8 to R3D-13 are closed, and **the Director ratifies the retirement** on the deletion list. The look
+is not an entry condition (Director, 2026-09-23).
 
 **Deleted:**
-- `VoxelRenderer`'s tile placement and its layers;
-- the TileSet atlas composition (`BakeCompositor` pages) and `BakedTileLookup`;
-- the damage composite pages and `DamageCompositeCache`;
-- light alternatives and the mint cache;
-- glass tiles, the render-order clip and the seam cull;
-- the 2D face shader and its soot textures;
-- OCC-21 / OCC-27;
-- the 2D-only instruments.
+- **`VoxelRenderer`'s tile placement, its `TileMapLayer`s and the `_set_voxel_cell()` path.** The class is split first.
+  What the rest of the game asks of it moves to a neutral owner (or stays under a renamed class):
+  - `ground_plane_level()`, `relative_level()`, `top_wall_level()`;
+  - the light field's apply to the planes and the `CellPlaneStore` forwarders;
+  - the level registry.
 
-**Selftests:**
-- 19 read tilemap cells and 17 call `get_layer()`;
-- each is migrated to `BoardProbe` or the store, or deleted with a written reason.
+  The rest goes.
+- `SKIP_BOARD_WRITES`, `RENDER3D` and every branch on them.
+- The TileSet atlas composition (`BakeCompositor` pages), `BakedTileLookup`, `DamageCompositeCache`, `DamageVariantBaker`'s
+  atom pages, the voxel atoms and `tileset_blocks`.
+- Light alternatives and the mint cache.
+- The glass tiles: `_glass_layers`, `_glass_tile_sync()`, the render-order clip and the seam cull, `glass_tile.gdshader`, the
+  2D `glass_pane.gdshader` and `GlassCrackSprite`.
+- The 2D face shader (`voxel_face_shading.gdshader`) and its soot textures.
+- OCC-21 / OCC-27, `apply_occlusion()`, `_ghosted_cells` and the 2D wireframe overlay.
+- `floor_layer`.
+- The 2D-only instruments, and the selftests pinned to 2D at R3D-8, each with its written reason.
 
 **Canon, edited in `CLAUDE.md` and the docs:**
-- Rule 8 is rewritten for the store: voxel state reaches the screen only through the store
-  and the mesher.
-- L1 is retargeted, since levels stay absolute and the store is keyed by level. Rule 9
-  holds.
-- B1, B3 and B5 retire. B2, B4 and B6 survive wherever facades, FNV-1a origins and loud
-  failure still apply.
-- These become historical: `VOXEL_MASTER_PLAN`'s "1 VOXEL = 1 Godot Tile" and
-  `RENDER_ORDER_MASTER_PLAN`.
-- `PERFORMANCE_MASTER_PLAN` P4 and P6 become moot.
+- **Rules:**
+  - rule 8 is rewritten for the store: voxel state reaches the screen only through the store and the mesher;
+  - rule 2 (`VISUAL_GRID_OFFSET`) is reviewed against its last readers;
+  - L1 is retargeted: levels stay absolute, and rule 9 holds;
+  - B1, B3 and B5 retire. B2, B4 and B6 survive only where facades, FNV-1a and loud failure still apply; the inventory
+    names each site.
+- **Historical:** `VOXEL_MASTER_PLAN`'s "1 VOXEL = 1 Godot Tile", `RENDER_ORDER_MASTER_PLAN` and `BAKE_SYSTEM_REFERENCE`.
+- **Moot:** `PERFORMANCE` P4 and P6.
+- **Rewritten:**
+  - `QUICK_REFERENCE`: the two-plane model as the 3D camera's;
+  - `ASSET_PIPELINE_QUICK_REFERENCE`: no TileSet, no reimport into tiles;
+  - `ART_SPECIFICATIONS`: the 3D board's failure modes;
+  - `CLAUDE.md`'s workflow lines: the generated PNGs, `BakeConfig`'s default;
+  - `DIRECTION_GLOSSARY` §10: what becomes banned;
+  - `Board3DLive`'s header.
 
 **Gate:**
-- full matrices on the Moto **and the Galaxy A16** — idle ladder, both grenades, memory,
-  load — against §1;
-- the web export plays a grenade;
-- every remaining selftest is clean, and invariants and CODEMAP pass.
+- the R3D-13 matrix on the Moto and the Galaxy A16, with no regression;
+- the web export plays a grenade, unless §8 Q4's answer says otherwise;
+- every selftest is clean on the only board; invariants, CODEMAP, `board_probe.py gate` and the 3D pixel gate all pass.
 
-### R3D-9 — Rotation returns
+### After R3D-END — the 3D track continues
 
-- **A 90° camera yaw replaces `_set_perspective()`'s full re-layout for drawing.**
-- **Whether the gameplay layout still rotates with the view is the Director's call** (§9
-  Q3). `MAP_MASTER_PLAN`'s `_layout_with_perspective()` rotates it today.
-- **Sprites pick their D44 facing relative to the camera's yaw.**
-- **Base-space keys are audited:** the soot store's faces, D25's carved side, the glass
-  craze variant key.
+These are not retirement steps: they are the work the end frees. Each opens on the Director's call; the order below is a
+proposal.
 
-**Gate:**
-- the four-view captures agree by identity;
-- the Moto frame cost of a rotation is recorded;
-- `SOOT_STORAGE_REFORM` SS-6's rotation proof runs on this renderer.
+- **R3D-LOOK — the look, on the 3D board's own terms.** The v1.14 register as it stands:
+  - the marks on a lit wall: dent, CRACKED, hole scorch, glass star, rim wedge;
+  - the spark anchor;
+  - the reveal silhouette's defaults (a 3D-only feature, so tuning, not parity);
+  - the floor depth dim and the burnt voxels;
+  - per-run facade origins on walls;
+  - the golden light shafts (`light_ray_overlay`, R3D-5's table).
 
-### To investigate at the end of R3D — real 3D objects in the scene
+  The Director grades them at 9/10, against the R3D-8 reference set where the 2D is the reference.
+- **R3D-WORLD — world-space models.** Three things are exact under the fixed D26 camera and wrong under a yaw:
+  - the actors: `ActorBillboard3D` reads `AgentSprite`'s screen position;
+  - the ground overlays: `GroundCanvas3D` re-issues 2D canvas calls through the 2D → ground affine;
+  - the VFX: `ParticleMath.to_world()` maps screen displacements.
 
-**Not a stage. A question the Director raised on 2026-09-18, parked until R3D-9 closes.**
+  They become world-space state before rotation (R3D-4's rule for new VFX, applied to the old ones).
+- **R3D-ROT — rotation returns (was R3D-9).**
+  - A 90° camera yaw replaces `_set_perspective()`'s full re-layout for drawing.
+  - Whether the gameplay layout still rotates with the view is the Director's call (§8 Q3); `MAP_MASTER_PLAN`'s
+    `_layout_with_perspective()` rotates it today.
+  - Sprites pick their D44 facing relative to the yaw.
+  - The base-space keys are audited: the soot map, D25's carved side, the craze variant key.
+
+  Gate: the four views agree by identity, the Moto cost of a rotation is recorded, and `SOOT_STORAGE_REFORM` SS-6's proof
+  runs.
+- **R3D-LIGHT — the lighting direction** (the Director's question of 2026-09-22: more voxel light levels, or real 3D lights
+  with a deterministic stealth shade). A measured Moto spike of each comes before any choice. Related, and independent of
+  the choice: the Moto's remaining over-budget frames are all on the light side (the commit frame ~190 ms, the cook's LIGHT
+  phase ~190 ms, the first shot after blasts 719 ms, grenade 5's consequence frame 919 ms).
+- **R3D-CLAIMS — the `Voxel` wrappers go** (~100 MB on the Moto, R3D-1d): the plan and the `WorldDelta` are keyed by claim.
+- **R3D-BUFFER — the playable buffer grows** (~4–5 GUs, XCOM-style, Director 2026-09-21). The border strata become real
+  store geometry, which settles v1.16's 116 416 light texels.
+- **R3D-GLB — real 3D objects in the scene** (below).
+
+### R3D-GLB — real 3D objects in the scene (to investigate)
+
+**Not a stage. A question the Director raised on 2026-09-18, parked until R3D-ROT closes.**
 Now that the board is a Godot 3D scene, can imported 3D meshes (GLB) stand in it as real
 geometry, instead of baked frames on billboards? Technically yes: a `MeshInstance3D` under
 `Board3DLive` is depth-tested, covered by walls and tinted by glass with no extra work, and
@@ -2592,8 +2845,31 @@ against the billboard it would replace — before any decision.
 
 ```
 R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
-                                   └─► R3D-5 ─┴─► R3D-6 ─► R3D-7 ─► R3D-8 ─► R3D-9
+                                   └─► R3D-5 ─┴─► R3D-6 ─► R3D-7
+                                                  (built items; the rest → R3D-LOOK)
+
+R3D-8 ─► R3D-9 ─► R3D-10 ─► R3D-11 ─► R3D-12 ─► R3D-13 ─► R3D-END
+ net     3D reads  no tiles  gameplay  load      one path   delete +
+         no 2D     in sim    off tiles no 2D     baseline   canon
+
+after R3D-END:  R3D-LOOK · R3D-WORLD ─► R3D-ROT · R3D-LIGHT · R3D-CLAIMS · R3D-BUFFER · R3D-GLB
 ```
+
+### Sequencing decided 2026-09-23 (the Director delegated the order)
+
+Why this order:
+1. **R3D-8 first:** every later stage moves or deletes code, so the net has to watch the path that ships
+   before anything moves. It also takes, once, the two things only the 2D can give: the reference set and a
+   working control for the comparison runs.
+2. **Consumers before producers.** The 3D board's own reads of 2D objects go first (R3D-9), then the
+   simulation's tile resolve (R3D-10), then gameplay's tile grid (R3D-11). Only then does the load stop
+   building what those three read (R3D-12). The other way round, a stage would delete something a later
+   stage still reads.
+3. **R3D-11 before R3D-12:** `floor_layer`'s walkability is written at load, so the load cannot stop writing
+   tiles while gameplay still reads them.
+4. **R3D-13 last before the end:** each stage deletes its own flag, and R3D-13 sweeps what predates the
+   road. The baseline is taken last because it must measure the shape R3D-END will keep.
+5. **R3D-WORLD before R3D-ROT:** the screen-space models are exact only under the fixed camera.
 
 - **R3D-1 and R3D-2 pay the 2D build too**, in memory and in the LIGHT step. If the track
   stopped there, the game would still be better.
@@ -2638,12 +2914,12 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
 |---|---|
 | `DEVICE_DIAGNOSTICS` §15.14 item 1 (cook LIGHT step) | R3D-2 |
 | §15.14 item 2 (3D commit frame) | R3D-3 |
-| `SOOT_STORAGE_REFORM` SS-6 (rotation) | R3D-9 |
+| `SOOT_STORAGE_REFORM` SS-6 (rotation) | R3D-ROT |
 | `SOOT_STORAGE_REFORM` SS-4 and SS-5 | unchanged, but the store they write is a plane both renderers read |
 | `OCCLUSION` Part 4 and §7 | R3D-7 |
 | `MATERIALS` M5 (voxel props, "blocked on renderer v2") | after R3D-3 — **this plan is renderer v2**; thin, half-thickness geometry is natural in 3D |
 | `GLASS` look on the new renderer | R3D-6 |
-| `PERFORMANCE` P4, P6 | moot at R3D-8 |
+| `PERFORMANCE` P4, P6 | moot at R3D-END |
 | `TOP_TEXTURE` Part 3 (textured interiors) | R3D-6, since an interior is a face with facade UVs |
 
 ## 6. What this plan does NOT do
@@ -2661,28 +2937,31 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
 | risk | caught by |
 |---|---|
 | GDScript packed-array access slower than object fields in hot loops | R3D-1a / R3D-1d timings on the Moto |
-| Compatibility renderer (web) lacks a feature the board uses | checked at R3D-3, not R3D-8 |
+| Compatibility renderer (web) lacks a feature the board uses | checked at R3D-3, again at R3D-8 (screen and depth textures came after) |
 | Mali cost of shader branches (the 0.6–2.2 ms untaken-branch lesson) | debug paths behind `#define` builds from the start |
 | two renderers drifting during the migration | both read one store; `BoardProbe` gates every flip |
 | look regressions no gate sees | paired Moto captures per R3D-6 item, Director ratification |
-| selftest rewrite volume | per-stage migration (principle 6), never a batch at R3D-8 |
+| selftest rewrite volume | per-stage migration (principle 6), never a batch at R3D-END |
+| a selftest moved to the 3D board passes because it no longer reaches its subject | R3D-8's per-suite class line, and a sabotage (red, then green) per migrated suite |
+| a 3D reader of a 2D artefact found only after the artefact is deleted (the `_read_look()` case) | R3D-9's grep gate over the 3D files; consumers cut before producers |
+| the 2D control disappears before a comparison someone still needs | R3D-8 step 6 (the reference set) and R3D-13 step 4 (the last baseline) |
 | persisted state (`_base_damage`, soot store, `SaveState`) | base-space keys unchanged; round-trips in every gate |
-| a stage that needs to bend canon before R3D-8 | principle 8: stop and ask |
+| a stage that needs to bend canon before R3D-END | principle 8: stop and ask |
 
 ## 8. Open questions for the Director
 
-1. **Floors.** Should an intact floor show its whole facade the way walls will? Today the
-   2D floor shows its 8×8 voxel pattern per GU.
-2. **Actors.** Billboards or depth-composited 2D? R3D-4a measures both, and the look call
-   is the Director's.
-3. **Rotation.**
+1. ~~**Floors.** Should an intact floor show its whole facade the way walls will?~~ **CLOSED 2026-09-23:
+   floors and slabs show the whole facade (Director), unless a measurement says it costs; the 3D board
+   already draws them so.**
+2. ~~**Actors.** Billboards or depth-composited 2D?~~ **CLOSED 2026-09-18: billboards (R3D-4a, ratified).**
+3. **Rotation** (open, for R3D-ROT).
    - Four fixed views as today, or a free orbit?
    - Does the gameplay layout keep rotating with the view, or does only the camera turn?
-4. **The web export.** Must it run the 3D board at parity — it is the phone-test path
-   today — or does the APK become the phone test once 3D lands?
-5. **Decals and dents in 3D.** Match the 2D atoms, or re-author for faces?
-6. **The cutaway style in 3D** (R3D-7).
-7. **The vertical scale** (R3D-3): true cubes, 19.6 px per level, or the 2D board's 20 px.
+4. **The web export** (open, needed by R3D-8 and R3D-END's gate). Must it run the 3D board at parity,
+   or is the APK the phone test now? The device runs since 2026-09-14 are all APKs.
+5. ~~**Decals and dents in 3D.**~~ **Built from the 2D atoms (R3D-6, 2026-09-19); their tuning is R3D-LOOK.**
+6. ~~**The cutaway style in 3D.**~~ **CLOSED 2026-09-19: the original 2D mechanism, approved (R3D-7).**
+7. ~~**The vertical scale.**~~ **CLOSED 2026-09-17: true cubes, `VERTICAL_SCALE = 1.0` (R3D-3).**
 
 ## 9. Revision history
 
@@ -2760,3 +3039,12 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
   Director's silhouette spec); `roofs` as an entity, opened by slab adjacency (reach 6, fade 2, corner-touching counts),
   stored per GU; the R3D-6 items measured on the Moto; wall picking and glass decided; canonical identity gate. Selftests
   60 → 62. Session: `RESUMO_SESSAO_2026-09-20_R3D7_CUTAWAY_ROOFS.md`.
+- **v1.10–v1.18, 2026-09-21 to 2026-09-22.** Recorded in their dated blocks at the top of this file (shots on materials,
+  the R3D-7 tail on the Moto, the look register and the parity bar, the light jump, the fire and embers, SOOT-STAMP).
+- **v1.19, 2026-09-23.** The end of the plan rewritten on the Director's ruling that independence from the 2D, not the
+  look, is what retires it. R3D-8 renamed **R3D-END**; six sequential stages before it (R3D-8 the net, R3D-9 the 3D board
+  reads nothing of the 2D, R3D-10 the simulation writes no tiles, R3D-11 gameplay off `floor_layer`, R3D-12 the load
+  builds no 2D board, R3D-13 one path and the last baseline); R3D-6 gates nothing and its items go to R3D-LOOK; the old
+  R3D-9 is R3D-ROT, after the end, with R3D-WORLD, R3D-LIGHT, R3D-CLAIMS, R3D-BUFFER and R3D-GLB. §8 Q1 closed (floors
+  and slabs show the whole facade). The legacy audit is in the v1.19 block (the Moto load bakes ~20.3 s of 2D atlases
+  under the 3D board; the cook still resolves 2D tiles; the 3D board reads its look constants from the 2D shader).

@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-21 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-22 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -19,12 +19,16 @@
 - **New since 2026-09-21:** blast scorch now darkens AFTER the crater in 4 timed steps (`detonation_presenter.gd`, from a video on the Moto); the DEV VISION text panels, the playable-area
   line and the spawn diamond are hidden by default (`DEV_PANELS=1` shows them); video of the game on a handset in one command (`tools/persistent/device_record.py`,
   [`docs/pipelines/device_video_recording.md`](../pipelines/device_video_recording.md)); `videos/` is git-ignored.
-- **The plan from here (Director, 2026-09-21):** "identical" means the SYSTEM (9/10 closeness to the 2D feature is enough). Next session: grade the look register on paired 2D/3D
-  captures, fix the system defects first (the FIRE and the EMBERS under 3D, the end-of-blast light jump, 116 416 light-plane texels that differ at load), then the items graded
-  below 9, measure on the Moto, and only then **R3D-8** (retire the 2D board and its canon; irreversible, needs ratification) as the LAST stage.
-- **Open and honest:** the fire is not exercised under 3D at all; the embers show unidentified flecks under 3D; the Galaxy's 3D brick shot tail (357 ms) is slower than 2D (214 ms), one boot;
-  the per-step soot upload is not measured on the Moto; `reap_orphaned_remnants()` was hardened but its original failure was never reproduced.
-
+- **The plan from here (Director, 2026-09-23, `RENDER3D_MASTER_PLAN` v1.19):** the 2D board retires when nothing depends
+  on it, not when the look matches; the look is not a gate. R3D-8 is renamed **R3D-END**; before it, in order: **R3D-8** the
+  safety net on the 3D path (selftests on the 3D board, a 3D pixel gate, the persistence round trip, the web export, the 2D
+  reference set), **R3D-9** the 3D board reads nothing of the 2D renderer, **R3D-10** the simulation writes no tiles, **R3D-11**
+  gameplay off `floor_layer`, **R3D-12** the load builds no 2D board, **R3D-13** one path and the last Moto + Galaxy baseline.
+  After the end: the look (R3D-LOOK), world-space models, rotation (R3D-ROT), the lighting direction, and more.
+- **Open and honest (the 2026-09-23 legacy audit):** the Moto's 3D boot still spends ~20.3 s of its 53.3 s baking 2D atlases;
+  the cook still resolves 2D tiles on the 3D board; the 3D board reads its look constants from the 2D face shader; the
+  selftests run on the 2D board; a rotation or `SaveState` round trip loses 21 voxels of damage; the Galaxy's 3D brick shot tail
+  (357 ms) is slower than 2D (214 ms), one boot.
 ---
 
 ## Where the project stands — 2026-08-30
@@ -335,6 +339,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-20_R3D7_CUTAWAY_ROOFS.md
 - RESUMO_SESSAO_2026-09-21_R3D7_MOTO.md
 - RESUMO_SESSAO_2026-09-21_R3D7_SHOTS.md
+- RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -343,7 +348,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 **Code & Test Inventory**
 
 - GDScript modules: 195
-- Test scripts: 62
+- Test scripts: 63
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

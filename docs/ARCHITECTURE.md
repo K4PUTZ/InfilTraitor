@@ -20,7 +20,7 @@ them as unreconciled, and read their master plans (`docs/README.md`).
 > board in Godot 3D over a packed voxel store
 > ([`RENDER3D_MASTER_PLAN`](../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)). The "Voxel Render
 > Plane" section below describes the 2D `TileMapLayer` path that ships today, and it stays in
-> force until that plan's R3D-8.
+> force until that plan's R3D-END.
 
 ---
 

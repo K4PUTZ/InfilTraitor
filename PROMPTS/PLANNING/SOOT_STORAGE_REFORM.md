@@ -31,7 +31,7 @@ destroyed voxel, and a tone stored before a cell burns stays stored and undrawn.
 keeps this plan's store.
 - The 3D board already reads the cell planes (`DEVICE_DIAGNOSTICS` §15.11).
 - §2.1b's base-space faces are exactly what rotation needs on that board.
-- SS-6, the proof under rotation, now runs on the 3D board at R3D-9.
+- SS-6, the proof under rotation, now runs on the 3D board at R3D-ROT.
 - SS-4 and SS-5 are unchanged.
 
 **Status:** 🟡 **PAUSED AT SS-3 SINCE 2026-08-27 — resumable, nothing blocking it.**

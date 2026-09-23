@@ -86,7 +86,7 @@ func _ready() -> void:
 	## itself automatically once the 3D board is on, so `SKIP_2D_BOARD_WRITES` no
 	## longer needs setting by hand alongside `RENDER3D=1`. `RENDER3D_2D_BUILD=1` is
 	## the A/B override: forces the 2D board to build anyway, in the same binary,
-	## for a same-map comparison. Removed at R3D-8 along with the 2D board itself.
+	## for a same-map comparison. Removed at R3D-END along with the 2D board itself.
 	VoxelRenderer.SKIP_BOARD_WRITES = on("SKIP_2D_BOARD_WRITES") \
 		or (on("RENDER3D") and not on("RENDER3D_2D_BUILD"))
 	## RENDER3D R3D-1c step 2 — the prediction WALK reads the VoxelStore. `=0` = object walk.
@@ -135,7 +135,7 @@ func value(flag_name: String, fallback: String = "") -> String:
 	if _overrides.has(flag_name):
 		return String(_overrides[flag_name])
 	## RENDER3D is ON by default since 2026-09-19 (Director: see the port as it stands);
-	## `RENDER3D=0` is the 2D board, until R3D-8 deletes it.
+	## `RENDER3D=0` is the 2D board, until R3D-END deletes it.
 	if flag_name == "RENDER3D":
 		return "1"
 	return fallback

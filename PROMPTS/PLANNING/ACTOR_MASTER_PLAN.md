@@ -8,7 +8,7 @@
 > decides what is shown and `ActorBillboard3D` mirrors it into depth-tested world-vertical quads (R3D-4a:
 > billboard +0.4 ms vs +9.9 ms for a depth-composited sprite on the Moto; the Director ratified the
 > billboard). `PropBillboard3D` does the same for the grenade and the floating collectible. Real 3D meshes
-> in the scene are parked for after R3D-9 (see `RENDER3D_MASTER_PLAN`).
+> in the scene are parked for after R3D-ROT (see `RENDER3D_MASTER_PLAN`).
 
 > ## ⏭️ 2026-09-15 — the board moves to 3D; no decision here changes
 >

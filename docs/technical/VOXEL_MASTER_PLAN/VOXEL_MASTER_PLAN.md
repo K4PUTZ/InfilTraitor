@@ -5,7 +5,7 @@
 > - **The geometry stays canon:** 8 voxels per GU axis, 8 levels per storey, slices,
 >   edges, junction columns, D16's two-voxel wall.
 > - **"1 VOXEL = 1 Godot Tile" (§1) is the 2D drawing rule.** It holds while the 2D board
->   ships and retires at R3D-8, on the Director's ratification.
+>   ships and retires at R3D-END, on the Director's ratification.
 > - **The `Voxel` object itself also changes.** R3D-1 replaces PLAYGROUND's 215 432
 >   objects (~316 MB, desktop debug build) with a packed store behind the same container
 >   API.

@@ -1377,7 +1377,7 @@ real phones.
   - The 2D board was measured as the cost: 60 ms idle at the default portrait zoom,
     multi-second detonation stalls, and 2.2 GB of memory with up to 1.4 GB swapped out.
 - **The render decision was taken on 2026-09-15.** The board moves to Godot 3D over a packed
-  voxel store: `RENDER3D_MASTER_PLAN`, stages R3D-0 → R3D-9. The prototype already idles at
+  voxel store: `RENDER3D_MASTER_PLAN`, stages R3D-0 → R3D-END. The prototype already idles at
   18–23 ms and plays grenade #1 in 11.8 s, against 28.5 s in 2D.
 - **JAMES, the design-branch agent, is suspended** until the performance milestone closes.
   Claude owns the UI meanwhile.

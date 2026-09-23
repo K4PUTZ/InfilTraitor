@@ -376,3 +376,26 @@ cost (one hash roll per cell inside the existing loops):
 2. **More tones** — the roll may darken or lighten up to two steps, and may drop isolated cells near the edge.
 3. **Radius per weapon** — e.g. pistol 2, rifle 3, sniper 4 (a `WeaponDef` field, Rule 1 `var`).
 Recommended together: 1 + 3. Judge on the same paired sheet.
+
+## Moto g04s, before vs after (2026-09-22, release APKs, same scenario)
+
+`export/soot_before.apk` = `fa2b168e` (derived soot), `export/soot_after.apk` = `622b9cae` (SOOT-STAMP +
+SOOT-EDGE). Flags: `MAP=PLAYGROUND_2`, `RENDER3D=1`, 5 grenades (`3,3;8,3;13,3;23,3;43,3`), then two shotgun
+shots at guard 2, `PREDICTION_PROFILE=1`, `EVENT_FRAMES=1`, portrait, zoom 0.5. `device_run.py --seconds 240`,
+then `bench_analyze.py`. One run each.
+
+| | before | after |
+|---|---|---|
+| shot soot (1st / 2nd shot) | 5 207 / 4 761 ms, one frame | 18.9 / 14.6 ms |
+| shot tail, post-flight (1st / 2nd) | 860 / 791 ms | 719 / 329 ms |
+| blast cook SOOT phase, grenades 1..5 | 257 / 453 / 714 / 907 / 1 142 ms (one visit) | 282 / 258 / 240 / 234 / 225 ms (worst visit 66–78) |
+| blast cook SOOTWAVE | 85 / 181 / 318 / 420 / 544 ms | 59 / 54 / 57 / 60 / 64 ms |
+| cook worst step | 257 / 453 / 714 / 907 / 1 142 ms | 191 / 191 / 201 / 196 / 192 ms |
+| detonation mean frame (target 33.3 ms) | 34.7 / 32.6 / 32.5 / 34.4 / 36.8 ms | 32.9 / 31.2 / 31.2 / 31.2 / 32.9 ms |
+| detonation worst frame | 312 / 466 / 729 / 922 / 1 155 ms | 289 / 203 / 215 / 209 / 919 ms |
+| commit frame | 252 / 260 / 336 / 416 / 484 ms | 195 / 203 / 187 / 193 / 191 ms |
+
+Every detonation's MEAN frame is now under the 33.3 ms budget (3 of 5 were over). Still over, and not soot: the
+commit frame (~190 ms), the cook's worst step (~190 ms: the SOOT phase's one-shot todo build ~70 ms and the
+atomic LIGHT phase), the first shot after the blasts (719 ms: its stale set carries every crater's
+neighbourhood, plus `build_occupancy()`), and grenade 5's 919 ms CONSEQUENCE frame (the glass wall, same before).

@@ -1,0 +1,969 @@
+--------- beginning of main
+09-23 19:01:59.401 V/Godot   ( 7673): InitEngine with params: [--xr_mode_regular, --xr-mode, off, --fullscreen, --background_color, #000000]
+09-23 19:01:59.402 V/Godot   ( 7673): Initializing Godot plugin registry
+09-23 19:01:59.458 V/Godot   ( 7673): Godot native layer initialization completed: true
+09-23 19:01:59.701 V/Godot   ( 7673): Godot native layer setup completed
+09-23 19:01:59.702 V/Godot   ( 7673): OnInitRenderView: GodotFragment{fc29790} (1b3adc8d-310c-4e8d-82f7-357190d3cd58 id=0x7f070033)
+09-23 19:01:59.716 D/Godot   ( 7673): Render view should be transparent: false
+09-23 19:01:59.716 D/Godot   ( 7673): usesVulkan(): true
+09-23 19:01:59.716 D/Godot   ( 7673): 			renderingDevice: vulkan (ProjectSettings)
+09-23 19:01:59.716 D/Godot   ( 7673): 			renderer: mobile (ProjectSettings)
+09-23 19:01:59.740 V/Godot   ( 7673): OnStart: GodotFragment{fc29790} (1b3adc8d-310c-4e8d-82f7-357190d3cd58 id=0x7f070033)
+09-23 19:01:59.751 V/Godot   ( 7673): OnResume: GodotFragment{fc29790} (1b3adc8d-310c-4e8d-82f7-357190d3cd58 id=0x7f070033)
+09-23 19:01:59.795 I/godot   ( 7673): Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+09-23 19:01:59.871 I/godot   ( 7673): Vulkan 1.3.225 - Forward Mobile - Using Device #0: ARM - Mali-G57
+09-23 19:02:00.376 I/godot   ( 7673): 
+09-23 19:02:04.870 V/Godot   ( 7673): OnGodotSetupCompleted
+09-23 19:02:04.897 I/godot   ( 7673): [DevFlags] 5 override(s) from /sdcard/Android/data/com.example.infiltraitor/files/dev_flags.cfg — FRAME_PROBE=1, MAP=PLAYGROUND, RENDER3D=1, RNG_SEED=1, SCENARIO=framing portrait; zoom 0.5; wait 25; quit
+09-23 19:02:04.897 I/godot   ( 7673): [INFILTRAITOR] Version 0.9.107
+09-23 19:02:04.903 I/godot   ( 7673): [Registries] Autoload initialized
+09-23 19:02:04.907 I/godot   ( 7673): [RNG] seeded 1 — particle rolls are reproducible this boot
+09-23 19:02:04.908 I/godot   ( 7673): [MaterialRegistry] Registered: brick (color: 0.55,0.29,0.22)
+09-23 19:02:04.908 I/godot   ( 7673): [MaterialRegistry] Registered: cardboard (color: 0.70,0.55,0.36)
+09-23 19:02:04.909 I/godot   ( 7673): [MaterialRegistry] Registered: concrete (color: 0.62,0.62,0.62)
+09-23 19:02:04.909 I/godot   ( 7673): [MaterialRegistry] Registered: dirt (color: 0.50,0.38,0.27)
+09-23 19:02:04.909 I/godot   ( 7673): [MaterialRegistry] Registered: earth (color: 0.52,0.39,0.26)
+09-23 19:02:04.909 I/godot   ( 7673): [MaterialRegistry] Registered: fabric (color: 0.78,0.74,0.66)
+09-23 19:02:04.910 I/godot   ( 7673): [MaterialRegistry] Registered: glass (color: 0.62,0.74,0.78)
+09-23 19:02:04.910 I/godot   ( 7673): [MaterialRegistry] Registered: glass_armored (color: 0.74,0.62,0.78)
+09-23 19:02:04.910 I/godot   ( 7673): [MaterialRegistry] Registered: glass_screen_amber (color: 0.70,0.60,0.38)
+09-23 19:02:04.910 I/godot   ( 7673): [MaterialRegistry] Registered: glass_screen_green (color: 0.38,0.55,0.42)
+09-23 19:02:04.911 I/godot   ( 7673): [MaterialRegistry] Registered: glass_screen_red (color: 0.62,0.40,0.41)
+09-23 19:02:04.911 I/godot   ( 7673): [MaterialRegistry] Registered: grass (color: 0.42,0.55,0.29)
+09-23 19:02:04.911 I/godot   ( 7673): [MaterialRegistry] Registered: gravel (color: 0.55,0.52,0.49)
+09-23 19:02:04.911 I/godot   ( 7673): [MaterialRegistry] Registered: metal (color: 0.49,0.53,0.56)
+09-23 19:02:04.912 I/godot   ( 7673): [MaterialRegistry] Registered: plywood (color: 0.78,0.63,0.42)
+09-23 19:02:04.912 I/godot   ( 7673): [MaterialRegistry] Registered: sand (color: 0.76,0.67,0.51)
+09-23 19:02:04.912 I/godot   ( 7673): [MaterialRegistry] Registered: stone (color: 0.55,0.55,0.58)
+09-23 19:02:04.912 I/godot   ( 7673): [MaterialRegistry] Registered: wood (color: 0.66,0.47,0.31)
+09-23 19:02:04.913 I/godot   ( 7673): [Registries] Material registry initialized with defaults
+09-23 19:02:04.913 I/godot   ( 7673): [BakeConfig] Enabled: true, Blend Mode: 0, Facade Tops: true
+09-23 19:02:04.926 I/godot   ( 7673): [Room] 4 tiles registered.
+09-23 19:02:05.765 I/godot   ( 7673): [Room] Light registry initialized with 0 map lights:
+09-23 19:02:05.765 I/godot   ( 7673): [Room] Tile semantics initialized with 0 tiles, 0 light anchors
+09-23 19:02:05.765 I/godot   ( 7673): [Room] Shadow projector initialized
+09-23 19:02:05.765 I/godot   ( 7673): [Room] Exposure system initialized with 0 light projections
+09-23 19:02:05.765 I/godot   ( 7673): [VisionController] Shadow overlay initialized
+09-23 19:02:05.766 I/godot   ( 7673): [VisionController] Exposure overlay initialized
+09-23 19:02:05.766 I/godot   ( 7673): [VisionController] Tile risk heatmap overlay initialized
+09-23 19:02:05.766 I/godot   ( 7673): [VisionController] Elite exposure overlay initialized: [EliteExposureOverlay safe=0 total=0 confidence=0.00 depth_layers=6 stability_types=4]
+09-23 19:02:05.862 I/godot   ( 7673): [Registries] File map source initialized
+09-23 19:02:06.719 I/godot   ( 7673): [MaterialRegistry] Registered: brick (color: 0.55,0.29,0.22)
+09-23 19:02:06.719 I/godot   ( 7673): [MaterialRegistry] Registered: cardboard (color: 0.70,0.55,0.36)
+09-23 19:02:06.719 I/godot   ( 7673): [MaterialRegistry] Registered: concrete (color: 0.62,0.62,0.62)
+09-23 19:02:06.720 I/godot   ( 7673): [MaterialRegistry] Registered: dirt (color: 0.50,0.38,0.27)
+09-23 19:02:06.720 I/godot   ( 7673): [MaterialRegistry] Registered: earth (color: 0.52,0.39,0.26)
+09-23 19:02:06.720 I/godot   ( 7673): [MaterialRegistry] Registered: fabric (color: 0.78,0.74,0.66)
+09-23 19:02:06.720 I/godot   ( 7673): [MaterialRegistry] Registered: glass (color: 0.62,0.74,0.78)
+09-23 19:02:06.720 I/godot   ( 7673): [MaterialRegistry] Registered: glass_armored (color: 0.74,0.62,0.78)
+09-23 19:02:06.721 I/godot   ( 7673): [MaterialRegistry] Registered: glass_screen_amber (color: 0.70,0.60,0.38)
+09-23 19:02:06.721 I/godot   ( 7673): [MaterialRegistry] Registered: glass_screen_green (color: 0.38,0.55,0.42)
+09-23 19:02:06.721 I/godot   ( 7673): [MaterialRegistry] Registered: glass_screen_red (color: 0.62,0.40,0.41)
+09-23 19:02:06.721 I/godot   ( 7673): [MaterialRegistry] Registered: grass (color: 0.42,0.55,0.29)
+09-23 19:02:06.721 I/godot   ( 7673): [MaterialRegistry] Registered: gravel (color: 0.55,0.52,0.49)
+09-23 19:02:06.722 I/godot   ( 7673): [MaterialRegistry] Registered: metal (color: 0.49,0.53,0.56)
+09-23 19:02:06.722 I/godot   ( 7673): [MaterialRegistry] Registered: plywood (color: 0.78,0.63,0.42)
+09-23 19:02:06.722 I/godot   ( 7673): [MaterialRegistry] Registered: sand (color: 0.76,0.67,0.51)
+09-23 19:02:06.722 I/godot   ( 7673): [MaterialRegistry] Registered: stone (color: 0.55,0.55,0.58)
+09-23 19:02:06.722 I/godot   ( 7673): [MaterialRegistry] Registered: wood (color: 0.66,0.47,0.31)
+09-23 19:02:07.436 I/godot   ( 7673): [ROOM] Baking textures with 40 junction columns...
+09-23 19:02:07.462 I/godot   ( 7673): [ROOM] Grouped edges into 43 runs
+09-23 19:02:07.469 I/godot   ( 7673): [BAKE] Loaded voxel atom: concrete (32×36, 0 AA pixels)
+09-23 19:02:07.470 I/godot   ( 7673): [BAKE] Loaded voxel atom: metal (32×36, 0 AA pixels)
+09-23 19:02:07.471 I/godot   ( 7673): [BAKE] Loaded voxel atom: stone (32×36, 0 AA pixels)
+09-23 19:02:07.472 I/godot   ( 7673): [BAKE] Loaded voxel atom: wood (32×36, 0 AA pixels)
+09-23 19:02:07.480 I/godot   ( 7673): [BAKE] Loaded voxel atom: grass (32×36, 0 AA pixels)
+09-23 19:02:07.482 I/godot   ( 7673): [BAKE] Loaded voxel atom: dirt (32×36, 0 AA pixels)
+09-23 19:02:07.484 I/godot   ( 7673): [BAKE] Loaded voxel atom: gravel (32×36, 0 AA pixels)
+09-23 19:02:07.486 I/godot   ( 7673): [BAKE] Loaded voxel atom: sand (32×36, 0 AA pixels)
+09-23 19:02:07.487 I/godot   ( 7673): [BAKE] Loaded voxel atom: earth (32×36, 0 AA pixels)
+09-23 19:02:07.488 I/godot   ( 7673): [BAKE] Loaded voxel atom: brick (32×36, 0 AA pixels)
+09-23 19:02:07.489 I/godot   ( 7673): [BAKE] Loaded voxel atom: cardboard (32×36, 0 AA pixels)
+09-23 19:02:07.491 I/godot   ( 7673): [BAKE] Loaded voxel atom: fabric (32×36, 0 AA pixels)
+09-23 19:02:07.492 I/godot   ( 7673): [BAKE] Loaded voxel atom: plywood (32×36, 0 AA pixels)
+09-23 19:02:07.493 I/godot   ( 7673): [BAKE] Loaded voxel atom: glass (32×36, 0 AA pixels)
+09-23 19:02:07.493 I/godot   ( 7673): [BAKE] Created persistent BakeCompositor for session
+09-23 19:02:07.495 I/godot   ( 7673): [BAKE] Found 9 unique (material, facade) combos
+09-23 19:02:07.633 I/godot   ( 7673): 
+09-23 19:02:07.633 I/godot   ( 7673): Attempting to resolve: facade_concrete (folder concrete)
+09-23 19:02:07.634 I/godot   ( 7673):   [USER] File not found: user://textures/concrete/facade_concrete.png
+09-23 19:02:07.634 I/godot   ( 7673):   [USER] File not found: user://textures/concrete/facade_concrete.webp
+09-23 19:02:07.660 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/concrete/facade_concrete.png
+09-23 19:02:07.660 I/godot   ( 7673): [RESOLVER] facade_concrete resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:07.660 I/godot   ( 7673): 
+09-23 19:02:07.660 I/godot   ( 7673): Attempting to resolve: facade_metal (folder metal)
+09-23 19:02:07.660 I/godot   ( 7673):   [USER] File not found: user://textures/metal/facade_metal.png
+09-23 19:02:07.660 I/godot   ( 7673):   [USER] File not found: user://textures/metal/facade_metal.webp
+09-23 19:02:07.691 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/metal/facade_metal.png
+09-23 19:02:07.691 I/godot   ( 7673): [RESOLVER] facade_metal resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:07.691 I/godot   ( 7673): 
+09-23 19:02:07.691 I/godot   ( 7673): Attempting to resolve: facade_stone (folder stone)
+09-23 19:02:07.691 I/godot   ( 7673):   [USER] File not found: user://textures/stone/facade_stone.png
+09-23 19:02:07.691 I/godot   ( 7673):   [USER] File not found: user://textures/stone/facade_stone.webp
+09-23 19:02:07.718 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/stone/facade_stone.png
+09-23 19:02:07.718 I/godot   ( 7673): [RESOLVER] facade_stone resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:07.718 I/godot   ( 7673): 
+09-23 19:02:07.718 I/godot   ( 7673): Attempting to resolve: facade_wood (folder wood)
+09-23 19:02:07.718 I/godot   ( 7673):   [USER] File not found: user://textures/wood/facade_wood.png
+09-23 19:02:07.718 I/godot   ( 7673):   [USER] File not found: user://textures/wood/facade_wood.webp
+09-23 19:02:07.745 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/wood/facade_wood.png
+09-23 19:02:07.745 I/godot   ( 7673): [RESOLVER] facade_wood resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:07.745 I/godot   ( 7673): 
+09-23 19:02:07.745 I/godot   ( 7673): Attempting to resolve: facade_brick (folder brick)
+09-23 19:02:07.745 I/godot   ( 7673):   [USER] File not found: user://textures/brick/facade_brick.png
+09-23 19:02:07.745 I/godot   ( 7673):   [USER] File not found: user://textures/brick/facade_brick.webp
+09-23 19:02:07.775 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/brick/facade_brick.png
+09-23 19:02:07.775 I/godot   ( 7673): [RESOLVER] facade_brick resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:07.775 I/godot   ( 7673): 
+09-23 19:02:07.775 I/godot   ( 7673): Attempting to resolve: facade_cardboard (folder cardboard)
+09-23 19:02:07.775 I/godot   ( 7673):   [USER] File not found: user://textures/cardboard/facade_cardboard.png
+09-23 19:02:07.775 I/godot   ( 7673):   [USER] File not found: user://textures/cardboard/facade_cardboard.webp
+09-23 19:02:07.797 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/cardboard/facade_cardboard.png
+09-23 19:02:07.797 I/godot   ( 7673): [RESOLVER] facade_cardboard resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:07.797 I/godot   ( 7673): 
+09-23 19:02:07.797 I/godot   ( 7673): Attempting to resolve: facade_fabric (folder fabric)
+09-23 19:02:07.798 I/godot   ( 7673):   [USER] File not found: user://textures/fabric/facade_fabric.png
+09-23 19:02:07.798 I/godot   ( 7673):   [USER] File not found: user://textures/fabric/facade_fabric.webp
+09-23 19:02:07.819 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/fabric/facade_fabric.png
+09-23 19:02:07.819 I/godot   ( 7673): [RESOLVER] facade_fabric resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:07.819 I/godot   ( 7673): 
+09-23 19:02:07.819 I/godot   ( 7673): Attempting to resolve: facade_plywood (folder plywood)
+09-23 19:02:07.819 I/godot   ( 7673):   [USER] File not found: user://textures/plywood/facade_plywood.png
+09-23 19:02:07.819 I/godot   ( 7673):   [USER] File not found: user://textures/plywood/facade_plywood.webp
+09-23 19:02:07.847 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/plywood/facade_plywood.png
+09-23 19:02:07.848 I/godot   ( 7673): [RESOLVER] facade_plywood resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:07.848 I/godot   ( 7673): 
+09-23 19:02:07.848 I/godot   ( 7673): Attempting to resolve: facade_glass (folder glass)
+09-23 19:02:07.848 I/godot   ( 7673):   [USER] File not found: user://textures/glass/facade_glass.png
+09-23 19:02:07.848 I/godot   ( 7673):   [USER] File not found: user://textures/glass/facade_glass.webp
+09-23 19:02:07.856 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/glass/facade_glass.png
+09-23 19:02:07.856 I/godot   ( 7673): [RESOLVER] facade_glass resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:08.630 I/godot   ( 7673): [BAKE] Composed sheet concrete|facade_concrete|0 (2048 atoms)
+09-23 19:02:09.476 I/godot   ( 7673): [BAKE] Composed sheet concrete|facade_concrete|1 (2048 atoms)
+09-23 19:02:09.978 I/godot   ( 7673): [BAKE] Composed sheet metal|facade_metal|0 (2048 atoms)
+09-23 19:02:10.431 I/godot   ( 7673): [BAKE] Composed sheet metal|facade_metal|1 (2048 atoms)
+09-23 19:02:10.870 I/godot   ( 7673): [BAKE] Composed sheet stone|facade_stone|0 (2048 atoms)
+09-23 19:02:11.328 I/godot   ( 7673): [BAKE] Composed sheet stone|facade_stone|1 (2048 atoms)
+09-23 19:02:11.764 I/godot   ( 7673): [BAKE] Composed sheet wood|facade_wood|0 (2048 atoms)
+09-23 19:02:12.219 I/godot   ( 7673): [BAKE] Composed sheet wood|facade_wood|1 (2048 atoms)
+09-23 19:02:12.656 I/godot   ( 7673): [BAKE] Composed sheet brick|facade_brick|0 (2048 atoms)
+09-23 19:02:13.108 I/godot   ( 7673): [BAKE] Composed sheet brick|facade_brick|1 (2048 atoms)
+09-23 19:02:13.550 I/godot   ( 7673): [BAKE] Composed sheet cardboard|facade_cardboard|0 (2048 atoms)
+09-23 19:02:14.004 I/godot   ( 7673): [BAKE] Composed sheet cardboard|facade_cardboard|1 (2048 atoms)
+09-23 19:02:14.439 I/godot   ( 7673): [BAKE] Composed sheet fabric|facade_fabric|0 (2048 atoms)
+09-23 19:02:14.890 I/godot   ( 7673): [BAKE] Composed sheet fabric|facade_fabric|1 (2048 atoms)
+09-23 19:02:15.331 I/godot   ( 7673): [BAKE] Composed sheet plywood|facade_plywood|0 (2048 atoms)
+09-23 19:02:15.797 I/godot   ( 7673): [BAKE] Composed sheet plywood|facade_plywood|1 (2048 atoms)
+09-23 19:02:16.235 I/godot   ( 7673): [BAKE] Composed sheet glass|facade_glass|0 (2048 atoms)
+09-23 19:02:16.690 I/godot   ( 7673): [BAKE] Composed sheet glass|facade_glass|1 (2048 atoms)
+09-23 19:02:16.761 I/godot   ( 7673): [BAKE] Composed junction page: concrete|facade_concrete (160 atoms)
+09-23 19:02:16.798 I/godot   ( 7673): [BAKE] Composed junction page: metal|facade_metal (64 atoms)
+09-23 19:02:16.836 I/godot   ( 7673): [BAKE] Composed junction page: stone|facade_stone (64 atoms)
+09-23 19:02:16.873 I/godot   ( 7673): [BAKE] Composed junction page: wood|facade_wood (64 atoms)
+09-23 19:02:16.910 I/godot   ( 7673): [BAKE] Composed junction page: brick|facade_brick (64 atoms)
+09-23 19:02:16.949 I/godot   ( 7673): [BAKE] Composed junction page: cardboard|facade_cardboard (64 atoms)
+09-23 19:02:16.986 I/godot   ( 7673): [BAKE] Composed junction page: fabric|facade_fabric (64 atoms)
+09-23 19:02:17.024 I/godot   ( 7673): [BAKE] Composed junction page: plywood|facade_plywood (64 atoms)
+09-23 19:02:17.061 I/godot   ( 7673): [BAKE] Composed junction page: glass|facade_glass (64 atoms)
+09-23 19:02:18.038 I/godot   ( 7673): [BAKE] Composed roof page ROOF|concrete|facade_concrete (4096 atoms)
+09-23 19:02:18.649 I/godot   ( 7673): [BAKE] Composed roof page ROOF|metal|facade_metal (586 atoms)
+09-23 19:02:19.230 I/godot   ( 7673): [BAKE] Composed roof page ROOF|stone|facade_stone (586 atoms)
+09-23 19:02:19.812 I/godot   ( 7673): [BAKE] Composed roof page ROOF|wood|facade_wood (586 atoms)
+09-23 19:02:20.394 I/godot   ( 7673): [BAKE] Composed roof page ROOF|brick|facade_brick (586 atoms)
+09-23 19:02:20.981 I/godot   ( 7673): [BAKE] Composed roof page ROOF|cardboard|facade_cardboard (586 atoms)
+09-23 19:02:21.565 I/godot   ( 7673): [BAKE] Composed roof page ROOF|fabric|facade_fabric (586 atoms)
+09-23 19:02:22.153 I/godot   ( 7673): [BAKE] Composed roof page ROOF|plywood|facade_plywood (586 atoms)
+09-23 19:02:22.735 I/godot   ( 7673): [BAKE] Composed roof page ROOF|glass|facade_glass (586 atoms)
+09-23 19:02:22.739 I/godot   ( 7673): [BAKE] Baked 9 combos × 2 directions in 14883.0 ms
+09-23 19:02:22.741 I/godot   ( 7673): [ROOM] Bake complete: 15249 ms, 36 pages
+09-23 19:02:27.385 I/godot   ( 7673): [ROOM] Registered baked atlas page 0 as source 98 on voxel_renderer (8448 tiles created)
+09-23 19:02:32.298 I/godot   ( 7673): [ROOM] Registered baked atlas page 1 as source 99 on voxel_renderer (8448 tiles created)
+09-23 19:02:32.311 I/godot   ( 7673): [ROOM] Registered baked atlas page 2 as source 100 on voxel_renderer (384 tiles created)
+09-23 19:02:32.325 I/godot   ( 7673): [ROOM] Registered baked atlas page 3 as source 101 on voxel_renderer (384 tiles created)
+09-23 19:02:32.338 I/godot   ( 7673): [ROOM] Registered baked atlas page 4 as source 102 on voxel_renderer (384 tiles created)
+09-23 19:02:32.352 I/godot   ( 7673): [ROOM] Registered baked atlas page 5 as source 103 on voxel_renderer (384 tiles created)
+09-23 19:02:32.365 I/godot   ( 7673): [ROOM] Registered baked atlas page 6 as source 104 on voxel_renderer (384 tiles created)
+09-23 19:02:32.378 I/godot   ( 7673): [ROOM] Registered baked atlas page 7 as source 105 on voxel_renderer (384 tiles created)
+09-23 19:02:32.392 I/godot   ( 7673): [ROOM] Registered baked atlas page 8 as source 106 on voxel_renderer (384 tiles created)
+09-23 19:02:32.405 I/godot   ( 7673): [ROOM] Registered baked atlas page 9 as source 107 on voxel_renderer (384 tiles created)
+09-23 19:02:32.418 I/godot   ( 7673): [ROOM] Registered baked atlas page 10 as source 108 on voxel_renderer (384 tiles created)
+09-23 19:02:32.432 I/godot   ( 7673): [ROOM] Registered baked atlas page 11 as source 109 on voxel_renderer (384 tiles created)
+09-23 19:02:32.445 I/godot   ( 7673): [ROOM] Registered baked atlas page 12 as source 110 on voxel_renderer (384 tiles created)
+09-23 19:02:32.458 I/godot   ( 7673): [ROOM] Registered baked atlas page 13 as source 111 on voxel_renderer (384 tiles created)
+09-23 19:02:32.471 I/godot   ( 7673): [ROOM] Registered baked atlas page 14 as source 112 on voxel_renderer (384 tiles created)
+09-23 19:02:32.484 I/godot   ( 7673): [ROOM] Registered baked atlas page 15 as source 113 on voxel_renderer (384 tiles created)
+09-23 19:02:32.505 I/godot   ( 7673): [ROOM] Registered baked atlas page 16 as source 114 on voxel_renderer (384 tiles created)
+09-23 19:02:32.608 I/godot   ( 7673): [ROOM] Registered baked atlas page 17 as source 115 on voxel_renderer (384 tiles created)
+09-23 19:02:32.613 I/godot   ( 7673): [ROOM] Registered baked atlas page 18 as source 116 on voxel_renderer (160 tiles created)
+09-23 19:02:32.615 I/godot   ( 7673): [ROOM] Registered baked atlas page 19 as source 117 on voxel_renderer (64 tiles created)
+09-23 19:02:32.616 I/godot   ( 7673): [ROOM] Registered baked atlas page 20 as source 118 on voxel_renderer (64 tiles created)
+09-23 19:02:32.618 I/godot   ( 7673): [ROOM] Registered baked atlas page 21 as source 119 on voxel_renderer (64 tiles created)
+09-23 19:02:32.620 I/godot   ( 7673): [ROOM] Registered baked atlas page 22 as source 120 on voxel_renderer (64 tiles created)
+09-23 19:02:32.622 I/godot   ( 7673): [ROOM] Registered baked atlas page 23 as source 121 on voxel_renderer (64 tiles created)
+09-23 19:02:32.624 I/godot   ( 7673): [ROOM] Registered baked atlas page 24 as source 122 on voxel_renderer (64 tiles created)
+09-23 19:02:32.626 I/godot   ( 7673): [ROOM] Registered baked atlas page 25 as source 123 on voxel_renderer (64 tiles created)
+09-23 19:02:32.628 I/godot   ( 7673): [ROOM] Registered baked atlas page 26 as source 124 on voxel_renderer (64 tiles created)
+09-23 19:02:33.641 I/godot   ( 7673): [ROOM] Registered baked atlas page 27 as source 125 on voxel_renderer (4096 tiles created)
+09-23 19:02:33.668 I/godot   ( 7673): [ROOM] Registered baked atlas page 28 as source 126 on voxel_renderer (586 tiles created)
+09-23 19:02:33.695 I/godot   ( 7673): [ROOM] Registered baked atlas page 29 as source 127 on voxel_renderer (586 tiles created)
+09-23 19:02:33.721 I/godot   ( 7673): [ROOM] Registered baked atlas page 30 as source 128 on voxel_renderer (586 tiles created)
+09-23 19:02:33.748 I/godot   ( 7673): [ROOM] Registered baked atlas page 31 as source 129 on voxel_renderer (586 tiles created)
+09-23 19:02:33.775 I/godot   ( 7673): [ROOM] Registered baked atlas page 32 as source 130 on voxel_renderer (586 tiles created)
+09-23 19:02:33.802 I/godot   ( 7673): [ROOM] Registered baked atlas page 33 as source 131 on voxel_renderer (586 tiles created)
+09-23 19:02:33.830 I/godot   ( 7673): [ROOM] Registered baked atlas page 34 as source 132 on voxel_renderer (586 tiles created)
+09-23 19:02:33.857 I/godot   ( 7673): [ROOM] Registered baked atlas page 35 as source 133 on voxel_renderer (586 tiles created)
+09-23 19:02:33.857 I/godot   ( 7673): [VOXEL] Baked lookup set: registered
+09-23 19:02:33.881 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 1ff64de9
+09-23 19:02:34.646 I/godot   ( 7673): [D33] composite page: 3584 tile(s) created up front in 735.0 ms
+09-23 19:02:34.657 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 79f4f5e8
+09-23 19:02:34.660 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c5a3ab77
+09-23 19:02:34.664 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 38139423
+09-23 19:02:34.667 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 66da5472
+09-23 19:02:34.670 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e4993765
+09-23 19:02:34.673 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 689fb62e
+09-23 19:02:34.676 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6705897f
+09-23 19:02:34.679 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f45df950
+09-23 19:02:34.682 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a69e54c4
+09-23 19:02:34.685 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 789ec235
+09-23 19:02:34.688 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7ae0a8c2
+09-23 19:02:34.691 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e19baabe
+09-23 19:02:34.695 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3323d2cf
+09-23 19:02:34.698 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 14a1b0e0
+09-23 19:02:34.702 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 312a1305
+09-23 19:02:34.705 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a6443a14
+09-23 19:02:34.708 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded de99e143
+09-23 19:02:34.711 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f582f5c8
+09-23 19:02:34.714 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c18fa5c9
+09-23 19:02:34.717 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 75160ea6
+09-23 19:02:34.720 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4d745b00
+09-23 19:02:34.722 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded baeabe01
+09-23 19:02:34.725 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 535489de
+09-23 19:02:34.728 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3e4f2802
+09-23 19:02:34.731 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8f879e33
+09-23 19:02:34.733 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e5158604
+09-23 19:02:34.736 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded bda6b76f
+09-23 19:02:34.739 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6ae15ade
+09-23 19:02:34.741 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d2778f01
+09-23 19:02:34.744 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8acb8dbd
+09-23 19:02:34.747 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f8179f2c
+09-23 19:02:34.750 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c3776c5b
+09-23 19:02:34.752 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ddea6eff
+09-23 19:02:34.755 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded df849bae
+09-23 19:02:34.758 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4b738391
+09-23 19:02:34.761 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 310dc82c
+09-23 19:02:34.763 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c3c1b6bd
+09-23 19:02:34.766 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2a46d30a
+09-23 19:02:34.769 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded fdc7ddf1
+09-23 19:02:34.772 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0fb2e0b0
+09-23 19:02:34.775 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded db12addf
+09-23 19:02:34.778 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4f78b87f
+09-23 19:02:34.780 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 5112e52e
+09-23 19:02:34.783 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded bd01cd11
+09-23 19:02:34.786 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 75a5bc1d
+09-23 19:02:34.789 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 564b730c
+09-23 19:02:34.792 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a1ac09bb
+09-23 19:02:34.795 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 62ea1cf0
+09-23 19:02:34.798 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 50ff1a31
+09-23 19:02:34.801 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dc23f14e
+09-23 19:02:34.804 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8b168722
+09-23 19:02:34.806 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dd8c31d3
+09-23 19:02:34.809 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 31dce524
+09-23 19:02:34.812 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dbe61180
+09-23 19:02:34.814 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 495c7481
+09-23 19:02:34.817 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e1c6405e
+09-23 19:02:34.820 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 266b01ab
+09-23 19:02:34.823 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 53a66e9a
+09-23 19:02:34.826 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d31dba8d
+09-23 19:02:34.829 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4da47f86
+09-23 19:02:34.832 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ec09bbb7
+09-23 19:02:34.835 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a05b0628
+09-23 19:02:34.838 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2ad8f476
+09-23 19:02:34.840 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7655f6e7
+09-23 19:02:34.843 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded aaa677d8
+09-23 19:02:34.846 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 93993437
+09-23 19:02:34.849 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f533f806
+09-23 19:02:34.851 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 953399a9
+09-23 19:02:34.854 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0fc056b1
+09-23 19:02:34.857 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 21ab5970
+09-23 19:02:34.860 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ed0b269f
+09-23 19:02:34.863 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9b8ed3b4
+09-23 19:02:34.866 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 99ce5225
+09-23 19:02:34.869 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 48889b32
+09-23 19:02:34.872 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 1a067eca
+09-23 19:02:34.874 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ec2d411b
+09-23 19:02:34.877 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4d0c84ec
+09-23 19:02:34.880 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0054ff2c
+09-23 19:02:34.883 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9308edbd
+09-23 19:02:34.886 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f98e0a0a
+09-23 19:02:34.889 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded bcf9043b
+09-23 19:02:34.892 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ead241ea
+09-23 19:02:34.895 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 90f2b69d
+09-23 19:02:34.898 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9e92ca16
+09-23 19:02:34.901 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 101b2487
+09-23 19:02:34.904 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded caa027f8
+09-23 19:02:34.907 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded db3c5d88
+09-23 19:02:34.910 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a7490d89
+09-23 19:02:34.912 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b387b366
+09-23 19:02:34.915 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d51907ad
+09-23 19:02:34.918 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c303b35c
+09-23 19:02:34.921 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0dc4e64b
+09-23 19:02:34.923 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6f0d800b
+09-23 19:02:34.926 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 988e09fa
+09-23 19:02:34.929 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3661a16d
+09-23 19:02:34.931 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 00714a05
+09-23 19:02:34.934 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 758b7114
+09-23 19:02:34.937 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ade11843
+09-23 19:02:34.939 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c99c60fa
+09-23 19:02:34.942 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a01bd70b
+09-23 19:02:34.945 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 555aa41c
+09-23 19:02:34.948 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d172d041
+09-23 19:02:34.951 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0b443040
+09-23 19:02:34.953 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 63e9bbaf
+09-23 19:02:34.957 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7dc14c67
+09-23 19:02:34.960 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 324449f6
+09-23 19:02:34.963 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded febd1799
+09-23 19:02:34.966 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 80070612
+09-23 19:02:34.969 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d27cb0c3
+09-23 19:02:34.972 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9a270994
+09-23 19:02:34.975 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 408a168c
+09-23 19:02:34.978 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 5fe45f9d
+09-23 19:02:34.981 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b9c3eaea
+09-23 19:02:34.984 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded fb0049ea
+09-23 19:02:34.987 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cd270c3b
+09-23 19:02:34.990 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 81c6758c
+09-23 19:02:34.993 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 725b1a95
+09-23 19:02:34.995 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f41ad2a4
+09-23 19:02:34.998 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9fca1f53
+09-23 19:02:35.001 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3ce87820
+09-23 19:02:35.004 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded aa5edb21
+09-23 19:02:35.007 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dd6945fe
+09-23 19:02:35.010 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 375c7783
+09-23 19:02:35.013 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e4e6ccd2
+09-23 19:02:35.016 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 89eca945
+09-23 19:02:35.019 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6f1c8b0d
+09-23 19:02:35.021 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cf23a7bc
+09-23 19:02:35.024 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c269d22b
+09-23 19:02:35.027 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a2f6a7a8
+09-23 19:02:35.030 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f03fc2a9
+09-23 19:02:35.032 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 50402106
+09-23 19:02:35.036 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 170da79e
+09-23 19:02:35.039 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 69d3042f
+09-23 19:02:35.042 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 112d78c0
+09-23 19:02:35.044 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0bea3be0
+09-23 19:02:35.048 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 79609ee1
+09-23 19:02:35.050 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d8e435be
+09-23 19:02:35.054 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c2f0fe17
+09-23 19:02:35.056 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d0ca0966
+09-23 19:02:35.059 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c48b6389
+09-23 19:02:35.062 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f42ffe0a
+09-23 19:02:35.065 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c656c05b
+09-23 19:02:35.068 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded faf6f32c
+09-23 19:02:35.070 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8e459ee2
+09-23 19:02:35.073 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e0bb4993
+09-23 19:02:35.076 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 350bfce4
+09-23 19:02:35.079 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 22b77a14
+09-23 19:02:35.082 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ad9d5305
+09-23 19:02:35.085 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 08977692
+09-23 19:02:35.087 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2b3ac651
+09-23 19:02:35.090 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4b0a2190
+09-23 19:02:35.093 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 1669eebf
+09-23 19:02:35.096 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ddd178df
+09-23 19:02:35.099 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8bab800e
+09-23 19:02:35.102 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0086a8f1
+09-23 19:02:35.104 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 078ff8c9
+09-23 19:02:35.107 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3b8348c8
+09-23 19:02:35.110 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 05f59357
+09-23 19:02:35.112 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded fa29a4f6
+09-23 19:02:35.115 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 45a6a767
+09-23 19:02:35.118 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 79f72858
+09-23 19:02:35.120 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c43fb14b
+09-23 19:02:35.123 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 72b7893a
+09-23 19:02:35.125 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8b93d2ad
+09-23 19:02:35.128 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3c0fdd7d
+09-23 19:02:35.131 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 50a3b1ec
+09-23 19:02:35.133 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded efc46e1b
+09-23 19:02:35.136 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 5d243053
+09-23 19:02:35.139 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0aae85a2
+09-23 19:02:35.142 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2fb52b95
+09-23 19:02:35.144 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dcc1c5e6
+09-23 19:02:35.147 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cee8ba97
+09-23 19:02:35.149 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 04767008
+09-23 19:02:35.152 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e8344460
+09-23 19:02:35.154 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 55aaa761
+09-23 19:02:35.157 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b52e3e3e
+09-23 19:02:35.160 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3ac39f1e
+09-23 19:02:35.163 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8d88fbaf
+09-23 19:02:35.165 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 34e37040
+09-23 19:02:35.168 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ae9fd721
+09-23 19:02:35.171 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 41297420
+09-23 19:02:35.173 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8beaa70f
+09-23 19:02:35.176 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 991789cc
+09-23 19:02:35.179 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b871d2dd
+09-23 19:02:35.182 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b999212a
+09-23 19:02:35.185 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 5e0bedbc
+09-23 19:02:35.188 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded fe04d10d
+09-23 19:02:35.190 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7e8d851a
+09-23 19:02:35.193 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f0cbacc5
+09-23 19:02:35.196 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 65e5d3d4
+09-23 19:02:35.199 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9e3b7b03
+09-23 19:02:35.202 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded fe7ed17f
+09-23 19:02:35.206 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0018fe2e
+09-23 19:02:35.209 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6c07e611
+09-23 19:02:35.212 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f8617f42
+09-23 19:02:35.215 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a2523273
+09-23 19:02:35.218 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 241f2b44
+09-23 19:02:35.221 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 43e30398
+09-23 19:02:35.224 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 908e4dd9
+09-23 19:02:35.226 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 1ccdbd36
+09-23 19:02:35.230 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9bc17792
+09-23 19:02:35.232 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ee372243
+09-23 19:02:35.236 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b5e17b14
+09-23 19:02:35.239 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8af654d1
+09-23 19:02:35.242 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded aac5b010
+09-23 19:02:35.244 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 76257d3f
+09-23 19:02:35.247 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 97f724ec
+09-23 19:02:35.250 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8363507d
+09-23 19:02:35.252 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 64f11eca
+09-23 19:02:35.255 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 02300d3e
+09-23 19:02:35.259 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 53b8354f
+09-23 19:02:35.261 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 35361360
+09-23 19:02:35.264 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cc7a3463
+09-23 19:02:35.267 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cf01e3b2
+09-23 19:02:35.270 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 20479aa5
+09-23 19:02:35.273 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a4e028c1
+09-23 19:02:35.276 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded deb188c0
+09-23 19:02:35.278 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3757142f
+09-23 19:02:35.281 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 37935b73
+09-23 19:02:35.284 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8da2a842
+09-23 19:02:35.286 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8b60c1b5
+09-23 19:02:35.289 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 02b23628
+09-23 19:02:35.292 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4ffb5129
+09-23 19:02:35.295 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded affbaf86
+09-23 19:02:35.298 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b9cd8a6b
+09-23 19:02:35.301 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e708f75a
+09-23 19:02:35.304 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0dc8064d
+09-23 19:02:35.306 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cefc66e9
+09-23 19:02:35.309 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 28fb0ee8
+09-23 19:02:35.312 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 74a9c477
+09-23 19:02:35.315 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4a4da5e4
+09-23 19:02:35.318 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 21462ad5
+09-23 19:02:35.321 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a38747e2
+09-23 19:02:35.324 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 72002296
+09-23 19:02:35.326 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e3887d07
+09-23 19:02:35.329 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9e0d8078
+09-23 19:02:35.332 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b7494534
+09-23 19:02:35.335 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b588c3a5
+09-23 19:02:35.338 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 64430cb2
+09-23 19:02:35.340 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cae2dc07
+09-23 19:02:35.343 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 595a8196
+09-23 19:02:35.346 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b279a9b9
+09-23 19:02:35.348 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded de015d02
+09-23 19:02:35.351 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2f39d333
+09-23 19:02:35.354 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 84c7bb04
+09-23 19:02:35.356 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9925edef
+09-23 19:02:35.359 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4660915e
+09-23 19:02:35.362 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded adf6c581
+09-23 19:02:35.364 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded db105109
+09-23 19:02:35.367 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0f03a108
+09-23 19:02:35.370 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d975eb97
+09-23 19:02:35.373 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 78a85bfc
+09-23 19:02:35.376 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 18a13f4d
+09-23 19:02:35.379 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f1e2305a
+09-23 19:02:35.382 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4d0a65c2
+09-23 19:02:35.384 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f6fb18f3
+09-23 19:02:35.387 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 78c811c4
+09-23 19:02:35.390 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a78c2364
+09-23 19:02:35.393 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7e84a855
+09-23 19:02:35.396 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 00c5c562
+09-23 19:02:35.399 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2db3fd43
+09-23 19:02:35.402 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded db3e5292
+09-23 19:02:35.405 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 80442f05
+09-23 19:02:35.408 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 94daf0a6
+09-23 19:02:35.410 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dfba2257
+09-23 19:02:35.413 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 1547d7c8
+09-23 19:02:35.416 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 441eecae
+09-23 19:02:35.419 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4284bfff
+09-23 19:02:35.422 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cfdd2fd0
+09-23 19:02:35.425 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3822d120
+09-23 19:02:35.428 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a5993421
+09-23 19:02:35.430 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d8a39efe
+09-23 19:02:35.434 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7dbcbe55
+09-23 19:02:35.437 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a6c43964
+09-23 19:02:35.439 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 52738613
+09-23 19:02:35.442 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 21231ae3
+09-23 19:02:35.445 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 23aaca32
+09-23 19:02:35.448 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 74f08125
+09-23 19:02:35.451 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3b0bc8dd
+09-23 19:02:35.453 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 1bb17fcc
+09-23 19:02:35.456 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0e59d97b
+09-23 19:02:35.460 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dd5561a2
+09-23 19:02:35.462 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2fcb0c53
+09-23 19:02:35.465 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 841bbfa4
+09-23 19:02:35.469 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 269bba47
+09-23 19:02:35.472 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b5135fd6
+09-23 19:02:35.475 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b57a4af9
+09-23 19:02:35.478 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e5a9a719
+09-23 19:02:35.481 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 98fe5cd8
+09-23 19:02:35.483 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 64addbe7
+09-23 19:02:35.486 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0146d99f
+09-23 19:02:35.489 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded af20e0ce
+09-23 19:02:35.492 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 23fc09b1
+09-23 19:02:35.495 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7fa109ba
+09-23 19:02:35.498 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d12931cb
+09-23 19:02:35.501 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8667fedc
+09-23 19:02:35.504 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 9ef68c64
+09-23 19:02:35.507 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 75ef1155
+09-23 19:02:35.510 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f8302e62
+09-23 19:02:35.513 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 559ffcc2
+09-23 19:02:35.516 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ff90aff3
+09-23 19:02:35.519 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 815da8c4
+09-23 19:02:35.522 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dd0a683d
+09-23 19:02:35.525 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 4a5679ac
+09-23 19:02:35.527 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 15b646db
+09-23 19:02:35.531 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d973c668
+09-23 19:02:35.533 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7f751e69
+09-23 19:02:35.536 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b2fc50c6
+09-23 19:02:35.539 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 01598f48
+09-23 19:02:35.542 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cd663f49
+09-23 19:02:35.545 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 80eca826
+09-23 19:02:35.547 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/dc910c0e.bin
+09-23 19:02:35.549 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/2eb704df.bin
+09-23 19:02:35.551 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/635737b0.bin
+09-23 19:02:35.553 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/96667239.bin
+09-23 19:02:35.556 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6954a7f8.bin
+09-23 19:02:35.559 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/aecfa487.bin
+09-23 19:02:35.561 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b6e72c0c.bin
+09-23 19:02:35.563 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d641751d.bin
+09-23 19:02:35.566 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3021006a.bin
+09-23 19:02:35.568 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3c0a4a83.bin
+09-23 19:02:35.571 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/e9949fd2.bin
+09-23 19:02:35.573 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/8e9a7c45.bin
+09-23 19:02:35.576 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/96667239.bin
+09-23 19:02:35.578 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6954a7f8.bin
+09-23 19:02:35.580 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/aecfa487.bin
+09-23 19:02:35.583 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b6e72c0c.bin
+09-23 19:02:35.585 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d641751d.bin
+09-23 19:02:35.587 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3021006a.bin
+09-23 19:02:35.589 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/dc910c0e.bin
+09-23 19:02:35.591 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/2eb704df.bin
+09-23 19:02:35.593 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/635737b0.bin
+09-23 19:02:35.595 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/96667239.bin
+09-23 19:02:35.598 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6954a7f8.bin
+09-23 19:02:35.600 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/aecfa487.bin
+09-23 19:02:35.602 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b6e72c0c.bin
+09-23 19:02:35.604 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d641751d.bin
+09-23 19:02:35.607 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3021006a.bin
+09-23 19:02:35.609 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3c0a4a83.bin
+09-23 19:02:35.611 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/e9949fd2.bin
+09-23 19:02:35.613 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/8e9a7c45.bin
+09-23 19:02:35.616 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/96667239.bin
+09-23 19:02:35.618 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6954a7f8.bin
+09-23 19:02:35.620 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/aecfa487.bin
+09-23 19:02:35.622 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b6e72c0c.bin
+09-23 19:02:35.624 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d641751d.bin
+09-23 19:02:35.626 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3021006a.bin
+09-23 19:02:35.628 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/dc910c0e.bin
+09-23 19:02:35.630 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/2eb704df.bin
+09-23 19:02:35.632 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/635737b0.bin
+09-23 19:02:35.634 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/96667239.bin
+09-23 19:02:35.636 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6954a7f8.bin
+09-23 19:02:35.639 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/aecfa487.bin
+09-23 19:02:35.642 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b6e72c0c.bin
+09-23 19:02:35.644 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d641751d.bin
+09-23 19:02:35.647 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3021006a.bin
+09-23 19:02:35.649 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3c0a4a83.bin
+09-23 19:02:35.652 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/e9949fd2.bin
+09-23 19:02:35.654 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/8e9a7c45.bin
+09-23 19:02:35.656 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/96667239.bin
+09-23 19:02:35.658 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6954a7f8.bin
+09-23 19:02:35.663 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/aecfa487.bin
+09-23 19:02:35.665 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b6e72c0c.bin
+09-23 19:02:35.667 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d641751d.bin
+09-23 19:02:35.669 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/3021006a.bin
+09-23 19:02:35.672 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/fa046aa8.bin
+09-23 19:02:35.674 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/474d85a9.bin
+09-23 19:02:35.676 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/a74de406.bin
+09-23 19:02:35.678 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/112c1c4b.bin
+09-23 19:02:35.680 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bfa3f43a.bin
+09-23 19:02:35.682 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d8803dad.bin
+09-23 19:02:35.684 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bd68f70e.bin
+09-23 19:02:35.686 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/0f8eefdf.bin
+09-23 19:02:35.689 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/442f22b0.bin
+09-23 19:02:35.691 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6b0acc9d.bin
+09-23 19:02:35.693 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/4bb0838c.bin
+09-23 19:02:35.710 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/97111a3b.bin
+09-23 19:02:35.713 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/112c1c4b.bin
+09-23 19:02:35.715 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bfa3f43a.bin
+09-23 19:02:35.718 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d8803dad.bin
+09-23 19:02:35.720 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bd68f70e.bin
+09-23 19:02:35.722 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/0f8eefdf.bin
+09-23 19:02:35.724 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/442f22b0.bin
+09-23 19:02:35.727 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/fa046aa8.bin
+09-23 19:02:35.729 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/474d85a9.bin
+09-23 19:02:35.731 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/a74de406.bin
+09-23 19:02:35.734 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/112c1c4b.bin
+09-23 19:02:35.736 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bfa3f43a.bin
+09-23 19:02:35.738 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d8803dad.bin
+09-23 19:02:35.741 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bd68f70e.bin
+09-23 19:02:35.743 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/0f8eefdf.bin
+09-23 19:02:35.746 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/442f22b0.bin
+09-23 19:02:35.749 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6b0acc9d.bin
+09-23 19:02:35.752 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/4bb0838c.bin
+09-23 19:02:35.755 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/97111a3b.bin
+09-23 19:02:35.757 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/112c1c4b.bin
+09-23 19:02:35.760 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bfa3f43a.bin
+09-23 19:02:35.763 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d8803dad.bin
+09-23 19:02:35.765 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bd68f70e.bin
+09-23 19:02:35.768 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/0f8eefdf.bin
+09-23 19:02:35.770 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/442f22b0.bin
+09-23 19:02:35.773 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/fa046aa8.bin
+09-23 19:02:35.776 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/474d85a9.bin
+09-23 19:02:35.779 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/a74de406.bin
+09-23 19:02:35.782 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/112c1c4b.bin
+09-23 19:02:35.784 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bfa3f43a.bin
+09-23 19:02:35.787 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d8803dad.bin
+09-23 19:02:35.789 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bd68f70e.bin
+09-23 19:02:35.792 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/0f8eefdf.bin
+09-23 19:02:35.795 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/442f22b0.bin
+09-23 19:02:35.797 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/6b0acc9d.bin
+09-23 19:02:35.800 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/4bb0838c.bin
+09-23 19:02:35.803 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/97111a3b.bin
+09-23 19:02:35.805 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/112c1c4b.bin
+09-23 19:02:35.808 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bfa3f43a.bin
+09-23 19:02:35.811 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d8803dad.bin
+09-23 19:02:35.814 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/bd68f70e.bin
+09-23 19:02:35.816 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/0f8eefdf.bin
+09-23 19:02:35.818 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/442f22b0.bin
+09-23 19:02:35.821 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b5a59a96.bin
+09-23 19:02:35.824 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/272df507.bin
+09-23 19:02:35.827 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/e1b2f878.bin
+09-23 19:02:35.829 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/599485d1.bin
+09-23 19:02:35.832 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/7963e110.bin
+09-23 19:02:35.835 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/44c3ae3f.bin
+09-23 19:02:35.838 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/944190b4.bin
+09-23 19:02:35.841 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/92810f25.bin
+09-23 19:02:35.845 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/413b5832.bin
+09-23 19:02:35.848 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/803e17eb.bin
+09-23 19:02:35.852 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/ad7984da.bin
+09-23 19:02:35.857 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d43893cd.bin
+09-23 19:02:35.860 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/599485d1.bin
+09-23 19:02:35.862 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/7963e110.bin
+09-23 19:02:35.865 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/44c3ae3f.bin
+09-23 19:02:35.868 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/944190b4.bin
+09-23 19:02:35.871 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/92810f25.bin
+09-23 19:02:35.873 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/413b5832.bin
+09-23 19:02:35.876 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b5a59a96.bin
+09-23 19:02:35.878 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/272df507.bin
+09-23 19:02:35.881 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/e1b2f878.bin
+09-23 19:02:35.883 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/599485d1.bin
+09-23 19:02:35.884 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/7963e110.bin
+09-23 19:02:35.886 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/44c3ae3f.bin
+09-23 19:02:35.888 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/944190b4.bin
+09-23 19:02:35.890 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/92810f25.bin
+09-23 19:02:35.892 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/413b5832.bin
+09-23 19:02:35.894 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/803e17eb.bin
+09-23 19:02:35.896 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/ad7984da.bin
+09-23 19:02:35.898 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d43893cd.bin
+09-23 19:02:35.900 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/599485d1.bin
+09-23 19:02:35.902 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/7963e110.bin
+09-23 19:02:35.904 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/44c3ae3f.bin
+09-23 19:02:35.906 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/944190b4.bin
+09-23 19:02:35.908 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/92810f25.bin
+09-23 19:02:35.910 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/413b5832.bin
+09-23 19:02:35.913 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/b5a59a96.bin
+09-23 19:02:35.915 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/272df507.bin
+09-23 19:02:35.917 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/e1b2f878.bin
+09-23 19:02:35.919 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/599485d1.bin
+09-23 19:02:35.921 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/7963e110.bin
+09-23 19:02:35.923 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/44c3ae3f.bin
+09-23 19:02:35.925 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/944190b4.bin
+09-23 19:02:35.927 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/92810f25.bin
+09-23 19:02:35.929 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/413b5832.bin
+09-23 19:02:35.931 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/803e17eb.bin
+09-23 19:02:35.933 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/ad7984da.bin
+09-23 19:02:35.936 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/d43893cd.bin
+09-23 19:02:35.938 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/599485d1.bin
+09-23 19:02:35.940 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/7963e110.bin
+09-23 19:02:35.943 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/44c3ae3f.bin
+09-23 19:02:35.945 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/944190b4.bin
+09-23 19:02:35.947 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/92810f25.bin
+09-23 19:02:35.950 I/godot   ( 7673): [BAKE] Disk cache MISS: file not found /data/data/com.example.infiltraitor/files/damage_atom_cache/413b5832.bin
+09-23 19:02:35.953 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7c862013
+09-23 19:02:35.957 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2a107562
+09-23 19:02:35.960 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a7cf5855
+09-23 19:02:35.965 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 558b1132
+09-23 19:02:35.970 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 530361e3
+09-23 19:02:35.975 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a89149b4
+09-23 19:02:35.980 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0ce26ecd
+09-23 19:02:35.984 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6ce98b7c
+09-23 19:02:35.989 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b8e7f2eb
+09-23 19:02:35.994 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 452e18ad
+09-23 19:02:35.999 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3318c45c
+09-23 19:02:36.003 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7dd9f74b
+09-23 19:02:36.007 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0ba3e4b4
+09-23 19:02:36.010 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 09e36325
+09-23 19:02:36.013 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b89dac32
+09-23 19:02:36.016 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8bedfaf3
+09-23 19:02:36.019 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded e1fd47c2
+09-23 19:02:36.022 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dfbb6135
+09-23 19:02:36.025 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 34f32541
+09-23 19:02:36.029 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6ec48540
+09-23 19:02:36.032 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c76a10af
+09-23 19:02:36.035 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded d3f60018
+09-23 19:02:36.038 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 20a14a59
+09-23 19:02:36.041 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ace0b9b6
+09-23 19:02:36.045 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f7198937
+09-23 19:02:36.048 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 58b44d06
+09-23 19:02:36.051 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f8b3eea9
+09-23 19:02:36.054 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 38eb88c7
+09-23 19:02:36.058 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c7632e56
+09-23 19:02:36.061 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c7ca1979
+09-23 19:02:36.064 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a72abf26
+09-23 19:02:36.067 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f209f0d7
+09-23 19:02:36.070 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 2797a648
+09-23 19:02:36.073 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded f8ff0191
+09-23 19:02:36.076 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 18ce5cd0
+09-23 19:02:36.079 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8b75ecff
+09-23 19:02:36.083 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 5efcfd35
+09-23 19:02:36.086 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8cfc8fc4
+09-23 19:02:36.089 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0b2f96f3
+09-23 19:02:36.093 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 92cecfdc
+09-23 19:02:36.097 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a4e4242d
+09-23 19:02:36.100 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8c07daba
+09-23 19:02:36.103 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dfa711db
+09-23 19:02:36.106 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0d804f8a
+09-23 19:02:36.109 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a6fb333d
+09-23 19:02:36.112 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 42ba5c0b
+09-23 19:02:36.116 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6c3ae5fa
+09-23 19:02:36.119 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 0a0e7d6d
+09-23 19:02:36.123 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded edb35aca
+09-23 19:02:36.126 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded bfda1d1b
+09-23 19:02:36.129 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 20b960ec
+09-23 19:02:36.133 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c2104765
+09-23 19:02:36.136 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded c3d0c8f4
+09-23 19:02:36.139 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 158aa423
+09-23 19:02:36.142 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 68b1ffea
+09-23 19:02:36.145 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 3ad8c23b
+09-23 19:02:36.149 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded ef782b8c
+09-23 19:02:36.152 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6363eeab
+09-23 19:02:36.155 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 909f5b9a
+09-23 19:02:36.158 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 1016a78d
+09-23 19:02:36.161 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 6e06b52c
+09-23 19:02:36.164 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 00baa3bd
+09-23 19:02:36.167 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 673fc00a
+09-23 19:02:36.170 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cde764b3
+09-23 19:02:36.173 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 7caeee82
+09-23 19:02:36.176 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 21b4caf5
+09-23 19:02:36.179 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 8acdbdd2
+09-23 19:02:36.181 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dd436883
+09-23 19:02:36.184 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded a4edc154
+09-23 19:02:36.186 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dfdfbf6d
+09-23 19:02:36.189 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded cdca6b1c
+09-23 19:02:36.192 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 188b9e0b
+09-23 19:02:36.195 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 830be869
+09-23 19:02:36.198 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded dd0a9068
+09-23 19:02:36.201 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 28b945f7
+09-23 19:02:36.204 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b089f580
+09-23 19:02:36.206 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 1e005881
+09-23 19:02:36.210 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b66a245e
+09-23 19:02:36.213 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b28e52ff
+09-23 19:02:36.215 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded b4287fae
+09-23 19:02:36.218 I/godot   ( 7673): [BAKE] Disk cache HIT: loaded 20176791
+09-23 19:02:36.218 I/godot   ( 7673): [DamageVariantBaker] Baked 447 atoms across 9 declared material(s), 9 floor material(s) in 2361 ms
+09-23 19:02:36.231 I/godot   ( 7673): [ROOM] Uploaded 1 damage-composite page(s) at load in 12 ms — off the first shot's impact frame
+09-23 19:02:36.231 I/godot   ( 7673): [VOXEL] Damage variant registry set (pre-baked variants available)
+09-23 19:02:36.231 I/godot   ( 7673): [ROOM] Initialized damage variant registry (447 atoms)
+09-23 19:02:38.127 I/godot   ( 7673): [VOXEL-STORE] built (map load: PLAYGROUND) — 216104 claim(s) in 2713 container(s), 0 irregular, 672 multi-claim cell(s), 13.59 MB, 1060 ms
+09-23 19:02:38.575 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:38.575 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:38.575 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:38.575 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:38.575 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:38.655 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:38.732 I/godot   ( 7673): [AgentSprite] layer 'hat/standing': 24 yaws at 15.0 deg
+09-23 19:02:38.839 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:38.914 I/godot   ( 7673): [AgentSprite] layer 'hat/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.016 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.094 I/godot   ( 7673): [AgentSprite] layer 'hat/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.095 I/godot   ( 7673): [OCC-03] Agent z_index set to 34 (max voxel layer z_index: 33, room size: (46, 24))
+09-23 19:02:39.143 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.143 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.143 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.143 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.143 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:39.222 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.259 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.259 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.259 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.259 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.259 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:39.332 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.363 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.363 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.363 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.363 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.363 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:39.438 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.470 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.470 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.470 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.470 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.470 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:39.544 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.575 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.575 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.575 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.575 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.575 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:39.651 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.682 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.682 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.682 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.682 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.682 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:39.755 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.786 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.786 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.786 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.786 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.786 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:39.862 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.893 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.893 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.893 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.893 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.893 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:39.967 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:39.997 I/godot   ( 7673): [AgentSprite] step (1, 0) draws (0.894427, 0.447214) -> screen SE (fit 1.000) -> frame W
+09-23 19:02:39.997 I/godot   ( 7673): [AgentSprite] step (0, 1) draws (-0.894427, 0.447214) -> screen SW (fit 1.000) -> frame S
+09-23 19:02:39.997 I/godot   ( 7673): [AgentSprite] step (-1, 0) draws (-0.894427, -0.447214) -> screen NW (fit 1.000) -> frame E
+09-23 19:02:39.997 I/godot   ( 7673): [AgentSprite] step (0, -1) draws (0.894427, -0.447214) -> screen NE (fit 1.000) -> frame N
+09-23 19:02:39.997 I/godot   ( 7673): [AgentSprite] head yaw mapping: grid 0 -> yaw 0, handedness -1
+09-23 19:02:40.072 I/godot   ( 7673): [AgentSprite] layer 'head/standing': 24 yaws at 15.0 deg
+09-23 19:02:40.085 I/godot   ( 7673): [Room] Light registry initialized with 12 map lights:
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_1 @ cell(6,4) radius=7 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_2 @ cell(17,4) radius=6 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_3 @ cell(12,11) radius=7 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_4 @ cell(11,10) radius=10 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_5 @ cell(16,11) radius=8 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_6 @ cell(24,4) radius=7 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_7 @ cell(28,4) radius=7 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_8 @ cell(32,4) radius=7 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_9 @ cell(36,4) radius=7 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_10 @ cell(40,4) radius=7 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_11 @ cell(26,9) radius=8 type=omni
+09-23 19:02:40.085 I/godot   ( 7673):   - map_light_12 @ cell(34,9) radius=8 type=omni
+09-23 19:02:40.087 I/godot   ( 7673): [Room] Tile semantics initialized with 163 tiles, 12 light anchors
+09-23 19:02:46.981 I/godot   ( 7673): 
+09-23 19:02:46.981 I/godot   ( 7673): Attempting to resolve: facade_concrete (folder concrete)
+09-23 19:02:46.981 I/godot   ( 7673):   [USER] File not found: user://textures/concrete/facade_concrete.png
+09-23 19:02:46.981 I/godot   ( 7673):   [USER] File not found: user://textures/concrete/facade_concrete.webp
+09-23 19:02:47.009 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/concrete/facade_concrete.png
+09-23 19:02:47.009 I/godot   ( 7673): [RESOLVER] facade_concrete resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:47.047 I/godot   ( 7673): 
+09-23 19:02:47.047 I/godot   ( 7673): Attempting to resolve: facade_metal (folder metal)
+09-23 19:02:47.047 I/godot   ( 7673):   [USER] File not found: user://textures/metal/facade_metal.png
+09-23 19:02:47.048 I/godot   ( 7673):   [USER] File not found: user://textures/metal/facade_metal.webp
+09-23 19:02:47.085 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/metal/facade_metal.png
+09-23 19:02:47.085 I/godot   ( 7673): [RESOLVER] facade_metal resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:47.126 I/godot   ( 7673): 
+09-23 19:02:47.126 I/godot   ( 7673): Attempting to resolve: facade_stone (folder stone)
+09-23 19:02:47.126 I/godot   ( 7673):   [USER] File not found: user://textures/stone/facade_stone.png
+09-23 19:02:47.126 I/godot   ( 7673):   [USER] File not found: user://textures/stone/facade_stone.webp
+09-23 19:02:47.159 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/stone/facade_stone.png
+09-23 19:02:47.159 I/godot   ( 7673): [RESOLVER] facade_stone resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:47.200 I/godot   ( 7673): 
+09-23 19:02:47.200 I/godot   ( 7673): Attempting to resolve: facade_wood (folder wood)
+09-23 19:02:47.201 I/godot   ( 7673):   [USER] File not found: user://textures/wood/facade_wood.png
+09-23 19:02:47.201 I/godot   ( 7673):   [USER] File not found: user://textures/wood/facade_wood.webp
+09-23 19:02:47.233 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/wood/facade_wood.png
+09-23 19:02:47.233 I/godot   ( 7673): [RESOLVER] facade_wood resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:47.272 I/godot   ( 7673): 
+09-23 19:02:47.272 I/godot   ( 7673): Attempting to resolve: facade_brick (folder brick)
+09-23 19:02:47.272 I/godot   ( 7673):   [USER] File not found: user://textures/brick/facade_brick.png
+09-23 19:02:47.272 I/godot   ( 7673):   [USER] File not found: user://textures/brick/facade_brick.webp
+09-23 19:02:47.308 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/brick/facade_brick.png
+09-23 19:02:47.308 I/godot   ( 7673): [RESOLVER] facade_brick resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:47.348 I/godot   ( 7673): 
+09-23 19:02:47.348 I/godot   ( 7673): Attempting to resolve: facade_cardboard (folder cardboard)
+09-23 19:02:47.348 I/godot   ( 7673):   [USER] File not found: user://textures/cardboard/facade_cardboard.png
+09-23 19:02:47.348 I/godot   ( 7673):   [USER] File not found: user://textures/cardboard/facade_cardboard.webp
+09-23 19:02:47.377 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/cardboard/facade_cardboard.png
+09-23 19:02:47.377 I/godot   ( 7673): [RESOLVER] facade_cardboard resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:47.414 I/godot   ( 7673): 
+09-23 19:02:47.414 I/godot   ( 7673): Attempting to resolve: facade_fabric (folder fabric)
+09-23 19:02:47.414 I/godot   ( 7673):   [USER] File not found: user://textures/fabric/facade_fabric.png
+09-23 19:02:47.414 I/godot   ( 7673):   [USER] File not found: user://textures/fabric/facade_fabric.webp
+09-23 19:02:47.441 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/fabric/facade_fabric.png
+09-23 19:02:47.441 I/godot   ( 7673): [RESOLVER] facade_fabric resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:47.481 I/godot   ( 7673): 
+09-23 19:02:47.481 I/godot   ( 7673): Attempting to resolve: facade_plywood (folder plywood)
+09-23 19:02:47.481 I/godot   ( 7673):   [USER] File not found: user://textures/plywood/facade_plywood.png
+09-23 19:02:47.481 I/godot   ( 7673):   [USER] File not found: user://textures/plywood/facade_plywood.webp
+09-23 19:02:47.515 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/plywood/facade_plywood.png
+09-23 19:02:47.515 I/godot   ( 7673): [RESOLVER] facade_plywood resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:47.596 I/godot   ( 7673): 
+09-23 19:02:47.596 I/godot   ( 7673): Attempting to resolve: facade_earth (folder earth)
+09-23 19:02:47.596 I/godot   ( 7673):   [USER] File not found: user://textures/earth/facade_earth.png
+09-23 19:02:47.596 I/godot   ( 7673):   [USER] File not found: user://textures/earth/facade_earth.webp
+09-23 19:02:47.631 I/godot   ( 7673):   [DEFAULT] Validation PASS: res://ASSETS/materials/earth/facade_earth.png
+09-23 19:02:47.631 I/godot   ( 7673): [RESOLVER] facade_earth resolved from DEFAULT.png (dims 1024x512)
+09-23 19:02:50.393 I/godot   ( 7673): [BOARD3D] 215432 voxel(s) (slices 69440, columns 672, slabs 145992; the 2D board holds 64 cell(s)) → 108772 face(s) → 732 quad(s) in 276 chunk(s), 11 material(s), plane levels 78..103; collect 1833 ms, mesh 1613 ms; skip 2D writes true; source store
+09-23 19:02:51.892 I/godot   ( 7673): [TestZone] 0 pickups
+09-23 19:02:52.174 I/godot   ( 7673): [DEV-HUD-01] DEV VISION Status Panel initialized
+09-23 19:02:52.181 I/godot   ( 7673): [DEBUG] _ready() complete, starting probe
+09-23 19:02:52.181 I/godot   ( 7673): [SLICE-02 probe] ===== STARTING ALIGNMENT CHECK =====
+09-23 19:02:52.182 I/godot   ( 7673): [SLICE-02 probe] floor_cell = (0, 0)  voxel_cell = (0, 0)
+09-23 19:02:52.182 I/godot   ( 7673): [SLICE-02 probe] floor_map=(128.0, 64.0)  voxel_map=(16.0, 8.0)
+09-23 19:02:52.182 I/godot   ( 7673): [SLICE-02 probe] floor_adjusted=(0.0, 0.0)  voxel_adjusted=(0.0, 0.0)
+09-23 19:02:52.182 I/godot   ( 7673): [SLICE-02 probe] canon_pos=(0.0, 512.0)  voxel_pos=(112.0, 576.0)  delta=(112.0, 64.0) px
+09-23 19:02:52.182 I/godot   ( 7673): [SLICE-02 probe] INFO: no block_* tile found for footprint check
+09-23 19:02:52.184 V/Godot   ( 7673): OnGodotMainLoopStarted
+09-23 19:02:53.992 I/godot   ( 7673): [GLASS-TILE] mirrored 2240 glass cell(s) into the opaque layers, removed 0
+09-23 19:02:54.115 I/godot   ( 7673): [SCENARIO] 4 step(s)
+09-23 19:02:54.115 I/godot   ( 7673): [SCENARIO] 1/4 framing portrait
+09-23 19:02:54.116 I/godot   ( 7673): [SCENARIO] 2/4 zoom 0.5
+09-23 19:02:54.116 I/godot   ( 7673): [SCENARIO] 3/4 wait 25
+09-23 19:02:56.820 I/godot   ( 7673): [FRAME-PROBE] 44.9 ms/frame · render cpu 0.8 ms · render gpu 31.7 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 78.3 ms · physics 32.3 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:02:56.821 I/godot   ( 7673): [FRAME-SPLIT] per frame: guard cone smooth draw 30.64 ms (8/f) · sprite light+throw 0.66 ms (10/f) · room temporal lights 0.09 ms (1/f) · room vision fog 0.07 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:02:58.030 I/godot   ( 7673): [FRAME-PROBE] 20.3 ms/frame · render cpu 0.7 ms · render gpu 17.4 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 47.8 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:02:58.030 I/godot   ( 7673): [FRAME-SPLIT] per frame: guard cone smooth draw 1.24 ms (0/f) · sprite light+throw 0.55 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:02:59.170 I/godot   ( 7673): [FRAME-PROBE] 19.0 ms/frame · render cpu 0.8 ms · render gpu 17.6 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 32.0 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:02:59.170 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.61 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:00.321 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.7 ms · render gpu 17.8 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.7 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:00.321 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.55 ms (10/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:01.471 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.7 ms · render gpu 17.7 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.7 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:01.471 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.59 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:02.656 I/godot   ( 7673): [FRAME-PROBE] 19.7 ms/frame · render cpu 1.4 ms · render gpu 17.8 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 23.0 ms · physics 0.2 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:02.656 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.68 ms (10/f) · room temporal lights 0.08 ms (1/f) · room vision fog 0.07 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:03.806 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 1.6 ms · render gpu 17.6 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 23.6 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:03.806 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.59 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:04.957 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.8 ms · render gpu 17.5 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.6 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:04.958 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.51 ms (10/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:06.108 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 1.4 ms · render gpu 17.7 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.6 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:06.108 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.60 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:07.269 I/godot   ( 7673): [FRAME-PROBE] 19.4 ms/frame · render cpu 0.8 ms · render gpu 17.8 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.8 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:07.269 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.58 ms (10/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:08.420 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.8 ms · render gpu 17.7 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 23.2 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:08.420 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.57 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:09.571 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.7 ms · render gpu 17.8 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.6 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:09.571 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.60 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:10.722 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.7 ms · render gpu 17.6 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.6 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:10.722 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.58 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:11.861 I/godot   ( 7673): [FRAME-PROBE] 19.0 ms/frame · render cpu 0.8 ms · render gpu 18.4 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.9 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:11.862 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.58 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:13.022 I/godot   ( 7673): [FRAME-PROBE] 19.4 ms/frame · render cpu 1.6 ms · render gpu 18.1 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 24.7 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:13.023 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.61 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:14.173 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.7 ms · render gpu 17.8 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 24.4 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:14.173 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.54 ms (10/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:15.324 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.7 ms · render gpu 17.5 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.7 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:15.324 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.59 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:16.463 I/godot   ( 7673): [FRAME-PROBE] 19.0 ms/frame · render cpu 0.7 ms · render gpu 17.7 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.7 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:16.463 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.54 ms (10/f) · room temporal lights 0.06 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:17.614 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.7 ms · render gpu 17.8 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.8 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:17.614 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.62 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.04 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:18.765 I/godot   ( 7673): [FRAME-PROBE] 19.2 ms/frame · render cpu 0.8 ms · render gpu 18.0 ms · 91 draw call(s) · 10812 primitive(s) · 108 object(s) · process 22.9 ms · physics 0.1 ms · 948 node(s) · view portrait 390x873 zoom 0.50 gu 95/1104 scale 1.00
+09-23 19:03:18.765 I/godot   ( 7673): [FRAME-SPLIT] per frame: sprite light+throw 0.61 ms (10/f) · room temporal lights 0.07 ms (1/f) · room vision fog 0.06 ms (1/f) · guard attention 0.03 ms (9/f) · room enemy visibility 0.02 ms (1/f)
+09-23 19:03:19.058 I/godot   ( 7673): [SCENARIO] 4/4 quit
+09-23 19:03:23.142 V/Godot   ( 7673): OnGodotTerminating
+[DIAG-02] com.example.infiltraitor exited on its own at 19:03:26 — capture ends

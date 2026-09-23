@@ -113,6 +113,24 @@
     reproduced, not explained). Desktop capture: the live figure walks beside its billboard at the same size, with its
     real materials; it reads flatter than the sprite (lit only by the actor-layer lamps, no D17 relight tuning).
   - **Awaiting the Director's decision on S2** (live actors; it reopens `ACTOR` D17, D34, D42, D44, D62).
+  - **S3 — static props as meshes (Director, same day: "mede os props estáticos no Moto antes de decidir").** No prop
+    asset exists, so two stand-ins bracket it: `light` = a single-mesh CC0 rifle at ~1 GU (1 304 tris each), `heavy` =
+    the posed static agent statue (~10 000 tris in 64 parts each), 20 of each around the agent (`PROP_MESH`,
+    `PROP_KIND`, `PROP_NOLAMPS`). Moto, same APK, one boot each:
+
+    | configuration | ms/frame | render gpu | draw calls |
+    |---|---|---|---|
+    | base | 19.0–19.2 | 17.5–18.0 | 91 |
+    | 20 light, lit by the 12 real lamps | 28.7–29.0 | 27.3–27.6 | 109 |
+    | 20 light, no lamps | 21.6–21.8 | 20.2–20.3 | 109 |
+    | 20 heavy, lit by the 12 real lamps | 34.1–34.4 | 32.7–33.0 | 859 |
+    | 20 heavy, no lamps | 26.4–27.6 | 25.0–25.4 | 859 |
+
+    - **The real lamps are most of a mesh's cost, again:** +7 ms of the light props' +9.7 is per-pixel lighting (S1's
+      finding, on a smaller area). Without lamps, 20 light props cost +2.6 ms; 20 heavy ones +7.4 ms, which is their
+      200 800 tris and 768 extra draw calls — an asset-budget question (join parts, cap tris), not a renderer one.
+    - **Consequence for S2 too:** the walking rigs' +2.4 ms included the actor-layer lamps. A mesh lit the board's way
+      (a shader reading the same cell planes, like the board's faces) should cost near the no-lamp rows; not built.
 - **Next: the Director's call on S1 and S2; R3D-8 meanwhile.** The v1.18 block below is the previous state.
 
 **2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**

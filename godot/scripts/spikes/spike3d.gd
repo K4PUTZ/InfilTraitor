@@ -31,6 +31,46 @@ var _bones: Array = []
 var _t: float = 0.0
 
 
+## PROP_MESH=<n> PROP_KIND=light|heavy — n STATIC meshes (no skeleton) around the agent: `light` is one
+## single-mesh CC0 rifle scaled to furniture size (the cheap end), `heavy` the posed static agent statue
+## (~7.6k tris in many parts, the expensive end). No real prop asset exists yet.
+const PROP_LIGHT := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/Assault Rifle.glb"
+const PROP_HEAVY := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_posed_shotgun_lowered.glb"
+
+
+func add_props(room: Node, board: Node3D, count: int, kind: String) -> void:
+	var scene := load(PROP_HEAVY if kind == "heavy" else PROP_LIGHT) as PackedScene
+	if scene == null:
+		push_error("[Spike3D] cannot load the %s prop" % kind)
+		return
+	var agent_cell: Vector2i = room.get("agent").cell
+	var meshes: int = 0
+	var tris: int = 0
+	var placed: int = 0
+	var ring: int = 2
+	while placed < count:
+		for dx in range(-ring, ring + 1):
+			for dy in range(-ring, ring + 1):
+				if placed >= count or (abs(dx) != ring and abs(dy) != ring) or (dx + dy) % 2 != 0:
+					continue
+				var body := scene.instantiate() as Node3D
+				body.position = _cell_point(board, agent_cell + Vector2i(dx, dy))
+				body.scale = Vector3.ONE * (0.5 if kind != "heavy" else METRES_TO_UNITS)
+				body.rotation_degrees = Vector3(0.0, 30.0 * float(placed), 0.0)
+				add_child(body)
+				for mi in body.find_children("*", "MeshInstance3D", true, false):
+					var m := mi as MeshInstance3D
+					m.layers = 1 << (ACTOR_LAYER - 1)
+					meshes += 1
+					if m.mesh != null:
+						for s in range(m.mesh.get_surface_count()):
+							var idx: PackedInt32Array = m.mesh.surface_get_arrays(s)[Mesh.ARRAY_INDEX]
+							tris += idx.size() / 3
+				placed += 1
+		ring += 1
+	print("[SPIKE3D] static props: %d %s instance(s), %d MeshInstance3D, %d tris total" % [count, kind, meshes, tris])
+
+
 static func apply(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> Spike3D:
 	var spike := Spike3D.new()
 	spike.name = "Spike3D"
@@ -62,7 +102,10 @@ func _build(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> v
 		return Vector2(a["cell"] - agent_cell).length() < Vector2(b["cell"] - agent_cell).length())
 	var shadowed: int = 0
 	var lit_board: bool = light_mode != ""
-	if lit_board or mesh_count > 0:
+	## PROP_NOLAMPS=1: the props get NO real lamps (ambient only), to separate the geometry's cost from the
+	## per-pixel light's.
+	var props_lit: bool = int(DevFlags.value("PROP_MESH", "0")) > 0 and DevFlags.value("PROP_NOLAMPS", "0") != "1"
+	if lit_board or mesh_count > 0 or props_lit:
 		for i in range(lamps.size()):
 			var source: Dictionary = lamps[i]
 			var light := OmniLight3D.new()
@@ -81,6 +124,9 @@ func _build(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> v
 	print("[SPIKE3D] lights: mode=%s lamps=%d shadowed=%d board_lit=%s" % [
 		light_mode if lit_board else "(actors only)", lamps.size(), shadowed, lit_board])
 
+	var prop_count: int = int(DevFlags.value("PROP_MESH", "0"))
+	if prop_count > 0:
+		add_props(room, board, prop_count, DevFlags.value("PROP_KIND", "light"))
 	if mesh_count <= 0:
 		return
 	var scene := load(AGENT_GLB) as PackedScene

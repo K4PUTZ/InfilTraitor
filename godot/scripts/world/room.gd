@@ -3021,7 +3021,7 @@ func _start_board3d_live() -> void:
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	var spike_meshes: int = int(_dev_flag("ACTOR_MESH", "0"))
-	if spike_light != "" or spike_meshes > 0:
+	if spike_light != "" or spike_meshes > 0 or int(_dev_flag("PROP_MESH", "0")) > 0:
 		Spike3D.apply(self, live, spike_light, spike_meshes)
 	_attach_actor_billboards(live)
 	_attach_vfx_to_board(live)

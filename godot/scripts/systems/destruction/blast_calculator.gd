@@ -1469,6 +1469,8 @@ static var SOOT_EDGE_DROP_CHANCE: float = 0.12
 
 ## L1 balls by radius, built once: `[offset: Vector3i, distance: int]` rows.
 static var _soot_balls: Dictionary = {}
+const _SOOT_NEIGHBOURS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+	Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
 
 ## SOOT-VARY 1's per-cell distance shift, -1/0/+1, deterministic and independent of
@@ -1501,6 +1503,18 @@ static func soot_jitter(cell: Vector2i, level: int, ring: int) -> int:
 
 
 ## The soot plane's code for a tone: the same value on all three drawn faces.
+## SOOT-EDGE (Director, 2026-09-22: "escurece só os voxels imediatamente vizinhos aos
+## destruídos"): tone 0 is RESERVED for a voxel touching a destroyed one. Every other
+## stamped cell takes `band` 0..2 as tones 1..3, jittered, never rolled down to 0.
+static func soot_tone(cell: Vector2i, level: int, band: int, touches_hole: bool) -> int:
+	if touches_hole:
+		return 0
+	if band < 0 or band > FACE_SOOT_CLEAN - 2:
+		return -1
+	var t: int = soot_jitter(cell, level, band + 1)
+	return maxi(t, 1) if t >= 0 else -1
+
+
 static func soot_code(ring: int) -> int:
 	if ring < 0 or ring >= FACE_SOOT_CLEAN:
 		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
@@ -1533,7 +1547,8 @@ static func soot_ball(radius: int) -> Array:
 ## takes ring d - 1, a surviving seed itself (a dent) ring 0. Only cells holding a
 ## solid voxel (`VoxelStore.has_solid()`, hidden ones included) are kept; with no
 ## store every cell is. Returns `level -> {cell: ring}`, jitter already applied.
-static func stamp_around(seeds: Array, radius: int, store: VoxelStore) -> Dictionary:
+static func stamp_around(seeds: Array, radius: int, store: VoxelStore,
+		holes: Dictionary = {}) -> Dictionary:
 	var best: Dictionary = {}
 	var ball: Array = soot_ball(radius)
 	for seed: Vector3i in seeds:
@@ -1554,7 +1569,12 @@ static func stamp_around(seeds: Array, radius: int, store: VoxelStore) -> Dictio
 		var dist: int = int(best[k]) + soot_edge_offset(Vector2i(k.x, k.y), k.z)
 		if dist < 0 or dist > radius:
 			continue
-		var ring: int = soot_jitter(Vector2i(k.x, k.y), k.z, maxi(dist - 1, 0))
+		var touches: bool = false
+		for d: Vector3i in _SOOT_NEIGHBOURS:
+			if holes.has(k + d):
+				touches = true
+				break
+		var ring: int = soot_tone(Vector2i(k.x, k.y), k.z, maxi(dist - 1, 0), touches)
 		if ring < 0:
 			continue
 		if not out.has(k.z):

@@ -1288,7 +1288,8 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		i += 1
 		var key: Vector3i = row[0]
 		var cell := Vector2i(key.x, key.y)
-		var tone: int = BlastCalculatorClass.soot_jitter(cell, key.z, int(row[1]))
+		var tone: int = BlastCalculatorClass.soot_tone(cell, key.z, int(row[1]),
+			_touches_hole(s, key))
 		if tone >= 0 and (not soot_codes.has(key) or tone < int(soot_codes[key])):
 			var shown: int = -1 if voxel_renderer == null else \
 				BlastCalculatorClass.soot_ring_of_code(voxel_renderer.cell_soot_at(key.z, cell))
@@ -1340,11 +1341,23 @@ static func _soot_ring_by_distance(s: Dictionary, key: Vector3i) -> int:
 	var epicenter: Vector2i = s["epicenter"]
 	var crater_max: float = float(s["crater_max"])
 	var reach: float = float(s["gu_reach_voxels"])
-	var band: float = maxf((reach - crater_max) / float(BlastCalculatorClass.FACE_SOOT_CLEAN), 1.0)
+	## Three bands (tones 1..3); tone 0 belongs to the voxels touching a hole (SOOT-EDGE).
+	var band: float = maxf((reach - crater_max) / float(BlastCalculatorClass.FACE_SOOT_CLEAN - 1), 1.0)
 	var dz: float = float(key.z - GeometryCoords.PLAYABLE_LEVEL)
 	var dxy := Vector2(Vector2i(key.x, key.y) - epicenter)
 	var r: float = sqrt(dxy.length_squared() + dz * dz)
 	return int(maxf(r - crater_max, 0.0) / band)
+
+
+## SOOT-EDGE — does `key` touch a voxel this plan leaves DESTROYED (a hole, old or new)?
+static func _touches_hole(s: Dictionary, key: Vector3i) -> bool:
+	var delta: WorldDelta = s["delta"]
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	for d: Vector3i in EMBER_NEIGHBOURS:
+		var nv: Voxel = cell_to_voxel.get(key + d)
+		if nv != null and delta.state_of(nv) == Voxel.DamageState.DESTROYED:
+			return true
+	return false
 
 
 ## The soot code an entry carries for `key`: the tone this blast stamps there, or what

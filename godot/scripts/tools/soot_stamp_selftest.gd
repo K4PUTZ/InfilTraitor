@@ -144,8 +144,8 @@ func _test_stamp_nearest_seed_wins() -> void:
 	var expected_dist: int = 2 + BlastCalculatorClass.soot_edge_offset(Vector2i(4, 0), level)
 	var expected_between: int = -1
 	if expected_dist >= 0 and expected_dist <= radius:
-		expected_between = BlastCalculatorClass.soot_jitter(
-			Vector2i(4, 0), level, maxi(expected_dist - 1, 0))
+		expected_between = BlastCalculatorClass.soot_tone(
+			Vector2i(4, 0), level, maxi(expected_dist - 1, 0), false)
 	var between: int = int(lv.get(Vector2i(4, 0), -1))
 	_check(between == expected_between,
 		"a cell between two seeds takes the nearer seed's ring, edge-shifted (got %d, expected %d)"
@@ -154,8 +154,8 @@ func _test_stamp_nearest_seed_wins() -> void:
 	var seed_dist: int = 0 + BlastCalculatorClass.soot_edge_offset(Vector2i(0, 0), level)
 	var expected_seed: int = -1
 	if seed_dist >= 0 and seed_dist <= radius:
-		expected_seed = BlastCalculatorClass.soot_jitter(
-			Vector2i(0, 0), level, maxi(seed_dist - 1, 0))
+		expected_seed = BlastCalculatorClass.soot_tone(
+			Vector2i(0, 0), level, maxi(seed_dist - 1, 0), false)
 	_check(int(lv.get(Vector2i(0, 0), -2)) == expected_seed,
 		"a surviving seed takes ring 0, edge-shifted the same way (got %d, expected %d)"
 			% [int(lv.get(Vector2i(0, 0), -2)), expected_seed])
@@ -163,3 +163,13 @@ func _test_stamp_nearest_seed_wins() -> void:
 	## jitter can reach them either.
 	_check(not lv.has(Vector2i(-5, 0)) and not lv.has(Vector2i(11, 0)),
 		"nothing past both seeds' radius is stamped")
+	## SOOT-EDGE — tone 0 only beside a hole; never elsewhere.
+	var holes := {Vector3i(20, 0, level): true}
+	var edge: Dictionary = BlastCalculatorClass.stamp_around([Vector3i(20, 0, level)], 3, null, holes).get(level, {})
+	var zero_away: int = 0
+	for c2: Vector2i in edge:
+		var adjacent: bool = absi(c2.x - 20) + absi(c2.y) == 1
+		if int(edge[c2]) == 0 and not adjacent:
+			zero_away += 1
+	_check(int(edge.get(Vector2i(21, 0), -1)) == 0 and zero_away == 0,
+		"tone 0 lands on a hole's neighbour and nowhere else (%d elsewhere)" % zero_away)

@@ -5238,8 +5238,12 @@ func apply_shot_soot(touched: Array, radius: int = -1) -> void:
 		return
 	var use_radius: int = radius if radius >= 0 else weapon_soot_radius
 	var seeds: Array = []
+	var holes: Dictionary = {}
 	for v in touched:
-		seeds.append(Vector3i(v.grid_pos.x, v.grid_pos.y, v.level))
+		var k := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+		seeds.append(k)
+		if v.damage_state == Voxel.DamageState.DESTROYED:
+			holes[k] = true
 	var renderer: VoxelRenderer = _voxel_renderer
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -5247,7 +5251,7 @@ func apply_shot_soot(touched: Array, radius: int = -1) -> void:
 		return
 	var t0: int = Time.get_ticks_usec()
 	var changed: Dictionary = stamp_soot(BlastCalculator.stamp_around(
-		seeds, use_radius, VoxelStore.active))
+		seeds, use_radius, VoxelStore.active, holes))
 	_paint_soot(changed, "shot soot")
 	var n: int = 0
 	for level in changed:

@@ -73,7 +73,7 @@ enum Dir { TOP, SE, SW }
 const DIR_STEP: Array[Vector3i] = [Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]
 const DIR_NORMAL: Array[Vector3] = [Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]
 ## The 2D face shader's defaults, used only when its live material cannot be read.
-const FALLBACK_SOOT_MULT: Array[float] = [0.38, 0.72, 0.83, 0.92]
+const FALLBACK_SOOT_MULT: Array[float] = [0.38, 0.60, 0.76, 0.90]
 const FALLBACK_TONE: Array[float] = [1.0, 0.975, 0.945]
 
 ## ⚠️ THE MATHS HAPPENS IN sRGB, AND ONLY THE PRODUCT IS LINEARISED. The 2D path
@@ -95,7 +95,7 @@ uniform int rel_offset = -80;
 uniform ivec2 plane_origin = ivec2(64, 64);
 uniform int plane_size = 512;
 uniform float bucket_lum[12];
-uniform vec4 soot_mult = vec4(0.38, 0.72, 0.83, 0.92);
+uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
 uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
 varying vec3 v_world;

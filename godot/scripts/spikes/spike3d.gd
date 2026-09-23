@@ -26,6 +26,12 @@ const LAMP_HEIGHT: float = 0.9
 const METRES_TO_UNITS: float = 1.0 / 1.6
 const ACTOR_LAYER: int = 2
 
+const PLANES_SHADER := "res://godot/shaders/spike_mesh_planes.gdshader"
+## MESH_PLANES=1: actors and props are lit by the board's cell planes (no Godot light at all).
+var _planes: bool = false
+var _plane_src: ShaderMaterial = null
+var _converted: Dictionary = {}
+
 var _skeletons: Array = []
 var _bones: Array = []
 var _t: float = 0.0
@@ -58,6 +64,7 @@ func add_props(room: Node, board: Node3D, count: int, kind: String) -> void:
 				body.scale = Vector3.ONE * (0.5 if kind != "heavy" else METRES_TO_UNITS)
 				body.rotation_degrees = Vector3(0.0, 30.0 * float(placed), 0.0)
 				add_child(body)
+				_apply_planes(body)
 				for mi in body.find_children("*", "MeshInstance3D", true, false):
 					var m := mi as MeshInstance3D
 					m.layers = 1 << (ACTOR_LAYER - 1)
@@ -89,6 +96,12 @@ func _build(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> v
 	env.environment = environment
 	add_child(env)
 
+	_planes = DevFlags.value("MESH_PLANES", "0") == "1"
+	if _planes:
+		for i in range((board.get("_shader_materials") as Array).size()):
+			if not bool(board.get("_material_glass")[i]):
+				_plane_src = board.get("_shader_materials")[i]
+				break
 	var sources: Array = room.get("_current_light_sources")
 	var agent_cell: Vector2i = room.get("agent").cell
 	var lamps: Array = []
@@ -105,7 +118,7 @@ func _build(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> v
 	## PROP_NOLAMPS=1: the props get NO real lamps (ambient only), to separate the geometry's cost from the
 	## per-pixel light's.
 	var props_lit: bool = int(DevFlags.value("PROP_MESH", "0")) > 0 and DevFlags.value("PROP_NOLAMPS", "0") != "1"
-	if lit_board or mesh_count > 0 or props_lit:
+	if not _planes and (lit_board or mesh_count > 0 or props_lit):
 		for i in range(lamps.size()):
 			var source: Dictionary = lamps[i]
 			var light := OmniLight3D.new()
@@ -146,6 +159,7 @@ func _build(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> v
 		body.position = _cell_point(board, cell)
 		body.rotation_degrees = Vector3(0.0, 45.0 + 90.0 * float(i % 4), 0.0)
 		add_child(body)
+		_apply_planes(body)
 		for mi in body.find_children("*", "MeshInstance3D", true, false):
 			(mi as MeshInstance3D).layers = 1 << (ACTOR_LAYER - 1)
 			meshes += 1
@@ -175,6 +189,31 @@ func _build(room: Node, board: Node3D, light_mode: String, mesh_count: int) -> v
 			_bones.append(picked)
 	print("[SPIKE3D] actor meshes: %d instance(s), %d MeshInstance3D, %d surface(s), %d procedurally swung skeleton(s), %d bone(s) each (0 = the real walk plays)" % [
 		mesh_count, meshes, surfaces, _skeletons.size(), (_bones[0] as Array).size() if not _bones.is_empty() else 0])
+
+
+func _apply_planes(body: Node) -> void:
+	if not _planes or _plane_src == null:
+		return
+	var shader := load(PLANES_SHADER) as Shader
+	for mi in body.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m.mesh == null:
+			continue
+		for s in range(m.mesh.get_surface_count()):
+			var src: Material = m.get_active_material(s)
+			if not _converted.has(src):
+				var sm := ShaderMaterial.new()
+				sm.shader = shader
+				var std := src as BaseMaterial3D
+				if std != null:
+					sm.set_shader_parameter("albedo", std.albedo_color)
+					if std.albedo_texture != null:
+						sm.set_shader_parameter("albedo_tex", std.albedo_texture)
+						sm.set_shader_parameter("has_tex", 1.0)
+				for u in ["cell_plane", "level_base", "level_count", "mesh_ground_level", "plane_origin", "plane_size", "bucket_lum"]:
+					sm.set_shader_parameter(u, _plane_src.get_shader_parameter(u))
+				_converted[src] = sm
+			m.set_surface_override_material(s, _converted[src])
 
 
 func _cell_point(board: Node3D, cell: Vector2i) -> Vector3:

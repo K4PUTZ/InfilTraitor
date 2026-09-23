@@ -130,7 +130,24 @@
       finding, on a smaller area). Without lamps, 20 light props cost +2.6 ms; 20 heavy ones +7.4 ms, which is their
       200 800 tris and 768 extra draw calls — an asset-budget question (join parts, cap tris), not a renderer one.
     - **Consequence for S2 too:** the walking rigs' +2.4 ms included the actor-layer lamps. A mesh lit the board's way
-      (a shader reading the same cell planes, like the board's faces) should cost near the no-lamp rows; not built.
+      (a shader reading the same cell planes, like the board's faces) should cost near the no-lamp rows — built and
+      measured below.
+  - **Meshes lit the board's way, BUILT and MEASURED (Director: "constrói o shader e mede no Moto").**
+    `godot/shaders/spike_mesh_planes.gdshader`: unshaded, NO Godot light; each pixel reads the light bucket of the
+    floor cell under it from the board's own `cell_plane` array and ladder, times a fixed key term on the normal, times
+    the mesh's own albedo (`MESH_PLANES=1` converts every surface of the spike's rigs and props). Desktop: the live
+    figure now takes the floor's light and reads close to its billboard. Moto, same APK, one boot each:
+
+    | configuration | ms/frame | render gpu | draw calls |
+    |---|---|---|---|
+    | base | 19.0–19.2 | 17.5–17.8 | 91 |
+    | 9 walking rigs, planes | 20.1–20.3 | 18.4–19.0 | 93 |
+    | 20 light props, planes | 20.5–20.7 | 18.8–19.2 | 109 |
+    | 20 heavy props (200 800 tris, 1 280 parts), planes | 23.3–23.6 | 21.8–22.1 | 859 |
+
+    **9 live walking actors cost +1.0 ms, 20 static props +1.5 ms**, against +2.4 and +9.7 with real lamps. The heavy
+    stand-in's +4.3 ms is its asset (200k tris, 768 extra draws). Not done: soot and the cutaway on meshes, the weapon
+    in the hand, RAM against the atlases. **Awaiting the Director's decision on S2 (live actors) and S3 (props as meshes).**
 - **Next: the Director's call on S1 and S2; R3D-8 meanwhile.** The v1.18 block below is the previous state.
 
 **2026-09-22 (later) update (v1.18) — SOOT-STAMP: soot is stamped once per event, never derived (Director).**

@@ -21,6 +21,12 @@ ficar tudo limpinho parecido."* What the code does now:
   cook's SOOT phase 45 -> 206 ms over five grenades -> 15–19 ms each. Full record:
   `PROMPTS/AUDITS/SHOT_SOOT_PERF_2026-09-22.md`.
 
+**Tuned the same day on the Director's captures:** the blast's bands end inside the circle inscribed in the
+flood's GU diamond (x `DetonationPlanBuilder.SOOT_REACH_SCALE` 1.25) — running them to the flood's edge left a
+per-GU cut; tone 0 is reserved for a voxel touching a destroyed one (SOOT-EDGE, `BlastCalculator.soot_tone()`),
+the gradient is 0.60 / 0.76 / 0.90 (`soot_face_mult`); per-weapon `soot_radius`, ragged edge and wider rolls
+(SOOT-VARY). **Moto g04s:** shot soot 5.2 s -> 19 ms, blast SOOT phase 257 -> 1 142 ms growing -> 225–282 ms flat.
+
 Everything below is the history of the derived design.
 
 > ⏭️ **2026-09-21 — blast scorch timing changed:** it now darkens AFTER the crater in 4 timed steps (0.075 s each), see `DETONATION_PRESENTATION_MASTER_PLAN` (top note) and `RENDER3D_MASTER_PLAN` v1.13. The store and the ladder's tones are unchanged.

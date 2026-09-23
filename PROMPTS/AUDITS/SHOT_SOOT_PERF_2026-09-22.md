@@ -364,7 +364,7 @@ derivation were deleted with it.
 Seen on screen (scenario captures, 3D board, not kept): the blast's scorch is a dithered darkening around the
 crater on floor and walls with no GU blocks; the shot's scorch lands on the struck face and the floor at its
 base; an older blast's scorch beside the shot survives the shot. `shot_3d_gate.py`: PASSED (brick 6 997 px vs 2D
-control 7 441 px, concrete 10 015 vs 11 635). **Not measured on the Moto.**
+control 7 441 px, concrete 10 015 vs 11 635). Moto: see the last section.
 
 
 ## Next session — soot variation (Director, 2026-09-22: "deixa as 3 planejadas pra próxima sessão")

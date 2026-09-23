@@ -15,7 +15,10 @@
   crater, uploaded to the 3D board and restored two frames later.
 - Blast cook: the SOOT phase is a resumable per-voxel loop (15–19 ms per grenade, flat) instead of one un-budgeted
   BFS over every hole on the level (45 -> 206 ms over five grenades); SOOTWAVE 10 -> 92 ms growing became 12–15 ms.
-- **Not measured on the Moto.** Desktop only; the Moto runs 3–4x slower.
+- **Moto g04s, release APKs before/after (2026-09-22, `20d110f8`):** shot soot 5.2 s -> 19 ms; detonation MEAN frame
+  31.2–32.9 ms on all five grenades (3 of 5 were over 33.3 ms). Still over and not soot: the commit frame (~190 ms), the
+  cook's atomic LIGHT phase (~190 ms), the first shot after blasts (719 ms tail). Tuned after: tone 0 only beside a hole
+  (SOOT-EDGE), blast reach inside the flood. Session: `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
 
 **2026-09-22 (session close) update (v1.17) — SHOT SOOT LADDER FIXED; THE SPARK-ANCHOR TOOLING FIXED, THE GRADE ITSELF NOT TAKEN.**
 - **The shot's soot ladder — FIXED**, closing the other half of R3D-6 item 8. `fade_in_scoped_soot()` used to walk

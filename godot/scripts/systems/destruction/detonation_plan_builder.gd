@@ -1369,6 +1369,26 @@ static func _soot_code_at(s: Dictionary, key: Vector3i) -> int:
 	return voxel_renderer.cell_soot_at(key.z, Vector2i(key.x, key.y))
 
 
+## The map-wide occupancy AFTER this plan commits: the store's visible claims, less the claims the Delta
+## projects gone (not visible, or destroyed). Per claim and not per cell (R3D-13): a shared corner or junction
+## column stays occupied while one of its claims survives, which is what the committed world holds and what a
+## full relight reads. The per-cell `blast_cells` set this replaced emptied it at the first claim destroyed.
+static func _predicted_occupancy(s: Dictionary, voxel_renderer: VoxelRendererClass) -> Dictionary:
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		return voxel_renderer.build_occupancy()  ## reports the missing store itself
+	var gone: Dictionary = {}
+	var projections: Dictionary = (s["delta"] as WorldDelta).projections()
+	for voxel in projections:
+		var p: Array = projections[voxel]
+		if bool(p[WorldDelta.P_VISIBLE]) and int(p[WorldDelta.P_STATE]) != Voxel.DamageState.DESTROYED:
+			continue
+		var claim: int = store.claim_of(voxel)
+		if claim >= 0:
+			gone[claim] = true
+	return store.occupancy_dict_after(gone)
+
+
 ## --- Phase 6: ATOMIC. The single map-wide light-field query (§2). ----------
 ## Built ONCE, queried per cell below. VoxelLightField.build() never touches the
 ## TileMapLayer, and nothing here calls VoxelRenderer.apply_light_field().
@@ -1384,14 +1404,9 @@ static func _phase_light(s: Dictionary) -> void:
 	## the edge of the scoped set would see phantom holes beyond it. `build()` is
 	## lazy — this is one `get_used_cells()` walk, the buckets are still computed
 	## on first query in the soot wave.
-	var predict_destroyed: Dictionary = {}
-	for k in s["blast_cells"]:
-		predict_destroyed[k] = true
-	for k in s["weapon_cells"]:
-		predict_destroyed[k] = true
 	field.build(lights, ctx.get("shadow_results", []),
 		voxel_renderer.top_wall_level(),
-		voxel_renderer.build_occupancy(predict_destroyed), s["under_structure"])
+		_predicted_occupancy(s, voxel_renderer), s["under_structure"])
 	s["field"] = field
 	s["ring_keys"] = s["ring_of"].keys()
 	## D-7 (§7.4) — carry the field to the Delta. `_phase_soot_wave` fills

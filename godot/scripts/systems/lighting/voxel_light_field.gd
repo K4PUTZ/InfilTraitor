@@ -224,6 +224,17 @@ func _stale_cells(occupancy: Dictionary) -> Dictionary:
 	return stale
 
 
+## The cells (level -> Vector3i(x, y, level)) where this field's occupancy and `other` disagree: in one
+## and not the other. For the cook's gate: the field a blast cooked was built from a PREDICTED occupancy,
+## so a bucket that differs from a full re-derivation is traced to the cells that differ here first.
+func occupancy_differences(other: Dictionary) -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	for level: Variant in _union_keys(_occupancy, other):
+		for cell: Vector2i in _symmetric_difference(_occupancy.get(level), other.get(level)):
+			out.append(Vector3i(cell.x, cell.y, int(level)))
+	return out
+
+
 ## PERF-10 — the accumulated stale set, or the statement that no subset is valid.
 ## `has_stale_subset()` false means a caller MUST use the map-wide apply.
 func has_stale_subset() -> bool:

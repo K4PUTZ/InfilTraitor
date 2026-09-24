@@ -48,6 +48,10 @@
 ##   reload                               R3D-1b gate: F2's `load_map()` on the current map
 ##   save_restore                         R3D-1b gate: SaveState capture → reload → restore
 ##   perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()`
+##   relight                              R3D-13: the map-wide light repaint on the CURRENT world,
+##                                        in place — what a rotation or a restore runs, without
+##                                        either (a probe before and after names what the
+##                                        incremental light left different from a full relight)
 ##   passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a
 ##                                        count and a digest
 ##   occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from
@@ -74,7 +78,7 @@ const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3,
-	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1,
+	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0,
 	"occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
@@ -297,7 +301,7 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_occupancy_compare()")
 			if int(room.call("scenario_occupancy_compare", str(step["name"]))) < 0:
 				return _fail(step, "no comparison was made (see the error above)")
-		"shoot", "reload", "save_restore", "perspective":
+		"shoot", "reload", "save_restore", "perspective", "relight":
 			var method: String = "scenario_" + str(step["op"])
 			if not room.has_method(method):
 				return _fail(step, "Room has no %s()" % method)

@@ -446,6 +446,34 @@ func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:
 	return out
 
 
+## The occupancy the world will have once the claims in `gone` (claim -> true) are no longer visible.
+## Per CLAIM, where `occupancy_dict(predict_destroyed)` is per cell: a box corner is held by two slices and
+## a junction column by the column plus the slices around it, the plan destroys them one claim at a time,
+## and a cell is empty only when NO claim of it stays visible. Erasing the cell for the first destroyed
+## claim emptied cells the committed world still holds (R3D-13: 9 and 17 cells after PLAYGROUND's two
+## grenades), which put the cook's light 21 and 13 cells away from a full relight.
+func occupancy_dict_after(gone: Dictionary) -> Dictionary:
+	var out: Dictionary = occupancy_dict()
+	for claim: int in gone:
+		var i: int = claim * 3
+		var x: int = xyz[i]
+		var y: int = xyz[i + 1]
+		var level: int = xyz[i + 2]
+		var li: int = level - l0
+		if li < PAD or li >= nl - PAD:
+			continue
+		var survives: bool = false
+		var cell: int = cell_index(x, y, level)
+		if _multi.has(cell):
+			for other: int in _multi[cell]:
+				if (state[other] & 1) and not gone.has(other):
+					survives = true
+					break
+		if not survives:
+			(out[level] as Dictionary).erase(Vector2i(x, y))
+	return out
+
+
 ## x, y, level and state byte of every voxel of `container`, in the container's own order
 ## (stride `CELL_STRIDE`). From the active store when it holds the container, else off the
 ## objects. State: bit 0 visible, bits 1–2 damage — `state_byte()`'s packing.

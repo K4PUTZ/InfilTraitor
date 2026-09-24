@@ -43,8 +43,10 @@
 ##       for it). Requires: 1. N-view after E→S→W→N is IDENTICAL to before the rotation (voxels AND cell
 ##       planes); 2. the SaveState restore is IDENTICAL to the state it captured; 3. an F2 reload is
 ##       IDENTICAL to a fresh load (planes included); the rotation and the restore are strict on VOXELS and
-##       GEOMETRY, and print their cell-plane differences (two open findings, see `roundtrip()`; `--strict-planes`
-##       fails on them); 4. THE CONTROLS: the damaged state differs from the loaded one (so
+##       GEOMETRY, and on the cell PLANES of PLAYGROUND (earned 2026-09-24: 0 texels); GLASS prints its
+##       cell-plane difference (1 light texel, see `roundtrip()`; `--strict-planes` fails on it). The planes
+##       are compared where the board READS them (a visible non-glass cell), and the texels left out are
+##       counted on the line. 4. THE CONTROLS: the damaged state differs from the loaded one (so
 ##       identity is not an empty agreement).
 ##
 ## ⚠️ THE GATE IS EARNED ON THE UNCHANGED CODE FIRST (R3D-0). A 0-difference claim
@@ -204,8 +206,39 @@ def _fmt_table(table):
     return ", ".join("%s: %d" % (k, table[k]) for k in sorted(table)) or "none"
 
 
-def diff(a, b, first=20, out=print):
-    """Compare two loaded dumps. Returns a dict of counts; `identical` is the verdict."""
+def _glass_ids():
+    """The glass family, read off `glass_materials.gd` by the L2 hook's own parser, or None when it cannot be."""
+    try:
+        import check_invariants
+        return set(check_invariants._glass_family() or ()) or None
+    except ImportError:
+        return None
+
+
+def _plane_read_cells(d, glass):
+    """level -> set of (x, y) whose plane texel the 3D board reads: a cell with a visible claim that is not
+    glass. The opaque face shader samples the cell plane for the face's own cell; the three glass shaders
+    (`glass_pane3d`, `glass_tile`, `glass_pane`, and `glass_shading.gdshaderinc`) name neither the soot nor the
+    light plane, so a glass cell's texel is written and never read."""
+    cells = {}
+    for _kind_id, (n, coords, state) in d["containers"].items():
+        for i in range(n):
+            if state[i * 4] & 1 and d["materials"].get(state[i * 4 + 3]) not in glass:
+                x, y, level = struct.unpack_from("<iii", coords, i * 12)
+                cells.setdefault(level, set()).add((x, y))
+    return cells
+
+
+def diff(a, b, first=20, out=print, occupied_only=False):
+    """Compare two loaded dumps. Returns a dict of counts; `identical` is the verdict.
+
+    `occupied_only` compares the cell planes only on the cells the board READS (`_plane_read_cells`, in A or
+    B): a visible non-glass claim. Two classes of texel are never read, and both are measured, printed and
+    returned rather than dropped: (1) a cell with no visible voxel — the incremental light writers
+    (`apply_light_field_cells()` / `_gus()`) leave a bucket on a cell a blast just emptied where a full relight
+    leaves it unwritten (714 texels after PLAYGROUND's two grenades, 3 102 after the shot); (2) a glass cell —
+    `_soot_map` holds tone 0 on cracked glass the live wave never paints (260 texels on GLASS), and its light
+    is derived like any cell's, but no glass shader samples either plane."""
     def describe(d):
         voxels = sum(c[0] for c in d["containers"].values())
         return "%s — label %s, %d voxels in %d containers, %d plane level(s)" % (
@@ -257,6 +290,12 @@ def diff(a, b, first=20, out=print):
     plane_shape = []
     texels_compared = 0
     texel_diffs = 0
+    unoccupied_skipped = 0
+    glass = (_glass_ids() or set()) if occupied_only else set()
+    if occupied_only and not glass:
+        out("%s ⚠️ the glass roster could not be read: glass cells are compared like any other" % TAG)
+    vis_a = _plane_read_cells(a, glass) if occupied_only else None
+    vis_b = _plane_read_cells(b, glass) if occupied_only else None
     by_channel, plane_by_level, plane_examples = {}, {}, []
     for level in sorted(set(a["planes"]) & set(b["planes"])):
         wa, ha, fa, oxa, oya, da = a["planes"][level]
@@ -277,6 +316,11 @@ def diff(a, b, first=20, out=print):
             for j in range(row):
                 if ra[j] == rb[j]:
                     continue
+                if occupied_only:
+                    cell = (j // bpp - oxa, r - oya)
+                    if cell not in vis_a.get(level, ()) and cell not in vis_b.get(level, ()):
+                        unoccupied_skipped += 1
+                        continue
                 texel_diffs += 1
                 _count(by_channel, names[j % bpp])
                 _count(plane_by_level, level)
@@ -303,6 +347,9 @@ def diff(a, b, first=20, out=print):
         % (TAG, texel_diffs, texels_compared, _fmt_table(by_channel), _fmt_table(plane_by_level)))
     for line in plane_examples:
         out("%s   %s" % (TAG, line))
+    if occupied_only:
+        out("%s plane texels on cells the board does not read (no visible voxel, or glass), not counted: %d channel byte(s)"
+            % (TAG, unoccupied_skipped))
 
     identical = not (only_a or only_b or geometry or voxel_diffs or levels_only_a
                      or levels_only_b or plane_shape or texel_diffs)
@@ -312,7 +359,7 @@ def diff(a, b, first=20, out=print):
            len(levels_only_a) + len(levels_only_b) + len(plane_shape))))
     return {"identical": identical, "voxel_diffs": voxel_diffs, "voxels_compared": voxels_compared,
             "by_channel": dict(by_channel), "only": len(only_a) + len(only_b),
-            "texel_diffs": texel_diffs, "geometry": len(geometry),
+            "texel_diffs": texel_diffs, "geometry": len(geometry), "unoccupied_skipped": unoccupied_skipped,
             "containers_unmatched": len(only_a) + len(only_b)}
 
 
@@ -597,21 +644,32 @@ def roundtrip(args):
             continue
         quiet = []
         for before, after, what in ROUNDTRIP_PAIRS[map_id]:
-            result = diff(load(probes["rt_" + before]), load(probes["rt_" + after]), args.first, quiet.append)
+            result = diff(load(probes["rt_" + before]), load(probes["rt_" + after]), args.first, quiet.append,
+                          occupied_only=True)
             light = result["by_channel"].get("light(G)", 0)
             hard = result["texel_diffs"] - light
             if hard or light:
                 print("%s %s   (planes: %s)" % (GATE_TAG, map_id,
-                      "known open, see the header" if not (args.strict_planes or what == "F2 reload") else "STRICT"))
-            print("%s %s %-18s %s vs %s: %s — voxels %d/%d, plane texels %d (soot etc. %d, light %d)"
+                      "GLASS rim residual, see the header" if not (args.strict_planes or what == "F2 reload"
+                                                                  or map_id == "PLAYGROUND") else "STRICT"))
+            print("%s %s %-18s %s vs %s: %s — voxels %d/%d, plane texels %d (soot etc. %d, light %d; %d more on "
+                  "cells the board does not read, not counted)"
                   % (GATE_TAG, map_id, what, before, after, "IDENTICAL" if result["identical"] else "DIFFERENT",
-                     result["voxel_diffs"], result["voxels_compared"], result["texel_diffs"], hard, light))
-            ## The cell PLANES are judged apart from the voxels (R3D-8 findings, 2026-09-23), because what they show
-            ## is a look question and not a persistence loss: (1) the blast's incremental LIGHT and a full relight
-            ## of the same damaged world disagree (light(G)); (2) `_soot_map` holds tone 0 on visible CRACKED glass
-            ## that the live wave never painted, so a rotation or restore paints it (soot(R), GLASS only). The F2
-            ## reload is strict on everything. `--strict-planes` makes the planes a failure everywhere.
-            planes_strict = args.strict_planes or what == "F2 reload"
+                     result["voxel_diffs"], result["voxels_compared"], result["texel_diffs"], hard, light,
+                     result["unoccupied_skipped"]))
+            ## The cell PLANES are judged apart from the voxels. R3D-8 (2026-09-23) found two differences after a
+            ## rotation or a restore; R3D-13 (2026-09-24) traced them: (1) the cook's LIGHT was built from a
+            ## per-CELL predicted occupancy, which emptied a box corner or junction column at the first of its
+            ## claims destroyed (21 and 13 cells apart from a full relight after PLAYGROUND's two grenades; fixed,
+            ## `VoxelStore.occupancy_dict_after()`), the SaveState restore skipped the relight a rotation runs
+            ## (fixed in `scenario_save_restore()`), and the incremental writers leave a bucket on a cell a blast
+            ## emptied (never read; counted, not compared); (2) `_soot_map` holds tone 0 on cracked GLASS that the
+            ## live wave never paints (never read: no glass shader samples the plane; counted, not compared).
+            ## What is left: GLASS, 1 light texel, L88 (39,103) 7 -> 8: the glass opening's rim cut destroys a pane
+            ## voxel at commit that the cook did not project, so a concrete cell beside it kept its pre-cut
+            ## occlusion. PLAYGROUND earned strict planes, so it is strict by default; GLASS is strict with
+            ## `--strict-planes`. The F2 reload is strict on everything.
+            planes_strict = args.strict_planes or what == "F2 reload" or map_id == "PLAYGROUND"
             broken = result["voxel_diffs"] or result["geometry"] or result["only"] \
                 or (planes_strict and result["texel_diffs"])
             if broken:

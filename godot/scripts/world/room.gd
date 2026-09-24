@@ -3625,6 +3625,11 @@ func scenario_save_restore() -> bool:
 	if not SaveState.restore(self, data):
 		return false
 	_reapply_base_damage()
+	## A rotation relights after the same replay (`_set_perspective()`: `_lighting_controller.rebuild_all()`), and
+	## `_reapply_base_damage()` says it must run BEFORE the light-field repaint. Without this the restored world was
+	## lit as the undamaged map: 560 intact floor voxels beside PLAYGROUND's two blasts read bucket 3 where the
+	## world they stand in gives 6-9 (R3D-13). A production load flow has to do the same.
+	_lighting_controller.rebuild_all()
 	for _f in range(10):
 		await get_tree().process_frame
 	return true
@@ -3640,6 +3645,17 @@ func scenario_perspective(direction: String) -> bool:
 	for _f in range(10):
 		await get_tree().process_frame
 	return _active_perspective == direction
+
+
+## R3D-13 — the map-wide light repaint on the world as it stands: the reset, the full apply and
+## the soot projection a rotation or a SaveState restore runs, with no rebuild around it. Probing
+## before and after is the one way to ask "does the incremental light equal a full relight of the
+## SAME voxels" without the rebuild's own effects in the answer.
+func scenario_relight() -> bool:
+	_repaint_voxel_light_buckets(false)
+	for _f in range(10):
+		await get_tree().process_frame
+	return _voxel_light_field != null
 
 
 ## TEL-06b — emitted when `scenario_detonate()` has finished, successfully or not. The
@@ -5126,6 +5142,28 @@ const PERF_SNAPSHOT_MISSING: Vector2i = Vector2i(-1, -1)
 
 func _perf_snapshot_alts() -> Dictionary:
 	var out: Dictionary = {}
+	## RENDER3D — the 3D board places no tile, so the loop below walks nothing and every gate built on this
+	## snapshot reported `0 of 2 240` (the glass cells on the hidden layers) and PASS, whatever the light did.
+	## What the planes describe is the store's OCCUPIED cells (a cell with a visible claim); the value is the
+	## same pair, (light bucket, soot code), where the tile board's was (alternative id, soot code). A glass cell
+	## is left out: no glass shader samples either plane, and `_soot_map` holds tone 0 on cracked glass the live
+	## wave never paints (260 texels on GLASS), which would fail every gate for a value nothing reads.
+	if VoxelRenderer.SKIP_BOARD_WRITES:
+		var store: VoxelStore = VoxelStore.active
+		if store == null:
+			push_error("[Room] _perf_snapshot_alts: no VoxelStore.active - the snapshot is empty")
+			return out
+		var occupied: Dictionary = store.occupancy_dict()
+		for occ_level: Variant in occupied.keys():
+			var level_i: int = int(occ_level)
+			for occ_cell: Vector2i in (occupied[occ_level] as Dictionary).keys():
+				var owner_claim: int = store.owner[store.cell_index(occ_cell.x, occ_cell.y, level_i)]
+				if owner_claim >= 0 and GlassMaterials.is_glass(store.material_ids[store.mat[owner_claim]]):
+					continue
+				out[Vector3i(occ_cell.x, occ_cell.y, level_i)] = Vector2i(
+					_voxel_renderer.cell_bucket_at(level_i, occ_cell),
+					_voxel_renderer.cell_soot_at(level_i, occ_cell))
+		return out
 	## LEVEL-RENUMBER — one store, so one loop. This function is the reason the
 	## unification is worth doing: it is the project's most-cited probe and it was
 	## two near-identical halves, either of which could have been forgotten.
@@ -6516,6 +6554,10 @@ func play_consequence_light(delta = null) -> void:
 	var derive_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
 	if gate:
 		var gate_cooked: Dictionary = _perf_snapshot_alts()
+		## The cook's field was built from a PREDICTED occupancy; the world the blast then produced has its own.
+		var occ_diff: Array[Vector3i] = delta.light_field.occupancy_differences(_voxel_renderer.build_occupancy())
+		print("[LIGHT-COOK-GATE] predicted vs real occupancy: %d cell(s) differ%s" % [occ_diff.size(),
+			(" - e.g. %s" % [occ_diff.slice(0, 8)]) if not occ_diff.is_empty() else ""])
 		_repaint_voxel_light_buckets(false)
 		var gate_full: Dictionary = _perf_snapshot_alts()
 		var differ: int = 0

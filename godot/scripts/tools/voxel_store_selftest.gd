@@ -16,6 +16,11 @@
 ##  5. A write the store cannot place is COUNTED: a voxel of a container the store never
 ##     saw. A container-less projection (`WorldDelta.project_voxel()`) is not a claim and
 ##     is not counted.
+##  6. `occupancy_dict_after()`, the cook's predicted occupancy, works per CLAIM: a cell two
+##     claims hold stays occupied while one of them is gone and empties when both are, a
+##     cell one claim holds empties with it, and the store itself is not written (R3D-13:
+##     the per-cell predecessor emptied a box corner at the first claim destroyed, which put
+##     the cook's light 21 and 13 cells from a full relight on PLAYGROUND).
 extends SceneTree
 
 const BoardProbeClass = preload("res://godot/scripts/systems/board_probe.gd")
@@ -43,6 +48,7 @@ func _init() -> void:
 		test_collision_ownership(fixture, store)
 		test_irregular_write(fixture, store)
 		test_unplaceable_writes_counted(store)
+		test_occupancy_after(fixture, store)
 	VoxelStore.active = null
 	_cleanup()
 	print("\nVoxelStore SELFTEST: %s (%d passed, %d failed)\n"
@@ -205,6 +211,33 @@ func test_unplaceable_writes_counted(store: VoxelStore) -> void:
 		and store.writes_mirrored == mirrored_before
 	_check(ok, "[TEST 5] set_damage() on an unclaimed voxel refuses loudly (no state change); mirror() still counts it (%d); a projection is skipped (mirrored %d → %d)"
 		% [store.writes_unknown_container, mirrored_before, store.writes_mirrored])
+
+
+func test_occupancy_after(fixture: Dictionary, store: VoxelStore) -> void:
+	var row: Slice = fixture["row"]
+	var col: Slice = fixture["col"]
+	## (8, 8) on the row's second level: both slices claim it, and TEST 3 left it alone.
+	var a: Voxel = row.voxels[4]
+	var b: Voxel = col.voxels[3]
+	var lone: Voxel = row.voxels[5]   ## (9, 8), one claim
+	var level: int = a.level
+	var shared := Vector2i(8, 8)
+	var here: bool = a.grid_pos == shared and b.grid_pos == shared and b.level == level \
+		and lone.grid_pos == Vector2i(9, 8) and lone.level == level
+	var whole: Dictionary = store.occupancy_dict()
+	var none_gone: Dictionary = store.occupancy_dict_after({})
+	var one_gone: Dictionary = store.occupancy_dict_after({store.claim_of(a): true})
+	var both_gone: Dictionary = store.occupancy_dict_after({store.claim_of(a): true, store.claim_of(b): true})
+	var lone_gone: Dictionary = store.occupancy_dict_after({store.claim_of(lone): true})
+	var same_as_real: bool = none_gone[level].size() == whole[level].size()
+	var survives: bool = (one_gone[level] as Dictionary).has(shared)
+	var empties: bool = not (both_gone[level] as Dictionary).has(shared)
+	var lone_empties: bool = not (lone_gone[level] as Dictionary).has(lone.grid_pos) \
+		and (lone_gone[level] as Dictionary).has(shared)
+	var untouched: bool = store.occ[store.cell_index(8, 8, level)] == 1 and store.grid_mismatches() == 0
+	_check(here and same_as_real and survives and empties and lone_empties and untouched,
+		"[TEST 6] occupancy_dict_after(): no claim gone = the real occupancy (%s); one of two claims gone keeps the cell (%s); both gone empties it (%s); a lone claim gone empties its cell only (%s); the store is unwritten (%s)"
+		% [same_as_real, survives, empties, lone_empties, untouched])
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────

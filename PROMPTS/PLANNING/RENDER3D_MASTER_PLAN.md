@@ -76,7 +76,9 @@
   - **The spike deletion list, for the Director (nothing deleted):** `godot/scripts/spikes/board3d_spike.gd` (362 lines) + `godot/scenes/spikes/board3d_spike.tscn`
     (reader: the scene switch at `room.gd` ~2102); `r3d4a_actor_spike.gd` (509) + its `.tscn` (reader: `room.gd` ~2111); `store_layout_spike.gd` (941) (readers: the
     `preload` and the `store_spike` step in `scenario_runner.gd`). `spike3d.gd` STAYS until R3D-ACTORS (it carries the planes shader and the rig export).
-- **Still open in R3D-13:** the last baseline matrix. **The Galaxy A16 was not attached today**, so only the Moto can be measured now.
+- **R3D-13's baseline recorded (Moto only; the Galaxy A16 was not attached):** `DEVICE_DIAGNOSTICS_MASTER_PLAN` top block. 3D vs 2D: load 16.3 vs 53.9 s, PSS 1.38 vs 2.33 GB, idle
+  ~19 vs ~54 ms/frame, detonation mean frame ~30 vs ~103-129 ms. **Not done: the Galaxy row and its 3D shot-tail explanation (357 vs 214 ms), which the plan asked for while the 2D
+  control still exists.**
 - **Next: R3D-13's baseline, then R3D-END (the Director ratifies).**
 
 **2026-09-23 (session close) update (v1.20) — S2 AND S3 APPROVED: ACTORS AND STATIC PROPS BECOME MESHES LIT BY THE CELL PLANES; THE PLAN IS COMPLETE (Director).**

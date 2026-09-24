@@ -1,6 +1,15 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
 ## Measuring the real build on a real entry-tier phone — v1.10
 
+> ⏭️ **2026-09-24 — THE R3D-13 BASELINE, Moto g04s ONLY (the Galaxy A16 was not attached).** Release APK of `1788f0fd` + docs (`export/r3d13.apk`), PLAYGROUND, portrait,
+> `RNG_SEED=1`, grenades `25,2;37,2`, shotgun at guard 0, `EVENT_FRAMES=1`; logs local (`/tmp`, git-ignored). **3D board (`RENDER3D=1`, two boots) vs the 2D board
+> (`RENDER3D=0`, one boot, the last row for the record):** `[RNG] seeded` -> map loaded **16.3 / 16.3 s vs 53.9 s**; PSS (last poll) **1.38 / 1.38 GB vs 2.33 GB**, native heap
+> 736 vs 691 MB. Idle, `FRAME_PROBE` windows: zoom 0.75 **18.9 vs 54.2 ms/frame** (gpu 17.3 vs 52.8, draws 76 vs 328), zoom 1.0 **19.1 vs 53.6** (gpu 17.5 vs 52.2, draws 55 vs 253), zoom
+> 0.5 after settling **19.1-21.9 vs 53.9-61.4** (draws 55-91 vs 253-1 625). Two detonations (mean / worst frame, COMMIT frame, LIGHT ms/frame): **3D 29.5-30.2 / 32.4-32.7 ms mean,
+> worst 319-402 / 693-725, COMMIT 237-239 / 230-233, LIGHT 32-32.4 / 34-35; 2D 102.5 / 128.9 ms mean, worst 389 / 3 855, COMMIT 312 / 309, LIGHT 102.7 / 112.3.** Only the 3D board is at the
+> 30 fps budget (33.3 ms); the tails (the second grenade's CONSEQUENCE frame, ~720 ms, and the ~235 ms COMMIT) are the open items. **Not measured:** the Galaxy A16; the shot's tail;
+> the earlier flag-malformed rows (a `RENDER3D=1 a` value silently ran the 2D board: check `[BOARD3D]` in the log before trusting any RENDER3D row).
+
 > ⏭️ **2026-09-23 — `RENDER3D_MASTER_PLAN` R3D-SPIKE-3D on the Moto g04s** (PLAYGROUND, portrait, zoom 0.5, `FRAME_PROBE`, one boot per row,
 > `docs/measurements/device_2026-09-23_moto_spike3d_*.log`): base 19.0-19.6 ms/frame (gpu 17.5-18.1). The board lit by 12 real
 > lamps 43.6 (no shadow) / 58.4 (4 shadowed) / 66-73 (12 shadowed). 9 walking rigs +2.4 ms with actor-layer lamps, **+1.0 with

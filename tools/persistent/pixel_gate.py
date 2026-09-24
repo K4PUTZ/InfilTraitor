@@ -13,9 +13,9 @@
 ## THE CONTROL: within one boot, load and the post-event captures MUST differ (a gate that cannot see the event
 ## would pass forever). Every boot uses RNG seed 1.
 ##
-## ⚠️ ONE UNEXPLAINED FAIL (2026-09-24): a run of the OLD code read FAIL and its GLASS g0/g1 frames differed from the new
-## code's by 136 and 66 px; the next four gate runs (and the same old-vs-new comparison) all read 0. Not reproduced, so not
-## diagnosed: treat a lone red here as "run it again and look", and a repeat as a real finding.
+## ⚠️ THE LONE FAILS OF 2026-09-24 WERE THE CELL CURSOR. A run read FAIL with GLASS g0/g1 ~100 px apart and did not
+## repeat; when it recurred (296 px in g0) the differing pixels were ALL one colour, the cursor outline's (229, 25, 114),
+## drawn in one boot and not the other because the real mouse sits over the window. Now masked by that exact colour.
 ##
 ## Usage:   python3 tools/persistent/pixel_gate.py [--cases PLAYGROUND,GLASS] [--settle 400] [--keep DIR]
 
@@ -38,6 +38,10 @@ BRICK_RX = 22 + 2
 ## band is masked here, both boots, and nothing else is: the wall, the floor and every effect the gate exists for
 ## are outside it. (GLASS frames its camera elsewhere and reads 0 px over the whole frame.)
 MASK = {"PLAYGROUND": (0, 720, 390, 844)}
+## The second real-mouse artefact (GLASS g0, 2026-09-24: 296 px, ONE colour): the cell cursor's outline, drawn where the
+## harness' real pointer happens to sit. It is exactly (229, 25, 114); a pixel of exactly that colour in either image
+## is excluded from the comparison. Nothing else is.
+CURSOR_RGB = (229, 25, 114)
 
 
 def case_env(case: str, settle: int, tag: str):
@@ -72,6 +76,11 @@ def differing(a: Path, b: Path, tol: int, mask=None) -> int:
     if mask is not None:
         for im in (x, y):
             ImageDraw.Draw(im).rectangle(mask, fill=(0, 0, 0))
+    xp, yp = x.load(), y.load()
+    for j in range(x.size[1]):
+        for i in range(x.size[0]):
+            if xp[i, j] == CURSOR_RGB or yp[i, j] == CURSOR_RGB:
+                xp[i, j] = yp[i, j] = (0, 0, 0)
     if x.size != y.size:
         return x.size[0] * x.size[1]
     d = ImageChops.difference(x, y).convert("L").point(lambda v: 255 if v > tol else 0)

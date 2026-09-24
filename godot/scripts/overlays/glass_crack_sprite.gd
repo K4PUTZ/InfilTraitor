@@ -32,6 +32,18 @@ const LEVEL_STEP: Vector2 = Vector2(0.0, -20.0)   ## GeometryCoords.VOXEL_STEP_P
 ## past their own centre. Half a voxel of slack, not a nudge.
 const PANE_CLIP_SLACK: float = 0.5
 
+## R3D-9 — every shader parameter this crack carries, as DATA. The record `VoxelRenderer` keeps holds this same
+## Dictionary (by reference), and the 3D board draws from it without touching this node or its material. The
+## ShaderMaterial below is only this record's 2D consumer, until R3D-END.
+var params: Dictionary = {}
+
+
+func _param(param_name: String, value: Variant) -> void:
+	params[param_name] = value
+	var mat := material as ShaderMaterial
+	if mat != null:
+		mat.set_shader_parameter(param_name, value)
+
 
 ## `sheet` is the fracture texture, `span` how many (run, level) voxels it covers
 ## on the pane, `origin` the impact's renderer-local position, `run_axis` 0 for a
@@ -61,17 +73,17 @@ func setup(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int,
 
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
-	mat.set_shader_parameter("crack_sheet", sheet)
-	mat.set_shader_parameter("crack_span", span)
-	mat.set_shader_parameter("crack_pane_lo", pane_lo - Vector2(PANE_CLIP_SLACK, PANE_CLIP_SLACK))
-	mat.set_shader_parameter("crack_pane_hi", pane_hi + Vector2(PANE_CLIP_SLACK, PANE_CLIP_SLACK))
+	material = mat
+	_param("crack_sheet", sheet)
+	_param("crack_span", span)
+	_param("crack_pane_lo", pane_lo - Vector2(PANE_CLIP_SLACK, PANE_CLIP_SLACK))
+	_param("crack_pane_hi", pane_hi + Vector2(PANE_CLIP_SLACK, PANE_CLIP_SLACK))
 	## ⚠️ THE OPACITY IS A DIRECTOR DIAL AND IT MOVED TWICE ALREADY (90% then 80%,
 	## 2026-09-02). `INFILTRAITOR_GLASS_CRACK_OPACITY` overrides the shader default
 	## so a sweep is one boot per value instead of an edit per value.
 	var env := OS.get_environment("INFILTRAITOR_GLASS_CRACK_OPACITY")
 	if env != "":
-		mat.set_shader_parameter("crack_opacity", clampf(float(env), 0.0, 1.0))
-	material = mat
+		_param("crack_opacity", clampf(float(env), 0.0, 1.0))
 
 
 ## ── G-D35 B-2 — THE FIELD MODE ──────────────────────────────────────────────
@@ -106,15 +118,15 @@ func setup_field(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int
 	## stretch across the whole pane as straight lines. Forward+ honours the hint,
 	## which is why a desktop run cannot see this.
 	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-	mat.set_shader_parameter("crack_field", true)
-	mat.set_shader_parameter("crack_tile_span", tile_span)
+	_param("crack_field", true)
+	_param("crack_tile_span", tile_span)
 	## ⚠️ `field_origin` IS NOT `pane_lo`, AND IT USED TO BE. B-2 anchored the
 	## lattice at the low-run corner of the CURRENT view; B-2b anchors it at the
 	## corner that is minimal in BASE space and counts in the base direction, so
 	## the same glass wears the same craze from every camera angle. The room owns
 	## that conversion — this node is handed the answer.
-	mat.set_shader_parameter("crack_field_origin", field_origin)
-	mat.set_shader_parameter("crack_field_dir", field_dir)
+	_param("crack_field_origin", field_origin)
+	_param("crack_field_dir", field_dir)
 
 
 ## G-D30 — bind (or rebind) this crack's occupancy image. `origin` is
@@ -125,9 +137,9 @@ func set_occupancy(tex: Texture2D, size: Vector2, origin: Vector2) -> void:
 	var mat := material as ShaderMaterial
 	if mat == null:
 		return
-	mat.set_shader_parameter("crack_occupancy", tex)
-	mat.set_shader_parameter("crack_occ_size", size)
-	mat.set_shader_parameter("crack_occ_origin", origin)
+	_param("crack_occupancy", tex)
+	_param("crack_occ_size", size)
+	_param("crack_occ_origin", origin)
 
 
 ## G-D30's dial, 0 (the web outlives the pane) .. 1 (the web lives only on glass
@@ -140,16 +152,16 @@ func set_opening(tex: Texture2D, origin: Vector2, size: Vector2) -> void:
 	var mat := material as ShaderMaterial
 	if mat == null:
 		return
-	mat.set_shader_parameter("crack_opening", tex)
-	mat.set_shader_parameter("crack_opening_origin", origin)
-	mat.set_shader_parameter("crack_opening_size", size)
+	_param("crack_opening", tex)
+	_param("crack_opening_origin", origin)
+	_param("crack_opening_size", size)
 
 
 func set_hole_cut(v: float) -> void:
 	var mat := material as ShaderMaterial
 	if mat == null:
 		return
-	mat.set_shader_parameter("crack_hole_cut", clampf(v, 0.0, 1.0))
+	_param("crack_hole_cut", clampf(v, 0.0, 1.0))
 
 
 ## The forward basis, as a pure function — canvas offset for a (run, level)

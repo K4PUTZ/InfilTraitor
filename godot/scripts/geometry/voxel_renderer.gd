@@ -5313,6 +5313,10 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 		"pane_lo": spec["pane_lo"],
 		"pane_hi": spec["pane_hi"],
 		"sprite": sprite,
+		## R3D-9: the crack as data — the 3D board draws from this (it is the sprite's own Dictionary, so it follows
+		## every later `set_occupancy()` / `set_opening()` / `set_hole_cut()`), never from the sprite.
+		"params": sprite.params,
+		"visible": true,
 		"opening": String(spec.get("opening", "")),
 	}
 	_glass_cracks.append(rec)
@@ -5409,6 +5413,8 @@ func spawn_glass_craze(spec: Dictionary) -> int:
 		"pane_lo": spec["pane_lo"],
 		"pane_hi": spec["pane_hi"],
 		"sprite": sprite,
+		"params": sprite.params,
+		"visible": true,
 		"opening": "",
 		"intensity": float(spec.get("intensity", 0.0)),
 	}
@@ -5751,6 +5757,7 @@ func _glass_opening_mask(opening_id: String) -> Dictionary:
 ## mask was used. Hiding the sprite inside ONE boot isolates the web exactly.
 func set_glass_cracks_visible(v: bool) -> void:
 	for c in _glass_cracks:
+		c["visible"] = v
 		var sp = c["sprite"]
 		if sp != null and is_instance_valid(sp):
 			sp.visible = v

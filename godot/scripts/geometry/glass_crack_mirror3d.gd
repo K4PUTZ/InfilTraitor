@@ -1,11 +1,11 @@
 ## GlassCrackMirror3D — the 3D board's twin of every live `GlassCrackSprite`.
 ##
-## RENDER3D R3D-6 item 2 (moved here from R3D-4e-4b). Under `RENDER3D=1` the 2D crack sprites are
-## still created — by `VoxelRenderer.spawn_glass_crack()` / `spawn_glass_craze()`, with the
-## occupancy cut and the opening void built by the code that already owns them — but they hang
-## off the hidden 2D renderer and draw nothing. This node reads those records and gives each one
-## a quad on the pane's plane in the 3D world, copying the sprite's shader parameters every frame
-## (the same mirror `ActorBillboard3D` is to `AgentSprite`). Nothing here decides a crack.
+## RENDER3D R3D-6 item 2 (moved here from R3D-4e-4b). `VoxelRenderer.spawn_glass_crack()` / `spawn_glass_craze()` produce
+## each crack as a RECORD: the centre voxel, the face, the run axis, the span, the pane bounds and `params`, every shader
+## parameter as data (the occupancy cut and the opening void included). This node gives each record a quad on the pane's
+## plane in the 3D world and copies `params` into it every frame. **R3D-9: it reads the record and nothing else** — not
+## the 2D sprite, not its ShaderMaterial; the sprite is the same record's 2D consumer, until R3D-END. Nothing here
+## decides a crack.
 ##
 ## PLACEMENT. The record says which voxel the crack is centred on (`impact_cell`, `impact_level`,
 ## `face`), which way the pane runs (`run_axis`: 0 = along X, 1 = along Z) and how large the sheet
@@ -17,7 +17,7 @@ extends Node3D
 
 const SHADER_PATH: String = "res://godot/shaders/glass_crack3d.gdshader"
 
-## The sprite's uniforms, copied verbatim.
+## The record's uniforms, copied verbatim.
 const MIRRORED: Array[String] = [
 	"crack_sheet", "crack_span", "crack_pane_lo", "crack_pane_hi", "crack_field",
 	"crack_tile_span", "crack_field_origin", "crack_field_dir", "crack_occupancy",
@@ -32,7 +32,7 @@ var _renderer: VoxelRenderer = null
 var _ground_level: int = 0
 var _unit: float = 1.0
 var _shader: Shader = null
-## crack record id -> {"mesh": MeshInstance3D, "mat": ShaderMaterial, "sprite": GlassCrackSprite}
+## crack record id -> {"mesh": MeshInstance3D, "mat": ShaderMaterial, "rec": the record}
 var _twins: Dictionary = {}
 
 ## CRACK-03/04 on the pane: the glass ShaderMaterials the applied openings are pushed into.
@@ -60,14 +60,13 @@ func _process(_delta: float) -> void:
 	_sync_openings()
 	var live: Dictionary = {}
 	for rec: Dictionary in _renderer.glass_crack_records():
-		var sprite: Node = rec.get("sprite") as Node
-		if sprite == null or not is_instance_valid(sprite):
+		if not rec.has("params"):
 			continue
 		var id: int = int(rec["id"])
 		live[id] = true
 		var twin: Dictionary = _twins.get(id, {})
 		if twin.is_empty():
-			twin = _make_twin(rec, sprite as Sprite2D)
+			twin = _make_twin(rec)
 			_twins[id] = twin
 		_mirror(twin)
 	for id: int in _twins.keys():
@@ -80,9 +79,8 @@ func twin_count() -> int:
 	return _twins.size()
 
 
-func _make_twin(rec: Dictionary, sprite: Sprite2D) -> Dictionary:
-	var src := sprite.material as ShaderMaterial
-	var span: Vector2 = src.get_shader_parameter("crack_span") if src != null else Vector2(8.0, 8.0)
+func _make_twin(rec: Dictionary) -> Dictionary:
+	var span: Vector2 = (rec["params"] as Dictionary).get("crack_span", Vector2(8.0, 8.0))
 	var mesh := MeshInstance3D.new()
 	mesh.name = "Crack_%d" % int(rec["id"])
 	var quad := QuadMesh.new()
@@ -96,7 +94,7 @@ func _make_twin(rec: Dictionary, sprite: Sprite2D) -> Dictionary:
 	mesh.material_override = mat
 	mesh.transform = _placement(rec)
 	add_child(mesh)
-	return {"mesh": mesh, "mat": mat, "sprite": sprite}
+	return {"mesh": mesh, "mat": mat, "rec": rec}
 
 
 ## Centre and basis of the quad, in the geometry root's local space.
@@ -122,15 +120,13 @@ func _placement(rec: Dictionary) -> Transform3D:
 
 ## Only writes what changed: this runs every frame per crack.
 func _mirror(twin: Dictionary) -> void:
-	var sprite: Sprite2D = twin["sprite"]
+	var rec: Dictionary = twin["rec"]
 	var mesh: MeshInstance3D = twin["mesh"]
-	mesh.visible = sprite.visible
-	var src := sprite.material as ShaderMaterial
-	if src == null:
-		return
+	mesh.visible = bool(rec.get("visible", true))
+	var src: Dictionary = rec["params"]
 	var mat: ShaderMaterial = twin["mat"]
 	for param: String in MIRRORED:
-		var value: Variant = src.get_shader_parameter(param)
+		var value: Variant = src.get(param)
 		if value != null and mat.get_shader_parameter(param) != value:
 			mat.set_shader_parameter(param, value)
 

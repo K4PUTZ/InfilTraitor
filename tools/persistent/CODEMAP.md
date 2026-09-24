@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**281 scripts · 101842 lines total** (under `godot/scripts/`)
+**281 scripts · 101856 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -785,11 +785,11 @@ extends `Node3D` · 1940 lines
 
 ### `glass_crack_mirror3d.gd`
 
-`class_name GlassCrackMirror3D` · extends `Node3D` · 185 lines
+`class_name GlassCrackMirror3D` · extends `Node3D` · 181 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 
-> GlassCrackMirror3D — the 3D board's twin of every live `GlassCrackSprite`. RENDER3D R3D-6 item 2 (moved here from R3D-4e-4b). Under `RENDER3D=1` the 2D crack sprites are still created — by `VoxelRenderer.spawn_glass_crack()` / `spawn_glass_craze()`, with the occupancy cut and the opening void built by the code that already owns them — but they hang off the hidden 2D renderer and draw nothing. This node reads those records and gives each one a quad on the pane's plane in the 3D world, copying the sprite's shader parameters every frame (the same mirror `ActorBillboard3D` is to `AgentSprite`). Nothing here decides a crack. PLACEMENT. The record says which voxel the crack is centred on (`impact_cell`, `impact_level`, `face`), which way the pane runs (`run_axis`: 0 = along X, 1 = along Z) and how large the sheet is (`crack_span`, in voxels). The quad is that many voxels wide and tall, centred on the impact voxel, standing on the face's own plane, and carries the sprite's UV so the shader's `off` is the same run/level offset it is in 2D.
+> GlassCrackMirror3D — the 3D board's twin of every live `GlassCrackSprite`. RENDER3D R3D-6 item 2 (moved here from R3D-4e-4b). `VoxelRenderer.spawn_glass_crack()` / `spawn_glass_craze()` produce each crack as a RECORD: the centre voxel, the face, the run axis, the span, the pane bounds and `params`, every shader parameter as data (the occupancy cut and the opening void included). This node gives each record a quad on the pane's plane in the 3D world and copies `params` into it every frame. **R3D-9: it reads the record and nothing else** — not the 2D sprite, not its ShaderMaterial; the sprite is the same record's 2D consumer, until R3D-END. Nothing here decides a crack. PLACEMENT. The record says which voxel the crack is centred on (`impact_cell`, `impact_level`, `face`), which way the pane runs (`run_axis`: 0 = along X, 1 = along Z) and how large the sheet is (`crack_span`, in voxels). The quad is that many voxels wide and tall, centred on the impact voxel, standing on the face's own plane, and carries the sprite's UV so the shader's `off` is the same run/level offset it is in 2D.
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/glass_crack3d.gdshader"`
@@ -1152,7 +1152,7 @@ extends `Node3D` · 1940 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7964 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7971 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1541,7 +1541,7 @@ extends `Node2D` · 144 lines
 
 ### `glass_crack_sprite.gd`
 
-`class_name GlassCrackSprite` · extends `Sprite2D` · 162 lines
+`class_name GlassCrackSprite` · extends `Sprite2D` · 174 lines
 
 `godot/scripts/overlays/glass_crack_sprite.gd`
 
@@ -1552,6 +1552,9 @@ extends `Node2D` · 144 lines
 - `RUN_STEP_Y` = `Vector2(-16.0, 8.0)`
 - `LEVEL_STEP` = `Vector2(0.0, -20.0)`
 - `PANE_CLIP_SLACK` = `0.5`
+
+**Public vars**
+- `var params: Dictionary = {}`
 
 **Public API**
 - `func setup(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int, pane_lo: Vector2, pane_hi: Vector2, shader: Shader) -> void:`
@@ -6276,7 +6279,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11898 lines
+extends `Node2D` · 11897 lines
 
 `godot/scripts/world/room.gd`
 

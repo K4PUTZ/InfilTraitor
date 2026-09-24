@@ -3045,8 +3045,7 @@ func scenario_mirror_check(label: String) -> bool:
 		return false
 	var records: int = 0
 	for rec: Dictionary in _voxel_renderer.glass_crack_records():
-		var sprite: Node = rec.get("sprite") as Node
-		if sprite != null and is_instance_valid(sprite):
+		if rec.has("params"):
 			records += 1
 	var mirror: Node = board.get("_crack_mirror")
 	var twins: int = int(mirror.call("twin_count")) if mirror != null else -1

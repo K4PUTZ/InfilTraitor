@@ -40,6 +40,19 @@ static func cell_containing_with_offset(local: Vector2, offset: Vector2) -> Vect
 	return Vector2i(floori((u + v) * 0.5 + 0.5), floori((v - u) * 0.5 + 0.5))
 
 
+## R3D-11 — the ground's extent. The room builder fills EVERY cell of `[0, size)` with the one walkable floor tile and
+## nothing else, so "the map has a floor here, and it is walkable" is exactly "the cell is inside the rectangle". This
+## is the grid authority gameplay asks instead of reading a TileMapLayer's tile data.
+static func has_cell(cell: Vector2i, size: Vector2i) -> bool:
+	return cell.x >= 0 and cell.y >= 0 and cell.x < size.x and cell.y < size.y
+
+
+## R3D-11 — the same-binary A/B: `INFILTRAITOR_GROUND_TILES=1` puts the old tile-data reads back, for the identity
+## check (`Room.scenario_ground_check`). Deleted with the stage.
+static func tiles_are_authority() -> bool:
+	return OS.get_environment("INFILTRAITOR_GROUND_TILES") == "1"
+
+
 ## The cell's centre in the game's convention.
 static func cell_center(cell: Vector2i, offset: Vector2) -> Vector2:
 	return map_to_local(cell) + Vector2(0.0, HALF_H) + offset

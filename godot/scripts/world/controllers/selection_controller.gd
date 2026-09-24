@@ -21,7 +21,7 @@ func is_selectable_cell(cell: Vector2i) -> bool:
 		return false
 	if room._is_guard_cell(cell):
 		return false
-	return room.floor_layer.get_cell_source_id(cell) != -1
+	return room.has_ground_cell(cell)
 
 
 ## Set the selected cell (if selectable) and update overlays.

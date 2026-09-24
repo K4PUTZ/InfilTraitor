@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**281 scripts · 101985 lines total** (under `godot/scripts/`)
+**281 scripts · 102097 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -839,7 +839,7 @@ extends `Node3D` · 1934 lines
 
 ### `ground_grid.gd`
 
-`class_name GroundGrid` · extends `RefCounted` · 45 lines
+`class_name GroundGrid` · extends `RefCounted` · 58 lines
 
 `godot/scripts/geometry/ground_grid.gd`
 
@@ -1188,7 +1188,7 @@ extends `Node3D` · 1934 lines
 
 ### `movement_overlay.gd`
 
-`class_name MovementOverlay` · extends `Node2D` · 301 lines
+`class_name MovementOverlay` · extends `Node2D` · 305 lines
 
 `godot/scripts/navigation/movement_overlay.gd`
 
@@ -1203,6 +1203,7 @@ extends `Node3D` · 1934 lines
 
 **Public vars**
 - `var floor_layer: TileMapLayer = null`
+- `var ground_size: Callable = Callable()`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var origin_cell: Vector2i = Vector2i(-9999, -9999)`
 - `var max_path_cost: int = 0`
@@ -3415,14 +3416,14 @@ extends `Node` · 156 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 489 lines
+extends `Node` · 494 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
 > ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. drop2d                               DIAG-23 instrument: clear the hidden 2D board's cells under a 3D board (RENDER3D=1) probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from placed tiles vs from the store, per level store_spike <reps>                   RENDER3D R3D-1a: build every candidate voxel store layout from the live registries, check each against today's objects, and time the three hot readers `reps` times (`StoreLayoutSpike`) occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "occupancy_compare": 1, "passages": 1, "mirror_check": 1, "occ_bench": 3, "place_guard": 2, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2, }`
 - `FRAMINGS` = `["portrait", "landscape", "desktop"]`
 - `ALLOC_KINDS` = `["objects", "packed", "bytes"]`
 - `BEAT_TOKEN_PATTERN` = `"^[A-Za-z0-9_]+$"`
@@ -3573,13 +3574,14 @@ extends `Node` · 54 lines
 
 ### `view_context.gd`
 
-`class_name ViewContext` · extends `RefCounted` · 96 lines
+`class_name ViewContext` · extends `RefCounted` · 122 lines
 
 `godot/scripts/systems/view_context.gd`
 
 > ViewContext — what the screen was showing when a number was read. TEL-03 (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). DIAG-16 (§10.16) measured one untouched board at 4 209 draw calls and at 49 688: the same scene and the same nodes, at two zooms. A frame-probe count means nothing without the view it was read under, so the frame probe and the telemetry timeline both take it from here. Pure reads, no state. The caller hands over everything it owns: the visual grid offset arrives as a parameter (architecture rule 2), and the cell-to-screen mapping arrives as Room's own inverse of `_screen_to_tile()` rather than being copied here. ⚠️ TWO COSTS, ON PURPOSE. `read()` is a handful of property reads and is safe once per probe window. `count_visible_cells()` walks every floor cell near the screen — thousands at the pinch minimum — so the caller caches it per view and recounts only when the view changed. A probe that recounted every window would put its own spike into the frames it reports.
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `SCAN_MARGIN_CELLS` = `2`
 
 ---
@@ -5884,7 +5886,7 @@ extends `Node2D` · 35 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1284 lines
+`class_name RoomBuilder` · 1289 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -6280,7 +6282,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11930 lines
+extends `Node2D` · 11989 lines
 
 `godot/scripts/world/room.gd`
 

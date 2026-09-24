@@ -1947,6 +1947,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## Give overlays their references.
 	movement_overlay.z_index = 5
 	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.move_points_per_ap)
+	movement_overlay.ground_size = Callable(self, "ground_size")
 	movement_overlay.set_blocked_cells(_room_builder.build_navigation_blocked_cells(_guards))
 	var blocked_edges: Array[Dictionary] = []
 	for e in view_layout.get("blocked_edges", []):
@@ -3034,6 +3035,52 @@ func _world_render_scale_value() -> float:
 ## DIAG-21 step 2 — the live 3D board, or null when `RENDER3D` did not build one.
 func board3d() -> Node:
 	return get_node_or_null("Board3DLive")
+
+
+## R3D-11 — the `ground_check` scenario step: what gameplay reads of the ground, as digests, plus an in-process
+## comparison of the two authorities over every cell of the map and a 3-cell margin. `tools/persistent/ground_gate.py`
+## runs it with `GROUND_TILES` off and on and requires every digest to agree.
+func scenario_ground_check(label: String) -> bool:
+	if floor_layer == null or _room_size == Vector2i.ZERO:
+		push_error("[Room] scenario_ground_check: no floor")
+		return false
+	var size: Vector2i = _room_size
+	var walk_mismatch: int = 0
+	var point_mismatch: int = 0
+	var walk_rows: PackedStringArray = []
+	var select_rows: PackedStringArray = []
+	var walkable_tiles: int = 0
+	for y in range(-3, size.y + 3):
+		for x in range(-3, size.x + 3):
+			var c := Vector2i(x, y)
+			var tile: bool = floor_layer.get_cell_source_id(c) != -1
+			var grid: bool = GroundGridRef.has_cell(c, size)
+			if tile != grid:
+				walk_mismatch += 1
+			if tile:
+				walkable_tiles += 1
+				if floor_layer.map_to_local(c) != GroundGridRef.map_to_local(c):
+					point_mismatch += 1
+			walk_rows.append("%d,%d=%d" % [x, y, 1 if grid else 0])
+			select_rows.append("%d,%d=%d" % [x, y, 1 if _selection_controller.is_selectable_cell(c) else 0])
+	var costs: Dictionary = movement_overlay._costs
+	var cost_rows: PackedStringArray = []
+	for c: Vector2i in costs:
+		cost_rows.append("%d,%d=%d" % [c.x, c.y, int(costs[c])])
+	cost_rows.sort()
+	var path_rows: PackedStringArray = []
+	var reach: Array = costs.keys()
+	reach.sort()
+	for i in range(0, reach.size(), 7):
+		var path: Array[Vector2i] = movement_overlay.build_path_to(reach[i])
+		path_rows.append("%s:%s" % [reach[i], path])
+	var counts: Dictionary = view_context()
+	print("[GROUND-CHECK] %s size %s tiles %d | walk_mismatch %d point_mismatch %d floor_pos %s floor_scale %s | walk %s select %s reach %d %s paths %d %s | view %s/%s"
+		% [label, size, walkable_tiles, walk_mismatch, point_mismatch, floor_layer.position, floor_layer.scale,
+			"\n".join(walk_rows).md5_text(), "\n".join(select_rows).md5_text(), cost_rows.size(),
+			"\n".join(cost_rows).md5_text(), path_rows.size(), "\n".join(path_rows).md5_text(),
+			counts.get("gu_visible", "?"), counts.get("gu_total", "?")])
+	return true
 
 
 ## R3D-8 — the `mirror_check` scenario step: the 3D board's twins of what the 2D renderer creates. Cracks: one twin per
@@ -5734,6 +5781,18 @@ func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i =
 ## cell when clicking the top quadrant. The 3×3 search over visual CENTERs
 ## (map_to_local + Vector2(0,64)) finds the diamond that truly contains the
 ## click — this corrects the other three quadrants.
+## R3D-11 — the ground grid gameplay asks: the extent, and whether a cell is inside it (walkable floor). Nothing here
+## reads a TileMapLayer; `GROUND_TILES=1` (A/B) puts the tile read back.
+func ground_size() -> Vector2i:
+	return _room_size
+
+
+func has_ground_cell(cell: Vector2i) -> bool:
+	if GroundGridRef.tiles_are_authority():
+		return floor_layer.get_cell_source_id(cell) != -1
+	return GroundGridRef.has_cell(cell, _room_size)
+
+
 func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	## RENDER3D R3D-5a — under a 3D board the cell comes from a camera ray against the ground plane; the
 	## 2D lattice below is the reference it is proven against (`PICK_CHECK=1`, ground_grid_selftest).
@@ -5994,8 +6053,8 @@ func view_context() -> Dictionary:
 	var sig: String = ViewContextClass.signature(fields)
 	if sig != _view_count_sig:
 		_view_count_sig = sig
-		_view_counts = ViewContextClass.count_visible_cells(get_viewport(), floor_layer,
-			VISUAL_GRID_OFFSET, _tile_to_screen_center)
+		_view_counts = ViewContextClass.count_visible_cells(get_viewport(), floor_layer, _room_size,
+			VISUAL_GRID_OFFSET, _tile_to_screen_center, Callable(self, "to_local"))
 	fields.merge(_view_counts)
 	return fields
 

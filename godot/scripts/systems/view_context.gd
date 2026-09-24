@@ -18,6 +18,7 @@
 ## put its own spike into the frames it reports.
 class_name ViewContext
 extends RefCounted
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")
 
 ## How far beyond the corners' bounding box to scan. The four screen corners map
 ## to cells on a diamond grid, so a cell whose centre is on screen can sit a step
@@ -54,10 +55,13 @@ static func signature(fields: Dictionary) -> String:
 ## How much board is on screen: floor cells whose centre lies inside the visible
 ## canvas (`gu_visible`), out of every floor cell the map has (`gu_total`). This is
 ## the quantity the draw calls follow (§10.16.2).
-static func count_visible_cells(viewport: Viewport, floor_layer: TileMapLayer,
-		visual_offset: Vector2, cell_to_screen: Callable) -> Dictionary:
+static func count_visible_cells(viewport: Viewport, floor_layer: TileMapLayer, room_size: Vector2i,
+		visual_offset: Vector2, cell_to_screen: Callable, to_local: Callable) -> Dictionary:
 	if floor_layer == null or not cell_to_screen.is_valid():
 		return {"gu_visible": "unavailable", "gu_total": "unavailable"}
+	## R3D-11: the extent is the room's and the lattice is `GroundGrid`'s; the layer is read only under the A/B flag.
+	if not GroundGridRef.tiles_are_authority():
+		return _count_visible_ground(viewport, room_size, visual_offset, cell_to_screen, to_local)
 	var visible: Rect2 = viewport.get_visible_rect()
 	var inverse: Transform2D = viewport.get_canvas_transform().affine_inverse()
 	var corners: Array[Vector2] = [visible.position,
@@ -79,6 +83,28 @@ static func count_visible_cells(viewport: Viewport, floor_layer: TileMapLayer,
 			if visible.has_point(screen):
 				on_screen += 1
 	return {"gu_visible": on_screen, "gu_total": floor_layer.get_used_cells().size()}
+
+
+static func _count_visible_ground(viewport: Viewport, room_size: Vector2i, visual_offset: Vector2,
+		cell_to_screen: Callable, to_local: Callable) -> Dictionary:
+	var visible: Rect2 = viewport.get_visible_rect()
+	var inverse: Transform2D = viewport.get_canvas_transform().affine_inverse()
+	var corners: Array[Vector2] = [visible.position,
+		Vector2(visible.end.x, visible.position.y), visible.end,
+		Vector2(visible.position.x, visible.end.y)]
+	var scan: Rect2i = Rect2i()
+	for i in range(corners.size()):
+		var local: Vector2 = to_local.call(inverse * corners[i])
+		var cell: Vector2i = GroundGridRef.cell_containing_with_offset(local, visual_offset)
+		scan = Rect2i(cell, Vector2i.ZERO) if i == 0 else scan.expand(cell)
+	scan = scan.grow(SCAN_MARGIN_CELLS).intersection(Rect2i(Vector2i.ZERO, room_size))
+	var on_screen: int = 0
+	for y in range(scan.position.y, scan.end.y):
+		for x in range(scan.position.x, scan.end.x):
+			var screen: Vector2 = cell_to_screen.call(Vector2i(x, y))
+			if visible.has_point(screen):
+				on_screen += 1
+	return {"gu_visible": on_screen, "gu_total": room_size.x * room_size.y}
 
 
 static func _aspect_name(aspect: int) -> String:

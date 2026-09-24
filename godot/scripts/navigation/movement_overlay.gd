@@ -5,6 +5,8 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## Computes a simple Dijkstra flood over 4-directional walkable cells.
 
 var floor_layer: TileMapLayer = null
+## R3D-11: the ground's extent, asked of the room (it changes on a rotation); no tile is read for walkability.
+var ground_size: Callable = Callable()
 var visual_offset: Vector2 = Vector2.ZERO
 var origin_cell: Vector2i = Vector2i(-9999, -9999)
 var max_path_cost: int = 0
@@ -278,6 +280,8 @@ func _is_traversable(cell: Vector2i) -> bool:
 		return false
 	if _blocked_cells.has(cell):
 		return false
+	if not GroundGridRef.tiles_are_authority():
+		return ground_size.is_valid() and GroundGridRef.has_cell(cell, ground_size.call())
 	var source_id := floor_layer.get_cell_source_id(cell)
 	if source_id == -1:
 		return false

@@ -79,7 +79,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1,
-	"occupancy_compare": 1, "passages": 1, "mirror_check": 1, "occ_bench": 3, "place_guard": 2,
+	"occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
@@ -167,7 +167,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "occupancy_compare", "passages", "mirror_check":
+		"capture", "probe", "probe_store", "occupancy_compare", "passages", "mirror_check", "ground_check":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -286,6 +286,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 			var store_path: String = _output_path("probes", "%s.txt" % step["name"])
 			if (room.call("scenario_board_probe_store", store_path, step["name"]) as Dictionary).is_empty():
 				return _fail(step, "no store dump was written (see the error above)")
+		"ground_check":
+			if not room.has_method("scenario_ground_check"):
+				return _fail(step, "Room has no scenario_ground_check()")
+			if not bool(room.call("scenario_ground_check", str(step["name"]))):
+				return _fail(step, "no ground check was made (see the error above)")
 		"mirror_check":
 			if not room.has_method("scenario_mirror_check"):
 				return _fail(step, "Room has no scenario_mirror_check()")

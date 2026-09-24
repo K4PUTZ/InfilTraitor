@@ -148,15 +148,20 @@ func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileS
 func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	MemStage.mark("11 room build starts")
 	_room_size = room_size
-	floor_layer.clear()
+	## R3D-11: on the 3D board nothing reads the floor layer any more (gameplay asks `GroundGrid.has_cell`), so nothing
+	## writes it either. `GROUND_TILES=1` (the A/B) keeps the old fill.
+	var write_floor: bool = not VoxelRenderer.SKIP_BOARD_WRITES or GroundGrid.tiles_are_authority()
+	if write_floor:
+		floor_layer.clear()
 	structure_layer.clear()
 
 	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
 	## Fills exactly the MAP_SIZE grid. The 5-tile buffer in the layout builder
 	## replaces the old negative extension — no coordinates outside the range [0, MAP_SIZE).
-	for x in range(0, _room_size.x):
-		for y in range(0, _room_size.y):
-			_place(Vector2i(x, y), floor_tile_name)
+	if write_floor:
+		for x in range(0, _room_size.x):
+			for y in range(0, _room_size.y):
+				_place(Vector2i(x, y), floor_tile_name)
 
 	## Voxel render plane: wall/block descriptors become stacked voxel presence.
 	## The old wall-storey layers remain as a fallback path, but the active render

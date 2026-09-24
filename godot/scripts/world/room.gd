@@ -4987,11 +4987,11 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 	if _voxel_renderer == null or _lighting_controller == null or scope_gus.is_empty():
 		_shot_precook_done = true
 		return
-	## R3D-10: this warms TileSet alternatives (it minted 0 on the 3D board, 2026-09-22) after building a whole light
-	## field for the predicted world. On the 3D board there is no tile to warm, so none of it runs.
-	if not VoxelRenderer.plan_resolves_tiles():
-		_shot_precook_done = true
-		return
+	## R3D-13: this runs on the 3D board too. R3D-10 made it return here ("it minted 0 alternatives there") and lost the
+	## other half of what it does: it builds the SHARED light field for the predicted world, in the aim window, which absorbs
+	## the stale set the earlier blasts accumulated. Skipped, a shot after two grenades paid that in its tail: 3D 419.0 / 420.8 /
+	## 413.7 ms against 218.9 / 224.5 / 273.8 with it running (Galaxy A16, same APK, one line changed, three boots each),
+	## and the 2D board's 223.0. Only the alternatives half below is tile work.
 	var registry = _lighting_controller.get_light_registry()
 	if registry == null:
 		_shot_precook_done = true
@@ -5026,8 +5026,12 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 	field.build(lights, shadows, top_wall_level, occupancy, _under_structure, true)
 	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
 		return
-	_shot_precook_minted = _voxel_renderer.warm_light_alts_for_gus(
-		field, scope_gus, variant_cells)
+	## TileSet alternatives are the 2D board's: `warm_light_alts_for_gus()` walks placed TILES, and the 3D board has none, so
+	## there it would only iterate the placement index and mint nothing.
+	_shot_precook_minted = 0
+	if VoxelRenderer.plan_resolves_tiles():
+		_shot_precook_minted = _voxel_renderer.warm_light_alts_for_gus(
+			field, scope_gus, variant_cells)
 	if token != _shot_precook_token:
 		return
 	_shot_precook_done = true

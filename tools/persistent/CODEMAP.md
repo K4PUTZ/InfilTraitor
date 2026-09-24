@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**281 scripts · 102039 lines total** (under `godot/scripts/`)
+**278 scripts · 100188 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,7 +18,7 @@
 - **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **spikes/** — board3d_spike.gd, r3d4a_actor_spike.gd, spike3d.gd, store_layout_spike.gd
+- **spikes/** — spike3d.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
@@ -2170,51 +2170,6 @@ extends `Node2D` · 44 lines
 
 ## spikes/
 
-### `board3d_spike.gd`
-
-extends `Node3D` · 362 lines
-
-`godot/scripts/spikes/board3d_spike.gd`
-
-> Board3DSpike — PLAYGROUND's static board as depth-tested 3D meshes. DIAG-20 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.3). An instrument, never a mode: reachable only through `SPIKE=board3d`, which makes Room hand over to this scene before any map is built. THE QUESTION: is the 2D representation the anchor? The idle portrait board is ~42 000 primitives and costs the Moto 60 ms, and 36–47 ms of that is pixel shading (§10.17.4): 48 stacked TileMapLayers drawn back to front with no depth buffer, and a face shader on every covered pixel of every layer. This draws the same board the way a 3D pipeline would, and measures it with the same tools. WHAT IS HERE, and what each is for: - the floor zones, blocks and panels of `maps/PLAYGROUND.map.json`, at the 2D board's own geometry: 8 voxels per GU, 8 levels per storey, a storey as tall as a GU is wide (158 px per storey on a 256 px tile is the 30° camera's cube); - TWO MESHING MODES, because the answer depends on them. `voxel` emits every exposed voxel face (hidden faces culled): the destructible granularity, the worst case. `merged` emits one quad per exposed surface: intact geometry, the best case; - each material's facade texture tinted by its `base_color`, on a lit material with one directional light — a per-pixel lit 3D look, not an unlit shortcut; - an orthographic camera at the 2D projection's angles (30° down, 45° around), with an ortho size that shows the same world area as the 2D portrait canvas at each zoom, and a printed on-screen GU count to prove it (2D: 95 at 0.5); - Telemetry `frame.window` records and `scenario.mark`s, so `bench_analyze.py` reads it exactly like the 2D zoom ladder. NOT HERE — so nobody reads this as parity: the 12-bucket light, soot, decals, destruction, actors, fog and the HUD. It prices the REPRESENTATION.
-
-**Constants / tuning**
-- `MAP_PATH` = `"res://maps/PLAYGROUND.map.json"`
-- `VOXELS_PER_GU` = `8`
-- `LEVELS_PER_STOREY` = `8`
-- `PX_PER_UNIT` = `256.0 / sqrt(2.0)`
-- `ZOOMS` = `[0.5, 0.42, 0.35, 0.3, 0.25, 0.2]`
-- `SETTLE_S` = `4.0`
-- `STOP_S` = `15.0`
-- `PROBE_FRAMES` = `60`
-- `FACE_DIRS` = `[Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]`
-
----
-
-### `r3d4a_actor_spike.gd`
-
-extends `Node3D` · 509 lines
-
-`godot/scripts/spikes/r3d4a_actor_spike.gd`
-
-> R3D4AActorSpike — RENDER3D R3D-4a: an actor in depth, billboard (A) against composite (B). An instrument, never a mode. Run windowed: godot --path . res://godot/scenes/spikes/r3d4a_actor_spike.tscn --resolution 720x1280 It builds an occlusion fixture out of plain boxes, puts the REAL baked agent frame in it three ways, saves a contact sheet per case to `Screenshots/r3d4a/` and quits. THE THREE VARIANTS of every case: - `truth`: a volumetric proxy (a capsule the agent's height). The occlusion a body really has. - `A`: a camera-facing quad in the 3D scene, D17's relight ported to a spatial shader, depth-tested by the pipeline. - `B`: the shipped 2D Sprite2D, relit by the canvas shader, cut against a depth pass of the same board (a second camera into a SubViewport, meshes duplicated on a second render layer). Nothing here reads a game system: the fixture is boxes, the light is a constant. The question is the mechanism, not the map.
-
-**Constants / tuning**
-- `PPU` = `256.0 / sqrt(2.0)`
-- `FRAME_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
-- `FRAME_PX` = `256.0`
-- `AGENT_H` = `200.0 / (PPU * 0.8660254)`
-- `DEPTH_RANGE` = `100.0`
-- `LAYER_MAIN` = `1`
-- `LAYER_DEPTH` = `2`
-- `OUT_DIR` = `"res://Screenshots/r3d4a/"`
-- `LIGHT_DIR` = `Vector3(-0.3, 0.5, 0.8)`
-- `BENCH_SETTLE_S` = `3.0`
-- `BENCH_HOLD_S` = `12.0`
-- `PROBE_FRAMES` = `60`
-
----
-
 ### `spike3d.gd`
 
 `class_name Spike3D` · extends `Node3D` · 234 lines
@@ -2236,33 +2191,6 @@ extends `Node3D` · 509 lines
 
 **Public API**
 - `func add_props(room: Node, board: Node3D, count: int, kind: String) -> void:`
-
----
-
-### `store_layout_spike.gd`
-
-extends `RefCounted` · 941 lines
-
-`godot/scripts/spikes/store_layout_spike.gd`
-
-> StoreLayoutSpike — RENDER3D R3D-1a: which packed layout holds the voxel store. A SPIKE, never a mode. It reads the live registries after a real map load, builds every candidate layout beside today's objects, checks each candidate's answers against the objects', and times three hot readers on each. It writes nothing back. The decision rule it serves was committed before it ran (`RENDER3D_MASTER_PLAN` R3D-1a, commit `43af4062`). THE LAYOUTS - O  today: `Voxel` objects in their containers, and the dictionaries today's readers build from them (`occupancy[level][Vector2i]`, the mesher's `Vector3i → material`). - A  one dense grid over the padded cell bounds: a state, aux and material byte and an `int32` reference per cell. FLAT, with a level stride, rather than one array per level: the same bytes, and no per-level fetch in a hot loop. A cell two containers claim keeps its first claim in the grid and the second in an overflow table (6 ints per entry) — R3D-0's collision census. - Ac A allocated per (level, 32×32 chunk) only where a voxel exists, behind a flat chunk directory. - B  every claim in flat per-voxel arrays (state, aux, material, xyz), contiguous per container, plus a derived dense grid: an occupancy byte and the owning claim. STATE BYTE (A, Ac, B): bit 0 visible, bits 1–2 damage, bit 3 blast, bits 4–6 carved side — `BoardProbe`'s packing. A and Ac add bit 7: ANY claim of this cell is visible, which is what occupancy asks. AUX: variant in the low nibble, substrate in the high. THE KERNELS — the read pattern of each hot reader, with everything a layout does not change left out, and each answering a checksum that must equal O's: - T1 `VoxelLightField.bucket_for()`'s occupancy reads: `surface_factor()`'s three neighbours, then `_face_occlusion()`'s ring for the face that wins. Once per visible cell. - T2 the mesher's scan (`Board3DLive._build_chunk()`): per occupied cell, three neighbour reads and the glass rule, faces appended to a flat array. Merge and upload are the same for every layout. - T3 the prediction WALK's reads (`DetonationPlanBuilder._phase_walk()`): per claim, visible, damage, blast, cell and the container's material flammability, classified into its buckets. The Delta projection and the dictionaries the WALK builds are left out — they exist because there is no store. PADDING: the bounds grow by 2 cells and 2 levels on every side, so every neighbour read of ±1/±2 is in range and no kernel carries a bounds check. The memory reported is the padded arrays' real size.
-
-**Constants / tuning**
-- `PAD` = `2`
-- `CHUNK_SHIFT` = `5`
-- `CHUNK_MASK` = `31`
-- `CHUNK_CELLS` = `1024`
-- `BIT_VISIBLE` = `1`
-- `BIT_OCCUPIED` = `0x80`
-- `DAMAGE_DESTROYED` = `2`
-- `DAMAGE_DENTED` = `3`
-- `DAMAGE_CRACKED` = `1`
-- `OVERFLOW_STRIDE` = `6`
-- `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`
-
-**Public API**
-- `func run(room: Node, reps: int) -> Dictionary:`
-- `func log_lines() -> PackedStringArray:`
 
 ---
 
@@ -3416,18 +3344,17 @@ extends `Node` · 156 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 494 lines
+extends `Node` · 481 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
-> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. drop2d                               DIAG-23 instrument: clear the hidden 2D board's cells under a 3D board (RENDER3D=1) probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from placed tiles vs from the store, per level store_spike <reps>                   RENDER3D R3D-1a: build every candidate voxel store layout from the live registries, check each against today's objects, and time the three hot readers `reps` times (`StoreLayoutSpike`) occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
+> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. drop2d                               DIAG-23 instrument: clear the hidden 2D board's cells under a 3D board (RENDER3D=1) probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from placed tiles vs from the store, per level occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2, }`
 - `FRAMINGS` = `["portrait", "landscape", "desktop"]`
 - `ALLOC_KINDS` = `["objects", "packed", "bytes"]`
 - `BEAT_TOKEN_PATTERN` = `"^[A-Za-z0-9_]+$"`
-- `StoreLayoutSpikeClass` = `preload("res://godot/scripts/spikes/store_layout_spike.gd")`
 
 **Public API**
 - `func run(room: Node, steps: Array) -> void:`
@@ -5319,7 +5246,7 @@ extends `SceneTree` · 212 lines
 
 ### `scenario_selftest.gd`
 
-extends `Node` · 137 lines
+extends `Node` · 136 lines
 
 `godot/scripts/tools/scenario_selftest.gd`
 
@@ -6282,7 +6209,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12015 lines
+extends `Node2D` · 11990 lines
 
 `godot/scripts/world/room.gd`
 

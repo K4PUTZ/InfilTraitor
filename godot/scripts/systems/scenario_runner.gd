@@ -52,10 +52,6 @@
 ##                                        count and a digest
 ##   occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from
 ##                                        placed tiles vs from the store, per level
-##   store_spike <reps>                   RENDER3D R3D-1a: build every candidate voxel store
-##                                        layout from the live registries, check each
-##                                        against today's objects, and time the three hot
-##                                        readers `reps` times (`StoreLayoutSpike`)
 ##   occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps>
 ##                                        times through the real occlusion path (`_recompute_occlusion`),
 ##                                        one frame apart, and print the set / 3D cutaway / total cost
@@ -77,14 +73,13 @@ extends Node
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
-	"probe": 1, "alloc": 2, "capture_at": 3, "store_spike": 1,
+	"probe": 1, "alloc": 2, "capture_at": 3,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1,
 	"occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
 const BEAT_TOKEN_PATTERN: String = "^[A-Za-z0-9_]+$"
-const StoreLayoutSpikeClass = preload("res://godot/scripts/spikes/store_layout_spike.gd")
 
 
 ## `{"steps": Array, "error": String}` — `error` is empty exactly when the whole
@@ -215,10 +210,6 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not ["N", "E", "S", "W"].has(arg.to_upper()):
 				return "perspective takes N, E, S or W"
 			step["direction"] = arg.to_upper()
-		"store_spike":
-			if not arg.is_valid_int() or int(arg) < 1:
-				return "store_spike takes a repetition count >= 1"
-			step["reps"] = int(arg)
 		"alloc":
 			if not ALLOC_KINDS.has(arg):
 				return "alloc takes objects, packed or bytes"
@@ -320,10 +311,6 @@ func _execute(room: Node, step: Dictionary) -> bool:
 					ok = await room.call(method)
 			if not ok:
 				return _fail(step, "%s() did not complete (see the error above)" % method)
-		"store_spike":
-			var summary: Dictionary = await StoreLayoutSpikeClass.new().run(room, int(step["reps"]))
-			if summary.is_empty():
-				return _fail(step, "the spike built nothing (see the error above)")
 		"detonate":
 			if not room.has_signal("scenario_detonation_done") or not room.has_method("scenario_detonate"):
 				return _fail(step, "Room has no scenario_detonate()")

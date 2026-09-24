@@ -1472,9 +1472,8 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				## what goes into `touched_voxels`, because that list is the commit's
 				## persistence seam and needs the object, not a snapshot of it.
 				## R3D-10: on the 3D board no tile is ever written, so nothing resolves one — the entry carries the
-				## voxel key, the soot code and the ring, exactly the fields the plane-only writer reads. `PLAN_RESOLVE=1`
-				## (same binary) puts the old resolve back for the A/B; a GLASS-family container still yields no entry,
-				## which is what an empty resolve meant.
+				## voxel key, the soot code and the ring, exactly the fields the plane-only writer reads. A GLASS-family
+				## container still yields no entry, which is what an empty resolve meant.
 				var resolved: Dictionary = _resolve_damaged_tile_or_none(
 					delta.project_voxel(voxel), container, voxel_renderer)
 				## GLASS-OLIVE — an empty resolve is "no opaque tile", not a miss.
@@ -2245,8 +2244,7 @@ static func plan_digest(delta: WorldDelta) -> String:
 	return "%s counts %s tiers %s touched %d" % ["\n".join(rows).md5_text(), counts, "|".join(tiers), delta.touched.size()]
 
 
-## R3D-10 — `RESOLVE_TILES`: whether the plan resolves a tile per entry. False on the 3D board (`SKIP_BOARD_WRITES`), where
-## no tile is written; `INFILTRAITOR_PLAN_RESOLVE=1` forces the old resolve for a same-binary A/B. Deleted with the stage's flag.
+## R3D-10 — whether the plan resolves a tile per entry. False on the 3D board (`SKIP_BOARD_WRITES`), where no tile is written.
 static func resolves_tiles() -> bool:
 	return VoxelRendererClass.plan_resolves_tiles()
 

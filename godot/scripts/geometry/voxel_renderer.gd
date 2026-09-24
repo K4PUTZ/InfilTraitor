@@ -7557,10 +7557,10 @@ static func board_needs_2d_bakes() -> bool:
 	return not SKIP_BOARD_WRITES or FORCE_2D_BAKES
 
 
-## R3D-10 — whether a detonation PLAN resolves a tile per entry. False on the 3D board (no tile is written there);
-## `INFILTRAITOR_PLAN_RESOLVE=1` forces the old resolve for a same-binary A/B, and is deleted with the stage.
+## R3D-10 — whether a detonation PLAN resolves a tile per entry: only the 2D board writes one. (Its same-binary A/B flag,
+## `PLAN_RESOLVE`, was deleted when the stage closed, R3D-13.)
 static func plan_resolves_tiles() -> bool:
-	return not SKIP_BOARD_WRITES or OS.get_environment("INFILTRAITOR_PLAN_RESOLVE") == "1"
+	return not SKIP_BOARD_WRITES
 
 
 func render_slab(slab: Slab, apply: bool = true) -> Array:

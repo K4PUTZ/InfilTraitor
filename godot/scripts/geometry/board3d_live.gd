@@ -283,8 +283,6 @@ var _material_ids: PackedStringArray = PackedStringArray()
 ## R3D-6 item 3 — "family|material|variant" → layer of `_decal_array`; the pseudo-material that draws them.
 const DECAL_MATERIAL_ID: String = "__decals__"
 const DECAL_LIFT_VOXELS: float = 0.02
-## `INFILTRAITOR_DECALS3D=0` draws no damage decals: comparison only.
-static var DECAL_FLAG: bool = OS.get_environment("INFILTRAITOR_DECALS3D") != "0"
 ## `INFILTRAITOR_DENTS3D=0` (or `DENTS3D=0` in the device flags file) emits a dented voxel's carved side as a flat face: comparison only.
 static var DENT_FLAG: bool = OS.get_environment("INFILTRAITOR_DENTS3D") != "0"
 var _decal_layer: Dictionary = {}
@@ -344,7 +342,6 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
 	## The comparison switches reach the APK through the device flags file; the static initialisers above only see the OS
 	## environment, which an Android application does not get.
-	DECAL_FLAG = DECAL_FLAG and str(room.call("_dev_flag", "DECALS3D", "1")) != "0"
 	DENT_FLAG = DENT_FLAG and str(room.call("_dev_flag", "DENTS3D", "1")) != "0"
 	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
 	VERTICAL_SCALE = _read_vertical_scale(room)
@@ -1358,7 +1355,7 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 	_store_material.resize(store.material_ids.size())
 	for i in range(store.material_ids.size()):
 		_store_material[i] = _material(store.material_ids[i])
-	if DECAL_FLAG and _decal_array == null:
+	if _decal_array == null:
 		_build_decal_catalog()
 	if _decal_array != null:
 		_decal_material_index = _material(DECAL_MATERIAL_ID)

@@ -56,6 +56,7 @@
 ##                                        count and a digest
 ##   occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from
 ##                                        placed tiles vs from the store, per level
+##   glass_compare <label>                R3D-14: the hidden glass layers against the store's glass panes, cell by cell
 ##   occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps>
 ##                                        times through the real occlusion path (`_recompute_occlusion`),
 ##                                        one frame apart, and print the set / 3D cutaway / total cost
@@ -79,7 +80,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0,
-	"occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2,
+	"occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "glass_compare": 1, "occ_bench": 3, "place_guard": 2,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
@@ -166,7 +167,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "occupancy_compare", "passages", "mirror_check", "ground_check":
+		"capture", "probe", "probe_store", "occupancy_compare", "passages", "mirror_check", "ground_check", "glass_compare":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -286,6 +287,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_ground_check()")
 			if not bool(room.call("scenario_ground_check", str(step["name"]))):
 				return _fail(step, "no ground check was made (see the error above)")
+		"glass_compare":
+			if not room.has_method("scenario_glass_compare"):
+				return _fail(step, "Room has no scenario_glass_compare()")
+			if not bool(room.call("scenario_glass_compare", str(step["name"]))):
+				return _fail(step, "no glass comparison was made (see the error above)")
 		"mirror_check":
 			if not room.has_method("scenario_mirror_check"):
 				return _fail(step, "Room has no scenario_mirror_check()")

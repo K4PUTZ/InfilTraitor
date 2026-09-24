@@ -97,9 +97,9 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 				## DIAG-21 2c: the voxel is already gone in the data; only the hidden
 				## 2D cell would change. The light apply still needs to visit it.
 				voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
-				## R3D-6: glass is NOT a 2D-only write — `_glass_layers` is still the authority
-				## the crack occupancy, the rims and the craze masks read, so a shattered pane
-				## has to leave it or the 3D board keeps drawing cracks over a hole.
+				## R3D-6: glass is NOT a 2D-only write: a shattered pane owes the crack occupancy, the rims and the craze
+				## masks their re-cut. R3D-14: those now read the store, so `erase_glass_cell()` carries only the seams
+				## (light, ghost, the two glass flags) and touches no layer.
 				voxel_renderer.erase_glass_cell(int(entry["level"]), entry["cell"])
 				return 1
 			layer.erase_cell(entry["cell"])

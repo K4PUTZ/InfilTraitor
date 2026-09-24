@@ -3078,6 +3078,24 @@ func scenario_ground_check(label: String) -> bool:
 	return true
 
 
+## RENDER3D R3D-14 — the `glass_compare` scenario step: the hidden glass layers against the store's glass panes, cell by
+## cell (`VoxelRenderer.glass_state_compare()`), one `[GLASS-COMPARE]` line. `tools/persistent/glass_state_gate.py` reads it.
+func scenario_glass_compare(label: String) -> bool:
+	if _voxel_renderer == null:
+		push_error("[Room] scenario_glass_compare: no renderer")
+		return false
+	var r: Dictionary = _voxel_renderer.glass_state_compare()
+	if r.is_empty():
+		return false
+	print("[GLASS-COMPARE] %s layer=%d store=%d layer_only=%d store_only=%d face_mismatch=%d shard_atoms=%d"
+		% [label, r["layer_cells"], r["store_cells"], r["layer_only"], r["store_only"], r["face_mismatch"], r["shard_atoms"]])
+	if int(r["layer_only"]) > 0:
+		print("[GLASS-COMPARE]   layer only: %s" % [r["layer_only_samples"]])
+	if int(r["store_only"]) > 0:
+		print("[GLASS-COMPARE]   store only: %s" % [r["store_only_samples"]])
+	return true
+
+
 ## R3D-8 — the `mirror_check` scenario step: the 3D board's twins of what the 2D renderer creates. Cracks: one twin per
 ## live crack record. Piles: what the 3D board draws equals the live piles. `tools/persistent/mirror_gate.py` reads the line.
 func scenario_mirror_check(label: String) -> bool:

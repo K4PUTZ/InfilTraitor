@@ -16,9 +16,12 @@
 ##     `bullet` variant removed both boards booted with no decal message at all,
 ##     and a concrete shot with all three removed printed none either; the 2D
 ##     loud-fail (`[D33 Part 3a] missing decal asset`, `_load_decal_image()`)
-##     lives on the baked path, which `BakeConfig.enabled` leaves off. THIS gate
-##     and `voxel_decal_selftest.gd` are what catch it, so neither may go with
-##     the 2D board at R3D-END;
+##     lives on the baked path, which `BakeConfig.enabled` leaves off. R3D-14
+##     (2026-09-24) gave `Board3DLive._build_decal_catalog()` its own loud-fail
+##     (`push_error` for a partial family, a file that is not 256x256, or one that
+##     will not load; a clean boot prints none), but THIS gate and
+##     `voxel_decal_selftest.gd` catch it before the game ever boots, so neither
+##     may go with the 2D board at R3D-END;
 ##   - a material added to VoxelRenderer.IMPACT_DECAL_MATERIALS with no files on
 ##     disk is a SILENT MISS, not an error — the same failure class as a
 ##     rejected facade, which is what earned check_facade.py in the first place.

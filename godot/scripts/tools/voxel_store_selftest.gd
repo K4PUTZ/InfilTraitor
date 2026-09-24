@@ -16,6 +16,10 @@
 ##  5. A write the store cannot place is COUNTED: a voxel of a container the store never
 ##     saw. A container-less projection (`WorldDelta.project_voxel()`) is not a claim and
 ##     is not counted.
+##  7. The glass pane queries (R3D-14): `glass_pane_face_at()` answers from the claims what the hidden glass layer used to. A banded
+##     glass slice is a pane only on its glass levels, on the slice's face; a glass INTERIOR slab is a pane (face NW), a glass
+##     CEILING slab is not; a cell two glass claims hold answers for the LAST visible one, and for the other once that one is
+##     destroyed; a destroyed pane and a cell with no glass answer 0.
 ##  6. `occupancy_dict_after()`, the cook's predicted occupancy, works per CLAIM: a cell two
 ##     claims hold stays occupied while one of them is gone and empties when both are, a
 ##     cell one claim holds empties with it, and the store itself is not written (R3D-13:
@@ -44,6 +48,7 @@ func _init() -> void:
 	else:
 		VoxelStore.active = store
 		test_build_matches_objects(fixture, store)
+		test_glass_panes(fixture, store)   ## before TEST 3 destroys the shared corner cell it asks about
 		test_write_mirrors(fixture, store)
 		test_collision_ownership(fixture, store)
 		test_irregular_write(fixture, store)
@@ -73,6 +78,16 @@ func _build_fixture() -> Dictionary:
 	for offset: Vector2i in [Vector2i(1, 0), Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1)]:
 		shuffled.voxels.append(Voxel.new(Vector2i(16, 8) + offset, 79, shuffled))
 	slab_registry.register_slab(shuffled)
+	## R3D-14: a glazed partition (INTERIOR, glass) and a glass roof (CEILING, glass), two voxels each.
+	var partition := Slab.new(Slab.make_id(Vector2i(3, 1), Slab.Role.INTERIOR, base), Vector2i(3, 1),
+		Slab.Role.INTERIOR, base, "glass")
+	var roof := Slab.new(Slab.make_id(Vector2i(4, 1), Slab.Role.CEILING, base + 4), Vector2i(4, 1),
+		Slab.Role.CEILING, base + 4, "glass")
+	for x in range(2):
+		partition.voxels.append(Voxel.new(Vector2i(24 + x, 8), base, partition))
+		roof.voxels.append(Voxel.new(Vector2i(32 + x, 8), base + 4, roof))
+	slab_registry.register_slab(partition)
+	slab_registry.register_slab(roof)
 
 	var edge_registry := EdgeRegistry.new()
 	## A row along x at y = 8, two levels, with a brick band on the second.
@@ -94,7 +109,7 @@ func _build_fixture() -> Dictionary:
 
 	var plane := Image.create(4, 4, false, Image.FORMAT_RG8)
 	plane.fill(Color8(124, 255, 0, 255))
-	return {"slab": slab, "shuffled": shuffled, "row": row, "col": col, "column": column,
+	return {"slab": slab, "shuffled": shuffled, "partition": partition, "roof": roof, "row": row, "col": col, "column": column,
 		"columns": [column], "slab_registry": slab_registry, "edge_registry": edge_registry,
 		"planes": {80: plane}}
 
@@ -125,7 +140,7 @@ func _dumps_identical(fixture: Dictionary, store: VoxelStore, name: String) -> b
 # ── tests ────────────────────────────────────────────────────────────────────
 
 func test_build_matches_objects(fixture: Dictionary, store: VoxelStore) -> void:
-	var ok: bool = store.claims == 4 + 4 + 8 + 6 + 8 and store.irregular_containers() == 1 \
+	var ok: bool = store.claims == 4 + 4 + 8 + 6 + 8 + 2 + 2 and store.irregular_containers() == 1 \
 		and store.multi_cells() == 2 and store.grid_mismatches() == 0 \
 		and _dumps_identical(fixture, store, "t1")
 	_check(ok, "[TEST 1] built: %d claims, %d irregular, %d multi-claim cell(s), grid mismatches %d — dump identical to the objects'"
@@ -238,6 +253,45 @@ func test_occupancy_after(fixture: Dictionary, store: VoxelStore) -> void:
 	_check(here and same_as_real and survives and empties and lone_empties and untouched,
 		"[TEST 6] occupancy_dict_after(): no claim gone = the real occupancy (%s); one of two claims gone keeps the cell (%s); both gone empties it (%s); a lone claim gone empties its cell only (%s); the store is unwritten (%s)"
 		% [same_as_real, survives, empties, lone_empties, untouched])
+
+
+func test_glass_panes(fixture: Dictionary, store: VoxelStore) -> void:
+	var row: Slice = fixture["row"]      ## NE face, glass with a brick band on its second level
+	var col: Slice = fixture["col"]      ## NW face, the same
+	var partition: Slab = fixture["partition"]
+	var roof: Slab = fixture["roof"]
+	var base: int = row.voxels[0].level
+	## (9, 8) on the row's glass level: one claim, the row's, face NE.
+	var row_only: int = store.glass_pane_face_at(9, 8, base)
+	## (9, 8) on the brick band: a wall, not a pane.
+	var brick: int = store.glass_pane_face_at(9, 8, base + 1)
+	## The partition is a pane on face NW; the roof is glass and is not.
+	var part: int = store.glass_pane_face_at(24, 8, base)
+	var roofed: int = store.glass_pane_face_at(32, 8, base + 4)
+	## A concrete slab cell and an empty cell.
+	var concrete: int = store.glass_pane_face_at(8, 9, 79)
+	var empty: int = store.glass_pane_face_at(60, 60, base)
+	## (8, 8) on the glass level is held by both slices: the LAST claim answers, and the other once it is destroyed.
+	var a: Voxel = row.voxels[0]
+	var b: Voxel = col.voxels[0]
+	var later: Voxel = a if store.claim_of(a) > store.claim_of(b) else b
+	var earlier: Voxel = b if later == a else a
+	var later_face: int = (row.face if later == a else col.face) + 1
+	var earlier_face: int = (row.face if earlier == a else col.face) + 1
+	var both: int = store.glass_pane_face_at(8, 8, base)
+	later.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+	var after_later: int = store.glass_pane_face_at(8, 8, base)
+	earlier.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
+	var after_both: int = store.glass_pane_face_at(8, 8, base)
+	## Put the shared cell back as it was: TEST 3 asks about the same one.
+	for v: Voxel in [later, earlier]:
+		v.set_damage(Voxel.DamageState.INTACT, false, Voxel.CarvedSide.NONE, 0, 0)
+		v.set_visible(true)
+	var ok: bool = row_only == row.face + 1 and brick == 0 and part == Face.NW + 1 and roofed == 0 \
+		and concrete == 0 and empty == 0 and both == later_face and after_later == earlier_face and after_both == 0 \
+		and later_face != earlier_face and store.has_glass_pane(9, 8, base) and not store.has_glass_pane(9, 8, base + 1)
+	_check(ok, "[TEST 7] glass panes: row level %d (face %d), brick band %d, partition %d, roof %d, concrete %d, empty %d; a shared cell answers %d (later), %d once it is gone (earlier), %d once both are"
+		% [row_only, row.face + 1, brick, part, roofed, concrete, empty, both, after_later, after_both])
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────

@@ -1019,12 +1019,18 @@ func _collect() -> Dictionary:
 
 
 ## Every damage decal on disk as one Texture2DArray (`ART_SPECIFICATIONS` §7: 256x256 RGBA, three
-## variants per family per material). Missing files are simply absent from `_decal_layer`, so a
-## material without a family (metal has no `crack`) draws nothing instead of erroring.
+## variants per family per material). A family with NO file (metal has no `crack`) is legitimate and draws nothing.
+##
+## ⚠️ B6, LOUD (R3D-14, measured 2026-09-24): a PARTIAL family is not legitimate, and used to be silent. The 2D board's
+## "missing decal asset" error lives on the baked path, which is off by default, so one of three variants gone, or a file
+## that is not 256x256, or one that will not load, dropped the marks of every voxel whose hash landed on it with no message
+## on either board. `check_decal.py` and `voxel_decal_selftest` catch it in the pipeline; this is the one that catches it
+## on the board that ships.
 func _build_decal_catalog() -> void:
 	var images: Array[Image] = []
 	for family: String in ["bullet", "dent", "crack"]:
 		for material_id: String in VoxelRenderer.IMPACT_DECAL_MATERIALS + [VoxelRenderer.IMPACT_FLOOR_MATERIAL]:
+			var loaded: int = 0
 			for variant: int in range(VoxelRenderer.IMPACT_DECAL_VARIANTS):
 				var path: String = "res://ASSETS/materials/%s/decals/decal_%s_%s_%d.png" % [
 					material_id, family, material_id, variant]
@@ -1032,14 +1038,21 @@ func _build_decal_catalog() -> void:
 					continue
 				var texture: Texture2D = load(path) as Texture2D
 				if texture == null:
+					push_error("[Board3DLive] decal %s did not load as a texture: its marks are dropped" % path)
 					continue
 				var image: Image = texture.get_image()
 				if image == null or image.get_size() != Vector2i(256, 256):
+					push_error("[Board3DLive] decal %s is %s, not 256x256 (ART_SPECIFICATIONS §7): its marks are dropped"
+						% [path, "unreadable" if image == null else str(image.get_size())])
 					continue
 				image.convert(Image.FORMAT_RGBA8)
 				image.generate_mipmaps()
 				_decal_layer["%s|%s|%d" % [family, material_id, variant]] = images.size()
 				images.append(image)
+				loaded += 1
+			if loaded > 0 and loaded < VoxelRenderer.IMPACT_DECAL_VARIANTS:
+				push_error("[Board3DLive] decal family %s|%s has %d of %d variants on disk: every voxel whose hash lands on a missing one draws no mark"
+					% [family, material_id, loaded, VoxelRenderer.IMPACT_DECAL_VARIANTS])
 	if images.is_empty() or images.size() > 255:
 		_decal_layer.clear()
 		return

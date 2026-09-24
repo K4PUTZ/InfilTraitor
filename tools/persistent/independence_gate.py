@@ -13,18 +13,21 @@
 ##           the cell planes identical where the board reads them.
 ##   PIXELS  `pixel_gate.py`'s cases (PLAYGROUND: load, grenade, pistol shot; GLASS: load, two grenades) at
 ##           `--fixed-fps 60` and a 400-frame settle, keep vs drop, 0 px above the gate's noise (8/255).
-##   CONTROL `drop2d` must really have emptied something (its log line names the cells), or the gate could not fail.
+##   EMPTY   every `drop2d` of the run must report 0 opaque, 0 glass and 0 structure cells: since R3D-14 nothing is WRITTEN
+##           to the hidden 2D board under the 3D board, so there is nothing for it to hold (a non-zero count names a writer).
+##   CONTROL the gate must be able to fail: the same GLASS pixel case with `INFILTRAITOR_GLASS_STATE_LAYER=1` (the R3D-14
+##           A/B flag, which puts the hidden glass layers back as the glass state's authority) must lose the crack and
+##           craze webs after a blast, >= 100 px above noise. The flag stays until R3D-END because this control needs it.
 ##
-## MEASURED 2026-09-24, before this file was written, and the reason it is a gate: PLAYGROUND is identical in every
-## dump and every frame; **GLASS is not — after a grenade the crack/craze webs on the standing panes vanish (19 391 px
-## on g0, 10 881 on g1; 42 and 82 light texels on cracked glass)**, because `VoxelRenderer._build_crack_occupancy()`
-## and the other glass mechanics still read `_glass_layers`, the hidden TileMapLayers that are the glass state's
-## authority. Until that authority moves to the store this gate is RED, and R3D-END (which deletes those layers) is not
-## enterable. Its first green run is the entry condition.
+## MEASURED 2026-09-24, the reason it is a gate: with the glass layers as the authority PLAYGROUND was identical in
+## every dump and frame and **GLASS was not — after a grenade the crack/craze webs on the standing panes vanished (19 391
+## px on g0, 10 881 on g1)**, because `VoxelRenderer._build_crack_occupancy()` and the opening walk read `_glass_layers`.
+## R3D-14 moved the glass state to the store (`VoxelStore.glass_pane_face_at()`); this gate read RED before it and reads
+## PASS after. It retires with R3D-END (an entry gate), which deletes what it probes.
 ##
 ## ⚠️ RUN IT WITH NO OTHER GODOT ALIVE (the pixel half depends on frame timing; see `pixel_gate.py`).
 ##
-## Usage:   python3 tools/persistent/independence_gate.py [--maps PLAYGROUND,GLASS] [--no-pixels] [--no-state]
+## Usage:   python3 tools/persistent/independence_gate.py [--maps PLAYGROUND,GLASS] [--no-pixels] [--no-state] [--no-control]
 
 import argparse
 import re
@@ -38,7 +41,7 @@ import board_probe as bp  # noqa: E402
 import pixel_gate as pg  # noqa: E402
 
 TAG = "[INDEPENDENCE-GATE]"
-DROPPED = re.compile(r"\[BOARD3D\] dropped the hidden 2D board — (\d+) opaque cell\(s\) in \d+ layer\(s\), (\d+) glass cell\(s\)")
+DROPPED = re.compile(r"\[BOARD3D\] dropped the hidden 2D board — (\d+) opaque cell\(s\) in \d+ layer\(s\), (\d+) glass cell\(s\) in \d+ layer\(s\), (\d+) structure cell")
 
 
 def state_scenario(map_id: str, drop: bool):
@@ -56,16 +59,15 @@ def state_scenario(map_id: str, drop: bool):
     return "; ".join(steps + ["quit"]), labels
 
 
-def dropped_cells(log_path: Path):
-    """(opaque, glass) cells the FIRST `drop2d` of a run emptied; (0, 0) when it never ran."""
-    try:
-        for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
-            m = DROPPED.search(line)
-            if m:
-                return int(m[1]), int(m[2])
-    except OSError:
-        pass
-    return 0, 0
+def dropped_cells(log_text: str):
+    """(steps, cells): how many `drop2d` steps a run made and the cells (opaque + glass + structure) they emptied in all."""
+    steps = cells = 0
+    for line in log_text.splitlines():
+        m = DROPPED.search(line)
+        if m:
+            steps += 1
+            cells += int(m[1]) + int(m[2]) + int(m[3])
+    return steps, cells
 
 
 def run_state(map_id: str, godot: str, root: Path, failures: list):
@@ -81,10 +83,12 @@ def run_state(map_id: str, godot: str, root: Path, failures: list):
             failures.append("STATE %s %s did not run cleanly" % (map_id, name))
             return
         runs[name] = probes
-    opaque, glass = dropped_cells(root / map_id / "drop" / "godot.log")
-    print("%s CONTROL %s: the first drop2d emptied %d opaque and %d glass cell(s)" % (TAG, map_id, opaque, glass))
-    if opaque + glass == 0:
-        failures.append("CONTROL %s: drop2d emptied nothing, so this gate could not have failed" % map_id)
+    steps, cells = dropped_cells((root / map_id / "drop" / "godot.log").read_text(encoding="utf-8", errors="replace"))
+    print("%s EMPTY %s: %d drop2d step(s), the hidden 2D board held %d cell(s) in all" % (TAG, map_id, steps, cells))
+    if steps == 0:
+        failures.append("EMPTY %s: drop2d never ran" % map_id)
+    elif cells:
+        failures.append("EMPTY %s: the hidden 2D board still holds %d cell(s) under the 3D board: something writes it" % (map_id, cells))
     for label in runs["keep"]:
         quiet = []
         result = bp.diff(bp.load(runs["keep"][label]), bp.load(runs["drop"][label]), 5, quiet.append, occupied_only=True)
@@ -116,10 +120,12 @@ def run_pixels(case: str, settle: int, failures: list):
         pg.case_env = original
     if k_err or d_err:
         failures.append("PIXELS %s: script error (keep %s, drop %s)" % (case, k_err, d_err))
-    steps = d_log.count("dropped the hidden 2D board")
-    print("%s CONTROL %s pixels: %d drop2d step(s) ran" % (TAG, case, steps))
+    steps, cells = dropped_cells(d_log)
+    print("%s EMPTY %s pixels: %d drop2d step(s), %d cell(s) held" % (TAG, case, steps, cells))
     if steps == 0:
-        failures.append("CONTROL %s pixels: drop2d never ran" % case)
+        failures.append("EMPTY %s pixels: drop2d never ran" % case)
+    elif cells:
+        failures.append("EMPTY %s pixels: the hidden 2D board held %d cell(s)" % (case, cells))
     for label in keep:
         if not keep[label].exists() or not drop[label].exists():
             failures.append("PIXELS %s %s: a capture is missing" % (case, label))
@@ -131,12 +137,28 @@ def run_pixels(case: str, settle: int, failures: list):
             failures.append("PIXELS %s %s: %d px differ once the 2D board is empty" % (case, label, loose))
 
 
+def run_control(settle: int, failures: list):
+    """The gate must be able to fail: with the glass layers back as the authority, a GLASS blast loses its crack webs."""
+    import os
+    os.environ["INFILTRAITOR_GLASS_STATE_LAYER"] = "1"
+    scratch: list = []
+    try:
+        run_pixels("GLASS", settle, scratch)
+    finally:
+        os.environ.pop("INFILTRAITOR_GLASS_STATE_LAYER", None)
+    seen = [int(m[1]) for f in scratch for m in [re.search(r"(\d+) px differ once", f)] if m]
+    print("%s CONTROL GLASS in layer mode: frames that lose pixels once the 2D board is empty: %s" % (TAG, seen))
+    if not seen or max(seen) < 100:
+        failures.append("CONTROL: with the glass layers as the authority the gate saw no difference (%s), so it could not have failed" % seen)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--maps", default="PLAYGROUND,GLASS")
     ap.add_argument("--settle", type=int, default=400)
     ap.add_argument("--no-pixels", action="store_true")
     ap.add_argument("--no-state", action="store_true")
+    ap.add_argument("--no-control", action="store_true")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
     godot = bp.find_godot()
@@ -151,6 +173,8 @@ def main() -> int:
             run_state(map_id, godot, root, failures)
         if not args.no_pixels:
             run_pixels(map_id, args.settle, failures)
+    if not args.no_control and not args.no_pixels and "GLASS" in maps:
+        run_control(args.settle, failures)
     for f in failures:
         print("%s   %s" % (TAG, f))
     print("%s %s%s" % (TAG, "FAIL" if failures else "PASS", " — R3D-END is not enterable" if failures else

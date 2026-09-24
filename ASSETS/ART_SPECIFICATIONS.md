@@ -430,8 +430,8 @@ python3 tools/asset_generation/generate_voxel.py
 (R3D-13): a decal variant missing from disk is SILENT on both boards. The 3D board's
 `_build_decal_catalog()` skips the file and draws no mark for the voxels whose hash
 lands on it; the older "hard-errors at boot (invariant B6)" holds only for the baked
-path, which is off by default. `check_decal.py --material <id>` and
-`voxel_decal_selftest.gd` are what catch it.
+path, which is off by default. Since R3D-14 the 3D board says so itself (`push_error` for a partial family, a file that is
+not 256x256 or one that will not load); `check_decal.py --material <id>` and `voxel_decal_selftest.gd` catch it before boot.
 
 Runtime side (for whoever changes it next): `damage_variant_material()` names
 the pseudo-material, `VoxelRenderer._set_voxel_cell()`'s plan parsers

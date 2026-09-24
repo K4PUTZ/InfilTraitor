@@ -61,6 +61,12 @@ var state := PackedByteArray()
 var aux := PackedByteArray()
 var mat := PackedByteArray()
 var xyz := PackedInt32Array()
+## RENDER3D R3D-14 — per claim, 0 = not a glass PANE voxel, else the pane's face + 1 (`Face`: NW 0, NE 1, SE 2, SW 3).
+## What the renderer routes to its pane layer, decided once at build so the glass state can be asked of the store
+## instead of a hidden `TileMapLayer`: a slice's voxel whose (band-resolved) material is glass, on the slice's face;
+## a glass INTERIOR slab's voxel (a glazed partition), face NW as `render_slab_solid()` passes it. A CEILING or FLOOR
+## slab and a junction column are never panes. Immutable after the build: presence is `pane != 0` AND visible.
+var pane := PackedByteArray()
 var material_ids := PackedStringArray()
 
 var x0: int = 0
@@ -164,6 +170,7 @@ func _fill(containers: Array) -> bool:
 	state.resize(total)
 	aux.resize(total)
 	mat.resize(total)
+	pane.resize(total)
 	xyz.resize(total * 3)
 	if total == 0:
 		return true
@@ -200,11 +207,20 @@ func _fill(containers: Array) -> bool:
 		var banded: Slice = null
 		var band_base: int = 0
 		var by_level: Dictionary = {}
+		## The pane byte of this container (see `pane`), once; per level on a banded slice.
+		var fixed_pane: int = 0
+		var pane_by_level: Dictionary = {}
 		if container is Slice and (container as Slice).has_material_bands():
 			banded = container
 			band_base = GeometryCoords.storey_level_base(banded.start_storey)
 		elif n > 0:
-			fixed_material = _material(_voxel_material(container, voxels[0]))
+			var fixed_id: String = _voxel_material(container, voxels[0])
+			fixed_material = _material(fixed_id)
+			if GlassMaterials.is_glass(fixed_id):
+				if container is Slice:
+					fixed_pane = (container as Slice).face + 1
+				elif container is Slab and (container as Slab).role == Slab.Role.INTERIOR:
+					fixed_pane = Face.NW + 1
 		for i in range(n):
 			var v: Voxel = voxels[i]
 			var gp: Vector2i = v.grid_pos
@@ -223,10 +239,16 @@ func _fill(containers: Array) -> bool:
 			v.claim = claim
 			if banded == null:
 				mat[claim] = fixed_material
+				if fixed_pane != 0:
+					pane[claim] = fixed_pane
 			else:
 				if not by_level.has(lv):
-					by_level[lv] = _material(banded.material_at(lv - band_base))
+					var band_id: String = banded.material_at(lv - band_base)
+					by_level[lv] = _material(band_id)
+					pane_by_level[lv] = banded.face + 1 if GlassMaterials.is_glass(band_id) else 0
 				mat[claim] = by_level[lv]
+				if int(pane_by_level[lv]) != 0:
+					pane[claim] = int(pane_by_level[lv])
 			var k: int = claim * 3
 			xyz[k] = gp.x
 			xyz[k + 1] = gp.y
@@ -474,6 +496,34 @@ func occupancy_dict_after(gone: Dictionary) -> Dictionary:
 	return out
 
 
+## RENDER3D R3D-14 — the face + 1 of the VISIBLE glass pane voxel that holds this cell, or 0 when none does. The glass
+## state's one question (`VoxelRenderer._glass_cell_present()`, the crack's cut mask, the opening walk), answered from the
+## claims. A cell two claims hold answers for the LAST visible pane of them: the layer this replaces was written in claim order
+## and the last writer won (64 such corner cells on GLASS, whose atoms carried the later pane's face). Bounds-checked like `has_cell()`.
+func glass_pane_face_at(x: int, y: int, level: int) -> int:
+	if x < x0 or y < y0 or level < l0 or x >= x0 + w or y >= y0 + h or level >= l0 + nl:
+		return 0
+	var cell: int = cell_index(x, y, level)
+	if occ[cell] == 0:
+		return 0
+	if _multi.has(cell):
+		var list: PackedInt32Array = _multi[cell]
+		for i in range(list.size() - 1, -1, -1):
+			var claim: int = list[i]
+			if (state[claim] & 1) == 1 and pane[claim] != 0:
+				return pane[claim]
+		return 0
+	var owner_claim: int = owner[cell]
+	if owner_claim >= 0 and (state[owner_claim] & 1) == 1:
+		return pane[owner_claim]
+	return 0
+
+
+## True when a visible glass pane voxel holds the cell.
+func has_glass_pane(x: int, y: int, level: int) -> bool:
+	return glass_pane_face_at(x, y, level) != 0
+
+
 ## x, y, level and state byte of every voxel of `container`, in the container's own order
 ## (stride `CELL_STRIDE`). From the active store when it holds the container, else off the
 ## objects. State: bit 0 visible, bits 1–2 damage — `state_byte()`'s packing.
@@ -544,7 +594,7 @@ func multi_cells() -> int:
 
 
 func bytes() -> int:
-	return state.size() + aux.size() + mat.size() + xyz.size() * 4 + occ.size() \
+	return state.size() + aux.size() + mat.size() + pane.size() + xyz.size() * 4 + occ.size() \
 		+ owner.size() * 4 + _geom.size() * 4
 
 

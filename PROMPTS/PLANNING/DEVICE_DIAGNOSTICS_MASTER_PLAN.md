@@ -1,6 +1,8 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
 ## Measuring the real build on a real entry-tier phone — v1.11
 
+> ⏭️ **2026-09-24 (night) — R3D-14 on the Galaxy A16: the glass state from the store vs from the hidden glass layers** (`export/r3d14.apk`, the flag `GLASS_STATE_LAYER=1` flips it, alternating, three boots each; GLASS, portrait, zoom 0.5, grenades `14,12;5,12`, `FRAME_PROBE` + `EVENT_FRAMES`): the worst (COMMIT) frame of the two grenades **722 / 705, 695 / 689, 692 / 682 ms with the store vs 919 / 965, 910 / 962, 897 / 937 with the layers (about -230 ms)**; the second grenade's mean frame 34.4-35.3 vs 37.3-38.7 ms, the first 40.1-41.0 vs 40.3-41.5; load 3.9-4.4 vs 4.3 s; native heap 476-482 vs 487-491 MB (first poll), PSS inside the noise; LIGHT 31.9-36.7 ms/frame in both. **The COMMIT frame is still ~700 ms** (not decomposed). Logs local: `docs/measurements/device_2026-09-24_galaxy_r3d14_gs_*.log`. The Moto was not attached.
+
 > ⏭️ **2026-09-24 (later) — THE R3D-13 BASELINE, Galaxy A16 (SM-A166W, Android 16, 3.5 GB, 1080x2340).** The Moto's row below, repeated on the same APK (`export/r3d13.apk`, `1788f0fd` + docs), PLAYGROUND, portrait, `RNG_SEED=1`,
 > grenades `25,2;37,2`, shotgun at guard 0, `EVENT_FRAMES=1`, `FRAME_PROBE=1`; scenario `zoom 0.75 (12 s), 1.0 (12 s), 0.5 (20 s), detonate 0, detonate 1, shoot 0`. **3D (`RENDER3D=1`, two boots) vs 2D (`RENDER3D=0`, one boot):**
 > `[RNG] seeded` -> `_ready()` **7.9 / 8.0 s vs 23.3 s**; PSS (last poll) **1 299 / 1 329 MB vs 2 199 MB**, native heap alloc 681 / 664 vs 1 405 MB, swap PSS 477 / 440 vs 1 138 MB. Idle (settled windows): **25.2-25.6 ms/frame vs 39.5-42.4** (gpu 22.8-23.6 vs

@@ -1,5 +1,21 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.24
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.25
+
+**2026-09-24 (night) update (v1.25) — R3D-14 BUILT: THE GLASS STATE LIVES IN THE STORE, THE INDEPENDENCE GATE READS PASS (Director: "Sim, começa a R3D-14").**
+Commit `8c8723c0`. **R3D-END's entry gate is green; R3D-END itself waits for the Director's ratification, and nothing else blocks it.**
+- **Built.** `VoxelStore.pane` (per claim: 0, or the pane's face + 1: a slice on its face band-resolved, a glass INTERIOR slab on NW, never a CEILING/FLOOR slab or a column) with `glass_pane_face_at()` / `has_glass_pane()`; a cell two panes hold answers for the LAST visible one,
+  which is what the layer's last-writer-wins gave (face mismatch 64 -> 0 at load); `voxel_store_selftest` TEST 7, sabotaged (first-visible: red). `VoxelRenderer.glass_state_from_store()` = 3D board and not `GLASS_STATE_LAYER`: under it the hidden glass layers are never
+  built or written, and `_build_crack_occupancy`, `_glass_cell_present`, `glass_cell_present`, `_apply_opening_to_region` (presence + face from the claims, a shaped-cell record for "already a shard", no atom), `apply_glass_remnant_at`, `erase_glass_cell` and `count_glass_shards` read the store.
+  The initial glass placements and both dirty passes skip glass like any other voxel and run `_render3d_glass_gone()` for what a destroyed pane owes (light, ghost, the two glass seams, a once-only `voxel_destroyed`, kept apart from the opaque set because a corner cell two claims hold is two destructions).
+- **The A/B, same binary (`GLASS_STATE_LAYER=1` = the layers back as the authority).** `glass_compare` (a scenario step: layers vs store cell by cell): identical at load on GLASS (6 240), PLAYGROUND (2 240), PLAYGROUND_2 (1 984) and RENDER_ORDER (2 304); through blasts and rotations `layer_only` stays 0 and the store keeps 3-6 corner cells the layer had lost
+  (PLAYGROUND (312,24,80..86): the layer's `erase_cell` dropped a cell when ONE of its two panes was destroyed, the store keeps the surviving pane, which is what the 3D board draws). Roundtrip dumps store vs layer: **19/19 identical** (PLAYGROUND 10, GLASS 9). Pictures, 0 px above noise on PLAYGROUND load/g0/shot, GLASS load/g0/g1 and a pistol shot at glass plus a rotation E and back (4 frames,
+  the `[GLASS-OPENING]` lines identical, 12 cells).
+- **The gate, RED -> GREEN on the real symptom.** `independence_gate.py` GLASS pixels g0 19 391 -> 0 and g1 10 881 -> 0 px above noise; the hidden board held 2 240 + 2 240 (PLAYGROUND) and 6 240 + 6 240 (GLASS) cells and holds **0 at all 19 `drop2d` steps** (nothing writes it any more); 19 state dumps identical; and the gate's own control, the same run in `GLASS_STATE_LAYER=1` mode, still loses [19 391, 10 881] px, so it can fail.
+  The gate was reworked for that: emptiness at every drop, identity, and a control that must fail. **`GLASS_STATE_LAYER` stays until R3D-END** (the control needs it) and is deleted with the 2D board.
+- **Galaxy A16, GLASS, two grenades, same APK, flag alternating, three boots each:** the worst (COMMIT) frame **722 / 705, 695 / 689, 692 / 682 ms with the store vs 919 / 965, 910 / 962, 897 / 937 with the layers** (about -230 ms); the second grenade's mean frame 34.4-35.3 vs 37.3-38.7 ms, the first 40.1-41.0 vs 40.3-41.5 (level); load 3.9-4.4 vs 4.3 s; native heap 476-482 vs 487-491 MB (first poll); PSS inside the noise. LIGHT ms/frame unchanged (31.9-36.7). **A GLASS blast's COMMIT frame is still ~700 ms on the Galaxy** with the store: not decomposed, it is R3D-LIGHT's next line (the layers were about a third of it). The Moto was not attached.
+- **Also in this stage:** the 3D decal catalog's loud-fail (`Board3DLive._build_decal_catalog()` `push_error`s on a partial family, a file that is not 256x256 or one that will not load; measured before: silent; after: a clean boot prints none, with one concrete bullet variant hidden it names the family and the count). `check_decal.py` and `voxel_decal_selftest` stay.
+- **Left, none of it a blocker:** the GLASS rim texel (v1.22: a rim-cut pane voxel the Delta does not project, so the cook's light kept its pre-cut occlusion; it is about the Delta, not the layers); `_soot_map` tone 0 on cracked glass (unread by any glass shader); the SE face of the reference set; the Moto halves (pre-cook A/B, this A/B).
+- **What R3D-END is now** (the deletion list, with the layers no longer written on 3D): `_glass_layers`, `_glass_tile_sync()`, the render-order clip, `GlassCrackSprite`, the 2D glass shaders, the voxel atoms and the TileSet (R3D-12 kept them for this), `GLASS_STATE_LAYER` and `independence_gate.py` itself; `floor_layer` (202 references in 25 files, a conversion behind `ground_gate.py`); the 15 `room.gd` instruments; the canon edits.
 
 **2026-09-24 (end) update (v1.24) — THE PRE-COOK IS BACK ON THE 3D BOARD, AND THE R3D-END ENTRY GATE EXISTS AND IS RED (Director: "Religa o pre-cook na 3D e checa se precisa de mais alguma coisa antes do END").**
 Commits `2d88472e` (the pre-cook) and the one carrying `tools/persistent/independence_gate.py`. R3D-END is still not started, and **it is not enterable yet: a new stage, R3D-14, comes first.**
@@ -2985,7 +3001,9 @@ This comes after its consumers (R3D-9 to R3D-11).
 - no 3D comparison flag is left;
 - the matrix is recorded in `DEVICE_DIAGNOSTICS` as the R3D-END baseline.
 
-### R3D-14 — The glass state leaves the tile layers (found 2026-09-24, by `independence_gate.py`)
+### R3D-14 — The glass state leaves the tile layers (found 2026-09-24, by `independence_gate.py`; BUILT 2026-09-24, v1.25)
+
+**Built — see the v1.25 block at the top for what, the A/B and the numbers.** The plan below is kept as written, except that step 4 changed: the A/B flag `GLASS_STATE_LAYER` is NOT deleted when the stage closes, because the independence gate's control needs it; it goes with the 2D board at R3D-END.
 
 **Why it exists.** R3D-12 kept the glass `TileMapLayer`s because they are the glass state's authority ("its own stage, not written"). This is that stage, and the gate says it is a real dependency, not a leftover:
 with the hidden 2D board emptied, a GLASS blast loses the crack and craze webs on the standing panes (19 391 px on g0, 10 881 on g1) while every voxel and every plane the board reads stays identical. R3D-END deletes
@@ -3007,7 +3025,7 @@ The 2D drawing ones (`_glass_tile_sync()`, the seam cull, the clip diagnostics) 
 
 ### R3D-END — Retire the 2D board (the canon change)
 
-**Entry condition:** R3D-8 to R3D-14 are closed, **`tools/persistent/independence_gate.py` reads PASS** (v1.24: red today, on GLASS), and **the Director ratifies the retirement** on the deletion list. The look
+**Entry condition:** R3D-8 to R3D-14 are closed, **`tools/persistent/independence_gate.py` reads PASS** (v1.25: it does), and **the Director ratifies the retirement** on the deletion list. The look
 is not an entry condition (Director, 2026-09-23).
 
 **Deleted:**

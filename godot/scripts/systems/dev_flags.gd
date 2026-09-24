@@ -89,8 +89,6 @@ func _ready() -> void:
 	## for a same-map comparison. Removed at R3D-END along with the 2D board itself.
 	VoxelRenderer.SKIP_BOARD_WRITES = on("SKIP_2D_BOARD_WRITES") \
 		or (on("RENDER3D") and not on("RENDER3D_2D_BUILD"))
-	## R3D-12 — `=1` puts the 2D board's bake back in the load (facade pages, damage-variant registry), for the A/B.
-	VoxelRenderer.FORCE_2D_BAKES = VoxelRenderer.FORCE_2D_BAKES or on("BAKE_2D")
 	## RENDER3D R3D-1c step 2 — the prediction WALK reads the VoxelStore. `=0` = object walk.
 	DetonationPlanBuilder.STORE_WALK = value("STORE_WALK", "1") != "0"
 	## RENDER3D R3D-1c step 3 — glass reads voxel state from the VoxelStore. `=0` = objects.

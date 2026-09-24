@@ -575,7 +575,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## merged array, so invalidation on floor-zone edits stays automatic.
 		var horizontal_specs: Array = _merge_horizontal_specs(roof_specs, floor_specs)
 		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
-		if bake_config and bake_config.enabled:
+		if bake_config and bake_config.enabled and VoxelRenderer.board_needs_2d_bakes():
 			_bake_textures(extraction, edge_registry, junction_columns, horizontal_specs,
 				damage_materials, damage_floor_materials)
 

@@ -7543,6 +7543,13 @@ func set_glass_opaque_preview(enable: bool) -> void:
 ## "atlas_coords":Vector2i, "alternative_id":int}] when apply is false (one
 ## entry per currently-visible voxel), empty when apply is true (existing
 ## callers all ignore the return value already).
+## R3D-12 — whether the load builds the 2D board's bake (the facade atlas pages, the damage-variant registry and its composite
+## page). False on the 3D board, which samples `TextureResolver` facades and writes no tile: it then loads exactly as `NO_BAKE=1`
+## does, a configuration the renderer already supports. `INFILTRAITOR_BAKE_2D=1` puts the bake back in the same binary (A/B).
+static func board_needs_2d_bakes() -> bool:
+	return not SKIP_BOARD_WRITES or OS.get_environment("INFILTRAITOR_BAKE_2D") == "1"
+
+
 ## R3D-10 — whether a detonation PLAN resolves a tile per entry. False on the 3D board (no tile is written there);
 ## `INFILTRAITOR_PLAN_RESOLVE=1` forces the old resolve for a same-binary A/B, and is deleted with the stage.
 static func plan_resolves_tiles() -> bool:

@@ -117,7 +117,7 @@ structural material), plus `brick`, `cardboard`, `fabric`, `plywood` and
 > Step 3 is not hypothetical. The first `facade_earth.png` delivery was
 > rejected at load for being full-colour (100% of sampled pixels over the
 > tolerance) — caught only because someone measured the file. A rejected
-> facade produces **no error at all**: Tier.NONE, generic atlas, a material
+> facade produces **no error at all**: Tier.NONE (2D board: the generic atlas; 3D board, measured 2026-09-24: a bad USER-tier file falls through to the shipped facade, a bad DEFAULT-tier file draws the material's flat base colour), a material
 > that looks vaguely wrong. Measure a new facade before trusting it, and
 > reimport after every re-export — a stale `.import` fails the same silent way.
 

@@ -9,6 +9,14 @@
 ## was caught only because somebody measured the file. Eyeballing it in the
 ## editor cannot catch either failure mode, because both render *something*.
 ##
+## R3D-13 (2026-09-24) — WHAT THE 3D BOARD DOES WITH A BAD FILE, measured on the running game rather than assumed. The
+## resolver rejects a coloured facade on EITHER board (log line "Not grayscale ... rejected", nothing above it). On the 3D
+## board (the default) the consequence is: a bad file in the USER tier falls through, silently, to the SHIPPED facade of
+## that material (measured: a full-red 1024x512 `user://textures/concrete/facade_concrete.png` left the wall at the
+## shipped concrete grey, (56,56,56)); a bad file in the DEFAULT tier leaves `Tier.NONE`, and the 3D board then draws the
+## material's flat base colour (`has_facade 0`), not the 2D board's generic atlas. Either way there is no error, which is
+## why this gate exists. `check_decal.py`'s failure modes were not re-measured on the 3D board.
+##
 ## Checks, in the order they bite:
 ##   1. dimensions      — 1024x512 exactly (FACADE_W/FACADE_H, bake_compositor.gd)
 ##   2. grayscale       — R == G == B on every pixel (invariant B2)

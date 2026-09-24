@@ -551,18 +551,17 @@ def gate(args):
             runs.append(probes)
         if any(label not in probes for probes in runs for label in GATE_LABELS):
             continue
-        if extra_env.get("INFILTRAITOR_RENDER3D", "1") != "0":
-            counts = [hook_counts(out_root / map_id / ("run%d" % k)) for k in range(1, args.runs + 1)]
-            print("%s %s hooks: %s" % (GATE_TAG, map_id, "; ".join(
-                "run %d %s" % (k + 1, ", ".join("%s %d" % kv for kv in c.items())) for k, c in enumerate(counts))))
-            for name in HOOK_LINES:
-                floor = HOOK_FLOOR.get(name, 2)
-                if counts[0][name] < floor:
-                    failures.append("%s: %d `%s` line(s), needs >= %d for 2 grenades (the blast never told the board)"
-                                    % (map_id, counts[0][name], name, floor))
-            for name in HOOK_EXACT:
-                if len({c[name] for c in counts}) > 1:
-                    failures.append("%s: `%s` count differs between runs %s" % (map_id, name, [c[name] for c in counts]))
+        counts = [hook_counts(out_root / map_id / ("run%d" % k)) for k in range(1, args.runs + 1)]
+        print("%s %s hooks: %s" % (GATE_TAG, map_id, "; ".join(
+            "run %d %s" % (k + 1, ", ".join("%s %d" % kv for kv in c.items())) for k, c in enumerate(counts))))
+        for name in HOOK_LINES:
+            floor = HOOK_FLOOR.get(name, 2)
+            if counts[0][name] < floor:
+                failures.append("%s: %d `%s` line(s), needs >= %d for 2 grenades (the blast never told the board)"
+                                % (map_id, counts[0][name], name, floor))
+        for name in HOOK_EXACT:
+            if len({c[name] for c in counts}) > 1:
+                failures.append("%s: `%s` count differs between runs %s" % (map_id, name, [c[name] for c in counts]))
         quiet = [] if args.verbose else None
         sink = print if quiet is None else quiet.append
         for label in GATE_LABELS:

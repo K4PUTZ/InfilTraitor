@@ -145,9 +145,9 @@ func plane_levels() -> Array:
 
 
 ## Upload whatever changed. Returns how many levels were re-uploaded — one
-## upload per level per repaint, never one per cell. `skip_writes` is
-## `VoxelRenderer.SKIP_BOARD_WRITES` (DIAG-21 2c): no 2D board draws these
-## textures while it's set, so the images stay written but nothing uploads.
+## upload per level per repaint, never one per cell. `skip_writes` (DIAG-21 2c): no 2D board draws these
+## textures while it is set, so the images stay written but nothing uploads. Always true since R3D-END (the 3D board
+## reads the images); the textures go at END-4.
 func flush(skip_writes: bool) -> int:
 	if skip_writes:
 		_dirty.clear()

@@ -142,6 +142,14 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 			for oy in range(b_size.y):
 				roof_level_by_gu[b_gu + Vector2i(ox, oy)] = b_level
 
+	## R3D-END: the roof's cells are asked of the store the 3D board draws (a claim at the roof level holding the
+	## block's material); until then this read the 2D TILE placed there. A module-level helper answers per cell.
+	var store: VoxelStore = VoxelStore.build(room._edge_registry, room._slab_registry, room._junction_columns)
+	if store == null:
+		_fail("VoxelStore.build() over the real build returned null")
+		room.queue_free()
+		return
+
 	var checked_blocks := 0
 	var geometry_mismatches := 0
 	var registry_mismatches := 0
@@ -156,7 +164,6 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 		var block_storeys: int = int(block_instance.get("storeys", 1))
 		var block_material: String = String(block_instance.get("material", "concrete"))
 		var roof_base_level: int = GeometryCoordsClass.storey_level_base(block_storeys)
-		var expected_source_id: int = VoxelRendererClass.MATERIALS.find(block_material)
 
 		for rx in range(block_size.x):
 			for ry in range(block_size.y):
@@ -170,12 +177,8 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 				if registered_slab.material != block_material:
 					material_mismatches += 1
 
-				var layer: TileMapLayer = voxel_renderer.get_layer(roof_base_level)
-				if layer == null:
-					geometry_mismatches += 1
-					continue
 				for voxel_pos in GeometryCoordsClass.gu_voxels(roof_gu):
-					if layer.get_cell_source_id(voxel_pos) != expected_source_id:
+					if _store_material(store, voxel_pos, roof_base_level) != block_material:
 						geometry_mismatches += 1
 						break
 
@@ -222,7 +225,7 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 				## check — a suppressed side has no border voxel to find.
 				if not has_west and not has_north:
 					var neighbour_border_voxel: Vector2i = GeometryCoordsClass.gu_to_voxel_origin(roof_gu) - Vector2i(1, 1)
-					if layer.get_cell_source_id(neighbour_border_voxel) != expected_source_id:
+					if _store_material(store, neighbour_border_voxel, roof_base_level) != block_material:
 						border_coverage_mismatches += 1
 
 	if checked_blocks > 0 and registry_mismatches == 0 and material_mismatches == 0 and geometry_mismatches == 0:
@@ -259,8 +262,7 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 	if sample_slab != null:
 		## RENDER3D R3D-1d: `Voxel` has no state of its own — set_damage() below needs
 		## an active store built over the real registries `builder` just filled.
-		VoxelStore.active = VoxelStore.build(room._edge_registry, room._slab_registry,
-			room._junction_columns)
+		VoxelStore.active = store
 		sample_slab.voxels[0].set_damage(Voxel.DamageState.DESTROYED)
 		if sample_slab.dirty_count == 1 and room._slab_registry.dirty_slabs().size() == 1:
 			_pass("A real roof Slab from the actual map is independently destructible (damaged 1/64 voxels, dirty_count=1)")
@@ -271,3 +273,10 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 
 	room.queue_free()
 	print("")
+
+
+## The material of the visible claim holding a cell, or "" when none does.
+func _store_material(store: VoxelStore, cell: Vector2i, level: int) -> String:
+	if not store.has_cell(cell.x, cell.y, level):
+		return ""
+	return store.material_ids[store.mat[store.owner[store.cell_index(cell.x, cell.y, level)]]]

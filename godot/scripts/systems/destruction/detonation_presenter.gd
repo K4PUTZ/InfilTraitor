@@ -325,13 +325,10 @@ func _soot_tick(elapsed: float, voxel_renderer) -> void:
 		voxel_renderer._write_cell_soot(int(row[0]), row[1],
 			VoxelLightField.encode_face_soot(DetonationEntryWriter.lightened(row[2], lighten)))
 		voxel_renderer.note_external_write(int(row[0]), row[1])
-	if VoxelRenderer.SKIP_BOARD_WRITES:
-		## R3D-6: the 3D board reads the plane when it is told to upload it; every step is one upload of the levels the blast touched.
-		var board3d: Node = _board3d()
-		if board3d != null:
-			board3d.on_blast_soot()
-	else:
-		voxel_renderer.flush_cell_soot()
+	## R3D-6: the 3D board reads the plane when it is told to upload it; every step is one upload of the levels the blast touched.
+	var board3d: Node = _board3d()
+	if board3d != null:
+		board3d.on_blast_soot()
 	_soot_next_k += 1
 	_soot_next_t = elapsed + soot_step_s
 

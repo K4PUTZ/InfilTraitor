@@ -2054,12 +2054,9 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## hypothesis: how much graphics memory is already committed with the map
 	## merely LOADED, before a single voxel has been destroyed. Deferred by one
 	## frame so the renderer has actually submitted what the load queued.
-	## DIAG-21 (DEVICE_DIAGNOSTICS §15.7) — `RENDER3D=1` draws the loaded board as 3D
-	## meshes read from the live registries and hides the 2D voxel board.
-	## RENDER3D R3D-3 step 5 — the 2D path does not run underneath: `DevFlags` sets `VoxelRenderer.SKIP_BOARD_WRITES`
-	## whenever `RENDER3D=1` (see its own note), so the hidden board is skipped, not just hidden.
-	if _dev_flag("RENDER3D") == "1":
-		_start_board3d_live()
+	## DIAG-21 (DEVICE_DIAGNOSTICS §15.7) — the loaded board is drawn as 3D meshes read from the live registries.
+	## R3D-END: it is the only board (the 2D voxel board was deleted; `34881f81` is the last commit that has it).
+	_start_board3d_live()
 	MemStage.mark("40 map loaded — %s" % map_id)
 	if _dev_flag_on("MEM_CENSUS"):
 		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)
@@ -3078,24 +3075,6 @@ func scenario_ground_check(label: String) -> bool:
 	return true
 
 
-## RENDER3D R3D-14 — the `glass_compare` scenario step: the hidden glass layers against the store's glass panes, cell by
-## cell (`VoxelRenderer.glass_state_compare()`), one `[GLASS-COMPARE]` line. `tools/persistent/glass_state_gate.py` reads it.
-func scenario_glass_compare(label: String) -> bool:
-	if _voxel_renderer == null:
-		push_error("[Room] scenario_glass_compare: no renderer")
-		return false
-	var r: Dictionary = _voxel_renderer.glass_state_compare()
-	if r.is_empty():
-		return false
-	print("[GLASS-COMPARE] %s layer=%d store=%d layer_only=%d store_only=%d face_mismatch=%d shard_atoms=%d"
-		% [label, r["layer_cells"], r["store_cells"], r["layer_only"], r["store_only"], r["face_mismatch"], r["shard_atoms"]])
-	if int(r["layer_only"]) > 0:
-		print("[GLASS-COMPARE]   layer only: %s" % [r["layer_only_samples"]])
-	if int(r["store_only"]) > 0:
-		print("[GLASS-COMPARE]   store only: %s" % [r["store_only_samples"]])
-	return true
-
-
 ## R3D-8 — the `mirror_check` scenario step: the 3D board's twins of what the 2D renderer creates. Cracks: one twin per
 ## live crack record. Piles: what the 3D board draws equals the live piles. `tools/persistent/mirror_gate.py` reads the line.
 func scenario_mirror_check(label: String) -> bool:
@@ -3112,31 +3091,6 @@ func scenario_mirror_check(label: String) -> bool:
 	print("[MIRROR-CHECK] %s cracks records=%d twins=%d piles base=%d sprites=%d drawn=%d"
 		% [label, records, twins, _base_shards.size(), _voxel_renderer.floor_shard_pile_count(),
 			_voxel_renderer.floor_shard_pile3d_count()])
-	return true
-
-
-## DIAG-23 (DEVICE_DIAGNOSTICS §15.15) — the `drop2d` scenario step: with a 3D board
-## built, clear the hidden 2D board's cells so `dumpsys meminfo` reads the process
-## before and after in ONE boot. The voxel and glass layers and the structure layer are
-## cleared; the floor layer is cleared too in effect, since R3D-11 left it written by nothing
-## (the log line says "floor layer keeps 0"). It is also the R3D-END entry gate's probe
-## (`tools/persistent/independence_gate.py`). An instrument, and one-way — see
-## `VoxelRenderer.debug_drop_board_cells()`.
-func scenario_drop_2d_board() -> bool:
-	if board3d() == null:
-		push_error("[Room] scenario_drop_2d_board: no 3D board — drop2d needs RENDER3D=1, or nothing would draw the board")
-		return false
-	var t0: int = Time.get_ticks_usec()
-	var dropped: Dictionary = _voxel_renderer.debug_drop_board_cells()
-	dropped["structure_cells"] = structure_layer.get_used_cells().size()
-	structure_layer.clear()
-	dropped["floor_cells_kept"] = floor_layer.get_used_cells().size()
-	dropped["ms"] = float(Time.get_ticks_usec() - t0) / 1000.0
-	print("[BOARD3D] dropped the hidden 2D board — %d opaque cell(s) in %d layer(s), %d glass cell(s) in %d layer(s), %d structure cell(s); floor layer keeps %d; %.0f ms"
-		% [dropped["opaque_cells"], dropped["opaque_layers"], dropped["glass_cells"],
-		dropped["glass_layers"], dropped["structure_cells"], dropped["floor_cells_kept"],
-		dropped["ms"]])
-	Telemetry.event("board2d.dropped", dropped)
 	return true
 
 
@@ -5002,7 +4956,7 @@ func shot_precook_ready() -> void:
 
 
 func _run_shot_precook(token: int, predict_destroyed: Dictionary,
-		scope_gus: Array, variant_cells: Array = []) -> void:
+		scope_gus: Array, _variant_cells: Array = []) -> void:
 	if _voxel_renderer == null or _lighting_controller == null or scope_gus.is_empty():
 		_shot_precook_done = true
 		return
@@ -5045,14 +4999,8 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 	field.build(lights, shadows, top_wall_level, occupancy, _under_structure, true)
 	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
 		return
-	## TileSet alternatives are the 2D board's: `warm_light_alts_for_gus()` walks placed TILES, and the 3D board has none, so
-	## there it would only iterate the placement index and mint nothing.
+	## The TileSet alternatives this used to mint were the 2D board's (R3D-END); the light field above is the whole warm.
 	_shot_precook_minted = 0
-	if VoxelRenderer.plan_resolves_tiles():
-		_shot_precook_minted = _voxel_renderer.warm_light_alts_for_gus(
-			field, scope_gus, variant_cells)
-	if token != _shot_precook_token:
-		return
 	_shot_precook_done = true
 	print_debug("[W-PRECOOK] warm complete — %d TileSet alternative(s) minted ahead of the shot"
 		% _shot_precook_minted)
@@ -5165,37 +5113,26 @@ const PERF_SNAPSHOT_MISSING: Vector2i = Vector2i(-1, -1)
 
 func _perf_snapshot_alts() -> Dictionary:
 	var out: Dictionary = {}
-	## RENDER3D — the 3D board places no tile, so the loop below walks nothing and every gate built on this
+	## RENDER3D — the board places no tile, so a walk over tiles walked nothing and every gate built on this
 	## snapshot reported `0 of 2 240` (the glass cells on the hidden layers) and PASS, whatever the light did.
 	## What the planes describe is the store's OCCUPIED cells (a cell with a visible claim); the value is the
 	## same pair, (light bucket, soot code), where the tile board's was (alternative id, soot code). A glass cell
 	## is left out: no glass shader samples either plane, and `_soot_map` holds tone 0 on cracked glass the live
 	## wave never paints (260 texels on GLASS), which would fail every gate for a value nothing reads.
-	if VoxelRenderer.SKIP_BOARD_WRITES:
-		var store: VoxelStore = VoxelStore.active
-		if store == null:
-			push_error("[Room] _perf_snapshot_alts: no VoxelStore.active - the snapshot is empty")
-			return out
-		var occupied: Dictionary = store.occupancy_dict()
-		for occ_level: Variant in occupied.keys():
-			var level_i: int = int(occ_level)
-			for occ_cell: Vector2i in (occupied[occ_level] as Dictionary).keys():
-				var owner_claim: int = store.owner[store.cell_index(occ_cell.x, occ_cell.y, level_i)]
-				if owner_claim >= 0 and GlassMaterials.is_glass(store.material_ids[store.mat[owner_claim]]):
-					continue
-				out[Vector3i(occ_cell.x, occ_cell.y, level_i)] = Vector2i(
-					_voxel_renderer.cell_bucket_at(level_i, occ_cell),
-					_voxel_renderer.cell_soot_at(level_i, occ_cell))
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		push_error("[Room] _perf_snapshot_alts: no VoxelStore.active - the snapshot is empty")
 		return out
-	## LEVEL-RENUMBER — one store, so one loop. This function is the reason the
-	## unification is worth doing: it is the project's most-cited probe and it was
-	## two near-identical halves, either of which could have been forgotten.
-	for level in _voxel_renderer.level_keys():
-		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-		for cell in layer.get_used_cells():
-			out[Vector3i(cell.x, cell.y, level)] = Vector2i(
-				layer.get_cell_alternative_tile(cell),
-				_voxel_renderer.cell_soot_at(level, cell))
+	var occupied: Dictionary = store.occupancy_dict()
+	for occ_level: Variant in occupied.keys():
+		var level_i: int = int(occ_level)
+		for occ_cell: Vector2i in (occupied[occ_level] as Dictionary).keys():
+			var owner_claim: int = store.owner[store.cell_index(occ_cell.x, occ_cell.y, level_i)]
+			if owner_claim >= 0 and GlassMaterials.is_glass(store.material_ids[store.mat[owner_claim]]):
+				continue
+			out[Vector3i(occ_cell.x, occ_cell.y, level_i)] = Vector2i(
+				_voxel_renderer.cell_bucket_at(level_i, occ_cell),
+				_voxel_renderer.cell_soot_at(level_i, occ_cell))
 	return out
 
 
@@ -5216,8 +5153,8 @@ func _perf_snapshot_alts() -> Dictionary:
 ## voxel must not be restorable"* — with the status "not reproduced".
 ##
 ## Scoped to the cells PLACED near the blast at arm time, and sampled with a
-## direct read per key rather than by enumerating the board (R3D-13: on the 3D board the read is the `VoxelStore`'s
-## occupancy, `has_cell()`, because no tile is written there; on the 2D board it is the tile):
+## direct read per key rather than by enumerating the board (R3D-13: the read is the `VoxelStore`'s
+## occupancy, `has_cell()`, because no tile is written):
 ## the map-wide walk is 205 000 cells and this runs every frame. A cell that was
 ## never placed and later appears is the EXPOSE path and is legitimate, which is
 ## also why the armed set is the right scope rather than a limitation.
@@ -5232,13 +5169,10 @@ var _cell_probe_vanished: int = 0
 var _cell_probe_events: Array = []
 
 
-## Is the cell occupied? The 3D board writes no tile, so the store answers; the 2D board's tile is the reference there.
+## Is the cell occupied? No tile is ever written, so the store answers.
 func _cell_probe_has(level: int, cell: Vector2i) -> bool:
-	if VoxelRenderer.SKIP_BOARD_WRITES:
-		var store: VoxelStore = VoxelStore.active
-		return store != null and store.has_cell(cell.x, cell.y, level)
-	var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-	return layer != null and layer.get_cell_source_id(cell) != -1
+	var store: VoxelStore = VoxelStore.active
+	return store != null and store.has_cell(cell.x, cell.y, level)
 
 
 func cell_probe_arm(gu: Vector2i) -> void:
@@ -5264,30 +5198,17 @@ func cell_probe_arm(gu: Vector2i) -> void:
 	var lo := Vector2i(1 << 30, 1 << 30)
 	var hi := Vector2i(-(1 << 30), -(1 << 30))
 	var levels: Array = []
-	if VoxelRenderer.SKIP_BOARD_WRITES:
-		var store: VoxelStore = VoxelStore.active
-		if store == null:
-			_cell_probe_on = false
-			return
-		for level in range(store.l0, store.l0 + store.nl):
-			levels.append(level)
-			for y in range((gu.y - CELL_PROBE_GU) * GeometryCoords.VOXELS_PER_UNIT_AXIS, (gu.y + CELL_PROBE_GU + 1) * GeometryCoords.VOXELS_PER_UNIT_AXIS):
-				for x in range((gu.x - CELL_PROBE_GU) * GeometryCoords.VOXELS_PER_UNIT_AXIS, (gu.x + CELL_PROBE_GU + 1) * GeometryCoords.VOXELS_PER_UNIT_AXIS):
-					if store.has_cell(x, y, level):
-						lo = Vector2i(mini(lo.x, x), mini(lo.y, y))
-						hi = Vector2i(maxi(hi.x, x), maxi(hi.y, y))
-	else:
-		for level in _voxel_renderer.level_keys():
-			var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-			if layer == null:
-				continue
-			levels.append(level)
-			for cell in layer.get_used_cells():
-				var g := GeometryCoords.voxel_to_gu(cell)
-				if maxi(absi(g.x - gu.x), absi(g.y - gu.y)) > CELL_PROBE_GU:
-					continue
-				lo = Vector2i(mini(lo.x, cell.x), mini(lo.y, cell.y))
-				hi = Vector2i(maxi(hi.x, cell.x), maxi(hi.y, cell.y))
+	var store: VoxelStore = VoxelStore.active
+	if store == null:
+		_cell_probe_on = false
+		return
+	for level in range(store.l0, store.l0 + store.nl):
+		levels.append(level)
+		for y in range((gu.y - CELL_PROBE_GU) * GeometryCoords.VOXELS_PER_UNIT_AXIS, (gu.y + CELL_PROBE_GU + 1) * GeometryCoords.VOXELS_PER_UNIT_AXIS):
+			for x in range((gu.x - CELL_PROBE_GU) * GeometryCoords.VOXELS_PER_UNIT_AXIS, (gu.x + CELL_PROBE_GU + 1) * GeometryCoords.VOXELS_PER_UNIT_AXIS):
+				if store.has_cell(x, y, level):
+					lo = Vector2i(mini(lo.x, x), mini(lo.y, y))
+					hi = Vector2i(maxi(hi.x, x), maxi(hi.y, y))
 	if lo.x > hi.x:
 		push_warning("[CELL-PROBE] nothing placed within %d GU of %s — not armed" % [CELL_PROBE_GU, gu])
 		_cell_probe_on = false
@@ -5937,7 +5858,7 @@ func _assert_geometry_rendered() -> void:
 	var slice_count: int = _edge_registry.all_slices().size()
 	if slice_count == 0:
 		return  ## a genuinely wall-less map is legal
-	## Under a 3D board the 2D board is not written (SKIP_BOARD_WRITES), so what counts is that the renderer WALKED the
+	## No tile is written (the 3D board draws the store), so what counts is that the renderer WALKED the
 	## geometry: cells it placed plus cells it skipped on purpose. A build aborted before render() leaves both at 0.
 	var placed: int = _voxel_renderer.get_walked_cell_count()
 	if placed > 0:
@@ -5996,9 +5917,9 @@ func _recompute_occlusion() -> void:
 	var occ_t1: int = Time.get_ticks_usec()
 
 	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
-	## While the 3D board draws the cutaway this erases tiles of a hidden 2D board (there are none to erase under
-	## SKIP_BOARD_WRITES, and `_ghosted_cells` stays empty): 68 ms per step on the Moto for the 5x5 room fixture and
-	## 291 ms for a 15x15 hall, for nothing anyone sees. The 2D board (RENDER3D=0) still calls it.
+	## While the 3D board draws the cutaway this erases tiles of a hidden 2D board (there are none to erase, and
+	## `_ghosted_cells` stays empty): 68 ms per step on the Moto for the 5x5 room fixture and 291 ms for a 15x15 hall,
+	## for nothing anyone sees. R3D-END step END-3 deletes this 2D cutaway.
 	var live_board: Node = board3d()
 	if _voxel_renderer != null and not (live_board != null and live_board.draws_cutaway()):
 		_voxel_renderer.apply_occlusion(_occlusion_set.get_occluded_cells())
@@ -6624,7 +6545,7 @@ func play_consequence_light(delta = null) -> void:
 	## the final value — "the light jump" the plan named. One upload per step, same
 	## as the soot ladder's own `on_blast_soot()` precedent, fixes it at the source:
 	## the plane the shader reads now carries the ramp, not just its two endpoints.
-	var board3d_node: Node = board3d() if VoxelRenderer.SKIP_BOARD_WRITES else null
+	var board3d_node: Node = board3d()
 
 	for step in range(steps):
 		var t: float = float(step) / float(steps)

@@ -87,12 +87,11 @@ func _init() -> void:
 		if bomb_def != null:
 			var ctx := _build_ctx(built)
 			var source_gu: Vector2i = _pick_source_gu(built)
-			var before := _snapshot_layers(built["renderer"])
+			var before := _snapshot_world(built["renderer"])
 			var plan: Dictionary = DetonationPlanBuilderClass.build_plan(bomb_def, source_gu, ctx).waves
-			var after := _snapshot_layers(built["renderer"])
+			var after := _snapshot_world(built["renderer"])
 
 			test_1_wave_census(plan, source_gu)
-			test_2_resolved_triples(plan)
 			test_3_no_live_layer_mutation(before, after)
 			test_4_exposure_fallback(plan)
 			test_5_smoke_ring_weights_consumed(plan, bomb_def)
@@ -156,6 +155,8 @@ func _build_playground() -> Dictionary:
 	builder.setup(floor_layer, structure_layer, TileSet.new())
 	builder.build_registry(floor_tileset)
 	builder.build_from_layout(layout, layout.get("size", Vector2i.ZERO))
+	## The store every voxel's state lives in, built over the real registries exactly as `Room` builds it at load.
+	VoxelStore.active = VoxelStore.build(room._edge_registry, room._slab_registry, room._junction_columns)
 	return {"room": room, "renderer": voxel_renderer, "builder": builder, "layout": layout}
 
 
@@ -237,18 +238,20 @@ func _pick_source_gu(built: Dictionary) -> Vector2i:
 	return Vector2i.ZERO
 
 
-## Every placed cell's (source_id, atlas_coords, alt), across every wall and
-## floor layer this renderer holds — the ground truth test_3 diffs against.
-func _snapshot_layers(renderer) -> Dictionary:
-	var out: Dictionary = {}
-	## LEVEL-RENUMBER — one store, one loop. The wall and floor halves were
-	## identical apart from where they read the layer from.
-	for level in renderer.level_keys():
-		var layer: TileMapLayer = renderer.get_layer(level)
-		for cell in layer.get_used_cells():
-			out[Vector3i(cell.x, cell.y, level)] = [layer.get_cell_source_id(cell),
-				layer.get_cell_atlas_coords(cell), layer.get_cell_alternative_tile(cell)]
-	return out
+## What the world holds — the ground truth test_3 diffs against: every voxel's state and aux byte and the occupancy grid
+## (the `VoxelStore`), and every cell plane (soot + light bucket per cell). R3D-END: until then this was every placed
+## TILE, which on the 3D board is an empty set, so the check had nothing to compare.
+func _snapshot_world(renderer) -> Dictionary:
+	var store: VoxelStore = VoxelStore.active
+	var planes: Dictionary = {}
+	for level in renderer.cell_plane_levels():
+		var img: Image = renderer.cell_plane_image(level)
+		if img != null:
+			planes[level] = img.get_data()
+	return {"state": store.state.duplicate() if store != null else PackedByteArray(),
+		"aux": store.aux.duplicate() if store != null else PackedByteArray(),
+		"occ": store.occ.duplicate() if store != null else PackedByteArray(),
+		"claims": store.claims if store != null else 0, "planes": planes}
 
 
 func test_1_wave_census(plan: Dictionary, source_gu: Vector2i) -> void:
@@ -274,41 +277,28 @@ func test_1_wave_census(plan: Dictionary, source_gu: Vector2i) -> void:
 	print("")
 
 
-func test_2_resolved_triples(plan: Dictionary) -> void:
-	print("[2] dented/cracked entries carry real resolved (source_id, atlas_coords, alt)\n")
-	var checked := 0
-	var ok := true
-	for kind in ["dented", "cracked"]:
-		for ring in plan[kind].keys():
-			for entry in plan[kind][ring]:
-				checked += 1
-				if not (entry.has("source_id") and entry.has("atlas_coords") and entry.has("alt")):
-					ok = false
-				elif int(entry["source_id"]) < 0:
-					ok = false
-	if checked == 0:
-		_pass("no dented/cracked entries this blast (nothing to check — real data, not assumed)")
-	elif ok:
-		_pass("%d dented/cracked entries all carry a real non-negative source_id + atlas_coords + alt" % checked)
-	else:
-		_fail("at least one dented/cracked entry is missing a resolved field or has source_id < 0")
-	print("")
-
-
 func test_3_no_live_layer_mutation(before: Dictionary, after: Dictionary) -> void:
-	print("[3] build_plan() never touches the live TileMapLayer\n")
-	if before.size() != after.size():
-		_fail("placed-cell COUNT changed (%d -> %d) — build_plan() painted or erased something" %
-			[before.size(), after.size()])
+	print("[3] build_plan() never touches the live world (the store and the cell planes)\n")
+	if int(before["claims"]) == 0:
+		_fail("the fixture holds no VoxelStore claims — there is nothing to compare")
 		return
-	var mismatches := 0
-	for key in before.keys():
-		if not after.has(key) or after[key] != before[key]:
-			mismatches += 1
-	if mismatches == 0:
-		_pass("%d placed cells are byte-identical before and after build_plan() — zero live mutation" % before.size())
+	var changed: Array = []
+	for key: String in ["state", "aux", "occ"]:
+		if before[key] != after[key]:
+			changed.append(key)
+	var planes_before: Dictionary = before["planes"]
+	var planes_after: Dictionary = after["planes"]
+	if planes_before.keys() != planes_after.keys():
+		changed.append("plane levels %s -> %s" % [planes_before.keys(), planes_after.keys()])
 	else:
-		_fail("%d placed cells changed during build_plan() — it touched the live layer" % mismatches)
+		for level in planes_before:
+			if planes_before[level] != planes_after[level]:
+				changed.append("plane L%d" % int(level))
+	if changed.is_empty():
+		_pass("%d store claims (state, aux, occupancy) and %d cell plane(s) are byte-identical before and after build_plan() — zero live mutation"
+			% [int(before["claims"]), planes_before.size()])
+	else:
+		_fail("build_plan() changed the live world: %s" % ", ".join(changed))
 	print("")
 
 

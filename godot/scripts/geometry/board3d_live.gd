@@ -358,13 +358,12 @@ func build(room: Node, cell_to_world: Callable) -> void:
 		"chunks": int(counts.get("chunks", _by_chunk.size())),
 		"materials": _material_ids.size(), "collect_ms": float(t1 - t0) / 1000.0,
 		"mesh_ms": float(t2 - t1) / 1000.0, "plane_levels": _level_max - _level_min + 1,
-		"skip_2d_writes": VoxelRenderer.SKIP_BOARD_WRITES,
 	}
-	print("[BOARD3D] %d voxel(s) (slices %d, columns %d, slabs %d) → %d face(s) → %d quad(s) in %d chunk(s), %d material(s), plane levels %d..%d; collect %.0f ms, mesh %.0f ms; skip 2D writes %s; source %s"
+	print("[BOARD3D] %d voxel(s) (slices %d, columns %d, slabs %d) → %d face(s) → %d quad(s) in %d chunk(s), %d material(s), plane levels %d..%d; collect %.0f ms, mesh %.0f ms; source %s"
 		% [fields["voxels"], fields["slice_voxels"], fields["column_voxels"],
 		fields["slab_voxels"], faces, quads, fields["chunks"],
 		fields["materials"], _level_min, _level_max, fields["collect_ms"],
-		fields["mesh_ms"], VoxelRenderer.SKIP_BOARD_WRITES,
+		fields["mesh_ms"],
 		"store" if _store != null else "objects"])
 	Telemetry.event("board3d.built", fields)
 	on_occlusion(_room._occlusion_set)

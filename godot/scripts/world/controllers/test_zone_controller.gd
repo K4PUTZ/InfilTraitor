@@ -1066,7 +1066,7 @@ func _pump_prediction(job: DetonationPrediction = null) -> void:
 		pumped, float(pump_work_us) / 1000.0, predict_budget_ms,
 		"prediction finished" if finished else "interrupted"])
 	if finished and job != null:
-		await _warm_prediction(job)
+		_warm_prediction(job)
 	_pumping = false
 
 
@@ -1118,101 +1118,9 @@ func _pump_prediction(job: DetonationPrediction = null) -> void:
 func _warm_prediction(job: DetonationPrediction) -> void:
 	if job.delta == null or job.warmed:
 		return
-	## R3D-10: the warm-up mints tile alternatives and uploads composited damage pages, both for the 2D board's tiles.
-	## The 3D board writes no tile, so there is nothing to warm (and no rebuild frame to wait for).
-	if not VoxelRenderer.plan_resolves_tiles():
-		job.warmed = true
-		return
-	var warm_start_us: int = Time.get_ticks_usec()
-	var minted_before: int = room._voxel_renderer.minted_light_alt_count()
-
-	## D-6 — the playback queue is gone with the choreographer. The presenter
-	## writes every cell in one frame in container order (no radial sort), so
-	## there is nothing to pre-flatten. What still pays off is the warm-up below:
-	## the tile alternatives and the composited page upload, which are what
-	## actually cost a frame, and the presenter places exactly the same tiles.
-
-	## 1. Every tile alternative the plan will place. Walks the PLAN rather than
-	##    the queue, so soot — which E-FUME took out of WAVE_TABLE and applies as
-	##    its own late step — is covered too.
-	for triple: Array in _plan_light_alt_triples(job.delta.waves):
-		room._voxel_renderer._ensure_light_alt(triple[0], triple[1], triple[2])
-
-	## 2. Push the composited damage pages the PACKAGE phase blitted. Whole
-	##    2048x2048 pages, so this is a real upload — and it belongs in the same
-	##    frame as the mints, so the sequence pays one penalty and not two.
-	var pages: int = room._voxel_renderer.flush_damage_composite_pages()
-
+	## R3D-10: the warm-up minted tile alternatives and uploaded composited damage pages, both for the 2D board's tiles
+	## (deleted at R3D-END). No tile is written, so there is nothing to warm and no rebuild frame to wait for.
 	job.warmed = true
-	_prof("WARM done — %d alt(s) minted, %d page(s) uploaded, %.1f ms cpu" % [
-		room._voxel_renderer.minted_light_alt_count() - minted_before, pages,
-		float(Time.get_ticks_usec() - warm_start_us) / 1000.0])
-	_prof("WARM carries — %s" % _plan_inventory(job.delta.waves))
-	var dropped: int = _entries_playback_will_drop(job.delta.waves)
-	if dropped > 0:
-		push_warning("[P-WARM] %d plan entr(ies) are in a kind the presenter never draws — computed, warmed, and dropped. See _entries_playback_will_drop()." % dropped)
-	## The frame this returns on is the one that pays the rebuild; waiting for it
-	## here keeps the caller's own timing line honest about where it landed.
-	await room.get_tree().process_frame
-
-
-## What a finished plan actually holds, per kind — the Director's own acceptance
-## question for pre-production: *"carrega todos os dados necessários desde os
-## voxels destruídos até o disparo da fumaça e a fuligem"*. A zero here is the
-## honest way to find a stage that silently produces nothing, which is exactly
-## how the floor-dent path stayed inert for a session (CLAUDE.md's own example).
-func _plan_inventory(plan: Dictionary) -> String:
-	var parts: PackedStringArray = PackedStringArray()
-	## `ember` added 2026-08-13 with E-EMBER-01. This readout exists so a zero
-	## exposes a stage that silently produces nothing — a new kind missing from
-	## the list is the same failure one level up, in the instrument itself.
-	for kind: String in ["destroy", "expose", "dented", "cracked", "soot", "smoke", "ember", "debris"]:
-		var count: int = 0
-		for ring: int in plan.get(kind, {}).keys():
-			count += plan[kind][ring].size()
-		if kind == "expose":
-			count = 0
-			for ring2: int in plan.get("destroy", {}).keys():
-				for entry in plan["destroy"][ring2]:
-					count += entry.get("expose", []).size()
-		parts.append("%s=%d" % [kind, count])
-	return " ".join(parts)
-
-
-## Plan entries in a kind the presenter never draws — computed by the pipeline,
-## pre-minted by this warm-up, then never read.
-##
-## THIS COUNTER EARNED ITS KEEP ON THE DAY IT SHIPPED. It found 18 ring-2 dents
-## dropped on every PLAYGROUND blast, because the choreographer's `WAVE_TABLE`
-## re-gated by ring what `frag_grenade.json`'s own `dent_ring_weights` had
-## already decided, and the two had drifted. E-ORGANIC-02 removed that gate, and
-## D-6 removed the choreographer — but the KIND axis survives: a new plan key
-## nobody wired into `DetonationPresenter` would be exactly as silent.
-func _entries_playback_will_drop(plan: Dictionary) -> int:
-	var dropped: int = 0
-	for kind: String in plan.keys():
-		if DetonationPresenterClass.PLAYED_KINDS.has(kind):
-			continue
-		for ring: int in plan[kind].keys():
-			dropped += plan[kind][ring].size()
-	return dropped
-
-
-## Every (source_id, atlas_coords, alt) a plan will hand to `set_cell()`.
-## `destroy` carries its reveals nested, and only ever erases on its own account;
-## `smoke` never touches a tile at all.
-func _plan_light_alt_triples(plan: Dictionary) -> Array:
-	var triples: Array = []
-	for kind: String in ["dented", "cracked", "soot"]:
-		for ring: int in plan.get(kind, {}).keys():
-			for entry in plan[kind][ring]:
-				triples.append([entry["source_id"], entry["atlas_coords"], entry["alt"]])
-	for ring2: int in plan.get("destroy", {}).keys():
-		for entry2 in plan["destroy"][ring2]:
-			for exposed in entry2.get("expose", []):
-				triples.append([exposed["source_id"], exposed["atlas_coords"], exposed["alt"]])
-	return triples
-
 
 func _stop_pumping() -> void:
 	_pumping = false

@@ -655,27 +655,6 @@ static func _initial_bucket_luminance() -> Array[float]:
 ## change and re-running, and every future light-path measurement wants it.
 static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") != "0"
 
-## DIAG-21 step 2c (DEVICE_DIAGNOSTICS §15.10) — the 3D board's switch (`RENDER3D=1`; the old
-## `SKIP_2D_BOARD_WRITES` instrument is deleted, R3D-13): a detonation keeps writing the
-## cell planes (the soot/bucket images the 3D board reads its colours from) and skips
-## everything that only the hidden 2D board would draw — `set_cell` / `erase_cell`,
-## tile-alternative minting, the plane texture uploads and the glass refreshes. Set by
-## DevFlags. ⚠️ The 2D layers go stale around a crater, so a later cook that reads
-## live layer cells for render information reads the pre-blast board there.
-## R3D-8: a `--script` selftest has no `DevFlags` autoload, so the flag it sets never ran and the "3D" suites wrote the
-## 2D board. The env var is read here too, so a headless run under `INFILTRAITOR_RENDER3D=1` really skips the writes.
-static var SKIP_BOARD_WRITES: bool = OS.get_environment("INFILTRAITOR_RENDER3D") == "1"
-
-## RENDER3D R3D-14 (A/B, deleted when the stage closes) — under the 3D board the glass state (which pane cells stand, which
-## face they are on, which have had an opening applied) is asked of the `VoxelStore` and the hidden glass `TileMapLayer`s
-## are never built or written. `INFILTRAITOR_GLASS_STATE_LAYER=1` (or `GLASS_STATE_LAYER=1` in `dev_flags.cfg`) puts the
-## layers back as the authority, for comparison only. The 2D board always uses them: it draws them.
-static var GLASS_STATE_LAYER: bool = OS.get_environment("INFILTRAITOR_GLASS_STATE_LAYER") == "1"
-
-
-static func glass_state_from_store() -> bool:
-	return SKIP_BOARD_WRITES and not GLASS_STATE_LAYER
-
 ## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.
 ##
 ## Director, 2026-08-26: *"eu queria testar desligando essas duas features por
@@ -817,8 +796,7 @@ static func decode_light_flipped(alt: int) -> bool:
 ## real one the moment bake config changed.
 var _ghosted_cells: Dictionary = {}
 
-## RENDER3D R3D-3 step 5 — under `SKIP_BOARD_WRITES`, the opaque tile is never
-## placed, so `_process_dirty_slice_voxel()`/`_process_dirty_slab_voxel()`'s erase
+## RENDER3D R3D-3 step 5 — the opaque tile is never placed, so `_process_dirty_slice_voxel()`/`_process_dirty_slab_voxel()`'s erase
 ## branch has no `get_cell_source_id() != -1` to ask "was this erasure already
 ## told to `voxel_destroyed` listeners" (the 2026-08-19 double-VFX bug the tile
 ## check itself guards against — see its own note beside `already_gone`). This is
@@ -1138,8 +1116,8 @@ var _baked_source_image_cache: Dictionary = {}
 
 ## BAKE-DIAG-01: placement counters, reset at the top of each render() call
 var _diag_total_cells: int = 0
-## Cells (a slice voxel, a junction column, a slab GU) this pass walked but did NOT write because
-## `SKIP_BOARD_WRITES` leaves them to the 3D board. `_assert_geometry_rendered()` needs them: under a 3D board
+## Cells (a slice voxel, a junction column, a slab GU) this pass walked but did NOT write, because
+## the 3D board draws them from the store. `_assert_geometry_rendered()` needs them: under a 3D board
 ## `_diag_total_cells` is 0 for a map whose walls are all opaque, and that is not a broken render path.
 var _diag_skipped_cells: int = 0
 var _diag_baked_hits: int = 0
@@ -2920,9 +2898,7 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 	# Iterate all slices and render their voxels
 	for slice in registry.all_slices():
 		_diag_slice_count += 1
-		# Try to get edge from registry (if available)
-		var edge = registry.get_edge(slice.edge_id) if registry.has_method("get_edge") else null
-		_render_slice(slice, edge)
+		_render_slice(slice)
 
 	# Render junction columns.
 	# INFILTRAITOR_SKIP_JUNCTIONS=1 renders the map with the filler columns
@@ -2932,7 +2908,7 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 	# cheap way to answer "is this column doing anything?" for a given map.
 	if OS.get_environment("INFILTRAITOR_SKIP_JUNCTIONS") != "1":
 		for column in junction_columns:
-			_render_junction_column(column, registry)
+			_render_junction_column(column)
 
 
 ## BAKE-DIAG-01: prints a summary of the last render() pass — how many cells were
@@ -2956,35 +2932,18 @@ func print_render_diagnostics() -> void:
 ## start_level=0 reproduces the old ground-anchored behavior; start_level>0 supports
 ## floating geometry (ceiling props, chandeliers, hanging objects — any block that
 ## doesn't start at floor 0).
-func render_block(gu_cell: Vector2i, start_level: int, storey_span: int, material_name: String) -> void:
+func render_block(_gu_cell: Vector2i, start_level: int, storey_span: int, _material_name: String) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey_span by LEVELS_PER_STOREY to expand to level-space
 	## RENDER3D R3D-3 step 5 — `_ensure_voxel_layers()` always runs first, same
 	## reasoning as `render_slab()`'s own note (cheap, and any later resolve-only
 	## caller needs the layer node to exist).
 	_ensure_voxel_layers(start_level * GeometryCoords.LEVELS_PER_STOREY + storey_span * GeometryCoords.LEVELS_PER_STOREY)
-	## Same reasoning as `_render_junction_column()`: this call to `_set_voxel_cell()`
-	## has `flat_baked` at its default (false), so a glass `material_name` WOULD
-	## route to the pane branch — skip only when it is not glass.
-	if SKIP_BOARD_WRITES and (not GlassMaterials.is_glass(material_name) or glass_state_from_store()):
-		_diag_skipped_cells += 1
-		return
-	
-	# Get all voxel positions in this GU
-	var voxel_positions: Array[Vector2i] = GeometryCoords.gu_voxels(gu_cell)
-	
-	# Render each voxel at each level in the span
-	## LEVEL-RENUMBER — `start_level` is a STOREY index despite its name (see the
-	## docstring: "start_level=0 reproduces the old ground-anchored behavior"), so
-	## it goes through the same origination helper every other storey does. Callers
-	## keep passing 0 for the ground storey and keep meaning it.
-	for level in range(GeometryCoords.storey_level_base(start_level),
-			GeometryCoords.storey_level_base(start_level + storey_span)):
-		for voxel_pos in voxel_positions:
-			_set_voxel_cell(voxel_pos, level, material_name)
+	## R3D-END: the 3D board draws every block from the store; nothing is placed here.
+	_diag_skipped_cells += 1
 
 
 ## Render a single slice's voxels
-func _render_slice(slice: Slice, edge = null) -> void:
+func _render_slice(slice: Slice) -> void:
 	# Ensure we have enough layers
 	# FIX-VOXEL-HEIGHT-01: multiply storey_count by LEVELS_PER_STOREY to expand to level-space
 	_ensure_voxel_layers(slice.storey_count * GeometryCoords.LEVELS_PER_STOREY)
@@ -2998,31 +2957,10 @@ func _render_slice(slice: Slice, edge = null) -> void:
 			slice.pane_id if slice.pane_id != "" else "<none>",
 			slice.material_bands if slice.has_material_bands() else "{}"])
 
-	## GLASS G1 GEOMETRY — the top level of a lone pane paints its dim top sliver;
-	## the frontmost column paints its dim side sliver. G-D9: "top" is the highest
-	## level that is actually GLASS, not the slice top (a brick head sits above it).
-	var glass_top_level: int = _slice_top_glass_level(slice)
-	var slice_level_base: int = GeometryCoords.storey_level_base(slice.start_storey)
-
-	# For each voxel in the slice, set_cell at the appropriate layer
+	## R3D-END: the 3D board draws every slice from the store; the pass only counts what it walked.
 	for voxel in slice.voxels:
 		if voxel.visible:
-			var vmat := slice.material_at(voxel.level - slice_level_base)
-			## RENDER3D R3D-3 step 5 — the INITIAL build's own placement path (this
-			## function, not `_process_dirty_slice_voxel()`, which only re-renders
-			## already-placed geometry on a later dirty pass). Same guard, same
-			## exemption for glass: see `_process_dirty_slice_voxel()`'s note.
-			if SKIP_BOARD_WRITES and (not GlassMaterials.is_glass(vmat) or glass_state_from_store()):
-				_diag_skipped_cells += 1
-				continue
-			# Derive local voxel position within 8×8 quad from grid position
-			var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-			var render_material := damage_variant_material(vmat, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-			var glass_mask: int = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, glass_top_level) \
-				if GlassMaterials.is_glass(vmat) else 0
-			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge,
-				voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE,
-				true, glass_mask)
+			_diag_skipped_cells += 1
 
 
 ## GLASS G-D9 — true when this slice renders any glass at all (base material, or
@@ -3131,108 +3069,11 @@ func _glass_side_covered(grid_pos: Vector2i, level: int, face: int) -> bool:
 ## By default: mirrors the neighboring wall voxel's atom (D-BAKE-2)
 ## If override_material is set and facade_enabled=false: renders flat material-only (D-BAKE-3)
 ## If override_material is set and facade_enabled=true: mirrors the override material's boundary atom (D-BAKE-3)
-func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: EdgeRegistry = null) -> void:
-	# Determine actual material to use (override if set, otherwise derived)
-	var actual_material = column.override_material if column.override_material != "" else column.material
+func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey counts by LEVELS_PER_STOREY to expand to level-space
-	## RENDER3D R3D-3 step 5 — `_ensure_voxel_layers()` always runs first; see
-	## `render_slab()`'s own note on why. `DetonationPlanBuilder._resolve_damaged_tile()`'s
-	## JunctionColumn branch calls `_set_voxel_cell()` directly and needs the layer
-	## to exist even when the write itself is skipped below.
 	_ensure_voxel_layers((column.start_storey + column.storey_count) * GeometryCoords.LEVELS_PER_STOREY)
-	## A junction column is a solid corner filler; every branch below writes the
-	## OPAQUE layer directly (`_layers[level].set_cell()`) or through
-	## `_set_voxel_cell()` with no glass-pane routing at all — unlike slices and
-	## INTERIOR slabs, nothing here ever reaches the pane branch. Kept conditional
-	## on `is_glass(actual_material)` rather than assumed impossible, so a future
-	## glass column would fall through unskipped instead of silently losing
-	## geometry.
-	## R3D-12: the glass column is skipped too. It was left to fall through "so a future glass column would not silently
-	## lose geometry", but the 3D board draws every column from the store, and the 4 glass columns of PLAYGROUND (64 cells)
-	## were the last opaque cells written to the hidden 2D board.
-	if SKIP_BOARD_WRITES:
-		_diag_skipped_cells += 1
-		return
-
-	for level_offset in range(column.storey_count * GeometryCoords.LEVELS_PER_STOREY):
-		var level: int = GeometryCoords.storey_level_base(column.start_storey) + level_offset
-
-		# Case 1: No facade (render flat material-only)
-		if not column.facade_enabled:
-			_set_voxel_cell(column.voxel_pos, level, actual_material)
-		# Case 2: With facade (mirror neighbor's atom with H-flip)
-		else:
-			# OVERLORD-FIX-02: dedicated junction atoms — each half-face
-			# CONTINUES its adjacent leg's plane. Try first; the legacy
-			# neighbor-mirror path below remains the fallback.
-			if _bake_config == null:
-				_bake_config = load("res://godot/scripts/systems/bake_config.gd")
-			if _baked_lookup == null:
-				_baked_lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
-			if _bake_config and _bake_config.enabled:
-				var junction_result = _baked_lookup.resolve_junction(column.voxel_pos, relative_level(level))
-				if junction_result and junction_result.source_id_int >= 0:
-					_diag_total_cells += 1
-					_diag_baked_hits += 1
-					(_layers[level] as TileMapLayer).set_cell(column.voxel_pos, junction_result.source_id_int, junction_result.atlas_coords, 0)
-					continue
-
-			# BAKE-FIX-06: Find neighboring wall voxel and mirror its atom
-			var neighbor_info = _find_neighbor_wall_voxel(column, registry)
-			
-			if neighbor_info:
-				var neighbor_edge: Edge = neighbor_info["edge"]
-				var neighbor_voxel: Voxel = neighbor_info["voxel"]
-				
-				# Resolve the neighbor voxel's baked atom (if baking enabled)
-				var source_id: int = -1
-				var atlas_coords: Vector2i = Vector2i.ZERO
-				var alternative_id: int = 0
-				
-				if _bake_config == null:
-					_bake_config = load("res://godot/scripts/systems/bake_config.gd")
-				if _baked_lookup == null:
-					_baked_lookup = preload("res://godot/scripts/systems/baked_tile_lookup.gd").new()
-				
-				if _bake_config and _bake_config.enabled and neighbor_edge:
-					# Get the voxel's local position within its slice
-					var voxel_xy = Vector2i(neighbor_voxel.grid_pos.x % 8, neighbor_voxel.grid_pos.y % 8)
-					var slice = registry.get_slice(neighbor_edge.slice_a_id) if registry.get_slice(neighbor_edge.slice_a_id) and neighbor_voxel in registry.get_slice(neighbor_edge.slice_a_id).voxels else registry.get_slice(neighbor_edge.slice_b_id)
-					
-					if slice:
-						var result = _baked_lookup.resolve(neighbor_edge, slice.face, voxel_xy, relative_level(level))
-						if result and result.source_id_int >= 0:
-							source_id = result.source_id_int
-							atlas_coords = result.atlas_coords
-							_diag_baked_hits += 1
-							# JUNCTION-MIRROR-01 (2026-07-16, Director): a real baked
-							# neighbor atom MUST be H-flipped — that is D-BAKE-2's
-							# "mirror the last column". The no-flip TEST below stays
-							# valid only for the generic material tile (its source art
-							# isn't mirror-symmetric); leaving baked atoms unflipped
-							# made lateral V-junction columns repeat the adjacent
-							# slice's column verbatim instead of mirroring it.
-							alternative_id = TileSetAtlasSource.TRANSFORM_FLIP_H
-
-				_diag_total_cells += 1
-				# TEST (no-flip hypothesis): fallback / no baked atom to mirror — use the
-				# canonical, unflipped tile (alternative_id stays 0). Flipping a generic
-				# material tile that isn't an actual mirrored neighbor atom serves no
-				# purpose and, per pixel-symmetry probe, visibly shifts the silhouette
-				# because the source art (voxel_<material>.png) isn't mirror-symmetric.
-				if source_id < 0:
-					_diag_generic_fallbacks += 1
-					source_id = MATERIALS.find(actual_material)
-					if source_id == -1:
-						source_id = 0
-					atlas_coords = Vector2i.ZERO
-				
-				# Set the cell with H-flipped alternative
-				var layer: TileMapLayer = _layers[level]
-				layer.set_cell(column.voxel_pos, source_id, atlas_coords, alternative_id)
-			else:
-				# No neighbor found: render flat material-only
-				_set_voxel_cell(column.voxel_pos, level, actual_material)
+	## R3D-END: the 3D board draws every column from the store; nothing is placed here.
+	_diag_skipped_cells += 1
 
 
 ## Set a voxel cell on the appropriate layer
@@ -3529,15 +3370,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 			## is three copies of one decision.
 			return {"source_id": glass_src, "atlas_coords": Vector2i.ZERO,
 				"alternative_id": 0, "glass_sublayer": true}
-		## R3D-14 — under the store's glass state nothing is placed: the 3D board draws the pane from its claim.
-		if glass_state_from_store():
-			note_external_write(level, grid_pos)
-			return {}
-		_ensure_glass_sublayers(level)
-		(_glass_layers[level] as TileMapLayer).set_cell(grid_pos, glass_src, Vector2i.ZERO, 0)
-		## Clear any opaque cell a prior state left here (e.g. the calibration
-		## control preview) — an intact pane must be a true gap.
-		layer.erase_cell(grid_pos)
+		## R3D-14 — nothing is placed: the 3D board draws the pane from its claim.
 		note_external_write(level, grid_pos)
 		return {}
 
@@ -3914,17 +3747,9 @@ func apply_light_field(field) -> void:
 	if OS.get_environment("INFILTRAITOR_APPLY_SPLIT_PROBE") == "1":
 		_apply_split_probe(field)
 		return
-	## RENDER3D R3D-3 step 5 — `SKIP_BOARD_WRITES` on means the opaque tiles this
-	## pass would normally walk (`_apply_light_field_pass()`'s `layer.get_used_cells()`)
-	## were never placed, so the plane-only counterpart below walks the STORE's
-	## occupancy instead. Without this, Board3DLive's first load would read empty
-	## cell planes — this is the one piece `apply_light_field_cells()`'s existing
-	## `SKIP_BOARD_WRITES` branch didn't cover, because it only ever ran off an
-	## incremental stale set, never the full initial pass.
-	if SKIP_BOARD_WRITES:
-		_apply_light_field_pass_store(field)
-		return
-	_apply_light_field_pass(field)
+	## RENDER3D R3D-3 step 5 — no opaque tile is ever placed, so the pass walks the STORE's occupancy
+	## (`_apply_light_field_pass_store()`); the tile-walking pass went with the 2D board (R3D-END).
+	_apply_light_field_pass_store(field)
 
 
 func _apply_split_probe(field) -> void:
@@ -3985,7 +3810,7 @@ func _apply_light_field_pass(field) -> void:
 	_externally_written.clear()
 
 
-## RENDER3D R3D-3 step 5 — `apply_light_field()`'s `SKIP_BOARD_WRITES` counterpart.
+## RENDER3D R3D-3 step 5 — `apply_light_field()`'s pass (the only one since R3D-END).
 ## Same job as `_apply_light_field_pass()` (write every cell's soot/bucket plane
 ## value, index it for `apply_light_field_gus()`), but the cell set comes from
 ## `VoxelStore.occupancy_dict()` instead of `layer.get_used_cells()`, since no
@@ -4097,34 +3922,10 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 	for k in _externally_written.keys():
 		visit[k] = true
 	for key in visit.keys():
+		## DIAG-21 2c: the planes only. No tile says whether the cell is still there, so every visited key is written.
 		var level: int = key.z
-		var layer: TileMapLayer = get_layer(level)
-		if layer == null and not SKIP_BOARD_WRITES:
-			continue
 		var cell := Vector2i(key.x, key.y)
-		if SKIP_BOARD_WRITES:
-			## DIAG-21 2c: the planes only. The layer was never updated by the commit, so
-			## its source id says nothing about the cell — write every visited key.
-			_write_cell_bucket(level, cell, field.bucket_for(cell, level))
-			continue
-		var source_id: int = layer.get_cell_source_id(cell)
-		if source_id == -1:
-			continue   ## erased — destroyed, or ghosted and handled below
-		_apply_cells_seen += 1
-		_index_placed(level, cell)
-		var prev_alt: int = layer.get_cell_alternative_tile(cell)
-		## PERF-P3 — the bucket write goes BEFORE the alt comparison: once the bucket
-		## left the alternative id, a change in it leaves `alt_id == prev_alt`.
-		var full_bucket: int = field.bucket_for(cell, level)
-		_write_cell_bucket(level, cell, full_bucket)
-		var alt_id: int = encode_light_alt(full_bucket,
-				decode_light_flipped(prev_alt))
-		if alt_id == prev_alt:
-			continue
-		var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
-		_ensure_light_alt(source_id, atlas_coords, alt_id)
-		layer.set_cell(cell, source_id, atlas_coords, alt_id)
-		_apply_cells_written += 1
+		_write_cell_bucket(level, cell, field.bucket_for(cell, level))
 	## Ghost records, restricted to the same set. A record outside it keeps its
 	## stored alternative, and that is correct by the same property the walk rests
 	## on: a bucket that did not change needs no retarget.
@@ -4158,33 +3959,9 @@ func apply_light_field_gus(field, gus: Array) -> void:
 		for entry in placements:
 			var level: int = entry["level"]
 			var cell: Vector2i = entry["cell"]
-			var layer: TileMapLayer = get_layer(level)
-			if layer == null and not SKIP_BOARD_WRITES:
-				continue
-			if SKIP_BOARD_WRITES:
-				## R3D-6: the planes only, like `apply_light_field_cells()`'s branch. No opaque tile
-				## exists to say whether the cell is still there, and without this the blast's
-				## consequence pass wrote NO soot and NO light into the planes (2D wrote soot on 823
-				## more floor cells of GLASS grenade #0 than the 3D board did).
-				_write_cell_bucket(level, cell, field.bucket_for(cell, level))
-				continue
-			var source_id: int = layer.get_cell_source_id(cell)
-			if source_id == -1:
-				continue  ## erased — destroyed, or currently ghosted (handled below)
-			var prev_alt: int = layer.get_cell_alternative_tile(cell)
-			## PERF-P3 — the bucket is written BEFORE the alt comparison: once it
-			## left the alternative id, a light-only change leaves `alt_id` equal
-			## to `prev_alt` and the `continue` below fires.
-			var bucket: int = field.bucket_for(cell, level)
-			_write_cell_bucket(level, cell, bucket)
-			var alt_id: int = encode_light_alt(bucket,
-					decode_light_flipped(prev_alt))
-			if alt_id == prev_alt:
-				continue
-			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
-			_ensure_light_alt(source_id, atlas_coords, alt_id)
-			layer.set_cell(cell, source_id, atlas_coords, alt_id)
-			_scoped_writes += 1
+			## R3D-6: the planes only. No opaque tile exists to say whether the cell is still there, and without this
+			## the blast's consequence pass wrote NO soot and NO light into the planes.
+			_write_cell_bucket(level, cell, field.bucket_for(cell, level))
 	## Ghosted cells inside the affected GUs: retarget their stored alternative
 	## too (same reasoning as apply_light_field()'s ghost retarget loop), so
 	## un-ghosting later shows the bucket this toggle produced, not a stale one.
@@ -4343,91 +4120,21 @@ func process_dirty(registry: EdgeRegistry) -> void:
 ## PERF-01: the per-voxel body process_dirty() runs for every dirty voxel in
 ## a slice — extracted so process_dirty_async() can share the exact same
 ## logic instead of a second copy drifting from this one over time.
-func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, edge) -> void:
+func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, _edge) -> void:
 	## GLASS G-D9 — the material is per-level on a banded slice.
 	var vmat := slice.material_at(voxel.level - GeometryCoords.storey_level_base(slice.start_storey))
 	var is_glass_mat: bool = GlassMaterials.is_glass(vmat)
-	## RENDER3D R3D-3 step 5 — `SKIP_BOARD_WRITES` on means the opaque layer is
-	## never placed at all (Board3DLive reads the store, not this tile). GLASS took
-	## the normal path below until R3D-14, because `_glass_layers` was the live authority the
-	## render-time glass mechanics read (`_glass_cell_present()` and everything downstream of
-	## it); it is now the STORE's (`glass_state_from_store()`), so under the 3D board a glass
-	## voxel is skipped like any other and only owes the seams `_render3d_glass_gone()` runs.
-	## The layer path below is the 2D board's, and the `GLASS_STATE_LAYER` A/B control.
-	## R3D-14: under the store's glass state a glass voxel is an ordinary skipped one, plus the glass seams a destroyed pane owes.
-	if SKIP_BOARD_WRITES and (not is_glass_mat or glass_state_from_store()):
-		if not voxel.visible:
-			if is_glass_mat:
-				_render3d_glass_gone(voxel, vmat)
-				return
-			## Same idempotence question the tile-backed erase branch below answers
-			## with `already_gone` — see `_render3d_gone_cells`'s own note.
-			var key3 := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
-			if not _render3d_gone_cells.has(key3):
-				_render3d_gone_cells[key3] = true
-				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
-		return
-	# Update cell state based on voxel visibility
-	if voxel.visible:
-		## D-ARCH-01: Try pre-baked damage variant swap first (single-frame ID swap)
-		if voxel.damage_state != Voxel.DamageState.INTACT and _damage_variant_registry != null:
-			if apply_damage_voxel_swap(voxel, slice, voxel.level):
-				return  # Swap succeeded, no need for fallback
-
-		## Fallback: render via material lookup (original behavior)
-		var voxel_xy = Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-		var render_material := damage_variant_material(vmat, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-		var glass_mask: int = 0
+	## No tile is placed (the 3D board reads the store). A visible voxel needs nothing here; an invisible one owes its
+	## `voxel_destroyed` notice once, and a glass one the seams `_render3d_glass_gone()` runs.
+	if not voxel.visible:
 		if is_glass_mat:
-			glass_mask = _glass_face_mask(voxel.grid_pos, voxel.level, slice.face, _slice_top_glass_level(slice))
-		_set_voxel_cell(voxel.grid_pos, voxel.level, render_material, edge, voxel_xy,
-			slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, true, glass_mask)
-	else:
-		## GLASS G1 — a destroyed glass voxel is erased from the glass pane layer,
-		## not the opaque layer it never lived on. Same `already_gone` guard and
-		## `voxel_destroyed` contract as the opaque branch below. G-D9: gate on the
-		## per-level material, not the slice base — a brick-band voxel takes the
-		## ordinary opaque path below.
-		if is_glass_mat and _glass_layers.has(voxel.level):
-			var gpane := _glass_layers[voxel.level] as TileMapLayer
-			var g_gone: bool = gpane.get_cell_source_id(voxel.grid_pos) == -1
-			gpane.erase_cell(voxel.grid_pos)
-			note_external_write(voxel.level, voxel.grid_pos)
-			forget_ghost_record(voxel.grid_pos, voxel.level)
-			## G-D30 — one of the three glass erase seams: any crack over this
-			## pane has to be re-cut. Flag only; the rebuild is at the flush.
-			note_glass_erased()
-			note_glass_erased_for_rim(voxel.level, voxel.grid_pos)   ## CRACK-03
-			if not g_gone:
-				voxel_destroyed.emit(voxel.grid_pos, voxel.level, vmat)
+			_render3d_glass_gone(voxel, vmat)
 			return
-		# Clear cell
-		if _layers.has(voxel.level):
-			## ⚠️ THE SIGNAL MEANS "A VOXEL JUST DISAPPEARED", NOT "WE PROCESSED A
-			## DESTROYED VOXEL", and conflating the two cost a real bug.
-			##
-			## Measured 2026-08-19, on the Director's report that firing a shot
-			## re-smoked every voxel two earlier grenades had destroyed: two
-			## grenades dispatched 0 `voxel_destroyed` (the choreographer paints
-			## its own cells and never emits), and the next shot dispatched 498 —
-			## while destroying 5 voxels of its own. The blast's voxels were still
-			## flagged dirty, the shot's pass is the only unfiltered one in the
-			## game, and it re-emitted for every one of them.
-			##
-			## The flag leak is fixed at its source too (see
-			## TestZoneController's commit site), but this guard is what makes the
-			## whole CLASS impossible: re-processing an already-erased cell is now
-			## a no-op instead of a second explosion of VFX, whatever leaves a
-			## stale flag in future.
-			var _vlayer: TileMapLayer = _layers[voxel.level]
-			var already_gone: bool = _vlayer.get_cell_source_id(voxel.grid_pos) == -1
-			_vlayer.erase_cell(voxel.grid_pos)
-			note_external_write(voxel.level, voxel.grid_pos)
-			note_opaque_erased(voxel.level, voxel.grid_pos)   ## the crack clip may un-cut
-			## See forget_ghost_record(): a destroyed voxel must not be restorable.
-			forget_ghost_record(voxel.grid_pos, voxel.level)
-			if not already_gone:
-				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
+		## The idempotence the tile's `already_gone` answered once: see `_render3d_gone_cells`'s own note.
+		var key3 := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
+		if not _render3d_gone_cells.has(key3):
+			_render3d_gone_cells[key3] = true
+			voxel_destroyed.emit(voxel.grid_pos, voxel.level, slice.material)
 
 
 ## Slab-side counterpart to process_dirty() — DESTRUCTION_MASTER_PLAN Part 3.
@@ -4482,102 +4189,19 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 ## exact same logic instead of a second copy drifting from this one over
 ## time. `use_solid`/`is_zoned_floor` are computed once per slab by the
 ## caller (constant across every voxel in it), not re-derived per voxel.
-func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, use_solid: bool, is_zoned_floor: bool) -> void:
-	## RENDER3D R3D-3 step 5 — mirrors `_process_dirty_slice_voxel()`'s guard. A
-	## slab voxel is glass-PANED (routed to `_glass_layers`, the render-time
-	## authority) only when `_set_voxel_cell()`'s own `not flat_baked` condition
-	## holds — a glass roof or glazed floor zone stays opaque by G1's own rule
-	## (`flat_baked == true` there), so it is exactly as safe to skip as any other
-	## opaque voxel; only the true pane case must still take the normal path.
+func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, _use_solid: bool, is_zoned_floor: bool) -> void:
+	## Mirrors `_process_dirty_slice_voxel()`. A slab voxel is a glass PANE only when `_set_voxel_cell()`'s own
+	## `not flat_baked` condition holds: a glass roof or glazed floor zone stays opaque by G1's own rule.
 	var is_glass_pane: bool = GlassMaterials.is_glass(slab.material) \
 		and not (slab.role == Slab.Role.CEILING or is_zoned_floor)
-	if SKIP_BOARD_WRITES and (not is_glass_pane or glass_state_from_store()):
-		if not voxel.visible:
-			if is_glass_pane:
-				_render3d_glass_gone(voxel, slab.material)
-				return
-			var key3 := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
-			if not _render3d_gone_cells.has(key3):
-				_render3d_gone_cells[key3] = true
-				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
-		return
-	if voxel.visible:
-		## D-ARCH-01: Try pre-baked damage variant swap first (single-frame ID swap)
-		if voxel.damage_state != Voxel.DamageState.INTACT and _damage_variant_registry != null:
-			if apply_damage_voxel_swap(voxel, slab, voxel.level):
-				return  # Swap succeeded, no need for fallback
-		
-		## Fallback: render via material lookup (original behavior)
-		if use_solid or is_zoned_floor:
-			var flat_baked: bool = slab.role == Slab.Role.CEILING or is_zoned_floor
-			## D22: the substitution tags CEILING/INTERIOR exactly like a
-			## wall (apply_container_damage).
-			var render_material := damage_variant_material(slab.material, voxel.damage_state, voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant)
-			## FLOOR-DENT-01: a zoned floor routes its dents to the carved-TOP
-			## asset. D34/E-SEAM-02: named by the zone's REAL material now, so
-			## a concrete floor wears the concrete dent — materials with no
-			## decal art of their own still fall back to earth, inside
-			## floor_damage_material().
-			if is_zoned_floor:
-				var floor_damaged := floor_damage_material(slab.material,
-					voxel.damage_state, voxel.damage_is_blast,
-					voxel.damage_carved_side, voxel.damage_variant)
-				if floor_damaged != "":
-					render_material = floor_damaged
-			## D33 Part 3c: pass slab.material (the REAL zone) separately from
-			## render_material — the two still differ whenever the earth
-			## fallback fires; _set_voxel_cell()'s own comment on
-			## `zone_material` explains why resolve_flat() needs the real one.
-			_set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
-					null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked,
-					slab.material if is_zoned_floor else "")
-		else:
-			## FLOOR-DENT-01: a damaged floor voxel renders its carved
-			## variant instead of a pristine earth variant — this branch
-			## was unreachable for damage before (craters only destroyed)
-			## and would silently repaint a dent as intact ground.
-			## This branch is the UNZONED floor (slab.material == "earth"), so
-			## D34's real-material naming resolves to the earth family anyway —
-			## passed explicitly rather than assumed, so a future zoned case
-			## reaching here names itself correctly instead of silently
-			## rendering as dirt.
-			var earth_material := floor_damage_material(slab.material,
-				voxel.damage_state, voxel.damage_is_blast,
-				voxel.damage_carved_side, voxel.damage_variant)
-			if earth_material == "":
-				earth_material = "earth_%d" % EarthVariantSelector.variant_for(
-					voxel.grid_pos, relative_level(voxel.level))
-			_set_voxel_cell(voxel.grid_pos, voxel.level, earth_material)
-	else:
-		## GLASS G1 — a glass INTERIOR slab voxel (a glazed partition — the only
-		## slab kind G1 routes to the glass pane layer; roofs and glazed floor
-		## zones stay opaque) is erased from the pane layer, mirroring the slice.
-		var glass_on_pane: bool = GlassMaterials.is_glass(slab.material) \
-			and not (slab.role == Slab.Role.CEILING or is_zoned_floor) \
-			and _glass_layers.has(voxel.level)
-		if glass_on_pane:
-			var gpane := _glass_layers[voxel.level] as TileMapLayer
-			var g_gone: bool = gpane.get_cell_source_id(voxel.grid_pos) == -1
-			gpane.erase_cell(voxel.grid_pos)
-			note_external_write(voxel.level, voxel.grid_pos)
-			forget_ghost_record(voxel.grid_pos, voxel.level)
-			note_glass_erased()   ## G-D30, seam 2 of 3
-			note_glass_erased_for_rim(voxel.level, voxel.grid_pos)   ## CRACK-03
-			if not g_gone:
-				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
+	if not voxel.visible:
+		if is_glass_pane:
+			_render3d_glass_gone(voxel, slab.material)
 			return
-		var layer := get_layer(voxel.level)
-		if layer != null:
-			## Same idempotence guard as the slice path — see its note. A floor
-			## or roof voxel erased twice is one destruction, not two.
-			var was_there: bool = layer.get_cell_source_id(voxel.grid_pos) != -1
-			layer.erase_cell(voxel.grid_pos)
-			note_external_write(voxel.level, voxel.grid_pos)
-			note_opaque_erased(voxel.level, voxel.grid_pos)   ## the crack clip may un-cut
-			## See forget_ghost_record(): a destroyed voxel must not be restorable.
-			forget_ghost_record(voxel.grid_pos, voxel.level)
-			if was_there:
-				voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
+		var key3 := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
+		if not _render3d_gone_cells.has(key3):
+			_render3d_gone_cells[key3] = true
+			voxel_destroyed.emit(voxel.grid_pos, voxel.level, slab.material)
 
 
 ## R3D-14 — a glass pane voxel has gone invisible under the store's glass state. Everything the layer erase used to do that is
@@ -4826,32 +4450,6 @@ func cell_plane_image(level: int) -> Image:
 ## `CellPlaneStore.plane_levels()`.
 func cell_plane_levels() -> Array:
 	return _cell_planes.plane_levels()
-
-
-## DIAG-23 (DEVICE_DIAGNOSTICS §15.15) — an INSTRUMENT for the 2D-vs-3D memory
-## comparison, reached only through `Room.scenario_drop_2d_board()` with a 3D board
-## built. Every cell of every opaque and glass layer is cleared, so the memory the
-## engine holds to DRAW the hidden 2D board leaves the process, while the cell planes
-## the 3D board reads its colours from stay written.
-## - What stays: the layer nodes (every `_layers` reader still finds a layer), the
-##   TileSet, the planes and their textures, `_placed_index`. What it frees is therefore
-##   a LOWER bound on the 2D board's own cost, and the process after it an UPPER bound
-##   on a 3D-only one.
-## ⚠️ One-way for the rest of the session. Since R3D-13 the light, the blast and the plan read the STORE, so a blast after
-## this still works and describes the real world; what still reads these layers is the glass state (`_glass_layers`), which is
-## what `tools/persistent/independence_gate.py` (the R3D-END entry gate) measures with this instrument: the crack and craze
-## webs on standing GLASS panes vanish after a blast once the glass cells are gone (2026-09-24, 19 391 px).
-func debug_drop_board_cells() -> Dictionary:
-	var opaque_cells: int = 0
-	var glass_cells: int = 0
-	for layer in _layers.values():
-		opaque_cells += (layer as TileMapLayer).get_used_cells().size()
-		(layer as TileMapLayer).clear()
-	for layer in _glass_layers.values():
-		glass_cells += (layer as TileMapLayer).get_used_cells().size()
-		(layer as TileMapLayer).clear()
-	return {"opaque_layers": _layers.size(), "opaque_cells": opaque_cells,
-		"glass_layers": _glass_layers.size(), "glass_cells": glass_cells}
 
 
 ## What the plane currently says about one cell's soot code. Thin forwarder —
@@ -5131,7 +4729,7 @@ func debug_layer_origin_drift() -> Array:
 
 ## Upload whatever changed. Thin forwarder — see `CellPlaneStore.flush()`.
 func flush_cell_soot() -> int:
-	return _cell_planes.flush(SKIP_BOARD_WRITES)
+	return _cell_planes.flush(true)
 
 
 ## ── CRACK-02 — THE CRACK SPRITES (GLASS_MASTER_PLAN §13, G-D27) ───────────────
@@ -5860,19 +5458,9 @@ func set_glass_opening_void(enabled: bool) -> void:
 ## instrument that can answer it is the board itself.
 func count_glass_shards() -> int:
 	var n: int = 0
-	if glass_state_from_store():
-		for key: Vector3i in _glass_shaped_cells:
-			if _glass_cell_present(key.z, Vector2i(key.x, key.y)):
-				n += 1
-		return n
-	for level in _glass_layers:
-		var layer := _glass_layers[level] as TileMapLayer
-		if layer == null:
-			continue
-		for cell in layer.get_used_cells():
-			var sid: int = layer.get_cell_source_id(cell)
-			if sid != -1 and not _glass_source_info.has(sid):
-				n += 1
+	for key: Vector3i in _glass_shaped_cells:
+		if _glass_cell_present(key.z, Vector2i(key.x, key.y)):
+			n += 1
 	return n
 
 
@@ -6097,19 +5685,12 @@ func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void
 	var occ_us: int = Time.get_ticks_usec() - occ_t0
 	var solid := Color8(255, 0, 0, 255)
 	var gone := Color8(0, 0, 0, 255)
-	var glass_from_store: bool = glass_state_from_store()
 	for j in range(h):
 		var level: int = lvl1 - j
-		var layer := _glass_layers.get(level) as TileMapLayer
-		if layer == null and not glass_from_store:
-			## No glass sublayer at this level at all — nothing stands here.
-			for i in range(w):
-				img.set_pixel(i, j, gone)
-			continue
 		for i in range(w):
 			var run: int = run0 + i
 			var cell := Vector2i(run, cross.y) if run_is_x else Vector2i(cross.x, run)
-			var here: bool = _glass_cell_present(level, cell)   ## R3D-14: the layer, or the store's glass panes
+			var here: bool = _glass_cell_present(level, cell)   ## R3D-14: the store's glass panes
 			var present: bool = here
 			if present:
 				var bu: int = cell.x - cell.y
@@ -6471,59 +6052,10 @@ func glass_cell_mask(level: int, cell: Vector2i) -> int:
 	return parts[at].to_int() if parts.size() > at and parts[at].is_valid_int() else -1
 
 
-## RENDER3D R3D-14 — the glass state as the hidden glass layers hold it against the glass state as the store holds it,
-## cell by cell: what `scenario_glass_compare()` prints, and the identity check every reader moved off the layers is
-## judged by. `layer_only` = a cell the layer draws that no visible glass pane voxel holds; `store_only` = the reverse;
-## `face_mismatch` = both hold it and the atom's face is not the pane's; `shard_atoms` = the layer's cell is a rim shard or
-## remnant atom (a 2D drawing detail, not a pane). Up to 8 cells of each list are returned as samples.
-func glass_state_compare() -> Dictionary:
-	var store: VoxelStore = VoxelStore.active
-	if store == null:
-		push_error("[VoxelRenderer] glass_state_compare: no VoxelStore.active")
-		return {}
-	var layer_cells: int = 0
-	var store_cells: int = 0
-	var face_mismatch: int = 0
-	var shard_atoms: int = 0
-	var layer_only: Array = []
-	var store_only: Array = []
-	var seen: Dictionary = {}
-	for level: Variant in _glass_layers:
-		var layer := _glass_layers[level] as TileMapLayer
-		for cell: Vector2i in layer.get_used_cells():
-			layer_cells += 1
-			seen[Vector3i(cell.x, cell.y, int(level))] = true
-			var sface: int = store.glass_pane_face_at(cell.x, cell.y, int(level))
-			var sid: int = layer.get_cell_source_id(cell)
-			if sface == 0:
-				layer_only.append(Vector3i(cell.x, cell.y, int(level)))
-			elif _glass_source_info.has(sid):
-				if int((_glass_source_info[sid] as Dictionary)["face"]) != sface - 1:
-					face_mismatch += 1
-			else:
-				shard_atoms += 1
-	var xyz: PackedInt32Array = store.xyz
-	for claim in range(store.claims):
-		if store.pane[claim] == 0 or (store.state[claim] & 1) == 0:
-			continue
-		var key := Vector3i(xyz[claim * 3], xyz[claim * 3 + 1], xyz[claim * 3 + 2])
-		store_cells += 1
-		if not seen.has(key):
-			store_only.append(key)
-	return {"layer_cells": layer_cells, "store_cells": store_cells, "layer_only": layer_only.size(),
-		"store_only": store_only.size(), "face_mismatch": face_mismatch, "shard_atoms": shard_atoms,
-		"layer_only_samples": layer_only.slice(0, 8), "store_only_samples": store_only.slice(0, 8)}
-
-
 ## Is there still glass drawn at this (level, cell)? The live authority, the same
 ## one G-D30's occupancy reads.
 func _glass_cell_present(level: int, cell: Vector2i) -> bool:
-	if glass_state_from_store():
-		return VoxelStore.active != null and VoxelStore.active.has_glass_pane(cell.x, cell.y, level)
-	var layer := _glass_layers.get(level) as TileMapLayer
-	if layer == null:
-		return false
-	return layer.get_cell_source_id(cell) != -1
+	return VoxelStore.active != null and VoxelStore.active.has_glass_pane(cell.x, cell.y, level)
 
 
 ## The (run, level) neighbour offset `d` as a real (cell, level) pair, given the
@@ -6735,8 +6267,6 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 	## The run axis comes from the face of a cell the opening actually touches —
 	## asked once per region rather than per cell, since a pane has one face.
 	var face: int = -1
-	var material_id: String = ""
-	var mask: int = 0
 	var swapped: int = 0
 	var unswallowed: int = 0
 	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
@@ -6750,61 +6280,24 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 				var cell := Vector2i(anchor.x + dr, anchor.y) if run_is_x \
 					else Vector2i(anchor.x, anchor.y + dr)
 				var level: int = anchor.z + dl
-				if glass_state_from_store():
-					## R3D-14: the pane's face and presence come from the claims; the rim ATOM is 2D drawing, so nothing is
-					## swapped, and "already a shard" is the shaped-cell record.
-					var pane_face: int = VoxelStore.active.glass_pane_face_at(cell.x, cell.y, level) \
-						if VoxelStore.active != null else 0
-					var skey := Vector3i(cell.x, cell.y, level)
-					if pane_face == 0 or _glass_shaped_cells.has(skey):
-						continue
-					var sface: int = pane_face - 1
-					if (sface == Face.SW or sface == Face.NE) != run_is_x:
-						continue
-					face = sface
-					if cover == GlassOpening.Coverage.FULL:
-						unswallowed += 1
-						continue
-					_glass_shaped_cells[skey] = true
-					swapped += 1
+				## R3D-14: the pane's face and presence come from the claims; nothing is swapped (no rim atom), and
+				## "already a shard" is the shaped-cell record.
+				var pane_face: int = VoxelStore.active.glass_pane_face_at(cell.x, cell.y, level) \
+					if VoxelStore.active != null else 0
+				var skey := Vector3i(cell.x, cell.y, level)
+				if pane_face == 0 or _glass_shaped_cells.has(skey):
 					continue
-				var layer := _glass_layers.get(level) as TileMapLayer
-				if layer == null:
+				var sface: int = pane_face - 1
+				if (sface == Face.SW or sface == Face.NE) != run_is_x:
 					continue
-				var sid: int = layer.get_cell_source_id(cell)
-				if sid == -1 or not _glass_source_info.has(sid):
-					## Either no glass here, or it is ALREADY a shard (shard ids
-					## are not in the info map). A hole never heals, so a shard is
-					## never recomputed — that is what keeps this idempotent.
-					continue
-				var info: Dictionary = _glass_source_info[sid]
-				if (int(info["face"]) == Face.SW or int(info["face"]) == Face.NE) != run_is_x:
-					continue
-				face = int(info["face"])
-				material_id = String(info["material"])
-				mask = int(info["mask"])
+				face = sface
 				if cover == GlassOpening.Coverage.FULL:
-					## ⚠️ THE RENDERER DOES NOT ERASE. A cell the opening swallows
-					## whole should ALREADY be gone, because destruction is the one
-					## authority on which voxels exist and this walk only shapes
-					## the region it opened. Erasing here would put a second writer
-					## on `Voxel.visible` — the exact drift the architecture rules
-					## forbid — and it would erase glass whose `damage_state` still
-					## says DESTROYED is false.
-					##
-					## Reaching this line therefore means the opening is BIGGER than
-					## the hole destruction made, which is a wiring error and is
-					## loud rather than quietly patched: patching it would show a
-					## correct hole on screen while the two models disagreed.
+					## ⚠️ THE RENDERER DOES NOT ERASE: destruction is the one authority on which voxels exist. A cell the
+					## opening swallows whole should already be gone, so reaching this means the opening is BIGGER than
+					## the hole destruction made — a wiring error, reported below rather than quietly patched.
 					unswallowed += 1
 					continue
-				var rim_id: int = _glass_rim_atom_source(material_id, face, mask,
-					opening_id, dr, dl)
-				if rim_id < 0:
-					continue
-				layer.set_cell(cell, rim_id, Vector2i.ZERO, 0)
-				_glass_shard_cells[Vector3i(cell.x, cell.y, level)] = rim_id
-				note_external_write(level, cell)
+				_glass_shaped_cells[skey] = true
 				swapped += 1
 	if unswallowed > 0:
 		push_warning("[VoxelRenderer] opening '%s' at %s covers %d cell(s) whole that still hold glass — the opening is larger than the hole destruction opened"
@@ -6951,34 +6444,14 @@ func _trim_glass_remnant_fringe(atom: Image, face: int) -> void:
 ## dictionary nothing ever reads. The rebuild path has exactly the same shape,
 ## which is why one function serves both the live break and the perspective flip.
 func apply_glass_remnant_at(level: int, cell: Vector2i, shape_id: String,
-		anchor_mask: int, flop: bool) -> bool:
+		anchor_mask: int, _flop: bool) -> bool:
 	if not GLASS_RIM_ENABLED or shape_id == "" or anchor_mask == 0:
 		return false
-	if glass_state_from_store():
-		## R3D-14: the remnant's state is "this pane cell is spared and shaped"; the cut atom is 2D drawing.
-		var rkey := Vector3i(cell.x, cell.y, level)
-		if not _glass_cell_present(level, cell) or _glass_shaped_cells.has(rkey):
-			return false
-		_glass_shaped_cells[rkey] = true
-		return true
-	var layer := _glass_layers.get(level) as TileMapLayer
-	if layer == null:
+	## R3D-14: the remnant's state is "this pane cell is spared and shaped"; the cut atom was 2D drawing.
+	var rkey := Vector3i(cell.x, cell.y, level)
+	if not _glass_cell_present(level, cell) or _glass_shaped_cells.has(rkey):
 		return false
-	var sid: int = layer.get_cell_source_id(cell)
-	if sid == -1 or not _glass_source_info.has(sid):
-		## No glass here, or it is already a cut atom — a remnant is never
-		## recomputed, the same idempotence the rim swap has.
-		return false
-	var info: Dictionary = _glass_source_info[sid]
-	var rid: int = _glass_remnant_atom_source(String(info["material"]), int(info["face"]),
-		int(info["mask"]), shape_id, anchor_mask, flop)
-	if rid < 0:
-		return false
-	layer.set_cell(cell, rid, Vector2i.ZERO, 0)
-	## The SAME registry the rim shards use, so `restamp_glass_shards()` keeps a
-	## remnant on the board through every pass that re-places glass.
-	_glass_shard_cells[Vector3i(cell.x, cell.y, level)] = rid
-	note_external_write(level, cell)
+	_glass_shaped_cells[rkey] = true
 	return true
 
 
@@ -7612,35 +7085,16 @@ func glass_level_keys() -> Array:
 ## (Director, 2026-09-07: *"permanece uma parte da vidraça azul"*), which only a
 ## rotation used to clear because the rebuild re-derives from `_base_damage`.
 func glass_cell_present(level: int, cell: Vector2i) -> bool:
-	if glass_state_from_store():
-		return VoxelStore.active != null and VoxelStore.active.has_glass_pane(cell.x, cell.y, level)
-	var layer := _glass_layers.get(level) as TileMapLayer
-	return layer != null and layer.get_cell_source_id(cell) != -1
+	return _glass_cell_present(level, cell)
 
 
 func erase_glass_cell(level: int, cell: Vector2i) -> bool:
-	if glass_state_from_store():
-		## R3D-14: no layer to erase; the light, ghost and glass seams the erase owed are all that is left of it.
-		note_external_write(level, cell)
-		forget_ghost_record(cell, level)
-		note_glass_erased()   ## G-D30, seam 3 of 3 (the cook)
-		note_glass_erased_for_rim(level, cell)   ## CRACK-03
-		return true
-	if not _glass_layers.has(level):
-		return false
-	var g := _glass_layers[level] as TileMapLayer
-	var was_there: bool = g.get_cell_source_id(cell) != -1
-	g.erase_cell(cell)
+	## R3D-14: no layer to erase; the light, ghost and glass seams the erase owed are all that is left of it.
 	note_external_write(level, cell)
 	forget_ghost_record(cell, level)
 	note_glass_erased()   ## G-D30, seam 3 of 3 (the cook)
 	note_glass_erased_for_rim(level, cell)   ## CRACK-03
-	## OPTION A — queued HERE and not only at the batch flush: `reap_orphaned_remnants()`
-	## erases through this seam with no flush after it, and a mirror that missed the
-	## erase would keep a felled remnant painted in the opaque layer.
-	if glass_tile_on:
-		_queue_glass_tile_sync()
-	return was_there
+	return true
 
 
 ## GLASS G1 — the blind strip needs a same-boot CONTROL: glass exactly as it
@@ -7681,19 +7135,6 @@ func set_glass_opaque_preview(enable: bool) -> void:
 ## "atlas_coords":Vector2i, "alternative_id":int}] when apply is false (one
 ## entry per currently-visible voxel), empty when apply is true (existing
 ## callers all ignore the return value already).
-## R3D-12 — whether the load builds the 2D board's bake (the facade atlas pages, the damage-variant registry, the composite page).
-## Only the 2D board does: the 3D board samples `TextureResolver` facades and writes no tile, so it loads exactly as `NO_BAKE=1`
-## does, a configuration the renderer already supports. (Its same-binary A/B flag, `BAKE_2D`, was deleted when the stage closed.)
-static func board_needs_2d_bakes() -> bool:
-	return not SKIP_BOARD_WRITES
-
-
-## R3D-10 — whether a detonation PLAN resolves a tile per entry: only the 2D board writes one. (Its same-binary A/B flag,
-## `PLAN_RESOLVE`, was deleted when the stage closed, R3D-13.)
-static func plan_resolves_tiles() -> bool:
-	return not SKIP_BOARD_WRITES
-
-
 func render_slab(slab: Slab, apply: bool = true) -> Array:
 	var resolved: Array = []
 	if slab.voxels.is_empty():
@@ -7712,72 +7153,14 @@ func render_slab(slab: Slab, apply: bool = true) -> Array:
 	## the Moto's own detonation run reproduced twice, deterministically. Only the
 	## per-voxel CELL WRITE below is skippable — the layer must always exist.
 	_ensure_layer(slab.level)
-	## a FLOOR-role Slab, zoned or not, always resolves `flat_baked = true` below
-	## (or takes the earth-variant path, which is never glass either) — G1's own
-	## rule keeps a glazed floor zone opaque, so this function never once reaches
-	## `_set_voxel_cell()`'s glass-pane branch. Skippable when `apply` — the
-	## resolve-only call never wrote a tile even before this step, and its caller
-	## still needs the real resolved answer.
-	if SKIP_BOARD_WRITES and apply:
+	## R3D-END: nothing is placed (the 3D board draws the store). The exposure plan (`apply == false`) needs WHICH
+	## cells a slab shows, not which tile draws each.
+	if apply:
 		return resolved
-	## R3D-10: the exposure plan needs WHICH cells a slab shows, not which tile draws each; on the 3D board there is no tile.
-	if not apply and not plan_resolves_tiles():
-		for voxel in slab.voxels:
-			if voxel.visible:
-				resolved.append({"grid_pos": voxel.grid_pos, "level": voxel.level,
-					"source_id": -1, "atlas_coords": Vector2i.ZERO, "alternative_id": 0})
-		return resolved
-
-	# Floor-zone bake: a Slab whose material isn't the "earth" sentinel was
-	# assigned a zone material by room_builder.gd's flood-fill (texture_anchor
-	# set alongside it). Decided ONCE per Slab, not per voxel — every voxel in
-	# a floor Slab shares one gu_cell (SlabGenerator generates one Slab per GU).
-	#
-	# Gated on _bake_config.enabled here (not just left to _set_voxel_cell's
-	# own gate) because ground_* materials are deliberately absent from
-	# MATERIALS: unlike render_slab_solid()'s CEILING materials (always a
-	# real wall material — concrete/metal/stone/wood — so falling back to the
-	# unbaked version of the SAME material is a harmless miss), a ground_*
-	# name falling through to _set_voxel_cell's MATERIALS.find() would resolve
-	# to -1 and silently default to MATERIALS[0] ("concrete") — a flat gray
-	# floor instead of the expected earth look. With bake off, zoned floor
-	# always falls back to EarthVariantSelector here instead.
-	if _bake_config == null:
-		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
-	var is_zoned: bool = slab.material != "earth" and _bake_config != null and _bake_config.enabled
-
-	## FLOOR-DEPTH-01: skip voxels destruction already took. At build time this
-	## changes nothing (a freshly generated Slab is entirely visible), but the
-	## deep floor plane is now rendered ON EXPOSURE rather than at build, so this
-	## function can run against a Slab that already has holes — twice, if a second
-	## blast reaches the same GU, and once more after every perspective rotation
-	## re-applies the damage registry. Without the skip each of those would place
-	## a cell back into a hole and silently heal the crater.
-	if is_zoned:
-		for voxel in slab.voxels:
-			if not voxel.visible:
-				continue
-			var result := _set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
-					null, voxel.grid_pos - slab.texture_anchor, 0, true,
-					"", BakePolicyClass.SurfaceClass.SLAB, apply)
-			if not apply and not result.is_empty():
-				resolved.append({"grid_pos": voxel.grid_pos, "level": voxel.level,
-					"source_id": result["source_id"], "atlas_coords": result["atlas_coords"],
-					"alternative_id": result["alternative_id"]})
-		return resolved
-
 	for voxel in slab.voxels:
-		if not voxel.visible:
-			continue
-		var variant_index: int = EarthVariantSelector.variant_for(
-			voxel.grid_pos, relative_level(voxel.level))
-		var material_name: String = "earth_%d" % variant_index
-		var result2 := _set_voxel_cell(voxel.grid_pos, voxel.level, material_name,
-				null, Vector2i.ZERO, 0, false, "", BakePolicyClass.SurfaceClass.SLICE, apply)
-		if not apply and not result2.is_empty():
+		if voxel.visible:
 			resolved.append({"grid_pos": voxel.grid_pos, "level": voxel.level,
-				"source_id": result2["source_id"], "atlas_coords": result2["atlas_coords"],
-				"alternative_id": result2["alternative_id"]})
+				"source_id": -1, "atlas_coords": Vector2i.ZERO, "alternative_id": 0})
 	return resolved
 
 
@@ -7811,22 +7194,7 @@ func render_slab_solid(slab: Slab) -> void:
 		return
 	_ensure_layer(slab.level)
 
-	# ROOF-BAKE-01/02c: ceiling slabs try the flat baked lookup (dedicated
-	# roof pages keyed by STRUCTURE-LOCAL offset = grid_pos − texture_anchor,
-	# carried on the Slab so re-renders need no builder context); floor/
-	# interior solid slabs keep the generic path. Misses fall back to the
-	# material atlas inside _set_voxel_cell, so this is safe with bake
-	# disabled or combo unresolved.
-	var flat_baked: bool = slab.role == Slab.Role.CEILING
-	## RENDER3D R3D-3 step 5 — unlike CEILING (always opaque, `flat_baked = true`),
-	## an INTERIOR glass slab (a glazed partition) reaches this function with
-	## `flat_baked = false` and DOES route to `_set_voxel_cell()`'s pane branch —
-	## that write must still happen; only the true-opaque case is skippable.
-	if SKIP_BOARD_WRITES and (not (GlassMaterials.is_glass(slab.material) and not flat_baked) or glass_state_from_store()):
-		return
-	for voxel in slab.voxels:
-		_set_voxel_cell(voxel.grid_pos, voxel.level, slab.material,
-				null, voxel.grid_pos - slab.texture_anchor, 0, flat_baked)
+	## R3D-END: nothing is placed; the 3D board draws the store.
 
 
 ## DESTRUCTION D13/D18 — render one FIXED floor level for one GU: no `Slab`,
@@ -7859,48 +7227,14 @@ func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true)
 	## RENDER3D R3D-3 step 5 — `_ensure_layer()` always runs first; see
 	## `render_slab()`'s own note on why the layer node must exist regardless.
 	_ensure_layer(level)
-	## A fixed earth/zone floor level, same reasoning as `render_slab()`: always
-	## opaque, never glass, and only skippable when `apply` — DetonationPlanBuilder's
-	## exposure fallback resolves this with `apply == false` and needs the real
-	## answer even under `RENDER3D`.
-	if SKIP_BOARD_WRITES and apply:
+	## R3D-END: nothing is placed. The exposure plan (`apply == false`) needs the cells the level shows.
+	if apply:
 		return resolved
-	if not apply and not plan_resolves_tiles():
-		for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
-			resolved.append({"grid_pos": voxel_pos, "level": level,
-				"source_id": -1, "atlas_coords": Vector2i.ZERO, "alternative_id": 0})
-		return resolved
-
-	if _bake_config == null:
-		_bake_config = load("res://godot/scripts/systems/bake_config.gd")
-	var zone: Dictionary = _floor_zone_by_gu.get(gu_cell, {})
-	var paint_zone: bool = (not zone.is_empty()) \
-			and level >= GeometryCoords.FLOOR_ZONE_PAINT_MIN_LEVEL \
-			and _bake_config != null and _bake_config.enabled
-
-	if paint_zone:
-		var zone_material: String = String(zone["material"])
-		var zone_anchor: Vector2i = zone["anchor"]
-		for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
-			var result := _set_voxel_cell(voxel_pos, level, zone_material,
-					null, voxel_pos - zone_anchor, 0, true,
-					"", BakePolicyClass.SurfaceClass.SLAB, apply)
-			if not apply and not result.is_empty():
-				resolved.append({"grid_pos": voxel_pos, "level": level,
-					"source_id": result["source_id"], "atlas_coords": result["atlas_coords"],
-					"alternative_id": result["alternative_id"]})
-		return resolved
-
 	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
-		var variant_index: int = EarthVariantSelector.variant_for(
-			voxel_pos, relative_level(level))
-		var result2 := _set_voxel_cell(voxel_pos, level, "earth_%d" % variant_index,
-				null, Vector2i.ZERO, 0, false, "", BakePolicyClass.SurfaceClass.SLICE, apply)
-		if not apply and not result2.is_empty():
-			resolved.append({"grid_pos": voxel_pos, "level": level,
-				"source_id": result2["source_id"], "atlas_coords": result2["atlas_coords"],
-				"alternative_id": result2["alternative_id"]})
+		resolved.append({"grid_pos": voxel_pos, "level": level,
+			"source_id": -1, "atlas_coords": Vector2i.ZERO, "alternative_id": 0})
 	return resolved
+
 
 
 ## FLOOR-DEPTH-01 — publish one GU's declared floor zone, so the FIXED levels

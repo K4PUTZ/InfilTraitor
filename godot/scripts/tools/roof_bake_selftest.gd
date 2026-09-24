@@ -8,11 +8,8 @@
 ##   3. PIXEL continuity + ISOTROPY: placed atom top-diamonds equal a direct
 ##      read of the roof plane (built from the UNSCALED facade — no wall
 ##      ×20/16 pre-scale) at the projected offset
-##   4. Real PLAYGROUND, bake ENABLED: every roof voxel carries the baked
-##      source + coords its STRUCTURE-LOCAL offset predicts, with component
-##      anchors re-derived by this test's own flood fill; storey-step borders
-##      follow the level-aware rule (suppress toward same-or-higher, eave
-##      over lower)
+##   4. (R3D-END, END-1: deleted. It read the baked TILE every roof voxel was placed as on a real load; the load no
+##      longer bakes and no tile is written. [1]-[3] drive the compositor directly and go with it at END-4.)
 ##   5. ROTATION (02a): building the E view puts a roof Slab of the right
 ##      material at every block's ROTATED position
 ##
@@ -91,7 +88,6 @@ func _init() -> void:
 	Engine.remove_meta("BAKE_TEST_REGISTRY")
 
 	bake_config.enabled = true
-	test_4_real_playground_local_keys_and_step_borders()
 	test_5_rotated_view_roofs_follow_structures()
 
 	bake_config.enabled = saved_enabled
@@ -347,105 +343,6 @@ func _build_playground(direction: String) -> Dictionary:
 	return {"room": room, "renderer": voxel_renderer, "layout": layout}
 
 
-func test_4_real_playground_local_keys_and_step_borders() -> void:
-	print("[TEST 4] Real PLAYGROUND (N), bake ENABLED: local-keyed baked tiles + level-aware step borders")
-	var built := _build_playground("N")
-	if built.is_empty():
-		return
-	var room: MinimalRoom = built["room"]
-	var voxel_renderer = built["renderer"]
-	var layout: Dictionary = built["layout"]
-	var solid_block_instances: Array = layout.get("solid_block_instances", [])
-
-	if voxel_renderer._baked_lookup == null or voxel_renderer._baked_lookup._baked_atlas == null:
-		_fail("build with bake enabled produced no baked atlas on the renderer")
-		room.queue_free()
-		return
-	var atlas = voxel_renderer._baked_lookup._baked_atlas
-	var source_ids: Dictionary = voxel_renderer._baked_lookup._source_ids
-	var anchors: Dictionary = _derive_anchors(solid_block_instances)
-
-	## Level map for the border expectations (own derivation)
-	var level_by_gu: Dictionary = {}
-	for b in solid_block_instances:
-		var b_gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
-		var b_size: Vector2i = b.get("size", Vector2i.ONE)
-		var b_level: int = GeometryCoordsClass.storey_level_base(int(b.get("storeys", 1)))
-		for ox in range(b_size.x):
-			for oy in range(b_size.y):
-				level_by_gu[b_gu + Vector2i(ox, oy)] = b_level
-
-	var checked := 0
-	var wrong_source := 0
-	var wrong_coords := 0
-	var not_baked_source := 0
-	var missing_entries := 0
-	var border_mismatches := 0
-	var steps_checked := 0
-
-	for block_instance in solid_block_instances:
-		var gu_base: Vector2i = block_instance.get("gu_cell", Vector2i.ZERO)
-		var size: Vector2i = block_instance.get("size", Vector2i.ONE)
-		var storeys: int = int(block_instance.get("storeys", 1))
-		var material: String = String(block_instance.get("material", "concrete"))
-		var base_level: int = GeometryCoordsClass.storey_level_base(storeys)
-		for rx in range(size.x):
-			for ry in range(size.y):
-				var gu := gu_base + Vector2i(rx, ry)
-				var anchor: Vector2i = anchors.get(gu, Vector2i.ZERO)
-
-				## Level-aware border expectation (own re-derivation of 02b):
-				## suppressed toward same-or-higher, grown toward lower/none.
-				var exp_w: int = 0 if int(level_by_gu.get(gu + Vector2i(-1, 0), -1)) >= base_level else 1
-				var exp_e: int = 0 if int(level_by_gu.get(gu + Vector2i(1, 0), -1)) >= base_level else 1
-				var exp_n: int = 0 if int(level_by_gu.get(gu + Vector2i(0, -1), -1)) >= base_level else 1
-				var exp_s: int = 0 if int(level_by_gu.get(gu + Vector2i(0, 1), -1)) >= base_level else 1
-				var expected_voxels: int = (8 + exp_w + exp_e) * (8 + exp_n + exp_s)
-				for d: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
-					var n_level: int = int(level_by_gu.get(gu + d, -1))
-					if n_level > 0 and n_level != base_level:
-						steps_checked += 1
-
-				for level in range(base_level, base_level + ROOF_LEVEL_COUNT):
-					var slab_id := "SLAB_%d_%d_%s_%d" % [gu.x, gu.y, Slab.role_name(Slab.Role.CEILING), level]
-					var slab: Slab = room._slab_registry.get_slab(slab_id)
-					if slab == null:
-						continue
-					if slab.voxels.size() != expected_voxels:
-						border_mismatches += 1
-					var layer: TileMapLayer = voxel_renderer.get_layer(level)
-					for voxel in slab.voxels:
-						checked += 1
-						var local: Vector2i = voxel.grid_pos - anchor
-						var entry = atlas.lookup.get(_roof_key(material, local.x, local.y))
-						if entry == null:
-							missing_entries += 1
-							continue
-						var expected_source: int = source_ids.get(int(entry.get("page")), -1)
-						if layer.get_cell_source_id(voxel.grid_pos) != expected_source:
-							wrong_source += 1
-						if layer.get_cell_atlas_coords(voxel.grid_pos) != entry.get("atlas_coords"):
-							wrong_coords += 1
-						if not voxel_renderer._baked_source_ids.has(layer.get_cell_source_id(voxel.grid_pos)):
-							not_baked_source += 1
-
-	if checked > 0 and missing_entries == 0 and wrong_source == 0 and wrong_coords == 0 and not_baked_source == 0:
-		_pass("All %d real roof voxels placed with exactly the baked source + coords their STRUCTURE-LOCAL offset (own flood-fill anchors) predicts" % checked)
-	else:
-		_fail("%d roof voxels: %d missing entries, %d wrong source, %d wrong coords, %d not baked" % [
-			checked, missing_entries, wrong_source, wrong_coords, not_baked_source,
-		])
-
-	if border_mismatches == 0 and steps_checked > 0:
-		_pass("Every roof Slab's voxel count matches the LEVEL-AWARE border rule (%d storey-step sides on the real map exercise it)" % steps_checked)
-	elif border_mismatches == 0:
-		_pass("Every roof Slab's voxel count matches the level-aware border rule (note: map has no storey-step adjacency to exercise the eave case)")
-	else:
-		_fail("%d roof Slabs have a voxel count contradicting the level-aware border expectation" % border_mismatches)
-
-	room.queue_free()
-
-
 func test_5_rotated_view_roofs_follow_structures() -> void:
 	print("[TEST 5] E view (02a): every block's roof Slab exists at its ROTATED position with its material")
 	var file_source := FileMapSourceClass.new()
@@ -458,13 +355,11 @@ func test_5_rotated_view_roofs_follow_structures() -> void:
 	if built.is_empty():
 		return
 	var room: MinimalRoom = built["room"]
-	var voxel_renderer = built["renderer"]
 
 	## Own rotation math (E = 90° CW): base (x, y) → (h−1−y, x); a rectangle's
 	## rotated NW corner = (h − y0 − sy, x0), size swaps.
 	var missing := 0
 	var wrong_material := 0
-	var baked_spot_checks := 0
 	for b in base_blocks:
 		var gu: Vector2i = b.get("gu_cell", Vector2i.ZERO)
 		var size: Vector2i = b.get("size", Vector2i.ONE)
@@ -482,13 +377,9 @@ func test_5_rotated_view_roofs_follow_structures() -> void:
 					continue
 				if slab.material != material:
 					wrong_material += 1
-				if baked_spot_checks < 8 and not slab.voxels.is_empty():
-					var layer: TileMapLayer = voxel_renderer.get_layer(base_level)
-					if layer != null and voxel_renderer._baked_source_ids.has(layer.get_cell_source_id(slab.voxels[0].grid_pos)):
-						baked_spot_checks += 1
 
 	if missing == 0 and wrong_material == 0 and base_blocks.size() > 0:
-		_pass("All %d blocks have a roof Slab at their independently-rotated E-view position with the correct material (%d baked-source spot checks hit)" % [base_blocks.size(), baked_spot_checks])
+		_pass("All %d blocks have a roof Slab at their independently-rotated E-view position with the correct material" % [base_blocks.size()])
 	else:
 		_fail("E view: %d rotated block-GUs missing a roof Slab, %d with wrong material" % [missing, wrong_material])
 

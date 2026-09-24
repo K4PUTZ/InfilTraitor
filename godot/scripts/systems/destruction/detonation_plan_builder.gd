@@ -1438,7 +1438,6 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 	var keys: Array = s["ring_keys"]
 	var delta: WorldDelta = s["delta"]
 	var waves: Dictionary = s["waves"]
-	var field: VoxelLightFieldClass = s["field"]
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
 	var ring_of: Dictionary = s["ring_of"]
 	var container_of: Dictionary = s["container_of"]
@@ -1486,8 +1485,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				## R3D-10: on the 3D board no tile is ever written, so nothing resolves one — the entry carries the
 				## voxel key, the soot code and the ring, exactly the fields the plane-only writer reads. A GLASS-family
 				## container still yields no entry, which is what an empty resolve meant.
-				var resolved: Dictionary = _resolve_damaged_tile_or_none(
-					delta.project_voxel(voxel), container, voxel_renderer)
+				var resolved: Dictionary = _resolve_damaged_tile_or_none(container)
 				## GLASS-OLIVE — an empty resolve is "no opaque tile", not a miss.
 				## The damage itself is already recorded above (`touched_voxels` is
 				## the commit's persistence seam, and VL-PERSIST replays a CRACKED
@@ -1496,8 +1494,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				## The craze web — a sprite over the pane — is the whole visual for
 				## a cracked pane, exactly as G-D27 ratified.
 				if not resolved.is_empty():
-					var alt: int = 0 if bool(resolved.get("no_tile", false)) \
-						else _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
+					var alt: int = 0
 					var wave_key: String = "dented" if state == Voxel.DamageState.DENTED else "cracked"
 					_count(census, wave_key, container, resolved["baked"])
 					_append(waves[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
@@ -1521,7 +1518,6 @@ static func _phase_expose(s: Dictionary, deadline: int) -> void:
 	var rings: Array = s["expose_rings"]
 	var exposed_by_ring: Dictionary = s["exposed_by_ring"]
 	var waves: Dictionary = s["waves"]
-	var field: VoxelLightFieldClass = s["field"]
 	var epicenter: Vector2i = s["epicenter"]
 	var i: int = int(s["cursor"])
 	while i < rings.size():
@@ -1529,8 +1525,7 @@ static func _phase_expose(s: Dictionary, deadline: int) -> void:
 		i += 1
 		var lit_expose: Array = []
 		for e in exposed_by_ring[ring]:
-			var alt: int = 0 if not resolves_tiles() \
-				else _alt_for(field, e["grid_pos"], e["level"], e["alternative_id"])
+			var alt: int = 0
 			lit_expose.append({"cell": e["grid_pos"], "level": e["level"],
 				"source_id": e["source_id"], "atlas_coords": e["atlas_coords"], "alt": alt,
 				"soot": _soot_code_at(s, Vector3i(e["grid_pos"].x, e["grid_pos"].y, int(e["level"]))),
@@ -1584,29 +1579,14 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 			var cell := Vector2i(key.x, key.y)
 			var ring: int = int(soot_codes[key])
 			var soot_code: int = BlastCalculatorClass.soot_code(ring)
-			if VoxelRendererClass.SKIP_BOARD_WRITES:
-				## R3D-6: no tile says whether the cell exists — the STORE does. Planes
-				## only, so the entry carries no tile fields.
-				var store: VoxelStore = VoxelStore.active
-				if store != null and store.has_cell(cell.x, cell.y, level):
-					_append(waves["soot"], ring, {"cell": cell, "level": level,
-						"source_id": -1, "atlas_coords": Vector2i.ZERO, "alt": 0,
-						"soot": soot_code, "r": _radius_of(cell, epicenter)})
-					changed[key] = true
-			else:
-				var layer: TileMapLayer = voxel_renderer.get_layer(level)
-				if layer != null:
-					var source_id: int = layer.get_cell_source_id(cell)
-					## -1 = not drawn (hidden, erased elsewhere) — the plane is
-					## written at commit instead.
-					if source_id != -1:
-						_append(waves["soot"], ring, {"cell": cell, "level": level,
-							"source_id": source_id,
-							"atlas_coords": layer.get_cell_atlas_coords(cell),
-							"alt": _alt_for(field, cell, level, layer.get_cell_alternative_tile(cell)),
-							"soot": soot_code, "r": _radius_of(cell, epicenter)})
-						## D-7 (§7.4) — the same set, keyed for `apply_light_field_cells()`.
-						changed[key] = true
+			## R3D-6: no tile says whether the cell exists — the STORE does. Planes only, so the entry carries no
+			## tile fields. D-7 (§7.4): `changed` is the same set, keyed for `apply_light_field_cells()`.
+			var store: VoxelStore = VoxelStore.active
+			if store != null and store.has_cell(cell.x, cell.y, level):
+				_append(waves["soot"], ring, {"cell": cell, "level": level,
+					"source_id": -1, "atlas_coords": Vector2i.ZERO, "alt": 0,
+					"soot": soot_code, "r": _radius_of(cell, epicenter)})
+				changed[key] = true
 		since_check += 1
 		if since_check >= chunk:
 			since_check = 0
@@ -1630,12 +1610,7 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 		j += 1
 		if not changed.has(key) and not touched_this_blast.has(key):
 			var cell := Vector2i(key.x, key.y)
-			var drawn: bool = false
-			if VoxelRendererClass.SKIP_BOARD_WRITES:
-				drawn = store != null and store.has_cell(cell.x, cell.y, key.z)
-			else:
-				var rlayer: TileMapLayer = voxel_renderer.get_layer(key.z)
-				drawn = rlayer != null and rlayer.get_cell_source_id(cell) != -1
+			var drawn: bool = store != null and store.has_cell(cell.x, cell.y, key.z)
 			if drawn and field.bucket_for(cell, key.z) != voxel_renderer.cell_bucket_at(key.z, cell):
 				changed[key] = true
 		since_check += 1
@@ -2206,27 +2181,6 @@ const EMBER_NEIGHBOURS: Array[Vector3i] = [
 ]
 
 
-## ⚠️ AN EMPTY RETURN MEANS "THIS VOXEL HAS NO OPAQUE TILE", AND THAT IS A REAL
-## ANSWER — GLASS-OLIVE, 2026-09-06.
-##
-## Every entry this builds is written by `DetonationEntryWriter` onto
-## `voxel_renderer.get_layer(level)`, the OPAQUE layer. A glass voxel does not
-## live there (CLAUDE.md rule 10 / G1: the pane is on `_glass_layers`), so the
-## three live-resolve branches below ask `_set_voxel_cell()` — the one authority
-## on that routing — whether the id it just handed back is a glass sublayer atom,
-## and return nothing rather than a cell for the wrong layer.
-##
-## What it cost while it was silent: `damage_variant_material()` already returns
-## the BASE glass name for every damage state (D22/G-D26 — a crazed pane must not
-## change material), so a CRACKED glass voxel resolved straight back to its own
-## pane atom and the writer stamped it on the opaque layer under the still-intact
-## pane. That atom's RGB is `(dim, dim, tint/255)`, which `voxel_face_shading`
-## renders as flat yellow; the real pane then MULTIPLIED its blue `PANE_TINT[0]`
-## over it and the Director saw OLIVE panes near every grenade. Measured on the
-## GLASS map at gu (13,13): **720** stray cells across levels 80..103 — which is
-## also why hiding one `voxel_layer_N` at a time never made the colour go away.
-## A rotation cleared it because the rebuild re-runs `_set_voxel_cell(apply=true)`,
-## whose glass branch erases the opaque cell.
 ## R3D-10 — an order-independent digest of what a plan SAYS, without the tile fields: per wave kind the ring, the voxel
 ## key, the soot code and the radius of every entry (the nested `expose` reveals included), sorted, then hashed; and the
 ## census's destroy/dented/cracked counts (not its baked/live split, which has no meaning without a tile). Two plans with
@@ -2256,77 +2210,12 @@ static func plan_digest(delta: WorldDelta) -> String:
 	return "%s counts %s tiers %s touched %d" % ["\n".join(rows).md5_text(), counts, "|".join(tiers), delta.touched.size()]
 
 
-## R3D-10 — whether the plan resolves a tile per entry. False on the 3D board (`SKIP_BOARD_WRITES`), where no tile is written.
-static func resolves_tiles() -> bool:
-	return VoxelRendererClass.plan_resolves_tiles()
-
-
-## The resolve, or on the 3D board the placeholder that stands for it: `{}` for a glass-family container (no opaque
-## entry, as before) and `{"no_tile": true, ...}` for everything else.
-static func _resolve_damaged_tile_or_none(voxel: Voxel, container, voxel_renderer: VoxelRendererClass) -> Dictionary:
-	if resolves_tiles():
-		return _resolve_damaged_tile(voxel, container, voxel_renderer)
+## R3D-10 — the placeholder that stands for a tile resolve (no tile is ever written, R3D-END): `{}` for a glass-family
+## container (no opaque entry, as before) and `{"no_tile": true, ...}` for everything else.
+static func _resolve_damaged_tile_or_none(container) -> Dictionary:
 	if container != null and GlassMaterials.is_glass(_material_name(container)):
 		return {}
 	return {"source_id": -1, "atlas_coords": Vector2i.ZERO, "alternative_id": 0, "baked": false, "no_tile": true}
-
-
-static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: VoxelRendererClass) -> Dictionary:
-	if container == null:
-		return {"source_id": 0, "atlas_coords": Vector2i.ZERO, "alternative_id": 0, "baked": false}
-	var baked := voxel_renderer.resolve_damage_voxel_swap(voxel, container)
-	if not baked.is_empty():
-		return {"source_id": baked["source_id"], "atlas_coords": baked["atlas_coords"],
-			"alternative_id": 0, "baked": true}
-	if container is Slice:
-		var slice: Slice = container
-		var voxel_xy := Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-		var render_material := VoxelRendererClass.damage_variant_material(
-			slice.material, voxel.damage_state, voxel.damage_is_blast,
-			voxel.damage_carved_side, voxel.damage_variant)
-		var resolved := voxel_renderer._set_voxel_cell(voxel.grid_pos, voxel.level, render_material,
-			null, voxel_xy, slice.face, false, "", BakePolicyClass.SurfaceClass.SLICE, false)
-		if bool(resolved.get("glass_sublayer", false)):
-			return {}
-		return {"source_id": resolved["source_id"], "atlas_coords": resolved["atlas_coords"],
-			"alternative_id": resolved["alternative_id"], "baked": false}
-	## E-JUNCTION-01: a JunctionColumn is a diagonal wall segment, so it takes
-	## the same live-resolve shape a Slice does — the one real difference is
-	## orientation. A Slice has one face; a column has two (face_a/face_b, the
-	## corner itself). face_a is the plan's recorded default (EXPLOSION_
-	## REBUILD_MASTER_PLAN's E-JUNCTION-01 section) — a look detail to revisit
-	## after a real capture, not a correctness question.
-	if container is JunctionResolver.JunctionColumn:
-		var column: JunctionResolver.JunctionColumn = container
-		var voxel_xy2 := Vector2i(voxel.grid_pos.x % 8, voxel.grid_pos.y % 8)
-		var render_material3 := VoxelRendererClass.damage_variant_material(
-			column.material, voxel.damage_state, voxel.damage_is_blast,
-			voxel.damage_carved_side, voxel.damage_variant)
-		var resolved3 := voxel_renderer._set_voxel_cell(voxel.grid_pos, voxel.level, render_material3,
-			null, voxel_xy2, column.face_a, false, "", BakePolicyClass.SurfaceClass.SLICE, false)
-		if bool(resolved3.get("glass_sublayer", false)):
-			return {}
-		return {"source_id": resolved3["source_id"], "atlas_coords": resolved3["atlas_coords"],
-			"alternative_id": resolved3["alternative_id"], "baked": false}
-	## Slab (FLOOR/CEILING/INTERIOR) — mirrors render_slab_solid()'s own
-	## fixed-material call shape. A live-fallback miss on a Slab is not
-	## exercised by any real material on PLAYGROUND today (Task 1b measured 0
-	## unresolved atoms across all three element classes), so this resolves
-	## the same shared solid material name the live pipeline would, without
-	## reproducing _process_dirty_slab_voxel()'s full zoned-floor branch —
-	## flagged, not silently assumed correct: a real miss here resolves to a
-	## plausible but unverified tile rather than crashing.
-	var slab: Slab = container
-	var render_material2 := VoxelRendererClass.damage_variant_material(
-		slab.material, voxel.damage_state, voxel.damage_is_blast,
-		voxel.damage_carved_side, voxel.damage_variant)
-	var resolved2 := voxel_renderer._set_voxel_cell(voxel.grid_pos, voxel.level, render_material2,
-		null, voxel.grid_pos - slab.texture_anchor, 0, slab.role == Slab.Role.CEILING,
-		"", BakePolicyClass.SurfaceClass.SLICE, false)
-	if bool(resolved2.get("glass_sublayer", false)):
-		return {}
-	return {"source_id": resolved2["source_id"], "atlas_coords": resolved2["atlas_coords"],
-		"alternative_id": resolved2["alternative_id"], "baked": false}
 
 
 ## E-DENT-01 census bookkeeping — one row per (surface, material, tier) triple.
@@ -2467,19 +2356,6 @@ static func _resolve_expose_below(slab: Slab, voxel_renderer: VoxelRendererClass
 	if below_slab != null:
 		return voxel_renderer.reveal_floor_slab(below_slab, false)
 	return voxel_renderer.render_fixed_earth_level(slab.gu_cell, below_level, false)
-
-
-## The final `alt` for one cell: whatever bucket/soot the single light-field
-## query gives it, preserving the flip bit the resolve step already decided
-## (junction-mirror half-voxels bake their own H-flip into `base_alt` — the
-## SAME technique VoxelRenderer._apply_light_to_layer() uses on `prev_alt`,
-## just fed the fresh resolve's own alt instead of a live read).
-## PERF-P2b: the alt is bucket + flip; the SOOT the same cell will wear travels
-## beside it as its own entry field, because it no longer fits in an id.
-static func _alt_for(field: VoxelLightFieldClass, cell: Vector2i, level: int, base_alt: int) -> int:
-	var bucket: int = field.bucket_for(cell, level)
-	var flipped: bool = VoxelRendererClass.decode_light_flipped(base_alt)
-	return VoxelRendererClass.encode_light_alt(bucket, flipped)
 
 
 static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:

@@ -100,32 +100,26 @@ func test_multi_level_roof_is_n_independent_slabs() -> void:
 ## variant selection — the whole point for a roof matching its structure's
 ## material 1:1.
 func test_render_slab_solid_uses_fixed_material_no_hash() -> void:
-	print("[2] render_slab_solid() places ONE fixed material, no hash\n")
-
-	var renderer := VoxelRendererClass.new()
-	root.add_child(renderer)
-	renderer.setup(Vector2.ZERO)
+	print("[2] a roof Slab is ONE fixed material in the store the board draws, no hash\n")
 
 	var registry := SlabRegistry.new()
 	var gu := Vector2i(1, 1)
 	var slab := SlabGenerator.generate(gu, Slab.Role.CEILING, CEILING_LEVEL, "stone", registry)
-	renderer.render_slab_solid(slab)
-
-	var layer: TileMapLayer = renderer.get_layer(CEILING_LEVEL)
-	var expected_source_id: int = VoxelRendererClass.MATERIALS.find("stone")
+	## R3D-END: the 3D board draws each claim with its material; the 2D board's tile source is gone.
+	var store: VoxelStore = VoxelStore.build(EdgeRegistry.new(), registry, [])
 	var mismatches := 0
 	var checked := 0
 	for voxel_pos in GeometryCoordsClass.gu_voxels(gu):
 		checked += 1
-		if layer.get_cell_source_id(voxel_pos) != expected_source_id:
+		var owner_claim: int = store.owner[store.cell_index(voxel_pos.x, voxel_pos.y, CEILING_LEVEL)] \
+			if store.has_cell(voxel_pos.x, voxel_pos.y, CEILING_LEVEL) else -1
+		if owner_claim < 0 or store.material_ids[store.mat[owner_claim]] != "stone":
 			mismatches += 1
 
-	if checked == 64 and mismatches == 0:
-		_pass("All 64 cells placed with 'stone' (source_id=%d), zero variance across the GU" % expected_source_id)
+	if checked == 64 and mismatches == 0 and slab.voxels.size() == 64:
+		_pass("All 64 cells of the roof Slab are 'stone' in the store, zero variance across the GU")
 	else:
-		_fail("%d/%d cells did not match the fixed 'stone' material" % [mismatches, checked])
-
-	renderer.queue_free()
+		_fail("%d/%d cells did not hold the fixed 'stone' material in the store" % [mismatches, checked])
 	print("")
 
 
@@ -172,50 +166,36 @@ func test_each_roof_level_independently_destructible() -> void:
 func test_roof_positioned_above_a_block_uses_the_blocks_own_material() -> void:
 	print("[4] Roof positioned above a simulated block, matching its material\n")
 
-	var renderer := VoxelRendererClass.new()
-	root.add_child(renderer)
-	renderer.setup(Vector2.ZERO)
-
-	# Simulate the block itself via the existing, proven wall-material path.
 	var block_gu := Vector2i(7, 3)
 	var block_material := "wood"
-	renderer.render_block(block_gu, 0, 1, block_material)  # storey 0
 
 	## Roof starts immediately above the block's top level — DERIVED from the
-	## storey the block was actually rendered at, never a transcribed number.
+	## storey the block occupies, never a transcribed number.
 	var block_top_level: int = CEILING_LEVEL - 1
 	var registry := SlabRegistry.new()
 	var roof_slabs: Array[Slab] = []
 	for level in range(block_top_level + 1, block_top_level + 3):
-		var roof_slab := SlabGenerator.generate(block_gu, Slab.Role.CEILING, level, block_material, registry)
-		roof_slabs.append(roof_slab)
-		renderer.render_slab_solid(roof_slab)
+		roof_slabs.append(SlabGenerator.generate(block_gu, Slab.Role.CEILING, level, block_material, registry))
 
-	var block_layer: TileMapLayer = renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
-	var roof_layer_lo: TileMapLayer = renderer.get_layer(CEILING_LEVEL)
-	var roof_layer_hi: TileMapLayer = renderer.get_layer(CEILING_LEVEL + 1)
-
+	## R3D-END: the block half of this test was a 2D `render_block()` tile read; what is left is the roof's own material.
+	var store: VoxelStore = VoxelStore.build(EdgeRegistry.new(), registry, [])
 	var sample_voxel: Vector2i = GeometryCoordsClass.gu_voxels(block_gu)[0]
-	var wood_id: int = VoxelRendererClass.MATERIALS.find("wood")
-
-	if block_layer.get_cell_source_id(sample_voxel) == wood_id \
-	and roof_layer_lo.get_cell_source_id(sample_voxel) == wood_id \
-	and roof_layer_hi.get_cell_source_id(sample_voxel) == wood_id:
-		_pass("Block (level %d) and both roof levels (%d, %d) all render 'wood' — material matches the structure below" % [
-			GeometryCoords.PLAYABLE_LEVEL, CEILING_LEVEL, CEILING_LEVEL + 1,
+	var lo_claim: int = store.owner[store.cell_index(sample_voxel.x, sample_voxel.y, CEILING_LEVEL)]
+	var hi_claim: int = store.owner[store.cell_index(sample_voxel.x, sample_voxel.y, CEILING_LEVEL + 1)]
+	var lo_mat: String = store.material_ids[store.mat[lo_claim]] if lo_claim >= 0 else "<none>"
+	var hi_mat: String = store.material_ids[store.mat[hi_claim]] if hi_claim >= 0 else "<none>"
+	if lo_mat == block_material and hi_mat == block_material:
+		_pass("Both roof levels (%d, %d) hold '%s' in the store — the material of the structure below" % [
+			CEILING_LEVEL, CEILING_LEVEL + 1, block_material,
 		])
 	else:
-		_fail("Material mismatch between block and roof — block=%d roof_lo=%d roof_hi=%d expected=%d" % [
-			block_layer.get_cell_source_id(sample_voxel), roof_layer_lo.get_cell_source_id(sample_voxel),
-			roof_layer_hi.get_cell_source_id(sample_voxel), wood_id,
-		])
+		_fail("Roof material mismatch in the store — lo=%s hi=%s expected=%s" % [lo_mat, hi_mat, block_material])
 
 	if roof_slabs.size() == 2 and registry.all_slabs().size() == 2:
 		_pass("Roof is 2 independent Slabs, both registered")
 	else:
 		_fail("Expected 2 roof Slabs registered, got %d" % registry.all_slabs().size())
 
-	renderer.queue_free()
 	print("")
 
 

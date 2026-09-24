@@ -148,20 +148,8 @@ func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileS
 func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	MemStage.mark("11 room build starts")
 	_room_size = room_size
-	## R3D-11: on the 3D board nothing reads the floor layer any more (gameplay asks `GroundGrid.has_cell`), so nothing
-	## writes it either.
-	var write_floor: bool = not VoxelRenderer.SKIP_BOARD_WRITES
-	if write_floor:
-		floor_layer.clear()
+	## R3D-11: nothing reads the floor layer any more (gameplay asks `GroundGrid.has_cell`), so nothing writes it either.
 	structure_layer.clear()
-
-	var floor_tile_name := String(layout.get("floor_tile_name", "floor_SE"))
-	## Fills exactly the MAP_SIZE grid. The 5-tile buffer in the layout builder
-	## replaces the old negative extension — no coordinates outside the range [0, MAP_SIZE).
-	if write_floor:
-		for x in range(0, _room_size.x):
-			for y in range(0, _room_size.y):
-				_place(Vector2i(x, y), floor_tile_name)
 
 	## Voxel render plane: wall/block descriptors become stacked voxel presence.
 	## The old wall-storey layers remain as a fallback path, but the active render
@@ -573,11 +561,9 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## the exact hazard _inject_damage_substrate_usage()'s own comment
 		## already warns about. The VL-PERF-BAKE cache key below loops the
 		## merged array, so invalidation on floor-zone edits stays automatic.
-		var horizontal_specs: Array = _merge_horizontal_specs(roof_specs, floor_specs)
-		var bake_config = load("res://godot/scripts/systems/bake_config.gd")
-		if bake_config and bake_config.enabled and VoxelRenderer.board_needs_2d_bakes():
-			_bake_textures(extraction, edge_registry, junction_columns, horizontal_specs,
-				damage_materials, damage_floor_materials)
+		## R3D-12: the bake (facade atlas pages, the damage-variant registry, the composite page) was the 2D board's; the 3D
+		## board samples `TextureResolver` facades. The spec lists above are what it consumed; R3D-END step END-4 removes
+		## them with the atlas code.
 
 		if _diag_on:
 			print("[BAKE-DIAG] Pre-render: voxel_renderer._baked_lookup=%s, slices=%d, junction_columns=%d" % [

@@ -89,69 +89,22 @@ static func lightened(faces: Vector3i, by: int) -> Vector3i:
 func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> int:
 	match kind:
 		"destroy":
-			var layer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			## R3D-6: a plane-only write needs no tile, and a level with no 2D layer (the floor's) has none.
-			if layer == null and not VoxelRenderer.SKIP_BOARD_WRITES:
-				return 0
-			if VoxelRenderer.SKIP_BOARD_WRITES:
-				## DIAG-21 2c: the voxel is already gone in the data; only the hidden
-				## 2D cell would change. The light apply still needs to visit it.
-				voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
-				## R3D-6: glass is NOT a 2D-only write: a shattered pane owes the crack occupancy, the rims and the craze
-				## masks their re-cut. R3D-14: those now read the store, so `erase_glass_cell()` carries only the seams
-				## (light, ghost, the two glass flags) and touches no layer.
-				voxel_renderer.erase_glass_cell(int(entry["level"]), entry["cell"])
-				return 1
-			layer.erase_cell(entry["cell"])
+			## DIAG-21 2c: the voxel is already gone in the data; the light apply still needs to visit it.
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
-			## RENDER_ORDER — the cook's destroy seam: a wall that covered part of a
-			## cracked pane has to un-cut the web. Flags only; `flush()` below re-cuts.
-			voxel_renderer.note_opaque_erased(int(entry["level"]), entry["cell"])
-			## GLASS G3 — a shattered glass voxel lives on `_glass_layers`, which
-			## `get_layer()` above does not reach; erase it there too. A no-op for
-			## every non-glass cell (no glass sublayer at that level).
+			## R3D-6: glass is NOT a plane-only write: a shattered pane owes the crack occupancy, the rims and the craze
+			## masks their re-cut. R3D-14: those read the store, so `erase_glass_cell()` carries only the seams
+			## (light, ghost, the two glass flags).
 			voxel_renderer.erase_glass_cell(int(entry["level"]), entry["cell"])
 			return 1
 		"expose":
 			## §2's exposure fallback (B5). Its own step since E-ORGANIC-01 —
-			## see flatten_plan() for why nesting these was the spike.
-			var elayer: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			## R3D-6: a plane-only write needs no tile, and a level with no 2D layer (the floor's) has none.
-			if elayer == null and not VoxelRenderer.SKIP_BOARD_WRITES:
-				return 0
-			if VoxelRenderer.SKIP_BOARD_WRITES:
-				voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
-				voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
-				return 1
-			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], entry["alt"])
-			elayer.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
-			## PERF-P2b: the alt carries bucket and flip; the scorch travels beside it.
-			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
-				_wave_soot(entry))
-			## PERF-10: this bypassed the light field, so the field's stale set
-			## cannot know the cell moved. Say so, or the next stale-driven apply
-			## walks past a cell only a map-wide walk would have corrected.
+			## see flatten_plan() for why nesting these was the spike. The planes only.
+			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			return 1
 		"dented", "cracked", "soot":
-			var layer2: TileMapLayer = voxel_renderer.get_layer(entry["level"])
-			## R3D-6: a plane-only write needs no tile, and a level with no 2D layer (the floor's) has none.
-			if layer2 == null and not VoxelRenderer.SKIP_BOARD_WRITES:
-				return 0
-			if VoxelRenderer.SKIP_BOARD_WRITES:
-				voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
-				voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
-				return 1
-			## _ensure_light_alt() mints the (source_id, atlas_coords, alt)
-			## TileData alternative if it doesn't exist yet — the SAME call
-			## VoxelRenderer._apply_light_to_layer() makes right before its own
-			## set_cell(). Cheap/memoized, not a "lookup" in §2's sense (no
-			## resolution decision happens here, the triple already arrived
-			## fully resolved).
-			voxel_renderer._ensure_light_alt(entry["source_id"], entry["atlas_coords"], entry["alt"])
-			layer2.set_cell(entry["cell"], entry["source_id"], entry["atlas_coords"], entry["alt"])
-			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"],
-				_wave_soot(entry))
+			## The planes only; PERF-10: `note_external_write()` because this bypasses the light field's stale set.
+			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
 			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
 			return 1
 		"smoke":
@@ -274,11 +227,6 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 ## contract, fewer calls, and still a cheap no-op when nothing composited
 ## (flush_dirty_pages() checks an empty dirty-page set itself).
 func flush(voxel_renderer) -> void:
-	if not VoxelRenderer.SKIP_BOARD_WRITES:
-		## DIAG-21 2c: these two only serve the hidden 2D board.
-		voxel_renderer.flush_damage_composite_pages()
-		## PERF-P2b: one soot upload per flushed frame, never one per cell.
-		voxel_renderer.flush_cell_soot()
 	## G-D30 — the cook's own batch seam. `erase_glass_cell()` above only flags;
 	## this is where a blast that took glass out from under a standing crack
 	## re-cuts it, once, instead of once per erased cell.

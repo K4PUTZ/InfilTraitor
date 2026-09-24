@@ -850,7 +850,7 @@ func test_the_pane_bounds_clip_the_sprite() -> void:
 ##     was standing when the crack was made, and the SAME crack's occupancy
 ##     follows.
 func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
-	print("[12] G-D30 — the cut is read off the glass tilemap, live\n")
+	print("[12] G-D30 — the cut is read off the store's glass panes, live\n")
 
 	var renderer = VoxelRendererClass.new()
 	var base: int = GeometryCoordsClass.storey_level_base(0)
@@ -858,16 +858,11 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 	var run0 := 4
 	var runs := 10
 	var levels := 6
-	var brick_level: int = base + 2      ## a G-D9 band: simply never placed
+	var brick_level: int = base + 2      ## a G-D9 band: a brick row of the SAME slice, so not a pane cell
 
-	var ts := _one_tile_tileset()
-	for lvl in range(base, base + levels):
-		var layer := TileMapLayer.new()
-		layer.tile_set = ts
-		if lvl != brick_level:
-			for r in range(run0, run0 + runs):
-				layer.set_cell(Vector2i(r, cross), 0, Vector2i.ZERO)
-		renderer._glass_layers[lvl] = layer
+	## R3D-END: the pane is a glass slice in the store (the glass state's only authority since R3D-14); until then this
+	## hand-filled the hidden glass TileMapLayers.
+	var board: Dictionary = _glass_board(run0, runs, cross, base, levels, {brick_level - base: "brick"})
 
 	var impact_run: int = run0 + 5
 	var impact_level: int = base + 3
@@ -881,7 +876,6 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 	})
 	if cid == 0:
 		_fail("spawn_glass_crack returned 0 — no sprite, so there is no cut to test")
-		_free_glass_layers(renderer)
 		renderer.free()
 		print("")
 		return
@@ -889,7 +883,6 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 	var occ: Image = _occ_image(renderer)
 	if occ == null:
 		_fail("the crack carries no occupancy image")
-		_free_glass_layers(renderer)
 		renderer.free()
 		print("")
 		return
@@ -916,12 +909,13 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 		_pass("row %d (the brick band) reads EMPTY and every glass row reads solid — §13.5's free clip, and row 0 is the top level"
 			% brick_row)
 	else:
-		_fail("%d brick cells read solid, %d glass cells read empty — the row convention or the tilemap read is wrong"
+		_fail("%d brick cells read solid, %d glass cells read empty — the row convention or the store read is wrong"
 			% [brick_solid, glass_gone])
 
-	## G-D30's live re-cut: erase a cell the crack was made over, flush, and the
-	## SAME crack follows it. No "update the old sprites" pass.
+	## G-D30's live re-cut: destroy a cell the crack was made over (destruction's write, then the erase seam the cook
+	## calls), flush, and the SAME crack follows it. No "update the old sprites" pass.
 	var victim := Vector2i(impact_run, cross)
+	_destroy_glass(board, victim, impact_level)
 	renderer.erase_glass_cell(impact_level, victim)
 	var rebuilt: int = renderer.refresh_glass_crack_occupancy()
 	occ = _occ_image(renderer)
@@ -967,30 +961,36 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 	else:
 		_fail("the cut is no longer a continuous mix in glass_crack.gdshader — G-D30 says it is a dial")
 
-	_free_glass_layers(renderer)
 	renderer.free()
+	VoxelStore.active = null
 	print("")
 
 
-## One 32x36 white tile, enough for `set_cell` to make `get_cell_source_id`
-## answer. The occupancy read only ever asks whether a cell is occupied.
-func _one_tile_tileset() -> TileSet:
-	var ts := TileSet.new()
-	ts.tile_size = Vector2i(32, 36)
-	## `_glass_rim_atom_source()` stamps `tile_name` on every shard it registers.
-	## Without the layer the engine prints an error per shard and the test still
-	## runs — the kind of noise that trains an eye to skip a log.
-	ts.add_custom_data_layer()
-	ts.set_custom_data_layer_name(0, "tile_name")
-	ts.set_custom_data_layer_type(0, TYPE_STRING)
-	var src := TileSetAtlasSource.new()
-	var img := Image.create(32, 36, false, Image.FORMAT_RGBA8)
-	img.fill(Color(1, 1, 1, 1))
-	src.texture = ImageTexture.create_from_image(img)
-	src.texture_region_size = Vector2i(32, 36)
-	src.create_tile(Vector2i.ZERO)
-	ts.add_source(src, 0)
-	return ts
+## R3D-END — a one-pane board: a glass slice on the SW face (run along X) whose voxels ARE the pane cells, `runs` x
+## `levels` at y = `cross`, with an optional G-D9 band (rel level -> material). `VoxelStore.active` is built over it,
+## so every glass-state read (`_glass_cell_present()`, the crack occupancy, the opening walk) answers from it.
+## Returns {"slice", "voxels": Vector3i -> Voxel} — the voxels are what destruction writes.
+func _glass_board(run0: int, runs: int, cross: int, base: int, levels: int, bands: Dictionary = {}) -> Dictionary:
+	@warning_ignore("integer_division")
+	var storeys: int = maxi(1, (levels + GeometryCoordsClass.LEVELS_PER_STOREY - 1) / GeometryCoordsClass.LEVELS_PER_STOREY)
+	var s := Slice.new("PANE_BOARD", GeometryCoordsClass.voxel_to_gu(Vector2i(run0, cross)), Face.SW,
+		"PANE_BOARD_E", storeys, "glass")
+	s.pane_id = "PANE_TEST"
+	s.material_bands = bands
+	var by_key: Dictionary = {}
+	for lvl in range(base, base + levels):
+		for run in range(run0, run0 + runs):
+			var v := Voxel.new(Vector2i(run, cross), lvl, s)
+			s.voxels.append(v)
+			by_key[Vector3i(run, cross, lvl)] = v
+	_activate_store([s])
+	return {"slice": s, "voxels": by_key}
+
+
+## Destruction's part, played on the store: the voxel at (cell, level) is DESTROYED (and so invisible).
+func _destroy_glass(board: Dictionary, cell: Vector2i, level: int) -> void:
+	(board["voxels"][Vector3i(cell.x, cell.y, level)] as Voxel).set_damage(
+		Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 
 
 func _occ_image(renderer) -> Image:
@@ -999,15 +999,6 @@ func _occ_image(renderer) -> Image:
 	## The CPU-side copy the builder keeps — see its note. Asking the ImageTexture
 	## would be a RenderingServer readback, and headless it can lag an update().
 	return renderer._glass_cracks[0].get("occ_image")
-
-
-## The layers are hand-made here, not built by the renderer, so nothing else
-## owns them — SELFTEST LEAK GATE: a bare Object needs freeing.
-func _free_glass_layers(renderer) -> void:
-	for l in renderer._glass_layers.values():
-		if l != null and is_instance_valid(l):
-			(l as TileMapLayer).free()
-	renderer._glass_layers.clear()
 
 
 ## [13] CRACK-02 S-3 — `sprite_spec()` IS THE RENDER HALF, AND ONLY THAT.
@@ -1388,54 +1379,41 @@ func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 		## with clearance, so a hole never touches the pane's own edge.
 		var runs := 23
 		var levels := 17
-		var ts := _one_tile_tileset()
-		## ⚠️ THE RENDERER'S OWN TileSet MUST BE THE LAYERS' TileSet. The shard
-		## atoms register into `_tileset`, and a `set_cell()` naming a source the
-		## LAYER's tileset does not have is silently ignored — the cell keeps its
-		## old id and the swap looks like it worked. Found by this test's ancestor
-		## on its first run.
-		r._tileset = ts
-		for lvl in range(base, base + levels):
-			var layer := TileMapLayer.new()
-			layer.tile_set = ts
-			for run in range(run0, run0 + runs):
-				layer.set_cell(Vector2i(run, cross), 0, Vector2i.ZERO)
-			r._glass_layers[lvl] = layer
-		r._glass_source_info[0] = {"material": "glass", "face": Face.SW, "mask": 0}
+		## R3D-END: the pane is a glass slice in the store; until then this hand-filled the hidden glass TileMapLayers.
+		var board: Dictionary = _glass_board(run0, runs, cross, base, levels)
 
+		@warning_ignore("integer_division")
 		var hit_run: int = run0 + runs / 2
+		@warning_ignore("integer_division")
 		var hit_level: int = base + levels / 2
 		var bounds: Rect2i = GlassOpeningClass.cell_bounds(opening)
 
 		## Destruction's part, played here: every cell the opening swallows whole
-		## is erased first. The renderer refuses to erase, on purpose — it would be
+		## is destroyed first. The renderer refuses to erase, on purpose — it would be
 		## a second writer on voxel existence.
 		var expect_partial: Dictionary = {}
+		var swallowed: Array = []
 		for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
 			for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
 				var cov: int = GlassOpeningClass.coverage(opening, dr, dl)
 				if cov == GlassOpeningClass.Coverage.FULL:
-					(r._glass_layers[hit_level + dl] as TileMapLayer).erase_cell(
-						Vector2i(hit_run + dr, cross))
-					r.note_glass_erased_for_rim(hit_level + dl, Vector2i(hit_run + dr, cross))
+					swallowed.append(Vector3i(hit_run + dr, cross, hit_level + dl))
 				elif cov == GlassOpeningClass.Coverage.PARTIAL:
 					expect_partial[Vector2i(dr, dl)] = true
-		if r._glass_rim_dirty.is_empty():
-			(r._glass_layers[hit_level] as TileMapLayer).erase_cell(Vector2i(hit_run, cross))
-			r.note_glass_erased_for_rim(hit_level, Vector2i(hit_run, cross))
+		if swallowed.is_empty():
+			swallowed.append(Vector3i(hit_run, cross, hit_level))
+		for k: Vector3i in swallowed:
+			_destroy_glass(board, Vector2i(k.x, k.y), k.z)
+			r.note_glass_erased_for_rim(k.z, Vector2i(k.x, k.y))
 
 		r.claim_glass_opening(hit_level, Vector2i(hit_run, cross), opening)
 		var swapped: int = r.refresh_glass_rims()
 
-		## Read the board back and compare SETS.
+		## Read the board back and compare SETS: a shaped cell is one the opening only intruded on.
 		var wrong: Array = []
 		for dl in range(bounds.position.y - 1, bounds.position.y + bounds.size.y + 1):
 			for dr in range(bounds.position.x - 1, bounds.position.x + bounds.size.x + 1):
-				var layer := r._glass_layers.get(hit_level + dl) as TileMapLayer
-				if layer == null:
-					continue
-				var sid: int = layer.get_cell_source_id(Vector2i(hit_run + dr, cross))
-				var is_shard: bool = sid != -1 and not r._glass_source_info.has(sid)
+				var is_shard: bool = r._glass_shaped_cells.has(Vector3i(hit_run + dr, cross, hit_level + dl))
 				if is_shard != expect_partial.has(Vector2i(dr, dl)):
 					wrong.append("(%d,%d)%s" % [dr, dl, " cut" if is_shard else " whole"])
 		if wrong.is_empty():
@@ -1444,97 +1422,35 @@ func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 		else:
 			_fail("'%s': %d cell(s) disagree with coverage(): %s"
 				% [opening, wrong.size(), ", ".join(wrong)])
-
-		## ⚠️ AND THE SHARDS MUST SURVIVE A RE-RENDER. This is the assertion whose
-		## absence made CRACK-03 invisible for its whole life: the swap was correct,
-		## the atoms were correct, and the CRACKED ring that a hole always crazes
-		## re-placed those very cells with the intact atom a frame later. Measured
-		## on the real map before the fix — `refresh_glass_rims()` said 12 cells
-		## cut, the tilemap said 0.
-		##
-		## Simulated exactly as it happens: put the ORIGINAL source back on every
-		## shard cell (that is all a re-render does), then run the seam that is
-		## supposed to notice. Note it is run with NOTHING dirty, because the pass
-		## that overwrites a shard flags no erase at all — which is why the repair
-		## cannot live behind the dirty check.
-		var shard_cells: Array = r._glass_shard_cells.keys()
-		for k in shard_cells:
-			(r._glass_layers[k.z] as TileMapLayer).set_cell(Vector2i(k.x, k.y), 0, Vector2i.ZERO)
-		if r.count_glass_shards() != 0:
-			_fail("'%s': the re-render simulation did not actually clear the shards" % opening)
-		r.refresh_glass_rims()
-		if r.count_glass_shards() == shard_cells.size() and shard_cells.size() > 0:
-			_pass("'%s': all %d shard(s) survive a render pass that overwrote them"
-				% [opening, shard_cells.size()])
+		if r.count_glass_shards() == swapped:
+			_pass("'%s': count_glass_shards() reads the same %d shaped cell(s) back" % [opening, swapped])
 		else:
-			_fail("'%s': %d of %d shard(s) came back after a re-render — the hole heals"
-				% [opening, r.count_glass_shards(), shard_cells.size()])
+			_fail("'%s': count_glass_shards() reads %d, the walk cut %d" % [opening, r.count_glass_shards(), swapped])
 
 		## ⚠️ THE REBUILD PATH MUST PRODUCE THE SAME BOARD AS THE SHOT PATH.
-		## There are two ways an opening reaches the tilemap — `claim` + the erase
+		## There are two ways an opening reaches the board — `claim` + the erase
 		## flush (a live shot) and `apply_glass_opening_at()` (a perspective flip or
 		## a load, where nothing is erased so nothing flags a rim). They were NOT
 		## equivalent when written: the rebuild claimed into a flush that never ran
 		## and the hole came back a rectangle, silently, for every opening. Two
-		## paths for one feature need the assertion that they agree.
+		## paths for one feature need the assertion that they agree. Same store (the
+		## same holes); a second renderer, with no rim flagged.
 		var r2 = VoxelRendererClass.new()
-		r2._tileset = ts
-		for lvl2 in range(base, base + levels):
-			var l2 := TileMapLayer.new()
-			l2.tile_set = ts
-			for run2 in range(run0, run0 + runs):
-				l2.set_cell(Vector2i(run2, cross), 0, Vector2i.ZERO)
-			r2._glass_layers[lvl2] = l2
-		r2._glass_source_info[0] = {"material": "glass", "face": Face.SW, "mask": 0}
-		## Same holes, but erased WITHOUT flagging a rim — which is exactly what a
-		## rebuild looks like: the cells are simply never placed.
-		for dl2 in range(bounds.position.y, bounds.position.y + bounds.size.y):
-			for dr2 in range(bounds.position.x, bounds.position.x + bounds.size.x):
-				if GlassOpeningClass.coverage(opening, dr2, dl2) == GlassOpeningClass.Coverage.FULL:
-					(r2._glass_layers[hit_level + dl2] as TileMapLayer).erase_cell(
-						Vector2i(hit_run + dr2, cross))
 		var direct: int = r2.apply_glass_opening_at(hit_level, Vector2i(hit_run, cross), opening)
-		## ⚠️ COMPARE THE SHAPE, NOT THE SOURCE ID. The two renderers register their
-		## shard atoms into the same TileSet, so equivalent shards get DIFFERENT
-		## ids — `_next_free_tileset_source_id()` skips whatever is already there.
-		## The first version of this check compared ids and failed all twelve
-		## openings with identical counts on identical cells, which is the shape of
-		## a wrong instrument rather than a wrong build.
 		var mismatch: Array = []
 		for dl2 in range(bounds.position.y - 1, bounds.position.y + bounds.size.y + 1):
 			for dr2 in range(bounds.position.x - 1, bounds.position.x + bounds.size.x + 1):
-				var la := r._glass_layers.get(hit_level + dl2) as TileMapLayer
-				var lb := r2._glass_layers.get(hit_level + dl2) as TileMapLayer
-				if la == null or lb == null:
-					continue
-				var c := Vector2i(hit_run + dr2, cross)
-				var sa: int = la.get_cell_source_id(c)
-				var sb: int = lb.get_cell_source_id(c)
-				## Class first: empty / intact / shard.
-				var ca: int = 0 if sa == -1 else (1 if r._glass_source_info.has(sa) else 2)
-				var cb: int = 0 if sb == -1 else (1 if r2._glass_source_info.has(sb) else 2)
-				if ca != cb:
-					mismatch.append("(%d,%d) %d!=%d" % [dr2, dl2, ca, cb])
-					continue
-				if ca != 2:
-					continue
-				## Both shards — then the CUT must be pixel-identical.
-				var ia: Image = ((r._tileset.get_source(sa) as TileSetAtlasSource)
-					.texture as ImageTexture).get_image()
-				var ib: Image = ((r2._tileset.get_source(sb) as TileSetAtlasSource)
-					.texture as ImageTexture).get_image()
-				if not _same_alpha(ia, ib):
-					mismatch.append("(%d,%d) shape" % [dr2, dl2])
+				var key := Vector3i(hit_run + dr2, cross, hit_level + dl2)
+				if r._glass_shaped_cells.has(key) != r2._glass_shaped_cells.has(key):
+					mismatch.append("(%d,%d)" % [dr2, dl2])
 		if mismatch.is_empty() and direct == swapped:
-			_pass("'%s': the rebuild path lands the same %d shard(s) on the same cells" % [opening, direct])
+			_pass("'%s': the rebuild path shapes the same %d cell(s) as the shot path" % [opening, direct])
 		else:
 			_fail("'%s': rebuild cut %d vs shot %d; cells differing: %s"
 				% [opening, direct, swapped, ", ".join(mismatch) if not mismatch.is_empty() else "none"])
-		_free_glass_layers(r2)
 		r2.free()
-
-		_free_glass_layers(r)
 		r.free()
+		VoxelStore.active = null
 	_pass("all %d openings survived the round with no idempotence failure" % GlassOpeningClass.ids().size())
 	print("")
 
@@ -1879,13 +1795,8 @@ func test_the_craze_field_is_cut_to_the_holes() -> void:
 	var run0 := 4
 	var runs := 12
 	var levels := 8
-	var ts := _one_tile_tileset()
-	for lvl in range(base, base + levels):
-		var layer := TileMapLayer.new()
-		layer.tile_set = ts
-		for r in range(run0, run0 + runs):
-			layer.set_cell(Vector2i(r, cross), 0, Vector2i.ZERO)
-		renderer._glass_layers[lvl] = layer
+	## R3D-END: the pane is a glass slice in the store; until then this hand-filled the hidden glass TileMapLayers.
+	_glass_board(run0, runs, cross, base, levels)
 
 	var c_run: int = run0 + runs / 2
 	var c_lvl: int = base + levels / 2
@@ -1902,8 +1813,8 @@ func test_the_craze_field_is_cut_to_the_holes() -> void:
 	var fid: int = renderer.spawn_glass_craze(spec)
 	if fid == 0:
 		_fail("spawn_glass_craze returned 0 — no field, so there is no mask to test")
-		_free_glass_layers(renderer)
 		renderer.free()
+		VoxelStore.active = null
 		print("")
 		return
 
@@ -1958,10 +1869,9 @@ func test_the_craze_field_is_cut_to_the_holes() -> void:
 	else:
 		_fail("no mask image was built")
 
-	_free_glass_layers(renderer)
 	renderer.free()
+	VoxelStore.active = null
 	print("")
-
 
 
 ## ── [20] G4-3 — THE REMNANT ATOM ─────────────────────────────────────────────
@@ -2024,7 +1934,6 @@ func test_the_remnant_atom_keeps_only_its_fragment() -> void:
 	else:
 		_fail("%d stray pixel(s) outside the fragment — the parallelogram's ghost is back" % stray_total)
 	print("")
-
 
 
 ## Opaque pixels whose (u, v) puts them outside the fragment — including the ones
@@ -2174,41 +2083,31 @@ func _cut_set_for(opening: String, claim: bool) -> Dictionary:
 	var run0 := 0
 	var runs := 23
 	var levels := 17
-	var ts := _one_tile_tileset()
-	r._tileset = ts
-	for lvl in range(base, base + levels):
-		var layer := TileMapLayer.new()
-		layer.tile_set = ts
-		for run in range(run0, run0 + runs):
-			layer.set_cell(Vector2i(run, cross), 0, Vector2i.ZERO)
-		r._glass_layers[lvl] = layer
-	r._glass_source_info[0] = {"material": "glass", "face": Face.SW, "mask": 0}
+	## R3D-END: the pane is a glass slice in the store; until then this hand-filled the hidden glass TileMapLayers.
+	var board: Dictionary = _glass_board(run0, runs, cross, base, levels)
 
+	@warning_ignore("integer_division")
 	var hit_run: int = run0 + runs / 2
+	@warning_ignore("integer_division")
 	var hit_level: int = base + levels / 2
 	var bounds: Rect2i = GlassOpeningClass.cell_bounds(opening)
+	var swallowed: Array = []
 	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
 		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
 			if GlassOpeningClass.coverage(opening, dr, dl) == GlassOpeningClass.Coverage.FULL:
-				(r._glass_layers[hit_level + dl] as TileMapLayer).erase_cell(
-					Vector2i(hit_run + dr, cross))
-				r.note_glass_erased_for_rim(hit_level + dl, Vector2i(hit_run + dr, cross))
-	if r._glass_rim_dirty.is_empty():
-		(r._glass_layers[hit_level] as TileMapLayer).erase_cell(Vector2i(hit_run, cross))
-		r.note_glass_erased_for_rim(hit_level, Vector2i(hit_run, cross))
+				swallowed.append(Vector3i(hit_run + dr, cross, hit_level + dl))
+	if swallowed.is_empty():
+		swallowed.append(Vector3i(hit_run, cross, hit_level))
+	for k: Vector3i in swallowed:
+		_destroy_glass(board, Vector2i(k.x, k.y), k.z)
+		r.note_glass_erased_for_rim(k.z, Vector2i(k.x, k.y))
 	if claim:
 		r.claim_glass_opening(hit_level, Vector2i(hit_run, cross), opening)
 	r.refresh_glass_rims()
 
 	var out: Dictionary = {}
-	for lvl in r._glass_layers:
-		var layer := r._glass_layers[lvl] as TileMapLayer
-		for cell in layer.get_used_cells():
-			var sid: int = layer.get_cell_source_id(cell)
-			if sid != -1 and not r._glass_source_info.has(sid):
-				out[Vector2i(cell.x - hit_run, lvl - hit_level)] = true
-	for lvl2 in r._glass_layers:
-		(r._glass_layers[lvl2] as TileMapLayer).free()
-	r._glass_layers.clear()
+	for key: Vector3i in r._glass_shaped_cells:
+		out[Vector2i(key.x - hit_run, key.z - hit_level)] = true
 	r.free()
+	VoxelStore.active = null
 	return out

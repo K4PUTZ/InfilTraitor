@@ -3057,6 +3057,32 @@ that still builds the 2D board is `34881f81`.
   `independence_gate.py` and its `drop2d` step retire here: with no mode that builds the 2D board there is nothing left
   to empty, and its control was `GLASS_STATE_LAYER`. The END-0 set holds every later step to the pictures and dumps of
   the code that still had the 2D board, which is the stronger check.
+  **Done 2026-09-24.** Every `SKIP_BOARD_WRITES` / `glass_state_from_store()` branch kept its 3D side; the 2D side and
+  every tail it left unreachable went (the render passes are husks that place nothing until END-4 deletes them; the
+  light has one pass, the store's; the glass state readers ask only the store). Also gone: `DevFlags`' `RENDER3D`
+  default, `Room`'s `glass_compare` / `drop2d` steps and their `VoxelRenderer` halves, the plan builder's tile
+  resolve (`_resolve_damaged_tile`, `_alt_for`; the entry is the tile-less placeholder), the prediction's 2D warm-up,
+  the room builder's floor tiles and bake call, `run_selftests.py`'s `PINNED_2D`. **The 18 suites, by subject:** a
+  criterion whose subject END-1 removed went, with a note in its header (tile placement: `fixed_floor` [1],
+  `negative_storey` [4][5], `slab_render` [2][3][5], `prop_01` criterion 3, `glass_transparency` [1][1b][2][3][4],
+  `detonation_plan` [2]; the load's bake: `roof_bake` [4], `floor_zone_bake` [4], `damage_atom_bake` [1][2][5]); a
+  criterion whose subject survives was ported to the store and proven live by a sabotage (red, then green on restore):
+  `floor_integration` [4] (floor claims carry the declared material) and [4b], `roof_integration` (roof cells and
+  borders in the store), `roof_slab` [2][4], `glass_transparency` [7] (a G-D9 band is not a pane cell) and [12],
+  `detonation_plan` [3] (build_plan() leaves the store's state/aux/occupancy and every cell plane byte-identical:
+  216 104 claims, 32 planes; it had been comparing two empty tile snapshots), `glass_crack` [12] [15] [19] [22] (a
+  `_glass_board()` fixture: the pane is a glass slice in the store, destruction is `set_damage(DESTROYED)`; the
+  "shards survive a re-render" half of [15] went, a render overwrites no store record). What a suite still tests of
+  a subject that goes later (the compositor, the baker, the layer registry, the seam atoms) stays until that step.
+  **Gates against END-0:** pixel_gate 0 px above noise on all six frames (GLASS g0/g1 136/63 strict, the known
+  jitter); the 12 `board_probe gate` dumps and the 19 roundtrip dumps IDENTICAL to END-0's; `ground_gate` 16/16;
+  roundtrip, shadow, mirror (7/504, 9/920), occ_canonical all PASS; shot_3d_gate PASSED (brick 2 919 px as END-0;
+  concrete 3 610 vs END-0's 3 585, and three boots of the same code read 3 595 / 3 610 / 3 596: its run-to-run noise,
+  it has no fixed FPS); `run_selftests` 64 clean with nothing pinned. Left without a caller, deleted by the step that
+  owns it: `_bake_textures`, `_find_neighbor_wall_voxel`, `resolve_junction`, `warm_light_alts_for_gus` (END-4),
+  `_ensure_glass_sublayers`, `note_opaque_erased` (END-2); `WorldDelta.project_voxel` is a prediction API, not 2D, and
+  stays. Finding: voxel props (PROP-01, `render_prop()`) and the raw solid blocks were only ever drawn by the 2D
+  `render_block()`; no map uses voxel props today, and drawing them on the 3D board is R3D-PROPS' (D65).
 - **END-2 — the glass tiles.** `_glass_layers`, `_glass_tile_sync()`, the render-order clip and seam cull,
   `glass_tile.gdshader`, the 2D users of `glass_pane.gdshader`, `GlassCrackSprite` (its record stays, as data), the 2D
   shard-pile sprites.

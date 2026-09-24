@@ -14,11 +14,8 @@
 ##      modulate does not alter the composed page's raw pixel RGB (the
 ##      compositor forces the modulate at TileData registration time, a
 ##      draw-time multiply — never a page-pixel write)
-##   4. Real FLOOR_ZONES_TEST map, bake ENABLED: every voxel in a declared
-##      zone carries the baked source + coords its STRUCTURE-LOCAL offset
-##      predicts (own flood-fill re-derivation, keyed on "same zone
-##      material" instead of "both roofed"); unzoned floor still resolves
-##      to the "earth" sentinel with zero anchor
+##   4. (R3D-END, END-1: deleted. It read the baked TILE every zoned floor voxel was placed as on a real load; the
+##      load no longer bakes and no tile is written. [1]-[3] drive the compositor directly and go with it at END-4.)
 ##   5. ROTATION: building the E view puts a zone's Slab material at the
 ##      correctly-rotated GU, exactly like roof's block rotation
 ##
@@ -99,7 +96,6 @@ func _init() -> void:
 	Engine.remove_meta("BAKE_TEST_REGISTRY")
 
 	bake_config.enabled = true
-	test_4_real_map_local_keys_and_unzoned_fallback()
 	test_5_rotated_view_zones_follow_declared_material()
 
 	bake_config.enabled = saved_enabled
@@ -378,101 +374,6 @@ func _build_test_map(direction: String) -> Dictionary:
 	return {"room": room, "renderer": voxel_renderer, "layout": layout}
 
 
-func test_4_real_map_local_keys_and_unzoned_fallback() -> void:
-	print("[TEST 4] Real FLOOR_ZONES_TEST (N), bake ENABLED: zoned voxels baked at their local offset; unzoned floor stays 'earth'")
-	var built := _build_test_map("N")
-	if built.is_empty():
-		return
-	var room: MinimalRoom = built["room"]
-	var voxel_renderer = built["renderer"]
-	var layout: Dictionary = built["layout"]
-	var floor_zone_instances: Array = layout.get("floor_zone_instances", [])
-
-	if floor_zone_instances.is_empty():
-		_fail("FLOOR_ZONES_TEST compiled with zero floor_zone_instances — fixture map missing its floor_zones section?")
-		room.queue_free()
-		return
-
-	if voxel_renderer._baked_lookup == null or voxel_renderer._baked_lookup._baked_atlas == null:
-		_fail("build with bake enabled produced no baked atlas on the renderer")
-		room.queue_free()
-		return
-	var atlas = voxel_renderer._baked_lookup._baked_atlas
-	var source_ids: Dictionary = voxel_renderer._baked_lookup._source_ids
-	var zone_by_gu: Dictionary = _expand_zones(floor_zone_instances)
-	var anchors: Dictionary = _derive_zone_anchors(zone_by_gu)
-
-	var checked := 0
-	var wrong_source := 0
-	var wrong_coords := 0
-	var not_baked_source := 0
-	var missing_entries := 0
-
-	for gu in zone_by_gu:
-		var material: String = zone_by_gu[gu]
-		var anchor: Vector2i = anchors.get(gu, Vector2i.ZERO)
-		var slab_id := "SLAB_%d_%d_%s_%d" % [gu.x, gu.y, Slab.role_name(Slab.Role.FLOOR), FLOOR_TOP_LEVEL]
-		var slab: Slab = room._slab_registry.get_slab(slab_id)
-		if slab == null:
-			_fail("zoned GU %s has no FLOOR Slab in the registry" % gu)
-			continue
-		if slab.material != material:
-			_fail("zoned GU %s: Slab.material='%s', expected '%s'" % [gu, slab.material, material])
-		if slab.texture_anchor != anchor:
-			_fail("zoned GU %s: texture_anchor=%s, own flood-fill derived %s" % [gu, slab.texture_anchor, anchor])
-		var layer: TileMapLayer = voxel_renderer.get_layer(FLOOR_TOP_LEVEL)
-		for voxel in slab.voxels:
-			checked += 1
-			var local: Vector2i = voxel.grid_pos - anchor
-			var entry = atlas.lookup.get(_floor_key(material, local.x, local.y))
-			if entry == null:
-				missing_entries += 1
-				continue
-			var expected_source: int = source_ids.get(int(entry.get("page")), -1)
-			if layer.get_cell_source_id(voxel.grid_pos) != expected_source:
-				wrong_source += 1
-			if layer.get_cell_atlas_coords(voxel.grid_pos) != entry.get("atlas_coords"):
-				wrong_coords += 1
-			if not voxel_renderer._baked_source_ids.has(layer.get_cell_source_id(voxel.grid_pos)):
-				not_baked_source += 1
-
-	if checked > 0 and missing_entries == 0 and wrong_source == 0 and wrong_coords == 0 and not_baked_source == 0:
-		_pass("All %d real zoned floor voxels placed with exactly the baked source + coords their STRUCTURE-LOCAL offset (own flood-fill anchors) predicts" % checked)
-	else:
-		_fail("%d zoned floor voxels: %d missing entries, %d wrong source, %d wrong coords, %d not baked" % [
-			checked, missing_entries, wrong_source, wrong_coords, not_baked_source,
-		])
-
-	## Unzoned-floor regression guard: a GU outside every declared zone must
-	## still be the "earth" sentinel with zero anchor (pre-feature behavior).
-	var unzoned_checked := 0
-	var unzoned_wrong := 0
-	var room_size: Vector2i = layout.get("size", Vector2i.ZERO)
-	for ux in range(room_size.x):
-		for uy in range(room_size.y):
-			var ugu := Vector2i(ux, uy)
-			if zone_by_gu.has(ugu):
-				continue
-			var uslab_id := "SLAB_%d_%d_%s_%d" % [ugu.x, ugu.y, Slab.role_name(Slab.Role.FLOOR), FLOOR_TOP_LEVEL]
-			var uslab: Slab = room._slab_registry.get_slab(uslab_id)
-			if uslab == null:
-				continue
-			unzoned_checked += 1
-			if uslab.material != "earth" or uslab.texture_anchor != Vector2i.ZERO:
-				unzoned_wrong += 1
-			if unzoned_checked >= 20:  # sample, not exhaustive — the map is walkable-sized
-				break
-		if unzoned_checked >= 20:
-			break
-
-	if unzoned_checked > 0 and unzoned_wrong == 0:
-		_pass("%d unzoned floor Slabs sampled all kept the 'earth' sentinel + zero anchor (no regression)" % unzoned_checked)
-	else:
-		_fail("%d/%d unzoned floor Slabs deviated from the 'earth'/zero-anchor baseline" % [unzoned_wrong, unzoned_checked])
-
-	room.queue_free()
-
-
 func test_5_rotated_view_zones_follow_declared_material() -> void:
 	print("[TEST 5] E view: every declared zone's Slab exists at its ROTATED GU with its declared material")
 	var file_source := FileMapSourceClass.new()
@@ -489,13 +390,11 @@ func test_5_rotated_view_zones_follow_declared_material() -> void:
 	if built.is_empty():
 		return
 	var room: MinimalRoom = built["room"]
-	var voxel_renderer = built["renderer"]
 
 	## Own rotation math (E = 90 CW): base (x, y) -> (h-1-y, x); a
 	## rectangle's rotated NW corner = (h - y0 - sy, x0), size swaps.
 	var missing := 0
 	var wrong_material := 0
-	var baked_spot_checks := 0
 	for z in base_zones:
 		var gu: Vector2i = z.get("gu_cell", Vector2i.ZERO)
 		var size: Vector2i = z.get("size", Vector2i.ONE)
@@ -511,13 +410,9 @@ func test_5_rotated_view_zones_follow_declared_material() -> void:
 					continue
 				if slab.material != material:
 					wrong_material += 1
-				if baked_spot_checks < 8 and not slab.voxels.is_empty():
-					var layer: TileMapLayer = voxel_renderer.get_layer(FLOOR_TOP_LEVEL)
-					if layer != null and voxel_renderer._baked_source_ids.has(layer.get_cell_source_id(slab.voxels[0].grid_pos)):
-						baked_spot_checks += 1
 
 	if missing == 0 and wrong_material == 0:
-		_pass("All %d declared zones have a FLOOR Slab at their independently-rotated E-view position with the correct material (%d baked-source spot checks hit)" % [base_zones.size(), baked_spot_checks])
+		_pass("All %d declared zones have a FLOOR Slab at their independently-rotated E-view position with the correct material" % [base_zones.size()])
 	else:
 		_fail("E view: %d rotated zone-GUs missing a FLOOR Slab, %d with wrong material" % [missing, wrong_material])
 

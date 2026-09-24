@@ -3,6 +3,8 @@
 ##
 ## Proves the floor can live at negative levels without disturbing the
 ## existing (positive) wall/block/prop pipeline at all — D17's whole claim.
+## R3D-END (END-1): [4] and [5] (render_block() / render_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more). The rest
+## stays until END-4 deletes the level layers.
 
 extends SceneTree
 
@@ -21,8 +23,6 @@ func _init() -> void:
 	test_negative_layer_creation_and_lookup()
 	test_negative_level_position_and_zindex_formula()
 	test_lazy_not_contiguous()
-	test_positive_pipeline_unaffected()
-	test_slab_render_routes_negative_level_correctly()
 	test_set_voxel_cell_still_rejects_unensured_level()
 
 	print("\n" + "=".repeat(70))
@@ -150,93 +150,6 @@ func test_lazy_not_contiguous() -> void:
 		_pass("The third ground level itself exists, as requested")
 	else:
 		_fail("The third ground level was not created despite being explicitly ensured")
-
-	renderer.queue_free()
-	print("")
-
-
-## D17's central claim: the existing wall/block pipeline is completely
-## unaffected. Prove render_block() (walls/props) still works exactly as
-## before, with negative floor layers coexisting alongside it.
-func test_positive_pipeline_unaffected() -> void:
-	print("[4] Positive (wall) pipeline is unaffected by negative layers existing\n")
-
-	var renderer := VoxelRendererClass.new()
-	root.add_child(renderer)
-	renderer.setup(Vector2.ZERO)
-
-	## LEVEL-RENUMBER — the two ground levels, present so the test can prove walls
-	## are placed WITHOUT them being disturbed. Their identity is what matters, not
-	## the literals that used to name them.
-	renderer._ensure_negative_voxel_layer(GeometryCoords.FLOOR_TOP_LEVEL)
-	renderer._ensure_negative_voxel_layer(GeometryCoords.FLOOR_DEEP_LEVEL)
-
-	renderer.render_block(Vector2i(0, 0), 0, 1, "concrete")
-
-	var wall_layer: TileMapLayer = renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
-	var placed := 0
-	if wall_layer != null:
-		for voxel_pos in GeometryCoordsClass.gu_voxels(Vector2i(0, 0)):
-			if wall_layer.get_cell_source_id(voxel_pos) >= 0:
-				placed += 1
-
-	if placed == 64:
-		_pass("render_block() still places all 64 cells correctly with negative layers present")
-	else:
-		_fail("render_block() placed %d/64 cells (expected 64) — negative layers interfered" % placed)
-
-	if renderer.get_layer_count() == 8:
-		_pass("get_layer_count() still reports 8 (positive-only, LEVELS_PER_STOREY) — negative layers not counted")
-	else:
-		_fail("get_layer_count() = %d, expected 8 (negative layers should not be counted)" % renderer.get_layer_count())
-
-	renderer.queue_free()
-	print("")
-
-
-## render_slab() must route a negative-level Slab to the negative storage,
-## via _ensure_negative_voxel_layer(), and place cells that read back
-## correctly — the same round-trip discipline slab_render_selftest.gd used
-## for the positive case, now for the negative one.
-func test_slab_render_routes_negative_level_correctly() -> void:
-	print("[5] render_slab() with a negative-level Slab places real, correct cells\n")
-
-	var renderer := VoxelRendererClass.new()
-	root.add_child(renderer)
-	renderer.setup(Vector2.ZERO)
-
-	var registry := SlabRegistry.new()
-	var gu := Vector2i(3, 3)
-	## LEVEL-RENUMBER — a FLOOR slab belongs on the floor top, which is what `-1`
-	## named before the ground plane moved.
-	var slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_TOP_LEVEL, "earth", registry)
-	renderer.render_slab(slab)
-
-	var layer: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL)
-	if layer == null:
-		_fail("render_slab() on the floor top did not create its layer")
-		renderer.queue_free()
-		print("")
-		return
-
-	var mismatches := 0
-	for voxel in slab.voxels:
-		var expected_variant: int = EarthVariantSelector.variant_for(voxel.grid_pos,
-			voxel.level - GeometryCoords.PLAYABLE_LEVEL)
-		var expected_source_id: int = VoxelRendererClass.MATERIALS.find("earth_%d" % expected_variant)
-		var actual_source_id: int = layer.get_cell_source_id(voxel.grid_pos)
-		if actual_source_id != expected_source_id:
-			mismatches += 1
-
-	if mismatches == 0:
-		_pass("All 64 cells of a negative-level (-1) Slab placed correctly, independently re-verified")
-	else:
-		_fail("%d/64 cells mismatched on the negative-level Slab" % mismatches)
-
-	if renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL) == null:
-		_pass("No positive layer was created as a side effect of rendering a negative-level Slab")
-	else:
-		_fail("Rendering a negative-level Slab unexpectedly created a positive layer 0")
 
 	renderer.queue_free()
 	print("")

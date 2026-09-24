@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**278 scripts · 100608 lines total** (under `godot/scripts/`)
+**278 scripts · 98238 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -533,7 +533,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1915 lines
+extends `Node3D` · 1914 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1153,7 +1153,7 @@ extends `Node3D` · 1915 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 8149 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7483 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -2430,7 +2430,7 @@ extends `Node2D` · 44 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 293 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 241 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -2459,7 +2459,7 @@ extends `Node2D` · 44 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2780 lines
+`class_name DetonationPlanBuilder` · 2656 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2481,7 +2481,7 @@ extends `Node2D` · 44 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 442 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 439 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2687,7 +2687,7 @@ extends `Node2D` · 44 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 248 lines
+extends `Node` · 238 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3344,14 +3344,14 @@ extends `Node` · 156 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 491 lines
+extends `Node` · 475 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
-> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. drop2d                               DIAG-23 instrument: clear the hidden 2D board's cells under a 3D board (RENDER3D=1) probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from placed tiles vs from the store, per level glass_compare <label>                R3D-14: the hidden glass layers against the store's glass panes, cell by cell occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
+> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from placed tiles vs from the store, per level occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "drop2d": 0, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "glass_compare": 1, "occ_bench": 3, "place_guard": 2, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2, }`
 - `FRAMINGS` = `["portrait", "landscape", "desktop"]`
 - `ALLOC_KINDS` = `["objects", "packed", "bytes"]`
 - `BEAT_TOKEN_PATTERN` = `"^[A-Za-z0-9_]+$"`
@@ -3957,16 +3957,13 @@ extends `SceneTree` · 213 lines
 
 ### `damage_atom_bake_selftest.gd`
 
-extends `SceneTree` · 425 lines
+extends `SceneTree` · 187 lines
 
 `godot/scripts/tools/damage_atom_bake_selftest.gd`
 
-> E-BAKE — damage-atom pre-bake selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1b, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/damage_atom_bake_selftest.gd Boots the REAL PLAYGROUND map through the exact room.gd::load_map() path (mirrors floor_zone_bake_selftest.gd's own scaffold) and proves: 1. DamageVariantBaker.bake_all() actually populates the registry — real coverage across all three element classes (WALL/CEILING/FLOOR), not just a non-empty count. 2. apply_damage_voxel_swap() resolves through the NEW (element_class, material, name, substrate) key — a real Voxel with damage_state/carved_side/variant/substrate set swaps to a pre-baked tile instead of falling through to D33 live compositing. 3. The user:// disk cache actually skips recompositing on a second bake of the identical declared-material set — same atom count, real disk cache hits. 4. D13's loud-fail: a material used by the map but missing from its declared damage_materials produces a real warning, not a silent gap. Every expectation is checked against the REAL registry/renderer state — never read back from the code under test's own success claim.
+> E-BAKE — damage-atom pre-bake selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1b, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/damage_atom_bake_selftest.gd Proves, on the baker directly: 3. The user:// disk cache actually skips recompositing on a second bake of the identical declared-material set — same atom count, real disk cache hits. 4. D13's loud-fail: a material used by the map but missing from its declared damage_materials produces a real warning, not a silent gap. Every expectation is checked against the REAL registry/renderer state — never read back from the code under test's own success claim. R3D-END (END-1): [1], [2] and [5] booted PLAYGROUND and read what the LOAD baked (the registry's coverage, the swap that painted a tile, the CEILING-carved-from-the-top key read back off the tile layer). The load no longer bakes (only the 2D board read the atoms), so those three went with it; [3] and [4] drive the baker directly and stay until the baker itself is deleted (END-4).
 
 **Constants / tuning**
-- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
-- `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `VoxelVariantRegistryClass` = `preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
 - `DamageVariantBakerClass` = `preload("res://godot/scripts/systems/damage_variant_baker.gd")`
@@ -3977,9 +3974,8 @@ extends `SceneTree` · 425 lines
 - `var failed: int = 0`
 
 **Public API**
-- `func test_1_real_coverage_across_element_classes(built: Dictionary) -> void:`
-- `func test_2_apply_damage_voxel_swap_resolves_new_key(built: Dictionary) -> void:`
 - `func test_3_cache_hit_on_second_bake() -> void:`
+- `func test_4_undeclared_material_warns_loudly() -> void:`
 
 ---
 
@@ -4084,7 +4080,7 @@ extends `SceneTree` · 159 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 1018 lines
+extends `SceneTree` · 1008 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -4160,11 +4156,11 @@ extends `SceneTree` · 173 lines
 
 ### `fixed_floor_selftest.gd`
 
-extends `SceneTree` · 191 lines
+extends `SceneTree` · 152 lines
 
 `godot/scripts/tools/fixed_floor_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN D13 — fixed floor level selftest. Rodar: godot --headless --script res://godot/scripts/tools/fixed_floor_selftest.gd Proves render_fixed_earth_level() (the 7 non-destructible levels) and render_slab() (the 1 destructible top) compose into the full D13 8-level stack — without the fixed levels ever touching Slab/Voxel/dirty-tracking.
+> DESTRUCTION_MASTER_PLAN D13 — fixed floor level selftest. Rodar: godot --headless --script res://godot/scripts/tools/fixed_floor_selftest.gd Proves render_fixed_earth_level() (the 7 non-destructible levels) and render_slab() (the 1 destructible top) compose into the full D13 8-level stack — without the fixed levels ever touching Slab/Voxel/dirty-tracking. R3D-END (END-1): [1] (the 64 placed cells' variant) went with the 2D board (it read placed TILES; no tile is written any more). The rest stays until END-4 deletes `render_fixed_earth_level()` and the level layers.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -4175,7 +4171,6 @@ extends `SceneTree` · 191 lines
 - `var failed: int = 0`
 
 **Public API**
-- `func test_fixed_level_places_correct_cells() -> void:`
 - `func test_fixed_level_does_not_touch_slab_registry() -> void:`
 - `func test_one_call_builds_only_the_requested_level() -> void:`
 - `func test_full_d13_stack_top_destructible_rest_fixed() -> void:`
@@ -4184,7 +4179,7 @@ extends `SceneTree` · 191 lines
 
 ### `floor_integration_selftest.gd`
 
-extends `SceneTree` · 296 lines
+extends `SceneTree` · 248 lines
 
 `godot/scripts/tools/floor_integration_selftest.gd`
 
@@ -4233,11 +4228,11 @@ extends `SceneTree` · 209 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 524 lines
+extends `SceneTree` · 419 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
-> FLOOR-BAKE-01 — floor-zone photographic ground bake selftest. Rodar: godot --headless --script res://godot/scripts/tools/floor_zone_bake_selftest.gd Mirrors roof_bake_selftest.gd's structure/rigor for the floor-zone bake feature (author-declared rectangular material zones, full-color RGB instead of grayscale-luminance-times-tint). Proves: 1. A floor_zones-only map_spec composes the SAME "ROOF|mat|fac|col|row" page family roof/ceiling uses (bake_compositor.gd deliberately never introduced a separate "FLOOR|" prefix) with a lookup entry for every folded LOCAL cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity + ISOTROPY at the floor's own 1024x1024 target size (not the wall/ceiling-inherited 1024x512) + full_color's WHITE modulate does not alter the composed page's raw pixel RGB (the compositor forces the modulate at TileData registration time, a draw-time multiply — never a page-pixel write) 4. Real FLOOR_ZONES_TEST map, bake ENABLED: every voxel in a declared zone carries the baked source + coords its STRUCTURE-LOCAL offset predicts (own flood-fill re-derivation, keyed on "same zone material" instead of "both roofed"); unzoned floor still resolves to the "earth" sentinel with zero anchor 5. ROTATION: building the E view puts a zone's Slab material at the correctly-rotated GU, exactly like roof's block rotation Every expectation is re-derived locally (own mirror fold, own key format, own component flood fill, own rotation math) — never read back from the code under test.
+> FLOOR-BAKE-01 — floor-zone photographic ground bake selftest. Rodar: godot --headless --script res://godot/scripts/tools/floor_zone_bake_selftest.gd Mirrors roof_bake_selftest.gd's structure/rigor for the floor-zone bake feature (author-declared rectangular material zones, full-color RGB instead of grayscale-luminance-times-tint). Proves: 1. A floor_zones-only map_spec composes the SAME "ROOF|mat|fac|col|row" page family roof/ceiling uses (bake_compositor.gd deliberately never introduced a separate "FLOOR|" prefix) with a lookup entry for every folded LOCAL cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity + ISOTROPY at the floor's own 1024x1024 target size (not the wall/ceiling-inherited 1024x512) + full_color's WHITE modulate does not alter the composed page's raw pixel RGB (the compositor forces the modulate at TileData registration time, a draw-time multiply — never a page-pixel write) 4. (R3D-END, END-1: deleted. It read the baked TILE every zoned floor voxel was placed as on a real load; the load no longer bakes and no tile is written. [1]-[3] drive the compositor directly and go with it at END-4.) 5. ROTATION: building the E view puts a zone's Slab material at the correctly-rotated GU, exactly like roof's block rotation Every expectation is re-derived locally (own mirror fold, own key format, own component flood fill, own rotation math) — never read back from the code under test.
 
 **Constants / tuning**
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
@@ -4263,7 +4258,6 @@ extends `SceneTree` · 524 lines
 - `func test_1_floor_cells_get_lookup_entries(fx: Dictionary) -> void:`
 - `func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) -> void:`
 - `func test_3_pixel_continuity_isotropy_and_full_color_modulate(fx: Dictionary) -> void:`
-- `func test_4_real_map_local_keys_and_unzoned_fallback() -> void:`
 - `func test_5_rotated_view_zones_follow_declared_material() -> void:`
 
 ---
@@ -4309,7 +4303,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 2214 lines
+extends `SceneTree` · 2113 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -4522,11 +4516,11 @@ extends `SceneTree` · 1606 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 865 lines
+extends `SceneTree` · 565 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
-> GLASS_MASTER_PLAN G1 — glass transparency routing selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_transparency G1 moves glass cells off the opaque `_layers` and onto their own MUL + ADD blend sublayers (glass_shading.gdshaderinc), so the background shows through (G-D1). This suite is the round-trip proof of that routing on the REAL `_set_voxel_cell()` seam every render path funnels through — not a fixture that only exercises the happy branch. GLASS G1 GEOMETRY (2026-08-31) — it also pins the face-culling rule: an interior voxel gets the main-only atom (mask 0), the frontmost column gets main+side (mask 1), the top level main+top (mask 2), and `_glass_face_mask()` returns those bits. 16 atom sources (4 faces × 4 masks), all distinct. What each test catches, worst first: 1. A glass voxel that STILL lands on the opaque layer — the pane would be a solid cube again, G1 undone with no error. 2. A glass sublayer built for a level that has no glass — a wasted layer pair, and a sign the lazy-build guard slipped. 3. A concrete voxel that got routed to the glass sublayers — the one test that proves the `material_name == "glass"` gate is not catching everything. 4. A destroyed glass voxel left drawn on a sublayer — the pane keeps a shard that was shot out. 5. Intact glass dropped from `build_occupancy()` — the light field would stop seeing the pane the moment G1 landed (this suite pins it BLOCKS light exactly as before; whether it should transmit is a later call). 6. A glass atom handed to a caller that writes the OPAQUE layer — test [12], GLASS-OLIVE. Test [1] proves the APPLY path routes glass correctly; the RESOLVE-ONLY path (`apply = false`) has no layer to be right about, so it hands back the id and the caller decides. DetonationPlanBuilder decided "opaque", and 720 pane atoms were stamped under the panes at every grenade, rendering flat yellow that the real pane MULTIPLIED to olive.
+> GLASS_MASTER_PLAN G1 — glass transparency routing selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_transparency Born as the round-trip proof of G1's routing of glass cells onto their own tile layers (G-D1); what it still pins is the glass STATE and grouping those layers used to carry, now asked of the store and the grouper. R3D-END (END-1): the tests that read which TILE LAYER a glass voxel landed on ([1] Option A's mirror, [1b] the seam cull, [2] lazy sublayers, [3] concrete on the opaque layer, [4] a destroyed pane cell erased from its layer) went with the 2D board: no tile is written any more, and the glass state lives in the `VoxelStore` (R3D-14). [7] now reads the store's pane cells; [12] reads the plan's tile-less entry. What is left, worst first: 5. Intact glass dropped from `build_occupancy()` — the light field would stop seeing the pane. 7. A G-D9 brick band read as pane glass (or the reverse) — a brick sill that cracks and rains shards. 6/10. Panes grouped wrong (`GlassPaneGrouper`) — a plain pane merged into an armoured one defeats the armour. 8. Glass occluding (O7) — the cutaway would ghost a see-through pane. 9. A pane larger than the fracture sheet accepted silently (G-D23). 11. A glass member missing its own tinted atoms (until END-2 deletes the atoms). 12. A damaged glass voxel yielding an opaque plan entry (GLASS-OLIVE).
 
 **Constants / tuning**
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
@@ -4853,11 +4847,11 @@ extends `SceneTree` · 202 lines
 
 ### `negative_storey_selftest.gd`
 
-extends `SceneTree` · 260 lines
+extends `SceneTree` · 173 lines
 
 `godot/scripts/tools/negative_storey_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN D17/D18 — negative storey selftest. Rodar: godot --headless --script res://godot/scripts/tools/negative_storey_selftest.gd Proves the floor can live at negative levels without disturbing the existing (positive) wall/block/prop pipeline at all — D17's whole claim.
+> DESTRUCTION_MASTER_PLAN D17/D18 — negative storey selftest. Rodar: godot --headless --script res://godot/scripts/tools/negative_storey_selftest.gd Proves the floor can live at negative levels without disturbing the existing (positive) wall/block/prop pipeline at all — D17's whole claim. R3D-END (END-1): [4] and [5] (render_block() / render_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more). The rest stays until END-4 deletes the level layers.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -4871,8 +4865,6 @@ extends `SceneTree` · 260 lines
 - `func test_negative_layer_creation_and_lookup() -> void:`
 - `func test_negative_level_position_and_zindex_formula() -> void:`
 - `func test_lazy_not_contiguous() -> void:`
-- `func test_positive_pipeline_unaffected() -> void:`
-- `func test_slab_render_routes_negative_level_correctly() -> void:`
 - `func test_set_voxel_cell_still_rejects_unensured_level() -> void:`
 
 ---
@@ -5022,7 +5014,7 @@ extends `SceneTree` · 97 lines
 
 ### `prop_01_selftest.gd`
 
-extends `Node` · 405 lines
+extends `Node` · 331 lines
 
 `godot/scripts/tools/prop_01_selftest.gd`
 
@@ -5039,7 +5031,6 @@ extends `Node` · 405 lines
 **Public API**
 - `func test_criterion_1_propdef_from_json() -> void:`
 - `func test_criterion_2_propregistry_override() -> void:`
-- `func test_criterion_3_render_prop_footprint() -> void:`
 - `func test_criterion_4_mapcompiler_voxel_props() -> void:`
 - `func test_criterion_5_file_map_source_round_trip() -> void:`
 - `func test_criterion_6_invariants_check() -> void:`
@@ -5086,11 +5077,11 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 495 lines
+extends `SceneTree` · 386 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
-> ROOF-BAKE-01/02 — roof/ceiling baked-surface selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_bake_selftest.gd Proves the ROOF-BAKE-02 contract end-to-end: 1. A roofs-only map_spec composes the dedicated roof page family with a "ROOF|mat|fac|col|row" lookup entry for every (folded) LOCAL cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity + ISOTROPY: placed atom top-diamonds equal a direct read of the roof plane (built from the UNSCALED facade — no wall ×20/16 pre-scale) at the projected offset 4. Real PLAYGROUND, bake ENABLED: every roof voxel carries the baked source + coords its STRUCTURE-LOCAL offset predicts, with component anchors re-derived by this test's own flood fill; storey-step borders follow the level-aware rule (suppress toward same-or-higher, eave over lower) 5. ROTATION (02a): building the E view puts a roof Slab of the right material at every block's ROTATED position Every expectation is re-derived locally (own mirror fold, own key format, own component flood fill, own rotation math) — never read back from the code under test.
+> ROOF-BAKE-01/02 — roof/ceiling baked-surface selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_bake_selftest.gd Proves the ROOF-BAKE-02 contract end-to-end: 1. A roofs-only map_spec composes the dedicated roof page family with a "ROOF|mat|fac|col|row" lookup entry for every (folded) LOCAL cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity + ISOTROPY: placed atom top-diamonds equal a direct read of the roof plane (built from the UNSCALED facade — no wall ×20/16 pre-scale) at the projected offset 4. (R3D-END, END-1: deleted. It read the baked TILE every roof voxel was placed as on a real load; the load no longer bakes and no tile is written. [1]-[3] drive the compositor directly and go with it at END-4.) 5. ROTATION (02a): building the E view puts a roof Slab of the right material at every block's ROTATED position Every expectation is re-derived locally (own mirror fold, own key format, own component flood fill, own rotation math) — never read back from the code under test.
 
 **Constants / tuning**
 - `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
@@ -5115,7 +5106,6 @@ extends `SceneTree` · 495 lines
 - `func test_1_roof_cells_get_lookup_entries(fx: Dictionary) -> void:`
 - `func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) -> void:`
 - `func test_3_pixel_continuity_and_isotropy(fx: Dictionary) -> void:`
-- `func test_4_real_playground_local_keys_and_step_borders() -> void:`
 - `func test_5_rotated_view_roofs_follow_structures() -> void:`
 
 ---
@@ -5140,7 +5130,7 @@ extends `SceneTree` · 168 lines
 
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 273 lines
+extends `SceneTree` · 282 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -5178,7 +5168,7 @@ extends `SceneTree` · 204 lines
 
 ### `roof_slab_selftest.gd`
 
-extends `SceneTree` · 329 lines
+extends `SceneTree` · 309 lines
 
 `godot/scripts/tools/roof_slab_selftest.gd`
 
@@ -5299,11 +5289,11 @@ extends `SceneTree` · 244 lines
 
 ### `slab_render_selftest.gd`
 
-extends `SceneTree` · 311 lines
+extends `SceneTree` · 120 lines
 
 `godot/scripts/tools/slab_render_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN Part 2 — consumer wave selftest. Rodar: godot --headless --script res://godot/scripts/tools/slab_render_selftest.gd Proves the D2/D4 core (EarthVariantSelector, landed in isolation) actually renders correctly once something consumes it: SlabGenerator builds real Voxels, VoxelRenderer.render_slab() places real TileMapLayer cells, and the cell each voxel actually got matches what the pure hash function predicted — the same round-trip discipline OCC-02 used for ghost restore.
+> DESTRUCTION_MASTER_PLAN Part 2 — consumer wave selftest. Rodar: godot --headless --script res://godot/scripts/tools/slab_render_selftest.gd Proves SlabGenerator builds real Voxels and that the floor's two Slabs are independent containers. R3D-END: the three tests that read the TILE each voxel was placed as (the earth-variant hash round trip, the re-render idempotence, the carved floor-dent asset) went with the 2D board; the 3D board draws the store, not those tiles.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -5315,10 +5305,7 @@ extends `SceneTree` · 311 lines
 
 **Public API**
 - `func test_slab_generator_produces_64_voxels() -> void:`
-- `func test_render_slab_places_cells_matching_the_hash() -> void:`
-- `func test_render_slab_idempotent() -> void:`
 - `func test_d13_two_layer_floor_independent_containers() -> void:`
-- `func test_floor_dent_places_carved_asset_on_both_branches() -> void:`
 
 ---
 
@@ -5816,7 +5803,7 @@ extends `Node2D` · 35 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1289 lines
+`class_name RoomBuilder` · 1275 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -5935,7 +5922,7 @@ extends `Node2D` · 35 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1657 lines
+`class_name TestZoneController` · 1565 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -6212,7 +6199,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12055 lines
+extends `Node2D` · 11976 lines
 
 `godot/scripts/world/room.gd`
 

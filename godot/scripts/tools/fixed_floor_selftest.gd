@@ -4,6 +4,8 @@
 ## Proves render_fixed_earth_level() (the 7 non-destructible levels) and
 ## render_slab() (the 1 destructible top) compose into the full D13 8-level
 ## stack — without the fixed levels ever touching Slab/Voxel/dirty-tracking.
+## R3D-END (END-1): [1] (the 64 placed cells' variant) went with the 2D board (it read placed TILES; no tile is written any more). The rest
+## stays until END-4 deletes `render_fixed_earth_level()` and the level layers.
 
 extends SceneTree
 
@@ -19,7 +21,6 @@ func _init() -> void:
 	print("DESTRUCTION D13 — Fixed floor level SELFTEST")
 	print("=".repeat(70) + "\n")
 
-	test_fixed_level_places_correct_cells()
 	test_fixed_level_does_not_touch_slab_registry()
 	test_one_call_builds_only_the_requested_level()
 	test_full_d13_stack_top_destructible_rest_fixed()
@@ -45,46 +46,6 @@ func _pass(msg: String) -> void:
 func _fail(msg: String) -> void:
 	print("  ✗ %s" % msg)
 	failed += 1
-
-
-func test_fixed_level_places_correct_cells() -> void:
-	print("[1] render_fixed_earth_level() places 64 independently-verified cells\n")
-
-	var renderer := VoxelRendererClass.new()
-	root.add_child(renderer)
-	renderer.setup(Vector2.ZERO)
-
-	var gu := Vector2i(2, 5)
-	## LEVEL-RENUMBER: the same fixed earth level, addressed from the ground stack
-	## instead of from zero. The expected variant below stays `-4` on purpose —
-	## `variant_for()` is fed the level RELATIVE to the ground plane, so its input
-	## is unchanged and B4's pinned hash keeps producing the same answer.
-	renderer.render_fixed_earth_level(gu, GeometryCoords.FLOOR_TOP_LEVEL - 3)
-
-	var layer: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL - 3)
-	if layer == null:
-		_fail("The fourth fixed earth level was not created")
-		renderer.queue_free()
-		print("")
-		return
-
-	var mismatches := 0
-	var checked := 0
-	for voxel_pos in GeometryCoordsClass.gu_voxels(gu):
-		checked += 1
-		var expected_variant: int = EarthVariantSelector.variant_for(voxel_pos, -4)
-		var expected_source_id: int = VoxelRendererClass.MATERIALS.find("earth_%d" % expected_variant)
-		var actual_source_id: int = layer.get_cell_source_id(voxel_pos)
-		if actual_source_id != expected_source_id:
-			mismatches += 1
-
-	if checked == 64 and mismatches == 0:
-		_pass("64/64 cells on the fixed earth level at RELATIVE -4 match an independently re-derived variant")
-	else:
-		_fail("%d/%d cells mismatched on the fixed earth level at RELATIVE -4" % [mismatches, checked])
-
-	renderer.queue_free()
-	print("")
 
 
 ## D13's whole point: fixed levels are never a Slab/Voxel, so there is no

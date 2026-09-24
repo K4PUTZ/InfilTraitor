@@ -40,7 +40,6 @@ func _ready() -> void:
 	
 	test_criterion_1_propdef_from_json()
 	test_criterion_2_propregistry_override()
-	test_criterion_3_render_prop_footprint()
 	test_criterion_4_mapcompiler_voxel_props()
 	test_criterion_5_file_map_source_round_trip()
 	test_criterion_6_invariants_check()
@@ -144,79 +143,6 @@ func test_criterion_2_propregistry_override() -> void:
 		return
 	
 	_pass("Criterion 2: Two-tier override")
-
-
-## Criterion 3: render_prop produces same footprint as render_block
-func test_criterion_3_render_prop_footprint() -> void:
-	print("\n[3] render_prop footprint equivalence")
-	
-	var prop_def = PropDefClass.new()
-	prop_def.id = "test_solid"
-	prop_def.size_vox = Vector3i(8, 8, 8)
-	prop_def.layers = []
-	prop_def.material_zones = {"default": "concrete"}
-	## MAT-COHERENCE-01 sweep (2026-09-01): `footprint_gus` is `Array[Vector2i]` and
-	## `tags` is `Array[String]` (prop_def.gd) — an untyped array literal cannot be
-	## assigned to either, and the runtime error aborted this whole criterion before
-	## it reached its first assertion. Typed locals, so the assignment is legal.
-	var footprint: Array[Vector2i] = [Vector2i(0, 0)]
-	prop_def.footprint_gus = footprint
-	prop_def.storeys = 1
-	prop_def.gameplay = {"cover": "full", "destructible": false}
-	var tags: Array[String] = []
-	prop_def.tags = tags
-	
-	# Test both render paths and compare voxel counts
-	var visual_grid_offset = Vector2(0, 0)
-	var renderer1 = VoxelRendererClass.new()
-	var renderer2 = VoxelRendererClass.new()
-	
-	for r in [renderer1, renderer2]:
-		r.setup(visual_grid_offset)
-	
-	# Render via render_block. OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE:
-	# storey 0 renders at `ground_plane_level()`, not at level 0. Asking for
-	# layer 0 returned null, both counts came out 0, and the equality check
-	# passed on 0 == 0 before the next assert failed on "expected 64, got 0".
-	renderer1.render_block(Vector2i(5, 5), 0, 1, "concrete")
-	var layer1 = renderer1.get_layer(renderer1.ground_plane_level())
-	var count1 = 0
-	if layer1 != null:
-		for x in range(8):
-			for y in range(8):
-				var pos = Vector2i(40 + x, 40 + y)
-				if layer1.get_cell_source_id(pos) >= 0:
-					count1 += 1
-	
-	# Render via render_prop
-	renderer2.render_prop(Vector2i(5, 5), 0, prop_def)
-	var layer2 = renderer2.get_layer(renderer2.ground_plane_level())
-	var count2 = 0
-	if layer2 != null:
-		for x in range(8):
-			for y in range(8):
-				var pos = Vector2i(40 + x, 40 + y)
-				if layer2.get_cell_source_id(pos) >= 0:
-					count2 += 1
-
-	## LEAK-GATE-01 (2026-09-01): both renderers are Node2D, never added to a
-	## tree, so nothing else will ever free them — and they hold a TileSet and
-	## its atlas images, which is where "18 resources still in use at exit" came
-	## from. Freed HERE rather than at the end of the function, because every
-	## verdict below returns early. This file only met the leak gate the day it
-	## joined the glob; it had been leaking for as long as it existed.
-	renderer1.free()
-	renderer2.free()
-	
-	if count1 != count2:
-		_fail("Voxel counts differ: %d vs %d" % [count1, count2])
-		return
-	
-	if count1 != 64:
-		_fail("Expected 64 voxels (8x8), got %d" % count1)
-		return
-	
-	_pass("Criterion 3: render_prop footprint")
 
 
 ## Criterion 4: MapCompiler voxel_props loop produces correct compiled output

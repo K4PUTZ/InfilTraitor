@@ -3344,7 +3344,7 @@ func _rebuild_voxel_store(reason: String) -> void:
 	VoxelStore.active = null
 	var store: VoxelStore = VoxelStore.build(_edge_registry, _slab_registry, _junction_columns)
 	if store == null:
-		push_error("[Room] VOXEL_STORE=1 but the store could not be built (%s) — the shadow is OFF for this board" % reason)
+		push_error("[Room] the voxel store could not be built (%s) — the shadow is OFF for this board" % reason)
 		return
 	VoxelStore.active = store
 	print("[VOXEL-STORE] built (%s) — %d claim(s) in %d container(s), %d irregular, %d multi-claim cell(s), %.2f MB, %.0f ms"
@@ -3358,7 +3358,7 @@ func _rebuild_voxel_store(reason: String) -> void:
 func scenario_board_probe_store(path: String, label: String) -> Dictionary:
 	var store: VoxelStore = VoxelStore.active
 	if store == null or _voxel_renderer == null:
-		push_error("[Room] scenario_board_probe_store: no shadow store (VOXEL_STORE=1?) or no renderer")
+		push_error("[Room] scenario_board_probe_store: no active store or no renderer")
 		return {}
 	var planes: Dictionary = {}
 	for level: Variant in _voxel_renderer.cell_plane_levels():
@@ -3393,7 +3393,7 @@ func scenario_board_probe_store(path: String, label: String) -> Dictionary:
 func scenario_occupancy_compare(label: String) -> int:
 	var store: VoxelStore = VoxelStore.active
 	if store == null or _voxel_renderer == null:
-		push_error("[Room] scenario_occupancy_compare: no shadow store (VOXEL_STORE=1?) or no renderer")
+		push_error("[Room] scenario_occupancy_compare: no active store or no renderer")
 		return -1
 	var tiles: Dictionary = _voxel_renderer.build_occupancy()
 	var claims: Dictionary = store.occupancy_dict()

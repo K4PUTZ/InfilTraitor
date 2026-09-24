@@ -26,7 +26,7 @@
 ##
 ##   shadow [--maps PLAYGROUND,GLASS] [--env KEY=VALUE ...] [--out DIR]
 ##       RENDER3D R3D-1b: the packed `VoxelStore` in shadow must hold exactly what the
-##       `Voxel` objects hold. Boots each map ONCE with `VOXEL_STORE=1` and, at every
+##       `Voxel` objects hold. Boots each map ONCE and, at every
 ##       stage — load, both grenades, a shot (PLAYGROUND), all four views and back, a
 ##       SaveState round trip, an F2 reload — writes the objects' dump (`o_<stage>`) and
 ##       the store's (`s_<stage>`) in the same frame. Requires, per map:
@@ -111,7 +111,7 @@ SHADOW_ENV = {
 SHADOW_CONTROLS = {"PLAYGROUND": [("load", "g0"), ("g1", "shot")], "GLASS": [("load", "g0")]}
 STORE_LINE = re.compile(r"^\[VOXEL-STORE\] (s_\S+) — grid mismatches (\d+), writes mirrored (\d+), "
                         r"unknown container (\d+), misplaced (\d+)$")
-SHADOW_FATAL = ("[Room] the shadow store has drifted", "[Room] VOXEL_STORE=1 but",
+SHADOW_FATAL = ("[Room] the shadow store has drifted", "[Room] the voxel store could not be built",
                 "[VoxelStore]", "scenario_shoot:", "scenario_perspective:")
 
 

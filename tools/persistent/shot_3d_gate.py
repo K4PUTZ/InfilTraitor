@@ -11,8 +11,10 @@
 ## WHAT IT ASSERTS, per case (one boot each, PLAYGROUND, the shot through the real `shoot` scenario step):
 ##   1. THE HOOK   — the log holds `[BOARD3D] remesh shot` and `[BOARD3D] recolour shot soot`;
 ##   2. THE PICTURE — the wall band of the capture changes between before and after (>= MIN_CHANGED_PX);
-##   3. THE CONTROL — the same shot on the 2D board (`RENDER3D=0`) changes it too. A gate that cannot see a
-##      shot on the board that always worked would pass with nothing to measure.
+##   3. THE CONTROL — the SAME scene on the 3D board with no `shoot` step leaves the wall band unchanged
+##      (<= MAX_CONTROL_PX). R3D-8 step 3 replaced the 2D board as the control: a gate whose "unshot" scene
+##      already differs would pass with nothing to measure, and the 3D pixel gate (`pixel_gate.py`) earned that this
+##      scene is deterministic. (The 2D control of R3D-7 read 5 220 px on brick; kept in the history above.)
 ## Earned red-before-green on the unfixed code (2026-09-21): no `remesh shot` line, 0 changed pixels in the 3D
 ## wall band, while the 2D control changed 5 220 px (brick). Metal is a poor case: its 2D dent is ~33 px.
 ##
@@ -36,6 +38,7 @@ TRIO_X = {"concrete": 2, "metal": 7, "stone": 12, "wood": 17, "brick": 22,
 ## measured at: the wall band of an unshot 3D scene changed 0 pixels between two captures (2026-09-21).
 BAND = (0, 100, 390, 520)
 MIN_CHANGED_PX = 100
+MAX_CONTROL_PX = 0
 TAG = "[SHOT-3D-GATE]"
 
 
@@ -47,13 +50,13 @@ def wall_band_changed(before: Path, after: Path) -> int:
     return diff.histogram()[255]
 
 
-def shoot(material: str, weapon: str, render3d: bool) -> tuple[str, int]:
+def shoot(material: str, weapon: str, fire: bool) -> tuple[str, int]:
     rx = TRIO_X[material] + 2
-    tag = "shot3dgate_%s_%s" % ("3d" if render3d else "2d", material)
-    scenario = ("framing portrait; frames 30; centre %d,3; zoom 2.2; frames 20; capture %s_before; shoot 0; "
-                "centre %d,3; frames 30; capture %s_after; quit") % (rx, tag, rx, tag)
+    tag = "shot3dgate_%s_%s" % ("shot" if fire else "control", material)
+    scenario = ("framing portrait; frames 30; centre %d,3; zoom 2.2; frames 20; capture %s_before; %s"
+                "centre %d,3; frames 30; capture %s_after; quit") % (rx, tag, "shoot 0; " if fire else "", rx, tag)
     env = {**os.environ, "INFILTRAITOR_MAP": "PLAYGROUND", "INFILTRAITOR_RNG_SEED": "1",
-           "INFILTRAITOR_RENDER3D": "1" if render3d else "0", "INFILTRAITOR_SHOT_WEAPON": weapon,
+           "INFILTRAITOR_RENDER3D": "1", "INFILTRAITOR_SHOT_WEAPON": weapon,
            "INFILTRAITOR_SHOT_AGENT_CELL": "%d,11" % rx, "INFILTRAITOR_SHOT_GUARD_CELL": "%d,6" % rx,
            "INFILTRAITOR_SCENARIO": scenario}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--position", "4000,4000"], capture_output=True,
@@ -81,7 +84,7 @@ def main() -> int:
             print("%s ERROR: unknown material %s (one of %s)" % (TAG, material, ", ".join(TRIO_X)))
             return 2
         log3d, px3d = shoot(material, args.weapon, True)
-        _, px2d = shoot(material, args.weapon, False)
+        _, pxctl = shoot(material, args.weapon, False)
         hook = "[BOARD3D] remesh shot" in log3d and "[BOARD3D] recolour shot soot" in log3d
         problems = []
         if "SCRIPT ERROR" in log3d or "scenario_shoot:" in log3d:
@@ -90,10 +93,10 @@ def main() -> int:
             problems.append("the 3D log has no `remesh shot` + `recolour shot soot` (the shot never told the board)")
         if px3d < MIN_CHANGED_PX:
             problems.append("the 3D wall band changed %d px (< %d)" % (px3d, MIN_CHANGED_PX))
-        if px2d < MIN_CHANGED_PX:
-            problems.append("THE CONTROL failed: the 2D wall band changed %d px (< %d)" % (px2d, MIN_CHANGED_PX))
-        print("%s %s/%s: hook %s, 3D wall band %d px, 2D control %d px -> %s"
-              % (TAG, material, args.weapon, "yes" if hook else "NO", px3d, px2d, "FAIL" if problems else "ok"))
+        if pxctl < 0 or pxctl > MAX_CONTROL_PX:
+            problems.append("THE CONTROL failed: the unshot 3D wall band changed %d px (> %d)" % (pxctl, MAX_CONTROL_PX))
+        print("%s %s/%s: hook %s, 3D wall band %d px, unshot control %d px -> %s"
+              % (TAG, material, args.weapon, "yes" if hook else "NO", px3d, pxctl, "FAIL" if problems else "ok"))
         for line in problems:
             print("%s     %s" % (TAG, line))
         if problems:

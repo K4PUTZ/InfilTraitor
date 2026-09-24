@@ -1,5 +1,18 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.22
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.23
+
+**2026-09-24 (last) update (v1.23) — R3D-13 CLOSED: THE GALAXY A16 ROW IS RECORDED AND THE 3D SHOT TAIL IS EXPLAINED (Director connected the phone).**
+Full numbers and the A/B: `DEVICE_DIAGNOSTICS_MASTER_PLAN` top block. R3D-END is still not started: it waits for the Director's ratification.
+- **The R3D-13 matrix on the Galaxy A16 (same APK as the Moto's row).** Load 7.9 / 8.0 s (3D) vs 23.3 s (2D); PSS 1.30 / 1.33 GB vs 2.20 GB; idle 25.2-25.6 ms/frame vs 39.5-42.4; a detonation mean of 32.0-36.7 ms in 3D (two of four grenades over 33.3) vs 70.6 / 83.2 in 2D.
+  **The Galaxy is slower than the Moto on the GPU-bound rows** (idle 25 vs 19 ms, 2.2x the pixels) and 2x faster on the CPU-bound ones (load). A budget claim for the Galaxy is a claim about pixels.
+- **The 357 vs 214 ms shot tail (2026-09-21) does not reproduce; a different gap does, and it is a regression of R3D-10.** A pistol at brick from a fresh board: 3D 201.8 / 157.0 / 206.5 vs 2D 156.0 / 174.1 / 163.1 ms (inside the spread). A shotgun AFTER two grenades: **3D 413-439 ms vs 2D 223-261**.
+  R3D-10 made the shot's pre-cook return at once on the 3D board ("it mints 0 alternatives there"), and the pre-cook was also building the shared light field for the predicted world in the aim window, which absorbed the stale set the grenades had accumulated. On-device A/B (HEAD APK vs the same APK with that one
+  line changed, alternating, three boots each): **419.0 / 420.8 / 413.7 -> 218.9 / 224.5 / 273.8 ms**, level with 2D's 223.0. R3D-10's own note said the shot's tail was "not measured".
+  **No code was changed:** turning it back on moves ~430 ms into the aim window on the Galaxy (the Director's 2026-08-19 placement of the lag), which is a call for the Director, and the whole tail belongs to R3D-LIGHT.
+- **R3D-LIGHT's list, from the desktop split of that shot (`REPAINT_PROFILE`, 3D, shotgun after two grenades: occupancy 66.6 · field.build 61.6 · apply 26.1 ms; 2D 39.7 · 11.3 · 14.3):**
+  (1) the pre-cook's light warm (`field.build` 61.6 -> 12.7 ms with it); (2) `apply_light_field_cells()`'s `SKIP_BOARD_WRITES` branch computes and writes a bucket for every visited key, cells with no visible voxel included (skipping them: 26.1 -> 15.7 ms, two boots each), and those are
+  the 3 103 unread texels the roundtrip counts; (3) the map-wide `occupancy_dict()` walk, 66 ms on 3D vs 40 on 2D after grenades and equal without them, cause not found. `REPAINT_PROFILE` is read from the environment only, so the split above is desktop; making it a `DevFlags` read would give it on a handset.
+- **What is left before R3D-END:** the SE face of the reference set; the GLASS rim texel (v1.22); the Moto half of the pre-cook A/B (not attached this session). R3D-13's gate ("the matrix is recorded") is met.
 
 **2026-09-24 (later) update (v1.22) — R3D-13 CLOSED EXCEPT ITS GALAXY ROW; THE SPIKES ARE DELETED; THE TWO PLANE FINDINGS ARE TRACED (Director: "Fechar o R3D-13 antes").**
 Commits `e5b5f9ca`, `b0f73d6b`. R3D-END is still not started: it waits for the Director's ratification.
@@ -34,8 +47,7 @@ Commits `e5b5f9ca`, `b0f73d6b`. R3D-END is still not started: it waits for the D
   cannot resolve them). `check_decal.py` and `ART_SPECIFICATIONS` §7 now say so; **both tools must survive R3D-END, and the 3D catalog wants its own loud-fail at that stage.**
 - **Evidence (b0f73d6b):** project_lint clean; `run_selftests` 64 clean / 0 failed; `check_invariants` OK; `board_probe` gate, shadow and roundtrip PASS; `pixel_gate` PASS (GLASS g0/g1 136 and 63 px strict,
   0 above noise, the known jitter); `shot_3d_gate` PASSED; `mirror_gate` PASS; `occ_canonical_gate` all identical.
-- **Still open before R3D-END:** the Galaxy A16 baseline row and its 3D shot tail (357 vs 214 ms), which the plan wants explained while the 2D control exists (the phone was not attached; only the Moto was);
-  the SE face of the reference set; the GLASS rim texel above. `CLAUDE.md`'s reference-map row for this plan still says v1.20 and lists the road as unbuilt: it is edited at R3D-END with the rest of the canon.
+- **Still open before R3D-END (v1.23: the Galaxy row is now recorded and the tail explained):** the SE face of the reference set; the GLASS rim texel above. `CLAUDE.md`'s reference-map row for this plan still says v1.20 and lists the road as unbuilt: it is edited at R3D-END with the rest of the canon.
 
 **2026-09-24 update (v1.21) — R3D-8 AND R3D-9 BUILT (Director: "pode seguir com todos os passos do R3D").** Commits `8e757cb1`..`9faf39b1`.
 - **R3D-8, what changed and what it found:**
@@ -3052,7 +3064,8 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
   light buckets, because 12 real lamps cost +24 ms of GPU on the Moto without a single shadow. What remains is cost: the
   Moto's over-budget frames are all light-side (the commit frame ~190 ms, the cook's LIGHT phase ~190 ms, the first shot
   after blasts 719 ms, grenade 5's consequence frame 919 ms). An event recomputes its own neighbourhood only and never
-  re-reads the map (the SOOT-STAMP lesson).
+  re-reads the map (the SOOT-STAMP lesson). **Starting list (v1.23, the shot tail after blasts on the Galaxy: 413-439 ms vs 2D's 223-261):** the shot pre-cook R3D-10 turned
+  off on 3D (-195 ms on the Galaxy), the buckets `apply_light_field_cells()` writes on cells with no visible voxel (-10 ms on desktop), and the map-wide `occupancy_dict()` walk (66 ms on desktop).
 - **R3D-CLAIMS — the `Voxel` wrappers go** (~100 MB on the Moto, R3D-1d): the plan and the `WorldDelta` are keyed by claim.
 - **R3D-BUFFER — the playable buffer grows** (~4–5 GUs, XCOM-style, Director 2026-09-21). The border strata become real
   store geometry, which settles v1.16's 116 416 light texels.

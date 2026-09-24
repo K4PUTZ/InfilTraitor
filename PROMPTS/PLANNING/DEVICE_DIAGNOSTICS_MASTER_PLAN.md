@@ -1,7 +1,22 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.10
+## Measuring the real build on a real entry-tier phone — v1.11
 
-> ⏭️ **2026-09-24 — THE R3D-13 BASELINE, Moto g04s ONLY (the Galaxy A16 was not attached).** Release APK of `1788f0fd` + docs (`export/r3d13.apk`), PLAYGROUND, portrait,
+> ⏭️ **2026-09-24 (later) — THE R3D-13 BASELINE, Galaxy A16 (SM-A166W, Android 16, 3.5 GB, 1080x2340).** The Moto's row below, repeated on the same APK (`export/r3d13.apk`, `1788f0fd` + docs), PLAYGROUND, portrait, `RNG_SEED=1`,
+> grenades `25,2;37,2`, shotgun at guard 0, `EVENT_FRAMES=1`, `FRAME_PROBE=1`; scenario `zoom 0.75 (12 s), 1.0 (12 s), 0.5 (20 s), detonate 0, detonate 1, shoot 0`. **3D (`RENDER3D=1`, two boots) vs 2D (`RENDER3D=0`, one boot):**
+> `[RNG] seeded` -> `_ready()` **7.9 / 8.0 s vs 23.3 s**; PSS (last poll) **1 299 / 1 329 MB vs 2 199 MB**, native heap alloc 681 / 664 vs 1 405 MB, swap PSS 477 / 440 vs 1 138 MB. Idle (settled windows): **25.2-25.6 ms/frame vs 39.5-42.4** (gpu 22.8-23.6 vs
+> 38.0-40.8, draws 55-91 vs 218-1 363). Two detonations (mean / worst frame, COMMIT frame, LIGHT ms/f): **3D 33.1 / 36.7 and 35.8 / 32.0 ms mean, worst 239 / 364 and 154 / 307, COMMIT 98 / 110 and 89 / 119, LIGHT 28.5 / 36.5 and 29.8 / 32.4;
+> 2D 70.6 / 83.2 mean, worst 222 / 1 446, COMMIT 142 / 146, LIGHT 70.4 / 76.7.** **The Galaxy is NOT faster than the Moto on the GPU-bound rows:** idle 25 vs 19 ms and a detonation mean of 32.0-36.7 vs 29.5-32.7, two of its four 3D grenades over the 33.3 ms budget. Its GPU
+> time is 23 ms at idle against the Moto's 17.5 and it renders 1080x2340 against 720x1600 (2.2x the pixels): consistent with pixel-bound, not tested. (Its CPU-bound work, load 8 vs 16 s, is 2x faster.) The FIRST boot after an install read 43 ms/frame for the first ~12 s of the
+> scenario and 25 ms after; the second boot did not (a cold-start effect: leave the first boot out).
+> **The shot tail, the item this baseline owed (3D 357 vs 2D 214 ms, one boot each, 2026-09-21): it does not reproduce, and a different gap appears.** (1) The 2026-09-21 recipe, a pistol at brick from a fresh board (`FRAME_PROBE=1`, three boots each): **3D 201.8 / 157.0 / 206.5 ms
+> (mean 188), 2D 156.0 / 174.1 / 163.1 (mean 164)**: a ~24 ms gap inside the spread. (2) **A shotgun after the two grenades: 3D 439.6 / 408.1 (`r3d13.apk`) and 419.0 / 420.8 / 413.7 (HEAD) ms, repaint 384-419, against 2D 260.8 and 223.0 (repaint 188.5 and 183.3): the 3D tail is 1.6-2x the 2D one.**
+> **Cause, by an on-device A/B** (HEAD APK against the same APK with ONE line changed, alternating installs, three boots each): R3D-10 made `Room._run_shot_precook()` return at once on the 3D board ("it minted 0 alternatives there"). Besides minting, the pre-cook builds the shared light field for the
+> predicted world in the aim window, which absorbs the stale set the grenades accumulated (5 324 keys on PLAYGROUND). With the pre-cook running on 3D the tail is **218.9 / 224.5 / 273.8 ms (repaint 198.1 / 199.1 / 220.0) against 419.0 / 420.8 / 413.7 (repaint 394.9 / 397.2 / 391.8)**, level with the 2D board's 223.0. Its cost is
+> **413-446 ms in the aim window** on the Galaxy (`shoot` -> `[W-PRECOOK] warm complete`). Desktop split of the same shot (`REPAINT_PROFILE`, 3D): `field.build` 61.6 -> 12.7 ms with the pre-cook. Two more differences remain on desktop after it: the map-wide `occupancy` walk reads 66 ms on 3D against 40 on 2D (after
+> grenades; equal without them, cause not found), and the scoped `apply` 26 vs 14 ms, because the `SKIP_BOARD_WRITES` branch of `apply_light_field_cells()` computes and writes a bucket for every visited key, including cells with no visible voxel (skipping them: 26.1 -> 15.7 ms, two boots each; those are the 3 103 unread texels of `RENDER3D` v1.22).
+> **Not done:** the same A/B on the Moto (the phone was not attached), and no code changed: restoring the pre-cook on 3D moves ~430 ms into the aim window (the Director's 2026-08-19 placement), and the whole tail is R3D-LIGHT's. Logs local: `docs/measurements/device_2026-09-24_galaxy_r3d13_*.log` (git-ignored).
+
+> ⏭️ **2026-09-24 — THE R3D-13 BASELINE, Moto g04s (the Galaxy A16 row is the block above).** Release APK of `1788f0fd` + docs (`export/r3d13.apk`), PLAYGROUND, portrait,
 > `RNG_SEED=1`, grenades `25,2;37,2`, shotgun at guard 0, `EVENT_FRAMES=1`; logs local (`/tmp`, git-ignored). **3D board (`RENDER3D=1`, two boots) vs the 2D board
 > (`RENDER3D=0`, one boot, the last row for the record):** `[RNG] seeded` -> map loaded **16.3 / 16.3 s vs 53.9 s**; PSS (last poll) **1.38 / 1.38 GB vs 2.33 GB**, native heap
 > 736 vs 691 MB. Idle, `FRAME_PROBE` windows: zoom 0.75 **18.9 vs 54.2 ms/frame** (gpu 17.3 vs 52.8, draws 76 vs 328), zoom 1.0 **19.1 vs 53.6** (gpu 17.5 vs 52.2, draws 55 vs 253), zoom

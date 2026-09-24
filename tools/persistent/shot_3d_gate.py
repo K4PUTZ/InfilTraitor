@@ -56,7 +56,7 @@ def shoot(material: str, weapon: str, fire: bool) -> tuple[str, int]:
     scenario = ("framing portrait; frames 30; centre %d,3; zoom 2.2; frames 20; capture %s_before; %s"
                 "centre %d,3; frames 30; capture %s_after; quit") % (rx, tag, "shoot 0; " if fire else "", rx, tag)
     env = {**os.environ, "INFILTRAITOR_MAP": "PLAYGROUND", "INFILTRAITOR_RNG_SEED": "1",
-           "INFILTRAITOR_RENDER3D": "1", "INFILTRAITOR_SHOT_WEAPON": weapon,
+           "INFILTRAITOR_SHOT_WEAPON": weapon,
            "INFILTRAITOR_SHOT_AGENT_CELL": "%d,11" % rx, "INFILTRAITOR_SHOT_GUARD_CELL": "%d,6" % rx,
            "INFILTRAITOR_SCENARIO": scenario}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--position", "4000,4000"], capture_output=True,

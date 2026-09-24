@@ -13,11 +13,11 @@ python3 tools/persistent/device_record.py --device ZF524T5TG5 --preset blast --o
 - `--preset blast`: dev grenade 0 on PLAYGROUND, camera zoomed OUT to 0.5 and centred on the grenade from the start (no pan, no zoom change), fuse,
   blast, smoke, scorch. `blast100` is the same at zoom 1.0.
 - `--scenario "<steps>"` for anything else (steps in `godot/scripts/systems/scenario_runner.gd`; end with `quit`; put a `mark rec` step where the
-  video should start). `--map`, `--render3d 0` (the 2D board), `--flag KEY=VALUE` (repeatable) and `--tail` are the other knobs.
+  video should start). `--map`, `--flag KEY=VALUE` (repeatable) and `--tail` are the other knobs.
 - Serials: Moto g04s `ZF524T5TG5` (the constraint device), Galaxy A16 `R5CY8122K7D` (`adb devices -l`).
 
 ## What it does for you
-Pushes `dev_flags.cfg` (map, `RENDER3D`, `RNG_SEED=1`, the scenario), starts `adb shell screenrecord` (720x1600, 8 Mbps), runs the game through
+Pushes `dev_flags.cfg` (map, `RNG_SEED=1`, the scenario), starts `adb shell screenrecord` (720x1600, 8 Mbps), runs the game through
 `device_run.py`, stops and pulls the recording, **removes the flags file from the handset**, and trims with ffmpeg: the start at the scenario step
 named by `--from` (default the `mark rec` step, else step 1) and the end `--tail` seconds after the last step. The cut points come from the game's
 own `[SCENARIO] n/N <step>` log lines and the handset's clock, never from a guessed number of seconds (the boot and the Godot splash are ~64-72 s).

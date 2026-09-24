@@ -7,7 +7,7 @@
 ## +0.8 to +1.1 ms of GPU against not recording (32.3-33.5 vs 33.4-34.6 ms/frame). Enough to judge an effect, NOT to take a performance
 ## number from: never record during a measurement.
 ##
-## WHAT IT DOES, in one command. It pushes `dev_flags.cfg` (the map, RENDER3D, a fixed RNG seed and the SCENARIO), starts
+## WHAT IT DOES, in one command. It pushes `dev_flags.cfg` (the map, a fixed RNG seed and the SCENARIO), starts
 ## `screenrecord`, runs the game through `device_run.py`, stops the recording, pulls it, removes the flags file from the handset, and
 ## trims the video with ffmpeg: the START is cut at the scenario step named by `--from` (default: the first step, so the boot and the
 ## Godot splash are gone) and the END is cut `--tail` seconds after the last step, so the home screen after `quit` is gone. The cut
@@ -68,7 +68,6 @@ def main() -> int:
     ap.add_argument("--seconds", type=int, default=170, help="capture window for device_run.py (screenrecord caps at 180)")
     ap.add_argument("--size", default="720x1600", help="recording size (default 720x1600)")
     ap.add_argument("--bit-rate", default="8000000")
-    ap.add_argument("--render3d", default="1", help="RENDER3D value (1 = the 3D board, the default; 0 = the 2D board)")
     ap.add_argument("--flag", action="append", default=[], help="an extra KEY=VALUE for dev_flags.cfg (repeatable)")
     args = ap.parse_args()
     scenario = args.scenario or (PRESETS[args.preset] if args.preset else None)
@@ -78,7 +77,7 @@ def main() -> int:
     def adb(*a, text=True):
         return subprocess.run([ADB, "-s", args.device, *a], capture_output=True, text=text)
 
-    flags = ["MAP=%s" % args.map, "RNG_SEED=1", "RENDER3D=%s" % args.render3d, "SCENARIO=%s" % scenario] + args.flag
+    flags = ["MAP=%s" % args.map, "RNG_SEED=1", "SCENARIO=%s" % scenario] + args.flag
     local_flags = Path("/tmp/device_record_flags.cfg")
     local_flags.write_text("\n".join(flags) + "\n")
     adb("shell", "mkdir", "-p", FLAGS_REMOTE.rsplit("/", 1)[0])

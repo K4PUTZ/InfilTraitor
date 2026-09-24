@@ -5,7 +5,8 @@
 ## A pixel-diff gate has to be EARNED before it means anything (CLAUDE.md, 2026-08-09: two identical runs differed by
 ## 36 733 px at a 45-frame settle, 0 at 400). This is the earning: it boots the real game per case, twice, at
 ## `--fixed-fps 60` with a long settle after every event, captures the same frames and requires 0 differing pixels
-## between the two boots. `--against DIR` (used by a later stage) compares against a stored set instead.
+## between the two boots. `--against DIR` also compares run 1 against a set an earlier `--keep DIR` stored (R3D-END:
+## every deletion step is held to the pictures of the code before it), 0 px above noise, the same mask.
 ##
 ## CASES (one boot each, 3D board):
 ##   PLAYGROUND  load, grenade #0, a pistol shot on the brick wall
@@ -26,7 +27,7 @@
 ## repeat; when it recurred (296 px in g0) the differing pixels were ALL one colour, the cursor outline's (229, 25, 114),
 ## drawn in one boot and not the other because the real mouse sits over the window. Now masked by that exact colour.
 ##
-## Usage:   python3 tools/persistent/pixel_gate.py [--cases PLAYGROUND,GLASS] [--settle 400] [--keep DIR]
+## Usage:   python3 tools/persistent/pixel_gate.py [--cases PLAYGROUND,GLASS] [--settle 400] [--keep DIR] [--against DIR]
 
 import argparse
 import os
@@ -68,7 +69,7 @@ def case_env(case: str, settle: int, tag: str):
 
 def boot(case: str, settle: int, tag: str):
     scenario, extra, labels = case_env(case, settle, tag)
-    env = {**os.environ, "INFILTRAITOR_MAP": case, "INFILTRAITOR_RNG_SEED": "1", "INFILTRAITOR_RENDER3D": "1",
+    env = {**os.environ, "INFILTRAITOR_MAP": case, "INFILTRAITOR_RNG_SEED": "1",
            "INFILTRAITOR_SCENARIO": scenario, **extra}
     for label in labels:
         (CAPTURES / ("%s_%s.png" % (tag, label))).unlink(missing_ok=True)
@@ -101,6 +102,7 @@ def main() -> int:
     ap.add_argument("--cases", default="PLAYGROUND,GLASS")
     ap.add_argument("--settle", type=int, default=400)
     ap.add_argument("--keep", default="", help="copy the captures of run 1 here")
+    ap.add_argument("--against", default="", help="also compare run 1 with the set a `--keep` stored here")
     args = ap.parse_args()
     problems = []
     for case in [c.strip() for c in args.cases.split(",") if c.strip()]:
@@ -128,6 +130,18 @@ def main() -> int:
             print("%s %s control: load vs %s — %d px" % (TAG, case, label, ctl))
             if ctl < 100:
                 problems.append("%s control: %s differs from load by only %d px (the gate cannot see the event)" % (case, label, ctl))
+        if args.against:
+            for label, f in runs[0].items():
+                ref = Path(args.against) / ("%s_%s.png" % (case, label))
+                if not ref.exists():
+                    problems.append("%s %s: no stored reference %s" % (case, label, ref))
+                    continue
+                strict = differing(ref, f, 0, MASK.get(case))
+                loose = differing(ref, f, NOISE, MASK.get(case))
+                print("%s %s %s: stored vs run 1 — %d px strict, %d px above noise %d" % (TAG, case, label, strict, loose, NOISE))
+                if loose != 0:
+                    problems.append("%s %s: %d px differ from the stored reference by more than %d/255"
+                                    % (case, label, loose, NOISE))
         if args.keep:
             Path(args.keep).mkdir(parents=True, exist_ok=True)
             for label, f in runs[0].items():

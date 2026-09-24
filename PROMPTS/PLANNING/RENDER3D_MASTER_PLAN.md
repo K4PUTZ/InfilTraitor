@@ -3028,6 +3028,50 @@ The 2D drawing ones (`_glass_tile_sync()`, the seam cull, the clip diagnostics) 
 **Entry condition:** R3D-8 to R3D-14 are closed, **`tools/persistent/independence_gate.py` reads PASS** (v1.25: it does), and **the Director ratifies the retirement** on the deletion list. The look
 is not an entry condition (Director, 2026-09-23).
 
+**RATIFIED 2026-09-24 (Director: "Vamos executar R3D-END"), with two rulings on the way in:**
+- **Delete in place, rename at the end** (overrides "the class is split first" below): the 2D code is deleted inside
+  `VoxelRenderer`, step by step, each step held to the identity gates, so every deletion reads as a deletion; the class
+  that is left is renamed ONCE, in a rename-only commit, at END-6, to a name the Director picks then.
+- **The SE face of the reference set is not captured now.** If R3D-LOOK needs it, it is taken from a worktree of
+  `34881f81`, the last commit with the 2D board.
+
+**Execution order.** Every step is held to the END-0 set (below) and committed and pushed on its own; the last commit
+that still builds the 2D board is `34881f81`.
+- **END-0 — the reference set.** `pixel_gate.py --keep` (captures), `board_probe.py gate|roundtrip --out` (dumps),
+  `ground_gate.py --keep` (the 3D boot's digests: the 2D side of that gate goes away), `shot_3d_gate`, `mirror_gate`,
+  `occ_canonical_gate`, `board_probe shadow`, `run_selftests`, and the independence gate's last PASS. Tools added for it:
+  `pixel_gate.py --against DIR`; `ground_gate.py` now carries the 16 map/view digests as RECORDED values (the
+  `occ_canonical_gate` pattern) and boots the 3D board only. **Done 2026-09-24 on `34881f81` (code unchanged), all PASS:**
+  pixels run 1 vs run 2 0 px above noise (PLAYGROUND 0 strict; GLASS g0/g1 136/63 strict, the known jitter), controls
+  253 468 / 3 648 / 223 703 / 286 326 px; `board_probe gate` and `roundtrip` PASS; `ground_gate` 16/16 digests IDENTICAL
+  3D vs 2D, walk/point mismatch 0 (those 3D digests are the recorded ones); `independence_gate` PASS (19 dumps identical,
+  the hidden board 0 cells at every drop, the layer-mode control still losing [19 391, 10 881] px): its last run;
+  `shot_3d_gate` PASSED (brick 2 919, concrete 3 585 px, controls 0); `mirror_gate` PASS; `occ_canonical_gate` all
+  identical; `board_probe shadow` PASS; `run_selftests` 64 clean / 0 failed. `build_paired_matrix.py` and
+  `build_reference_set.py` (2D-vs-3D look tools) are deleted: the reference set they made is archived, and both live in
+  `34881f81`.
+- **END-1 — the switch collapses.** `RENDER3D`, `SKIP_BOARD_WRITES`, `GLASS_STATE_LAYER`, `glass_state_from_store()`,
+  `board_needs_2d_bakes()`, `plan_resolves_tiles()`: every branch keeps its 3D side, the 2D side and every tail it leaves
+  unreachable are deleted, so after it no path writes a tile. The 18 suites pinned to 2D at R3D-8: a criterion whose
+  subject is the 2D placement goes, a criterion about something that survives is kept and runs on the only board.
+  `independence_gate.py` and its `drop2d` step retire here: with no mode that builds the 2D board there is nothing left
+  to empty, and its control was `GLASS_STATE_LAYER`. The END-0 set holds every later step to the pictures and dumps of
+  the code that still had the 2D board, which is the stronger check.
+- **END-2 — the glass tiles.** `_glass_layers`, `_glass_tile_sync()`, the render-order clip and seam cull,
+  `glass_tile.gdshader`, the 2D users of `glass_pane.gdshader`, `GlassCrackSprite` (its record stays, as data), the 2D
+  shard-pile sprites.
+- **END-3 — the 2D cutaway.** OCC-21 / OCC-27, `apply_occlusion()`, `_ghosted_cells`, the 2D wireframe overlay (it reads
+  the tile layers, so it goes before them).
+- **END-4 — tile placement and the atlases.** `_set_voxel_cell()`, the `TileMapLayer`s, the TileSet and the voxel atoms,
+  `tileset_blocks`, `BakeCompositor`, `BakedTileLookup`, `DamageCompositeCache`, `DamageVariantBaker`'s atom pages, the
+  light alternatives and the mint cache, `voxel_face_shading.gdshader` and its soot textures, the 2D-only light
+  instruments.
+- **END-5 — `floor_layer`.** Converted to `GroundGrid`, held by `ground_gate.py --against`.
+- **END-6 — instruments, tools, the rename.** The `room.gd` tile readers (port or delete, each with its reason), the tools
+  that still have a 2D mode, then the rename.
+- **END-7 — canon.** The edits listed under "Canon" below, and the L1 hook retargeted.
+- **END-8 — the gate** (below).
+
 **Deleted:**
 - **`VoxelRenderer`'s tile placement, its `TileMapLayer`s and the `_set_voxel_cell()` path.** The class is split first.
   What the rest of the game asks of it moves to a neutral owner (or stays under a renamed class):

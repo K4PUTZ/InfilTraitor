@@ -373,7 +373,7 @@ def shadow(args):
     if godot is None:
         print("%s ERROR: no Godot binary (looked in %s)" % (GATE_TAG, GODOT_CANDIDATES))
         return 2
-    extra_env = {"INFILTRAITOR_VOXEL_STORE": "1"}
+    extra_env = {}
     for pair in args.env:
         if "=" not in pair:
             print("%s ERROR: --env takes KEY=VALUE, got %r" % (GATE_TAG, pair))

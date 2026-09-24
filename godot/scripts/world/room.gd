@@ -3339,13 +3339,9 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 ## registries right after every board build, so every write the rebuilt board makes
 ## afterwards — `_reapply_base_damage()` included — is mirrored into it. `VoxelStore.active`
 ## is cleared BEFORE the build by both callers: a set_damage() during the build must not
-## land in the previous board's store. On by default; `VOXEL_STORE=0` turns it off.
+## land in the previous board's store. Always built (R3D-13 deleted the `VOXEL_STORE=0` switch).
 func _rebuild_voxel_store(reason: String) -> void:
 	VoxelStore.active = null
-	## DEFAULT ON since R3D-1c step 1 (the light's occupancy reads it); `VOXEL_STORE=0`
-	## turns the store off, and every reader falls back to its old path.
-	if _dev_flag("VOXEL_STORE", "1") == "0":
-		return
 	var store: VoxelStore = VoxelStore.build(_edge_registry, _slab_registry, _junction_columns)
 	if store == null:
 		push_error("[Room] VOXEL_STORE=1 but the store could not be built (%s) — the shadow is OFF for this board" % reason)

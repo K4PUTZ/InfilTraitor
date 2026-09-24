@@ -5812,9 +5812,8 @@ func has_ground_cell(cell: Vector2i) -> bool:
 func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 	## RENDER3D R3D-5a — under a 3D board the cell comes from a camera ray against the ground plane; the
 	## 2D lattice below is the reference it is proven against (`PICK_CHECK=1`, ground_grid_selftest).
-	## `PICK3D=0` keeps the 2D pick.
 	var live: Node = board3d()
-	if live != null and _dev_flag("PICK3D", "1") != "0":
+	if live != null:
 		var picked: Vector2i = live.call("pick_cell", screen_pos)
 		return INVALID_CELL if picked == Vector2i(-9999, -9999) else picked
 	return _screen_to_tile_2d(screen_pos)
@@ -5852,9 +5851,9 @@ func _screen_to_tile_2d(screen_pos: Vector2) -> Vector2i:
 ## this, not a sprite-derived screen position, or it silently misses the
 ## object's own hit_test().
 func _tile_to_screen_center(cell: Vector2i) -> Vector2:
-	## RENDER3D R3D-5a — the 3D board's own projection of the cell centre (`PICK3D=0` keeps the 2D one).
+	## RENDER3D R3D-5a — the 3D board's own projection of the cell centre.
 	var live: Node = board3d()
-	if live != null and _dev_flag("PICK3D", "1") != "0":
+	if live != null:
 		return live.call("cell_screen_center", cell)
 	return _tile_to_screen_center_2d(cell)
 

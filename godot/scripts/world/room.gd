@@ -3263,14 +3263,12 @@ func _pick_check() -> void:
 
 ## RENDER3D R3D-5b — the ground-plane gameplay overlays draw on the 3D board's ground (depth-tested), not
 ## over everything: a wall hides the tiles behind it, and an actor standing on a tile covers it.
-## `GROUND3D=0` keeps them 2D, for comparison.
 func _attach_ground_overlays(live: Node3D) -> void:
-	var on: bool = _dev_flag("GROUND3D", "1") != "0"
 	for overlay in [movement_overlay, path_preview, selection_overlay, _throw_perimeter_overlay,
 			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game, fog_of_war]:
 		if overlay != null and is_instance_valid(overlay) and overlay.has_method("set_board3d"):
-			overlay.set_board3d(live if on else null)
-	_set_dev_ground(live if on else null)
+			overlay.set_board3d(live)
+	_set_dev_ground(live)
 
 
 ## RENDER3D R3D-4e-2 — the VFX overlays draw their particles in the 3D board's world (depth-tested)
@@ -5540,7 +5538,7 @@ func scenario_place_guard(index: int, cell: Vector2i) -> bool:
 
 ## R3D-9 — the Room's DEV_VISION aids (exit diamonds, spawn diamond, the playable-area line, the shadow debug tint and
 ## the guards' last-known markers) draw on the 3D board's ground, depth-tested, so a wall hides them. Before, they
-## painted over the 3D walls. `GROUND3D=0` keeps them 2D, like the overlays in `_attach_ground_overlays()`.
+## painted over the 3D walls.
 const GroundCanvas3DRoomRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
 var _dev_ground: RefCounted = null
 

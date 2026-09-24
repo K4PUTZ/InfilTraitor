@@ -37,15 +37,12 @@ var _twins: Dictionary = {}
 
 ## CRACK-03/04 on the pane: the glass ShaderMaterials the applied openings are pushed into.
 var pane_materials: Array = []
-## `INFILTRAITOR_GLASS_OPENINGS3D=0` leaves the pane rectangular: comparison only.
-static var OPENINGS_ON: bool = OS.get_environment("INFILTRAITOR_GLASS_OPENINGS3D") != "0"
 const OPEN_MAX: int = 16
 const OPEN_TEXELS_PER_VOXEL: int = 12
 var _open_seen: int = -1
 
 
 func setup(renderer: VoxelRenderer, ground_level: int) -> void:
-	OPENINGS_ON = OPENINGS_ON and DevFlags.value("GLASS_OPENINGS3D", "1") != "0"  ## reaches the APK (see Board3DLive.DENT_FLAG)
 	_renderer = renderer
 	_ground_level = ground_level
 	_unit = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
@@ -135,7 +132,7 @@ func _mirror(twin: Dictionary) -> void:
 ## reload); the masks are rasterised in one common frame so a single Texture2DArray serves them all.
 func _sync_openings() -> void:
 	var recs: Array = _renderer.glass_applied_openings()
-	if recs.size() == _open_seen or pane_materials.is_empty() or not OPENINGS_ON:
+	if recs.size() == _open_seen or pane_materials.is_empty():
 		return
 	_open_seen = recs.size()
 	var used: Array = recs.slice(maxi(0, recs.size() - OPEN_MAX))

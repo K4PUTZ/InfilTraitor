@@ -29,7 +29,20 @@
   (`VoxelRenderer.floor_shard_alpha()`; GLASS g0 0 px, g1 158 px at <= 3/255, inside the jitter above). The Room's DEV_VISION aids draw through
   `GroundCanvas3D` (36 vertices with `DEV_PANELS=1`, 0 without); `_count_2d_cells()` is gone. `board3d_live.gd` reads no `get_layer`, `TileMapLayer` or
   `Sprite2D`; `actor_billboard3d.gd` / `prop_billboard3d.gd` still mirror actor and prop sprites (R3D-ACTORS / R3D-PROPS).
-- **Not done yet: the Moto measurements** the stage list names for R3D-10 onward. **Next: R3D-10.**
+- **R3D-10 built (`94b71aac`).** On the 3D board the detonation plan resolves no tile: `_resolve_damaged_tile()` and `_alt_for()` are skipped for dented,
+  cracked and expose entries (a glass-family container still yields no entry, as an empty resolve did); the exposure cells come from the slab's own
+  voxels (`render_slab` / `render_fixed_earth_level` with `apply=false` return cells with `source_id -1`); the shot's W-PRECOOK and the prediction's
+  `_warm_prediction` do not run. **A/B in one binary: `INFILTRAITOR_PLAN_RESOLVE=1` puts the old path back** (deleted when the stage closes).
+  Proof: `INFILTRAITOR_PLAN_DIGEST=1` prints an order-independent digest of the plan (rings, voxel keys, soot codes, radii, the nested expose
+  reveals, the tier census) — **identical on all four blasts (PLAYGROUND ×2, GLASS ×2) with the resolve on and off**, and it goes red (dented and cracked
+  vanish) when the placeholder is sabotaged. Voxels and pixels unchanged (`board_probe gate`, `pixel_gate`, `shot_3d_gate`).
+  **Moto g04s, release APKs `9faf39b1` vs `94b71aac`, the SOOT-STAMP scenario (PLAYGROUND_2, 5 grenades + 2 shotgun shots), one run each**
+  (local, git-ignored: `docs/measurements/device_2026-09-24_moto_r3d10_{before,after}.log`), cook phases per grenade 1..5: **PACKAGE 175/374/172/304/124 -> 138/125/134/135/110 ms;
+  EXPOSE ~18 -> ~8 ms; FLOORS 87/162/101/95/93 -> 62/57/66/67/60 ms**; detonation mean frame 34.8/32.7/31.5/31.8/33.1 -> 32.8/31.3/31.5/32.0/33.1 ms;
+  commit frame (~230 ms), LIGHT (~190) and WALK (~780) unchanged. Not measured: the shot's tail (the precook skip).
+- **A note that cost an hour:** `shot_3d_gate.py`'s concrete wall band reads ~3 200 px in some runs and ~3 600 in others with the SAME code (bisected commit by
+  commit: the old commits read 3 200 too once conditions changed). The threshold is 100 px, so the gate is unaffected; do not chase it.
+- **Next: R3D-11.**
 
 **2026-09-23 (session close) update (v1.20) — S2 AND S3 APPROVED: ACTORS AND STATIC PROPS BECOME MESHES LIT BY THE CELL PLANES; THE PLAN IS COMPLETE (Director).**
 - **Rulings (Director, 2026-09-23):** S1 closed — the board keeps its CPU light buckets (*"se as luzes atuais são melhores pra

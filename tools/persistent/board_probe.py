@@ -236,7 +236,7 @@ def diff(a, b, first=20, out=print, occupied_only=False):
     B): a visible non-glass claim. Two classes of texel are never read, and both are measured, printed and
     returned rather than dropped: (1) a cell with no visible voxel — the incremental light writers
     (`apply_light_field_cells()` / `_gus()`) leave a bucket on a cell a blast just emptied where a full relight
-    leaves it unwritten (714 texels after PLAYGROUND's two grenades, 3 102 after the shot); (2) a glass cell —
+    leaves it unwritten (714 texels after PLAYGROUND's two grenades, 3 103 once the shot is added); (2) a glass cell —
     `_soot_map` holds tone 0 on cracked glass the live wave never paints (260 texels on GLASS), and its light
     is derived like any cell's, but no glass shader samples either plane."""
     def describe(d):

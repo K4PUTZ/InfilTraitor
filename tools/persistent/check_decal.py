@@ -7,9 +7,18 @@
 ##
 ##   - a decal with NO transparency is not a mark, it is a new face: it covers
 ##     the whole voxel side and the material underneath disappears;
-##   - a decal delivered with two variants instead of three is a hard B6 error
-##     at boot, because the runtime picks its variant by hashing the voxel's
-##     coordinates into 0..IMPACT_DECAL_VARIANTS-1 and expects all three to load;
+##   - a decal delivered with two variants instead of three is a SILENT miss on
+##     the 3D board (measured 2026-09-24, R3D-13): the runtime picks its variant
+##     by hashing the voxel's coordinates into 0..IMPACT_DECAL_VARIANTS-1,
+##     `Board3DLive._build_decal_catalog()` skips a file that is not there, and
+##     `_decal_faces()` draws nothing for a voxel whose hash lands on the gap —
+##     about a third of the marks vanish with no message. With one concrete
+##     `bullet` variant removed both boards booted with no decal message at all,
+##     and a concrete shot with all three removed printed none either; the 2D
+##     loud-fail (`[D33 Part 3a] missing decal asset`, `_load_decal_image()`)
+##     lives on the baked path, which `BakeConfig.enabled` leaves off. THIS gate
+##     and `voxel_decal_selftest.gd` are what catch it, so neither may go with
+##     the 2D board at R3D-END;
 ##   - a material added to VoxelRenderer.IMPACT_DECAL_MATERIALS with no files on
 ##     disk is a SILENT MISS, not an error — the same failure class as a
 ##     rejected facade, which is what earned check_facade.py in the first place.
@@ -93,7 +102,7 @@ DECAL_W = 256
 DECAL_H = 256
 
 ## voxels/manifest.json's own `variant_count`, and the range the runtime hashes
-## into. Not a convention — a missing variant is a boot-time B6 failure.
+## into. Not a convention — a missing variant silently drops the marks whose hash lands on it (see the header).
 VARIANT_COUNT = 3
 FAMILIES = ("bullet", "dent", "crack")
 

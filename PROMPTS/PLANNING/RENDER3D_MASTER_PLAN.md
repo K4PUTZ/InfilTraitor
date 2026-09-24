@@ -1,5 +1,41 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.21
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.22
+
+**2026-09-24 (later) update (v1.22) — R3D-13 CLOSED EXCEPT ITS GALAXY ROW; THE SPIKES ARE DELETED; THE TWO PLANE FINDINGS ARE TRACED (Director: "Fechar o R3D-13 antes").**
+Commits `e5b5f9ca`, `b0f73d6b`. R3D-END is still not started: it waits for the Director's ratification.
+- **The spikes are gone (`e5b5f9ca`).** `board3d_spike`, `r3d4a_actor_spike`, `store_layout_spike` with their scenes, the two `SPIKE=` hand-overs in `Room._ready()` and the
+  `store_spike` scenario step (preload, ARITY, validation, run branch, docstring). Readers grepped repo-wide first. `scenario_selftest` now pins the deleted op:
+  `"store_spike 5"` is rejected as an unknown step. `spike3d.gd` STAYS until R3D-ACTORS. Suites 64/64, `board_probe gate` PASS.
+- **The gate that could not fail (`b0f73d6b`).** `INFILTRAITOR_LIGHT_COOK_GATE` (and `LIGHT_EQUIV_PROBE`, the shot's scope gate, the burn's "corrected N cells") snapshot the board through
+  `Room._perf_snapshot_alts()`, which walked `TileMapLayer` cells. On the 3D board that is the 2 240 glass cells on the hidden layers, so it printed
+  **`0 of 2240 cell(s) differ ... PASS`** whatever the light did. It now reads the planes over the store's occupied, non-glass cells (211 154 on PLAYGROUND). **Any instrument
+  that reads a tile layer is vacuous on the 3D board; R3D-END's instrument list must decide each `get_used_cells()` / `get_cell_source_id()` reader in `room.gd`: port it
+  (as this one was) or delete it with its written reason.**
+- **The cause of the plane finding.** With the gate real it went red on the real symptom: **21 and 13 cells of ~215 000 differ, cook vs full relight, after PLAYGROUND's two
+  grenades** (predicted vs real occupancy 9 and 17 cells apart; a new gate line prints them, and they are all box corners and junction columns held by TWO claims, one destroyed and
+  one surviving). `DetonationPlanBuilder._phase_light` built the post-blast occupancy by erasing every CELL in `blast_cells`, so the first claim destroyed emptied a cell the committed world
+  still holds. Now `VoxelStore.occupancy_dict_after(gone)`, per claim, from the Delta's projections (`_predicted_occupancy`): **0 and 0**; `voxel_store_selftest` TEST 6, sabotaged
+  (survivors ignored) -> only that assertion goes red. The rotation and the restore then agree with the blast: `board_probe roundtrip` PLAYGROUND IDENTICAL, planes included.
+- **Two more things that read as the same finding.** (1) The SaveState restore scenario skipped the relight a rotation runs after `_reapply_base_damage()`; the restored world was lit as the
+  undamaged map (560 intact floor voxels beside the blasts at bucket 3 where the world gives 6-9). A production load flow has to relight the way `_set_perspective()` does. (2) New scenario step
+  `relight` (the map-wide repaint, in place) isolated the rest: after two grenades an in-place relight differed at 748 texels, 714 of them cells with NO visible voxel.
+- **What the roundtrip compares now, and what it counts instead.** The planes are compared where the board READS them: a visible non-glass cell. Left out and printed on the line: (a) texels on cells
+  with no visible voxel (3 103 on PLAYGROUND after the shot, 714 of them already after the two grenades; the incremental writers leave a bucket on a cell a blast emptied, a full relight leaves it unwritten); (b) glass
+  cells (260 soot + 16 light on GLASS): `_soot_map` holds tone 0 on CRACKED glass that the live wave never paints, and **no glass shader (`glass_pane3d`, `glass_pane`, `glass_tile`,
+  `glass_shading.gdshaderinc`) samples either plane**. If glass ever takes scorch, that is a design call and these cells become read cells. PLAYGROUND is strict by default; GLASS is strict with
+  `--strict-planes`.
+- **Left, measured, not fixed: GLASS, 1 light texel.** L88 (39,103) bucket 7 -> 8 (cook gate: 1 of 106 809 on grenade 2). Cause: the glass opening's rim cut destroys a pane voxel at commit
+  (`SLICE_5_12_SW` (40,103,87), `blast=0`) that the plan's Delta never projected, so the concrete cell beside it kept its pre-cut occlusion. Predicting it means the planner asking
+  `glass_opening_for()`, which lives in `Room`. Separately unexplained: the 2D board's cook gate read `0 differ` with the same 9 and 17 predicted-vs-real cells (the 2D board retires).
+- **`check_decal.py` on 3D, measured, and the finding is that the game is SILENT.** With one concrete `bullet` variant removed, both boards boot with no decal message, and a concrete shot with all three
+  removed prints none (`Board3DLive._build_decal_catalog()` skips a missing file; `_decal_faces()` draws nothing for a voxel whose hash lands on the gap). The old "hard-errors at boot (B6)" lives in
+  the baked path, which `BakeConfig.enabled` leaves off. `voxel_decal_selftest` and `check_decal.py --material concrete` both FAIL with the file absent and pass with it back (restored byte for byte;
+  the decal art is git-ignored, so `git checkout` could not have restored it). Whether the mark is drawn was NOT measured (the shot gate's wall band reads 3 608 px with and without the decals, so it
+  cannot resolve them). `check_decal.py` and `ART_SPECIFICATIONS` §7 now say so; **both tools must survive R3D-END, and the 3D catalog wants its own loud-fail at that stage.**
+- **Evidence (b0f73d6b):** project_lint clean; `run_selftests` 64 clean / 0 failed; `check_invariants` OK; `board_probe` gate, shadow and roundtrip PASS; `pixel_gate` PASS (GLASS g0/g1 136 and 63 px strict,
+  0 above noise, the known jitter); `shot_3d_gate` PASSED; `mirror_gate` PASS; `occ_canonical_gate` all identical.
+- **Still open before R3D-END:** the Galaxy A16 baseline row and its 3D shot tail (357 vs 214 ms), which the plan wants explained while the 2D control exists (the phone was not attached; only the Moto was);
+  the SE face of the reference set; the GLASS rim texel above. `CLAUDE.md`'s reference-map row for this plan still says v1.20 and lists the road as unbuilt: it is edited at R3D-END with the rest of the canon.
 
 **2026-09-24 update (v1.21) — R3D-8 AND R3D-9 BUILT (Director: "pode seguir com todos os passos do R3D").** Commits `8e757cb1`..`9faf39b1`.
 - **R3D-8, what changed and what it found:**

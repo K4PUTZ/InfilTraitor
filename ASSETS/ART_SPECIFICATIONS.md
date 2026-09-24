@@ -419,13 +419,19 @@ that tree's own `ASSETS/materials/README.md`
 (ASSET-LAYOUT-01).
 
 **After dropping new art**, run the generator and let Godot reimport before
-launching, or the new PNGs fail to load and every affected voxel hard-errors at
-boot (invariant B6 — a missing asset is loud, never a silent fallback):
+launching, or the new PNGs fail to load:
 
 ```
 python3 tools/asset_generation/generate_voxel.py
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --import
 ```
+
+⚠️ **Do not expect the game to say so when a file is missing.** Measured 2026-09-24
+(R3D-13): a decal variant missing from disk is SILENT on both boards. The 3D board's
+`_build_decal_catalog()` skips the file and draws no mark for the voxels whose hash
+lands on it; the older "hard-errors at boot (invariant B6)" holds only for the baked
+path, which is off by default. `check_decal.py --material <id>` and
+`voxel_decal_selftest.gd` are what catch it.
 
 Runtime side (for whoever changes it next): `damage_variant_material()` names
 the pseudo-material, `VoxelRenderer._set_voxel_cell()`'s plan parsers

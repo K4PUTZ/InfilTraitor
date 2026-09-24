@@ -1,14 +1,32 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-23 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-24 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
 
-## Where the project stands — 2026-09-21 (newest; the 2026-08-30 handover below is kept as history)
+## Where the project stands — 2026-09-24 (newest; the 2026-09-21 and 2026-08-30 sections below are kept as history)
+
+**Version 0.9.107 · the game renders on a Godot 3D board by default (`RENDER3D`); the 2D board is still in the repo behind `RENDER3D=0`, and nothing the 3D board runs depends on it any more. Deleting it (R3D-END) waits for the Director's ratification.**
+- **Done since 2026-09-21, all in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.25):** **R3D-8 to R3D-14.** The safety net on the 3D path (selftests run the 3D board, a pixel gate, the persistence round trip fixed); the 3D board reads nothing of the 2D renderer; the
+  simulation writes no tiles; gameplay off `floor_layer`; the load builds no 2D board; one path (20 comparison flags and the three finished spikes deleted); and the glass state lives in the `VoxelStore`, so the hidden glass layers are never built or written.
+- **R3D-END's entry gate reads PASS:** `python3 tools/persistent/independence_gate.py` empties the hidden 2D board after every step of a real run and requires the same world and the same picture (0 cells held at 19 steps, 19 dumps identical, 0 px above noise), with a control that must still fail.
+  It was RED on GLASS earlier the same day (the crack webs vanished, 19 391 px), which is what R3D-14 fixed.
+- **Measured on both handsets** (`DEVICE_DIAGNOSTICS_MASTER_PLAN` top blocks). 3D vs 2D, load: Moto 16 vs 54 s, Galaxy A16 8 vs 23 s; PSS 1.4 vs 2.3 GB (Moto), 1.3 vs 2.2 GB (Galaxy); idle 19 vs 54 ms (Moto), 25 vs 40 ms (Galaxy). **The Galaxy is 2x faster on load and slower on GPU-bound rows (2.2x the pixels).**
+  A shot after blasts cost ~195 ms more on 3D than on 2D because R3D-10 had turned the shot pre-cook off: restored (Galaxy tail 419 -> 223 ms). A GLASS blast's commit frame: 690-720 ms with the store vs 900-965 with the layers (Galaxy); still ~700 ms, R3D-LIGHT's next line.
+- **Findings worth knowing:** the cook built its post-blast light from a per-cell occupancy and was 21 and 13 cells off a full relight (fixed per claim); the gate that should have said so read tile layers and printed `0 of 2240 ... PASS` on the 3D board (any gate that reads a `TileMapLayer` is vacuous there); a missing decal variant is silent
+  on both boards (the 3D catalog now says so; `check_decal.py` and `voxel_decal_selftest` catch it before boot).
+- **Suite:** 64 selftests clean; gates: `board_probe.py gate|shadow|roundtrip`, `pixel_gate.py`, `shot_3d_gate.py`, `mirror_gate.py`, `occ_canonical_gate.py`, `ground_gate.py`, `independence_gate.py`.
+- **What is next (Director's call):** ratify **R3D-END** (split the `VoxelRenderer` first: `ground_plane_level`, `relative_level`, the light apply and the level registry go to a neutral owner; then delete the tile placement, `floor_layer` (202 references in 25 files), the atoms and TileSet, 15 `room.gd` tile-reading instruments; then the canon edits).
+  Open, not blockers: the GLASS rim texel (a rim-cut pane voxel the Delta does not project), the SE face of the reference set, the Moto halves of the pre-cook and R3D-14 A/B. After the end: R3D-ACTORS/PROPS may start any time; R3D-WORLD, R3D-ROT, R3D-LOOK, R3D-LIGHT, R3D-CLAIMS, R3D-BUFFER.
+- **Session records:** `PROMPTS/RESUMO_SESSAO_2026-09-24_R3D_8_A_13.md` (R3D-8 to R3D-13) and `PROMPTS/RESUMO_SESSAO_2026-09-24_R3D_13_CLOSE.md` (the close of R3D-13, the pre-cook, the independence gate, R3D-14).
+
+---
+
+## Where the project stands — 2026-09-21 (history; superseded by the section above)
 
 **Version 0.9.107 · the game renders on a Godot 3D board by default (`RENDER3D`), the 2D board still ships underneath until the last stage.**
 - **Done this arc (2026-09-15 → 09-21), all in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md):** the packed voxel store, the 3D board, actors and props
@@ -344,6 +362,9 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-21_R3D7_MOTO.md
 - RESUMO_SESSAO_2026-09-21_R3D7_SHOTS.md
 - RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md
+- RESUMO_SESSAO_2026-09-23_R3D_END_PLAN.md
+- RESUMO_SESSAO_2026-09-24_R3D_13_CLOSE.md
+- RESUMO_SESSAO_2026-09-24_R3D_8_A_13.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -351,8 +372,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 196
-- Test scripts: 63
+- GDScript modules: 194
+- Test scripts: 64
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 17

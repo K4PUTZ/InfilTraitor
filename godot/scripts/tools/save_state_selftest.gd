@@ -14,6 +14,8 @@ extends SceneTree
 class RoomStub extends RefCounted:
 	var map_id: String = "TESTMAP"
 	var _base_damage: Dictionary = {}
+	## R3D-8 step 4 — the same records per claim: `cell -> {claim tag -> record}`.
+	var _base_damage_claims: Dictionary = {}
 	## GLASS G-D15 / V-D — the primed-pane store. The stub models the real Room's
 	## persisted fields, so a new one has to appear here too; that is the point of
 	## a stub rather than a mock.
@@ -76,6 +78,9 @@ func _test_round_trip() -> void:
 	var a := RoomStub.new()
 	a._base_damage[Vector3i(3, -4, 80)] = [2, 1, 0, 1, 0, 5, 2]
 	a._base_damage[Vector3i(-9, 12, 79)] = [1, 0, 0, 0, 0, 0, 0]
+	## R3D-8 step 4 — two claims of ONE cell in different states (a box corner): the tags and payloads must both
+	## come back, on a negative key.
+	a._base_damage_claims[Vector3i(3, -4, 80)] = {10: [2, 1, 0, 1, 0, 5, 2], 11: [1, 0, 0, 0, 0, 0, 0]}
 	a._soot_map[79] = {Vector2i(5, 6): 2, Vector2i(-1, 0): 3}
 	a._soot_map[96] = {Vector2i(40, 3): 0}
 	a._pane_primed["PANE_SLICE_6_10_SW"] = true
@@ -99,6 +104,10 @@ func _test_round_trip() -> void:
 		"base_damage: a negative-Y key round-trips with its payload")
 	_check(b._base_damage.get(Vector3i(-9, 12, 79), []) == [1, 0, 0, 0, 0, 0, 0],
 		"base_damage: a negative-X key round-trips with its payload")
+	var claims_back: Dictionary = b._base_damage_claims.get(Vector3i(3, -4, 80), {})
+	_check(claims_back.size() == 2 and claims_back.get(10, []) == [2, 1, 0, 1, 0, 5, 2] \
+			and claims_back.get(11, []) == [1, 0, 0, 0, 0, 0, 0],
+		"base_damage_claims: both claims of one cell round-trip with their own payloads")
 	## G-D15 / V-D — the primed pane survives a round trip, and an OLD save with
 	## no `pane_primed` key restores as "nothing primed" rather than refusing.
 	_check(b._pane_primed.has("PANE_SLICE_6_10_SW"),

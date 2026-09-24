@@ -1429,7 +1429,12 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	for voxel in job.delta.touched_voxels:
 		room.record_voxel_damage_to_base(voxel.grid_pos, voxel.level, voxel.damage_state,
 			voxel.damage_is_blast, voxel.damage_carved_side, voxel.damage_variant,
-			voxel.damage_substrate)
+			voxel.damage_substrate, voxel)
+	## R3D-8 step 4: the other claims of a shared cell (box corner, junction column) that this blast also damaged.
+	for entry in job.delta.damage:
+		var claim_voxel: Voxel = entry["voxel"]
+		if claim_voxel != null:
+			room.record_claim_damage_to_base(claim_voxel)
 	_prof("PERSIST — record_voxel_damage_to_base x%d took %.2f ms" % [
 		job.delta.touched_voxels.size(), float(Time.get_ticks_usec() - rec0) / 1000.0])
 

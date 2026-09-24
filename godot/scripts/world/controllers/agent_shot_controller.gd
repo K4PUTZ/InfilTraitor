@@ -691,7 +691,7 @@ func fire_at_active() -> void:
 	for key in cell_to_voxel:
 		var av: Voxel = cell_to_voxel[key]
 		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
-			av.damage_is_blast, av.damage_carved_side, av.damage_variant, av.damage_substrate)
+			av.damage_is_blast, av.damage_carved_side, av.damage_variant, av.damage_substrate, av)
 
 	## G-D45 — if this shot destroyed the frame around an EARLIER remnant, the
 	## fragment falls with it. `reap_orphaned_remnants()` base-records its own

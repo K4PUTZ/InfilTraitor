@@ -70,8 +70,12 @@ func setup(board: Node3D, source: Node2D) -> void:
 func _exit_tree() -> void:
 	for key: int in _entries:
 		var entry: Dictionary = _entries[key]
+		## Validated BEFORE the cast: `as` on a freed object is a script error (a perspective flip frees the props
+		## first), and `is_instance_valid()` on the already-cast result never got the chance to say so.
+		if not is_instance_valid(entry["node"]):
+			continue
 		var node: Sprite2D = entry["node"] as Sprite2D
-		if is_instance_valid(node) and node.material == _hidden:
+		if node.material == _hidden:
 			node.material = entry["orig"]
 	if is_instance_valid(_source) and _source.has_meta("prop_billboard3d") \
 			and _source.get_meta("prop_billboard3d") == self:

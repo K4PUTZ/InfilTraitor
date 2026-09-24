@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**279 scripts · 101603 lines total** (under `godot/scripts/`)
+**279 scripts · 101735 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -916,7 +916,7 @@ extends `Node3D` · 1957 lines
 
 ### `prop_billboard3d.gd`
 
-`class_name PropBillboard3D` · extends `Node3D` · 219 lines
+`class_name PropBillboard3D` · extends `Node3D` · 223 lines
 
 `godot/scripts/geometry/prop_billboard3d.gd`
 
@@ -3387,12 +3387,12 @@ extends `Node` · 156 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 219 lines
+`class_name SaveState` · extends `RefCounted` · 237 lines
 
 `godot/scripts/systems/save_state.gd`
 
 **Constants / tuning**
-- `FORMAT_VERSION` = `2`
+- `FORMAT_VERSION` = `3`
 - `OLDEST_READABLE_VERSION` = `1`
 
 ---
@@ -5281,7 +5281,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 203 lines
+extends `SceneTree` · 212 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -5975,7 +5975,7 @@ extends `Node2D` · 35 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1647 lines
+`class_name TestZoneController` · 1652 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -6252,7 +6252,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11802 lines
+extends `Node2D` · 11898 lines
 
 `godot/scripts/world/room.gd`
 

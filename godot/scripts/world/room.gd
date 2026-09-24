@@ -221,6 +221,12 @@ var _soot_map: Dictionary = {}
 ## identical reason — records written before this are 6 long or shorter and
 ## read back as substrate 0.
 var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see above)
+## R3D-8 step 4 — the same records PER CLAIM: `Vector3i(base cell, level)` → `{claim tag → record}`. A cell can be claimed
+## by several voxels (a box corner by two slices, a junction column by the column and the slices around it) and a blast
+## can leave them in DIFFERENT states, which the one record per cell cannot say. The tag is view-independent
+## (`_claim_tag()`). Written only when the writer names the voxel; a cell with no entry here (an older save) replays its
+## single record onto every claim instead.
+var _base_damage_claims: Dictionary = {}
 
 ## CRACK-02 S-3 (GLASS_MASTER_PLAN §13.2) — EVERY CRACK, IN BASE COORDS.
 ##
@@ -386,13 +392,71 @@ func _base_voxel_size() -> Vector2i:
 ## to whatever the carved side is under the NEW view on reapply.
 func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: int,
 		is_blast: bool = false, carved_side: int = Voxel.CarvedSide.NONE,
-		variant: int = 0, substrate: int = 0) -> void:
+		variant: int = 0, substrate: int = 0, source: Voxel = null) -> void:
 	if damage_state <= 0:
 		return
 	var base_xy := PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
 	var key := Vector3i(base_xy.x, base_xy.y, level)
 	var dir := _carved_side_to_base_dir(grid_pos, carved_side)
-	_base_damage[key] = [damage_state, 1 if is_blast else 0, dir.x, dir.y, dir.z, variant, substrate]
+	var rec: Array = [damage_state, 1 if is_blast else 0, dir.x, dir.y, dir.z, variant, substrate]
+	_base_damage[key] = rec
+	if source != null:
+		var tag: int = _claim_tag(source)
+		if tag != CLAIM_TAG_UNKNOWN:
+			if not _base_damage_claims.has(key):
+				_base_damage_claims[key] = {}
+			(_base_damage_claims[key] as Dictionary)[tag] = rec
+
+
+## R3D-8 step 4 — records one CLAIM's damage in the per-claim table only. `touched_voxels` carries one voxel per cell
+## (`cell_to_voxel`), so a cell whose other claim the blast also damaged reaches the base store only through the
+## Delta's own `damage` entries, which name every voxel. The cell record is left as the caller wrote it (it is only the
+## fallback for a cell with no table), and is written here only when the cell has none yet.
+func record_claim_damage_to_base(v: Voxel) -> void:
+	if v.damage_state <= 0:
+		return
+	var tag: int = _claim_tag(v)
+	if tag == CLAIM_TAG_UNKNOWN:
+		return
+	var base_xy := PerspectiveMapperClass.cell_to_base(v.grid_pos, _active_perspective, _base_voxel_size())
+	var key := Vector3i(base_xy.x, base_xy.y, v.level)
+	var dir := _carved_side_to_base_dir(v.grid_pos, v.damage_carved_side)
+	var rec: Array = [v.damage_state, 1 if v.damage_is_blast else 0, dir.x, dir.y, dir.z,
+			v.damage_variant, v.damage_substrate]
+	if not _base_damage.has(key):
+		_base_damage[key] = rec
+	if not _base_damage_claims.has(key):
+		_base_damage_claims[key] = {}
+	(_base_damage_claims[key] as Dictionary)[tag] = rec
+
+
+## R3D-8 step 4 — a claim's identity in BASE space, so it means the same voxel in every view. A slab and a junction
+## column are one claim per cell; a slice is named by the base-space direction of the face it stands on (its view face
+## is a screen direction and turns with the camera).
+const CLAIM_TAG_UNKNOWN: int = 0
+const CLAIM_TAG_COLUMN: int = 1
+const CLAIM_TAG_SLAB: int = 2
+const CLAIM_TAG_SLICE_BASE: int = 10   ## + the index of the base face (Face.NW..SW)
+
+
+func _claim_tag(v: Voxel) -> int:
+	var container: Object = instance_from_id(v.container_id())
+	if container is Slab:
+		return CLAIM_TAG_SLAB
+	if container is JunctionResolver.JunctionColumn:
+		return CLAIM_TAG_COLUMN
+	if not (container is Slice):
+		return CLAIM_TAG_UNKNOWN
+	## The rotation is linear, so the face's delta rotates like a vector; any far-from-INVALID cell serves as the origin.
+	var origin := Vector2i(100, 100)
+	var size := _base_voxel_size()
+	var view_delta: Vector2i = Face.delta((container as Slice).face)
+	var base_delta: Vector2i = PerspectiveMapperClass.cell_to_base(origin + view_delta, _active_perspective, size) \
+			- PerspectiveMapperClass.cell_to_base(origin, _active_perspective, size)
+	for base_face in [Face.NW, Face.NE, Face.SE, Face.SW]:
+		if Face.delta(base_face) == base_delta:
+			return CLAIM_TAG_SLICE_BASE + base_face
+	return CLAIM_TAG_UNKNOWN
 
 
 ## CRACK-02 S-3 — record one crack in base coords. `hit_grid_pos` is the struck
@@ -936,7 +1000,7 @@ func reap_orphaned_remnants() -> Dictionary:
 				## other destruction; the caller's own base-record loop has already
 				## run by the time reap is called.
 				record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state,
-					v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate)
+					v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate, v)
 				break
 		_voxel_renderer.erase_glass_cell(level, cell)
 	for bkey in orphan_keys:
@@ -1242,6 +1306,14 @@ func _carved_side_from_base(base_xy: Vector2i, dir: Vector3i) -> int:
 	return BlastCalculator.carved_side_from_base(base_xy, dir, _active_perspective, _base_voxel_size())
 
 
+## Appends `v` to the claims of its cell in a `_reapply_base_damage()` index.
+func _index_claim(index: Dictionary, v: Voxel) -> void:
+	var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+	if not index.has(key):
+		index[key] = []
+	(index[key] as Array).append(v)
+
+
 ## VL-PERSIST — re-apply the base-coord destruction registry to the freshly
 ## rebuilt geometry after a perspective rotation. build_from_layout() rebuilt
 ## every Voxel intact from the MapSpec; this stamps the recorded damage back
@@ -1256,13 +1328,20 @@ func _reapply_base_damage() -> void:
 
 	## Index this view's voxels by (grid_pos, level) — the same shape the soot
 	## snapshot builds, cheap next to the rebuild it follows.
+	## R3D-8 step 4: every CLAIM of a cell, not the last one written. A box corner is claimed by two slices and a
+	## junction column by the column plus the slices around it, and the old one-voxel index gave the record to
+	## whichever came last and to no column at all: rotating PLAYGROUND away and back returned 21 destroyed voxels
+	## (11 column, 10 corner slice) to INTACT (found R3D-1b, 2026-09-16).
 	var index: Dictionary = {}
 	for slice in _edge_registry.all_slices():
 		for v in slice.voxels:
-			index[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = v
+			_index_claim(index, v)
+	for column in _junction_columns:
+		for v in column.voxels:
+			_index_claim(index, v)
 	for slab in _slab_registry.all_slabs():
 		for v in slab.voxels:
-			index[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = v
+			_index_claim(index, v)
 
 	## FLOOR-DEPTH-01: two reveal buckets, because the level under a holed floor
 	## plane is now sometimes a real Slab (FLOOR_DEEP_LEVEL, generated by this very
@@ -1281,22 +1360,33 @@ func _reapply_base_damage() -> void:
 	for base_key in _base_damage:
 		var vxy := PerspectiveMapperClass.cell_from_base(
 				Vector2i(base_key.x, base_key.y), _active_perspective, base_size_vox)
-		var v = index.get(Vector3i(vxy.x, vxy.y, base_key.z))
-		if v == null:
+		var claims: Array = index.get(Vector3i(vxy.x, vxy.y, base_key.z), [])
+		if claims.is_empty():
 			missed += 1
 			continue
 		reapplied += 1
+		var per_claim: Dictionary = _base_damage_claims.get(base_key, {})
 		## D23/D25: replay the FULL record, not just damage_state — the carved
 		## side is re-derived for the perspective being entered, so the hole
 		## stays on the side that physically faced the blast instead of
 		## following the screen.
 		var rec: Array = _base_damage[base_key]
 		var rec_state: int = int(rec[0])
-		v.set_damage(rec_state, int(rec[1]) == 1,
-			_carved_side_from_base(Vector2i(base_key.x, base_key.y),
-				Vector3i(int(rec[2]), int(rec[3]), int(rec[4]))),
-			int(rec[5]) if rec.size() > 5 else 0,
-			int(rec[6]) if rec.size() > 6 else 0)
+		for claim: Voxel in claims:
+			## A claim the cell's per-claim table does not name was not damaged; a cell with no table (an older save,
+			## a writer that named no voxel) replays its one record onto every claim.
+			var claim_rec: Array = rec
+			if not per_claim.is_empty():
+				var tag: int = _claim_tag(claim)
+				if not per_claim.has(tag):
+					continue
+				claim_rec = per_claim[tag]
+			claim.set_damage(int(claim_rec[0]), int(claim_rec[1]) == 1,
+				_carved_side_from_base(Vector2i(base_key.x, base_key.y),
+					Vector3i(int(claim_rec[2]), int(claim_rec[3]), int(claim_rec[4]))),
+				int(claim_rec[5]) if claim_rec.size() > 5 else 0,
+				int(claim_rec[6]) if claim_rec.size() > 6 else 0)
+		var v: Voxel = claims[0]
 		## A destroyed FLOOR voxel exposes the level beneath it — re-reveal it and
 		## scorch the revealed cell, same as the original detonation did (VL-D2).
 		## ⚠️ LEVEL-RENUMBER regression (Rule 9): the guard was `base_key.z < 0`,
@@ -1805,6 +1895,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_current_light_sources = _room_builder.get_light_sources()
 	_soot_map.clear()           ## SOOT-STAMP: the soot map dies with the board
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
+	_base_damage_claims.clear()
 	_base_cracks.clear()        ## CRACK-02 S-3: and no glass has been crazed on it
 	_base_openings.clear()      ## CRACK-04: nor any hole opened in it
 	_base_crazes.clear()        ## G-D35 B-2: nor any pane crazed by a blast
@@ -6888,7 +6979,8 @@ func _save_glass_panel(out_dir: String, panel: int) -> void:
 ## counts were comparing a pane that had lost 52 voxels with one that had not.
 func _record_crack_voxels_to_base(res: Dictionary) -> void:
 	for v in res.get("voxels", []):
-		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state)
+		record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state,
+			false, Voxel.CarvedSide.NONE, 0, 0, v)
 
 
 ## CRACK-04 — punch the bore ONE hit makes, exactly as destruction would.
@@ -6932,7 +7024,8 @@ func _punch_demo_bore(pane_slices: Array, run_is_x: bool, hit_gp: Vector2i,
 			## that still hold glass" warning fired after EVERY flip — a loud signal
 			## nobody was reading. Any shard count compared across a rotation was
 			## measuring the demo's missing persistence, not the rebuild.
-			record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED)
+			record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED,
+				false, Voxel.CarvedSide.NONE, 0, 0, v)
 			holed += 1
 	## A small opening can swallow nothing whole; the struck cell still goes.
 	if holed == 0:
@@ -6941,7 +7034,8 @@ func _punch_demo_bore(pane_slices: Array, run_is_x: bool, hit_gp: Vector2i,
 				if v.grid_pos == hit_gp and v.level == hit_level \
 						and v.damage_state != Voxel.DamageState.DESTROYED:
 					v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-					record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED)
+					record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED,
+				false, Voxel.CarvedSide.NONE, 0, 0, v)
 					holed += 1
 	return holed
 
@@ -7178,7 +7272,8 @@ func _capture_glass_crack_demo() -> void:
 				for v in s.voxels:
 					if v.level >= ground and v.damage_state != Voxel.DamageState.DESTROYED:
 						v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-						record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED)
+						record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED,
+				false, Voxel.CarvedSide.NONE, 0, 0, v)
 						killed_slice += 1
 			## A block's roof cap OVERHANGS its footprint by one voxel (RENDER_ORDER's
 			## tall pillar: 10 x 10 on level 104), so a slab is taken WHOLE if any of
@@ -7199,7 +7294,8 @@ func _capture_glass_crack_demo() -> void:
 					for v in slab.voxels:
 						if v.level >= ground and v.damage_state != Voxel.DamageState.DESTROYED:
 							v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
-							record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED)
+							record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED,
+				false, Voxel.CarvedSide.NONE, 0, 0, v)
 							killed_slab += 1
 			await _voxel_renderer.process_dirty_async(_edge_registry)
 			if _slab_registry != null:

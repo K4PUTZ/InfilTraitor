@@ -36,7 +36,8 @@ class_name SaveState
 
 ## Bumped when the shape below changes. A loader that meets a version it does not
 ## know FAILS LOUDLY (B6) rather than silently restoring a partial world.
-const FORMAT_VERSION: int = 2
+const FORMAT_VERSION: int = 3
+## v3 (R3D-8 step 4) adds `base_damage_claims`; v1 and v2 still restore, their cells replaying one record onto every claim.
 ## v1 (before SOOT-STAMP) still restores: its `crater_floor_soot` is ignored, so a v1
 ## save comes back without scorch rather than refusing to load.
 const OLDEST_READABLE_VERSION: int = 1
@@ -53,6 +54,12 @@ static func capture(room) -> Dictionary:
 	for key in room._base_damage.keys():
 		var payload: Array = room._base_damage[key]
 		damage.append([key.x, key.y, key.z] + payload)
+	## R3D-8 step 4 — `[x, y, z, tag, ...payload]` per claim.
+	var claim_damage: Array = []
+	for key in room._base_damage_claims.keys():
+		var by_tag: Dictionary = room._base_damage_claims[key]
+		for tag in by_tag.keys():
+			claim_damage.append([key.x, key.y, key.z, int(tag)] + (by_tag[tag] as Array))
 	var soot: Array = []
 	var shards: Array = []
 	for key in room._base_shards.keys():
@@ -74,6 +81,7 @@ static func capture(room) -> Dictionary:
 		## travels with the record even though nothing checks it yet.
 		"map_id": room.map_id,
 		"base_damage": damage,
+		"base_damage_claims": claim_damage,
 		"soot": soot,
 		## G6 — `[base_x, base_y, level, count]` per pile. ⚠️ The COUNT travels, not
 		## a flag: it is what decides how heavy the pile reads, and a save that
@@ -125,6 +133,9 @@ static func validate(data: Dictionary) -> String:
 	for e in data.get("base_damage", []):
 		if typeof(e) != TYPE_ARRAY or (e as Array).size() < 4:
 			return "malformed base_damage entry: %s" % [e]
+	for c in data.get("base_damage_claims", []):
+		if typeof(c) != TYPE_ARRAY or (c as Array).size() < 5:
+			return "malformed base_damage_claims entry: %s" % [c]
 	for c in data.get("soot", []):
 		if typeof(c) != TYPE_ARRAY or (c as Array).size() < 4:
 			return "malformed soot entry: %s" % [c]
@@ -145,6 +156,12 @@ static func restore(room, data: Dictionary) -> bool:
 	for e in data.get("base_damage", []):
 		room._base_damage[Vector3i(int(e[0]), int(e[1]), int(e[2]))] = \
 			(e as Array).slice(3)
+	room._base_damage_claims.clear()
+	for c in data.get("base_damage_claims", []):
+		var ckey := Vector3i(int(c[0]), int(c[1]), int(c[2]))
+		if not room._base_damage_claims.has(ckey):
+			room._base_damage_claims[ckey] = {}
+		(room._base_damage_claims[ckey] as Dictionary)[int(c[3])] = (c as Array).slice(4)
 	## G6 — an OLD save simply has no `floor_shards` key, and `get()` reads that as
 	## "no glass on the floor", which is the honest restore rather than a refusal.
 	room._base_shards.clear()
@@ -207,6 +224,7 @@ static func load_from_file(room, path: String = "user://save_01.json") -> bool:
 ## so a new persisted field has exactly one place to be forgotten from.
 static func clear_run_state(room) -> void:
 	room._base_damage.clear()
+	room._base_damage_claims.clear()
 	## G-D15 / V-D — a primed pane is a promise made to THIS run. A fresh mission
 	## must not inherit a window that shatters to the first pistol shot.
 	room._pane_primed.clear()

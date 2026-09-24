@@ -36,6 +36,17 @@
 ##         3. THE CONTROLS — the objects changed where the scenario changed them
 ##            (load vs g0, and g1 vs shot), so (1) is not an empty agreement.
 ##
+##   roundtrip [--maps PLAYGROUND,GLASS] [--wait 120] [--out DIR]
+##       R3D-8 step 4: what the game holds must survive being carried. One boot per map runs
+##           load; g0; g1; (shot); views E, S, W, N; save_restore; reload
+##       with `--wait` frames before every probe (a relight lands a few frames after the step that asks
+##       for it). Requires: 1. N-view after E→S→W→N is IDENTICAL to before the rotation (voxels AND cell
+##       planes); 2. the SaveState restore is IDENTICAL to the state it captured; 3. an F2 reload is
+##       IDENTICAL to a fresh load (planes included); the rotation and the restore are strict on VOXELS and
+##       GEOMETRY, and print their cell-plane differences (two open findings, see `roundtrip()`; `--strict-planes`
+##       fails on them); 4. THE CONTROLS: the damaged state differs from the loaded one (so
+##       identity is not an empty agreement).
+##
 ## ⚠️ THE GATE IS EARNED ON THE UNCHANGED CODE FIRST (R3D-0). A 0-difference claim
 ## from a nondeterministic run is noise wearing a number — the pixel-diff lesson of
 ## 2026-08-09, which measured 36 733 px between two identical captures.
@@ -300,6 +311,7 @@ def diff(a, b, first=20, out=print):
         % (voxel_diffs, len(geometry), len(only_a) + len(only_b), texel_diffs,
            len(levels_only_a) + len(levels_only_b) + len(plane_shape))))
     return {"identical": identical, "voxel_diffs": voxel_diffs, "voxels_compared": voxels_compared,
+            "by_channel": dict(by_channel), "only": len(only_a) + len(only_b),
             "texel_diffs": texel_diffs, "geometry": len(geometry),
             "containers_unmatched": len(only_a) + len(only_b)}
 
@@ -535,6 +547,92 @@ def gate(args):
     return 0
 
 
+## R3D-8 step 4 — (label, step) per stage of the round-trip gate. The wait is added per probe, not per step.
+ROUNDTRIP_STAGES = {
+    "PLAYGROUND": [("load", ""), ("g0", "detonate 0"), ("g1", "detonate 1"), ("shot", "shoot 0"),
+                   ("view_e", "perspective E"), ("view_s", "perspective S"),
+                   ("view_w", "perspective W"), ("view_n", "perspective N"),
+                   ("restore", "save_restore"), ("reload", "reload")],
+    "GLASS": [("load", ""), ("g0", "detonate 0"), ("g1", "detonate 1"),
+              ("view_e", "perspective E"), ("view_s", "perspective S"),
+              ("view_w", "perspective W"), ("view_n", "perspective N"),
+              ("restore", "save_restore"), ("reload", "reload")],
+}
+## (before, after, must be identical): the damaged state is the last one before the rotation.
+ROUNDTRIP_PAIRS = {
+    "PLAYGROUND": [("shot", "view_n", "rotation E-S-W-N"), ("shot", "restore", "SaveState restore"),
+                   ("load", "reload", "F2 reload")],
+    "GLASS": [("g1", "view_n", "rotation E-S-W-N"), ("g1", "restore", "SaveState restore"),
+              ("load", "reload", "F2 reload")],
+}
+ROUNDTRIP_CONTROLS = {"PLAYGROUND": ("load", "shot"), "GLASS": ("load", "g1")}
+
+
+def roundtrip(args):
+    godot = find_godot()
+    if godot is None:
+        print("%s ERROR: no Godot binary (looked in %s)" % (GATE_TAG, GODOT_CANDIDATES))
+        return 2
+    out_root = Path(args.out) if args.out else Path(tempfile.mkdtemp(prefix="board_probe_roundtrip_"))
+    maps = [m.strip() for m in args.maps.split(",") if m.strip()]
+    print("%s roundtrip: %d map(s), wait %d frame(s) → %s" % (GATE_TAG, len(maps), args.wait, out_root))
+    failures = []
+    for map_id in maps:
+        stages = ROUNDTRIP_STAGES[map_id]
+        steps, labels = [], []
+        for label, step in stages:
+            if step:
+                steps.append(step)
+            steps += ["frames %d" % args.wait, "probe rt_%s" % label]
+            labels.append("rt_%s" % label)
+        run_dir = out_root / map_id
+        probes, problems, seconds = run_once(godot, map_id, run_dir, {}, "; ".join(steps + ["quit"]), labels,
+                                             SHADOW_ENV.get(map_id, {}), FATAL_MARKERS)
+        print("%s %s: %d probe(s) in %.0f s%s" % (GATE_TAG, map_id, len(probes), seconds,
+              "" if not problems else " — %d problem(s)" % len(problems)))
+        for line in problems[:8]:
+            print("%s     %s" % (GATE_TAG, line))
+        if problems:
+            failures.append("%s did not run cleanly" % map_id)
+            continue
+        quiet = []
+        for before, after, what in ROUNDTRIP_PAIRS[map_id]:
+            result = diff(load(probes["rt_" + before]), load(probes["rt_" + after]), args.first, quiet.append)
+            light = result["by_channel"].get("light(G)", 0)
+            hard = result["texel_diffs"] - light
+            if hard or light:
+                print("%s %s   (planes: %s)" % (GATE_TAG, map_id,
+                      "known open, see the header" if not (args.strict_planes or what == "F2 reload") else "STRICT"))
+            print("%s %s %-18s %s vs %s: %s — voxels %d/%d, plane texels %d (soot etc. %d, light %d)"
+                  % (GATE_TAG, map_id, what, before, after, "IDENTICAL" if result["identical"] else "DIFFERENT",
+                     result["voxel_diffs"], result["voxels_compared"], result["texel_diffs"], hard, light))
+            ## The cell PLANES are judged apart from the voxels (R3D-8 findings, 2026-09-23), because what they show
+            ## is a look question and not a persistence loss: (1) the blast's incremental LIGHT and a full relight
+            ## of the same damaged world disagree (light(G)); (2) `_soot_map` holds tone 0 on visible CRACKED glass
+            ## that the live wave never painted, so a rotation or restore paints it (soot(R), GLASS only). The F2
+            ## reload is strict on everything. `--strict-planes` makes the planes a failure everywhere.
+            planes_strict = args.strict_planes or what == "F2 reload"
+            broken = result["voxel_diffs"] or result["geometry"] or result["only"] \
+                or (planes_strict and result["texel_diffs"])
+            if broken:
+                failures.append("%s %s: %d voxel(s), %d plane texel(s) differ" % (
+                    map_id, what, result["voxel_diffs"], result["texel_diffs"] if planes_strict else 0))
+                for line in quiet[:args.first]:
+                    print(line)
+            quiet.clear()
+        a, b = ROUNDTRIP_CONTROLS[map_id]
+        control = diff(load(probes["rt_" + a]), load(probes["rt_" + b]), 0, quiet.append)
+        print("%s %s control: %s vs %s — voxels %d%s" % (GATE_TAG, map_id, a, b, control["voxel_diffs"],
+              "" if control["voxel_diffs"] else " — ⛔ the probe did not see the damage"))
+        if control["voxel_diffs"] == 0:
+            failures.append("%s control: the blast changed no voxel" % map_id)
+    if failures:
+        print("%s ROUNDTRIP FAIL — %s" % (GATE_TAG, "; ".join(failures)))
+        return 1
+    print("%s ROUNDTRIP PASS — dumps and logs in %s" % (GATE_TAG, out_root))
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Compare BoardProbe dumps / run the R3D identity gate")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -555,7 +653,19 @@ def main():
     p_shadow.add_argument("--out", default=None)
     p_shadow.add_argument("--first", type=int, default=20)
     p_shadow.add_argument("--verbose", action="store_true")
+    p_round = sub.add_parser("roundtrip", help="R3D-8: rotation, SaveState restore and reload must be identity")
+    p_round.add_argument("--maps", default="PLAYGROUND,GLASS")
+    p_round.add_argument("--wait", type=int, default=120, help="frames before every probe")
+    p_round.add_argument("--out", default=None)
+    p_round.add_argument("--first", type=int, default=20)
+    p_round.add_argument("--strict-planes", action="store_true", help="also fail on any cell-plane difference")
     args = parser.parse_args()
+    if args.command == "roundtrip":
+        try:
+            return roundtrip(args)
+        except DumpError as exc:
+            print("%s ERROR: %s" % (GATE_TAG, exc))
+            return 2
     if args.command == "shadow":
         try:
             return shadow(args)

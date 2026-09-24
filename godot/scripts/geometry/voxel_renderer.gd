@@ -4792,8 +4792,10 @@ func cell_plane_levels() -> Array:
 ##   TileSet, the planes and their textures, `_placed_index`. What it frees is therefore
 ##   a LOWER bound on the 2D board's own cost, and the process after it an UPPER bound
 ##   on a 3D-only one.
-## ⚠️ One-way for the rest of the session: `build_occupancy()` and the detonation plan
-## read these layers, so any light or blast after it describes an empty board.
+## ⚠️ One-way for the rest of the session. Since R3D-13 the light, the blast and the plan read the STORE, so a blast after
+## this still works and describes the real world; what still reads these layers is the glass state (`_glass_layers`), which is
+## what `tools/persistent/independence_gate.py` (the R3D-END entry gate) measures with this instrument: the crack and craze
+## webs on standing GLASS panes vanish after a blast once the glass cells are gone (2026-09-24, 19 391 px).
 func debug_drop_board_cells() -> Dictionary:
 	var opaque_cells: int = 0
 	var glass_cells: int = 0

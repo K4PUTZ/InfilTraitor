@@ -1,5 +1,21 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.23
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.24
+
+**2026-09-24 (end) update (v1.24) — THE PRE-COOK IS BACK ON THE 3D BOARD, AND THE R3D-END ENTRY GATE EXISTS AND IS RED (Director: "Religa o pre-cook na 3D e checa se precisa de mais alguma coisa antes do END").**
+Commits `2d88472e` (the pre-cook) and the one carrying `tools/persistent/independence_gate.py`. R3D-END is still not started, and **it is not enterable yet: a new stage, R3D-14, comes first.**
+- **The pre-cook (`2d88472e`).** `Room._run_shot_precook()` builds the shared light field for the predicted world on both boards again; only the alternatives half (`warm_light_alts_for_gus()`, which walks placed tiles) stays 2D-only. Galaxy A16, shotgun after two grenades,
+  HEAD APK vs this one, alternating installs, three pairs: the pairs read 663.0 -> 418.0, 755.9 -> 220.6 and 418.8 -> 223.3 ms (the first two pairs are noisy, their HEAD rows at 663 and 756 against 419 in the third and in every earlier control; the cause is not established); with the earlier A/B, 419.0 / 420.8 / 413.7 -> 218.9 / 224.5 / 273.8, level with 2D's 223.0. The pre-cook takes 383-406 ms in
+  the aim window (776 in the first pair). Desktop: tail 164 -> 113-117 ms, `field.build` 61.6 -> 12.6. `INFILTRAITOR_SHOT_SCOPE_PROBE` (real on 3D since v1.22's planes snapshot): 210 749 cells checked, **0 differ** from a full apply, 3D and 2D. The prediction's own `_warm_prediction()` skip (R3D-10) is right: it
+  is only tile minting and page uploads. Not done: the same A/B on the Moto (not attached).
+- **The entry gate: `tools/persistent/independence_gate.py`.** Runs the game twice per map, the second time with the hidden 2D board emptied after every step that rebuilds or blasts it (`drop2d`: opaque, glass and structure layers; the floor layer holds 0 since R3D-11), and requires the same world
+  (the roundtrip probes, keep vs drop) and the same picture (`pixel_gate`'s cases at `--fixed-fps 60`, 400-frame settle, 0 px above noise), with a control that `drop2d` emptied something. **PLAYGROUND: identical in all 10 dumps and all 3 frames (2 240 opaque + 2 240 glass cells emptied). GLASS (6 240 + 6 240 emptied): all 9 dumps identical on
+  voxels and on the planes the board reads, and the PICTURE differs after a blast: g0 19 391 px, g1 10 881 px above noise, the same numbers on a second run. The gate is RED, and it is the honest state of "nothing depends on the 2D board".**
+  What changes on screen is the crack and craze web on the standing panes: `VoxelRenderer._build_crack_occupancy()` decides which cells of a pane a crack is cut over with `_glass_layers[level].get_cell_source_id(cell) != -1`, so with the glass layers emptied the web is cut away everywhere.
+- **R3D-14 (new, written below): the glass state leaves the tile layers.** R3D-12 named it ("its own stage, not written"); R3D-END's own list deletes `_glass_layers`, `_glass_tile_sync()` and `GlassCrackSprite`, which is not possible while the crack occupancy and the other glass mechanics read them. R3D-END's entry condition is now "R3D-8 to R3D-14 closed, `independence_gate.py` PASS".
+- **What else R3D-END is, measured, so its size is known:** (1) `floor_layer` still has 202 references in 25 files: overlays and navigation take it as a parameter (`.tile_set` 12 uses, `map_to_local`, `to_local`, `local_to_map`), so it is a conversion refactor behind `ground_gate.py`, not a delete; (2) `room.gd` has 15 functions that still read tile layers,
+  every one a dev instrument or capture: `_perf_snapshot_alts` (ported), `_cell_probe_has` and `cell_probe_arm` (read the store on 3D), `_compare_light_buckets` (tiles vs store: delete), `_burn_probe_snapshot`, `_capture_agent_shot`, `_capture_cell_index_gate`, `_capture_cell_index_spike`, `_capture_glass_crack_demo`, `_capture_level_census`,
+  `_census_subtree`, `_collect_all_voxel_cells`, `_debug_probe_voxel_alignment`, `scenario_ground_check` (R3D-11's gate; 9 reads), `scenario_drop_2d_board` (the independence probe: goes last, with the gate); (3) the 3D decal catalog wants its own loud-fail (`check_decal.py` and `voxel_decal_selftest` stay).
+- **Still open, none of it a blocker:** the SE face of the reference set; the GLASS rim texel (v1.22; the store already knows the rim-cut voxel, so R3D-14 is where it can close); the Moto half of the pre-cook A/B.
 
 **2026-09-24 (last) update (v1.23) — R3D-13 CLOSED: THE GALAXY A16 ROW IS RECORDED AND THE 3D SHOT TAIL IS EXPLAINED (Director connected the phone).**
 Full numbers and the A/B: `DEVICE_DIAGNOSTICS_MASTER_PLAN` top block. R3D-END is still not started: it waits for the Director's ratification.
@@ -8,7 +24,7 @@ Full numbers and the A/B: `DEVICE_DIAGNOSTICS_MASTER_PLAN` top block. R3D-END is
 - **The 357 vs 214 ms shot tail (2026-09-21) does not reproduce; a different gap does, and it is a regression of R3D-10.** A pistol at brick from a fresh board: 3D 201.8 / 157.0 / 206.5 vs 2D 156.0 / 174.1 / 163.1 ms (inside the spread). A shotgun AFTER two grenades: **3D 413-439 ms vs 2D 223-261**.
   R3D-10 made the shot's pre-cook return at once on the 3D board ("it mints 0 alternatives there"), and the pre-cook was also building the shared light field for the predicted world in the aim window, which absorbed the stale set the grenades had accumulated. On-device A/B (HEAD APK vs the same APK with that one
   line changed, alternating, three boots each): **419.0 / 420.8 / 413.7 -> 218.9 / 224.5 / 273.8 ms**, level with 2D's 223.0. R3D-10's own note said the shot's tail was "not measured".
-  **No code was changed:** turning it back on moves ~430 ms into the aim window on the Galaxy (the Director's 2026-08-19 placement of the lag), which is a call for the Director, and the whole tail belongs to R3D-LIGHT.
+  **No code was changed at that point** (turning it back on moves ~430 ms into the aim window on the Galaxy, the Director's 2026-08-19 placement of the lag): the Director then said to turn it back on, and v1.24 did; the whole tail still belongs to R3D-LIGHT.
 - **R3D-LIGHT's list, from the desktop split of that shot (`REPAINT_PROFILE`, 3D, shotgun after two grenades: occupancy 66.6 · field.build 61.6 · apply 26.1 ms; 2D 39.7 · 11.3 · 14.3):**
   (1) the pre-cook's light warm (`field.build` 61.6 -> 12.7 ms with it); (2) `apply_light_field_cells()`'s `SKIP_BOARD_WRITES` branch computes and writes a bucket for every visited key, cells with no visible voxel included (skipping them: 26.1 -> 15.7 ms, two boots each), and those are
   the 3 103 unread texels the roundtrip counts; (3) the map-wide `occupancy_dict()` walk, 66 ms on 3D vs 40 on 2D after grenades and equal without them, cause not found. `REPAINT_PROFILE` is read from the environment only, so the split above is desktop; making it a `DevFlags` read would give it on a handset.
@@ -2969,9 +2985,29 @@ This comes after its consumers (R3D-9 to R3D-11).
 - no 3D comparison flag is left;
 - the matrix is recorded in `DEVICE_DIAGNOSTICS` as the R3D-END baseline.
 
+### R3D-14 — The glass state leaves the tile layers (found 2026-09-24, by `independence_gate.py`)
+
+**Why it exists.** R3D-12 kept the glass `TileMapLayer`s because they are the glass state's authority ("its own stage, not written"). This is that stage, and the gate says it is a real dependency, not a leftover:
+with the hidden 2D board emptied, a GLASS blast loses the crack and craze webs on the standing panes (19 391 px on g0, 10 881 on g1) while every voxel and every plane the board reads stays identical. R3D-END deletes
+`_glass_layers`, `_glass_tile_sync()`, the render-order clip and `GlassCrackSprite`; none of that can go while the readers below ask a tile layer whether a pane cell exists.
+
+**What reads `_glass_layers` (50 references in `voxel_renderer.gd`, 6 elsewhere: `Room` 2, `DetonationEntryWriter` 2, `DetonationPlanBuilder` 1, `OcclusionSet` 1).** Grep names these readers of the layer's cells; only the first is PROVEN to matter to the 3D picture, the rest are unclassified until built:
+`_build_crack_occupancy()` (the crack's cut mask: the proven one), `glass_cell_present()` / `_glass_cell_present()`, `glass_cell_mask()`, `_apply_opening_to_region()`, `apply_glass_remnant_at()`, `restamp_glass_shards()`, `erase_glass_cell()`, `glass_cell_face_pos()`, `_expose_seam_neighbour()`, `_clip_diag_rebuild()`.
+The 2D drawing ones (`_glass_tile_sync()`, the seam cull, the clip diagnostics) are not migrated, they go at R3D-END.
+
+**How (R3D-11's pattern):**
+1. The store answers "does a visible glass claim hold this cell" (`VoxelStore` already has the claims and the material per claim; a glass-family owner is one read). One reader of that, named once.
+2. A same-binary A/B flag while the stage is open: each state reader takes the store's answer or the layer's. `_build_crack_occupancy()` first, since it is the measured one, identity-checked by a scenario step that compares every crack's `occ_image` from both sources (the `occupancy_compare` precedent), then the others one by one.
+3. `independence_gate.py` PASS on both maps, state and pixels. The other identity gates unchanged: `board_probe.py gate|roundtrip`, `mirror_gate.py`, `pixel_gate.py`, `shot_3d_gate.py`, the glass selftests.
+4. The flag goes when the stage closes. Then the voxel atoms and the TileSet, which R3D-12 left for this, can go at R3D-END.
+
+**Companions worth doing in the same pass:** the GLASS rim texel (v1.22: a rim-cut pane voxel the Delta does not project); the 3D decal catalog's loud-fail; the `_soot_map` tone 0 on cracked glass (unread; decide whether glass ever takes scorch).
+
+**Gate:** `independence_gate.py` PASS; the Moto and Galaxy frame for a GLASS blast against the R3D-13 baseline (the crack mask is rebuilt per blast: measure it).
+
 ### R3D-END — Retire the 2D board (the canon change)
 
-**Entry condition:** R3D-8 to R3D-13 are closed, and **the Director ratifies the retirement** on the deletion list. The look
+**Entry condition:** R3D-8 to R3D-14 are closed, **`tools/persistent/independence_gate.py` reads PASS** (v1.24: red today, on GLASS), and **the Director ratifies the retirement** on the deletion list. The look
 is not an entry condition (Director, 2026-09-23).
 
 **Deleted:**
@@ -3104,9 +3140,10 @@ R3D-0 ─► R3D-1 ─► R3D-2 ─► R3D-3 ─┬─► R3D-4 ─┐
                                    └─► R3D-5 ─┴─► R3D-6 ─► R3D-7
                                                   (built items; the rest → R3D-LOOK)
 
-R3D-8 ─► R3D-9 ─► R3D-10 ─► R3D-11 ─► R3D-12 ─► R3D-13 ─► R3D-END
- net     3D reads  no tiles  gameplay  load      one path   delete +
-         no 2D     in sim    off tiles no 2D     baseline   canon
+R3D-8 ─► R3D-9 ─► R3D-10 ─► R3D-11 ─► R3D-12 ─► R3D-13 ─► R3D-14 ─► R3D-END
+ net     3D reads  no tiles  gameplay  load      one path   glass      delete +
+         no 2D     in sim    off tiles no 2D     baseline   state off  canon
+                                                             tiles      (gate: independence_gate.py)
 
 after R3D-8 (in parallel):  R3D-ACTORS ─► R3D-PROPS
 after R3D-END:  R3D-WORLD ─► R3D-ROT · R3D-LOOK · R3D-LIGHT · R3D-CLAIMS · R3D-BUFFER

@@ -1,7 +1,6 @@
 # Session summary — 2026-09-24 (later) — R3D-13 CLOSED (Galaxy row recorded, shot tail explained); the plane findings traced
 
-**Resume point:** R3D-13 is CLOSED: the Galaxy A16 row is recorded and the 3D shot tail explained (v1.23). **R3D-END is NOT started: it needs the Director's
-ratification** on the deletion list (`RENDER3D_MASTER_PLAN` §R3D-END). The Director chose "Fechar o R3D-13 antes" over starting R3D-END or R3D-ACTORS, then connected the Galaxy.
+**Resume point:** R3D-13 is CLOSED (Galaxy row recorded, shot tail explained, pre-cook back on 3D: v1.23/v1.24). **R3D-END is NOT started and is NOT enterable: `tools/persistent/independence_gate.py` is RED on GLASS, so a new stage, R3D-14 (the glass state leaves the tile layers), comes first** (plan v1.24). R3D-END also still needs the Director's ratification on the deletion list.
 
 ## What changed (full detail and evidence: `RENDER3D_MASTER_PLAN` v1.22)
 - **Spikes deleted** (`e5b5f9ca`): `board3d_spike`, `r3d4a_actor_spike`, `store_layout_spike`, their scenes, the two `SPIKE=` hand-overs and the `store_spike` step. `spike3d.gd` stays for R3D-ACTORS.
@@ -17,6 +16,12 @@ ratification** on the deletion list (`RENDER3D_MASTER_PLAN` §R3D-END). The Dire
 - Same APK as the Moto's row: load 7.9 / 8.0 s vs 23.3 s (2D), PSS 1.30 / 1.33 vs 2.20 GB, idle 25.2-25.6 vs 39.5-42.4 ms/frame. **Slower than the Moto on the GPU-bound rows** (2.2x the pixels), 2x faster on load.
 - **The 357 vs 214 ms shot tail does not reproduce** (pistol at brick, fresh board: 3D 188 vs 2D 164 ms mean of three). **A real gap does:** a shotgun after two grenades, 3D 413-439 vs 2D 223-261 ms. Cause: R3D-10 turned the shot pre-cook off on 3D and it was also warming the light field
   in the aim window. On-device A/B, one line changed, three boots each: 419.0 / 420.8 / 413.7 -> 218.9 / 224.5 / 273.8 ms. No code changed (it moves ~430 ms into the aim window: the Director's call; the tail is R3D-LIGHT's).
+
+## The last round (Director: "Religa o pre-cook na 3D e checa se precisa de mais alguma coisa antes do END")
+- **Pre-cook back on 3D** (`2d88472e`): Galaxy tail 418.8 -> 223.3 ms (settled pair; two noisy pairs 663 -> 418, 756 -> 221), SHOT_SCOPE_PROBE 0 differ of 210 749 cells (real on 3D now), desktop tail 164 -> 113-117 ms.
+- **The R3D-END entry gate, `tools/persistent/independence_gate.py`, is RED.** With the hidden 2D board emptied after every step: PLAYGROUND identical (10 dumps, 3 frames); GLASS identical in voxels and read planes but the PICTURE loses the crack/craze webs after a blast (19 391 px g0, 10 881 g1, reproduced exactly).
+  Cause: `_build_crack_occupancy()` reads `_glass_layers`. **R3D-14** (plan v1.24) is the stage that moves the glass state to the store; R3D-END's entry condition is now R3D-8..14 closed + this gate PASS + the Director.
+- R3D-END's size, measured: `floor_layer` 202 refs in 25 files (a conversion refactor, not a delete), 15 `room.gd` instrument functions that read tile layers (listed in the plan), the 3D decal catalog's loud-fail.
 
 ## Traps this session found
 - The decal art is **git-ignored** (`.gitignore:66 ASSETS/materials/*/*`): a `git checkout` cannot restore a file moved for a test. Copy first, verify with `cmp` after.

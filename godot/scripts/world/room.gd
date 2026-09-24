@@ -3100,8 +3100,9 @@ func scenario_mirror_check(label: String) -> bool:
 ## DIAG-23 (DEVICE_DIAGNOSTICS §15.15) — the `drop2d` scenario step: with a 3D board
 ## built, clear the hidden 2D board's cells so `dumpsys meminfo` reads the process
 ## before and after in ONE boot. The voxel and glass layers and the structure layer are
-## cleared; the floor layer keeps its cells, because selection, the movement overlay and
-## `ViewContext` read them. An instrument, and one-way — see
+## cleared; the floor layer is cleared too in effect, since R3D-11 left it written by nothing
+## (the log line says "floor layer keeps 0"). It is also the R3D-END entry gate's probe
+## (`tools/persistent/independence_gate.py`). An instrument, and one-way — see
 ## `VoxelRenderer.debug_drop_board_cells()`.
 func scenario_drop_2d_board() -> bool:
 	if board3d() == null:

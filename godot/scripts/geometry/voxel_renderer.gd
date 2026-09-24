@@ -668,7 +668,9 @@ static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") != "0"
 ## tile-alternative minting, the plane texture uploads and the glass refreshes. Set by
 ## DevFlags. ⚠️ The 2D layers go stale around a crater, so a later cook that reads
 ## live layer cells for render information reads the pre-blast board there.
-static var SKIP_BOARD_WRITES: bool = false
+## R3D-8: a `--script` selftest has no `DevFlags` autoload, so the flag it sets never ran and the "3D" suites wrote the
+## 2D board. The env var is read here too, so a headless run under `INFILTRAITOR_RENDER3D=1` really skips the writes.
+static var SKIP_BOARD_WRITES: bool = OS.get_environment("INFILTRAITOR_RENDER3D") == "1"
 
 ## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.
 ##

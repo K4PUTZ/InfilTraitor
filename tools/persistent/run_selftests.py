@@ -70,6 +70,35 @@ AUTOLOAD_ERROR_RE = re.compile(
 DEPENDED_ERROR = "SCRIPT ERROR: Compile Error: Failed to compile depended scripts."
 
 
+## R3D-8 class (b): the suite's SUBJECT is the 2D renderer's tile placement (the atlas source / atlas coords /
+## variant it wrote into a TileMapLayer). Under the 3D board those writes are skipped (`SKIP_BOARD_WRITES`), so the
+## suite would read an empty layer. Observed 2026-09-23 on the first real 3D run: every one fails on a tile-cell read.
+## Each is deleted with its subject at R3D-END. Geometry itself is guarded on 3D by `board_probe.py gate`.
+PINNED_2D = {
+    "fixed_floor_selftest.gd": "asserts the atlas source of the earth floor tiles (64/64 mismatched)",
+    "floor_integration_selftest.gd": "asserts atlas source per floor cell on PLAYGROUND (192/192 mismatched)",
+    "floor_zone_bake_selftest.gd": "asserts each zoned floor voxel's bake source and coords (3072 not baked)",
+    "glass_transparency_selftest.gd": "asserts the opaque and glass tile layers' cells (0 concrete cells)",
+    "negative_storey_selftest.gd": "asserts render_block() placed tile cells on negative layers (0/64)",
+    "prop_01_selftest.tscn": "criterion 3 counts render_prop() tile cells (0 of 64)",
+    "roof_bake_selftest.gd": "asserts each roof voxel's bake source and coords (4680 not baked)",
+    "roof_integration_selftest.gd": "asserts roof tile source ids (27 geometry mismatches)",
+    "roof_slab_selftest.gd": "asserts the roof slab tiles' fixed material (64/64)",
+    "slab_render_selftest.gd": "asserts the slab tiles' damage-variant cells (64/64)",
+    ## Labelled from a grep of their tile reads, NOT from a failure: they still pass under 3D because their fixture
+    ## (`render_block` / `_set_voxel_cell`) writes tiles outside the skipped detonation path, so on 3D they test the
+    ## same 2D placement they always did.
+    "ceiling_carve_seam_selftest.gd": "reads placed tile source ids (4 tile reads)",
+    "damage_atom_bake_selftest.gd": "reads the painted tile's source (2 tile reads)",
+    "decal_seam_selftest.gd": "reads placed tile source ids (3 tile reads)",
+    "detonation_plan_selftest.gd": "dumps layer cells' source/atlas/alternative (3 tile reads)",
+    "floor_sunk_seam_selftest.gd": "reads placed tile source ids (4 tile reads)",
+    "generic_mark_seam_selftest.gd": "reads placed tile source ids (10 tile reads)",
+    "glass_crack_selftest.gd": "reads glass layer tile ids (6 tile reads)",
+    "half_voxel_seam_selftest.gd": "reads placed tile source ids (6 tile reads)",
+}
+
+
 def find_godot() -> str:
     for candidate in GODOT_CANDIDATES:
         if os.path.sep in candidate:
@@ -103,9 +132,10 @@ def run_one(godot: str, script_rel: str) -> dict:
         proc = subprocess.run(
             argv,
             cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=TIMEOUT_S,
-            # RENDER3D is the game's default since 2026-09-19; the suites that read 2D tilemap
-            # cells need the 2D board written, until R3D-8 migrates them.
-            env={**os.environ, "INFILTRAITOR_RENDER3D": os.environ.get("INFILTRAITOR_RENDER3D", "0")},
+            # R3D-8: the suites run on the 3D board (the game's default). A suite that asserts what the 2D
+            # RENDERER placed is pinned to 2D in PINNED_2D, with its reason. An explicit env var still wins.
+            env={**os.environ, "INFILTRAITOR_RENDER3D": os.environ.get(
+                "INFILTRAITOR_RENDER3D", "0" if os.path.basename(script_rel) in PINNED_2D else "1")},
         )
         output = proc.stdout + proc.stderr
         exit_code = proc.returncode

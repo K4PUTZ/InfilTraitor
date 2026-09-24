@@ -222,19 +222,6 @@ static var LIT_SHADER: String = OPAQUE_SHADER \
 	.replace("render_mode unshaded, cull_disabled;", "render_mode cull_disabled, specular_disabled;") \
 	.replace("float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];", "float f = face_tone[face];")
 
-const GLASS_SHADER: String = """
-shader_type spatial;
-render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
-uniform vec3 base_color = vec3(0.55, 0.7, 0.9);
-vec3 srgb_to_linear(vec3 c) {
-	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
-}
-void fragment() {
-	ALBEDO = srgb_to_linear(base_color);
-	ALPHA = 0.35;
-}
-"""
-
 ## One material's geometry for one chunk. The Packed arrays are MEMBERS on purpose:
 ## a Packed array is a value type, so `(dict["v"] as PackedVector3Array).append()`
 ## appends to a copy — measured on the first run: every surface came out empty and
@@ -1873,12 +1860,7 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	var definition = Registries.get_material_registry().get_material(material_id)
 	var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
 	if GlassMaterials.is_glass(material_id):
-		if OS.get_environment("INFILTRAITOR_GLASS3D_FLAT") != "1":
-			return _make_glass_material(material_id)
-		shader.code = GLASS_SHADER
-		shader_material.shader = shader
-		shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
-		return shader_material
+		return _make_glass_material(material_id)
 	shader.code = LIT_SHADER if LIT3D else OPAQUE_SHADER
 	shader_material.shader = shader
 	shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
@@ -1892,7 +1874,6 @@ func _make_material(material_id: String) -> ShaderMaterial:
 
 
 ## R3D-6 item 2 — the 2D glass look, one pass that reads the scene behind the pane.
-## `INFILTRAITOR_GLASS3D_FLAT=1` keeps the R3D-3 flat blue, for comparison only.
 func _make_glass_material(material_id: String) -> ShaderMaterial:
 	var tint: Color = GlassMaterials.pane_tint(material_id)
 	var shader_material := ShaderMaterial.new()

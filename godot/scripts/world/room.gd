@@ -5180,7 +5180,8 @@ func _perf_snapshot_alts() -> Dictionary:
 ## voxel must not be restorable"* — with the status "not reproduced".
 ##
 ## Scoped to the cells PLACED near the blast at arm time, and sampled with a
-## direct `get_cell_source_id()` per key rather than by enumerating the board:
+## direct read per key rather than by enumerating the board (R3D-13: on the 3D board the read is the `VoxelStore`'s
+## occupancy, `has_cell()`, because no tile is written there; on the 2D board it is the tile):
 ## the map-wide walk is 205 000 cells and this runs every frame. A cell that was
 ## never placed and later appears is the EXPOSE path and is legitimate, which is
 ## also why the armed set is the right scope rather than a limitation.
@@ -5193,6 +5194,15 @@ var _cell_probe_erased: int = 0
 var _cell_probe_appeared: int = 0
 var _cell_probe_vanished: int = 0
 var _cell_probe_events: Array = []
+
+
+## Is the cell occupied? The 3D board writes no tile, so the store answers; the 2D board's tile is the reference there.
+func _cell_probe_has(level: int, cell: Vector2i) -> bool:
+	if VoxelRenderer.SKIP_BOARD_WRITES:
+		var store: VoxelStore = VoxelStore.active
+		return store != null and store.has_cell(cell.x, cell.y, level)
+	var layer: TileMapLayer = _voxel_renderer.get_layer(level)
+	return layer != null and layer.get_cell_source_id(cell) != -1
 
 
 func cell_probe_arm(gu: Vector2i) -> void:
@@ -5218,27 +5228,39 @@ func cell_probe_arm(gu: Vector2i) -> void:
 	var lo := Vector2i(1 << 30, 1 << 30)
 	var hi := Vector2i(-(1 << 30), -(1 << 30))
 	var levels: Array = []
-	for level in _voxel_renderer.level_keys():
-		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-		if layer == null:
-			continue
-		levels.append(level)
-		for cell in layer.get_used_cells():
-			var g := GeometryCoords.voxel_to_gu(cell)
-			if maxi(absi(g.x - gu.x), absi(g.y - gu.y)) > CELL_PROBE_GU:
+	if VoxelRenderer.SKIP_BOARD_WRITES:
+		var store: VoxelStore = VoxelStore.active
+		if store == null:
+			_cell_probe_on = false
+			return
+		for level in range(store.l0, store.l0 + store.nl):
+			levels.append(level)
+			for y in range((gu.y - CELL_PROBE_GU) * GeometryCoords.VOXELS_PER_UNIT_AXIS, (gu.y + CELL_PROBE_GU + 1) * GeometryCoords.VOXELS_PER_UNIT_AXIS):
+				for x in range((gu.x - CELL_PROBE_GU) * GeometryCoords.VOXELS_PER_UNIT_AXIS, (gu.x + CELL_PROBE_GU + 1) * GeometryCoords.VOXELS_PER_UNIT_AXIS):
+					if store.has_cell(x, y, level):
+						lo = Vector2i(mini(lo.x, x), mini(lo.y, y))
+						hi = Vector2i(maxi(hi.x, x), maxi(hi.y, y))
+	else:
+		for level in _voxel_renderer.level_keys():
+			var layer: TileMapLayer = _voxel_renderer.get_layer(level)
+			if layer == null:
 				continue
-			lo = Vector2i(mini(lo.x, cell.x), mini(lo.y, cell.y))
-			hi = Vector2i(maxi(hi.x, cell.x), maxi(hi.y, cell.y))
+			levels.append(level)
+			for cell in layer.get_used_cells():
+				var g := GeometryCoords.voxel_to_gu(cell)
+				if maxi(absi(g.x - gu.x), absi(g.y - gu.y)) > CELL_PROBE_GU:
+					continue
+				lo = Vector2i(mini(lo.x, cell.x), mini(lo.y, cell.y))
+				hi = Vector2i(maxi(hi.x, cell.x), maxi(hi.y, cell.y))
 	if lo.x > hi.x:
 		push_warning("[CELL-PROBE] nothing placed within %d GU of %s — not armed" % [CELL_PROBE_GU, gu])
 		_cell_probe_on = false
 		return
 	var placed_n: int = 0
 	for level in levels:
-		var layer2: TileMapLayer = _voxel_renderer.get_layer(level)
 		for y in range(lo.y, hi.y + 1):
 			for x in range(lo.x, hi.x + 1):
-				var here: bool = layer2.get_cell_source_id(Vector2i(x, y)) != -1
+				var here: bool = _cell_probe_has(level, Vector2i(x, y))
 				if here:
 					placed_n += 1
 				## [placed_now, erased_at, restores, was_placed_at_arm]
@@ -5253,10 +5275,7 @@ func cell_probe_frame() -> void:
 		return
 	_cell_probe_frames += 1
 	for key in _cell_probe_state.keys():
-		var layer: TileMapLayer = _voxel_renderer.get_layer(key.z)
-		if layer == null:
-			continue
-		var placed: bool = layer.get_cell_source_id(Vector2i(key.x, key.y)) != -1
+		var placed: bool = _cell_probe_has(key.z, Vector2i(key.x, key.y))
 		var rec: Array = _cell_probe_state[key]
 		if bool(rec[0]) == placed:
 			continue

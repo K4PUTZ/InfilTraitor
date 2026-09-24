@@ -8,6 +8,10 @@
 ## bare name `RENDER3D`, which the game never reads). One boot per board, fixed 60
 ## fps, same grenade index: both sides are the same blast on the same map.
 ##
+## R3D-13 (2026-09-24): this tool needs the 2D board and stops working when R3D-END deletes it. Its top row IS the
+## reference; after the end the references are the hand-named 2D captures in `ARCHIVE/r3d_reference_2d/`
+## (`build_reference_set.py`), and a 3D-vs-3D comparison is `pixel_gate.py`'s job, not this sheet's.
+##
 ## Usage:
 ##     python3 tools/persistent/build_paired_matrix.py
 ##     python3 tools/persistent/build_paired_matrix.py --grenade 2 --frames 270 --step 30

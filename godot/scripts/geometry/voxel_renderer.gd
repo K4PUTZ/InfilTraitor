@@ -655,8 +655,8 @@ static func _initial_bucket_luminance() -> Array[float]:
 ## change and re-running, and every future light-path measurement wants it.
 static var P3_CELL_BUCKET: bool = OS.get_environment("INFILTRAITOR_P3") != "0"
 
-## DIAG-21 step 2c (DEVICE_DIAGNOSTICS §15.10) — `SKIP_2D_BOARD_WRITES=1`, an
-## INSTRUMENT that is only meaningful with `RENDER3D=1`: a detonation keeps writing the
+## DIAG-21 step 2c (DEVICE_DIAGNOSTICS §15.10) — the 3D board's switch (`RENDER3D=1`; the old
+## `SKIP_2D_BOARD_WRITES` instrument is deleted, R3D-13): a detonation keeps writing the
 ## cell planes (the soot/bucket images the 3D board reads its colours from) and skips
 ## everything that only the hidden 2D board would draw — `set_cell` / `erase_cell`,
 ## tile-alternative minting, the plane texture uploads and the glass refreshes. Set by

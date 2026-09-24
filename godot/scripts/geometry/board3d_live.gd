@@ -42,16 +42,14 @@ extends Node3D
 ## unaffected geometry gets re-merged alongside the cells a blast actually touched.
 static var CHUNK_VOXELS: int = 16
 
-## RENDER3D R3D-1c step 5 — the board meshes straight from the `VoxelStore` (DevFlags
-## `STORE_BOARD3D`, read at `build()` through the Room; DEFAULT ON; `=0` collects the objects
-## into `_occ` as before). Without an active store the object path runs.
+## RENDER3D R3D-1c step 5 — the board meshes straight from the `VoxelStore` (R3D-13 deleted the `STORE_BOARD3D` switch).
+## Without an active store the object path runs.
 ##
 ## One semantic difference, ratified: a cell two claims hold stays occupied while EITHER
 ## stands (the store's `occ`). The object path erased the cell when a destroyed claim was
 ## folded in, even with the other claim standing — the Director's option A (2026-09-16,
 ## "the voxels are the truth") for the same corner cells in the light's occupancy.
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
-static var STORE_BOARD3D: bool = true
 
 ## RENDER3D R3D-3 step 2 — the vertical-scale spike. A true cube in this camera projects
 ## 32 px/√2 × cos 30° = 19.6 px/level (156.8 px/storey), but the 2D board's sprites and
@@ -324,7 +322,6 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_cell_to_world = cell_to_world
 	_ground_level = GeometryCoords.PLAYABLE_LEVEL
 	var t0: int = Time.get_ticks_usec()
-	STORE_BOARD3D = str(room.call("_dev_flag", "STORE_BOARD3D", "1")) != "0"
 	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
 	VERTICAL_SCALE = _read_vertical_scale(room)
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
@@ -332,7 +329,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_geometry_root.name = "Geometry"
 	_geometry_root.scale.y = VERTICAL_SCALE
 	add_child(_geometry_root)
-	_store = VoxelStore.active if STORE_BOARD3D else null
+	_store = VoxelStore.active
 	var counts: Dictionary = _collect_store(_store) if _store != null else _collect()
 	var t1: int = Time.get_ticks_usec()
 	_read_look()

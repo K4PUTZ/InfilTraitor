@@ -375,19 +375,18 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	if VSCALE_MARKER:
 		_add_vscale_marker()
 	var t2: int = Time.get_ticks_usec()
-	var cells_2d: int = _count_2d_cells()
 	var fields: Dictionary = {
 		"voxels": int(counts.get("cells", _occ.size())), "slice_voxels": counts["slices"],
 		"column_voxels": counts["columns"], "slab_voxels": counts["slabs"],
-		"cells_2d": cells_2d, "faces": faces, "quads": quads,
+		"faces": faces, "quads": quads,
 		"chunks": int(counts.get("chunks", _by_chunk.size())),
 		"materials": _material_ids.size(), "collect_ms": float(t1 - t0) / 1000.0,
 		"mesh_ms": float(t2 - t1) / 1000.0, "plane_levels": _level_max - _level_min + 1,
 		"skip_2d_writes": VoxelRenderer.SKIP_BOARD_WRITES,
 	}
-	print("[BOARD3D] %d voxel(s) (slices %d, columns %d, slabs %d; the 2D board holds %d cell(s)) → %d face(s) → %d quad(s) in %d chunk(s), %d material(s), plane levels %d..%d; collect %.0f ms, mesh %.0f ms; skip 2D writes %s; source %s"
+	print("[BOARD3D] %d voxel(s) (slices %d, columns %d, slabs %d) → %d face(s) → %d quad(s) in %d chunk(s), %d material(s), plane levels %d..%d; collect %.0f ms, mesh %.0f ms; skip 2D writes %s; source %s"
 		% [fields["voxels"], fields["slice_voxels"], fields["column_voxels"],
-		fields["slab_voxels"], cells_2d, faces, quads, fields["chunks"],
+		fields["slab_voxels"], faces, quads, fields["chunks"],
 		fields["materials"], _level_min, _level_max, fields["collect_ms"],
 		fields["mesh_ms"], VoxelRenderer.SKIP_BOARD_WRITES,
 		"store" if _store != null else "objects"])
@@ -1170,16 +1169,6 @@ func _sync_levels(levels: Dictionary, reason: String) -> void:
 	var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
 	print("[BOARD3D] recolour %s — %d level(s) uploaded in %.1f ms" % [reason, uploaded, ms])
 	Telemetry.event("board3d.recolour", {"reason": reason, "levels": uploaded, "ms": ms})
-
-
-func _count_2d_cells() -> int:
-	var renderer: VoxelRenderer = _room._voxel_renderer
-	var cells: int = 0
-	for level in range(GeometryCoords.FLOOR_DEEP_LEVEL, renderer.top_wall_level() + 1):
-		var layer: TileMapLayer = renderer.get_layer(level)
-		if layer != null:
-			cells += layer.get_used_cells().size()
-	return cells
 
 
 # ── detonation (DIAG-21 step 2 / 2c) ──────────────────────────────────────────

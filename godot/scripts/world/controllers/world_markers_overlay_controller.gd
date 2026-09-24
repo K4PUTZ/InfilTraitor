@@ -144,7 +144,7 @@ func _spill_color(level: int, ortho: bool) -> Color:
 	return Color(keeps, keeps, minf(1.0, keeps + 0.05), 1.0)
 
 
-func draw_shadow_debug() -> void:
+func draw_shadow_debug(canvas: Object = null) -> void:
 	## M2-13: ShadowOverlay now handles the permanent visualization.
 	## Kept only for technical debug in DEV_VISION (translucent blue overlay).
 	if not _vision_controller.dev_vision:
@@ -163,4 +163,4 @@ func draw_shadow_debug() -> void:
 		## Direct shadow: dark blue. Penumbra: lighter blue.
 		var alpha := 0.35 if mult < PENUMBRA_MULT else 0.15
 		var color := Color(0.1, 0.4, 1.0, alpha)
-		room.draw_colored_polygon(diamond, color)
+		(canvas if canvas != null else room).draw_colored_polygon(diamond, color)

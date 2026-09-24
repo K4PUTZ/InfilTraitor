@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**281 scripts · 101887 lines total** (under `godot/scripts/`)
+**281 scripts · 101904 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -533,7 +533,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1945 lines
+extends `Node3D` · 1934 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -6130,7 +6130,7 @@ extends `Node2D` · 35 lines
 **Public API**
 - `func setup(tile_shadow: Node2D, lighting_controller: Node, shadow_boundary: Node, light_ray: Node, vision_controller: Node, floor_layer_ref: Node2D, visual_offset: Vector2, room_size: Vector2i, shadow_tiles: Dictionary) -> void:`
 - `func repaint_world_shadows() -> void:`
-- `func draw_shadow_debug() -> void:`
+- `func draw_shadow_debug(canvas: Object = null) -> void:`
 
 ---
 
@@ -6280,7 +6280,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11897 lines
+extends `Node2D` · 11925 lines
 
 `godot/scripts/world/room.gd`
 

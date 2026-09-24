@@ -13,6 +13,12 @@
 ## THE CONTROL: within one boot, load and the post-event captures MUST differ (a gate that cannot see the event
 ## would pass forever). Every boot uses RNG seed 1.
 ##
+## ⚠️ THE GATE FAILS ON PIXELS ABOVE NOISE (8/255 per channel), NOT ON STRICT ZERO (2026-09-24). GLASS g0/g1 read 136 and
+## 63 px strict in some boots and 0 in others, with 0 px above 8/255 in every case: a low-amplitude jitter between two
+## boots of the same code (its source was not found). The strict count is still printed. It also means an old-vs-new
+## comparison of GLASS cannot claim better than "<= 8/255" — the pile comparison of R3D-9 step 3 (158 px, <= 3/255)
+## is inside this noise.
+##
 ## ⚠️ THE LONE FAILS OF 2026-09-24 WERE THE CELL CURSOR. A run read FAIL with GLASS g0/g1 ~100 px apart and did not
 ## repeat; when it recurred (296 px in g0) the differing pixels were ALL one colour, the cursor outline's (229, 25, 114),
 ## drawn in one boot and not the other because the real mouse sits over the window. Now masked by that exact colour.
@@ -111,8 +117,9 @@ def main() -> int:
             strict = differing(runs[0][label], runs[1][label], 0, MASK.get(case))
             loose = differing(runs[0][label], runs[1][label], NOISE, MASK.get(case))
             print("%s %s %s: run 1 vs run 2 — %d px strict, %d px above noise %d" % (TAG, case, label, strict, loose, NOISE))
-            if strict != 0:
-                problems.append("%s %s: %d px differ between two boots of the same code" % (case, label, strict))
+            if loose != 0:
+                problems.append("%s %s: %d px differ by more than %d/255 between two boots of the same code"
+                                % (case, label, loose, NOISE))
         for label in list(runs[0])[1:]:
             ctl = differing(runs[0]["load"], runs[0][label], NOISE)
             print("%s %s control: load vs %s — %d px" % (TAG, case, label, ctl))

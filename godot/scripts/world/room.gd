@@ -3198,6 +3198,7 @@ func _attach_ground_overlays(live: Node3D) -> void:
 			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game, fog_of_war]:
 		if overlay != null and is_instance_valid(overlay) and overlay.has_method("set_board3d"):
 			overlay.set_board3d(live if on else null)
+	_set_dev_ground(live if on else null)
 
 
 ## RENDER3D R3D-4e-2 — the VFX overlays draw their particles in the 3D board's world (depth-tested)
@@ -3726,7 +3727,7 @@ func _update_guard_los_data() -> void:
 			guard.set_los_data(_blocked_cells, blocked_edges, _room_size, _shadow_tiles)
 
 
-func _draw_exit_markers() -> void:
+func _draw_exit_markers(c: Object) -> void:
 	## Purple diamond on each segment exit tile.
 	## Drawn in the Room node's _draw() — renders below fog_of_war.
 	## Revealed naturally when the FOW uncovers the area. Visible in DEV_VISION
@@ -3743,13 +3744,13 @@ func _draw_exit_markers() -> void:
 			world + Vector2(0.0,  hh),
 			world + Vector2(-hw, 0.0),
 		])
-		draw_colored_polygon(pts, Color(0.55, 0.10, 0.90, 0.28))
-		draw_polyline(
+		c.draw_colored_polygon(pts, Color(0.55, 0.10, 0.90, 0.28))
+		c.draw_polyline(
 			PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]),
 			Color(0.72, 0.25, 1.00, 0.82), 3.0
 		)
 
-func _draw_spawn_marker() -> void:
+func _draw_spawn_marker(c: Object) -> void:
 	## Dark diamond on the spawn point — DEV_VISION only.
 	## Lets you quickly identify the AGENT_START_CELL when testing maps. Also needs `DEV_PANELS=1`.
 	if not _vision_controller.dev_vision or not _dev_panels_on:
@@ -3765,14 +3766,14 @@ func _draw_spawn_marker() -> void:
 		world + Vector2(0.0,  hh),
 		world + Vector2(-hw, 0.0),
 	])
-	draw_colored_polygon(pts, Color(0.05, 0.05, 0.05, 0.45))
-	draw_polyline(
+	c.draw_colored_polygon(pts, Color(0.05, 0.05, 0.05, 0.45))
+	c.draw_polyline(
 		PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]),
 		Color(0.22, 0.22, 0.22, 0.80), 2.0
 	)
 
 
-func _draw_playable_boundary() -> void:
+func _draw_playable_boundary(c: Object) -> void:
 	## Linha vermelha fina ao redor da área JOGÁVEL (excluindo o buffer ring).
 	## Visível apenas em DEV_VISION e com `DEV_PANELS=1` (fora disso poluía capturas e gravações).
 	if not _vision_controller.dev_vision or not _dev_panels_on:
@@ -3792,7 +3793,7 @@ func _draw_playable_boundary() -> void:
 	var s: Vector2 = GroundGridRef.map_to_local(origin + size) + off
 	var w: Vector2 = GroundGridRef.map_to_local(origin + Vector2i(0, size.y)) + off
 
-	draw_polyline(
+	c.draw_polyline(
 		PackedVector2Array([n, e, s, w, n]),
 		Color(1.0, 0.15, 0.15, 0.90),
 		2.5,
@@ -5460,11 +5461,38 @@ func scenario_place_guard(index: int, cell: Vector2i) -> bool:
 	return true
 
 
+## R3D-9 — the Room's DEV_VISION aids (exit diamonds, spawn diamond, the playable-area line, the shadow debug tint and
+## the guards' last-known markers) draw on the 3D board's ground, depth-tested, so a wall hides them. Before, they
+## painted over the 3D walls. `GROUND3D=0` keeps them 2D, like the overlays in `_attach_ground_overlays()`.
+const GroundCanvas3DRoomRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _dev_ground: RefCounted = null
+
+
+func _set_dev_ground(board: Node3D) -> void:
+	if _dev_ground != null:
+		_dev_ground.detach()
+		_dev_ground = null
+	if board != null:
+		_dev_ground = GroundCanvas3DRoomRef.new()
+		_dev_ground.attach(board, 5, 0.012, false)
+		_dev_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
-	_draw_exit_markers()
-	_draw_spawn_marker()
-	_draw_playable_boundary()
-	_world_markers_controller.draw_shadow_debug()
+	if _dev_ground == null:
+		_draw_dev_into(self)
+		return
+	_dev_ground.begin(self)
+	_draw_dev_into(_dev_ground)
+	_dev_ground.end()
+
+
+func _draw_dev_into(c: Object) -> void:
+	_draw_exit_markers(c)
+	_draw_spawn_marker(c)
+	_draw_playable_boundary(c)
+	_world_markers_controller.draw_shadow_debug(c)
 
 	## Draw enemy last_known markers
 	for guard in _guards:
@@ -5475,10 +5503,10 @@ func _draw() -> void:
 		if guard.state == guard.STATE_PATROL:
 			continue
 		var world := _world_center_for_cell(guard.last_known_agent_cell)
-		draw_circle(world, 18.0, Color(1.0, 0.72, 0.18, 0.24))
-		draw_circle(world, 18.0, Color(1.0, 0.9, 0.2, 0.82), 3.0)
-		draw_line(world + Vector2(-8.0, 0.0), world + Vector2(8.0, 0.0), Color(1.0, 1.0, 1.0, 0.92), 2.5)
-		draw_line(world + Vector2(0.0, -8.0), world + Vector2(0.0, 8.0), Color(1.0, 1.0, 1.0, 0.92), 2.5)
+		c.draw_circle(world, 18.0, Color(1.0, 0.72, 0.18, 0.24))
+		c.draw_circle(world, 18.0, Color(1.0, 0.9, 0.2, 0.82))
+		c.draw_line(world + Vector2(-8.0, 0.0), world + Vector2(8.0, 0.0), Color(1.0, 1.0, 1.0, 0.92), 2.5)
+		c.draw_line(world + Vector2(0.0, -8.0), world + Vector2(0.0, 8.0), Color(1.0, 1.0, 1.0, 0.92), 2.5)
 
 
 func _update_selected_preview() -> void:

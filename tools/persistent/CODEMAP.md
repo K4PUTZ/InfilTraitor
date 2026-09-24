@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**281 scripts · 101856 lines total** (under `godot/scripts/`)
+**281 scripts · 101887 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -533,7 +533,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1940 lines
+extends `Node3D` · 1945 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -553,6 +553,7 @@ extends `Node3D` · 1940 lines
 - `func ground_point(point_2d: Vector2) -> Vector3:`
 - `func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:`
 - `func ground_affine() -> Transform2D:`
+- `func ground_level() -> int:`
 - `func ground_origin() -> Vector2:`
 - `func pick_ground(screen_pos: Vector2) -> Vector3:`
 - `func pick_cell(screen_pos: Vector2) -> Vector2i:`
@@ -740,11 +741,11 @@ extends `Node3D` · 1940 lines
 
 ### `floor_pile3d.gd`
 
-`class_name FloorPile3D` · extends `RefCounted` · 124 lines
+`class_name FloorPile3D` · extends `RefCounted` · 137 lines
 
 `godot/scripts/geometry/floor_pile3d.gd`
 
-> FloorPile3D — the glass-shard piles on the 3D board's floor. RENDER3D R3D-6 (item 6). The 2D board draws a landed pane's piles as one `Sprite2D` per cell (`VoxelRenderer.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles — the white band that stays on the floor after a pane is shot out — were not drawn at all. HOW: the sprite's four screen corners are carried onto the ground plane by the board's own 2D → ground map (`ground_point`), which is affine, so the decal re-projects to the very pixels the sprite covered. One `ArrayMesh` per decal variant (three), rebuilt once per frame at most when a pile changes, so a whole pane's ~650 piles are three draw calls. Depth-tested: a wall in front hides a pile. State stays where it always was (`Room._base_shards`, base-space); this only draws it.
+> FloorPile3D — the glass-shard piles on the 3D board's floor. RENDER3D R3D-6 (item 6). The 2D board draws a landed pane's piles as one `Sprite2D` per cell (`VoxelRenderer.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles — the white band that stays on the floor after a pane is shot out — were not drawn at all. HOW (R3D-9): a pile is DATA — a voxel cell, a level, a variant and an opacity (`VoxelRenderer.spawn_floor_shard_pile` hands them over, from `Room._base_shards`); nothing is read from a sprite. Its ground quad is the cell's centre plus the decal's screen-aligned half-side carried onto the ground by the board's own 2D → ground map (a linear map, so the decal keeps the very shape it had as a sprite). One `ArrayMesh` per decal variant (three), rebuilt once per frame at most when a pile changes, so a whole pane's ~650 piles are three draw calls. Depth-tested: a wall in front hides a pile. State stays where it always was (`Room._base_shards`, base-space); this only draws it.
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/floor_decal3d.gdshader"`
@@ -752,7 +753,7 @@ extends `Node3D` · 1940 lines
 **Public API**
 - `func attach(board: Node3D, textures: Array, priority: int, lift: float) -> void:`
 - `func detach() -> void:`
-- `func set_pile(key: Vector3i, variant: int, pos_2d: Vector2, size_px: float, alpha: float) -> void:`
+- `func set_pile(key: Vector3i, variant: int, alpha: float) -> void:`
 - `func clear() -> void:`
 - `func pile_count() -> int:`
 
@@ -1152,7 +1153,7 @@ extends `Node3D` · 1940 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7971 lines
+`class_name VoxelRenderer` · extends `Node2D` · 7984 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 

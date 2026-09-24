@@ -417,6 +417,11 @@ func ground_affine() -> Transform2D:
 	return _to_gu
 
 
+## The absolute level the board's ground plane sits at (Rule 9: asked, never typed).
+func ground_level() -> int:
+	return _ground_level
+
+
 func ground_origin() -> Vector2:
 	return _origin_2d
 

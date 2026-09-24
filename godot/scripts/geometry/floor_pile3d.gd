@@ -4,10 +4,12 @@
 ## (`VoxelRenderer.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles —
 ## the white band that stays on the floor after a pane is shot out — were not drawn at all.
 ##
-## HOW: the sprite's four screen corners are carried onto the ground plane by the board's own 2D → ground
-## map (`ground_point`), which is affine, so the decal re-projects to the very pixels the sprite covered.
-## One `ArrayMesh` per decal variant (three), rebuilt once per frame at most when a pile changes, so a
-## whole pane's ~650 piles are three draw calls. Depth-tested: a wall in front hides a pile.
+## HOW (R3D-9): a pile is DATA — a voxel cell, a level, a variant and an opacity (`VoxelRenderer.spawn_floor_shard_pile`
+## hands them over, from `Room._base_shards`); nothing is read from a sprite. Its ground quad is the cell's centre
+## plus the decal's screen-aligned half-side carried onto the ground by the board's own 2D → ground map (a linear
+## map, so the decal keeps the very shape it had as a sprite). One `ArrayMesh` per decal variant (three), rebuilt
+## once per frame at most when a pile changes, so a whole pane's ~650 piles are three draw calls. Depth-tested: a
+## wall in front hides a pile.
 ##
 ## State stays where it always was (`Room._base_shards`, base-space); this only draws it.
 class_name FloorPile3D
@@ -18,7 +20,7 @@ const SHADER_PATH := "res://godot/shaders/floor_decal3d.gdshader"
 var _board: Node3D = null
 var _nodes: Array = []      ## MeshInstance3D, one per variant
 var _meshes: Array = []     ## ArrayMesh, one per variant
-var _piles: Dictionary = {} ## Vector3i(cell, level) -> {"variant", "pos", "half", "alpha"}
+var _piles: Dictionary = {} ## Vector3i(cell, level) -> {"variant", "alpha"}
 var _dirty: bool = false
 var _lift: float = 0.004
 
@@ -56,11 +58,11 @@ func detach() -> void:
 	_board = null
 
 
-## `pos_2d` is the sprite's centre and `size_px` its side, exactly as the 2D sprite has them.
-func set_pile(key: Vector3i, variant: int, pos_2d: Vector2, size_px: float, alpha: float) -> void:
+## `key` is Vector3i(voxel cell x, voxel cell y, level).
+func set_pile(key: Vector3i, variant: int, alpha: float) -> void:
 	if _nodes.is_empty():
 		return
-	_piles[key] = {"variant": variant % _nodes.size(), "pos": pos_2d, "half": size_px * 0.5, "alpha": alpha}
+	_piles[key] = {"variant": variant % _nodes.size(), "alpha": alpha}
 	_mark_dirty()
 
 
@@ -94,15 +96,26 @@ func _rebuild() -> void:
 		uvs.append(PackedVector2Array())
 		cols.append(PackedColorArray())
 	var lift := Vector3.UP * _lift
+	var to_gu: Transform2D = _board.call("ground_affine")
+	var h: float = VoxelRenderer.floor_shard_half_px()
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	## The decal's screen-aligned corners, as ground offsets (the map is linear, so one set serves every pile).
+	var oa: Vector2 = to_gu.basis_xform(Vector2(-h, -h))
+	var ob: Vector2 = to_gu.basis_xform(Vector2(h, -h))
+	var od: Vector2 = to_gu.basis_xform(Vector2(h, h))
+	var oe: Vector2 = to_gu.basis_xform(Vector2(-h, h))
+	var ground_level: int = _board.call("ground_level")
 	for key in _piles:
 		var p: Dictionary = _piles[key]
 		var v: int = int(p["variant"])
-		var c: Vector2 = p["pos"]
-		var h: float = float(p["half"])
-		var a: Vector3 = _board.call("ground_point", c + Vector2(-h, -h)) + lift
-		var b: Vector3 = _board.call("ground_point", c + Vector2(h, -h)) + lift
-		var d: Vector3 = _board.call("ground_point", c + Vector2(h, h)) + lift
-		var e: Vector3 = _board.call("ground_point", c + Vector2(-h, h)) + lift
+		## A pile on a level below the playable ground sits `VOXEL_STEP_PX` lower on screen per level, and the 2D
+		## sprite carried that in its position; on the ground plane it is the same step through the same map.
+		var drop: Vector2 = to_gu.basis_xform(Vector2(0.0, GeometryCoords.VOXEL_STEP_PX * float(ground_level - key.z)))
+		var centre := Vector3((float(key.x) + 0.5) * unit + drop.x, 0.0, (float(key.y) + 0.5) * unit + drop.y) + lift
+		var a: Vector3 = centre + Vector3(oa.x, 0.0, oa.y)
+		var b: Vector3 = centre + Vector3(ob.x, 0.0, ob.y)
+		var d: Vector3 = centre + Vector3(od.x, 0.0, od.y)
+		var e: Vector3 = centre + Vector3(oe.x, 0.0, oe.y)
 		var col := Color(1.0, 1.0, 1.0, float(p["alpha"]))
 		verts[v].append_array(PackedVector3Array([a, b, d, a, d, e]))
 		uvs[v].append_array(PackedVector2Array([

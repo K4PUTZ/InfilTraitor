@@ -5606,6 +5606,8 @@ func _build_craze_opening_mask(c: Dictionary) -> void:
 ## own local centre, which for a floor voxel IS the centre of its top diamond —
 ## the same origin `glass_crack_face_centre()` offsets AWAY from for a wall face.
 var _floor_shards: Dictionary = {}      ## Vector3i(cell, level) -> Sprite2D
+## R3D-9: (variant, count) per pile, keyed like `_floor_shards` — what the 3D board draws from.
+var _floor_shard_records: Dictionary = {}
 var _floor_shard_root: Node2D = null
 const FloorPile3DRef = preload("res://godot/scripts/geometry/floor_pile3d.gd")
 var _pile3d: RefCounted = null          ## RENDER3D — the same piles drawn on the 3D board's floor
@@ -5671,18 +5673,29 @@ func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int
 	## A single shard is faint, a whole column's collapse is not. Capped below 1 —
 	## a pile is glass on a floor, never a new floor. Tuned up 2026-09-06 (see the
 	## constants) because G4-4's scatter drops the per-cell count.
-	sprite.modulate = Color(1.0, 1.0, 1.0, clampf(
-		FLOOR_SHARD_ALPHA_BASE + FLOOR_SHARD_ALPHA_GAIN * float(count),
-		FLOOR_SHARD_ALPHA_BASE, FLOOR_SHARD_ALPHA_MAX))
+	sprite.modulate = Color(1.0, 1.0, 1.0, floor_shard_alpha(count))
 	sprite.position = layer.position + layer.map_to_local(cell)
 	## The decal is authored at 256 px square for a 32 px cell diamond.
 	sprite.scale = Vector2.ONE * (32.0 * FLOOR_SHARD_SCALE / maxf(float(tex.get_width()), 1.0))
 	sprite.z_index = layer.z_index + 1
 	sprite.set_meta("pile_variant", variant)
+	## R3D-9: the pile as DATA — the 3D board draws from this, never from the sprite's screen position, scale or alpha.
+	_floor_shard_records[key] = {"variant": variant, "count": count}
 	if _pile3d != null:
-		_pile3d.set_pile(key, variant, sprite.position,
-			float(tex.get_width()) * sprite.scale.x, sprite.modulate.a)
+		_pile3d.set_pile(key, variant, floor_shard_alpha(count))
 	return true
+
+
+## A pile's opacity from how many voxels landed there. One formula for both boards.
+static func floor_shard_alpha(count: int) -> float:
+	return clampf(FLOOR_SHARD_ALPHA_BASE + FLOOR_SHARD_ALPHA_GAIN * float(count),
+		FLOOR_SHARD_ALPHA_BASE, FLOOR_SHARD_ALPHA_MAX)
+
+
+## Half the decal's side on screen, in px (the decal is authored for a 32 px cell diamond). The 3D board turns it into
+## a ground quad through its own screen-to-ground map.
+static func floor_shard_half_px() -> float:
+	return 16.0 * FLOOR_SHARD_SCALE
 
 
 ## RENDER3D — draw the shard piles on the 3D board too (this renderer is hidden under it). Piles that
@@ -5698,15 +5711,15 @@ func set_pile_board3d(board: Node3D) -> void:
 		textures.append(_floor_shard_texture(i))
 	_pile3d = FloorPile3DRef.new()
 	_pile3d.attach(board, textures, 3, 0.02)
-	for key in _floor_shards:
-		var sp = _floor_shards[key]
-		if sp != null and is_instance_valid(sp) and sp.texture != null:
-			_pile3d.set_pile(key, int(sp.get_meta("pile_variant", 0)), sp.position, float(sp.texture.get_width()) * sp.scale.x, sp.modulate.a)
+	for key in _floor_shard_records:
+		var rec: Dictionary = _floor_shard_records[key]
+		_pile3d.set_pile(key, int(rec["variant"]), floor_shard_alpha(int(rec["count"])))
 
 
 ## Drop every pile. A perspective flip rebuilds the renderer, so this is what
 ## keeps orphans from surviving it; the room puts them back from its base store.
 func clear_floor_shards() -> void:
+	_floor_shard_records.clear()
 	for k in _floor_shards:
 		var sp = _floor_shards[k]
 		if sp != null and is_instance_valid(sp):

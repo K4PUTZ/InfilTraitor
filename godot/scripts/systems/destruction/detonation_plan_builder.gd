@@ -1471,7 +1471,11 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				## it, so it is handed the Delta's PROJECTED copy. The real Voxel is
 				## what goes into `touched_voxels`, because that list is the commit's
 				## persistence seam and needs the object, not a snapshot of it.
-				var resolved := _resolve_damaged_tile(
+				## R3D-10: on the 3D board no tile is ever written, so nothing resolves one — the entry carries the
+				## voxel key, the soot code and the ring, exactly the fields the plane-only writer reads. `PLAN_RESOLVE=1`
+				## (same binary) puts the old resolve back for the A/B; a GLASS-family container still yields no entry,
+				## which is what an empty resolve meant.
+				var resolved: Dictionary = _resolve_damaged_tile_or_none(
 					delta.project_voxel(voxel), container, voxel_renderer)
 				## GLASS-OLIVE — an empty resolve is "no opaque tile", not a miss.
 				## The damage itself is already recorded above (`touched_voxels` is
@@ -1481,7 +1485,8 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				## The craze web — a sprite over the pane — is the whole visual for
 				## a cracked pane, exactly as G-D27 ratified.
 				if not resolved.is_empty():
-					var alt := _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
+					var alt: int = 0 if bool(resolved.get("no_tile", false)) \
+						else _alt_for(field, voxel.grid_pos, voxel.level, resolved["alternative_id"])
 					var wave_key: String = "dented" if state == Voxel.DamageState.DENTED else "cracked"
 					_count(census, wave_key, container, resolved["baked"])
 					_append(waves[wave_key], ring, {"cell": voxel.grid_pos, "level": voxel.level,
@@ -1513,7 +1518,8 @@ static func _phase_expose(s: Dictionary, deadline: int) -> void:
 		i += 1
 		var lit_expose: Array = []
 		for e in exposed_by_ring[ring]:
-			var alt := _alt_for(field, e["grid_pos"], e["level"], e["alternative_id"])
+			var alt: int = 0 if not resolves_tiles() \
+				else _alt_for(field, e["grid_pos"], e["level"], e["alternative_id"])
 			lit_expose.append({"cell": e["grid_pos"], "level": e["level"],
 				"source_id": e["source_id"], "atlas_coords": e["atlas_coords"], "alt": alt,
 				"soot": _soot_code_at(s, Vector3i(e["grid_pos"].x, e["grid_pos"].y, int(e["level"]))),
@@ -1736,6 +1742,8 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 			touched_cells.append(Vector3i(v.grid_pos.x, v.grid_pos.y, v.level))
 		delta.touched = touched_cells
 		delta.census = s["census"]
+		if OS.get_environment("INFILTRAITOR_PLAN_DIGEST") == "1":
+			print("[PLAN-DIGEST] %s" % plan_digest(delta))
 		_enter_phase(s, PHASE_DONE)
 
 
@@ -2208,6 +2216,51 @@ const EMBER_NEIGHBOURS: Array[Vector3i] = [
 ## also why hiding one `voxel_layer_N` at a time never made the colour go away.
 ## A rotation cleared it because the rebuild re-runs `_set_voxel_cell(apply=true)`,
 ## whose glass branch erases the opaque cell.
+## R3D-10 — an order-independent digest of what a plan SAYS, without the tile fields: per wave kind the ring, the voxel
+## key, the soot code and the radius of every entry (the nested `expose` reveals included), sorted, then hashed; and the
+## census's destroy/dented/cracked counts (not its baked/live split, which has no meaning without a tile). Two plans with
+## the same digest change the same voxels, the same tiers, the same soot, in the same rings.
+static func plan_digest(delta: WorldDelta) -> String:
+	var rows: PackedStringArray = []
+	var counts: Dictionary = {}
+	for kind: String in ["destroy", "dented", "cracked", "soot"]:
+		for ring in delta.waves.get(kind, {}).keys():
+			for entry: Dictionary in delta.waves[kind][ring]:
+				var cell: Vector2i = entry["cell"]
+				rows.append("%s|%d|%d,%d,%d|%d|%.3f" % [kind, int(ring), cell.x, cell.y, int(entry["level"]),
+					int(entry.get("soot", -1)), float(entry.get("r", 0.0))])
+				counts[kind] = int(counts.get(kind, 0)) + 1
+				for reveal: Dictionary in entry.get("expose", []):
+					var rc: Vector2i = reveal["cell"]
+					rows.append("expose|%d|%d,%d,%d|%d|%.3f" % [int(ring), rc.x, rc.y, int(reveal["level"]),
+						int(reveal.get("soot", -1)), float(reveal.get("r", 0.0))])
+					counts["expose"] = int(counts.get("expose", 0)) + 1
+	rows.sort()
+	var tiers: Array = []
+	var groups: Array = delta.census.keys()
+	groups.sort()
+	for g in groups:
+		var row: Dictionary = delta.census[g]
+		tiers.append("%s:%d/%d/%d" % [g, int(row["destroy"]), int(row["dented"]), int(row["cracked"])])
+	return "%s counts %s tiers %s touched %d" % ["\n".join(rows).md5_text(), counts, "|".join(tiers), delta.touched.size()]
+
+
+## R3D-10 — `RESOLVE_TILES`: whether the plan resolves a tile per entry. False on the 3D board (`SKIP_BOARD_WRITES`), where
+## no tile is written; `INFILTRAITOR_PLAN_RESOLVE=1` forces the old resolve for a same-binary A/B. Deleted with the stage's flag.
+static func resolves_tiles() -> bool:
+	return VoxelRendererClass.plan_resolves_tiles()
+
+
+## The resolve, or on the 3D board the placeholder that stands for it: `{}` for a glass-family container (no opaque
+## entry, as before) and `{"no_tile": true, ...}` for everything else.
+static func _resolve_damaged_tile_or_none(voxel: Voxel, container, voxel_renderer: VoxelRendererClass) -> Dictionary:
+	if resolves_tiles():
+		return _resolve_damaged_tile(voxel, container, voxel_renderer)
+	if container != null and GlassMaterials.is_glass(_material_name(container)):
+		return {}
+	return {"source_id": -1, "atlas_coords": Vector2i.ZERO, "alternative_id": 0, "baked": false, "no_tile": true}
+
+
 static func _resolve_damaged_tile(voxel: Voxel, container, voxel_renderer: VoxelRendererClass) -> Dictionary:
 	if container == null:
 		return {"source_id": 0, "atlas_coords": Vector2i.ZERO, "alternative_id": 0, "baked": false}

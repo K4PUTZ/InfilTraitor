@@ -4939,6 +4939,11 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 	if _voxel_renderer == null or _lighting_controller == null or scope_gus.is_empty():
 		_shot_precook_done = true
 		return
+	## R3D-10: this warms TileSet alternatives (it minted 0 on the 3D board, 2026-09-22) after building a whole light
+	## field for the predicted world. On the 3D board there is no tile to warm, so none of it runs.
+	if VoxelRenderer.SKIP_BOARD_WRITES and not VoxelRenderer.plan_resolves_tiles():
+		_shot_precook_done = true
+		return
 	var registry = _lighting_controller.get_light_registry()
 	if registry == null:
 		_shot_precook_done = true

@@ -1118,6 +1118,11 @@ func _pump_prediction(job: DetonationPrediction = null) -> void:
 func _warm_prediction(job: DetonationPrediction) -> void:
 	if job.delta == null or job.warmed:
 		return
+	## R3D-10: the warm-up mints tile alternatives and uploads composited damage pages, both for the 2D board's tiles.
+	## The 3D board writes no tile, so there is nothing to warm (and no rebuild frame to wait for).
+	if VoxelRenderer.SKIP_BOARD_WRITES and not VoxelRenderer.plan_resolves_tiles():
+		job.warmed = true
+		return
 	var warm_start_us: int = Time.get_ticks_usec()
 	var minted_before: int = room._voxel_renderer.minted_light_alt_count()
 

@@ -7543,6 +7543,12 @@ func set_glass_opaque_preview(enable: bool) -> void:
 ## "atlas_coords":Vector2i, "alternative_id":int}] when apply is false (one
 ## entry per currently-visible voxel), empty when apply is true (existing
 ## callers all ignore the return value already).
+## R3D-10 — whether a detonation PLAN resolves a tile per entry. False on the 3D board (no tile is written there);
+## `INFILTRAITOR_PLAN_RESOLVE=1` forces the old resolve for a same-binary A/B, and is deleted with the stage.
+static func plan_resolves_tiles() -> bool:
+	return not SKIP_BOARD_WRITES or OS.get_environment("INFILTRAITOR_PLAN_RESOLVE") == "1"
+
+
 func render_slab(slab: Slab, apply: bool = true) -> Array:
 	var resolved: Array = []
 	if slab.voxels.is_empty():
@@ -7568,6 +7574,13 @@ func render_slab(slab: Slab, apply: bool = true) -> Array:
 	## resolve-only call never wrote a tile even before this step, and its caller
 	## still needs the real resolved answer.
 	if SKIP_BOARD_WRITES and apply:
+		return resolved
+	## R3D-10: the exposure plan needs WHICH cells a slab shows, not which tile draws each; on the 3D board there is no tile.
+	if not apply and not plan_resolves_tiles():
+		for voxel in slab.voxels:
+			if voxel.visible:
+				resolved.append({"grid_pos": voxel.grid_pos, "level": voxel.level,
+					"source_id": -1, "atlas_coords": Vector2i.ZERO, "alternative_id": 0})
 		return resolved
 
 	# Floor-zone bake: a Slab whose material isn't the "earth" sentinel was
@@ -7706,6 +7719,11 @@ func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true)
 	## exposure fallback resolves this with `apply == false` and needs the real
 	## answer even under `RENDER3D`.
 	if SKIP_BOARD_WRITES and apply:
+		return resolved
+	if not apply and not plan_resolves_tiles():
+		for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
+			resolved.append({"grid_pos": voxel_pos, "level": level,
+				"source_id": -1, "atlas_coords": Vector2i.ZERO, "alternative_id": 0})
 		return resolved
 
 	if _bake_config == null:

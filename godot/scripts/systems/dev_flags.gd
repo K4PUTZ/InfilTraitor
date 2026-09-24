@@ -85,8 +85,6 @@ func _ready() -> void:
 	## deleted the two switches that overrode it (`SKIP_2D_BOARD_WRITES`, `RENDER3D_2D_BUILD`): the 2D board is built
 	## exactly when `RENDER3D=0`. Removed at R3D-END along with the 2D board itself.
 	VoxelRenderer.SKIP_BOARD_WRITES = on("RENDER3D")
-	## RENDER3D R3D-1c step 2 — the prediction WALK reads the VoxelStore. `=0` = object walk.
-	DetonationPlanBuilder.STORE_WALK = value("STORE_WALK", "1") != "0"
 	## DIAG-22 — `=0` is the old lazy path (one TileSet mutation per new composite),
 	## kept only so one APK can measure both sides.
 	if value("COMPOSITE_TILES_UP_FRONT", "") == "0":

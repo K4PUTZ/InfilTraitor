@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**281 scripts · 102040 lines total** (under `godot/scripts/`)
+**281 scripts · 102032 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2759,7 +2759,7 @@ extends `RefCounted` · 941 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 252 lines
+extends `Node` · 248 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3588,7 +3588,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 542 lines
+`class_name VoxelStore` · extends `RefCounted` · 538 lines
 
 `godot/scripts/systems/voxel_store.gd`
 

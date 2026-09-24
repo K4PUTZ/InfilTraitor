@@ -249,11 +249,8 @@ const PHASE_NAMES: Array[String] = [
 static var WALK_CHUNK: int = 512
 
 ## RENDER3D R3D-1c step 2 — the WALK reads voxel state from the `VoxelStore` instead of the
-## `Voxel` objects. DEFAULT ON (DevFlags `STORE_WALK`; `=0` is the object walk, kept for
-## comparison). Falls back to the object walk, loudly once, whenever the active store does
-## not hold exactly this plan's containers — a selftest fixture, or a store built for
-## another board.
-static var STORE_WALK: bool = true
+## `Voxel` objects (R3D-13 deleted the `STORE_WALK` switch). Falls back to the object walk, loudly once, whenever the
+## active store does not hold exactly this plan's containers — a selftest fixture, or a store built for another board.
 static var _store_walk_mismatch_warned: bool = false
 static var PACKAGE_CHUNK: int = 256
 static var SOOTWAVE_CHUNK: int = 512
@@ -1144,7 +1141,7 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 ## counts, else null. Checked once per plan, at the WALK's first visit.
 static func _walk_store_for(containers: Array) -> VoxelStore:
 	var store: VoxelStore = VoxelStore.active
-	if not STORE_WALK or store == null:
+	if store == null:
 		return null
 	var matches: bool = store.container_count() == containers.size()
 	if matches:
@@ -1157,7 +1154,7 @@ static func _walk_store_for(containers: Array) -> VoxelStore:
 	if not matches:
 		if not _store_walk_mismatch_warned:
 			_store_walk_mismatch_warned = true
-			push_warning("[DetonationPlanBuilder] STORE_WALK: the active VoxelStore does not hold this plan's %d containers (it holds %d) — the WALK reads the objects"
+			push_warning("[DetonationPlanBuilder] the store walk: the active VoxelStore does not hold this plan's %d containers (it holds %d) — the WALK reads the objects"
 				% [containers.size(), store.container_count()])
 		return null
 	return store

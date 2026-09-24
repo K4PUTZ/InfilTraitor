@@ -149,8 +149,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	MemStage.mark("11 room build starts")
 	_room_size = room_size
 	## R3D-11: on the 3D board nothing reads the floor layer any more (gameplay asks `GroundGrid.has_cell`), so nothing
-	## writes it either. `GROUND_TILES=1` (the A/B) keeps the old fill.
-	var write_floor: bool = not VoxelRenderer.SKIP_BOARD_WRITES or GroundGrid.tiles_are_authority()
+	## writes it either.
+	var write_floor: bool = not VoxelRenderer.SKIP_BOARD_WRITES
 	if write_floor:
 		floor_layer.clear()
 	structure_layer.clear()

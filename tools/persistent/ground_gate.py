@@ -4,8 +4,8 @@
 ##
 ## Boots the real game per map with the scenario
 ##     ground_check n; perspective E; ground_check e; perspective S; ground_check s; perspective W; ground_check w
-## once with the new authority (default) and once with `INFILTRAITOR_GROUND_TILES=1` (the tile data back, same binary), and
-## requires for every map and view:
+## once on the 3D board (the floor layer is never written) and once on the 2D board (`RENDER3D=0`: the layer still holds the
+## floor tiles, so the in-process tile-vs-grid comparison means something), and requires for every map and view:
 ##   1. IN-PROCESS, on the boot that still fills the layer: walk_mismatch 0 and point_mismatch 0 — over every cell of the map and
 ##      a 3-cell margin, "the layer holds a tile here" equals "the cell is inside the room's rectangle", and `map_to_local`
 ##      agrees with `GroundGrid.map_to_local`; on the NEW boot the layer holds NO tile (`tiles 0`): nothing writes it;
@@ -32,9 +32,9 @@ LINE = re.compile(r"\[GROUND-CHECK\] (\w) size \((\d+), (\d+)\) tiles (\d+) \| w
                   r"floor_pos (.*?) floor_scale (.*?) \| (walk .*)$")
 
 
-def boot(map_id: str, tiles: bool):
+def boot(map_id: str, tiles: bool):  ## tiles=True: the 2D board, whose floor layer holds tiles
     env = {**os.environ, "INFILTRAITOR_MAP": map_id, "INFILTRAITOR_RNG_SEED": "1", "INFILTRAITOR_SCENARIO": SCENARIO,
-           "INFILTRAITOR_GROUND_TILES": "1" if tiles else "0"}
+           "INFILTRAITOR_RENDER3D": "0" if tiles else "1"}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--position", "4000,4000"], capture_output=True, text=True,
                          env=env, timeout=400)
     log = out.stdout + out.stderr

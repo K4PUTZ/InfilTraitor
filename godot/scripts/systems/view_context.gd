@@ -59,30 +59,8 @@ static func count_visible_cells(viewport: Viewport, floor_layer: TileMapLayer, r
 		visual_offset: Vector2, cell_to_screen: Callable, to_local: Callable) -> Dictionary:
 	if floor_layer == null or not cell_to_screen.is_valid():
 		return {"gu_visible": "unavailable", "gu_total": "unavailable"}
-	## R3D-11: the extent is the room's and the lattice is `GroundGrid`'s; the layer is read only under the A/B flag.
-	if not GroundGridRef.tiles_are_authority():
-		return _count_visible_ground(viewport, room_size, visual_offset, cell_to_screen, to_local)
-	var visible: Rect2 = viewport.get_visible_rect()
-	var inverse: Transform2D = viewport.get_canvas_transform().affine_inverse()
-	var corners: Array[Vector2] = [visible.position,
-		Vector2(visible.end.x, visible.position.y), visible.end,
-		Vector2(visible.position.x, visible.end.y)]
-	var scan: Rect2i = Rect2i()
-	for i in range(corners.size()):
-		var local: Vector2 = floor_layer.to_local(inverse * corners[i]) - visual_offset
-		var cell: Vector2i = floor_layer.local_to_map(local)
-		scan = Rect2i(cell, Vector2i.ZERO) if i == 0 else scan.expand(cell)
-	scan = scan.grow(SCAN_MARGIN_CELLS).intersection(floor_layer.get_used_rect())
-	var on_screen: int = 0
-	for y in range(scan.position.y, scan.end.y):
-		for x in range(scan.position.x, scan.end.x):
-			var cell: Vector2i = Vector2i(x, y)
-			if floor_layer.get_cell_source_id(cell) == -1:
-				continue
-			var screen: Vector2 = cell_to_screen.call(cell)
-			if visible.has_point(screen):
-				on_screen += 1
-	return {"gu_visible": on_screen, "gu_total": floor_layer.get_used_cells().size()}
+	## R3D-11: the extent is the room's and the lattice is `GroundGrid`'s; the layer is not read.
+	return _count_visible_ground(viewport, room_size, visual_offset, cell_to_screen, to_local)
 
 
 static func _count_visible_ground(viewport: Viewport, room_size: Vector2i, visual_offset: Vector2,

@@ -3038,8 +3038,9 @@ func board3d() -> Node:
 
 
 ## R3D-11 — the `ground_check` scenario step: what gameplay reads of the ground, as digests, plus an in-process
-## comparison of the two authorities over every cell of the map and a 3-cell margin. `tools/persistent/ground_gate.py`
-## runs it with `GROUND_TILES` off and on and requires every digest to agree.
+## comparison of the two authorities over every cell of the map and a 3-cell margin (meaningful on the 2D board, whose floor
+## layer still holds the tiles). `tools/persistent/ground_gate.py` runs it on the 3D and the 2D board and requires every
+## digest to agree.
 func scenario_ground_check(label: String) -> bool:
 	if floor_layer == null or _room_size == Vector2i.ZERO:
 		push_error("[Room] scenario_ground_check: no floor")
@@ -5806,14 +5807,12 @@ func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i =
 ## (map_to_local + Vector2(0,64)) finds the diamond that truly contains the
 ## click — this corrects the other three quadrants.
 ## R3D-11 — the ground grid gameplay asks: the extent, and whether a cell is inside it (walkable floor). Nothing here
-## reads a TileMapLayer; `GROUND_TILES=1` (A/B) puts the tile read back.
+## reads a TileMapLayer.
 func ground_size() -> Vector2i:
 	return _room_size
 
 
 func has_ground_cell(cell: Vector2i) -> bool:
-	if GroundGridRef.tiles_are_authority():
-		return floor_layer.get_cell_source_id(cell) != -1
 	return GroundGridRef.has_cell(cell, _room_size)
 
 

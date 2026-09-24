@@ -47,12 +47,6 @@ static func has_cell(cell: Vector2i, size: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < size.x and cell.y < size.y
 
 
-## R3D-11 — the same-binary A/B: `INFILTRAITOR_GROUND_TILES=1` puts the old tile-data reads back, for the identity
-## check (`Room.scenario_ground_check`). Deleted with the stage.
-static func tiles_are_authority() -> bool:
-	return OS.get_environment("INFILTRAITOR_GROUND_TILES") == "1"
-
-
 ## The cell's centre in the game's convention.
 static func cell_center(cell: Vector2i, offset: Vector2) -> Vector2:
 	return map_to_local(cell) + Vector2(0.0, HALF_H) + offset

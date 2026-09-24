@@ -280,19 +280,7 @@ func _is_traversable(cell: Vector2i) -> bool:
 		return false
 	if _blocked_cells.has(cell):
 		return false
-	if not GroundGridRef.tiles_are_authority():
-		return ground_size.is_valid() and GroundGridRef.has_cell(cell, ground_size.call())
-	var source_id := floor_layer.get_cell_source_id(cell)
-	if source_id == -1:
-		return false
-
-	var source := floor_layer.tile_set.get_source(source_id) as TileSetAtlasSource
-	if source == null:
-		return false
-	var tile_data := source.get_tile_data(Vector2i(0, 0), 0)
-	if tile_data == null:
-		return false
-	return bool(tile_data.get_custom_data("walkable"))
+	return ground_size.is_valid() and GroundGridRef.has_cell(cell, ground_size.call())
 
 
 func _is_edge_blocked(from_cell: Vector2i, to_cell: Vector2i) -> bool:

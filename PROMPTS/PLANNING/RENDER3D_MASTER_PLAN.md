@@ -1,5 +1,35 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.20
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.21
+
+**2026-09-24 update (v1.21) — R3D-8 AND R3D-9 BUILT (Director: "pode seguir com todos os passos do R3D").** Commits `8e757cb1`..`9faf39b1`.
+- **R3D-8, what changed and what it found:**
+  - **The 3D selftest run had never been 3D.** `SKIP_BOARD_WRITES` was set only by the `DevFlags` autoload, which a `--script` selftest does not have, so
+    the first "62 of 63 clean on RENDER3D=1" wrote the 2D board. It now also reads `INFILTRAITOR_RENDER3D`; the runner defaults to 3D. The first REAL
+    3D run: 53 clean, 10 failed, every failure a read of what the 2D renderer placed in a tile. **`PINNED_2D` in `run_selftests.py` lists 18 suites with
+    the reason each** (10 observed failures; 8 labelled from a grep of their tile reads, which still pass on 3D because their fixture writes tiles). No
+    suite was migrated to the store (none was a simulation test through tiles), so **3D simulation coverage still rests on `board_probe.py gate`.**
+  - **Step 2:** `board_probe gate` now counts the blast's hook lines (remesh 2, recolour commit 2, soot 8, light 28) — earned by a sabotage that first
+    passed (floor 2 was too loose) and then failed at floor 10. `mirror_gate.py` (+ the `mirror_check` scenario step): crack twins = records, piles
+    drawn = sprites = base; sabotaged both ways.
+  - **Step 3:** `pixel_gate.py` earned (0 px over two boots, PLAYGROUND + GLASS; two masks, both declared: the agent's movement overlay band and the
+    cell cursor's exact colour). It later showed a GLASS jitter of <= 8/255 between boots (source not found), so it fails above 8/255 and prints the
+    strict count. `shot_3d_gate.py`'s control is now the unshot 3D scene.
+  - **Step 4:** the 21 lost voxels are fixed with a per-claim base-damage table (`_base_damage_claims`, tags derived in base space; `SaveState` v3),
+    red-before-green on the real PLAYGROUND case (21 -> 0 voxels after rotation and restore); `board_probe.py roundtrip` is the gate. **Open, not fixed:**
+    (1) after a rotation or a restore the light plane differs from the post-blast state (PLAYGROUND 3 105 / 3 346 texels, light(G) only): the blast's
+    incremental light and a full relight of the same damaged world disagree; (2) GLASS: 261 soot texels, on visible CRACKED glass the live wave never
+    painted and `_soot_map` holds at tone 0. Both are printed by the gate (`--strict-planes` fails on them); the F2 reload is strict and 0. Also fixed on
+    the way: `PropBillboard3D._exit_tree` cast a freed node (`as`), a script error on every rotation.
+  - **Step 5** dropped (Director). **Step 6:** `build_reference_set.py` writes the 2D reference set to `ARCHIVE/r3d_reference_2d/` (git-ignored, 107 files:
+    blast on concrete, wood burn, glass blast, nine SW shots, sparks; each 2D + 3D; read by eye). **The SE face is NOT captured** — three attempts
+    failed (east gap: the shot menu stayed open; rotated view: wrong wall / nothing fired), recorded in the script's header.
+- **R3D-9, built:** `BoardLook` is the one owner of the soot tones, face tones and light ladder (a selftest parses the 2D shader's defaults against it;
+  sabotaged both ways); `Board3DLive` no longer asks the 2D ground layer for a ShaderMaterial (old vs new: 0 px). Cracks are records: `GlassCrackSprite.params`
+  is the record's dictionary and `GlassCrackMirror3D` reads only the record (0 px vs the previous commit). Piles are drawn from (cell, level, variant, count)
+  (`VoxelRenderer.floor_shard_alpha()`; GLASS g0 0 px, g1 158 px at <= 3/255, inside the jitter above). The Room's DEV_VISION aids draw through
+  `GroundCanvas3D` (36 vertices with `DEV_PANELS=1`, 0 without); `_count_2d_cells()` is gone. `board3d_live.gd` reads no `get_layer`, `TileMapLayer` or
+  `Sprite2D`; `actor_billboard3d.gd` / `prop_billboard3d.gd` still mirror actor and prop sprites (R3D-ACTORS / R3D-PROPS).
+- **Not done yet: the Moto measurements** the stage list names for R3D-10 onward. **Next: R3D-10.**
 
 **2026-09-23 (session close) update (v1.20) — S2 AND S3 APPROVED: ACTORS AND STATIC PROPS BECOME MESHES LIT BY THE CELL PLANES; THE PLAN IS COMPLETE (Director).**
 - **Rulings (Director, 2026-09-23):** S1 closed — the board keeps its CPU light buckets (*"se as luzes atuais são melhores pra

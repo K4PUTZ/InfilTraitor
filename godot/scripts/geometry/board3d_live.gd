@@ -515,14 +515,12 @@ func _process(_delta: float) -> void:
 	_camera.position = target + _camera.basis.z * 200.0
 
 
-## R3D-7 spike — the dither cutaway. `INFILTRAITOR_CUTAWAY=0` turns it off, `CUTAWAY_RADIUS` (world
-## units, default 1.4) sizes it. VIEW, never state: it writes shader uniforms and nothing else.
+## R3D-7 spike — the dither cutaway. `CUTAWAY_RADIUS` (world units, default 1.4) sizes it. VIEW, never state: it writes shader
+## uniforms and nothing else.
 
 
 ## R3D-7 — the cutaway. The occlusion SET is the 2D board's own (`OcclusionSet`, O1: view, never state); this
 ## only draws it: a column texture the face shader ghosts by, and the wireframe's edges as white lines.
-## `INFILTRAITOR_CUTAWAY=0` = off.
-static var CUTAWAY_ON: bool = OS.get_environment("INFILTRAITOR_CUTAWAY") != "0"
 const OCC_BLOCK: int = 4
 var _solid_top := PackedInt32Array()
 var _solid_top_bw: int = 0
@@ -570,11 +568,11 @@ var last_occ_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0, 0, 0])
 
 ## True when this board draws the cutaway itself; the 2D wireframe overlay is then hidden and needs no rebuilding.
 func draws_cutaway() -> bool:
-	return CUTAWAY_ON
+	return true
 
 
 func on_occlusion(occ_set) -> void:
-	if not CUTAWAY_ON or occ_set == null or _geometry_root == null:
+	if occ_set == null or _geometry_root == null:
 		return
 	var oc0: int = Time.get_ticks_usec()
 	var size: int = VoxelRenderer.SOOT_TEX_SIZE

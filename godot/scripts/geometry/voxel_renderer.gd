@@ -603,15 +603,9 @@ const LIGHT_BUCKET_COUNT: int = 12
 var bucket_luminance: Array[float] = _initial_bucket_luminance()
 
 
+## R3D-9: the ladder is `BoardLook`'s (the 3D board reads the same one).
 static func _initial_bucket_luminance() -> Array[float]:
-	var ladder: Array[float] = [
-		0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
-	]
-	if OS.get_environment("INFILTRAITOR_FLAT_LIGHT") == "1":
-		for i in range(ladder.size()):
-			ladder[i] = 1.0
-		print("[P3-DIAG] INFILTRAITOR_FLAT_LIGHT — bucket_luminance flattened to 1.00 on BOTH paths")
-	return ladder
+	return BoardLook.light_ladder()
 
 ## PERF-P3 DIAGNOSTIC — `INFILTRAITOR_FLAT_LIGHT=1` flattens the ladder to all
 ## 1.00, for BOTH delivery paths at once: `_ensure_light_alt()` bakes it into the
@@ -6908,6 +6902,12 @@ func _get_layer_material(level: int) -> ShaderMaterial:
 	## that changes take effect on the next map load / rotation — unchanged here,
 	## because that is also when layer materials are built.
 	mat.set_shader_parameter("bucket_lum", PackedFloat32Array(bucket_luminance))
+	## R3D-9: the tones come from `BoardLook`, the one owner, until the 2D shader is deleted at R3D-END.
+	mat.set_shader_parameter("soot_face_mult", Vector4(BoardLook.SOOT_FACE_MULT[0], BoardLook.SOOT_FACE_MULT[1],
+		BoardLook.SOOT_FACE_MULT[2], BoardLook.SOOT_FACE_MULT[3]))
+	mat.set_shader_parameter("face_top", BoardLook.FACE_TONE[0])
+	mat.set_shader_parameter("face_se", BoardLook.FACE_TONE[1])
+	mat.set_shader_parameter("face_sw", BoardLook.FACE_TONE[2])
 	mat.set_shader_parameter("p3_enabled", 1.0 if P3_CELL_BUCKET else 0.0)
 	_layer_materials[level] = mat
 	return mat

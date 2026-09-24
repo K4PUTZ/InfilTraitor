@@ -13,6 +13,10 @@
 ## THE CONTROL: within one boot, load and the post-event captures MUST differ (a gate that cannot see the event
 ## would pass forever). Every boot uses RNG seed 1.
 ##
+## ⚠️ ONE UNEXPLAINED FAIL (2026-09-24): a run of the OLD code read FAIL and its GLASS g0/g1 frames differed from the new
+## code's by 136 and 66 px; the next four gate runs (and the same old-vs-new comparison) all read 0. Not reproduced, so not
+## diagnosed: treat a lone red here as "run it again and look", and a repeat as a real finding.
+##
 ## Usage:   python3 tools/persistent/pixel_gate.py [--cases PLAYGROUND,GLASS] [--settle 400] [--keep DIR]
 
 import argparse

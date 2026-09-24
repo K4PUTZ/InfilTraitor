@@ -72,10 +72,6 @@ const FACADE_SPAN_VOXELS: Vector2 = Vector2(64.0, 32.0)
 enum Dir { TOP, SE, SW }
 const DIR_STEP: Array[Vector3i] = [Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]
 const DIR_NORMAL: Array[Vector3] = [Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]
-## The 2D face shader's defaults, used only when its live material cannot be read.
-const FALLBACK_SOOT_MULT: Array[float] = [0.38, 0.60, 0.76, 0.90]
-const FALLBACK_TONE: Array[float] = [1.0, 0.975, 0.945]
-
 ## ⚠️ THE MATHS HAPPENS IN sRGB, AND ONLY THE PRODUCT IS LINEARISED. The 2D path
 ## multiplies on sRGB-encoded values because a 2D canvas never converts; a spatial
 ## shader's ALBEDO is linear. Measured on the first desktop capture: fed raw, the board
@@ -1104,25 +1100,12 @@ func _put(grid: Vector2i, level: int, material_id: String) -> void:
 	_occ[key] = _material_index[material_id]
 
 
-## The 2D path's own look terms, read from the live renderer and its face shader.
+## The look terms, from `BoardLook` (R3D-9).
 func _read_look() -> void:
-	var renderer: VoxelRenderer = _room._voxel_renderer
-	_light_ladder = renderer.bucket_luminance.duplicate()
-	_soot_mult = FALLBACK_SOOT_MULT.duplicate()
-	_tone = FALLBACK_TONE.duplicate()
-	var layer: TileMapLayer = renderer.get_layer(renderer.ground_plane_level())
-	var shader_material := layer.material as ShaderMaterial if layer != null else null
-	if shader_material == null:
-		push_warning("[Board3DLive] no face ShaderMaterial on the ground layer — soot and tone use the shader's defaults")
-		return
-	var soot: Variant = shader_material.get_shader_parameter("soot_face_mult")
-	if soot is Vector4:
-		var s: Vector4 = soot
-		_soot_mult = [s.x, s.y, s.z, s.w]
-	for i: int in range(3):
-		var tone: Variant = shader_material.get_shader_parameter(["face_top", "face_se", "face_sw"][i])
-		if tone is float:
-			_tone[i] = tone
+	## R3D-9: `BoardLook` owns these; the 2D renderer's ground-layer ShaderMaterial is no longer asked.
+	_light_ladder = BoardLook.light_ladder()
+	_soot_mult = BoardLook.SOOT_FACE_MULT.duplicate()
+	_tone = BoardLook.FACE_TONE.duplicate()
 
 
 ## One Texture2DArray layer per occupied level, filled from the 2D renderer's cell

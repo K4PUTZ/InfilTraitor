@@ -758,8 +758,7 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 	if layer != null:
 		rain.z_index = layer.z_index + 2
 	_voxel_renderer.add_child(rain)
-	if _dev_flag("VFX3D", "1") != "0":
-		rain.set_board3d(board3d())
+	rain.set_board3d(board3d())
 	var n: int = rain.spawn(rows)
 
 	## ── G6b-3 — THE DUST PUFF ──────────────────────────────────────────────
@@ -3272,14 +3271,13 @@ func _attach_ground_overlays(live: Node3D) -> void:
 
 
 ## RENDER3D R3D-4e-2 — the VFX overlays draw their particles in the 3D board's world (depth-tested)
-## instead of over it. `VFX3D=0` keeps them 2D, for comparison.
+## instead of over it.
 func _attach_vfx_to_board(live: Node3D) -> void:
-	var on: bool = _dev_flag("VFX3D", "1") != "0"
 	for overlay in [_smoke_spark_overlay, _ember_overlay, _debris_overlay, _shrapnel_overlay]:
 		if overlay != null and is_instance_valid(overlay):
-			overlay.set_board3d(live if on else null)
+			overlay.set_board3d(live)
 	if _voxel_renderer != null:
-		_voxel_renderer.set_pile_board3d(live if on else null)
+		_voxel_renderer.set_pile_board3d(live)
 
 
 ## RENDER3D R3D-4d — a prop that joins the tree while the 3D board is up gets a `PropBillboard3D`.

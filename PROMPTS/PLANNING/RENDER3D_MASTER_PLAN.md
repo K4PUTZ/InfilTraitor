@@ -42,7 +42,17 @@
   commit frame (~230 ms), LIGHT (~190) and WALK (~780) unchanged. Not measured: the shot's tail (the precook skip).
 - **A note that cost an hour:** `shot_3d_gate.py`'s concrete wall band reads ~3 200 px in some runs and ~3 600 in others with the SAME code (bisected commit by
   commit: the old commits read 3 200 too once conditions changed). The threshold is 100 px, so the gate is unaffected; do not chase it.
-- **Next: R3D-11.**
+- **R3D-11 built (`91d7686c`).** Walkability and the used-cell set are `GroundGrid.has_cell(cell, room_size)` (the builder fills every cell of
+  `[0, room_size)` with the one walkable floor tile, so the two are the same fact); `Room.has_ground_cell()` / `ground_size()`, `MovementOverlay`,
+  `SelectionController` and `ViewContext.count_visible_cells()` ask it; on the 3D board **the floor layer is written by nothing** (`room_builder` skips
+  the `clear()` and the fill) and read by nothing that runs there. A same-binary A/B (`GROUND_TILES=1` puts the tile read and the fill back) and
+  `ground_gate.py`: 4 maps (PLAYGROUND, GLASS, SIGMA_01, PLAYGROUND_2) x 4 views, every digest (walkability, selectable cells, the movement flood, a path
+  to every 7th reachable cell, visible/total counts) identical, 0 walkability and 0 screen-point mismatches over every cell plus a margin, the new boot
+  holds 0 tiles; sabotaged (`<=` in `has_cell`) it fails. `PICK_CHECK`: 35 840 points, 0 disagreements; 64 suites clean. **Moto:** the four
+  `ground_check` lines are byte-identical to the desktop's; real taps by `adb input` reach the game (`input.tap` on cells 29,11 and 30,11) and
+  select -> walk twice spent the AP, ending in `turn.enemy_start` half a second after the last tap. `_screen_to_tile_2d` / `_tile_to_screen_center_2d`
+  still use the layer (they run only under `PICK3D=0` or the 2D board) and go with it at R3D-END.
+- **Next: R3D-12.**
 
 **2026-09-23 (session close) update (v1.20) — S2 AND S3 APPROVED: ACTORS AND STATIC PROPS BECOME MESHES LIT BY THE CELL PLANES; THE PLAN IS COMPLETE (Director).**
 - **Rulings (Director, 2026-09-23):** S1 closed — the board keeps its CPU light buckets (*"se as luzes atuais são melhores pra

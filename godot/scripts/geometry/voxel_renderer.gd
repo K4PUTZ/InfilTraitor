@@ -3129,7 +3129,10 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn, registry: 
 	## on `is_glass(actual_material)` rather than assumed impossible, so a future
 	## glass column would fall through unskipped instead of silently losing
 	## geometry.
-	if SKIP_BOARD_WRITES and not GlassMaterials.is_glass(actual_material):
+	## R3D-12: the glass column is skipped too. It was left to fall through "so a future glass column would not silently
+	## lose geometry", but the 3D board draws every column from the store, and the 4 glass columns of PLAYGROUND (64 cells)
+	## were the last opaque cells written to the hidden 2D board.
+	if SKIP_BOARD_WRITES and not (GlassMaterials.is_glass(actual_material) and FORCE_2D_BAKES):
 		_diag_skipped_cells += 1
 		return
 
@@ -7546,8 +7549,12 @@ func set_glass_opaque_preview(enable: bool) -> void:
 ## R3D-12 — whether the load builds the 2D board's bake (the facade atlas pages, the damage-variant registry and its composite
 ## page). False on the 3D board, which samples `TextureResolver` facades and writes no tile: it then loads exactly as `NO_BAKE=1`
 ## does, a configuration the renderer already supports. `INFILTRAITOR_BAKE_2D=1` puts the bake back in the same binary (A/B).
+## Set by `DevFlags` too (`BAKE_2D`), so one APK can measure both sides.
+static var FORCE_2D_BAKES: bool = OS.get_environment("INFILTRAITOR_BAKE_2D") == "1"
+
+
 static func board_needs_2d_bakes() -> bool:
-	return not SKIP_BOARD_WRITES or OS.get_environment("INFILTRAITOR_BAKE_2D") == "1"
+	return not SKIP_BOARD_WRITES or FORCE_2D_BAKES
 
 
 ## R3D-10 — whether a detonation PLAN resolves a tile per entry. False on the 3D board (no tile is written there);

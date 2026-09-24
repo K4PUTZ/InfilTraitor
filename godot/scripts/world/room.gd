@@ -3075,6 +3075,30 @@ func scenario_ground_check(label: String) -> bool:
 		var path: Array[Vector2i] = movement_overlay.build_path_to(reach[i])
 		path_rows.append("%s:%s" % [reach[i], path])
 	var counts: Dictionary = view_context()
+	## R3D-12: what is still written to the hidden 2D board — opaque layer cells, glass layer cells (the glass state's
+	## authority until it moves), the structure layer.
+	var opaque_cells: int = 0
+	var glass_cells: int = 0
+	var opaque_by_level: PackedStringArray = []
+	for level in range(GeometryCoords.FLOOR_DEEP_LEVEL, _voxel_renderer.top_wall_level() + 1):
+		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
+		if layer != null:
+			opaque_cells += layer.get_used_cells().size()
+			if layer.get_used_cells().size() > 0:
+				opaque_by_level.append("L%d:%d" % [level, layer.get_used_cells().size()])
+				if level == GeometryCoords.PLAYABLE_LEVEL and OS.get_environment("INFILTRAITOR_GROUND_CELLS_DUMP") == "1":
+					var gl_layer: TileMapLayer = _voxel_renderer._glass_layers.get(level)
+					var odd: PackedStringArray = []
+					for uc in layer.get_used_cells():
+						if gl_layer == null or gl_layer.get_cell_source_id(uc) == -1:
+							odd.append("%d,%d src%d" % [uc.x, uc.y, layer.get_cell_source_id(uc)])
+					print("[GROUND-CELLS-DUMP] L%d non-glass opaque cells: %s" % [level, ", ".join(odd)])
+	for gl in _voxel_renderer._glass_layers.values():
+		for lay in (gl as Dictionary).values() if gl is Dictionary else [gl]:
+			if lay is TileMapLayer:
+				glass_cells += (lay as TileMapLayer).get_used_cells().size()
+	print("[GROUND-CELLS] %s opaque %d (%s) glass %d structure %d floor %d" % [label, opaque_cells,
+		" ".join(opaque_by_level), glass_cells, structure_layer.get_used_cells().size(), floor_layer.get_used_cells().size()])
 	print("[GROUND-CHECK] %s size %s tiles %d | walk_mismatch %d point_mismatch %d floor_pos %s floor_scale %s | walk %s select %s reach %d %s paths %d %s | view %s/%s"
 		% [label, size, walkable_tiles, walk_mismatch, point_mismatch, floor_layer.position, floor_layer.scale,
 			"\n".join(walk_rows).md5_text(), "\n".join(select_rows).md5_text(), cost_rows.size(),

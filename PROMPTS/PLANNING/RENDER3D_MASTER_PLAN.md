@@ -52,7 +52,15 @@
   `ground_check` lines are byte-identical to the desktop's; real taps by `adb input` reach the game (`input.tap` on cells 29,11 and 30,11) and
   select -> walk twice spent the AP, ending in `turn.enemy_start` half a second after the last tap. `_screen_to_tile_2d` / `_tile_to_screen_center_2d`
   still use the layer (they run only under `PICK3D=0` or the 2D board) and go with it at R3D-END.
-- **Next: R3D-12.**
+- **R3D-12 built (`7d81e2df`, `474ba433`).** On the 3D board the load builds no bake: `_bake_textures()` (the facade atlas pages, the damage-variant
+  registry and its composite page) is skipped, so the 3D board loads exactly as `NO_BAKE=1` always did; the 4 glass junction columns of PLAYGROUND no longer
+  write their 64 opaque cells (the last opaque writes; what is left on the hidden 2D board is the 2 240 glass cells, the glass state's authority).
+  A same-binary A/B: `BAKE_2D=1` (env or `dev_flags.cfg`) puts it all back. `board_probe gate`, `pixel_gate` (PLAYGROUND and GLASS, every frame 0 px above noise
+  against the previous commit), `shot_3d_gate`, `mirror_gate` and 64 suites unchanged. **Desktop load 12.1 -> 7.2 s. Moto g04s, one APK, flag A/B, two boots each:
+  `[RNG] seeded` -> map loaded 46.2 / 45.6 s -> 16.2 / 16.3 s; PSS 2.18 / 2.23 GB -> 1.00 / 0.99 GB; native heap 903 / 1 106 MB -> 661 / 661 MB.**
+  **Not done, and why:** the voxel atoms and the TileSet stay (stage 10 of `MEM-STAGE`): the glass layers that are still the glass state's authority are
+  TileMapLayers on that TileSet, so they go when the glass authority moves off the tile layers (its own stage, not written).
+- **Next: R3D-13.**
 
 **2026-09-23 (session close) update (v1.20) — S2 AND S3 APPROVED: ACTORS AND STATIC PROPS BECOME MESHES LIT BY THE CELL PLANES; THE PLAN IS COMPLETE (Director).**
 - **Rulings (Director, 2026-09-23):** S1 closed — the board keeps its CPU light buckets (*"se as luzes atuais são melhores pra

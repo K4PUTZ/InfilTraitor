@@ -2945,6 +2945,26 @@ func board3d() -> Node:
 	return get_node_or_null("Board3DLive")
 
 
+## R3D-8 — the `mirror_check` scenario step: the 3D board's twins of what the 2D renderer creates. Cracks: one twin per
+## live crack record. Piles: what the 3D board draws equals the live piles. `tools/persistent/mirror_gate.py` reads the line.
+func scenario_mirror_check(label: String) -> bool:
+	var board: Node = board3d()
+	if board == null or _voxel_renderer == null:
+		push_error("[Room] scenario_mirror_check: no 3D board")
+		return false
+	var records: int = 0
+	for rec: Dictionary in _voxel_renderer.glass_crack_records():
+		var sprite: Node = rec.get("sprite") as Node
+		if sprite != null and is_instance_valid(sprite):
+			records += 1
+	var mirror: Node = board.get("_crack_mirror")
+	var twins: int = int(mirror.call("twin_count")) if mirror != null else -1
+	print("[MIRROR-CHECK] %s cracks records=%d twins=%d piles base=%d sprites=%d drawn=%d"
+		% [label, records, twins, _base_shards.size(), _voxel_renderer.floor_shard_pile_count(),
+			_voxel_renderer.floor_shard_pile3d_count()])
+	return true
+
+
 ## DIAG-23 (DEVICE_DIAGNOSTICS §15.15) — the `drop2d` scenario step: with a 3D board
 ## built, clear the hidden 2D board's cells so `dumpsys meminfo` reads the process
 ## before and after in ONE boot. The voxel and glass layers and the structure layer are

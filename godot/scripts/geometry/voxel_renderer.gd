@@ -5721,6 +5721,12 @@ func floor_shard_pile_count() -> int:
 	return _floor_shards.size()
 
 
+## How many piles the 3D board draws, or -1 when there is no 3D pile mirror. R3D-8: the mirror gate compares it with
+## `floor_shard_pile_count()`.
+func floor_shard_pile3d_count() -> int:
+	return _pile3d.pile_count() if _pile3d != null else -1
+
+
 ## The opening's void as a texture, built on first use and cached. The image
 ## itself comes from `GlassOpening.mask_image()` — the SAME polygon the atoms are
 ## cut with, which is what makes the sheet's void and the hole's edge one line

@@ -441,6 +441,27 @@ def shadow(args):
     return 0
 
 
+## R3D-8 step 2 — the blast's uploads. A detonation that never tells `Board3DLive` (commit, soot, light) passes every
+## identity check above, because the STATE is right and only the board is stale. Each grenade of the gate scenario must
+## leave these lines in the log; the remesh and soot counts must also agree between runs (the light ramp's count is
+## frame-driven, so it only has to be present).
+HOOK_LINES = {
+    "remesh commit": "[BOARD3D] remesh commit",
+    "recolour commit": "[BOARD3D] recolour commit",
+    "recolour soot": "[BOARD3D] recolour soot",
+    "recolour light": "[BOARD3D] recolour light",
+}
+HOOK_EXACT = ("remesh commit", "recolour commit")
+## The light ramp writes one upload per step: 28 measured for the two grenades (2026-09-23); with the ramp's
+## `on_blast_light` calls removed it read 2 and a floor of 2 let that pass. 10 sits between the two.
+HOOK_FLOOR = {"recolour light": 10}
+
+
+def hook_counts(run_dir):
+    text = (run_dir / "godot.log").read_text(encoding="utf-8", errors="replace")
+    return {name: text.count(marker) for name, marker in HOOK_LINES.items()}
+
+
 def gate(args):
     godot = find_godot()
     if godot is None:
@@ -471,6 +492,18 @@ def gate(args):
             runs.append(probes)
         if any(label not in probes for probes in runs for label in GATE_LABELS):
             continue
+        if extra_env.get("INFILTRAITOR_RENDER3D", "1") != "0":
+            counts = [hook_counts(out_root / map_id / ("run%d" % k)) for k in range(1, args.runs + 1)]
+            print("%s %s hooks: %s" % (GATE_TAG, map_id, "; ".join(
+                "run %d %s" % (k + 1, ", ".join("%s %d" % kv for kv in c.items())) for k, c in enumerate(counts))))
+            for name in HOOK_LINES:
+                floor = HOOK_FLOOR.get(name, 2)
+                if counts[0][name] < floor:
+                    failures.append("%s: %d `%s` line(s), needs >= %d for 2 grenades (the blast never told the board)"
+                                    % (map_id, counts[0][name], name, floor))
+            for name in HOOK_EXACT:
+                if len({c[name] for c in counts}) > 1:
+                    failures.append("%s: `%s` count differs between runs %s" % (map_id, name, [c[name] for c in counts]))
         quiet = [] if args.verbose else None
         sink = print if quiet is None else quiet.append
         for label in GATE_LABELS:

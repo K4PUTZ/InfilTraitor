@@ -60,7 +60,24 @@
   `[RNG] seeded` -> map loaded 46.2 / 45.6 s -> 16.2 / 16.3 s; PSS 2.18 / 2.23 GB -> 1.00 / 0.99 GB; native heap 903 / 1 106 MB -> 661 / 661 MB.**
   **Not done, and why:** the voxel atoms and the TileSet stay (stage 10 of `MEM-STAGE`): the glass layers that are still the glass state's authority are
   TileMapLayers on that TileSet, so they go when the glass authority moves off the tile layers (its own stage, not written).
-- **Next: R3D-13.**
+- **R3D-13, built so far (2026-09-24), every removal its own commit, the repo grepped for readers, the gate battery run after each group:**
+  - **Flags deleted:** `PLAN_RESOLVE`, `GROUND_TILES`, `BAKE_2D` (the A/Bs of R3D-10/11/12, at each stage's close); `GROUND3D`, `VFX3D`, `ACTORS3D`,
+    `PICK3D`, `CUTAWAY`, `DECALS3D`, `DENTS3D`, `GLASS3D_FLAT` (with its flat-blue shader), `GLASS_OPENINGS3D`; `RENDER3D_2D_BUILD`, `SKIP_2D_BOARD_WRITES` (the 2D
+    board is built exactly when `RENDER3D=0`); `STORE_GLASS`, `STORE_BLAST`, `STORE_WALK`, `STORE_BOARD3D`, `VOXEL_STORE`. **The `STORE_*` collapse kept the object
+    fallback on purpose:** it is what runs when no store is active (a selftest fixture, a store built for another board), so it is not dead code; only the
+    switch is gone. After the last group: 64 suites, `board_probe` gate + shadow + roundtrip, the four plan digests (unchanged), `pixel_gate`, `shot_3d_gate`,
+    `mirror_gate`, `occ_canonical_gate`, `ground_gate` and `PICK_CHECK` (35 840 points, 0 disagreements) all pass. `GLASS_TILE`, `GLASS_CLIP`, `GLASS_SEAM_CULL`
+    and the other 2D render-order options are 2D-board flags and go with the 2D board at R3D-END.
+  - **Tools:** `CELL_PROBE` reads the `VoxelStore` on the 3D board (248 erased, 0 restored, 0 vanished — the 2D tile read agrees). `check_facade.py` and
+    `ART_SPECIFICATIONS` now state what the 3D board does with a bad facade, **measured**: the resolver rejects a coloured file on either board; a bad USER-tier file
+    falls through silently to the shipped facade, a bad DEFAULT-tier file draws the material's flat base colour. (The plan said a coloured facade is "read by its
+    `.r` channel"; the resolver rejects it before any sampling, so that is not what happens.) `check_decal.py` was NOT re-measured on 3D. `build_paired_matrix.py`
+    keeps its 2D row (it is the reference) and stops working at R3D-END.
+  - **The spike deletion list, for the Director (nothing deleted):** `godot/scripts/spikes/board3d_spike.gd` (362 lines) + `godot/scenes/spikes/board3d_spike.tscn`
+    (reader: the scene switch at `room.gd` ~2102); `r3d4a_actor_spike.gd` (509) + its `.tscn` (reader: `room.gd` ~2111); `store_layout_spike.gd` (941) (readers: the
+    `preload` and the `store_spike` step in `scenario_runner.gd`). `spike3d.gd` STAYS until R3D-ACTORS (it carries the planes shader and the rig export).
+- **Still open in R3D-13:** the last baseline matrix. **The Galaxy A16 was not attached today**, so only the Moto can be measured now.
+- **Next: R3D-13's baseline, then R3D-END (the Director ratifies).**
 
 **2026-09-23 (session close) update (v1.20) — S2 AND S3 APPROVED: ACTORS AND STATIC PROPS BECOME MESHES LIT BY THE CELL PLANES; THE PLAN IS COMPLETE (Director).**
 - **Rulings (Director, 2026-09-23):** S1 closed — the board keeps its CPU light buckets (*"se as luzes atuais são melhores pra

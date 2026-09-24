@@ -649,7 +649,7 @@ static func plan_point_impact(slice: Slice, voxel_index: int, punch: float,
 		## path. The sibling still pays depth 1's penetration multiplier, which is
 		## conservative — a round crossing air should arguably keep its punch — and
 		## is left as the ratified ladder rather than retuned here.
-		if VoxelStore.damage_of(voxel, VoxelStore.STORE_BLAST) == Voxel.DamageState.DESTROYED:
+		if VoxelStore.damage_of(voxel) == Voxel.DamageState.DESTROYED:
 			current_slice = edge_registry.sibling_slice(current_slice.id)
 			continue
 		## W-TUNE-02: the BREACH threshold is the material's, not a global one, and

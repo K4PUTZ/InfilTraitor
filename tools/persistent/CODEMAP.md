@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**281 scripts · 102135 lines total** (under `godot/scripts/`)
+**281 scripts · 102040 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -533,7 +533,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1934 lines
+extends `Node3D` · 1905 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -786,7 +786,7 @@ extends `Node3D` · 1934 lines
 
 ### `glass_crack_mirror3d.gd`
 
-`class_name GlassCrackMirror3D` · extends `Node3D` · 181 lines
+`class_name GlassCrackMirror3D` · extends `Node3D` · 178 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 
@@ -839,7 +839,7 @@ extends `Node3D` · 1934 lines
 
 ### `ground_grid.gd`
 
-`class_name GroundGrid` · extends `RefCounted` · 58 lines
+`class_name GroundGrid` · extends `RefCounted` · 52 lines
 
 `godot/scripts/geometry/ground_grid.gd`
 
@@ -1153,7 +1153,7 @@ extends `Node3D` · 1934 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 8016 lines
+`class_name VoxelRenderer` · extends `Node2D` · 8012 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1188,7 +1188,7 @@ extends `Node3D` · 1934 lines
 
 ### `movement_overlay.gd`
 
-`class_name MovementOverlay` · extends `Node2D` · 305 lines
+`class_name MovementOverlay` · extends `Node2D` · 293 lines
 
 `godot/scripts/navigation/movement_overlay.gd`
 
@@ -2759,7 +2759,7 @@ extends `RefCounted` · 941 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 258 lines
+extends `Node` · 252 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3574,7 +3574,7 @@ extends `Node` · 54 lines
 
 ### `view_context.gd`
 
-`class_name ViewContext` · extends `RefCounted` · 122 lines
+`class_name ViewContext` · extends `RefCounted` · 100 lines
 
 `godot/scripts/systems/view_context.gd`
 
@@ -6282,7 +6282,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 12013 lines
+extends `Node2D` · 12000 lines
 
 `godot/scripts/world/room.gd`
 

@@ -151,7 +151,7 @@ static func _open_positions(faces: Array, storey: int) -> Dictionary:
 	## the slice), one read per face per pass.
 	var cells_by_face: Array = []
 	for slice in faces:
-		cells_by_face.append(VoxelStore.cells_of(slice, VoxelStore.STORE_BLAST))
+		cells_by_face.append(VoxelStore.cells_of(slice))
 	for cells: PackedInt32Array in cells_by_face:
 		for i in range(cells.size() >> 2):
 			var o: int = i * VoxelStore.CELL_STRIDE
@@ -266,7 +266,7 @@ static func _storey_table(faces: Array) -> Dictionary:
 	var present: Dictionary = {}  ## storey -> {index: true}
 	var per_storey: int = GeometryCoords.LEVELS_PER_STOREY
 	for slice in faces:
-		var cells: PackedInt32Array = VoxelStore.cells_of(slice, VoxelStore.STORE_BLAST)
+		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
 		for i in range(cells.size() >> 2):
 			var o: int = i * VoxelStore.CELL_STRIDE
 			var storey: int = int(floor(float(cells[o + 2]) / float(per_storey)))

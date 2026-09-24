@@ -19,6 +19,9 @@
 ## comparison of GLASS cannot claim better than "<= 8/255" — the pile comparison of R3D-9 step 3 (158 px, <= 3/255)
 ## is inside this noise.
 ##
+## ⚠️ RUN IT WITH NO OTHER GODOT ALIVE. A FAIL on 2026-09-24 coincided with an orphaned Godot from an abandoned worktree
+## still running; the same code passed once it was gone. Concurrent load moves the frame timing the gate depends on.
+##
 ## ⚠️ THE LONE FAILS OF 2026-09-24 WERE THE CELL CURSOR. A run read FAIL with GLASS g0/g1 ~100 px apart and did not
 ## repeat; when it recurred (296 px in g0) the differing pixels were ALL one colour, the cursor outline's (229, 25, 114),
 ## drawn in one boot and not the other because the real mouse sits over the window. Now masked by that exact colour.

@@ -13,10 +13,13 @@ Checks implemented:
   R3  `_edge_key()` is only defined in wall_edge_data.gd (single source of truth)
   R4  guard `state` is only assigned inside `_enter_state()`
   R5  `_alert_meter` is only *accumulated* inside `_apply_tic_result()`
-  B1  Baking: voxel_board is the sole caller of set_cell() (branch exclusivity)
+  R8  Voxel state reaches the screen only through the store and the mesher: neither
+      `voxel_board.gd` nor `board3d_live.gd` writes a TileMapLayer cell (R3D-END END-7;
+      it replaces B1, which policed the 2D tile placement that no longer exists)
   B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
   L3  HUD widgets are named only inside hud_controller.gd (UI-SPLIT-02)
-  L1  LEVEL-RENUMBER: `get_layer(<integer literal>)` — a level is always
+  L1  LEVEL-RENUMBER: a level handed to the level API (`has_level`, `level_origin`,
+      `level_z_index`, `voxel_world_position`) is never an integer literal — it is
       derived (`ground_plane_level()` / `storey_level_base()`), never typed
 
 Not mechanized (documented for honesty):
@@ -48,7 +51,11 @@ R1_STAT_CONST = re.compile(
 R2_VISUAL_OFFSET = re.compile(r"^\s*const\s+VISUAL_GRID_OFFSET\b")
 R3_EDGE_KEY = re.compile(r"^\s*(static\s+)?func\s+_edge_key\b")
 R4_STATE_ASSIGN = re.compile(r"^\s+state\s*=(?!=)")
-B1_VOXEL_LAYER_SET_CELL = re.compile(r"_voxel_layers?\[?\s*[.\[]\s*set_cell\s*\(")
+# R8: a tile write in the two files that own the voxel state and its picture. The 2D board that wrote voxel tiles (`set_cell()` through
+# `_set_voxel_cell()`) was deleted at R3D-END (the last commit that builds it is 34881f81); no path writes one now, and this keeps it so.
+# `room_builder.gd` still places PROP tiles on the structure layer (R3D-PROPS retires that), so it is not in this rule's scope.
+R8_TILE_WRITE = re.compile(r"\.(set_cell|erase_cell|set_cells_terrain_connect)\s*\(")
+R8_FILES = ("voxel_board.gd", "board3d_live.gd")
 B4_FNV_CONST = re.compile(r"\b(2166136261|16777619)\b")
 # L1: a level spelled as a literal. `_layers` is keyed by ABSOLUTE level and the
 # ground plane moved to PLAYABLE_LEVEL (80) on 2026-08-24, so `get_layer(0)` — and
@@ -66,7 +73,13 @@ B4_FNV_CONST = re.compile(r"\b(2166136261|16777619)\b")
 # resolves to a layer — so every integer literal is a violation now. A level is
 # always derived: `ground_plane_level()`, `storey_level_base()`, or an expression
 # over one of them.
-L1_GROUND_LAYER_LITERAL = re.compile(r"\bget_layer\s*\(\s*-?\s*\d+\s*\)")
+#
+# RETARGETED at R3D-END END-7: `get_layer()` went with the level layers (a level is a registry entry now), so the same mistake is
+# a literal handed to the level API. `voxel_world_position(cell, <literal>)` returns Vector2.ZERO for an unbuilt level and
+# `has_level(<literal>)` is false, so nothing errors and the caller takes its own branch, exactly as before.
+L1_GROUND_LAYER_LITERAL = re.compile(
+    r"\b(?:has_level|level_origin|level_z_index)\s*\(\s*-?\s*\d+\s*\)"
+    r"|\bvoxel_world_position\s*\([^()]*,\s*-?\s*\d+\s*\)")
 FUNC_DECL = re.compile(r"^func\s+(\w+)\s*\(")
 
 # L2: glass-ness is ASKED, never COMPARED (GLASS_MASTER_PLAN G-D16, V-A).
@@ -230,8 +243,8 @@ def check_file(path: Path) -> list[Violation]:
             out.append(Violation(
                 "L1 level-never-a-literal",
                 rel, lineno,
-                "get_layer(<literal>) hardcodes a level — the ground plane is "
-                "PLAYABLE_LEVEL (80), not 0. Derive it: ground_plane_level() / "
+                "a level literal handed to the level API hardcodes a level — the ground "
+                "plane is PLAYABLE_LEVEL (80), not 0. Derive it: ground_plane_level() / "
                 "storey_level_base() (and relative_level() for offsets)",
             ))
 
@@ -280,12 +293,14 @@ def check_file(path: Path) -> list[Violation]:
                 "HudController and ask it instead",
             ))
 
-        # B1 — _voxel_layers (voxel grid) only modified via voxel_board._set_voxel_cell()
-        if B1_VOXEL_LAYER_SET_CELL.search(line) and name != "voxel_board.gd":
+        # R8 — voxel state reaches the screen only through the store and the mesher.
+        if (name in R8_FILES and not line.lstrip().startswith("#")
+                and R8_TILE_WRITE.search(line)):
             out.append(Violation(
-                "B1 branch-exclusivity",
+                "R8 voxel-state-through-the-store",
                 rel, lineno,
-                "_voxel_layers cells must only be set via voxel_board._set_voxel_cell() (seam integration)",
+                "voxel state is drawn by Board3DLive from the VoxelStore; nothing writes a TileMapLayer cell for it "
+                "(the 2D board was deleted at R3D-END)",
             ))
 
     # B4 — FNV-1a constants pinned in facade_sampler.gd

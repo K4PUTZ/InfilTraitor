@@ -1,27 +1,31 @@
 # Asset Pipeline Quick Reference — INFILTRAITOR
 
-Voxel and TileSet generation workflow.
+Voxel art and TileSet generation workflow.
+
+> **⏭️ 2026-09-25 (R3D-END END-7): the voxel board has no TileSet.** The 3D board (`Board3DLive`) reads `ASSETS/materials/<id>/`
+> facades and damage decals as textures straight from disk (`TextureResolver`, `Board3DLive`'s decal catalogue). The voxel atoms
+> (32×36), the in-memory TileSet, the bake and the runtime decal compositing described in the historical sections below were the
+> 2D board's and were deleted (END-4 / END-6; the last commit that has them is `34881f81`). What still applies: the material folder
+> layout, facade rules (`check_facade.py`), decal rules (`check_decal.py`), `generate_voxel.py`, and the **one on-disk TileSet**,
+> `tileset_blocks.tres`, which only the structure layer (props) and `GroundGrid`'s geometry still use.
 
 ---
 
 ## Pipeline Overview
 
 ```
-Asset Source                  Generator              Output TileSet              In-Game
+Asset Source                  Generator              Output                      In-Game
 ────────────────────────────────────────────────────────────────────────────────────────
-PNG voxel atoms       →  generate_voxel.py     →  built in memory at    →  Voxel walls
-(voxels/materials/)        (32×36 per material)    room load (32×16)        (VoxelRenderer)
+facade_<id>.png (1024×512)    (authored)             read as a texture           3D wall / roof / floor
+decal_<family>_<mat>_<n>.png  generate_voxel.py      read into a Texture2DArray  damage marks
+(ASSETS/materials/<id>/)      (INPUT never overwritten)  by Board3DLive
 
-decals/ + halves/     →  VoxelRenderer         →  live composite onto   →  Damage marks
-(what you paint)           (runtime, D33)          the placed cell's atom
-
-Floor/block/prop PNGs  →  build_tileset.gd     →  tileset_blocks.tres   →  Floor, props
+Floor/block/prop PNGs  →  build_tileset.gd     →  tileset_blocks.tres   →  props (structure layer)
 (source_assets/generated/)  (no wall series)        (256×128 tile_size)
 ```
 
-Voxel atoms have no `.tres` output — `VoxelRenderer._build_voxel_tileset()`
-reads `ASSETS/materials/<id>/` and builds the TileSet in memory on every room
-load. No separate build step, no baked resource on disk.
+After adding or replacing any PNG run `--import`; an unimported facade or decal is dropped with a `push_error`, never a
+silent fallback (B6).
 
 ---
 
@@ -41,9 +45,7 @@ ASSETS/materials/<id>/
 **`composites/` is retired (D33 Part 4c, 2026-08-03).** It used to hold
 `material | half × decal` as a pure, always-rebuilt OUTPUT — deleted
 permanently now. Every damage mark composites LIVE at room-load time instead
-(`VoxelRenderer`, reading straight from the three INPUT folders above): onto
-a real baked facade when one is available, onto the flat material atom via a
-material-agnostic vector mark when it isn't. Nothing on disk needs rebuilding
+(historical — the 2D board's `VoxelRenderer`; the 3D board reads the decal art as a texture array). Nothing on disk needs rebuilding
 around your art any more — INPUT folders are never overwritten by the
 generator: drop art at an existing filename and re-run it, and it's kept.
 **After adding or replacing any PNG, run `--import`** — an unimported asset
@@ -54,13 +56,8 @@ python3 tools/asset_generation/generate_voxel.py
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --import
 ```
 
-There is deliberately **no `bakes/` folder** — no baked voxel exists on disk;
-`BakeSystem` composes atlas pages in memory from `ASSETS/materials/<id>/`
-(ASSET_TREE_REFORM, 2026-08-21 — one folder per material; was
-`ASSETS/TEXTURES/defaults/`).
-Runtime damage compositing (`DamageCompositeCache`, D33) is also
-in-memory-only and also writes nothing to disk here — distinct systems, same
-"nothing is ever baked to a file" property.
+There is deliberately **no `bakes/` folder** — nothing is baked to disk, and since R3D-END nothing is baked in memory either
+(ASSET_TREE_REFORM, 2026-08-21 — one folder per material; was `ASSETS/TEXTURES/defaults/`).
 
 ### Voxel Atom Anatomy
 
@@ -95,10 +92,8 @@ ATOM = vstack(TOP, SIDE)
 
 ### Workflow: Add New Voxel Material
 
-There is no voxel TileSet builder or `.tres` to run — `VoxelRenderer.setup()`
-calls `_build_voxel_tileset()` every room load, which scans
-`ASSETS/materials/<id>/` and builds the atlas in memory from the current PNGs.
-(`build_voxel_tileset.gd` / `tileset_voxels.tres` existed at one point as a
+There is no voxel TileSet builder or `.tres` to run, and (since END-4) no in-memory TileSet either: the board reads the PNGs
+in `ASSETS/materials/<id>/` as textures. (`build_voxel_tileset.gd` / `tileset_voxels.tres` existed at one point as a
 pre-baked alternative but were never wired to anything — retired 2026-07-29,
 confirmed zero runtime callers.)
 

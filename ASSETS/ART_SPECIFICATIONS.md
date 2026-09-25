@@ -5,6 +5,16 @@
 (`docs/production/milestones.md`) — scheduled for the **Alpha → Beta window**,
 after scenario and gameplay are complete.
 
+> **⏭️ 2026-09-25 (R3D-END END-7): the 3D board is the only board.** Art is no longer sliced into atoms or baked: the mesher
+> maps a facade onto a 3D face through UVs and `Board3DLive` reads damage decals as a texture array. Read every mention below of
+> the bake compositor, atoms, `BakeConfig`, `VoxelRenderer.BASE_MATERIALS` / `BakeCompositor.VOXEL_MATERIALS`, the atlas and
+> ATOM-SHEET as the 2D board's history (last commit that has it: `34881f81`). **Unchanged and binding: the metrics, 16 texels
+> per voxel, facade dimensions / grayscale / no pre-squaring, decal size and families, and loud failure.**
+> **The 3D board's silent failure modes** (the ones nothing reports): an un-imported or colored facade is rejected with no error
+> (a bad USER-tier file falls through to the shipped facade, a bad DEFAULT-tier file draws the material's flat base colour);
+> a decal variant missing from disk drops that mark (`Board3DLive` logs the family, `check_decal.py` and `voxel_decal_selftest`
+> catch it in the pipeline); a decal that is not 256x256 is dropped with a `push_error`.
+
 This is the single authoritative manual for producing art assets for
 INFILTRAITOR. Every texture, facade, and voxel object authored for the game
 must conform to the specifications here. Sections marked **SHIPPED** describe
@@ -43,10 +53,8 @@ Derived facts every artist must internalize:
   128 px of texture = 8 voxels = 1 GU of surface. This is pinned
   (`TEX_AUTHORING_N`); never author at another density and never pre-stretch
   to compensate for projection — the compositor owns all projection math.
-- Each voxel is one native Godot `TileMapLayer` cell. Art is consumed by the
-  bake compositor (`godot/scripts/systems/bake_compositor.gd`), which slices
-  it into 32×36 atoms at bake time (D12: procedural cost is paid at bake
-  time, never per frame).
+- Each voxel is a cell of the `VoxelStore`, meshed by `Board3DLive`; the texture is sampled through UVs at draw time, so there
+  is nothing to slice or bake (the 2D board's bake compositor sliced art into 32×36 atoms; deleted at R3D-END END-4).
 
 ---
 
@@ -58,16 +66,16 @@ since `verified/v0.6.0`.
 | Property | Specification |
 |---|---|
 | File | `textures/defaults/facade_<material>.png` |
-| Dimensions | **1024×512 px** (pinned: `FACADE_W`/`FACADE_H`, `bake_compositor.gd`) |
-| Color | **Grayscale — R==G==B on every pixel** (invariant B2). Color arrives at runtime from the material via blend mode (MULTIPLY canon). |
-| Alpha | None (fully opaque). Silhouette alpha comes from the canonical voxel texture, never from facade art (invariant B3). |
+| Dimensions | **1024×512 px** (pinned: `FACADE_W`/`FACADE_H` in `tools/persistent/check_facade.py`) |
+| Color | **Grayscale — R==G==B on every pixel** (invariant B2). Color arrives at runtime from the material (MULTIPLY canon). |
+| Alpha | None (fully opaque). Never from facade art: a 3D face has no silhouette to mask (invariant B3 is retired). |
 | Coverage | 1024/16 = **64 voxel columns** wide; 512/16 = **32 voxel rows** = 4 storeys tall |
 | Wrap | Edges repeat by **mirroring**, not tiling — the pattern must tolerate being flipped at its borders without reading as broken |
-| Vertical pre-scale | The compositor stretches walls ×20/16 vertically (16-texel authoring rows onto 20 px levels). **Author flat at 16 texels/voxel; never bake this stretch into the art.** |
+| Vertical pre-scale | The renderer owns projection (the 2D compositor stretched walls ×20/16 onto 20 px levels; the 3D mesher maps UVs). **Author flat at 16 texels/voxel; never bake any stretch into the art.** |
 
 **Vertical wrap mirrors too, since D34 (2026-08-08).** A horizontal surface
 (roof, ceiling, floor) addresses 1024 texels on *both* axes, and the
-compositor reaches the second 512 by flipping the art vertically. So the top
+renderer reaches the second 512 by flipping the art vertically (D34). So the top
 and bottom edges must survive being mirrored the same way the left and right
 already had to — and a facade is now seen on horizontal surfaces, not just
 vertical ones. Still author 1024×512; **never pre-square it.**
@@ -80,14 +88,13 @@ dict is gone, D20). To add a facade for a material:
 2. Set `has_facade: true` and a real `base_color` in `materials/<material>.json`
    — left at the WHITE default, MULTIPLY leaves the wall grayscale.
 3. **Let Godot reimport it.** `TextureResolver` resolves through
-   `ResourceLoader.exists()`, so an un-imported PNG is invisible to the bake
-   and silently falls back to the generic atlas — Tier.NONE, no error.
+   `ResourceLoader.exists()`, so an un-imported PNG is invisible to the board
+   and silently falls through to a lower tier — Tier.NONE, no error.
    Focus the open editor for a few seconds, or
    `godot --headless --import --path .`
-4. If the material's canonical voxel atom is not `voxel_<material>.png`, add
-   the alias to `BakePolicy.canonical_voxel_atom_for()` (only `earth` needs
-   one today) and the id to `BakeCompositor.VOXEL_MATERIALS` and
-   `VoxelRenderer.BASE_MATERIALS`.
+4. *(Retired at R3D-END.)* This step used to register the material's voxel atom in `BakeCompositor.VOXEL_MATERIALS` and
+   `VoxelRenderer.BASE_MATERIALS`; the 3D board has no atom, so a material is its folder plus its `MaterialRegistry` row
+   (`material_tree_selftest` checks the two agree).
 
 Current materials with a facade — **ten** since 2026-08-21: `concrete`, `stone`,
 `wood`, `metal`, `earth` (D35, delivered 2026-08-08 — walls, blocks and roofs of
@@ -102,17 +109,10 @@ structural material), plus `brick`, `cardboard`, `fabric`, `plywood` and
 > was trusted: its first version failed two SHIPPED facades that render
 > correctly, so the gate was wrong rather than the art.
 
-> **A material needs ONLY this file.** Measured 2026-08-21 and worth stating
-> here because it looks like three requirements: all 17 voxel atoms are 32×36
-> with **byte-identical alpha**, so a new id is aliased in
-> `BakePolicy.CANONICAL_ATOM_ALIASES` instead of getting a file; and roofs
-> reproject the wall facade (§3 is still PLANNED). ⚠️ Registration is **two**
-> lists, not one: `VoxelRenderer.BASE_MATERIALS` *and*
-> `BakeCompositor.VOXEL_MATERIALS`. `glass` sat in the first and not the second
-> for months — invisible until a glass block was finally placed, at which point
-> B6 fired *"no canonical voxel atom for 'glass' — will render unmasked
-> rectangles"*. A material in one list and not the other renders, and renders
-> wrong.
+> **A material needs ONLY this file.** Measured 2026-08-21: all 17 voxel atoms were 32×36 with **byte-identical alpha**, so a new
+> id was aliased instead of getting a file; and roofs reproject the wall facade (§3 is still PLANNED). Since R3D-END there is no
+> atom and no second registration list (the 2D board's `BASE_MATERIALS` / `VOXEL_MATERIALS` pair, where `glass` sat in one and not
+> the other for months, is deleted).
 
 > Step 3 is not hypothetical. The first `facade_earth.png` delivery was
 > rejected at load for being full-colour (100% of sampled pixels over the
@@ -442,41 +442,15 @@ a loadable asset behind BOTH the photographic decal path and the generic
 vector-mark path below — so adding a corner of the matrix with no art behind
 it fails the suite instead of failing on screen.
 
-### Reviewing the baked result (ATOM-SHEET, 2026-08-08)
+### Reviewing the baked result (ATOM-SHEET, 2026-08-08) — retired
 
-Authoring a decal is only half the loop — what lands on a voxel is the decal
-**composited onto a crop of that material's facade and tinted**, which can read
-very differently from the source PNG. Two commands produce a printable contact
-sheet of every baked atom in a map, to look at while editing the art:
-
-```bash
-INFILTRAITOR_CAPTURE_ACTION=export_atoms python3 tools/persistent/auto_screenshot.py
-python3 tools/persistent/build_atom_sheet.py
-```
-
-The first dumps one PNG per atom plus `manifest.json` into `Screenshots/atoms/`
-(a real map load, so it is the real bake — 300 atoms on PLAYGROUND). The second
-composes `Screenshots/atom_sheet.png` and `.pdf`, grouped material → surface →
-decal family, variants across, substrates alongside. `--scale N` changes the
-zoom; `--substrate N` narrows to one substrate crop.
-
-Both outputs are gitignored like everything else under `Screenshots/` — they
-are regenerable from those two commands, not source.
-
-Atoms are drawn on a checkerboard rather than a flat fill on purpose: several
-decals are near-white or near-black, and a flat backdrop swallows one end of
-that range — the exact failure the sheet exists to catch. Read dark tiles with
-that in mind; measure before calling one broken (a first pass at this sheet
-read metal's atoms as "black faces", and they measure (58,62,66) with metal's
-own hue intact — dark, textured, and correct).
-
-`F8` shows the same data as an in-game overlay (`atom_sheet_debug.gd`), which
-is the quicker look; the exported sheet is the one to print.
+The contact sheet of composited atoms (`export_atoms`, `build_atom_sheet.py`, the F8 overlay) was a view of the 2D bake and was
+deleted with it at R3D-END END-4. To look at a decal, look at the PNG, then at the 3D board with a real capture.
 
 ### Generic vector marks (procedural — nothing to author here)
 
-A generic (flat, unbaked) voxel — `BakeConfig.enabled == false` (the release
-canon), or simply no baked atom available for a given cell — never wears the
+*(2D-board history: it told a generic, flat voxel from a baked one. `BakeConfig` is deleted; the files below are still generated and
+asserted on disk by `voxel_decal_selftest`.)* A generic (flat, unbaked) voxel never wore the
 photographic decal art above (Director, 2026-08-03: "não queremos texturas
 sendo aplicadas em voxels genéricos"). Instead it gets a **material-agnostic,
 procedurally generated** vector mark: `generate_generic_bullet_decal()` /
@@ -504,14 +478,13 @@ Full detail: `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
   sources left are `slab_<material>.png` for organic ground (grass, dirt,
   sand, gravel — materials with `has_facade: false`), where hue is the
   material's identity and grayscale cannot carry it.
-  Facades stay 1024×512; the compositor reaches the 1024×1024 a horizontal
+  Facades stay 1024×512; the renderer reaches the 1024×1024 a horizontal
   surface needs by mirroring the art vertically, so **do not pre-square a
   facade** — same rule as never pre-stretching for projection (§1).
-- **B3 — Alpha from canon:** silhouette alpha always comes from the
-  canonical voxel texture; art never carries silhouettes.
-- **B6 — Loud-fail:** a missing or malformed asset must hard-assert at
-  bake, never fall back silently. Ship no asset that "mostly works."
-- **D12 — Mobile budget:** all procedural cost at bake time; art decisions
+- **B3 — RETIRED** (R3D-END): it kept the silhouette of a pre-projected atom; a 3D face has none. Art still never carries silhouettes.
+- **B6 — Loud-fail:** a missing or malformed asset must fail loudly (`push_error`, a gate), never fall back silently. Ship no
+  asset that "mostly works." (§ above lists the failures the 3D board still cannot report on its own.)
+- **D12 — Mobile budget:** procedural cost is paid at load, never per frame; art decisions
   that would add per-frame cost need explicit Director sign-off.
 - **16 texels/voxel** (`TEX_AUTHORING_N`) is pinned. Changing it is a
   canon change (stop-and-report), not a tuning knob.

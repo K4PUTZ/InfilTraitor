@@ -2,13 +2,15 @@
 
 Fast lookup for grid geometry, voxel constants, inviolable rules, and common patterns.
 
-> **⏭️ 2026-09-15:** the Transform Canon below is the geometry of the **2D** board, and it
-> stays binding while that board ships.
+> **⏭️ 2026-09-25 (R3D-END END-7): the two-plane model below is the 3D camera's.** The 2D board it was first written for was deleted;
+> the lattice survives as closed-form maths (`GroundGrid`, `VoxelBoard.level_origin()` / `voxel_cell_local()`), and the gameplay grid vs
+> the geometry grid split is unchanged.
 > - The 3D board ([`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md))
 >   uses an orthographic camera at D26's 30° down / 45° around, which reproduces the 2:1
 >   diamond exactly (sin 30° = 0.5).
-> - One difference is still open, and R3D-3 settles it by measurement: a true cube projects
->   **19.6 px** per level, where `VOXEL_STEP_PX` is **20**.
+> - The 2D overlays and actors that are still 2D use the same lattice through `GroundGrid.map_to_local()`; nothing asks a
+>   `TileMapLayer` for it (`floor_layer` is deleted).
+> - A true cube projects **19.6 px** per level, where `VOXEL_STEP_PX` is **20** (R3D-3 settled it by measurement).
 
 ---
 
@@ -24,11 +26,11 @@ Fast lookup for grid geometry, voxel constants, inviolable rules, and common pat
 **Canonical screen positions** (always use these):
 
 ```gdscript
-tile_center         = floor_layer.map_to_local(cell) + Vector2(0, 64) + VISUAL_GRID_OFFSET
-tile_N_vertex       = floor_layer.map_to_local(cell) + VISUAL_GRID_OFFSET
-tile_E_vertex       = floor_layer.map_to_local(cell) + Vector2(128, 64) + VISUAL_GRID_OFFSET
-tile_S_vertex       = floor_layer.map_to_local(cell) + Vector2(0, 128) + VISUAL_GRID_OFFSET
-tile_W_vertex       = floor_layer.map_to_local(cell) + Vector2(-128, 64) + VISUAL_GRID_OFFSET
+tile_center         = GroundGrid.map_to_local(cell) + Vector2(0, 64) + VISUAL_GRID_OFFSET
+tile_N_vertex       = GroundGrid.map_to_local(cell) + VISUAL_GRID_OFFSET
+tile_E_vertex       = GroundGrid.map_to_local(cell) + Vector2(128, 64) + VISUAL_GRID_OFFSET
+tile_S_vertex       = GroundGrid.map_to_local(cell) + Vector2(0, 128) + VISUAL_GRID_OFFSET
+tile_W_vertex       = GroundGrid.map_to_local(cell) + Vector2(-128, 64) + VISUAL_GRID_OFFSET
 
 ceiling_lift        = WALL_FLOOR_STEP_PX * (max_floors + 0.75)  # receive from room.gd
 ceiling_lamp        = tile_center - Vector2(0, ceiling_lift)
@@ -71,18 +73,17 @@ HIGHWALL_012.WALL_NW_03_S0.VOXEL_034.visible = false
 - Visual delta X = (128-16) = **112** px
 - Visual delta Y = **64** px (floor_half_h; no subtraction on Y component)
 
-**Fix — Two Constants:**
+**Fix — Two Constants** *(now arithmetic in `VoxelBoard.level_origin()`; the level `TileMapLayer` and the tile's `texture_origin`
+went at END-4 / END-6, and the formula was proved equal to the layer's `position + map_to_local()` before they were deleted)*:
 
 ```gdscript
-# In _build_voxel_tileset():
-td.texture_origin = Vector2i(0, 10)  # = (atom_h - tile_h) / 2 = (36 - 16) / 2
-
-# In _ensure_voxel_layers():
+# VoxelBoard.level_origin(level):
 const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)  # (floor_half_w - voxel_half_w, floor_half_h)
-layer.position = Vector2(
+origin = Vector2(
     VISUAL_GRID_OFFSET.x + TILE_OFFSET.x,      # 0 + 112 = 112
-    VISUAL_GRID_OFFSET.y + TILE_OFFSET.y - VOXEL_STEP_PX * level)
+    VISUAL_GRID_OFFSET.y + TILE_OFFSET.y - VOXEL_STEP_PX * relative_level(level))
     # 512 + 64 - 20*k (note: Y is 64, not 56; empirically calibrated 2026-07-02)
+# VoxelBoard.voxel_cell_local(cell) = ((x - y) * 16 + 16, (x + y) * 8 + 8)
 ```
 
 **Result:** Both N-vertices align pixel-perfectly:
@@ -107,11 +108,11 @@ not knowing them:
    project** (only `y_sort_origin` is set, which does nothing on its own). Depth
    is `OcclusionSet` POLICY O5: `(x + y)` in view space, greater = nearer. A prop
    that must sort in front of / behind geometry asks
-   `VoxelRenderer.classify_geometry_over_rect()` — see `FloatingCollectible`.
+   the 3D depth buffer (R3D-PROPS); `VoxelRenderer.classify_geometry_over_rect()` read the 2D board's tiles and was deleted at END-6.
 
 | z | occupant |
 |---|---|
-| −9 | `floor_layer` (legacy coarse plane) |
+| −9 | *(the legacy coarse floor plane, `floor_layer`, was deleted at END-5)* |
 | −7 … 0 | voxel floor levels −8 … −1 (walkable top face at 0) |
 | 1 | shadow tint layers, GU grid, `_tile_shadow`, **HEAT overlays** (same z, earlier in tree → below the others) |
 | 2 | fog of war |
@@ -143,9 +144,9 @@ how the HEAT heatmap and the dev cell labels disappeared under the concrete.
 | **5** | `_alert_meter` only in `_apply_tic_result()` | No accumulation elsewhere |
 | **6** | Mission structure independent of narrative | Logic ≠ text |
 | **7** | Maps in internal coords (never raw) | Buffer applied only in `MapCompiler` |
-| **8** | Wall voxels via `set_cell()` only | Never `blend_rect`, `Image.create()`, `Sprite2D` |
+| **8** | Voxel state reaches the screen only through the store and the mesher | Nothing writes a tile, an `Image` blit or a `Sprite2D` for it (hook R8) |
 
-**Enforcement:** Rules 1–5 checked by `tools/persistent/check_invariants.py` (pre-commit hook). Rules 6–8 rely on review.
+**Enforcement:** Rules 1–5 and 8 checked by `tools/persistent/check_invariants.py` (pre-commit hook). Rules 6–7 rely on review.
 
 ---
 
@@ -162,7 +163,7 @@ how the HEAT heatmap and the dev cell labels disappeared under the concrete.
 | Accumulate `_alert_meter` anywhere except `_apply_tic_result()` | Only in `_apply_tic_result()` |
 | Guard-to-guard comms directly | Route via signals in `room.gd` |
 | Hardcode player text | Use `tr("domain.key")` + CSV |
-| `blend_rect`, `Image.create()` for walls | Always `set_cell()` on `_voxel_layers[level]` |
+| `set_cell()`, `blend_rect`, `Image.create()` for walls | Voxel state goes into `VoxelStore`; `Board3DLive` meshes it |
 | `FACE_CENTER_OFFSET`, `is_x_varying`, `SUBCUBE_*` patterns | Eliminated — don't recreate |
 
 ---
@@ -184,8 +185,7 @@ func _ready() -> void:
     z_index = 20  # set alongside other overlays
 
 func draw_at_tile(cell: Vector2i) -> void:
-    var floor_layer = get_tree().root.get_node("Room/FloorLayer")
-    var screen_pos = floor_layer.map_to_local(cell) + Vector2(0, 64) + _visual_offset
+    var screen_pos = GroundGrid.map_to_local(cell) + Vector2(0, 64) + _visual_offset
     # ... draw at screen_pos
 ```
 

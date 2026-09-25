@@ -289,3 +289,22 @@ Estão **banidos** do codebase e da documentação:
 | `BakePolicy.DEFAULT_FACADES` | Dict material→facade mantido à mão | `BakePolicy.texture_for_material()`, derivado (D20/D34) |
 | "o chão usa arte colorida, a parede grayscale" | Modelo pré-D34 — as duas superfícies eram pipelines de arte diferentes | Um `facade_<id>` grayscale + MULTIPLY serve parede, teto **e** chão de um material estrutural; foto só para ground orgânico |
 | esticar (`resize`) uma facade para altura isotrópica | Pré-D34 — dobrava cada linha de texel, metade do detalhe vertical | Repetição espelhada (`_mirror_tile_v`), que é o idioma do resto do compositor |
+
+### Banidos desde o R3D-END (2026-09-25) — o tabuleiro 2D foi apagado
+
+O último commit que constrói o tabuleiro 2D é `34881f81`. Nada da coluna da esquerda pode ser usado ou recriado; as entradas
+antigas acima que apontam para `set_cell()` / `_voxel_layers[level]` / `tileset_voxels.tres` são **história** (o substituto delas
+mudou de novo — veja aqui).
+
+| Termo banido | Sistema de origem | Substituto |
+|---|---|---|
+| `VoxelRenderer` / `voxel_renderer.gd` / `_voxel_renderer` | A classe que desenhava o tabuleiro em `TileMapLayer`s (renomeada no END-6) | `VoxelBoard` / `voxel_board.gd` / `_voxel_board` — o estado que o `Board3DLive` desenha; não renderiza nada |
+| `_set_voxel_cell()`, `set_cell()` / `erase_cell()` para estado de voxel | Colocação de tiles (a regra 8 antiga) | `VoxelStore` (estado) + `Board3DLive` (malha); hook **R8** |
+| `get_layer(level)`, `_layers[level]` como `TileMapLayer`, `get_layer_count()` | O layer por nível | `has_level()`, `level_origin()`, `level_z_index()`, `voxel_world_position()` (aritmética; hook **L1**) |
+| `floor_layer`, `$FloorLayer`, `floor_layer.map_to_local()` / `local_to_map()` | O plano de chão em tiles | `GroundGrid.map_to_local()` / `cell_containing()` / `has_cell()` |
+| `BakeConfig`, `BakeCompositor`, `BakedTileLookup`, `DamageCompositeCache`, `DamageVariantBaker`, `DecalCompositor`, `HalfVoxelCompositor` | O atlas de bake e a composição em tempo de execução | Nada: a face 3D amostra a facade por UV e o `Board3DLive` lê os decals como `Texture2DArray` |
+| alternativas de tile de luz (`encode_light_alt()`, `_ensure_light_alt()`, `_minted_light_alts`), `voxel_face_shading.gdshader` | A luz e o soot como id de alternativa / shader de face 2D | Os planos de célula (`CellPlaneStore`) lidos pela malha 3D |
+| `apply_occlusion()`, `_ghosted_cells`, `occlusion_wireframe_overlay.gd` | O corte 2D (OCC-21 / OCC-27) | `Board3DLive.on_occlusion()` sobre o `OcclusionSet` |
+| `_glass_layers`, `_glass_tile_sync()`, `GlassCrackSprite`, `glass_tile.gdshader` | O vidro como tile e o sprite da trinca | O estado de vidro do `VoxelStore` (`pane`), `GlassCrackParams` (dados) e o `glass_pane3d` |
+| `RENDER3D`, `SKIP_BOARD_WRITES`, `GLASS_STATE_LAYER`, `drop2d`, `glass_compare` | As chaves que alternavam 2D / 3D | (nada: só existe o 3D) |
+| "1 VOXEL = 1 Godot Tile" | A regra de desenho 2D | Um voxel é uma célula do `VoxelStore` |

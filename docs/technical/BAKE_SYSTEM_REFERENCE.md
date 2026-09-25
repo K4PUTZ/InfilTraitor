@@ -9,9 +9,13 @@
 >   pages, `BakedTileLookup`, damage composite pages and TileSet alternatives.
 >   `DEVICE_DIAGNOSTICS` §15.15 measured it as half of the 2D board's memory on the
 >   Moto: 2.17–2.20 GB with the bake, 1.10 GB without.
-> - **B1, B3 and B5 are atlas invariants.** They stay in force while the 2D board ships,
->   and retire at R3D-END on the Director's ratification. Until then `BakeConfig` and
->   everything below stay authoritative.
+> - **B1, B3 and B5 are atlas invariants.** They stayed in force while the 2D board shipped.
+>
+> **🔒 2026-09-25 — HISTORY, except the logic named above. R3D-END deleted the atlas (END-4: `BakeCompositor`,
+> `BakedTileLookup`, `DamageCompositeCache`, `DamageVariantBaker`, the compositors, the room builder's bake) and `BakeConfig`
+> (END-6); B1, B3 and B5 are RETIRED and B2, B4, B6 survive where facades, FNV-1a and loud failure still apply (`CLAUDE.md`
+> lists each site). The last commit that builds the bake is `34881f81`. Everything below describes that system, not the
+> current one.**
 
 **Extracted 2026-07-08 from `tools/persistent/OPERATOR_CONTEXT.md`** (v0.5.0
 context restructure). This document holds the full bake-pipeline architecture,

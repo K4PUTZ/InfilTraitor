@@ -101,7 +101,7 @@ No `FACE_CENTER_OFFSET`. No `is_x_varying`. No empirical offsets.
 ```
 Edge            one wall between two GUs (EdgeRegistry, keyed through WallEdgeData)
 Slice           one face of an edge: 8 positions × 8 levels per storey, index = level*8 + position;
-                two per edge, indexed identically (D16)
+				two per edge, indexed identically (D16)
 Slab            a horizontal plane at one level — FLOOR / CEILING / INTERIOR (SlabRegistry), 64 voxels per level
 JunctionColumn  the diagonal column that closes a wall elbow (JunctionResolver), one Voxel per level
 Voxel           per-voxel state: visible, dirty, damage_state (+ blast flag, carved side, variant, substrate)

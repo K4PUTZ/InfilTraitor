@@ -13,10 +13,11 @@ file existing does not make the others stale.
 ## The project
 
 Turn-based tactical stealth, mobile-first (iOS/Android), portrait
-orientation. Godot 4.6, GDScript, isometric 2.5D voxels via `TileMapLayer` — **moving to
-a Godot 3D board over a packed voxel store** (ratified 2026-09-15,
-[`RENDER3D_MASTER_PLAN`](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)); the 2D board ships
-until that plan's R3D-END.
+orientation. Godot 4.6, GDScript, isometric 2.5D voxels drawn as **a Godot 3D board over a packed
+voxel store** (`VoxelStore` + `Board3DLive`; ratified 2026-09-15,
+[`RENDER3D_MASTER_PLAN`](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)). **The 2D `TileMapLayer` board was deleted
+at R3D-END (steps END-0 to END-6, 2026-09-24/25); `34881f81` is the last commit that builds it.** END-8's device
+gate is still to run. Props, actors and the 2D overlays are still 2D until R3D-PROPS / R3D-ACTORS.
 No deadline — architecture and code quality outrank speed.
 
 Repo: https://github.com/K4PUTZ/InfilTraitor
@@ -45,8 +46,9 @@ Two standing duties, both obligations:
   `/Applications/Godot.app/Contents/MacOS/Godot --path . 2>/dev/null &`
 - GDScript changes hot-reload automatically.
 - **Video of the game on a handset** (to judge the flow of an effect): `python3 tools/persistent/device_record.py --device <serial> --preset blast --out videos/<name>.mp4`; `videos/` is git-ignored. Guide: [`docs/pipelines/device_video_recording.md`](docs/pipelines/device_video_recording.md). Costs +1 to +2 ms/frame on the Moto: never record during a measurement.
-- Generated PNGs land in `ASSETS/ISOMETRIC/source_assets/generated/`; switch
-  focus to Godot and wait 3–5s for reimport — no manual rebuild.
+- Generated PNGs land in `ASSETS/ISOMETRIC/source_assets/generated/` (the floor / structure `TileSet` only) or in a material's
+  own folder `ASSETS/materials/<id>/` (facades, decals — what the 3D board reads); switch focus to Godot and wait 3–5s for
+  reimport. There is no bake step to run and no `BakeConfig` (deleted at END-6).
 - On interruption or session resume: re-read the active prompt/plan file
   from disk first and state the resume point in one line before continuing.
   Conversational memory is not ground truth; the file on disk is.
@@ -219,13 +221,14 @@ immediately; the files above are the live source.
 
 These must not be broken:
 
-> **2026-09-15 — the 3D render path is ratified** (`RENDER3D_MASTER_PLAN`). Rules 2 and 8,
-> the L1 hook and B1–B6 describe the 2D board and **stay in force until R3D-END** retires
-> them on the Director's ratification. A 3D stage that needs to bend one stops and asks;
-> it never works around it.
+> **2026-09-25 — R3D-END END-7 retired the 2D-board rules** (the plan's R3D-END block has the record). Rule 8 is rewritten for the
+> store; rule 2 was reviewed against its last readers and stays; L1 is retargeted; B1, B3 and B5 are retired and B2, B4 and B6
+> survive where they still apply (below). A stage that needs to bend a rule stops and asks; it never works around it.
 
 1. Stats = `var`, never `const` (future difficulty scaling).
-2. `VISUAL_GRID_OFFSET` always via parameter, never hardcoded.
+2. `VISUAL_GRID_OFFSET` always via parameter, never hardcoded. *(Reviewed at END-7 against its last readers: `room.gd`
+   defines it and hands it to the 2D overlays, the actors and `VoxelBoard.setup()`; `Board3DLive` must never know it. It is the
+   screen-space offset of the 2D layer and retires with the last 2D overlay, not before.)*
 3. `WallEdgeData` is the only source of edge keys — never recreate
    `_edge_key()`.
 4. Guard state transitions go through `_enter_state()`, never direct
@@ -234,29 +237,33 @@ These must not be broken:
 6. Mission structure stays independent of narrative (logic ≠ text).
 7. Maps use internal coords only; the buffer is applied only in
    `MapCompiler`.
-8. Wall and Slab voxels (floor/ceiling/interior) reach the tilemap only
-   through `set_cell()`/`_set_voxel_cell()`, never `blend_rect`, `Image`,
-   or `Sprite2D`. **Slab is a voxel class sharing this rule, not a second
-   placement mechanism** (2026-07-15 amendment) — a future Slab renderer
-   has no excuse to invent a parallel image-compositing path.
+8. **Voxel state reaches the screen only through the store and the mesher.** Wall, Slab (floor / ceiling / interior) and
+   glass state is `VoxelStore`'s; `Board3DLive` meshes it; nothing writes a `TileMapLayer` cell, an `Image` blit or a
+   `Sprite2D` for it. (Rewritten at END-7: it used to say voxels reach the *tilemap* only through `set_cell()` /
+   `_set_voxel_cell()`, which policed the 2D placement that was deleted.) Slab is a voxel class sharing this rule, not a second
+   path. Hook-checked as **R8 `voxel-state-through-the-store`**: neither `voxel_board.gd` nor `board3d_live.gd` may call
+   `set_cell()` / `erase_cell()`. Prop tiles on the structure layer are outside it until R3D-PROPS.
 
-9. **A level is derived, never typed.** `VoxelRenderer._layers` is keyed by
+9. **A level is derived, never typed.** `VoxelBoard`'s level registry is keyed by
    ABSOLUTE level and the ground plane is `PLAYABLE_LEVEL` (80). Ask
-   `renderer.ground_plane_level()` / `GeometryCoords.storey_level_base(storey)`
+   `board.ground_plane_level()` / `GeometryCoords.storey_level_base(storey)`
    for an anchor, `GeometryCoords.FLOOR_TOP_LEVEL` / `FLOOR_DEEP_LEVEL` for the
-   ground stack, and `renderer.relative_level(level)` for a per-level offset.
-   A literal is wrong in both directions and neither one raises: `get_layer(0)`
-   (and the pre-renumber floor levels `-1` / `-2`) returns **null**, so the
-   caller takes its own null branch and does nothing at all, forever; a stale
-   positive literal resolves to a REAL layer eighty levels from where it means,
+   ground stack, and `board.relative_level(level)` for a per-level offset.
+   A literal is wrong in both directions and neither one raises: `has_level(0)`
+   is false and `voxel_world_position(cell, 0)` answers `Vector2.ZERO` (as did
+   `get_layer(0)` returning **null** before END-6, and the pre-renumber floor levels `-1` / `-2`), so the
+   caller takes its own branch and does nothing at all, forever; a stale
+   positive literal names a REAL level eighty levels from where it means,
    so the code runs and quietly describes a different building. Cost when
    ignored, all found on 2026-09-01 (OCC-FIX-03): the occlusion wireframe drew
    a wedge to the scene origin, the dev occlusion overlay painted in one pile
    there, three props' `_apply_z_index()` had become a silent no-op, the damage
    gallery reported 8 of 8 CEILING probes as "no Slab", and four selftests were
    passing against fixtures 72–80 levels from the geometry they were named for.
-   Hook-checked as **L1 `level-never-a-literal`** — any integer literal passed
-   to `get_layer()` outside `voxel_renderer.gd`, which owns the store.
+   Hook-checked as **L1 `level-never-a-literal`** — an integer literal handed to
+   `has_level()`, `level_origin()`, `level_z_index()` or the level argument of
+   `voxel_world_position()` outside `voxel_board.gd`, which owns the registry (retargeted
+   at END-7 from `get_layer()`, which went with the level layers).
 
 10. **A material FAMILY is asked, never compared.** `glass` is not one material
    — G-D16 makes it a family (`glass_armored`, `glass_screen_*`) whose members
@@ -285,32 +292,30 @@ These must not be broken:
    `hud_seam_selftest`, which runs against the real scene so a rename fails
    there instead of on screen.
 
-**Enforcement:** rules 1–5, 9, 10 and 11 are pre-commit-hook-checked
-(`check_invariants.py`); 6–8 rely on review.
+**Enforcement:** rules 1–5, 8, 9, 10 and 11 are pre-commit-hook-checked
+(`check_invariants.py`); 6–7 rely on review.
 
 **Banned terms & eliminated patterns** (`SUBCUBE_*`, `WallContainer`,
 `FACE_CENTER_OFFSET`, `is_x_varying`, Kenney derivations, …):
 [`docs/DIRECTION_GLOSSARY.md`](docs/DIRECTION_GLOSSARY.md) §10 is the single
 authoritative list — do not use or recreate anything on it.
 
-### Bake invariants (B1–B6)
+### Bake invariants (B1–B6) — B1, B3, B5 retired; B2, B4, B6 survive where they still apply
 
-Enforced by selftests + the pre-commit hook. Full detail, closure evidence,
-and process learnings:
-[`docs/technical/BAKE_SYSTEM_REFERENCE.md`](docs/technical/BAKE_SYSTEM_REFERENCE.md).
+The bake (facade atlas pages, `BakedTileLookup`, damage composite pages, TileSet alternatives) was the 2D board's and went at
+R3D-END END-4. The 3D board samples the facade itself through UVs (`TextureResolver`, `MaterialRegistry`). Record and closure
+evidence: [`docs/technical/BAKE_SYSTEM_REFERENCE.md`](docs/technical/BAKE_SYSTEM_REFERENCE.md) (historical).
 
-- **B1 Branch Exclusivity** — placement uses exactly one atlas path (baked
-  XOR generic), never both.
-- **B2 Grayscale Enforcement** — all facade/pattern sources are grayscale
-  (R==G==B).
-- **B3 Alpha from Canon** — silhouette never generated from scratch; alpha
-  verified against the canonical voxel texture loaded independently, never
-  a tautological self-comparison.
-- **B4 FNV-1a Determinism** — hash values and wall-origin behavior stay
-  pinned.
-- **B5 No Re-bake on Destruction** — exposed geometry falls back to the
-  material atlas.
-- **B6 Loud-Fail** — missing dependencies fail loudly, never silently.
+- **B1 Branch Exclusivity — RETIRED.** There is one placement path and it is not an atlas (rule 8 / R8 replaces it).
+- **B2 Grayscale Enforcement — SURVIVES** for facade / pattern art: all facade sources are grayscale (R==G==B), gated by
+  `tools/persistent/check_facade.py` (a colored or un-imported facade is rejected with no error at all).
+- **B3 Alpha from Canon — RETIRED.** It guarded the silhouette of pre-projected atoms; a 3D face has no atom.
+- **B4 FNV-1a Determinism — SURVIVES** where a hash picks something that must not change between runs: the pinned constants live
+  in `facade_sampler.gd` (hook-checked), and `FacadeSampler`'s window origins, `EarthVariantSelector`, the shot hit / punch
+  tables and the glass opening pick read them.
+- **B5 No Re-bake on Destruction — RETIRED.** There is no bake to skip; exposed geometry is drawn from the store.
+- **B6 Loud-Fail — SURVIVES** as a general rule (see the error-handling contract above): a missing facade, decal or catalogue entry fails
+  loudly (`Board3DLive`'s decal catalogue, `check_decal.py`, `voxel_decal_selftest`), never silently.
 
 ## Process — what not to do
 
@@ -349,15 +354,15 @@ Read the linked doc before modifying that system.
 | **Game design canon** (any gameplay-facing proposal) | [`docs/DESIGN_MASTER_PLAN.md`](docs/DESIGN_MASTER_PLAN.md) | Every ratified mechanic in one place. Confrontation/cover, 3-layer resistance + the tenth-shot rule, the 3 equipment classes, enemy factions and hierarchy, segment map structure and Freelance escalation are **designed and unbuilt** — extend that design, never invent a parallel one. §19 = the six architecture rules an endless game depends on; §20 = where the build already diverges |
 | Grid, screen coords, voxel constants | [`tools/persistent/QUICK_REFERENCE.md`](tools/persistent/QUICK_REFERENCE.md) | `ceiling_lift = WALL_FLOOR_STEP_PX * (max_floors + 0.75)`; `TILE_OFFSET = (112, 64)`; two-plane model (gameplay grid vs. geometry/render grid) — never a per-height lookup table |
 | Directions, faces, banned terms | [`docs/DIRECTION_GLOSSARY.md`](docs/DIRECTION_GLOSSARY.md) | Vertex-aligned compass, N = top diamond vertex; always qualify axes explicitly |
-| Voxel wall system | [`docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md`](docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | 1 voxel = 1 Godot tile via `set_cell()`; no image compositing — that is the 2D drawing rule, which retires at `RENDER3D` R3D-END; the geometry stays canon |
-| Baking system | [`docs/technical/BAKE_SYSTEM_REFERENCE.md`](docs/technical/BAKE_SYSTEM_REFERENCE.md) | `BakedTileLookup.resolve()` is the only placement seam; `BakeConfig.enabled` defaults `false`; B1–B6 above |
+| Voxel wall system | [`docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md`](docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | The geometry is canon (8 voxels per GU axis, 8 levels per storey, slices, edges, junction columns, D16's two-voxel wall). "1 voxel = 1 Godot tile" is history: the 2D drawing rule went at R3D-END |
+| Baking system (**historical**) | [`docs/technical/BAKE_SYSTEM_REFERENCE.md`](docs/technical/BAKE_SYSTEM_REFERENCE.md) | The atlas bake was deleted at R3D-END END-4 (`BakeConfig` at END-6); what survives is the logic — `TextureResolver`'s tier ladder, `MaterialRegistry`, `FacadeSampler`'s FNV-1a, grayscale facades (B2, B4, B6 above) |
 | Voxel FACE lighting | [`PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md`](PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md) | 12-bucket directional brightness; blast soot/crater/ember visuals; destruction persists through rotation |
 | Actor/object bakes, digital twin | [`PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md`](PROMPTS/PLANNING/ACTOR_MASTER_PLAN.md) | ⏭️ **2026-09-23: D64 — actors render as LIVE skinned meshes lit by the board's cell planes (the frame bake retires for gameplay; D17, D34, D42, D44, D62 reopened), D65 — static props are meshes, breakable props are voxels.** **The decision register (D1–D58)** — twin (showcase) vs. simplification (gameplay, D16); normal-map relighting (D17); the character decisions are D32–D58 |
 | **How the agent MOVES** (situations, poses, transitions, motion design) | [`PROMPTS/PLANNING/MOVEMENT_MASTER_PLAN.md`](PROMPTS/PLANNING/MOVEMENT_MASTER_PLAN.md) | ⏭️ **2026-09-23: motion is authored as ACTIONS on the live rig (D64), not baked frames.** 🟡 v0.1 — a captured brief, not yet executable. **The pipeline is PROVEN** (Director, 2026-08-16): proportion and viability are closed, motion QUALITY is what is open. The agent is a stealth infiltrator, so movement is situational, not a neutral cycle — M1–M5. **Key poses first, in-betweens second.** Research (§4) runs before authoring; CC0 is a hard filter (D57). Five items come first (§6) |
 | **The player character** (model, rig, poses, animation, layering) | [`PROMPTS/PLANNING/CHARACTER_MASTER_PLAN.md`](PROMPTS/PLANNING/CHARACTER_MASTER_PLAN.md) | ⏭️ **2026-09-23: the rig becomes the runtime mesh (D64); `r3d_live_rig_export.py` keys the p3 phases into actions (no `.blend` holds one).** **Owns the build; ACTOR owns the decisions — cite D-rows, never restate them.** Rigged low-poly mesh (D35); four facings, permanently (D44); only archetype × silhouette class multiplies, everything else is additive or a free shader uniform (D34); RAM is the constraint, not CPU (D42). **Part 2 is CLOSED (2026-08-16) — the vector placeholder is gone and the pipeline is Director-ratified (D62)**; the step is 0.56 s per GU (D61) and a faction is a palette on one mesh (D63); Alpha closes mechanics, finish is Beta (D54); the hand bar is pose-capable, not anatomically correct (D56); CC0 is a licence filter, not a preference (D57, shortlist in §5.1) |
 | Destruction | [`PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md`](PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md) | Sole writer of `Voxel.visible`; dirty-flag/TIC machinery other systems (actor damage) reuse |
-| **Draw order / depth on the board** (anything about what covers what on screen) | [`PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md`](PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md) | 🟢 v1.1 — **Option A RATIFIED and default ON 2026-09-10.** **`z_index` in this project encodes HEIGHT (`WALL_BASE_Z_INDEX + relative_level`), and depth is independent of it** (`OCCLUSION` `O5`). **A `TileMapLayer`'s own draw order IS iso depth order** (Q8), so glass is an ordinary tile in its level's opaque layer: cells are MIRRORED from `_glass_layers` (still the authority every glass system reads, hidden) into `_layers` by `_glass_tile_sync()`, each glass tile carries `TileData.material` → `glass_tile.gdshader`, and there is no `BackBufferCopy`. The per-pane crack sprite is clipped where a nearer wall covers it, and the side sliver is painted by exposure, not `pos == 7`. `=0` on `INFILTRAITOR_GLASS_TILE` / `GLASS_CLIP` / `GLASS_SEAM_CULL` = old path, comparison only. **Y-sorting has never been enabled anywhere in this project** — measured and rejected on cost. ⛔ `GLASS` §19 and its dependency on `OCCLUSION` §7 were rejected 2026-09-10 — do not build from either |
-| **The 3D board migration** (anything that renders the board, stores voxel state, or retires a 2D-board rule) | [`PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md`](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) | 🟡 v1.26 — **R3D-END IS IN PROGRESS (Director ratified 2026-09-24; order END-0 to END-8 and each step's record in the plan's R3D-END block — read it before touching any 2D code). END-0 (the reference set) and END-1 (the switch collapsed) are DONE: `RENDER3D`, `SKIP_BOARD_WRITES` and `GLASS_STATE_LAYER` no longer exist, the 3D board is the only board, no path writes a tile, no selftest is pinned to 2D. `34881f81` is the last commit that builds the 2D board.** The 2D code still in the tree (the placement husks, the atlases and bakes, the glass tiles and `GlassCrackSprite`, the 2D cutaway, `floor_layer`) is dead or a leftover and is deleted at END-2 to END-5; every step is held to the END-0 set (`pixel_gate.py --against`, the `board_probe` dumps diffed against END-0, `ground_gate.py`'s recorded digests). **Director, 2026-09-23: the 2D board retires when NOTHING depends on it, not when the look matches — the look is not a gate.** **R3D-8 to R3D-14 are BUILT (2026-09-24):** the safety net on the 3D path; the 3D board reads nothing of the 2D renderer; the simulation writes no tiles; gameplay off `floor_layer` (`GroundGrid`); the load builds no 2D board (Moto 46 -> 16 s, PSS 2.2 -> 1.0 GB); one path (20 comparison flags deleted, the finished spikes deleted); and the glass state in the `VoxelStore` (`VoxelStore.pane`, `glass_pane_face_at()`), the hidden glass layers never built or written under the 3D board. R3D-END's entry gate, `independence_gate.py`, read PASS for the last time at END-0 and retired at END-1 with its control (`GLASS_STATE_LAYER`). Still to do inside R3D-END: the glass tiles (END-2), the 2D cutaway (END-3), tile placement and the atlases (END-4), `floor_layer` (END-5, a conversion behind `ground_gate.py`), the `room.gd` instruments that read tile layers and the class rename (END-6), the canon edits (END-7: this row, rules 2, 8, L1, B1-B6), the device matrix (END-8). **Actors (D64) and static props (D65) become meshes lit by the board's cell planes (R3D-ACTORS, R3D-PROPS); the board KEEPS its CPU light buckets** (real Godot lamps cost +24 ms of GPU on the Moto). After the end: R3D-WORLD, R3D-ROT (rotation), R3D-LOOK, R3D-LIGHT (the light's CPU cost: the shot tail after blasts, the GLASS commit frame ~700 ms on the Galaxy, the map-wide occupancy walk), R3D-CLAIMS, R3D-BUFFER. The web export is retired: the APK is the phone test. ⚠️ **Identity gates, all of them run before trusting a change: `board_probe.py gate|shadow|roundtrip` (voxels + cell planes, never a tile; the planes are compared where the board READS them, the rest is counted on the line), `pixel_gate.py` (no other Godot alive), `shot_3d_gate.py`, `mirror_gate.py`, `occ_canonical_gate.py`, `ground_gate.py`, `run_selftests.py`.** ⚠️ **A gate that reads a `TileMapLayer` (`get_used_cells()`, `get_cell_source_id()`) is VACUOUS on the 3D board and prints PASS: read the population it prints against the board's (the D-7 cook gate said `0 of 2240 ... PASS` while the light was 21 cells off); a state gate needs a pixel gate beside it (the independence gate's state dumps were identical while GLASS lost its crack webs).** ⚠️ **Before skipping a function on the 3D board, list what else it does** (R3D-10 skipped the shot pre-cook for its tile minting and lost its light-field warm: +195 ms on the shot's tail, restored 2026-09-24). ⚠️ **Under the 3D board, a step that still drives the hidden 2D board is pure waste: skip it.** The Moto g04s is the constraint on CPU-bound work; **the Galaxy A16 is 2x faster on load but SLOWER on GPU-bound rows (idle 25 vs 19 ms, 2.2x the pixels), so quote it as neither fast nor slow.** **Rules: a NEW VFX stores world-space state (ground + height), never screen pixels; a level is asked of `ground_plane_level()`, never a literal.** The session records are `PROMPTS/RESUMO_SESSAO_2026-09-24_*.md`. |
+| **Draw order / depth on the board** (**historical** — what covered what on the 2D board) | [`PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md`](PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md) | 🔒 **History since R3D-END (2026-09-25).** It solved depth for a board drawn as stacked `TileMapLayer`s (glass as a tile in its level's layer, the crack clip, the seam cull — all deleted at END-2). On the 3D board **a depth buffer decides what covers what by construction**; what carries over is the traps it records and Y-sort's measured cost. The 2D overlays and actors still sort by `z_index` (`WALL_BASE_Z_INDEX + relative_level`, `VoxelBoard.level_z_index()`), which encodes HEIGHT, never depth |
+| **The 3D board migration** (anything that renders the board, stores voxel state, or retires a 2D-board rule) | [`PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md`](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) | 🟡 v1.27 — **R3D-END: END-0 to END-7 are DONE (2026-09-24/25), END-8 (the device gate) is still to run.** The 2D board is gone: no path writes a tile; `VoxelRenderer` is **`VoxelBoard`** (the state the board draws: the level registry `level_origin()` / `level_z_index()` / `has_level()`, the light and soot cell planes, the dirty -> `voxel_destroyed` pass, the glass and shard records); `BakeConfig`, `floor_layer`, the bake, the tile atlases and the 2D face shader are deleted. `34881f81` is the last commit that builds the 2D board. Every step was held to the END-0 set (`pixel_gate.py --against`, the `board_probe` dumps diffed against END-0, `ground_gate.py`'s recorded digests, `run_selftests.py`). **Still 2D by design:** the structure layer (props), actors, the 2D overlays and `VISUAL_GRID_OFFSET` until R3D-PROPS / R3D-ACTORS. **After the end:** R3D-WORLD, R3D-ROT (rotation), R3D-LOOK, R3D-LIGHT, R3D-CLAIMS, R3D-BUFFER, and the Moto / Galaxy device matrix (END-8). ⚠️ **Identity gates, all of them run before trusting a change: `board_probe.py gate|shadow|roundtrip` (voxels + cell planes, never a tile), `pixel_gate.py` (no other Godot alive, the editor included, or it times out at 600 s), `shot_3d_gate.py`, `mirror_gate.py`, `occ_canonical_gate.py`, `ground_gate.py`, `run_selftests.py`.** ⚠️ **A gate that reads a `TileMapLayer` is VACUOUS on the 3D board and prints PASS: read the population it prints against the board's.** ⚠️ **Before skipping or deleting a function on the 3D board, list what else it does** (R3D-10 skipped the shot pre-cook for its tile minting and lost its light-field warm; END-4's layer-material removal silently dropped a cell-plane creation, caught only by the probe dumps). **Rules: a NEW VFX stores world-space state (ground + height), never screen pixels; a level is asked of `ground_plane_level()`, never a literal.** The session records are `PROMPTS/RESUMO_SESSAO_2026-09-24_*.md` and `PROMPTS/RESUMO_SESSAO_2026-09-25_*.md`. |
 | **Device measurement** (Android handsets, memory, frame budget, `DevFlags`, telemetry, scenarios) | [`PROMPTS/PLANNING/DEVICE_DIAGNOSTICS_MASTER_PLAN.md`](PROMPTS/PLANNING/DEVICE_DIAGNOSTICS_MASTER_PLAN.md) | 🟢 v1.11. Budget: 30 fps / 33.3 ms on playback frames (§0.5), on the Moto g04s and the Galaxy A16. The chain is `export_android.py` → `device_run.py --mem-poll` → `bench_analyze.py`. A flag reaches the APK only through `DevFlags` (`adb push` of `dev_flags.cfg`). §15 holds the 2D-vs-3D evidence; the top blocks hold the R3D-13 baseline on both handsets (Moto and Galaxy A16), the shot-tail A/B and the R3D-14 A/B. **Galaxy A16 serial `R5CY8122K7D`; put multi-step device runs in a bash script (zsh does not word-split, macOS has no `timeout`); the first boot after an install is noisy; an `adb install -r` of a throwaway APK must be proven in (compare the compiled `.gdc`) and the source diffed clean afterwards** |
 | **Prediction / simulate-without-committing** (any preview, estimate, or "what if") | [`PROMPTS/PLANNING/PREDICTION_MASTER_PLAN.md`](PROMPTS/PLANNING/PREDICTION_MASTER_PLAN.md) | ✅ **BUILT 2026-08-09, all 6 tasks.** `build_plan()` is PURE — it returns a `WorldDelta` and `delta.commit()` is the only writer; the pipeline is an 11-phase resumable state machine (`begin()`/`step(budget)`/`cancel()`); `PredictionCache` keys on `(signature, room._world_revision)`. **Bump the revision from any new committed mutation** (`room.bump_world_revision()`) or predictions go stale. §2 is the authoritative mutation inventory (7 `set_damage()` sites, all behind `commit_damage()`); the soot layer was always pure; firearms use `apply_point_impact()` and share neither. **§8.8 supersedes §1.1's phase table** — the map-wide voxel walk is 66% of the cost, not the soot BFS or the light field |
 | Weapons & arsenal catalog | [`PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md`](PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md) | Four delivery shapes (RADIAL/CONE/LINE/NONE) + step falloff; owns *what* a weapon emits, never *how* voxels break; facing constants are measured from baked frames, never reasoned |
@@ -368,7 +373,7 @@ Read the linked doc before modifying that system.
 | Localization | [`docs/technical/LOCALIZATION_REFERENCE.md`](docs/technical/LOCALIZATION_REFERENCE.md) | `tr("domain.key")`; singleton via `get_node_or_null("/root/Localization")`; dev overlays stay English |
 | Art authoring (any new texture/decal) | [`ASSETS/ART_SPECIFICATIONS.md`](ASSETS/ART_SPECIFICATIONS.md) | `TEX_AUTHORING_N = 16` texels/voxel is PINNED; never pre-stretch for projection — the compositor owns it. A facade is **1024×512 grayscale, never pre-squared** (D34 mirrors it vertically) and serves that material's wall, roof AND floor. A colored or un-imported facade is rejected with **no error at all** — Tier.NONE, generic atlas, silently wrong; measure a new one and reimport after every re-export. §7 = damage decals (square 256×256, alpha, 3 variants/family/material) |
 | **Character bakes** (any new frame, palette or posed export) | [`docs/pipelines/character_bake_pipeline.md`](docs/pipelines/character_bake_pipeline.md) | ⏭️ **Retires for gameplay at `RENDER3D` R3D-ACTORS (D64); the game still draws these frames until then.** Blender model → posed GLB → windowed Godot frame bake. Camera is 30°/45° and CANNOT move (D26 — a wrong angle breaks the light maths silently); scale factor is fixed at 2.00/1.898 so every variant's body matches, which means total height varies with silhouette and the gate must be told (`P2_EXPECTED_HEIGHT_M`). §8 is the trap table — `P1_MODEL` is not a model-script variable, and stage 2's closing log prints the WRONG out_dir |
-| Asset & TileSet pipeline | [`tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md`](tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md) | One on-disk TileSet (`tileset_blocks` 256×128, floor tiles only, `source_assets/generated/` scan); voxel atoms (32×16) build in memory at room load, no `.tres` |
+| Asset & TileSet pipeline | [`tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md`](tools/persistent/ASSET_PIPELINE_QUICK_REFERENCE.md) | One on-disk TileSet (`tileset_blocks` 256×128) that only the STRUCTURE layer and `GroundGrid`'s geometry still use; **the voxel board has no TileSet, no atom and no reimport into tiles** — the 3D board reads the `ASSETS/materials/<id>/` facades and decals directly |
 | Mobile device testing | [`tools/persistent/MobileTesting.md`](tools/persistent/MobileTesting.md) | ⏭️ **Since 2026-09-23 the phone test is the release APK (Director: web export no longer needed): `export_android.py` → `device_run.py` / `device_record.py`, flags via `dev_flags.cfg`.** The web + ngrok flow below is history |
 | File map, API surface | [`tools/persistent/CODEMAP.md`](tools/persistent/CODEMAP.md) | **Generated — never hand-edit, never mirror lists here.** Consult on demand |
 | Full documentation index | [`docs/README.md`](docs/README.md) | Every doc that exists; a dead link there is a bug |

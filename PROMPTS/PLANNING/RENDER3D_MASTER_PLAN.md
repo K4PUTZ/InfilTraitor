@@ -3035,7 +3035,7 @@ is not an entry condition (Director, 2026-09-23).
 - **The SE face of the reference set is not captured now.** If R3D-LOOK needs it, it is taken from a worktree of
   `34881f81`, the last commit with the 2D board.
 
-**Resume point (2026-09-24 close): END-0 to END-5 DONE; next END-6.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
+**Resume point (2026-09-25 close): END-0 to END-7 DONE; next END-8 (the device gate).** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
 
 **Execution order.** Every step is held to the END-0 set (below) and committed and pushed on its own; the last commit
 that still builds the 2D board is `34881f81`.
@@ -3180,6 +3180,20 @@ that still builds the 2D board is `34881f81`.
   errors before it, none after). **Gates:** ground_gate 16/16; pixel 0 px above noise; 31/31 probe dumps identical; roundtrip,
   shadow, mirror, occ_canonical PASS; shot_3d PASSED (2 919 / 3 611 px); `run_selftests` 51 clean.
 - **END-7 — canon.** The edits listed under "Canon" below, and the L1 hook retargeted.
+  **END-7 done 2026-09-25 — the canon.** `CLAUDE.md`: rule 8 rewritten for the store ("voxel state reaches the screen only through the
+  store and the mesher") and now hook-checked as **R8** (neither `voxel_board.gd` nor `board3d_live.gd` may call `set_cell()` /
+  `erase_cell()`); rule 2 reviewed against its last readers and KEPT (`room.gd` defines it and hands it to the 2D overlays, the actors
+  and `VoxelBoard.setup()`; `Board3DLive` must never know it; it retires with the last 2D overlay); rule 9 and hook **L1** retargeted
+  from `get_layer(<literal>)` to a literal handed to `has_level()` / `level_origin()` / `level_z_index()` / the level argument of
+  `voxel_world_position()`; **B1, B3, B5 retired; B2 (`check_facade.py`), B4 (`facade_sampler.gd` and the hash pickers) and B6 (loud
+  failure) survive**, each with its site named. The hook edits were proved red-then-green by sabotage (a `set_cell()` appended to
+  `board3d_live.gd` and literal level arguments appended to a selftest: three violations, then clean on restore). The workflow line on
+  generated PNGs, the project header, the Draw-order row (history), the R3D row and the Asset & TileSet row are rewritten.
+  History banners: `VOXEL_MASTER_PLAN` ("1 voxel = 1 Godot tile"), `RENDER_ORDER_MASTER_PLAN`, `BAKE_SYSTEM_REFERENCE`;
+  `PERFORMANCE_MASTER_PLAN` P4 and P6 marked moot. Rewritten: `QUICK_REFERENCE` (the two-plane model is the 3D camera's, the
+  layer formula is `VoxelBoard.level_origin()`), `ASSET_PIPELINE_QUICK_REFERENCE` (no TileSet, no reimport into tiles),
+  `ART_SPECIFICATIONS` (the 3D board's silent failure modes; B3 retired; the atom sheet retired), `DIRECTION_GLOSSARY` §10
+  (a new "banidos desde o R3D-END" table) and `Board3DLive`'s header. `docs/README.md` and `current_state.md` were not touched.
 - **END-8 — the gate** (below).
 
 **Deleted:**

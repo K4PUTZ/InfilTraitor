@@ -1,11 +1,14 @@
 # INFILTRAITOR — VOXEL SYSTEM MASTER PLAN
 
-> **⏭️ 2026-09-15 — the 3D render path is ratified ([`RENDER3D_MASTER_PLAN`](../../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)),
-> and two parts of this document now age differently.**
+> **⏭️ 2026-09-25 — R3D-END retired the 2D drawing rule; the 3D board is the only board
+> ([`RENDER3D_MASTER_PLAN`](../../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)). Read §1's "1 VOXEL = 1 Godot Tile", the atlas /
+> TileSet / `set_cell()` sections and every `VoxelRenderer` reference (now `VoxelBoard`, and it renders nothing) as HISTORY; the
+> last commit that builds the 2D board is `34881f81`.** The geometry below is untouched and canon.
+>
+> **⏭️ 2026-09-15 — the 3D render path was ratified, and two parts of this document aged differently.**
 > - **The geometry stays canon:** 8 voxels per GU axis, 8 levels per storey, slices,
 >   edges, junction columns, D16's two-voxel wall.
-> - **"1 VOXEL = 1 Godot Tile" (§1) is the 2D drawing rule.** It holds while the 2D board
->   ships and retires at R3D-END, on the Director's ratification.
+> - **"1 VOXEL = 1 Godot Tile" (§1) is the 2D drawing rule.** It retired at R3D-END (2026-09-25).
 > - **The `Voxel` object itself also changes.** R3D-1 replaces PLAYGROUND's 215 432
 >   objects (~316 MB, desktop debug build) with a packed store behind the same container
 >   API.
@@ -22,7 +25,7 @@
 >
 > | Topic | Canonical doc |
 > |---|---|
-> | **Baking** (atlas, atoms, invariants B1–B6, themes) | `docs/technical/BAKE_SYSTEM_REFERENCE.md` |
+> | **Baking** (historical: the atlas went at R3D-END; B2, B4, B6 survive) | `docs/technical/BAKE_SYSTEM_REFERENCE.md` |
 > | **Destruction** (damage states, Slab, dirty flag + TIC) | `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` |
 > | **Occlusion** (view ghosting, agent silhouette, cutaway) | `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md` |
 > | **Directions** (NW/NE/SE/SW, banned terms) | `docs/DIRECTION_GLOSSARY.md` |

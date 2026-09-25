@@ -3035,6 +3035,8 @@ is not an entry condition (Director, 2026-09-23).
 - **The SE face of the reference set is not captured now.** If R3D-LOOK needs it, it is taken from a worktree of
   `34881f81`, the last commit with the 2D board.
 
+**Resume point (2026-09-24 close): END-0, END-1, END-2 DONE (`901c5bd7`); next END-3.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
+
 **Execution order.** Every step is held to the END-0 set (below) and committed and pushed on its own; the last commit
 that still builds the 2D board is `34881f81`.
 - **END-0 — the reference set.** `pixel_gate.py --keep` (captures), `board_probe.py gate|roundtrip --out` (dumps),

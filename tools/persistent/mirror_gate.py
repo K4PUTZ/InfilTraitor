@@ -34,7 +34,7 @@ def boot() -> tuple[dict, str]:
     env = {**os.environ, "INFILTRAITOR_MAP": "GLASS", "INFILTRAITOR_RNG_SEED": "1",
            "INFILTRAITOR_GRENADE_GUS": "14,12;5,12", "INFILTRAITOR_SCENARIO": SCENARIO}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--position", "4000,4000"], capture_output=True,
-                         text=True, env=env, timeout=300)
+                         text=True, env=env, timeout=180)
     log = out.stdout + out.stderr
     checks = {}
     for m in LINE.finditer(log):
@@ -43,9 +43,10 @@ def boot() -> tuple[dict, str]:
 
 
 def main() -> int:
+    single = "--single" in sys.argv[1:]  ## one boot (verify.py's full tier); the internal checks below still run
     runs = []
     problems = []
-    for k in (1, 2):
+    for k in ((1,) if single else (1, 2)):
         checks, log = boot()
         runs.append(checks)
         if "SCRIPT ERROR" in log:

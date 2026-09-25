@@ -65,7 +65,7 @@ RECORDED = {
 def boot(map_id: str):
     env = {**os.environ, "INFILTRAITOR_MAP": map_id, "INFILTRAITOR_RNG_SEED": "1", "INFILTRAITOR_SCENARIO": SCENARIO}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--position", "4000,4000"], capture_output=True, text=True,
-                         env=env, timeout=400)
+                         env=env, timeout=200)
     log = out.stdout + out.stderr
     rows = {}
     for line in log.splitlines():

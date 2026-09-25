@@ -27,7 +27,11 @@
 ## repeat; when it recurred (296 px in g0) the differing pixels were ALL one colour, the cursor outline's (229, 25, 114),
 ## drawn in one boot and not the other because the real mouse sits over the window. Now masked by that exact colour.
 ##
-## Usage:   python3 tools/persistent/pixel_gate.py [--cases PLAYGROUND,GLASS] [--settle 400] [--keep DIR] [--against DIR]
+## `--single` (tools/persistent/verify.py's full tier) boots ONCE per case and holds run 1 to a stored `--against` set: the
+## determinism this gate earns with two boots was earned already and is re-earned only when a baseline is taken (`--keep`
+## without `--single`), so the daily check costs half. It needs `--against`: one boot alone proves nothing.
+##
+## Usage:   python3 tools/persistent/pixel_gate.py [--cases PLAYGROUND,GLASS] [--settle 400] [--keep DIR] [--against DIR] [--single]
 
 import argparse
 import os
@@ -40,6 +44,7 @@ ROOT = Path(__file__).resolve().parents[2]
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 CAPTURES = Path.home() / "Library/Application Support/Godot/app_userdata/INFILTRAITOR/captures"
 TAG = "[PIXEL-GATE]"
+BOOT_TIMEOUT_S = 180  ## a boot is 15-45 s; a hung one (another Godot alive, an open editor) must fail fast, not after 10 minutes
 NOISE = 8  ## per-channel step below which two pixels count as equal (0 = strict; reported both ways)
 BRICK_RX = 22 + 2
 ## PLAYGROUND's first two boots differed by 28 906 px in ONE region only: the agent's movement-range overlay
@@ -74,7 +79,7 @@ def boot(case: str, settle: int, tag: str):
     for label in labels:
         (CAPTURES / ("%s_%s.png" % (tag, label))).unlink(missing_ok=True)
     out = subprocess.run([GODOT, "--path", str(ROOT), "--fixed-fps", "60", "--position", "4000,4000"],
-                         capture_output=True, text=True, env=env, timeout=600)
+                         capture_output=True, text=True, env=env, timeout=BOOT_TIMEOUT_S)
     log = out.stdout + out.stderr
     files = {label: CAPTURES / ("%s_%s.png" % (tag, label)) for label in labels}
     return files, ("SCRIPT ERROR" in log), log
@@ -103,11 +108,15 @@ def main() -> int:
     ap.add_argument("--settle", type=int, default=400)
     ap.add_argument("--keep", default="", help="copy the captures of run 1 here")
     ap.add_argument("--against", default="", help="also compare run 1 with the set a `--keep` stored here")
+    ap.add_argument("--single", action="store_true", help="one boot per case, held to --against (no run-to-run check)")
     args = ap.parse_args()
+    if args.single and not args.against:
+        print("%s ERROR: --single needs --against (one boot alone proves nothing)" % TAG)
+        return 2
     problems = []
     for case in [c.strip() for c in args.cases.split(",") if c.strip()]:
         runs = []
-        for k in (1, 2):
+        for k in ((1,) if args.single else (1, 2)):
             tag = "pixgate_%s_r%d" % (case, k)
             files, script_error, log = boot(case, args.settle, tag)
             missing = [l for l, f in files.items() if not f.exists()]
@@ -118,7 +127,7 @@ def main() -> int:
             runs.append(files)
         if any(not f.exists() for r in runs for f in r.values()):
             continue
-        for label in runs[0]:
+        for label in (runs[0] if len(runs) == 2 else ()):
             strict = differing(runs[0][label], runs[1][label], 0, MASK.get(case))
             loose = differing(runs[0][label], runs[1][label], NOISE, MASK.get(case))
             print("%s %s %s: run 1 vs run 2 — %d px strict, %d px above noise %d" % (TAG, case, label, strict, loose, NOISE))

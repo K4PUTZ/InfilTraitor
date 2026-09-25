@@ -90,7 +90,7 @@ PROBE_LINE = re.compile(r"^\[BOARD-PROBE\] (\S+) .*→ (.+)$")
 ## Lines that mean the scenario itself went wrong, as opposed to boot noise.
 FATAL_MARKERS = ("SCRIPT ERROR", "[ScenarioRunner] step", "SCENARIO rejected",
                  "[BoardProbe]", "scenario_detonate:")
-RUN_TIMEOUT_S = 900
+RUN_TIMEOUT_S = 300
 
 ## R3D-1b — the shadow gate's stages: (label, the step that produces it). PLAYGROUND's
 ## grenades sit beside four boxes' corners, where two slices claim one cell and their
@@ -415,6 +415,52 @@ def run_once(godot, map_id, run_dir, extra_env, scenario=GATE_SCENARIO, labels=G
     return probes, problems, time.time() - t0
 
 
+def shadow_checks(map_id, stages, probes, run_dir, failures, args, o_prefix):
+    """The store-vs-objects comparison of `shadow`, per stage, plus its controls. `o_prefix` names the object dumps
+    (`o_` in `shadow`, `rt_` when `roundtrip --with-store` takes both in one boot)."""
+    log = (run_dir / "godot.log").read_text(encoding="utf-8", errors="replace")
+    store_lines = {}
+    for line in log.splitlines():
+        match = STORE_LINE.match(line.strip())
+        if match:
+            store_lines[match.group(1)] = [int(match.group(k)) for k in range(2, 6)]
+    for line in log.splitlines():
+        if line.startswith("[VOXEL-STORE] built"):
+            print("%s %s   %s" % (GATE_TAG, map_id, line.strip()))
+    quiet = [] if args.verbose else None
+    sink = print if quiet is None else quiet.append
+    for label, _step in stages:
+        o, s_ = o_prefix + label, "s_" + label
+        if o not in probes or s_ not in probes:
+            continue
+        result = diff(load(probes[o]), load(probes[s_]), args.first, sink)
+        counters = store_lines.get(s_)
+        drift = counters is None or counters[0] != 0 or counters[2] != 0 or counters[3] != 0
+        print("%s %s %-8s objects vs store %s — voxels %d/%d, plane texels %d; grid mismatches %s, writes mirrored %s, unknown %s, misplaced %s"
+              % (GATE_TAG, map_id, label, "IDENTICAL" if result["identical"] else "DIFFERENT",
+                 result["voxel_diffs"], result["voxels_compared"], result["texel_diffs"],
+                 *(counters if counters else ["?"] * 4)))
+        if not result["identical"]:
+            failures.append("%s %s: objects and store differ" % (map_id, label))
+            if quiet is not None:
+                for line in quiet:
+                    print(line)
+        if drift:
+            failures.append("%s %s: the store line is missing or reports drift" % (map_id, label))
+        if quiet is not None:
+            quiet.clear()
+    for a, b in SHADOW_CONTROLS.get(map_id, []):
+        if o_prefix + a not in probes or o_prefix + b not in probes:
+            continue
+        control = diff(load(probes[o_prefix + a]), load(probes[o_prefix + b]), args.first, sink)
+        if quiet is not None:
+            quiet.clear()
+        print("%s %s control: objects %s vs %s — voxels %d%s" % (GATE_TAG, map_id, a, b,
+              control["voxel_diffs"], "" if control["voxel_diffs"] else " — ⛔ the stage changed nothing"))
+        if control["voxel_diffs"] == 0:
+            failures.append("%s control %s→%s changed no voxel" % (map_id, a, b))
+
+
 def shadow(args):
     godot = find_godot()
     if godot is None:
@@ -452,47 +498,7 @@ def shadow(args):
             print("%s     %s" % (GATE_TAG, line))
         if problems:
             failures.append("%s did not run cleanly" % map_id)
-        log = (run_dir / "godot.log").read_text(encoding="utf-8", errors="replace")
-        store_lines = {}
-        for line in log.splitlines():
-            match = STORE_LINE.match(line.strip())
-            if match:
-                store_lines[match.group(1)] = [int(match.group(k)) for k in range(2, 6)]
-        for line in log.splitlines():
-            if line.startswith("[VOXEL-STORE] built"):
-                print("%s %s   %s" % (GATE_TAG, map_id, line.strip()))
-        quiet = [] if args.verbose else None
-        sink = print if quiet is None else quiet.append
-        for label, _step in stages:
-            o, s_ = "o_%s" % label, "s_%s" % label
-            if o not in probes or s_ not in probes:
-                continue
-            result = diff(load(probes[o]), load(probes[s_]), args.first, sink)
-            counters = store_lines.get(s_)
-            drift = counters is None or counters[0] != 0 or counters[2] != 0 or counters[3] != 0
-            print("%s %s %-8s objects vs store %s — voxels %d/%d, plane texels %d; grid mismatches %s, writes mirrored %s, unknown %s, misplaced %s"
-                  % (GATE_TAG, map_id, label, "IDENTICAL" if result["identical"] else "DIFFERENT",
-                     result["voxel_diffs"], result["voxels_compared"], result["texel_diffs"],
-                     *(counters if counters else ["?"] * 4)))
-            if not result["identical"]:
-                failures.append("%s %s: objects and store differ" % (map_id, label))
-                if quiet is not None:
-                    for line in quiet:
-                        print(line)
-            if drift:
-                failures.append("%s %s: the store line is missing or reports drift" % (map_id, label))
-            if quiet is not None:
-                quiet.clear()
-        for a, b in SHADOW_CONTROLS.get(map_id, []):
-            if "o_%s" % a not in probes or "o_%s" % b not in probes:
-                continue
-            control = diff(load(probes["o_%s" % a]), load(probes["o_%s" % b]), args.first, sink)
-            if quiet is not None:
-                quiet.clear()
-            print("%s %s control: objects %s vs %s — voxels %d%s" % (GATE_TAG, map_id, a, b,
-                  control["voxel_diffs"], "" if control["voxel_diffs"] else " — ⛔ the stage changed nothing"))
-            if control["voxel_diffs"] == 0:
-                failures.append("%s control %s→%s changed no voxel" % (map_id, a, b))
+        shadow_checks(map_id, stages, probes, run_dir, failures, args, "o_")
     if failures:
         print("%s SHADOW FAIL — %s" % (GATE_TAG, "; ".join(failures)))
         return 1
@@ -578,6 +584,23 @@ def gate(args):
                             print(line)
                 if quiet is not None:
                     quiet.clear()
+        if args.against:
+            for label in GATE_LABELS:
+                ref = Path(args.against) / map_id / "run1" / ("%s.txt" % label)
+                if not ref.exists():
+                    failures.append("%s %s: no stored baseline dump %s" % (map_id, label, ref))
+                    continue
+                result = diff(load(ref), load(runs[0][label]), args.first, sink)
+                print("%s %s %s: baseline vs run 1 %s — voxels %d/%d, plane texels %d"
+                      % (GATE_TAG, map_id, label, "IDENTICAL" if result["identical"] else "DIFFERENT",
+                         result["voxel_diffs"], result["voxels_compared"], result["texel_diffs"]))
+                if not result["identical"]:
+                    failures.append("%s %s: differs from the baseline" % (map_id, label))
+                    if quiet is not None:
+                        for line in quiet:
+                            print(line)
+                if quiet is not None:
+                    quiet.clear()
         control = diff(load(runs[0]["load"]), load(runs[0]["g0"]), args.first, sink)
         if quiet is not None:
             quiet.clear()
@@ -631,9 +654,15 @@ def roundtrip(args):
                 steps.append(step)
             steps += ["frames %d" % args.wait, "probe rt_%s" % label]
             labels.append("rt_%s" % label)
+            if args.with_store:
+                ## The stage list is the shadow gate's, so ONE boot can take both dumps at the same frame: the objects
+                ## (`rt_`) and the store (`s_`). `shadow_checks()` then judges them against each other.
+                steps.append("probe_store s_%s" % label)
+                labels.append("s_%s" % label)
         run_dir = out_root / map_id
         probes, problems, seconds = run_once(godot, map_id, run_dir, {}, "; ".join(steps + ["quit"]), labels,
-                                             SHADOW_ENV.get(map_id, {}), FATAL_MARKERS)
+                                             SHADOW_ENV.get(map_id, {}),
+                                             FATAL_MARKERS + (SHADOW_FATAL if args.with_store else ()))
         print("%s %s: %d probe(s) in %.0f s%s" % (GATE_TAG, map_id, len(probes), seconds,
               "" if not problems else " — %d problem(s)" % len(problems)))
         for line in problems[:8]:
@@ -641,6 +670,8 @@ def roundtrip(args):
         if problems:
             failures.append("%s did not run cleanly" % map_id)
             continue
+        if args.with_store:
+            shadow_checks(map_id, stages, probes, run_dir, failures, args, "rt_")
         quiet = []
         for before, after, what in ROUNDTRIP_PAIRS[map_id]:
             result = diff(load(probes["rt_" + before]), load(probes["rt_" + after]), args.first, quiet.append,
@@ -700,6 +731,9 @@ def main():
     p_gate = sub.add_parser("gate", help="boot the game per map, twice, and require identical probes")
     p_gate.add_argument("--maps", default="PLAYGROUND,GLASS")
     p_gate.add_argument("--runs", type=int, default=2)
+    p_gate.add_argument("--against", default=None, metavar="DIR",
+                        help="hold run 1 to the dumps a baseline `gate --out DIR` stored (<DIR>/<map>/run1/<label>.txt); "
+                             "with it a single run is enough (verify.py's full tier)")
     p_gate.add_argument("--env", action="append", default=[], metavar="KEY=VALUE")
     p_gate.add_argument("--out", default=None, help="where dumps and logs go (default: a new temp dir)")
     p_gate.add_argument("--first", type=int, default=20)
@@ -716,6 +750,10 @@ def main():
     p_round.add_argument("--out", default=None)
     p_round.add_argument("--first", type=int, default=20)
     p_round.add_argument("--strict-planes", action="store_true", help="also fail on any cell-plane difference")
+    p_round.add_argument("--with-store", action="store_true",
+                         help="also probe the VoxelStore at every stage and judge it against the objects (the `shadow` gate's "
+                              "checks, in the same boot: verify.py's full tier runs this instead of `shadow`)")
+    p_round.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     if args.command == "roundtrip":
         try:
@@ -736,8 +774,8 @@ def main():
             print("%s ERROR: %s" % (TAG, exc))
             return 2
         return 0 if result["identical"] else 1
-    if args.runs < 2:
-        print("%s ERROR: identity needs at least 2 runs" % GATE_TAG)
+    if args.runs < 2 and not args.against:
+        print("%s ERROR: identity needs at least 2 runs, or one run held to --against" % GATE_TAG)
         return 2
     try:
         return gate(args)

@@ -55,6 +55,29 @@ Two standing duties, both obligations:
 
 ## Verification protocol (before declaring anything done)
 
+**One command, in tiers, failing fast: `python3 tools/persistent/verify.py`** (added 2026-09-25; the header of
+`tools/persistent/verify.py` has the reasoning). It picks the tier from the files you changed:
+
+| Tier | Runs | Time | When |
+|---|---|---|---|
+| `docs` | invariants, codemap | seconds | Markdown / `PROMPTS/` / `docs/` only |
+| `quick` | lint, invariants, codemap, selftests (items 1, 5, 6 below) | ~1 min | every change, and the ONLY tier for tools, selftests and localisation |
+| `full` | `quick` + `ground_gate`, `shot_3d_gate`, `occ_canonical_gate`, `mirror_gate`, `roundtrip --with-store` (the old `shadow` folded in), and the two identity gates held to a stored baseline | ~7 min | anything under `godot/` that is not a selftest, `project.godot`, shaders, scenes, assets: the board, the state, the light, the ground, the geometry |
+
+- **Take a baseline at the START of a task**, on the code before your change: `python3 tools/persistent/verify.py --baseline`
+  (two boots per case, so it also proves the harness is deterministic today; ~3.5 min; stored git-ignored under
+  `Screenshots/verify_baseline/` with the commit). `verify.py full` then holds ONE boot per case to it. Without a baseline the two
+  identity gates fall back to their two-boot form and the run says so: slower, and it proves less (a change that alters both
+  boots the same way passes).
+- **The boot gates refuse to start while another Godot is alive, the editor included** (they used to sit out a 600 s timeout;
+  every boot now times out at 180-300 s). Close the editor first.
+- ⚠️ **`pixel_gate.py` is blind to a brightness change under its 8/255 noise floor:** measured 2026-09-25, a face-tone change from
+  0.975 to 0.900 moved ~16 000 px but only 5 px above the floor, so it failed by a hair. A look change needs a real capture
+  (item 4), not this gate.
+- The individual gates remain runnable on their own (each has its header); `verify.py --list` prints a tier's steps.
+
+The numbered list below is what the tiers run and what each step means:
+
 1. `python3 tools/persistent/project_lint.py` — zero real compile errors.
    The editor's Problems panel is a convenience view, not evidence (can
    hold stale entries for deleted/unsaved files) — the CLI is the arbiter.

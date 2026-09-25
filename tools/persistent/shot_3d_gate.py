@@ -60,7 +60,7 @@ def shoot(material: str, weapon: str, fire: bool) -> tuple[str, int]:
            "INFILTRAITOR_SHOT_AGENT_CELL": "%d,11" % rx, "INFILTRAITOR_SHOT_GUARD_CELL": "%d,6" % rx,
            "INFILTRAITOR_SCENARIO": scenario}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--position", "4000,4000"], capture_output=True,
-                         text=True, env=env, timeout=300)
+                         text=True, env=env, timeout=180)
     log = out.stdout + out.stderr
     before, after = CAPTURES / (tag + "_before.png"), CAPTURES / (tag + "_after.png")
     if not (before.exists() and after.exists()):

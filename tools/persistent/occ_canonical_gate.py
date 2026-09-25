@@ -50,7 +50,7 @@ def run_case(map_id: str, a: str, b: str) -> tuple[int, int]:
            "INFILTRAITOR_SCENARIO": "framing portrait; frames 60; occ_bench %s %s 41; quit" % (a, b)}
     import os
     out = subprocess.run([GODOT, "--path", str(ROOT)], capture_output=True, text=True,
-                         env={**os.environ, **env}, timeout=300).stdout
+                         env={**os.environ, **env}, timeout=180).stdout
     set_digest = re.search(r"canonical set digest (\d+)", out)
     geo_digest = re.search(r"cutaway geometry digest \d+, canonical (\d+)", out)
     if not set_digest or not geo_digest:

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**251 scripts · 81258 lines total** (under `godot/scripts/`)
+**251 scripts · 81218 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1054,7 +1054,7 @@ extends `Node3D` · 1905 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 2405 lines
+`class_name VoxelRenderer` · extends `Node2D` · 2408 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -4016,7 +4016,7 @@ extends `SceneTree` · 1606 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 462 lines
+extends `SceneTree` · 437 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
@@ -4294,11 +4294,11 @@ extends `SceneTree` · 202 lines
 
 ### `negative_storey_selftest.gd`
 
-extends `SceneTree` · 173 lines
+extends `SceneTree` · 155 lines
 
 `godot/scripts/tools/negative_storey_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN D17/D18 — negative storey selftest. Rodar: godot --headless --script res://godot/scripts/tools/negative_storey_selftest.gd Proves the floor can live at negative levels without disturbing the existing (positive) wall/block/prop pipeline at all — D17's whole claim. R3D-END (END-1): [4] and [5] (render_block() / render_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more). The rest stays until END-4 deletes the level layers.
+> DESTRUCTION_MASTER_PLAN D17/D18 — negative storey selftest. Rodar: godot --headless --script res://godot/scripts/tools/negative_storey_selftest.gd Proves the floor can live at negative levels without disturbing the existing (positive) wall/block/prop pipeline at all — D17's whole claim. R3D-END (END-1): [4] and [5] (render_block() / render_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more). END-4: [6] (`_set_voxel_cell()` on an unensured level) went with the placement. The rest stays until END-6 turns the level layers into arithmetic.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -4312,7 +4312,6 @@ extends `SceneTree` · 173 lines
 - `func test_negative_layer_creation_and_lookup() -> void:`
 - `func test_negative_level_position_and_zindex_formula() -> void:`
 - `func test_lazy_not_contiguous() -> void:`
-- `func test_set_voxel_cell_still_rejects_unensured_level() -> void:`
 
 ---
 

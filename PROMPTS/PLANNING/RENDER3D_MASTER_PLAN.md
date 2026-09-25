@@ -3195,6 +3195,12 @@ that still builds the 2D board is `34881f81`.
   `ART_SPECIFICATIONS` (the 3D board's silent failure modes; B3 retired; the atom sheet retired), `DIRECTION_GLOSSARY` §10
   (a new "banidos desde o R3D-END" table) and `Board3DLive`'s header. `docs/README.md` and `current_state.md` were not touched.
 - **END-8 — the gate** (below).
+  **END-8, Moto half done 2026-09-25; the Galaxy A16 half is PENDING (the handset was not attached).** The R3D-13 matrix on the Moto g04s
+  with the APK of `ac2eebce`, two boots: no regression, memory ~20% down (PSS 1.09-1.11 GB vs 1.38), idle 18.8-19.4 vs 18.9-21.9 ms,
+  both detonations' mean under 33.3 ms, the second grenade's worst frame 254 vs 693-725 ms; the full table is the top block of
+  `DEVICE_DIAGNOSTICS_MASTER_PLAN`. The other END-8 conditions are the ones every step already met (selftests clean, invariants,
+  CODEMAP, `board_probe gate`, the 3D pixel gate: `verify.py full` PASSED, 433 s). **To close R3D-END: run the same scenario on the Galaxy
+  (serial `R5CY8122K7D`, `--seconds` 220) and compare with its R3D-13 row.**
 
 **Deleted:**
 - **`VoxelRenderer`'s tile placement, its `TileMapLayer`s and the `_set_voxel_cell()` path.** The class is split first.

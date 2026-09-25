@@ -541,11 +541,6 @@ func finish_occ_digests() -> void:
 var last_occ_usec: PackedInt64Array = PackedInt64Array([0, 0, 0, 0, 0, 0, 0])
 
 
-## True when this board draws the cutaway itself; the 2D wireframe overlay is then hidden and needs no rebuilding.
-func draws_cutaway() -> bool:
-	return true
-
-
 func on_occlusion(occ_set) -> void:
 	if occ_set == null or _geometry_root == null:
 		return
@@ -601,10 +596,6 @@ func on_occlusion(occ_set) -> void:
 		material.set_shader_parameter("roof_on", 1 if not roof_gus.is_empty() else 0)
 	last_occ_usec[0] = Time.get_ticks_usec() - oc0
 	_rebuild_occlusion_lines(occ_set)
-	## The 2D wireframe panels are the same information drawn a second time, in the wrong place.
-	var overlay: Variant = _room.get("_occlusion_wireframe_overlay")
-	if overlay != null and is_instance_valid(overlay):
-		(overlay as CanvasItem).visible = false
 
 
 ## The occlusion volume's geometry, in one mesh with two surfaces: the wireframe as lines, and a cap on the

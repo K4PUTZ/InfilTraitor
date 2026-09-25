@@ -188,9 +188,8 @@ func test_material_bands_route_per_level() -> void:
 
 ## GLASS — OcclusionSet policy O7 (Director 2026-08-31): a glass slice must
 ## contribute NOTHING to occlusion. A glass pane is see-through, so the agent
-## behind it is already visible; and glass renders on `_glass_layers`, which
-## `apply_occlusion()` never touches — the wireframe would draw over a still-solid
-## pane. Control run first: the SAME cells as concrete DO occlude, so an empty
+## behind it is already visible; and a glass pane is drawn as a pane, not as a
+## wall the cutaway could ghost — the wireframe would draw over a still-solid pane. Control run first: the SAME cells as concrete DO occlude, so an empty
 ## glass result is the filter working, not a broken fixture.
 func test_glass_does_not_occlude() -> void:
 	print("[8] O7: a glass slice contributes nothing to OcclusionSet\n")

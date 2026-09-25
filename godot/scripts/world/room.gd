@@ -82,7 +82,6 @@ const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.
 ## OCC-01: Occlusion system (geometry occlusion set, view-space computation)
 const OcclusionSetClass = preload("res://godot/scripts/systems/occlusion_set.gd")
 const OcclusionOverlayClass = preload("res://godot/scripts/overlays/occlusion_overlay.gd")
-const OcclusionWireframeOverlayClass = preload("res://godot/scripts/overlays/occlusion_wireframe_overlay.gd")
 
 @onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
@@ -1755,7 +1754,6 @@ var _noise_overlay: Node2D = null
 ## OCC-01: Occlusion module and debug overlay
 var _occlusion_set: OcclusionSetClass = null
 var _occlusion_overlay: Node2D = null
-var _occlusion_wireframe_overlay: Node2D = null
 
 ## M2-14: Guard noise indicator — flutuante ao redor do agente
 var _guard_noise_indicator: Node2D = null
@@ -2504,30 +2502,6 @@ func _ready() -> void:
 	## separate toggle. Director's call: colored ring overlay is analysis/debug, should
 	## be part of LIGHT_VISION suite, not visible in normal gameplay.
 	_occlusion_overlay.visible = false
-
-	## OCC-07-b: the real, gameplay-facing occlusion visual — a silhouette outline over
-	## the hidden geometry, one rectangle per occluded Slice (its own real shape, not
-	## a generic box). Unlike _occlusion_overlay (dev-only diamond painter, starts
-	## hidden behind a debug toggle), this one is meant to be visible from the start —
-	## it is the whole point of occluding at all.
-	## z_index stays at the default (0, relative) on THIS manager node — it no longer
-	## carries a flat elevated z_index itself. Each occluded slice spawns its own
-	## per-level child panel stamped with that level's REAL voxel-layer z_index (read
-	## off VoxelRenderer directly), so the wireframe draws in the same bucket as the
-	## geometry it stands in for and nearer, unoccluded walls correctly cover it —
-	## a flat 150 always won regardless of what should have been in front of it.
-	_occlusion_wireframe_overlay = Node2D.new()
-	_occlusion_wireframe_overlay.set_script(OcclusionWireframeOverlayClass)
-	add_child(_occlusion_wireframe_overlay)
-	_occlusion_wireframe_overlay.set_occlusion_set(_occlusion_set)
-	_occlusion_wireframe_overlay.set_voxel_renderer(_voxel_renderer)
-	## OCC-12 (2026-07-14): back on — the diagonal-seam artifact was root-caused
-	## to per-edge corner_a/corner_b coming from each edge's own independently
-	## -scanned voxel bounds, which could disagree with a neighbor's at a real
-	## corner. Rebuilt on OcclusionSet's merged hull segments (true shared grid
-	## vertices, one box per straight run, not one per Slice/Edge) — see
-	## OcclusionSet._build_wireframe_segments().
-	_occlusion_wireframe_overlay.visible = true
 
 	## OCC-FIX-02: seed the set for the map we just loaded.
 	##
@@ -5847,10 +5821,9 @@ func _recompute_occlusion() -> void:
 	## isolates exactly the erased pixels — the erased-silhouette boundary is the
 	## ground truth wireframe alignment is measured against.
 	if OS.get_environment("INFILTRAITOR_OCC_DISABLE") == "1":
-		if _voxel_renderer != null:
-			_voxel_renderer.apply_occlusion({})
-		if _occlusion_wireframe_overlay != null:
-			_occlusion_wireframe_overlay.refresh()
+		var disabled_board: Node = board3d()
+		if disabled_board != null:
+			disabled_board.on_occlusion(OcclusionSetClass.new())
 		return
 	## OCC-07: the occlusion decision is per-Slice now, not per raw voxel column —
 	## feed it the same EdgeRegistry the renderer itself just built from (published
@@ -5880,13 +5853,9 @@ func _recompute_occlusion() -> void:
 	_occlusion_set.recompute(origins, slices, _room_size, _junction_columns, ceiling_slabs)
 	var occ_t1: int = Time.get_ticks_usec()
 
-	## OCC-02: paint it. The set is the truth; ghosts are its only rendering.
-	## While the 3D board draws the cutaway this erases tiles of a hidden 2D board (there are none to erase, and
-	## `_ghosted_cells` stays empty): 68 ms per step on the Moto for the 5x5 room fixture and 291 ms for a 15x15 hall,
-	## for nothing anyone sees. R3D-END step END-3 deletes this 2D cutaway.
+	## The set is the truth; the 3D board draws it (`Board3DLive.on_occlusion`). The 2D cutaway that erased tiles
+	## (OCC-21) went at R3D-END step END-3.
 	var live_board: Node = board3d()
-	if _voxel_renderer != null and not (live_board != null and live_board.draws_cutaway()):
-		_voxel_renderer.apply_occlusion(_occlusion_set.get_occluded_cells())
 	var occ_t2: int = Time.get_ticks_usec()
 
 	if live_board != null:
@@ -5894,13 +5863,6 @@ func _recompute_occlusion() -> void:
 	var occ_t3: int = Time.get_ticks_usec()
 	if _occlusion_overlay != null:
 		_occlusion_overlay.queue_redraw()
-	## The overlay is hidden while the 3D cutaway draws (`Board3DLive.on_occlusion`), and rebuilding its panels cost
-	## 25 ms per step on the Moto for nothing anyone sees.
-	if _occlusion_wireframe_overlay != null and not (live_board != null and live_board.draws_cutaway()):
-		## OCC-07-b: rebuilds the per-level panel children (each with its own
-		## z_index) — this manager no longer draws anything itself, so a plain
-		## queue_redraw() here would do nothing.
-		_occlusion_wireframe_overlay.refresh()
 	_occ_last_usec = [occ_t1 - occ_t0, occ_t2 - occ_t1, occ_t3 - occ_t2, Time.get_ticks_usec() - occ_t3]
 
 
@@ -10152,15 +10114,6 @@ func _capture_all_four_views() -> void:
 			continue
 		var path := "%s/occ_view_%s.png" % [history_dir, view]
 		img.save_png(path)
-		## OCC-02 criterion 3: a cell that leaves the set must come back to EXACTLY the
-		## alternative it had. Checked here rather than described: snapshot every placed
-		## cell, ghost the set, release it, snapshot again, compare. A lossy restore would
-		## permanently damage the map as the agent walks, and it would do so silently.
-		var roundtrip_ok: bool = _voxel_renderer.verify_ghost_roundtrip(
-			_occlusion_set.get_occluded_cells())
-		print("[OCC-02] view=%s ghost restore round-trip: %s" % [
-			view, "IDENTICAL" if roundtrip_ok else "*** LOSSY — CELLS DAMAGED ***"])
-
 		print("[OCC-FIX-02] view=%s active=%s agent_cell=%s collected=%d occluded_cells=%d → %s" % [
 			view, _active_perspective, agent.cell, _collect_all_voxel_cells().size(),
 			(_occlusion_set.get_occluded_cells().size() if _occlusion_set != null and _occlusion_set.has_method("get_occluded_cells") else -1),

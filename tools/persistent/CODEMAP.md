@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**275 scripts · 94465 lines total** (under `godot/scripts/`)
+**273 scripts · 93932 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,7 +17,7 @@
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
 - **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
+- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
 - **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
@@ -533,7 +533,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1914 lines
+extends `Node3D` · 1905 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1153,7 +1153,7 @@ extends `Node3D` · 1914 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 5636 lines
+`class_name VoxelRenderer` · extends `Node2D` · 5399 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1777,49 +1777,6 @@ extends `Node2D` · 146 lines
 - `var voxel_renderer = null`
 - `var voxel_tile_size: Vector2 = Vector2(32, 16)`
 - `var ring_colors := { 0: Color(1.0, 0.0, 0.0, 0.5),   # Red — ring 0 (nearest, most transparent) 1: Color(1.0, 0.5, 0.0, 0.5),   # Orange — ring 1 (middle) 2: Color(1.0, 1.0, 0.0, 0.5),   # Yellow — ring 2 (outer, least transparent) }`
-
-**Public API**
-- `func set_occlusion_set(occ_set: OcclusionSetClass) -> void:`
-- `func set_voxel_renderer(renderer) -> void:`
-
----
-
-### `occlusion_slice_panel.gd`
-
-extends `Node2D` · 79 lines
-
-`godot/scripts/overlays/occlusion_slice_panel.gd`
-
-> Occlusion Wireframe Panel — OCC-27 (2026-07-21) Draws ALL wireframe geometry for ONE LEVEL, at that level's own z_index (see occlusion_wireframe_overlay.gd for why z_index must track the real voxel layer). Supersedes the old per-structural-unit box panel (OCC-08-b through OCC-23): geometry now comes from OcclusionSet's own unified hidden-face-culling pass (_build_wireframe_geometry) over the shared occluded-column set, so this script no longer needs to know whether a given line/fill came from a wall, a junction column, or a roof. Simplified line style (Director, 2026-07-21 — "menos linhas sobrepostas, foco em arestas externas"): a "solid" line (this volume's own near side, nothing of its own bulk between it and the camera) draws as a plain solid line, no dots. A "dots" line (the volume's far side, behind its own bulk) draws as dots only, no underline — hidden-line-removal convention (CAD tradition: visible edges solid, hidden edges dashed), replacing the old "underline + dots on every edge regardless" look that read as one continuous, cluttered mesh. Fill alpha comes straight from VoxelRenderer.GHOST_ALPHAS (see that constant for the current per-ring values) — restoring OCC-19's original intent that the wireframe's glass fill uses the SAME alpha the real ghosted material already uses, not a second, independently-tuned value.
-
-**Constants / tuning**
-- `FILL_COLOR` = `Color(0.7, 0.7, 0.7)`
-- `LINE_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
-- `DOT_ALPHA` = `0.5`
-- `DOT_RADIUS` = `0.75`
-- `DOT_BLUR_SIGMA` = `1.0`
-
-**Public vars**
-- `var fills: Array = []`
-- `var lines: Array = []`
-
----
-
-### `occlusion_wireframe_overlay.gd`
-
-extends `Node2D` · 160 lines
-
-`godot/scripts/overlays/occlusion_wireframe_overlay.gd`
-
-> Occlusion Wireframe Overlay — OCC-27 (2026-07-21) Draws the wireframe over each occluded (erased) voxel's translucent band, reading OcclusionSet.get_wireframe_by_level() — geometry already unified across walls, junctions and roofs by OcclusionSet's own hidden-face- culling pass (see occlusion_set.gd::_build_wireframe_geometry() for why). VoxelRenderer.apply_occlusion() ghosts the band this outlines (ring alpha, OCC-08/O6); the edge's own base band underneath is left fully opaque and untouched (OCC-10) — solid enough on its own that it needs no outline. History: OCC-07-b through OCC-23 built this as one independent box PER STRUCTURAL UNIT (one per wall Edge, one per roof GU or later GU-rectangle, one disabled per junction column), each spawning its own OcclusionSlicePanel per level. OCC-27 supersedes that architecture: since the geometry is now ALREADY organized per level (one merged set of lines+fills per level, not per unit), this spawns exactly one panel PER LEVEL — no structural-unit grouping left to reason about, and far fewer nodes than before. z_index still tracks the real voxel layer per level (OCC-23): a panel for level L must draw BEHIND visible voxels at level L+1 and above, but IN FRONT of everything strictly below it (most visibly the edge's own opaque base band, OCC-10). Offset -1 puts the panel exactly between its level's layer and the one below.
-
-**Constants / tuning**
-- `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
-- `SlicePanelClass` = `preload("res://godot/scripts/overlays/occlusion_slice_panel.gd")`
-
-**Public vars**
-- `var occlusion_set: OcclusionSetClass = null`
-- `var voxel_renderer = null`
 
 **Public API**
 - `func set_occlusion_set(occ_set: OcclusionSetClass) -> void:`
@@ -4483,7 +4440,7 @@ extends `SceneTree` · 1606 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 463 lines
+extends `SceneTree` · 462 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
@@ -6150,7 +6107,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11774 lines
+extends `Node2D` · 11727 lines
 
 `godot/scripts/world/room.gd`
 
@@ -6220,7 +6177,6 @@ extends `Node2D` · 11774 lines
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
 - `OcclusionOverlayClass` = `preload("res://godot/scripts/overlays/occlusion_overlay.gd")`
-- `OcclusionWireframeOverlayClass` = `preload("res://godot/scripts/overlays/occlusion_wireframe_overlay.gd")`
 - `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `INVALID_CELL` = `Vector2i(-9999, -9999)`
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`

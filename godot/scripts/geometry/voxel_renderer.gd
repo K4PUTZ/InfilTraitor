@@ -546,13 +546,6 @@ static func floor_damage_material(base_material: String, damage_state: int,
 	return damage_variant_material(family, damage_state, is_blast, carved_side, variant)
 
 
-## OCC-27 (2026-07-21, Director's call): occlusion ring alphas, consumed by the
-## wireframe fill (occlusion_slice_panel.gd). Since OCC-21 occluded cells are
-## ERASED (not ghosted), so these alphas no longer ride on tile alternatives —
-## the wireframe fill is their only consumer. Bumped 3/6/9% -> 6/12/18% ->
-## 8/16/24% across two follow-up asks the same session.
-const GHOST_ALPHAS: Array[float] = [0.08, 0.16, 0.24]
-
 ## VL-01 — Six-bucket light painting (VOXEL_LIGHT_MASTER_PLAN, Director 2026-07-23).
 ##
 ## A lit/dark face is an ALTERNATIVE TILE, the exact mechanism OCC-02's ghosts
@@ -788,13 +781,6 @@ static func decode_face_soot_code(alt: int) -> int:
 ## VL-01: alternative id → is the cell H-flipped (junction mirror)?
 static func decode_light_flipped(alt: int) -> bool:
 	return alt >= SOOT_ALT_FLIP_BASE
-
-## Cells currently ghosted → Array of {"level": int, "prev_alt": int}, so a cell leaving
-## the occluded set is restored to EXACTLY the alternative it had. We remember what was
-## there rather than re-deriving what "should" be there: re-running the bake lookup here
-## would be a second live copy of the placement decision, and it would diverge from the
-## real one the moment bake config changed.
-var _ghosted_cells: Dictionary = {}
 
 ## RENDER3D R3D-3 step 5 — the opaque tile is never placed, so `_process_dirty_slice_voxel()`/`_process_dirty_slab_voxel()`'s erase
 ## branch has no `get_cell_source_id() != -1` to ask "was this erasure already
@@ -2675,173 +2661,6 @@ func _find_neighbor_wall_voxel(column: JunctionResolver.JunctionColumn, registry
 	return {}
 
 
-## OCC-02/OCC-08 — apply the occluded-cell set as ghosts. THE single entry point.
-##
-## `occluded`: Vector2i (voxel COLUMN) → ring index, straight from OcclusionSet.
-## OCC-08: the ring is an EDGE-GRAPH hop distance (0/1/2) from a triggering edge, not
-## a voxel distance — every voxel belonging to the same edge shares one ring, so
-## there is no per-voxel patchwork within a single wall to serrate. Every level of a
-## ghosted column is ghosted: a wall covering the agent covers him from his feet to
-## over his head, and the upper layers draw above him regardless of y-sort.
-##
-## Full restore, then full re-apply. The set is a few dozen columns and this runs on agent
-## step / view change / map load — never per frame. Diffing would buy nothing and would
-## add a second notion of "what is currently ghosted".
-##
-## O1: this never writes Voxel.visible, never sets a dirty flag, never persists. A ghost
-## is a tile alternative and nothing more. If occlusion ever hid a voxel instead, a
-## DESTROYED voxel would come back to life the moment the player rotated the camera over
-## a crater — and that bug only reproduces under rotation, so it would survive for months.
-func apply_occlusion(occluded: Dictionary) -> void:
-	_restore_ghosted_cells()
-
-	for cell in occluded.keys():
-		var entry = occluded[cell]
-		## OCC-10: min_level is where GHOSTING STARTS — the edge's own base band
-		## (OcclusionSet.BASE_VISIBLE_LEVELS) sits below it and is never touched
-		## here at all, left at its original full-opacity tile (Director's call:
-		## the base always reads as solid footprint; only the rest ghosts).
-		var min_level: int = int(entry.get("min_level", 0))
-		## OCC-26 (2026-07-18): the erase stops at the occluding structure's OWN
-		## top instead of running through every layer above it. Levels above an
-		## occluded wall belong to someone else — concretely the roof's 1-voxel
-		## border row, which the old open-ended loop erased along with the wall,
-		## pushing the visible roof edge one voxel deeper (a ~4-px roofline seam
-		## against the wireframe's top cap). Missing max_level (older callers,
-		## tests) keeps the historical erase-to-top behavior.
-		var max_level: int = int(entry.get("max_level", top_wall_level()))
-		## OCC-21 dropped tile-alternative ghosting for erase+wireframe-fill (see
-		## below) — `entry["ring"]` is no longer read here; ring-based visuals now
-		## live entirely in occlusion_slice_panel.gd/occlusion_wireframe_overlay.gd.
-		var restore_records: Array = []
-
-		for level in range(min_level, max_level + 1):
-			var layer: TileMapLayer = _layers.get(level)
-			if layer == null:
-				continue
-			var source_id: int = layer.get_cell_source_id(cell)
-			if source_id == -1:
-				continue  ## nothing placed at this level of the column
-
-			var atlas_coords: Vector2i = layer.get_cell_atlas_coords(cell)
-			var prev_alt: int = layer.get_cell_alternative_tile(cell)
-
-			## OCC-21 (2026-07-14): ERASE occluded cells entirely instead of ghosting.
-			## The wireframe fill is now the sole visual representation. Store full
-			## placement data (source, atlas, alt) for complete restoration later.
-			restore_records.append({
-				"level": level,
-				"source_id": source_id,
-				"atlas_coords": atlas_coords,
-				"prev_alt": prev_alt
-			})
-			layer.erase_cell(cell)
-			note_external_write(level, cell)
-
-		if not restore_records.is_empty():
-			_ghosted_cells[cell] = restore_records
-
-
-## OCC-02 — prove the restore is lossless, on the real map, not by argument.
-##
-## Snapshot every placed cell's (source, atlas, alternative) across every level; ghost the
-## given set; release it; snapshot again; compare. Returns true iff the map is bit-identical
-## afterwards.
-##
-## This is the invariant that matters most in the whole prompt. Ghosting runs on every agent
-## step; if restore is lossy by even one alternative, the map degrades a little with each
-## step the player takes — a corruption that accumulates invisibly and would be blamed on
-## anything but occlusion months later.
-func verify_ghost_roundtrip(occluded: Dictionary) -> bool:
-	apply_occlusion({})          ## start from a clean, unghosted map
-	var before := _snapshot_cells()
-	apply_occlusion(occluded)
-	apply_occlusion({})          ## release everything
-	var after := _snapshot_cells()
-
-	var ok := true
-	if before.size() != after.size():
-		push_error("[OCC-02] Round-trip changed the cell COUNT: %d → %d" % [before.size(), after.size()])
-		ok = false
-	else:
-		for key in before.keys():
-			if not after.has(key) or after[key] != before[key]:
-				push_error("[OCC-02] Round-trip damaged cell %s: %s → %s" % [
-					key, before[key], after.get(key, "<missing>")])
-				ok = false
-				break
-
-	## Leave the map in the state the caller had: ghosts applied. A verification that
-	## silently un-ghosts the world would make the very capture taken to prove ghosting
-	## show none of it.
-	apply_occlusion(occluded)
-	return ok
-
-
-## OCC-02: (level, cell) → [source_id, atlas_coords, alternative] for every placed cell.
-func _snapshot_cells() -> Dictionary:
-	var snap: Dictionary = {}
-	for level in wall_level_keys():
-		var layer: TileMapLayer = _layers[level]
-		for cell in layer.get_used_cells():
-			snap[[level, cell]] = [
-				layer.get_cell_source_id(cell),
-				layer.get_cell_atlas_coords(cell),
-				layer.get_cell_alternative_tile(cell),
-			]
-	return snap
-
-
-## OCC-02: put every ghosted cell back to the exact alternative it had before we touched
-## it. Reading the remembered value — not recomputing it — is what keeps occlusion a pure
-## view layer over whatever placement decided (baked or generic).
-## OCC-GHOST-DESTROY — A DESTROYED VOXEL HAS NOTHING TO RESTORE, and not saying so
-## is how one voxel gets destroyed TWICE.
-##
-## `_ghosted_cells` remembers a cell's exact placement so un-ghosting can put it
-## back. If the voxel is destroyed WHILE ghosted, that memory becomes a promise to
-## re-create geometry that no longer exists — and `_restore_ghosted_cells()` keeps
-## the promise, because it restores from the saved record precisely so it does not
-## have to consult live layer state (OCC-21).
-##
-## The sequence behind the reported defect (Director, 2026-08-23: *"algumas areas
-## queimam e soltam fumaça uma segunda vez"*):
-##
-##   1. occlusion ghosts a cell — erased, placement remembered
-##   2. a blast destroys that voxel: `process_dirty()` erases it, sees
-##      `already_gone`, and correctly does NOT emit `voxel_destroyed`
-##   3. the agent moves on and `_restore_ghosted_cells()` PUTS THE CELL BACK
-##   4. the next dirty pass finds geometry there, erases it, and emits
-##      `voxel_destroyed` — smoke, debris and sparks for a voxel that died in an
-##      earlier blast
-##
-## ⚠️ The emit guards at both erase sites are CORRECT and are not the bug: in step
-## 4 the cell really was there. The flag was never finalised, and this finalises it
-## at the moment of destruction — the only place that knows.
-func forget_ghost_record(cell: Vector2i, level: int) -> void:
-	var records = _ghosted_cells.get(cell)
-	if records == null:
-		return
-	for i in range(records.size() - 1, -1, -1):
-		if int(records[i]["level"]) == level:
-			records.remove_at(i)
-	if (records as Array).is_empty():
-		_ghosted_cells.erase(cell)
-
-
-func _restore_ghosted_cells() -> void:
-	for cell in _ghosted_cells.keys():
-		for record in _ghosted_cells[cell]:
-			var level: int = record["level"]
-			if not _layers.has(level):
-				continue
-			var layer: TileMapLayer = _layers[level]
-			## OCC-21: restore from saved placement data, not current layer state
-			## (the cell was erased, so layer queries would return -1)
-			layer.set_cell(cell, record["source_id"], record["atlas_coords"], record["prev_alt"])
-	_ghosted_cells.clear()
-
-
 ## VL-01 — repaint every placed voxel cell to its light bucket. Runs on
 ## lighting_rebuilt (map load, perspective rotation, light changes) — never per
 ## frame. Pure view layer, same contract as occlusion (O1): no Voxel state, no
@@ -3013,23 +2832,8 @@ func _apply_light_field_pass(field) -> void:
 	_placed_index.clear()
 	for level in level_keys():
 		_apply_light_to_layer(_layers[level], level, field, true)
-	## Occluded cells are ERASED right now (OCC-21) and will come back from
-	## _ghosted_cells records — retarget each stored alternative so releasing
-	## occlusion cannot resurrect a stale bucket.
-	for cell in _ghosted_cells.keys():
-		for record in _ghosted_cells[cell]:
-			var flipped: bool = decode_light_flipped(record["prev_alt"])
-			## PERF-P3: and its light, for the same reason. §5.1 named the ghost
-			## store as the reader with real teeth — it remembers `prev_alt` to
-			## restore a cell EXACTLY. Once the id stops carrying the bucket, the
-			## record alone no longer describes the cell, so the plane has to be
-			## kept in step here or an un-ghosted cell comes back lit by whatever
-			## the plane last happened to hold.
-			var ghost_bucket: int = field.bucket_for(cell, record["level"])
-			_write_cell_bucket(int(record["level"]), cell, ghost_bucket)
-			record["prev_alt"] = encode_light_alt(ghost_bucket, flipped)
-	## PERF-P2 — ONE upload per level per repaint, at the end, after the ghost
-	## records have had their say. Never one upload per cell.
+	## PERF-P2 — ONE upload per level per repaint, at the end, at the end of
+	## the pass. Never one upload per cell.
 	flush_cell_soot()
 	## PERF-10 — this pass repainted every cell there is, so it repainted every
 	## cell the accumulator names. `apply_light_field_gus()` deliberately does NOT
@@ -3046,12 +2850,6 @@ func _apply_light_field_pass(field) -> void:
 ## `VoxelStore.occupancy_dict()` instead of `layer.get_used_cells()`, since no
 ## opaque tile exists to enumerate. No `layer.get_cell_*`/`set_cell` call anywhere
 ## in this function — that is the entire point.
-##
-## ⚠️ Ghost records (OCC-21's cell erase / restore) are NOT replayed here. O1 says
-## occlusion is VIEW, not STATE, and never writes the store — under this path there
-## is no opaque tile for OCC-21 to erase in the first place, so `_ghosted_cells`
-## stays empty and this is a no-op omission, not a skipped fix. R3D-7 is where
-## occlusion gets its own 3D mechanism; this function does not attempt one.
 func _apply_light_field_pass_store(field) -> void:
 	_apply_cells_seen = 0
 	_apply_cells_written = 0
@@ -3156,18 +2954,6 @@ func apply_light_field_cells(field, cells: Dictionary) -> void:
 		var level: int = key.z
 		var cell := Vector2i(key.x, key.y)
 		_write_cell_bucket(level, cell, field.bucket_for(cell, level))
-	## Ghost records, restricted to the same set. A record outside it keeps its
-	## stored alternative, and that is correct by the same property the walk rests
-	## on: a bucket that did not change needs no retarget.
-	for gcell in _ghosted_cells.keys():
-		for record in _ghosted_cells[gcell]:
-			var glevel: int = int(record["level"])
-			if not visit.has(Vector3i(gcell.x, gcell.y, glevel)):
-				continue
-			var flipped: bool = decode_light_flipped(record["prev_alt"])
-			var ghost_bucket: int = field.bucket_for(gcell, glevel)
-			_write_cell_bucket(glevel, gcell, ghost_bucket)
-			record["prev_alt"] = encode_light_alt(ghost_bucket, flipped)
 	flush_cell_soot()
 	field.clear_stale_accum()
 	_externally_written.clear()
@@ -3192,23 +2978,6 @@ func apply_light_field_gus(field, gus: Array) -> void:
 			## R3D-6: the planes only. No opaque tile exists to say whether the cell is still there, and without this
 			## the blast's consequence pass wrote NO soot and NO light into the planes.
 			_write_cell_bucket(level, cell, field.bucket_for(cell, level))
-	## Ghosted cells inside the affected GUs: retarget their stored alternative
-	## too (same reasoning as apply_light_field()'s ghost retarget loop), so
-	## un-ghosting later shows the bucket this toggle produced, not a stale one.
-	for cell in _ghosted_cells.keys():
-		if not gu_set.has(Vector2i(cell.x >> 3, cell.y >> 3)):
-			continue
-		for record in _ghosted_cells[cell]:
-			var flipped: bool = decode_light_flipped(record["prev_alt"])
-			## PERF-P3: and its light, for the same reason. §5.1 named the ghost
-			## store as the reader with real teeth — it remembers `prev_alt` to
-			## restore a cell EXACTLY. Once the id stops carrying the bucket, the
-			## record alone no longer describes the cell, so the plane has to be
-			## kept in step here or an un-ghosted cell comes back lit by whatever
-			## the plane last happened to hold.
-			var ghost_bucket: int = field.bucket_for(cell, record["level"])
-			_write_cell_bucket(int(record["level"]), cell, ghost_bucket)
-			record["prev_alt"] = encode_light_alt(ghost_bucket, flipped)
 	flush_cell_soot()
 
 
@@ -3435,14 +3204,13 @@ func _process_dirty_slab_voxel(voxel: Voxel, slab: Slab, _use_solid: bool, is_zo
 
 
 ## R3D-14 — a glass pane voxel has gone invisible under the store's glass state. Everything the layer erase used to do that is
-## STATE and not drawing: the light and ghost bookkeeping, the two glass seams (the crack's occupancy re-cut, the rim's opening
+## STATE and not drawing: the light bookkeeping, the two glass seams (the crack's occupancy re-cut, the rim's opening
 ## batch), and the `voxel_destroyed` notice, told once per cell.
 func _render3d_glass_gone(voxel: Voxel, material_id: String) -> void:
 	var key := Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)
 	var first: bool = not _render3d_gone_glass.has(key)
 	_render3d_gone_glass[key] = true
 	note_external_write(voxel.level, voxel.grid_pos)
-	forget_ghost_record(voxel.grid_pos, voxel.level)
 	note_glass_erased()
 	note_glass_erased_for_rim(voxel.level, voxel.grid_pos)
 	if first:
@@ -5269,9 +5037,8 @@ func glass_cell_present(level: int, cell: Vector2i) -> bool:
 
 
 func erase_glass_cell(level: int, cell: Vector2i) -> bool:
-	## R3D-14: no layer to erase; the light, ghost and glass seams the erase owed are all that is left of it.
+	## R3D-14: no layer to erase; the light and glass seams the erase owed are all that is left of it.
 	note_external_write(level, cell)
-	forget_ghost_record(cell, level)
 	note_glass_erased()   ## G-D30, seam 3 of 3 (the cook)
 	note_glass_erased_for_rim(level, cell)   ## CRACK-03
 	return true
@@ -5425,10 +5192,6 @@ func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 func clear() -> void:
 	for layer in _layers.values():
 		layer.clear()
-	## OCC-02: the cells those records point at no longer exist. Keeping them would make
-	## the next restore write stale alternatives into freshly-rebuilt geometry — the
-	## rotation path (clear() + render()) goes through here every time.
-	_ghosted_cells.clear()
 	## VL-03: same reasoning — the GU index would point at cells this cleared
 	## tilemap no longer has. apply_light_field() rebuilds it from scratch on the
 	## next full pass, which always follows clear()+render() in the rebuild flow.

@@ -3035,7 +3035,7 @@ is not an entry condition (Director, 2026-09-23).
 - **The SE face of the reference set is not captured now.** If R3D-LOOK needs it, it is taken from a worktree of
   `34881f81`, the last commit with the 2D board.
 
-**Resume point (2026-09-24 close): END-0, END-1, END-2 DONE (`901c5bd7`); next END-3.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
+**Resume point (2026-09-24 close): END-0 to END-3 DONE; next END-4.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
 
 **Execution order.** Every step is held to the END-0 set (below) and committed and pushed on its own; the last commit
 that still builds the 2D board is `34881f81`.
@@ -3104,6 +3104,15 @@ that still builds the 2D board is `34881f81`.
   clean; no new warnings in touched files.
 - **END-3 — the 2D cutaway.** OCC-21 / OCC-27, `apply_occlusion()`, `_ghosted_cells`, the 2D wireframe overlay (it reads
   the tile layers, so it goes before them).
+  **Done 2026-09-25.** Gone: `apply_occlusion()`, `_ghosted_cells` and its records, `verify_ghost_roundtrip()`,
+  `_snapshot_cells()`, `forget_ghost_record()` and its two callers, the ghost loops in the light passes,
+  `GHOST_ALPHAS`, `Board3DLive.draws_cutaway()`, `occlusion_wireframe_overlay.gd` and `occlusion_slice_panel.gd`,
+  the `occ_view` capture's ghost round-trip. `OcclusionSet`'s geometry stays (the 3D board reads it).
+  `INFILTRAITOR_OCC_DISABLE` now sends the 3D board an empty set (it only cleared the 2D one before, so it never
+  disabled the cutaway). Left for END-6: `occlusion_overlay.gd` (dev diamond painter). **Gates against END-0:** pixel
+  0 px above noise (GLASS g0/g1 136/63 strict, the known jitter; the first run timed out at 600 s in Godot's boot, a
+  rerun passed); 31/31 probe dumps pass, roundtrip and shadow PASS, ground 16/16, mirror (7/504, 9/920),
+  occ_canonical identical, shot_3d PASSED (2 919 / 3 594 px); `run_selftests` 64 clean.
 - **END-4 — tile placement and the atlases.** `_set_voxel_cell()`, the `TileMapLayer`s, the TileSet and the voxel atoms,
   `tileset_blocks`, `BakeCompositor`, `BakedTileLookup`, `DamageCompositeCache`, `DamageVariantBaker`'s atom pages, the
   light alternatives and the mint cache, `voxel_face_shading.gdshader` and its soot textures, the 2D-only light

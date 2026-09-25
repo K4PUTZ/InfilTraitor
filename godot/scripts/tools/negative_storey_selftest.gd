@@ -3,8 +3,8 @@
 ##
 ## Proves the floor can live at negative levels without disturbing the
 ## existing (positive) wall/block/prop pipeline at all — D17's whole claim.
-## R3D-END (END-1): [4] and [5] (render_block() / render_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more). The rest
-## stays until END-4 deletes the level layers.
+## R3D-END (END-1): [4] and [5] (render_block() / render_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more).
+## END-4: [6] (`_set_voxel_cell()` on an unensured level) went with the placement. The rest stays until END-6 turns the level layers into arithmetic.
 
 extends SceneTree
 
@@ -23,7 +23,6 @@ func _init() -> void:
 	test_negative_layer_creation_and_lookup()
 	test_negative_level_position_and_zindex_formula()
 	test_lazy_not_contiguous()
-	test_set_voxel_cell_still_rejects_unensured_level()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -154,20 +153,3 @@ func test_lazy_not_contiguous() -> void:
 	renderer.queue_free()
 	print("")
 
-
-## The pre-existing contract (never silently no-op without a warning) must
-## still hold for BOTH signs — a level nobody ensured is still a hard warning,
-## not a crash and not a silent success.
-func test_set_voxel_cell_still_rejects_unensured_level() -> void:
-	print("[6] _set_voxel_cell() on an unensured negative level still warns, doesn't crash\n")
-
-	var renderer := VoxelRendererClass.new()
-	root.add_child(renderer)
-	renderer.setup(Vector2.ZERO)
-
-	# Level -5 was never ensured. This should push_warning and return, not error.
-	renderer._set_voxel_cell(Vector2i(0, 0), -5, "earth_0")
-	_pass("_set_voxel_cell() on unensured level -5 returned without crashing (warning expected in output above)")
-
-	renderer.queue_free()
-	print("")

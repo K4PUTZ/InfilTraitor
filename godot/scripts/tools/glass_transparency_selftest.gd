@@ -400,22 +400,13 @@ func test_two_glass_materials_are_two_panes() -> void:
 
 ## ── [12] GLASS-OLIVE (2026-09-06) — THE RESOLVE-ONLY SEAM NAMES ITS LAYER ────
 ##
-## Test [1] pins the APPLY path: `_set_voxel_cell(apply = true)` puts glass on
-## `_glass_layers` and erases the opaque cell. This one pins the half that has no
-## layer at all — `apply = false` RETURNS an id and lets the caller place it, and
-## for a decade of commits the returned dict gave the caller no way to learn that
-## the id belongs to a different TileMapLayer than every other id it hands out.
+## The plan-level half of the resolve-only seam: DetonationPlanBuilder's per-voxel entry for a damaged voxel. A GLASS-family
+## container yields NO entry at all (a cracked pane's whole visual is the craze web, G-D27), and a concrete control still
+## yields one. (R3D-END END-4: the renderer-level half — `_set_voxel_cell(apply = false)` returning no atom for glass — went with
+## the placement.)
 ##
-## ⚠️ THE FAILURE IS SILENT IN BOTH DIRECTIONS, WHICH IS WHY THIS IS ASSERTED AS
-## AN IDENTITY. A glass atom's RGB is `(dim, dim, tint_index / 255)` — an
-## instruction to `glass_pane.gdshader` and nothing else — so on the opaque layer
-## `voxel_face_shading.gdshader` renders it as a flat YELLOW rectangle with no
-## push_error anywhere; and the pane still drawing above it tints that yellow with
-## `PANE_TINT[0]`'s blue, which reads as OLIVE and looks like a lighting bug.
-## Asserting merely "the resolve is not the wrong id" would pass for the whole
-## life of the defect, so both sides are named: the marker must BE true for glass
-## and the plan-level resolve must BE empty, with a concrete control that must
-## still produce a real opaque tile.
+## The failure this guards was silent in both directions (GLASS-OLIVE, 2026-09-06): a glass atom stamped on the opaque layer
+## rendered as a flat YELLOW rectangle with no push_error anywhere, so it is asserted as an identity on both sides.
 func test_a_damaged_glass_voxel_yields_no_opaque_tile_entry() -> void:
 	print("[12] a CRACKED glass voxel resolves to NO opaque tile (GLASS-OLIVE)\n")
 	var r := _fresh_renderer()
@@ -426,22 +417,6 @@ func test_a_damaged_glass_voxel_yields_no_opaque_tile_entry() -> void:
 	registry.register_slice(glass_slice)
 	registry.register_slice(concrete_slice)
 	r.render(registry)
-
-	## The seam itself (R3D-END END-2): a glass pane voxel resolves to NOTHING — no atom, no opaque tile — and the
-	## concrete control still resolves to a real opaque id.
-	var glass_resolve: Dictionary = r._set_voxel_cell(Vector2i(26, 31), level, "glass",
-		null, Vector2i(2, 7), Face.SW, false, "", BakePolicy.SurfaceClass.SLICE, false)
-	if glass_resolve.is_empty():
-		_pass("resolve-only glass returns nothing — no tile for the opaque layer to wear")
-	else:
-		_fail("resolve-only glass returned %s — a caller would stamp it on the opaque layer" % [glass_resolve])
-
-	var concrete_resolve: Dictionary = r._set_voxel_cell(Vector2i(26, 31), level, "concrete",
-		null, Vector2i(2, 7), Face.SW, false, "", BakePolicy.SurfaceClass.SLICE, false)
-	if int(concrete_resolve.get("source_id", -1)) >= 0:
-		_pass("resolve-only concrete still returns a real opaque id (%d)" % int(concrete_resolve["source_id"]))
-	else:
-		_fail("resolve-only concrete dict %s — the glass guard is eating other materials" % [concrete_resolve])
 
 	## The consumer: DetonationPlanBuilder's per-voxel entry. R3D-END: no tile is resolved any more, so the entry is the
 	## placeholder that carries the voxel key; a GLASS-family container still yields NO entry at all (a cracked pane's

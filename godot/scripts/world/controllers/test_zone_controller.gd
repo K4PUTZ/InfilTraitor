@@ -1247,49 +1247,28 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## bigger bite ends the wait sooner.
 	var cook_frames: int = 0
 	var cook_work_us: int = 0
-	## DIAG-22 — the cook's worst frame on the Moto (frame 117 of grenade #1: 1 866 ms
-	## in 2D, 682–709 ms with the 2D writes skipped) is two to eight times its worst
-	## STEP (234–305 ms), so most of it is paid outside `job.step()`. The trace names
-	## what each cook frame did to the TileSet every TileMapLayer shares: a composite
-	## tile, a composite page or a light alternative created mid-cook is a TileSet
-	## mutation, and the frame that follows pays the layers' rebuild. THROW_PROFILE only.
+	## DIAG-22 — `THROW_PROFILE` names each cook frame that runs long and what the step did in it (the composite and light-alt
+	## counters this line also carried went with the 2D tile atlases, R3D-END END-4).
 	var cook_trace: bool = room._dev_flag_on("THROW_PROFILE")
 	var cook_trace_slow_ms: float = 50.0
-	## A stored composite creates a tile only on the lazy path; up front, its tile
-	## already exists and the store is pixels only.
-	var tile_mode: String = "up front" if DamageCompositeCache.TILES_UP_FRONT else "created lazily"
-	var composites: DamageCompositeCache = room._voxel_renderer.get_damage_composite_cache()
-	var cook_tiles: int = 0
-	var cook_pages: int = 0
-	var cook_alts: int = 0
 	while not job.is_done() and not job.is_cancelled():
 		var ct0: int = Time.get_ticks_usec()
 		var phase_in: String = job.phase_name()
-		var tiles0: int = composites.size()
-		var pages0: int = composites.page_count()
-		var alts0: int = room._voxel_renderer.minted_light_alt_count()
 		job.step(cook_budget_ms)
 		var step_us: int = Time.get_ticks_usec() - ct0
 		cook_work_us += step_us
-		var tiles: int = composites.size() - tiles0
-		var pages: int = composites.page_count() - pages0
-		var alts: int = room._voxel_renderer.minted_light_alt_count() - alts0
-		cook_tiles += tiles
-		cook_pages += pages
-		cook_alts += alts
 		## The fuse keeps sputtering while the engine finishes thinking.
 		room.spawn_fuse_sputter(anchor)
 		await room.get_tree().process_frame
 		if cook_trace:
 			var frame_ms: float = float(Time.get_ticks_usec() - ct0) / 1000.0
-			if frame_ms > cook_trace_slow_ms or tiles > 0 or pages > 0 or alts > 0:
-				print("[T-COOK] f=%3d  frame %6.1f ms · step %6.1f ms (%s -> %s) · outside the step %6.1f ms · composites stored +%d (tiles %s) · pages +%d · light alts +%d" % [
+			if frame_ms > cook_trace_slow_ms:
+				print("[T-COOK] f=%3d  frame %6.1f ms · step %6.1f ms (%s -> %s) · outside the step %6.1f ms" % [
 					cook_frames, frame_ms, float(step_us) / 1000.0, phase_in, job.phase_name(),
-					frame_ms - float(step_us) / 1000.0, tiles, tile_mode, pages, alts])
+					frame_ms - float(step_us) / 1000.0])
 		cook_frames += 1
 	if cook_trace:
-		print("[T-COOK] cook total — %d frame(s) · composites stored +%d (tiles %s) · pages +%d · light alts +%d"
-			% [cook_frames, cook_tiles, tile_mode, cook_pages, cook_alts])
+		print("[T-COOK] cook total — %d frame(s)" % cook_frames)
 	_prof("BEAT 0 — cooking done: %d frame(s), %.1f ms of leftover work at a %.1f ms budget" % [
 		cook_frames, float(cook_work_us) / 1000.0, cook_budget_ms])
 	if job.delta == null:

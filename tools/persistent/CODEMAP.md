@@ -8,19 +8,19 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**273 scripts · 93932 lines total** (under `godot/scripts/`)
+**251 scripts · 81258 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
-- **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
+- **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **systems/** — bake_config.gd, bake_policy.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -376,23 +376,6 @@ extends `Node2D` · 316 lines
 
 ## debug/
 
-### `atom_sheet_debug.gd`
-
-`class_name AtomSheetDebug` · extends `CanvasLayer` · 323 lines
-
-`godot/scripts/debug/atom_sheet_debug.gd`
-
-> ATOM-SHEET (2026-08-08, Director) — a contact sheet of EVERY pre-baked damage atom in the loaded map, grouped by material and by the surface it belongs to (WALL / CEILING / FLOOR), with its decal visible. Why a sheet and not more in-world geometry: `damage_gallery_debug.gd` (F5) forces damage onto real voxels scattered across the map, which proves the RENDER PATH works but can only ever show the handful of atoms the map's own geometry happens to expose, at whatever angle the camera is at. This reads the `VoxelVariantRegistry` directly, so what it displays IS the bake — every atom that exists, nothing that doesn't, and a count that can be checked against `registry.size()`. The two are complements: F5 answers "does a damaged voxel render correctly", F8 answers "what did the map actually bake". Atoms come back through `DamageCompositeCache.get_image_at()`, the same readback `DamageVariantBaker` already uses to persist its disk cache — the real composited pixels, not a re-derivation, so an atom that is wrong here is wrong in the game. Substrates: an atom exists once per (material, damage name, substrate) and the substrate axis is just a different crop of the same facade — three near-identical tiles per row, which triples the sheet's size for very little signal. Substrate 0 only by default; set `INFILTRAITOR_ATOM_SHEET_SUBSTRATES=all` to see the axis itself. Debug-only. Never called from gameplay.
-
-**Constants / tuning**
-- `DEFAULT_ATOM_SCALE` = `2`
-- `ELEMENT_ORDER` = `["WALL", "CEILING", "FLOOR"]`
-
-**Public API**
-- `func setup(room: Node) -> bool:`
-
----
-
 ### `circle_gate_probe.gd`
 
 `class_name CircleGateProbe` · extends `Node2D` · 73 lines
@@ -406,22 +389,6 @@ extends `Node2D` · 316 lines
 
 **Public API**
 - `func circle_count() -> int:`
-
----
-
-### `damage_gallery_debug.gd`
-
-`class_name DamageGalleryDebug` · 252 lines
-
-`godot/scripts/debug/damage_gallery_debug.gd`
-
-> DAMAGE-GALLERY (2026-08-07) — forces DENTED/CRACKED onto real voxels of every declared material, on WALL/FLOOR/CEILING, and reports whether VoxelRenderer.apply_damage_voxel_swap() actually hit a pre-baked atom. Built because the Post-Task-5 soot diagnosis (EXPLOSION_REBUILD_MASTER_PLAN) concluded the "quebradiça" floor texture comes from pre-existing dent/crack art, without first confirming those atoms are baked at all for every material — this checks that assumption directly instead of reasoning about it. Debug-only, triggered by F5 (see debug_tools_controller.gd), never called from gameplay. WALL/FLOOR/CEILING all paint through REAL, registered containers — room._edge_registry's Slices for WALL (EdgeExtractor gives every block-to-block/block-to-floor boundary a real Slice, confirmed by probe: SLICE_13_3_SW etc — the map's per-material test blocks are NOT purely render_block()-anonymous, only their non-boundary interior voxels are), room._slab_registry's Slabs for FLOOR/CEILING. This matters beyond correctness: a throwaway, unregistered Voxel/Slice (this file's first version, for WALL) paints once via a direct apply_damage_voxel_swap() call and then gets silently overwritten by the next repaint (light/occlusion/ FOW reveal all re-render from each container's own tracked Voxel objects) — nothing persists the forced damage anywhere a repaint would consult, so the mark visibly reverted to intact by the time of the capture. Confirmed real, non-reverting bullet marks exist on these same blocks (a live shotgun weapon_fire capture, 2026-08-08) — this now uses that exact register-and-repaint-safe path instead of a one-shot poke.
-
-**Constants / tuning**
-- `BLOCK_STOREYS` = `2`
-- `MAP_BUFFER_OFFSET` = `Vector2i(1, 1)`
-- `MATERIAL_BLOCK_GU` = `{ "concrete": Vector2i(3, 2) + MAP_BUFFER_OFFSET, "metal": Vector2i(8, 2) + MAP_BUFFER_OFFSET, "stone": Vector2i(13, 2) + MAP_BUFFER_OFFSET, "wood": Vector2i(18, 2) + MAP_BUFFER_OFFSET, }`
-- `MATERIAL_FLOOR_GU` = `{ "concrete": Vector2i(3, 5) + MAP_BUFFER_OFFSET, "metal": Vector2i(8, 5) + MAP_BUFFER_OFFSET, "stone": Vector2i(13, 5) + MAP_BUFFER_OFFSET, "wood": Vector2i(18, 5) + MAP_BUFFER_OFFSET, }`
 
 ---
 
@@ -592,59 +559,6 @@ extends `Node3D` · 1905 lines
 **Public API**
 - `func attach(parent: Node3D, additive: bool, feather: float = 0.0, priority: int = 0) -> void:`
 - `func push(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2, radius_px: float, color: Color) -> void:`
-
----
-
-### `damage_composite_cache.gd`
-
-`class_name DamageCompositeCache` · extends `RefCounted` · 186 lines
-
-`godot/scripts/geometry/damage_composite_cache.gd`
-
-> D33 Part 1 — DamageCompositeCache: allocates and tracks runtime-composited decal atoms on a growing set of dynamic TileSetAtlasSource pages, mirroring how baked facade pages already work (VoxelRenderer.register_baked_atlas_page()) rather than inventing a second placement mechanism. See PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 1 and §11 for why the key is caller-supplied and opaque here: Part 3 (not yet built) owns constructing a key that is stable in base space and varies by physical face, the two things §10's Part 0 correction established actually matter. This class only owns slot allocation, page growth, and the reset a room rebuild needs — never scene placement (Rule 8: only ever registers a TileSetAtlasSource; every voxel still reaches the tilemap through set_cell()). Lifetime: one instance per VoxelRenderer, reset alongside prune_baked_sources() — same category of per-rebuild-transient state as the baked pages themselves (§11: with player rotation gone, a rebuild only happens once per mission, so "surviving the rebuild" — §10's hardest open question — is no longer something this cache needs to do at all).
-
-**Constants / tuning**
-- `ATOM_W` = `32`
-- `ATOM_H` = `36`
-- `DEFAULT_PAGE_W` = `2048`
-- `DEFAULT_PAGE_H` = `2048`
-
-**Public API**
-- `func has(key: String) -> bool:`
-- `func resolve(key: String) -> Dictionary:`
-- `func store(key: String, composite: Image) -> Dictionary:`
-- `func flush_dirty_pages() -> int:`
-- `func size() -> int:`
-- `func page_count() -> int:`
-- `func get_image_at(source_id: int, atlas_coords: Vector2i) -> Image:`
-- `func get_page_image(page_idx: int) -> Image:`
-- `func reset() -> void:`
-
----
-
-### `decal_compositor.gd`
-
-`class_name DecalCompositor` · extends `RefCounted` · 211 lines
-
-`godot/scripts/geometry/decal_compositor.gd`
-
-> D33 Part 2 — DecalCompositor: the GDScript port of tools/asset_generation/generate_voxel.py's real compositing math (_paste_decal + compose_decal_voxel), NOT the simplified "resize + shear" sketch D33's own §5 originally described — that sketch was written from memory before this file was read line by line. The actual Python compositor inverse-maps every destination pixel into the decal's parametric (s, t) space through a general parallelogram (not a fixed shear), 4x4-supersamples it, and premultiplied-alpha-blends the result — see _paste_decal's own docstring for why (inverse mapping so an oblique projection leaves no holes). This port must be numerically equal to that function, not to a cheaper approximation of it — proven by godot/scripts/tools/decal_compositor_equality_selftest.gd against fixtures godot/scripts/tools/fixtures/d33_part2/ generated straight from the real Python functions (tools/asset_generation/d33_part2_fixture_gen.py). Known, accepted sources of sub-tolerance divergence from the Python reference (measured by the selftest, not assumed away): - Godot's Image.INTERPOLATE_LANCZOS and Pillow's Image.LANCZOS are different implementations (kernel radius/windowing); the pre-resize step this class ports (native x 4 supersample) cannot be bit-identical across them. - Python's round() is round-half-to-even; GDScript Image.set_pixel() on an RGBA8-format Image rounds half-up at the C++ level. Only reachable at exact .5 boundaries in 0..255 space, so it affects at most a handful of pixels' least-significant bit. Rule 8 is not implicated here: this class produces an Image the caller registers exactly like any other baked/composite page (Part 1's DamageCompositeCache) — it never touches the tilemap directly.
-
-**Constants / tuning**
-- `SUPERSAMPLE` = `4`
-- `V_N` = `Vector2(16, 0)`
-- `V_E` = `Vector2(32, 8)`
-- `V_S` = `Vector2(16, 16)`
-- `V_W` = `Vector2(0, 8)`
-- `V_WB` = `Vector2(0, 28)`
-- `V_SB` = `Vector2(16, 36)`
-- `V_EB` = `Vector2(32, 28)`
-- `LATERAL_NATIVE` = `Vector2i(16, 20)`
-- `TOP_NATIVE` = `Vector2i(16, 16)`
-- `FACE_TOP` = `{"origin": V_N, "u_end": V_E, "v_end": V_W, "native": TOP_NATIVE}`
-- `FACE_SW` = `{"origin": V_W, "u_end": V_S, "v_end": V_WB, "native": LATERAL_NATIVE}`
-- `FACE_SE` = `{"origin": V_S, "u_end": V_E, "v_end": V_SB, "native": LATERAL_NATIVE}`
-- `FACE_SE_MIRRORED` = `{"origin": V_E, "u_end": V_S, "v_end": V_EB, "native": LATERAL_NATIVE}`
 
 ---
 
@@ -848,19 +762,6 @@ extends `Node3D` · 1905 lines
 **Constants / tuning**
 - `HALF_W` = `128.0`
 - `HALF_H` = `64.0`
-
----
-
-### `half_voxel_compositor.gd`
-
-`class_name HalfVoxelCompositor` · extends `RefCounted` · 309 lines
-
-`godot/scripts/geometry/half_voxel_compositor.gd`
-
-> D33 Part 3b — HalfVoxelCompositor: the GDScript port of generate_voxel.py's generate_half_voxel() (LEFT/RIGHT wall variants only — "top"/floor and "bottom"/ceiling are a further increment, see PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 3b). This is a DIFFERENT primitive from DecalCompositor (Part 2): a decal is PROJECTED onto a face through a sheared parallelogram (inverse-mapped, resampled); a half-voxel's kept geometry is a straight, same-coordinate POLYGON MASK copy — Pillow's `Image.paste(source, (0,0), _polygon_mask(poly))`, which has no direct Godot Image equivalent. paste_masked() below is that primitive: point-in-polygon per destination pixel, no resampling, no shear. Proven equal to the real Python output (not assumed) by godot/scripts/tools/half_voxel_compositor_equality_selftest.gd against fixtures generated straight from generate_half_voxel() itself (tools/asset_generation/d33_part3b_fixture_gen.py).
-
-**Constants / tuning**
-- `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
 
 ---
 
@@ -1153,7 +1054,7 @@ extends `Node3D` · 1905 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 5399 lines
+`class_name VoxelRenderer` · extends `Node2D` · 2405 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1164,15 +1065,34 @@ extends `Node3D` · 1905 lines
 
 **Constants / tuning**
 - `GlassShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
-- `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
-- `HalfVoxelCompositorClass` = `preload("res://godot/scripts/geometry/half_voxel_compositor.gd")`
-- `VoxelVariantRegistryClass` = `preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
-- `VOXEL_SOURCE_ID` = `0`
+- `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood", "brick"]`
+- `IMPACT_DECAL_VARIANTS` = `3`
+- `DAMAGE_SUBSTRATE_VARIANTS` = `3`
+- `IMPACT_FLOOR_MATERIAL` = `"earth"`
+- `IMPACT_CRACK_MATERIALS` = `["concrete", "stone", "brick"]`
+- `FLOOR_DEPTH_DIM` = `[1.0, 0.70, 0.45, 0.34, 0.28]`
+- `_GENERIC_HOLE_RADIUS` = `{"bullet": 2.0, "blast": 3.0}`
+- `EMPTY_COLUMN` = `-9999`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
+- `var debug_nudge: Vector2 = Vector2.ZERO`
+
+**Public API**
+- `func level_keys() -> Array:`
+- `func wall_level_keys() -> Array:`
+- `func ground_plane_level() -> int:`
+- `func relative_level(level: int) -> int:`
+- `func top_wall_level() -> int:`
+- `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
+- `func get_layer(level: int) -> TileMapLayer:`
+- `func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int) -> bool:`
+- `func set_pile_board3d(board: Node3D) -> void:`
+- `func clear_floor_shards() -> void:`
+- `func floor_shard_pile_count() -> int:`
+- `func floor_shard_pile3d_count() -> int:`
+- `func set_glass_cracks_visible(v: bool) -> void:`
 
 ---
 
@@ -2129,37 +2049,6 @@ extends `Node2D` · 44 lines
 
 ## systems/
 
-### `bake_compositor.gd`
-
-`class_name BakeCompositor` · 1261 lines
-
-`godot/scripts/systems/bake_compositor.gd`
-
-> BakeCompositor — Continuous-plane facade baking (OVERLORD-FIX-01) Model (replaces every previous half-face/strip scheme): A wall run is ONE continuous inclined plane on screen. Each atom carries a 32-texel-wide window of that plane, anchored at u = col*16 — consecutive atoms' windows OVERLAP by 16 texels on purpose: the occluded halves carry the same plane content as the neighbor that covers them, so every visible mix of atom fragments (sawtooth overlaps included) is seamless by construction. Runs exist in two screen directions, so atoms are baked per direction (dir 0: plane descends screen-right; dir 1: mirrored, descends screen-left) and direction is part of the lookup key. Per atom (col, row, dir), side-face content at atom pixel (x, y): dir 0:  u = col*16 + x          y_top(x) = 8 + x/2 dir 1:  u = col*16 + (31 - x)   y_top(x) = 8 + (31 - x)/2 v = (31 - row)*16 + (y - y_top(x)) * 16/20      (row 31 = top storey) Equivalently (what the code does): pre-scale the facade ×20/16 vertically, shear it ±x/2 once per direction ("plane image" P), and every atom is an axis-aligned 32×28 crop of P at (x0, (31-row)*20 + col*8 + V_MARGIN), pasted at atom-local (0, 8) — the x-terms cancel exactly, so composition is pure blit_rect with no per-pixel sampling. RGB in pages is pure facade luminance (grayscale); blend modes are applied at registration time via per-tile modulate (TEXTURE_ONLY = white, MULTIPLY = material base color). Top faces are baked as material color. Alpha = canonical voxel silhouette via blit_rect_mask + an exact byte-level fixup of the antialiased (partial-alpha) pixels (B3: alpha verbatim).
-
-**Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
-- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
-- `GlassMaterialsClass` = `preload("res://godot/scripts/systems/glass_materials.gd")`
-- `TEX_AUTHORING_N` = `GeometryCoordsClass.TEX_AUTHORING_N`
-- `VOXEL_ATOM_W` = `GeometryCoordsClass.VOXEL_ATOM_W`
-- `VOXEL_ATOM_H` = `GeometryCoordsClass.VOXEL_ATOM_H`
-- `VOXEL_VISIBLE_Y_START` = `16`
-- `SHEET_COLS` = `64`
-- `SHEET_ROWS` = `32`
-- `FACADE_W` = `1024`
-- `FACADE_H` = `512`
-- `PLANE_W` = `FACADE_W + 32`
-- `V_MARGIN` = `32`
-- `SCALED_H` = `640`
-- `PLANE_H` = `1232`
-- `PAGE_W` = `4096`
-- `PAGE_TILE_COLS` = `128`
-- `PAGE_H` = `576`
-
----
-
 ### `bake_config.gd`
 
 `class_name BakeConfig` · 89 lines
@@ -2180,29 +2069,6 @@ extends `Node2D` · 44 lines
 
 **Constants / tuning**
 - `CANONICAL_ATOM_ALIASES` = `{ "earth": "earth_0", "brick": "concrete", "cardboard": "concrete", "fabric": "concrete", "plywood": "concrete", }`
-
----
-
-### `baked_tile_lookup.gd`
-
-`class_name BakedTileLookup` · 484 lines
-
-`godot/scripts/systems/baked_tile_lookup.gd`
-
-> BakedTileLookup — Single lookup seam for placement path Insertion point between placement code and tile source selection. Query for a voxel face → either baked atlas or generic material atlas. OVERLORD-FIX-01: addresses per-direction continuous-plane sheets via (material, facade, column_in_run, level, dir) keys, with mirrored-repeat wrapping. Fallback chain: baked → generic material atlas.
-
-**Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-
-**Public API**
-- `func set_test_config(config) -> void:`
-- `func set_material_registry(registry) -> void:`
-- `func set_baked_atlas(atlas) -> void:`
-- `func set_source_ids(source_ids: Dictionary) -> void:`
-- `func register_runs(runs: Array) -> void:`
-- `func resolve(edge, face: int, voxel_xy: Vector2i, level: int = 0, column_in_run: int = -1, material_override: String = "") -> TileLookupResult:`
 
 ---
 
@@ -2280,25 +2146,6 @@ extends `Node2D` · 44 lines
 - `func request(frames_dir: String, indices: Array) -> Dictionary:`
 - `func extents_of(frames_dir: String) -> Dictionary:`
 - `func describe() -> String:`
-
----
-
-### `damage_variant_baker.gd`
-
-`class_name DamageVariantBaker` · extends `RefCounted` · 353 lines
-
-`godot/scripts/systems/damage_variant_baker.gd`
-
-> DamageVariantBaker — EXPLOSION_REBUILD_MASTER_PLAN Task 1b (E-BAKE, 2026-08-06) Pre-bakes CRACKED/DENTED/MARKED damage-decal ATOMS once per map load — replaces D-ARCH-01's per-CELL bake (which this class used to be: bake_wall_voxel()/bake_ceiling_voxel()/bake_zoned_floor_voxel(), called once per placed Voxel, 71,296 cells × N variants — infeasible, see EXPLOSION_REBUILD_MASTER_PLAN §0). The new model's whole premise: a damaged voxel no longer shows ITS OWN facade under the decal, it shows a randomly chosen crop of that material's facade — so the bake surface collapses from cells × variants to materials × damage-type × decal × substrate, ~207-279 atoms for the WHOLE MAP, not per cell. Drives the SAME compositor functions the D33 live-compositing path uses (VoxelRenderer._composite_full_voxel_decal() etc.) — same pixels, computed once here instead of lazily at hit time — via a synthetic, edge-free substrate crop (VoxelRenderer._composite_full_voxel_decal()'s own doc comment explains why `edge == null` triggers resolve_flat() there instead of the edge-based resolve()). Results register into a VoxelVariantRegistry keyed by (element_class, material, damage_material_name, substrate_variant) — no cell dimension — that VoxelRenderer.apply_damage_voxel_swap() consults before falling back to D33 runtime compositing. Scope is derived from what VoxelRenderer._set_voxel_cell()'s own dispatch actually reaches, same as the retired per-cell version: - WALL (element_class "WALL", any `has_facade` material): DENTED blast+bullet(mark) (2 sides × 3 decal variants each) + CRACKED bullet(mark) (2 sides × 3 variants) + CRACKED blast (3 variants, only materials with crack_factor > 0 — D10's derived rule, not the hardcoded IMPACT_CRACK_MATERIALS list this file used to lean on). D12 (2026-08-06): bullet marks bake BOTH shapes (cracked full-voxel AND dented half-voxel) — confirmed with the Director, since ShotPunchTable.damage_state_for() genuinely produces either outcome and the whole point of D12 was moving bullets fully off live compositing. - CEILING (element_class "CEILING", any `has_facade` material): DENTED blast-bottom, a silhouette carve with **1 shape** today (not D7's eventual 3 irregular cut shapes — HalfVoxelCompositor. carve_ceiling_silhouette() takes no shape parameter yet; that art/code doesn't exist, so this bakes what's real rather than pretending 3 variants exist). D6: CRACKED is universal — the SAME wall CRACKED-blast atom (already a 3-face composite, D6's "bakes onto all three visible faces at once") is additionally registered under "CEILING" with no re-compositing. - FLOOR (element_class "FLOOR", only materials actually used as a real floor zone — D9): DENTED blast-top, 3 variants. The registry NAME is always the shared "earth_blast_dented_top_N" pseudo-name (floor_damage_material()'s own rule, unchanged) but the ATOM's substrate is the GU's REAL ground material (D9) — so the registry key's material component must be the real material, not the naming constant, or every real floor material would collide into one slot. FLOOR CRACKED is not composited here: §3.2's roster makes CRACKED universal (floor + wall + ceiling, D6) and the wall's CRACKED-blast atom IS that atom, so a floor material with crack_factor > 0 gets it registered a second time under "FLOOR" from the same composite — see _bake_wall_and_marked()'s `is_floor_material`. Both halves of the old reason this was skipped are gone: D34/E-SEAM-02 made floor_damage_material() material-real (a concrete floor asks for "concrete_blast_cracked_all_N", not the "earth" sentinel), and E-CRACK-01 gave apply_crater_damage() a real crack tier, so a floor voxel can reach CRACKED at all. - INTERIOR slabs and plain (unzoned) earth floors: skipped entirely, same reasoning as the retired version — neither ever reaches the baked D33 path, so there is nothing expensive to pre-bake for them. Soot is never part of this: it is a per-cell modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the light-repaint pass after any set_cell(), independent of which tile a cell shows.
-
-**Constants / tuning**
-- `SUBSTRATE_POSITIONS` = `[Vector2i(0, 0), Vector2i(20, 0), Vector2i(40, 0)]`
-- `BAKE_LEVEL` = `0`
-- `FLOOR_SHADE_BRIGHTNESS` = `0.72`
-- `DAMAGE_CACHE_PATH` = `"user://damage_atom_cache/"`
-
-**Public API**
-- `func bake_all(declared_materials: Array[String], floor_materials: Array[String] = []) -> int:`
 
 ---
 
@@ -2644,7 +2491,7 @@ extends `Node2D` · 44 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 238 lines
+extends `Node` · 234 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3650,60 +3497,6 @@ extends `SceneTree` · 968 lines
 
 ---
 
-### `bake_cache_selftest.gd`
-
-extends `SceneTree` · 441 lines
-
-`godot/scripts/tools/bake_cache_selftest.gd`
-
-> BAKE-CACHE-01 — Content-addressed disk cache test suite Acceptance criteria: 1. Transparency: compose cold → save → reload via disk → byte-identical 2. Invalidation: change BAKE_CODE_VERSION → different key → MISS 3. Warm-boot budget: cold + warm; warm ≤ 150ms 4. Corruption safety: truncate file → warning + MISS + recompose, no crash 5-7. Regressions + lint + version bump
-
-**Constants / tuning**
-- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
-
-**Public vars**
-- `var test_results: Array = []`
-
----
-
-### `bake_selftest.gd`
-
-extends `SceneTree` · 358 lines
-
-`godot/scripts/tools/bake_selftest.gd`
-
-> BAKE-FIX-01: MASTER-STRIP SELFTEST Updated selftest suite for master-strip baking architecture. Tests B1–B6 with focus on real voxel alpha matching and canonical silhouette copying.
-
-**Constants / tuning**
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
-- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
-- `VOXEL_PATH_TEMPLATE` = `"res://ASSETS/materials/%s/voxel_%s.png"`
-- `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_B1_branch_exclusivity() -> void:`
-- `func test_B2_grayscale_enforcement() -> void:`
-- `func test_B3_alpha_from_canonical() -> void:`
-- `func test_B4_fnv1a_determinism() -> void:`
-- `func test_B5_no_rebake_on_destruction() -> void:`
-- `func test_B6_loud_fail_validation() -> void:`
-- `func test_real_voxel_atoms_loadable() -> void:`
-- `func test_master_strip_dimensions() -> void:`
-
----
-
 ### `bake_voxel_sprite_3d.gd`
 
 extends `SceneTree` · 139 lines
@@ -3830,13 +3623,9 @@ extends `SceneTree` · 689 lines
 
 ### `board_look_selftest.gd`
 
-extends `SceneTree` · 97 lines
+extends `SceneTree` · 49 lines
 
 `godot/scripts/tools/board_look_selftest.gd`
-
-**Constants / tuning**
-- `SHADER_PATH` = `"res://godot/shaders/voxel_face_shading.gdshader"`
-- `BOARD_PATH` = `"res://godot/scripts/geometry/board3d_live.gd"`
 
 ---
 
@@ -3884,154 +3673,6 @@ extends `SceneTree` · 342 lines
 - `TILE_PROPS` = `{ # Floor "floor":                  {walkable=true,  cover=false, interactive=false}, "floorHalf":              {walkable=true,  cover=false, interactive=false}, "floorQuarter":           {walkable=true,  cover=false, interactive=false}, # Solid blocks "block":                  {walkable=false, cover=true,  interactive=false}, "blockHalf":              {walkable=false, cover=true,  interactive=false}, "blockAngle":             {walkable=false, cover=true,  interactive=false}, "blockQuarter":           {walkable=false, cover=true,  interactive=false}, # Walls "wall":                   {walkable=false, cover=true,  interactive=false}, "wallHalf":               {walkable=false, cover=true,  interactive=false}, "wallCorner":             {walkable=false, cover=true,  interactive=false}, "wallCornerHalf":         {walkable=false, cover=true,  interactive=false}, "wallCurve":              {walkable=false, cover=true,  interactive=false}, "wallCurveHalf":          {walkable=false, cover=true,  interactive=false}, "wallBattlement":         {walkable=false, cover=true,  interactive=false}, # Windows "window":                 {walkable=false, cover=false, interactive=false}, "windowLeft":             {walkable=false, cover=false, interactive=false}, "windowMiddle":           {walkable=false, cover=false, interactive=false}, "windowRight":            {walkable=false, cover=false, interactive=false}, # Doors / passages "doorClosed":             {walkable=false, cover=false, interactive=true}, "doorOpen":               {walkable=true,  cover=false, interactive=true}, "doorway":                {walkable=true,  cover=false, interactive=false}, "doorwayBottom":          {walkable=true,  cover=false, interactive=false}, "doorwayCenter":          {walkable=true,  cover=false, interactive=false}, "doorwayLeft":            {walkable=true,  cover=false, interactive=false}, "doorwayLeftBottom":      {walkable=true,  cover=false, interactive=false}, "doorwayMiddle":          {walkable=true,  cover=false, interactive=false}, "doorwayMiddleBottom":    {walkable=true,  cover=false, interactive=false}, "doorwayRight":           {walkable=true,  cover=false, interactive=false}, "doorwayRightBottom":     {walkable=true,  cover=false, interactive=false}, # Cover props "crate":                  {walkable=false, cover=true,  interactive=true}, # Structural details "column":                 {walkable=false, cover=false, interactive=false}, "columnBlocks":           {walkable=false, cover=false, interactive=false}, "columnCorner":           {walkable=false, cover=false, interactive=false}, "pole":                   {walkable=false, cover=false, interactive=false}, "poleGroup":              {walkable=false, cover=false, interactive=false}, "fence":                  {walkable=false, cover=false, interactive=false}, # Slopes / ramps "slope":                  {walkable=true,  cover=false, interactive=false}, "slopeHalf":              {walkable=true,  cover=false, interactive=false}, "slopeQuarter":           {walkable=true,  cover=false, interactive=false}, "slopeSmall":             {walkable=true,  cover=false, interactive=false}, "sloperCornerInner":      {walkable=true,  cover=false, interactive=false}, "sloperCornerOuter":      {walkable=true,  cover=false, interactive=false}, # Stairs "stairs":                 {walkable=true,  cover=false, interactive=false}, "stairsCornerInner":      {walkable=true,  cover=false, interactive=false}, "stairsCornerOuter":      {walkable=true,  cover=false, interactive=false}, "stairsOpen":             {walkable=true,  cover=false, interactive=false}, "stairsOpenCornerInner":  {walkable=true,  cover=false, interactive=false}, "stairsOpenCornerOuter":  {walkable=true,  cover=false, interactive=false}, "steps":                  {walkable=true,  cover=false, interactive=false}, "ladder":                 {walkable=true,  cover=false, interactive=true}, # Slabs / platforms "slab":                   {walkable=true,  cover=false, interactive=false}, "slabHalf":               {walkable=true,  cover=false, interactive=false}, "slabAngle":              {walkable=true,  cover=false, interactive=false}, "slabQuarter":            {walkable=true,  cover=false, interactive=false}, # Switches / triggers "switchFloorOff":         {walkable=true,  cover=false, interactive=true}, "switchFloorOn":          {walkable=true,  cover=false, interactive=true}, "switchWallOff":          {walkable=false, cover=false, interactive=true}, "switchWallOn":           {walkable=false, cover=false, interactive=true}, # Direction markers "arrow":                  {walkable=true,  cover=false, interactive=false}, "arrowWall":              {walkable=false, cover=false, interactive=false}, }`
 - `EDGE_ALIGNED_PREFIXES` = `[ "arrowWall", "door", "fence", "switchWall", "wall", "window", ]`
 - `EDGE_ALIGNED_EXCLUSIONS` = `[ "wallCorner", "wallCornerHalf", "wallCurve", "wallCurveHalf", "wallBattlement", ]`
-
----
-
-### `ceiling_carve_seam_selftest.gd`
-
-extends `SceneTree` · 213 lines
-
-`godot/scripts/tools/ceiling_carve_seam_selftest.gd`
-
-> D33 Part 3d — the real render-seam selftest for ceiling DENTED marks, sibling to decal_seam_selftest.gd (3a), half_voxel_seam_selftest.gd (3b), and floor_sunk_seam_selftest.gd (3c). This is the last one — Part 3 is complete after this suite passes. Rodar: godot --headless --script res://godot/scripts/tools/ceiling_carve_seam_selftest.gd
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_plan_parser_recognizes_ceiling_case() -> void:`
-- `func test_set_voxel_cell_end_to_end_picks_the_ceiling_composite() -> void:`
-- `func test_resolve_flat_receives_the_real_material_directly() -> void:`
-- `func test_floor_still_resolves_when_both_could_apply() -> void:`
-- `func test_no_baked_atom_falls_through_to_generic() -> void:`
-
----
-
-### `damage_atom_bake_selftest.gd`
-
-extends `SceneTree` · 187 lines
-
-`godot/scripts/tools/damage_atom_bake_selftest.gd`
-
-> E-BAKE — damage-atom pre-bake selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1b, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/damage_atom_bake_selftest.gd Proves, on the baker directly: 3. The user:// disk cache actually skips recompositing on a second bake of the identical declared-material set — same atom count, real disk cache hits. 4. D13's loud-fail: a material used by the map but missing from its declared damage_materials produces a real warning, not a silent gap. Every expectation is checked against the REAL registry/renderer state — never read back from the code under test's own success claim. R3D-END (END-1): [1], [2] and [5] booted PLAYGROUND and read what the LOAD baked (the registry's coverage, the swap that painted a tile, the CEILING-carved-from-the-top key read back off the tile layer). The load no longer bakes (only the 2D board read the atoms), so those three went with it; [3] and [4] drive the baker directly and stay until the baker itself is deleted (END-4).
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `VoxelVariantRegistryClass` = `preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
-- `DamageVariantBakerClass` = `preload("res://godot/scripts/systems/damage_variant_baker.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_3_cache_hit_on_second_bake() -> void:`
-- `func test_4_undeclared_material_warns_loudly() -> void:`
-
----
-
-### `damage_composite_cache_selftest.gd`
-
-extends `SceneTree` · 291 lines
-
-`godot/scripts/tools/damage_composite_cache_selftest.gd`
-
-> D33 Part 1 — DamageCompositeCache selftest. Rodar: godot --headless --script res://godot/scripts/tools/damage_composite_cache_selftest.gd Part 1's scope (PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5/§11) is the cache + its dynamic page, NOT the pixel math (Part 2) or the render-path wiring (Part 3) — so this suite proves allocation, idempotence, page overflow, real TileSet registration, and the reset prune_baked_sources() now drives, without composing a single real decal.
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `DamageCompositeCacheClass` = `preload("res://godot/scripts/geometry/damage_composite_cache.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_store_leaves_the_tileset_alone() -> void:`
-- `func test_empty_cache_reports_nothing() -> void:`
-- `func test_store_registers_a_real_tile_and_is_idempotent() -> void:`
-- `func test_two_distinct_keys_land_in_distinct_slots_with_correct_pixels() -> void:`
-- `func test_wrong_sized_image_is_rejected_without_corrupting_state() -> void:`
-- `func test_page_overflow_allocates_a_second_page() -> void:`
-- `func test_reset_clears_everything_and_next_store_starts_fresh() -> void:`
-
----
-
-### `decal_compositor_equality_selftest.gd`
-
-extends `SceneTree` · 186 lines
-
-`godot/scripts/tools/decal_compositor_equality_selftest.gd`
-
-> D33 Part 2 — the equality proof the plan calls "the single highest-risk step" (PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 2). Compares DecalCompositor's GDScript output against a reference composited by the REAL Python function it ports (generate_voxel.py's compose_decal_voxel), on fixtures neither side generates itself: godot/scripts/tools/fixtures/d33_part2/{substrate,decal}.png       — inputs godot/scripts/tools/fixtures/d33_part2/reference_{lateral,top}.png — Python output (produced by tools/asset_generation/d33_part2_fixture_gen.py, which calls the real _paste_decal/compose_decal_voxel unmodified). Rodar: godot --headless --script res://godot/scripts/tools/decal_compositor_equality_selftest.gd Tolerance is MEASURED here, not assumed: DecalCompositor's own doc comment names two real sources of divergence (Lanczos implementation differences, Python round-half-to-even vs Godot's round-half-up at 8-bit quantization). The thresholds below are the actual measured worst case on this fixture, recorded so a future regression shows up as a real failure instead of a silently loosened bound.
-
-**Constants / tuning**
-- `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
-- `FIXTURE_DIR` = `"res://godot/scripts/tools/fixtures/d33_part2/"`
-- `FACE_SE` = `DecalCompositorClass.FACE_SE`
-- `FACE_TOP` = `DecalCompositorClass.FACE_TOP`
-- `FACE_SW` = `DecalCompositorClass.FACE_SW`
-- `FACE_SE_MIRRORED` = `DecalCompositorClass.FACE_SE_MIRRORED`
-- `MAX_CHANNEL_DIFF_TOLERANCE` = `3`
-- `MAX_MISMATCHED_PIXEL_FRACTION` = `0.0`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_face(label: String, target: Dictionary, reference_filename: String, substrate: Image, decal: Image) -> void:`
-- `func test_b3_clamp_never_exceeds_substrate_silhouette(substrate: Image, decal: Image) -> void:`
-
----
-
-### `decal_seam_selftest.gd`
-
-extends `SceneTree` · 338 lines
-
-`godot/scripts/tools/decal_seam_selftest.gd`
-
-> D33 Part 3a — the real render-seam selftest. Rodar: godot --headless --script res://godot/scripts/tools/decal_seam_selftest.gd Parts 1/2 proved the cache and the compositor in isolation. This suite proves the SEAM (PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 3a): VoxelRenderer._full_voxel_decal_plan() (name parsing) and _composite_full_voxel_decal() (substrate read + tint + compose + cache), wired into the real _set_voxel_cell(), against a REAL registered baked page and the REAL decal_bullet_concrete_0.png art (not a synthetic placeholder — Part 3a's whole point is compositing onto what the wall around it actually shows). _baked_lookup is stubbed (a small duck-typed fake, not the real BakedTileLookup) so this test doesn't have to stand up a full EdgeRegistry/facade bake just to control what "the wall's baked atom" resolves to — that machinery is what the bake selftests already cover; this one owns what D33 added on top of it.
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_plan_parser_recognizes_full_voxel_cases() -> void:`
-- `func test_composite_applies_tint_and_pastes_the_real_decal() -> void:`
-- `func test_composite_is_idempotent() -> void:`
-- `func test_set_voxel_cell_end_to_end_picks_the_composite() -> void:`
-- `func test_dented_and_non_impact_names_are_unaffected() -> void:`
-- `func test_no_baked_atom_falls_through_to_generic() -> void:`
-
----
-
-### `destruction_part0_spike.gd`
-
-extends `SceneTree` · 159 lines
-
-`godot/scripts/tools/destruction_part0_spike.gd`
-
-> DESTRUCTION_MASTER_PLAN — Part 0 measurement spike. Not a standing gate, not a selftest suite. This is the one-shot investigation Part 0 calls for: "force the worst cases and measure... find where it breaks." No production code depends on this script; it exists to turn the plan's one real unknown (TileMapLayer count scaling) and its two other worst-case numbers into real, printed, reproducible evidence before Slab (Part 1) is written on top of a guess. Honesty boundary, stated once here instead of at every print: this runs `--headless` on a Mac, not on the target mobile device. Headless Godot has no display driver, so nothing here measures GPU draw cost — only the CPU-side bookkeeping cost (node creation, TileMapLayer.set_cell(), memory). The plan itself asks for target-device numbers (§5 Part 0); this script produces the Mac/CPU half of that, not a substitute for it.
-
-**Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
-- `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `MAP_GU_SIZE` = `26`
 
 ---
 
@@ -4158,93 +3799,28 @@ extends `SceneTree` · 248 lines
 
 ---
 
-### `floor_sunk_seam_selftest.gd`
-
-extends `SceneTree` · 209 lines
-
-`godot/scripts/tools/floor_sunk_seam_selftest.gd`
-
-> D33 Part 3c — the real render-seam selftest for floor-sunk DENTED marks, sibling to decal_seam_selftest.gd (3a) and half_voxel_seam_selftest.gd (3b). Rodar: godot --headless --script res://godot/scripts/tools/floor_sunk_seam_selftest.gd
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_plan_parser_recognizes_floor_sunk_case() -> void:`
-- `func test_set_voxel_cell_end_to_end_picks_the_floor_composite() -> void:`
-- `func test_resolve_flat_receives_the_real_zone_material_not_the_pseudo_name() -> void:`
-- `func test_empty_zone_material_falls_through_to_generic() -> void:`
-- `func test_no_baked_atom_falls_through_to_generic() -> void:`
-
----
-
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 419 lines
+extends `SceneTree` · 142 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
-> FLOOR-BAKE-01 — floor-zone photographic ground bake selftest. Rodar: godot --headless --script res://godot/scripts/tools/floor_zone_bake_selftest.gd Mirrors roof_bake_selftest.gd's structure/rigor for the floor-zone bake feature (author-declared rectangular material zones, full-color RGB instead of grayscale-luminance-times-tint). Proves: 1. A floor_zones-only map_spec composes the SAME "ROOF|mat|fac|col|row" page family roof/ceiling uses (bake_compositor.gd deliberately never introduced a separate "FLOOR|" prefix) with a lookup entry for every folded LOCAL cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity + ISOTROPY at the floor's own 1024x1024 target size (not the wall/ceiling-inherited 1024x512) + full_color's WHITE modulate does not alter the composed page's raw pixel RGB (the compositor forces the modulate at TileData registration time, a draw-time multiply — never a page-pixel write) 4. (R3D-END, END-1: deleted. It read the baked TILE every zoned floor voxel was placed as on a real load; the load no longer bakes and no tile is written. [1]-[3] drive the compositor directly and go with it at END-4.) 5. ROTATION: building the E view puts a zone's Slab material at the correctly-rotated GU, exactly like roof's block rotation Every expectation is re-derived locally (own mirror fold, own key format, own component flood fill, own rotation math) — never read back from the code under test.
+> FLOOR-BAKE-01 — floor-zone photographic ground bake selftest. Rodar: godot --headless --script res://godot/scripts/tools/floor_zone_bake_selftest.gd R3D-END END-4: the compositor and the baked lookup are gone, and with them criteria [1]-[3] (the shared page family, the resolved atoms, pixel continuity, isotropy and the full-colour modulate) and [4] (END-1). What survives is the data contract: 5. ROTATION: building the E view puts a zone's Slab material at the correctly-rotated GU, exactly like roof's block rotation The expectation is re-derived locally (own rotation math), never read back from the code under test.
 
 **Constants / tuning**
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
-- `ATOM_W` = `32`
-- `ATOM_H` = `36`
-- `V_MARGIN` = `32`
 - `FLOOR_TOP_LEVEL` = `GeometryCoords.FLOOR_TOP_LEVEL`
-- `FLOOR_TARGET_H` = `1024`
 
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
 
 **Public API**
-- `func test_1_floor_cells_get_lookup_entries(fx: Dictionary) -> void:`
-- `func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) -> void:`
-- `func test_3_pixel_continuity_isotropy_and_full_color_modulate(fx: Dictionary) -> void:`
 - `func test_5_rotated_view_zones_follow_declared_material() -> void:`
-
----
-
-### `generic_mark_seam_selftest.gd`
-
-extends `SceneTree` · 307 lines
-
-`godot/scripts/tools/generic_mark_seam_selftest.gd`
-
-> D33 Part 4b — the real render-seam selftest for the generic/vector-mark fallback compositor, sibling to decal_seam_selftest.gd (3a), half_voxel_seam_selftest.gd (3b), floor_sunk_seam_selftest.gd (3c) and ceiling_carve_seam_selftest.gd (3d). Those four all stub a REAL baked atom in; this suite deliberately runs with BakeConfig OFF (the release canon — see PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md §5 Part 4's own risk note) so every one of Part 3's branches misses by construction, proving the NEW fallback catches every shape instead of reaching the last-resort composites/-backed MATERIALS.find(). Rodar: godot --headless --script res://godot/scripts/tools/generic_mark_seam_selftest.gd
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_plan_parser_recognizes_old_flat_names() -> void:`
-- `func test_flat_mark_resolves_with_bake_off() -> void:`
-- `func test_flat_mark_dented_has_a_true_alpha_cut_cracked_does_not() -> void:`
-- `func test_full_voxel_cracked_resolves_with_bake_off() -> void:`
-- `func test_half_voxel_wall_resolves_with_bake_off() -> void:`
-- `func test_half_voxel_variant_threading_is_not_collapsed() -> void:`
-- `func test_floor_sunk_resolves_with_bake_off() -> void:`
-- `func test_ceiling_resolves_with_bake_off_no_decal_needed() -> void:`
-- `func test_composite_is_idempotent() -> void:`
-- `func test_non_impact_material_is_unaffected() -> void:`
 
 ---
 
@@ -4260,7 +3836,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1718 lines
+extends `SceneTree` · 1689 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -4571,50 +4147,6 @@ extends `SceneTree` · 310 lines
 
 ---
 
-### `half_voxel_compositor_equality_selftest.gd`
-
-extends `SceneTree` · 263 lines
-
-`godot/scripts/tools/half_voxel_compositor_equality_selftest.gd`
-
-> D33 Parts 3b/3c/3d — HalfVoxelCompositor equality proof, same discipline as Part 2's decal_compositor_equality_selftest.gd: compare the GDScript port against a reference built by the REAL Python function it ports (generate_voxel.py's generate_half_voxel()/generate_dented_voxel(), plus compose_decal_voxel() for the full real pipeline where a decal exists), on fixtures neither side generates itself: godot/scripts/tools/fixtures/d33_part3b/{atom,decal}.png                — wall inputs godot/scripts/tools/fixtures/d33_part3b/half_{left,right}.png           — wall mask-only reference godot/scripts/tools/fixtures/d33_part3b/composited_{left,right}.png     — wall mask + decal reference godot/scripts/tools/fixtures/d33_part3c/{atom,decal}.png                — floor inputs godot/scripts/tools/fixtures/d33_part3c/half_top.png                    — floor mask-only reference godot/scripts/tools/fixtures/d33_part3c/composited_top.png              — floor mask + decal reference godot/scripts/tools/fixtures/d33_part3d/atom.png                       — ceiling input (no decal) godot/scripts/tools/fixtures/d33_part3d/bottom.png                      — ceiling carve reference (produced by tools/asset_generation/d33_part3{b,c,d}_fixture_gen.py). Rodar: godot --headless --script res://godot/scripts/tools/half_voxel_compositor_equality_selftest.gd
-
-**Constants / tuning**
-- `HalfVoxelCompositorClass` = `preload("res://godot/scripts/geometry/half_voxel_compositor.gd")`
-- `DecalCompositorClass` = `preload("res://godot/scripts/geometry/decal_compositor.gd")`
-- `FIXTURE_DIR` = `"res://godot/scripts/tools/fixtures/d33_part3b/"`
-- `FLOOR_FIXTURE_DIR` = `"res://godot/scripts/tools/fixtures/d33_part3c/"`
-- `CEILING_FIXTURE_DIR` = `"res://godot/scripts/tools/fixtures/d33_part3d/"`
-- `CUT_FILL` = `Color(140.0 / 255.0, 136.0 / 255.0, 129.0 / 255.0, 1.0)`
-
----
-
-### `half_voxel_seam_selftest.gd`
-
-extends `SceneTree` · 268 lines
-
-`godot/scripts/tools/half_voxel_seam_selftest.gd`
-
-> D33 Part 3b — the real render-seam selftest for half-voxel DENTED marks, sibling to decal_seam_selftest.gd (Part 3a, full-voxel CRACKED). Rodar: godot --headless --script res://godot/scripts/tools/half_voxel_seam_selftest.gd
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_plan_parser_recognizes_dented_wall_cases() -> void:`
-- `func test_flat_material_side_color_is_cached_and_nonwhite() -> void:`
-- `func test_set_voxel_cell_end_to_end_picks_the_half_voxel_composite() -> void:`
-- `func test_cracked_still_goes_through_full_voxel_path_not_half() -> void:`
-- `func test_floor_and_ceiling_dented_are_unaffected() -> void:`
-- `func test_no_baked_atom_falls_through_to_generic() -> void:`
-
----
-
 ### `hud_seam_selftest.gd`
 
 extends `Node` · 202 lines
@@ -4717,29 +4249,20 @@ extends `SceneTree` · 367 lines
 
 ### `material_reform_selftest.gd`
 
-extends `SceneTree` · 493 lines
+extends `SceneTree` · 247 lines
 
 `godot/scripts/tools/material_reform_selftest.gd`
 
-> E-MAT — material reform selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1a, D19/D20/D21, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/material_reform_selftest.gd Proves the two halves of the reform independently: 1. BEHAVIOR is unified — one row per material (MaterialRegistry + MaterialResistanceTable), the old duplicate `ground_concrete` row is gone, not merely shadowed. 2. RENDERING follows the MATERIAL, not the surface — D34/E-SEAM-01 (Director, 2026-08-08) **reversed D20's original answer here.** D20 sent every floor down the photographic `slab_` path, so a concrete floor and a concrete wall were literally different art and could never read as the same material. The rule now: `has_facade == true` -> the floor bakes through the SAME `facade_<id>` its wall and roof do (grayscale + multiply); `has_facade == false` -> the photographic `slab_<id>` exception, kept on purpose for organic ground. Tests 3-5 below assert the new contract; they asserted the opposite before, and were rewritten rather than relaxed. 3. The projection that made the merge free — D34 extends a 1024x512 wall facade to the isotropic 1024x1024 a horizontal surface addresses by MIRRORED VERTICAL REPEAT, never by resize (tests 6-7). Every expectation is computed independently (own expected values), never read back from the code under test.
+> E-MAT — material reform selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1a, D19/D20/D21, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/material_reform_selftest.gd Proves the two halves of the reform independently: 1. BEHAVIOR is unified — one row per material (MaterialRegistry + MaterialResistanceTable), the old duplicate `ground_concrete` row is gone, not merely shadowed. 2. TEXTURE IDENTITY follows the MATERIAL, not the surface — D34/E-SEAM-01 (Director, 2026-08-08) **reversed D20's original answer here.** `has_facade == true` -> the floor names the SAME `facade_<id>` its wall and roof do; `has_facade == false` -> the photographic `slab_<id>` exception, kept on purpose for organic ground. R3D-END END-4: the tests that drove the compositor (the shared modulate, the two families baked in one session, the mirrored vertical repeat, the roof/floor spec merge) went with it, and so did the generic-atlas half of test 8. Every expectation is computed independently (own expected values), never read back from the code under test.
 
 **Constants / tuning**
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
-- `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
-
-**Public API**
-- `func test_6_horizontal_plane_is_mirrored_not_stretched() -> void:`
-- `func test_7_roof_and_floor_specs_merge_their_cells() -> void:`
-- `func test_8_earth_is_a_buildable_material() -> void:`
 
 ---
 
@@ -4985,35 +4508,25 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 386 lines
+extends `SceneTree` · 138 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
-> ROOF-BAKE-01/02 — roof/ceiling baked-surface selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_bake_selftest.gd Proves the ROOF-BAKE-02 contract end-to-end: 1. A roofs-only map_spec composes the dedicated roof page family with a "ROOF|mat|fac|col|row" lookup entry for every (folded) LOCAL cell 2. resolve_flat() returns exactly the independently re-derived atom 3. PIXEL continuity + ISOTROPY: placed atom top-diamonds equal a direct read of the roof plane (built from the UNSCALED facade — no wall ×20/16 pre-scale) at the projected offset 4. (R3D-END, END-1: deleted. It read the baked TILE every roof voxel was placed as on a real load; the load no longer bakes and no tile is written. [1]-[3] drive the compositor directly and go with it at END-4.) 5. ROTATION (02a): building the E view puts a roof Slab of the right material at every block's ROTATED position Every expectation is re-derived locally (own mirror fold, own key format, own component flood fill, own rotation math) — never read back from the code under test.
+> ROOF-BAKE-01/02 — roof/ceiling baked-surface selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_bake_selftest.gd R3D-END END-4: the compositor and the baked lookup are gone, and with them criteria [1]-[3] (the roof page family, the resolved atoms, pixel continuity and isotropy of the placed atoms) and [4] (END-1). What survives is the data contract: 5. ROTATION (02a): building the E view puts a roof Slab of the right material at every block's ROTATED position The expectation is re-derived locally (own rotation math), never read back from the code under test.
 
 **Constants / tuning**
-- `BakeCompositorClass` = `preload("res://godot/scripts/systems/bake_compositor.gd")`
-- `BakedTileLookupClass` = `preload("res://godot/scripts/systems/baked_tile_lookup.gd")`
-- `TextureResolverClass` = `preload("res://godot/scripts/systems/texture_resolver.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
-- `ATOM_W` = `32`
-- `ATOM_H` = `36`
-- `V_MARGIN` = `32`
-- `ROOF_LEVEL_COUNT` = `2`
 
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
 
 **Public API**
-- `func test_1_roof_cells_get_lookup_entries(fx: Dictionary) -> void:`
-- `func test_2_resolve_flat_matches_rederived_atoms(fx: Dictionary, bake_config) -> void:`
-- `func test_3_pixel_continuity_and_isotropy(fx: Dictionary) -> void:`
 - `func test_5_rotated_view_roofs_follow_structures() -> void:`
 
 ---
@@ -5295,28 +4808,6 @@ extends `MainLoop` · 298 lines
 
 ---
 
-### `tint_baked_atom_selftest.gd`
-
-extends `SceneTree` · 152 lines
-
-`godot/scripts/tools/tint_baked_atom_selftest.gd`
-
-> PERF-01 — proves VoxelRenderer._tint_image_rgb() (byte-buffer multiply) matches the get_pixel()/set_pixel() loop it replaced inside _tint_baked_atom(), within MAX_CHANNEL_DIFF_TOLERANCE. Tolerance is MEASURED here, not assumed (same discipline as the D33 Part 2 equality selftests, decal_compositor_equality_selftest.gd): every modulate <= 1.0 (no clamping needed) round-trips byte-for-byte, 0/1152 pixels differ. Only a modulate > 1.0 — which pushes byte*modulate through _tint_image_rgb()'s clampf(...,0.0,1.0) branch — shows a ±1/255 diff on a real fraction of pixels (measured 2026-08-04: 228/1152). Root cause, confirmed by reproducing the exact divide/multiply/clamp/scale sequence get_pixel()+set_pixel() run and STILL seeing the same 228 mismatches: GDScript's float is 64-bit; Godot's internal Color->byte quantization (engine-side, C++) is 32-bit. The identical real-valued expression can round to a different integer on either side of that precision boundary when the product lands within one ULP of an exact integer — an unavoidable consequence of computing the same math at two different float widths, not a logic error in either implementation. Rodar: godot --headless --script res://godot/scripts/tools/tint_baked_atom_selftest.gd
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `MAX_CHANNEL_DIFF_TOLERANCE` = `1`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_case(label: String, modulate: Color) -> void:`
-- `func test_white_fast_path() -> void:`
-
----
-
 ### `version_info_selftest.gd`
 
 extends `Node` · 74 lines
@@ -5329,54 +4820,26 @@ extends `Node` · 74 lines
 
 ### `voxel_decal_selftest.gd`
 
-extends `SceneTree` · 656 lines
+extends `SceneTree` · 247 lines
 
 `godot/scripts/tools/voxel_decal_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN D32 — damage-decal placement selftest. Rodar: godot --headless --script res://godot/scripts/tools/voxel_decal_selftest.gd What this suite exists to catch, stated as the bug it would have caught: before D32 every firearm hit on a wall painted its bullet hole on the voxel's TOP diamond, because apply_point_impact() never resolved which face was struck and the art had the mark baked on the top face. Nothing failed — it just rendered wrong. So the assertions here are about WHICH NAME a given (tier, cause, side) resolves to, and about every one of those names having a real asset behind it, rather than about the pixels. Deliberately NOT asserted here: what the decal looks like. That is verified on the asset side (the generator's own geometry checks) and by real capture.
+> DESTRUCTION_MASTER_PLAN D32 — damage-decal ART selftest. Rodar: godot --headless --script res://godot/scripts/tools/voxel_decal_selftest.gd What this suite exists to catch: a decal family, a variant or a generic mark missing from disk, or the generator's manifest drifting from the constants the board reads. Nothing fails loudly otherwise — a mark is silently dropped. R3D-END END-4: the criteria about WHICH NAME a (tier, cause, side) resolves to went with the 2D name resolver (`damage_variant_material()` and its plan parsers); the board picks a decal by (family, material, variant) and this suite keeps the asset side of that. Deliberately NOT asserted here: what the decal looks like. That is verified on the asset side (the generator's own geometry checks) and by real capture.
 
 **Constants / tuning**
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `MANIFEST_PATH` = `"res://ASSETS/materials/manifest.json"`
+- `DECAL_NAME_TEMPLATE` = `"res://ASSETS/materials/%s/decals/decal_%s_%s_%d.png"`
+- `GENERIC_MARK_TEMPLATE` = `"res://ASSETS/materials/_generic/decals/decal_generic_%s_%d.png"`
+- `GENERIC_MARK_VARIANT_COUNT` = `3`
 
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
 
 **Public API**
+- `func test_every_family_variant_has_an_asset() -> void:`
 - `func test_manifest_agrees_with_the_renderer() -> void:`
-- `func test_bullet_marks_the_struck_lateral_face_only() -> void:`
-- `func test_cracked_is_whole_voxel_for_a_blast() -> void:`
-- `func test_ceiling_carve_is_variantless() -> void:`
-- `func test_floor_dent_uses_the_real_material_art() -> void:`
-- `func test_variant_selects_distinct_names() -> void:`
-- `func test_unknown_material_falls_back_instead_of_composing_a_missing_name() -> void:`
-- `func test_shooter_gu_resolves_a_real_side() -> void:`
-
----
-
-### `voxel_face_separation_selftest.gd`
-
-extends `SceneTree` · 235 lines
-
-`godot/scripts/tools/voxel_face_separation_selftest.gd`
-
-> FACE-READ-02 selftest — the "never three identical faces" guarantee. Run: godot --headless --script res://godot/scripts/tools/voxel_face_separation_selftest.gd Director, 2026-08-01: *"forçar a fuligem de destruição e tiros a seguir o mesmo princípio de nunca deixar um voxel existir com as 3 faces totalmente iguais [...] garantir que as 3 faces tem uma micro diferença."* The property under test is a CONTRACT BETWEEN TWO FILES that are tuned independently: the shader's per-face constants (godot/shaders/voxel_face_shading.gdshader) and the darkening canon they have to stay separable against (VoxelRenderer.bucket_luminance and its FLOOR_DEPTH_DIM). Either side can be retuned in good faith and silently destroy the guarantee — soot to 0.20 is exactly what broke it originally — so both sides are read from their real owners here, and the shader constants are PARSED from the shader file rather than copied, so a value changed there fails this test instead of drifting. FACE-SOOT-01 (2026-08-01) moved soot OUT of the light bucket and into this same shader, as a per-face multiplier (`soot_face_mult`). The scan follows it: the incoming colour is now bucket x depth only, and every one of the 64 per-face ring COMBINATIONS is swept, because two faces at different soot rings are a collapse risk this test could not previously even express. A headless run has no rasteriser, so this reproduces the shader's arithmetic rather than sampling real pixels: quantised 8-bit output for each of the three faces. That is a deliberate, stated substitution — the real-pixel evidence for this feature is the capture cited in the session record.
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `VoxelLightFieldClass` = `preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")`
-- `SHADER_PATH` = `"res://godot/shaders/voxel_face_shading.gdshader"`
-- `BLACK_CEILING` = `0`
-
-**Public vars**
-- `var passed: int = 0`
-- `var failed: int = 0`
-
-**Public API**
-- `func test_three_faces_never_identical(uniforms: Dictionary) -> void:`
-- `func test_guarantee_depends_on_the_separation_term(uniforms: Dictionary) -> void:`
-- `func test_sooted_dark_voxel_is_separable(uniforms: Dictionary) -> void:`
 
 ---
 
@@ -5711,7 +5174,7 @@ extends `Node2D` · 35 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 1275 lines
+`class_name RoomBuilder` · 595 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -5720,23 +5183,28 @@ extends `Node2D` · 35 lines
 **Public vars**
 - `var room: Node`
 - `var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
-- `var BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")`
 - `var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")`
-- `var MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")`
-- `var DamageVariantBakerClass = preload("res://godot/scripts/systems/damage_variant_baker.gd")`
-- `var VoxelVariantRegistryClass = preload("res://godot/scripts/systems/voxel_variant_registry.gd")`
+- `var floor_layer: TileMapLayer = null`
+- `var structure_layer: TileMapLayer = null`
 
 **Public API**
-- `func invalidate_bake_cache() -> void:`
+- `func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileSet) -> void:`
+- `func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:`
+- `func get_blocked_cells() -> Dictionary:`
+- `func get_prop_heights() -> Dictionary:`
+- `func get_exit_cells() -> Array[Vector2i]:`
+- `func get_light_sources() -> Array:`
+- `func build_registry(ts: TileSet) -> void:`
+- `func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:`
 - `func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:`
 
 ---
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1138 lines
+`class_name AgentShotController` · 1118 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -5754,7 +5222,7 @@ extends `Node2D` · 35 lines
 
 ### `debug_tools_controller.gd`
 
-`class_name DebugToolsController` · 225 lines
+`class_name DebugToolsController` · 194 lines
 
 `godot/scripts/world/controllers/debug_tools_controller.gd`
 
@@ -5771,8 +5239,6 @@ extends `Node2D` · 35 lines
 - `func toggle_nudge_mode() -> void:`
 - `func toggle_bake_mode() -> void:`
 - `func cycle_blend_mode() -> void:`
-- `func force_damage_gallery() -> void:`
-- `func toggle_atom_sheet() -> void:`
 - `func apply_nudge(delta: Vector2) -> void:`
 - `func reset_nudge() -> void:`
 - `func try_change_posture(new_posture: DebugAgent.Posture) -> void:`
@@ -5782,7 +5248,7 @@ extends `Node2D` · 35 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 238 lines
+`class_name InputController` · 228 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 
@@ -5830,7 +5296,7 @@ extends `Node2D` · 35 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1565 lines
+`class_name TestZoneController` · 1544 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -6107,7 +5573,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11727 lines
+extends `Node2D` · 11056 lines
 
 `godot/scripts/world/room.gd`
 

@@ -267,16 +267,13 @@ func _begin_precook(guard) -> void:
 	var plan := _build_shot_plan(agent.cell, guard.cell, weapon_def)
 	if plan.is_empty():
 		return
-	room.begin_shot_precook(plan["destroyed"],
-		room.shot_repaint_scope(plan["impact_gus"]), plan["variant_cells"])
+	room.begin_shot_precook(plan["destroyed"], room.shot_repaint_scope(plan["impact_gus"]))
 
 
 ## PURE. The shot that WOULD be fired, as data, writing nothing:
 ##   "destroyed"     Dictionary[Vector3i] — every voxel the ladder would remove
 ##   "damaged"       Array of plan_point_impact() entries — the DENTED/CRACKED
 ##                   ones, tuple included
-##   "variant_cells" Array of {"level","cell","source_id","atlas_coords"} — the
-##                   atoms those damaged voxels will MOVE to
 ##   "impact_gus"    Array[Vector2i]
 ## The two consumers are the precook above and, one day, D32's hit-percentage
 ## readout.
@@ -313,7 +310,6 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 	picks = _flatten_glass_passthrough(picks)
 	var destroyed: Dictionary = {}
 	var damaged: Array = []
-	var variant_cells: Array = []
 	var gus: Dictionary = {}
 	for i in range(picks.size()):
 		gus[picks[i]["gu"]] = true
@@ -357,24 +353,8 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 				destroyed[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
 				continue
 			damaged.append(entry)
-			## ...and a DENTED or CRACKED voxel also MOVES to another atom, whose
-			## light alternative is a fresh mint on the impact frame unless it is
-			## warmed here. An empty resolve is the D33 runtime-composite fallback
-			## (registry miss): its atlas coords are allocated while rendering, so
-			## there is nothing to warm ahead of time and it is skipped rather than
-			## guessed at.
-			if room._voxel_renderer == null:
-				continue
-			var swap: Dictionary = room._voxel_renderer.resolve_damage_swap_for(
-				entry["container"], int(entry["state"]), bool(entry["is_blast"]),
-				int(entry["carved_side"]), int(entry["variant"]),
-				int(entry["substrate"]))
-			if swap.is_empty():
-				continue
-			variant_cells.append({"level": v.level, "cell": v.grid_pos,
-				"source_id": swap["source_id"], "atlas_coords": swap["atlas_coords"]})
-	return {"destroyed": destroyed, "damaged": damaged,
-		"variant_cells": variant_cells, "impact_gus": gus.keys()}
+
+	return {"destroyed": destroyed, "damaged": damaged, "impact_gus": gus.keys()}
 
 
 ## ONE definition of the shot's salt, because the precook and the real shot must

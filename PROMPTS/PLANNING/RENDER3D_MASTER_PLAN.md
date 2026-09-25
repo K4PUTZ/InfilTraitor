@@ -3035,7 +3035,7 @@ is not an entry condition (Director, 2026-09-23).
 - **The SE face of the reference set is not captured now.** If R3D-LOOK needs it, it is taken from a worktree of
   `34881f81`, the last commit with the 2D board.
 
-**Resume point (2026-09-24 close): END-0 to END-3 DONE; next END-4.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
+**Resume point (2026-09-24 close): END-0 to END-4 DONE; next END-5.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
 
 **Execution order.** Every step is held to the END-0 set (below) and committed and pushed on its own; the last commit
 that still builds the 2D board is `34881f81`.
@@ -3117,6 +3117,31 @@ that still builds the 2D board is `34881f81`.
   `tileset_blocks`, `BakeCompositor`, `BakedTileLookup`, `DamageCompositeCache`, `DamageVariantBaker`'s atom pages, the
   light alternatives and the mint cache, `voxel_face_shading.gdshader` and its soot textures, the 2D-only light
   instruments.
+  **Done 2026-09-25 (in two halves of one commit, one boundary moved).** Gone: `BakeCompositor`, `BakedTileLookup`,
+  `DamageCompositeCache`, `DamageVariantBaker`, `DecalCompositor`, `HalfVoxelCompositor` (and `bake_compositor.gdshader`);
+  `VoxelRenderer`'s `_set_voxel_cell()`, every `_composite_*` / `_*_plan` / `_tint_*` function, the light alternatives
+  (`_ensure_light_alt`, the alt encode/decode, `_minted_light_alts`), `_build_voxel_tileset()`, the layer material and
+  face-shader builder, `MATERIALS` / `BASE_MATERIALS` and the asset templates, the ysort probe, the tile-reading
+  instruments (`debug_*_census`, atlas alignment, cell paint, quad rect) and `memory_census`'s tileset half;
+  `voxel_face_shading.gdshader` and its experimental copy; `RoomBuilder`'s bake, atlas, damage-registry and spec code
+  (`_bake_textures`, `_wire_baked_lookup`, ...); `Room`'s `cell_index_spike` / `cell_index_gate` / P3-census /
+  `damage_gallery` / `atom_sheet` / `export_atoms` capture actions and the F5 / F8 keys; `atom_sheet_debug.gd`,
+  `damage_gallery_debug.gd`, `build_atom_sheet.py`. 13 suites went with their subject (`bake`, `bake_cache`,
+  `damage_atom_bake`, the five `*_seam`, the three compositor-equality, `tint_baked_atom`, `damage_composite_cache`,
+  `voxel_face_separation`) and `destruction_part0_spike`; `roof_bake` and `floor_zone_bake` keep only their rotation
+  criterion, `material_reform` keeps [1]-[3] and [8] without the atlas half, `voxel_decal_selftest` keeps the ART side
+  (files on disk, manifest, reachable tiers), `board_look_selftest` keeps "the board reads BoardLook".
+  **Two boundaries moved, on purpose.** (1) The per-level `TileMapLayer` nodes STAY as bare positioned nodes (no
+  cell, no material, a geometry-only TileSet), because `voxel_world_position()`, `get_max_voxel_z_index()`, the 2D overlays
+  and ~20 `room.gd` readers ask them for a screen origin and a draw height: END-6 ports those readers and turns the levels
+  into arithmetic. (2) `tileset_blocks.tres` stays: it is the STRUCTURE layer's set (props, and `GroundGrid`'s geometry), not the
+  voxel atlas. `BakeConfig` / `BakePolicy` stay (data owners other code reads; `is_zoned_floor` no longer asks
+  `BakeConfig.enabled`, which was true on every real load). **Regression caught by the gate, not by lint:** the layer's
+  material used to create the level's cell plane as a side effect; removing it changed "plane levels" (6 vs 5) in the probe
+  dumps while voxels, texels and pixels were identical — restored in `_build_voxel_layer_node()`, 31/31 dumps identical.
+  **Gates against END-0/END-3's reference:** pixel 0 px above noise (GLASS g0/g1 136/63 strict, the known jitter; the first two runs timed out at 600 s because the Director's editor was open, and passed once it was closed); 31/31 `board_probe` dumps identical;
+  roundtrip, shadow, ground 16/16, mirror (7/504, 9/920), occ_canonical PASS; shot_3d PASSED (2 919 / 3 573 px);
+  `run_selftests` 51 clean (64 - 13 deleted).
 - **END-5 — `floor_layer`.** Converted to `GroundGrid`, held by `ground_gate.py --against`.
 - **END-6 — instruments, tools, the rename.** The `room.gd` tile readers (port or delete, each with its reason), the tools
   that still have a 2D mode, then the rename.

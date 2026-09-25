@@ -81,10 +81,6 @@ func _ready() -> void:
 	## NO_BAKE: an instrument, never a look mode. OR-ed so a desktop env var keeps
 	## working exactly as it did.
 	VoxelRenderer.LIGHT_DISABLED = VoxelRenderer.LIGHT_DISABLED or on("NO_LIGHT")
-	## DIAG-22 — `=0` is the old lazy path (one TileSet mutation per new composite),
-	## kept only so one APK can measure both sides.
-	if value("COMPOSITE_TILES_UP_FRONT", "") == "0":
-		DamageCompositeCache.TILES_UP_FRONT = false
 	## DIAG-19 (§15.2) — detonation ablation knobs, reachable in the APK. Both are
 	## static switches their classes read from the environment alone at class load;
 	## OR-ed / overridden here, so a desktop env var keeps working exactly as before.

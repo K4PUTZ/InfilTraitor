@@ -1852,9 +1852,6 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		push_error("Room layout did not provide a valid map size.")
 		return
 
-	## VL-PERF-BAKE: a (re)load always does a full rebake — the rotation fast-path
-	## caches sources, but a reload may intend to pick up changed facades.
-	_room_builder.invalidate_bake_cache()
 	var view_layout := _room_builder.layout_with_perspective(layout, _active_perspective)
 	room_size = view_layout.get("size", room_size)
 	_map_buffer = view_layout.get("buffer", 0)
@@ -4879,16 +4876,13 @@ const SHOT_REPAINT_SOOT_RINGS: int = 3
 ## Nothing is committed, nothing is drawn, and cancelling is just dropping it.
 var _shot_precook_token: int = 0
 var _shot_precook_done: bool = false
-var _shot_precook_minted: int = 0
 
 
 ## Begin warming. Returns immediately; `await shot_precook_ready()` to join.
-func begin_shot_precook(predict_destroyed: Dictionary,
-		scope_gus: Array, variant_cells: Array = []) -> void:
+func begin_shot_precook(predict_destroyed: Dictionary, scope_gus: Array) -> void:
 	_shot_precook_token += 1
 	_shot_precook_done = false
-	_run_shot_precook(_shot_precook_token, predict_destroyed,
-		scope_gus, variant_cells)
+	_run_shot_precook(_shot_precook_token, predict_destroyed, scope_gus)
 
 
 func cancel_shot_precook() -> void:
@@ -4905,8 +4899,7 @@ func shot_precook_ready() -> void:
 		await get_tree().process_frame
 
 
-func _run_shot_precook(token: int, predict_destroyed: Dictionary,
-		scope_gus: Array, _variant_cells: Array = []) -> void:
+func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Array) -> void:
 	if _voxel_renderer == null or _lighting_controller == null or scope_gus.is_empty():
 		_shot_precook_done = true
 		return
@@ -4950,10 +4943,7 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary,
 	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
 		return
 	## The TileSet alternatives this used to mint were the 2D board's (R3D-END); the light field above is the whole warm.
-	_shot_precook_minted = 0
 	_shot_precook_done = true
-	print_debug("[W-PRECOOK] warm complete — %d TileSet alternative(s) minted ahead of the shot"
-		% _shot_precook_minted)
 
 
 ## The GU scope for a shot: every impact GU, grown by the soot reach.
@@ -6445,10 +6435,8 @@ func play_consequence_light(delta = null) -> void:
 			"PASS — the cook's field landed the board exactly"
 			if differ == 0 else "FAIL — the cook's field/changed-set is not the full one"])
 
-	if not VoxelRenderer.P3_CELL_BUCKET or moved.is_empty():
-		print("[CONSEQUENCE] light restored instantly — %.1f ms (%s)" % [derive_ms,
-			"P3 off, no plane to ramp" if not VoxelRenderer.P3_CELL_BUCKET
-			else "nothing moved"])
+	if moved.is_empty():
+		print("[CONSEQUENCE] light restored instantly — %.1f ms (nothing moved)" % derive_ms)
 		return
 
 	var to_bucket: Dictionary = {}
@@ -7889,181 +7877,6 @@ func _capture_agent_shot() -> void:
 var _burn_probe_targets: Array = []
 
 
-## PERF-SPIKE-01 — CAN A SHADER RECOVER WHICH CELL IT IS DRAWING?
-##
-## The Director's architecture question (2026-08-22) is whether per-cell visual
-## state can leave the TileSet and live in a DATA TEXTURE the existing voxel
-## shader samples — which would make light and soot writes into pixel writes
-## instead of `create_alternative_tile()` calls, and make the apply O(changed)
-## instead of O(every placed cell).
-##
-## `voxel_face_shading.gdshader` today knows only ATLAS coordinates
-## (`UV / TEXTURE_PIXEL_SIZE`). It has no idea which cell it is on. This probe
-## answers the first question that has to be true before anything is designed:
-##
-##   is cell -> local position AFFINE on a real voxel layer?
-##
-## If it is, the shader can invert it with a 2x2 matrix passed as a uniform, and
-## each level being its own TileMapLayer removes the third dimension for free.
-## If it is STAGGERED (Godot offsets alternate rows/columns for some isometric
-## layouts) it is not invertible that way and the whole route needs rethinking.
-##
-## Printed, never asserted into a pass: this is a spike, and its output is meant
-## to be read by a person deciding whether to open a master plan.
-func _capture_cell_index_spike() -> void:
-	print("[SPIKE] ---- PERF-SPIKE-01: cell index recoverability ----")
-	if _voxel_renderer == null:
-		print("[SPIKE] no renderer")
-		return
-	var levels: Array = _voxel_renderer.level_keys()
-	print("[SPIKE] layers: %d wall + %d below the ground plane" % [
-		_voxel_renderer.get_layer_count(),
-		levels.size() - _voxel_renderer.get_layer_count()])
-	for level in [0, 1, levels.min()]:
-		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-		if layer == null:
-			continue
-		var o: Vector2 = layer.map_to_local(Vector2i(0, 0))
-		var e1: Vector2 = layer.map_to_local(Vector2i(1, 0)) - o
-		var e2: Vector2 = layer.map_to_local(Vector2i(0, 1)) - o
-		## AFFINITY, tested where a stagger would show: odd cells on both axes,
-		## and a far corner where an accumulated half-offset could not hide.
-		var worst: float = 0.0
-		var worst_cell := Vector2i.ZERO
-		for tx in [0, 1, 2, 3, 7, 16, 41, 100, 247, 350]:
-			for ty in [0, 1, 2, 3, 7, 16, 41, 100, 247, 350]:
-				var c := Vector2i(tx, ty)
-				var predicted: Vector2 = o + e1 * float(tx) + e2 * float(ty)
-				var actual: Vector2 = layer.map_to_local(c)
-				var err: float = (predicted - actual).length()
-				if err > worst:
-					worst = err
-					worst_cell = c
-		print("[SPIKE] level %d · layer.position %s · origin %s · e1 %s · e2 %s"
-			% [level, layer.position, o, e1, e2])
-		print("[SPIKE]   affine? worst error %.6f px over 100 cells (worst at %s) — %s"
-			% [worst, worst_cell, "AFFINE" if worst < 0.001 else "NOT AFFINE (staggered)"])
-		var det: float = e1.x * e2.y - e1.y * e2.x
-		print("[SPIKE]   basis determinant %.4f — %s"
-			% [det, "invertible" if absf(det) > 0.0001 else "SINGULAR, not invertible"])
-		if absf(det) > 0.0001:
-			## Round-trip a real placed cell through the inverse the shader would use.
-			var cells: Array = layer.get_used_cells()
-			var checked: int = 0
-			var bad: int = 0
-			for c2 in cells:
-				if checked >= 200:
-					break
-				checked += 1
-				var lp: Vector2 = layer.map_to_local(c2) - o
-				var inv_x: float = (lp.x * e2.y - lp.y * e2.x) / det
-				var inv_y: float = (lp.y * e1.x - lp.x * e1.y) / det
-				if roundi(inv_x) != c2.x or roundi(inv_y) != c2.y:
-					bad += 1
-			print("[SPIKE]   inverse round-trip on real placed cells: %d checked, %d wrong"
-				% [checked, bad])
-	## GATE 2 — drive the shader's recovered cell and let a capture judge it.
-	## INFILTRAITOR_SPIKE_MODE: 2 = parity paint (is the recovery aligned to real
-	## voxel edges?), 1 = sample a real data texture (does the per-cell fetch
-	## work at all?).
-	var mode_env := OS.get_environment("INFILTRAITOR_SPIKE_MODE")
-	var mode: float = float(mode_env.to_int()) if mode_env.is_valid_int() else 0.0
-	if mode > 0.0:
-		var mat: ShaderMaterial = _voxel_renderer._get_layer_material(0)
-		if mat == null:
-			print("[SPIKE] no shading material — cannot drive gate 2")
-			print("[SPIKE] ---- end ----")
-			return
-		## THE EXPERIMENTAL SHADER IS SWAPPED IN AT RUNTIME, and only here.
-		## `voxel_face_shading.gdshader` on main is untouched on purpose: adding a
-		## vertex() stage to it moved 14 pixels of 921 600 (max channel delta 5)
-		## with the spike DISABLED — a real, if tiny, visual change, and the
-		## residue-class face separation (mod 3) is exactly the kind of thing a
-		## precision shift flips. Landing that belongs to the master plan, with
-		## its own decision, not to a probe.
-		var spike_shader = load("res://godot/shaders/experimental/voxel_face_shading_cellindex.gdshader")
-		if spike_shader == null:
-			print("[SPIKE] experimental shader missing — gate 2 cannot run")
-			print("[SPIKE] ---- end ----")
-			return
-		mat.shader = spike_shader
-		## A checkerboard, one texel per CELL. Nearest-filtered and never
-		## repeated, so a misaligned fetch cannot be smoothed into looking right.
-		var size: int = 512
-		var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
-		for y in range(size):
-			for x in range(size):
-				var v: float = 1.0 if (x + y) % 2 == 0 else 0.40
-				img.set_pixel(x, y, Color(v, v, v, 1.0))
-		mat.set_shader_parameter("cell_data", ImageTexture.create_from_image(img))
-		mat.set_shader_parameter("cell_data_size", Vector2(size, size))
-		mat.set_shader_parameter("spike_cell_mode", mode)
-		print("[SPIKE] gate 2 armed — spike_cell_mode=%.0f, %dx%d nearest data texture"
-			% [mode, size, size])
-		for _f in range(20):
-			await get_tree().process_frame
-		var vp := get_viewport()
-		var shot := vp.get_texture().get_image()
-		var out := "Screenshots/spike_cell_index_mode%d.png" % int(mode)
-		shot.save_png(out)
-		print("[SPIKE] capture written: %s" % out)
-	## GATE 3 — WHAT DOES CHANGING THE DATA COST? The whole promise of the route
-	## is that a light or soot change becomes a PIXEL WRITE instead of a
-	## create_alternative_tile() call. That is only worth anything if the write
-	## itself is cheap, so it gets a number rather than an assumption.
-	##
-	## Sized to the real board, one texture per LEVEL, because each level is its
-	## own TileMapLayer and therefore its own 2D problem.
-	var cells_x: int = (_room_size.x + 2) * GeometryCoords.VOXELS_PER_UNIT_AXIS
-	var cells_y: int = (_room_size.y + 2) * GeometryCoords.VOXELS_PER_UNIT_AXIS
-	var level_count: int = _voxel_renderer.level_keys().size()
-	var imgs: Array = []
-	var texs: Array = []
-	var t_build: int = Time.get_ticks_usec()
-	for _i in range(level_count):
-		var im := Image.create(cells_x, cells_y, false, Image.FORMAT_RGBA8)
-		imgs.append(im)
-		texs.append(ImageTexture.create_from_image(im))
-	print("[SPIKE] data textures: %d level(s) of %dx%d RGBA8 = %.1f MB · built in %.1f ms"
-		% [level_count, cells_x, cells_y,
-		float(level_count * cells_x * cells_y * 4) / 1048576.0,
-		float(Time.get_ticks_usec() - t_build) / 1000.0])
-
-	## (a) the realistic case: ONE level's worth of cells rewritten and uploaded.
-	var t1: int = Time.get_ticks_usec()
-	var im0: Image = imgs[0]
-	for y in range(cells_y):
-		for x in range(cells_x):
-			im0.set_pixel(x, y, Color(0.5, 0.25, 0.0, 1.0))
-	var t2: int = Time.get_ticks_usec()
-	(texs[0] as ImageTexture).update(im0)
-	var t3: int = Time.get_ticks_usec()
-	print("[SPIKE] ONE level, every cell: %.1f ms to fill (%d set_pixel) + %.1f ms to upload"
-		% [float(t2 - t1) / 1000.0, cells_x * cells_y, float(t3 - t2) / 1000.0])
-
-	## (b) the cheap path the real system would take — a scoped patch. Godot has
-	## no partial upload for ImageTexture, so the upload is whole-image either
-	## way; only the CPU fill scales with how much changed.
-	var t4: int = Time.get_ticks_usec()
-	for y in range(64):
-		for x in range(64):
-			im0.set_pixel(x, y, Color(0.9, 0.1, 0.0, 1.0))
-	var t5: int = Time.get_ticks_usec()
-	(texs[0] as ImageTexture).update(im0)
-	var t6: int = Time.get_ticks_usec()
-	print("[SPIKE] a 64x64 cell patch: %.1f ms to fill + %.1f ms to upload (upload is whole-image; Godot has no partial ImageTexture update)"
-		% [float(t5 - t4) / 1000.0, float(t6 - t5) / 1000.0])
-
-	## (c) the worst case the current architecture pays every full repaint:
-	## EVERY level re-uploaded.
-	var t7: int = Time.get_ticks_usec()
-	for i in range(level_count):
-		(texs[i] as ImageTexture).update(imgs[i])
-	print("[SPIKE] ALL %d levels re-uploaded: %.1f ms — compare with the map-wide apply at ~1080 ms and 2179 mints per burn"
-		% [level_count, float(Time.get_ticks_usec() - t7) / 1000.0])
-	print("[SPIKE] ---- end ----")
-
-
 ## PERF-P3 GATE — hide every CanvasItem/CanvasLayer that is not the voxel
 ## renderer's own subtree. Gate-only; see the call site for why it has to be
 ## this blunt.
@@ -8088,79 +7901,6 @@ func _debug_hide_all_but_voxels(node: Node) -> void:
 		_debug_hide_all_but_voxels(child)
 
 
-## PERF-P3 GATE — decode one pixel's self-declared (level, cell), or null.
-##
-## Capture A's signature is (level + 100, 0, 255) — its G is always 0 because the
-## whole level's plane carries one value, which is what makes the LEVEL readout
-## survive even a completely broken cell recovery. Capture B's G CARRIES cell.y
-## and its B carries both high bytes biased by 2, so only B's range can be
-## tested there. Requiring g == 0 on B threw away 875 896 pixels of 921 600 in an
-## earlier run and left twenty claims that looked like a catastrophic failure and
-## were an analysis bug.
-func _p3_gate_claim(pl: Color, pc: Color):
-	if pl.g8 != 0 or pl.b8 != 255 or pc.b8 < 64 or pc.b8 > 127:
-		return null
-	var hi: int = pc.b8 - 64
-	@warning_ignore("integer_division")
-	var hy: int = hi / 8
-	return Vector3i(pl.r8 - 100, pc.r8 + 256 * ((hi % 8) - 2), pc.g8 + 256 * (hy - 2))
-
-
-## PERF-P3 GATE — a cell's quad in VIEWPORT pixels, AT THE MOMENT OF THE CALL.
-##
-## This must never be cached across a frame wait. The camera eases toward its
-## target, so a rect computed during setup and compared against a capture taken
-## twenty frames later is measuring the camera, not the shader — measured, that
-## mistake produced a recovery "offset" of 1 to 3 cells with a spread, which
-## reads exactly like a real mapping bug and is not one.
-func _p3_gate_rect(level: int, cell: Vector2i) -> Rect2:
-	var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-	if layer == null:
-		return Rect2()
-	var local: Rect2 = _voxel_renderer.debug_cell_quad_rect(level, cell)
-	if local.size == Vector2.ZERO:
-		return Rect2()
-	var xf: Transform2D = layer.get_global_transform_with_canvas()
-	var tl: Vector2 = xf * local.position
-	var br: Vector2 = xf * (local.position + local.size)
-	return Rect2(tl, br - tl)
-
-
-## PERF-P3 GATE — DOES THE SHADER RECOVER THE *RIGHT* CELL?
-##
-## `INFILTRAITOR_CAPTURE_ACTION=cell_index_gate`.
-##
-## PERF-SPIKE-01's gate 2 painted the recovered cell's PARITY and read the
-## checkerboard as proof. It is not: a parity checkerboard is INVARIANT under a
-## constant cell offset — shift every cell by one and the picture is an equally
-## perfect checkerboard. It proved "one cell per quad, consistent on the
-## lattice" and never "the RIGHT cell", and PERFORMANCE_MASTER_PLAN §3.1 records
-## that weakness as the reason P3 was reverted without knowing what was wrong.
-##
-## THE SHAPE THAT CANNOT PASS FOR THE WRONG MAPPING — every pixel names itself.
-##
-##   capture A · the plane is filled with `level + 100` and the shader paints
-##              what it read, so each pixel names the LEVEL whose layer drew it;
-##   capture B · the shader paints the recovered CELL (x and y mod 256);
-##
-## and then the only question asked is: does this pixel lie inside the quad of
-## the (level, cell) IT CLAIMS TO BE? That rect is computed from
-## `map_to_local()`, `texture_region_size` and the TileData's `texture_origin` —
-## Godot's own numbers, never the shader's `quad_to_map` literal, so the gate
-## cannot be checking the shader against itself.
-##
-## ⚠️ WHY NOT THE OBVIOUS SHAPE, which was built first and thrown away: marking
-## N known cells with unique codes and looking for them. It requires knowing
-## which cell OWNS a pixel, and in an isometric scene that is exactly what you
-## do not know — a wall to the south covers the floor to the north, so a sample
-## at a cell's own diamond centre routinely belongs to some other cell entirely.
-## Measured, that version reported recovery "offsets" of (31, -80) and (46, -81)
-## cells with a broad spread. Those numbers were occlusion, not the shader. The
-## self-describing form has no ownership assumption in it at all, and it judges
-## every pixel of the frame instead of 200 samples.
-##
-## It is ONE-SIDED on purpose: a pixel is never required to exist, only to be
-## where it says it is.
 ## PERF-P7b §12.11 — DOES `CircleField` RASTERIZE LIKE `draw_circle`?
 ##
 ## `INFILTRAITOR_CAPTURE_ACTION=circle_gate`.
@@ -8269,314 +8009,6 @@ func _capture_circle_gate() -> void:
 		if differ == 0 else "FAIL — the two paths do not rasterize the same"])
 	print("[CIRCLE-GATE] captures: Screenshots/history/circle_gate_{draw,multimesh}.png")
 	host.queue_free()
-
-
-func _capture_cell_index_gate() -> void:
-	print("[P3-GATE] ---- cell recovery, absolute position ----")
-	if _voxel_renderer == null:
-		push_error("[P3-GATE] no voxel renderer.")
-		return
-	if _fow_controller != null and agent != null:
-		_fow_controller.reveal_around(agent.cell, 32)
-	## EVERYTHING THAT IS NOT A VOXEL LAYER GOES AWAY, and this is not tidiness.
-	##
-	## MEASURED: with the overlays up, 325 059 pixels of the board came back as
-	## (3, 9, 255) and (6, 18, 255) instead of the (value, 0, 255) the shader
-	## writes — an ADDITIVE overlay, at two densities, sitting on the floor. That
-	## does not merely hide the answer, it CORRUPTS it: a byte of 5 reads back as
-	## 8 or 11, which is another cell's answer. Four runs of this gate reported
-	## "0 of 200 marked cells visible" and the cause was this, not the mapping
-	## the gate exists to judge.
-	##
-	## So the gate photographs a frame holding the voxel layers and nothing else.
-	## The boot quits straight afterwards and never renders a real frame, which
-	## is what makes something this violent acceptable here.
-	_debug_hide_all_but_voxels(self)
-	_debug_hide_all_but_voxels(get_tree().root)
-	var zoom_env := OS.get_environment("INFILTRAITOR_P3_GATE_ZOOM")
-	if _camera_controller != null:
-		_camera_controller.set_zoom_for_capture(
-			zoom_env.to_float() if zoom_env.is_valid_float() else 1.5)
-	var focus_env := OS.get_environment("INFILTRAITOR_P3_GATE_FOCUS")
-	if focus_env != "" and agent != null and _camera_controller != null:
-		var fp := focus_env.split(",")
-		if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
-			agent.set_cell(Vector2i(fp[0].to_int(), fp[1].to_int()))
-			_camera_controller.focus_on(agent._cell_to_world(agent.cell))
-	_recompute_occlusion()
-	for _i in range(20):
-		await get_tree().process_frame
-
-	var vp := get_viewport()
-
-	## §12.9 — THE PLAIN FRAME, BEFORE ANY DEBUG PAINT TOUCHES IT.
-	##
-	## P3's picture has to be judged against a control, and the BOOT capture cannot
-	## serve: two identical boots were measured **3 366 px apart** (the agent, the
-	## fog and the temporal lights all move), which is a noise floor no 4%
-	## difference can be read through. This frame is deterministic by construction
-	## — `_debug_hide_all_but_voxels()` has already removed everything that
-	## animates, the camera is pinned, and the scene quits straight after — so
-	## `INFILTRAITOR_P3=0` against `=1` on THIS image is an earned comparison.
-	var shot_dir0 := ProjectSettings.globalize_path("res://") + "Screenshots/history"
-	DirAccess.make_dir_recursive_absolute(shot_dir0)
-	await RenderingServer.frame_post_draw
-	var img_plain := vp.get_texture().get_image()
-	if img_plain != null:
-		img_plain.save_png("%s/p3_gate_plain.png" % shot_dir0)
-		print("[P3-GATE] plain frame: Screenshots/history/p3_gate_plain.png (no debug paint · P3=%s)"
-			% [VoxelRenderer.P3_CELL_BUCKET])
-
-	var levels: Array = _voxel_renderer.level_keys()
-
-	## WHAT THE TILESET ACTUALLY CONTAINS. The shader hard-codes the quad offset
-	## as `quad_to_map = (0, 20)`, which is `region/2 + texture_origin` for a
-	## 32x36 atom at origin (0, 10). Any source or tile that disagrees is a
-	## systematic error the shader cannot see, so the gate states the real
-	## inventory rather than trusting the constant.
-	var origins: Dictionary = {}
-	var regions: Dictionary = {}
-	for si in range(_voxel_renderer._tileset.get_source_count()):
-		var src := _voxel_renderer._tileset.get_source(
-			_voxel_renderer._tileset.get_source_id(si)) as TileSetAtlasSource
-		if src == null:
-			continue
-		regions[src.texture_region_size] = int(regions.get(src.texture_region_size, 0)) + 1
-		for ti in range(src.get_tiles_count()):
-			var tc: Vector2i = src.get_tile_id(ti)
-			var td0: TileData = src.get_tile_data(tc, 0)
-			if td0 != null:
-				origins[td0.texture_origin] = int(origins.get(td0.texture_origin, 0)) + 1
-	print("[P3-GATE] tileset: region sizes %s · texture_origins %s" % [regions, origins])
-
-	## CAPTURE A — which LEVEL drew each pixel. `level + 100` is never 0 and
-	## never collides across -8..15, so a pixel that carries no level is a pixel
-	## no voxel layer drew.
-	for level in levels:
-		if _voxel_renderer.get_layer(level) != null:
-			_voxel_renderer.debug_fill_cell_plane(level, level + 100)
-	_voxel_renderer.flush_cell_soot()
-	_voxel_renderer.debug_set_cell_paint(true)
-	for _i in range(10):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var img_level := vp.get_texture().get_image()
-
-	## CAPTURE B — which CELL the shader recovered, straight out of the fragment
-	## maths with no plane lookup between it and the pixel.
-	_voxel_renderer.debug_set_cell_paint_mode(2.0)
-	for _i in range(10):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var img_cell := vp.get_texture().get_image()
-	var shot_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
-	DirAccess.make_dir_recursive_absolute(shot_dir)
-	if img_level == null or img_cell == null:
-		push_error("[P3-GATE] null viewport image.")
-		return
-	img_cell.save_png("%s/p3_gate_recovered_cells.png" % shot_dir)
-
-	## CAPTURE C (§12.8) — THE RESIDUE, in the SAME frame setup as A and B.
-	##
-	## Taken here rather than in its own boot on purpose: the camera eases toward
-	## its target and `_debug_hide_all_but_voxels()` has already run, so a residue
-	## map captured anywhere else would be of a different frame than the recovery
-	## it is meant to explain. See `_p3_gate_rect()`'s note on exactly this trap.
-	_voxel_renderer.debug_set_cell_paint_mode(5.0)
-	for _i in range(10):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var img_res := vp.get_texture().get_image()
-	if img_res != null:
-		img_res.save_png("%s/p3_gate_residue.png" % shot_dir)
-		print("[P3-GATE] residue: Screenshots/history/p3_gate_residue.png (R,G = |q - round(q)| x2)")
-
-	## CAPTURE D (§12.8) — `local`, for the same frame. See mode 6's note.
-	_voxel_renderer.debug_set_cell_paint_mode(6.0)
-	for _i in range(10):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var img_local := vp.get_texture().get_image()
-	if img_local != null:
-		img_local.save_png("%s/p3_gate_local.png" % shot_dir)
-		print("[P3-GATE] local: Screenshots/history/p3_gate_local.png (R = local.x*8, G = local.y*7)")
-	## BOTH captures and the exact per-level transform are written out, so the
-	## analysis can be re-run and re-cut offline without another four-minute
-	## boot. The transform is printed rather than re-derived because a reader
-	## that re-derives it is a second copy of the thing under test.
-	img_level.save_png("%s/p3_gate_levels.png" % shot_dir)
-	for level in levels:
-		var lay: TileMapLayer = _voxel_renderer.get_layer(level)
-		if lay == null:
-			continue
-		var xf0: Transform2D = lay.get_global_transform_with_canvas()
-		print("[P3-GATE-XF] level %d origin %s e1 %s e2 %s canvas_o %s canvas_x %s canvas_y %s"
-			% [level, lay.map_to_local(Vector2i.ZERO),
-			lay.map_to_local(Vector2i(1, 0)) - lay.map_to_local(Vector2i.ZERO),
-			lay.map_to_local(Vector2i(0, 1)) - lay.map_to_local(Vector2i.ZERO),
-			xf0.origin, xf0.x, xf0.y])
-
-	## PASS 1 — collect the distinct (level, cell) each pixel CLAIMS, and resolve
-	## each claim's quad ONCE. Grouping first is what keeps this affordable: the
-	## per-claim work (map_to_local, the TileSet lookup, the canvas transform)
-	## runs once per claim instead of once per pixel.
-	var rect_of: Dictionary = {}    ## Vector3i(level, cx, cy) -> Rect2
-	var no_voxel: Dictionary = {}   ## claims naming a cell that holds nothing
-	var unpainted: int = 0
-	var w: int = img_cell.get_width()
-	var h: int = img_cell.get_height()
-	for y in range(h):
-		for x in range(w):
-			var key = _p3_gate_claim(img_level.get_pixel(x, y), img_cell.get_pixel(x, y))
-			if key == null:
-				continue
-			if rect_of.has(key) or no_voxel.has(key):
-				continue
-			var layer: TileMapLayer = _voxel_renderer.get_layer(key.x)
-			if layer == null or layer.get_cell_source_id(Vector2i(key.y, key.z)) == -1:
-				## A claim on a cell that holds no voxel is itself an answer — a
-				## fragment recovered somewhere nothing is placed — so it is
-				## counted apart rather than quietly repaired into a nearby cell
-				## that does exist.
-				no_voxel[key] = true
-				continue
-			rect_of[key] = _p3_gate_rect(key.x, Vector2i(key.y, key.z))
-
-	## PASS 2 — judge every pixel on its own. Deliberately NOT per claim: a claim
-	## covers ~1 650 pixels at this zoom, and an earlier version that failed the
-	## whole claim on one stray pixel reported 0.000% correct without being able
-	## to say whether the mapping was off by a cell or by a pixel of antialiasing.
-	var judged: int = 0
-	var inside: int = 0
-	var outside: int = 0
-	var homeless: int = 0
-	var worst_d: float = 0.0
-	var worst_key = null
-	var worst_pt := Vector2.ZERO
-	var offenders: Dictionary = {}
-	var shifts: Dictionary = {}
-	var interior_n: int = 0
-	var interior_in: int = 0
-	## A MASK, because a percentage cannot say WHERE. Green = the pixel is inside
-	## the quad it claims, red = it is not, blue = it claims a cell holding no
-	## voxel. A thin red outline around every atom is a boundary rule; a red FACE
-	## is a face rule; red in patches is neither.
-	var mask := Image.create(w, h, false, Image.FORMAT_RGB8)
-	var by_level_in: Dictionary = {}
-	var by_level_out: Dictionary = {}
-	for y in range(h):
-		for x in range(w):
-			var key = _p3_gate_claim(img_level.get_pixel(x, y), img_cell.get_pixel(x, y))
-			if key == null:
-				unpainted += 1
-				continue
-			if no_voxel.has(key):
-				homeless += 1
-				mask.set_pixel(x, y, Color(0.1, 0.2, 1.0))
-				continue
-			var rect: Rect2 = rect_of[key]
-			if rect.size == Vector2.ZERO:
-				homeless += 1
-				mask.set_pixel(x, y, Color(0.1, 0.2, 1.0))
-				continue
-			judged += 1
-			## INTERIOR vs SEAM. A pixel whose four neighbours all claim the same
-			## (level, cell) sits inside a recovered quad rather than on the
-			## boundary between two. The distinction decides what a residual
-			## MEANS: if every interior pixel is right and only the seams are
-			## ragged, the mapping is correct and the artefact is a boundary
-			## rule; if interior pixels are wrong, the mapping still is.
-			var interior: bool = false
-			if x > 0 and y > 0 and x < w - 1 and y < h - 1:
-				interior = (_p3_gate_claim(img_level.get_pixel(x - 1, y), img_cell.get_pixel(x - 1, y)) == key
-					and _p3_gate_claim(img_level.get_pixel(x + 1, y), img_cell.get_pixel(x + 1, y)) == key
-					and _p3_gate_claim(img_level.get_pixel(x, y - 1), img_cell.get_pixel(x, y - 1)) == key
-					and _p3_gate_claim(img_level.get_pixel(x, y + 1), img_cell.get_pixel(x, y + 1)) == key)
-			if interior:
-				interior_n += 1
-			var pt := Vector2(float(x) + 0.5, float(y) + 0.5)
-			## grow(1.0) is a one-pixel rounding allowance on the rect, not a
-			## tolerance on the answer: a whole-cell error is 16 px or more here,
-			## so nothing this gate looks for can hide inside one pixel.
-			if rect.grow(1.0).has_point(pt):
-				inside += 1
-				if interior:
-					interior_in += 1
-				by_level_in[key.x] = int(by_level_in.get(key.x, 0)) + 1
-				mask.set_pixel(x, y, Color(0.0, 0.8, 0.2))
-				continue
-			by_level_out[key.x] = int(by_level_out.get(key.x, 0)) + 1
-			mask.set_pixel(x, y, Color(1.0, 0.0, 0.0))
-			outside += 1
-			offenders[key] = int(offenders.get(key, 0)) + 1
-			## HOW FAR outside, bucketed. This is the statistic that separates a
-			## boundary/rounding artefact from a whole-cell error: one atom is
-			## 32 x 36 world pixels, so anything under ~2 px is the edge of a
-			## quad and anything past ~16 px is a different cell entirely. An
-			## earlier version histogrammed the offset from the quad's TOP-LEFT
-			## in cell units and learned nothing — for a pixel anywhere inside a
-			## quad that offset already spans (0..3, -1..2), so it could not tell
-			## inside from outside at all.
-			var d: float = maxf(
-				maxf(rect.position.x - pt.x, pt.x - (rect.position.x + rect.size.x)),
-				maxf(rect.position.y - pt.y, pt.y - (rect.position.y + rect.size.y)))
-			var sc: float = maxf(rect.size.x / 32.0, 0.0001)
-			var dw: float = d / sc
-			var bucket: int = 0 if dw < 2.0 else (1 if dw < 8.0 else (2 if dw < 16.0 else (3 if dw < 36.0 else 4)))
-			shifts[bucket] = int(shifts.get(bucket, 0)) + 1
-			if d > worst_d:
-				worst_d = d
-				worst_key = key
-				worst_pt = pt
-
-	print("[P3-GATE] frame %dx%d · %d px carried no voxel answer · %d claim(s) resolved, %d naming an empty cell"
-		% [w, h, unpainted, rect_of.size(), no_voxel.size()])
-	print("[P3-GATE] judged %d px · INSIDE their own quad %d (%.3f%%) · OUTSIDE %d · on empty cells %d px"
-		% [judged, inside, 100.0 * float(inside) / float(maxi(judged, 1)), outside, homeless])
-	if outside > 0 and worst_key != null:
-		var wr: Rect2 = rect_of[worst_key]
-		print("[P3-GATE] worst pixel: %s claims level %d cell (%d, %d), whose quad is %s — %.1f px away"
-			% [worst_pt, worst_key.x, worst_key.y, worst_key.z, wr, worst_d])
-		var names: Array = ["<2px (quad edge)", "2-8px", "8-16px",
-			"16-36px (one atom)", ">36px"]
-		var shift_txt: Array = []
-		for b in range(5):
-			if shifts.has(b):
-				shift_txt.append("%s: %.1f%%" % [names[b],
-					100.0 * float(shifts[b]) / float(maxi(outside, 1))])
-		print("[P3-GATE] how far the OUTSIDE pixels miss by, in WORLD px: %s"
-			% ", ".join(shift_txt))
-		var ranked: Array = offenders.keys()
-		ranked.sort_custom(func(a, b): return int(offenders[a]) > int(offenders[b]))
-		for k in ranked.slice(0, mini(5, ranked.size())):
-			print("[P3-GATE]   level %d cell (%d, %d): %d px outside its quad %s"
-				% [k.x, k.y, k.z, int(offenders[k]), rect_of[k]])
-	mask.save_png("%s/p3_gate_mask.png" % shot_dir)
-	var lv_txt: Array = []
-	var lv_keys: Array = by_level_in.keys()
-	for k in by_level_out.keys():
-		if not lv_keys.has(k):
-			lv_keys.append(k)
-	lv_keys.sort()
-	for k in lv_keys:
-		var i0: int = int(by_level_in.get(k, 0))
-		var o0: int = int(by_level_out.get(k, 0))
-		lv_txt.append("L%d %.0f%%(%d)" % [k, 100.0 * float(i0) / float(maxi(i0 + o0, 1)), i0 + o0])
-	print("[P3-GATE] inside%% per level: %s" % ", ".join(lv_txt))
-	print("[P3-GATE] INTERIOR pixels (all 4 neighbours claim the same cell): %d · inside %d (%.3f%%) — seam pixels are the rest"
-		% [interior_n, interior_in, 100.0 * float(interior_in) / float(maxi(interior_n, 1))])
-	print("[P3-GATE] mask: Screenshots/history/p3_gate_mask.png")
-	## §3.3's lead, measured before the verdict it might explain.
-	var census: Dictionary = _voxel_renderer.debug_tiledata_census()
-	print("[P3-GATE] TILEDATA CENSUS — %d placed cell(s) · %d resolve to NULL TileData (%.2f%%) · nulls by alt id: %s · texture_origin histogram: %s"
-		% [census["total"], census["nulls"],
-		100.0 * float(census["nulls"]) / maxf(float(census["total"]), 1.0),
-		census["null_by_alt"], census["origins"]])
-	print("[P3-GATE] VERDICT: %s" % ("PASS — every judged pixel lies inside the quad of the cell it claims"
-		if outside == 0 and judged > 0
-		else "FAIL — pixels claim a cell whose quad they are not in"))
-	print("[P3-GATE] capture: Screenshots/history/p3_gate_recovered_cells.png")
-	print("[P3-GATE] ---- end ----")
 
 
 ## LEVEL-RENUMBER — THE GATE, and it has to be earned before it means anything.
@@ -10517,58 +9949,6 @@ func _run_auto_screenshot_capture() -> void:
 			for _j in range(4):
 				await get_tree().process_frame
 
-	## PERF-P3 — what the cell plane actually holds, before any capture action
-	## disturbs it. Printed rather than asserted: the question at this stage is
-	## whether the bucket reaches the plane at all.
-	if OS.get_environment("INFILTRAITOR_P3_CENSUS") == "1" and _voxel_renderer != null:
-		var bc: Dictionary = _voxel_renderer.debug_bucket_census()
-		print("[P3-CENSUS] %d placed cell(s) · %d level image(s)" % [bc["cells"], bc["levels_with_image"]])
-		var drift: Array = _voxel_renderer.debug_layer_origin_drift()
-		print("[P3-CENSUS] LAYER-ORIGIN DRIFT — %d layer(s) whose uniform no longer matches the layer" % drift.size())
-		for e in drift:
-			print("[P3-CENSUS]   %s" % [e])
-		var al: Dictionary = _voxel_renderer.debug_atlas_alignment()
-		print("[P3-CENSUS] ATLAS ALIGNMENT — %d source(s) checked · %d misaligned to the shader's mod(32,36) grid" % [al["checked"], (al["bad"] as Array).size()])
-		for e in al["bad"]:
-			print("[P3-CENSUS]   %s" % [e])
-		print("[P3-CENSUS] PLANE bucket histogram: %s" % [bc["plane"]])
-		print("[P3-CENSUS] ALT-id bucket histogram: %s" % [bc["alt"]])
-		print("[P3-CENSUS] PER-CELL disagreement (plane vs alt id): %d of %d (%.4f%%)"
-			% [bc["disagree"], bc["cells"],
-			100.0 * float(bc["disagree"]) / maxf(float(bc["cells"]), 1.0)])
-		if not (bc["samples"] as Array).is_empty():
-			print("[P3-CENSUS] samples: %s" % [bc["samples"]])
-		## §12.8 — the shader's precondition, tested on the tiles that DRAW.
-		var ao: Dictionary = _voxel_renderer.debug_tile_atlas_origins()
-		for lv in ao.keys():
-			var h: Dictionary = (ao[lv] as Dictionary)["origin_mod"]
-			var sp: Dictionary = (ao[lv] as Dictionary)["atlas_span"]
-			var bad_n: int = 0
-			for k in h.keys():
-				if k != Vector2i.ZERO:
-					bad_n += int(h[k])
-			if bad_n > 0 or h.size() > 1:
-				print("[P3-CENSUS] ATLAS ORIGIN mod(32,36), level %d: %s  <-- %d cell(s) OFF-GRID"
-					% [lv, h, bad_n])
-			var rg: Dictionary = (ao[lv] as Dictionary)["regions"]
-			var tx: Dictionary = (ao[lv] as Dictionary)["tex_sizes"]
-			if rg.size() > 1 or tx.size() > 1 or lv == _voxel_renderer.level_keys()[0]:
-				print("[P3-CENSUS] LEVEL %d — region(w,h,source): %s · texture sizes: %s"
-					% [lv, rg, tx])
-			var span_bad: int = 0
-			for k in sp.keys():
-				if k != Vector2i.ONE:
-					span_bad += int(sp[k])
-			if span_bad > 0 or sp.size() > 1:
-				print("[P3-CENSUS] ATLAS SPAN, level %d: %s  <-- %d cell(s) span MORE than one atlas cell"
-					% [lv, sp, span_bad])
-	## PERF-P3 — drive the shader's G-channel debug paint (mode 3) for a capture
-	## whose R channel IS the bucket the sampler read.
-	var paint_env := OS.get_environment("INFILTRAITOR_CELL_PAINT_MODE")
-	if paint_env.is_valid_float() and _voxel_renderer != null:
-		_voxel_renderer.debug_set_cell_paint_mode(paint_env.to_float())
-		for _pj in range(6):
-			await get_tree().process_frame
 	var capture_action := OS.get_environment("INFILTRAITOR_CAPTURE_ACTION")
 	if OS.get_environment("INFILTRAITOR_CAPTURE_VIEWS") == "1":
 		## VL-PERSIST verification: detonate a grenade first, then capture all four
@@ -10612,16 +9992,8 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "agent_shot" and _agent_shot_controller != null:
 		await _capture_agent_shot()
-	elif capture_action == "cell_index_spike":
-		await _capture_cell_index_spike()
-		get_tree().quit(0)
-		return
 	elif capture_action == "circle_gate":
 		await _capture_circle_gate()
-	elif capture_action == "cell_index_gate":
-		await _capture_cell_index_gate()
-		get_tree().quit(0)
-		return
 	elif capture_action == "level_census":
 		await _capture_level_census()
 	elif capture_action == "light_burn_probe":
@@ -11080,45 +10452,6 @@ func _run_auto_screenshot_capture() -> void:
 				await get_tree().process_frame
 			print("[T-GRENADE] after Escape: targeting=%s paused=%s"
 				% [is_grenade_targeting(), get_tree().paused])
-	elif capture_action == "damage_gallery" and _voxel_renderer != null:
-		## DAMAGE-GALLERY dev capture action (2026-08-07) — frames the map's
-		## per-material test row wide enough to cover the wall row (y=2), this
-		## rig's floor patches south of it (y=4-6), and the roof above, then
-		## forces every material's WALL/FLOOR/CEILING DENTED/CRACKED atoms so
-		## the capture shows whether they're actually baked. See
-		## damage_gallery_debug.gd — real F5 keybind counterpart for
-		## interactive use, this is the unattended-capture path for it.
-		var dg_row_center := Vector2i(10, 5)
-		if _camera_controller != null and agent != null:
-			_camera_controller.focus_on(agent._cell_to_world(dg_row_center))
-		if _fow_controller != null:
-			_fow_controller.reveal_around(dg_row_center, 14)
-		for _c in range(5):
-			await get_tree().process_frame
-		var DamageGalleryDebugClass = preload("res://godot/scripts/debug/damage_gallery_debug.gd")
-		DamageGalleryDebugClass.run(self)
-		for _j in range(10):
-			await get_tree().process_frame
-		if OS.get_environment("INFILTRAITOR_GALLERY_READBACK") == "1":
-			DamageGalleryDebugClass.readback_probe(self)
-	elif capture_action == "export_atoms":
-		## ATOM-EXPORT dev action (Director, 2026-08-08) — dumps every baked
-		## damage atom to Screenshots/atoms/ as its own PNG plus a manifest,
-		## for reviewing the decals while iterating on their source art.
-		## Compose the printable sheet from it with
-		## `python3 tools/persistent/build_atom_sheet.py`.
-		var AtomSheetExportClass = preload("res://godot/scripts/debug/atom_sheet_debug.gd")
-		AtomSheetExportClass.export_atoms(self)
-		for _j in range(5):
-			await get_tree().process_frame
-	elif capture_action == "atom_sheet" and _debug_tools_controller != null:
-		## ATOM-SHEET dev capture action (2026-08-08) — the unattended-capture
-		## path for F8. Needs no camera framing at all, unlike damage_gallery
-		## above: the sheet is a full-screen overlay built from the registry,
-		## not something happening out in the world.
-		_debug_tools_controller.toggle_atom_sheet()
-		for _j in range(10):
-			await get_tree().process_frame
 	elif capture_action == "open_showcase" and _main_menu_panel != null:
 		## ACTOR_MASTER_PLAN D20/Part 5a dev verification: real button-handler
 		## path (Main Menu's own _on_showcase_pressed(), same as a real click
@@ -11604,10 +10937,6 @@ func _on_debug_command_requested(command: String) -> void:
 		"nudge_reset":
 			if _debug_tools_controller.is_nudge_mode_active():
 				_debug_tools_controller.reset_nudge()
-		"force_damage_gallery":
-			_debug_tools_controller.force_damage_gallery()
-		"toggle_atom_sheet":
-			_debug_tools_controller.toggle_atom_sheet()
 
 
 ## ESC-STACK-01: Escape's ONE entry point (InputController emits this

@@ -25,9 +25,6 @@ script = ExtResource("1_room")
 [node name="Camera2D" type="Camera2D" parent="." unique_id=2050405450]
 zoom = Vector2(0.5, 0.5)
 
-[node name="FloorLayer" type="TileMapLayer" parent="." unique_id=1365023476]
-y_sort_origin = 1
-
 [node name="ShadowFullLayer" type="TileMapLayer" parent="." unique_id=1600002004]
 y_sort_origin = 1
 

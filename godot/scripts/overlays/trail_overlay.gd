@@ -3,13 +3,11 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## Trail overlay for DEV_VISION — displays yellow diamond trail of last 5 tiles walked.
 
 var _room_ref: Node2D = null
-var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO
 
 
-func setup(room_ref: Node2D, floor_layer: TileMapLayer, visual_offset: Vector2) -> void:
+func setup(room_ref: Node2D, visual_offset: Vector2) -> void:
 	_room_ref = room_ref
-	_floor_layer = floor_layer
 	_visual_offset = visual_offset
 	z_index = 150  ## Well above movement_overlay (~100)
 

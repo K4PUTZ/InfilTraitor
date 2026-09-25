@@ -54,7 +54,6 @@ const TIMER_SEARCH_TO_SUSPICIOUS := 2
 const TIMER_NOISE_SUSPICIOUS     := 3
 const TIMER_NOISE_SUSPICIOUS_MED := 2
 
-var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
 var enemy_id: String = ""
 
@@ -331,13 +330,11 @@ func _cone_inputs_changed() -> bool:
 
 
 func setup(
-		tile_layer: TileMapLayer,
 		offset: Vector2,
 		id: String,
 		route: Array[Vector2i],
 		start_index: int = 0
 ) -> void:
-	floor_layer = tile_layer
 	visual_offset = offset
 	enemy_id = id
 	patrol_route = route.duplicate()
@@ -539,8 +536,6 @@ func _step_next() -> void:
 
 
 func _cell_to_world(map_cell: Vector2i) -> Vector2:
-	if floor_layer == null:
-		return Vector2.ZERO
 	return GroundGridRef.map_to_local(map_cell) + TILE_CENTER_OFFSET + visual_offset
 
 

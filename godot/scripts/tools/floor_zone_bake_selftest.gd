@@ -80,18 +80,15 @@ func _build_test_map(direction: String) -> Dictionary:
 	var room := MinimalRoom.new()
 	root.add_child(room)
 	var floor_tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
-	var floor_layer := TileMapLayer.new()
 	var structure_layer := TileMapLayer.new()
-	floor_layer.tile_set = floor_tileset
 	structure_layer.tile_set = floor_tileset
-	room.add_child(floor_layer)
 	room.add_child(structure_layer)
 	var voxel_renderer := VoxelRendererClass.new()
 	room.add_child(voxel_renderer)
 	voxel_renderer.setup(Vector2.ZERO)
 	room._voxel_renderer = voxel_renderer
 	var builder := RoomBuilderClass.new(room)
-	builder.setup(floor_layer, structure_layer, TileSet.new())
+	builder.setup(structure_layer, TileSet.new())
 	builder.build_registry(floor_tileset)
 	builder.build_from_layout(layout, layout.get("size", Vector2i.ZERO))
 	return {"room": room, "renderer": voxel_renderer, "layout": layout}

@@ -25,7 +25,6 @@ const VOXEL_LINE_WIDTH := 0.5
 const GU_LINE_WIDTH := 1.0
 
 ## References to canonical frame
-var _floor_layer: TileMapLayer = null
 var _visual_grid_offset: Vector2 = Vector2.ZERO
 var _room_size: Vector2i = Vector2i(18, 36)  ## Default PLAYGROUND size
 
@@ -33,15 +32,14 @@ var _room_size: Vector2i = Vector2i(18, 36)  ## Default PLAYGROUND size
 var visible_grid: bool = false
 
 
-func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2, room_size: Vector2i) -> void:
-	_floor_layer = floor_layer
+func setup(visual_grid_offset: Vector2, room_size: Vector2i) -> void:
 	_visual_grid_offset = visual_grid_offset
 	_room_size = room_size
 	z_index = 100  ## Above walls, below HUD
 
 
 func _draw() -> void:
-	if not visible_grid or _floor_layer == null:
+	if not visible_grid:
 		return
 
 	## Compute grid bounds: playable area + one-tile buffer margin

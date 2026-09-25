@@ -18,7 +18,6 @@ const EXPOSURE_SYSTEM_CLASS = preload("res://godot/scripts/systems/lighting/expo
 
 ## References
 var exposure_system
-var floor_layer: TileMapLayer = null
 var tile_size: Vector2 = Vector2(256, 128)
 var visual_offset: Vector2 = Vector2.ZERO
 
@@ -125,13 +124,7 @@ func _draw_label(cell: Vector2i, _vis_class: int) -> void:
 
 ## Convert grid cell to screen position (dimetric projection).
 func _cell_to_screen(cell: Vector2i) -> Vector2:
-	if floor_layer != null:
-		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
-	var x = float(cell.x)
-	var y = float(cell.y)
-	var screen_x = (x - y) * tile_size.x * 0.5
-	var screen_y = (x + y) * tile_size.y * 0.5
-	return Vector2(screen_x, screen_y) + visual_offset
+	return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + visual_offset
 
 ## ============================================================================
 ## Debugging

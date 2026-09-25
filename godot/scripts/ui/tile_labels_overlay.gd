@@ -3,7 +3,6 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## Draws (x,y) coordinate labels at the visual centre of every tile.
 ## Visibility is toggled by the HUD button via node.visible.
 
-var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
 var room_w: int = 0
 var room_h: int = 0
@@ -14,8 +13,6 @@ const COLOR_SHADOW := Color(1.0, 1.0, 1.0, 0.60)
 
 
 func _draw() -> void:
-	if floor_layer == null:
-		return
 
 	var font := ThemeDB.fallback_font
 

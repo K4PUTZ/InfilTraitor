@@ -8,8 +8,7 @@
 ## and requires for every map and view:
 ##   1. THE DIGESTS: walkability, selectable cells, the movement flood (cell -> cost), a path to every 7th reachable cell,
 ##      and the visible/total cell counts equal the RECORDED ones below;
-##   2. NOTHING WRITES THE FLOOR LAYER: the boot holds no floor tile (`tiles 0`);
-##   3. THE CONTROL: the four views are not the same picture (a rotated PLAYGROUND has a different size / reach), so a gate that
+##   2. THE CONTROL: the four views are not the same picture (a rotated PLAYGROUND has a different size / reach), so a gate that
 ##      read one cached answer would fail here.
 ##
 ## WHERE THE RECORDED DIGESTS COME FROM. Until R3D-END this gate booted each map twice, on the 3D board and on the 2D board
@@ -33,8 +32,7 @@ GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 TAG = "[GROUND-GATE]"
 SCENARIO = ("framing portrait; frames 90; ground_check n; perspective E; frames 30; ground_check e; perspective S; "
             "frames 30; ground_check s; perspective W; frames 30; ground_check w; quit")
-LINE = re.compile(r"\[GROUND-CHECK\] (\w) size \((\d+), (\d+)\) tiles (\d+) \| walk_mismatch (\d+) point_mismatch (\d+) "
-                  r"floor_pos (.*?) floor_scale (.*?) \| (walk .*)$")
+LINE = re.compile(r"\[GROUND-CHECK\] (\w) size \((\d+), (\d+)\) \| (walk .*)$")
 
 RECORDED = {
     "GLASS": {
@@ -93,21 +91,19 @@ def main() -> int:
         if args.update:
             print('    "%s": {' % map_id)
             for view in "nesw":
-                print('        "%s": "%s",' % (view, rows[view][8]))
+                print('        "%s": "%s",' % (view, rows[view][3]))
             print("    },")
             continue
         for view in "nesw":
             row = rows[view]
             ref = RECORDED.get(map_id, {}).get(view)
-            same = ref == row[8]
-            print("%s %s %s: %sx%s, %s floor tile(s); digests %s" % (TAG, map_id, view, row[1], row[2], row[3],
+            same = ref == row[3]
+            print("%s %s %s: %sx%s; digests %s" % (TAG, map_id, view, row[1], row[2],
                   "IDENTICAL" if same else ("NOT RECORDED" if ref is None else "DIFFERENT")))
             if not same:
                 problems.append("%s %s: the digests differ from the recorded ones\n     now      %s\n     recorded %s"
-                                % (map_id, view, row[8], ref))
-            if row[3] != "0":
-                problems.append("%s %s: the boot holds %s floor tile(s) — something writes the layer" % (map_id, view, row[3]))
-        if len({rows[v][8] for v in "nesw"}) == 1:
+                                % (map_id, view, row[3], ref))
+        if len({rows[v][3] for v in "nesw"}) == 1:
             problems.append("%s: all four views gave one digest — the control failed" % map_id)
     for p in problems:
         print("%s   %s" % (TAG, p))

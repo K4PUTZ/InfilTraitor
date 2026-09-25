@@ -20,7 +20,6 @@ const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 @export var shadow_projector = null
 @export var light_registry = null
-@export var floor_layer: TileMapLayer = null  ## Canonical projection source (matches lamps/floor)
 @export var tile_size: Vector2 = Vector2(128, 64)  ## Fallback only when floor_layer is unset
 @export var visual_offset: Vector2 = Vector2(0, 0)
 
@@ -87,9 +86,4 @@ func _draw_result(result) -> void:
 
 ## Convert grid cell to screen isometric position (canonical — matches lamps & floor)
 func _cell_to_screen(cell: Vector2i) -> Vector2:
-	if floor_layer != null:
-		return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
-	# Fallback: legacy manual isometric projection (half-scale; only if floor_layer unset)
-	var x := float(cell.x)
-	var y := float(cell.y)
-	return Vector2((x - y) * tile_size.x * 0.5, (x + y) * tile_size.y * 0.5) + visual_offset
+	return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset

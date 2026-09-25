@@ -97,11 +97,8 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 	root.add_child(room)
 
 	var floor_tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
-	var floor_layer := TileMapLayer.new()
 	var structure_layer := TileMapLayer.new()
-	floor_layer.tile_set = floor_tileset
 	structure_layer.tile_set = floor_tileset
-	room.add_child(floor_layer)
 	room.add_child(structure_layer)
 
 	var voxel_renderer := VoxelRendererClass.new()
@@ -110,7 +107,7 @@ func test_real_playground_blocks_get_real_roofs() -> void:
 	room._voxel_renderer = voxel_renderer
 
 	var builder := RoomBuilderClass.new(room)
-	builder.setup(floor_layer, structure_layer, TileSet.new())
+	builder.setup(structure_layer, TileSet.new())
 	builder.build_registry(floor_tileset)
 
 	var t_start := Time.get_ticks_usec()

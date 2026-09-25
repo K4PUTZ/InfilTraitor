@@ -12,13 +12,11 @@ const INDICATOR_RADIUS := 120.0        ## orbit radius around the agent
 const INDICATOR_FLOAT_DIST := 40.0     ## vertical movement distance
 const INDICATOR_DURATION := 1.8        ## lifetime in seconds
 
-var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO
 var _indicators: Array[Dictionary] = []
 
 
-func setup(floor_layer: TileMapLayer, visual_offset: Vector2) -> void:
-	_floor_layer = floor_layer
+func setup(visual_offset: Vector2) -> void:
 	_visual_offset = visual_offset
 	z_index = 100  ## Above movement_overlay
 

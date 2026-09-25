@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**251 scripts · 81218 lines total** (under `godot/scripts/`)
+**251 scripts · 80898 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -30,7 +30,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 498 lines
+`class_name DebugAgent` · extends `Node2D` · 494 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -64,7 +64,6 @@
 
 **Public vars**
 - `var posture: Posture = Posture.STANDING`
-- `var floor_layer: TileMapLayer = null`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var cell: Vector2i = Vector2i.ZERO`
 - `var vision_radius: int = 7`
@@ -84,7 +83,7 @@
 - `func play_throw_release() -> bool:`
 - `func set_grip(name: String) -> void:`
 - `func throw_launch_height() -> float:`
-- `func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:`
+- `func setup(offset: Vector2, start_cell: Vector2i) -> void:`
 - `func attach_sprite(p_room: Node) -> bool:`
 - `func set_cell(new_cell: Vector2i) -> void:`
 - `func get_vision_radius() -> int:`
@@ -98,13 +97,14 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1458 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1456 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
 > CHARACTER_MASTER_PLAN Part 2 §10 — the baked figure ON the playable agent. This is the node that closes Part 2. `AgentProbeProp` put the figure in the room to be LOOKED at; this one puts it on the thing the player moves, which is the difference §10 draws between "the pipeline works" and done. It is a child of `DebugAgent` rather than a replacement for it, because the agent is a Node2D that owns grid state, tweening and signals, and none of that wants to become a Sprite2D. The agent keeps position; this keeps appearance. --- FOUR THINGS IT DOES THAT THE PROBE DOES NOT --- 1. THREE POSTURES, EACH ITS OWN BAKE WITH ITS OWN ANCHOR. The placeholder it replaces drew three shapes; a single standing sprite would have been a regression, not a swap. The anchors are NOT shared: the bake recentres each model on its own AABB, so the pixel its feet land on differs per posture (standing 227.99, crouch 184.00, prone 156.74 — measured, and read from each posture's own anchor.json rather than transcribed). 2. FACING, SNAPPED AT THE GU BOUNDARY (D47). Ordinary movement changes facing with no transition frames — the Director judged that blind on 2026-08-15, and it is the row that keeps the art budget at 744 body sets instead of 4608. So the facing is set once per step, from the step's own direction, and nothing interpolates. 3. FACING IS STORED IN BASE SPACE, NOT VIEW SPACE. A perspective flip rotates the room; an agent facing a wall must still face that wall afterwards. The cell round-trip through `_cell_to_base` already exists for exactly this reason and the facing has to make the same trip, or the figure would silently turn 90 degrees every time the Director rotated the view. 4. POSTURE FRAME SETS LOAD ON FIRST USE. D42 names RAM, not CPU, as this character's binding constraint. A session where the agent never goes prone should not pay for the prone bake. Everything else — the relight shader, the perspective-aware light mapping (D22), the ground-contact anchoring, the raw-PNG loader — is `AgentProbeProp`'s behaviour, and the duplication between the two files is real and known. The probe stays the single-pose bracket rig it was built as; this is the shipping path.
 
 **Constants / tuning**
+- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `DEV_ONLY_MILESTONE` = `false`
 - `FRAMES_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
 - `FRAMES_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
@@ -184,7 +184,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1318 lines
+`class_name GuardEnemy` · extends `Node2D` · 1313 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -228,7 +228,6 @@
 - `TURN_SPEED` = `4.0`
 
 **Public vars**
-- `var floor_layer: TileMapLayer = null`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var enemy_id: String = ""`
 - `var vision_3d: bool = false`
@@ -290,7 +289,7 @@ extends `Node` · 77 lines
 
 **Public API**
 - `func setup(room_ref: Node2D, fog_of_war_ref: FogOfWarOverlay, fog_rect_ref: ColorRect) -> void:`
-- `func initialize_fog(floor_layer: TileMapLayer, visual_offset: Vector2, room_size: Vector2i) -> void:`
+- `func initialize_fog(visual_offset: Vector2, room_size: Vector2i) -> void:`
 - `func reveal_around(center: Vector2i, radius: int) -> void:`
 - `func reset_fog() -> void:`
 - `func add_peek_reveal(cell: Vector2i) -> void:`
@@ -359,7 +358,7 @@ extends `Node` · 270 lines
 
 ### `vision_controller.gd`
 
-extends `Node2D` · 316 lines
+extends `Node2D` · 312 lines
 
 `godot/scripts/controllers/vision_controller.gd`
 
@@ -451,7 +450,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_ruler_overlay.gd`
 
-`class_name VoxelRulerOverlay` · extends `Node2D` · 104 lines
+`class_name VoxelRulerOverlay` · extends `Node2D` · 102 lines
 
 `godot/scripts/debug/voxel_ruler_overlay.gd`
 
@@ -469,7 +468,7 @@ extends `ConfirmationDialog` · 64 lines
 - `var visible_grid: bool = false`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2, room_size: Vector2i) -> void:`
+- `func setup(visual_grid_offset: Vector2, room_size: Vector2i) -> void:`
 
 ---
 
@@ -1108,7 +1107,7 @@ extends `Node3D` · 1905 lines
 
 ### `movement_overlay.gd`
 
-`class_name MovementOverlay` · extends `Node2D` · 293 lines
+`class_name MovementOverlay` · extends `Node2D` · 289 lines
 
 `godot/scripts/navigation/movement_overlay.gd`
 
@@ -1122,14 +1121,13 @@ extends `Node3D` · 1905 lines
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
-- `var floor_layer: TileMapLayer = null`
 - `var ground_size: Callable = Callable()`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var origin_cell: Vector2i = Vector2i(-9999, -9999)`
 - `var max_path_cost: int = 0`
 
 **Public API**
-- `func setup(tile_layer: TileMapLayer, offset: Vector2, points_per_ap: int = 3) -> void:`
+- `func setup(offset: Vector2, points_per_ap: int = 3) -> void:`
 - `func set_blocked_cells(cells: Array[Vector2i]) -> void:`
 - `func set_blocked_edges(edges: Array[Dictionary]) -> void:`
 - `func set_blocked_edge_keys(keys: Dictionary) -> void:`
@@ -1147,7 +1145,7 @@ extends `Node3D` · 1905 lines
 
 ### `path_preview.gd`
 
-`class_name PathPreview` · extends `Node2D` · 90 lines
+`class_name PathPreview` · extends `Node2D` · 88 lines
 
 `godot/scripts/navigation/path_preview.gd`
 
@@ -1160,11 +1158,10 @@ extends `Node3D` · 1905 lines
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
-- `var floor_layer: TileMapLayer = null`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 
 **Public API**
-- `func setup(tile_layer: TileMapLayer, offset: Vector2) -> void:`
+- `func setup(offset: Vector2) -> void:`
 - `func set_path(cells: Array[Vector2i], ap_cost: int) -> void:`
 - `func clear_path() -> void:`
 - `func set_board3d(board: Node3D) -> void:`
@@ -1241,7 +1238,7 @@ extends `Node3D` · 1905 lines
 
 ### `blast_wireframe_overlay.gd`
 
-`class_name BlastWireframeOverlay` · extends `Node2D` · 122 lines
+`class_name BlastWireframeOverlay` · extends `Node2D` · 120 lines
 
 `godot/scripts/overlays/blast_wireframe_overlay.gd`
 
@@ -1255,7 +1252,7 @@ extends `Node3D` · 1905 lines
 - `var ring_fill_alphas: PackedFloat32Array = PackedFloat32Array([0.34, 0.22, 0.13])`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:`
+- `func setup(visual_grid_offset: Vector2) -> void:`
 - `func show_footprint(cells, ring_by_cell: Dictionary = {}) -> void:`
 - `func clear() -> void:`
 
@@ -1263,7 +1260,7 @@ extends `Node3D` · 1905 lines
 
 ### `ceiling_prop_overlay.gd`
 
-`class_name CeilingPropOverlay` · extends `Node2D` · 46 lines
+`class_name CeilingPropOverlay` · extends `Node2D` · 42 lines
 
 `godot/scripts/overlays/ceiling_prop_overlay.gd`
 
@@ -1272,7 +1269,7 @@ extends `Node3D` · 1905 lines
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, visual_offset: Vector2, ceiling_lift: float) -> void:`
+- `func setup(visual_offset: Vector2, ceiling_lift: float) -> void:`
 - `func set_lights(light_sources: Array) -> void:`
 
 ---
@@ -1357,7 +1354,7 @@ extends `Node3D` · 1905 lines
 
 ### `elite_exposure_overlay.gd`
 
-extends `Node2D` · 234 lines
+extends `Node2D` · 226 lines
 
 `godot/scripts/overlays/elite_exposure_overlay.gd`
 
@@ -1380,7 +1377,6 @@ extends `Node2D` · 234 lines
 - `var show_safe_corridors: bool = false`
 - `var overlay_opacity: float = 0.4`
 - `var exposure_system = null`
-- `var floor_layer: TileMapLayer = null`
 - `var tile_size: Vector2 = Vector2(256, 128)`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 
@@ -1424,7 +1420,7 @@ extends `Node2D` · 234 lines
 
 ### `exposure_overlay.gd`
 
-extends `Node2D` · 144 lines
+extends `Node2D` · 137 lines
 
 `godot/scripts/overlays/exposure_overlay.gd`
 
@@ -1436,7 +1432,6 @@ extends `Node2D` · 144 lines
 
 **Public vars**
 - `var exposure_system`
-- `var floor_layer: TileMapLayer = null`
 - `var tile_size: Vector2 = Vector2(256, 128)`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 
@@ -1541,7 +1536,7 @@ extends `Node2D` · 144 lines
 
 ### `gu_grid_overlay.gd`
 
-`class_name GuGridOverlay` · extends `Node2D` · 89 lines
+`class_name GuGridOverlay` · extends `Node2D` · 87 lines
 
 `godot/scripts/overlays/gu_grid_overlay.gd`
 
@@ -1552,7 +1547,7 @@ extends `Node2D` · 144 lines
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:`
+- `func setup(visual_grid_offset: Vector2) -> void:`
 - `func set_room_size(room_size: Vector2i) -> void:`
 - `func set_board3d(board: Node3D) -> void:`
 
@@ -1560,7 +1555,7 @@ extends `Node2D` · 144 lines
 
 ### `guard_noise_indicator.gd`
 
-extends `Node2D` · 83 lines
+extends `Node2D` · 81 lines
 
 `godot/scripts/overlays/guard_noise_indicator.gd`
 
@@ -1573,14 +1568,14 @@ extends `Node2D` · 83 lines
 - `INDICATOR_DURATION` = `1.8`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, visual_offset: Vector2) -> void:`
+- `func setup(visual_offset: Vector2) -> void:`
 - `func add_indicator(agent_world_pos: Vector2, noise_world_pos: Vector2, intensity: float) -> void:`
 
 ---
 
 ### `height_overlay.gd`
 
-extends `Node2D` · 259 lines
+extends `Node2D` · 252 lines
 
 `godot/scripts/overlays/height_overlay.gd`
 
@@ -1594,7 +1589,6 @@ extends `Node2D` · 259 lines
 **Public vars**
 - `var tile_semantics_map: Dictionary = {}`
 - `var light_anchors: Array = []`
-- `var floor_layer: TileMapLayer = null`
 - `var tile_size: Vector2 = Vector2(256, 128)`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var height_colors := { 0: Color(0.8, 0.7, 0.6, 0.6),           # Tan (FLOOR) 1: Color(0.6, 0.8, 0.6, 0.6),           # Light green (LOW_COVER) 2: Color(0.7, 0.7, 1.0, 0.6),           # Light blue (HUMAN) 3: Color(0.9, 0.6, 0.6, 0.6),           # Light red (TALL) 4: Color(0.8, 0.6, 0.9, 0.6),           # Light purple (OVERHEAD) }`
@@ -1614,7 +1608,7 @@ extends `Node2D` · 259 lines
 
 ### `light_overlay.gd`
 
-extends `Node2D` · 122 lines
+extends `Node2D` · 114 lines
 
 `godot/scripts/overlays/light_overlay.gd`
 
@@ -1628,7 +1622,6 @@ extends `Node2D` · 122 lines
 
 **@export**
 - `light_registry = null`
-- `floor_layer: TileMapLayer = null`
 - `tile_size: Vector2 = Vector2(128, 64)`
 - `visual_offset: Vector2 = Vector2(0, 0)`
 
@@ -1640,7 +1633,7 @@ extends `Node2D` · 122 lines
 
 ### `light_ray_overlay.gd`
 
-extends `Node2D` · 102 lines
+extends `Node2D` · 96 lines
 
 `godot/scripts/overlays/light_ray_overlay.gd`
 
@@ -1649,7 +1642,6 @@ extends `Node2D` · 102 lines
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **@export**
-- `floor_layer: TileMapLayer = null`
 - `visual_offset: Vector2 = Vector2.ZERO`
 
 **Public vars**
@@ -1659,14 +1651,14 @@ extends `Node2D` · 102 lines
 - `var ceiling_lift: float    = 0.0`
 
 **Public API**
-- `func setup(fl_layer: TileMapLayer, v_offset: Vector2, lift: float) -> void:`
+- `func setup(v_offset: Vector2, lift: float) -> void:`
 - `func refresh(shadow_results: Array) -> void:`
 
 ---
 
 ### `noise_overlay.gd`
 
-extends `Node2D` · 91 lines
+extends `Node2D` · 86 lines
 
 `godot/scripts/overlays/noise_overlay.gd`
 
@@ -1675,7 +1667,7 @@ extends `Node2D` · 91 lines
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public API**
-- `func setup( room_ref: Node2D, floor_layer: TileMapLayer, visual_offset: Vector2, noise_system ) -> void:`
+- `func setup( room_ref: Node2D, visual_offset: Vector2, noise_system ) -> void:`
 - `func set_board3d(board: Node3D) -> void:`
 
 ---
@@ -1706,7 +1698,7 @@ extends `Node2D` · 146 lines
 
 ### `shadow_boundary_overlay.gd`
 
-extends `Node2D` · 153 lines
+extends `Node2D` · 151 lines
 
 `godot/scripts/overlays/shadow_boundary_overlay.gd`
 
@@ -1721,7 +1713,7 @@ extends `Node2D` · 153 lines
 - `visual_offset: Vector2 = Vector2(0, 0)`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, offset: Vector2) -> void:`
+- `func setup(offset: Vector2) -> void:`
 - `func set_full_shadow_cells(cells: Array[Vector2i]) -> void:`
 - `func set_lite_shadow_cells(cells: Array[Vector2i]) -> void:`
 - `func set_board3d(board: Node3D) -> void:`
@@ -1730,7 +1722,7 @@ extends `Node2D` · 153 lines
 
 ### `shadow_overlay.gd`
 
-extends `Node2D` · 95 lines
+extends `Node2D` · 89 lines
 
 `godot/scripts/overlays/shadow_overlay.gd`
 
@@ -1744,7 +1736,6 @@ extends `Node2D` · 95 lines
 **@export**
 - `shadow_projector = null`
 - `light_registry = null`
-- `floor_layer: TileMapLayer = null`
 - `tile_size: Vector2 = Vector2(128, 64)`
 - `visual_offset: Vector2 = Vector2(0, 0)`
 
@@ -1808,7 +1799,7 @@ extends `Node2D` · 95 lines
 
 ### `shrapnel_preview_overlay.gd`
 
-`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 234 lines
+`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 228 lines
 
 `godot/scripts/overlays/shrapnel_preview_overlay.gd`
 
@@ -1829,7 +1820,7 @@ extends `Node2D` · 95 lines
 - `var spread_rad: float = 0.26`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, visual_offset: Vector2) -> void:`
+- `func setup(visual_offset: Vector2) -> void:`
 - `func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:`
 - `func clear() -> void:`
 
@@ -1867,7 +1858,7 @@ extends `Node2D` · 95 lines
 
 ### `temporal_overlay.gd`
 
-extends `Node2D` · 263 lines
+extends `Node2D` · 255 lines
 
 `godot/scripts/overlays/temporal_overlay.gd`
 
@@ -1886,7 +1877,6 @@ extends `Node2D` · 263 lines
 - `var show_rotations: bool = true`
 - `var ui_scale: float = 1.5`
 - `var light_registry = null`
-- `var floor_layer: TileMapLayer = null`
 - `var tile_size: Vector2 = Vector2(256, 128)`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var fixture_lift: float = 0.0`
@@ -1941,7 +1931,7 @@ extends `Node2D` · 263 lines
 
 ### `tile_overlay.gd`
 
-extends `Node2D` · 245 lines
+extends `Node2D` · 243 lines
 
 `godot/scripts/overlays/tile_overlay.gd`
 
@@ -1958,7 +1948,7 @@ extends `Node2D` · 245 lines
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, visual_offset: Vector2 = Vector2.ZERO) -> void:`
+- `func setup(visual_offset: Vector2 = Vector2.ZERO) -> void:`
 - `func paint(cell: Vector2i, color: Color, priority: int = 0) -> void:`
 - `func paint_named(cell: Vector2i, palette_key: String, priority: int = 0) -> void:`
 - `func unpaint(cell: Vector2i) -> void:`
@@ -1973,7 +1963,7 @@ extends `Node2D` · 245 lines
 
 ### `tile_risk_overlay.gd`
 
-extends `Node2D` · 111 lines
+extends `Node2D` · 104 lines
 
 `godot/scripts/overlays/tile_risk_overlay.gd`
 
@@ -1984,7 +1974,6 @@ extends `Node2D` · 111 lines
 
 **Public vars**
 - `var exposure_system`
-- `var floor_layer: TileMapLayer = null`
 - `var tile_size: Vector2 = Vector2(256, 128)`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 
@@ -2009,7 +1998,7 @@ extends `Node2D` · 111 lines
 
 ### `trail_overlay.gd`
 
-extends `Node2D` · 44 lines
+extends `Node2D` · 42 lines
 
 `godot/scripts/overlays/trail_overlay.gd`
 
@@ -2017,7 +2006,7 @@ extends `Node2D` · 44 lines
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 
 **Public API**
-- `func setup(room_ref: Node2D, floor_layer: TileMapLayer, visual_offset: Vector2) -> void:`
+- `func setup(room_ref: Node2D, visual_offset: Vector2) -> void:`
 
 ---
 
@@ -3593,7 +3582,7 @@ extends `SceneTree` · 2268 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 689 lines
+extends `SceneTree` · 686 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
@@ -3678,7 +3667,7 @@ extends `SceneTree` · 342 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 1008 lines
+extends `SceneTree` · 1005 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -3777,7 +3766,7 @@ extends `SceneTree` · 152 lines
 
 ### `floor_integration_selftest.gd`
 
-extends `SceneTree` · 248 lines
+extends `SceneTree` · 245 lines
 
 `godot/scripts/tools/floor_integration_selftest.gd`
 
@@ -3801,7 +3790,7 @@ extends `SceneTree` · 248 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 142 lines
+extends `SceneTree` · 139 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
@@ -4507,7 +4496,7 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 138 lines
+extends `SceneTree` · 135 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
@@ -4532,7 +4521,7 @@ extends `SceneTree` · 138 lines
 
 ### `roof_entity_selftest.gd`
 
-extends `SceneTree` · 168 lines
+extends `SceneTree` · 162 lines
 
 `godot/scripts/tools/roof_entity_selftest.gd`
 
@@ -4550,7 +4539,7 @@ extends `SceneTree` · 168 lines
 
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 282 lines
+extends `SceneTree` · 279 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -4991,7 +4980,7 @@ extends `SceneTree` · 306 lines
 
 ### `fog_of_war_overlay.gd`
 
-`class_name FogOfWarOverlay` · extends `Node2D` · 187 lines
+`class_name FogOfWarOverlay` · extends `Node2D` · 183 lines
 
 `godot/scripts/ui/fog_of_war_overlay.gd`
 
@@ -5003,7 +4992,7 @@ extends `SceneTree` · 306 lines
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public API**
-- `func setup(floor_layer: TileMapLayer, visual_offset: Vector2, room_size: Vector2i) -> void:`
+- `func setup(visual_offset: Vector2, room_size: Vector2i) -> void:`
 - `func reveal_around(center: Vector2i, radius: int) -> void:`
 - `func reset_fog() -> void:`
 - `func add_peek_reveal(cell: Vector2i) -> void:`
@@ -5072,7 +5061,7 @@ extends `SceneTree` · 306 lines
 
 ### `selection_overlay.gd`
 
-extends `Node2D` · 63 lines
+extends `Node2D` · 60 lines
 
 `godot/scripts/ui/selection_overlay.gd`
 
@@ -5083,7 +5072,6 @@ extends `Node2D` · 63 lines
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
-- `var floor_layer: TileMapLayer = null`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 
 **Public API**
@@ -5109,7 +5097,7 @@ extends `Node2D` · 63 lines
 
 ### `tile_labels_overlay.gd`
 
-extends `Node2D` · 35 lines
+extends `Node2D` · 32 lines
 
 `godot/scripts/ui/tile_labels_overlay.gd`
 
@@ -5120,7 +5108,6 @@ extends `Node2D` · 35 lines
 - `COLOR_SHADOW` = `Color(1.0, 1.0, 1.0, 0.60)`
 
 **Public vars**
-- `var floor_layer: TileMapLayer = null`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var room_w: int = 0`
 - `var room_h: int = 0`
@@ -5173,7 +5160,7 @@ extends `Node2D` · 35 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 595 lines
+`class_name RoomBuilder` · 591 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -5185,11 +5172,10 @@ extends `Node2D` · 35 lines
 - `var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")`
-- `var floor_layer: TileMapLayer = null`
 - `var structure_layer: TileMapLayer = null`
 
 **Public API**
-- `func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileSet) -> void:`
+- `func setup(structure: TileMapLayer, wall_tileset: TileSet) -> void:`
 - `func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:`
 - `func get_blocked_cells() -> Dictionary:`
 - `func get_prop_heights() -> Dictionary:`
@@ -5328,7 +5314,7 @@ extends `Node2D` · 35 lines
 
 ### `turn_controller.gd`
 
-`class_name TurnController` · 388 lines
+`class_name TurnController` · 379 lines
 
 `godot/scripts/world/controllers/turn_controller.gd`
 
@@ -5349,13 +5335,12 @@ extends `Node2D` · 35 lines
 - `var enemy_phase_controller: EnemyPhaseController = null`
 - `var agent: DebugAgent = null`
 - `var camera: Camera2D = null`
-- `var floor_layer: TileMapLayer = null`
 - `var VISUAL_GRID_OFFSET: Vector2 = Vector2.ZERO`
 - `var FOW_REVEAL_RADIUS: int = 0`
 - `var vision_bonus_tiles: int = 0`
 
 **Public API**
-- `func setup( p_turn_manager: TacticalTurnManager, p_enemy_phase_controller: EnemyPhaseController, p_agent: DebugAgent, p_camera: Camera2D, p_floor_layer: TileMapLayer, p_fow_controller: Object, p_hud_controller: Object, p_vision_controller: Object, p_guard_coordinator: Object, p_noise_system: Object, p_noise_overlay: Object ) -> void:`
+- `func setup( p_turn_manager: TacticalTurnManager, p_enemy_phase_controller: EnemyPhaseController, p_agent: DebugAgent, p_camera: Camera2D, p_fow_controller: Object, p_hud_controller: Object, p_vision_controller: Object, p_guard_coordinator: Object, p_noise_system: Object, p_noise_overlay: Object ) -> void:`
 - `func set_constants( p_visual_grid_offset: Vector2, p_fow_radius: int, p_vision_bonus: int, p_alert_max: int, p_alert_gain: int ) -> void:`
 - `func set_game_state( p_guards: Array, p_blocked_cells: Dictionary, p_current_blocked_edges: Array[Dictionary], p_room_size: Vector2i ) -> void:`
 - `func get_alert_meter() -> int:`
@@ -5399,7 +5384,7 @@ extends `Node2D` · 35 lines
 
 ### `world_markers_overlay_controller.gd`
 
-`class_name WorldMarkersOverlayController` · 166 lines
+`class_name WorldMarkersOverlayController` · 164 lines
 
 `godot/scripts/world/controllers/world_markers_overlay_controller.gd`
 
@@ -5417,10 +5402,9 @@ extends `Node2D` · 35 lines
 
 **Public vars**
 - `var room: Node`
-- `var floor_layer: Node2D = null`
 
 **Public API**
-- `func setup(tile_shadow: Node2D, lighting_controller: Node, shadow_boundary: Node, light_ray: Node, vision_controller: Node, floor_layer_ref: Node2D, visual_offset: Vector2, room_size: Vector2i, shadow_tiles: Dictionary) -> void:`
+- `func setup(tile_shadow: Node2D, lighting_controller: Node, shadow_boundary: Node, light_ray: Node, vision_controller: Node, visual_offset: Vector2, room_size: Vector2i, shadow_tiles: Dictionary) -> void:`
 - `func repaint_world_shadows() -> void:`
 - `func draw_shadow_debug(canvas: Object = null) -> void:`
 
@@ -5572,7 +5556,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11056 lines
+extends `Node2D` · 10892 lines
 
 `godot/scripts/world/room.gd`
 

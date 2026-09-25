@@ -3,7 +3,6 @@ class_name PathPreview
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 ## Visual preview of the currently hovered movement path.
 
-var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
 var _cells: Array[Vector2i] = []
 var _ap_cost: int = 0
@@ -14,8 +13,7 @@ const PREVIEW_FILL := Color(1.0, 0.76, 0.20, 0.22)
 const TARGET_LINE := Color(1.0, 0.45, 0.10, 0.95)
 
 
-func setup(tile_layer: TileMapLayer, offset: Vector2) -> void:
-	floor_layer = tile_layer
+func setup(offset: Vector2) -> void:
 	visual_offset = offset
 
 
@@ -62,7 +60,7 @@ func _draw() -> void:
 
 
 func _draw_into(c: Object) -> void:
-	if floor_layer == null or _cells.size() < 2:
+	if _cells.size() < 2:
 		return
 
 	var centers := PackedVector2Array()

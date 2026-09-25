@@ -21,7 +21,6 @@ var _lighting_controller: Node = null
 var _shadow_boundary_overlay: Node = null
 var _light_ray_overlay: Node = null
 var _vision_controller: Node = null
-var floor_layer: Node2D = null
 var _visual_grid_offset: Vector2 = Vector2.ZERO
 var _room_size: Vector2i = Vector2i.ZERO
 var _shadow_tiles: Dictionary = {}  ## used in debug draw
@@ -32,14 +31,13 @@ func _init(p_room: Node) -> void:
 
 
 func setup(tile_shadow: Node2D, lighting_controller: Node, shadow_boundary: Node,
-		light_ray: Node, vision_controller: Node, floor_layer_ref: Node2D, visual_offset: Vector2,
+		light_ray: Node, vision_controller: Node, visual_offset: Vector2,
 		room_size: Vector2i, shadow_tiles: Dictionary) -> void:
 	_tile_shadow = tile_shadow
 	_lighting_controller = lighting_controller
 	_shadow_boundary_overlay = shadow_boundary
 	_light_ray_overlay = light_ray
 	_vision_controller = vision_controller
-	floor_layer = floor_layer_ref
 	_visual_grid_offset = visual_offset
 	_room_size = room_size
 	_shadow_tiles = shadow_tiles

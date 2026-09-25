@@ -15,7 +15,6 @@ const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_sou
 const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
 
 @export var light_registry = null
-@export var floor_layer: TileMapLayer = null  ## Canonical projection source (matches lamps/floor)
 @export var tile_size: Vector2 = Vector2(128, 64)  # Fallback only when floor_layer is unset
 @export var visual_offset: Vector2 = Vector2(0, 0)
 
@@ -112,11 +111,4 @@ func _draw_light_label(light, _world_pos: Vector2, _color: Color) -> void:
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	# Canonical projection (matches lamps & floor) when floor_layer is available
-	if floor_layer != null:
-		return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset
-	# Fallback: legacy manual isometric projection (half-scale; only if floor_layer unset)
-	var x = float(cell.x)
-	var y = float(cell.y)
-	var screen_x = (x - y) * tile_size.x * 0.5
-	var screen_y = (x + y) * tile_size.y * 0.5
-	return Vector2(screen_x, screen_y) + visual_offset
+	return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset

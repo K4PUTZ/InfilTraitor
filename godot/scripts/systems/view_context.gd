@@ -55,9 +55,9 @@ static func signature(fields: Dictionary) -> String:
 ## How much board is on screen: floor cells whose centre lies inside the visible
 ## canvas (`gu_visible`), out of every floor cell the map has (`gu_total`). This is
 ## the quantity the draw calls follow (§10.16.2).
-static func count_visible_cells(viewport: Viewport, floor_layer: TileMapLayer, room_size: Vector2i,
+static func count_visible_cells(viewport: Viewport, room_size: Vector2i,
 		visual_offset: Vector2, cell_to_screen: Callable, to_local: Callable) -> Dictionary:
-	if floor_layer == null or not cell_to_screen.is_valid():
+	if not cell_to_screen.is_valid():
 		return {"gu_visible": "unavailable", "gu_total": "unavailable"}
 	## R3D-11: the extent is the room's and the lattice is `GroundGrid`'s; the layer is not read.
 	return _count_visible_ground(viewport, room_size, visual_offset, cell_to_screen, to_local)

@@ -93,18 +93,15 @@ func _builder(layout: Dictionary, roof: Dictionary) -> void:
 	var room := MinimalRoom.new()
 	root.add_child(room)
 	var tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
-	var floor_layer := TileMapLayer.new()
 	var structure_layer := TileMapLayer.new()
-	floor_layer.tile_set = tileset
 	structure_layer.tile_set = tileset
-	room.add_child(floor_layer)
 	room.add_child(structure_layer)
 	var renderer := VoxelRendererClass.new()
 	room.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 	room._voxel_renderer = renderer
 	var builder := RoomBuilderClass.new(room)
-	builder.setup(floor_layer, structure_layer, TileSet.new())
+	builder.setup(structure_layer, TileSet.new())
 	builder.build_registry(tileset)
 	builder.build_from_layout(layout, layout.get("size", Vector2i.ZERO))
 
@@ -140,18 +137,15 @@ func _unknown_kind(layout: Dictionary, roof: Dictionary) -> void:
 	var room := MinimalRoom.new()
 	root.add_child(room)
 	var tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
-	var floor_layer := TileMapLayer.new()
 	var structure_layer := TileMapLayer.new()
-	floor_layer.tile_set = tileset
 	structure_layer.tile_set = tileset
-	room.add_child(floor_layer)
 	room.add_child(structure_layer)
 	var renderer := VoxelRendererClass.new()
 	room.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 	room._voxel_renderer = renderer
 	var builder := RoomBuilderClass.new(room)
-	builder.setup(floor_layer, structure_layer, TileSet.new())
+	builder.setup(structure_layer, TileSet.new())
 	builder.build_registry(tileset)
 	builder.build_from_layout(bent, bent.get("size", Vector2i.ZERO))
 	var base_level: int = GeometryCoordsClass.storey_level_base(int(roof["storeys"]))

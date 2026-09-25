@@ -4,19 +4,16 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## Always visible (not only in DEV_VISION) — it is gameplay information.
 
 var _room_ref: Node2D = null
-var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO
 var _noise_system = null
 
 
 func setup(
 	room_ref: Node2D,
-	floor_layer: TileMapLayer,
 	visual_offset: Vector2,
 	noise_system
 ) -> void:
 	_room_ref       = room_ref
-	_floor_layer    = floor_layer
 	_visual_offset  = visual_offset
 	_noise_system   = noise_system
 	z_index = 140   ## below the trail (150) but above the movement overlay
@@ -86,6 +83,4 @@ func _draw_into() -> void:
 
 
 func _cell_to_world(cell: Vector2i) -> Vector2:
-	if _floor_layer == null:
-		return Vector2.ZERO
 	return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + _visual_offset

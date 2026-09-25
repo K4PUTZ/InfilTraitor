@@ -3035,7 +3035,7 @@ is not an entry condition (Director, 2026-09-23).
 - **The SE face of the reference set is not captured now.** If R3D-LOOK needs it, it is taken from a worktree of
   `34881f81`, the last commit with the 2D board.
 
-**Resume point (2026-09-24 close): END-0 to END-4 DONE; next END-5.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
+**Resume point (2026-09-24 close): END-0 to END-5 DONE; next END-6.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
 
 **Execution order.** Every step is held to the END-0 set (below) and committed and pushed on its own; the last commit
 that still builds the 2D board is `34881f81`.
@@ -3143,6 +3143,19 @@ that still builds the 2D board is `34881f81`.
   roundtrip, shadow, ground 16/16, mirror (7/504, 9/920), occ_canonical PASS; shot_3d PASSED (2 919 / 3 573 px);
   `run_selftests` 51 clean (64 - 13 deleted).
 - **END-5 — `floor_layer`.** Converted to `GroundGrid`, held by `ground_gate.py --against`.
+  **END-5 done 2026-09-25.** `floor_layer` was already read through `GroundGrid` (R3D-11); what was left was the node and its
+  plumbing. Gone: the `FloorLayer` node (`room.tscn`) and `Room.floor_layer`; the field and the `setup()` parameter in 30 classes
+  (the overlays, `DebugAgent`, `GuardEnemy`, `TurnController`, `RoomBuilder`, `FowController`, `ViewContext`,
+  `WorldMarkersOverlayController`) with their `floor_layer == null` guards and the legacy-projection fallbacks behind
+  `floor_layer != null`; the 2D pick's `local_to_map` (now `GroundGrid.cell_containing`, then the same 3x3 refinement) and
+  `to_local` / `to_global` (the room's own, the layer was at the identity); `_debug_probe_voxel_alignment()` (it aborted on "no
+  floor tile" on every 3D load), the GLASS-BLAST magenta-canary count (a count over a layer that holds no tile), the
+  backdrop's floor `modulate`. `scenario_ground_check` no longer compares a tile layer with the grid (there is none): its line
+  is `[GROUND-CHECK] <v> size (x, y) | walk ... | view ...` and `ground_gate.py` parses that; the recorded digests are the
+  ones from END-0, unchanged. The tint overlays that were moved to `floor_layer.get_index() + 1` now go to index 1
+  (`OVERLAY_AFTER_CAMERA_INDEX`): the same neighbours. **Gates:** ground_gate 16/16 IDENTICAL against the recorded digests; pixel 0
+  px above noise (GLASS 136/63 strict, the known jitter); 31/31 probe dumps identical; roundtrip, shadow, mirror (7/504, 9/920),
+  occ_canonical PASS; shot_3d PASSED (2 919 / 3 598 px); `run_selftests` 51 clean.
 - **END-6 — instruments, tools, the rename.** The `room.gd` tile readers (port or delete, each with its reason), the tools
   that still have a 2D mode, then the rename.
 - **END-7 — canon.** The edits listed under "Canon" below, and the L1 hook retargeted.

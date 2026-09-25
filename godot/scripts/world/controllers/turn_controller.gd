@@ -21,7 +21,6 @@ var turn_manager: TacticalTurnManager = null
 var enemy_phase_controller: EnemyPhaseController = null
 var agent: DebugAgent = null
 var camera: Camera2D = null
-var floor_layer: TileMapLayer = null
 
 ## Cached references to arrays/dicts
 var _guards: Array = []
@@ -63,7 +62,6 @@ func setup(
 	p_enemy_phase_controller: EnemyPhaseController,
 	p_agent: DebugAgent,
 	p_camera: Camera2D,
-	p_floor_layer: TileMapLayer,
 	p_fow_controller: Object,
 	p_hud_controller: Object,
 	p_vision_controller: Object,
@@ -75,7 +73,6 @@ func setup(
 	enemy_phase_controller = p_enemy_phase_controller
 	agent = p_agent
 	camera = p_camera
-	floor_layer = p_floor_layer
 	_fow_controller = p_fow_controller
 	_hud_controller = p_hud_controller
 	_vision_controller = p_vision_controller
@@ -153,10 +150,6 @@ func _on_enemy_phase_started() -> void:
 	
 	if _hud_controller != null:
 		_hud_controller.show_enemy_banner()
-	
-	if floor_layer != null:
-		# Clear overlays
-		pass  # Movement and path preview cleared in room context
 	
 	if agent != null:
 		if _fow_controller != null:
@@ -325,7 +318,7 @@ func _hold_actor_end_pause() -> void:
 ## Camera Control
 
 func _focus_camera_for_enemy_phase(target_cell: Vector2i, duration: float = ENEMY_CAMERA_TWEEN_DURATION) -> void:
-	if target_cell == Vector2i(-1, -1) or camera == null or floor_layer == null:
+	if target_cell == Vector2i(-1, -1) or camera == null:
 		return
 	
 	var target_world := _world_center_for_cell(target_cell)
@@ -343,13 +336,11 @@ func _focus_camera_for_enemy_phase(target_cell: Vector2i, duration: float = ENEM
 
 
 func _world_center_for_cell(cell: Vector2i) -> Vector2:
-	if floor_layer == null:
-		return Vector2.ZERO
 	return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
 
 
 func _center_camera(cell: Vector2i) -> void:
-	if camera == null or floor_layer == null:
+	if camera == null:
 		return
 	var target_pos := _world_center_for_cell(cell)
 	camera.global_position = target_pos

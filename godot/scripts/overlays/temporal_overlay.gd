@@ -39,7 +39,6 @@ var light_registry = null
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 # Canonical projection source (matches lamps/floor); tile_size is fallback only
-var floor_layer: TileMapLayer = null
 # Tile size and offset (for isometric projection)
 var tile_size: Vector2 = Vector2(256, 128)
 var visual_offset: Vector2 = Vector2.ZERO
@@ -217,14 +216,7 @@ func _get_state_color(light) -> Color:
 func _cell_to_screen(cell: Vector2i) -> Vector2:
 	# Canonical projection (matches lamps & floor); raise by fixture_lift so the
 	# knob reads just above the lifted lamp glyph.
-	if floor_layer != null:
-		return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset - Vector2(0.0, fixture_lift)
-	# Fallback: legacy manual isometric projection (only if floor_layer unset)
-	var x: float = float(cell.x)
-	var y: float = float(cell.y)
-	var screen_x: float = (x - y) * tile_size.x * 0.5
-	var screen_y: float = (x + y) * tile_size.y * 0.5
-	return Vector2(screen_x, screen_y) + visual_offset - Vector2(0.0, fixture_lift)
+	return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset - Vector2(0.0, fixture_lift)
 
 func _draw_circle_outline(pos: Vector2, radius: float, color: Color, width: float) -> void:
 	# Draw circle outline using arc segments

@@ -80,7 +80,7 @@ func toggle_voxel_ruler_overlay() -> void:
 		_voxel_ruler_overlay = Node2D.new()
 		_voxel_ruler_overlay.set_script(VoxelRulerClass)
 		room.add_child(_voxel_ruler_overlay)
-		_voxel_ruler_overlay.setup(room.floor_layer, room.VISUAL_GRID_OFFSET, room._room_size)
+		_voxel_ruler_overlay.setup(room.VISUAL_GRID_OFFSET, room._room_size)
 
 	_voxel_ruler_overlay.visible_grid = not _voxel_ruler_overlay.visible_grid
 	_voxel_ruler_overlay.queue_redraw()

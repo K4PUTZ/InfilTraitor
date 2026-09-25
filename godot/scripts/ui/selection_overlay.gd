@@ -3,7 +3,6 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## Draws a pink diamond outline on the currently selected tile.
 ## Lives in world space as a sibling of FloorLayer — no camera or UI involved.
 
-var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
 var _cell: Vector2i = Vector2i(-9999, -9999)
 
@@ -45,8 +44,6 @@ func _draw() -> void:
 
 
 func _draw_into(c: Object) -> void:
-	if floor_layer == null:
-		return
 	if _cell == Vector2i(-9999, -9999):
 		return
 

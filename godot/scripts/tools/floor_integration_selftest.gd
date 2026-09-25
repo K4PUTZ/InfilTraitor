@@ -89,11 +89,8 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	## calling build_from_layout() — _place() needs floor_layer.tile_set to
 	## resolve tile names via tile_registry.gd, same as the real boot.
 	var floor_tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
-	var floor_layer := TileMapLayer.new()
 	var structure_layer := TileMapLayer.new()
-	floor_layer.tile_set = floor_tileset
 	structure_layer.tile_set = floor_tileset
-	room.add_child(floor_layer)
 	room.add_child(structure_layer)
 
 	var voxel_renderer := VoxelRendererClass.new()
@@ -102,7 +99,7 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	room._voxel_renderer = voxel_renderer
 
 	var builder := RoomBuilderClass.new(room)
-	builder.setup(floor_layer, structure_layer, TileSet.new())
+	builder.setup(structure_layer, TileSet.new())
 	## Same call room.gd's real _ready() makes right after loading the
 	## tileset (room.gd:459) — populates _tile_ids from TileData custom_data,
 	## which _place() needs to resolve "floor_SE" and friends.

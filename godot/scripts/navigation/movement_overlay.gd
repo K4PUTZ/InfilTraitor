@@ -4,7 +4,6 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## Reachable movement bands for the current player turn.
 ## Computes a simple Dijkstra flood over 4-directional walkable cells.
 
-var floor_layer: TileMapLayer = null
 ## R3D-11: the ground's extent, asked of the room (it changes on a rotation); no tile is read for walkability.
 var ground_size: Callable = Callable()
 var visual_offset: Vector2 = Vector2.ZERO
@@ -29,8 +28,7 @@ const FILL_COLOR  := Color(1.0, 1.0, 1.0, 1.0)     ## White base for the fill (t
 const PERIMETER_INSET_DISTANCE := 6.0
 
 
-func setup(tile_layer: TileMapLayer, offset: Vector2, points_per_ap: int = 3) -> void:
-	floor_layer = tile_layer
+func setup(offset: Vector2, points_per_ap: int = 3) -> void:
 	visual_offset = offset
 	_points_per_ap = points_per_ap
 
@@ -67,7 +65,7 @@ func rebuild(start_cell: Vector2i, new_max_path_cost: int) -> void:
 	_costs.clear()
 	_came_from.clear()
 
-	if floor_layer == null or max_path_cost <= 0:
+	if max_path_cost <= 0:
 		queue_redraw()
 		return
 
@@ -186,7 +184,7 @@ func _draw() -> void:
 
 
 func _draw_into(c: Object) -> void:
-	if floor_layer == null or _costs.is_empty():
+	if _costs.is_empty():
 		return
 
 	var target_cells: Array[Vector2i] = []
@@ -276,8 +274,6 @@ func _diamond_points_inset(cell: Vector2i) -> PackedVector2Array:
 
 
 func _is_traversable(cell: Vector2i) -> bool:
-	if floor_layer == null:
-		return false
 	if _blocked_cells.has(cell):
 		return false
 	return ground_size.is_valid() and GroundGridRef.has_cell(cell, ground_size.call())

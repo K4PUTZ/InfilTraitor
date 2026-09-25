@@ -101,7 +101,6 @@ var ground_brake: float = 0.42
 var rays_per_cell: int = 3
 var spread_rad: float = 0.26
 
-var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO
 
 ## Pre-computed draw data, rebuilt only in show_rays().
@@ -110,8 +109,7 @@ var _ray_tos: PackedVector2Array = PackedVector2Array()
 var _ray_alphas: PackedFloat32Array = PackedFloat32Array()
 
 
-func setup(floor_layer: TileMapLayer, visual_offset: Vector2) -> void:
-	_floor_layer = floor_layer
+func setup(visual_offset: Vector2) -> void:
 	_visual_offset = visual_offset
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
@@ -124,10 +122,6 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 	_ray_froms.clear()
 	_ray_tos.clear()
 	_ray_alphas.clear()
-
-	if _floor_layer == null:
-		push_error("[ShrapnelPreviewOverlay] setup() never ran — no floor_layer to project with")
-		return
 
 	## The fragments leave the grenade, which is sitting slightly above the floor,
 	## not the floor plane itself.

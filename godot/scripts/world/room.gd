@@ -83,7 +83,6 @@ const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.
 const OcclusionSetClass = preload("res://godot/scripts/systems/occlusion_set.gd")
 const OcclusionOverlayClass = preload("res://godot/scripts/overlays/occlusion_overlay.gd")
 
-@onready var floor_layer:         TileMapLayer = $FloorLayer
 @onready var turn_manager:        TacticalTurnManager = $TurnManager
 @onready var enemy_phase_controller: EnemyPhaseController = $EnemyPhaseController
 @onready var enemies_root:         Node2D       = $Enemies
@@ -1098,10 +1097,6 @@ func apply_glass_diagnostic_backdrop() -> void:
 			_ceiling_overlay]:
 		if ov != null and is_instance_valid(ov):
 			ov.visible = false
-	## One flat floor. `modulate` rather than a repaint: the tiles keep their own
-	## ids, so nothing downstream sees a different board — only the eye does.
-	if floor_layer != null:
-		floor_layer.modulate = Color(0.22, 0.23, 0.26, 1.0)
 	## ⚠️ NOT `[GLASS-DIAG]` — that tag already belongs to the slice dump above,
 	## and two unrelated things under one tag is how a log stops being readable.
 	print("[GLASS-BACKDROP] stripped — %d guard(s) hidden, overlays off, floor flat"
@@ -1811,8 +1806,6 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 @export var map_id: String = "PLAYGROUND"  ## Restored default 2026-07-22 — PLAYGROUND is now the destruction test zone
 ## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
 @export var wall_height_override: int = 8  ## Legacy, now ignored (FIX-EXTERIOR-WALLS-01: exterior walls have fixed EXTERIOR_WALL_STOREYS height)
-## SLICE-00: Enable voxel alignment probe to measure and report world-space deltas.
-@export var debug_probe_voxel_alignment: bool = true
 
 const WHISTLE_RADIUS := 3
 
@@ -1939,7 +1932,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 	## Give overlays their references.
 	movement_overlay.z_index = 5
-	movement_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, turn_manager.move_points_per_ap)
+	movement_overlay.setup(VISUAL_GRID_OFFSET, turn_manager.move_points_per_ap)
 	movement_overlay.ground_size = Callable(self, "ground_size")
 	movement_overlay.set_blocked_cells(_room_builder.build_navigation_blocked_cells(_guards))
 	var blocked_edges: Array[Dictionary] = []
@@ -1949,13 +1942,12 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## G3 STAGE D: the movement set, not the raw wall array — an intact glass pane
 	## has to block from the first frame, not from the first refresh.
 	movement_overlay.set_blocked_edge_keys(_movement_edge_set())
-	path_preview.setup(floor_layer, VISUAL_GRID_OFFSET)
+	path_preview.setup(VISUAL_GRID_OFFSET)
 	path_preview.z_index = 6
-	selection_overlay.floor_layer = floor_layer
 	selection_overlay.visual_offset = VISUAL_GRID_OFFSET
 	selection_overlay.z_index = 7
 
-	agent.setup(floor_layer, VISUAL_GRID_OFFSET, agent_start_cell)
+	agent.setup(VISUAL_GRID_OFFSET, agent_start_cell)
 	## CHARACTER Part 2 §10: the baked figure replaces the vector placeholder.
 	## Idempotent, so a map reload does not stack a second sprite; it returns
 	## false (having already push_error'd) if the bake is missing, and the agent
@@ -1994,7 +1986,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	if _turn_controller != null:
 		_turn_controller.set_game_state(_guards, _blocked_cells, _current_blocked_edges, _room_size)
 	
-	_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, room_size)
+	_fow_controller.initialize_fog(VISUAL_GRID_OFFSET, room_size)
 	_fow_controller.reveal_around(agent_start_cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 	## HEAT-Z-01 sweep (Director, 2026-07-28): the dev cell-number overlay was the
 	## other casualty of D17's voxel earth floor reaching z=0 — it is a plain
@@ -2005,7 +1997,6 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## walls (WALL_BASE_Z_INDEX = 10): labels are sparse text meant to be READ, so
 	## unlike the HEAT tint they go above the other floor overlays, not under them.
 	tile_labels_overlay.z_index = 8
-	tile_labels_overlay.floor_layer = floor_layer
 	tile_labels_overlay.visual_offset = VISUAL_GRID_OFFSET
 	tile_labels_overlay.room_w = room_size.x
 	tile_labels_overlay.room_h = room_size.y
@@ -2119,11 +2110,6 @@ func _ready() -> void:
 		push_error("TileSet not found: " + TILESET_PATH)
 		return
 
-	floor_layer.tile_set = ts
-	## Legacy coarse floor plane sits UNDER the voxel earth floor (negative
-	## levels render at z = level+1 → bedrock -8..-2 occupies z -7..-1, top at
-	## 0). See VoxelRenderer._build_voxel_layer_node for the slot map.
-	floor_layer.z_index = -9
 	structure_layer.tile_set = ts
 	structure_layer.z_index = 10
 	_wall_tileset = ts
@@ -2137,7 +2123,7 @@ func _ready() -> void:
 
 	## Initialize RoomBuilder (map construction orchestrator)
 	_room_builder = RoomBuilderClass.new(self)
-	_room_builder.setup(floor_layer, structure_layer, ts)
+	_room_builder.setup(structure_layer, ts)
 	_room_builder.build_registry(ts)
 
 	## Initialize TurnController (turn phases, enemy AI, alert system)
@@ -2166,7 +2152,7 @@ func _ready() -> void:
 	_shadow_boundary_overlay.set_script(ShadowBoundaryOverlayClass)
 	_shadow_boundary_overlay.z_index = 4  ## Above _tile_game (z=3), well above fog_of_war (z=2)
 	add_child(_shadow_boundary_overlay)
-	_shadow_boundary_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+	_shadow_boundary_overlay.setup(VISUAL_GRID_OFFSET)
 
 	## GU-GRID-01: always-on GU boundary grid — z_index 1 puts it above the
 	## earth-voxel floor's top level (z=0, see VoxelRenderer's negative-level
@@ -2177,7 +2163,7 @@ func _ready() -> void:
 	_gu_grid_overlay.set_script(GuGridOverlayClass)
 	_gu_grid_overlay.z_index = 1
 	add_child(_gu_grid_overlay)
-	_gu_grid_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+	_gu_grid_overlay.setup(VISUAL_GRID_OFFSET)
 
 	## DESTRUCTION_MASTER_PLAN Part 3: blast-radius preview — deliberately
 	## above walls (z=100, matching the F3 debug ruler's reasoning) since it's
@@ -2187,7 +2173,7 @@ func _ready() -> void:
 	_blast_wireframe_overlay.set_script(BlastWireframeOverlayClass)
 	_blast_wireframe_overlay.z_index = AIM_Z_FOOTPRINT
 	add_child(_blast_wireframe_overlay)
-	_blast_wireframe_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+	_blast_wireframe_overlay.setup(VISUAL_GRID_OFFSET)
 
 	## M2-14: Create and setup TileOverlay instances for shadow and game visuals
 	_tile_shadow = Node2D.new()
@@ -2196,7 +2182,7 @@ func _ready() -> void:
 	add_child(_tile_shadow)
 	_tile_shadow.material = CanvasItemMaterial.new()
 	_tile_shadow.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
-	_tile_shadow.setup(floor_layer, VISUAL_GRID_OFFSET)
+	_tile_shadow.setup(VISUAL_GRID_OFFSET)
 
 	_tile_game = Node2D.new()
 	_tile_game.set_script(TileOverlayClass)
@@ -2204,7 +2190,7 @@ func _ready() -> void:
 	add_child(_tile_game)
 	_tile_game.material = CanvasItemMaterial.new()
 	_tile_game.material.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
-	_tile_game.setup(floor_layer, VISUAL_GRID_OFFSET)
+	_tile_game.setup(VISUAL_GRID_OFFSET)
 
 	## Initialize light ray overlay (before world markers controller, setup later with ceiling_lift)
 	_light_ray_overlay = LightRayOverlayClass.new()
@@ -2234,7 +2220,7 @@ func _ready() -> void:
 	## shape they travel inside.
 	_shrapnel_preview_overlay = ShrapnelPreviewOverlayClass.new()
 	add_child(_shrapnel_preview_overlay)
-	_shrapnel_preview_overlay.setup(floor_layer, VISUAL_GRID_OFFSET)
+	_shrapnel_preview_overlay.setup(VISUAL_GRID_OFFSET)
 
 	## T-CURSOR: the hatched grenade standing on the target cell, in place of
 	## SelectionOverlay's magenta diamond while a throw is being aimed.
@@ -2269,7 +2255,7 @@ func _ready() -> void:
 	## MUST be before signal connections to LightingController
 	_world_markers_controller = WorldMarkersOverlayControllerClass.new(self)
 	_world_markers_controller.setup(_tile_shadow, _lighting_controller, _shadow_boundary_overlay,
-		_light_ray_overlay, _vision_controller, floor_layer, VISUAL_GRID_OFFSET, _room_size, _shadow_tiles)
+		_light_ray_overlay, _vision_controller, VISUAL_GRID_OFFSET, _room_size, _shadow_tiles)
 
 	## Connect LightingController signal to VisionController for overlay updates
 	_lighting_controller.lighting_rebuilt.connect(_vision_controller.request_redraw)
@@ -2328,7 +2314,6 @@ func _ready() -> void:
 		enemy_phase_controller,
 		agent,
 		camera,
-		floor_layer,
 		_fow_controller,
 		_hud_controller,
 		_vision_controller,
@@ -2470,7 +2455,7 @@ func _ready() -> void:
 	_trail_overlay = Node2D.new()
 	_trail_overlay.set_script(TrailOverlayClass)
 	add_child(_trail_overlay)
-	_trail_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET)
+	_trail_overlay.setup(self, VISUAL_GRID_OFFSET)
 
 	## M2-04: Create and setup noise system and overlay
 	var NoiseSystemClass = preload("res://godot/scripts/systems/noise_system.gd")
@@ -2480,7 +2465,7 @@ func _ready() -> void:
 	_noise_overlay = Node2D.new()
 	_noise_overlay.set_script(NoiseOverlayClass)
 	add_child(_noise_overlay)
-	_noise_overlay.setup(self, floor_layer, VISUAL_GRID_OFFSET, _noise_system)
+	_noise_overlay.setup(self, VISUAL_GRID_OFFSET, _noise_system)
 
 	## OCC-01: Create and setup occlusion module and debug overlay
 	_occlusion_set = OcclusionSetClass.new()
@@ -2520,7 +2505,7 @@ func _ready() -> void:
 	## M2-14: Create and setup guard noise indicator — as child of agent so it orbits naturally
 	_guard_noise_indicator = GuardNoiseIndicatorClass.new()
 	agent.add_child(_guard_noise_indicator)
-	_guard_noise_indicator.setup(floor_layer, VISUAL_GRID_OFFSET)
+	_guard_noise_indicator.setup(VISUAL_GRID_OFFSET)
 
 	## VIS-01 Slice 3: overhead ceiling layer (lights as placeholders for now),
 	## raised above the wall stack and drawn above the top storey.
@@ -2534,12 +2519,12 @@ func _ready() -> void:
 	## as mounted overhead. True "5th-floor" verticality needs taller storeys (pairs
 	## with the view-occlusion slice, else taller walls hide the interior).
 	var ceiling_lift: float = WALL_FLOOR_STEP_PX * (float(ceil_floors) + 0.75)
-	_ceiling_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, ceiling_lift)
+	_ceiling_overlay.setup(VISUAL_GRID_OFFSET, ceiling_lift)
 	_ceiling_overlay.set_lights(_current_light_sources)
 
 	## Light ray overlay — always-visible golden shafts, MIX blend, below shadow MUL (z=1).
 	## Created here (after ceil_floors) so ceiling_lift matches the CeilingPropOverlay exactly.
-	_light_ray_overlay.setup(floor_layer, VISUAL_GRID_OFFSET, ceiling_lift)
+	_light_ray_overlay.setup(VISUAL_GRID_OFFSET, ceiling_lift)
 	## Initial populate: _repaint_world_shadows() ran before this node existed, so feed it now.
 	_light_ray_overlay.refresh(_lighting_controller.get_shadow_results())
 	## VL-02a: both overhead overlays exist only now — load_map()'s own call ran
@@ -2585,11 +2570,6 @@ func _ready() -> void:
 
 	## Initialize debug views (S1: FIX-BAKE-06)
 	_initialize_debug_views()
-
-	## SLICE-02: Run alignment probe if debug flag is set
-	if debug_probe_voxel_alignment:
-		print_debug("[DEBUG] _ready() complete, starting probe")
-		_debug_probe_voxel_alignment()
 
 	## SCREENSHOT-HOOK-01: opt-in auto-capture for the pre-commit hook's
 	## dedicated Godot process (INFILTRAITOR_AUTO_SCREENSHOT=1). Never fires
@@ -2687,7 +2667,7 @@ func _set_perspective(direction: String) -> void:
 		if _weapon_bench_controller != null:
 			_weapon_bench_controller.reposition_for_perspective(_active_perspective)
 
-		_fow_controller.initialize_fog(floor_layer, VISUAL_GRID_OFFSET, _room_size)
+		_fow_controller.initialize_fog(VISUAL_GRID_OFFSET, _room_size)
 		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
 		_update_guard_los_data()
 		_center_camera(agent.cell)
@@ -2974,26 +2954,16 @@ func board3d() -> Node:
 ## layer still holds the tiles). `tools/persistent/ground_gate.py` runs it on the 3D and the 2D board and requires every
 ## digest to agree.
 func scenario_ground_check(label: String) -> bool:
-	if floor_layer == null or _room_size == Vector2i.ZERO:
+	if _room_size == Vector2i.ZERO:
 		push_error("[Room] scenario_ground_check: no floor")
 		return false
 	var size: Vector2i = _room_size
-	var walk_mismatch: int = 0
-	var point_mismatch: int = 0
 	var walk_rows: PackedStringArray = []
 	var select_rows: PackedStringArray = []
-	var walkable_tiles: int = 0
 	for y in range(-3, size.y + 3):
 		for x in range(-3, size.x + 3):
 			var c := Vector2i(x, y)
-			var tile: bool = floor_layer.get_cell_source_id(c) != -1
 			var grid: bool = GroundGridRef.has_cell(c, size)
-			if tile != grid:
-				walk_mismatch += 1
-			if tile:
-				walkable_tiles += 1
-				if floor_layer.map_to_local(c) != GroundGridRef.map_to_local(c):
-					point_mismatch += 1
 			walk_rows.append("%d,%d=%d" % [x, y, 1 if grid else 0])
 			select_rows.append("%d,%d=%d" % [x, y, 1 if _selection_controller.is_selectable_cell(c) else 0])
 	var costs: Dictionary = movement_overlay._costs
@@ -3008,20 +2978,8 @@ func scenario_ground_check(label: String) -> bool:
 		var path: Array[Vector2i] = movement_overlay.build_path_to(reach[i])
 		path_rows.append("%s:%s" % [reach[i], path])
 	var counts: Dictionary = view_context()
-	## R3D-12: what is still written to the hidden 2D board — opaque layer cells, the structure layer. (The glass layers
-	## are gone, R3D-END END-2.)
-	var opaque_cells: int = 0
-	var opaque_by_level: PackedStringArray = []
-	for level in range(GeometryCoords.FLOOR_DEEP_LEVEL, _voxel_renderer.top_wall_level() + 1):
-		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-		if layer != null:
-			opaque_cells += layer.get_used_cells().size()
-			if layer.get_used_cells().size() > 0:
-				opaque_by_level.append("L%d:%d" % [level, layer.get_used_cells().size()])
-	print("[GROUND-CELLS] %s opaque %d (%s) structure %d floor %d" % [label, opaque_cells,
-		" ".join(opaque_by_level), structure_layer.get_used_cells().size(), floor_layer.get_used_cells().size()])
-	print("[GROUND-CHECK] %s size %s tiles %d | walk_mismatch %d point_mismatch %d floor_pos %s floor_scale %s | walk %s select %s reach %d %s paths %d %s | view %s/%s"
-		% [label, size, walkable_tiles, walk_mismatch, point_mismatch, floor_layer.position, floor_layer.scale,
+	print("[GROUND-CHECK] %s size %s | walk %s select %s reach %d %s paths %d %s | view %s/%s"
+		% [label, size,
 			"\n".join(walk_rows).md5_text(), "\n".join(select_rows).md5_text(), cost_rows.size(),
 			"\n".join(cost_rows).md5_text(), path_rows.size(), "\n".join(path_rows).md5_text(),
 			counts.get("gu_visible", "?"), counts.get("gu_total", "?")])
@@ -3088,7 +3046,6 @@ func _start_board3d_live() -> void:
 		remove_child(existing)
 		existing.queue_free()
 	_voxel_renderer.visible = false
-	floor_layer.visible = false
 	structure_layer.visible = false
 	var live: Node3D = Board3DLiveClass.new()
 	live.name = "Board3DLive"
@@ -3752,7 +3709,7 @@ func _draw_playable_boundary(c: Object) -> void:
 	## Visível apenas em DEV_VISION e com `DEV_PANELS=1` (fora disso poluía capturas e gravações).
 	if not _vision_controller.dev_vision or not _dev_panels_on:
 		return
-	if floor_layer == null or _base_layout.is_empty():
+	if _base_layout.is_empty():
 		return
 
 	## playable_rect: Rect2i(offset, inner_size) — injetado pelo MapCompiler.
@@ -4159,7 +4116,6 @@ func _spawn_guards(enemy_defs: Array) -> void:
 		var guard = GuardEnemyClass.new()
 		enemies_root.add_child(guard)
 		guard.setup(
-			floor_layer,
 			VISUAL_GRID_OFFSET,
 			String(entry.get("id", "guard_%d" % (i + 1))),
 			route,
@@ -5537,111 +5493,6 @@ func _handle_tile_click(cell: Vector2i) -> void:
 	_selected_cell = _selection_controller.selected_cell
 
 
-func _debug_probe_voxel_alignment() -> void:
-	## SLICE-02: measures world-space delta between the canonical GU diamond and the
-	## voxel plane's 8x8 block. Diagnostic for block/voxel layer alignment.
-	## Uses corrected formula: adjusted = map_to_local() - half_tile_size
-	if not debug_probe_voxel_alignment:
-		return
-	## OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE: the ground plane is
-	## `_voxel_renderer.ground_plane_level()`, not 0, so this probe had been
-	## aborting on every map since the renumber. Never name the level.
-	if _voxel_renderer == null \
-			or _voxel_renderer.get_layer(_voxel_renderer.ground_plane_level()) == null:
-		print_debug("[SLICE-02 probe] ABORT: no voxel renderer or ground-plane layer")
-		return
-
-	print_debug("[SLICE-02 probe] ===== STARTING ALIGNMENT CHECK =====")
-
-	# Find a floor layer cell that exists
-	var floor_cell = Vector2i.ZERO
-	var floor_found = false
-	for x in range(-5, 10):
-		for y in range(-5, 10):
-			if floor_layer.get_cell_source_id(Vector2i(x, y)) != -1:
-				floor_cell = Vector2i(x, y)
-				floor_found = true
-				break
-		if floor_found: break
-
-	if not floor_found:
-		print("[SLICE-02 probe] ABORT: no floor tile found")
-		return
-
-	var floor_ts = floor_layer.tile_set
-	var floor_tile_size = floor_ts.tile_size
-	var floor_half_size = Vector2(floor_tile_size) / 2.0
-
-	var vlayer = _voxel_renderer.get_layer(_voxel_renderer.ground_plane_level())
-	var voxel_ts = vlayer.tile_set
-	var voxel_tile_size = voxel_ts.tile_size
-	var voxel_half_size = Vector2(voxel_tile_size) / 2.0
-
-	## Corrected formula: adjusted = map_to_local - half_tile_size
-	var floor_map = GroundGridRef.map_to_local(floor_cell)
-	var floor_adjusted = floor_map - floor_half_size
-
-	var voxel_cell = floor_cell * 8
-	var voxel_map = vlayer.map_to_local(voxel_cell)
-	var voxel_adjusted = voxel_map - voxel_half_size
-
-	## Compare adjusted positions
-	var canon_pos = floor_adjusted + VISUAL_GRID_OFFSET
-	var voxel_pos = voxel_adjusted + vlayer.position
-	var delta = voxel_pos - canon_pos
-
-	print_debug("[SLICE-02 probe] floor_cell = %s  voxel_cell = %s" % [floor_cell, voxel_cell])
-	print_debug("[SLICE-02 probe] floor_map=%s  voxel_map=%s" % [floor_map, voxel_map])
-	print_debug("[SLICE-02 probe] floor_adjusted=%s  voxel_adjusted=%s" % [floor_adjusted, voxel_adjusted])
-	print_debug("[SLICE-02 probe] canon_pos=%s  voxel_pos=%s  delta=%s px" % [canon_pos, voxel_pos, delta])
-
-	## I2: Check painted voxels for solid blocks
-	if _base_layout.is_empty():
-		return
-
-	var structure_tiles: Array = _base_layout.get("structure_tiles", [])
-	var block_found = false
-	var block_cell = Vector2i.ZERO
-
-	for entry in structure_tiles:
-		var tile_name: String = entry.get("tile_name", "")
-		if tile_name.begins_with("block_"):
-			block_cell = entry.get("cell", Vector2i.ZERO)
-			block_found = true
-			break
-
-	if not block_found:
-		print_debug("[SLICE-02 probe] INFO: no block_* tile found for footprint check")
-		return
-
-	print_debug("[SLICE-02 probe] === Block Footprint Check ===")
-	print_debug("[SLICE-02 probe] block_cell (GU coords) = %s" % block_cell)
-
-	## Get expected voxel positions for this GU
-	var GeometryCoordinatesClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
-	var expected_voxels: Array[Vector2i] = GeometryCoordinatesClass.gu_voxels(block_cell)
-
-	## Check which voxel cells are actually painted at voxel layer 0
-	var painted_voxels: Array[Vector2i] = []
-	for vx in expected_voxels:
-		if vlayer.get_cell_source_id(vx) != -1:
-			painted_voxels.append(vx)
-
-	print_debug("[SLICE-02 probe] expected voxel count = %d" % expected_voxels.size())
-	print_debug("[SLICE-02 probe] painted voxel count = %d" % painted_voxels.size())
-
-	if painted_voxels.size() == expected_voxels.size():
-		print_debug("[SLICE-02 probe] result = MATCH (all expected voxels painted)")
-	else:
-		print_debug("[SLICE-02 probe] result = MISMATCH")
-		var missing: Array[Vector2i] = []
-		for ev in expected_voxels:
-			if not painted_voxels.has(ev):
-				missing.append(ev)
-		if missing.size() > 0:
-			print_debug("[SLICE-02 probe] missing voxels: %s" % missing)
-
-
 func _tic_voxel_system() -> void:
 	if _voxel_renderer != null and _edge_registry != null:
 		_voxel_renderer.process_dirty(_edge_registry)
@@ -5718,9 +5569,9 @@ func _screen_to_tile(screen_pos: Vector2) -> Vector2i:
 ## The 2D pick: screen → canvas → floor-layer lattice. See `_screen_to_tile()`.
 func _screen_to_tile_2d(screen_pos: Vector2) -> Vector2i:
 	var ct: Transform2D = get_viewport().get_canvas_transform()
-	var lp: Vector2 = floor_layer.to_local(ct.affine_inverse() * screen_pos)
+	var lp: Vector2 = to_local(ct.affine_inverse() * screen_pos)
 	var logical_lp := lp - VISUAL_GRID_OFFSET
-	var tile_seed: Vector2i = floor_layer.local_to_map(logical_lp)
+	var tile_seed: Vector2i = GroundGridRef.cell_containing(logical_lp)
 	var best := tile_seed
 	var best_dist := INF
 	var found_inside := false
@@ -5757,7 +5608,7 @@ func _tile_to_screen_center(cell: Vector2i) -> Vector2:
 ## The 2D inverse of `_screen_to_tile_2d()`. See `_tile_to_screen_center()`.
 func _tile_to_screen_center_2d(cell: Vector2i) -> Vector2:
 	var local_center: Vector2 = GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
-	var global_pos: Vector2 = floor_layer.to_global(local_center)
+	var global_pos: Vector2 = to_global(local_center)
 	return get_viewport().get_canvas_transform() * global_pos
 
 
@@ -5952,7 +5803,7 @@ func view_context() -> Dictionary:
 	var sig: String = ViewContextClass.signature(fields)
 	if sig != _view_count_sig:
 		_view_count_sig = sig
-		_view_counts = ViewContextClass.count_visible_cells(get_viewport(), floor_layer, _room_size,
+		_view_counts = ViewContextClass.count_visible_cells(get_viewport(), _room_size,
 			VISUAL_GRID_OFFSET, _tile_to_screen_center, Callable(self, "to_local"))
 	fields.merge(_view_counts)
 	return fields
@@ -7534,21 +7385,6 @@ func _capture_glass_blast_demo() -> void:
 		await RenderingServer.frame_post_draw
 		var flip_img: Image = get_viewport().get_texture().get_image()
 		flip_img.save_png("%s/glass_blast_demo_flip_%s.png" % [dir, flip_to])
-		## FLOOR-CRATER-01 — a rotation used to leave the crater a clean hole through
-		## the whole voxel floor stack (the re-reveal guard in _reapply_base_damage()
-		## went dead at the LEVEL-RENUMBER), so the legacy `floor_layer` canary tile
-		## — a flat #FF00FF magenta diamond (generate_master_floor.py) — showed
-		## through. Count those pixels: a crater that re-revealed its deep floor +
-		## soot leaves none, and magenta anywhere on screen is a cover failure.
-		var canary_px: int = 0
-		for py in range(0, flip_img.get_height(), 2):
-			for px in range(0, flip_img.get_width(), 2):
-				var c := flip_img.get_pixel(px, py)
-				if c.r > 0.90 and c.g < 0.10 and c.b > 0.90:
-					canary_px += 1
-		print("[GLASS-BLAST] floor_layer magenta canary after the flip: %d px (%s)"
-			% [canary_px, "OK" if canary_px < 20 else "LEAKING — crater re-reveal regressed"])
-
 	## ── A MAP RELOAD MUST WIPE THE GLASS DEBRIS ────────────────────────────────
 	##
 	## Director, 2026-09-07: *"seeing past debris from previous explosions […]

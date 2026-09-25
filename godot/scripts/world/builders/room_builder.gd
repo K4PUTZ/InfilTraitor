@@ -21,7 +21,6 @@ var _current_light_sources: Array = []
 var _tile_ids: Dictionary = {}
 
 # References to room layers
-var floor_layer: TileMapLayer = null
 var structure_layer: TileMapLayer = null
 
 
@@ -29,8 +28,7 @@ func _init(p_room: Node) -> void:
 	room = p_room
 
 
-func setup(floor_ref: TileMapLayer, structure: TileMapLayer, wall_tileset: TileSet) -> void:
-	floor_layer = floor_ref
+func setup(structure: TileMapLayer, wall_tileset: TileSet) -> void:
 	structure_layer = structure
 	_wall_tileset = wall_tileset
 
@@ -461,9 +459,7 @@ func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionar
 ## It went from latent to live on 2026-07-12: the sprite purge cut tile_registry from 32
 ## names to 8 (4 floors + 4 voxel atoms). Any map still asking for "crate_SE" or "wall_NW"
 ## would have drawn nothing, in silence. Now it says so.
-func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer = null) -> void:
-	if layer == null:
-		layer = floor_layer
+func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer) -> void:
 	var sid: int = _tile_ids.get(tile_name, -1)
 	if sid == -1:
 		push_error("[RoomBuilder] Unknown tile '%s' at %s — not in tile_registry.gd. Scenery is voxels now; only floor_* and voxel_* are sprites. See docs/technical/ASSET_MAP.md." % [tile_name, cell])

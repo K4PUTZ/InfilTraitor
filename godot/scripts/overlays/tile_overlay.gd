@@ -70,7 +70,6 @@ const PALETTE: Dictionary = {
 
 ## Internal state
 var _entries: Dictionary = {}        ## Vector2i → {"color": Color, "prio": int}
-var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO
 
 
@@ -81,9 +80,8 @@ func _ready() -> void:
 	material = mat
 
 
-func setup(floor_layer: TileMapLayer, visual_offset: Vector2 = Vector2.ZERO) -> void:
+func setup(visual_offset: Vector2 = Vector2.ZERO) -> void:
 	## Configures rendering references. Called by room.gd after add_child().
-	_floor_layer = floor_layer
 	_visual_offset = visual_offset
 
 
@@ -223,7 +221,7 @@ func _draw() -> void:
 
 
 func _draw_into() -> void:
-	if _entries.is_empty() or _floor_layer == null:
+	if _entries.is_empty():
 		return
 	## Sort by priority (lower prio drawn first → ends up below)
 	var sorted: Array = []

@@ -24,6 +24,9 @@ const EliteExposureOverlayClass = preload("res://godot/scripts/overlays/elite_ex
 ## OTHER z=1 tie (shadow tint layers, GU grid, tile_shadow), so their
 ## relationship to every non-floor overlay is byte-for-byte what it was.
 const HEAT_OVERLAY_Z := 1
+## Where the tint overlays sit among the room's children: right after the camera, which is where the floor layer's slot was
+## (the floor layer was child 1 and the overlays went to its index + 1; deleting it moves them to 1 with the same neighbours).
+const OVERLAY_AFTER_CAMERA_INDEX := 1
 
 # ── Vision state ───────────────────────────────────────────────────────────────
 ## ROTATE-KILL-01: dev_vision now gates PerspectivePad (see _apply_dev_vision())
@@ -189,7 +192,6 @@ func _setup_light_overlay() -> void:
 	
 	_light_overlay = LightOverlayClass.new()
 	_light_overlay.light_registry = light_registry
-	_light_overlay.floor_layer = _room.floor_layer
 	_light_overlay.tile_size = Vector2(128, 64)
 	_light_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_light_overlay)
@@ -205,7 +207,6 @@ func _setup_shadow_overlay() -> void:
 	_shadow_overlay = ShadowOverlayClass.new()
 	_shadow_overlay.shadow_projector = _room._lighting_controller._shadow_projector
 	_shadow_overlay.light_registry = light_registry
-	_shadow_overlay.floor_layer = _room.floor_layer
 	_shadow_overlay.tile_size = Vector2(128, 64)
 	_shadow_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_shadow_overlay)
@@ -222,12 +223,11 @@ func _setup_exposure_overlay() -> void:
 	
 	_exposure_overlay = ExposureOverlayClass.new()
 	_exposure_overlay.exposure_system = exposure_system
-	_exposure_overlay.floor_layer = _room.floor_layer
 	_exposure_overlay.tile_size = Vector2(256, 128)
 	_exposure_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_exposure_overlay)
-	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
-	_room.move_child(_exposure_overlay, _room.floor_layer.get_index() + 1)
+	# Position HEAT overlay near the top of the tree (below all structures/entities)
+	_room.move_child(_exposure_overlay, OVERLAY_AFTER_CAMERA_INDEX)
 	_exposure_overlay.z_index = HEAT_OVERLAY_Z
 	_exposure_overlay.z_as_relative = true
 	_exposure_overlay.visible = heat_vision
@@ -242,12 +242,11 @@ func _setup_tile_risk_overlay() -> void:
 	
 	_tile_risk_overlay = TileRiskOverlayClass.new()
 	_tile_risk_overlay.exposure_system = exposure_system
-	_tile_risk_overlay.floor_layer = _room.floor_layer
 	_tile_risk_overlay.tile_size = Vector2(256, 128)
 	_tile_risk_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_tile_risk_overlay)
-	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
-	_room.move_child(_tile_risk_overlay, _room.floor_layer.get_index() + 1)
+	# Position HEAT overlay near the top of the tree (below all structures/entities)
+	_room.move_child(_tile_risk_overlay, OVERLAY_AFTER_CAMERA_INDEX)
 	_tile_risk_overlay.z_index = HEAT_OVERLAY_Z
 	_tile_risk_overlay.z_as_relative = true
 	_tile_risk_overlay.visible = heat_vision
@@ -265,7 +264,6 @@ func _setup_height_overlay() -> void:
 	_height_overlay = HeightOverlayClass.new()
 	_height_overlay.load_semantics(tile_semantics_map)
 	_height_overlay.load_anchors(light_anchors)
-	_height_overlay.floor_layer = _room.floor_layer
 	_height_overlay.tile_size = Vector2(256, 128)
 	_height_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_height_overlay)
@@ -282,7 +280,6 @@ func _setup_temporal_overlay() -> void:
 	
 	_temporal_overlay = TemporalOverlayClass.new()
 	_temporal_overlay.load_lights(light_registry)
-	_temporal_overlay.floor_layer = _room.floor_layer
 	_temporal_overlay.tile_size = Vector2(128, 64)
 	_temporal_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	## Raise the state-knob just above the lamp glyph. Mirrors the ceiling lamp lift
@@ -303,12 +300,11 @@ func _setup_elite_exposure_overlay() -> void:
 	
 	_elite_exposure_overlay = EliteExposureOverlayClass.new()
 	_elite_exposure_overlay.load_exposure_system(exposure_system)
-	_elite_exposure_overlay.floor_layer = _room.floor_layer
 	_elite_exposure_overlay.tile_size = Vector2(256, 128)
 	_elite_exposure_overlay.visual_offset = _room.VISUAL_GRID_OFFSET
 	_room.add_child(_elite_exposure_overlay)
-	# Position HEAT overlay immediately after FloorLayer (below all structures/entities)
-	_room.move_child(_elite_exposure_overlay, _room.floor_layer.get_index() + 1)
+	# Position HEAT overlay near the top of the tree (below all structures/entities)
+	_room.move_child(_elite_exposure_overlay, OVERLAY_AFTER_CAMERA_INDEX)
 	_elite_exposure_overlay.z_index = HEAT_OVERLAY_Z
 	_elite_exposure_overlay.z_as_relative = true
 	_elite_exposure_overlay.visible = heat_vision

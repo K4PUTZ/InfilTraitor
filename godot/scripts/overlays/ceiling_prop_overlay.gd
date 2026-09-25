@@ -14,13 +14,11 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
-var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2 = Vector2.ZERO   ## received, never hardcoded (rule #2)
 var _ceiling_lift: float = 0.0                ## px to raise props to ceiling height
 var _lights: Array = []                       ## active light_sources dicts {x,y,radius,intensity}
 
-func setup(floor_layer: TileMapLayer, visual_offset: Vector2, ceiling_lift: float) -> void:
-	_floor_layer = floor_layer
+func setup(visual_offset: Vector2, ceiling_lift: float) -> void:
 	_visual_offset = visual_offset
 	_ceiling_lift = ceiling_lift
 
@@ -30,8 +28,6 @@ func set_lights(light_sources: Array) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	if _floor_layer == null:
-		return
 	for light in _lights:
 		var cell := Vector2i(int(light.get("x", 0)), int(light.get("y", 0)))
 		var pos: Vector2 = GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset

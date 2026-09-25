@@ -12,7 +12,6 @@ const TILE_HALF_H :=  64.0
 ## Semi-opaque dark colour that hides unrevealed terrain.
 const FOG_COLOR := Color(0.04, 0.04, 0.09, 0.93)
 
-var _floor_layer: TileMapLayer = null
 var _visual_offset: Vector2    = Vector2.ZERO
 var _room_size: Vector2i       = Vector2i.ZERO
 
@@ -25,8 +24,7 @@ var _fog_alpha_override: Dictionary = {}
 
 
 ## Call once from room.gd _ready, after layout is built.
-func setup(floor_layer: TileMapLayer, visual_offset: Vector2, room_size: Vector2i) -> void:
-	_floor_layer  = floor_layer
+func setup(visual_offset: Vector2, room_size: Vector2i) -> void:
 	_visual_offset = visual_offset
 	_room_size    = room_size
 	_revealed.clear()
@@ -136,8 +134,6 @@ func _draw() -> void:
 
 
 func _draw_into() -> void:
-	if _floor_layer == null:
-		return
 	## Pre-compute alpha for every unrevealed cell, including 1-tile virtual ring
 	## outside the room bounds. Those outer cells are never in _revealed, so they
 	## pick up the smoothstep gradient from adjacent revealed inner tiles —

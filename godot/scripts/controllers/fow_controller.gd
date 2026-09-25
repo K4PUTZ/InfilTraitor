@@ -16,10 +16,10 @@ func setup(room_ref: Node2D, fog_of_war_ref: FogOfWarOverlay, fog_rect_ref: Colo
 
 
 ## Initializes the fog overlay for a new room.
-func initialize_fog(floor_layer: TileMapLayer, visual_offset: Vector2, room_size: Vector2i) -> void:
+func initialize_fog(visual_offset: Vector2, room_size: Vector2i) -> void:
 	if _fog_of_war == null:
 		return
-	_fog_of_war.setup(floor_layer, visual_offset, room_size)
+	_fog_of_war.setup(visual_offset, room_size)
 
 
 ## Reveals all tiles within a Euclidean radius around the center.

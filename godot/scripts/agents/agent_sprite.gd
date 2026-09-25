@@ -74,6 +74,8 @@ extends Sprite2D
 ## whose whole subject is *"outra aparência e cores"*. Judging an appearance
 ## through a debug tint is circular. Flip back to `true` when the movement
 ## milestone opens.
+const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")
+
 const DEV_ONLY_MILESTONE := false
 
 const FRAMES_ROOT := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"
@@ -431,23 +433,19 @@ func setup(p_room: Node) -> bool:
 ## Measure, for each of the four grid steps, which way it actually moves the
 ## agent ON SCREEN, and pair it with the baked frame that faces that way.
 ##
-## `map_to_local` is the same call `DebugAgent._cell_to_world()` uses to place
+## `GroundGrid.map_to_local` is the same call `DebugAgent._cell_to_world()` uses to place
 ## him, so this reads the exact geometry he walks on rather than a remembered
 ## convention. Loud-fails if two steps resolve to one frame — that would mean the
-## tilemap is no longer a 2:1 diamond and every facing in the game is a guess.
+## lattice is no longer a 2:1 diamond and every facing in the game is a guess.
 func _derive_frame_by_step() -> bool:
-	var layer: TileMapLayer = (get_parent() as Node2D).get("floor_layer")
-	if layer == null:
-		push_error("[AgentSprite] the agent has no floor_layer — cannot derive the step facings")
-		return false
 	var frame_of_compass := {}
 	for frame: String in SCREEN_COMPASS_BY_FRAME:
 		frame_of_compass[SCREEN_COMPASS_BY_FRAME[frame]] = frame
 
-	var origin := layer.map_to_local(Vector2i.ZERO)
+	var origin := GroundGridRef.map_to_local(Vector2i.ZERO)
 	_frame_by_step.clear()
 	for step: Vector2i in STEPS:
-		var delta := (layer.map_to_local(step) - origin).normalized()
+		var delta := (GroundGridRef.map_to_local(step) - origin).normalized()
 		var best := ""
 		var best_fit := -2.0
 		for compass: String in COMPASS_SCREEN:

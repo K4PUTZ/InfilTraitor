@@ -20,13 +20,11 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 const COLOR_BLACK := Color(0.0, 0.0, 0.0, 0.35)
 const LINE_WIDTH := 1.5
 
-var _floor_layer: TileMapLayer = null
 var _visual_grid_offset: Vector2 = Vector2.ZERO
 var _room_size: Vector2i = Vector2i.ZERO
 
 
-func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:
-	_floor_layer = floor_layer
+func setup(visual_grid_offset: Vector2) -> void:
 	_visual_grid_offset = visual_grid_offset
 
 
@@ -70,7 +68,7 @@ func _draw() -> void:
 
 
 func _draw_into() -> void:
-	if _floor_layer == null or _room_size == Vector2i.ZERO:
+	if _room_size == Vector2i.ZERO:
 		return
 	for gu_x in range(_room_size.x):
 		for gu_y in range(_room_size.y):

@@ -14,7 +14,6 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## _draw() iterates those arrays — zero allocation per frame. rebuild only fires
 ## on lighting_rebuilt (static lights: once at startup; flickering lights: ~2-4 Hz).
 
-@export var floor_layer: TileMapLayer = null
 @export var visual_offset: Vector2 = Vector2.ZERO
 
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
@@ -33,8 +32,7 @@ var _ray_tos:    PackedVector2Array = PackedVector2Array()
 var _ray_alphas: PackedFloat32Array = PackedFloat32Array()
 
 
-func setup(fl_layer: TileMapLayer, v_offset: Vector2, lift: float) -> void:
-	floor_layer   = fl_layer
+func setup(v_offset: Vector2, lift: float) -> void:
 	visual_offset = v_offset
 	ceiling_lift  = lift
 	var mat := CanvasItemMaterial.new()
@@ -49,8 +47,6 @@ func refresh(shadow_results: Array) -> void:
 	_ray_tos.clear()
 	_ray_alphas.clear()
 
-	if floor_layer == null:
-		return
 
 	for result in shadow_results:
 		if result == null or result.source_light == null:
@@ -97,6 +93,4 @@ func _draw_ray(from: Vector2, to: Vector2, alpha: float) -> void:
 
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
-	if floor_layer == null:
-		return Vector2.ZERO
 	return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset

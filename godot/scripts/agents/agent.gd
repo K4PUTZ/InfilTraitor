@@ -52,7 +52,6 @@ const POSTURE_AIM_MULT: Dictionary = {
 	Posture.PRONE:     0.50,
 }
 
-var floor_layer: TileMapLayer = null
 var visual_offset: Vector2 = Vector2.ZERO
 var cell: Vector2i = Vector2i.ZERO
 var vision_radius: int = 7  ## base player visibility radius in tiles; affects enemy fade thresholds
@@ -292,8 +291,7 @@ var _walk_progress: float = 0.0:
 			sprite.set_walk_phase(value)
 
 
-func setup(tile_layer: TileMapLayer, offset: Vector2, start_cell: Vector2i) -> void:
-	floor_layer = tile_layer
+func setup(offset: Vector2, start_cell: Vector2i) -> void:
 	visual_offset = offset
 	set_cell(start_cell)
 
@@ -440,8 +438,6 @@ func _step_next() -> void:
 
 
 func _cell_to_world(map_cell: Vector2i) -> Vector2:
-	if floor_layer == null:
-		return Vector2.ZERO
 	return GroundGridRef.map_to_local(map_cell) + TILE_CENTER_OFFSET + visual_offset
 
 

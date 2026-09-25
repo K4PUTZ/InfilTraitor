@@ -13,7 +13,6 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 @export var tile_size: Vector2 = Vector2(128, 64)
 @export var visual_offset: Vector2 = Vector2(0, 0)
 
-var _floor_layer: TileMapLayer = null
 var _full_shadow_cells: Dictionary = {}    ## Deep shadow tiles
 var _lite_shadow_cells: Dictionary = {}    ## Penumbra/lite shadow tiles
 
@@ -32,8 +31,7 @@ var _internal_boundary_line: Color = Color(0.08, 0.08, 0.08, 0.85)  ## Dark grey
 
 var _line_width: float = 3.5
 
-func setup(floor_layer: TileMapLayer, offset: Vector2) -> void:
-	_floor_layer = floor_layer
+func setup(offset: Vector2) -> void:
 	visual_offset = offset
 
 func set_full_shadow_cells(cells: Array[Vector2i]) -> void:

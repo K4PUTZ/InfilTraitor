@@ -42,14 +42,12 @@ const PERIMETER_INSET_DISTANCE := 6.0  ## reused verbatim from movement_overlay.
 ## written for.
 var ring_fill_alphas: PackedFloat32Array = PackedFloat32Array([0.34, 0.22, 0.13])
 
-var _floor_layer: TileMapLayer = null
 var _visual_grid_offset: Vector2 = Vector2.ZERO
 var _footprint: Dictionary = {}  ## Vector2i -> true, membership test only
 var _ring_by_cell: Dictionary = {}  ## Vector2i -> int, empty when unfilled
 
 
-func setup(floor_layer: TileMapLayer, visual_grid_offset: Vector2) -> void:
-	_floor_layer = floor_layer
+func setup(visual_grid_offset: Vector2) -> void:
 	_visual_grid_offset = visual_grid_offset
 
 
@@ -74,7 +72,7 @@ func clear() -> void:
 
 
 func _draw() -> void:
-	if _floor_layer == null or _footprint.is_empty():
+	if _footprint.is_empty():
 		return
 	## Fills first, so the perimeter still reads as the boundary on top of them —
 	## the same order MovementOverlay._draw() uses.

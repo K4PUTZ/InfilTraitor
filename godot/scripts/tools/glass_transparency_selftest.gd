@@ -7,14 +7,14 @@
 ## R3D-END (END-1): the tests that read which TILE LAYER a glass voxel landed on ([1] Option A's mirror, [1b] the seam
 ## cull, [2] lazy sublayers, [3] concrete on the opaque layer, [4] a destroyed pane cell erased from its layer) went with
 ## the 2D board: no tile is written any more, and the glass state lives in the `VoxelStore` (R3D-14). [7] now reads the
-## store's pane cells; [12] reads the plan's tile-less entry. What is left, worst first:
+## store's pane cells; [12] reads the plan's tile-less entry. END-2 took [11] (per-member pane atoms and the tint in their
+## BLUE channel: the 3D board tints each member's material directly). What is left, worst first:
 ##
 ##   5. Intact glass dropped from `build_occupancy()` — the light field would stop seeing the pane.
 ##   7. A G-D9 brick band read as pane glass (or the reverse) — a brick sill that cracks and rains shards.
 ##   6/10. Panes grouped wrong (`GlassPaneGrouper`) — a plain pane merged into an armoured one defeats the armour.
 ##   8. Glass occluding (O7) — the cutaway would ghost a see-through pane.
 ##   9. A pane larger than the fracture sheet accepted silently (G-D23).
-##   11. A glass member missing its own tinted atoms (until END-2 deletes the atoms).
 ##   12. A damaged glass voxel yielding an opaque plan entry (GLASS-OLIVE).
 
 extends SceneTree
@@ -39,7 +39,6 @@ func _init() -> void:
 	test_glass_does_not_occlude()
 	test_pane_size_ceiling_is_enforced()
 	test_two_glass_materials_are_two_panes()
-	test_every_family_member_has_its_own_tinted_atoms()
 	test_a_damaged_glass_voxel_yields_no_opaque_tile_entry()
 
 	print("\n" + "=".repeat(70))
@@ -400,99 +399,6 @@ func test_two_glass_materials_are_two_panes() -> void:
 	print("")
 
 
-## G-D16 / V-B — EVERY MEMBER GETS ITS OWN 16 ATOMS, CARRYING ITS OWN TINT INDEX.
-##
-## The tint does not ride a uniform per layer or a per-cell alternative: it rides
-## the atom's BLUE channel, which the builder had always written as a third copy
-## of the dim nothing reads. Three things can silently go wrong and all three are
-## pinned here rather than eyeballed on a capture:
-##
-##   · a member missing from the atom table renders through BASE's fallback and
-##     is simply the wrong colour;
-##   · two members sharing a source id means one of them is not really there;
-##   · the BLUE byte disagreeing with FAMILY's order means every tint after the
-##     first is off by one, which looks plausible and is wrong.
-##
-## Plus the three-copies problem: PANE_TINT[0], the shader's `glass_tint` default
-## and `_glass_shader_params` are the same number written in three files. The
-## comment says keep them equal; this asserts it.
-func test_every_family_member_has_its_own_tinted_atoms() -> void:
-	print("[11] G-D16: per-member glass atoms, and the tint index in the BLUE channel\n")
-	## `_fresh_renderer()` parents it under `root` and calls `setup()`, which is
-	## what builds the tileset — including the glass atom table.
-	var r := _fresh_renderer()
-
-	var seen: Dictionary = {}
-	var missing: Array = []
-	var dupes: Array = []
-	for material_id in GlassMaterials.FAMILY:
-		var per_face: Dictionary = r._glass_atom_source.get(material_id, {})
-		if per_face.is_empty():
-			missing.append(material_id)
-			continue
-		for fc in [Face.SW, Face.SE, Face.NW, Face.NE]:
-			for m in range(4):
-				var sid: int = int((per_face.get(fc, {}) as Dictionary).get(m, -1))
-				if sid < 0:
-					missing.append("%s/%d/%d" % [material_id, fc, m])
-				elif seen.has(sid):
-					dupes.append("%s shares source %d with %s" % [material_id, sid, seen[sid]])
-				else:
-					seen[sid] = material_id
-	var expected: int = GlassMaterials.FAMILY.size() * 4 * 4
-	if missing.is_empty() and dupes.is_empty() and seen.size() == expected:
-		_pass("%d distinct glass atoms — %d members x 4 faces x 4 masks"
-			% [seen.size(), GlassMaterials.FAMILY.size()])
-	else:
-		_fail("atoms missing=%s dupes=%s distinct=%d expected=%d"
-			% [missing, dupes, seen.size(), expected])
-
-	## The BLUE byte, read straight back out of the built atom the way the shader
-	## reads it: `int(round(t.b * 255.0))`.
-	var wrong: Array = []
-	for material_id in GlassMaterials.FAMILY:
-		var want: int = GlassMaterials.tint_index(material_id)
-		var atom: Image = r._build_glass_pane_atom(Face.SW, false, false, want)
-		if atom == null:
-			wrong.append("%s: no atom" % material_id)
-			continue
-		var got: int = -1
-		for y in range(atom.get_height()):
-			for x in range(atom.get_width()):
-				var px: Color = atom.get_pixel(x, y)
-				if px.a > 0.0:
-					got = int(round(px.b * 255.0))
-					break
-			if got >= 0:
-				break
-		if got != want:
-			wrong.append("%s: blue byte %d, expected index %d" % [material_id, got, want])
-	if wrong.is_empty():
-		_pass("every member's atom carries its own FAMILY index in BLUE (0..%d)"
-			% (GlassMaterials.FAMILY.size() - 1))
-	else:
-		_fail("tint index round-trip broken: %s" % [wrong])
-
-	## The same number in three files.
-	var from_params = r._glass_shader_params.get("glass_tint", null)
-	if from_params is Color and (from_params as Color).is_equal_approx(GlassMaterials.PANE_TINT[0]):
-		_pass("_glass_shader_params['glass_tint'] IS GlassMaterials.PANE_TINT[0] (%s)"
-			% [GlassMaterials.PANE_TINT[0]])
-	else:
-		_fail("the base tint disagrees between GlassMaterials and _glass_shader_params: %s vs %s"
-			% [GlassMaterials.PANE_TINT[0], from_params])
-
-	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_shading.gdshaderinc")
-	var t0: Color = GlassMaterials.PANE_TINT[0]
-	var want_default := "vec3(%.2f, %.2f, %.2f)" % [t0.r, t0.g, t0.b]
-	if src.contains("uniform vec3 glass_tint : source_color = " + want_default):
-		_pass("glass_shading.gdshaderinc's `glass_tint` default is the same number (%s)" % want_default)
-	else:
-		_fail("the shader's glass_tint default is not %s — three copies of one colour and they have drifted"
-			% want_default)
-	print("")
-
-
 ## ── [12] GLASS-OLIVE (2026-09-06) — THE RESOLVE-ONLY SEAM NAMES ITS LAYER ────
 ##
 ## Test [1] pins the APPLY path: `_set_voxel_cell(apply = true)` puts glass on
@@ -522,29 +428,21 @@ func test_a_damaged_glass_voxel_yields_no_opaque_tile_entry() -> void:
 	registry.register_slice(concrete_slice)
 	r.render(registry)
 
-	## The seam itself: the resolve-only dict says WHICH layer its id belongs to.
+	## The seam itself (R3D-END END-2): a glass pane voxel resolves to NOTHING — no atom, no opaque tile — and the
+	## concrete control still resolves to a real opaque id.
 	var glass_resolve: Dictionary = r._set_voxel_cell(Vector2i(26, 31), level, "glass",
 		null, Vector2i(2, 7), Face.SW, false, "", BakePolicy.SurfaceClass.SLICE, false)
-	var glass_ids := {}
-	for fc in [Face.SW, Face.SE, Face.NW, Face.NE]:
-		for m in range(4):
-			glass_ids[int(r._glass_atom_source.get(GlassMaterials.BASE, {}).get(fc, {}).get(m, -1))] = true
-	if bool(glass_resolve.get("glass_sublayer", false)) \
-			and glass_ids.has(int(glass_resolve.get("source_id", -1))):
-		_pass("resolve-only glass returns a glass ATOM id (%d) MARKED `glass_sublayer`"
-			% int(glass_resolve["source_id"]))
+	if glass_resolve.is_empty():
+		_pass("resolve-only glass returns nothing — no tile for the opaque layer to wear")
 	else:
-		_fail("resolve-only glass dict %s — an unmarked glass atom id is what a caller stamps on the opaque layer"
-			% [glass_resolve])
+		_fail("resolve-only glass returned %s — a caller would stamp it on the opaque layer" % [glass_resolve])
 
 	var concrete_resolve: Dictionary = r._set_voxel_cell(Vector2i(26, 31), level, "concrete",
 		null, Vector2i(2, 7), Face.SW, false, "", BakePolicy.SurfaceClass.SLICE, false)
-	if not bool(concrete_resolve.get("glass_sublayer", false)) \
-			and int(concrete_resolve.get("source_id", -1)) >= 0:
-		_pass("resolve-only concrete is UNMARKED and still returns a real opaque id (%d)"
-			% int(concrete_resolve["source_id"]))
+	if int(concrete_resolve.get("source_id", -1)) >= 0:
+		_pass("resolve-only concrete still returns a real opaque id (%d)" % int(concrete_resolve["source_id"]))
 	else:
-		_fail("resolve-only concrete dict %s — the marker must be glass-only" % [concrete_resolve])
+		_fail("resolve-only concrete dict %s — the glass guard is eating other materials" % [concrete_resolve])
 
 	## The consumer: DetonationPlanBuilder's per-voxel entry. R3D-END: no tile is resolved any more, so the entry is the
 	## placeholder that carries the voxel key; a GLASS-family container still yields NO entry at all (a cracked pane's

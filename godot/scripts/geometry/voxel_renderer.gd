@@ -833,55 +833,17 @@ var _wall_base_z_index: int = 10
 ## looked at the right voxel.
 var _layers: Dictionary = {}               ## level:int -> TileMapLayer, sparse
 
-## GLASS G1 (GLASS_MASTER_PLAN §3.2) — glass cells do NOT live in `_layers`. They
-## render on their own MUL + ADD blend sublayers, one pair per level that actually
-## contains glass, drawn immediately above that level's opaque layer. Built lazily
-## by `_ensure_glass_sublayers()`; a map with no glass builds none. Rule 8 holds —
-## the voxels still arrive via `set_cell()`, only the layer's compositing changes.
-var _glass_layers: Dictionary = {}         ## level:int -> TileMapLayer (one per glass level)
-## GLASS G1 — the rasterising container (Director's "container rasterizado"): a
-## BackBufferCopy snapshots the scene just before the glass draws, and every glass
-## fragment reads THAT snapshot and applies the tint once (glass_pane.gdshader).
-## Overlapping voxel faces — the top row carries a dim top sliver, the front
-## column a dim side sliver — all read the same snapshot, so there is no
-## double-tint. Lazy.
-var _glass_backbuffer: BackBufferCopy = null
-## Task 2 pricing only — the per-level rect copies built under INFILTRAITOR_GLASS_BB.
-var _glass_bb_rects: Array = []
-var _glass_bb_refresh_queued: bool = false
-
-var _glass_composite_z: int = -9999        ## z for the backbuffer + every glass layer
-## GLASS G-D18b (Director 2026-08-31: *"no caso do vidro ser transparente, acho
-## que podemos deixar o agente ser renderizado atrás e ficar parcialmente coberto
-## pelo vidro"*). OCC-03 bumps the agent one z above the tallest opaque layer so a
-## wall never HIDES him — but glass hides nothing, so the agent should read as
-## BEHIND a pane he stands behind, faintly tinted, exactly like a guard already
-## does (`enemies_root.z_index = 10`, never bumped). room.gd calls `set_glass_over_z()`
-## with `agent.z_index + 1` so the whole glass composite (backbuffer + every pane
-## layer) sits just above him.
-var _glass_composite_z_floor: int = -9999
-## Atlas sources in `_tileset` for the glass pane atoms. GLASS G1 GEOMETRY
-## (Director's diagram, 2026-08-31): a glass voxel paints its MAIN face always,
-## its TOP face only when nothing (no glass) is above it, and its SIDE face only
-## on the frontmost column — the camera-facing end of the pane. Top and side
-## render DIM, and that dimness IS the thickness read (no invented strips, no
-## ground ledge). Painting only the exposed faces is what kills the "serrilhado"
-## — with transparency every hidden face that gets drawn shows through as a
-## doubled ghost. The rule generalises by exposure to L-walls and glass cubes.
-##
-## So four faces × four masks (main / +top / +side / +top+side) = 16 sources —
-## PER GLASS MATERIAL since G-D16 / V-B, because the atom is where a member's
-## tint index lives (its BLUE channel). Five members = 80 atoms, composed once at
-## load; the alternative, a TileMapLayer set per material, would multiply DRAW
-## SUBMISSION instead, and submission is what an event actually pays for.
-## `_glass_atom_source[material_id][face][mask]`, mask = (want_top << 1) | want_side.
-var _glass_atom_source: Dictionary = {}       ## material:String -> { Face int -> { mask:int -> source_id:int } }
-## CRACK-03 — the shard rim. "<material>|<face>|<dir>" -> source_id, composed
-## lazily; and the inverse of `_glass_atom_source`, so a placed cell can be
-## identified from the id the tilemap already holds (which is what lets the rim
-## be applied as a SWAP, with no registry and no dirty flags).
-var _glass_rim_sources: Dictionary = {}
-var _glass_source_info: Dictionary = {}       ## source_id:int -> {material, face, mask}
+## GLASS — R3D-END (END-2): the glass tile layers, their backbuffer and composite z, the pane atoms and their inverse
+## (`_glass_atom_source`, `_glass_source_info`), the shard rim atoms, the sliver dims and the sublayer shader knobs were
+## the 2D board's. The glass STATE is the store's (R3D-14); what is left here is the rim batch, the claimed openings
+## and the shaped-cell record the 3D board reads.
+## Dimness of a glass voxel's top and side faces against its main face — a LOOK calibration the Director iterates on
+## (env-overridable, `static var`). The 3D board's pane shader reads them (`Board3DLive`); the 2D atoms that first
+## carried them are gone (R3D-END END-2).
+static var GLASS_DIM_TOP: float = float(OS.get_environment("INFILTRAITOR_GLASS_DIM_TOP")) \
+	if OS.get_environment("INFILTRAITOR_GLASS_DIM_TOP") != "" else 0.60
+static var GLASS_DIM_SIDE: float = float(OS.get_environment("INFILTRAITOR_GLASS_DIM_SIDE")) \
+	if OS.get_environment("INFILTRAITOR_GLASS_DIM_SIDE") != "" else 0.78
 ## Glass cells erased since the last rim refresh, level -> Array[Vector2i].
 var _glass_rim_dirty: Dictionary = {}
 ## CRACK-04 — region anchor -> the opening claimed for it, consumed by the next
@@ -891,59 +853,6 @@ var _glass_region_openings: Dictionary = {}
 ## Rasterised once per opening and shared by every crack that uses it: there are
 ## twelve of them and a map can have hundreds of holes.
 var _glass_opening_masks: Dictionary = {}
-## CRACK-04 — every cell that currently holds a SHARD, as Vector3i(cell, level) ->
-## the rim source id.
-##
-## ⚠️ CRACK-03 SHIPPED WITHOUT THIS AND THE RIM NEVER REACHED THE SCREEN. Its
-## commit celebrated needing "no registry, no dirty flags and no per-cell state",
-## and that is exactly why: the swap writes the shard onto the tilemap, and the
-## craze that follows a hole sets ~80 voxels around it to CRACKED, whose render
-## pass re-places those same cells with the intact atom. Measured 2026-09-04 on
-## the real map — `refresh_glass_rims()` reported **12 cells cut** and
-## `count_glass_shards()` read **0** on the board a frame later. A hole never
-## heals, so the shard is re-stamped at every batch seam until the cell is erased.
-var _glass_shard_cells: Dictionary = {}
-## Back-compat alias — the SW main-only source id (diagnostics / selftest).
-var _glass_frosted_source_id: int = -1
-## GLASS G1 GEOMETRY — how far the dim top/side slivers recede into the atom, as
-## a fraction of a voxel. A half-thickness pane reads with a thin sliver; tune
-## with the capture, not by reasoning.
-const GLASS_FACE_SLIVER_FRAC: float = 0.55
-## Dimness of the top and side face slivers (rides the atom's RED channel;
-## glass_pane.gdshader multiplies by it). Director: *"diminuir o brilho das
-## faces de topo e de lateral ... para diferenciar esses planos"*.
-##
-## ⚠️ `static var` AND ENV-OVERRIDABLE SINCE 2026-09-04, because they are a LOOK
-## calibration the Director iterates on and a `const` cannot be swept. He could
-## not read the hole's topography — *"consegue criar mais contraste entre as
-## facetas, principalmente o lado interno (direito) dos voxels?"* — and the SIDE
-## sliver at 0.78 sits close enough to the main face's 1.0 that the two planes
-## barely separate.
-##
-## ⚠️ THE DIM IS BAKED INTO THE ATOM'S RED CHANNEL, so changing these needs the
-## atoms recomposed — it is not a shader uniform and a running scene will not
-## follow it. That is why the sweep is one boot per value.
-static var GLASS_DIM_TOP: float = float(OS.get_environment("INFILTRAITOR_GLASS_DIM_TOP")) \
-	if OS.get_environment("INFILTRAITOR_GLASS_DIM_TOP") != "" else 0.60
-static var GLASS_DIM_SIDE: float = float(OS.get_environment("INFILTRAITOR_GLASS_DIM_SIDE")) \
-	if OS.get_environment("INFILTRAITOR_GLASS_DIM_SIDE") != "" else 0.78
-## The five calibration knobs the glass sublayer shaders expose, mirrored here so
-## `set_glass_shader_param()` (the blind-strip capture action) can drive them and
-## every freshly-built sublayer inherits the current value. Defaults match
-## glass_shading.gdshaderinc.
-var _glass_shader_params: Dictionary = {
-	## Defaults track glass_shading.gdshaderinc — the Director's pick on the
-	## parallelogram strip was "painel 005": sheen mode, mul 0.60, add 0.20, blue.
-	"glass_mul_strength": 0.60,
-	"glass_add_strength": 0.20,
-	"glass_add_threshold": 0.55,
-	"glass_add_mode": 1.0,
-	## G-D16 / V-B — the BASE member's tint, taken from the roster rather than
-	## re-typed. It was one of three copies of 0.47/0.63/0.90 (here, the shader
-	## default, and now GlassMaterials); this leaves two, and
-	## `glass_transparency_selftest` pins those equal.
-	"glass_tint": GlassMaterials.PANE_TINT[0],
-}
 
 ## LEVEL-RENUMBER — the ground plane: the lowest level that counts as WALL rather
 ## than floor/bedrock. Stage A keeps it at 0 so the numbering is untouched; stage B
@@ -1147,80 +1056,6 @@ var _diag_slice_count: int = 0
 ## where a storefront is a few levels out of thirty-odd, it is most of the cost.
 static var ysort_probe_on: bool = OS.get_environment("INFILTRAITOR_YSORT") == "1"
 static var ysort_probe_scoped: bool = OS.get_environment("INFILTRAITOR_YSORT") == "2"
-
-
-## RENDER_ORDER_MASTER_PLAN Task 2 gate — HOW MUCH DOES THE CONTAINER COST?
-## `INFILTRAITOR_GLASS_BB` — default (unset) is today's behaviour untouched.
-##
-##   none    no backbuffer at all — the FLOOR. The pane renders wrong; that is
-##           fine and it is the point: it prices the container by removing it,
-##           the same way INFILTRAITOR_HIDE_VOXELS prices the layers.
-##   rect    one COPY_MODE_RECT BackBufferCopy per glass LEVEL, each bounded to
-##           that level's own glass extent — Option C's shape.
-##   rect2   two per level. Option C needs one per glass DEPTH BAND, and GLASS has
-##           panes at y=9 AND y=6 on the same levels, so 1-per-level is the floor
-##           of the real count and this brackets the ceiling.
-##
-## ⚠️ The rects are for PRICING. A rect-mode pane composites against a snapshot
-## taken at the wrong point in the order, so it may look wrong — the number is the
-## deliverable here, not the picture.
-static var glass_bb_mode: String = OS.get_environment("INFILTRAITOR_GLASS_BB")
-
-
-## OPTION A's clip — cut the per-pane crack sprite where a nearer opaque wall covers
-## the pane. See the occupancy builder for why this needs no shader change: the
-## sprite already cuts on `gone`.
-## DEFAULT ON since 2026-09-10 — the Director ratified Option A (*"Vamos com a A,
-## liga os três gates por padrão"*). `INFILTRAITOR_GLASS_CLIP=0` restores the uncut
-## sprite, for comparison only.
-static var glass_clip_on: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP") != "0"
-## `INFILTRAITOR_GLASS_CLIP=diag` also RENDERS THE DECISION: every glass cell the
-## rule calls hidden is repainted red, on top, so which cells were chosen stops
-## being a thing to infer from a silhouette.
-##
-## ⚠️ This exists because inferring from silhouettes failed three times in one day
-## on this track — the overlay's sawtooth, the `z + 1` reading that had to be
-## retracted, and the clip's own wedge. Each was settled only by drawing what the
-## code decided instead of looking at what it produced.
-static var glass_clip_diag: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP") == "diag"
-var _clip_diag_layers: Dictionary = {}
-var _clip_diag_queued: bool = false
-
-
-## OPTION A's other half — glass as an ORDINARY tile in its level's opaque layer
-## (RENDER_ORDER_MASTER_PLAN §10b.3). DEFAULT ON since 2026-09-10, Director-ratified
-## (§10b.10). `INFILTRAITOR_GLASS_TILE=0` restores the flat-top-z container path,
-## for comparison only — it is the path that drew glass over walls in front of it.
-##
-##     [ one opaque layer, level N ]  far wall · GLASS · near wall   ← sorted by the
-##                                                                     layer itself (Q8)
-##
-## No BackBufferCopy, no flat top z, no overlay: a `TileMapLayer`'s own draw order IS
-## iso depth order, so a glass cell placed among the walls takes its turn for free.
-##
-## ⚠️ MIRRORED, NOT MOVED — the same reason T2-1 redraws instead of splitting.
-## `_glass_layers[level]` stays the authority every glass system reads (the crack's
-## occupancy, the rim, the shard registry, `count_glass_shards()`); it is kept and
-## HIDDEN, and `_glass_tile_sync()` copies its cells into `_layers[level]`. Nothing
-## glass-shaped has to learn a new layer, which is what keeps this a gate.
-##
-## ⚠️ THE GLASS TILE CARRIES ITS OWN MATERIAL (`TileData.material`), not a branch
-## in the opaque shader. The layer splits into a new canvas item wherever the
-## material changes, in the layer's own sorted order, so the depth order survives;
-## and nothing has to guess "is this texel glass" from colour — a glass atom's RGB is
-## `(dim, dim, tint/255)`, which a yellow texel of coloured art would also match.
-##
-## ⚠️ THIS IS WHERE G-D1 IS LOST, and it is one of the two things to judge on screen:
-## a tile has a fixed blend, and without a snapshot of what is behind it the
-## coloured MULTIPLY cannot be expressed. `glass_tile.gdshader` approximates it with
-## plain alpha, exact over one reference grey — see its header.
-static var glass_tile_on: bool = OS.get_environment("INFILTRAITOR_GLASS_TILE") != "0"
-var _glass_tile_material: ShaderMaterial = null
-## level:int -> { cell:Vector2i -> source_id:int } — what the last sync copied into
-## `_layers[level]`, so a cell the glass layer lost can be taken back out without
-## touching an opaque cell that a later write put in the same place.
-var _glass_tile_mirror: Dictionary = {}
-var _glass_tile_sync_queued: bool = false
 
 
 ## Setup: builds tileset and prepares for rendering
@@ -2271,8 +2106,8 @@ func memory_census(label: String) -> void:
 		% [float(tex_used) / mb, float(buf_used) / mb, float(vid_used) / mb,
 		"   ⚠️ ALL ZERO — instrument unavailable on this renderer"
 			if tex_used == 0 and buf_used == 0 and vid_used == 0 else ""])
-	print("[MEM-CENSUS]   lazy-minted light alts: %d · layers: %d opaque, %d glass · placed cells: %d"
-		% [_minted_light_alts.size(), _layers.size(), _glass_layers.size(), _diag_total_cells])
+	print("[MEM-CENSUS]   lazy-minted light alts: %d · layers: %d opaque · placed cells: %d"
+		% [_minted_light_alts.size(), _layers.size(), _diag_total_cells])
 	print("[MEM-CENSUS]   script static memory: %.1f MB"
 		% [float(OS.get_static_memory_usage()) / mb])
 
@@ -2283,10 +2118,6 @@ func apply_debug_nudge(delta: Vector2) -> void:
 	debug_nudge += delta
 	for layer in _layers.values():
 		layer.position += delta
-	## GLASS G1 — the sublayers register pixel-exact with their opaque siblings;
-	## a nudge that moved one and not the other would split them.
-	for l in _glass_layers.values():
-		(l as TileMapLayer).position += delta
 
 
 ## Build runtime TileSet with 4 materials
@@ -2345,183 +2176,10 @@ func _build_voxel_tileset() -> void:
 			## VL-03-PERF: light-bucket alts minted lazily on first use — see
 			## _ensure_light_alt (eager minting dominated rotation cost).
 
-	## GLASS G1 GEOMETRY — 16 extra atlas sources: four faces (SW/SE/NW/NE) ×
-	## four face masks (main-only / +top / +side / +top+side). Each atom's alpha
-	## is that face's wall parallelogram (the fundamental domain of the face's
-	## voxel lattice, on its own diamond edge) so a stack tiles seam-to-seam with
-	## NO overlap (a translucent atom over a translucent one DOUBLE-TINTS the
-	## overlap, the "serrilhado"). `+top` adds the dim iso top-face sliver, `+side`
-	## the dim iso side-face sliver — the voxel's OWN faces, not invented shapes;
-	## painting only the exposed ones is what stops the ghosting. The frosted
-	## PATTERN is not in the atom — the shader samples it by world position. RGB
-	## carries the per-face dim (1.0 main, GLASS_DIM_TOP / GLASS_DIM_SIDE for the
-	## slivers); glass_pane.gdshader multiplies by it. Alpha is the silhouette.
-	_glass_atom_source.clear()
-	_glass_source_info.clear()
-	_glass_rim_sources.clear()
+	## CRACK-03/04 — a fresh board has no rim batch pending and no shaped pane cell. (R3D-END: the glass pane atoms
+	## this pass also built — sixteen sources per glass material — were the 2D board's.)
 	_glass_rim_dirty.clear()
-	_glass_shard_cells.clear()   ## CRACK-04 — a fresh board has no shards on it
 	_glass_shaped_cells.clear()
-	var ok := true
-	var next_id: int = MATERIALS.size()
-	## G-D16 / V-B — B6 loud-fail BEFORE building anything: a roster larger than
-	## the shader's tint table would build atoms whose index the shader clamps,
-	## and a sixth member silently wearing the fifth member's colour is the kind
-	## of wrongness nobody reports because it still looks like glass.
-	if GlassMaterials.FAMILY.size() > GlassMaterials.TINT_SLOTS:
-		push_error("[VoxelRenderer] GLASS-G-D16: %d glass materials but glass_pane.gdshader holds %d tints (glass_tint + glass_tint_alt[4]) — widen the array and GlassMaterials.TINT_SLOTS together, or the extra members render in the wrong colour with no error" % [
-			GlassMaterials.FAMILY.size(), GlassMaterials.TINT_SLOTS])
-	for material_id in GlassMaterials.FAMILY:
-		var tint_index: int = GlassMaterials.tint_index(material_id)
-		_glass_atom_source[material_id] = {}
-		for face in [Face.SW, Face.SE, Face.NW, Face.NE]:
-			(_glass_atom_source[material_id] as Dictionary)[face] = {}
-			for mask in range(4):
-				var want_top: bool = (mask & 0b10) != 0
-				var want_side: bool = (mask & 0b01) != 0
-				var atom := _build_glass_pane_atom(face, want_top, want_side, tint_index)
-				if atom == null:
-					ok = false
-					break
-				var src := TileSetAtlasSource.new()
-				src.texture = ImageTexture.create_from_image(atom)
-				src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
-				src.separation = Vector2i.ZERO
-				src.margins = Vector2i.ZERO
-				src.create_tile(Vector2i.ZERO)
-				_tileset.add_source(src, next_id)
-				var td: TileData = src.get_tile_data(Vector2i.ZERO, 0)
-				if td != null:
-					td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
-					td.set_custom_data("tile_name", material_id)
-					## OPTION A — the tile brings its own material into the opaque
-					## layer. Off the gate this is never set, and the glass sublayer's
-					## layer material is what shades it, exactly as before.
-					if glass_tile_on:
-						td.material = _get_glass_tile_material()
-				((_glass_atom_source[material_id] as Dictionary)[face] as Dictionary)[mask] = next_id
-				## CRACK-03 — the inverse. A placed glass cell carries only its
-				## source id, and this is what turns that id back into
-				## (material, face, mask) so the rim can be applied as a SWAP —
-				## no registry, no dirty flags, no per-cell state.
-				_glass_source_info[next_id] = {
-					"material": material_id, "face": face, "mask": mask}
-				next_id += 1
-			if not ok:
-				break
-		if not ok:
-			break
-	if ok:
-		## Back-compat alias: BASE's SW main-only source, used by diagnostics/selftest.
-		_glass_frosted_source_id = _glass_atom_source[GlassMaterials.BASE][Face.SW][0]
-	else:
-		## B6 loud-fail: without the atoms glass panes would silently disappear.
-		push_error("[VoxelRenderer] GLASS-G1: glass pane atom build failed — glass panes will not render")
-		_glass_atom_source.clear()
-		_glass_frosted_source_id = -1
-
-
-## GLASS G1 GEOMETRY — extra texture_origin offset for the pane atoms, ON TOP of
-## `voxel_texture_origin()`. It is **0** by design: `_build_glass_pane_atom`'s
-## `face_q` is byte-for-byte the material atom's own side-face parallelogram
-## (verified against `voxel_concrete.png` — alpha rows 8..36, left half), so the
-## glass renders exactly where an opaque wall would. The old default (0,20) was
-## leftover compensation for a `+shift` the atom no longer applies, and it lifted
-## every pane a level off the ground (Director, 2026-08-31: *"o bloco todo de
-## vidro está deslocado pra cima ... flutuando na base"*). `INFILTRAITOR_GLASS_
-## ATOM_NUDGE="x,y"` overrides it for a tuning pass only.
-static var _GLASS_ATOM_ORIGIN_NUDGE: Vector2i = _read_glass_atom_nudge()
-static func _read_glass_atom_nudge() -> Vector2i:
-	var raw := OS.get_environment("INFILTRAITOR_GLASS_ATOM_NUDGE")
-	if raw.contains(","):
-		var p := raw.split(",")
-		if p.size() == 2 and p[0].is_valid_int() and p[1].is_valid_int():
-			return Vector2i(p[0].to_int(), p[1].to_int())
-	return Vector2i.ZERO
-
-
-## GLASS G1 GEOMETRY — build the 32×36 glass pane atom for one face and one
-## face mask. Alpha is the silhouette, RGB carries the per-face dim.
-##
-##   MAIN face  — always. The parallelogram on the face's own diamond edge,
-##                extending VOXEL_STEP_PX down. RGB 1.0 (full see-through).
-##   TOP sliver — only when `want_top` (the voxel has no glass above it). The
-##                pane's top edge extruded into the GU by the pane's thickness
-##                (a parallelogram — its back edge stays PARALLEL to its front
-##                edge, so voxel-to-voxel the slivers meet with no sawtooth).
-##                RGB GLASS_DIM_TOP.
-##   SIDE sliver — only when `want_side` (the voxel is the frontmost column).
-##                The frontmost column's outer vertical edge extruded into the
-##                GU by the same thickness vector. RGB GLASS_DIM_SIDE.
-##
-## `d_vec` is the pane's thickness in screen space — a fraction of the depth to
-## the opposite diamond edge (SW/SE recede UP/away from the camera). The main
-## face stays crisp; a sliver fills only where the main face is absent, so
-## nothing double-covers and the container never double-tints. NW/NE slivers are
-## computed but their extrusion comes toward the camera (back walls) — the
-## tested case is SW/SE.
-## `tint_index` (G-D16 / V-B) is the member's slot in GlassMaterials.FAMILY and
-## rides the BLUE channel, which this builder has always written as a third copy
-## of the dim nothing reads. glass_pane.gdshader decodes it back with
-## `int(round(t.b * 255.0))` — exact for 8-bit, and every texel of one atom
-## carries the same value so filtering inside the atom cannot smear it.
-func _build_glass_pane_atom(face: int, want_top: bool = false, want_side: bool = false,
-		tint_index: int = 0) -> Image:
-	var w: int = GeometryCoords.VOXEL_ATOM_W          # 32
-	var h: int = GeometryCoords.VOXEL_ATOM_H          # 36
-	var step: float = GeometryCoords.VOXEL_STEP_PX    # 20
-	## Cube-atom diamond vertices, the reference every voxel atom shares.
-	var vn := Vector2(16.0, 0.0)
-	var ve := Vector2(32.0, 8.0)
-	var vs := Vector2(16.0, 16.0)
-	var vw := Vector2(0.0, 8.0)
-	var down := Vector2(0.0, step)
-	var f: float = GLASS_FACE_SLIVER_FRAC
-	## `ea`,`eb` — the face's diamond edge, `ea` the far end, `eb` the frontmost
-	## column's end. `d_vec` — the thickness extrusion into the GU (toward the
-	## opposite edge), scaled to the pane's half thickness.
-	var ea: Vector2
-	var eb: Vector2
-	var d_vec: Vector2
-	match face:
-		Face.SW: ea = vw; eb = vs; d_vec = (ve - vs) * f
-		Face.SE: ea = ve; eb = vs; d_vec = (vw - vs) * f
-		Face.NW: ea = vn; eb = vw; d_vec = (vs - vw) * f
-		Face.NE: ea = vn; eb = ve; d_vec = (vs - ve) * f
-		_: return null
-	## The main face parallelogram (diamond edge, extending `step` down).
-	var face_q: PackedVector2Array = [ea, eb, eb + down, ea + down]
-	## The top sliver: the top edge extruded into the GU by the thickness.
-	var top_q: PackedVector2Array = [ea, eb, eb + d_vec, ea + d_vec]
-	## The side sliver: the frontmost column's outer vertical edge (at `eb`)
-	## extruded into the GU by the same thickness.
-	var side_q: PackedVector2Array = [eb, eb + d_vec, eb + d_vec + down, eb + down]
-
-	var out := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	## Quantised the same way the shader reads it back, so the round-trip is a
-	## measurement rather than a hope.
-	var tint_b: float = float(clampi(tint_index, 0, 255)) / 255.0
-	for y in range(h):
-		for x in range(w):
-			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
-			var a_face: float = clampf(_signed_dist_in_quad(p, face_q) + 0.5, 0.0, 1.0)
-			var rgb: float = 1.0
-			var a: float = a_face
-			if a_face < 0.5:
-				var a_top: float = clampf(_signed_dist_in_quad(p, top_q) + 0.5, 0.0, 1.0) if want_top else 0.0
-				var a_side: float = clampf(_signed_dist_in_quad(p, side_q) + 0.5, 0.0, 1.0) if want_side else 0.0
-				if a_top >= a_side and a_top > 0.0:
-					a = a_top
-					rgb = GLASS_DIM_TOP
-				elif a_side > 0.0:
-					a = a_side
-					rgb = GLASS_DIM_SIDE
-			if a > 0.0:
-				## RED = the per-plane dim (read by the shader). GREEN = the same
-				## value, reserved for G-D19's per-voxel damage term and not read.
-				## BLUE = the tint index.
-				out.set_pixel(x, y, Color(rgb, rgb, tint_b, a))
-	return out
 
 
 ## ── CRACK-03 — THE SHARD RIM (Director, 2026-09-02) ──────────────────────────
@@ -2577,309 +2235,6 @@ static var GLASS_CUT_FACET_DIM: float = float(OS.get_environment("INFILTRAITOR_G
 	if OS.get_environment("INFILTRAITOR_GLASS_FACET_DIM") != "" else 0.35
 
 
-## The shard atom for one (material, face, mask, opening, cell offset), composed
-## and registered on first use. LAZY on purpose, and more so than before: the key
-## now carries the cell's OFFSET inside the opening, because every cell the
-## boundary crosses sees a different piece of it — there is no longer a fixed set
-## of eight shapes to enumerate. Eager composition is not merely wasteful here,
-## it is unbounded. A real scenario touches the handful of offsets its holes
-## actually have. The same pattern `_ensure_light_alt()` uses, for the same reason.
-##
-## ⚠️ THE FACE MASK IS PART OF THE KEY, and skipping it was a real bug for exactly
-## one run: the first version built main-face atoms only, on the reasoning that a
-## cell showing a top or side sliver is on the pane's outer edge. It is not — the
-## SIDE sliver marks the frontmost column of every GU, so one of the three columns
-## bordering a hole carries it whenever the hole lands on a GU boundary. Measured:
-## a 1-voxel hole cut **5** of its 8 neighbours instead of 8. The slivers survive
-## the cut for free, because `_cut_glass_rim_wedge()` only touches pixels inside
-## the main-face parallelogram.
-func _glass_rim_atom_source(material_id: String, face: int, mask: int,
-		opening_id: String, dr: int, dl: int) -> int:
-	var key := "%s|%d|%d|%s|%d|%d" % [material_id, face, mask, opening_id, dr, dl]
-	if _glass_rim_sources.has(key):
-		return _glass_rim_sources[key]
-	var atom := _build_glass_pane_atom(face, (mask & 0b10) != 0, (mask & 0b01) != 0,
-		GlassMaterials.tint_index(material_id))
-	if atom == null:
-		_glass_rim_sources[key] = -1
-		return -1
-	_cut_glass_opening(atom, opening_id, dr, dl, face)
-	var src := TileSetAtlasSource.new()
-	src.texture = ImageTexture.create_from_image(atom)
-	src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
-	src.separation = Vector2i.ZERO
-	src.margins = Vector2i.ZERO
-	src.create_tile(Vector2i.ZERO)
-	var id: int = _next_free_tileset_source_id()
-	_tileset.add_source(src, id)
-	var td: TileData = src.get_tile_data(Vector2i.ZERO, 0)
-	if td != null:
-		## The SAME origin the pane atoms take — a rim shard that registered half a
-		## pixel off would read as a seam along every hole.
-		td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
-		td.set_custom_data("tile_name", material_id)
-		## OPTION A — a shard is a glass tile too; see the pane atoms.
-		if glass_tile_on:
-			td.material = _get_glass_tile_material()
-	_glass_rim_sources[key] = id
-	return id
-
-
-## Cut one cell's piece of an OPENING out of `atom`'s alpha, in the FACE's own
-## (u, v) coordinates. `(dr, dl)` is this cell's integer offset from the struck
-## one, so the polygon is evaluated in the opening's own frame and the cell only
-## ever sees the part of the boundary that crosses it.
-##
-## The main face is the parallelogram [ea, eb, eb+down, ea+down], so `u` runs
-## along the diamond edge and `v` straight down. Measured, not assumed: for all
-## four faces `ea -> eb` is the canvas direction of the RUN step, so u+ is run+
-## and v+ (down) is level−. That is why one polygon serves every face.
-##
-## ⚠️ ONLY THE MAIN-FACE PARALLELOGRAM IS TOUCHED, and that is load-bearing: the
-## top and side SLIVERS mark the frontmost column of a GU, so cutting them would
-## make a shard on a GU boundary stop reading as one voxel thick. CRACK-03 paid
-## for this once already, in the atom key.
-func _cut_glass_opening(atom: Image, opening_id: String, dr: int, dl: int, face: int) -> void:
-	var poly: PackedVector2Array = GlassOpening.polygon(opening_id)
-	if poly.is_empty():
-		return
-	var cell := Vector2(float(dr), float(dl))
-	_cut_glass_face_region(atom, face, func(off: Vector2) -> bool:
-		return GlassOpening.contains(poly, off + cell))
-	_cut_glass_opening_slivers(atom, poly, cell, face)
-	_shade_glass_cut_facet(atom, poly, cell, face)
-
-
-## ── THE SLIVERS INSIDE THE HOLE ──────────────────────────────────────────────
-##
-## (Director, 2026-09-04: *"parece que tem uma faixa vertical no centro do buraco
-## […] o vidro deveria ter só uma camada simples."*)
-##
-## ⚠️ CRACK-03 SPARED THE SLIVERS ON PURPOSE AND THAT WAS RIGHT FOR THE WRONG
-## SCOPE. Its cut touched only the main-face parallelogram so that a shard sitting
-## on a GU boundary would still read one voxel THICK — a real requirement, and the
-## reason its atom key had to carry the face mask. But the side sliver is a
-## VERTICAL strip on the frontmost column of a GU, so where a hole crosses one it
-## survives standing in mid-air inside the opening: the vertical band he marked.
-##
-## The rule is not "spare the slivers", it is "spare the slivers OUTSIDE the
-## hole". A sliver pixel belongs to one edge of the voxel, so it is tested at that
-## EDGE's own (run, level): the top sliver along the cell's top edge, the side
-## sliver down the cell's front edge. Inside the opening it goes; outside it stays
-## and the shard keeps its thickness.
-## `invert` is G4-3's one difference: an OPENING cuts what is inside the polygon,
-## a REMNANT cuts what is outside it. Everything else about the two is identical,
-## so this is a flag rather than a second copy of the sliver basis — a second copy
-## of that inversion is exactly how a shear bug gets in (CRACK-01 shipped one).
-func _cut_glass_opening_slivers(atom: Image, poly: PackedVector2Array, cell: Vector2,
-		face: int, invert: bool = false) -> void:
-	var vn := Vector2(16.0, 0.0)
-	var ve := Vector2(32.0, 8.0)
-	var vs := Vector2(16.0, 16.0)
-	var vw := Vector2(0.0, 8.0)
-	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
-	var f: float = GLASS_FACE_SLIVER_FRAC
-	var ea: Vector2
-	var eb: Vector2
-	var d_vec: Vector2
-	match face:
-		Face.SW: ea = vw; eb = vs; d_vec = (ve - vs) * f
-		Face.SE: ea = ve; eb = vs; d_vec = (vw - vs) * f
-		Face.NW: ea = vn; eb = vw; d_vec = (vs - vw) * f
-		Face.NE: ea = vn; eb = ve; d_vec = (vs - ve) * f
-		_: return
-	## The same three quads `_build_glass_pane_atom()` composes from.
-	var face_q: PackedVector2Array = [ea, eb, eb + down, ea + down]
-	var top_q: PackedVector2Array = [ea, eb, eb + d_vec, ea + d_vec]
-	var side_q: PackedVector2Array = [eb, eb + d_vec, eb + d_vec + down, eb + down]
-	var e_u: Vector2 = eb - ea
-	var det: float = e_u.x * down.y - e_u.y * down.x
-	if absf(det) < 0.0001:
-		return
-	for y in range(atom.get_height()):
-		for x in range(atom.get_width()):
-			var c := atom.get_pixel(x, y)
-			if c.a <= 0.0:
-				continue
-			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
-			## Main face is already handled; only the slivers are left.
-			if _signed_dist_in_quad(p, face_q) >= 0.0:
-				continue
-			var in_top: bool = _signed_dist_in_quad(p, top_q) >= 0.0
-			var in_side: bool = _signed_dist_in_quad(p, side_q) >= 0.0
-			if not in_top and not in_side:
-				continue
-			## Project onto the face's own basis to recover which point of which
-			## EDGE this sliver pixel belongs to.
-			var px: Vector2 = p - ea
-			var u: float = (px.x * down.y - px.y * down.x) / det
-			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
-			## Top sliver: run varies, level is the cell's top. Side sliver: run is
-			## the cell's front edge, level varies.
-			var off := Vector2(clampf(u, 0.0, 1.0) - 0.5, 0.5) if in_top \
-				else Vector2(0.5, 0.5 - clampf(v, 0.0, 1.0))
-			if GlassOpening.contains(poly, off + cell) != invert:
-				atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
-
-
-## ── CRACK-04 — THE CUT'S OWN FACET ───────────────────────────────────────────
-##
-## (Director, 2026-09-04, on a capture where the hole still read as a square:
-## *"os voxels em si não tem recorte. Observe que eles precisaram de uma
-## adaptação nas facetas para ficarem nesse formato […] Não basta apenas recortar
-## o voxel."*)
-##
-## ⚠️ REMOVING ALPHA IS NOT A SHAPE, AND THAT IS THE WHOLE FINDING. A cut glass
-## voxel reveals whatever is behind it — on a two-pane window, more glass — so the
-## silhouette the cut makes has no edge for the eye to land on and the hole goes on
-## reading as the one fully-destroyed cell. Measured the same day from the other
-## direction: sweeping `GLASS_DIM_TOP`/`GLASS_DIM_SIDE` across their whole range
-## moved 17 296 px of the frame and **3.47% of a 40 px box around the bore**,
-## because the cells bordering a hole have no sliver to dim. There was no facet
-## there to make contrast with.
-##
-## So the glass immediately OUTSIDE the boundary — the pane's fractured thickness,
-## seen edge-on — is written dark, into the same RED channel the top and side
-## slivers already ride. No new render path, no new uniform: `glass_pane.gdshader`
-## multiplies by it exactly as it does for them.
-##
-## ⚠️ IT IS NOT G-D26'S MOLDURA. That rule bans a per-voxel change to a property
-## read CONTINUOUSLY across the pane, because the untouched neighbour then draws
-## the cell boundary. This band follows the CUT, not the cell: it exists only where
-## the opening's edge passes, is the same shade on both sides of any cell boundary
-## it crosses, and an uncut voxel has none of it at all.
-func _shade_glass_cut_facet(atom: Image, poly: PackedVector2Array, cell: Vector2,
-		face: int, invert: bool = false) -> void:
-	if GLASS_CUT_FACET_WIDTH <= 0.0:
-		return
-	_shade_glass_face_region(atom, face, func(off: Vector2) -> float:
-		var p: Vector2 = off + cell
-		## `invert` — for a REMNANT the glass that was cut away is OUTSIDE the
-		## polygon, so the side to skip is the other one. The facet still follows
-		## the CUT and not the cell, which is what keeps it out of G-D26's moldura
-		## rule in both directions.
-		if GlassOpening.contains(poly, p) != invert:
-			return -1.0    ## the side that was cut away — nothing to bevel
-		var d: float = GlassOpening.distance_to_edge(poly, p)
-		if d > GLASS_CUT_FACET_WIDTH:
-			return -1.0
-		## Darkest at the very edge, easing back to the pane over the band, so the
-		## facet reads as a bevel rather than as a painted outline.
-		return lerpf(GLASS_CUT_FACET_DIM, 1.0, d / GLASS_CUT_FACET_WIDTH))
-
-
-## Walk the main face's pixels, handing each one its offset in VOXELS from the
-## cell's centre, and clear the alpha wherever `is_inside` says the hole is.
-## Factored out because it is the one place the face basis is inverted, and a
-## second copy of that inversion is how a shear bug gets in (CRACK-01 shipped
-## one: the GROUND-plane inverse on a WALL face, 1.25 voxels of error per level).
-func _cut_glass_face_region(atom: Image, face: int, is_inside: Callable) -> void:
-	var w: int = atom.get_width()
-	var h: int = atom.get_height()
-	var vn := Vector2(16.0, 0.0)
-	var ve := Vector2(32.0, 8.0)
-	var vs := Vector2(16.0, 16.0)
-	var vw := Vector2(0.0, 8.0)
-	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
-	var ea: Vector2
-	var eb: Vector2
-	match face:
-		Face.SW: ea = vw; eb = vs
-		Face.SE: ea = ve; eb = vs
-		Face.NW: ea = vn; eb = vw
-		Face.NE: ea = vn; eb = ve
-		_: return
-	var e_u: Vector2 = eb - ea
-	## (u, v) from a pixel: invert the 2x2 [e_u | down].
-	var det: float = e_u.x * down.y - e_u.y * down.x
-	if absf(det) < 0.0001:
-		return
-	for y in range(h):
-		for x in range(w):
-			var px: Vector2 = Vector2(float(x) + 0.5, float(y) + 0.5) - ea
-			var u: float = (px.x * down.y - px.y * down.x) / det
-			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
-			if u < 0.0 or u > 1.0 or v < 0.0 or v > 1.0:
-				continue
-			## (u, v) -> voxels from the CELL's centre. u+ is run+; v grows DOWN
-			## and level grows UP, hence the flip on y.
-			if not is_inside.call(Vector2(u - 0.5, 0.5 - v)):
-				continue
-			var c := atom.get_pixel(x, y)
-			if c.a > 0.0:
-				atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
-
-
-## The same face walk as `_cut_glass_face_region()`, but writing the RED/GREEN
-## channels instead of clearing alpha. `shade` returns the dim to write, or a
-## negative to leave the pixel alone.
-##
-## ⚠️ RED AND GREEN TOGETHER. `_build_glass_pane_atom()` writes them identical and
-## the shader reads RED; GREEN is reserved and unread. Writing only one would work
-## today and diverge the day something starts reading the other.
-func _shade_glass_face_region(atom: Image, face: int, shade: Callable) -> void:
-	var w: int = atom.get_width()
-	var h: int = atom.get_height()
-	var vn := Vector2(16.0, 0.0)
-	var ve := Vector2(32.0, 8.0)
-	var vs := Vector2(16.0, 16.0)
-	var vw := Vector2(0.0, 8.0)
-	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
-	var ea: Vector2
-	var eb: Vector2
-	match face:
-		Face.SW: ea = vw; eb = vs
-		Face.SE: ea = ve; eb = vs
-		Face.NW: ea = vn; eb = vw
-		Face.NE: ea = vn; eb = ve
-		_: return
-	var e_u: Vector2 = eb - ea
-	var det: float = e_u.x * down.y - e_u.y * down.x
-	if absf(det) < 0.0001:
-		return
-	for y in range(h):
-		for x in range(w):
-			var px: Vector2 = Vector2(float(x) + 0.5, float(y) + 0.5) - ea
-			var u: float = (px.x * down.y - px.y * down.x) / det
-			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
-			if u < 0.0 or u > 1.0 or v < 0.0 or v > 1.0:
-				continue
-			var c := atom.get_pixel(x, y)
-			if c.a <= 0.0:
-				continue
-			var dim: float = shade.call(Vector2(u - 0.5, 0.5 - v))
-			if dim < 0.0:
-				continue
-			atom.set_pixel(x, y, Color(c.r * dim, c.g * dim, c.b, c.a))
-
-
-## The next unused TileSet source id. The glass atoms take a contiguous run from
-## MATERIALS.size(); the light alts live on ALTERNATIVES, not on sources, so this
-## only has to clear whatever is already registered.
-func _next_free_tileset_source_id() -> int:
-	var id: int = MATERIALS.size() + 1
-	while _tileset.has_source(id):
-		id += 1
-	return id
-
-
-## Signed distance from `p` to the boundary of convex quad `q` (CW or CCW):
-## positive inside, negative outside, magnitude ≈ px to the nearest edge.
-func _signed_dist_in_quad(p: Vector2, q: PackedVector2Array) -> float:
-	var centroid := (q[0] + q[1] + q[2] + q[3]) * 0.25
-	var d: float = 1e9
-	for i in range(4):
-		var a := q[i]
-		var b := q[(i + 1) % 4]
-		var edge := b - a
-		var n := Vector2(-edge.y, edge.x).normalized()
-		## Point the normal inward (toward the centroid).
-		if n.dot(centroid - a) < 0.0:
-			n = -n
-		d = min(d, n.dot(p - a))
-	return d
-
-
 ## Render all slices and junction columns from registry
 ## Creates cells in layers based on voxel positions and levels
 func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
@@ -2891,10 +2246,6 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 	_diag_null_edge_cells = 0
 
 	_diag_slice_count = 0
-	## RENDER_ORDER seam cull — the exposure the side sliver asks about, built from
-	## geometry BEFORE any slice is placed, so the answer never depends on the order.
-	if glass_seam_cull_on:
-		_build_glass_seam_index(registry)
 	# Iterate all slices and render their voxels
 	for slice in registry.all_slices():
 		_diag_slice_count += 1
@@ -2975,96 +2326,6 @@ func _slice_is_glassy(slice: Slice) -> bool:
 	return false
 
 
-## GLASS G-D9 — the highest RENDER level of this slice whose material is glass,
-## or a large negative sentinel when the slice has no glass at all. For a plain
-## glass pane this is simply the slice top; for a brick-capped window it is one
-## level below the head band.
-func _slice_top_glass_level(slice: Slice) -> int:
-	if not _slice_is_glassy(slice):
-		return -99999
-	var base: int = GeometryCoords.storey_level_base(slice.start_storey)
-	var span: int = slice.storey_count * GeometryCoords.LEVELS_PER_STOREY
-	if not slice.has_material_bands():
-		return base + span - 1
-	for rel in range(span - 1, -1, -1):
-		if GlassMaterials.is_glass(slice.material_at(rel)):
-			return base + rel
-	return -99999
-
-
-## GLASS G1 GEOMETRY — the face mask for one glass voxel. Bit 1 = paint the dim
-## top sliver: nothing (no glass) above it — for a lone pane, the top level. Bit
-## 0 = paint the dim side sliver: the frontmost column. NW/SE faces vary in the
-## y grid coord, NE/SW in x; both screen axes carry a +south component, so the
-## column nearest the camera is always pos 7 (max coord along the varying axis).
-func _glass_face_mask(grid_pos: Vector2i, level: int, face: int, top_level: int) -> int:
-	var mask: int = 0
-	if level == top_level:
-		mask |= 0b10
-	var pos: int = posmod(grid_pos.y, 8) if (face == Face.NW or face == Face.SE) \
-		else posmod(grid_pos.x, 8)
-	if pos == GeometryCoords.VOXELS_PER_UNIT_AXIS - 1 and not glass_no_side_test \
-			and not (glass_seam_cull_on and _glass_side_covered(grid_pos, level, face)):
-		mask |= 0b01
-	return mask
-
-
-## RENDER_ORDER seam test, `INFILTRAITOR_GLASS_NO_SIDE=1` — no side sliver anywhere.
-## A KILL SWITCH, not a fix: it also strips the real end of a pane. It exists to
-## answer one question before anything is built — are the GU-boundary bands (A) and
-## triangles (B) the side sliver of `pos == 7` overlapping the next panel?
-static var glass_no_side_test: bool = OS.get_environment("INFILTRAITOR_GLASS_NO_SIDE") == "1"
-
-
-## RENDER_ORDER seam cull — the fix the kill switch above pointed at. DEFAULT ON since
-## 2026-09-10, Director-ratified with Option A. `INFILTRAITOR_GLASS_SEAM_CULL=0`
-## restores the pos-7-of-every-GU sliver, for comparison only.
-##
-## The ratified rule (G1 GEOMETRY, Director's diagrams 2026-08-31) is an EXPOSED-FACE
-## cull: a glass voxel paints its side face only where that face is exposed. The code
-## approximated "exposed" as `pos == 7` — the frontmost column of EVERY GU — which is
-## only right for a one-GU pane. On a pane of N panels the side face at each internal
-## GU boundary is hidden by the next panel's glass, and painting it anyway put a
-## translucent sliver over the neighbour's first voxel: two glass fragments on one
-## pixel. That is A's dark band (no container) and B's triangles (the sliver slants
-## across a level band into the next container). Measured: with no side sliver at all
-## both are gone, and so is today's faint GU line.
-##
-## Asked of GEOMETRY, not of the tilemap: the neighbour GU may not be placed yet when
-## this voxel is, so a tilemap answer would depend on render order.
-##
-## The index is built in `render()` and kept current by `_expose_seam_neighbour()` on
-## every glass erase — which also gives a pos-7 voxel its side sliver back when its
-## pos-0 neighbour dies, locally. Not by a full render: the only ones are map load and
-## rotation, and one after a grenade would repaint the map outside the pre-cooked plan.
-static var glass_seam_cull_on: bool = OS.get_environment("INFILTRAITOR_GLASS_SEAM_CULL") != "0"
-## Vector3i(grid x, grid y, level) -> the slice FACE of the standing glass voxel there.
-var _glass_seam_index: Dictionary = {}
-
-
-func _build_glass_seam_index(registry: EdgeRegistry) -> void:
-	_glass_seam_index.clear()
-	if registry == null:
-		return
-	for slice in registry.all_slices():
-		if not _slice_is_glassy(slice):
-			continue
-		var base: int = GeometryCoords.storey_level_base(slice.start_storey)
-		var cells: PackedInt32Array = VoxelStore.cells_of(slice)
-		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
-			if (cells[o + 3] & 1) == 1 and GlassMaterials.is_glass(slice.material_at(cells[o + 2] - base)):
-				_glass_seam_index[Vector3i(cells[o], cells[o + 1], cells[o + 2])] = slice.face
-
-
-## True when the next cell along the run, at the same level, holds standing glass of
-## the SAME face — the pane continues, so this voxel's side face is not exposed. A
-## different face there (an L-corner) leaves the side exposed, as before.
-func _glass_side_covered(grid_pos: Vector2i, level: int, face: int) -> bool:
-	var step := Vector2i(0, 1) if (face == Face.NW or face == Face.SE) else Vector2i(1, 0)
-	var n: Vector2i = grid_pos + step
-	return int(_glass_seam_index.get(Vector3i(n.x, n.y, level), -1)) == face
-
-
 ## Render a junction column (BAKE-FIX-02: mirror-at-the-column implementation)
 ## By default: mirrors the neighboring wall voxel's atom (D-BAKE-2)
 ## If override_material is set and facade_enabled=false: renders flat material-only (D-BAKE-3)
@@ -3112,7 +2373,7 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
                      slice_face: int = 0, flat_baked: bool = false,
                      zone_material: String = "",
                      surface_class: int = BakePolicyClass.SurfaceClass.SLICE,
-                     apply: bool = true, glass_mask: int = 0) -> Dictionary:
+                     apply: bool = true, _glass_mask: int = 0) -> Dictionary:
 	# D17: get_layer() routes negative levels to _negative_voxel_layers — the
 	# caller must have ensured the layer first (_ensure_voxel_layers() for
 	# level >= 0, _ensure_negative_voxel_layer() for level < 0), same contract
@@ -3337,41 +2598,12 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 			source_id = 0  # Fallback to concrete
 		atlas_coords = Vector2i.ZERO
 
-	## GLASS G1 — a glass VERTICAL face does not live on the opaque layer. Route it
-	## to this level's MUL/ADD blend sublayers so the background shows through
-	## (G-D1). `damage_variant_material()` returns "glass" for every visible glass
-	## state (D22: no marked tier), so this catches wall slices, panels and the
-	## vertical faces of a glass block. `flat_baked` HORIZONTAL glass — a roof or a
-	## glazed floor zone — stays opaque for G1: a see-through roof is out of scope
-	## and it kept the roof-coverage geometry intact. The sublayers build lazily,
-	## so a map with no vertical glass builds none.
-	if GlassMaterials.is_glass(material_name) and not _glass_atom_source.is_empty() and not flat_baked:
-		## GLASS G1 GEOMETRY — one of the four per-face masks (main / +top / +side
-		## / +top+side). The main face is always present; the dim slivers are
-		## added only where the voxel's top or camera-facing side is exposed. The
-		## container lets the atoms overlap without tint².
-		var member_atoms: Dictionary = _glass_atom_source.get(material_name,
-			_glass_atom_source.get(GlassMaterials.BASE, {}))
-		var face_atoms: Dictionary = member_atoms.get(slice_face, {})
-		var glass_src: int = int(face_atoms.get(glass_mask, face_atoms.get(0, _glass_frosted_source_id)))
-		if glass_src < 0:
-			glass_src = _glass_frosted_source_id
-		if not apply:
-			## ⚠️ `glass_sublayer` IS PART OF THE ANSWER, NOT A DECORATION — the id
-			## above belongs on `_glass_layers[level]`, and a caller that writes it
-			## to the OPAQUE layer gets a flat YELLOW rectangle with no error
-			## anywhere (GLASS-OLIVE, 2026-09-06). The glass atom's RGB is
-			## `(dim, dim, tint_index / 255)` — data `glass_pane.gdshader` decodes
-			## and `voxel_face_shading.gdshader` renders literally, so R == G and
-			## B ~= 0. Every resolve-only caller assumed "opaque layer" because the
-			## dict gave it no way to ask; this is that way. The routing rule stays
-			## in this one place — a caller re-deriving it from `is_glass()` would
-			## also have to re-derive `flat_baked` and `_glass_atom_source`, which
-			## is three copies of one decision.
-			return {"source_id": glass_src, "atlas_coords": Vector2i.ZERO,
-				"alternative_id": 0, "glass_sublayer": true}
-		## R3D-14 — nothing is placed: the 3D board draws the pane from its claim.
-		note_external_write(level, grid_pos)
+	## GLASS G1 — a glass VERTICAL face never lives on the opaque layer: the 3D board draws the pane from its claim
+	## (R3D-14), and nothing places it. `flat_baked` HORIZONTAL glass — a roof or a glazed floor zone — stays opaque,
+	## as G1 ruled. (R3D-END END-2: the pane atoms and the `glass_sublayer` resolve answer went with the 2D board.)
+	if GlassMaterials.is_glass(material_name) and not flat_baked:
+		if apply:
+			note_external_write(level, grid_pos)
 		return {}
 
 	if not apply:
@@ -3386,8 +2618,6 @@ func _set_voxel_cell(grid_pos: Vector2i, level: int, material_name: String,
 	## repaint left 3 144 cells disagreeing with a full apply without this.
 	note_external_write(level, grid_pos)
 	return {}
-
-
 
 
 ## BAKE-FIX-06: Find the neighbor wall voxel adjacent to a junction column
@@ -4739,16 +3969,15 @@ func flush_cell_soot() -> int:
 ## drawn by the voxel shader inherits the atom's `dim`, the coverage alpha and the
 ## quad seams, which is why the look was rejected three times.
 ##
-## A crack is now a NODE — one `GlassCrackSprite` per event, parented into the
-## glass composite so it rides `_glass_composite_z` and G-D18b still holds. What
-## the renderer owns here is the registry: enough to answer G-D24's crossing test
-## geometrically (§13.1's one rewritten piece) and, from S-3, to rebuild the
-## sprites after a perspective flip.
-const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
+## A crack is a RECORD — one per event, carrying its `GlassCrackParams` (every shader parameter, as data), which
+## `GlassCrackMirror3D` draws on the 3D board (R3D-END: the 2D `GlassCrackSprite` it was until then is gone). What the
+## renderer owns here is the registry: enough to answer G-D24's crossing test geometrically (§13.1's one rewritten
+## piece) and, from S-3, to rebuild the cracks after a perspective flip.
+const GlassCrackParamsClass = preload("res://godot/scripts/systems/destruction/glass_crack_params.gd")
 
-## Every live crack, in creation order. One entry per sprite:
+## Every live crack, in creation order. One entry per event:
 ##   id, pane_id, run_axis, wide, impact_run, impact_level, radius (Vector2i),
-##   sprite (GlassCrackSprite)
+##   crack (GlassCrackParams), params (its Dictionary)
 var _glass_cracks: Array = []
 ## B-2 — so the "B-3 owes the art" note is printed once per boot, not once per
 ## crazed pane. A blast can craze several.
@@ -4760,46 +3989,7 @@ var _glass_craze_tile_cache: Texture2D = null
 ## refilled by `_respawn_base_openings()` replaying them.
 var _glass_applied_openings: Array = []
 var _glass_crack_next_id: int = 0
-var _glass_crack_root: Node2D = null
-var _glass_crack_shader: Shader = null
 var _glass_crack_sheets: Dictionary = {}   ## width:String -> Texture2D
-
-
-## The container the sprites live in — a direct child of the renderer, so a
-## sprite's transform origin is in the same space `glass_cell_face_pos()` answers
-## in. Kept LAST in the child list at `_glass_composite_z`, which is what puts the
-## web over every glass pane layer (they share the z; tree order decides).
-func _ensure_glass_crack_root() -> Node2D:
-	if _glass_crack_root != null and is_instance_valid(_glass_crack_root):
-		return _glass_crack_root
-	_glass_crack_root = Node2D.new()
-	_glass_crack_root.name = "glass_crack_root"
-	_apply_glass_composite_z(_glass_crack_root)
-	add_child(_glass_crack_root)
-	move_child(_glass_crack_root, -1)
-	return _glass_crack_root
-
-
-## ⚠️ `_glass_composite_z` STARTS AT A SENTINEL, AND THE ENGINE REJECTS IT.
-## -9999 is below `CANVAS_ITEM_Z_MIN` (-4096), so assigning it prints
-## `Condition "p_z < RenderingServer::CANVAS_ITEM_Z_MIN" is true` and leaves the
-## node at 0. The glass LAYERS never hit this because `_ensure_glass_sublayers()`
-## establishes the real z on its first line; the crack root can be asked for
-## before any of that has happened. Skipping the assignment leaves the node
-## relative to its parent, which is the honest answer for "no composite z yet".
-func _apply_glass_composite_z(node: CanvasItem) -> void:
-	if _glass_composite_z > RenderingServer.CANVAS_ITEM_Z_MIN:
-		node.z_index = _glass_composite_z
-
-
-## Re-assert the crack root's place at the top of the glass composite. Called
-## wherever the glass layers are re-ordered, for the same reason they are: an
-## opaque layer added later would otherwise draw over them.
-func _lift_glass_crack_root() -> void:
-	if _glass_crack_root == null or not is_instance_valid(_glass_crack_root):
-		return
-	_apply_glass_composite_z(_glass_crack_root)
-	move_child(_glass_crack_root, -1)
 
 
 ## The fracture sheet for one width (G-D14's `tight` / `wide`), cached. Loaded
@@ -4822,69 +4012,6 @@ func _glass_crack_sheet(opening_id: String, variant: int) -> Texture2D:
 		push_error("[VoxelRenderer] CRACK-04: fracture sheet %s failed to load — the crack will not draw" % path)
 	_glass_crack_sheets[path] = tex
 	return tex
-
-
-## The renderer-local position of one glass cell's MAIN FACE CENTRE — the point a
-## crack radiates from, and the origin a crack sprite is placed at.
-##
-## ⚠️ RENDERER-LOCAL, not global (CRACK-01 read the layer's GLOBAL origin because
-## the old shader compared it against `v_glass_world`). The renderer is added at
-## an identity transform, so the two agree today; asking for the local one is what
-## makes that an assumption the sprite does not carry.
-##
-## Uses the level's own glass layer when it exists (its position already carries
-## the per-level VOXEL_STEP_PX offset); falls back to the same formula
-## `_build_glass_sublayer_node()` uses, so a level with no layer yet still answers.
-func glass_cell_face_pos(level: int, cell: Vector2i, face: int = Face.SW) -> Vector2:
-	var centre: Vector2 = glass_crack_face_centre(face)
-	var layer := _glass_layers.get(level) as TileMapLayer
-	if layer != null:
-		return layer.position + layer.map_to_local(cell) + centre
-	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
-	var origin := Vector2(
-		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
-		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y \
-			- GeometryCoords.VOXEL_STEP_PX * float(relative_level(level)))
-	## map_to_local's basis, written out (e1 = (16, 8), e2 = (-16, 8)).
-	return origin + Vector2(float(cell.x - cell.y) * 16.0, float(cell.x + cell.y) * 8.0) \
-		+ centre
-
-
-## From `map_to_local(cell)` to the centre of the voxel's MAIN FACE — the point a
-## crack radiates from, and the point the OPENING is centred on.
-##
-## ⚠️ IT IS PER FACE, AND IT WAS A SINGLE CONSTANT `(0, -6)` UNTIL 2026-09-04.
-## The old derivation took the quad's own centre in x: *"the main face occupies
-## atom rows 8..36 of the 32x36 quad, so its centre is top_left + (16, 22)"*. The
-## rows were right and the column was not — a face occupies HALF the quad's width,
-## because its diamond edge runs from one vertex to the next. For SW that is
-## `vw -> vs`, x 0..16, so the centre is at atom x=8 and the constant put the
-## sheet **8 px to the right of the hole** — half a run step, on every crack in
-## the game, forever. The Director found it by outlining the two shapes on one
-## frame (red the voxels, yellow the decal) once they were finally the same
-## polygon and any difference had to be a coordinate error.
-##
-## Derived from the SAME `ea`/`eb`/`down` the atom builder composes the face from,
-## so the two cannot disagree:
-##   SW (-8, -6)   SE (+8, -6)   NW (-8, -14)   NE (+8, -14)
-static func glass_crack_face_centre(face: int) -> Vector2:
-	var vn := Vector2(16.0, 0.0)
-	var ve := Vector2(32.0, 8.0)
-	var vs := Vector2(16.0, 16.0)
-	var vw := Vector2(0.0, 8.0)
-	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
-	var ea: Vector2
-	var eb: Vector2
-	match face:
-		Face.SW: ea = vw; eb = vs
-		Face.SE: ea = ve; eb = vs
-		Face.NW: ea = vn; eb = vw
-		Face.NE: ea = vn; eb = ve
-		_: return Vector2.ZERO
-	## The parallelogram's centroid, minus `map_to_local`'s own atom reference
-	## (16, 28) — the offset the caller adds it to.
-	var centroid: Vector2 = (ea + eb + (eb + down) + (ea + down)) * 0.25
-	return centroid - Vector2(16.0, 28.0)
 
 
 ## G-D24's test, now GEOMETRIC (§13.1 — the one piece of CRACK-01 that had to be
@@ -4923,11 +4050,6 @@ func glass_crack_covering(pane_id: String, run: int, level: int) -> int:
 ## impact_cell, radius, span, pane_lo, pane_hi. Returns the new crack's id, or 0
 ## if the art or the shader is missing (already loud-failed by then).
 func spawn_glass_crack(spec: Dictionary) -> int:
-	if _glass_crack_shader == null:
-		_glass_crack_shader = load("res://godot/shaders/glass_crack.gdshader") as Shader
-		if _glass_crack_shader == null:
-			push_error("[VoxelRenderer] CRACK-02: glass_crack.gdshader failed to load — no crack will draw")
-			return 0
 	var wide: bool = bool(spec.get("wide", false))
 	var opening_id: String = String(spec.get("opening", ""))
 	## ⚠️ A CRACK WITH NO HOLE STILL NEEDS A SHEET, AND WHICH ONE IS NOT DECIDED
@@ -4941,12 +4063,8 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 	var sheet: Texture2D = _glass_crack_sheet(sheet_opening, int(spec.get("variant", 0)))
 	if sheet == null:
 		return 0
-	var sprite := GlassCrackSpriteClass.new()
-	sprite.setup(sheet, spec["span"],
-		glass_cell_face_pos(int(spec["impact_level"]), spec["impact_cell"],
-			int(spec.get("face", Face.SW))),
-		int(spec["run_axis"]), spec["pane_lo"], spec["pane_hi"], _glass_crack_shader)
-	_ensure_glass_crack_root().add_child(sprite)
+	var crack := GlassCrackParamsClass.new()
+	crack.setup(sheet, spec["span"], spec["pane_lo"], spec["pane_hi"])
 	_glass_crack_next_id += 1
 	var rec := {
 		"id": _glass_crack_next_id,
@@ -4960,15 +4078,15 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 		"radius": spec["radius"],
 		"pane_lo": spec["pane_lo"],
 		"pane_hi": spec["pane_hi"],
-		"sprite": sprite,
-		## R3D-9: the crack as data — the 3D board draws from this (it is the sprite's own Dictionary, so it follows
-		## every later `set_occupancy()` / `set_opening()` / `set_hole_cut()`), never from the sprite.
-		"params": sprite.params,
+		"crack": crack,
+		## R3D-9: the crack as data — the 3D board draws from this (it is the params' own Dictionary, so it follows
+		## every later `set_occupancy()` / `set_opening()` / `set_hole_cut()`).
+		"params": crack.params,
 		"visible": true,
 		"opening": String(spec.get("opening", "")),
 	}
 	_glass_cracks.append(rec)
-	sprite.set_hole_cut(_glass_crack_hole_cut)
+	crack.set_hole_cut(_glass_crack_hole_cut)
 	## CRACK-04 — the sheet's inner void IS the opening this hole was cut with.
 	## An empty id is the pane that only CRAZED: no hole, so no void, and the sheet
 	## keeps its whole centre. That is G-D33's rule arriving as a consequence of
@@ -4976,7 +4094,7 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 	if opening_id != "":
 		var m: Dictionary = _glass_opening_mask(opening_id)
 		if not m.is_empty():
-			sprite.set_opening(m["texture"], m["origin"], m["size"])
+			crack.set_opening(m["texture"], m["origin"], m["size"])
 	_build_crack_occupancy(rec)
 	return _glass_crack_next_id
 
@@ -4995,11 +4113,6 @@ func spawn_glass_crack(spec: Dictionary) -> int:
 ## change anywhere. `INFILTRAITOR_GLASS_CRAZE_SHEET` overrides the key, which is
 ## how the demo photographs the SEAM before the art exists.
 func spawn_glass_craze(spec: Dictionary) -> int:
-	if _glass_crack_shader == null:
-		_glass_crack_shader = load("res://godot/shaders/glass_crack.gdshader") as Shader
-		if _glass_crack_shader == null:
-			push_error("[VoxelRenderer] B-2: glass_crack.gdshader failed to load — no craze will draw")
-			return 0
 	var sheet_id: String = String(spec.get("sheet", ""))
 	var tile_span: Vector2 = spec.get("tile_span", Vector2(8.0, 8.0))
 	var forced := OS.get_environment("INFILTRAITOR_GLASS_CRAZE_SHEET")
@@ -5028,19 +4141,15 @@ func spawn_glass_craze(spec: Dictionary) -> int:
 			print_debug("[GLASS-CRAZE] B-2: the field is wired and \"%s\" has no sheet yet — B-3 owes the art (GLASS_MASTER_PLAN §16.3)"
 				% sheet_id)
 		return 0
-	var sprite := GlassCrackSpriteClass.new()
+	var crack := GlassCrackParamsClass.new()
 	var centre_cell: Vector2i = spec["centre_cell"]
 	var centre_level: int = int(spec["centre_level"])
-	sprite.setup_field(sheet, spec["span"],
-		glass_cell_face_pos(centre_level, centre_cell, int(spec.get("face", Face.SW))),
-		int(spec["run_axis"]), spec["pane_lo"], spec["pane_hi"], tile_span,
-		_glass_crack_shader,
+	crack.setup_field(sheet, spec["span"], spec["pane_lo"], spec["pane_hi"], tile_span,
 		## B-2b — the base-space anchor, computed by the room (it owns the
 		## conversion) and defaulting to B-2's view-space corner when a caller has
 		## none, which is only the selftest's synthetic frame.
 		spec.get("field_origin", spec["pane_lo"]),
 		spec.get("field_dir", Vector2.ONE))
-	_ensure_glass_crack_root().add_child(sprite)
 	_glass_crack_next_id += 1
 	## ⚠️ THE RECORD'S `impact_*` ARE THE PANE'S CENTRE CELL, NOT AN IMPACT. A
 	## craze has none — but `_build_crack_occupancy()` is written against exactly
@@ -5060,14 +4169,14 @@ func spawn_glass_craze(spec: Dictionary) -> int:
 		"radius": Vector2i.ZERO,
 		"pane_lo": spec["pane_lo"],
 		"pane_hi": spec["pane_hi"],
-		"sprite": sprite,
-		"params": sprite.params,
+		"crack": crack,
+		"params": crack.params,
 		"visible": true,
 		"opening": "",
 		"intensity": float(spec.get("intensity", 0.0)),
 	}
 	_glass_cracks.append(rec)
-	sprite.set_hole_cut(_glass_crack_hole_cut)
+	crack.set_hole_cut(_glass_crack_hole_cut)
 	_build_crack_occupancy(rec)
 	_build_craze_opening_mask(rec)
 	return _glass_crack_next_id
@@ -5157,8 +4266,8 @@ const CRAZE_MASK_TEXELS_PER_VOXEL: int = 6
 
 
 func _build_craze_opening_mask(c: Dictionary) -> void:
-	var sprite = c["sprite"]
-	if sprite == null or not is_instance_valid(sprite):
+	var crack = c["crack"]
+	if crack == null or not crack.valid:
 		return
 	var lo: Vector2 = c["pane_lo"]
 	var hi: Vector2 = c["pane_hi"]
@@ -5222,7 +4331,7 @@ func _build_craze_opening_mask(c: Dictionary) -> void:
 	else:
 		tex = ImageTexture.create_from_image(img)
 		c["craze_mask_texture"] = tex
-	sprite.set_opening(tex, origin, span)
+	crack.set_opening(tex, origin, span)
 	c["craze_mask_painted"] = painted
 
 
@@ -5250,13 +4359,10 @@ func _build_craze_opening_mask(c: Dictionary) -> void:
 ##      voxels atrás sejam idênticos aos outros"* — the floor under a pile is
 ##      untouched floor, and only LEAVING the voxel says so.
 ##
-## The position is analytic, never measured: `map_to_local()` returns the cell's
-## own local centre, which for a floor voxel IS the centre of its top diamond —
-## the same origin `glass_crack_face_centre()` offsets AWAY from for a wall face.
-var _floor_shards: Dictionary = {}      ## Vector3i(cell, level) -> Sprite2D
-## R3D-9: (variant, count) per pile, keyed like `_floor_shards` — what the 3D board draws from.
+## R3D-END (END-2): the pile was a Sprite2D on the 2D board; it is a RECORD now, drawn by `FloorPile3D` on the 3D
+## board's floor (R3D-9 made the 3D board draw from the record, never from the sprite).
+## Vector3i(cell, level) -> {variant, count}: what the 3D board draws from.
 var _floor_shard_records: Dictionary = {}
-var _floor_shard_root: Node2D = null
 const FloorPile3DRef = preload("res://godot/scripts/geometry/floor_pile3d.gd")
 var _pile3d: RefCounted = null          ## RENDER3D — the same piles drawn on the 3D board's floor
 var _floor_shard_textures: Array = []
@@ -5270,15 +4376,6 @@ static var FLOOR_SHARD_ALPHA_BASE: float = 0.34
 static var FLOOR_SHARD_ALPHA_GAIN: float = 0.055
 static var FLOOR_SHARD_ALPHA_MAX: float = 0.88
 static var FLOOR_SHARD_SCALE: float = 1.18    ## decals slightly larger than the cell, so a band reads continuous
-
-
-func _ensure_floor_shard_root() -> Node2D:
-	if _floor_shard_root != null and is_instance_valid(_floor_shard_root):
-		return _floor_shard_root
-	_floor_shard_root = Node2D.new()
-	_floor_shard_root.name = "floor_shard_root"
-	add_child(_floor_shard_root)
-	return _floor_shard_root
 
 
 ## The three shipped shard decals. ⚠️ Loaded through `load()` and CHECKED: G-ART
@@ -5300,34 +4397,15 @@ func _floor_shard_texture(variant: int) -> Texture2D:
 ## the pile's OPACITY, so a shattered pane reads heavier than a single round's
 ## worth without needing a second art axis.
 func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int) -> bool:
-	var layer := get_layer(level)
-	if layer == null:
-		## Rule 9 — the level is derived by the caller and may genuinely have no
-		## layer (a landing on a plane this view does not build). Reported by the
-		## caller's own count, not swallowed here.
+	## Rule 9 — the level is derived by the caller and may genuinely not be built (a landing on a plane this view does
+	## not build): the pile is then recorded by the room and not drawn, and the caller's own count says so. The layer
+	## is asked because it is the level registry until END-4 replaces it; nothing is placed on it.
+	if get_layer(level) == null:
 		return false
-	var tex := _floor_shard_texture(variant)
-	if tex == null:
+	if _floor_shard_texture(variant) == null:
 		return false
 	var key := Vector3i(cell.x, cell.y, level)
-	var sprite: Sprite2D = _floor_shards.get(key)
-	if sprite == null or not is_instance_valid(sprite):
-		sprite = Sprite2D.new()
-		sprite.centered = true
-		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-		_ensure_floor_shard_root().add_child(sprite)
-		_floor_shards[key] = sprite
-	sprite.texture = tex
-	## A single shard is faint, a whole column's collapse is not. Capped below 1 —
-	## a pile is glass on a floor, never a new floor. Tuned up 2026-09-06 (see the
-	## constants) because G4-4's scatter drops the per-cell count.
-	sprite.modulate = Color(1.0, 1.0, 1.0, floor_shard_alpha(count))
-	sprite.position = layer.position + layer.map_to_local(cell)
-	## The decal is authored at 256 px square for a 32 px cell diamond.
-	sprite.scale = Vector2.ONE * (32.0 * FLOOR_SHARD_SCALE / maxf(float(tex.get_width()), 1.0))
-	sprite.z_index = layer.z_index + 1
-	sprite.set_meta("pile_variant", variant)
-	## R3D-9: the pile as DATA — the 3D board draws from this, never from the sprite's screen position, scale or alpha.
+	## R3D-9: the pile as DATA — the 3D board draws from this.
 	_floor_shard_records[key] = {"variant": variant, "count": count}
 	if _pile3d != null:
 		_pile3d.set_pile(key, variant, floor_shard_alpha(count))
@@ -5368,18 +4446,13 @@ func set_pile_board3d(board: Node3D) -> void:
 ## keeps orphans from surviving it; the room puts them back from its base store.
 func clear_floor_shards() -> void:
 	_floor_shard_records.clear()
-	for k in _floor_shards:
-		var sp = _floor_shards[k]
-		if sp != null and is_instance_valid(sp):
-			sp.queue_free()
-	_floor_shards.clear()
 	if _pile3d != null:
 		_pile3d.clear()
 
 
 ## How many piles are live. Diagnostics and the selftest.
 func floor_shard_pile_count() -> int:
-	return _floor_shards.size()
+	return _floor_shard_records.size()
 
 
 ## How many piles the 3D board draws, or -1 when there is no 3D pile mirror. R3D-8: the mirror gate compares it with
@@ -5419,9 +4492,6 @@ func _glass_opening_mask(opening_id: String) -> Dictionary:
 func set_glass_cracks_visible(v: bool) -> void:
 	for c in _glass_cracks:
 		c["visible"] = v
-		var sp = c["sprite"]
-		if sp != null and is_instance_valid(sp):
-			sp.visible = v
 
 
 ## CRACK-04 — bind or UNBIND every live crack's opening void, for a same-boot A/B.
@@ -5435,8 +4505,8 @@ func set_glass_cracks_visible(v: bool) -> void:
 ## capture-only one.
 func set_glass_opening_void(enabled: bool) -> void:
 	for c in _glass_cracks:
-		var sp = c["sprite"]
-		if sp == null or not is_instance_valid(sp):
+		var crack = c["crack"]
+		if crack == null:
 			continue
 		var oid: String = String(c.get("opening", ""))
 		if oid == "":
@@ -5444,9 +4514,9 @@ func set_glass_opening_void(enabled: bool) -> void:
 		if enabled:
 			var m: Dictionary = _glass_opening_mask(oid)
 			if not m.is_empty():
-				sp.set_opening(m["texture"], m["origin"], m["size"])
+				crack.set_opening(m["texture"], m["origin"], m["size"])
 		else:
-			sp.set_opening(null, Vector2.ZERO, Vector2.ONE)
+			crack.set_opening(null, Vector2.ZERO, Vector2.ONE)
 
 
 ## CRACK-04 — how many glass cells currently hold a SHARD atom (a source the
@@ -5495,14 +4565,9 @@ func glass_craze_count() -> int:
 	return n
 
 
-## Drop every crack sprite. A perspective flip rebuilds the whole renderer, so
-## this is what keeps orphaned nodes from surviving it; S-3 is what puts the
-## cracks BACK from the room-side base-coord registry.
+## Drop every crack. A perspective flip rebuilds the whole renderer, so this is what keeps stale records from surviving
+## it; S-3 is what puts the cracks BACK from the room-side base-coord registry.
 func clear_glass_cracks() -> void:
-	for c in _glass_cracks:
-		var s = c["sprite"]
-		if s != null and is_instance_valid(s):
-			s.queue_free()
 	_glass_cracks.clear()
 	## B-4b — the applied-opening log describes THIS view's geometry, which the
 	## rebuild is about to replace. `_respawn_base_openings()` refills it.
@@ -5510,14 +4575,9 @@ func clear_glass_cracks() -> void:
 
 
 ## A map reload (`Room.load_map()`) rebuilds every pane intact and clears the
-## base-space damage records, but `clear()` above only drops the tilemap cells —
-## it leaves `_glass_shard_cells` full of the PREVIOUS mission's rim atoms, keyed
-## in view space. `restamp_glass_shards()` would then stamp a cut rim onto any
-## fresh pane that lands on one of those cells: a broken-looking notch on intact
-## glass. `_set_perspective()` gets away without this because it immediately
-## rebuilds the rims from `_base_openings`; a reload has none to rebuild.
+## base-space damage records; the shaped-cell record is keyed in view space and would otherwise mark cells of a fresh
+## pane as already shaped. `_set_perspective()` rebuilds the rims from `_base_openings`; a reload has none to rebuild.
 func clear_glass_rim_cells() -> void:
-	_glass_shard_cells.clear()
 	_glass_shaped_cells.clear()
 
 
@@ -5554,9 +4614,9 @@ static func _env_hole_cut() -> float:
 func set_glass_crack_hole_cut(v: float) -> void:
 	_glass_crack_hole_cut = clampf(v, 0.0, 1.0)
 	for c in _glass_cracks:
-		var sp = c["sprite"]
-		if sp != null and is_instance_valid(sp):
-			sp.set_hole_cut(_glass_crack_hole_cut)
+		var crack = c["crack"]
+		if crack != null:
+			crack.set_hole_cut(_glass_crack_hole_cut)
 
 
 func glass_crack_hole_cut() -> float:
@@ -5571,30 +4631,6 @@ func note_glass_erased() -> void:
 		_glass_crack_occ_dirty = true
 
 
-## RENDER_ORDER — an OPAQUE cell was destroyed. If it could have been cutting a
-## crack's web, the occupancy is re-cut at the batch flush, exactly as a glass erase
-## already does; before this, destroying the wall in front of a cracked pane left the
-## web cut where the wall had been, until some glass happened to break.
-##
-## Rare by nature (Director: *"vai ser raro"*), so it must cost nothing when it does
-## not apply: a few integer compares against each crack's `occ_bounds`, and the ~13 ms
-## index rebuild (GLASS) only when a destroyed cell falls inside one. A grenade far
-## from any cracked pane never pays it. Called from the three destruction erase
-## seams — the slice and slab dirty passes and the cook's `destroy` entry — and NOT
-## from `note_external_write()`, which also fires for damage-variant swaps and for
-## occlusion on every agent step.
-func note_opaque_erased(level: int, cell: Vector2i) -> void:
-	if not glass_clip_on or _glass_crack_occ_dirty or _glass_cracks.is_empty():
-		return
-	var p := Vector2i(cell.x - cell.y,
-		((cell.x + cell.y) * 8 - int(GeometryCoords.VOXEL_STEP_PX) * level) >> 3)
-	for c in _glass_cracks:
-		var b = c.get("occ_bounds")
-		if b is Rect2i and (b as Rect2i).has_point(p):
-			_glass_crack_occ_dirty = true
-			return
-
-
 ## Rebuild the occupancy of every live crack, if any glass was erased since the
 ## last call. Returns how many were rebuilt. Called at the four dirty-pass ends
 ## and from DetonationEntryWriter.flush() — the same five batch seams
@@ -5603,18 +4639,8 @@ func refresh_glass_crack_occupancy() -> int:
 	if not _glass_crack_occ_dirty:
 		return 0
 	_glass_crack_occ_dirty = false
-	## ONE occluder index for the whole batch. It walks every opaque cell at or
-	## above the lowest glass level, and building it per crack was measured at ~40 ms
-	## x 11 on one grenade on GLASS.
-	var shared_idx: Dictionary = {}
-	if glass_clip_on and not _glass_cracks.is_empty():
-		## Always FRESH at the flush — and it becomes this frame's cache, so a craze
-		## spawned later in the same frame reuses it.
-		shared_idx = _build_screen_occluder_index()
-		_occ_index_cache = shared_idx
-		_occ_index_frame = Engine.get_process_frames()
 	for c in _glass_cracks:
-		_build_crack_occupancy(c, shared_idx if glass_clip_on else null)
+		_build_crack_occupancy(c)
 		## B-4b — a field's hole mask changes for exactly the same reason its
 		## occupancy does, so it is rebuilt on the same seam rather than on one of
 		## its own that could fall out of step.
@@ -5638,9 +4664,9 @@ func refresh_craze_opening_masks() -> int:
 ## One crack's occupancy image, walked over its pane's (run, level) rectangle.
 ## Row 0 is the HIGHEST level, so the image reads the way the pane does on screen
 ## and the shader's `crack_occ_origin` is (run_min, level_max).
-func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void:
-	var sprite = c["sprite"]
-	if sprite == null or not is_instance_valid(sprite):
+func _build_crack_occupancy(c: Dictionary) -> void:
+	var crack = c["crack"]
+	if crack == null or not crack.valid:
 		return
 	var lo: Vector2 = c["pane_lo"]
 	var hi: Vector2 = c["pane_hi"]
@@ -5661,28 +4687,8 @@ func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void
 	var run_is_x: bool = int(c["run_axis"]) == 0
 	var cross: Vector2i = c["impact_cell"]
 	var img := Image.create(w, h, false, Image.FORMAT_R8)
-	var clipped_count: int = 0
-	var clip_i0: int = 9999
-	var clip_i1: int = -1
-	var clip_j0: int = 9999
-	var clip_j1: int = -1
-	## `INFILTRAITOR_GLASS_CLIP_WHY=1` — name the occluder of a sample of hidden cells.
-	var clip_why: bool = OS.get_environment("INFILTRAITOR_GLASS_CLIP_WHY") == "1"
-	var why: Array = []
-	## The screen buckets this crack's glass occupies — see `occ_bounds` below.
-	var ob_u0: int = 1 << 30
-	var ob_u1: int = -(1 << 30)
-	var ob_r0: int = 1 << 30
-	var ob_r1: int = -(1 << 30)
-	## ⚠️ The index walks EVERY opaque cell of the map, once per crack rebuild — so
-	## its cost is timed and printed rather than assumed small. RENDER_ORDER is a
-	## 16 x 12 fixture; a mission map is not.
-	var occ_t0: int = Time.get_ticks_usec()
-	var occ_index: Dictionary = {}
-	if glass_clip_on:
-		occ_index = shared_index if shared_index is Dictionary \
-			else _occluder_index_this_frame()
-	var occ_us: int = Time.get_ticks_usec() - occ_t0
+	## R3D-END (END-2): the 2D render-order clip also cut away every cell a nearer wall hid on the SCREEN, from an index
+	## of the opaque tile layers. The 3D board depth-tests the quad itself, and on it that index was always empty.
 	var solid := Color8(255, 0, 0, 255)
 	var gone := Color8(0, 0, 0, 255)
 	for j in range(h):
@@ -5690,31 +4696,7 @@ func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void
 		for i in range(w):
 			var run: int = run0 + i
 			var cell := Vector2i(run, cross.y) if run_is_x else Vector2i(cross.x, run)
-			var here: bool = _glass_cell_present(level, cell)   ## R3D-14: the store's glass panes
-			var present: bool = here
-			if present:
-				var bu: int = cell.x - cell.y
-				var br: int = ((cell.x + cell.y) * 8 - int(GeometryCoords.VOXEL_STEP_PX) * level) >> 3
-				ob_u0 = mini(ob_u0, bu)
-				ob_u1 = maxi(ob_u1, bu)
-				ob_r0 = mini(ob_r0, br)
-				ob_r1 = maxi(ob_r1, br)
-			if present and glass_clip_on:
-				var occ: Vector3i = _screen_occluder_of(cell, level, occ_index, run_is_x)
-				present = occ.z < 0
-				if not present and clip_why and why.size() < 16 and i % 8 == 0:
-					var olay := _layers.get(occ.z) as TileMapLayer
-					var otd: TileData = olay.get_cell_tile_data(Vector2i(occ.x, occ.y)) if olay != null else null
-					why.append("(i%d j%d)<-%s[%s vis=%s tree=%s a=%.2f]" % [i, j, occ,
-						String(otd.get_custom_data("tile_name")) if otd != null else "?",
-						olay.visible if olay != null else false,
-						olay.is_visible_in_tree() if olay != null else false,
-						olay.modulate.a if olay != null else -1.0])
-			if glass_clip_on and here and not present:
-				clipped_count += 1
-				clip_i0 = mini(clip_i0, i); clip_i1 = maxi(clip_i1, i)
-				clip_j0 = mini(clip_j0, j); clip_j1 = maxi(clip_j1, j)
-			img.set_pixel(i, j, solid if present else gone)
+			img.set_pixel(i, j, solid if _glass_cell_present(level, cell) else gone)   ## R3D-14: the store's glass panes
 	var tex = c.get("occ_texture")
 	if tex != null and tex is ImageTexture \
 			and (tex as ImageTexture).get_size() == Vector2(float(w), float(h)):
@@ -5727,218 +4709,8 @@ func _build_crack_occupancy(c: Dictionary, shared_index: Variant = null) -> void
 	## reflect an `update()` yet — a diagnostic that asked the texture would read
 	## the crack's occupancy one event stale and say the cut had not followed.
 	c["occ_image"] = img
-	if glass_clip_on:
-		print_debug("[GLASS-CLIP] pane lattice %dx%d — %d cell(s) hidden by a nearer wall · i=%d..%d j=%d..%d (impact i=%d j=%d) · occluder index %d cell bucket(s) in %.2f ms"
-			% [w, h, clipped_count, clip_i0, clip_i1, clip_j0, clip_j1,
-				(cross.x if run_is_x else cross.y) - run0, lvl1 - int(c["impact_level"]),
-				occ_index.size(), float(occ_us) / 1000.0])
-		if clip_why and not why.is_empty():
-			print_debug("[GLASS-CLIP-WHY] hidden <- occluder (x, y, level): %s" % " ".join(why))
-	c["occ_image"] = img
-	## RENDER_ORDER — every screen bucket an opaque cell could sit in and still cut
-	## this crack: the glass's own (column, row) box, grown by the reach
-	## `_screen_hidden_by_opaque()` searches (±1 column, ±5 rows). What
-	## `note_opaque_erased()` asks before it re-cuts anything.
-	c["occ_bounds"] = Rect2i(ob_u0 - 1, ob_r0 - 5, ob_u1 - ob_u0 + 3, ob_r1 - ob_r0 + 11) \
-		if ob_u1 >= ob_u0 else Rect2i()
-	sprite.set_occupancy(tex, Vector2(float(w), float(h)),
+	crack.set_occupancy(tex, Vector2(float(w), float(h)),
 		Vector2(lo.x, hi.y))
-
-
-## `INFILTRAITOR_GLASS_CLIP=diag` — paint the clip's decision on the board.
-##
-## For every glass cell in the map, ask the same `_screen_hidden_by_opaque()` the
-## crack's occupancy asks, and repaint the ones it calls hidden in red at top z.
-## No crack needed: this is the RULE's picture, not one sprite's.
-func _clip_diag_rebuild() -> void:
-	_clip_diag_queued = false
-	for l in _clip_diag_layers.values():
-		if is_instance_valid(l):
-			l.queue_free()
-	_clip_diag_layers.clear()
-
-	var idx: Dictionary = _build_screen_occluder_index()
-	var top_z: int = get_max_voxel_z_index() + 3
-	var total: int = 0
-	## The rule needs each cell's pane axis. A pane atom names its face in
-	## `_glass_source_info`; a rim shard's key carries it as "material|face|...".
-	var face_of: Dictionary = {}
-	for sid in _glass_source_info:
-		face_of[int(sid)] = int(_glass_source_info[sid]["face"])
-	for key in _glass_rim_sources:
-		var parts: PackedStringArray = String(key).split("|")
-		if parts.size() > 1 and parts[1].is_valid_int() and int(_glass_rim_sources[key]) >= 0:
-			face_of[int(_glass_rim_sources[key])] = parts[1].to_int()
-	var levels: Array = _glass_layers.keys()
-	levels.sort()
-	for level in levels:
-		var glass := _glass_layers[level] as TileMapLayer
-		if glass == null:
-			continue
-		var dbg: TileMapLayer = null
-		for cell in glass.get_used_cells():
-			var face: int = int(face_of.get(glass.get_cell_source_id(cell), -1))
-			if face == -1:
-				continue
-			if not _screen_hidden_by_opaque(cell, level, idx,
-					face == Face.SW or face == Face.NE):
-				continue
-			if dbg == null:
-				## ⚠️ NOT a glass sublayer with `modulate` — that was the first cut
-				## and it drew NOTHING AT ALL while the counter happily reported 925
-				## hidden cells. `glass_pane.gdshader` WRITES `COLOR` outright, so an
-				## incoming modulate is discarded before it can tint anything. A
-				## diagnostic that borrows a shader inherits the shader's opinions.
-				dbg = _build_glass_sublayer_node(level)
-				dbg.name = "clip_diag_%d" % level
-				var dm := ShaderMaterial.new()
-				var dsh := Shader.new()
-				dsh.code = """shader_type canvas_item;\nrender_mode blend_mix;\nvoid fragment() { COLOR = vec4(1.0, 0.10, 0.10, texture(TEXTURE, UV).a); }\n"""
-				dm.shader = dsh
-				dbg.material = dm
-				dbg.z_index = top_z
-				_clip_diag_layers[level] = dbg
-			dbg.set_cell(cell, glass.get_cell_source_id(cell),
-				glass.get_cell_atlas_coords(cell), glass.get_cell_alternative_tile(cell))
-			total += 1
-		if dbg != null:
-			move_child(dbg, -1)
-	print("[GLASS-CLIP-DIAG] %d glass cell(s) the rule calls HIDDEN, across %d level(s)"
-		% [total, _clip_diag_layers.size()])
-
-
-## OPTION A's CLIP — the index a per-pane sprite is cut against.
-##
-## ⚠️ THE OCCLUDER IS ALMOST NEVER AT THE SAME LEVEL, and assuming it was is what
-## made the first two cuts of this rule wrong (one ate the entire web, the next
-## found nothing at all). Screen position is
-##
-##     screen_y = (x + y) * VOXEL_STEP_XY - level * VOXEL_STEP_PX      (8 and 20)
-##
-## so a wall that is NEARER in depth draws LOWER on screen unless it is also
-## HIGHER in level: covering a pane cell needs `ΔL ≈ 0.4 · Δd`. On the GLASS map
-## the wall in front of the big pane is 9 depth steps nearer, which puts the cell
-## that actually covers it **about 4 levels up**. A same-level search cannot see it.
-##
-## So the test is done where it belongs — in SCREEN space. Every opaque cell in the
-## map is bucketed by (screen column, screen row / 8) with the nearest depth in
-## each bucket; a pane cell then asks its own neighbourhood.
-func _build_screen_occluder_index() -> Dictionary:
-	var idx: Dictionary = {}
-	## OPTION A puts glass cells in `_layers` too, and glass is not an occluder
-	## (rule 10) — left in, a pane's own next cell along the run is one depth step
-	## nearer and one screen column over, so every pane would hide itself.
-	var glass_ids: Dictionary = _glass_tile_source_ids() if glass_tile_on else {}
-	## A level BELOW the lowest glass draws before every pane (`z_index` encodes
-	## height), so nothing on it can cover one — and that is the whole floor stack,
-	## most of a map's cells. Measured on GLASS before this skip: 40 ms per build.
-	## Skipping it is EXACT, not an approximation: see `_screen_hidden_by_opaque()` —
-	## within a bucket the higher level always holds the larger depth, so a lower
-	## level's cell is never the bucket's answer to a pane above it.
-	var min_glass_level: int = 1 << 30
-	for gl in _glass_layers:
-		min_glass_level = mini(min_glass_level, int(gl))
-	for level in _layers:
-		if int(level) < min_glass_level:
-			continue
-		var lay := _layers[level] as TileMapLayer
-		if lay == null:
-			continue
-		var lvl_off: int = int(GeometryCoords.VOXEL_STEP_PX) * int(level)
-		for c in lay.get_used_cells():
-			if not glass_ids.is_empty() and glass_ids.has(lay.get_cell_source_id(c)):
-				continue
-			var d: int = c.x + c.y
-			var key := Vector2i(c.x - c.y, (d * 8 - lvl_off) >> 3)
-			if not idx.has(key) or d > int(idx[key]):
-				idx[key] = d
-	return idx
-
-
-## A blast spawns a craze on every pane it reaches, in ONE frame, and each spawn used
-## to build its own index — measured 6 x 13 ms on GLASS for one grenade. So the index
-## is reused within a frame.
-## ⚠️ Stale within that frame if an opaque cell is erased AFTER the first spawn; the
-## batch refresh at the flush always builds fresh, so the window is one flush.
-var _occ_index_cache: Dictionary = {}
-var _occ_index_frame: int = -1
-
-
-func _occluder_index_this_frame() -> Dictionary:
-	var f: int = Engine.get_process_frames()
-	if f != _occ_index_frame:
-		_occ_index_cache = _build_screen_occluder_index()
-		_occ_index_frame = f
-	return _occ_index_cache
-
-
-## True when an opaque cell shares this cell's screen neighbourhood, draws after it,
-## and stands IN FRONT of the pane's plane. The reach is the atom: 32 px wide against
-## a 16 px column step (±1 column), and 36 px tall against 8 px per screen-row bucket
-## (±5 buckets). `run_is_x` is the pane's run axis — SW/NE panes run along x and face
-## +y, SE/NW run along y and face +x.
-func _screen_hidden_by_opaque(cell: Vector2i, level: int, idx: Dictionary,
-		run_is_x: bool) -> bool:
-	return _screen_occluder_of(cell, level, idx, run_is_x).z >= 0
-
-
-## The opaque cell `_screen_hidden_by_opaque()` found, as (x, y, level) — or z = -1
-## when nothing hides this glass cell. Returned rather than a bool so a diagnostic
-## can NAME the occluder (`INFILTRAITOR_GLASS_CLIP_WHY=1`): the clip's decision has
-## been misread from silhouettes more than once on this track.
-func _screen_occluder_of(cell: Vector2i, level: int, idx: Dictionary,
-		run_is_x: bool) -> Vector3i:
-	if idx.is_empty():
-		return Vector3i(0, 0, -1)
-	var d: int = cell.x + cell.y
-	var u: int = cell.x - cell.y
-	var row: int = (d * 8 - int(GeometryCoords.VOXEL_STEP_PX) * int(level)) >> 3
-	for du in range(-1, 2):
-		for dr in range(-5, 6):
-			var m = idx.get(Vector2i(u + du, row + dr))
-			if m == null or int(m) <= d:
-				continue
-			## ⚠️ NEARER IS NOT ENOUGH — it must also draw AFTER this cell, which
-			## means a level at or above it (a lower level's layer is drawn first).
-			## Without this the floor in front of a pane "hid" its whole bottom row:
-			## 48 of 48 foot cells on GLASS, every one a false positive.
-			##
-			## The bucket stores only the max depth, and that is enough: in one
-			## bucket `8d - 20L` lies in [8r, 8r + 7], so the level is recoverable
-			## from (d, r) exactly and a higher level always has the larger d — the
-			## max-depth cell IS the highest-level cell.
-			var occ_level: int = int(floor(float(8 * (int(m) - (row + dr))) / 20.0))
-			if occ_level < level:
-				continue
-			## ⚠️ AND THE TWO ATOMS MUST ACTUALLY OVERLAP ON SCREEN. The bucket search
-			## reaches ±5 rows of 8 px — up to 47 px — and an atom is only
-			## `VOXEL_ATOM_H` (36) tall, so the outer buckets hold cells whose atom
-			## never touches this one. Found by naming the occluders: on
-			## `RENDER_ORDER` most of the pane's "hidden" cells were blamed on the
-			## tall pillar's roof cap, 40 px below them on screen — which is why
-			## destroying the pillar changed nothing. Exact, because d' and L' are:
-			## a cell's screen y is `8d - 20L` (the same formula the buckets use).
-			var dy: int = (8 * int(m) - int(GeometryCoords.VOXEL_STEP_PX) * occ_level) \
-				- (8 * d - int(GeometryCoords.VOXEL_STEP_PX) * level)
-			if absi(dy) >= GeometryCoords.VOXEL_ATOM_H:
-				continue
-			## ⚠️ AND IT MUST STAND IN FRONT OF THE PANE'S PLANE. The reach is a box,
-			## not a silhouette, so an opaque cell of the SAME wall — the next brick
-			## along the run, a head or sill band of a framed window — lands in it: one
-			## depth step "nearer", one column over. It shares an edge with the glass
-			## and covers none of it. On the GLASS map this cut the web off most of a
-			## brick-framed window (225 of 480 cells) with nothing standing in front.
-			##
-			## Exact from the same max-depth cell: with the bucket's column fixed,
-			## `x = (d + u) / 2` and `y = (d - u) / 2` both grow with d, so the deepest
-			## cell is also the one furthest in front — if it is not in front, nothing
-			## in the bucket is. (d and u share parity, so the halving is exact.)
-			var ou: int = u + du
-			var in_front: bool = ((int(m) - ou) >> 1) > cell.y if run_is_x \
-				else ((int(m) + ou) >> 1) > cell.x
-			if in_front:
-				return Vector3i((int(m) + ou) >> 1, (int(m) - ou) >> 1, occ_level)
-	return Vector3i(0, 0, -1)
 
 
 ## ── CRACK-03 — APPLYING THE RIM ──────────────────────────────────────────────
@@ -5946,110 +4718,12 @@ func _screen_occluder_of(cell: Vector2i, level: int, idx: Dictionary,
 ## Every glass erase records its cell here; `refresh_glass_rims()` runs at the
 ## same five batch seams the crack occupancy uses and re-cuts the neighbours.
 ##
-## ⚠️ IT IS A SWAP ON THE TILEMAP, NOT A RE-RENDER. The alternative was to mark
-## the eight neighbouring VOXELS dirty so the next dirty pass re-placed them —
-## which needs the edge registry (a neighbour is usually in another Slice), a
-## dirty flag on a voxel nothing damaged, and a second pass over geometry. The
-## cell already on the tilemap carries its own source id, and `_glass_source_info`
-## turns that back into (material, face, mask), so the rim needs neither.
+## R3D-END (END-2): it was a SWAP on the glass tilemap (a shard atom placed over the pane cell). What is left is the
+## state the 3D board draws from: which pane cells an opening shaped (`_glass_shaped_cells`) and the polygons applied.
 func note_glass_erased_for_rim(level: int, cell: Vector2i) -> void:
 	if not _glass_rim_dirty.has(level):
 		_glass_rim_dirty[level] = []
 	(_glass_rim_dirty[level] as Array).append(cell)
-	## RENDER_ORDER seam — every glass erase seam already passes through here.
-	if glass_seam_cull_on:
-		_expose_seam_neighbour(level, cell)
-
-
-## RENDER_ORDER §10b.9 — a glass cell just went. Drop it from the seam index, and if
-## it was the FIRST column of a GU, the previous GU's frontmost column (pos 7) of the
-## same pane now has an exposed side: give it the side sliver back, locally.
-##
-## Here and not at a full render: the only full renders are map load and rotation,
-## and one at the end of a grenade would repaint the whole map outside the
-## pre-cooked plan (Director, 2026-09-11). Every glass erase seam calls this — both
-## dirty passes and `erase_glass_cell()` (the cook's destroy, the remnant reap) — and
-## it runs BEFORE the flush's rim cut, so a neighbour the opening then turns into a
-## shard is cut from a mask that already carries its side.
-##
-## Leaving the destroyed cell in the index would undo this on the next re-render of
-## the neighbour (a CRACKED ring re-places it through `_glass_face_mask()`).
-func _expose_seam_neighbour(level: int, cell: Vector2i) -> void:
-	var key := Vector3i(cell.x, cell.y, level)
-	if not _glass_seam_index.has(key):
-		return
-	var face: int = int(_glass_seam_index[key])
-	_glass_seam_index.erase(key)
-	var run_is_x: bool = face == Face.SW or face == Face.NE
-	var run: int = cell.x if run_is_x else cell.y
-	if posmod(run, GeometryCoords.VOXELS_PER_UNIT_AXIS) != 0:
-		return
-	var n: Vector2i = cell - (Vector2i(1, 0) if run_is_x else Vector2i(0, 1))
-	if int(_glass_seam_index.get(Vector3i(n.x, n.y, level), -1)) != face:
-		return
-	var layer := _glass_layers.get(level) as TileMapLayer
-	if layer == null:
-		return
-	var sid: int = layer.get_cell_source_id(n)
-	if sid == -1:
-		return
-	var want: int = _glass_with_side(sid)
-	if want < 0 or want == sid:
-		return
-	layer.set_cell(n, want, Vector2i.ZERO, 0)
-	note_external_write(level, n)
-	## A shard already on the board is re-stamped from the registry every flush, so
-	## the registry has to learn the new id or the restamp puts the old one back.
-	var nk := Vector3i(n.x, n.y, level)
-	if _glass_shard_cells.has(nk):
-		_glass_shard_cells[nk] = want
-	if glass_tile_on:
-		_queue_glass_tile_sync()
-
-
-## The same glass atom with the side-sliver bit set — a pane atom, a rim shard or a
-## remnant, each through the composer that made it, so the result is exactly the atom
-## a fresh placement or cut would have produced. -1 if the id is not one of ours.
-func _glass_with_side(sid: int) -> int:
-	if _glass_source_info.has(sid):
-		var info: Dictionary = _glass_source_info[sid]
-		var faces: Dictionary = _glass_atom_source.get(String(info["material"]), {})
-		var masks: Dictionary = faces.get(int(info["face"]), {})
-		return int(masks.get(int(info["mask"]) | 0b01, -1))
-	var key = _glass_rim_sources.find_key(sid)
-	if key == null:
-		return -1
-	var p: PackedStringArray = String(key).split("|")
-	if p.size() == 7 and p[0] == "R":
-		return _glass_remnant_atom_source(p[1], p[2].to_int(), p[3].to_int() | 0b01,
-			p[4], p[5].to_int(), p[6] == "1")
-	if p.size() == 6:
-		return _glass_rim_atom_source(p[0], p[1].to_int(), p[2].to_int() | 0b01,
-			p[3], p[4].to_int(), p[5].to_int())
-	return -1
-
-
-## The face mask a placed glass cell renders with — from its pane atom, or from the
-## key its rim shard / remnant atom was composed under ("m|f|MASK|..." and
-## "R|m|f|MASK|..."). -1 when the cell holds no glass atom this renderer made.
-## Asked by the seam selftest instead of an atom id: a hole's neighbour is often cut
-## into a shard in the same flush, and it is the MASK that says whether it kept its
-## side sliver.
-func glass_cell_mask(level: int, cell: Vector2i) -> int:
-	var layer := _glass_layers.get(level) as TileMapLayer
-	if layer == null:
-		return -1
-	var sid: int = layer.get_cell_source_id(cell)
-	if sid == -1:
-		return -1
-	if _glass_source_info.has(sid):
-		return int(_glass_source_info[sid]["mask"])
-	var key = _glass_rim_sources.find_key(sid)
-	if key == null:
-		return -1
-	var parts: PackedStringArray = String(key).split("|")
-	var at: int = 3 if parts[0] == "R" else 2
-	return parts[at].to_int() if parts.size() > at and parts[at].is_valid_int() else -1
 
 
 ## Is there still glass drawn at this (level, cell)? The live authority, the same
@@ -6086,22 +4760,13 @@ func _glass_neighbour(cell: Vector2i, level: int, face: int, d: Vector2) -> Arra
 ## is a capture dial, not a play-path answer — a view-space pick would reshape a
 ## standing hole on every camera turn, which is the failure S-3 exists to prevent.
 func refresh_glass_rims() -> int:
-	## ⚠️ THE RE-STAMP RUNS EVEN WHEN NOTHING IS DIRTY, AND THAT IS THE WHOLE FIX.
-	## The pass that overwrites a shard is the CRACKED ring's own re-render, which
-	## flags no glass erase at all — so the seam that has to repair it is the one
-	## where nothing happened. Putting the re-stamp behind the early return left
-	## `registry=12 board=0` on the real map with the repair code already written
-	## and simply never reached.
-	## OPTION A — every batch seam ends here, after its erases and before its rim
-	## swaps, so the mirror is queued once for all of them.
-	if glass_tile_on:
-		_queue_glass_tile_sync()
-	var restamped: int = restamp_glass_shards()
+	## R3D-END (END-2): the re-stamp of shard atoms a later render pass overwrote, and the Option A mirror queue, were
+	## the 2D board's; nothing re-renders over a shaped cell on the 3D board.
 	if _glass_rim_dirty.is_empty():
-		return restamped
+		return 0
 	if not GLASS_RIM_ENABLED:
 		_glass_rim_dirty.clear()
-		return restamped
+		return 0
 
 	var regions: Array = _group_erased_into_regions()
 	_glass_rim_dirty.clear()
@@ -6121,45 +4786,7 @@ func refresh_glass_rims() -> int:
 	if swapped > 0:
 		print_debug("[GLASS-OPENING] %d region(s) [%s], %d cell(s) cut into shards"
 			% [regions.size(), ", ".join(applied), swapped])
-	return swapped + restamped
-
-
-## Put every shard back that a render pass has overwritten. A hole never heals,
-## so this is idempotent by nature: a cell that still holds its shard costs one
-## comparison, and one that was erased leaves the registry for good.
-##
-## ⚠️ THIS IS THE HALF CRACK-03 WAS MISSING. Its swap was correct and its atoms
-## were correct; nothing kept them on the board once the CRACKED ring around the
-## hole re-rendered. Called from every seam `refresh_glass_rims()` is, so any pass
-## that re-places glass is followed by one that puts the shards back.
-func restamp_glass_shards() -> int:
-	if _glass_shard_cells.is_empty():
-		return 0
-	var gone: Array = []
-	var fixed: int = 0
-	for key in _glass_shard_cells:
-		var layer := _glass_layers.get(key.z) as TileMapLayer
-		if layer == null:
-			gone.append(key)
-			continue
-		var cell := Vector2i(key.x, key.y)
-		var sid: int = layer.get_cell_source_id(cell)
-		if sid == -1:
-			## The cell was destroyed outright since — it is a hole now, not a
-			## shard, and a hole is not something to restore.
-			gone.append(key)
-			continue
-		var want: int = int(_glass_shard_cells[key])
-		if sid == want:
-			continue
-		layer.set_cell(cell, want, Vector2i.ZERO, 0)
-		note_external_write(key.z, cell)
-		fixed += 1
-	for k in gone:
-		_glass_shard_cells.erase(k)
-	if fixed > 0:
-		print_debug("[GLASS-OPENING] re-stamped %d shard(s) a render pass had overwritten" % fixed)
-	return fixed
+	return swapped
 
 
 ## Turn the batch's erased cells into regions to apply an opening around.
@@ -6321,119 +4948,6 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 			"anchor": anchor, "opening": opening_id,
 			"run_is_x": (face == Face.SW or face == Face.NE)})
 	return swapped
-
-
-## ── G4-3 / G-D38 + G-D39 — THE REMNANT STUCK IN THE FRAME ───────────────────
-##
-## (Director, 2026-09-05: *"Os voxels que permanecem grudados no frame não podem
-## ser os mesmos quadradinhos."*)
-##
-## A remnant is a glass voxel that SURVIVED — `GlassShatter.plan_pane_shatter()`
-## spared it because one of its four orthogonal neighbours holds another material
-## — so it is still a live, visible voxel and destruction never touched it. All
-## that changes is its ATOM: the pane atom with everything OUTSIDE the shard
-## polygon cut away.
-##
-## ⚠️ THE SAME PATH AS THE BULLET HOLE'S RIM, DELIBERATELY. `_glass_rim_atom_source`
-## already builds "a pane atom cut by a polygon" and `_glass_shard_cells` already
-## keeps such a cell alive through re-render passes (`restamp_glass_shards()` —
-## the half CRACK-03 was missing). A remnant registers in the SAME dictionary, so
-## it inherits the restamp instead of needing a second one, and a later opening
-## walk skips it for free (the walk ignores any cell whose source is not in
-## `_glass_source_info`).
-##
-## ⚠️ AND THE ONE DIFFERENCE IS THE DIRECTION OF THE CUT, not the mechanism: an
-## opening removes the polygon's INTERIOR, a remnant keeps it. That is the `invert`
-## flag on the two sliver/facet helpers and nothing else.
-func _glass_remnant_atom_source(material_id: String, face: int, mask: int,
-		shape_id: String, anchor_mask: int, flop: bool) -> int:
-	var key := "R|%s|%d|%d|%s|%d|%d" % [material_id, face, mask, shape_id, anchor_mask,
-		1 if flop else 0]
-	if _glass_rim_sources.has(key):
-		return _glass_rim_sources[key]
-	var poly: PackedVector2Array = GlassShardShapes.anchored_polygon(shape_id, anchor_mask, flop)
-	if poly.size() < 3:
-		_glass_rim_sources[key] = -1
-		return -1
-	var atom := _build_glass_pane_atom(face, (mask & 0b10) != 0, (mask & 0b01) != 0,
-		GlassMaterials.tint_index(material_id))
-	if atom == null:
-		_glass_rim_sources[key] = -1
-		return -1
-	## Everything OUTSIDE the fragment goes — main face, then the slivers, then the
-	## bevel along what is left.
-	_cut_glass_face_region(atom, face, func(off: Vector2) -> bool:
-		return not GlassShardShapes.contains(poly, off))
-	_cut_glass_opening_slivers(atom, poly, Vector2.ZERO, face, true)
-	_trim_glass_remnant_fringe(atom, face)
-	_shade_glass_cut_facet(atom, poly, Vector2.ZERO, face, true)
-	var src := TileSetAtlasSource.new()
-	src.texture = ImageTexture.create_from_image(atom)
-	src.texture_region_size = Vector2i(atom.get_width(), atom.get_height())
-	src.separation = Vector2i.ZERO
-	src.margins = Vector2i.ZERO
-	src.create_tile(Vector2i.ZERO)
-	var id: int = _next_free_tileset_source_id()
-	_tileset.add_source(src, id)
-	var td: TileData = src.get_tile_data(Vector2i.ZERO, 0)
-	if td != null:
-		td.texture_origin = GeometryCoords.voxel_texture_origin() + _GLASS_ATOM_ORIGIN_NUDGE
-		td.set_custom_data("tile_name", material_id)
-		## OPTION A — a shard is a glass tile too; see the pane atoms.
-		if glass_tile_on:
-			td.material = _get_glass_tile_material()
-	_glass_rim_sources[key] = id
-	return id
-
-
-## ⚠️ **THE GHOST OF THE PARALLELOGRAM, FOUND ON THE FIRST ATOM SHEET.**
-##
-## `_cut_glass_face_region()` SKIPS a pixel whose recovered (u, v) falls outside
-## [0, 1] rather than clearing it — the atom's fill and the analytic inverse
-## disagree by a pixel here and there along the edges. For an OPENING that is
-## harmless: those pixels sit at the cell boundary where glass legitimately
-## remains. For a REMNANT it is the one thing this whole feature exists to remove
-## — everything outside the fragment is supposed to be gone, so what survives is a
-## dotted outline of the voxel's own parallelogram. Measured on
-## `glass_remnant_atoms_2026-09-05.png`: a clean diagonal of stray pixels along
-## the top edge and another at the frontmost column, on every one of the 25 cuts.
-##
-## ⚠️ AND IT CANNOT SIMPLY CLEAR EVERYTHING OUTSIDE THE MAIN FACE. The top and
-## side SLIVERS are real geometry outside that parallelogram — they are what makes
-## a voxel on a GU boundary read one voxel THICK, and CRACK-03 paid for stripping
-## them once already. So a pixel goes only when it is outside the main face AND
-## outside both sliver quads; the slivers themselves were already cut against the
-## polygon by the pass above.
-func _trim_glass_remnant_fringe(atom: Image, face: int) -> void:
-	var vn := Vector2(16.0, 0.0)
-	var ve := Vector2(32.0, 8.0)
-	var vs := Vector2(16.0, 16.0)
-	var vw := Vector2(0.0, 8.0)
-	var down := Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
-	var f: float = GLASS_FACE_SLIVER_FRAC
-	var ea: Vector2
-	var eb: Vector2
-	var d_vec: Vector2
-	match face:
-		Face.SW: ea = vw; eb = vs; d_vec = (ve - vs) * f
-		Face.SE: ea = ve; eb = vs; d_vec = (vw - vs) * f
-		Face.NW: ea = vn; eb = vw; d_vec = (vs - vw) * f
-		Face.NE: ea = vn; eb = ve; d_vec = (vs - ve) * f
-		_: return
-	var face_q: PackedVector2Array = [ea, eb, eb + down, ea + down]
-	var top_q: PackedVector2Array = [ea, eb, eb + d_vec, ea + d_vec]
-	var side_q: PackedVector2Array = [eb, eb + d_vec, eb + d_vec + down, eb + down]
-	for y in range(atom.get_height()):
-		for x in range(atom.get_width()):
-			var c := atom.get_pixel(x, y)
-			if c.a <= 0.0:
-				continue
-			var p := Vector2(float(x) + 0.5, float(y) + 0.5)
-			if _signed_dist_in_quad(p, face_q) >= 0.0:
-				continue
-			if _signed_dist_in_quad(p, top_q) >= 0.0 or _signed_dist_in_quad(p, side_q) >= 0.0:
-				continue
-			atom.set_pixel(x, y, Color(c.r, c.g, c.b, 0.0))
 
 
 ## Stamp one remnant onto its cell. Returns true when the board actually changed.## Stamp one remnant onto its cell. Returns true when the board actually changed.
@@ -6740,340 +5254,6 @@ func _ensure_layer(level: int) -> void:
 	_layers[level] = _build_voxel_layer_node(level)
 
 
-## GLASS G1 — the frosted / sheen sublayer pair for one level. Idempotent, lazy:
-## called from `_set_voxel_cell()` the first time a glass cell lands on `level`,
-## so a map with no glass builds nothing. The opaque layer for `level` already
-## exists by the time this runs (every render path ensures its wall layers before
-## its voxel loop), so the sublayers are added to the tree AFTER it and — sharing
-## its z_index — composite over it and under everything a level up.
-func _ensure_glass_sublayers(level: int) -> void:
-	if _glass_frosted_source_id < 0:
-		return
-	## Backbuffer + glass sit above the tallest opaque voxel layer so glass
-	## composites over every wall behind it — AND, per G-D18b, above the agent
-	## (`_glass_composite_z_floor` = agent.z_index + 1, set by room.gd) so he reads
-	## as behind a pane he stands behind. `render()` keeps adding opaque layers as
-	## it goes, so this is recomputed on every glass level and the nodes are moved
-	## to the end of the tree to stay after any opaque layer added since.
-	var z: int = maxi(maxi(get_max_voxel_z_index(), _wall_base_z_index), _glass_composite_z_floor)
-	if z > _glass_composite_z:
-		_glass_composite_z = z
-	if glass_clip_diag and not _clip_diag_queued:
-		_clip_diag_queued = true
-		call_deferred("_clip_diag_rebuild")
-	if glass_tile_on:
-		## OPTION A — no container, no lifted pane layer. The sublayer is still built,
-		## because it is the STATE every glass system reads, and it is HIDDEN: its
-		## cells reach the screen through `_layers[level]`, mirrored at the end of the
-		## frame. `_glass_composite_z` above still matters — the crack sprite root
-		## rides it, and `INFILTRAITOR_GLASS_CLIP=1` is what cuts that sprite where a
-		## nearer wall covers the pane.
-		if not _glass_layers.has(level):
-			var gl_state := _build_glass_sublayer_node(level)
-			gl_state.visible = false
-			_glass_layers[level] = gl_state
-		_lift_glass_crack_root()
-		_queue_glass_tile_sync()
-		return
-	if glass_bb_mode == "":
-		if _glass_backbuffer == null:
-			_glass_backbuffer = BackBufferCopy.new()
-			_glass_backbuffer.name = "glass_backbuffer"
-			_glass_backbuffer.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
-			add_child(_glass_backbuffer)
-		_glass_backbuffer.z_index = _glass_composite_z
-		move_child(_glass_backbuffer, -1)
-	else:
-		## The measurement modes own the container instead. `none` builds nothing;
-		## the rect modes build per level, below, once the level's glass exists.
-		_glass_bb_refresh()
-	for l in _glass_layers.values():
-		(l as TileMapLayer).z_index = _glass_composite_z
-		move_child(l, -1)
-	_lift_glass_crack_root()
-	if _glass_layers.has(level):
-		return
-	var gl := _build_glass_sublayer_node(level)
-	_glass_layers[level] = gl
-	## Q2 SCOPED gate — glass just arrived on `level`, so THIS band is the one that
-	## has to resolve depth per cell. Applied to the pair, retroactively, because
-	## the opaque layer was built long before anything knew there was glass here.
-	if ysort_probe_scoped:
-		gl.y_sort_enabled = true
-		var opaque := _layers.get(level) as TileMapLayer
-		if opaque != null:
-			opaque.y_sort_enabled = true
-
-
-## GLASS G-D18b — raise the whole glass composite (backbuffer + every pane layer)
-## to at least `z`, and re-apply it if the sublayers already exist. room.gd calls
-## this with `agent.z_index + 1` after OCC-03 sets the agent's z, so a pane the
-## agent stands behind draws OVER him (a faint tint) instead of him popping in
-## front of it. Idempotent; a no-op when glass is already at or above `z`.
-func set_glass_over_z(z: int) -> void:
-	_glass_composite_z_floor = maxi(_glass_composite_z_floor, z)
-	if _glass_composite_z_floor <= _glass_composite_z:
-		return
-	_glass_composite_z = _glass_composite_z_floor
-	if _glass_backbuffer != null:
-		_glass_backbuffer.z_index = _glass_composite_z
-		move_child(_glass_backbuffer, -1)
-	for l in _glass_layers.values():
-		(l as TileMapLayer).z_index = _glass_composite_z
-		move_child(l, -1)
-	_lift_glass_crack_root()
-
-
-## Task 2 pricing — (re)build the per-level rect backbuffers. Coalesced through a
-## deferred call: `_ensure_glass_sublayers()` fires once per glass level, and a
-## rect can only be computed once that level's cells are actually placed.
-func _glass_bb_refresh() -> void:
-	if _glass_bb_refresh_queued:
-		return
-	_glass_bb_refresh_queued = true
-	call_deferred("_glass_bb_rebuild")
-
-
-func _glass_bb_rebuild() -> void:
-	_glass_bb_refresh_queued = false
-	for bb in _glass_bb_rects:
-		if is_instance_valid(bb):
-			bb.queue_free()
-	_glass_bb_rects.clear()
-	if not glass_bb_mode.begins_with("rect"):
-		return
-	## `rect` = 1 per level, `rect<K>` = K per level. K is a STRESS KNOB, not a
-	## design: the first sweep (1, 2) could not separate 0, 1, 24 and 48 copies
-	## from run-to-run noise, and "inside the noise" is not the same claim as
-	## "free". Driving K until the curve bends is what turns it into one.
-	var suffix := glass_bb_mode.substr(4)
-	var per_level: int = suffix.to_int() if suffix.is_valid_int() else 1
-	per_level = maxi(per_level, 1)
-	var area_total: float = 0.0
-	for level in _glass_layers:
-		var layer := _glass_layers[level] as TileMapLayer
-		if layer == null:
-			continue
-		var used: Rect2i = layer.get_used_rect()
-		if used.size.x <= 0 or used.size.y <= 0:
-			continue
-		## Cell bounds → this renderer's local space. Every corner, because an
-		## isometric rect's screen bounds are NOT its corner pair: the diamond's
-		## extremes are the other two.
-		var pts: Array[Vector2] = []
-		for c in [used.position, used.position + Vector2i(used.size.x, 0),
-				used.position + Vector2i(0, used.size.y), used.position + used.size]:
-			pts.append(layer.position + layer.map_to_local(c))
-		var mn := pts[0]
-		var mx := pts[0]
-		for pt in pts:
-			mn = mn.min(pt)
-			mx = mx.max(pt)
-		var atom := Vector2(float(GeometryCoords.VOXEL_ATOM_W), float(GeometryCoords.VOXEL_ATOM_H))
-		var r := Rect2(mn - atom, (mx - mn) + atom * 2.0)
-		area_total += r.size.x * r.size.y
-		for i in range(per_level):
-			var bb := BackBufferCopy.new()
-			bb.name = "glass_bb_%d_%d" % [level, i]
-			bb.copy_mode = BackBufferCopy.COPY_MODE_RECT
-			bb.rect = r
-			bb.z_index = _glass_composite_z
-			add_child(bb)
-			move_child(bb, -1)
-			_glass_bb_rects.append(bb)
-	## The glass layers must stay AFTER every backbuffer, exactly as the single
-	## viewport copy arranges them.
-	for l in _glass_layers.values():
-		move_child(l as TileMapLayer, -1)
-	_lift_glass_crack_root()
-	## The AREA is the number that matters, not the count — and it is in WORLD px,
-	## which the camera zoom then scales onto a 390x844 viewport. Printed so the
-	## comparison against one full-viewport copy is a measurement rather than the
-	## back-of-envelope arithmetic RO3 wrote down.
-	var vp_size := get_viewport().get_visible_rect().size
-	print("[GLASS-BB] mode=%s — %d rect backbuffer(s) over %d glass level(s) · avg rect %.0f px² · total %.2f Mpx² (world) · viewport %.0fx%.0f = %.2f Mpx"
-		% [glass_bb_mode, _glass_bb_rects.size(), _glass_layers.size(),
-			(area_total / maxf(float(_glass_layers.size()), 1.0)),
-			area_total * float(per_level) / 1000000.0,
-			vp_size.x, vp_size.y, vp_size.x * vp_size.y / 1000000.0])
-
-
-## GLASS G1 — one glass pane layer (one per level), a direct child of the
-## renderer, drawn just after the backbuffer. Transform copied verbatim from
-## `_build_voxel_layer_node()` so the pane registers pixel-exact with the opaque
-## geometry.
-func _build_glass_sublayer_node(level: int) -> TileMapLayer:
-	var layer := TileMapLayer.new()
-	layer.tile_set = _tileset
-	layer.name = "glass_layer_%d" % level
-	layer.material = _make_glass_material()
-	## One tile per texture region — nothing to bleed from — so linear filtering
-	## is safe and softens the frost + the feathered silhouette.
-	layer.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-
-	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
-	layer.position = Vector2(
-		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
-		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y \
-			- GeometryCoords.VOXEL_STEP_PX * float(relative_level(level))
-	)
-
-	var quad_env := OS.get_environment("INFILTRAITOR_QUADRANT")
-	if quad_env.is_valid_int():
-		layer.rendering_quadrant_size = maxi(quad_env.to_int(), 1)
-	if OS.get_environment("INFILTRAITOR_HIDE_VOXELS") == "1":
-		layer.visible = false
-
-	layer.y_sort_origin = 1
-	layer.y_sort_enabled = ysort_probe_on   ## Q2 gate — see setup()
-	layer.z_index = _glass_composite_z
-
-	add_child(layer)
-	move_child(layer, -1)
-	## CRACK-02 — nothing crack-shaped is bound here any more. The web left this
-	## shader entirely (G-D27): it is a sprite over the pane, and the pane layer
-	## went back to what it was before CRACK-01-B.
-	_lift_glass_crack_root()
-	return layer
-
-
-## GLASS G1 — a ShaderMaterial for a glass pane layer, its uniforms seeded from
-## the current `_glass_shader_params` (so a mid-run change via
-## `set_glass_shader_param` survives into any layer built afterwards).
-func _make_glass_material() -> ShaderMaterial:
-	var shader = load("res://godot/shaders/glass_pane.gdshader")
-	if shader == null:
-		push_error("[VoxelRenderer] GLASS-G1: glass_pane.gdshader failed to load — glass will render flat")
-		return null
-	var mat := ShaderMaterial.new()
-	mat.shader = shader
-	_apply_glass_params_to(mat)
-	## G-D16 / V-B — the rest of the family's tints. NOT a `_glass_shader_params`
-	## key: those are the five calibration knobs the blind-strip capture action
-	## drives one at a time by name, and this is a fixed-size array the roster
-	## owns. Index 0 (`glass_tint`) stays a knob because that is how "painel 005"
-	## was picked.
-	## Four named uniforms rather than one array — see the ⚠️ in
-	## glass_shading.gdshaderinc: the array form prints a shader-compiler error on
-	## every boot while rendering correctly, which is the kind of noise that
-	## teaches a reader to skim the log.
-	for i in range(1, GlassMaterials.TINT_SLOTS):
-		var c: Color = GlassMaterials.PANE_TINT[i]
-		mat.set_shader_parameter("glass_tint_alt_%d" % (i - 1), Vector3(c.r, c.g, c.b))
-	## The frosted grain, sampled by world position (see the shader). Bound once
-	## here — it is not a calibration knob.
-	var frost_tex := load(MATERIAL_ASSET_ROOT + "glass/facade_glass.png")
-	if frost_tex != null:
-		mat.set_shader_parameter("glass_frost_tex", frost_tex)
-	## CRACK-02 — the fracture sheets are NOT bound here. They are the crack
-	## SPRITE's texture now (G-D27), loaded per width by `_glass_crack_sheet()`, so
-	## a pane layer carries no crack uniform at all and every glass fragment on the
-	## map loses a `texture()` + branch.
-	return mat
-
-
-func _apply_glass_params_to(mat: ShaderMaterial) -> void:
-	if mat == null:
-		return
-	for key in _glass_shader_params:
-		mat.set_shader_parameter(key, _glass_shader_params[key])
-
-
-## GLASS G1 — the blind-strip capture action drives the calibration knobs through
-## here. Sets the value on every live sublayer AND records it so later sublayers
-## inherit it. `name` is one of the `_glass_shader_params` keys.
-func set_glass_shader_param(name: String, value) -> void:
-	_glass_shader_params[name] = value
-	for l in _glass_layers.values():
-		(l as TileMapLayer).material.set_shader_parameter(name, value)
-	if _glass_tile_material != null:
-		_glass_tile_material.set_shader_parameter(name, value)
-
-
-## OPTION A — the one material every glass tile carries into the opaque layer.
-## Seeded by COPYING a freshly built pane material's parameters rather than by a
-## second list of them: the calibration knobs, the family's tints and the frost
-## texture all have one author (`_make_glass_material()`), and the tile shader
-## shares its include, so every name lines up.
-func _get_glass_tile_material() -> ShaderMaterial:
-	if _glass_tile_material != null:
-		return _glass_tile_material
-	var shader = load("res://godot/shaders/glass_tile.gdshader")
-	var pane := _make_glass_material()
-	if shader == null or pane == null:
-		push_error("[VoxelRenderer] RENDER-ORDER-A: glass_tile.gdshader or the pane material failed to load — glass tiles will render through the opaque layer's shader as flat yellow")
-		return null
-	var mat := ShaderMaterial.new()
-	mat.shader = shader
-	for u in (pane.shader as Shader).get_shader_uniform_list():
-		var value = pane.get_shader_parameter(String(u["name"]))
-		if value != null:
-			mat.set_shader_parameter(String(u["name"]), value)
-	_glass_tile_material = mat
-	return mat
-
-
-func _queue_glass_tile_sync() -> void:
-	if _glass_tile_sync_queued:
-		return
-	_glass_tile_sync_queued = true
-	call_deferred("_glass_tile_sync")
-
-
-## OPTION A — copy every glass cell into its level's opaque layer, and take back out
-## the ones the glass layer has lost since the last pass.
-##
-## Checked against the BOARD, not against the record, so it heals: a re-render that
-## cleared `_layers[level]` is repaired by the next pass. And it only removes a cell
-## that still holds the glass id it copied — a later opaque write in the same place
-## is never erased by a stale glass record.
-func _glass_tile_sync() -> void:
-	_glass_tile_sync_queued = false
-	var placed: int = 0
-	var removed: int = 0
-	for level in _glass_layers:
-		var glass := _glass_layers[level] as TileMapLayer
-		var opaque := _layers.get(level) as TileMapLayer
-		if glass == null or opaque == null:
-			continue
-		var prev: Dictionary = _glass_tile_mirror.get(level, {})
-		var now: Dictionary = {}
-		for c in glass.get_used_cells():
-			var sid: int = glass.get_cell_source_id(c)
-			now[c] = sid
-			if opaque.get_cell_source_id(c) != sid:
-				opaque.set_cell(c, sid, Vector2i.ZERO, 0)
-				placed += 1
-		for c in prev:
-			if not now.has(c) and opaque.get_cell_source_id(c) == int(prev[c]):
-				opaque.erase_cell(c)
-				removed += 1
-		_glass_tile_mirror[level] = now
-	if placed > 0 or removed > 0:
-		print_debug("[GLASS-TILE] mirrored %d glass cell(s) into the opaque layers, removed %d"
-			% [placed, removed])
-
-
-## Every source id that draws glass: the pane atoms and every rim shard composed so
-## far. What `_build_screen_occluder_index()` must not count as an occluder.
-func _glass_tile_source_ids() -> Dictionary:
-	var ids: Dictionary = {}
-	for sid in _glass_source_info:
-		ids[int(sid)] = true
-	for sid in _glass_rim_sources.values():
-		if int(sid) >= 0:
-			ids[int(sid)] = true
-	return ids
-
-
-## GLASS G1 — levels that currently hold a glass sublayer pair. Sorted, for the
-## selftest and diagnostics.
-func glass_level_keys() -> Array:
-	var out: Array = _glass_layers.keys()
-	out.sort()
-	return out
-
-
 ## GLASS G3 — erase one glass pane cell. A glass voxel renders on `_glass_layers`,
 ## not `_layers`, so the detonation writer's "destroy" wave (which only knows
 ## `get_layer()` → the opaque stack) leaves a blast-shattered pane on screen.
@@ -7095,27 +5275,6 @@ func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 	note_glass_erased()   ## G-D30, seam 3 of 3 (the cook)
 	note_glass_erased_for_rim(level, cell)   ## CRACK-03
 	return true
-
-
-## GLASS G1 — the blind strip needs a same-boot CONTROL: glass exactly as it
-## rendered before G1, a solid pale-blue cube. Hiding the pane layer alone just
-## leaves a hole (glass no longer writes the opaque layer), so this transiently
-## paints the opaque cube back onto every glass cell and hides the pane + the
-## backbuffer. `enable=false` undoes both. Capture-only — never on the play path.
-func set_glass_opaque_preview(enable: bool) -> void:
-	var opaque_glass_id: int = MATERIALS.find(GlassMaterials.BASE)
-	for level in _glass_layers:
-		var gpane := _glass_layers[level] as TileMapLayer
-		var opaque := get_layer(level)
-		for cell in gpane.get_used_cells():
-			if enable:
-				if opaque != null and opaque_glass_id >= 0:
-					opaque.set_cell(cell, opaque_glass_id, Vector2i.ZERO, 0)
-			elif opaque != null:
-				opaque.erase_cell(cell)
-		gpane.visible = not enable
-	if _glass_backbuffer != null:
-		_glass_backbuffer.visible = not enable
 
 
 ## DESTRUCTION D1/D2/D4 — render one Slab's voxels. Each voxel independently
@@ -7236,7 +5395,6 @@ func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true)
 	return resolved
 
 
-
 ## FLOOR-DEPTH-01 — publish one GU's declared floor zone, so the FIXED levels
 ## beneath the Slab planes can wear the same baked texture. material is the zone
 ## material ("earth" clears the entry — an unzoned GU must fall back to the
@@ -7267,11 +5425,6 @@ func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 func clear() -> void:
 	for layer in _layers.values():
 		layer.clear()
-	## GLASS G1 — the rotation path is clear()+render(); a glass sublayer keeping
-	## its pre-rotation cells would leave a pane floating where the old view had
-	## one. The nodes stay (like the opaque layers) — only the cells go.
-	for l in _glass_layers.values():
-		(l as TileMapLayer).clear()
 	## OCC-02: the cells those records point at no longer exist. Keeping them would make
 	## the next restore write stale alternatives into freshly-rebuilt geometry — the
 	## rotation path (clear() + render()) goes through here every time.

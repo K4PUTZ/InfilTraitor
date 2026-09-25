@@ -21,7 +21,6 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 ## in the same commit is not in Godot's global class cache until the editor
 ## rescans, so a headless capture run fails to PARSE room.gd. Measured, not
 ## guessed — it cost one hung capture boot.
-const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
 ## CRACK-04 / G-D34 — the catalogue of hole shapes. Preloaded rather than left to
 ## the global class_name so the dependency is visible where this file is read.
 const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
@@ -1984,11 +1983,6 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	var max_voxel_z_index := _voxel_renderer.get_max_voxel_z_index()
 	agent.z_index = max_voxel_z_index + 1
 	print("[OCC-03] Agent z_index set to %d (max voxel layer z_index: %d, room size: %s)" % [agent.z_index, max_voxel_z_index, room_size])
-	## GLASS G-D18b: glass hides nothing, so a pane the agent stands BEHIND should
-	## draw over him (a faint tint), the way it already does for a guard. Lift the
-	## whole glass composite one z above him — OCC-03's bump only needs to clear
-	## the OPAQUE stack.
-	_voxel_renderer.set_glass_over_z(agent.z_index + 1)
 	## VL-02a: overhead fixtures/shafts are DRAWN at ceiling_lift — above the whole
 	## wall stack on screen — so they must sort above it too. Their old z values
 	## (rays 0; lamps WALL_BASE_Z_INDEX + ceil_floors + 1 = 19) were derived from the
@@ -3043,10 +3037,9 @@ func scenario_ground_check(label: String) -> bool:
 		var path: Array[Vector2i] = movement_overlay.build_path_to(reach[i])
 		path_rows.append("%s:%s" % [reach[i], path])
 	var counts: Dictionary = view_context()
-	## R3D-12: what is still written to the hidden 2D board — opaque layer cells, glass layer cells (the glass state's
-	## authority until it moves), the structure layer.
+	## R3D-12: what is still written to the hidden 2D board — opaque layer cells, the structure layer. (The glass layers
+	## are gone, R3D-END END-2.)
 	var opaque_cells: int = 0
-	var glass_cells: int = 0
 	var opaque_by_level: PackedStringArray = []
 	for level in range(GeometryCoords.FLOOR_DEEP_LEVEL, _voxel_renderer.top_wall_level() + 1):
 		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
@@ -3054,19 +3047,8 @@ func scenario_ground_check(label: String) -> bool:
 			opaque_cells += layer.get_used_cells().size()
 			if layer.get_used_cells().size() > 0:
 				opaque_by_level.append("L%d:%d" % [level, layer.get_used_cells().size()])
-				if level == GeometryCoords.PLAYABLE_LEVEL and OS.get_environment("INFILTRAITOR_GROUND_CELLS_DUMP") == "1":
-					var gl_layer: TileMapLayer = _voxel_renderer._glass_layers.get(level)
-					var odd: PackedStringArray = []
-					for uc in layer.get_used_cells():
-						if gl_layer == null or gl_layer.get_cell_source_id(uc) == -1:
-							odd.append("%d,%d src%d" % [uc.x, uc.y, layer.get_cell_source_id(uc)])
-					print("[GROUND-CELLS-DUMP] L%d non-glass opaque cells: %s" % [level, ", ".join(odd)])
-	for gl in _voxel_renderer._glass_layers.values():
-		for lay in (gl as Dictionary).values() if gl is Dictionary else [gl]:
-			if lay is TileMapLayer:
-				glass_cells += (lay as TileMapLayer).get_used_cells().size()
-	print("[GROUND-CELLS] %s opaque %d (%s) glass %d structure %d floor %d" % [label, opaque_cells,
-		" ".join(opaque_by_level), glass_cells, structure_layer.get_used_cells().size(), floor_layer.get_used_cells().size()])
+	print("[GROUND-CELLS] %s opaque %d (%s) structure %d floor %d" % [label, opaque_cells,
+		" ".join(opaque_by_level), structure_layer.get_used_cells().size(), floor_layer.get_used_cells().size()])
 	print("[GROUND-CHECK] %s size %s tiles %d | walk_mismatch %d point_mismatch %d floor_pos %s floor_scale %s | walk %s select %s reach %d %s paths %d %s | view %s/%s"
 		% [label, size, walkable_tiles, walk_mismatch, point_mismatch, floor_layer.position, floor_layer.scale,
 			"\n".join(walk_rows).md5_text(), "\n".join(select_rows).md5_text(), cost_rows.size(),
@@ -4097,9 +4079,6 @@ func _refresh_tactical_state() -> void:
 	_update_movement_highlight()
 
 
-
-
-
 ## ID-02: Full memory flush — resets all state when the room needs to restart
 func _reset_room_state() -> void:
 	## §13.2 (Director, 2026-08-26: *"lembrar de limpar em caso de reset, morte,
@@ -4247,9 +4226,6 @@ func _is_guard_cell(cell: Vector2i) -> bool:
 		if is_instance_valid(guard) and guard.cell == cell:
 			return true
 	return false
-
-
-
 
 
 ## Utility: converts a cell coordinate to world position
@@ -5597,13 +5573,6 @@ func _handle_tile_click(cell: Vector2i) -> void:
 	_selected_cell = _selection_controller.selected_cell
 
 
-
-
-
-
-
-
-
 func _debug_probe_voxel_alignment() -> void:
 	## SLICE-02: measures world-space delta between the canonical GU diamond and the
 	## voxel plane's 8x8 block. Diagnostic for block/voxel layer alignment.
@@ -5730,7 +5699,6 @@ func _tic_slab_system() -> void:
 		slab.clear_all_dirty()
 
 
-
 ## M2-13: Quantized isometric directions (8 directions)
 const SHADOW_DIRS: Array[Vector2i] = [
 	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
@@ -5751,15 +5719,11 @@ func _is_cell_inside_room(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < _room_size.x and cell.y < _room_size.y
 
 
-
-
 func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:
 	var size := base_size
 	if size == Vector2i.ZERO:
 		size = _base_layout.get("size", Vector2i.ZERO)
 	return PerspectiveMapperClass.cell_to_base(view_cell, direction, size)
-
-
 
 
 ## Convert a screen-space press position to the tile cell underneath it.
@@ -6924,110 +6888,6 @@ func _capture_walk_filmstrip() -> void:
 	print("[P3-WALK] wrote %d frames to %s" % [frame_count, out_dir])
 
 
-## GLASS G1 — the calibration obligation (RESUMO_SESSAO_2026-08-30_GLASS_DESIGN §6):
-## the Director sets MUL vs ADD strength and the ADD mode, from a strip of variants
-## built IN ONE BOOT over PLAYGROUND's glass, with the order shuffled and the labels
-## hidden by the Python driver (glass_calibration.py). This action produces the raw
-## panels: one per (add_mode, mul_strength, add_strength) combo plus one same-boot
-## OPAQUE CONTROL (glass as it rendered before G1). Grid is env-overridable.
-func _capture_glass_calibration() -> void:
-	if _voxel_renderer == null:
-		push_error("[GLASS-CALIB] no voxel renderer")
-		get_tree().quit(1)
-		return
-	var out_dir := ProjectSettings.globalize_path("res://") + "Screenshots/glass_calib"
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	var existing := DirAccess.open(out_dir)
-	if existing != null:
-		for f in existing.get_files():
-			if f.ends_with(".png") or f.ends_with(".txt"):
-				existing.remove(f)
-
-	## Both ADD modes side by side (Director: "testar as opções lado a lado").
-	var modes: Array = _env_float_list("INFILTRAITOR_GLASS_MODES", [0.0, 1.0])
-	var muls: Array = _env_float_list("INFILTRAITOR_GLASS_MUL", [0.30, 0.55, 0.80])
-	var adds: Array = _env_float_list("INFILTRAITOR_GLASS_ADD", [0.12, 0.28, 0.45])
-
-	## Hide the overlays that draw directly ON the glass — the GU grid, the
-	## occlusion wireframe, the selection diamond, the cell labels. The top
-	## toolbar and the top-left dev panel are left alone; glass_calibration.py
-	## crops each panel to a glass-centred region and they fall outside it.
-	for n in [_gu_grid_overlay, _occlusion_wireframe_overlay,
-			get_node_or_null("SelectionOverlay"), get_node_or_null("TileLabelsOverlay"),
-			get_node_or_null("MovementOverlay"), get_node_or_null("PathPreview")]:
-		if n != null:
-			n.visible = false
-
-	## Frame the two half-thickness panels — (25,8) SE and (29,8) SW — the plan's
-	## primary G1 test case. One static shot with the lit floor behind them, so
-	## every panel judges the same "seeing through it" against the same scenery.
-	var focus_cell := Vector2i(27, 9)
-	var focus_env := OS.get_environment("INFILTRAITOR_GLASS_FOCUS_CELL")
-	if focus_env.contains(","):
-		var fp := focus_env.split(",")
-		if fp.size() == 2 and fp[0].is_valid_int() and fp[1].is_valid_int():
-			focus_cell = Vector2i(fp[0].to_int(), fp[1].to_int())
-	if _camera_controller != null and agent != null:
-		_camera_controller.focus_on(agent._cell_to_world(focus_cell))
-	var zoom_env := OS.get_environment("INFILTRAITOR_GLASS_ZOOM")
-	var zoom: float = zoom_env.to_float() if zoom_env.is_valid_float() else 0.60
-	if _camera_controller != null:
-		_camera_controller.set_zoom_for_capture(zoom)
-	if _fow_controller != null:
-		_fow_controller.reveal_around(focus_cell, 30)
-	for _s in range(45):
-		await get_tree().process_frame
-
-	var glass_levels: Array = _voxel_renderer.glass_level_keys()
-	print("[GLASS-CALIB] glass sublayers on %d level(s): %s" % [glass_levels.size(), glass_levels])
-	if glass_levels.is_empty():
-		push_warning("[GLASS-CALIB] no glass sublayers built — is this PLAYGROUND, and did glass route through the sublayers?")
-
-	var index_lines: PackedStringArray = []
-	var panel: int = 0
-
-	## The opaque control first (panel 0), so the driver always has it.
-	_voxel_renderer.set_glass_opaque_preview(true)
-	for _c in range(8):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	_save_glass_panel(out_dir, panel)
-	index_lines.append("%d\tCONTROL\topaque (pre-G1)" % panel)
-	panel += 1
-	_voxel_renderer.set_glass_opaque_preview(false)
-	for _c in range(4):
-		await get_tree().process_frame
-
-	for mode in modes:
-		_voxel_renderer.set_glass_shader_param("glass_add_mode", mode)
-		for mul in muls:
-			_voxel_renderer.set_glass_shader_param("glass_mul_strength", mul)
-			for add in adds:
-				_voxel_renderer.set_glass_shader_param("glass_add_strength", add)
-				for _c in range(6):
-					await get_tree().process_frame
-				await RenderingServer.frame_post_draw
-				_save_glass_panel(out_dir, panel)
-				index_lines.append("%d\tmode=%s\tmul=%.2f\tadd=%.2f" % [
-					panel, ("facade" if mode < 0.5 else "sheen"), mul, add])
-				panel += 1
-
-	var key := FileAccess.open("%s/index.txt" % out_dir, FileAccess.WRITE)
-	if key != null:
-		for line in index_lines:
-			key.store_line(line)
-		key.close()
-	print("[GLASS-CALIB] wrote %d panels + index.txt to %s" % [panel, out_dir])
-
-
-func _save_glass_panel(out_dir: String, panel: int) -> void:
-	var img := get_viewport().get_texture().get_image()
-	if img == null:
-		push_error("[GLASS-CALIB] null viewport image at panel %d" % panel)
-		return
-	img.save_png("%s/panel_%03d.png" % [out_dir, panel])
-
-
 ## CRACK-01/02 — the on-map proof, without the agent_shot pipeline's timing.
 ## `INFILTRAITOR_CAPTURE_ACTION=glass_crack_demo` on the GLASS map: finds the
 ## biggest panel pane, cracks it at its centre through the REAL
@@ -7245,12 +7105,6 @@ func _capture_glass_crack_demo() -> void:
 	await _voxel_renderer.process_dirty_async(_edge_registry)
 	print("[CRACK-DEMO] bore: %d voxel(s) destroyed through the real erase seam (G-D14), opening=%s, armored=%s"
 		% [holed, demo_opening if demo_opening != "" else "(none)", armored_pane])
-	## RENDER_ORDER seam — a bore on a GU's FIRST column exposes the previous column's
-	## side. Read back what the board says that neighbour renders with now.
-	if posmod(hit_run, GeometryCoords.VOXELS_PER_UNIT_AXIS) == 0:
-		var seam_n: Vector2i = hit_gp - (Vector2i(1, 0) if run_is_x else Vector2i(0, 1))
-		print("[CRACK-DEMO] seam neighbour %s of the bore, level %d: mask %d (bit 0 = side sliver)"
-			% [seam_n, hit_level, _voxel_renderer.glass_cell_mask(hit_level, seam_n)])
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	plan["opening"] = demo_opening   ## CRACK-04 — the sheet's void, same polygon
@@ -7271,7 +7125,6 @@ func _capture_glass_crack_demo() -> void:
 		% [GlassCrack.sheet_span_for(String(plan.get("opening", "")), wide, bool(plan.get("armored", false))),
 		plan["pane_lo"].x, plan["pane_hi"].x,
 		plan["pane_lo"].y, plan["pane_hi"].y])
-	_print_crack_quads(plan)
 
 	## ⚠️ THE SECOND HIT PUNCHES ITS OWN BORE, AND UNTIL 2026-09-06 IT DID NOT —
 	## which made this branch photograph the exact fiction this function's own
@@ -7860,53 +7713,6 @@ func _pane_by_id(pane_id: String) -> Array:
 		if s.pane_id == pane_id:
 			out.append(s)
 	return out
-
-
-## CRACK-02 — the SHEET quad and the PANE quad, in SCREEN pixels, so "the web
-## stays inside the pane" (G-D27's one named cost) is a measurement instead of a
-## squint at an isometric picture. Both are walked with the SAME public geometry
-## the sprite itself uses — `glass_cell_face_pos()` for the impact and
-## `GlassCrackSpriteClass.face_offset()` for the basis — so this cannot agree with the
-## render by accident and disagree with the truth.
-##
-## ⚠️ A sheet SMALLER than its pane clips nothing, and reading that picture as
-## "the clip works" is the exact mistake this print exists to prevent: compare the
-## two rectangles, not the crack against the wall you think you see.
-func _print_crack_quads(plan: Dictionary) -> void:
-	if _voxel_renderer == null:
-		return
-	var axis: int = int(plan["run_axis"])
-	var span: Vector2 = GlassCrack.sheet_span_for(String(plan.get("opening", "")),
-		bool(plan.get("wide", false)), bool(plan.get("armored", false)))
-	var impact: Vector2 = _voxel_renderer.glass_cell_face_pos(
-		int(plan["hit_level"]), plan["hit_cell"])
-	var to_screen: Transform2D = _voxel_renderer.get_global_transform_with_canvas()
-	var lo: Vector2 = plan["pane_lo"]
-	var hi: Vector2 = plan["pane_hi"]
-	var sheet_c: Array = [Vector2(-span.x * 0.5, span.y * 0.5), Vector2(span.x * 0.5, span.y * 0.5),
-		Vector2(span.x * 0.5, -span.y * 0.5), Vector2(-span.x * 0.5, -span.y * 0.5)]
-	var pane_c: Array = [Vector2(lo.x, hi.y), Vector2(hi.x, hi.y),
-		Vector2(hi.x, lo.y), Vector2(lo.x, lo.y)]
-	var out: Array = []
-	for c in sheet_c:
-		out.append(to_screen * (impact + GlassCrackSpriteClass.face_offset(c.x, c.y, axis)))
-	print("[CRACK-DEMO] sheet quad (screen px, NW NE SE SW): %s" % str(out))
-	out = []
-	for c in pane_c:
-		out.append(to_screen * (impact + GlassCrackSpriteClass.face_offset(c.x, c.y, axis)))
-	print("[CRACK-DEMO] pane  quad (screen px, NW NE SE SW): %s" % str(out))
-
-
-## Small helper: parse "a,b,c" of floats from an env var, else the fallback.
-func _env_float_list(env_name: String, fallback: Array) -> Array:
-	var raw := OS.get_environment(env_name)
-	if raw == "":
-		return fallback
-	var out: Array = []
-	for part in raw.split(","):
-		if part.is_valid_float():
-			out.append(part.to_float())
-	return out if not out.is_empty() else fallback
 
 
 ## Give the dev-capture actions something to detonate. PLAYGROUND stopped
@@ -8809,7 +8615,6 @@ func _capture_cell_index_gate() -> void:
 		else "FAIL — pixels claim a cell whose quad they are not in"))
 	print("[P3-GATE] capture: Screenshots/history/p3_gate_recovered_cells.png")
 	print("[P3-GATE] ---- end ----")
-
 
 
 ## LEVEL-RENUMBER — THE GATE, and it has to be earned before it means anything.
@@ -10602,8 +10407,6 @@ func _populate_test_zone_if_playground() -> void:
 		print("[TestZone] %d pickups" % _collectibles.size())
 
 
-
-
 ## GU-GRID-01: re-run whenever room_size can have changed — a real map load
 ## (load_map()) or a perspective/rotation rebuild (_set_perspective()), both
 ## of which call _room_builder.build_from_layout() with a possibly different
@@ -10878,10 +10681,6 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "walk_filmstrip" and agent != null:
 		await _capture_walk_filmstrip()
-		get_tree().quit(0)
-		return
-	elif capture_action == "glass_calibration":
-		await _capture_glass_calibration()
 		get_tree().quit(0)
 		return
 	elif capture_action == "glass_crack_demo":
@@ -11761,7 +11560,6 @@ func _print_node_census(node: Node, depth: int) -> void:
 		## The voxel renderer's 48 layers are already priced by HIDE_VOXELS.
 		if depth < 4 and (c.x >= 4 or c.z > 0) and child != _voxel_renderer:
 			_print_node_census(child, depth + 1)
-
 
 
 func _on_posture_lower_requested() -> void:

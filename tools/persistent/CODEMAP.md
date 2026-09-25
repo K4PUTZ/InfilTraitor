@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**278 scripts · 98238 lines total** (under `godot/scripts/`)
+**275 scripts · 94465 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -17,10 +17,10 @@
 - **debug/** — atom_sheet_debug.gd, circle_gate_probe.gd, damage_gallery_debug.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
 - **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, damage_composite_cache.gd, decal_compositor.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, half_voxel_compositor.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_crack_sprite.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
+- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, occlusion_slice_panel.gd, occlusion_wireframe_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
-- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_remnant_atom_capture.gd, glass_rim_capture.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, render_order_ysort_spike.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **systems/** — bake_compositor.gd, bake_config.gd, bake_policy.gd, baked_tile_lookup.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, damage_variant_baker.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_cache_selftest.gd, bake_selftest.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, ceiling_carve_seam_selftest.gd, damage_atom_bake_selftest.gd, damage_composite_cache_selftest.gd, decal_compositor_equality_selftest.gd, decal_seam_selftest.gd, destruction_part0_spike.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_sunk_seam_selftest.gd, floor_zone_bake_selftest.gd, generic_mark_seam_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, half_voxel_compositor_equality_selftest.gd, half_voxel_seam_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, tint_baked_atom_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_face_separation_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -1153,7 +1153,7 @@ extends `Node3D` · 1914 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 7483 lines
+`class_name VoxelRenderer` · extends `Node2D` · 5636 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1538,30 +1538,6 @@ extends `Node2D` · 144 lines
 - `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
-
----
-
-### `glass_crack_sprite.gd`
-
-`class_name GlassCrackSprite` · extends `Sprite2D` · 174 lines
-
-`godot/scripts/overlays/glass_crack_sprite.gd`
-
-> GlassCrackSprite — GLASS_MASTER_PLAN CRACK-02 / G-D27 (§13, stage S-1). ONE crack event = ONE of these. A Sprite2D carrying the fracture sheet, laid over the pane in the pane's OWN basis, drawing additively and touching nothing about the glass underneath. ⚠️ THE TRANSFORM IS THE WHOLE TRICK, so it is here and not scattered: CRACK-01-D measured the wall face's basis — a voxel sits at `impact + run · RUN_STEP + level · (0, −VOXEL_STEP)`, RUN_STEP = (16, 8) for a run along X and (−16, 8) along Y — and CRACK-01's shader had to INVERT it per fragment. Baking the FORWARD basis into `transform` instead makes the quad the pane's parallelogram, so the sheet is already anchored, already sheared correctly, and the shader has no inverse in it at all. What this buys over CRACK-01's renderer-side plane (G-D27, all four measurable): the glass behind is untouched by construction; a crack is a NODE with a position, so a perspective rebuild can recreate it (S-3); N impacts are N sprites that alpha-composite, so the 16-group cap, the per-cell group plane and the RGBAF strip are gone; and every glass fragment on the map loses a `texture()` + branch.
-
-**Constants / tuning**
-- `RUN_STEP_X` = `Vector2(16.0, 8.0)`
-- `RUN_STEP_Y` = `Vector2(-16.0, 8.0)`
-- `LEVEL_STEP` = `Vector2(0.0, -20.0)`
-- `PANE_CLIP_SLACK` = `0.5`
-
-**Public vars**
-- `var params: Dictionary = {}`
-
-**Public API**
-- `func setup(sheet: Texture2D, span: Vector2, origin: Vector2, run_axis: int, pane_lo: Vector2, pane_hi: Vector2, shader: Shader) -> void:`
-- `func set_opening(tex: Texture2D, origin: Vector2, size: Vector2) -> void:`
-- `func set_hole_cut(v: float) -> void:`
 
 ---
 
@@ -2523,6 +2499,30 @@ extends `Node2D` · 44 lines
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `FacadeSampler` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
+
+---
+
+### `glass_crack_params.gd`
+
+`class_name GlassCrackParams` · extends `RefCounted` · 105 lines
+
+`godot/scripts/systems/destruction/glass_crack_params.gd`
+
+> GlassCrackParams — GLASS_MASTER_PLAN CRACK-02 / G-D27 (§13), as DATA. ONE crack event = ONE of these: every shader parameter the crack carries (the fracture sheet, its span, the pane's clip bounds, the craze field, the occupancy cut, the opening void, the hole-cut dial). `VoxelRenderer` keeps it in the crack's record (`rec["params"]` is `params`, by reference), and `GlassCrackMirror3D` gives the record a quad on the pane's plane in the 3D board and copies `params` into it every frame. R3D-END (END-2): this was `GlassCrackSprite`, a Sprite2D laid over the pane in the pane's own canvas basis, with a ShaderMaterial on `glass_crack.gdshader` as the record's 2D consumer. The 2D board is gone, so the node, its transform and its material are too; what the 3D board reads was always only `params` (R3D-9).
+
+**Constants / tuning**
+- `PANE_CLIP_SLACK` = `0.5`
+
+**Public vars**
+- `var params: Dictionary = {}`
+- `var valid: bool = false`
+
+**Public API**
+- `func setup(sheet: Texture2D, span: Vector2, pane_lo: Vector2, pane_hi: Vector2) -> void:`
+- `func setup_field(sheet: Texture2D, span: Vector2, pane_lo: Vector2, pane_hi: Vector2, tile_span: Vector2, field_origin: Vector2, field_dir: Vector2) -> void:`
+- `func set_occupancy(tex: Texture2D, size: Vector2, origin: Vector2) -> void:`
+- `func set_opening(tex: Texture2D, origin: Vector2, size: Vector2) -> void:`
+- `func set_hole_cut(v: float) -> void:`
 
 ---
 
@@ -4303,11 +4303,11 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 2113 lines
+extends `SceneTree` · 1718 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
-> GLASS_MASTER_PLAN §8.1 / CRACK-01 — the CRACKED tier for glass. Rodar: python3 tools/persistent/run_selftests.py --only glass_crack §8.1 was written up as a CONTRADICTION: the art order's step 3 asked to raise `glass.json`'s `crack_factor` above 0 and add `glass` to `IMPACT_DECAL_MATERIALS`, which together make `voxel_decal_selftest` [12] demand `decal_crack_glass_{0,1,2}.png` — the per-voxel crack family G-D21 explicitly folded into the fracture SHEET. The resolution (Director, 2026-09-02): glass reaches CRACKED by the route it ALREADY has — `ShotPunchTable.damage_state_for()` returns CRACKED for a sub-breach glass hit — and NOT through the blast `crack_factor` probability path. So `crack_factor` stays 0.0, `glass` stays out of both decal lists, and the whole [12] coupling is untouched. Glass is simply the first material whose CRACKED art is a sheet, not a decal family. This suite is the guard on that resolution — it fails if a future edit "fixes" §8.1 by commissioning the decal family, and (from CRACK-01 stages B/C) it grows to pin the render and the shot-path event. What each test catches: [1] the CRACKED tier going unreachable for glass — the enum path breaking. [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists, or on disk. [3] the fracture SHEETS (the real CRACKED art) going missing or unimported. [8] the crack coming back INSIDE glass_pane.gdshader — CRACK-02 / G-D27 took it out of the voxel because a crack drawn there inherits `dim`, `cover` and the quad seams, and no tuning survives that. [10] the sheet shearing off the voxels — the CRACK-01-B/C bug, now pinned against the SPRITE'S OWN TRANSFORM instead of a shader inverse. [11] a crack bleeding past the frame of the pane it is on. [12] G-D30's cut reading anything other than the live glass tilemap, the occupancy rows going upside down, or the dial collapsing to a boolean. [13] S-3's rebuild path acquiring side effects — a perspective flip that re-damages the pane it is only supposed to redraw. [14] a cell's cut collapsing to one shape (the cell OFFSET being dropped from the atom key), a PARTIAL cell being cut away entirely, or the cut eating the pane's slivers. [16] the opening FAMILY going malformed — an opening that does not leave the struck cell, a pooled id with no shape, a pick that stops hashing, or the SHEET's void drifting from the voxel cut (G-D34's whole point). [15] the applied hole drifting from the opening it claims to be — a cell cut that coverage() calls outside, or left whole that it calls PARTIAL — and the shards NOT SURVIVING a later render pass, which is what kept CRACK-03's rim off the screen for its entire life. [22] a rotation re-shaping every standing hole with the DEFAULT opening — CRACK-04, GLASS §16.13. The mechanism was never broken; the ORDER was. The perspective rebuild renders the pane intact, erases the recorded holes back out of it and flushes, so unless it CLAIMS first the flush sees a batch of unclaimed erases and invents a shape for each.
+> GLASS_MASTER_PLAN §8.1 / CRACK-01 — the CRACKED tier for glass. Rodar: python3 tools/persistent/run_selftests.py --only glass_crack §8.1 was written up as a CONTRADICTION: the art order's step 3 asked to raise `glass.json`'s `crack_factor` above 0 and add `glass` to `IMPACT_DECAL_MATERIALS`, which together make `voxel_decal_selftest` [12] demand `decal_crack_glass_{0,1,2}.png` — the per-voxel crack family G-D21 explicitly folded into the fracture SHEET. The resolution (Director, 2026-09-02): glass reaches CRACKED by the route it ALREADY has — `ShotPunchTable.damage_state_for()` returns CRACKED for a sub-breach glass hit — and NOT through the blast `crack_factor` probability path. So `crack_factor` stays 0.0, `glass` stays out of both decal lists, and the whole [12] coupling is untouched. Glass is simply the first material whose CRACKED art is a sheet, not a decal family. This suite is the guard on that resolution — it fails if a future edit "fixes" §8.1 by commissioning the decal family, and (from CRACK-01 stages B/C) it grows to pin the render and the shot-path event. What each test catches: [1] the CRACKED tier going unreachable for glass — the enum path breaking. [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists, or on disk. [3] the fracture SHEETS (the real CRACKED art) going missing or unimported. [8] the crack coming back INSIDE the pane shader (glass_pane3d.gdshader) — CRACK-02 / G-D27 took it out of the voxel because a crack drawn there inherits `dim`, `cover` and the quad seams, and no tuning survives that; and a uniform the mirror feeds that glass_crack3d.gdshader does not declare (dropped with no error). [11] a crack bleeding past the frame of the pane it is on. [12] G-D30's cut reading anything other than the live glass state (the store's pane cells), the occupancy rows going upside down, or the dial collapsing to a boolean. [13] S-3's rebuild path acquiring side effects — a perspective flip that re-damages the pane it is only supposed to redraw. [16] the opening FAMILY going malformed — an opening that does not leave the struck cell, a pooled id with no shape, a pick that stops hashing, or the SHEET's void drifting from the voxel cut (G-D34's whole point). [15] the applied hole drifting from the opening it claims to be — a cell cut that coverage() calls outside, or left whole that it calls PARTIAL — and the rebuild path (a flip, a load) shaping different cells from the shot path. [22] a rotation re-shaping every standing hole with the DEFAULT opening — CRACK-04, GLASS §16.13. The mechanism was never broken; the ORDER was. The perspective rebuild renders the pane intact, erases the recorded holes back out of it and flushes, so unless it CLAIMS first the flush sees a batch of unclaimed erases and invents a shape for each. R3D-END (END-2): [10] (the 2D sprite's transform on the wall-face basis), [14] (the shard ATOMS a cell's cut was drawn with) and [20] (the remnant atom) went with the 2D board, whose tiles they drew; the openings, the shaped cells, the occupancy and the sheet are what the 3D board draws from, and those stay pinned.
 
 **Constants / tuning**
 - `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`
@@ -4315,7 +4315,6 @@ extends `SceneTree` · 2113 lines
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
 - `GlassMaterialsClass` = `preload("res://godot/scripts/systems/glass_materials.gd")`
 - `GlassCrackClass` = `preload("res://godot/scripts/systems/destruction/glass_crack.gd")`
-- `GlassCrackSpriteClass` = `preload("res://godot/scripts/overlays/glass_crack_sprite.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `GlassOpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `GlassShatterClass` = `preload("res://godot/scripts/systems/destruction/glass_shatter.gd")`
@@ -4337,6 +4336,15 @@ extends `SceneTree` · 2113 lines
 - `func test_wide_for_blowout_splits_the_arsenal() -> void:`
 - `func test_the_glass_shaders_split_the_crack_out() -> void:`
 - `func test_apply_spawns_a_sprite_and_gd24_crosses() -> void:`
+- `func test_the_pane_bounds_clip_the_sprite() -> void:`
+- `func test_the_occupancy_cut_reads_the_live_tilemap() -> void:`
+- `func test_sprite_spec_is_render_only() -> void:`
+- `func test_the_opening_family_is_well_formed() -> void:`
+- `func test_only_the_four_orthogonal_neighbours_become_shards() -> void:`
+- `func test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon() -> void:`
+- `func test_the_craze_field_covers_the_pane_and_tiles() -> void:`
+- `func test_the_craze_field_is_cut_to_the_holes() -> void:`
+- `func test_an_unclaimed_hole_is_reshaped_and_the_replay_claims_first() -> void:`
 
 ---
 
@@ -4367,47 +4375,6 @@ extends `SceneTree` · 425 lines
 - `func test_lift_widens_the_scatter() -> void:`
 - `func test_determinism() -> void:`
 - `func test_the_shockwave_is_radial_not_parallel() -> void:`
-
----
-
-### `glass_remnant_atom_capture.gd`
-
-extends `SceneTree` · 119 lines
-
-`godot/scripts/tools/glass_remnant_atom_capture.gd`
-
-> GLASS G4-3 — photograph the REMNANT ATOMS, off the production cut path. Rodar: /Applications/Godot.app/Contents/MacOS/Godot --headless --path . \ --script godot/scripts/tools/glass_remnant_atom_capture.gd ⚠️ IT CALLS `VoxelRenderer._build_glass_pane_atom()` AND THE REAL CUT HELPERS, not a re-implementation of them. What this sheet shows is the image that would be uploaded to a TileSetAtlasSource on a real break — the same pixels, at the same 32 x 36 the board draws. The leftmost column is the UNCUT atom, and it is the point of the sheet: the claim being checked is "a remnant is not the same little square", so the square has to be next to it.
-
-**Constants / tuning**
-- `RendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `ShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
-- `OUT_PATH` = `"res://Screenshots/history/glass_remnant_atoms_2026-09-05.png"`
-- `AW` = `32`
-- `AH` = `36`
-- `ZOOM` = `5`
-- `PAD` = `6`
-- `BG` = `Color(0.086, 0.094, 0.110, 1.0)`
-- `GUIDE` = `Color(0.20, 0.22, 0.25, 1.0)`
-
----
-
-### `glass_rim_capture.gd`
-
-extends `SceneTree` · 250 lines
-
-`godot/scripts/tools/glass_rim_capture.gd`
-
-> GLASS CRACK-04 — RENDER THE FAMILY OF OPENINGS FROM THE REAL ATOMS. Rodar: /Applications/Godot.app/Contents/MacOS/Godot --headless --path . \ --script godot/scripts/tools/glass_rim_capture.gd One panel per member of `GlassOpening.FAMILY`, each a real pierced pane with that opening applied through the real `refresh_glass_rims()`. This is the picture a shape decision gets made on. ⚠️ WHY THIS EXISTS AS A COMMITTED TOOL AND NOT A SCRATCH SCRIPT. `glass_rim_shape_options_2026-09-02.png` — the picture G-D32 was ratified from — was made by an ad-hoc script that was never committed and no longer exists. It was captured at 04:11 on 2026-09-03, **four minutes before `330d285d` cut the neighbour count from 8 to 4**, so the silhouette it shows is one the build has not made since. A picture that cannot be re-made is a citation that decays (the same lesson the `auto_*.png` rotation already taught this project). ⚠️ IT COMPOSITES ATOMS, IT DOES NOT BOOT THE GAME. That is the point: the question is what SILHOUETTE an opening cuts, and a play-zoom screenshot cannot answer it — the difference between two openings is tenths of a voxel there. Compositing runs headless, deterministically, in under a second. The geometry is the atom's own, not a re-derivation: a SW face's diamond edge runs `vw -> vs`, so the RUN step in canvas is (16, 8), and a level is `VOXEL_STEP_PX` straight up. Those two vectors ARE the pane's basis — the same one `GlassCrackSprite` bakes into its Transform2D.
-
-**Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `GlassOpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
-- `RUNS` = `15`
-- `LEVELS` = `13`
-- `OUT_DIR` = `"res://Screenshots/history"`
-- `BG` = `Color(0.16, 0.17, 0.22, 1.0)`
-- `GLASS_FLAT` = `Color(1.0, 0.93, 0.20, 1.0)`
 
 ---
 
@@ -4516,11 +4483,11 @@ extends `SceneTree` · 1606 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 565 lines
+extends `SceneTree` · 463 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
-> GLASS_MASTER_PLAN G1 — glass transparency routing selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_transparency Born as the round-trip proof of G1's routing of glass cells onto their own tile layers (G-D1); what it still pins is the glass STATE and grouping those layers used to carry, now asked of the store and the grouper. R3D-END (END-1): the tests that read which TILE LAYER a glass voxel landed on ([1] Option A's mirror, [1b] the seam cull, [2] lazy sublayers, [3] concrete on the opaque layer, [4] a destroyed pane cell erased from its layer) went with the 2D board: no tile is written any more, and the glass state lives in the `VoxelStore` (R3D-14). [7] now reads the store's pane cells; [12] reads the plan's tile-less entry. What is left, worst first: 5. Intact glass dropped from `build_occupancy()` — the light field would stop seeing the pane. 7. A G-D9 brick band read as pane glass (or the reverse) — a brick sill that cracks and rains shards. 6/10. Panes grouped wrong (`GlassPaneGrouper`) — a plain pane merged into an armoured one defeats the armour. 8. Glass occluding (O7) — the cutaway would ghost a see-through pane. 9. A pane larger than the fracture sheet accepted silently (G-D23). 11. A glass member missing its own tinted atoms (until END-2 deletes the atoms). 12. A damaged glass voxel yielding an opaque plan entry (GLASS-OLIVE).
+> GLASS_MASTER_PLAN G1 — glass transparency routing selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_transparency Born as the round-trip proof of G1's routing of glass cells onto their own tile layers (G-D1); what it still pins is the glass STATE and grouping those layers used to carry, now asked of the store and the grouper. R3D-END (END-1): the tests that read which TILE LAYER a glass voxel landed on ([1] Option A's mirror, [1b] the seam cull, [2] lazy sublayers, [3] concrete on the opaque layer, [4] a destroyed pane cell erased from its layer) went with the 2D board: no tile is written any more, and the glass state lives in the `VoxelStore` (R3D-14). [7] now reads the store's pane cells; [12] reads the plan's tile-less entry. END-2 took [11] (per-member pane atoms and the tint in their BLUE channel: the 3D board tints each member's material directly). What is left, worst first: 5. Intact glass dropped from `build_occupancy()` — the light field would stop seeing the pane. 7. A G-D9 brick band read as pane glass (or the reverse) — a brick sill that cracks and rains shards. 6/10. Panes grouped wrong (`GlassPaneGrouper`) — a plain pane merged into an armoured one defeats the armour. 8. Glass occluding (O7) — the cutaway would ghost a see-through pane. 9. A pane larger than the fracture sheet accepted silently (G-D23). 12. A damaged glass voxel yielding an opaque plan entry (GLASS-OLIVE).
 
 **Constants / tuning**
 - `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
@@ -5035,22 +5002,6 @@ extends `Node` · 331 lines
 - `func test_criterion_5_file_map_source_round_trip() -> void:`
 - `func test_criterion_6_invariants_check() -> void:`
 - `func test_criterion_7_non_regression() -> void:`
-
----
-
-### `render_order_ysort_spike.gd`
-
-extends `SceneTree` · 789 lines
-
-`godot/scripts/tools/render_order_ysort_spike.gd`
-
-> RENDER_ORDER_MASTER_PLAN Task 1 — the Y-sort spike (Q1 + Q3). Answers, by MEASURING PIXELS rather than by looking: Q1  Does Godot merge the tiles of two sibling Y-sorted TileMapLayers at the SAME z_index, under a Y-sorted parent, into one depth order? This is the whole premise of RO1/RO2 — the rejected GLASS §19 assumed it was already happening and it never has been (y_sort_enabled appears zero times in this repo). Q3  Can a BackBufferCopy be ordered INSIDE that stream — i.e. can a glass fragment read a snapshot that contains an opaque cell drawn earlier in the SAME z band? That is exactly what GLASS §19 could not do (finding F2) and what RO3/RO4 need. ⚠️ EVERY CASE SHIPS WITH ITS CONTROL. A case that only runs the "after" cannot tell "the mechanism worked" from "the probe cannot see anything", so each question is run twice — once configured to succeed, once configured to fail — and BOTH verdicts have to land for the answer to count. Geometry is the project's own (Transform Canon): tile_size (32,16), ISOMETRIC, DIAMOND_DOWN, atom 32x36, texture_origin (0,10). Cell (0,0) lands at screen (0,0) and cell (1,1) at (0,16) — 16 px apart with a 36 px atom, so they overlap by 20 px, and (1,1) is NEARER (view-space x+y greater, O5's canon). Must run WINDOWED — a headless run has no rasterizer and no backbuffer: godot --path . --position 4000,4000 \ --script res://godot/scripts/tools/render_order_ysort_spike.gd
-
-**Constants / tuning**
-- `VIEW_SIZE` = `Vector2i(160, 160)`
-- `ORIGIN` = `Vector2(70.0, 40.0)`
-- `PROBE_SHADER` = `"""`
-- `CLIP_SHADER` = `"""`
 
 ---
 
@@ -6199,7 +6150,7 @@ extends `Node2D` · 35 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11976 lines
+extends `Node2D` · 11774 lines
 
 `godot/scripts/world/room.gd`
 
@@ -6218,7 +6169,6 @@ extends `Node2D` · 11976 lines
 - `DebugToolsControllerClass` = `preload("res://godot/scripts/world/controllers/debug_tools_controller.gd")`
 - `InputControllerClass` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
-- `GlassCrackSpriteClass` = `preload("res://godot/scripts/overlays/glass_crack_sprite.gd")`
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `SelectionControllerClass` = `preload("res://godot/scripts/world/controllers/selection_controller.gd")`
 - `TestZoneControllerClass` = `preload("res://godot/scripts/world/controllers/test_zone_controller.gd")`

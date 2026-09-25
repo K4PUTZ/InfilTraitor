@@ -23,31 +23,30 @@
 ##   [2] a crack DECAL FAMILY appearing for glass — in data, in the wiring lists,
 ##       or on disk.
 ##   [3] the fracture SHEETS (the real CRACKED art) going missing or unimported.
-##   [8] the crack coming back INSIDE glass_pane.gdshader — CRACK-02 / G-D27 took
+##   [8] the crack coming back INSIDE the pane shader (glass_pane3d.gdshader) — CRACK-02 / G-D27 took
 ##       it out of the voxel because a crack drawn there inherits `dim`, `cover`
-##       and the quad seams, and no tuning survives that.
-##   [10] the sheet shearing off the voxels — the CRACK-01-B/C bug, now pinned
-##       against the SPRITE'S OWN TRANSFORM instead of a shader inverse.
+##       and the quad seams, and no tuning survives that; and a uniform the mirror feeds that
+##       glass_crack3d.gdshader does not declare (dropped with no error).
 ##   [11] a crack bleeding past the frame of the pane it is on.
-##   [12] G-D30's cut reading anything other than the live glass tilemap, the
+##   [12] G-D30's cut reading anything other than the live glass state (the store's pane cells), the
 ##       occupancy rows going upside down, or the dial collapsing to a boolean.
 ##   [13] S-3's rebuild path acquiring side effects — a perspective flip that
 ##       re-damages the pane it is only supposed to redraw.
-##   [14] a cell's cut collapsing to one shape (the cell OFFSET being dropped
-##       from the atom key), a PARTIAL cell being cut away entirely, or the cut
-##       eating the pane's slivers.
 ##   [16] the opening FAMILY going malformed — an opening that does not leave the
 ##       struck cell, a pooled id with no shape, a pick that stops hashing, or the
 ##       SHEET's void drifting from the voxel cut (G-D34's whole point).
 ##   [15] the applied hole drifting from the opening it claims to be — a cell cut
 ##       that coverage() calls outside, or left whole that it calls PARTIAL — and
-##       the shards NOT SURVIVING a later render pass, which is what kept
-##       CRACK-03's rim off the screen for its entire life.
+##       the rebuild path (a flip, a load) shaping different cells from the shot path.
 ##   [22] a rotation re-shaping every standing hole with the DEFAULT opening —
 ##       CRACK-04, GLASS §16.13. The mechanism was never broken; the ORDER was.
 ##       The perspective rebuild renders the pane intact, erases the recorded
 ##       holes back out of it and flushes, so unless it CLAIMS first the flush
 ##       sees a batch of unclaimed erases and invents a shape for each.
+##
+## R3D-END (END-2): [10] (the 2D sprite's transform on the wall-face basis), [14] (the shard ATOMS a cell's cut was
+## drawn with) and [20] (the remnant atom) went with the 2D board, whose tiles they drew; the openings, the shaped
+## cells, the occupancy and the sheet are what the 3D board draws from, and those stay pinned.
 
 extends SceneTree
 
@@ -56,7 +55,6 @@ const MaterialResistanceTableClass = preload("res://godot/scripts/systems/destru
 const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
 const GlassMaterialsClass = preload("res://godot/scripts/systems/glass_materials.gd")
 const GlassCrackClass = preload("res://godot/scripts/systems/destruction/glass_crack.gd")
-const GlassCrackSpriteClass = preload("res://godot/scripts/overlays/glass_crack_sprite.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const GlassOpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 ## B-2 [18] — the ring intensities the granularity split is measured against.
@@ -85,17 +83,14 @@ func _init() -> void:
 	test_wide_for_blowout_splits_the_arsenal()
 	test_the_glass_shaders_split_the_crack_out()
 	test_apply_spawns_a_sprite_and_gd24_crosses()
-	test_the_sprite_transform_lands_on_the_voxels()
 	test_the_pane_bounds_clip_the_sprite()
 	test_the_occupancy_cut_reads_the_live_tilemap()
 	test_sprite_spec_is_render_only()
-	test_the_shard_rim_cuts_eight_distinct_shapes()
 	test_the_opening_family_is_well_formed()
 	test_only_the_four_orthogonal_neighbours_become_shards()
 	test_the_armored_sheet_is_chosen_by_the_pane_not_the_weapon()
 	test_the_craze_field_covers_the_pane_and_tiles()
 	test_the_craze_field_is_cut_to_the_holes()
-	test_the_remnant_atom_keeps_only_its_fragment()
 	test_an_unclaimed_hole_is_reshaped_and_the_replay_claims_first()
 
 	print("\n" + "=".repeat(70))
@@ -472,11 +467,13 @@ func test_wide_for_blowout_splits_the_arsenal() -> void:
 
 
 func test_the_glass_shaders_split_the_crack_out() -> void:
-	print("[8] the crack left glass_pane.gdshader, and glass_crack.gdshader took it\n")
+	print("[8] the crack is not the pane shader's, and glass_crack3d.gdshader draws it\n")
 
-	var pane_shader := load("res://godot/shaders/glass_pane.gdshader") as Shader
+	## R3D-END (END-2): the 2D `glass_pane.gdshader` / `glass_crack.gdshader` went with the 2D board; the rule is the
+	## same on the shaders the 3D board draws with.
+	var pane_shader := load("res://godot/shaders/glass_pane3d.gdshader") as Shader
 	if pane_shader == null:
-		_fail("glass_pane.gdshader did not load as a Shader")
+		_fail("glass_pane3d.gdshader did not load as a Shader")
 		print("")
 		return
 
@@ -494,29 +491,31 @@ func test_the_glass_shaders_split_the_crack_out() -> void:
 		if String(n).contains("crack") or String(n).contains("fracture"):
 			leaked.append(n)
 	if leaked.is_empty():
-		_pass("glass_pane.gdshader declares no crack/fracture uniform — the web is not the voxel's any more")
+		_pass("glass_pane3d.gdshader declares no crack/fracture uniform — the web is not the voxel's any more")
 	else:
-		_fail("glass_pane.gdshader is drawing the crack again (%s) — G-D27 moved it to a sprite"
+		_fail("glass_pane3d.gdshader is drawing the crack again (%s) — G-D27 moved it off the pane"
 			% ", ".join(leaked))
 
-	var crack_shader := load("res://godot/shaders/glass_crack.gdshader") as Shader
+	var crack_shader := load("res://godot/shaders/glass_crack3d.gdshader") as Shader
 	if crack_shader == null:
-		_fail("glass_crack.gdshader did not load as a Shader — the crack has no renderer")
+		_fail("glass_crack3d.gdshader did not load as a Shader — the crack has no renderer")
 		print("")
 		return
 	var names: Array = []
 	for prop in crack_shader.get_shader_uniform_list():
 		names.append(prop.name)
-	var required := ["crack_sheet", "crack_span", "crack_pane_lo", "crack_pane_hi",
-		"crack_color", "crack_strength", "crack_opacity", "crack_edge_feather"]
+	## Every uniform the mirror copies out of a crack's record, and the look dials: a name the shader does not declare
+	## is dropped by `set_shader_parameter()` with no error.
+	var required: Array = ["crack_color", "crack_strength", "crack_opacity", "crack_edge_feather"]
+	required.append_array(GlassCrackMirror3D.MIRRORED)
 	var missing: Array = []
 	for r in required:
 		if not names.has(r):
 			missing.append(r)
 	if missing.is_empty():
-		_pass("glass_crack.gdshader declares all %d uniforms GlassCrackSprite feeds" % required.size())
+		_pass("glass_crack3d.gdshader declares all %d uniforms the mirror feeds it" % required.size())
 	else:
-		_fail("glass_crack.gdshader is missing uniform(s): %s" % ", ".join(missing))
+		_fail("glass_crack3d.gdshader is missing uniform(s): %s" % ", ".join(missing))
 
 	## ⚠️ WHAT G-D26 ACTUALLY REQUIRES, AND WHAT IT DOES NOT.
 	##
@@ -531,15 +530,15 @@ func test_the_glass_shaders_split_the_crack_out() -> void:
 	## per-voxel change to transparency frames the voxel against its untouched
 	## neighbours. A sprite cannot do that whatever it blends with: it draws over
 	## the pane in one continuous piece and the glass underneath is not modified.
-	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_crack.gdshader")
+	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_crack3d.gdshader")
 	if src.contains("crack_opacity"):
-		_pass("the sprite's opacity is a uniform — the Director's 90% is a dial, not a hardcode")
+		_pass("the crack's opacity is a uniform — the Director's 90% is a dial, not a hardcode")
 	else:
-		_fail("glass_crack.gdshader has no crack_opacity uniform to set")
+		_fail("glass_crack3d.gdshader has no crack_opacity uniform to set")
 	if src.contains("discard"):
-		_pass("the sprite discards outside the pane bounds — G-D27's one named cost, paid")
+		_pass("the crack discards outside the pane bounds — G-D27's one named cost, paid")
 	else:
-		_fail("no pane clipping in glass_crack.gdshader: a crack near a frame will bleed over what is beside it")
+		_fail("no pane clipping in glass_crack3d.gdshader: a crack near a frame will bleed over what is beside it")
 
 	print("")
 
@@ -656,122 +655,6 @@ func test_apply_spawns_a_sprite_and_gd24_crosses() -> void:
 	else:
 		_fail("%d cells crossed across a pane boundary — the registry is not keyed by pane" % r3.crossed)
 
-	print("")
-
-
-## [10] THE BUG THAT SHIPPED IN CRACK-01-B/C, STILL PINNED — WITH THE BASIS IN ITS
-## NEW JOB (Director, 2026-09-02: *"as linhas não se encontram e estão todas
-## embaralhadas"*).
-##
-## CRACK-01 had the shader INVERT a canvas delta into (run, level) per fragment,
-## and the first build used voxel_face_shading's GROUND-PLANE inverse, which
-## answers a different question: on a vertical face the vertical screen axis is
-## LEVEL, not ground depth. CRACK-02 does not invert anything — `GlassCrackSprite`
-## bakes the FORWARD basis into the node's Transform2D — so this test now asserts
-## the transform itself lands the sheet on the voxels, and keeps the ground-plane
-## inverse as a CONTROL THAT MUST BE WRONG, so a test that recovered everything
-## trivially could not pass.
-func test_the_sprite_transform_lands_on_the_voxels() -> void:
-	print("[10] the crack sprite's transform IS the wall-face basis (and the ground plane is not)\n")
-
-	## Any real sheet does — this test is about the TRANSFORM, and the transform is
-	## built from the span, not from the art. `star_deep` v0 simply exists.
-	var sheet := load(GlassCrackClass.sheet_path("star_deep", 0)) as Texture2D
-	var shader := load("res://godot/shaders/glass_crack.gdshader") as Shader
-	if sheet == null or shader == null:
-		_fail("no fracture sheet / crack shader to build a sprite from")
-		print("")
-		return
-
-	## ⚠️ A SECOND INSTRUMENT, BECAUSE THE REST OF THIS TEST CANNOT SEE THE BUG IT
-	## WAS WRITTEN AFTER. Everything below compares the sprite's transform against
-	## `glass_cell_face_pos()` — the same function that builds it — so it reported
-	## 0.00000 px while the sheet sat HALF A RUN STEP right of the hole, for the
-	## whole life of `GLASS_CRACK_FACE_CENTRE = (0, -6)`. The centre is a claim
-	## about the ATOM, so the atom is what has to answer it: compose a main-face-
-	## only glass atom and take the centroid of the pixels it actually drew.
-	var probe = VoxelRendererClass.new()
-	var centre_drift: Array = []
-	for f in [Face.SW, Face.SE, Face.NW, Face.NE]:
-		var atom: Image = probe._build_glass_pane_atom(f, false, false, 0)
-		if atom == null:
-			centre_drift.append("face %d: no atom" % f)
-			continue
-		var sx: float = 0.0
-		var sy: float = 0.0
-		var n: int = 0
-		for y in range(atom.get_height()):
-			for x in range(atom.get_width()):
-				if atom.get_pixel(x, y).a > 0.5:
-					sx += float(x) + 0.5
-					sy += float(y) + 0.5
-					n += 1
-		if n == 0:
-			centre_drift.append("face %d: empty atom" % f)
-			continue
-		## `map_to_local`'s own atom reference, the point the offset is added to.
-		var measured := Vector2(sx / float(n), sy / float(n)) - Vector2(16.0, 28.0)
-		var declared: Vector2 = VoxelRendererClass.glass_crack_face_centre(f)
-		if measured.distance_to(declared) > 1.0:
-			centre_drift.append("face %d: atom says %s, code says %s" % [f, measured, declared])
-	probe.free()
-	if centre_drift.is_empty():
-		_pass("the face centre matches the atom's own drawn pixels on all 4 faces (within 1 px)")
-	else:
-		_fail("face centre disagrees with the composed atom: %s" % ", ".join(centre_drift))
-
-	var mock := MockRenderer.new()
-	var base: int = GeometryCoordsClass.storey_level_base(0)
-	var origin_cell := Vector2i(112, 87)
-	var origin_level: int = base + 10
-	var impact: Vector2 = mock.glass_cell_face_pos(origin_level, origin_cell)
-	var span := Vector2(20.0, 10.0)
-
-	var sprite = GlassCrackSpriteClass.new()
-	sprite.setup(sheet, span, impact, 0, Vector2(-1000, -1000), Vector2(1000, 1000), shader)
-
-	var w := float(sheet.get_width())
-	var h := float(sheet.get_height())
-	var worst := 0.0
-	var ground_worst_run := 0.0
-	for dr in range(-6, 7):
-		for dl in range(-5, 6):
-			## Where the VOXEL is, walked by the renderer's own geometry.
-			var want: Vector2 = mock.glass_cell_face_pos(
-				origin_level + dl, Vector2i(origin_cell.x + dr, origin_cell.y))
-			## Where the SPRITE puts that (run, level) offset — the texture-space
-			## point for it, through the node's transform. Sprite2D is centred, so
-			## texture space runs -w/2..w/2 and UV.y grows downward.
-			var local := Vector2(float(dr) / span.x * w, -float(dl) / span.y * h)
-			var got: Vector2 = sprite.transform * local
-			worst = maxf(worst, (got - want).length())
-
-			## THE CONTROL — the ground-plane inverse the first build used.
-			var d: Vector2 = want - impact
-			var ground_run: float = d.x / 32.0 + d.y / 16.0
-			ground_worst_run = maxf(ground_worst_run, absf(ground_run - float(dr)))
-
-	if worst < 0.001:
-		_pass("the sprite quad lands on every voxel over 13x11 offsets (worst %.5f px)" % worst)
-	else:
-		_fail("the sprite quad drifts from the voxels by up to %.4f px — the sheet will shear" % worst)
-
-	if ground_worst_run > 1.0:
-		_pass("the ground-plane inverse is off by up to %.2f voxels of sheet column — the shear that scrambled the web"
-			% ground_worst_run)
-	else:
-		_fail("the ground-plane control only drifted %.4f — this test is not exercising the failure it exists for"
-			% ground_worst_run)
-
-	## And the shear is a function of LEVEL alone: same cell, one level down.
-	var same_cell_down: Vector2 = mock.glass_cell_face_pos(origin_level - 1, origin_cell) - impact
-	var shear: float = same_cell_down.x / 32.0 + same_cell_down.y / 16.0
-	if absf(shear - 1.25) < 0.001:
-		_pass("one level down shears the ground-plane column by exactly 1.25 voxels")
-	else:
-		_fail("expected a 1.25-voxel shear per level, measured %.4f" % shear)
-
-	sprite.free()
 	print("")
 
 
@@ -955,11 +838,11 @@ func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 		_fail("the cut dial did not clamp/hold: 2.5 -> %.2f, then 0.5 -> %.2f"
 			% [clamped, renderer.glass_crack_hole_cut()])
 
-	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_crack.gdshader")
+	var src := FileAccess.get_file_as_string("res://godot/shaders/glass_crack3d.gdshader")
 	if src.contains("mix(1.0, texture(crack_occupancy, occ_uv).r, crack_hole_cut)"):
 		_pass("the shader mixes the occupancy by the dial — 0.5 is half a cut, not a rounded boolean")
 	else:
-		_fail("the cut is no longer a continuous mix in glass_crack.gdshader — G-D30 says it is a dial")
+		_fail("the cut is no longer a continuous mix in glass_crack3d.gdshader — G-D30 says it is a dial")
 
 	renderer.free()
 	VoxelStore.active = null
@@ -1061,161 +944,6 @@ func test_sprite_spec_is_render_only() -> void:
 	else:
 		_fail("apply() did not spawn a crack for a plan with %d cells" % plan.cells.size())
 
-	print("")
-
-
-## [14] CRACK-03 — THE SHARD RIM (Director, 2026-09-02: *"em vez de voxels
-## cúbicos, a gente vai ter partes de voxel formando triângulos agudos apontando
-## em direção ao centro do buraco"*).
-##
-## A hole is a rectangle of missing cells and reads as one however good the web
-## over it is, so the cells bordering it stop being cubes. This pins the three
-## things that are invisible on screen when they break:
-##   · the eight masks are eight DIFFERENT shapes. If the direction were dropped
-##     on the way to the atom they would all be the same wedge, and on a 1-voxel
-##     hole nobody would see it;
-##   · the cut never eats the top/side SLIVERS, which are what make a pane read
-##     as one voxel thick;
-##   · the FACE MASK is part of the atom key. It was not, for one run: the side
-##     sliver marks the frontmost column of every GU, so a hole on a GU boundary
-##     cut **5** of its 8 neighbours instead of 8.
-func test_the_shard_rim_cuts_eight_distinct_shapes() -> void:
-	print("[14] CRACK-04 — a cell's cut is its own piece of the opening, and the slivers survive\n")
-
-	var r = VoxelRendererClass.new()
-	var plain: Image = r._build_glass_pane_atom(Face.SW, false, false, 0)
-	if plain == null:
-		_fail("the intact glass atom did not build — nothing to cut")
-		r.free()
-		print("")
-		return
-	var full: int = _opaque_px(plain)
-
-	## ⚠️ THE OFFSETS ARE READ OFF THE OPENING, NOT ASSUMED. CRACK-03 asked for
-	## eight fixed directions; an opening has whatever partial cells its polygon
-	## happens to cross, and that count is a property of the SHAPE. Asserting a
-	## hardcoded 8 here would pass for `star_deep` and fail the family.
-	var opening: String = "star_deep"
-	var bounds: Rect2i = GlassOpeningClass.cell_bounds(opening)
-	var partials: Array = []
-	var fulls: Array = []
-	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
-		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
-			var cov: int = GlassOpeningClass.coverage(opening, dr, dl)
-			if cov == GlassOpeningClass.Coverage.PARTIAL:
-				partials.append(Vector2i(dr, dl))
-			elif cov == GlassOpeningClass.Coverage.FULL:
-				fulls.append(Vector2i(dr, dl))
-	if partials.size() >= 4:
-		_pass("'%s' crosses %d cells partially and swallows %d whole" % [opening, partials.size(), fulls.size()])
-	else:
-		_fail("'%s' has only %d partial cells — an opening that intrudes on nothing is a rectangle again"
-			% [opening, partials.size()])
-
-	var shapes: Array = []
-	var kept_all: Array = []
-	for off in partials:
-		var a: Image = r._build_glass_pane_atom(Face.SW, false, false, 0)
-		r._cut_glass_opening(a, opening, off.x, off.y, Face.SW)
-		shapes.append(a)
-		kept_all.append(_opaque_px(a))
-
-	var uncut: Array = []
-	for i in range(shapes.size()):
-		if kept_all[i] >= full:
-			uncut.append(str(partials[i]))
-	if uncut.is_empty():
-		_pass("every partial cell loses glass (kept %d..%d of %d px)"
-			% [kept_all.min(), kept_all.max(), full])
-	else:
-		_fail("cell(s) %s lost nothing — the opening is not reaching the atom" % ", ".join(uncut))
-
-	## ⚠️ AND NONE OF THEM IS EMPTY. A partial cell that lost EVERYTHING is a cell
-	## the coverage sampler should have called FULL, and it would read on screen as
-	## a hole one voxel bigger than the opening — the failure that cannot be undone
-	## by a later pass, since the glass is already gone.
-	var emptied: Array = []
-	for i in range(shapes.size()):
-		if kept_all[i] == 0:
-			emptied.append(str(partials[i]))
-	if emptied.is_empty():
-		_pass("no partial cell was cut away entirely — PARTIAL and FULL agree with the raster")
-	else:
-		_fail("cell(s) %s were cut to nothing but classified PARTIAL" % ", ".join(emptied))
-
-	## Distinct pieces. Compared pairwise on the alpha mask, because "they all
-	## removed something" is satisfied by one shape stamped many times — which is
-	## exactly what the cut degrades to if `(dr, dl)` is dropped from the key.
-	var identical: Array = []
-	for i in range(shapes.size()):
-		for j in range(i + 1, shapes.size()):
-			if _same_alpha(shapes[i], shapes[j]):
-				identical.append("%s==%s" % [partials[i], partials[j]])
-	if identical.size() * 4 < shapes.size() * shapes.size():
-		_pass("the %d pieces are shape-distinct (%d symmetric pairs, as a symmetric star should have)"
-			% [shapes.size(), identical.size()])
-	else:
-		_fail("the pieces collapsed to one mask: %s — the cell offset is being dropped"
-			% ", ".join(identical))
-
-	## ⚠️ AND THE SAMPLER AGREES WITH THE RASTER, WHICH IS THE OTHER HALF.
-	## `coverage()` classifies a cell on a 33x33 grid; `_cut_glass_opening()`
-	## decides per ATOM PIXEL. Where they disagree the walk is wrong in a way
-	## nothing else can see: a cell called NONE is never rastered at all, so a
-	## spike thinner than the sampler's spacing is silently lost from the hole's
-	## shape, and [15] cannot catch it because [15] compares the board against the
-	## same sampler. This compares the sampler against the OTHER instrument.
-	var leaks: Array = []
-	for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
-		for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
-			if GlassOpeningClass.coverage(opening, dr, dl) != GlassOpeningClass.Coverage.NONE:
-				continue
-			var probe: Image = r._build_glass_pane_atom(Face.SW, false, false, 0)
-			r._cut_glass_opening(probe, opening, dr, dl, Face.SW)
-			if _opaque_px(probe) < full:
-				leaks.append("(%d,%d)" % [dr, dl])
-	if leaks.is_empty():
-		_pass("every cell the sampler calls NONE is cut by nothing — sampler and raster agree")
-	else:
-		_fail("cell(s) %s read NONE but the raster cuts them — the sampler is coarser than the cut"
-			% ", ".join(leaks))
-
-	## ⚠️ THE SLIVER RULE CHANGED ON 2026-09-04 AND THIS ASSERTION WITH IT.
-	## CRACK-03 spared the top/side slivers wholesale, so a shard on a GU boundary
-	## still read one voxel THICK. Right requirement, wrong scope: the side sliver
-	## is a VERTICAL strip on the frontmost column, so where a hole crossed one it
-	## survived standing in mid-air inside the opening — the vertical band the
-	## Director marked in the middle of the bore.
-	##
-	## The rule is now "spare the slivers OUTSIDE the hole", which needs both
-	## halves asserted, because either one alone passes for a broken build: sparing
-	## everything passes the first, cutting everything passes the second.
-	var with_slivers: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
-	var sliver_px: int = _opaque_px(with_slivers) - full
-	var cut_slivers: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
-	r._cut_glass_opening(cut_slivers, opening, partials[0].x, partials[0].y, Face.SW)
-	var kept_sliver: int = _opaque_px(cut_slivers) - kept_all[0]
-	if sliver_px > 0 and kept_sliver > 0:
-		_pass("a cut cell keeps %d of its %d sliver px — a shard on a GU boundary still reads 1 voxel thick"
-			% [kept_sliver, sliver_px])
-	else:
-		_fail("the cut ate the slivers whole (%d of %d left) — the shard lost its thickness"
-			% [kept_sliver, sliver_px])
-
-	## ...and a cell the opening does not reach loses NOTHING, sliver included.
-	## This is the half that catches an over-eager sliver cut, which would eat the
-	## pane's thickness everywhere and look like a rendering change nobody ordered.
-	var far := Vector2i(bounds.position.x + bounds.size.x + 3, 0)
-	var far_atom: Image = r._build_glass_pane_atom(Face.SW, true, true, 0)
-	var far_before: int = _opaque_px(far_atom)
-	r._cut_glass_opening(far_atom, opening, far.x, far.y, Face.SW)
-	if _opaque_px(far_atom) == far_before:
-		_pass("a cell outside the opening loses nothing at all, slivers included")
-	else:
-		_fail("a cell %s outside the opening lost %d px — the sliver cut is reaching too far"
-			% [far, far_before - _opaque_px(far_atom)])
-
-	r.free()
 	print("")
 
 
@@ -1331,23 +1059,6 @@ func test_the_opening_family_is_well_formed() -> void:
 		_fail("an unknown size class silently resolved to an opening")
 
 	print("")
-
-
-func _opaque_px(img: Image) -> int:
-	var n := 0
-	for y in range(img.get_height()):
-		for x in range(img.get_width()):
-			if img.get_pixel(x, y).a > 0.0:
-				n += 1
-	return n
-
-
-func _same_alpha(a: Image, b: Image) -> bool:
-	for y in range(a.get_height()):
-		for x in range(a.get_width()):
-			if (a.get_pixel(x, y).a > 0.0) != (b.get_pixel(x, y).a > 0.0):
-				return false
-	return true
 
 
 ## [15] CRACK-04 — THE CELLS THAT GET CUT ARE EXACTLY THE OPENING'S PARTIAL SET.
@@ -1872,112 +1583,6 @@ func test_the_craze_field_is_cut_to_the_holes() -> void:
 	renderer.free()
 	VoxelStore.active = null
 	print("")
-
-
-## ── [20] G4-3 — THE REMNANT ATOM ─────────────────────────────────────────────
-##
-## ⚠️ PINS THE FRINGE, WHICH THE NUMBERS COULD NOT SEE AND THE ATOM SHEET COULD.
-## `_cut_glass_face_region()` SKIPS a pixel whose recovered (u, v) falls outside
-## [0, 1] instead of clearing it — the fill and the analytic inverse disagree by a
-## pixel along the edges. Harmless for an opening; for a remnant it left a dotted
-## outline of the voxel's own parallelogram on all 25 cuts of
-## `glass_remnant_atoms_2026-09-05.png`, which is precisely the square this
-## feature exists to remove, drawn faintly.
-##
-## Two claims, and the second is the one that matters: the cut REMOVED most of the
-## atom, and NOTHING opaque survives outside the fragment.
-func test_the_remnant_atom_keeps_only_its_fragment() -> void:
-	print("[20] G4-3 — the remnant atom keeps its fragment and nothing else\n")
-	var r = VoxelRendererClass.new()
-	## ⚠️ `Face.SW`, NEVER `0`. The enum is `{NW, NE, SE, SW}`, so a literal 0 is
-	## NW — a REAL face, eighty degrees from the one the comment claims, and
-	## nothing errors. The first version of this test wrote `0  ## Face.SW` and
-	## then hand-rolled the SW basis to check it, so the two halves disagreed
-	## about which wall they were looking at and 1 318 perfectly good pixels were
-	## reported as strays. Same shape as architecture Rule 9's literal level.
-	var face: int = Face.SW
-	var worst_kept: float = 0.0
-	var stray_total: int = 0
-	var checked: int = 0
-	for id in GlassShardShapesClass.ids():
-		for mask in [GlassShardShapesClass.ANCHOR_RUN_NEG,
-				GlassShardShapesClass.ANCHOR_LEVEL_NEG,
-				GlassShardShapesClass.ANCHOR_RUN_POS,
-				GlassShardShapesClass.ANCHOR_LEVEL_POS]:
-			var atom: Image = r._build_glass_pane_atom(face, false, false, 0)
-			if atom == null:
-				_fail("the pane atom did not build")
-				r.free()
-				return
-			var before: int = _opaque_px(atom)
-			var poly: PackedVector2Array = GlassShardShapesClass.anchored_polygon(
-				String(id), int(mask))
-			r._cut_glass_face_region(atom, face, func(off: Vector2) -> bool:
-				return not GlassShardShapesClass.contains(poly, off))
-			r._cut_glass_opening_slivers(atom, poly, Vector2.ZERO, face, true)
-			r._trim_glass_remnant_fringe(atom, face)
-			var after: int = _opaque_px(atom)
-			worst_kept = maxf(worst_kept, float(after) / maxf(float(before), 1.0))
-			## Every surviving pixel must map back INSIDE the fragment. No sliver is
-			## drawn here (want_top/want_side are false), so there is no legitimate
-			## geometry outside the main face at all.
-			stray_total += _stray_px_outside(atom, poly, face)
-			checked += 1
-	r.free()
-	if worst_kept > 0.0 and worst_kept < 0.55:
-		_pass("%d cuts: the heaviest keeps %.1f%% of the atom — a fragment, not a square"
-			% [checked, worst_kept * 100.0])
-	else:
-		_fail("the heaviest cut keeps %.1f%% of the atom (want well under 55%%)" % (worst_kept * 100.0))
-	if stray_total == 0:
-		_pass("and not one opaque pixel survives outside the fragment across all %d cuts" % checked)
-	else:
-		_fail("%d stray pixel(s) outside the fragment — the parallelogram's ghost is back" % stray_total)
-	print("")
-
-
-## Opaque pixels whose (u, v) puts them outside the fragment — including the ones
-## the face walk skips because their (u, v) is out of range, which is exactly the
-## class the fringe trim exists for.
-func _stray_px_outside(atom: Image, poly: PackedVector2Array, face: int) -> int:
-	var vn := Vector2(16.0, 0.0)
-	var ve := Vector2(32.0, 8.0)
-	var vs := Vector2(16.0, 16.0)
-	var vw := Vector2(0.0, 8.0)
-	var down := Vector2(0.0, GeometryCoordsClass.VOXEL_STEP_PX)
-	## The renderer's own table, by NAME — see the note in [20].
-	var ea: Vector2
-	var eb: Vector2
-	match face:
-		Face.SW: ea = vw; eb = vs
-		Face.SE: ea = ve; eb = vs
-		Face.NW: ea = vn; eb = vw
-		_: ea = vn; eb = ve
-	var e_u: Vector2 = eb - ea
-	var det: float = e_u.x * down.y - e_u.y * down.x
-	if absf(det) < 0.0001:
-		return 0
-	var stray: int = 0
-	for y in range(atom.get_height()):
-		for x in range(atom.get_width()):
-			if atom.get_pixel(x, y).a <= 0.0:
-				continue
-			var px: Vector2 = Vector2(float(x) + 0.5, float(y) + 0.5) - ea
-			var u: float = (px.x * down.y - px.y * down.x) / det
-			var v: float = (e_u.x * px.y - e_u.y * px.x) / det
-			## A pixel with (u, v) out of range is outside the main face entirely
-			## and, with no slivers drawn, has nothing legitimate to be.
-			if u < -0.02 or u > 1.02 or v < -0.02 or v > 1.02:
-				stray += 1
-				continue
-			## Half a texel of slack: the polygon boundary and the atom's fill are
-			## rasterised by different code, so an exact test would count the
-			## boundary itself.
-			if not GlassShardShapesClass.contains(poly, Vector2(u - 0.5, 0.5 - v)):
-				var d: float = GlassOpeningClass.distance_to_edge(poly, Vector2(u - 0.5, 0.5 - v))
-				if d > 0.06:
-					stray += 1
-	return stray
 
 
 ## ── [22] CRACK-04 / GLASS §16.13 — THE REPLAY MUST CLAIM BEFORE IT FLUSHES ───

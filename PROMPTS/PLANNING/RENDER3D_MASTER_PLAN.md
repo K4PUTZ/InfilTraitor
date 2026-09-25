@@ -3086,6 +3086,20 @@ that still builds the 2D board is `34881f81`.
 - **END-2 — the glass tiles.** `_glass_layers`, `_glass_tile_sync()`, the render-order clip and seam cull,
   `glass_tile.gdshader`, the 2D users of `glass_pane.gdshader`, `GlassCrackSprite` (its record stays, as data), the 2D
   shard-pile sprites.
+  **Done 2026-09-24.** Gone: the glass sublayers, backbuffer and composite z, the tile mirror (Option A), the pane /
+  rim / remnant atoms and their helpers, the render-order clip (its occluder index read the opaque TILE layers and
+  was always empty on the 3D board, so it never hid a cell there), the seam cull, the opaque preview, the sublayer
+  shader knobs, `glass_pane` / `glass_tile` / `glass_crack` .gdshader and `glass_shading.gdshaderinc`, the room's
+  `glass_calibration` action and `glass_calibration.py`, `_print_crack_quads`, `glass_rim_capture.gd`,
+  `glass_remnant_atom_capture.gd`, `render_order_ysort_spike.gd`. `GlassCrackSprite` became `GlassCrackParams`
+  (RefCounted, `systems/destruction/`): the `params` record the mirror always read. Piles are records only; a pile is
+  still drawn only on a level the registry has built (the same `false` as before, until END-4 replaces the registry).
+  `GLASS_DIM_TOP/SIDE` stay: `Board3DLive` reads them. Suites: `glass_crack` [8] and [12] now check
+  `glass_pane3d` / `glass_crack3d` (every uniform `GlassCrackMirror3D.MIRRORED` copies must be declared), [10] [14] [20]
+  went (2D transform, atoms); `glass_transparency` [11] went (atoms), [12]'s seam half now pins that glass resolves
+  to nothing. **Gates against END-0:** pixel 0 px above noise on all six frames; 31/31 probe dumps identical;
+  ground 16/16; roundtrip, shadow, mirror (7/504, 9/920), occ PASS; shot_3d PASSED (2 919 / 3 610 px); 64 suites
+  clean; no new warnings in touched files.
 - **END-3 — the 2D cutaway.** OCC-21 / OCC-27, `apply_occlusion()`, `_ghosted_cells`, the 2D wireframe overlay (it reads
   the tile layers, so it goes before them).
 - **END-4 — tile placement and the atlases.** `_set_voxel_cell()`, the `TileMapLayer`s, the TileSet and the voxel atoms,

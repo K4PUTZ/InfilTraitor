@@ -42,19 +42,19 @@ func _initialize() -> void:
 	for relative in [0, 1, 7]:
 		var level: int = SC.storey_level_base(0) + relative
 		checked += 1
-		var layer: TileMapLayer = e1_renderer.get_layer(level)
-		if layer == null:
-			push_error("E1: level %d (relative %d) has no layer" % [level, relative])
+		if not e1_renderer.has_level(level):
+			push_error("E1: level %d (relative %d) is not built" % [level, relative])
 			failures += 1
 			continue
 		var expected_pos: Vector2 = VISUAL_GRID_OFFSET + TILE_OFFSET \
 			- Vector2(0.0, SC.VOXEL_STEP_PX * float(relative))
-		if layer.position.is_equal_approx(expected_pos):
+		var origin: Vector2 = e1_renderer.level_origin(level)
+		if origin.is_equal_approx(expected_pos):
 			print_debug("  ✓ Level %d (relative %d): position %s matches E1" % [
-				level, relative, layer.position])
+				level, relative, origin])
 		else:
-			push_error("E1 mismatch at level %d (relative %d): layer.position=%s expected=%s" % [
-				level, relative, layer.position, expected_pos])
+			push_error("E1 mismatch at level %d (relative %d): level_origin=%s expected=%s" % [
+				level, relative, origin, expected_pos])
 			failures += 1
 	e1_renderer.queue_free()
 

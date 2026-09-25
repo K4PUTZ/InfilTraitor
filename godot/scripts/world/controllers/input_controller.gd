@@ -194,16 +194,6 @@ func _handle_key_action(key: InputEventKey) -> void:
 		debug_command_requested.emit("toggle_nudge_mode")
 		if viewport:
 			viewport.set_input_as_handled()
-	elif key.is_action_pressed("debug_toggle_bake_mode"):
-		print_debug("[INPUT] Debug: toggle bake mode")
-		debug_command_requested.emit("toggle_bake_mode")
-		if viewport:
-			viewport.set_input_as_handled()
-	elif key.is_action_pressed("debug_cycle_blend_mode"):
-		print_debug("[INPUT] Debug: cycle blend mode")
-		debug_command_requested.emit("cycle_blend_mode")
-		if viewport:
-			viewport.set_input_as_handled()
 	elif key.is_action_pressed("debug_cycle_language"):
 		print_debug("[INPUT] Debug: cycle language")
 		debug_command_requested.emit("cycle_language")

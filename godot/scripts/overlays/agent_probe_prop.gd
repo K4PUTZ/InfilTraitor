@@ -237,9 +237,7 @@ func _apply_z_index() -> void:
 	if room == null or room._voxel_renderer == null:
 		return
 	var renderer = room._voxel_renderer
-	var ground_layer: TileMapLayer = renderer.get_layer(renderer.ground_plane_level())
-	if ground_layer != null:
-		z_index = ground_layer.z_index
+	z_index = renderer.level_z_index(renderer.ground_plane_level())
 
 
 ## `perspective` is the room's; the frame shown is the composition of it with the

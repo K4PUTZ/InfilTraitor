@@ -37,13 +37,9 @@ func _init() -> void:
 	## ceiling cells now legitimately carry BAKED source ids instead — the baked
 	## path has its own end-to-end suite (roof_bake_selftest.gd), so bake is
 	## explicitly off here to keep these assertions meaning what they say.
-	var bake_config = load("res://godot/scripts/systems/bake_config.gd")
-	var bake_was_enabled: bool = bake_config.enabled
-	bake_config.enabled = false
 
 	test_real_playground_blocks_get_real_roofs()
 
-	bake_config.enabled = bake_was_enabled
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])

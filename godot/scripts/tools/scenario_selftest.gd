@@ -125,7 +125,6 @@ func _test_each_argument_check() -> bool:
 		"reload now": "'reload' takes 0 argument(s), got 1",
 		"perspective up": "perspective takes N, E, S or W",
 		"relight now": "'relight' takes 0 argument(s), got 1",
-		"occupancy_compare a.b": "occupancy_compare takes a file name (letters, digits, _ or -)",
 		"passages a.b": "passages takes a file name (letters, digits, _ or -)",
 		"glass_compare g_0": "unknown step 'glass_compare'",
 	}

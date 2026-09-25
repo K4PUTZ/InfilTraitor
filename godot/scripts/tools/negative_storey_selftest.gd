@@ -60,23 +60,23 @@ func test_negative_layer_creation_and_lookup() -> void:
 	renderer.setup(Vector2.ZERO)
 	var below: int = GeometryCoords.FLOOR_TOP_LEVEL
 
-	if renderer.get_layer(below) != null:
-		_fail("get_layer(floor top) should be null before anything ensures it")
+	if renderer.has_level(below):
+		_fail("has_level(floor top) should be false before anything ensures it")
 	else:
-		_pass("get_layer(floor top) is null before it's ensured (nothing pre-created)")
+		_pass("has_level(floor top) is false before it's ensured (nothing pre-created)")
 
 	renderer._ensure_negative_voxel_layer(below)
-	var layer: TileMapLayer = renderer.get_layer(below)
-	if layer != null:
-		_pass("get_layer(floor top) returns a real TileMapLayer after ensuring it")
+	if renderer.has_level(below):
+		_pass("has_level(floor top) is true after ensuring it")
 	else:
-		_fail("get_layer(floor top) still null after ensuring it")
+		_fail("has_level(floor top) still false after ensuring it")
 
+	var built_before: int = renderer.level_keys().size()
 	renderer._ensure_negative_voxel_layer(below)
-	if renderer.get_layer(below) == layer:
-		_pass("Ensuring the same sub-ground level again is a no-op (same node, not a new one)")
+	if renderer.level_keys().size() == built_before and renderer.has_level(below):
+		_pass("Ensuring the same sub-ground level again is a no-op (one level, not two)")
 	else:
-		_fail("Second ensure call replaced the layer instead of reusing it")
+		_fail("Second ensure call built another level")
 
 	renderer.queue_free()
 	print("")
@@ -86,7 +86,7 @@ func test_negative_layer_creation_and_lookup() -> void:
 ## negative levels — position moves further "down" (higher Y) via the same
 ## formula walls use; z_index lands in the legacy floor slot (level + 1,
 ## Z-SLOT-01) so floors stay under the overlay ecosystem. Both live in
-## _build_voxel_layer_node, not a parallel copy.
+## `level_origin()` / `level_z_index()`, not a parallel copy.
 func test_negative_level_position_and_zindex_formula() -> void:
 	print("[2] Negative level position/z-index — same formula, sign-correct result\n")
 
@@ -99,15 +99,17 @@ func test_negative_level_position_and_zindex_formula() -> void:
 	renderer._ensure_voxel_layers(1)                            # the wall base
 	renderer._ensure_layer(GeometryCoords.FLOOR_TOP_LEVEL)      # the floor top
 
-	var level0: TileMapLayer = renderer.get_layer(GeometryCoords.PLAYABLE_LEVEL)
-	var level_neg1: TileMapLayer = renderer.get_layer(GeometryCoords.FLOOR_TOP_LEVEL)
+	var level0_y: float = renderer.level_origin(GeometryCoords.PLAYABLE_LEVEL).y
+	var level_neg1_y: float = renderer.level_origin(GeometryCoords.FLOOR_TOP_LEVEL).y
+	var level0_z: int = renderer.level_z_index(GeometryCoords.PLAYABLE_LEVEL)
+	var level_neg1_z: int = renderer.level_z_index(GeometryCoords.FLOOR_TOP_LEVEL)
 
 	# VOXEL_STEP_PX * level, position.y = ... - VOXEL_STEP_PX * level.
 	# level -1 => -VOXEL_STEP_PX * -1 = +VOXEL_STEP_PX => Y increases (moves down).
-	if level_neg1.position.y > level0.position.y:
+	if level_neg1_y > level0_y:
 		_pass("Level -1's screen Y is below level 0's (floor sits below the wall base, as expected)")
 	else:
-		_fail("Level -1 should be visually BELOW level 0: y=%f vs y=%f" % [level_neg1.position.y, level0.position.y])
+		_fail("Level -1 should be visually BELOW level 0: y=%f vs y=%f" % [level_neg1_y, level0_y])
 
 	## Z-SLOT-01 (2026-07-16): negative levels no longer share the wall formula's
 	## z band — they render in the LEGACY FLOOR SLOT (z = level + 1, floor top -1
@@ -116,10 +118,10 @@ func test_negative_level_position_and_zindex_formula() -> void:
 	## wall_base_z_index + level. See _build_voxel_layer_node.
 	## The floor slot is still `relative + 1` and the wall band still
 	## `wall_base + relative`; only the origin of `relative` moved.
-	if level_neg1.z_index == 0 and level0.z_index == 10:
-		_pass("z_index: level 0 = %d (wall_base + level), level -1 = %d (floor slot: level + 1)" % [level0.z_index, level_neg1.z_index])
+	if level_neg1_z == 0 and level0_z == 10:
+		_pass("z_index: level 0 = %d (wall_base + level), level -1 = %d (floor slot: level + 1)" % [level0_z, level_neg1_z])
 	else:
-		_fail("z_index mismatch: level0=%d (want 10) level_neg1=%d (want 0)" % [level0.z_index, level_neg1.z_index])
+		_fail("z_index mismatch: level0=%d (want 10) level_neg1=%d (want 0)" % [level0_z, level_neg1_z])
 
 	renderer.queue_free()
 	print("")
@@ -140,12 +142,12 @@ func test_lazy_not_contiguous() -> void:
 
 	renderer._ensure_negative_voxel_layer(top - 2)
 
-	if renderer.get_layer(top) == null and renderer.get_layer(top - 1) == null:
+	if not renderer.has_level(top) and not renderer.has_level(top - 1):
 		_pass("The floor top and the level below it remain unbuilt after only the third was ensured")
 	else:
 		_fail("Ensuring the third ground level leaked into building the two above it — violates D18's lazy contract")
 
-	if renderer.get_layer(top - 2) != null:
+	if renderer.has_level(top - 2):
 		_pass("The third ground level itself exists, as requested")
 	else:
 		_fail("The third ground level was not created despite being explicitly ensured")

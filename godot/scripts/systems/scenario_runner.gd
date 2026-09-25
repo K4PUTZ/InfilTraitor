@@ -52,8 +52,6 @@
 ##                                        incremental light left different from a full relight)
 ##   passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a
 ##                                        count and a digest
-##   occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from
-##                                        placed tiles vs from the store, per level
 ##   occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps>
 ##                                        times through the real occlusion path (`_recompute_occlusion`),
 ##                                        one frame apart, and print the set / 3D cutaway / total cost
@@ -77,7 +75,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0,
-	"occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2,
+	"passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2,
 }
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
@@ -164,7 +162,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "occupancy_compare", "passages", "mirror_check", "ground_check":
+		"capture", "probe", "probe_store", "passages", "mirror_check", "ground_check":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -294,11 +292,6 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_passages()")
 			if not bool(room.call("scenario_passages", str(step["name"]))):
 				return _fail(step, "no passages were computed (see the error above)")
-		"occupancy_compare":
-			if not room.has_method("scenario_occupancy_compare"):
-				return _fail(step, "Room has no scenario_occupancy_compare()")
-			if int(room.call("scenario_occupancy_compare", str(step["name"]))) < 0:
-				return _fail(step, "no comparison was made (see the error above)")
 		"shoot", "reload", "save_restore", "perspective", "relight":
 			var method: String = "scenario_" + str(step["op"])
 			if not room.has_method(method):

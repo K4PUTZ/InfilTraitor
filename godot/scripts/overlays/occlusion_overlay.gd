@@ -140,7 +140,4 @@ func _draw_stats() -> void:
 func _voxel_to_screen(voxel_cell: Vector2i) -> Vector2:
 	if voxel_renderer == null:
 		return Vector2.ZERO
-	var layer: TileMapLayer = voxel_renderer.get_layer(voxel_renderer.ground_plane_level())
-	if layer == null:
-		return Vector2.ZERO
-	return layer.map_to_local(voxel_cell) + layer.position
+	return voxel_renderer.voxel_world_position(voxel_cell, voxel_renderer.ground_plane_level())

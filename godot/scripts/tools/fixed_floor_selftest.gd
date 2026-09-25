@@ -84,7 +84,7 @@ func test_one_call_builds_only_the_requested_level() -> void:
 	var neighbours_untouched := true
 	for offset in [4, 6, 0, 7]:  ## the levels either side of it, plus the stack's ends
 		var level: int = GeometryCoords.FLOOR_TOP_LEVEL - offset
-		if renderer.get_layer(level) != null:
+		if renderer.has_level(level):
 			neighbours_untouched = false
 			_fail("Level %d was created as a side effect of rendering level %d" % [level, rendered_level])
 
@@ -133,7 +133,7 @@ func test_full_d13_stack_top_destructible_rest_fixed() -> void:
 
 	var all_levels_have_layers := true
 	for level in range(stack_bottom, stack_top + 1):
-		if renderer.get_layer(level) == null:
+		if not renderer.has_level(level):
 			all_levels_have_layers = false
 			_fail("Level %d has no layer — full 8-level stack incomplete" % level)
 	if all_levels_have_layers:

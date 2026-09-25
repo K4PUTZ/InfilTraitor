@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**251 scripts · 80898 lines total** (under `godot/scripts/`)
+**250 scripts · 80382 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
-- **systems/** — bake_config.gd, bake_policy.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
+- **systems/** — bake_policy.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -393,7 +393,7 @@ extends `Node2D` · 312 lines
 
 ### `dev_vision_status_panel.gd`
 
-`class_name DevVisionStatusPanel` · extends `Control` · 117 lines
+`class_name DevVisionStatusPanel` · extends `Control` · 101 lines
 
 `godot/scripts/debug/dev_vision_status_panel.gd`
 
@@ -1053,7 +1053,7 @@ extends `Node3D` · 1905 lines
 
 ### `voxel_renderer.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 2408 lines
+`class_name VoxelRenderer` · extends `Node2D` · 2317 lines
 
 `godot/scripts/geometry/voxel_renderer.gd`
 
@@ -1073,19 +1073,39 @@ extends `Node3D` · 1905 lines
 - `FLOOR_DEPTH_DIM` = `[1.0, 0.70, 0.45, 0.34, 0.28]`
 - `_GENERIC_HOLE_RADIUS` = `{"bullet": 2.0, "blast": 3.0}`
 - `EMPTY_COLUMN` = `-9999`
+- `GlassCrackParamsClass` = `preload("res://godot/scripts/systems/destruction/glass_crack_params.gd")`
+- `CRAZE_MASK_TEXELS_PER_VOXEL` = `6`
+- `FloorPile3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var debug_nudge: Vector2 = Vector2.ZERO`
 
 **Public API**
+- `func has_level(level: int) -> bool:`
 - `func level_keys() -> Array:`
 - `func wall_level_keys() -> Array:`
 - `func ground_plane_level() -> int:`
 - `func relative_level(level: int) -> int:`
 - `func top_wall_level() -> int:`
 - `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
-- `func get_layer(level: int) -> TileMapLayer:`
+- `func level_origin(level: int) -> Vector2:`
+- `func level_z_index(level: int) -> int:`
+- `func get_max_voxel_z_index() -> int:`
+- `func get_walked_cell_count() -> int:`
+- `func memory_census(label: String) -> void:`
+- `func apply_debug_nudge(delta: Vector2) -> void:`
+- `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
+- `func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:`
+- `func columns_with_structure() -> Dictionary:`
+- `func note_external_write(level: int, cell: Vector2i) -> void:`
+- `func apply_light_field(field) -> void:`
+- `func apply_light_field_cells(field, cells: Dictionary) -> void:`
+- `func apply_light_field_gus(field, gus: Array) -> void:`
+- `func process_dirty(registry: EdgeRegistry) -> void:`
+- `func glass_crack_covering(pane_id: String, run: int, level: int) -> int:`
+- `func spawn_glass_crack(spec: Dictionary) -> int:`
+- `func spawn_glass_craze(spec: Dictionary) -> int:`
 - `func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int) -> bool:`
 - `func set_pile_board3d(board: Node3D) -> void:`
 - `func clear_floor_shards() -> void:`
@@ -1172,7 +1192,7 @@ extends `Node3D` · 1905 lines
 
 ### `agent_probe_prop.gd`
 
-`class_name AgentProbeProp` · extends `Sprite2D` · 319 lines
+`class_name AgentProbeProp` · extends `Sprite2D` · 317 lines
 
 `godot/scripts/overlays/agent_probe_prop.gd`
 
@@ -1443,7 +1463,7 @@ extends `Node2D` · 137 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 627 lines
+`class_name FloatingCollectible` · extends `Node2D` · 596 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1497,7 +1517,7 @@ extends `Node2D` · 137 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 377 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 375 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -1674,7 +1694,7 @@ extends `Node2D` · 86 lines
 
 ### `occlusion_overlay.gd`
 
-extends `Node2D` · 146 lines
+extends `Node2D` · 143 lines
 
 `godot/scripts/overlays/occlusion_overlay.gd`
 
@@ -2037,16 +2057,6 @@ extends `Node2D` · 42 lines
 ---
 
 ## systems/
-
-### `bake_config.gd`
-
-`class_name BakeConfig` · 89 lines
-
-`godot/scripts/systems/bake_config.gd`
-
-> BakeConfig — Unified bake system configuration Master kill-switch and feature toggles for the baking pipeline. Branch-exclusive (structural, not tested); values set at boot.
-
----
 
 ### `bake_policy.gd`
 
@@ -2480,7 +2490,7 @@ extends `Node2D` · 42 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 234 lines
+extends `Node` · 231 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -3137,14 +3147,14 @@ extends `Node` · 156 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 475 lines
+extends `Node` · 468 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
-> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occupancy_compare <label>            RENDER3D R3D-1c: the light field's occupancy from placed tiles vs from the store, per level occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
+> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "occupancy_compare": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2, }`
 - `FRAMINGS` = `["portrait", "landscape", "desktop"]`
 - `ALLOC_KINDS` = `["objects", "packed", "bytes"]`
 - `BEAT_TOKEN_PATTERN` = `"^[A-Za-z0-9_]+$"`
@@ -3582,7 +3592,7 @@ extends `SceneTree` · 2268 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 686 lines
+extends `SceneTree` · 682 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
@@ -3667,7 +3677,7 @@ extends `SceneTree` · 342 lines
 
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 1005 lines
+extends `SceneTree` · 1001 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -4152,11 +4162,11 @@ extends `Node` · 202 lines
 
 ### `input_controller_selftest.gd`
 
-extends `SceneTree` · 275 lines
+extends `SceneTree` · 273 lines
 
 `godot/scripts/tools/input_controller_selftest.gd`
 
-> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script INPUT-01-c Test: Verify InputController dispatches all 18 actions with real signal firing. Run: godot --headless --script godot/scripts/tools/input_controller_test.gd
+> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script INPUT-01-c Test: Verify InputController dispatches all 16 actions with real signal firing. Run: godot --headless --script godot/scripts/tools/input_controller_test.gd
 
 **Constants / tuning**
 - `InputControllerClass` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
@@ -4164,7 +4174,7 @@ extends `SceneTree` · 275 lines
 **Public vars**
 - `var test_passed: int = 0`
 - `var test_failed: int = 0`
-- `var action_expectations: Dictionary = { "ui_posture_lower": ["posture_lower_requested", []], "ui_posture_raise": ["posture_raise_requested", []], "ui_view_mode_dev": ["view_mode_requested", ["dev"]], "ui_view_mode_light": ["view_mode_requested", ["light"]], "ui_view_mode_heat": ["view_mode_requested", ["heat"]], "ui_peek": ["peek_initiated", []], "ui_move_up": ["movement_input_requested", [Vector2i.UP, false]], "ui_move_down": ["movement_input_requested", [Vector2i.DOWN, false]], "ui_move_left": ["movement_input_requested", [Vector2i.LEFT, false]], "ui_move_right": ["movement_input_requested", [Vector2i.RIGHT, false]], "debug_toggle_map_loader": ["debug_command_requested", ["toggle_map_loader"]], "debug_toggle_voxel_ruler": ["debug_command_requested", ["toggle_voxel_ruler"]], "debug_toggle_nudge_mode": ["debug_command_requested", ["toggle_nudge_mode"]], "debug_toggle_bake_mode": ["debug_command_requested", ["toggle_bake_mode"]], "debug_cycle_blend_mode": ["debug_command_requested", ["cycle_blend_mode"]], "debug_cycle_language": ["debug_command_requested", ["cycle_language"]], "debug_nudge_reset": ["debug_command_requested", ["nudge_reset"]], "debug_screenshot": ["screenshot_requested", []], }`
+- `var action_expectations: Dictionary = { "ui_posture_lower": ["posture_lower_requested", []], "ui_posture_raise": ["posture_raise_requested", []], "ui_view_mode_dev": ["view_mode_requested", ["dev"]], "ui_view_mode_light": ["view_mode_requested", ["light"]], "ui_view_mode_heat": ["view_mode_requested", ["heat"]], "ui_peek": ["peek_initiated", []], "ui_move_up": ["movement_input_requested", [Vector2i.UP, false]], "ui_move_down": ["movement_input_requested", [Vector2i.DOWN, false]], "ui_move_left": ["movement_input_requested", [Vector2i.LEFT, false]], "ui_move_right": ["movement_input_requested", [Vector2i.RIGHT, false]], "debug_toggle_map_loader": ["debug_command_requested", ["toggle_map_loader"]], "debug_toggle_voxel_ruler": ["debug_command_requested", ["toggle_voxel_ruler"]], "debug_toggle_nudge_mode": ["debug_command_requested", ["toggle_nudge_mode"]], "debug_cycle_language": ["debug_command_requested", ["cycle_language"]], "debug_nudge_reset": ["debug_command_requested", ["nudge_reset"]], "debug_screenshot": ["screenshot_requested", []], }`
 
 **Public API**
 - `func test_all_actions_fire_signals() -> void:`
@@ -4283,7 +4293,7 @@ extends `SceneTree` · 202 lines
 
 ### `negative_storey_selftest.gd`
 
-extends `SceneTree` · 155 lines
+extends `SceneTree` · 157 lines
 
 `godot/scripts/tools/negative_storey_selftest.gd`
 
@@ -4521,7 +4531,7 @@ extends `SceneTree` · 135 lines
 
 ### `roof_entity_selftest.gd`
 
-extends `SceneTree` · 162 lines
+extends `SceneTree` · 158 lines
 
 `godot/scripts/tools/roof_entity_selftest.gd`
 
@@ -4539,7 +4549,7 @@ extends `SceneTree` · 162 lines
 
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 279 lines
+extends `SceneTree` · 275 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -5207,7 +5217,7 @@ extends `Node2D` · 32 lines
 
 ### `debug_tools_controller.gd`
 
-`class_name DebugToolsController` · 194 lines
+`class_name DebugToolsController` · 162 lines
 
 `godot/scripts/world/controllers/debug_tools_controller.gd`
 
@@ -5222,8 +5232,6 @@ extends `Node2D` · 32 lines
 - `func create_grenade_button() -> void:`
 - `func toggle_voxel_ruler_overlay() -> void:`
 - `func toggle_nudge_mode() -> void:`
-- `func toggle_bake_mode() -> void:`
-- `func cycle_blend_mode() -> void:`
 - `func apply_nudge(delta: Vector2) -> void:`
 - `func reset_nudge() -> void:`
 - `func try_change_posture(new_posture: DebugAgent.Posture) -> void:`
@@ -5233,7 +5241,7 @@ extends `Node2D` · 32 lines
 
 ### `input_controller.gd`
 
-`class_name InputController` · 228 lines
+`class_name InputController` · 218 lines
 
 `godot/scripts/world/controllers/input_controller.gd`
 
@@ -5556,7 +5564,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10892 lines
+extends `Node2D` · 10678 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5615,7 +5623,6 @@ extends `Node2D` · 10892 lines
 - `CameraControllerClass` = `preload("res://godot/scripts/controllers/camera_controller.gd")`
 - `FowControllerClass` = `preload("res://godot/scripts/controllers/fow_controller.gd")`
 - `GuardCoordinatorClass` = `preload("res://godot/scripts/controllers/guard_coordinator.gd")`
-- `BakeConfigClass` = `preload("res://godot/scripts/systems/bake_config.gd")`
 - `DevVisionStatusPanelClass` = `preload("res://godot/scripts/debug/dev_vision_status_panel.gd")`
 - `GuGridOverlayClass` = `preload("res://godot/scripts/overlays/gu_grid_overlay.gd")`
 - `BlastWireframeOverlayClass` = `preload("res://godot/scripts/overlays/blast_wireframe_overlay.gd")`

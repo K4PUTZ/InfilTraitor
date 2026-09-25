@@ -67,7 +67,6 @@ const LightingControllerClass = preload("res://godot/scripts/controllers/lightin
 const CameraControllerClass = preload("res://godot/scripts/controllers/camera_controller.gd")
 const FowControllerClass = preload("res://godot/scripts/controllers/fow_controller.gd")
 const GuardCoordinatorClass = preload("res://godot/scripts/controllers/guard_coordinator.gd")
-const BakeConfigClass = preload("res://godot/scripts/systems/bake_config.gd")
 const DevVisionStatusPanelClass = preload("res://godot/scripts/debug/dev_vision_status_panel.gd")
 const GuGridOverlayClass = preload("res://godot/scripts/overlays/gu_grid_overlay.gd")
 const BlastWireframeOverlayClass = preload("res://godot/scripts/overlays/blast_wireframe_overlay.gd")
@@ -751,9 +750,7 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 	## rather than floating over the scenery. A rain spanning two storeys will have
 	## its upper shards drawn in the lower plane's band for the ~40 frames it lives;
 	## stated because it is a trade for the one draw call, not an oversight.
-	var layer := _voxel_renderer.get_layer(top_level)
-	if layer != null:
-		rain.z_index = layer.z_index + 2
+	rain.z_index = _voxel_renderer.level_z_index(top_level) + 2
 	_voxel_renderer.add_child(rain)
 	rain.set_board3d(board3d())
 	var n: int = rain.spawn(rows)
@@ -2102,9 +2099,6 @@ func _ready() -> void:
 	## Material registry is used by baking; ensure it's ready before map compilation.
 	Registries.ensure_material_registry()
 	
-	## Load user:// bake toggle before any map builds (BAKE-LIVE-BOOT-01).
-	BakeConfigClass.load_config()
-
 	var ts: TileSet = load(TILESET_PATH)
 	if ts == null:
 		push_error("TileSet not found: " + TILESET_PATH)
@@ -3242,89 +3236,6 @@ func scenario_board_probe_store(path: String, label: String) -> Dictionary:
 		push_error("[Room] the shadow store has drifted at '%s': grid mismatches %d, unknown-container writes %d, misplaced writes %d"
 			% [label, mismatches, store.writes_unknown_container, store.writes_misplaced])
 	return summary
-
-
-## RENDER3D R3D-1c instrument — the light field's occupancy two ways, compared per level:
-## `VoxelRenderer.build_occupancy()` (placed tiles + ghosted cells + glass sublayers, what
-## the field reads today) against `VoxelStore.occupancy_dict()` (visible claims). Prints
-## the counts and the first differing cells; returns the total difference.
-func scenario_occupancy_compare(label: String) -> int:
-	var store: VoxelStore = VoxelStore.active
-	if store == null or _voxel_renderer == null:
-		push_error("[Room] scenario_occupancy_compare: no active store or no renderer")
-		return -1
-	var tiles: Dictionary = _voxel_renderer.build_occupancy()
-	var claims: Dictionary = store.occupancy_dict()
-	var levels: Dictionary = {}
-	for level in tiles:
-		levels[level] = true
-	for level in claims:
-		levels[level] = true
-	var sorted_levels: Array = levels.keys()
-	sorted_levels.sort()
-	var total: int = 0
-	var lines: PackedStringArray = []
-	var examples: PackedStringArray = []
-	for level in sorted_levels:
-		var a: Dictionary = tiles.get(level, {})
-		var b: Dictionary = claims.get(level, {})
-		var only_tiles: int = 0
-		var only_store: int = 0
-		for cell in a:
-			if not b.has(cell):
-				only_tiles += 1
-				if examples.size() < 12:
-					examples.append("L%d %s tile-only" % [level, cell])
-		for cell in b:
-			if not a.has(cell):
-				only_store += 1
-				if examples.size() < 12:
-					examples.append("L%d %s store-only" % [level, cell])
-		if only_tiles > 0 or only_store > 0:
-			lines.append("L%d tiles %d store %d (tile-only %d, store-only %d)"
-				% [level, a.size(), b.size(), only_tiles, only_store])
-		total += only_tiles + only_store
-	print("[OCC-COMPARE] %s — %d cell(s) differ over %d level(s)%s" % [label, total,
-		sorted_levels.size(), "" if lines.is_empty() else ": " + "; ".join(lines)])
-	for e in examples:
-		print("[OCC-COMPARE]   %s" % e)
-	_compare_light_buckets(label, tiles, claims)
-	return total
-
-
-## What the occupancy difference does to the LIGHT: one field per occupancy, same lights
-## and shadows, and every placed opaque cell's bucket compared. This is the number
-## the R3D-1c flip is judged on — occupancy only matters where a bucket reads it.
-func _compare_light_buckets(label: String, tiles: Dictionary, claims: Dictionary) -> void:
-	if _lighting_controller == null or _lighting_controller.get_light_registry() == null:
-		print("[OCC-COMPARE] %s — no lighting controller, buckets not compared" % label)
-		return
-	var registry = _lighting_controller.get_light_registry()
-	var lights: Array = registry.get_active_lights()
-	var shadows = _lighting_controller.get_shadow_results()
-	var top: int = _voxel_renderer.top_wall_level()
-	var field_tiles := VoxelLightField.new()
-	field_tiles.build(lights, shadows, top, tiles, _under_structure)
-	var field_claims := VoxelLightField.new()
-	field_claims.build(lights, shadows, top, claims, _under_structure)
-	var compared: int = 0
-	var differ: int = 0
-	var by_level: Dictionary = {}
-	var examples: PackedStringArray = []
-	for level in _voxel_renderer.level_keys():
-		for cell in (_voxel_renderer.get_layer(level) as TileMapLayer).get_used_cells():
-			compared += 1
-			var a: int = field_tiles.bucket_for(cell, level)
-			var b: int = field_claims.bucket_for(cell, level)
-			if a != b:
-				differ += 1
-				by_level[level] = int(by_level.get(level, 0)) + 1
-				if examples.size() < 12:
-					examples.append("L%d %s bucket %d (tiles) vs %d (store)" % [level, cell, a, b])
-	print("[OCC-COMPARE] %s — light buckets: %d of %d placed cell(s) differ, by level %s"
-		% [label, differ, compared, by_level])
-	for e in examples:
-		print("[OCC-COMPARE]   %s" % e)
 
 
 ## RENDER3D R3D-1c step 4 instrument — `PassageQuery.passage_class()` for EVERY edge,
@@ -5707,31 +5618,6 @@ func _recompute_occlusion() -> void:
 	_occ_last_usec = [occ_t1 - occ_t0, occ_t2 - occ_t1, occ_t3 - occ_t2, Time.get_ticks_usec() - occ_t3]
 
 
-## OCC-01: Collect all voxel cells currently placed in the renderer
-## Returns an array of Vector2i voxel-grid cells (in view-space, already rotated).
-func _collect_all_voxel_cells() -> Array:
-	var voxel_cells: Array = []
-	
-	if _voxel_renderer == null:
-		return voxel_cells
-	
-	## LEVEL-RENUMBER — was `range(8)`, which read the first storey only and
-	## contradicted this function's own docstring ("all voxel cells currently
-	## placed"). The renumber forced the question: those eight hardcoded indices
-	## address nothing at all once the ground plane moves. Corrected to the
-	## renderer's own level list rather than re-based to the new origin, because
-	## the docstring was right and the loop was wrong. Feeds one debug count.
-	for level in _voxel_renderer.level_keys():
-		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-		if layer != null:
-			var used_cells := layer.get_used_cells()
-			for cell in used_cells:
-				if not voxel_cells.has(cell):
-					voxel_cells.append(cell)
-	
-	return voxel_cells
-
-
 ## PERF — a standing frame probe, `INFILTRAITOR_FRAME_PROBE=1`, printing once a
 ## second. "Performance is the standing priority" is unanswerable without a
 ## baseline: the burn profiler can say a fire frame costs 64 ms and still not say
@@ -7043,28 +6929,6 @@ func _capture_glass_crack_demo() -> void:
 			get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_destroyed.png" % [dir, tag])
 			print("[CRACK-DEMO] destroyed GU %s through the dirty pass: %d slice + %d slab voxel(s) -> glass_crack_demo_%s_destroyed.png"
 				% [dgu, killed_slice, killed_slab, tag])
-			## ⚠️ THE BOARD, NOT THE COUNTER. The first run reported 896 voxels
-			## destroyed and photographed the pillar still standing. What is left in
-			## the GU's voxel rect, per level, read back from the tilemap:
-			var left_total: int = 0
-			var left_levels: Array = []
-			for lvl in _voxel_renderer.level_keys():
-				if int(lvl) < ground:
-					continue
-				var lay: TileMapLayer = _voxel_renderer.get_layer(int(lvl))
-				if lay == null:
-					continue
-				var n_left: int = 0
-				## One voxel of margin: the cap's overhang lives there.
-				for cx in range(dgu.x * 8 - 1, dgu.x * 8 + 9):
-					for cy in range(dgu.y * 8 - 1, dgu.y * 8 + 9):
-						if lay.get_cell_source_id(Vector2i(cx, cy)) != -1:
-							n_left += 1
-				if n_left > 0:
-					left_total += n_left
-					left_levels.append("%d:%d" % [lvl, n_left])
-			print("[CRACK-DEMO] board after the destroy: %d cell(s) still in GU %s — %s"
-				% [left_total, dgu, " ".join(left_levels) if not left_levels.is_empty() else "none"])
 
 	## G-D30 — ONE crack, ONE boot, three values of the dial. Separate boots would
 	## not answer the question: the pane, the light and the shot would all be the
@@ -7847,79 +7711,6 @@ func _capture_circle_gate() -> void:
 	host.queue_free()
 
 
-## LEVEL-RENUMBER — THE GATE, and it has to be earned before it means anything.
-##
-## The storey renumber (Director, 2026-08-24: *"seria melhor a gente só usar valores
-## positivos… o andar 10 vai ser sempre o jogável"*) must leave the board IDENTICAL
-## apart from a constant added to every level. A pixel diff cannot say that: two
-## boots of the same code were measured 22 967 pixels apart (§10.4), because the
-## fire's cadence is pinned in seconds. This dumps the board itself instead —
-## every placed cell, with everything that decides how it draws — so the check is
-## an exact comparison of state rather than of a rendering of it.
-##
-## `INFILTRAITOR_CENSUS_LEVEL_SHIFT=-80` subtracts the offset back out, which is
-## what lets a renumbered board be compared against a pre-renumber baseline line
-## for line. Sorted, so the file order cannot itself be the difference.
-##
-## ⚠️ Run it TWICE on unchanged code first. A census that is not reproducible
-## boot-to-boot is not a gate, it is a number that looks like one.
-func _capture_level_census() -> void:
-	if _voxel_renderer == null:
-		push_error("[CENSUS] no voxel renderer.")
-		return
-	## The board settles over several frames (bakes, the first full repaint), and
-	## a census taken before it has is a census of a construction site.
-	for _w in range(90):
-		await get_tree().process_frame
-	var shift_env := OS.get_environment("INFILTRAITOR_CENSUS_LEVEL_SHIFT")
-	var shift: int = shift_env.to_int() if shift_env.is_valid_int() else 0
-	var lines: Array = []
-	var levels: Array = _voxel_renderer.level_keys()
-	for level in levels:
-		var layer: TileMapLayer = _voxel_renderer.get_layer(level)
-		if layer == null:
-			continue
-		for cell in layer.get_used_cells():
-			var atlas: Vector2i = layer.get_cell_atlas_coords(cell)
-			lines.append("%d %d %d %d %d %d %d %d" % [
-				level + shift, cell.x, cell.y,
-				layer.get_cell_source_id(cell), atlas.x, atlas.y,
-				layer.get_cell_alternative_tile(cell),
-				_voxel_renderer.cell_soot_at(level, cell)])
-	lines.sort()
-	## The layer-level state a cell's own row cannot carry: z_index decides what
-	## draws over what, and modulate is FLOOR_DEPTH_02's per-level tone. Both are
-	## derived from the level number, so both are exactly what a renumber can
-	## break silently.
-	var meta: Array = []
-	for level in levels:
-		var layer2: TileMapLayer = _voxel_renderer.get_layer(level)
-		if layer2 == null:
-			continue
-		## ⚠️ `pos` was added after the renumber proved a cell census cannot see a
-		## layer that moved: every cell held the right value and the whole board
-		## would have drawn eighty steps off screen. A gate that cannot fail on the
-		## thing being changed is not a gate.
-		meta.append("LAYER %d z=%d mod=%.4f pos=%.2f cells=%d" % [
-			level + shift, layer2.z_index, layer2.modulate.r, layer2.position.y,
-			layer2.get_used_cells().size()])
-	meta.sort()
-	var out_path := OS.get_environment("INFILTRAITOR_CENSUS_OUT")
-	if out_path == "":
-		out_path = ProjectSettings.globalize_path("res://") + "Screenshots/history/level_census.txt"
-	var f := FileAccess.open(out_path, FileAccess.WRITE)
-	if f == null:
-		push_error("[CENSUS] cannot write %s" % out_path)
-		return
-	for m in meta:
-		f.store_line(m)
-	for l in lines:
-		f.store_line(l)
-	f.close()
-	print("[CENSUS] %d placed cell(s) over %d layer(s), level shift %d -> %s"
-		% [lines.size(), meta.size(), shift, out_path])
-
-
 func _capture_light_burn_probe() -> void:
 	if _voxel_renderer == null or _edge_registry == null:
 		push_error("[BURN-PROBE] needs a voxel renderer and an edge registry.")
@@ -8178,8 +7969,9 @@ func _burn_probe_snapshot() -> Dictionary:
 	var out: Dictionary = {}
 	if _voxel_light_field == null:
 		return out
-	for level in _voxel_renderer.level_keys():
-		for cell in (_voxel_renderer.get_layer(level) as TileMapLayer).get_used_cells():
+	var occupancy: Dictionary = _voxel_renderer.build_occupancy()
+	for level in occupancy:
+		for cell in occupancy[level]:
 			out[Vector3i(cell.x, cell.y, level)] = _voxel_light_field.bucket_for(cell, level)
 	return out
 
@@ -9382,8 +9174,8 @@ func _capture_all_four_views() -> void:
 			continue
 		var path := "%s/occ_view_%s.png" % [history_dir, view]
 		img.save_png(path)
-		print("[OCC-FIX-02] view=%s active=%s agent_cell=%s collected=%d occluded_cells=%d → %s" % [
-			view, _active_perspective, agent.cell, _collect_all_voxel_cells().size(),
+		print("[OCC-FIX-02] view=%s active=%s agent_cell=%s occluded_cells=%d → %s" % [
+			view, _active_perspective, agent.cell,
 			(_occlusion_set.get_occluded_cells().size() if _occlusion_set != null and _occlusion_set.has_method("get_occluded_cells") else -1),
 			path.get_file()
 		])
@@ -9830,8 +9622,6 @@ func _run_auto_screenshot_capture() -> void:
 		await _capture_agent_shot()
 	elif capture_action == "circle_gate":
 		await _capture_circle_gate()
-	elif capture_action == "level_census":
-		await _capture_level_census()
 	elif capture_action == "light_burn_probe":
 		await _capture_light_burn_probe()
 		get_tree().quit(0)
@@ -10755,10 +10545,6 @@ func _on_debug_command_requested(command: String) -> void:
 			_debug_tools_controller.toggle_voxel_ruler_overlay()
 		"toggle_nudge_mode":
 			_debug_tools_controller.toggle_nudge_mode()
-		"toggle_bake_mode":
-			_debug_tools_controller.toggle_bake_mode()
-		"cycle_blend_mode":
-			_debug_tools_controller.cycle_blend_mode()
 		"cycle_language":
 			var localization: Variant = get_node_or_null("/root/Localization")
 			if localization:

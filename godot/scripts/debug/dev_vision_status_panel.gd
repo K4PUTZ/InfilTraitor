@@ -10,7 +10,6 @@ class_name DevVisionStatusPanel
 # ── References ─────────────────────────────────────────────────────────────────
 var _room: Node = null
 var _label: Label = null
-var _bake_config_class = null
 var _vision_controller: Node = null
 var _update_timer: float = 0.0
 const UPDATE_INTERVAL: float = 0.1  ## Refresh every 100ms (10 FPS for status display)
@@ -50,7 +49,6 @@ func _ready() -> void:
 
 func setup(room_ref: Node) -> void:
 	_room = room_ref
-	_bake_config_class = preload("res://godot/scripts/systems/bake_config.gd")
 	
 	# Get vision controller from room
 	_vision_controller = room_ref._vision_controller
@@ -71,27 +69,13 @@ func _process(delta: float) -> void:
 
 
 func _update_display() -> void:
-	if not _room or not _vision_controller or not _bake_config_class:
+	if not _room or not _vision_controller:
 		return
 	
 	var lines: Array[String] = []
 	
 	# ── MAP & PERSPECTIVE ──────────────────────────────────────────────────────
 	lines.append("MAP: %s | VIEW: %s" % [_room.map_id, _room._active_perspective])
-	
-	# ── BAKE STATE ─────────────────────────────────────────────────────────────
-	var bake_status = "- OFF"
-	if _bake_config_class.enabled:
-		var blend_mode_name = _bake_config_class.BlendMode.keys()[_bake_config_class.blend_mode]
-		bake_status = "+ %s" % blend_mode_name
-	
-	# ── BAKE FEATURES ──────────────────────────────────────────────────────────
-	var facade_str = "+" if _bake_config_class.facade_enabled else "-"
-	var tops_str = "+" if _bake_config_class.facade_tops else "-"
-	var pattern_str = "+" if _bake_config_class.material_pattern_enabled else "-"
-	var dump_str = "+" if _bake_config_class.debug_bake_set_dump else "-"
-	
-	lines.append("BAKE: %s | facade%s tops%s pattern%s dump%s" % [bake_status, facade_str, tops_str, pattern_str, dump_str])
 	
 	# ── VISION SYSTEMS ─────────────────────────────────────────────────────────
 	var dev_str = "+" if _vision_controller.dev_vision else "·"

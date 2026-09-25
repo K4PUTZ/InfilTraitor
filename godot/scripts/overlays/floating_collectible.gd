@@ -401,42 +401,11 @@ func _apply_z_index() -> void:
 	## whole function returned here and NEVER SET z_index at all — silently, with
 	## no error, leaving the prop wherever its node default put it. Ask the
 	## renderer where its own ground plane is; never name the level.
-	var ground_layer: TileMapLayer = voxel_renderer.get_layer(voxel_renderer.ground_plane_level())
-	if ground_layer == null:
-		return
-	var base_z: int = ground_layer.z_index
-
-	## The sprite's own world-space rect, taken at the bob's extremes so the
-	## answer doesn't flicker as the object rises and falls. A static prop never
-	## bobs, so its rect is just the sprite.
-	var bob_reach := 0.0 if _static_facing != STATIC_FACING_NONE else BOB_AMPLITUDE_PX
-	var sprite_rect := Rect2(
-		position.x - _sprite_half_w,
-		_base_y - bob_reach - _sprite_half_h,
-		_sprite_half_w * 2.0,
-		(bob_reach + _sprite_half_h) * 2.0)
-
-	## Centre voxel of my own GU — the reference for O5 depth at voxel scale.
-	var center_voxel: Vector2i = GeometryCoords.gu_to_voxel_origin(gu_cell) \
-			+ Vector2i(GeometryCoords.VOXELS_PER_UNIT_AXIS / 2, GeometryCoords.VOXELS_PER_UNIT_AXIS / 2)
-	var verdict: Dictionary = voxel_renderer.classify_geometry_over_rect(
-			center_voxel, sprite_rect, Z_SCAN_RADIUS_VOXELS)
-
-	if bool(verdict["covered_from_front"]):
-		## Something NEARER really overlaps me: I belong behind all of it,
-		## including its ground level. This is the case D22-FOLLOWUP protected.
-		z_index = base_z - 1
-		return
-
-	var behind_top_z: int = int(verdict["behind_top_z"])
-	if behind_top_z == voxel_renderer.EMPTY_COLUMN:
-		## Open ground: keep the old floor-level slot.
-		z_index = base_z
-		return
-
-	## Sit just above the tallest thing behind me, capped at the top voxel layer
-	## so the agent (max + 1, OCC-03) still draws over every prop.
-	z_index = mini(behind_top_z + 1, voxel_renderer.get_max_voxel_z_index())
+	## R3D-END END-6: the ground plane's draw height, and nothing more. The scan that used to lift a prop above the tallest wall
+	## behind it (`classify_geometry_over_rect()`) read the 2D board's placed tiles; there have been none on the 3D board since
+	## R3D-3, so it had been answering "open ground" for every prop and this is what it did. Sorting a prop against the 3D walls
+	## is R3D-PROPS' (D65: a static prop is a mesh and depth-tests).
+	z_index = voxel_renderer.level_z_index(voxel_renderer.ground_plane_level())
 
 
 func _ready() -> void:

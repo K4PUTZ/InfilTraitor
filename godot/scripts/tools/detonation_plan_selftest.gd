@@ -77,9 +77,6 @@ func _init() -> void:
 	print("E-PLAN — DETONATION PLAN BUILDER SELFTEST")
 	print("=".repeat(70) + "\n")
 
-	var bake_config = load("res://godot/scripts/systems/bake_config.gd")
-	var saved_enabled: bool = bake_config.enabled
-	bake_config.enabled = true
 
 	var built := _build_playground()
 	if not built.is_empty():
@@ -104,7 +101,6 @@ func _init() -> void:
 		else:
 			_fail("could not load frag_grenade.json — nothing else can run")
 
-	bake_config.enabled = saved_enabled
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])

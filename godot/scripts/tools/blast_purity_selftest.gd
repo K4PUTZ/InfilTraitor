@@ -83,9 +83,6 @@ func _init() -> void:
 	print("P-PURE / P-DELTA / P-SLICE / P-CACHE — PREDICTION LAYER SELFTEST")
 	print("=".repeat(70) + "\n")
 
-	var bake_config = load("res://godot/scripts/systems/bake_config.gd")
-	var saved_enabled: bool = bake_config.enabled
-	bake_config.enabled = true
 
 	var built := _build_playground()
 	if not built.is_empty():
@@ -119,7 +116,6 @@ func _init() -> void:
 			## Mutating — must be last. Everything above assumes an untouched world.
 			test_4_commit_realises_the_delta(delta_a, edge_registry, slab_registry)
 
-	bake_config.enabled = saved_enabled
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])

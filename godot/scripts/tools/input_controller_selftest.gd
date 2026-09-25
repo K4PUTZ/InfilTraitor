@@ -1,5 +1,5 @@
 #!/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script
-## INPUT-01-c Test: Verify InputController dispatches all 18 actions with real signal firing.
+## INPUT-01-c Test: Verify InputController dispatches all 16 actions with real signal firing.
 ## Run: godot --headless --script godot/scripts/tools/input_controller_test.gd
 
 extends SceneTree
@@ -24,8 +24,6 @@ var action_expectations: Dictionary = {
 	"debug_toggle_map_loader": ["debug_command_requested", ["toggle_map_loader"]],
 	"debug_toggle_voxel_ruler": ["debug_command_requested", ["toggle_voxel_ruler"]],
 	"debug_toggle_nudge_mode": ["debug_command_requested", ["toggle_nudge_mode"]],
-	"debug_toggle_bake_mode": ["debug_command_requested", ["toggle_bake_mode"]],
-	"debug_cycle_blend_mode": ["debug_command_requested", ["cycle_blend_mode"]],
 	"debug_cycle_language": ["debug_command_requested", ["cycle_language"]],
 	"debug_nudge_reset": ["debug_command_requested", ["nudge_reset"]],
 	"debug_screenshot": ["screenshot_requested", []],
@@ -36,7 +34,7 @@ func _init() -> void:
 	print("============================================================")
 	print("[INPUT-01-c TEST] Starting...")
 	print("============================================================")
-	print("[INPUT-01-c TEST] Verifying real signal firing for all 18 actions")
+	print("[INPUT-01-c TEST] Verifying real signal firing for all 16 actions")
 	
 	test_all_actions_fire_signals()
 	
@@ -54,7 +52,7 @@ func _init() -> void:
 
 
 func test_all_actions_fire_signals() -> void:
-	print("\n[FIRING] Testing all 18 actions fire correct signals...\n")
+	print("\n[FIRING] Testing all 16 actions fire correct signals...\n")
 	
 	# Create a dummy room node
 	var dummy_room := Node.new()

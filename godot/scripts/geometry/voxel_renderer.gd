@@ -111,7 +111,7 @@ var _wall_base_z_index: int = 10
 ## this file and in `room.gd` came in pairs, one loop for each store, and a walk
 ## that forgot its second half was a silent bug with no symptom until someone
 ## looked at the right voxel.
-var _layers: Dictionary = {}               ## level:int -> TileMapLayer, sparse
+var _layers: Dictionary = {}               ## level:int -> true, sparse: the levels something has built
 
 ## GLASS — R3D-END (END-2): the glass tile layers, their backbuffer and composite z, the pane atoms and their inverse
 ## (`_glass_atom_source`, `_glass_source_info`), the shard rim atoms, the sliver dims and the sublayer shader knobs were
@@ -140,6 +140,11 @@ var _glass_opening_masks: Dictionary = {}
 ## "is this a wall level" test in this file goes through here, so stage B is one
 ## constant rather than a sweep of sign checks.
 var _ground_plane_level: int = GeometryCoords.PLAYABLE_LEVEL
+
+
+## True when something has built this level (the level registry: `_layers` holds no node any more, R3D-END END-6).
+func has_level(level: int) -> bool:
+	return _layers.has(level)
 
 
 ## Every built level, ascending. The single replacement for the paired
@@ -199,7 +204,6 @@ func top_wall_level() -> int:
 	return walls[walls.size() - 1] if not walls.is_empty() else _ground_plane_level
 
 ## Runtime TileSet
-var _geometry_tileset: TileSet = null   ## R3D-END: tile size and shape only, no source, so `map_to_local()` still answers
 
 ## Visual grid offset (isometric screen space)
 var _visual_grid_offset: Vector2
@@ -246,10 +250,6 @@ func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	## The parent must be Y-sorted for sibling layers' tiles to merge into one
 	## order — per-layer `y_sort_enabled` alone still draws all of one, then all
 	## of the other (Q1's control).
-	_geometry_tileset = TileSet.new()
-	_geometry_tileset.tile_size = GeometryCoords.VOXEL_TILE_SIZE
-	_geometry_tileset.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
-	_geometry_tileset.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
 	MemStage.mark("10 voxel TileSet built")
 
 
@@ -259,78 +259,10 @@ func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 const _GENERIC_HOLE_RADIUS: Dictionary = {"bullet": 2.0, "blast": 3.0}
 
 
-## Getter for voxel layer at given level (for diagnostics). D17: negative
-## levels (floor/background) route to _negative_voxel_layers; this is the
-## single point that makes the split storage invisible to every caller.
-func get_layer(level: int) -> TileMapLayer:
-	return _layers.get(level)
-
-
 ## FLOAT-PROP-Z-01 — sentinel for "this GU has no wall/block geometry at all".
 ## Not -1: level -1 is a real (floor) level, and a caller comparing heights would
 ## silently treat an empty column as ground.
 const EMPTY_COLUMN: int = -9999
-
-
-## FLOAT-PROP-Z-01 — classify the geometry that actually overlaps a world-space
-## rect (a prop's sprite), split by whether it is NEARER or FARTHER than that
-## prop, so the caller can pick a z_index that sorts correctly against both.
-##
-## Returns {"behind_top_z": int, "covered_from_front": bool}; behind_top_z is
-## EMPTY_COLUMN when nothing farther-or-equal overlaps.
-##
-## Works at VOXEL resolution, and that is the whole point. The first version of
-## this asked "does GU X have geometry, and how tall is its column" — but walls
-## are not per-GU columns: SliceGenerator puts a wall's slice in a single 8-voxel
-## ROW, and the far slice of an edge lands one voxel INSIDE the neighbour GU. So
-## a GU-granular test reported the weapon's own cell and its neighbour as
-## "occupied to level 17" (real, but a thin row 128px off to the side) and buried
-## the prop under the map. Measured on a real run, not reasoned about.
-##
-## Depth is OcclusionSet's POLICY O5 — (x + y) in view space, greater = nearer —
-## applied at voxel scale, where it holds for the same reason it holds per GU:
-## the same diamond, 8× finer.
-##
-## The per-voxel rect is approximate (the atom is 32×36 with a 16px top face; the
-## anchor is the tile centre). ±10px of slop cannot change any answer here: the
-## error this exists to prevent is a 128px-away slice counting as an occluder.
-##
-## Cost: (2·radius+1)² × layer count lookups — ~26k for a 16-voxel radius on
-## PLAYGROUND's 24 layers. Called when a prop is placed and on every perspective
-## rotation, NEVER per frame; a rotation already rebuilds the whole map (~3 s), so
-## this is noise beside it. A per-frame caller would need a different design.
-func classify_geometry_over_rect(center_voxel: Vector2i, world_rect: Rect2, radius: int) -> Dictionary:
-	var result: Dictionary = {"behind_top_z": EMPTY_COLUMN, "covered_from_front": false}
-	var ref_depth: int = center_voxel.x + center_voxel.y
-	var atom_offset := Vector2(
-		-float(GeometryCoords.VOXEL_ATOM_W) * 0.5,
-		-float(GeometryCoords.VOXEL_ATOM_H) + float(GeometryCoords.VOXEL_TILE_H) * 0.5)
-	var atom_size := Vector2(float(GeometryCoords.VOXEL_ATOM_W), float(GeometryCoords.VOXEL_ATOM_H))
-
-	for vy in range(center_voxel.y - radius, center_voxel.y + radius + 1):
-		for vx in range(center_voxel.x - radius, center_voxel.x + radius + 1):
-			var cell := Vector2i(vx, vy)
-			var nearer: bool = (vx + vy) > ref_depth
-			## Top-down, stopping at this cell's highest OVERLAPPING voxel: that
-			## one carries the greatest z the cell can contribute.
-			var _walls_desc: Array = wall_level_keys()
-			_walls_desc.reverse()
-			for level in _walls_desc:
-				var layer: TileMapLayer = _layers[level]
-				if layer == null:
-					continue
-				if layer.get_cell_source_id(cell) == -1:
-					continue
-				var anchor: Vector2 = layer.position + layer.map_to_local(cell)
-				if not Rect2(anchor + atom_offset, atom_size).intersects(world_rect):
-					continue
-				if nearer:
-					result["covered_from_front"] = true
-				else:
-					result["behind_top_z"] = maxi(int(result["behind_top_z"]), layer.z_index)
-				break
-
-	return result
 
 
 ## VL-D4 — screen/world anchor of one voxel cell (its N-vertex, same anchor
@@ -344,18 +276,35 @@ func classify_geometry_over_rect(center_voxel: Vector2i, world_rect: Rect2, radi
 ## Returns Vector2.ZERO if the level has no layer (caller's cell couldn't be
 ## there).
 func voxel_world_position(grid_pos: Vector2i, level: int) -> Vector2:
-	var layer := get_layer(level)
-	if layer == null:
+	if not _layers.has(level):
 		return Vector2.ZERO
-	return layer.position + layer.map_to_local(grid_pos)
+	return level_origin(level) + voxel_cell_local(grid_pos)
 
 
-## Number of voxel layers currently built (for OcclusionWireframeOverlay's per-column
-## height scan — see get_layer()'s docstring for why callers must not assume LEVELS_PER_STOREY).
-## Positive (wall) levels only, unchanged by D17 — occlusion's column scan has
-## no reason to know about floor levels below it.
-func get_layer_count() -> int:
-	return wall_level_keys().size()
+## R3D-END END-6 — what the level's TileMapLayer used to carry, as arithmetic (proved equal to the layer's
+## `position + map_to_local()` on 1 800 cells over six levels with a nonzero offset, before the layers were deleted).
+## The screen origin of a level: the room's visual offset, the tile-lattice compensation `TILE_OFFSET` (Transform Canon
+## (SLICE-00): (floor half-width - voxel half-width, floor half-height) = (112, 64); do not "restore symmetry" to 56), the debug nudge,
+## and one voxel step of height per level above the ground plane (relative: absolute levels would draw eighty steps too high).
+func level_origin(level: int) -> Vector2:
+	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
+	return Vector2(
+		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
+		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y - GeometryCoords.VOXEL_STEP_PX * float(relative_level(level)))
+
+
+## Where a voxel cell's N-vertex sits inside its level (32x16 iso diamonds, DIAMOND_DOWN) — the `TileMapLayer.map_to_local()`
+## of the layer this replaced.
+static func voxel_cell_local(cell: Vector2i) -> Vector2:
+	return Vector2(float(cell.x - cell.y) * 16.0 + 16.0, float(cell.x + cell.y) * 8.0 + 8.0)
+
+
+## The draw height (`z_index`) of a level: walls stack above the wall base; the floor levels below the ground plane take the
+## LEGACY FLOOR SLOT (level + 1 puts the walkable top face at 0 and bedrock at -7..-1), so the floor-painted overlays draw ON
+## the floor and UNDER the walls.
+func level_z_index(level: int) -> int:
+	var rel: int = level - _ground_plane_level
+	return (_wall_base_z_index + rel) if rel >= 0 else (rel + 1)
 
 
 ## OCC-03: Get the highest z_index across all voxel layers (used to render agent above all geometry).
@@ -372,7 +321,6 @@ func get_max_voxel_z_index() -> int:
 ## all" check asks (see `_diag_skipped_cells`).
 func get_walked_cell_count() -> int:
 	return _diag_total_cells + _diag_skipped_cells
-
 
 
 func memory_census(label: String) -> void:
@@ -403,8 +351,6 @@ func memory_census(label: String) -> void:
 ## Accumulates nudges and shifts existing layers; new layers inherit the offset.
 func apply_debug_nudge(delta: Vector2) -> void:
 	debug_nudge += delta
-	for layer in _layers.values():
-		layer.position += delta
 
 
 ## ── CRACK-03 — THE SHARD RIM (Director, 2026-09-02) ──────────────────────────
@@ -1561,7 +1507,7 @@ func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int
 	## Rule 9 — the level is derived by the caller and may genuinely not be built (a landing on a plane this view does
 	## not build): the pile is then recorded by the room and not drawn, and the caller's own count says so. The layer
 	## is asked because it is the level registry until END-4 replaces it; nothing is placed on it.
-	if get_layer(level) == null:
+	if not _layers.has(level):
 		return false
 	if _floor_shard_texture(variant) == null:
 		return false
@@ -2169,43 +2115,6 @@ func _dev_flag(flag_name: String) -> String:
 	return OS.get_environment("INFILTRAITOR_" + flag_name)
 
 
-func _build_voxel_layer_node(level: int) -> TileMapLayer:
-	## R3D-END: a level's layer is now a bare positioned node — it holds no cell, no material and no shader. The 3D board
-	## draws the store; this is what `voxel_world_position()` and the 2D overlays read a level's screen origin and
-	## draw height from, until END-6 turns them into arithmetic.
-	var layer := TileMapLayer.new()
-	layer.tile_set = _geometry_tileset
-	layer.name = "voxel_layer_%d" % level
-	## The layer's material used to make this level's cell plane as a side effect; the 3D board reads planes by level and the
-	## probe dumps count them, so a built level keeps one.
-	_cell_planes.ensure_level(level)
-
-	# E1 equation from Transform Canon (SLICE-00)
-	# Compensation between floor grid (256×128 tiles) and voxel grid (32×16 tiles):
-	# TILE_OFFSET = (floor_half_w − voxel_half_w, floor_half_h) = (128−16, 64) = (112, 64).
-	# NOTE: the pre-2026-07-02 value (112, 56) subtracted voxel_half_h on Y as well —
-	# an 8px error, empirically measured and corrected via DEBUG-02 ruler + nudge session
-	# (residual now zero). Do not "restore symmetry" to (112, 56); the asymmetry is correct.
-	# Formula is sign-agnostic: a negative level correctly pushes the layer DOWN
-	# on screen (subtracting a negative adds height), which is exactly D17's floor.
-	const TILE_OFFSET: Vector2 = Vector2(112.0, 64.0)
-	layer.position = Vector2(
-		_visual_grid_offset.x + TILE_OFFSET.x + debug_nudge.x,
-		## LEVEL-RENUMBER — RELATIVE: left absolute, every layer would sit eighty steps too high.
-		_visual_grid_offset.y + TILE_OFFSET.y + debug_nudge.y - GeometryCoords.VOXEL_STEP_PX * float(relative_level(level))
-	)
-
-	# Z-index: positive (wall/roof) levels stack above _wall_base_z_index; negative (D17 floor/background) levels render
-	# in the LEGACY FLOOR SLOT (level+1 puts the walkable top face (-1) at z=0 and bedrock (-8..-2) at -7..-1), so the
-	# floor-painted overlays (shadows, FOW, AP perimeter, path, selection) draw ON the floor and UNDER the walls.
-	var rel: int = level - _ground_plane_level
-	layer.z_index = (_wall_base_z_index + rel) if rel >= 0 else (rel + 1)
-	layer.visible = true
-
-	add_child(layer)
-	return layer
-
-
 ## LEVEL-RENUMBER — `storey_count` is a COUNT of wall levels, kept as such because
 ## every caller computes it from `storey_count * LEVELS_PER_STOREY`. It ensures the
 ## contiguous run from the ground plane upward; `_ensure_layer()` is the per-level
@@ -2235,7 +2144,9 @@ func _ensure_negative_voxel_layer(level: int) -> void:
 func _ensure_layer(level: int) -> void:
 	if _layers.has(level):
 		return
-	_layers[level] = _build_voxel_layer_node(level)
+	_layers[level] = true
+	## The level's cell plane, made when the level is (the 3D board reads planes by level and the probe dumps count them).
+	_cell_planes.ensure_level(level)
 
 
 ## GLASS G3 — erase one glass pane cell. A glass voxel renders on `_glass_layers`,
@@ -2388,8 +2299,6 @@ func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 
 ## Clear all layers and voxels
 func clear() -> void:
-	for layer in _layers.values():
-		layer.clear()
 	## VL-03: same reasoning — the GU index would point at cells this cleared
 	## tilemap no longer has. apply_light_field() rebuilds it from scratch on the
 	## next full pass, which always follows clear()+render() in the rebuild flow.

@@ -34,9 +34,6 @@ func _check(ok: bool, label: String) -> void:
 
 func _init() -> void:
 	print("\n== ROOF ENTITY SELFTEST (OCCLUSION_ROOM) ==\n")
-	var bake_config = load("res://godot/scripts/systems/bake_config.gd")
-	var bake_was_enabled: bool = bake_config.enabled
-	bake_config.enabled = false
 
 	var spec: Dictionary = FileMapSourceClass.new().get_runtime_spec("OCCLUSION_ROOM")
 	_check(not spec.is_empty(), "FileMapSource reads OCCLUSION_ROOM")
@@ -54,7 +51,6 @@ func _init() -> void:
 		_rotation(layout)
 		_builder(layout, roof)
 		_unknown_kind(layout, roof)
-	bake_config.enabled = bake_was_enabled
 	if _failures == 0:
 		print("\n[SUCCESS] ROOF ENTITY SELFTEST PASS — all checks")
 		quit(0)

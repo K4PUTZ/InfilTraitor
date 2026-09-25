@@ -3158,6 +3158,20 @@ that still builds the 2D board is `34881f81`.
   occ_canonical PASS; shot_3d PASSED (2 919 / 3 598 px); `run_selftests` 51 clean.
 - **END-6 — instruments, tools, the rename.** The `room.gd` tile readers (port or delete, each with its reason), the tools
   that still have a 2D mode, then the rename.
+  **END-6 (a) done 2026-09-25 — the layers become arithmetic, the tile readers go.** `VoxelRenderer._layers` is now
+  `level -> true` (the level registry); the level's `TileMapLayer` nodes and the geometry-only TileSet are gone. What they carried is
+  `level_origin(level)`, `voxel_cell_local(cell)` and `level_z_index(level)`, proved equal to the layer's `position + map_to_local()`
+  and `z_index` on 1 800 cells over six levels with a nonzero offset BEFORE the layers were deleted; `voxel_world_position()` is
+  the sum, `has_level()` replaces `get_layer() != null`. Deleted with their reason: `get_layer()`, `get_layer_count()`,
+  `classify_geometry_over_rect()` (it read placed tiles, so it had answered "open ground" for every prop since R3D-3:
+  `FloatingCollectible` now takes the ground plane's height, the same answer; sorting a prop against the 3D walls is R3D-PROPS'),
+  `Room.scenario_occupancy_compare()` and `_compare_light_buckets()` (they compared the store with the tile walk that no longer exists;
+  the scenario op `occupancy_compare` went with them), `_collect_all_voxel_cells()`, `_capture_level_census()` and the crack demo's
+  tilemap read-back (each read a layer that holds no cell); `BakeConfig` and everything that toggled it (F6/F7, the status-panel
+  row, `NO_BAKE`, four suites' save/restore of it). Ported, not deleted: the burn probe's snapshot now walks `build_occupancy()`;
+  `negative_storey`, `fixed_floor` and `slice_geometry` assert `has_level()` / `level_origin()` / `level_z_index()`.
+  `structure_layer` (props) stays: R3D-PROPS. **Gates:** ground_gate 16/16 IDENTICAL; pixel 0 px above noise (136/63 jitter);
+  31/31 probe dumps identical; roundtrip, shadow, mirror, occ_canonical PASS; shot_3d PASSED (2 919 / 3 598 px); `run_selftests` 51 clean.
 - **END-7 — canon.** The edits listed under "Canon" below, and the L1 hook retargeted.
 - **END-8 — the gate** (below).
 

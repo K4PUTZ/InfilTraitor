@@ -392,9 +392,9 @@ func _displayable_frame_indices() -> Array:
 ## Re-applied on every rotation, not just at setup: _set_perspective() rebuilds
 ## every voxel TileMapLayer from scratch AND changes which cells are behind.
 func _apply_z_index() -> void:
-	if room == null or room._voxel_renderer == null:
+	if room == null or room._voxel_board == null:
 		return
-	var voxel_renderer = room._voxel_renderer
+	var voxel_board = room._voxel_board
 	## OCC-FIX-03 (2026-09-01) — LEVEL-RENUMBER RESIDUE. This asked for
 	## `get_layer(0)` back when the ground plane WAS level 0; since the renumber
 	## put it at PLAYABLE_LEVEL (80) that lookup is null on every map, so this
@@ -405,7 +405,7 @@ func _apply_z_index() -> void:
 	## behind it (`classify_geometry_over_rect()`) read the 2D board's placed tiles; there have been none on the 3D board since
 	## R3D-3, so it had been answering "open ground" for every prop and this is what it did. Sorting a prop against the 3D walls
 	## is R3D-PROPS' (D65: a static prop is a mesh and depth-tests).
-	z_index = voxel_renderer.level_z_index(voxel_renderer.ground_plane_level())
+	z_index = voxel_board.level_z_index(voxel_board.ground_plane_level())
 
 
 func _ready() -> void:

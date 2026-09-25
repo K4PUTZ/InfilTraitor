@@ -68,13 +68,13 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## can no longer happen.
 	room._slab_registry = SlabRegistry.new()
 
-	## room._voxel_renderer.clear() also moved here, unconditional, mirroring why
+	## room._voxel_board.clear() also moved here, unconditional, mirroring why
 	## floor_layer/structure_layer are cleared unconditionally above: a room that
 	## loses its edges on rebuild must not keep stale wall geometry from a
 	## previous build. render() below (walls) and render_slab() (floor, next)
 	## only ADD cells on top of a cleared renderer — neither touches state the
 	## other owns.
-	room._voxel_renderer.clear()
+	room._voxel_board.clear()
 
 	## Floor-zone bake: author-declared material rects (layout.floor_zone_instances,
 	## MapCompiler-produced, always present even if empty) expanded to a per-GU
@@ -145,7 +145,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## by the plane above it, so placing 64 cells per GU for it would double the
 	## floor's tilemap footprint and the per-cell cost of every full light-field
 	## repaint, to draw nothing. It is rendered on exposure instead — see
-	## VoxelRenderer.reveal_floor_slab().
+	## VoxelBoard.reveal_floor_slab().
 	const FLOOR_TOP_LEVEL := GeometryCoords.FLOOR_TOP_LEVEL
 	var floor_slabs_by_gu: Dictionary = {}
 	for fx in range(0, _room_size.x):
@@ -190,7 +190,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 
 	for border_gu in border_gus:
 		for fixed_level in range(FLOOR_TOP_LEVEL - 7, FLOOR_TOP_LEVEL):  # -8..-2
-			room._voxel_renderer.render_fixed_earth_level(border_gu, fixed_level)
+			room._voxel_board.render_fixed_earth_level(border_gu, fixed_level)
 
 	if not extraction.get("edges", []).is_empty():
 		## New geometry path — the only active renderer when it has data.
@@ -200,8 +200,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## `var _junction_columns = ...` — function locals that shadowed room.gd's members
 		## of the same name and were discarded on return. room._edge_registry therefore
 		## stayed null forever, and room.gd::_tic_voxel_system() —
-		##     if _voxel_renderer != null and _edge_registry != null:
-		##         _voxel_renderer.process_dirty(_edge_registry)
+		##     if _voxel_board != null and _edge_registry != null:
+		##         _voxel_board.process_dirty(_edge_registry)
 		## — could never fire. The destruction/dirty-flag motor was not merely "built but
 		## not switched on": it was severed at both ends. OCCLUSION and DESTRUCTION both
 		## need this handle, so it is published here rather than re-derived by each.
@@ -337,12 +337,12 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		room._edge_registry = edge_registry
 		room._junction_columns = junction_columns
 
-		## room._slab_registry and room._voxel_renderer.clear() moved to run
+		## room._slab_registry and room._voxel_board.clear() moved to run
 		## unconditionally above (before this if-block), so the floor exists even
 		## for edge-less rooms. Do not re-add either here — re-instantiating the
 		## registry would drop the floor Slabs just registered, and re-clear()ing
 		## would erase the floor cells just placed.
-		room._voxel_renderer.render(edge_registry, junction_columns)
+		room._voxel_board.render(edge_registry, junction_columns)
 
 		_render_solid_blocks(extraction.get("solid_blocks", []))
 		_render_voxel_props(layout.get("voxel_prop_instances", []))
@@ -350,11 +350,11 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## DESTRUCTION D1-ROOF rendering. The roof Slabs are generated above (see the D1-ROOF/border
 		## rationale there); this loop only renders what was generated.
 		for roof_slab in roof_slabs:
-			room._voxel_renderer.render_slab_solid(roof_slab)
+			room._voxel_board.render_slab_solid(roof_slab)
 
 	## Floor rendering, deferred to here: generation happened earlier, before the edges-conditional.
 	for floor_gu in floor_slabs_by_gu:
-		room._voxel_renderer.render_slab(floor_slabs_by_gu[floor_gu])
+		room._voxel_board.render_slab(floor_slabs_by_gu[floor_gu])
 
 	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
 	## layers offset up by the crate body step (visual stacking). The taller stack also
@@ -533,7 +533,7 @@ func _render_solid_blocks(blocks: Array) -> void:
 		for run in runs:
 			var run_start: int = run[0]
 			var run_span: int = run.size()
-			room._voxel_renderer.render_block(gu_cell, run_start, run_span, material_name)
+			room._voxel_board.render_block(gu_cell, run_start, run_span, material_name)
 
 
 func _render_voxel_props(instances: Array) -> void:
@@ -548,7 +548,7 @@ func _render_voxel_props(instances: Array) -> void:
 		if prop_def == null:
 			push_warning("[RoomBuilder] Unknown prop def '%s' — skipped" % instance.get("def_id", ""))
 			continue
-		room._voxel_renderer.render_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
+		room._voxel_board.render_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
 		_prop_cover[instance["gu_cell"]] = prop_def.gameplay.get("cover", "none")
 
 

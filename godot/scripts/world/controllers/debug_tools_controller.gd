@@ -121,25 +121,25 @@ func _show_transient_label(text: String) -> void:
 
 ## Apply nudge to voxel renderer
 func apply_nudge(delta: Vector2) -> void:
-	if room._voxel_renderer == null:
+	if room._voxel_board == null:
 		return
-	room._voxel_renderer.apply_debug_nudge(delta)
-	# Get base TILE_OFFSET from VoxelRenderer to keep nudge print truthful
-	var base_offset := Vector2(112.0, 64.0)  # Must match VoxelRenderer.TILE_OFFSET
+	room._voxel_board.apply_debug_nudge(delta)
+	# Get base TILE_OFFSET from VoxelBoard to keep nudge print truthful
+	var base_offset := Vector2(112.0, 64.0)  # Must match VoxelBoard.TILE_OFFSET
 	print_debug("[NUDGE] accumulated = (%.1f, %.1f) px  →  suggested TILE_OFFSET = (%.1f, %.1f)" % [
-		room._voxel_renderer.debug_nudge.x,
-		room._voxel_renderer.debug_nudge.y,
-		base_offset.x + room._voxel_renderer.debug_nudge.x,
-		base_offset.y + room._voxel_renderer.debug_nudge.y
+		room._voxel_board.debug_nudge.x,
+		room._voxel_board.debug_nudge.y,
+		base_offset.x + room._voxel_board.debug_nudge.x,
+		base_offset.y + room._voxel_board.debug_nudge.y
 	])
 
 
 ## Reset nudge to zero
 func reset_nudge() -> void:
-	if room._voxel_renderer == null:
+	if room._voxel_board == null:
 		return
-	var current: Vector2 = room._voxel_renderer.debug_nudge
-	room._voxel_renderer.apply_debug_nudge(-current)
+	var current: Vector2 = room._voxel_board.debug_nudge
+	room._voxel_board.apply_debug_nudge(-current)
 	print_debug("[NUDGE] reset to (0.0, 0.0) px  →  suggested TILE_OFFSET = (112.0, 64.0)")
 
 

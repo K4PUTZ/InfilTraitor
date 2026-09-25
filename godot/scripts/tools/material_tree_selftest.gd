@@ -23,7 +23,7 @@
 extends SceneTree
 
 const MaterialRegistryClass = preload("res://godot/scripts/systems/material_registry.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 
 const MATERIALS_ROOT := "res://ASSETS/materials"
 
@@ -179,10 +179,10 @@ func test_decal_materials_have_a_complete_family() -> void:
 	## outside; having it in the suite means it runs on every commit.
 	var broken: Array[String] = []
 	var checked := 0
-	for material in VoxelRendererClass.IMPACT_DECAL_MATERIALS:
+	for material in VoxelBoardClass.IMPACT_DECAL_MATERIALS:
 		for family in ["bullet", "dent", "crack"]:
 			var present := 0
-			for i in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+			for i in range(VoxelBoardClass.IMPACT_DECAL_VARIANTS):
 				var path := "%s/%s/decals/decal_%s_%s_%d.png" % [
 					MATERIALS_ROOT, material, family, material, i]
 				if _source_exists(path):
@@ -192,9 +192,9 @@ func test_decal_materials_have_a_complete_family() -> void:
 			if present == 0:
 				continue
 			checked += 1
-			if present != VoxelRendererClass.IMPACT_DECAL_VARIANTS:
+			if present != VoxelBoardClass.IMPACT_DECAL_VARIANTS:
 				broken.append("%s/%s (%d of %d)" % [material, family, present,
-					VoxelRendererClass.IMPACT_DECAL_VARIANTS])
+					VoxelBoardClass.IMPACT_DECAL_VARIANTS])
 	if broken.is_empty():
 		_pass("%d claimed decal family/families, every one complete" % checked)
 	else:

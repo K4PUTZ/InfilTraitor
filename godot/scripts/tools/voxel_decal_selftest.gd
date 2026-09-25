@@ -12,7 +12,7 @@
 
 extends SceneTree
 
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 
 ## ASSET_TREE_REFORM (2026-08-21): the manifest describes the decal CONTRACT
 ## (canvas, variant count, which families exist), not any one material's art, so
@@ -66,21 +66,21 @@ func test_every_family_variant_has_an_asset() -> void:
 	print("[1] Every decal family the board draws has all its variants on disk (B6)\n")
 	var checked := 0
 	var missing: Array[String] = []
-	for material in VoxelRendererClass.IMPACT_DECAL_MATERIALS:
+	for material in VoxelBoardClass.IMPACT_DECAL_MATERIALS:
 		var families: Array[String] = ["bullet", "dent"]
-		if VoxelRendererClass.IMPACT_CRACK_MATERIALS.has(material):
+		if VoxelBoardClass.IMPACT_CRACK_MATERIALS.has(material):
 			families.append("crack")
-		for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+		for variant in range(VoxelBoardClass.IMPACT_DECAL_VARIANTS):
 			for family in families:
 				checked += 1
 				var path: String = DECAL_NAME_TEMPLATE % [material, family, material, variant]
 				if not FileAccess.file_exists(path):
 					missing.append(path)
 	## The floor's dent is the shared "earth" family (D26): no bullets, no crack tier.
-	for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+	for variant in range(VoxelBoardClass.IMPACT_DECAL_VARIANTS):
 		checked += 1
 		var floor_path: String = DECAL_NAME_TEMPLATE % [
-			VoxelRendererClass.IMPACT_FLOOR_MATERIAL, "dent", VoxelRendererClass.IMPACT_FLOOR_MATERIAL, variant]
+			VoxelBoardClass.IMPACT_FLOOR_MATERIAL, "dent", VoxelBoardClass.IMPACT_FLOOR_MATERIAL, variant]
 		if not FileAccess.file_exists(floor_path):
 			missing.append(floor_path)
 	for kind in ["bullet_cracked", "bullet_dented", "blast_dent", "blast_crack"]:
@@ -100,7 +100,7 @@ func test_every_family_variant_has_an_asset() -> void:
 ## A drift between them drops marks silently at runtime, so it is asserted
 ## rather than trusted.
 func test_manifest_agrees_with_the_renderer() -> void:
-	print("[2] voxels/manifest.json agrees with VoxelRenderer's constants\n")
+	print("[2] voxels/manifest.json agrees with VoxelBoard's constants\n")
 
 	if not FileAccess.file_exists(MANIFEST_PATH):
 		_fail("manifest.json missing at %s — run tools/asset_generation/generate_voxel.py" % MANIFEST_PATH)
@@ -114,18 +114,18 @@ func test_manifest_agrees_with_the_renderer() -> void:
 		return
 
 	var manifest_variants: int = int(parsed.get("variant_count", -1))
-	if manifest_variants == VoxelRendererClass.IMPACT_DECAL_VARIANTS:
+	if manifest_variants == VoxelBoardClass.IMPACT_DECAL_VARIANTS:
 		_pass("variant_count %d matches IMPACT_DECAL_VARIANTS" % manifest_variants)
 	else:
 		_fail("variant_count %d != IMPACT_DECAL_VARIANTS %d — generator and renderer disagree"
-			% [manifest_variants, VoxelRendererClass.IMPACT_DECAL_VARIANTS])
+			% [manifest_variants, VoxelBoardClass.IMPACT_DECAL_VARIANTS])
 
 	var manifest_materials: Array = parsed.get("materials", [])
-	if manifest_materials == Array(VoxelRendererClass.IMPACT_DECAL_MATERIALS):
+	if manifest_materials == Array(VoxelBoardClass.IMPACT_DECAL_MATERIALS):
 		_pass("material list matches IMPACT_DECAL_MATERIALS (%s)" % ", ".join(manifest_materials))
 	else:
 		_fail("material list %s != IMPACT_DECAL_MATERIALS %s"
-			% [manifest_materials, VoxelRendererClass.IMPACT_DECAL_MATERIALS])
+			% [manifest_materials, VoxelBoardClass.IMPACT_DECAL_MATERIALS])
 
 	print("")
 
@@ -174,24 +174,24 @@ func test_every_data_reachable_tier_has_art() -> void:
 		## ── CRACK ────────────────────────────────────────────────────────────
 		if crack > 0.0:
 			cracking.append("%s %.2f" % [material, crack])
-			if not VoxelRendererClass.IMPACT_CRACK_MATERIALS.has(material):
+			if not VoxelBoardClass.IMPACT_CRACK_MATERIALS.has(material):
 				crack_offenders.append("%s (factor %.2f, not wired)" % [material, crack])
 			else:
-				for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+				for variant in range(VoxelBoardClass.IMPACT_DECAL_VARIANTS):
 					var path: String = DECAL_NAME_TEMPLATE % [
 						material, "crack", material, variant]
 					if not FileAccess.file_exists(path):
 						crack_offenders.append(path)
-		elif VoxelRendererClass.IMPACT_CRACK_MATERIALS.has(material):
+		elif VoxelBoardClass.IMPACT_CRACK_MATERIALS.has(material):
 			dead_art.append("%s (crack_factor 0.0 but wired to crack)" % material)
 
 		## ── DENT ─────────────────────────────────────────────────────────────
 		if dent <= 0.0:
 			continue
-		var owns_family: bool = VoxelRendererClass.IMPACT_DECAL_MATERIALS.has(material) \
-			or material == VoxelRendererClass.IMPACT_FLOOR_MATERIAL
+		var owns_family: bool = VoxelBoardClass.IMPACT_DECAL_MATERIALS.has(material) \
+			or material == VoxelBoardClass.IMPACT_FLOOR_MATERIAL
 		if owns_family:
-			for variant in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+			for variant in range(VoxelBoardClass.IMPACT_DECAL_VARIANTS):
 				var path: String = DECAL_NAME_TEMPLATE % [
 					material, "dent", material, variant]
 				if not FileAccess.file_exists(path):
@@ -205,7 +205,7 @@ func test_every_data_reachable_tier_has_art() -> void:
 
 	if crack_offenders.is_empty():
 		_pass("%d material(s) can crack and every one is wired with all %d variants on disk: %s" % [
-			cracking.size(), VoxelRendererClass.IMPACT_DECAL_VARIANTS, ", ".join(cracking)])
+			cracking.size(), VoxelBoardClass.IMPACT_DECAL_VARIANTS, ", ".join(cracking)])
 	else:
 		_fail("%d crack promise(s) the renderer cannot keep: %s"
 			% [crack_offenders.size(), ", ".join(crack_offenders.slice(0, 5))])

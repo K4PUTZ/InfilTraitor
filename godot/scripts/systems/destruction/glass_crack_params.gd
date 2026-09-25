@@ -1,7 +1,7 @@
 ## GlassCrackParams — GLASS_MASTER_PLAN CRACK-02 / G-D27 (§13), as DATA.
 ##
 ## ONE crack event = ONE of these: every shader parameter the crack carries (the fracture sheet, its span, the pane's
-## clip bounds, the craze field, the occupancy cut, the opening void, the hole-cut dial). `VoxelRenderer` keeps it in
+## clip bounds, the craze field, the occupancy cut, the opening void, the hole-cut dial). `VoxelBoard` keeps it in
 ## the crack's record (`rec["params"]` is `params`, by reference), and `GlassCrackMirror3D` gives the record a quad on
 ## the pane's plane in the 3D board and copies `params` into it every frame.
 ##

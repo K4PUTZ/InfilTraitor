@@ -262,9 +262,9 @@ func update_cell(p_gu_cell: Vector2i) -> void:
 ## "always on top" bug, reintroduced by a number, not by a decision. Ask the
 ## renderer where its own ground plane is; never name the level.
 func _apply_z_index() -> void:
-	if room == null or room._voxel_renderer == null:
+	if room == null or room._voxel_board == null:
 		return
-	var renderer = room._voxel_renderer
+	var renderer = room._voxel_board
 	z_index = renderer.level_z_index(renderer.ground_plane_level())
 
 
@@ -295,9 +295,9 @@ func set_airborne(airborne: bool) -> void:
 	if not airborne:
 		_apply_z_index()
 		return
-	if room == null or room._voxel_renderer == null:
+	if room == null or room._voxel_board == null:
 		return
-	z_index = room._voxel_renderer.get_max_voxel_z_index() + 1
+	z_index = room._voxel_board.get_max_voxel_z_index() + 1
 
 
 func _apply_direction(direction: String) -> void:

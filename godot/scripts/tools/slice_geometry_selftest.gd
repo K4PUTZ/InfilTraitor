@@ -20,7 +20,7 @@ func _initialize() -> void:
 	## `print_debug` it — three `checked += 1` and not one assertion, excused by a
 	## comment claiming "we can't instantiate TileMapLayers headless". That claim
 	## is false: negative_storey_selftest, fixed_floor_selftest and roof_slab_
-	## selftest all build a real VoxelRenderer headless and read `layer.position`.
+	## selftest all build a real VoxelBoard headless and read `layer.position`.
 	##
 	## Worse, the formula it was printing was itself WRONG — `VISUAL_GRID_OFFSET -
 	## (0, VOXEL_STEP_PX * level)` omits TILE_OFFSET (112, 64) entirely, which is
@@ -34,8 +34,8 @@ func _initialize() -> void:
 	print_debug("[SLICE-00] Check 1: E1 (layer transform)")
 	var VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
 	const TILE_OFFSET := Vector2(112.0, 64.0)
-	var VoxelRendererClass = load("res://godot/scripts/geometry/voxel_renderer.gd")
-	var e1_renderer = VoxelRendererClass.new()
+	var VoxelBoardClass = load("res://godot/scripts/geometry/voxel_board.gd")
+	var e1_renderer = VoxelBoardClass.new()
 	root.add_child(e1_renderer)
 	e1_renderer.setup(VISUAL_GRID_OFFSET)
 	e1_renderer._ensure_voxel_layers(SC.LEVELS_PER_STOREY)

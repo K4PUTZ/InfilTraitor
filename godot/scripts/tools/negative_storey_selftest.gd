@@ -9,7 +9,7 @@
 extends SceneTree
 
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -55,7 +55,7 @@ func test_negative_layer_creation_and_lookup() -> void:
 	## it is now expressed against the level that actually is the floor top.
 	print("[1] _ensure_negative_voxel_layer() creates a real, retrievable layer\n")
 
-	var renderer := VoxelRendererClass.new()
+	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 	var below: int = GeometryCoords.FLOOR_TOP_LEVEL
@@ -90,7 +90,7 @@ func test_negative_layer_creation_and_lookup() -> void:
 func test_negative_level_position_and_zindex_formula() -> void:
 	print("[2] Negative level position/z-index — same formula, sign-correct result\n")
 
-	var renderer := VoxelRendererClass.new()
+	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO, 10)
 
@@ -135,7 +135,7 @@ func test_lazy_not_contiguous() -> void:
 	## `-1 / -2 / -3` used to name.
 	print("[3] Lazy reveal — ensuring the third ground level does not create the two above it\n")
 
-	var renderer := VoxelRendererClass.new()
+	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 	var top: int = GeometryCoords.FLOOR_TOP_LEVEL

@@ -15,7 +15,7 @@
 ## off freshly-mutated Voxels it now reads through `WorldDelta`'s projection.
 ##
 ## What this class does NOT do, on purpose:
-##  - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelRenderer
+##  - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelBoard
 ##    call it makes runs in resolve-only mode (`apply=false`, Task 4's own
 ##    seam added to `_set_voxel_cell()`/`render_slab()`/
 ##    `render_fixed_earth_level()`/`resolve_damage_voxel_swap()`). A voxel's
@@ -44,7 +44,7 @@
 ## other:
 ##   "edge_registry": EdgeRegistry        (required)
 ##   "slab_registry": SlabRegistry        (required)
-##   "voxel_renderer": VoxelRenderer      (required)
+##   "voxel_board": VoxelBoard      (required)
 ##   "blocked_edges": Dictionary          (optional, default {})
 ##   "blocked_cells": Dictionary          (optional, default {})
 ##   "lights": Array                      (optional, default [] — real light
@@ -62,7 +62,7 @@ class_name DetonationPlanBuilder
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const WorldDeltaClass = preload("res://godot/scripts/systems/prediction/world_delta.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 const VoxelLightFieldClass = preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")
 const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 
@@ -276,7 +276,7 @@ static func begin(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> Dictionary:
 		"ctx": ctx,
 		"edge_registry": ctx["edge_registry"] as EdgeRegistry,
 		"slab_registry": ctx["slab_registry"] as SlabRegistry,
-		"voxel_renderer": ctx["voxel_renderer"] as VoxelRendererClass,
+		"voxel_board": ctx["voxel_board"] as VoxelBoardClass,
 		"deep_layer_unlocked": bool(ctx.get("deep_layer_unlocked", false)),
 		"delta": delta,
 		"waves": delta.waves,
@@ -1020,7 +1020,7 @@ static func _phase_floors(s: Dictionary, deadline: int) -> void:
 		## that actually opened this slab, so the reveal rides in on the same wave
 		## a real destroy already lands in.
 		if min_destroy_ring >= 0:
-			var expose := _resolve_expose_below(floor_slab, s["voxel_renderer"], slab_registry)
+			var expose := _resolve_expose_below(floor_slab, s["voxel_board"], slab_registry)
 			if not expose.is_empty():
 				var by_ring: Dictionary = s["exposed_by_ring"]
 				if not by_ring.has(min_destroy_ring):
@@ -1277,7 +1277,7 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 	var todo: Array = s["soot_todo"]
 	var soot_codes: Dictionary = s["soot_codes"]
 	var writes: Dictionary = (s["delta"] as WorldDelta).scorch_writes
-	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var i: int = int(s["cursor"])
 	var since_check: int = 0
 	while i < todo.size():
@@ -1288,8 +1288,8 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		var tone: int = BlastCalculatorClass.soot_tone(cell, key.z, int(row[1]),
 			_touches_hole(s, key))
 		if tone >= 0 and (not soot_codes.has(key) or tone < int(soot_codes[key])):
-			var shown: int = -1 if voxel_renderer == null else \
-				BlastCalculatorClass.soot_ring_of_code(voxel_renderer.cell_soot_at(key.z, cell))
+			var shown: int = -1 if voxel_board == null else \
+				BlastCalculatorClass.soot_ring_of_code(voxel_board.cell_soot_at(key.z, cell))
 			if shown < 0 or tone < shown:
 				soot_codes[key] = tone
 				if not writes.has(key.z):
@@ -1363,20 +1363,20 @@ static func _soot_code_at(s: Dictionary, key: Vector3i) -> int:
 	var codes: Dictionary = s["soot_codes"]
 	if codes.has(key):
 		return BlastCalculatorClass.soot_code(int(codes[key]))
-	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
-	if voxel_renderer == null:
-		return VoxelRendererClass.FACE_SOOT_CODE_CLEAN
-	return voxel_renderer.cell_soot_at(key.z, Vector2i(key.x, key.y))
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
+	if voxel_board == null:
+		return VoxelBoardClass.FACE_SOOT_CODE_CLEAN
+	return voxel_board.cell_soot_at(key.z, Vector2i(key.x, key.y))
 
 
 ## The map-wide occupancy AFTER this plan commits: the store's visible claims, less the claims the Delta
 ## projects gone (not visible, or destroyed). Per claim and not per cell (R3D-13): a shared corner or junction
 ## column stays occupied while one of its claims survives, which is what the committed world holds and what a
 ## full relight reads. The per-cell `blast_cells` set this replaced emptied it at the first claim destroyed.
-static func _predicted_occupancy(s: Dictionary, voxel_renderer: VoxelRendererClass) -> Dictionary:
+static func _predicted_occupancy(s: Dictionary, voxel_board: VoxelBoardClass) -> Dictionary:
 	var store: VoxelStore = VoxelStore.active
 	if store == null:
-		return voxel_renderer.build_occupancy()  ## reports the missing store itself
+		return voxel_board.build_occupancy()  ## reports the missing store itself
 	var gone: Dictionary = {}
 	var projections: Dictionary = (s["delta"] as WorldDelta).projections()
 	for voxel in projections:
@@ -1391,10 +1391,10 @@ static func _predicted_occupancy(s: Dictionary, voxel_renderer: VoxelRendererCla
 
 ## --- Phase 6: ATOMIC. The single map-wide light-field query (§2). ----------
 ## Built ONCE, queried per cell below. VoxelLightField.build() never touches the
-## TileMapLayer, and nothing here calls VoxelRenderer.apply_light_field().
+## TileMapLayer, and nothing here calls VoxelBoard.apply_light_field().
 static func _phase_light(s: Dictionary) -> void:
 	var ctx: Dictionary = s["ctx"]
-	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var lights: Array = ctx.get("lights", [])
 	var field := VoxelLightFieldClass.new()
 	## D-7 (§7.4) — MAP-WIDE occupancy, not `s["occupancy"]` (which PHASE_WALK only
@@ -1405,8 +1405,8 @@ static func _phase_light(s: Dictionary) -> void:
 	## lazy — this is one `get_used_cells()` walk, the buckets are still computed
 	## on first query in the soot wave.
 	field.build(lights, ctx.get("shadow_results", []),
-		voxel_renderer.top_wall_level(),
-		_predicted_occupancy(s, voxel_renderer), s["under_structure"])
+		voxel_board.top_wall_level(),
+		_predicted_occupancy(s, voxel_board), s["under_structure"])
 	s["field"] = field
 	s["ring_keys"] = s["ring_of"].keys()
 	## D-7 (§7.4) — carry the field to the Delta. `_phase_soot_wave` fills
@@ -1445,7 +1445,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 	var touched_voxels: Array = s["touched_voxels"]
 	var census: Dictionary = s["census"]
 	var smoked_gus: Dictionary = s["smoked_gus"]
-	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var epicenter: Vector2i = s["epicenter"]
 	var smoke_weights: Array[float] = s["bomb_def"].smoke_ring_weights
 	var chunk: int = PACKAGE_CHUNK
@@ -1465,19 +1465,19 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 				touched_voxels.append(voxel)
 				_count(census, "destroy", container, true)
 				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring,
-					smoke_weights, DESTROY_SMOKE_INTENSITY, voxel_renderer, epicenter,
+					smoke_weights, DESTROY_SMOKE_INTENSITY, voxel_board, epicenter,
 					_material_name(container), s["plume_gus"])
 				_append(waves["destroy"], ring, {"cell": voxel.grid_pos, "level": voxel.level,
 					"r": _radius_of(voxel.grid_pos, epicenter)})
 				_append_voxel_debris(waves["debris"], voxel, ring, _material_name(container),
-					s["debris_policy"], voxel_renderer, epicenter)
+					s["debris_policy"], voxel_board, epicenter)
 			elif state == Voxel.DamageState.DENTED or state == Voxel.DamageState.CRACKED:
 				touched_this_blast[key] = true
 				touched_voxels.append(voxel)
 				_append_voxel_smoke(waves["smoke"], smoked_gus, voxel, ring, smoke_weights,
 					DENT_SMOKE_INTENSITY if state == Voxel.DamageState.DENTED
 						else CRACK_SMOKE_INTENSITY,
-					voxel_renderer, epicenter, _material_name(container), s["plume_gus"])
+					voxel_board, epicenter, _material_name(container), s["plume_gus"])
 				## The resolver takes a whole Voxel and reads five damage fields off
 				## it, so it is handed the Delta's PROJECTED copy. The real Voxel is
 				## what goes into `touched_voxels`, because that list is the commit's
@@ -1565,7 +1565,7 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 	var waves: Dictionary = s["waves"]
 	var field: VoxelLightFieldClass = s["field"]
 	var touched_this_blast: Dictionary = s["touched_this_blast"]
-	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var epicenter: Vector2i = s["epicenter"]
 	var changed: Dictionary = s["delta"].light_changed_cells
 	var chunk: int = SOOTWAVE_CHUNK
@@ -1611,7 +1611,7 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 		if not changed.has(key) and not touched_this_blast.has(key):
 			var cell := Vector2i(key.x, key.y)
 			var drawn: bool = store != null and store.has_cell(cell.x, cell.y, key.z)
-			if drawn and field.bucket_for(cell, key.z) != voxel_renderer.cell_bucket_at(key.z, cell):
+			if drawn and field.bucket_for(cell, key.z) != voxel_board.cell_bucket_at(key.z, cell):
 				changed[key] = true
 		since_check += 1
 		if since_check >= chunk:
@@ -1651,7 +1651,7 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 	var gu_rings: Dictionary = s["gu_rings"]
 	var smoked_gus: Dictionary = s["smoked_gus"]
 	var waves: Dictionary = s["waves"]
-	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var epicenter: Vector2i = s["epicenter"]
 	var smoke_weights: Array[float] = s["bomb_def"].smoke_ring_weights
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
@@ -1668,11 +1668,11 @@ static func _phase_smoke(s: Dictionary, deadline: int) -> void:
 		if weight <= 0.0:
 			continue
 		var gu_center: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
-		var gu_smoke_pos: Vector2 = voxel_renderer.voxel_world_position(
+		var gu_smoke_pos: Vector2 = voxel_board.voxel_world_position(
 			gu_center, BlastCalculatorClass.GRENADE_LEVEL)
 		_append(waves["smoke"], ring, {
 			"world_pos": gu_smoke_pos,
-			"floor_pos": _floor_of(voxel_renderer, gu_center, gu_smoke_pos),
+			"floor_pos": _floor_of(voxel_board, gu_center, gu_smoke_pos),
 			"duration": weight, "scale": weight, "alpha": weight, "blobs": 0,
 			"r": _radius_of(gu_center, epicenter),
 			## E-ORDER-01 — see `_append_voxel_smoke()`. This is the GU-level
@@ -1888,7 +1888,7 @@ static func _build_ember_wave(s: Dictionary) -> void:
 		return
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
 	var delta: WorldDelta = s["delta"]
-	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var epicenter: Vector2i = s["epicenter"]
 	var waves: Dictionary = s["waves"]
 	var ring_of: Dictionary = s["ring_of"]
@@ -1921,10 +1921,10 @@ static func _build_ember_wave(s: Dictionary) -> void:
 			_append(waves["ember"], ring, {
 				"cell": neighbour.grid_pos,
 				"level": neighbour.level,
-				"world_pos": voxel_renderer.voxel_world_position(
+				"world_pos": voxel_board.voxel_world_position(
 					neighbour.grid_pos, neighbour.level),
-				"floor_pos": _floor_of(voxel_renderer, neighbour.grid_pos,
-					voxel_renderer.voxel_world_position(neighbour.grid_pos, neighbour.level)),
+				"floor_pos": _floor_of(voxel_board, neighbour.grid_pos,
+					voxel_board.voxel_world_position(neighbour.grid_pos, neighbour.level)),
 				"duration_scale": flammability,
 				## E-EMBER-02 tuning pass: a small per-cell stagger. Without it
 				## every seed in a crater ignites on the SAME frame at the same
@@ -1971,7 +1971,7 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 	var flammable_cells: Dictionary = s["flammable_cells"]
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
 	var delta: WorldDelta = s["delta"]
-	var voxel_renderer: VoxelRendererClass = s["voxel_renderer"]
+	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var epicenter: Vector2i = s["epicenter"]
 	var chance: float = EMBER_CLIMB_CHANCE
 	for step in range(1, EMBER_CLIMB_MAX_LEVELS + 1):
@@ -1997,9 +1997,9 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 		_append(ember_by_ring, ring, {
 			"cell": voxel.grid_pos,
 			"level": voxel.level,
-			"world_pos": voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
-			"floor_pos": _floor_of(voxel_renderer, voxel.grid_pos,
-				voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level)),
+			"world_pos": voxel_board.voxel_world_position(voxel.grid_pos, voxel.level),
+			"floor_pos": _floor_of(voxel_board, voxel.grid_pos,
+				voxel_board.voxel_world_position(voxel.grid_pos, voxel.level)),
 			"duration_scale": flammability * pow(EMBER_CLIMB_LIFE_DECAY, float(step)),
 			"delay": EMBER_CLIMB_DELAY_S * float(step)
 				* (1.0 - EMBER_CLIMB_DELAY_JITTER + 2.0 * EMBER_CLIMB_DELAY_JITTER * jitter),
@@ -2349,13 +2349,13 @@ static func print_census(delta: WorldDelta, source_gu: Vector2i) -> void:
 ## SECOND blast opens the deep layer too — D2), WITHOUT applying either to
 ## the live layer. Mirrors TestZoneController's pre-reset _expose_below()
 ## exactly (same two branches, same below_level derivation).
-static func _resolve_expose_below(slab: Slab, voxel_renderer: VoxelRendererClass, slab_registry: SlabRegistry) -> Array:
+static func _resolve_expose_below(slab: Slab, voxel_board: VoxelBoardClass, slab_registry: SlabRegistry) -> Array:
 	var below_level: int = slab.level - 1
 	var below_slab: Slab = slab_registry.get_slab(
 		Slab.make_id(slab.gu_cell, Slab.Role.FLOOR, below_level))
 	if below_slab != null:
-		return voxel_renderer.reveal_floor_slab(below_slab, false)
-	return voxel_renderer.render_fixed_earth_level(slab.gu_cell, below_level, false)
+		return voxel_board.reveal_floor_slab(below_slab, false)
+	return voxel_board.render_fixed_earth_level(slab.gu_cell, below_level, false)
 
 
 static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:
@@ -2386,7 +2386,7 @@ static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:
 ## selftests where the `Registries` autoload does not exist.
 static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionary,
 		voxel: Voxel, ring: int, smoke_ring_weights: Array[float], tier_intensity: float,
-		voxel_renderer: VoxelRendererClass, epicenter: Vector2i,
+		voxel_board: VoxelBoardClass, epicenter: Vector2i,
 		material: String = "", plume_gus: Dictionary = {}) -> void:
 	if ring < 0 or ring >= smoke_ring_weights.size():
 		return
@@ -2407,7 +2407,7 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 	var prev: Array = plume_gus.get(pgu, [])
 	if prev.is_empty() or voxel.level > int(prev[1]):
 		plume_gus[pgu] = [
-			voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
+			voxel_board.voxel_world_position(voxel.grid_pos, voxel.level),
 			voxel.level, ring]
 	## D-4 — the per-material thinning, rolled BEFORE `smoked_gus` is marked.
 	##
@@ -2437,9 +2437,9 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 		lerpf(SMOKE_DURATION_FLOOR, 1.0, clampf(strength, 0.0, 1.0))
 		* (1.0 - SMOKE_DURATION_JITTER + 2.0 * SMOKE_DURATION_JITTER * time_roll), 0.05)
 	_append(smoke_by_ring, ring, {
-		"world_pos": voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level),
-		"floor_pos": _floor_of(voxel_renderer, voxel.grid_pos,
-			voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level)),
+		"world_pos": voxel_board.voxel_world_position(voxel.grid_pos, voxel.level),
+		"floor_pos": _floor_of(voxel_board, voxel.grid_pos,
+			voxel_board.voxel_world_position(voxel.grid_pos, voxel.level)),
 		"duration": duration,
 		"scale": scale,
 		"alpha": clampf(strength * (0.6 + 0.8 * size_roll) * SMOKE_ALPHA_GAIN, 0.05, 4.0),
@@ -2463,7 +2463,7 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 
 ## E-DEBRIS-01 (2026-08-13) — dust, sparks and wood chips for a DESTROYED voxel.
 ## The last piece of VFX-01 that never reached explosions: the choreographer
-## erases cells directly, so `VoxelRenderer.voxel_destroyed` (which drives
+## erases cells directly, so `VoxelBoard.voxel_destroyed` (which drives
 ## `Room._dispatch_destruction_vfx()`) has only ever fired for firearms.
 ##
 ## Reconnecting that dispatch was again the wrong move, for the third time and
@@ -2536,7 +2536,7 @@ static func _append_plumes(s: Dictionary) -> void:
 		var level: int = int(seed_row[1])
 		var ring: int = int(seed_row[2])
 		var gu_center: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
-		var plume_floor: Vector2 = _floor_of(s["voxel_renderer"], gu_center, origin)
+		var plume_floor: Vector2 = _floor_of(s["voxel_board"], gu_center, origin)
 		var jitter: float = _hash_unit("PLUMEAT", gu, level)
 		var size_roll: float = _hash_unit("PLUMESIZE", gu, level)
 		for k in range(maxi(PLUME_PUFFS, 1)):
@@ -2575,21 +2575,21 @@ static func _append_plumes(s: Dictionary) -> void:
 ## the "unbuilt column" fallback: measured 330 of 330 on a detonation. The dust never fell (its floor
 ## was its own origin) and, once the particles got a 3D origin from it, every wall voxel's puff was
 ## anchored on the ground behind the wall and hidden by it.
-static func _floor_of(voxel_renderer: VoxelRendererClass, grid_pos: Vector2i, origin: Vector2) -> Vector2:
-	var floor_pos: Vector2 = voxel_renderer.voxel_world_position(grid_pos, voxel_renderer.ground_plane_level())
+static func _floor_of(voxel_board: VoxelBoardClass, grid_pos: Vector2i, origin: Vector2) -> Vector2:
+	var floor_pos: Vector2 = voxel_board.voxel_world_position(grid_pos, voxel_board.ground_plane_level())
 	return origin if floor_pos == Vector2.ZERO else floor_pos
 
 
 static func _append_voxel_debris(debris_by_ring: Dictionary, voxel: Voxel, ring: int,
-		material: String, policy: Dictionary, voxel_renderer: VoxelRendererClass,
+		material: String, policy: Dictionary, voxel_board: VoxelBoardClass,
 		epicenter: Vector2i) -> void:
 	if policy.is_empty():
 		return
-	var origin: Vector2 = voxel_renderer.voxel_world_position(voxel.grid_pos, voxel.level)
+	var origin: Vector2 = voxel_board.voxel_world_position(voxel.grid_pos, voxel.level)
 	## Where dust settles and chips land — the floor under this voxel, the same
 	## point VFX-01's own dispatch uses. Falls back to the origin when level 0 has
 	## no cell there (an unbuilt column), matching that dispatch exactly.
-	var floor_pos: Vector2 = voxel_renderer.voxel_world_position(voxel.grid_pos, voxel_renderer.ground_plane_level())
+	var floor_pos: Vector2 = voxel_board.voxel_world_position(voxel.grid_pos, voxel_board.ground_plane_level())
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
 	var r: float = _radius_of(voxel.grid_pos, epicenter)

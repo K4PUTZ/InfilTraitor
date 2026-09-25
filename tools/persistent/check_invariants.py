@@ -13,7 +13,7 @@ Checks implemented:
   R3  `_edge_key()` is only defined in wall_edge_data.gd (single source of truth)
   R4  guard `state` is only assigned inside `_enter_state()`
   R5  `_alert_meter` is only *accumulated* inside `_apply_tic_result()`
-  B1  Baking: voxel_renderer is the sole caller of set_cell() (branch exclusivity)
+  B1  Baking: voxel_board is the sole caller of set_cell() (branch exclusivity)
   B4  Baking: FNV-1a constants are pinned in facade_sampler.gd (determinism)
   L3  HUD widgets are named only inside hud_controller.gd (UI-SPLIT-02)
   L1  LEVEL-RENUMBER: `get_layer(<integer literal>)` — a level is always
@@ -221,10 +221,10 @@ def check_file(path: Path) -> list[Violation]:
                 ))
 
         # L1 — a level is derived, never a literal.
-        # voxel_renderer.gd owns the level→layer store, so it is the one file
+        # voxel_board.gd owns the level→layer store, so it is the one file
         # allowed to speak in raw level numbers. Comments are skipped: the fix
         # commits quote the broken call in their own headers.
-        if (name != "voxel_renderer.gd"
+        if (name != "voxel_board.gd"
                 and not line.lstrip().startswith("#")
                 and L1_GROUND_LAYER_LITERAL.search(line)):
             out.append(Violation(
@@ -280,12 +280,12 @@ def check_file(path: Path) -> list[Violation]:
                 "HudController and ask it instead",
             ))
 
-        # B1 — _voxel_layers (voxel grid) only modified via voxel_renderer._set_voxel_cell()
-        if B1_VOXEL_LAYER_SET_CELL.search(line) and name != "voxel_renderer.gd":
+        # B1 — _voxel_layers (voxel grid) only modified via voxel_board._set_voxel_cell()
+        if B1_VOXEL_LAYER_SET_CELL.search(line) and name != "voxel_board.gd":
             out.append(Violation(
                 "B1 branch-exclusivity",
                 rel, lineno,
-                "_voxel_layers cells must only be set via voxel_renderer._set_voxel_cell() (seam integration)",
+                "_voxel_layers cells must only be set via voxel_board._set_voxel_cell() (seam integration)",
             ))
 
     # B4 — FNV-1a constants pinned in facade_sampler.gd

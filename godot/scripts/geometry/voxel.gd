@@ -29,7 +29,7 @@ var claim: int = -1
 
 ## `WorldDelta.project_voxel()` hands out a detached copy — `parent_container` null, no
 ## claim, ever — to readers that take a whole `Voxel` rather than individual fields
-## (`VoxelRenderer.resolve_damage_voxel_swap()` and friends). It still needs somewhere to
+## (`VoxelBoard.resolve_damage_voxel_swap()` and friends). It still needs somewhere to
 ## hold the projected fields since there is no store to read them from, but adding those
 ## fields directly to `Voxel` would make every one of PLAYGROUND's 216 104 REAL voxels pay
 ## for a handful of ephemeral snapshots' storage. This lazy side object is that "somewhere

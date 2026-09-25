@@ -454,7 +454,7 @@ func fire_at_active() -> void:
 	## is no lag at all. When they slam the button, they wait once, here, with
 	## nothing on screen half-finished.
 	await room.shot_precook_ready()
-	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_board):
 		return
 
 	## E-MUZZLE-01: the flash fires at the shot, before any damage resolves —
@@ -536,7 +536,7 @@ func fire_at_active() -> void:
 	## any being drawn.
 	for _f in range(TRACER_FLIGHT_FRAMES):
 		await room.get_tree().process_frame
-	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_board):
 		push_warning("[AgentShotController] room went away mid-flight (map reload?) — shot abandoned")
 		return
 
@@ -684,18 +684,18 @@ func fire_at_active() -> void:
 
 	## PERF-01: spread across frames instead of one synchronous batch, and
 	## W-GUARD-01: every `await` below is a place the ROOM can go away (a map
-	## load frees it and builds a new VoxelRenderer), so each resume revalidates
+	## load frees it and builds a new VoxelBoard), so each resume revalidates
 	## and abandons loudly rather than reaching through a freed reference. Both
 	## rules are WeaponBenchController's, copied because they are properties of
 	## this pipeline rather than of that caller.
 	room._destruction_render_busy = true
 	var prof_render0: int = Time.get_ticks_usec()
-	await room._voxel_renderer.process_dirty_async(room._edge_registry)
-	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+	await room._voxel_board.process_dirty_async(room._edge_registry)
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_board):
 		push_warning("[AgentShotController] room went away mid-shot (map reload?) — render pass abandoned")
 		return
-	await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry)
-	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+	await room._voxel_board.process_dirty_slabs_async(room._slab_registry)
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_board):
 		push_warning("[AgentShotController] room went away mid-shot (map reload?) — render pass abandoned")
 		return
 	## PERF-03: a shot changes geometry and soot only, never a light or a shadow
@@ -994,7 +994,7 @@ func _maybe_shatter_pane(hit_slice: Slice, hit_voxel_index: int, weapon_def: Wea
 func _craze_pane_around_hole(hit_slice: Slice, hv: Voxel, hit_material: String,
 		weapon_def: WeaponDef, cell_to_voxel: Dictionary, cell_to_material: Dictionary,
 		cell_to_depth: Dictionary) -> void:
-	var renderer = room._voxel_renderer
+	var renderer = room._voxel_board
 	if renderer == null or not is_instance_valid(renderer):
 		return
 	if room._edge_registry == null:
@@ -1109,10 +1109,10 @@ func _flatten_glass_passthrough(picks: Array) -> Array:
 ## World position of a GU cell's centre at chest height — the same
 ## GU→voxel→world chain the bench's muzzle flash uses.
 func _gu_centre_world(gu: Vector2i) -> Vector2:
-	if room._voxel_renderer == null:
+	if room._voxel_board == null:
 		return Vector2.ZERO
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
 	var centre: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
-	var renderer: VoxelRenderer = room._voxel_renderer
+	var renderer: VoxelBoard = room._voxel_board
 	return renderer.voxel_world_position(centre,
 		renderer.ground_plane_level() + MUZZLE_LEVELS_ABOVE_GROUND)

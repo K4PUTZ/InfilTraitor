@@ -1,7 +1,7 @@
 ## BoardLook — the one owner of the board's look constants (R3D-9, 2026-09-24).
 ##
 ## Until now the same numbers lived in three places: the 2D face shader's uniform defaults, `Board3DLive`'s
-## fallbacks, and (for the light ladder) `VoxelRenderer`. The 3D board read them by asking the 2D renderer's ground
+## fallbacks, and (for the light ladder) `VoxelBoard`. The 3D board read them by asking the 2D renderer's ground
 ## layer for its `ShaderMaterial`, which made the 3D board depend on a node the 3D path is meant to outlive.
 ## Now both boards read this; the 2D face shader gets these values pushed as uniforms until R3D-END deletes it, and
 ## `board_look_selftest` parses the shader's defaults so a change there cannot drift from here.

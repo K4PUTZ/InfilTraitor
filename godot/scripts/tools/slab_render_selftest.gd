@@ -8,7 +8,7 @@
 extends SceneTree
 
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 
 var passed: int = 0
 var failed: int = 0

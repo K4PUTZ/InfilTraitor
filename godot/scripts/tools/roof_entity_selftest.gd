@@ -9,14 +9,14 @@ const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_sour
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 
 class MinimalRoom extends Node:
 	var _edge_registry
 	var _junction_columns
 	var _slab_registry
-	var _voxel_renderer
+	var _voxel_board
 	@warning_ignore("unused_private_class_variable")
 	var _wall_height_edges
 	var map_id: String = "TEST"
@@ -92,10 +92,10 @@ func _builder(layout: Dictionary, roof: Dictionary) -> void:
 	var structure_layer := TileMapLayer.new()
 	structure_layer.tile_set = tileset
 	room.add_child(structure_layer)
-	var renderer := VoxelRendererClass.new()
+	var renderer := VoxelBoardClass.new()
 	room.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
-	room._voxel_renderer = renderer
+	room._voxel_board = renderer
 	var builder := RoomBuilderClass.new(room)
 	builder.setup(structure_layer, TileSet.new())
 	builder.build_registry(tileset)
@@ -136,10 +136,10 @@ func _unknown_kind(layout: Dictionary, roof: Dictionary) -> void:
 	var structure_layer := TileMapLayer.new()
 	structure_layer.tile_set = tileset
 	room.add_child(structure_layer)
-	var renderer := VoxelRendererClass.new()
+	var renderer := VoxelBoardClass.new()
 	room.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
-	room._voxel_renderer = renderer
+	room._voxel_board = renderer
 	var builder := RoomBuilderClass.new(room)
 	builder.setup(structure_layer, TileSet.new())
 	builder.build_registry(tileset)

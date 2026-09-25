@@ -93,13 +93,13 @@ func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {},
 	_writer.debris_colors = debris_colors
 
 
-func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:
+func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> void:
 	_t0_ms = Time.get_ticks_msec()
 	## §7.1 — the scorch rides in the commit. The FADE (below) is what arrives
 	## afterwards, and it is a plane walk, not a second set of cell writes.
 	_writer.soot_clean = false
-	var ramp: Array = _collect_soot_ramp(plan, voxel_renderer)
-	_commit_frame(plan, voxel_renderer)
+	var ramp: Array = _collect_soot_ramp(plan, voxel_board)
+	_commit_frame(plan, voxel_board)
 	var board3d: Node = _board3d()
 	if board3d != null and consequence_delta != null:
 		board3d.on_blast_commit(consequence_delta)
@@ -107,8 +107,8 @@ func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> 
 	## It now arrives AFTER the crater is drawn, in steps: the ramp is armed here, `_run_consequence` steps it from `soot_start_s`
 	## (0 = right after the commit), and whatever is left after the channel is finished by `_finish_soot`.
 	_soot_begin(ramp)
-	await _run_consequence(plan, voxel_renderer, smoke_overlay, tree)
-	await _finish_soot(voxel_renderer, tree, board3d)
+	await _run_consequence(plan, voxel_board, smoke_overlay, tree)
+	await _finish_soot(voxel_board, tree, board3d)
 	## D-6 — the smoke is all instanced and rising, so the world may resume
 	## (Director, 2026-08-29). The light ramp below runs with the agent already
 	## unlocked; only the turn advance waits for it to land.
@@ -190,19 +190,19 @@ func _wait_for_smoke(smoke_overlay, tree: SceneTree) -> void:
 ## and that would have been one indivisible 628-cell step in a paced front. There
 ## is no pacing here, so they are simply applied where they live — the reason to
 ## break them out went away with the front.
-func _commit_frame(plan: Dictionary, voxel_renderer) -> void:
+func _commit_frame(plan: Dictionary, voxel_board) -> void:
 	var cells: int = 0
 	var t0: int = Time.get_ticks_usec()
 	for ring in plan.get("destroy", {}).keys():
 		for entry: Dictionary in plan["destroy"][ring]:
-			cells += _writer.apply("destroy", entry, voxel_renderer, null)
+			cells += _writer.apply("destroy", entry, voxel_board, null)
 			for reveal: Dictionary in entry.get("expose", []):
-				cells += _writer.apply("expose", reveal, voxel_renderer, null)
+				cells += _writer.apply("expose", reveal, voxel_board, null)
 	for kind: String in ["dented", "cracked", "soot"]:
 		for ring in plan.get(kind, {}).keys():
 			for entry: Dictionary in plan[kind][ring]:
-				cells += _writer.apply(kind, entry, voxel_renderer, null)
-	_writer.flush(voxel_renderer)
+				cells += _writer.apply(kind, entry, voxel_board, null)
+	_writer.flush(voxel_board)
 	print("[E-PRESENT] commit frame — %d cell(s) in %.3f ms of apply" % [
 		cells, float(Time.get_ticks_usec() - t0) / 1000.0])
 
@@ -254,7 +254,7 @@ var _channel_elapsed: float = 0.0
 ## back, which is the flash the Director reported on 2026-08-23. Excluding them
 ## here is also what keeps them out of `soot_ramp_cells`, so the commit writes them
 ## at their real value and they never go clean at all.
-func _collect_soot_ramp(plan: Dictionary, voxel_renderer) -> Array:
+func _collect_soot_ramp(plan: Dictionary, voxel_board) -> Array:
 	## DIAG-19 (DEVICE_DIAGNOSTICS §15.2) — `NO_SOOT=1`, an instrument: the commit writes
 	## every scorch clean (`soot_clean`, the writer's own switch) and there is no fade.
 	## The cells still get their light alternatives — only the scorch is priced.
@@ -267,11 +267,11 @@ func _collect_soot_ramp(plan: Dictionary, voxel_renderer) -> Array:
 	for kind: String in ["dented", "cracked", "soot"]:
 		for ring in plan.get(kind, {}).keys():
 			for entry: Dictionary in plan[kind][ring]:
-				_note_ramp(entry, voxel_renderer, out, ramp_cells)
+				_note_ramp(entry, voxel_board, out, ramp_cells)
 	for ring in plan.get("destroy", {}).keys():
 		for entry: Dictionary in plan["destroy"][ring]:
 			for reveal: Dictionary in entry.get("expose", []):
-				_note_ramp(reveal, voxel_renderer, out, ramp_cells)
+				_note_ramp(reveal, voxel_board, out, ramp_cells)
 	_writer.soot_ramp_cells = ramp_cells
 	return out
 
@@ -292,14 +292,14 @@ static func _no_soot() -> bool:
 	return flags != null and flags.on("NO_SOOT")
 
 
-func _note_ramp(entry: Dictionary, voxel_renderer, out: Array,
+func _note_ramp(entry: Dictionary, voxel_board, out: Array,
 		ramp_cells: Dictionary) -> void:
 	if not entry.has("soot") or not entry.has("level") or not entry.has("cell"):
 		return
 	var level: int = int(entry["level"])
 	var cell: Vector2i = entry["cell"]
 	var target: int = int(entry["soot"])
-	if voxel_renderer.cell_soot_at(level, cell) == target:
+	if voxel_board.cell_soot_at(level, cell) == target:
 		return
 	ramp_cells[Vector3i(cell.x, cell.y, level)] = true
 	out.append([level, cell, VoxelLightField.decode_face_soot(target)])
@@ -314,7 +314,7 @@ func _soot_begin(ramp: Array) -> void:
 
 ## One ladder step, when its time has come. Step 0 is what the commit frame wrote (fully lightened); the last step is the
 ## settled scorch. Each call writes ONE step, so a slow frame delays the ladder instead of collapsing it into a jump cut.
-func _soot_tick(elapsed: float, voxel_renderer) -> void:
+func _soot_tick(elapsed: float, voxel_board) -> void:
 	var steps: int = maxi(soot_fade_frames, 1)
 	if _soot_ramp.is_empty() or _soot_next_k >= steps or elapsed < _soot_next_t:
 		return
@@ -322,9 +322,9 @@ func _soot_tick(elapsed: float, voxel_renderer) -> void:
 		consequence_room.event_probe_beat("SOOT FADE")
 	var lighten: int = steps - 1 - _soot_next_k
 	for row: Array in _soot_ramp:
-		voxel_renderer._write_cell_soot(int(row[0]), row[1],
+		voxel_board._write_cell_soot(int(row[0]), row[1],
 			VoxelLightField.encode_face_soot(DetonationEntryWriter.lightened(row[2], lighten)))
-		voxel_renderer.note_external_write(int(row[0]), row[1])
+		voxel_board.note_external_write(int(row[0]), row[1])
 	## R3D-6: the 3D board reads the plane when it is told to upload it; every step is one upload of the levels the blast touched.
 	var board3d: Node = _board3d()
 	if board3d != null:
@@ -335,16 +335,16 @@ func _soot_tick(elapsed: float, voxel_renderer) -> void:
 
 ## Whatever the channel did not get to: the ladder finishes on its own clock. An empty ramp (nothing sooted, or `NO_SOOT`)
 ## still tells the 3D board once, as before.
-func _finish_soot(voxel_renderer, tree: SceneTree, board3d: Node) -> void:
+func _finish_soot(voxel_board, tree: SceneTree, board3d: Node) -> void:
 	var steps: int = maxi(soot_fade_frames, 1)
 	var t0: int = Time.get_ticks_usec()
 	var clock: float = _channel_elapsed
 	while not _soot_ramp.is_empty() and _soot_next_k < steps:
 		await tree.process_frame
-		if not is_instance_valid(voxel_renderer):
+		if not is_instance_valid(voxel_board):
 			return
 		clock += tree.root.get_process_delta_time()
-		_soot_tick(clock, voxel_renderer)
+		_soot_tick(clock, voxel_board)
 	if _soot_ramp.is_empty() and board3d != null and is_instance_valid(board3d):
 		board3d.on_blast_soot()
 	print("[E-PRESENT] soot fade — %d cell(s) in %d step(s) from %.2fs, finished %.2fs after the channel (%.2f ms in the tail)" % [
@@ -354,7 +354,7 @@ func _finish_soot(voxel_renderer, tree: SceneTree, board3d: Node) -> void:
 ## Beat 3 — the channel. Every VFX entry gets a release time; frames pass; each
 ## is dispatched when its time comes. **No frame here writes a cell**, which is
 ## what makes a dropped one cosmetic instead of a desync.
-func _run_consequence(plan: Dictionary, voxel_renderer, smoke_overlay,
+func _run_consequence(plan: Dictionary, voxel_board, smoke_overlay,
 		tree: SceneTree) -> void:
 	var scheduled: Array = []
 	var per_kind: Dictionary = {}
@@ -375,18 +375,18 @@ func _run_consequence(plan: Dictionary, voxel_renderer, smoke_overlay,
 	while next < scheduled.size():
 		await tree.process_frame
 		## RUNTIME-GUARD-01 — this is a RefCounted living across `await`s while the
-		## VoxelRenderer it paints into is a child of the Room, and `load_map()`
+		## VoxelBoard it paints into is a child of the Room, and `load_map()`
 		## builds a new one. Same guard, same reason as the choreographer's.
-		if not is_instance_valid(voxel_renderer):
+		if not is_instance_valid(voxel_board):
 			push_warning("[DetonationPresenter] renderer went away mid-sequence (map reload?) — abandoned with %d of %d effect(s) undispatched" % [scheduled.size() - next, scheduled.size()])
 			return
 		frames += 1
 		elapsed += tree.root.get_process_delta_time()
-		_soot_tick(elapsed, voxel_renderer)
+		_soot_tick(elapsed, voxel_board)
 		_channel_elapsed = elapsed
 		while next < scheduled.size() and float(scheduled[next][0]) <= elapsed:
 			_writer.apply(String(scheduled[next][1]), scheduled[next][2],
-				voxel_renderer, smoke_overlay)
+				voxel_board, smoke_overlay)
 			next += 1
 	## Per kind, because "N effects" cannot answer the question D-4 is tuned on —
 	## a smoke count that changed and an ember count that did not look identical in

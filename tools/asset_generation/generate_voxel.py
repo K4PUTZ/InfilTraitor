@@ -370,7 +370,7 @@ DECAL_FAMILIES: tuple[str, ...] = ("bullet", "dent", "crack")
 # ou balas." Only these fracture, so only these get crack decals and composites
 # — keeping the others would put art in the Director's queue for a state the
 # runtime can no longer reach (MaterialResistanceTable crack_factor 0.0 for
-# metal and wood). Mirrors VoxelRenderer.IMPACT_CRACK_MATERIALS; the two are
+# metal and wood). Mirrors VoxelBoard.IMPACT_CRACK_MATERIALS; the two are
 # asserted equal by voxel_decal_selftest.
 CRACK_MATERIALS: tuple[str, ...] = ("concrete", "stone")
 DECAL_VARIANT_COUNT = 3
@@ -1063,7 +1063,7 @@ def main() -> None:
     # stages that used to run here (impact-mark placeholders, blast-mark
     # placeholders, dented half-voxels, the floor's own carved composite) are
     # retired along with composites/ itself — every one of those shapes is
-    # composited LIVE at runtime now (VoxelRenderer's baked and generic
+    # composited LIVE at runtime now (VoxelBoard's baked and generic
     # branches), never pre-baked to a per-name PNG. generate_broken_face()'s
     # generic fallback texture still gets written below, inside
     # build_decal_family() — that one is real decals/ INPUT art (ASSET-LAYOUT-01),
@@ -1092,7 +1092,7 @@ def build_decal_family() -> None:
     from the above (composites/ — material|half x decal, ~130 files) and end
     with `composites = 0` counting them. That whole stage is retired:
     composites/ is gone, every one of those shapes composites LIVE at runtime
-    now instead (VoxelRenderer's baked and generic branches).
+    now instead (VoxelBoard's baked and generic branches).
     """
     DECAL_DIR.mkdir(parents=True, exist_ok=True)
 

@@ -51,7 +51,7 @@ enum SurfaceClass { SLICE, SLAB }
 ## per boot — measured on the GLASS map the day the variants were added. Routing
 ## them here also stops the compositor composing a second, third and fourth
 ## IDENTICAL 2048-atom sheet for materials whose panes never read a baked sheet
-## at all (they render through VoxelRenderer._glass_atom_source).
+## at all (they render through VoxelBoard._glass_atom_source).
 static func facade_for_material(material_id: String) -> String:
 	return "facade_" + GlassMaterials.art_id(material_id)
 
@@ -127,7 +127,7 @@ static func canonical_voxel_atom_for(material_id: String) -> String:
 ## pseudo-materials `earth_0`..`earth_7`, so the naive "folder = atom id" built
 ## `ASSETS/materials/earth_0/voxel_earth_0.png` and every one of the eight failed:
 ##
-##     ERROR: VoxelRenderer: missing texture for material 'earth_7'
+##     ERROR: VoxelBoard: missing texture for material 'earth_7'
 ##            at res://ASSETS/materials/earth_7/voxel_earth_7.png
 ##
 ## The 363-atom export diff reported **0 differing** through all of it — the

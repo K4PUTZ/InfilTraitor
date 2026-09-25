@@ -10,7 +10,7 @@
 extends SceneTree
 
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 
 var passed: int = 0
 var failed: int = 0
@@ -53,7 +53,7 @@ func _fail(msg: String) -> void:
 func test_fixed_level_does_not_touch_slab_registry() -> void:
 	print("[2] render_fixed_earth_level() never touches a SlabRegistry\n")
 
-	var renderer := VoxelRendererClass.new()
+	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 	var registry := SlabRegistry.new()
@@ -74,7 +74,7 @@ func test_fixed_level_does_not_touch_slab_registry() -> void:
 func test_one_call_builds_only_the_requested_level() -> void:
 	print("[3] One render_fixed_earth_level() call touches only its own level\n")
 
-	var renderer := VoxelRendererClass.new()
+	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 
@@ -102,7 +102,7 @@ func test_one_call_builds_only_the_requested_level() -> void:
 func test_full_d13_stack_top_destructible_rest_fixed() -> void:
 	print("[4] Full D13 stack: 1 destructible top (Slab) + 7 fixed levels\n")
 
-	var renderer := VoxelRendererClass.new()
+	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 

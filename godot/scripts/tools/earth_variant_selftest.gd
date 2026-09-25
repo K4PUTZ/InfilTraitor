@@ -2,7 +2,7 @@
 ## Rodar: godot --headless --script res://godot/scripts/tools/earth_variant_selftest.gd
 ##
 ## This is the "core, isolated, verified before anything consumes it" prompt:
-## no VoxelRenderer/TileSet/Slab wiring here on purpose — that's the next wave.
+## no VoxelBoard/TileSet/Slab wiring here on purpose — that's the next wave.
 
 extends SceneTree
 
@@ -125,7 +125,7 @@ func test_distribution_uses_all_variants() -> void:
 
 
 ## The placeholder assets generate_voxel.py just produced must actually exist
-## at the exact paths/dimensions the selector and (later) VoxelRenderer expect
+## at the exact paths/dimensions the selector and (later) VoxelBoard expect
 ## — same canon as the four material atoms (32x36, matching VOXEL_ATOM_W/H).
 func test_assets_loadable_and_canon_sized() -> void:
 	print("[5] All %d earth voxel atoms load at canon size (32x36)\n" % EarthVariantSelector.VARIANT_COUNT)

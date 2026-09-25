@@ -3172,6 +3172,13 @@ that still builds the 2D board is `34881f81`.
   `negative_storey`, `fixed_floor` and `slice_geometry` assert `has_level()` / `level_origin()` / `level_z_index()`.
   `structure_layer` (props) stays: R3D-PROPS. **Gates:** ground_gate 16/16 IDENTICAL; pixel 0 px above noise (136/63 jitter);
   31/31 probe dumps identical; roundtrip, shadow, mirror, occ_canonical PASS; shot_3d PASSED (2 919 / 3 598 px); `run_selftests` 51 clean.
+  **END-6 (b) done 2026-09-25 — the rename.** `VoxelRenderer` -> **`VoxelBoard`** (Director delegated the name: "Sugira o nome mais apropriado"): the
+  class no longer renders, it is the state the 3D board (`Board3DLive`) draws (the level registry, the light / soot cell planes, the
+  dirty -> `voxel_destroyed` pass, the glass and shard records), and the name pairs with `Board3DLive` and `VoxelStore`. A
+  rename-only commit: `voxel_renderer.gd` -> `voxel_board.gd`, `_voxel_renderer` -> `_voxel_board`, in `godot/` and `tools/`
+  (656 hits, 67 files); the docs are END-7's. `godot --headless --import` had to run once for the class cache (lint failed 51
+  errors before it, none after). **Gates:** ground_gate 16/16; pixel 0 px above noise; 31/31 probe dumps identical; roundtrip,
+  shadow, mirror, occ_canonical PASS; shot_3d PASSED (2 919 / 3 611 px); `run_selftests` 51 clean.
 - **END-7 — canon.** The edits listed under "Canon" below, and the L1 hook retargeted.
 - **END-8 — the gate** (below).
 

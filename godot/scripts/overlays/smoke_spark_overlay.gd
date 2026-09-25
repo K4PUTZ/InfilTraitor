@@ -1,7 +1,7 @@
 extends Node2D
 class_name SmokeSparkOverlay
 
-## SmokeSparkOverlay — brief above-floor VFX for VoxelRenderer.voxel_destroyed:
+## SmokeSparkOverlay — brief above-floor VFX for VoxelBoard.voxel_destroyed:
 ## material-colored smoke puffs (every destroyed voxel) and metal/stone
 ## sparks (chance-gated, rolled by the caller).
 ##

@@ -1,7 +1,7 @@
 ## VoxelLightField — per-voxel light BUCKET data (VL-01, VOXEL_LIGHT_MASTER_PLAN).
 ##
 ## The single seam between tactical lighting (LightRegistry / ShadowProjector,
-## GU resolution) and every VISUAL consumer. VoxelRenderer.apply_light_field()
+## GU resolution) and every VISUAL consumer. VoxelBoard.apply_light_field()
 ## reads it to repaint faces; future vision modes (thermal / night / X-ray)
 ## query it instead of touching tilemaps. Canon split preserved: this consumes
 ## LightSource.visual_energy, never tactical_energy — visual brightness is not
@@ -71,7 +71,7 @@ var under_structure_factor: float = 0.68
 ##      moved only 19% of crater pixels, by a mean of 1.15/255, and *lowered*
 ##      the region's standard deviation — the 12-bucket quantisation ate it.
 ##   2. As a ±1 step on the QUANTISED index it always lands, but
-##      VoxelRenderer.bucket_luminance is compressed at the dark end
+##      VoxelBoard.bucket_luminance is compressed at the dark end
 ##      (0.12 → 0.20 → 0.33 = +67%, +65% per step, against +8% at the top), so
 ##      one step is a far bigger perceptual jump in shadow than in light.
 ##      Measured against a neutral capture, stratified by brightness: 6.7% in
@@ -140,11 +140,11 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 ## Rebuild the field from the current lighting state. Called from room on every
 ## lighting_rebuilt (map load, perspective rotation, light change) — the cache
 ## resets because any input may have moved.
-## top_wall_level: the highest built voxel layer (VoxelRenderer.get_layer_count()
+## top_wall_level: the highest built voxel layer (VoxelBoard.get_layer_count()
 ## − 1) — where an OVERHEAD lamp hangs. NOT the ceiling-fixture height
 ## (max_floors), which is an 8-storey render artifact that would place the lamp
 ## far above the real walls and zero out every contribution via vertical falloff.
-## occupancy: level -> set of occupied cells, supplied by VoxelRenderer (it owns
+## occupancy: level -> set of occupied cells, supplied by VoxelBoard (it owns
 ## the tilemaps). Drives the surface/AO terms above; empty = shading disabled.
 ## under_structure: {cell: true} floor columns that had a wall above at load
 ## (VL-D3); their floor voxels read darker once exposed.
@@ -321,7 +321,7 @@ func bucket_for(cell: Vector2i, level: int) -> int:
 
 
 func _compute_bucket(cell: Vector2i, level: int) -> int:
-	var top_bucket: int = VoxelRenderer.LIGHT_BUCKET_COUNT - 1
+	var top_bucket: int = VoxelBoard.LIGHT_BUCKET_COUNT - 1
 	## The lamp term is a GU-resolution quantity (the falloff is measured GU→GU),
 	## so all 64 voxels of a GU column at one level share it — compute once per
 	## (GU, level) and cache. This was the repaint's hot loop: the sqrt-per-light
@@ -406,7 +406,7 @@ func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> float:
 	return intensity
 
 
-## The code layout lives on VoxelRenderer (it owns the alternative-id space this
+## The code layout lives on VoxelBoard (it owns the alternative-id space this
 ## packs into) and is referenced from function bodies only — a `const` here
 ## pointing at it and back would be a parse-time cycle between the two classes.
 ## PERF-02 B3-2: base is FACE_SOOT_CLEAN + 1 (5 — four real tones plus clean),
@@ -424,7 +424,7 @@ static func encode_face_soot(faces: Vector3i) -> int:
 
 
 static func decode_face_soot(code: int) -> Vector3i:
-	var c: int = clampi(code, 0, VoxelRenderer.FACE_SOOT_CODE_COUNT - 1)
+	var c: int = clampi(code, 0, VoxelBoard.FACE_SOOT_CODE_COUNT - 1)
 	@warning_ignore("integer_division")
 	var top: int = c / (FACE_SOOT_BASE * FACE_SOOT_BASE)
 	@warning_ignore("integer_division")

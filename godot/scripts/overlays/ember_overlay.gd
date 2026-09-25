@@ -183,7 +183,7 @@ func set_smoke_overlay(overlay: SmokeSparkOverlay) -> void:
 	_smoke_overlay = overlay
 
 
-## Queue one glow at a voxel's world position (VoxelRenderer.voxel_world_position).
+## Queue one glow at a voxel's world position (VoxelBoard.voxel_world_position).
 ## duration <= 0 rolls a random one in [min_glow_duration, max_glow_duration],
 ## then applies the height bias below; a caller-supplied duration is used as
 ## the pre-bias base instead (still height-biased, never randomized further).

@@ -19,7 +19,7 @@ var PropRegistryClass
 var MapCompilerClass
 var FileMapSourceClass
 var MapCatalogClass
-var VoxelRendererClass
+var VoxelBoardClass
 
 ## Test results
 var _tests_passed := 0
@@ -32,7 +32,7 @@ func _ready() -> void:
 	MapCompilerClass = load("res://godot/scripts/world/maps/map_compiler.gd")
 	FileMapSourceClass = load("res://godot/scripts/world/maps/file_map_source.gd")
 	MapCatalogClass = load("res://godot/scripts/world/maps/map_catalog.gd")
-	VoxelRendererClass = load("res://godot/scripts/geometry/voxel_renderer.gd")
+	VoxelBoardClass = load("res://godot/scripts/geometry/voxel_board.gd")
 	
 	print("\n" + "=".repeat(60))
 	print("PROP-01 ACCEPTANCE TESTS")

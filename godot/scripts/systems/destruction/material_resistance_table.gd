@@ -46,7 +46,7 @@ const USER_MATERIALS_DIR := "user://materials"
 ## would be a balance change nobody asked for, and the freed voxels simply
 ## stay intact. Bullets are unaffected: a firearm's CRACKED tier is a bullet
 ## MARK on the struck face, not a fracture, and it reads from the bullet
-## family (VoxelRenderer.damage_variant_material's blast_sourced=false
+## family (VoxelBoard.damage_variant_material's blast_sourced=false
 ## branch).
 ## PERF-02 B2 (Director, 2026-08-04): the four wall materials scaled down
 ## together, ~x0.65, as part of making an explosion physically smaller rather

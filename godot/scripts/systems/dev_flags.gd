@@ -77,7 +77,7 @@ func _ready() -> void:
 	## PERF-DEV — the light ablation, reachable in the APK. Same standing as
 	## NO_BAKE: an instrument, never a look mode. OR-ed so a desktop env var keeps
 	## working exactly as it did.
-	VoxelRenderer.LIGHT_DISABLED = VoxelRenderer.LIGHT_DISABLED or on("NO_LIGHT")
+	VoxelBoard.LIGHT_DISABLED = VoxelBoard.LIGHT_DISABLED or on("NO_LIGHT")
 	## DIAG-19 (§15.2) — detonation ablation knobs, reachable in the APK. Both are
 	## static switches their classes read from the environment alone at class load;
 	## OR-ed / overridden here, so a desktop env var keeps working exactly as before.

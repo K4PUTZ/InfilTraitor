@@ -326,7 +326,7 @@ func is_blast_of(voxel) -> bool:
 
 ## A detached Voxel carrying this Delta's projected fields, for the resolution
 ## code that takes a whole Voxel rather than individual fields
-## (`VoxelRenderer.resolve_damage_voxel_swap()` and friends, which read five
+## (`VoxelBoard.resolve_damage_voxel_swap()` and friends, which read five
 ## damage fields plus the cell and never write).
 ##
 ## Handing them a copy is what keeps the pure builder from needing a parallel

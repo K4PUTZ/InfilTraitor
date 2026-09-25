@@ -52,7 +52,7 @@ extends SceneTree
 
 const ShotPunchTableClass = preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")
 const MaterialResistanceTableClass = preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 const GlassMaterialsClass = preload("res://godot/scripts/systems/glass_materials.gd")
 const GlassCrackClass = preload("res://godot/scripts/systems/destruction/glass_crack.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
@@ -164,12 +164,12 @@ func test_glass_has_no_crack_decal_family() -> void:
 	else:
 		_fail("glass crack_factor is %.2f — that path demands decal_crack_glass_* (voxel_decal_selftest [12])" % cf)
 
-	if not VoxelRendererClass.IMPACT_CRACK_MATERIALS.has("glass"):
+	if not VoxelBoardClass.IMPACT_CRACK_MATERIALS.has("glass"):
 		_pass("glass is not in IMPACT_CRACK_MATERIALS (that list composes *_blast_cracked_all_*)")
 	else:
 		_fail("glass is in IMPACT_CRACK_MATERIALS — it would ask for a blast-crack decal family")
 
-	if not VoxelRendererClass.IMPACT_DECAL_MATERIALS.has("glass"):
+	if not VoxelBoardClass.IMPACT_DECAL_MATERIALS.has("glass"):
 		_pass("glass is not in IMPACT_DECAL_MATERIALS (that list composes *_bullet_cracked_*)")
 	else:
 		_fail("glass is in IMPACT_DECAL_MATERIALS — it would ask for a bullet-crack decal family")
@@ -180,7 +180,7 @@ func test_glass_has_no_crack_decal_family() -> void:
 	## renames.)
 
 	var on_disk: Array = []
-	for v in range(VoxelRendererClass.IMPACT_DECAL_VARIANTS):
+	for v in range(VoxelBoardClass.IMPACT_DECAL_VARIANTS):
 		if FileAccess.file_exists(CRACK_DECAL_TEMPLATE % v):
 			on_disk.append(CRACK_DECAL_TEMPLATE % v)
 	if on_disk.is_empty():
@@ -514,14 +514,14 @@ func test_the_glass_shaders_split_the_crack_out() -> void:
 	print("")
 
 
-## A stand-in for VoxelRenderer's CRACK-02 crack registry — records what
+## A stand-in for VoxelBoard's CRACK-02 crack registry — records what
 ## GlassCrack.apply spawns and answers G-D24's geometric test, so the rule can be
 ## tested without a real renderer.
 class MockRenderer:
 	var cracks: Array = []            ## the spawned specs, in order
 	var _next: int = 0
 
-	## G-D24, exactly as VoxelRenderer.glass_crack_covering() does it.
+	## G-D24, exactly as VoxelBoard.glass_crack_covering() does it.
 	func glass_crack_covering(pane_id: String, run: int, level: int) -> int:
 		for c in cracks:
 			if String(c["pane_id"]) != pane_id:
@@ -544,7 +544,7 @@ class MockRenderer:
 	func relative_level(level: int) -> int:
 		return level - GeometryCoordsClass.storey_level_base(0)
 
-	## The same wall-face geometry VoxelRenderer.glass_cell_face_pos() uses:
+	## The same wall-face geometry VoxelBoard.glass_cell_face_pos() uses:
 	## map_to_local's e1 (16,8) / e2 (-16,8), minus VOXEL_STEP_PX per level.
 	func glass_cell_face_pos(level: int, cell: Vector2i) -> Vector2:
 		return Vector2(float(cell.x - cell.y) * 16.0,
@@ -691,7 +691,7 @@ func test_the_pane_bounds_clip_the_sprite() -> void:
 ## The claim is that the sprite's cut is read off the GLASS TILEMAP — the live
 ## authority every erase seam already writes — rather than off a parallel plane
 ## that could drift from it. That claim is only worth anything if it is exercised
-## through the real `VoxelRenderer`, so this builds one, gives it two glass levels
+## through the real `VoxelBoard`, so this builds one, gives it two glass levels
 ## of actual cells, and reads the image the sprite is handed.
 ##
 ## Three things it pins, and each one is a §13 promise:
@@ -706,7 +706,7 @@ func test_the_pane_bounds_clip_the_sprite() -> void:
 func test_the_occupancy_cut_reads_the_live_tilemap() -> void:
 	print("[12] G-D30 — the cut is read off the store's glass panes, live\n")
 
-	var renderer = VoxelRendererClass.new()
+	var renderer = VoxelBoardClass.new()
 	var base: int = GeometryCoordsClass.storey_level_base(0)
 	var cross := 7
 	var run0 := 4
@@ -886,7 +886,7 @@ func test_sprite_spec_is_render_only() -> void:
 		_fail("sprite_spec() changed %d voxel states — a perspective flip would re-run G-D24 on itself"
 			% changed)
 
-	## Every key `VoxelRenderer.spawn_glass_crack()` reads. A missing one is not a
+	## Every key `VoxelBoard.spawn_glass_crack()` reads. A missing one is not a
 	## crash — GDScript would index a Dictionary and get null — so it is listed.
 	var required := ["pane_id", "run_axis", "wide", "impact_run", "impact_level",
 		"impact_cell", "radius", "span", "pane_lo", "pane_hi"]
@@ -1053,7 +1053,7 @@ func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 	## seven SYMMETRIC openings and showed only on `chunk_bite` — so a suite that
 	## covers one size class covers the easy half of the family by construction.
 	for opening in GlassOpeningClass.ids():
-		var r = VoxelRendererClass.new()
+		var r = VoxelBoardClass.new()
 		var base: int = GeometryCoordsClass.storey_level_base(0)
 		var cross := 7
 		var run0 := 0
@@ -1117,7 +1117,7 @@ func test_only_the_four_orthogonal_neighbours_become_shards() -> void:
 		## and the hole came back a rectangle, silently, for every opening. Two
 		## paths for one feature need the assertion that they agree. Same store (the
 		## same holes); a second renderer, with no rim flagged.
-		var r2 = VoxelRendererClass.new()
+		var r2 = VoxelBoardClass.new()
 		var direct: int = r2.apply_glass_opening_at(hit_level, Vector2i(hit_run, cross), opening)
 		var mismatch: Array = []
 		for dl2 in range(bounds.position.y - 1, bounds.position.y + bounds.size.y + 1):
@@ -1471,7 +1471,7 @@ func test_the_craze_field_is_cut_to_the_holes() -> void:
 	## G-D30's per-CELL occupancy reads as full glass while most of each is gone.
 	## That path has no capture (it needs a shot and a blast on one pane in one
 	## boot), so it is pinned here instead of left as a claim.
-	var renderer = VoxelRendererClass.new()
+	var renderer = VoxelBoardClass.new()
 	var base: int = GeometryCoordsClass.storey_level_base(0)
 	var cross := 7
 	var run0 := 4
@@ -1575,7 +1575,7 @@ func test_the_craze_field_is_cut_to_the_holes() -> void:
 func test_an_unclaimed_hole_is_reshaped_and_the_replay_claims_first() -> void:
 	print("[22] an unclaimed erase takes the DEFAULT opening; the rotation replay claims first\n")
 
-	var default_id: String = VoxelRendererClass.GLASS_OPENING_DEFAULT
+	var default_id: String = VoxelBoardClass.GLASS_OPENING_DEFAULT
 	## A member that a one-cell bore reaches (so the unclaimed fallback picks the
 	## DEFAULT rather than the >2-member `star_deep_wide`) and whose cut set is not
 	## the default's — otherwise the two halves are the same picture and the test
@@ -1653,7 +1653,7 @@ func _partial_set(opening: String) -> Dictionary:
 ## flush, and return the offsets that came back as shards. Same fixture shape as
 ## [15]; the ONE variable is whether the claim is made.
 func _cut_set_for(opening: String, claim: bool) -> Dictionary:
-	var r = VoxelRendererClass.new()
+	var r = VoxelBoardClass.new()
 	var base: int = GeometryCoordsClass.storey_level_base(0)
 	var cross := 7
 	var run0 := 0

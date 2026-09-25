@@ -11,7 +11,7 @@ extends SceneTree
 
 ## Single source of truth: recursive scan of this folder finds ALL asset PNGs.
 ## Scoped to generated/ only (floor/block/prop) — voxel atoms build their own
-## TileSet at runtime (voxel_renderer.gd:_build_voxel_tileset()) and actor
+## TileSet at runtime (voxel_board.gd:_build_voxel_tileset()) and actor
 ## bakes (grenade, shotgun) load straight from disk (FloatingCollectible),
 ## neither reads this TileSet. A project-root-wide scan here used to sweep
 ## both in as dead TileSetAtlasSource entries — confirmed unused via

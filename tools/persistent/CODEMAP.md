@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**250 scripts · 80382 lines total** (under `godot/scripts/`)
+**250 scripts · 80385 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_renderer.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
@@ -535,7 +535,7 @@ extends `Node3D` · 1905 lines
 
 `godot/scripts/geometry/board_look.gd`
 
-> BoardLook — the one owner of the board's look constants (R3D-9, 2026-09-24). Until now the same numbers lived in three places: the 2D face shader's uniform defaults, `Board3DLive`'s fallbacks, and (for the light ladder) `VoxelRenderer`. The 3D board read them by asking the 2D renderer's ground layer for its `ShaderMaterial`, which made the 3D board depend on a node the 3D path is meant to outlive. Now both boards read this; the 2D face shader gets these values pushed as uniforms until R3D-END deletes it, and `board_look_selftest` parses the shader's defaults so a change there cannot drift from here.
+> BoardLook — the one owner of the board's look constants (R3D-9, 2026-09-24). Until now the same numbers lived in three places: the 2D face shader's uniform defaults, `Board3DLive`'s fallbacks, and (for the light ladder) `VoxelBoard`. The 3D board read them by asking the 2D renderer's ground layer for its `ShaderMaterial`, which made the 3D board depend on a node the 3D path is meant to outlive. Now both boards read this; the 2D face shader gets these values pushed as uniforms until R3D-END deletes it, and `board_look_selftest` parses the shader's defaults so a change there cannot drift from here.
 
 **Constants / tuning**
 - `SOOT_FACE_MULT` = `[0.38, 0.60, 0.76, 0.90]`
@@ -658,7 +658,7 @@ extends `Node3D` · 1905 lines
 
 `godot/scripts/geometry/floor_pile3d.gd`
 
-> FloorPile3D — the glass-shard piles on the 3D board's floor. RENDER3D R3D-6 (item 6). The 2D board draws a landed pane's piles as one `Sprite2D` per cell (`VoxelRenderer.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles — the white band that stays on the floor after a pane is shot out — were not drawn at all. HOW (R3D-9): a pile is DATA — a voxel cell, a level, a variant and an opacity (`VoxelRenderer.spawn_floor_shard_pile` hands them over, from `Room._base_shards`); nothing is read from a sprite. Its ground quad is the cell's centre plus the decal's screen-aligned half-side carried onto the ground by the board's own 2D → ground map (a linear map, so the decal keeps the very shape it had as a sprite). One `ArrayMesh` per decal variant (three), rebuilt once per frame at most when a pile changes, so a whole pane's ~650 piles are three draw calls. Depth-tested: a wall in front hides a pile. State stays where it always was (`Room._base_shards`, base-space); this only draws it.
+> FloorPile3D — the glass-shard piles on the 3D board's floor. RENDER3D R3D-6 (item 6). The 2D board draws a landed pane's piles as one `Sprite2D` per cell (`VoxelBoard.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles — the white band that stays on the floor after a pane is shot out — were not drawn at all. HOW (R3D-9): a pile is DATA — a voxel cell, a level, a variant and an opacity (`VoxelBoard.spawn_floor_shard_pile` hands them over, from `Room._base_shards`); nothing is read from a sprite. Its ground quad is the cell's centre plus the decal's screen-aligned half-side carried onto the ground by the board's own 2D → ground map (a linear map, so the decal keeps the very shape it had as a sprite). One `ArrayMesh` per decal variant (three), rebuilt once per frame at most when a pile changes, so a whole pane's ~650 piles are three draw calls. Depth-tested: a wall in front hides a pile. State stays where it always was (`Room._base_shards`, base-space); this only draws it.
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/floor_decal3d.gdshader"`
@@ -703,7 +703,7 @@ extends `Node3D` · 1905 lines
 
 `godot/scripts/geometry/glass_crack_mirror3d.gd`
 
-> GlassCrackMirror3D — the 3D board's twin of every live `GlassCrackSprite`. RENDER3D R3D-6 item 2 (moved here from R3D-4e-4b). `VoxelRenderer.spawn_glass_crack()` / `spawn_glass_craze()` produce each crack as a RECORD: the centre voxel, the face, the run axis, the span, the pane bounds and `params`, every shader parameter as data (the occupancy cut and the opening void included). This node gives each record a quad on the pane's plane in the 3D world and copies `params` into it every frame. **R3D-9: it reads the record and nothing else** — not the 2D sprite, not its ShaderMaterial; the sprite is the same record's 2D consumer, until R3D-END. Nothing here decides a crack. PLACEMENT. The record says which voxel the crack is centred on (`impact_cell`, `impact_level`, `face`), which way the pane runs (`run_axis`: 0 = along X, 1 = along Z) and how large the sheet is (`crack_span`, in voxels). The quad is that many voxels wide and tall, centred on the impact voxel, standing on the face's own plane, and carries the sprite's UV so the shader's `off` is the same run/level offset it is in 2D.
+> GlassCrackMirror3D — the 3D board's twin of every live `GlassCrackSprite`. RENDER3D R3D-6 item 2 (moved here from R3D-4e-4b). `VoxelBoard.spawn_glass_crack()` / `spawn_glass_craze()` produce each crack as a RECORD: the centre voxel, the face, the run axis, the span, the pane bounds and `params`, every shader parameter as data (the occupancy cut and the opening void included). This node gives each record a quad on the pane's plane in the 3D world and copies `params` into it every frame. **R3D-9: it reads the record and nothing else** — not the 2D sprite, not its ShaderMaterial; the sprite is the same record's 2D consumer, until R3D-END. Nothing here decides a crack. PLACEMENT. The record says which voxel the crack is centred on (`impact_cell`, `impact_level`, `face`), which way the pane runs (`run_axis`: 0 = along X, 1 = along Z) and how large the sheet is (`crack_span`, in voxels). The quad is that many voxels wide and tall, centred on the impact voxel, standing on the face's own plane, and carries the sprite's UV so the shader's `off` is the same run/level offset it is in 2D.
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/glass_crack3d.gdshader"`
@@ -716,7 +716,7 @@ extends `Node3D` · 1905 lines
 - `var pane_materials: Array = []`
 
 **Public API**
-- `func setup(renderer: VoxelRenderer, ground_level: int) -> void:`
+- `func setup(renderer: VoxelBoard, ground_level: int) -> void:`
 - `func twin_count() -> int:`
 
 ---
@@ -1051,13 +1051,13 @@ extends `Node3D` · 1905 lines
 
 ---
 
-### `voxel_renderer.gd`
+### `voxel_board.gd`
 
-`class_name VoxelRenderer` · extends `Node2D` · 2317 lines
+`class_name VoxelBoard` · extends `Node2D` · 2321 lines
 
-`godot/scripts/geometry/voxel_renderer.gd`
+`godot/scripts/geometry/voxel_board.gd`
 
-> Geometry Module — Voxel Renderer: TileMapLayer-based voxel wall rendering Port from room.gd voxel functions, honoring Transform Canon Extends Node2D to add to scene tree
+> Geometry Module — VoxelBoard: the state of the voxel board that the 3D board (`Board3DLive`) draws. It renders nothing. Its levels are a registry (`level_origin()`, `level_z_index()`, `voxel_world_position()`), it owns the light and soot cell planes and their application, it turns dirty voxels into `voxel_destroyed`, and it keeps the glass crack / rim / shard-pile records the 3D board mirrors. Until R3D-END (2026-09-25) it was `VoxelRenderer`, a `TileMapLayer` renderer; this rename came after the 2D board was deleted (END-0 to END-6) and changed no behaviour. Extends Node2D so the 2D overlays that still parent to it keep working.
 
 **Signals**
 - `signal voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String)`
@@ -1706,13 +1706,13 @@ extends `Node2D` · 143 lines
 
 **Public vars**
 - `var occlusion_set: OcclusionSetClass = null`
-- `var voxel_renderer = null`
+- `var voxel_board = null`
 - `var voxel_tile_size: Vector2 = Vector2(32, 16)`
 - `var ring_colors := { 0: Color(1.0, 0.0, 0.0, 0.5),   # Red — ring 0 (nearest, most transparent) 1: Color(1.0, 0.5, 0.0, 0.5),   # Orange — ring 1 (middle) 2: Color(1.0, 1.0, 0.0, 0.5),   # Yellow — ring 2 (outer, least transparent) }`
 
 **Public API**
 - `func set_occlusion_set(occ_set: OcclusionSetClass) -> void:`
-- `func set_voxel_renderer(renderer) -> void:`
+- `func set_voxel_board(renderer) -> void:`
 
 ---
 
@@ -1812,7 +1812,7 @@ extends `Node2D` · 89 lines
 
 **Public API**
 - `func set_board3d(board: Node3D) -> void:`
-- `func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR) -> void:`
+- `func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_board, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -2093,7 +2093,7 @@ extends `Node2D` · 42 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
-> CellPlaneStore — the render-neutral home for the per-cell soot/light planes. RENDER3D R3D-2 step 3. Moved out of `VoxelRenderer` verbatim (a relocation, not a redesign — the API already matched what a future reader needs): one 512x512 `Image.FORMAT_RG8` per level, R = the per-face soot code (0..124, PERF-P2), G = the light bucket (0..11, PERF-P3; 255 = `BUCKET_UNWRITTEN`, never written). `VoxelRenderer` is now one reader/writer of this store, same standing the 3D board will have — `cell_plane_image()`/`cell_plane_levels()` are already documented as "read-only by contract" for exactly that use (DIAG-21). See `RENDER3D_MASTER_PLAN` R3D-2: "the cell planes move to a render-neutral owner (name decided at build time), which both renderers read."
+> CellPlaneStore — the render-neutral home for the per-cell soot/light planes. RENDER3D R3D-2 step 3. Moved out of `VoxelBoard` verbatim (a relocation, not a redesign — the API already matched what a future reader needs): one 512x512 `Image.FORMAT_RG8` per level, R = the per-face soot code (0..124, PERF-P2), G = the light bucket (0..11, PERF-P3; 255 = `BUCKET_UNWRITTEN`, never written). `VoxelBoard` is now one reader/writer of this store, same standing the 3D board will have — `cell_plane_image()`/`cell_plane_levels()` are already documented as "read-only by contract" for exactly that use (DIAG-21). See `RENDER3D_MASTER_PLAN` R3D-2: "the cell planes move to a render-neutral owner (name decided at build time), which both renderers read."
 
 **Constants / tuning**
 - `BUCKET_UNWRITTEN` = `255`
@@ -2232,7 +2232,7 @@ extends `Node2D` · 42 lines
 - `var soot_ramp_cells: Dictionary = {}`
 
 **Public API**
-- `func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> int:`
+- `func apply(kind: String, entry: Dictionary, voxel_board, smoke_overlay) -> int:`
 
 ---
 
@@ -2242,12 +2242,12 @@ extends `Node2D` · 42 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
-> DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN). Builds one `WorldDelta` for a single grenade detonation: all resolution, all exposure fallback, and the single map-wide light-field query, folded into one object a later choreography driver (Task 5/E-WAVE) can play back from `delta.waves` as a pure sequence of `set_cell()`/`erase_cell()` calls with zero further compositing/lookup — the performance idea §2 states once: "no compositing, no lookup, no light rebuild, no allocation happens inside a wave." **P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09): this class is now PURE.** It changes nothing — not a tile, not a Voxel — and returns a description of what a detonation WOULD do. `delta.commit()` is what makes it happen, and the caller owns that decision. Everything this pass used to read off freshly-mutated Voxels it now reads through `WorldDelta`'s projection. What this class does NOT do, on purpose: - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelRenderer call it makes runs in resolve-only mode (`apply=false`, Task 4's own seam added to `_set_voxel_cell()`/`render_slab()`/ `render_fixed_earth_level()`/`resolve_damage_voxel_swap()`). A voxel's on-screen TILE is only ever resolved, never painted, until a wave chooses to apply the plan entry produced here. - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s `commit_damage()` remains the single writer (DESTRUCTION_MASTER_PLAN §3); this pass only ever calls its `simulate_*` half. - It never CALLS `room.record_voxel_damage_to_base()`/increments `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's job, the same split Task 2/3 already established for their own new parameters. It DOES return the raw material for the first of those (`delta.touched_voxels`, `Array[Voxel]` — every voxel this blast's containers would change the damage_state of, DESTROYED or DENTED/ CRACKED), so Task 5's caller can persist without a second flood/ find_affected_containers pass to re-derive the same set. That list is only meaningful AFTER `commit()`, which is when its caller reads it. - It never schedules or times anything — the plan is a static census of what EVERY wave should eventually paint; Task 5 owns turning that into a 40 ms-cadenced sequence. `ctx` is a plain Dictionary rather than a typed context object, matching the project's existing MinimalRoom precedent (damage_atom_bake_selftest.gd) for running real BlastCalculator machinery against either a full `room.gd` or a trimmed selftest scaffold without either needing to know about the other: "edge_registry": EdgeRegistry        (required) "slab_registry": SlabRegistry        (required) "voxel_renderer": VoxelRenderer      (required) "blocked_edges": Dictionary          (optional, default {}) "blocked_cells": Dictionary          (optional, default {}) "lights": Array                      (optional, default [] — real light sources, e.g. RoomBuilder.get_ light_sources()) "shadow_results": Array              (optional, default []) "under_structure": Dictionary        (optional, default {} — VL-D3 "never saw the sun" darkening; derived from the CURRENT geometry if omitted, see _columns_with_structure()) "deep_layer_unlocked": bool          (optional, default false — D2; no live caller drives true yet)
+> DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN). Builds one `WorldDelta` for a single grenade detonation: all resolution, all exposure fallback, and the single map-wide light-field query, folded into one object a later choreography driver (Task 5/E-WAVE) can play back from `delta.waves` as a pure sequence of `set_cell()`/`erase_cell()` calls with zero further compositing/lookup — the performance idea §2 states once: "no compositing, no lookup, no light rebuild, no allocation happens inside a wave." **P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09): this class is now PURE.** It changes nothing — not a tile, not a Voxel — and returns a description of what a detonation WOULD do. `delta.commit()` is what makes it happen, and the caller owns that decision. Everything this pass used to read off freshly-mutated Voxels it now reads through `WorldDelta`'s projection. What this class does NOT do, on purpose: - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelBoard call it makes runs in resolve-only mode (`apply=false`, Task 4's own seam added to `_set_voxel_cell()`/`render_slab()`/ `render_fixed_earth_level()`/`resolve_damage_voxel_swap()`). A voxel's on-screen TILE is only ever resolved, never painted, until a wave chooses to apply the plan entry produced here. - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s `commit_damage()` remains the single writer (DESTRUCTION_MASTER_PLAN §3); this pass only ever calls its `simulate_*` half. - It never CALLS `room.record_voxel_damage_to_base()`/increments `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's job, the same split Task 2/3 already established for their own new parameters. It DOES return the raw material for the first of those (`delta.touched_voxels`, `Array[Voxel]` — every voxel this blast's containers would change the damage_state of, DESTROYED or DENTED/ CRACKED), so Task 5's caller can persist without a second flood/ find_affected_containers pass to re-derive the same set. That list is only meaningful AFTER `commit()`, which is when its caller reads it. - It never schedules or times anything — the plan is a static census of what EVERY wave should eventually paint; Task 5 owns turning that into a 40 ms-cadenced sequence. `ctx` is a plain Dictionary rather than a typed context object, matching the project's existing MinimalRoom precedent (damage_atom_bake_selftest.gd) for running real BlastCalculator machinery against either a full `room.gd` or a trimmed selftest scaffold without either needing to know about the other: "edge_registry": EdgeRegistry        (required) "slab_registry": SlabRegistry        (required) "voxel_board": VoxelBoard      (required) "blocked_edges": Dictionary          (optional, default {}) "blocked_cells": Dictionary          (optional, default {}) "lights": Array                      (optional, default [] — real light sources, e.g. RoomBuilder.get_ light_sources()) "shadow_results": Array              (optional, default []) "under_structure": Dictionary        (optional, default {} — VL-D3 "never saw the sun" darkening; derived from the CURRENT geometry if omitted, see _columns_with_structure()) "deep_layer_unlocked": bool          (optional, default false — D2; no live caller drives true yet)
 
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `WorldDeltaClass` = `preload("res://godot/scripts/systems/prediction/world_delta.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `VoxelLightFieldClass` = `preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")`
 - `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `CRATER_MAX_FACTOR` = `0.40`
@@ -2287,7 +2287,7 @@ extends `Node2D` · 42 lines
 
 **Public API**
 - `func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {}, debris_overlay: DebrisOverlay = null, debris_colors: Dictionary = {}) -> void:`
-- `func start(plan: Dictionary, voxel_renderer, smoke_overlay, tree: SceneTree) -> void:`
+- `func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> void:`
 
 ---
 
@@ -2311,7 +2311,7 @@ extends `Node2D` · 42 lines
 
 `godot/scripts/systems/destruction/glass_crack_params.gd`
 
-> GlassCrackParams — GLASS_MASTER_PLAN CRACK-02 / G-D27 (§13), as DATA. ONE crack event = ONE of these: every shader parameter the crack carries (the fracture sheet, its span, the pane's clip bounds, the craze field, the occupancy cut, the opening void, the hole-cut dial). `VoxelRenderer` keeps it in the crack's record (`rec["params"]` is `params`, by reference), and `GlassCrackMirror3D` gives the record a quad on the pane's plane in the 3D board and copies `params` into it every frame. R3D-END (END-2): this was `GlassCrackSprite`, a Sprite2D laid over the pane in the pane's own canvas basis, with a ShaderMaterial on `glass_crack.gdshader` as the record's 2D consumer. The 2D board is gone, so the node, its transform and its material are too; what the 3D board reads was always only `params` (R3D-9).
+> GlassCrackParams — GLASS_MASTER_PLAN CRACK-02 / G-D27 (§13), as DATA. ONE crack event = ONE of these: every shader parameter the crack carries (the fracture sheet, its span, the pane's clip bounds, the craze field, the occupancy cut, the opening void, the hole-cut dial). `VoxelBoard` keeps it in the crack's record (`rec["params"]` is `params`, by reference), and `GlassCrackMirror3D` gives the record a quad on the pane's plane in the 3D board and copies `params` into it every frame. R3D-END (END-2): this was `GlassCrackSprite`, a Sprite2D laid over the pane in the pane's own canvas basis, with a ShaderMaterial on `glass_crack.gdshader` as the record's 2D consumer. The 2D board is gone, so the node, its transform and its material are too; what the 3D board reads was always only `params` (R3D-9).
 
 **Constants / tuning**
 - `PANE_CLIP_SLACK` = `0.5`
@@ -2811,7 +2811,7 @@ extends `Node` · 231 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
-> VoxelLightField — per-voxel light BUCKET data (VL-01, VOXEL_LIGHT_MASTER_PLAN). The single seam between tactical lighting (LightRegistry / ShadowProjector, GU resolution) and every VISUAL consumer. VoxelRenderer.apply_light_field() reads it to repaint faces; future vision modes (thermal / night / X-ray) query it instead of touching tilemaps. Canon split preserved: this consumes LightSource.visual_energy, never tactical_energy — visual brightness is not tactical visibility. Deterministic and discrete: same lights + same layout always produce the same bucket per (cell, level). No per-frame work — built on lighting_rebuilt, queried lazily with a cache.
+> VoxelLightField — per-voxel light BUCKET data (VL-01, VOXEL_LIGHT_MASTER_PLAN). The single seam between tactical lighting (LightRegistry / ShadowProjector, GU resolution) and every VISUAL consumer. VoxelBoard.apply_light_field() reads it to repaint faces; future vision modes (thermal / night / X-ray) query it instead of touching tilemaps. Canon split preserved: this consumes LightSource.visual_energy, never tactical_energy — visual brightness is not tactical visibility. Deterministic and discrete: same lights + same layout always produce the same bucket per (cell, level). No per-frame work — built on lighting_rebuilt, queried lazily with a cache.
 
 **Public vars**
 - `var ambient_intensity: float = 0.15`
@@ -3365,7 +3365,7 @@ extends `Node` · 54 lines
 
 `godot/scripts/systems/voxel_variant_registry.gd`
 
-> VoxelVariantRegistry — Pre-fabricated damage-ATOM lookup (EXPLOSION_REBUILD_MASTER_PLAN Task 1b/E-BAKE, 2026-08-06, §3.1) Stores and resolves pre-baked damage-decal tile references created during map load. D-ARCH-01's per-CELL key (grid_pos, level, material) is gone — the atom-bake model's whole premise is that a damaged voxel shows a RANDOMLY CHOSEN facade crop for its material, not its own, so there is no cell dimension left to key on. The key is now purely about WHICH ATOM: (element_class, material, damage_material_name, substrate_variant). `damage_material_name` is the exact string VoxelRenderer. damage_variant_material()/floor_damage_material() computes for a given (damage_state, blast_sourced, carved_side, decal_variant) — the same functions VoxelRenderer.apply_damage_voxel_swap() calls to build its lookup key, so a hit and its D33 runtime-compositing fallback can never name a cell differently. `substrate_variant` is Voxel.damage_substrate, rolled once per mark and persisted (see Voxel's own doc). Soot is deliberately NOT part of this registry: soot is a per-cell modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the light-repaint pass after any set_cell(), independent of which source_id/atlas_coords a cell shows. DESTROYED voxels are not registered either — Voxel.set_damage(DESTROYED) sets visible = false and the renderer erases the cell directly, never reaching a damage-variant lookup at all.
+> VoxelVariantRegistry — Pre-fabricated damage-ATOM lookup (EXPLOSION_REBUILD_MASTER_PLAN Task 1b/E-BAKE, 2026-08-06, §3.1) Stores and resolves pre-baked damage-decal tile references created during map load. D-ARCH-01's per-CELL key (grid_pos, level, material) is gone — the atom-bake model's whole premise is that a damaged voxel shows a RANDOMLY CHOSEN facade crop for its material, not its own, so there is no cell dimension left to key on. The key is now purely about WHICH ATOM: (element_class, material, damage_material_name, substrate_variant). `damage_material_name` is the exact string VoxelBoard. damage_variant_material()/floor_damage_material() computes for a given (damage_state, blast_sourced, carved_side, decal_variant) — the same functions VoxelBoard.apply_damage_voxel_swap() calls to build its lookup key, so a hit and its D33 runtime-compositing fallback can never name a cell differently. `substrate_variant` is Voxel.damage_substrate, rolled once per mark and persisted (see Voxel's own doc). Soot is deliberately NOT part of this registry: soot is a per-cell modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the light-repaint pass after any set_cell(), independent of which source_id/atlas_coords a cell shows. DESTROYED voxels are not registered either — Voxel.set_damage(DESTROYED) sets visible = false and the renderer erases the cell directly, never reaching a damage-variant lookup at all.
 
 **Public API**
 - `func register(variant_key: String, source_id: int, atlas_coords: Vector2i) -> void:`
@@ -3602,7 +3602,7 @@ extends `SceneTree` · 682 lines
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 - `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
@@ -3687,7 +3687,7 @@ extends `SceneTree` · 1001 lines
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 - `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
 - `WallEdgeDataClass` = `preload("res://godot/scripts/world/wall_edge_data.gd")`
@@ -3735,7 +3735,7 @@ extends `SceneTree` · 173 lines
 
 `godot/scripts/tools/earth_variant_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN D2/D4 — EarthVariantSelector selftest. Rodar: godot --headless --script res://godot/scripts/tools/earth_variant_selftest.gd This is the "core, isolated, verified before anything consumes it" prompt: no VoxelRenderer/TileSet/Slab wiring here on purpose — that's the next wave.
+> DESTRUCTION_MASTER_PLAN D2/D4 — EarthVariantSelector selftest. Rodar: godot --headless --script res://godot/scripts/tools/earth_variant_selftest.gd This is the "core, isolated, verified before anything consumes it" prompt: no VoxelBoard/TileSet/Slab wiring here on purpose — that's the next wave.
 
 **Public vars**
 - `var passed: int = 0`
@@ -3761,7 +3761,7 @@ extends `SceneTree` · 152 lines
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -3786,7 +3786,7 @@ extends `SceneTree` · 245 lines
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 **Public vars**
@@ -3810,7 +3810,7 @@ extends `SceneTree` · 139 lines
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `FLOOR_TOP_LEVEL` = `GeometryCoords.FLOOR_TOP_LEVEL`
 
@@ -3844,7 +3844,7 @@ extends `SceneTree` · 1689 lines
 **Constants / tuning**
 - `ShotPunchTableClass` = `preload("res://godot/scripts/systems/destruction/shot_punch_table.gd")`
 - `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `GlassMaterialsClass` = `preload("res://godot/scripts/systems/glass_materials.gd")`
 - `GlassCrackClass` = `preload("res://godot/scripts/systems/destruction/glass_crack.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -4022,7 +4022,7 @@ extends `SceneTree` · 437 lines
 > GLASS_MASTER_PLAN G1 — glass transparency routing selftest. Rodar: python3 tools/persistent/run_selftests.py --only glass_transparency Born as the round-trip proof of G1's routing of glass cells onto their own tile layers (G-D1); what it still pins is the glass STATE and grouping those layers used to carry, now asked of the store and the grouper. R3D-END (END-1): the tests that read which TILE LAYER a glass voxel landed on ([1] Option A's mirror, [1b] the seam cull, [2] lazy sublayers, [3] concrete on the opaque layer, [4] a destroyed pane cell erased from its layer) went with the 2D board: no tile is written any more, and the glass state lives in the `VoxelStore` (R3D-14). [7] now reads the store's pane cells; [12] reads the plan's tile-less entry. END-2 took [11] (per-member pane atoms and the tint in their BLUE channel: the 3D board tints each member's material directly). What is left, worst first: 5. Intact glass dropped from `build_occupancy()` — the light field would stop seeing the pane. 7. A G-D9 brick band read as pane glass (or the reverse) — a brick sill that cracks and rains shards. 6/10. Panes grouped wrong (`GlassPaneGrouper`) — a plain pane merged into an armoured one defeats the armour. 8. Glass occluding (O7) — the cutaway would ghost a see-through pane. 9. A pane larger than the fracture sheet accepted silently (G-D23). 12. A damaged glass voxel yielding an opaque plan entry (GLASS-OLIVE).
 
 **Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 
@@ -4275,7 +4275,7 @@ extends `SceneTree` · 202 lines
 
 **Constants / tuning**
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `MATERIALS_ROOT` = `"res://ASSETS/materials"`
 - `GENERIC_DIR` = `"_generic"`
 
@@ -4301,7 +4301,7 @@ extends `SceneTree` · 157 lines
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -4471,7 +4471,7 @@ extends `Node` · 331 lines
 - `var MapCompilerClass`
 - `var FileMapSourceClass`
 - `var MapCatalogClass`
-- `var VoxelRendererClass`
+- `var VoxelBoardClass`
 
 **Public API**
 - `func test_criterion_1_propdef_from_json() -> void:`
@@ -4516,7 +4516,7 @@ extends `SceneTree` · 135 lines
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 
@@ -4542,7 +4542,7 @@ extends `SceneTree` · 158 lines
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 ---
@@ -4559,7 +4559,7 @@ extends `SceneTree` · 275 lines
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 **Public vars**
@@ -4595,7 +4595,7 @@ extends `SceneTree` · 309 lines
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `CEILING_LEVEL` = `GeometryCoordsClass.PLAYABLE_LEVEL + GeometryCoordsClass.LEVELS_PER_STOREY`
 
 **Public vars**
@@ -4656,7 +4656,7 @@ extends `SceneTree` · 212 lines
 
 ### `scenario_selftest.gd`
 
-extends `Node` · 138 lines
+extends `Node` · 137 lines
 
 `godot/scripts/tools/scenario_selftest.gd`
 
@@ -4716,7 +4716,7 @@ extends `SceneTree` · 120 lines
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -4825,7 +4825,7 @@ extends `SceneTree` · 247 lines
 > DESTRUCTION_MASTER_PLAN D32 — damage-decal ART selftest. Rodar: godot --headless --script res://godot/scripts/tools/voxel_decal_selftest.gd What this suite exists to catch: a decal family, a variant or a generic mark missing from disk, or the generator's manifest drifting from the constants the board reads. Nothing fails loudly otherwise — a mark is silently dropped. R3D-END END-4: the criteria about WHICH NAME a (tier, cause, side) resolves to went with the 2D name resolver (`damage_variant_material()` and its plan parsers); the board picks a decal by (family, material, variant) and this suite keeps the asset side of that. Deliberately NOT asserted here: what the decal looks like. That is verified on the asset side (the generator's own geometry checks) and by real capture.
 
 **Constants / tuning**
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `MANIFEST_PATH` = `"res://ASSETS/materials/manifest.json"`
 - `DECAL_NAME_TEMPLATE` = `"res://ASSETS/materials/%s/decals/decal_%s_%s_%d.png"`
 - `GENERIC_MARK_TEMPLATE` = `"res://ASSETS/materials/_generic/decals/decal_generic_%s_%d.png"`
@@ -5630,7 +5630,7 @@ extends `Node2D` · 10678 lines
 - `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
 - `JunctionResolverClass` = `preload("res://godot/scripts/geometry/junction_resolver.gd")`
 - `EdgeRegistryClass` = `preload("res://godot/scripts/geometry/edge_registry.gd")`
-- `VoxelRendererClass` = `preload("res://godot/scripts/geometry/voxel_renderer.gd")`
+- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
 - `OcclusionOverlayClass` = `preload("res://godot/scripts/overlays/occlusion_overlay.gd")`
 - `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`

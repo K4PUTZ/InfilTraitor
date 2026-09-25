@@ -12,7 +12,7 @@ const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.
 var occlusion_set: OcclusionSetClass = null
 ## OCC-FIX-02: the overlay asks the voxel renderer where a cell is. It does not re-derive
 ## the isometric transform. See _voxel_to_screen().
-var voxel_renderer = null
+var voxel_board = null
 
 ## Voxel tile dimensions (must match tileset_voxels)
 var voxel_tile_size: Vector2 = Vector2(32, 16)
@@ -48,8 +48,8 @@ func set_occlusion_set(occ_set: OcclusionSetClass) -> void:
 ## them — but occluded cells live on the VOXEL grid (8 voxels per gameplay unit), not the
 ## floor grid. Two planes, one transform, wrong answer: the painted region landed on a
 ## different cube entirely. The renderer owns the voxel transform; ask it.
-func set_voxel_renderer(renderer) -> void:
-	voxel_renderer = renderer
+func set_voxel_board(renderer) -> void:
+	voxel_board = renderer
 
 ## ============================================================================
 ## Visualization
@@ -62,7 +62,7 @@ func _draw() -> void:
 	# Draw each occluded voxel cell as a diamond, colored by ring
 	# OCC-09: get_occluded_cells() values are now {"ring": int, "min_level": int}
 	# dicts, not a bare ring int — min_level travels with the cell so
-	# VoxelRenderer can skip levels the vertical reveal cutoff excluded.
+	# VoxelBoard can skip levels the vertical reveal cutoff excluded.
 	var occluded_cells := occlusion_set.get_occluded_cells()
 	for voxel_cell in occluded_cells.keys():
 		var ring_index: int = occluded_cells[voxel_cell]["ring"]
@@ -138,6 +138,6 @@ func _draw_stats() -> void:
 ## Vector2.ZERO for EVERY cell and the whole dev overlay painted its ring diamonds in one
 ## pile at the origin. It is hidden by default, which is why it went unreported.
 func _voxel_to_screen(voxel_cell: Vector2i) -> Vector2:
-	if voxel_renderer == null:
+	if voxel_board == null:
 		return Vector2.ZERO
-	return voxel_renderer.voxel_world_position(voxel_cell, voxel_renderer.ground_plane_level())
+	return voxel_board.voxel_world_position(voxel_cell, voxel_board.ground_plane_level())

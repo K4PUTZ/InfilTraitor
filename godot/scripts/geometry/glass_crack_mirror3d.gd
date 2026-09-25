@@ -1,6 +1,6 @@
 ## GlassCrackMirror3D — the 3D board's twin of every live `GlassCrackSprite`.
 ##
-## RENDER3D R3D-6 item 2 (moved here from R3D-4e-4b). `VoxelRenderer.spawn_glass_crack()` / `spawn_glass_craze()` produce
+## RENDER3D R3D-6 item 2 (moved here from R3D-4e-4b). `VoxelBoard.spawn_glass_crack()` / `spawn_glass_craze()` produce
 ## each crack as a RECORD: the centre voxel, the face, the run axis, the span, the pane bounds and `params`, every shader
 ## parameter as data (the occupancy cut and the opening void included). This node gives each record a quad on the pane's
 ## plane in the 3D world and copies `params` into it every frame. **R3D-9: it reads the record and nothing else** — not
@@ -28,7 +28,7 @@ const MIRRORED: Array[String] = [
 ## Lifts the quad off the glass so it never z-fights the pane, in voxels.
 const FACE_LIFT_VOXELS: float = 0.05
 
-var _renderer: VoxelRenderer = null
+var _renderer: VoxelBoard = null
 var _ground_level: int = 0
 var _unit: float = 1.0
 var _shader: Shader = null
@@ -42,7 +42,7 @@ const OPEN_TEXELS_PER_VOXEL: int = 12
 var _open_seen: int = -1
 
 
-func setup(renderer: VoxelRenderer, ground_level: int) -> void:
+func setup(renderer: VoxelBoard, ground_level: int) -> void:
 	_renderer = renderer
 	_ground_level = ground_level
 	_unit = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)

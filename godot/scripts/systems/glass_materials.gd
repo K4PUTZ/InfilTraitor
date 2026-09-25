@@ -102,7 +102,7 @@ static func tint_index(material_id: String) -> int:
 ## would silently repaint every pane in the game.
 ##
 ## Index 0 MUST equal glass_shading.gdshaderinc's `glass_tint` default and
-## VoxelRenderer._glass_shader_params — three copies of one number, which is one
+## VoxelBoard._glass_shader_params — three copies of one number, which is one
 ## too many; the selftest pins them equal rather than trusting the comment.
 ##
 ## `static var` (not const) for the same reason every balance row in

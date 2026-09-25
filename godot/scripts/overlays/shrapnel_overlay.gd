@@ -17,7 +17,7 @@ class_name ShrapnelOverlay
 ##
 ## FIXED 2026-08-12 — never fired since `0c728c6`. Two bugs, both silent
 ## because nothing exercises this path except a real detonation:
-## 1. `cell_level_to_world()` doesn't exist on VoxelRenderer — the real name
+## 1. `cell_level_to_world()` doesn't exist on VoxelBoard — the real name
 ##    is `voxel_world_position()` (same (cell, level) -> Vector2 signature).
 ##    Every call raised a SCRIPT ERROR and aborted `spawn_shrapnel()` before
 ##    a single fragment was created. Confirmed NOT to abort its caller too —
@@ -74,7 +74,7 @@ func _ready() -> void:
 
 ## Sample `frag_count` fragments from the damage cells and launch them.
 ## `blast_center` is the epicenter in world coords; `plan` is the
-## DetonationPlan; `voxel_renderer` resolves cell→world coords.
+## DetonationPlan; `voxel_board` resolves cell→world coords.
 ## RENDER3D R3D-4e-3 — hand this overlay the 3D board (or null to go back to 2D): fragments then fly in
 ## world space, so a wall in front of them hides them.
 const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
@@ -97,9 +97,9 @@ func set_board3d(board: Node3D) -> void:
 	_trail_field3d.attach_rect(board, 4)
 
 
-func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer,
+func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_board,
 		floor_pos: Vector2 = ParticleMathRef.NO_FLOOR) -> void:
-	if voxel_renderer == null:
+	if voxel_board == null:
 		return
 
 	## Collect all affected cells (destroy/dented/cracked) with their world positions
@@ -109,7 +109,7 @@ func spawn_shrapnel(blast_center: Vector2, plan: Dictionary, voxel_renderer,
 			for entry in plan[kind][ring]:
 				var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
 				var level: int = entry.get("level", 0)
-				var world_pos: Vector2 = voxel_renderer.voxel_world_position(cell, level)
+				var world_pos: Vector2 = voxel_board.voxel_world_position(cell, level)
 				cells.append(world_pos)
 
 	if cells.is_empty():

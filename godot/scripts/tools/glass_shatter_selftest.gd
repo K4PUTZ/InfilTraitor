@@ -1025,7 +1025,7 @@ func test_only_rifle_class_pierces_armored_glass() -> void:
 ## A stand-in for the room, holding exactly the one call `WorldDelta.commit()`
 ## makes on this path. It records rather than acts, because what is being tested
 ## is WHEN the claim happens, not what claiming does — and the real
-## `claim_glass_opening_for_hit()` needs a VoxelRenderer, a PerspectiveMapper and
+## `claim_glass_opening_for_hit()` needs a VoxelBoard, a PerspectiveMapper and
 ## a live map to do anything at all.
 class RoomStub:
 	extends RefCounted

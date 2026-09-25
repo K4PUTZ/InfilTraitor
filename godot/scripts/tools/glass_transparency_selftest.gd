@@ -19,7 +19,7 @@
 
 extends SceneTree
 
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
 
@@ -74,8 +74,8 @@ func _make_slice(id: String, material: String, level: int, storeys: int = 1) -> 
 	return slice
 
 
-func _fresh_renderer() -> VoxelRenderer:
-	var r := VoxelRendererClass.new()
+func _fresh_renderer() -> VoxelBoard:
+	var r := VoxelBoardClass.new()
 	root.add_child(r)
 	r.setup(Vector2.ZERO)
 	return r

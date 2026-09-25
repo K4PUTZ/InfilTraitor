@@ -108,8 +108,8 @@ func _test_code_round_trip() -> void:
 		if BlastCalculatorClass.soot_ring_of_code(BlastCalculatorClass.soot_code(ring)) != ring:
 			ok = false
 	_check(ok, "tones 0..3 round-trip through the plane code")
-	_check(BlastCalculatorClass.soot_code(-1) == VoxelRenderer.FACE_SOOT_CODE_CLEAN
-		and BlastCalculatorClass.soot_ring_of_code(VoxelRenderer.FACE_SOOT_CODE_CLEAN) == -1,
+	_check(BlastCalculatorClass.soot_code(-1) == VoxelBoard.FACE_SOOT_CODE_CLEAN
+		and BlastCalculatorClass.soot_ring_of_code(VoxelBoard.FACE_SOOT_CODE_CLEAN) == -1,
 		"clean maps to the clean code and back to -1")
 
 

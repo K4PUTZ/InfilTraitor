@@ -7,10 +7,10 @@
 ## RANDOMLY CHOSEN facade crop for its material, not its own, so there is no
 ## cell dimension left to key on. The key is now purely about WHICH ATOM:
 ## (element_class, material, damage_material_name, substrate_variant).
-## `damage_material_name` is the exact string VoxelRenderer.
+## `damage_material_name` is the exact string VoxelBoard.
 ## damage_variant_material()/floor_damage_material() computes for a given
 ## (damage_state, blast_sourced, carved_side, decal_variant) — the same
-## functions VoxelRenderer.apply_damage_voxel_swap() calls to build its
+## functions VoxelBoard.apply_damage_voxel_swap() calls to build its
 ## lookup key, so a hit and its D33 runtime-compositing fallback can never
 ## name a cell differently. `substrate_variant` is Voxel.damage_substrate,
 ## rolled once per mark and persisted (see Voxel's own doc).

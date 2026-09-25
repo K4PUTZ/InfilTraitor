@@ -69,12 +69,12 @@ var soot_ramp_cells: Dictionary = {}
 ## The scorch an entry should write RIGHT NOW — its own, or clean.
 func _wave_soot(entry: Dictionary) -> int:
 	if soot_clean:
-		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
+		return VoxelBoard.FACE_SOOT_CODE_CLEAN
 	if not soot_ramp_cells.is_empty():
 		var cell: Vector2i = entry.get("cell", Vector2i.ZERO)
 		if soot_ramp_cells.has(Vector3i(cell.x, cell.y, int(entry.get("level", 0)))):
-			return VoxelRenderer.FACE_SOOT_CODE_CLEAN
-	return int(entry.get("soot", VoxelRenderer.FACE_SOOT_CODE_CLEAN))
+			return VoxelBoard.FACE_SOOT_CODE_CLEAN
+	return int(entry.get("soot", VoxelBoard.FACE_SOOT_CODE_CLEAN))
 
 
 ## One rung down the ladder: every face `by` tones fainter, clamped at clean.
@@ -86,26 +86,26 @@ static func lightened(faces: Vector3i, by: int) -> Vector3i:
 		mini(faces.x + by, clean), mini(faces.y + by, clean), mini(faces.z + by, clean))
 
 
-func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> int:
+func apply(kind: String, entry: Dictionary, voxel_board, smoke_overlay) -> int:
 	match kind:
 		"destroy":
 			## DIAG-21 2c: the voxel is already gone in the data; the light apply still needs to visit it.
-			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+			voxel_board.note_external_write(int(entry["level"]), entry["cell"])
 			## R3D-6: glass is NOT a plane-only write: a shattered pane owes the crack occupancy, the rims and the craze
 			## masks their re-cut. R3D-14: those read the store, so `erase_glass_cell()` carries only the seams
 			## (light, ghost, the two glass flags).
-			voxel_renderer.erase_glass_cell(int(entry["level"]), entry["cell"])
+			voxel_board.erase_glass_cell(int(entry["level"]), entry["cell"])
 			return 1
 		"expose":
 			## §2's exposure fallback (B5). Its own step since E-ORGANIC-01 —
 			## see flatten_plan() for why nesting these was the spike. The planes only.
-			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
-			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+			voxel_board._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
+			voxel_board.note_external_write(int(entry["level"]), entry["cell"])
 			return 1
 		"dented", "cracked", "soot":
 			## The planes only; PERF-10: `note_external_write()` because this bypasses the light field's stale set.
-			voxel_renderer._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
-			voxel_renderer.note_external_write(int(entry["level"]), entry["cell"])
+			voxel_board._write_cell_soot(int(entry["level"]), entry["cell"], _wave_soot(entry))
+			voxel_board.note_external_write(int(entry["level"]), entry["cell"])
 			return 1
 		"smoke":
 			if smoke_overlay == null:
@@ -226,16 +226,16 @@ func apply(kind: String, entry: Dictionary, voxel_renderer, smoke_overlay) -> in
 ## Called once per FRAME now rather than once per wave (E-ORGANIC-01) — same
 ## contract, fewer calls, and still a cheap no-op when nothing composited
 ## (flush_dirty_pages() checks an empty dirty-page set itself).
-func flush(voxel_renderer) -> void:
+func flush(voxel_board) -> void:
 	## G-D30 — the cook's own batch seam. `erase_glass_cell()` above only flags;
 	## this is where a blast that took glass out from under a standing crack
 	## re-cuts it, once, instead of once per erased cell.
-	voxel_renderer.refresh_glass_crack_occupancy()
+	voxel_board.refresh_glass_crack_occupancy()
 	## CRACK-03 — and the shard rim around whatever hole the blast just opened.
-	voxel_renderer.refresh_glass_rims()
+	voxel_board.refresh_glass_rims()
 	## ⚠️ B-4b — AND THE CRAZE FIELD'S HOLE MASK, WHICH MUST COME AFTER THE RIMS
 	## AND NOT WITH THE OCCUPANCY ABOVE. `refresh_glass_rims()` is what APPLIES the
 	## openings, and applying them is what records their polygons; asked before it,
 	## the mask would be built from an empty log and the mesh would draw over every
 	## hole — the silent version of the defect this exists to fix.
-	voxel_renderer.refresh_craze_opening_masks()
+	voxel_board.refresh_craze_opening_masks()

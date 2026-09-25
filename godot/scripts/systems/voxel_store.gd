@@ -434,7 +434,7 @@ func grid_mismatches() -> int:
 	return mismatches
 
 
-## RENDER3D R3D-1c — `VoxelRenderer.build_occupancy()`'s shape (level -> {Vector2i: true}),
+## RENDER3D R3D-1c — `VoxelBoard.build_occupancy()`'s shape (level -> {Vector2i: true}),
 ## read from the claims: a cell is occupied when any of its claims is visible. Every level
 ## the store spans gets an entry, empty or not. `predict_destroyed` omits cells, keyed
 ## Vector3i(x, y, level), exactly as the tile-based version does.
@@ -497,7 +497,7 @@ func occupancy_dict_after(gone: Dictionary) -> Dictionary:
 
 
 ## RENDER3D R3D-14 — the face + 1 of the VISIBLE glass pane voxel that holds this cell, or 0 when none does. The glass
-## state's one question (`VoxelRenderer._glass_cell_present()`, the crack's cut mask, the opening walk), answered from the
+## state's one question (`VoxelBoard._glass_cell_present()`, the crack's cut mask, the opening walk), answered from the
 ## claims. A cell two claims hold answers for the LAST visible pane of them: the layer this replaces was written in claim order
 ## and the last writer won (64 such corner cells on GLASS, whose atoms carried the later pane's face). Bounds-checked like `has_cell()`.
 func glass_pane_face_at(x: int, y: int, level: int) -> int:

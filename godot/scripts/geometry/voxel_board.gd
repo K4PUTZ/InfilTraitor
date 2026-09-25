@@ -1,8 +1,12 @@
-## Geometry Module — Voxel Renderer: TileMapLayer-based voxel wall rendering
-## Port from room.gd voxel functions, honoring Transform Canon
-## Extends Node2D to add to scene tree
+## Geometry Module — VoxelBoard: the state of the voxel board that the 3D board (`Board3DLive`) draws.
+##
+## It renders nothing. Its levels are a registry (`level_origin()`, `level_z_index()`, `voxel_world_position()`), it owns the light
+## and soot cell planes and their application, it turns dirty voxels into `voxel_destroyed`, and it keeps the glass crack / rim /
+## shard-pile records the 3D board mirrors. Until R3D-END (2026-09-25) it was `VoxelRenderer`, a `TileMapLayer` renderer; this rename
+## came after the 2D board was deleted (END-0 to END-6) and changed no behaviour.
+## Extends Node2D so the 2D overlays that still parent to it keep working.
 extends Node2D
-class_name VoxelRenderer
+class_name VoxelBoard
 
 ## DESTRUCTION_MASTER_PLAN D15: emitted at the TIC, alongside the dirty pass,
 ## whenever a voxel is actually erased (destroyed). VFX/audio subscribe here
@@ -517,7 +521,7 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 ## grenades before the tile fallback below was deleted.
 func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
 	if VoxelStore.active == null:
-		push_error("[VoxelRenderer] build_occupancy: no VoxelStore.active — returning empty occupancy")
+		push_error("[VoxelBoard] build_occupancy: no VoxelStore.active — returning empty occupancy")
 		return {}
 	return VoxelStore.active.occupancy_dict(predict_destroyed)
 
@@ -537,7 +541,7 @@ func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
 ## below was deleted.
 func columns_with_structure() -> Dictionary:
 	if VoxelStore.active == null:
-		push_error("[VoxelRenderer] columns_with_structure: no VoxelStore.active — returning empty")
+		push_error("[VoxelBoard] columns_with_structure: no VoxelStore.active — returning empty")
 		return {}
 	var cols: Dictionary = {}
 	var occ: Dictionary = VoxelStore.active.occupancy_dict()
@@ -611,7 +615,7 @@ func _apply_light_field_pass_store(field) -> void:
 	_placed_by_gu.clear()
 	_placed_index.clear()
 	if VoxelStore.active == null:
-		push_error("[VoxelRenderer] _apply_light_field_pass_store: no VoxelStore.active — planes not written")
+		push_error("[VoxelBoard] _apply_light_field_pass_store: no VoxelStore.active — planes not written")
 		return
 	var occ: Dictionary = VoxelStore.active.occupancy_dict()
 	for level: Variant in occ.keys():
@@ -1116,7 +1120,7 @@ func _glass_crack_sheet(opening_id: String, variant: int) -> Texture2D:
 	var tex := load(path) as Texture2D
 	if tex == null:
 		## B6 loud-fail: a missing sheet must not degrade to an invisible crack.
-		push_error("[VoxelRenderer] CRACK-04: fracture sheet %s failed to load — the crack will not draw" % path)
+		push_error("[VoxelBoard] CRACK-04: fracture sheet %s failed to load — the crack will not draw" % path)
 	_glass_crack_sheets[path] = tex
 	return tex
 
@@ -1495,7 +1499,7 @@ func _floor_shard_texture(variant: int) -> Texture2D:
 			var path := "res://ASSETS/materials/glass/decals/decal_shard_glass_%d.png" % i
 			var tex := load(path) as Texture2D
 			if tex == null:
-				push_error("[VoxelRenderer] G6: %s failed to load — no shards will draw" % path)
+				push_error("[VoxelBoard] G6: %s failed to load — no shards will draw" % path)
 			_floor_shard_textures.append(tex)
 	return _floor_shard_textures[variant % _floor_shard_textures.size()] as Texture2D
 
@@ -1787,7 +1791,7 @@ func _build_crack_occupancy(c: Dictionary) -> void:
 		## G-D23 caps a pane at 64 x 32; anything past this is a pane that was
 		## never authored, and silently allocating for it is how a 6 MB surprise
 		## gets in. Clamp and say so.
-		push_warning("[VoxelRenderer] G-D30: pane %s is %dx%d cells, past the %d cap — the crack's cut is clipped"
+		push_warning("[VoxelBoard] G-D30: pane %s is %dx%d cells, past the %d cap — the crack's cut is clipped"
 			% [c["pane_id"], w, h, GLASS_OCC_MAX_SIDE])
 		w = mini(w, GLASS_OCC_MAX_SIDE)
 		h = mini(h, GLASS_OCC_MAX_SIDE)
@@ -2034,7 +2038,7 @@ func _apply_opening_to_region(region: Dictionary) -> int:
 				_glass_shaped_cells[skey] = true
 				swapped += 1
 	if unswallowed > 0:
-		push_warning("[VoxelRenderer] opening '%s' at %s covers %d cell(s) whole that still hold glass — the opening is larger than the hole destruction opened"
+		push_warning("[VoxelBoard] opening '%s' at %s covers %d cell(s) whole that still hold glass — the opening is larger than the hole destruction opened"
 			% [opening_id, str(anchor), unswallowed])
 	## ── G-D35 B-4b — REMEMBER THE POLYGON, NOT JUST ITS EFFECT ───────────────
 	##
@@ -2132,7 +2136,7 @@ func _ensure_voxel_layers(storey_count: int) -> void:
 ## for, which is precisely what D18 forbids.
 func _ensure_negative_voxel_layer(level: int) -> void:
 	if level >= _ground_plane_level:
-		push_error("VoxelRenderer._ensure_negative_voxel_layer: level %d is not below the ground plane (%d)"
+		push_error("VoxelBoard._ensure_negative_voxel_layer: level %d is not below the ground plane (%d)"
 			% [level, _ground_plane_level])
 		return
 	_ensure_layer(level)
@@ -2312,6 +2316,6 @@ func clear() -> void:
 
 
 func _to_string() -> String:
-	return "VoxelRenderer{layers=%d, negative_layers=%d}" % [
+	return "VoxelBoard{layers=%d, negative_layers=%d}" % [
 		wall_level_keys().size(), _layers.size() - wall_level_keys().size()
 	]

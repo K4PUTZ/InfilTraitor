@@ -338,7 +338,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	_crack_mirror = GlassCrackMirror3DClass.new()
 	_crack_mirror.name = "GlassCracks"
 	_geometry_root.add_child(_crack_mirror)
-	_crack_mirror.call("setup", room._voxel_renderer, _ground_level)
+	_crack_mirror.call("setup", room._voxel_board, _ground_level)
 	for i: int in range(_shader_materials.size()):
 		if _material_glass[i] and _shader_materials[i].shader.resource_path.ends_with("glass_pane3d.gdshader"):
 			_crack_mirror.pane_materials.append(_shader_materials[i])
@@ -545,7 +545,7 @@ func on_occlusion(occ_set) -> void:
 	if occ_set == null or _geometry_root == null:
 		return
 	var oc0: int = Time.get_ticks_usec()
-	var size: int = VoxelRenderer.SOOT_TEX_SIZE
+	var size: int = VoxelBoard.SOOT_TEX_SIZE
 	if _occ_image == null:
 		_occ_image = Image.create(size, size, false, Image.FORMAT_RGBA8)
 		_occ_texture = ImageTexture.create_from_image(_occ_image)
@@ -556,7 +556,7 @@ func on_occlusion(occ_set) -> void:
 	bytes.resize(size * size * 4)
 	for column: Vector2i in columns:
 		var entry: Dictionary = columns[column]
-		var px: Vector2i = column + VoxelRenderer.SOOT_PLANE_ORIGIN
+		var px: Vector2i = column + VoxelBoard.SOOT_PLANE_ORIGIN
 		if px.x < 0 or px.y < 0 or px.x >= size or px.y >= size:
 			continue
 		var at: int = (px.y * size + px.x) * 4
@@ -573,7 +573,7 @@ func on_occlusion(occ_set) -> void:
 	var roof_gus: Dictionary = occ_set.get_roof_gus()
 	var roof_bytes := PackedByteArray()
 	roof_bytes.resize(gu_size * gu_size * 4)
-	var gu_origin: Vector2i = VoxelRenderer.SOOT_PLANE_ORIGIN / 8
+	var gu_origin: Vector2i = VoxelBoard.SOOT_PLANE_ORIGIN / 8
 	for gu: Vector2i in roof_gus:
 		var roof_entry: Dictionary = roof_gus[gu]
 		var gp: Vector2i = gu + gu_origin
@@ -1019,9 +1019,9 @@ func _collect() -> Dictionary:
 func _build_decal_catalog() -> void:
 	var images: Array[Image] = []
 	for family: String in ["bullet", "dent", "crack"]:
-		for material_id: String in VoxelRenderer.IMPACT_DECAL_MATERIALS + [VoxelRenderer.IMPACT_FLOOR_MATERIAL]:
+		for material_id: String in VoxelBoard.IMPACT_DECAL_MATERIALS + [VoxelBoard.IMPACT_FLOOR_MATERIAL]:
 			var loaded: int = 0
-			for variant: int in range(VoxelRenderer.IMPACT_DECAL_VARIANTS):
+			for variant: int in range(VoxelBoard.IMPACT_DECAL_VARIANTS):
 				var path: String = "res://ASSETS/materials/%s/decals/decal_%s_%s_%d.png" % [
 					material_id, family, material_id, variant]
 				if not ResourceLoader.exists(path):
@@ -1040,9 +1040,9 @@ func _build_decal_catalog() -> void:
 				_decal_layer["%s|%s|%d" % [family, material_id, variant]] = images.size()
 				images.append(image)
 				loaded += 1
-			if loaded > 0 and loaded < VoxelRenderer.IMPACT_DECAL_VARIANTS:
+			if loaded > 0 and loaded < VoxelBoard.IMPACT_DECAL_VARIANTS:
 				push_error("[Board3DLive] decal family %s|%s has %d of %d variants on disk: every voxel whose hash lands on a missing one draws no mark"
-					% [family, material_id, loaded, VoxelRenderer.IMPACT_DECAL_VARIANTS])
+					% [family, material_id, loaded, VoxelBoard.IMPACT_DECAL_VARIANTS])
 	if images.is_empty() or images.size() > 255:
 		_decal_layer.clear()
 		return
@@ -1093,7 +1093,7 @@ func _read_look() -> void:
 ## plane for that level (or a clean, unwritten plane when the renderer has none), and
 ## every opaque material pointed at it.
 func _build_plane() -> void:
-	var renderer: VoxelRenderer = _room._voxel_renderer
+	var renderer: VoxelBoard = _room._voxel_board
 	var images: Array[Image] = []
 	for level in range(_level_min, _level_max + 1):
 		images.append(_plane_image(level))
@@ -1102,7 +1102,7 @@ func _build_plane() -> void:
 	if err != OK:
 		push_error("[Board3DLive] Texture2DArray.create_from_images failed (%s) — faces will read full light, no soot" % error_string(err))
 	var ladder := PackedFloat32Array(_light_ladder)
-	var dims := PackedFloat32Array(VoxelRenderer.FLOOR_DEPTH_DIM)
+	var dims := PackedFloat32Array(VoxelBoard.FLOOR_DEPTH_DIM)
 	var rel_offset: int = renderer.relative_level(_ground_level) - _ground_level
 	for i: int in range(_shader_materials.size()):
 		if _material_glass[i]:
@@ -1113,8 +1113,8 @@ func _build_plane() -> void:
 		m.set_shader_parameter("level_count", _level_max - _level_min + 1)
 		m.set_shader_parameter("mesh_ground_level", _ground_level)
 		m.set_shader_parameter("rel_offset", rel_offset)
-		m.set_shader_parameter("plane_origin", VoxelRenderer.SOOT_PLANE_ORIGIN)
-		m.set_shader_parameter("plane_size", VoxelRenderer.SOOT_TEX_SIZE)
+		m.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
+		m.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		m.set_shader_parameter("bucket_lum", ladder)
 		m.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 		m.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
@@ -1122,12 +1122,12 @@ func _build_plane() -> void:
 
 
 func _plane_image(level: int) -> Image:
-	var image: Image = (_room._voxel_renderer as VoxelRenderer).cell_plane_image(level)
+	var image: Image = (_room._voxel_board as VoxelBoard).cell_plane_image(level)
 	if image != null:
 		return image
-	var blank := Image.create(VoxelRenderer.SOOT_TEX_SIZE, VoxelRenderer.SOOT_TEX_SIZE,
+	var blank := Image.create(VoxelBoard.SOOT_TEX_SIZE, VoxelBoard.SOOT_TEX_SIZE,
 		false, Image.FORMAT_RG8)
-	blank.fill(Color8(VoxelRenderer.FACE_SOOT_CODE_CLEAN, VoxelRenderer.BUCKET_UNWRITTEN, 0, 255))
+	blank.fill(Color8(VoxelBoard.FACE_SOOT_CODE_CLEAN, VoxelBoard.BUCKET_UNWRITTEN, 0, 255))
 	return blank
 
 
@@ -1653,8 +1653,8 @@ const GLASS_CAP_VOXELS: int = 2
 
 func _glass_plane_dim(dir: int, w: int, h: int) -> float:
 	if dir == Dir.TOP:
-		return VoxelRenderer.GLASS_DIM_TOP if mini(w, h) <= GLASS_CAP_VOXELS else 1.0
-	return VoxelRenderer.GLASS_DIM_SIDE if w <= GLASS_CAP_VOXELS else 1.0
+		return VoxelBoard.GLASS_DIM_TOP if mini(w, h) <= GLASS_CAP_VOXELS else 1.0
+	return VoxelBoard.GLASS_DIM_SIDE if w <= GLASS_CAP_VOXELS else 1.0
 
 
 ## Voxel.CarvedSide (VIEW space, view N) → the face it carved: LEFT is the SW face, RIGHT the SE face,
@@ -1736,18 +1736,18 @@ func _dent_quad(surface: SurfaceData, unit: float, corners: Array, normal: Vecto
 	surface.add_quad(c, unit, normal, uvs, -1.0)
 
 
-## Which faces of a damaged voxel carry which decal (`VoxelRenderer._decal_material()`'s table, as
+## Which faces of a damaged voxel carry which decal (`VoxelBoard._decal_material()`'s table, as
 ## faces): a blast's CRACKED mark covers all three visible faces of a crack-capable material; a
 ## bullet's mark is the ONE lateral face it struck; a DENTED voxel marks its carved face. LEFT is the
 ## SW face and RIGHT the SE face in view N. The variant is the one chosen at damage time.
 func _decal_faces(material_id: String, damage: int, blast: bool, carved: int, variant: int,
 		out_dirs: Array, out_layers: Array) -> void:
-	var v: int = posmod(variant, VoxelRenderer.IMPACT_DECAL_VARIANTS)
+	var v: int = posmod(variant, VoxelBoard.IMPACT_DECAL_VARIANTS)
 	var base: String = material_id
 	var carved_dir: int = int(DENT_DIR_OF_CARVED_SIDE.get(carved, -1))
-	if not VoxelRenderer.IMPACT_DECAL_MATERIALS.has(base):
+	if not VoxelBoard.IMPACT_DECAL_MATERIALS.has(base):
 		if damage == Voxel.DamageState.DENTED and blast and carved_dir == Dir.TOP:
-			base = VoxelRenderer.IMPACT_FLOOR_MATERIAL
+			base = VoxelBoard.IMPACT_FLOOR_MATERIAL
 		else:
 			return
 	if damage == Voxel.DamageState.CRACKED:

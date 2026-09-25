@@ -376,19 +376,19 @@ func fire_active() -> void:
 	## TestZoneController.detonate_active()'s matching comment.
 	##
 	## W-GUARD-01: every `await` below is a place the ROOM can go away — a map
-	## load frees it and builds a new VoxelRenderer, and this coroutine would
+	## load frees it and builds a new VoxelBoard, and this coroutine would
 	## resume reaching through a freed `room`. Same defect class as
 	## RUNTIME-GUARD-01 on the blast side, same fix: revalidate and abandon
 	## loudly. The busy flag needs no separate rescue on that path — it lives on
 	## the room that just went away.
 	room._destruction_render_busy = true
 	var render_us := Time.get_ticks_usec()
-	await room._voxel_renderer.process_dirty_async(room._edge_registry)
-	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+	await room._voxel_board.process_dirty_async(room._edge_registry)
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_board):
 		push_warning("[WeaponBenchController] room went away mid-shot (map reload?) — render pass abandoned")
 		return
-	await room._voxel_renderer.process_dirty_slabs_async(room._slab_registry)
-	if not is_instance_valid(room) or not is_instance_valid(room._voxel_renderer):
+	await room._voxel_board.process_dirty_slabs_async(room._slab_registry)
+	if not is_instance_valid(room) or not is_instance_valid(room._voxel_board):
 		push_warning("[WeaponBenchController] room went away mid-shot (map reload?) — render pass abandoned")
 		return
 	var render_wall_ms: float = float(Time.get_ticks_usec() - render_us) / 1000.0
@@ -454,7 +454,7 @@ func _blocked_edges_dict() -> Dictionary:
 ##
 ## The MUZZLE POSITION is derived, never an empirical pixel offset (project
 ## rule): the weapon's own GU centre and the GU one step along its facing are
-## both converted to world space through `VoxelRenderer.voxel_world_position()`,
+## both converted to world space through `VoxelBoard.voxel_world_position()`,
 ## and the barrel line is the vector between them. That is the same analytic
 ## route the cone preview already uses to decide where the shot goes, so the
 ## flash can never point somewhere the shot does not — including after a
@@ -466,7 +466,7 @@ func _blocked_edges_dict() -> Dictionary:
 ## `Room.spawn_muzzle_flash()` takes a point and a direction and knows about
 ## neither.
 func _spawn_muzzle_flash(weapon: Dictionary, facing_delta: Vector2i) -> void:
-	if room._voxel_renderer == null or facing_delta == Vector2i.ZERO:
+	if room._voxel_board == null or facing_delta == Vector2i.ZERO:
 		return
 	var gu: Vector2i = weapon["gu_cell"]
 	var here: Vector2 = _gu_centre_world(gu)
@@ -486,6 +486,6 @@ func _spawn_muzzle_flash(weapon: Dictionary, facing_delta: Vector2i) -> void:
 func _gu_centre_world(gu: Vector2i) -> Vector2:
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
 	var centre: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
-	var renderer: VoxelRenderer = room._voxel_renderer
+	var renderer: VoxelBoard = room._voxel_board
 	return renderer.voxel_world_position(centre,
 		renderer.ground_plane_level() + MUZZLE_LEVELS_ABOVE_GROUND)

@@ -1,10 +1,10 @@
 ## CellPlaneStore — the render-neutral home for the per-cell soot/light planes.
 ##
-## RENDER3D R3D-2 step 3. Moved out of `VoxelRenderer` verbatim (a relocation, not a
+## RENDER3D R3D-2 step 3. Moved out of `VoxelBoard` verbatim (a relocation, not a
 ## redesign — the API already matched what a future reader needs): one 512x512
 ## `Image.FORMAT_RG8` per level, R = the per-face soot code (0..124, PERF-P2),
 ## G = the light bucket (0..11, PERF-P3; 255 = `BUCKET_UNWRITTEN`, never written).
-## `VoxelRenderer` is now one reader/writer of this store, same standing the 3D board
+## `VoxelBoard` is now one reader/writer of this store, same standing the 3D board
 ## will have — `cell_plane_image()`/`cell_plane_levels()` are already documented as
 ## "read-only by contract" for exactly that use (DIAG-21).
 ##
@@ -31,8 +31,8 @@ const SOOT_TEX_SIZE: int = 512
 ## RENDER3D R3D-2 — this store is domain-agnostic (it knows nothing of "soot" or
 ## "light bucket" as concepts): its OWNER supplies the R-channel's clean fill value
 ## and the G-channel's max legal value at construction, so nothing here needs a
-## reference back to `VoxelRenderer` (that would be a circular class dependency —
-## `VoxelRenderer` already depends on this file for `BUCKET_UNWRITTEN` etc.).
+## reference back to `VoxelBoard` (that would be a circular class dependency —
+## `VoxelBoard` already depends on this file for `BUCKET_UNWRITTEN` etc.).
 var _clean_r: int
 var _max_bucket: int
 var _images: Dictionary = {}     ## level -> Image (FORMAT_RG8)

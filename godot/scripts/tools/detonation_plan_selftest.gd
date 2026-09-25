@@ -49,7 +49,7 @@ extends SceneTree
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
 const BombRegistryClass = preload("res://godot/scripts/systems/destruction/bomb_registry.gd")
 const WallEdgeDataClass = preload("res://godot/scripts/world/wall_edge_data.gd")
@@ -66,7 +66,7 @@ class MinimalRoom extends Node:
 	var _edge_registry
 	var _junction_columns
 	var _slab_registry
-	var _voxel_renderer
+	var _voxel_board
 	@warning_ignore("unused_private_class_variable")
 	var _wall_height_edges
 	var map_id: String = "TEST"
@@ -140,17 +140,17 @@ func _build_playground() -> Dictionary:
 	var structure_layer := TileMapLayer.new()
 	structure_layer.tile_set = floor_tileset
 	room.add_child(structure_layer)
-	var voxel_renderer := VoxelRendererClass.new()
-	room.add_child(voxel_renderer)
-	voxel_renderer.setup(Vector2.ZERO)
-	room._voxel_renderer = voxel_renderer
+	var voxel_board := VoxelBoardClass.new()
+	room.add_child(voxel_board)
+	voxel_board.setup(Vector2.ZERO)
+	room._voxel_board = voxel_board
 	var builder := RoomBuilderClass.new(room)
 	builder.setup(structure_layer, TileSet.new())
 	builder.build_registry(floor_tileset)
 	builder.build_from_layout(layout, layout.get("size", Vector2i.ZERO))
 	## The store every voxel's state lives in, built over the real registries exactly as `Room` builds it at load.
 	VoxelStore.active = VoxelStore.build(room._edge_registry, room._slab_registry, room._junction_columns)
-	return {"room": room, "renderer": voxel_renderer, "builder": builder, "layout": layout}
+	return {"room": room, "renderer": voxel_board, "builder": builder, "layout": layout}
 
 
 func _load_frag_grenade() -> BombDef:
@@ -173,7 +173,7 @@ func _build_ctx(built: Dictionary) -> Dictionary:
 	return {
 		"edge_registry": built["room"]._edge_registry,
 		"slab_registry": built["room"]._slab_registry,
-		"voxel_renderer": built["renderer"],
+		"voxel_board": built["renderer"],
 		"blocked_edges": blocked_edges,
 		"blocked_cells": builder.get_blocked_cells(),
 		"lights": _real_light_sources(builder),

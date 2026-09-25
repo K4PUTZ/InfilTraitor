@@ -242,6 +242,6 @@ func test_8_earth_is_a_buildable_material() -> void:
 			return
 	_pass("every other material's canonical atom is still identity")
 
-	## (R3D-END END-4: the generic-atlas half — `VoxelRenderer.MATERIALS` carrying `earth` and `earth_0..7` — went with the atlas.)
+	## (R3D-END END-4: the generic-atlas half — `VoxelBoard.MATERIALS` carrying `earth` and `earth_0..7` — went with the atlas.)
 
 	print("")

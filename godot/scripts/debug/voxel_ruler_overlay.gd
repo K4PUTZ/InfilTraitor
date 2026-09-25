@@ -1,7 +1,7 @@
 extends Node2D
 ## DEBUG-02: Voxel-resolution ruler grid overlay
 ## Draws independent grid at 8×8 voxel resolution (32×16 per tile)
-## computed from canonical floor frame only — zero dependency on VoxelRenderer.
+## computed from canonical floor frame only — zero dependency on VoxelBoard.
 ## Toggled F3, z_index above walls for visibility.
 
 class_name VoxelRulerOverlay

@@ -163,7 +163,7 @@ static var PUNCH_DESTROY_MIN: float = 0.80
 ## A material listed here has exactly TWO states under a projectile — INTACT and
 ## DESTROYED. It is not an art omission dressed up as data: a material with no
 ## authored decal family is NOT unmarked, it falls to the material-agnostic
-## GENERIC family (VoxelRenderer._generic_flat_mark_plan), so leaving the tiers
+## GENERIC family (VoxelBoard._generic_flat_mark_plan), so leaving the tiers
 ## alone would have kept marking cardboard with a grey dent the Director had
 ## just ruled out.
 ##

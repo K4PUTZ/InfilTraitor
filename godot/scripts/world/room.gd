@@ -76,7 +76,7 @@ const EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.
 const SliceGeneratorClass = preload("res://godot/scripts/geometry/slice_generator.gd")
 const JunctionResolverClass = preload("res://godot/scripts/geometry/junction_resolver.gd")
 const EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 
 ## OCC-01: Occlusion system (geometry occlusion set, view-space computation)
 const OcclusionSetClass = preload("res://godot/scripts/systems/occlusion_set.gd")
@@ -108,7 +108,7 @@ const INVALID_CELL := Vector2i(-9999, -9999)
 ## visual offset so camera, labels, selection and picking all agree.
 const VISUAL_GRID_OFFSET := Vector2(0.0, 512.0)
 
-## Wall storeys (N-floor stacking). Walls are VOXELS, not sprites: VoxelRenderer creates one
+## Wall storeys (N-floor stacking). Walls are VOXELS, not sprites: VoxelBoard creates one
 ## TileMapLayer per voxel level, z_index = WALL_BASE_Z_INDEX + level. WALL_FLOOR_STEP_PX is the
 ## per-storey height in px. Reserve z=100 band for a future overhead ceiling/light layer
 ## (below noise at z=140).
@@ -148,7 +148,7 @@ var _slab_registry: SlabRegistry = null
 ## fix for the *cause*, not cosmetics.
 @warning_ignore("unused_private_class_variable")
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
-var _voxel_renderer: VoxelRenderer = null     ## Voxel rendering engine
+var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
 
 ## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,
 ## offset up by the crate body step. Must equal the crate sprite's CUBE_HEIGHT
@@ -484,12 +484,12 @@ func record_glass_crack_to_base(hit_grid_pos: Vector2i, hit_level: int, wide: bo
 ## re-appending would grow it by one hole per camera turn, forever.
 func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
 		record: bool = true) -> String:
-	if _voxel_renderer == null:
+	if _voxel_board == null:
 		return ""
 	var opening_id: String = glass_opening_for(grid_pos, level, wide)
 	if opening_id == "":
 		return ""
-	_voxel_renderer.claim_glass_opening(level, grid_pos, opening_id)
+	_voxel_board.claim_glass_opening(level, grid_pos, opening_id)
 	if record:
 		var base_xy := PerspectiveMapperClass.cell_to_base(
 			grid_pos, _active_perspective, _base_voxel_size())
@@ -512,7 +512,7 @@ func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
 ## camera turn, forever — the same trap `claim_glass_opening_for_hit()` names.
 func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 		record: bool = true) -> int:
-	if _voxel_renderer == null or _edge_registry == null:
+	if _voxel_board == null or _edge_registry == null:
 		return 0
 	var host = _glass_slice_at(grid_pos, level)
 	if host == null:
@@ -605,7 +605,7 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 		print("[GLASS-CRAZE] lattice anchor base (%d,%d) level %d · variant %d · dir %s (view %s)"
 			% [ab.x, ab.y, anchor_level, int(plan["variant"]),
 			plan["field_dir"], _active_perspective])
-	var id: int = _voxel_renderer.spawn_glass_craze(plan)
+	var id: int = _voxel_board.spawn_glass_craze(plan)
 	if record and id != 0:
 		var base_xy := PerspectiveMapperClass.cell_to_base(
 			grid_pos, _active_perspective, _base_voxel_size())
@@ -638,7 +638,7 @@ func record_glass_shards(piles: Dictionary) -> int:
 		var bkey := Vector3i(base_xy.x, base_xy.y, k.z)
 		var total: int = int(_base_shards.get(bkey, 0)) + int(piles[key])
 		_base_shards[bkey] = total
-		if _voxel_renderer != null and _voxel_renderer.spawn_floor_shard_pile(
+		if _voxel_board != null and _voxel_board.spawn_floor_shard_pile(
 				k.z, Vector2i(k.x, k.y), total, _shard_variant_for(bkey)):
 			drawn += 1
 	return drawn
@@ -657,7 +657,7 @@ func _shard_variant_for(base_key: Vector3i) -> int:
 ## the crack and craze respawns and for the same reason: the record survives the
 ## rebuild and the NODE does not.
 func _respawn_base_shards() -> void:
-	if _base_shards.is_empty() or _voxel_renderer == null:
+	if _base_shards.is_empty() or _voxel_board == null:
 		return
 	var bsize := _base_voxel_size()
 	var drawn: int = 0
@@ -666,7 +666,7 @@ func _respawn_base_shards() -> void:
 		var k: Vector3i = bkey
 		var vxy := PerspectiveMapperClass.cell_from_base(
 			Vector2i(k.x, k.y), _active_perspective, bsize)
-		if _voxel_renderer.spawn_floor_shard_pile(
+		if _voxel_board.spawn_floor_shard_pile(
 				k.z, vxy, int(_base_shards[bkey]), _shard_variant_for(k)):
 			drawn += 1
 		else:
@@ -703,7 +703,7 @@ func _respawn_base_shards() -> void:
 ##
 ## Returns how many shards are in flight.
 func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
-	if _voxel_renderer == null or flights.is_empty():
+	if _voxel_board == null or flights.is_empty():
 		return 0
 	var bsize := _base_voxel_size()
 	var rows: Array = []
@@ -716,8 +716,8 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 		## one (`grid_pos`), so the fall is now diagonal. `origin_pos` is absent on
 		## the synthetic capture path, which drops everything straight down.
 		var origin_gp: Vector2i = f.get("origin_pos", gp)
-		var from: Vector2 = _voxel_renderer.voxel_world_position(origin_gp, from_level)
-		var to: Vector2 = _voxel_renderer.voxel_world_position(gp, land_level)
+		var from: Vector2 = _voxel_board.voxel_world_position(origin_gp, from_level)
+		var to: Vector2 = _voxel_board.voxel_world_position(gp, land_level)
 		if from == Vector2.ZERO or to == Vector2.ZERO:
 			## Rule 9 — a level this view does not build has no layer, and
 			## `voxel_world_position()` answers ZERO. Skipped, and counted by the
@@ -730,13 +730,13 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 		## which is unique per destroyed voxel — two shards scattering onto one
 		## landing cell must not collapse to one hash.
 		var base_xy := PerspectiveMapperClass.cell_to_base(origin_gp, _active_perspective, bsize)
-		var ground: int = _voxel_renderer.ground_plane_level()
+		var ground: int = _voxel_board.ground_plane_level()
 		rows.append({
 			"from": from, "to": to,
 			"key": Vector3i(base_xy.x, base_xy.y, from_level),
 			## R3D-4e-4 — the floor under each end, so the 3D rain can place both in the world.
-			"from_floor": _voxel_renderer.voxel_world_position(origin_gp, ground),
-			"to_floor": _voxel_renderer.voxel_world_position(gp, ground),
+			"from_floor": _voxel_board.voxel_world_position(origin_gp, ground),
+			"to_floor": _voxel_board.voxel_world_position(gp, ground),
 		})
 		top_level = maxi(top_level, land_level)
 	if rows.is_empty():
@@ -750,8 +750,8 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 	## rather than floating over the scenery. A rain spanning two storeys will have
 	## its upper shards drawn in the lower plane's band for the ~40 frames it lives;
 	## stated because it is a trade for the one draw call, not an oversight.
-	rain.z_index = _voxel_renderer.level_z_index(top_level) + 2
-	_voxel_renderer.add_child(rain)
+	rain.z_index = _voxel_board.level_z_index(top_level) + 2
+	_voxel_board.add_child(rain)
 	rain.set_board3d(board3d())
 	var n: int = rain.spawn(rows)
 
@@ -805,7 +805,7 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 ## Returns how many reached the board — which is not always how many were asked
 ## for, and the difference is reported rather than swallowed (§16.6's discipline).
 func claim_glass_remnants(remnants: Array, record: bool = true) -> int:
-	if _voxel_renderer == null or remnants.is_empty():
+	if _voxel_board == null or remnants.is_empty():
 		return 0
 	var bsize := _base_voxel_size()
 	var drawn: int = 0
@@ -843,7 +843,7 @@ func _draw_remnant(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
 	var salt := "remnant|%d,%d,%d" % [base_key.x, base_key.y, base_key.z]
 	var shape_id: String = GlassShardShapes.pick(salt)
 	var flop: bool = (FacadeSampler._fnv1a_hash(salt + "|flop") & 1) == 1
-	return _voxel_renderer.apply_glass_remnant_at(level, cell, shape_id, mask, flop)
+	return _voxel_board.apply_glass_remnant_at(level, cell, shape_id, mask, flop)
 
 
 ## G4-2 — restamp every recorded remnant for the perspective just entered. The
@@ -852,7 +852,7 @@ func _draw_remnant(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
 ## the rim: nothing is erased on a rebuild, so nothing is flagged, so nothing is
 ## re-cut).
 func _respawn_base_remnants() -> void:
-	if _base_remnants.is_empty() or _voxel_renderer == null:
+	if _base_remnants.is_empty() or _voxel_board == null:
 		return
 	var bsize := _base_voxel_size()
 	var drawn: int = 0
@@ -882,7 +882,7 @@ func _respawn_base_remnants() -> void:
 ## separate store and a separate claim: a frame remnant that loses its frame must
 ## fall (G-D45), not silently re-anchor to whatever glass sits beside it.
 func claim_glass_rim_shards(shards: Array, record: bool = true) -> int:
-	if _voxel_renderer == null or shards.is_empty():
+	if _voxel_board == null or shards.is_empty():
 		return 0
 	var bsize := _base_voxel_size()
 	var drawn: int = 0
@@ -912,14 +912,14 @@ func _draw_rim_shard(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
 	var salt := "rimshard|%d,%d,%d" % [base_key.x, base_key.y, base_key.z]
 	var shape_id: String = GlassShardShapes.pick(salt)
 	var flop: bool = (FacadeSampler._fnv1a_hash(salt + "|flop") & 1) == 1
-	return _voxel_renderer.apply_glass_remnant_at(level, cell, shape_id, mask, flop)
+	return _voxel_board.apply_glass_remnant_at(level, cell, shape_id, mask, flop)
 
 
 ## CRACK-06 — restamp every recorded rim shard for the perspective just entered,
 ## the same reason `_respawn_base_remnants()` exists (a rebuild places plain glass
 ## from voxel state and never re-cuts the atom).
 func _respawn_base_rim_shards() -> void:
-	if _base_rim_shards.is_empty() or _voxel_renderer == null:
+	if _base_rim_shards.is_empty() or _voxel_board == null:
 		return
 	var bsize := _base_voxel_size()
 	var drawn: int = 0
@@ -962,7 +962,7 @@ func _respawn_base_rim_shards() -> void:
 ## Returns {"reaped": int, "landed": int, "voxels": Array[Voxel]}. `voxels` are the glass voxels felled here: they are written
 ## outside the caller's own touched set, so the 3D board (which remeshes only the chunks it is told about) needs them handed over.
 func reap_orphaned_remnants() -> Dictionary:
-	if _base_remnants.is_empty() or _voxel_renderer == null or _edge_registry == null:
+	if _base_remnants.is_empty() or _voxel_board == null or _edge_registry == null:
 		return {"reaped": 0, "landed": 0, "voxels": []}
 	var bsize := _base_voxel_size()
 	var orphan_keys: Array = []
@@ -995,7 +995,7 @@ func reap_orphaned_remnants() -> Dictionary:
 				record_voxel_damage_to_base(v.grid_pos, v.level, v.damage_state,
 					v.damage_is_blast, v.damage_carved_side, v.damage_variant, v.damage_substrate, v)
 				break
-		_voxel_renderer.erase_glass_cell(level, cell)
+		_voxel_board.erase_glass_cell(level, cell)
 	for bkey in orphan_keys:
 		_base_remnants.erase(bkey)
 	var landed: int = 0
@@ -1027,7 +1027,7 @@ func _glass_slice_at(grid_pos: Vector2i, level: int):
 ## CRACKED states are already back (VL-PERSIST), and the FIELD is a node that the
 ## renderer rebuild dropped.
 func _respawn_base_crazes() -> void:
-	if _base_crazes.is_empty() or _voxel_renderer == null:
+	if _base_crazes.is_empty() or _voxel_board == null:
 		return
 	var base_size := _base_voxel_size()
 	var rebuilt: int = 0
@@ -1140,7 +1140,7 @@ func apply_glass_diagnostic_backdrop() -> void:
 ## `record = false` — the record is already in the store and re-appending would grow
 ## it by one hole per camera turn, forever.
 func _claim_base_openings() -> void:
-	if _base_openings.is_empty() or _voxel_renderer == null:
+	if _base_openings.is_empty() or _voxel_board == null:
 		return
 	var base_size := _base_voxel_size()
 	var claimed: int = 0
@@ -1160,7 +1160,7 @@ func _claim_base_openings() -> void:
 ## idempotent by the same rule the live path relies on — a cell already holding a
 ## shard is never recomputed — so the two cannot fight over a cell.
 func _respawn_base_openings() -> void:
-	if _base_openings.is_empty() or _voxel_renderer == null:
+	if _base_openings.is_empty() or _voxel_board == null:
 		return
 	var base_size := _base_voxel_size()
 	var applied: int = 0
@@ -1172,7 +1172,7 @@ func _respawn_base_openings() -> void:
 		var opening_id: String = glass_opening_for(vxy, key.z, bool(rec["wide"]))
 		if opening_id == "":
 			continue
-		var n: int = _voxel_renderer.apply_glass_opening_at(key.z, vxy, opening_id)
+		var n: int = _voxel_board.apply_glass_opening_at(key.z, vxy, opening_id)
 		if n > 0:
 			applied += 1
 			cut += n
@@ -1215,7 +1215,7 @@ func _respawn_base_openings() -> void:
 ## the round trip did not restore because the demo records no voxel damage to
 ## base. It has since stopped existing (glass no longer takes a damage variant).
 func _respawn_base_cracks() -> void:
-	if _base_cracks.is_empty() or _voxel_renderer == null or _edge_registry == null:
+	if _base_cracks.is_empty() or _voxel_board == null or _edge_registry == null:
 		return
 	var base_size := _base_voxel_size()
 	var all_slices: Array = _edge_registry.all_slices()
@@ -1267,7 +1267,7 @@ func _respawn_base_cracks() -> void:
 			plan["opening"] = glass_opening_for(vxy, key.z, bool(rec["wide"]))
 		## The variant rides the same base key, so a flip redraws the sheet it had.
 		plan["variant"] = GlassCrack.pick_variant(glass_base_key(vxy, key.z))
-		if _voxel_renderer.spawn_glass_crack(GlassCrack.sprite_spec(plan)) != 0:
+		if _voxel_board.spawn_glass_crack(GlassCrack.sprite_spec(plan)) != 0:
 			rebuilt += 1
 		else:
 			lost += 1
@@ -1403,11 +1403,11 @@ func _reapply_base_damage() -> void:
 		var deep_slab: Slab = _slab_registry.get_slab(
 				Slab.make_id(gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL))
 		if deep_slab != null:
-			_voxel_renderer.reveal_floor_slab(deep_slab)
+			_voxel_board.reveal_floor_slab(deep_slab)
 	for gu in reveal_fixed:
-		_voxel_renderer.render_fixed_earth_level(gu, reveal_fixed[gu])
-	_voxel_renderer.process_dirty(_edge_registry)
-	_voxel_renderer.process_dirty_slabs(_slab_registry)
+		_voxel_board.render_fixed_earth_level(gu, reveal_fixed[gu])
+	_voxel_board.process_dirty(_edge_registry)
+	_voxel_board.process_dirty_slabs(_slab_registry)
 	print_debug("[VL-PERSIST] perspective %s — %d of %d base damage record(s) re-applied, %d had no voxel in this view"
 		% [_active_perspective, reapplied, _base_damage.size(), missed])
 var _ceiling_overlay: Node2D = null  ## VIS-01: overhead ceiling props/lights (CeilingPropOverlay)
@@ -1563,7 +1563,7 @@ var vfx_stone_spark_color: Color = Color(0.9, 0.6, 0.35, 0.9)
 ## Pedra menos, e assim por diante."*
 ##
 ## WHY THIS TABLE HAD TO EXIST AT ALL, because the bug was not "too few sparks":
-## `_dispatch_destruction_vfx()` runs off `VoxelRenderer.voxel_destroyed`, so it
+## `_dispatch_destruction_vfx()` runs off `VoxelBoard.voxel_destroyed`, so it
 ## only ever fires for a voxel that is DESTROYED. Measured on the real bench
 ## (D30's ladder: <0.30 CRACKED, <0.60 DENTED, above DESTROYED) —
 ##
@@ -1849,7 +1849,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_room_builder.build_from_layout(view_layout, room_size)
 	_rebuild_voxel_store("map load: %s" % new_map_id)
 	## VL-D3: floor columns under structure, from the intact just-built geometry.
-	_under_structure = _voxel_renderer.columns_with_structure()
+	_under_structure = _voxel_board.columns_with_structure()
 	_room_size = room_size
 	_assert_geometry_rendered()
 	_refresh_gu_grid_overlay()
@@ -1886,16 +1886,16 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_remnants.clear()      ## G4: and none is stuck to a frame
 	_base_rim_shards.clear()    ## CRACK-06: nor clinging to a torn glass edge
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
-	## The base-space RECORDS above are cleared; the VoxelRenderer's own SPRITE
+	## The base-space RECORDS above are cleared; the VoxelBoard's own SPRITE
 	## decals for them are not touched by `build_from_layout()` (only `_set_perspective()`
 	## dropped them, and a reload stays in the same perspective). Without this an F2
 	## reload leaves the previous mission's glass piles and crack webs on screen —
 	## Director, 2026-09-07: *"seeing past debris from previous explosions […] between
 	## map loads (F2)"*.
-	if _voxel_renderer != null:
-		_voxel_renderer.clear_floor_shards()     ## G6: the glass-pile floor sprites
-		_voxel_renderer.clear_glass_cracks()     ## CRACK-02 / B-2: the crack + craze sprites
-		_voxel_renderer.clear_glass_rim_cells()  ## CRACK-04: stale hole-rim atoms, keyed in view space
+	if _voxel_board != null:
+		_voxel_board.clear_floor_shards()     ## G6: the glass-pile floor sprites
+		_voxel_board.clear_glass_cracks()     ## CRACK-02 / B-2: the crack + craze sprites
+		_voxel_board.clear_glass_rim_cells()  ## CRACK-04: stale hole-rim atoms, keyed in view space
 	if _ember_overlay != null:
 		_ember_overlay.clear()  ## VL-D4: any in-flight glow belongs to the old map
 	if _smoke_spark_overlay != null:
@@ -1964,7 +1964,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		agent.sprite.preload_grip(AgentShotControllerClass.GRIP_AIMED)
 
 	# OCC-03: Agent renders above all voxel layers, below dev hover label (z=200)
-	var max_voxel_z_index := _voxel_renderer.get_max_voxel_z_index()
+	var max_voxel_z_index := _voxel_board.get_max_voxel_z_index()
 	agent.z_index = max_voxel_z_index + 1
 	print("[OCC-03] Agent z_index set to %d (max voxel layer z_index: %d, room size: %s)" % [agent.z_index, max_voxel_z_index, room_size])
 	## VL-02a: overhead fixtures/shafts are DRAWN at ceiling_lift — above the whole
@@ -1988,7 +1988,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## HEAT-Z-01 sweep (Director, 2026-07-28): the dev cell-number overlay was the
 	## other casualty of D17's voxel earth floor reaching z=0 — it is a plain
 	## Node2D in room.tscn, so it kept the default z_index 0 and, being a scene
-	## child added BEFORE VoxelRenderer, lost the tie and disappeared under the
+	## child added BEFORE VoxelBoard, lost the tie and disappeared under the
 	## concrete. z=8 is the top of the floor-plane band (shadows 1, FOW 2, game
 	## tiles 3, shadow boundary 4, AP 5, path 6, selection 7) and still below the
 	## walls (WALL_BASE_Z_INDEX = 10): labels are sparse text meant to be READ, so
@@ -2123,10 +2123,10 @@ func _ready() -> void:
 	## Initialize TurnController (turn phases, enemy AI, alert system)
 	_turn_controller = TurnControllerClass.new(self)
 
-	## SLICE-02: Initialize VoxelRenderer
-	_voxel_renderer = VoxelRendererClass.new()
-	add_child(_voxel_renderer)
-	_voxel_renderer.setup(VISUAL_GRID_OFFSET, WALL_BASE_Z_INDEX)
+	## SLICE-02: Initialize VoxelBoard
+	_voxel_board = VoxelBoardClass.new()
+	add_child(_voxel_board)
+	_voxel_board.setup(VISUAL_GRID_OFFSET, WALL_BASE_Z_INDEX)
 
 	## MODULARIZE-03: Initialize LightingController (before VisionController, which connects to its signals)
 	_lighting_controller = LightingControllerClass.new()
@@ -2149,7 +2149,7 @@ func _ready() -> void:
 	_shadow_boundary_overlay.setup(VISUAL_GRID_OFFSET)
 
 	## GU-GRID-01: always-on GU boundary grid — z_index 1 puts it above the
-	## earth-voxel floor's top level (z=0, see VoxelRenderer's negative-level
+	## earth-voxel floor's top level (z=0, see VoxelBoard's negative-level
 	## z formula) and level with the shadow tint layers, so walls/shadow/fog
 	## still draw over it like they do the floor itself. room_size is not
 	## known yet at this point in _ready(); load_map() refreshes it below.
@@ -2227,7 +2227,7 @@ func _ready() -> void:
 	add_child(_ember_overlay)
 
 	## VFX-01: smoke/spark (above-floor) and dust/chip (floor-level) VFX for
-	## VoxelRenderer.voxel_destroyed — same deferred z-assignment as above.
+	## VoxelBoard.voxel_destroyed — same deferred z-assignment as above.
 	_smoke_spark_overlay = SmokeSparkOverlayClass.new()
 	add_child(_smoke_spark_overlay)
 	_debris_overlay = DebrisOverlayClass.new()
@@ -2243,7 +2243,7 @@ func _ready() -> void:
 	_explosion_flash_overlay = ExplosionFlashOverlayClass.new()
 	add_child(_explosion_flash_overlay)
 	_ember_overlay.set_smoke_overlay(_smoke_spark_overlay)
-	_voxel_renderer.voxel_destroyed.connect(_on_voxel_destroyed)
+	_voxel_board.voxel_destroyed.connect(_on_voxel_destroyed)
 
 	## Initialize world markers overlay controller (shadows, spill, light rays)
 	## MUST be before signal connections to LightingController
@@ -2473,7 +2473,7 @@ func _ready() -> void:
 	_occlusion_overlay.z_index = 150
 	add_child(_occlusion_overlay)
 	_occlusion_overlay.set_occlusion_set(_occlusion_set)
-	_occlusion_overlay.set_voxel_renderer(_voxel_renderer)
+	_occlusion_overlay.set_voxel_board(_voxel_board)
 	## OCC-21m (2026-07-15): start invisible — now controlled by light_vision, not a
 	## separate toggle. Director's call: colored ring overlay is analysis/debug, should
 	## be part of LIGHT_VISION suite, not visible in normal gameplay.
@@ -2523,7 +2523,7 @@ func _ready() -> void:
 	_light_ray_overlay.refresh(_lighting_controller.get_shadow_results())
 	## VL-02a: both overhead overlays exist only now — load_map()'s own call ran
 	## before they were constructed, so assign their real z here too.
-	_apply_overhead_overlay_z(_voxel_renderer.get_max_voxel_z_index())
+	_apply_overhead_overlay_z(_voxel_board.get_max_voxel_z_index())
 
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
@@ -2669,12 +2669,12 @@ func _set_perspective(direction: String) -> void:
 		## VL-D3: capture which floor columns are under structure from the INTACT
 		## geometry (build just rendered everything unbroken) — before reapply
 		## damage punches holes, so it reflects the ORIGINAL cover.
-		_under_structure = _voxel_renderer.columns_with_structure()
+		_under_structure = _voxel_board.columns_with_structure()
 		## CRACK-02 S-3 — drop the OLD view's crack sprites before anything
 		## rebuilds: their transforms are in the old view's screen space, the same
 		## reason the ember/smoke/debris overlays are cleared below.
 		## `_respawn_base_cracks()` puts them back, after the damage is stamped.
-		_voxel_renderer.clear_glass_cracks()
+		_voxel_board.clear_glass_cracks()
 		## VL-PERSIST: stamp recorded destruction back onto the freshly rebuilt
 		## geometry BEFORE the lighting rebuild, so the repaint sees the holes and
 		## soot in this view (build_from_layout rebuilt every Voxel intact).
@@ -2696,7 +2696,7 @@ func _set_perspective(direction: String) -> void:
 		## every one of these would have reported "no pane voxel" and healed.
 		_respawn_base_crazes()
 		## G6 — and the glass on the floor.
-		_voxel_renderer.clear_floor_shards()
+		_voxel_board.clear_floor_shards()
 		_respawn_base_shards()
 		## G4-2 — and the glass still stuck to the frames. AFTER the openings, so a
 		## pane that has both a hole and remnants has its rim cut before the
@@ -2708,7 +2708,7 @@ func _set_perspective(direction: String) -> void:
 		_respawn_base_rim_shards()
 		## B-4b — the fields' hole masks, after the openings above have been
 		## re-applied (that is what refills the polygon log the mask reads).
-		_voxel_renderer.refresh_craze_opening_masks()
+		_voxel_board.refresh_craze_opening_masks()
 
 		## Re-derive the per-cell overlays for the rotated layout so they follow the scenery:
 		## numbers redraw, lighting (lights/semantics/shadows/exposure) rebuilds from the rotated
@@ -2984,18 +2984,18 @@ func scenario_ground_check(label: String) -> bool:
 ## live crack record. Piles: what the 3D board draws equals the live piles. `tools/persistent/mirror_gate.py` reads the line.
 func scenario_mirror_check(label: String) -> bool:
 	var board: Node = board3d()
-	if board == null or _voxel_renderer == null:
+	if board == null or _voxel_board == null:
 		push_error("[Room] scenario_mirror_check: no 3D board")
 		return false
 	var records: int = 0
-	for rec: Dictionary in _voxel_renderer.glass_crack_records():
+	for rec: Dictionary in _voxel_board.glass_crack_records():
 		if rec.has("params"):
 			records += 1
 	var mirror: Node = board.get("_crack_mirror")
 	var twins: int = int(mirror.call("twin_count")) if mirror != null else -1
 	print("[MIRROR-CHECK] %s cracks records=%d twins=%d piles base=%d sprites=%d drawn=%d"
-		% [label, records, twins, _base_shards.size(), _voxel_renderer.floor_shard_pile_count(),
-			_voxel_renderer.floor_shard_pile3d_count()])
+		% [label, records, twins, _base_shards.size(), _voxel_board.floor_shard_pile_count(),
+			_voxel_board.floor_shard_pile3d_count()])
 	return true
 
 
@@ -3004,13 +3004,13 @@ func scenario_mirror_check(label: String) -> bool:
 ## after the error is reported. Reads the simulation's own record, never a tile, so it
 ## judges both boards and outlives the 2D one.
 func scenario_board_probe(path: String, label: String) -> Dictionary:
-	if _voxel_renderer == null or _edge_registry == null or _slab_registry == null:
+	if _voxel_board == null or _edge_registry == null or _slab_registry == null:
 		push_error("[Room] scenario_board_probe: the board is not built (renderer %s, edges %s, slabs %s)"
-			% [_voxel_renderer != null, _edge_registry != null, _slab_registry != null])
+			% [_voxel_board != null, _edge_registry != null, _slab_registry != null])
 		return {}
 	var planes: Dictionary = {}
-	for level: Variant in _voxel_renderer.cell_plane_levels():
-		planes[level] = _voxel_renderer.cell_plane_image(int(level))
+	for level: Variant in _voxel_board.cell_plane_levels():
+		planes[level] = _voxel_board.cell_plane_image(int(level))
 	var meta: Dictionary = {
 		"map": _dev_flag("MAP", "default"),
 		"perspective": _active_perspective,
@@ -3018,7 +3018,7 @@ func scenario_board_probe(path: String, label: String) -> Dictionary:
 		"board3d": board3d() != null,
 	}
 	var summary: Dictionary = BoardProbeClass.write(path, label, _edge_registry, _slab_registry,
-		_junction_columns, planes, VoxelRenderer.SOOT_PLANE_ORIGIN, meta)
+		_junction_columns, planes, VoxelBoard.SOOT_PLANE_ORIGIN, meta)
 	if summary.is_empty():
 		return {}
 	print("[BOARD-PROBE] %s — %d voxel(s) in %d container(s) (slice %d, column %d, slab %d), %d plane level(s), %d material(s), %.1f MB, %.0f ms → %s"
@@ -3039,7 +3039,7 @@ func _start_board3d_live() -> void:
 		## `board3d()` would then keep answering with the board being freed.
 		remove_child(existing)
 		existing.queue_free()
-	_voxel_renderer.visible = false
+	_voxel_board.visible = false
 	structure_layer.visible = false
 	var live: Node3D = Board3DLiveClass.new()
 	live.name = "Board3DLive"
@@ -3124,8 +3124,8 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 	for overlay in [_smoke_spark_overlay, _ember_overlay, _debris_overlay, _shrapnel_overlay]:
 		if overlay != null and is_instance_valid(overlay):
 			overlay.set_board3d(live)
-	if _voxel_renderer != null:
-		_voxel_renderer.set_pile_board3d(live)
+	if _voxel_board != null:
+		_voxel_board.set_pile_board3d(live)
 
 
 ## RENDER3D R3D-4d — a prop that joins the tree while the 3D board is up gets a `PropBillboard3D`.
@@ -3209,12 +3209,12 @@ func _rebuild_voxel_store(reason: String) -> void:
 ## planes are the renderer's, as in the objects' dump.
 func scenario_board_probe_store(path: String, label: String) -> Dictionary:
 	var store: VoxelStore = VoxelStore.active
-	if store == null or _voxel_renderer == null:
+	if store == null or _voxel_board == null:
 		push_error("[Room] scenario_board_probe_store: no active store or no renderer")
 		return {}
 	var planes: Dictionary = {}
-	for level: Variant in _voxel_renderer.cell_plane_levels():
-		planes[level] = _voxel_renderer.cell_plane_image(int(level))
+	for level: Variant in _voxel_board.cell_plane_levels():
+		planes[level] = _voxel_board.cell_plane_image(int(level))
 	var meta: Dictionary = {
 		"map": _dev_flag("MAP", "default"),
 		"perspective": _active_perspective,
@@ -3223,7 +3223,7 @@ func scenario_board_probe_store(path: String, label: String) -> Dictionary:
 		"source": "store",
 	}
 	var summary: Dictionary = BoardProbeClass.write_store(path, label, store, planes,
-		VoxelRenderer.SOOT_PLANE_ORIGIN, meta)
+		VoxelBoard.SOOT_PLANE_ORIGIN, meta)
 	if summary.is_empty():
 		return {}
 	var mismatches: int = store.grid_mismatches()
@@ -4138,12 +4138,12 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 		_ember_overlay.z_index = max_voxel_z_index + 5
 
 
-## VFX-01: dispatch VoxelRenderer.voxel_destroyed to the smoke/spark/debris
+## VFX-01: dispatch VoxelBoard.voxel_destroyed to the smoke/spark/debris
 ## overlays. Ember keeps its own separate trigger (TestZoneController's
 ## freshly-scorched-neighbour loop) — that condition ("survives next to a
 ## fresh hole") is different from "this voxel was destroyed", so it isn't
 ## folded in here. Fires for both blast and firearm destruction — both paths
-## emit the same signal (VoxelRenderer.process_dirty()/process_dirty_slabs()).
+## emit the same signal (VoxelBoard.process_dirty()/process_dirty_slabs()).
 ## VFX-01 — dispatch smoke/dust/sparks/chips immediately when voxels are destroyed.
 ## D-ARCH-01: No buffering needed — damage applies in a single frame via tile swap,
 ## so VFX is dispatched directly as the voxel_destroyed signal fires.
@@ -4426,13 +4426,13 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 ## freshly shot.
 func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 		carved_side: int = Voxel.CarvedSide.NONE) -> void:
-	if _voxel_renderer == null or _smoke_spark_overlay == null or _debris_overlay == null:
+	if _voxel_board == null or _smoke_spark_overlay == null or _debris_overlay == null:
 		return
 	var profile: Dictionary = vfx_impact_profiles.get(material_id, {})
 	if profile.is_empty():
 		return
-	var origin: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, level)
-	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, _voxel_renderer.ground_plane_level())
+	var origin: Vector2 = _voxel_board.voxel_world_position(grid_pos, level)
+	var floor_pos: Vector2 = _voxel_board.voxel_world_position(grid_pos, _voxel_board.ground_plane_level())
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
 
@@ -4478,7 +4478,7 @@ func _impact_anchor_3d(origin: Vector2, floor_pos: Vector2, carved_side: int) ->
 
 
 func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: String) -> void:
-	if _voxel_renderer == null or _smoke_spark_overlay == null or _debris_overlay == null:
+	if _voxel_board == null or _smoke_spark_overlay == null or _debris_overlay == null:
 		return
 	## GLASS G3 — glass does not billow smoke or drop dust. A pane shatter
 	## (GLASS_MASTER_PLAN §5.1) destroys hundreds of voxels in one event; routing
@@ -4488,8 +4488,8 @@ func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: Stri
 	## until then a glass break is visually just the pane going away.
 	if GlassMaterials.is_glass(material_id):
 		return
-	var origin: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, level)
-	var floor_pos: Vector2 = _voxel_renderer.voxel_world_position(grid_pos, _voxel_renderer.ground_plane_level())
+	var origin: Vector2 = _voxel_board.voxel_world_position(grid_pos, level)
+	var floor_pos: Vector2 = _voxel_board.voxel_world_position(grid_pos, _voxel_board.ground_plane_level())
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
 
@@ -4653,15 +4653,15 @@ func _vfx_smoke_color_for_material(material_id: String) -> Color:
 ## SOOT-STAMP (2026-09-22): a pure LIGHT repaint. The field does not take soot and
 ## no apply writes the soot plane any more; a shot's soot is `apply_shot_soot()`.
 func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
-	## ABLATION — see VoxelRenderer.LIGHT_DISABLED. Gated HERE, above the
+	## ABLATION — see VoxelBoard.LIGHT_DISABLED. Gated HERE, above the
 	## delegation to the map-wide sibling, so the scoped path cannot reach it and
 	## pay a full repaint on an ablation run.
-	if VoxelRenderer.LIGHT_DISABLED:
+	if VoxelBoard.LIGHT_DISABLED:
 		return
 	if gus.is_empty():
 		_repaint_voxel_light_buckets(true)
 		return
-	if _voxel_renderer == null or _lighting_controller == null:
+	if _voxel_board == null or _lighting_controller == null:
 		return
 	var registry = _lighting_controller.get_light_registry()
 	if registry == null:
@@ -4670,12 +4670,12 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 		_voxel_light_field = VoxelLightField.new()
 	var _sp: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
 	var _s1: int = Time.get_ticks_usec()
-	var occ: Dictionary = _voxel_renderer.build_occupancy()
+	var occ: Dictionary = _voxel_board.build_occupancy()
 	var _s2: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
 			registry.get_active_lights(),
 			_lighting_controller.get_shadow_results(),
-			_voxel_renderer.top_wall_level(),
+			_voxel_board.top_wall_level(),
 			occ,
 			_under_structure,
 			true)
@@ -4690,23 +4690,23 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 	## precondition is gone.
 	var stale_path: bool = _voxel_light_field.has_stale_subset()
 	if stale_path:
-		_voxel_renderer.apply_light_field_cells(_voxel_light_field,
+		_voxel_board.apply_light_field_cells(_voxel_light_field,
 			_voxel_light_field.stale_cells())
 	else:
-		_voxel_renderer.apply_light_field_gus(_voxel_light_field, gus)
+		_voxel_board.apply_light_field_gus(_voxel_light_field, gus)
 	if _sp:
 		print("[SCOPED-PROF] occupancy %.1f · field.build %.1f · apply %.1f ms (%s, %d GUs)"
 			% [float(_s2 - _s1) / 1000.0, float(_s3 - _s2) / 1000.0,
 			float(Time.get_ticks_usec() - _s3) / 1000.0,
 			"stale set" if stale_path else "GU walk", gus.size()])
 		print("[SCOPED-PROF]   cells written: %d · TileSet alternatives minted: %d"
-			% [_voxel_renderer._scoped_writes, _voxel_renderer._alts_minted])
+			% [_voxel_board._scoped_writes, _voxel_board._alts_minted])
 	## THE SCOPE GATE. A scoped repaint is only correct if it leaves the board in
 	## the state a full one would have. Env-gated because it costs a full repaint
 	## on top of the scoped one.
 	if OS.get_environment("INFILTRAITOR_SHOT_SCOPE_PROBE") == "1":
 		var before: Dictionary = _perf_snapshot_alts()
-		_voxel_renderer.apply_light_field(_voxel_light_field)
+		_voxel_board.apply_light_field(_voxel_light_field)
 		var after: Dictionary = _perf_snapshot_alts()
 		var differ: int = 0
 		for k in after:
@@ -4767,7 +4767,7 @@ func shot_precook_ready() -> void:
 
 
 func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Array) -> void:
-	if _voxel_renderer == null or _lighting_controller == null or scope_gus.is_empty():
+	if _voxel_board == null or _lighting_controller == null or scope_gus.is_empty():
 		_shot_precook_done = true
 		return
 	## R3D-13: this runs on the 3D board too. R3D-10 made it return here ("it minted 0 alternatives there") and lost the
@@ -4783,7 +4783,7 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Arr
 	## starts. Warming inside the click's own frame would move the stall onto the
 	## action that is supposed to hide it.
 	await get_tree().process_frame
-	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
+	if token != _shot_precook_token or not is_instance_valid(_voxel_board):
 		return
 
 	## ⚠️ THE SHARED FIELD, NOT A FRESH ONE. `VoxelLightField` invalidates
@@ -4798,8 +4798,8 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Arr
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
 	var field = _voxel_light_field
-	var top_wall_level: int = _voxel_renderer.top_wall_level()
-	var occupancy: Dictionary = _voxel_renderer.build_occupancy(predict_destroyed)
+	var top_wall_level: int = _voxel_board.top_wall_level()
+	var occupancy: Dictionary = _voxel_board.build_occupancy(predict_destroyed)
 	var lights: Array = registry.get_active_lights()
 	var shadows = _lighting_controller.get_shadow_results()
 
@@ -4807,7 +4807,7 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Arr
 	## and left the light field altogether with SOOT-STAMP, so the soot-free world
 	## this used to warm next to a sooty one is the only world there is.
 	field.build(lights, shadows, top_wall_level, occupancy, _under_structure, true)
-	if token != _shot_precook_token or not is_instance_valid(_voxel_renderer):
+	if token != _shot_precook_token or not is_instance_valid(_voxel_board):
 		return
 	## The TileSet alternatives this used to mint were the 2D board's (R3D-END); the light field above is the whole warm.
 	_shot_precook_done = true
@@ -4825,13 +4825,13 @@ func shot_repaint_scope(impact_gus: Array) -> Array:
 
 func _repaint_voxel_light_buckets(geometry_only: bool = false,
 		stale_driven: bool = false) -> void:
-	## ABLATION — see VoxelRenderer.LIGHT_DISABLED. The apply entries return on
+	## ABLATION — see VoxelBoard.LIGHT_DISABLED. The apply entries return on
 	## their own, but the map-wide DERIVATIONS below (build_occupancy,
 	## VoxelLightField.build) are callers, not callees, and would still run. This
 	## is where they stop.
-	if VoxelRenderer.LIGHT_DISABLED:
+	if VoxelBoard.LIGHT_DISABLED:
 		return
-	if _voxel_renderer == null or _lighting_controller == null:
+	if _voxel_board == null or _lighting_controller == null:
 		return
 	var registry = _lighting_controller.get_light_registry()
 	if registry == null:
@@ -4840,13 +4840,13 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 		_voxel_light_field = VoxelLightField.new()
 	## OVERHEAD lamps anchor at the top of the ACTUAL built wall stack, not the
 	## 8-storey ceiling-fixture height — see VoxelLightField.build().
-	var top_wall_level: int = _voxel_renderer.top_wall_level()
+	var top_wall_level: int = _voxel_board.top_wall_level()
 	## W-PRECOOK profiling seam, env-gated like every other standing dev probe in
 	## this function. §0's routes are chosen from WHERE the repaint's time goes,
 	## and the only figures on record are from the retired bench in August.
 	var _prof: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
 	var _t0: int = Time.get_ticks_usec()
-	var occupancy: Dictionary = _voxel_renderer.build_occupancy()
+	var occupancy: Dictionary = _voxel_board.build_occupancy()
 	var _t1: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
 			registry.get_active_lights(),
@@ -4869,12 +4869,12 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## apply writes soot any more, so nothing else would clear a stale view's
 	## scorch. A geometry_only repaint touches neither.
 	if not geometry_only:
-		_voxel_renderer.reset_cell_planes()
+		_voxel_board.reset_cell_planes()
 	if stale_driven and _voxel_light_field.has_stale_subset():
-		_voxel_renderer.apply_light_field_cells(_voxel_light_field,
+		_voxel_board.apply_light_field_cells(_voxel_light_field,
 			_voxel_light_field.stale_cells())
 	else:
-		_voxel_renderer.apply_light_field(_voxel_light_field)
+		_voxel_board.apply_light_field(_voxel_light_field)
 	if not geometry_only:
 		project_soot_store()
 	if _prof:
@@ -4938,8 +4938,8 @@ func _perf_snapshot_alts() -> Dictionary:
 			if owner_claim >= 0 and GlassMaterials.is_glass(store.material_ids[store.mat[owner_claim]]):
 				continue
 			out[Vector3i(occ_cell.x, occ_cell.y, level_i)] = Vector2i(
-				_voxel_renderer.cell_bucket_at(level_i, occ_cell),
-				_voxel_renderer.cell_soot_at(level_i, occ_cell))
+				_voxel_board.cell_bucket_at(level_i, occ_cell),
+				_voxel_board.cell_soot_at(level_i, occ_cell))
 	return out
 
 
@@ -4984,7 +4984,7 @@ func _cell_probe_has(level: int, cell: Vector2i) -> bool:
 
 func cell_probe_arm(gu: Vector2i) -> void:
 	_cell_probe_on = OS.get_environment("INFILTRAITOR_CELL_PROBE") == "1"
-	if not _cell_probe_on or _voxel_renderer == null:
+	if not _cell_probe_on or _voxel_board == null:
 		return
 	_cell_probe_state.clear()
 	_cell_probe_events.clear()
@@ -5035,7 +5035,7 @@ func cell_probe_arm(gu: Vector2i) -> void:
 
 
 func cell_probe_frame() -> void:
-	if not _cell_probe_on or _voxel_renderer == null:
+	if not _cell_probe_on or _voxel_board == null:
 		return
 	_cell_probe_frames += 1
 	for key in _cell_probe_state.keys():
@@ -5157,37 +5157,37 @@ func stamp_soot(writes: Dictionary) -> Dictionary:
 func absorb_scorch(writes: Dictionary) -> void:
 	var changed: Dictionary = stamp_soot(writes)
 	var store: VoxelStore = VoxelStore.active
-	if _voxel_renderer == null or store == null:
+	if _voxel_board == null or store == null:
 		return
 	for level in changed:
 		var level_cells: Dictionary = changed[level]
 		for view_cell: Vector2i in level_cells:
 			if not store.has_cell(view_cell.x, view_cell.y, int(level)):
-				_voxel_renderer._write_cell_soot(int(level), view_cell,
+				_voxel_board._write_cell_soot(int(level), view_cell,
 					BlastCalculator.soot_code(int(level_cells[view_cell])))
 
 
 ## `level -> {view_cell: tone}` into the soot plane, and the levels it touched up to
 ## whichever board draws them. `reason` names the 3D board's upload log line.
 func _paint_soot(cells: Dictionary, reason: String) -> void:
-	if cells.is_empty() or _voxel_renderer == null:
+	if cells.is_empty() or _voxel_board == null:
 		return
 	for level in cells:
 		var level_cells: Dictionary = cells[level]
 		for view_cell: Vector2i in level_cells:
-			_voxel_renderer._write_cell_soot(int(level), view_cell,
+			_voxel_board._write_cell_soot(int(level), view_cell,
 				BlastCalculator.soot_code(int(level_cells[view_cell])))
-	_voxel_renderer.flush_cell_soot()
+	_voxel_board.flush_cell_soot()
 	var board: Node = board3d()
 	if board != null:
 		board.sync_soot_levels(cells, reason)
 
 
-## The whole soot map into the soot plane: after `VoxelRenderer.reset_cell_planes()`
+## The whole soot map into the soot plane: after `VoxelBoard.reset_cell_planes()`
 ## (the map-wide repaint) and after a save restore. Costs the stored cell count,
 ## not the map.
 func project_soot_store() -> void:
-	if _voxel_renderer == null:
+	if _voxel_board == null:
 		return
 	var base_size := _base_voxel_size()
 	var cells: Dictionary = {}
@@ -5206,7 +5206,7 @@ func project_soot_store() -> void:
 ## two frames after the impact only for the look (the Director's 2026-08-19 order:
 ## soot after the tiles swap and the smoke is out).
 func apply_shot_soot(touched: Array, radius: int = -1) -> void:
-	if touched.is_empty() or _voxel_renderer == null:
+	if touched.is_empty() or _voxel_board == null:
 		return
 	var use_radius: int = radius if radius >= 0 else weapon_soot_radius
 	var seeds: Array = []
@@ -5216,10 +5216,10 @@ func apply_shot_soot(touched: Array, radius: int = -1) -> void:
 		seeds.append(k)
 		if v.damage_state == Voxel.DamageState.DESTROYED:
 			holes[k] = true
-	var renderer: VoxelRenderer = _voxel_renderer
+	var renderer: VoxelBoard = _voxel_board
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if not is_instance_valid(renderer) or renderer != _voxel_renderer:
+	if not is_instance_valid(renderer) or renderer != _voxel_board:
 		return
 	var t0: int = Time.get_ticks_usec()
 	var changed: Dictionary = stamp_soot(BlastCalculator.stamp_around(
@@ -5405,8 +5405,8 @@ func _handle_tile_click(cell: Vector2i) -> void:
 
 
 func _tic_voxel_system() -> void:
-	if _voxel_renderer != null and _edge_registry != null:
-		_voxel_renderer.process_dirty(_edge_registry)
+	if _voxel_board != null and _edge_registry != null:
+		_voxel_board.process_dirty(_edge_registry)
 	_tic_slab_system()
 
 
@@ -5543,14 +5543,14 @@ func _tile_to_screen_center_2d(cell: Vector2i) -> Vector2:
 ## cells. Zero cells from a non-empty registry is a broken render path, and it must be
 ## loud rather than silently shipping an empty map.
 func _assert_geometry_rendered() -> void:
-	if _voxel_renderer == null or _edge_registry == null:
+	if _voxel_board == null or _edge_registry == null:
 		return
 	var slice_count: int = _edge_registry.all_slices().size()
 	if slice_count == 0:
 		return  ## a genuinely wall-less map is legal
 	## No tile is written (the 3D board draws the store), so what counts is that the renderer WALKED the
 	## geometry: cells it placed plus cells it skipped on purpose. A build aborted before render() leaves both at 0.
-	var placed: int = _voxel_renderer.get_walked_cell_count()
+	var placed: int = _voxel_board.get_walked_cell_count()
 	if placed > 0:
 		return
 	push_error(
@@ -5558,7 +5558,7 @@ func _assert_geometry_rendered() -> void:
 		+ "The map has geometry but none of it was placed. Do not trust any visual "
 		+ "result from this build."
 	)
-	assert(false, "VoxelRenderer placed 0 cells for %d slices — render path broken" % slice_count)
+	assert(false, "VoxelBoard placed 0 cells for %d slices — render path broken" % slice_count)
 
 
 ## OCC-FIX-02: the single recompute path for the occlusion set. Called from exactly three
@@ -5930,12 +5930,12 @@ func _event_frame_sample() -> void:
 ## not submitted yet, so reading the counters in the same frame reports the state
 ## BEFORE the thing being measured exists.
 func _census_after_a_frame(label: String) -> void:
-	if _voxel_renderer == null:
+	if _voxel_board == null:
 		return
 	await get_tree().process_frame
-	if _voxel_renderer == null:
+	if _voxel_board == null:
 		return
-	_voxel_renderer.memory_census(label)
+	_voxel_board.memory_census(label)
 
 
 ## Closes the window and prints the timeline. Silent when the probe is off.
@@ -6042,7 +6042,7 @@ func report_blast_passage(delta) -> void:
 ## an ~18 ms apply. Null delta or a temporal light falls back to the full
 ## re-derivation, unchanged. Proven cell-for-cell by `INFILTRAITOR_LIGHT_COOK_GATE=1`.
 func play_consequence_light(delta = null) -> void:
-	if not is_instance_valid(_voxel_renderer):
+	if not is_instance_valid(_voxel_board):
 		return
 	## DIAG-19 (§15.2) — an instrument, never a look: the consequence light is not
 	## played at all and the board keeps its pre-blast light. Prices the LIGHT beat.
@@ -6080,7 +6080,7 @@ func play_consequence_light(delta = null) -> void:
 	elif _voxel_light_field != null and _voxel_light_field.has_stale_subset():
 		for k in _voxel_light_field.stale_cells().keys():
 			moved[k] = true
-	for k in _voxel_renderer._externally_written.keys():
+	for k in _voxel_board._externally_written.keys():
 		moved[k] = true
 	## E-PACE-02 (2026-08-26) — ⚠️ THE RAMP'S START IS WHAT IS ON SCREEN, AND FOR
 	## A CRATER CELL THAT IS 11, NOT THE SENTINEL.
@@ -6124,9 +6124,9 @@ func play_consequence_light(delta = null) -> void:
 	## should not be reported as moving.
 	var from_bucket: Dictionary = {}
 	for k in moved.keys():
-		var b0: int = _voxel_renderer.cell_bucket_at(k.z, Vector2i(k.x, k.y))
-		if b0 == VoxelRenderer.BUCKET_UNWRITTEN:
-			b0 = VoxelRenderer.LIGHT_BUCKET_COUNT - 1
+		var b0: int = _voxel_board.cell_bucket_at(k.z, Vector2i(k.x, k.y))
+		if b0 == VoxelBoard.BUCKET_UNWRITTEN:
+			b0 = VoxelBoard.LIGHT_BUCKET_COUNT - 1
 		from_bucket[k] = b0
 
 	## D-7 (§7.4) — THE GATE. After the cooked apply, force the full map-wide
@@ -6145,14 +6145,14 @@ func play_consequence_light(delta = null) -> void:
 		## `_voxel_light_field` is deliberately NOT touched: nothing reads it before
 		## the next `lighting_rebuilt` (temporal lights are excluded by
 		## `light_field_usable`), and that pass rebuilds it from scratch anyway.
-		_voxel_renderer.apply_light_field_cells(delta.light_field, delta.light_changed_cells)
+		_voxel_board.apply_light_field_cells(delta.light_field, delta.light_changed_cells)
 	else:
 		_repaint_voxel_light_buckets(true, true)
 	var derive_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
 	if gate:
 		var gate_cooked: Dictionary = _perf_snapshot_alts()
 		## The cook's field was built from a PREDICTED occupancy; the world the blast then produced has its own.
-		var occ_diff: Array[Vector3i] = delta.light_field.occupancy_differences(_voxel_renderer.build_occupancy())
+		var occ_diff: Array[Vector3i] = delta.light_field.occupancy_differences(_voxel_board.build_occupancy())
 		print("[LIGHT-COOK-GATE] predicted vs real occupancy: %d cell(s) differ%s" % [occ_diff.size(),
 			(" - e.g. %s" % [occ_diff.slice(0, 8)]) if not occ_diff.is_empty() else ""])
 		_repaint_voxel_light_buckets(false)
@@ -6179,7 +6179,7 @@ func play_consequence_light(delta = null) -> void:
 	var to_bucket: Dictionary = {}
 	var changed: int = 0
 	for k in moved.keys():
-		var b: int = _voxel_renderer.cell_bucket_at(k.z, Vector2i(k.x, k.y))
+		var b: int = _voxel_board.cell_bucket_at(k.z, Vector2i(k.x, k.y))
 		to_bucket[k] = b
 		if b != int(from_bucket[k]):
 			changed += 1
@@ -6209,22 +6209,22 @@ func play_consequence_light(delta = null) -> void:
 			## `from_bucket` is normalised to the shader's own clamp (11) where it
 			## is built, so a crater cell ramps down from the full light it is
 			## already being drawn at instead of arriving in one frame.
-			_voxel_renderer._write_cell_bucket(k.z, Vector2i(k.x, k.y),
+			_voxel_board._write_cell_bucket(k.z, Vector2i(k.x, k.y),
 				int(round(lerpf(float(f), float(to), t))))
-		_voxel_renderer.flush_cell_soot()
+		_voxel_board.flush_cell_soot()
 		if board3d_node != null and is_instance_valid(board3d_node):
 			board3d_node.on_blast_light(delta)
 		for _h in range(frames_per_step):
 			await get_tree().process_frame
-		if not is_instance_valid(_voxel_renderer):
+		if not is_instance_valid(_voxel_board):
 			return
 
 	## The last step is the REAL value, written from `to` rather than from a lerp
 	## that rounds to it — a ramp that ends one rung off would leave the board
 	## permanently wrong, and nothing downstream would ever correct it.
 	for k in moved.keys():
-		_voxel_renderer._write_cell_bucket(k.z, Vector2i(k.x, k.y), int(to_bucket[k]))
-	_voxel_renderer.flush_cell_soot()
+		_voxel_board._write_cell_bucket(k.z, Vector2i(k.x, k.y), int(to_bucket[k]))
+	_voxel_board.flush_cell_soot()
 	if board3d_node != null and is_instance_valid(board3d_node):
 		board3d_node.on_blast_light(delta)
 	print("[CONSEQUENCE] light landed")
@@ -6257,14 +6257,14 @@ func _update_temporal_lights(delta: float) -> void:
 	##      objects) — update_temporal_all() already mutated energy_multiplier
 	##      in place, so the field sees the new value the instant its caches
 	##      are cleared; no need to rebuild _lights itself.
-	if _voxel_light_field == null or _voxel_renderer == null:
+	if _voxel_light_field == null or _voxel_board == null:
 		return  ## field not built yet (pre-first lighting_rebuilt); nothing to do
 	_voxel_light_field.clear_caches()
 	var affected_gus: Dictionary = {}
 	for light in changed_lights:
 		for gu in _voxel_light_field.gus_in_light_range(light):
 			affected_gus[gu] = true
-	_voxel_renderer.apply_light_field_gus(_voxel_light_field, affected_gus.keys())
+	_voxel_board.apply_light_field_gus(_voxel_light_field, affected_gus.keys())
 
 
 func _has_moving_guards() -> bool:
@@ -6666,7 +6666,7 @@ func _punch_demo_bore(pane_slices: Array, run_is_x: bool, hit_gp: Vector2i,
 
 
 func _capture_glass_crack_demo() -> void:
-	if _voxel_renderer == null or _edge_registry == null:
+	if _voxel_board == null or _edge_registry == null:
 		push_error("[CRACK-DEMO] no renderer / edge registry")
 		return
 	var wide := OS.get_environment("INFILTRAITOR_CRACK_DEMO_WIDE") == "1"
@@ -6729,7 +6729,7 @@ func _capture_glass_crack_demo() -> void:
 		## offset is the renderer's own per-level step, not a nudge.
 		_camera_controller.focus_on(agent._cell_to_world(focus_gu)
 			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
-				* float(_voxel_renderer.relative_level(hit_level))))
+				* float(_voxel_board.relative_level(hit_level))))
 	if _fow_controller != null:
 		_fow_controller.reveal_around(focus_gu, 30)
 	for _c in range(30):
@@ -6789,14 +6789,14 @@ func _capture_glass_crack_demo() -> void:
 	## from the build it exists to photograph.
 	var demo_opening: String = "" if armored_pane \
 		else claim_glass_opening_for_hit(hit_gp, hit_level, wide)
-	await _voxel_renderer.process_dirty_async(_edge_registry)
+	await _voxel_board.process_dirty_async(_edge_registry)
 	print("[CRACK-DEMO] bore: %d voxel(s) destroyed through the real erase seam (G-D14), opening=%s, armored=%s"
 		% [holed, demo_opening if demo_opening != "" else "(none)", armored_pane])
 
 	var plan: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit_gp, hit_level, wide)
 	plan["opening"] = demo_opening   ## CRACK-04 — the sheet's void, same polygon
 	plan["variant"] = GlassCrack.pick_variant(glass_base_key(hit_gp, hit_level))
-	var res: Dictionary = GlassCrack.apply(_voxel_renderer, plan)
+	var res: Dictionary = GlassCrack.apply(_voxel_board, plan)
 	_record_crack_voxels_to_base(res)   ## G-D24 — the crossed pieces are gone for good
 	if int(res["crack_id"]) != 0:
 		record_glass_crack_to_base(hit_gp, hit_level, wide)   ## CRACK-02 S-3
@@ -6835,11 +6835,11 @@ func _capture_glass_crack_demo() -> void:
 			hit_level, wide, armored_pane)
 		var demo_opening2: String = "" if armored_pane \
 			else claim_glass_opening_for_hit(hit2, hit_level, wide)
-		await _voxel_renderer.process_dirty_async(_edge_registry)
+		await _voxel_board.process_dirty_async(_edge_registry)
 		var plan2: Dictionary = GlassCrack.plan_pane_crack(pane_slices, face, hit2, hit_level, wide)
 		plan2["opening"] = demo_opening2
 		plan2["variant"] = GlassCrack.pick_variant(glass_base_key(hit2, hit_level))
-		var res2: Dictionary = GlassCrack.apply(_voxel_renderer, plan2)
+		var res2: Dictionary = GlassCrack.apply(_voxel_board, plan2)
 		_record_crack_voxels_to_base(res2)
 		if int(res2["crack_id"]) != 0:
 			record_glass_crack_to_base(hit2, hit_level, wide)   ## CRACK-02 S-3
@@ -6847,7 +6847,7 @@ func _capture_glass_crack_demo() -> void:
 			% [hit2, gap, holed2, demo_opening2 if demo_opening2 != "" else "(none)",
 			res2["crazed"], res2["crossed"]])
 
-	await _voxel_renderer.process_dirty_async(_edge_registry)
+	await _voxel_board.process_dirty_async(_edge_registry)
 	for _c in range(10):
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
@@ -6857,7 +6857,7 @@ func _capture_glass_crack_demo() -> void:
 	## cut" says the swap was ISSUED; this reads the tilemap back. The two
 	## disagreed for the whole life of CRACK-03 — 12 issued, 0 on the board.
 	print("[CRACK-DEMO] shards: registry=%d board=%d"
-		% [_voxel_renderer._glass_shard_cells.size(), _voxel_renderer.count_glass_shards()])
+		% [_voxel_board._glass_shard_cells.size(), _voxel_board.count_glass_shards()])
 
 	## RENDER_ORDER — the crack's clip must FOLLOW the destruction of the wall that
 	## covered the pane. `INFILTRAITOR_CRACK_DEMO_DESTROY_GU=x,y` (a GRID GU, i.e.
@@ -6872,7 +6872,7 @@ func _capture_glass_crack_demo() -> void:
 			push_warning("[CRACK-DEMO] INFILTRAITOR_CRACK_DEMO_DESTROY_GU=%s — expected \"x,y\"" % destroy_env)
 		else:
 			var dgu := Vector2i(dparts[0].to_int(), dparts[1].to_int())
-			var ground: int = _voxel_renderer.ground_plane_level()
+			var ground: int = _voxel_board.ground_plane_level()
 			var killed_slice: int = 0
 			var killed_slab: int = 0
 			## Every slice of every EDGE of that GU — BOTH sides. A block's wall is two
@@ -6915,9 +6915,9 @@ func _capture_glass_crack_demo() -> void:
 							record_voxel_damage_to_base(v.grid_pos, v.level, Voxel.DamageState.DESTROYED,
 				false, Voxel.CarvedSide.NONE, 0, 0, v)
 							killed_slab += 1
-			await _voxel_renderer.process_dirty_async(_edge_registry)
+			await _voxel_board.process_dirty_async(_edge_registry)
 			if _slab_registry != null:
-				_voxel_renderer.process_dirty_slabs(_slab_registry)
+				_voxel_board.process_dirty_slabs(_slab_registry)
 			## `INFILTRAITOR_CRACK_DEMO_DESTROY_WAIT=<frames>` (default 10). 896 voxels
 			## destroyed at once leave a pillar-shaped cloud of dust that reads as the
 			## pillar still standing; wait it out before judging the web behind it.
@@ -6939,7 +6939,7 @@ func _capture_glass_crack_demo() -> void:
 	## centre compared to the hole's without a second boot's noise in between.
 	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_ALIGN") == "1":
 		for shown in [false, true]:
-			_voxel_renderer.set_glass_cracks_visible(shown)
+			_voxel_board.set_glass_cracks_visible(shown)
 			for _f in range(6):
 				await get_tree().process_frame
 			await RenderingServer.frame_post_draw
@@ -6970,10 +6970,10 @@ func _capture_glass_crack_demo() -> void:
 				push_warning("[CRACK-DEMO] span %r is not a number" % part)
 				continue
 			var sw: float = part.to_float()
-			_voxel_renderer.clear_glass_cracks()
+			_voxel_board.clear_glass_cracks()
 			var spec2: Dictionary = base_spec.duplicate(true)
 			spec2["span"] = Vector2(sw, sw * 0.5)
-			if _voxel_renderer.spawn_glass_crack(spec2) == 0:
+			if _voxel_board.spawn_glass_crack(spec2) == 0:
 				push_warning("[CRACK-DEMO] span %.1f produced no sprite" % sw)
 				continue
 			for _f in range(8):
@@ -6986,7 +6986,7 @@ func _capture_glass_crack_demo() -> void:
 	## CRACK-04 — the void A/B, in ONE boot for the reason the cut triptych is.
 	if OS.get_environment("INFILTRAITOR_CRACK_DEMO_VOID") == "1":
 		for on in [false, true]:
-			_voxel_renderer.set_glass_opening_void(on)
+			_voxel_board.set_glass_opening_void(on)
 			for _f in range(6):
 				await get_tree().process_frame
 			await RenderingServer.frame_post_draw
@@ -6996,7 +6996,7 @@ func _capture_glass_crack_demo() -> void:
 
 	if cut_demo:
 		for cut in [0.0, 0.5, 1.0]:
-			_voxel_renderer.set_glass_crack_hole_cut(cut)
+			_voxel_board.set_glass_crack_hole_cut(cut)
 			for _f in range(6):
 				await get_tree().process_frame
 			await RenderingServer.frame_post_draw
@@ -7025,7 +7025,7 @@ func _capture_glass_crack_demo() -> void:
 				_camera_controller.focus_on(
 					agent._cell_to_world(Vector2i(flipped.x >> 3, flipped.y >> 3))
 					+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
-						* float(_voxel_renderer.relative_level(hit_level))))
+						* float(_voxel_board.relative_level(hit_level))))
 				if _fow_controller != null:
 					_fow_controller.reveal_around(Vector2i(flipped.x >> 3, flipped.y >> 3), 30)
 			for _f in range(40):
@@ -7049,12 +7049,12 @@ func _capture_glass_crack_demo() -> void:
 			## — before and after the flush — is what separates "the rebuild is
 			## right" from "the rebuild is right until something else destroys a
 			## voxel". The two numbers must be equal.
-			var board_pre: int = _voxel_renderer.count_glass_shards()
-			_voxel_renderer.refresh_glass_rims()
-			var board_post: int = _voxel_renderer.count_glass_shards()
+			var board_pre: int = _voxel_board.count_glass_shards()
+			_voxel_board.refresh_glass_rims()
+			var board_post: int = _voxel_board.count_glass_shards()
 			print("[CRACK-DEMO] S-3 flip to %s -> glass_crack_flip_%s_%s.png · %d sprite(s) live · shards registry=%d board=%d, after a flush board=%d"
-				% [flip_to, tag, flip_to, _voxel_renderer.glass_crack_count(),
-				_voxel_renderer._glass_shard_cells.size(), board_pre, board_post])
+				% [flip_to, tag, flip_to, _voxel_board.glass_crack_count(),
+				_voxel_board._glass_shard_cells.size(), board_pre, board_post])
 
 	## §13.5 — "perf is a claim, not a fact". With INFILTRAITOR_FRAME_PROBE=1 the
 	## demo holds the finished board long enough for the standing probe to print,
@@ -7063,7 +7063,7 @@ func _capture_glass_crack_demo() -> void:
 	## or every number under 16.7 ms is the 60 Hz pace, not the work.
 	if _dev_flag_on("FRAME_PROBE"):
 		print("[CRACK-DEMO] holding for the frame probe (%d crack sprite(s) on screen)"
-			% _voxel_renderer.glass_crack_count())
+			% _voxel_board.glass_crack_count())
 		for _p in range(420):
 			await get_tree().process_frame
 
@@ -7086,7 +7086,7 @@ func _capture_glass_crack_demo() -> void:
 ##   INFILTRAITOR_GLASS_DIAG=1         — the flat backdrop, for a readable frame
 ##   INFILTRAITOR_FREEZE_GUARD_TURN=1  — 0-px reproducibility between two runs
 func _capture_glass_blast_demo() -> void:
-	if _voxel_renderer == null or _edge_registry == null or _test_zone_controller == null:
+	if _voxel_board == null or _edge_registry == null or _test_zone_controller == null:
 		push_error("[GLASS-BLAST] no renderer / edge registry / test zone controller")
 		return
 	## ⚠️ THE PANE IS SELECTABLE, AND IT HAS TO BE. Under the shipped balance a
@@ -7132,7 +7132,7 @@ func _capture_glass_blast_demo() -> void:
 		## crack demo needs, and for the same reason.
 		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
 			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
-				* float(_voxel_renderer.relative_level(pane_slices[0].voxels[0].level))))
+				* float(_voxel_board.relative_level(pane_slices[0].voxels[0].level))))
 	if _fow_controller != null:
 		_fow_controller.reveal_around(pane_gu, 30)
 	for _s in range(60):
@@ -7157,25 +7157,25 @@ func _capture_glass_blast_demo() -> void:
 	## ⚠️ THE BOARD, NOT THE COUNTER — CRACK-04's lesson, and the only reading that
 	## can tell a claim that reached the tilemap from one that was merely issued.
 	print("[GLASS-BLAST] shards: registry=%d board=%d"
-		% [_voxel_renderer._glass_shard_cells.size(), _voxel_renderer.count_glass_shards()])
+		% [_voxel_board._glass_shard_cells.size(), _voxel_board.count_glass_shards()])
 	## G-D35 B-2 — the craze FIELDS. `_base_crazes` is what was claimed and the
 	## count is what actually reached the scene; before B-3's art the second is 0
 	## by design, and printing both is what tells "not wired" from "no sheet yet".
 	## B-4b — did the mesh actually get cut to the holes? The painted-texel count
 	## is the only number that says so: an empty mask and a correct one produce the
 	## same log everywhere else, and the difference is sub-cell on screen.
-	for c in _voxel_renderer._glass_cracks:
+	for c in _voxel_board._glass_cracks:
 		if bool(c.get("field", false)):
 			print("[GLASS-BLAST] craze hole mask: %d texel(s) inside a hole, %d opening(s) logged"
 				% [int(c.get("craze_mask_painted", -1)),
-				_voxel_renderer._glass_applied_openings.size()])
+				_voxel_board._glass_applied_openings.size()])
 	## G6 — the glass on the floor. RECORDED against LIVE, because a landing on a
 	## plane this view does not build is stored and not drawn, and the two numbers
 	## are the only thing that tells that apart from nothing having landed.
 	print("[GLASS-BLAST] floor shards: %d pile(s) recorded, %d live"
-		% [_base_shards.size(), _voxel_renderer.floor_shard_pile_count()])
+		% [_base_shards.size(), _voxel_board.floor_shard_pile_count()])
 	print("[GLASS-BLAST] craze fields: claimed=%d live=%d"
-		% [_base_crazes.size(), _voxel_renderer.glass_craze_count()])
+		% [_base_crazes.size(), _voxel_board.glass_craze_count()])
 	## The aim dome / blast flood damage-awareness (Director, 2026-09-07): a pane the
 	## blast SHATTERED must drop out of `_wall_height_edges`, so a second grenade's
 	## bubble stops tracing glass that is gone.
@@ -7192,7 +7192,7 @@ func _capture_glass_blast_demo() -> void:
 				continue
 			if not GlassMaterials.is_glass(_sl.material_at(_v.level - _base)):
 				continue
-			if _voxel_renderer.glass_cell_present(_v.level, _v.grid_pos):
+			if _voxel_board.glass_cell_present(_v.level, _v.grid_pos):
 				_stale += 1
 	print("[GLASS-BLAST] STALE glass cells (destroyed in data, still painted): %d" % _stale)
 	print("[GLASS-BLAST] wrote glass_blast_demo_{before,after}.png")
@@ -7225,7 +7225,7 @@ func _capture_glass_blast_demo() -> void:
 		print("[GLASS-BLAST] cracked glass voxels: %d before the flip, %d after (%s)"
 			% [before_n, after_n, "KEPT" if after_n == before_n else "LOST %d" % (before_n - after_n)])
 		print("[GLASS-BLAST] craze fields: %d live after the flip (%d claimed)"
-			% [_voxel_renderer.glass_craze_count(), _base_crazes.size()])
+			% [_voxel_board.glass_craze_count(), _base_crazes.size()])
 		## ⚠️ THE BOARD, NOT THE REBUILD COUNTER. `_respawn_base_openings()` counts
 		## a hole as rebuilt only when it swapped at least one NEW cell into a
 		## shard — two holes whose rims overlap make the second report zero even
@@ -7233,10 +7233,10 @@ func _capture_glass_blast_demo() -> void:
 		## "did the rims survive" is how many shard cells stand on the tilemap,
 		## which is what CRACK-04 learned to read.
 		print("[GLASS-BLAST] shards after the flip: registry=%d board=%d"
-			% [_voxel_renderer._glass_shard_cells.size(),
-			_voxel_renderer.count_glass_shards()])
+			% [_voxel_board._glass_shard_cells.size(),
+			_voxel_board.count_glass_shards()])
 		print("[GLASS-BLAST] floor shards after the flip: %d recorded, %d live"
-			% [_base_shards.size(), _voxel_renderer.floor_shard_pile_count()])
+			% [_base_shards.size(), _voxel_board.floor_shard_pile_count()])
 		## ⚠️ B-2b's WHOLE CLAIM, as a verdict. The tile lattice's anchor and the
 		## sheet variant are keyed in BASE space, so a quarter turn must leave both
 		## untouched — a pane cannot wear a different craze depending on where the
@@ -7257,19 +7257,19 @@ func _capture_glass_blast_demo() -> void:
 	## the base store but used to leave the decals on screen. This re-detonates,
 	## reloads the same map, and asserts every glass render store is back to zero.
 	if OS.get_environment("INFILTRAITOR_GLASS_BLAST_RELOAD") == "1":
-		var piles_before: int = _voxel_renderer.floor_shard_pile_count()
-		var cracks_before: int = _voxel_renderer.count_glass_shards()
-		var crazes_before: int = _voxel_renderer.glass_craze_count()
+		var piles_before: int = _voxel_board.floor_shard_pile_count()
+		var cracks_before: int = _voxel_board.count_glass_shards()
+		var crazes_before: int = _voxel_board.glass_craze_count()
 		print("[GLASS-BLAST] before reload: %d floor pile(s), %d shard cell(s), %d craze field(s)"
 			% [piles_before, cracks_before, crazes_before])
 		load_map(map_id)
 		for _f in range(60):
 			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
-		var piles_after: int = _voxel_renderer.floor_shard_pile_count()
-		var cracks_after: int = _voxel_renderer.count_glass_shards()
-		var crazes_after: int = _voxel_renderer.glass_craze_count()
-		var rim_after: int = _voxel_renderer._glass_shard_cells.size()
+		var piles_after: int = _voxel_board.floor_shard_pile_count()
+		var cracks_after: int = _voxel_board.count_glass_shards()
+		var crazes_after: int = _voxel_board.glass_craze_count()
+		var rim_after: int = _voxel_board._glass_shard_cells.size()
 		var clean: bool = piles_after == 0 and cracks_after == 0 and crazes_after == 0 and rim_after == 0
 		print("[GLASS-BLAST] after reload: %d floor pile(s), %d shard cell(s), %d rim cell(s), %d craze field(s) — %s"
 			% [piles_after, cracks_after, rim_after, crazes_after,
@@ -7582,14 +7582,14 @@ var _burn_probe_targets: Array = []
 ## this blunt.
 func _debug_hide_all_but_voxels(node: Node) -> void:
 	for child in node.get_children():
-		if child == _voxel_renderer:
+		if child == _voxel_board:
 			continue
 		## Never hide an ancestor of the voxel renderer — that would take the
 		## thing being photographed down with the overlays.
-		if _voxel_renderer != null and _voxel_renderer.is_ancestor_of(child):
+		if _voxel_board != null and _voxel_board.is_ancestor_of(child):
 			_debug_hide_all_but_voxels(child)
 			continue
-		if child.is_ancestor_of(_voxel_renderer):
+		if child.is_ancestor_of(_voxel_board):
 			_debug_hide_all_but_voxels(child)
 			continue
 		if child is CanvasItem:
@@ -7712,7 +7712,7 @@ func _capture_circle_gate() -> void:
 
 
 func _capture_light_burn_probe() -> void:
-	if _voxel_renderer == null or _edge_registry == null:
+	if _voxel_board == null or _edge_registry == null:
 		push_error("[BURN-PROBE] needs a voxel renderer and an edge registry.")
 		return
 	var material := OS.get_environment("INFILTRAITOR_BURN_PROBE_MATERIAL")
@@ -7837,7 +7837,7 @@ func _capture_light_burn_probe() -> void:
 		base, _burn_probe_snapshot())
 
 	## ⚠️ WAIT FOR THE SMOKE, or the capture photographs the wrong thing.
-	## `VoxelRenderer.voxel_destroyed` fires per voxel and room.gd dispatches it
+	## `VoxelBoard.voxel_destroyed` fires per voxel and room.gd dispatches it
 	## to the smoke/spark/debris overlays — so erasing 3 080 cells in one frame
 	## raises a dust cloud that HIDES the hole it is announcing. The first three
 	## runs of this probe produced a pale mass exactly where the wall had been,
@@ -7956,9 +7956,9 @@ func _burn_probe_passages(label: String, slices: Array = []) -> void:
 
 
 func _burn_probe_render() -> void:
-	_voxel_renderer.process_dirty(_edge_registry)
+	_voxel_board.process_dirty(_edge_registry)
 	if _slab_registry != null:
-		_voxel_renderer.process_dirty_slabs(_slab_registry)
+		_voxel_board.process_dirty_slabs(_slab_registry)
 
 
 ## Every placed cell's light bucket, keyed by (x, y, level). The fixed set is
@@ -7969,7 +7969,7 @@ func _burn_probe_snapshot() -> Dictionary:
 	var out: Dictionary = {}
 	if _voxel_light_field == null:
 		return out
-	var occupancy: Dictionary = _voxel_renderer.build_occupancy()
+	var occupancy: Dictionary = _voxel_board.build_occupancy()
 	for level in occupancy:
 		for cell in occupancy[level]:
 			out[Vector3i(cell.x, cell.y, level)] = _voxel_light_field.bucket_for(cell, level)
@@ -8549,7 +8549,7 @@ func _capture_detonation_filmstrip() -> void:
 ## blast's own fire and smoke are still playing, a zero would be impossible and a
 ## non-zero would mean nothing.
 func _capture_glass_rain_demo() -> void:
-	if _voxel_renderer == null or _test_zone_controller == null:
+	if _voxel_board == null or _test_zone_controller == null:
 		push_error("[GLASS-RAIN] no renderer / test zone controller")
 		return
 	var pane_id_want := OS.get_environment("INFILTRAITOR_GLASS_BLAST_PANE")
@@ -8572,7 +8572,7 @@ func _capture_glass_rain_demo() -> void:
 		_camera_controller.set_zoom_for_capture(1.0)
 		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
 			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
-				* float(_voxel_renderer.relative_level(pane_slices[0].voxels[0].level))))
+				* float(_voxel_board.relative_level(pane_slices[0].voxels[0].level))))
 	if _fow_controller != null:
 		_fow_controller.reveal_around(pane_gu, 30)
 	_test_zone_controller.add_grenade(gu)
@@ -8587,7 +8587,7 @@ func _capture_glass_rain_demo() -> void:
 	## ── 1. let EVERYTHING settle, the rain included ─────────────────────────
 	for _f in range(420):
 		await get_tree().process_frame
-	for r in _voxel_renderer.get_children():
+	for r in _voxel_board.get_children():
 		if r is GlassRainOverlay:
 			r.free()
 	for _g in range(6):
@@ -8639,7 +8639,7 @@ func _capture_glass_rain_demo() -> void:
 
 	## ── 5. kill it mid-flight ───────────────────────────────────────────────
 	var killed: int = 0
-	for r2 in _voxel_renderer.get_children():
+	for r2 in _voxel_board.get_children():
 		if r2 is GlassRainOverlay:
 			killed += r2.live_count()
 			r2.free()
@@ -8741,7 +8741,7 @@ const RAIN_TIMING_PRESETS: Dictionary = {
 
 
 func _capture_glass_rain_timings() -> void:
-	if _voxel_renderer == null or _edge_registry == null or _slab_registry == null:
+	if _voxel_board == null or _edge_registry == null or _slab_registry == null:
 		push_error("[GLASS-RAIN-T] no renderer / edge registry / slab registry")
 		return
 	var preset_name := OS.get_environment("INFILTRAITOR_RAIN_TIMING")
@@ -8806,7 +8806,7 @@ func _capture_glass_rain_timings() -> void:
 		_camera_controller.set_zoom_for_capture(1.0)
 		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
 			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
-				* float(_voxel_renderer.relative_level(pane_slices[0].voxels[0].level))))
+				* float(_voxel_board.relative_level(pane_slices[0].voxels[0].level))))
 	if _fow_controller != null:
 		_fow_controller.reveal_around(pane_gu, 30)
 	for _s in range(50):
@@ -8824,7 +8824,7 @@ func _capture_glass_rain_timings() -> void:
 			continue
 		v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 		fallen.append({"grid_pos": v.grid_pos, "level": v.level})
-	await _voxel_renderer.process_dirty_async(_edge_registry)
+	await _voxel_board.process_dirty_async(_edge_registry)
 	var remnant_cells: Array = []
 	for r in res["remnants"]:
 		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
@@ -8865,7 +8865,7 @@ func _capture_glass_rain_timings() -> void:
 	var n: int = spawn_glass_rain(landings)
 	GlassRainOverlay.timing_overrides = {}
 	var span: int = 0
-	for r in _voxel_renderer.get_children():
+	for r in _voxel_board.get_children():
 		if r is GlassRainOverlay:
 			span = maxi(span, r.span_frames())
 	var frames_env := OS.get_environment("INFILTRAITOR_RAIN_FRAMES")
@@ -8909,7 +8909,7 @@ func _capture_glass_rain_timings() -> void:
 ##   4. `reap_orphaned_remnants()` — the remnants should now fall;
 ##   5. capture "after", and assert the reap reported > 0 and the store shrank.
 func _capture_glass_reap_demo() -> void:
-	if _voxel_renderer == null or _edge_registry == null or _slab_registry == null:
+	if _voxel_board == null or _edge_registry == null or _slab_registry == null:
 		push_error("[GLASS-REAP] no renderer / edge registry / slab registry")
 		return
 	var pane_slices: Array = _framed_glass_pane()
@@ -8928,7 +8928,7 @@ func _capture_glass_reap_demo() -> void:
 		_camera_controller.set_zoom_for_capture(1.0)
 		_camera_controller.focus_on(agent._cell_to_world(pane_gu)
 			+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
-				* float(_voxel_renderer.relative_level(pane_slices[0].voxels[0].level))))
+				* float(_voxel_board.relative_level(pane_slices[0].voxels[0].level))))
 	if _fow_controller != null:
 		_fow_controller.reveal_around(pane_gu, 30)
 	for _s in range(40):
@@ -8947,7 +8947,7 @@ func _capture_glass_reap_demo() -> void:
 	for r in res["remnants"]:
 		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
 		remnant_cells.append({"cell": rv.grid_pos, "level": rv.level})
-	await _voxel_renderer.process_dirty_async(_edge_registry)
+	await _voxel_board.process_dirty_async(_edge_registry)
 	var stuck: int = claim_glass_remnants(remnant_cells)
 	var before_store: int = _base_remnants.size()
 	for _f in range(8):
@@ -8968,7 +8968,7 @@ func _capture_glass_reap_demo() -> void:
 			if frame_keys.has(key):
 				v.set_damage(Voxel.DamageState.DESTROYED, false, Voxel.CarvedSide.NONE, 0, 0)
 				frame_hit += 1
-	await _voxel_renderer.process_dirty_async(_edge_registry)
+	await _voxel_board.process_dirty_async(_edge_registry)
 
 	## ── 4. the reap ───────────────────────────────────────────────────────
 	var reaped: Dictionary = reap_orphaned_remnants()
@@ -10470,7 +10470,7 @@ func _print_node_census(node: Node, depth: int) -> void:
 			% ["  ".repeat(depth), child.name, child.get_class(), c.x, c.y, c.z,
 			" · process" if child.is_processing() else ""])
 		## The voxel renderer's 48 layers are already priced by HIDE_VOXELS.
-		if depth < 4 and (c.x >= 4 or c.z > 0) and child != _voxel_renderer:
+		if depth < 4 and (c.x >= 4 or c.z > 0) and child != _voxel_board:
 			_print_node_census(child, depth + 1)
 
 

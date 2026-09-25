@@ -272,7 +272,7 @@ func clear() -> void:
 	_active_index = -1
 	## RUNTIME-GUARD-01 (2026-08-13): drop an in-flight blast too. This runs on
 	## map load (`_populate_test_zone_if_playground()`), and a sequence started
-	## against the OLD room's VoxelRenderer has nothing left to paint into — the
+	## against the OLD room's VoxelBoard has nothing left to paint into — the
 	## renderer is rebuilt by `load_map()`. Releasing the reference lets the
 	## coroutine's own `is_instance_valid()` guard end it on the next frame
 	## instead of it running on against freed geometry.
@@ -949,13 +949,13 @@ func is_in_targeting_mode() -> bool:
 ## (Task 5) is the only thing that actually paints it, as the real 15-wave
 ## sequence from §1's table. Firearm destruction
 ## (WeaponBenchController.fire_active()) is untouched by this — it still
-## renders through VoxelRenderer.process_dirty()'s single-frame D-ARCH-01 swap.
+## renders through VoxelBoard.process_dirty()'s single-frame D-ARCH-01 swap.
 ##
 ## Gap, flagged not silently dropped: VFX-01's per-voxel debris
 ## (room._dispatch_destruction_vfx(), driven by the voxel_destroyed signal)
 ## does not fire for blast-caused destruction — the choreographer's destroy wave
 ## calls layer.erase_cell() directly rather than going through
-## VoxelRenderer.process_dirty(), so the signal never reaches the room.
+## VoxelBoard.process_dirty(), so the signal never reaches the room.
 ## Firearms are unaffected (still the signal-driven path).
 ##
 ## PARTIALLY CLOSED 2026-08-13 (E-EMBER-01 / E-SMOKE-TINT-01, Director: "reativar
@@ -1412,7 +1412,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## of ramp later.
 	var frag0: int = Time.get_ticks_usec()
 	if room._shrapnel_overlay != null:
-		room._shrapnel_overlay.spawn_shrapnel(boom_anchor, waves, room._voxel_renderer)
+		room._shrapnel_overlay.spawn_shrapnel(boom_anchor, waves, room._voxel_board)
 	_prof("FRAG — spawn_shrapnel %.2f ms (BEFORE the flash now)" % [
 		float(Time.get_ticks_usec() - frag0) / 1000.0])
 
@@ -1465,7 +1465,7 @@ func _start_waves(delta) -> void:
 	## tints only a MaterialRegistry owner can resolve.
 	presenter.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints(),
 		room._debris_overlay, room.blast_debris_palette())
-	presenter.start(delta.waves, room._voxel_renderer, room._smoke_spark_overlay,
+	presenter.start(delta.waves, room._voxel_board, room._smoke_spark_overlay,
 		room.get_tree())
 
 
@@ -1496,7 +1496,7 @@ func _build_detonation_ctx(source_gu: Vector2i) -> Dictionary:
 	return {
 		"edge_registry": room._edge_registry,
 		"slab_registry": room._slab_registry,
-		"voxel_renderer": room._voxel_renderer,
+		"voxel_board": room._voxel_board,
 		## E-JUNCTION-01: wall-junction corner columns, so a grenade's
 		## omnidirectional flood can reach them the way it already reaches
 		## every Slice/Slab. find_affected_containers() defaults this to []

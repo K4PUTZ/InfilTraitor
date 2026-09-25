@@ -14,7 +14,7 @@
 extends SceneTree
 
 const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
-const VoxelRendererClass = preload("res://godot/scripts/geometry/voxel_renderer.gd")
+const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 
 ## OCC-FIX-03c (2026-09-01) — LEVEL-RENUMBER RESIDUE. Every fixture below used to
 ## spell its levels as 8, 9, 10, back when a 1-storey block occupied levels 0..7.

@@ -1,10 +1,10 @@
 ## FloorPile3D — the glass-shard piles on the 3D board's floor.
 ##
 ## RENDER3D R3D-6 (item 6). The 2D board draws a landed pane's piles as one `Sprite2D` per cell
-## (`VoxelRenderer.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles —
+## (`VoxelBoard.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles —
 ## the white band that stays on the floor after a pane is shot out — were not drawn at all.
 ##
-## HOW (R3D-9): a pile is DATA — a voxel cell, a level, a variant and an opacity (`VoxelRenderer.spawn_floor_shard_pile`
+## HOW (R3D-9): a pile is DATA — a voxel cell, a level, a variant and an opacity (`VoxelBoard.spawn_floor_shard_pile`
 ## hands them over, from `Room._base_shards`); nothing is read from a sprite. Its ground quad is the cell's centre
 ## plus the decal's screen-aligned half-side carried onto the ground by the board's own 2D → ground map (a linear
 ## map, so the decal keeps the very shape it had as a sprite). One `ArrayMesh` per decal variant (three), rebuilt
@@ -97,7 +97,7 @@ func _rebuild() -> void:
 		cols.append(PackedColorArray())
 	var lift := Vector3.UP * _lift
 	var to_gu: Transform2D = _board.call("ground_affine")
-	var h: float = VoxelRenderer.floor_shard_half_px()
+	var h: float = VoxelBoard.floor_shard_half_px()
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	## The decal's screen-aligned corners, as ground offsets (the map is linear, so one set serves every pile).
 	var oa: Vector2 = to_gu.basis_xform(Vector2(-h, -h))

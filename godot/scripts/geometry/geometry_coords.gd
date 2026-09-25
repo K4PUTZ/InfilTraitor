@@ -61,7 +61,7 @@ const VOXEL_TILE_H: int = 16     ## tile height (top face only)
 
 ## ── Ground stack (D13/D17/D18 + FLOOR-DEPTH-01, Director 2026-07-28) ──────────
 ## The level map beneath the walkable plane, in one place — room_builder,
-## VoxelRenderer and the blast path all used to spell these out independently
+## VoxelBoard and the blast path all used to spell these out independently
 ## (or, worse, as a bare -1 / level - 1).
 ##
 ##   FLOOR_TOP_LEVEL   (-1) real Slab, destructible, wears the floor-zone bake.

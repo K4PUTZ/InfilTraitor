@@ -140,7 +140,7 @@ const ARMORED_SHEET_WIDE: String = "armored_wide"
 ##
 ## ⚠️ ONE DEFINITION, AND IT USED TO BE TWO. The "a crack with no hole borrows the
 ## smallest member's page" fallback was written once in `sheet_span_for()` and
-## again in `VoxelRenderer.spawn_glass_crack()`, so the PAGE and the QUAD were
+## again in `VoxelBoard.spawn_glass_crack()`, so the PAGE and the QUAD were
 ## chosen by two copies of one rule — the arrangement that silently draws a sheet
 ## at another sheet's scale the day only one of them is edited. G-D28 is that day.
 ##
@@ -447,7 +447,7 @@ static func plan_pane_crack(pane_slices: Array, face: int, hit_grid_pos: Vector2
 	}
 
 
-## The RENDER half of a plan, as `VoxelRenderer.spawn_glass_crack()` wants it.
+## The RENDER half of a plan, as `VoxelBoard.spawn_glass_crack()` wants it.
 ## Separated from `apply()` because CRACK-02 decoupled state from render (§13.1)
 ## and S-3 needs the render half ALONE: after a perspective flip the CRACKED
 ## states are already back (VL-PERSIST re-applied them), and re-running `apply()`
@@ -479,7 +479,7 @@ static func sprite_spec(plan: Dictionary) -> Dictionary:
 ## Apply a plan: set the voxel states, resolve G-D24's crossings against the
 ## cracks already live, and spawn the crack SPRITE. Shared by the shot path
 ## (`agent_shot_controller._craze_pane_around_hole`) and the demo capture, so the
-## sequence has ONE definition. `renderer` is the VoxelRenderer; it must expose
+## sequence has ONE definition. `renderer` is the VoxelBoard; it must expose
 ## `glass_crack_covering()` and `spawn_glass_crack()`.
 ##
 ## ⚠️ ORDER IS LOAD-BEARING: every crossing is tested BEFORE the new crack is

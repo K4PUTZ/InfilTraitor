@@ -42,7 +42,7 @@ const NO_EPICENTER_BIAS := Vector2i(-999999, -999999)
 ## and the binding constraint is NOT the alpha carrier the code rides in
 ## (measured: a 216-level carrier decodes cleanly — a real capture with the
 ## finer packing came back pixel-identical to the 64-level one). It is the
-## alternative-id ceiling documented on VoxelRenderer.FACE_SOOT_CODE_COUNT:
+## alternative-id ceiling documented on VoxelBoard.FACE_SOOT_CODE_COUNT:
 ## 12 buckets × codes × 2 flips must stay under TileSetAtlasSource.
 ## TRANSFORM_FLIP_H (4096, read from the engine, not assumed). Five tones need
 ## 6³ = 216 codes and peak at id 5183 — over. Four need 5³ = 125 and peak at
@@ -1041,7 +1041,7 @@ static func vertical_ring_for(level_offset: int) -> int:
 ## grid_pos is view-space and re-deriving it would re-roll every mark on
 ## rotation.
 static func decal_variant_for(salt: String, a: int, b: int) -> int:
-	var count: int = VoxelRenderer.IMPACT_DECAL_VARIANTS
+	var count: int = VoxelBoard.IMPACT_DECAL_VARIANTS
 	if count <= 1:
 		return 0
 	return FacadeSampler._fnv1a_hash("%s:DECAL:%d:%d" % [salt, a, b]) % count
@@ -1057,7 +1057,7 @@ static func decal_variant_for(salt: String, a: int, b: int) -> int:
 ## is stored: grid_pos is view-space, re-deriving at paint time would re-roll
 ## every mark's substrate on rotation.
 static func substrate_for(salt: String, a: int, b: int) -> int:
-	var count: int = VoxelRenderer.DAMAGE_SUBSTRATE_VARIANTS
+	var count: int = VoxelBoard.DAMAGE_SUBSTRATE_VARIANTS
 	if count <= 1:
 		return 0
 	return FacadeSampler._fnv1a_hash("%s:SUBSTRATE:%d:%d" % [salt, a, b]) % count
@@ -1367,7 +1367,7 @@ const DEEP_FLOOR_CRATER_FACTOR := 0.5
 ## wrong. Director's ruling — soot ADDS to the per-level tone instead of competing
 ## with it, everything gets darker downward, and losing the texture to shadow at
 ## the bottom is acceptable. The layer separation therefore comes entirely from
-## VoxelRenderer.FLOOR_DEPTH_DIM, which was re-tuned for that job.
+## VoxelBoard.FLOOR_DEPTH_DIM, which was re-tuned for that job.
 ##
 ## Kept as a named constant rather than returning to a bare literal 0: the
 ## detonation path and the post-rotation replay both write it, and they must never
@@ -1517,7 +1517,7 @@ static func soot_tone(cell: Vector2i, level: int, band: int, touches_hole: bool)
 
 static func soot_code(ring: int) -> int:
 	if ring < 0 or ring >= FACE_SOOT_CLEAN:
-		return VoxelRenderer.FACE_SOOT_CODE_CLEAN
+		return VoxelBoard.FACE_SOOT_CODE_CLEAN
 	return VoxelLightField.encode_face_soot(Vector3i(ring, ring, ring))
 
 

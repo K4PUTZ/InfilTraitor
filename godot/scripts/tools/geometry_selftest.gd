@@ -30,7 +30,7 @@ func _initialize():
 		"res://godot/scripts/geometry/slice_generator.gd",
 		"res://godot/scripts/geometry/junction_resolver.gd",
 		"res://godot/scripts/geometry/high_wall.gd",
-		"res://godot/scripts/geometry/voxel_renderer.gd",
+		"res://godot/scripts/geometry/voxel_board.gd",
 	]
 	
 	for file_path in required_files:
@@ -54,7 +54,7 @@ func _initialize():
 		"SliceGenerator": "res://godot/scripts/geometry/slice_generator.gd",
 		"JunctionResolver": "res://godot/scripts/geometry/junction_resolver.gd",
 		"HighWallGroup": "res://godot/scripts/geometry/high_wall.gd",
-		"VoxelRenderer": "res://godot/scripts/geometry/voxel_renderer.gd",
+		"VoxelBoard": "res://godot/scripts/geometry/voxel_board.gd",
 	}
 	
 	for name_key in classes:

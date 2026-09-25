@@ -22,7 +22,7 @@
 ##     will not load; a clean boot prints none), but THIS gate and
 ##     `voxel_decal_selftest.gd` catch it before the game ever boots, so neither
 ##     may go with the 2D board at R3D-END;
-##   - a material added to VoxelRenderer.IMPACT_DECAL_MATERIALS with no files on
+##   - a material added to VoxelBoard.IMPACT_DECAL_MATERIALS with no files on
 ##     disk is a SILENT MISS, not an error — the same failure class as a
 ##     rejected facade, which is what earned check_facade.py in the first place.
 ##
@@ -90,7 +90,7 @@ GENERIC_MATERIAL = "_generic"
 
 def decal_dir(material):
     return os.path.join(MATERIALS_ROOT, material, "decals")
-RENDERER = os.path.join(REPO_ROOT, "godot", "scripts", "geometry", "voxel_renderer.gd")
+RENDERER = os.path.join(REPO_ROOT, "godot", "scripts", "geometry", "voxel_board.gd")
 ## The two files the SHEET wiring check reads. GlassMaterials owns the width
 ## roster (the same file CLAUDE.md rule L2 already parses the glass family out
 ## of), and TextureResolver is where a sheet is accepted or silently dropped.
@@ -257,7 +257,7 @@ COVERAGE_CEILING = 99.5
 
 
 def _wired_materials():
-    """The materials VoxelRenderer will actually ask the disk for.
+    """The materials VoxelBoard will actually ask the disk for.
 
     Read from the source rather than duplicated here, because the whole failure
     this gate exists for is the two lists DISAGREEING: a material in
@@ -952,11 +952,11 @@ def _floor_family_consumer(material):
 
     ⚠️ A PATH GREP, AND THE PATH IS THE CONTRACT. `IMPACT_DECAL_MATERIALS` only
     reaches the wall families, so a floor-only family is loaded by whoever wants
-    it — for glass that is `VoxelRenderer._floor_shard_texture()`. Asking whether
+    it — for glass that is `VoxelBoard._floor_shard_texture()`. Asking whether
     the LITERAL path appears in the renderer is the same discipline the rest of
     this file follows: read the owner, never keep a second copy of the answer.
     """
-    src = os.path.join(REPO_ROOT, "godot/scripts/geometry/voxel_renderer.gd")
+    src = os.path.join(REPO_ROOT, "godot/scripts/geometry/voxel_board.gd")
     try:
         text = open(src, encoding="utf-8", errors="replace").read()
     except OSError:
@@ -1083,7 +1083,7 @@ def check_material(material):
                 ## built (2026-09-05). A material can be CORRECTLY ABSENT from
                 ## IMPACT_DECAL_MATERIALS and still be loaded — glass's `shard` is
                 ## a FLOOR mark, which that list cannot reach by construction, and
-                ## `VoxelRenderer._floor_shard_texture()` is what asks the disk for
+                ## `VoxelBoard._floor_shard_texture()` is what asks the disk for
                 ## it. "Absent from the list" and "nothing loads it" were being
                 ## reported as one thing; they are two, and the gate now checks the
                 ## one that matters — that SOMETHING loads the files.

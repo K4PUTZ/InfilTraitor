@@ -1,7 +1,7 @@
 extends Node2D
 class_name DebrisOverlay
 
-## DebrisOverlay — floor-level VFX for VoxelRenderer.voxel_destroyed: masonry
+## DebrisOverlay — floor-level VFX for VoxelBoard.voxel_destroyed: masonry
 ## dust (concrete/stone/ground family) and wood chips, both chance-gated by
 ## the caller. Sits in the floor z-band (see room.gd's
 ## _apply_overhead_overlay_z()), not "always on top" like EmberOverlay/
@@ -16,7 +16,7 @@ class_name DebrisOverlay
 ## everything on map reload.
 ##
 ## Both `origin` and `target` (the floor position to fall/land at) are passed
-## in by the caller via VoxelRenderer.voxel_world_position() — analytic, not
+## in by the caller via VoxelBoard.voxel_world_position() — analytic, not
 ## an empirical pixel offset (project rule): this overlay has no geometry
 ## knowledge of its own, it only interpolates between two points it's given.
 

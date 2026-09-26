@@ -386,6 +386,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-24_R3D_8_A_13.md
 - RESUMO_SESSAO_2026-09-24_R3D_END_0_A_2.md
 - RESUMO_SESSAO_2026-09-25_R3D_END_3_A_CLOSE.md
+- RESUMO_SESSAO_2026-09-26_CLEANUP_E_R3D_LIGHT_PLAN.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

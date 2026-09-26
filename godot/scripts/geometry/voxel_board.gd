@@ -457,6 +457,14 @@ func build_occupancy_live(changes: Array[Vector3i]) -> Dictionary:
 	return VoxelStore.active.occupancy_live(changes)
 
 
+## The shot pre-cook's predicted occupancy from the live one (`VoxelStore.occupancy_live_erasing()`).
+func build_occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:
+	if VoxelStore.active == null:
+		push_error("[VoxelBoard] build_occupancy_live_erasing: no VoxelStore.active — returning empty occupancy")
+		return {}
+	return VoxelStore.active.occupancy_live_erasing(predict, changes, erased)
+
+
 ## VL-D3 — columns (x,y) covered by any wall/block/roof voxel (positive levels).
 ## A floor voxel in such a column was never sun-exposed; when a blast opens the
 ## wall above and exposes its top, it should read darker than always-open floor.

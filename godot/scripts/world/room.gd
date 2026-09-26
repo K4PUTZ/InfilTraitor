@@ -4634,7 +4634,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 		return
 	if _voxel_light_field == null:
 		_voxel_light_field = VoxelLightField.new()
-	var _sp: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
+	var _sp: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1" or _dev_flag_on("REPAINT_PROFILE")
 	var _s1: int = Time.get_ticks_usec()
 	var live_changes: Array[Vector3i] = []
 	var occ: Dictionary = _voxel_board.build_occupancy_live(live_changes)
@@ -4658,6 +4658,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 	## cells anywhere on the board; no light apply writes soot now, so that
 	## precondition is gone.
 	var stale_path: bool = _voxel_light_field.has_stale_subset()
+	var _stale_n: int = _voxel_light_field.stale_cells().size()
 	if stale_path:
 		_voxel_board.apply_light_field_cells(_voxel_light_field,
 			_voxel_light_field.stale_cells())
@@ -4668,8 +4669,7 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 			% [float(_s2 - _s1) / 1000.0, float(_s3 - _s2) / 1000.0,
 			float(Time.get_ticks_usec() - _s3) / 1000.0,
 			"stale set" if stale_path else "GU walk", gus.size()])
-		print("[SCOPED-PROF]   cells written: %d · TileSet alternatives minted: %d"
-			% [_voxel_board._scoped_writes, _voxel_board._alts_minted])
+		print("[SCOPED-PROF]   stale set %d cell(s), %d live change(s) this sync" % [_stale_n, live_changes.size()])
 	## THE SCOPE GATE. A scoped repaint is only correct if it leaves the board in
 	## the state a full one would have. Env-gated because it costs a full repaint
 	## on top of the scoped one.
@@ -4768,18 +4768,39 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Arr
 		_voxel_light_field = VoxelLightField.new()
 	var field = _voxel_light_field
 	var top_wall_level: int = _voxel_board.top_wall_level()
-	var occupancy: Dictionary = _voxel_board.build_occupancy(predict_destroyed)
+	var pre_changes: Array[Vector3i] = []
+	var pre_erased: Array[Vector3i] = []
+	var occupancy: Dictionary = _voxel_board.build_occupancy_live_erasing(predict_destroyed, pre_changes, pre_erased)
 	var lights: Array = registry.get_active_lights()
 	var shadows = _lighting_controller.get_shadow_results()
 
 	## SOOT-STAMP (2026-09-22): ONE world. Soot left the alternative id with PERF-P2
 	## and left the light field altogether with SOOT-STAMP, so the soot-free world
 	## this used to warm next to a sooty one is the only world there is.
-	field.build(lights, shadows, top_wall_level, occupancy, _under_structure, true)
+	field.build(lights, shadows, top_wall_level, occupancy, _under_structure, true, pre_changes, pre_erased)
 	if token != _shot_precook_token or not is_instance_valid(_voxel_board):
 		return
+	## R3D-LIGHT (the shot's tail): the shot's repaint applies this field to its stale set and every bucket in it was a cache
+	## miss (46 ms on the desktop, the bulk of the Moto's 217 ms repaint). Derive them here, in the aim window, a few ms a
+	## frame: the field is the predicted world's and the shot's own build invalidates only what the real world differs by.
+	var warm_keys: Array = field.stale_cells().keys()
+	var warm_i: int = 0
+	while warm_i < warm_keys.size():
+		var warm_t0: int = Time.get_ticks_usec()
+		while warm_i < warm_keys.size() and Time.get_ticks_usec() - warm_t0 < SHOT_PRECOOK_WARM_BUDGET_US:
+			var wk: Vector3i = warm_keys[warm_i]
+			field.bucket_for(Vector2i(wk.x, wk.y), wk.z)
+			warm_i += 1
+		await get_tree().process_frame
+		if token != _shot_precook_token or not is_instance_valid(_voxel_board):
+			return
 	## The TileSet alternatives this used to mint were the 2D board's (R3D-END); the light field above is the whole warm.
 	_shot_precook_done = true
+
+
+## Microseconds of a frame the shot pre-cook spends deriving buckets (R3D-LIGHT). Rule 1: a `var` would do the same; this is a
+## budget constant like `SHOT_REPAINT_SOOT_RINGS`.
+const SHOT_PRECOOK_WARM_BUDGET_US: int = 6000
 
 
 ## The GU scope for a shot: every impact GU, grown by the soot reach.
@@ -4834,7 +4855,7 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## W-PRECOOK profiling seam, env-gated like every other standing dev probe in
 	## this function. §0's routes are chosen from WHERE the repaint's time goes,
 	## and the only figures on record are from the retired bench in August.
-	var _prof: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
+	var _prof: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1" or _dev_flag_on("REPAINT_PROFILE")
 	var _t0: int = Time.get_ticks_usec()
 	var live_changes: Array[Vector3i] = []
 	var occupancy: Dictionary = _voxel_board.build_occupancy_live(live_changes)

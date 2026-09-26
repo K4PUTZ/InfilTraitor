@@ -520,6 +520,22 @@ func _sync_live() -> void:
 	_journal.clear()
 
 
+## The shot pre-cook's predicted occupancy: a per-level copy of the live one less the cells in `predict` (Vector3i keys, as
+## `occupancy_dict(predict)` takes them). Consumes the pending changes into `changes` like `occupancy_live()`, and lists in
+## `erased` exactly the cells it removed (a key that was not occupied is not listed), so a light field can name the difference
+## between two worlds by flips instead of comparing them.
+func occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:
+	var live: Dictionary = occupancy_live(changes)
+	var out: Dictionary = {}
+	for level: Variant in live:
+		out[level] = (live[level] as Dictionary).duplicate()
+	for key: Vector3i in predict:
+		var level_set: Variant = out.get(key.z)
+		if level_set != null and (level_set as Dictionary).erase(Vector2i(key.x, key.y)):
+			erased.append(key)
+	return out
+
+
 ## `occupancy_dict_after()` from the live dictionary instead of the map walk: a per-level copy of it (the cook's own field
 ## must hold a snapshot, not a dictionary later syncs move: a repaint between the cook and its commit would otherwise
 ## turn the predicted world back into the committed one under the field's lazy queries), less the claims in `gone`.

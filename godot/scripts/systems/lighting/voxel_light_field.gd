@@ -125,6 +125,13 @@ var _bucket_cache: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) ->
 ## back to the map-wide apply. It is the honest answer, not a failure.
 var _stale_accum: Dictionary = {}          ## Vector3i -> true, since the last full apply
 var _stale_total: bool = true              ## true = no subset is valid; walk everything
+## R3D-LIGHT - what `_occupancy` is, so the next build can name the difference instead of comparing: the store's live
+## dictionary (`TRACKED_LIVE`), a copy of it less `_pred_erased` (`TRACKED_PRED`), or something else (`TRACKED_NONE`).
+const TRACKED_NONE: int = 0
+const TRACKED_LIVE: int = 1
+const TRACKED_PRED: int = 2
+var _tracked: int = TRACKED_NONE
+var _pred_erased: Array = []
 var _lamp_cache: Dictionary = {}           ## Vector3i(gu.x, gu.y, level) -> float (VL-PERF)
 ## VL-03 — surface_factor × under_structure_factor for one voxel,
 ## cached SEPARATELY from the lamp term and NOT cleared by clear_caches(). None
@@ -164,7 +171,7 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 ## wholesale clear here is what defeated it.
 func build(lights: Array, shadow_results: Array, top_wall_level: int,
 		occupancy: Dictionary = {}, under_structure: Dictionary = {},
-		geometry_only: bool = false, live_changes: Variant = null) -> void:
+		geometry_only: bool = false, live_changes: Variant = null, pred_erased: Variant = null) -> void:
 	## SOOT-STAMP (2026-09-22): soot is not an input any more. It lives in
 	## `Room._soot_map` and the renderer's soot plane, written only by the events
 	## that make it; a light build never reads it and a light apply never writes it.
@@ -174,8 +181,15 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 		## trusted ONLY when the field already holds this very dictionary: the store mutates it in place, so a
 		## comparison against it would see nothing. Any other previous occupancy (the cook's predicted one, the
 		## first build) gets the full diff.
-		if live_changes != null and is_same(_occupancy, occupancy):
+		if live_changes != null and pred_erased == null and is_same(_occupancy, occupancy):
 			stale = _stale_from_changes(live_changes)
+		elif live_changes != null and (_tracked == TRACKED_PRED or (_tracked == TRACKED_LIVE and pred_erased != null)):
+			## R3D-LIGHT (the shot's tail): a PREDICTED occupancy is the live one less the cells `pred_erased` names, so
+			## what differs between the field's previous world and this one is the parity of three flip lists (the live
+			## changes since, what the previous prediction erased, what this one erases): no map-wide comparison, which cost
+			## 435 ms in the aim window and 99 ms again in the shot's repaint on the Moto.
+			stale = _stale_from_parity(live_changes, _pred_erased if _tracked == TRACKED_PRED else [],
+				pred_erased if pred_erased != null else [])
 		else:
 			stale = _stale_cells(occupancy)
 		for skey in stale:
@@ -185,8 +199,17 @@ func build(lights: Array, shadow_results: Array, top_wall_level: int,
 		## accumulator cannot describe the work any more.
 		_stale_total = true
 		_stale_accum.clear()
+	var was_pred: bool = _tracked == TRACKED_PRED
+	_tracked = TRACKED_NONE
+	if live_changes != null:
+		_tracked = TRACKED_PRED if pred_erased != null else TRACKED_LIVE
+	_pred_erased = pred_erased if pred_erased != null else []
 	_lights = lights
 	_top_wall_level = maxi(top_wall_level, 0)
+	## A predicted occupancy is a copy only this field holds; letting go of it in one step cost ~6 ms on the desktop and
+	## ~40 on the Moto inside the shot's repaint, so the reaper empties it a few ms a frame instead.
+	if was_pred and not is_same(_occupancy, occupancy):
+		PredictionReaper.retire(_occupancy)
 	_occupancy = occupancy
 	_under_structure = under_structure
 	_shadow_by_light.clear()
@@ -240,6 +263,19 @@ func _stale_from_changes(changes: Array) -> Dictionary:
 				for dy in range(-1, 2):
 					stale[Vector3i(cell.x + dx, cell.y + dy, cell.z + dz)] = true
 	return stale
+
+
+## `_stale_from_changes()` of the cells whose membership differs after three flip lists are combined: a cell listed an even
+## number of times is back where it started. Every list holds only cells that really flipped (see `VoxelStore`).
+func _stale_from_parity(a: Array, b: Array, c: Array) -> Dictionary:
+	var par: Dictionary = {}
+	for list: Array in [a, b, c]:
+		for cell: Vector3i in list:
+			if par.has(cell):
+				par.erase(cell)
+			else:
+				par[cell] = true
+	return _stale_from_changes(par.keys())
 
 
 ## The cells (level -> Vector3i(x, y, level)) where this field's occupancy and `other` disagree: in one

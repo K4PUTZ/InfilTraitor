@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**246 scripts · 79159 lines total** (under `godot/scripts/`)
+**246 scripts · 79240 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1012,7 +1012,7 @@ extends `Node3D` · 1894 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2178 lines
+`class_name VoxelBoard` · extends `Node2D` · 2186 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1040,6 +1040,7 @@ extends `Node3D` · 1894 lines
 **Public API**
 - `func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:`
 - `func build_occupancy_live(changes: Array[Vector3i]) -> Dictionary:`
+- `func build_occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:`
 - `func columns_with_structure() -> Dictionary:`
 - `func note_external_write(level: int, cell: Vector2i) -> void:`
 - `func apply_light_field(field) -> void:`
@@ -2701,7 +2702,7 @@ extends `Node` · 231 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 581 lines
+`class_name VoxelLightField` · extends `RefCounted` · 617 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -3207,7 +3208,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 714 lines
+`class_name VoxelStore` · extends `RefCounted` · 730 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3244,6 +3245,9 @@ extends `Node` · 54 lines
 - `var writes_unknown_container: int = 0`
 - `var writes_misplaced: int = 0`
 - `var build_ms: float = 0.0`
+
+**Public API**
+- `func occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:`
 
 ---
 
@@ -5378,7 +5382,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10621 lines
+extends `Node2D` · 10642 lines
 
 `godot/scripts/world/room.gd`
 

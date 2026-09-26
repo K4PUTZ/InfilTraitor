@@ -86,7 +86,7 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	root.add_child(room)
 
 	## Same tileset room.gd's real _ready() loads (TILESET_PATH) before ever
-	## calling build_from_layout() — _place() needs floor_layer.tile_set to
+	## calling build_from_layout() — _place() needs structure_layer.tile_set to
 	## resolve tile names via tile_registry.gd, same as the real boot.
 	var floor_tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
 	var structure_layer := TileMapLayer.new()

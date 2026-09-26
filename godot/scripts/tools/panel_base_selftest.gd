@@ -1,6 +1,6 @@
 #!/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script
 ## PANEL-01 Test: Standalone verification of PanelBase and WindowBase functionality.
-## Run: godot --headless --script godot/scripts/tools/panel_base_test.gd
+## Run: godot --headless --script godot/scripts/tools/panel_base_selftest.gd
 
 extends SceneTree
 

@@ -91,7 +91,7 @@ uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
 varying vec3 v_world;
 varying vec3 v_normal;
-// R3D-7 — the cutaway, driven by the SAME set the 2D board uses (OcclusionSet): one texel per grid
+// R3D-7 — the cutaway, driven by the OcclusionSet: one texel per grid
 // column holds (min level, max level, ring + 1). From min to max a voxel is ghosted; the levels below
 // min (the wall's 2-voxel base) are untouched. A ghosted voxel dithers into discarded pixels and ghost
 // diamonds, the diamonds' density being the ring's fill opacity.
@@ -1733,7 +1733,7 @@ func _dent_quad(surface: SurfaceData, unit: float, corners: Array, normal: Vecto
 	surface.add_quad(c, unit, normal, uvs, -1.0)
 
 
-## Which faces of a damaged voxel carry which decal (`VoxelBoard._decal_material()`'s table, as
+## Which faces of a damaged voxel carry which decal (the table the 2D board's `_decal_material()` held, as
 ## faces): a blast's CRACKED mark covers all three visible faces of a crack-capable material; a
 ## bullet's mark is the ONE lateral face it struck; a DENTED voxel marks its carved face. LEFT is the
 ## SW face and RIGHT the SE face in view N. The variant is the one chosen at damage time.

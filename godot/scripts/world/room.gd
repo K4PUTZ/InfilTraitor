@@ -4711,17 +4711,17 @@ const SHOT_REPAINT_SOOT_RINGS: int = 3
 ## lag depois que clica no botão do que no meio da execução."*
 ##
 ## WHAT IS ACTUALLY PRE-COOKED, and it is not what the name suggests. The
-## destruction itself resolves in 1.5 ms; pre-computing it saves nothing. The
-## measured cost of a shot is **412 `create_alternative_tile()` calls** — the
-## TileSet rebuild that lands on the impact frame and that no profiler inside
-## the shot could see (see the SHOT-FILM measurements). So what this warms is the
-## ALTERNATIVE CACHE, by building the light field for the world as it will be
-## after the shot and touching every alternative that world will need.
+## destruction itself resolves in 1.5 ms; pre-computing it saves nothing. On the 2D board the measured cost of a
+## shot was **412 `create_alternative_tile()` calls** — the TileSet rebuild that landed on the impact frame and that
+## no profiler inside the shot could see (see the SHOT-FILM measurements) — so warming the alternative cache was the
+## point. Those alternatives went with the 2D board (R3D-END); what this warms now is the SHARED LIGHT FIELD for the
+## world as it will be after the shot, which absorbs the stale set the earlier blasts accumulated (Galaxy A16, a shot
+## after two grenades: ~419 ms without it, ~220 with it).
 ##
-## WHY IT IS SAFE TO DO SPECULATIVELY: minting is idempotent and cached in
-## `_minted_light_alts`. A prediction that is wrong costs a cache miss, never a
-## wrong picture — `_ensure_light_alt()` still mints on demand at apply time.
-## Nothing is committed, nothing is drawn, and cancelling is just dropping it.
+## WHY IT IS SAFE TO DO SPECULATIVELY: `_repaint_voxel_light_buckets_scoped()` rebuilds the field from real state
+## before the apply, so what is left here is always overwritten before it can reach a pixel. A prediction that is
+## wrong costs a cache miss, never a wrong picture. Nothing is committed, nothing is drawn, and cancelling is just
+## dropping it.
 var _shot_precook_token: int = 0
 var _shot_precook_done: bool = false
 
@@ -4755,7 +4755,7 @@ func _run_shot_precook(token: int, predict_destroyed: Dictionary, scope_gus: Arr
 	## other half of what it does: it builds the SHARED light field for the predicted world, in the aim window, which absorbs
 	## the stale set the earlier blasts accumulated. Skipped, a shot after two grenades paid that in its tail: 3D 419.0 / 420.8 /
 	## 413.7 ms against 218.9 / 224.5 / 273.8 with it running (Galaxy A16, same APK, one line changed, three boots each),
-	## and the 2D board's 223.0. Only the alternatives half below is tile work.
+	## and the 2D board's 223.0. (The alternatives half it also had was tile work and went with the 2D board.)
 	var registry = _lighting_controller.get_light_registry()
 	if registry == null:
 		_shot_precook_done = true
@@ -6067,7 +6067,7 @@ func play_consequence_light(delta = null) -> void:
 	## `BUCKET_UNWRITTEN` (255) means "no bucket was ever written here", and the
 	## loop below used to SKIP those cells on the grounds that a sentinel is not a
 	## value to lerp out of. That reasoning is right about the integer and wrong
-	## about the picture: `voxel_face_shading.gdshader` CLAMPS 255 down to 11, so
+	## about the picture: `voxel_face_shading.gdshader` (the 2D board's face shader, deleted at R3D-END) CLAMPED 255 down to 11, so
 	## an unwritten cell is already being drawn at full light. There is a start
 	## value; it just is not the byte in the plane.
 	##
@@ -7019,12 +7019,12 @@ func _capture_glass_crack_demo() -> void:
 			## each recorded hole on its own; the live path lets one region's cut
 			## claim the cells a neighbouring opening would also have cut, so two
 			## OVERLAPPING openings are where the two can disagree. The number is
-			## read off the tilemap (`count_glass_shards()`), never off the counter.
+			## read off the store (`count_glass_shards()`), never off the counter.
 			## ⚠️ AND THEN THE FLUSH ANY LATER BATCH WILL RUN. A stale registry key
-			## is not inert: `restamp_glass_shards()` walks the registry and puts
-			## its atom back on any cell that does not already hold it, so a key
-			## left over from the PREVIOUS view is a shard waiting to be stamped
-			## onto whatever glass now occupies that cell. Reading the board twice
+			## is not inert: it used to be put back on any cell that did not already hold it
+			## (`restamp_glass_shards()`, the 2D board's flush, deleted at R3D-END), so a key
+			## left over from the PREVIOUS view was a shard waiting to be stamped
+			## onto whatever glass now occupied that cell. Reading the board twice
 			## — before and after the flush — is what separates "the rebuild is
 			## right" from "the rebuild is right until something else destroys a
 			## voxel". The two numbers must be equal.

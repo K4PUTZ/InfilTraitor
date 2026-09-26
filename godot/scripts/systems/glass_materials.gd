@@ -31,9 +31,9 @@ class_name GlassMaterials
 ## parses it off this line — a multi-line literal turns the rule off, which is
 ## why the parser reports "cannot check" as a violation rather than passing.
 ##
-## Order is the TINT INDEX and is therefore load-bearing: the pane atom carries
-## it in its BLUE channel and glass_pane.gdshader indexes `glass_tint_alt` with
-## it. Append, never reorder.
+## Order is the TINT INDEX and is therefore load-bearing: `PANE_TINT` below is
+## indexed by it, and `Board3DLive` sets each pane material's `glass_tint` from
+## `pane_tint()`. Append, never reorder.
 const FAMILY: Array[String] = ["glass", "glass_armored", "glass_screen_green", "glass_screen_red", "glass_screen_amber"]
 
 ## The BASE member — the id whose balance rows, frost texture, atom silhouette
@@ -82,8 +82,8 @@ static func tint_index(material_id: String) -> int:
 ## ── THE PANE TINTS (G-D16) ───────────────────────────────────────────────────
 ##
 ## ⚠️ THIS IS NOT `base_color`, AND CONFLATING THE TWO WOULD BE WRONG RATHER THAN
-## MERELY UNTIDY. A pane does not alpha-blend: `glass_apply()` MULTIPLIES this
-## colour over a BackBufferCopy of the scene behind it and adds a sheen on top
+## MERELY UNTIDY. A pane does not alpha-blend: `glass_pane3d.gdshader` MULTIPLIES this
+## colour over the scene behind it (the screen texture) and adds a sheen on top
 ## (G-D1). It is a filter, not a paint. `base_color` is the opaque MULTIPLY a
 ## material's atom takes on the ordinary wall path — a different operation on a
 ## different surface — and the two have carried different values for base glass
@@ -91,9 +91,9 @@ static func tint_index(material_id: String) -> int:
 ## 0.47/0.63/0.90, the Director's calibrated "painel 005"). Reading the JSON here
 ## would silently repaint every pane in the game.
 ##
-## Index 0 MUST equal glass_shading.gdshaderinc's `glass_tint` default and
-## VoxelBoard._glass_shader_params — three copies of one number, which is one
-## too many; the selftest pins them equal rather than trusting the comment.
+## Index 0 MUST equal `glass_pane3d.gdshader`'s `glass_tint` default — two copies
+## of one number, which is one too many, and no selftest pins them equal today,
+## so change both or neither.
 ##
 ## `static var` (not const) for the same reason every balance row in
 ## ShotPunchTable and GlassShatter is: these are the Director's dials, and 1..4

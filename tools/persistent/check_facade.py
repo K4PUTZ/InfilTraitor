@@ -18,11 +18,11 @@
 ## why this gate exists. `check_decal.py`'s failure modes were not re-measured on the 3D board.
 ##
 ## Checks, in the order they bite:
-##   1. dimensions      — 1024x512 exactly (FACADE_W/FACADE_H, bake_compositor.gd)
+##   1. dimensions      — 1024x512 exactly (FACADE_W/FACADE_H; `TextureResolver` validates 64 x 32 voxels at TEX_AUTHORING_N = 16)
 ##   2. grayscale       — R == G == B on every pixel (invariant B2)
-##   3. alpha           — reported, not enforced. B3 says the silhouette comes
-##                        from the canonical voxel atom, so facade alpha is
-##                        simply ignored; the SHIPPED facade_concrete.png
+##   3. alpha           — reported, not enforced. The silhouette never comes
+##                        from the facade (B3, retired at R3D-END: a 3D face has
+##                        no atom), so facade alpha is simply ignored; the SHIPPED facade_concrete.png
 ##                        carries alpha down to 224 and renders correctly. A
 ##                        gate that failed it would be failing known-good art
 ##   4. imported        — the .import sidecar's own `dest_files` exist on disk.
@@ -50,7 +50,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 ## per-material tree instead of one flat directory.
 MATERIALS_ROOT = os.path.join(REPO_ROOT, "ASSETS", "materials")
 
-## Pinned in bake_compositor.gd. A facade is authored FLAT at 16 texels/voxel:
+## Pinned by `TextureResolver`'s own validation (the 2D bake's compositor pinned it before). A facade is authored FLAT at 16 texels/voxel:
 ## 1024/16 = 64 voxel columns, 512/16 = 32 voxel rows = 4 storeys. Never
 ## pre-squared to 1024x1024 — D34 reaches the second 512 by mirroring.
 FACADE_W = 1024

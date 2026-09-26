@@ -151,9 +151,8 @@ func test_assets_loadable_and_canon_sized() -> void:
 
 ## B4 says the FNV-1a algorithm gets ONE owner. Prove the static-call
 ## refactor didn't fork it: calling through the class name (new caller,
-## EarthVariantSelector) and through an instance (old caller, bake_selftest.gd's
-## B4 test) must agree, and both must match the pinned test vector already in
-## bake_selftest.gd's test_B4_fnv1a_determinism().
+## EarthVariantSelector) and through an instance (the older call shape) must
+## agree, on the pinned strings below.
 func test_fnv1a_static_call_matches_instance_call() -> void:
 	print("[6] FacadeSampler._fnv1a_hash — static call agrees with instance call (single algorithm, B4)\n")
 

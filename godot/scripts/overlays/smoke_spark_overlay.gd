@@ -19,9 +19,9 @@ class_name SmokeSparkOverlay
 
 ## PERF-P7b (§12.10) — the puffs are 68.9% of the whole VFX `_draw()` and they are
 ## `draw_circle`, so they go through `CircleField` (one MultiMesh, one draw call)
-## instead of one canvas command each. Opt IN with `INFILTRAITOR_P7B=1` while the
-## pixel gate is being earned — the same one-binary A/B `INFILTRAITOR_P3` uses,
-## which is stricter than stashing the change and re-running (§5.5).
+## instead of one canvas command each. It was opt IN (`INFILTRAITOR_P7B=1`) while the
+## pixel gate was being earned — a one-binary A/B, which is stricter than stashing
+## the change and re-running (§5.5).
 ## §12.13 — DEFAULT ON since 2026-08-26. Opt OUT with `INFILTRAITOR_P7B=0`.
 ## Earned on the static `circle_gate`: 0 of 921 600 px differ between the two
 ## paths. The opt-out stays for the same one-binary A/B reason P3's does.

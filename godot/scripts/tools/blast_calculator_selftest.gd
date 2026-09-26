@@ -2210,7 +2210,7 @@ func _would_dent(container_id: String, voxel, d: float, max_radius: float,
 ## underneath it promised dents. fabric/cardboard/plywood shipped with
 ## dent_factor 0.10/0.15/0.22, and a material with no authored decal family is
 ## NOT unmarked — it falls to the GENERIC family
-## (VoxelBoard._generic_flat_mark_plan), so a blast was marking cardboard
+## (the 2D board's `_generic_flat_mark_plan`), so a blast was marking cardboard
 ## with a grey dent nobody had asked for.
 ##
 ## Two halves, and both must hold or the ruling is only half true:

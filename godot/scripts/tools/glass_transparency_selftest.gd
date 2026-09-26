@@ -252,7 +252,7 @@ func test_intact_glass_still_blocks_light() -> void:
 	registry.register_slice(_make_slice("SLICE_GLASS_OCC", "glass", level))
 	r.register_geometry(registry)
 	## RENDER3D R3D-2: build_occupancy() reads VoxelStore.active alone now — needs a
-	## store built over this fixture's registry, same as test_side_sliver_only_where_exposed.
+	## store built over this fixture's registry.
 	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
 
 	var occ: Dictionary = r.build_occupancy()
@@ -271,7 +271,7 @@ func test_intact_glass_still_blocks_light() -> void:
 ## máximo […] Precisando, usa-se um frame divisório e começa outra vidraça."*
 ##
 ## The bound is DERIVED, not chosen: the fracture sheet is
-## `_compute_facade_key()`'s own 64-column x 32-row window and G-D23 clamps it at
+## a 64-column x 32-row window (`_compute_facade_key()`'s, on the 2D board) and G-D23 clamps it at
 ## the edge instead of mirroring, so a pane wider than the sheet has a far half
 ## that can never crack — silently, which is the failure mode this project keeps
 ## paying for. `GlassPaneGrouper` unions panels by coplanar adjacency with no size

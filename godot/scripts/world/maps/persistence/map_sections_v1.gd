@@ -156,7 +156,8 @@ static func register_roofs(registry) -> void:
 ## DamageVariantBaker's own selftest checks that a map's declared list is a
 ## superset of what its walls/blocks/floor_zones actually reference, so a
 ## forgotten declaration fails loudly (B6) rather than silently missing its
-## bake. v1, no migration needed — "materials" is always present from the
+## bake. (R3D-END: the bake and its baker are deleted; the section is still
+## compiled and forwarded by MapCompiler, but nothing reads it any more.) v1, no migration needed — "materials" is always present from the
 ## start.
 static func register_damage_materials(registry) -> void:
 	var SectionOwner = registry.SectionOwner

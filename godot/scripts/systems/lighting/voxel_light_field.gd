@@ -71,7 +71,7 @@ var under_structure_factor: float = 0.68
 ##      moved only 19% of crater pixels, by a mean of 1.15/255, and *lowered*
 ##      the region's standard deviation — the 12-bucket quantisation ate it.
 ##   2. As a ±1 step on the QUANTISED index it always lands, but
-##      VoxelBoard.bucket_luminance is compressed at the dark end
+##      `BoardLook.light_ladder()` is compressed at the dark end
 ##      (0.12 → 0.20 → 0.33 = +67%, +65% per step, against +8% at the top), so
 ##      one step is a far bigger perceptual jump in shadow than in light.
 ##      Measured against a neutral capture, stratified by brightness: 6.7% in
@@ -79,8 +79,8 @@ var under_structure_factor: float = 0.68
 ##      where the Director reported it reading as noise ("veja nas zonas mais
 ##      escuras como varia demais").
 ##
-## The per-FACE shader (godot/shaders/voxel_face_shading.gdshader) does the same
-## job correctly because it MULTIPLIES colour instead of stepping an index, so
+## The per-FACE shading (the 2D board's `voxel_face_shading.gdshader`; `Board3DLive`'s opaque shader today) does
+## the same job correctly because it MULTIPLIES colour instead of stepping an index, so
 ## its effect is perceptually flat: measured 1.6% → 3.3% across the same
 ## brightness bands. Face differentiation is also what the Director actually
 ## asked for — *"o grande segredo é só diferenciar as 3 faces de cada voxel."*
@@ -140,12 +140,12 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 ## Rebuild the field from the current lighting state. Called from room on every
 ## lighting_rebuilt (map load, perspective rotation, light change) — the cache
 ## resets because any input may have moved.
-## top_wall_level: the highest built voxel layer (VoxelBoard.get_layer_count()
-## − 1) — where an OVERHEAD lamp hangs. NOT the ceiling-fixture height
+## top_wall_level: the highest built voxel level (`VoxelBoard.top_wall_level()`)
+## — where an OVERHEAD lamp hangs. NOT the ceiling-fixture height
 ## (max_floors), which is an 8-storey render artifact that would place the lamp
 ## far above the real walls and zero out every contribution via vertical falloff.
-## occupancy: level -> set of occupied cells, supplied by VoxelBoard (it owns
-## the tilemaps). Drives the surface/AO terms above; empty = shading disabled.
+## occupancy: level -> set of occupied cells, supplied by `VoxelBoard.build_occupancy()`
+## (which reads the VoxelStore). Drives the surface/AO terms above; empty = shading disabled.
 ## under_structure: {cell: true} floor columns that had a wall above at load
 ## (VL-D3); their floor voxels read darker once exposed.
 ## PERF-03 — `geometry_only` says: LIGHTS, SHADOWS, top_wall_level and cover are
@@ -411,8 +411,8 @@ func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> float:
 ## pointing at it and back would be a parse-time cycle between the two classes.
 ## PERF-02 B3-2: base is FACE_SOOT_CLEAN + 1 (5 — four real tones plus clean),
 ## was 4. Derived from the constant rather than written as a literal so the two
-## can never drift; the same base appears in voxel_face_shading.gdshader, which
-## cannot import it and states the coupling in its own comment.
+## can never drift; the same base appears (as 5 and 25) in `Board3DLive`'s opaque shader, which
+## cannot import it.
 const FACE_SOOT_BASE: int = BlastCalculator.FACE_SOOT_CLEAN + 1
 
 

@@ -13,8 +13,8 @@
 ## floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the
 ## three read as one material; only `has_facade == false` (organic ground)
 ## keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted
-## modulate is still decided by the texture id's own prefix at bake time
-## (bake_compositor.gd's _modulate_for_mode), never by a field on this class —
+## modulate was decided by the texture id's own prefix at bake time
+## (the 2D bake's `_modulate_for_mode`, deleted at R3D-END), never by a field on this class —
 ## what changed is which ids reach it.
 
 class_name MaterialRegistry

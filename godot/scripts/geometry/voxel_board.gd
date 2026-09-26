@@ -317,7 +317,8 @@ func apply_debug_nudge(delta: Vector2) -> void:
 ## ⚠️ IT IS THE SAME PRIMITIVE G-D25 ALREADY RATIFIED — an alpha mask carving a
 ## whole voxel's outline, the dented-ceiling mechanism — applied to the rim
 ## instead of to free shards. No new art, no new render path: the mask multiplies
-## the alpha of the atom `_build_glass_pane_atom()` already builds.
+## the alpha of the pane (the 2D board's `_build_glass_pane_atom()` built it as an atom; the 3D board cuts the pane
+## with the same polygons).
 ##
 ## ⚠️ AND IT DOES NOT RE-CREATE G-D26's MOLDURA. That rule bans a per-voxel change
 ## to a property the eye reads CONTINUOUSLY across the surface — transparency —
@@ -1510,13 +1511,12 @@ func set_glass_opening_void(enabled: bool) -> void:
 			crack.set_opening(null, Vector2.ZERO, Vector2.ONE)
 
 
-## CRACK-04 — how many glass cells currently hold a SHARD atom (a source the
-## `_glass_source_info` inverse does not know, which is what a rim swap writes).
+## CRACK-04 — how many of the pane cells an opening shaped (`_glass_shaped_cells`) still hold glass.
 ##
-## ⚠️ IT READS THE TILEMAP, not a counter kept alongside it. `refresh_glass_rims()`
-## reporting "12 cell(s) cut" says the swap was ISSUED; whether those cells still
-## hold the shard after the frame settles is a different question, and the only
-## instrument that can answer it is the board itself.
+## ⚠️ IT ASKS THE STORE, not a counter kept alongside it. `refresh_glass_rims()`
+## reporting "12 cell(s) cut" says the cut was ISSUED; whether those cells still
+## hold glass after the frame settles is a different question, and the only
+## instrument that can answer it is the store itself.
 func count_glass_shards() -> int:
 	var n: int = 0
 	for key: Vector3i in _glass_shaped_cells:

@@ -1,4 +1,4 @@
-## mapfile_roundtrip_test.gd — Comprehensive round-trip and migration testing
+## mapfile_roundtrip_selftest.gd — Comprehensive round-trip and migration testing
 ##
 ## Tests:
 ## 1. Basic round-trip: save spec -> load -> verify structural equality

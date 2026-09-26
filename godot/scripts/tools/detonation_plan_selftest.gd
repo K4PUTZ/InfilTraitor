@@ -3,7 +3,7 @@
 ## Rodar: godot --headless --script res://godot/scripts/tools/detonation_plan_selftest.gd
 ##
 ## Boots the REAL PLAYGROUND map through the exact room.gd::load_map() path
-## (mirrors damage_atom_bake_selftest.gd's own MinimalRoom scaffold), runs
+## (mirrors the deleted damage_atom_bake_selftest.gd's own MinimalRoom scaffold), runs
 ## DetonationPlanBuilder.build_plan() against a REAL grenade throw at a real
 ## wall's own GU, and proves:
 ##   1. The Task 4 gate itself — a printed wave census (cell counts per
@@ -124,7 +124,7 @@ func _fail(msg: String) -> void:
 	failed += 1
 
 
-## Mirrors damage_atom_bake_selftest.gd's own _build_playground() exactly —
+## Mirrors the deleted damage_atom_bake_selftest.gd's own _build_playground() exactly —
 ## the established real-PLAYGROUND-without-a-full-game-boot scaffold.
 func _build_playground() -> Dictionary:
 	var file_source := FileMapSourceClass.new()

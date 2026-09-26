@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**248 scripts · 79817 lines total** (under `godot/scripts/`)
+**248 scripts · 79772 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2223,7 +2223,7 @@ extends `Node2D` · 42 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
-> DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN). Builds one `WorldDelta` for a single grenade detonation: all resolution, all exposure fallback, and the single map-wide light-field query, folded into one object a later choreography driver (Task 5/E-WAVE) can play back from `delta.waves` as a pure sequence of `set_cell()`/`erase_cell()` calls with zero further compositing/lookup — the performance idea §2 states once: "no compositing, no lookup, no light rebuild, no allocation happens inside a wave." **P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09): this class is now PURE.** It changes nothing — not a tile, not a Voxel — and returns a description of what a detonation WOULD do. `delta.commit()` is what makes it happen, and the caller owns that decision. Everything this pass used to read off freshly-mutated Voxels it now reads through `WorldDelta`'s projection. What this class does NOT do, on purpose: - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelBoard call it makes runs in resolve-only mode (`apply=false`, Task 4's own seam added to `_set_voxel_cell()`/`register_slab()`/ `register_fixed_level()`/`resolve_damage_voxel_swap()`). A voxel's on-screen TILE is only ever resolved, never painted, until a wave chooses to apply the plan entry produced here. - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s `commit_damage()` remains the single writer (DESTRUCTION_MASTER_PLAN §3); this pass only ever calls its `simulate_*` half. - It never CALLS `room.record_voxel_damage_to_base()`/increments `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's job, the same split Task 2/3 already established for their own new parameters. It DOES return the raw material for the first of those (`delta.touched_voxels`, `Array[Voxel]` — every voxel this blast's containers would change the damage_state of, DESTROYED or DENTED/ CRACKED), so Task 5's caller can persist without a second flood/ find_affected_containers pass to re-derive the same set. That list is only meaningful AFTER `commit()`, which is when its caller reads it. - It never schedules or times anything — the plan is a static census of what EVERY wave should eventually paint; Task 5 owns turning that into a 40 ms-cadenced sequence. `ctx` is a plain Dictionary rather than a typed context object, matching the project's existing MinimalRoom precedent (damage_atom_bake_selftest.gd) for running real BlastCalculator machinery against either a full `room.gd` or a trimmed selftest scaffold without either needing to know about the other: "edge_registry": EdgeRegistry        (required) "slab_registry": SlabRegistry        (required) "voxel_board": VoxelBoard      (required) "blocked_edges": Dictionary          (optional, default {}) "blocked_cells": Dictionary          (optional, default {}) "lights": Array                      (optional, default [] — real light sources, e.g. RoomBuilder.get_ light_sources()) "shadow_results": Array              (optional, default []) "under_structure": Dictionary        (optional, default {} — VL-D3 "never saw the sun" darkening; derived from the CURRENT geometry if omitted, see _columns_with_structure()) "deep_layer_unlocked": bool          (optional, default false — D2; no live caller drives true yet)
+> DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN). Builds one `WorldDelta` for a single grenade detonation: all resolution, all exposure fallback, and the single map-wide light-field query, folded into one object a later choreography driver (Task 5/E-WAVE) can play back from `delta.waves` as a pure sequence of `set_cell()`/`erase_cell()` calls with zero further compositing/lookup — the performance idea §2 states once: "no compositing, no lookup, no light rebuild, no allocation happens inside a wave." **P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09): this class is now PURE.** It changes nothing — not a tile, not a Voxel — and returns a description of what a detonation WOULD do. `delta.commit()` is what makes it happen, and the caller owns that decision. Everything this pass used to read off freshly-mutated Voxels it now reads through `WorldDelta`'s projection. What this class does NOT do, on purpose: - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelBoard call it makes runs in resolve-only mode (`apply=false`, Task 4's own seam added to `_set_voxel_cell()`/`register_slab()`/ `register_fixed_level()`/`resolve_damage_voxel_swap()`). A voxel's on-screen TILE is only ever resolved, never painted, until a wave chooses to apply the plan entry produced here. - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s `commit_damage()` remains the single writer (DESTRUCTION_MASTER_PLAN §3); this pass only ever calls its `simulate_*` half. - It never CALLS `room.record_voxel_damage_to_base()`/increments `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's job, the same split Task 2/3 already established for their own new parameters. It DOES return the raw material for the first of those (`delta.touched_voxels`, `Array[Voxel]` — every voxel this blast's containers would change the damage_state of, DESTROYED or DENTED/ CRACKED), so Task 5's caller can persist without a second flood/ find_affected_containers pass to re-derive the same set. That list is only meaningful AFTER `commit()`, which is when its caller reads it. - It never schedules or times anything — the plan is a static census of what EVERY wave should eventually paint; Task 5 owns turning that into a 40 ms-cadenced sequence. `ctx` is a plain Dictionary rather than a typed context object, matching the project's existing MinimalRoom precedent (the deleted damage_atom_bake_selftest.gd's) for running real BlastCalculator machinery against either a full `room.gd` or a trimmed selftest scaffold without either needing to know about the other: "edge_registry": EdgeRegistry        (required) "slab_registry": SlabRegistry        (required) "voxel_board": VoxelBoard      (required) "blocked_edges": Dictionary          (optional, default {}) "blocked_cells": Dictionary          (optional, default {}) "lights": Array                      (optional, default [] — real light sources, e.g. RoomBuilder.get_ light_sources()) "shadow_results": Array              (optional, default []) "under_structure": Dictionary        (optional, default {} — VL-D3 "never saw the sun" darkening; derived from the CURRENT geometry if omitted, see _columns_with_structure()) "deep_layer_unlocked": bool          (optional, default false — D2; no live caller drives true yet)
 
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
@@ -2244,7 +2244,7 @@ extends `Node2D` · 42 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
-> DetonationPresenter — D-3 of `DETONATION_PRESENTATION_MASTER_PLAN`. **The world changes once, and the EFFECTS are what is animated.** That is the whole inversion (§4). `DetonationChoreographer` animates the WORLD — it spreads 20 ms of cell writes across 24 frames and decorates them — and this replaces it with one frame that writes everything and then N frames that write nothing. Behind `INFILTRAITOR_PRESENTER=1`; the choreographer stays the default until D-6 removes it. Both run from one binary, so a before/after needs no stash. ## What it does NOT contain, which is the point No `flatten_plan()`, no `_sort_key()`, no `KIND_RADIUS_BIAS`, no `front_radius_for()`, no `front_frames`, no `_fade_in_soot()`. Every one of those exists to decide WHEN a cell is written, and there is only one frame that writes cells. §3.1: the ordering problem does not get solved here, it stops existing — `KIND_RADIUS_BIAS` had been re-derived three times. ## The three beats 1. **THE COMMIT — one frame.** Every `destroy`, `expose`, `dented`, `cracked` and `soot` entry, then one flush. From here the board is FINAL. 2. **The consequence channel — N frames, zero cell writes.** `smoke`, `ember` and `debris`, each released at its own time. 3. **The light**, unchanged and still last (§7, the Director's standing ruling: scorch is what the light is about to reveal). ⚠️ **THE SCORCH IS IN THE COMMIT, AND THAT IS WHY `soot_clean` IS FALSE HERE.** §13.4 made the wave write clean geometry because its scorch arrived later in a ramp, and a hole that opened already-scorched then had to be wiped and refilled. With one commit frame there is no later — §7.1 — so the cell writes carry their own soot and `_fade_in_soot()` has nothing left to do. Setting this true would produce a permanently clean crater with no error anywhere.
+> DetonationPresenter — D-3 of `DETONATION_PRESENTATION_MASTER_PLAN`. **The world changes once, and the EFFECTS are what is animated.** That is the whole inversion (§4). `DetonationChoreographer` animates the WORLD — it spreads 20 ms of cell writes across 24 frames and decorates them — and this replaces it with one frame that writes everything and then N frames that write nothing. It is the only detonation path: the choreographer it replaced was deleted at D-6 (`620f8e3a`). ## What it does NOT contain, which is the point No `flatten_plan()`, no `_sort_key()`, no `KIND_RADIUS_BIAS`, no `front_radius_for()`, no `front_frames`, no `_fade_in_soot()`. Every one of those exists to decide WHEN a cell is written, and there is only one frame that writes cells. §3.1: the ordering problem does not get solved here, it stops existing — `KIND_RADIUS_BIAS` had been re-derived three times. ## The three beats 1. **THE COMMIT — one frame.** Every `destroy`, `expose`, `dented`, `cracked` and `soot` entry, then one flush. From here the board is FINAL. 2. **The consequence channel — N frames, zero cell writes.** `smoke`, `ember` and `debris`, each released at its own time. 3. **The light**, unchanged and still last (§7, the Director's standing ruling: scorch is what the light is about to reveal). ⚠️ **THE SCORCH IS IN THE COMMIT, AND THAT IS WHY `soot_clean` IS FALSE HERE.** §13.4 made the wave write clean geometry because its scorch arrived later in a ramp, and a hole that opened already-scorched then had to be wiped and refilled. With one commit frame there is no later — §7.1 — so the cell writes carry their own soot and `_fade_in_soot()` has nothing left to do. Setting this true would produce a permanently clean crater with no error anywhere.
 
 **Signals**
 - `signal finished()`
@@ -2826,7 +2826,7 @@ extends `Node` · 231 lines
 
 `godot/scripts/systems/material_registry.gd`
 
-> MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE axis, owned by BakePolicy.texture_for_material(). D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed either. A `has_facade` material renders EVERY surface — wall, roof and floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the three read as one material; only `has_facade == false` (organic ground) keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted modulate is still decided by the texture id's own prefix at bake time (bake_compositor.gd's _modulate_for_mode), never by a field on this class — what changed is which ids reach it.
+> MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE axis, owned by BakePolicy.texture_for_material(). D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed either. A `has_facade` material renders EVERY surface — wall, roof and floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the three read as one material; only `has_facade == false` (organic ground) keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted modulate was decided by the texture id's own prefix at bake time (the 2D bake's `_modulate_for_mode`, deleted at R3D-END), never by a field on this class — what changed is which ids reach it.
 
 **Constants / tuning**
 - `StonePatternClass` = `preload("res://godot/scripts/systems/stone_pattern.gd")`
@@ -2896,7 +2896,7 @@ extends `Node` · 231 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 1253 lines
+`class_name OcclusionSet` · 1252 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -2906,6 +2906,10 @@ extends `Node` · 231 lines
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `FaceMod` = `preload("res://godot/scripts/geometry/face.gd")`
 - `SlabMod` = `preload("res://godot/scripts/geometry/slab.gd")`
+- `MAX_RING` = `2`
+- `ROOF_REACH` = `6`
+- `ROOF_FADE` = `2`
+- `ROOF_ADJACENT_CORNERS` = `true`
 - `BASE_VISIBLE_LEVELS` = `2`
 - `SMALL_ROOF_MAX_STRIPES` = `5`
 - `_FACE_DIRS` = `[Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]`
@@ -3173,7 +3177,7 @@ extends `Node` · 298 lines
 
 ### `texture_resolver.gd`
 
-`class_name TextureResolver` · 231 lines
+`class_name TextureResolver` · 230 lines
 
 `godot/scripts/systems/texture_resolver.gd`
 
@@ -3613,7 +3617,7 @@ extends `SceneTree` · 1001 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
-> E-PLAN — DetonationPlanBuilder selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 4, 2026-08-07). Rodar: godot --headless --script res://godot/scripts/tools/detonation_plan_selftest.gd Boots the REAL PLAYGROUND map through the exact room.gd::load_map() path (mirrors damage_atom_bake_selftest.gd's own MinimalRoom scaffold), runs DetonationPlanBuilder.build_plan() against a REAL grenade throw at a real wall's own GU, and proves: 1. The Task 4 gate itself — a printed wave census (cell counts per ring, per wave kind) from a real detonation, not a synthetic fixture. 2. Every dented/cracked/expose entry carries a real, resolved (source_id, atlas_coords, alt) triple — never a placeholder. 3. build_plan() never mutates the live TileMapLayer — every placed cell's (source_id, atlas_coords, alt) is BYTE-IDENTICAL before and after, proven by a real snapshot diff, not by re-reading the code's own claim. 4. The exposure fallback (§2/B5) fires for real: at least one destroy entry carries a non-empty `expose` array once the crater opens the floor. 5. smoke_ring_weights is consumed for real (duration/scale fall off with ring, matching the JSON's own weights) — the "still unread" gap Task 3's closure note flagged. 6. The per-tier ring gates from the REAL frag_grenade.json hold on real data: crack_ring_weights[0]=0.0 means ring 0 never has a cracked entry, dent_ring_weights[2]=0.0 means ring 2 never has a dented one. 7. E-EMBER-01: a real blast at PLAYGROUND's own WOOD wall queues embers, every one on a SURVIVING combustible voxel 6-adjacent to a hole this same blast opens — cell->material read off the live registries, not assumed. Non-zero on real data is the point: this is the exact shape of failure the floor-dent case (69 on a fixture, 0 on PLAYGROUND) is remembered for. 8. E-SMOKE-TINT-01: every per-voxel smoke entry carries the material it came from, without which the choreographer cannot tint the puff. 9. E-EMBER-02: fire creeps UPWARD one level at a time (every rung sits directly above another lit voxel and burns shorter than it), the creep is FNV-1a-deterministic across two builds of the same blast, and an ember COOLS yellow-hot -> deep red while dimming — the one detail the Director first described inverted and then corrected. 10. E-DEBRIS-01: dust/sparks/chips fire only on cells the blast DESTROYS, only on materials their own rule lists, with counts inside their range and identical across two builds — plus the contract that a ctx carrying no debris policy produces exactly zero, so no pre-existing caller moved. Every expectation is checked against the REAL plan/registry/renderer state — never read back from the code under test's own success claim.
+> E-PLAN — DetonationPlanBuilder selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 4, 2026-08-07). Rodar: godot --headless --script res://godot/scripts/tools/detonation_plan_selftest.gd Boots the REAL PLAYGROUND map through the exact room.gd::load_map() path (mirrors the deleted damage_atom_bake_selftest.gd's own MinimalRoom scaffold), runs DetonationPlanBuilder.build_plan() against a REAL grenade throw at a real wall's own GU, and proves: 1. The Task 4 gate itself — a printed wave census (cell counts per ring, per wave kind) from a real detonation, not a synthetic fixture. 2. Every dented/cracked/expose entry carries a real, resolved (source_id, atlas_coords, alt) triple — never a placeholder. 3. build_plan() never mutates the live TileMapLayer — every placed cell's (source_id, atlas_coords, alt) is BYTE-IDENTICAL before and after, proven by a real snapshot diff, not by re-reading the code's own claim. 4. The exposure fallback (§2/B5) fires for real: at least one destroy entry carries a non-empty `expose` array once the crater opens the floor. 5. smoke_ring_weights is consumed for real (duration/scale fall off with ring, matching the JSON's own weights) — the "still unread" gap Task 3's closure note flagged. 6. The per-tier ring gates from the REAL frag_grenade.json hold on real data: crack_ring_weights[0]=0.0 means ring 0 never has a cracked entry, dent_ring_weights[2]=0.0 means ring 2 never has a dented one. 7. E-EMBER-01: a real blast at PLAYGROUND's own WOOD wall queues embers, every one on a SURVIVING combustible voxel 6-adjacent to a hole this same blast opens — cell->material read off the live registries, not assumed. Non-zero on real data is the point: this is the exact shape of failure the floor-dent case (69 on a fixture, 0 on PLAYGROUND) is remembered for. 8. E-SMOKE-TINT-01: every per-voxel smoke entry carries the material it came from, without which the choreographer cannot tint the puff. 9. E-EMBER-02: fire creeps UPWARD one level at a time (every rung sits directly above another lit voxel and burns shorter than it), the creep is FNV-1a-deterministic across two builds of the same blast, and an ember COOLS yellow-hot -> deep red while dimming — the one detail the Director first described inverted and then corrected. 10. E-DEBRIS-01: dust/sparks/chips fire only on cells the blast DESTROYS, only on materials their own rule lists, with counts inside their range and identical across two builds — plus the contract that a ctx carrying no debris policy produces exactly zero, so no pre-existing caller moved. Every expectation is checked against the REAL plan/registry/renderer state — never read back from the code under test's own success claim.
 
 **Constants / tuning**
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
@@ -3663,7 +3667,7 @@ extends `SceneTree` · 61 lines
 
 ### `earth_variant_selftest.gd`
 
-extends `SceneTree` · 173 lines
+extends `SceneTree` · 172 lines
 
 `godot/scripts/tools/earth_variant_selftest.gd`
 
@@ -4095,7 +4099,7 @@ extends `SceneTree` · 273 lines
 
 `godot/scripts/tools/input_controller_selftest.gd`
 
-> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script INPUT-01-c Test: Verify InputController dispatches all 16 actions with real signal firing. Run: godot --headless --script godot/scripts/tools/input_controller_test.gd
+> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script INPUT-01-c Test: Verify InputController dispatches all 16 actions with real signal firing. Run: godot --headless --script godot/scripts/tools/input_controller_selftest.gd
 
 **Constants / tuning**
 - `InputControllerClass` = `preload("res://godot/scripts/world/controllers/input_controller.gd")`
@@ -4166,7 +4170,7 @@ extends `SceneTree` · 367 lines
 
 `godot/scripts/tools/mapfile_roundtrip_selftest.gd`
 
-> mapfile_roundtrip_test.gd — Comprehensive round-trip and migration testing Tests: 1. Basic round-trip: save spec -> load -> verify structural equality 2. Tolerant round-trip: unknown section preservation (M3) 3. Migration RED (missing migration fails loudly) + GREEN (migration present succeeds)
+> mapfile_roundtrip_selftest.gd — Comprehensive round-trip and migration testing Tests: 1. Basic round-trip: save spec -> load -> verify structural equality 2. Tolerant round-trip: unknown section preservation (M3) 3. Migration RED (missing migration fails loudly) + GREEN (migration present succeeds)
 
 **Public vars**
 - `var MapSectionRegistryClass = preload("res://godot/scripts/world/maps/persistence/map_section_registry.gd")`
@@ -4289,7 +4293,7 @@ extends `SceneTree` · 177 lines
 
 `godot/scripts/tools/panel_base_selftest.gd`
 
-> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script PANEL-01 Test: Standalone verification of PanelBase and WindowBase functionality. Run: godot --headless --script godot/scripts/tools/panel_base_test.gd
+> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script PANEL-01 Test: Standalone verification of PanelBase and WindowBase functionality. Run: godot --headless --script godot/scripts/tools/panel_base_selftest.gd
 
 **Constants / tuning**
 - `PanelBaseClass` = `preload("res://godot/scripts/ui/panel_base.gd")`
@@ -4371,7 +4375,7 @@ extends `SceneTree` · 414 lines
 
 ### `project_lint_validator.gd`
 
-extends `SceneTree` · 97 lines
+extends `SceneTree` · 88 lines
 
 `godot/scripts/tools/project_lint_validator.gd`
 
@@ -5095,11 +5099,16 @@ extends `Node2D` · 32 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 591 lines
+`class_name RoomBuilder` · 589 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
 > RoomBuilder Orchestrates room construction, tile placement, and perspective transformations. Handles loading maps, building layouts, caching blocked cells, and coordinate rotations.
+
+**Constants / tuning**
+- `WALL_FLOOR_STEP_PX` = `20.0`
+- `WALL_BASE_Z_INDEX` = `8`
+- `INVALID_CELL` = `Vector2i(-1, -1)`
 
 **Public vars**
 - `var room: Node`
@@ -5214,7 +5223,7 @@ extends `Node2D` · 32 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1544 lines
+`class_name TestZoneController` · 1512 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5479,7 +5488,7 @@ extends `Node2D` · 32 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 268 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 269 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 

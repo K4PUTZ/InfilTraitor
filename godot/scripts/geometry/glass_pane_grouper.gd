@@ -105,8 +105,8 @@ static func assign(edge_registry: EdgeRegistry, solid_block_instances: Array) ->
 ##
 ## The bound comes from the crack sheet, so it is not a taste call. G-D21 anchors
 ## the fracture sheet on the impact voxel and G-D23 CLAMPS it at the sheet edge
-## (no mirror — a mirrored fracture is a second, false crack). The sheet is
-## `BakedTileLookup._compute_facade_key()`'s own window, 64 columns x 32 rows, so
+## (no mirror — a mirrored fracture is a second, false crack). The sheet is a
+## window of 64 columns x 32 rows (`BakedTileLookup._compute_facade_key()` gave it that on the 2D board), so
 ## a pane that fits inside it is a pane a centred hit can crack END TO END. Larger
 ## than that and the far half can never crack at all, silently.
 ##

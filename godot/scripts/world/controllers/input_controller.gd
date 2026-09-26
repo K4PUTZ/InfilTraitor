@@ -104,7 +104,7 @@ func _handle_key_action(key: InputEventKey) -> void:
 	
 	## AUDIT-01 (2026-08-06): guarded like get_viewport() above. get_tree() is
 	## null whenever this controller is driven outside the SceneTree — which is
-	## exactly what input_controller_test.gd does, and what made it throw 17
+	## exactly what input_controller_selftest.gd does, and what made it throw 17
 	## SCRIPT ERRORs. Pause cannot be in effect off-tree, so falling through is
 	## the correct reading, not a swallowed error.
 	var tree := get_tree()

@@ -69,7 +69,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	room._slab_registry = SlabRegistry.new()
 
 	## room._voxel_board.clear() also moved here, unconditional, mirroring why
-	## floor_layer/structure_layer are cleared unconditionally above: a room that
+	## structure_layer is cleared unconditionally above: a room that
 	## loses its edges on rebuild must not keep stale wall geometry from a
 	## previous build. register_geometry() below (walls) and register_slab() (floor, next)
 	## only ADD cells on top of a cleared renderer — neither touches state the
@@ -127,13 +127,11 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## coarse plane) and are not in conflict, so there is no reason for their
 	## coverage to differ.
 	## NOTE: generation only here — rendering is deferred (see the register_slab()
-	## loop after the edges-conditional block below). A zoned floor Slab's
-	## flat_baked lookup needs _bake_textures() to have already run; rendering
-	## immediately here (as this loop used to, back when floor never baked
-	## anything) would query the atlas before this call's own bake pass built
-	## it, always MISS, and silently fall back to MATERIALS[0] ("concrete") —
-	## the same lesson ROOF-BAKE-01 already learned for roof_slabs, which is
-	## why those are generated here but rendered only after register_geometry(), below.
+	## loop after the edges-conditional block below), as it is for roof_slabs, which are
+	## generated here but rendered only after register_geometry(), below. (The reason was
+	## the 2D atlas bake: a zoned floor Slab's flat_baked lookup needed the bake to have
+	## run, or it always missed and silently fell back to MATERIALS[0] ("concrete"). The
+	## bake is gone (R3D-END, END-4); the order is unchanged.)
 	##
 	## FLOOR-DEPTH-01 (Director, 2026-07-28): the destructible ground is now TWO
 	## planes, not one — FLOOR_TOP_LEVEL as before, plus FLOOR_DEEP_LEVEL beneath
@@ -245,8 +243,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## ANY roofed neighbour exists there, regardless of which declaration
 		## it came from.
 		##
-		## ROOF-BAKE-01: GENERATION hoisted above _bake_textures() (rendering
-		## stays below, after register_geometry()): the bake pass needs each roof combo's
+		## ROOF-BAKE-01: GENERATION was hoisted above the 2D atlas bake (`_bake_textures()`, gone at R3D-END;
+		## rendering stays below, after register_geometry()): the bake pass needed each roof combo's
 		## real voxel cells as sheet usage, and the actual Slab voxels are the
 		## single truth for that footprint — deriving cells a second way here
 		## would be exactly the split-brain the border fix above just killed.
@@ -564,8 +562,8 @@ func _register_voxel_prop_levels(instances: Array) -> void:
 ## only the SIGMA_01 *code* spec (fallback-only) declares 9 of them.
 ##
 ## Re-enabling is the one line below, but it is a rendering change on a path
-## no currently-running test covers (prop_01_tests.gd is outside the selftest
-## runner's glob), so it is a Director call, not a cleanup.
+## no test covered when this was written (`prop_01_tests.gd`, since renamed `prop_01_selftest` and now in
+## the runner: re-check what it reaches), so it is a Director call, not a cleanup.
 func _get_prop_registry():
 	# return Registries.ensure_prop_registry()
 	return null

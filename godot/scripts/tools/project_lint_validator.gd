@@ -54,15 +54,6 @@ func _walk_directory(dir_path: String) -> void:
 ## Try to load a file and capture parse errors
 ## Checks ALL .gd files including tests (parse/compile errors are static and don't require runtime context)
 func _check_file(gd_path: String) -> void:
-	# NARROW EXCEPTION: version_info_test.gd references the VersionInfo autoload at compile time.
-	# In a headless context (no autoload registry), this generates "Identifier not found: VersionInfo"
-	# which is a compile error but NOT a code defect — the script is correct; the limitation is
-	# environmental. Test files that need their autoloads are validated through their own test runners
-	# with full context; we skip this one file specifically to avoid a false failure.
-	# This exception is named and justified; it does NOT apply to other test files generally.
-	if gd_path == "res://godot/scripts/tools/version_info_test.gd":
-		return
-	
 	files_checked += 1
 	
 	# Attempt to load the script — parse errors print to stderr/stdout automatically

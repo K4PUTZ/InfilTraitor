@@ -41,8 +41,8 @@ var silhouette_half_width_px: float = 52.0
 var silhouette_height_px: float = 222.0
 
 ## How many hops along the wall's own connectivity graph the ring falloff reaches
-## from a triggering edge. Ring alphas themselves live in VoxelBoard.GHOST_ALPHAS
-## (3 entries) — this must stay one less than that array's size.
+## from a triggering edge. The ring fill opacities live in Board3DLive's cutaway shader (`fill`: 3 entries,
+## 0.14 / 0.24 / 0.36) — this must stay one less than that count.
 const MAX_RING: int = 2
 ## R3D-7: how many adjacent roof slabs an origin under a roof opens (the slab above it counts as the first), and how
 ## many of the last of them fade.
@@ -114,7 +114,7 @@ var _recompute_count: int = 0
 ## Returns: Dictionary of voxel COLUMN (x,y only) → {"ring": int, "min_level": int}.
 ## "min_level" is where ghosting starts (OCC-10: the edge's true base plus
 ## BASE_VISIBLE_LEVELS) — a column key alone cannot tell
-## VoxelBoard.apply_occlusion() which of ITS levels are the always-visible
+## the cutaway (`Board3DLive.on_occlusion()`) which of ITS levels are the always-visible
 ## base versus the ghosted rest, so the level floor has to travel with the cell.
 func get_occluded_cells() -> Dictionary:
 	return _expand().duplicate()
@@ -252,7 +252,7 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 		ring_by_edge_id[e["edge_id"]] = e["ring"]
 		for column in _edge_columns(e["edge_id"], slices_by_edge):
 			## OCC-09/OCC-10: min_level travels WITH the cell — a column key
-			## alone would leave VoxelBoard.apply_occlusion() unable to tell
+			## alone would leave the cutaway unable to tell
 			## which of a column's levels are the always-visible base versus
 			## the ghosted rest above it.
 			## OCC-26 (2026-07-18): max_level travels too. The erase used to run
@@ -459,7 +459,7 @@ func _build_exposure_by_gu() -> Dictionary:
 ## live). ROOF-OCC-02 (2026-07-20) patched this locally for roof GUs only
 ## (rectangle-merge); this supersedes that too — walls, junctions and roofs
 ## already all fold into ONE shared dictionary (`occluded`, identical to
-## _occluded_cells / what VoxelBoard.apply_occlusion() erases), so instead
+## _occluded_cells / what the cutaway ghosts), so instead
 ## of trusting each generator's own idea of its unit's shape, this runs ONE
 ## real hidden-face-culling pass directly against that shared ground truth —
 ## the same principle voxel engines use for chunk meshing (Minecraft-style
@@ -686,9 +686,8 @@ func _merge_columns_into_rects(cells: Array) -> Array:
 ## de vidro."*).
 ##
 ## A glass pane is see-through by construction (G-D1) — the agent behind it is
-## already visible, so ghosting it reveals nothing. And glass voxels render on
-## their own `_glass_layers`, which `VoxelBoard.apply_occlusion()` never
-## touches (it erases `_layers` only); the wireframe would then draw its lines
+## already visible, so ghosting it reveals nothing. And the cutaway only ever
+## touches opaque voxels (`glass_pane3d` never reads the occlusion texture); the wireframe would then draw its lines
 ## and translucent fills over a pane that is still solid on screen. So a glass
 ## slice contributes nothing here: no trigger, no wireframe, no ghost band.
 ##

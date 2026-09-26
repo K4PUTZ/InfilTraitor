@@ -1,6 +1,6 @@
 #!/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script
 ## INPUT-01-c Test: Verify InputController dispatches all 16 actions with real signal firing.
-## Run: godot --headless --script godot/scripts/tools/input_controller_test.gd
+## Run: godot --headless --script godot/scripts/tools/input_controller_selftest.gd
 
 extends SceneTree
 

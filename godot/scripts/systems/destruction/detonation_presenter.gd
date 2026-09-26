@@ -5,8 +5,8 @@
 ## 20 ms of cell writes across 24 frames and decorates them — and this replaces it
 ## with one frame that writes everything and then N frames that write nothing.
 ##
-## Behind `INFILTRAITOR_PRESENTER=1`; the choreographer stays the default until
-## D-6 removes it. Both run from one binary, so a before/after needs no stash.
+## It is the only detonation path: the choreographer it replaced was deleted at D-6
+## (`620f8e3a`).
 ##
 ## ## What it does NOT contain, which is the point
 ##

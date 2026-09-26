@@ -343,7 +343,7 @@ const MASK_PAD: float = 0.25
 ## instead — one shape, read by the atom cut and by the sprite shader.
 ##
 ## Returns { image, origin, size } with origin/size in VOXELS from the impact, the
-## same space `glass_crack.gdshader` already works in for the occupancy.
+## same space `glass_crack3d.gdshader` already works in for the occupancy.
 static func mask_image(id: String) -> Dictionary:
 	var poly: PackedVector2Array = polygon(id)
 	if poly.is_empty():

@@ -1075,46 +1075,14 @@ func _pump_prediction(job: DetonationPrediction = null) -> void:
 ## carrega todos os dados necessários (...) Assim a gente garante que estamos
 ## vendo os frames 'livres', e não travando por conta de processamento."*
 ##
-## The prediction being DONE was never the same thing as the blast being ready
-## to play. Three pieces of work survived into playback, and all three landed on
-## the frames the Director was watching:
+## The prediction being DONE was never the same thing as the blast being ready to play. On the 2D board three
+## pieces of work survived into playback: flattening and radially sorting the step queue (8.5 ms), minting the
+## TileSet alternatives each cell needed (~105 ms PER FRAME: any frame that mints anything pays one TileSet
+## rebuild) and uploading the composited damage page (~133 ms). Paying them in ONE frame, deliberately not
+## sliced, took 5 wave frames on a real PLAYGROUND throw from 753 ms to 85 ms. The last two were the 2D board's
+## tiles and are gone (R3D-10, END-4): nothing is left to warm, so this only marks the job warmed.
 ##
-##   · flattening + radially sorting the 1 590-step queue   8.5 ms, once
-##   · minting the TileSet alternatives each cell needs     ~105 ms PER FRAME
-##   · uploading the composited damage page to the GPU      ~133 ms, once
-##
-## The middle one is the whole story and it is not obvious: `_ensure_light_alt()`
-## calls `create_alternative_tile()`, which mutates the TileSet that EVERY
-## TileMapLayer shares, so a single new alternative on a frame forces the lot to
-## rebuild. That is why the cost was flat — a frame minting one alternative and a
-## frame minting three hundred cost the same, and a frame minting none cost
-## nothing. Measured end to end on a real PLAYGROUND throw:
-##
-##     before   5 wave frames over 753 ms   (~150 ms each)
-##     after    5 wave frames over  85 ms   (~17 ms each — a normal frame)
-##
-## Done HERE and not in the pipeline because two of the three mutate the
-## renderer, and `build_plan()` is pure by architecture (PREDICTION_MASTER_PLAN
-## §3.3). This is playback preparation that happens to be cheap to do early, not
-## part of the prediction — hence a controller step, and hence `warmed` living on
-## the job rather than inside the Delta.
-##
-## DELIBERATELY NOT SLICED, and that is the whole trick rather than an omission.
-## The first version budgeted the mint pass across frames the way the pump does,
-## and made things WORSE: it took the warm-up from one frame to five, and the
-## throw animation stuttered for 490 ms (measured, f=44 to f=49). The cost is not
-## the CPU of `_ensure_light_alt()` — that is ~19 ms for the lot — it is the
-## TileSet rebuild that any frame minting ANYTHING has to pay, once. Spreading
-## the mints spreads that penalty over every frame it touches.
-##
-## This is the same inversion DetonationChoreographer's own header warns about
-## ("a naive 'spread the work thinner' budget makes the blast three to twenty
-## times SLOWER"), met a second time from the other side. One frame pays it once.
-##
-## Where that frame LANDS is what makes it affordable: the prediction finishes
-## around +730 ms on a real throw, which is already past the 600 ms flight — so
-## the hitch falls while the grenade is sitting on the ground cooking, not while
-## it is arcing through the air.
+## It lives here and not in the pipeline because `build_plan()` is pure by architecture (PREDICTION_MASTER_PLAN §3.3).
 func _warm_prediction(job: DetonationPrediction) -> void:
 	if job.delta == null or job.warmed:
 		return

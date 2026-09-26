@@ -38,7 +38,7 @@
 ##    a 40 ms-cadenced sequence.
 ##
 ## `ctx` is a plain Dictionary rather than a typed context object, matching
-## the project's existing MinimalRoom precedent (damage_atom_bake_selftest.gd)
+## the project's existing MinimalRoom precedent (the deleted damage_atom_bake_selftest.gd's)
 ## for running real BlastCalculator machinery against either a full `room.gd`
 ## or a trimmed selftest scaffold without either needing to know about the
 ## other:

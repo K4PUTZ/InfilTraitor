@@ -56,10 +56,9 @@ func _init(p_user_dir: String = "", p_default_dir: String = "") -> void:
 ## Defaulting to "" keeps every such caller — and any future non-material texture
 ## — on the flat lookup they already have.
 ##
-## The production callers are BakeCompositor's two `resolver.resolve()` sites,
-## both of which have the material in hand. A site that forgets to pass it gets
-## Tier.NONE, which renders silently wrong — so the acceptance gate for this
-## reform is the 363-atom export diff, not a screenshot.
+## The production caller is `Board3DLive`'s facade load, which has the material in hand.
+## A site that forgets to pass it gets Tier.NONE, which renders silently wrong — the
+## reform's acceptance gate was the 2D bake's 363-atom export diff, not a screenshot.
 func resolve(texture_id: String, material_folder: String = "") -> ResolvedTexture:
 	_log("")  # blank line for readability
 	_log("Attempting to resolve: %s (folder %s)" % [texture_id, material_folder if material_folder != "" else "<flat>"])
@@ -196,8 +195,8 @@ func _validate_dimensions(path: String, img: Image) -> bool:
 		# check_decal.py owns the art gate.
 		return true
 	elif filename.begins_with("slab_"):
-		# Isotropic floor-bake plane: resolve_flat() folds both axes at
-		# SHEET_COLS=64, so 64 * TEX_AUTHORING_N is the addressable domain
+		# Isotropic floor plane: the 2D bake's `resolve_flat()` folded both axes at
+		# 64 columns, so 64 * TEX_AUTHORING_N is the addressable domain
 		# on BOTH axes (unlike the wall facade's anisotropic 64x32).
 		expected_w = 64 * GeometryCoords.TEX_AUTHORING_N
 		expected_h = 64 * GeometryCoords.TEX_AUTHORING_N

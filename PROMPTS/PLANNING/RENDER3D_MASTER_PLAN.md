@@ -3035,7 +3035,7 @@ is not an entry condition (Director, 2026-09-23).
 - **The SE face of the reference set is not captured now.** If R3D-LOOK needs it, it is taken from a worktree of
   `34881f81`, the last commit with the 2D board.
 
-**Resume point (2026-09-25 close): END-0 to END-7 DONE; next END-8 (the device gate).** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
+**Resume point (2026-09-25 close): R3D-END IS DONE (END-0 to END-8); the next stage is the Director's call.** Re-take the reference set from the current commit before a step (the scratchpad copy is gone).
 
 **Execution order.** Every step is held to the END-0 set (below) and committed and pushed on its own; the last commit
 that still builds the 2D board is `34881f81`.
@@ -3195,12 +3195,15 @@ that still builds the 2D board is `34881f81`.
   `ART_SPECIFICATIONS` (the 3D board's silent failure modes; B3 retired; the atom sheet retired), `DIRECTION_GLOSSARY` §10
   (a new "banidos desde o R3D-END" table) and `Board3DLive`'s header. `docs/README.md` and `current_state.md` were not touched.
 - **END-8 — the gate** (below).
-  **END-8, Moto half done 2026-09-25; the Galaxy A16 half is PENDING (the handset was not attached).** The R3D-13 matrix on the Moto g04s
-  with the APK of `ac2eebce`, two boots: no regression, memory ~20% down (PSS 1.09-1.11 GB vs 1.38), idle 18.8-19.4 vs 18.9-21.9 ms,
-  both detonations' mean under 33.3 ms, the second grenade's worst frame 254 vs 693-725 ms; the full table is the top block of
-  `DEVICE_DIAGNOSTICS_MASTER_PLAN`. The other END-8 conditions are the ones every step already met (selftests clean, invariants,
-  CODEMAP, `board_probe gate`, the 3D pixel gate: `verify.py full` PASSED, 433 s). **To close R3D-END: run the same scenario on the Galaxy
-  (serial `R5CY8122K7D`, `--seconds` 220) and compare with its R3D-13 row.**
+  **END-8 done 2026-09-25 — R3D-END IS CLOSED.** The R3D-13 matrix on both handsets with the APK of `ac2eebce`, no regression.
+  **Moto g04s** (two boots): load 15.2-15.5 s vs 16.3; PSS 1.09-1.11 GB vs 1.38 (~20% down); idle 18.8-19.4 vs 18.9-21.9 ms;
+  detonation means 28.4-31.3 vs 29.5-32.7 ms; the second grenade's worst frame 254 vs 693-725; shot tail 526 ms (719 before the
+  pre-cook). **Galaxy A16** (three boots + a four-boot A/B against `r3d13.apk`): load 7.1-7.4 vs 7.9-8.0 s; PSS 1.28-1.31 GB vs
+  1.30-1.33; detonation worst frames 112-157 vs 154-364 ms; shot tail 211-219 ms (`r3d13.apk` 416-420 in the same A/B). Idle on the
+  Galaxy swung 23-26 to 40-47 ms/frame from boot to boot on BOTH APKs (charging at ~1.7 A, battery 23 -> 30 C): only the
+  alternating A/B is comparable. The tables, logs and the thermal note are the top block of `DEVICE_DIAGNOSTICS_MASTER_PLAN`.
+  The other END-8 conditions were met at every step (`verify.py full` PASSED, 433 s). **Next: R3D-WORLD, R3D-ROT, R3D-LOOK, R3D-LIGHT,
+  R3D-CLAIMS, R3D-BUFFER, R3D-ACTORS, R3D-PROPS (the Director's order).**
 
 **Deleted:**
 - **`VoxelRenderer`'s tile placement, its `TileMapLayer`s and the `_set_voxel_cell()` path.** The class is split first.

@@ -75,11 +75,6 @@ func get_material_registry() -> MaterialRegistryClass:
 	return ensure_material_registry()
 
 
-## Get prop registry (ensure called first, or handle null)
-func get_prop_registry() -> PropRegistryClass:
-	return ensure_prop_registry()
-
-
 ## Ensure bomb registry exists and is initialized
 func ensure_bomb_registry() -> BombRegistryClass:
 	var reg = _bomb_registry

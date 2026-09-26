@@ -142,10 +142,6 @@ var _slab_registry: SlabRegistry = null
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
 
-## Prop stacking (e.g. stacked crates). Each extra sprite seats on the one below,
-## offset up by the crate body step. Must equal the crate sprite's CUBE_HEIGHT
-## (tools/asset_generation/generate_*_crate.py) so stacked crates seat seamlessly.
-var CRATE_STACK_STEP_PX: float = 128.0
 
 ## tile_name → TileSet source_id
 var _room_size: Vector2i = Vector2i.ZERO
@@ -1406,15 +1402,6 @@ var _ceiling_overlay: Node2D = null  ## VIS-01: overhead ceiling props/lights (C
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
 
-## M2-13: Obstacle heights (in tiles above the floor plane)
-const OBSTACLE_HEIGHTS: Dictionary = {
-	"crate":     1.0,
-	"wall":      2.0,
-	"block":     2.0,
-	"column":    3.0,
-	"half_wall": 1.0,
-}
-const OBSTACLE_HEIGHT_DEFAULT := 1.5
 
 ## Vision & FOW radii — independent of each other:
 ## VISION_TILE_RADIUS  controls only the shader gradient (live clear-circle around agent).
@@ -1438,7 +1425,6 @@ const DETECTION_THRESHOLD_SUSPICIOUS := 0.30
 const DETECTION_THRESHOLD_ALERT      := 0.60
 const DETECTION_THRESHOLD_CHASE      := 1.00
 
-const ENEMY_INTER_TURN_DELAY := 1.0
 const ENEMY_CAMERA_TWEEN_DURATION := 0.45
 const ENEMY_PHASE_MAX_OPEN_ZOOM := 0.65
 const ACTOR_END_HOLD_DELAY := 0.5
@@ -1462,7 +1448,8 @@ var _test_zone_controller: TestZoneControllerClass = null
 var _collectibles: Array[Node] = []
 var _floating_collectible: Node = null
 ## TEST-ZONE weapons bench (2026-07-29): static, aimed, right-click-firable
-## weapon props — see TEST_ZONE_WEAPON_ROWS and WeaponBenchController.
+## weapon props. Its rows and props were retired with the PLAYGROUND reform (2026-08-17);
+## `WeaponBenchController` is what is left of it.
 var _weapon_bench_controller: WeaponBenchControllerClass = null
 ## §6c: right-click an ENEMY to open "Atirar" (B1, Director 2026-08-19 — the
 ## action lives on the target's menu, not the shooter's).
@@ -1793,8 +1780,6 @@ const GUARD_NOISE_INTENSITY_BY_STATE := {
 @export var level_seed: int = 0
 ## Which map MapCatalog resolves for this room: "PLAYGROUND", "SIGMA_01", "PROCEDURAL".
 @export var map_id: String = "PLAYGROUND"  ## Restored default 2026-07-22 — PLAYGROUND is now the destruction test zone
-## Quick-test override for wall storeys (0 = use the map's own wall_height). Inspector-tweakable.
-@export var wall_height_override: int = 8  ## Legacy, now ignored (FIX-EXTERIOR-WALLS-01: exterior walls have fixed EXTERIOR_WALL_STOREYS height)
 
 const WHISTLE_RADIUS := 3
 
@@ -5406,15 +5391,6 @@ func _tic_slab_system() -> void:
 		slab.clear_all_dirty()
 
 
-## M2-13: Quantized isometric directions (8 directions)
-const SHADOW_DIRS: Array[Vector2i] = [
-	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
-	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
-]
-
-const SHADOW_LENGTH_MAX := 5
-
-
 func _get_blocked_cells_array() -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for cell in _blocked_cells.keys():
@@ -6223,7 +6199,7 @@ func _update_temporal_lights(delta: float) -> void:
 		return
 
 	## VL-03: repaint ONLY the changed lights' influence set, never the whole
-	## map. rebuild_deferred() (the old path) re-derives EVERYTHING — shadow,
+	## map. LightingController.rebuild() (the full path) re-derives EVERYTHING — shadow,
 	## exposure, and the light field — at ~590-675ms on PLAYGROUND; paying that
 	## twice a second for a flickering lamp would stall the game. Two things
 	## make the incremental path correct, not just faster:
@@ -9241,60 +9217,7 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 ## time. Put cells back here to bring the board back.
 const TEST_ZONE_AGENT_PROBE_BRACKET: Array[Dictionary] = []
 
-## TEST-ZONE weapons bench (Director, 2026-07-29; pared down 2026-07-30 for
-## real destruction calibration — "a bancada está muito cheia [...] vai ser
-## impossível atirar diretamente na parede durante o jogo"). Revolver/SMG/
-## assault rifle dropped: they added rows without adding mechanical coverage
-## (all three are LINE, same as pistol and sniper, and LINE isn't built yet).
-## Three weapons left, one per range band: shotgun (CONE, short), pistol
-## (LINE, short), sniper rifle (LINE, long).
-##
-## The bench is a MATRIX, and this table is its row axis: one entry per weapon
-## type, placed once per wall material (the column axis, TEST_ZONE_WALL_GU_X) so
-## every weapon can be tried against every material. `row_y` is the distance
-## that weapon is actually meant to be used at — "na distância mais adequada
-## para utilização" — so the rows read as a range ladder marching south as
-## engagement range grows:
-##
-##   y=2   the wall row itself
-##   y=5   ground grenades (kept, Director's explicit call — unmoved)
-##   y=6   shotgun (CONE)
-##   y=9   pistol (LINE)
-##   y=13  sniper rifle (LINE, longest)
-##
-## Shotgun moved from y=4 to y=6 (Director: "a shotgun está muito próxima da
-## parede [...] vamos [...] trazer a shotgun mais pra trás"). y=6 is not an
-## arbitrary pullback — it is `flood_gu_cone()`'s hard ceiling: with the wall
-## at y=2 and `weapons/shotgun.json`'s step_multipliers holding 5 entries
-## (indices 0-4), a voxel only takes damage at ring <= 4
-## (apply_container_damage: `if ring >= ring_multipliers.size(): continue`),
-## and one GU-step = one row here (facing NE = grid delta (0,-1), so distance
-## in y IS distance in cone steps). y=6 -> distance 4 -> the wall is hit at the
-## cone's weakest possible ring (multiplier 0.15) and still registers damage;
-## y=7 or beyond would miss the wall entirely. If this reads as too weak once
-## captured, the fix is step_multipliers/destroy_multiplier in
-## weapons/shotgun.json, not pushing the row back further — there is no
-## further back to push it without the shot going dark.
-##
-## All weapons aim NE — the compass edge from a bench cell to the wall directly
-## "above" it (grid delta (0,-1), docs/DIRECTION_GLOSSARY.md §3). Sprite scale
-## and shadow factor are per-object, exactly as for a collectible; the five
-## weapons baked together by weapon_frames_bake.gd share a framing, hence a
-## shared 2.0 shadow factor, while the shotgun keeps the 2.5 its own earlier
-## bake produced.
-const TEST_ZONE_WALL_GU_X: Array[int] = [3, 8, 13, 18]
 const BAKE_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
-const TEST_ZONE_WEAPON_ROWS: Array[Dictionary] = [
-	{"id": "shotgun", "row_y": 6, "facing": "NE",
-		"frames_dir": BAKE_DIR + "shotgun_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.5},
-	{"id": "pistol", "row_y": 9, "facing": "NE",
-		"frames_dir": BAKE_DIR + "pistol_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"id": "sniper_rifle", "row_y": 13, "facing": "NE",
-		"frames_dir": BAKE_DIR + "sniper_rifle_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-]
 
 ## Collectibles strip — OFF (Director, 2026-07-29: "os objetos coletáveis estão
 ## ótimos, pode tirar eles do cenário por enquanto, já vimos que vai

@@ -102,12 +102,6 @@ func add_tracer(from: Vector2, to: Vector2) -> void:
 	queue_redraw()
 
 
-func clear_tracers() -> void:
-	_streaks.clear()
-	set_process(false)
-	queue_redraw()
-
-
 func _process(_delta: float) -> void:
 	var alive: Array = []
 	for s in _streaks:

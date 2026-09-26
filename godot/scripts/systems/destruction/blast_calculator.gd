@@ -1358,23 +1358,6 @@ static func _ring_weight(weights: Array[float], ring: int, absent: float) -> flo
 const DEEP_FLOOR_CRATER_FACTOR := 0.5
 
 
-## Soot ring stamped on a freshly exposed crater floor. Ring 0 = darkest, VL-D2's
-## original call ("the bottom of a blast crater is the most burned surface there
-## is", Director 2026-07-24).
-##
-## Briefly raised to 2 on 2026-07-28 to let the per-depth tone steps read against a
-## brighter floor, and REVERTED the same day: lightening the crater inward looked
-## wrong. Director's ruling — soot ADDS to the per-level tone instead of competing
-## with it, everything gets darker downward, and losing the texture to shadow at
-## the bottom is acceptable. The layer separation therefore comes entirely from
-## VoxelBoard.FLOOR_DEPTH_DIM, which was re-tuned for that job.
-##
-## Kept as a named constant rather than returning to a bare literal 0: the
-## detonation path and the post-rotation replay both write it, and they must never
-## disagree or the crater would change shade when the map turns.
-const EXPOSED_FLOOR_SOOT_RING := 0
-
-
 ## Deterministic "which N of M" — hash-and-rank, mirroring
 ## EarthVariantSelector's use of FacadeSampler._fnv1a_hash (D4/B4): same
 ## inputs always produce the same subset, no RNG, nothing stored.

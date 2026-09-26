@@ -22,7 +22,6 @@ const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 const BLUE_LINE   := Color(0.25, 0.70, 1.0, 0.90)  ## Blue for Zone 1 (2 AP remaining)
 const ORANGE_LINE := Color(1.0, 0.60, 0.20, 0.95)  ## Orange for Zone 2 (or Zone 1 with 1 AP)
-const FILL_COLOR  := Color(1.0, 1.0, 1.0, 1.0)     ## White base for the fill (tinted at draw time)
 
 ## Inward offset (pixels) — shrinks losango for perimeter lines to avoid visual clash
 const PERIMETER_INSET_DISTANCE := 6.0

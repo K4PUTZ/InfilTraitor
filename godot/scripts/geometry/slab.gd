@@ -45,24 +45,9 @@ func _init(p_id: String, p_gu_cell: Vector2i, p_role: int, p_level: int, p_mater
 	material = p_material
 
 
-## Get voxel by index; returns null if out of bounds
-func get_voxel(index: int) -> Voxel:
-	if index < 0 or index >= voxels.size():
-		return null
-	return voxels[index]
-
-
 ## Total voxel count (64 per level, one storey's worth of a GU footprint)
 func total_voxel_count() -> int:
 	return voxels.size()
-
-
-## Mark all voxels dirty and update counter
-func mark_all_dirty() -> void:
-	for voxel in voxels:
-		if not voxel.dirty:
-			voxel.dirty = true
-			dirty_count += 1
 
 
 ## Called by child Voxel when it becomes dirty

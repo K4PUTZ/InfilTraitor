@@ -20,8 +20,6 @@
 ##     board, and after D-3 they all land in ONE frame;
 ##   - **VFX** (`smoke`, `ember`, `debris`) — write nothing, and are what the
 ##     consequence channel animates afterwards.
-## `is_cell_kind()` is that split, in code, so a caller cannot get it wrong by
-## listing kinds by hand.
 class_name DetonationEntryWriter
 extends RefCounted
 
@@ -31,8 +29,6 @@ const DEBRIS_FALLBACK_COLOR := Color(0.6, 0.6, 0.6)
 const SURFACE_SPARK_SPEED_SCALE: float = 1.3
 const SURFACE_SPARK_DURATION_SCALE: float = 0.6
 
-## The kinds that MUTATE THE BOARD. Everything else is drawing.
-const CELL_KINDS: Array[String] = ["destroy", "expose", "dented", "cracked", "soot"]
 
 var ember_overlay: EmberOverlay = null
 var debris_overlay: DebrisOverlay = null
@@ -46,10 +42,6 @@ var smoke_tints: Dictionary = {}
 ## leaves it FALSE, because §7.1 puts the scorch in the commit and there is no
 ## later beat to leave it to.
 var soot_clean: bool = false
-
-
-static func is_cell_kind(kind: String) -> bool:
-	return CELL_KINDS.has(kind)
 
 
 ## D-3b — the cells whose scorch a caller is about to RAMP IN, as {Vector3i: true}.

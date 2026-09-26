@@ -543,11 +543,6 @@ class MockRenderer:
 	func relative_level(level: int) -> int:
 		return level - GeometryCoordsClass.storey_level_base(0)
 
-	## The same wall-face geometry VoxelBoard.glass_cell_face_pos() uses:
-	## map_to_local's e1 (16,8) / e2 (-16,8), minus VOXEL_STEP_PX per level.
-	func glass_cell_face_pos(level: int, cell: Vector2i) -> Vector2:
-		return Vector2(float(cell.x - cell.y) * 16.0,
-			float(cell.x + cell.y) * 8.0 - 20.0 * float(relative_level(level)))
 
 
 func test_apply_spawns_a_sprite_and_gd24_crosses() -> void:

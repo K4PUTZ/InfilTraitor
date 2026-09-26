@@ -11,7 +11,6 @@ const PlaygroundMapClass = preload("res://godot/scripts/world/maps/definitions/p
 const Sigma01MapClass    = preload("res://godot/scripts/world/maps/definitions/sigma_01_map.gd")
 const ProceduralMapClass = preload("res://godot/scripts/world/maps/definitions/procedural_map.gd")
 
-const DEFAULT_MAP_ID := "PLAYGROUND"
 
 
 ## Returns all map ids the catalog can resolve, in display order.

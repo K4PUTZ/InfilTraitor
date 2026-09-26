@@ -68,10 +68,6 @@ func rebuild_all() -> void:
 	lighting_rebuilt.emit()
 
 
-func rebuild_deferred() -> void:
-	call_deferred("rebuild")
-
-
 func _init_systems() -> void:
 	## L-IMP-01: Initialize light registry and overlay
 	_light_registry = LightRegistryClass.new()

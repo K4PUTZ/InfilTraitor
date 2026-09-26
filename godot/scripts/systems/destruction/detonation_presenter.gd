@@ -36,14 +36,6 @@ extends RefCounted
 
 signal finished()
 
-## Every wave kind this presenter actually consumes — the commit frame's cell
-## kinds plus the consequence channel's VFX kinds. `expose` rides nested inside
-## `destroy` and is not a top-level key. `TestZoneController._entries_playback_will_drop()`
-## checks a plan against this so a new kind nobody wired in is caught, not silently
-## computed and dropped (it once found 18 dents dropped on every blast).
-const PLAYED_KINDS: Array[String] = [
-	"destroy", "dented", "cracked", "soot", "smoke", "ember", "debris",
-]
 
 ## §13.3 — the Room that owns the consequence beat and the light. Null keeps this
 ## usable headless (no light beat), which is what a selftest wants.

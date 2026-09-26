@@ -193,13 +193,6 @@ func show_dome(center: Vector2, radius_gu: float, center_gu: Vector2i,
 	queue_redraw()
 
 
-## Move the dome without changing its size (cursor follow).
-func update_position(center: Vector2, center_gu: Vector2i) -> void:
-	_center = center
-	_center_gu = center_gu
-	queue_redraw()
-
-
 func _draw() -> void:
 	if not _visible or _radius_gu < 0.001:
 		return

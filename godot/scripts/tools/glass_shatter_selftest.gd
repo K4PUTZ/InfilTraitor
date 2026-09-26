@@ -319,24 +319,6 @@ func _apply(slices: Array, plan: Array) -> void:
 		s.voxels[int(e["voxel_index"])].set_damage(Voxel.DamageState.DESTROYED, false, 0, 0, 0)
 
 
-## Every voxel on the pane's outer frame (col 0 of the leftmost GU, col 7 of the
-## rightmost, bottom and top level) that is still standing.
-func _surviving_border(slices: Array, gu_x_lo: int, gu_x_hi: int, storeys: int) -> int:
-	var base: int = GeometryCoords.storey_level_base(0)
-	var col_min: int = gu_x_lo * 8
-	var col_max: int = gu_x_hi * 8 + 7
-	var lvl_min: int = base
-	var lvl_max: int = base + storeys * 8 - 1
-	var n: int = 0
-	for s in slices:
-		for v in s.voxels:
-			if v.damage_state == Voxel.DamageState.DESTROYED:
-				continue
-			if v.grid_pos.x == col_min or v.grid_pos.x == col_max or v.level == lvl_min or v.level == lvl_max:
-				n += 1
-	return n
-
-
 func test_region_radius_scales_with_punch() -> void:
 	print("[6] region_radius() is monotonic and at least the base\n")
 	var prev: int = -1

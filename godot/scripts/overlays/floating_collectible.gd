@@ -136,7 +136,6 @@ const SHADOW_SCALE_AT_BOTTOM := 0.90  ## at the bottom of the bob
 ## too), so this resolves to the width-0 default D28 already established rather
 ## than to a second code path.
 const OUTLINE_COLOR_DEFAULT := Color(0.35, 0.72, 1.0, 1.0)
-const OUTLINE_DISABLED := Color(0.0, 0.0, 0.0, 0.0)
 const OUTLINE_WIDTH_TEXELS := 1.0
 
 ## STATIC FACING MODE — sentinel and the measured yaw table.
@@ -195,14 +194,14 @@ const PERSPECTIVE_YAW_DEG := {"N": 0.0, "E": -90.0, "S": 180.0, "W": 90.0}
 const SPRITE_HALF_WIDTH_FALLBACK_PX := 38.0
 const SPRITE_HALF_HEIGHT_FALLBACK_PX := 19.0
 
-## Silhouette stroke colour — set before add_child(). OUTLINE_DISABLED turns it
-## off entirely (placed weapons); a rarity tier will drive it once rarity exists.
+## Silhouette stroke colour — set before add_child(). A fully transparent colour turns it
+## off entirely (the placed weapons of the retired weapon bench used that); a rarity tier will drive it once rarity exists.
 var outline_color: Color = OUTLINE_COLOR_DEFAULT
 
 ## COLOR-GRADE-02 — set before add_child(). 1.0/1.0 = no-op, matching the
 ## shader's own default; a runtime nudge on top of D31's baked grade, opt-in
-## per material the same way outline_color is (weapons only, see
-## WeaponBenchController.add_weapon() — the grenade already reads with real
+## per material the same way outline_color is (it was for the placed weapons of the retired
+## weapon bench; the grenade already reads with real
 ## colour and stays at the neutral default).
 var grade_saturation: float = 1.0
 var grade_contrast: float = 1.0

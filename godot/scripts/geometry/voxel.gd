@@ -17,9 +17,6 @@ enum CarvedSide { NONE = 0, TOP = 1, BOTTOM = 2, LEFT = 3, RIGHT = 4 }
 var grid_pos: Vector2i           ## voxel cell coordinate — addressing, not state
 var level: int                   ## vertical storey index — addressing, not state
 var dirty: bool = false          ## marked for TIC processing; per-wrapper, not store state
-var face_atlas_rect: Rect2i      ## assigned by BakeSystem (VOXEL-08); bake-time geometry,
-                                  ## not damage/visibility state — stays on the wrapper,
-                                  ## outside VoxelStore's packed arrays
 
 ## The claim this wrapper resolves to in `VoxelStore.active`, or -1 before the store is
 ## built (assigned once, by `VoxelStore._fill()`, right after this wrapper's container is
@@ -27,13 +24,11 @@ var face_atlas_rect: Rect2i      ## assigned by BakeSystem (VOXEL-08); bake-time
 ## by design (see `_LocalState` below).
 var claim: int = -1
 
-## `WorldDelta.project_voxel()` hands out a detached copy — `parent_container` null, no
-## claim, ever — to readers that take a whole `Voxel` rather than individual fields
-## (`VoxelBoard.resolve_damage_voxel_swap()` and friends). It still needs somewhere to
-## hold the projected fields since there is no store to read them from, but adding those
-## fields directly to `Voxel` would make every one of PLAYGROUND's 216 104 REAL voxels pay
-## for a handful of ephemeral snapshots' storage. This lazy side object is that "somewhere
-## else": null on every real (claimed) voxel, allocated only when a projection's fields
+## A voxel with no claim (`claim < 0`: before the store is built, or a detached copy such as the ones
+## `WorldDelta.project_voxel()` handed out until R3D-END) has no store to read its damage fields from, but
+## adding those fields directly to `Voxel` would make every one of PLAYGROUND's 216 104 REAL voxels pay
+## for the few claimless voxels' storage. This lazy side object is that "somewhere
+## else": null on every real (claimed) voxel, allocated only when a claimless voxel's fields
 ## are actually written.
 class _LocalState:
 	var damage_state: int = DamageState.INTACT

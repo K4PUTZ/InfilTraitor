@@ -43,8 +43,6 @@ func set_dev_vision(enabled: bool) -> void:
 	_update_projections()
 	queue_redraw()
 
-func is_dev_vision_enabled() -> bool:
-	return _dev_vision_enabled
 
 ## Recompute all shadow projections
 func _update_projections() -> void:

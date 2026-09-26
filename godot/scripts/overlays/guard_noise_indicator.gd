@@ -21,24 +21,6 @@ func setup(visual_offset: Vector2) -> void:
 	z_index = 100  ## Above movement_overlay
 
 
-func add_indicator(agent_world_pos: Vector2, noise_world_pos: Vector2, intensity: float) -> void:
-	"""
-	Adds a sound indicator.
-
-	:param agent_world_pos: Agent position in world space
-	:param noise_world_pos: Noise position in world space (approximate, with offset)
-	:param intensity: Noise intensity (0.0 to 1.0)
-	"""
-	var dir := (noise_world_pos - agent_world_pos).normalized()
-	_indicators.append({
-		"dir": dir,
-		"intensity": intensity,
-		"timer": INDICATOR_DURATION,
-		"offset": 0.0,
-	})
-	queue_redraw()
-
-
 func _process(delta: float) -> void:
 	if _indicators.is_empty():
 		return

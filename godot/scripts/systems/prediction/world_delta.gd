@@ -314,51 +314,6 @@ func state_of(voxel) -> int:
 	return int(p[P_STATE]) if not p.is_empty() else voxel.damage_state
 
 
-func visible_of(voxel) -> bool:
-	var p: Array = _by_voxel.get(voxel, [])
-	return bool(p[P_VISIBLE]) if not p.is_empty() else voxel.visible
-
-
-func is_blast_of(voxel) -> bool:
-	var p: Array = _by_voxel.get(voxel, [])
-	return bool(p[P_BLAST]) if not p.is_empty() else voxel.damage_is_blast
-
-
-## A detached Voxel carrying this Delta's projected fields, for the resolution
-## code that takes a whole Voxel rather than individual fields
-## (`VoxelBoard.resolve_damage_voxel_swap()` and friends, which read five
-## damage fields plus the cell and never write).
-##
-## Handing them a copy is what keeps the pure builder from needing a parallel
-## set of renderer signatures — the resolver cannot tell the difference, and the
-## alternative (threading a projection through every renderer entry point) would
-## put prediction concerns inside the render path for no gain.
-##
-## `parent_container` is deliberately **null**: nothing here should ever write to
-## a projected voxel, and a write would take `Voxel._set_dirty()` straight into a
-## null dereference instead of silently bumping the real container's dirty count.
-## Loud, per the project's B6 rule. LEAK-CYCLE-01 changed how Voxel stores that
-## back-reference (an instance id, no longer the object) without changing this:
-## null still lands on id 0, `instance_from_id(0)` still resolves to null, and a
-## write still dies on the same loud SCRIPT ERROR. Verified, not assumed.
-##
-## Returns the ORIGINAL voxel — no allocation — when this Delta does not change
-## it, since a copy would be identical by definition.
-func project_voxel(voxel) -> Voxel:
-	var p: Array = _by_voxel.get(voxel, [])
-	if p.is_empty():
-		return voxel
-	var copy := Voxel.new(voxel.grid_pos, voxel.level, null)
-	copy.damage_state = int(p[P_STATE])
-	copy.damage_is_blast = bool(p[P_BLAST])
-	copy.damage_carved_side = int(p[P_SIDE])
-	copy.damage_variant = int(p[P_VARIANT])
-	copy.damage_substrate = int(p[P_SUBSTRATE])
-	copy.visible = bool(p[P_VISIBLE])
-	copy.face_atlas_rect = voxel.face_atlas_rect
-	return copy
-
-
 ## Makes this Delta real. The only state-changing call in the class, and the
 ## only one a caller has to think about — everything above is read-only by
 ## construction.

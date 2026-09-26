@@ -42,11 +42,6 @@ const FAMILY: Array[String] = ["glass", "glass_armored", "glass_screen_green", "
 ## repoint it.
 const BASE: String = "glass"
 
-## How many tints glass_pane.gdshader can hold: `glass_tint` (index 0) plus
-## `glass_tint_alt[4]`. The renderer LOUD-FAILS when the roster outgrows this
-## rather than clamping — a sixth member silently wearing the fifth's colour is
-## exactly the kind of quiet wrongness a clamp buys.
-const TINT_SLOTS: int = 5
 
 
 ## ── THE FRACTURE SHEETS (G-D14 / G-D21 / G-D23) ──────────────────────────────

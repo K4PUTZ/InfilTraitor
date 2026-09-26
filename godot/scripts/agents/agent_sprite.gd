@@ -808,10 +808,6 @@ func stop_throw() -> void:
 	_refresh()
 
 
-func is_throwing() -> bool:
-	return _throw_seq != ""
-
-
 ## Which phase index is on screen right now. Clamped rather than wrapped: a throw
 ## is a one-shot, not a cycle, and wrapping would restart the arm mid-flight.
 func _throw_phase_index() -> int:

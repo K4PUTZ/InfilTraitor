@@ -18,7 +18,6 @@ class_name WeaponBenchController
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
-const FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 
 ## Compass edge -> GU-space step, per docs/DIRECTION_GLOSSARY.md §3. The same
 ## four deltas edge_extractor.gd's _EDGE_BY_SUFFIX uses; a weapon's declared
@@ -32,12 +31,6 @@ const FACING_DELTA := {
 
 const MENU_GAP_ABOVE_PX: float = 30.0
 
-## COLOR-GRADE-02 (Director, 2026-07-30): a runtime nudge on top of D31's
-## baked grade, tunable without a windowed GPU re-bake — change these two
-## numbers and re-capture. 1.0/1.0 would be a no-op (the shader's own
-## default); values here are the "um pouquinho" starting point.
-const WEAPON_GRADE_SATURATION := 1.3
-const WEAPON_GRADE_CONTRAST := 1.15
 
 ## D26 (Director, 2026-07-30): "não pode ter esse limite de 5 GUs" — there is
 ## no authored range cap; a miss travels until it finds a wall, and the
@@ -74,36 +67,6 @@ func clear() -> void:
 			sprite.queue_free()
 	_weapons.clear()
 	_active_index = -1
-
-
-## Place one weapon prop at gu_cell, aimed along `facing`, and register it as
-## right-click firable. Mirrors TestZoneController.add_grenade()'s perspective
-## handling: gu_cell is a VIEW-space cell for the room's current perspective and
-## is also stored converted to base, so reposition_for_perspective() can follow
-## rotation instead of going stale.
-func add_weapon(gu_cell: Vector2i, facing: String, weapon_id: String,
-		frames_dir: String, sprite_scale: float, shadow_scale_factor: float) -> void:
-	if not FACING_DELTA.has(facing):
-		push_error("[WeaponBenchController] unknown facing '%s' — expected one of %s" %
-			[facing, FACING_DELTA.keys()])
-		return
-	var base_cell: Vector2i = room._cell_to_base(gu_cell, room._active_perspective)
-	var sprite = FloatingCollectibleClass.new()
-	## COLLECTIBLE-OUTLINE-02: the stroke means "you can pick this up"; a placed
-	## weapon is scenery, not loot.
-	sprite.outline_color = FloatingCollectibleClass.OUTLINE_DISABLED
-	sprite.grade_saturation = WEAPON_GRADE_SATURATION
-	sprite.grade_contrast = WEAPON_GRADE_CONTRAST
-	sprite.setup(room, gu_cell, frames_dir, sprite_scale, shadow_scale_factor, facing)
-	room.add_child(sprite)
-	_weapons.append({
-		"gu_cell": gu_cell,
-		"base_cell": base_cell,
-		"facing": facing,
-		"weapon_id": weapon_id,
-		"sprite": sprite,
-		"shots_fired": 0,
-	})
 
 
 ## Called from room.gd::_set_perspective(). The sprite re-derives its own cell

@@ -64,9 +64,6 @@ func _initialize_color_map() -> void:
 func set_dev_vision(enabled: bool) -> void:
 	visible = enabled
 
-func set_show_labels(show_labels: bool) -> void:
-	_show_labels = show_labels
-	queue_redraw()
 
 ## ============================================================================
 ## Visualization

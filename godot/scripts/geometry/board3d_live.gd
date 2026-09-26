@@ -761,14 +761,6 @@ func _occ_segment(points: PackedVector3Array, a: Vector3, b: Vector3, solid: boo
 const OCC_CAP_TOP: Color = Color(0.36, 0.33, 0.56)
 
 
-## A visible, non-glass voxel at (x, y, level) in the store.
-func _solid_non_glass(x: int, y: int, level: int) -> bool:
-	if _store == null or not _store.has_cell(x, y, level):
-		return false
-	var claim: int = _store.owner[_store.cell_index(x, y, level)]
-	return not _material_glass[_store_material[_store.mat[claim]]]
-
-
 ## One filled side of the volume: the face of `column` toward `dir`, from level `lo` to `hi` inclusive, shaded
 ## by which way it faces (the same contrast the ghost diamonds use).
 func _occ_side_quad(tris: PackedVector3Array, colors: PackedColorArray, column: Vector2i, dir: Vector2i,

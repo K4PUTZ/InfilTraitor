@@ -8,10 +8,8 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## API:
 ##   paint(cell, color)           — paint a tile with a specific Color
 ##   paint_named(cell, key)       — paint a tile using a PALETTE color
-##   unpaint(cell)                — remove the overlay from a tile
 ##   clear_priority(p)            — remove all tiles of a given priority
 ##   clear_all()                  — clear everything
-##   shadow_color_for(mult)       — return the shadow color for a float multiplier
 ##
 ## Blend mode: MULTIPLY (CanvasItemMaterial.BLEND_MODE_MUL).
 ## Effect: overlay_color × tile_texture_color → preserves visual detail.
@@ -24,8 +22,6 @@ const TILE_HALF_H :=  64.0   ## half-height — vertical
 
 ## Render priorities — ordered from lowest (drawn first) to highest
 const PRIO_SHADOW   := 1    ## Shadows — drawn below everything
-const PRIO_DETECT   := 2    ## Detection cone
-const PRIO_MOVEMENT := 3    ## Movement/pathfinding preview
 const PRIO_NAV      := 4    ## Navigation — exits, objectives
 const PRIO_DEV      := 5    ## Dev only — spawn marker, debug
 
@@ -98,12 +94,6 @@ func paint_named(cell: Vector2i, palette_key: String, priority: int = 0) -> void
 	paint(cell, PALETTE.get(palette_key, Color.WHITE), priority)
 
 
-func unpaint(cell: Vector2i) -> void:
-	## Removes the overlay from a specific tile.
-	if _entries.erase(cell):
-		queue_redraw()
-
-
 func clear_priority(priority: int) -> void:
 	## Removes all tiles of a specific priority.
 	## Useful to clear only the detection cone without affecting shadows, for example.
@@ -149,17 +139,6 @@ func set_cells_colored(colored: Dictionary, priority: int = 0) -> void:
 
 ## ─── Helpers ───────────────────────────────────────────────────────────────
 
-static func shadow_color_for(shadow_mult: float) -> Color:
-	## Returns the correct shadow color for a _shadow_tiles value.
-	## shadow_mult: float from room.gd (SHADOW_MULT≈0.30, PENUMBRA≈0.55, lit=1.0)
-	if shadow_mult <= 0.35:
-		return PALETTE["shadow_full"]
-	elif shadow_mult < 0.55:
-		return PALETTE["shadow_mid"]
-	elif shadow_mult < 1.0:
-		return PALETTE["shadow_lite"]
-	else:
-		return PALETTE["lit"]
 
 
 static func detect_color_for(probability: float) -> Color:

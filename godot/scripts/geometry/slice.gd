@@ -14,7 +14,6 @@ var facade_id: String = ""       ## facade id for baking (NEW: FIX-BAKE-05)
 var voxels: Array[Voxel] = []    ## all voxels in this slice (64 per storey)
 var dirty_count: int = 0         ## sum of child Voxel dirty flags
 var baked: bool = false          ## texture assigned by BakeSystem (VOXEL-08)
-var bake_texture: Texture2D      ## reserved for VOXEL-08
 ## GLASS G2 (GLASS_MASTER_PLAN §4) — the whole continuous glass surface this
 ## slice belongs to. Blank for every non-glass slice; stamped at map load by
 ## `GlassPaneGrouper.assign()`. The cascade (G3) reads it to take a whole pane
@@ -57,24 +56,9 @@ func _init(p_id: String, p_gu_cell: Vector2i, p_face: int, p_edge_id: String,
 	material = p_material
 
 
-## Get voxel by index; returns null if out of bounds
-func get_voxel(index: int) -> Voxel:
-	if index < 0 or index >= voxels.size():
-		return null
-	return voxels[index]
-
-
 ## Total voxel count (storey_count × 8 positions per face)
 func total_voxel_count() -> int:
 	return voxels.size()
-
-
-## Mark all voxels dirty and update counter
-func mark_all_dirty() -> void:
-	for voxel in voxels:
-		if not voxel.dirty:
-			voxel.dirty = true
-			dirty_count += 1
 
 
 ## Called by child Voxel when it becomes dirty

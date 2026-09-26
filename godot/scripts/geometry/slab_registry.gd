@@ -42,11 +42,3 @@ func clear() -> void:
 func is_empty() -> bool:
 	return _slabs.is_empty()
 
-
-## Debug: print all slabs
-func debug_print() -> void:
-	print("\n=== SlabRegistry Debug ===")
-	print("Slabs: %d" % _slabs.size())
-	for slab in _slabs.values():
-		print("  %s" % slab)
-	print("=== End ===\n")

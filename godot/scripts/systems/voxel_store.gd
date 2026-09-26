@@ -43,7 +43,6 @@ const PAD: int = 2
 const KIND_SLICE: int = 0
 const KIND_SLAB: int = 1
 const KIND_COLUMN: int = 2
-const KIND_NAMES: PackedStringArray = ["slice", "slab", "column"]
 ## Per-container geometry record: offset, count, xmin, ymin, lmin, nx, ny.
 const GEOM_STRIDE: int = 7
 
@@ -565,16 +564,6 @@ static func damage_of(v: Voxel, use_store: bool = true) -> int:
 		if claim >= 0:
 			return (store.state[claim] >> 1) & 3
 	return v.damage_state
-
-
-## A voxel's visibility, from the active store when it holds the voxel.
-static func visible_of(v: Voxel) -> bool:
-	var store: VoxelStore = active
-	if store != null:
-		var claim: int = store.claim_of(v)
-		if claim >= 0:
-			return (store.state[claim] & 1) == 1
-	return v.visible
 
 
 func container_count() -> int:

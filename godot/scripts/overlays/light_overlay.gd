@@ -41,8 +41,6 @@ func set_dev_vision(enabled: bool) -> void:
 	_dev_vision_enabled = enabled
 	queue_redraw()
 
-func is_dev_vision_enabled() -> bool:
-	return _dev_vision_enabled
 
 func _draw() -> void:
 	if not _dev_vision_enabled or light_registry == null:

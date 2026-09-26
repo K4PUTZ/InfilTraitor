@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**248 scripts · 79772 lines total** (under `godot/scripts/`)
+**248 scripts · 79375 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -97,7 +97,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1456 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1452 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -151,7 +151,6 @@
 - `func update_for_cell() -> void:`
 - `func play_throw(sequence: String, seconds: float, hold: bool = false, reversed_playback: bool = false) -> bool:`
 - `func stop_throw() -> void:`
-- `func is_throwing() -> bool:`
 - `func set_walk_phase_quantise(n: int) -> void:`
 - `func set_walk_phase(progress01: float) -> void:`
 - `func stop_walking() -> void:`
@@ -184,7 +183,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1313 lines
+`class_name GuardEnemy` · extends `Node2D` · 1312 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -208,7 +207,6 @@
 - `FOV_DISTANCE_CURVE` = `[ 1.00, 1.00, 0.95, 0.88, 0.70, 0.48, 0.20, 0.06, 0.01 ]`
 - `FOV_LATERAL_FALLOFF` = `[1.0, 0.50, 0.10]`
 - `COLOR_VISION_SMOOTH` = `Color(1.0, 0.9, 0.2, 0.5)`
-- `CARDINAL_DIRS` = `[Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]`
 - `VISION_RANGE` = `6`
 - `STATE_PATROL` = `"patrol"`
 - `STATE_SUSPICIOUS` = `"suspicious"`
@@ -327,7 +325,7 @@ extends `Node` · 285 lines
 
 ### `lighting_controller.gd`
 
-extends `Node` · 269 lines
+extends `Node` · 265 lines
 
 `godot/scripts/controllers/lighting_controller.gd`
 
@@ -351,7 +349,6 @@ extends `Node` · 269 lines
 - `func get_shadow_results() -> Array:`
 - `func rebuild() -> void:`
 - `func rebuild_all() -> void:`
-- `func rebuild_deferred() -> void:`
 
 ---
 
@@ -498,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1902 lines
+extends `Node3D` · 1894 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -612,7 +609,7 @@ extends `Node3D` · 1902 lines
 
 ### `edge_registry.gd`
 
-`class_name EdgeRegistry` · 203 lines
+`class_name EdgeRegistry` · 192 lines
 
 `godot/scripts/geometry/edge_registry.gd`
 
@@ -637,7 +634,6 @@ extends `Node3D` · 1902 lines
 - `func dirty_slices() -> Array:`
 - `func clear() -> void:`
 - `func is_empty() -> bool:`
-- `func debug_print() -> void:`
 
 ---
 
@@ -905,7 +901,7 @@ extends `Node3D` · 1902 lines
 
 ### `slab.gd`
 
-`class_name Slab` · 111 lines
+`class_name Slab` · 96 lines
 
 `godot/scripts/geometry/slab.gd`
 
@@ -921,9 +917,6 @@ extends `Node3D` · 1902 lines
 - `var dirty_count: int = 0`
 - `var texture_anchor: Vector2i = Vector2i.ZERO`
 
-**Public API**
-- `func get_voxel(index: int) -> Voxel:`
-
 ---
 
 ### `slab_generator.gd`
@@ -938,7 +931,7 @@ extends `Node3D` · 1902 lines
 
 ### `slab_registry.gd`
 
-`class_name SlabRegistry` · 52 lines
+`class_name SlabRegistry` · 44 lines
 
 `godot/scripts/geometry/slab_registry.gd`
 
@@ -954,13 +947,12 @@ extends `Node3D` · 1902 lines
 - `func dirty_slabs() -> Array:`
 - `func clear() -> void:`
 - `func is_empty() -> bool:`
-- `func debug_print() -> void:`
 
 ---
 
 ### `slice.gd`
 
-`class_name Slice` · 102 lines
+`class_name Slice` · 86 lines
 
 `godot/scripts/geometry/slice.gd`
 
@@ -978,7 +970,6 @@ extends `Node3D` · 1902 lines
 - `var voxels: Array[Voxel] = []`
 - `var dirty_count: int = 0`
 - `var baked: bool = false`
-- `var bake_texture: Texture2D`
 - `var pane_id: String = ""`
 - `var material_bands: Dictionary = {}`
 - `var glass_class: int = GlassMaterials.CLASS_UNSET`
@@ -986,9 +977,7 @@ extends `Node3D` · 1902 lines
 **Public API**
 - `func has_material_bands() -> bool:`
 - `func material_at(rel_level: int) -> String:`
-- `func get_voxel(index: int) -> Voxel:`
 - `func total_voxel_count() -> int:`
-- `func mark_all_dirty() -> void:`
 - `func increment_dirty() -> void:`
 - `func decrement_dirty() -> void:`
 - `func clear_all_dirty() -> void:`
@@ -1023,7 +1012,7 @@ extends `Node3D` · 1902 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 214 lines
+`class_name Voxel` · 209 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -1033,7 +1022,6 @@ extends `Node3D` · 1902 lines
 - `var grid_pos: Vector2i`
 - `var level: int`
 - `var dirty: bool = false`
-- `var face_atlas_rect: Rect2i`
 - `var claim: int = -1`
 - `var visible: bool:`
 - `var damage_state: int:`
@@ -1118,7 +1106,7 @@ extends `Node3D` · 1902 lines
 
 ### `movement_overlay.gd`
 
-`class_name MovementOverlay` · extends `Node2D` · 289 lines
+`class_name MovementOverlay` · extends `Node2D` · 288 lines
 
 `godot/scripts/navigation/movement_overlay.gd`
 
@@ -1127,7 +1115,6 @@ extends `Node3D` · 1902 lines
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 - `BLUE_LINE` = `Color(0.25, 0.70, 1.0, 0.90)`
 - `ORANGE_LINE` = `Color(1.0, 0.60, 0.20, 0.95)`
-- `FILL_COLOR` = `Color(1.0, 1.0, 1.0, 1.0)`
 - `PERIMETER_INSET_DISTANCE` = `6.0`
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
@@ -1201,7 +1188,7 @@ extends `Node3D` · 1902 lines
 
 ### `aim_bubble_overlay.gd`
 
-`class_name AimBubbleOverlay` · extends `Node2D` · 775 lines
+`class_name AimBubbleOverlay` · extends `Node2D` · 768 lines
 
 `godot/scripts/overlays/aim_bubble_overlay.gd`
 
@@ -1243,7 +1230,6 @@ extends `Node3D` · 1902 lines
 
 **Public API**
 - `func show_dome(center: Vector2, radius_gu: float, center_gu: Vector2i, wall_height_edges: Dictionary) -> void:`
-- `func update_position(center: Vector2, center_gu: Vector2i) -> void:`
 
 ---
 
@@ -1430,7 +1416,7 @@ extends `Node2D` · 225 lines
 
 ### `exposure_overlay.gd`
 
-extends `Node2D` · 137 lines
+extends `Node2D` · 134 lines
 
 `godot/scripts/overlays/exposure_overlay.gd`
 
@@ -1447,13 +1433,12 @@ extends `Node2D` · 137 lines
 
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
-- `func set_show_labels(show_labels: bool) -> void:`
 
 ---
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 592 lines
+`class_name FloatingCollectible` · extends `Node2D` · 591 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1565,7 +1550,7 @@ extends `Node2D` · 137 lines
 
 ### `guard_noise_indicator.gd`
 
-extends `Node2D` · 81 lines
+extends `Node2D` · 63 lines
 
 `godot/scripts/overlays/guard_noise_indicator.gd`
 
@@ -1579,7 +1564,6 @@ extends `Node2D` · 81 lines
 
 **Public API**
 - `func setup(visual_offset: Vector2) -> void:`
-- `func add_indicator(agent_world_pos: Vector2, noise_world_pos: Vector2, intensity: float) -> void:`
 
 ---
 
@@ -1618,7 +1602,7 @@ extends `Node2D` · 252 lines
 
 ### `light_overlay.gd`
 
-extends `Node2D` · 112 lines
+extends `Node2D` · 110 lines
 
 `godot/scripts/overlays/light_overlay.gd`
 
@@ -1635,7 +1619,6 @@ extends `Node2D` · 112 lines
 
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
-- `func is_dev_vision_enabled() -> bool:`
 
 ---
 
@@ -1728,7 +1711,7 @@ extends `Node2D` · 150 lines
 
 ### `shadow_overlay.gd`
 
-extends `Node2D` · 87 lines
+extends `Node2D` · 85 lines
 
 `godot/scripts/overlays/shadow_overlay.gd`
 
@@ -1745,7 +1728,6 @@ extends `Node2D` · 87 lines
 
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
-- `func is_dev_vision_enabled() -> bool:`
 
 ---
 
@@ -1933,7 +1915,7 @@ extends `Node2D` · 252 lines
 
 ### `tile_overlay.gd`
 
-extends `Node2D` · 243 lines
+extends `Node2D` · 222 lines
 
 `godot/scripts/overlays/tile_overlay.gd`
 
@@ -1942,8 +1924,6 @@ extends `Node2D` · 243 lines
 - `TILE_HALF_W` = `128.0`
 - `TILE_HALF_H` = `64.0`
 - `PRIO_SHADOW` = `1`
-- `PRIO_DETECT` = `2`
-- `PRIO_MOVEMENT` = `3`
 - `PRIO_NAV` = `4`
 - `PRIO_DEV` = `5`
 - `PALETTE` = `{ ## Shadows — cool-blue tint, intensity encoded as the RGB multiply factor. ## Each step keeps a different fraction of floor brightness → smooth gradient, ## floor texture reads through at every level. "shadow_full":   Color(0.48, 0.48, 0.58, 1.0),  ## darkest — keeps ~48% brightness "shadow_mid":    Color(0.60, 0.60, 0.68, 1.0),  ## keeps ~60% "shadow_lite":   Color(0.70, 0.70, 0.78, 1.0),  ## penumbra — keeps ~70% "lit":           Color(1.00, 1.00, 1.00, 0.00),  ## no overlay (skipped: alpha≈0) ## Artistic shadow spill — soft cosmetic halo around full-shadow tiles. Its colors ## are computed PER-CELL in room._spill_color (directional + density-driven), not from ## fixed keys here, and painted via set_cells_colored(). PURELY VISUAL: detection reads ## the exposure grid, never this overlay — the spill grants no hiding value. ## Detection cone — 5 probability bands "detect_0":      Color(0.30, 1.00, 0.30, 0.70),  ## 0.0–0.2   light green "detect_1":      Color(0.60, 0.95, 0.50, 0.75),  ## 0.2–0.4 "detect_2":      Color(1.00, 0.95, 0.30, 0.75),  ## 0.4–0.6   yellow "detect_3":      Color(1.00, 0.60, 0.30, 0.75),  ## 0.6–0.8   orange "detect_4":      Color(1.00, 0.20, 0.20, 0.80),  ## 0.8–1.0   red ## Exits and markers "exit":          Color(0.55, 0.10, 0.90, 0.28),  ## pure purple — segment exits "spawn":         Color(0.20, 0.20, 0.20, 0.40),  ## dark gray — spawn position "spawn_dev":     Color(0.20, 0.20, 0.20, 0.40),  ## dark gray — spawn in DEV_VISION ## Objectives "objective":     Color(0.90, 0.75, 0.20, 0.75),  ## gold/amber — primary objective "secondary":     Color(0.75, 0.75, 0.75, 0.60),  ## light gray — secondary }`
@@ -1953,7 +1933,6 @@ extends `Node2D` · 243 lines
 - `func setup(visual_offset: Vector2 = Vector2.ZERO) -> void:`
 - `func paint(cell: Vector2i, color: Color, priority: int = 0) -> void:`
 - `func paint_named(cell: Vector2i, palette_key: String, priority: int = 0) -> void:`
-- `func unpaint(cell: Vector2i) -> void:`
 - `func clear_priority(priority: int) -> void:`
 - `func clear_all() -> void:`
 - `func set_cells(cells: Array[Vector2i], color: Color, priority: int = 0) -> void:`
@@ -1986,7 +1965,7 @@ extends `Node2D` · 104 lines
 
 ### `tracer_overlay.gd`
 
-`class_name TracerOverlay` · extends `Node2D` · 148 lines
+`class_name TracerOverlay` · extends `Node2D` · 142 lines
 
 `godot/scripts/overlays/tracer_overlay.gd`
 
@@ -2130,7 +2109,7 @@ extends `Node2D` · 42 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1583 lines
+`class_name BlastCalculator` · 1566 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2189,11 +2168,11 @@ extends `Node2D` · 42 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 229 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 221 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
-> DetonationEntryWriter — ONE plan entry's real work, and the only place in the whole pipeline that calls `layer.set_cell()`/`erase_cell()` or hands a puff to an overlay. Extracted from `DetonationChoreographer._apply_entry()` on 2026-08-28 for D-3 (`DETONATION_PRESENTATION_MASTER_PLAN` §3), unchanged in behaviour. It exists because the reform replaces the choreographer's PACING, not its writing: §3's table says the cell writes "survive as one loop inside the commit" and the VFX dispatch "survives and MOVES". Two paths now need this code and they have to run from one binary (D-3's gate), so copying it would have created exactly the second place for them to drift — and D-6 would then have to reconcile two versions instead of deleting one file. ⚠️ **KIND IS THE ONLY THING THAT DECIDES WHAT HAPPENS HERE — there is no ordering, no pacing and no frame in this class.** That is what makes it shared: everything the reform is removing lives in the caller. The two families are worth naming because the reform separates them: - **cells** (`destroy`, `expose`, `dented`, `cracked`, `soot`) — mutate the board, and after D-3 they all land in ONE frame; - **VFX** (`smoke`, `ember`, `debris`) — write nothing, and are what the consequence channel animates afterwards. `is_cell_kind()` is that split, in code, so a caller cannot get it wrong by listing kinds by hand.
+> DetonationEntryWriter — ONE plan entry's real work, and the only place in the whole pipeline that calls `layer.set_cell()`/`erase_cell()` or hands a puff to an overlay. Extracted from `DetonationChoreographer._apply_entry()` on 2026-08-28 for D-3 (`DETONATION_PRESENTATION_MASTER_PLAN` §3), unchanged in behaviour. It exists because the reform replaces the choreographer's PACING, not its writing: §3's table says the cell writes "survive as one loop inside the commit" and the VFX dispatch "survives and MOVES". Two paths now need this code and they have to run from one binary (D-3's gate), so copying it would have created exactly the second place for them to drift — and D-6 would then have to reconcile two versions instead of deleting one file. ⚠️ **KIND IS THE ONLY THING THAT DECIDES WHAT HAPPENS HERE — there is no ordering, no pacing and no frame in this class.** That is what makes it shared: everything the reform is removing lives in the caller. The two families are worth naming because the reform separates them: - **cells** (`destroy`, `expose`, `dented`, `cracked`, `soot`) — mutate the board, and after D-3 they all land in ONE frame; - **VFX** (`smoke`, `ember`, `debris`) — write nothing, and are what the consequence channel animates afterwards.
 
 **Constants / tuning**
 - `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
@@ -2201,7 +2180,6 @@ extends `Node2D` · 42 lines
 - `DEBRIS_FALLBACK_COLOR` = `Color(0.6, 0.6, 0.6)`
 - `SURFACE_SPARK_SPEED_SCALE` = `1.3`
 - `SURFACE_SPARK_DURATION_SCALE` = `0.6`
-- `CELL_KINDS` = `["destroy", "expose", "dented", "cracked", "soot"]`
 
 **Public vars**
 - `var ember_overlay: EmberOverlay = null`
@@ -2219,7 +2197,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2655 lines
+`class_name DetonationPlanBuilder` · 2654 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2240,7 +2218,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 439 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 431 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2248,9 +2226,6 @@ extends `Node2D` · 42 lines
 
 **Signals**
 - `signal finished()`
-
-**Constants / tuning**
-- `PLAYED_KINDS` = `[ "destroy", "dented", "cracked", "soot", "smoke", "ember", "debris", ]`
 
 **Public vars**
 - `var consequence_room = null`
@@ -2325,7 +2300,7 @@ extends `Node2D` · 42 lines
 
 ### `glass_opening.gd`
 
-`class_name GlassOpening` · 396 lines
+`class_name GlassOpening` · 377 lines
 
 `godot/scripts/systems/destruction/glass_opening.gd`
 
@@ -2542,7 +2517,7 @@ extends `Node` · 231 lines
 
 ### `glass_materials.gd`
 
-`class_name GlassMaterials` · 230 lines
+`class_name GlassMaterials` · 225 lines
 
 `godot/scripts/systems/glass_materials.gd`
 
@@ -2551,7 +2526,6 @@ extends `Node` · 231 lines
 **Constants / tuning**
 - `FAMILY` = `["glass", "glass_armored", "glass_screen_green", "glass_screen_red", "glass_screen_amber"]`
 - `BASE` = `"glass"`
-- `TINT_SLOTS` = `5`
 - `FRACTURE_WIDTHS` = `["tight", "wide"]`
 
 ---
@@ -2997,7 +2971,7 @@ extends `Node` · 231 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 422 lines
+`class_name WorldDelta` · extends `RefCounted` · 377 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3072,7 +3046,7 @@ extends `Node` · 231 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 156 lines
+extends `Node` · 151 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
@@ -3093,7 +3067,6 @@ extends `Node` · 156 lines
 - `func ensure_material_registry() -> MaterialRegistryClass:`
 - `func ensure_prop_registry() -> PropRegistryClass:`
 - `func get_material_registry() -> MaterialRegistryClass:`
-- `func get_prop_registry() -> PropRegistryClass:`
 - `func ensure_bomb_registry() -> BombRegistryClass:`
 - `func get_bomb_registry() -> BombRegistryClass:`
 - `func ensure_weapon_registry() -> WeaponRegistryClass:`
@@ -3271,7 +3244,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 616 lines
+`class_name VoxelStore` · extends `RefCounted` · 605 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3282,7 +3255,6 @@ extends `Node` · 54 lines
 - `KIND_SLICE` = `0`
 - `KIND_SLAB` = `1`
 - `KIND_COLUMN` = `2`
-- `KIND_NAMES` = `["slice", "slab", "column"]`
 - `GEOM_STRIDE` = `7`
 - `CELL_STRIDE` = `4`
 
@@ -3327,7 +3299,7 @@ extends `Node` · 54 lines
 
 ### `world_render_scale.gd`
 
-extends `Node` · 177 lines
+extends `Node` · 172 lines
 
 `godot/scripts/systems/world_render_scale.gd`
 
@@ -3341,7 +3313,6 @@ extends `Node` · 177 lines
 **Public API**
 - `func current_scale() -> float:`
 - `func is_active() -> bool:`
-- `func render_size() -> Vector2i:`
 - `func viewport_rid() -> RID:`
 - `func set_measure(enabled: bool) -> void:`
 - `func apply(scale: float) -> void:`
@@ -3592,7 +3563,7 @@ extends `SceneTree` · 203 lines
 
 ### `build_tileset.gd`
 
-extends `SceneTree` · 342 lines
+extends `SceneTree` · 340 lines
 
 `godot/scripts/tools/build_tileset.gd`
 
@@ -3601,7 +3572,6 @@ extends `SceneTree` · 342 lines
 - `TILESET_OUT` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `REGISTRY_OUT` = `"res://godot/scripts/world/tile_registry.gd"`
 - `CELL_SIZE` = `Vector2i(256, 128)`
-- `PNG_SIZE` = `Vector2i(256, 512)`
 - `SPRITE_OFFSET` = `Vector2i(0, -384)`
 - `EDGE_VISUAL_OFFSETS` = `{ "N": Vector2i(64, -32), "S": Vector2i(-64, 32), "E": Vector2i(64, 32), "W": Vector2i(-64, -32), ## Diagonal wall faces (NE/NW/SE/SW): straddle the boundary at half a ## diamond-step. Values calibrated in commit 924dbf0. "NE": Vector2i(-16, -8), "NW": Vector2i(-16,  8), "SE": Vector2i( 16, -8), "SW": Vector2i( 16,  8), }`
 - `CORNER_VISUAL_OFFSETS` = `{ "NE": Vector2i(-32, -8), "NW": Vector2i(  0, 16), "SE": Vector2i(  0,-16), "SW": Vector2i( 32, -8), }`
@@ -3770,7 +3740,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1688 lines
+extends `SceneTree` · 1683 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -3904,7 +3874,7 @@ extends `SceneTree` · 554 lines
 
 ### `glass_shatter_selftest.gd`
 
-extends `SceneTree` · 1606 lines
+extends `SceneTree` · 1588 lines
 
 `godot/scripts/tools/glass_shatter_selftest.gd`
 
@@ -3927,23 +3897,6 @@ extends `SceneTree` · 1606 lines
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
-
-**Public API**
-- `func test_region_radius_scales_with_punch() -> void:`
-- `func test_small_pane_is_binary_with_remnants() -> void:`
-- `func test_big_pane_partial_then_full() -> void:`
-- `func test_remnant_floor_never_leaves_zero_border() -> void:`
-- `func test_blast_glass_punch_reliable_inside_zero_outside() -> void:`
-- `func test_banded_pane_never_destroys_its_own_frame_bands() -> void:`
-- `func test_unanchored_pane_keeps_nothing() -> void:`
-- `func test_layer_falloff_weakens_each_successive_pane() -> void:`
-- `func test_local_hole_does_not_wall_off_the_flood() -> void:`
-- `func test_armored_takes_the_whole_pane_and_leaves_fewer_remnants() -> void:`
-- `func test_indestructible_never_breaks_and_stops_the_round() -> void:`
-- `func test_glass_never_dents() -> void:`
-- `func test_per_placement_class_overrides_the_material() -> void:`
-- `func test_only_rifle_class_pierces_armored_glass() -> void:`
-- `func test_cook_proposes_the_opening_and_only_commit_claims_it() -> void:`
 
 ---
 
@@ -5291,7 +5244,7 @@ extends `Node2D` · 32 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 491 lines
+`class_name WeaponBenchController` · 454 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -5300,11 +5253,8 @@ extends `Node2D` · 32 lines
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
-- `FloatingCollectibleClass` = `preload("res://godot/scripts/overlays/floating_collectible.gd")`
 - `FACING_DELTA` = `{ "NW": Vector2i(-1, 0), "NE": Vector2i(0, -1), "SE": Vector2i(1, 0), "SW": Vector2i(0, 1), }`
 - `MENU_GAP_ABOVE_PX` = `30.0`
-- `WEAPON_GRADE_SATURATION` = `1.3`
-- `WEAPON_GRADE_CONTRAST` = `1.15`
 - `PELLET_FLOOD_MAX_STEPS` = `40`
 - `MUZZLE_OFFSET_GU_FRACTION` = `0.42`
 - `MUZZLE_HEIGHT_PX` = `-18.0`
@@ -5315,7 +5265,6 @@ extends `Node2D` · 32 lines
 
 **Public API**
 - `func clear() -> void:`
-- `func add_weapon(gu_cell: Vector2i, facing: String, weapon_id: String, frames_dir: String, sprite_scale: float, shadow_scale_factor: float) -> void:`
 - `func reposition_for_perspective(direction: String) -> void:`
 - `func hit_test(screen_pos: Vector2) -> int:`
 - `func open_menu_for(index: int) -> void:`
@@ -5413,7 +5362,7 @@ extends `Node2D` · 32 lines
 
 ### `map_catalog.gd`
 
-`class_name MapCatalog` · extends `RefCounted` · 49 lines
+`class_name MapCatalog` · extends `RefCounted` · 48 lines
 
 `godot/scripts/world/maps/map_catalog.gd`
 
@@ -5421,7 +5370,6 @@ extends `Node2D` · 32 lines
 - `PlaygroundMapClass` = `preload("res://godot/scripts/world/maps/definitions/playground_map.gd")`
 - `Sigma01MapClass` = `preload("res://godot/scripts/world/maps/definitions/sigma_01_map.gd")`
 - `ProceduralMapClass` = `preload("res://godot/scripts/world/maps/definitions/procedural_map.gd")`
-- `DEFAULT_MAP_ID` = `"PLAYGROUND"`
 
 ---
 
@@ -5498,7 +5446,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10651 lines
+extends `Node2D` · 10574 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5568,9 +5516,6 @@ extends `Node2D` · 10651 lines
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `VOXEL_STEP_PX` = `20.0`
-
-**Public vars**
-- `var CRATE_STACK_STEP_PX: float = 128.0`
 
 ---
 

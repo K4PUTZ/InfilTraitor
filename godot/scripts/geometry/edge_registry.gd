@@ -190,14 +190,3 @@ func clear() -> void:
 func is_empty() -> bool:
 	return _edges.is_empty() and _slices.is_empty()
 
-
-## Debug: print all edges and slices
-func debug_print() -> void:
-	print("\n=== EdgeRegistry Debug ===")
-	print("Edges: %d" % _edges.size())
-	for edge in _edges.values():
-		print("  %s" % edge)
-	print("Slices: %d" % _slices.size())
-	for slice in _slices.values():
-		print("  %s" % slice)
-	print("=== End ===\n")

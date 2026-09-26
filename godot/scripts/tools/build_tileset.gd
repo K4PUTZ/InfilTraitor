@@ -22,8 +22,6 @@ const REGISTRY_OUT  := "res://godot/scripts/world/tile_registry.gd"
 
 ## Tile cell dimensions (the isometric diamond base, 2:1 ratio)
 const CELL_SIZE     := Vector2i(256, 128)
-## Full PNG dimensions (diamond + 3D block height above)
-const PNG_SIZE      := Vector2i(256, 512)
 ## Sprite Y-offset: shifts PNG up so bottom 128px (floor diamond) aligns with cell
 ## floor diamond occupies PNG rows 384–512 → shift up by 384px
 const SPRITE_OFFSET := Vector2i(0, -384)

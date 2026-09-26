@@ -56,11 +56,6 @@ func is_active() -> bool:
 	return _sub != null
 
 
-## The pixels the world is rendered at — the screen's own when inactive.
-func render_size() -> Vector2i:
-	return _sub.size if _sub != null else DisplayServer.window_get_size()
-
-
 func viewport_rid() -> RID:
 	return _sub.get_viewport_rid() if _sub != null else RID()
 

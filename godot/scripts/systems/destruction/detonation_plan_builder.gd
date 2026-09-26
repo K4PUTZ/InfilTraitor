@@ -2497,8 +2497,7 @@ static func _append_voxel_smoke(smoke_by_ring: Dictionary, smoked_gus: Dictionar
 ## Staggering is what makes it read as a continuous plume rather than one balloon.
 ##
 ## They ride in `waves["smoke"]` rather than in a kind of their own: they ARE
-## smoke entries, they need no new writer branch, no `PLAYED_KINDS` row and no
-## change to the drop-check. `at` is what separates them — see
+## smoke entries, they need no new writer branch. `at` is what separates them — see
 ## `DetonationPresenter._delay_for()`, which honours an explicit release time and
 ## does not clamp it to the consequence channel's own span.
 ##

@@ -88,8 +88,6 @@ const OcclusionOverlayClass = preload("res://godot/scripts/overlays/occlusion_ov
 @onready var movement_overlay:    MovementOverlay = $MovementOverlay
 @onready var path_preview:        PathPreview  = $PathPreview
 @onready var structure_layer:            TileMapLayer = $StructureLayer
-@onready var shadow_full_layer:    TileMapLayer = $ShadowFullLayer
-@onready var shadow_partial_layer: TileMapLayer = $ShadowPartialLayer
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
 @onready var agent:               DebugAgent   = $Agent
 @onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
@@ -2107,13 +2105,6 @@ func _ready() -> void:
 	structure_layer.tile_set = ts
 	structure_layer.z_index = 10
 	_wall_tileset = ts
-	## M2-13: Initialize shadow layers
-	shadow_full_layer.tile_set = ts
-	shadow_partial_layer.tile_set = ts
-	shadow_full_layer.z_index = 1
-	shadow_partial_layer.z_index = 1
-	shadow_full_layer.modulate = Color(0.58, 0.58, 0.58, 1.0)
-	shadow_partial_layer.modulate = Color(0.78, 0.78, 0.78, 1.0)
 
 	## Initialize RoomBuilder (map construction orchestrator)
 	_room_builder = RoomBuilderClass.new(self)
@@ -2605,10 +2596,6 @@ func _set_perspective(direction: String) -> void:
 		_assert_geometry_registered()
 		_refresh_gu_grid_overlay()
 		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
-		
-		# Clear legacy shadow layers (migrated to _tile_shadow, but kept for compatibility)
-		shadow_full_layer.clear()
-		shadow_partial_layer.clear()
 		
 		# Update cache data from builder
 		_blocked_cells = _room_builder.get_blocked_cells()

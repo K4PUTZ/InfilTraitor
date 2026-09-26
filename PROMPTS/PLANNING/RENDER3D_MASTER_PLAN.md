@@ -3195,6 +3195,23 @@ that still builds the 2D board is `34881f81`.
   `ART_SPECIFICATIONS` (the 3D board's silent failure modes; B3 retired; the atom sheet retired), `DIRECTION_GLOSSARY` §10
   (a new "banidos desde o R3D-END" table) and `Board3DLive`'s header. `docs/README.md` and `current_state.md` were not touched.
 - **END-8 — the gate** (below).
+  **R3D-END FINAL VERDICT, 2026-09-25 (Director asked: is the transition complete, can we proceed in 3D, do we reach 30 fps or at least 24).**
+  **Transition: complete.** The only tile writer left in the game is `RoomBuilder._place()` for PROP tiles on the structure layer
+  (R3D-PROPS); the scene's remaining `TileMapLayer`s are `StructureLayer` and the prop stacks (the empty `ShadowFullLayer` /
+  `ShadowPartialLayer` were the last vestiges and are deleted); nothing reads a tile; `VoxelRenderer` is `VoxelBoard` and its `render*()`
+  methods are `register_*()`; the canon, the hook (R8, L1) and the docs are on the 3D board. **Proceed in 3D: yes.** **Frame rate, from the
+  END-8 runs already made (release APK, PLAYGROUND, portrait, scripted, no finger):** 30 fps = 33.3 ms, 24 fps = 41.7 ms.
+  | | Moto g04s | Galaxy A16 |
+  |---|---|---|
+  | idle | 18.8-19.4 ms = **52 fps** | 25 ms = **40 fps** cool; 40-47 ms = **21-25 fps** hot / charging (the OLD APK reads the same) |
+  | a detonation, mean | 28.4-31.3 ms = **32-35 fps** | 29.8-35.6 ms = **28-34 fps** |
+  | hitch frames (COMMIT, CONSEQUENCE, worst) | 155-263 ms | 112-157 ms |
+  | shot tail after two grenades | 526 ms | 211-219 ms |
+  **30 fps: yes at idle on both, and on the average of a detonation on the Moto (borderline on the Galaxy); 24 fps: yes everywhere except the
+  Galaxy when it is hot and charging (21-25 fps, on the line), which is the handset's state and not the build's.** **Not met, by name:** the
+  single hitch frames of a blast and a shot (112-526 ms, 3-9 fps for one frame, ~7 frames per blast) — they are R3D-LIGHT's. **Caveat:** these
+  are scripted runs with no finger and no play session; a hand-play check on the Moto and the Galaxy is the confirmation only the
+  Director can give.
   **R3D-END review, 2026-09-25 (after the close): loose ends found and swept.** A stale dev help block still advertised F6 bake / F7 blend /
   F8 atom sheet and a deleted `bake_selftest.gd` (and the status panel's legend the same keys): fixed. Dead code the END left behind
   (each proven zero references and present at `34881f81`): `ysort_probe_*`, `EMPTY_COLUMN`, `GLASS_CUT_FACET_*`, `_mint_trace`,

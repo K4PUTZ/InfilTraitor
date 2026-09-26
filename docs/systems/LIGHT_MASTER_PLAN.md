@@ -1,5 +1,7 @@
 # INFILTRAITOR — Lighting System Master Plan
 
+> ⏭️ **2026-09-25 — the visual light's 2D delivery is deleted (R3D-END END-4):** alternative tiles and the 2D face shader are gone; the buckets live in the cell planes the 3D board reads. The tactical / visual split described here is unchanged.
+
 > ⏭️ **2026-09-23 — the visual/tactical split held under a real test.** `RENDER3D_MASTER_PLAN` R3D-SPIKE-3D replaced the VISUAL light with real 3D
 > lamps without touching detection (TIC reads `ExposureSystem`, never `VoxelLightField`); it was rejected on GPU cost (+24 ms on
 > the Moto), not on determinism. Visual light stays the per-voxel buckets.

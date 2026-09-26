@@ -1,6 +1,8 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
+> ⏭️ **2026-09-25 — the render half of this plan is gone (R3D-END).** The dirty-flag / TIC machinery is unchanged; what it drove is not: `_set_voxel_cell()`, tile erase and the 2D repaint were deleted (END-1, END-4). `VoxelBoard.process_dirty*()` now only emits `voxel_destroyed` and keeps the light and glass bookkeeping; the picture is the `VoxelStore` meshed by `Board3DLive`. `render_slab()` and its siblings are `register_*()` (END-6). Read "tilemap" and "TileMapLayer" below as history.
+
 > ## ⏭️ 2026-09-15 — two items in the block below have moved
 >
 > - **"On-device GPU cost of many TileMapLayers"** was measured

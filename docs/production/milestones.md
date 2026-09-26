@@ -1379,13 +1379,17 @@ real phones.
 - **The render decision was taken on 2026-09-15.** The board moves to Godot 3D over a packed
   voxel store: `RENDER3D_MASTER_PLAN`, stages R3D-0 → R3D-END. The prototype already idles at
   18–23 ms and plays grenade #1 in 11.8 s, against 28.5 s in 2D.
+- **R3D-END closed on 2026-09-25: the performance milestone's render half is done.** The 2D board is deleted; on the 3D board the Moto
+  reads load 15 s (was 54), PSS 1.1 GB (was 2.3), idle 19 ms (was 54), a detonation's mean frame 28-31 ms (was 102-129); the Galaxy A16
+  is inside the same budget. 30 fps holds at idle and on the average of a detonation; **what is left is the hitch frames of a blast
+  and a shot (112-526 ms), `RENDER3D` R3D-LIGHT.** The budget of 30 fps / 33.3 ms stands.
 - **JAMES, the design-branch agent, is suspended** until the performance milestone closes.
   Claude owns the UI meanwhile.
 
 ### What is next
 
-1. **`RENDER3D_MASTER_PLAN` R3D-0 → R3D-3** — the spine of the performance milestone. R3D-1
-   and R3D-2 also improve the 2D build that ships: memory, and the cook's LIGHT step.
+1. ~~**`RENDER3D_MASTER_PLAN` R3D-0 → R3D-3**~~ **DONE (through R3D-END, 2026-09-25).** What follows, on the Director's call: R3D-LIGHT (the hitch
+   frames), R3D-WORLD, R3D-PROPS / R3D-ACTORS, R3D-ROT, R3D-LOOK, R3D-CLAIMS, R3D-BUFFER.
 2. **The 2026-08-30 list stays valid as unscheduled work,** with three moves:
    - `TOP_TEXTURE` Part 3 now lives inside `RENDER3D` R3D-6;
    - `OCCLUSION` Part 4 now lives inside `RENDER3D` R3D-7;

@@ -1,5 +1,15 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.25
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.28
+
+**2026-09-25 (close) update (v1.28) — R3D-END IS CLOSED: THE 2D BOARD IS DELETED, THE 3D BOARD IS THE ONLY BOARD (Director: "Vamos executar R3D-END", then END-1 to END-8 in order).**
+Last commits `5ffbe282` and before; the record of every step is the R3D-END block below (Execution order, "Done" paragraphs); `34881f81` is the last commit that builds the 2D board.
+- **Done.** END-0 the reference set; END-1 the switch collapsed (`RENDER3D`, `SKIP_BOARD_WRITES`, `GLASS_STATE_LAYER` gone); END-2 the glass tiles; END-3 the 2D cutaway; END-4 tile placement, the atlases, the bake and the 2D face shader; END-5 `floor_layer`; END-6 the level layers as arithmetic
+  (`level_origin()`, `level_z_index()`, `has_level()`), `BakeConfig` gone, and **`VoxelRenderer` renamed `VoxelBoard`** with its `render*()` methods now `register_*()`; END-7 the canon (rule 8 rewritten and hook-checked as R8, L1 retargeted, B1/B3/B5 retired, B2/B4/B6 survive); END-8 the device gate. A review after the close swept the loose ends (a stale F6/F7/F8 help, dead code and comments, the empty shadow layers).
+- **Every step was held to the END-0 set** (the same pictures and probe dumps of the code before it): 0 px above noise, 31/31 `board_probe` dumps identical, `ground_gate` 16/16 against recorded digests, `run_selftests` clean (64 -> 51: 13 suites lost their subject).
+- **The device gate, both handsets, no regression** (R3D-13 matrix, release APK, PLAYGROUND, scripted): Moto g04s load 15.2-15.5 s (16.3), PSS 1.09-1.11 GB (1.38), idle 18.8-19.4 ms (18.9-21.9), detonation means 28.4-31.3 ms, the second grenade's worst frame 254 ms (693-725); Galaxy A16 load 7.1-7.4 s (7.9-8.0), PSS 1.28-1.31 GB (1.30-1.33), detonation worst frames 112-157 ms (154-364), shot tail 211-219 ms. **Frame rate:** 30 fps at idle on both handsets and on the average of a detonation on the Moto; 24 fps everywhere except a hot, charging Galaxy (21-25 fps: the handset's state, the old APK reads the same); **not met: the hitch frames of a blast and a shot (112-526 ms), which are R3D-LIGHT's.** The tables are the top block of `DEVICE_DIAGNOSTICS_MASTER_PLAN`.
+- **How to verify from now on (Director, 2026-09-25: stop replaying the same explosions):** `python3 tools/persistent/verify.py` (docs / quick / smoke picked by what changed; smoke = quick + a boot and rotation of PLAYGROUND and GLASS, no grenade, no shot). The identity gates run as `verify.py full`, ONLY on request or to close a stage that rewires the board.
+- **Still 2D on purpose:** the structure layer (props), the actors, the 2D overlays and `VISUAL_GRID_OFFSET`, until R3D-PROPS / R3D-ACTORS.
+- **Next (the Director's call, none is a blocker):** R3D-LIGHT (the hitch frames: the ~235 ms COMMIT frame and the 155-236 ms CONSEQUENCE frame on the Moto, its 526 ms shot tail), R3D-WORLD, R3D-PROPS / R3D-ACTORS, R3D-ROT, R3D-LOOK, R3D-CLAIMS, R3D-BUFFER.
 
 **2026-09-24 (night) update (v1.25) — R3D-14 BUILT: THE GLASS STATE LIVES IN THE STORE, THE INDEPENDENCE GATE READS PASS (Director: "Sim, começa a R3D-14").**
 Commit `8c8723c0`. **R3D-END's entry gate is green; R3D-END itself waits for the Director's ratification, and nothing else blocks it.**
@@ -3023,7 +3033,7 @@ The 2D drawing ones (`_glass_tile_sync()`, the seam cull, the clip diagnostics) 
 
 **Gate:** `independence_gate.py` PASS; the Moto and Galaxy frame for a GLASS blast against the R3D-13 baseline (the crack mask is rebuilt per blast: measure it).
 
-### R3D-END — Retire the 2D board (the canon change)
+### R3D-END — Retire the 2D board (the canon change) — **DONE 2026-09-25 (v1.26-v1.28)**
 
 **Entry condition:** R3D-8 to R3D-14 are closed, **`tools/persistent/independence_gate.py` reads PASS** (v1.25: it does), and **the Director ratifies the retirement** on the deletion list. The look
 is not an entry condition (Director, 2026-09-23).
@@ -3327,7 +3337,8 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
   Moto's over-budget frames are all light-side (the commit frame ~190 ms, the cook's LIGHT phase ~190 ms, the first shot
   after blasts 719 ms, grenade 5's consequence frame 919 ms). An event recomputes its own neighbourhood only and never
   re-reads the map (the SOOT-STAMP lesson). **Starting list (v1.23, the shot tail after blasts on the Galaxy: 413-439 ms vs 2D's 223-261):** the shot pre-cook R3D-10 turned
-  off on 3D (-195 ms on the Galaxy), the buckets `apply_light_field_cells()` writes on cells with no visible voxel (-10 ms on desktop), and the map-wide `occupancy_dict()` walk (66 ms on desktop).
+  off on 3D (-195 ms on the Galaxy; restored), the buckets `apply_light_field_cells()` writes on cells with no visible voxel (-10 ms on desktop), and the map-wide `occupancy_dict()` walk (66 ms on desktop).
+  **The list as END-8 measured it (2026-09-25, the only board):** the Moto's COMMIT frame 234-241 ms (the Galaxy 74-127), the CONSEQUENCE frame 155-236 ms (85-153), the shot after two grenades 526 ms (211-219), the detonation's mean frame 28.4-31.3 ms (29.8-35.6): these hitch frames, not the mean, are what keeps a blast under 30 fps.
 - **R3D-CLAIMS — the `Voxel` wrappers go** (~100 MB on the Moto, R3D-1d): the plan and the `WorldDelta` are keyed by claim.
 - **R3D-BUFFER — the playable buffer grows** (~4–5 GUs, XCOM-style, Director 2026-09-21). The border strata become real
   store geometry, which settles v1.16's 116 416 light texels.
@@ -3371,8 +3382,10 @@ R3D-8 ─► R3D-9 ─► R3D-10 ─► R3D-11 ─► R3D-12 ─► R3D-13 ─�
          no 2D     in sim    off tiles no 2D     baseline   state off  canon
                                                              tiles      (gate: independence_gate.py)
 
-after R3D-8 (in parallel):  R3D-ACTORS ─► R3D-PROPS
-after R3D-END:  R3D-WORLD ─► R3D-ROT · R3D-LOOK · R3D-LIGHT · R3D-CLAIMS · R3D-BUFFER
+R3D-END: DONE 2026-09-25 (END-0 to END-8; the 2D board is deleted)
+
+after R3D-8 (in parallel):  R3D-ACTORS ─► R3D-PROPS            (open)
+after R3D-END:  R3D-WORLD ─► R3D-ROT · R3D-LOOK · R3D-LIGHT · R3D-CLAIMS · R3D-BUFFER   (open)
 ```
 
 ### Sequencing decided 2026-09-23 (the Director delegated the order)
@@ -3574,3 +3587,7 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
   the CPU buckets; S2 (live actor meshes) and S3 (static props as meshes) approved, both lit by the board's cell planes
   (+1.0 ms for 9 walking rigs, +1.5 ms for 20 props). New stages R3D-ACTORS and R3D-PROPS; R3D-WORLD, R3D-LIGHT and R3D-GLB
   re-scoped. `ACTOR` D64, D65. The rotation defect (the 3D board never rebuilt on a view change) fixed the same day.
+- **v1.21-v1.25, 2026-09-23 to 2026-09-24.** Recorded in their dated blocks at the top of this file (R3D-8 to R3D-13, the pre-cook back on the 3D board, R3D-14 and the independence gate).
+- **v1.26, 2026-09-24.** R3D-END ratified ("Vamos executar R3D-END"): END-0 (the reference set), END-1 (the switch collapsed), END-2 (the glass tiles). Delete in place, rename at the end.
+- **v1.27, 2026-09-25.** END-3 (the 2D cutaway), END-4 (tile placement, the atlases, the bake, the 2D face shader; the level layers stay as bare nodes), END-5 (`floor_layer`), END-6 (the layers become arithmetic; `BakeConfig` gone; `VoxelRenderer` -> `VoxelBoard`), END-7 (the canon, hook R8 and the L1 retarget, B1/B3/B5 retired). `verify.py` (tiered, fail-fast, a stored baseline). Session: `RESUMO_SESSAO_2026-09-25_R3D_END_3_A_CLOSE.md`.
+- **v1.28, 2026-09-25.** END-8 on the Moto and the Galaxy (no regression), a review sweep of the loose ends, the `register_*` renames, the docs renamed, a `smoke` tier as the default check (Director: stop replaying the same explosions), the empty shadow layers deleted, and the verdict: the transition is complete, the frame budget is met on average and missed only on the hitch frames (R3D-LIGHT). **R3D-END is closed.**

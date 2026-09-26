@@ -1,5 +1,5 @@
 # DEVICE_DIAGNOSTICS_MASTER_PLAN
-## Measuring the real build on a real entry-tier phone — v1.11
+## Measuring the real build on a real entry-tier phone — v1.12
 
 > ⏭️ **2026-09-24 (night) — R3D-14 on the Galaxy A16: the glass state from the store vs from the hidden glass layers** (`export/r3d14.apk`, the flag `GLASS_STATE_LAYER=1` flips it, alternating, three boots each; GLASS, portrait, zoom 0.5, grenades `14,12;5,12`, `FRAME_PROBE` + `EVENT_FRAMES`): the worst (COMMIT) frame of the two grenades **722 / 705, 695 / 689, 692 / 682 ms with the store vs 919 / 965, 910 / 962, 897 / 937 with the layers (about -230 ms)**; the second grenade's mean frame 34.4-35.3 vs 37.3-38.7 ms, the first 40.1-41.0 vs 40.3-41.5; load 3.9-4.4 vs 4.3 s; native heap 476-482 vs 487-491 MB (first poll), PSS inside the noise; LIGHT 31.9-36.7 ms/frame in both. **The COMMIT frame is still ~700 ms** (not decomposed). Logs local: `docs/measurements/device_2026-09-24_galaxy_r3d14_gs_*.log`. The Moto was not attached.
 

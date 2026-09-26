@@ -1,6 +1,8 @@
 # EXPLOSION_REBUILD_MASTER_PLAN
 ## Grenade detonation: targeting, choreography, and voxel damage — v1.0
 
+> ⏭️ **2026-09-25 — its 2D atoms are deleted (R3D-END END-4).** `DamageVariantBaker`, `DamageCompositeCache`, D33's runtime decal compositing and the pre-baked damage atoms are gone; the plan / delta prediction layer (`PREDICTION_MASTER_PLAN`) and the choreography stay. Damage decals are drawn by `Board3DLive` from a `Texture2DArray`.
+
 > ## ✅ CLOSED 2026-08-13, Director-ratified
 >
 > *"Pode fechar como won't do e fechar os dois planos."* Phase A and Phase B are

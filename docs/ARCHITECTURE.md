@@ -1,5 +1,7 @@
 # INFILTRAITOR — System Architecture
 
+> **⏭️ 2026-09-25 — R3D-END: the 2D `TileMapLayer` board is deleted; the 3D board is the only board.** The "Voxel Render Plane" section below describes the deleted path (last commit that has it: `34881f81`); the live one is `VoxelStore` (state) meshed by `Board3DLive`, with `VoxelBoard` (formerly `VoxelRenderer`) keeping the level registry, the cell planes, the dirty -> `voxel_destroyed` pass and the glass records. Where this file names tiles, atoms, the bake or `floor_layer`, read history.
+
 > **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from earlier design specs (`docs/systems/*`), the **code is authoritative**.
 
 **Source of truth:** `godot/scripts/`

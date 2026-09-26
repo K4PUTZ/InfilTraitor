@@ -1,6 +1,8 @@
 # SOOT_MASTER_PLAN
 ## One soot mechanism for explosives and firearms — study, 2026-08-12
 
+> ⏭️ **2026-09-25 — the alternative-id soot path is deleted (R3D-END END-4);** soot is one tone per cell in the cell plane (SOOT-STAMP, above) and the 3D board reads it.
+
 ⛔ **2026-09-22 — SOOT-STAMP (Director): soot is STAMPED once per event and never derived again.**
 *"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do
 código. (...) a fuligem é meramente um efeito a mais, não é pra sugar CPU. Ela existe pra não

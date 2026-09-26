@@ -1,5 +1,7 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
+> ⏭️ **2026-09-25 — R3D-END deleted the 2D delivery of the light (END-4).** The 12-bucket ladder and the soot codes stay (per-cell planes in `CellPlaneStore`, the constants in `BoardLook`, read by `Board3DLive` and, later, by actors and props). Gone: the alternative-tile mechanism (`encode_light_alt`, `_ensure_light_alt`, the mint cache), the TileSet rebuild it caused and `voxel_face_shading.gdshader`. Sections on tiles, alternatives and the face shader are history (`34881f81`).
+
 > ⏭️ **2026-09-23 — the per-voxel light field STAYS (Director, `RENDER3D_MASTER_PLAN` R3D-SPIKE-3D S1).** The board lit by 12 real `OmniLight3D`
 > lamps cost +24 ms of GPU on the Moto with no shadow (43.6 vs 19.5 ms/frame), 58-73 ms with shadows. The buckets keep the
 > look and gain consumers: actors and static props (`ACTOR` D64, D65) read the same `cell_plane` array. What remains is the

@@ -1,5 +1,7 @@
 # D33 — Runtime decal compositing over the real baked facade
 
+> 🔒 **2026-09-25 — HISTORY. R3D-END deleted this system (END-4):** `DecalCompositor`, `HalfVoxelCompositor`, `DamageCompositeCache`, the `_composite_*` functions and the seam selftests. Damage decals are drawn by `Board3DLive` from a `Texture2DArray` of the same art (`ART_SPECIFICATIONS` §7). The last commit that has it is `34881f81`.
+
 **Status:** ✅ **D33 COMPLETE (2026-08-03).** Every impact-mark shape
 (full-voxel CRACKED, wall/floor/ceiling DENTED) composites onto the real
 baked facade when one is available (Parts 3a-3d), and onto the flat

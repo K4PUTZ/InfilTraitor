@@ -79,6 +79,28 @@ generated *what*.
 
 ---
 
+### verify.py
+
+**Purpose:** ONE command for "is it done", in tiers, failing fast (2026-09-25; the header of the script has the reasoning)
+**Category:** Verification
+**Status:** ✅ Active
+
+```bash
+python3 tools/persistent/verify.py                 # auto: docs / quick / smoke from the files you changed (never `full`)
+python3 tools/persistent/verify.py quick|smoke|full|docs
+python3 tools/persistent/verify.py --baseline      # start of a task: the reference set for `full` (two boots per case)
+python3 tools/persistent/verify.py --list          # the steps of a tier
+```
+
+- **quick** = lint, invariants, codemap, selftests. **smoke** = quick + `smoke_boot.py` (PLAYGROUND and GLASS boot and rotate E, N;
+  no grenade, no shot): the default for a change under `godot/`. **full** = smoke + the identity gates (`ground_gate`,
+  `shot_3d_gate`, `occ_canonical_gate`, `mirror_gate`, `board_probe roundtrip --with-store`, `board_probe gate` and `pixel_gate`
+  held to the stored baseline): ONLY on request or to close a stage that rewires the board.
+- The boot gates refuse to start while another Godot is alive (the editor included) and time out at 180-300 s.
+- `pixel_gate.py` is blind under 8/255: a look change needs a real capture.
+
+---
+
 ### check_invariants.py
 
 **Purpose:** Mechanically enforce the inviolable architecture rules from
@@ -98,6 +120,10 @@ python3 tools/persistent/check_invariants.py --quiet   # exit code only
 - **R3** `_edge_key()` is only defined in wall_edge_data.gd
 - **R4** guard `state` is only assigned inside `_enter_state()` (scope-aware)
 - **R5** `_alert_meter` only *accumulates* inside `_apply_tic_result()` (scope-aware)
+- **R8** voxel state reaches the screen only through the store and the mesher: neither `voxel_board.gd` nor `board3d_live.gd` may call `set_cell()` / `erase_cell()` (R3D-END; it replaced B1)
+- **B4** the FNV-1a constants are pinned in `facade_sampler.gd`
+- **L1** a level handed to the level API (`has_level`, `level_origin`, `level_z_index`, `voxel_world_position`) is never an integer literal
+- **L2** glass is asked (`GlassMaterials.is_glass()`), never compared; **L3** a HUD widget is named only inside `hud_controller.gd`
 
 **Not mechanized:** R6 (no mission code yet) and R7 (`+ buffer` too heuristic to
 detect without false positives) — those still rely on review.
@@ -267,6 +293,7 @@ Archive/ (deprecate, move when replacing)
 | BACKUP.py | As-needed | Anyone | Run before major changes |
 | gen_codemap.py | Automatic | pre-commit hook | Regenerates CODEMAP.md; never edit by hand |
 | check_invariants.py | Automatic | pre-commit hook | Enforces CLAUDE.md inviolable rules |
+| verify.py | Every change (auto tier) | Anyone | docs / quick / smoke by default; `full` only on request |
 | hooks/pre-commit | One-time install | Anyone | `git config core.hooksPath tools/persistent/hooks` |
 | Migration scripts | Never (archived) | None | Reference only |
 

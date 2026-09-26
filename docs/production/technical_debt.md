@@ -2,7 +2,9 @@
 
 > **Known limitations, architectural issues, and maintenance requirements.**
 
-> **⏭️ 2026-09-15 — the largest debt item is now a plan.**
+> **✅ 2026-09-25 — the largest debt item is PAID (R3D-END).** The 2D board is deleted; on the 3D board the Moto reads PSS ~1.1 GB (was 2.2-2.3), idle 19 ms (was 54-60), detonation means 28-31 ms (was 100+), load 15 s (was 54). Remaining performance debt is the hitch frames of a blast and a shot (`RENDER3D` R3D-LIGHT). **Items below that are properties of `TileMapLayer`s (overlay and tile performance) are moot unless they concern the props' structure layer.**
+>
+> **⏭️ 2026-09-15 — (was) the largest debt item, now a plan.**
 > - **The debt:** the 2D board's cost on the target phones, measured in
 >   `DEVICE_DIAGNOSTICS_MASTER_PLAN` §10–§15.
 >   - memory 2.17–2.20 GB, with 0.7–1.4 GB swapped out;

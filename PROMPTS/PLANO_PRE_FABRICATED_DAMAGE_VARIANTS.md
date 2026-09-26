@@ -1,5 +1,7 @@
 # PLANO: Pre-Fabricated Damage Variants (Swap-Based Destruction)
 
+> 🔒 **2026-09-25 — HISTORY. The swap-based model was built, then deleted with the 2D board (R3D-END END-4):** `DamageVariantBaker`, `VoxelVariantRegistry` and the tile swap are gone. Last commit that has them: `34881f81`.
+
 **Date:** 2026-08-04  
 **Status:** Planning (awaiting Director sign-off)  
 **Goal:** Replace runtime decal compositing with pre-baked damage voxels, eliminating runtime composition pipeline entirely.

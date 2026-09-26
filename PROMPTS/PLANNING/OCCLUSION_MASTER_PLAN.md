@@ -1,6 +1,8 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
+> ⏭️ **2026-09-25 — R3D-END deleted the 2D cutaway (END-3).** `VoxelBoard.apply_occlusion()`, `_ghosted_cells`, OCC-21's tile erase, OCC-27's wireframe overlay and slice panel are gone; the `OcclusionSet` (policies O1-O7, its geometry) is unchanged and `Board3DLive.on_occlusion()` draws the cutaway. `INFILTRAITOR_OCC_DISABLE=1` now sends the 3D board an empty set. Read the 2D mechanism below as history (last commit that has it: `34881f81`).
+
 > ⏭️ **2026-09-21 — nothing changed here; R3D-7 (incl. its tail: shots, decals, touch, second map) is fully closed in `RENDER3D_MASTER_PLAN` v1.12.** Roofs of a `kind` other than "flat" are now covered by `roof_entity_selftest` (skipped loudly, builds nothing).
 
 > ⏭️ **2026-09-20 — R3D-7 is CLOSED in `RENDER3D_MASTER_PLAN`; what it changed here.** (1) **A roof opens by

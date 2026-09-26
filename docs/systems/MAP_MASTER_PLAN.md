@@ -1,5 +1,7 @@
 # INFILTRAITOR — Map System Master Plan
 
+> ⏭️ **2026-09-25 — `RoomBuilder` no longer bakes or places voxel tiles (R3D-END):** it builds the registries and the store's input; `VoxelBoard.register_*()` only makes the levels exist. The `MapSpec` contract and Rule 7 are unchanged.
+
 > **Canonical specification for the data-driven map pipeline, MapSpec contract, and compilation.**
 
 The map system is completely data-driven. `room.gd` is a renderer that consumes a `layout` dictionary; it does not know how the map was produced. Permanent (hardcoded) maps and future procedural generators share the same vocabulary and compiler.

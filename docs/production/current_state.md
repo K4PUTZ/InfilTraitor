@@ -8,7 +8,18 @@
 
 ---
 
-## Where the project stands — 2026-09-24 (newest; the 2026-09-21 and 2026-08-30 sections below are kept as history)
+## Where the project stands — 2026-09-25 (newest; the 2026-09-24, 2026-09-21 and 2026-08-30 sections below are kept as history)
+
+**Version 0.9.107 · R3D-END IS CLOSED: the game renders on a Godot 3D board and the 2D `TileMapLayer` board is deleted (the last commit that builds it is `34881f81`).** Record: the R3D-END block and the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.28).
+- **What changed in this stretch (END-0 to END-8, 2026-09-24/25):** the 2D/3D switch collapsed; the glass tiles, the 2D cutaway, tile placement, the atlases and the bake, the 2D face shader, `BakeConfig` and `floor_layer` were deleted; the level `TileMapLayer`s became arithmetic (`level_origin()`, `level_z_index()`, `has_level()`); **`VoxelRenderer` is now `VoxelBoard`** (its `render*()` methods are `register_*()`); the canon was rewritten (rule 8 is hook-checked as R8, L1 retargeted, B1/B3/B5 retired, B2/B4/B6 survive where they apply). Every step was held to the same pictures and probe dumps as the step before it (0 px above noise, 31/31 dumps identical, ground digests recorded).
+- **The device gate, Moto g04s and Galaxy A16, no regression** (`DEVICE_DIAGNOSTICS_MASTER_PLAN`, top block): Moto load 15 s (was 54 in 2D), PSS 1.1 GB (was 2.3), idle 19 ms (was 54), detonation mean 28-31 ms (was 102-129); Galaxy load 7 s, PSS 1.3 GB, detonation worst frames 112-157 ms. **Frame rate:** 30 fps at idle on both handsets and on the average of a detonation on the Moto; 24 fps everywhere except a hot, charging Galaxy (21-25 fps: the handset's state, the old APK reads the same). **Not met:** the hitch frames of a blast and a shot (112-526 ms), which are R3D-LIGHT's. Scripted runs, no finger: a hand-play check is the Director's.
+- **Still 2D on purpose:** the structure layer (props), the actors, the 2D overlays and `VISUAL_GRID_OFFSET`, until R3D-PROPS / R3D-ACTORS.
+- **How to verify now (Director, 2026-09-25: stop replaying the same explosions):** `python3 tools/persistent/verify.py` picks docs / quick / smoke from what changed; smoke = lint, invariants, codemap, selftests (51) and a boot with a rotation of PLAYGROUND and GLASS, ~1 min. The identity gates run as `verify.py full`, only on request. `pixel_gate.py` is blind under 8/255.
+- **Left, stated:** dead code that predates the END (`_glass_neighbour`, `FacadeSampler.get_window_origin_*`, `theme_applier.gd`, five dev-tool paths); the 17 `voxel_*.png` atoms and `halves/` folders that no runtime code reads (`ASSETS/materials` is not in git); the "zero warnings" rule cannot be checked from the command line; no selftest pins the FNV-1a output values.
+- **What is next (the Director's call):** R3D-LIGHT (the hitch frames), R3D-WORLD, R3D-PROPS / R3D-ACTORS, R3D-ROT, R3D-LOOK, R3D-CLAIMS, R3D-BUFFER.
+- **Session record:** `PROMPTS/RESUMO_SESSAO_2026-09-25_R3D_END_3_A_CLOSE.md` (END-3 to the close).
+
+## Where the project stood — 2026-09-24 (history)
 
 **Version 0.9.107 · the game renders on a Godot 3D board, the only board since R3D-END step END-1 (2026-09-24). R3D-END (deleting the 2D board) is IN PROGRESS: the Director ratified it on 2026-09-24; END-0 (the reference set) and END-1 (the 2D/3D switch collapsed, `RENDER3D=0` gone) are done, and the dead 2D code goes at END-2 to END-5 (order and records in the plan's R3D-END block). `34881f81` is the last commit that builds the 2D board.**
 - **Done since 2026-09-21, all in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.25):** **R3D-8 to R3D-14.** The safety net on the 3D path (selftests run the 3D board, a pixel gate, the persistence round trip fixed); the 3D board reads nothing of the 2D renderer; the
@@ -366,7 +377,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-24_R3D_13_CLOSE.md
 - RESUMO_SESSAO_2026-09-24_R3D_8_A_13.md
 - RESUMO_SESSAO_2026-09-24_R3D_END_0_A_2.md
-- RESUMO_SESSAO_2026-09-25_R3D_END_3_A_7.md
+- RESUMO_SESSAO_2026-09-25_R3D_END_3_A_CLOSE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

@@ -34,13 +34,40 @@ static func pending() -> int:
 	return _pending.size()
 
 
+## A member with more than this many entries is emptied a slice at a time: releasing a 200 000-entry `cell_to_voxel` in one
+## `erase()` took 101 ms on the Moto (2026-09-26), and that one call was the commit's next frame at 143 ms.
+const BIG_MEMBER: int = 4000
+
+## ⚠️ ONLY the members the cook alone holds. Draining EMPTIES the dictionary, so a member the delta or the presenter also
+## references (`light_changed_cells`, `waves`, `soot_codes`, ...) would be emptied under them: the first version drained every
+## big member and `LIGHT_COOK_GATE` failed with 5 295 and 206 cells. `cell_to_voxel` is read only inside the builder
+## (grep: nothing outside `detonation_plan_builder.gd` names it; the delta has no such field).
+const DRAINABLE: Array[String] = ["cell_to_voxel"]
+
+
 static func _tick() -> void:
 	var t0: int = Time.get_ticks_usec()
 	var limit: int = int(budget_ms * 1000.0)
 	while not _pending.is_empty():
 		var state: Dictionary = _pending[0]
 		while not state.is_empty():
-			state.erase(state.keys()[0])
+			var k: Variant = state.keys()[0]
+			var member: Variant = state[k]
+			if DRAINABLE.has(k) and member is Dictionary and (member as Dictionary).size() > BIG_MEMBER:
+				## The first keys of the remaining entries, not `keys()`: materialising 200 000 keys was itself ~100 ms.
+				var big: Dictionary = member
+				while not big.is_empty():
+					var batch: Array = []
+					for bk: Variant in big:
+						batch.append(bk)
+						if batch.size() >= 256:
+							break
+					for bk: Variant in batch:
+						big.erase(bk)
+					if Time.get_ticks_usec() - t0 >= limit:
+						return
+			member = null
+			state.erase(k)
 			if Time.get_ticks_usec() - t0 >= limit:
 				return
 		_pending.remove_at(0)

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**246 scripts · 79240 lines total** (under `godot/scripts/`)
+**246 scripts · 79306 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2173,7 +2173,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 469 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 508 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2925,11 +2925,15 @@ extends `Node` · 231 lines
 
 ### `prediction_reaper.gd`
 
-`class_name PredictionReaper` · extends `RefCounted` · 48 lines
+`class_name PredictionReaper` · extends `RefCounted` · 75 lines
 
 `godot/scripts/systems/prediction/prediction_reaper.gd`
 
 > PredictionReaper - lets go of a finished cook's working state a few milliseconds a frame. R3D-LIGHT (2026-09-26, Moto g04s): `bump_world_revision()` at the commit cancels the cached job, `cancel()` drops the cook's state dictionary, and freeing that one object (every ring, cell-to-voxel and packaging table the cook built) took **115 ms** inside the commit frame. Dropping a reference is atomic, so the state is handed here instead and emptied entry by entry under a budget; whatever a frame does not reach waits for the next one. Nothing reads a retired state again: `cancel()` had already made it unreachable.
+
+**Constants / tuning**
+- `BIG_MEMBER` = `4000`
+- `DRAINABLE` = `["cell_to_voxel"]`
 
 ---
 

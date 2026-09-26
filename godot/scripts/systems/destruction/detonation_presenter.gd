@@ -262,20 +262,48 @@ func prepare(plan: Dictionary) -> void:
 		for entry: Dictionary in plan["destroy"][ring]:
 			entries.append_array(entry.get("expose", []))
 	_prep = {"entries": entries, "i": 0, "out": [], "cells": {}}
+	## The consequence channel's schedule (a delay per VFX entry, then the sort by it) was built in the frame the channel
+	## starts: ~400-530 entries, a measurable part of the Moto's presenter-start frame. Same treatment as the ramp.
+	var src: Array = []
+	var per_kind: Dictionary = {}
+	for kind: String in ["smoke", "ember", "debris"]:
+		for ring in plan.get(kind, {}).keys():
+			for entry: Dictionary in plan[kind][ring]:
+				src.append([kind, entry])
+				per_kind[kind] = int(per_kind.get(kind, 0)) + 1
+	_sched_prep = {"src": src, "i": 0, "out": [], "per_kind": per_kind}
+
+
+var _sched_prep: Dictionary = {}
+
+## Microseconds of one frame the consequence channel may spend dispatching VFX entries. `var` (Rule 1).
+var effect_budget_us: int = 8000
 
 
 func prepare_step(voxel_board, budget_usec: int) -> void:
-	if _prep.is_empty():
-		return
 	var t0: int = Time.get_ticks_usec()
-	var entries: Array = _prep["entries"]
-	var i: int = _prep["i"]
-	while i < entries.size():
-		_note_ramp(entries[i], voxel_board, _prep["out"], _prep["cells"])
-		i += 1
-		if budget_usec > 0 and (i & 63) == 0 and Time.get_ticks_usec() - t0 >= budget_usec:
-			break
-	_prep["i"] = i
+	if not _prep.is_empty():
+		var entries: Array = _prep["entries"]
+		var i: int = _prep["i"]
+		while i < entries.size():
+			_note_ramp(entries[i], voxel_board, _prep["out"], _prep["cells"])
+			i += 1
+			if budget_usec > 0 and (i & 63) == 0 and Time.get_ticks_usec() - t0 >= budget_usec:
+				break
+		_prep["i"] = i
+		if i < entries.size():
+			return
+	if not _sched_prep.is_empty():
+		var src: Array = _sched_prep["src"]
+		var out: Array = _sched_prep["out"]
+		var j: int = _sched_prep["i"]
+		while j < src.size():
+			var pair: Array = src[j]
+			out.append([_delay_for(pair[1]), pair[0], pair[1]])
+			j += 1
+			if budget_usec > 0 and (j & 63) == 0 and Time.get_ticks_usec() - t0 >= budget_usec:
+				break
+		_sched_prep["i"] = j
 
 
 func _collect_soot_ramp(plan: Dictionary, voxel_board) -> Array:
@@ -388,11 +416,17 @@ func _run_consequence(plan: Dictionary, voxel_board, smoke_overlay,
 		tree: SceneTree) -> void:
 	var scheduled: Array = []
 	var per_kind: Dictionary = {}
-	for kind: String in ["smoke", "ember", "debris"]:
-		for ring in plan.get(kind, {}).keys():
-			for entry: Dictionary in plan[kind][ring]:
-				scheduled.append([_delay_for(entry), kind, entry])
-				per_kind[kind] = int(per_kind.get(kind, 0)) + 1
+	if not _sched_prep.is_empty():
+		prepare_step(voxel_board, 0)
+		scheduled = _sched_prep["out"]
+		per_kind = _sched_prep["per_kind"]
+		_sched_prep = {}
+	else:
+		for kind: String in ["smoke", "ember", "debris"]:
+			for ring in plan.get(kind, {}).keys():
+				for entry: Dictionary in plan[kind][ring]:
+					scheduled.append([_delay_for(entry), kind, entry])
+					per_kind[kind] = int(per_kind.get(kind, 0)) + 1
 	if scheduled.is_empty():
 		return
 	scheduled.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
@@ -414,10 +448,15 @@ func _run_consequence(plan: Dictionary, voxel_board, smoke_overlay,
 		elapsed += tree.root.get_process_delta_time()
 		_soot_tick(elapsed, voxel_board)
 		_channel_elapsed = elapsed
+		var _disp0: int = Time.get_ticks_usec()
 		while next < scheduled.size() and float(scheduled[next][0]) <= elapsed:
 			_writer.apply(String(scheduled[next][1]), scheduled[next][2],
 				voxel_board, smoke_overlay)
 			next += 1
+			## A frame that is due for hundreds of effects spends a few ms and hands the rest to the next one: these are
+			## VFX (nothing here writes a cell), and 403 puffs at once were 32 ms of the Moto's frame (R3D-LIGHT).
+			if (next & 15) == 0 and Time.get_ticks_usec() - _disp0 >= effect_budget_us:
+				break
 	## Per kind, because "N effects" cannot answer the question D-4 is tuned on —
 	## a smoke count that changed and an ember count that did not look identical in
 	## one total, and the per-material thinning moves exactly one of them.

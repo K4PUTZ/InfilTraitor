@@ -257,7 +257,7 @@ or S. Root cause, fully diagnosed: two roof-page caches key purely on
 `bake_compositor.gd`'s `_page_cache` (`_compose_roof_pages()`, ~line 661).
 A roof's structure-local offset set is recomputed fresh per rotated view;
 non-square footprints request `(col,row)` pairs the frozen cache never
-baked, `BakedTileLookup.resolve_flat()` misses, and `voxel_renderer.gd`
+baked, `BakedTileLookup.resolve_flat()` misses, and `voxel_board.gd`
 falls back to the generic material.
 
 **Why not fixed immediately:** the obvious correctness fix (key the cache by
@@ -303,7 +303,7 @@ The `DEV_VISION` flag and debug code are mixed with the logic. Functional for de
 
 | Refactor | Priority | Target | ETA |
 |----------|----------|--------|-----|
-| **Depth on the isometric board** (a glass pane composites over an opaque wall in FRONT of it — `O5`: `z_index` encodes HEIGHT, depth is independent. The third system to hit it, after props and the occlusion wireframe) | 🟠 renderer scale, **spike-gated** | voxel_renderer.gd (glass layers + backbuffer) — the per-level `z_index` scheme itself is deliberately NOT touched | [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md) Task 1. ⛔ The 2026-09-10 design (`GLASS` §19 + `OCCLUSION` §7) was rejected the same day — do not build from it |
+| **Depth on the isometric board** (a glass pane composites over an opaque wall in FRONT of it — `O5`: `z_index` encodes HEIGHT, depth is independent. The third system to hit it, after props and the occlusion wireframe) | 🟠 renderer scale, **spike-gated** | voxel_board.gd (glass layers + backbuffer) — the per-level `z_index` scheme itself is deliberately NOT touched | [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md) Task 1. ⛔ The 2026-09-10 design (`GLASS` §19 + `OCCLUSION` §7) was rejected the same day — do not build from it |
 | **Gradual detection escalation** | 🔴 Pre-playtest | guard_enemy.gd + room.gd | 1–2 weeks |
 | **FSM → Strategy/BTree** | Pre-GAME-01 | guard_enemy.gd | 1–2 weeks |
 | **Data-driven patrols** (now `MapSpec.patrols` in `world/maps/definitions/*_map.gd`; remaining: external resource authoring) | Pre-campaign | world/maps/ | 2–3 days |

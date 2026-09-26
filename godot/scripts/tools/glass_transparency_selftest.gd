@@ -64,7 +64,7 @@ func _fail(msg: String) -> void:
 
 ## A slice on the SW face (varies in x, matching the fixture's `24 + pos`), its 8
 ## face voxels populated at `level`. `storeys` sets how many level-bands
-## `_render_slice()` ensures opaque layers for.
+## `_register_slice()` ensures opaque layers for.
 func _make_slice(id: String, material: String, level: int, storeys: int = 1) -> Slice:
 	var slice := Slice.new(id, Vector2i(3, 3), Face.SW, "", storeys, material)
 	for pos in range(8):
@@ -251,7 +251,7 @@ func test_intact_glass_still_blocks_light() -> void:
 	var level: int = GeometryCoords.PLAYABLE_LEVEL
 	var registry := EdgeRegistry.new()
 	registry.register_slice(_make_slice("SLICE_GLASS_OCC", "glass", level))
-	r.render(registry)
+	r.register_geometry(registry)
 	## RENDER3D R3D-2: build_occupancy() reads VoxelStore.active alone now — needs a
 	## store built over this fixture's registry, same as test_side_sliver_only_where_exposed.
 	VoxelStore.active = VoxelStore.build(registry, SlabRegistry.new(), [])
@@ -416,7 +416,7 @@ func test_a_damaged_glass_voxel_yields_no_opaque_tile_entry() -> void:
 	var concrete_slice := _make_slice("SLICE_CONCRETE_D", "concrete", level)
 	registry.register_slice(glass_slice)
 	registry.register_slice(concrete_slice)
-	r.render(registry)
+	r.register_geometry(registry)
 
 	## The consumer: DetonationPlanBuilder's per-voxel entry. R3D-END: no tile is resolved any more, so the entry is the
 	## placeholder that carries the voxel key; a GLASS-family container still yields NO entry at all (a cracked pane's

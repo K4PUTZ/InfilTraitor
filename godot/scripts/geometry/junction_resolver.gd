@@ -62,7 +62,7 @@ class JunctionColumn:
 		edge_a_id = p_edge_a_id
 		edge_b_id = p_edge_b_id
 		## E-JUNCTION-01 (2026-08-13): a JunctionColumn used to be voxel
-		## POSITIONS only — `_render_junction_column()` writes tiles straight
+		## POSITIONS only — `_register_junction_column()` writes tiles straight
 		## from `voxel_pos`/`storey_count`, never through a Voxel object, so
 		## there was never any per-voxel damage state to read or write. One
 		## real Voxel per level, mirroring SliceGenerator._create_slice()'s

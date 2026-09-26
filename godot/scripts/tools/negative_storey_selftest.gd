@@ -3,7 +3,7 @@
 ##
 ## Proves the floor can live at negative levels without disturbing the
 ## existing (positive) wall/block/prop pipeline at all — D17's whole claim.
-## R3D-END (END-1): [4] and [5] (render_block() / render_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more).
+## R3D-END (END-1): [4] and [5] (register_block_levels() / register_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more).
 ## END-4: [6] (`_set_voxel_cell()` on an unensured level) went with the placement. The rest stays until END-6 turns the level layers into arithmetic.
 
 extends SceneTree
@@ -53,7 +53,7 @@ func test_negative_layer_creation_and_lookup() -> void:
 	## true but meaningless thing. The property under test is unchanged — a level
 	## BELOW the ground plane is created on demand, retrievably, idempotently — and
 	## it is now expressed against the level that actually is the floor top.
-	print("[1] _ensure_negative_voxel_layer() creates a real, retrievable layer\n")
+	print("[1] _ensure_floor_level() creates a real, retrievable layer\n")
 
 	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
@@ -65,14 +65,14 @@ func test_negative_layer_creation_and_lookup() -> void:
 	else:
 		_pass("has_level(floor top) is false before it's ensured (nothing pre-created)")
 
-	renderer._ensure_negative_voxel_layer(below)
+	renderer._ensure_floor_level(below)
 	if renderer.has_level(below):
 		_pass("has_level(floor top) is true after ensuring it")
 	else:
 		_fail("has_level(floor top) still false after ensuring it")
 
 	var built_before: int = renderer.level_keys().size()
-	renderer._ensure_negative_voxel_layer(below)
+	renderer._ensure_floor_level(below)
 	if renderer.level_keys().size() == built_before and renderer.has_level(below):
 		_pass("Ensuring the same sub-ground level again is a no-op (one level, not two)")
 	else:
@@ -96,8 +96,8 @@ func test_negative_level_position_and_zindex_formula() -> void:
 
 	## LEVEL-RENUMBER — the same two layers, named by what they ARE rather than by
 	## a sign: the wall base is PLAYABLE_LEVEL and the floor top is one below it.
-	renderer._ensure_voxel_layers(1)                            # the wall base
-	renderer._ensure_layer(GeometryCoords.FLOOR_TOP_LEVEL)      # the floor top
+	renderer._ensure_wall_levels(1)                            # the wall base
+	renderer._ensure_level(GeometryCoords.FLOOR_TOP_LEVEL)      # the floor top
 
 	var level0_y: float = renderer.level_origin(GeometryCoords.PLAYABLE_LEVEL).y
 	var level_neg1_y: float = renderer.level_origin(GeometryCoords.FLOOR_TOP_LEVEL).y
@@ -140,7 +140,7 @@ func test_lazy_not_contiguous() -> void:
 	renderer.setup(Vector2.ZERO)
 	var top: int = GeometryCoords.FLOOR_TOP_LEVEL
 
-	renderer._ensure_negative_voxel_layer(top - 2)
+	renderer._ensure_floor_level(top - 2)
 
 	if not renderer.has_level(top) and not renderer.has_level(top - 1):
 		_pass("The floor top and the level below it remain unbuilt after only the third was ensured")

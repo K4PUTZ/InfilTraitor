@@ -249,7 +249,7 @@ demanding §4 be done.
    **with no error at all**. This is the same Tier.NONE trap that once rejected a
    full-colour `facade_earth.png` silently. One `elif`, expecting
    `64 × TEX_AUTHORING_N` by `32 × TEX_AUTHORING_N`.
-3. Add `"glass"` to `VoxelRenderer.IMPACT_DECAL_MATERIALS` (for the shards) and
+3. Add `"glass"` to `VoxelBoard.IMPACT_DECAL_MATERIALS` (for the shards) and
    set `glass.json`'s `crack_factor` above `0.0` — **the two must move together
    with the art.** `voxel_decal_selftest` **[12]** asserts exactly that, in both
    directions, so a data edit without the art turns the suite red instead of the
@@ -370,7 +370,7 @@ down here before someone follows it:
 
 > the files exist but 'glass' is NOT in IMPACT_DECAL_MATERIALS … Add the id.
 
-**Do not add the id.** `VoxelRenderer._decal_material()` (`voxel_renderer.gd:286`)
+**Do not add the id.** `VoxelBoard._decal_material()` (`voxel_board.gd:286`)
 composes names from the DAMAGE STATE for every material in that list —
 `glass_cracked_*`, `glass_bullet_*`. Those are precisely the two families
 G-D21 folded into the fracture sheet and that this gate's own header says glass
@@ -416,7 +416,7 @@ are not read as a working feature.
 against the code, **both halves are wrong for glass and neither was done:**
 
 - `IMPACT_DECAL_MATERIALS` reaches only the WALL families.
-  `_decal_material()` (`voxel_renderer.gd:286`) composes from the DAMAGE STATE,
+  `_decal_material()` (`voxel_board.gd:286`) composes from the DAMAGE STATE,
   so glass's id there would ask for `glass_bullet_cracked_*` — the per-voxel mark
   G-D21 folded into the sheet. `shard` is not a name that function can compose
   at all; its sibling, earth's dent, rides `IMPACT_FLOOR_MATERIAL` instead.

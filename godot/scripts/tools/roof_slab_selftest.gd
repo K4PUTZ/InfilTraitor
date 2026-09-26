@@ -7,8 +7,8 @@
 ## per level, each fully destructible — falls out of calling the EXISTING
 ## SlabGenerator N times, zero new geometry classes needed. No bake system
 ## involved yet (Director's call: geometry first, bake as a later
-## experiment) — render_slab_solid() places one fixed wall material per
-## voxel, the same way render_block() already does for a whole block, just
+## experiment) — register_slab_solid() places one fixed wall material per
+## voxel, the same way register_block_levels() already does for a whole block, just
 ## through Slab/Voxel so every level is independently dirty-tracked.
 
 extends SceneTree
@@ -96,7 +96,7 @@ func test_multi_level_roof_is_n_independent_slabs() -> void:
 	print("")
 
 
-## render_slab_solid() must place slab.material directly, no per-voxel
+## register_slab_solid() must place slab.material directly, no per-voxel
 ## variant selection — the whole point for a roof matching its structure's
 ## material 1:1.
 func test_render_slab_solid_uses_fixed_material_no_hash() -> void:
@@ -177,7 +177,7 @@ func test_roof_positioned_above_a_block_uses_the_blocks_own_material() -> void:
 	for level in range(block_top_level + 1, block_top_level + 3):
 		roof_slabs.append(SlabGenerator.generate(block_gu, Slab.Role.CEILING, level, block_material, registry))
 
-	## R3D-END: the block half of this test was a 2D `render_block()` tile read; what is left is the roof's own material.
+	## R3D-END: the block half of this test was a 2D `register_block_levels()` tile read; what is left is the roof's own material.
 	var store: VoxelStore = VoxelStore.build(EdgeRegistry.new(), registry, [])
 	var sample_voxel: Vector2i = GeometryCoordsClass.gu_voxels(block_gu)[0]
 	var lo_claim: int = store.owner[store.cell_index(sample_voxel.x, sample_voxel.y, CEILING_LEVEL)]

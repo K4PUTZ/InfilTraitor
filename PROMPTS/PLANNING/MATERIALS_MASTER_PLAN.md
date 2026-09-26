@@ -180,7 +180,7 @@ whose "no decals" has a different cause: not that it cannot be marked, but that
 its marks need their own crack/hole algorithm.
 
 **M2 tasks:** author → `check_decal.py --material brick` → add `brick` to
-`VoxelRenderer.IMPACT_DECAL_MATERIALS` **and** `IMPACT_CRACK_MATERIALS` → update
+`VoxelBoard.IMPACT_DECAL_MATERIALS` **and** `IMPACT_CRACK_MATERIALS` → update
 `voxels/manifest.json` → capture the before/after pair.
 
 ⚠️ `IMPACT_DECAL_MATERIALS` is currently `["concrete", "metal", "stone",
@@ -605,7 +605,7 @@ author's meaning survives the swap because the cell survives it.
 
 #### What does NOT tolerate it — the real work
 
-1. **`voxel_renderer.gd:1892`** resolves a neighbour's slice with
+1. **`voxel_board.gd:1892`** resolves a neighbour's slice with
    `... else registry.get_slice(neighbor_edge.slice_b_id)` as its final fallback.
    With a half-thickness neighbour that returns **null**, and the expression has
    no null branch. First thing to fix, and the first thing to selftest.
@@ -706,7 +706,7 @@ one leg half-thickness on the OUTER GU → 1 column   (the corner is real)
 was — the fix is that it now asks the edge, not the slice, which costs no extra
 lookup.)*
 
-*(Corrected while building: §3.2c listed `voxel_renderer.gd:1892`'s neighbour
+*(Corrected while building: §3.2c listed `voxel_board.gd:1892`'s neighbour
 lookup as the first thing to fix, on the grounds that its final fallback
 `get_slice(neighbor_edge.slice_b_id)` has no null branch. Read again on the real
 line, the very next statement is `if slice:` — it is guarded, and degrades to the
@@ -747,7 +747,7 @@ than a rewrite. Do not scatter delta arithmetic through the burn state.
 
 ### 3.4 What is already free
 
-Light does not read `damage_state`. `VoxelRenderer.build_occupancy()` is built
+Light does not read `damage_state`. `VoxelBoard.build_occupancy()` is built
 from `TileMapLayer.get_used_cells()`, and a DESTROYED voxel has its cell
 **erased**. So "cardboard blocks light until it burns" needs **no opacity state
 and no coupling to `LIGHT_MASTER_PLAN`** — it is a property of burning being

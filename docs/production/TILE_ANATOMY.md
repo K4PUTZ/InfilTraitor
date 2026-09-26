@@ -63,7 +63,7 @@ All atoms are **exactly 36 pixels tall**, and the opaque region clusters around 
 
 ### Stacking Geometry (Verified Against Renderer)
 
-Per `voxel_renderer.gd::_ensure_voxel_layers()` and `GeometryCoords`:
+Per `voxel_board.gd::_ensure_wall_levels()` and `GeometryCoords`:
 
 - **VOXEL_ATOM_H** (atom height): 36 pixels
 - **VOXEL_STEP_PX** (vertical layer spacing): 20 pixels
@@ -258,7 +258,7 @@ The audit was performed by a single, disposable headless GDScript tool:
 **Features:**
 - Loads all voxel and facade PNGs and decodes dimensions
 - Computes per-pixel alpha histograms (opaque/transparent/partial)
-- Traces voxel_renderer stacking logic to derive visible region
+- Traces voxel_board stacking logic to derive visible region
 - Parses PLAYGROUND and SIGMA_01 maps to find wall-run distributions
 - All output is console-based; results are copy-pasteable into this document
 

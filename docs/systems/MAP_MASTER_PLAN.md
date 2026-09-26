@@ -14,7 +14,7 @@ The map system is completely data-driven. `room.gd` is a renderer that consumes 
 >   an empty spec. Schema: `docs/technical/MAPFILE_REFERENCE.md`.
 > - **The room is built by `RoomBuilder.build_from_layout(layout, room_size)`**
 >   (`world/builders/room_builder.gd`), not `room._build_room()`. Walls are voxel slices
->   drawn by `VoxelRenderer` (`VOXEL_MASTER_PLAN`), not per-storey wall `TileMapLayer`s.
+>   drawn by `VoxelBoard` (`VOXEL_MASTER_PLAN`), not per-storey wall `TileMapLayer`s.
 > - **Rotation** is `room._set_perspective(direction: String)`. It re-lays the view from
 >   `_base_layout` through `RoomBuilder.layout_with_perspective()` →
 >   `world/utilities/perspective_mapper.gd`, and rebuilds the board. It was suspended for

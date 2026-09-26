@@ -6,12 +6,16 @@
 ## just to re-prove determinism, and a 10-minute timeout whenever another Godot was alive). Measured 2026-09-25, one boot is
 ## 15-45 s; the cost was the number of gates, the doubled boots and the hangs. So:
 ##
-##   quick   ~1.5 min   project_lint, check_invariants, gen_codemap --check, run_selftests. EVERY change.
-##   full    ~5 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
+##   quick   ~1 min     project_lint, check_invariants, gen_codemap --check, run_selftests.
+##   smoke   ~1.5 min   quick + a boot of PLAYGROUND and GLASS that rotates E then N (smoke_boot.py): no grenade, no shot. THE DEFAULT for
+##                      any change under godot/: it catches the runtime wiring the linter cannot, and nothing else is repeated.
+##   full    ~7 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
 ##                      identity gates (`board_probe gate`, `pixel_gate`) held to a STORED BASELINE with ONE boot per case.
 ##                      For a change that touches the board, the state, the light, the ground, the geometry or the shaders.
 ##   docs    seconds    check_invariants + gen_codemap --check. Markdown / PROMPTS / docs only.
-##   auto    (default)  picks one of the above from the files you changed (`git status`, or the last commit if the tree is clean).
+##   auto    (default)  picks docs / quick / smoke from the files you changed (`git status`, or the last commit if the tree is clean).
+##                      It NEVER picks `full`: the identity gates replay the same explosions and shots, so they run only when asked
+##                      (`verify.py full`), when the Director asks, or to close a stage that rewires the board.
 ##
 ## THE BASELINE. Determinism (two boots of the same code give the same pixels and the same dump) was earned when the gates were
 ## built and is re-earned ONLY when a baseline is taken: `verify.py --baseline` runs `pixel_gate --keep` and `board_probe gate
@@ -66,6 +70,8 @@ def steps_for(tier: str, have_baseline: bool):
         return quick[1:3]
     if tier == "quick":
         return quick
+    if tier == "smoke":
+        return quick + [("smoke-boot", False, sh("smoke_boot.py"))]
     identity = []
     if have_baseline:
         identity = [
@@ -115,7 +121,7 @@ def auto_tier():
         return "docs", files
     if all(any(re.search(p, f) for p in DOC_PATTERNS + QUICK_PATTERNS) for f in files):
         return "quick", files
-    return "full", files
+    return "smoke", files
 
 
 def baseline_note():
@@ -151,7 +157,7 @@ def take_baseline() -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Tiered, fail-fast verification (see the header).")
-    ap.add_argument("tier", nargs="?", default="auto", choices=["auto", "quick", "full", "docs"])
+    ap.add_argument("tier", nargs="?", default="auto", choices=["auto", "docs", "quick", "smoke", "full"])
     ap.add_argument("--baseline", action="store_true", help="take the reference set (two boots per case) and stop")
     ap.add_argument("--keep-going", action="store_true", help="run every step even after a failure")
     ap.add_argument("--only", default="", help="comma list: run only the steps whose name contains one of these")

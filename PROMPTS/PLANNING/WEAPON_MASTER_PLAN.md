@@ -119,7 +119,7 @@ weapons exist, and what shape of effect does each one put into the world.**
 > **What W-PRECOOK-02 added:** `BlastCalculator.plan_point_impact()`, D30's ladder
 > as a PURE plan that `apply_point_impact()` then applies, so the warm can resolve
 > which damage-VARIANT atom each voxel will move to
-> (`VoxelRenderer.resolve_damage_swap_for()`) instead of guessing it. Mints after
+> (`VoxelBoard.resolve_damage_swap_for()`) instead of guessing it. Mints after
 > the warm: **36 → 0**.
 >
 > **Per-frame result on PLAYGROUND, `INFILTRAITOR_CAPTURE_ACTION=shot_filmstrip`,
@@ -1056,7 +1056,7 @@ tile, still one `set_cell()` image, no new geometry), distinct from `CRACKED`
 (flat surface mark, fully opaque), and **every material can now reach every
 tier** — this retracts the "stone stays whole" framing below. Both tiers
 render as a dedicated, self-contained impact-mark tile that always bypasses
-the baked-facade lookup (`VoxelRenderer.damage_variant_material()` +
+the baked-facade lookup (`VoxelBoard.damage_variant_material()` +
 `_is_impact_mark()`), loaded from its own folder
 (`ASSETS/ISOMETRIC/source_assets/voxels/impact_marks/`) via the exact
 mechanism `earth_0..7` already proved — real photographic bakes drop in later

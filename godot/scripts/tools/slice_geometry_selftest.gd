@@ -38,7 +38,7 @@ func _initialize() -> void:
 	var e1_renderer = VoxelBoardClass.new()
 	root.add_child(e1_renderer)
 	e1_renderer.setup(VISUAL_GRID_OFFSET)
-	e1_renderer._ensure_voxel_layers(SC.LEVELS_PER_STOREY)
+	e1_renderer._ensure_wall_levels(SC.LEVELS_PER_STOREY)
 	for relative in [0, 1, 7]:
 		var level: int = SC.storey_level_base(0) + relative
 		checked += 1

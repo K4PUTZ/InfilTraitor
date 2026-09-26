@@ -138,9 +138,9 @@ var _edge_registry: EdgeRegistry = null       ## EdgeRegistry of all edges and s
 var _slab_registry: SlabRegistry = null
 ## Written from room_builder.gd (`room._junction_columns = junction_columns`), not from
 ## this file. It looks unused to a grep confined to room.gd — it is not. Deleting it makes
-## that external write a runtime error that aborts build_from_layout() before render(),
+## that external write a runtime error that aborts build_from_layout() before register_geometry(),
 ## and the game boots with no walls. This cost a full session on 2026-07-12. Do not
-## "clean it up"; see _assert_geometry_rendered().
+## "clean it up"; see _assert_geometry_registered().
 ##
 ## The @warning_ignore below is load-bearing: Godot's own linter reports this as
 ## UNUSED_PRIVATE_CLASS_VARIABLE, because it cannot see the cross-file write either. That
@@ -1405,7 +1405,7 @@ func _reapply_base_damage() -> void:
 		if deep_slab != null:
 			_voxel_board.reveal_floor_slab(deep_slab)
 	for gu in reveal_fixed:
-		_voxel_board.render_fixed_earth_level(gu, reveal_fixed[gu])
+		_voxel_board.register_fixed_level(gu, reveal_fixed[gu])
 	_voxel_board.process_dirty(_edge_registry)
 	_voxel_board.process_dirty_slabs(_slab_registry)
 	print_debug("[VL-PERSIST] perspective %s — %d of %d base damage record(s) re-applied, %d had no voxel in this view"
@@ -1851,7 +1851,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## VL-D3: floor columns under structure, from the intact just-built geometry.
 	_under_structure = _voxel_board.columns_with_structure()
 	_room_size = room_size
-	_assert_geometry_rendered()
+	_assert_geometry_registered()
 	_refresh_gu_grid_overlay()
 
 	## SCREENSHOT-HOOK-01: persist the last successfully loaded map id so the
@@ -2602,7 +2602,7 @@ func _set_perspective(direction: String) -> void:
 		_room_builder.build_from_layout(view_layout, room_size)
 		_rebuild_voxel_store("perspective %s" % direction)
 		_room_size = room_size
-		_assert_geometry_rendered()
+		_assert_geometry_registered()
 		_refresh_gu_grid_overlay()
 		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
 		
@@ -5530,7 +5530,7 @@ func _tile_to_screen_center_2d(cell: Vector2i) -> Vector2:
 ## an "unused variable". It is not unused — room_builder.gd writes to it from the outside
 ## (`room._junction_columns = junction_columns`). Deleting it turned that write into a
 ## *runtime* error, which aborts build_from_layout() at that line — before clear() and
-## render() ever run. A guard placed after render() inside the builder would never have
+## register_geometry() ever run. A guard placed after register_geometry() inside the builder would never have
 ## executed either. Execution DOES return here, so here is where the check has to be.
 ##
 ## Why nothing else caught it: GDScript raises invalid-property-assignment at runtime, not
@@ -5542,14 +5542,14 @@ func _tile_to_screen_center_2d(cell: Vector2i) -> Vector2:
 ## The invariant: if the edge registry produced slices, the renderer must have placed
 ## cells. Zero cells from a non-empty registry is a broken render path, and it must be
 ## loud rather than silently shipping an empty map.
-func _assert_geometry_rendered() -> void:
+func _assert_geometry_registered() -> void:
 	if _voxel_board == null or _edge_registry == null:
 		return
 	var slice_count: int = _edge_registry.all_slices().size()
 	if slice_count == 0:
 		return  ## a genuinely wall-less map is legal
 	## No tile is written (the 3D board draws the store), so what counts is that the renderer WALKED the
-	## geometry: cells it placed plus cells it skipped on purpose. A build aborted before render() leaves both at 0.
+	## geometry: cells it placed plus cells it skipped on purpose. A build aborted before register_geometry() leaves both at 0.
 	var placed: int = _voxel_board.get_walked_cell_count()
 	if placed > 0:
 		return

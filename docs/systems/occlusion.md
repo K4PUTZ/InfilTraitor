@@ -774,10 +774,10 @@ On every agent step, view rotation, and (for a preview) hover-cell change,
 between the camera and one or more **origins** (agent position, optionally
 the hover cell) and are close enough on screen to actually hide him. Those
 cells are **erased** from their `TileMapLayer` (not ghosted via alpha —
-`VoxelRenderer.apply_occlusion()`), and a dotted-white wireframe box
+`VoxelBoard.apply_occlusion()`), and a dotted-white wireframe box
 (`OcclusionWireframeOverlay`) is drawn in their place so the structure's
 shape stays legible. Restoring the cell is lossless and verified on every
-capture run (`VoxelRenderer.verify_ghost_roundtrip()`).
+capture run (`VoxelBoard.verify_ghost_roundtrip()`).
 
 ### Walls (OCC-01→27)
 
@@ -790,7 +790,7 @@ capture run (`VoxelRenderer.verify_ghost_roundtrip()`).
   graph (shared grid VERTEX = adjacency), up to `MAX_RING` hops, only through
   simple pass-through vertices continuing the same face — corners and
   junctions stop propagation. Ring index selects
-  `VoxelRenderer.GHOST_ALPHAS` / the wireframe fill alpha.
+  `VoxelBoard.GHOST_ALPHAS` / the wireframe fill alpha.
 - **Always-visible base:** an occluded edge's own bottom
   `BASE_VISIBLE_LEVELS` (2) levels are never erased — reads as solid ground
   truth footprint regardless of ring.
@@ -866,7 +866,7 @@ external boundary.
 
 **Fill:** a translucent quad per exposed face plus the flat top (merged into
 maximal rectangles to avoid antialiasing seams between adjacent per-voxel
-quads), at `VoxelRenderer.GHOST_ALPHAS[ring]` — the same alpha the real
+quads), at `VoxelBoard.GHOST_ALPHAS[ring]` — the same alpha the real
 ghosted material uses, restoring OCC-19's original intent after it had
 drifted to an independently-tuned 30/50/70% through the OCC-21 series.
 Currently 8%/16%/24% (retuned twice live from an initial 3%/6%/9%, both
@@ -889,13 +889,13 @@ light shaft, which is why it looked like a lighting bug; it is entirely the
 wireframe overlay (`INFILTRAITOR_WF_HIDE=1` removes 100% of it).
 
 **Cause — LEVEL-RENUMBER residue.** Both overlays resolved a screen position
-by asking `VoxelRenderer.get_layer(...)` for the layer that actually draws a
+by asking `VoxelBoard.get_layer(...)` for the layer that actually draws a
 level, with a fallback for levels that have no layer built — in practice
 `max_level + 1`, which is where the ghost band's **top-cap** rim and fills
 live. That fallback was written when the ground plane WAS level 0:
 
 ```gdscript
-var base_layer := voxel_renderer.get_layer(0)          # null since the renumber
+var base_layer := voxel_board.get_layer(0)          # null since the renumber
 if base_layer == null:
     return Vector2.ZERO                                 # ← every top-cap point
 return base_pos + Vector2(0.0, -float(level) * VOXEL_STEP_PX)   # absolute level
@@ -953,7 +953,7 @@ than 34 (`max_voxel_z + 1`).
 
 **Pinned by a new invariant, L1 `level-never-a-literal`**
 (`tools/persistent/check_invariants.py`, so it runs in the pre-commit hook): any
-integer literal passed to `get_layer()` outside `voxel_renderer.gd` is a
+integer literal passed to `get_layer()` outside `voxel_board.gd` is a
 violation. Verified red-before-green at both widths.
 
 ⚠️ `prop_01_tests.gd` still reports **4/7**, unchanged by this fix: its
@@ -1057,7 +1057,7 @@ What that bought, beyond ending the blind spot:
 |---|---|---|
 | `version_info_selftest` | failed to LOAD (`Identifier not found: VersionInfo`) — the only test of the version singleton had never run since it was written | 4/4 |
 | `prop_01_selftest` criterion 7 | SKIPPED itself and counted the skip as a pass, because `MapCatalog` → `Registries` was unreachable | compiles SIGMA_01 through the real catalog |
-| `prop_01_selftest` lifetime | leaked two `VoxelRenderer` Node2Ds and 18 resources | freed |
+| `prop_01_selftest` lifetime | leaked two `VoxelBoard` Node2Ds and 18 resources | freed |
 
 ⚠️ **`SceneTree.quit(code)` is DEFERRED** — it asks the tree to stop at the end
 of the frame and returns immediately, so a failing branch must `return` as well.
@@ -1138,7 +1138,7 @@ excused by a comment claiming "we can't instantiate TileMapLayers headless" —
 which three other selftests disprove by doing exactly that. Worse, the formula it
 printed omitted `TILE_OFFSET` entirely, the same re-derivation OCC-FIX-02 had to
 undo in `OcclusionOverlay`; a check that asserts nothing cannot notice its own
-canon is wrong. It now builds a real `VoxelRenderer` and asserts each layer's
+canon is wrong. It now builds a real `VoxelBoard` and asserts each layer's
 `position` against E1 with `relative_level()`. Red-before-green: restoring the
 historical 8 px `TILE_OFFSET` error (112, 56) produces 3 mismatches and exit 1.
 

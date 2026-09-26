@@ -401,7 +401,7 @@ Session: `PROMPTS/RESUMO_SESSAO_2026-08-27_PACING_AND_ORDER.md` §5.
 ➡️ **THAT PLAN NOW EXISTS: [`SOOT_STORAGE_REFORM.md`](SOOT_STORAGE_REFORM.md)**
 (2026-08-27, still 🟡 not started). Read it before building any of this. Its
 opening finding changes the shape of the work: **the store already exists twice**
-— `VoxelRenderer._soot_images` (RG8, R = the per-face code, one texel per cell)
+— `VoxelBoard._soot_images` (RG8, R = the per-face code, one texel per cell)
 and `room._crater_floor_soot` (stored, min-wins, permanent, already persisted by
 `SaveState`, i.e. the ruled B shipped in miniature for the one cell class that
 could not be derived). So the reform is a change of AUTHORITY, not of data

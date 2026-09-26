@@ -106,7 +106,7 @@ affected voxel hard-errors at boot (B6):
 
 ### The failure mode worth naming
 
-`brick` is **not** in `VoxelRenderer.IMPACT_DECAL_MATERIALS` yet, and adding it
+`brick` is **not** in `VoxelBoard.IMPACT_DECAL_MATERIALS` yet, and adding it
 before the files exist is a **silent miss** — not a warning, not a crash. The
 material simply keeps falling back to the generic grey mark and looks vaguely
 wrong. So the id goes in only once the gate is green, and the gate now fails
@@ -147,7 +147,7 @@ python3 tools/persistent/build_atom_sheet.py
 ## 4. What I do when the nine land
 
 1. Run `check_decal.py --material brick`; report the measured numbers, not "looks fine".
-2. Add `"brick"` to `VoxelRenderer.IMPACT_DECAL_MATERIALS`, and to
+2. Add `"brick"` to `VoxelBoard.IMPACT_DECAL_MATERIALS`, and to
    `IMPACT_CRACK_MATERIALS` (it fractures; metal and wood do not).
 3. Update `voxels/manifest.json` — `materials` and `crack_materials`. It is what
    the runtime reads for variant discovery, and `voxel_decal_selftest.gd`

@@ -272,5 +272,5 @@ func is_cell_in_shadow(cell: Vector2i) -> bool
   shadows, exposure) gets painted onto voxel faces as 6-then-12 discrete
   buckets, plus blast soot/ember/crater visuals and destruction persistence
   through perspective rotation. Read that doc before touching
-  `VoxelLightField`, `VoxelRenderer.apply_light_field*()`, or `EmberOverlay` —
+  `VoxelLightField`, `VoxelBoard.apply_light_field*()`, or `EmberOverlay` —
   this doc's split (brightness ≠ visibility) is the canon it inherits.

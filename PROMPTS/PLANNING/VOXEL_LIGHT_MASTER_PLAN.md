@@ -12,7 +12,7 @@
 
 > **⏭️ 2026-09-15 — two notes before the header.**
 > 1. **§1 records the ratified 6 buckets; the code runs 12**
->    (`VoxelRenderer.LIGHT_BUCKET_COUNT = 12`, and `CLAUDE.md` / `docs/README.md` quote 12).
+>    (`VoxelBoard.LIGHT_BUCKET_COUNT = 12`, and `CLAUDE.md` / `docs/README.md` quote 12).
 >    Read §1's number as the original ratification, not the value in force.
 > 2. **The 3D render path is ratified ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).**
 >    - **Carries over unchanged:** the light field, the buckets and PERF-P3's per-cell
@@ -35,7 +35,7 @@
 > geometry/mechanism reference for the voxel FACE lighting plane (buckets, blast
 > visuals, persistence, temporal repaint, per-face shading and per-face soot) —
 > read it before
-> touching `VoxelLightField`, `VoxelRenderer.apply_light_field*()`,
+> touching `VoxelLightField`, `VoxelBoard.apply_light_field*()`,
 > `godot/shaders/voxel_face_shading.gdshader`, `EmberOverlay`, or the
 > destruction↔lighting seam in `test_zone_controller.gd`. Item 6 (metal
 > denting/warping), the 4-view prebuild optimization, and per-FACE soot CONTENT
@@ -98,7 +98,7 @@ tactical side (5 visibility classes, detection multipliers) is owned by
   rotation and emits `lighting_rebuilt` — the natural rebuild hook.
 - The per-cell tint mechanism is proven in production: occlusion ghosts are
   **alternative tiles with per-alternative `modulate`**
-  (`VoxelRenderer._mint_ghost_alternatives()`, `GHOST_ALT_IDS = [1,2,3]`),
+  (`VoxelBoard._mint_ghost_alternatives()`, `GHOST_ALT_IDS = [1,2,3]`),
   applied per cell via `set_cell()`. `BAKE_SYSTEM_REFERENCE.md` names this
   same lever for per-wall tints.
 - Baked pages are grayscale; blend rides per-tile modulate (`MULTIPLY` +
@@ -261,7 +261,7 @@ damage was invisible, and grenades spared the ground.
   collected in their own bucket (different vertical ring step — a floor's
   destructible plane is one level, D13). **24 floor slabs** hit with correct
   falloff (ring1 22/64, ring2 11/64, ring3 3/64). Also triggered D18's lazy
-  fixed-level reveal for the first time (`render_fixed_earth_level`, whose own
+  fixed-level reveal for the first time (`register_fixed_level`, whose own
   docstring said "Part 3, not built yet") — without it the crater had no bottom
   and the legacy floor plane showed through as untouched ground.
 - Destruction now re-derives the light field, so new cavity walls pick up their
@@ -302,7 +302,7 @@ a lighting one — flagged for the Director, not silently worked around.
 The blocker above is closed. A temporal light's toggle now repaints ONLY its
 own influence set, never the whole map.
 
-- **`VoxelRenderer._placed_by_gu`**: GU → `[{level, cell}]` for every placed
+- **`VoxelBoard._placed_by_gu`**: GU → `[{level, cell}]` for every placed
   voxel, built as a free side-effect of each FULL `apply_light_field()` pass
   (which already visits every cell). `apply_light_field_gus(field, gus)` uses
   it to repaint only the given GUs — skips entirely for a GU with nothing
@@ -417,7 +417,7 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
      revealed level — a tuning pass, flagged not silently taken.
 3. **Under-wall floor darkening ✅ LANDED 2026-07-24 (VL-D3).** Took the
    Director's cleaner idea: darken the floor that was under structure, so
-   exposure reveals the difference naturally. `VoxelRenderer.
+   exposure reveals the difference naturally. `VoxelBoard.
    columns_with_structure()` returns every column with a wall/block/roof voxel
    (positive levels); `room._under_structure` is computed from it after each
    build FROM THE INTACT geometry (before reapply_damage), so it reflects the
@@ -461,7 +461,7 @@ room-filling lamp radius, so expect lower cost than the 75ms worst-case above.
      alternative's modulate is SHARED by every voxel placed at that
      `(source, atlas_coords, alt_id)` — the exact sharing that makes VL-01/
      VL-03 cheap — so it structurally cannot carry one voxel's own
-     independent, time-varying colour. `VoxelRenderer.voxel_world_position()`
+     independent, time-varying colour. `VoxelBoard.voxel_world_position()`
      (new, analytic — reuses the real `TileMapLayer.position +
      map_to_local()`, no empirical offset) gives the overlay a draw point.
      Seeded from wood-material ring-0 (`soot_ring == 0`) survivors right
@@ -621,7 +621,7 @@ diferença."*
 **The defect FACE-READ-01 still had, measured before touching anything.** Its
 face factors are MULTIPLIES, so their effect shrinks with the pixel value and
 disappears entirely into 8-bit quantisation — exactly where soot lives. Scanned
-over the real canon grid (`VoxelRenderer.bucket_luminance` ×
+over the real canon grid (`VoxelBoard.bucket_luminance` ×
 `VoxelLightField.soot_darkening` × `FLOOR_DEPTH_DIM`, art pixel 4..255):
 
 | | collapsed to <3 distinct face values | brightest top face still collapsing |
@@ -696,7 +696,7 @@ leaves both colour paths untouched.
   is why a crater's inner wall now reads scorched while its outer slope does not.
   Ties MERGE rather than race (min per face), so a corner voxel between two holes
   scorches on both sides and the result is order-independent.
-- **Carrier.** `VoxelRenderer._ensure_light_alt()` writes
+- **Carrier.** `VoxelBoard._ensure_light_alt()` writes
   `modulate.a = (code + 1) / 64`, `code = top*16 + se*4 + sw` (ring 0..2, 3 =
   clean). Clean is code 63 → alpha exactly 1.0, so **an untouched voxel's tile is
   bit-identical to what it was before this existed** and a map with no
@@ -820,7 +820,7 @@ the ceiling.
 
 **Cost to weigh when it is taken up** (this is the part that is not free): the
 index becomes derived from two terms that live in different files and are tuned
-independently today — `VoxelRenderer.bucket_luminance` (12 light levels) and the
+independently today — `VoxelBoard.bucket_luminance` (12 light levels) and the
 shader's `soot_face_mult` (4 soot levels). Merging them means recalibrating both
 together into one 12-level ramp, and FACE-SOOT-01's calibration lesson applies
 directly: `soot_face_mult` ships at `[0.33, 0.47, 0.69, 1.0]` precisely because

@@ -52,7 +52,7 @@ before authoring, not during"*. All three answered:
 **Decision 2 costs almost nothing, GIVEN decision 1**, and that is a real
 finding rather than an optimistic reading.
 
-Light does not read `damage_state`. `VoxelRenderer.build_occupancy()` is built
+Light does not read `damage_state`. `VoxelBoard.build_occupancy()` is built
 from `TileMapLayer.get_used_cells()`, and a voxel that goes `DESTROYED` has its
 cell **erased** by `_process_dirty_slice_voxel()`'s `else` branch. So the moment
 fire converts a voxel to `DESTROYED`, that cell leaves occupancy, and the light

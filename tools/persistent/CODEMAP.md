@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**249 scripts · 80060 lines total** (under `godot/scripts/`)
+**249 scripts · 80052 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1053,7 +1053,7 @@ extends `Node3D` · 1902 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2158 lines
+`class_name VoxelBoard` · extends `Node2D` · 2150 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1067,14 +1067,35 @@ extends `Node3D` · 1902 lines
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood", "brick"]`
 - `IMPACT_DECAL_VARIANTS` = `3`
+- `_CellPlaneStoreScript` = `preload("res://godot/scripts/systems/cell_plane_store.gd")`
+- `BUCKET_UNWRITTEN` = `_CellPlaneStoreScript.BUCKET_UNWRITTEN`
+- `SOOT_PLANE_ORIGIN` = `_CellPlaneStoreScript.SOOT_PLANE_ORIGIN`
+- `SOOT_TEX_SIZE` = `_CellPlaneStoreScript.SOOT_TEX_SIZE`
 - `GlassCrackParamsClass` = `preload("res://godot/scripts/systems/destruction/glass_crack_params.gd")`
 - `CRAZE_MASK_TEXELS_PER_VOXEL` = `6`
 - `FloorPile3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
+- `var render_frame_budget_ms: float = 200.0`
 
 **Public API**
+- `func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:`
+- `func columns_with_structure() -> Dictionary:`
+- `func note_external_write(level: int, cell: Vector2i) -> void:`
+- `func apply_light_field(field) -> void:`
+- `func apply_light_field_cells(field, cells: Dictionary) -> void:`
+- `func apply_light_field_gus(field, gus: Array) -> void:`
+- `func process_dirty(registry: EdgeRegistry) -> void:`
+- `func process_dirty_slabs(registry: SlabRegistry) -> void:`
+- `func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:`
+- `func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> void:`
+- `func reset_cell_planes() -> void:`
+- `func cell_bucket_at(level: int, cell: Vector2i) -> int:`
+- `func cell_plane_image(level: int) -> Image:`
+- `func cell_plane_levels() -> Array:`
+- `func cell_soot_at(level: int, cell: Vector2i) -> int:`
+- `func flush_cell_soot() -> int:`
 - `func glass_crack_covering(pane_id: String, run: int, level: int) -> int:`
 - `func spawn_glass_crack(spec: Dictionary) -> int:`
 - `func spawn_glass_craze(spec: Dictionary) -> int:`
@@ -2213,7 +2234,7 @@ extends `Node2D` · 42 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
-> DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN). Builds one `WorldDelta` for a single grenade detonation: all resolution, all exposure fallback, and the single map-wide light-field query, folded into one object a later choreography driver (Task 5/E-WAVE) can play back from `delta.waves` as a pure sequence of `set_cell()`/`erase_cell()` calls with zero further compositing/lookup — the performance idea §2 states once: "no compositing, no lookup, no light rebuild, no allocation happens inside a wave." **P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09): this class is now PURE.** It changes nothing — not a tile, not a Voxel — and returns a description of what a detonation WOULD do. `delta.commit()` is what makes it happen, and the caller owns that decision. Everything this pass used to read off freshly-mutated Voxels it now reads through `WorldDelta`'s projection. What this class does NOT do, on purpose: - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelBoard call it makes runs in resolve-only mode (`apply=false`, Task 4's own seam added to `_set_voxel_cell()`/`render_slab()`/ `render_fixed_earth_level()`/`resolve_damage_voxel_swap()`). A voxel's on-screen TILE is only ever resolved, never painted, until a wave chooses to apply the plan entry produced here. - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s `commit_damage()` remains the single writer (DESTRUCTION_MASTER_PLAN §3); this pass only ever calls its `simulate_*` half. - It never CALLS `room.record_voxel_damage_to_base()`/increments `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's job, the same split Task 2/3 already established for their own new parameters. It DOES return the raw material for the first of those (`delta.touched_voxels`, `Array[Voxel]` — every voxel this blast's containers would change the damage_state of, DESTROYED or DENTED/ CRACKED), so Task 5's caller can persist without a second flood/ find_affected_containers pass to re-derive the same set. That list is only meaningful AFTER `commit()`, which is when its caller reads it. - It never schedules or times anything — the plan is a static census of what EVERY wave should eventually paint; Task 5 owns turning that into a 40 ms-cadenced sequence. `ctx` is a plain Dictionary rather than a typed context object, matching the project's existing MinimalRoom precedent (damage_atom_bake_selftest.gd) for running real BlastCalculator machinery against either a full `room.gd` or a trimmed selftest scaffold without either needing to know about the other: "edge_registry": EdgeRegistry        (required) "slab_registry": SlabRegistry        (required) "voxel_board": VoxelBoard      (required) "blocked_edges": Dictionary          (optional, default {}) "blocked_cells": Dictionary          (optional, default {}) "lights": Array                      (optional, default [] — real light sources, e.g. RoomBuilder.get_ light_sources()) "shadow_results": Array              (optional, default []) "under_structure": Dictionary        (optional, default {} — VL-D3 "never saw the sun" darkening; derived from the CURRENT geometry if omitted, see _columns_with_structure()) "deep_layer_unlocked": bool          (optional, default false — D2; no live caller drives true yet)
+> DetonationPlanBuilder — EXPLOSION_REBUILD_MASTER_PLAN Task 4 (E-PLAN). Builds one `WorldDelta` for a single grenade detonation: all resolution, all exposure fallback, and the single map-wide light-field query, folded into one object a later choreography driver (Task 5/E-WAVE) can play back from `delta.waves` as a pure sequence of `set_cell()`/`erase_cell()` calls with zero further compositing/lookup — the performance idea §2 states once: "no compositing, no lookup, no light rebuild, no allocation happens inside a wave." **P-DELTA (PREDICTION_MASTER_PLAN Task 3, 2026-08-09): this class is now PURE.** It changes nothing — not a tile, not a Voxel — and returns a description of what a detonation WOULD do. `delta.commit()` is what makes it happen, and the caller owns that decision. Everything this pass used to read off freshly-mutated Voxels it now reads through `WorldDelta`'s projection. What this class does NOT do, on purpose: - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelBoard call it makes runs in resolve-only mode (`apply=false`, Task 4's own seam added to `_set_voxel_cell()`/`register_slab()`/ `register_fixed_level()`/`resolve_damage_voxel_swap()`). A voxel's on-screen TILE is only ever resolved, never painted, until a wave chooses to apply the plan entry produced here. - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s `commit_damage()` remains the single writer (DESTRUCTION_MASTER_PLAN §3); this pass only ever calls its `simulate_*` half. - It never CALLS `room.record_voxel_damage_to_base()`/increments `_gu_blast_count`/appends a stamped-blast replay list — that is Task 5's job, the same split Task 2/3 already established for their own new parameters. It DOES return the raw material for the first of those (`delta.touched_voxels`, `Array[Voxel]` — every voxel this blast's containers would change the damage_state of, DESTROYED or DENTED/ CRACKED), so Task 5's caller can persist without a second flood/ find_affected_containers pass to re-derive the same set. That list is only meaningful AFTER `commit()`, which is when its caller reads it. - It never schedules or times anything — the plan is a static census of what EVERY wave should eventually paint; Task 5 owns turning that into a 40 ms-cadenced sequence. `ctx` is a plain Dictionary rather than a typed context object, matching the project's existing MinimalRoom precedent (damage_atom_bake_selftest.gd) for running real BlastCalculator machinery against either a full `room.gd` or a trimmed selftest scaffold without either needing to know about the other: "edge_registry": EdgeRegistry        (required) "slab_registry": SlabRegistry        (required) "voxel_board": VoxelBoard      (required) "blocked_edges": Dictionary          (optional, default {}) "blocked_cells": Dictionary          (optional, default {}) "lights": Array                      (optional, default [] — real light sources, e.g. RoomBuilder.get_ light_sources()) "shadow_results": Array              (optional, default []) "under_structure": Dictionary        (optional, default {} — VL-D3 "never saw the sun" darkening; derived from the CURRENT geometry if omitted, see _columns_with_structure()) "deep_layer_unlocked": bool          (optional, default false — D2; no live caller drives true yet)
 
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
@@ -3712,7 +3733,7 @@ extends `SceneTree` · 152 lines
 
 `godot/scripts/tools/fixed_floor_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN D13 — fixed floor level selftest. Rodar: godot --headless --script res://godot/scripts/tools/fixed_floor_selftest.gd Proves render_fixed_earth_level() (the 7 non-destructible levels) and render_slab() (the 1 destructible top) compose into the full D13 8-level stack — without the fixed levels ever touching Slab/Voxel/dirty-tracking. R3D-END (END-1): [1] (the 64 placed cells' variant) went with the 2D board (it read placed TILES; no tile is written any more). The rest stays until END-4 deletes `render_fixed_earth_level()` and the level layers.
+> DESTRUCTION_MASTER_PLAN D13 — fixed floor level selftest. Rodar: godot --headless --script res://godot/scripts/tools/fixed_floor_selftest.gd Proves register_fixed_level() (the 7 non-destructible levels) and register_slab() (the 1 destructible top) compose into the full D13 8-level stack — without the fixed levels ever touching Slab/Voxel/dirty-tracking. R3D-END (END-1): [1] (the 64 placed cells' variant) went with the 2D board (it read placed TILES; no tile is written any more). The rest stays until END-4 deletes `register_fixed_level()` and the level layers.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -4252,7 +4273,7 @@ extends `SceneTree` · 157 lines
 
 `godot/scripts/tools/negative_storey_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN D17/D18 — negative storey selftest. Rodar: godot --headless --script res://godot/scripts/tools/negative_storey_selftest.gd Proves the floor can live at negative levels without disturbing the existing (positive) wall/block/prop pipeline at all — D17's whole claim. R3D-END (END-1): [4] and [5] (render_block() / render_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more). END-4: [6] (`_set_voxel_cell()` on an unensured level) went with the placement. The rest stays until END-6 turns the level layers into arithmetic.
+> DESTRUCTION_MASTER_PLAN D17/D18 — negative storey selftest. Rodar: godot --headless --script res://godot/scripts/tools/negative_storey_selftest.gd Proves the floor can live at negative levels without disturbing the existing (positive) wall/block/prop pipeline at all — D17's whole claim. R3D-END (END-1): [4] and [5] (register_block_levels() / register_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more). END-4: [6] (`_set_voxel_cell()` on an unensured level) went with the placement. The rest stays until END-6 turns the level layers into arithmetic.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -4546,7 +4567,7 @@ extends `SceneTree` · 309 lines
 
 `godot/scripts/tools/roof_slab_selftest.gd`
 
-> DESTRUCTION_MASTER_PLAN — roof/ceiling ("laje") geometry selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_slab_selftest.gd Proves the "2+ levels, ALL destructible, existing wall material" roof model this session's Director asked for: unlike the floor (1 destructible Slab + 7 fixed non-Slab levels, D13), a roof is N independent Slabs, one per level, each fully destructible — falls out of calling the EXISTING SlabGenerator N times, zero new geometry classes needed. No bake system involved yet (Director's call: geometry first, bake as a later experiment) — render_slab_solid() places one fixed wall material per voxel, the same way render_block() already does for a whole block, just through Slab/Voxel so every level is independently dirty-tracked.
+> DESTRUCTION_MASTER_PLAN — roof/ceiling ("laje") geometry selftest. Rodar: godot --headless --script res://godot/scripts/tools/roof_slab_selftest.gd Proves the "2+ levels, ALL destructible, existing wall material" roof model this session's Director asked for: unlike the floor (1 destructible Slab + 7 fixed non-Slab levels, D13), a roof is N independent Slabs, one per level, each fully destructible — falls out of calling the EXISTING SlabGenerator N times, zero new geometry classes needed. No bake system involved yet (Director's call: geometry first, bake as a later experiment) — register_slab_solid() places one fixed wall material per voxel, the same way register_block_levels() already does for a whole block, just through Slab/Voxel so every level is independently dirty-tracked.
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`

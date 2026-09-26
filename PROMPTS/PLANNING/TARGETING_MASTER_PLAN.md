@@ -583,7 +583,7 @@ silently-inert rather than visible breakage. Both are now closed.
 - **E-FRAG's post-blast debris has never fired — CLOSED 2026-08-12.** Two
   bugs, both silent because nothing but a real detonation exercises the path.
   `shrapnel_overlay.gd:49` and `debug_ray_overlay.gd:45` both called
-  `VoxelRenderer.cell_level_to_world()`, which never existed — every
+  `VoxelBoard.cell_level_to_world()`, which never existed — every
   detonation raised a SCRIPT ERROR and aborted before a single fragment/ray
   was built (confirmed NOT to abort the caller too: `_start_waves()` right
   after it always ran, so real destruction was never affected). Real name:

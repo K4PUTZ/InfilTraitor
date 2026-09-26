@@ -17,8 +17,8 @@
 ## What this class does NOT do, on purpose:
 ##  - It never calls `layer.set_cell()`/`erase_cell()` — every VoxelBoard
 ##    call it makes runs in resolve-only mode (`apply=false`, Task 4's own
-##    seam added to `_set_voxel_cell()`/`render_slab()`/
-##    `render_fixed_earth_level()`/`resolve_damage_voxel_swap()`). A voxel's
+##    seam added to `_set_voxel_cell()`/`register_slab()`/
+##    `register_fixed_level()`/`resolve_damage_voxel_swap()`). A voxel's
 ##    on-screen TILE is only ever resolved, never painted, until a wave chooses
 ##    to apply the plan entry produced here.
 ##  - It never writes DAMAGE STATE either, since P-DELTA. `BlastCalculator`'s
@@ -2355,7 +2355,7 @@ static func _resolve_expose_below(slab: Slab, voxel_board: VoxelBoardClass, slab
 		Slab.make_id(slab.gu_cell, Slab.Role.FLOOR, below_level))
 	if below_slab != null:
 		return voxel_board.reveal_floor_slab(below_slab, false)
-	return voxel_board.render_fixed_earth_level(slab.gu_cell, below_level, false)
+	return voxel_board.register_fixed_level(slab.gu_cell, below_level, false)
 
 
 static func _append(by_ring: Dictionary, ring: int, entry: Dictionary) -> void:

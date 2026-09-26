@@ -64,7 +64,7 @@ var xyz := PackedInt32Array()
 ## RENDER3D R3D-14 — per claim, 0 = not a glass PANE voxel, else the pane's face + 1 (`Face`: NW 0, NE 1, SE 2, SW 3).
 ## What the renderer routes to its pane layer, decided once at build so the glass state can be asked of the store
 ## instead of a hidden `TileMapLayer`: a slice's voxel whose (band-resolved) material is glass, on the slice's face;
-## a glass INTERIOR slab's voxel (a glazed partition), face NW as `render_slab_solid()` passes it. A CEILING or FLOOR
+## a glass INTERIOR slab's voxel (a glazed partition), face NW as `register_slab_solid()` passes it. A CEILING or FLOOR
 ## slab and a junction column are never panes. Immutable after the build: presence is `pane != 0` AND visible.
 var pane := PackedByteArray()
 var material_ids := PackedStringArray()

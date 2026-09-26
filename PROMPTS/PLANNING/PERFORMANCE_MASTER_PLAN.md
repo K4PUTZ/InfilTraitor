@@ -60,7 +60,7 @@ reading this plan:
   **§14.3's consequence** — `INFILTRAITOR_HIDE_VOXELS` was broken until 2026-09-12
   (cause and fix in §14.3), so §12.4's conclusion that rested on it still needs
   re-measuring on desktop. Optional and cheap: a
-  base-occupancy cache in `VoxelRenderer`, which removes D-7's 45 ms cook step and
+  base-occupancy cache in `VoxelBoard`, which removes D-7's 45 ms cook step and
   speeds up every room repaint.
 - **What ships and defaults ON:** P3 (the cell plane, recovery 100.000%) and
   P7b/P7c (the `MultiMesh` circle field).
@@ -227,7 +227,7 @@ The two figures that DID move are the ones P3 inherits.
 
 ### 1.5 ⚠️ WHAT THE APPLY IS ACTUALLY MADE OF — and it inverts §4
 
-`INFILTRAITOR_APPLY_SPLIT_PROBE=1` (`VoxelRenderer._apply_split_probe()`). Three
+`INFILTRAITOR_APPLY_SPLIT_PROBE=1` (`VoxelBoard._apply_split_probe()`). Three
 phases ordered so each can only measure itself: WARM forces the light field's
 lazy per-cell derivation, APPLY runs against a warm cache, APPLY AGAIN is the
 walk alone because every cell is already at its target.
@@ -1221,7 +1221,7 @@ silent 10 px error sits squarely inside the observed 2–8 px spread. `alt 0` an
 `TRANSFORM_FLIP_H` are native tiles no `create_alternative_tile()` ever produced,
 which made them the obvious suspects.
 
-`VoxelRenderer.debug_tiledata_census()`, run inside the gate:
+`VoxelBoard.debug_tiledata_census()`, run inside the gate:
 
 ```
 [P3-GATE] TILEDATA CENSUS — 205704 placed cell(s) · 0 resolve to NULL TileData (0.00%)
@@ -2089,7 +2089,7 @@ Found while arming this same instrument for the soot storage reform's SS-0, and
 recorded here because this is where anyone will come looking.
 
 **§12's `PERF-P3` shipped default-ON on 2026-08-26 and structurally removed
-§9.11a's mechanism.** Under `P3_CELL_BUCKET` (`voxel_renderer.gd:637`, ON unless
+§9.11a's mechanism.** Under `P3_CELL_BUCKET` (`voxel_board.gd:637`, ON unless
 the env var says `0`), `encode_light_alt()` returns `alt_for_flip()` — **the
 light bucket does not travel in the alternative id at all.** §9.11a's route in
 was *"that cell enters the wave on the **alt** half of that OR"*, and a light
@@ -2139,7 +2139,7 @@ F9 was carried as *"the whole fire in the pre-cook. Blocked: `_build_soot_snapsh
 takes `predict_weapon_cells` only, and a burn's holes are BLAST provenance."*
 
 **That blocker describes nothing that still exists.** PERF-P2 moved the scorch into
-its own per-cell plane, and `VoxelRenderer.warm_light_alts_for_gus()` mints on
+its own per-cell plane, and `VoxelBoard.warm_light_alts_for_gus()` mints on
 `encode_light_alt(field.bucket_for(cell, level), decode_light_flipped(prev_alt))` —
 **soot is not an input to it at all**. Warming "the sooty world" was never the thing
 F9 needed, so the provenance objection cannot block it. The pre-cook has been
@@ -2346,7 +2346,7 @@ an apply driven by that set requires.
 So the proposal, for ratification rather than built:
 
 1. `VoxelLightField` keeps its stale set and exposes it.
-2. `VoxelRenderer.apply_light_field_cells(field, cells)` — the identical per-cell
+2. `VoxelBoard.apply_light_field_cells(field, cells)` — the identical per-cell
    body, over that set instead of `get_used_cells()` map-wide. It touches
    `_placed_by_gu` not at all, so **cause 1 of §10.2 stops existing** rather than
    being patched.
@@ -2396,7 +2396,7 @@ the first failure. `DetonationChoreographer` is documented as *"the ONLY place a
 plan ever reaches `set_cell()`"*, and it writes the plan's own alternative and
 scorch straight onto the layer. The stale set rests on *"a cell whose value changed
 was invalidated in the field"*, which covers every change the FIELD causes and none
-that a direct write causes. `VoxelRenderer.note_external_write()` is the writer
+that a direct write causes. `VoxelBoard.note_external_write()` is the writer
 naming what it wrote; the next full-coverage apply unions it in and clears it.
 **The map-wide walk WAS this bookkeeping, done by brute force every time.**
 
@@ -2444,7 +2444,7 @@ it, every shot, instead of accumulating.
 
 ### The seam this needed, and why it belongs at the placement site
 
-`VoxelRenderer._set_voxel_cell()` now calls `note_external_write()`. Rule 8 makes
+`VoxelBoard._set_voxel_cell()` now calls `note_external_write()`. Rule 8 makes
 it the only way a Wall or Slab voxel reaches the tilemap, which is precisely why
 the note belongs there and not at its callers: damage variants, re-renders after
 destruction and the shot's own dirty pass all funnel through it, and none of them
@@ -2510,7 +2510,7 @@ accident while chasing something else. `pos=` was added and the baseline re-take
 ### 11.2 A RENDER LEVEL IS NOT A TEXTURE ROW, and this cost four separate bugs
 
 The lesson repeated until it was written down: several axes are *indexed by level*
-and have their own origin at zero. `VoxelRenderer.relative_level()` is the single
+and have their own origin at zero. `VoxelBoard.relative_level()` is the single
 conversion, and each of these was found by the gate refusing to pass:
 
 | axis confused with a render level | measured cost |
@@ -3301,7 +3301,7 @@ was measured with the broken flag, on desktop, and this fix does not re-measure
 it. What follows is the original note, kept as written.
 
 
-It sets `layer.visible = false` inside `VoxelRenderer._build_voxel_layer_node()`.
+It sets `layer.visible = false` inside `VoxelBoard._build_voxel_layer_node()`.
 In a real PLAYGROUND capture with `INFILTRAITOR_HIDE_VOXELS=1`, **the walls,
 crates and floor are all still drawn.** Verified visually 2026-08-27, not
 investigated further.

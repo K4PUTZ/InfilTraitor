@@ -131,7 +131,7 @@ Art-independent, landing before your files arrive:
   `flammability`, `base_color`, `has_facade: true`.
 - `ShotPunchTable.RESISTANCE` and `DESTROY_MIN` rows, so each one breaks at its
   own rate rather than sharing concrete's.
-- Registration in `BakeCompositor.VOXEL_MATERIALS`, `VoxelRenderer.BASE_MATERIALS`
+- Registration in `BakeCompositor.VOXEL_MATERIALS`, `VoxelBoard.BASE_MATERIALS`
   (appended, never inserted — index 0 is the last-resort fallback) and the
   `canonical_voxel_atom_for()` aliases.
 - PLAYGROUND blocks, which are currently reserved as open floor at

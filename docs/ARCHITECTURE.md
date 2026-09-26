@@ -50,7 +50,7 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 >
 > **Implementation progress (VOXEL series):**
 > - ✅ **VOXEL-01:** Fixed geometry (flat→3D cube), regenerated PNG tiles (4 materials)
-> - ✅ **VOXEL-02:** Coordinate constants + TileSet infrastructure; `_build_voxel_tileset()`, `_ensure_voxel_layers()`
+> - ✅ **VOXEL-02:** Coordinate constants + TileSet infrastructure; `_build_voxel_tileset()`, `_ensure_wall_levels()`
 > - ✅ **VOXEL-03:** Data classes (VoxelRef, WallSlice, HighWall) with comprehensive selftest (425 checks)
 > - ✅ **VOXEL-04:** Wall voxel placement via `set_cell()`; `_place_wall_voxels()`, `_voxel_slice_positions()`
 > - ✅ **VOXEL-05:** Junction detection + extra voxels; `_build_voxel_junction_extras()`, corner-fill logic
@@ -149,7 +149,7 @@ destructibility: `ref.visible = false` + `ref.dirty = true` → next TIC calls `
 |------|-------|--------|--------|
 | `tools/generate_voxel.py` | VOXEL-01 | Regenerated PNG tiles with correct 3D cube geometry (top + left/right faces) | ✅ Complete |
 | `godot/scripts/geometry/geometry_coords.gd` | VOXEL-02 | Added voxel coordinate functions: `gu_to_voxel_origin()`, `voxel_to_gu()`, `voxel_local()`, `gu_voxels()` | ✅ Complete |
-| `godot/scripts/world/room.gd` | VOXEL-02, -04 | Added voxel infrastructure: `_build_voxel_tileset()`, `_ensure_voxel_layers()`, `_place_wall_voxels()`, `_voxel_slice_positions()` | ✅ Complete |
+| `godot/scripts/world/room.gd` | VOXEL-02, -04 | Added voxel infrastructure: `_build_voxel_tileset()`, `_ensure_wall_levels()`, `_place_wall_voxels()`, `_voxel_slice_positions()` | ✅ Complete |
 | `godot/scripts/world/voxel_ref.gd` | VOXEL-03 | Created data class for individual voxel state (visible, dirty, damage_state, face_atlas_rect) | ✅ Complete |
 | `godot/scripts/world/wall_slice.gd` | VOXEL-03 | Created primary container (8 voxels × N storeys per wall edge) | ✅ Complete |
 | `godot/scripts/world/high_wall.gd` | VOXEL-03 | Created secondary container (group of WallSlices + junction extras) | ✅ Complete |
@@ -779,7 +779,7 @@ This architecture deliberately separates **visual depth** from **gameplay depth*
 | **Voxel system** — *rows corrected 2026-09-15; the files this table named never shipped under those names* | |
 | Voxel data classes | `geometry/{voxel,slice,slab,edge}.gd`, `geometry/junction_resolver.gd` (`JunctionColumn`) |
 | Registries & generators | `geometry/{edge_registry,slab_registry,slice_generator,slab_generator}.gd` |
-| Voxel renderer (the 2D board) | `geometry/voxel_renderer.gd` (7 886 lines) |
+| Voxel renderer (the 2D board) | `geometry/voxel_board.gd` (7 886 lines) |
 | Baking system | `systems/{bake_config,bake_compositor,baked_tile_lookup,texture_resolver,facade_sampler,damage_variant_baker}.gd` |
 | Destruction & prediction | `systems/destruction/`, `systems/prediction/` |
 | 3D board prototype | `spikes/board3d_live.gd` |

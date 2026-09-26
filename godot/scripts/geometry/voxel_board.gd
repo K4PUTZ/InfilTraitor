@@ -199,10 +199,10 @@ var _visual_grid_offset: Vector2
 ## DEBUG-02: Accumulated nudge offset (pixels). Applied to all layers for real-time measurement.
 var debug_nudge: Vector2 = Vector2.ZERO
 
-## BAKE-DIAG-01: placement counters, reset at the top of each render() call
+## BAKE-DIAG-01: placement counters, reset at the top of each register_geometry() call
 var _diag_total_cells: int = 0
 ## Cells (a slice voxel, a junction column, a slab GU) this pass walked but did NOT write, because
-## the 3D board draws them from the store. `_assert_geometry_rendered()` needs them: under a 3D board
+## the 3D board draws them from the store. `_assert_geometry_registered()` needs them: under a 3D board
 ## `_diag_total_cells` is 0 for a map whose walls are all opaque, and that is not a broken render path.
 var _diag_skipped_cells: int = 0
 var _diag_slice_count: int = 0
@@ -268,7 +268,7 @@ func get_max_voxel_z_index() -> int:
 	return _wall_base_z_index + (top_wall_level() - _ground_plane_level)
 
 
-## Placed plus deliberately skipped: how many cells the last render() walked. What the "did the render path run at
+## Placed plus deliberately skipped: how many cells the last register_geometry() walked. What the "did the render path run at
 ## all" check asks (see `_diag_skipped_cells`).
 func get_walked_cell_count() -> int:
 	return _diag_total_cells + _diag_skipped_cells
@@ -348,48 +348,42 @@ static var GLASS_RIM_ENABLED: bool = OS.get_environment("INFILTRAITOR_GLASS_RIM"
 static var GLASS_OPENING_DEFAULT: String = "star_deep"
 
 
-## Render all slices and junction columns from registry
-## Creates cells in layers based on voxel positions and levels
-func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
-	# BAKE-DIAG-01: reset placement counters for this render pass
+## Register the levels every slice and junction column of the registry needs, and count the cells walked
+## (`get_walked_cell_count()`, what `Room._assert_geometry_registered()` asks). R3D-END: nothing is drawn or placed — the 3D board meshes
+## the `VoxelStore`; this only makes the levels exist for `level_origin()` and its readers. It was `render()`, which placed tiles.
+func register_geometry(registry: EdgeRegistry, junction_columns: Array = []) -> void:
+	# reset the walk counters for this pass
 	_diag_total_cells = 0
 	_diag_skipped_cells = 0
 
 	_diag_slice_count = 0
-	# Iterate all slices and render their voxels
+	# Iterate all slices
 	for slice in registry.all_slices():
 		_diag_slice_count += 1
-		_render_slice(slice)
+		_register_slice(slice)
 
-	# Render junction columns.
-	# INFILTRAITOR_SKIP_JUNCTIONS=1 renders the map with the filler columns
-	# omitted — diff two captures to see exactly which pixels on screen belong
-	# to junction columns and nothing else. This is how TOP-JUNCTION-06's
-	# follow-up isolated their real screen footprint; keep it, it is the only
-	# cheap way to answer "is this column doing anything?" for a given map.
+	# Junction columns. INFILTRAITOR_SKIP_JUNCTIONS=1 leaves them out of the walk (a 2D-era capture instrument, TOP-JUNCTION-06).
 	if OS.get_environment("INFILTRAITOR_SKIP_JUNCTIONS") != "1":
 		for column in junction_columns:
-			_render_junction_column(column)
+			_register_junction_column(column)
 
 
-## Render a solid block (SLICE-02: A-T2)
-## Fills all 64 voxel positions of a GU across [start_level, start_level + storey_span).
-## start_level=0 reproduces the old ground-anchored behavior; start_level>0 supports
-## floating geometry (ceiling props, chandeliers, hanging objects — any block that
-## doesn't start at floor 0).
-func render_block(_gu_cell: Vector2i, start_level: int, storey_span: int, _material_name: String) -> void:
+## Register the levels of a solid block (SLICE-02: A-T2) across [start_level, start_level + storey_span): start_level=0 is the
+## ground-anchored block, start_level>0 floating geometry (ceiling props, chandeliers, anything that does not start at floor 0).
+## Nothing is placed (R3D-END); the 3D board draws every block from the store.
+func register_block_levels(_gu_cell: Vector2i, start_level: int, storey_span: int, _material_name: String) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey_span by LEVELS_PER_STOREY to expand to level-space
-	## The levels are always registered first (see `render_slab()`): readers of `level_origin()` ask for them.
-	_ensure_voxel_layers(start_level * GeometryCoords.LEVELS_PER_STOREY + storey_span * GeometryCoords.LEVELS_PER_STOREY)
+	## The levels are always registered first (see `register_slab()`): readers of `level_origin()` ask for them.
+	_ensure_wall_levels(start_level * GeometryCoords.LEVELS_PER_STOREY + storey_span * GeometryCoords.LEVELS_PER_STOREY)
 	## R3D-END: the 3D board draws every block from the store; nothing is placed here.
 	_diag_skipped_cells += 1
 
 
-## Render a single slice's voxels
-func _render_slice(slice: Slice) -> void:
+## Register the levels one slice needs and count its visible voxels (nothing is placed, R3D-END).
+func _register_slice(slice: Slice) -> void:
 	# Ensure we have enough layers
 	# FIX-VOXEL-HEIGHT-01: multiply storey_count by LEVELS_PER_STOREY to expand to level-space
-	_ensure_voxel_layers(slice.storey_count * GeometryCoords.LEVELS_PER_STOREY)
+	_ensure_wall_levels(slice.storey_count * GeometryCoords.LEVELS_PER_STOREY)
 	## GLASS G-D9 — a slice's material is now per-level. `_slice_is_glassy()` is
 	## true when the base OR any band is glass, so the diag and the geometry
 	## still fire for a brick-capped window.
@@ -418,13 +412,11 @@ func _slice_is_glassy(slice: Slice) -> bool:
 	return false
 
 
-## Render a junction column (BAKE-FIX-02: mirror-at-the-column implementation)
-## By default: mirrors the neighboring wall voxel's atom (D-BAKE-2)
-## If override_material is set and facade_enabled=false: renders flat material-only (D-BAKE-3)
-## If override_material is set and facade_enabled=true: mirrors the override material's boundary atom (D-BAKE-3)
-func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
+## Register the levels a junction column needs (BAKE-FIX-02's mirror-at-the-column atoms went with the 2D board; the 3D board draws
+## the column from the store).
+func _register_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey counts by LEVELS_PER_STOREY to expand to level-space
-	_ensure_voxel_layers((column.start_storey + column.storey_count) * GeometryCoords.LEVELS_PER_STOREY)
+	_ensure_wall_levels((column.start_storey + column.storey_count) * GeometryCoords.LEVELS_PER_STOREY)
 	## R3D-END: the 3D board draws every column from the store; nothing is placed here.
 	_diag_skipped_cells += 1
 
@@ -685,7 +677,7 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, _edge) -> void:
 ## Until now nothing consumed SlabRegistry.dirty_slabs() on the render side:
 ## room.gd's _tic_slab_system() only cleared dirty flags. Re-render routes
 ## through the SAME per-voxel call each Slab's own original render used
-## (render_slab()'s split — zoned floor, earth-hash otherwise — and render_slab_solid()'s
+## (register_slab()'s split — zoned floor, earth-hash otherwise — and register_slab_solid()'s
 ## fixed material for CEILING/INTERIOR) so a re-render after partial damage sees the same
 ## visible voxels as a fresh one. R3D-END: nothing is erased here (the 3D board meshes the
 ## store); what is left is the `voxel_destroyed` notice and the light and glass bookkeeping.
@@ -695,7 +687,7 @@ func process_dirty_slabs(registry: SlabRegistry) -> void:
 		return
 
 	## FLOOR-ZONE fix (2026-07-28): a FLOOR Slab carrying a zone material re-renders
-	## through the zone's baked page, exactly like render_slab() does — the branch
+	## through the zone's baked page, exactly like register_slab() does — the branch
 	## below used to send EVERY Role.FLOOR voxel down the earth-variant path, so a
 	## dirty-but-surviving voxel of a zoned floor (a CRACKED one; a DESTROYED one
 	## is erased instead) would come back as generic earth in the middle of an
@@ -2006,11 +1998,11 @@ func _dev_flag(flag_name: String) -> String:
 
 ## LEVEL-RENUMBER — `storey_count` is a COUNT of wall levels, kept as such because
 ## every caller computes it from `storey_count * LEVELS_PER_STOREY`. It ensures the
-## contiguous run from the ground plane upward; `_ensure_layer()` is the per-level
+## contiguous run from the ground plane upward; `_ensure_level()` is the per-level
 ## form the sparse floor levels need.
-func _ensure_voxel_layers(storey_count: int) -> void:
+func _ensure_wall_levels(storey_count: int) -> void:
 	for i in range(storey_count):
-		_ensure_layer(_ground_plane_level + i)
+		_ensure_level(_ground_plane_level + i)
 
 
 ## D17/D18: negative levels are never contiguous-from-zero and rarely all
@@ -2019,18 +2011,18 @@ func _ensure_voxel_layers(storey_count: int) -> void:
 ## something has actually dug down to them). No "ensure up to N" variant on
 ## purpose: that shape would invite building a contiguous run nobody asked
 ## for, which is precisely what D18 forbids.
-func _ensure_negative_voxel_layer(level: int) -> void:
+func _ensure_floor_level(level: int) -> void:
 	if level >= _ground_plane_level:
-		push_error("VoxelBoard._ensure_negative_voxel_layer: level %d is not below the ground plane (%d)"
+		push_error("VoxelBoard._ensure_floor_level: level %d is not below the ground plane (%d)"
 			% [level, _ground_plane_level])
 		return
-	_ensure_layer(level)
+	_ensure_level(level)
 
 
 ## LEVEL-RENUMBER — the one creation seam. Idempotent, and sparse by construction:
 ## D18's lazy reveal means a level exists only once something has built it, which
 ## a Dictionary expresses directly where an Array had to be grown contiguously.
-func _ensure_layer(level: int) -> void:
+func _ensure_level(level: int) -> void:
 	if _layers.has(level):
 		return
 	_layers[level] = true
@@ -2060,12 +2052,12 @@ func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 ## R3D-END: nothing is drawn (the 3D board meshes the store). `apply == false` is the exposure plan's seam
 ## (EXPLOSION_REBUILD_MASTER_PLAN Task 4/E-PLAN: destroying a voxel exposes geometry behind it): it returns one entry per
 ## currently visible voxel (`grid_pos`, `level`, and the tile-less placeholder ids) and is empty when `apply` is true.
-func render_slab(slab: Slab, apply: bool = true) -> Array:
+func register_slab(slab: Slab, apply: bool = true) -> Array:
 	var resolved: Array = []
 	if slab.voxels.is_empty():
 		return resolved
 	## The level always exists afterwards, whatever `apply` says: the exposure plan and the readers of `level_origin()` ask for it.
-	_ensure_layer(slab.level)
+	_ensure_level(slab.level)
 	## R3D-END: nothing is placed (the 3D board draws the store). The exposure plan (`apply == false`) needs WHICH
 	## cells a slab shows, not which tile draws each.
 	if apply:
@@ -2085,27 +2077,27 @@ func render_slab(slab: Slab, apply: bool = true) -> Array:
 ## seam that pays that cost only once the plane above has actually opened — from
 ## the blast path, and again from the post-rotation damage replay.
 ##
-## Idempotent by construction (render_slab skips destroyed voxels): calling it on
+## Idempotent by construction (register_slab skips destroyed voxels): calling it on
 ## an already-revealed, already-cratered plane re-places exactly the cells that
 ## are still there and leaves the holes alone.
 func reveal_floor_slab(slab: Slab, apply: bool = true) -> Array:
-	return render_slab(slab, apply)
+	return register_slab(slab, apply)
 
 
 ## DESTRUCTION — render one Slab's voxels using a single FIXED material for
-## every voxel, no per-voxel hash. Sibling to render_slab() (the earth/floor
+## every voxel, no per-voxel hash. Sibling to register_slab() (the earth/floor
 ## path, which selects a variant per voxel) — kept separate rather than
 ## branching one function on material type, since the two have genuinely
 ## different per-voxel logic. For roof/ceiling Slabs (Slab.Role.CEILING):
 ## these reuse an EXISTING wall material 1:1 (concrete/metal/stone/wood),
-## matching whatever structure they sit above, the same way render_block()
+## matching whatever structure they sit above, the same way register_block_levels()
 ## already places one fixed material across a whole block — just through the
 ## Slab/Voxel container so every level is independently dirty-tracked
 ## (unlike a wall block, and unlike the floor's fixed-bedrock levels).
-func render_slab_solid(slab: Slab) -> void:
+func register_slab_solid(slab: Slab) -> void:
 	if slab.voxels.is_empty():
 		return
-	_ensure_layer(slab.level)
+	_ensure_level(slab.level)
 
 	## R3D-END: nothing is placed; the 3D board draws the store.
 
@@ -2117,10 +2109,10 @@ func render_slab_solid(slab: Slab) -> void:
 ## R3D-END: nothing is drawn (the 3D board meshes the store). `apply == false` is the exposure plan's seam
 ## (`DetonationPlanBuilder`'s "no real Slab below" case): it returns one entry per cell the level shows, with no tile,
 ## and is empty when `apply` is true.
-func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true) -> Array:
+func register_fixed_level(gu_cell: Vector2i, level: int, apply: bool = true) -> Array:
 	var resolved: Array = []
-	## The level always exists afterwards (see `render_slab()`).
-	_ensure_layer(level)
+	## The level always exists afterwards (see `register_slab()`).
+	_ensure_level(level)
 	## R3D-END: nothing is placed. The exposure plan (`apply == false`) needs the cells the level shows.
 	if apply:
 		return resolved
@@ -2132,17 +2124,17 @@ func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true)
 
 ## Render a VoxelProp's footprint as a full solid fill (v1: whole-storey granularity only;
 ## sub-storey/partial-layer rendering is deferred to the destruction phase — see PROP-01 Item 0-A).
-func render_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
+func register_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 	var material_name: String = prop_def.material_zones.get("default", "concrete")
 	for footprint_offset in prop_def.footprint_gus:
-		render_block(gu_cell + footprint_offset, start_storey, prop_def.storeys, material_name)
+		register_block_levels(gu_cell + footprint_offset, start_storey, prop_def.storeys, material_name)
 
 
 ## Clear all layers and voxels
 func clear() -> void:
 	## VL-03: same reasoning — the GU index would point at cells this cleared
 	## tilemap no longer has. apply_light_field() rebuilds it from scratch on the
-	## next full pass, which always follows clear()+render() in the rebuild flow.
+	## next full pass, which always follows clear()+register_geometry() in the rebuild flow.
 	_placed_by_gu.clear()
 	## RENDER3D R3D-3 step 5 — same reasoning again: a rebuild means every voxel is
 	## about to become INTACT and undirtied from scratch, so no erasure this

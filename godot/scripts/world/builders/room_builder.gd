@@ -71,7 +71,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## room._voxel_board.clear() also moved here, unconditional, mirroring why
 	## floor_layer/structure_layer are cleared unconditionally above: a room that
 	## loses its edges on rebuild must not keep stale wall geometry from a
-	## previous build. render() below (walls) and render_slab() (floor, next)
+	## previous build. register_geometry() below (walls) and register_slab() (floor, next)
 	## only ADD cells on top of a cleared renderer — neither touches state the
 	## other owns.
 	room._voxel_board.clear()
@@ -126,14 +126,14 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## two floors occupy different vertical space (storey −1 vs. the legacy
 	## coarse plane) and are not in conflict, so there is no reason for their
 	## coverage to differ.
-	## NOTE: generation only here — rendering is deferred (see the render_slab()
+	## NOTE: generation only here — rendering is deferred (see the register_slab()
 	## loop after the edges-conditional block below). A zoned floor Slab's
 	## flat_baked lookup needs _bake_textures() to have already run; rendering
 	## immediately here (as this loop used to, back when floor never baked
 	## anything) would query the atlas before this call's own bake pass built
 	## it, always MISS, and silently fall back to MATERIALS[0] ("concrete") —
 	## the same lesson ROOF-BAKE-01 already learned for roof_slabs, which is
-	## why those are generated here but rendered only after render(), below.
+	## why those are generated here but rendered only after register_geometry(), below.
 	##
 	## FLOOR-DEPTH-01 (Director, 2026-07-28): the destructible ground is now TWO
 	## planes, not one — FLOOR_TOP_LEVEL as before, plus FLOOR_DEEP_LEVEL beneath
@@ -190,7 +190,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 
 	for border_gu in border_gus:
 		for fixed_level in range(FLOOR_TOP_LEVEL - 7, FLOOR_TOP_LEVEL):  # -8..-2
-			room._voxel_board.render_fixed_earth_level(border_gu, fixed_level)
+			room._voxel_board.register_fixed_level(border_gu, fixed_level)
 
 	if not extraction.get("edges", []).is_empty():
 		## New geometry path — the only active renderer when it has data.
@@ -246,7 +246,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## it came from.
 		##
 		## ROOF-BAKE-01: GENERATION hoisted above _bake_textures() (rendering
-		## stays below, after render()): the bake pass needs each roof combo's
+		## stays below, after register_geometry()): the bake pass needs each roof combo's
 		## real voxel cells as sheet usage, and the actual Slab voxels are the
 		## single truth for that footprint — deriving cells a second way here
 		## would be exactly the split-brain the border fix above just killed.
@@ -342,19 +342,19 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		## for edge-less rooms. Do not re-add either here — re-instantiating the
 		## registry would drop the floor Slabs just registered, and re-clear()ing
 		## would erase the floor cells just placed.
-		room._voxel_board.render(edge_registry, junction_columns)
+		room._voxel_board.register_geometry(edge_registry, junction_columns)
 
-		_render_solid_blocks(extraction.get("solid_blocks", []))
-		_render_voxel_props(layout.get("voxel_prop_instances", []))
+		_register_solid_block_levels(extraction.get("solid_blocks", []))
+		_register_voxel_prop_levels(layout.get("voxel_prop_instances", []))
 
 		## DESTRUCTION D1-ROOF rendering. The roof Slabs are generated above (see the D1-ROOF/border
 		## rationale there); this loop only renders what was generated.
 		for roof_slab in roof_slabs:
-			room._voxel_board.render_slab_solid(roof_slab)
+			room._voxel_board.register_slab_solid(roof_slab)
 
 	## Floor rendering, deferred to here: generation happened earlier, before the edges-conditional.
 	for floor_gu in floor_slabs_by_gu:
-		room._voxel_board.render_slab(floor_slabs_by_gu[floor_gu])
+		room._voxel_board.register_slab(floor_slabs_by_gu[floor_gu])
 
 	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
 	## layers offset up by the crate body step (visual stacking). The taller stack also
@@ -490,7 +490,7 @@ func _ensure_prop_stack_layers(count: int) -> void:
 ## SLICE-02: A-T2 — Render solid blocks at their correct storeys
 ## Fixed from G3: reads actual EdgeExtractor shape (gu_cell, storey, material)
 ## and routes through voxel renderer for baking/theming/destructibility
-func _render_solid_blocks(blocks: Array) -> void:
+func _register_solid_block_levels(blocks: Array) -> void:
 	if blocks.is_empty():
 		return
 	
@@ -533,10 +533,10 @@ func _render_solid_blocks(blocks: Array) -> void:
 		for run in runs:
 			var run_start: int = run[0]
 			var run_span: int = run.size()
-			room._voxel_board.render_block(gu_cell, run_start, run_span, material_name)
+			room._voxel_board.register_block_levels(gu_cell, run_start, run_span, material_name)
 
 
-func _render_voxel_props(instances: Array) -> void:
+func _register_voxel_prop_levels(instances: Array) -> void:
 	if instances.is_empty():
 		return
 	var registry = _get_prop_registry()
@@ -548,7 +548,7 @@ func _render_voxel_props(instances: Array) -> void:
 		if prop_def == null:
 			push_warning("[RoomBuilder] Unknown prop def '%s' — skipped" % instance.get("def_id", ""))
 			continue
-		room._voxel_board.render_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
+		room._voxel_board.register_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
 		_prop_cover[instance["gu_cell"]] = prop_def.gameplay.get("cover", "none")
 
 
@@ -557,7 +557,7 @@ func _render_voxel_props(instances: Array) -> void:
 ## `Registries` IS a registered autoload (project.godot) and
 ## `ensure_prop_registry()` exists (registries_autoload.gd) — the reference
 ## needs no fixing. Returning null keeps PROP-01's whole PropDef path
-## unreachable: _render_voxel_props() warns and skips every instance.
+## unreachable: _register_voxel_prop_levels() warns and skips every instance.
 ##
 ## Nothing is missing on screen today because the shipped maps place crates
 ## through the LEGACY tile path in their .map.json, not through voxel_props;

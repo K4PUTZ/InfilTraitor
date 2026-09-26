@@ -29,7 +29,7 @@ as an adjacent wall) and real soot from either weapon type. Firearms do NOT
 get direct point-impact damage on them — the Director's own scope call, since
 a shot's aim has no way to target a diagonal notch on purpose. Found and
 fixed along the way: `JunctionColumn` never had real `Voxel` objects at all
-(`_render_junction_column()` wrote tiles directly, bypassing the Voxel model
+(`_register_junction_column()` wrote tiles directly, bypassing the Voxel model
 entirely) — the plan assumed otherwise from the class definition alone, a
 mistake its own red-before-green check caught before anything shipped. See
 the dated section near the end of this file for the full account and the
@@ -47,7 +47,7 @@ boundary: a real room-wide relight after a blast is confirmed real but belongs
 to its own future gameplay milestone alongside cover/exposure.
 >
 > **Correction, 2026-08-12:** "complete" was wrong for E-FRAG/E-DEBUG-RAY —
-> both called a `VoxelRenderer` method (`cell_level_to_world`) that never
+> both called a `VoxelBoard` method (`cell_level_to_world`) that never
 > existed, so every real detonation silently aborted before a fragment or ray
 > was built. Real destruction was unaffected (the SCRIPT ERROR did not abort
 > the caller). Fixed along with a second bug that would have kept the
@@ -177,7 +177,7 @@ Shipped larger than the plan's one-line row summary suggested: the retired
 D-ARCH-01 `DamageVariantBaker`/`VoxelVariantRegistry` pair was genuinely dead
 code (`room_builder.gd` built an always-empty registry with a literal
 `TODO (D-ARCH-01 Phase 2)`), and the consumer
-(`VoxelRenderer.apply_damage_voxel_swap()`) was still written for the retired
+(`VoxelBoard.apply_damage_voxel_swap()`) was still written for the retired
 per-cell key shape — making it real required a new persisted `Voxel.
 damage_substrate` field (D3/§3.3), a `BlastCalculator.substrate_for()`
 matching `decal_variant_for()`'s shape, and a 7th `_base_damage` column, none
@@ -270,7 +270,7 @@ are Task 5 (E-WAVE)'s job, since no caller exists yet to drive that state.
   `apply_crater_damage()` — its DENTED path already hardcoded
   `CarvedSide.TOP` unconditionally, already correct for a roof struck from
   above. D16 is entirely a render-side fix in
-  `VoxelRenderer.apply_damage_voxel_swap()`: a CEILING container whose
+  `VoxelBoard.apply_damage_voxel_swap()`: a CEILING container whose
   voxel carries `damage_carved_side == TOP` now routes through the FLOOR
   naming/key path (`floor_damage_material()`, the GU's real ground material
   via `_floor_zone_by_gu`) instead of the ordinary CEILING path. Proven
@@ -394,7 +394,7 @@ the next time the map is edited).
 
 **The literal reading of §2 ("no compositing, no lookup... inside a wave")
 turned out to be achievable without a risky refactor, once read against the
-real code, not guessed past.** `VoxelRenderer._set_voxel_cell()` — the
+real code, not guessed past.** `VoxelBoard._set_voxel_cell()` — the
 function every damage/floor-reveal render path ultimately funnels through —
 already had exactly ONE side-effecting line (`layer.set_cell()`) at the very
 end of an otherwise pure resolution cascade (baked lookup → D33 live-
@@ -403,7 +403,7 @@ compositing fallback → flat material-only last resort). A trailing
 byte-for-byte, proven by the unchanged 31/31 selftest run before this task's
 own test was added) turns that one line into a `return` of the resolved
 `{source_id, atlas_coords, alternative_id}` triple instead — the same seam
-added to `render_slab()`/`render_fixed_earth_level()`/`reveal_floor_slab()`
+added to `register_slab()`/`register_fixed_level()`/`reveal_floor_slab()`
 (the exposure-fallback paths) and, via a Task-3-style pure extraction,
 `apply_damage_voxel_swap()` → `resolve_damage_voxel_swap()` (the pre-baked
 lookup, now its own function). **DetonationPlanBuilder never calls
@@ -428,7 +428,7 @@ byte-identity.
   (`bucket_for()`/`face_soot_code()`) — never calls `apply_light_field()`,
   so the single map-wide light repaint §2 describes never touches the live
   layer either. Occupancy for that field is derived from `Voxel.visible`
-  directly (a new `_voxel_occupancy()`, NOT `VoxelRenderer.build_occupancy()`
+  directly (a new `_voxel_occupancy()`, NOT `VoxelBoard.build_occupancy()`
   — that reads the live TileMapLayer, which still shows every voxel this
   blast just destroyed as solid, since nothing has erased it yet).
 - Packages `destroy`/`dented`/`cracked` by the SAME per-voxel ring
@@ -544,7 +544,7 @@ instead of the wrong assumption, so the next reader doesn't repeat it.
   `_base_damage`) — D2's floor-layer memory, threaded into
   `build_plan()`'s `ctx["deep_layer_unlocked"]` as `count(gu) > 0`.
 - **`TestZoneController.detonate_active()`** rebuilds a real `ctx` from the
-  live room (`_edge_registry`/`_slab_registry`/`_voxel_renderer`, real
+  live room (`_edge_registry`/`_slab_registry`/`_voxel_board`, real
   `blocked_edges`/`blocked_cells`, real `LightSource` objects from
   `room._lighting_controller.get_light_registry().get_active_lights()` — a
   real room already has these, unlike the selftest scaffold which had to
@@ -555,10 +555,10 @@ instead of the wrong assumption, so the next reader doesn't repeat it.
 **One documented, deliberate scope decision, not silently dropped**
 *(partially reversed 2026-08-13 — see E-EMBER-01 / E-SMOKE-TINT-01 below):*
 VFX-01's per-voxel dust/spark/chip debris (`room._dispatch_destruction_vfx()`,
-driven by `VoxelRenderer.voxel_destroyed`) does not fire for blast-caused
+driven by `VoxelBoard.voxel_destroyed`) does not fire for blast-caused
 destruction any more — the choreographer's destroy wave calls
 `layer.erase_cell()` directly rather than routing through
-`VoxelRenderer.process_dirty()`, and the plan's own destroy entries carry no
+`VoxelBoard.process_dirty()`, and the plan's own destroy entries carry no
 material to dispatch debris VFX from (§6.1's literal shape is `{cell,
 level}` only). The OLD immediate-smoke half of that same dispatch would have
 doubled up with the new staged smoke waves (D5) if left connected, which is
@@ -672,7 +672,7 @@ dirty, but defers the actual GPU texture upload to `flush_dirty_pages()`.
 Every real call site pairs painting with that flush EXCEPT
 `DetonationChoreographer` — the only place a `DetonationPlan` ever reaches
 `set_cell()` — which never did. Fixed
-(`voxel_renderer.flush_damage_composite_pages()`, once per wave,
+(`voxel_board.flush_damage_composite_pages()`, once per wave,
 `detonation_choreographer.gd`).
 
 That means the ORIGINAL A/B capture above (`soot_stamp_on.png`/
@@ -1107,7 +1107,7 @@ D6); MARKED atoms unconditionally, for every wall material (bullets always
 leave a mark regardless of blast resistance — a cosmetic, not a resistance
 roll). Evaluated against today's real `TABLE` rows
 (`material_resistance_table.gd`) and the real element-class rosters
-(`voxel_renderer.gd`'s `IMPACT_DECAL_MATERIALS` for wall/ceiling-family
+(`voxel_board.gd`'s `IMPACT_DECAL_MATERIALS` for wall/ceiling-family
 materials; D9's `ground_concrete` for floor, PLAYGROUND's only real ground
 material today):
 
@@ -1496,9 +1496,9 @@ Two new sibling stores, both in base coords:
 | **0** | ✅ **DONE 2026-08-06 — GATE PASSED, see §8.1** | **~737 ms** measured for all 207 atoms (742.3 / 731.3 / 739.0 across three runs) | Gate was ~2 s. **2.7× headroom — no escape hatch needed.** Task 1 proceeds as written |
 | **1a** | ✅ **DONE 2026-08-06, commit `95d83cb`** — **E-MAT**, D19/D20/D21 | **One material table, surface-independent.** `MaterialResistanceTable` + `MaterialRegistry` load from `res://materials/*.json` (+ `user://` override) instead of hardcoded GDScript — the duplicate `ground_*` rows collapsed into their base material, one `concrete` row, `crack_factor` 0.1, closing D10's gap; texture identity moved to `(material, surface_class)` via `BakePolicy` — `SLICE → facade_*` (unchanged, **including roofs**, which reproject their own wall texture rather than adopting a SLAB source) and `SLAB → slab_*` (renamed from `ground_*`, floor zones only); `full_color` **retired** from `MaterialDef` — corrected against the plan text: the bake compositor's WHITE-vs-tinted modulate now reads the texture id's own prefix, since one unified material (concrete) needs tinted-on-walls AND full-color-on-floors at once, which a single material-level flag cannot express; `floor_zones` MAPFILE section bumped v1→v2 with a migration, 2 shipped maps edited directly; no code names a map anywhere (D21) | `project_lint` + all 30 selftests clean · `check_invariants` OK · **real PLAYGROUND capture pixel-identical to the pre-reform one — 0/921600 differing pixels** (`Screenshots/history/e_mat_before.png`/`e_mat_after.png`) · `material_reform_selftest.gd` (new) proves the unified row + the surface-split render |
 | **1b** | ✅ **DONE 2026-08-06, commit `2d18a9e`** — **E-BAKE** | `VoxelVariantRegistry` re-keyed to `(element_class, material, damage_material_name, substrate_variant)`; `DamageVariantBaker` rewritten to `bake_all(declared_materials, floor_materials)`, D10-derived (crack_factor > 0, not the hardcoded `IMPACT_CRACK_MATERIALS` list) across WALL/CEILING/FLOOR, scoped to each map's `damage_materials` MAPFILE section (D13, registered); D12's marked/bullet atoms baked as **both** shapes (144 atoms, Director-confirmed, not the plan's original 72) — and found to already be **live and consumed by `fire_active()`** with zero code changes there (§9's rewritten note); floor specials source substrate from the real ground material via SLAB atoms per D9; `user://` bake cache wired (reusing `BakeCompositor`'s own encode/decode/load/save helpers); wired into `room_builder`; `damage_atom_bake_selftest.gd` (new) asserts real coverage, the new key's consumer, cache parity, and D13's loud-fail | **273 real atoms** on PLAYGROUND (0 unresolved) · load-time count+ms printed · second-load cache-hit capture: **1498 ms → 31 ms**, 255/255 disk cache hits, 0 misses · firearm live-D33 sanity capture unaffected |
-| **2** | ✅ **DONE 2026-08-07, commit `a3f58ee`** — **E-RING** | Calculation-layer only (neither function has a live caller yet — confirmed, Task 5's job to reconnect). 4th ring in `frag_grenade.json` + `destroy_ring_weights`/`dent_ring_weights`/`crack_ring_weights` in `BombDef`; `apply_container_damage()`'s vertical-ring step rewritten to D14's spherical `absi(level_offset) / LEVELS_PER_STOREY` (both wall and roof, `is_roof` per-raw-level branch retired); `apply_crater_damage()` gains `deep_layer_unlocked` (D2) and `slab_pierce_multiplier` (D17, trailing + inert at 1.0); D16 needed zero calculation-layer changes — it's entirely `VoxelRenderer.apply_damage_voxel_swap()`'s CEILING+TOP→FLOOR routing fix; D9 confirmed already fully wired pre-task, this task's job was proving it | `blast_calculator_selftest` +6 real assertions (ring-3 red-before-green against the REAL `frag_grenade.json`, D14 wall/roof parity, the roof-two-levels-one-ring-group proof, wood-vs-concrete floor realism, D2 gate on/off, D17 multiplier live-check) · `damage_atom_bake_selftest` +1 test (D16 routing proven against the real PLAYGROUND registry + a real `TileMapLayer` readback, not a boolean) · 31/31 selftests clean |
+| **2** | ✅ **DONE 2026-08-07, commit `a3f58ee`** — **E-RING** | Calculation-layer only (neither function has a live caller yet — confirmed, Task 5's job to reconnect). 4th ring in `frag_grenade.json` + `destroy_ring_weights`/`dent_ring_weights`/`crack_ring_weights` in `BombDef`; `apply_container_damage()`'s vertical-ring step rewritten to D14's spherical `absi(level_offset) / LEVELS_PER_STOREY` (both wall and roof, `is_roof` per-raw-level branch retired); `apply_crater_damage()` gains `deep_layer_unlocked` (D2) and `slab_pierce_multiplier` (D17, trailing + inert at 1.0); D16 needed zero calculation-layer changes — it's entirely `VoxelBoard.apply_damage_voxel_swap()`'s CEILING+TOP→FLOOR routing fix; D9 confirmed already fully wired pre-task, this task's job was proving it | `blast_calculator_selftest` +6 real assertions (ring-3 red-before-green against the REAL `frag_grenade.json`, D14 wall/roof parity, the roof-two-levels-one-ring-group proof, wood-vs-concrete floor realism, D2 gate on/off, D17 multiplier live-check) · `damage_atom_bake_selftest` +1 test (D16 routing proven against the real PLAYGROUND registry + a real `TileMapLayer` readback, not a boolean) · 31/31 selftests clean |
 | **3** | ✅ **DONE 2026-08-07, commit `fdcb5e9`** — **E-SOOT** | Calculation-layer only, same reason as Task 2 (no live caller). Full per-face directional soot **kept everywhere** — `FACE_SOOT_CODE_COUNT`/encode/decode/shader untouched, per Director confirmation this session (§5.1's per-voxel collapse was a stale processing-cost concession); `stamp_container_soot()` (walls/ceiling, reuses D14's ring formula + `carved_side_for()` + `_face_rings_for()`) and `stamp_crater_soot()` (floor, extends `apply_crater_damage()`'s own `rim_span` unit into numbered rings) stamp soot from `BombDef.soot_ring_tones`, independent of what got destroyed — closing the real gap that ring 3 (destroys nothing) can never get soot through derivation alone; both min-wins-merge with `derive_soot_rings()`'s output. No `room.gd` changes — the stamped-blast event/replay list is Task 5's job, alongside `_gu_blast_count` | `blast_calculator_selftest` +12 real assertions (ring-3 reached-and-stamped against the REAL `frag_grenade.json`, epicenter-directional face split, ceiling-underside skip, stamped/derived min-merge both directions, crater ring bands + isotropic output, out-of-range skip) · 31/31 selftests clean, including all 7 pre-existing `SOOT-SELF-*`/`FACE-SOOT-*` assertions unchanged |
-| **4** | ✅ **DONE 2026-08-07, commit `ddbe7dd`** — **E-PLAN** | `DetonationPlanBuilder.build_plan()` — the real resolution/soot-merge/single-light-field-query/exposure-fallback pipeline, resolve-only end to end (a new `apply` seam on `_set_voxel_cell()`/`apply_damage_voxel_swap()`→`resolve_damage_voxel_swap()`/`render_slab()`/`render_fixed_earth_level()`); `smoke_ring_weights` consumed for the first time; two new `BlastCalculator` public helpers (`vertical_ring_for()` promoted, `crater_ring_for()` extracted) so wave grouping and soot banding share one ring formula | Printed plan census from a real PLAYGROUND detonation (see closure note) · a real before/after TileMapLayer snapshot diff over 108,576 cells proves zero live mutation · `run_selftests.py` 32/32 clean |
+| **4** | ✅ **DONE 2026-08-07, commit `ddbe7dd`** — **E-PLAN** | `DetonationPlanBuilder.build_plan()` — the real resolution/soot-merge/single-light-field-query/exposure-fallback pipeline, resolve-only end to end (a new `apply` seam on `_set_voxel_cell()`/`apply_damage_voxel_swap()`→`resolve_damage_voxel_swap()`/`register_slab()`/`register_fixed_level()`); `smoke_ring_weights` consumed for the first time; two new `BlastCalculator` public helpers (`vertical_ring_for()` promoted, `crater_ring_for()` extracted) so wave grouping and soot banding share one ring formula | Printed plan census from a real PLAYGROUND detonation (see closure note) · a real before/after TileMapLayer snapshot diff over 108,576 cells proves zero live mutation · `run_selftests.py` 32/32 clean |
 | **5** | ✅ **DONE 2026-08-07, commit `98e9772`** — **E-WAVE** | `DetonationChoreographer` (15-wave table, independent `SceneTreeTimer` per wave, `wave_interval_ms=40`); `TestZoneController.detonate_active()` reconnected end to end; `add_smoke()` gained `duration_scale`; `build_plan()` returns `touched_voxels` for VL-PERSIST; `room._gu_blast_count` (D2) added | Real capture (`Screenshots/history/e_wave_detonation.png`) · real per-wave `[E-WAVE]` timing log on the actual detonation · `detonation_choreographer_selftest.gd` proves every wave's cells match the plan exactly · `run_selftests.py` 33/33 clean |
 | 6 | Tuning pass | Director reviews captures, moves the §4.2 numbers | Director sign-off |
 
@@ -2597,7 +2597,7 @@ it), `e_native_burst.png`, `e_native_smoke_core.png`.
    `DetonationPlan` ever reaches `set_cell()` — never called it, so both
    `soot_stamp_on.png` and `soot_stamp_off.png` were comparing stale/unflushed
    texture content, not the real difference. Fixed
-   (`voxel_renderer.flush_damage_composite_pages()`, once per wave). Same
+   (`voxel_board.flush_damage_composite_pages()`, once per wave). Same
    A/B test, re-run clean on the identical stone crater: stamp ON vs OFF now
    differ on 4.1% of the frame at mean 101.6/255 (was 3.3% at 0.76/255) —
    **the blast's own soot stamp IS the cause.** With the stamp off, ring 3
@@ -2834,7 +2834,7 @@ wall end) with a `JunctionColumn` — its own class, structurally close to a
 It is a third container class, held only as a flat `Array` on
 `room._junction_columns`, populated once at build time
 (`room_builder.gd:565`) and consumed today by exactly two systems: rendering
-(`voxel_renderer.render(edge_registry, junction_columns)`) and occlusion
+(`voxel_board.render(edge_registry, junction_columns)`) and occlusion
 (`_occlusion_set.recompute(origins, slices, _room_size, _junction_columns,
 ceiling_slabs)`).
 
@@ -2932,7 +2932,7 @@ uses `face_a`, exactly the "look detail, not blocking" call recorded above.
 **What the plan got wrong, found by the red-before-green check §12 always
 demands, not by inspection:** a fresh probe of a real PLAYGROUND
 `JunctionColumn` (all 20 of them) printed `voxels=0` on every single one.
-`_render_junction_column()` (`voxel_renderer.gd:1806`) writes tiles straight
+`_register_junction_column()` (`voxel_board.gd:1806`) writes tiles straight
 from `column.voxel_pos`/`storey_count` via `_set_voxel_cell()` — it never
 constructed a `Voxel` object at all. §"Why this is not a punctual fix" read
 `voxels: Array[Voxel]` off the class definition and assumed it was populated
@@ -3074,7 +3074,7 @@ applied AFTER any `set_cell()`, per this file's own DamageVariantBaker header
 never touched them).
 
 **Shipped**, floor only, matching the Director's own scope call:
-- `VoxelRenderer._composite_floor_sunk_decal()` (FLOOR DENTED — floor-
+- `VoxelBoard._composite_floor_sunk_decal()` (FLOOR DENTED — floor-
   exclusive, `_bake_floor()`'s own compositor) and `_composite_full_voxel_decal()`
   (also the CRACKED-blast atom D6 registers under FLOOR *and* WALL/CEILING
   from one composite — see this file's own DamageVariantBaker header) gain an
@@ -3111,8 +3111,8 @@ a explosão."*
 | id | task | touches | outcome |
 |---|---|---|---|
 | — | ring 3 soot tune | `voxel_face_shading.gdshader`, `voxel_light_field.gd` | **built, then reverted** — real but not the reported problem |
-| — | floor-only runtime soot shade | `voxel_face_shading.gdshader`, `voxel_renderer.gd` | **built, regressed the feather, scoped to fix that, then reverted entirely** once the real cause was found |
-| — | shade FLOOR decal atoms at bake time | `voxel_renderer.gd` (`_composite_floor_sunk_decal`, `_composite_full_voxel_decal`), `damage_variant_baker.gd` | done — the real fix |
+| — | floor-only runtime soot shade | `voxel_face_shading.gdshader`, `voxel_board.gd` | **built, regressed the feather, scoped to fix that, then reverted entirely** once the real cause was found |
+| — | shade FLOOR decal atoms at bake time | `voxel_board.gd` (`_composite_floor_sunk_decal`, `_composite_full_voxel_decal`), `damage_variant_baker.gd` | done — the real fix |
 
 ### Verification
 

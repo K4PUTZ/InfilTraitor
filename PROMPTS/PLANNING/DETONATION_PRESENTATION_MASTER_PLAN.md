@@ -1151,7 +1151,7 @@ the map as changed: 158 ms → 1849 ms. The equivalence gate still passed
 **What shipped:**
 
 - **`_phase_light`** builds a **map-wide** field:
-  `voxel_renderer.build_occupancy(predict_destroyed)` where `predict_destroyed`
+  `voxel_board.build_occupancy(predict_destroyed)` where `predict_destroyed`
   is `s["blast_cells"] + s["weapon_cells"]`. Still lazy, so this is one
   `get_used_cells()` walk — **+45 ms, one cook step.**
 - **`_phase_soot_wave`** already computed the bucket of every cell this blast
@@ -1178,7 +1178,7 @@ the map as changed: 158 ms → 1849 ms. The equivalence gate still passed
 **Cost the Director closed on:** the cook's worst single step went 7–9 ms → 45 ms
 (the occupancy walk, atomic). It runs during aiming, once per cook, and the cook
 already overruns the aim window by ~336 ms and eats fuse frames — the fuse is
-elastic by design (§8.10). A base-occupancy cache in `VoxelRenderer` (help every
+elastic by design (§8.10). A base-occupancy cache in `VoxelBoard` (help every
 repaint, ~48 ms each) is the follow-up if it ever matters.
 
 3× video: `d7_light_cook.mp4` (scratchpad). Selftests 38 clean, invariants,

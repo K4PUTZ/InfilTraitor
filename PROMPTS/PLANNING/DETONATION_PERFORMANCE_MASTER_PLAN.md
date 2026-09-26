@@ -133,7 +133,7 @@ reverted after each measurement — same discipline as
 | **Total `detonate_active()`** | **4270 ms** |
 
 Isolated: 99.8% of the `process_dirty*` time was inside
-`VoxelRenderer._set_voxel_cell()` (965 calls that blast); confirmed **not**
+`VoxelBoard._set_voxel_cell()` (965 calls that blast); confirmed **not**
 VFX-01 (the same session's smoke/dust/spark/chip/ember feature, shipped
 commit `bc6972c`) by disconnecting its signal handler entirely and
 re-measuring: 4275 ms, statistically identical.
@@ -259,11 +259,11 @@ any real numerical drift shows up there.
 
 **A1 (D4) — batch the damage-composite texture upload.**
 `godot/scripts/geometry/damage_composite_cache.gd`,
-`godot/scripts/geometry/voxel_renderer.gd`. `DamageCompositeCache.store()`
+`godot/scripts/geometry/voxel_board.gd`. `DamageCompositeCache.store()`
 keeps doing the CPU-side `blit_rect()` but stops calling
 `add_damage_composite_tile()` (hence `ImageTexture.update()`) immediately;
 instead it marks the touched page dirty. A new
-`VoxelRenderer.flush_damage_composite_pages()` uploads each dirty page
+`VoxelBoard.flush_damage_composite_pages()` uploads each dirty page
 exactly once, called at the end of `process_dirty()`, `process_dirty_slabs()`,
 `process_dirty_async()`, and `process_dirty_slabs_async()` (all four —
 sync callers get the same win).
@@ -421,7 +421,7 @@ nothing further) while still yielding when a stage's total work genuinely
 needs it — this exact blast triggered one yield at 200ms, not zero — so a
 much larger future blast still spreads across multiple frames instead of
 one long block, honoring PERF-01's original hard requirement. Full reasoning
-lives on `VoxelRenderer.render_frame_budget_ms`'s own doc comment.
+lives on `VoxelBoard.render_frame_budget_ms`'s own doc comment.
 
 **Verification, because a pixel diff alone was ambiguous.** A real capture
 of the final cascade state differed from a pre-D11 capture by 518 pixels

@@ -1,11 +1,11 @@
 ## DESTRUCTION_MASTER_PLAN D13 — fixed floor level selftest.
 ## Rodar: godot --headless --script res://godot/scripts/tools/fixed_floor_selftest.gd
 ##
-## Proves render_fixed_earth_level() (the 7 non-destructible levels) and
-## render_slab() (the 1 destructible top) compose into the full D13 8-level
+## Proves register_fixed_level() (the 7 non-destructible levels) and
+## register_slab() (the 1 destructible top) compose into the full D13 8-level
 ## stack — without the fixed levels ever touching Slab/Voxel/dirty-tracking.
 ## R3D-END (END-1): [1] (the 64 placed cells' variant) went with the 2D board (it read placed TILES; no tile is written any more). The rest
-## stays until END-4 deletes `render_fixed_earth_level()` and the level layers.
+## stays until END-4 deletes `register_fixed_level()` and the level layers.
 
 extends SceneTree
 
@@ -51,17 +51,17 @@ func _fail(msg: String) -> void:
 ## D13's whole point: fixed levels are never a Slab/Voxel, so there is no
 ## dirty_count to accidentally leave nonzero and no registry entry to leak.
 func test_fixed_level_does_not_touch_slab_registry() -> void:
-	print("[2] render_fixed_earth_level() never touches a SlabRegistry\n")
+	print("[2] register_fixed_level() never touches a SlabRegistry\n")
 
 	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 	var registry := SlabRegistry.new()
 
-	renderer.render_fixed_earth_level(Vector2i(0, 0), GeometryCoords.FLOOR_TOP_LEVEL - 1)
+	renderer.register_fixed_level(Vector2i(0, 0), GeometryCoords.FLOOR_TOP_LEVEL - 1)
 
 	if registry.is_empty():
-		_pass("An independent SlabRegistry stays empty — render_fixed_earth_level() took no registry and created no Slab")
+		_pass("An independent SlabRegistry stays empty — register_fixed_level() took no registry and created no Slab")
 	else:
 		_fail("SlabRegistry is unexpectedly non-empty after a fixed-level render")
 
@@ -72,14 +72,14 @@ func test_fixed_level_does_not_touch_slab_registry() -> void:
 ## D18: one call renders exactly the one level asked for — no eager
 ## materialization of neighbouring levels "while we're at it".
 func test_one_call_builds_only_the_requested_level() -> void:
-	print("[3] One render_fixed_earth_level() call touches only its own level\n")
+	print("[3] One register_fixed_level() call touches only its own level\n")
 
 	var renderer := VoxelBoardClass.new()
 	root.add_child(renderer)
 	renderer.setup(Vector2.ZERO)
 
 	var rendered_level: int = GeometryCoords.FLOOR_TOP_LEVEL - 5
-	renderer.render_fixed_earth_level(Vector2i(1, 1), rendered_level)
+	renderer.register_fixed_level(Vector2i(1, 1), rendered_level)
 
 	var neighbours_untouched := true
 	for offset in [4, 6, 0, 7]:  ## the levels either side of it, plus the stack's ends
@@ -121,7 +121,7 @@ func test_full_d13_stack_top_destructible_rest_fixed() -> void:
 
 	# Top: real Slab, destructible.
 	var top_slab := SlabGenerator.generate(gu, Slab.Role.FLOOR, stack_top, "earth", registry)
-	renderer.render_slab(top_slab)
+	renderer.register_slab(top_slab)
 
 	## RENDER3D R3D-1d: `Voxel` has no state of its own — the `set_damage()` call below
 	## needs an active store built over this fixture's registry.
@@ -129,7 +129,7 @@ func test_full_d13_stack_top_destructible_rest_fixed() -> void:
 
 	# The other 7: fixed, no Slab.
 	for level in range(stack_bottom, stack_top):
-		renderer.render_fixed_earth_level(gu, level)
+		renderer.register_fixed_level(gu, level)
 
 	var all_levels_have_layers := true
 	for level in range(stack_bottom, stack_top + 1):

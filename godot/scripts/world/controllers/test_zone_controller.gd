@@ -1258,7 +1258,11 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	job.delta.commit(room)
 	_prof("COMMIT — %.1f ms, %d voxel(s) written" % [
 		float(Time.get_ticks_usec() - commit_t0) / 1000.0, job.delta.touched_voxels.size()])
-	DetonationPlanBuilderClass.print_census(job.delta, gu)
+	## The census and the passage report are diagnostics: 34 ms of the Moto's commit frame (2026-09-26, R3D-LIGHT), so a
+	## release build skips them unless `BLAST_REPORT=1` asks (the desktop, a debug build, keeps both).
+	var blast_report: bool = OS.is_debug_build() or room._dev_flag_on("BLAST_REPORT")
+	if blast_report:
+		DetonationPlanBuilderClass.print_census(job.delta, gu)
 	## Deep diagnostic, off by default — the per-phase profile and the worst
 	## single frame the prediction actually cost. §4.4's budget can only honestly
 	## be judged on the REAL map (the two unsuspendable phases are both cheap on a
@@ -1278,7 +1282,8 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## actually lives.
 	## D-2 — the passage, reported off the committed world. It used to ride out on
 	## the fire's own end-of-schedule line, which no longer happens.
-	room.report_blast_passage(job.delta)
+	if blast_report:
+		room.report_blast_passage(job.delta)
 	_prof("CENSUS — print_census done")
 	room._gu_blast_count[gu] = int(room._gu_blast_count.get(gu, 0)) + 1
 	var rec0: int = Time.get_ticks_usec()

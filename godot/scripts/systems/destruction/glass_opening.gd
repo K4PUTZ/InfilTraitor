@@ -288,6 +288,18 @@ static func cell_bounds(id: String) -> Rect2i:
 	return Rect2i(min_dr, min_dl, max_dr - min_dr + 1, max_dl - min_dl + 1)
 
 
+## Fills `_coverage_cache` for every opening and every cell it can reach. `coverage()` samples an 81-point grid per cell the
+## first time it is asked, and the first glass hole of a session asked for ~300 of them inside the blast's commit frame
+## (R3D-LIGHT, 2026-09-26: `refresh_glass_rims()` 21 ms on the desktop the first time, 6 the second; ~90 ms more on the
+## Moto). Called once at board setup so no blast pays it.
+static func warm_coverage() -> void:
+	for id: String in ids():
+		var bounds: Rect2i = cell_bounds(id)
+		for dl in range(bounds.position.y, bounds.position.y + bounds.size.y):
+			for dr in range(bounds.position.x, bounds.position.x + bounds.size.x):
+				coverage(id, dr, dl)
+
+
 ## How much of the cell at integer offset (dr, dl) the opening covers.
 ##
 ## ⚠️ SAMPLED, NOT SOLVED. An exact polygon-vs-square clip would be the "right"

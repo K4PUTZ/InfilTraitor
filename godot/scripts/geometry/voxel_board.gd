@@ -212,6 +212,7 @@ var _diag_slice_count: int = 0
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	_visual_grid_offset = visual_grid_offset
 	_wall_base_z_index = wall_base_z_index
+	GlassOpening.warm_coverage()   ## R3D-LIGHT: the first glass hole of a session no longer pays for the coverage table
 	## The parent must be Y-sorted for sibling layers' tiles to merge into one
 	## order — per-layer `y_sort_enabled` alone still draws all of one, then all
 	## of the other (Q1's control).

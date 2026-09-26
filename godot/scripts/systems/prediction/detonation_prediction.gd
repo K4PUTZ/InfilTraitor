@@ -120,6 +120,7 @@ func run(bomb_def, source_gu: Vector2i, ctx: Dictionary) -> WorldDelta:
 ## twice. See the class doc for why this needs no rollback.
 func cancel() -> void:
 	_cancelled = true
+	PredictionReaper.retire(_state)
 	_state = {}
 	delta = null
 

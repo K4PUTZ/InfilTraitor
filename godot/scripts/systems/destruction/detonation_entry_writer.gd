@@ -206,16 +206,18 @@ func apply(kind: String, entry: Dictionary, voxel_board, smoke_overlay) -> int:
 ## The batch seam of the blast's writes, called once per FRAME (E-ORGANIC-01) rather than once per wave. On the 2D board it also
 ## uploaded the damage-composite pages the wave had blitted into (GPU-UPLOAD-01: without that flush a real detonation's marks
 ## rendered stale page content); those pages went at R3D-END, so what is left is the glass bookkeeping below.
-func flush(voxel_board) -> void:
+## Returns how many glass cells the rims shaped (0 = nothing about the glass mesh changed).
+func flush(voxel_board) -> int:
 	## G-D30 — the cook's own batch seam. `erase_glass_cell()` above only flags;
 	## this is where a blast that took glass out from under a standing crack
 	## re-cuts it, once, instead of once per erased cell.
 	voxel_board.refresh_glass_crack_occupancy()
 	## CRACK-03 — and the shard rim around whatever hole the blast just opened.
-	voxel_board.refresh_glass_rims()
+	var shaped: int = voxel_board.refresh_glass_rims()
 	## ⚠️ B-4b — AND THE CRAZE FIELD'S HOLE MASK, WHICH MUST COME AFTER THE RIMS
 	## AND NOT WITH THE OCCUPANCY ABOVE. `refresh_glass_rims()` is what APPLIES the
 	## openings, and applying them is what records their polygons; asked before it,
 	## the mask would be built from an empty log and the mesh would draw over every
 	## hole — the silent version of the defect this exists to fix.
 	voxel_board.refresh_craze_opening_masks()
+	return shaped

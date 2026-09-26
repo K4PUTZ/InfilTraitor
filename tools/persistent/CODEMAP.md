@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**246 scripts · 79330 lines total** (under `godot/scripts/`)
+**246 scripts · 79334 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2123,7 +2123,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 221 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 223 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -2146,7 +2146,7 @@ extends `Node2D` · 42 lines
 
 **Public API**
 - `func apply(kind: String, entry: Dictionary, voxel_board, smoke_overlay) -> int:`
-- `func flush(voxel_board) -> void:`
+- `func flush(voxel_board) -> int:`
 
 ---
 
@@ -2173,7 +2173,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 532 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 534 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 

@@ -10,7 +10,6 @@
 extends Node2D
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
-@export var tile_size: Vector2 = Vector2(128, 64)
 @export var visual_offset: Vector2 = Vector2(0, 0)
 
 var _full_shadow_cells: Dictionary = {}    ## Deep shadow tiles

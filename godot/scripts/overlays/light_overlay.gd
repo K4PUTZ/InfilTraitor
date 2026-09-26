@@ -15,7 +15,7 @@ const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_sou
 const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
 
 @export var light_registry = null
-@export var tile_size: Vector2 = Vector2(128, 64)  # Fallback only when floor_layer is unset
+@export var tile_size: Vector2 = Vector2(128, 64)  # Set by VisionController; the lamp radius and the direction arrow scale with it
 @export var visual_offset: Vector2 = Vector2(0, 0)
 
 ## Offset from a cell's map_to_local() to its visual rhombus center (canonical placement)
@@ -110,5 +110,5 @@ func _draw_light_label(light, _world_pos: Vector2, _color: Color) -> void:
 	# draw_string(font, world_pos + Vector2(10, -20), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, color)
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:
-	# Canonical projection (matches lamps & floor) when floor_layer is available
+	# Canonical projection (matches lamps & floor): the ground lattice, no tile layer
 	return GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + visual_offset

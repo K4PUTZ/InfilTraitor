@@ -38,9 +38,7 @@ var light_registry = null
 ## Offset from a cell's map_to_local() to its visual rhombus center (canonical placement)
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
-# Canonical projection source (matches lamps/floor); tile_size is fallback only
-# Tile size and offset (for isometric projection)
-var tile_size: Vector2 = Vector2(256, 128)
+# Screen-space offset of the 2D layer, handed in by VisionController; the projection itself is GroundGrid's
 var visual_offset: Vector2 = Vector2.ZERO
 
 ## Pixels to raise the state-knob so it reads just above the (lifted) lamp fixture

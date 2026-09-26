@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**248 scripts · 79888 lines total** (under `godot/scripts/`)
+**248 scripts · 79882 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -358,7 +358,7 @@ extends `Node` · 270 lines
 
 ### `vision_controller.gd`
 
-extends `Node2D` · 312 lines
+extends `Node2D` · 310 lines
 
 `godot/scripts/controllers/vision_controller.gd`
 
@@ -1711,7 +1711,7 @@ extends `Node2D` · 143 lines
 
 ### `shadow_boundary_overlay.gd`
 
-extends `Node2D` · 151 lines
+extends `Node2D` · 150 lines
 
 `godot/scripts/overlays/shadow_boundary_overlay.gd`
 
@@ -1722,7 +1722,6 @@ extends `Node2D` · 151 lines
 - `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **@export**
-- `tile_size: Vector2 = Vector2(128, 64)`
 - `visual_offset: Vector2 = Vector2(0, 0)`
 
 **Public API**
@@ -1735,7 +1734,7 @@ extends `Node2D` · 151 lines
 
 ### `shadow_overlay.gd`
 
-extends `Node2D` · 89 lines
+extends `Node2D` · 88 lines
 
 `godot/scripts/overlays/shadow_overlay.gd`
 
@@ -1749,7 +1748,6 @@ extends `Node2D` · 89 lines
 **@export**
 - `shadow_projector = null`
 - `light_registry = null`
-- `tile_size: Vector2 = Vector2(128, 64)`
 - `visual_offset: Vector2 = Vector2(0, 0)`
 
 **Public API**
@@ -1871,7 +1869,7 @@ extends `Node2D` · 89 lines
 
 ### `temporal_overlay.gd`
 
-extends `Node2D` · 255 lines
+extends `Node2D` · 253 lines
 
 `godot/scripts/overlays/temporal_overlay.gd`
 
@@ -1890,7 +1888,6 @@ extends `Node2D` · 255 lines
 - `var show_rotations: bool = true`
 - `var ui_scale: float = 1.5`
 - `var light_registry = null`
-- `var tile_size: Vector2 = Vector2(256, 128)`
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var fixture_lift: float = 0.0`
 - `var all_lights: Array = []`

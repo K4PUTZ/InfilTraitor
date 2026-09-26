@@ -20,7 +20,6 @@ const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 
 @export var shadow_projector = null
 @export var light_registry = null
-@export var tile_size: Vector2 = Vector2(128, 64)  ## Fallback only when floor_layer is unset
 @export var visual_offset: Vector2 = Vector2(0, 0)
 
 var _dev_vision_enabled: bool = false

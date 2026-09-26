@@ -104,7 +104,7 @@ of docs rotted.
 - **[roadmap.md](production/roadmap.md)** — macro phases
 - **[technical_debt.md](production/technical_debt.md)** — known issues
 - **[METHODOLOGY.md](production/METHODOLOGY.md)** — the two axes (phases vs. milestones), milestone IDs, the domain enum
-- **[TILE_ANATOMY.md](production/TILE_ANATOMY.md)** — tile geometry (audited by `tile_anatomy_audit.gd`)
+- **[TILE_ANATOMY.md](production/TILE_ANATOMY.md)** — tile geometry (history; its audit tool was retired 2026-09-26)
 
 ## Technical
 

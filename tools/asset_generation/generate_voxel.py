@@ -4,6 +4,10 @@ generate_voxel.py — INFILTRAITOR Voxel Atom Generator
 ======================================================
 Gera um PNG 32×36 px por material (átomo de voxel para tileset_voxels.tres).
 
+NOTE (2026-09-26): the atom and half-voxel outputs are RETIRED — the 3D board reads neither, and the existing
+files were archived to ARCHIVE/voxel_atoms_2d/. `main()` would still write them if run; only
+`build_decal_family()` (decal placeholders, generic marks) feeds anything live.
+
 Executar da raiz do projeto:
     python3 tools/asset_generation/generate_voxel.py
 

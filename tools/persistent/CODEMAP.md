@@ -8,19 +8,19 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**248 scripts · 79375 lines total** (under `godot/scripts/`)
+**245 scripts · 78753 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, high_wall.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
-- **systems/** — bake_policy.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -756,34 +756,6 @@ extends `Node3D` · 1894 lines
 **Constants / tuning**
 - `HALF_W` = `128.0`
 - `HALF_H` = `64.0`
-
----
-
-### `high_wall.gd`
-
-`class_name HighWallGroup` · 69 lines
-
-`godot/scripts/geometry/high_wall.gd`
-
-> Geometry Module — High Wall Group: bake-time grouping container Port from world/high_wall.gd into module namespace as HighWallGroup VOXEL-08: maximal-run regrouping strategy is deferred
-
-**Public vars**
-- `var id: String`
-- `var edge_ids: Array[String] = []`
-- `var slice_ids: Array[String] = []`
-- `var junction_columns: Array = []`
-- `var bake_texture: Texture2D`
-- `var baked: bool = false`
-- `var dirty_count: int = 0`
-- `var voxel_bounds: Rect2i`
-
-**Public API**
-- `func add_edge_with_slices(edge: Edge, slice_a: Slice, slice_b: Slice) -> void:`
-- `func add_junction_columns(columns: Array) -> void:`
-- `func total_voxel_count() -> int:`
-- `func mark_all_dirty() -> void:`
-- `func decrement_dirty() -> void:`
-- `func clear_dirty() -> void:`
 
 ---
 
@@ -2019,19 +1991,6 @@ extends `Node2D` · 42 lines
 
 ## systems/
 
-### `bake_policy.gd`
-
-`class_name BakePolicy` · 153 lines
-
-`godot/scripts/systems/bake_policy.gd`
-
-> BakePolicy — Shared deterministic rules for texture baking Ensures the bake pass and lookup pass use identical: - Texture assignment (material ID + surface class → texture ID) - Variant seeding (edge + material → [0, 4) variant) D20 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): texture identity is a (material, surface_class) pair, mechanically derived — no per-material dict to keep in sync, matching MAPFILE_REFERENCE.md's existing M6 prefix canon (`facade_<material>`). SLICE (walls/roofs, reprojected from the same source) always resolves to `facade_<id>`. A missing asset (e.g. a material with no wall facade) is handled the same way it always was: TextureResolver.resolve() falls back to Tier.NONE and every caller already treats that as "fall back to the generic atlas". D34/E-SEAM-01 (Director, 2026-08-08) — **amends D20's SLAB half.** D20 sent EVERY floor zone down the `slab_<id>` photographic path, which is what made a concrete floor unable to read as the same material as a concrete wall (they were literally different art: `facade_concrete` grayscale+tinted vs `slab_concrete`, an unrelated ground photo at WHITE). The Director's model instead: **a floor is a roof at the base of the scene** — same bake, same grayscale source, same multiply tint, so wall/roof/floor of one material all read as that material. Which family a SLAB request resolves to is therefore derived from the MATERIAL, not from the surface alone: has_facade == true  -> `facade_<id>`, the SLICE family (concrete, metal, stone, wood today) has_facade == false -> `slab_<id>`, the photographic exception, kept on purpose for organic/wild ground (grass, dirt, sand, gravel) where hue IS the material identity and a grayscale source cannot carry it `has_facade` is consulted for SLAB only; SLICE resolves to `facade_<id>` regardless. This also retires the never-read `MaterialDef.slab_full_color` flag — the same split is derivable from `has_facade`, so there is no second field to keep in sync with it (E-SEAM-03).
-
-**Constants / tuning**
-- `CANONICAL_ATOM_ALIASES` = `{ "earth": "earth_0", "brick": "concrete", "cardboard": "concrete", "fabric": "concrete", "plywood": "concrete", }`
-
----
-
 ### `board_probe.gd`
 
 `class_name BoardProbe` · extends `RefCounted` · 277 lines
@@ -2467,15 +2426,14 @@ extends `Node` · 231 lines
 
 ### `earth_variant_selector.gd`
 
-`class_name EarthVariantSelector` · 36 lines
+`class_name EarthVariantSelector` · 29 lines
 
 `godot/scripts/systems/earth_variant_selector.gd`
 
-> EarthVariantSelector — DESTRUCTION_MASTER_PLAN D2/D4 core. Floor/slab voxels don't have corners or continuous facade planes to project (unlike walls) — they're just a small pre-authored palette of voxel atoms, scattered across the grid by a deterministic hash of position. This is the whole mechanism: no shear, no junction compositor, no per-map baking step. Determinism is the entire point (D5): hash(x, y, level) is recomputed identically forever, never stored. A voxel's look never changes just because a neighbour got destroyed and exposed it — there is nothing to "pop" because nothing was ever assigned; it's re-derived the same way every time it's looked at.
+> EarthVariantSelector — DESTRUCTION_MASTER_PLAN D2/D4 core. Floor/slab voxels don't have corners or continuous facade planes to project (unlike walls) — they were a small pre-authored palette of voxel atoms, scattered across the grid by a deterministic hash of position. This is the whole mechanism: no shear, no junction compositor, no per-map baking step. R3D-END cleanup (2026-09-26): the eight atoms this indexed (`voxel_earth_0..7.png`) were archived to ARCHIVE/voxel_atoms_2d/ — the 3D board has no atom. The selector stays as the deterministic-variant reference (B4) for R3D-LOOK, which decides what a variant is on a 3D face. Determinism is the entire point (D5): hash(x, y, level) is recomputed identically forever, never stored. A voxel's look never changes just because a neighbour got destroyed and exposed it — there is nothing to "pop" because nothing was ever assigned; it's re-derived the same way every time it's looked at.
 
 **Constants / tuning**
 - `VARIANT_COUNT` = `8`
-- `ASSET_PATH_TEMPLATE` = `"res://ASSETS/materials/earth/voxel_earth_%d.png"`
 
 ---
 
@@ -2796,11 +2754,11 @@ extends `Node` · 231 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 176 lines
+`class_name MaterialRegistry` · 177 lines
 
 `godot/scripts/systems/material_registry.gd`
 
-> MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE axis, owned by BakePolicy.texture_for_material(). D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed either. A `has_facade` material renders EVERY surface — wall, roof and floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the three read as one material; only `has_facade == false` (organic ground) keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted modulate was decided by the texture id's own prefix at bake time (the 2D bake's `_modulate_for_mode`, deleted at R3D-END), never by a field on this class — what changed is which ids reach it.
+> MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE axis (derived from the material id and `has_facade`; `BakePolicy.texture_for_material()` owned it until R3D-END). D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed either. A `has_facade` material renders EVERY surface — wall, roof and floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the three read as one material; only `has_facade == false` (organic ground) keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted modulate was decided by the texture id's own prefix at bake time (the 2D bake's `_modulate_for_mode`, deleted at R3D-END), never by a field on this class — what changed is which ids reach it.
 
 **Constants / tuning**
 - `StonePatternClass` = `preload("res://godot/scripts/systems/stone_pattern.gd")`
@@ -3637,7 +3595,7 @@ extends `SceneTree` · 61 lines
 
 ### `earth_variant_selftest.gd`
 
-extends `SceneTree` · 172 lines
+extends `SceneTree` · 146 lines
 
 `godot/scripts/tools/earth_variant_selftest.gd`
 
@@ -3652,7 +3610,6 @@ extends `SceneTree` · 172 lines
 - `func test_range() -> void:`
 - `func test_not_constant() -> void:`
 - `func test_distribution_uses_all_variants() -> void:`
-- `func test_assets_loadable_and_canon_sized() -> void:`
 - `func test_fnv1a_static_call_matches_instance_call() -> void:`
 
 ---
@@ -3730,7 +3687,7 @@ extends `SceneTree` · 139 lines
 
 ### `geometry_selftest.gd`
 
-extends `SceneTree` · 234 lines
+extends `SceneTree` · 232 lines
 
 `godot/scripts/tools/geometry_selftest.gd`
 
@@ -4134,16 +4091,15 @@ extends `SceneTree` · 367 lines
 
 ### `material_reform_selftest.gd`
 
-extends `SceneTree` · 247 lines
+extends `SceneTree` · 179 lines
 
 `godot/scripts/tools/material_reform_selftest.gd`
 
-> E-MAT — material reform selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1a, D19/D20/D21, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/material_reform_selftest.gd Proves the two halves of the reform independently: 1. BEHAVIOR is unified — one row per material (MaterialRegistry + MaterialResistanceTable), the old duplicate `ground_concrete` row is gone, not merely shadowed. 2. TEXTURE IDENTITY follows the MATERIAL, not the surface — D34/E-SEAM-01 (Director, 2026-08-08) **reversed D20's original answer here.** `has_facade == true` -> the floor names the SAME `facade_<id>` its wall and roof do; `has_facade == false` -> the photographic `slab_<id>` exception, kept on purpose for organic ground. R3D-END END-4: the tests that drove the compositor (the shared modulate, the two families baked in one session, the mirrored vertical repeat, the roof/floor spec merge) went with it, and so did the generic-atlas half of test 8. Every expectation is computed independently (own expected values), never read back from the code under test.
+> E-MAT — material reform selftest (EXPLOSION_REBUILD_MASTER_PLAN Task 1a, D19/D20/D21, 2026-08-06). Rodar: godot --headless --script res://godot/scripts/tools/material_reform_selftest.gd Proves the two halves of the reform independently: 1. BEHAVIOR is unified — one row per material (MaterialRegistry + MaterialResistanceTable), the old duplicate `ground_concrete` row is gone, not merely shadowed. 2. The has_facade FLAG is the contract — D34/E-SEAM-01 (Director, 2026-08-08) made texture identity follow the MATERIAL, not the surface (**reversing D20's original answer**): `has_facade == true` -> wall, roof and floor share one `facade_<id>`; `has_facade == false` -> organic ground (the photographic `slab_<id>` exception). This test pins the flag in the data. R3D-END END-4: the tests that drove the compositor (the shared modulate, the two families baked in one session, the mirrored vertical repeat, the roof/floor spec merge) went with it, and so did the generic-atlas half of test 8. R3D-END cleanup (2026-09-26): `BakePolicy` (the policy that turned the flag into a texture id) and the voxel atoms were retired, so test 3 keeps only the flag and test 8 lost its canonical-atom checks (the alias, the alpha, the identity). Every expectation is computed independently (own expected values), never read back from the code under test.
 
 **Constants / tuning**
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `MaterialResistanceTableClass` = `preload("res://godot/scripts/systems/destruction/material_resistance_table.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -4654,37 +4610,6 @@ extends `SceneTree` · 327 lines
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `TEST_USER_DIR` = `"user://textures_test/"`
 - `TEST_DEFAULT_DIR` = `"user://textures_defaults_test/"`
-
----
-
-### `tile_anatomy_audit.gd`
-
-extends `MainLoop` · 298 lines
-
-`godot/scripts/tools/tile_anatomy_audit.gd`
-
-> !/usr/bin/env -S /Applications/Godot.app/Contents/MacOS/Godot --headless --script BAKE-FIX-00 Ground-Truth Audit Tool Measures real voxel atom geometry, facade dimensions, and wall-run lengths Usage: /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script godot/scripts/tools/tile_anatomy_audit.gd
-
-**Constants / tuning**
-- `VOXEL_MATERIALS` = `["concrete", "metal", "stone", "wood"]`
-- `VOXEL_BASE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/voxels/materials/voxel_"`
-- `FACADE_BASE_PATH` = `"res://ASSETS/TEXTURES/defaults/facade_"`
-- `EXPECTED_VOXEL_W` = `32`
-- `EXPECTED_VOXEL_H` = `36`
-- `EXPECTED_VOXEL_TILE_H` = `16`
-- `EXPECTED_VOXEL_SIDE_H` = `20`
-- `EXPECTED_FACADE_W` = `1024`
-- `EXPECTED_FACADE_H` = `512`
-- `EXPECTED_TEX_N` = `16`
-
-**Public API**
-- `func audit_voxel_assets() -> Dictionary:`
-- `func compute_alpha_histogram(img: Image) -> Dictionary:`
-- `func audit_facade_multiply_region() -> void:`
-- `func audit_facade_assets() -> Dictionary:`
-- `func audit_map_wall_runs() -> void:`
-- `func extract_wall_runs(map_data: Variant) -> Array:`
-- `func get_median(arr: Array) -> int:`
 
 ---
 

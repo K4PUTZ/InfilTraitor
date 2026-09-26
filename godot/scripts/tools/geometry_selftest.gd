@@ -29,7 +29,6 @@ func _initialize():
 		"res://godot/scripts/geometry/edge_extractor.gd",
 		"res://godot/scripts/geometry/slice_generator.gd",
 		"res://godot/scripts/geometry/junction_resolver.gd",
-		"res://godot/scripts/geometry/high_wall.gd",
 		"res://godot/scripts/geometry/voxel_board.gd",
 	]
 	
@@ -53,7 +52,6 @@ func _initialize():
 		"EdgeExtractor": "res://godot/scripts/geometry/edge_extractor.gd",
 		"SliceGenerator": "res://godot/scripts/geometry/slice_generator.gd",
 		"JunctionResolver": "res://godot/scripts/geometry/junction_resolver.gd",
-		"HighWallGroup": "res://godot/scripts/geometry/high_wall.gd",
 		"VoxelBoard": "res://godot/scripts/geometry/voxel_board.gd",
 	}
 	

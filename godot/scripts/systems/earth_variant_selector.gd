@@ -1,9 +1,13 @@
 ## EarthVariantSelector — DESTRUCTION_MASTER_PLAN D2/D4 core.
 ##
 ## Floor/slab voxels don't have corners or continuous facade planes to project
-## (unlike walls) — they're just a small pre-authored palette of voxel atoms,
+## (unlike walls) — they were a small pre-authored palette of voxel atoms,
 ## scattered across the grid by a deterministic hash of position. This is the
 ## whole mechanism: no shear, no junction compositor, no per-map baking step.
+##
+## R3D-END cleanup (2026-09-26): the eight atoms this indexed (`voxel_earth_0..7.png`) were archived to
+## ARCHIVE/voxel_atoms_2d/ — the 3D board has no atom. The selector stays as the deterministic-variant
+## reference (B4) for R3D-LOOK, which decides what a variant is on a 3D face.
 ##
 ## Determinism is the entire point (D5): hash(x, y, level) is recomputed
 ## identically forever, never stored. A voxel's look never changes just
@@ -14,11 +18,6 @@ class_name EarthVariantSelector
 
 const VARIANT_COUNT: int = 8
 
-## ASSET_TREE_REFORM (2026-08-21) — the eight earth variants are one material's
-## art, so they live together in earth's own folder rather than looking like
-## eight materials in a flat directory.
-const ASSET_PATH_TEMPLATE: String = "res://ASSETS/materials/earth/voxel_earth_%d.png"
-
 
 ## Deterministic variant index in [0, VARIANT_COUNT) for one voxel position.
 ## Same (grid_pos, level) always returns the same index — on every machine,
@@ -28,9 +27,3 @@ static func variant_for(grid_pos: Vector2i, level: int) -> int:
 	var key := "%d,%d,%d" % [grid_pos.x, grid_pos.y, level]
 	var hash_val: int = FacadeSampler._fnv1a_hash(key)
 	return hash_val % VARIANT_COUNT
-
-
-## Asset path for one variant index, matching generate_voxel.py's output
-## naming (voxel_earth_0.png .. voxel_earth_7.png).
-static func variant_asset_path(variant_index: int) -> String:
-	return ASSET_PATH_TEMPLATE % variant_index

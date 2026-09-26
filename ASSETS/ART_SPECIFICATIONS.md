@@ -80,9 +80,10 @@ and bottom edges must survive being mirrored the same way the left and right
 already had to — and a facade is now seen on horizontal surfaces, not just
 vertical ones. Still author 1024×512; **never pre-square it.**
 
-Registration is mechanical, not a table: `BakePolicy.texture_for_material()`
-derives `facade_<material>` from the material id (the old `DEFAULT_FACADES`
-dict is gone, D20). To add a facade for a material:
+Registration is mechanical, not a table: `Board3DLive` derives `facade_<material>`
+from the material id when it loads a material's facade (the old `DEFAULT_FACADES`
+dict is gone, D20; `BakePolicy`, which used to own the derivation, was retired
+2026-09-26). To add a facade for a material:
 
 1. Drop `facade_<material>.png` in `ASSETS/materials/<id>/`.
 2. Set `has_facade: true` and a real `base_color` in `materials/<material>.json`
@@ -149,9 +150,9 @@ Overlord's, dimensions await Director ratification with a D-number):
 | Wrap | Mirrored, same as facades |
 | Step faces | Stepped-roof art must design the exposed 1-voxel step face (the "testeira" band) as part of the texture concept — see §4. |
 
-Plumbing change required (small, scoped in ART-01): `BakePolicy` gains a
-separate `roof_facade_for_material` map; the compositor's pinned roof source
-dimensions move to the ratified values.
+Plumbing change required (small, scoped in ART-01, written for the 2D bake): `BakePolicy`
+and the compositor it names are retired, so this is re-scoped when a dedicated roof facade
+is taken up on the 3D board.
 
 ---
 
@@ -237,8 +238,8 @@ JSON (field to be added at ART-01).
 > single authoritative source, loaded by `MaterialRegistry` (two-tier
 > `res://` then `user://`), one surface-independent row per material.
 > `DEFAULT_FACADES` no longer exists — texture identity is derived
-> mechanically by `BakePolicy.texture_for_material()` from the material id
-> plus its `has_facade` flag (D34). The table below is kept as the ART-01
+> mechanically from the material id plus its `has_facade` flag (D34;
+> `BakePolicy.texture_for_material()` did it until it was retired, 2026-09-26). The table below is kept as the ART-01
 > wish-list; compare it against a real `materials/*.json` before trusting
 > any row. PropDef `material_zones` is the one part genuinely still separate.
 
@@ -252,8 +253,8 @@ Planned `MaterialDef` shape (schema finalized at ART-01):
 | `base_color` | Runtime tint for MULTIPLY blend |
 | Gameplay properties | HP/damage class, sound signature, debris behavior (destruction phase) |
 
-Rule: once the dictionary exists, `BakePolicy` and every other consumer
-**read** it; nobody keeps a private copy of material truth (anti-split-brain).
+Rule: once the dictionary exists, every consumer
+**reads** it; nobody keeps a private copy of material truth (anti-split-brain).
 
 ---
 

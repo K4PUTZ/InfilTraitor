@@ -3,7 +3,7 @@
 > 🔒 **2026-09-25 — HISTORY. The 32x36 voxel atom, the master strip and the facade multiply region were the 2D board's (deleted at R3D-END).** The 3D board maps the facade by UVs. Kept as the record of the measurements (last commit that has the atoms' consumers: `34881f81`).
 
 **Date:** 2026-07-07  
-**Tool:** `godot/scripts/tools/tile_anatomy_audit.gd` (headless Godot audit script)  
+**Tool:** `godot/scripts/tools/tile_anatomy_audit.gd` (headless Godot audit script; retired 2026-09-26, last present in `f4ddd52c`)  
 **Purpose:** Establish real, measured numbers for voxel atom geometry, facade multiply region, and master-strip sizing — every number in this document is traceable to literal console output, never derived from code under test.
 
 ---

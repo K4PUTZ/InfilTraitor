@@ -5,8 +5,8 @@
 ## collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry.
 ##
 ## D19/D20: one row per material, surface-independent for behavior (this
-## file). Texture identity is a SEPARATE axis, owned by
-## BakePolicy.texture_for_material().
+## file). Texture identity is a SEPARATE axis (derived from the material id and
+## `has_facade`; `BakePolicy.texture_for_material()` owned it until R3D-END).
 ##
 ## D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed
 ## either. A `has_facade` material renders EVERY surface — wall, roof and
@@ -63,9 +63,10 @@ class MaterialDef:
 	## now the WHOLE texture-family rule. `true` means every surface of this
 	## material — wall, roof AND floor — bakes through `facade_<id>`, grayscale
 	## + multiply; `false` means its floor bakes through the photographic
-	## `slab_<id>` exception (organic ground, where hue IS the identity). See
-	## BakePolicy.texture_for_material(), which owns the decision for both
-	## sides of the seam.
+	## `slab_<id>` exception (organic ground, where hue IS the identity).
+	## `BakePolicy.texture_for_material()` owned the decision for both sides of the seam
+	## until it was retired (R3D-END); the 3D board only has the `facade_<id>` side: a
+	## `has_facade == false` material draws its flat base colour.
 	##
 	## E-SEAM-03 retired `slab_full_color` here, which tried to express the
 	## same split as a second field and was **never read by anything** — the

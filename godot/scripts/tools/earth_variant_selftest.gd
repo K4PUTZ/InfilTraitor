@@ -19,7 +19,6 @@ func _init() -> void:
 	test_range()
 	test_not_constant()
 	test_distribution_uses_all_variants()
-	test_assets_loadable_and_canon_sized()
 	test_fnv1a_static_call_matches_instance_call()
 
 	print("\n" + "=".repeat(70))
@@ -120,31 +119,6 @@ func test_distribution_uses_all_variants() -> void:
 		_pass("All %d variants appeared across one 8x8 GU footprint (64 voxels)" % EarthVariantSelector.VARIANT_COUNT)
 	else:
 		_fail("Only %d/%d variants appeared across 64 voxels: %s" % [seen.size(), EarthVariantSelector.VARIANT_COUNT, seen.keys()])
-
-	print("")
-
-
-## The placeholder assets generate_voxel.py just produced must actually exist
-## at the exact paths/dimensions the selector and (later) VoxelBoard expect
-## — same canon as the four material atoms (32x36, matching VOXEL_ATOM_W/H).
-func test_assets_loadable_and_canon_sized() -> void:
-	print("[5] All %d earth voxel atoms load at canon size (32x36)\n" % EarthVariantSelector.VARIANT_COUNT)
-
-	var all_ok := true
-	for i in range(EarthVariantSelector.VARIANT_COUNT):
-		var path := EarthVariantSelector.variant_asset_path(i)
-		var img := Image.new()
-		var err := img.load(path)
-		if err != OK:
-			all_ok = false
-			_fail("Failed to load %s (err=%d)" % [path, err])
-			continue
-		if img.get_width() != 32 or img.get_height() != 36:
-			all_ok = false
-			_fail("%s is %dx%d, expected 32x36" % [path, img.get_width(), img.get_height()])
-
-	if all_ok:
-		_pass("All %d voxel_earth_N.png atoms load at 32x36 (VOXEL_ATOM_W/H canon)" % EarthVariantSelector.VARIANT_COUNT)
 
 	print("")
 

@@ -9,7 +9,7 @@ Where the work stands and what gets built next.
 | **[roadmap.md](roadmap.md)** | Macro phases and exit criteria | Hand, rarely |
 | **[technical_debt.md](technical_debt.md)** | Known issues and pending refactors | Hand |
 | **[METHODOLOGY.md](METHODOLOGY.md)** | Prompt IDs, domain enum, Director/Overlord/Operator split | Hand |
-| **[TILE_ANATOMY.md](TILE_ANATOMY.md)** | Tile geometry, audited by `godot/scripts/tools/tile_anatomy_audit.gd` | The audit tool |
+| **[TILE_ANATOMY.md](TILE_ANATOMY.md)** | Tile geometry (history; its audit tool was retired 2026-09-26 with the atoms it measured) | Frozen |
 | **[RETROSPECTIVE_2026-07.md](RETROSPECTIVE_2026-07.md)** | The first eight weeks, with the numbers and the open disagreement | Frozen — it's a record |
 
 ---

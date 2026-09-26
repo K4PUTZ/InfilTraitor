@@ -286,7 +286,7 @@ Estão **banidos** do codebase e da documentação:
 | `ground_<material>.png` como nome de textura | Renomeado em D20 | `slab_<material>.png` (só ground orgânico — D34) |
 | `MaterialDef.full_color` | Lido igual nas duas superfícies, não conseguia representar um material tintado na parede e fotográfico no chão | `has_facade` (D34) |
 | `MaterialDef.slab_full_color` | Substituto do anterior que **nunca foi lido por nada** — o compositor decidia pelo prefixo do texture id | `has_facade` (D34) |
-| `BakePolicy.DEFAULT_FACADES` | Dict material→facade mantido à mão | `BakePolicy.texture_for_material()`, derivado (D20/D34) |
+| `BakePolicy.DEFAULT_FACADES` | Dict material→facade mantido à mão | derivado do id do material + `has_facade` (D20/D34); `BakePolicy`, que o fazia, foi aposentada em 2026-09-26 |
 | "o chão usa arte colorida, a parede grayscale" | Modelo pré-D34 — as duas superfícies eram pipelines de arte diferentes | Um `facade_<id>` grayscale + MULTIPLY serve parede, teto **e** chão de um material estrutural; foto só para ground orgânico |
 | esticar (`resize`) uma facade para altura isotrópica | Pré-D34 — dobrava cada linha de texel, metade do detalhe vertical | Repetição espelhada (`_mirror_tile_v`), que é o idioma do resto do compositor |
 

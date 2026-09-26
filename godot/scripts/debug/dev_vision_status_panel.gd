@@ -94,7 +94,7 @@ func _update_display() -> void:
 	lines.append("FOG: %s | SHADOW: %s" % [fog_str, shadow_str])
 	
 	# ── HELPER LEGEND ──────────────────────────────────────────────────────────
-	lines.append("[F6:bake F7:blend H:heat L:light V:dev]")
+	lines.append("[H:heat L:light V:dev]")
 	
 	# ── BUILD DISPLAY ──────────────────────────────────────────────────────────
 	_label.text = "\n".join(lines)

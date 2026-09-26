@@ -962,9 +962,9 @@ new cross-plane query.
 | `Slice` / `Edge` | `material_bands: Dictionary` keyed by **rel_level**, read through `material_at(rel_level)`. A 1-D run along the vertical axis |
 | `Slab` | **single `material`. No bands, no `material_at()`** |
 | `pane_id` | **`Slice` only.** `plan_pane_shatter()` is built on a `(col, level)` lattice with a run axis — it has no meaning for a horizontal pane |
-| glass on the pane layer | **INTERIOR slabs only.** [`voxel_renderer.gd:3676`](../../godot/scripts/geometry/voxel_renderer.gd) is explicit: *"roofs and glazed floor zones stay opaque"* — a CEILING slab set to `glass` renders as an opaque glass-coloured slab today |
+| glass on the pane layer | **INTERIOR slabs only.** `voxel_renderer.gd:3676` *(deleted at R3D-END; last in `34881f81`)* is explicit: *"roofs and glazed floor zones stay opaque"* — a CEILING slab set to `glass` renders as an opaque glass-coloured slab today |
 | G6 shards | designed (§7.1) as a **floor decal** on the floor-dent path, BASE coords, checkpoint-scoped, a third `SaveState` section. **Unbuilt** |
-| `PropDef.material_zones` | the dictionary exists; only `"default"` is ever read ([`voxel_renderer.gd:4773`](../../godot/scripts/geometry/voxel_renderer.gd)). Props are single-material in practice |
+| `PropDef.material_zones` | the dictionary exists; only `"default"` is ever read (`voxel_renderer.gd:4773` *(deleted at R3D-END; last in `34881f81`)*). Props are single-material in practice |
 
 So a skylight does not merely lack polish — **it has no pane identity, no
 transparency, and no shatter path.** Three separate seams, not one.
@@ -1680,7 +1680,7 @@ one.
 fuligem?"*
 
 **Not on the soot map itself.** It is `FORMAT_RG8` — R is the per-face soot code
-(0..124), G is the light bucket ([`voxel_renderer.gd:3507`](../../godot/scripts/geometry/voxel_renderer.gd)).
+(0..124), G is the light bucket (`voxel_renderer.gd:3507` *(deleted at R3D-END; last in `34881f81`)*).
 Both channels are spoken for, and the cell plane (P3) still defaults OFF, so
 anything living there is invisible on the shipped path.
 

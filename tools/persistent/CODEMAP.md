@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**250 scripts · 80382 lines total** (under `godot/scripts/`)
+**249 scripts · 80060 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,7 +19,7 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
-- **systems/** — bake_policy.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, voxel_variant_registry.gd, wood_pattern.gd, world_render_scale.gd
+- **systems/** — bake_policy.gd, board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, theme_applier.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
 - **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, tile_anatomy_audit.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -674,7 +674,7 @@ extends `Node3D` · 1902 lines
 
 ### `geometry_coords.gd`
 
-`class_name GeometryCoords` · 121 lines
+`class_name GeometryCoords` · 103 lines
 
 `godot/scripts/geometry/geometry_coords.gd`
 
@@ -1012,7 +1012,7 @@ extends `Node3D` · 1902 lines
 
 `godot/scripts/geometry/vision_cone3d.gd`
 
-> VisionCone3D — a guard's smooth vision cone, drawn on the 3D board's ground plane. RENDER3D R3D-4c. The 2D cone was painted at z −4 under everything the 2D board drew above it, so a wall covered it. Under `RENDER3D=1` the 2D canvas draws over the 3D board, so left in 2D the cone would paint across walls and over the actors. Here it is a triangle fan on the ground, a hair above it, depth-tested: geometry covers it, actors stand over it. ONE AUTHORITY. The polygon is the guard's own (`_draw_vision_smooth_body` — LOS cuts, fov, range, the fade to alpha 0 at the rim). The guard publishes it through `vision_smooth_ready` while `vision_3d` is on; this only re-expresses each 2D point on the ground.
+> VisionCone3D — a guard's smooth vision cone, drawn on the 3D board's ground plane. RENDER3D R3D-4c. The 2D cone was painted at z −4 under everything the 2D board drew above it, so a wall covered it. The 2D canvas draws over the 3D board, so left in 2D the cone would paint across walls and over the actors. Here it is a triangle fan on the ground, a hair above it, depth-tested: geometry covers it, actors stand over it. ONE AUTHORITY. The polygon is the guard's own (`_draw_vision_smooth_body` — LOS cuts, fov, range, the fade to alpha 0 at the rim). The guard publishes it through `vision_smooth_ready` while `vision_3d` is on; this only re-expresses each 2D point on the ground.
 
 **Constants / tuning**
 - `GROUND_LIFT` = `0.02`
@@ -1053,7 +1053,7 @@ extends `Node3D` · 1902 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2321 lines
+`class_name VoxelBoard` · extends `Node2D` · 2158 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1067,42 +1067,14 @@ extends `Node3D` · 1902 lines
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood", "brick"]`
 - `IMPACT_DECAL_VARIANTS` = `3`
-- `DAMAGE_SUBSTRATE_VARIANTS` = `3`
-- `IMPACT_FLOOR_MATERIAL` = `"earth"`
-- `IMPACT_CRACK_MATERIALS` = `["concrete", "stone", "brick"]`
-- `FLOOR_DEPTH_DIM` = `[1.0, 0.70, 0.45, 0.34, 0.28]`
-- `_GENERIC_HOLE_RADIUS` = `{"bullet": 2.0, "blast": 3.0}`
-- `EMPTY_COLUMN` = `-9999`
 - `GlassCrackParamsClass` = `preload("res://godot/scripts/systems/destruction/glass_crack_params.gd")`
 - `CRAZE_MASK_TEXELS_PER_VOXEL` = `6`
 - `FloorPile3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
-- `var debug_nudge: Vector2 = Vector2.ZERO`
 
 **Public API**
-- `func has_level(level: int) -> bool:`
-- `func level_keys() -> Array:`
-- `func wall_level_keys() -> Array:`
-- `func ground_plane_level() -> int:`
-- `func relative_level(level: int) -> int:`
-- `func top_wall_level() -> int:`
-- `func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:`
-- `func level_origin(level: int) -> Vector2:`
-- `func level_z_index(level: int) -> int:`
-- `func get_max_voxel_z_index() -> int:`
-- `func get_walked_cell_count() -> int:`
-- `func memory_census(label: String) -> void:`
-- `func apply_debug_nudge(delta: Vector2) -> void:`
-- `func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:`
-- `func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:`
-- `func columns_with_structure() -> Dictionary:`
-- `func note_external_write(level: int, cell: Vector2i) -> void:`
-- `func apply_light_field(field) -> void:`
-- `func apply_light_field_cells(field, cells: Dictionary) -> void:`
-- `func apply_light_field_gus(field, gus: Array) -> void:`
-- `func process_dirty(registry: EdgeRegistry) -> void:`
 - `func glass_crack_covering(pane_id: String, run: int, level: int) -> int:`
 - `func spawn_glass_crack(spec: Dictionary) -> int:`
 - `func spawn_glass_craze(spec: Dictionary) -> int:`
@@ -1463,7 +1435,7 @@ extends `Node2D` · 137 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 596 lines
+`class_name FloatingCollectible` · extends `Node2D` · 592 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -2089,7 +2061,7 @@ extends `Node2D` · 42 lines
 
 ### `cell_plane_store.gd`
 
-`class_name CellPlaneStore` · extends `RefCounted` · 201 lines
+`class_name CellPlaneStore` · extends `RefCounted` · 181 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
@@ -2108,10 +2080,8 @@ extends `Node2D` · 42 lines
 - `func plane_image(level: int) -> Image:`
 - `func plane_levels() -> Array:`
 - `func flush(skip_writes: bool) -> int:`
-- `func texture_for(level: int) -> ImageTexture:`
 - `func ensure_level(level: int) -> void:`
 - `func reset_all() -> void:`
-- `func debug_fill(level: int, value: int) -> void:`
 
 ---
 
@@ -2209,7 +2179,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 241 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 229 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -2233,6 +2203,7 @@ extends `Node2D` · 42 lines
 
 **Public API**
 - `func apply(kind: String, entry: Dictionary, voxel_board, smoke_overlay) -> int:`
+- `func flush(voxel_board) -> void:`
 
 ---
 
@@ -3356,22 +3327,6 @@ extends `Node` · 54 lines
 - `var writes_unknown_container: int = 0`
 - `var writes_misplaced: int = 0`
 - `var build_ms: float = 0.0`
-
----
-
-### `voxel_variant_registry.gd`
-
-`class_name VoxelVariantRegistry` · 76 lines
-
-`godot/scripts/systems/voxel_variant_registry.gd`
-
-> VoxelVariantRegistry — Pre-fabricated damage-ATOM lookup (EXPLOSION_REBUILD_MASTER_PLAN Task 1b/E-BAKE, 2026-08-06, §3.1) Stores and resolves pre-baked damage-decal tile references created during map load. D-ARCH-01's per-CELL key (grid_pos, level, material) is gone — the atom-bake model's whole premise is that a damaged voxel shows a RANDOMLY CHOSEN facade crop for its material, not its own, so there is no cell dimension left to key on. The key is now purely about WHICH ATOM: (element_class, material, damage_material_name, substrate_variant). `damage_material_name` is the exact string VoxelBoard. damage_variant_material()/floor_damage_material() computes for a given (damage_state, blast_sourced, carved_side, decal_variant) — the same functions VoxelBoard.apply_damage_voxel_swap() calls to build its lookup key, so a hit and its D33 runtime-compositing fallback can never name a cell differently. `substrate_variant` is Voxel.damage_substrate, rolled once per mark and persisted (see Voxel's own doc). Soot is deliberately NOT part of this registry: soot is a per-cell modulate-alpha code (VoxelLightField.encode_face_soot()) applied by the light-repaint pass after any set_cell(), independent of which source_id/atlas_coords a cell shows. DESTROYED voxels are not registered either — Voxel.set_damage(DESTROYED) sets visible = false and the renderer erases the cell directly, never reaching a damage-variant lookup at all.
-
-**Public API**
-- `func register(variant_key: String, source_id: int, atlas_coords: Vector2i) -> void:`
-- `func get_variant(variant_key: String) -> Dictionary:`
-- `func clear() -> void:`
-- `func size() -> int:`
 
 ---
 
@@ -5217,7 +5172,7 @@ extends `Node2D` · 32 lines
 
 ### `debug_tools_controller.gd`
 
-`class_name DebugToolsController` · 162 lines
+`class_name DebugToolsController` · 141 lines
 
 `godot/scripts/world/controllers/debug_tools_controller.gd`
 
@@ -5564,7 +5519,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10678 lines
+extends `Node2D` · 10670 lines
 
 `godot/scripts/world/room.gd`
 

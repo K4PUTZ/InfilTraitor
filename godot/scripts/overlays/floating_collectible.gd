@@ -194,10 +194,6 @@ const PERSPECTIVE_YAW_DEG := {"N": 0.0, "E": -90.0, "S": 180.0, "W": 90.0}
 ## 128px, not by 5.
 const SPRITE_HALF_WIDTH_FALLBACK_PX := 38.0
 const SPRITE_HALF_HEIGHT_FALLBACK_PX := 19.0
-## How far the overlap scan reaches, in VOXELS (8 per GU). Two GUs in every
-## direction: one GU sideways already moves a voxel 128px on screen against a
-## 76px-wide sprite, so nothing past that can overlap.
-const Z_SCAN_RADIUS_VOXELS := 16
 
 ## Silhouette stroke colour — set before add_child(). OUTLINE_DISABLED turns it
 ## off entirely (placed weapons); a rarity tier will drive it once rarity exists.

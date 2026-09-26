@@ -30,13 +30,11 @@ const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_open
 const IMPACT_DECAL_MATERIALS: Array[String] = ["concrete", "metal", "stone", "wood", "brick"]
 ## Fixed at three by the Director, same session. Must match `variant_count` in
 ## voxels/manifest.json — asserted by voxel_decal_selftest.gd rather than
-## trusted, because a mismatch fails as a silent MATERIALS.find() miss.
+## trusted, because a mismatch drops marks silently.
 const IMPACT_DECAL_VARIANTS: int = 3
-## D3/§3.3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06) — how many pre-baked
-## substrate crops the atom-bake model offers per (material, damage name).
-## Independent of IMPACT_DECAL_VARIANTS on purpose (same reasoning as
-## GENERIC_MARK_VARIANT_COUNT above): a decal-art axis and a substrate-crop
-## axis have no reason to share a count, they just both happen to be 3 today.
+## D3/§3.3 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06) — how many substrate crops the damage model offers per (material, damage
+## name) (the 2D atom bake's axis; `BlastCalculator` still rolls it). Independent of IMPACT_DECAL_VARIANTS on purpose: a
+## decal-art axis and a substrate-crop axis have no reason to share a count, they just both happen to be 3 today.
 const DAMAGE_SUBSTRATE_VARIANTS: int = 3
 ## Every ground material's dent routes to this one shared asset (D26), so the
 ## floor family is built on "earth" and needs only the blast/dent/top corner of
@@ -173,30 +171,16 @@ func ground_plane_level() -> int:
 	return _ground_plane_level
 
 
-## LEVEL-RENUMBER — A RENDER LEVEL IS NOT A FACADE SHEET ROW, and conflating them
-## is what the renumber exposed.
+## LEVEL-RENUMBER — A RENDER LEVEL IS NOT A FACADE SHEET ROW, and conflating them is what the renumber exposed.
 ##
-## `BakedTileLookup` indexes a facade page BY LEVEL: level 0 is the sheet's bottom
-## row and each level up advances the atlas window, wrapping rows. That axis has
-## its own origin — zero — and always did; it only ever coincided with the render
-## level because the render level also started at zero.
-##
-## Measured when it did not: with the ground plane at 80 the lookup read level 80
-## as sheet row 16, so the wall's first two levels rendered another storey's
-## texture and levels 82 and up fell off the page entirely — **2 112 cells gone,
-## silently, with no warning and no script error**, because a resolve that finds
-## nothing simply places nothing.
-##
-## Same class as `bake_compositor.gd`'s `start_level` and `room_builder`'s
-## `level_start`/`level_end`: texture space, origin zero, never shifted.
-##
-## ⚠️ AND THE BAKE SHEET IS NOT THE ONLY AXIS LIKE THIS. Every level-keyed HASH in
-## the project has the same property, and invariant **B4 pins them**: the earth
-## variant (`EarthVariantSelector.variant_for`) and the generic damage mark
-## (`_generic_variant_for`) both multiply the level into an FNV-style mix, so
-## feeding them an absolute level would silently repaint the ground with different
-## variants. Measured: **52 224 floor cells changed source id** before this was
-## applied to them — a board that looks fine and is not the one that was there.
+## The absolute level minus the ground plane: 0 is the wall base, negative is the floor stack. Everything addressed from
+## the ground rather than from the absolute number goes through it: `level_origin()` and `level_z_index()`, the facade sheet
+## row a 3D face samples, and every level-keyed HASH — invariant **B4 pins them**: the earth variant
+## (`EarthVariantSelector.variant_for`) multiplies the level into an FNV-style mix, so feeding it an absolute level would
+## silently repaint the ground with different variants (measured on the 2D board: **52 224 floor cells changed source id**
+## before this was applied). The 2D board's bake sheet (`BakedTileLookup`, deleted) had the same property: with the ground plane
+## at 80 it read level 80 as sheet row 16 and **2 112 cells vanished with no warning**, because a resolve that finds nothing
+## places nothing. Never a literal (rule 9).
 func relative_level(level: int) -> int:
 	return level - _ground_plane_level
 
@@ -224,30 +208,8 @@ var _diag_skipped_cells: int = 0
 var _diag_slice_count: int = 0
 
 
-## RENDER_ORDER_MASTER_PLAN Task 1 Q2 — the Y-sort gate, DEFAULT OFF.
-##
-## `RO1` resolves glass-vs-wall depth INSIDE a level band by Y-sorting, which this
-## project has never enabled anywhere (`y_sort_origin` is set in three places and
-## does nothing on its own). Q1 proved the mechanism works on Godot 4.6.1; Q2 asks
-## what it COSTS on the real board, where Y-sorting a `TileMapLayer` gives up
-## quadrant batching and this renderer already reports ~12 000 draw calls.
-##
-## ⚠️ MEASUREMENT GATE, NOT A FEATURE. Default off, so the shipping board is
-## byte-identical. Turning it on alone must ALSO leave the board unchanged — glass
-## does not move until the plan says it does — and that control is the first thing
-## Q2 checks: a "before/after" that skips it cannot tell "Y-sort did nothing" from
-## "Y-sort did two things that cancelled".
-## `INFILTRAITOR_YSORT=1` — every level Y-sorted (the blunt form).
-## `INFILTRAITOR_YSORT=2` — SCOPED: only the levels that actually carry glass, set
-## retroactively in `_ensure_glass_sublayers()`. Depth only has to be resolved
-## where glass and opaque share a level band, so every other level keeps its
-## quadrant batching. On a glass test map that saves little; on a mission map,
-## where a storefront is a few levels out of thirty-odd, it is most of the cost.
-static var ysort_probe_on: bool = OS.get_environment("INFILTRAITOR_YSORT") == "1"
-static var ysort_probe_scoped: bool = OS.get_environment("INFILTRAITOR_YSORT") == "2"
 
-
-## Setup: builds tileset and prepares for rendering
+## Setup: the visual offset and the wall base z-index, which the level registry's origins and draw heights derive from
 func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	_visual_grid_offset = visual_grid_offset
 	_wall_base_z_index = wall_base_z_index
@@ -257,28 +219,13 @@ func setup(visual_grid_offset: Vector2, wall_base_z_index: int = 10) -> void:
 	MemStage.mark("10 voxel TileSet built")
 
 
-## D33 Part 4b — how big a hole punch_generic_alpha_hole() cuts, keyed by
-## mark_family. Must match generate_voxel.py's _GENERIC_HOLE_RADIUS exactly
-## (equality-tested by generic_mark_compositor_equality_selftest.gd).
-const _GENERIC_HOLE_RADIUS: Dictionary = {"bullet": 2.0, "blast": 3.0}
 
 
-## FLOAT-PROP-Z-01 — sentinel for "this GU has no wall/block geometry at all".
-## Not -1: level -1 is a real (floor) level, and a caller comparing heights would
-## silently treat an empty column as ground.
-const EMPTY_COLUMN: int = -9999
-
-
-## VL-D4 — screen/world anchor of one voxel cell (its N-vertex, same anchor
-## `map_to_local()` gives for any tile), for overlays that need to draw AT a
-## specific voxel (e.g. EmberOverlay's glow) without re-deriving the layer
-## position formula themselves. Analytic, no empirical offset (project rule):
-## reuses the REAL TileMapLayer's own `position` + `map_to_local()` — the exact
-## transform Godot uses to render that cell — so this stays correct even if the
-## layer-position formula ever changes. Good enough for a soft glow blob, which
-## needs "roughly at this voxel," not pixel-exact face-centre alignment.
-## Returns Vector2.ZERO if the level has no layer (caller's cell couldn't be
-## there).
+## VL-D4 — screen/world anchor of one voxel cell (its N-vertex), for overlays and VFX that need to draw AT a specific voxel
+## (e.g. EmberOverlay's glow) without re-deriving the layer-position formula themselves. Analytic, no empirical offset
+## (project rule): `level_origin(level) + voxel_cell_local(cell)`, proved equal to the deleted TileMapLayer's own
+## `position + map_to_local()` before it went. Good enough for a soft glow blob, which needs "roughly at this voxel", not
+## pixel-exact face-centre alignment. Returns Vector2.ZERO if the level was never built (the caller's cell couldn't be there).
 func voxel_world_position(grid_pos: Vector2i, level: int) -> Vector2:
 	if not _layers.has(level):
 		return Vector2.ZERO
@@ -400,15 +347,6 @@ static var GLASS_RIM_ENABLED: bool = OS.get_environment("INFILTRAITOR_GLASS_RIM"
 ## time the camera turns.
 static var GLASS_OPENING_DEFAULT: String = "star_deep"
 
-## CRACK-04 — the cut's facet: how wide the darkened band along the opening's edge
-## is, in VOXELS, and how dark it goes at the edge itself. Both are LOOK dials and
-## both are env-overridable, because the whole point of them is that the Director
-## can read the hole's topography and only he can say when he can.
-static var GLASS_CUT_FACET_WIDTH: float = float(OS.get_environment("INFILTRAITOR_GLASS_FACET_W")) \
-	if OS.get_environment("INFILTRAITOR_GLASS_FACET_W") != "" else 0.30
-static var GLASS_CUT_FACET_DIM: float = float(OS.get_environment("INFILTRAITOR_GLASS_FACET_DIM")) \
-	if OS.get_environment("INFILTRAITOR_GLASS_FACET_DIM") != "" else 0.35
-
 
 ## Render all slices and junction columns from registry
 ## Creates cells in layers based on voxel positions and levels
@@ -441,9 +379,7 @@ func render(registry: EdgeRegistry, junction_columns: Array = []) -> void:
 ## doesn't start at floor 0).
 func render_block(_gu_cell: Vector2i, start_level: int, storey_span: int, _material_name: String) -> void:
 	# FIX-VOXEL-HEIGHT-01: multiply storey_span by LEVELS_PER_STOREY to expand to level-space
-	## RENDER3D R3D-3 step 5 — `_ensure_voxel_layers()` always runs first, same
-	## reasoning as `render_slab()`'s own note (cheap, and any later resolve-only
-	## caller needs the layer node to exist).
+	## The levels are always registered first (see `render_slab()`): readers of `level_origin()` ask for them.
 	_ensure_voxel_layers(start_level * GeometryCoords.LEVELS_PER_STOREY + storey_span * GeometryCoords.LEVELS_PER_STOREY)
 	## R3D-END: the 3D board draws every block from the store; nothing is placed here.
 	_diag_skipped_cells += 1
@@ -493,24 +429,16 @@ func _render_junction_column(column: JunctionResolver.JunctionColumn) -> void:
 	_diag_skipped_cells += 1
 
 
-## VL-01 — repaint every placed voxel cell to its light bucket. Runs on
-## lighting_rebuilt (map load, perspective rotation, light changes) — never per
-## frame. Pure view layer, same contract as occlusion (O1): no Voxel state, no
-## dirty flag, no persistence — placement decisions (source, atlas coords,
-## flip) are read back from the cell and preserved; only the bucket changes.
 ## VL-02b — level → set of occupied cells, for the field's surface/AO shading.
-## The renderer owns the tilemaps, so it owns this snapshot; a Dictionary set
-## keeps the field's neighbour probes O(1) instead of a TileMap API call each.
+## A Dictionary set keeps the field's neighbour probes O(1).
 ## Includes negative (floor/slab) levels so floor craters shade like wall ones.
 ## `predict_destroyed` (W-PRECOOK, 2026-08-19) omits cells a shot is ABOUT to
 ## destroy, so the caller can build the light field for the world as it will be
 ## rather than as it is. Empty = the live world, which is every existing caller.
 ##
-## It exists to warm the TileSet alternative cache during the aim window: the
-## measured cost of a shot is 412 `create_alternative_tile()` calls landing on
-## the impact frame, and an alternative minted early is one not minted late.
-## A WRONG prediction costs nothing but a cache miss — `_ensure_light_alt()`
-## still mints on demand — which is why this is safe to do speculatively.
+## It exists so the shot's pre-cook can build the light field for the predicted world in the aim window (on the 2D board it
+## also warmed the TileSet alternative cache: 412 `create_alternative_tile()` calls on the impact frame, deleted at R3D-END).
+## A WRONG prediction costs nothing but a cache miss, which is why this is safe to do speculatively.
 ##
 ## RENDER3D R3D-2 step 1 — answers from the `VoxelStore` alone (visible claims), never the
 ## placed tiles. Ghosted cells and glass need no separate fold-in here: occlusion never
@@ -574,8 +502,8 @@ var _placed_index: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) ->
 ## VoxelLightField, therefore it is in the stale set". That property covers every
 ## change the FIELD causes and none that a direct board write causes — and
 ## `DetonationChoreographer` is documented as *"the ONLY place a plan ever reaches
-## set_cell()"*, writing the plan's own alternative and scorch straight onto the
-## layer. Measured: without this the ending's gate failed by 200 cells, every one
+## set_cell()"*, writing the plan's own soot and light straight into the
+## cell planes. Measured: without this the ending's gate failed by 200 cells, every one
 ## of them a cell the blast's own wave had written.
 ##
 ## So the writer names what it wrote, and the next full-coverage apply unions it
@@ -603,12 +531,8 @@ func apply_light_field(field) -> void:
 	_apply_light_field_pass_store(field)
 
 
-## RENDER3D R3D-3 step 5 — `apply_light_field()`'s pass (the only one since R3D-END).
-## Same job as `_apply_light_field_pass()` (write every cell's soot/bucket plane
-## value, index it for `apply_light_field_gus()`), but the cell set comes from
-## `VoxelStore.occupancy_dict()` instead of `layer.get_used_cells()`, since no
-## opaque tile exists to enumerate. No `layer.get_cell_*`/`set_cell` call anywhere
-## in this function — that is the entire point.
+## `apply_light_field()`'s pass: write every cell's soot/bucket plane value and index it for `apply_light_field_gus()`. The
+## cell set comes from `VoxelStore.occupancy_dict()` (no opaque tile exists to enumerate; the tile-walking pass went at R3D-END).
 func _apply_light_field_pass_store(field) -> void:
 	_apply_cells_seen = 0
 	_apply_cells_written = 0
@@ -630,31 +554,6 @@ func _apply_light_field_pass_store(field) -> void:
 		field.clear_stale_accum()
 	_externally_written.clear()
 
-
-## VL-03 — repaint ONLY the cells inside the given GU cells, using the index
-## built by the last full apply_light_field() pass. For a temporal light
-## (flicker/pulse) toggling: scopes the repaint to the light's own influence
-## set instead of the whole map. Measured on PLAYGROUND's demo lamp (radius 7,
-## 149 GUs, 29,180 voxels — a worst case: the radius fully overlaps a dense
-## 2-storey wall row): ~75ms/toggle steady-state, down from the ~590-675ms a
-## full rebuild cost for the same event (~88% reduction). A smaller or
-## more open-area light touches far fewer voxels and costs proportionally
-## less. Silently no-ops for a GU the index doesn't know about (nothing was
-## ever placed there).
-## Cells actually written by the last scoped apply. The CPU inside this function
-## is not the whole cost — every `set_cell` also makes the TileMapLayer resubmit,
-## and that lands in the frame outside any profiler scope here. Counting the
-## writes is how that invisible half gets a number.
-var _scoped_writes: int = 0
-
-## How many TileSet ALTERNATIVES were actually created. `create_alternative_tile`
-## rebuilds the TileSet, and that cost lands in the frame outside any profiler
-## scope in this file — the suspected other half of the shot's impact frame
-## (258 ms of measured work inside a 522 ms frame).
-var _alts_minted: int = 0
-## INFILTRAITOR_MINT_TRACE=1 prints every alternative actually created. The count
-## alone cannot say WHY a warm missed; the (coords, alt) pair can.
-var _mint_trace: bool = OS.get_environment("INFILTRAITOR_MINT_TRACE") == "1"
 
 
 ## PERF-10 §10.2 — `_placed_by_gu` MEMBERSHIP, in O(1).
@@ -678,7 +577,7 @@ func _index_placed(level: int, cell: Vector2i) -> void:
 
 ## PERF-10 — THE APPLY, DRIVEN BY THE FIELD'S OWN STALE SET.
 ##
-## Identical per-cell body to `_apply_light_to_layer()`; the only difference is
+## The same per-cell body as the map-wide pass; the only difference is
 ## which cells it visits. §10.1 priced the map-wide pass at ~610 ms of walk to
 ## write 96 cells of 205 384 — the writes and the mints together came to 37 ms,
 ## and -3 ms on a second sample. The walk IS the stall, so the fix is to walk the
@@ -723,8 +622,6 @@ func apply_light_field_gus(field, gus: Array) -> void:
 		return
 	if field == null or gus.is_empty():
 		return
-	_scoped_writes = 0
-	_alts_minted = 0
 	var gu_set: Dictionary = {}
 	for gu in gus:
 		gu_set[gu] = true
@@ -788,17 +685,10 @@ func _process_dirty_slice_voxel(voxel: Voxel, slice: Slice, _edge) -> void:
 ## Until now nothing consumed SlabRegistry.dirty_slabs() on the render side:
 ## room.gd's _tic_slab_system() only cleared dirty flags. Re-render routes
 ## through the SAME per-voxel call each Slab's own original render used
-## (render_slab()'s split — zone bake for a zoned floor, earth-hash otherwise —
-## and render_slab_solid()'s fixed material for CEILING/INTERIOR) so a re-render
-## after partial damage is pixel-identical to a fresh one for whatever voxels
-## remain visible.
-##
-## Erase routes through get_layer() (sign-aware for both positive and
-## negative levels) — process_dirty()'s raw `_voxel_layers[level]` indexing
-## must NOT be copied here: GDScript arrays support Python-style negative
-## indices, so a floor-level Voxel destroyed through that pattern would
-## silently erase a cell from the wrong (last positive) layer instead of
-## being a safe no-op.
+## (render_slab()'s split — zoned floor, earth-hash otherwise — and render_slab_solid()'s
+## fixed material for CEILING/INTERIOR) so a re-render after partial damage sees the same
+## visible voxels as a fresh one. R3D-END: nothing is erased here (the 3D board meshes the
+## store); what is left is the `voxel_destroyed` notice and the light and glass bookkeeping.
 func process_dirty_slabs(registry: SlabRegistry) -> void:
 	var dirty_slabs := registry.dirty_slabs()
 	if dirty_slabs.is_empty():
@@ -878,7 +768,7 @@ func _render3d_glass_gone(voxel: Voxel, material_id: String) -> void:
 ## does per-voxel-STATE stages (DESTROYED, then DENTED, then the rest), and
 ## real profiling on the dev capture harness found each yield disproportionately
 ## expensive whenever a batch had composited a damage-composite atlas page
-## (flush_damage_composite_pages() re-uploads the touched page's whole texture
+## (on the 2D board, whose page flush re-uploaded the touched page's whole texture
 ## before the frame draws — cheap CPU-side per PERF-02's own numbers, but the
 ## frame that then renders it was measured far slower than an untouched one on
 ## this harness). An 8ms budget forces a yield roughly every 1-2 decal-heavy
@@ -989,11 +879,10 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 ## cell, carrying the same 0..124 base-5 face code the alternative's alpha used
 ## to carry (top*25 + se*5 + sw, 4 = clean per face, 124 = fully clean).
 ##
-## WHY A TEXTURE AT ALL, and it is not "because textures are fast": a
-## TileMapLayer has exactly one per-cell channel — the alternative id — and
-## every distinct (bucket, soot) pair spent one. PERFORMANCE_MASTER_PLAN §1.4:
-## up to 3 000 alternatives per tile, each a `create_alternative_tile()` and a
-## TileSet rebuild charged once per FRAME THAT MINTS.
+## WHY A TEXTURE AT ALL, and it is not "because textures are fast": the 2D board's TileMapLayer had exactly one per-cell channel
+## — the alternative id — and every distinct (bucket, soot) pair spent one (PERFORMANCE_MASTER_PLAN §1.4: up to 3 000
+## alternatives per tile, each a `create_alternative_tile()` and a TileSet rebuild charged once per FRAME THAT MINTS). The 3D
+## board reads this plane per cell instead.
 ##
 ## Sized by a CONSTANT and loud-failing past it (B6) rather than growing: a
 ## silently-clamped cell would render clean soot with no error, which is exactly
@@ -1002,7 +891,7 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 ## ⚠️ CELLS GO NEGATIVE, and the first version of this plane did not know that.
 ##
 ## The map's BUFFER (Rule 7 — applied only in MapCompiler) puts real geometry at
-## negative voxel coordinates: measured by making the shader print its recovered
+## negative voxel coordinates: measured by making the 2D shader print its recovered
 ## cell, the fragments along every GU seam resolve to cells like (-8, 8). Indexed
 ## from zero, ~110 000 fragments of a 921 600-pixel frame — about 12% — fell
 ## outside the plane and silently took the "clean" fallback, which is invisible
@@ -1010,7 +899,7 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 ## project keeps paying for, and it shipped in PERF-P2.
 ##
 ## So the plane carries an ORIGIN: everything indexes `cell + ORIGIN`, and the
-## shader is passed the same offset.
+## board's shader is passed the same offset.
 ## PERF-P3 — the G-channel value meaning "no bucket was ever written here".
 ## Deliberately outside 0..LIGHT_BUCKET_COUNT-1 so it can never be mistaken for a
 ## real bucket; the shader clamps it to full-lit for rendering.
@@ -1535,7 +1424,7 @@ static func floor_shard_half_px() -> float:
 	return 16.0 * FLOOR_SHARD_SCALE
 
 
-## RENDER3D — draw the shard piles on the 3D board too (this renderer is hidden under it). Piles that
+## RENDER3D — draw the shard piles on the 3D board. Piles that
 ## already exist are handed over, so a board built after a blast still shows them. `null` detaches.
 func set_pile_board3d(board: Node3D) -> void:
 	if _pile3d != null:
@@ -1698,13 +1587,10 @@ func clear_glass_rim_cells() -> void:
 ## 1 where glass still stands, 0 where it is gone — and the sprite multiplies its
 ## alpha by it, scaled by the Director's `glass_crack_hole_cut` dial.
 ##
-## ⚠️ IT IS READ OFF THE GLASS TILEMAP, NOT MAINTAINED AS A PARALLEL PLANE, and
-## that is the whole design. `erase_cell()` on `_glass_layers` is what actually
-## removes a glass voxel from the screen — it is the live authority every erase
-## seam already goes through (the cook's `erase_glass_cell`, and the two dirty
-## passes). A second plane written alongside them would be a third copy of the
-## same fact, free to drift; asking the tilemap cannot drift, and it is the same
-## instrument INFILTRAITOR_CELL_PROBE reads.
+## ⚠️ IT IS READ OFF THE STORE'S GLASS STATE, NOT MAINTAINED AS A PARALLEL PLANE, and that is the whole design.
+## `_glass_cell_present()` asks `VoxelStore.has_glass_pane()`, the live authority every erase seam already goes through
+## (the cook's `erase_glass_cell`, and the two dirty passes). A second plane written alongside them would be a third copy of
+## the same fact, free to drift; asking the store cannot drift.
 ##
 ## The rebuild is bounded by G-D23: a pane is at most 64 x 32 cells, so one crack
 ## costs at most 2048 cell queries and only when glass was actually erased.
@@ -1744,8 +1630,7 @@ func note_glass_erased() -> void:
 
 ## Rebuild the occupancy of every live crack, if any glass was erased since the
 ## last call. Returns how many were rebuilt. Called at the four dirty-pass ends
-## and from DetonationEntryWriter.flush() — the same five batch seams
-## `flush_damage_composite_pages()` already uses.
+## and from DetonationEntryWriter.flush() (the batch seams the 2D board's composite-page flush also used).
 func refresh_glass_crack_occupancy() -> int:
 	if not _glass_crack_occ_dirty:
 		return 0
@@ -2153,16 +2038,11 @@ func _ensure_layer(level: int) -> void:
 	_cell_planes.ensure_level(level)
 
 
-## GLASS G3 — erase one glass pane cell. A glass voxel renders on `_glass_layers`,
-## not `_layers`, so the detonation writer's "destroy" wave (which only knows
-## `get_layer()` → the opaque stack) leaves a blast-shattered pane on screen.
-## The shot path already handles this in `_process_dirty_slice_voxel`; this is
-## the same erase for the cook, callable per destroyed cell. Returns true if a
-## cell was actually removed. A no-op when the level has no glass sublayer.
-## True when the glass sublayer at `level` still paints `cell`. The instrument for
-## "a voxel is DESTROYED in the data and still on screen" — the G-D48 render gap
-## (Director, 2026-09-07: *"permanece uma parte da vidraça azul"*), which only a
-## rotation used to clear because the rebuild re-derives from `_base_damage`.
+## GLASS G3 — the cook's erase of one glass pane cell. The glass state is the store's (R3D-14), so there is nothing to erase
+## here: what remains is the light and glass bookkeeping the erase owed (the crack's occupancy re-cut, the rim's opening
+## batch). Returns true.
+## `glass_cell_present()` below asks the store whether a pane cell is still standing: the instrument for "a voxel is DESTROYED
+## in the data and still on screen" (the G-D48 render gap).
 func glass_cell_present(level: int, cell: Vector2i) -> bool:
 	return _glass_cell_present(level, cell)
 
@@ -2175,40 +2055,16 @@ func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 	return true
 
 
-## DESTRUCTION D1/D2/D4 — render one Slab's voxels. Each voxel independently
-## picks its earth variant via EarthVariantSelector.variant_for(grid_pos,
-## level) — deterministic, so this is idempotent: calling it again on the
-## same Slab places the exact same cells (D5's "nothing to pop" property).
-## Not wired to any real map data yet (no MapSpec integration) — this is the
-## render-side half of Part 2's core, consumed directly by whatever builds a
-## Slab (today: only slab_generator.gd's manual/test construction).
-## EXPLOSION_REBUILD_MASTER_PLAN Task 4/E-PLAN (2026-08-07) — `apply` mirrors
-## _set_voxel_cell()'s own resolve-only seam: DetonationPlanBuilder's floor-
-## reveal exposure fallback (§2 — "destroying a voxel exposes geometry behind
-## it, which must fall back to the material atlas") needs to resolve the
-## deep floor Slab's tiles WITHOUT painting them onto the live TileMapLayer
-## before the destroy wave that exposes them actually fires. Returns
-## Array[{"grid_pos":Vector2i, "level":int, "source_id":int,
-## "atlas_coords":Vector2i, "alternative_id":int}] when apply is false (one
-## entry per currently-visible voxel), empty when apply is true (existing
-## callers all ignore the return value already).
+## DESTRUCTION D1/D2/D4 — register one Slab's level. Each Slab's voxels share `slab.level` (SlabGenerator.generate()'s
+## invariant), so one level is ensured, not a scan.
+## R3D-END: nothing is drawn (the 3D board meshes the store). `apply == false` is the exposure plan's seam
+## (EXPLOSION_REBUILD_MASTER_PLAN Task 4/E-PLAN: destroying a voxel exposes geometry behind it): it returns one entry per
+## currently visible voxel (`grid_pos`, `level`, and the tile-less placeholder ids) and is empty when `apply` is true.
 func render_slab(slab: Slab, apply: bool = true) -> Array:
 	var resolved: Array = []
 	if slab.voxels.is_empty():
 		return resolved
-	# All of one Slab's voxels share slab.level (SlabGenerator.generate()'s
-	# invariant) — one layer to ensure, not a min/max scan. D17: negative
-	# (floor) levels route to the negative-only ensure function.
-	##
-	## RENDER3D R3D-3 step 5 — `_ensure_layer()` ALWAYS runs, skip or not: the
-	## node itself is cheap (no cells), and `DetonationPlanBuilder`'s resolve-only
-	## call (`apply == false`, `_resolve_damaged_tile()`) reaches `_set_voxel_cell()`
-	## directly and crashes on a missing layer node — measured 2026-09-18, desktop
-	## `--verbose`: `_set_voxel_cell` returned `{}` (its own "no layer" warning),
-	## and the caller's `result["source_id"]` on that empty dict threw a SCRIPT
-	## ERROR mid-phase, which is what left the "3 resources still in use at exit"
-	## the Moto's own detonation run reproduced twice, deterministically. Only the
-	## per-voxel CELL WRITE below is skippable — the layer must always exist.
+	## The level always exists afterwards, whatever `apply` says: the exposure plan and the readers of `level_origin()` ask for it.
 	_ensure_layer(slab.level)
 	## R3D-END: nothing is placed (the 3D board draws the store). The exposure plan (`apply == false`) needs WHICH
 	## cells a slab shows, not which tile draws each.
@@ -2254,35 +2110,16 @@ func render_slab_solid(slab: Slab) -> void:
 	## R3D-END: nothing is placed; the 3D board draws the store.
 
 
-## DESTRUCTION D13/D18 — render one FIXED floor level for one GU: no `Slab`,
-## no `Voxel`, no dirty-tracking at all. D13's 7 non-destructible levels
-## beneath the one real (Slab) destructible top are structurally incapable of
-## ever being marked dirty precisely because they never go through Voxel in
-## the first place — this function places cells directly, the same way
-## render_block() does for wall material, just per-LEVEL (not per-storey) and
-## through the earth-variant hash instead of one fixed material, so a fixed
-## level reads as the same material family as the destructible level above it.
-##
-## D18: called once per level, on demand — never loops over a range itself.
-## Whatever eventually decides "digging exposed level -4" (Part 3, not built
-## yet) calls this once for that one level; nothing here assumes or builds a
+## DESTRUCTION D13/D18 — register one FIXED floor level for one GU: no `Slab`, no `Voxel`, no dirty-tracking at all. D13's 7
+## non-destructible levels beneath the one real (Slab) destructible top can never be dirty because they never go through
+## `Voxel`. D18: called once per level, on demand — never loops over a range itself; nothing here assumes or builds a
 ## contiguous stack.
-## FLOOR-DEPTH-01: levels down to FLOOR_ZONE_PAINT_MIN_LEVEL wear the floor
-## zone's own baked texture instead of the earth hash, when the GU has a zone
-## and the bake is on (same two conditions render_slab() applies to the
-## destructible planes — a ground_* material is absent from MATERIALS, so
-## letting one through with the bake off would resolve to MATERIALS[0] and paint
-## the crater bottom flat concrete gray).
-## EXPLOSION_REBUILD_MASTER_PLAN Task 4/E-PLAN (2026-08-07) — `apply` mirrors
-## render_slab()'s own resolve-only seam, for the OTHER exposure-fallback
-## branch (_expose_below()'s "no real Slab below — paint the fixed earth
-## plane directly" case). See render_slab()'s doc for the full rationale;
-## same return shape (Array of resolved per-voxel entries, empty when apply
-## is true).
+## R3D-END: nothing is drawn (the 3D board meshes the store). `apply == false` is the exposure plan's seam
+## (`DetonationPlanBuilder`'s "no real Slab below" case): it returns one entry per cell the level shows, with no tile,
+## and is empty when `apply` is true.
 func render_fixed_earth_level(gu_cell: Vector2i, level: int, apply: bool = true) -> Array:
 	var resolved: Array = []
-	## RENDER3D R3D-3 step 5 — `_ensure_layer()` always runs first; see
-	## `render_slab()`'s own note on why the layer node must exist regardless.
+	## The level always exists afterwards (see `render_slab()`).
 	_ensure_layer(level)
 	## R3D-END: nothing is placed. The exposure plan (`apply == false`) needs the cells the level shows.
 	if apply:

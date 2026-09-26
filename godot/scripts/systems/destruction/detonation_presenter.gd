@@ -278,7 +278,7 @@ func _collect_soot_ramp(plan: Dictionary, voxel_board) -> Array:
 
 ## The DevFlags NODE, not the global name: this RefCounted is also built by tools
 ## that run without autoloads, where it simply reads as off.
-## DIAG-21 step 2 — the 3D board, when `RENDER3D=1` built one. It follows the same
+## DIAG-21 step 2 — the 3D board, once a map is loaded. It follows the same
 ## three beats the 2D board changes on: the commit frame, the settled soot, the light.
 func _board3d() -> Node:
 	if consequence_room == null or not consequence_room.has_method("board3d"):

@@ -3195,6 +3195,20 @@ that still builds the 2D board is `34881f81`.
   `ART_SPECIFICATIONS` (the 3D board's silent failure modes; B3 retired; the atom sheet retired), `DIRECTION_GLOSSARY` §10
   (a new "banidos desde o R3D-END" table) and `Board3DLive`'s header. `docs/README.md` and `current_state.md` were not touched.
 - **END-8 — the gate** (below).
+  **R3D-END review, 2026-09-25 (after the close): loose ends found and swept.** A stale dev help block still advertised F6 bake / F7 blend /
+  F8 atom sheet and a deleted `bake_selftest.gd` (and the status panel's legend the same keys): fixed. Dead code the END left behind
+  (each proven zero references and present at `34881f81`): `ysort_probe_*`, `EMPTY_COLUMN`, `GLASS_CUT_FACET_*`, `_mint_trace`,
+  `_GENERIC_HOLE_RADIUS`, the write-only `_scoped_writes` / `_alts_minted`, `CellPlaneStore.texture_for` / `debug_fill`,
+  `GeometryCoords.voxel_texture_origin` / `FLOOR_ZONE_PAINT_MIN_LEVEL`, `_show_transient_label`, `Z_SCAN_RADIUS_VOXELS` and the whole
+  `voxel_variant_registry.gd`; ~25 comment blocks that described deleted mechanisms as live were rewritten; two dead links repaired.
+  **Left, on purpose:** dead code that was ALREADY dead before the END (`_glass_neighbour`, `FacadeSampler.get_window_origin_*`,
+  `GlassCrack.has_craze_art`, `GlassMaterials.fracture_texture_id`, `OcclusionSet._is_exposed`, 5 dev-tool paths, `theme_applier.gd`);
+  the `render*()` husks' names; `VoxelRenderer` in the live docs; the 17 `voxel_*.png` atoms and `halves/` folders no runtime code reads
+  (`ASSETS/materials` is not in git: the Director's art). **Two gaps stated, not closed:** the "zero warnings in modified files"
+  rule cannot be checked from the command line (`project_lint.py` reports errors only and headless Godot prints no script warnings,
+  tested with a deliberately bad script), and no selftest pins the FNV-1a OUTPUT values (only the hook pins the constants).
+  All 11 maps boot and rotate E -> N with 0 errors. `verify.py full` PASSED (419 s) on the cleanup; `occ_canonical_gate` failed once
+  in an earlier run (46 s, no digest) and passed alone and in the rerun: an unexplained flake, not reproduced.
   **END-8 done 2026-09-25 — R3D-END IS CLOSED.** The R3D-13 matrix on both handsets with the APK of `ac2eebce`, no regression.
   **Moto g04s** (two boots): load 15.2-15.5 s vs 16.3; PSS 1.09-1.11 GB vs 1.38 (~20% down); idle 18.8-19.4 vs 18.9-21.9 ms;
   detonation means 28.4-31.3 vs 29.5-32.7 ms; the second grenade's worst frame 254 vs 693-725; shot tail 526 ms (719 before the

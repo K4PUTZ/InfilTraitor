@@ -15,7 +15,7 @@ const SOOT_FACE_MULT: Array[float] = [0.38, 0.60, 0.76, 0.90]
 const FACE_TONE: Array[float] = [1.0, 0.975, 0.945]
 
 ## The light ladder: brightness of light bucket 0..11. A function (not a const) because the PERF-P3 diagnostic
-## `INFILTRAITOR_FLAT_LIGHT=1` flattens it to 1.0 on both boards and has to take effect before the first material.
+## `INFILTRAITOR_FLAT_LIGHT=1` flattens it to 1.0 and has to take effect before the first material.
 static func light_ladder() -> Array[float]:
 	var ladder: Array[float] = [
 		0.12, 0.20, 0.33, 0.40, 0.47, 0.54, 0.61, 0.69, 0.77, 0.85, 0.92, 1.00,
@@ -23,5 +23,5 @@ static func light_ladder() -> Array[float]:
 	if OS.get_environment("INFILTRAITOR_FLAT_LIGHT") == "1":
 		for i in range(ladder.size()):
 			ladder[i] = 1.0
-		print("[P3-DIAG] INFILTRAITOR_FLAT_LIGHT — light ladder flattened to 1.00 on BOTH boards")
+		print("[P3-DIAG] INFILTRAITOR_FLAT_LIGHT — light ladder flattened to 1.00")
 	return ladder

@@ -98,27 +98,6 @@ func toggle_nudge_mode() -> void:
 		print_debug("[DEBUG-02] Nudge mode OFF")
 
 
-## Show a transient on-screen label (used by bake mode and blend mode toggles)
-func _show_transient_label(text: String) -> void:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", 20)
-	label.set("theme_override_colors/font_color", Color.WHITE)
-	label.position = Vector2(100.0, 20.0)  # Top-left, below UI
-	room.add_child(label)
-
-	# Auto-remove after 2.5 seconds
-	var timer := Timer.new()
-	timer.wait_time = 2.5
-	timer.one_shot = true
-	timer.timeout.connect(func() -> void:
-		label.queue_free()
-		timer.queue_free()
-	)
-	room.add_child(timer)
-	timer.start()
-
-
 ## Apply nudge to voxel renderer
 func apply_nudge(delta: Vector2) -> void:
 	if room._voxel_board == null:

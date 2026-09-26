@@ -1,7 +1,7 @@
 ## VisionCone3D — a guard's smooth vision cone, drawn on the 3D board's ground plane.
 ##
 ## RENDER3D R3D-4c. The 2D cone was painted at z −4 under everything the 2D board drew above it, so a
-## wall covered it. Under `RENDER3D=1` the 2D canvas draws over the 3D board, so left in 2D the cone
+## wall covered it. The 2D canvas draws over the 3D board, so left in 2D the cone
 ## would paint across walls and over the actors. Here it is a triangle fan on the ground, a hair above
 ## it, depth-tested: geometry covers it, actors stand over it.
 ##

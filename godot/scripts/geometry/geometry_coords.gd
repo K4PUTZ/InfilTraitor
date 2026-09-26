@@ -77,24 +77,6 @@ const VOXEL_TILE_H: int = 16     ## tile height (top face only)
 ## only the origin moved, so the ground now occupies storey 9.
 const FLOOR_TOP_LEVEL: int = PLAYABLE_LEVEL - 1
 const FLOOR_DEEP_LEVEL: int = PLAYABLE_LEVEL - 2
-## Deepest level that gets the floor zone's baked texture instead of the
-## earth-variant hash.
-##
-## Was -3 for a few hours on 2026-07-28 (D20, "pintar a terceira camada com a
-## mesma textura"), moved to -2 the same day: Director asked for the first two
-## layers to read as concrete and the third as earth. This is the FREE half of
-## that request — the earth variants are already in the material atlas and cost
-## nothing to place, whereas a photographic dirt would be another baked ground
-## material at ~18 MB of atlas (measured; see D21).
-const FLOOR_ZONE_PAINT_MIN_LEVEL: int = FLOOR_DEEP_LEVEL
-
-
-## Derived texture origin constant (Transform Canon 3 from SLICE-00)
-## = (VOXEL_ATOM_H - VOXEL_TILE_H) / 2
-## = (36 - 16) / 2
-## = (0, 10)
-static func voxel_texture_origin() -> Vector2i:
-	return Vector2i(0, int((VOXEL_ATOM_H - VOXEL_TILE_H) / 2.0))
 
 
 ## Gameplay Unit cell → voxel grid origin (Canon 4)

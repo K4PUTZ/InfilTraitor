@@ -164,26 +164,12 @@ func flush(skip_writes: bool) -> int:
 	return n
 
 
-## The texture a renderer's shader material samples for one level, or null.
-func texture_for(level: int) -> ImageTexture:
-	return _textures.get(level)
-
-
-## Lazily create the level's image/texture without writing any cell — a renderer
-## building a layer's shader material needs a real texture to bind before anything
-## has been written to it.
+## Lazily create the level's image/texture without writing any cell — the 3D board's plane array needs a real layer for every
+## built level before anything has been written to it.
 func ensure_level(level: int) -> void:
 	_image_for(level)
 
 
-## PERF-P3 GATE — the cell plane as a WRITE-ANYTHING scratch surface.
-##
-## `write_soot()` clamps to the 0..124 soot code space and skips a write that
-## does not change the byte. Both are right for soot and wrong for the gate: the
-## gate needs codes that are unique per marked cell (so a pixel can name the cell
-## it came from) and it needs the fill to actually land. Only ever called from
-## `Room._capture_cell_index_gate()`; leaves the plane meaningless for soot — the
-## gate boot is a throwaway process and never renders a real frame after running.
 ## SOOT-STAMP — every level back to a fresh plane (soot clean, bucket unwritten).
 ## Only a MAP-WIDE light apply may follow this, because that is what writes every
 ## occupied cell's bucket again; the soot store is re-projected after it. It exists
@@ -193,9 +179,3 @@ func reset_all() -> void:
 	for level in _images:
 		(_images[level] as Image).fill(Color8(_clean_r, BUCKET_UNWRITTEN, 0, 255))
 		_dirty[level] = true
-
-
-func debug_fill(level: int, value: int) -> void:
-	var img := _image_for(level)
-	img.fill(Color8(clampi(value, 0, 255), BUCKET_UNWRITTEN, 0, 255))
-	_dirty[level] = true

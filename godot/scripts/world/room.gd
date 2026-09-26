@@ -6065,11 +6065,9 @@ func play_consequence_light(delta = null) -> void:
 	## them across. Nothing is presented in between — there is no `await` between
 	## the apply and the rewind — so the final state never flashes.
 	##
-	## ⚠️ THIS RAMP ONLY EXISTS UNDER P3. The intermediate buckets are written to
-	## the cell plane (`_write_cell_bucket`), which is where the bucket lives only
-	## once it has left the alternative id. With `INFILTRAITOR_P3=0` the plane is
-	## not what the shader reads, so the ramp would be invisible — the code below
-	## detects that and applies instantly rather than pretending.
+	## The intermediate buckets are written to the cell plane (`_write_cell_bucket`),
+	## which is where the bucket lives (the alternative-id path it used to have, and its
+	## `INFILTRAITOR_P3=0` switch, went at R3D-END).
 	var moved: Dictionary = {}
 	if cooked:
 		## D-7 (§7.4) — the cook's own "this blast moved the light here" set, the
@@ -10662,13 +10660,7 @@ func _initialize_debug_views() -> void:
 	print("""
 	[DEBUG BINDINGS]
 	F5:  Toggle Theme Matrix (saturation calibration grid)
-	F6:  Toggle bake mode (BAKED / GENERIC), reloads current map
-	F7:  Cycle bake blend mode (MULTIPLY/TEXTURE_ONLY/MATERIAL_ONLY/OVERLAY/LINEAR_LIGHT), reloads current map
-	F8:  Toggle Atom Sheet — every pre-baked damage atom in this map, by
-	     material and surface, read off the VoxelVariantRegistry
-	     (INFILTRAITOR_ATOM_SHEET_SUBSTRATES=all shows the substrate axis too)
-	F12: (Reserved) Selftest — run headless:
-	     godot --headless --script godot/scripts/tools/bake_selftest.gd
+	F12: (Reserved) Selftests — `python3 tools/persistent/verify.py quick`
 	""")
 
 	# Theme Matrix (F5)

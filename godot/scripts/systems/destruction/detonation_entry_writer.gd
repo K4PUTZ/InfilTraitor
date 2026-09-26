@@ -211,21 +211,9 @@ func apply(kind: String, entry: Dictionary, voxel_board, smoke_overlay) -> int:
 	return 0
 
 
-## GPU-UPLOAD-01 (2026-08-08): every dented/cracked/soot entry's
-## source_id/atlas_coords was resolved by DetonationPlanBuilder against
-## DamageVariantBaker's pre-bake OR live-composited on the spot — either way it
-## was written through DamageCompositeCache.store(), which blits into a CPU-side
-## Image and marks the page dirty but leaves the GPU texture upload for
-## flush_dirty_pages() (that class's own doc comment). This choreographer is the
-## ONLY place a plan ever reaches set_cell() (this file's own header), and it
-## never called that flush — every real detonation's marks rendered whatever the
-## page texture already held (stale content, or nothing), unless some UNRELATED
-## event happened to flush the same page first. Root-caused via
-## damage_gallery_debug.gd hitting the identical gap directly.
-##
-## Called once per FRAME now rather than once per wave (E-ORGANIC-01) — same
-## contract, fewer calls, and still a cheap no-op when nothing composited
-## (flush_dirty_pages() checks an empty dirty-page set itself).
+## The batch seam of the blast's writes, called once per FRAME (E-ORGANIC-01) rather than once per wave. On the 2D board it also
+## uploaded the damage-composite pages the wave had blitted into (GPU-UPLOAD-01: without that flush a real detonation's marks
+## rendered stale page content); those pages went at R3D-END, so what is left is the glass bookkeeping below.
 func flush(voxel_board) -> void:
 	## G-D30 — the cook's own batch seam. `erase_glass_cell()` above only flags;
 	## this is where a blast that took glass out from under a standing crack

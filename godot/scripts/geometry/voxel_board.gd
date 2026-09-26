@@ -930,7 +930,35 @@ func reset_cell_planes() -> void:
 
 ## Record one cell's light bucket. Thin forwarder — see `CellPlaneStore.write_bucket()`.
 func _write_cell_bucket(level: int, cell: Vector2i, bucket: int) -> void:
+	if _bucket_journal_on:
+		var was: int = _cell_planes.write_bucket(level, cell, bucket)
+		var now: int = clampi(bucket, 0, LIGHT_BUCKET_COUNT - 1)
+		var key := Vector3i(cell.x, cell.y, level)
+		if _bucket_journal.has(key):
+			_bucket_journal[key] = Vector2i((_bucket_journal[key] as Vector2i).x, now)
+		else:
+			_bucket_journal[key] = Vector2i(was, now)
+		return
 	_cell_planes.write_bucket(level, cell, bucket)
+
+
+## R3D-LIGHT - while on, every `_write_cell_bucket()` records the cell's bucket before the first write and after the last, so a
+## caller that needs "what did this apply move" reads it here instead of walking the plane before and after. Off by default.
+var _bucket_journal_on: bool = false
+var _bucket_journal: Dictionary = {}   ## Vector3i(x, y, level) -> Vector2i(before, after)
+
+
+func begin_bucket_journal() -> void:
+	_bucket_journal.clear()
+	_bucket_journal_on = true
+
+
+## Stops recording and hands the journal over (the board keeps no copy).
+func end_bucket_journal() -> Dictionary:
+	_bucket_journal_on = false
+	var out: Dictionary = _bucket_journal
+	_bucket_journal = {}
+	return out
 
 
 ## What the plane currently says about one cell's light bucket. Thin forwarder —

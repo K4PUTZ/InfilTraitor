@@ -1599,6 +1599,10 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 					"source_id": -1, "atlas_coords": Vector2i.ZERO, "alt": 0,
 					"soot": soot_code, "r": _radius_of(cell, epicenter)})
 				changed[key] = true
+				## R3D-LIGHT: the bucket is derived HERE, under the cook's budget, so the consequence beat's apply of this
+				## field is a cache hit (it derived ~3 100 of them inside the LIGHT beat's first frame: 30 ms on the desktop,
+				## ~70 on the Moto). The field is the post-blast world's and does not change afterwards.
+				field.bucket_for(cell, level)
 		since_check += 1
 		if since_check >= chunk:
 			since_check = 0

@@ -87,22 +87,23 @@ func write_soot(level: int, cell: Vector2i, code: int) -> void:
 
 
 ## PERF-P3 — record one cell's light bucket. The exact counterpart of
-## `write_soot()`, down to the idempotence: an unchanged bucket does not dirty
+## `write_soot()`, down to the idempotence (it returns the bucket the cell held BEFORE the write, `BUCKET_UNWRITTEN` out of range - R3D-LIGHT's journal): an unchanged bucket does not dirty
 ## the level, so a repaint that only moves soot uploads nothing.
-func write_bucket(level: int, cell: Vector2i, bucket: int) -> void:
+func write_bucket(level: int, cell: Vector2i, bucket: int) -> int:
 	var p := cell + SOOT_PLANE_ORIGIN
 	if p.x < 0 or p.y < 0 or p.x >= SOOT_TEX_SIZE or p.y >= SOOT_TEX_SIZE:
 		if not _out_of_range_reported:
 			_out_of_range_reported = true
 			push_error("[CellPlaneStore] PERF-P3: cell %s is outside the %dx%d cell plane — raise SOOT_TEX_SIZE" % [cell, SOOT_TEX_SIZE, SOOT_TEX_SIZE])
-		return
+		return BUCKET_UNWRITTEN
 	var img := _image_for(level)
 	var b: int = clampi(bucket, 0, _max_bucket)
 	var was: Color = img.get_pixel(p.x, p.y)
 	if was.g8 == b:
-		return
+		return b
 	img.set_pixel(p.x, p.y, Color8(was.r8, b, 0, 255))
 	_dirty[level] = true
+	return was.g8
 
 
 ## What the plane currently says about one cell's light bucket — the counterpart

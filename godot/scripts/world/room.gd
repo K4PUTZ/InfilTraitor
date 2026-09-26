@@ -6057,13 +6057,16 @@ func play_consequence_light(delta = null) -> void:
 		## D-7 (§7.4) — the cook's own "this blast moved the light here" set, the
 		## one it also emitted to `waves["soot"]`. The authoritative re-derivation
 		## below is replaced by an apply of the cook's field to exactly these.
-		for k in delta.light_changed_cells.keys():
-			moved[k] = true
+		## R3D-LIGHT: not copied into `moved` any more. The apply visits exactly this set plus the externally written
+		## cells and journals each cell's bucket before and after (`begin_bucket_journal()`), which replaces the two
+		## passes over it that read the plane (15 ms before the apply and 28 after, on the Moto).
+		pass
 	elif _voxel_light_field != null and _voxel_light_field.has_stale_subset():
 		for k in _voxel_light_field.stale_cells().keys():
 			moved[k] = true
-	for k in _voxel_board._externally_written.keys():
-		moved[k] = true
+	if not cooked:
+		for k in _voxel_board._externally_written.keys():
+			moved[k] = true
 	## E-PACE-02 (2026-08-26) — ⚠️ THE RAMP'S START IS WHAT IS ON SCREEN, AND FOR
 	## A CRATER CELL THAT IS 11, NOT THE SENTINEL.
 	##
@@ -6105,11 +6108,12 @@ func play_consequence_light(delta = null) -> void:
 	## that renders at 11 and whose real bucket is also 11 changes nothing, and
 	## should not be reported as moving.
 	var from_bucket: Dictionary = {}
-	for k in moved.keys():
-		var b0: int = _voxel_board.cell_bucket_at(k.z, Vector2i(k.x, k.y))
-		if b0 == VoxelBoard.BUCKET_UNWRITTEN:
-			b0 = VoxelBoard.LIGHT_BUCKET_COUNT - 1
-		from_bucket[k] = b0
+	if not cooked:
+		for k in moved.keys():
+			var b0: int = _voxel_board.cell_bucket_at(k.z, Vector2i(k.x, k.y))
+			if b0 == VoxelBoard.BUCKET_UNWRITTEN:
+				b0 = VoxelBoard.LIGHT_BUCKET_COUNT - 1
+			from_bucket[k] = b0
 
 	## D-7 (§7.4) — THE GATE. After the cooked apply, force the full map-wide
 	## re-derivation and count how many cells disagree. 0 means the cook's field
@@ -6120,6 +6124,7 @@ func play_consequence_light(delta = null) -> void:
 	var gate: bool = cooked and OS.get_environment("INFILTRAITOR_LIGHT_COOK_GATE") == "1"
 
 	var t0: int = Time.get_ticks_usec()
+	var journal: Dictionary = {}
 	if cooked:
 		## The cook's field, applied to exactly the cells it changed. No
 		## `build_occupancy()`, no `field.build()` —
@@ -6127,7 +6132,9 @@ func play_consequence_light(delta = null) -> void:
 		## `_voxel_light_field` is deliberately NOT touched: nothing reads it before
 		## the next `lighting_rebuilt` (temporal lights are excluded by
 		## `light_field_usable`), and that pass rebuilds it from scratch anyway.
+		_voxel_board.begin_bucket_journal()
 		_voxel_board.apply_light_field_cells(delta.light_field, delta.light_changed_cells)
+		journal = _voxel_board.end_bucket_journal()
 	else:
 		_repaint_voxel_light_buckets(true, true)
 	var derive_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
@@ -6154,22 +6161,37 @@ func play_consequence_light(delta = null) -> void:
 			"PASS — the cook's field landed the board exactly"
 			if differ == 0 else "FAIL — the cook's field/changed-set is not the full one"])
 
-	if moved.is_empty():
+	var visited: int = journal.size() if cooked else moved.size()
+	if visited == 0:
 		print("[CONSEQUENCE] light restored instantly — %.1f ms (nothing moved)" % derive_ms)
 		return
 
+	## The cells whose DISPLAYED bucket moves, with where the ramp starts (`from_bucket`) and ends (`to_bucket`). Only these are
+	## walked by the steps below; a cell that ends where it starts has nothing to ramp and already holds its value.
 	var to_bucket: Dictionary = {}
-	var changed: int = 0
-	for k in moved.keys():
-		var b: int = _voxel_board.cell_bucket_at(k.z, Vector2i(k.x, k.y))
-		to_bucket[k] = b
-		if b != int(from_bucket[k]):
-			changed += 1
+	var ramp_keys: Array[Vector3i] = []
+	if cooked:
+		for k: Vector3i in journal:
+			var pair: Vector2i = journal[k]
+			var f0: int = pair.x
+			if f0 == VoxelBoard.BUCKET_UNWRITTEN:
+				f0 = VoxelBoard.LIGHT_BUCKET_COUNT - 1
+			if f0 != pair.y:
+				from_bucket[k] = f0
+				to_bucket[k] = pair.y
+				ramp_keys.append(k)
+	else:
+		for k: Vector3i in moved:
+			var b: int = _voxel_board.cell_bucket_at(k.z, Vector2i(k.x, k.y))
+			if b != int(from_bucket[k]):
+				to_bucket[k] = b
+				ramp_keys.append(k)
+	var changed: int = ramp_keys.size()
 	var steps: int = maxi(consequence_light_steps, 1)
 	var frames_per_step: int = maxi(
 		int(ceil(consequence_light_seconds * 60.0 / float(steps))), 1)
 	print("[CONSEQUENCE] light ramp — %d cell(s) moving of %d · %d step(s) x %d frame(s) · derive %.1f ms (%s)"
-		% [changed, moved.size(), steps, frames_per_step, derive_ms,
+		% [changed, visited, steps, frames_per_step, derive_ms,
 		"cook field, §7.4" if cooked else "full re-derivation"])
 
 	## R3D-6 item 2 — the 3D board's light plane was only re-uploaded once this whole
@@ -6182,11 +6204,9 @@ func play_consequence_light(delta = null) -> void:
 
 	for step in range(steps):
 		var t: float = float(step) / float(steps)
-		for k in moved.keys():
+		for k in ramp_keys:
 			var f: int = int(from_bucket[k])
 			var to: int = int(to_bucket[k])
-			if f == to:
-				continue
 			## E-PACE-02 — the BUCKET_UNWRITTEN skip that used to sit here is gone;
 			## `from_bucket` is normalised to the shader's own clamp (11) where it
 			## is built, so a crater cell ramps down from the full light it is
@@ -6204,7 +6224,7 @@ func play_consequence_light(delta = null) -> void:
 	## The last step is the REAL value, written from `to` rather than from a lerp
 	## that rounds to it — a ramp that ends one rung off would leave the board
 	## permanently wrong, and nothing downstream would ever correct it.
-	for k in moved.keys():
+	for k in ramp_keys:
 		_voxel_board._write_cell_bucket(k.z, Vector2i(k.x, k.y), int(to_bucket[k]))
 	_voxel_board.flush_cell_soot()
 	if board3d_node != null and is_instance_valid(board3d_node):

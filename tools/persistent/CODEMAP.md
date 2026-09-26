@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**246 scripts · 79106 lines total** (under `godot/scripts/`)
+**246 scripts · 79159 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1012,7 +1012,7 @@ extends `Node3D` · 1894 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2150 lines
+`class_name VoxelBoard` · extends `Node2D` · 2178 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1050,6 +1050,8 @@ extends `Node3D` · 1894 lines
 - `func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:`
 - `func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> void:`
 - `func reset_cell_planes() -> void:`
+- `func begin_bucket_journal() -> void:`
+- `func end_bucket_journal() -> Dictionary:`
 - `func cell_bucket_at(level: int, cell: Vector2i) -> int:`
 - `func cell_plane_image(level: int) -> Image:`
 - `func cell_plane_levels() -> Array:`
@@ -2010,7 +2012,7 @@ extends `Node2D` · 42 lines
 
 ### `cell_plane_store.gd`
 
-`class_name CellPlaneStore` · extends `RefCounted` · 181 lines
+`class_name CellPlaneStore` · extends `RefCounted` · 182 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
@@ -2023,14 +2025,6 @@ extends `Node2D` · 42 lines
 
 **Public API**
 - `func write_soot(level: int, cell: Vector2i, code: int) -> void:`
-- `func write_bucket(level: int, cell: Vector2i, bucket: int) -> void:`
-- `func bucket_at(level: int, cell: Vector2i) -> int:`
-- `func soot_at(level: int, cell: Vector2i) -> int:`
-- `func plane_image(level: int) -> Image:`
-- `func plane_levels() -> Array:`
-- `func flush(skip_writes: bool) -> int:`
-- `func ensure_level(level: int) -> void:`
-- `func reset_all() -> void:`
 
 ---
 
@@ -2157,7 +2151,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2667 lines
+`class_name DetonationPlanBuilder` · 2671 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -5384,7 +5378,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10601 lines
+extends `Node2D` · 10621 lines
 
 `godot/scripts/world/room.gd`
 

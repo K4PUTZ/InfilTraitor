@@ -58,7 +58,6 @@
 
 class_name GlassFall
 
-const GeometryCoordsMod = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const FacadeSamplerClass = preload("res://godot/scripts/systems/facade_sampler.gd")
 
 ## A shard that reaches the bottom of the built world without meeting anything.

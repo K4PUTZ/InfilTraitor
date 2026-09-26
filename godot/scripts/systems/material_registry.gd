@@ -20,7 +20,6 @@
 class_name MaterialRegistry
 
 # Import constants
-const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")
 const WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")
 const MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")

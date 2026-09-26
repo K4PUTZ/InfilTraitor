@@ -64,7 +64,6 @@ const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/bl
 const WorldDeltaClass = preload("res://godot/scripts/systems/prediction/world_delta.gd")
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 const VoxelLightFieldClass = preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")
-const BakePolicyClass = preload("res://godot/scripts/systems/bake_policy.gd")
 
 ## VL-02c/D2 (unchanged from the pre-reset detonate_active() this task
 ## replaces) — the ground takes the blast as a CONTIGUOUS crater, radii

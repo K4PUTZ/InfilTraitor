@@ -13,7 +13,6 @@
 extends Node2D
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
-const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 
 # Color scheme for temporal states
 var state_colors: Dictionary = {

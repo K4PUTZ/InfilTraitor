@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**248 scripts · 79882 lines total** (under `godot/scripts/`)
+**248 scripts · 79817 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -327,7 +327,7 @@ extends `Node` · 285 lines
 
 ### `lighting_controller.gd`
 
-extends `Node` · 270 lines
+extends `Node` · 269 lines
 
 `godot/scripts/controllers/lighting_controller.gd`
 
@@ -340,7 +340,6 @@ extends `Node` · 270 lines
 - `ExposureSystemClass` = `preload("res://godot/scripts/systems/lighting/exposure_system.gd")`
 - `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 - `LightAnchorClass` = `preload("res://godot/scripts/systems/lighting/light_anchor.gd")`
-- `ShadowResultClass` = `preload("res://godot/scripts/systems/lighting/shadow_result.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 
 **Public API**
@@ -1053,7 +1052,7 @@ extends `Node3D` · 1902 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2140 lines
+`class_name VoxelBoard` · extends `Node2D` · 2139 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1063,7 +1062,6 @@ extends `Node3D` · 1902 lines
 - `signal voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String)`
 
 **Constants / tuning**
-- `GlassShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood", "brick"]`
 - `IMPACT_DECAL_VARIANTS` = `3`
@@ -1367,7 +1365,7 @@ extends `Node3D` · 1902 lines
 
 ### `elite_exposure_overlay.gd`
 
-extends `Node2D` · 226 lines
+extends `Node2D` · 225 lines
 
 `godot/scripts/overlays/elite_exposure_overlay.gd`
 
@@ -1375,7 +1373,6 @@ extends `Node2D` · 226 lines
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
-- `ExposureSystemClass` = `preload("res://godot/scripts/systems/lighting/exposure_system.gd")`
 
 **Public vars**
 - `var depth_gradient: Dictionary = { 5: Color.RED,              # FULL_LIT (danger) 4: Color.ORANGE,           # DIM 3: Color.YELLOW,           # PENUMBRA 2: Color.GREEN,            # SHADOW 1: Color.CYAN,             # DEEP_SHADOW 0: Color.BLUE,             # OCCLUDED_VOID (extreme stealth) }`
@@ -1621,7 +1618,7 @@ extends `Node2D` · 252 lines
 
 ### `light_overlay.gd`
 
-extends `Node2D` · 114 lines
+extends `Node2D` · 112 lines
 
 `godot/scripts/overlays/light_overlay.gd`
 
@@ -1629,8 +1626,6 @@ extends `Node2D` · 114 lines
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
-- `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
-- `LightRegistryClass` = `preload("res://godot/scripts/systems/lighting/light_registry.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **@export**
@@ -1687,7 +1682,7 @@ extends `Node2D` · 86 lines
 
 ### `occlusion_overlay.gd`
 
-extends `Node2D` · 143 lines
+extends `Node2D` · 142 lines
 
 `godot/scripts/overlays/occlusion_overlay.gd`
 
@@ -1695,7 +1690,6 @@ extends `Node2D` · 143 lines
 
 **Constants / tuning**
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
-- `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 
 **Public vars**
 - `var occlusion_set: OcclusionSetClass = null`
@@ -1734,7 +1728,7 @@ extends `Node2D` · 150 lines
 
 ### `shadow_overlay.gd`
 
-extends `Node2D` · 88 lines
+extends `Node2D` · 87 lines
 
 `godot/scripts/overlays/shadow_overlay.gd`
 
@@ -1742,7 +1736,6 @@ extends `Node2D` · 88 lines
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
-- `ShadowResultClass` = `preload("res://godot/scripts/systems/lighting/shadow_result.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **@export**
@@ -1869,7 +1862,7 @@ extends `Node2D` · 88 lines
 
 ### `temporal_overlay.gd`
 
-extends `Node2D` · 253 lines
+extends `Node2D` · 252 lines
 
 `godot/scripts/overlays/temporal_overlay.gd`
 
@@ -1877,7 +1870,6 @@ extends `Node2D` · 253 lines
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
-- `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
 
 **Public vars**
@@ -2227,7 +2219,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2656 lines
+`class_name DetonationPlanBuilder` · 2655 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2238,7 +2230,6 @@ extends `Node2D` · 42 lines
 - `WorldDeltaClass` = `preload("res://godot/scripts/systems/prediction/world_delta.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `VoxelLightFieldClass` = `preload("res://godot/scripts/systems/lighting/voxel_light_field.gd")`
-- `BakePolicyClass` = `preload("res://godot/scripts/systems/bake_policy.gd")`
 - `CRATER_MAX_FACTOR` = `0.40`
 - `CRATER_CORE_FACTOR` = `0.30`
 - `SMOKE_BLOBS_PER_VOXEL` = `1`
@@ -2320,14 +2311,13 @@ extends `Node2D` · 42 lines
 
 ### `glass_fall.gd`
 
-`class_name GlassFall` · 292 lines
+`class_name GlassFall` · 291 lines
 
 `godot/scripts/systems/destruction/glass_fall.gd`
 
 > GLASS G-D16a — WHERE A SHARD LANDS. GLASS_MASTER_PLAN §5.4 / §18.5. G-D13b answers "does this shard survive where it is"; this answers the other half, "where does the glass that fell end up", and it is deliberately ONE rule rather than one feature per surface: A destroyed glass voxel SCATTERS a few cells from its own column and then falls until it meets the first horizontal surface, and lands there. Base pile, counter top, windowsill, and a skylight dropping a whole storey are then the same code with different geometry underneath — no per-case branch. ── G4-4 / G-D41 + G-D42 — THE SCATTER ────────────────────────────────────── (Director, 2026-09-05: *"A maior parte dos elementos fica na primeira sub-GU mais próxima […] Alguns cacos conseguem vencer até 3 sub-GUs de distância […] uma força vetor que desloca todo o conjunto de cacos mais pra longe, baseado na força e na distância da granada."*) A pane is a vertical sheet, so its voxels project onto a LINE of grid cells — and until G4-4 that line was the whole pile. The scatter spreads it into a band: most shards on the pane's own column, fewer one cell out, a tail reaching `scatter_max_cells()` (G-D41's "3 sub-GUs"). A sub-GU is one voxel cell (G-D41), so every distance here is in cells, not GUs. The symmetric draw covers "perpendicular to the pane BOTH ways and along the run" by construction — for any pane orientation one grid axis is the run and the other is perpendicular, and an isotropic symmetric offset spreads both the same. So this file never needs the pane's face; it only needs a DIRECTION for the shockwave, and the caller hands that in `impulse`. `impulse` — `{from: Vector2, strength: float, lift: float}` in GRID space, from the bomb's own `ring_multipliers` falloff (G-D42 — no second force model). At zero impulse the scatter is symmetric; a near grenade shifts the band's mean downrange and, per-shard-scaled, spreads it wider ("caírem mais longe, mais espalhados"). `lift` is the skylight term and is UNEXERCISED by any real map — G-D16c/d is unbuilt, CEILING glass renders opaque and has no `pane_id`, so no skylight can shatter yet. It is authored with a synthetic test rather than quietly, so it does not become a fourth built-but-never-triggered feature. ⚠️ THE SCATTER OFFSET IS HASHED IN GRID SPACE, NOT BASE SPACE, and that is correct here rather than a shortcut. The result becomes STATE at `commit()` — the G6 pile is recorded in base coords and never recomputed, only re-laid (`Room._respawn_base_shards()`) — exactly as the un-scattered landing already was. The hash only has to be stable across the many `build_plan()` calls of one event, and the cursor is on one target throughout, so the grid key is. PURE, and that is not decoration. It takes a surface INDEX, never the SlabRegistry, so the selftest can hand it a synthetic counter and prove the rule without building a map — the same contract PREDICTION_MASTER_PLAN holds `build_plan()` to, and the same one `GlassShatter.collect_anchor_positions()` already follows. ⚠️ This module decides WHERE, never WHETHER anything is drawn. G6 (`Room.record_glass_shards()`) turns a landing into a floor pile decal and G6b-2 (`Room.spawn_glass_rain()`) into the falling shards; both are BUILT and consume this file's output. This module stays pure and knows about neither.
 
 **Constants / tuning**
-- `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `FacadeSamplerClass` = `preload("res://godot/scripts/systems/facade_sampler.gd")`
 - `NO_LANDING` = `-1`
 
@@ -2532,14 +2522,11 @@ extends `Node` · 231 lines
 
 ### `facade_sampler.gd`
 
-`class_name FacadeSampler` · 62 lines
+`class_name FacadeSampler` · 24 lines
 
 `godot/scripts/systems/facade_sampler.gd`
 
-> FacadeSampler — Sample the infinite facade plane via mirrored-repeat addressing The facade is a concrete texture (64N × 32N pixels) that defines an infinite deterministic plane via mirrored repetition. Given a coordinate in the infinite plane, return the luminance from the wrapped texture.
-
-**Public API**
-- `func sample(facade: Image, plane_x: float, plane_y: float) -> float:`
+> FacadeSampler — the FNV-1a hash every deterministic pick in the game reads (B4) It began as the 2D bake's sampler of the infinite facade plane (mirrored-repeat addressing) and its per-run window origins. Both went with the 2D board (R3D-END; last present in `6bb89cb4`, and the window origins are R3D-LOOK's reference). What is left is the hash, kept in this file because the B4 hook pins its constants here.
 
 ---
 
@@ -2669,7 +2656,7 @@ extends `Node` · 231 lines
 
 ### `light_registry.gd`
 
-`class_name LightRegistry` · extends `Node` · 111 lines
+`class_name LightRegistry` · extends `Node` · 110 lines
 
 `godot/scripts/systems/lighting/light_registry.gd`
 
@@ -2678,9 +2665,6 @@ extends `Node` · 231 lines
 **Signals**
 - `signal light_registered(light)`
 - `signal light_removed(light)`
-
-**Constants / tuning**
-- `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 
 **Public API**
 - `func register_light(light) -> void:`
@@ -2730,7 +2714,7 @@ extends `Node` · 231 lines
 
 ### `shadow_projector.gd`
 
-`class_name ShadowProjector` · extends `Node` · 253 lines
+`class_name ShadowProjector` · extends `Node` · 252 lines
 
 `godot/scripts/systems/lighting/shadow_projector.gd`
 
@@ -2738,7 +2722,6 @@ extends `Node` · 231 lines
 
 **Constants / tuning**
 - `ShadowResultClass` = `preload("res://godot/scripts/systems/lighting/shadow_result.gd")`
-- `LightSourceClass` = `preload("res://godot/scripts/systems/lighting/light_source.gd")`
 - `WallEdgeDataClass` = `preload("res://godot/scripts/world/wall_edge_data.gd")`
 
 **Public vars**
@@ -2839,14 +2822,13 @@ extends `Node` · 231 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 177 lines
+`class_name MaterialRegistry` · 176 lines
 
 `godot/scripts/systems/material_registry.gd`
 
 > MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE axis, owned by BakePolicy.texture_for_material(). D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed either. A `has_facade` material renders EVERY surface — wall, roof and floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the three read as one material; only `has_facade == false` (organic ground) keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted modulate is still decided by the texture id's own prefix at bake time (bake_compositor.gd's _modulate_for_mode), never by a field on this class — what changed is which ids reach it.
 
 **Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `StonePatternClass` = `preload("res://godot/scripts/systems/stone_pattern.gd")`
 - `WoodPatternClass` = `preload("res://godot/scripts/systems/wood_pattern.gd")`
 - `MetalPatternClass` = `preload("res://godot/scripts/systems/metal_pattern.gd")`
@@ -3543,7 +3525,7 @@ extends `SceneTree` · 2268 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 682 lines
+extends `SceneTree` · 681 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
@@ -3554,7 +3536,6 @@ extends `SceneTree` · 682 lines
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `RoomBuilderClass` = `preload("res://godot/scripts/world/builders/room_builder.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
-- `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 - `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
 - `WallEdgeDataClass` = `preload("res://godot/scripts/world/wall_edge_data.gd")`
@@ -3704,14 +3685,13 @@ extends `SceneTree` · 173 lines
 
 ### `fixed_floor_selftest.gd`
 
-extends `SceneTree` · 152 lines
+extends `SceneTree` · 151 lines
 
 `godot/scripts/tools/fixed_floor_selftest.gd`
 
 > DESTRUCTION_MASTER_PLAN D13 — fixed floor level selftest. Rodar: godot --headless --script res://godot/scripts/tools/fixed_floor_selftest.gd Proves register_fixed_level() (the 7 non-destructible levels) and register_slab() (the 1 destructible top) compose into the full D13 8-level stack — without the fixed levels ever touching Slab/Voxel/dirty-tracking. R3D-END (END-1): [1] (the 64 placed cells' variant) went with the 2D board (it read placed TILES; no tile is written any more). The rest stays until END-4 deletes `register_fixed_level()` and the level layers.
 
 **Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 
 **Public vars**
@@ -3786,7 +3766,7 @@ extends `SceneTree` · 234 lines
 
 ### `glass_crack_selftest.gd`
 
-extends `SceneTree` · 1689 lines
+extends `SceneTree` · 1688 lines
 
 `godot/scripts/tools/glass_crack_selftest.gd`
 
@@ -3801,7 +3781,6 @@ extends `SceneTree` · 1689 lines
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `GlassOpeningClass` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `GlassShatterClass` = `preload("res://godot/scripts/systems/destruction/glass_shatter.gd")`
-- `GlassShardShapesClass` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
 - `CRACK_DECAL_TEMPLATE` = `"res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"`
 - `FRACTURE_TEMPLATE` = `"res://ASSETS/materials/glass/fracture_glass_%s.png"`
 
@@ -3966,7 +3945,7 @@ extends `SceneTree` · 1606 lines
 
 ### `glass_transparency_selftest.gd`
 
-extends `SceneTree` · 437 lines
+extends `SceneTree` · 436 lines
 
 `godot/scripts/tools/glass_transparency_selftest.gd`
 
@@ -3974,7 +3953,6 @@ extends `SceneTree` · 437 lines
 
 **Constants / tuning**
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 
 **Public vars**
@@ -4244,14 +4222,13 @@ extends `SceneTree` · 202 lines
 
 ### `negative_storey_selftest.gd`
 
-extends `SceneTree` · 157 lines
+extends `SceneTree` · 156 lines
 
 `godot/scripts/tools/negative_storey_selftest.gd`
 
 > DESTRUCTION_MASTER_PLAN D17/D18 — negative storey selftest. Rodar: godot --headless --script res://godot/scripts/tools/negative_storey_selftest.gd Proves the floor can live at negative levels without disturbing the existing (positive) wall/block/prop pipeline at all — D17's whole claim. R3D-END (END-1): [4] and [5] (register_block_levels() / register_slab() placed cells) went with the 2D board (it read placed TILES; no tile is written any more). END-4: [6] (`_set_voxel_cell()` on an unensured level) went with the placement. The rest stays until END-6 turns the level layers into arithmetic.
 
 **Constants / tuning**
-- `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 
 **Public vars**
@@ -4538,7 +4515,7 @@ extends `SceneTree` · 204 lines
 
 ### `roof_slab_selftest.gd`
 
-extends `SceneTree` · 309 lines
+extends `SceneTree` · 308 lines
 
 `godot/scripts/tools/roof_slab_selftest.gd`
 
@@ -4546,7 +4523,6 @@ extends `SceneTree` · 309 lines
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `CEILING_LEVEL` = `GeometryCoordsClass.PLAYABLE_LEVEL + GeometryCoordsClass.LEVELS_PER_STOREY`
 
 **Public vars**
@@ -4659,7 +4635,7 @@ extends `SceneTree` · 244 lines
 
 ### `slab_render_selftest.gd`
 
-extends `SceneTree` · 120 lines
+extends `SceneTree` · 119 lines
 
 `godot/scripts/tools/slab_render_selftest.gd`
 
@@ -4667,7 +4643,6 @@ extends `SceneTree` · 120 lines
 
 **Constants / tuning**
 - `GeometryCoordsClass` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
-- `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 
 **Public vars**
 - `var passed: int = 0`
@@ -4681,13 +4656,12 @@ extends `SceneTree` · 120 lines
 
 ### `slice_geometry_selftest.gd`
 
-extends `SceneTree` · 257 lines
+extends `SceneTree` · 256 lines
 
 `godot/scripts/tools/slice_geometry_selftest.gd`
 
 **Constants / tuning**
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
-- `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
 
 ---
@@ -5515,7 +5489,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10657 lines
+extends `Node2D` · 10651 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5567,7 +5541,6 @@ extends `Node2D` · 10657 lines
 - `SmokeSparkOverlayClass` = `preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")`
 - `DebrisOverlayClass` = `preload("res://godot/scripts/overlays/debris_overlay.gd")`
 - `ExplosionFlashOverlayClass` = `preload("res://godot/scripts/overlays/explosion_flash_overlay.gd")`
-- `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 - `VisionControllerClass` = `preload("res://godot/scripts/controllers/vision_controller.gd")`
 - `HudControllerClass` = `preload("res://godot/scripts/controllers/hud_controller.gd")`
 - `LightingControllerClass` = `preload("res://godot/scripts/controllers/lighting_controller.gd")`
@@ -5577,10 +5550,6 @@ extends `Node2D` · 10657 lines
 - `DevVisionStatusPanelClass` = `preload("res://godot/scripts/debug/dev_vision_status_panel.gd")`
 - `GuGridOverlayClass` = `preload("res://godot/scripts/overlays/gu_grid_overlay.gd")`
 - `BlastWireframeOverlayClass` = `preload("res://godot/scripts/overlays/blast_wireframe_overlay.gd")`
-- `EdgeExtractorClass` = `preload("res://godot/scripts/geometry/edge_extractor.gd")`
-- `SliceGeneratorClass` = `preload("res://godot/scripts/geometry/slice_generator.gd")`
-- `JunctionResolverClass` = `preload("res://godot/scripts/geometry/junction_resolver.gd")`
-- `EdgeRegistryClass` = `preload("res://godot/scripts/geometry/edge_registry.gd")`
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
 - `OcclusionOverlayClass` = `preload("res://godot/scripts/overlays/occlusion_overlay.gd")`

@@ -11,8 +11,6 @@
 extends Node2D
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
-const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
-const LightRegistryClass = preload("res://godot/scripts/systems/lighting/light_registry.gd")
 
 @export var light_registry = null
 @export var tile_size: Vector2 = Vector2(128, 64)  # Set by VisionController; the lamp radius and the direction arrow scale with it

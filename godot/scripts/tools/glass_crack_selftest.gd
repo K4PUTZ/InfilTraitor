@@ -59,7 +59,6 @@ const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coord
 const GlassOpeningClass = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 ## B-2 [18] — the ring intensities the granularity split is measured against.
 const GlassShatterClass = preload("res://godot/scripts/systems/destruction/glass_shatter.gd")
-const GlassShardShapesClass = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 
 const CRACK_DECAL_TEMPLATE := "res://ASSETS/materials/glass/decals/decal_crack_glass_%d.png"
 ## ⛔ The RETIRED round-hole pair, kept only so [3] can assert they are GONE.

@@ -17,7 +17,6 @@ signal voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String)
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
-const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 
 ## D32 — the four wall materials the Director authors decals for. Glass is

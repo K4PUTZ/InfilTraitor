@@ -20,7 +20,6 @@
 extends SceneTree
 
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
-const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
 
 var passed: int = 0

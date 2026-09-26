@@ -16,7 +16,6 @@
 class_name LightRegistry
 extends Node
 
-const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 
 var _lights: Dictionary = {}  # light_id -> LightSource
 var _lights_by_cell: Dictionary = {}  # Vector2i -> Array[LightSource]

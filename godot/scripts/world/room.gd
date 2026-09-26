@@ -60,7 +60,6 @@ const EmberOverlayClass = preload("res://godot/scripts/overlays/ember_overlay.gd
 const SmokeSparkOverlayClass = preload("res://godot/scripts/overlays/smoke_spark_overlay.gd")
 const DebrisOverlayClass = preload("res://godot/scripts/overlays/debris_overlay.gd")
 const ExplosionFlashOverlayClass = preload("res://godot/scripts/overlays/explosion_flash_overlay.gd")
-const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 const VisionControllerClass = preload("res://godot/scripts/controllers/vision_controller.gd")
 const HudControllerClass = preload("res://godot/scripts/controllers/hud_controller.gd")
 const LightingControllerClass = preload("res://godot/scripts/controllers/lighting_controller.gd")
@@ -71,11 +70,6 @@ const DevVisionStatusPanelClass = preload("res://godot/scripts/debug/dev_vision_
 const GuGridOverlayClass = preload("res://godot/scripts/overlays/gu_grid_overlay.gd")
 const BlastWireframeOverlayClass = preload("res://godot/scripts/overlays/blast_wireframe_overlay.gd")
 
-## SLICE-02: Geometry module (Edge → Slice → Voxel pipeline)
-const EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")
-const SliceGeneratorClass = preload("res://godot/scripts/geometry/slice_generator.gd")
-const JunctionResolverClass = preload("res://godot/scripts/geometry/junction_resolver.gd")
-const EdgeRegistryClass = preload("res://godot/scripts/geometry/edge_registry.gd")
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
 
 ## OCC-01: Occlusion system (geometry occlusion set, view-space computation)

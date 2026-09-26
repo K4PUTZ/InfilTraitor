@@ -13,7 +13,6 @@ const ShadowProjectorClass = preload("res://godot/scripts/systems/lighting/shado
 const ExposureSystemClass  = preload("res://godot/scripts/systems/lighting/exposure_system.gd")
 const LightSourceClass     = preload("res://godot/scripts/systems/lighting/light_source.gd")
 const LightAnchorClass     = preload("res://godot/scripts/systems/lighting/light_anchor.gd")
-const ShadowResultClass    = preload("res://godot/scripts/systems/lighting/shadow_result.gd")
 const TileSemanticsClass = preload("res://godot/scripts/world/tile_semantics.gd")
 
 var _room: Node2D

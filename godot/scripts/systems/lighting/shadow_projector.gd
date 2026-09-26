@@ -18,7 +18,6 @@ class_name ShadowProjector
 extends Node
 
 const ShadowResultClass = preload("res://godot/scripts/systems/lighting/shadow_result.gd")
-const LightSourceClass = preload("res://godot/scripts/systems/lighting/light_source.gd")
 const WallEdgeDataClass = preload("res://godot/scripts/world/wall_edge_data.gd")
 
 ## Reference to blocked cells dictionary (objects/props that occlude + cast)

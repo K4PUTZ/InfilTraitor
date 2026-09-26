@@ -13,7 +13,6 @@
 extends Node2D
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
 
-const ShadowResultClass = preload("res://godot/scripts/systems/lighting/shadow_result.gd")
 
 ## Offset from a cell's map_to_local() to its visual rhombus center (canonical placement)
 const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)

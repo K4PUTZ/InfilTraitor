@@ -49,7 +49,6 @@ const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_sour
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const RoomBuilderClass = preload("res://godot/scripts/world/builders/room_builder.gd")
 const VoxelBoardClass = preload("res://godot/scripts/geometry/voxel_board.gd")
-const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
 const BombRegistryClass = preload("res://godot/scripts/systems/destruction/bomb_registry.gd")
 const WallEdgeDataClass = preload("res://godot/scripts/world/wall_edge_data.gd")

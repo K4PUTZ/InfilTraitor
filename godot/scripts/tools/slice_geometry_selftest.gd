@@ -5,7 +5,6 @@ extends SceneTree
 
 ## Preloads for ENHANCE-02 negative testing (error contract validation)
 const MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
-const MapCatalogClass = preload("res://godot/scripts/world/maps/map_catalog.gd")
 const EdgeExtractorClass = preload("res://godot/scripts/geometry/edge_extractor.gd")
 
 func _initialize() -> void:

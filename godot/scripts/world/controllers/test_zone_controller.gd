@@ -132,6 +132,8 @@ var aim_dome_radius_gu: float = 2.0
 ## stretch for a prediction that is somehow still cooking after all that.
 var throw_duration_s: float = 0.6
 var grenade_cook_s: float = 1.0
+## Microseconds of a beat frame the presenter may spend on work it does ahead of the commit (R3D-LIGHT). `var` (Rule 1).
+var prepare_budget_us: int = 6000
 var throw_prediction_timeout_s: float = 1.0
 
 ## Where the dome starts when targeting opens and the cursor is not over the map
@@ -1357,6 +1359,9 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## last few frames so it detonates AT that point. Ease-out on the screen-Y
 	## delta, coordinate-space-agnostic (a raw `position.y` step, not a lerp
 	## between anchor and sprite-local space).
+	## R3D-LIGHT: the presenter exists from here, and its soot ramp is collected a few ms per frame of the beats below.
+	var presenter: DetonationPresenter = _make_presenter(delta)
+	presenter.prepare(waves)
 	var boom_anchor: Vector2 = anchor - Vector2(0.0, blast_pop_height_px)
 	var g_sprite = grenade.get("sprite")
 	if g_sprite != null and is_instance_valid(g_sprite):
@@ -1367,7 +1372,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			var eased: float = 1.0 - (1.0 - t) * (1.0 - t)
 			g_sprite.position.y -= blast_pop_height_px * (eased - prev_eased)
 			prev_eased = eased
-			await room.get_tree().process_frame
+			await _pace(presenter)
 		g_sprite.visible = false
 	room.spawn_blast_burst(boom_anchor)
 	if room._camera_controller != null:
@@ -1395,24 +1400,24 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		## a long ramp only delays the bang it is supposed to be part of.
 		flash_overlay.strobe_negative_amount = 0.5
 		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
-		await room.get_tree().process_frame
+		await _pace(presenter)
 		## Peak, on frame 2.
 		flash_overlay.strobe_negative_amount = 1.0
 		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
-		await room.get_tree().process_frame
+		await _pace(presenter)
 		## The fade is UNCHANGED at three frames — it is what keeps the strobe
 		## from reading as a single dropped frame, and nothing asked for it to
 		## move.
 		for i in range(3):
 			flash_overlay.strobe_negative_amount = 1.0 - float(i + 1) / 3.0
 			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
-			await room.get_tree().process_frame
+			await _pace(presenter)
 		flash_overlay.clear()
 	_prof("BEAT 2 ends — metal away, then 5 flash frames (was 7 flash frames, then metal)")
 	_prof("BEAT 3 — destruction starts%s" % ["" if job.warmed else " (NOT warmed — paying at playback)"])
 
 	## Beat 3 — destruction, clean.
-	_start_waves(delta)
+	_start_waves(delta, presenter)
 
 
 ## D-6 (2026-08-29) — `DetonationPresenter` is the only path now. The
@@ -1420,7 +1425,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 ## writes across 24 frames, and `DETONATION_PRESENTATION_MASTER_PLAN` replaced it
 ## with one commit frame and a drawing channel. `DetonationEntryWriter` (the cell
 ## writes + the VFX dispatch) survived the removal; nothing else did.
-func _start_waves(delta) -> void:
+func _make_presenter(delta) -> DetonationPresenter:
 	var presenter := DetonationPresenterClass.new()
 	_active_presenter = presenter
 	presenter.finished.connect(func():
@@ -1438,6 +1443,16 @@ func _start_waves(delta) -> void:
 	## tints only a MaterialRegistry owner can resolve.
 	presenter.set_vfx_targets(room._ember_overlay, room.blast_smoke_tints(),
 		room._debris_overlay, room.blast_debris_palette())
+	return presenter
+
+
+## One frame of a beat, with the presenter's ahead-of-time work (its soot ramp) taking its share first.
+func _pace(presenter: DetonationPresenter) -> void:
+	presenter.prepare_step(room._voxel_board, prepare_budget_us)
+	await room.get_tree().process_frame
+
+
+func _start_waves(delta, presenter: DetonationPresenter) -> void:
 	presenter.start(delta.waves, room._voxel_board, room._smoke_spark_overlay,
 		room.get_tree())
 

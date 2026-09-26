@@ -246,6 +246,38 @@ var _channel_elapsed: float = 0.0
 ## back, which is the flash the Director reported on 2026-08-23. Excluding them
 ## here is also what keeps them out of `soot_ramp_cells`, so the commit writes them
 ## at their real value and they never go clean at all.
+## R3D-LIGHT - the ramp collection (30 ms of the Moto's presenter-start frame) done ahead, a few ms a frame, while the fuse and
+## the flash frames play: `prepare()` flattens the entries, `prepare_step()` notes some of them, and `_collect_soot_ramp()`
+## finishes whatever is left and returns the result. Nothing writes a soot plane between the two, so the answer is the one
+## the commit frame would have computed.
+var _prep: Dictionary = {}
+
+
+func prepare(plan: Dictionary) -> void:
+	var entries: Array = []
+	for kind: String in ["dented", "cracked", "soot"]:
+		for ring in plan.get(kind, {}).keys():
+			entries.append_array(plan[kind][ring])
+	for ring in plan.get("destroy", {}).keys():
+		for entry: Dictionary in plan["destroy"][ring]:
+			entries.append_array(entry.get("expose", []))
+	_prep = {"entries": entries, "i": 0, "out": [], "cells": {}}
+
+
+func prepare_step(voxel_board, budget_usec: int) -> void:
+	if _prep.is_empty():
+		return
+	var t0: int = Time.get_ticks_usec()
+	var entries: Array = _prep["entries"]
+	var i: int = _prep["i"]
+	while i < entries.size():
+		_note_ramp(entries[i], voxel_board, _prep["out"], _prep["cells"])
+		i += 1
+		if budget_usec > 0 and (i & 63) == 0 and Time.get_ticks_usec() - t0 >= budget_usec:
+			break
+	_prep["i"] = i
+
+
 func _collect_soot_ramp(plan: Dictionary, voxel_board) -> Array:
 	## DIAG-19 (DEVICE_DIAGNOSTICS §15.2) — `NO_SOOT=1`, an instrument: the commit writes
 	## every scorch clean (`soot_clean`, the writer's own switch) and there is no fade.
@@ -254,6 +286,12 @@ func _collect_soot_ramp(plan: Dictionary, voxel_board) -> Array:
 		_writer.soot_clean = true
 		_writer.soot_ramp_cells = {}
 		return []
+	if not _prep.is_empty():
+		prepare_step(voxel_board, 0)
+		var done: Array = _prep["out"]
+		_writer.soot_ramp_cells = _prep["cells"]
+		_prep = {}
+		return done
 	var out: Array = []
 	var ramp_cells: Dictionary = {}
 	for kind: String in ["dented", "cracked", "soot"]:

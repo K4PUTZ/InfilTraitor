@@ -525,12 +525,37 @@ func _sync_live() -> void:
 ## turn the predicted world back into the committed one under the field's lazy queries), less the claims in `gone`.
 ## Syncs first; the changes that sync finds stay pending for `occupancy_live()`'s consumer.
 func occupancy_live_after(gone: Dictionary) -> Dictionary:
+	var cursor: Dictionary = occupancy_after_begin()
+	occupancy_after_step(cursor, 0)
+	return occupancy_after_finish(cursor, gone)
+
+
+## `occupancy_live_after()` in three resumable parts, so the cook can spend it across frames (the copy alone was ~15 ms on
+## the desktop, ~75 on the Moto, inside one uninterruptible step). `begin` syncs and opens a cursor; `step` copies levels
+## until `deadline_usec` (0 = no limit) and returns true when every level is copied; `finish` erases the gone claims.
+## The world must not move between `begin` and `finish` (the cook runs before its commit, nothing writes a voxel then).
+func occupancy_after_begin() -> Dictionary:
 	if not _live_built:
-		return occupancy_dict_after(gone)
+		occupancy_live([] as Array[Vector3i])   ## the one map walk, the first time anything asks
 	_sync_live()
-	var out: Dictionary = {}
-	for level: Variant in _live_occ:
-		out[level] = (_live_occ[level] as Dictionary).duplicate()
+	return {"levels": _live_occ.keys(), "i": 0, "out": {}}
+
+
+func occupancy_after_step(cursor: Dictionary, deadline_usec: int) -> bool:
+	var levels: Array = cursor["levels"]
+	var out: Dictionary = cursor["out"]
+	var i: int = cursor["i"]
+	while i < levels.size():
+		out[levels[i]] = (_live_occ[levels[i]] as Dictionary).duplicate()
+		i += 1
+		if deadline_usec > 0 and Time.get_ticks_usec() >= deadline_usec:
+			break
+	cursor["i"] = i
+	return i >= levels.size()
+
+
+func occupancy_after_finish(cursor: Dictionary, gone: Dictionary) -> Dictionary:
+	var out: Dictionary = cursor["out"]
 	for claim: int in gone:
 		var i: int = claim * 3
 		var x: int = xyz[i]

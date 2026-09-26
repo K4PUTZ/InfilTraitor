@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**246 scripts · 79015 lines total** (under `godot/scripts/`)
+**246 scripts · 79106 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2157,7 +2157,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2654 lines
+`class_name DetonationPlanBuilder` · 2667 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2178,7 +2178,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 431 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 469 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -3213,7 +3213,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 689 lines
+`class_name VoxelStore` · extends `RefCounted` · 714 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -5113,7 +5113,7 @@ extends `Node2D` · 32 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1517 lines
+`class_name TestZoneController` · 1532 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5136,6 +5136,7 @@ extends `Node2D` · 32 lines
 - `var aim_dome_radius_gu: float = 2.0`
 - `var throw_duration_s: float = 0.6`
 - `var grenade_cook_s: float = 1.0`
+- `var prepare_budget_us: int = 6000`
 - `var throw_prediction_timeout_s: float = 1.0`
 
 **Public API**

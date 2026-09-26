@@ -403,7 +403,7 @@ static func _run_phase(s: Dictionary, deadline: int) -> void:
 		PHASE_SOOT:
 			_phase_soot(s, deadline)
 		PHASE_LIGHT:
-			_phase_light(s)
+			_phase_light(s, deadline)
 		PHASE_PACKAGE:
 			_phase_package(s, deadline)
 		PHASE_EXPOSE:
@@ -1372,10 +1372,7 @@ static func _soot_code_at(s: Dictionary, key: Vector3i) -> int:
 ## projects gone (not visible, or destroyed). Per claim and not per cell (R3D-13): a shared corner or junction
 ## column stays occupied while one of its claims survives, which is what the committed world holds and what a
 ## full relight reads. The per-cell `blast_cells` set this replaced emptied it at the first claim destroyed.
-static func _predicted_occupancy(s: Dictionary, voxel_board: VoxelBoardClass) -> Dictionary:
-	var store: VoxelStore = VoxelStore.active
-	if store == null:
-		return voxel_board.build_occupancy()  ## reports the missing store itself
+static func _gone_claims(s: Dictionary, store: VoxelStore) -> Dictionary:
 	var gone: Dictionary = {}
 	var projections: Dictionary = (s["delta"] as WorldDelta).projections()
 	for voxel in projections:
@@ -1385,15 +1382,31 @@ static func _predicted_occupancy(s: Dictionary, voxel_board: VoxelBoardClass) ->
 		var claim: int = store.claim_of(voxel)
 		if claim >= 0:
 			gone[claim] = true
-	return store.occupancy_live_after(gone)
+	return gone
 
 
 ## --- Phase 6: ATOMIC. The single map-wide light-field query (§2). ----------
 ## Built ONCE, queried per cell below. VoxelLightField.build() never touches the
 ## TileMapLayer, and nothing here calls VoxelBoard.apply_light_field().
-static func _phase_light(s: Dictionary) -> void:
+static func _phase_light(s: Dictionary, deadline: int) -> void:
 	var ctx: Dictionary = s["ctx"]
 	var voxel_board: VoxelBoardClass = s["voxel_board"]
+	## R3D-LIGHT: the predicted occupancy is a per-level copy of the store's live one, taken across steps under the
+	## budget (a single step copying it was ~75 ms of the Moto's 125 ms `SOOT -> PACKAGE` step). The phase stays LIGHT
+	## until the last level is copied; the rest of it is cheap.
+	var store: VoxelStore = VoxelStore.active
+	var occupancy: Dictionary
+	if store == null:
+		occupancy = voxel_board.build_occupancy()  ## reports the missing store itself
+	else:
+		if not s.has("occ_cursor"):
+			s["occ_gone"] = _gone_claims(s, store)
+			s["occ_cursor"] = store.occupancy_after_begin()
+		if not store.occupancy_after_step(s["occ_cursor"], deadline):
+			return
+		occupancy = store.occupancy_after_finish(s["occ_cursor"], s["occ_gone"])
+		s.erase("occ_cursor")
+		s.erase("occ_gone")
 	var lights: Array = ctx.get("lights", [])
 	var field := VoxelLightFieldClass.new()
 	## D-7 (§7.4) — MAP-WIDE occupancy, not `s["occupancy"]` (which PHASE_WALK only
@@ -1405,7 +1418,7 @@ static func _phase_light(s: Dictionary) -> void:
 	## on first query in the soot wave.
 	field.build(lights, ctx.get("shadow_results", []),
 		voxel_board.top_wall_level(),
-		_predicted_occupancy(s, voxel_board), s["under_structure"])
+		occupancy, s["under_structure"])
 	s["field"] = field
 	s["ring_keys"] = s["ring_of"].keys()
 	## D-7 (§7.4) — carry the field to the Delta. `_phase_soot_wave` fills

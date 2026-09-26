@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**245 scripts · 78742 lines total** (under `godot/scripts/`)
+**245 scripts · 78948 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1012,7 +1012,7 @@ extends `Node3D` · 1894 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2139 lines
+`class_name VoxelBoard` · extends `Node2D` · 2149 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1039,6 +1039,7 @@ extends `Node3D` · 1894 lines
 
 **Public API**
 - `func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:`
+- `func build_occupancy_live(changes: Array[Vector3i]) -> Dictionary:`
 - `func columns_with_structure() -> Dictionary:`
 - `func note_external_write(level: int, cell: Vector2i) -> void:`
 - `func apply_light_field(field) -> void:`
@@ -2706,7 +2707,7 @@ extends `Node` · 231 lines
 
 ### `voxel_light_field.gd`
 
-`class_name VoxelLightField` · extends `RefCounted` · 563 lines
+`class_name VoxelLightField` · extends `RefCounted` · 581 lines
 
 `godot/scripts/systems/lighting/voxel_light_field.gd`
 
@@ -3202,7 +3203,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 605 lines
+`class_name VoxelStore` · extends `RefCounted` · 689 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -4697,7 +4698,7 @@ extends `SceneTree` · 162 lines
 
 ### `voxel_store_selftest.gd`
 
-extends `SceneTree` · 312 lines
+extends `SceneTree` · 379 lines
 
 `godot/scripts/tools/voxel_store_selftest.gd`
 
@@ -4718,6 +4719,7 @@ extends `SceneTree` · 312 lines
 - `func test_irregular_write(fixture: Dictionary, store: VoxelStore) -> void:`
 - `func test_unplaceable_writes_counted(store: VoxelStore) -> void:`
 - `func test_occupancy_after(fixture: Dictionary, store: VoxelStore) -> void:`
+- `func test_occupancy_live(fixture: Dictionary, store: VoxelStore) -> void:`
 - `func test_glass_panes(fixture: Dictionary, store: VoxelStore) -> void:`
 
 ---
@@ -5371,7 +5373,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10574 lines
+extends `Node2D` · 10601 lines
 
 `godot/scripts/world/room.gd`
 

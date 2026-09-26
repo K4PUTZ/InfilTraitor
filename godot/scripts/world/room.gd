@@ -4636,7 +4636,9 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 		_voxel_light_field = VoxelLightField.new()
 	var _sp: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
 	var _s1: int = Time.get_ticks_usec()
-	var occ: Dictionary = _voxel_board.build_occupancy()
+	var live_changes: Array[Vector3i] = []
+	var occ: Dictionary = _voxel_board.build_occupancy_live(live_changes)
+	_occ_live_probe(occ, "scoped repaint")
 	var _s2: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
 			registry.get_active_lights(),
@@ -4644,7 +4646,8 @@ func _repaint_voxel_light_buckets_scoped(gus: Array) -> void:
 			_voxel_board.top_wall_level(),
 			occ,
 			_under_structure,
-			true)
+			true,
+			live_changes)
 	var _s3: int = Time.get_ticks_usec()
 	## PERF-10 §10.5 — the STALE SET answers the right question ("which cells did
 	## this geometry change move"), where a GU scope does not: it measured 3 144
@@ -4789,6 +4792,27 @@ func shot_repaint_scope(impact_gus: Array) -> Array:
 	return scope.keys()
 
 
+## R3D-LIGHT step 1 - `INFILTRAITOR_OCC_LIVE_PROBE=1`: after every live-occupancy sync, walk the map the old way and print how many
+## cells the store's incremental dictionary disagrees on. 0 is the only answer; it costs the walk it exists to remove.
+func _occ_live_probe(live: Dictionary, where: String) -> void:
+	if OS.get_environment("INFILTRAITOR_OCC_LIVE_PROBE") != "1" or VoxelStore.active == null:
+		return
+	var walk: Dictionary = VoxelStore.active.occupancy_dict()
+	var differ: int = 0
+	var total: int = 0
+	for level: Variant in walk:
+		var a_set: Dictionary = walk[level]
+		var b_set: Dictionary = live.get(level, {})
+		total += a_set.size()
+		for cell: Vector2i in a_set:
+			if not b_set.has(cell):
+				differ += 1
+		for cell: Vector2i in b_set:
+			if not a_set.has(cell):
+				differ += 1
+	print("[OCC-LIVE-PROBE] %s: %d of %d occupied cell(s) differ from the full walk" % [where, differ, total])
+
+
 func _repaint_voxel_light_buckets(geometry_only: bool = false,
 		stale_driven: bool = false) -> void:
 	## ABLATION — see VoxelBoard.LIGHT_DISABLED. The apply entries return on
@@ -4812,7 +4836,9 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 	## and the only figures on record are from the retired bench in August.
 	var _prof: bool = OS.get_environment("INFILTRAITOR_REPAINT_PROFILE") == "1"
 	var _t0: int = Time.get_ticks_usec()
-	var occupancy: Dictionary = _voxel_board.build_occupancy()
+	var live_changes: Array[Vector3i] = []
+	var occupancy: Dictionary = _voxel_board.build_occupancy_live(live_changes)
+	_occ_live_probe(occupancy, "repaint (geometry_only=%s)" % geometry_only)
 	var _t1: int = Time.get_ticks_usec()
 	_voxel_light_field.build(
 			registry.get_active_lights(),
@@ -4820,7 +4846,8 @@ func _repaint_voxel_light_buckets(geometry_only: bool = false,
 			top_wall_level,
 			occupancy,
 			_under_structure,
-			geometry_only)
+			geometry_only,
+			live_changes)
 	var _t3: int = Time.get_ticks_usec()
 	## PERF-10 — WALK THE WORK, NOT THE BOARD.
 	##

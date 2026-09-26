@@ -54,6 +54,7 @@ func _init() -> void:
 		test_irregular_write(fixture, store)
 		test_unplaceable_writes_counted(store)
 		test_occupancy_after(fixture, store)
+		test_occupancy_live(fixture, store)
 	VoxelStore.active = null
 	_cleanup()
 	print("\nVoxelStore SELFTEST: %s (%d passed, %d failed)\n"
@@ -253,6 +254,72 @@ func test_occupancy_after(fixture: Dictionary, store: VoxelStore) -> void:
 	_check(here and same_as_real and survives and empties and lone_empties and untouched,
 		"[TEST 6] occupancy_dict_after(): no claim gone = the real occupancy (%s); one of two claims gone keeps the cell (%s); both gone empties it (%s); a lone claim gone empties its cell only (%s); the store is unwritten (%s)"
 		% [same_as_real, survives, empties, lone_empties, untouched])
+
+
+func _same_occupancy(a: Dictionary, b: Dictionary) -> bool:
+	if a.size() != b.size():
+		return false
+	for level: Variant in a:
+		if not b.has(level):
+			return false
+		var sa: Dictionary = a[level]
+		var sb: Dictionary = b[level]
+		if sa.size() != sb.size():
+			return false
+		for cell: Vector2i in sa:
+			if not sb.has(cell):
+				return false
+	return true
+
+
+## R3D-LIGHT step 1 - the journal. `occupancy_live()` must equal the full walk after every kind of write, report exactly
+## the cells whose membership changed (a shared cell that keeps a visible claim reports nothing), and the comparison
+## must be able to FAIL: a write that skips the journal leaves the live dictionary different from the walk.
+func test_occupancy_live(fixture: Dictionary, store: VoxelStore) -> void:
+	var row: Slice = fixture["row"]
+	var col: Slice = fixture["col"]
+	var a: Voxel = row.voxels[4]      ## (8, 8), shared with col.voxels[3]
+	var b: Voxel = col.voxels[3]
+	var lone: Voxel = row.voxels[5]   ## (9, 8), one claim
+	var first: Array[Vector3i] = []
+	var live: Dictionary = store.occupancy_live(first)
+	var built_equal: bool = _same_occupancy(live, store.occupancy_dict()) and first.is_empty()
+	## One of two claims of a shared cell gone: no change. The lone claim gone: one change.
+	var was_a: bool = store.has_cell(a.grid_pos.x, a.grid_pos.y, a.level)
+	var was_lone: bool = store.has_cell(lone.grid_pos.x, lone.grid_pos.y, lone.level)
+	store.set_visible(store.claim_of(a), false)
+	store.set_visible(store.claim_of(lone), false)
+	var c1: Array[Vector3i] = []
+	store.occupancy_live(c1)
+	var eq1: bool = _same_occupancy(live, store.occupancy_dict())
+	var lone_only: bool = c1.size() == 1 and c1[0] == Vector3i(lone.grid_pos.x, lone.grid_pos.y, lone.level) \
+		or (c1.size() == 2 and not was_a)
+	## Both claims gone empties the shared cell; the lone one toggles back to visible.
+	store.set_visible(store.claim_of(b), false)
+	store.set_visible(store.claim_of(lone), true)
+	store.set_visible(store.claim_of(lone), false)
+	store.set_visible(store.claim_of(lone), true)
+	var c2: Array[Vector3i] = []
+	store.occupancy_live(c2)
+	var eq2: bool = _same_occupancy(live, store.occupancy_dict())
+	var shared_gone: bool = not (live[a.level] as Dictionary).has(a.grid_pos) and c2.has(Vector3i(a.grid_pos.x, a.grid_pos.y, a.level))
+	## The lone cell was gone at the last sync and is back now, through a visible-invisible-visible toggle: one change.
+	var lone_quiet: bool = c2.count(Vector3i(lone.grid_pos.x, lone.grid_pos.y, lone.level)) == 1 and c2.size() == 2
+	## The cook's twin: the live occupancy less a set of claims equals the walk's, for a shared cell (one claim, both) and a lone one.
+	var gone_sets: Array = [{}, {store.claim_of(a): true}, {store.claim_of(a): true, store.claim_of(b): true}, {store.claim_of(lone): true}]
+	var after_equal: bool = true
+	for g: Dictionary in gone_sets:
+		after_equal = after_equal and _same_occupancy(store.occupancy_live_after(g), store.occupancy_dict_after(g))
+	after_equal = after_equal and _same_occupancy(live, store.occupancy_dict())   ## and it moved nothing
+	## Sabotage: a state write that skips the journal must make the live dictionary DIFFER from the walk.
+	var c: int = store.claim_of(lone)
+	store.state[c] = store.state[c] & ~1
+	store.occupancy_live([] as Array[Vector3i])
+	var sabotage_detected: bool = not _same_occupancy(live, store.occupancy_dict())
+	store.state[c] = store.state[c] | 1
+	_check(built_equal and eq1 and lone_only and eq2 and shared_gone and lone_quiet and after_equal and sabotage_detected and was_lone and was_a,
+		"[TEST 8] occupancy_live(): the first call equals the walk (%s); after writes it equals the walk (%s, %s); reports only membership changes (%s, %s, %s); occupancy_live_after() equals occupancy_dict_after() (%s); a write that skips the journal is caught (%s)"
+		% [built_equal, eq1, eq2, lone_only, shared_gone, lone_quiet, after_equal, sabotage_detected])
 
 
 func test_glass_panes(fixture: Dictionary, store: VoxelStore) -> void:

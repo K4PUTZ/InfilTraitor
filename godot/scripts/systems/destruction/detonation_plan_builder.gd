@@ -1385,7 +1385,7 @@ static func _predicted_occupancy(s: Dictionary, voxel_board: VoxelBoardClass) ->
 		var claim: int = store.claim_of(voxel)
 		if claim >= 0:
 			gone[claim] = true
-	return store.occupancy_dict_after(gone)
+	return store.occupancy_live_after(gone)
 
 
 ## --- Phase 6: ATOMIC. The single map-wide light-field query (§2). ----------

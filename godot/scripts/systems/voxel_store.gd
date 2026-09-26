@@ -87,6 +87,14 @@ var _irregular: Dictionary = {}         ## container ordinal -> {Vector3i cell: 
 var _multi: Dictionary = {}             ## cell index -> PackedInt32Array of claims
 var _material_index: Dictionary = {}
 
+## R3D-LIGHT step 1 - the occupancy the light reads, kept instead of rebuilt. `_live_occ` is `occupancy_dict()`'s
+## shape (level -> {Vector2i: true}) built once by the first `occupancy_live()`; from then on every visibility
+## write journals its cell index in `_journal` and the next `occupancy_live()` applies just those cells to it.
+var _live_occ: Dictionary = {}
+var _live_built: bool = false
+var _journal: Dictionary = {}           ## cell index -> true, since the last sync
+var _pending: Array[Vector3i] = []      ## membership changes synced but not yet handed to a consumer
+
 ## Counters `BoardProbe` reports. A write to a voxel whose container the store does not
 ## know is a write the store missed — the shadow has drifted, and the gate fails on it.
 var writes_mirrored: int = 0
@@ -345,6 +353,8 @@ func mirror(v: Voxel) -> void:
 	state[claim] = state_byte(v)
 	aux[claim] = aux_byte(v)
 	var cell: int = cell_index(v.grid_pos.x, v.grid_pos.y, v.level)
+	if _live_built:
+		_journal[cell] = true
 	if _multi.has(cell):
 		_resolve_cell(cell)
 	else:
@@ -404,6 +414,8 @@ func set_damage(claim: int, new_state: int, from_blast: bool, carved_side: int,
 ## direct `occ` write, exactly as `mirror()` (the R3D-1b/c shadow write) already did.
 func _recompute_cell(claim: int) -> void:
 	var cell: int = cell_index(xyz[claim * 3], xyz[claim * 3 + 1], xyz[claim * 3 + 2])
+	if _live_built:
+		_journal[cell] = true
 	if _multi.has(cell):
 		_resolve_cell(cell)
 	else:
@@ -464,6 +476,78 @@ func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:
 		var li: int = key.z - base
 		if li >= 0 and li < nl:
 			(sets[li] as Dictionary).erase(Vector2i(key.x, key.y))
+	return out
+
+
+## R3D-LIGHT step 1 - the LIVE occupancy: the same answer as `occupancy_dict()` with no prediction, without the map
+## walk. The first call builds it; every later one applies the journal of cells a visibility write touched (a cell's
+## truth is the derived grid `occ`, which `_recompute_cell()` / `_resolve_cell()` keep per cell, `grid_mismatches()`
+## gates it) and appends to `changes` every cell whose membership changed since the last call that HANDED CHANGES OVER
+## (as Vector3i(x, y, level)), so the light field derives its stale set from them alone. `changes` stays empty on the call
+## that walked the map, which is why the field falls back to a full diff unless it already holds this dictionary.
+## The returned dictionary is the store's own and is mutated in place by the next call: hand it to the field, never keep it.
+func occupancy_live(changes: Array[Vector3i]) -> Dictionary:
+	if not _live_built:
+		_live_occ = occupancy_dict()
+		_live_built = true
+		_journal.clear()
+		return _live_occ
+	_sync_live()
+	changes.append_array(_pending)
+	_pending.clear()
+	return _live_occ
+
+
+## Applies the journal to `_live_occ`; the membership changes wait in `_pending` for the consumer (`occupancy_live()`).
+@warning_ignore("integer_division")
+func _sync_live() -> void:
+	var per_level: int = w * h
+	for cell: int in _journal:
+		var li: int = cell / per_level
+		if li < PAD or li >= nl - PAD:
+			continue
+		var rem: int = cell - li * per_level
+		var ry: int = rem / w
+		var v := Vector2i(x0 + (rem - ry * w), y0 + ry)
+		var level_set: Dictionary = _live_occ[l0 + li]
+		var now: bool = occ[cell] != 0
+		if now != level_set.has(v):
+			if now:
+				level_set[v] = true
+			else:
+				level_set.erase(v)
+			_pending.append(Vector3i(v.x, v.y, l0 + li))
+	_journal.clear()
+
+
+## `occupancy_dict_after()` from the live dictionary instead of the map walk: a per-level copy of it (the cook's own field
+## must hold a snapshot, not a dictionary later syncs move: a repaint between the cook and its commit would otherwise
+## turn the predicted world back into the committed one under the field's lazy queries), less the claims in `gone`.
+## Syncs first; the changes that sync finds stay pending for `occupancy_live()`'s consumer.
+func occupancy_live_after(gone: Dictionary) -> Dictionary:
+	if not _live_built:
+		return occupancy_dict_after(gone)
+	_sync_live()
+	var out: Dictionary = {}
+	for level: Variant in _live_occ:
+		out[level] = (_live_occ[level] as Dictionary).duplicate()
+	for claim: int in gone:
+		var i: int = claim * 3
+		var x: int = xyz[i]
+		var y: int = xyz[i + 1]
+		var level: int = xyz[i + 2]
+		var li: int = level - l0
+		if li < PAD or li >= nl - PAD:
+			continue
+		var survives: bool = false
+		var cell: int = cell_index(x, y, level)
+		if _multi.has(cell):
+			for other: int in _multi[cell]:
+				if (state[other] & 1) and not gone.has(other):
+					survives = true
+					break
+		if not survives:
+			(out[level] as Dictionary).erase(Vector2i(x, y))
 	return out
 
 

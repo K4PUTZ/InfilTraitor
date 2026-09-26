@@ -164,13 +164,20 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 ## wholesale clear here is what defeated it.
 func build(lights: Array, shadow_results: Array, top_wall_level: int,
 		occupancy: Dictionary = {}, under_structure: Dictionary = {},
-		geometry_only: bool = false) -> void:
+		geometry_only: bool = false, live_changes: Variant = null) -> void:
 	## SOOT-STAMP (2026-09-22): soot is not an input any more. It lives in
 	## `Room._soot_map` and the renderer's soot plane, written only by the events
 	## that make it; a light build never reads it and a light apply never writes it.
 	var stale: Dictionary = {}
 	if geometry_only:
-		stale = _stale_cells(occupancy)
+		## R3D-LIGHT step 1 - `live_changes` (the store's journal of membership changes) stands for the diff, and is
+		## trusted ONLY when the field already holds this very dictionary: the store mutates it in place, so a
+		## comparison against it would see nothing. Any other previous occupancy (the cook's predicted one, the
+		## first build) gets the full diff.
+		if live_changes != null and is_same(_occupancy, occupancy):
+			stale = _stale_from_changes(live_changes)
+		else:
+			stale = _stale_cells(occupancy)
 		for skey in stale:
 			_stale_accum[skey] = true
 	else:
@@ -221,6 +228,17 @@ func _stale_cells(occupancy: Dictionary) -> Dictionary:
 				for dx in range(-1, 2):
 					for dy in range(-1, 2):
 						stale[Vector3i(cell.x + dx, cell.y + dy, level + dz)] = true
+	return stale
+
+
+## `_stale_cells()`'s neighbourhood, from a list of cells whose occupancy changed instead of a diff of two dictionaries.
+func _stale_from_changes(changes: Array) -> Dictionary:
+	var stale: Dictionary = {}
+	for cell: Vector3i in changes:
+		for dz in range(-2, 2):
+			for dx in range(-1, 2):
+				for dy in range(-1, 2):
+					stale[Vector3i(cell.x + dx, cell.y + dy, cell.z + dz)] = true
 	return stale
 
 

@@ -446,6 +446,16 @@ func build_occupancy(predict_destroyed: Dictionary = {}) -> Dictionary:
 	return VoxelStore.active.occupancy_dict(predict_destroyed)
 
 
+## R3D-LIGHT step 1 - `build_occupancy()` without the map walk: the store's live occupancy, with the cells whose
+## membership changed since the previous call appended to `changes`. The dictionary is the store's own (see
+## `VoxelStore.occupancy_live()`): hand it to `VoxelLightField.build()` together with `changes`, never keep it.
+func build_occupancy_live(changes: Array[Vector3i]) -> Dictionary:
+	if VoxelStore.active == null:
+		push_error("[VoxelBoard] build_occupancy_live: no VoxelStore.active — returning empty occupancy")
+		return {}
+	return VoxelStore.active.occupancy_live(changes)
+
+
 ## VL-D3 — columns (x,y) covered by any wall/block/roof voxel (positive levels).
 ## A floor voxel in such a column was never sun-exposed; when a blast opens the
 ## wall above and exposes its top, it should read darker than always-open floor.

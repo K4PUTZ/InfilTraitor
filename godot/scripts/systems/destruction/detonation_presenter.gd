@@ -92,14 +92,18 @@ func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> voi
 	_writer.soot_clean = false
 	var ramp: Array = _collect_soot_ramp(plan, voxel_board)
 	_commit_frame(plan, voxel_board)
+	## R3D-LIGHT: the glass flush (crack re-cut, shard rims, craze masks: ~46 ms on the Moto for a blast that breaks glass) and the
+	## 3D board's commit (`on_blast_commit()`: remesh + upload) run in the channel's SECOND frame, not this one. They go
+	## together and in this order because the glass mesh reads the shaped cells the rims record, so the remesh must follow the
+	## flush. The scorch waits for them (`_soot_tick()`), which keeps the Director's order (crater first, scorch after).
+	_tail_pending = true
 	var board3d: Node = _board3d()
-	if board3d != null and consequence_delta != null:
-		board3d.on_blast_commit(consequence_delta)
 	## Director, 2026-09-21 (a video of the blast on the Moto): the scorch was arriving BEFORE the crater and the smoke read.
 	## It now arrives AFTER the crater is drawn, in steps: the ramp is armed here, `_run_consequence` steps it from `soot_start_s`
 	## (0 = right after the commit), and whatever is left after the channel is finished by `_finish_soot`.
 	_soot_begin(ramp)
 	await _run_consequence(plan, voxel_board, smoke_overlay, tree)
+	_run_tail(voxel_board)   ## a channel with nothing scheduled (or shorter than two frames) still owes it
 	await _finish_soot(voxel_board, tree, board3d)
 	## D-6 — the smoke is all instanced and rising, so the world may resume
 	## (Director, 2026-08-29). The light ramp below runs with the agent already
@@ -194,7 +198,7 @@ func _commit_frame(plan: Dictionary, voxel_board) -> void:
 		for ring in plan.get(kind, {}).keys():
 			for entry: Dictionary in plan[kind][ring]:
 				cells += _writer.apply(kind, entry, voxel_board, null)
-	_writer.flush(voxel_board)
+	## (`_writer.flush()` is `_run_tail()`'s now.)
 	print("[E-PRESENT] commit frame — %d cell(s) in %.3f ms of apply" % [
 		cells, float(Time.get_ticks_usec() - t0) / 1000.0])
 
@@ -275,6 +279,19 @@ func prepare(plan: Dictionary) -> void:
 
 
 var _sched_prep: Dictionary = {}
+
+## The commit's glass flush and the 3D board's commit, still owed (see `start()`).
+var _tail_pending: bool = false
+
+
+func _run_tail(voxel_board) -> void:
+	if not _tail_pending:
+		return
+	_tail_pending = false
+	_writer.flush(voxel_board)
+	var board3d: Node = _board3d()
+	if board3d != null and consequence_delta != null:
+		board3d.on_blast_commit(consequence_delta)
 
 ## Microseconds of one frame the consequence channel may spend dispatching VFX entries. `var` (Rule 1).
 var effect_budget_us: int = 8000
@@ -374,7 +391,7 @@ func _soot_begin(ramp: Array) -> void:
 ## settled scorch. Each call writes ONE step, so a slow frame delays the ladder instead of collapsing it into a jump cut.
 func _soot_tick(elapsed: float, voxel_board) -> void:
 	var steps: int = maxi(soot_fade_frames, 1)
-	if _soot_ramp.is_empty() or _soot_next_k >= steps or elapsed < _soot_next_t:
+	if _tail_pending or _soot_ramp.is_empty() or _soot_next_k >= steps or elapsed < _soot_next_t:
 		return
 	if _soot_next_k == 1 and consequence_room != null:
 		consequence_room.event_probe_beat("SOOT FADE")
@@ -445,8 +462,15 @@ func _run_consequence(plan: Dictionary, voxel_board, smoke_overlay,
 			push_warning("[DetonationPresenter] renderer went away mid-sequence (map reload?) — abandoned with %d of %d effect(s) undispatched" % [scheduled.size() - next, scheduled.size()])
 			return
 		frames += 1
+		## The tail's commit uploads the cell planes; a soot step in the SAME frame uploads them again, and that second upload
+		## waited ~375 ms on the Moto (the tail + tick in one frame, first version). The step goes to the next frame.
+		var ran_tail: bool = false
+		if frames == 2 and _tail_pending:
+			_run_tail(voxel_board)
+			ran_tail = true
 		elapsed += tree.root.get_process_delta_time()
-		_soot_tick(elapsed, voxel_board)
+		if not ran_tail:
+			_soot_tick(elapsed, voxel_board)
 		_channel_elapsed = elapsed
 		var _disp0: int = Time.get_ticks_usec()
 		while next < scheduled.size() and float(scheduled[next][0]) <= elapsed:

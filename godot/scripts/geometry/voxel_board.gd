@@ -1720,16 +1720,6 @@ func _glass_cell_present(level: int, cell: Vector2i) -> bool:
 	return VoxelStore.active != null and VoxelStore.active.has_glass_pane(cell.x, cell.y, level)
 
 
-## The (run, level) neighbour offset `d` as a real (cell, level) pair, given the
-## face's run axis. Run along X for SW/NE, along Y for SE/NW — the same rule
-## GlassShatter and GlassCrack use.
-func _glass_neighbour(cell: Vector2i, level: int, face: int, d: Vector2) -> Array:
-	var run_is_x: bool = (face == Face.SW or face == Face.NE)
-	var dr: int = int(d.x)
-	var off := Vector2i(dr, 0) if run_is_x else Vector2i(0, dr)
-	return [cell + off, level + int(d.y)]
-
-
 ## Apply an OPENING around every hole made since the last call. Returns how many
 ## cells were cut into shards.
 ##

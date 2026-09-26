@@ -6,8 +6,6 @@
 
 class_name FacadeSampler
 
-const GeometryCoordsClass = preload("res://godot/scripts/geometry/geometry_coords.gd")
-
 ## Sample facade at (plane_x, plane_y) in the infinite plane
 ## Uses mirrored-repeat addressing
 ## Returns: luminance [0, 1]
@@ -20,16 +18,6 @@ func sample(facade: Image, plane_x: float, plane_y: float) -> float:
 	
 	# Extract luminance (V in HSV, works for grayscale)
 	return pixel.v
-
-## Get window origin for a contiguous run of edges (in texel units [0, 64N) × [0, 32N))
-## Deterministic based on canonical minimum edge
-func get_window_origin_run_texels(canonical_min_edge, facade_id: String) -> Vector2i:
-	return _window_origin_run_texels(canonical_min_edge, facade_id)
-
-## Get window origin for an isolated wall (in texel units [0, 64N) × [0, 32N))
-## Randomized based on edge hash
-func get_window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:
-	return _window_origin_isolated_texels(edge, facade_id)
 
 ## Mirror 2D coordinates into texture domain
 func _mirror_2d(plane_x: float, plane_y: float, tex_width: int, tex_height: int) -> Vector2i:
@@ -55,47 +43,6 @@ func _mirror_1d(k: float, S: int) -> float:
 		k2 = 2.0 * S_int - k2
 	
 	return k2
-
-## Window origin for contiguous run (all edges use same origin from canonical min)
-## Returns texel units [0, 64N) × [0, 32N)
-func _window_origin_run_texels(canonical_min_edge, facade_id: String) -> Vector2i:
-	# Get key string from edge (duck typing; expects .key_string() method or property)
-	var key_str = ""
-	if canonical_min_edge.has_method("key_string"):
-		key_str = canonical_min_edge.key_string()
-	else:
-		key_str = canonical_min_edge.key_string as String
-
-	var hash_input = key_str + ":" + facade_id
-	var hash_val = _fnv1a_hash(hash_input)
-
-	var N = GeometryCoordsClass.TEX_AUTHORING_N
-
-	# Column offset in texel units [0, 64N)
-	var plane_col_texels = (hash_val % (64 * N))
-	var plane_row_texels = 0  # v1 uses row 0
-
-	return Vector2i(plane_col_texels, plane_row_texels)
-
-## Window origin for isolated wall (independent hash per edge)
-## Returns texel units [0, 64N) × [0, 32N)
-func _window_origin_isolated_texels(edge, facade_id: String) -> Vector2i:
-	var key_str = ""
-	if edge.has_method("key_string"):
-		key_str = edge.key_string()
-	else:
-		key_str = edge.key_string as String
-
-	var hash_input = key_str + ":" + facade_id
-	var hash_val = _fnv1a_hash(hash_input)
-
-	var N = GeometryCoordsClass.TEX_AUTHORING_N
-
-	# Two independent bit windows, full range (no byte masks)
-	var plane_col_texels = hash_val % (64 * N)
-	var plane_row_texels = (hash_val >> 16) % (32 * N)
-
-	return Vector2i(plane_col_texels, plane_row_texels)
 
 ## FNV-1a 32-bit hash
 ## Static: pure function of `input`, no instance state. Made static 2026-07-16

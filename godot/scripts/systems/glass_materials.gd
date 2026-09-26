@@ -64,16 +64,6 @@ const TINT_SLOTS: int = 5
 const FRACTURE_WIDTHS: Array[String] = ["tight", "wide"]
 
 
-## The sheet a member of the family cracks with. Every variant reuses BASE's
-## pair (G-D16: the variants differ by tint and behaviour class, never by
-## geometry), so this goes through `art_id()` for the same reason every other
-## art seam does — a variant id must never reach a texture lookup under its own
-## name. Returns the `texture_id` half of `TextureResolver.resolve()`, whose
-## folder argument is `art_id()` as well.
-static func fracture_texture_id(material_id: String, width: String) -> String:
-	return "fracture_%s_%s" % [art_id(material_id), width]
-
-
 ## The only question the engine asks about glass-ness.
 ##
 ## Takes the material id a caller already has — a `Slice.material`, an

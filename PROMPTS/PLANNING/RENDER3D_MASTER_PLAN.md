@@ -9,6 +9,7 @@ Last commits `5ffbe282` and before; the record of every step is the R3D-END bloc
 - **The device gate, both handsets, no regression** (R3D-13 matrix, release APK, PLAYGROUND, scripted): Moto g04s load 15.2-15.5 s (16.3), PSS 1.09-1.11 GB (1.38), idle 18.8-19.4 ms (18.9-21.9), detonation means 28.4-31.3 ms, the second grenade's worst frame 254 ms (693-725); Galaxy A16 load 7.1-7.4 s (7.9-8.0), PSS 1.28-1.31 GB (1.30-1.33), detonation worst frames 112-157 ms (154-364), shot tail 211-219 ms. **Frame rate:** 30 fps at idle on both handsets and on the average of a detonation on the Moto; 24 fps everywhere except a hot, charging Galaxy (21-25 fps: the handset's state, the old APK reads the same); **not met: the hitch frames of a blast and a shot (112-526 ms), which are R3D-LIGHT's.** The tables are the top block of `DEVICE_DIAGNOSTICS_MASTER_PLAN`.
 - **How to verify from now on (Director, 2026-09-25: stop replaying the same explosions):** `python3 tools/persistent/verify.py` (docs / quick / smoke picked by what changed; smoke = quick + a boot and rotation of PLAYGROUND and GLASS, no grenade, no shot). The identity gates run as `verify.py full`, ONLY on request or to close a stage that rewires the board.
 - **Still 2D on purpose:** the structure layer (props), the actors, the 2D overlays and `VISUAL_GRID_OFFSET`, until R3D-PROPS / R3D-ACTORS.
+- **Post-close cleanup (2026-09-25, Director: "vamos limpar o codigo morto primeiro"):** the dead code the END left on purpose is gone: `VoxelBoard._glass_neighbour`, `FacadeSampler.get_window_origin_*` (and the two private `_window_origin_*` they alone reached), `GlassCrack.has_craze_art`, `GlassMaterials.fracture_texture_id`, `OcclusionSet._is_exposed` (two comments repointed; the wireframe builder's header, stranded above it, moved back onto it), `theme_applier.gd`, and the scratch `test_keys.gd` at the repo root. Each had zero readers repo-wide (code, scenes, tools); last present in `6bb89cb4`. `verify.py` smoke: 51 selftests clean, PLAYGROUND and GLASS boot and rotate. **Still open:** the five "dev-tool paths" (never enumerated anywhere), the 17 `voxel_*.png` atoms and `halves/` folders (git-ignored art), `occlusion_overlay.gd`, `FacadeSampler.sample()` and its mirror helpers (no caller either).
 - **Next (the Director's call, none is a blocker):** R3D-LIGHT (the hitch frames: the ~235 ms COMMIT frame and the 155-236 ms CONSEQUENCE frame on the Moto, its 526 ms shot tail), R3D-WORLD, R3D-PROPS / R3D-ACTORS, R3D-ROT, R3D-LOOK, R3D-CLAIMS, R3D-BUFFER.
 
 **2026-09-24 (night) update (v1.25) — R3D-14 BUILT: THE GLASS STATE LIVES IN THE STORE, THE INDEPENDENCE GATE READS PASS (Director: "Sim, começa a R3D-14").**
@@ -3313,7 +3314,7 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
   - the spark anchor;
   - the reveal silhouette's defaults (a 3D-only feature, so tuning, not parity);
   - the floor depth dim and the burnt voxels;
-  - per-run facade origins on walls;
+  - per-run facade origins on walls (the 2D's reference is `FacadeSampler._window_origin_run_texels` / `_window_origin_isolated_texels`, deleted in the 2026-09-25 cleanup; last present in `6bb89cb4`);
   - the golden light shafts (`light_ray_overlay`, R3D-5's table).
 
   The Director grades them at 9/10, against the R3D-8 reference set where the 2D is the reference.

@@ -368,93 +368,19 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 ## doesn't matter — each is independent.
 const _FACE_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
-## Director-ratified redesign (2026-07-21), replacing OCC-13's "one
-## independent box per structural unit" (one per wall Edge, one per roof
-## GU-rectangle, one disabled per junction column). OCC-13 explicitly
-## accepted the overlap at a unit-to-unit boundary as "expected, not a
-## defect" — in practice it was: every boundary between two occluded units
-## (wall-to-wall, wall-to-junction, GU-to-GU) drew a full extra wireframe
-## edge that didn't correspond to any real silhouette, reading as a
-## serrated/jagged line and, in aggregate, as "muito poluído" (Director,
-## live). ROOF-OCC-02 (2026-07-20) patched this locally for roof GUs only
-## (rectangle-merge); this supersedes that too — walls, junctions and roofs
-## already all fold into ONE shared dictionary (`occluded`, identical to
-## _occluded_cells / what VoxelBoard.apply_occlusion() erases), so instead
-## of trusting each generator's own idea of its unit's shape, this runs ONE
-## real hidden-face-culling pass directly against that shared ground truth —
-## the same principle voxel engines use for chunk meshing (Minecraft-style
-## "only mesh a face if the neighbour across it is air"): a face is INTERNAL
-## (never drawn) iff the neighbouring column is ALSO occluded and its level
-## range covers this level; EXTERNAL (drawn) otherwise. This kills every
-## unit-to-unit seam by construction, for walls, junctions and roofs alike,
-## in one pass, rather than patching one axis at a time.
-##
-## Deliberately not merged into longer runs along a straight boundary: each
-## exposed 1-voxel face only ever draws the 2 endpoints its own boundary is
-## entitled to, so a straight run of many contiguous exposed faces becomes
-## many collinear 1-voxel segments that already read as one continuous line
-## (solid style) or one evenly-spaced dotted line (dots style, matching the
-## OCC-18 per-voxel-boundary dot spacing) — visually identical to an
-## explicit run-merge, without the extra rectangle-decomposition bookkeeping
-## ROOF-OCC-02 needed and this now removes.
-##
-## Visibility/style convention (hidden-line removal, CAD tradition): O5 (top
-## of file) fixes camera depth as x+y, greater = nearer. A face exposed
-## toward +x or +y (EAST/SOUTH) is this volume's OWN near side — nothing of
-## its own bulk sits between that face and the camera — drawn as a plain
-## SOLID line, no dots. A face exposed toward -x or -y (WEST/NORTH) is the
-## volume's far side, behind its own bulk from the camera's POV — drawn as
-## DOTS only, no line underneath. The flat TOP rim is the one exception:
-## nothing overhangs it from this camera angle regardless of which side of
-## the rim it's on, so every top-level cap edge draws SOLID regardless of
-## direction. The ghosted band's own BOTTOM is never capped at all — it sits
-## directly on the edge's real, opaque, always-visible base (BASE_VISIBLE_
-## LEVELS), which is not a true external boundary, just an internal render
-## style change within the same solid structure.
-##
-## Args: occluded — the SAME dict as _occluded_cells (voxel column Vector2i
-## -> {"ring","min_level","max_level"}), already merged across walls,
-## junctions and roofs by the time recompute() calls this.
-## Returns: Dictionary int level -> {"lines": Array, "fills": Array}
-##   "lines": {"a": Vector2i, "b": Vector2i, "level_a": int, "level_b": int,
-##     "solid": bool} — the line runs from _voxel_to_screen(a, level_a) to
-##     _voxel_to_screen(b, level_b). Two shapes share this: a=b (same lattice
-##     point) with level_a/level_b = level/level+1 is a true VERTICAL corner
-##     (drawn only at a run's real start/end, never per interior voxel — see
-##     the width-axis run-boundary check below); a!=b with level_a==level_b
-##     is a flat top-cap rim edge (both endpoints at the same height).
-##   "fills": {"kind": "side"/"top", "a": Vector2i, "b": Vector2i, "level":
-##     int, "ring": int} — "side" is a vertical quad from level to level+1
-##     along the a-b lattice edge; "top" is the column's own flat footprint
-##     quad at level+1 (level here is always the column's own max_level+1).
-## True if `column` (assumed present in `occluded`) has an EXTERNAL
-## (exposed) face in direction `dir` — its neighbour in that direction is
-## either absent, or present but with a vertical range that never overlaps
-## this column's own (see _build_wireframe_geometry's header for why overlap,
-## not exact-level match, is the right test). Shared by the main pass and by
-## the width-axis run boundary check (a face is only a true run START/END
-## when its along-the-run neighbour does NOT share the same exposure).
-static func _is_exposed(occluded: Dictionary, column: Vector2i, dir: Vector2i) -> bool:
-	var entry: Dictionary = occluded[column]
-	var neighbour := column + dir
-	if not occluded.has(neighbour):
-		return true
-	var n: Dictionary = occluded[neighbour]
-	return not (int(n["min_level"]) <= int(entry["max_level"]) and int(n["max_level"]) >= int(entry["min_level"]))
-
-
 ## Public: the order of `_FACE_DIRS`, which is the bit order of every exposure mask.
 const FACE_DIRS: Array[Vector2i] = _FACE_DIRS
 var _exposure: Dictionary = {}   ## column -> bitmask of exposed faces (bit i = FACE_DIRS[i]); columns with none are absent
 
 
-## Which faces of each occluded column are EXPOSED (see `_is_exposed`), computed once per set and read by the wireframe,
+## Which faces of each occluded column are EXPOSED (the neighbour across the face is absent, or shares no level with
+## the column), computed once per set and read by the wireframe,
 ## the 3D cutaway's side fills and its caps, which used to recompute it three times over. Read-only: do not modify.
 func get_exposure() -> Dictionary:
 	return _exposure
 
 
-## The mask `_is_exposed` gives for each direction, for every column of `occluded` that has any exposed face, in the
+## The mask of exposed faces for each direction, for every column of `occluded` that has any exposed face, in the
 ## set's own order. `unexposed` names columns known to have none (interior cells of a uniformly ghosted roof GU).
 func _build_exposure(occluded: Dictionary, unexposed: Dictionary) -> Dictionary:
 	var exposure: Dictionary = {}
@@ -522,6 +448,65 @@ func _build_exposure_by_gu() -> Dictionary:
 	return exposure
 
 
+## Director-ratified redesign (2026-07-21), replacing OCC-13's "one
+## independent box per structural unit" (one per wall Edge, one per roof
+## GU-rectangle, one disabled per junction column). OCC-13 explicitly
+## accepted the overlap at a unit-to-unit boundary as "expected, not a
+## defect" — in practice it was: every boundary between two occluded units
+## (wall-to-wall, wall-to-junction, GU-to-GU) drew a full extra wireframe
+## edge that didn't correspond to any real silhouette, reading as a
+## serrated/jagged line and, in aggregate, as "muito poluído" (Director,
+## live). ROOF-OCC-02 (2026-07-20) patched this locally for roof GUs only
+## (rectangle-merge); this supersedes that too — walls, junctions and roofs
+## already all fold into ONE shared dictionary (`occluded`, identical to
+## _occluded_cells / what VoxelBoard.apply_occlusion() erases), so instead
+## of trusting each generator's own idea of its unit's shape, this runs ONE
+## real hidden-face-culling pass directly against that shared ground truth —
+## the same principle voxel engines use for chunk meshing (Minecraft-style
+## "only mesh a face if the neighbour across it is air"): a face is INTERNAL
+## (never drawn) iff the neighbouring column is ALSO occluded and its level
+## range covers this level; EXTERNAL (drawn) otherwise. This kills every
+## unit-to-unit seam by construction, for walls, junctions and roofs alike,
+## in one pass, rather than patching one axis at a time.
+##
+## Deliberately not merged into longer runs along a straight boundary: each
+## exposed 1-voxel face only ever draws the 2 endpoints its own boundary is
+## entitled to, so a straight run of many contiguous exposed faces becomes
+## many collinear 1-voxel segments that already read as one continuous line
+## (solid style) or one evenly-spaced dotted line (dots style, matching the
+## OCC-18 per-voxel-boundary dot spacing) — visually identical to an
+## explicit run-merge, without the extra rectangle-decomposition bookkeeping
+## ROOF-OCC-02 needed and this now removes.
+##
+## Visibility/style convention (hidden-line removal, CAD tradition): O5 (top
+## of file) fixes camera depth as x+y, greater = nearer. A face exposed
+## toward +x or +y (EAST/SOUTH) is this volume's OWN near side — nothing of
+## its own bulk sits between that face and the camera — drawn as a plain
+## SOLID line, no dots. A face exposed toward -x or -y (WEST/NORTH) is the
+## volume's far side, behind its own bulk from the camera's POV — drawn as
+## DOTS only, no line underneath. The flat TOP rim is the one exception:
+## nothing overhangs it from this camera angle regardless of which side of
+## the rim it's on, so every top-level cap edge draws SOLID regardless of
+## direction. The ghosted band's own BOTTOM is never capped at all — it sits
+## directly on the edge's real, opaque, always-visible base (BASE_VISIBLE_
+## LEVELS), which is not a true external boundary, just an internal render
+## style change within the same solid structure.
+##
+## Args: occluded — the SAME dict as _occluded_cells (voxel column Vector2i
+## -> {"ring","min_level","max_level"}), already merged across walls,
+## junctions and roofs by the time recompute() calls this.
+## Returns: Dictionary int level -> {"lines": Array, "fills": Array}
+##   "lines": {"a": Vector2i, "b": Vector2i, "level_a": int, "level_b": int,
+##     "solid": bool} — the line runs from _voxel_to_screen(a, level_a) to
+##     _voxel_to_screen(b, level_b). Two shapes share this: a=b (same lattice
+##     point) with level_a/level_b = level/level+1 is a true VERTICAL corner
+##     (drawn only at a run's real start/end, never per interior voxel — see
+##     the width-axis run-boundary check below); a!=b with level_a==level_b
+##     is a flat top-cap rim edge (both endpoints at the same height).
+##   "fills": {"kind": "side"/"top", "a": Vector2i, "b": Vector2i, "level":
+##     int, "ring": int} — "side" is a vertical quad from level to level+1
+##     along the a-b lattice edge; "top" is the column's own flat footprint
+##     quad at level+1 (level here is always the column's own max_level+1).
 func _build_wireframe_geometry(occluded: Dictionary, exposure: Dictionary, with_fills: bool) -> Dictionary:
 	var by_level: Dictionary = {}
 

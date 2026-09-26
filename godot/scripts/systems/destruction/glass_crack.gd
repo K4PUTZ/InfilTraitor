@@ -251,22 +251,6 @@ static func craze_sheet_id_for(intensity: float, base_key: String = "") -> Strin
 	return String(bucket[FacadeSampler._fnv1a_hash("craze_pattern|%s" % base_key) % bucket.size()])
 
 
-## Whether B-3 has delivered the craze art yet.
-##
-## ⚠️ THIS IS A STAGE GATE, NOT A LOUD FAILURE, AND THE DISTINCTION IS DELIBERATE.
-## B6 says a missing dependency fails loudly — but this dependency is not missing,
-## it is NOT BUILT YET, and the ordering is on purpose (§16.5: the wrong art wired
-## to a real trigger is worse than no art, because it looks finished). So the
-## trigger is fully wired and the field simply does not spawn until the manifest
-## carries a `blast_*` row, at which point it lights up with no code change.
-static func has_craze_art() -> bool:
-	var o: Dictionary = _manifest_data().get("openings", {})
-	for id in CRAZE_BUCKET_COARSE + CRAZE_BUCKET_FINE:
-		if o.has(id):
-			return true
-	return false
-
-
 ## G-D35 B-3 — resolve the SHEET on a field plan, once the room knows the pane's
 ## base-space key. Split out of `plan_pane_field()` (which is pure and has no base
 ## knowledge) so the pick and the page span stay one statement: a plan whose sheet

@@ -3129,6 +3129,13 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 		## VoxelBoard's own comment on `place_prop_demo`).
 		if _dev_flag_on("PROPS_MESH_DEMO"):
 			_voxel_board.place_prop_demo(live, "barrel", Vector2i(36, 36), _voxel_board.ground_plane_level())
+		## R3D-PROPS Tier 4 — the shatter-burst demo (see `spawn_prop_shatter()`'s own comment),
+		## same dev-only/no-map-data shape as the two demos above. Independent of PROPS_MESH_DEMO
+		## on purpose: this captures the burst in isolation (no intact mesh first), the same way
+		## PROPS_MESH_DEMO captures the intact mesh in isolation — a sequenced "intact, then
+		## shatter" demo is real follow-on scope once a prop is actually wired to take damage.
+		if _dev_flag_on("PROP_SHATTER_DEMO"):
+			spawn_prop_shatter(Vector2i(36, 36), _voxel_board.ground_plane_level(), "wood", 12)
 
 
 ## RENDER3D R3D-4d — a prop that joins the tree while the 3D board is up gets a `PropBillboard3D`.
@@ -4532,6 +4539,36 @@ func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: Stri
 	if material_id == "wood" and randf() < vfx_chip_chance:
 		var wood_color: Color = _vfx_material_base_color(material_id)
 		_debris_overlay.add_chips(origin, floor_pos, randi_range(vfx_chip_count_min, vfx_chip_count_max), wood_color)
+
+
+## R3D-PROPS Tier 4 (Director, 2026-09-27): a medium/large organic/natural prop's mesh, on
+## impact, swaps for a "LEGO-style" burst of standardized fragments — approximate dimensions,
+## never a voxelized replica of the source model. This is that burst, built ENTIRELY from the
+## VFX this file already has for a destroyed voxel (`_dispatch_destruction_vfx()`'s smoke/dust/
+## spark/chip calls) rather than a new particle field or real geometry: the same reclassification
+## that keeps Tier 4 out of `VoxelStore` (no persistent per-voxel state) applies to its BURST too
+## — it is one scaled-up VFX call, not `size_vox` many small containers.
+## `fragment_count` stands in for the plan's "~8x8x8 subdivision": not that many literal chip
+## instances (`add_chips()` already fans one call out across `count` chips with their own jitter),
+## just a caller-tunable density knob, higher for a bigger prop.
+## Ground debris (OPEN THREADS goal 7, mechanism ruled but not built — needs new decal art) is
+## deliberately NOT called here yet.
+func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragment_count: int = 8) -> void:
+	if _voxel_board == null or _smoke_spark_overlay == null or _debris_overlay == null:
+		return
+	var origin: Vector2 = _voxel_board.voxel_world_position(cell, level)
+	var floor_pos: Vector2 = _voxel_board.voxel_world_position(cell, _voxel_board.ground_plane_level())
+	if floor_pos == Vector2.ZERO:
+		floor_pos = origin
+	var tint: Color = _vfx_material_base_color(material_id)
+	_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id), 1.0, 1.0, 0, 1.0, 0.0, floor_pos)
+	_debris_overlay.add_dust(origin, floor_pos, tint)
+	_debris_overlay.add_chips(origin, floor_pos, fragment_count, tint)
+	if material_id == "metal":
+		_smoke_spark_overlay.add_sparks(origin, randi_range(vfx_metal_spark_count_min, vfx_metal_spark_count_max),
+			vfx_metal_spark_color, 1.0, 1.0, floor_pos)
+	elif material_id == "stone":
+		_smoke_spark_overlay.add_sparks(origin, vfx_stone_spark_count, vfx_stone_spark_color, 1.0, 1.0, floor_pos)
 
 
 ## VFX-01: MaterialDef.base_color for `material_id`, or a neutral gray if the

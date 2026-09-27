@@ -1,6 +1,24 @@
 # RENDER3D_MASTER_PLAN
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.29
 
+**2026-09-27 update (v1.32) — THE GPU FLOOR, MEASURED: WHAT THE 17.5 ms OF IDLE IS MADE OF, AND WHAT EACH LEVER COSTS.**
+- **Method:** Moto g04s, release APK, PLAYGROUND, portrait, zoom 0.75, `FRAME_PROBE`, one boot per row, idle (`device_2026-09-27_...` logs `docs/measurements/device_2026-09-26_moto_gpu_*.log`, git-ignored). The engine's per-pass GPU timestamps are not reachable from script (`RenderingDevice` marks are captured only by the editor profiler; 2 per frame on the desktop), so the split is by ABLATION. `render gpu` (ms):
+
+  | configuration | gpu | reading |
+  |---|---|---|
+  | base | 17.45 | 76 draws, 10 700 primitives |
+  | board fragment shader replaced by a constant | 13.2 | the whole board shader is **~4.2 ms** |
+  | ...without the sRGB `pow` (`srgb_to_linear`) | 16.0 | **-1.5** |
+  | ...without the facade fetch / the `cell_plane` fetch / the cutaway `discard` | 16.6 / 16.9 / 17.05 | -0.85 / -0.55 / -0.4 (all four together 14.65, -2.8) |
+  | 2D hidden (`HIDE_NON_VOXEL`) | 14.3 | 2D + HUD + actors + overlays = **~3.1 ms**, no single culprit (HUD -1.0, overlays -0.85, actors -0.6, vision cones -0.6); a near-empty canvas still costs ~0.8, so there is no big fixed 3D-to-canvas pass split |
+  | 2D hidden AND a constant shader | 9.9 | **the pixel baseline (raster, depth, colour, present) is ~9.9 ms** |
+  | `STRETCH_VIEWPORT` (the 3D at 390x844, a quarter of the pixels) | 6.9 | the floor is pixel-proportional |
+  | GLASS map (same framing) | 21.6 | **+4.2 ms** with FEWER primitives: `glass_pane3d` reads `hint_screen_texture`, so the renderer copies the whole colour buffer and splits the pass |
+
+- **The lever that moves the floor is the 3D resolution (new `SCALE_3D=<f>` DevFlag, `Viewport.scaling_3d_scale`, the HUD and sprites stay native): 1.0 -> 17.45, 0.85 -> 14.1, 0.75 -> 12.2, 0.67 -> 10.8, 0.5 -> 8.4 ms** (FSR 1.0 and bilinear cost the same). Capture of the Moto's screen at each scale, walls and floor texture: `Screenshots/history/gpu_scale3d_compare_walls.png` (a Director look decision: 0.85 and 0.75 soften the concrete slightly, 0.67 clearly, 0.5 also serrates the blue diamond lines). **The Director ruled against a world render scale on 2026-09-14 (`WorldRenderScale`, 0.75, "vamos manter 1.0") when it also scaled the HUD; the 3D-only scale keeps the HUD sharp, so it is offered again, not applied.**
+- **Not built, each needs a Director look call:** (1) an approximate `srgb_to_linear` (-1.5 ms; changes pixels a little, and the plan's pixel gate is blind under 8/255); (2) glass without the screen read (blend modes cannot reproduce the sRGB `max(behind * tint, floor)` maths, so the glass look would change); (3) the 3D render scale above.
+- **Zero-risk items measured too small to build:** a cutaway-free shader variant (-0.4 ms). The GPU's DVFS may make "trivial shader still 9.9 ms" a clock effect rather than work; not separable from here.
+
 **2026-09-26 (night) update (v1.31) — THE WAIT BEFORE THE BOOM HALVED: THE WALK'S GEOMETRY INDEXES ARE KEPT AND WARMED IN IDLE FRAMES.**
 - **Step 0 done:** baseline on `506688ac` and `verify.py full` PASSED (438 s).
 - **Cause (measured, desktop micro-benchmark first):** the cook's WALK visited all ~215 000 claims per grenade to rebuild `cell_to_voxel`, `flammable_cells` and `burn_cells`, which depend on geometry alone (loop 94 ms desktop: 50 in the inserts, 43 in the loop skeleton). **Built:** `VoxelStore.walk_cache` (per store instance, so it dies with a rebuilt board; guarded by a per-container first-voxel signature), `WalkWarmer` (builds it 3 ms/frame after `_rebuild_voxel_store`), and a warm `_phase_walk_warm` that enumerates only the claims that can be a hole (native `PackedByteArray.find` per state byte + the delta's projections, sorted ascending = the cold order). The cache is SHARED and read-only: `PredictionReaper` skips a state with `walk_shared`. The cold path stays for a cook that starts before the warmer finishes, and for `derive_under_structure`.

@@ -10396,6 +10396,11 @@ func _dev_flag_num(flag_name: String, fallback: int) -> int:
 ##                       ~3.5x fewer pixels on a 720x1612 handset, same framing.
 ##                       If the frame falls with it, the cost is FILL (per
 ##                       fragment), not submission.
+##   SCALE_3D=<f>        the 3D board renders at <f> of the window's pixels and is
+##                       upscaled (`SCALE_3D_MODE=fsr|bilinear`, default fsr); the
+##                       canvas (HUD, sprites, overlays) stays native. An instrument:
+##                       measured 2026-09-27 on the Moto g04s, idle gpu 17.5 (1.0) ->
+##                       14.1 (0.85) -> 12.2 (0.75) -> 10.8 (0.67) -> 8.4 ms (0.5).
 ##   ZOOM=<f>            camera zoom through the game's own clamp; smaller sees
 ##                       more of the board, which is what a pinching hand does.
 ##   HIDE_NON_VOXEL=1    hide every CanvasItem/CanvasLayer outside the voxel
@@ -10415,6 +10420,13 @@ func _apply_perf_ablations() -> void:
 		_apply_world_render_scale()
 		print("[PERF-DEV] STRETCH_VIEWPORT — 2D renders at %s, upscaled to %s"
 			% [get_window().content_scale_size, get_window().size])
+	var s3d_raw: String = _dev_flag("SCALE_3D", "")
+	if s3d_raw.is_valid_float():
+		var vp: Viewport = get_viewport()
+		vp.scaling_3d_scale = s3d_raw.to_float()
+		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if _dev_flag("SCALE_3D_MODE", "fsr") == "fsr" \
+			else Viewport.SCALING_3D_MODE_BILINEAR
+		print("[PERF-DEV] SCALE_3D — the 3D renders at %.2f (%s) of the window, the canvas stays native" % [vp.scaling_3d_scale, _dev_flag("SCALE_3D_MODE", "fsr")])
 	var zoom_raw: String = _dev_flag("ZOOM", "")
 	if zoom_raw.is_valid_float() and _camera_controller != null:
 		_camera_controller.set_zoom_for_capture(zoom_raw.to_float())

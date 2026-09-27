@@ -55,6 +55,7 @@ func _init() -> void:
 		test_unplaceable_writes_counted(store)
 		test_occupancy_after(fixture, store)
 		test_occupancy_live(fixture, store)
+		test_gone_claims(fixture, store)
 	VoxelStore.active = null
 	_cleanup()
 	print("\nVoxelStore SELFTEST: %s (%d passed, %d failed)\n"
@@ -320,6 +321,54 @@ func test_occupancy_live(fixture: Dictionary, store: VoxelStore) -> void:
 	_check(built_equal and eq1 and lone_only and eq2 and shared_gone and lone_quiet and after_equal and sabotage_detected and was_lone and was_a,
 		"[TEST 8] occupancy_live(): the first call equals the walk (%s); after writes it equals the walk (%s, %s); reports only membership changes (%s, %s, %s); occupancy_live_after() equals occupancy_dict_after() (%s); a write that skips the journal is caught (%s)"
 		% [built_equal, eq1, eq2, lone_only, shared_gone, lone_quiet, after_equal, sabotage_detected])
+
+
+## R3D-LIGHT - `gone_claims` is the index of "not visible, or DESTROYED" that the detonation WALK reads instead of scanning
+## the state bytes. It must equal the scan after every kind of writer, and a write that skips it must be caught.
+func _gone_scan(store: VoxelStore) -> Dictionary:
+	var out: Dictionary = {}
+	for claim in range(store.claims):
+		var byte: int = store.state[claim]
+		if (byte & 1) == 0 or ((byte >> 1) & 3) == Voxel.DamageState.DESTROYED:
+			out[claim] = true
+	return out
+
+
+func test_gone_claims(fixture: Dictionary, store: VoxelStore) -> void:
+	var row: Slice = fixture["row"]
+	var alive: Array[Voxel] = []   ## earlier tests leave some claims gone: only a live one can be taken through a round trip
+	for v: Voxel in row.voxels:
+		if not store.gone_claims.has(store.claim_of(v)):
+			alive.append(v)
+	var v0: Voxel = alive[0]
+	var v1: Voxel = alive[1]
+	var v2: Voxel = alive[2]
+	var v3: Voxel = alive[3]
+	var c0: int = store.claim_of(v0)
+	var c1: int = store.claim_of(v1)
+	var c2: int = store.claim_of(v2)
+	var c3: int = store.claim_of(v3)
+	var base_equal: bool = _gone_scan(store) == store.gone_claims
+	store.set_visible(c0, false)                                                     ## set_visible
+	store.set_damage(c1, Voxel.DamageState.DESTROYED, true, 0, 0, 0)                 ## set_damage (forces invisible)
+	v2.damage_state = Voxel.DamageState.DESTROYED                                    ## the Voxel setter (bits only)
+	v3.set_visible(false)                                                            ## the Voxel forwarder
+	var after_writes: bool = _gone_scan(store) == store.gone_claims and store.gone_claims.has(c0) \
+		and store.gone_claims.has(c1) and store.gone_claims.has(c2) and store.gone_claims.has(c3)
+	store.set_visible(c0, true)
+	v2.damage_state = Voxel.DamageState.INTACT
+	v3.set_visible(true)
+	store.set_damage(c1, Voxel.DamageState.INTACT, false, 0, 0, 0)
+	store.set_visible(c1, true)
+	var restored: bool = _gone_scan(store) == store.gone_claims and not store.gone_claims.has(c0) \
+		and not store.gone_claims.has(c1) and not store.gone_claims.has(c2) and not store.gone_claims.has(c3)
+	## Sabotage: a raw byte write that skips the index must make it DIFFER from the scan.
+	store.state[c0] = store.state[c0] & ~1
+	var sabotage_detected: bool = _gone_scan(store) != store.gone_claims
+	store.state[c0] = store.state[c0] | 1
+	_check(base_equal and after_writes and restored and sabotage_detected,
+		"[TEST 9] gone_claims equals a scan of the state bytes at load (%s), after set_visible / set_damage / the Voxel setters (%s) and once restored (%s); a write that skips it is caught (%s)"
+		% [base_equal, after_writes, restored, sabotage_detected])
 
 
 func test_glass_panes(fixture: Dictionary, store: VoxelStore) -> void:

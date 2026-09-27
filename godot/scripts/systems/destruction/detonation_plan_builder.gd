@@ -1299,21 +1299,20 @@ static func _phase_walk_warm(s: Dictionary, deadline: int, store: VoxelStore) ->
 		s["flammable_cells"] = cache["flammable"]
 		s["burn_cells"] = cache["burn"]
 		s["walk_shared"] = true
-		s["walk_scan"] = {"val": 0, "hits": PackedInt32Array()}
-	var scan: Dictionary = s["walk_scan"]
-	var hits: PackedInt32Array = scan["hits"]
-	var vi: int = int(scan["val"])
-	while vi < _WALK_GONE_BYTES.size():
-		var b: int = _WALK_GONE_BYTES[vi]
-		var f: int = state.find(b)
-		while f != -1:
-			hits.append(f)
-			f = state.find(b, f + 1)
-		vi += 1
-		scan["val"] = vi
-		scan["hits"] = hits
-		if _out_of_time(deadline):
-			return
+		s["walk_scan"] = true
+	var hits: PackedInt32Array = PackedInt32Array(store.gone_claims.keys())
+	if OS.get_environment("INFILTRAITOR_WALK_EQUIV") == "1":
+		var scanned: int = 0
+		for b in _WALK_GONE_BYTES:
+			var f: int = state.find(b)
+			while f != -1:
+				scanned += 1
+				if not store.gone_claims.has(f):
+					scanned = -1000000
+				f = state.find(b, f + 1)
+		if scanned != store.gone_claims.size():
+			push_error("[DetonationPlanBuilder] WALK-EQUIV: gone_claims (%d) differs from a scan of the state bytes (%d)"
+				% [store.gone_claims.size(), scanned])
 	var by_claim_projection: Dictionary = s["walk_projection"]
 	var candidates: Dictionary = {}
 	var real_destroyed := PackedInt32Array()

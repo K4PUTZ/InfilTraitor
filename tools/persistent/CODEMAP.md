@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**247 scripts · 79728 lines total** (under `godot/scripts/`)
+**247 scripts · 79791 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2152,7 +2152,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 2961 lines
+`class_name DetonationPlanBuilder` · 2960 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -3222,7 +3222,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 742 lines
+`class_name VoxelStore` · extends `RefCounted` · 757 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3245,6 +3245,7 @@ extends `Node` · 54 lines
 - `var pane := PackedByteArray()`
 - `var material_ids := PackedStringArray()`
 - `var walk_cache: Dictionary = {}`
+- `var gone_claims: Dictionary = {}`
 - `var x0: int = 0`
 - `var y0: int = 0`
 - `var l0: int = 0`
@@ -4721,7 +4722,7 @@ extends `SceneTree` · 162 lines
 
 ### `voxel_store_selftest.gd`
 
-extends `SceneTree` · 379 lines
+extends `SceneTree` · 428 lines
 
 `godot/scripts/tools/voxel_store_selftest.gd`
 
@@ -4743,6 +4744,7 @@ extends `SceneTree` · 379 lines
 - `func test_unplaceable_writes_counted(store: VoxelStore) -> void:`
 - `func test_occupancy_after(fixture: Dictionary, store: VoxelStore) -> void:`
 - `func test_occupancy_live(fixture: Dictionary, store: VoxelStore) -> void:`
+- `func test_gone_claims(fixture: Dictionary, store: VoxelStore) -> void:`
 - `func test_glass_panes(fixture: Dictionary, store: VoxelStore) -> void:`
 
 ---

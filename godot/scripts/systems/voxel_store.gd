@@ -74,6 +74,11 @@ var material_ids := PackedStringArray()
 ## Empty until a cook's walk completes. SHARED and read-only: a cook that holds these must never empty or write them.
 var walk_cache: Dictionary = {}
 
+## R3D-LIGHT — the claims whose state byte is "gone" (not visible, or DESTROYED), kept at every write (`mirror()`, and
+## `_recompute_cell()` for `set_visible()`, `set_damage()` and `Voxel.damage_state`) so the detonation WALK does not scan all
+## ~215 000 bytes for them (160 native `find` passes: ~91 ms of a warm cook on the Moto). The byte is the authority; this is its index.
+var gone_claims: Dictionary = {}
+
 var x0: int = 0
 var y0: int = 0
 var l0: int = 0
@@ -363,6 +368,7 @@ func mirror(v: Voxel) -> void:
 		writes_misplaced += 1
 		return
 	state[claim] = state_byte(v)
+	_note_gone(claim)
 	aux[claim] = aux_byte(v)
 	var cell: int = cell_index(v.grid_pos.x, v.grid_pos.y, v.level)
 	if _live_built:
@@ -424,7 +430,16 @@ func set_damage(claim: int, new_state: int, from_blast: bool, carved_side: int,
 ## Shared by `set_visible()`/`set_damage()`: refreshes the derived grid cell a claim's
 ## write may have changed — `_resolve_cell()` when other claims share the cell, else a
 ## direct `occ` write, exactly as `mirror()` (the R3D-1b/c shadow write) already did.
+func _note_gone(claim: int) -> void:
+	var b: int = state[claim]
+	if (b & 1) == 0 or ((b >> 1) & 3) == Voxel.DamageState.DESTROYED:
+		gone_claims[claim] = true
+	else:
+		gone_claims.erase(claim)
+
+
 func _recompute_cell(claim: int) -> void:
+	_note_gone(claim)
 	var cell: int = cell_index(xyz[claim * 3], xyz[claim * 3 + 1], xyz[claim * 3 + 2])
 	if _live_built:
 		_journal[cell] = true

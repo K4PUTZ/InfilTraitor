@@ -423,8 +423,29 @@ const CLAIM_TAG_SLAB: int = 2
 const CLAIM_TAG_SLICE_BASE: int = 10   ## + the index of the base face (Face.NW..SW)
 
 
+## R3D-LIGHT: the tag is a function of the container (its class and, for a slice, its face) and the perspective, so it is asked
+## once per pair (`container id -> PackedInt32Array` per perspective, -1 = not asked yet). It was ~half of the blast commit's
+## persistence loop: two loops of ~600 calls, each an `instance_from_id`, type tests and two perspective conversions.
+var _claim_tag_cache: Dictionary = {}
+
+
 func _claim_tag(v: Voxel) -> int:
-	var container: Object = instance_from_id(v.container_id())
+	var cid: int = v.container_id()
+	var persp: int = "NESW".find(_active_perspective)
+	var row: PackedInt32Array = _claim_tag_cache.get(cid, PackedInt32Array())
+	if row.size() == 4 and persp >= 0 and persp < 4 and row[persp] >= 0:
+		return row[persp]
+	var tag: int = _claim_tag_uncached(cid)
+	if persp >= 0 and persp < 4:
+		if row.size() != 4:
+			row = PackedInt32Array([-1, -1, -1, -1])
+		row[persp] = tag
+		_claim_tag_cache[cid] = row
+	return tag
+
+
+func _claim_tag_uncached(cid: int) -> int:
+	var container: Object = instance_from_id(cid)
 	if container is Slab:
 		return CLAIM_TAG_SLAB
 	if container is JunctionResolver.JunctionColumn:
@@ -3159,6 +3180,7 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 ## is cleared BEFORE the build by both callers: a set_damage() during the build must not
 ## land in the previous board's store. Always built (R3D-13 deleted the `VOXEL_STORE=0` switch).
 func _rebuild_voxel_store(reason: String) -> void:
+	_claim_tag_cache.clear()
 	VoxelStore.active = null
 	var store: VoxelStore = VoxelStore.build(_edge_registry, _slab_registry, _junction_columns)
 	if store == null:

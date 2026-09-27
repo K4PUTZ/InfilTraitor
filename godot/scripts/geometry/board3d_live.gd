@@ -78,6 +78,12 @@ render_mode unshaded, cull_disabled;
 uniform sampler2D facade : filter_nearest_mipmap, repeat_disable;
 uniform vec3 base_color = vec3(0.6);
 uniform float has_facade = 0.0;
+// R3D-SURFACES — a photographic top-face plane for organic ground (has_facade == false, D34's other
+// branch), REPEAT-tiled in world space at one texel-density (`TEX_AUTHORING_N`) per 8 GU, no mirroring
+// (a mirrored tile hides seams a photograph cannot hide; a world-space plane only has to match at its
+// own two borders). Side faces of a has_surface material stay flat (D34: organic ground has no wall).
+uniform sampler2D surface_tex : filter_linear_mipmap, repeat_enable;
+uniform float has_surface = 0.0;
 uniform sampler2DArray cell_plane : filter_nearest, repeat_disable;
 uniform int level_base = 0;
 uniform int level_count = 1;
@@ -178,6 +184,9 @@ void fragment() {
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
+	if (has_surface > 0.5 && face == 0) {
+		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * f);
+	}
 	if (ghost) {
 		float tone = v_normal.y > 0.5 ? 1.0 : (v_normal.x > 0.5 ? 0.80 : 0.60);
 		ALBEDO = srgb_to_linear(vec3(0.62, 0.67, 1.0) * tone * 0.85);
@@ -203,6 +212,9 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
+	if (has_surface > 0.5 && face == 0) {
+		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * f);
+	}
 	if (ghost) {
 		float tone = v_normal.y > 0.5 ? 1.0 : (v_normal.x > 0.5 ? 0.80 : 0.60);
 		ALBEDO = srgb_to_linear(vec3(0.62, 0.67, 1.0) * tone * 0.85);
@@ -1859,6 +1871,15 @@ func _make_material(material_id: String) -> ShaderMaterial:
 		image.generate_mipmaps()
 		shader_material.set_shader_parameter("facade", ImageTexture.create_from_image(image))
 		shader_material.set_shader_parameter("has_facade", 1.0)
+	else:
+		## R3D-SURFACES prototype — the has_facade == false branch (organic ground): a `slab_<id>`
+		## photographic plane if one resolves, else the flat base_color unchanged from before this stage.
+		var surface_resolved = TextureResolver.new().resolve("slab_%s" % material_id, material_id)
+		if surface_resolved != null and surface_resolved.image != null:
+			var simage: Image = (surface_resolved.image as Image).duplicate()
+			simage.generate_mipmaps()
+			shader_material.set_shader_parameter("surface_tex", ImageTexture.create_from_image(simage))
+			shader_material.set_shader_parameter("has_surface", 1.0)
 	return shader_material
 
 

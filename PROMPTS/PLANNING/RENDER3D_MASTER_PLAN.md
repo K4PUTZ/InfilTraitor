@@ -1,5 +1,11 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.40
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.41
+
+**2026-09-27 (planning, later) — four pending decisions ruled on (Director).**
+- **§8 item 3a, rotation views — CLOSED: the four fixed views stay, for now.** A free-floating dev-mode camera (hovering over the agent at a settable height Y, with zoom) is left open as a possible future addition, not built now — it is a dev/debug tool, not a gameplay mode.
+- **§8 item 3b, does the layout rotate — CLOSED: one map, camera-only.** The grid's internal orientation never changes; `MAP_MASTER_PLAN._layout_with_perspective()`'s re-layout-on-rotate behaviour is retired by this ruling (real follow-on work for R3D-ROT, not done here) — only the camera turns around a fixed world. This also means a 3D position is view-independent by construction: nothing needs re-deriving per view any more (see the SOOT_STORAGE_REFORM item below).
+- **`SOOT_STORAGE_REFORM` §5.3 — CLOSED: scorch dies with the material, and a checkpoint restore (e.g. death) returns the wall to clean.** A destroyed voxel keeps no soot; on checkpoint reactivation the affected walls return unmarked, not just un-destroyed. Real follow-on work: today's store keeps "store-only" scorch for voxels destroyed after being stamped (§5.3's 2 040-cell finding) — that path needs to actively clear, not just stop deriving.
+- **`WEAPON_MASTER_PLAN`'s "which face was struck" question — CLOSED, moot by the 3D mechanism.** The open question existed because the 2D board could not know which of several simulated directions a 2D tile was struck from; true 3D geometry (a real raycast/normal against the voxel face) answers it directly, so no separate simulation of "3 directions" is needed. D12-D20 themselves stay unbuilt (see OPEN THREADS below).
 
 **2026-09-27 (planning) — the 24 masterplans audited and reorganized (Director: "quero finalizar ou reorganizar os masterplans... um caminho mais simples e eficiente até o fechamento das funções básicas da engine").**
 - **Archived to `PROMPTS/DONE/` (fully closed, nothing left open):** `ASSET_TREE_REFORM`, `BURN_THROUGH_MASTER_PLAN`, `FIRE_REBUILD_MASTER_PLAN`, `DETONATION_PERFORMANCE_MASTER_PLAN`, `DETONATION_PRESENTATION_MASTER_PLAN`, `EXPLOSION_REBUILD_MASTER_PLAN`, `PREDICTION_MASTER_PLAN`, `RENDER_ORDER_MASTER_PLAN`, `TARGETING_MASTER_PLAN`, `SOOT_MASTER_PLAN`. `docs/README.md`, `docs/DESIGN_MASTER_PLAN.md`, `docs/production/current_state.md`, `docs/production/technical_debt.md` and this file's own `CLAUDE.md` reference-map entries repointed; the historical `PROMPTS/RESUMO_SESSAO_*.md` logs were left citing the old `PLANNING/` path on purpose (they describe the repo as it stood that day).
@@ -7,11 +13,10 @@
 - **The closing sequence for "engine basics" (Director-ratified order, replaces the flat "Director's call, none is a blocker" list below): `R3D-PROPS` → `R3D-ACTORS` → `R3D-ROT` + `R3D-WORLD` → `R3D-SURFACES` → `R3D-LOOK` → `R3D-CLAIMS` / `R3D-BUFFER`.** Reasoning: PROPS and ACTORS are gameplay/content blockers (nothing destructible or alive renders right today without them); ROT is the Director's own standing request (rotation returns) and is the prerequisite for testing every later stage in all four views; WORLD rides the same pass (world-space overlays/VFX, R3D-4's rule, before rotation exists to test against); SURFACES only needs closing (prototype already built, 2026-09-27); LOOK is cosmetic polish (already graded 9/10); CLAIMS/BUFFER are memory/scale housekeeping that do not block content and can trail. Once these six close, the engine-basics phase is done and the repo opens to content/subsystem work without consulting the other 23 plans.
 - **OPEN THREADS — every loose end outside the R3D-* tracks below, consolidated here instead of scattered across plans:**
   1. **BUG, not yet triaged (reported 2026-09-27, Director):** switching maps leaves the PREVIOUS map's occlusion active on screen — the occlusion wireframe/reveal state is not cleared (or not rebuilt) on map load. Needs repro (`F2`/map-change path, `OcclusionSet`/`occlusion_overlay.gd`), root cause, and a fix; not yet assigned to a track — likely `OCCLUSION_MASTER_PLAN` territory but filed here so it isn't lost among 24 documents.
-  2. **R3D-ROT's own two design questions (§8 item 3, still open — missed in the first pass of this reorganization, added 2026-09-27):** (a) four fixed views as before, or a free camera orbit? (b) does the gameplay layout keep re-rotating with the view (`MAP_MASTER_PLAN._layout_with_perspective()`'s behaviour today), or does only the camera turn around a grid whose internal orientation never changes? Both are architecture-shaping and block starting R3D-ROT's build, not just its polish.
-  3. `INTERFACE_MASTER_PLAN`: pause menu is missing a RESUME button.
-  4. `WEAPON_MASTER_PLAN`: damage marks don't know which face actually faced the blast (flagged 2026-07-31, needs a Director diagram to resolve) — D12-D20 (§5b) are ratified but entirely unbuilt.
-  5. `SOOT_STORAGE_REFORM` §5.3: open design question — should scorch outlive the wall it is on (survive a rebuild/replace), or die with it? Director's call, not yet asked.
-  6. `MATERIALS_MASTER_PLAN`: `plastic` screen backing and the S-4 fracture art are deliberately unmade (scope choice already made, not a defect) — left here only as a reminder they exist if glass content expands.
+  2. `INTERFACE_MASTER_PLAN`: pause menu is missing a RESUME button.
+  3. `WEAPON_MASTER_PLAN`: D12-D20 (§5b) are ratified but entirely unbuilt. (The "which face was struck" half of this item is CLOSED — see the ruling below.)
+  4. **EVALUATE (Director, 2026-09-27): is `SOOT_STORAGE_REFORM`'s store architecture still needed?** It exists to let scorch survive re-derivation across the 2D board's 4 fixed-view re-layout (§2.1b's base-space keying). Camera-only rotation (ruling below: one map, the grid layout never re-lays-out, only the camera turns) may remove the reason that keying exists at all — a true 3D position is already view-independent, nothing to re-project. Needs an actual read of `SOOT-STAMP`'s current isotropic-tone code (already view-independent since 2026-09-22) before concluding the REFORM's remaining scope (SS-1/SS-2/SS-3's "store is the source of truth", SS-6's rotation proof) is redundant with it — not yet done, flagged here so it isn't lost.
+  5. `MATERIALS_MASTER_PLAN`: `plastic` screen backing and the S-4 fracture art are deliberately unmade (scope choice already made, not a defect) — left here only as a reminder they exist if glass content expands.
 
 **2026-09-27 (evening) — R3D-PROPS started: static-mesh half built and measured, destructible-voxel half found broken deeper than expected, session closed at the Director's call to plan next.**
 - **Barrel (static mesh) works end to end**, desktop capture + Moto (`ZF524T5TG5`, no errors, steady ~21 ms GPU): see the R3D-PROPS block below (§4) for the mechanism.
@@ -3479,15 +3484,23 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
   - the VFX: `ParticleMath.to_world()` maps screen displacements.
 
   They become world-space state before rotation (R3D-4's rule for new VFX, applied to the old ones).
-- **R3D-ROT — rotation returns (was R3D-9).**
+- **R3D-ROT — rotation returns (was R3D-9). Design CLOSED 2026-09-27 (Director): four fixed views, camera-only — see the
+  top-of-file ruling.**
   - A 90° camera yaw replaces `_set_perspective()`'s full re-layout for drawing.
-  - Whether the gameplay layout still rotates with the view is the Director's call (§8 Q3); `MAP_MASTER_PLAN`'s
-    `_layout_with_perspective()` rotates it today.
+  - **The gameplay layout no longer re-rotates with the view** (ruled 2026-09-27) — `MAP_MASTER_PLAN`'s
+    `_layout_with_perspective()`'s re-layout-on-rotate behaviour retires; real follow-on work, not done by the ruling
+    itself.
+  - A free-floating dev-mode camera (over the agent, adjustable height Y + zoom) is a possible LATER addition, not part
+    of this stage.
   - Sprites pick their D44 facing relative to the yaw.
-  - The base-space keys are audited: the soot map, D25's carved side, the craze variant key.
+  - The base-space keys are audited: the soot map, D25's carved side, the craze variant key. Camera-only rotation means
+    a base-space key answers identically from every view by construction — **audit whether this makes the audit itself,
+    and `SOOT_STORAGE_REFORM`'s base-space keying, redundant** (see the OPEN THREADS evaluation item at the top of this
+    file) before assuming the old re-projection concern still applies.
 
-  Gate: the four views agree by identity, the Moto cost of a rotation is recorded, and `SOOT_STORAGE_REFORM` SS-6's proof
-  runs.
+  Gate: the four views agree by identity, the Moto cost of a rotation is recorded. `SOOT_STORAGE_REFORM` SS-6's proof
+  runs **only if the evaluation above finds the store still needed** — do not build a proof for a mechanism that turns
+  out to be redundant.
 - **R3D-LIGHT — the light's CPU cost.** The direction is CLOSED (R3D-SPIKE-3D S1, 2026-09-23): the board keeps the CPU
   light buckets, because 12 real lamps cost +24 ms of GPU on the Moto without a single shadow. What remains is cost: the
   Moto's over-budget frames are all light-side (the commit frame ~190 ms, the cook's LIGHT phase ~190 ms, the first shot
@@ -3668,9 +3681,9 @@ picking by camera ray, `floor_layer` readers moved to the store or the grid; **5
    already draws them so.**
 2. ~~**Actors.** Billboards or depth-composited 2D?~~ **CLOSED 2026-09-18: billboards (R3D-4a, ratified); superseded
    2026-09-23: live meshes lit by the cell planes (`ACTOR` D64, R3D-ACTORS).**
-3. **Rotation** (open, for R3D-ROT).
-   - Four fixed views as today, or a free orbit?
-   - Does the gameplay layout keep rotating with the view, or does only the camera turn?
+3. ~~**Rotation** (for R3D-ROT).~~ **CLOSED 2026-09-27: four fixed views stay (a free-floating dev-mode camera over the
+   agent, adjustable height + zoom, is left open as a possible future addition, not built now); one map, camera-only —
+   the layout never re-rotates, only the camera turns.**
 4. ~~**The web export.**~~ **CLOSED 2026-09-23: not needed any more; the APK is the phone test (Director).**
 5. ~~**Decals and dents in 3D.**~~ **Built from the 2D atoms (R3D-6, 2026-09-19); their tuning is R3D-LOOK.**
 6. ~~**The cutaway style in 3D.**~~ **CLOSED 2026-09-19: the original 2D mechanism, approved (R3D-7).**

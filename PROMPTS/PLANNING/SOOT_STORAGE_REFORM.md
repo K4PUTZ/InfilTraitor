@@ -1,7 +1,7 @@
 # SOOT_STORAGE_REFORM
 ## The soot map becomes the source of truth — plan, 2026-08-27
 
-> 🧭 **2026-09-27 — reorganization pointer.** Paused at SS-3, resumable, nothing blocking; SS-4/5 effectively done by the SOOT-STAMP ruling; SS-6 (rotation proof) runs at `RENDER3D_MASTER_PLAN`'s R3D-ROT. §5.3's open design question (should scorch outlive the wall it's on?) is also listed in `RENDER3D_MASTER_PLAN`'s OPEN THREADS.
+> 🧭 **2026-09-27 — reorganization pointer, updated same day.** Paused at SS-3, resumable, nothing blocking; SS-4/5 effectively done by the SOOT-STAMP ruling. **§5.3 CLOSED (Director, 2026-09-27): scorch dies with the material — a destroyed voxel keeps no soot, and a checkpoint restore (e.g. death) returns the wall to clean.** Real follow-on work: today's store still keeps "store-only" scorch for voxels destroyed after being stamped (§5.3's 2 040-cell finding) — that needs to actively clear, not just stop deriving. **Also flagged (Director): with `RENDER3D_MASTER_PLAN`'s R3D-ROT ruled camera-only (one map, the layout never re-rotates), this plan's whole reason to exist — surviving re-derivation across the 2D board's 4-view re-layout (§2.1b's base-space keying) — may be gone; evaluate deprecating the store architecture before building SS-6.** Not yet evaluated — see `RENDER3D_MASTER_PLAN`'s OPEN THREADS.
 
 ⛔ **2026-09-22 — SOOT-STAMP (Director): soot is STAMPED once per event and never derived again.**
 *"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do

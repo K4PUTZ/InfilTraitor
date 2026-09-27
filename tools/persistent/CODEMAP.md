@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**248 scripts · 80076 lines total** (under `godot/scripts/`)
+**249 scripts · 80152 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, prop_mesh3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, prop_block.gd, prop_mesh3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1980 lines
+extends `Node3D` · 1983 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -806,6 +806,26 @@ extends `Node3D` · 1980 lines
 
 ---
 
+### `prop_block.gd`
+
+`class_name PropBlock` · 33 lines
+
+`godot/scripts/geometry/prop_block.gd`
+
+> Geometry Module — PropBlock: one destructible prop's solid voxel fill, one GU cell wide. R3D-PROPS Tier 1/2 (crates and other square props render through the SAME `VoxelStore` mechanism as a wall — this is that mechanism's container, mirroring Slice's minimal contract (id, material, voxels, dirty bookkeeping) since `VoxelStore._fill()` reads containers duck-typed, not by class: any object with those fields fills the same way. v1 scope matches `PropDef`'s own doc ("whole-storey granularity only"): one fixed material, a solid box, no per-voxel bitmask (PROP-01 Item 0-A defers that).
+
+**Public vars**
+- `var id: String`
+- `var material: String`
+- `var voxels: Array[Voxel] = []`
+- `var dirty_count: int = 0`
+
+**Public API**
+- `func increment_dirty() -> void:`
+- `func decrement_dirty() -> void:`
+
+---
+
 ### `prop_mesh3d.gd`
 
 `class_name PropMesh3D` · extends `Node3D` · 49 lines
@@ -1014,7 +1034,7 @@ extends `Node3D` · 1980 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2259 lines
+`class_name VoxelBoard` · extends `Node2D` · 2290 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1995,7 +2015,7 @@ extends `Node2D` · 42 lines
 
 ### `board_probe.gd`
 
-`class_name BoardProbe` · extends `RefCounted` · 277 lines
+`class_name BoardProbe` · extends `RefCounted` · 279 lines
 
 `godot/scripts/systems/board_probe.gd`
 
@@ -2006,6 +2026,7 @@ extends `Node2D` · 42 lines
 - `KIND_SLICE` = `"slice"`
 - `KIND_COLUMN` = `"column"`
 - `KIND_SLAB` = `"slab"`
+- `KIND_PROP` = `"prop"`
 
 ---
 
@@ -3220,7 +3241,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 757 lines
+`class_name VoxelStore` · extends `RefCounted` · 763 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3231,6 +3252,7 @@ extends `Node` · 54 lines
 - `KIND_SLICE` = `0`
 - `KIND_SLAB` = `1`
 - `KIND_COLUMN` = `2`
+- `KIND_PROP` = `3`
 - `GEOM_STRIDE` = `7`
 - `CELL_STRIDE` = `4`
 
@@ -5392,7 +5414,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10695 lines
+extends `Node2D` · 10696 lines
 
 `godot/scripts/world/room.gd`
 

@@ -1401,7 +1401,9 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 	_chunk_start.resize(_chunk_cols * _chunk_rows + 1)
 	_chunk_start.fill(0)
 	## Per-kind visible claims, then occupied cells: plain ints, no Dictionary write per claim.
-	var by_kind := PackedInt32Array([0, 0, 0])
+	## R3D-PROPS: a 4th slot for KIND_PROP — indexing `by_kind[kind]` below with only 3 slots
+	## would go out of bounds the instant a prop container held any visible claim.
+	var by_kind := PackedInt32Array([0, 0, 0, 0])
 	var cells: int = 0
 	var owner: PackedInt32Array = store.owner
 	var x0: int = store.x0
@@ -1461,7 +1463,8 @@ func _collect_store(store: VoxelStore) -> Dictionary:
 		_chunk_claims[fill[c]] = claim
 		fill[c] += 1
 	return {"slices": by_kind[VoxelStore.KIND_SLICE], "slabs": by_kind[VoxelStore.KIND_SLAB],
-		"columns": by_kind[VoxelStore.KIND_COLUMN], "cells": cells, "chunks": used}
+		"columns": by_kind[VoxelStore.KIND_COLUMN], "props": by_kind[VoxelStore.KIND_PROP],
+		"cells": cells, "chunks": used}
 
 
 ## The chunks that hold any claim, as `_by_chunk`'s keys would be.

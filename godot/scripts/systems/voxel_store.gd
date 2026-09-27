@@ -43,6 +43,7 @@ const PAD: int = 2
 const KIND_SLICE: int = 0
 const KIND_SLAB: int = 1
 const KIND_COLUMN: int = 2
+const KIND_PROP: int = 3
 ## Per-container geometry record: offset, count, xmin, ymin, lmin, nx, ny.
 const GEOM_STRIDE: int = 7
 
@@ -114,8 +115,11 @@ var writes_misplaced: int = 0
 var build_ms: float = 0.0
 
 
-## The store's containers in CLAIM ORDER: `[container, KIND_*]` for every slice, then every slab, then every junction column.
-static func containers_of(edge_registry: EdgeRegistry, slab_registry: SlabRegistry, junction_columns: Array) -> Array:
+## The store's containers in CLAIM ORDER: `[container, KIND_*]` for every slice, then every slab,
+## then every junction column, then every prop block (R3D-PROPS Tier 1/2 — `crate_full` and the
+## like; `prop_blocks` defaults to `[]` so every caller that predates props keeps working unchanged).
+static func containers_of(edge_registry: EdgeRegistry, slab_registry: SlabRegistry, junction_columns: Array,
+		prop_blocks: Array = []) -> Array:
 	var containers: Array = []
 	for slice: Slice in edge_registry.all_slices():
 		containers.append([slice, KIND_SLICE])
@@ -123,19 +127,21 @@ static func containers_of(edge_registry: EdgeRegistry, slab_registry: SlabRegist
 		containers.append([slab, KIND_SLAB])
 	for column: JunctionResolver.JunctionColumn in junction_columns:
 		containers.append([column, KIND_COLUMN])
+	for block: PropBlock in prop_blocks:
+		containers.append([block, KIND_PROP])
 	return containers
 
 
-## Builds a store from the three registries, or returns null after a `push_error`.
+## Builds a store from the three registries plus any prop blocks, or returns null after a `push_error`.
 static func build(edge_registry: EdgeRegistry, slab_registry: SlabRegistry,
-		junction_columns: Array) -> VoxelStore:
+		junction_columns: Array, prop_blocks: Array = []) -> VoxelStore:
 	if edge_registry == null or slab_registry == null:
 		push_error("[VoxelStore] build: a registry is missing (edges %s, slabs %s)"
 			% [edge_registry != null, slab_registry != null])
 		return null
 	var t0: int = Time.get_ticks_usec()
 	var store := VoxelStore.new()
-	var containers: Array = containers_of(edge_registry, slab_registry, junction_columns)
+	var containers: Array = containers_of(edge_registry, slab_registry, junction_columns, prop_blocks)
 	if not store._fill(containers):
 		return null
 	store.build_ms = float(Time.get_ticks_usec() - t0) / 1000.0

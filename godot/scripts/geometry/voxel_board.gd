@@ -507,6 +507,11 @@ var _placed_by_gu: Dictionary = {}
 ## incrementally without scanning its GU's list. Cleared and rebuilt with it.
 var _placed_index: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) -> true
 
+## R3D-PROPS Tier 1/2 — one `PropBlock` per footprint GU cell `register_prop()` places, fresh
+## every `clear()` + `register_geometry()` cycle (same lifetime as `_edge_registry` etc. in
+## room.gd). `VoxelStore.build()` reads this list alongside the three registries.
+var _prop_blocks: Array[PropBlock] = []
+
 ## PERF-10 — CELLS WRITTEN TO THE BOARD BY SOMEONE OTHER THAN AN APPLY PASS.
 ##
 ## The stale-driven apply rests on "a cell whose value changed was invalidated in
@@ -2233,14 +2238,40 @@ func register_fixed_level(gu_cell: Vector2i, level: int, apply: bool = true) -> 
 
 ## Render a VoxelProp's footprint as a full solid fill (v1: whole-storey granularity only;
 ## sub-storey/partial-layer rendering is deferred to the destruction phase — see PROP-01 Item 0-A).
+## R3D-PROPS Tier 1/2 (2026-09-27): unlike `register_block_levels()` (2D-era, a no-op since
+## R3D-END), this actually places real `VoxelStore` voxels — one `PropBlock` container per
+## footprint GU cell, filled solid across the prop's storey span at native resolution
+## (`GeometryCoords.VOXELS_PER_UNIT_AXIS`), exactly like a wall. `VoxelStore.build()` (called
+## from `Room._rebuild_voxel_store()`, AFTER `register_prop()` runs during `build_from_layout()`)
+## reads `_prop_blocks` alongside the three registries.
 func register_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 	var material_name: String = prop_def.material_zones.get("default", "concrete")
+	var start_level: int = GeometryCoords.storey_level_base(start_storey)
+	var level_count: int = prop_def.storeys * GeometryCoords.LEVELS_PER_STOREY
+	for lv in range(start_level, start_level + level_count):
+		_ensure_level(lv)
 	for footprint_offset in prop_def.footprint_gus:
-		register_block_levels(gu_cell + footprint_offset, start_storey, prop_def.storeys, material_name)
+		var cell: Vector2i = gu_cell + footprint_offset
+		var block := PropBlock.new("PROP_%d_%d_%d_%s" % [cell.x, cell.y, start_storey, prop_def.id], material_name)
+		## Level outer, then `gu_voxels()`'s own y-outer/x-inner order — matches
+		## `VoxelStore._fill()`'s "regular" box check exactly, so this container
+		## never falls back to the per-voxel lookup table irregular containers need.
+		for lv in range(start_level, start_level + level_count):
+			for pos: Vector2i in GeometryCoords.gu_voxels(cell):
+				block.voxels.append(Voxel.new(pos, lv, block))
+		_prop_blocks.append(block)
+
+
+## R3D-PROPS: the prop containers `VoxelStore.build()` reads alongside the three registries.
+func prop_blocks() -> Array[PropBlock]:
+	return _prop_blocks
 
 
 ## Clear all layers and voxels
 func clear() -> void:
+	## R3D-PROPS: fresh containers every rebuild, same reasoning as the registries below —
+	## a stale PropBlock would point `VoxelStore.build()` at last map's `Voxel`s.
+	_prop_blocks.clear()
 	## VL-03: same reasoning — the GU index would point at cells this cleared
 	## tilemap no longer has. apply_light_field() rebuilds it from scratch on the
 	## next full pass, which always follows clear()+register_geometry() in the rebuild flow.

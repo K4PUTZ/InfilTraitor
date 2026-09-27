@@ -53,6 +53,7 @@ const FORMAT_VERSION: int = 1
 const KIND_SLICE: String = "slice"
 const KIND_COLUMN: String = "column"
 const KIND_SLAB: String = "slab"
+const KIND_PROP: String = "prop"
 
 
 ## Writes one dump to `path`. `planes` is level -> Image. Returns a summary (voxels,
@@ -112,10 +113,10 @@ static func write_store(path: String, label: String, store: VoxelStore, planes: 
 	if file == null:
 		return {}
 	var materials: Dictionary = {}
-	var counts: Dictionary = {"containers": 0, KIND_SLICE: 0, KIND_COLUMN: 0, KIND_SLAB: 0}
+	var counts: Dictionary = {"containers": 0, KIND_SLICE: 0, KIND_COLUMN: 0, KIND_SLAB: 0, KIND_PROP: 0}
 	var error: String = ""
 	var passes: Array = [[VoxelStore.KIND_SLICE, KIND_SLICE], [VoxelStore.KIND_COLUMN, KIND_COLUMN],
-		[VoxelStore.KIND_SLAB, KIND_SLAB]]
+		[VoxelStore.KIND_SLAB, KIND_SLAB], [VoxelStore.KIND_PROP, KIND_PROP]]
 	for pass_kinds: Array in passes:
 		for ci in range(store.container_count()):
 			if store.container_kinds[ci] != int(pass_kinds[0]):
@@ -175,7 +176,8 @@ static func _finish(file: FileAccess, path: String, error_in: String, materials:
 		DirAccess.remove_absolute(path)
 		push_error("[BoardProbe] write %s: %s — no dump written" % [path, error])
 		return {}
-	var voxels: int = int(counts[KIND_SLICE]) + int(counts[KIND_COLUMN]) + int(counts[KIND_SLAB])
+	var voxels: int = int(counts[KIND_SLICE]) + int(counts[KIND_COLUMN]) + int(counts[KIND_SLAB]) \
+		+ int(counts.get(KIND_PROP, 0))
 	file.store_line("END voxels=%d containers=%d materials=%d levels=%d"
 		% [voxels, int(counts["containers"]), materials.size(), levels.size()])
 	var bytes: int = file.get_position()

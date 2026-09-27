@@ -3198,14 +3198,15 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 func _rebuild_voxel_store(reason: String) -> void:
 	_claim_tag_cache.clear()
 	VoxelStore.active = null
-	var store: VoxelStore = VoxelStore.build(_edge_registry, _slab_registry, _junction_columns)
+	var prop_blocks: Array = _voxel_board.prop_blocks() if _voxel_board != null else []
+	var store: VoxelStore = VoxelStore.build(_edge_registry, _slab_registry, _junction_columns, prop_blocks)
 	if store == null:
 		push_error("[Room] the voxel store could not be built (%s) — the shadow is OFF for this board" % reason)
 		return
 	VoxelStore.active = store
 	## `NO_WALK_CACHE=1` keeps the warmer off: the control for measuring what the WALK cache costs in RAM on a device.
 	if not _dev_flag_on("NO_WALK_CACHE"):
-		WalkWarmer.begin(store, VoxelStore.containers_of(_edge_registry, _slab_registry, _junction_columns))
+		WalkWarmer.begin(store, VoxelStore.containers_of(_edge_registry, _slab_registry, _junction_columns, prop_blocks))
 	print("[VOXEL-STORE] built (%s) — %d claim(s) in %d container(s), %d irregular, %d multi-claim cell(s), %.2f MB, %.0f ms"
 		% [reason, store.claims, store.container_count(), store.irregular_containers(),
 		store.multi_cells(), float(store.bytes()) / 1048576.0, store.build_ms])

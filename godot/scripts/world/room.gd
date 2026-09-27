@@ -3165,6 +3165,7 @@ func _rebuild_voxel_store(reason: String) -> void:
 		push_error("[Room] the voxel store could not be built (%s) — the shadow is OFF for this board" % reason)
 		return
 	VoxelStore.active = store
+	WalkWarmer.begin(store, VoxelStore.containers_of(_edge_registry, _slab_registry, _junction_columns))
 	print("[VOXEL-STORE] built (%s) — %d claim(s) in %d container(s), %d irregular, %d multi-claim cell(s), %.2f MB, %.0f ms"
 		% [reason, store.claims, store.container_count(), store.irregular_containers(),
 		store.multi_cells(), float(store.bytes()) / 1048576.0, store.build_ms])

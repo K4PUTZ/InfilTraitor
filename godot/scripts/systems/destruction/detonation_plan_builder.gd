@@ -1190,6 +1190,9 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 	var by_claim_projection: Dictionary = s["walk_projection"]
 	var state: PackedByteArray = store.state
 	var xyz: PackedInt32Array = store.xyz
+	if s.has("walk_scan") or (not derive_us and not store.walk_cache.is_empty() and _walk_cache_matches(store, containers)):
+		_phase_walk_warm(s, deadline, store)
+		return
 	var chunk: int = WALK_CHUNK
 	var ci: int = int(s["cursor"])
 	var vi: int = int(s["sub"])
@@ -1242,7 +1245,197 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 		ci += 1
 	s["cursor"] = ci
 	s["sub"] = 0
+	if not derive_us:
+		store.walk_cache = {
+			"cell_to_voxel": cell_to_voxel, "flammable": flammable_cells, "burn": burn_cells,
+			"sig": _walk_signature(containers),
+		}
+		s["walk_shared"] = true
 	_enter_phase(s, PHASE_BURN)
+
+
+## First voxel's instance id per container: a cook whose containers are not the ones the cache was built from (a junction column
+## rebuilt, a map reloaded under the same store) must not read its Voxel objects.
+static func _walk_signature(containers: Array) -> PackedInt64Array:
+	var sig := PackedInt64Array()
+	sig.resize(containers.size())
+	for ci in range(containers.size()):
+		var voxels: Array = containers[ci][0].voxels
+		sig[ci] = (voxels[0] as Object).get_instance_id() if not voxels.is_empty() else 0
+	return sig
+
+
+static func _walk_cache_matches(store: VoxelStore, containers: Array) -> bool:
+	return store.walk_cache["sig"] == _walk_signature(containers)
+
+
+## The byte values of `VoxelStore.state` that are NOT "visible and not destroyed": bit 0 clear, or the damage bits (1-2) = DESTROYED.
+## Everything the WALK appends to `blast_cells` / `weapon_cells` is one of these in the real state, or a claim the delta projects.
+static var _WALK_GONE_BYTES: PackedInt32Array = _walk_gone_bytes()
+
+
+static func _walk_gone_bytes() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for b in range(256):
+		if (b & 1) == 0 or ((b >> 1) & 3) == Voxel.DamageState.DESTROYED:
+			out.append(b)
+	return out
+
+
+## The warm WALK: the geometry-only indexes come from `store.walk_cache`, so the cook enumerates only the claims that can be a
+## hole (a native `find` per state byte value, then the delta's projections) instead of visiting all ~215 000. Same outputs, in the
+## same (ascending claim) order, as the cold walk; `INFILTRAITOR_WALK_EQUIV=1` proves it on the real map.
+static func _phase_walk_warm(s: Dictionary, deadline: int, store: VoxelStore) -> void:
+	var state: PackedByteArray = store.state
+	var xyz: PackedInt32Array = store.xyz
+	if not s.has("walk_scan"):
+		var cache: Dictionary = store.walk_cache
+		s["cell_to_voxel"] = cache["cell_to_voxel"]
+		s["flammable_cells"] = cache["flammable"]
+		s["burn_cells"] = cache["burn"]
+		s["walk_shared"] = true
+		s["walk_scan"] = {"val": 0, "hits": PackedInt32Array()}
+	var scan: Dictionary = s["walk_scan"]
+	var hits: PackedInt32Array = scan["hits"]
+	var vi: int = int(scan["val"])
+	while vi < _WALK_GONE_BYTES.size():
+		var b: int = _WALK_GONE_BYTES[vi]
+		var f: int = state.find(b)
+		while f != -1:
+			hits.append(f)
+			f = state.find(b, f + 1)
+		vi += 1
+		scan["val"] = vi
+		scan["hits"] = hits
+		if _out_of_time(deadline):
+			return
+	var by_claim_projection: Dictionary = s["walk_projection"]
+	var candidates: Dictionary = {}
+	for c in hits:
+		candidates[c] = true
+	for c in by_claim_projection:
+		candidates[c] = true
+	var claims: Array = candidates.keys()
+	claims.sort()
+	var blast_cells: Array = s["blast_cells"]
+	var weapon_cells: Array = s["weapon_cells"]
+	for claim: int in claims:
+		var real: int = state[claim]
+		var p: Array = by_claim_projection.get(claim, [])
+		var touched: bool = not p.is_empty()
+		var damage: int = int(p[WorldDelta.P_STATE]) if touched else (real >> 1) & 3
+		var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else (real & 1) == 1
+		if not vis or damage == Voxel.DamageState.DESTROYED:
+			var k: int = claim * 3
+			var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
+			var from_blast: bool = bool(p[WorldDelta.P_BLAST]) if touched else (real & 8) != 0
+			if from_blast:
+				blast_cells.append(key)
+			else:
+				weapon_cells.append(key)
+	if OS.get_environment("INFILTRAITOR_WALK_EQUIV") == "1":
+		_walk_equiv(s, store)
+	s["cursor"] = (s["walk_containers"] as Array).size()
+	s["sub"] = 0
+	_enter_phase(s, PHASE_BURN)
+
+
+## R3D-LIGHT — the cold walk's index half, resumable and with nothing else in it: `WalkWarmer` runs it in idle frames after a
+## board build so the first grenade's cook finds `store.walk_cache` ready. `job` carries `containers`, `store`, the cursor and the
+## three dictionaries; true when every claim has been visited.
+static func warm_walk_step(job: Dictionary, deadline: int) -> bool:
+	var store: VoxelStore = job["store"]
+	var containers: Array = job["containers"]
+	var c2v: Dictionary = job["c2v"]
+	var flammable: Dictionary = job["flam"]
+	var burn: Dictionary = job["burn"]
+	var xyz: PackedInt32Array = store.xyz
+	var ci: int = int(job["ci"])
+	var vi: int = int(job["vi"])
+	var since_check: int = 0
+	while ci < containers.size():
+		var entry: Array = containers[ci]
+		var voxels: Array = entry[0].voxels
+		var offset: int = store.container_claims(ci).x
+		var flammability: float = MaterialResistanceTable.flammability(_material_name(entry[0]))
+		var consumption: float = MaterialResistanceTable.burn_consumption(_material_name(entry[0]))
+		while vi < voxels.size():
+			var k: int = (offset + vi) * 3
+			var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
+			c2v[key] = voxels[vi]
+			vi += 1
+			if flammability > 0.0:
+				flammable[key] = flammability
+				if consumption > 0.0:
+					burn[key] = consumption
+			since_check += 1
+			if since_check >= WALK_CHUNK:
+				since_check = 0
+				if _out_of_time(deadline):
+					job["ci"] = ci
+					job["vi"] = vi
+					return false
+		vi = 0
+		ci += 1
+	job["ci"] = ci
+	job["vi"] = 0
+	return true
+
+
+## `INFILTRAITOR_WALK_EQUIV=1` — the warm walk against the cold one, on the real map: the ordered blast / weapon lists, and the
+## cached dictionaries against a fresh full build (size and every Voxel identity). Prints one line; a mismatch is a push_error.
+static func _walk_equiv(s: Dictionary, store: VoxelStore) -> void:
+	var containers: Array = s["walk_containers"]
+	var by_claim: Dictionary = s["walk_projection"]
+	var state: PackedByteArray = store.state
+	var xyz: PackedInt32Array = store.xyz
+	var blast: Array = []
+	var weapon: Array = []
+	var fresh: Dictionary = {}
+	var fresh_flam: Dictionary = {}
+	var fresh_burn: Dictionary = {}
+	for ci in range(containers.size()):
+		var entry: Array = containers[ci]
+		var voxels: Array = entry[0].voxels
+		var offset: int = store.container_claims(ci).x
+		var flam: float = MaterialResistanceTable.flammability(_material_name(entry[0]))
+		var cons: float = MaterialResistanceTable.burn_consumption(_material_name(entry[0]))
+		for vi in range(voxels.size()):
+			var claim: int = offset + vi
+			var real: int = state[claim]
+			var p: Array = by_claim.get(claim, [])
+			var touched: bool = not p.is_empty()
+			var damage: int = int(p[WorldDelta.P_STATE]) if touched else (real >> 1) & 3
+			var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else (real & 1) == 1
+			var k: int = claim * 3
+			var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
+			fresh[key] = voxels[vi]
+			if flam > 0.0:
+				fresh_flam[key] = flam
+				if cons > 0.0:
+					fresh_burn[key] = cons
+			if not vis or damage == Voxel.DamageState.DESTROYED:
+				if (bool(p[WorldDelta.P_BLAST]) if touched else (real & 8) != 0):
+					blast.append(key)
+				else:
+					weapon.append(key)
+	var bad: int = 0
+	if blast != s["blast_cells"] or weapon != s["weapon_cells"]:
+		bad += 1
+	var cache: Dictionary = store.walk_cache
+	if fresh.size() != (cache["cell_to_voxel"] as Dictionary).size() or fresh_flam != cache["flammable"] \
+			or fresh_burn != cache["burn"]:
+		bad += 1
+	else:
+		for key in fresh:
+			if (cache["cell_to_voxel"] as Dictionary).get(key) != fresh[key]:
+				bad += 1
+				break
+	if bad > 0:
+		push_error("[DetonationPlanBuilder] WALK-EQUIV: the warm walk differs from the cold one (%d check(s) failed)" % bad)
+	print("[WALK-EQUIV] %s — blast %d weapon %d (cold %d / %d), cell_to_voxel %d, flammable %d, burn %d"
+		% ["MISMATCH" if bad > 0 else "IDENTICAL", (s["blast_cells"] as Array).size(), (s["weapon_cells"] as Array).size(),
+		blast.size(), weapon.size(), fresh.size(), fresh_flam.size(), fresh_burn.size()])
 
 
 ## --- Phase 5: SOOT-STAMP (Director, 2026-09-22) --------------------------------

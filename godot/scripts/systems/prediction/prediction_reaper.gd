@@ -53,7 +53,8 @@ static func _tick() -> void:
 		while not state.is_empty():
 			var k: Variant = state.keys()[0]
 			var member: Variant = state[k]
-			if DRAINABLE.has(k) and member is Dictionary and (member as Dictionary).size() > BIG_MEMBER:
+			if DRAINABLE.has(k) and member is Dictionary and (member as Dictionary).size() > BIG_MEMBER \
+					and not bool(state.get("walk_shared", false)):
 				## The first keys of the remaining entries, not `keys()`: materialising 200 000 keys was itself ~100 ms.
 				var big: Dictionary = member
 				while not big.is_empty():

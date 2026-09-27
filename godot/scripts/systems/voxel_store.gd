@@ -68,6 +68,12 @@ var xyz := PackedInt32Array()
 var pane := PackedByteArray()
 var material_ids := PackedStringArray()
 
+## R3D-LIGHT — what the detonation plan's WALK derives from geometry alone, kept for the store's lifetime instead of rebuilt per
+## grenade (~950 ms of the cook's ~1.9 s on the Moto): `cell_to_voxel` (Vector3i -> Voxel), `flammable` and `burn` (Vector3i ->
+## float), and `sig`, the first voxel's instance id of every container (a cook whose containers are not these gets a cold walk).
+## Empty until a cook's walk completes. SHARED and read-only: a cook that holds these must never empty or write them.
+var walk_cache: Dictionary = {}
+
 var x0: int = 0
 var y0: int = 0
 var l0: int = 0
@@ -103,6 +109,18 @@ var writes_misplaced: int = 0
 var build_ms: float = 0.0
 
 
+## The store's containers in CLAIM ORDER: `[container, KIND_*]` for every slice, then every slab, then every junction column.
+static func containers_of(edge_registry: EdgeRegistry, slab_registry: SlabRegistry, junction_columns: Array) -> Array:
+	var containers: Array = []
+	for slice: Slice in edge_registry.all_slices():
+		containers.append([slice, KIND_SLICE])
+	for slab: Slab in slab_registry.all_slabs():
+		containers.append([slab, KIND_SLAB])
+	for column: JunctionResolver.JunctionColumn in junction_columns:
+		containers.append([column, KIND_COLUMN])
+	return containers
+
+
 ## Builds a store from the three registries, or returns null after a `push_error`.
 static func build(edge_registry: EdgeRegistry, slab_registry: SlabRegistry,
 		junction_columns: Array) -> VoxelStore:
@@ -112,13 +130,7 @@ static func build(edge_registry: EdgeRegistry, slab_registry: SlabRegistry,
 		return null
 	var t0: int = Time.get_ticks_usec()
 	var store := VoxelStore.new()
-	var containers: Array = []
-	for slice: Slice in edge_registry.all_slices():
-		containers.append([slice, KIND_SLICE])
-	for slab: Slab in slab_registry.all_slabs():
-		containers.append([slab, KIND_SLAB])
-	for column: JunctionResolver.JunctionColumn in junction_columns:
-		containers.append([column, KIND_COLUMN])
+	var containers: Array = containers_of(edge_registry, slab_registry, junction_columns)
 	if not store._fill(containers):
 		return null
 	store.build_ms = float(Time.get_ticks_usec() - t0) / 1000.0

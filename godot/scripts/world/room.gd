@@ -4158,6 +4158,22 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) -> void:
 	_vfx_destroy_count += 1
 	_dispatch_destruction_vfx(grid_pos, level, material_id)
+	_clear_orphaned_soot(grid_pos, level)
+
+
+## SOOT-ORPHAN-01 (Director ruling, 2026-09-27): scorch dies with the material — a destroyed
+## voxel keeps no soot. `voxel_destroyed` is the one choke point every destruction path already
+## fires through (blast, firearm, fire, glass — `VoxelBoard`'s dirty-flag pass), so this is the
+## single place that needs to erase the cell, rather than special-casing each caller.
+## `SOOT_STORAGE_REFORM` §5.3 measured this leak's other half as legitimate (a revealed crater
+## floor is a DIFFERENT, still-INTACT voxel getting scorched, never THIS voxel), so clearing here
+## only ever removes a mark for the exact voxel that just stopped existing.
+func _clear_orphaned_soot(grid_pos: Vector2i, level: int) -> void:
+	var stored: Dictionary = _soot_map.get(level)
+	if stored == null or stored.is_empty():
+		return
+	var base_xy: Vector2i = PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
+	stored.erase(base_xy)
 
 
 ## DIAGNOSTIC (2026-08-19). Counts voxel_destroyed dispatches so a capture can

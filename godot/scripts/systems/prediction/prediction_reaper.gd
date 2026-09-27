@@ -53,7 +53,10 @@ static func _tick() -> void:
 		while not state.is_empty():
 			var k: Variant = state.keys()[0]
 			var member: Variant = state[k]
-			if DRAINABLE.has(k) and member is Dictionary and (member as Dictionary).size() > BIG_MEMBER \
+			## `state` is not always the cook's `s` (string-keyed): `VoxelLightField` also retires `_occupancy`,
+			## keyed by level (int). `DRAINABLE.has(k)` on a non-String key throws Godot's TypedArray validation
+			## error instead of just returning false, so the type is checked first.
+			if k is String and DRAINABLE.has(k) and member is Dictionary and (member as Dictionary).size() > BIG_MEMBER \
 					and not bool(state.get("walk_shared", false)):
 				## The first keys of the remaining entries, not `keys()`: materialising 200 000 keys was itself ~100 ms.
 				var big: Dictionary = member

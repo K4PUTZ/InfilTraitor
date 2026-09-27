@@ -25,6 +25,7 @@ Measured by ablation: board shader ~4.2, 2D ~3.1, pixel baseline ~9.9, glass +4.
 - `PackedArray` in a Dictionary is copy-on-write: write it back.
 
 ## Open / not done
-- Moto COMMIT frame has no margin (persistence ~37 ms; slicing needs a flush before every rotation, save and `_base_damage` read).
-- PACKAGE / FLOORS not profiled inside; LIGHT's occupancy copy left (snapshot guarantee).
-- Pre-existing: 26 `'has' ... TypedArray of String` errors in a scenario with `shoot 0` (task spawned separately).
+- **CLOSED (2026-09-27, later)** — the 26 `'has' ... TypedArray of String` errors: `PredictionReaper.retire()` assumed a string-keyed `s` dict; `VoxelLightField` also retires `_occupancy` (int-keyed by level). Fixed with a type guard in `prediction_reaper.gd:56`. Full record in `RENDER3D_MASTER_PLAN` v1.34.
+- **CLOSED (2026-09-27, later)** — PACKAGE / FLOORS profiled inside (desktop clocks, removed after). FLOORS = mostly `simulate_crater_damage` itself; PACKAGE's smoke/debris/resolve calls are a small slice, the phase's cost is the per-key walk. Nothing built from this — it confirms the existing note, doesn't change it.
+- **Left open on purpose** — Moto COMMIT frame has no margin (persistence ~37 ms; slicing needs a flush before every rotation, save and `_base_damage` read). Director's call: not worth the architectural surface for a frame already inside the 100 ms criterion.
+- LIGHT's occupancy copy left (snapshot guarantee) — unchanged, not requested.

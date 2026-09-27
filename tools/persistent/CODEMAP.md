@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**247 scripts · 79827 lines total** (under `godot/scripts/`)
+**247 scripts · 79830 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2925,7 +2925,7 @@ extends `Node` · 231 lines
 
 ### `prediction_reaper.gd`
 
-`class_name PredictionReaper` · extends `RefCounted` · 76 lines
+`class_name PredictionReaper` · extends `RefCounted` · 79 lines
 
 `godot/scripts/systems/prediction/prediction_reaper.gd`
 

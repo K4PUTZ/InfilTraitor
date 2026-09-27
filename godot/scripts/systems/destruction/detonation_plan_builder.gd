@@ -1193,6 +1193,7 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 	if s.has("walk_scan") or (not derive_us and not store.walk_cache.is_empty() and _walk_cache_matches(store, containers)):
 		_phase_walk_warm(s, deadline, store)
 		return
+	var real_destroyed: PackedInt32Array = s.get("real_destroyed", PackedInt32Array())
 	var chunk: int = WALK_CHUNK
 	var ci: int = int(s["cursor"])
 	var vi: int = int(s["sub"])
@@ -1212,6 +1213,8 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 			var v: Voxel = voxels[vi]
 			vi += 1
 			var real: int = state[claim]
+			if ((real >> 1) & 3) == Voxel.DamageState.DESTROYED:
+				real_destroyed.append(claim)
 			var p: Array = by_claim_projection.get(claim, []) if not by_claim_projection.is_empty() else []
 			var touched: bool = not p.is_empty()
 			var damage: int = int(p[WorldDelta.P_STATE]) if touched else (real >> 1) & 3
@@ -1240,11 +1243,13 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 				if _out_of_time(deadline):
 					s["cursor"] = ci
 					s["sub"] = vi
+					s["real_destroyed"] = real_destroyed
 					return
 		vi = 0
 		ci += 1
 	s["cursor"] = ci
 	s["sub"] = 0
+	s["real_destroyed"] = real_destroyed
 	if not derive_us:
 		store.walk_cache = {
 			"cell_to_voxel": cell_to_voxel, "flammable": flammable_cells, "burn": burn_cells,
@@ -1311,8 +1316,12 @@ static func _phase_walk_warm(s: Dictionary, deadline: int, store: VoxelStore) ->
 			return
 	var by_claim_projection: Dictionary = s["walk_projection"]
 	var candidates: Dictionary = {}
+	var real_destroyed := PackedInt32Array()
 	for c in hits:
 		candidates[c] = true
+		if ((state[c] >> 1) & 3) == Voxel.DamageState.DESTROYED:
+			real_destroyed.append(c)
+	s["real_destroyed"] = real_destroyed
 	for c in by_claim_projection:
 		candidates[c] = true
 	var claims: Array = candidates.keys()
@@ -1465,7 +1474,12 @@ static func _walk_equiv(s: Dictionary, store: VoxelStore) -> void:
 ## paint) and `delta.scorch_writes` (`level -> {cell: tone}`, what `commit()` stores).
 static func _phase_soot(s: Dictionary, deadline: int) -> void:
 	if not s.has("soot_todo"):
+		var holes: Dictionary = _hole_cells(s)
+		if not holes.is_empty() or s.has("real_destroyed"):
+			s["hole_cells"] = holes
 		s["soot_todo"] = _soot_todo(s)
+		if OS.get_environment("INFILTRAITOR_HOLE_EQUIV") == "1":
+			_hole_equiv(s)
 	var todo: Array = s["soot_todo"]
 	var soot_codes: Dictionary = s["soot_codes"]
 	var writes: Dictionary = (s["delta"] as WorldDelta).scorch_writes
@@ -1504,8 +1518,7 @@ static func _soot_todo(s: Dictionary) -> Array:
 	var ring_of: Dictionary = s["ring_of"]
 	var todo: Array = []
 	for key: Vector3i in ring_of:
-		var v: Voxel = cell_to_voxel.get(key)
-		if v != null and delta.state_of(v) == Voxel.DamageState.DESTROYED:
+		if _is_hole(s, key):
 			continue
 		todo.append([key, _soot_ring_by_distance(s, key)])
 	var exposed: Dictionary = s["exposed_by_ring"]
@@ -1516,10 +1529,48 @@ static func _soot_todo(s: Dictionary) -> Array:
 			todo.append([ekey, _soot_ring_by_distance(s, ekey)])
 	for key: Vector3i in s["burnt"]:
 		for d: Vector3i in EMBER_NEIGHBOURS:
-			var nv: Voxel = cell_to_voxel.get(key + d)
-			if nv != null and delta.state_of(nv) != Voxel.DamageState.DESTROYED:
+			if cell_to_voxel.has(key + d) and not _is_hole(s, key + d):
 				todo.append([key + d, 1])
 	return todo
+
+
+## Is the voxel `cell_to_voxel` holds at `key` DESTROYED under the delta. False when there is none.
+static func _is_hole(s: Dictionary, key: Vector3i) -> bool:
+	if s.has("hole_cells"):
+		return (s["hole_cells"] as Dictionary).has(key)
+	var v: Voxel = (s["cell_to_voxel"] as Dictionary).get(key)
+	return v != null and (s["delta"] as WorldDelta).state_of(v) == Voxel.DamageState.DESTROYED
+
+
+## `INFILTRAITOR_HOLE_EQUIV=1` — the set against the reference, on every cell the SOOT will ask about (its rows and their six
+## neighbours) and on every cell the set holds. Prints one line; a mismatch is a push_error.
+static func _hole_equiv(s: Dictionary) -> void:
+	if not s.has("hole_cells"):
+		print("[HOLE-EQUIV] no set (the WALK did not run on the store)")
+		return
+	var delta: WorldDelta = s["delta"]
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var holes: Dictionary = s["hole_cells"]
+	var asked: int = 0
+	var bad: int = 0
+	var seen: Dictionary = {}
+	for row: Array in (s["soot_todo"] as Array):
+		var key: Vector3i = row[0]
+		seen[key] = true
+		for d: Vector3i in EMBER_NEIGHBOURS:
+			seen[key + d] = true
+	for key in holes:
+		seen[key] = true
+	for key in seen:
+		var v: Voxel = cell_to_voxel.get(key)
+		var want: bool = v != null and delta.state_of(v) == Voxel.DamageState.DESTROYED
+		asked += 1
+		if want != holes.has(key):
+			bad += 1
+	if bad > 0:
+		push_error("[DetonationPlanBuilder] HOLE-EQUIV: %d of %d cell(s) differ from the reference" % [bad, asked])
+	print("[HOLE-EQUIV] %s — %d cell(s) asked, %d hole(s) in the set, %d row(s)"
+		% ["MISMATCH" if bad > 0 else "IDENTICAL", asked, holes.size(), (s["soot_todo"] as Array).size()])
 
 
 ## A voxel's blast soot tone from its 3D distance (voxel units; a level is one voxel
@@ -1538,8 +1589,54 @@ static func _soot_ring_by_distance(s: Dictionary, key: Vector3i) -> int:
 	return int(maxf(r - crater_max, 0.0) / band)
 
 
+## R3D-LIGHT — the cells whose `cell_to_voxel` voxel this plan leaves DESTROYED (a hole, old or new), as a set: what `state_of()` on
+## that voxel answers, without a 215 000-entry lookup and a delta lookup per neighbour of every SOOT row (23 of the phase's ~36 ms
+## on the desktop). Built at the SOOT's first visit, after the BURN has folded the burnt cells into the delta. A cell shared by
+## several claims answers for the claim `cell_to_voxel` holds (the last one), exactly as before. Absent when the WALK did not
+## run on the store (`real_destroyed` unset): the reference path then answers.
+static func _hole_cells(s: Dictionary) -> Dictionary:
+	var store: VoxelStore = s.get("walk_store")
+	if store == null or not s.has("real_destroyed"):
+		return {}
+	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var xyz: PackedInt32Array = store.xyz
+	var holes: Dictionary = {"": true}
+	holes.clear()
+	for claim: int in (s["real_destroyed"] as PackedInt32Array):
+		var k: int = claim * 3
+		var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
+		var v: Voxel = cell_to_voxel.get(key)
+		if v != null and store.claim_of(v) == claim:
+			holes[key] = true
+	var projections: Dictionary = (s["delta"] as WorldDelta).projections()
+	for voxel in projections:
+		var claim: int = store.claim_of(voxel)
+		if claim < 0:
+			continue
+		var k: int = claim * 3
+		var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
+		if cell_to_voxel.get(key) != voxel:
+			continue
+		if int((projections[voxel] as Array)[WorldDelta.P_STATE]) == Voxel.DamageState.DESTROYED:
+			holes[key] = true
+		else:
+			holes.erase(key)
+	return holes
+
+
 ## SOOT-EDGE — does `key` touch a voxel this plan leaves DESTROYED (a hole, old or new)?
 static func _touches_hole(s: Dictionary, key: Vector3i) -> bool:
+	if s.has("hole_cells"):
+		var holes: Dictionary = s["hole_cells"]
+		for d: Vector3i in EMBER_NEIGHBOURS:
+			if holes.has(key + d):
+				return true
+		return false
+	return _touches_hole_reference(s, key)
+
+
+## The reference: ask the delta about the cell's voxel. `hole_cells` answers the same thing from a set built once.
+static func _touches_hole_reference(s: Dictionary, key: Vector3i) -> bool:
 	var delta: WorldDelta = s["delta"]
 	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
 	for d: Vector3i in EMBER_NEIGHBOURS:

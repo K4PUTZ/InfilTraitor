@@ -1,5 +1,11 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.34
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.39
+
+**2026-09-27 (evening) — R3D-PROPS started: static-mesh half built and measured, destructible-voxel half found broken deeper than expected, session closed at the Director's call to plan next.**
+- **Barrel (static mesh) works end to end**, desktop capture + Moto (`ZF524T5TG5`, no errors, steady ~21 ms GPU): see the R3D-PROPS block below (§4) for the mechanism.
+- **Crate (`crate_full`, destructible voxel, `ACTOR` D65) does NOT render.** `RoomBuilder._get_prop_registry()` was hard-disabled since before AUDIT-01 (re-enabled, Director's call) — but the real blocker underneath is that `VoxelBoard.register_block_levels()` is a no-op since R3D-END (2D-era code, never ported to write real `VoxelStore` voxels). D65's voxel half is unbuilt on the 3D board, not just unwired. Real follow-on scope; see §4.
+- **Fixed along the way:** a bare `Registries.xxx()` call in `room_builder.gd` fails to COMPILE under a `--script` selftest run (autoload identifiers aren't resolvable at GDScript parse time before the engine finishes booting autoloads) — broke 7 selftests, fixed via `room.get_node_or_null("/root/Registries")`. `verify.py smoke` PASSED (51/51 selftests) after the fix.
+- Session record: `PROMPTS/RESUMO_SESSAO_2026-09-27_R3D_PROPS_START.md`.
 
 **2026-09-27 (later still) — R3D-LIGHT'S TWO OPEN ITEMS CLOSED (the COMMIT-frame slicing was left out on purpose, see below).**
 - **The pre-existing bug (26 `'has' ... TypedArray of String` errors after `shoot 0` behind two grenades) — found and fixed.** Root cause (reproduced on desktop, same recipe as the R3D-LIGHT baseline: `detonate 0; detonate 1; shoot 0`): `PredictionReaper.retire()` assumes every dictionary it drains is the cook's `s` state (string keys, e.g. `"cell_to_voxel"`) and calls `DRAINABLE.has(k)` — an `Array[String]` — on whatever the first key is. `VoxelLightField._apply_occupancy_diff()` (`voxel_light_field.gd:212`) also calls `retire()`, on `_occupancy`, which is keyed by LEVEL (`int`), so `k` there is an int and the typed-array validator throws instead of returning false. One error per level drained (26 on this map, matching the count). **Fix:** `k is String and DRAINABLE.has(k)` in `prediction_reaper.gd:56` — a type guard, not a behaviour change (an int key was never going to be in `DRAINABLE` anyway; only the crash noise stops). Red-before-green: the same desktop scenario read the 26 errors before the fix and 0 after; `verify.py smoke` PASSED (lint, invariants, codemap, 51/51 selftests, PLAYGROUND+GLASS boot).
@@ -3414,6 +3420,37 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
 - **R3D-PROPS — static props as meshes, destructible ones as voxels (`ACTOR` D65).** `PropBillboard3D` (grenade,
   collectible) moves to meshes with the same shader; an asset budget is set (one mesh per prop, a triangle cap measured on
   the Moto); a breakable prop is a voxel container (`MATERIALS` M5). Absorbs R3D-GLB.
+  - **Static-mesh half BUILT and measured (2026-09-27).** `prop_mesh3d.gdshader` promotes R3D-SPIKE-3D's measured
+    `spike_mesh_planes.gdshader` (the +1.5 ms/20-props number) out of its spike gate: one cell-plane fetch, no Godot
+    light, same uniform names `Board3DLive._build_plane()` already sets on its own materials. `PropMesh3D`
+    (`godot/scripts/geometry/prop_mesh3d.gd`) places a real mesh at a voxel cell's TOP face (the same convention
+    `Board3DLive._emit_quad()` uses: 1 world unit = `VOXELS_PER_UNIT_AXIS` voxels, a level's top sits at
+    `(level + 1 - ground_level)` world-Y units) and registers its material with the board
+    (`register_prop_light_material()` / `unregister_prop_light_material()`, a new small array kept separate from
+    `_shader_materials` on purpose — that one is indexed 1:1 against `_material_glass`/`_material_index` elsewhere in
+    the file). `VoxelBoard.place_prop_demo()` is the dev-only demo seam (`PROPS_MESH_DEMO` flag, mirrors
+    `SURFACE_PATCH_DEMO`'s shape): a procedural `CylinderMesh` "barrel" (~0.5 m radius, ~0.9 m tall — trivial triangle
+    count, so the plan's own "triangle cap" question is deferred to whichever prop first needs real art, not answered
+    here). Captured on desktop (depth-tested correctly against a wall, lit the same dim green as the floor it stands
+    on) and measured on the Moto (`ZF524T5TG5`, release APK, `FLOOR_ZONES_TEST`, `PROPS_MESH_DEMO=1`,
+    `FRAME_PROBE=1`): steady GPU ~21 ms, zero errors — no measurable cost from the one prop at this scale, consistent
+    with the R3D-SPIKE-3D number.
+  - **Destructible/voxel half: real gap found, not fixed this session.** `RoomBuilder._get_prop_registry()` had
+    returned `null` unconditionally since before AUDIT-01 (`012eb159`, 2026-08-06) — the whole `PropDef` → voxel path
+    (PROP-01) was reachable in name only; every shipped map places crates through the LEGACY tile path, and only the
+    SIGMA_01 *code* spec (fallback-only) ever declared `voxel_props`, never rendered. Re-enabled it (Director's call,
+    the comment there named it one) through `room.get_node_or_null("/root/Registries")`, not a bare `Registries.xxx()`
+    — the bare form fails to COMPILE `room_builder.gd` under a `--script` selftest run (autoloads are not up yet when
+    GDScript resolves the identifier at parse time; measured: broke 7 selftests with "Compile Error: Identifier not
+    found: Registries" until fixed). With the registry live, `crate_full` resolves and `register_prop()` is reached —
+    but nothing appears, and the store's voxel count is byte-identical with or without the prop. Root cause:
+    `register_block_levels()` (`voxel_board.gd:375`) is **already a no-op since R3D-END** — its own comment says so
+    ("nothing is placed here"), because it is 2D-era code (used to write `TileMapLayer` cells) that was neutered, not
+    ported, when the 3D board's real geometry moved to `VoxelStore` (rule 8). **D65's "destructible props are voxels"
+    is therefore not actually implemented on the 3D board today** — it needs `register_prop()` rewritten to emit real
+    store voxels from a `PropDef`'s `size_vox`/`layers` bitmask (the shape is authored and sitting unread in
+    `props/crate_full.json`), which is real, separate work, not a flag flip. Left for the Director to schedule
+    (session closed here, 2026-09-27, at the Director's call to stop and plan next).
 
 - **R3D-LOOK — the look, on the 3D board's own terms.** The v1.14 register as it stands:
   - the marks on a lit wall: dent, CRACKED, hole scorch, glass star, rim wedge;

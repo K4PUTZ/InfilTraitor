@@ -550,23 +550,23 @@ func _register_voxel_prop_levels(instances: Array) -> void:
 		_prop_cover[instance["gu_cell"]] = prop_def.gameplay.get("cover", "none")
 
 
-## Hard-disabled, and the reason it gives used to be false. AUDIT-01
-## (2026-08-06): the old note read "TODO: Fix Registries reference", but
-## `Registries` IS a registered autoload (project.godot) and
-## `ensure_prop_registry()` exists (registries_autoload.gd) — the reference
-## needs no fixing. Returning null keeps PROP-01's whole PropDef path
-## unreachable: _register_voxel_prop_levels() warns and skips every instance.
-##
-## Nothing is missing on screen today because the shipped maps place crates
-## through the LEGACY tile path in their .map.json, not through voxel_props;
-## only the SIGMA_01 *code* spec (fallback-only) declares 9 of them.
-##
-## Re-enabling is the one line below, but it is a rendering change on a path
-## no test covered when this was written (`prop_01_tests.gd`, since renamed `prop_01_selftest` and now in
-## the runner: re-check what it reaches), so it is a Director call, not a cleanup.
+## RE-ENABLED (R3D-PROPS, 2026-09-27, Director's call). Had been hard-disabled since before
+## AUDIT-01 (2026-08-06): PROP-01's whole PropDef path was unreachable
+## (`_register_voxel_prop_levels()` warned and skipped every instance) even though `Registries`
+## and `ensure_prop_registry()` both worked — nothing depended on it, because every shipped map
+## placed crates through the LEGACY tile path, not `voxel_props` (only the SIGMA_01 code spec,
+## fallback-only, declared 9 that never rendered). R3D-PROPS' own "destructible props are voxels"
+## half (`ACTOR` D65) needs this path live to test `crate_full`.
+## A bare `Registries.xxx()` fails to COMPILE `room_builder.gd` itself under a `--script`
+## selftest run (autoloads are not up yet when GDScript resolves the identifier — measured:
+## "Compile Error: Identifier not found: Registries" broke 7 selftests that load this file
+## transitively), so this goes through `room`'s own tree the way `Room._dev_flag()` already
+## does for `DevFlags`, not the bare autoload name.
 func _get_prop_registry():
-	# return Registries.ensure_prop_registry()
-	return null
+	var registries: Node = room.get_node_or_null("/root/Registries") if is_instance_valid(room) else null
+	if registries == null:
+		return null
+	return registries.ensure_prop_registry()
 
 
 func _cache_blocked_cells(layout: Dictionary) -> void:

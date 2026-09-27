@@ -1510,6 +1510,50 @@ func place_patch_demo(cell: Vector2i, level: int) -> void:
 	_patch3d.set_pile(Vector3i(cell.x, cell.y, level), 0, 1.0)
 
 
+## R3D-PROPS — static props as real meshes (`ACTOR` D65). Dev-only demo seam, same shape as
+## `set_patch_board3d`/`place_patch_demo` above: a fixed placement triggered by `Room` on a dev flag,
+## not map data — a real prop-placement schema (footprint, rotation, per-map catalogue) is follow-on
+## scope. Geometry is procedural (`PrimitiveMesh`), not authored art: R3D-PROPS' own budget question
+## (one mesh per prop, a triangle cap) is answered trivially by a box/cylinder, so it is deferred to
+## whichever prop first needs real art.
+const PropMesh3DRef = preload("res://godot/scripts/geometry/prop_mesh3d.gd")
+var _prop_meshes: Array = []
+
+
+func place_prop_demo(board: Node3D, prop_id: String, cell: Vector2i, level: int) -> void:
+	if board == null:
+		return
+	var mesh: Mesh
+	var half_h: float
+	var albedo: Color
+	match prop_id:
+		"crate_full":
+			## Voxel-authored (D65: destructible props are voxels, rule 8) — a box mesh here would
+			## double-draw it. Kept as a match arm only to fail loudly on a typo, not to render it.
+			push_error("[VoxelBoard] place_prop_demo: '%s' is a voxel prop, not a mesh prop" % prop_id)
+			return
+		"barrel":
+			## Static, non-destructible showcase prop: ~0.5 m radius, ~0.9 m tall, in voxel-grid
+			## world units (`GeometryCoords.VOXELS_PER_UNIT_AXIS` voxels per unit, 1 voxel = 0.20 m).
+			var radius: float = 2.5 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+			var height: float = 4.5 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = radius
+			cyl.bottom_radius = radius
+			cyl.height = height
+			cyl.radial_segments = 12
+			mesh = cyl
+			half_h = height * 0.5
+			albedo = Color(0.45, 0.28, 0.12)
+		_:
+			push_error("[VoxelBoard] place_prop_demo: unknown prop id '%s'" % prop_id)
+			return
+	var node := PropMesh3DRef.new()
+	board.add_child(node)
+	node.setup(board, mesh, cell, level, albedo, half_h)
+	_prop_meshes.append(node)
+
+
 ## Drop every pile. A perspective flip rebuilds the renderer, so this is what
 ## keeps orphans from surviving it; the room puts them back from its base store.
 func clear_floor_shards() -> void:

@@ -297,6 +297,10 @@ var _surface_macro_tried: bool = false
 var _material_index: Dictionary = {}
 var _material_glass: Array[bool] = []
 var _shader_materials: Array[ShaderMaterial] = []
+## R3D-PROPS: prop-mesh materials (`prop_mesh3d.gdshader`) kept lit by the same pass as the board's
+## own materials, without joining `_shader_materials` (which other code indexes 1:1 against
+## `_material_glass`/`_material_index`). A prop registers on spawn, unregisters on despawn.
+var _prop_materials: Array[ShaderMaterial] = []
 var _light_ladder: Array[float] = []
 var _soot_mult: Array[float] = []
 var _tone: Array[float] = []
@@ -1134,6 +1138,35 @@ func _build_plane() -> void:
 		m.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 		m.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
 		m.set_shader_parameter("depth_dim", dims)
+	for pm: ShaderMaterial in _prop_materials:
+		pm.set_shader_parameter("cell_plane", _plane)
+		pm.set_shader_parameter("level_base", _level_min)
+		pm.set_shader_parameter("level_count", _level_max - _level_min + 1)
+		pm.set_shader_parameter("mesh_ground_level", _ground_level)
+		pm.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
+		pm.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
+		pm.set_shader_parameter("bucket_lum", ladder)
+
+
+## R3D-PROPS: a prop mesh's `ShaderMaterial` (`prop_mesh3d.gdshader`) asks to be kept lit by every
+## future light/soot rebuild, the same way the board's own opaque materials are. Applies the current
+## plane immediately so a prop spawned between rebuilds is not dark for one frame.
+func register_prop_light_material(mat: ShaderMaterial) -> void:
+	if _prop_materials.has(mat):
+		return
+	_prop_materials.append(mat)
+	if _plane != null:
+		mat.set_shader_parameter("cell_plane", _plane)
+		mat.set_shader_parameter("level_base", _level_min)
+		mat.set_shader_parameter("level_count", _level_max - _level_min + 1)
+		mat.set_shader_parameter("mesh_ground_level", _ground_level)
+		mat.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
+		mat.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
+		mat.set_shader_parameter("bucket_lum", PackedFloat32Array(_light_ladder))
+
+
+func unregister_prop_light_material(mat: ShaderMaterial) -> void:
+	_prop_materials.erase(mat)
 
 
 func _plane_image(level: int) -> Image:

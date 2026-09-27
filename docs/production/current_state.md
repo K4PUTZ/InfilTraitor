@@ -402,7 +402,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - Test scripts: 51
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 17
+- Archived prompts: 27
 <!-- AUTO:END inventory -->
 
 ### Version History
@@ -908,7 +908,7 @@ the blast from "the waves fire" to something that reads right. Full record:
   - ⛔ **2026-08-27 — the storage model is ruled and the reform is NOT started.**
     The soot map becomes the source of truth: stored per-cell, permanent, and
     explicitly **not** accumulating. Plan:
-    `PROMPTS/PLANNING/SOOT_STORAGE_REFORM.md`. Until its SS-2 lands, everything
+    `PROMPTS/DONE/SOOT_STORAGE_REFORM.md`. Until its SS-2 lands, everything
     above (and the "persists through perspective rotation" line under Lighting &
     Visuals) still describes the shipped code — soot survives rotation because it
     is re-derived from `_base_damage`, not because it is stored.

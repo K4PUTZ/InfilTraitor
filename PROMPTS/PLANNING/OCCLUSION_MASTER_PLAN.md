@@ -1,7 +1,7 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
-> 🧭 **2026-09-27 — reorganization pointer.** Parts 1-4 are closed/done; §7 (X-ray silhouette) stays deliberately deferred (waits on gameplay vision modes). **New, unfiled:** a reported bug where switching maps leaves the PREVIOUS map's occlusion active on screen — tracked in `RENDER3D_MASTER_PLAN`'s OPEN THREADS until triaged and given a real home.
+> 🧭 **2026-09-27 — reorganization pointer, updated same day.** Parts 1-4 are closed/done; §7 (X-ray silhouette) stays deliberately deferred (waits on gameplay vision modes). **A reported bug where switching maps left the PREVIOUS map's occlusion active on screen was found and FIXED same day** (`80afbaac`; `load_map()` never called `_recompute_occlusion()` after building a fresh `Board3DLive` node) — see `RENDER3D_MASTER_PLAN`'s OPEN THREADS for the record.
 
 > ⏭️ **2026-09-25 — R3D-END deleted the 2D cutaway (END-3).** `VoxelBoard.apply_occlusion()`, `_ghosted_cells`, OCC-21's tile erase, OCC-27's wireframe overlay and slice panel are gone; the `OcclusionSet` (policies O1-O7, its geometry) is unchanged and `Board3DLive.on_occlusion()` draws the cutaway. `INFILTRAITOR_OCC_DISABLE=1` now sends the 3D board an empty set. Read the 2D mechanism below as history (last commit that has it: `34881f81`).
 

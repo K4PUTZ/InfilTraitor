@@ -1,6 +1,8 @@
 # WEAPON_MASTER_PLAN
 ## The Arsenal — What Weapons Exist, and What Each Does to the Scenario — v1.2
 
+> 🧭 **2026-09-27 — reorganization pointer.** W-PRECOOK built. Two open items stay here, also listed in `RENDER3D_MASTER_PLAN`'s OPEN THREADS: D12-D20 (§5b) ratified but unbuilt, and "which face was struck" (flagged 2026-07-31, needs a Director diagram). The weapon bench itself stays untouched until new weapons arrive (Director, 2026-09-26).
+
 > ⏭️ **2026-09-22 — SOOT-STAMP:** a firearm's scorch is an L1 ball of `WeaponDef.soot_radius` voxels (weapons JSON, default 3) around the voxels the shot touched, stamped once ~2 frames after the impact (~4 ms desktop, 15–19 ms Moto). The darkest tone lands only on voxels touching a hole. D24's derived soot is superseded. See `SOOT_MASTER_PLAN`'s top note; `PROMPTS/RESUMO_SESSAO_2026-09-22_SOOT_STAMP.md`.
 
 

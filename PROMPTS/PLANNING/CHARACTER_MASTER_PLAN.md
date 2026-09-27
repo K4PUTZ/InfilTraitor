@@ -1,6 +1,8 @@
 # CHARACTER_MASTER_PLAN
 ## The Agent — Model, Rig, Poses, Animation, Layering — v2.0
 
+> 🧭 **2026-09-27 — reorganization pointer.** The build now targets D64's live-mesh rig, executed by `RENDER3D_MASTER_PLAN`'s `R3D-ACTORS` track. Read `RENDER3D_MASTER_PLAN` for current status.
+
 > ⏭️ **2026-09-23 — the agent becomes a LIVE mesh (`ACTOR` D64, Director).** Measured in `RENDER3D_MASTER_PLAN` R3D-SPIKE-3D: the rig joined into one
 > skinned mesh with the walk keyed as an action (`tools/asset_generation/r3d_live_rig_export.py`, the same `p3_walk_export`
 > phases), lit by the board's cell planes, costs +1.0 ms for 9 walking figures on the Moto. The model, rig and poses this plan

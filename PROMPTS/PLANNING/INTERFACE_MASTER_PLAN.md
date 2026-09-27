@@ -1,6 +1,8 @@
 # INTERFACE_MASTER_PLAN
 ## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.2
 
+> 🧭 **2026-09-27 — reorganization pointer.** Wave 3 built. One open item stays here, also listed in `RENDER3D_MASTER_PLAN`'s OPEN THREADS: the pause menu is missing a RESUME button. JAMES (the design branch) is suspended until the performance milestone closes (CLAUDE.md); Claude owns UI solo meanwhile.
+
 > **⏸ 2026-09-14 — JAMES is suspended until the performance milestone closes.** Director:
 > *"vamos suspender o JAMES até terminar o milestone de performance - você faz tudo, sem
 > divisão de tarefas"*.

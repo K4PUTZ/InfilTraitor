@@ -1,6 +1,8 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
+> 🧭 **2026-09-27 — reorganization pointer.** Core mechanics closed 2026-08-13; the 2D render half was deleted at R3D-END. The dirty-flag/TIC machinery stays canon (rule 5), feeding `VoxelStore` directly. No open thread of its own — materials reopening lives in `MATERIALS_MASTER_PLAN`.
+
 > ⏭️ **2026-09-25 — the render half of this plan is gone (R3D-END).** The dirty-flag / TIC machinery is unchanged; what it drove is not: `_set_voxel_cell()`, tile erase and the 2D repaint were deleted (END-1, END-4). `VoxelBoard.process_dirty*()` now only emits `voxel_destroyed` and keeps the light and glass bookkeeping; the picture is the `VoxelStore` meshed by `Board3DLive`. `render_slab()` and its siblings are `register_*()` (END-6). Read "tilemap" and "TileMapLayer" below as history.
 
 > ## ⏭️ 2026-09-15 — two items in the block below have moved

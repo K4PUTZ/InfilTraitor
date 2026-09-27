@@ -1,5 +1,7 @@
 # INFILTRAITOR — Voxel Light Projection Master Plan
 
+> 🧭 **2026-09-27 — reorganization pointer.** The CPU-bucket-vs-3D-lights question is RESOLVED (2026-09-23: keeps CPU buckets). Remaining light cost work is `RENDER3D_MASTER_PLAN`'s R3D-LIGHT track (CLOSED 2026-09-27).
+
 > ⏭️ **2026-09-25 — R3D-END deleted the 2D delivery of the light (END-4).** The 12-bucket ladder and the soot codes stay (per-cell planes in `CellPlaneStore`, the constants in `BoardLook`, read by `Board3DLive` and, later, by actors and props). Gone: the alternative-tile mechanism (`encode_light_alt`, `_ensure_light_alt`, the mint cache), the TileSet rebuild it caused and `voxel_face_shading.gdshader`. Sections on tiles, alternatives and the face shader are history (`34881f81`).
 
 > ⏭️ **2026-09-23 — the per-voxel light field STAYS (Director, `RENDER3D_MASTER_PLAN` R3D-SPIKE-3D S1).** The board lit by 12 real `OmniLight3D`

@@ -1,6 +1,8 @@
 # MATERIALS_MASTER_PLAN
 ## The materials milestone — burn, breach, see through, and flow — v1.3
 
+> 🧭 **2026-09-27 — reorganization pointer.** M1/M2/M4 (glass) are DONE. M5 (voxel props) is now `RENDER3D_MASTER_PLAN`'s `R3D-PROPS` track — read there for current status. The `plastic` backing and S-4 fracture art stay deliberately unmade (see `RENDER3D_MASTER_PLAN`'s OPEN THREADS).
+
 > ⏭️ **2026-09-25 — registering a material got simpler (R3D-END END-4).** The second list (`BakeCompositor.VOXEL_MATERIALS` / `VoxelRenderer.BASE_MATERIALS`) and the voxel atom are gone: a material is its `ASSETS/materials/<id>/` folder plus its `MaterialRegistry` row (`material_tree_selftest` checks they agree).
 
 > ⏭️ **2026-09-23 — props (`ACTOR` D65):** a static prop is a mesh lit by the board's cell planes (+1.5 ms for 20 on the Moto); a

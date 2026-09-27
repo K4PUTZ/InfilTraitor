@@ -1,6 +1,8 @@
 # SOOT_STORAGE_REFORM
 ## The soot map becomes the source of truth — plan, 2026-08-27
 
+> 🧭 **2026-09-27 — reorganization pointer.** Paused at SS-3, resumable, nothing blocking; SS-4/5 effectively done by the SOOT-STAMP ruling; SS-6 (rotation proof) runs at `RENDER3D_MASTER_PLAN`'s R3D-ROT. §5.3's open design question (should scorch outlive the wall it's on?) is also listed in `RENDER3D_MASTER_PLAN`'s OPEN THREADS.
+
 ⛔ **2026-09-22 — SOOT-STAMP (Director): soot is STAMPED once per event and never derived again.**
 *"Faz todas as correções, não importa o visual. Queremos máxima performance e eficiência do
 código. (...) a fuligem é meramente um efeito a mais, não é pra sugar CPU. Ela existe pra não

@@ -1,6 +1,8 @@
 # ACTOR_MASTER_PLAN
 ## Voxel Actors — Digital Twin, Pose Bakes, Damage States — v2.3
 
+> 🧭 **2026-09-27 — reorganization pointer.** This plan's live thread (D64/D65, actors and props as meshes) is executed by `RENDER3D_MASTER_PLAN`'s `R3D-ACTORS` / `R3D-PROPS` tracks. This file stays the decision register (cite D-rows); read `RENDER3D_MASTER_PLAN` for current status.
+
 > ## ⏭️ 2026-09-23 — actors become LIVE MESHES, static props become meshes (D64, D65)
 >
 > Measured on the Moto in `RENDER3D_MASTER_PLAN`'s R3D-SPIKE-3D and approved by the Director: the agent and

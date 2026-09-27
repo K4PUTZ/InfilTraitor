@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-26 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-27 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -83,7 +83,7 @@ detailed record.
 
 ### 1. The explosion, as built
 
-[`DETONATION_PRESENTATION_MASTER_PLAN`](../../PROMPTS/PLANNING/DETONATION_PRESENTATION_MASTER_PLAN.md)
+[`DETONATION_PRESENTATION_MASTER_PLAN`](../../PROMPTS/DONE/DETONATION_PRESENTATION_MASTER_PLAN.md)
 is ✅ **FULLY CLOSED — design AND engineering, 2026-08-29.** Director: *"isso
 conclui nosso design da explosão, com exceção do vidro… Fica pendente a limpeza e
 a otimização do código + cook da luz"* — and the limpeza (D-6) and the cook da luz
@@ -133,7 +133,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 | `PERFORMANCE` | it *was* the explosion's cost | 🟠 **Its fire block is HISTORY, not status** — D-6 deleted the very subsystem F3–F8 optimized. P3 + P7b/P7c ship and default ON; P4, P6 and §14.3's broken `INFILTRAITOR_HIDE_VOXELS` stay open. **Read §12–§14, not the v2.3 header** |
 | `SOOT_STORAGE_REFORM` | nothing — the presentation reform took the session on 2026-08-27 | 🟡 **PAUSED at SS-3.** SS-4 (checkpoint persistence), SS-5 (subtraction), SS-6 (rotation) open; **§5.3 is an open DESIGN question for the Director** |
 | `MATERIALS` M3-6 (lateral fire propagation) | PERF P7 — *"do not judge a look through a frame time its own voxel count made worse"* | 🟢 **UNBLOCKED** — P7b/P7c shipped 2026-08-26 |
-| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ✅ **PHYSICS DONE — calibrated 2026-09-10.** `GLASS_MASTER_PLAN` **v1.50.** Everything through §18 built, plus **G-D48** (the shockwave zone) and **G-D49** (re-damage collapses a region), both **calibrated on screen 2026-09-10** (`SHOCKWAVE_REGION_MAX` 50→20, edge jitter, CRACK-06 rim shards). ⛔ **§19 was designed AND REJECTED 2026-09-10** — the depth problem left this plan for [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md), because the cause is the board's, not glass's. Left in M4: `plastic` + S-4's fracture art. |
+| `MATERIALS` M4 (glass) | parked to the END of the materials milestone by decision | ✅ **PHYSICS DONE — calibrated 2026-09-10.** `GLASS_MASTER_PLAN` **v1.50.** Everything through §18 built, plus **G-D48** (the shockwave zone) and **G-D49** (re-damage collapses a region), both **calibrated on screen 2026-09-10** (`SHOCKWAVE_REGION_MAX` 50→20, edge jitter, CRACK-06 rim shards). ⛔ **§19 was designed AND REJECTED 2026-09-10** — the depth problem left this plan for [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/DONE/RENDER_ORDER_MASTER_PLAN.md), because the cause is the board's, not glass's. Left in M4: `plastic` + S-4's fracture art. |
 | `TARGETING` (grenade aim/throw) | — | ✅ Built; **2026-09-07 it learned about the scenery** — a LINE-OF-THROW clamp (the grenade no longer lands through walls), the aim dome and blast flood subtracting `Room._blast_opened_edge_keys()`, and `throw_range_skill_bonus_gu` as the seam for a coming range skill. §5b/§5c |
 | `MATERIALS` M5 (voxel props) | renderer v2 | 🔴 Still blocked — the real gate on `OCCLUSION` Part 4 too |
 | `TOP_TEXTURE` Part 3 (textured interiors) | *"the destruction system (no implementation plan exists yet)"* | 🟢 **UNBLOCKED** — that plan was written, shipped and closed. Unscheduled, not blocked |
@@ -146,7 +146,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 ### 3. What is genuinely open, ordered by how ready it is
 
 0. **RENDER ORDER — 🟡 THE OPEN QUESTION, and it is waiting on the Director's EYES.**
-   [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md),
+   [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/DONE/RENDER_ORDER_MASTER_PLAN.md),
    created 2026-09-10. `z_index` in this project encodes HEIGHT while depth is
    independent (`OCCLUSION` `O5`) — three systems have paid for it, glass last.
    Y-sort works and costs +244% / +511% draw calls on an IDLE board, so it is out.
@@ -176,7 +176,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
    FRONT of it) is real and **left this plan**, because the cause is the board's,
    not glass's: `z_index` encodes HEIGHT and depth is independent (`OCCLUSION`
    `O5`). It now lives in
-   [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER_ORDER_MASTER_PLAN.md).
+   [`RENDER_ORDER_MASTER_PLAN`](../../PROMPTS/DONE/RENDER_ORDER_MASTER_PLAN.md).
    See [`RESUMO_SESSAO_2026-09-10_RENDER_ORDER.md`](../../PROMPTS/RESUMO_SESSAO_2026-09-10_RENDER_ORDER.md).
 
    Earlier, v1.43 — **§18 (the shard rain) CLOSED.** The track ran from G1 (the pane geometry) through
@@ -387,6 +387,10 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-24_R3D_END_0_A_2.md
 - RESUMO_SESSAO_2026-09-25_R3D_END_3_A_CLOSE.md
 - RESUMO_SESSAO_2026-09-26_CLEANUP_E_R3D_LIGHT_PLAN.md
+- RESUMO_SESSAO_2026-09-26_R3D_LIGHT.md
+- RESUMO_SESSAO_2026-09-27_R3D_LIGHT_FECHAMENTO.md
+- RESUMO_SESSAO_2026-09-27_R3D_PROPS_START.md
+- RESUMO_SESSAO_2026-09-27_R3D_SURFACES_PROTOTYPE.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -394,7 +398,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 179
+- GDScript modules: 182
 - Test scripts: 51
 - Known maps: 3
 - Shipped facade files: 0
@@ -771,7 +775,7 @@ full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 > mode "designed and unbuilt"; both shipped on 2026-08-19/20. See
 > [§ Where the project stands](#where-the-project-stands--2026-08-30) at the top of
 > this file for the full handover, and
-> [`DETONATION_PRESENTATION_MASTER_PLAN`](../../PROMPTS/PLANNING/DETONATION_PRESENTATION_MASTER_PLAN.md)
+> [`DETONATION_PRESENTATION_MASTER_PLAN`](../../PROMPTS/DONE/DETONATION_PRESENTATION_MASTER_PLAN.md)
 > for the plan itself.
 >
 > **The event, as it plays today:** cook (the whole `WorldDelta`, the fire's
@@ -834,7 +838,7 @@ blast *flow*. Full record:
   frame-driven strobe cannot express the E-FLASH-03 bug (a 150 ms frame burning
   half the fade curve in one step) by construction.
 - **A complete PREDICTION layer**
-  ([`PREDICTION_MASTER_PLAN`](../../PROMPTS/PLANNING/PREDICTION_MASTER_PLAN.md),
+  ([`PREDICTION_MASTER_PLAN`](../../PROMPTS/DONE/PREDICTION_MASTER_PLAN.md),
   all six tasks). `build_plan()` is **pure** — it returns a `WorldDelta`
   describing what a grenade *would* do, and `delta.commit()` is the only writer.
   The pipeline is an 11-phase resumable, cancellable state machine; predictions
@@ -1092,7 +1096,7 @@ the blast from "the waves fire" to something that reads right. Full record:
   `e_debris01_filmstrip_stone_2026-08-13.png`.
 
 ✅ **Tasks 0–5 of the rebuild are done — Phase A is functionally complete**
-([`EXPLOSION_REBUILD_MASTER_PLAN`](../../PROMPTS/PLANNING/EXPLOSION_REBUILD_MASTER_PLAN.md),
+([`EXPLOSION_REBUILD_MASTER_PLAN`](../../PROMPTS/DONE/EXPLOSION_REBUILD_MASTER_PLAN.md),
 🟢 BUILDING, updated 2026-08-07):
 - **Task 0** (2026-08-06) measured the bake-cost gate: ~737 ms for the
   atom set against a ~2 s ceiling — 2.7× headroom, no escape hatch needed.
@@ -1149,7 +1153,7 @@ the blast from "the waves fire" to something that reads right. Full record:
   bounce → cook → detonation**. Full record:
   [`RESUMO_SESSAO_2026-08-10_11_BUBBLE_FOUNDATION.md`](../../PROMPTS/RESUMO_SESSAO_2026-08-10_11_BUBBLE_FOUNDATION.md);
   plan and open items:
-  [`TARGETING_MASTER_PLAN`](../../PROMPTS/PLANNING/TARGETING_MASTER_PLAN.md).
+  [`TARGETING_MASTER_PLAN`](../../PROMPTS/DONE/TARGETING_MASTER_PLAN.md).
   - **It did not run when the session opened.** The previous pass reported the
     feature complete and `34/34 selftests clean`; an audit found the throw
     aborted on its first frame (`SceneTree.get_physics_frame()` does not exist

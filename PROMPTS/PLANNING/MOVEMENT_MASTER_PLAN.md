@@ -1,6 +1,8 @@
 # MOVEMENT_MASTER_PLAN
 ## How the Agent Moves — Situations, Poses, Transitions and the Motion-Design Pipeline — v0.1 (BRIEF CAPTURED, NOT YET A PLAN)
 
+> 🧭 **2026-09-27 — reorganization pointer.** Motion is now scoped as keyed actions on the live rig (D64), executed inside `RENDER3D_MASTER_PLAN`'s `R3D-ACTORS` track ("motion as actions"). This brief stays the design source; not yet its own active plan.
+
 > ⏭️ **2026-09-23 — motion becomes ACTIONS on a live mesh (`ACTOR` D64).** The key-poses-first method stands, but the output is
 > a keyed action on the rig (in-betweens are interpolation, blends and transitions happen in the engine), not a baked frame
 > sequence; the dev-only bake mode below matters only until `RENDER3D` R3D-ACTORS. D44's four facings lost their rendering

@@ -1,6 +1,8 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
+> 🧭 **2026-09-27 — reorganization pointer.** P4/P6 are moot (2D board deleted at R3D-END); P3 (cell plane) survives and feeds `RENDER3D_MASTER_PLAN` directly. Current performance work lives in R3D-LIGHT (closed) and R3D-CLAIMS — read there for status.
+
 > ⏭️ **2026-09-23 — per-cell state keeps paying off in 3D:** real Godot lamps cost +24 ms of GPU on the Moto, so the board, the
 > actors and the props all stay lit from the per-cell planes (`RENDER3D_MASTER_PLAN` R3D-SPIKE-3D, `ACTOR` D64/D65).
 

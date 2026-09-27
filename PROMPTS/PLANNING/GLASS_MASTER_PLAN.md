@@ -1,5 +1,7 @@
 # GLASS MASTER PLAN — the physics of glass
 
+> 🧭 **2026-09-27 — reorganization pointer.** Glass physics is CLOSED (v1.50); its only remaining rendering thread was absorbed by `RENDER3D_MASTER_PLAN` (R3D-14, closed). Nothing here routes through the current engine-basics sequence.
+
 > ⏭️ **2026-09-25 — R3D-END deleted the 2D glass (END-2, R3D-14).** The physics (G-D*) is untouched. Gone: `_glass_layers` and the tile mirror (Option A), the pane / rim atoms, the render-order clip and seam cull, the 2D glass shaders and `GlassCrackSprite` (its record is now `GlassCrackParams`, data). The glass state is `VoxelStore.pane`; the picture is `glass_pane3d` / `glass_crack3d` on `Board3DLive`. Read the 2D rendering sections as history (`34881f81`).
 
 > ⏭️ **2026-09-23 — the end of RENDER3D rewritten (Director):** the 2D board retires when nothing depends on it, not when the look matches. R3D-8 is renamed **R3D-END**, with six stages before it (R3D-8 to R3D-13); the look register moves after the end (R3D-LOOK), and rotation becomes R3D-ROT. See `RENDER3D_MASTER_PLAN` v1.19.

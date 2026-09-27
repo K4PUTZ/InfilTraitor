@@ -513,7 +513,7 @@ as open questions in `WEAPON_MASTER_PLAN.md` §7c.
 
 **Interaction and pre-computation detail:** `WEAPON_MASTER_PLAN.md` §5c and
 D31–D36. The grenade's equivalent flow is already built and is the model to read
-against — `PROMPTS/PLANNING/TARGETING_MASTER_PLAN.md`.
+against — `PROMPTS/DONE/TARGETING_MASTER_PLAN.md`.
 
 ---
 

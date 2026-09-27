@@ -1,6 +1,8 @@
 # TOP_TEXTURE_MASTER_PLAN
 ## Horizontal Facades, Textured Interiors & Bake Persistence — Master Plan v1.0
 
+> 🧭 **2026-09-27 — reorganization pointer.** Parts 1-2 closed. Part 3 (textured interiors) is unblocked but unscheduled, and is now conceptually absorbed by `RENDER3D_MASTER_PLAN`'s R3D-6 (interior = UV-sampled facade face) — read there for current status.
+
 ⏭️ **2026-09-15:** Part 3 (textured interiors) is absorbed by
 [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) R3D-6.
 - **Why:** in the 3D board an interior is a face that samples its facade through UVs.

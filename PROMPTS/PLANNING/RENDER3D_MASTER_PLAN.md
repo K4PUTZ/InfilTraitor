@@ -1,6 +1,8 @@
 # RENDER3D_MASTER_PLAN
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.29
 
+**2026-09-27 (close) — R3D-LIGHT CLOSED BY THE DIRECTOR ("Pode fechar o R3D-LIGHT").** Record: `PROMPTS/RESUMO_SESSAO_2026-09-27_R3D_LIGHT_FECHAMENTO.md`. What is left is in that file's "Open" list and is optional; R3D itself continues as the follow-on tracks (R3D-SURFACES, R3D-PROPS, R3D-ACTORS...).
+
 **2026-09-27 (later) update (v1.33) — THE GALAXY A16 MEASURED, AND THE WALK CACHE'S RAM: ~21 MB.**
 - **Galaxy A16 (R5CY8122K7D, release APK of the clean `HEAD`, PLAYGROUND, two grenades + shot; logs `device_2026-09-27_galaxy_*.log`, git-ignored).** Second boot after the install (the FIRST boot after an install is noisy: it read a 112.6 ms WALK worst step, cook 24 / 20 frames and commit 114 / consequence 120 ms; the boot after read WALK 21 / 18 ms with clocks in it, and the one after that the numbers below): **cook 20 / 19 frames; every blast frame <= 93.5 ms (CONSEQUENCE 93.5 / 87.5, COMMIT 70.8, PERSIST 68); shot tail 38 ms.** The criterion (no blast or shot frame over 100 ms) holds on both handsets. **Idle GPU on the Galaxy is 24-31 ms/frame** (33.3 budget), against the Moto's 17.5: it is the GPU-bound handset; the render-scale decision (kept at 1.0) is what leaves it so little slack.
 - **WALK cache RAM (Galaxy, `dumpsys meminfo` native HEAP ALLOC, idle 60 s, two A/B pairs, `NO_WALK_CACHE=1` = the control that keeps the warmer off; logs `device_2026-09-27_galaxy_mem_*.log`):** with the cache 665.2 / 664.5 MB, without 643.7 / 643.7 MB: **~21 MB** (pairs agree to 0.5 MB). Read as an upper bound on nothing else: it is the cost of ~215 000 dictionary entries for the life of a board.

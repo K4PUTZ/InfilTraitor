@@ -20,6 +20,7 @@ Director: "Vamos com R3D-Light, usando o criterio de 100ms". Closed by the Direc
 - The 143 ms frame was the reaper's own single `erase()` of a 200 000-entry dictionary; `keys()` on it was also ~100 ms. Iterate the first keys.
 - Draining a dictionary EMPTIES it: a shared member broke `LIGHT_COOK_GATE` (5 295 / 206 cells). Allow-list only what the builder alone holds. Removing "redundant" `note_external_write()` broke the same gate.
 - Two uploads of the cell planes in one frame waited 375 ms on the Moto.
+- `PredictionReaper._tick` asked `DRAINABLE.has(k)` (an `Array[String]`) with every key of the state it drains; a state with an int key raised `Attempted to use 'has' a variable of type 'int' into a TypedArray of type 'String'` (26 times in the PLAYGROUND `detonate 0; detonate 1; shoot 0` scenario, only the shot's cook state carries such keys). Fixed 2026-09-26 with `k is String and DRAINABLE.has(k)`; the same command now prints 0. It looked like the agent shot path because the errors appear only with `shoot 0`; the backtrace named the reaper. A fresh worktree needs `godot --headless --import` and the git-ignored art (`ASSETS/ISOMETRIC/source_assets/generated`, `ASSETS/materials/*`) copied from the main checkout before any scenario boots.
 - Frame labels of `[E-FRAME]` do not name the heavy frame; a per-frame hitch timeline with timestamps did.
 
 ## Open / not done

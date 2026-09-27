@@ -130,9 +130,12 @@ func _try_load_and_validate(path: String, tier_name: String) -> Image:
 	# Validate grayscale (all pixels: R == G == B) — B2 scopes this to wall/ceiling
 	# facades; "slab_" sources (D20, renamed from "ground_") are the floor-bake
 	# full-color exception (see BAKE_SYSTEM_REFERENCE.md B2) and skip this
-	# check on purpose.
-	var is_slab_source: bool = path.get_file().begins_with("slab_")
-	if not is_slab_source and not _is_grayscale(img):
+	# check on purpose. "macro_" (R3D-SURFACES) is colour by design too — its
+	# whole job is a hue/brightness drift, which a grayscale check would reject
+	# outright.
+	var filename := path.get_file()
+	var is_colour_source: bool = filename.begins_with("slab_") or filename.begins_with("macro_")
+	if not is_colour_source and not _is_grayscale(img):
 		_log("  [%s] Not grayscale (colored facades violate D9); rejected: %s" % [tier_name, path])
 		return null
 	
@@ -200,6 +203,13 @@ func _validate_dimensions(path: String, img: Image) -> bool:
 		# on BOTH axes (unlike the wall facade's anisotropic 64x32).
 		expected_w = 64 * GeometryCoords.TEX_AUTHORING_N
 		expected_h = 64 * GeometryCoords.TEX_AUTHORING_N
+	elif filename.begins_with("macro_"):
+		# R3D-SURFACES — the small, shared, large-period modulation map. Fixed size, not
+		# TEX_AUTHORING_N-derived: it carries no per-voxel texel contract (it is sampled at a
+		# ~61 GU period, not 1:1 with the board's texel density), only a resolution that keeps
+		# it small and its own low-frequency content legible.
+		expected_w = 256
+		expected_h = 256
 	else:
 		_log("    WARN: unrecognized category prefix in filename: %s" % filename)
 		return false

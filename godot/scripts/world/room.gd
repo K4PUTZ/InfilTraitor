@@ -3113,6 +3113,11 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 			overlay.set_board3d(live)
 	if _voxel_board != null:
 		_voxel_board.set_pile_board3d(live)
+		## R3D-SURFACES prototype — "one leaf-patch decal", dev-only, no map data (see VoxelBoard's
+		## own comment on `set_patch_board3d` / `place_patch_demo`).
+		if _dev_flag_on("SURFACE_PATCH_DEMO"):
+			_voxel_board.set_patch_board3d(live)
+			_voxel_board.place_patch_demo(Vector2i(4, 4), _voxel_board.ground_plane_level())
 
 
 ## RENDER3D R3D-4d — a prop that joins the tree while the 3D board is up gets a `PropBillboard3D`.

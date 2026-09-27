@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**247 scripts · 79851 lines total** (under `godot/scripts/`)
+**247 scripts · 79932 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1915 lines
+extends `Node3D` · 1947 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -508,20 +508,6 @@ extends `Node3D` · 1915 lines
 - `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`
 - `DIR_NORMAL` = `[Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]`
 - `OPAQUE_SHADER` = `"""`
-- `INVALID_PICK` = `Vector2i(-9999, -9999)`
-
-**Public API**
-- `func build(room: Node, cell_to_world: Callable) -> void:`
-- `func ground_point(point_2d: Vector2) -> Vector3:`
-- `func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:`
-- `func ground_affine() -> Transform2D:`
-- `func ground_level() -> int:`
-- `func ground_origin() -> Vector2:`
-- `func pick_ground(screen_pos: Vector2) -> Vector3:`
-- `func pick_cell(screen_pos: Vector2) -> Vector2i:`
-- `func cell_screen_center(cell: Vector2i) -> Vector2:`
-- `func camera_basis() -> Basis:`
-- `func px_per_unit() -> float:`
 
 ---
 
@@ -649,7 +635,7 @@ extends `Node3D` · 1915 lines
 
 ### `floor_pile3d.gd`
 
-`class_name FloorPile3D` · extends `RefCounted` · 137 lines
+`class_name FloorPile3D` · extends `RefCounted` · 142 lines
 
 `godot/scripts/geometry/floor_pile3d.gd`
 
@@ -659,7 +645,7 @@ extends `Node3D` · 1915 lines
 - `SHADER_PATH` = `"res://godot/shaders/floor_decal3d.gdshader"`
 
 **Public API**
-- `func attach(board: Node3D, textures: Array, priority: int, lift: float) -> void:`
+- `func attach(board: Node3D, textures: Array, priority: int, lift: float, half_px: float = -1.0) -> void:`
 - `func detach() -> void:`
 - `func set_pile(key: Vector3i, variant: int, alpha: float) -> void:`
 - `func clear() -> void:`
@@ -1012,7 +998,7 @@ extends `Node3D` · 1915 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2186 lines
+`class_name VoxelBoard` · extends `Node2D` · 2215 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1063,10 +1049,6 @@ extends `Node3D` · 1915 lines
 - `func spawn_glass_craze(spec: Dictionary) -> int:`
 - `func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int) -> bool:`
 - `func set_pile_board3d(board: Node3D) -> void:`
-- `func clear_floor_shards() -> void:`
-- `func floor_shard_pile_count() -> int:`
-- `func floor_shard_pile3d_count() -> int:`
-- `func set_glass_cracks_visible(v: bool) -> void:`
 
 ---
 
@@ -3128,7 +3110,7 @@ extends `Node` · 298 lines
 
 ### `texture_resolver.gd`
 
-`class_name TextureResolver` · 230 lines
+`class_name TextureResolver` · 240 lines
 
 `godot/scripts/systems/texture_resolver.gd`
 
@@ -5399,7 +5381,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10679 lines
+extends `Node2D` · 10684 lines
 
 `godot/scripts/world/room.gd`
 

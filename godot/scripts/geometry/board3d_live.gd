@@ -84,6 +84,12 @@ uniform float has_facade = 0.0;
 // own two borders). Side faces of a has_surface material stay flat (D34: organic ground has no wall).
 uniform sampler2D surface_tex : filter_linear_mipmap, repeat_enable;
 uniform float has_surface = 0.0;
+// R3D-SURFACES macro modulation — one small (~256^2), shared, synthetic (not photographed, so no CC0
+// sourcing question) low-frequency noise map that breaks up the plane's own repeat over a whole map: its
+// period (61 GU) is coprime-ish to the plane's 8 GU and larger than any authored map, so it reads as one
+// slow brightness/hue drift, never a second visible tile. R/G channels modulate brightness together,
+// B modulates a faint warm/cool drift independently (see ASSETS/materials/_generic/macro_ground.png).
+uniform sampler2D surface_macro : filter_linear_mipmap, repeat_enable;
 uniform sampler2DArray cell_plane : filter_nearest, repeat_disable;
 uniform int level_base = 0;
 uniform int level_count = 1;
@@ -185,7 +191,9 @@ void fragment() {
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
 	if (has_surface > 0.5 && face == 0) {
-		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * f);
+		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
+		vec3 macro_mult = vec3(mix(0.85, 1.15, macro_n.r), mix(0.85, 1.15, macro_n.g), mix(0.90, 1.05, macro_n.b));
+		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
 	}
 	if (ghost) {
 		float tone = v_normal.y > 0.5 ? 1.0 : (v_normal.x > 0.5 ? 0.80 : 0.60);
@@ -213,7 +221,9 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
 	if (has_surface > 0.5 && face == 0) {
-		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * f);
+		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
+		vec3 macro_mult = vec3(mix(0.85, 1.15, macro_n.r), mix(0.85, 1.15, macro_n.g), mix(0.90, 1.05, macro_n.b));
+		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
 	}
 	if (ghost) {
 		float tone = v_normal.y > 0.5 ? 1.0 : (v_normal.x > 0.5 ? 0.80 : 0.60);
@@ -280,6 +290,10 @@ const DECAL_LIFT_VOXELS: float = 0.02
 var _decal_layer: Dictionary = {}
 var _decal_array: Texture2DArray = null
 var _decal_material_index: int = -1
+## R3D-SURFACES — one shared macro-modulation texture, lazily resolved and reused by every
+## `has_surface` material (it is not per-material art, see the shader uniform's comment).
+var _surface_macro_tex: ImageTexture = null
+var _surface_macro_tried: bool = false
 var _material_index: Dictionary = {}
 var _material_glass: Array[bool] = []
 var _shader_materials: Array[ShaderMaterial] = []
@@ -1880,7 +1894,25 @@ func _make_material(material_id: String) -> ShaderMaterial:
 			simage.generate_mipmaps()
 			shader_material.set_shader_parameter("surface_tex", ImageTexture.create_from_image(simage))
 			shader_material.set_shader_parameter("has_surface", 1.0)
+			var macro: ImageTexture = _get_surface_macro_tex()
+			if macro != null:
+				shader_material.set_shader_parameter("surface_macro", macro)
 	return shader_material
+
+
+## R3D-SURFACES — resolves `ASSETS/materials/_generic/macro_ground.png` once (`_generic` is where the decal
+## art already shares assets across materials) and caches the failure too, so a missing file is one warning
+## per board build, not one per organic-ground material.
+func _get_surface_macro_tex() -> ImageTexture:
+	if _surface_macro_tex != null or _surface_macro_tried:
+		return _surface_macro_tex
+	_surface_macro_tried = true
+	var resolved = TextureResolver.new().resolve("macro_ground", "_generic")
+	if resolved != null and resolved.image != null:
+		var image: Image = (resolved.image as Image).duplicate()
+		image.generate_mipmaps()
+		_surface_macro_tex = ImageTexture.create_from_image(image)
+	return _surface_macro_tex
 
 
 ## R3D-6 item 2 — the 2D glass look, one pass that reads the scene behind the pane.

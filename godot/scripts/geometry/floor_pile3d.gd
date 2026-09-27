@@ -23,13 +23,18 @@ var _meshes: Array = []     ## ArrayMesh, one per variant
 var _piles: Dictionary = {} ## Vector3i(cell, level) -> {"variant", "alpha"}
 var _dirty: bool = false
 var _lift: float = 0.004
+## Screen-space half-side of one decal quad, in the same px unit `VoxelBoard.floor_shard_half_px()`
+## already used. Defaults to that shard size (every caller before R3D-SURFACES); a caller placing a
+## different kind of ground decal (a GU-sized patch, not a shard) passes its own.
+var _half_px: float = -1.0
 
 
-func attach(board: Node3D, textures: Array, priority: int, lift: float) -> void:
+func attach(board: Node3D, textures: Array, priority: int, lift: float, half_px: float = -1.0) -> void:
 	if not _nodes.is_empty():
 		return
 	_board = board
 	_lift = lift
+	_half_px = half_px if half_px > 0.0 else VoxelBoard.floor_shard_half_px()
 	for i in range(textures.size()):
 		var mat := ShaderMaterial.new()
 		mat.shader = load(SHADER_PATH)
@@ -97,7 +102,7 @@ func _rebuild() -> void:
 		cols.append(PackedColorArray())
 	var lift := Vector3.UP * _lift
 	var to_gu: Transform2D = _board.call("ground_affine")
-	var h: float = VoxelBoard.floor_shard_half_px()
+	var h: float = _half_px
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	## The decal's screen-aligned corners, as ground offsets (the map is linear, so one set serves every pile).
 	var oa: Vector2 = to_gu.basis_xform(Vector2(-h, -h))

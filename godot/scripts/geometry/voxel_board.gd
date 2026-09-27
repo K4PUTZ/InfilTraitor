@@ -1481,6 +1481,35 @@ func set_pile_board3d(board: Node3D) -> void:
 		_pile3d.set_pile(key, int(rec["variant"]), floor_shard_alpha(int(rec["count"])))
 
 
+## R3D-SURFACES prototype — the "one leaf-patch decal" step: proves a GU-sized ground patch rides the
+## same `FloorPile3D` path as a glass-shard pile (the plan's own choice, "ride the existing decal path"),
+## just at a full-cell size (`half_px = 16.0`, no shard overlap) instead of the shard's 1.18x. Dev-only:
+## a fixed single placement, triggered by `Room` on a dev flag, not map data — real per-GU patch data is
+## follow-on scope, not this prototype's.
+const PatchDecal3DRef = preload("res://godot/scripts/geometry/floor_pile3d.gd")
+var _patch3d: RefCounted = null
+
+
+func set_patch_board3d(board: Node3D) -> void:
+	if _patch3d != null:
+		_patch3d.detach()
+		_patch3d = null
+	if board == null:
+		return
+	var texture: Texture2D = load("res://ASSETS/materials/_generic/decals/decal_patch_leaf_0.png") as Texture2D
+	if texture == null:
+		push_error("[VoxelBoard] set_patch_board3d: decal_patch_leaf_0.png did not load")
+		return
+	_patch3d = PatchDecal3DRef.new()
+	_patch3d.attach(board, [texture], 3, 0.021, 16.0)
+
+
+func place_patch_demo(cell: Vector2i, level: int) -> void:
+	if _patch3d == null:
+		return
+	_patch3d.set_pile(Vector3i(cell.x, cell.y, level), 0, 1.0)
+
+
 ## Drop every pile. A perspective flip rebuilds the renderer, so this is what
 ## keeps orphans from surviving it; the room puts them back from its base store.
 func clear_floor_shards() -> void:

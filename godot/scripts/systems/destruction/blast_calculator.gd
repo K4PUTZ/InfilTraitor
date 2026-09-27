@@ -1363,6 +1363,45 @@ static func _select_deterministic(voxels: Array, container_id: String, salt: Str
 		bias_epicenter: Vector2i = NO_EPICENTER_BIAS) -> Array:
 	if n <= 0 or voxels.is_empty():
 		return []
+	var fast: Array = _select_ranked_once(voxels, container_id, salt, n, bias_epicenter)
+	if OS.get_environment("INFILTRAITOR_SELECT_EQUIV") == "1":
+		var slow: Array = _select_deterministic_reference(voxels, container_id, salt, n, bias_epicenter)
+		if not fast.is_empty() and fast != slow:
+			push_error("[BlastCalculator] SELECT-EQUIV: the ranked-once selection differs from the reference (%s, %d of %d)"
+				% [salt, n, voxels.size()])
+	if not fast.is_empty():
+		return fast
+	return _select_deterministic_reference(voxels, container_id, salt, n, bias_epicenter)
+
+
+## The same ranking as `_select_deterministic_reference`, with each voxel's key computed ONCE: the comparator formatted two strings
+## and ran a byte-by-byte FNV-1a over each on every comparison (~2 log2 n hashes a voxel; 85% of a blast's SLICES phase on the
+## Moto). The rank is one int64 `(distance << 32) | hash`, sorted natively; two voxels with the same rank (the reference's order
+## is then arbitrary) make this return [] and the caller runs the reference, so the result is never a different set.
+static func _select_ranked_once(voxels: Array, container_id: String, salt: String, n: int,
+		bias_epicenter: Vector2i) -> Array:
+	var biased: bool = bias_epicenter != NO_EPICENTER_BIAS
+	var prefix: String = "%s:%s:" % [container_id, salt]
+	var ranks := PackedInt64Array()
+	ranks.resize(voxels.size())
+	var owner_of: Dictionary = {}
+	for i in range(voxels.size()):
+		var v: Voxel = voxels[i]
+		var d: int = (v.grid_pos - bias_epicenter).length_squared() if biased else 0
+		var rank: int = (d << 32) | FacadeSampler._fnv1a_hash("%s%d,%d,%d" % [prefix, v.grid_pos.x, v.grid_pos.y, v.level])
+		if owner_of.has(rank):
+			return []
+		owner_of[rank] = v
+		ranks[i] = rank
+	ranks.sort()
+	var out: Array = []
+	for i in range(mini(n, ranks.size())):
+		out.append(owner_of[ranks[i]])
+	return out
+
+
+static func _select_deterministic_reference(voxels: Array, container_id: String, salt: String, n: int,
+		bias_epicenter: Vector2i = NO_EPICENTER_BIAS) -> Array:
 	var ranked: Array = voxels.duplicate()
 	if bias_epicenter == NO_EPICENTER_BIAS:
 		ranked.sort_custom(func(a, b) -> bool:

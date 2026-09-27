@@ -14,6 +14,7 @@ signal showcase_requested
 
 @onready var _lbl_title := Label.new()
 @onready var _sep := HSeparator.new()
+@onready var _btn_resume := Button.new()
 @onready var _btn_new_game := Button.new()
 @onready var _btn_load := Button.new()
 @onready var _btn_controls := Button.new()
@@ -70,6 +71,7 @@ func _ready() -> void:
 	_container.add_child(_sep)
 	
 	# Buttons
+	_setup_button(_btn_resume, "ui.main_menu.resume", _on_resume_pressed)
 	_setup_button(_btn_new_game, "ui.main_menu.new_game", _on_new_game_pressed)
 	_setup_button(_btn_load, "ui.main_menu.load", _on_load_pressed)
 	_setup_button(_btn_controls, "ui.main_menu.controls", _on_controls_pressed)
@@ -80,18 +82,23 @@ func _ready() -> void:
 	_btn_load.disabled = true
 	_btn_options.disabled = true
 
-## ESC-STACK-01: "New Game" starts focused so Enter advances immediately —
+## ESC-STACK-01: "Resume" starts focused so Enter advances immediately —
 ## same native Button/ui_accept mechanism DetonateContextMenu already relies
-## on for its own "Enters avançam" behavior, applied here too.
+## on for its own "Enters avançam" behavior, applied here too. Resume, not
+## New Game: Escape's most common reason to open this panel is a pause, and
+## Enter should undo that, not risk discarding the run.
 func open() -> void:
 	super.open()
-	_btn_new_game.grab_focus()
+	_btn_resume.grab_focus()
 
 func _setup_button(btn: Button, text_key: String, callable: Callable) -> void:
 	btn.text = tr(text_key)
 	btn.custom_minimum_size = Vector2(200, 44)
 	btn.pressed.connect(callable)
 	_container.add_child(btn)
+
+func _on_resume_pressed() -> void:
+	request_close()
 
 func _on_new_game_pressed() -> void:
 	reset_requested.emit()

@@ -2032,6 +2032,13 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## DIAG-21 (DEVICE_DIAGNOSTICS §15.7) — the loaded board is drawn as 3D meshes read from the live registries.
 	## R3D-END: it is the only board (the 2D voxel board was deleted; `34881f81` is the last commit that has it).
 	_start_board3d_live()
+	## OCC-FIX-02's header claims map load as one of "exactly three places" this runs from,
+	## but the call was never actually here: the PREVIOUS map's `_occlusion_set` (built
+	## against slices/registries this load just replaced) kept being handed to the fresh
+	## `Board3DLive` node above, so a map switch (F2 or a real transition) left the old
+	## map's occlusion wireframe/reveal on screen until the next agent step or view change
+	## happened to trigger a recompute. Found and fixed 2026-09-27 (Director-reported bug).
+	_recompute_occlusion()
 	MemStage.mark("40 map loaded — %s" % map_id)
 	if _dev_flag_on("MEM_CENSUS"):
 		_census_after_a_frame("AT LOAD — %s, nothing detonated yet" % map_id)

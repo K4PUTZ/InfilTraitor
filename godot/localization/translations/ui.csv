@@ -6,6 +6,7 @@ ui.button.end_turn,END,FIM
 ui.banner.enemy_turn,Enemy Turn,Turno Inimigo
 ui.banner.busted,Busted,Capturado
 ui.main_menu.title,MAIN MENU,MENU PRINCIPAL
+ui.main_menu.resume,RESUME,CONTINUAR
 ui.main_menu.new_game,NEW GAME,NOVO JOGO
 ui.main_menu.load,LOAD GAME,CARREGAR JOGO
 ui.main_menu.controls,CONTROLS,CONTROLES

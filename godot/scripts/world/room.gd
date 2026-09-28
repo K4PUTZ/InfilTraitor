@@ -1552,6 +1552,9 @@ var vfx_metal_spark_count_max: int = 8
 var vfx_stone_spark_count: int = 2
 var vfx_chip_count_min: int = 1
 var vfx_chip_count_max: int = 4
+var vfx_debris_pile_min_pieces: int = 2   ## R3D-PROPS Tier 4 ground debris: how many scattered pieces per shatter
+var vfx_debris_pile_max_pieces: int = 5
+var vfx_debris_pile_spread: float = 0.7   ## world units (1.0 = 1 GU) a piece can jitter from the break point
 var vfx_smoke_darken_wood: float = 0.55   ## Color.darkened() amount — wood smoke reads darker
 var vfx_smoke_darken_default: float = 0.15  ## masonry/metal/ground smoke reads lighter
 var vfx_smoke_alpha: float = 0.6
@@ -4572,7 +4575,20 @@ func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragmen
 			vfx_metal_spark_color, 1.0, 1.0, floor_pos)
 	elif material_id == "stone":
 		_smoke_spark_overlay.add_sparks(origin, vfx_stone_spark_count, vfx_stone_spark_color, 1.0, 1.0, floor_pos)
-	_voxel_board.place_debris_pile(cell, _voxel_board.ground_plane_level(), material_id, randi() % 3, tint)
+	## Ground debris (goal 7): several small, scattered, rotated pieces around the break point —
+	## Director, 2026-09-28: not one mark sized to a whole cell, and free to land across a GU or
+	## voxel-cell edge on purpose (the same reason a ground/leaf patch is meant to break up the grid
+	## rather than sit squarely inside it). `vfx_debris_pile_spread` is in world units (1.0 = 1 GU).
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var base_center := Vector2((float(cell.x) + 0.5) * unit, (float(cell.y) + 0.5) * unit)
+	var ground_level: int = _voxel_board.ground_plane_level()
+	var piece_count: int = clampi(fragment_count / 3, vfx_debris_pile_min_pieces, vfx_debris_pile_max_pieces)
+	for i in range(piece_count):
+		var jitter := Vector2(randf_range(-vfx_debris_pile_spread, vfx_debris_pile_spread),
+			randf_range(-vfx_debris_pile_spread, vfx_debris_pile_spread))
+		var id := "%d_%d_%d" % [cell.x, cell.y, i]
+		_voxel_board.place_debris_piece(id, base_center + jitter, ground_level, material_id,
+			randi() % 3, tint, randf_range(0.0, TAU))
 
 
 ## VFX-01: MaterialDef.base_color for `material_id`, or a neutral gray if the

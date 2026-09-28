@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**249 scripts · 80269 lines total** (under `godot/scripts/`)
+**249 scripts · 80330 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -635,21 +635,19 @@ extends `Node3D` · 1985 lines
 
 ### `floor_pile3d.gd`
 
-`class_name FloorPile3D` · extends `RefCounted` · 149 lines
+`class_name FloorPile3D` · extends `RefCounted` · 185 lines
 
 `godot/scripts/geometry/floor_pile3d.gd`
 
-> FloorPile3D — the glass-shard piles on the 3D board's floor. RENDER3D R3D-6 (item 6). The 2D board draws a landed pane's piles as one `Sprite2D` per cell (`VoxelBoard.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles — the white band that stays on the floor after a pane is shot out — were not drawn at all. HOW (R3D-9): a pile is DATA — a voxel cell, a level, a variant and an opacity (`VoxelBoard.spawn_floor_shard_pile` hands them over, from `Room._base_shards`); nothing is read from a sprite. Its ground quad is the cell's centre plus the decal's screen-aligned half-side carried onto the ground by the board's own 2D → ground map (a linear map, so the decal keeps the very shape it had as a sprite). One `ArrayMesh` per decal variant (three), rebuilt once per frame at most when a pile changes, so a whole pane's ~650 piles are three draw calls. Depth-tested: a wall in front hides a pile. State stays where it always was (`Room._base_shards`, base-space); this only draws it.
+> FloorPile3D — decals lying flat on the 3D board's floor (glass-shard piles, the ground/leaf patch, Tier 4 debris). RENDER3D R3D-6 (item 6). The 2D board draws a landed pane's piles as one `Sprite2D` per cell (`VoxelBoard.spawn_floor_shard_pile`); under the 3D board that renderer is hidden, so the piles — the white band that stays on the floor after a pane is shot out — were not drawn at all. HOW (R3D-9): a pile is DATA — a world-space centre, a level, a variant and an opacity (`VoxelBoard.spawn_floor_shard_pile` hands them over, from `Room._base_shards`); nothing is read from a sprite. One `ArrayMesh` per decal variant (three), rebuilt once per frame at most when a pile changes, so a whole pane's ~650 piles are three draw calls. Depth-tested: a wall in front hides a pile. GEOMETRY (rewritten 2026-09-28, Director: the piles read as screen-facing squares, not the ground's own isometric losango — glass included, not just the newer debris). The quad used to be built by taking a SCREEN-space square and back-projecting it onto the ground through the camera (`ground_affine()`), which is why it always looked axis-aligned to the screen regardless of the camera's angle — a leftover from when this was a `Sprite2D` and the goal was literally "keep the same screen footprint it had as a sprite". It is now a plain flat quad in WORLD space (X/Z, like every other piece of ground geometry — the same convention `Board3DLive._emit_quad()`'s top face and `PropMesh3D` already use), so it shears under the camera exactly like the floor tile beneath it. `half_gu` is a half-side in WORLD units, not screen pixels — 1.0 world unit = 1 GU (8 voxels). State stays where it always was (`Room._base_shards`, base-space); this only draws it.
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/floor_decal3d.gdshader"`
+- `DEFAULT_HALF_GU` = `0.5 / GeometryCoords.VOXELS_PER_UNIT_AXIS`
 
 **Public API**
-- `func attach(board: Node3D, textures: Array, priority: int, lift: float, half_px: float = -1.0) -> void:`
+- `func attach(board: Node3D, textures: Array, priority: int, lift: float, half_gu: float = -1.0) -> void:`
 - `func detach() -> void:`
-- `func set_pile(key: Vector3i, variant: int, alpha: float, tint: Color = Color.WHITE) -> void:`
-- `func clear() -> void:`
-- `func pile_count() -> int:`
 
 ---
 
@@ -1034,7 +1032,7 @@ extends `Node3D` · 1985 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2341 lines
+`class_name VoxelBoard` · extends `Node2D` · 2350 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1054,6 +1052,7 @@ extends `Node3D` · 1985 lines
 - `GlassCrackParamsClass` = `preload("res://godot/scripts/systems/destruction/glass_crack_params.gd")`
 - `CRAZE_MASK_TEXELS_PER_VOXEL` = `6`
 - `FloorPile3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
+- `PropMesh3DRef` = `preload("res://godot/scripts/geometry/prop_mesh3d.gd")`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -1085,6 +1084,12 @@ extends `Node3D` · 1985 lines
 - `func spawn_glass_craze(spec: Dictionary) -> int:`
 - `func spawn_floor_shard_pile(level: int, cell: Vector2i, count: int, variant: int) -> bool:`
 - `func set_pile_board3d(board: Node3D) -> void:`
+- `func place_debris_piece(id, center: Vector2, level: int, material_id: String, variant: int, tint: Color, rot: float = 0.0) -> void:`
+- `func place_prop_demo(board: Node3D, prop_id: String, cell: Vector2i, level: int) -> void:`
+- `func clear_floor_shards() -> void:`
+- `func floor_shard_pile_count() -> int:`
+- `func floor_shard_pile3d_count() -> int:`
+- `func set_glass_cracks_visible(v: bool) -> void:`
 
 ---
 
@@ -5414,7 +5419,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10753 lines
+extends `Node2D` · 10769 lines
 
 `godot/scripts/world/room.gd`
 

@@ -1462,10 +1462,10 @@ static func floor_shard_alpha(count: int) -> float:
 		FLOOR_SHARD_ALPHA_BASE, FLOOR_SHARD_ALPHA_MAX)
 
 
-## Half the decal's side on screen, in px (the decal is authored for a 32 px cell diamond). The 3D board turns it into
-## a ground quad through its own screen-to-ground map.
-static func floor_shard_half_px() -> float:
-	return 16.0 * FLOOR_SHARD_SCALE
+## Half the decal's side in WORLD units (1.0 = 1 GU) — `FloorPile3D.DEFAULT_HALF_GU` (one voxel
+## cell's width, the decal's own authored size) times the shard's own overlap scale.
+static func floor_shard_half_gu() -> float:
+	return FloorPile3DRef.DEFAULT_HALF_GU * FLOOR_SHARD_SCALE
 
 
 ## RENDER3D — draw the shard piles on the 3D board. Piles that
@@ -1480,7 +1480,7 @@ func set_pile_board3d(board: Node3D) -> void:
 	for i in range(3):
 		textures.append(_floor_shard_texture(i))
 	_pile3d = FloorPile3DRef.new()
-	_pile3d.attach(board, textures, 3, 0.02)
+	_pile3d.attach(board, textures, 3, 0.02, floor_shard_half_gu())
 	for key in _floor_shard_records:
 		var rec: Dictionary = _floor_shard_records[key]
 		_pile3d.set_pile(key, int(rec["variant"]), floor_shard_alpha(int(rec["count"])))
@@ -1506,7 +1506,11 @@ func set_patch_board3d(board: Node3D) -> void:
 		push_error("[VoxelBoard] set_patch_board3d: decal_patch_leaf_0.png did not load")
 		return
 	_patch3d = PatchDecal3DRef.new()
-	_patch3d.attach(board, [texture], 3, 0.021, 16.0)
+	## ⚠️ Kept at one voxel cell's width (`FloorPile3D.DEFAULT_HALF_GU`), same effective size the old
+	## `half_px=16.0` produced — NOT actually GU-sized despite this prototype's own top comment
+	## calling it that (found 2026-09-28, out of scope to retune here: a leaf patch this small was
+	## never revisited after the R3D-SURFACES session that built it).
+	_patch3d.attach(board, [texture], 3, 0.021, FloorPile3DRef.DEFAULT_HALF_GU)
 
 
 func place_patch_demo(cell: Vector2i, level: int) -> void:
@@ -1552,18 +1556,23 @@ func _debris_pile_for(material_id: String) -> RefCounted:
 			push_error("[VoxelBoard] Tier 4 debris: %s failed to load — no pile will draw for '%s'" % [path, material_id])
 		textures.append(tex)
 	var pile := DebrisPileRef.new()
-	pile.attach(_debris_pile3d_board, textures, 3, 0.022, 16.0)
+	pile.attach(_debris_pile3d_board, textures, 3, 0.022)
 	_debris_piles[material_id] = pile
 	return pile
 
 
 ## `variant` picks one of the 3 grayscale decals; `tint` is the material colour
 ## (`Room._vfx_material_base_color()`), applied by `FloorPile3D`'s COLOR multiply.
-func place_debris_pile(cell: Vector2i, level: int, material_id: String, variant: int, tint: Color) -> void:
+## `id` is this piece's own stable identity (the caller's — `spawn_prop_shatter()` gives each
+## scattered piece its own). `center` is world-space X/Z (1.0 = 1 GU): free to land anywhere near
+## the break, including across a GU or voxel-cell edge — Director, 2026-09-28: several small pieces
+## scattered around the object, not one mark centred and sized to a whole cell. `rot` randomises
+## the quad's facing so a repeated shape reads less like a stamp.
+func place_debris_piece(id, center: Vector2, level: int, material_id: String, variant: int, tint: Color, rot: float = 0.0) -> void:
 	var pile: RefCounted = _debris_pile_for(material_id)
 	if pile == null:
 		return
-	pile.set_pile(Vector3i(cell.x, cell.y, level), variant, 1.0, tint)
+	pile.place(id, center, level, variant, 1.0, tint, rot)
 
 
 ## R3D-PROPS — static props as real meshes (`ACTOR` D65). Dev-only demo seam, same shape as

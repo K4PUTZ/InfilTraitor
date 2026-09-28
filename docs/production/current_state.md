@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-27 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-28 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -391,6 +391,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-27_R3D_LIGHT_FECHAMENTO.md
 - RESUMO_SESSAO_2026-09-27_R3D_PROPS_START.md
 - RESUMO_SESSAO_2026-09-27_R3D_SURFACES_PROTOTYPE.md
+- RESUMO_SESSAO_2026-09-28_R3D_PROPS_TIERS_1_A_4.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -398,11 +399,11 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 182
+- GDScript modules: 183
 - Test scripts: 51
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 27
+- Archived prompts: 28
 <!-- AUTO:END inventory -->
 
 ### Version History

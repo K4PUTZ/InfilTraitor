@@ -1211,6 +1211,9 @@ func remove_mesh_prop(id: String) -> void:
 	var node: Node3D = _mesh_prop_nodes.get(id, null)
 	if node != null and is_instance_valid(node):
 		node.queue_free()
+	elif OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+		print("[PROP-DEBUG] remove_mesh_prop(%s): no live node found (known ids: %s)"
+			% [id, _mesh_prop_nodes.keys()])
 	_mesh_prop_nodes.erase(id)
 
 

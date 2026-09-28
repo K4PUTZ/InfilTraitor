@@ -4651,6 +4651,9 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 		var live: Node = board3d()
 		if live != null:
 			live.call("remove_mesh_prop", inst.id)
+		if prop_debug:
+			print("[PROP-DEBUG] mesh prop %s SHATTERED (weight=%.2f, board3d=%s)"
+				% [inst.id, weight, "found" if live != null else "NULL"])
 
 
 ## R3D-PROPS Tier 1/2 debris (Director, 2026-09-28): "aproveitar o mecanismo do vidro que

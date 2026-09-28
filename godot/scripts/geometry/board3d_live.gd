@@ -1146,6 +1146,7 @@ func _build_plane() -> void:
 		pm.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
 		pm.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		pm.set_shader_parameter("bucket_lum", ladder)
+		pm.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 
 
 ## R3D-PROPS: a prop mesh's `ShaderMaterial` (`prop_mesh3d.gdshader`) asks to be kept lit by every
@@ -1163,6 +1164,7 @@ func register_prop_light_material(mat: ShaderMaterial) -> void:
 		mat.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
 		mat.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		mat.set_shader_parameter("bucket_lum", PackedFloat32Array(_light_ladder))
+		mat.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 
 
 func unregister_prop_light_material(mat: ShaderMaterial) -> void:

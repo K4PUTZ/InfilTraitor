@@ -303,6 +303,10 @@ var _shader_materials: Array[ShaderMaterial] = []
 var _prop_materials: Array[ShaderMaterial] = []
 var _light_ladder: Array[float] = []
 var _soot_mult: Array[float] = []
+
+## R3D-PROPS Tier 3/4 — one `PropMesh3D` per `VoxelBoard.mesh_props()` entry, keyed by the
+## instance's own id so `Room` can find and remove one after `spawn_prop_shatter()` fires.
+var _mesh_prop_nodes: Dictionary = {}
 var _tone: Array[float] = []
 var _px_per_unit: float = 1.0
 var _origin_2d: Vector2 = Vector2.ZERO
@@ -377,6 +381,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 		quads += built.y
 	if VSCALE_MARKER:
 		_add_vscale_marker()
+	_build_mesh_props()
 	var t2: int = Time.get_ticks_usec()
 	var fields: Dictionary = {
 		"voxels": int(counts.get("cells", _occ.size())), "slice_voxels": counts["slices"],
@@ -1169,6 +1174,44 @@ func register_prop_light_material(mat: ShaderMaterial) -> void:
 
 func unregister_prop_light_material(mat: ShaderMaterial) -> void:
 	_prop_materials.erase(mat)
+
+
+## R3D-PROPS Tier 3/4 — one `PropMesh3D` (a plain `BoxMesh`, `mesh_size` wide, tinted by the
+## instance's material) per live `MeshPropInstance`. Lit and sooted the same way every other
+## prop mesh is (`register_prop_light_material()`, called from `PropMesh3D.setup()` itself) —
+## this is why a Tier 3/4 prop's proximity soot needs NO code of its own: the shader already
+## reads the real `_soot_map` cell beneath it, and a blast already stamps that cell by its own
+## true 3D distance to the epicentre (`DetonationPlanBuilder._soot_ring_by_distance()`), the
+## same mechanism a wall gets its ring-proportional soot from.
+func _build_mesh_props() -> void:
+	for node: Node3D in _mesh_prop_nodes.values():
+		if is_instance_valid(node):
+			node.queue_free()
+	_mesh_prop_nodes.clear()
+	var board: VoxelBoard = _room._voxel_board
+	if board == null:
+		return
+	for inst: MeshPropInstance in board.mesh_props():
+		if inst.shattered:
+			continue
+		var definition = Registries.get_material_registry().get_material(inst.material_id)
+		var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
+		var mesh := BoxMesh.new()
+		mesh.size = inst.mesh_size
+		var node := PropMesh3D.new()
+		node.name = inst.id
+		_geometry_root.add_child(node)
+		node.setup(self, mesh, inst.cell, inst.level, colour, inst.mesh_size.y * 0.5)
+		_mesh_prop_nodes[inst.id] = node
+
+
+## R3D-PROPS Tier 4 — `Room` calls this right after `spawn_prop_shatter()` so the intact mesh
+## does not keep standing where the fragment burst just played.
+func remove_mesh_prop(id: String) -> void:
+	var node: Node3D = _mesh_prop_nodes.get(id, null)
+	if node != null and is_instance_valid(node):
+		node.queue_free()
+	_mesh_prop_nodes.erase(id)
 
 
 func _plane_image(level: int) -> Image:

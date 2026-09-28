@@ -1260,6 +1260,14 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	job.delta.commit(room)
 	_prof("COMMIT — %.1f ms, %d voxel(s) written" % [
 		float(Time.get_ticks_usec() - commit_t0) / 1000.0, job.delta.touched_voxels.size()])
+	## R3D-PROPS Tier 4 (Director, 2026-09-28): the SAME wall-aware ring flood the footprint
+	## preview and the shrapnel rays already read, so a prop breaks exactly where the wall-
+	## destruction table says a wall would at that ring — see Room.apply_prop_proximity_effects().
+	var prop_bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+	if prop_bomb_def != null:
+		room.apply_prop_proximity_effects(
+			BlastCalculatorClass.flood_gu_rings(gu, prop_bomb_def, _blocked_edges_dict(), room._blocked_cells),
+			prop_bomb_def)
 	## The census and the passage report are diagnostics: 34 ms of the Moto's commit frame (2026-09-26, R3D-LIGHT), so a
 	## release build skips them unless `BLAST_REPORT=1` asks (the desktop, a debug build, keeps both).
 	var blast_report: bool = OS.is_debug_build() or room._dev_flag_on("BLAST_REPORT")

@@ -4591,6 +4591,37 @@ func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragmen
 			randi() % 3, tint, randf_range(0.0, TAU))
 
 
+## R3D-PROPS Tier 3/4 proximity (Director, 2026-09-28): "o efeito seja condizente com a
+## parede, quanto mais perto da granada mais dano, fuligem, etc., proporcional aos demais
+## materiais." Tier 3's soot/smoke needs NO call here — its mesh already reads the real
+## `_soot_map` cell beneath it (`Board3DLive._build_mesh_props()`'s own comment), which the
+## blast stamps by true 3D distance to the epicentre exactly the way a wall's soot is stamped
+## (`DetonationPlanBuilder._soot_ring_by_distance()`). This only resolves Tier 4's one DISCRETE
+## event — shatter, or stay standing — from the SAME wall-aware ring flood every other blast
+## consequence in this event reads (`gu_rings`, the caller's own `BlastCalculator.flood_gu_rings()`
+## result), gated on `destroy_ring_weights` — the bomb's own "how close is close enough to
+## actually destroy something" table, so a prop breaks exactly where a wall would.
+func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
+	if _voxel_board == null:
+		return
+	var weights: Array = bomb_def.destroy_ring_weights
+	for inst: MeshPropInstance in _voxel_board.mesh_props():
+		if inst.mesh_tier != 4 or inst.shattered or not gu_rings.has(inst.cell):
+			continue
+		var ring: int = int(gu_rings[inst.cell])
+		if ring >= weights.size():
+			continue
+		var weight: float = float(weights[ring])
+		if weight <= 0.0:
+			continue
+		inst.shattered = true
+		spawn_prop_shatter(inst.cell, inst.level, inst.material_id,
+			maxi(1, int(round(vfx_debris_pile_max_pieces * 3.0 * weight))))
+		var live: Node = board3d()
+		if live != null:
+			live.call("remove_mesh_prop", inst.id)
+
+
 ## VFX-01: MaterialDef.base_color for `material_id`, or a neutral gray if the
 ## material has no registry entry (e.g. "earth" — resistance-table-only, see
 ## material_resistance_table.gd).

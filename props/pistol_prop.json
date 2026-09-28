@@ -1,0 +1,10 @@
+{
+  "id": "pistol_prop",
+  "mesh_tier": 3,
+  "mesh_size": [0.28, 0.14, 0.5],
+  "material_zones": { "default": "metal" },
+  "footprint_gus": [[0, 0]],
+  "storeys": 1,
+  "gameplay": { "cover": "none", "destructible": false },
+  "tags": ["weapon", "small", "cosmetic"]
+}

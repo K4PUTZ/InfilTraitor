@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**249 scripts · 80330 lines total** (under `godot/scripts/`)
+**250 scripts · 80484 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, prop_block.gd, prop_mesh3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, prop_block.gd, prop_mesh3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 1985 lines
+extends `Node3D` · 2028 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -750,6 +750,25 @@ extends `Node3D` · 1985 lines
 `godot/scripts/geometry/junction_resolver.gd`
 
 > Geometry Module — Junction Resolver: fills V-junction corner columns. Rewritten (JUNCTION-02): the previous version reconstructed GU cells from voxel-index vertex coordinates and divided them back down by 8. That broke whenever a vertex used the "+7" near-edge offset (true for one axis of almost every vertex _get_edge_vertices produced) instead of a clean multiple of 8 — integer division silently floored into the wrong bucket, so the resolver picked a cell adjacent to the elbow instead of the true diagonal notch. This version never touches voxel coordinates for the detection step: it stays in GU-cell space the whole time, using the faces already recorded on each Edge. Scope: V-junctions (2 walls) and free-standing wall ends (3 walls, all genuinely open — e.g. a divider stopping next to a gate) both get filler columns, one per adjacent (non-opposite) pair of occupied faces at the cell. A true T-junction (a wall butting flush into another, already-solid wall) also presents as 3 faces on a naive count, but EdgeExtractor's exposure culling (see edge_extractor.gd) already removes the spurious flush-contact face before this ever sees it, so it correctly reduces to 2 opposite (straight-through) faces — 0 columns, nothing to fill. This only works because that culling fix landed first; see JUNCTION-01b prompt. X-junctions (4 walls) are intentionally skipped — assumed already covered by surrounding wall geometry; revisit only if a real gap is reported there.
+
+---
+
+### `mesh_prop_instance.gd`
+
+`class_name MeshPropInstance` · 31 lines
+
+`godot/scripts/geometry/mesh_prop_instance.gd`
+
+> Geometry Module — MeshPropInstance: one Tier 3/4 prop's placement record. R3D-PROPS Tier 3/4 (small/medium non-destructible props with cosmetic soot/smoke by proximity, and medium/large organic props that swap for a fragment-cube VFX burst on impact) never become `VoxelStore` state — rule 8 does not apply to them, there is no voxel here to place. This is the data `Board3DLive` reads to build one `PropMesh3D` per instance and `Room` reads to resolve a blast's proximity effect against.
+
+**Public vars**
+- `var id: String`
+- `var cell: Vector2i`
+- `var level: int`
+- `var material_id: String`
+- `var mesh_tier: int`
+- `var mesh_size: Vector3`
+- `var shattered: bool = false`
 
 ---
 
@@ -1032,7 +1051,7 @@ extends `Node3D` · 1985 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2350 lines
+`class_name VoxelBoard` · extends `Node2D` · 2375 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -3005,7 +3024,7 @@ extends `Node` · 231 lines
 
 ### `prop_def.gd`
 
-`class_name PropDef` · 39 lines
+`class_name PropDef` · 49 lines
 
 `godot/scripts/systems/prop_def.gd`
 
@@ -5029,7 +5048,7 @@ extends `Node2D` · 32 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 589 lines
+`class_name RoomBuilder` · 595 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -5148,7 +5167,7 @@ extends `Node2D` · 32 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1532 lines
+`class_name TestZoneController` · 1540 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5419,7 +5438,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10769 lines
+extends `Node2D` · 10800 lines
 
 `godot/scripts/world/room.gd`
 

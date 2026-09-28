@@ -13,6 +13,12 @@ var storeys: int = 1                        # how many storeys tall the *rendere
 var gameplay: Dictionary                    # {"cover": "full"|"half"|"quarter"|"none", "destructible": bool}
 var tags: Array[String]                     # Array[String] — classification tags
 
+## R3D-PROPS Tier 3/4: 0 means "native voxel" (the size_vox/layers path above, unchanged).
+## 3 or 4 means this def places a MeshPropInstance instead (VoxelBoard.register_mesh_prop(),
+## never register_prop() — see RoomBuilder._register_voxel_prop_levels()'s branch).
+var mesh_tier: int = 0
+var mesh_size: Vector3 = Vector3.ONE        # world units (1.0 = 1 GU); mesh_tier > 0 only
+
 
 ## Factory: parse PropDef from a JSON dict (file format).
 static func from_json(data: Dictionary) -> PropDef:
@@ -35,5 +41,9 @@ static func from_json(data: Dictionary) -> PropDef:
 	def.tags = []
 	for tag in data.get("tags", []):
 		def.tags.append(String(tag))
-	
+
+	def.mesh_tier = int(data.get("mesh_tier", 0))
+	var ms = data.get("mesh_size", [1.0, 1.0, 1.0])
+	def.mesh_size = Vector3(float(ms[0]), float(ms[1]), float(ms[2]))
+
 	return def

@@ -546,7 +546,13 @@ func _register_voxel_prop_levels(instances: Array) -> void:
 		if prop_def == null:
 			push_warning("[RoomBuilder] Unknown prop def '%s' — skipped" % instance.get("def_id", ""))
 			continue
-		room._voxel_board.register_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
+		## R3D-PROPS Tier 3/4: a mesh_tier def never becomes VoxelStore state (rule 8 does not
+		## apply — there is no voxel here); it places a MeshPropInstance Board3DLive renders
+		## as a PropMesh3D instead. Tier 1/2 (mesh_tier == 0) is the unchanged voxel path.
+		if prop_def.mesh_tier > 0:
+			room._voxel_board.register_mesh_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
+		else:
+			room._voxel_board.register_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
 		_prop_cover[instance["gu_cell"]] = prop_def.gameplay.get("cover", "none")
 
 

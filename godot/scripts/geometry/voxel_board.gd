@@ -512,6 +512,11 @@ var _placed_index: Dictionary = {}         ## Vector3i(cell.x, cell.y, level) ->
 ## room.gd). `VoxelStore.build()` reads this list alongside the three registries.
 var _prop_blocks: Array[PropBlock] = []
 
+## R3D-PROPS Tier 3/4 — one `MeshPropInstance` per `register_mesh_prop()` call, same lifetime
+## as `_prop_blocks` above. Never touches `VoxelStore` (rule 8 does not apply — there is no
+## voxel here); `Board3DLive` reads this to build the actual `PropMesh3D` nodes.
+var _mesh_props: Array[MeshPropInstance] = []
+
 ## PERF-10 — CELLS WRITTEN TO THE BOARD BY SOMEONE OTHER THAN AN APPLY PASS.
 ##
 ## The stale-driven apply rests on "a cell whose value changed was invalidated in
@@ -2327,11 +2332,31 @@ func prop_blocks() -> Array[PropBlock]:
 	return _prop_blocks
 
 
+## R3D-PROPS Tier 3/4 — records one mesh-only prop instance. No voxel is ever placed for it;
+## `start_storey`'s level is kept only so the mesh sits on the right storey's floor top, exactly
+## like `register_prop()`'s own `start_level`.
+func register_mesh_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
+	var material_name: String = prop_def.material_zones.get("default", "wood")
+	var start_level: int = GeometryCoords.storey_level_base(start_storey)
+	var id := "MESHPROP_%d_%d_%d_%s" % [gu_cell.x, gu_cell.y, start_storey, prop_def.id]
+	_mesh_props.append(MeshPropInstance.new(id, gu_cell, start_level, material_name,
+		prop_def.mesh_tier, prop_def.mesh_size))
+
+
+## R3D-PROPS Tier 3/4: the live mesh-prop instances `Board3DLive` renders and `Room` resolves
+## blast proximity against.
+func mesh_props() -> Array[MeshPropInstance]:
+	return _mesh_props
+
+
 ## Clear all layers and voxels
 func clear() -> void:
 	## R3D-PROPS: fresh containers every rebuild, same reasoning as the registries below —
 	## a stale PropBlock would point `VoxelStore.build()` at last map's `Voxel`s.
 	_prop_blocks.clear()
+	## R3D-PROPS Tier 3/4: same reasoning — a stale MeshPropInstance would point Board3DLive at
+	## last map's cell/material data.
+	_mesh_props.clear()
 	## VL-03: same reasoning — the GU index would point at cells this cleared
 	## tilemap no longer has. apply_light_field() rebuilds it from scratch on the
 	## next full pass, which always follows clear()+register_geometry() in the rebuild flow.

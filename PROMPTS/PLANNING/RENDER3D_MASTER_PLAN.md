@@ -1,5 +1,9 @@
 # RENDER3D_MASTER_PLAN
-## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.44
+## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.45
+
+**2026-09-28 — Tier 3/4 props scorch like a wall now; debris art ruled CLEAN (Director).**
+- **Built (`7ea8ecbe`):** `prop_mesh3d.gdshader` was light-only (cell-plane G channel); it now also decodes the R-channel soot code the same way `OPAQUE_SHADER` does (code -> ring -> `soot_mult`), reading the TOP ring of the floor cell the prop already samples for light — a stand-in for "how sooted is the ground here", not a per-face read (a prop mesh has no flat wall face to pick one from). `board3d_live.gd` pushes `soot_mult` to prop materials alongside the light uniforms they already got. Verified: no shader compile error, barrel renders unchanged (regression capture). **Not verified: a live blast staged on the prop's own cell** — scripting a dev grenade at that exact position was more setup than this pass scoped; the decode math is an unchanged copy of the wall's own formula.
+- **Ruled: debris art (Tier 4's wood/cardboard/ash decals, not built) is authored CLEAN, soot applied procedurally at runtime** — matches every other decal in the project (bullet/dent/crack are all clean, soot is always a separate multiplicative layer, never baked in), and lets one piece of art read differently near a small shot vs. a big blast, which a pre-dirtied texture cannot do. Once the debris pile itself exists (`FloorPile3D`-based, mechanism already ruled), its shader (`floor_decal3d.gdshader`) would need the identical R-channel read added here — not done, real follow-on.
 
 **2026-09-27 (planning, R3D-PROPS) — the prop art direction RULED (Director): three tiers, and destruction is a transient shatter VFX, never a permanent voxel container.**
 - **Tier 1 — construction (walls, floors, etc).** Unchanged: the existing material/voxel system, native resolution (8³/GU), exactly as it is today.

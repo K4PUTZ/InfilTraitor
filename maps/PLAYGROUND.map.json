@@ -337,7 +337,15 @@
       "v": 1
     },
     "props": {
-      "items": [],
+      "items": [
+        {
+          "def": "crate_full",
+          "gu": [20, 15],
+          "storey": 0,
+          "vox_offset": [0, 0],
+          "rot": 0
+        }
+      ],
       "v": 1
     },
     "floor_zones": {

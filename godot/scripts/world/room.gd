@@ -6995,7 +6995,7 @@ func _capture_glass_crack_demo() -> void:
 	## cut" says the swap was ISSUED; this reads the tilemap back. The two
 	## disagreed for the whole life of CRACK-03 — 12 issued, 0 on the board.
 	print("[CRACK-DEMO] shards: registry=%d board=%d"
-		% [_voxel_board._glass_shard_cells.size(), _voxel_board.count_glass_shards()])
+		% [_voxel_board._glass_shaped_cells.size(), _voxel_board.count_glass_shards()])
 
 	## RENDER_ORDER — the crack's clip must FOLLOW the destruction of the wall that
 	## covered the pane. `INFILTRAITOR_CRACK_DEMO_DESTROY_GU=x,y` (a GRID GU, i.e.
@@ -7192,7 +7192,7 @@ func _capture_glass_crack_demo() -> void:
 			var board_post: int = _voxel_board.count_glass_shards()
 			print("[CRACK-DEMO] S-3 flip to %s -> glass_crack_flip_%s_%s.png · %d sprite(s) live · shards registry=%d board=%d, after a flush board=%d"
 				% [flip_to, tag, flip_to, _voxel_board.glass_crack_count(),
-				_voxel_board._glass_shard_cells.size(), board_pre, board_post])
+				_voxel_board._glass_shaped_cells.size(), board_pre, board_post])
 
 	## §13.5 — "perf is a claim, not a fact". With INFILTRAITOR_FRAME_PROBE=1 the
 	## demo holds the finished board long enough for the standing probe to print,
@@ -7295,7 +7295,7 @@ func _capture_glass_blast_demo() -> void:
 	## ⚠️ THE BOARD, NOT THE COUNTER — CRACK-04's lesson, and the only reading that
 	## can tell a claim that reached the tilemap from one that was merely issued.
 	print("[GLASS-BLAST] shards: registry=%d board=%d"
-		% [_voxel_board._glass_shard_cells.size(), _voxel_board.count_glass_shards()])
+		% [_voxel_board._glass_shaped_cells.size(), _voxel_board.count_glass_shards()])
 	## G-D35 B-2 — the craze FIELDS. `_base_crazes` is what was claimed and the
 	## count is what actually reached the scene; before B-3's art the second is 0
 	## by design, and printing both is what tells "not wired" from "no sheet yet".
@@ -7371,7 +7371,7 @@ func _capture_glass_blast_demo() -> void:
 		## "did the rims survive" is how many shard cells stand on the tilemap,
 		## which is what CRACK-04 learned to read.
 		print("[GLASS-BLAST] shards after the flip: registry=%d board=%d"
-			% [_voxel_board._glass_shard_cells.size(),
+			% [_voxel_board._glass_shaped_cells.size(),
 			_voxel_board.count_glass_shards()])
 		print("[GLASS-BLAST] floor shards after the flip: %d recorded, %d live"
 			% [_base_shards.size(), _voxel_board.floor_shard_pile_count()])
@@ -7407,7 +7407,7 @@ func _capture_glass_blast_demo() -> void:
 		var piles_after: int = _voxel_board.floor_shard_pile_count()
 		var cracks_after: int = _voxel_board.count_glass_shards()
 		var crazes_after: int = _voxel_board.glass_craze_count()
-		var rim_after: int = _voxel_board._glass_shard_cells.size()
+		var rim_after: int = _voxel_board._glass_shaped_cells.size()
 		var clean: bool = piles_after == 0 and cracks_after == 0 and crazes_after == 0 and rim_after == 0
 		print("[GLASS-BLAST] after reload: %d floor pile(s), %d shard cell(s), %d rim cell(s), %d craze field(s) — %s"
 			% [piles_after, cracks_after, rim_after, crazes_after,

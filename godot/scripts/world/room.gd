@@ -4631,10 +4631,15 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 	if _voxel_board == null:
 		return
 	var weights: Array = bomb_def.destroy_ring_weights
+	var prop_debug: bool = OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1"
 	for inst: MeshPropInstance in _voxel_board.mesh_props():
 		if inst.mesh_tier != 4 or inst.shattered:
 			continue
 		var ring: int = _prop_ring_at(gu_rings, inst.cell)
+		if prop_debug:
+			print("[PROP-DEBUG] mesh prop %s tier=%d cell=%s ring=%d weight=%s"
+				% [inst.id, inst.mesh_tier, inst.cell, ring,
+				weights[ring] if ring >= 0 and ring < weights.size() else "n/a"])
 		if ring < 0 or ring >= weights.size():
 			continue
 		var weight: float = float(weights[ring])

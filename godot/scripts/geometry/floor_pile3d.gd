@@ -63,11 +63,17 @@ func detach() -> void:
 	_board = null
 
 
-## `key` is Vector3i(voxel cell x, voxel cell y, level).
-func set_pile(key: Vector3i, variant: int, alpha: float) -> void:
+## `key` is Vector3i(voxel cell x, voxel cell y, level). `tint` defaults to white — a photographic
+## decal (glass shard, the leaf/ground patch) is authored in full colour and reads unchanged, the
+## way every caller before this one already worked. A caller whose art is neutral/grayscale and
+## meant to pick up its COLOUR from elsewhere (Director, 2026-09-28: debris decals are grayscale,
+## tinted by the material that broke — unlike a ground decal, which complements a photographic
+## surface and stays full colour) passes its own tint; `floor_decal3d.gdshader` already multiplies
+## `texel.rgb * COLOR.rgb`, so this is the whole change.
+func set_pile(key: Vector3i, variant: int, alpha: float, tint: Color = Color.WHITE) -> void:
 	if _nodes.is_empty():
 		return
-	_piles[key] = {"variant": variant % _nodes.size(), "alpha": alpha}
+	_piles[key] = {"variant": variant % _nodes.size(), "alpha": alpha, "tint": tint}
 	_mark_dirty()
 
 
@@ -121,7 +127,8 @@ func _rebuild() -> void:
 		var b: Vector3 = centre + Vector3(ob.x, 0.0, ob.y)
 		var d: Vector3 = centre + Vector3(od.x, 0.0, od.y)
 		var e: Vector3 = centre + Vector3(oe.x, 0.0, oe.y)
-		var col := Color(1.0, 1.0, 1.0, float(p["alpha"]))
+		var tint: Color = p.get("tint", Color.WHITE)
+		var col := Color(tint.r, tint.g, tint.b, float(p["alpha"]))
 		verts[v].append_array(PackedVector3Array([a, b, d, a, d, e]))
 		uvs[v].append_array(PackedVector2Array([
 			Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 0), Vector2(1, 1), Vector2(0, 1)]))

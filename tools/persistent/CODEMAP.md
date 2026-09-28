@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**249 scripts · 80207 lines total** (under `godot/scripts/`)
+**249 scripts · 80214 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -635,7 +635,7 @@ extends `Node3D` · 1985 lines
 
 ### `floor_pile3d.gd`
 
-`class_name FloorPile3D` · extends `RefCounted` · 142 lines
+`class_name FloorPile3D` · extends `RefCounted` · 149 lines
 
 `godot/scripts/geometry/floor_pile3d.gd`
 
@@ -647,7 +647,7 @@ extends `Node3D` · 1985 lines
 **Public API**
 - `func attach(board: Node3D, textures: Array, priority: int, lift: float, half_px: float = -1.0) -> void:`
 - `func detach() -> void:`
-- `func set_pile(key: Vector3i, variant: int, alpha: float) -> void:`
+- `func set_pile(key: Vector3i, variant: int, alpha: float, tint: Color = Color.WHITE) -> void:`
 - `func clear() -> void:`
 - `func pile_count() -> int:`
 

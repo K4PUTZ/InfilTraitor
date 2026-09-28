@@ -200,9 +200,15 @@ const PHASE_SLICES: int = 1
 ## same simulate_container_damage() ring model, inserted right after it since
 ## a JunctionColumn is architecturally a diagonal wall segment.
 const PHASE_JUNCTIONS: int = 2
-const PHASE_ROOFS: int = 3
-const PHASE_FLOORS: int = 4
-const PHASE_WALK: int = 5
+## R3D-PROPS (2026-09-28): a crate's own voxels, explosion-only (same reason JUNCTIONS is —
+## see find_affected_containers()'s own note) — mirrors PHASE_JUNCTIONS exactly, same
+## simulate_container_damage() ring model, since a PropBlock is architecturally a short
+## free-standing wall segment. Inserted right after JUNCTIONS, before the horizontal
+## ROOFS/FLOORS pair, alongside the other "vertical solid" container kind.
+const PHASE_PROPS: int = 3
+const PHASE_ROOFS: int = 4
+const PHASE_FLOORS: int = 5
+const PHASE_WALK: int = 6
 ## D-2 (`DETONATION_PRESENTATION_MASTER_PLAN` §6): the fire, decided here and
 ## owned by the cook. It sits between WALK and SOOT because that is the only
 ## window where both halves of its input exist and both of its consumers are
@@ -212,17 +218,17 @@ const PHASE_WALK: int = 5
 ## of PHASE_SMOKE (where `_build_ember_wave()` used to be called) it was behind
 ## every one of them, which is exactly why the fire had to be a second mutation
 ## stream running under the animation.
-const PHASE_BURN: int = 6
-const PHASE_SOOT: int = 7
-const PHASE_LIGHT: int = 8
-const PHASE_PACKAGE: int = 9
-const PHASE_EXPOSE: int = 10
-const PHASE_SOOTWAVE: int = 11
-const PHASE_SMOKE: int = 12
-const PHASE_DONE: int = 13
+const PHASE_BURN: int = 7
+const PHASE_SOOT: int = 8
+const PHASE_LIGHT: int = 9
+const PHASE_PACKAGE: int = 10
+const PHASE_EXPOSE: int = 11
+const PHASE_SOOTWAVE: int = 12
+const PHASE_SMOKE: int = 13
+const PHASE_DONE: int = 14
 
 const PHASE_NAMES: Array[String] = [
-	"SETUP", "SLICES", "JUNCTIONS", "ROOFS", "FLOORS", "WALK", "BURN", "SOOT",
+	"SETUP", "SLICES", "JUNCTIONS", "PROPS", "ROOFS", "FLOORS", "WALK", "BURN", "SOOT",
 	"LIGHT", "PACKAGE", "EXPOSE", "SOOTWAVE", "SMOKE", "DONE",
 ]
 
@@ -392,6 +398,8 @@ static func _run_phase(s: Dictionary, deadline: int) -> void:
 			_phase_slices(s, deadline)
 		PHASE_JUNCTIONS:
 			_phase_junctions(s, deadline)
+		PHASE_PROPS:
+			_phase_props(s, deadline)
 		PHASE_ROOFS:
 			_phase_roofs(s, deadline)
 		PHASE_FLOORS:
@@ -425,8 +433,9 @@ static func _phase_setup(s: Dictionary) -> void:
 	## ctx.get default keeps every non-explosion caller (firearms, selftests
 	## that predate this) exactly as it was.
 	var junction_columns: Array = ctx.get("junction_columns", [])
+	var prop_blocks: Array = (s["voxel_board"] as VoxelBoardClass).prop_blocks()
 	var affected := BlastCalculatorClass.find_affected_containers(
-		gu_rings, s["edge_registry"], s["slab_registry"], junction_columns)
+		gu_rings, s["edge_registry"], s["slab_registry"], junction_columns, prop_blocks)
 	var n_rings: int = bomb_def.ring_multipliers.size()
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
 	var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) * CRATER_MAX_FACTOR
@@ -458,6 +467,19 @@ static func _phase_setup(s: Dictionary) -> void:
 	for column in junction_columns:
 		junction_by_id[column.id] = column
 	s["junction_by_id"] = junction_by_id
+
+	s["prop_ids"] = affected.get("props", {}).keys()
+	var prop_by_id: Dictionary = {}
+	for block in prop_blocks:
+		prop_by_id[block.id] = block
+	s["prop_by_id"] = prop_by_id
+	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+		var dbg: Array = []
+		for block in prop_blocks:
+			var fp: Vector2i = (block.voxels[0] as Voxel).grid_pos
+			dbg.append("%s@gu(%d,%d)" % [block.id, fp.x >> 3, fp.y >> 3])
+		print("[PROP-DEBUG] source_gu=%s prop_blocks=%s hit_props=%s"
+			% [source_gu, dbg, s["prop_ids"]])
 
 	s["soot_codes"] = {}       ## SOOT-STAMP: Vector3i -> the tone this blast stamps
 	s["ring_of"] = {}
@@ -940,6 +962,45 @@ static func _phase_junctions(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= ids.size():
+		_enter_phase(s, PHASE_PROPS)
+
+
+## R3D-PROPS (2026-09-28) — a crate's own voxels: mirrors _phase_junctions() exactly (same
+## simulate_container_damage() ring model, since a PropBlock is architecturally a short
+## free-standing wall segment), reading from prop_by_id instead of an owning registry, the
+## same reason JUNCTIONS does — a PropBlock belongs to no registry, only VoxelBoard's flat
+## `_prop_blocks` Array. `base_level` is the block's own lowest voxel rather than a stored
+## field: register_prop() never kept the start_storey it computed from, and the block's
+## voxels already answer the same question directly.
+static func _phase_props(s: Dictionary, deadline: int) -> void:
+	var ids: Array = s["prop_ids"]
+	var prop_by_id: Dictionary = s["prop_by_id"]
+	var affected: Dictionary = s["affected"]["props"]
+	var bomb_def = s["bomb_def"]
+	var delta: WorldDelta = s["delta"]
+	var epicenter: Vector2i = s["epicenter"]
+	var ring_of: Dictionary = s["ring_of"]
+	var container_of: Dictionary = s["container_of"]
+	var i: int = int(s["cursor"])
+	while i < ids.size():
+		var block: PropBlock = prop_by_id[ids[i]]
+		var base_ring: int = affected[ids[i]]
+		var base_level: int = block.voxels[0].level
+		for v in block.voxels:
+			base_level = mini(base_level, v.level)
+		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
+			block.voxels, block.id, block.material, base_ring, base_level, false,
+			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,
+			bomb_def.dent_ring_weights, bomb_def.crack_ring_weights, epicenter))
+		for v in block.voxels:
+			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+			ring_of[key] = base_ring + BlastCalculatorClass.vertical_ring_for(v.level - base_level)
+			container_of[key] = block
+		i += 1
+		if _out_of_time(deadline):
+			break
+	s["cursor"] = i
+	if i >= ids.size():
 		_enter_phase(s, PHASE_ROOFS)
 
 
@@ -1040,6 +1101,13 @@ static func _phase_floors(s: Dictionary, deadline: int) -> void:
 		## WHOLE map, not just this blast's own reach.
 		for column in (s["junction_columns"] as Array):
 			walk.append([column, true])
+		## R3D-PROPS: a crate's voxels get the SAME occupancy/flammability/burn walk a
+		## wall's do — appended LAST, in the exact order `VoxelStore.containers_of()`
+		## appends its own KIND_PROP containers, so `_walk_store_for()`'s container-count
+		## and per-index id check keeps matching the active store on any map with a prop
+		## (previously always false there, silently forcing the slow object walk).
+		for block in (s["voxel_board"] as VoxelBoardClass).prop_blocks():
+			walk.append([block, false])
 		s["walk_containers"] = walk
 		_enter_phase(s, PHASE_WALK)
 
@@ -2556,11 +2624,17 @@ static func _surface_name(container) -> String:
 				return "CEILING"
 			_:
 				return "INTERIOR"
+	## R3D-PROPS: its own group, not folded into WALL — same reasoning as JUNCTION
+	## above, so a prop's census row is legible on its own rather than smeared into
+	## whichever wall material happens to sort next to it.
+	if container is PropBlock:
+		return "PROP"
 	return "NONE"
 
 
 static func _material_name(container) -> String:
-	if container is Slice or container is Slab or container is JunctionResolver.JunctionColumn:
+	if container is Slice or container is Slab or container is JunctionResolver.JunctionColumn \
+			or container is PropBlock:
 		return container.material
 	return "?"
 

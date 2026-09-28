@@ -788,7 +788,7 @@ static func select_line_impact(source_gu: Vector2i, facing_delta: Vector2i,
 ## omnidirectional and reaches that same diagonal GU like any other. Default
 ## `[]` keeps every existing caller (firearms among them) exactly as it was.
 static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRegistry,
-		slab_registry: SlabRegistry, junction_columns: Array = []) -> Dictionary:
+		slab_registry: SlabRegistry, junction_columns: Array = [], prop_blocks: Array = []) -> Dictionary:
 	var hit_slices: Dictionary = {}
 	for gu in gu_rings:
 		var ring: int = gu_rings[gu]
@@ -825,8 +825,39 @@ static func find_affected_containers(gu_rings: Dictionary, edge_registry: EdgeRe
 			continue
 		hit_junctions[column.id] = gu_rings[column.gu_cell]
 
+	## R3D-PROPS: one PropBlock per footprint GU cell (register_prop()'s own contract), so its
+	## first voxel's GU is the whole block's GU — no owning registry to ask, same reason
+	## JUNCTIONS reads its flat Array directly instead of a registry lookup.
+	##
+	## ⚠️ UNLIKE A JUNCTION, A PROP'S OWN GU IS USUALLY A BLOCKED CELL — a solid Tier 1/2
+	## prop is exactly what `blocked_cells` exists to mark impassable, and `flood_gu_rings()`
+	## refuses to assign ANY ring to a blocked cell, including as the flood's own source (a
+	## grenade thrown one cell short of the crate never reached it at all: `gu_rings.has(gu)`
+	## was always false). A wall never hits this because it sits on an EDGE and is found via
+	## `edges_touching_gu()` from whichever neighbouring GU the flood actually entered — so a
+	## prop takes the SAME "ring at the boundary" reading, off its nearest flooded neighbour,
+	## rather than demanding a ring on a cell the flood can structurally never enter.
+	var hit_props: Dictionary = {}
+	for block in prop_blocks:
+		if (block.voxels as Array).is_empty():
+			continue
+		var first_pos: Vector2i = block.voxels[0].grid_pos
+		var gu := Vector2i(first_pos.x >> 3, first_pos.y >> 3)
+		var best_ring: int = -1
+		if gu_rings.has(gu):
+			best_ring = gu_rings[gu]
+		else:
+			for face in [Face.NW, Face.NE, Face.SE, Face.SW]:
+				var neighbor: Vector2i = gu + Face.delta(face)
+				if gu_rings.has(neighbor):
+					var r: int = gu_rings[neighbor]
+					if best_ring < 0 or r < best_ring:
+						best_ring = r
+		if best_ring >= 0:
+			hit_props[block.id] = best_ring
+
 	return {"slices": hit_slices, "roofs": hit_roofs, "floors": hit_floors,
-		"junctions": hit_junctions}
+		"junctions": hit_junctions, "props": hit_props}
 
 
 ## ============================================================================

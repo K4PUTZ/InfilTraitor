@@ -710,8 +710,12 @@ func _respawn_base_shards() -> void:
 ## only frees the `GlassRainOverlay` — a dust puff it did not ask for would outlive
 ## that and break the gate.
 ##
+## `tint`: R3D-PROPS Tier 1/2 debris — a null Color (the default) leaves the overlay's own
+## glass tint untouched; any other Color repaints the whole field for a non-glass material
+## (a crate's wood, say) instead of adding a second falling-shard mechanism for it.
+##
 ## Returns how many shards are in flight.
-func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
+func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = null) -> int:
 	if _voxel_board == null or flights.is_empty():
 		return 0
 	var bsize := _base_voxel_size()
@@ -752,6 +756,8 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true) -> int:
 		return 0
 	var rain := GlassRainOverlay.new()
 	rain.name = "GlassRain"
+	if tint is Color:
+		rain.tint = tint
 	## ⚠️ ONE z_index FOR THE WHOLE FIELD, and it is a real limitation of doing this
 	## in a single MultiMesh: a draw order cannot vary per instance. It sits just
 	## above the deepest landing plane's layer — the same band the pile decals take
@@ -4601,15 +4607,35 @@ func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragmen
 ## consequence in this event reads (`gu_rings`, the caller's own `BlastCalculator.flood_gu_rings()`
 ## result), gated on `destroy_ring_weights` — the bomb's own "how close is close enough to
 ## actually destroy something" table, so a prop breaks exactly where a wall would.
+## R3D-PROPS: a mesh prop's own GU is a `blocked_cells` entry — `MapCompiler` marks every
+## "props" section placement blocked the same way it does for `crate_full` (`blocked_map[cell]
+## = true`, `map_compiler.gd`) — so `flood_gu_rings()` never assigns it a ring at all, the exact
+## reason `BlastCalculator.find_affected_containers()`'s own prop bucket needed the same
+## neighbour fallback for Tier 1/2. This is that fallback's twin for Tier 4 mesh props, which
+## have no `find_affected_containers()` bucket of their own (they never become VoxelStore
+## containers). Returns -1 if neither the cell nor any of its 4 neighbours were reached.
+func _prop_ring_at(gu_rings: Dictionary, gu: Vector2i) -> int:
+	if gu_rings.has(gu):
+		return int(gu_rings[gu])
+	var best: int = -1
+	for delta in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+		var n: Vector2i = gu + delta
+		if gu_rings.has(n):
+			var r: int = int(gu_rings[n])
+			if best < 0 or r < best:
+				best = r
+	return best
+
+
 func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 	if _voxel_board == null:
 		return
 	var weights: Array = bomb_def.destroy_ring_weights
 	for inst: MeshPropInstance in _voxel_board.mesh_props():
-		if inst.mesh_tier != 4 or inst.shattered or not gu_rings.has(inst.cell):
+		if inst.mesh_tier != 4 or inst.shattered:
 			continue
-		var ring: int = int(gu_rings[inst.cell])
-		if ring >= weights.size():
+		var ring: int = _prop_ring_at(gu_rings, inst.cell)
+		if ring < 0 or ring >= weights.size():
 			continue
 		var weight: float = float(weights[ring])
 		if weight <= 0.0:
@@ -4620,6 +4646,73 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 		var live: Node = board3d()
 		if live != null:
 			live.call("remove_mesh_prop", inst.id)
+
+
+## R3D-PROPS Tier 1/2 debris (Director, 2026-09-28): "aproveitar o mecanismo do vidro que
+## quebra e cai, combinado com o desvio dos estilhaços na direção do impacto da explosão."
+## A crate's destroyed voxels fall and land through the EXACT mechanism a shattered pane's
+## shards already do — `GlassFall.plan_landings()` with the same `impulse` shape a real
+## glass break already builds (epicenter + this ring's falloff pushes every piece along its
+## OWN bearing from the blast, G-D42), and `spawn_glass_rain()` for the flight, tinted by
+## the crate's own material instead of glass's fixed blue. What is left once they settle
+## uses the Tier 4 debris-pile mechanism (`place_debris_piece()`, already material-tinted)
+## rather than `record_glass_shards()`'s glass-only decal texture.
+##
+## Ember/burn/soot need NO call here at all — DetonationPlanBuilder's WALK phase now walks a
+## PropBlock's voxels exactly like a wall's (this session's fix to `_material_name()` and the
+## walk-container list, previously silent: a crate's flammability always resolved through the
+## container-type check that only knew Slice/Slab/JunctionColumn, so `_material_name()`
+## returned "?" and `MaterialResistanceTable.flammability("?")` was always 0). A flammable
+## crate now catches, embers and soots through the same waves a wall does — "em tese tudo
+## isso já existe", exactly as the Director expected.
+func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings: Dictionary,
+		bomb_def) -> void:
+	if _voxel_board == null or _slab_registry == null:
+		return
+	## Voxel is a thin index wrapper (R3D-1d) — it keeps its container's INSTANCE ID
+	## (`container_id()`), never the object itself, so a PropBlock is found by id lookup,
+	## the same association the WALK phase reads container-first rather than voxel-first.
+	var prop_material_by_id: Dictionary = {}   ## instance id -> material
+	for block: PropBlock in _voxel_board.prop_blocks():
+		prop_material_by_id[block.get_instance_id()] = block.material
+	var by_material: Dictionary = {}   ## material_id -> Array[{grid_pos, level}]
+	for voxel: Voxel in touched_voxels:
+		if voxel.damage_state != Voxel.DamageState.DESTROYED:
+			continue
+		var material_id: Variant = prop_material_by_id.get(voxel.container_id())
+		if material_id == null:
+			continue
+		if not by_material.has(material_id):
+			by_material[material_id] = []
+		(by_material[material_id] as Array).append({"grid_pos": voxel.grid_pos, "level": voxel.level})
+	if by_material.is_empty():
+		return
+	## The SAME epicenter DetonationPlanBuilder.build_plan() computes (its own `s["epicenter"]`
+	## line): the source GU's centre voxel.
+	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
+	var epicenter_vx: Vector2i = source_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS + Vector2i(half, half)
+	var ring: int = int(gu_rings.get(source_gu, 0))
+	var multipliers: Array = bomb_def.ring_multipliers
+	var strength: float = clampf(float(multipliers[ring]) if ring < multipliers.size() else 0.0, 0.0, 1.0)
+	var impulse: Dictionary = {"from": Vector2(epicenter_vx), "strength": strength, "lift": 0.0}
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	for material_id in by_material:
+		var landings: Array = GlassFall.plan_landings(
+			by_material[material_id], _slab_registry.all_slabs(), impulse)
+		if landings.is_empty():
+			continue
+		var tint: Color = _vfx_material_base_color(material_id)
+		var flight_tint: Color = tint
+		flight_tint.a = 0.85
+		spawn_glass_rain(landings, false, flight_tint)
+		var piles: Dictionary = GlassFall.pile_by_cell(landings)
+		var i: int = 0
+		for key in piles:
+			var k: Vector3i = key
+			var center := Vector2((float(k.x) + 0.5) * unit, (float(k.y) + 0.5) * unit)
+			_voxel_board.place_debris_piece("%s_%d_%d_%d" % [material_id, k.x, k.y, k.z],
+				center, k.z, material_id, i % 3, tint, randf_range(0.0, TAU))
+			i += 1
 
 
 ## VFX-01: MaterialDef.base_color for `material_id`, or a neutral gray if the

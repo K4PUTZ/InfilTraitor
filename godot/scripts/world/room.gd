@@ -3120,6 +3120,7 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 			overlay.set_board3d(live)
 	if _voxel_board != null:
 		_voxel_board.set_pile_board3d(live)
+		_voxel_board.set_debris_pile_board3d(live)
 		## R3D-SURFACES prototype — "one leaf-patch decal", dev-only, no map data (see VoxelBoard's
 		## own comment on `set_patch_board3d` / `place_patch_demo`).
 		if _dev_flag_on("SURFACE_PATCH_DEMO"):
@@ -4551,8 +4552,10 @@ func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: Stri
 ## `fragment_count` stands in for the plan's "~8x8x8 subdivision": not that many literal chip
 ## instances (`add_chips()` already fans one call out across `count` chips with their own jitter),
 ## just a caller-tunable density knob, higher for a bigger prop.
-## Ground debris (OPEN THREADS goal 7, mechanism ruled but not built — needs new decal art) is
-## deliberately NOT called here yet.
+## Ground debris (OPEN THREADS goal 7): a persistent, grayscale-art pile tinted by `material_id`,
+## the same `FloorPile3D` mechanism the glass shard rain already uses (`VoxelBoard.place_debris_pile()`).
+## Missing decal art for a given material degrades loudly (a `push_error`, no pile for that material)
+## rather than silently — wood is the only family with real art as of 2026-09-28.
 func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragment_count: int = 8) -> void:
 	if _voxel_board == null or _smoke_spark_overlay == null or _debris_overlay == null:
 		return
@@ -4569,6 +4572,7 @@ func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragmen
 			vfx_metal_spark_color, 1.0, 1.0, floor_pos)
 	elif material_id == "stone":
 		_smoke_spark_overlay.add_sparks(origin, vfx_stone_spark_count, vfx_stone_spark_color, 1.0, 1.0, floor_pos)
+	_voxel_board.place_debris_pile(cell, _voxel_board.ground_plane_level(), material_id, randi() % 3, tint)
 
 
 ## VFX-01: MaterialDef.base_color for `material_id`, or a neutral gray if the

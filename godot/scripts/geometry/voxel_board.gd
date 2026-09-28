@@ -1515,6 +1515,57 @@ func place_patch_demo(cell: Vector2i, level: int) -> void:
 	_patch3d.set_pile(Vector3i(cell.x, cell.y, level), 0, 1.0)
 
 
+## R3D-PROPS Tier 4 (2026-09-28) — the persistent ground debris `spawn_prop_shatter()` leaves once
+## a fragment swarm settles, OPEN THREADS goal 7's mechanism: rides the exact `FloorPile3D` path a
+## glass-shard pile does, one grayscale decal per material (`decal_debris_<material>_<n>.png`,
+## `ASSETS/materials/_generic/decals/`), tinted by `Room._vfx_material_base_color()` at the call
+## site (§2026-09-28's ruling: debris art is neutral, colour comes from the engine, unlike a
+## ground/patch decal, which is photographic and stays full colour). `half_px = 16.0`, same as the
+## leaf patch: a whole-GU-cell mark, not a shard-sized one. `check_decal.py` covers the same B6
+## loud-fail rule the shard textures already have — a missing variant errors, it never draws blank.
+const DebrisPileRef = preload("res://godot/scripts/geometry/floor_pile3d.gd")
+var _debris_pile3d_board: Node3D = null        ## held so a new material's FloorPile3D can attach lazily
+var _debris_piles: Dictionary = {}             ## material_id -> FloorPile3D (one node-set per material)
+
+
+func set_debris_pile_board3d(board: Node3D) -> void:
+	for material_id in _debris_piles:
+		_debris_piles[material_id].detach()
+	_debris_piles.clear()
+	_debris_pile3d_board = board
+
+
+## Lazily attaches one `FloorPile3D` per material the first time it is placed (a material change is
+## a different texture family, not a texture swap on one shared node — each gets its own 3 draw
+## calls, same cost shape as the shard pile). Loads `decal_debris_<material>_0/1/2.png`; a missing
+## file is B6-loud (`push_error`, that variant never draws) rather than a silent blank pile.
+func _debris_pile_for(material_id: String) -> RefCounted:
+	if _debris_piles.has(material_id):
+		return _debris_piles[material_id]
+	if _debris_pile3d_board == null:
+		return null
+	var textures: Array = []
+	for i in range(3):
+		var path := "res://ASSETS/materials/_generic/decals/decal_debris_%s_%d.png" % [material_id, i]
+		var tex := load(path) as Texture2D
+		if tex == null:
+			push_error("[VoxelBoard] Tier 4 debris: %s failed to load — no pile will draw for '%s'" % [path, material_id])
+		textures.append(tex)
+	var pile := DebrisPileRef.new()
+	pile.attach(_debris_pile3d_board, textures, 3, 0.022, 16.0)
+	_debris_piles[material_id] = pile
+	return pile
+
+
+## `variant` picks one of the 3 grayscale decals; `tint` is the material colour
+## (`Room._vfx_material_base_color()`), applied by `FloorPile3D`'s COLOR multiply.
+func place_debris_pile(cell: Vector2i, level: int, material_id: String, variant: int, tint: Color) -> void:
+	var pile: RefCounted = _debris_pile_for(material_id)
+	if pile == null:
+		return
+	pile.set_pile(Vector3i(cell.x, cell.y, level), variant, 1.0, tint)
+
+
 ## R3D-PROPS — static props as real meshes (`ACTOR` D65). Dev-only demo seam, same shape as
 ## `set_patch_board3d`/`place_patch_demo` above: a fixed placement triggered by `Room` on a dev flag,
 ## not map data — a real prop-placement schema (footprint, rotation, per-map catalogue) is follow-on

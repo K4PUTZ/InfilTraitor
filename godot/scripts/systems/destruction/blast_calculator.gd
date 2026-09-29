@@ -166,8 +166,13 @@ static func add_prop_boundary_rings(gu_rings: Dictionary, prop_gus: Array, block
 ## orthogonal route through one of its two flank cells, so the throw cannot squeeze
 ## the diagonal gap between two wall corners. Pure — lives here beside the other
 ## wall-aware GU-space walks; `blast_calculator_selftest` drives it.
+## `over_blocked` (R3D-PROPS, 2026-09-29, Director: a grenade must be able to fly OVER a crate): an optional
+## `Callable(cell: Vector2i, f0: float, f1: float) -> bool`, asked when the line enters a BLOCKED cell — does the
+## flight clear it between fractions `f0..f1` of the way to the target? A cell it clears is crossed but never a place
+## to land (`last_ok` skips it), so a throw can pass over a prop and never end inside one. A cell the callback does not
+## know (a wall block) answers false and stops the line exactly as before. The default leaves every old caller as it was.
 static func throw_line_clamp(origin_gu: Vector2i, target_gu: Vector2i, reach: float,
-		edges: Dictionary, blocked_cells: Dictionary) -> Vector2i:
+		edges: Dictionary, blocked_cells: Dictionary, over_blocked: Callable = Callable()) -> Vector2i:
 	if target_gu == origin_gu:
 		return origin_gu
 	var to_target := Vector2(target_gu - origin_gu)
@@ -186,12 +191,17 @@ static func throw_line_clamp(origin_gu: Vector2i, target_gu: Vector2i, reach: fl
 		if cell == cur:
 			continue
 		var d := cell - cur
+		var flies_over: bool = false
+		if blocked_cells.has(cell) and over_blocked.is_valid():
+			var f_mid: float = Vector2(cell - origin_gu).length() / span
+			var half: float = 0.5 / span
+			flies_over = bool(over_blocked.call(cell, clampf(f_mid - half, 0.0, 1.0), clampf(f_mid + half, 0.0, 1.0)))
 		if absi(d.x) + absi(d.y) == 1:
-			if WallEdgeData.is_edge_blocked(cur, cell, edges) or blocked_cells.has(cell):
+			if WallEdgeData.is_edge_blocked(cur, cell, edges) or (blocked_cells.has(cell) and not flies_over):
 				break
 		else:
 			## Diagonal — open only if an L-route through one flank cell is clear.
-			if blocked_cells.has(cell):
+			if blocked_cells.has(cell) and not flies_over:
 				break
 			var flank_a := cur + Vector2i(d.x, 0)
 			var flank_b := cur + Vector2i(0, d.y)
@@ -204,7 +214,7 @@ static func throw_line_clamp(origin_gu: Vector2i, target_gu: Vector2i, reach: fl
 			if not (a_open or b_open):
 				break
 		cur = cell
-		if Vector2(cur - origin_gu).length() <= reach + 0.001:
+		if Vector2(cur - origin_gu).length() <= reach + 0.001 and not blocked_cells.has(cell):
 			last_ok = cur
 	return last_ok
 

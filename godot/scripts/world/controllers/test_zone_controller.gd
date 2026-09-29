@@ -720,8 +720,73 @@ func _damaging_rings(gu_rings: Dictionary, bomb_def) -> Dictionary:
 ## through one of its two flank cells, so the throw cannot squeeze the diagonal
 ## gap between two wall corners.
 func _clamp_gu_to_throw_range(target_gu: Vector2i, origin_gu: Vector2i) -> Vector2i:
-	return BlastCalculatorClass.throw_line_clamp(origin_gu, target_gu,
-		effective_throw_range_gu(), room._movement_edge_set(), room._blocked_cells)
+	var reach: float = effective_throw_range_gu()
+	var edges: Dictionary = room._movement_edge_set()
+	## A grenade flies OVER a prop it clears (Director, 2026-09-29): the arc is the one the player is shown
+	## (`ThrowArcOverlay.height_at`), asked at the fractions of the way where the line crosses the prop, against the
+	## prop's real top (`Room.prop_top_px`). The arc's apex depends on how far the throw goes, so the answer is
+	## settled by iterating: clamp for the throw asked, then again for where that clamp ended up (at most 3 times).
+	var landing: Vector2i = target_gu
+	for _i in range(3):
+		var arc_landing: Vector2i = landing
+		var over := func(cell: Vector2i, f0: float, f1: float) -> bool:
+			return _flight_clears(cell, f0, f1, origin_gu, arc_landing)
+		var next: Vector2i = BlastCalculatorClass.throw_line_clamp(origin_gu, target_gu, reach, edges,
+			room._blocked_cells, over)
+		if next == landing:
+			break
+		landing = next
+	return landing
+
+
+## Dev probe (`INFILTRAITOR_THROW_PROBE="x,y;x,y"`): where the aim clamp puts each requested target, from the agent's own
+## cell, with the flight-over rule and with the old rule (every blocked cell a wall), plus the props' real tops.
+func probe_throw_clamp(targets: Array) -> void:
+	var origin: Vector2i = room.agent.cell
+	print("[THROW-PROBE] agent at %s, reach %.1f GU" % [origin, effective_throw_range_gu()])
+	for target: Vector2i in targets:
+		var with_over: Vector2i = _clamp_gu_to_throw_range(target, origin)
+		var old_rule: Vector2i = BlastCalculatorClass.throw_line_clamp(origin, target, effective_throw_range_gu(),
+			room._movement_edge_set(), room._blocked_cells)
+		print("[THROW-PROBE] target %s -> %s (old rule: %s) | prop top at target %.0f px%s" % [target, with_over,
+			old_rule, room.prop_top_px(target), "  BLOCKED" if room._blocked_cells.has(target) else ""])
+
+
+## Dev probe: click the middle of each standing prop as the eye sees it, and report which GU the picker answers — with the
+## prop-aware pick (`pick_cell`) and with the ground plane alone (what it answered before).
+func probe_pick() -> void:
+	var live: Node = room.board3d()
+	if live == null:
+		return
+	for block: PropBlock in room._voxel_board.prop_blocks():
+		if block.voxels.is_empty():
+			continue
+		var first: Vector2i = block.voxels[0].grid_pos
+		var gu := Vector2i(first.x >> 3, first.y >> 3)
+		var mid: Vector2 = live.call("screen_of_world", Vector3(float(gu.x) + 0.5, 0.5, float(gu.y) + 0.5))
+		var ground: Vector3 = live.call("pick_ground", mid)
+		print("[PICK-PROBE] crate at %s: pick_cell -> %s, ground plane alone -> (%d, %d)" % [gu,
+			live.call("pick_cell", mid), floori(ground.x), floori(ground.z)])
+
+
+## Does a throw from `origin_gu` to `landing_gu` pass above `cell`'s prop between fractions f0..f1 of its way? The
+## lowest of the arc's heights at both ends and the middle of the crossing must clear the prop's top by a margin.
+func _flight_clears(cell: Vector2i, f0: float, f1: float, origin_gu: Vector2i, landing_gu: Vector2i) -> bool:
+	var top_px: float = room.prop_top_px(cell)
+	if top_px <= 0.0 or room._throw_arc_overlay == null:
+		return false
+	var start_pos: Vector2 = room.agent.throw_origin()
+	var launch_px: float = room.agent.throw_launch_height()
+	var apex: float = ThrowArcOverlay.arc_height_for(start_pos, room.agent._cell_to_world(landing_gu),
+		room._throw_arc_overlay.arc_height_ratio, launch_px)
+	var lowest: float = INF
+	for f in [f0, (f0 + f1) * 0.5, f1]:
+		lowest = minf(lowest, ThrowArcOverlay.height_at(f, apex, launch_px))
+	return lowest > top_px + THROW_CLEARANCE_PX
+
+
+## Margin (px) an arc must clear a prop by — about a level and a half — so a grenade skims nothing.
+const THROW_CLEARANCE_PX: float = 30.0
 
 
 ## T-ARC: fly the grenade along its arc, then detonate where it lands.

@@ -8,6 +8,7 @@
 
 extends SceneTree
 
+const PickMathRef = preload("res://godot/scripts/geometry/pick_math.gd")
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const BombDefClass = preload("res://godot/scripts/systems/destruction/bomb_def.gd")
 const BombRegistryClass = preload("res://godot/scripts/systems/destruction/bomb_registry.gd")
@@ -39,6 +40,8 @@ func _init() -> void:
 	test_flood_capped_at_bomb_range()
 	## TARGETING_MASTER_PLAN §5b — the wall-aware grenade throw clamp.
 	test_throw_line_clamp_range_and_walls()
+	test_throw_flies_over_props()
+	test_prop_pick_ray_box()
 	test_affected_slice_on_source_gu_boundary()
 	test_deterministic_selection_is_stable()
 	test_deterministic_selection_differs_by_salt_and_container()
@@ -234,6 +237,48 @@ func test_throw_line_clamp_range_and_walls() -> void:
 	else:
 		_fail("throw_line_clamp wrong: clear=%s range=%s wall_on=%s wall_off=%s block=%s squeeze=%s one_flank=%s"
 			% [clear_hit, range_hit, wall_on, wall_off, block_hit, squeezed, one_flank])
+	print("")
+
+
+## R3D-PROPS (2026-09-29) — a grenade may fly OVER a prop it clears, and never lands inside one. The callback is the
+## one seam: it is asked only for BLOCKED cells, answers per cell, and a cell it does not clear (a wall block) stops the
+## line exactly as before.
+func test_throw_flies_over_props() -> void:
+	print("[3c] throw_line_clamp: over a prop it clears, never inside it, a wall block still stops it\n")
+	var o := Vector2i(5, 5)
+	var blocked := {Vector2i(8, 5): true}
+	var clears := func(_cell: Vector2i, _f0: float, _f1: float) -> bool: return true
+	var refuses := func(_cell: Vector2i, _f0: float, _f1: float) -> bool: return false
+	var over := BlastCalculatorClass.throw_line_clamp(o, Vector2i(12, 5), 7.0, {}, blocked, clears)
+	var no_hook := BlastCalculatorClass.throw_line_clamp(o, Vector2i(12, 5), 7.0, {}, blocked)
+	var not_cleared := BlastCalculatorClass.throw_line_clamp(o, Vector2i(12, 5), 7.0, {}, blocked, refuses)
+	var onto := BlastCalculatorClass.throw_line_clamp(o, Vector2i(8, 5), 7.0, {}, blocked, clears)
+	## Only the cell it names is cleared: a wall block behind the prop still stops the line.
+	var two := {Vector2i(8, 5): true, Vector2i(10, 5): true}
+	var only_prop := func(cell: Vector2i, _f0: float, _f1: float) -> bool: return cell == Vector2i(8, 5)
+	var wall_behind := BlastCalculatorClass.throw_line_clamp(o, Vector2i(12, 5), 7.0, {}, two, only_prop)
+	var ok := over == Vector2i(12, 5) and no_hook == Vector2i(7, 5) and not_cleared == Vector2i(7, 5) \
+		and onto == Vector2i(7, 5) and wall_behind == Vector2i(9, 5)
+	if ok:
+		_pass("over→(12,5), no hook→(7,5), refused→(7,5), target inside the prop→(7,5), wall block behind→(9,5)")
+	else:
+		_fail("flight-over wrong: over=%s no_hook=%s refused=%s onto=%s wall_behind=%s"
+			% [over, no_hook, not_cleared, onto, wall_behind])
+	print("")
+
+
+## The pick ray meets a prop's box at the right distance, or misses it.
+func test_prop_pick_ray_box() -> void:
+	print("[3d] PickMath.ray_box: a ray at a prop's box\n")
+	var straight: float = PickMathRef.ray_box(Vector3(0.5, 0.5, -3.0), Vector3(0, 0, 1), Vector2i(0, 0), 1.0)
+	var above: float = PickMathRef.ray_box(Vector3(0.5, 2.0, -3.0), Vector3(0, 0, 1), Vector2i(0, 0), 1.0)
+	var beside: float = PickMathRef.ray_box(Vector3(3.5, 0.5, -3.0), Vector3(0, 0, 1), Vector2i(0, 0), 1.0)
+	var down: float = PickMathRef.ray_box(Vector3(0.5, 3.0, 0.5), Vector3(0, -1, 0), Vector2i(0, 0), 1.0)
+	var ok: bool = is_equal_approx(straight, 3.0) and above < 0.0 and beside < 0.0 and is_equal_approx(down, 2.0)
+	if ok:
+		_pass("side hit at 3.0, over the top misses, off to the side misses, from above hits the top at 2.0")
+	else:
+		_fail("ray_box wrong: straight=%s above=%s beside=%s down=%s" % [straight, above, beside, down])
 	print("")
 
 

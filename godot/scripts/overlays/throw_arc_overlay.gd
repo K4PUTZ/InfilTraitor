@@ -135,6 +135,15 @@ static func arc_point(from_pos: Vector2, to_pos: Vector2, t: float,
 	return ground_from.lerp(to_pos, t) - Vector2(0.0, height)
 
 
+## The grenade's height above the landing plane at flight time `t` (0..1), in pixels: `arc_point()`'s own height term,
+## so what a throw is asked to clear and what the player sees fly are one curve.
+static func height_at(t: float, apex_px: float, launch_px: float = 0.0) -> float:
+	var k: float = maxf(apex_px - launch_px, 0.001)
+	var b: float = 2.0 * k + 2.0 * sqrt(k * k + k * launch_px)
+	var c: float = launch_px + b
+	return launch_px + b * t - c * t * t
+
+
 ## When the apex happens, as a fraction of flight time. Exactly 0.5 for a throw
 ## that starts and ends at the same height, earlier for one thrown from above it.
 static func apex_time(apex_px: float, launch_px: float) -> float:

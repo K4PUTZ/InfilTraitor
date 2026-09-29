@@ -46,6 +46,7 @@ static var CHUNK_VOXELS: int = 16
 ## stands (the store's `occ`). The object path erased the cell when a destroyed claim was
 ## folded in, even with the other claim standing — the Director's option A (2026-09-16,
 ## "the voxels are the truth") for the same corner cells in the light's occupancy.
+const PickMathRef = preload("res://godot/scripts/geometry/pick_math.gd")
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 
 ## RENDER3D R3D-3 step 2 — the vertical-scale spike. A true cube in this camera projects
@@ -452,9 +453,59 @@ func pick_ground(screen_pos: Vector2) -> Vector3:
 
 func pick_cell(screen_pos: Vector2) -> Vector2i:
 	var hit: Vector3 = pick_ground(screen_pos)
+	## R3D-PROPS (2026-09-29): a prop has a HEIGHT, and the ground-plane hit lands on whatever is BEHIND it on screen —
+	## clicking a crate's face selected the cell past the crate. So the ray is also asked about each prop's box, and the
+	## nearest wins: what the eye sees under the cursor is what is picked. Walls are not asked (their cut-away and ghost
+	## views are what let the player click past them).
+	var prop_hit: Vector2i = _pick_prop_cell(screen_pos, hit)
+	if prop_hit != INVALID_PICK:
+		return prop_hit
 	if not is_finite(hit.x):
 		return INVALID_PICK
 	return Vector2i(floori(hit.x), floori(hit.z))
+
+
+## The GU of the standing prop the camera ray meets BEFORE it meets the ground (or the ground at all), else INVALID_PICK.
+## Boxes are one GU wide and `storeys` (or a mesh prop's `mesh_size.y`) tall in world units, stretched by
+## `VERTICAL_SCALE` like the geometry.
+func _pick_prop_cell(screen_pos: Vector2, ground_hit: Vector3) -> Vector2i:
+	var board: VoxelBoard = _room._voxel_board
+	if board == null:
+		return INVALID_PICK
+	var origin: Vector3 = _camera.project_ray_origin(screen_pos)
+	var dir: Vector3 = _camera.project_ray_normal(screen_pos)
+	var best_t: float = origin.distance_to(ground_hit) if is_finite(ground_hit.x) else INF
+	var best: Vector2i = INVALID_PICK
+	var per_axis: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	for block: PropBlock in board.prop_blocks():
+		if block.voxels.is_empty():
+			continue
+		var first: Vector2i = block.voxels[0].grid_pos
+		var gu := Vector2i(first.x >> 3, first.y >> 3)
+		var top: int = -1
+		for v: Voxel in block.voxels:
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				top = maxi(top, v.level)
+		if top < 0:
+			continue
+		var height: float = float(top + 1 - _ground_level) / float(per_axis) * VERTICAL_SCALE
+		var t: float = PickMathRef.ray_box(origin, dir, gu, height)
+		if t >= 0.0 and t < best_t:
+			best_t = t
+			best = gu
+	for inst: MeshPropInstance in board.mesh_props():
+		if inst.shattered:
+			continue
+		var t: float = PickMathRef.ray_box(origin, dir, inst.cell, inst.mesh_size.y * VERTICAL_SCALE)
+		if t >= 0.0 and t < best_t:
+			best_t = t
+			best = inst.cell
+	return best
+
+
+## Where a world point is on screen, in viewport coordinates (dev probes and tests; the ground version is below).
+func screen_of_world(p: Vector3) -> Vector2:
+	return _camera.unproject_position(p)
 
 
 ## The inverse of `pick_cell()`: where cell `cell`'s centre is on screen, in viewport coordinates.
@@ -1205,8 +1256,16 @@ func _build_mesh_props() -> void:
 		var node := PropMesh3D.new()
 		node.name = inst.id
 		_geometry_root.add_child(node)
-		node.setup(self, mesh, inst.cell, inst.level, colour, inst.mesh_size.y * 0.5)
+		## `setup()` takes a VOXEL cell and the level the prop rests ON TOP of; `inst.cell` is a GU and `inst.level` is
+		## the storey's first level, whose own top is one level above the ground. Handing them over as they were
+		## drew every mesh prop within a GU of the map origin and a level up in the air (found 2026-09-29, on the
+		## first capture that looked for them). So: rest it on the level below, and centre it on its GU.
+		node.setup(self, mesh, inst.cell, inst.level - 1, colour, inst.mesh_size.y * 0.5)
+		node.position.x = float(inst.cell.x) + 0.5
+		node.position.z = float(inst.cell.y) + 0.5
 		_mesh_prop_nodes[inst.id] = node
+		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+			print("[PROP-DEBUG] mesh prop %s gu=%s placed at world %s" % [inst.id, inst.cell, node.position])
 
 
 ## R3D-PROPS Tier 4 — `Room` calls this right after `spawn_prop_shatter()` so the intact mesh

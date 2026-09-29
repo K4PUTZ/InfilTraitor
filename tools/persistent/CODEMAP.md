@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**250 scripts · 80996 lines total** (under `godot/scripts/`)
+**251 scripts · 81244 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, prop_billboard3d.gd, prop_block.gd, prop_mesh3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_mesh3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
@@ -495,13 +495,14 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2035 lines
+extends `Node3D` · 2094 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
 > Board3DLive — THE board: the voxel world as depth-tested 3D meshes under the 2D game. DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10) built this as a spike under `spikes/`; RENDER3D R3D-3 (2026-09-17) moved it here. Since R3D-END (2026-09-24/25) it is the ONLY board: the 2D `TileMapLayer` board was deleted (the last commit that builds it is `34881f81`) and `VoxelBoard` — the class that used to render it — holds only the state this file draws. It is built after a real map load. Actors, props, fog, the overlays and the HUD still draw in 2D, on top of it, until R3D-ACTORS / R3D-PROPS. WHAT IT READS: the `VoxelStore` (visible claims, glass state, decal state) and the registries the real load built (every Slice with its half thickness and material bands, every junction corner column, every floor, deep-floor and roof Slab), plus the light and soot cell planes `VoxelBoard` keeps. It reads, it never writes game state — and it never writes a tile (the R8 hook keeps it so). THE LOOK, and how it maps from the 2D lattice: - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a GU is one world unit and a storey one unit tall (the 30° camera's cube); - only the three faces the camera can see are emitted — top (+Y), SE (+X) and SW (+Z) — the same three `VoxelLightField.surface_factor()` names; - a material is `base_color × facade luminance` (MULTIPLY), sampled in world space at 16 texels per voxel with mirrored repeat; - LIGHT AND SOOT ARE PER CELL, NOT PER VERTEX. The fragment finds its own voxel from its world position and reads bucket and soot code from a `Texture2DArray` holding the cell planes, one layer per level, so faces merge by MATERIAL only and a soot or light change is a layer upload instead of a remesh (a remesh for colour changes cost ~240 ms on the Moto, §15.9); - the terms are applied in a fixed order: face tone × bucket luminance × per-face soot × floor depth dim, all in sRGB, the product decoded once (`BoardLook` owns the constants). ⚠️ NOT A PARITY CLAIM against the deleted 2D board: facade continuity is world-space (not per wall run), a true cube projects 19.6 px per level where the 2D sprites expect 20, and R3D-LOOK owns whatever else differs. Compare against the 2D board only from a worktree of `34881f81`.
 
 **Constants / tuning**
+- `PickMathRef` = `preload("res://godot/scripts/geometry/pick_math.gd")`
 - `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `VERTICAL_SCALE_MATCHED` = `158.0 / 156.8`
 - `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
@@ -795,6 +796,16 @@ extends `Node3D` · 2035 lines
 `godot/scripts/geometry/passage_query.gd`
 
 > PassageQuery — MATERIALS_MASTER_PLAN M3-2. "Can the agent get through this wall, and how?" PURE. It reads `Voxel.damage_state` and writes nothing — no caches, no signals, no side effects — so a prediction can ask it about a hypothetical world exactly the way the committed one is asked (PREDICTION_MASTER_PLAN's split: `build_plan()` is pure, `delta.commit()` is the only writer). THE RULE, Director 2026-08-21: > *"uma parede comum é feita de um par de slices, uma em cada GU anexas. Para > o agente passar agachado (ou transpor uma janela), é necessário que as duas > estejam desobstruídas. Se tiver 4 slices destruídas (2 pares empilhados), o > agente consegue entrar em pé."* ⚠️ THE UNIT THAT STACKS IS THE **STOREY**, not the voxel level, and that correction is the whole of M3-0. The Director's "slice" is *one storey of wall on one GU face* — this file calls it a **storey-face**. The code's `Slice` class is the WHOLE face across every storey (128 voxels at storey_count 2), a different object with the same name. Confusing the two is what made three earlier readings of this rule wrong. Checked, not transcribed: the baked agent is 222 px against `WALL_FLOOR_STEP_PX` 158 — **1.41 storeys tall**. A one-storey opening is 0.71 of him (crouch); two storeys is 1.41x (standing). ⚠️ THIS ANSWERS GEOMETRY, NOT REACHABILITY. `passage_class()` says an opening of a given size exists somewhere in this wall; it does NOT say the agent can stand in front of it. A hole two storeys up is a window, and whether he can reach it is the movement system's question — which is why `clear_storeys()` is public and returns WHICH storeys are open, rather than this file quietly deciding that only an opening at storey 0 counts. The Director's own wording covers both cases in one sentence (*"passar agachado (ou transpor uma janela)"*), so the distinction is real and is not this query's to make.
+
+---
+
+### `pick_math.gd`
+
+`class_name PickMath` · extends `RefCounted` · 27 lines
+
+`godot/scripts/geometry/pick_math.gd`
+
+> PickMath — the pure geometry of picking (kept out of `Board3DLive`, which needs the autoloads and so cannot be loaded headless by a selftest).
 
 ---
 
@@ -1895,7 +1906,7 @@ extends `Node2D` · 252 lines
 
 ### `throw_arc_overlay.gd`
 
-`class_name ThrowArcOverlay` · extends `Node2D` · 189 lines
+`class_name ThrowArcOverlay` · extends `Node2D` · 198 lines
 
 `godot/scripts/overlays/throw_arc_overlay.gd`
 
@@ -2108,7 +2119,7 @@ extends `Node2D` · 42 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1682 lines
+`class_name BlastCalculator` · 1692 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -3456,13 +3467,14 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2268 lines
+extends `SceneTree` · 2313 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
 > DESTRUCTION_MASTER_PLAN Part 3 — BlastCalculator selftest. Rodar: godot --headless --script res://godot/scripts/tools/blast_calculator_selftest.gd Synthetic fixtures only (SliceGenerator/SlabGenerator against a hand-built Edge list), same discipline as roof_slab_selftest.gd/slab_render_selftest.gd — no real map involved. Real-map end-to-end proof is the screenshot captures (INFILTRAITOR_CAPTURE_ACTION=test_zone_menu/test_zone_detonate).
 
 **Constants / tuning**
+- `PickMathRef` = `preload("res://godot/scripts/geometry/pick_math.gd")`
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `BombDefClass` = `preload("res://godot/scripts/systems/destruction/bomb_def.gd")`
 - `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
@@ -3479,6 +3491,8 @@ extends `SceneTree` · 2268 lines
 - `func test_flood_unobstructed_rings() -> void:`
 - `func test_flood_stops_at_blocked_edge() -> void:`
 - `func test_throw_line_clamp_range_and_walls() -> void:`
+- `func test_throw_flies_over_props() -> void:`
+- `func test_prop_pick_ray_box() -> void:`
 - `func test_flood_capped_at_bomb_range() -> void:`
 - `func test_affected_slice_on_source_gu_boundary() -> void:`
 - `func test_deterministic_selection_is_stable() -> void:`
@@ -5169,7 +5183,7 @@ extends `Node2D` · 32 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1542 lines
+`class_name TestZoneController` · 1607 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5440,7 +5454,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11081 lines
+extends `Node2D` · 11114 lines
 
 `godot/scripts/world/room.gd`
 

@@ -4658,6 +4658,31 @@ func _prop_ring_at(gu_rings: Dictionary, gu: Vector2i) -> int:
 	return best
 
 
+## R3D-PROPS (2026-09-29): how tall the prop standing on GU `gu` is, in the 2D world's pixels above the ground (0.0 = no
+## prop there, or one fully destroyed). Read off the prop's REAL geometry — its standing voxels' highest level, or a mesh
+## prop's box — so a throw can be asked whether it flies over it; `WALL_FLOOR_STEP_PX` is one storey, eight levels.
+func prop_top_px(gu: Vector2i) -> float:
+	if _voxel_board == null:
+		return 0.0
+	var per_level: float = WALL_FLOOR_STEP_PX / float(GeometryCoords.LEVELS_PER_STOREY)
+	var ground: int = _voxel_board.ground_plane_level()
+	for block: PropBlock in _voxel_board.prop_blocks():
+		if block.voxels.is_empty():
+			continue
+		var first: Vector2i = block.voxels[0].grid_pos
+		if Vector2i(first.x >> 3, first.y >> 3) != gu:
+			continue
+		var top: int = -1
+		for v: Voxel in block.voxels:
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				top = maxi(top, v.level)
+		return 0.0 if top < 0 else float(top + 1 - ground) * per_level
+	for inst: MeshPropInstance in _voxel_board.mesh_props():
+		if inst.cell == gu and not inst.shattered:
+			return float(inst.level - ground) * per_level + inst.mesh_size.y * WALL_FLOOR_STEP_PX
+	return 0.0
+
+
 ## A point in VOXEL units (continuous) through the same 90-degree rotation `cell_to_base()` applies to a cell: the cell
 ## it is in maps as a cell, and the offset inside it turns with the cell's own axes. Used for debris, whose centre is
 ## free to sit anywhere, not on a cell.
@@ -10171,6 +10196,14 @@ func _run_auto_screenshot_capture() -> void:
 			_fow_controller.reveal_around(row_center, 12)
 		for _c in range(5):
 			await get_tree().process_frame
+		var probe_env := OS.get_environment("INFILTRAITOR_THROW_PROBE")
+		if probe_env != "":
+			var probe_targets: Array = []
+			for part in probe_env.split(";", false):
+				var xy := part.split(",")
+				probe_targets.append(Vector2i(int(xy[0]), int(xy[1])))
+			_test_zone_controller.probe_throw_clamp(probe_targets)
+			_test_zone_controller.probe_pick()
 		if capture_action != "test_zone_view":
 			## The floor grenades were retired from PLAYGROUND 2026-08-17 (see
 			## _populate_test_zone_if_playground()), so this action seeds its own

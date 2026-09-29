@@ -512,7 +512,10 @@ func test_7_ember_wave_on_real_wood(built: Dictionary, bomb_def, ctx: Dictionary
 		if seen.has(key):
 			duplicated += 1
 		seen[key] = true
-		if holes.has(key):
+		## 2026-09-29: wood now burns (burn_consumption 0.2, Director), so some of its embers are the FLAGGED kind
+		## `_mark_burnt_embers()` documents as sitting ON the hole the fire opened. The survivor predicate is pinned for
+		## every UNFLAGGED ember, exactly as before.
+		if holes.has(key) and not bool(e.get("burnt", false)):
 			on_a_hole += 1
 		if MaterialResistanceTable.flammability(String(material_of.get(key, ""))) <= 0.0:
 			non_combustible += 1

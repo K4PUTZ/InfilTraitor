@@ -3,24 +3,28 @@
   "schema_version": 3,
   "id": "PROPS",
   "meta": {
-    "note": "R3D-PROPS test map. Throw the test grenade at GU (6,5) — empty on purpose — to compare ring-proportional prop effects: wood_table at (5,5)/(7,5 is pistol) ring1 should shatter hard, (4,5) ring2 shatters lighter, (3,5) ring3 stays standing (destroy_ring_weights[3]==0 for frag_grenade), (2,5) is out of blast range entirely as a clean control. pistol_prop at (7,5)/(8,5) shows the soot gradient (Tier 3 never shatters). crate_full at (9,5)/(6,6) are the existing Tier 1/2 voxel path, unchanged, for reference."
+    "note": "R3D-PROPS test map, turned 180 degrees (2026-09-29) so the default view faces the props, on an 18x12 board. Throw the test grenade at GU [11, 6] - empty on purpose - to compare ring-proportional prop effects: the wood_tables at [12, 6] (ring 1, shatters hard), [13, 6] (ring 2), [14, 6] (ring 3, stays standing: destroy_ring_weights[3]==0 for frag_grenade) and [15, 6] (out of blast range, a clean control). pistol_prop at [10, 6] and [9, 6] shows the soot gradient (Tier 3 never shatters). crate_full at [8, 6] and [11, 5], and crate_plywood at [10, 5], are the Tier 1/2 voxel path: hollow crates, wood vs plywood."
   },
   "sections": {
     "board": {
       "v": 1,
-      "inner_size": [14, 10],
+      "inner_size": [18, 12],
       "buffer": 1,
       "floor_tile": "floor_SE"
     },
     "actors": {
       "v": 1,
-      "agent_start": [12, 1],
+      "agent_start": [5, 10],
       "guards": []
     },
     "floor_zones": {
       "v": 2,
       "items": [
-        { "gu": [0, 0], "size": [14, 10], "material": "concrete" }
+        {
+          "gu": [0, 0],
+          "size": [18, 12],
+          "material": "concrete"
+        }
       ]
     },
     "damage_materials": {
@@ -30,15 +34,15 @@
     "props": {
       "v": 1,
       "items": [
-        { "def": "wood_table", "gu": [5, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "pistol_prop", "gu": [7, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "wood_table", "gu": [4, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "pistol_prop", "gu": [8, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "wood_table", "gu": [3, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "crate_full", "gu": [9, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "wood_table", "gu": [2, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "crate_full", "gu": [6, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "crate_plywood", "gu": [7, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 }
+        { "def": "wood_table", "gu": [12, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "pistol_prop", "gu": [10, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "wood_table", "gu": [13, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "pistol_prop", "gu": [9, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "wood_table", "gu": [14, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "crate_full", "gu": [8, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "wood_table", "gu": [15, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "crate_full", "gu": [11, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "crate_plywood", "gu": [10, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 }
       ]
     }
   }

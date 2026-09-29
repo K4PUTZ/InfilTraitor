@@ -73,9 +73,15 @@ func _wave_soot(entry: Dictionary) -> int:
 ## A face already clean stays clean, so a cell only fades on the faces it is
 ## actually going to scorch.
 static func lightened(faces: Vector3i, by: int) -> Vector3i:
+	return Vector3i(_lightened_face(faces.x, by), _lightened_face(faces.y, by), _lightened_face(faces.z, by))
+
+
+## A charred face is settled at `by == 0`; one rung up it reads as the darkest ordinary tone, then lightens like any.
+static func _lightened_face(face: int, by: int) -> int:
 	var clean: int = BlastCalculator.FACE_SOOT_CLEAN
-	return Vector3i(
-		mini(faces.x + by, clean), mini(faces.y + by, clean), mini(faces.z + by, clean))
+	if face == BlastCalculator.FACE_SOOT_CHAR:
+		return face if by <= 0 else mini(by - 1, clean)
+	return mini(face + by, clean)
 
 
 func apply(kind: String, entry: Dictionary, voxel_board, smoke_overlay) -> int:

@@ -4700,7 +4700,9 @@ func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Col
 	var base_xy := PerspectiveMapperClass.cell_to_base(cell, _active_perspective, _base_voxel_size())
 	var soot_level: Dictionary = _soot_map.get(_voxel_board.ground_plane_level() - 1, {})
 	var tone: int = int(soot_level.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
-	if tone >= 0 and tone < DEBRIS_SOOT_MULT.size():
+	if tone == BlastCalculator.FACE_SOOT_CHAR:
+		k *= 0.03
+	elif tone >= 0 and tone < DEBRIS_SOOT_MULT.size():
 		k *= DEBRIS_SOOT_MULT[tone]
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 		_debris_tone_hist[tone] = int(_debris_tone_hist.get(tone, 0)) + 1
@@ -4750,6 +4752,12 @@ func _print_prop_ring_map(gu_rings: Dictionary) -> void:
 		var view_cell := PerspectiveMapperClass.cell_from_base(base_cell, _active_perspective, base_size)
 		var g := Vector2i(view_cell.x >> 3, view_cell.y >> 3)
 		soot_per_gu[g] = int(soot_per_gu.get(g, 0)) + 1
+	var charred_total: int = 0
+	for lvl in _soot_map:
+		for tone in (_soot_map[lvl] as Dictionary).values():
+			if int(tone) == BlastCalculator.FACE_SOOT_CHAR:
+				charred_total += 1
+	print("[PROP-DEBUG] _soot_map holds %d CHARRED cell(s)" % charred_total)
 	print("[PROP-DEBUG] ring map around %s (ring | blocked | soot cells at level %d), rows = y, cols = x:" % [src, ground - 1])
 	for y in range(src.y - 3, src.y + 4):
 		var line := ""
@@ -5554,11 +5562,15 @@ func stamp_soot(writes: Dictionary) -> Dictionary:
 		var out_level: Dictionary = {}
 		for view_cell: Vector2i in level_writes:
 			var tone: int = int(level_writes[view_cell])
-			if tone < 0 or tone >= BlastCalculator.FACE_SOOT_CLEAN:
+			if tone < 0 or tone == BlastCalculator.FACE_SOOT_CLEAN or tone > BlastCalculator.FACE_SOOT_CHAR:
 				continue
 			var base_xy := PerspectiveMapperClass.cell_to_base(
 				view_cell, _active_perspective, base_size)
-			if tone < int(stored.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN)):
+			var current: int = int(stored.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
+			## CHARRED wins over every tone and nothing overwrites it: what fire touched stays black.
+			if current == BlastCalculator.FACE_SOOT_CHAR:
+				continue
+			if tone == BlastCalculator.FACE_SOOT_CHAR or tone < current:
 				stored[base_xy] = tone
 				out_level[view_cell] = tone
 		if not out_level.is_empty():

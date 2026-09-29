@@ -34,6 +34,7 @@ const SOOT_TEX_SIZE: int = 512
 ## reference back to `VoxelBoard` (that would be a circular class dependency —
 ## `VoxelBoard` already depends on this file for `BUCKET_UNWRITTEN` etc.).
 var _clean_r: int
+var _max_r: int      ## the largest valid soot code (CLEAN is not the largest since the charred tone, R3D-PROPS)
 var _max_bucket: int
 var _images: Dictionary = {}     ## level -> Image (FORMAT_RG8)
 var _textures: Dictionary = {}   ## level -> ImageTexture
@@ -41,8 +42,9 @@ var _dirty: Dictionary = {}      ## level -> true, cleared by flush()
 var _out_of_range_reported: bool = false
 
 
-func _init(clean_r: int, max_bucket: int) -> void:
+func _init(clean_r: int, max_bucket: int, max_r: int = -1) -> void:
 	_clean_r = clean_r
+	_max_r = max_r if max_r >= 0 else clean_r
 	_max_bucket = max_bucket
 
 
@@ -75,7 +77,7 @@ func write_soot(level: int, cell: Vector2i, code: int) -> void:
 			push_error("[CellPlaneStore] PERF-P2: cell %s is outside the %dx%d soot plane — raise SOOT_TEX_SIZE" % [cell, SOOT_TEX_SIZE, SOOT_TEX_SIZE])
 		return
 	var img := _image_for(level)
-	var c: int = clampi(code, 0, _clean_r)
+	var c: int = clampi(code, 0, _max_r)
 	var was: Color = img.get_pixel(p.x, p.y)
 	if was.r8 == c:
 		return

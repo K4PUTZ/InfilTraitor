@@ -99,6 +99,7 @@ uniform ivec2 plane_origin = ivec2(64, 64);
 uniform int plane_size = 512;
 uniform float bucket_lum[12];
 uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
+uniform float soot_char = 0.03;
 uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
 varying vec3 v_world;
@@ -169,19 +170,19 @@ void fragment() {
 	int level = v.y + mesh_ground_level;
 	ivec2 pc = ivec2(v.x, v.z) + plane_origin;
 	int layer = level - level_base;
-	float code = 124.0;
+	float code = 172.0;
 	int bucket = 255;
 	if (layer >= 0 && layer < level_count && pc.x >= 0 && pc.y >= 0
 			&& pc.x < plane_size && pc.y < plane_size) {
 		vec4 t = texelFetch(cell_plane, ivec3(pc, layer), 0);
-		code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 124.0);
+		code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 215.0);
 		bucket = int(floor(t.g * 255.0 + 0.5));
 	}
 	int face = v_normal.y > 0.5 ? 0 : (v_normal.x > 0.5 ? 1 : 2);
-	float ring = face == 0 ? floor(code / 25.0)
-			: (face == 1 ? floor(mod(code, 25.0) / 5.0) : mod(code, 5.0));
+	float ring = face == 0 ? floor(code / 36.0)
+			: (face == 1 ? floor(mod(code, 36.0) / 6.0) : mod(code, 6.0));
 	float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];
-	f *= ring < 3.5 ? soot_mult[int(ring)] : 1.0;
+	f *= ring < 3.5 ? soot_mult[int(ring)] : (ring > 4.5 ? soot_char : 1.0);
 	int rel = level + rel_offset;
 	if (rel < 0) {
 		f *= depth_dim[min(-rel - 1, 4)];
@@ -1141,6 +1142,7 @@ func _build_plane() -> void:
 		m.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		m.set_shader_parameter("bucket_lum", ladder)
 		m.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
+		m.set_shader_parameter("soot_char", BoardLook.SOOT_CHAR_MULT)
 		m.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
 		m.set_shader_parameter("depth_dim", dims)
 	for pm: ShaderMaterial in _prop_materials:
@@ -1152,6 +1154,7 @@ func _build_plane() -> void:
 		pm.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		pm.set_shader_parameter("bucket_lum", ladder)
 		pm.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
+		pm.set_shader_parameter("soot_char", BoardLook.SOOT_CHAR_MULT)
 
 
 ## R3D-PROPS: a prop mesh's `ShaderMaterial` (`prop_mesh3d.gdshader`) asks to be kept lit by every
@@ -1170,6 +1173,7 @@ func register_prop_light_material(mat: ShaderMaterial) -> void:
 		mat.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		mat.set_shader_parameter("bucket_lum", PackedFloat32Array(_light_ladder))
 		mat.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
+		mat.set_shader_parameter("soot_char", BoardLook.SOOT_CHAR_MULT)
 
 
 func unregister_prop_light_material(mat: ShaderMaterial) -> void:

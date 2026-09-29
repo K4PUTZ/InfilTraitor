@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**250 scripts · 80922 lines total** (under `godot/scripts/`)
+**250 scripts · 80979 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2031 lines
+extends `Node3D` · 2035 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -513,7 +513,7 @@ extends `Node3D` · 2031 lines
 
 ### `board_look.gd`
 
-`class_name BoardLook` · extends `RefCounted` · 27 lines
+`class_name BoardLook` · extends `RefCounted` · 30 lines
 
 `godot/scripts/geometry/board_look.gd`
 
@@ -521,6 +521,7 @@ extends `Node3D` · 2031 lines
 
 **Constants / tuning**
 - `SOOT_FACE_MULT` = `[0.38, 0.60, 0.76, 0.90]`
+- `SOOT_CHAR_MULT` = `0.03`
 - `FACE_TONE` = `[1.0, 0.975, 0.945]`
 
 ---
@@ -1051,7 +1052,7 @@ extends `Node3D` · 2031 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2386 lines
+`class_name VoxelBoard` · extends `Node2D` · 2388 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -2056,7 +2057,7 @@ extends `Node2D` · 42 lines
 
 ### `cell_plane_store.gd`
 
-`class_name CellPlaneStore` · extends `RefCounted` · 182 lines
+`class_name CellPlaneStore` · extends `RefCounted` · 184 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
@@ -2107,7 +2108,7 @@ extends `Node2D` · 42 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1674 lines
+`class_name BlastCalculator` · 1682 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -2117,6 +2118,7 @@ extends `Node2D` · 42 lines
 - `GRENADE_LEVEL` = `0`
 - `NO_EPICENTER_BIAS` = `Vector2i(-999999, -999999)`
 - `FACE_SOOT_CLEAN` = `4`
+- `FACE_SOOT_CHAR` = `5`
 
 ---
 
@@ -2166,7 +2168,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_entry_writer.gd`
 
-`class_name DetonationEntryWriter` · extends `RefCounted` · 223 lines
+`class_name DetonationEntryWriter` · extends `RefCounted` · 229 lines
 
 `godot/scripts/systems/destruction/detonation_entry_writer.gd`
 
@@ -2195,7 +2197,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3043 lines
+`class_name DetonationPlanBuilder` · 3063 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -5438,7 +5440,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11055 lines
+extends `Node2D` · 11067 lines
 
 `godot/scripts/world/room.gd`
 

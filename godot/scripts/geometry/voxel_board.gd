@@ -58,8 +58,10 @@ const FLOOR_DEPTH_DIM: Array[float] = [1.0, 0.70, 0.45, 0.34, 0.28]
 const LIGHT_BUCKET_COUNT: int = 12
 
 ## The soot code of an untouched face (base-5 top*25 + se*5 + sw, 4 = clean per face) and the size of the code space.
-const FACE_SOOT_CODE_CLEAN: int = 124
-const FACE_SOOT_CODE_COUNT: int = 125
+## R3D-PROPS (2026-09-29): base 6, not 5 — a face's digit is 0..3 a soot tone, 4 clean, 5 CHARRED (`BlastCalculator.FACE_SOOT_CHAR`).
+## 6^3 = 216 codes fit the plane's 8-bit R channel; clean = 4*36 + 4*6 + 4.
+const FACE_SOOT_CODE_CLEAN: int = 172
+const FACE_SOOT_CODE_COUNT: int = 216
 
 ## ABLATION — `INFILTRAITOR_NO_LIGHT=1` REMOVES THE LIGHT SYSTEM FROM THE RUN.
 ##
@@ -932,7 +934,7 @@ const _CellPlaneStoreScript: GDScript = preload("res://godot/scripts/systems/cel
 const BUCKET_UNWRITTEN: int = _CellPlaneStoreScript.BUCKET_UNWRITTEN
 const SOOT_PLANE_ORIGIN: Vector2i = _CellPlaneStoreScript.SOOT_PLANE_ORIGIN
 const SOOT_TEX_SIZE: int = _CellPlaneStoreScript.SOOT_TEX_SIZE
-var _cell_planes = _CellPlaneStoreScript.new(FACE_SOOT_CODE_CLEAN, LIGHT_BUCKET_COUNT - 1)
+var _cell_planes = _CellPlaneStoreScript.new(FACE_SOOT_CODE_CLEAN, LIGHT_BUCKET_COUNT - 1, FACE_SOOT_CODE_COUNT - 1)
 
 
 ## Record one cell's soot code. Thin forwarder — see `CellPlaneStore.write_soot()`.

@@ -26,6 +26,7 @@ uniform ivec2 plane_origin = ivec2(64, 64);
 uniform int plane_size = 512;
 uniform float bucket_lum[12];
 uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
+uniform float soot_char = 0.03;
 uniform vec3 key_dir = vec3(-0.45, 0.8, 0.4);
 
 varying vec3 v_world;
@@ -45,9 +46,9 @@ void fragment() {
 		vec4 t = texelFetch(cell_plane, ivec3(pc, layer), 0);
 		int bucket = int(floor(t.g * 255.0 + 0.5));
 		lum = bucket_lum[clamp(bucket, 0, 11)];
-		float code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 124.0);
-		float ring = floor(code / 25.0);
-		soot = ring < 3.5 ? soot_mult[int(ring)] : 1.0;
+		float code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 215.0);
+		float ring = floor(code / 36.0);
+		soot = ring < 3.5 ? soot_mult[int(ring)] : (ring > 4.5 ? soot_char : 1.0);
 	}
 	float key = 0.72 + 0.28 * max(dot(v_normal, normalize(key_dir)), 0.0);
 	vec3 base = albedo.rgb;

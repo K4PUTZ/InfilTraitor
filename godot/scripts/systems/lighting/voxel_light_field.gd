@@ -467,13 +467,13 @@ func _lamp_intensity(gu: Vector2i, level: int, top_bucket: int) -> float:
 ## was 4. Derived from the constant rather than written as a literal so the two
 ## can never drift; the same base appears (as 5 and 25) in `Board3DLive`'s opaque shader, which
 ## cannot import it.
-const FACE_SOOT_BASE: int = BlastCalculator.FACE_SOOT_CLEAN + 1
+const FACE_SOOT_BASE: int = BlastCalculator.FACE_SOOT_CHAR + 1
 
 
 static func encode_face_soot(faces: Vector3i) -> int:
-	var t: int = clampi(faces.x, 0, BlastCalculator.FACE_SOOT_CLEAN)
-	var se: int = clampi(faces.y, 0, BlastCalculator.FACE_SOOT_CLEAN)
-	var sw: int = clampi(faces.z, 0, BlastCalculator.FACE_SOOT_CLEAN)
+	var t: int = clampi(faces.x, 0, BlastCalculator.FACE_SOOT_CHAR)
+	var se: int = clampi(faces.y, 0, BlastCalculator.FACE_SOOT_CHAR)
+	var sw: int = clampi(faces.z, 0, BlastCalculator.FACE_SOOT_CHAR)
 	return t * FACE_SOOT_BASE * FACE_SOOT_BASE + se * FACE_SOOT_BASE + sw
 
 

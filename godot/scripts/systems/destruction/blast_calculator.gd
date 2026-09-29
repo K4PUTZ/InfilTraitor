@@ -48,6 +48,10 @@ const NO_EPICENTER_BIAS := Vector2i(-999999, -999999)
 ## 6³ = 216 codes and peak at id 5183 — over. Four need 5³ = 125 and peak at
 ## 2999.
 const FACE_SOOT_CLEAN := 4
+## R3D-PROPS (2026-09-29, Director): "só o que for tocado por fogo/brasa fica totalmente carbonizado" — a tone past clean
+## in the digit space, much darker than tone 0, that no soot tone may overwrite (see `Room.stamp_soot()`). Written for
+## every voxel an ember lights (`DetonationPlanBuilder._build_ember_wave()`), so a burnt material ends black, walls included.
+const FACE_SOOT_CHAR := 5
 
 
 ## GU cell -> ring index (0 = source GU). Wall-aware BFS, capped at
@@ -1607,6 +1611,8 @@ static func soot_tone(cell: Vector2i, level: int, band: int, touches_hole: bool)
 
 
 static func soot_code(ring: int) -> int:
+	if ring == FACE_SOOT_CHAR:
+		return VoxelLightField.encode_face_soot(Vector3i(ring, ring, ring))
 	if ring < 0 or ring >= FACE_SOOT_CLEAN:
 		return VoxelBoard.FACE_SOOT_CODE_CLEAN
 	return VoxelLightField.encode_face_soot(Vector3i(ring, ring, ring))
@@ -1615,6 +1621,8 @@ static func soot_code(ring: int) -> int:
 ## The tone a plane code shows (its darkest face), or -1 for clean.
 static func soot_ring_of_code(code: int) -> int:
 	var f: Vector3i = VoxelLightField.decode_face_soot(code)
+	if f.x == FACE_SOOT_CHAR and f.y == FACE_SOOT_CHAR and f.z == FACE_SOOT_CHAR:
+		return FACE_SOOT_CHAR
 	var ring: int = mini(f.x, mini(f.y, f.z))
 	return ring if ring < FACE_SOOT_CLEAN else -1
 

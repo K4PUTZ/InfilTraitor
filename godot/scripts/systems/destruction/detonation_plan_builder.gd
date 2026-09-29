@@ -1554,6 +1554,15 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		if not holes.is_empty() or s.has("real_destroyed"):
 			s["hole_cells"] = holes
 		s["soot_todo"] = _soot_todo(s)
+		## The charred voxels go in FIRST, and the loop below never overwrites them (`char` is above every tone).
+		var char_codes: Dictionary = s["soot_codes"]
+		var char_writes: Dictionary = (s["delta"] as WorldDelta).scorch_writes
+		print("[E-CHAR] %d voxel(s) marked CHARRED by embers" % (s.get("char_cells", {}) as Dictionary).size())
+		for ckey: Vector3i in s.get("char_cells", {}):
+			char_codes[ckey] = BlastCalculatorClass.FACE_SOOT_CHAR
+			if not char_writes.has(ckey.z):
+				char_writes[ckey.z] = {}
+			(char_writes[ckey.z] as Dictionary)[Vector2i(ckey.x, ckey.y)] = BlastCalculatorClass.FACE_SOOT_CHAR
 		if OS.get_environment("INFILTRAITOR_HOLE_EQUIV") == "1":
 			_hole_equiv(s)
 	var todo: Array = s["soot_todo"]
@@ -1569,7 +1578,8 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		var cell := Vector2i(key.x, key.y)
 		var tone: int = BlastCalculatorClass.soot_tone(cell, key.z, int(row[1]),
 			_touches_hole(s, key))
-		if tone >= 0 and (not soot_codes.has(key) or tone < int(soot_codes[key])):
+		if tone >= 0 and int(soot_codes.get(key, 0)) != BlastCalculatorClass.FACE_SOOT_CHAR \
+				and (not soot_codes.has(key) or tone < int(soot_codes[key])):
 			var shown: int = -1 if voxel_board == null else \
 				BlastCalculatorClass.soot_ring_of_code(voxel_board.cell_soot_at(key.z, cell))
 			if shown < 0 or tone < shown:
@@ -2300,6 +2310,7 @@ static func _build_ember_wave(s: Dictionary) -> void:
 			if not vis or state == Voxel.DamageState.DESTROYED:
 				continue
 			seen[ncell] = true
+			_mark_charred(s, neighbour)
 			_append(waves["ember"], ring, {
 				"cell": neighbour.grid_pos,
 				"level": neighbour.level,
@@ -2328,6 +2339,14 @@ static func _build_ember_wave(s: Dictionary) -> void:
 				"EMBERSEED", neighbour.grid_pos, neighbour.level), flammability,
 				_radius_of(neighbour.grid_pos, epicenter))
 			_climb_from(ncell, ring, s, seen, waves["ember"])
+
+
+## R3D-PROPS (2026-09-29, Director): a voxel an ember lights ends CHARRED — the soot map's darkest tone, black. Collected here
+## (the fire phase runs before the soot phase) and stamped by `_phase_soot()`.
+static func _mark_charred(s: Dictionary, voxel: Voxel) -> void:
+	if not s.has("char_cells"):
+		s["char_cells"] = {}
+	(s["char_cells"] as Dictionary)[Vector3i(voxel.grid_pos.x, voxel.grid_pos.y, voxel.level)] = true
 
 
 ## E-EMBER-02 (Director, 2026-08-13): *"os voxels também se propagam para cima,
@@ -2375,6 +2394,7 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 		if _hash_unit("EMBERCLIMB", voxel.grid_pos, voxel.level) > chance:
 			return
 		seen[up] = true
+		_mark_charred(s, voxel)
 		var jitter: float = _hash_unit("EMBERDELAY", voxel.grid_pos, voxel.level)
 		_append(ember_by_ring, ring, {
 			"cell": voxel.grid_pos,

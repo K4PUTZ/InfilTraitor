@@ -11,6 +11,9 @@ extends RefCounted
 ## Soot ring 0..3 (0 = the darkest), multiplied into a face's colour. SOOT-STAMP 2026-09-22 (lighter, softer).
 const SOOT_FACE_MULT: Array[float] = [0.38, 0.60, 0.76, 0.90]
 
+## A CHARRED face (`BlastCalculator.FACE_SOOT_CHAR`): what fire and embers leave. Far below soot tone 0 (0.38): near black.
+const SOOT_CHAR_MULT: float = 0.03
+
 ## Per-face brightness, index 0 = top, 1 = the SE side, 2 = the SW side (a face can only be darkened against the art).
 const FACE_TONE: Array[float] = [1.0, 0.975, 0.945]
 

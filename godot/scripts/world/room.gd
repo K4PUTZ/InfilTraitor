@@ -10184,6 +10184,20 @@ func _run_auto_screenshot_capture() -> void:
 				push_warning("[SCREENSHOT-HOOK-01] %s: no grenade to detonate" % capture_action)
 				get_tree().quit(1)
 				return
+			## INFILTRAITOR_CAPTURE_VIEW (2026-09-29): rotate BEFORE the blast, so a recording sees it from that side
+			## (`CAPTURE_ROTATE_AFTER` rotates once it is over, which is a still's tool, not a video's).
+			var view_env := OS.get_environment("INFILTRAITOR_CAPTURE_VIEW")
+			if view_env in ["N", "E", "S", "W"]:
+				_set_perspective(view_env)
+				for _v in range(20):
+					await get_tree().process_frame
+				var view_gu: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
+				if _camera_controller != null and agent != null:
+					_camera_controller.focus_on(agent._cell_to_world(view_gu))
+				if _fow_controller != null:
+					_fow_controller.reveal_around(view_gu, 12)
+				for _v2 in range(10):
+					await get_tree().process_frame
 			## D22-INPUT-01: click the GU floor cell, not the sprite.
 			var g_cell: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
 			var click := InputEventMouseButton.new()

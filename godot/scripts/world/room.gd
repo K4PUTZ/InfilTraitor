@@ -219,6 +219,7 @@ var _base_damage_claims: Dictionary = {}
 ## "rot"}; replayed after the 3D board is rebuilt, because rebuilding it drops the piles.
 var _base_shattered_props: Dictionary = {}
 var _base_debris: Dictionary = {}
+var _debris_tone_hist: Dictionary = {}   ## PROP_DEBUG only: soot tone -> pieces placed on it
 
 ## CRACK-02 S-3 (GLASS_MASTER_PLAN §13.2) — EVERY CRACK, IN BASE COORDS.
 ##
@@ -1579,10 +1580,12 @@ var vfx_debris_pile_max_pieces: int = 5
 var vfx_debris_pile_spread: float = 0.35  ## world units (1.0 = 1 GU) a piece can jitter from the break point
 ## A crate's fallen voxels land this fraction of the way to where the glass mechanism would throw them (1.0 = the
 ## full glass scatter): most of the debris piles up under the object, a little reaches the cells around it.
-var vfx_prop_debris_scatter: float = 0.45
+var vfx_prop_debris_scatter: float = 0.3
+## Every Nth fallen voxel is thrown the FULL glass scatter, so a little debris reaches the GUs around the break.
+const PROP_DEBRIS_FAR_EVERY: int = 5
 ## Ground debris darkens with the soot on the cell it lies on, by the same per-tone multipliers a Tier 3 prop's
 ## shader uses (`prop_mesh3d.gdshader` `soot_mult`, tone 0 = darkest).
-const DEBRIS_SOOT_MULT: Array[float] = [0.38, 0.60, 0.76, 0.90]
+const DEBRIS_SOOT_MULT: Array[float] = [0.10, 0.35, 0.60, 0.85]
 ## Per-material darkening of the debris art (the wood debris read too close to plywood).
 const DEBRIS_TINT_SCALE: Dictionary = {"wood": 0.72}
 var vfx_smoke_darken_wood: float = 0.55   ## Color.darkened() amount — wood smoke reads darker
@@ -4699,6 +4702,11 @@ func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Col
 	var tone: int = int(soot_level.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
 	if tone >= 0 and tone < DEBRIS_SOOT_MULT.size():
 		k *= DEBRIS_SOOT_MULT[tone]
+	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+		_debris_tone_hist[tone] = int(_debris_tone_hist.get(tone, 0)) + 1
+	## The pile shader is unshaded and multiplies in LINEAR space: a plain 0.27 displays as ~0.55 and "sooted" debris
+	## stays pale. The factor is meant as a DISPLAYED brightness, so it is taken through the gamma (hue untouched).
+	k = pow(k, 2.2)
 	return Color(tint.r * k, tint.g * k, tint.b * k, tint.a)
 
 
@@ -4838,10 +4846,12 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 			by_material[material_id], _slab_registry.all_slabs(), impulse)
 		if landings.is_empty():
 			continue
-		for l in landings:
+		for li in range(landings.size()):
+			var l: Dictionary = landings[li]
 			var src: Vector2i = l["origin_pos"]
 			var far: Vector2i = l["grid_pos"]
-			l["grid_pos"] = src + Vector2i((Vector2(far - src) * vfx_prop_debris_scatter).round())
+			var reach: float = 1.0 if li % PROP_DEBRIS_FAR_EVERY == 0 else vfx_prop_debris_scatter
+			l["grid_pos"] = src + Vector2i((Vector2(far - src) * reach).round())
 		var tint: Color = _vfx_material_base_color(material_id)
 		var flight_tint: Color = tint
 		flight_tint.a = 0.85
@@ -4852,7 +4862,7 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 			var k: Vector3i = key
 			var center := Vector2((float(k.x) + 0.5) * unit, (float(k.y) + 0.5) * unit)
 			## A dense cell (under the object) gets several pieces, jittered inside it.
-			var pieces: int = clampi(1 + int(piles[key]) / 3, 1, 4)
+			var pieces: int = clampi(int(piles[key]), 1, 8)
 			for j in range(pieces):
 				var jitter := Vector2(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5)) * unit if j > 0 else Vector2.ZERO
 				_place_debris_piece("%s_%d_%d_%d_%d" % [material_id, k.x, k.y, k.z, j],
@@ -4860,6 +4870,7 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 			i += 1
 		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 			var first: Vector3i = piles.keys()[0] if not piles.is_empty() else Vector3i.ZERO
+			print("[PROP-DEBUG] debris soot-tone histogram so far: %s (4 = clean)" % [_debris_tone_hist])
 			var dbg_pile = _voxel_board._debris_piles.get(material_id)
 			print("[PROP-DEBUG] debris %s: %d landing(s) -> %d pile cell(s), tint=%s, first cell=%s ground=%d, pile node: %s"
 				% [material_id, landings.size(), piles.size(), tint, first, _voxel_board.ground_plane_level(),

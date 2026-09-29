@@ -7,6 +7,7 @@
   "material_zones": { "default": "wood" },
   "footprint_gus": [[0, 0]],
   "storeys": 1,
+  "hollow_shell": 1,
   "gameplay": { "cover": "full", "destructible": true },
   "tags": ["crate", "cover", "container"]
 }

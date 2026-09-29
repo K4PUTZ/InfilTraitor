@@ -18,6 +18,9 @@ var tags: Array[String]                     # Array[String] — classification t
 ## never register_prop() — see RoomBuilder._register_voxel_prop_levels()'s branch).
 var mesh_tier: int = 0
 var mesh_size: Vector3 = Vector3.ONE        # world units (1.0 = 1 GU); mesh_tier > 0 only
+## Native voxel props only: 0 = solid fill; N > 0 = a hollow box with an N-voxel shell (a crate is a container, not a
+## block of wood). The interior is simply no voxels — what it CONTAINS is a later, separate thing.
+var hollow_shell: int = 0
 
 
 ## Factory: parse PropDef from a JSON dict (file format).
@@ -29,6 +32,7 @@ static func from_json(data: Dictionary) -> PropDef:
 	def.size_vox = Vector3i(int(sv[0]), int(sv[1]), int(sv[2]))
 	
 	def.layers = data.get("layers", [])
+	def.hollow_shell = int(data.get("hollow_shell", 0))
 	def.material_zones = data.get("material_zones", {"default": "concrete"})
 	
 	def.footprint_gus = []

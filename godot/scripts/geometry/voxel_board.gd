@@ -2321,8 +2321,19 @@ func register_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 		## Level outer, then `gu_voxels()`'s own y-outer/x-inner order — matches
 		## `VoxelStore._fill()`'s "regular" box check exactly, so this container
 		## never falls back to the per-voxel lookup table irregular containers need.
+		var shell: int = prop_def.hollow_shell
+		var per_axis: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
 		for lv in range(start_level, start_level + level_count):
 			for pos: Vector2i in GeometryCoords.gu_voxels(cell):
+				## A hollow prop leaves its interior empty, so the container is no longer a full box and the store
+				## keeps it in its per-voxel table (`VoxelStore._irregular`) — the path a shaped container takes.
+				if shell > 0:
+					var local: Vector2i = pos - cell * per_axis
+					var lvl: int = lv - start_level
+					if local.x >= shell and local.x < per_axis - shell \
+							and local.y >= shell and local.y < per_axis - shell \
+							and lvl >= shell and lvl < level_count - shell:
+						continue
 				block.voxels.append(Voxel.new(pos, lv, block))
 		_prop_blocks.append(block)
 

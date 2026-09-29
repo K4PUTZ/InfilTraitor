@@ -1576,7 +1576,15 @@ var vfx_chip_count_min: int = 1
 var vfx_chip_count_max: int = 4
 var vfx_debris_pile_min_pieces: int = 2   ## R3D-PROPS Tier 4 ground debris: how many scattered pieces per shatter
 var vfx_debris_pile_max_pieces: int = 5
-var vfx_debris_pile_spread: float = 0.7   ## world units (1.0 = 1 GU) a piece can jitter from the break point
+var vfx_debris_pile_spread: float = 0.35  ## world units (1.0 = 1 GU) a piece can jitter from the break point
+## A crate's fallen voxels land this fraction of the way to where the glass mechanism would throw them (1.0 = the
+## full glass scatter): most of the debris piles up under the object, a little reaches the cells around it.
+var vfx_prop_debris_scatter: float = 0.45
+## Ground debris darkens with the soot on the cell it lies on, by the same per-tone multipliers a Tier 3 prop's
+## shader uses (`prop_mesh3d.gdshader` `soot_mult`, tone 0 = darkest).
+const DEBRIS_SOOT_MULT: Array[float] = [0.38, 0.60, 0.76, 0.90]
+## Per-material darkening of the debris art (the wood debris read too close to plywood).
+const DEBRIS_TINT_SCALE: Dictionary = {"wood": 0.72}
 var vfx_smoke_darken_wood: float = 0.55   ## Color.darkened() amount — wood smoke reads darker
 var vfx_smoke_darken_default: float = 0.15  ## masonry/metal/ground smoke reads lighter
 var vfx_smoke_alpha: float = 0.6
@@ -4675,9 +4683,23 @@ func _voxel_point_from_base(bp: Vector2, perspective: String) -> Vector2:
 func _place_debris_piece(id: String, center: Vector2, level: int, material_id: String, variant: int,
 		tint: Color, rot: float) -> void:
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	tint = _debris_tint(tint, center / unit, material_id)
 	_base_debris[id] = {"base": _voxel_point_to_base(center / unit, _active_perspective), "level": level,
 		"material": material_id, "variant": variant, "tint": tint, "rot": rot}
 	_voxel_board.place_debris_piece(id, center, level, material_id, variant, tint, rot)
+
+
+## The debris art's tint: the material colour, darkened per material, then by the soot tone of the cell it lies on
+## (`_soot_map`, base-keyed, the ground plane's own level) — proximity to the blast, the same model a wall follows.
+func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Color:
+	var k: float = float(DEBRIS_TINT_SCALE.get(material_id, 1.0))
+	var cell := Vector2i(floori(voxel_point.x), floori(voxel_point.y))
+	var base_xy := PerspectiveMapperClass.cell_to_base(cell, _active_perspective, _base_voxel_size())
+	var soot_level: Dictionary = _soot_map.get(_voxel_board.ground_plane_level() - 1, {})
+	var tone: int = int(soot_level.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
+	if tone >= 0 and tone < DEBRIS_SOOT_MULT.size():
+		k *= DEBRIS_SOOT_MULT[tone]
+	return Color(tint.r * k, tint.g * k, tint.b * k, tint.a)
 
 
 ## After a rotation: the Tier 4 props that shattered stay shattered (`_build_mesh_props()` skips them)...
@@ -4816,6 +4838,10 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 			by_material[material_id], _slab_registry.all_slabs(), impulse)
 		if landings.is_empty():
 			continue
+		for l in landings:
+			var src: Vector2i = l["origin_pos"]
+			var far: Vector2i = l["grid_pos"]
+			l["grid_pos"] = src + Vector2i((Vector2(far - src) * vfx_prop_debris_scatter).round())
 		var tint: Color = _vfx_material_base_color(material_id)
 		var flight_tint: Color = tint
 		flight_tint.a = 0.85
@@ -4825,8 +4851,12 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 		for key in piles:
 			var k: Vector3i = key
 			var center := Vector2((float(k.x) + 0.5) * unit, (float(k.y) + 0.5) * unit)
-			_place_debris_piece("%s_%d_%d_%d" % [material_id, k.x, k.y, k.z],
-				center, k.z, material_id, i % 3, tint, randf_range(0.0, TAU))
+			## A dense cell (under the object) gets several pieces, jittered inside it.
+			var pieces: int = clampi(1 + int(piles[key]) / 3, 1, 4)
+			for j in range(pieces):
+				var jitter := Vector2(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5)) * unit if j > 0 else Vector2.ZERO
+				_place_debris_piece("%s_%d_%d_%d_%d" % [material_id, k.x, k.y, k.z, j],
+					center + jitter, k.z, material_id, (i + j) % 3, tint, randf_range(0.0, TAU))
 			i += 1
 		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 			var first: Vector3i = piles.keys()[0] if not piles.is_empty() else Vector3i.ZERO

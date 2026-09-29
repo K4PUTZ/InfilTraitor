@@ -104,21 +104,47 @@ static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Diction
 ## never darken. This gives each such GU the ring of its nearest flooded neighbour — the "ring at the boundary" reading
 ## a wall already gets through `edges_touching_gu()` — WITHOUT letting the flood pass through it. Only the GUs
 ## named in `prop_gus` are touched: a wall block's own footprint keeps behaving exactly as it did.
-static func add_prop_boundary_rings(gu_rings: Dictionary, prop_gus: Array) -> void:
+##
+## Diagonals count (Director, 2026-09-29): the flood is 4-connected, so a prop diagonal to the blast, or sheltered
+## on its sides by its neighbours, was reached by no orthogonal path and its floor stayed intact next to a destroyed
+## one — a dead straight line between two GUs. A diagonal neighbour counts as one ring farther than an orthogonal one,
+## and the open cells right beside a prop take the prop's ring + 1 ("the blast wraps around it by one cell"), never
+## through a blocked edge or another blocked cell. Capped at `max_ring`, like the flood.
+static func add_prop_boundary_rings(gu_rings: Dictionary, prop_gus: Array, blocked_edges: Dictionary,
+		blocked_cells: Dictionary, max_ring: int) -> void:
+	var orthogonal: Array[Vector2i] = [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+	var diagonal: Array[Vector2i] = [Vector2i(1, -1), Vector2i(1, 1), Vector2i(-1, 1), Vector2i(-1, -1)]
 	var added: Dictionary = {}
 	for gu: Vector2i in prop_gus:
 		if gu_rings.has(gu):
 			continue
 		var best: int = -1
-		for face in [Face.NW, Face.NE, Face.SE, Face.SW]:
-			var neighbor: Vector2i = gu + Face.delta(face)
-			if gu_rings.has(neighbor):
-				var r: int = gu_rings[neighbor]
+		for d in orthogonal:
+			if gu_rings.has(gu + d):
+				var r: int = gu_rings[gu + d]
 				if best < 0 or r < best:
 					best = r
-		if best >= 0:
+		for d in diagonal:
+			if gu_rings.has(gu + d):
+				var r: int = int(gu_rings[gu + d]) + 1
+				if best < 0 or r < best:
+					best = r
+		if best >= 0 and best <= max_ring:
 			added[gu] = best
+	var wrapped: Dictionary = {}
+	for gu in added:
+		var wrap_ring: int = int(added[gu]) + 1
+		if wrap_ring > max_ring:
+			continue
+		for d in orthogonal:
+			var n: Vector2i = gu + d
+			if gu_rings.has(n) or added.has(n) or blocked_cells.has(n) \
+					or WallEdgeData.is_edge_blocked(gu, n, blocked_edges):
+				continue
+			if not wrapped.has(n) or wrap_ring < int(wrapped[n]):
+				wrapped[n] = wrap_ring
 	gu_rings.merge(added)
+	gu_rings.merge(wrapped)
 
 
 ## TARGETING_MASTER_PLAN §5b — the wall-aware grenade THROW clamp.

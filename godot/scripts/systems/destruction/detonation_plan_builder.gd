@@ -441,7 +441,8 @@ static func _phase_setup(s: Dictionary) -> void:
 			prop_gus.append(Vector2i(first_pos.x >> 3, first_pos.y >> 3))
 	for inst in (s["voxel_board"] as VoxelBoardClass).mesh_props():
 		prop_gus.append(inst.cell)
-	BlastCalculatorClass.add_prop_boundary_rings(gu_rings, prop_gus)
+	BlastCalculatorClass.add_prop_boundary_rings(gu_rings, prop_gus, ctx.get("blocked_edges", {}),
+		ctx.get("blocked_cells", {}), bomb_def.ring_multipliers.size() - 1)
 	var affected := BlastCalculatorClass.find_affected_containers(
 		gu_rings, s["edge_registry"], s["slab_registry"], junction_columns, prop_blocks)
 	var n_rings: int = bomb_def.ring_multipliers.size()

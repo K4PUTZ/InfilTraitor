@@ -3,7 +3,7 @@
   "destroy_factor": 1.0,
   "dent_factor": 0.0,
   "crack_factor": 0.0,
-  "flammability": 1.1,
+  "flammability": 1.5,
   "base_color": [
     0.78,
     0.63,
@@ -11,6 +11,6 @@
   ],
   "pattern_algorithm": "wood",
   "has_facade": true,
-  "burn_consumption": 0.35,
+  "burn_consumption": 0.6,
   "smoke_chance": 0.28
 }

@@ -99,7 +99,7 @@ uniform ivec2 plane_origin = ivec2(64, 64);
 uniform int plane_size = 512;
 uniform float bucket_lum[12];
 uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
-uniform float soot_char = 0.18;
+uniform float soot_char = 0.14;
 uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
 varying vec3 v_world;

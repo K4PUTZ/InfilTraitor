@@ -521,7 +521,7 @@ extends `Node3D` · 2035 lines
 
 **Constants / tuning**
 - `SOOT_FACE_MULT` = `[0.38, 0.60, 0.76, 0.90]`
-- `SOOT_CHAR_MULT` = `0.18`
+- `SOOT_CHAR_MULT` = `0.14`
 - `FACE_TONE` = `[1.0, 0.975, 0.945]`
 
 ---

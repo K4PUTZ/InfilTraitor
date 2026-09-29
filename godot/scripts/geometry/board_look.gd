@@ -12,7 +12,7 @@ extends RefCounted
 const SOOT_FACE_MULT: Array[float] = [0.38, 0.60, 0.76, 0.90]
 
 ## A CHARRED face (`BlastCalculator.FACE_SOOT_CHAR`): what fire and embers leave. Far below soot tone 0 (0.38): dark, with the material's texture still reading through (0.03 was solid black).
-const SOOT_CHAR_MULT: float = 0.18
+const SOOT_CHAR_MULT: float = 0.14
 
 ## Per-face brightness, index 0 = top, 1 = the SE side, 2 = the SW side (a face can only be darkened against the art).
 const FACE_TONE: Array[float] = [1.0, 0.975, 0.945]

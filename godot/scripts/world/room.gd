@@ -4701,7 +4701,7 @@ func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Col
 	var soot_level: Dictionary = _soot_map.get(_voxel_board.ground_plane_level() - 1, {})
 	var tone: int = int(soot_level.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
 	if tone == BlastCalculator.FACE_SOOT_CHAR:
-		k *= 0.03
+		k *= BoardLook.SOOT_CHAR_MULT
 	elif tone >= 0 and tone < DEBRIS_SOOT_MULT.size():
 		k *= DEBRIS_SOOT_MULT[tone]
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":

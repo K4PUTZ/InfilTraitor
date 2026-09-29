@@ -26,7 +26,7 @@ uniform ivec2 plane_origin = ivec2(64, 64);
 uniform int plane_size = 512;
 uniform float bucket_lum[12];
 uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
-uniform float soot_char = 0.03;
+uniform float soot_char = 0.18;
 uniform vec3 key_dir = vec3(-0.45, 0.8, 0.4);
 
 varying vec3 v_world;

@@ -37,7 +37,8 @@
         { "def": "wood_table", "gu": [3, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
         { "def": "crate_full", "gu": [9, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
         { "def": "wood_table", "gu": [2, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "crate_full", "gu": [6, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 }
+        { "def": "crate_full", "gu": [6, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "crate_plywood", "gu": [7, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 }
       ]
     }
   }

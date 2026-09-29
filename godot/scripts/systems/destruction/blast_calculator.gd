@@ -98,6 +98,29 @@ static func flood_gu_rings(source_gu: Vector2i, bomb_def, blocked_edges: Diction
 	return rings
 
 
+## R3D-PROPS (2026-09-29) — the GU a solid prop stands on is a `blocked_cells` entry, which the flood above never
+## enters, so it has no ring: the floor under it took no damage and no soot, and stood out as one clean cell beside
+## the grenade (Director, PROPS map) — and a Tier 3 prop, whose soot is read off the floor cell beneath it, could
+## never darken. This gives each such GU the ring of its nearest flooded neighbour — the "ring at the boundary" reading
+## a wall already gets through `edges_touching_gu()` — WITHOUT letting the flood pass through it. Only the GUs
+## named in `prop_gus` are touched: a wall block's own footprint keeps behaving exactly as it did.
+static func add_prop_boundary_rings(gu_rings: Dictionary, prop_gus: Array) -> void:
+	var added: Dictionary = {}
+	for gu: Vector2i in prop_gus:
+		if gu_rings.has(gu):
+			continue
+		var best: int = -1
+		for face in [Face.NW, Face.NE, Face.SE, Face.SW]:
+			var neighbor: Vector2i = gu + Face.delta(face)
+			if gu_rings.has(neighbor):
+				var r: int = gu_rings[neighbor]
+				if best < 0 or r < best:
+					best = r
+		if best >= 0:
+			added[gu] = best
+	gu_rings.merge(added)
+
+
 ## TARGETING_MASTER_PLAN §5b — the wall-aware grenade THROW clamp.
 ##
 ## Walks the straight line `origin_gu -> target_gu` in GU space and returns the

@@ -1598,6 +1598,7 @@ func place_debris_piece(id, center: Vector2, level: int, material_id: String, va
 ## (one mesh per prop, a triangle cap) is answered trivially by a box/cylinder, so it is deferred to
 ## whichever prop first needs real art.
 const PropMesh3DRef = preload("res://godot/scripts/geometry/prop_mesh3d.gd")
+const PerspectiveMapperScript = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 var _prop_meshes: Array = []
 
 
@@ -2361,10 +2362,51 @@ func prop_gus() -> Array:
 	for block in _prop_blocks:
 		if not block.voxels.is_empty():
 			var first: Vector2i = block.voxels[0].grid_pos
-			out.append(Vector2i(first.x >> 3, first.y >> 3))
+			var gu := Vector2i(first.x >> 3, first.y >> 3)
+			if not out.has(gu):   ## a model of several materials has several blocks on one GU
+				out.append(gu)
 	for inst in _mesh_props:
 		out.append(inst.cell)
 	return out
+
+
+## PROP_PIPELINE_PLAN PP4 — a voxel MODEL (`.vox`) as destructible blocks. `build` is `PropVoxLibrary.build_for()`: cells per material in
+## footprint-local voxel coordinates (z up). One `PropBlock` per (GU, material): the store holds one material per container and the
+## destruction code assumes one GU per block, so a model of several materials becomes several blocks, all with the prop's floor level.
+##
+## ROTATION (until R3D-ROT): the map is re-laid out per view, so the model is authored in BASE orientation at the BASE anchor and each of
+## its voxels is carried into the current view like any other cell (`PerspectiveMapper.cell_from_base`). Without this an asymmetric
+## model stood the same way in every view and its base-coordinate damage records found no voxel (155 of 692 lost on the first E turn).
+## `gu_cell` is the VIEW cell the layout placed the prop on; `perspective` and `base_gu_size` say how that view relates to the base.
+func register_vox_prop(gu_cell: Vector2i, start_storey: int, prop_def, build: Dictionary,
+		perspective: String = "N", base_gu_size: Vector2i = Vector2i.ZERO) -> void:
+	var start_level: int = GeometryCoords.storey_level_base(start_storey)
+	var per: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var rotate_view: bool = perspective != "N" and base_gu_size != Vector2i.ZERO
+	var base_anchor: Vector2i = PerspectiveMapperScript.cell_to_base(gu_cell, perspective, base_gu_size) if rotate_view else gu_cell
+	var origin: Vector2i = (base_anchor + (build["origin_gu"] as Vector2i)) * per
+	var base_voxel_size: Vector2i = base_gu_size * per
+	var materials: Array = (build["materials"] as Dictionary).keys()
+	materials.sort()
+	for material_id in materials:
+		var by_gu: Dictionary = {}
+		for c: Vector3i in build["materials"][material_id]:
+			var pos := Vector2i(origin.x + c.x, origin.y + c.y)
+			if rotate_view:
+				pos = PerspectiveMapperScript.cell_from_base(pos, perspective, base_voxel_size)
+			var gu := Vector2i(int(floor(float(pos.x) / float(per))), int(floor(float(pos.y) / float(per))))
+			if not by_gu.has(gu):
+				by_gu[gu] = []
+			(by_gu[gu] as Array).append(Vector3i(pos.x, pos.y, start_level + c.z))
+		var gus: Array = by_gu.keys()
+		gus.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y < b.y or (a.y == b.y and a.x < b.x))
+		for gu: Vector2i in gus:
+			var block := PropBlock.new("PROP_%d_%d_%d_%s_%s" % [gu.x, gu.y, start_storey, prop_def.id, material_id], String(material_id))
+			block.floor_level = start_level
+			for cell: Vector3i in by_gu[gu]:
+				_ensure_level(cell.z)
+				block.voxels.append(Voxel.new(Vector2i(cell.x, cell.y), cell.z, block))
+			_prop_blocks.append(block)
 
 
 ## R3D-PROPS Tier 3/4 — records one mesh-only prop instance. No voxel is ever placed for it;

@@ -18,6 +18,10 @@ var default_model: String = ""
 var generic_material: String = "generic"
 var max_triangles: int = 4000
 var max_surfaces: int = 4
+## Voxel-model slots (mesh_tier 0): the store claims a model may take (its hollow shell) and the materials it may use (each extra one is an
+## extra draw on a chunk).
+var max_claims: int = 1500
+var max_materials: int = 4
 ## Material FAMILIES a model of this slot may use (empty = any). A surface mapped outside them makes the model invalid.
 var allowed_families: Array[String] = []
 
@@ -37,6 +41,8 @@ static func from_json(data: Dictionary) -> SlotDef:
 	var budget: Dictionary = data.get("budget", {})
 	slot.max_triangles = int(budget.get("max_triangles", 4000))
 	slot.max_surfaces = int(budget.get("max_surfaces", 4))
+	slot.max_claims = int(budget.get("max_claims", 1500))
+	slot.max_materials = int(budget.get("max_materials", 4))
 	slot.allowed_families = []
 	for f in data.get("allowed_families", []):
 		slot.allowed_families.append(String(f))

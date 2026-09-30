@@ -25,6 +25,12 @@ var mesh_size: Vector3 = Vector3.ONE        # world units (1.0 = 1 GU); mesh_tie
 var model_path: String = ""
 ## The SLOT this prop is a model of (`props/slots/<id>.json`, `SlotDef`); empty = a legacy prop with no slot (the voxel crates).
 var slot: String = ""
+## A MagicaVoxel `.vox` model (res:// or user://): makes this a destructible VOXEL prop (mesh_tier 0). `vox_scale`: board voxels per
+## source voxel (1 = the source voxel is the board voxel). `vox_materials`: palette index (string) -> registry material id; an index
+## without an entry takes the nearest registry colour. See `PropVoxLibrary`.
+var vox_model: String = ""
+var vox_scale: int = 1
+var vox_materials: Dictionary = {}
 ## A model's surfaces (by the name of the material they were authored with) -> a material id from OUR registry: the colour and the
 ## detail of a prop come from the material, never from the model (`ACTOR` D66). A surface not named here takes
 ## `material_zones["default"]`; a material id the registry does not have resolves through its fallback chain.
@@ -63,6 +69,9 @@ static func from_json(data: Dictionary) -> PropDef:
 	def.mesh_size = Vector3(float(ms[0]), float(ms[1]), float(ms[2]))
 	def.model_path = String(data.get("model", ""))
 	def.slot = String(data.get("slot", ""))
+	def.vox_model = String(data.get("vox_model", ""))
+	def.vox_scale = int(data.get("vox_scale", 1))
+	def.vox_materials = data.get("vox_materials", {})
 	def.surface_materials = data.get("surface_materials", {})
 	var mr = data.get("model_rotation_deg", [0.0, 0.0, 0.0])
 	def.model_rotation_deg = Vector3(float(mr[0]), float(mr[1]), float(mr[2]))

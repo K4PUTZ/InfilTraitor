@@ -1,0 +1,32 @@
+{
+  "id": "bookshelf",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/bookshelf.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "1": "wood",
+    "3": "paper",
+    "4": "upholstery",
+    "7": "cardboard"
+  },
+  "material_zones": {
+    "default": "wood"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 1,
+  "gameplay": {
+    "cover": "full",
+    "destructible": true
+  },
+  "tags": [
+    "furniture",
+    "voxel-model",
+    "dormitory"
+  ],
+  "slot": "bookshelf"
+}

@@ -1,0 +1,31 @@
+{
+  "id": "nightstand",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/nightstand.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "1": "wood",
+    "5": "plywood",
+    "6": "steel_dark"
+  },
+  "material_zones": {
+    "default": "wood"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 1,
+  "gameplay": {
+    "cover": "quarter",
+    "destructible": true
+  },
+  "tags": [
+    "furniture",
+    "voxel-model",
+    "dormitory"
+  ],
+  "slot": "nightstand"
+}

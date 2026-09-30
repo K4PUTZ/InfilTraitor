@@ -991,6 +991,9 @@ static func _phase_props(s: Dictionary, deadline: int) -> void:
 		var base_level: int = block.voxels[0].level
 		for v in block.voxels:
 			base_level = mini(base_level, v.level)
+		## A voxel model's blocks may not start at the floor (a pillow above a mattress): the ring's vertical reference is the floor.
+		if int(block.floor_level) >= 0:
+			base_level = int(block.floor_level)
 		delta.add_damage(BlastCalculatorClass.simulate_container_damage(
 			block.voxels, block.id, block.material, base_ring, base_level, false,
 			bomb_def.ring_multipliers, bomb_def.destroy_ring_weights,

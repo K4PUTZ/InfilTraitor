@@ -42,7 +42,14 @@
         { "def": "crate_full", "gu": [8, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
         { "def": "plywood_table", "gu": [15, 6], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
         { "def": "crate_full", "gu": [11, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
-        { "def": "crate_plywood", "gu": [10, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 }
+        { "def": "crate_plywood", "gu": [10, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "bed_single", "gu": [3, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "nightstand", "gu": [4, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "locker", "gu": [5, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "bookshelf", "gu": [6, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "desk", "gu": [7, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "chair", "gu": [8, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 },
+        { "def": "bin", "gu": [9, 3], "storey": 0, "vox_offset": [0, 0], "rot": 0 }
       ]
     }
   }

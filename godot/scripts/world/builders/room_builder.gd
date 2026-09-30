@@ -553,7 +553,17 @@ func _register_voxel_prop_levels(instances: Array) -> void:
 		## R3D-PROPS Tier 3/4: a mesh_tier def never becomes VoxelStore state (rule 8 does not
 		## apply — there is no voxel here); it places a MeshPropInstance Board3DLive renders
 		## as a PropMesh3D instead. Tier 1/2 (mesh_tier == 0) is the unchanged voxel path.
-		if prop_def.mesh_tier > 0:
+		if String(prop_def.vox_model) != "":
+			## PP4: a voxel MODEL (.vox): destructible blocks in the store, one per (GU, material).
+			var autoload: Node = room.get_node_or_null("/root/Registries")
+			var vox_build: Dictionary = PropVoxLibrary.build_for(prop_def, autoload.get_material_registry() if autoload != null else null)
+			if bool(vox_build["ok"]):
+				room._voxel_board.register_vox_prop(instance["gu_cell"], instance.get("storey", 0), prop_def, vox_build,
+					room._active_perspective, room._base_layout.get("size", Vector2i.ZERO))
+			else:
+				push_warning("[RoomBuilder] '%s': its .vox model could not be built — placement skipped" % prop_def.id)
+				continue
+		elif prop_def.mesh_tier > 0:
 			room._voxel_board.register_mesh_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
 		else:
 			room._voxel_board.register_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)

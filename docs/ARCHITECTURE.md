@@ -546,7 +546,7 @@ Tile semantics and heights are inferred from `blocked_cells`; lights are map-dri
 | Glass (physics, shatter, crack, shards, panes) | Implemented | `GLASS_MASTER_PLAN` |
 | Light (voxel buckets, cell planes) | Implemented | `VoxelLightField`; real 3D lamps rejected (+24 ms GPU on the Moto) |
 | Props Tier 1/2 (hollow voxel crates), Tier 3/4 (real CC0 models) | Implemented | R3D-PROPS; Tier 4 voxel replacement + the persistent charred pile built 2026-09-30 (`PropVoxelizer`, `PropFragmentSim`, `PropFragments3D`); prop colour from the material registry and the wider charred tones built (P4/P5), shadows and the grade planned (`PROPS_TIER4_PLAN`) |
-| Model pipeline: slots, several models per slot, validator, fallback chain | Implemented (PP1, 2026-09-30) | `SlotDef`, `PropValidator`, `PropRegistry.resolve_placement`; `.iprop`, the user tier for models and `.vox` are planned (`PROP_PIPELINE_PLAN`); first content: the dormitory scene |
+| Model pipeline: slots, several models per slot, validator, fallback chain; `.vox` voxel models | Implemented (PP1, PP4, 2026-09-30) | `SlotDef`, `PropValidator`, `PropRegistry.resolve_placement`, `VoxModel`, `VoxPropBuilder`, `PropVoxLibrary`, `VoxelBoard.register_vox_prop`; `.iprop` and the user tier for models are planned (`PROP_PIPELINE_PLAN`); first content: 7 dormitory objects on the PROPS map, the scene itself next |
 | Actors (agent, guards) | Partial | baked 2D frames mirrored as billboards; live rigs at R3D-ACTORS (D64) |
 | Rotation | Partial | four views by full re-layout + base-record replay; camera-only is R3D-ROT |
 | Guard AI (FSM), detection (visual/audio), noise | Implemented | `docs/systems/AI_MASTER_PLAN.md` |

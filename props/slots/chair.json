@@ -1,0 +1,25 @@
+{
+  "id": "chair",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    0.6,
+    0.6,
+    0.8
+  ],
+  "mesh_tier": 0,
+  "gameplay": {
+    "cover": "none",
+    "destructible": true
+  },
+  "default_model": "chair",
+  "generic_material": "wood",
+  "budget": {
+    "max_claims": 300,
+    "max_materials": 4
+  }
+}

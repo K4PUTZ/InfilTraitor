@@ -18,6 +18,8 @@ var registry: Dictionary = {}  # id → PropDef (stored as Dict due to class_nam
 var slots: Dictionary = {}     # id → SlotDef
 ## Callable(material_id) -> family String. Set by the `Registries` autoload (the material registry's fallback chain); a test sets its own.
 var family_of: Callable = Callable()
+## The material registry (for a voxel model's colour -> material mapping); null in a test that has none.
+var material_registry = null
 var _problem_logged: Dictionary = {}
 var _stats_cache: Dictionary = {}
 
@@ -108,8 +110,8 @@ func _resolve(name: String, salt: String) -> Dictionary:
 			return {"def": _generic_def(slots[name]), "fallback": "slot_generic", "problems": ["slot '%s' has no model" % name]}
 	if def == null:
 		return {"def": null, "fallback": "", "problems": ["no prop or slot named '%s'" % name]}
-	if String(def.slot) == "" or int(def.mesh_tier) == 0:
-		return {"def": def, "fallback": "", "problems": []}   ## a legacy / voxel prop: no slot to fit
+	if String(def.slot) == "" or (int(def.mesh_tier) == 0 and String(def.vox_model) == ""):
+		return {"def": def, "fallback": "", "problems": []}   ## a legacy procedural voxel prop (the crates): no slot to fit
 	var slot: SlotDef = slots.get(String(def.slot), null)
 	if slot == null:
 		var own_problems: Array[String] = ["prop '%s' names slot '%s', which does not exist" % [def.id, def.slot]]
@@ -131,11 +133,15 @@ func problems_of(def, slot: SlotDef) -> Array[String]:
 	if _stats_cache.has(key):
 		return _stats_cache[key]
 	var stats: Dictionary
-	if String(def.model_path) == "":
+	var size: Vector3 = def.mesh_size
+	if String(def.vox_model) != "":
+		stats = PropVoxLibrary.stats(def, material_registry)
+		size = stats["size"]   ## a voxel model has no `mesh_size`: its own scaled size is what must fit the slot's box
+	elif String(def.model_path) == "":
 		stats = PropModelFit.stats(PropModelFit.box(def.mesh_size))
 	else:
 		stats = PropModelFit.stats(PropModelFit.fit(def.model_path, def.model_rotation_deg, def.mesh_size))
-	var result: Array[String] = PropValidator.validate({"slot": slot.id, "mesh_size": def.mesh_size, "mesh_tier": def.mesh_tier,
+	var result: Array[String] = PropValidator.validate({"slot": slot.id, "mesh_size": size, "mesh_tier": def.mesh_tier,
 		"footprint": def.footprint_gus, "surface_materials": def.surface_materials}, slot, stats,
 		family_of if family_of.is_valid() else func(_m: String) -> String: return "generic")
 	_stats_cache[key] = result

@@ -4680,17 +4680,20 @@ func prop_top_px(gu: Vector2i) -> float:
 		return 0.0
 	var per_level: float = WALL_FLOOR_STEP_PX / float(GeometryCoords.LEVELS_PER_STOREY)
 	var ground: int = _voxel_board.ground_plane_level()
+	var block_top: int = -1
+	var on_gu: bool = false
 	for block: PropBlock in _voxel_board.prop_blocks():
 		if block.voxels.is_empty():
 			continue
 		var first: Vector2i = block.voxels[0].grid_pos
 		if Vector2i(first.x >> 3, first.y >> 3) != gu:
 			continue
-		var top: int = -1
+		on_gu = true   ## (a model of several materials has several blocks here: the highest standing voxel of all)
 		for v: Voxel in block.voxels:
 			if v.damage_state != Voxel.DamageState.DESTROYED:
-				top = maxi(top, v.level)
-		return 0.0 if top < 0 else float(top + 1 - ground) * per_level
+				block_top = maxi(block_top, v.level)
+	if on_gu:
+		return 0.0 if block_top < 0 else float(block_top + 1 - ground) * per_level
 	for inst: MeshPropInstance in _voxel_board.mesh_props():
 		if inst.cell == gu and not inst.shattered:
 			return float(inst.level - ground) * per_level + inst.mesh_size.y * WALL_FLOOR_STEP_PX
@@ -4767,25 +4770,27 @@ func _release_destroyed_prop_cells() -> void:
 	if _voxel_board == null:
 		return
 	var released: bool = false
+	## A model of several materials is several blocks on one GU: the collapse is judged on the GU's voxels together.
+	var standing_by_gu: Dictionary = {}   ## Vector2i -> [standing, total]
 	for block: PropBlock in _voxel_board.prop_blocks():
 		if block.voxels.is_empty():
 			continue
 		var gu: Vector2i = GeometryCoords.voxel_to_gu(block.voxels[0].grid_pos)
 		if not _blocked_cells.has(gu):
 			continue
-		var standing: int = 0
+		var tally: Array = standing_by_gu.get(gu, [0, 0])
 		for v: Voxel in block.voxels:
 			if v.damage_state != Voxel.DamageState.DESTROYED:
-				standing += 1
-		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1" and standing < block.voxels.size():
-			print("[PROP-DEBUG] %s on %s: %d of %d voxels standing (%.0f%% destroyed)"
-				% [block.material, gu, standing, block.voxels.size(), 100.0 * (1.0 - float(standing) / float(block.voxels.size()))])
-		if float(standing) <= prop_collapse_standing_fraction * float(block.voxels.size()):
+				tally[0] += 1
+		tally[1] += block.voxels.size()
+		standing_by_gu[gu] = tally
+	for gu: Vector2i in standing_by_gu:
+		var tally: Array = standing_by_gu[gu]
+		if float(tally[0]) <= prop_collapse_standing_fraction * float(tally[1]):
 			_blocked_cells.erase(gu)
 			released = true
 			if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
-				print("[PROP-DEBUG] crate on %s collapsed (%d of %d voxels standing): its GU no longer blocks"
-					% [gu, standing, block.voxels.size()])
+				print("[PROP-DEBUG] prop on %s collapsed (%d of %d voxels standing): its GU no longer blocks" % [gu, tally[0], tally[1]])
 	for inst: MeshPropInstance in _voxel_board.mesh_props():
 		if inst.shattered and _blocked_cells.has(inst.cell):
 			_blocked_cells.erase(inst.cell)

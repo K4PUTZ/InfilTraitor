@@ -560,11 +560,20 @@ static func prop_shot_index(prop_blocks: Array) -> Dictionary:
 	for block in prop_blocks:
 		if block.voxels.is_empty():
 			continue
-		var by_pos: Dictionary = {}
-		for v: Voxel in block.voxels:
-			by_pos[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = v
 		var first: Vector2i = block.voxels[0].grid_pos
-		out[GeometryCoords.voxel_to_gu(first)] = {"block": block, "voxels": by_pos}
+		var gu: Vector2i = GeometryCoords.voxel_to_gu(first)
+		## A model of several materials has several blocks on one GU: they share this entry, and each voxel remembers its block.
+		if not out.has(gu):
+			out[gu] = {"voxels": {}, "block_of": {}, "base_level": 1 << 30, "top_level": -(1 << 30)}
+		var entry: Dictionary = out[gu]
+		for v: Voxel in block.voxels:
+			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+			entry["voxels"][key] = v
+			entry["block_of"][key] = block
+			entry["base_level"] = mini(int(entry["base_level"]), v.level)
+			entry["top_level"] = maxi(int(entry["top_level"]), v.level)
+		if int(block.floor_level) >= 0:
+			entry["base_level"] = mini(int(entry["base_level"]), int(block.floor_level))
 	return out
 
 
@@ -578,17 +587,11 @@ static func resolve_prop_voxel(pick: Dictionary, prop_index: Dictionary, salt: S
 	var entry: Variant = prop_index.get(cell)
 	if entry == null:
 		return {}
-	var block = entry["block"]
 	var by_pos: Dictionary = entry["voxels"]
 	var per: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
 	var origin: Vector2i = cell * per
-	var first: Voxel = block.voxels[0]
-	var base_level: int = first.level
-	for v: Voxel in block.voxels:
-		base_level = mini(base_level, v.level)
-	var levels: int = 0
-	for v: Voxel in block.voxels:
-		levels = maxi(levels, v.level - base_level + 1)
+	var base_level: int = int(entry["base_level"])
+	var levels: int = int(entry["top_level"]) - base_level + 1
 	## Vertical and lateral place: the same disc a wall pick reads (`resolve_pellet_voxel`), chest height by default.
 	var v_offset := 0
 	var lateral := per / 2
@@ -608,7 +611,8 @@ static func resolve_prop_voxel(pick: Dictionary, prop_index: Dictionary, salt: S
 			pos = Vector2i(origin.x + lateral, origin.y + (depth if dir.y > 0 else per - 1 - depth))
 		var v: Voxel = by_pos.get(Vector3i(pos.x, pos.y, level))
 		if v != null and VoxelStore.damage_of(v) != Voxel.DamageState.DESTROYED:
-			return {"block": block, "voxel": v, "index": block.voxels.find(v)}
+			var owner_block = entry["block_of"][Vector3i(pos.x, pos.y, level)]
+			return {"block": owner_block, "voxel": v, "index": owner_block.voxels.find(v)}
 	return {}
 
 

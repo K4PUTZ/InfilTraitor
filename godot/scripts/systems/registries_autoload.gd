@@ -64,6 +64,7 @@ func ensure_prop_registry() -> PropRegistryClass:
 	if reg == null:
 		reg = PropRegistryClass.new()
 		## A model's surface is checked against its slot by the material's FAMILY, resolved through the material registry's fallback chain.
+		reg.material_registry = get_material_registry()
 		reg.family_of = func(material_id: String) -> String:
 			var def = get_material_registry().resolve(material_id)
 			return def.family if def != null else "generic"

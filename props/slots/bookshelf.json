@@ -1,0 +1,25 @@
+{
+  "id": "bookshelf",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    1.0,
+    0.5,
+    1.0
+  ],
+  "mesh_tier": 0,
+  "gameplay": {
+    "cover": "full",
+    "destructible": true
+  },
+  "default_model": "bookshelf",
+  "generic_material": "wood",
+  "budget": {
+    "max_claims": 700,
+    "max_materials": 4
+  }
+}

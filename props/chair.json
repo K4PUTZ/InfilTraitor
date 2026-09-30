@@ -1,0 +1,30 @@
+{
+  "id": "chair",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/chair.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "1": "wood",
+    "5": "plywood"
+  },
+  "material_zones": {
+    "default": "wood"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 1,
+  "gameplay": {
+    "cover": "none",
+    "destructible": true
+  },
+  "tags": [
+    "furniture",
+    "voxel-model",
+    "dormitory"
+  ],
+  "slot": "chair"
+}

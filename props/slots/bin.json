@@ -1,0 +1,25 @@
+{
+  "id": "bin",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    0.6,
+    0.6,
+    0.6
+  ],
+  "mesh_tier": 0,
+  "gameplay": {
+    "cover": "none",
+    "destructible": true
+  },
+  "default_model": "bin",
+  "generic_material": "plastic",
+  "budget": {
+    "max_claims": 300,
+    "max_materials": 4
+  }
+}

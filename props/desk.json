@@ -1,0 +1,30 @@
+{
+  "id": "desk",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/desk.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "1": "wood",
+    "5": "plywood"
+  },
+  "material_zones": {
+    "default": "wood"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 1,
+  "gameplay": {
+    "cover": "half",
+    "destructible": true
+  },
+  "tags": [
+    "furniture",
+    "voxel-model",
+    "dormitory"
+  ],
+  "slot": "desk"
+}

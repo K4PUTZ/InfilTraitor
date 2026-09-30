@@ -11,6 +11,8 @@ var id: String
 var material: String
 var voxels: Array[Voxel] = []
 var dirty_count: int = 0
+## The floor level the prop stands on (the vertical reference of a blast ring); -1 = use the block's own lowest voxel.
+var floor_level: int = -1
 
 
 func _init(p_id: String, p_material: String):

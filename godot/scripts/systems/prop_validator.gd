@@ -4,7 +4,8 @@
 ## (model -> the slot's default -> the slot's generic -> the `generic` box) and logs the FIRST problem once. This class only answers;
 ## it reads no file and no registry (the selftest feeds it literals; `family_of` is a Callable so a test needs no autoload).
 ##
-## `stats` is `PropModelFit.stats(model)`: {"ok", "size": Vector3 (the fitted box), "triangles", "surfaces": Array[String], "finite"}.
+## `stats` is `PropModelFit.stats(model)` (a mesh) or `PropVoxLibrary.stats(def, registry)` (a voxel model, which adds "claims" and "materials"):
+## {"ok", "size": Vector3 (the fitted box), "triangles", "surfaces": Array[String], "finite"}.
 class_name PropValidator
 
 
@@ -28,6 +29,10 @@ static func validate(def: Dictionary, slot: SlotDef, stats: Dictionary, family_o
 		problems.append("the model has a NaN or infinite vertex")
 	if int(stats["triangles"]) > slot.max_triangles:
 		problems.append("%d triangles exceed slot '%s' budget of %d" % [int(stats["triangles"]), slot.id, slot.max_triangles])
+	if stats.has("claims") and int(stats["claims"]) > slot.max_claims:
+		problems.append("%d voxel claims exceed slot '%s' budget of %d" % [int(stats["claims"]), slot.id, slot.max_claims])
+	if stats.has("materials") and int(stats["materials"]) > slot.max_materials:
+		problems.append("%d materials exceed slot '%s' budget of %d" % [int(stats["materials"]), slot.id, slot.max_materials])
 	var surfaces: Array = stats["surfaces"]
 	if surfaces.size() > slot.max_surfaces:
 		problems.append("%d surfaces exceed slot '%s' budget of %d" % [surfaces.size(), slot.id, slot.max_surfaces])

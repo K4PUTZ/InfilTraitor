@@ -1,0 +1,25 @@
+{
+  "id": "bed_single",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    1.0,
+    0.8,
+    0.75
+  ],
+  "mesh_tier": 0,
+  "gameplay": {
+    "cover": "half",
+    "destructible": true
+  },
+  "default_model": "bed_single",
+  "generic_material": "wood",
+  "budget": {
+    "max_claims": 800,
+    "max_materials": 4
+  }
+}

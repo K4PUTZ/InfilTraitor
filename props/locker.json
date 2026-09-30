@@ -1,0 +1,31 @@
+{
+  "id": "locker",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/locker.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "1": "painted_metal",
+    "2": "metal",
+    "6": "steel_dark"
+  },
+  "material_zones": {
+    "default": "painted_metal"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 1,
+  "gameplay": {
+    "cover": "full",
+    "destructible": true
+  },
+  "tags": [
+    "furniture",
+    "voxel-model",
+    "dormitory"
+  ],
+  "slot": "locker"
+}

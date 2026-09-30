@@ -1,0 +1,29 @@
+{
+  "id": "bin",
+  "mesh_tier": 0,
+  "vox_model": "res://ASSETS/props/vox/bin.vox",
+  "vox_scale": 1,
+  "vox_materials": {
+    "9": "plastic"
+  },
+  "material_zones": {
+    "default": "plastic"
+  },
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "storeys": 1,
+  "gameplay": {
+    "cover": "none",
+    "destructible": true
+  },
+  "tags": [
+    "furniture",
+    "voxel-model",
+    "dormitory"
+  ],
+  "slot": "bin"
+}

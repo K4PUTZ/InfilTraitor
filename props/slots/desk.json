@@ -1,0 +1,25 @@
+{
+  "id": "desk",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    1.0,
+    0.7,
+    0.7
+  ],
+  "mesh_tier": 0,
+  "gameplay": {
+    "cover": "half",
+    "destructible": true
+  },
+  "default_model": "desk",
+  "generic_material": "wood",
+  "budget": {
+    "max_claims": 600,
+    "max_materials": 4
+  }
+}

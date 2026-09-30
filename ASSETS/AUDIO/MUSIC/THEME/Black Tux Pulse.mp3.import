@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://ft0tdtxlfigc"
+path="res://.godot/imported/Black Tux Pulse.mp3-3affc3bcc49ff27b0a4cd9ede5025b18.mp3str"
+
+[deps]
+
+source_file="res://ASSETS/AUDIO/MUSIC/THEME/Black Tux Pulse.mp3"
+dest_files=["res://.godot/imported/Black Tux Pulse.mp3-3affc3bcc49ff27b0a4cd9ede5025b18.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

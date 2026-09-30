@@ -163,3 +163,25 @@ dev_flags.cfg
 
 # Recordings of the game on a handset (tools/persistent/device_record.py); local only
 videos/
+
+# MUSIC production workspace (Director ruling 2026-09-29)
+# Keep project data/versioning files in Git, including final exports.
+# Only raw source media stays local.
+!ASSETS/AUDIO/
+ASSETS/AUDIO/*
+!ASSETS/AUDIO/MUSIC/
+!ASSETS/AUDIO/MUSIC/**
+
+# Raw media folders (local only)
+ASSETS/AUDIO/MUSIC/**/Raw/
+ASSETS/AUDIO/MUSIC/**/Raw/**
+ASSETS/AUDIO/MUSIC/**/raw/
+ASSETS/AUDIO/MUSIC/**/raw/**
+ASSETS/AUDIO/MUSIC/**/BRUTO/
+ASSETS/AUDIO/MUSIC/**/BRUTO/**
+ASSETS/AUDIO/MUSIC/**/Bruto/
+ASSETS/AUDIO/MUSIC/**/Bruto/**
+
+# Exported deliverables must be versioned
+!ASSETS/AUDIO/MUSIC/**/Export/
+!ASSETS/AUDIO/MUSIC/**/Export/**

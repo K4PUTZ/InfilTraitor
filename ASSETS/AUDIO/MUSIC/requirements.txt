@@ -1,0 +1,13 @@
+# INFILTRAITOR music production stack (Python)
+# Installed in project .venv to keep isolation from system Python.
+
+numpy
+scipy
+soundfile
+mido
+pretty_midi
+music21
+matplotlib
+rich
+typer
+python-dotenv

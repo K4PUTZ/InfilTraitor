@@ -1548,16 +1548,25 @@ func set_debris_pile_board3d(board: Node3D) -> void:
 
 ## Lazily attaches one `FloorPile3D` per material the first time it is placed (a material change is
 ## a different texture family, not a texture swap on one shared node — each gets its own 3 draw
-## calls, same cost shape as the shard pile). Loads `decal_debris_<material>_0/1/2.png`; a missing
-## file is B6-loud (`push_error`, that variant never draws) rather than a silent blank pile.
+## calls, same cost shape as the shard pile). Loads `decal_debris_<material>_0/1/2.png`. The art is grayscale and tinted by the
+## material's colour, so a material with no debris art of its own borrows the generic set (`DEBRIS_ART_FALLBACK`, wood splinters)
+## under ITS tint, with one warning: a plastic or leather break leaves a pile, never a blank (the fallback chain, D66). Art that is
+## missing even for the fallback is B6-loud.
+const DEBRIS_ART_FALLBACK: String = "wood"
+
+
 func _debris_pile_for(material_id: String) -> RefCounted:
 	if _debris_piles.has(material_id):
 		return _debris_piles[material_id]
 	if _debris_pile3d_board == null:
 		return null
+	var art_id: String = material_id
+	if not ResourceLoader.exists("res://ASSETS/materials/_generic/decals/decal_debris_%s_0.png" % art_id):
+		push_warning("[VoxelBoard] Tier 4 debris: no art for '%s', borrowing '%s' under its own tint" % [material_id, DEBRIS_ART_FALLBACK])
+		art_id = DEBRIS_ART_FALLBACK
 	var textures: Array = []
 	for i in range(3):
-		var path := "res://ASSETS/materials/_generic/decals/decal_debris_%s_%d.png" % [material_id, i]
+		var path := "res://ASSETS/materials/_generic/decals/decal_debris_%s_%d.png" % [art_id, i]
 		var tex := load(path) as Texture2D
 		if tex == null:
 			push_error("[VoxelBoard] Tier 4 debris: %s failed to load — no pile will draw for '%s'" % [path, material_id])
@@ -2368,6 +2377,7 @@ func register_mesh_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 	var inst := MeshPropInstance.new(id, gu_cell, start_level, material_name,
 		prop_def.mesh_tier, prop_def.mesh_size)
 	inst.model_path = prop_def.model_path
+	inst.surface_materials = prop_def.surface_materials
 	inst.model_rotation_deg = prop_def.model_rotation_deg
 	_mesh_props.append(inst)
 

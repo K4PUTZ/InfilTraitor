@@ -220,7 +220,7 @@ var _base_damage_claims: Dictionary = {}
 var _base_shattered_props: Dictionary = {}
 var _base_debris: Dictionary = {}
 ## PROPS_TIER4_PLAN P2 / `ACTOR` D67: the charred pile a shattered Tier 4 prop leaves, in BASE coords (base GU of the prop ->
-## {"y0": floor height in world units, "material": id, "records": [{"col": base voxel column, "level": stack level, "mult": colour
+## {"y0": floor height in world units, "zone_materials": [material id per zone], "records": [{"col": base voxel column, "level": stack level, "zone", "mult": colour
 ## multiplier}]}); laid back after the board is rebuilt. A cosmetic record, not `VoxelStore` state. R3D-ROT deletes the replay.
 var _base_prop_piles: Dictionary = {}
 var _debris_tone_hist: Dictionary = {}   ## PROP_DEBUG only: soot tone -> pieces placed on it
@@ -4740,7 +4740,9 @@ func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Col
 	var soot_level: Dictionary = _soot_map.get(_voxel_board.ground_plane_level() - 1, {})
 	var tone: int = int(soot_level.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
 	if tone == BlastCalculator.FACE_SOOT_CHAR:
-		k *= BoardLook.SOOT_CHAR_MULT
+		## The same range the board's charred faces use, drawn by the cell's BASE coordinates (stable across a rotation).
+		var ch: float = float(FacadeSampler._fnv1a_hash("char:%d:%d" % [base_xy.x, base_xy.y]) % 65536) / 65536.0
+		k *= BoardLook.char_mult(ch)
 	elif tone >= 0 and tone < DEBRIS_SOOT_MULT.size():
 		k *= DEBRIS_SOOT_MULT[tone]
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
@@ -4899,10 +4901,11 @@ func release_prop_breaks() -> void:
 	for pending: Dictionary in _pending_prop_breaks:
 		var inst: MeshPropInstance = pending["inst"]
 		var weight: float = float(pending["weight"])
-		spawn_prop_shatter(inst.cell, inst.level, inst.material_id,
-			maxi(1, int(round(vfx_debris_pile_max_pieces * 3.0 * weight))))
 		## The mesh's position is read before it goes.
 		var fragmented: bool = _start_prop_fragments(inst, weight, int(pending["ring"]), pending["source"])
+		## The cubes ARE the chips now: the old burst keeps its smoke, dust and debris carpet but only a fraction of its flying chips.
+		var chips: int = maxi(1, int(round(vfx_debris_pile_max_pieces * 3.0 * weight)))
+		spawn_prop_shatter(inst.cell, inst.level, inst.material_id, maxi(2, int(float(chips) / 4.0)) if fragmented else chips)
 		if live != null:
 			live.call("remove_mesh_prop", inst.id)
 		if prop_debug:
@@ -4944,11 +4947,16 @@ func _start_prop_fragments(inst: MeshPropInstance, weight: float, ring: int, sou
 	var sim := PropFragmentSim.new({"cells": cells, "zones": vox["zones"], "origin": origin, "voxel": vox["voxel"],
 		"blast": blast, "weight": weight, "seed": "%s:%d" % [inst.id, _world_revision],
 		"wave_delay": 0.04 + 0.03 * float(maxi(ring, 0)), "can_cross": cross})
-	var colour: Color = _vfx_material_base_color(inst.material_id)
-	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, colour)
+	## A zone is a surface of the model; its material is the one the prop's `surface_materials` names (else the prop's own).
+	var zone_materials: Array = []
+	var surfaces: Array = (PropModelFit.fit(inst.model_path, inst.model_rotation_deg, inst.mesh_size)["surfaces"]
+		if inst.model_path != "" else [""])
+	for authored in surfaces:
+		zone_materials.append(String(inst.surface_materials.get(String(authored), inst.material_id)))
+	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials)
 	var base_gu: Vector2i = PerspectiveMapperClass.cell_to_base(inst.cell, _active_perspective,
 		_base_layout.get("size", Vector2i.ZERO))
-	node.settled.connect(_on_prop_fragments_settled.bind(base_gu, origin.y, inst.material_id))
+	node.settled.connect(_on_prop_fragments_settled.bind(base_gu, origin.y, zone_materials))
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 		print("[PROP-DEBUG] %s -> %d fragments (%s), weight %.2f, ring %d, blast %s"
 			% [inst.id, cells.size(), "model" if inst.model_path != "" else "box", weight, ring, blast])
@@ -4956,13 +4964,13 @@ func _start_prop_fragments(inst: MeshPropInstance, weight: float, ring: int, sou
 
 
 ## The fragments have landed: the pile goes into the base-coordinate record (what a rotation or a restore replays).
-func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, material_id: String) -> void:
+func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zone_materials: Array) -> void:
 	var size := _base_voxel_size()
 	var base_records: Array = []
 	for r: Dictionary in records:
 		base_records.append({"col": PerspectiveMapperClass.cell_to_base(r["column"], _active_perspective, size),
-			"level": int(r["level"]), "mult": float(r["mult"])})
-	_base_prop_piles[base_gu] = {"y0": y0, "material": material_id, "records": base_records}
+			"level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
+	_base_prop_piles[base_gu] = {"y0": y0, "zone_materials": zone_materials, "records": base_records}
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 		print("[PROP-DEBUG] pile at base GU %s: %d cubes, y0 %.3f" % [base_gu, base_records.size(), y0])
 
@@ -4987,8 +4995,8 @@ func _respawn_base_prop_piles() -> void:
 		var records: Array = []
 		for r: Dictionary in pile["records"]:
 			records.append({"column": PerspectiveMapperClass.cell_from_base(r["col"], _active_perspective, size),
-				"level": int(r["level"]), "mult": float(r["mult"])})
-		live.call("spawn_prop_pile", records, float(pile["y0"]), _vfx_material_base_color(String(pile["material"])))
+				"level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
+		live.call("spawn_prop_pile", records, float(pile["y0"]), pile["zone_materials"])
 		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 			print("[PROP-DEBUG] pile of base GU %s laid back: %d cubes (view %s)" % [base_gu, records.size(), _active_perspective])
 
@@ -5084,7 +5092,7 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 ## material has no registry entry (e.g. "earth" — resistance-table-only, see
 ## material_resistance_table.gd).
 func _vfx_material_base_color(material_id: String) -> Color:
-	var mat_def = Registries.get_material_registry().get_material(material_id)
+	var mat_def = Registries.get_material_registry().resolve(material_id)
 	return mat_def.base_color if mat_def != null else Color(0.6, 0.6, 0.6)
 
 

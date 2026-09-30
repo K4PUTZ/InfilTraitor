@@ -1,5 +1,6 @@
 {
   "id": "glass_armored",
+  "family": "glass",
   "destroy_factor": 0.35,
   "dent_factor": 0.0,
   "crack_factor": 0.0,

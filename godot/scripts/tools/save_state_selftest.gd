@@ -208,14 +208,15 @@ func _test_props_round_trip() -> void:
 	a._base_debris["wood_1_2_79_0"] = {"base": Vector2(52.25, 57.75), "level": 79, "material": "wood", "variant": 2,
 		"tint": Color(0.25, 0.125, 0.0625, 1.0), "rot": 1.5}
 	## P2: a charred pile of fragments (base GU -> floor height, material, cubes).
-	a._base_prop_piles[Vector2i(6, 6)] = {"y0": 0.0, "material": "wood", "records": [
-		{"col": Vector2i(49, 50), "level": 0, "mult": 0.25}, {"col": Vector2i(49, 50), "level": 1, "mult": 0.125}]}
+	a._base_prop_piles[Vector2i(6, 6)] = {"y0": 0.0, "zone_materials": ["wood", "metal"], "records": [
+		{"col": Vector2i(49, 50), "level": 0, "mult": 0.25, "zone": 0}, {"col": Vector2i(49, 50), "level": 1, "mult": 0.125, "zone": 1}]}
 	var b := RoomStub.new()
 	_check(SaveState.restore(b, SaveState.capture(a)), "props: restore() accepts what capture() produced")
 	var pile: Dictionary = b._base_prop_piles.get(Vector2i(6, 6), {})
-	_check(not pile.is_empty() and pile["material"] == "wood" and is_equal_approx(float(pile["y0"]), 0.0) \
+	_check(not pile.is_empty() and pile["zone_materials"] == ["wood", "metal"] and is_equal_approx(float(pile["y0"]), 0.0) \
 		and pile["records"].size() == 2 and pile["records"][1]["col"] == Vector2i(49, 50) \
-		and int(pile["records"][1]["level"]) == 1 and is_equal_approx(float(pile["records"][1]["mult"]), 0.125),
+		and int(pile["records"][1]["level"]) == 1 and int(pile["records"][1]["zone"]) == 1 \
+		and is_equal_approx(float(pile["records"][1]["mult"]), 0.125),
 		"props: a pile of charred fragments came back with every cube")
 	_check(b._base_shattered_props.has(Vector2i(6, 6)) and b._base_shattered_props.size() == 1,
 		"props: the shattered table survived the round trip")

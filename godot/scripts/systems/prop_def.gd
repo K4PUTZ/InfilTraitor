@@ -23,6 +23,10 @@ var mesh_size: Vector3 = Vector3.ONE        # world units (1.0 = 1 GU); mesh_tie
 ## so `mesh_size` should be the model's own proportions at the size it is meant to have (it is what the throw arc, the
 ## pick and the shatter read). Each surface keeps the colour/texture the model was authored with.
 var model_path: String = ""
+## A model's surfaces (by the name of the material they were authored with) -> a material id from OUR registry: the colour and the
+## detail of a prop come from the material, never from the model (`ACTOR` D66). A surface not named here takes
+## `material_zones["default"]`; a material id the registry does not have resolves through its fallback chain.
+var surface_materials: Dictionary = {}
 var model_rotation_deg: Vector3 = Vector3.ZERO
 ## Native voxel props only: 0 = solid fill; N > 0 = a hollow box with an N-voxel shell (a crate is a container, not a
 ## block of wood). The interior is simply no voxels — what it CONTAINS is a later, separate thing.
@@ -56,6 +60,7 @@ static func from_json(data: Dictionary) -> PropDef:
 	var ms = data.get("mesh_size", [1.0, 1.0, 1.0])
 	def.mesh_size = Vector3(float(ms[0]), float(ms[1]), float(ms[2]))
 	def.model_path = String(data.get("model", ""))
+	def.surface_materials = data.get("surface_materials", {})
 	var mr = data.get("model_rotation_deg", [0.0, 0.0, 0.0])
 	def.model_rotation_deg = Vector3(float(mr[0]), float(mr[1]), float(mr[2]))
 

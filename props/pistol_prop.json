@@ -30,5 +30,10 @@
     90,
     0,
     0
-  ]
+  ],
+  "surface_materials": {
+    "Metal": "steel_dark",
+    "Black": "rubber",
+    "LightMetal": "metal"
+  }
 }

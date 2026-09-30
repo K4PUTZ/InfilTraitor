@@ -1,0 +1,17 @@
+{
+  "id": "leather",
+  "family": "leather",
+  "destroy_factor": 0.45,
+  "dent_factor": 0.2,
+  "crack_factor": 0.0,
+  "flammability": 0.6,
+  "base_color": [
+    0.42,
+    0.27,
+    0.17
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": false,
+  "burn_consumption": 0.3,
+  "smoke_chance": 0.3
+}

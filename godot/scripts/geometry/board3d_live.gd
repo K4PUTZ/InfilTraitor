@@ -100,7 +100,7 @@ uniform ivec2 plane_origin = ivec2(64, 64);
 uniform int plane_size = 512;
 uniform float bucket_lum[12];
 uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
-uniform float soot_char = 0.14;
+uniform vec2 soot_char_range = vec2(0.10, 0.30);
 uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform float depth_dim[5];
 varying vec3 v_world;
@@ -153,6 +153,14 @@ int cut_state(ivec3 v, vec2 frag) {
 	float fill = ring == 0 ? 0.14 : (ring == 1 ? 0.24 : 0.36);
 	return fill > cut_bayer(frag) ? 2 : 1;
 }
+// A stable hash of a voxel in [0, 1): what makes charred tones vary from voxel to voxel. View-space coordinates, so the
+// pattern re-rolls on a rotation until R3D-ROT fixes the world.
+float char_hash(ivec3 c) {
+	uint x = uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u;
+	x = (x ^ (x >> 13u)) * 1274126177u;
+	x = x ^ (x >> 16u);
+	return float(x & 65535u) / 65536.0;
+}
 vec3 srgb_to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
 }
@@ -183,7 +191,13 @@ void fragment() {
 	float ring = face == 0 ? floor(code / 36.0)
 			: (face == 1 ? floor(mod(code, 36.0) / 6.0) : mod(code, 6.0));
 	float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];
-	f *= ring < 3.5 ? soot_mult[int(ring)] : (ring > 4.5 ? soot_char : 1.0);
+	if (ring < 3.5) {
+		f *= soot_mult[int(ring)];
+	} else if (ring > 4.5) {
+		// charred: a tone per voxel (the hash runs only here, never on a clean or lightly sooted fragment)
+		float ch = char_hash(ivec3(v.x, v.y, v.z));
+		f *= mix(soot_char_range.x, soot_char_range.y, ch * ch);
+	}
 	int rel = level + rel_offset;
 	if (rel < 0) {
 		f *= depth_dim[min(-rel - 1, 4)];
@@ -1199,7 +1213,7 @@ func _build_plane() -> void:
 		m.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		m.set_shader_parameter("bucket_lum", ladder)
 		m.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
-		m.set_shader_parameter("soot_char", BoardLook.SOOT_CHAR_MULT)
+		m.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
 		m.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
 		m.set_shader_parameter("depth_dim", dims)
 	for pm: ShaderMaterial in _prop_materials:
@@ -1211,7 +1225,7 @@ func _build_plane() -> void:
 		pm.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		pm.set_shader_parameter("bucket_lum", ladder)
 		pm.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
-		pm.set_shader_parameter("soot_char", BoardLook.SOOT_CHAR_MULT)
+		pm.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
 
 
 ## R3D-PROPS: a prop mesh's `ShaderMaterial` (`prop_mesh3d.gdshader`) asks to be kept lit by every
@@ -1230,7 +1244,7 @@ func register_prop_light_material(mat: ShaderMaterial) -> void:
 		mat.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
 		mat.set_shader_parameter("bucket_lum", PackedFloat32Array(_light_ladder))
 		mat.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
-		mat.set_shader_parameter("soot_char", BoardLook.SOOT_CHAR_MULT)
+		mat.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
 
 
 func unregister_prop_light_material(mat: ShaderMaterial) -> void:
@@ -1268,7 +1282,8 @@ func _build_mesh_props() -> void:
 		## drew every mesh prop within a GU of the map origin and a level up in the air (found 2026-09-29, on the
 		## first capture that looked for them). So: rest it on the level below, and centre it on its GU.
 		if inst.model_path != "":
-			node.setup_model(self, inst.model_path, inst.model_rotation_deg, inst.mesh_size, inst.cell, inst.level - 1)
+			node.setup_model(self, inst.model_path, inst.model_rotation_deg, inst.mesh_size, inst.cell, inst.level - 1,
+				inst.surface_materials, inst.material_id)
 		else:
 			var mesh := BoxMesh.new()
 			mesh.size = inst.mesh_size
@@ -1290,18 +1305,18 @@ func mesh_prop_position(id: String) -> Variant:
 
 
 ## The voxel fragments of a broken prop: one node, one draw call, stepping `sim` every frame and keeping the landed cubes as a pile.
-func spawn_prop_fragments(sim: PropFragmentSim, base_color: Color) -> PropFragments3D:
+func spawn_prop_fragments(sim: PropFragmentSim, zone_materials: Array) -> PropFragments3D:
 	var node := PropFragments3D.new()
 	node.name = "PropFragments_%d" % _fragment_nodes.size()
 	_geometry_root.add_child(node)
-	node.setup(self, sim, base_color)
+	node.setup(self, sim, zone_materials)
 	_fragment_nodes.append(node)
 	return node
 
 
 ## A pile laid back from records (after a rotation rebuilt the board, or a restore).
-func spawn_prop_pile(records: Array, y0: float, base_color: Color) -> PropFragments3D:
-	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, base_color)
+func spawn_prop_pile(records: Array, y0: float, zone_materials: Array) -> PropFragments3D:
+	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, zone_materials)
 	_geometry_root.add_child(node)
 	_fragment_nodes.append(node)
 	return node
@@ -2074,11 +2089,9 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	shader.code = LIT_SHADER if LIT3D else OPAQUE_SHADER
 	shader_material.shader = shader
 	shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
-	var resolved = TextureResolver.new().resolve("facade_%s" % material_id, material_id)
-	if resolved != null and resolved.image != null:
-		var image: Image = (resolved.image as Image).duplicate()
-		image.generate_mipmaps()
-		shader_material.set_shader_parameter("facade", ImageTexture.create_from_image(image))
+	var facade_tex: Texture2D = material_facade_texture(material_id)
+	if facade_tex != null:
+		shader_material.set_shader_parameter("facade", facade_tex)
 		shader_material.set_shader_parameter("has_facade", 1.0)
 	else:
 		## R3D-SURFACES prototype — the has_facade == false branch (organic ground): a `slab_<id>`
@@ -2093,6 +2106,24 @@ func _make_material(material_id: String) -> ShaderMaterial:
 			if macro != null:
 				shader_material.set_shader_parameter("surface_macro", macro)
 	return shader_material
+
+
+## A material's grayscale facade as a texture (mipmapped), built ONCE per board and shared by everything that draws that material:
+## its walls, floors and roofs, the props made of it and their voxel fragments. Null when the material has none (a flat one).
+var _facade_textures: Dictionary = {}
+
+
+func material_facade_texture(material_id: String) -> Texture2D:
+	if _facade_textures.has(material_id):
+		return _facade_textures[material_id]
+	var tex: Texture2D = null
+	var resolved = TextureResolver.new().resolve("facade_%s" % material_id, material_id)
+	if resolved != null and resolved.image != null:
+		var image: Image = (resolved.image as Image).duplicate()
+		image.generate_mipmaps()
+		tex = ImageTexture.create_from_image(image)
+	_facade_textures[material_id] = tex
+	return tex
 
 
 ## R3D-SURFACES — resolves `ASSETS/materials/_generic/macro_ground.png` once (`_generic` is where the decal

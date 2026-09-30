@@ -1,0 +1,17 @@
+{
+  "id": "upholstery",
+  "family": "fabric",
+  "destroy_factor": 0.55,
+  "dent_factor": 0.2,
+  "crack_factor": 0.0,
+  "flammability": 1.2,
+  "base_color": [
+    0.35,
+    0.4,
+    0.47
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": false,
+  "burn_consumption": 0.6,
+  "smoke_chance": 0.4
+}

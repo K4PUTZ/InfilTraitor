@@ -25,5 +25,8 @@
     "organic",
     "shatterable"
   ],
-  "model": "res://ASSETS/props/wooden_table_02/wooden_table_02_1k.gltf"
+  "model": "res://ASSETS/props/wooden_table_02/wooden_table_02_1k.gltf",
+  "surface_materials": {
+    "wooden_table_02": "wood"
+  }
 }

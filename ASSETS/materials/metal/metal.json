@@ -1,5 +1,6 @@
 {
   "id": "metal",
+  "family": "metal",
   "destroy_factor": 0.03,
   "dent_factor": 0.35,
   "crack_factor": 0.0,

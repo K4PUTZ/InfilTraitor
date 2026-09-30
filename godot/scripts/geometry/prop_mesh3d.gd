@@ -46,16 +46,21 @@ func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color,
 
 
 ## A real model (glTF/GLB) instead of a box: turned by `rotation_deg`, scaled uniformly to fit inside `fit_size` (world
-## units), centred on the cell horizontally and standing on its base. Every surface becomes one lit material that keeps
-## the colour (and texture) the model was authored with, so a pistol's grip and slide read as two colours; all of them
-## are registered with the board, so the light and the soot reach them exactly as they reach the box.
-func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int) -> void:
+## units), centred on the cell horizontally and standing on its base. COLOUR AND DETAIL COME FROM OUR MATERIAL REGISTRY, never from
+## the model (`ACTOR` D66): each surface is looked up by the name of the material it was authored with in `surface_materials`
+## (falling back to `default_material`), and becomes one board-lit material carrying that registry material's colour and, when it
+## has one, its facade. A pistol's grip and slide read as two materials; all of them are registered with the board, so the light and
+## the soot reach them exactly as they reach the box.
+func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int,
+		surface_materials: Dictionary = {}, default_material: String = "generic") -> void:
 	_board = board
 	var model: Dictionary = PropModelFit.fit(path, rotation_deg, fit_size)
 	if not bool(model["ok"]):
 		return
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var ground_level: int = board.call("ground_level")
+	var surface_names: Array = model["surfaces"]
+	var surface_index: int = 0
 	for part: Dictionary in model["parts"]:
 		var mesh: Mesh = part["mesh"]
 		var node := MeshInstance3D.new()
@@ -63,7 +68,9 @@ func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: V
 		node.transform = part["xf"]
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for s in range(mesh.get_surface_count()):
-			var m := _lit_material_from(mesh.surface_get_material(s))
+			var authored: String = String(surface_names[surface_index]) if surface_index < surface_names.size() else ""
+			surface_index += 1
+			var m := _material_for(String(surface_materials.get(authored, default_material)))
 			node.set_surface_override_material(s, m)
 			_extra_mats.append(m)
 			board.call("register_prop_light_material", m)
@@ -71,18 +78,19 @@ func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: V
 	position = Vector3((float(cell.x) + 0.5) * unit, float(level + 1 - ground_level) * unit, (float(cell.y) + 0.5) * unit)
 
 
-## One board-lit material carrying a source material's albedo colour and texture.
-func _lit_material_from(source: Material) -> ShaderMaterial:
+## One board-lit material for a registry material id (through its fallback chain): its colour, and its facade when it has one.
+func _material_for(material_id: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = load(SHADER_PATH)
-	var colour := Color(0.6, 0.6, 0.6)
-	if source is BaseMaterial3D:
-		var base := source as BaseMaterial3D
-		colour = base.albedo_color
-		if base.albedo_texture != null:
-			m.set_shader_parameter("albedo_tex", base.albedo_texture)
-			m.set_shader_parameter("has_tex", 1.0)
-	m.set_shader_parameter("albedo", colour)
+	## Not the bare `Registries` identifier: a script that names an autoload does not compile under a `--script` selftest.
+	var registries: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/Registries")
+	var definition = registries.get_material_registry().resolve(material_id) if registries != null else null
+	m.set_shader_parameter("albedo", definition.base_color if definition != null else Color(0.55, 0.55, 0.55))
+	if definition != null and definition.has_facade:
+		var facade: Texture2D = _board.call("material_facade_texture", definition.id)
+		if facade != null:
+			m.set_shader_parameter("facade", facade)
+			m.set_shader_parameter("has_facade", 1.0)
 	return m
 
 

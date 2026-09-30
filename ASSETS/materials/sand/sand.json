@@ -1,5 +1,6 @@
 {
   "id": "sand",
+  "family": "soil",
   "destroy_factor": 0.5,
   "dent_factor": 0.4,
   "crack_factor": 0.0,

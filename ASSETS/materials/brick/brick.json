@@ -1,5 +1,6 @@
 {
   "id": "brick",
+  "family": "stone",
   "destroy_factor": 0.35,
   "dent_factor": 0.18,
   "crack_factor": 0.12,

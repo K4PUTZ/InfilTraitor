@@ -1,0 +1,17 @@
+{
+  "id": "plastic",
+  "family": "plastic",
+  "destroy_factor": 0.65,
+  "dent_factor": 0.25,
+  "crack_factor": 0.0,
+  "flammability": 1.3,
+  "base_color": [
+    0.72,
+    0.72,
+    0.74
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": false,
+  "burn_consumption": 0.5,
+  "smoke_chance": 0.5
+}

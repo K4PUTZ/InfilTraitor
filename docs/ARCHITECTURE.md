@@ -22,28 +22,28 @@ an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. Acto
 
 ```
  CONTENT (data on disk)            maps/*.map.json (sections, versioned, owner-registered) · props/*.json · bombs/ · weapons/ · ASSETS/materials/<id>/ (row + grayscale facade + decals)
-        │  two tiers everywhere: res:// (shipped) then user:// (a player's; user wins on id collision)
-        ▼
+		│  two tiers everywhere: res:// (shipped) then user:// (a player's; user wins on id collision)
+		▼
  LOAD PIPELINE (room.load_map)     FileMapSource/MapFileService -> MapCatalog -> MapSpec -> MapCompiler (the ONLY owner of the buffer offset) -> base layout (BASE coordinates, rotation-independent)
-        │                          -> RoomBuilder.layout_with_perspective (PerspectiveMapper) -> RoomBuilder.build_from_layout
-        ▼
+		│                          -> RoomBuilder.layout_with_perspective (PerspectiveMapper) -> RoomBuilder.build_from_layout
+		▼
  GEOMETRY REGISTRIES               EdgeRegistry (Edge -> 2 Slices, D16) · SlabRegistry (FLOOR/CEILING/INTERIOR) · JunctionResolver columns · VoxelBoard prop containers (PropBlock) and mesh props (MeshPropInstance)
-        │  VoxelBoard._rebuild_voxel_store -> VoxelStore.build(...)   (WalkWarmer then fills the walk cache in idle frames)
-        ▼
+		│  VoxelBoard._rebuild_voxel_store -> VoxelStore.build(...)   (WalkWarmer then fills the walk cache in idle frames)
+		▼
  STATE                             VoxelStore      the ONLY place voxel state lives: flat per-claim arrays (visible, damage tier, carved side, variant, substrate, material), a derived dense occupancy grid, `gone_claims`; `Voxel` is a 1-int wrapper
-                                   CellPlaneStore  one 512x512 RG8 image per level: R = per-face soot code (base 6, 172 = clean, 5 = charred), G = light bucket (0..11)
-                                   GroundGrid      the cell lattice as closed-form maths (no tiles)
-                                   Room._base_*    records of everything a mission did, in BASE coordinates (damage, soot, cracks, openings, shards, shattered props, debris): replayed after a rotation, saved by SaveState
-        ▼
+								   CellPlaneStore  one 512x512 RG8 image per level: R = per-face soot code (base 6, 172 = clean, 5 = charred), G = light bucket (0..11)
+								   GroundGrid      the cell lattice as closed-form maths (no tiles)
+								   Room._base_*    records of everything a mission did, in BASE coordinates (damage, soot, cracks, openings, shards, shattered props, debris): replayed after a rotation, saved by SaveState
+		▼
  SIMULATION (pure -> commit)       DetonationPlanBuilder: a 14-phase, time-budgeted, resumable cook (SETUP, SLICES, JUNCTIONS, PROPS, ROOFS, FLOORS, WALK, BURN, SOOT, LIGHT, PACKAGE, EXPOSE, SOOTWAVE, SMOKE) that builds a WorldDelta: a DESCRIPTION of what would change
-                                   PredictionCache keys it on (signature, world_revision); `delta.commit(room)` is the only writer; DetonationPresenter plays one frame that writes everything, then N frames of effects
-                                   Firearms: AgentShotController / WeaponBench -> BlastCalculator.plan_point_impact (walls) or plan_prop_impact (prop voxels); WeaponDef + ShotPunchTable; Glass: GlassShatter / GlassCrack / GlassOpening
-                                   Light: VoxelLightField (12 directional buckets per face) <- LightRegistry/ShadowProjector (tactical, GU resolution); visual brightness is not tactical visibility
-        ▼
+								   PredictionCache keys it on (signature, world_revision); `delta.commit(room)` is the only writer; DetonationPresenter plays one frame that writes everything, then N frames of effects
+								   Firearms: AgentShotController / WeaponBench -> BlastCalculator.plan_point_impact (walls) or plan_prop_impact (prop voxels); WeaponDef + ShotPunchTable; Glass: GlassShatter / GlassCrack / GlassOpening
+								   Light: VoxelLightField (12 directional buckets per face) <- LightRegistry/ShadowProjector (tactical, GU resolution); visual brightness is not tactical visibility
+		▼
  RENDER (3D, then 2D on top)       Board3DLive (Node3D under Room): meshes the VoxelStore in 16-voxel chunks, faces merged by MATERIAL, three visible faces; colour = material base_color x facade luminance sampled in world space at 16 texels per voxel;
-                                   light and soot are read PER CELL from the planes (a Texture2DArray), so a light or soot change is a layer upload, not a remesh; `BoardLook` owns the look constants; glass panes read the screen behind them
-                                   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each), ActorBillboard3D (2D sprite frames as depth-tested billboards), GroundCanvas3D, VisionCone3D
-                                   2D on top: HUD (hud.tscn), FogOfWar, Selection/Movement/Path overlays, guards and the agent (baked frames)
+								   light and soot are read PER CELL from the planes (a Texture2DArray), so a light or soot change is a layer upload, not a remesh; `BoardLook` owns the look constants; glass panes read the screen behind them
+								   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each), ActorBillboard3D (2D sprite frames as depth-tested billboards), GroundCanvas3D, VisionCone3D
+								   2D on top: HUD (hud.tscn), FogOfWar, Selection/Movement/Path overlays, guards and the agent (baked frames)
 ```
 
 ### 0.2 Five rules the whole architecture leans on
@@ -64,7 +64,7 @@ an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. Acto
 | **Localization** | `tr("domain.key")` through an autoload | `systems/localization/` |
 
 ### 0.4 What is NOT built yet (so nobody assumes it)
-R3D-ACTORS (live skinned actors, D64), R3D-ROT (camera-only rotation), R3D-WORLD (world-space 2D overlays), R3D-SURFACES (photographic ground), R3D-LOOK, R3D-CLAIMS / BUFFER; Prop shadows, the colour grade, registry-driven prop colour and the drop-in model pipeline (slots, several models per slot, `.iprop`, `.vox` containers; decisions `ACTOR` D66-D69, plans [`PROPS_TIER4_PLAN`](../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md) and [`PROP_PIPELINE_PLAN`](../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md)); the first content scene, a dormitory (`maps/DORM.map.json`); the run-state model of §1; detection consuming the exposure pipeline (§15.4).
+R3D-ACTORS (live skinned actors, D64), R3D-ROT (camera-only rotation), R3D-WORLD (world-space 2D overlays), R3D-SURFACES (photographic ground), R3D-LOOK, R3D-CLAIMS / BUFFER; Prop shadows, the colour grade and the drop-in model pipeline (slots, several models per slot, `.iprop`, `.vox` containers; decisions `ACTOR` D66-D69, plans [`PROPS_TIER4_PLAN`](../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md) and [`PROP_PIPELINE_PLAN`](../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md)); the first content scene, a dormitory (`maps/DORM.map.json`); the run-state model of §1; detection consuming the exposure pipeline (§15.4).
 
 ---
 
@@ -545,7 +545,7 @@ Tile semantics and heights are inferred from `blocked_cells`; lights are map-dri
 | Prediction (simulate -> `WorldDelta` -> commit) | Implemented | `systems/prediction/` (cache, reaper, warmer) |
 | Glass (physics, shatter, crack, shards, panes) | Implemented | `GLASS_MASTER_PLAN` |
 | Light (voxel buckets, cell planes) | Implemented | `VoxelLightField`; real 3D lamps rejected (+24 ms GPU on the Moto) |
-| Props Tier 1/2 (hollow voxel crates), Tier 3/4 (real CC0 models) | Implemented | R3D-PROPS; Tier 4 voxel replacement + the persistent charred pile built 2026-09-30 (`PropVoxelizer`, `PropFragmentSim`, `PropFragments3D`); registry colour, charred variety, shadows planned (`PROPS_TIER4_PLAN`) |
+| Props Tier 1/2 (hollow voxel crates), Tier 3/4 (real CC0 models) | Implemented | R3D-PROPS; Tier 4 voxel replacement + the persistent charred pile built 2026-09-30 (`PropVoxelizer`, `PropFragmentSim`, `PropFragments3D`); prop colour from the material registry and the wider charred tones built (P4/P5), shadows and the grade planned (`PROPS_TIER4_PLAN`) |
 | Drop-in model pipeline (`.iprop`, slots, several models per slot, `.vox`) | Planned | `PROP_PIPELINE_PLAN` (questions ruled 2026-09-30); first content: the dormitory scene |
 | Actors (agent, guards) | Partial | baked 2D frames mirrored as billboards; live rigs at R3D-ACTORS (D64) |
 | Rotation | Partial | four views by full re-layout + base-record replay; camera-only is R3D-ROT |

@@ -24,9 +24,7 @@ const SLIDE_TIME: float = 0.07
 ## Outward speed (GU/s) at weight 1, and the up-kick.
 const PUSH_SPEED: float = 1.3
 const PUSH_UP: float = 1.2
-## The charred tone of a fragment: a multiplier on its colour, `lerp(MIN, MAX, h*h)` (mostly dark, some lighter; D-P5).
-const CHAR_MIN: float = 0.10
-const CHAR_MAX: float = 0.30
+## The charred tone of a fragment: a multiplier on its colour, `BoardLook.char_mult(h)` = `lerp(MIN, MAX, h*h)` (mostly dark, some lighter; D-P5).
 ## Seconds over which a fragment goes from its own colour to its charred tone, starting at the wave.
 const CHAR_TIME: float = 0.30
 
@@ -101,7 +99,7 @@ func _init(p: Dictionary) -> void:
 		far = maxf(far, centres[i].distance_to(blast))
 		state[i] = State.FALLING
 		vanish_at[i] = -1.0
-		tone[i] = lerpf(CHAR_MIN, CHAR_MAX, _h01(i, "tone") * _h01(i, "tone"))
+		tone[i] = BoardLook.char_mult(_h01(i, "tone"))
 		jitter[i] = 0.94 + 0.12 * _h01(i, "jit")
 	## The blast carves away the fragments nearest it: rank by (a hash nudged by distance), the first `round(weight * count)` go.
 	var order: Array = range(count)

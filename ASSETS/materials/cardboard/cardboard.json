@@ -1,5 +1,6 @@
 {
   "id": "cardboard",
+  "family": "paper",
   "destroy_factor": 0.9,
   "dent_factor": 0.0,
   "crack_factor": 0.0,

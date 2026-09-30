@@ -1,0 +1,17 @@
+{
+  "id": "rubber",
+  "family": "rubber",
+  "destroy_factor": 0.25,
+  "dent_factor": 0.3,
+  "crack_factor": 0.0,
+  "flammability": 1.0,
+  "base_color": [
+    0.13,
+    0.13,
+    0.14
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": false,
+  "burn_consumption": 0.3,
+  "smoke_chance": 0.6
+}

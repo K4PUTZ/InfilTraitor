@@ -1,16 +1,17 @@
 {
-  "id": "glass_screen_amber",
-  "family": "glass",
-  "destroy_factor": 0.7,
+  "id": "ceramic",
+  "family": "ceramic",
+  "destroy_factor": 0.9,
   "dent_factor": 0.0,
   "crack_factor": 0.0,
   "flammability": 0.0,
   "base_color": [
-    0.7,
-    0.6,
-    0.38
+    0.9,
+    0.89,
+    0.85
   ],
   "pattern_algorithm": "flat",
   "has_facade": false,
-  "smoke_chance": 0.15
+  "burn_consumption": 0.0,
+  "smoke_chance": 0.05
 }

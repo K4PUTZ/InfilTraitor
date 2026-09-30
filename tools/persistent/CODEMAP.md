@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 82969 lines total** (under `godot/scripts/`)
+**257 scripts · 83122 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2142 lines
+extends `Node3D` · 2173 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -514,7 +514,7 @@ extends `Node3D` · 2142 lines
 
 ### `board_look.gd`
 
-`class_name BoardLook` · extends `RefCounted` · 30 lines
+`class_name BoardLook` · extends `RefCounted` · 39 lines
 
 `godot/scripts/geometry/board_look.gd`
 
@@ -522,7 +522,8 @@ extends `Node3D` · 2142 lines
 
 **Constants / tuning**
 - `SOOT_FACE_MULT` = `[0.38, 0.60, 0.76, 0.90]`
-- `SOOT_CHAR_MULT` = `0.14`
+- `SOOT_CHAR_MIN` = `0.10`
+- `SOOT_CHAR_MAX` = `0.30`
 - `FACE_TONE` = `[1.0, 0.975, 0.945]`
 
 ---
@@ -757,7 +758,7 @@ extends `Node3D` · 2142 lines
 
 ### `mesh_prop_instance.gd`
 
-`class_name MeshPropInstance` · 33 lines
+`class_name MeshPropInstance` · 34 lines
 
 `godot/scripts/geometry/mesh_prop_instance.gd`
 
@@ -770,6 +771,7 @@ extends `Node3D` · 2142 lines
 - `var material_id: String`
 - `var mesh_tier: int`
 - `var mesh_size: Vector3`
+- `var surface_materials: Dictionary = {}`
 - `var model_path: String = ""`
 - `var model_rotation_deg: Vector3 = Vector3.ZERO`
 - `var shattered: bool = false`
@@ -859,7 +861,7 @@ extends `Node3D` · 2142 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 330 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 328 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -873,8 +875,6 @@ extends `Node3D` · 2142 lines
 - `SLIDE_TIME` = `0.07`
 - `PUSH_SPEED` = `1.3`
 - `PUSH_UP` = `1.2`
-- `CHAR_MIN` = `0.10`
-- `CHAR_MAX` = `0.30`
 - `CHAR_TIME` = `0.30`
 
 **Public vars**
@@ -909,11 +909,11 @@ extends `Node3D` · 2142 lines
 
 ### `prop_fragments3d.gd`
 
-`class_name PropFragments3D` · extends `Node3D` · 174 lines
+`class_name PropFragments3D` · extends `Node3D` · 213 lines
 
 `godot/scripts/geometry/prop_fragments3d.gd`
 
-> PropFragments3D — the voxel fragments of one broken prop, in ONE draw call, depth-tested, lit by the board's planes. PROPS_TIER4_PLAN P2 / `ACTOR` D67. While a `PropFragmentSim` runs, this node moves the cubes every frame; when the sim is done it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a rotation rebuilds the board and drops every node, so the pile is laid back from `Room._base_prop_piles`). ONE MultiMesh of a board-size cube (1/8 GU), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its base mesh, so without it every cube away from the node origin is culled). The material is the board's prop shader with `use_color`: the cell planes give it light and soot, the per-instance colour gives it the prop's material colour, each cube's small brightness variation and its charring. The colour is handed over in linear (vertex colour is linear, the shader's `albedo` is sRGB).
+> PropFragments3D — the voxel fragments of one broken prop, in ONE draw call, depth-tested, lit by the board's planes. PROPS_TIER4_PLAN P2 / `ACTOR` D67. While a `PropFragmentSim` runs, this node moves the cubes every frame; when the sim is done it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a rotation rebuilds the board and drops every node, so the pile is laid back from `Room._base_prop_piles`). ONE MultiMesh of a board-size cube (1/8 GU), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its base mesh, so without it every cube away from the node origin is culled). The material is the board's prop shader with `use_color`: the cell planes give it light and soot, the per-instance colour gives it the prop's material colour, each cube's small brightness variation and its charring. The colour is handed over in linear (vertex colour is linear, the shader's `albedo` is sRGB). COLOUR COMES FROM THE MATERIAL REGISTRY (`ACTOR` D66): each fragment carries the zone of the surface it came from, and a zone is a material id (`zone_materials[zone]`, resolved through the fallback chain). The node draws with the facade of the material most of its cubes are made of (one draw call, one texture): the others keep their own colour under that detail.
 
 **Signals**
 - `signal settled(records: Array)`
@@ -923,7 +923,7 @@ extends `Node3D` · 2142 lines
 - `FLOATS_PER_INSTANCE` = `16`
 
 **Public API**
-- `func setup(board: Node3D, sim: PropFragmentSim, base_color: Color) -> void:`
+- `func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array) -> void:`
 - `func is_finished() -> bool:`
 - `func finish_now() -> void:`
 
@@ -931,7 +931,7 @@ extends `Node3D` · 2142 lines
 
 ### `prop_mesh3d.gd`
 
-`class_name PropMesh3D` · extends `Node3D` · 94 lines
+`class_name PropMesh3D` · extends `Node3D` · 102 lines
 
 `godot/scripts/geometry/prop_mesh3d.gd`
 
@@ -942,17 +942,17 @@ extends `Node3D` · 2142 lines
 
 **Public API**
 - `func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color, mesh_half_height: float) -> void:`
-- `func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int) -> void:`
+- `func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int, surface_materials: Dictionary = {}, default_material: String = "generic") -> void:`
 
 ---
 
 ### `prop_model_fit.gd`
 
-`class_name PropModelFit` · 86 lines
+`class_name PropModelFit` · 91 lines
 
 `godot/scripts/geometry/prop_model_fit.gd`
 
-> PropModelFit — a prop model (glTF/GLB, or a plain box) fitted into its `mesh_size`: turned by `rotation_deg`, scaled uniformly to fit, standing on Y = 0 and centred on X/Z (so local X/Z = 0 is the cell's centre, a board-voxel boundary, and local Y = 0 is the floor). One answer, used by the thing that DRAWS the prop (`PropMesh3D.setup_model`) and by the thing that turns it into voxels (`PropVoxelizer`), so the two can never disagree about where the prop is. Cached per (path, rotation, fit size): a model is built once and every instance of it shares the parts (PROP_PIPELINE_PLAN §1b, several instances of one model). A part is {"mesh": Mesh, "xf": Transform3D}, `xf` already carrying the fit.
+> PropModelFit — a prop model (glTF/GLB, or a plain box) fitted into its `mesh_size`: turned by `rotation_deg`, scaled uniformly to fit, standing on Y = 0 and centred on X/Z (so local X/Z = 0 is the cell's centre, a board-voxel boundary, and local Y = 0 is the floor). One answer, used by the thing that DRAWS the prop (`PropMesh3D.setup_model`) and by the thing that turns it into voxels (`PropVoxelizer`), so the two can never disagree about where the prop is. Cached per (path, rotation, fit size): a model is built once and every instance of it shares the parts (PROP_PIPELINE_PLAN §1b, several instances of one model). A part is {"mesh": Mesh, "xf": Transform3D}, `xf` already carrying the fit. `surfaces` is the name of the material each surface was authored with, in the order `PropVoxelizer` numbers its zones (across the parts).
 
 ---
 
@@ -1161,7 +1161,7 @@ extends `Node3D` · 2142 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2404 lines
+`class_name VoxelBoard` · extends `Node2D` · 2414 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -2892,7 +2892,7 @@ extends `Node` · 231 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 177 lines
+`class_name MaterialRegistry` · 212 lines
 
 `godot/scripts/systems/material_registry.gd`
 
@@ -2911,6 +2911,7 @@ extends `Node` · 231 lines
 **Public API**
 - `func register(material: MaterialDef) -> void:`
 - `func get_material(p_id: String) -> MaterialDef:`
+- `func resolve(p_id: String) -> MaterialDef:`
 - `func list_materials() -> Array:`
 - `func count() -> int:`
 - `func register_defaults() -> void:`
@@ -3123,7 +3124,7 @@ extends `Node` · 231 lines
 
 ### `prop_def.gd`
 
-`class_name PropDef` · 62 lines
+`class_name PropDef` · 67 lines
 
 `godot/scripts/systems/prop_def.gd`
 
@@ -3139,6 +3140,7 @@ extends `Node` · 231 lines
 - `var gameplay: Dictionary`
 - `var tags: Array[String]`
 - `var model_path: String = ""`
+- `var surface_materials: Dictionary = {}`
 - `var model_rotation_deg: Vector3 = Vector3.ZERO`
 - `var hollow_shell: int = 0`
 
@@ -3201,7 +3203,7 @@ extends `Node` · 151 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 285 lines
+`class_name SaveState` · extends `RefCounted` · 288 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -4693,7 +4695,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 255 lines
+extends `SceneTree` · 256 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -5574,7 +5576,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11284 lines
+extends `Node2D` · 11292 lines
 
 `godot/scripts/world/room.gd`
 

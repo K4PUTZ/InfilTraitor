@@ -75,6 +75,11 @@ class MaterialDef:
 	## Two fields could also encode a contradiction (has_facade false + not
 	## full_color = a material with neither source); one cannot.
 	var has_facade: bool = true
+	## PROPS_TIER4_PLAN §2b / `ACTOR` D66 (2026-09-30): what this material is like in general (`wood | metal | stone | soil | fabric |
+	## paper | plastic | rubber | leather | ceramic | glass | organic | generic`). Used to group materials and, later, to pick a
+	## family default where a material has no art of its own. A flat (untextured) material is simply `has_facade == false`: that
+	## field already means "draw the flat base colour", so the plan's separate `textured` flag would only have duplicated it.
+	var family: String = "generic"
 
 	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm) -> void:
 		id = p_id
@@ -107,6 +112,7 @@ class MaterialDef:
 		## table's serves destruction and runs autoload-free in selftests.
 		def.burn_consumption = float(data.get("burn_consumption", 0.0))
 		def.has_facade = bool(data.get("has_facade", false))
+		def.family = String(data.get("family", "generic"))
 		return def
 
 ## Material registry
@@ -124,6 +130,35 @@ func register(material: MaterialDef) -> void:
 ## Get a material by ID
 func get_material(p_id: String) -> MaterialDef:
 	return registry.get(p_id, null)
+
+
+## The FALLBACK CHAIN (PROPS_TIER4_PLAN §2b, `ACTOR` D66): nothing ever resolves to "missing".
+##  1. the material's own row;
+##  2. its family by NAME: the id with its last `_segment` dropped, repeatedly (`painted_metal_red` -> `painted_metal`, `wood_dark` -> `wood`);
+##  3. `generic` (a neutral, flat, mid-resistance row).
+## A step past the first is a `push_warning`, once per id (B6: loud, never silent). Returns null only if even `generic` is not loaded.
+func resolve(p_id: String) -> MaterialDef:
+	var own: MaterialDef = registry.get(p_id, null)
+	if own != null:
+		return own
+	var stem: String = p_id
+	while stem.contains("_"):
+		stem = stem.substr(0, stem.rfind("_"))
+		if registry.has(stem):
+			_warn_fallback(p_id, stem)
+			return registry[stem]
+	_warn_fallback(p_id, "generic")
+	return registry.get("generic", null)
+
+
+var _fallback_warned: Dictionary = {}
+
+
+func _warn_fallback(p_id: String, used: String) -> void:
+	if _fallback_warned.has(p_id):
+		return
+	_fallback_warned[p_id] = true
+	push_warning("[MaterialRegistry] material '%s' is not registered: using '%s'" % [p_id, used])
 
 ## List all material IDs
 func list_materials() -> Array:

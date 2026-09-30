@@ -4,7 +4,8 @@
 ## thing that turns it into voxels (`PropVoxelizer`), so the two can never disagree about where the prop is.
 ##
 ## Cached per (path, rotation, fit size): a model is built once and every instance of it shares the parts (PROP_PIPELINE_PLAN
-## §1b, several instances of one model). A part is {"mesh": Mesh, "xf": Transform3D}, `xf` already carrying the fit.
+## §1b, several instances of one model). A part is {"mesh": Mesh, "xf": Transform3D}, `xf` already carrying the fit. `surfaces` is
+## the name of the material each surface was authored with, in the order `PropVoxelizer` numbers its zones (across the parts).
 class_name PropModelFit
 
 static var _cache: Dictionary = {}
@@ -27,7 +28,7 @@ static func box(size: Vector3) -> Dictionary:
 		return _cache[key]
 	var mesh := BoxMesh.new()
 	mesh.size = size
-	var out := {"ok": true, "size": size,
+	var out := {"ok": true, "size": size, "surfaces": [""],
 		"parts": [{"mesh": mesh, "xf": Transform3D(Basis.IDENTITY, Vector3(0.0, size.y * 0.5, 0.0))}]}
 	_cache[key] = out
 	return out
@@ -38,7 +39,7 @@ static func clear_cache() -> void:
 
 
 static func _load_fit(path: String, rotation_deg: Vector3, fit_size: Vector3) -> Dictionary:
-	var failed := {"ok": false, "parts": [], "size": Vector3.ZERO}
+	var failed := {"ok": false, "parts": [], "size": Vector3.ZERO, "surfaces": []}
 	var scene: PackedScene = load(path)
 	if scene == null:
 		push_error("[PropModelFit] cannot load '%s'" % path)
@@ -80,7 +81,11 @@ static func _load_fit(path: String, rotation_deg: Vector3, fit_size: Vector3) ->
 	var centre := Vector3(box.position.x + box.size.x * 0.5, box.position.y, box.position.z + box.size.z * 0.5)
 	var fit := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * k), -centre * k)
 	var parts: Array = []
+	var surfaces: Array = []
 	for i in range(meshes.size()):
 		parts.append({"mesh": meshes[i].mesh, "xf": fit * xforms[i]})
+		for s in range(meshes[i].mesh.get_surface_count()):
+			var src: Material = meshes[i].mesh.surface_get_material(s)
+			surfaces.append(src.resource_name if src != null else "")
 	root.free()
-	return {"ok": true, "parts": parts, "size": box.size * k}
+	return {"ok": true, "parts": parts, "size": box.size * k, "surfaces": surfaces}

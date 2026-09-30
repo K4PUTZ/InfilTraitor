@@ -1,6 +1,8 @@
 # RENDER3D_MASTER_PLAN
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.50
 
+**2026-09-30 (later still) — P4 and P5 built (`PROPS_TIER4_PLAN`):** the charred tone is a range (`BoardLook.SOOT_CHAR_MIN/MAX`, per-voxel hash in the board's and the props' shaders), prop colour and detail come from the material registry (`PropDef.surface_materials`, facade in world space, fragments match the mesh), `family` on every material, `generic` + 8 new flat materials, `MaterialRegistry.resolve()` fallback chain. `BoardLook.grade()` waits for the calibration round.
+
 **2026-09-30 (later) — Tier 4 voxel replacement BUILT (`PROPS_TIER4_PLAN` P1/P2 + the pile persistence):** a broken `mesh_tier 4` prop becomes board-size voxels on the first frame after the flash (`PropVoxelizer`, `PropFragmentSim`, `PropFragments3D`; the real table = 104 cubes keeping its top and legs), falls ~0.57 s, is carved by the ring weight, piles, slumps and stays as a charred pile recorded in base coords (`Room._base_prop_piles`, SaveState, replayed after a rotation). R3D-ROT deletes that replay with the other base records. Not built: registry colour/textures, charred variety, shadows, calibration.
 
 **2026-09-30 — R3D-PROPS: real models, the passage rule, firearms on props (`7cfc18dd..ecf34cdc`) and the two plans ([`PROPS_TIER4_PLAN`](PROPS_TIER4_PLAN.md) v0.3, [`PROP_PIPELINE_PLAN`](PROP_PIPELINE_PLAN.md) v0.2, planning only).**

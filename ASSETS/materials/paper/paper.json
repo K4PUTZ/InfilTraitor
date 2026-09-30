@@ -1,0 +1,17 @@
+{
+  "id": "paper",
+  "family": "paper",
+  "destroy_factor": 0.85,
+  "dent_factor": 0.1,
+  "crack_factor": 0.0,
+  "flammability": 1.8,
+  "base_color": [
+    0.88,
+    0.85,
+    0.75
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": false,
+  "burn_consumption": 0.9,
+  "smoke_chance": 0.3
+}

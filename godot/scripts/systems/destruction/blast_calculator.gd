@@ -553,6 +553,102 @@ static func resolve_pellet_voxel(pick: Dictionary, edge_registry: EdgeRegistry, 
 	return {"slice": target_slice, "voxel_index": voxel_index}
 
 
+## R3D-PROPS: `PropBlock`s keyed by the GU they stand on, and each block's voxels keyed by (x, y, level) — what
+## a shot needs to resolve a round that stopped against a prop. Built once per shot, not per pellet.
+static func prop_shot_index(prop_blocks: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for block in prop_blocks:
+		if block.voxels.is_empty():
+			continue
+		var by_pos: Dictionary = {}
+		for v: Voxel in block.voxels:
+			by_pos[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = v
+		var first: Vector2i = block.voxels[0].grid_pos
+		out[GeometryCoords.voxel_to_gu(first)] = {"block": block, "voxels": by_pos}
+	return out
+
+
+## R3D-PROPS: a pellet pick that stopped against a prop, resolved to the standing voxel it strikes. The round enters
+## the cell from `pick["gu"]` moving along the pick's face, at the same chest height and lateral spread a wall hit
+## uses, and takes the FIRST voxel of the column that is still there: a hollow crate's shell, or, once a hole is
+## open, the far wall. Returns {"block", "voxel", "index"} or {} (no prop there, or the round flies through a hole).
+static func resolve_prop_voxel(pick: Dictionary, prop_index: Dictionary, salt: String) -> Dictionary:
+	var dir: Vector2i = Face.delta(int(pick["face"]))
+	var cell: Vector2i = Vector2i(pick["gu"]) + dir
+	var entry: Variant = prop_index.get(cell)
+	if entry == null:
+		return {}
+	var block = entry["block"]
+	var by_pos: Dictionary = entry["voxels"]
+	var per: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	var origin: Vector2i = cell * per
+	var first: Voxel = block.voxels[0]
+	var base_level: int = first.level
+	for v: Voxel in block.voxels:
+		base_level = mini(base_level, v.level)
+	var levels: int = 0
+	for v: Voxel in block.voxels:
+		levels = maxi(levels, v.level - base_level + 1)
+	## Vertical and lateral place: the same disc a wall pick reads (`resolve_pellet_voxel`), chest height by default.
+	var v_offset := 0
+	var lateral := per / 2
+	if pick.has("v_unit") and pick.has("half_angle_deg"):
+		var spread: float = float(int(pick.get("steps", 0))) * tan(deg_to_rad(float(pick["half_angle_deg"])))
+		v_offset = int(roundf(float(pick["v_unit"]) * spread * float(per)))
+		if pick.has("h_unit"):
+			lateral = clampi(int(roundf(float(per) / 2.0 + float(pick["h_unit"]) * spread * float(per))), 0, per - 1)
+	else:
+		lateral = FacadeSampler._fnv1a_hash("%s:PROP_JITTER:%s" % [salt, cell]) % per
+	var level: int = base_level + clampi(int(float(per) / 2.0) + v_offset, 0, maxi(levels - 1, 0))
+	for depth in range(per):
+		var pos: Vector2i
+		if dir.x != 0:
+			pos = Vector2i(origin.x + (depth if dir.x > 0 else per - 1 - depth), origin.y + lateral)
+		else:
+			pos = Vector2i(origin.x + lateral, origin.y + (depth if dir.y > 0 else per - 1 - depth))
+		var v: Voxel = by_pos.get(Vector3i(pos.x, pos.y, level))
+		if v != null and VoxelStore.damage_of(v) != Voxel.DamageState.DESTROYED:
+			return {"block": block, "voxel": v, "index": block.voxels.find(v)}
+	return {}
+
+
+## R3D-PROPS: `plan_point_impact()`'s twin for a prop's voxel, PURE and returning the same entry shape. A prop is one
+## solid layer, not D16's two-voxel wall, so the ladder has a single depth (no sibling, no penetration into a second
+## slice); a destroyed voxel takes up to `neighbour_count_for(punch)` of its four face neighbours in the plane across
+## the round's path, never marked (D30.1), chosen by the same hash rank a wall uses.
+static func plan_prop_impact(block, voxel: Voxel, prop_index: Dictionary, dir: Vector2i, punch: float,
+		salt: String, shooter_gu: Vector2i = NO_EPICENTER_BIAS, blowout: float = 1.0) -> Array:
+	var shooter_bias: Vector2i = NO_EPICENTER_BIAS if shooter_gu == NO_EPICENTER_BIAS \
+		else shooter_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS \
+			+ Vector2i.ONE * int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
+	var state: int = ShotPunchTable.damage_state_for(punch, ShotPunchTable.destroy_min(block.material), block.material)
+	if state != Voxel.DamageState.DESTROYED:
+		return [{"voxel": voxel, "container": block, "depth": 0, "state": state, "is_blast": false,
+			"carved_side": carved_side_for(voxel.grid_pos, false, shooter_bias),
+			"variant": decal_variant_for(salt, voxel.level, 0), "substrate": substrate_for(salt, voxel.level, 0)}]
+	var plan: Array = [_destroyed_plan_entry(voxel, block, 0)]
+	var neighbour_count: int = ShotPunchTable.neighbour_count_for(punch, blowout)
+	if neighbour_count <= 0:
+		return plan
+	var lateral_axis: Vector2i = Vector2i(0, 1) if dir.x != 0 else Vector2i(1, 0)
+	var by_pos: Dictionary = {}
+	var cell: Vector2i = GeometryCoords.voxel_to_gu(voxel.grid_pos)
+	if prop_index.has(cell):
+		by_pos = prop_index[cell]["voxels"]
+	var candidates: Array = []
+	for offset in [[lateral_axis, 0], [-lateral_axis, 0], [Vector2i.ZERO, 1], [Vector2i.ZERO, -1]]:
+		var pos: Vector2i = voxel.grid_pos + Vector2i(offset[0])
+		var n: Voxel = by_pos.get(Vector3i(pos.x, pos.y, voxel.level + int(offset[1])))
+		if n != null and VoxelStore.damage_of(n) != Voxel.DamageState.DESTROYED:
+			candidates.append(n)
+	candidates.sort_custom(func(a, b) -> bool:
+		return FacadeSampler._fnv1a_hash("%s:PROPNB:%d:%d:%d" % [salt, a.grid_pos.x, a.grid_pos.y, a.level]) \
+			< FacadeSampler._fnv1a_hash("%s:PROPNB:%d:%d:%d" % [salt, b.grid_pos.x, b.grid_pos.y, b.level]))
+	for n: Voxel in candidates.slice(0, mini(neighbour_count, candidates.size())):
+		plan.append(_destroyed_plan_entry(n, block, 0))
+	return plan
+
+
 ## WEAPON_MASTER_PLAN D28 (Director, 2026-07-30) — ONE voxel, ONE roll: the
 ## per-projectile point-impact counterpart to apply_container_damage()'s
 ## ring-group scatter (which stays correct for RADIAL — a blast genuinely is

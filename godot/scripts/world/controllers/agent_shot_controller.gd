@@ -311,11 +311,21 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 	var destroyed: Dictionary = {}
 	var damaged: Array = []
 	var gus: Dictionary = {}
+	var prop_index: Dictionary = BlastCalculatorClass.prop_shot_index(room._voxel_board.prop_blocks())
 	for i in range(picks.size()):
 		gus[picks[i]["gu"]] = true
 		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
 			picks[i], room._edge_registry, "%s:%d" % [salt, i])
 		if resolved.is_empty():
+			## R3D-PROPS: no wall on that edge — the round stopped against a prop's cell.
+			var prop_hit := BlastCalculatorClass.resolve_prop_voxel(picks[i], prop_index, "%s:%d" % [salt, i])
+			if not prop_hit.is_empty():
+				for entry in _prop_plan(prop_hit, picks[i], prop_index, weapon_def, "%s:%d" % [salt, i], origin_gu):
+					var pv: Voxel = entry["voxel"]
+					if int(entry["state"]) == Voxel.DamageState.DESTROYED:
+						destroyed[Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)] = true
+					else:
+						damaged.append(entry)
 			continue
 		var slice: Slice = resolved["slice"]
 		## G-D17 — the round arrives at this pick already through `glass_depth`
@@ -355,6 +365,18 @@ func _build_shot_plan(origin_gu: Vector2i, target_gu: Vector2i, weapon_def) -> D
 			damaged.append(entry)
 
 	return {"destroyed": destroyed, "damaged": damaged, "impact_gus": gus.keys()}
+
+
+## R3D-PROPS: the ladder for one pellet that struck a prop voxel — the punch is the prop's material's, weakened by any
+## glass the round crossed first, exactly as a wall hit's is.
+func _prop_plan(prop_hit: Dictionary, pick: Dictionary, prop_index: Dictionary, weapon_def, pellet_salt: String,
+		origin_gu: Vector2i) -> Array:
+	var block = prop_hit["block"]
+	var punch: float = ShotPunchTable.compute(
+		GlassShatter.punch_after_layers(weapon_def.punch, int(pick.get("glass_depth", 0))),
+		block.material, ShotPunchTable.SKILL_NEUTRAL, 1.0, pellet_salt)
+	return BlastCalculatorClass.plan_prop_impact(block, prop_hit["voxel"], prop_index,
+		Face.delta(int(pick["face"])), punch, pellet_salt, origin_gu, weapon_def.blowout)
 
 
 ## ONE definition of the shot's salt, because the precook and the real shot must
@@ -518,11 +540,15 @@ func fire_at_active() -> void:
 	## scope its repaint, and the profile print needs it after that.
 	var impact_gus: Dictionary = {}
 	var resolved_picks: Array = []
+	var prop_index: Dictionary = BlastCalculatorClass.prop_shot_index(room._voxel_board.prop_blocks())
 	for i in range(pellet_picks.size()):
 		var resolved := BlastCalculatorClass.resolve_pellet_voxel(
 			pellet_picks[i], room._edge_registry, "%s:%d" % [salt, i])
 		if resolved.is_empty():
-			continue
+			## R3D-PROPS: no wall on that edge — the round stopped against a prop's cell.
+			resolved = BlastCalculatorClass.resolve_prop_voxel(pellet_picks[i], prop_index, "%s:%d" % [salt, i])
+			if resolved.is_empty():
+				continue
 		resolved_picks.append({"index": i, "resolved": resolved})
 		_draw_tracer(muzzle_world, pellet_picks[i])
 
@@ -546,7 +572,10 @@ func fire_at_active() -> void:
 		var i: int = int(entry["index"])
 		var resolved: Dictionary = entry["resolved"]
 		pellets_landed += 1
-		var slice: Slice = resolved["slice"]
+		## R3D-PROPS: a prop hit carries the block and its voxel, no slice.
+		var prop_hit: bool = resolved.has("block")
+		var slice: Slice = null if prop_hit else resolved["slice"]
+		var hit_material: String = String(resolved["block"].material) if prop_hit else slice.material
 		## D30: one coefficient decides tier, neighbour count and cascade, and
 		## each projectile rolls its OWN luck — D36's independent pellets.
 		## Distance stays neutral for both shapes, as on the bench: D29's
@@ -560,7 +589,7 @@ func fire_at_active() -> void:
 		var layer_depth: int = int(pellet_picks[i].get("glass_depth", 0))
 		var punch: float = ShotPunchTable.compute(
 			GlassShatter.punch_after_layers(weapon_def.punch, layer_depth),
-			slice.material, ShotPunchTable.SKILL_NEUTRAL,
+			hit_material, ShotPunchTable.SKILL_NEUTRAL,
 			1.0, "%s:%d" % [salt, i])
 		punch_log.append(snappedf(punch, 0.01))
 		## D32.4: the SHOOTER's GU decides which face the mark lands on — without
@@ -569,11 +598,16 @@ func fire_at_active() -> void:
 		## W-TUNE-02: `blowout` is the weapon's own hole-widening share — see
 		## WeaponDef.blowout. Passed rather than defaulted because the shotgun and
 		## the pistol both declare 0.0 and would otherwise crater like a rifle.
-		var plan_entries := BlastCalculatorClass.plan_point_impact(
-			slice, int(resolved["voxel_index"]), punch,
-			room._edge_registry, "%s:%d" % [salt, i],
-			weapon_def.step_multipliers if is_line else [],
-			origin_gu, weapon_def.blowout)
+		var plan_entries: Array
+		if prop_hit:
+			plan_entries = BlastCalculatorClass.plan_prop_impact(resolved["block"], resolved["voxel"], prop_index,
+				Face.delta(int(pellet_picks[i]["face"])), punch, "%s:%d" % [salt, i], origin_gu, weapon_def.blowout)
+		else:
+			plan_entries = BlastCalculatorClass.plan_point_impact(
+				slice, int(resolved["voxel_index"]), punch,
+				room._edge_registry, "%s:%d" % [salt, i],
+				weapon_def.step_multipliers if is_line else [],
+				origin_gu, weapon_def.blowout)
 		var touched: Array = []
 		for pe in plan_entries:
 			var pv: Voxel = pe["voxel"]
@@ -589,18 +623,23 @@ func fire_at_active() -> void:
 			if not cell_to_depth.has(pkey) or d < int(cell_to_depth[pkey]):
 				cell_to_depth[pkey] = d
 			_index_voxel(cell_to_voxel, pv)
-			cell_to_material[pkey] = slice.material
+			cell_to_material[pkey] = hit_material
 			if pv.damage_state != Voxel.DamageState.DESTROYED:
 				if not _impact_vfx_done.has(pkey):
 					_impact_vfx_done[pkey] = true
-					room.dispatch_impact_vfx(pv.grid_pos, pv.level, slice.material, pv.damage_carved_side)
+					room.dispatch_impact_vfx(pv.grid_pos, pv.level, hit_material, pv.damage_carved_side)
+			elif prop_hit:
+				## A prop's voxels never reach `process_dirty()` (no registry holds them), so the destruction
+				## notice a wall's voxel gets from it is sent here.
+				room._on_voxel_destroyed(pv.grid_pos, pv.level, hit_material)
 
 		## GLASS G3 (G-D11/G-D12/G-D13) — on top of the local hole, this pellet
 		## rolls its OWN chance to take the whole pane (or a region larger than
 		## its hole). After the local hole so the flood spreads from a real gap.
-		_maybe_shatter_pane(slice, int(resolved["voxel_index"]), weapon_def,
-			"%s:%d" % [salt, i], cell_to_voxel, cell_to_material, cell_to_depth,
-			layer_depth)
+		if not prop_hit:
+			_maybe_shatter_pane(slice, int(resolved["voxel_index"]), weapon_def,
+				"%s:%d" % [salt, i], cell_to_voxel, cell_to_material, cell_to_depth,
+				layer_depth)
 
 	var prof_apply_ms: float = float(Time.get_ticks_usec() - prof_apply0) / 1000.0
 	## B3: a round with no wall behind the target is VOID and nothing happens
@@ -677,6 +716,8 @@ func fire_at_active() -> void:
 	## fragment falls with it. `reap_orphaned_remnants()` base-records its own
 	## felled voxels, so it is safe here after the loop above.
 	var reaped_voxels: Array = room.reap_orphaned_remnants().get("voxels", [])
+	## R3D-PROPS: a crate this shot brought down stops blocking.
+	room._release_destroyed_prop_cells()
 
 	cancel_active()
 	if cell_to_voxel.is_empty():

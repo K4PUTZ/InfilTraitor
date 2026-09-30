@@ -4211,8 +4211,6 @@ func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) ->
 	_vfx_destroy_count += 1
 	_dispatch_destruction_vfx(grid_pos, level, material_id)
 	_clear_orphaned_soot(grid_pos, level)
-	if _blocked_cells.has(GeometryCoords.voxel_to_gu(grid_pos)):
-		_release_destroyed_prop_cells()
 
 
 ## SOOT-ORPHAN-01 (Director ruling, 2026-09-27): scorch dies with the material — a destroyed
@@ -4223,8 +4221,8 @@ func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) ->
 ## floor is a DIFFERENT, still-INTACT voxel getting scorched, never THIS voxel), so clearing here
 ## only ever removes a mark for the exact voxel that just stopped existing.
 func _clear_orphaned_soot(grid_pos: Vector2i, level: int) -> void:
-	var stored: Dictionary = _soot_map.get(level)
-	if stored == null or stored.is_empty():
+	var stored: Dictionary = _soot_map.get(level, {})
+	if stored.is_empty():
 		return
 	var base_xy: Vector2i = PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
 	stored.erase(base_xy)
@@ -4898,6 +4896,9 @@ func apply_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 		bomb_def) -> void:
 	if _voxel_board == null or _slab_registry == null:
 		return
+	## The blast has committed: a crate it brought down stops blocking. (`voxel_destroyed` is never told for a prop's
+	## voxels, so nothing else would ask.)
+	_release_destroyed_prop_cells()
 	## Voxel is a thin index wrapper (R3D-1d) — it keeps its container's INSTANCE ID
 	## (`container_id()`), never the object itself, so a PropBlock is found by id lookup,
 	## the same association the WALK phase reads container-first rather than voxel-first.

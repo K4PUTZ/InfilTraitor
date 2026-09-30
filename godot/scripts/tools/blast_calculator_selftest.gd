@@ -44,6 +44,7 @@ func _init() -> void:
 	test_prop_pick_ray_box()
 	test_charred_soot_code()
 	test_prop_boundary_rings()
+	test_prop_shot_impact()
 	test_affected_slice_on_source_gu_boundary()
 	test_deterministic_selection_is_stable()
 	test_deterministic_selection_differs_by_salt_and_container()
@@ -327,6 +328,48 @@ func test_prop_boundary_rings() -> void:
 		_fail("prop boundary rings wrong: (6,6)=%s (7,6)=%s (6,7)=%s (9,9)=%s unnamed=%s walled(7,6)=%s"
 			% [rings.get(Vector2i(6, 6)), rings.get(Vector2i(7, 6)), rings.get(Vector2i(6, 7)),
 			rings.has(Vector2i(9, 9)), others.has(Vector2i(6, 6)), walled.get(Vector2i(7, 6))])
+	print("")
+
+
+## R3D-PROPS — a round that stopped against a prop strikes the FIRST standing voxel of its column (the near face, then
+## deeper once a hole is open), and the ladder there is one layer: a hit that breaches takes neighbours, a weak one marks.
+func test_prop_shot_impact() -> void:
+	print("[3g] resolve_prop_voxel / plan_prop_impact: a shot into a solid prop block\n")
+	var block := PropBlock.new("PROP_TEST", "wood")
+	var per: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	for lv in range(80, 88):
+		for pos: Vector2i in GeometryCoords.gu_voxels(Vector2i(3, 3)):
+			block.voxels.append(Voxel.new(pos, lv, block))
+	VoxelStore.active = VoxelStore.build(EdgeRegistry.new(), SlabRegistry.new(), [], [block])
+	var index: Dictionary = BlastCalculatorClass.prop_shot_index([block])
+	## From (3,4) moving north (0,-1) into (3,3): the near face is the row y = 3*8+7.
+	var pick := {"gu": Vector2i(3, 4), "face": Face.from_delta(Vector2i(0, -1)), "steps": 3}
+	var first := BlastCalculatorClass.resolve_prop_voxel(pick, index, "S")
+	var ok: bool = not first.is_empty() and first["voxel"].grid_pos.y == 3 * per + per - 1 \
+		and first["voxel"].level == 84
+	var none := BlastCalculatorClass.resolve_prop_voxel({"gu": Vector2i(9, 9), "face": pick["face"]}, index, "S")
+	ok = ok and none.is_empty()
+	## The near voxel gone: the same round strikes the one behind it.
+	var near: Voxel = first["voxel"]
+	near.set_damage(Voxel.DamageState.DESTROYED)
+	var second := BlastCalculatorClass.resolve_prop_voxel(pick, index, "S")
+	ok = ok and not second.is_empty() and second["voxel"].grid_pos.y == 3 * per + per - 2 \
+		and second["voxel"].grid_pos.x == near.grid_pos.x
+	var strong := BlastCalculatorClass.plan_prop_impact(block, second["voxel"], index, Vector2i(0, -1), 3.0, "S",
+		Vector2i(3, 10), 1.0)
+	var weak := BlastCalculatorClass.plan_prop_impact(block, second["voxel"], index, Vector2i(0, -1), 0.4, "S",
+		Vector2i(3, 10), 1.0)
+	ok = ok and strong.size() >= 1 and int(strong[0]["state"]) == Voxel.DamageState.DESTROYED and strong[0]["voxel"] == second["voxel"]
+	for i in range(1, strong.size()):
+		ok = ok and int(strong[i]["state"]) == Voxel.DamageState.DESTROYED and strong[i]["voxel"] != second["voxel"] \
+			and strong[i]["voxel"].level - second["voxel"].level in [-1, 0, 1]
+	ok = ok and weak.size() == 1 and int(weak[0]["state"]) != Voxel.DamageState.DESTROYED
+	if ok:
+		_pass("near face first, the voxel behind once it is gone, no prop -> nothing, strong = destroyed (+%d neighbours), weak = one mark" % (strong.size() - 1))
+	else:
+		_fail("prop shot wrong: first=%s none=%s second=%s strong=%d weak=%d" % [first.get("index"), none.is_empty(),
+			second.get("index"), strong.size(), weak.size()])
+	VoxelStore.active = null
 	print("")
 
 

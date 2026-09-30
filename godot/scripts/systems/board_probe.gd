@@ -61,7 +61,7 @@ const KIND_PROP: String = "prop"
 ## `push_error`, in which case no file is left behind.
 static func write(path: String, label: String, edge_registry: EdgeRegistry,
 		slab_registry: SlabRegistry, junction_columns: Array, planes: Dictionary,
-		plane_origin: Vector2i, meta: Dictionary) -> Dictionary:
+		plane_origin: Vector2i, meta: Dictionary, prop_blocks: Array = []) -> Dictionary:
 	var t0: int = Time.get_ticks_usec()
 	if edge_registry == null or slab_registry == null:
 		push_error("[BoardProbe] write: a registry is missing (edges %s, slabs %s)"
@@ -71,7 +71,7 @@ static func write(path: String, label: String, edge_registry: EdgeRegistry,
 	if file == null:
 		return {}
 	var materials: Dictionary = {}
-	var counts: Dictionary = {"containers": 0, KIND_SLICE: 0, KIND_COLUMN: 0, KIND_SLAB: 0}
+	var counts: Dictionary = {"containers": 0, KIND_SLICE: 0, KIND_COLUMN: 0, KIND_SLAB: 0, KIND_PROP: 0}
 	var error: String = ""
 	for slice: Slice in edge_registry.all_slices():
 		var banded: Slice = slice if slice.has_material_bands() else null
@@ -96,6 +96,15 @@ static func write(path: String, label: String, edge_registry: EdgeRegistry,
 			if not error.is_empty():
 				break
 			_tally(counts, KIND_SLAB, slab.voxels.size())
+	## R3D-PROPS: a crate's `PropBlock` is held by the board, in no registry; without it this dump never saw a prop
+	## and every map with a crate read "objects and store differ".
+	if error.is_empty():
+		for block in prop_blocks:
+			error = _store_container(file, materials, KIND_PROP, block.id, block.voxels,
+				block.material, null, 0)
+			if not error.is_empty():
+				break
+			_tally(counts, KIND_PROP, block.voxels.size())
 	return _finish(file, path, error, materials, counts, planes, plane_origin, t0)
 
 

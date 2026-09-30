@@ -1580,7 +1580,7 @@ var vfx_debris_pile_max_pieces: int = 5
 var vfx_debris_pile_spread: float = 0.35  ## world units (1.0 = 1 GU) a piece can jitter from the break point
 ## A crate's fallen voxels land this fraction of the way to where the glass mechanism would throw them (1.0 = the
 ## full glass scatter): most of the debris piles up under the object, a little reaches the cells around it.
-var vfx_prop_debris_scatter: float = 0.3
+var vfx_prop_debris_scatter: float = 0.45
 ## Every Nth fallen voxel is thrown the FULL glass scatter, so a little debris reaches the GUs around the break.
 const PROP_DEBRIS_FAR_EVERY: int = 5
 ## Ground debris darkens with the soot on the cell it lies on, by the same per-tone multipliers a Tier 3 prop's
@@ -3053,7 +3053,7 @@ func scenario_board_probe(path: String, label: String) -> Dictionary:
 		"board3d": board3d() != null,
 	}
 	var summary: Dictionary = BoardProbeClass.write(path, label, _edge_registry, _slab_registry,
-		_junction_columns, planes, VoxelBoard.SOOT_PLANE_ORIGIN, meta)
+		_junction_columns, planes, VoxelBoard.SOOT_PLANE_ORIGIN, meta, _voxel_board.prop_blocks())
 	if summary.is_empty():
 		return {}
 	print("[BOARD-PROBE] %s — %d voxel(s) in %d container(s) (slice %d, column %d, slab %d), %d plane level(s), %d material(s), %.1f MB, %.0f ms → %s"
@@ -4744,11 +4744,11 @@ func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Col
 ## R3D-PROPS: a prop that is gone stops blocking. `_blocked_cells` is built from the layout and was never
 ## re-fed, so a collapsed crate or a shattered Tier 4 mesh prop kept its GU closed to walking, sight, the flood
 ## and the throw. Erased IN PLACE: the turn controller and the guards hold this same dictionary. "Collapsed" is
-## fewer than `prop_collapse_standing_fraction` of the block's voxels standing: measured on PROPS, a grenade
-## beside a crate leaves 35-70% of it up, so "every voxel destroyed" would never fire.
+## at most `prop_collapse_standing_fraction` (Director: 20%, i.e. 80% destroyed) of the block's voxels standing. It
+## usually takes more than one grenade: plain wood beside a grenade keeps 35-70% of a crate up.
 ## Idempotent; also run after a rotation / restore, which rebuild `_blocked_cells` from the layout.
 ## Not re-fed: the lamps' cached shadow map (same gap as a burnt wall, see `_burn_probe`).
-var prop_collapse_standing_fraction: float = 0.4
+var prop_collapse_standing_fraction: float = 0.2
 
 
 func _release_destroyed_prop_cells() -> void:
@@ -4765,7 +4765,10 @@ func _release_destroyed_prop_cells() -> void:
 		for v: Voxel in block.voxels:
 			if v.damage_state != Voxel.DamageState.DESTROYED:
 				standing += 1
-		if float(standing) < prop_collapse_standing_fraction * float(block.voxels.size()):
+		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1" and standing < block.voxels.size():
+			print("[PROP-DEBUG] %s on %s: %d of %d voxels standing (%.0f%% destroyed)"
+				% [block.material, gu, standing, block.voxels.size(), 100.0 * (1.0 - float(standing) / float(block.voxels.size()))])
+		if float(standing) <= prop_collapse_standing_fraction * float(block.voxels.size()):
 			_blocked_cells.erase(gu)
 			released = true
 			if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":

@@ -42,10 +42,10 @@ RECORDED = {
         "w": "walk 52771707181bfb57b5c947d8610bb9ae select 890027f9c6fc360203431937aed86f21 reach 69 9528b23688504728cc96fef2f926df44 paths 10 345dfb51f9d4a589c4090d969276e013 | view 86/560",
     },
     "PLAYGROUND": {
-        "n": "walk 1eb876a5bfdb495f1746d1b26669adff select 7ec97830f25467d3a451aada33bec827 reach 84 c46d752e7503cf4353a283949f73bd41 paths 12 e97045cdba41cfa2d4120d19163b9094 | view 95/1104",
-        "e": "walk 8afc09d0eb8ae3b022c3daf7ae9fc2de select 221ef398229ba6569c0f921d6ba40493 reach 84 cbd5d0041297124d1ad26efb6f577456 paths 12 645bf6881523bc6895545325448974ab | view 95/1104",
-        "s": "walk 1eb876a5bfdb495f1746d1b26669adff select 4dabec09501f921eb233a890412e6c47 reach 84 f1ac8ed6ef9488baac12e6d2bd96a04a paths 12 e9a5f508d4e60578d5b10afc8da8535f | view 95/1104",
-        "w": "walk 8afc09d0eb8ae3b022c3daf7ae9fc2de select 6ec5bb86aa8ae5a9417e1294b808a359 reach 84 e54ef8ce99bb806a50f52810d42f20ad paths 12 6375f2b038af938d1ca641bf5dcf6cfd | view 95/1104",
+        "n": "walk 1eb876a5bfdb495f1746d1b26669adff select 646c9bd3a71d0039c8db1caa8e5dbed4 reach 84 c46d752e7503cf4353a283949f73bd41 paths 12 e97045cdba41cfa2d4120d19163b9094 | view 95/1104",
+        "e": "walk 8afc09d0eb8ae3b022c3daf7ae9fc2de select 83cc9ca2a09833d13d185e01dc2eec49 reach 84 cbd5d0041297124d1ad26efb6f577456 paths 12 645bf6881523bc6895545325448974ab | view 95/1104",
+        "s": "walk 1eb876a5bfdb495f1746d1b26669adff select b85ed058b8ad5989a0f7719591e04cd7 reach 84 f1ac8ed6ef9488baac12e6d2bd96a04a paths 12 e9a5f508d4e60578d5b10afc8da8535f | view 95/1104",
+        "w": "walk 8afc09d0eb8ae3b022c3daf7ae9fc2de select 240ac73e763df871300ca32b6fb6a91c reach 84 e54ef8ce99bb806a50f52810d42f20ad paths 12 6375f2b038af938d1ca641bf5dcf6cfd | view 95/1104",
     },
     "PLAYGROUND_2": {
         "n": "walk 793d35a7f40b1ab2704ed41036ddcc47 select 7dbae2d082261d7cdb9d7c9cd3665956 reach 71 7c5f83bb9db12c411836dbd8a246eff7 paths 11 22201d4163da25a05e1b3c3e923e8cf5 | view 70/800",

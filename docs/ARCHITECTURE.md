@@ -22,28 +22,28 @@ an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. Acto
 
 ```
  CONTENT (data on disk)            maps/*.map.json (sections, versioned, owner-registered) · props/*.json · bombs/ · weapons/ · ASSETS/materials/<id>/ (row + grayscale facade + decals)
-		│  two tiers everywhere: res:// (shipped) then user:// (a player's; user wins on id collision)
-		▼
+        │  two tiers everywhere: res:// (shipped) then user:// (a player's; user wins on id collision)
+        ▼
  LOAD PIPELINE (room.load_map)     FileMapSource/MapFileService -> MapCatalog -> MapSpec -> MapCompiler (the ONLY owner of the buffer offset) -> base layout (BASE coordinates, rotation-independent)
-		│                          -> RoomBuilder.layout_with_perspective (PerspectiveMapper) -> RoomBuilder.build_from_layout
-		▼
+        │                          -> RoomBuilder.layout_with_perspective (PerspectiveMapper) -> RoomBuilder.build_from_layout
+        ▼
  GEOMETRY REGISTRIES               EdgeRegistry (Edge -> 2 Slices, D16) · SlabRegistry (FLOOR/CEILING/INTERIOR) · JunctionResolver columns · VoxelBoard prop containers (PropBlock) and mesh props (MeshPropInstance)
-		│  VoxelBoard._rebuild_voxel_store -> VoxelStore.build(...)   (WalkWarmer then fills the walk cache in idle frames)
-		▼
+        │  VoxelBoard._rebuild_voxel_store -> VoxelStore.build(...)   (WalkWarmer then fills the walk cache in idle frames)
+        ▼
  STATE                             VoxelStore      the ONLY place voxel state lives: flat per-claim arrays (visible, damage tier, carved side, variant, substrate, material), a derived dense occupancy grid, `gone_claims`; `Voxel` is a 1-int wrapper
-								   CellPlaneStore  one 512x512 RG8 image per level: R = per-face soot code (base 6, 172 = clean, 5 = charred), G = light bucket (0..11)
-								   GroundGrid      the cell lattice as closed-form maths (no tiles)
-								   Room._base_*    records of everything a mission did, in BASE coordinates (damage, soot, cracks, openings, shards, shattered props, debris): replayed after a rotation, saved by SaveState
-		▼
+                                   CellPlaneStore  one 512x512 RG8 image per level: R = per-face soot code (base 6, 172 = clean, 5 = charred), G = light bucket (0..11)
+                                   GroundGrid      the cell lattice as closed-form maths (no tiles)
+                                   Room._base_*    records of everything a mission did, in BASE coordinates (damage, soot, cracks, openings, shards, shattered props, debris): replayed after a rotation, saved by SaveState
+        ▼
  SIMULATION (pure -> commit)       DetonationPlanBuilder: a 14-phase, time-budgeted, resumable cook (SETUP, SLICES, JUNCTIONS, PROPS, ROOFS, FLOORS, WALK, BURN, SOOT, LIGHT, PACKAGE, EXPOSE, SOOTWAVE, SMOKE) that builds a WorldDelta: a DESCRIPTION of what would change
-								   PredictionCache keys it on (signature, world_revision); `delta.commit(room)` is the only writer; DetonationPresenter plays one frame that writes everything, then N frames of effects
-								   Firearms: AgentShotController / WeaponBench -> BlastCalculator.plan_point_impact (walls) or plan_prop_impact (prop voxels); WeaponDef + ShotPunchTable; Glass: GlassShatter / GlassCrack / GlassOpening
-								   Light: VoxelLightField (12 directional buckets per face) <- LightRegistry/ShadowProjector (tactical, GU resolution); visual brightness is not tactical visibility
-		▼
+                                   PredictionCache keys it on (signature, world_revision); `delta.commit(room)` is the only writer; DetonationPresenter plays one frame that writes everything, then N frames of effects
+                                   Firearms: AgentShotController / WeaponBench -> BlastCalculator.plan_point_impact (walls) or plan_prop_impact (prop voxels); WeaponDef + ShotPunchTable; Glass: GlassShatter / GlassCrack / GlassOpening
+                                   Light: VoxelLightField (12 directional buckets per face) <- LightRegistry/ShadowProjector (tactical, GU resolution); visual brightness is not tactical visibility
+        ▼
  RENDER (3D, then 2D on top)       Board3DLive (Node3D under Room): meshes the VoxelStore in 16-voxel chunks, faces merged by MATERIAL, three visible faces; colour = material base_color x facade luminance sampled in world space at 16 texels per voxel;
-								   light and soot are read PER CELL from the planes (a Texture2DArray), so a light or soot change is a layer upload, not a remesh; `BoardLook` owns the look constants; glass panes read the screen behind them
-								   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each), ActorBillboard3D (2D sprite frames as depth-tested billboards), GroundCanvas3D, VisionCone3D
-								   2D on top: HUD (hud.tscn), FogOfWar, Selection/Movement/Path overlays, guards and the agent (baked frames)
+                                   light and soot are read PER CELL from the planes (a Texture2DArray), so a light or soot change is a layer upload, not a remesh; `BoardLook` owns the look constants; glass panes read the screen behind them
+                                   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each), ActorBillboard3D (2D sprite frames as depth-tested billboards), GroundCanvas3D, VisionCone3D
+                                   2D on top: HUD (hud.tscn), FogOfWar, Selection/Movement/Path overlays, guards and the agent (baked frames)
 ```
 
 ### 0.2 Five rules the whole architecture leans on

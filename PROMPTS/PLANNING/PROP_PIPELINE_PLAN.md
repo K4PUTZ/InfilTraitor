@@ -1,7 +1,7 @@
 # PROP_PIPELINE_PLAN
-## Drop-in models: a pipeline like the textures', for props, vehicles and voxel objects — v0.1 (PLANNING, nothing built)
+## Drop-in models: a pipeline like the textures', for props, vehicles and voxel objects — v0.2 (PLANNING, nothing built; the four open questions RULED 2026-09-30)
 
-Session 2026-09-30, Director's planning round. Sibling of [`PROPS_TIER4_PLAN`](PROPS_TIER4_PLAN.md) (which owns what a prop looks like and how it breaks) — this file owns **how a model
+Session 2026-09-30, Director's planning round; **v0.2 records the Director's answers to the four open questions (§6) and adds the first content scene (§8).** Sibling of [`PROPS_TIER4_PLAN`](PROPS_TIER4_PLAN.md) (which owns what a prop looks like and how it breaks) — this file owns **how a model
 gets into the game**: authored by us, dropped in by a player, or taken from an open voxel library. Canon it obeys: materials come from OUR registry (PROPS_TIER4 D-P1), the texture pipeline's
 two-tier `res://` / `user://` rule (user wins) and its loud-fail discipline (B6), and R3D-CLAIMS (no new per-voxel engine state that is not needed).
 
@@ -10,11 +10,11 @@ two-tier `res://` / `user://` rule (user wins) and its loud-fail discipline (B6)
 **Can the game load a 3D object and show it at runtime?** Yes, and it is a supported Godot 4 path: `GLTFDocument.append_from_file()` + `generate_scene()` works in an exported Android build, from
 `user://` as well as from the pack; it needs no editor import. So a "player Y's car" can be a file in the user tier that replaces "player X's car" in the same place.
 
-**Our own extension, with models processed for the game?** Yes, and it is the right call, for a reason that is not about speed: **safety**. A Godot `.tres` / `.res` / `.tscn` loaded from disk can carry a
-script, i.e. run code; a file a player supplied must never go through `ResourceLoader`. glTF is pure data (no scripts), but it is a big format and a loose one. So:
+**Our own extension, with models processed for the game?** Yes. The reason is **robustness and predictability**, not defence against attackers (see §6, Q2: the game has no servers, so a bad file can only spoil the player's own game). A Godot `.tres` / `.res` / `.tscn` loaded from disk can carry a
+script, i.e. run code, and its failure modes are unbounded; a file a player supplied does not go through `ResourceLoader` by default. glTF is pure data, but it is a big, loose format. So:
 - **Exchange format:** GLB (glTF binary). What artists and open libraries already produce. The dev path loads it directly.
 - **Shipping / player format: `.iprop`** — a data-only package (a ZIP read with `ZIPReader`: `manifest.json` + flat vertex/index buffers + optional `voxels.bin`), produced by an offline compiler from a GLB, parsed by OUR code into an `ArrayMesh`
-  (`add_surface_from_arrays`). No script, no `Resource` deserialisation, hard size limits checked before allocating, every field validated. It also carries the parts the engine would otherwise compute at load (the
+  (`add_surface_from_arrays`). No script, no `Resource` deserialisation, size limits checked before allocating (so a bad file is rejected, it never takes the app down), every field validated. It also carries the parts the engine would otherwise compute at load (the
   voxelisation for fragments and shadows, the zone list, the fitted size), so the handsets do less at load.
 - **The contract is the point, not the format** (§1).
 
@@ -26,8 +26,16 @@ A model does not define gameplay. A **slot** does (`props/slots/<id>.json`): a v
 - the **zones** the model must/may name (`body`, `glass`, `wheels`; a surface's name selects the registry material, PROPS_TIER4 D-P1) and a per-zone default;
 - budgets: triangles, surfaces (draw calls), file size, bounding box;
 - **no textures from the model**: colour and detail come from the material library (so a hundred player cars share one palette and cost no texture RAM); a model may only choose a zone and, for `painted_metal`, a tint from a small palette.
-A `vehicle_sedan` slot is filled by the default sedan we ship; a player's `user://props/my_car.iprop` declaring `slot: vehicle_sedan` replaces it on load **if it validates**; if not, the shipped default is used and the reason is logged
-(B6: loud, never silent). The same idea covers skins for weapons lying on the floor, furniture sets, a player's "trophy" on a shelf.
+A `vehicle_sedan` slot is filled by the default sedan we ship; a player's `user://props/my_car.iprop` declaring `slot: vehicle_sedan` is offered to the game **if it validates**. The same idea covers skins for weapons lying on the floor, furniture sets, a player's "trophy" on a shelf.
+
+### 1b. Several models of one slot at the same time (Director, 2026-09-30)
+"We must be ready to have more than one model of the same container running at once": two different sedans in one scene, a map asking for "any bed", the player's bed beside our bed. So:
+- A model is identified by an **id** (`<pack>/<name>`); a slot has N models. A placement in a map names a **slot** (take the preferred model) or a **model id** (that one); "any of the slot" is picked by a deterministic hash of the placement (same map, same pick), never `randf()`.
+- A built model (the `ArrayMesh`, its voxel set, its zones) is cached ONCE per model id and shared by every instance; per-instance state (cell, level, shattered, charred tone) is on the instance. The per-surface materials are shared per zone material (light and soot come from the cell planes, so nothing in a material is per-instance): N props cost N transforms, not N materials. A `MultiMesh` for a model with many instances (beds in a dorm) is a measured option, not a first build.
+- The registry answers `models_for_slot(slot)`, `default_model(slot)`, `resolve(slot_or_id) -> model`; a fixture test loads three models of one slot and places them side by side.
+
+### 1c. The fallback chain (Director, 2026-09-30: "in general it will not be compatible and will end up generic")
+Most third-party models will NOT conform, and that is the expected, benign outcome: **model -> the slot's own default -> the slot's GENERIC** (a simple shape filling the slot's box, in the `generic` family material) **-> the `generic` box**. A rejection is one loud log line naming the file, the slot and the rule broken (B6), never a crash and never a silent substitution. A slot with no shipped model still has its generic, so a map never has a hole.
 
 ## 2. Three kinds of content, one loader
 
@@ -36,6 +44,8 @@ A `vehicle_sedan` slot is filled by the default sedan we ship; a player's `user:
 | **Mesh model** | GLB -> `.iprop` | `PropMesh3D` (what exists today) | Tier 3: soot only; Tier 4: the fragment replacement (PROPS_TIER4 §2.2) | 3 / 4 |
 | **Voxel model** | MagicaVoxel `.vox` (open libraries, §4) -> `.iprop` with `voxels.bin` | a `PropBlock`-style container in the `VoxelStore` (the crate's path) | **free**: the whole blast / firearm / burn / charred / debris machinery already works on it | 2 |
 | **Procedural** | `PropDef` with `size_vox` / `hollow_shell` | what exists (the crate) | as today | 1 / 2 |
+
+**Scripts and animation in a mod (Director, 2026-09-30: someone who builds a crazy car with animation scripts only spoils their own game; not a concern).** v1 is data-only: no script ever runs from a model file. glTF *animations* (clips as data: wheels, a door) can be played by OUR animation player later (PP7, optional); a script-driven mod is a possible explicit opt-in "unsafe mods" tier for a future decision, **not designed or built**, and nothing here forbids it. A mod that does not fit its slot lands on the generic (§1c).
 
 ## 3. Voxel models (the Director's third idea): yes, this is the cheap way to fill the room with mundane square objects
 
@@ -78,21 +88,44 @@ GLB / .vox  ->  tools/persistent/build_prop.py (offline compiler)  ->  <id>.ipro
 - Packs: a prop pack is a DIRECTORY on either tier (`props/<pack>/*.iprop` + `pack.json`), the same shape as a material pack (ASSET_TREE_REFORM), so "downloadable content" is a folder.
 
 ## 5. Stages (each: `verify.py smoke`; the ones that load files also get a hostile-input test)
-- **PP1 — the slot and the loader for GLB in dev:** `props/slots/*.json`, `PropDef.slot`, the validator logic as a pure class with a selftest (oversize, too many triangles, unknown zone, NaN); the GLB path already drawn (`setup_model`) goes through the slot's fit.
-- **PP2 — `.iprop`:** the format spec (a short doc), `build_prop.py`, `check_prop.py`, `PropLoader` with `ZIPReader`; a hostile-file suite (truncated, oversized counts, bad offsets, a zip-bomb ratio, a file that claims 4 G vertices) — none may crash, hang or allocate past its limit.
+- **PP1 — the slot, the model registry and the loader for GLB in dev:** `props/slots/*.json`, `PropDef.slot`, the registry (`models_for_slot`, `default_model`, `resolve`), **several models of one slot placed at once** (shared mesh and per-zone materials, §1b), the fallback chain (§1c, every rung tested), the validator as a pure class with a selftest (oversize, too many triangles, unknown zone, NaN); the GLB path already drawn (`setup_model`) goes through the slot's fit.
+- **PP2 — `.iprop`:** the format spec (a short doc), `build_prop.py`, `check_prop.py`, `PropLoader` with `ZIPReader`; a **robustness** suite (truncated file, oversized counts, bad offsets, a zip-bomb ratio, a file that claims 4 G vertices): none may crash, hang or allocate past its limit, each must end in the fallback chain with a log line. (Robustness, not adversarial security: there is no server to attack, §6 Q2.)
 - **PP3 — user tier:** `user://props/`, id collision (user wins), the slot default on rejection, the log line. Test on the Moto (path under `Android/data/<pkg>/files`, as `dev_flags.cfg`).
 - **PP4 — voxel models:** `.vox` parser, scale/hollow/palette mapping, the container registration; first content: 5-10 CC0 objects (crate variants, shelf, barrel, desk, locker) placed in PROPS; blast + firearm + fire on each; the claim count and Moto memory (`alloc` census).
 - **PP5 — material-tint variants** (`painted_metal` red/blue/...): how many fit in the 256-material byte and what they cost per chunk.
-- **PP6 — the first vehicle slot** with our own default model, to prove a swap end to end (two different `.iprop` files in the same slot, same footprint, same cover).
+- **PP6 — the first vehicle slot** with our own default model, to prove a swap end to end (two different `.iprop` files in the same slot, same footprint, same cover, **both on screen at once**).
+- **PP7 — optional: glTF animation clips** (data-only) for a prop that moves (wheels, a door); a scripted-mod opt-in tier stays a separate, later product decision.
 
-## 6. Open questions for the Director (recommendation first)
-1. **Multiplayer / sharing?** The design assumes player models are cosmetic and local (a `user://` file). If another player must SEE your car, the file travels: then size limits, hashing and a review path become product questions. *Recommend: decide before PP3; keep it local until then.*
-2. **Who validates a player's model?** *Recommend: the loader alone, with hard limits and a fallback, no trust.*
-3. **Voxel models: our board voxel (1/8 GU) as the target, chunky multiples allowed?** *Recommend: yes.*
-4. **Do we ship the `.vox` library curation (5-10 objects) before or after the pipeline?** *Recommend: after PP4, so every model is chosen against the real container, not guessed.*
+## 6. The four questions, RULED (Director, 2026-09-30)
+1. **Sharing / multiplayer — RULED: no.** A model is seen only by its own player on their own device. **But several models of the same slot must run at the same time** (§1b). If models ever have to travel between devices, that is a new product decision (size limits, hashes, review); nothing built now prevents it.
+2. **Who validates a player's model — RULED: the loader, and failure is benign.** With no servers to inject into, someone who tries to break the system only spoils their own experience; a crazy mod (their own car, with animation scripts) does not bother the Director. **The working assumption is that third-party models will usually NOT be compatible and will fall to the generic** (§1c). So the loader's job is to fit, or fall back cleanly and say why — not to police.
+3. **Target scale — RULED: the game's own** (the board voxel, 1/8 GU; a model is fitted into its slot's box). Scale problems are expected and will be adapted as they appear (a per-asset fit, never a global rule).
+4. **The first content — RULED: yes, a first scene, a dormitory with common objects** (§8). It curates the first models against the real container (after PP4, as recommended) and doubles as the calibration room.
 
 ## 7. Risks
-- **Untrusted files** are the whole security surface: never `ResourceLoader`, never scripts, limits before allocation, fuzz-style tests in PP2.
+- **Files from outside** are the only input we do not control: default to no `ResourceLoader` and no scripts, limits before allocation, the robustness tests in PP2 (the goal is "a bad file never takes the game down and never leaves a hole in a scene", not hardening against an attacker).
 - **Licences:** a single CC BY or unknown-licence file in the pack is a release problem; `MODEL_SOURCES.md` is gated (every `.iprop` in `res://props/` must have a row).
 - **Triangle / draw budget on the Moto:** the validator's limits are guesses until PP1 measures 20 props on the device.
 - **A voxel prop adds claims to the store** (R3D-CLAIMS's concern): the per-map claim budget is enforced, not hoped.
+
+## 8. The first scene: a dormitory (Director, 2026-09-30: "a first scene, it can be a dormitory, with some common objects")
+
+**What it is for.** (1) The first real test of the pipeline: every object below is chosen against the real container, not guessed. (2) The **calibration room** of PROPS_TIER4 P7: every prop at its real size beside a wall, the agent and a guard, so sizes (the GU-to-metre canon), colours (the palette) and material numbers are judged in one place. (3) A sandbox for blast, firearm and fire on ordinary furniture. It is a hand-authored `.map.json` (`maps/DORM.map.json`, the existing format; procedural map generation is a separate, later track).
+
+**The room (first draft, to be tuned):** about 14 x 9 GU, one door, one window (glass exists), 4 beds along two walls, each with a nightstand; a desk and chair; two lockers; a bookshelf; a trash bin; a rug (a floor patch, not a prop); small things on surfaces.
+
+| Object | Tier | Material zones | Source (to curate at PP4) | Notes |
+|---|---|---|---|---|
+| Single bed | 2 (voxel, hollow) | frame `metal`/`painted_metal`, mattress `upholstery` | CC0 `.vox` if a clean one exists, else ours | the most common object: the pipeline's first real `.vox` |
+| Nightstand | 2 | `wood` | `.vox` (CC0) | a crate-like box: easiest voxel prop |
+| Locker / wardrobe | 2 | `painted_metal` | `.vox` or ours | tall: tests a prop that is more than one storey of height in voxels (hollow shell, 2 storeys?) — scale to be decided on the room |
+| Bookshelf | 2 | `wood` + `paper` (books) | `.vox` | tests 2 materials in one voxel container |
+| Desk | 4 (mesh, shatters) | `wood` | a CC0 GLB (Poly Haven / Kenney style, like the table) | the fragment replacement's second subject, after the table |
+| Chair | 4 | `wood` (+ `plastic`) | CC0 GLB | thin parts at 1/8 GU: the voxelizer's stress test (§3 risks of PROPS_TIER4) |
+| Trash bin | 3 | `plastic` | CC0 GLB | soot only |
+| Lamp, laptop, books stack, backpack, sneakers | 3 | `plastic`, `paper`, `fabric`, `leather` | CC0 GLB | small things: soot/smoke only; also the size-reference set |
+| Window | map section | `glass` | exists | |
+| Rug, clothes on the floor | floor patch / decal | `fabric` | our decals | not a prop |
+
+**Gates for the scene:** the same `verify.py smoke`; a blast and a shot on each object class; a capture of the whole room at the Moto's zoom next to the agent and a guard; the claim count of the room against the per-map budget (§7); a Moto run.
+

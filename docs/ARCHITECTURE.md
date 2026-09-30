@@ -64,7 +64,7 @@ an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. Acto
 | **Localization** | `tr("domain.key")` through an autoload | `systems/localization/` |
 
 ### 0.4 What is NOT built yet (so nobody assumes it)
-R3D-ACTORS (live skinned actors, D64), R3D-ROT (camera-only rotation), R3D-WORLD (world-space 2D overlays), R3D-SURFACES (photographic ground), R3D-LOOK, R3D-CLAIMS / BUFFER; Tier 4 prop replacement by fragments, prop shadows and the drop-in model pipeline ([`PROPS_TIER4_PLAN`](../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md), [`PROP_PIPELINE_PLAN`](../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md)); the run-state model of §1; detection consuming the exposure pipeline (§15.4).
+R3D-ACTORS (live skinned actors, D64), R3D-ROT (camera-only rotation), R3D-WORLD (world-space 2D overlays), R3D-SURFACES (photographic ground), R3D-LOOK, R3D-CLAIMS / BUFFER; Tier 4 prop replacement by fragments, the persistent pile, prop shadows, the colour grade and the drop-in model pipeline (slots, several models per slot, `.iprop`, `.vox` containers; decisions `ACTOR` D66-D69, plans [`PROPS_TIER4_PLAN`](../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md) and [`PROP_PIPELINE_PLAN`](../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md)); the first content scene, a dormitory (`maps/DORM.map.json`); the run-state model of §1; detection consuming the exposure pipeline (§15.4).
 
 ---
 
@@ -546,7 +546,7 @@ Tile semantics and heights are inferred from `blocked_cells`; lights are map-dri
 | Glass (physics, shatter, crack, shards, panes) | Implemented | `GLASS_MASTER_PLAN` |
 | Light (voxel buckets, cell planes) | Implemented | `VoxelLightField`; real 3D lamps rejected (+24 ms GPU on the Moto) |
 | Props Tier 1/2 (hollow voxel crates), Tier 3/4 (real CC0 models) | Implemented | R3D-PROPS; Tier 4 fragment replacement, pile, shadows: planned (`PROPS_TIER4_PLAN`) |
-| Drop-in model pipeline (`.iprop`, slots, `.vox`) | Planned | `PROP_PIPELINE_PLAN` |
+| Drop-in model pipeline (`.iprop`, slots, several models per slot, `.vox`) | Planned | `PROP_PIPELINE_PLAN` (questions ruled 2026-09-30); first content: the dormitory scene |
 | Actors (agent, guards) | Partial | baked 2D frames mirrored as billboards; live rigs at R3D-ACTORS (D64) |
 | Rotation | Partial | four views by full re-layout + base-record replay; camera-only is R3D-ROT |
 | Guard AI (FSM), detection (visual/audio), noise | Implemented | `docs/systems/AI_MASTER_PLAN.md` |

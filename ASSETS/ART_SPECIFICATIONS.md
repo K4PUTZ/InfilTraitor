@@ -178,7 +178,9 @@ Feasibility confirmed 2026-07-16 against the shipped geometry. Key facts:
 
 ---
 
-## 5. Voxel Objects — Props Dictionary (PLANNED — ART-01)
+## 5. Props: voxel objects, models, slots (PARTLY SHIPPED — R3D-PROPS; the pipeline is PLANNED)
+
+> **⏭️ 2026-09-30 — what this section now says.** Shipped: voxel crates (`size_vox`, `hollow_shell`, Tier 1/2) and mesh props with a real CC0 model (`model`, `model_rotation_deg`, Tier 3/4). **Ruled, not built** (`PROP_PIPELINE_PLAN`, `ACTOR` D66-D69): a model conforms to a **slot** (footprint, max box, pivot, zones, budgets; gameplay comes from the slot); colour and texture come from the material registry, never the model; several models of one slot run at once; an incompatible model falls to the slot's generic; `.vox` models become store containers; the target scale is the game's own (1/8 GU voxels). The "multiple of 8 on every axis" rule below applies to the FOOTPRINT (whole GUs); an object's own box may be smaller (the table is 0.95 x 0.67 x 0.59 GU = 8 x 5 x 5 voxels).
 
 **Canon (Director, 2026-07-16):** every game element other than walls,
 roofs, and floors exists as **one GU or a whole multiple of GUs**. No new
@@ -192,7 +194,7 @@ The object schema already exists — `godot/scripts/systems/prop_def.gd`
 | Field | Meaning | Authoring rule |
 |---|---|---|
 | `id` | Unique object id | snake_case |
-| `size_vox` | `[x, y, z]` voxel dimensions | **Every axis a multiple of 8** (GU rule) |
+| `size_vox` | `[x, y, z]` voxel dimensions | the footprint is whole GUs (a multiple of 8); the box inside it may be smaller (2026-09-30) |
 | `layers` | Per-level occupancy bitmask: 8-char rows of `0`/`1`, rows separated by `/`, one string per level | Exact row/level ordering is **not yet pinned** — pinning it (with a D-number) is an ART-01 deliverable; do not author multi-layer objects before that |
 | `material_zones` | Zone → material id from the materials dictionary (§6) | Only dictionary materials |
 | `footprint_gus` | GU cells occupied, relative to anchor | Whole GUs only |
@@ -208,7 +210,15 @@ and destruction for free. Multi-GU objects additionally require
 footprint-aware rotation in `perspective_mapper` (known gap, recorded
 2026-07-16; all shipped props are 1×1).
 
-### Open-source voxel models (.vox import)
+### Mesh prop models (GLB) — authoring rules (2026-09-30, shipped for `wood_table` / `pistol_prop`; the rest planned)
+- **Format:** glTF binary (GLB), Y up; the importer's own node transforms are honoured. `PropDef.model` (`res://ASSETS/props/...`) and `model_rotation_deg` (degrees, Godot axes) turn it; it is then scaled UNIFORMLY to fit inside `mesh_size` and stood on its base, centred on the cell. `mesh_size` is authored to the model's own proportions at the size it should have (the throw arc, the pick and the shatter read it).
+- **Surfaces = material zones** (PLANNED, `ACTOR` D66): a surface's NAME is a registry material id (`wood`, `metal`, `plastic`, ...); an unknown name resolves by family, then `generic` (§6). Today the model's own surface colour/texture is used (the two CC0 models); that moves to the registry at PROPS_TIER4 P5.
+- **No texture is required or wanted from the model** (colour and detail come from the material, §6); UVs are kept only for an optional detail facade.
+- **Budgets:** one mesh per prop, a triangle cap measured on the Moto (20 props of 1 300 tris each were +1.5 ms; 20 of 10 000 tris were +4.3 ms) — the number is set at PP1 from a 20-prop device run. The two shipped models are 200 and 1 200 vertices.
+- **Sources and licences:** every model is logged in `props/MODEL_SOURCES.md` (source, author, licence); CC0 is the filter. The files live under `ASSETS/props/` (local only).
+
+### Open-source voxel models (.vox import) — UPDATED 2026-09-30 (`PROP_PIPELINE_PLAN` §3)
+Still true: the palette is arbitrary and must be mapped to registry materials (a sidecar `palette.json`, default = the nearest `base_color`; unmapped = the family/generic fallback), and sizes are arbitrary. **Changed:** the target is the BOARD voxel (1/8 GU) or an integer multiple (a per-asset scale), not "whole GU multiples"; the import hollows the model (keeps voxels with an empty 6-neighbour); a model is held to 4 materials; it becomes a `PropBlock`-kind container in the `VoxelStore` (destructible, fire, soot, charred, debris for free); the converter is the offline `tools/persistent/build_prop.py` (`.vox` or GLB -> `.iprop`), validated by `check_prop.py`. The original note follows.
 
 Open-source MagicaVoxel models **do not work directly** — two conversion
 gaps, both scoped in ART-01:
@@ -230,6 +240,8 @@ JSON (field to be added at ART-01).
 ---
 
 ## 6. Materials Dictionary (LARGELY SHIPPED — D19/D21, 2026-08-06)
+
+> **⏭️ 2026-09-30 — the library grows (`PROPS_TIER4_PLAN` §2b, `MATERIALS_MASTER_PLAN`).** Two new row fields, `family` (`wood | metal | stone | soil | fabric | paper | plastic | rubber | leather | ceramic | glass | organic | generic`) and `textured` (false = a flat tint, no facade: no art needed). The fallback chain for any lookup is the material's own row/facade/debris decal -> the family's `generic_<family>` -> `generic`, loud once per id. **To add (numbers calibrated with the Director):** `plastic`, `rubber`, `leather`, `ceramic`, `paper`, `painted_metal` (+ tint variants), `upholstery`, `steel_dark`. A `textured` material's facade is still ONE 1024x512 grayscale PNG (B2, `check_facade.py`); a flat one needs only its JSON row.
 
 > **This section's premise is out of date.** It was written when "what is a
 > material" was scattered across `BakePolicy.DEFAULT_FACADES`, the

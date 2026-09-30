@@ -85,6 +85,15 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
+## Props and content debt (2026-09-30)
+- **The two real prop models carry their own colours:** colour/texture must move to the material registry (`ACTOR` D66, `PROPS_TIER4_PLAN` P5); today the two CC0 models carry their own.
+- **Tier 4 replacement, pile, prop shadows, the colour grade, charred variety** are planned and unbuilt (`PROPS_TIER4_PLAN`); a mesh prop's shatter today is the chip/smoke VFX + a debris carpet, and the lamps' cached shadow map is not re-fed when a prop stops blocking.
+- **No slot / model registry / `.iprop` / user tier** (`PROP_PIPELINE_PLAN`); `PropMesh3D` makes one material per surface per instance (shared-per-zone materials and a `MultiMesh` for many instances are part of PP1).
+- **Material library is 14 rows with no `family`/fallback**; 8 materials are missing for everyday objects (`PROPS_TIER4_PLAN` §2b).
+- **Firearms on props:** the agent path only; the weapon bench is untouched by decision; no debris on a shot.
+- **Open since `6d21893d`:** the PLAYGROUND rotation round trip differs by 2-4 soot texels at (216,24) (`verify.py full` red); a task is open.
+- **Documentation:** `docs/ARCHITECTURE.md` §2-§14, `docs/systems/*.md`, `ASSET_MAP`, `TEXTURE_CATALOG` still describe July 2026 (bannered; `ARCHITECTURE.md` §15.7).
+
 ## Critical Debt 🔴 (Blocks future scalability)
 **Severity:** HIGH
 **Impact:** HIGH

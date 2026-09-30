@@ -897,6 +897,8 @@ which own art authoring today.)*
 sprite sheets: directional sprites (N/S/E/W) and animation frames (idle, walk,
 action). **A purely visual swap — TileMap and game logic do not change.**
 
+**Content extensibility (Director, 2026-09-30).** Objects the world is made of are **models that fill slots** (a footprint, a size box, material zones, a budget; gameplay belongs to the slot, never the model). A player may drop in their own model for a slot (a car, a bed): it is **local and cosmetic** (seen only by its player, on their device), several models of one slot can be on screen at once, and a model that does not fit simply becomes the slot's **generic**. Colour and texture come from the game's own material library, so every model shares one palette. A prop's material decides how it breaks and burns. Builds: [`PROP_PIPELINE_PLAN`](../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md), [`PROPS_TIER4_PLAN`](../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md).
+
 **Palette and visual language.** Dark, restrained backgrounds (concrete,
 steel) with high-contrast colour reserved for the agent and threats.
 Isometric 2.5D dimetric, portrait. **Minimal UI:** alert meter (top), AP

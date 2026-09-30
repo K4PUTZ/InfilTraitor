@@ -8,7 +8,17 @@
 
 ---
 
-## Where the project stands — 2026-09-26 (newest; the 2026-09-25, 2026-09-24, 2026-09-21 and 2026-08-30 sections below are kept as history)
+## Where the project stands — 2026-09-30 (newest; the sections below are kept as history)
+
+**Version 0.9.107 · R3D-PROPS continues: real models are in, and the next stretch is planned and ratified.** Record: `PROMPTS/RESUMO_SESSAO_2026-09-30_R3D_PROPS_MODELS_PLANS_DOCS.md`; the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.50).
+- **Built today (`7cfc18dd..`):** a crate stops blocking its GU at >= 80% destroyed (wood needs two grenades, plywood one: 85%, `destroy_factor` 0.95); firearm rounds strike prop voxels; `board_probe` dumps props; `wood_table` and `pistol_prop` draw real CC0 models (Poly Haven, Quaternius; `props/MODEL_SOURCES.md`); the APK with the PROPS map ran on the Moto.
+- **Ratified by the Director (`ACTOR` D66-D69):** materials and colour come from OUR registry (families, flat `textured: false`, fallback own -> family generic -> `generic`, 8 materials to add); one `BoardLook.grade()` in the shaders, no full-screen LUT; Tier 4 props are replaced by 1/8 GU voxel fragments on a blast (~0.5 s) and leave a persistent, cosmetic, charred pile; wider charred tones; contact shadows AFTER the destruction; **models fill SLOTS** (gameplay from the slot), several models of one slot at once, local and cosmetic, an incompatible one falls to the generic, `.vox` models are free destructible containers, target scale the game's own. **First content: a dormitory scene** (`maps/DORM.map.json`), also the calibration room.
+- **Plans (nothing of them is built):** [`PROPS_TIER4_PLAN`](../../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md) v0.3 (P1 voxelizer + replacement, P2 pile persistence, P3 charred variety, P5 material zones + grade, P6 shadows, P7 calibration) and [`PROP_PIPELINE_PLAN`](../../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md) v0.2 (PP1-PP7).
+- **Documentation:** `docs/ARCHITECTURE.md` rewritten against the 3D board (§0 layered picture, §1, §15, §16); `repo_structure.md` and `developer_setup.md` refreshed; `ASSET_MAP`, `TEXTURE_CATALOG`, `rendering.md` bannered; the old texts are in `docs/history/`.
+- **Known red:** `verify.py full` — the PLAYGROUND rotation round trip differs by 2-4 soot texels at cell (216,24), bisected to `6d21893d`, separate task. The `ground_gate` PLAYGROUND digests were re-recorded (the map gained a crate, `086ddea2`).
+- **Next (the order ruled):** Tier 4 voxel replacement + pile + charred variety -> material zones/grade/new materials -> the model pipeline (PP1-PP6) -> the dormitory -> contact shadows.
+
+## Where the project stood — 2026-09-26 (history; the 2026-09-25, 2026-09-24, 2026-09-21 and 2026-08-30 sections below are kept as history)
 
 **Version 0.9.107 · R3D-END is closed, the post-close cleanup is done, and the Director closes R3D at R3D-LIGHT (planned for the next session).** Record: the v1.29 block at the top of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) and `PROMPTS/RESUMO_SESSAO_2026-09-26_CLEANUP_E_R3D_LIGHT_PLAN.md`.
 - **The cleanup (9 commits, `2bb5cbb1`..`200986da`, about 1 550 net lines):** the dead code the END left on purpose, 26 unused preload constants, 55 declared-but-never-referenced symbols (34 more kept after inspection: design stubs and documentation of live flags), 48 comments that named something deleted, and the 2D voxel-atom cluster (`BakePolicy`, `HighWallGroup`, `tile_anatomy_audit`, the atoms and `halves/` moved to `ARCHIVE/voxel_atoms_2d/`, two selftests lost the assertions whose subject went: 12 -> 8 and 6 -> 5). Every commit passed `verify.py` smoke (51 selftests, PLAYGROUND and GLASS boot and rotation).

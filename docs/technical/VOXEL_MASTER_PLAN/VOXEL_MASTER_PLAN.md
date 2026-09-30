@@ -1,5 +1,7 @@
 # INFILTRAITOR — VOXEL SYSTEM MASTER PLAN
 
+> **⏭️ 2026-09-30 — voxel PROPS are containers too.** The geometry here (8 voxels per GU axis, 8 levels per storey) also governs props: a `PropBlock` (hollow crate shell today) is an irregular container in the `VoxelStore`; the planned `.vox` models (`PROP_PIPELINE_PLAN` §3) are more of them, hollowed to their surface voxels and held to a per-map claim budget. A prop's footprint is whole GUs; its own box may be smaller.
+
 > **⏭️ 2026-09-25 — R3D-END retired the 2D drawing rule; the 3D board is the only board
 > ([`RENDER3D_MASTER_PLAN`](../../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)). Read §1's "1 VOXEL = 1 Godot Tile", the atlas /
 > TileSet / `set_cell()` sections and every `VoxelRenderer` reference (now `VoxelBoard`, and it renders nothing) as HISTORY; the

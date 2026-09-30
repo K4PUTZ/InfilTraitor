@@ -538,6 +538,7 @@ neither blocking.
 ---
 
 ### ⏸️ ART-01 — Materials & Objects Pipeline — SCHEDULED (Alpha → Beta window)
+> **⏭️ 2026-09-30 — largely superseded in practice by R3D-PROPS** (`RENDER3D_MASTER_PLAN`): the voxel-objects dictionary is the crate's `PropDef` path (shipped), the open-source `.vox` import became `PROP_PIPELINE_PLAN` (a slot-based model pipeline with `.vox` containers, first content a dormitory scene), and the materials dictionary grows families and fallbacks (`PROPS_TIER4_PLAN` §2b). The horizontal-surface art (slab tops, stepped roofs) is still ART-01's / `R3D-SURFACES`. The window rule below is unchanged for that part.
 **Objective:** Dedicated art for horizontal surfaces (slab tops + roof tiles,
 including stepped/sloped roofs), a single-writer materials dictionary, a voxel
 objects dictionary rendered per-voxel, and an open-source `.vox` import

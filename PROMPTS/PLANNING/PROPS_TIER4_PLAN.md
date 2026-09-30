@@ -1,5 +1,5 @@
 # PROPS_TIER4_PLAN
-## Real models, material-driven colour, generic voxel replacement on a blast, a persistent charred pile — v0.2 (PLANNING, nothing built)
+## Real models, material-driven colour, generic voxel replacement on a blast, a persistent charred pile — v0.3 (PLANNING, nothing built)
 
 Session 2026-09-30, Director's planning round. Parent track: [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) R3D-PROPS (the tiers are ruled there, 2026-09-27; this file
 owns the build of Tier 4 and the look/shadow questions that came with real models). Canon it extends, never replaces: ACTOR D65 (static props are meshes, breakable
@@ -62,7 +62,7 @@ what moves the floor: `srgb_to_linear` alone was -1.5 ms).
 From the P1 silhouette. Measured on the Moto with 20 props.
 
 ### 2.7 P7 — the calibration round (Director: "uma calibrada geral em todos os tamanhos")
-One sheet with every prop at its size next to a wall, a crate, the agent and a guard; the GU-to-metre canon is written down (the table is 1.13 m wide at 0.95 GU, so a GU is ~1.2 m; the
+In the **dormitory scene** ([`PROP_PIPELINE_PLAN`](PROP_PIPELINE_PLAN.md) §8, the Director's first content scene) plus one sheet: every prop at its size next to a wall, a crate, the agent and a guard; the GU-to-metre canon is written down (the table is 1.13 m wide at 0.95 GU, so a GU is ~1.2 m; the
 pistol is deliberately 0.40 GU long, larger than real so it reads); `mesh_size` of every def is set from the model's own proportions; the palette sheet for D-P2.
 
 ## 2b. The material library (formalises D-P1; Director 2026-09-30: more materials to cover a wider variety of objects, with fallbacks, generic materials)
@@ -94,6 +94,12 @@ A model's surface that names no known material resolves by rule 2/3 instead of f
 | `upholstery` | fabric | yes | sofas, seats | fabric + foam: burns, smoulders |
 | `steel_dark` | metal | no | weapons, tools | metal, darker colour |
 The numbers are NOT mine to set: each row is proposed from its analogue and calibrated with the Director in the P7 round, the way wood/plywood were (plywood 0.95 beside a grenade = 85% destroyed).
+
+## 2c. What the model-input pipeline changes here (2026-09-30, see [`PROP_PIPELINE_PLAN`](PROP_PIPELINE_PLAN.md); Director's rulings)
+- **Several models of one slot at once.** The fragment replacement, the voxelizer cache, the shadow silhouette and the material instances are keyed by MODEL id, built once and shared by every instance (PP1 §1b): N tables of one model cost N transforms. Per-instance state (shattered, charred tone, the pile) stays on the instance.
+- **A model that does not fit its slot falls to the slot's generic** (a box in the `generic` material), and the generic is a legitimate Tier 4 prop too: it voxelizes to a box of fragments. So the replacement must never assume a particular shape.
+- **Scale target = the game's own** (1/8 GU fragments, a model fitted into its slot's box); scale problems are adapted as they appear.
+- **The dormitory (PIPELINE §8) is the calibration room of P7:** sizes, palette, material numbers are judged there, with the agent and a guard beside every prop.
 
 ## 3. Risks
 - The 30 fps handsets make 0.5 s = 15 frames: the animation has to read in 15 frames, so the sim is timed, not counted, and is judged on a device capture, not the desktop one.

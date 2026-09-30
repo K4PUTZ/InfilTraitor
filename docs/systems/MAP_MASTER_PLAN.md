@@ -1,5 +1,7 @@
 # INFILTRAITOR — Map System Master Plan
 
+> ⏭️ **2026-09-30 — props and content scenes.** The `props` section's `def` names a `PropDef`; with the model pipeline (`PROP_PIPELINE_PLAN`) a placement names a **slot** (the preferred model) or a **model id**, and several models of one slot coexist in a map. The first hand-authored content scene (**not yet created**) will be **`maps/DORM.map.json`, a dormitory** (PIPELINE §8), also the calibration room. Procedural map generation stays a separate, later track. `MAPFILE` props items gain an optional `model` (a model id); the section version is bumped when that lands.
+
 > ⏭️ **2026-09-25 — `RoomBuilder` no longer bakes or places voxel tiles (R3D-END):** it builds the registries and the store's input; `VoxelBoard.register_*()` only makes the levels exist. The `MapSpec` contract and Rule 7 are unchanged.
 
 > **Canonical specification for the data-driven map pipeline, MapSpec contract, and compilation.**

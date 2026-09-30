@@ -71,6 +71,11 @@ func is_finished() -> bool:
 	return _finished
 
 
+## The world height of the floor the cubes stand on.
+func floor_y() -> float:
+	return _y0
+
+
 ## Runs a live simulation to its end NOW (a rotation is about to rebuild the board: the pile has to be recorded first).
 func finish_now() -> void:
 	if _sim == null or _finished:

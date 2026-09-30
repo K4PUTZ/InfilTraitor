@@ -399,6 +399,7 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	if VSCALE_MARKER:
 		_add_vscale_marker()
 	_build_mesh_props()
+	_build_prop_shadows()
 	var t2: int = Time.get_ticks_usec()
 	var fields: Dictionary = {
 		"voxels": int(counts.get("cells", _occ.size())), "slice_voxels": counts["slices"],
@@ -1295,6 +1296,100 @@ func _build_mesh_props() -> void:
 			print("[PROP-DEBUG] mesh prop %s gu=%s placed at world %s" % [inst.id, inst.cell, node.position])
 
 
+## ── PROP CONTACT SHADOWS (PROPS_TIER4_PLAN P6, `ACTOR` D68) ─────────────────────────────────────────────────────────────────────
+## One flat multiplied quad per mesh prop, per GU of voxel prop and per pile (`PropShadow`: built from the prop's voxels, projected
+## along the key light, no shadow map). A mesh prop's goes with its mesh; a voxel prop's is rebuilt when its standing voxel count
+## changes (`refresh_prop_shadows()`, called from every blast and shot commit); a pile throws a small one of its own.
+var _prop_shadows: Dictionary = {}          ## key -> MeshInstance3D
+var _prop_shadow_counts: Dictionary = {}    ## "gu:x:y" -> standing voxels the shadow was built from
+
+
+func _build_prop_shadows() -> void:
+	for node in _prop_shadows.values():
+		if is_instance_valid(node):
+			(node as Node).queue_free()
+	_prop_shadows.clear()
+	_prop_shadow_counts.clear()
+	var board: VoxelBoard = _room._voxel_board
+	if board == null:
+		return
+	var per: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
+	for inst: MeshPropInstance in board.mesh_props():
+		if inst.shattered or not _mesh_prop_nodes.has(inst.id):
+			continue
+		var node: Node3D = _mesh_prop_nodes[inst.id]
+		var vox: Dictionary = PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size)
+		var ox: int = int(round(node.position.x * float(per)))
+		var oz: int = int(round(node.position.z * float(per)))
+		var cells: Array = []
+		for c: Vector3i in vox["cells"]:
+			cells.append(Vector3i(ox + c.x, c.y, oz + c.z))
+		_set_prop_shadow("mesh:" + inst.id, cells, node.position.y)
+	refresh_prop_shadows(true)
+
+
+## The shadow of every GU of voxel prop, rebuilt where the number of standing voxels changed (or everywhere when `force`); `only_gus`
+## (when given) limits the look to those GUs.
+func refresh_prop_shadows(force: bool = false, only_gus: Dictionary = {}) -> void:
+	var board: VoxelBoard = _room._voxel_board if _room != null else null
+	if board == null or _geometry_root == null:
+		return
+	var by_gu: Dictionary = {}   ## Vector2i -> {"cells": Array, "floor": int}
+	for block: PropBlock in board.prop_blocks():
+		if block.voxels.is_empty():
+			continue
+		var first: Vector2i = block.voxels[0].grid_pos
+		var gu := Vector2i(first.x >> 3, first.y >> 3)
+		if not only_gus.is_empty() and not only_gus.has(gu):
+			continue
+		if not by_gu.has(gu):
+			by_gu[gu] = {"cells": [], "floor": 1 << 30}
+		var entry: Dictionary = by_gu[gu]
+		var floor_level: int = block.floor_level if block.floor_level >= 0 else block.voxels[0].level
+		for v: Voxel in block.voxels:
+			if block.floor_level < 0:
+				floor_level = mini(floor_level, v.level)
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				(entry["cells"] as Array).append(Vector3i(v.grid_pos.x, v.level, v.grid_pos.y))
+		entry["floor"] = mini(int(entry["floor"]), floor_level)
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	for gu: Vector2i in by_gu:
+		var entry: Dictionary = by_gu[gu]
+		var key := "gu:%d:%d" % [gu.x, gu.y]
+		var count: int = (entry["cells"] as Array).size()
+		if not force and int(_prop_shadow_counts.get(key, -1)) == count:
+			continue
+		_prop_shadow_counts[key] = count
+		var cells: Array = []
+		for c: Vector3i in entry["cells"]:
+			cells.append(Vector3i(c.x, c.y - int(entry["floor"]), c.z))
+		_set_prop_shadow(key, cells, float(int(entry["floor"]) - _ground_level) * unit)
+
+
+func _add_pile_shadow(pile_name: String, records: Array, y0: float) -> void:
+	var cells: Array = []
+	for r: Dictionary in records:
+		var col: Vector2i = r["column"]
+		cells.append(Vector3i(col.x, int(r["level"]), col.y))
+	_set_prop_shadow("pile:" + String(pile_name), cells, y0)
+
+
+func _set_prop_shadow(key: String, cells: Array, floor_y: float) -> void:
+	_drop_prop_shadow(key)
+	var node: MeshInstance3D = PropShadow.make(cells, floor_y)
+	if node == null:
+		return
+	_geometry_root.add_child(node)
+	_prop_shadows[key] = node
+
+
+func _drop_prop_shadow(key: String) -> void:
+	var node = _prop_shadows.get(key, null)
+	if node != null and is_instance_valid(node):
+		(node as Node).queue_free()
+	_prop_shadows.erase(key)
+
+
 ## R3D-PROPS Tier 4 voxel replacement (PROPS_TIER4_PLAN P2). The world position of a live mesh prop's base (its floor point, on
 ## a voxel boundary in X/Z), or null when there is none: what a fragment simulation is anchored to. Read BEFORE `remove_mesh_prop()`.
 func mesh_prop_position(id: String) -> Variant:
@@ -1311,6 +1406,8 @@ func spawn_prop_fragments(sim: PropFragmentSim, zone_materials: Array) -> PropFr
 	_geometry_root.add_child(node)
 	node.setup(self, sim, zone_materials)
 	_fragment_nodes.append(node)
+	## When the cubes have landed, the pile throws its own (small) shadow.
+	node.settled.connect(func(records: Array) -> void: _add_pile_shadow(node.name, records, node.floor_y()))
 	return node
 
 
@@ -1319,6 +1416,7 @@ func spawn_prop_pile(records: Array, y0: float, zone_materials: Array) -> PropFr
 	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, zone_materials)
 	_geometry_root.add_child(node)
 	_fragment_nodes.append(node)
+	_add_pile_shadow(node.name, records, y0)
 	return node
 
 
@@ -1334,6 +1432,7 @@ func running_prop_fragments() -> Array:
 ## R3D-PROPS Tier 4 — `Room` calls this right after `spawn_prop_shatter()` so the intact mesh
 ## does not keep standing where the fragment burst just played.
 func remove_mesh_prop(id: String) -> void:
+	_drop_prop_shadow("mesh:" + id)
 	var node: Node3D = _mesh_prop_nodes.get(id, null)
 	if node != null and is_instance_valid(node):
 		node.queue_free()
@@ -1399,6 +1498,11 @@ func sync_soot_levels(levels: Dictionary, reason: String) -> void:
 
 func _commit_touched(touched: Array, reason: String, whole_stack: bool) -> void:
 	var t0: int = Time.get_ticks_usec()
+	## A voxel prop that lost voxels throws a smaller shadow: only the GUs this commit touched are looked at.
+	var touched_gus: Dictionary = {}
+	for tv: Voxel in touched:
+		touched_gus[Vector2i(tv.grid_pos.x >> 3, tv.grid_pos.y >> 3)] = true
+	refresh_prop_shadows(false, touched_gus)
 	_blast_chunks = {}
 	_blast_levels = {}
 	for voxel: Voxel in touched:

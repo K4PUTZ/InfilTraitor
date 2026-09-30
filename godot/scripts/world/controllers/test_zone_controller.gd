@@ -1492,6 +1492,8 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 			await _pace(presenter)
 		flash_overlay.clear()
+	## The first frame AFTER the flash: a broken Tier 4 prop's mesh is replaced by its board-size voxels, already falling.
+	room.release_prop_breaks()
 	_prof("BEAT 2 ends — metal away, then 5 flash frames (was 7 flash frames, then metal)")
 	_prof("BEAT 3 — destruction starts%s" % ["" if job.warmed else " (NOT warmed — paying at playback)"])
 

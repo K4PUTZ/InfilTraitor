@@ -87,6 +87,18 @@ static func capture(room) -> Dictionary:
 		var tint: Color = d["tint"]
 		debris.append([String(did), bp.x, bp.y, int(d["level"]), String(d["material"]), int(d["variant"]),
 			tint.r, tint.g, tint.b, tint.a, float(d["rot"])])
+	## P2: the piles of charred fragments ([base_gu_x, base_gu_y, y0, material, [[col_x, col_y, level, mult], ...]]). Still-falling
+	## fragments are run to their end first so their pile is in the record.
+	if room.has_method("_finish_running_prop_fragments"):
+		room._finish_running_prop_fragments()
+	var prop_piles: Array = []
+	for gk in room._base_prop_piles.keys():
+		var pile: Dictionary = room._base_prop_piles[gk]
+		var recs: Array = []
+		for r: Dictionary in pile["records"]:
+			var cc: Vector2i = r["col"]
+			recs.append([cc.x, cc.y, int(r["level"]), float(r["mult"])])
+		prop_piles.append([gk.x, gk.y, float(pile["y0"]), String(pile["material"]), recs])
 	return {
 		"version": FORMAT_VERSION,
 		## The map a save belongs to. A loader that restores damage into the WRONG
@@ -98,6 +110,7 @@ static func capture(room) -> Dictionary:
 		"soot": soot,
 		## R3D-PROPS — an OLD save has neither key and reads as "nothing shattered, no debris": the honest restore.
 		"shattered_props": shattered_props,
+		"prop_piles": prop_piles,
 		"debris": debris,
 		## G6 — `[base_x, base_y, level, count]` per pile. ⚠️ The COUNT travels, not
 		## a flag: it is what decides how heavy the pile reads, and a save that
@@ -203,6 +216,13 @@ static func restore(room, data: Dictionary) -> bool:
 	room._base_shattered_props.clear()
 	for sp in data.get("shattered_props", []):
 		room._base_shattered_props[Vector2i(int(sp[0]), int(sp[1]))] = true
+	room._base_prop_piles.clear()
+	for pp in data.get("prop_piles", []):
+		var pile_records: Array = []
+		for rr in pp[4]:
+			pile_records.append({"col": Vector2i(int(rr[0]), int(rr[1])), "level": int(rr[2]), "mult": float(rr[3])})
+		room._base_prop_piles[Vector2i(int(pp[0]), int(pp[1]))] = {"y0": float(pp[2]), "material": String(pp[3]),
+			"records": pile_records}
 	room._base_debris.clear()
 	for dd in data.get("debris", []):
 		room._base_debris[String(dd[0])] = {"base": Vector2(float(dd[1]), float(dd[2])), "level": int(dd[3]),
@@ -262,3 +282,4 @@ static func clear_run_state(room) -> void:
 	## R3D-PROPS — a fresh mission must not inherit last level's shattered tables or the debris on its floor.
 	room._base_shattered_props.clear()
 	room._base_debris.clear()
+	room._base_prop_piles.clear()

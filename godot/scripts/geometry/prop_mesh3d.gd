@@ -51,57 +51,23 @@ func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color,
 ## are registered with the board, so the light and the soot reach them exactly as they reach the box.
 func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int) -> void:
 	_board = board
-	var scene: PackedScene = load(path)
-	if scene == null:
-		push_error("[PropMesh3D] setup_model: cannot load '%s'" % path)
+	var model: Dictionary = PropModelFit.fit(path, rotation_deg, fit_size)
+	if not bool(model["ok"]):
 		return
-	var root: Node = scene.instantiate()
-	var meshes: Array[MeshInstance3D] = []
-	var stack: Array[Node] = [root]
-	while not stack.is_empty():
-		var n: Node = stack.pop_back()
-		stack.append_array(n.get_children())
-		if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
-			meshes.append(n as MeshInstance3D)
-	if meshes.is_empty():
-		push_error("[PropMesh3D] setup_model: '%s' holds no mesh" % path)
-		root.free()
-		return
-	## The model's own node transforms (the import's axis fix, a unit scale) are part of its shape: measure through them.
-	var turn := Basis.from_euler(Vector3(deg_to_rad(rotation_deg.x), deg_to_rad(rotation_deg.y), deg_to_rad(rotation_deg.z)))
-	var box := AABB()
-	var first := true
-	var xforms: Array[Transform3D] = []
-	for m in meshes:
-		var xf := Transform3D.IDENTITY
-		var cur: Node = m
-		while cur != null and cur != root.get_parent():
-			if cur is Node3D:
-				xf = (cur as Node3D).transform * xf
-			cur = cur.get_parent()
-		xf = Transform3D(turn, Vector3.ZERO) * xf
-		xforms.append(xf)
-		var bb: AABB = xf * m.get_aabb()
-		box = bb if first else box.merge(bb)
-		first = false
-	var k: float = minf(fit_size.x / box.size.x, minf(fit_size.y / box.size.y, fit_size.z / box.size.z))
-	var centre := Vector3(box.position.x + box.size.x * 0.5, box.position.y, box.position.z + box.size.z * 0.5)
-	var fit := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * k), -centre * k)
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var ground_level: int = board.call("ground_level")
-	for i in range(meshes.size()):
-		var src: MeshInstance3D = meshes[i]
+	for part: Dictionary in model["parts"]:
+		var mesh: Mesh = part["mesh"]
 		var node := MeshInstance3D.new()
-		node.mesh = src.mesh
-		node.transform = fit * xforms[i]
+		node.mesh = mesh
+		node.transform = part["xf"]
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		for s in range(src.mesh.get_surface_count()):
-			var m := _lit_material_from(src.mesh.surface_get_material(s))
+		for s in range(mesh.get_surface_count()):
+			var m := _lit_material_from(mesh.surface_get_material(s))
 			node.set_surface_override_material(s, m)
 			_extra_mats.append(m)
 			board.call("register_prop_light_material", m)
 		add_child(node)
-	root.free()
 	position = Vector3((float(cell.x) + 0.5) * unit, float(level + 1 - ground_level) * unit, (float(cell.y) + 0.5) * unit)
 
 

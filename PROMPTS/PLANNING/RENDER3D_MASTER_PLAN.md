@@ -1,6 +1,8 @@
 # RENDER3D_MASTER_PLAN
 ## The board in 3D — one packed voxel store, one depth-tested renderer, the 2D board retired — v1.50
 
+**2026-09-30 (later) — Tier 4 voxel replacement BUILT (`PROPS_TIER4_PLAN` P1/P2 + the pile persistence):** a broken `mesh_tier 4` prop becomes board-size voxels on the first frame after the flash (`PropVoxelizer`, `PropFragmentSim`, `PropFragments3D`; the real table = 104 cubes keeping its top and legs), falls ~0.57 s, is carved by the ring weight, piles, slumps and stays as a charred pile recorded in base coords (`Room._base_prop_piles`, SaveState, replayed after a rotation). R3D-ROT deletes that replay with the other base records. Not built: registry colour/textures, charred variety, shadows, calibration.
+
 **2026-09-30 — R3D-PROPS: real models, the passage rule, firearms on props (`7cfc18dd..ecf34cdc`) and the two plans ([`PROPS_TIER4_PLAN`](PROPS_TIER4_PLAN.md) v0.3, [`PROP_PIPELINE_PLAN`](PROP_PIPELINE_PLAN.md) v0.2, planning only).**
 - A crate stops blocking at >= 80% destroyed (`Room.prop_collapse_standing_fraction`); plain wood beside a grenade = 65% (two grenades open it), plywood (`destroy_factor` 0.95) = 85%. Firearm rounds strike prop voxels (`BlastCalculator.resolve_prop_voxel` / `plan_prop_impact`). `board_probe` dumps `PropBlock`s. Known red in `verify.py full`: PLAYGROUND rotation E-S-W-N soot texels at cell (216,24), bisected to `6d21893d` (separate task).
 - `wood_table` and `pistol_prop` draw real CC0 models (Poly Haven, Quaternius; `props/MODEL_SOURCES.md`; `PropDef.model`).

@@ -87,7 +87,7 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ## Props and content debt (2026-09-30)
 - **The two real prop models carry their own colours:** colour/texture must move to the material registry (`ACTOR` D66, `PROPS_TIER4_PLAN` P5); today the two CC0 models carry their own.
-- **Tier 4 replacement, pile, prop shadows, the colour grade, charred variety** are planned and unbuilt (`PROPS_TIER4_PLAN`); a mesh prop's shatter today is the chip/smoke VFX + a debris carpet, and the lamps' cached shadow map is not re-fed when a prop stops blocking.
+- **Tier 4 voxel replacement and the pile are BUILT** (2026-09-30); still planned: registry colour/textures for the fragments, the colour grade, charred variety, prop shadows (`PROPS_TIER4_PLAN` P4-P7). The old chip/smoke burst still plays beside the cubes, the Moto is not measured, fragments ignore the floor's holes and other props' tops (they land on the lattice of this prop's own pile only), and the lamps' cached shadow map is not re-fed when a prop stops blocking.
 - **No slot / model registry / `.iprop` / user tier** (`PROP_PIPELINE_PLAN`); `PropMesh3D` makes one material per surface per instance (shared-per-zone materials and a `MultiMesh` for many instances are part of PP1).
 - **Material library is 14 rows with no `family`/fallback**; 8 materials are missing for everyday objects (`PROPS_TIER4_PLAN` §2b).
 - **Firearms on props:** the agent path only; the weapon bench is untouched by decision; no debris on a shot.

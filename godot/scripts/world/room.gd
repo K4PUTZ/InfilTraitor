@@ -219,6 +219,10 @@ var _base_damage_claims: Dictionary = {}
 ## "rot"}; replayed after the 3D board is rebuilt, because rebuilding it drops the piles.
 var _base_shattered_props: Dictionary = {}
 var _base_debris: Dictionary = {}
+## PROPS_TIER4_PLAN P2 / `ACTOR` D67: the charred pile a shattered Tier 4 prop leaves, in BASE coords (base GU of the prop ->
+## {"y0": floor height in world units, "material": id, "records": [{"col": base voxel column, "level": stack level, "mult": colour
+## multiplier}]}); laid back after the board is rebuilt. A cosmetic record, not `VoxelStore` state. R3D-ROT deletes the replay.
+var _base_prop_piles: Dictionary = {}
 var _debris_tone_hist: Dictionary = {}   ## PROP_DEBUG only: soot tone -> pieces placed on it
 
 ## CRACK-02 S-3 (GLASS_MASTER_PLAN §13.2) — EVERY CRACK, IN BASE COORDS.
@@ -1919,6 +1923,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_shards.clear()        ## G6: and no glass has fallen on its floor
 	_base_shattered_props.clear()   ## R3D-PROPS: nor any Tier 4 prop shattered
 	_base_debris.clear()            ## R3D-PROPS: nor any debris lying on its floor
+	_base_prop_piles.clear()        ## P2: nor any pile of charred fragments
+	_pending_prop_breaks.clear()
 	_base_remnants.clear()      ## G4: and none is stuck to a frame
 	_base_rim_shards.clear()    ## CRACK-06: nor clinging to a torn glass edge
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
@@ -2619,6 +2625,8 @@ func _set_perspective(direction: String) -> void:
 		return
 
 	Telemetry.event("view.perspective", {"from": _active_perspective, "to": direction})
+	## A prop's voxel fragments still falling are run to their end first, so the pile is recorded before the board is rebuilt.
+	_finish_running_prop_fragments()
 	var prev_direction := _active_perspective
 	var base_agent := _cell_to_base(agent.cell, prev_direction)
 	var has_selected := _selected_cell != INVALID_CELL
@@ -2788,6 +2796,7 @@ func _set_perspective(direction: String) -> void:
 		if board3d() != null:
 			_start_board3d_live()
 			_respawn_base_debris()
+			_respawn_base_prop_piles()
 
 		## OCC-01: Recompute occlusion set on perspective change
 		_recompute_occlusion()
@@ -3484,6 +3493,7 @@ func scenario_save_restore() -> bool:
 	## world they stand in gives 6-9 (R3D-13). A production load flow has to do the same.
 	_lighting_controller.rebuild_all()
 	_respawn_base_debris()
+	_respawn_base_prop_piles()
 	for _f in range(10):
 		await get_tree().process_frame
 	return true
@@ -4864,18 +4874,123 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 		var weight: float = float(weights[ring])
 		if weight <= 0.0:
 			continue
+		## The LOGIC happens now, at the commit: the prop is broken and its cell is free. What the player SEES waits for the
+		## first frame after the flash (`release_prop_breaks()`): the mesh stands through the flash, then it is voxels.
 		inst.shattered = true
 		_base_shattered_props[PerspectiveMapperClass.cell_to_base(
 			inst.cell, _active_perspective, _base_layout.get("size", Vector2i.ZERO))] = true
-		spawn_prop_shatter(inst.cell, inst.level, inst.material_id,
-			maxi(1, int(round(vfx_debris_pile_max_pieces * 3.0 * weight))))
-		var live: Node = board3d()
-		if live != null:
-			live.call("remove_mesh_prop", inst.id)
+		_pending_prop_breaks.append({"inst": inst, "weight": weight, "ring": ring, "source": _ring_source(gu_rings)})
 		_release_destroyed_prop_cells()
 		if prop_debug:
-			print("[PROP-DEBUG] mesh prop %s SHATTERED (weight=%.2f, board3d=%s)"
-				% [inst.id, weight, "found" if live != null else "NULL"])
+			print("[PROP-DEBUG] mesh prop %s BROKEN (weight=%.2f), its look waits for the flash to end" % [inst.id, weight])
+
+
+## Broken Tier 4 props whose look has not been swapped yet: {"inst", "weight", "ring", "source"}. Filled at the commit, emptied by
+## `release_prop_breaks()` (the flash's last frame); a map load drops them.
+var _pending_prop_breaks: Array = []
+
+
+## THE FIRST FRAME AFTER THE FLASH (Director, 2026-09-30): each broken Tier 4 prop's mesh goes, its board-size voxels appear in the
+## same place already falling, and the chip/smoke burst and the debris carpet start with them. Called by the detonation once the
+## flash has cleared.
+func release_prop_breaks() -> void:
+	var live: Node = board3d()
+	var prop_debug: bool = OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1"
+	for pending: Dictionary in _pending_prop_breaks:
+		var inst: MeshPropInstance = pending["inst"]
+		var weight: float = float(pending["weight"])
+		spawn_prop_shatter(inst.cell, inst.level, inst.material_id,
+			maxi(1, int(round(vfx_debris_pile_max_pieces * 3.0 * weight))))
+		## The mesh's position is read before it goes.
+		var fragmented: bool = _start_prop_fragments(inst, weight, int(pending["ring"]), pending["source"])
+		if live != null:
+			live.call("remove_mesh_prop", inst.id)
+		if prop_debug:
+			print("[PROP-DEBUG] mesh prop %s SHATTERED (weight=%.2f, board3d=%s, fragments=%s)"
+				% [inst.id, weight, "found" if live != null else "NULL", fragmented])
+	_pending_prop_breaks.clear()
+
+
+## The GU the blast came from: the one the flood gave ring 0.
+func _ring_source(gu_rings: Dictionary) -> Vector2i:
+	for gu: Vector2i in gu_rings:
+		if int(gu_rings[gu]) == 0:
+			return gu
+	return Vector2i(-1, -1)
+
+
+## PROPS_TIER4_PLAN P2 / `ACTOR` D67 — a Tier 4 prop inside the blast's ring weights becomes board-size voxel fragments. Generic:
+## whatever the model, `PropVoxelizer` keeps its shape (a table keeps its top and its legs), the simulation falls it, carves it by
+## `weight`, piles it, and the pile is recorded in base coordinates. Returns false when there is nothing to fragment (no 3D board,
+## no voxels): the caller keeps the old chip burst either way.
+func _start_prop_fragments(inst: MeshPropInstance, weight: float, ring: int, source_gu: Vector2i) -> bool:
+	var live: Node = board3d()
+	if live == null:
+		return false
+	var vox: Dictionary = PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size)
+	var cells: Array = vox["cells"]
+	var at: Variant = live.call("mesh_prop_position", inst.id)
+	if cells.is_empty() or at == null:
+		return false
+	var origin: Vector3 = at
+	var blast := Vector2(float(source_gu.x) + 0.5, float(source_gu.y) + 0.5) if source_gu.x >= 0 \
+		else Vector2(origin.x, origin.z)
+	var edges: Dictionary = _movement_edge_set()
+	var home: Vector2i = inst.cell
+	var cross := func(from: Vector2i, to: Vector2i) -> bool:
+		if to != home and _blocked_cells.has(to):
+			return false
+		return not WallEdgeData.is_edge_blocked(from, to, edges)
+	var sim := PropFragmentSim.new({"cells": cells, "zones": vox["zones"], "origin": origin, "voxel": vox["voxel"],
+		"blast": blast, "weight": weight, "seed": "%s:%d" % [inst.id, _world_revision],
+		"wave_delay": 0.04 + 0.03 * float(maxi(ring, 0)), "can_cross": cross})
+	var colour: Color = _vfx_material_base_color(inst.material_id)
+	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, colour)
+	var base_gu: Vector2i = PerspectiveMapperClass.cell_to_base(inst.cell, _active_perspective,
+		_base_layout.get("size", Vector2i.ZERO))
+	node.settled.connect(_on_prop_fragments_settled.bind(base_gu, origin.y, inst.material_id))
+	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+		print("[PROP-DEBUG] %s -> %d fragments (%s), weight %.2f, ring %d, blast %s"
+			% [inst.id, cells.size(), "model" if inst.model_path != "" else "box", weight, ring, blast])
+	return true
+
+
+## The fragments have landed: the pile goes into the base-coordinate record (what a rotation or a restore replays).
+func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, material_id: String) -> void:
+	var size := _base_voxel_size()
+	var base_records: Array = []
+	for r: Dictionary in records:
+		base_records.append({"col": PerspectiveMapperClass.cell_to_base(r["column"], _active_perspective, size),
+			"level": int(r["level"]), "mult": float(r["mult"])})
+	_base_prop_piles[base_gu] = {"y0": y0, "material": material_id, "records": base_records}
+	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+		print("[PROP-DEBUG] pile at base GU %s: %d cubes, y0 %.3f" % [base_gu, base_records.size(), y0])
+
+
+## A rotation or a save is about to happen: any fragment simulation still running is run to its end first, so its pile is recorded.
+func _finish_running_prop_fragments() -> void:
+	var live: Node = board3d()
+	if live == null:
+		return
+	for node: PropFragments3D in live.call("running_prop_fragments"):
+		node.finish_now()
+
+
+## ...and the piles are laid back on the floor AFTER the board is rebuilt (rebuilding drops every node).
+func _respawn_base_prop_piles() -> void:
+	var live: Node = board3d()
+	if live == null:
+		return
+	var size := _base_voxel_size()
+	for base_gu: Vector2i in _base_prop_piles:
+		var pile: Dictionary = _base_prop_piles[base_gu]
+		var records: Array = []
+		for r: Dictionary in pile["records"]:
+			records.append({"column": PerspectiveMapperClass.cell_from_base(r["col"], _active_perspective, size),
+				"level": int(r["level"]), "mult": float(r["mult"])})
+		live.call("spawn_prop_pile", records, float(pile["y0"]), _vfx_material_base_color(String(pile["material"])))
+		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+			print("[PROP-DEBUG] pile of base GU %s laid back: %d cubes (view %s)" % [base_gu, records.size(), _active_perspective])
 
 
 ## R3D-PROPS Tier 1/2 debris (Director, 2026-09-28): "aproveitar o mecanismo do vidro que

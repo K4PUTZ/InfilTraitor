@@ -309,6 +309,7 @@ var _soot_mult: Array[float] = []
 ## R3D-PROPS Tier 3/4 — one `PropMesh3D` per `VoxelBoard.mesh_props()` entry, keyed by the
 ## instance's own id so `Room` can find and remove one after `spawn_prop_shatter()` fires.
 var _mesh_prop_nodes: Dictionary = {}
+var _fragment_nodes: Array = []   ## PropFragments3D: the voxel fragments / piles of broken Tier 4 props
 var _tone: Array[float] = []
 var _px_per_unit: float = 1.0
 var _origin_2d: Vector2 = Vector2.ZERO
@@ -1256,6 +1257,9 @@ func _build_mesh_props() -> void:
 			continue
 		var definition = Registries.get_material_registry().get_material(inst.material_id)
 		var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
+		## A Tier 4 prop will be voxelized when it breaks: do it now, once per model (cached), so the blast's frame does not pay for it.
+		if inst.mesh_tier == 4:
+			PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size)
 		var node := PropMesh3D.new()
 		node.name = inst.id
 		_geometry_root.add_child(node)
@@ -1274,6 +1278,42 @@ func _build_mesh_props() -> void:
 		_mesh_prop_nodes[inst.id] = node
 		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 			print("[PROP-DEBUG] mesh prop %s gu=%s placed at world %s" % [inst.id, inst.cell, node.position])
+
+
+## R3D-PROPS Tier 4 voxel replacement (PROPS_TIER4_PLAN P2). The world position of a live mesh prop's base (its floor point, on
+## a voxel boundary in X/Z), or null when there is none: what a fragment simulation is anchored to. Read BEFORE `remove_mesh_prop()`.
+func mesh_prop_position(id: String) -> Variant:
+	var node: Node3D = _mesh_prop_nodes.get(id, null)
+	if node != null and is_instance_valid(node):
+		return node.position
+	return null
+
+
+## The voxel fragments of a broken prop: one node, one draw call, stepping `sim` every frame and keeping the landed cubes as a pile.
+func spawn_prop_fragments(sim: PropFragmentSim, base_color: Color) -> PropFragments3D:
+	var node := PropFragments3D.new()
+	node.name = "PropFragments_%d" % _fragment_nodes.size()
+	_geometry_root.add_child(node)
+	node.setup(self, sim, base_color)
+	_fragment_nodes.append(node)
+	return node
+
+
+## A pile laid back from records (after a rotation rebuilt the board, or a restore).
+func spawn_prop_pile(records: Array, y0: float, base_color: Color) -> PropFragments3D:
+	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, base_color)
+	_geometry_root.add_child(node)
+	_fragment_nodes.append(node)
+	return node
+
+
+## The fragment nodes whose simulation has not finished (a rotation, a save: they are run to their end first).
+func running_prop_fragments() -> Array:
+	var out: Array = []
+	for node in _fragment_nodes:
+		if is_instance_valid(node) and not (node as PropFragments3D).is_finished():
+			out.append(node)
+	return out
 
 
 ## R3D-PROPS Tier 4 — `Room` calls this right after `spawn_prop_shatter()` so the intact mesh

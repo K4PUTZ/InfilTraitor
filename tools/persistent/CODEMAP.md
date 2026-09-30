@@ -8,19 +8,19 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**251 scripts · 81721 lines total** (under `godot/scripts/`)
+**257 scripts · 82969 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_mesh3d.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
+- **geometry/** — actor_billboard3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
 - **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_voxelizer_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2102 lines
+extends `Node3D` · 2142 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -857,9 +857,81 @@ extends `Node3D` · 2102 lines
 
 ---
 
+### `prop_fragment_sim.gd`
+
+`class_name PropFragmentSim` · extends `RefCounted` · 330 lines
+
+`godot/scripts/geometry/prop_fragment_sim.gd`
+
+> PropFragmentSim — what a Tier 4 prop does in the half second after a blast, as pure deterministic maths. PROPS_TIER4_PLAN P2 / `ACTOR` D67. The prop has been voxelized (`PropVoxelizer`, board-size cubes that keep its shape). This moves those cubes: they fall from where the prop stood; the blast carves away the ones nearest it (by the ring weight) and pushes the rest outward; what is left lands, STACKS on the column under it, slumps downhill, and ends as a pile of charred cubes on the board's own voxel lattice. No Godot physics, no scene, no `randf()`: every roll is a hash of (seed, fragment), so the same blast on the same prop gives the same pile (a replay, a rotation and a test all see one answer). TIMED, NOT COUNTED. `advance(delta)` runs fixed 1/60 s steps of SIMULATED time, so 0.5 s is 0.5 s on a 30 fps handset (15 drawn frames) and on the desktop (30) alike; a long frame runs several steps, capped so a hitch can never spiral. SPACE. World units are GU (1.0 = one game unit; the board voxel is 1/8). `origin` is the world position of the prop's local (0, 0, 0): the floor, on a voxel boundary in X/Z, so a local cell index plus `origin / voxel` is the board's own voxel column.
+
+**Constants / tuning**
+- `GRAVITY` = `8.0`
+- `STEP` = `1.0 / 60.0`
+- `MAX_STEPS_PER_ADVANCE` = `8`
+- `MAX_SIM_TIME` = `1.6`
+- `SLIDE_TIME` = `0.07`
+- `PUSH_SPEED` = `1.3`
+- `PUSH_UP` = `1.2`
+- `CHAR_MIN` = `0.10`
+- `CHAR_MAX` = `0.30`
+- `CHAR_TIME` = `0.30`
+
+**Public vars**
+- `var count: int = 0`
+- `var voxel: float = 0.125`
+- `var origin: Vector3 = Vector3.ZERO`
+- `var weight: float = 1.0`
+- `var time: float = 0.0`
+- `var wave_time: float = 0.06`
+- `var pos: PackedVector3Array = PackedVector3Array()`
+- `var vel: PackedVector3Array = PackedVector3Array()`
+- `var euler: PackedVector3Array = PackedVector3Array()`
+- `var spin: PackedVector3Array = PackedVector3Array()`
+- `var state: PackedInt32Array = PackedInt32Array()`
+- `var zone: PackedInt32Array = PackedInt32Array()`
+- `var level: PackedInt32Array = PackedInt32Array()`
+- `var column: Array[Vector2i] = []`
+- `var tone: PackedFloat32Array = PackedFloat32Array()`
+- `var jitter: PackedFloat32Array = PackedFloat32Array()`
+- `var vanish_at: PackedFloat32Array = PackedFloat32Array()`
+
+**Public API**
+- `func is_done() -> bool:`
+- `func advance(delta: float) -> void:`
+- `func step() -> void:`
+- `func pile_records() -> Array:`
+- `func vanished_count() -> int:`
+- `func char_amount(i: int) -> float:`
+- `func rotation_of(i: int) -> Basis:`
+
+---
+
+### `prop_fragments3d.gd`
+
+`class_name PropFragments3D` · extends `Node3D` · 174 lines
+
+`godot/scripts/geometry/prop_fragments3d.gd`
+
+> PropFragments3D — the voxel fragments of one broken prop, in ONE draw call, depth-tested, lit by the board's planes. PROPS_TIER4_PLAN P2 / `ACTOR` D67. While a `PropFragmentSim` runs, this node moves the cubes every frame; when the sim is done it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a rotation rebuilds the board and drops every node, so the pile is laid back from `Room._base_prop_piles`). ONE MultiMesh of a board-size cube (1/8 GU), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its base mesh, so without it every cube away from the node origin is culled). The material is the board's prop shader with `use_color`: the cell planes give it light and soot, the per-instance colour gives it the prop's material colour, each cube's small brightness variation and its charring. The colour is handed over in linear (vertex colour is linear, the shader's `albedo` is sRGB).
+
+**Signals**
+- `signal settled(records: Array)`
+
+**Constants / tuning**
+- `SHADER_PATH` = `"res://godot/shaders/prop_mesh3d.gdshader"`
+- `FLOATS_PER_INSTANCE` = `16`
+
+**Public API**
+- `func setup(board: Node3D, sim: PropFragmentSim, base_color: Color) -> void:`
+- `func is_finished() -> bool:`
+- `func finish_now() -> void:`
+
+---
+
 ### `prop_mesh3d.gd`
 
-`class_name PropMesh3D` · extends `Node3D` · 128 lines
+`class_name PropMesh3D` · extends `Node3D` · 94 lines
 
 `godot/scripts/geometry/prop_mesh3d.gd`
 
@@ -871,6 +943,29 @@ extends `Node3D` · 2102 lines
 **Public API**
 - `func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color, mesh_half_height: float) -> void:`
 - `func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int) -> void:`
+
+---
+
+### `prop_model_fit.gd`
+
+`class_name PropModelFit` · 86 lines
+
+`godot/scripts/geometry/prop_model_fit.gd`
+
+> PropModelFit — a prop model (glTF/GLB, or a plain box) fitted into its `mesh_size`: turned by `rotation_deg`, scaled uniformly to fit, standing on Y = 0 and centred on X/Z (so local X/Z = 0 is the cell's centre, a board-voxel boundary, and local Y = 0 is the floor). One answer, used by the thing that DRAWS the prop (`PropMesh3D.setup_model`) and by the thing that turns it into voxels (`PropVoxelizer`), so the two can never disagree about where the prop is. Cached per (path, rotation, fit size): a model is built once and every instance of it shares the parts (PROP_PIPELINE_PLAN §1b, several instances of one model). A part is {"mesh": Mesh, "xf": Transform3D}, `xf` already carrying the fit.
+
+---
+
+### `prop_voxelizer.gd`
+
+`class_name PropVoxelizer` · 164 lines
+
+`godot/scripts/geometry/prop_voxelizer.gd`
+
+> PropVoxelizer — turns any fitted model (`PropModelFit`) into board-size voxels, keeping its SHAPE. PROPS_TIER4_PLAN P1 / `ACTOR` D67. A voxel here is exactly one board voxel (1/8 GU, `VOXELS_PER_UNIT_AXIS` per axis), on the board's own lattice: local X/Z = 0 is a voxel boundary (a cell's centre is 4 voxels in) and local Y = 0 is a level boundary, so a cell index is the offset from the prop's cell centre / floor and adds straight onto the board's voxel coordinates. METHOD. Every triangle marks each voxel whose box it overlaps (Akenine-Moller's separating-axis test, conservative: a leg thinner than a voxel is still a column). A table keeps its top plate and its legs because SURFACES are rasterised, not the bounding box. A cell takes the zone (the surface index across the model's parts) of the first triangle that marked it. The output is sorted (y, z, x), so the same model always gives the same bytes. Generic on purpose: it knows nothing about tables. Whatever a `mesh_tier 4` prop is, this is what its fragments are made from; a box (the placeholder, or a slot's generic) voxelizes to a box.
+
+**Constants / tuning**
+- `TOUCH_EPS` = `1.0e-4`
 
 ---
 
@@ -3106,7 +3201,7 @@ extends `Node` · 151 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 264 lines
+`class_name SaveState` · extends `RefCounted` · 285 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -4406,6 +4501,34 @@ extends `Node` · 331 lines
 
 ---
 
+### `prop_fragment_sim_selftest.gd`
+
+extends `SceneTree` · 181 lines
+
+`godot/scripts/tools/prop_fragment_sim_selftest.gd`
+
+> Selftest — PropFragmentSim (PROPS_TIER4_PLAN P2): a voxelized prop falls, is carved by the blast, piles up and slumps, deterministically and in simulated time. Synthetic table (boxes), no ASSETS needed.
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+---
+
+### `prop_voxelizer_selftest.gd`
+
+extends `SceneTree` · 157 lines
+
+`godot/scripts/tools/prop_voxelizer_selftest.gd`
+
+> Selftest — PropVoxelizer (PROPS_TIER4_PLAN P1): a model keeps its SHAPE when it becomes board voxels. Synthetic meshes only (a table built from boxes), so it runs on a clone without the local-only ASSETS.
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+---
+
 ### `resolver_hardening_selftest.gd`
 
 extends `SceneTree` · 527 lines
@@ -4570,7 +4693,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 243 lines
+extends `SceneTree` · 255 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -5180,7 +5303,7 @@ extends `Node2D` · 32 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1611 lines
+`class_name TestZoneController` · 1613 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5451,7 +5574,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11169 lines
+extends `Node2D` · 11284 lines
 
 `godot/scripts/world/room.gd`
 

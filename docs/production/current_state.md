@@ -413,6 +413,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-28_R3D_PROPS_BLAST_AND_DEBRIS.md
 - RESUMO_SESSAO_2026-09-28_R3D_PROPS_TIERS_1_A_4.md
 - RESUMO_SESSAO_2026-09-29_R3D_PROPS_DEBRIS_CHAR_THROW.md
+- RESUMO_SESSAO_2026-09-30_R3D_PROPS_MODELS_PLANS_DOCS.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

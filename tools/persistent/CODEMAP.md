@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 83122 lines total** (under `godot/scripts/`)
+**260 scripts · 83547 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,8 +19,8 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **spikes/** — spike3d.gd
-- **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_voxelizer_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, version_info_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -948,7 +948,7 @@ extends `Node3D` · 2173 lines
 
 ### `prop_model_fit.gd`
 
-`class_name PropModelFit` · 91 lines
+`class_name PropModelFit` · 114 lines
 
 `godot/scripts/geometry/prop_model_fit.gd`
 
@@ -3124,7 +3124,7 @@ extends `Node` · 231 lines
 
 ### `prop_def.gd`
 
-`class_name PropDef` · 67 lines
+`class_name PropDef` · 70 lines
 
 `godot/scripts/systems/prop_def.gd`
 
@@ -3140,6 +3140,7 @@ extends `Node` · 231 lines
 - `var gameplay: Dictionary`
 - `var tags: Array[String]`
 - `var model_path: String = ""`
+- `var slot: String = ""`
 - `var surface_materials: Dictionary = {}`
 - `var model_rotation_deg: Vector3 = Vector3.ZERO`
 - `var hollow_shell: int = 0`
@@ -3148,30 +3149,37 @@ extends `Node` · 231 lines
 
 ### `prop_registry.gd`
 
-`class_name PropRegistry` · 61 lines
+`class_name PropRegistry` · 209 lines
 
 `godot/scripts/systems/prop_registry.gd`
 
-> PropRegistry — Prop definitions catalog (two-tier: res:// + user://) User-tier props override res:// props on id collision, same pattern as MaterialRegistry and TextureResolver.
+> PropRegistry — Prop definitions catalog (two-tier: res:// + user://) User-tier props override res:// props on id collision, same pattern as MaterialRegistry and TextureResolver. SLOTS (PROP_PIPELINE_PLAN PP1, `ACTOR` D66): `props/slots/*.json` (two tiers) are `SlotDef`s; a `PropDef` with `slot` is one MODEL of that slot and several models of one slot coexist. `resolve_placement()` turns what a map names (a prop id, or a slot id) into a prop that FITS, walking the fallback chain when it does not: the model -> the slot's default model -> the slot's GENERIC (a plain box of the slot's size in the `generic` material) -> the generic box of the prop's own size. A rejection is one `push_warning` per prop id.
 
 **Constants / tuning**
 - `RES_PROPS_DIR` = `"res://props"`
 - `USER_PROPS_DIR` = `"user://props"`
+- `RES_SLOTS_DIR` = `"res://props/slots"`
+- `USER_SLOTS_DIR` = `"user://props/slots"`
 
 **Public vars**
 - `var registry: Dictionary = {}`
+- `var slots: Dictionary = {}`
 
-**Public API**
-- `func register(prop_def) -> void:`
-- `func get_prop(p_id: String):`
-- `func count() -> int:`
-- `func load_from_disk() -> void:`
+---
+
+### `prop_validator.gd`
+
+`class_name PropValidator` · 44 lines
+
+`godot/scripts/systems/prop_validator.gd`
+
+> PropValidator — does this model fit its slot? PURE: plain data in, a list of problems out (empty = it fits). PROP_PIPELINE_PLAN PP1 / `ACTOR` D66, D69. A rejection is never fatal and never silent: the registry walks its fallback chain (model -> the slot's default -> the slot's generic -> the `generic` box) and logs the FIRST problem once. This class only answers; it reads no file and no registry (the selftest feeds it literals; `family_of` is a Callable so a test needs no autoload). `stats` is `PropModelFit.stats(model)`: {"ok", "size": Vector3 (the fitted box), "triangles", "surfaces": Array[String], "finite"}.
 
 ---
 
 ### `registries_autoload.gd`
 
-extends `Node` · 151 lines
+extends `Node` · 155 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
@@ -3229,6 +3237,28 @@ extends `Node` · 468 lines
 
 **Public API**
 - `func run(room: Node, steps: Array) -> void:`
+
+---
+
+### `slot_def.gd`
+
+`class_name SlotDef` · 43 lines
+
+`godot/scripts/systems/slot_def.gd`
+
+> SlotDef — a SLOT: the visual container a prop model has to fit (`ACTOR` D66, PROP_PIPELINE_PLAN §1). A model does not define gameplay, a slot does: the footprint, the box it may fill, the cover it gives, how it breaks (its mesh tier), the budgets it must respect and which kinds of material it may be made of. Any number of models fill one slot (`PropDef.slot`); a map may place "the slot" (the registry picks a model) or one model by id. `props/slots/<id>.json`, two tiers like every registry.
+
+**Public vars**
+- `var id: String = ""`
+- `var footprint_gus: Array[Vector2i] = [Vector2i.ZERO]`
+- `var max_size: Vector3 = Vector3.ONE`
+- `var mesh_tier: int = 4`
+- `var gameplay: Dictionary = {"cover": "none", "destructible": false}`
+- `var default_model: String = ""`
+- `var generic_material: String = "generic"`
+- `var max_triangles: int = 4000`
+- `var max_surfaces: int = 4`
+- `var allowed_families: Array[String] = []`
 
 ---
 
@@ -4517,6 +4547,23 @@ extends `SceneTree` · 181 lines
 
 ---
 
+### `prop_slot_selftest.gd`
+
+extends `SceneTree` · 156 lines
+
+`godot/scripts/tools/prop_slot_selftest.gd`
+
+> Selftest — slots, several models per slot, the validator and the fallback chain (PROP_PIPELINE_PLAN PP1, `ACTOR` D66/D69). In-memory registry and box models only (no disk, no ASSETS, no autoload).
+
+**Constants / tuning**
+- `FAMILIES` = `{"wood": "wood", "plywood": "wood", "metal": "metal", "rubber": "rubber", "generic": "generic", "glass": "glass"}`
+
+**Public vars**
+- `var passed: int = 0`
+- `var failed: int = 0`
+
+---
+
 ### `prop_voxelizer_selftest.gd`
 
 extends `SceneTree` · 157 lines
@@ -5186,7 +5233,7 @@ extends `Node2D` · 32 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 595 lines
+`class_name RoomBuilder` · 599 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 

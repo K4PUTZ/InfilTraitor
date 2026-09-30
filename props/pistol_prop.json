@@ -35,5 +35,6 @@
     "Metal": "steel_dark",
     "Black": "rubber",
     "LightMetal": "metal"
-  }
+  },
+  "slot": "handgun_floor"
 }

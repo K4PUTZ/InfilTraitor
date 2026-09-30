@@ -1,0 +1,33 @@
+{
+  "id": "handgun_floor",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    0.5,
+    0.12,
+    0.3
+  ],
+  "mesh_tier": 3,
+  "gameplay": {
+    "cover": "none",
+    "destructible": false
+  },
+  "default_model": "pistol_prop",
+  "generic_material": "steel_dark",
+  "budget": {
+    "max_triangles": 3000,
+    "max_surfaces": 4
+  },
+  "allowed_families": [
+    "metal",
+    "plastic",
+    "rubber",
+    "leather",
+    "wood",
+    "generic"
+  ]
+}

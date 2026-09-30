@@ -542,7 +542,11 @@ func _register_voxel_prop_levels(instances: Array) -> void:
 		push_warning("[RoomBuilder] Prop registry unavailable — props skipped")
 		return
 	for instance in instances:
-		var prop_def = registry.get_prop(instance.get("def_id", ""))
+		## The placement names a prop (that model) or a SLOT (its default model, else a stable pick): either resolves to a prop that FITS,
+		## or to the slot's generic (PropRegistry.resolve_placement: the fallback chain, one warning per prop).
+		var placed: Dictionary = registry.resolve_placement(String(instance.get("def_id", "")),
+			"%s" % [instance.get("gu_cell", Vector2i.ZERO)])
+		var prop_def = placed["def"]
 		if prop_def == null:
 			push_warning("[RoomBuilder] Unknown prop def '%s' — skipped" % instance.get("def_id", ""))
 			continue
@@ -553,7 +557,7 @@ func _register_voxel_prop_levels(instances: Array) -> void:
 			room._voxel_board.register_mesh_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
 		else:
 			room._voxel_board.register_prop(instance["gu_cell"], instance.get("storey", 0), prop_def)
-		_prop_cover[instance["gu_cell"]] = prop_def.gameplay.get("cover", "none")
+		_prop_cover[instance["gu_cell"]] = (placed["gameplay"] as Dictionary).get("cover", "none")
 
 
 ## RE-ENABLED (R3D-PROPS, 2026-09-27, Director's call). Had been hard-disabled since before

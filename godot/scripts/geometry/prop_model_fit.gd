@@ -34,6 +34,29 @@ static func box(size: Vector3) -> Dictionary:
 	return out
 
 
+## What a validator needs to know about a fitted model: {"ok", "size", "triangles", "surfaces", "finite"}. Counts triangles over
+## every surface of every part and checks every vertex for NaN / infinity.
+static func stats(model: Dictionary) -> Dictionary:
+	var out := {"ok": bool(model.get("ok", false)), "size": model.get("size", Vector3.ZERO), "triangles": 0,
+		"surfaces": model.get("surfaces", []), "finite": true}
+	if not out["ok"]:
+		return out
+	var tris: int = 0
+	for part: Dictionary in model["parts"]:
+		var mesh: Mesh = part["mesh"]
+		for s in range(mesh.get_surface_count()):
+			var arrays: Array = mesh.surface_get_arrays(s)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var idx = arrays[Mesh.ARRAY_INDEX]
+			tris += int((idx as PackedInt32Array).size() / 3.0) if idx != null and (idx as PackedInt32Array).size() > 0 else int(verts.size() / 3.0)
+			for p: Vector3 in verts:
+				if not (is_finite(p.x) and is_finite(p.y) and is_finite(p.z)):
+					out["finite"] = false
+					break
+	out["triangles"] = tris
+	return out
+
+
 static func clear_cache() -> void:
 	_cache.clear()
 

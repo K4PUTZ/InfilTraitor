@@ -1,0 +1,33 @@
+{
+  "id": "table_small",
+  "footprint_gus": [
+    [
+      0,
+      0
+    ]
+  ],
+  "max_size": [
+    1.0,
+    0.8,
+    0.8
+  ],
+  "mesh_tier": 4,
+  "gameplay": {
+    "cover": "half",
+    "destructible": false
+  },
+  "default_model": "wood_table",
+  "generic_material": "generic",
+  "budget": {
+    "max_triangles": 2000,
+    "max_surfaces": 2
+  },
+  "allowed_families": [
+    "wood",
+    "metal",
+    "plastic",
+    "stone",
+    "glass",
+    "generic"
+  ]
+}

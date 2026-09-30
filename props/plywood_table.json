@@ -1,5 +1,5 @@
 {
-  "id": "wood_table",
+  "id": "plywood_table",
   "mesh_tier": 4,
   "mesh_size": [
     0.95,
@@ -7,7 +7,7 @@
     0.59
   ],
   "material_zones": {
-    "default": "wood"
+    "default": "plywood"
   },
   "footprint_gus": [
     [
@@ -27,7 +27,7 @@
   ],
   "model": "res://ASSETS/props/wooden_table_02/wooden_table_02_1k.gltf",
   "surface_materials": {
-    "wooden_table_02": "wood"
+    "wooden_table_02": "plywood"
   },
   "slot": "table_small"
 }

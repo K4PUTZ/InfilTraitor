@@ -3,6 +3,8 @@
 
 > 🧭 **2026-09-27 — reorganization pointer.** M1/M2/M4 (glass) are DONE. M5 (voxel props) is now `RENDER3D_MASTER_PLAN`'s `R3D-PROPS` track — read there for current status. The `plastic` backing and S-4 fracture art stay deliberately unmade (see `RENDER3D_MASTER_PLAN`'s OPEN THREADS).
 
+> ⏭️ **2026-09-29 — material rows moved for props (Director):** wood `flammability` 1.0 -> 1.4 and `burn_consumption` 0.0 -> 0.2 (the ratified 0.0 overridden); plywood 1.1 -> 1.5, 0.35 -> 0.6 and `destroy_factor` 0.8 -> 1.0 (wood 0.75). Wood and plywood walls, floors and firearm damage moved with the crates. Every ember-lit voxel now ends CHARRED (`FACE_SOOT_CHAR`). Record: `RENDER3D_MASTER_PLAN` top block.
+
 > ⏭️ **2026-09-25 — registering a material got simpler (R3D-END END-4).** The second list (`BakeCompositor.VOXEL_MATERIALS` / `VoxelRenderer.BASE_MATERIALS`) and the voxel atom are gone: a material is its `ASSETS/materials/<id>/` folder plus its `MaterialRegistry` row (`material_tree_selftest` checks they agree).
 
 > ⏭️ **2026-09-23 — props (`ACTOR` D65):** a static prop is a mesh lit by the board's cell planes (+1.5 ms for 20 on the Moto); a

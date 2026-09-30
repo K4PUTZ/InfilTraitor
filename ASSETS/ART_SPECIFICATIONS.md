@@ -465,6 +465,18 @@ no filename to override; regenerating always overwrites these (unlike every
 other file in `decals/`). If a future pass wants real per-material generic art
 instead, that is a new design conversation, not a file drop.
 
+### 7c. Ground debris decals (R3D-PROPS, 2026-09-28/29) — what a broken prop leaves on the floor
+
+`ASSETS/materials/_generic/decals/decal_debris_<material>_<n>.png`, `n` = 0..2, **256x256 RGBA, GRAYSCALE, alpha = the piece**. Shipped: `wood`, `plywood`.
+- **Grayscale on purpose (Director, 2026-09-28).** Debris takes its colour from the material that broke and its darkness from the soot of the cell it lies on, both applied by the engine
+  (`Room._place_debris_piece()` -> `_debris_tint()` -> `FloorPile3D`); a ground/leaf decal is the opposite (photographic, full colour). A coloured file is not rejected — it is tinted TWICE and reads
+  wrong — so convert on delivery (luminance, mean matched to the shipped wood pieces): `PLYWOOD1-3` arrived coloured and were converted, the source files left alone.
+- Per-material darkening lives in code, not in the art: `Room.DEBRIS_TINT_SCALE` (wood 0.72, so it reads apart from plywood); soot tone -> multiplier is `Room.DEBRIS_SOOT_MULT`; a charred cell takes
+  `BoardLook.SOOT_CHAR_MULT`. The multiplier is taken through the gamma (the pile shader is unshaded and linear).
+- **All three variants or none:** `VoxelBoard._debris_pile_for()` is loud (`push_error`) about a missing one and that material draws no pile at all.
+- **A new PNG needs its `.import`:** open the editor or run `godot --headless --path . --import`, or the load fails with "No loader found".
+- Materials still without debris art: cardboard, fabric, ash/char.
+
 ---
 
 ## 8. Invariants That Bind All Art

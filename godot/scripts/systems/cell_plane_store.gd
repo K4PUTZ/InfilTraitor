@@ -2,7 +2,7 @@
 ##
 ## RENDER3D R3D-2 step 3. Moved out of `VoxelBoard` verbatim (a relocation, not a
 ## redesign — the API already matched what a future reader needs): one 512x512
-## `Image.FORMAT_RG8` per level, R = the per-face soot code (0..124, PERF-P2),
+## `Image.FORMAT_RG8` per level, R = the per-face soot code (0..215 base 6, 172 = clean; PERF-P2, widened for the charred tone 2026-09-29),
 ## G = the light bucket (0..11, PERF-P3; 255 = `BUCKET_UNWRITTEN`, never written).
 ## `VoxelBoard` is now one reader/writer of this store, same standing the 3D board
 ## will have — `cell_plane_image()`/`cell_plane_levels()` are already documented as
@@ -25,7 +25,7 @@ const SOOT_PLANE_ORIGIN: Vector2i = Vector2i(64, 64)
 ## 512 covers a 64x64 GU board; PLAYGROUND is 46x24 with its buffer.
 const SOOT_TEX_SIZE: int = 512
 
-## PERF-P3: FORMAT_RG8 — R = the per-face soot code (0..124), G = the light
+## PERF-P3: FORMAT_RG8 — R = the per-face soot code (0..215, base 6), G = the light
 ## bucket (0..11). One texel per cell, one texture per level. Both writers do a
 ## read-modify-write so neither channel can erase the other.
 ## RENDER3D R3D-2 — this store is domain-agnostic (it knows nothing of "soot" or

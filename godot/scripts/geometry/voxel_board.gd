@@ -57,7 +57,7 @@ const FLOOR_DEPTH_DIM: Array[float] = [1.0, 0.70, 0.45, 0.34, 0.28]
 ## many. (R3D-END END-4: the alternative-tile mechanism that used to carry the bucket, and the debug knobs that A/B'd it, went.)
 const LIGHT_BUCKET_COUNT: int = 12
 
-## The soot code of an untouched face (base-5 top*25 + se*5 + sw, 4 = clean per face) and the size of the code space.
+## The soot code of an untouched face (base-6 top*36 + se*6 + sw; per face 0..3 a tone, 4 clean, 5 CHARRED) and the size of the code space.
 ## R3D-PROPS (2026-09-29): base 6, not 5 — a face's digit is 0..3 a soot tone, 4 clean, 5 CHARRED (`BlastCalculator.FACE_SOOT_CHAR`).
 ## 6^3 = 216 codes fit the plane's 8-bit R channel; clean = 4*36 + 4*6 + 4.
 const FACE_SOOT_CODE_CLEAN: int = 172
@@ -899,8 +899,8 @@ func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> vo
 
 
 ## PERF-P2 — the per-cell soot plane: one R8 texture per LEVEL, one texel per
-## cell, carrying the same 0..124 base-5 face code the alternative's alpha used
-## to carry (top*25 + se*5 + sw, 4 = clean per face, 124 = fully clean).
+## cell, carrying the per-face soot code (base 6, 0..215: top*36 + se*6 + sw, 4 = clean per face, 172 = fully clean,
+## 5 = charred; the alternative's alpha used to carry the base-5 form of it).
 ##
 ## WHY A TEXTURE AT ALL, and it is not "because textures are fast": the 2D board's TileMapLayer had exactly one per-cell channel
 ## — the alternative id — and every distinct (bucket, soot) pair spent one (PERFORMANCE_MASTER_PLAN §1.4: up to 3 000

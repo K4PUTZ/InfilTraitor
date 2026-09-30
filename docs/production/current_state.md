@@ -1,7 +1,7 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-09-28 · **Branch:** main
+**Version:** 0.9.107 · **Updated:** 2026-09-29 · **Branch:** main
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
@@ -15,6 +15,14 @@
 - **Decided (Director):** R3D closes when R3D-LIGHT meets its budget; every other stage is a follow-on track. The weapon bench stays untouched until new weapons exist. `occlusion_overlay.gd` stays (LIGHT_VISION suite). FLOOR-DEPTH-01 is resolved. **R3D-SURFACES is planned, not started:** a large world-space photographic plane per horizontal surface (1024^2 = 8 x 8 GU, repeat not mirror) + a macro modulation map + patches (mud, foliage) as decals; the wall stays a facade; hard edges between surfaces at first.
 - **What is next:** R3D-LIGHT step 1, incremental occupancy (the store journals the cells whose visibility changed; the light field stops walking ~216 000 claims per repaint). Baseline measured on the desktop: the shot's tail 112.6 ms, of which 66.0 is that walk. The closing number is a Moto measurement and needs the phone connected.
 - **Open, recorded in the plan:** the five "dev-tool paths" nobody enumerated; the `damage_materials` map section (compiled, read by nothing); the D34 organic-ground `slab_<id>` rule now exists only as prose (the 3D board draws a flat colour for `has_facade == false`); `generate_voxel.py` still writes atoms and halves if run.
+
+## Where the project stood — 2026-09-29
+
+**Version 0.9.107 · R3D-PROPS is under way.** Record: `PROMPTS/RESUMO_SESSAO_2026-09-29_R3D_PROPS_DEBRIS_CHAR_THROW.md`; the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.48).
+- **Working:** crates are hollow `VoxelStore` voxels that a blast destroys in proportion to its rings, burns, embers and soots like a wall; their fallen voxels land through the glass-fall mechanism as material-tinted ground debris (wood and plywood art); Tier 4 tables shatter and Tier 3 props soot by proximity; a blast now leaves a **charred (black) tone** on everything an ember lit, walls included; grenades fly over props they clear and the mouse picks the prop it sees (desktop-verified).
+- **Still not right / not done:** rotation is a full re-layout, so what a blast does to props is recorded twice (voxels and base-coord records) until R3D-ROT; a destroyed crate still blocks its GU; crate contents, cardboard/fabric/ash debris art and firearm damage on props are open; the touch aim/selection on the Moto is untested (no scripted aim step); `verify.py full` was not run after the soot code went to base 6.
+- **Material rows moved (Director):** wood burns (consumption 0.2, glow x1.4) and plywood is weaker and burns more; wood/plywood walls and floors moved with them.
+- **PROPS test map:** 18x12, turned 180 degrees, grenade at GU (11,6): `INFILTRAITOR_MAP=PROPS INFILTRAITOR_PROP_DEBUG=1 INFILTRAITOR_CAPTURE_VIEW=S`.
 
 ## Where the project stood — 2026-09-25 (history)
 
@@ -391,7 +399,9 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-27_R3D_LIGHT_FECHAMENTO.md
 - RESUMO_SESSAO_2026-09-27_R3D_PROPS_START.md
 - RESUMO_SESSAO_2026-09-27_R3D_SURFACES_PROTOTYPE.md
+- RESUMO_SESSAO_2026-09-28_R3D_PROPS_BLAST_AND_DEBRIS.md
 - RESUMO_SESSAO_2026-09-28_R3D_PROPS_TIERS_1_A_4.md
+- RESUMO_SESSAO_2026-09-29_R3D_PROPS_DEBRIS_CHAR_THROW.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory
@@ -399,7 +409,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 184
+- GDScript modules: 185
 - Test scripts: 51
 - Known maps: 3
 - Shipped facade files: 0

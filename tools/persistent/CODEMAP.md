@@ -1076,10 +1076,6 @@ extends `Node3D` · 2094 lines
 - `GlassOpening` = `preload("res://godot/scripts/systems/destruction/glass_opening.gd")`
 - `IMPACT_DECAL_MATERIALS` = `["concrete", "metal", "stone", "wood", "brick"]`
 - `IMPACT_DECAL_VARIANTS` = `3`
-- `_CellPlaneStoreScript` = `preload("res://godot/scripts/systems/cell_plane_store.gd")`
-- `BUCKET_UNWRITTEN` = `_CellPlaneStoreScript.BUCKET_UNWRITTEN`
-- `SOOT_PLANE_ORIGIN` = `_CellPlaneStoreScript.SOOT_PLANE_ORIGIN`
-- `SOOT_TEX_SIZE` = `_CellPlaneStoreScript.SOOT_TEX_SIZE`
 - `GlassCrackParamsClass` = `preload("res://godot/scripts/systems/destruction/glass_crack_params.gd")`
 - `CRAZE_MASK_TEXELS_PER_VOXEL` = `6`
 - `FloorPile3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
@@ -1102,14 +1098,6 @@ extends `Node3D` · 2094 lines
 - `func process_dirty_slabs(registry: SlabRegistry) -> void:`
 - `func process_dirty_async(registry: EdgeRegistry, states: Array = []) -> void:`
 - `func process_dirty_slabs_async(registry: SlabRegistry, states: Array = []) -> void:`
-- `func reset_cell_planes() -> void:`
-- `func begin_bucket_journal() -> void:`
-- `func end_bucket_journal() -> Dictionary:`
-- `func cell_bucket_at(level: int, cell: Vector2i) -> int:`
-- `func cell_plane_image(level: int) -> Image:`
-- `func cell_plane_levels() -> Array:`
-- `func cell_soot_at(level: int, cell: Vector2i) -> int:`
-- `func flush_cell_soot() -> int:`
 - `func glass_crack_covering(pane_id: String, run: int, level: int) -> int:`
 - `func spawn_glass_crack(spec: Dictionary) -> int:`
 - `func spawn_glass_craze(spec: Dictionary) -> int:`
@@ -2072,7 +2060,7 @@ extends `Node2D` · 42 lines
 
 `godot/scripts/systems/cell_plane_store.gd`
 
-> CellPlaneStore — the render-neutral home for the per-cell soot/light planes. RENDER3D R3D-2 step 3. Moved out of `VoxelBoard` verbatim (a relocation, not a redesign — the API already matched what a future reader needs): one 512x512 `Image.FORMAT_RG8` per level, R = the per-face soot code (0..124, PERF-P2), G = the light bucket (0..11, PERF-P3; 255 = `BUCKET_UNWRITTEN`, never written). `VoxelBoard` is now one reader/writer of this store, same standing the 3D board will have — `cell_plane_image()`/`cell_plane_levels()` are already documented as "read-only by contract" for exactly that use (DIAG-21). See `RENDER3D_MASTER_PLAN` R3D-2: "the cell planes move to a render-neutral owner (name decided at build time), which both renderers read."
+> CellPlaneStore — the render-neutral home for the per-cell soot/light planes. RENDER3D R3D-2 step 3. Moved out of `VoxelBoard` verbatim (a relocation, not a redesign — the API already matched what a future reader needs): one 512x512 `Image.FORMAT_RG8` per level, R = the per-face soot code (0..215 base 6, 172 = clean; PERF-P2, widened for the charred tone 2026-09-29), G = the light bucket (0..11, PERF-P3; 255 = `BUCKET_UNWRITTEN`, never written). `VoxelBoard` is now one reader/writer of this store, same standing the 3D board will have — `cell_plane_image()`/`cell_plane_levels()` are already documented as "read-only by contract" for exactly that use (DIAG-21). See `RENDER3D_MASTER_PLAN` R3D-2: "the cell planes move to a render-neutral owner (name decided at build time), which both renderers read."
 
 **Constants / tuning**
 - `BUCKET_UNWRITTEN` = `255`

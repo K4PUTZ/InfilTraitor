@@ -1,5 +1,7 @@
 # INFILTRAITOR — Asset Map
 
+> **⚠️ 2026-09-30 — DATED (last content update 2026-06-21).** It predates the voxel board, the 3D board and the per-material asset tree: the folder layout, the TileMap/2:1-dimetric framing and the "procedural dungeon" mapping below describe the July 2026 project. **Current:** the repository layout is in [`repo_structure.md`](repo_structure.md); materials live in `ASSETS/materials/<id>/` ([`ART_SPECIFICATIONS.md`](../../ASSETS/ART_SPECIFICATIONS.md)); props in `props/` + `ASSETS/props/` with their licences in `props/MODEL_SOURCES.md`; model input: [`PROP_PIPELINE_PLAN`](../../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md). Use this file for the provenance of the legacy isometric art only.
+
 > **Purpose:** Single reference for every asset available in the project — what it is, where it lives, how it maps to a game element, and how it is used in procedural dungeon generation.
 > **Last updated:** 2026-06-21
 > **Engine:** Godot 4 · TileMap isometric mode · 2:1 dimetric projection (45° horizontal, 26.57° elevation)

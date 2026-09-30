@@ -4,6 +4,26 @@
 
 ---
 
+## Day-to-day workflow (added 2026-09-30)
+
+```bash
+# open the project (the editor stays open while you work; GDScript hot-reloads)
+/Applications/Godot.app/Contents/MacOS/Godot --path . 2>/dev/null &
+
+# verify before declaring anything done: ONE command, in tiers, failing fast
+python3 tools/persistent/verify.py            # picks docs / quick / smoke from the changed files
+python3 tools/persistent/verify.py smoke      # lint + invariants + codemap + selftests + a boot of PLAYGROUND and GLASS (the default for code under godot/)
+python3 tools/persistent/verify.py full       # + the identity gates: ONLY when asked, or to close a stage that rewires the board/state/light/ground
+python3 tools/persistent/verify.py --baseline # take this at the START of a task that will need `full`
+```
+- The **boot gates refuse to start while any other Godot is alive, the editor included** (`smoke` does not care). Close the editor for `full`.
+- Git hooks (`.git/hooks/pre-commit`, `pre-push`, sources in `tools/persistent/hooks/`) run invariants, the codemap freshness check and the lint; never bypass them. A commit can still pass with a failing selftest: run `verify.py smoke` before committing code.
+- A capture or probe always names its map: `INFILTRAITOR_MAP=PLAYGROUND|PROPS|GLASS` (without it the LAST map used opens). Scenarios: `INFILTRAITOR_SCENARIO="framing portrait; frames 60; detonate 0; frames 400; capture name; quit"`.
+- **A phone test is the release APK:** `python3 tools/persistent/export_android.py --install`, then `device_run.py --device <serial> --seconds N` (logs) or `device_record.py` (video). Flags reach the APK only through `dev_flags.cfg` (`DevFlags`). The Android SDK is at `/opt/homebrew/share/android-commandlinetools` (`adb` in `platform-tools/`). Guide: [`../../tools/persistent/MobileTesting.md`](../../tools/persistent/MobileTesting.md), [`../../EXPORT_ANDROID.md`](../../EXPORT_ANDROID.md).
+- New textures, decals and models follow the checkers: `check_facade.py`, `check_decal.py`, `check_surface.py` (a colored or un-imported facade is rejected with no error at all). A new PNG/GLB in a folder Godot has not scanned needs `godot --headless --path . --import`.
+
+---
+
 ## SSH Authentication
 
 ### SSH Keys for GitHub Access

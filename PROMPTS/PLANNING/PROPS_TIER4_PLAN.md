@@ -1,5 +1,5 @@
 # PROPS_TIER4_PLAN
-## Real models, material-driven colour, generic voxel replacement on a blast, a persistent charred pile — v0.1 (PLANNING, nothing built)
+## Real models, material-driven colour, generic voxel replacement on a blast, a persistent charred pile — v0.2 (PLANNING, nothing built)
 
 Session 2026-09-30, Director's planning round. Parent track: [`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) R3D-PROPS (the tiers are ruled there, 2026-09-27; this file
 owns the build of Tier 4 and the look/shadow questions that came with real models). Canon it extends, never replaces: ACTOR D65 (static props are meshes, breakable
@@ -10,7 +10,7 @@ props are voxels), the Tier 1-4 ruling (Tier 4 = a transient fragment swarm, not
 prop already shatters by ring weight (`Room.apply_prop_proximity_effects`: ring 0/1/2 = weight 0.85/0.28/0.06, beyond = no swap, soot only) with the existing chip/smoke VFX
 and a debris carpet. What is NOT built: the model turning into fragments that keep its shape, the pile, the charred variety, prop shadows, the colour grade.
 
-## 1. Decisions to ratify (each has a recommendation; the Director rules)
+## 1. Decisions — **D-P1 to D-P6 RATIFIED by the Director, 2026-09-30** ("então tá ótimo, vamos usar nossas próprias texturas"; the six recommendations below stand as written)
 
 | # | Question | Recommendation | Why |
 |---|---|---|---|
@@ -64,6 +64,36 @@ From the P1 silhouette. Measured on the Moto with 20 props.
 ### 2.7 P7 — the calibration round (Director: "uma calibrada geral em todos os tamanhos")
 One sheet with every prop at its size next to a wall, a crate, the agent and a guard; the GU-to-metre canon is written down (the table is 1.13 m wide at 0.95 GU, so a GU is ~1.2 m; the
 pistol is deliberately 0.40 GU long, larger than real so it reads); `mesh_size` of every def is set from the model's own proportions; the palette sheet for D-P2.
+
+## 2b. The material library (formalises D-P1; Director 2026-09-30: more materials to cover a wider variety of objects, with fallbacks, generic materials)
+
+**What a material is today** (`ASSETS/materials/<id>/<id>.json`, two tiers `res://` then `user://`, user wins; `MaterialRegistry` / `MaterialResistanceTable`): balance numbers
+(`destroy_factor`, `dent_factor`, `crack_factor`, `flammability`, `burn_consumption`, `smoke_chance`), `base_color`, `pattern_algorithm`, `has_facade`; art: a 1024x512 grayscale `facade_<id>.png`
+(B2), a slab variant, decals (`decals/`, incl. debris). The registry already holds: brick, cardboard, concrete, dirt, earth, fabric, glass (+armored, 3 screens), grass, gravel, metal, plywood, sand, stone, wood.
+
+**Two new row fields**
+- `family` (`wood | metal | stone | soil | fabric | paper | plastic | rubber | leather | ceramic | glass | organic | generic`): what the material behaves and looks like in general.
+- `textured` (bool, default true): false = a flat tint with no detail texture (small hard objects: a pistol, a plastic bin, a tyre read better flat at this size, and need NO art).
+
+**The fallback chain (nothing ever renders as "missing")** — every lookup walks it, loudly once per id (`push_warning`), never silently:
+1. the material's own row / facade / debris decal;
+2. the family's generic row (`generic_<family>`: sane balance numbers, the family's typical colour, a family facade, a family debris decal);
+3. `generic` (neutral mid-grey, mid-resistance, flat, generic debris).
+A model's surface that names no known material resolves by rule 2/3 instead of failing; a pack that brings only a `.json` still loads (flat). This extends `TextureResolver`'s existing tier ladder
+(USER -> DEFAULT -> NONE, where NONE today renders silently wrong — it becomes "the family's generic" instead).
+
+**Materials to add first (every object the game is likely to need soon; each is one JSON row, art only where `textured`):**
+| Material | Family | Textured | For | Balance analogue (to calibrate) |
+|---|---|---|---|---|
+| `plastic` | plastic | no | bins, electronics, grips, toys | wood-like destroy, melts: high flammability, smoky |
+| `rubber` | rubber | no | tyres, mats, cable | hard to destroy, burns long and smoky |
+| `leather` | leather | yes | chairs, holsters, bags | fabric-like, tough |
+| `ceramic` | ceramic | no | plates, toilets, tiles, pots | brittle: high destroy, no burn, sharp debris |
+| `paper` | paper | yes | books, documents, boxes of files | cardboard-like, burns fast |
+| `painted_metal` | metal | yes | lockers, vehicles, appliances | metal, with a tint variant per colour (see the pipeline plan) |
+| `upholstery` | fabric | yes | sofas, seats | fabric + foam: burns, smoulders |
+| `steel_dark` | metal | no | weapons, tools | metal, darker colour |
+The numbers are NOT mine to set: each row is proposed from its analogue and calibrated with the Director in the P7 round, the way wood/plywood were (plywood 0.95 beside a grenade = 85% destroyed).
 
 ## 3. Risks
 - The 30 fps handsets make 0.5 s = 15 frames: the animation has to read in 15 frames, so the sim is timed, not counted, and is judged on a device capture, not the desktop one.

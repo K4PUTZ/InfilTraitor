@@ -1,5 +1,7 @@
 # Texture Catalog — Baking System Contract
 
+> **⚠️ 2026-09-30 — PARTLY HISTORICAL.** This is the contract of the **baking pipeline**, which was deleted at R3D-END (END-4, 2026-09-25): there are no atlas pages, no `BakedTileLookup`, no STICKER/SLICE bakes. **What still holds:** a material lives in its own folder (`ASSETS/materials/<id>/`, two tiers `res://` then `user://`, user wins), its facade is one **1024x512 grayscale** PNG (B2, checked by `check_facade.py`; a colored or un-imported facade is rejected with no error at all), `TextureResolver`'s tier ladder, and the decals (`check_decal.py`). The 3D board samples the facade itself, in world space, at 16 texels per voxel. **Current specs:** [`ART_SPECIFICATIONS.md`](../../ASSETS/ART_SPECIFICATIONS.md); **what is being added** (material families, fallbacks, new materials): [`PROPS_TIER4_PLAN` §2b](../../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md). Read everything below as history unless it agrees with those.
+
 **Companion docs:** `BAKING_MASTER_PLAN.md`, `DIRECTION_GLOSSARY.md`, `VOXEL_MASTER_PLAN.md`
 
 ---

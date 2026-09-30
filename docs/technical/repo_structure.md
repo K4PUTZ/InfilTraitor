@@ -1,411 +1,55 @@
 # INFILTRAITOR Repository Structure
 
-> **Formal documentation of repository organization, folder purposes, and ownership.**
+> **Where things live and what may go where.** Rewritten 2026-09-30 against the real tree (the July 2026 version described a team and a folder layout that never existed; it is kept at [`../history/repo_structure_2026-07-12.md`](../history/repo_structure_2026-07-12.md)). For the code's classes and signals use the generated [`CODEMAP.md`](../../tools/persistent/CODEMAP.md); for how the runtime fits together, [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
----
+## Root
 
-## Overview
+| Path | What it is | In git? |
+|---|---|---|
+| `project.godot`, `icon.svg`, `export_presets.cfg` | Godot project (autoloads: `DevFlags`, `VersionInfo`, `Telemetry`, `Localization`, `Registries`), the Android/iOS export presets | yes |
+| `CLAUDE.md` | standing instructions for agent sessions (rules, verification protocol, the architecture's inviolable rules) | yes |
+| `QWEN.md`, `.README_WORKSPACE.md` | the parallel interface workspace's charter and process | yes |
+| `VERSION` | the game's version | yes |
+| `README.md`, `EXPORT_ANDROID.md`, `ANDROID_CONFIG.sh` | landing page; the Android SDK/export guide and config | yes |
+| `godot/` | **all game code, scenes, shaders, localisation** (below) | yes |
+| `maps/` | `*.map.json` maps (sections are versioned and owner-registered; `MAPFILE_REFERENCE.md`) | yes |
+| `props/`, `bombs/`, `weapons/` | data rows: prop definitions and slots (`props/MODEL_SOURCES.md` records every model's licence), bomb and weapon definitions | yes |
+| `ASSETS/` | materials (`materials/<id>/`: row + grayscale facade + decals), art, audio, models | **local only** (heavy binaries; only `ART_SPECIFICATIONS.md` and each material's `.json` are tracked) |
+| `tools/` | `persistent/` (verification, gates, device and export tooling, the codemap), `asset_generation/` (art generators) | yes |
+| `docs/` | documentation (below) | yes |
+| `PROMPTS/` | plans and session records (below) | yes |
+| `REFERENCES/`, `ARCHIVE/`, `Screenshots/` (except `history/`), `export/`, `videos/`, `.godot/` | local working material, outputs and caches | no |
 
-This document defines the structure, responsibilities, and allowed contents of each folder in the INFILTRAITOR repository.
-
-**Goal:** Prevent entropy growth by establishing clear ownership and purposes.
-
----
-
-## Repository Root
-
-**Folder:** `/Volumes/Expansion/----- PESSOAL -----/PYTHON/INFILTRAITOR/`
-
-### Required Files (Always in Root)
-
-| File | Purpose | Owner | Locked |
-|------|---------|-------|--------|
-| `project.godot` | Godot project configuration | Engine Team | Yes |
-| `README.md` | Repository landing page | Documentation | Yes |
-| `LICENSE` | Project license | Legal | Yes |
-| `.gitignore` | Git exclusion rules | DevOps | Yes |
-| `icon.svg` | Project icon (for Godot) | Art Lead | Yes |
-
-### Allowed in Root (Utilities)
-
-| File/Folder | Purpose | Example |
-|-------------|---------|---------|
-| `tools/` | Development utilities | See [Tools](#tools) section |
-| `BACKUP.py` | Backup utility | Alternative: move to `tools/persistent/` |
-
-### NOT Allowed in Root
-
-| Item | Reason | Alternative |
-|------|--------|-------------|
-| **Loose Python scripts** | Maintenance burden | Move to `tools/` |
-| **Debug outputs** | Build artifact | Add to `.gitignore` |
-| **Temporary exports** | Regenerable | Add to `.gitignore` |
-| **Old backups** | Repo bloat | Move to `ARCHIVE/` (local only) |
-| **Personal notes** | Not code | Move to wiki/docs |
-
----
-
-## godot/ (Engine Project)
-
-**Owner:** Engine Team  
-**Locked Structure:** Yes (Don't reorganize)  
-**Responsibility:** All Godot game code and configuration
-
-### godot/project.godot
-Godot project configuration (redundant with root, maintained by Godot)
-
-### godot/scenes/ (Scenes & Nodes)
-```
-scenes/
-├── room/                           # Main game scene
-├── ui/                             # UI overlays
-└── debug/                          # Debug visualization
-```
-
-**Rules:**
-- One scene file per gameplay system
-- UI scenes separate from game logic
-- Debug scenes excluded from export
-
-### godot/scripts/ (Source Code)
-```
-scripts/
-├── world/                          # Room, layout, tile manipulation
-├── agents/                         # Player and guard AI
-├── systems/                        # Core systems (movement, detection, etc.)
-├── ui/                             # UI logic
-├── game/                           # Game flow, turn management
-└── navigation/                     # Pathfinding, movement
-```
-
-**Rules:**
-- One file per class
-- Max 500 lines per script (split if larger)
-- No debug code in main scripts (use debug/ folder)
-- All external dependencies declared at top
-
-### godot/resources/ (Assets & Configs)
-```
-resources/
-├── tilesets/                       # Tileset data (tileset_blocks.tres)
-├── themes/                         # UI themes
-├── shaders/                        # Godot shaders (if any)
-└── materials/                      # Material definitions
-```
-
-**Rules:**
-- Tileset definitions only (asset PNGs in ASSETS/)
-- All tilesets use consistent origin calibration
-- Shader changes require design review
-
----
-
-## ASSETS/ (Game Content)
-
-**Owner:** Art Lead  
-**Locked Structure:** Yes (Preserve folder organization)  
-**Size:** ~31MB (tracked in git)  
-**Responsibility:** All visual and audio game content
+## godot/
 
 ```
-ASSETS/
-├── ISOMETRIC/                      # Kenney tile packs (8 sets)
-│   ├── blocks-prototype/
-│   ├── bases-terrain/
-│   └── ... (6 more)
-├── CHARACTERS/                     # Player & NPC sprites
-│   ├── humans/ (8 variants)
-│   └── enemies/ (future)
-├── UI/                             # UI icons and elements
-├── FX/                             # Effects and animations
-│   └── smoke/
-├── REFERENCES/                     # External reference images
-└── README.md                       # Asset inventory & licenses
+godot/
+├── scenes/game/room.tscn          the main scene (Room, the orchestrator)
+├── scenes/ui/hud.tscn             the HUD (reached only through HudController)
+├── scripts/                       251 scripts, ~81 700 lines
+│   ├── world/                     room.gd, builders/, controllers/, maps/ (+ persistence/), utilities/
+│   ├── geometry/                  voxel geometry, VoxelBoard, Board3DLive, 3D fields, prop meshes, billboards
+│   ├── systems/                   VoxelStore, CellPlaneStore, registries, SaveState, dev harness, tic/turns/noise
+│   │   ├── destruction/           blast + shot maths, DetonationPlanBuilder, presenter, weapon/bomb defs, glass
+│   │   ├── prediction/            WorldDelta, prediction cache/reaper, WalkWarmer
+│   │   ├── lighting/              VoxelLightField, LightRegistry, ShadowProjector, ExposureSystem
+│   │   └── localization/
+│   ├── agents/  navigation/  controllers/  overlays/  ui/   actors, movement, extracted room controllers, 2D overlays, panels
+│   ├── tools/                     *_selftest.gd (51 gated), fixtures, dev-only spikes and bake helpers
+│   └── debug/  spikes/            dev views; R3D-era experiments
+├── shaders/                       board/props/glass/decal/actor/VFX shaders (`*.gdshader`)
+├── localization/                  translation tables (CSV)
+└── resources/tilesets/            the one TileSet (structure layer + the lattice GroundGrid was measured from)
 ```
 
-**Rules:**
-- No modifications to Kenney assets (already licensed)
-- New assets follow same directory structure
-- All assets attributed (license, source, date)
-- Unused assets → ARCHIVE/ (local only)
+## docs/ and PROMPTS/
 
-**Access:**
-- Read: Everyone
-- Modify: Art Lead only
-- New assets: Propose to Art Lead
+- `docs/ARCHITECTURE.md` (the runtime), `DESIGN_MASTER_PLAN.md` (game design canon), `DIRECTION_GLOSSARY.md` (compass, faces, banned terms), `README.md` (the index of every document: a dead link there is a bug).
+- `docs/technical/` references (map file, localisation, input, assets, textures, voxel plan), `docs/systems/` per-system docs and plans, `docs/pipelines/` (character bakes, video recording, lighting), `docs/production/` (current state, technical debt), `docs/measurements/` (device logs), `docs/history/` (retired context files and superseded documents; do not edit).
+- `PROMPTS/` active or recent prompts and session records (`RESUMO_SESSAO_*.md`); `PROMPTS/PLANNING/` **master plans only**; `PROMPTS/DONE/` the Director's archive; `PROMPTS/AUDITS/` audits.
 
----
-
-## ARCHIVE/ (Local-Only Assets)
-
-**Owner:** Art Lead  
-**Locked Structure:** No (Can reorganize)  
-**Size:** ~558MB (excluded from git)  
-**Responsibility:** Unused/deprecated assets
-
-```
-ARCHIVE/
-├── fonts/                          # Old font files
-├── fx-lightning/                   # Unused VFX
-├── scifi-ui/                       # Abandoned UI style
-├── sprites-2d/                     # Flat sprites (project uses isometric)
-├── textures-flat/                  # Non-isometric textures
-└── top-down-lab/                   # Top-down prototypes
-```
-
-**Rules:**
-- All contents `.gitignore`'d
-- No references from active code
-- Can be deleted anytime (low priority)
-- Useful for reference/rollback (keep locally)
-
-**Access:**
-- Read: Anyone
-- Modify: Art Lead
-- Delete: Anyone (non-critical)
-
----
-
-## docs/ (Documentation)
-
-**Owner:** Documentation Team  
-**Locked Structure:** Yes (Mirror in docs/README.md)  
-**Responsibility:** All project documentation
-
-```
-docs/
-├── README.md                       # Main doc hub
-├── vision/                         # Game concept & philosophy
-│   ├── game_vision.md
-│   ├── design_philosophy.md
-│   └── pillars.md
-├── systems/                        # Individual system docs
-│   ├── movement.md
-│   ├── perception.md
-│   ├── lighting.md
-│   ├── noise.md
-│   ├── stealth.md
-│   └── ai.md
-├── production/                     # Development roadmap & tracking
-│   ├── README.md
-│   ├── current_state.md            # AUTO header — the live status
-│   ├── milestones.md
-│   ├── roadmap.md
-│   ├── systems_matrix.md
-│   ├── technical_debt.md
-│   ├── METHODOLOGY.md
-│   ├── TILE_ANATOMY.md
-│   └── RETROSPECTIVE_2026-07.md
-├── technical/                      # Implementation guides
-│   ├── repo_structure.md
-│   ├── developer_setup.md
-│   ├── asset_map.md
-│   ├── architecture.md
-│   ├── performance.md
-│   └── godot_setup.md (planned)
-└── history/                        # Development records
-    ├── sprint_logs/
-    ├── refactor_logs/
-    └── deprecated_design/
-```
-
-**Rules:**
-- One doc per topic (no mega-docs)
-- Cross-reference via markdown links
-- Update README.md when adding docs
-- Archive old docs to history/ (never delete)
-
-**Access:**
-- Read: Everyone
-- Write: Designated author + documentation lead review
-- Archive: Docs team + project lead approval
-
----
-
-## tools/ (Development Utilities)
-
-**Owner:** DevOps/Architecture Team  
-**Locked Structure:** Moderate (Can add subdirs for new tools)  
-**Responsibility:** Scripts, build utilities, automation
-
-```
-tools/
-├── README.md                       # Tools registry & docs
-├── persistent/                     # Active utilities
-│   └── BACKUP.py                  # Project backup script
-├── migration/                      # Historical/one-shot scripts
-│   └── tileset_origin_calibration/
-│       ├── MIGRATION_HISTORY.md
-│       ├── rename_tiles.py
-│       ├── update_texture_origins.py
-│       └── ... (7 more)
-├── experimental/                   # Sandbox for new tools
-└── archive/                        # Deprecated tools
-```
-
-**Rules:**
-- New tools start in `experimental/`
-- Move to `persistent/` when stable
-- Move to `archive/` when deprecated (never delete)
-- Each tool has README or docstring
-- No implicit dependencies between scripts
-
-**Access:**
-- Read: Everyone
-- Write: DevOps + proposing developer
-- Promote: DevOps approval
-
----
-
-## DEVELOPMENT/ (Deprecated)
-
-**Status:** ⏳ Being migrated to docs/  
-**Owner:** None (legacy)  
-**Action:** Files being moved to docs/history/ and docs/technical/
-
-```
-DEVELOPMENT/  (→ docs/history/ and docs/technical/)
-├── GAME_PLAN.md  → docs/history/design_decisions.md
-├── PROGRESS.md → docs/history/sprint_logs/
-├── DEVELOPER_GUIDE.md → docs/technical/developer_setup.md
-├── ASSET_MAP.md → docs/technical/asset_map.md
-├── REFACTOR_SPRINT_04.md → docs/history/refactor_logs/
-├── LIGHTING_DESIGN.md → docs/systems/lighting.md (completed)
-├── DEV_VISION_FOUNDATION.md → docs/history/deprecated_design/
-└── README.md
-```
-
-**Timeline:** All content moved during CLEAN-01 sprint
-
----
-
-## REFERENCES/ (External Reference Content)
-
-**Owner:** Art Lead  
-**Locked Structure:** No  
-**Size:** 1.3MB  
-**Responsibility:** Reference images, inspirations
-
-**Rules:**
-- No code (images only)
-- Cited sources where applicable
-- Can be deleted anytime (reference only)
-
----
-
-## export/ (Godot Exports)
-
-**Owner:** Engine Team  
-**Gitignored:** Yes  
-**Purpose:** Build outputs for testing
-
-**Rules:**
-- Regenerable (don't commit)
-- Delete before submitting PR
-- Can be deleted anytime
-
----
-
-## Hidden Folders (System)
-
-| Folder | Purpose | Gitignored |
-|--------|---------|-----------|
-| `.git/` | Git repository | No (system) |
-| `.godot/` | Godot cache | Yes |
-| `.vscode/` | VS Code settings | Yes |
-| `__pycache__/` | Python cache | Yes |
-
-**Rules:**
-- Don't modify manually
-- Let tools manage automatically
-
----
-
-## Ownership & Responsibilities
-
-### Engine Team
-- Maintain godot/ folder structure
-- Update godot scripts
-- Manage godot/resources/
-
-### Art Lead
-- Manage ASSETS/ folder
-- Organize ARCHIVE/
-- Update REFERENCES/
-
-### Documentation Team
-- Maintain docs/ structure
-- Write and review docs
-- Archive deprecated docs
-
-### DevOps/Architecture
-- Manage tools/ folder
-- Maintain this document
-- Code cleanup & refactoring
-
----
-
-## Adding New Folders
-
-**Request Process:**
-1. Propose to project lead
-2. Document purpose & responsibility owner
-3. Add to this document
-4. Create README.md in new folder
-5. Commit with approval
-
-**Forbidden New Folders:**
-- Anything redundant with existing structure
-- Temporary/debug folders (use .gitignore)
-- Personal working directories (use local branches)
-
----
-
-## Cleanup Principles
-
-### What Gets Gitignored (Regenerable)
-- Build outputs (export/)
-- Cache (\.godot/, \.vscode/, __pycache__)
-- Temporary files (.DS_Store)
-- Build artifacts (*.ZIP)
-
-### What Gets Archived (Non-regenerable)
-- Old scripts (tools/archive/)
-- Old docs (docs/history/)
-- Deprecated assets (ARCHIVE/)
-
-### What Gets Deleted (Dead Code)
-- Only with explicit approval
-- After archiving
-- After confirming no dependencies
-
----
-
-## Long-Term Vision
-
-```
-Current State (CLEAN-01)          → Mature State (Year 2)
-├── tools/persistent/             ├── tools/persistent/ (10+ utilities)
-├── tools/migration/              ├── tools/experimental/
-├── docs/                         ├── docs/ (organized by team)
-├── godot/                        ├── godot/ (stable architecture)
-├── ASSETS/                       ├── ASSETS/ + content/
-└── ARCHIVE/                      ├── ARCHIVE/ (growing)
-                                  ├── build/ (CI/CD outputs)
-                                  ├── tests/ (automated test suite)
-                                  └── scripts/ (deployment helpers)
-```
-
----
-
-## Reference
-
-- [Tools Registry](../../tools/README.md)
-- [Main Documentation Hub](../README.md)
-
----
-
-**Last Updated:** 2026-06-12  
-**Maintained By:** Architecture Team  
-**Approval Required:** Before structural changes  
-**Status:** Active 🟢
+## Rules of the tree
+- Code, comments, docs and commit messages are English; chat with the Director is Brazilian Portuguese.
+- A new tool goes to `tools/persistent/` and is listed in `tools/README.md`; a new document is added to `docs/README.md` in the same commit (the `docs` tier of `verify.py` checks it).
+- Nothing generated by a run is committed except `Screenshots/history/*.png` and `tools/persistent/CODEMAP.md` (regenerated by a hook).
+- A heavy binary never goes in git: it lives under `ASSETS/` (local) and its source and licence are recorded in a tracked file next to the data that uses it.

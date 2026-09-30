@@ -1,70 +1,30 @@
+> **HISTORICAL — a verbatim copy of `docs/ARCHITECTURE.md` as it stood on 2026-09-25 (R3D-END), kept because it is the only full description of the deleted 2D `TileMapLayer` voxel plane, the bake and the old node topology. The live document is [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (rewritten 2026-09-30). Do not update this file.**
+
 # INFILTRAITOR — System Architecture
 
-> **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from a design spec (`docs/systems/*`, the master plans), the **code is authoritative**.
+> **⏭️ 2026-09-25 — R3D-END: the 2D `TileMapLayer` board is deleted; the 3D board is the only board.** The "Voxel Render Plane" section below describes the deleted path (last commit that has it: `34881f81`); the live one is `VoxelStore` (state) meshed by `Board3DLive`, with `VoxelBoard` (formerly `VoxelRenderer`) keeping the level registry, the cell planes, the dirty -> `voxel_destroyed` pass and the glass records. Where this file names tiles, atoms, the bake or `floor_layer`, read history.
 
-**Source of truth:** `godot/scripts/` (251 scripts, ~81 700 lines; [`tools/persistent/CODEMAP.md`](../tools/persistent/CODEMAP.md) is the generated, always-current index of every class and signal)
-**Engine:** Godot 4.6, GDScript · **Main scene:** `res://godot/scenes/game/room.tscn` · **Targets:** Android/iOS handsets (portrait), desktop for development
+> **Engineering reference for the INFILTRAITOR runtime.** This document describes the systems **as currently implemented in code**, not as originally specified. Where the code diverges from earlier design specs (`docs/systems/*`), the **code is authoritative**.
 
-**Reconciliation status (2026-09-30).** Rewritten against the code on this date: **§0 (the architecture today), §1 (runtime: load pipeline, node topology, control flow), §15 (debt), §16 (status matrix) and the Appendix**. The old "Voxel Render Plane" section (the deleted 2D `TileMapLayer` board, the bake, `VoxelLayer[]`) moved to
-[`history/ARCHITECTURE_PRE_R3D_2026-09-25.md`](history/ARCHITECTURE_PRE_R3D_2026-09-25.md) verbatim. **§2-§14 (controllers, AI, detection, noise, exposure, shadow, lighting, height, fog, overlays, camera, turns, coordination) were last reconciled with the code in 2026-07** and were only spot-checked on
-2026-09-30 (the perspective paragraph in §12 and the `FloorLayer` / `floor_layer` references in §2.7 and §11 were corrected; nothing else was re-audited): treat a claim there as "true in July", and confirm it in the code before building on it.
+**Source of truth:** `godot/scripts/`
+**Last reconciled with code:** 2026-07-20 (date/line-count refresh only; see gaps below) · **status-tag pass 2026-09-15** (the voxel plane's tags, container classes, line counts, status matrix and file map — not a rewrite)
+**Engine:** Godot 4.x · **Main scene:** `res://godot/scenes/game/room.tscn`
 
-The rules that must not be broken are in [`CLAUDE.md`](../CLAUDE.md) ("Architecture — inviolable rules"); the vocabulary (compass, faces, banned terms) in [`DIRECTION_GLOSSARY.md`](DIRECTION_GLOSSARY.md); each subsystem's decisions in its master plan ([`README.md`](README.md)).
+**Not yet covered since the last full reconciliation (2026-07-03):**
+- B3 and the bake closure, and the SCREENSHOT-HOOK system;
+- `OCCLUSION_MASTER_PLAN` and `DESTRUCTION_MASTER_PLAN`;
+- added since: the prediction layer (`PREDICTION_MASTER_PLAN`), the detonation presenter,
+  glass (`GLASS_MASTER_PLAN`), render order, `DevFlags` / `Telemetry` / `ScenarioRunner`,
+  and the live 3D board prototype.
 
----
+This document was not rewritten to incorporate those systems. Treat any section touching
+them as unreconciled, and read their master plans (`docs/README.md`).
 
-## 0. The architecture today (2026-09-30)
-
-INFILTRAITOR is a turn-based tactical stealth game. **The board is drawn in Godot 3D, from a packed voxel store, under a 2D game** (ratified 2026-09-15, finished at R3D-END 2026-09-25, `RENDER3D_MASTER_PLAN`). Gameplay is 2D on a grid of **game units (GU)**; the world is **voxels, 8 per GU axis and 8 levels per storey**;
-an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. Actors, the HUD, fog, selection and the tactical overlays are still 2D nodes drawn on top (actors and some props move to 3D at R3D-ACTORS).
-
-### 0.1 The layers, from data to pixels
-
-```
- CONTENT (data on disk)            maps/*.map.json (sections, versioned, owner-registered) · props/*.json · bombs/ · weapons/ · ASSETS/materials/<id>/ (row + grayscale facade + decals)
-        │  two tiers everywhere: res:// (shipped) then user:// (a player's; user wins on id collision)
-        ▼
- LOAD PIPELINE (room.load_map)     FileMapSource/MapFileService -> MapCatalog -> MapSpec -> MapCompiler (the ONLY owner of the buffer offset) -> base layout (BASE coordinates, rotation-independent)
-        │                          -> RoomBuilder.layout_with_perspective (PerspectiveMapper) -> RoomBuilder.build_from_layout
-        ▼
- GEOMETRY REGISTRIES               EdgeRegistry (Edge -> 2 Slices, D16) · SlabRegistry (FLOOR/CEILING/INTERIOR) · JunctionResolver columns · VoxelBoard prop containers (PropBlock) and mesh props (MeshPropInstance)
-        │  VoxelBoard._rebuild_voxel_store -> VoxelStore.build(...)   (WalkWarmer then fills the walk cache in idle frames)
-        ▼
- STATE                             VoxelStore      the ONLY place voxel state lives: flat per-claim arrays (visible, damage tier, carved side, variant, substrate, material), a derived dense occupancy grid, `gone_claims`; `Voxel` is a 1-int wrapper
-                                   CellPlaneStore  one 512x512 RG8 image per level: R = per-face soot code (base 6, 172 = clean, 5 = charred), G = light bucket (0..11)
-                                   GroundGrid      the cell lattice as closed-form maths (no tiles)
-                                   Room._base_*    records of everything a mission did, in BASE coordinates (damage, soot, cracks, openings, shards, shattered props, debris): replayed after a rotation, saved by SaveState
-        ▼
- SIMULATION (pure -> commit)       DetonationPlanBuilder: a 14-phase, time-budgeted, resumable cook (SETUP, SLICES, JUNCTIONS, PROPS, ROOFS, FLOORS, WALK, BURN, SOOT, LIGHT, PACKAGE, EXPOSE, SOOTWAVE, SMOKE) that builds a WorldDelta: a DESCRIPTION of what would change
-                                   PredictionCache keys it on (signature, world_revision); `delta.commit(room)` is the only writer; DetonationPresenter plays one frame that writes everything, then N frames of effects
-                                   Firearms: AgentShotController / WeaponBench -> BlastCalculator.plan_point_impact (walls) or plan_prop_impact (prop voxels); WeaponDef + ShotPunchTable; Glass: GlassShatter / GlassCrack / GlassOpening
-                                   Light: VoxelLightField (12 directional buckets per face) <- LightRegistry/ShadowProjector (tactical, GU resolution); visual brightness is not tactical visibility
-        ▼
- RENDER (3D, then 2D on top)       Board3DLive (Node3D under Room): meshes the VoxelStore in 16-voxel chunks, faces merged by MATERIAL, three visible faces; colour = material base_color x facade luminance sampled in world space at 16 texels per voxel;
-                                   light and soot are read PER CELL from the planes (a Texture2DArray), so a light or soot change is a layer upload, not a remesh; `BoardLook` owns the look constants; glass panes read the screen behind them
-                                   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each), ActorBillboard3D (2D sprite frames as depth-tested billboards), GroundCanvas3D, VisionCone3D
-                                   2D on top: HUD (hud.tscn), FogOfWar, Selection/Movement/Path overlays, guards and the agent (baked frames)
-```
-
-### 0.2 Five rules the whole architecture leans on
-1. **Voxel state reaches the screen only through the store and the mesher** (rule 8, hook R8). Nothing writes a tile, an image blit or a sprite for it.
-2. **A level, a material family, a HUD widget is asked, never typed/compared** (rules 9, 10, 11): `ground_plane_level()`, `GlassMaterials.is_glass()`, `HudController`.
-3. **Simulate, then commit.** Anything that predicts (a throw preview, a cook) returns a `WorldDelta`; only `commit()` mutates; a new committed mutation bumps `Room.bump_world_revision()` or cached predictions go stale.
-4. **Records are in BASE coordinates.** Until R3D-ROT makes rotation camera-only, a rotation re-lays the whole map out and replays every `_base_*` record; every new consequence of a blast needs a base record and a replay.
-5. **Materials are data, and the registry is the palette.** A row in `ASSETS/materials/<id>/` (balance numbers, colour, facade) drives destruction, fire, soot, debris and colour; nothing hardcodes a material's behaviour (`PROPS_TIER4_PLAN` §2b adds families and fallbacks).
-
-### 0.3 Cross-cutting systems
-| System | What it is | Files |
-|---|---|---|
-| **Registries** (autoload) | Material, Prop, Bomb, Weapon catalogs; two-tier; user wins | `systems/registries_autoload.gd`, `material_registry.gd`, `prop_registry.gd`, `destruction/{bomb,weapon}_registry.gd` |
-| **Dev harness** | `DevFlags` (environment variables on desktop, `dev_flags.cfg` inside an APK), `Telemetry` (one timeline), `ScenarioRunner` (a session as data), `FrameSplit`, `MemStage` | `systems/{dev_flags,telemetry,scenario_runner,frame_split,mem_stage}.gd` |
-| **Verification** | `tools/persistent/verify.py` tiers (docs / quick / smoke / full), `project_lint.py`, `run_selftests.py` (51 selftests), identity gates (`board_probe`, `pixel_gate`, `ground_gate`, ...) | `tools/persistent/`, `godot/scripts/tools/*_selftest.gd` |
-| **Device pipeline** | release APK via `export_android.py`, `device_run.py`, `device_record.py`, flags through `dev_flags.cfg` (Moto g04s and Galaxy A16 are the budget devices: 30 fps / 33.3 ms) | `tools/persistent/`, `docs/pipelines/device_video_recording.md` |
-| **Persistence** | `SaveState` (checkpoint-scoped: capture / restore / clear_run_state of the base records); `.map.json` sections (`MapFileService`, loud-fail load, unknown sections round-trip) | `systems/save_state.gd`, `world/maps/persistence/` |
-| **Localization** | `tr("domain.key")` through an autoload | `systems/localization/` |
-
-### 0.4 What is NOT built yet (so nobody assumes it)
-R3D-ACTORS (live skinned actors, D64), R3D-ROT (camera-only rotation), R3D-WORLD (world-space 2D overlays), R3D-SURFACES (photographic ground), R3D-LOOK, R3D-CLAIMS / BUFFER; Tier 4 prop replacement by fragments, prop shadows and the drop-in model pipeline ([`PROPS_TIER4_PLAN`](../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md), [`PROP_PIPELINE_PLAN`](../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md)); the run-state model of §1; detection consuming the exposure pipeline (§15.4).
+> **⏭️ 2026-09-15 — the render architecture is changing.** The Director ratified drawing the
+> board in Godot 3D over a packed voxel store
+> ([`RENDER3D_MASTER_PLAN`](../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)). The "Voxel Render
+> Plane" section below describes the 2D `TileMapLayer` path that ships today, and it stays in
+> force until that plan's R3D-END.
 
 ---
 
@@ -80,45 +40,224 @@ Legacy design docs under `docs/systems/` and `docs/pipelines/` use a phase vocab
 
 ---
 
+## Voxel Render Plane
+
+**Status: The only wall/structure renderer.** · Spec: `docs/technical/BAKE_SYSTEM_REFERENCE.md`  
+**Last updated:** 2026-07-12
+
+> **The Subcube/WallContainer approach is gone, not "being replaced".** The
+> CONTAINER-01..04 series (`WallContainer` via `Image.blend_rect`) was removed. Its
+> persistent misalignment came from cascading empirical dependencies
+> (`FACE_CENTER_OFFSET`, `is_x_varying`, `+100/+2` layer offsets) that could not be
+> resolved without replacing the architecture. Voxel positions are now derived
+> analytically — there is no calibration constant left to tune.
+>
+> **Implementation progress (VOXEL series):**
+> - ✅ **VOXEL-01:** Fixed geometry (flat→3D cube), regenerated PNG tiles (4 materials)
+> - ✅ **VOXEL-02:** Coordinate constants + TileSet infrastructure; `_build_voxel_tileset()`, `_ensure_wall_levels()`
+> - ✅ **VOXEL-03:** Data classes (VoxelRef, WallSlice, HighWall) with comprehensive selftest (425 checks)
+> - ✅ **VOXEL-04:** Wall voxel placement via `set_cell()`; `_place_wall_voxels()`, `_voxel_slice_positions()`
+> - ✅ **VOXEL-05:** Junction detection + extra voxels; `_build_voxel_junction_extras()`, corner-fill logic
+> - ✅ **VOXEL-06:** VoxelRegistry centralized container index; `VoxelRegistry.new()`, lookup API
+> - ✅ **VOXEL-07:** Dirty flag + TIC loop; `_tic_voxel_system()`, per-voxel state updates
+> - ✅ **VOXEL-08..11:** shipped — baking (`BAKE_SYSTEM_REFERENCE.md`), destructibility (`DESTRUCTION_MASTER_PLAN.md`), CODEMAP integration. *(This line read ⏳ pending until 2026-09-15.)*
+
+The engine uses two coordinate planes. The **gameplay plane** (`CELL_SIZE 256×128`) is
+unchanged — guard AI, A\*, `blocked_*`, TicSystem, alarms, triggers, movement. The
+**voxel render plane** (`VOXEL_TILE_SIZE 32×16`, 8×8 voxels per GAME UNIT) handles all
+wall rendering via native `TileMapLayer.set_cell()` — no image compositing, no calibration.
+
+### Coordinate planes
+
+| Plane | `tile_size` | Resolution | Owner |
+|-------|------------|------------|-------|
+| **Gameplay** | 256×128 px | 1 GAME UNIT | Guards, A\*, TicSystem, blocked_edges — unchanged |
+| **Voxel render** | 32×16 px | 8×8 voxels per GAME UNIT | Wall rendering, containers, baking, TIC dirty |
+
+Conversions happen only at the seam (`map_compiler.gd`). Voxel coordinates are strictly
+downstream of that seam. The gameplay plane contract is invariant.
+
+### Voxel constants
+
+| Constant | Value | Derivation |
+|----------|-------|------------|
+| `VOXEL_TILE_SIZE` | `Vector2i(32, 16)` | GAME_UNIT tile_size / 8 per axis |
+| `VOXELS_PER_UNIT_AXIS` | `8` | Voxels per GAME UNIT axis (was 4 for subcubes) |
+| `VOXEL_STEP_PX` | `20.0` | Side face height = `1.25 × tile_h = 1.25 × 16` |
+| `VOXEL_STOREY_HEIGHT_PX` | `160.0` | `8 × 20` — **same as old subcube system** ✓ |
+
+### Wall placement
+
+Each wall edge between adjacent GAME UNITs generates **2 voxel slices** — one in each
+adjacent unit — placed via `set_cell()` on `_voxel_layers[level]`. VoxelLayer positions
+are analytically derived:
+
+```gdscript
+layer.z_index  = WALL_BASE_Z_INDEX + level
+layer.position = Vector2(VISUAL_GRID_OFFSET.x,
+						 VISUAL_GRID_OFFSET.y - VOXEL_STEP_PX * float(level))
+```
+
+No `FACE_CENTER_OFFSET`. No `is_x_varying`. No empirical offsets.
+
+### Container hierarchy
+
+```
+Edge            one wall between two GUs (EdgeRegistry, keyed through WallEdgeData)
+Slice           one face of an edge: 8 positions × 8 levels per storey, index = level*8 + position;
+				two per edge, indexed identically (D16)
+Slab            a horizontal plane at one level — FLOOR / CEILING / INTERIOR (SlabRegistry), 64 voxels per level
+JunctionColumn  the diagonal column that closes a wall elbow (JunctionResolver), one Voxel per level
+Voxel           per-voxel state: visible, dirty, damage_state (+ blast flag, carved side, variant, substrate)
+```
+
+*Corrected 2026-09-15.* This block used to show `WallSlice` / `HighWall` / `VoxelRef`, the
+VOXEL-03 design names. The shipped classes are the ones above, in `godot/scripts/geometry/`.
+`RENDER3D_MASTER_PLAN` R3D-1 replaces the `Voxel` objects (~1.5 KB each) with a packed store
+behind the same container API.
+
+### Junction rules
+
+- **V junction** (2 walls at vertex): +1 extra voxel column at the uncovered outer diagonal
+- **T junction** (3 walls): no extra — 3rd wall's outer slice covers the diagonal
+- **X junction** (4 walls): no extra — all 4 diagonals covered by outer slices
+
+### Baking System (Implemented — `BAKE_SYSTEM_REFERENCE.md` is the spec; the text below is the original VOXEL-08..09 plan)
+
+Load-time pipeline: per-voxel Crop + Multiply blend applied from a `TextureCatalog` texture
+keyed on `(map_id, theme, player_level)`. Supports **primary baking** (per `WallSlice`) and
+**secondary baking** (per `HighWall`, single large texture spanning all constituent voxels).
+Result stored as `VoxelRef.face_atlas_rect`; rendering path unchanged between primary/secondary.
+
+### Dirty Flag + TIC (Implemented — VOXEL-07, `room._tic_voxel_system()`)
+
+Per-voxel `dirty: bool`. State changes propagate `dirty_count` upward through the hierarchy.
+TIC loop skips containers with `dirty_count == 0` — O(container_count) cost at idle. Runtime
+destructibility: `ref.visible = false` + `ref.dirty = true` → next TIC calls `erase_cell()`.
+
+### Implementation sequence (historical — every step shipped)
+
+```
+✅ VOXEL-00 (docs)  → VOXEL-01 (generate_voxel.py)  → VOXEL-02 (TileSet + constants)
+✅ VOXEL-03 (data classes)  → VOXEL-04 (_place_wall_voxels)  → ⏳ VOXEL-05 (junction extras)
+⏳ VOXEL-06 (VoxelRegistry)  → VOXEL-07 (dirty + TIC)
+⏳ VOXEL-08 (baking primary)  → VOXEL-09 (baking secondary)
+⏳ VOXEL-10 (destructibility)  → VOXEL-11 (CODEMAP update)
+```
+
+### Files modified / created (VOXEL series) — historical
+
+⚠️ `world/voxel_ref.gd`, `world/wall_slice.gd` and `world/high_wall.gd` do not exist (checked 2026-09-15); the Appendix has the real files.
+
+| File | Phase | Change | Status |
+|------|-------|--------|--------|
+| `tools/generate_voxel.py` | VOXEL-01 | Regenerated PNG tiles with correct 3D cube geometry (top + left/right faces) | ✅ Complete |
+| `godot/scripts/geometry/geometry_coords.gd` | VOXEL-02 | Added voxel coordinate functions: `gu_to_voxel_origin()`, `voxel_to_gu()`, `voxel_local()`, `gu_voxels()` | ✅ Complete |
+| `godot/scripts/world/room.gd` | VOXEL-02, -04 | Added voxel infrastructure: `_build_voxel_tileset()`, `_ensure_wall_levels()`, `_place_wall_voxels()`, `_voxel_slice_positions()` | ✅ Complete |
+| `godot/scripts/world/voxel_ref.gd` | VOXEL-03 | Created data class for individual voxel state (visible, dirty, damage_state, face_atlas_rect) | ✅ Complete |
+| `godot/scripts/world/wall_slice.gd` | VOXEL-03 | Created primary container (8 voxels × N storeys per wall edge) | ✅ Complete |
+| `godot/scripts/world/high_wall.gd` | VOXEL-03 | Created secondary container (group of WallSlices + junction extras) | ✅ Complete |
+| `godot/scripts/tools/voxel_selftest.gd` | VOXEL-03 | Created headless selftest validating all data classes + coordinate API (425 checks) | ✅ Complete |
+
+### Archived (do not recreate)
+
+`wall_container.gd` · `FACE_CENTER_OFFSET` · `SUBCUBE_FACE_OFFSETS` · `SUBCUBE_BASE_ORIGIN`
+· `is_x_varying` logic · `blend_rect` / `Sprite2D` for walls · `CONTAINER-01..04` prompts
+
 ---
 
 ## 1. Runtime Architecture
 
-**Status: Implemented** (rewritten 2026-09-30)
+**Status: Implemented**
 
-The scene root is `room.gd` (`Node2D`, instantiated from `room.tscn`): the level container and the orchestration hub. It is still large (§15.1) and every controller is a slice of its former self.
+INFILTRAITOR is a single-scene tactical prototype. The scene root is `room.gd` (`Node2D`), instantiated from `room.tscn`. It is both the level container and the orchestration hub.
+
+### Boot sequence (`room.gd::_ready`)
+
+1. Load the shared `TileSet`, assign it to every `TileMapLayer`, and set per-layer `z_index`.
+2. Generate the macro level: `LevelGraph.generate(level_seed)` → `MapCatalog.get_spec(map_id, …)` resolves the active map to a `MapSpec` (authored in inner/segment coords) → `MapCompiler.compile(spec, …)` applies the buffer offset and produces the base layout dictionary (size, floor/wall/structure tiles, blocked cells, blocked edges, enemy defs, exits). See **Map pipeline** below.
+3. Apply the active perspective (`_layout_with_perspective`) and build the tilemaps (`_build_room`).
+4. Instantiate the seven controllers as children of `room`, in dependency order:
+   `LightingController` → `VisionController` → `HudController` → `CameraController` → `FowController` → `GuardCoordinator` → `TurnController`.
+5. Wire signals (HUD → room handlers; `LightingController.lighting_rebuilt` → `VisionController.request_redraw`; turn manager → room; agent → room).
+6. Set up the remaining overlays created directly by room (trail, noise, tile overlays, guard-noise indicator, hover label).
+7. Spawn guards, initialize fog, center the camera, start the player turn.
+
+### Map pipeline (`world/maps/`)
+
+`room.gd` is a **renderer**: it consumes a `layout` dictionary and paints tilemaps, with
+no knowledge of how the map was produced. Permanent (hand-authored) maps and the future
+procedural generator share one vocabulary (`MapSpec`) and one compiler.
+
+```
+@export map_id ──► MapCatalog.get_spec(map_id, {connections, segment_grid_pos, seed})
+                        PLAYGROUND → PlaygroundMap.spec()
+                        SIGMA_01   → Sigma01Map.spec()
+                        PROCEDURAL → ProceduralMap.generate(seed)   (stub)
+                              │  MapSpec (inner/segment coords)
+                              ▼
+                   MapCompiler.compile(spec, context)   ◄ sole owner of the buffer offset
+                              │  layout dict (raw/grid coords) — unchanged contract
+                              ▼
+                   room.gd _build_room / _cache_blocked_cells   (renderer, untouched)
+```
+
+- **`MapGeometry`** — pure, coordinate-agnostic primitives (`build_room`, `place_inner_room`,
+  wall/door tile picking, wall blocked-edges). The single source of wall logic.
+- **`MapCompiler`** — translates a `MapSpec` (authored in the 18×36 inner/segment space, same
+  as `LevelGraph`) into the render-ready layout dict, applying the buffer offset in one place.
+  Specs that set `access_from_graph` pull their doors from `LevelGraph` connections; otherwise
+  they declare explicit `access_points`.
+- **`MapCatalog`** — resolves `map_id` → `MapSpec`; unknown ids fall back to `PLAYGROUND`.
+- **`definitions/*_map.gd`** — one `static func spec()` per permanent map. `PLAYGROUND` is the
+  reference artwork mockup; `SIGMA_01` is the migrated test map; `ProceduralMap` is a stub.
+- Note: outer walls block movement via `blocked_edges` only — they are **not** added to
+  `blocked_cells` (interior bounded by edges). To add a map: author a definition + one
+  `MapCatalog` branch. Map selection is the exported `map_id` on the Room node.
+- **Wall storeys (N-floor):** `MapSpec.wall_height` (storeys for the outer perimeter; default 1)
+  makes `MapCompiler` emit `wall_levels: Array[Array]` — `[0]` is the ground course (doors +
+  dividers), `[k≥1]` the solid perimeter ring (no door gaps) so doorways stay normal-height with
+  wall above. `room._build_room` currently renders level 0 on `StructureWallLayer` (z=10) and each
+  higher level on a runtime `TileMapLayer` offset up by `WALL_FLOOR_STEP_PX` (=158px). **VOXEL-04
+  replaces this path:** `StructureWallLayer` is removed; all wall levels are rendered by
+  `_place_wall_voxels()` across `_voxel_layers[0..8N-1]` at `VOXEL_STEP_PX=20` per voxel level.
+  The `wall_levels` contract from `MapCompiler` is unchanged — only the renderer changes.
+  `MapSpec.lights` feed the lighting system (§8). `@export wall_height_override` forces height.
 
 ### Node topology (as built)
 
 ```
-Room (room.gd, Node2D)                 orchestrator
-├── Board3DLive (Node3D, built by code after every map load)   THE board: Camera3D (orthographic, 30/45), chunk meshes, glass, decals, prop meshes, VFX fields, actor billboards, ground overlays
-│     (`_start_board3d_live()`; a map reload removes and rebuilds it; `board3d()` answers with the live one)
-├── VoxelBoard (VoxelBoard, Node2D, hidden)   NOT a renderer: the level registry, the cell planes' application, the dirty -> `voxel_destroyed` pass, glass crack/rim/shard records, prop containers
-├── Camera2D · TurnManager · EnemyPhaseController
-├── Agent (DebugAgent) · Enemies (GuardEnemy*, spawned at runtime)       baked-frame actors, mirrored into 3D by ActorBillboard3D
-├── MovementOverlay · PathPreview · SelectionOverlay · TileLabelsOverlay · FogOfWarOverlay · VisionFogOverlay(FogRect)
-├── StructureLayer (TileMapLayer, hidden while the 3D board is live: the one tile layer that survives, for the prop tiles and the TileSet `GroundGrid` was measured from)
-├── HUD (hud.tscn)        reached ONLY through `HudController` (rule 11)
+Room (room.gd, Node2D)              ← orchestrator + God Object (§15)
+├── FloorLayer / Structure* / Shadow* (TileMapLayer)   ← floor, props, shadows
+│   └── [StructureWallLayer removed in VOXEL-04 — replaced by VoxelLayer[]]
+├── VoxelLayer[0..8N-1]  (TileMapLayer × 8 per storey)  ← voxel wall rendering (PLANNED — VOXEL-04)
+│     z_index = WALL_BASE_Z_INDEX + k
+│     position.y = VISUAL_GRID_OFFSET.y − VOXEL_STEP_PX × k
+├── TurnManager            (TacticalTurnManager)   — scene node
+├── EnemyPhaseController   (EnemyPhaseController)   — scene node
+├── Agent                 (DebugAgent)
+├── Enemies               (Node2D)  → GuardEnemy*  (spawned at runtime)
+├── MovementOverlay / PathPreview / SelectionOverlay / TileLabelsOverlay
+├── FogOfWarOverlay / VisionFogOverlay(FogRect)
+├── Camera2D
+├── HUD (buttons, labels, banners)
 │
-│   controllers added in code: LightingController · VisionController · HudController · CameraController · FowController · GuardCoordinator · TurnController
-│   world/controllers: InputController · SelectionController · AgentShotController · TestZoneController (grenades, props) · WeaponBenchController · DebugToolsController · WorldMarkersOverlayController
+│   ── Controllers (added in code, not in .tscn) ──
+├── LightingController     → LightRegistry, ShadowProjector, ExposureSystem
+├── VisionController       → 7 debug/analysis overlays
+├── HudController
+├── CameraController
+├── FowController
+└── GuardCoordinator
 ```
 
-### The load pipeline (`room.load_map(map_id)`)
-1. `MapCatalog.get_spec(map_id, ...)`: `maps/<id>.map.json` through `FileMapSource` / `MapFileService` first (res:// then user://), the code definitions (`world/maps/definitions/*_map.gd`) as fallback. `MapCompiler.compile()` applies the buffer offset (rule 7) and produces the **base layout** (`_base_layout`).
-2. `RoomBuilder.layout_with_perspective(base, _active_perspective)` rotates it (`PerspectiveMapper`); `build_from_layout()` builds the registries (edges/slices, slabs, junction columns, prop containers and mesh props from the `props` section via `PropRegistry`).
-3. `_rebuild_voxel_store()` builds the `VoxelStore` and starts `WalkWarmer`; the base records (`_base_damage`, `_soot_map`, ...) are cleared for a fresh map.
-4. `_start_board3d_live()` builds the 3D board from the store and the registries; overlays, agent, guards, fog and the lighting controller are set up; the turn starts.
-5. A rotation (`_set_perspective`) does steps 2-4 again and **replays the base records** (R3D-ROT retires this).
-
 ### Control-flow model
-- **Input:** `InputController` turns mapped actions into signals `room` handles; `CameraController` gets first refusal on pointer events; a tile click is a GU pick (`Board3DLive.pick_cell()`: a ray against the ground plane plus each prop's box; walls are not asked, their cut-away is what lets the player click past them).
-- **Per frame:** `room._process` advances temporal lights; `Board3DLive._process` re-aims its orthographic camera at `Camera2D`'s screen centre (the 2D camera is the one the player moves) and finishes a background remesh (`WorkerThreadPool`) when one is done; VFX fields advance; the prediction cook spends its time budget (`DetonationPrediction.step(budget)`).
-- **Turn loop:** the player spends AP to move, shoot or throw; `end_turn()` -> `TurnManager.enemy_phase_started` -> `TurnController` drives `EnemyPhaseController` over each guard (sequential, deterministic) -> control returns.
-- **A detonation:** throw -> (a cook may already be running from the aim preview) -> `DetonationPlanBuilder` delta -> `delta.commit(room)` (one write) -> `DetonationPresenter` effects -> prop consequences (`Room.apply_prop_proximity_effects`, `apply_prop_debris_fall`) -> soot stamped in timed steps -> light re-applied to the touched GUs -> `bump_world_revision()`.
 
----
+- **Input:** `room._input` gives the `CameraController` first refusal (`handle_input` returns `true` when it consumes the event); otherwise room handles keyboard gameplay and hover. `room._unhandled_input` handles tile clicks / right-click move.
+- **Per-frame:** `room._process` advances temporal lights, updates the vision-fog shader, and refreshes enemy visibility while guards animate.
+- **Turn loop:** player spends AP to move → optionally ends turn → `TurnManager` emits `enemy_phase_started` → `TurnController._on_enemy_phase_started()` drives `EnemyPhaseController` over each guard via `_run_enemy_phase()` → `finish_enemy_phase` returns control.
+
+Data flow is **mostly** unidirectional for lighting (Light → Shadow → Exposure → overlays), but **not** for gameplay: controllers read and mutate room state directly (see §13).
 
 ### Interactive-object hit-testing — GU cell, not sprite *(Director, 2026-07-30)*
 
@@ -266,7 +405,7 @@ Seven controllers were extracted from `room.gd` (the `MODULARIZE-01..06` series,
 ### 2.7 TurnController — `world/controllers/turn_controller.gd`
 
 - **Responsibilities:** orchestrates turn phases, enemy AI execution, detection/alert system. Centralizes alert meter accumulation (Rule 5), detection decay, camera focus during enemy phase, and noise processing. Extracted in **ENHANCE-08**.
-- **Dependencies:** `turn_manager`, `enemy_phase_controller`, `agent`, `camera`, `_fow_controller`, `_hud_controller`, `_vision_controller`, `_guard_coordinator`, `_noise_system`, `_noise_overlay`. Operates on `_guards`, `_blocked_cells`, `_current_blocked_edges`, `_room_size`.
+- **Dependencies:** `turn_manager`, `enemy_phase_controller`, `agent`, `camera`, `floor_layer`, `_fow_controller`, `_hud_controller`, `_vision_controller`, `_guard_coordinator`, `_noise_system`, `_noise_overlay`. Operates on `_guards`, `_blocked_cells`, `_current_blocked_edges`, `_room_size`.
 - **Events/signals:** receives `turn_manager.player_turn_started` and `turn_manager.enemy_phase_started`; routes `_hud_controller.end_turn_requested`. Exposes callable references for TIC callbacks (`_apply_tic_result` function).
 - **Key invariant:** **Only `_apply_tic_result()` accumulates `_alert_meter`** — all detection thresholds (CHASE/ALERT/SUSPICIOUS) trigger alert accumulation in one place, preventing duplicate logic.
 - **Room integration:** moderate. Receives game state via `set_game_state()` after map loads or perspective changes. Most turn-phase functions are now delegated to it; room holds thin wrappers for backward compatibility.
@@ -463,7 +602,7 @@ Two groups. **Analysis overlays** are owned by `VisionController` and gated by v
 | `TileRiskOverlay` | `overlays/tile_risk_overlay.gd` | HEAT | detection-risk heatmap |
 | `EliteExposureOverlay` | `overlays/elite_exposure_overlay.gd` | HEAT | shadow depth, confidence, stability |
 
-`EliteExposureOverlay` is the **only** consumer of stability/confidence (§6). The HEAT / LIGHT overlays are 2D nodes drawn over the 3D board; their z-order is set in `room.gd` (`_apply_overhead_overlay_z`). (`FloorLayer` was deleted at R3D-END.)
+`EliteExposureOverlay` is the **only** consumer of stability/confidence (§6). HEAT overlays are inserted just above `FloorLayer`; LIGHT overlays render above structures.
 
 ### Gameplay / utility overlays (room)
 
@@ -477,7 +616,7 @@ Two groups. **Analysis overlays** are owned by `VisionController` and gated by v
 
 - **Interaction:** left-drag pan with an 8px drag threshold, mouse-wheel zoom (`ZOOM_MIN 0.20 … ZOOM_MAX 1.20`, step 0.06), two-finger pinch-zoom.
 - **Leash:** agent-centered hard radius `CAMERA_MAX_BORDER_TILES = 4` tiles with a 2-tile quadratic soft-zone ease-out; fully released in `dev_vision`.
-- **Perspective:** four cardinal views (N/E/S/W). Switching re-lays-out the room (still the case on 2026-09-30: the ruling is camera-only rotation, built at R3D-ROT): `_layout_with_perspective` rotates every cell/edge/route — `wall_levels` (all storeys), `structure_tiles`, `blocked_cells/edges`, `enemy_defs`, **`exit_cells`, and `light_sources`** — and remaps tile-name suffixes via `_PERSPECTIVE_SUFFIX_MAP`. `_set_perspective` then rebuilds tilemaps, re-spawns guards, re-derives blocked sets, re-initializes fog, re-centers, **redraws the tile-number overlay, calls `LightingController.rebuild_all()` (lights/semantics/shadows/exposure follow the rotation, refreshing the analysis overlays via `lighting_rebuilt`), and clears the now-stale dev trail.** Agent/selection cells are round-tripped through a base-coordinate transform (`_cell_to_base` / `_cell_from_base`) so positions survive the rotation. Principle: every per-cell system is re-derived from the rotated layout, exactly as initial `_ready` setup does.
+- **Perspective:** four cardinal views (N/E/S/W). Switching re-lays-out the room: `_layout_with_perspective` rotates every cell/edge/route — `wall_levels` (all storeys), `structure_tiles`, `blocked_cells/edges`, `enemy_defs`, **`exit_cells`, and `light_sources`** — and remaps tile-name suffixes via `_PERSPECTIVE_SUFFIX_MAP`. `_set_perspective` then rebuilds tilemaps, re-spawns guards, re-derives blocked sets, re-initializes fog, re-centers, **redraws the tile-number overlay, calls `LightingController.rebuild_all()` (lights/semantics/shadows/exposure follow the rotation, refreshing the analysis overlays via `lighting_rebuilt`), and clears the now-stale dev trail.** Agent/selection cells are round-tripped through a base-coordinate transform (`_cell_to_base` / `_cell_from_base`) so positions survive the rotation. Principle: every per-cell system is re-derived from the rotated layout, exactly as initial `_ready` setup does.
 - **Isometric picking:** `_screen_to_tile` does a 3×3 diamond-center search to resolve the clicked tile across all four diamond quadrants.
 
 ---
@@ -505,59 +644,72 @@ All coordination operates directly on `room._guards`; the coordinator stores no 
 
 ---
 
----
-
 ## 15. Current Technical Debt
 
-This section is descriptive, not aspirational. These are real properties of the code on 2026-09-30.
+This section is descriptive, not aspirational. These are real properties of the code today.
 
-### 15.1 `room.gd` is a residual God Object (11 169 lines)
-Despite `MODULARIZE-01..06`, `room.gd` still owns: input routing, turn handlers, agent move callbacks, tic application and alert metering, busted/reset flows, the perspective re-layout and every base-record replay, the picking glue, the dev capture/scenario/benchmark entry points, the prop consequence code, and the reads of 38+ distinct dev flags (`_dev_flag("NAME")`). It grew (11 909 lines on 2026-09-15, 11 169 now after R3D-END's deletions) because each track added its seam here. **R3D-ROT deletes the replay half; the dev entry points are the next extraction** (they are not game logic).
+### 15.1 `room.gd` is a residual God Object (11 909 lines on 2026-09-15 — ~2,380 when this section was written)
 
-### 15.2 Other oversized files
-`DetonationPlanBuilder` 3 057 lines (one cook, 14 phases: cohesive but huge), `TestZoneController` 1 611 (it became the grenade and prop controller, the name is the placeholder it started as), `guard_enemy.gd` 1 312 (FSM + movement + detection + three `_draw` routines), `VoxelBoard` 2 404 (state, planes, glass records, prop containers), `Board3DLive` (the whole 3D board in one node).
+Despite the `MODULARIZE-01..06` extractions, `room.gd` still owns: input routing, turn handlers, agent move callbacks, tic application and escalation thresholds, audio detection, alert metering, busted/reset flows, perspective rotation math, isometric picking, guard spawning, LOS data fan-out, navigation blocked-cell assembly, temporal-light pumping, and most overlay creation. The controllers orbit it rather than replacing it.
 
-### 15.3 Controller <-> room coupling
-Controllers hold `_room` back-references and read/write room's underscore members (`VisionController` reaches `_room._lighting_controller._shadow_projector`; `AgentShotController` calls `room._on_voxel_destroyed` and `room._release_destroyed_prop_cells`). They are extracted *responsibilities*, not yet *boundaries*. The one boundary that IS enforced is the HUD (rule 11, hook L3).
+### 15.2 `guard_enemy.gd` is oversized (1 302 lines on 2026-09-15)
+
+A single class mixes: FSM logic, A* movement + caching, detection math, attention, organic patrol, active search, comms emission, audio reaction, and three separate `_draw` routines (body, cone tiles, smooth cone, dev HUD). The detection/geometry core and the rendering/visual-interpolation concerns are strong candidates for separation.
+
+### 15.3 Controller ↔ room coupling
+
+Controllers are **not** isolated modules. They hold `_room` back-references and read/write room's underscore-prefixed members directly:
+- `VisionController` mutates `_room._tile_game`, `_room._trail_overlay`, `_room._fog_rect`, and reaches `_room._lighting_controller._shadow_projector` (two-level reach-through).
+- `GuardCoordinator` operates entirely on `_room._guards` / `_room._alert_meter` and is invoked from room's tic code.
+- `CameraController` depends on `room.agent` and delegates perspective back to room.
+Encapsulation is partial; these are extracted *responsibilities*, not yet *boundaries*.
 
 ### 15.4 Computed-but-unused lighting/exposure pipeline
-`ShadowProjector -> ExposureSystem` produces a graduated, stability-aware tactical map every build, but detection never consumes it (`TicSystem.evaluate`'s `exposure_system` argument is always null); the one consumer is `EliteExposureOverlay`.
 
-### 15.5 State that is not yet consistent across a rotation
-Until R3D-ROT, every mission consequence needs a base record + a replay (`_base_damage`, `_base_shattered_props`, `_base_debris`, ...); one soot round-trip diff is open on PLAYGROUND (2-4 texels at cell (216,24), bisected to `6d21893d`). A prop's blocked GU is erased in place (`_release_destroyed_prop_cells`) but the lamps' cached shadow map is not re-fed (same gap as a burnt wall).
+The most significant integration gap: ShadowProjector → ExposureSystem produces a full, graduated, stability-aware tactical map every build, but **detection never consumes it** (the `exposure_system` arg to `TicSystem.evaluate` is always `null`), and the legacy `_shadow_tiles` modifier is a dead path (declared, never populated). The lighting stack currently drives **only visualization**. Wiring `ExposureSystem.get_detection_multiplier` into the tic callers is the single highest-leverage integration task.
 
-### 15.6 Hardcoded / inferred data
-Tile semantics and heights are inferred from `blocked_cells`; lights are map-driven (omni only) without authoring tooling; `TestZoneController` still seeds dev grenades; material rows are calibrated by eye with the Director, not derived.
+### 15.5 Hardcoded / inferred data
 
-### 15.7 Documentation debt
-`docs/systems/*.md` (ai, lighting, movement, noise, perception, rendering, stealth), `docs/technical/{ASSET_MAP,TEXTURE_CATALOG,repo_structure,developer_setup}.md` and §2-§14 above pre-date R3D and were reconciled to the code only as far as their banners say.
+- Lights: now map-driven from `MapSpec.lights` (the hardcoded test lights are retired), but omni-only and no serialization/anchor-authoring tooling yet.
+- Tile semantics / heights: inferred from `blocked_cells`, not authored.
+- No authoring tooling exists for semantics/heights, despite the `LIGHT-03` spec.
+
+### 15.6 Pending modularization targets
+
+- Extract a `DetectionController` / tic pipeline out of `room.gd` and wire exposure into it.
+- Split `guard_enemy.gd` into FSM + movement + rendering.
+- Give controllers real interfaces (pass data in, emit results out) instead of `_room` reach-through.
+- Replace direct `_room._lighting_controller._shadow_projector` access with an accessor.
 
 ---
 
 ## 16. System Status Matrix
 
-| System | Status | Notes |
-|---|---|---|
-| Runtime / scene orchestration | Implemented | `room.gd` hub (§15.1) |
-| **3D board (`Board3DLive`) + `VoxelStore`** | **Implemented** | the only board since R3D-END (2026-09-25); both budget handsets hold 30 fps idle |
-| Voxel geometry (slices, slabs, junction columns, prop blocks) | Implemented | `VOXEL_MASTER_PLAN`; 8 voxels per GU axis, 8 levels per storey |
-| Destruction (blast, firearm, fire, charred tone) | Implemented | `DESTRUCTION_MASTER_PLAN` (closed) + R3D-PROPS; tiers DEST/DENT/CRACK; one-layer ladder for props |
-| Prediction (simulate -> `WorldDelta` -> commit) | Implemented | `systems/prediction/` (cache, reaper, warmer) |
-| Glass (physics, shatter, crack, shards, panes) | Implemented | `GLASS_MASTER_PLAN` |
-| Light (voxel buckets, cell planes) | Implemented | `VoxelLightField`; real 3D lamps rejected (+24 ms GPU on the Moto) |
-| Props Tier 1/2 (hollow voxel crates), Tier 3/4 (real CC0 models) | Implemented | R3D-PROPS; Tier 4 fragment replacement, pile, shadows: planned (`PROPS_TIER4_PLAN`) |
-| Drop-in model pipeline (`.iprop`, slots, `.vox`) | Planned | `PROP_PIPELINE_PLAN` |
-| Actors (agent, guards) | Partial | baked 2D frames mirrored as billboards; live rigs at R3D-ACTORS (D64) |
-| Rotation | Partial | four views by full re-layout + base-record replay; camera-only is R3D-ROT |
-| Guard AI (FSM), detection (visual/audio), noise | Implemented | `docs/systems/AI_MASTER_PLAN.md` |
-| Detection <-> exposure link | Partial | §15.4 |
-| Shadow / exposure / height semantics | Partial | overlay-only consumers; data inferred |
-| Fog of war, tactical overlays, camera, turns, coordination | Implemented | 2D on top of the 3D board |
-| Map files (`.map.json`), two-tier maps | Implemented | `MAPFILE_REFERENCE.md` |
-| Save (`SaveState`) | Partial | the plumbing; no slots/UI (`save model is checkpoint-scoped`) |
-| Device harness (APK, `DevFlags`, `Telemetry`, scenarios, video) | Implemented | `DEVICE_DIAGNOSTICS_MASTER_PLAN` |
-| Verification (`verify.py` tiers, selftests, identity gates) | Implemented | one known red in `full`: PLAYGROUND rotation soot (§15.5) |
-| Light/semantic authoring & serialization | Planned | specced (LIGHT-03), no runtime code path |
+| System | Status | Maturity | Notes |
+|---|---|---|---|
+| Runtime / scene orchestration | Implemented | Functional | room.gd hub; boot sequence stable, but God Object (§15.1) |
+| Controller architecture | Implemented | Functional | 6 controllers extracted; coupling to room remains (§15.3) |
+| Guard AI (FSM) | Implemented | Functional | 5 states, monotonic escalation, search + patrol behaviors |
+| Detection — visual | Implemented | Functional | tic-based; cone + LOS + posture + cover + flanking |
+| Detection — audio | Implemented | Functional | distance + wall attenuation, hearing radius 2 |
+| Detection — exposure link | Partial | Experimental | `exposure_system` arg never passed; `_shadow_tiles` dead |
+| Noise system | Implemented | Functional | grid intensity, decay, agent + guard emission |
+| Exposure system | Partial | Functional | 6 classes + stability + confidence computed; overlay-only consumer |
+| Shadow projection | Implemented | Functional | LOS, height-aware, penumbra/deep passes; not wired to gameplay |
+| Lighting (runtime) | Partial | Functional | temporal effects live; lights map-driven (omni), no authoring yet |
+| Height semantics | Partial | Experimental | model exists; data inferred from blocked_cells |
+| Fog of war | Implemented | Functional | persistent reveal + live vision-fog shader + peek |
+| Tactical overlays | Implemented | Functional | 7 analysis + several gameplay/util overlays |
+| Camera & perspective | Implemented | Functional | leash, zoom/pinch, 4-way perspective re-layout |
+| Turn system | Implemented | Functional | AP economy, deterministic sequential enemy phase |
+| Guard coordination | Implemented | Functional | whistle / radio / alarm / noise routing |
+| **Voxel Render Plane** | **Implemented** | Functional | Shipped; it is what every wall, roof and floor renders through today. This row read "Planned" until 2026-08-03, contradicting this document's own opening section. Spec: `VOXEL_MASTER_PLAN.md` |
+| Destruction (tiers, blasts, firearm impacts) | Implemented | Functional | `DESTRUCTION_MASTER_PLAN` (closed), `systems/destruction/` — *row added 2026-09-15* |
+| Prediction (simulate → `WorldDelta` → commit) | Implemented | Functional | `PREDICTION_MASTER_PLAN`, `systems/prediction/` |
+| Glass (physics, shatter, crack, shards) | Implemented | Functional | `GLASS_MASTER_PLAN` |
+| Device harness (`DevFlags`, `Telemetry`, `ScenarioRunner`) | Implemented | Functional | `DEVICE_DIAGNOSTICS_MASTER_PLAN` |
+| 3D board (`RENDER3D=1`) | Partial | Experimental | a prototype drawn under the 2D game (`spikes/board3d_live.gd`); the production migration is `RENDER3D_MASTER_PLAN` |
+| Light/semantic authoring & serialization | Planned | — | specced (LIGHT-03), no runtime code path |
 
 ---
 
@@ -593,26 +745,48 @@ Additional storeys do not participate in simulation. Instead, they are used to r
 
 This separation allows environments to appear vertically complex while preserving a strictly two-dimensional gameplay model.
 
-> *The "Vertical Rendering and Parallax" note that used to follow (per-layer parallax factors for upper storeys, backgrounds) described the 2D layered board. It was never built and the 3D orthographic camera makes it moot; it is preserved in the history copy.*
+## Vertical Rendering and Parallax
+
+Visual storeys may move independently relative to the camera through small per-layer parallax factors.
+
+This effect is intentionally subtle and is used only to reinforce depth perception.
+
+Typical usage includes:
+
+- Upper architectural levels moving slightly slower.
+- Underground layers moving slightly faster.
+- Atmospheric effects such as smoke or fog.
+- Large background structures.
+
+Future background rendering (sky, mountains, industrial skylines, distant cities, etc.) follows the same principle and should be implemented as additional render-only layers with independent parallax factors.
+
+This architecture deliberately separates **visual depth** from **gameplay depth**, allowing large vertical environments to be rendered without introducing additional navigation, AI or physics layers.
 
 ---
 
-## Appendix: Where things live
+## Appendix: File Map
 
-`godot/scripts/` (full API: [`CODEMAP.md`](../tools/persistent/CODEMAP.md), generated):
-
-| Folder | Holds |
+| Concern | File |
 |---|---|
-| `world/` | `room.gd` (hub), `world/builders/room_builder.gd`, `world/controllers/*`, `world/maps/` (catalog, compiler, file maps, persistence), `world/utilities/` (iso projection, perspective mapper), `wall_edge_data.gd` (the only source of edge keys) |
-| `geometry/` | voxel geometry classes (`slice`, `slab`, `edge`, registries, generators, `junction_resolver`, `prop_block`, `mesh_prop_instance`), `voxel_board.gd`, **`board3d_live.gd`**, `board_look.gd`, `ground_grid.gd`, 3D fields (`circle_field3d`, `quad_field3d`, `shard_field3d`), `floor_pile3d`, `prop_mesh3d`, `actor_billboard3d`, glass helpers, `pick_math` |
-| `systems/` | `voxel_store`, `cell_plane_store`, registries and their autoload, `save_state`, dev harness, `tic_system`, turn manager, noise, `occlusion_set`, material/texture resolvers |
-| `systems/destruction/` | `blast_calculator`, `detonation_plan_builder`, `detonation_presenter`, weapon/bomb defs and registries, shot tables, glass shatter/crack, `material_resistance_table` |
-| `systems/prediction/` | `world_delta`, `detonation_prediction`, `prediction_cache`, `prediction_reaper`, `walk_warmer` |
-| `systems/lighting/` | `voxel_light_field`, `light_registry`, `shadow_projector`, `exposure_system`, `light_source` |
-| `agents/`, `navigation/`, `controllers/` | actors and guard AI, pathfinding and movement overlays, the extracted room controllers (incl. `hud_controller`) |
-| `overlays/`, `ui/` | 2D overlays and VFX, HUD panels, fog of war, menus |
-| `tools/` | selftests (`*_selftest.gd`), fixtures, dev-only spikes and bake helpers; `spikes/` holds R3D-era experiments |
-
-Outside `godot/`: `maps/` (`*.map.json`), `props/`, `bombs/`, `weapons/` (data rows), `ASSETS/` (local only: materials, art, audio), `tools/persistent/` (verification and device tooling), `docs/`, `PROMPTS/` (plans and session records).
+| Orchestrator | `world/room.gd` |
+| Controllers | `controllers/{vision,hud,lighting,camera,fow}_controller.gd`, `controllers/guard_coordinator.gd`, `world/controllers/turn_controller.gd` |
+| Guard AI | `agents/guard_enemy.gd`, `agents/guard_attention.gd` |
+| Agent | `agents/agent.gd` |
+| Detection | `systems/tic_system.gd` |
+| Turns | `systems/turn_manager.gd`, `systems/enemy_phase_controller.gd` |
+| Noise | `systems/noise_system.gd` |
+| Lighting core | `systems/lighting/{light_source,light_registry,shadow_projector,shadow_result,exposure_system,light_anchor}.gd` |
+| World semantics | `world/{tile_semantics,wall_edge_data,tile_registry,level_graph}.gd` |
+| Map pipeline | `world/maps/{map_geometry,map_compiler,map_catalog}.gd`, `world/maps/definitions/{playground,sigma_01,procedural}_map.gd` |
+| Navigation | `navigation/{guard_pathfinder,movement_overlay,path_preview}.gd` |
+| Overlays | `overlays/*.gd`, `ui/fog_of_war_overlay.gd` |
+| **Voxel system** — *rows corrected 2026-09-15; the files this table named never shipped under those names* | |
+| Voxel data classes | `geometry/{voxel,slice,slab,edge}.gd`, `geometry/junction_resolver.gd` (`JunctionColumn`) |
+| Registries & generators | `geometry/{edge_registry,slab_registry,slice_generator,slab_generator}.gd` |
+| Voxel renderer (the 2D board) | `geometry/voxel_board.gd` (7 886 lines) |
+| Baking system | `systems/{bake_config,bake_compositor,baked_tile_lookup,texture_resolver,facade_sampler,damage_variant_baker}.gd` |
+| Destruction & prediction | `systems/destruction/`, `systems/prediction/` |
+| 3D board prototype | `spikes/board3d_live.gd` |
+| Archived | `world/_archive/wall_container.gd` |
 
 > Legacy specification docs (`docs/systems/*`, `docs/pipelines/*`) describe intended design and use phase tags (`L-IMP/L-ARCH/M2`). Treat them as design intent; treat **this document and the code** as the description of current behavior.

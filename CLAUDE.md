@@ -179,6 +179,11 @@ still undecided. Nothing below changed except that the folder is empty:
   being used to judge.
 - When a capture exists for a claim, point at the actual file instead of
   describing what the code should produce.
+- **Show every capture in the conversation (Director, 2026-09-30).** Whenever a
+  screenshot, filmstrip or video is taken, render it to the Director in the chat
+  (`SendUserFile` with `display: "render"`, one-line caption saying what to look
+  at) instead of only citing its path. For a batch of near-identical frames send
+  the relevant ones or the contact sheet, not every file.
 - **A pixel-diff gate has to be EARNED before it means anything.** Prove the
   harness is deterministic first, by diffing two runs of the *same* code — a
   0-pixel claim from a non-deterministic capture is noise wearing a number.

@@ -13,7 +13,7 @@ Everything below was asked for, in this order, by looking at real captures (the 
 - `WOOD1-3` were already installed (`decal_debris_wood_*`, byte-identical). `PLYWOOD1-3` arrived COLOURED; the rule (`ART_SPECIFICATIONS` §7c) is grayscale + engine tint, so they were
   converted (luminance, matched to WOOD's mean) into `ASSETS/materials/_generic/decals/decal_debris_plywood_0..2.png`. The source files are untouched.
   A new PNG in a folder Godot has not scanned has NO `.import` and fails with "No loader found" — run `godot --headless --path . --import`.
-- `props/crate_plywood.json`; `maps/PROPS.map.json` is now 18x12, turned 180 degrees (the default view faces the props); the test grenade goes on GU **(11,6)**.
+- `props/crate_plywood.json`; `maps/PROPS.map.json` is now 18x12, turned 180 degrees (the default view faces the props); the test grenade goes on GU **(11,6) in MAP coordinates**; `INFILTRAITOR_GRENADE_GUS` takes VIEW coordinates (map + the 1-cell buffer), so the harness value is `12,7`.
 
 ### 2. Rotation was rebuilding the crates (found by rotating after the blast)
 `Room._set_perspective()` still re-lays the whole map out and rebuilds every `Voxel`, then replays `_base_damage`. `_reapply_base_damage()` indexed slices, junction columns and slabs and never the
@@ -65,6 +65,13 @@ floors and firearm damage change with the crates (the destroy table is shared wi
 `INFILTRAITOR_PROP_DEBUG=1` prints the ring/soot map around the epicentre, debris placement and tone histogram, mesh-prop world positions and `_soot_map`'s charred count.
 `INFILTRAITOR_THROW_PROBE="x,y;x,y"` prints the aim clamp (with and without the flight-over rule) and a pick probe. `INFILTRAITOR_CAPTURE_VIEW=N|E|S|W` rotates BEFORE the blast (a video's tool;
 `CAPTURE_ROTATE_AFTER` is a still's). A desktop video: `--fixed-fps 60 --write-movie x.avi` then ffmpeg (`videos/props_blast_front.mp4`); the Moto: `device_record.py` (`videos/props_moto.mp4`).
+
+## Review pass (end of session)
+A read of everything changed since `a72b4026` found four loose ends, all fixed with tests:
+- **`SaveState`** did not save, restore or clear `_base_shattered_props` / `_base_debris` (a fresh mission would have inherited last level's shattered tables and debris; a checkpoint restore lost both). Now in `capture`/`restore`/`clear_run_state` (an old save reads as none; no version bump), `scenario_save_restore` replays them, `_reapply_base_shattered_props` drops the live node of a prop it marks shattered. `save_state_selftest` covers the round trip, an old save and the clear.
+- **`pick_cell`** scanned every voxel of every prop on every pointer move; it now tests the block's box first and scans only on a hit.
+- **Rings:** the Tier 4 shatter and the debris fall used a flood without the diagonal/wrap rule the plan's flood got. One helper now (`VoxelBoard.prop_gus()` + `add_prop_boundary_rings`) feeds both.
+- **Untested new logic:** `blast_calculator_selftest` gained the charred soot code (base 6, round trip, `lightened`) and the boundary rings (diagonal, wrap, cap, unnamed cells, blocked edge).
 
 ## Traps recorded this session
 - **A capture with no `INFILTRAITOR_MAP` opens the LAST map used** (`user://current_map.cfg`), which here was PROPS: the wall tests reported "no container reached" until `MAP=PLAYGROUND` was explicit.

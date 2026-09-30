@@ -42,6 +42,8 @@ func _init() -> void:
 	test_throw_line_clamp_range_and_walls()
 	test_throw_flies_over_props()
 	test_prop_pick_ray_box()
+	test_charred_soot_code()
+	test_prop_boundary_rings()
 	test_affected_slice_on_source_gu_boundary()
 	test_deterministic_selection_is_stable()
 	test_deterministic_selection_differs_by_salt_and_container()
@@ -264,6 +266,67 @@ func test_throw_flies_over_props() -> void:
 	else:
 		_fail("flight-over wrong: over=%s no_hook=%s refused=%s onto=%s wall_behind=%s"
 			% [over, no_hook, not_cleared, onto, wall_behind])
+	print("")
+
+
+## R3D-PROPS — the CHARRED tone: the plane's per-face code is base 6 (clean 172), a charred code reads back as charred, a
+## clean one as clean, every ordinary tone still round-trips, and a charred face stays settled through the fade ladder.
+func test_charred_soot_code() -> void:
+	print("[3e] the charred soot tone: base-6 code, round trip, the fade ladder\n")
+	var char_tone: int = BlastCalculatorClass.FACE_SOOT_CHAR
+	var ok: bool = VoxelBoard.FACE_SOOT_CODE_CLEAN == 172 and VoxelBoard.FACE_SOOT_CODE_COUNT == 216
+	ok = ok and BlastCalculatorClass.soot_ring_of_code(BlastCalculatorClass.soot_code(char_tone)) == char_tone
+	ok = ok and BlastCalculatorClass.soot_ring_of_code(VoxelBoard.FACE_SOOT_CODE_CLEAN) == -1
+	for tone in range(4):
+		ok = ok and BlastCalculatorClass.soot_ring_of_code(BlastCalculatorClass.soot_code(tone)) == tone
+	var mixed := Vector3i(char_tone, BlastCalculatorClass.FACE_SOOT_CLEAN, 0)
+	ok = ok and VoxelLightField.decode_face_soot(VoxelLightField.encode_face_soot(mixed)) == mixed
+	var all_char := Vector3i(char_tone, char_tone, char_tone)
+	var settled: Vector3i = DetonationEntryWriter.lightened(all_char, 0)
+	var one_up: Vector3i = DetonationEntryWriter.lightened(all_char, 1)
+	var faded: Vector3i = DetonationEntryWriter.lightened(all_char, 9)
+	ok = ok and settled == all_char and one_up == Vector3i.ZERO \
+		and faded == Vector3i(4, 4, 4)
+	if ok:
+		_pass("clean 172/216 codes, charred and every tone round-trip, mixed faces intact, lightened(charred): settled 0, darkest tone 1, clean 9")
+	else:
+		_fail("charred code wrong: settled=%s one_up=%s faded=%s" % [settled, one_up, faded])
+	print("")
+
+
+## R3D-PROPS — `add_prop_boundary_rings()`: a prop GU the flood never entered takes its nearest flooded neighbour's ring,
+## a diagonal counting one more, the open cells beside it the prop's ring + 1 (capped), and nothing outside `prop_gus`.
+func test_prop_boundary_rings() -> void:
+	print("[3f] add_prop_boundary_rings: a prop diagonal to the blast, the wrap, the cap, cells not named\n")
+	var bomb := _test_bomb([1.0, 0.5, 0.25])   ## max ring 2
+	var src := Vector2i(5, 5)
+	var props := [Vector2i(6, 5), Vector2i(5, 6), Vector2i(6, 6)]
+	var blocked := {}
+	for g in props:
+		blocked[g] = true
+	var rings := BlastCalculatorClass.flood_gu_rings(src, bomb, {}, blocked)
+	var before_has_diag: bool = rings.has(Vector2i(6, 6))
+	BlastCalculatorClass.add_prop_boundary_rings(rings, props, {}, blocked, 2)
+	var ok: bool = not before_has_diag and int(rings.get(Vector2i(6, 5), -1)) == 0 \
+		and int(rings.get(Vector2i(5, 6), -1)) == 0 and int(rings.get(Vector2i(6, 6), -1)) == 1
+	## Beside the diagonal prop, unreachable by the flood inside the cap: the prop's ring + 1.
+	ok = ok and int(rings.get(Vector2i(7, 6), -1)) == 2 and int(rings.get(Vector2i(6, 7), -1)) == 2
+	## A cell nobody named stays as the flood left it (absent here), and a blocked cell not named stays blocked-and-unringed.
+	ok = ok and not rings.has(Vector2i(9, 9))
+	var others := BlastCalculatorClass.flood_gu_rings(src, bomb, {}, blocked)
+	BlastCalculatorClass.add_prop_boundary_rings(others, [], {}, blocked, 2)
+	ok = ok and not others.has(Vector2i(6, 6))
+	## A blocked edge is not crossed by the wrap.
+	var walled := BlastCalculatorClass.flood_gu_rings(src, bomb, {}, blocked)
+	BlastCalculatorClass.add_prop_boundary_rings(walled, props,
+		{WallEdgeData.edge_key(Vector2i(6, 6), Vector2i(7, 6)): true}, blocked, 2)
+	ok = ok and not walled.has(Vector2i(7, 6)) and int(walled.get(Vector2i(6, 7), -1)) == 2
+	if ok:
+		_pass("diagonal prop -> ring 1, the cells beside it -> ring 2, none outside the list, a blocked edge stops the wrap")
+	else:
+		_fail("prop boundary rings wrong: (6,6)=%s (7,6)=%s (6,7)=%s (9,9)=%s unnamed=%s walled(7,6)=%s"
+			% [rings.get(Vector2i(6, 6)), rings.get(Vector2i(7, 6)), rings.get(Vector2i(6, 7)),
+			rings.has(Vector2i(9, 9)), others.has(Vector2i(6, 6)), walled.get(Vector2i(7, 6))])
 	print("")
 
 

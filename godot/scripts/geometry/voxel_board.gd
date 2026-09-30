@@ -2345,6 +2345,19 @@ func prop_blocks() -> Array[PropBlock]:
 	return _prop_blocks
 
 
+## Every GU a prop stands on (voxel crates and mesh props alike): the cells `BlastCalculator.add_prop_boundary_rings()` gives
+## a ring, because the flood never enters them.
+func prop_gus() -> Array:
+	var out: Array = []
+	for block in _prop_blocks:
+		if not block.voxels.is_empty():
+			var first: Vector2i = block.voxels[0].grid_pos
+			out.append(Vector2i(first.x >> 3, first.y >> 3))
+	for inst in _mesh_props:
+		out.append(inst.cell)
+	return out
+
+
 ## R3D-PROPS Tier 3/4 — records one mesh-only prop instance. No voxel is ever placed for it;
 ## `start_storey`'s level is kept only so the mesh sits on the right storey's floor top, exactly
 ## like `register_prop()`'s own `start_level`.

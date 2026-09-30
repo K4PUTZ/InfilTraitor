@@ -3475,11 +3475,13 @@ func scenario_save_restore() -> bool:
 	if not SaveState.restore(self, data):
 		return false
 	_reapply_base_damage()
+	_reapply_base_shattered_props()
 	## A rotation relights after the same replay (`_set_perspective()`: `_lighting_controller.rebuild_all()`), and
 	## `_reapply_base_damage()` says it must run BEFORE the light-field repaint. Without this the restored world was
 	## lit as the undamaged map: 560 intact floor voxels beside PLAYGROUND's two blasts read bucket 3 where the
 	## world they stand in gives 6-9 (R3D-13). A production load flow has to do the same.
 	_lighting_controller.rebuild_all()
+	_respawn_base_debris()
 	for _f in range(10):
 		await get_tree().process_frame
 	return true
@@ -4742,10 +4744,14 @@ func _reapply_base_shattered_props() -> void:
 	if _voxel_board == null:
 		return
 	var base_gu_size: Vector2i = _base_layout.get("size", Vector2i.ZERO)
+	var live: Node = board3d()
 	for inst: MeshPropInstance in _voxel_board.mesh_props():
 		var base_gu: Vector2i = PerspectiveMapperClass.cell_to_base(inst.cell, _active_perspective, base_gu_size)
 		if _base_shattered_props.has(base_gu):
 			inst.shattered = true
+			## A live board that already drew this prop (a save restore does not rebuild it) must drop the node.
+			if live != null:
+				live.call("remove_mesh_prop", inst.id)
 
 
 ## ...and the debris is laid back on the floor, AFTER the board is rebuilt (rebuilding drops every pile).

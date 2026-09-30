@@ -74,6 +74,19 @@ static func capture(room) -> Dictionary:
 		var stored: Dictionary = room._soot_map[level]
 		for cell in stored.keys():
 			soot.append([int(level), cell.x, cell.y, int(stored[cell])])
+	## R3D-PROPS — what a blast leaves of a prop that is not voxel state, in BASE coords: the Tier 4 props that shattered
+	## (`[base_gu_x, base_gu_y]`) and every piece of ground debris (`[id, base_x, base_y, level, material, variant,
+	## r, g, b, a, rot]`, the position in base VOXEL units, the tint already soot-darkened).
+	var shattered_props: Array = []
+	for pk in room._base_shattered_props.keys():
+		shattered_props.append([pk.x, pk.y])
+	var debris: Array = []
+	for did in room._base_debris.keys():
+		var d: Dictionary = room._base_debris[did]
+		var bp: Vector2 = d["base"]
+		var tint: Color = d["tint"]
+		debris.append([String(did), bp.x, bp.y, int(d["level"]), String(d["material"]), int(d["variant"]),
+			tint.r, tint.g, tint.b, tint.a, float(d["rot"])])
 	return {
 		"version": FORMAT_VERSION,
 		## The map a save belongs to. A loader that restores damage into the WRONG
@@ -83,6 +96,9 @@ static func capture(room) -> Dictionary:
 		"base_damage": damage,
 		"base_damage_claims": claim_damage,
 		"soot": soot,
+		## R3D-PROPS — an OLD save has neither key and reads as "nothing shattered, no debris": the honest restore.
+		"shattered_props": shattered_props,
+		"debris": debris,
 		## G6 — `[base_x, base_y, level, count]` per pile. ⚠️ The COUNT travels, not
 		## a flag: it is what decides how heavy the pile reads, and a save that
 		## dropped it would restore every pile at a single shard's weight.
@@ -184,6 +200,14 @@ static func restore(room, data: Dictionary) -> bool:
 	room._pane_primed.clear()
 	for pid in data.get("pane_primed", []):
 		room._pane_primed[String(pid)] = true
+	room._base_shattered_props.clear()
+	for sp in data.get("shattered_props", []):
+		room._base_shattered_props[Vector2i(int(sp[0]), int(sp[1]))] = true
+	room._base_debris.clear()
+	for dd in data.get("debris", []):
+		room._base_debris[String(dd[0])] = {"base": Vector2(float(dd[1]), float(dd[2])), "level": int(dd[3]),
+			"material": String(dd[4]), "variant": int(dd[5]),
+			"tint": Color(float(dd[6]), float(dd[7]), float(dd[8]), float(dd[9])), "rot": float(dd[10])}
 	## The cache is NOT restored — it is rebuilt. See the class note.
 	room.project_soot_store()
 	return true
@@ -235,3 +259,6 @@ static func clear_run_state(room) -> void:
 	## the previous level's crater — silently, and only on the second level anyone
 	## plays.
 	room._soot_map.clear()
+	## R3D-PROPS — a fresh mission must not inherit last level's shattered tables or the debris on its floor.
+	room._base_shattered_props.clear()
+	room._base_debris.clear()

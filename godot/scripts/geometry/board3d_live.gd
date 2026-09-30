@@ -482,6 +482,11 @@ func _pick_prop_cell(screen_pos: Vector2, ground_hit: Vector3) -> Vector2i:
 			continue
 		var first: Vector2i = block.voxels[0].grid_pos
 		var gu := Vector2i(first.x >> 3, first.y >> 3)
+		## The cheap test first: the box of the block as built. Only a ray that meets it pays for the scan of its voxels,
+		## which finds the top that is actually still standing (`_pick_prop_cell()` runs on every pointer move).
+		var full: float = float(block.voxels.back().level + 1 - _ground_level) / float(per_axis) * VERTICAL_SCALE
+		if PickMathRef.ray_box(origin, dir, gu, full) < 0.0:
+			continue
 		var top: int = -1
 		for v: Voxel in block.voxels:
 			if v.damage_state != Voxel.DamageState.DESTROYED:

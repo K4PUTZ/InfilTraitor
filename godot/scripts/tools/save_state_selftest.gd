@@ -34,6 +34,9 @@ class RoomStub extends RefCounted:
 	## CRACK-06 — the same, clinging to the pane's own torn glass edge. A separate
 	## store for a separate anchor rule; models the real Room's field.
 	var _base_rim_shards: Dictionary = {}
+	## R3D-PROPS — the Tier 4 props that shattered (base GU) and the ground debris, both in BASE coords.
+	var _base_shattered_props: Dictionary = {}
+	var _base_debris: Dictionary = {}
 	var projected: int = 0
 	func project_soot_store() -> void:
 		projected += 1
@@ -51,6 +54,7 @@ func _init() -> void:
 	_test_version_refusal()
 	_test_malformed_refusal()
 	_test_clear()
+	_test_props_round_trip()
 
 	print("")
 	## ⚠️ The literal word PASS, because `run_selftests.py` requires it: a suite
@@ -193,6 +197,33 @@ func _test_malformed_refusal() -> void:
 	r._base_damage[Vector3i(7, 7, 7)] = [1, 0, 0, 0, 0, 0, 0]
 	_check(SaveState.validate(bad) != "" and r._base_damage.size() == 1,
 		"validation happens before any state is cleared")
+
+
+## R3D-PROPS: a shattered table and the debris on the floor survive a save, an old save reads as none, and a fresh
+## mission clears both.
+func _test_props_round_trip() -> void:
+	var a := RoomStub.new()
+	a._base_shattered_props[Vector2i(6, 6)] = true
+	a._base_debris["wood_1_2_79_0"] = {"base": Vector2(52.25, 57.75), "level": 79, "material": "wood", "variant": 2,
+		"tint": Color(0.25, 0.125, 0.0625, 1.0), "rot": 1.5}
+	var b := RoomStub.new()
+	_check(SaveState.restore(b, SaveState.capture(a)), "props: restore() accepts what capture() produced")
+	_check(b._base_shattered_props.has(Vector2i(6, 6)) and b._base_shattered_props.size() == 1,
+		"props: the shattered table survived the round trip")
+	var d: Dictionary = b._base_debris.get("wood_1_2_79_0", {})
+	_check(not d.is_empty() and d["base"] == Vector2(52.25, 57.75) and int(d["level"]) == 79 \
+		and d["material"] == "wood" and int(d["variant"]) == 2 and d["tint"] == Color(0.25, 0.125, 0.0625, 1.0) \
+		and is_equal_approx(float(d["rot"]), 1.5), "props: a debris piece came back with every field intact")
+	var legacy: Dictionary = SaveState.capture(a)
+	legacy.erase("shattered_props")
+	legacy.erase("debris")
+	var c := RoomStub.new()
+	c._base_debris["stale"] = {}
+	_check(SaveState.restore(c, legacy) and c._base_shattered_props.is_empty() and c._base_debris.is_empty(),
+		"props: a save written before R3D-PROPS restores as nothing shattered and no debris")
+	SaveState.clear_run_state(a)
+	_check(a._base_shattered_props.is_empty() and a._base_debris.is_empty(),
+		"props: clear_run_state empties the shattered set and the debris")
 
 
 ## The Director's "limpar em caso de reset, morte, etc", in one place.

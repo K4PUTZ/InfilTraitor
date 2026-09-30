@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**251 scripts · 81244 lines total** (under `godot/scripts/`)
+**251 scripts · 81387 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2094 lines
+extends `Node3D` · 2099 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1063,7 +1063,7 @@ extends `Node3D` · 2094 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2388 lines
+`class_name VoxelBoard` · extends `Node2D` · 2401 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -2196,7 +2196,7 @@ extends `Node2D` · 42 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3063 lines
+`class_name DetonationPlanBuilder` · 3057 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -3100,7 +3100,7 @@ extends `Node` · 151 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 237 lines
+`class_name SaveState` · extends `RefCounted` · 264 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -3455,7 +3455,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2313 lines
+extends `SceneTree` · 2376 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -3480,6 +3480,8 @@ extends `SceneTree` · 2313 lines
 - `func test_flood_stops_at_blocked_edge() -> void:`
 - `func test_throw_line_clamp_range_and_walls() -> void:`
 - `func test_throw_flies_over_props() -> void:`
+- `func test_charred_soot_code() -> void:`
+- `func test_prop_boundary_rings() -> void:`
 - `func test_prop_pick_ray_box() -> void:`
 - `func test_flood_capped_at_bomb_range() -> void:`
 - `func test_affected_slice_on_source_gu_boundary() -> void:`
@@ -4561,7 +4563,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 212 lines
+extends `SceneTree` · 243 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -5171,7 +5173,7 @@ extends `Node2D` · 32 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1607 lines
+`class_name TestZoneController` · 1611 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5442,7 +5444,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11114 lines
+extends `Node2D` · 11120 lines
 
 `godot/scripts/world/room.gd`
 

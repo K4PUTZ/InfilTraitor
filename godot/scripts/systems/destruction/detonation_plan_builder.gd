@@ -434,14 +434,8 @@ static func _phase_setup(s: Dictionary) -> void:
 	## that predate this) exactly as it was.
 	var junction_columns: Array = ctx.get("junction_columns", [])
 	var prop_blocks: Array = (s["voxel_board"] as VoxelBoardClass).prop_blocks()
-	var prop_gus: Array = []
-	for block in prop_blocks:
-		if not (block.voxels as Array).is_empty():
-			var first_pos: Vector2i = block.voxels[0].grid_pos
-			prop_gus.append(Vector2i(first_pos.x >> 3, first_pos.y >> 3))
-	for inst in (s["voxel_board"] as VoxelBoardClass).mesh_props():
-		prop_gus.append(inst.cell)
-	BlastCalculatorClass.add_prop_boundary_rings(gu_rings, prop_gus, ctx.get("blocked_edges", {}),
+	BlastCalculatorClass.add_prop_boundary_rings(gu_rings, (s["voxel_board"] as VoxelBoardClass).prop_gus(),
+		ctx.get("blocked_edges", {}),
 		ctx.get("blocked_cells", {}), bomb_def.ring_multipliers.size() - 1)
 	var affected := BlastCalculatorClass.find_affected_containers(
 		gu_rings, s["edge_registry"], s["slab_registry"], junction_columns, prop_blocks)

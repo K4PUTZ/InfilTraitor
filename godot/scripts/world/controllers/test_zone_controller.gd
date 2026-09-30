@@ -1333,6 +1333,10 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	if prop_bomb_def != null:
 		var prop_gu_rings := BlastCalculatorClass.flood_gu_rings(
 			gu, prop_bomb_def, _blocked_edges_dict(), room._blocked_cells)
+		## The SAME prop rule the plan's own flood got (`_phase_setup`): a prop diagonal to the blast, or sheltered
+		## by its neighbours, still takes a ring — else a Tier 4 table would stay whole beside a crate that broke.
+		BlastCalculatorClass.add_prop_boundary_rings(prop_gu_rings, room._voxel_board.prop_gus(),
+			_blocked_edges_dict(), room._blocked_cells, prop_bomb_def.ring_multipliers.size() - 1)
 		room.apply_prop_proximity_effects(prop_gu_rings, prop_bomb_def)
 		room.apply_prop_debris_fall(job.delta.touched_voxels, gu, prop_gu_rings, prop_bomb_def)
 	## The census and the passage report are diagnostics: 34 ms of the Moto's commit frame (2026-09-26, R3D-LIGHT), so a

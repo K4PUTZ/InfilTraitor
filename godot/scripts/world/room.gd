@@ -2718,6 +2718,7 @@ func _set_perspective(direction: String) -> void:
 		_claim_base_openings()
 		_reapply_base_damage()
 		_reapply_base_shattered_props()
+		_release_destroyed_prop_cells()
 		## CRACK-04 — and the shard rims around any recorded hole the flush above
 		## did not reach. AFTER the stamp, because the walk reads the tilemap.
 		_respawn_base_openings()
@@ -3476,6 +3477,7 @@ func scenario_save_restore() -> bool:
 		return false
 	_reapply_base_damage()
 	_reapply_base_shattered_props()
+	_release_destroyed_prop_cells()
 	## A rotation relights after the same replay (`_set_perspective()`: `_lighting_controller.rebuild_all()`), and
 	## `_reapply_base_damage()` says it must run BEFORE the light-field repaint. Without this the restored world was
 	## lit as the undamaged map: 560 intact floor voxels beside PLAYGROUND's two blasts read bucket 3 where the
@@ -4209,6 +4211,8 @@ func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) ->
 	_vfx_destroy_count += 1
 	_dispatch_destruction_vfx(grid_pos, level, material_id)
 	_clear_orphaned_soot(grid_pos, level)
+	if _blocked_cells.has(GeometryCoords.voxel_to_gu(grid_pos)):
+		_release_destroyed_prop_cells()
 
 
 ## SOOT-ORPHAN-01 (Director ruling, 2026-09-27): scorch dies with the material — a destroyed
@@ -4739,6 +4743,46 @@ func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Col
 	return Color(tint.r * k, tint.g * k, tint.b * k, tint.a)
 
 
+## R3D-PROPS: a prop that is gone stops blocking. `_blocked_cells` is built from the layout and was never
+## re-fed, so a collapsed crate or a shattered Tier 4 mesh prop kept its GU closed to walking, sight, the flood
+## and the throw. Erased IN PLACE: the turn controller and the guards hold this same dictionary. "Collapsed" is
+## fewer than `prop_collapse_standing_fraction` of the block's voxels standing: measured on PROPS, a grenade
+## beside a crate leaves 35-70% of it up, so "every voxel destroyed" would never fire.
+## Idempotent; also run after a rotation / restore, which rebuild `_blocked_cells` from the layout.
+## Not re-fed: the lamps' cached shadow map (same gap as a burnt wall, see `_burn_probe`).
+var prop_collapse_standing_fraction: float = 0.4
+
+
+func _release_destroyed_prop_cells() -> void:
+	if _voxel_board == null:
+		return
+	var released: bool = false
+	for block: PropBlock in _voxel_board.prop_blocks():
+		if block.voxels.is_empty():
+			continue
+		var gu: Vector2i = GeometryCoords.voxel_to_gu(block.voxels[0].grid_pos)
+		if not _blocked_cells.has(gu):
+			continue
+		var standing: int = 0
+		for v: Voxel in block.voxels:
+			if v.damage_state != Voxel.DamageState.DESTROYED:
+				standing += 1
+		if float(standing) < prop_collapse_standing_fraction * float(block.voxels.size()):
+			_blocked_cells.erase(gu)
+			released = true
+			if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+				print("[PROP-DEBUG] crate on %s collapsed (%d of %d voxels standing): its GU no longer blocks"
+					% [gu, standing, block.voxels.size()])
+	for inst: MeshPropInstance in _voxel_board.mesh_props():
+		if inst.shattered and _blocked_cells.has(inst.cell):
+			_blocked_cells.erase(inst.cell)
+			released = true
+			if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
+				print("[PROP-DEBUG] shattered %s: its GU no longer blocks" % inst.id)
+	if released and movement_overlay != null:
+		movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
+
+
 ## After a rotation: the Tier 4 props that shattered stay shattered (`_build_mesh_props()` skips them)...
 func _reapply_base_shattered_props() -> void:
 	if _voxel_board == null:
@@ -4827,6 +4871,7 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 		var live: Node = board3d()
 		if live != null:
 			live.call("remove_mesh_prop", inst.id)
+		_release_destroyed_prop_cells()
 		if prop_debug:
 			print("[PROP-DEBUG] mesh prop %s SHATTERED (weight=%.2f, board3d=%s)"
 				% [inst.id, weight, "found" if live != null else "NULL"])

@@ -2,9 +2,9 @@
   "id": "wood_table",
   "mesh_tier": 4,
   "mesh_size": [
-    0.95,
-    0.67,
-    0.59
+    0.709,
+    0.499,
+    0.441
   ],
   "material_zones": {
     "default": "wood"

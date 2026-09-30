@@ -49,6 +49,7 @@ temporal_fixture    = tile_center - Vector2(0, ceiling_lift + 72)
 | `VOXELS_PER_UNIT_AXIS` | `8` | 8×8 voxels per GAME UNIT |
 | `VOXEL_STEP_PX` | `20.0` | Vertical pixel height per voxel layer |
 | `VOXEL_STOREY_HEIGHT_PX` | `160.0` | `8 × 20` |
+| **Scale canon** (ACTOR D61) | 1 GU = **1.60 m**, 1 voxel = **0.20 m**, storey = 8 levels = 1.60 m | Author every prop in whole voxels at real size; a small item is never under 2 voxels (0.40 m) and a handheld item is drawn at 2x (PROPS_TIER4 D-P7a). "A GU is ~1.2 m" was a mistake: retracted |
 
 **VoxelLayer position** (analytically derived, no calibration):
 ```gdscript

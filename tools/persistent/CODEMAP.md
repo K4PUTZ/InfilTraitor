@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**266 scripts · 84489 lines total** (under `godot/scripts/`)
+**266 scripts · 84589 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -514,7 +514,7 @@ extends `Node3D` · 2277 lines
 
 ### `board_look.gd`
 
-`class_name BoardLook` · extends `RefCounted` · 39 lines
+`class_name BoardLook` · extends `RefCounted` · 107 lines
 
 `godot/scripts/geometry/board_look.gd`
 
@@ -525,6 +525,9 @@ extends `Node3D` · 2277 lines
 - `SOOT_CHAR_MIN` = `0.10`
 - `SOOT_CHAR_MAX` = `0.30`
 - `FACE_TONE` = `[1.0, 0.975, 0.945]`
+- `GRADE_SATURATION` = `1.0`
+- `GRADE_CONTRAST` = `1.0`
+- `GRADE_LIFT` = `0.0`
 
 ---
 
@@ -3763,7 +3766,7 @@ extends `SceneTree` · 681 lines
 
 ### `board_look_selftest.gd`
 
-extends `SceneTree` · 49 lines
+extends `SceneTree` · 81 lines
 
 `godot/scripts/tools/board_look_selftest.gd`
 

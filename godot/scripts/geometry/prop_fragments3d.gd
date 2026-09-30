@@ -114,7 +114,7 @@ func _build(n: int) -> void:
 	_buf = PackedFloat32Array()
 	_buf.resize(n * FLOATS_PER_INSTANCE)
 	_mat = ShaderMaterial.new()
-	_mat.shader = load(SHADER_PATH)
+	_mat.shader = BoardLook.graded_shader(SHADER_PATH)
 	_mat.set_shader_parameter("albedo", Color.WHITE)
 	_mat.set_shader_parameter("use_color", 1.0)
 	_mat.set_shader_parameter("soot_affects", 0.0)   ## the fragment carries its own charred tone

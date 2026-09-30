@@ -2180,7 +2180,7 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	if material_id == DECAL_MATERIAL_ID:
 		var decal_material := ShaderMaterial.new()
 		var decal_shader := Shader.new()
-		decal_shader.code = DECAL_SHADER
+		decal_shader.code = BoardLook.apply_grade(DECAL_SHADER)
 		decal_material.shader = decal_shader
 		decal_material.set_shader_parameter("decals", _decal_array)
 		return decal_material
@@ -2190,7 +2190,7 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
 	if GlassMaterials.is_glass(material_id):
 		return _make_glass_material(material_id)
-	shader.code = LIT_SHADER if LIT3D else OPAQUE_SHADER
+	shader.code = BoardLook.apply_grade(LIT_SHADER if LIT3D else OPAQUE_SHADER)
 	shader_material.shader = shader
 	shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
 	var facade_tex: Texture2D = material_facade_texture(material_id)

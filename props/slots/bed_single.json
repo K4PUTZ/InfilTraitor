@@ -7,9 +7,9 @@
     ]
   ],
   "max_size": [
-    1.0,
-    0.8,
-    0.75
+    1.05,
+    0.675,
+    0.675
   ],
   "mesh_tier": 0,
   "gameplay": {
@@ -19,7 +19,7 @@
   "default_model": "bed_single",
   "generic_material": "wood",
   "budget": {
-    "max_claims": 800,
+    "max_claims": 280,
     "max_materials": 4
   }
 }

@@ -45,3 +45,31 @@ Built (`git log 960b2850..`): `PropModelFit` (the fit of a model into its box, s
 - **Not done / known:** the cubes are the material's flat colour (registry colour + facade = P5); the old chip/smoke burst still plays beside them; fragments land only on their own pile's lattice (they ignore the floor's holes and other props); the charred variety in the shader for walls (P4); prop shadows (P6).
 - **Traps:** the `detonate` scenario step BLOCKS until the animation ends, so stills show only the end: use the Movie Maker take; `centre x,y; zoom z` must be repeated AFTER `detonate` (the camera refocuses on the blast); a new `class_name` file needs `godot --headless --path . --import` before the headless lint sees it; a `git stash` round trip is safe with untracked new files but the `update_docs.py` pre-commit step leaves `docs/` edits unstaged (and once re-tabbed `ARCHITECTURE.md`: reverted).
 
+
+## Addendum — P4-P7 and the pipeline (Director: "pode seguir com o P6 e o P7")
+Built after P1/P2 (`git log 6d21893d..`): P4 charred range (`BoardLook.SOOT_CHAR_MIN/MAX`, `char_mult`), P5 material zones (`PropDef.surface_materials`, registry colour + facade in world space, `family`, `generic` + 8 flat materials, `MaterialRegistry.resolve()`), PP1 (`SlotDef`, `PropValidator`, `PropRegistry.resolve_placement`), PP4 (`.vox` destructible props, rotated with the view), the dormitory (`maps/DORM.map.json`), the `.vox` files in the export, P6 (`PropShadow`), P7 (scale canon, real-size furniture, `BoardLook.grade()` identity).
+- **Scale canon:** 1 GU = 1.60 m, 1 voxel = 0.20 m, storey = 1.60 m (ACTOR D61). My earlier "a GU is ~1.2 m" was wrong (it came from 8-voxel beds read against a tall sprite); retracted in PROPS_TIER4 / PIPELINE / QUICK_REFERENCE.
+- **Recommended D-P7a (taken, revisable):** a small thing is never under 2 voxels (0.40 m); a handheld item is drawn at 2x (pistol 0.25 GU for a ~0.20 m weapon).
+- **Grade:** identity by default, zero cost (the shader text is untouched); `INFILTRAITOR_GRADE=sat,contrast,lift` trials one. No art-directed value chosen; Moto cost of a non-identity grade NOT measured.
+- **Verified:** `verify.py smoke` PASSED (56 selftests, PLAYGROUND and GLASS boots); `board_look_selftest` gained the grade and the charred range.
+- **Not done / open:** the PLAYGROUND rotation soot red (task chip); PP2/PP3/PP5-PP7; window/small items/rug in the DORM; multi-GU footprints; mesh props do not turn with the view; the charred pattern re-rolls on rotation until R3D-ROT; the Moto A/B of a real grade.
+
+### Material numbers, MEASURED on DORM (nothing changed: the Director calibrates)
+One grenade at view GU (8,3), `probe load; detonate 0; frames 30; probe g0` through `board_probe.run_once` (the dumps' `prop` containers: visible bit before/after; 30 frames after the commit, so the burn's later consumption is NOT in it). Only containers the blast touched are listed; every other prop read 0 destroyed (beds/nightstands 3+ GU away, the three lockers, the bookshelf, desks, chairs, bins).
+
+| Prop @ GU (distance) | material (registry row: `destroy_factor`, `flammability`) | voxels | destroyed | dented |
+|---|---|---|---|---|
+| bed @ (8,2) (1 GU, adjacent) | fabric (0.95, 0.6) | 35 | **35 (100%)** | 0 |
+| | paper (0.85, 1.8) | 6 | 5 (83%) | 0 |
+| | upholstery (0.55, 1.2) | 25 | 17 (68%) | 2 |
+| | wood (0.75, 1.4) | 23 | 15 (65%) | 5 |
+| **bed total** | | 89 | **72 (81%)** | 7 |
+| nightstand @ (9,2) (diagonal) | wood | 23 | 7 (30%) | 4 |
+| | plywood (0.95, 1.5) | 2 | 1 (50%) | 0 |
+| | steel_dark (0.02) | 1 | 0 | 0 |
+| nightstand @ (6,2) (2 GU) | wood | 23 | 1 (4%) | 1 |
+
+- **Reads:** a bed next to a grenade is a collapse by the 80% rule (72 of 89: its GU stops blocking, as the debug line printed: "17 of 89 voxels standing"); the nightstand beside it survives one grenade (wood 30%, two grenades would open it, the canon the Director gave for wood). Soft materials go first (fabric 100%, paper 83%), so the mattress vanishes before the frame: visible in `dorm_calib_blast.png` (the bed is a heap of dark cubes with the frame's legs charred). Metal lockers and everything 3+ GU away: untouched.
+- **Open for the Director (proposals only):** upholstery 0.55 leaves the bed's blanket half-standing while the fabric beside it is gone — both read "cloth"; raise upholstery toward 0.8 if a bed should strip evenly. Plastic bins (0.65) and leather (0.45) have no blast sample here (out of reach): place a bin and a leather prop inside the ring to read them.
+- The measuring recipe: `python3 /tmp/claude-501/dorm_measure.py` (local) = `board_probe.run_once` + `board_probe.load`, parse the `prop` containers' visible bit; the capture recipe = `INFILTRAITOR_SCENARIO="zoom 0.45; centre 7,4; frames 90; detonate 0; zoom 0.45; centre 7,4; frames 120; capture <name>; quit"` on `INFILTRAITOR_MAP=DORM`, `INFILTRAITOR_GRENADE_GUS="8,3"` (a `capture` takes a bare name, the PNG lands in `~/Library/Application Support/Godot/app_userdata/INFILTRAITOR/captures/`; the default `framing portrait` crops the 14x9 room to floor, use landscape and zoom 0.45). Captures of this round: `Screenshots/dorm_calib_intact.png`, `Screenshots/dorm_calib_blast.png` (git-ignored).
+- **Trap (mine):** the first two captures I sent showed only floor (portrait framing + zoom 0.9) under captions describing furniture; I re-took them and said so. Read a capture before sending it with a caption.

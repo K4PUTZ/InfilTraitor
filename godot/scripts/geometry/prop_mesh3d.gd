@@ -37,7 +37,7 @@ func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color,
 	_mesh_node.position = Vector3(0.0, mesh_half_height, 0.0)
 	_mesh_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_mat = ShaderMaterial.new()
-	_mat.shader = load(SHADER_PATH)
+	_mat.shader = BoardLook.graded_shader(SHADER_PATH)
 	_mat.set_shader_parameter("albedo", albedo)
 	_mesh_node.material_override = _mat
 	add_child(_mesh_node)
@@ -81,7 +81,7 @@ func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: V
 ## One board-lit material for a registry material id (through its fallback chain): its colour, and its facade when it has one.
 func _material_for(material_id: String) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = load(SHADER_PATH)
+	m.shader = BoardLook.graded_shader(SHADER_PATH)
 	## Not the bare `Registries` identifier: a script that names an autoload does not compile under a `--script` selftest.
 	var registries: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("/root/Registries")
 	var definition = registries.get_material_registry().resolve(material_id) if registries != null else null

@@ -7,9 +7,9 @@
     ]
   ],
   "max_size": [
-    0.6,
-    0.6,
-    0.6
+    0.425,
+    0.425,
+    0.425
   ],
   "mesh_tier": 0,
   "gameplay": {
@@ -19,7 +19,7 @@
   "default_model": "nightstand",
   "generic_material": "wood",
   "budget": {
-    "max_claims": 300,
+    "max_claims": 150,
     "max_materials": 4
   }
 }

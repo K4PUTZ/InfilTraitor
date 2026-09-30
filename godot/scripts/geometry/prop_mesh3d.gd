@@ -17,6 +17,7 @@ const SHADER_PATH := "res://godot/shaders/prop_mesh3d.gdshader"
 
 var _board: Node3D = null
 var _mat: ShaderMaterial = null
+var _extra_mats: Array[ShaderMaterial] = []
 var _mesh_node: MeshInstance3D = null
 
 
@@ -44,6 +45,84 @@ func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color,
 	board.call("register_prop_light_material", _mat)
 
 
+## A real model (glTF/GLB) instead of a box: turned by `rotation_deg`, scaled uniformly to fit inside `fit_size` (world
+## units), centred on the cell horizontally and standing on its base. Every surface becomes one lit material that keeps
+## the colour (and texture) the model was authored with, so a pistol's grip and slide read as two colours; all of them
+## are registered with the board, so the light and the soot reach them exactly as they reach the box.
+func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int) -> void:
+	_board = board
+	var scene: PackedScene = load(path)
+	if scene == null:
+		push_error("[PropMesh3D] setup_model: cannot load '%s'" % path)
+		return
+	var root: Node = scene.instantiate()
+	var meshes: Array[MeshInstance3D] = []
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		stack.append_array(n.get_children())
+		if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+			meshes.append(n as MeshInstance3D)
+	if meshes.is_empty():
+		push_error("[PropMesh3D] setup_model: '%s' holds no mesh" % path)
+		root.free()
+		return
+	## The model's own node transforms (the import's axis fix, a unit scale) are part of its shape: measure through them.
+	var turn := Basis.from_euler(Vector3(deg_to_rad(rotation_deg.x), deg_to_rad(rotation_deg.y), deg_to_rad(rotation_deg.z)))
+	var box := AABB()
+	var first := true
+	var xforms: Array[Transform3D] = []
+	for m in meshes:
+		var xf := Transform3D.IDENTITY
+		var cur: Node = m
+		while cur != null and cur != root.get_parent():
+			if cur is Node3D:
+				xf = (cur as Node3D).transform * xf
+			cur = cur.get_parent()
+		xf = Transform3D(turn, Vector3.ZERO) * xf
+		xforms.append(xf)
+		var bb: AABB = xf * m.get_aabb()
+		box = bb if first else box.merge(bb)
+		first = false
+	var k: float = minf(fit_size.x / box.size.x, minf(fit_size.y / box.size.y, fit_size.z / box.size.z))
+	var centre := Vector3(box.position.x + box.size.x * 0.5, box.position.y, box.position.z + box.size.z * 0.5)
+	var fit := Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * k), -centre * k)
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var ground_level: int = board.call("ground_level")
+	for i in range(meshes.size()):
+		var src: MeshInstance3D = meshes[i]
+		var node := MeshInstance3D.new()
+		node.mesh = src.mesh
+		node.transform = fit * xforms[i]
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for s in range(src.mesh.get_surface_count()):
+			var m := _lit_material_from(src.mesh.surface_get_material(s))
+			node.set_surface_override_material(s, m)
+			_extra_mats.append(m)
+			board.call("register_prop_light_material", m)
+		add_child(node)
+	root.free()
+	position = Vector3((float(cell.x) + 0.5) * unit, float(level + 1 - ground_level) * unit, (float(cell.y) + 0.5) * unit)
+
+
+## One board-lit material carrying a source material's albedo colour and texture.
+func _lit_material_from(source: Material) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = load(SHADER_PATH)
+	var colour := Color(0.6, 0.6, 0.6)
+	if source is BaseMaterial3D:
+		var base := source as BaseMaterial3D
+		colour = base.albedo_color
+		if base.albedo_texture != null:
+			m.set_shader_parameter("albedo_tex", base.albedo_texture)
+			m.set_shader_parameter("has_tex", 1.0)
+	m.set_shader_parameter("albedo", colour)
+	return m
+
+
 func _exit_tree() -> void:
-	if is_instance_valid(_board) and _mat != null:
-		_board.call("unregister_prop_light_material", _mat)
+	if is_instance_valid(_board):
+		if _mat != null:
+			_board.call("unregister_prop_light_material", _mat)
+		for m in _extra_mats:
+			_board.call("unregister_prop_light_material", m)

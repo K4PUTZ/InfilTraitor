@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**251 scripts · 81625 lines total** (under `godot/scripts/`)
+**251 scripts · 81721 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2099 lines
+extends `Node3D` · 2102 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -757,7 +757,7 @@ extends `Node3D` · 2099 lines
 
 ### `mesh_prop_instance.gd`
 
-`class_name MeshPropInstance` · 31 lines
+`class_name MeshPropInstance` · 33 lines
 
 `godot/scripts/geometry/mesh_prop_instance.gd`
 
@@ -770,6 +770,8 @@ extends `Node3D` · 2099 lines
 - `var material_id: String`
 - `var mesh_tier: int`
 - `var mesh_size: Vector3`
+- `var model_path: String = ""`
+- `var model_rotation_deg: Vector3 = Vector3.ZERO`
 - `var shattered: bool = false`
 
 ---
@@ -857,7 +859,7 @@ extends `Node3D` · 2099 lines
 
 ### `prop_mesh3d.gd`
 
-`class_name PropMesh3D` · extends `Node3D` · 49 lines
+`class_name PropMesh3D` · extends `Node3D` · 128 lines
 
 `godot/scripts/geometry/prop_mesh3d.gd`
 
@@ -868,6 +870,7 @@ extends `Node3D` · 2099 lines
 
 **Public API**
 - `func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color, mesh_half_height: float) -> void:`
+- `func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int) -> void:`
 
 ---
 
@@ -1063,7 +1066,7 @@ extends `Node3D` · 2099 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2401 lines
+`class_name VoxelBoard` · extends `Node2D` · 2404 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -3025,7 +3028,7 @@ extends `Node` · 231 lines
 
 ### `prop_def.gd`
 
-`class_name PropDef` · 53 lines
+`class_name PropDef` · 62 lines
 
 `godot/scripts/systems/prop_def.gd`
 
@@ -3040,6 +3043,9 @@ extends `Node` · 231 lines
 - `var storeys: int = 1`
 - `var gameplay: Dictionary`
 - `var tags: Array[String]`
+- `var model_path: String = ""`
+- `var model_rotation_deg: Vector3 = Vector3.ZERO`
+- `var hollow_shell: int = 0`
 
 ---
 

@@ -18,6 +18,12 @@ var tags: Array[String]                     # Array[String] — classification t
 ## never register_prop() — see RoomBuilder._register_voxel_prop_levels()'s branch).
 var mesh_tier: int = 0
 var mesh_size: Vector3 = Vector3.ONE        # world units (1.0 = 1 GU); mesh_tier > 0 only
+## Optional real model (a glTF/GLB under res://ASSETS/props/). Empty = the placeholder box. The model is turned by
+## `model_rotation_deg` (degrees, Godot axes), then scaled UNIFORMLY to fit inside `mesh_size` and stood on its base,
+## so `mesh_size` should be the model's own proportions at the size it is meant to have (it is what the throw arc, the
+## pick and the shatter read). Each surface keeps the colour/texture the model was authored with.
+var model_path: String = ""
+var model_rotation_deg: Vector3 = Vector3.ZERO
 ## Native voxel props only: 0 = solid fill; N > 0 = a hollow box with an N-voxel shell (a crate is a container, not a
 ## block of wood). The interior is simply no voxels — what it CONTAINS is a later, separate thing.
 var hollow_shell: int = 0
@@ -49,5 +55,8 @@ static func from_json(data: Dictionary) -> PropDef:
 	def.mesh_tier = int(data.get("mesh_tier", 0))
 	var ms = data.get("mesh_size", [1.0, 1.0, 1.0])
 	def.mesh_size = Vector3(float(ms[0]), float(ms[1]), float(ms[2]))
+	def.model_path = String(data.get("model", ""))
+	var mr = data.get("model_rotation_deg", [0.0, 0.0, 0.0])
+	def.model_rotation_deg = Vector3(float(mr[0]), float(mr[1]), float(mr[2]))
 
 	return def

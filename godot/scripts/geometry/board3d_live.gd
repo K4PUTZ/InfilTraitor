@@ -1256,8 +1256,6 @@ func _build_mesh_props() -> void:
 			continue
 		var definition = Registries.get_material_registry().get_material(inst.material_id)
 		var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
-		var mesh := BoxMesh.new()
-		mesh.size = inst.mesh_size
 		var node := PropMesh3D.new()
 		node.name = inst.id
 		_geometry_root.add_child(node)
@@ -1265,7 +1263,12 @@ func _build_mesh_props() -> void:
 		## the storey's first level, whose own top is one level above the ground. Handing them over as they were
 		## drew every mesh prop within a GU of the map origin and a level up in the air (found 2026-09-29, on the
 		## first capture that looked for them). So: rest it on the level below, and centre it on its GU.
-		node.setup(self, mesh, inst.cell, inst.level - 1, colour, inst.mesh_size.y * 0.5)
+		if inst.model_path != "":
+			node.setup_model(self, inst.model_path, inst.model_rotation_deg, inst.mesh_size, inst.cell, inst.level - 1)
+		else:
+			var mesh := BoxMesh.new()
+			mesh.size = inst.mesh_size
+			node.setup(self, mesh, inst.cell, inst.level - 1, colour, inst.mesh_size.y * 0.5)
 		node.position.x = float(inst.cell.x) + 0.5
 		node.position.z = float(inst.cell.y) + 0.5
 		_mesh_prop_nodes[inst.id] = node

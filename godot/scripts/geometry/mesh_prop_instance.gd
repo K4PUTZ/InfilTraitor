@@ -12,6 +12,8 @@ var level: int
 var material_id: String
 var mesh_tier: int          ## 3 (cosmetic-only) or 4 (shatters on a close-enough hit)
 var mesh_size: Vector3      ## world units (1.0 = 1 GU), the box the mesh occupies
+var model_path: String = ""            ## a real model to draw instead of the box (see PropDef.model_path)
+var model_rotation_deg: Vector3 = Vector3.ZERO
 var shattered: bool = false ## Tier 4 only: true once spawn_prop_shatter() has fired for it
 
 

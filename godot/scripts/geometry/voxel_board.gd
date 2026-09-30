@@ -2365,8 +2365,11 @@ func register_mesh_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 	var material_name: String = prop_def.material_zones.get("default", "wood")
 	var start_level: int = GeometryCoords.storey_level_base(start_storey)
 	var id := "MESHPROP_%d_%d_%d_%s" % [gu_cell.x, gu_cell.y, start_storey, prop_def.id]
-	_mesh_props.append(MeshPropInstance.new(id, gu_cell, start_level, material_name,
-		prop_def.mesh_tier, prop_def.mesh_size))
+	var inst := MeshPropInstance.new(id, gu_cell, start_level, material_name,
+		prop_def.mesh_tier, prop_def.mesh_size)
+	inst.model_path = prop_def.model_path
+	inst.model_rotation_deg = prop_def.model_rotation_deg
+	_mesh_props.append(inst)
 
 
 ## R3D-PROPS Tier 3/4: the live mesh-prop instances `Board3DLive` renders and `Room` resolves

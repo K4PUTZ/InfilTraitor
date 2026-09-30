@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**264 scripts · 84146 lines total** (under `godot/scripts/`)
+**264 scripts · 84151 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3154,7 +3154,7 @@ extends `Node` · 231 lines
 
 ### `prop_registry.gd`
 
-`class_name PropRegistry` · 215 lines
+`class_name PropRegistry` · 220 lines
 
 `godot/scripts/systems/prop_registry.gd`
 

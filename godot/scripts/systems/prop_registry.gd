@@ -136,7 +136,9 @@ func problems_of(def, slot: SlotDef) -> Array[String]:
 	var size: Vector3 = def.mesh_size
 	if String(def.vox_model) != "":
 		stats = PropVoxLibrary.stats(def, material_registry)
-		size = stats["size"]   ## a voxel model has no `mesh_size`: its own scaled size is what must fit the slot's box
+		## A voxel model has no `mesh_size`: its own scaled size is what must fit the slot's box (and when it could not be built there
+		## is no size to judge: the slot's own box keeps "it could not be loaded" the first problem instead of a confusing 0-size one).
+		size = stats["size"] if bool(stats["ok"]) else slot.max_size
 	elif String(def.model_path) == "":
 		stats = PropModelFit.stats(PropModelFit.box(def.mesh_size))
 	else:
@@ -169,6 +171,9 @@ func _generic_def(slot: SlotDef):
 	def.footprint_gus = slot.footprint_gus
 	def.gameplay = slot.gameplay
 	def.material_zones = {"default": slot.generic_material}
+	## A voxel slot's generic is a HOLLOW box (a crate's shell), never a solid cube: the claim budget of a slot is what a map is planned on.
+	if slot.mesh_tier == 0:
+		def.hollow_shell = 1
 	return def
 
 

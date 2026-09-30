@@ -114,6 +114,11 @@ REQUIRED_PATTERNS = [
     ("map JSON", re.compile(r"(^|/)maps/[^/]+\.map\.json$")),
     ("localization CSV", re.compile(r"localization/translations/.*\.csv$")),
 ]
+# PP4 (2026-09-30): a `.vox` model is not a Godot resource, so the export's `include_filter` has to name it; without it the APK boots
+# with every voxel prop missing (the validator falls each one back to its slot's generic, which is exactly what the first Moto run of
+# the DORM map showed: 49 120 claims and 0 irregular containers instead of 41 464 and 39). Required only when the models exist locally.
+if (REPO / "ASSETS/props/vox").is_dir() and any(f.endswith(".vox") for f in os.listdir(REPO / "ASSETS/props/vox")):
+    REQUIRED_PATTERNS.append((".vox voxel models", re.compile(r"ASSETS/props/vox/[^/]+\.vox$")))
 
 # Anything at or above this is almost certainly the source-texture trap back
 # again, even if the filename pattern changed. A tripwire, not a spec.

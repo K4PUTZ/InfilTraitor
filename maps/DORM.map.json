@@ -1,0 +1,327 @@
+{
+  "format": "infiltraitor-map",
+  "schema_version": 3,
+  "id": "DORM",
+  "meta": {
+    "title": "Dormitory",
+    "description": "The first content scene (PROP_PIPELINE_PLAN \u00a78): a 14x9 GU dormitory built entirely from voxel models (bed_single, nightstand, locker, bookshelf, desk, chair, bin; ours, `tools/asset_generation/gen_dorm_vox.py`) in slots. Four beds with their nightstands along the top wall, a locker row on the right, a bookshelf on the left, two desks with chairs, two bins, one door at the bottom. It is also the CALIBRATION room: every object at its real size beside a wall and the agent, to judge sizes, palette and material numbers in one place (PROPS_TIER4_PLAN P7). Every prop is a destructible store container: blast, shoot and burn it."
+  },
+  "sections": {
+    "board": {
+      "v": 1,
+      "inner_size": [
+        14,
+        9
+      ],
+      "buffer": 1,
+      "floor_tile": "floor_SE"
+    },
+    "actors": {
+      "v": 1,
+      "agent_start": [
+        6,
+        6
+      ],
+      "guards": []
+    },
+    "legacy_compiler": {
+      "v": 1,
+      "wall_height": 1,
+      "access_points": [
+        {
+          "cell": [
+            6,
+            8
+          ]
+        }
+      ],
+      "dividers": [],
+      "lights": [
+        {
+          "x": 3,
+          "y": 3,
+          "height_class": 4,
+          "radius": 8,
+          "intensity": 1.0
+        },
+        {
+          "x": 10,
+          "y": 3,
+          "height_class": 4,
+          "radius": 8,
+          "intensity": 1.0
+        },
+        {
+          "x": 7,
+          "y": 6,
+          "height_class": 4,
+          "radius": 9,
+          "intensity": 1.1
+        }
+      ]
+    },
+    "floor_zones": {
+      "v": 2,
+      "items": [
+        {
+          "gu": [
+            0,
+            0
+          ],
+          "size": [
+            14,
+            9
+          ],
+          "material": "concrete"
+        }
+      ]
+    },
+    "damage_materials": {
+      "v": 1,
+      "materials": [
+        "concrete",
+        "wood",
+        "metal"
+      ]
+    },
+    "props": {
+      "v": 1,
+      "items": [
+        {
+          "def": "bed_single",
+          "gu": [
+            1,
+            1
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "nightstand",
+          "gu": [
+            2,
+            1
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bed_single",
+          "gu": [
+            4,
+            1
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "nightstand",
+          "gu": [
+            5,
+            1
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bed_single",
+          "gu": [
+            7,
+            1
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "nightstand",
+          "gu": [
+            8,
+            1
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bed_single",
+          "gu": [
+            10,
+            1
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "nightstand",
+          "gu": [
+            11,
+            1
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "locker",
+          "gu": [
+            13,
+            3
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "locker",
+          "gu": [
+            13,
+            4
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "locker",
+          "gu": [
+            13,
+            5
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bookshelf",
+          "gu": [
+            0,
+            4
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "desk",
+          "gu": [
+            3,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "chair",
+          "gu": [
+            3,
+            7
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "desk",
+          "gu": [
+            4,
+            6
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "chair",
+          "gu": [
+            4,
+            7
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bin",
+          "gu": [
+            12,
+            7
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        },
+        {
+          "def": "bin",
+          "gu": [
+            1,
+            7
+          ],
+          "storey": 0,
+          "vox_offset": [
+            0,
+            0
+          ],
+          "rot": 0
+        }
+      ]
+    }
+  }
+}

@@ -3500,6 +3500,30 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
   5. **Retire:** `ActorBillboard3D` and the gameplay frame bake (atlases, normal maps, D17's relight).
   - **Gate:** the Moto frame for the agent and 8 guards against the billboard baseline; RAM against the atlases (first time);
     the Director's look call; the touch run (tap, select, walk).
+  - **STEPS 2-5 BUILT 2026-10-01** (`64ca9708`, `d8177c58`, `27a7ed50`; Director: "segue os passos conforme planejado, tomando
+    as decisões recomendadas"). Record: `PROMPTS/RESUMO_SESSAO_2026-10-01_R3D_ACTORS_WORLD.md`.
+    - **Step 2:** `r3d_live_rig_export.py` writes one GLB per model (`agent_live.glb`, `agent_live_enemy_white.glb`, NORMAL model,
+      `P3_DEV_ONLY=0`) with 18 actions keyed from the shipped pose functions: `<posture>_<weapon>_<grip>` (standing / crouch /
+      prone x shotgun / pistol x lowered / aimed), `walk_<weapon>` (32 phases), `throw_raise|release_<weapon>`. Weapons ride
+      `hand_R`, the grenade `hand_L` (`BoneAttachment3D`). Measured per action against `p2.place_weapon()`: grip 0 m, aim 0 deg,
+      and ROLL up to 146 deg (prone, upside down) until `hand_R` is twisted about the barrel (`level_weapon()`); now 0.
+    - **Step 3:** `ActorMesh3D` reads `AgentSprite.mesh_state()` and SEEKS the action (walk locked to the step's progress, throw to
+      the sprite's clock); `ActorHeadTurn3D` (SkeletonModifier3D) turns the head. **D44: gameplay KEEPS four facings + D47's snap**
+      (the recommended reading of D64's open question: no design change, the mesh could take any yaw later). Facings match the
+      billboard in N / E / S.
+    - **Step 4:** soot on the mesh (shared `mesh_planes.gdshaderinc`); the GUARD_REVEAL silhouette on real geometry
+      (`actor_mesh_silhouette3d.gdshader`, next_pass, depth tolerance 0.3 units: at the billboard's 0.03 the mesh striped its own
+      torso behind its arm); glass tint and the cutaway dither checked equal to the billboard by capture.
+    - **Step 5:** `ActorBillboard3D`, `actor_silhouette3d*`, `ACTORS_BILLBOARD` deleted; `AgentSprite` is decision-only (no frame
+      sets, layers, anchors, relight); `head_offset_px()` is the rig's head bone on the base lattice (~-165 px standing vs the
+      bake's -168.6). The bake TOOLS stay (showcase / props).
+    - **Gate, Moto g04s, PLAYGROUND portrait, `FRAME_PROBE`, two boots per row, alternating** (logs local,
+      `docs/measurements/device_2026-10-01_moto_actors_*.log`): idle zoom 0.75 / 0.5 — billboard 18.9-19.0 / 19.4 ms (GPU 17.4-17.9),
+      mesh 19.7 / 20.5-20.6 (GPU 18.2-19.2), after step 5 19.7 / 20.7. **+0.7 to +1.2 ms**, the spike's +1.0. PSS (last poll)
+      billboard 1 078-1 133 MB, mesh with atlases 1 098-1 136, after step 5 1 016-1 101: **the atlas saving is inside boot noise**
+      (they loaded lazily; this scenario only touched the standing set). **Touch run passed** (tap selects, tap walks, the mesh
+      walks and stops; AP 2 -> 1). **Open: the Director's look call** (the billboard frames showed yellow joint bands the
+      current `agent_base` has not; the `enemy_white` mesh shows white joint spheres).
 - **R3D-PROPS — static props as meshes, destructible ones as voxels (`ACTOR` D65). Art direction RULED 2026-09-27 (Director)
   — see the top-of-file block: 4 tiers (construction unchanged; crates/square props native-voxel; small/medium props mesh +
   cosmetic soot/smoke, never destructible; medium/large organic props mesh + a transient shatter-fragment VFX swarm on
@@ -3554,6 +3578,19 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
   - the VFX: `ParticleMath.to_world()` maps screen displacements.
 
   They become world-space state before rotation (R3D-4's rule for new VFX, applied to the old ones).
+  - **BUILT 2026-10-01 (`c3216776`).** The VFX keep their 2D simulation, which runs in the N lattice in every view, and reach the
+    world through `Board3DLive.lattice_basis()` (the BASE view's camera); only a particle's shape faces the live camera. In-flight
+    VFX are no longer cleared on a view change (a blast captured mid-rotation burns where one started in that view does).
+    `GroundCanvas3D` was already exact under yaw (the N lattice is permanent); the blast footprint and the DEV trail joined it.
+    NEW `WorldCanvas3D`: lifted drawings as world ribbons / discs (each point from its floor, `particle_origin()`), rebuilt on
+    `Board3DLive.view_changed`; tracer, throw arc, ceiling lamps. Its SCREEN mode puts a 2D drawing on the live camera plane over a
+    world anchor: the aim dome and the shrapnel star, derived with the VIEW's grid axes (walls cut the dome on their real side in
+    every view). Actor contact shadows ride the mesh. World-anchored HUD (fire / detonate menus, the virtual grenade) projects
+    through the 3D camera (`Room.screen_of_lifted()`, `Board3DLive.canvas_point()` / `screen_of()`).
+  - **Still 2D, for R3D-ROT's list:** the explosion flash (full-screen, stays 2D by nature); the DEV overlays (light, exposure,
+    temporal, height, occlusion, tile risk, elite exposure, tile labels, voxel ruler, circle gate, shadow, golden shafts =
+    R3D-LOOK); `guard_noise_indicator` is never shown (`Room._emit_guard_noise_indicator` does not exist, an old wiring gap);
+    grenade / collectible billboards are R3D-PROPS'.
 - **R3D-ROT — rotation returns (was R3D-9). Design CLOSED 2026-09-27 (Director): four fixed views, camera-only — see the
   top-of-file ruling.**
   - **Built as a HYBRID, steps (Director, 2026-09-30, who took R3D-ROT ahead of R3D-ACTORS / R3D-WORLD and chose "hybrid" and "re-mesh per view"):**

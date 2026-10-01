@@ -5,7 +5,6 @@
 class_name RoomBuilder
 
 var room: Node
-var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
@@ -440,10 +439,6 @@ static func _apply_junction_overrides(junction_columns: Array, layout: Dictionar
 				column.facade_enabled = bool(override["facade_enabled"])
 
 
-func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:
-	return PerspectiveMapperClass.layout_with_perspective(layout, direction)
-
-
 ## Private helpers
 
 ## Place a named tile at cell. LOUD-FAILS on an unknown name (bake invariant B6).
@@ -558,8 +553,7 @@ func _register_voxel_prop_levels(instances: Array) -> void:
 			var autoload: Node = room.get_node_or_null("/root/Registries")
 			var vox_build: Dictionary = PropVoxLibrary.build_for(prop_def, autoload.get_material_registry() if autoload != null else null)
 			if bool(vox_build["ok"]):
-				room._voxel_board.register_vox_prop(instance["gu_cell"], instance.get("storey", 0), prop_def, vox_build,
-					room._active_perspective, room._base_layout.get("size", Vector2i.ZERO))
+				room._voxel_board.register_vox_prop(instance["gu_cell"], instance.get("storey", 0), prop_def, vox_build)
 			else:
 				push_warning("[RoomBuilder] '%s': its .vox model could not be built — placement skipped" % prop_def.id)
 				continue

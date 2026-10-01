@@ -73,12 +73,10 @@ const FACADE_SPAN_VOXELS: Vector2 = Vector2(64.0, 32.0)
 enum Dir { TOP, SE, SW, NW, NE }
 const DIR_STEP: Array[Vector3i] = [Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(-1, 0, 0), Vector3i(0, 0, -1)]
 const DIR_NORMAL: Array[Vector3] = [Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]
-## R3D-ROT-2 — the three faces each VIEW meshes (TOP, then the view's SE side, then its SW side), in base-grid faces: the
-## camera yaws a quarter turn per view, so the faces turned toward it are a different pair. N keeps the old order.
-const VIEW_DIRS: Dictionary = {
-	"N": [Dir.TOP, Dir.SE, Dir.SW], "E": [Dir.TOP, Dir.NE, Dir.SE],
-	"S": [Dir.TOP, Dir.NW, Dir.NE], "W": [Dir.TOP, Dir.SW, Dir.NW],
-}
+## R3D-ROT (Director, 2026-10-01: "one truth, turned by the camera alone, every face built up front") — the board meshes
+## EVERY face a voxel can show, once, whatever the view: a rotation is the camera's yaw and two uniforms, nothing re-meshed.
+## The faces turned away from the camera are culled by the GPU (`cull_back`), never by the mesher.
+const ALL_DIRS: Array = [Dir.TOP, Dir.SE, Dir.SW, Dir.NW, Dir.NE]
 ## The shader's face SLOT (1 = the view's SE side, 2 = its SW side) of an x-facing and of a z-facing face, per view: the
 ## tone and the soot digit are the screen side's, never the world face's, so a wall keeps its tone through a rotation.
 const VIEW_FACE_SLOTS: Dictionary = {
@@ -93,7 +91,7 @@ const VIEW_YAW_DEG: Dictionary = {"N": 0.0, "E": 90.0, "S": 180.0, "W": 270.0}
 ## hint for the same reason — its luminance is a multiplier in sRGB space.
 const OPAQUE_SHADER: String = """
 shader_type spatial;
-render_mode unshaded, cull_disabled;
+render_mode unshaded, cull_back;
 uniform sampler2D facade : filter_nearest_mipmap, repeat_disable;
 uniform vec3 base_color = vec3(0.6);
 uniform float has_facade = 0.0;
@@ -174,8 +172,8 @@ int cut_state(ivec3 v, vec2 frag) {
 	float fill = ring == 0 ? 0.14 : (ring == 1 ? 0.24 : 0.36);
 	return fill > cut_bayer(frag) ? 2 : 1;
 }
-// A stable hash of a voxel in [0, 1): what makes charred tones vary from voxel to voxel. View-space coordinates, so the
-// pattern re-rolls on a rotation until R3D-ROT fixes the world.
+// A stable hash of a voxel in [0, 1): what makes charred tones vary from voxel to voxel. World (base) coordinates, so the
+// pattern is the same from every view.
 float char_hash(ivec3 c) {
 	uint x = uint(c.x) * 73856093u ^ uint(c.y) * 19349663u ^ uint(c.z) * 83492791u;
 	x = (x ^ (x >> 13u)) * 1274126177u;
@@ -248,7 +246,7 @@ const DECAL_TAIL: String = """
 }
 """
 static var DECAL_SHADER: String = OPAQUE_SHADER \
-	.replace("render_mode unshaded, cull_disabled;", "render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;") \
+	.replace("render_mode unshaded, cull_back;", "render_mode unshaded, cull_back, depth_draw_never, blend_mix;") \
 	.replace("varying vec3 v_normal;", "varying vec3 v_normal;\nvarying float v_layer;\nuniform sampler2DArray decals : filter_linear_mipmap, repeat_disable;") \
 	.replace("	v_normal = NORMAL;", "	v_normal = NORMAL;\n	v_layer = floor(COLOR.r * 255.0 + 0.5);") \
 	.replace("v_normal * 0.01", "v_normal * 0.06") \
@@ -340,9 +338,8 @@ var _mesh_prop_nodes: Dictionary = {}
 var _fragment_nodes: Array = []   ## PropFragments3D: the voxel fragments / piles of broken Tier 4 props
 var _tone: Array[float] = []
 var _px_per_unit: float = 1.0
-## R3D-ROT-2 — the view the board is turned to and the three faces it meshes for it.
+## R3D-ROT-2 — the view the board is turned to (the camera's yaw; the mesh does not depend on it).
 var _view: String = "N"
-var _view_dirs: Array = [Dir.TOP, Dir.SE, Dir.SW]
 var _origin_2d: Vector2 = Vector2.ZERO
 var _to_gu: Transform2D = Transform2D.IDENTITY
 var _plane: Texture2DArray = null
@@ -1636,18 +1633,17 @@ func _start_remesh_task(chunks: Dictionary, reason: String, voxels: int, fold_ms
 		"t0": Time.get_ticks_usec()}
 	_remesh_result = []
 	var chunk_list: Array = chunks.keys()
-	var dirs: Array = _view_dirs  ## the view the task meshes for, whatever `set_view()` does while it runs
 	_remesh_task_id = WorkerThreadPool.add_task(
-		func() -> void: _remesh_task_body(chunk_list, dirs))
+		func() -> void: _remesh_task_body(chunk_list))
 
 
 ## Runs OFF the main thread. Writes into `_remesh_result` (this `Board3DLive` instance
 ## isn't touched by anything else while a task is in flight — `_remesh_task_id != -1`
 ## blocks a second task, and nothing else in this turn-based model mutates the store mid-
 ## remesh) and never touches the scene tree or a `RenderingServer` resource.
-func _remesh_task_body(chunk_list: Array, dirs: Array) -> void:
+func _remesh_task_body(chunk_list: Array) -> void:
 	for chunk: Vector2i in chunk_list:
-		var collected: Dictionary = _collect_and_merge_chunk(chunk, dirs)
+		var collected: Dictionary = _collect_and_merge_chunk(chunk)
 		_remesh_result.append({"chunk": chunk, "surfaces": collected["surfaces"],
 			"faces": collected["faces"], "quads": collected["quads"],
 			"collect_us": collected["collect_us"], "merge_us": collected["merge_us"]})
@@ -1849,16 +1845,15 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 ## `Resource`, so building it off the main thread is safe). No `ArrayMesh`, no
 ## `MeshInstance3D`, no scene-tree touch — those need the main thread and live in
 ## `_commit_chunk_mesh()`.
-func _collect_and_merge_chunk(chunk: Vector2i, dirs: Array = []) -> Dictionary:
-	if dirs.is_empty():
-		dirs = _view_dirs
+func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
+	var dirs: Array = ALL_DIRS
 	var t0: int = Time.get_ticks_usec()
 	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material}
 	var faces: int = 0
 	var dents: Array = []  ## [dir, x, y, level, material] — faces emitted as a recess, unmerged
 	var decals: Array = []  ## [dir, x, y, level, layer, on_recess] — damage marks, unmerged
 	if _store != null:
-		faces = _collect_chunk_faces_store(chunk, planes, dents, decals, dirs)
+		faces = _collect_chunk_faces_store(chunk, planes, dents, decals)
 	for key: Vector3i in ({} if _store != null else (_by_chunk.get(chunk, {}) as Dictionary)):
 		var material: int = _occ[key]
 		var glass: bool = _material_glass[material]
@@ -1931,9 +1926,8 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 ## glass and this is not), and materials map through `_store_material`. Returns the faces
 ## added to `planes`, in `_build_chunk()`'s (dir, plane) → {uv: material} shape.
 func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Array = [],
-		decals: Array = [], dirs: Array = []) -> int:
-	if dirs.is_empty():
-		dirs = _view_dirs
+		decals: Array = []) -> int:
+	var dirs: Array = ALL_DIRS
 	var cidx: int = (chunk.y - _chunk_y0) * _chunk_cols + (chunk.x - _chunk_x0)
 	if chunk.x < _chunk_x0 or chunk.y < _chunk_y0 or chunk.x - _chunk_x0 >= _chunk_cols \
 			or chunk.y - _chunk_y0 >= _chunk_rows:
@@ -2112,11 +2106,12 @@ static func _face_offset(normal: Vector3) -> Vector3:
 	return Vector3(maxf(normal.x, 0.0), maxf(normal.y, 0.0), maxf(normal.z, 0.0))
 
 
-## A quad wound so its front faces `normal`, with the facade UVs of the axis it faces.
+## A quad wound so its front faces `normal` (Godot's front face is clockwise seen from the normal side, cross . normal < 0,
+## as `_emit_quad()` winds; it matters since the board is `cull_back`), with the facade UVs of the axis it faces.
 func _dent_quad(surface: SurfaceData, unit: float, corners: Array, normal: Vector3) -> void:
 	var c: Array[Vector3] = []
 	c.assign(corners)
-	if (c[1] - c[0]).cross(c[2] - c[0]).dot(normal) < 0.0:
+	if (c[1] - c[0]).cross(c[2] - c[0]).dot(normal) > 0.0:
 		c = [c[0], c[3], c[2], c[1]]
 	var uvs: Array[Vector2] = []
 	var ax: Vector3 = normal.abs()
@@ -2190,7 +2185,7 @@ func _emit_decal(dir: int, x: int, y: int, level: int, layer: int, on_recess: bo
 	var uvs: Array[Vector2] = [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
 	if dir == Dir.TOP:
 		uvs = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
-	if (corners[1] - corners[0]).cross(corners[2] - corners[0]).dot(normal) < 0.0:
+	if (corners[1] - corners[0]).cross(corners[2] - corners[0]).dot(normal) > 0.0:
 		corners = [corners[0], corners[3], corners[2], corners[1]]
 		uvs = [uvs[0], uvs[3], uvs[2], uvs[1]]
 	surface.add_quad(corners, unit, normal, uvs, float(layer) / 255.0)
@@ -2354,14 +2349,13 @@ func _measure_ground_map() -> void:
 	_px_per_unit = absf(ex.x) / cos(deg_to_rad(45.0))
 
 
-## R3D-ROT-2 — turn the board to `direction` ("N"/"E"/"S"/"W"): the camera yaws a quarter turn per view, the 2D -> ground
-## map is untouched, the shaders learn which face is which side, and every chunk is re-meshed for the three faces the new view
-## sees (in the background task, from the unchanged base store). The world, the store and the 2D -> ground map never change.
+## R3D-ROT — turn the board to `direction` ("N"/"E"/"S"/"W"): the camera yaws a quarter turn per view and the shaders learn
+## which face is which screen side. Nothing is re-meshed: every face was meshed at build (`ALL_DIRS`), the GPU culls the ones
+## turned away. The world, the store, the mesh and the 2D -> ground map never change.
 func set_view(direction: String) -> void:
-	if not VIEW_DIRS.has(direction) or direction == _view:
+	if not VIEW_YAW_DEG.has(direction) or direction == _view:
 		return
 	_view = direction
-	_view_dirs = VIEW_DIRS[direction]
 	if _camera != null:
 		_camera.rotation_degrees = Vector3(-30.0, 45.0 + float(VIEW_YAW_DEG[_view]), 0.0)
 	var slots: Vector2i = VIEW_FACE_SLOTS[direction]
@@ -2382,11 +2376,6 @@ func set_view(direction: String) -> void:
 		else:
 			m.set_shader_parameter("face_x_slot", slots.x)
 			m.set_shader_parameter("face_z_slot", slots.y)
-	if _store != null and _geometry_root != null:
-		var all: Dictionary = {}
-		for chunk: Vector2i in _store_chunks():
-			all[chunk] = true
-		_remesh(all, "view %s" % direction, 0, 0.0)
 	if _room != null:
 		on_occlusion(_room._occlusion_set)
 	view_changed.emit(direction)

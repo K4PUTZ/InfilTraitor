@@ -13,7 +13,6 @@ func _init() -> void:
 	_test_hostile_files()
 	_test_builder()
 	_test_register_blocks()
-	_test_rotation()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -158,44 +157,4 @@ func _test_register_blocks() -> void:
 	board.free()
 	print("")
 
-
-## An asymmetric model seen from E, carried back to the base, is the model seen from N: its base-coordinate damage records find their voxels.
-func _test_rotation() -> void:
-	print("[5] a rotated view holds the same voxels, turned")
-	var cells: Array = []
-	for z in range(3):
-		for x in range(6):
-			cells.append(Vector4i(x, 0, z, 1))   ## a long thin wall along x
-	cells.append(Vector4i(1, 3, 1, 1))            ## and a knob: asymmetric
-	var model := VoxModel.parse(VoxModel.write(Vector3i(6, 4, 3), cells, PackedColorArray([Color8(200, 0, 0)])))
-	var any := func(_i: int, _c: Color) -> String: return "wood"
-	var build: Dictionary = VoxPropBuilder.build(model, 1, any, Vector2i(8, 8))
-	build["origin_gu"] = Vector2i.ZERO
-	var def := PropDef.from_json({"id": "wall", "mesh_tier": 0, "footprint_gus": [[0, 0]], "vox_model": "x"})
-	var base_size := Vector2i(10, 8)
-	var per: int = GeometryCoords.VOXELS_PER_UNIT_AXIS
-	var north := VoxelBoard.new()
-	north.register_vox_prop(Vector2i(3, 2), 0, def, build, "N", base_size)
-	var want: Dictionary = {}
-	for b: PropBlock in north.prop_blocks():
-		for v: Voxel in b.voxels:
-			want[Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)] = true
-	var all_views: bool = true
-	var view_anchor: Dictionary = {"E": Vector2i(base_size.y - 1 - 2, 3), "S": Vector2i(base_size.x - 1 - 3, base_size.y - 1 - 2),
-		"W": Vector2i(2, base_size.x - 1 - 3)}
-	for dir in ["E", "S", "W"]:
-		var board := VoxelBoard.new()
-		board.register_vox_prop(view_anchor[dir], 0, def, build, dir, base_size)
-		var got: Dictionary = {}
-		for b: PropBlock in board.prop_blocks():
-			for v: Voxel in b.voxels:
-				var back: Vector2i = PerspectiveMapper.cell_to_base(v.grid_pos, dir, base_size * per)
-				got[Vector3i(back.x, back.y, v.level)] = true
-		if got != want:
-			all_views = false
-			print("    view %s: %d voxels back in base, expected %d" % [dir, got.size(), want.size()])
-		board.free()
-	_check(all_views, "E, S and W views, carried back to the base, are exactly the N view's %d voxels" % want.size())
-	north.free()
-	print("")
 

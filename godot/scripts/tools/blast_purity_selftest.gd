@@ -468,7 +468,7 @@ func test_7_cursor_sweep_and_invalidation(bomb_def, ctx: Dictionary, gus: Array)
 	var revision: int = 1
 
 	for gu in gus:
-		var sig := PredictionCache.blast_signature("frag_grenade", gu, "NORTH")
+		var sig := PredictionCache.blast_signature("frag_grenade", gu)
 		cache.request(sig, revision, bomb_def, gu, ctx)
 		while cache.is_busy():
 			cache.pump(BUDGET_MS)
@@ -477,7 +477,7 @@ func test_7_cursor_sweep_and_invalidation(bomb_def, ctx: Dictionary, gus: Array)
 
 	## The comparison — back over the same targets, nothing changed in between.
 	for gu in gus:
-		var sig := PredictionCache.blast_signature("frag_grenade", gu, "NORTH")
+		var sig := PredictionCache.blast_signature("frag_grenade", gu)
 		var d := cache.peek(sig, revision)
 		if d == null:
 			cache.request(sig, revision, bomb_def, gu, ctx)
@@ -502,7 +502,7 @@ func test_7_cursor_sweep_and_invalidation(bomb_def, ctx: Dictionary, gus: Array)
 
 	## §5.2's invalidation, which is the half that makes a stale prediction
 	## impossible rather than merely unlikely.
-	var probe := PredictionCache.blast_signature("frag_grenade", gus[0], "NORTH")
+	var probe := PredictionCache.blast_signature("frag_grenade", gus[0])
 	if cache.peek(probe, revision) == null:
 		_fail("the probe GU was not cached before the mutation — nothing to invalidate")
 		return

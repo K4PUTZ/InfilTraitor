@@ -346,8 +346,7 @@ func _update_light_uniform() -> void:
 		_material.set_shader_parameter("light_intensity", 0.0)
 		return
 
-	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
-	var base_light_cell: Vector2i = room._cell_to_base(best_light.cell, room._active_perspective, base_size)
+	var base_light_cell: Vector2i = best_light.cell
 	var grid_delta: Vector2i = base_light_cell - base_cell
 	## The baked basis below is the N camera's; the live camera is yawed by the view, so the world direction is turned back.
 	var light_dir_world := Vector3(float(grid_delta.x), 0.0, float(grid_delta.y)).normalized() \

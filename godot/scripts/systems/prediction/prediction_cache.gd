@@ -72,9 +72,8 @@ var _active: DetonationPrediction = null
 ## Perspective is in the key because anything resolving through view space
 ## (carved sides, screen-x reads) differs between rotations, and §2.4 lists it as
 ## a real input.
-static func blast_signature(bomb_id: String, source_gu: Vector2i,
-		perspective: String) -> String:
-	return "blast:%s:%d,%d:%s" % [bomb_id, source_gu.x, source_gu.y, perspective]
+static func blast_signature(bomb_id: String, source_gu: Vector2i) -> String:
+	return "blast:%s:%d,%d" % [bomb_id, source_gu.x, source_gu.y]
 
 
 ## Asks for a prediction, starting one if this is new. Returns the handle —

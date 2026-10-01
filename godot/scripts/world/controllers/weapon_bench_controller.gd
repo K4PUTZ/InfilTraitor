@@ -17,7 +17,6 @@
 class_name WeaponBenchController
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
-const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 
 ## Compass edge -> GU-space step, per docs/DIRECTION_GLOSSARY.md §3. The same
 ## four deltas edge_extractor.gd's _EDGE_BY_SUFFIX uses; a weapon's declared
@@ -69,17 +68,13 @@ func clear() -> void:
 	_active_index = -1
 
 
-## Called from room.gd::_set_perspective(). The sprite re-derives its own cell
-## and baked frame (FloatingCollectible.reposition_for_perspective); this only
-## has to keep the registry's own view-space cell in step, since that is what
-## the cone is fired from.
-func reposition_for_perspective(direction: String) -> void:
-	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
+## Called from room.gd::_set_perspective(). R3D-ROT: the camera turned over the one world, so no cell moves; each
+## sprite re-picks the baked frame of the new view (FloatingCollectible.on_view_changed).
+func on_view_changed() -> void:
 	for w in _weapons:
-		w["gu_cell"] = PerspectiveMapperClass.cell_from_base(w["base_cell"], direction, base_size)
 		var sprite = w["sprite"]
 		if sprite != null and is_instance_valid(sprite):
-			sprite.reposition_for_perspective(direction)
+			sprite.on_view_changed()
 
 
 func _sprite_global_rect(weapon: Dictionary) -> Rect2:
@@ -151,17 +146,9 @@ func _cone_cells(weapon: Dictionary) -> Array:
 		PELLET_FLOOD_MAX_STEPS, _blocked_edges_dict(), room._blocked_cells).keys()
 
 
-## Rotate a base-space compass edge into the active perspective. A perspective
-## flip turns the world by 90 deg per step, and the compass edges are exactly
-## those 90 deg steps, so this is an index rotation rather than any angle math.
+## A compass edge's grid step. R3D-ROT: the map never turns (only the camera does), so the base facing IS the grid's.
 func _view_facing_delta(base_facing: String) -> Vector2i:
-	const ORDER: Array[String] = ["NE", "SE", "SW", "NW"]
-	const STEPS := {"N": 0, "E": 1, "S": 2, "W": 3}
-	var i: int = ORDER.find(base_facing)
-	if i < 0:
-		return Vector2i.ZERO
-	var steps: int = int(STEPS.get(String(room._active_perspective), 0))
-	return FACING_DELTA[ORDER[(i + steps) % ORDER.size()]]
+	return FACING_DELTA.get(base_facing, Vector2i.ZERO)
 
 
 ## The real trigger. Marks the wall Slices and roof Slabs inside the cone

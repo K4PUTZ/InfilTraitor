@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**269 scripts · 84377 lines total** (under `godot/scripts/`)
+**269 scripts · 84259 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -497,7 +497,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2392 lines
+extends `Node3D` · 2381 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -513,6 +513,7 @@ extends `Node3D` · 2392 lines
 - `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
 - `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(-1, 0, 0), Vector3i(0, 0, -1)]`
 - `DIR_NORMAL` = `[Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]`
+- `ALL_DIRS` = `[Dir.TOP, Dir.SE, Dir.SW, Dir.NW, Dir.NE]`
 - `VIEW_FACE_SLOTS` = `{ "N": Vector2i(1, 2), "E": Vector2i(2, 1), "S": Vector2i(1, 2), "W": Vector2i(2, 1), }`
 - `VIEW_YAW_DEG` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": 270.0}`
 - `OPAQUE_SHADER` = `"""`
@@ -1206,7 +1207,7 @@ extends `Node3D` · 2392 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2457 lines
+`class_name VoxelBoard` · extends `Node2D` · 2448 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1223,7 +1224,6 @@ extends `Node3D` · 2392 lines
 - `CRAZE_MASK_TEXELS_PER_VOXEL` = `6`
 - `FloorPile3DRef` = `preload("res://godot/scripts/geometry/floor_pile3d.gd")`
 - `PropMesh3DRef` = `preload("res://godot/scripts/geometry/prop_mesh3d.gd")`
-- `PerspectiveMapperScript` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 
 **Public vars**
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
@@ -1361,7 +1361,7 @@ extends `Node3D` · 2392 lines
 
 ### `agent_probe_prop.gd`
 
-`class_name AgentProbeProp` · extends `Sprite2D` · 319 lines
+`class_name AgentProbeProp` · extends `Sprite2D` · 318 lines
 
 `godot/scripts/overlays/agent_probe_prop.gd`
 
@@ -1635,7 +1635,7 @@ extends `Node2D` · 134 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 593 lines
+`class_name FloatingCollectible` · extends `Node2D` · 582 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1643,7 +1643,6 @@ extends `Node2D` · 134 lines
 
 **Constants / tuning**
 - `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
-- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
 
 ---
@@ -1689,7 +1688,7 @@ extends `Node2D` · 134 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 377 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 376 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -3027,7 +3026,7 @@ extends `Node` · 231 lines
 
 ### `occlusion_set.gd`
 
-`class_name OcclusionSet` · 1296 lines
+`class_name OcclusionSet` · 1336 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
@@ -3104,7 +3103,7 @@ extends `Node` · 231 lines
 
 ### `prediction_cache.gd`
 
-`class_name PredictionCache` · extends `RefCounted` · 208 lines
+`class_name PredictionCache` · extends `RefCounted` · 207 lines
 
 `godot/scripts/systems/prediction/prediction_cache.gd`
 
@@ -4537,7 +4536,7 @@ extends `SceneTree` · 313 lines
 
 ### `occlusion_view_selftest.gd`
 
-extends `SceneTree` · 83 lines
+extends `SceneTree` · 105 lines
 
 `godot/scripts/tools/occlusion_view_selftest.gd`
 
@@ -5043,7 +5042,7 @@ extends `Node` · 74 lines
 
 ### `vox_model_selftest.gd`
 
-extends `SceneTree` · 201 lines
+extends `SceneTree` · 160 lines
 
 `godot/scripts/tools/vox_model_selftest.gd`
 
@@ -5411,7 +5410,7 @@ extends `Node2D` · 32 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 609 lines
+`class_name RoomBuilder` · 603 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -5419,7 +5418,6 @@ extends `Node2D` · 32 lines
 
 **Public vars**
 - `var room: Node`
-- `var PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")`
@@ -5434,7 +5432,6 @@ extends `Node2D` · 32 lines
 - `func get_light_sources() -> Array:`
 - `func build_registry(ts: TileSet) -> void:`
 - `func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:`
-- `func layout_with_perspective(layout: Dictionary, direction: String) -> Dictionary:`
 
 ---
 
@@ -5530,7 +5527,7 @@ extends `Node2D` · 32 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1613 lines
+`class_name TestZoneController` · 1605 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5538,7 +5535,6 @@ extends `Node2D` · 32 lines
 
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
-- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
 - `AgentProbePropClass` = `preload("res://godot/scripts/overlays/agent_probe_prop.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
@@ -5599,7 +5595,7 @@ extends `Node2D` · 32 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 454 lines
+`class_name WeaponBenchController` · 441 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -5607,7 +5603,6 @@ extends `Node2D` · 32 lines
 
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
-- `PerspectiveMapperClass` = `preload("res://godot/scripts/world/utilities/perspective_mapper.gd")`
 - `FACING_DELTA` = `{ "NW": Vector2i(-1, 0), "NE": Vector2i(0, -1), "SE": Vector2i(1, 0), "SW": Vector2i(0, 1), }`
 - `MENU_GAP_ABOVE_PX` = `30.0`
 - `PELLET_FLOOD_MAX_STEPS` = `40`
@@ -5620,7 +5615,7 @@ extends `Node2D` · 32 lines
 
 **Public API**
 - `func clear() -> void:`
-- `func reposition_for_perspective(direction: String) -> void:`
+- `func on_view_changed() -> void:`
 - `func hit_test(screen_pos: Vector2) -> int:`
 - `func open_menu_for(index: int) -> void:`
 - `func cancel_active() -> void:`
@@ -5801,7 +5796,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11200 lines
+extends `Node2D` · 11122 lines
 
 `godot/scripts/world/room.gd`
 

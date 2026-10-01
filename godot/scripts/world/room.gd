@@ -392,7 +392,7 @@ func record_voxel_damage_to_base(grid_pos: Vector2i, level: int, damage_state: i
 		variant: int = 0, substrate: int = 0, source: Voxel = null) -> void:
 	if damage_state <= 0:
 		return
-	var base_xy := PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
+	var base_xy := grid_pos
 	var key := Vector3i(base_xy.x, base_xy.y, level)
 	var dir := _carved_side_to_base_dir(grid_pos, carved_side)
 	var rec: Array = [damage_state, 1 if is_blast else 0, dir.x, dir.y, dir.z, variant, substrate]
@@ -415,7 +415,7 @@ func record_claim_damage_to_base(v: Voxel) -> void:
 	var tag: int = _claim_tag(v)
 	if tag == CLAIM_TAG_UNKNOWN:
 		return
-	var base_xy := PerspectiveMapperClass.cell_to_base(v.grid_pos, _active_perspective, _base_voxel_size())
+	var base_xy := v.grid_pos
 	var key := Vector3i(base_xy.x, base_xy.y, v.level)
 	var dir := _carved_side_to_base_dir(v.grid_pos, v.damage_carved_side)
 	var rec: Array = [v.damage_state, 1 if v.damage_is_blast else 0, dir.x, dir.y, dir.z,
@@ -437,23 +437,18 @@ const CLAIM_TAG_SLICE_BASE: int = 10   ## + the index of the base face (Face.NW.
 
 
 ## R3D-LIGHT: the tag is a function of the container (its class and, for a slice, its face) and the perspective, so it is asked
-## once per pair (`container id -> PackedInt32Array` per perspective, -1 = not asked yet). It was ~half of the blast commit's
+## once per container (`container id -> tag`; one per container since R3D-ROT, the layout no longer turns). It was ~half of the blast commit's
 ## persistence loop: two loops of ~600 calls, each an `instance_from_id`, type tests and two perspective conversions.
 var _claim_tag_cache: Dictionary = {}
 
 
 func _claim_tag(v: Voxel) -> int:
 	var cid: int = v.container_id()
-	var persp: int = "NESW".find(_active_perspective)
-	var row: PackedInt32Array = _claim_tag_cache.get(cid, PackedInt32Array())
-	if row.size() == 4 and persp >= 0 and persp < 4 and row[persp] >= 0:
-		return row[persp]
+	var cached: int = int(_claim_tag_cache.get(cid, -1))
+	if cached >= 0:
+		return cached
 	var tag: int = _claim_tag_uncached(cid)
-	if persp >= 0 and persp < 4:
-		if row.size() != 4:
-			row = PackedInt32Array([-1, -1, -1, -1])
-		row[persp] = tag
-		_claim_tag_cache[cid] = row
+	_claim_tag_cache[cid] = tag
 	return tag
 
 
@@ -465,12 +460,7 @@ func _claim_tag_uncached(cid: int) -> int:
 		return CLAIM_TAG_COLUMN
 	if not (container is Slice):
 		return CLAIM_TAG_UNKNOWN
-	## The rotation is linear, so the face's delta rotates like a vector; any far-from-INVALID cell serves as the origin.
-	var origin := Vector2i(100, 100)
-	var size := _base_voxel_size()
-	var view_delta: Vector2i = Face.delta((container as Slice).face)
-	var base_delta: Vector2i = PerspectiveMapperClass.cell_to_base(origin + view_delta, _active_perspective, size) \
-			- PerspectiveMapperClass.cell_to_base(origin, _active_perspective, size)
+	var base_delta: Vector2i = Face.delta((container as Slice).face)
 	for base_face in [Face.NW, Face.NE, Face.SE, Face.SW]:
 		if Face.delta(base_face) == base_delta:
 			return CLAIM_TAG_SLICE_BASE + base_face
@@ -482,8 +472,7 @@ func _claim_tag_uncached(cid: int) -> int:
 ## called `GlassCrack.apply()` and got a non-zero crack id back, the same way the
 ## shot path calls `record_voxel_damage_to_base()` for the voxels it changed.
 func record_glass_crack_to_base(hit_grid_pos: Vector2i, hit_level: int, wide: bool) -> void:
-	var base_xy := PerspectiveMapperClass.cell_to_base(
-		hit_grid_pos, _active_perspective, _base_voxel_size())
+	var base_xy := hit_grid_pos
 	_base_cracks.append({
 		"base": Vector3i(base_xy.x, base_xy.y, hit_level),
 		"wide": wide,
@@ -513,8 +502,7 @@ func claim_glass_opening_for_hit(grid_pos: Vector2i, level: int, wide: bool,
 		return ""
 	_voxel_board.claim_glass_opening(level, grid_pos, opening_id)
 	if record:
-		var base_xy := PerspectiveMapperClass.cell_to_base(
-			grid_pos, _active_perspective, _base_voxel_size())
+		var base_xy := grid_pos
 		_base_openings.append({"base": Vector3i(base_xy.x, base_xy.y, level), "wide": wide})
 	return opening_id
 
@@ -542,8 +530,8 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 		## already applies to its own misses. A craze whose anchor is not in this
 		## view is how a whole feature turns out to be healing on every rotation
 		## with nothing in any log to say so (§16.6 was exactly that).
-		print_debug("[GLASS-CRAZE] anchor %s level %d has no pane voxel in perspective %s — no field"
-			% [grid_pos, level, _active_perspective])
+		print_debug("[GLASS-CRAZE] anchor %s level %d has no pane voxel — no field"
+			% [grid_pos, level])
 		return 0
 	var plan: Dictionary = GlassCrack.plan_pane_field(
 		_pane_by_id(host.pane_id), host.face, intensity)
@@ -575,9 +563,8 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 	var lo_off: Vector2 = plan["pane_lo"]
 	var hi_off: Vector2 = plan["pane_hi"]
 	var step := Vector2i(1, 0) if run_is_x else Vector2i(0, 1)
-	var bsize := _base_voxel_size()
-	var b0 := PerspectiveMapperClass.cell_to_base(c_cell, _active_perspective, bsize)
-	var b1 := PerspectiveMapperClass.cell_to_base(c_cell + step, _active_perspective, bsize)
+	var b0 := c_cell
+	var b1 := c_cell + step
 	var db := b1 - b0
 	var run_grows_with_base: bool = (db.x + db.y) > 0
 	var anchor_off: float = lo_off.x if run_grows_with_base else hi_off.x
@@ -606,7 +593,7 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 	## be eyeballed — which is how the flip difference that found this bug nearly
 	## went unnoticed.
 	_last_craze_identity = "anchor=%s level=%d variant=%d" % [
-		PerspectiveMapperClass.cell_to_base(anchor_cell, _active_perspective, bsize),
+		anchor_cell,
 		anchor_level, GlassCrack.pick_variant(pane_key)]
 	plan["variant"] = GlassCrack.pick_variant(pane_key)
 	## G-D29's H/V flip, off the same hash — three patterns become twelve looks for
@@ -623,14 +610,13 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 		## on screen, so no two views of one craze can be diffed; the claim is that
 		## the anchor, the variant and the flip are IDENTICAL in every view, and
 		## these are them.
-		var ab := PerspectiveMapperClass.cell_to_base(anchor_cell, _active_perspective, bsize)
-		print("[GLASS-CRAZE] lattice anchor base (%d,%d) level %d · variant %d · dir %s (view %s)"
+		var ab := anchor_cell
+		print("[GLASS-CRAZE] lattice anchor base (%d,%d) level %d · variant %d · dir %s"
 			% [ab.x, ab.y, anchor_level, int(plan["variant"]),
-			plan["field_dir"], _active_perspective])
+			plan["field_dir"]])
 	var id: int = _voxel_board.spawn_glass_craze(plan)
 	if record and id != 0:
-		var base_xy := PerspectiveMapperClass.cell_to_base(
-			grid_pos, _active_perspective, _base_voxel_size())
+		var base_xy := grid_pos
 		_base_crazes.append({
 			"base": Vector3i(base_xy.x, base_xy.y, level), "intensity": intensity})
 	return id
@@ -651,12 +637,10 @@ func claim_glass_craze(grid_pos: Vector2i, level: int, intensity: float,
 func record_glass_shards(piles: Dictionary) -> int:
 	if piles.is_empty():
 		return 0
-	var bsize := _base_voxel_size()
 	var drawn: int = 0
 	for key in piles:
 		var k: Vector3i = key
-		var base_xy := PerspectiveMapperClass.cell_to_base(
-			Vector2i(k.x, k.y), _active_perspective, bsize)
+		var base_xy := Vector2i(k.x, k.y)
 		var bkey := Vector3i(base_xy.x, base_xy.y, k.z)
 		var total: int = int(_base_shards.get(bkey, 0)) + int(piles[key])
 		_base_shards[bkey] = total
@@ -681,13 +665,11 @@ func _shard_variant_for(base_key: Vector3i) -> int:
 func _respawn_base_shards() -> void:
 	if _base_shards.is_empty() or _voxel_board == null:
 		return
-	var bsize := _base_voxel_size()
 	var drawn: int = 0
 	var lost: int = 0
 	for bkey in _base_shards:
 		var k: Vector3i = bkey
-		var vxy := PerspectiveMapperClass.cell_from_base(
-			Vector2i(k.x, k.y), _active_perspective, bsize)
+		var vxy := Vector2i(k.x, k.y)
 		if _voxel_board.spawn_floor_shard_pile(
 				k.z, vxy, int(_base_shards[bkey]), _shard_variant_for(k)):
 			drawn += 1
@@ -696,8 +678,8 @@ func _respawn_base_shards() -> void:
 	## ⚠️ REPORTED, NOT SWALLOWED — the discipline §16.6 was caught by. A pile that
 	## silently stops being drawn on a flip is a whole feature healing itself with
 	## nothing in any log to say so.
-	print_debug("[GLASS-SHARDS] perspective %s — %d pile(s) redrawn, %d had no layer"
-		% [_active_perspective, drawn, lost])
+	print_debug("[GLASS-SHARDS] %d pile(s) redrawn, %d had no layer"
+		% [drawn, lost])
 
 
 ## ── G6b-2 / G-D43 — SPAWN ONE EVENT'S RAIN ──────────────────────────────────
@@ -731,7 +713,6 @@ func _respawn_base_shards() -> void:
 func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = null) -> int:
 	if _voxel_board == null or flights.is_empty():
 		return 0
-	var bsize := _base_voxel_size()
 	var rows: Array = []
 	var top_level: int = -1
 	for f in flights:
@@ -755,7 +736,7 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = nu
 		## shard on a camera turn mid-flight. Keyed on the ORIGIN cell + level,
 		## which is unique per destroyed voxel — two shards scattering onto one
 		## landing cell must not collapse to one hash.
-		var base_xy := PerspectiveMapperClass.cell_to_base(origin_gp, _active_perspective, bsize)
+		var base_xy := origin_gp
 		var ground: int = _voxel_board.ground_plane_level()
 		rows.append({
 			"from": from, "to": to,
@@ -835,12 +816,11 @@ func spawn_glass_rain(flights: Array, with_dust: bool = true, tint: Variant = nu
 func claim_glass_remnants(remnants: Array, record: bool = true) -> int:
 	if _voxel_board == null or remnants.is_empty():
 		return 0
-	var bsize := _base_voxel_size()
 	var drawn: int = 0
 	for r in remnants:
 		var cell: Vector2i = r["cell"]
 		var level: int = int(r["level"])
-		var base_xy := PerspectiveMapperClass.cell_to_base(cell, _active_perspective, bsize)
+		var base_xy := cell
 		var bkey := Vector3i(base_xy.x, base_xy.y, level)
 		if _draw_remnant(cell, level, bkey):
 			drawn += 1
@@ -882,19 +862,17 @@ func _draw_remnant(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
 func _respawn_base_remnants() -> void:
 	if _base_remnants.is_empty() or _voxel_board == null:
 		return
-	var bsize := _base_voxel_size()
 	var drawn: int = 0
 	var lost: int = 0
 	for bkey in _base_remnants:
 		var k: Vector3i = bkey
-		var vxy := PerspectiveMapperClass.cell_from_base(
-			Vector2i(k.x, k.y), _active_perspective, bsize)
+		var vxy := Vector2i(k.x, k.y)
 		if _draw_remnant(vxy, k.z, k):
 			drawn += 1
 		else:
 			lost += 1
-	print_debug("[GLASS-REMNANT] perspective %s — %d remnant(s) restamped, %d had no pane or no anchor"
-		% [_active_perspective, drawn, lost])
+	print_debug("[GLASS-REMNANT] %d remnant(s) restamped, %d had no pane or no anchor"
+		% [drawn, lost])
 
 
 ## ── CRACK-06 — THE SHARDS CLINGING TO THE TORN GLASS EDGE ───────────────────
@@ -912,12 +890,11 @@ func _respawn_base_remnants() -> void:
 func claim_glass_rim_shards(shards: Array, record: bool = true) -> int:
 	if _voxel_board == null or shards.is_empty():
 		return 0
-	var bsize := _base_voxel_size()
 	var drawn: int = 0
 	for s in shards:
 		var cell: Vector2i = s["cell"]
 		var level: int = int(s["level"])
-		var base_xy := PerspectiveMapperClass.cell_to_base(cell, _active_perspective, bsize)
+		var base_xy := cell
 		var bkey := Vector3i(base_xy.x, base_xy.y, level)
 		if _draw_rim_shard(cell, level, bkey):
 			drawn += 1
@@ -949,19 +926,17 @@ func _draw_rim_shard(cell: Vector2i, level: int, base_key: Vector3i) -> bool:
 func _respawn_base_rim_shards() -> void:
 	if _base_rim_shards.is_empty() or _voxel_board == null:
 		return
-	var bsize := _base_voxel_size()
 	var drawn: int = 0
 	var lost: int = 0
 	for bkey in _base_rim_shards:
 		var k: Vector3i = bkey
-		var vxy := PerspectiveMapperClass.cell_from_base(
-			Vector2i(k.x, k.y), _active_perspective, bsize)
+		var vxy := Vector2i(k.x, k.y)
 		if _draw_rim_shard(vxy, k.z, k):
 			drawn += 1
 		else:
 			lost += 1
-	print_debug("[GLASS-RIM-SHARD] perspective %s — %d restamped, %d had no pane or no glass edge"
-		% [_active_perspective, drawn, lost])
+	print_debug("[GLASS-RIM-SHARD] %d restamped, %d had no pane or no glass edge"
+		% [drawn, lost])
 
 
 ## ── G4-4 / G-D45 — A REMNANT WHOSE FRAME WAS DESTROYED FALLS WITH IT ─────────
@@ -992,13 +967,12 @@ func _respawn_base_rim_shards() -> void:
 func reap_orphaned_remnants() -> Dictionary:
 	if _base_remnants.is_empty() or _voxel_board == null or _edge_registry == null:
 		return {"reaped": 0, "landed": 0, "voxels": []}
-	var bsize := _base_voxel_size()
 	var orphan_keys: Array = []
 	var fallen: Array = []
 	var fallen_voxels: Array = []
 	for bkey in _base_remnants:
 		var k: Vector3i = bkey
-		var cell := PerspectiveMapperClass.cell_from_base(Vector2i(k.x, k.y), _active_perspective, bsize)
+		var cell := Vector2i(k.x, k.y)
 		var level: int = k.z
 		var host = _glass_slice_at(cell, level)
 		if host == null:
@@ -1057,19 +1031,17 @@ func _glass_slice_at(grid_pos: Vector2i, level: int):
 func _respawn_base_crazes() -> void:
 	if _base_crazes.is_empty() or _voxel_board == null:
 		return
-	var base_size := _base_voxel_size()
 	var rebuilt: int = 0
 	var lost: int = 0
 	for rec in _base_crazes:
 		var key: Vector3i = rec["base"]
-		var vxy := PerspectiveMapperClass.cell_from_base(
-			Vector2i(key.x, key.y), _active_perspective, base_size)
+		var vxy := Vector2i(key.x, key.y)
 		if claim_glass_craze(vxy, key.z, float(rec["intensity"]), false) != 0:
 			rebuilt += 1
 		else:
 			lost += 1
-	print_debug("[GLASS-CRAZE] perspective %s — %d field(s) rebuilt from base coords, %d not rebuilt"
-		% [_active_perspective, rebuilt, lost])
+	print_debug("[GLASS-CRAZE] %d field(s) rebuilt from base coords, %d not rebuilt"
+		% [rebuilt, lost])
 
 
 ## The pick itself, shared by the live claim, the rebuild replay and the crack
@@ -1086,8 +1058,7 @@ func glass_opening_for(grid_pos: Vector2i, level: int, wide: bool) -> String:
 ## three call sites deriving "the same" key separately is how two of them end up
 ## disagreeing after an unrelated edit.
 func glass_base_key(grid_pos: Vector2i, level: int) -> String:
-	var base_xy := PerspectiveMapperClass.cell_to_base(
-		grid_pos, _active_perspective, _base_voxel_size())
+	var base_xy := grid_pos
 	return "%d,%d,%d" % [base_xy.x, base_xy.y, level]
 
 
@@ -1170,16 +1141,14 @@ func apply_glass_diagnostic_backdrop() -> void:
 func _claim_base_openings() -> void:
 	if _base_openings.is_empty() or _voxel_board == null:
 		return
-	var base_size := _base_voxel_size()
 	var claimed: int = 0
 	for rec in _base_openings:
 		var key: Vector3i = rec["base"]
-		var vxy := PerspectiveMapperClass.cell_from_base(
-			Vector2i(key.x, key.y), _active_perspective, base_size)
+		var vxy := Vector2i(key.x, key.y)
 		if claim_glass_opening_for_hit(vxy, key.z, bool(rec["wide"]), false) != "":
 			claimed += 1
-	print_debug("[GLASS-OPENING] claimed %d of %d recorded hole(s) before the replay flush, perspective %s"
-		% [claimed, _base_openings.size(), _active_perspective])
+	print_debug("[GLASS-OPENING] claimed %d of %d recorded hole(s) before the replay flush"
+		% [claimed, _base_openings.size()])
 
 
 ## ⚠️ AND THIS STILL RUNS, AS THE BELT TO THAT BRACE. `_claim_base_openings()` above
@@ -1190,13 +1159,11 @@ func _claim_base_openings() -> void:
 func _respawn_base_openings() -> void:
 	if _base_openings.is_empty() or _voxel_board == null:
 		return
-	var base_size := _base_voxel_size()
 	var applied: int = 0
 	var cut: int = 0
 	for rec in _base_openings:
 		var key: Vector3i = rec["base"]
-		var vxy := PerspectiveMapperClass.cell_from_base(
-			Vector2i(key.x, key.y), _active_perspective, base_size)
+		var vxy := Vector2i(key.x, key.y)
 		var opening_id: String = glass_opening_for(vxy, key.z, bool(rec["wide"]))
 		if opening_id == "":
 			continue
@@ -1204,8 +1171,8 @@ func _respawn_base_openings() -> void:
 		if n > 0:
 			applied += 1
 			cut += n
-	print_debug("[GLASS-OPENING] rebuilt %d of %d recorded hole(s), %d shard(s), perspective %s"
-		% [applied, _base_openings.size(), cut, _active_perspective])
+	print_debug("[GLASS-OPENING] rebuilt %d of %d recorded hole(s), %d shard(s)"
+		% [applied, _base_openings.size(), cut])
 
 
 ## CRACK-02 S-3 — rebuild every crack sprite for the perspective just entered.
@@ -1245,7 +1212,6 @@ func _respawn_base_openings() -> void:
 func _respawn_base_cracks() -> void:
 	if _base_cracks.is_empty() or _voxel_board == null or _edge_registry == null:
 		return
-	var base_size := _base_voxel_size()
 	var all_slices: Array = _edge_registry.all_slices()
 	## One pass to index the panes, rather than one scan per crack.
 	var by_pane: Dictionary = {}
@@ -1258,8 +1224,7 @@ func _respawn_base_cracks() -> void:
 	var lost: int = 0
 	for rec in _base_cracks:
 		var key: Vector3i = rec["base"]
-		var vxy := PerspectiveMapperClass.cell_from_base(
-			Vector2i(key.x, key.y), _active_perspective, base_size)
+		var vxy := Vector2i(key.x, key.y)
 		## The pane this cell belongs to, in THIS view.
 		var found_slice = null
 		## ⚠️ THE IMPACT VOXEL ITSELF IS KEPT, not just the slice it is in: whether
@@ -1283,8 +1248,8 @@ func _respawn_base_cracks() -> void:
 			## swallowed — measured 2026-09-02, it is how a real map defect showed
 			## up. See `_respawn_base_cracks()`'s own ⚠️ note.
 			lost += 1
-			print_debug("[GLASS-CRACK] base %s -> view %s level %d has no pane voxel in perspective %s"
-				% [key, vxy, key.z, _active_perspective])
+			print_debug("[GLASS-CRACK] base %s level %d has no pane voxel"
+				% [vxy, key.z])
 			continue
 		var plan: Dictionary = GlassCrack.plan_pane_crack(
 			by_pane[found_slice.pane_id], found_slice.face, vxy, key.z, bool(rec["wide"]))
@@ -1299,8 +1264,8 @@ func _respawn_base_cracks() -> void:
 			rebuilt += 1
 		else:
 			lost += 1
-	print_debug("[GLASS-CRACK] perspective %s — %d crack(s) rebuilt from base coords, %d without a pane"
-		% [_active_perspective, rebuilt, lost])
+	print_debug("[GLASS-CRACK] %d crack(s) rebuilt from base coords, %d without a pane"
+		% [rebuilt, lost])
 
 
 ## D25 — VIEW-space Voxel.CarvedSide → BASE-space unit direction pointing at the
@@ -1312,7 +1277,7 @@ func _respawn_base_cracks() -> void:
 ## so there is no second rotation formula here to drift out of sync with the one
 ## in PerspectiveMapper.
 func _carved_side_to_base_dir(grid_pos: Vector2i, carved_side: int) -> Vector3i:
-	return BlastCalculator.carved_side_to_base_dir(grid_pos, carved_side, _active_perspective, _base_voxel_size())
+	return BlastCalculator.carved_side_to_base_dir(grid_pos, carved_side, "N", _base_voxel_size())
 
 
 ## D25 — the inverse of the above, for the perspective the room is in NOW.
@@ -1320,7 +1285,7 @@ func _carved_side_to_base_dir(grid_pos: Vector2i, carved_side: int) -> Vector3i:
 ## sign of their screen-x ((x − y) under this isometric projection), the same
 ## test BlastCalculator.carved_side_for() applies at detonation time.
 func _carved_side_from_base(base_xy: Vector2i, dir: Vector3i) -> int:
-	return BlastCalculator.carved_side_from_base(base_xy, dir, _active_perspective, _base_voxel_size())
+	return BlastCalculator.carved_side_from_base(base_xy, dir, "N", _base_voxel_size())
 
 
 ## Appends `v` to the claims of its cell in a `_reapply_base_damage()` index.
@@ -1341,7 +1306,6 @@ func _reapply_base_damage() -> void:
 		return
 	if _edge_registry == null or _slab_registry == null:
 		return
-	var base_size_vox := _base_voxel_size()
 
 	## Index this view's voxels by (grid_pos, level) — the same shape the soot
 	## snapshot builds, cheap next to the rebuild it follows.
@@ -1383,8 +1347,7 @@ func _reapply_base_damage() -> void:
 	var reapplied: int = 0
 	var missed: int = 0
 	for base_key in _base_damage:
-		var vxy := PerspectiveMapperClass.cell_from_base(
-				Vector2i(base_key.x, base_key.y), _active_perspective, base_size_vox)
+		var vxy := Vector2i(base_key.x, base_key.y)
 		var claims: Array = index.get(Vector3i(vxy.x, vxy.y, base_key.z), [])
 		if claims.is_empty():
 			missed += 1
@@ -1444,8 +1407,8 @@ func _reapply_base_damage() -> void:
 		_voxel_board.register_fixed_level(gu, reveal_fixed[gu])
 	_voxel_board.process_dirty(_edge_registry)
 	_voxel_board.process_dirty_slabs(_slab_registry)
-	print_debug("[VL-PERSIST] perspective %s — %d of %d base damage record(s) re-applied, %d had no voxel in this view"
-		% [_active_perspective, reapplied, _base_damage.size(), missed])
+	print_debug("[VL-PERSIST] %d of %d base damage record(s) re-applied, %d had no voxel"
+		% [reapplied, _base_damage.size(), missed])
 var _ceiling_overlay: Node2D = null  ## VIS-01: overhead ceiling props/lights (CeilingPropOverlay)
 const SHADOW_MULT   := GuardEnemy.SHADOW_MULT
 const PENUMBRA_MULT := GuardEnemy.PENUMBRA_MULT
@@ -1462,9 +1425,8 @@ const WORLD_TILE_PX      := 128.0  ## horizontal px per isometric tile step (use
 var _is_desktop_viewport: bool = false
 var _pending_auto_end_turn: bool = false
 var _selected_cell: Vector2i = INVALID_CELL
-var _active_perspective: String = "N"
-## R3D-ROT — the camera's side. `_active_perspective` (the layout's orientation, what the conversions below turn through) no
-## longer changes after a map loads, so those conversions are the identity until they are deleted.
+## R3D-ROT — the camera's side. The layout's orientation is N for the life of a map (the old `_active_perspective` and every
+## conversion through it were the identity once rotation stopped re-laying the map out, and went at R3D-ROT).
 var _view_direction: String = "N"
 var _alert_meter: int = 0
 
@@ -1883,8 +1845,9 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 		push_error("Room layout did not provide a valid map size.")
 		return
 
-	var view_layout := _room_builder.layout_with_perspective(layout, _active_perspective)
-	room_size = view_layout.get("size", room_size)
+	## The map is laid out once, in base (N) orientation: a rotation turns the camera, never the layout (R3D-ROT). A deep copy,
+	## as the old per-view re-layout made, so nothing downstream writes into `_base_layout`.
+	var view_layout: Dictionary = layout.duplicate(true)
 	_map_buffer = view_layout.get("buffer", 0)
 	VoxelStore.active = null
 	_room_builder.build_from_layout(view_layout, room_size)
@@ -2640,8 +2603,8 @@ func view_yaw_deg() -> float:
 
 
 ## R3D-ROT — a rotation turns the CAMERA over one fixed world. The map is never re-laid-out and no Voxel is rebuilt: the
-## store, the damage, the soot and every record stay in base coordinates, so there is nothing to replay. The board yaws and
-## re-meshes the faces the new side shows (`Board3DLive.set_view()`); the 2D lattice, the actors' billboards and the lifted
+## store, the damage, the soot and every record stay in base coordinates, so there is nothing to replay. The board yaws over
+## faces meshed once for every side (`Board3DLive.set_view()`); the 2D lattice, the actors' billboards and the lifted
 ## overlays are placed through the N lattice and land on the same world point from every side.
 func _set_perspective(direction: String) -> void:
 	if not PerspectiveMapperClass.is_valid_direction(direction):
@@ -2660,12 +2623,12 @@ func _set_perspective(direction: String) -> void:
 	## The baked figures pick their frame against the view: the agent and the runtime props recompose.
 	agent.on_perspective_changed()
 	if _test_zone_controller != null:
-		_test_zone_controller.reposition_for_perspective(_active_perspective)
+		_test_zone_controller.on_view_changed()
 	for pickup in _collectibles:
 		if pickup != null and is_instance_valid(pickup):
-			pickup.reposition_for_perspective(_active_perspective)
+			pickup.on_view_changed()
 	if _weapon_bench_controller != null:
-		_weapon_bench_controller.reposition_for_perspective(_active_perspective)
+		_weapon_bench_controller.on_view_changed()
 	## R3D-WORLD: the VFX in flight are NOT cleared any more. Their positions are world state (the 2D simulation runs in
 	## the base view's lattice and reaches the world through `Board3DLive.lattice_basis()`), so a blast keeps burning in
 	## the same place while the camera turns around it.
@@ -2926,7 +2889,7 @@ func scenario_board_probe(path: String, label: String) -> Dictionary:
 		planes[level] = _voxel_board.cell_plane_image(int(level))
 	var meta: Dictionary = {
 		"map": _dev_flag("MAP", "default"),
-		"perspective": _active_perspective,
+		"perspective": "N",  ## the layout's orientation, fixed since R3D-ROT (the camera's side is not board state)
 		"world_revision": _world_revision,
 		"board3d": board3d() != null,
 	}
@@ -3152,7 +3115,7 @@ func scenario_board_probe_store(path: String, label: String) -> Dictionary:
 		planes[level] = _voxel_board.cell_plane_image(int(level))
 	var meta: Dictionary = {
 		"map": _dev_flag("MAP", "default"),
-		"perspective": _active_perspective,
+		"perspective": "N",  ## the layout's orientation, fixed since R3D-ROT (the camera's side is not board state)
 		"world_revision": _world_revision,
 		"board3d": board3d() != null,
 		"source": "store",
@@ -4105,7 +4068,7 @@ func _clear_orphaned_soot(grid_pos: Vector2i, level: int) -> void:
 	var stored: Dictionary = _soot_map.get(level, {})
 	if stored.is_empty():
 		return
-	var base_xy: Vector2i = PerspectiveMapperClass.cell_to_base(grid_pos, _active_perspective, _base_voxel_size())
+	var base_xy: Vector2i = grid_pos
 	stored.erase(base_xy)
 
 
@@ -4575,36 +4538,13 @@ func prop_top_px(gu: Vector2i) -> float:
 	return 0.0
 
 
-## A point in VOXEL units (continuous) through the same 90-degree rotation `cell_to_base()` applies to a cell: the cell
-## it is in maps as a cell, and the offset inside it turns with the cell's own axes. Used for debris, whose centre is
-## free to sit anywhere, not on a cell.
-func _voxel_point_to_base(p: Vector2, perspective: String) -> Vector2:
-	var size := _base_voxel_size()
-	var c := Vector2i(floori(p.x), floori(p.y))
-	var f: Vector2 = p - Vector2(c) - Vector2(0.5, 0.5)
-	var bc: Vector2i = PerspectiveMapperClass.cell_to_base(c, perspective, size)
-	var ux: Vector2i = PerspectiveMapperClass.cell_to_base(c + Vector2i(1, 0), perspective, size) - bc
-	var uy: Vector2i = PerspectiveMapperClass.cell_to_base(c + Vector2i(0, 1), perspective, size) - bc
-	return Vector2(bc) + Vector2(0.5, 0.5) + Vector2(ux) * f.x + Vector2(uy) * f.y
-
-
-func _voxel_point_from_base(bp: Vector2, perspective: String) -> Vector2:
-	var size := _base_voxel_size()
-	var c := Vector2i(floori(bp.x), floori(bp.y))
-	var f: Vector2 = bp - Vector2(c) - Vector2(0.5, 0.5)
-	var vc: Vector2i = PerspectiveMapperClass.cell_from_base(c, perspective, size)
-	var ux: Vector2i = PerspectiveMapperClass.cell_from_base(c + Vector2i(1, 0), perspective, size) - vc
-	var uy: Vector2i = PerspectiveMapperClass.cell_from_base(c + Vector2i(0, 1), perspective, size) - vc
-	return Vector2(vc) + Vector2(0.5, 0.5) + Vector2(ux) * f.x + Vector2(uy) * f.y
-
-
 ## Every ground-debris placement goes through here so it is recorded in base coords and survives a rotation.
 ## `center` is world units (1.0 = 1 GU), as `VoxelBoard.place_debris_piece()` takes it.
 func _place_debris_piece(id: String, center: Vector2, level: int, material_id: String, variant: int,
 		tint: Color, rot: float) -> void:
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	tint = _debris_tint(tint, center / unit, material_id)
-	_base_debris[id] = {"base": _voxel_point_to_base(center / unit, _active_perspective), "level": level,
+	_base_debris[id] = {"base": (center / unit), "level": level,
 		"material": material_id, "variant": variant, "tint": tint, "rot": rot}
 	_voxel_board.place_debris_piece(id, center, level, material_id, variant, tint, rot)
 
@@ -4614,7 +4554,7 @@ func _place_debris_piece(id: String, center: Vector2, level: int, material_id: S
 func _debris_tint(tint: Color, voxel_point: Vector2, material_id: String) -> Color:
 	var k: float = float(DEBRIS_TINT_SCALE.get(material_id, 1.0))
 	var cell := Vector2i(floori(voxel_point.x), floori(voxel_point.y))
-	var base_xy := PerspectiveMapperClass.cell_to_base(cell, _active_perspective, _base_voxel_size())
+	var base_xy := cell
 	var soot_level: Dictionary = _soot_map.get(_voxel_board.ground_plane_level() - 1, {})
 	var tone: int = int(soot_level.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
 	if tone == BlastCalculator.FACE_SOOT_CHAR:
@@ -4680,10 +4620,9 @@ func _release_destroyed_prop_cells() -> void:
 func _reapply_base_shattered_props() -> void:
 	if _voxel_board == null:
 		return
-	var base_gu_size: Vector2i = _base_layout.get("size", Vector2i.ZERO)
 	var live: Node = board3d()
 	for inst: MeshPropInstance in _voxel_board.mesh_props():
-		var base_gu: Vector2i = PerspectiveMapperClass.cell_to_base(inst.cell, _active_perspective, base_gu_size)
+		var base_gu: Vector2i = inst.cell
 		if _base_shattered_props.has(base_gu):
 			inst.shattered = true
 			## A live board that already drew this prop (a save restore does not rebuild it) must drop the node.
@@ -4698,7 +4637,7 @@ func _respawn_base_debris() -> void:
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	for id in _base_debris:
 		var d: Dictionary = _base_debris[id]
-		var centre: Vector2 = _voxel_point_from_base(d["base"], _active_perspective) * unit
+		var centre: Vector2 = d["base"] * unit
 		_voxel_board.place_debris_piece(id, centre, int(d["level"]), String(d["material"]),
 			int(d["variant"]), d["tint"], float(d["rot"]))
 
@@ -4713,11 +4652,10 @@ func _print_prop_ring_map(gu_rings: Dictionary) -> void:
 			src = gu
 			break
 	var ground: int = _voxel_board.ground_plane_level()
-	var base_size := _base_voxel_size()
 	var soot_level: Dictionary = _soot_map.get(ground - 1, {})
 	var soot_per_gu: Dictionary = {}
 	for base_cell: Vector2i in soot_level:
-		var view_cell := PerspectiveMapperClass.cell_from_base(base_cell, _active_perspective, base_size)
+		var view_cell := base_cell
 		var g := Vector2i(view_cell.x >> 3, view_cell.y >> 3)
 		soot_per_gu[g] = int(soot_per_gu.get(g, 0)) + 1
 	var charred_total: int = 0
@@ -4759,8 +4697,7 @@ func apply_prop_proximity_effects(gu_rings: Dictionary, bomb_def) -> void:
 		## The LOGIC happens now, at the commit: the prop is broken and its cell is free. What the player SEES waits for the
 		## first frame after the flash (`release_prop_breaks()`): the mesh stands through the flash, then it is voxels.
 		inst.shattered = true
-		_base_shattered_props[PerspectiveMapperClass.cell_to_base(
-			inst.cell, _active_perspective, _base_layout.get("size", Vector2i.ZERO))] = true
+		_base_shattered_props[inst.cell] = true
 		_pending_prop_breaks.append({"inst": inst, "weight": weight, "ring": ring, "source": _ring_source(gu_rings)})
 		_release_destroyed_prop_cells()
 		if prop_debug:
@@ -4835,8 +4772,7 @@ func _start_prop_fragments(inst: MeshPropInstance, weight: float, ring: int, sou
 	for authored in surfaces:
 		zone_materials.append(String(inst.surface_materials.get(String(authored), inst.material_id)))
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials)
-	var base_gu: Vector2i = PerspectiveMapperClass.cell_to_base(inst.cell, _active_perspective,
-		_base_layout.get("size", Vector2i.ZERO))
+	var base_gu: Vector2i = inst.cell
 	node.settled.connect(_on_prop_fragments_settled.bind(base_gu, origin.y, zone_materials, division))
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 		print("[PROP-DEBUG] %s -> %d fragments of 1/%d GU (%s), weight %.2f, ring %d, blast %s"
@@ -4850,7 +4786,7 @@ func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zo
 	var size := _base_voxel_size() * division
 	var base_records: Array = []
 	for r: Dictionary in records:
-		base_records.append({"col": PerspectiveMapperClass.cell_to_base(r["column"], _active_perspective, size),
+		base_records.append({"col": r["column"],
 			"level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
 	_base_prop_piles[base_gu] = {"y0": y0, "zone_materials": zone_materials, "records": base_records, "div": division}
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
@@ -4877,11 +4813,11 @@ func _respawn_base_prop_piles() -> void:
 		var size := _base_voxel_size() * division
 		var records: Array = []
 		for r: Dictionary in pile["records"]:
-			records.append({"column": PerspectiveMapperClass.cell_from_base(r["col"], _active_perspective, size),
+			records.append({"column": r["col"],
 				"level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
 		live.call("spawn_prop_pile", records, float(pile["y0"]), pile["zone_materials"], division)
 		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
-			print("[PROP-DEBUG] pile of base GU %s laid back: %d cubes (view %s)" % [base_gu, records.size(), _active_perspective])
+			print("[PROP-DEBUG] pile of base GU %s laid back: %d cubes" % [base_gu, records.size()])
 
 
 ## R3D-PROPS Tier 1/2 debris (Director, 2026-09-28): "aproveitar o mecanismo do vidro que
@@ -5639,7 +5575,6 @@ var weapon_soot_radius: int = 3
 ## whose stored tone actually got darker, in the same shape.
 func stamp_soot(writes: Dictionary) -> Dictionary:
 	var changed: Dictionary = {}
-	var base_size := _base_voxel_size()
 	for level in writes:
 		if not _soot_map.has(level):
 			_soot_map[level] = {}
@@ -5650,8 +5585,7 @@ func stamp_soot(writes: Dictionary) -> Dictionary:
 			var tone: int = int(level_writes[view_cell])
 			if tone < 0 or tone == BlastCalculator.FACE_SOOT_CLEAN or tone > BlastCalculator.FACE_SOOT_CHAR:
 				continue
-			var base_xy := PerspectiveMapperClass.cell_to_base(
-				view_cell, _active_perspective, base_size)
+			var base_xy := view_cell
 			var current: int = int(stored.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
 			## CHARRED wins over every tone and nothing overwrites it: what fire touched stays black.
 			if current == BlastCalculator.FACE_SOOT_CHAR:
@@ -5702,14 +5636,12 @@ func _paint_soot(cells: Dictionary, reason: String) -> void:
 func project_soot_store() -> void:
 	if _voxel_board == null:
 		return
-	var base_size := _base_voxel_size()
 	var cells: Dictionary = {}
 	for level in _soot_map:
 		var stored: Dictionary = _soot_map[level]
 		var view: Dictionary = {}
 		for base_xy: Vector2i in stored:
-			view[PerspectiveMapperClass.cell_from_base(
-				base_xy, _active_perspective, base_size)] = stored[base_xy]
+			view[base_xy] = stored[base_xy]
 		cells[level] = view
 	_paint_soot(cells, "soot store")
 
@@ -5949,13 +5881,6 @@ func _is_cell_inside_room(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < _room_size.x and cell.y < _room_size.y
 
 
-func _cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i = Vector2i.ZERO) -> Vector2i:
-	var size := base_size
-	if size == Vector2i.ZERO:
-		size = _base_layout.get("size", Vector2i.ZERO)
-	return PerspectiveMapperClass.cell_to_base(view_cell, direction, size)
-
-
 ## Convert a screen-space press position to the tile cell underneath it.
 ## local_to_map uses the TOP VERTEX as anchor, so it only gives the correct
 ## cell when clicking the top quadrant. The 3×3 search over visual CENTERs
@@ -6118,6 +6043,11 @@ func _recompute_occlusion() -> void:
 			if slab.role == Slab.Role.CEILING:
 				ceiling_slabs.append(slab)
 
+	## R3D-ROT (Director, 2026-10-01): every view's edge geometry is built once, here, the first time a set of slices is
+	## seen, so a rotation reads a cache (the turn used to rebuild it: 210 ms on the Moto). A no-op once warm.
+	var warm_t0: int = Time.get_ticks_usec()
+	if _occlusion_set.prewarm_views(slices):
+		print("[OCC] every view's edge geometry built in %.1f ms" % (float(Time.get_ticks_usec() - warm_t0) / 1000.0))
 	var occ_t0: int = Time.get_ticks_usec()
 	_occlusion_set.recompute(origins, slices, _room_size, _junction_columns, ceiling_slabs)
 	var occ_t1: int = Time.get_ticks_usec()
@@ -7554,9 +7484,7 @@ func _capture_glass_crack_demo() -> void:
 			_set_perspective(flip_to)
 			if _camera_controller != null:
 				_camera_controller.set_zoom_for_capture(zoom)
-				var flipped := PerspectiveMapperClass.cell_from_base(
-					Vector2i(_base_cracks[0]["base"].x, _base_cracks[0]["base"].y),
-					_active_perspective, _base_voxel_size()) if not _base_cracks.is_empty() else hit_gp
+				var flipped := Vector2i(_base_cracks[0]["base"].x, _base_cracks[0]["base"].y) if not _base_cracks.is_empty() else hit_gp
 				_camera_controller.focus_on(
 					agent._cell_to_world(Vector2i(flipped.x >> 3, flipped.y >> 3))
 					+ Vector2(0.0, -GeometryCoords.VOXEL_STEP_PX
@@ -9698,12 +9626,8 @@ func _capture_all_four_views() -> void:
 			if focus_env != "":
 				var xy := focus_env.split(",")
 				if xy.size() == 2 and xy[0].is_valid_int() and xy[1].is_valid_int():
-					## ⚠️ THROUGH THE MAPPER, because the cell was named in BASE
-					## coords and this loop is standing in four different views. A
-					## raw cell would frame a different place in three of them.
-					var base_cell := Vector2i(xy[0].to_int(), xy[1].to_int())
-					var view_cell := PerspectiveMapperClass.cell_from_base(
-						base_cell, view, _base_layout.get("size", Vector2i.ZERO))
+					## The cell is named in BASE coords, which since R3D-ROT are the cells of every view (only the camera turns).
+					var view_cell := Vector2i(xy[0].to_int(), xy[1].to_int())
 					_camera_controller.focus_on(agent._cell_to_world(view_cell))
 					if _fow_controller != null:
 						_fow_controller.reveal_around(view_cell, 40)
@@ -9722,7 +9646,7 @@ func _capture_all_four_views() -> void:
 		var path := "%s/occ_view_%s.png" % [history_dir, view]
 		img.save_png(path)
 		print("[OCC-FIX-02] view=%s active=%s agent_cell=%s occluded_cells=%d → %s" % [
-			view, _active_perspective, agent.cell,
+			view, _view_direction, agent.cell,
 			(_occlusion_set.get_occluded_cells().size() if _occlusion_set != null and _occlusion_set.has_method("get_occluded_cells") else -1),
 			path.get_file()
 		])
@@ -10376,15 +10300,13 @@ func _run_auto_screenshot_capture() -> void:
 				## Re-read the grenade's GU here: the click block above scopes its
 				## own copy, and this runs whether or not that block ran.
 				var blast_gu: Vector2i = _test_zone_controller._grenades[tz_index]["gu_cell"]
-				var gu_base := PerspectiveMapperClass.cell_to_base(
-					blast_gu, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
+				var gu_base := blast_gu
 				_set_perspective(rotate_after)
 				for _r in range(30):
 					await get_tree().process_frame
 				## The crater moved with the map — follow it, or the capture frames
 				## whatever is now at the old screen position and proves nothing.
-				var gu_now := PerspectiveMapperClass.cell_from_base(
-					gu_base, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
+				var gu_now := gu_base
 				if _camera_controller != null and agent != null:
 					_camera_controller.focus_on(agent._cell_to_world(gu_now))
 				if _fow_controller != null:

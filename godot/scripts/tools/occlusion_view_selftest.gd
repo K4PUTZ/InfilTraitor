@@ -50,6 +50,18 @@ func _init() -> void:
 			% [dir, view_result.size(), control_base.size()])
 		_check(dir == "S" or view_result != base_result or base_result.is_empty(),
 			"%s: the set is not just the N set (the view is read)" % dir)
+	## R3D-ROT: ONE set, its geometry built for every view up front (`prewarm_views()`), turned N -> E -> S -> W -> N, must
+	## answer each view exactly as a fresh set does: a cache keyed on anything but the view hands one view another's walls.
+	var reused = _make_set("N", voxel_size)
+	var reused_slices: Array = _slices(columns)
+	_check(reused.prewarm_views(reused_slices), "prewarm builds the geometry for a new set of slices")
+	_check(not reused.prewarm_views(reused_slices), "a second prewarm over the same slices builds nothing")
+	for dir: String in ["N", "E", "S", "W", "N"]:
+		reused.view = dir
+		var origins: Array[Vector2i] = [agent]
+		reused.recompute(origins, reused_slices, GU_SIZE)
+		_check(reused.get_occluded_cells() == _run(columns, agent, dir, GU_SIZE, voxel_size),
+			"%s on the prewarmed set equals a fresh set's %s" % [dir, dir])
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
 	print("=".repeat(70) + "\n")
@@ -66,6 +78,14 @@ func _check(cond: bool, msg: String) -> void:
 
 
 func _run(columns: Array[Vector2i], agent: Vector2i, view: String, gu_size: Vector2i, voxel_size: Vector2i) -> Dictionary:
+	var slices: Array = _slices(columns)
+	var set = _make_set(view, voxel_size, gu_size)
+	var origins: Array[Vector2i] = [agent]
+	set.recompute(origins, slices, gu_size)
+	return set.get_occluded_cells()
+
+
+func _slices(columns: Array[Vector2i]) -> Array:
 	var slices: Array = []
 	for cell: Vector2i in columns:
 		var slice := Slice.new("S_%d_%d" % [cell.x, cell.y], GeometryCoordsMod.voxel_to_gu(cell), 0,
@@ -73,11 +93,13 @@ func _run(columns: Array[Vector2i], agent: Vector2i, view: String, gu_size: Vect
 		for level_offset in range(FIXTURE_LEVELS):
 			slice.voxels.append(Voxel.new(cell, GeometryCoordsMod.storey_level_base(0) + level_offset, slice))
 		slices.append(slice)
+	return slices
+
+
+func _make_set(view: String, voxel_size: Vector2i, gu_size: Vector2i = GU_SIZE):
 	var set = OcclusionSetMod.new()
 	set.memo_enabled = false
 	set.view = view
 	set.base_voxel_size = voxel_size
 	set.base_gu_size = gu_size
-	var origins: Array[Vector2i] = [agent]
-	set.recompute(origins, slices, gu_size)
-	return set.get_occluded_cells()
+	return set

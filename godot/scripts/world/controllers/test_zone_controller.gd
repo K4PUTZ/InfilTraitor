@@ -22,7 +22,6 @@
 class_name TestZoneController
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
-const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const GrenadePropClass = preload("res://godot/scripts/overlays/grenade_prop.gd")
 const AgentProbePropClass = preload("res://godot/scripts/overlays/agent_probe_prop.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
@@ -288,10 +287,9 @@ func clear() -> void:
 ## anchored to the cell's center), and register it as right-click detonatable.
 ## PERSPECTIVE-01: gu_cell is a view-space cell for the room's CURRENT
 ## perspective at add-time — also stored converted to a base (pre-rotation)
-## cell, so reposition_for_perspective() can follow rotation the same way
-## room.gd already does for the agent and the selection cursor.
+## cell. Since R3D-ROT the two are the same cell: the map never re-lays out on a rotation.
 func add_grenade(gu_cell: Vector2i) -> void:
-	var base_cell: Vector2i = room._cell_to_base(gu_cell, room._active_perspective)
+	var base_cell: Vector2i = gu_cell
 	var sprite := GrenadePropClass.new()
 	sprite.setup(room, gu_cell, base_cell)
 	sprite.position = room.agent._cell_to_world(gu_cell)
@@ -309,7 +307,7 @@ func add_grenade(gu_cell: Vector2i) -> void:
 ## follow it — because a figure that drifts off its tile on a perspective flip
 ## would corrupt the proportion judgement this probe exists for.
 func add_agent_probe(gu_cell: Vector2i, cfg: Dictionary = {}) -> void:
-	var base_cell: Vector2i = room._cell_to_base(gu_cell, room._active_perspective)
+	var base_cell: Vector2i = gu_cell
 	var sprite := AgentProbePropClass.new()
 	sprite.setup(room, gu_cell, base_cell, cfg)
 	sprite.position = room.agent._cell_to_world(gu_cell)
@@ -333,24 +331,18 @@ func set_agent_probes_dev_vision(enabled: bool) -> void:
 ## agent already uses, generalized to any runtime-instantiated prop that
 ## isn't rebuilt fresh from _base_layout on rotation. GrenadeProp.update_cell()
 ## also swaps to the frame baked for the new compass direction (D22 fix).
-func reposition_for_perspective(direction: String) -> void:
-	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
+func on_view_changed() -> void:
+	## R3D-ROT: the camera turned over the one world, so no cell moves; the baked props re-pick the frame of the new view.
 	for g in _grenades:
 		if g["detonated"]:
 			continue
-		var new_cell: Vector2i = PerspectiveMapperClass.cell_from_base(g["base_cell"], direction, base_size)
-		g["gu_cell"] = new_cell
 		var sprite: GrenadePropClass = g["sprite"]
 		if sprite != null and is_instance_valid(sprite):
-			sprite.position = room.agent._cell_to_world(new_cell)
-			sprite.update_cell(new_cell)
+			sprite.update_cell(g["gu_cell"])
 	for p in _agent_probes:
-		var probe_cell: Vector2i = PerspectiveMapperClass.cell_from_base(p["base_cell"], direction, base_size)
-		p["gu_cell"] = probe_cell
 		var probe: AgentProbePropClass = p["sprite"]
 		if probe != null and is_instance_valid(probe):
-			probe.position = room.agent._cell_to_world(probe_cell)
-			probe.update_cell(probe_cell)
+			probe.update_cell(p["gu_cell"])
 
 
 ## The sprite's own drawn rect, in world/global space — centered=false with a
@@ -1085,7 +1077,7 @@ func detonate_active() -> void:
 func _take_prediction(bomb_def, gu: Vector2i) -> DetonationPrediction:
 	var ctx := _build_detonation_ctx(gu)
 	return room._prediction_cache.request(
-		PredictionCache.blast_signature(BOMB_ID, gu, room._active_perspective),
+		PredictionCache.blast_signature(BOMB_ID, gu),
 		room._world_revision, bomb_def, gu, ctx)
 
 
@@ -1102,7 +1094,7 @@ func _begin_preproduction(gu: Vector2i) -> void:
 		return
 	var ctx := _build_detonation_ctx(gu)
 	_pump_prediction(room._prediction_cache.request(
-		PredictionCache.blast_signature(BOMB_ID, gu, room._active_perspective),
+		PredictionCache.blast_signature(BOMB_ID, gu),
 		room._world_revision, bomb_def, gu, ctx))
 
 

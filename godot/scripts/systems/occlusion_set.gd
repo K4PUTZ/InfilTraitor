@@ -797,10 +797,13 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ## makes new ones). Keyed on the count and every slice's instance id.
 var _group_key: int = -1
 var _grouped: Dictionary = {}
-var _geom_view: String = "N"
+## R3D-ROT (Director, 2026-10-01: "one truth, built once for every view"): the expensive half of the edge geometry — every
+## voxel of every wall walked for its bounds — does not depend on the view, so it is kept once per set of slices
+## (`_base_bounds`), and each view's turned geometry is kept beside it (`_geom_by_view`), so a view change reads a cache
+## instead of rebuilding (it used to: 210 ms per turn on the Moto, 33 ms on desktop).
 var _geom_source: Dictionary = {}
-var _geom_by_edge: Dictionary = {}
-var _geom_vertices: Dictionary = {}
+var _base_bounds: Dictionary = {}     ## edge_id -> [min_gx, max_gx, min_gy, max_gy, min_level, max_level]
+var _geom_by_view: Dictionary = {}    ## view -> [edge_geom, vertex_to_edges]
 
 
 func _grouped_slices(slices: Array) -> Dictionary:
@@ -869,90 +872,9 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 	## R3D-7 (Moto): this pass reads only the slices, never the agent, and walks every voxel of every wall
 	## (99 of 124 ms per agent step on the Moto g04s), so it is kept for as long as `slices_by_edge` is the
 	## very same Dictionary it was built from. A caller passing a fresh one (the selftests) recomputes.
-	var edge_geom: Dictionary = {}        ## edge_id -> geometry dict (see below)
-	var vertex_to_edges: Dictionary = {}  ## Vector2i vertex -> Array[String edge_id]
-	var reuse: bool = is_same(_geom_source, slices_by_edge) and not slices_by_edge.is_empty() and _geom_view == view
-	if reuse:
-		edge_geom = _geom_by_edge
-		vertex_to_edges = _geom_vertices
-
-	for edge_id in ([] if reuse else slices_by_edge.keys()):
-		var edge_slices: Array = slices_by_edge[edge_id]
-
-		var min_gx: int = edge_slices[0].voxels[0].grid_pos.x
-		var max_gx: int = min_gx
-		var min_gy: int = edge_slices[0].voxels[0].grid_pos.y
-		var max_gy: int = min_gy
-		var min_level: int = edge_slices[0].voxels[0].level
-		var max_level: int = min_level
-		for slice in edge_slices:
-			for voxel in slice.voxels:
-				min_gx = mini(min_gx, voxel.grid_pos.x)
-				max_gx = maxi(max_gx, voxel.grid_pos.x)
-				min_gy = mini(min_gy, voxel.grid_pos.y)
-				max_gy = maxi(max_gy, voxel.grid_pos.y)
-				min_level = mini(min_level, voxel.level)
-				max_level = maxi(max_level, voxel.level)
-
-		## The footprint in the VIEW's lattice: the two extreme corners turned, then re-ordered (a quarter turn swaps which
-		## extreme is the minimum on an axis). The base corners stay as they were, for the adjacency below.
-		var turned_a: Vector2i = turn_voxel(Vector2i(min_gx, min_gy))
-		var turned_b: Vector2i = turn_voxel(Vector2i(max_gx, max_gy))
-		var view_min_x: int = mini(turned_a.x, turned_b.x)
-		var view_max_x: int = maxi(turned_a.x, turned_b.x)
-		var view_min_y: int = mini(turned_a.y, turned_b.y)
-		var view_max_y: int = maxi(turned_a.y, turned_b.y)
-		var center_x := float(view_min_x + view_max_x) * 0.5
-		var center_y := float(view_min_y + view_max_y) * 0.5
-		var center_depth := center_x + center_y
-
-		var corner_a_x := (float(view_min_x) - float(view_min_y)) * VOXEL_HALF_W
-		var corner_b_x := (float(view_max_x) - float(view_max_y)) * VOXEL_HALF_W
-		var screen_x := (corner_a_x + corner_b_x) * 0.5
-		var half_width := absf(corner_b_x - corner_a_x) * 0.5
-
-		## y_top is the SMALLER value (higher storeys sit higher on screen);
-		## y_bottom is the LARGER value (ground level, nearer the bottom of screen).
-		## LEVEL-RENUMBER — a level becomes a SCREEN Y here, so it has to be the
-		## level relative to the ground plane, exactly as the layer's own position
-		## is. Left absolute, a wall's screen rectangle lands eighty levels off and
-		## the overlap test against the agent answers a question about a different
-		## wall — measured as 2 112 cells ghosted that the baseline never ghosts.
-		var rel_min := float(min_level - GeometryCoordsMod.PLAYABLE_LEVEL)
-		var rel_max := float(max_level - GeometryCoordsMod.PLAYABLE_LEVEL)
-		var y_bottom := center_depth * VOXEL_HALF_H - rel_min * GeometryCoordsMod.VOXEL_STEP_PX
-		var y_top := center_depth * VOXEL_HALF_H - (rel_max + 1.0) * GeometryCoordsMod.VOXEL_STEP_PX
-
-		## OCC-10: fixed always-visible base band — this edge's own bottom
-		## BASE_VISIBLE_LEVELS levels are left untouched (full opacity); ghosting
-		## starts right above them and runs to the edge's own top, at the ring
-		## alpha, same as it always has. No agent-relative math any more (see
-		## BASE_VISIBLE_LEVELS doc comment).
-		var ghost_start_level := mini(min_level + BASE_VISIBLE_LEVELS, max_level + 1)
-
-		## Adjacency graph: registered for EVERY edge, not just triggers — a
-		## non-triggering edge can still be a ring-1/ring-2 stop on the path
-		## outward from one.
-		var anchor = edge_slices[0]
-		var vertices := _edge_vertices(anchor.gu_cell, anchor.face)
-
-		edge_geom[edge_id] = {
-			"corner_a": Vector2i(min_gx, min_gy), "corner_b": Vector2i(max_gx, max_gy),
-			"depth": center_depth, "screen_x": screen_x, "half_width": half_width,
-			"y_top": y_top, "y_bottom": y_bottom,
-			"min_level": ghost_start_level, "max_level": max_level,
-		}
-
-		for v in vertices:
-			if not vertex_to_edges.has(v):
-				vertex_to_edges[v] = []
-			vertex_to_edges[v].append(edge_id)
-
-	if not reuse:
-		_geom_view = view
-		_geom_source = slices_by_edge
-		_geom_by_edge = edge_geom
-		_geom_vertices = vertex_to_edges
+	var cached: Array = _edge_geometry(slices_by_edge, view)
+	var edge_geom: Dictionary = cached[0]        ## edge_id -> geometry dict (see `_build_view_geometry()`)
+	var vertex_to_edges: Dictionary = cached[1]  ## Vector2i vertex -> Array[String edge_id]
 
 	## Trigger test: camera-side + real 2D (screen-X and screen-Y) overlap with the
 	## agent's own silhouette rectangle. Uses the edge's UNCLIPPED y_bottom — the
@@ -1294,3 +1216,121 @@ func _edge_vertices(gu_cell: Vector2i, face: int) -> Array:
 			return [Vector2i(x, y + 1), Vector2i(x + 1, y + 1)]
 		_:
 			return []
+
+
+## `slices_by_edge`'s geometry for `view`, from the caches: the base bounds once per set of slices, each view's turned
+## geometry once per view. A caller passing a fresh Dictionary (the selftests) starts both over.
+func _edge_geometry(slices_by_edge: Dictionary, for_view: String) -> Array:
+	if not is_same(_geom_source, slices_by_edge) or slices_by_edge.is_empty():
+		_geom_source = slices_by_edge
+		_base_bounds = {}
+		_geom_by_view = {}
+		for edge_id in slices_by_edge.keys():
+			var edge_slices: Array = slices_by_edge[edge_id]
+			var min_gx: int = edge_slices[0].voxels[0].grid_pos.x
+			var max_gx: int = min_gx
+			var min_gy: int = edge_slices[0].voxels[0].grid_pos.y
+			var max_gy: int = min_gy
+			var min_level: int = edge_slices[0].voxels[0].level
+			var max_level: int = min_level
+			for slice in edge_slices:
+				for voxel in slice.voxels:
+					min_gx = mini(min_gx, voxel.grid_pos.x)
+					max_gx = maxi(max_gx, voxel.grid_pos.x)
+					min_gy = mini(min_gy, voxel.grid_pos.y)
+					max_gy = maxi(max_gy, voxel.grid_pos.y)
+					min_level = mini(min_level, voxel.level)
+					max_level = maxi(max_level, voxel.level)
+			_base_bounds[edge_id] = [min_gx, max_gx, min_gy, max_gy, min_level, max_level]
+	if not _geom_by_view.has(for_view):
+		_geom_by_view[for_view] = _build_view_geometry(slices_by_edge, for_view)
+	return _geom_by_view[for_view]
+
+
+## Build every view's geometry now (Director, 2026-10-01: pay up front, then a turn costs nothing). `view` is restored.
+## True when anything had to be built (a new set of slices), false when every view was already cached.
+func prewarm_views(slices: Array) -> bool:
+	var slices_by_edge: Dictionary = _grouped_slices(slices)
+	var built: bool = false
+	for v: String in ["N", "E", "S", "W"]:
+		if not (is_same(_geom_source, slices_by_edge) and _geom_by_view.has(v)):
+			built = true
+		_edge_geometry(slices_by_edge, v)
+	return built
+
+
+## One view's geometry per edge: real footprint + screen-X/Y span, from the edge's base bounds turned into the view's
+## lattice. Reads `turn_voxel()`, which reads `view`, so `view` is set to `for_view` for the pass and restored.
+func _build_view_geometry(slices_by_edge: Dictionary, for_view: String) -> Array:
+	const VOXEL_HALF_W := 16.0   ## GeometryCoords.VOXEL_TILE_SIZE.x * 0.5
+	const VOXEL_HALF_H := 8.0    ## GeometryCoords.VOXEL_TILE_SIZE.y * 0.5
+	var saved_view: String = view
+	view = for_view
+	var edge_geom: Dictionary = {}
+	var vertex_to_edges: Dictionary = {}
+	for edge_id in slices_by_edge.keys():
+		var edge_slices: Array = slices_by_edge[edge_id]
+		var bounds: Array = _base_bounds[edge_id]
+		var min_gx: int = bounds[0]
+		var max_gx: int = bounds[1]
+		var min_gy: int = bounds[2]
+		var max_gy: int = bounds[3]
+		var min_level: int = bounds[4]
+		var max_level: int = bounds[5]
+
+		## The footprint in the VIEW's lattice: the two extreme corners turned, then re-ordered (a quarter turn swaps which
+		## extreme is the minimum on an axis). The base corners stay as they were, for the adjacency below.
+		var turned_a: Vector2i = turn_voxel(Vector2i(min_gx, min_gy))
+		var turned_b: Vector2i = turn_voxel(Vector2i(max_gx, max_gy))
+		var view_min_x: int = mini(turned_a.x, turned_b.x)
+		var view_max_x: int = maxi(turned_a.x, turned_b.x)
+		var view_min_y: int = mini(turned_a.y, turned_b.y)
+		var view_max_y: int = maxi(turned_a.y, turned_b.y)
+		var center_x := float(view_min_x + view_max_x) * 0.5
+		var center_y := float(view_min_y + view_max_y) * 0.5
+		var center_depth := center_x + center_y
+
+		var corner_a_x := (float(view_min_x) - float(view_min_y)) * VOXEL_HALF_W
+		var corner_b_x := (float(view_max_x) - float(view_max_y)) * VOXEL_HALF_W
+		var screen_x := (corner_a_x + corner_b_x) * 0.5
+		var half_width := absf(corner_b_x - corner_a_x) * 0.5
+
+		## y_top is the SMALLER value (higher storeys sit higher on screen);
+		## y_bottom is the LARGER value (ground level, nearer the bottom of screen).
+		## LEVEL-RENUMBER — a level becomes a SCREEN Y here, so it has to be the
+		## level relative to the ground plane, exactly as the layer's own position
+		## is. Left absolute, a wall's screen rectangle lands eighty levels off and
+		## the overlap test against the agent answers a question about a different
+		## wall — measured as 2 112 cells ghosted that the baseline never ghosts.
+		var rel_min := float(min_level - GeometryCoordsMod.PLAYABLE_LEVEL)
+		var rel_max := float(max_level - GeometryCoordsMod.PLAYABLE_LEVEL)
+		var y_bottom := center_depth * VOXEL_HALF_H - rel_min * GeometryCoordsMod.VOXEL_STEP_PX
+		var y_top := center_depth * VOXEL_HALF_H - (rel_max + 1.0) * GeometryCoordsMod.VOXEL_STEP_PX
+
+		## OCC-10: fixed always-visible base band — this edge's own bottom
+		## BASE_VISIBLE_LEVELS levels are left untouched (full opacity); ghosting
+		## starts right above them and runs to the edge's own top, at the ring
+		## alpha, same as it always has. No agent-relative math any more (see
+		## BASE_VISIBLE_LEVELS doc comment).
+		var ghost_start_level := mini(min_level + BASE_VISIBLE_LEVELS, max_level + 1)
+
+		## Adjacency graph: registered for EVERY edge, not just triggers — a
+		## non-triggering edge can still be a ring-1/ring-2 stop on the path
+		## outward from one.
+		var anchor = edge_slices[0]
+		var vertices := _edge_vertices(anchor.gu_cell, anchor.face)
+
+		edge_geom[edge_id] = {
+			"corner_a": Vector2i(min_gx, min_gy), "corner_b": Vector2i(max_gx, max_gy),
+			"depth": center_depth, "screen_x": screen_x, "half_width": half_width,
+			"y_top": y_top, "y_bottom": y_bottom,
+			"min_level": ghost_start_level, "max_level": max_level,
+		}
+
+		for v in vertices:
+			if not vertex_to_edges.has(v):
+				vertex_to_edges[v] = []
+			vertex_to_edges[v].append(edge_id)
+
+	view = saved_view
+	return [edge_geom, vertex_to_edges]

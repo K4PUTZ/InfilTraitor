@@ -65,7 +65,6 @@ class_name FloatingCollectible
 extends Node2D
 
 const CollectibleBakeConfig = preload("res://godot/scripts/systems/collectible_bake_config.gd")
-const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")
 const SHADER_PATH := "res://godot/shaders/flat_normal_relight.gdshader"
 
 ## Bumped 6.0 -> 18.0 (Director, 2026-07-28: "aumenta o BOB_AMPLITUDE_PX pra
@@ -287,23 +286,14 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_frames_dir: String, p_sprite_sca
 			[p_static_facing, FACING_YAW_DEG.keys()])
 		return
 	_static_facing = p_static_facing
-	base_cell = room._cell_to_base(gu_cell, room._active_perspective)
+	base_cell = gu_cell
 	## z is NOT applied here — see the note at the end of _ready(): the sort needs
 	## a real world position, which setup() runs too early to have.
 
 
-## Mirrors TestZoneController.reposition_for_perspective(): called from
-## room.gd::_set_perspective() so this runtime-instantiated overlay follows
-## rotation the same way the test-zone grenades do, instead of gu_cell
-## silently going stale (pre-fix behavior).
-func reposition_for_perspective(direction: String) -> void:
-	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
-	gu_cell = PerspectiveMapperClass.cell_from_base(base_cell, direction, base_size)
-	if room != null and room.agent != null:
-		var world_pos: Vector2 = room.agent._cell_to_world(gu_cell)
-		_floor_y = world_pos.y
-		position = Vector2(world_pos.x, _floor_y - HOVER_HEIGHT_PX)
-		_base_y = position.y
+## Called from room.gd::_set_perspective(). R3D-ROT: the camera turned over the one world, so the cell and the position
+## stay; only the view-dependent frame and sort are re-picked.
+func on_view_changed() -> void:
 	## A static prop's frame encodes its aim in SCREEN space, so it has to be
 	## re-picked whenever the scene rotates or the muzzle keeps pointing where
 	## the target used to be. The spinning path re-picks every _process() frame
@@ -555,8 +545,7 @@ func _update_light_uniform() -> void:
 	## azimuth was derived against a canonical N view, so the grid-x/grid-y
 	## -> world-x/world-z mapping below is only valid in that same base
 	## orientation (see file header, D22/open question #16).
-	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
-	var base_light_cell: Vector2i = room._cell_to_base(best_light.cell, room._active_perspective, base_size)
+	var base_light_cell: Vector2i = best_light.cell
 	var grid_delta: Vector2i = base_light_cell - base_cell
 	## Explicit grid->bake-world mapping (file header): grid-x -> world-x,
 	## grid-y -> world-z, light assumed roughly floor-height (no Y term).

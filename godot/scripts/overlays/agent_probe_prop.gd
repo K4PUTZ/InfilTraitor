@@ -174,7 +174,7 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i,
 	_material.set_shader_parameter("outline_width", float(cfg.get("outline", 0.0)))
 	material = _material
 
-	_apply_direction(room._active_perspective)
+	_apply_direction(room.view_direction())
 	_apply_z_index()
 	set_process(true)
 
@@ -197,7 +197,7 @@ func set_dev_vision(enabled: bool) -> void:
 			_dev_color_frames[direction] = c
 			_dev_normal_frames[direction] = n
 	if room != null:
-		_apply_direction(room._active_perspective)
+		_apply_direction(room.view_direction())
 
 
 ## The anchor pixel the bake computed and wrote — see note 2.
@@ -221,7 +221,7 @@ func _load_anchor() -> bool:
 ## _set_perspective() rebuilds every voxel layer from scratch.
 func update_cell(p_gu_cell: Vector2i) -> void:
 	gu_cell = p_gu_cell
-	_apply_direction(room._active_perspective)
+	_apply_direction(room.view_direction())
 	_apply_z_index()
 
 
@@ -292,7 +292,9 @@ func _update_light_uniform() -> void:
 	var base_size: Vector2i = room._base_layout.get("size", Vector2i.ZERO)
 	var base_light_cell: Vector2i = room._cell_to_base(best_light.cell, room._active_perspective, base_size)
 	var grid_delta: Vector2i = base_light_cell - base_cell
-	var light_dir_world := Vector3(float(grid_delta.x), 0.0, float(grid_delta.y)).normalized()
+	## The baked basis below is the N camera's; the live camera is yawed by the view, so the world direction is turned back.
+	var light_dir_world := Vector3(float(grid_delta.x), 0.0, float(grid_delta.y)).normalized() \
+			.rotated(Vector3.UP, -deg_to_rad(room.view_yaw_deg()))
 	if grid_delta == Vector2i.ZERO:
 		light_dir_world = _cam_toward_viewer
 

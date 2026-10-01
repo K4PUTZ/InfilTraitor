@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**267 scripts · 84930 lines total** (under `godot/scripts/`)
+**267 scripts · 84979 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -97,7 +97,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1452 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1454 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2369 lines
+extends `Node3D` · 2370 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -1173,7 +1173,7 @@ extends `Node3D` · 2369 lines
 
 ### `voxel.gd`
 
-`class_name Voxel` · 209 lines
+`class_name Voxel` · 212 lines
 
 `godot/scripts/geometry/voxel.gd`
 
@@ -1327,7 +1327,7 @@ extends `Node3D` · 2369 lines
 
 ### `agent_probe_prop.gd`
 
-`class_name AgentProbeProp` · extends `Sprite2D` · 317 lines
+`class_name AgentProbeProp` · extends `Sprite2D` · 319 lines
 
 `godot/scripts/overlays/agent_probe_prop.gd`
 
@@ -1595,7 +1595,7 @@ extends `Node2D` · 134 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 591 lines
+`class_name FloatingCollectible` · extends `Node2D` · 593 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1649,7 +1649,7 @@ extends `Node2D` · 134 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 375 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 377 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -2246,7 +2246,7 @@ extends `Node2D` · 42 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1792 lines
+`class_name BlastCalculator` · 1798 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -3684,7 +3684,7 @@ extends `SceneTree` · 139 lines
 
 ### `blast_calculator_selftest.gd`
 
-extends `SceneTree` · 2419 lines
+extends `SceneTree` · 2423 lines
 
 `godot/scripts/tools/blast_calculator_selftest.gd`
 
@@ -5767,7 +5767,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11151 lines
+extends `Node2D` · 11178 lines
 
 `godot/scripts/world/room.gd`
 

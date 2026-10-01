@@ -606,7 +606,7 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	## as long as the throw is being aimed. The perspective goes with it — it is
 	## the real baked prop, so it has a per-view frame like the prop does.
 	if room._target_cursor_overlay != null:
-		room._target_cursor_overlay.show_at(target_pos, room._active_perspective)
+		room._target_cursor_overlay.show_at(target_pos, room.view_direction())
 	if room.selection_overlay != null:
 		room.selection_overlay.visible = false
 

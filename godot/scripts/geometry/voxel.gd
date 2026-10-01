@@ -12,7 +12,10 @@ class_name Voxel
 ## historical note this enum used to carry: persisted base-coord damage dicts store these
 ## ordinals, so they never shift.
 enum DamageState { INTACT = 0, CRACKED = 1, DESTROYED = 2, DENTED = 3 }
-enum CarvedSide { NONE = 0, TOP = 1, BOTTOM = 2, LEFT = 3, RIGHT = 4 }
+## The face a blast or a round carved, as a face of the BASE grid (R3D-ROT: one world, so the side is recorded once and is the
+## same from every view). LEFT is the SW face (+y), RIGHT the SE face (+x), FACE_NW the -x face, FACE_NE the -y face. The first
+## four values are pinned (persisted ordinals); 5 and 6 fit the state byte's three carved-side bits.
+enum CarvedSide { NONE = 0, TOP = 1, BOTTOM = 2, LEFT = 3, RIGHT = 4, FACE_NW = 5, FACE_NE = 6 }
 
 var grid_pos: Vector2i           ## voxel cell coordinate — addressing, not state
 var level: int                   ## vertical storey index — addressing, not state

@@ -319,7 +319,7 @@ func _current_frame_index() -> int:
 	if _static_facing != STATIC_FACING_NONE:
 		var perspective: String = "N"
 		if room != null:
-			perspective = String(room._active_perspective)
+			perspective = String(room.view_direction())
 		var view_yaw: float = float(FACING_YAW_DEG[_static_facing]) \
 			+ float(PERSPECTIVE_YAW_DEG.get(perspective, 0.0))
 		return int(round(fposmod(view_yaw, 360.0) / step)) % CollectibleBakeConfig.FRAME_COUNT
@@ -560,7 +560,9 @@ func _update_light_uniform() -> void:
 	var grid_delta: Vector2i = base_light_cell - base_cell
 	## Explicit grid->bake-world mapping (file header): grid-x -> world-x,
 	## grid-y -> world-z, light assumed roughly floor-height (no Y term).
-	var light_dir_world := Vector3(float(grid_delta.x), 0.0, float(grid_delta.y)).normalized()
+	## The baked basis below is the N camera's; the live camera is yawed by the view, so the world direction is turned back.
+	var light_dir_world := Vector3(float(grid_delta.x), 0.0, float(grid_delta.y)).normalized() \
+			.rotated(Vector3.UP, -deg_to_rad(room.view_yaw_deg()))
 	if grid_delta == Vector2i.ZERO:
 		light_dir_world = _cam_toward_viewer
 

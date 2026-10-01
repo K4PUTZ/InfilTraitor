@@ -2625,6 +2625,20 @@ func view_direction() -> String:
 	return _view_direction
 
 
+## The camera's yaw about the map for the current view, degrees (what `Board3DLive.VIEW_YAW_DEG` holds), for the baked
+## actors' light maths, whose basis is the N camera's.
+func view_yaw_deg() -> float:
+	match _view_direction:
+		"E":
+			return 90.0
+		"S":
+			return 180.0
+		"W":
+			return 270.0
+		_:
+			return 0.0
+
+
 ## R3D-ROT — a rotation turns the CAMERA over one fixed world. The map is never re-laid-out and no Voxel is rebuilt: the
 ## store, the damage, the soot and every record stay in base coordinates, so there is nothing to replay. The board yaws and
 ## re-meshes the faces the new side shows (`Board3DLive.set_view()`); the 2D lattice, the actors' billboards and the lifted
@@ -2643,6 +2657,15 @@ func _set_perspective(direction: String) -> void:
 		live.set_view(direction)
 	if _camera_controller != null:
 		_camera_controller.stop_shake()
+	## The baked figures pick their frame against the view: the agent and the runtime props recompose.
+	agent.on_perspective_changed()
+	if _test_zone_controller != null:
+		_test_zone_controller.reposition_for_perspective(_active_perspective)
+	for pickup in _collectibles:
+		if pickup != null and is_instance_valid(pickup):
+			pickup.reposition_for_perspective(_active_perspective)
+	if _weapon_bench_controller != null:
+		_weapon_bench_controller.reposition_for_perspective(_active_perspective)
 	for overlay in [_ember_overlay, _smoke_spark_overlay, _debris_overlay, _shrapnel_overlay]:
 		if overlay != null:
 			overlay.clear()
@@ -4393,7 +4416,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 
 
 ## The 3D point in front of the face a round struck, or NO_ANCHOR (no 3D board, or the face is unknown).
-## LEFT is the SW face (+grid y = +z), RIGHT the SE face (+grid x), TOP is up.
+## LEFT is the SW face (+grid y = +z), RIGHT the SE face (+grid x), FACE_NW the -x face, FACE_NE the -y face, TOP is up.
 func _impact_anchor_3d(origin: Vector2, floor_pos: Vector2, carved_side: int) -> Vector3:
 	var board: Node = board3d()
 	if board == null:
@@ -4404,6 +4427,10 @@ func _impact_anchor_3d(origin: Vector2, floor_pos: Vector2, carved_side: int) ->
 			normal = Vector3(0.0, 0.0, 1.0)
 		Voxel.CarvedSide.RIGHT:
 			normal = Vector3(1.0, 0.0, 0.0)
+		Voxel.CarvedSide.FACE_NW:
+			normal = Vector3(-1.0, 0.0, 0.0)
+		Voxel.CarvedSide.FACE_NE:
+			normal = Vector3(0.0, 0.0, -1.0)
 		Voxel.CarvedSide.TOP:
 			normal = Vector3.UP
 		_:

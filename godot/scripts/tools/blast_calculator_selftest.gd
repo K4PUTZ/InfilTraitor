@@ -1533,7 +1533,7 @@ func test_point_impact_side_follows_the_shooters_gu() -> void:
 	## A punch far below the dent threshold: the impact voxel is CRACKED, so the entry carries a side.
 	var cases := [["east", Vector2i(9, 2), Voxel.CarvedSide.RIGHT],
 		["south", Vector2i(5, 8), Voxel.CarvedSide.LEFT],
-		["west", Vector2i(1, 2), Voxel.CarvedSide.LEFT]]
+		["west", Vector2i(1, 2), Voxel.CarvedSide.FACE_NW]]
 	for c in cases:
 		var plan := BlastCalculatorClass.plan_point_impact(
 			slice, 12, 0.05, registry, "SIDE_TEST_" + str(c[0]), [], c[1])
@@ -2069,16 +2069,20 @@ func test_carved_side_faces_the_blast() -> void:
 	else:
 		_fail("roof voxel expected CarvedSide.BOTTOM, got %d" % roof_side)
 
-	## Walls resolve left/right in SCREEN space, where x runs along (x − y).
-	## Epicentre at (0,20): screen-x −20, vs the voxel's 0 → screen-left.
-	var left_side: int = BlastCalculatorClass.carved_side_for(
-		Vector2i(10, 10), false, Vector2i(0, 20))
-	var right_side: int = BlastCalculatorClass.carved_side_for(
-		Vector2i(10, 10), false, Vector2i(20, 0))
-	if left_side == Voxel.CarvedSide.LEFT and right_side == Voxel.CarvedSide.RIGHT:
-		_pass("wall voxel carves toward the epicentre on both screen sides")
-	else:
-		_fail("wall expected LEFT/RIGHT, got %d/%d" % [left_side, right_side])
+	## Walls carve the PHYSICAL face toward the epicentre (R3D-ROT revised D25: one world, the side is stored once): the
+	## horizontal face whose normal best points at it, the x face on a tie. Four epicentres, four faces.
+	var faces: Array = [
+		[Vector2i(20, 10), Voxel.CarvedSide.RIGHT], [Vector2i(0, 10), Voxel.CarvedSide.FACE_NW],
+		[Vector2i(10, 20), Voxel.CarvedSide.LEFT], [Vector2i(10, 0), Voxel.CarvedSide.FACE_NE],
+		[Vector2i(20, 20), Voxel.CarvedSide.RIGHT]]
+	var faces_ok: bool = true
+	for f: Array in faces:
+		var got: int = BlastCalculatorClass.carved_side_for(Vector2i(10, 10), false, f[0])
+		if got != int(f[1]):
+			faces_ok = false
+			_fail("epicentre %s expected side %d, got %d" % [f[0], int(f[1]), got])
+	if faces_ok:
+		_pass("wall voxel carves the face that faces the epicentre, on all four horizontal sides (a tie goes to x)")
 
 	## No epicentre supplied (every pure-hash caller and its tests) must not
 	## invent a direction — it falls back to the flat pre-D25 mark.
@@ -2106,7 +2110,7 @@ func test_carved_side_survives_rotation() -> void:
 	## 1. Same view in and out must return the side it went in as.
 	var round_trip_ok := true
 	for view in views:
-		for side in [Voxel.CarvedSide.LEFT, Voxel.CarvedSide.RIGHT,
+		for side in [Voxel.CarvedSide.LEFT, Voxel.CarvedSide.RIGHT, Voxel.CarvedSide.FACE_NW, Voxel.CarvedSide.FACE_NE,
 				Voxel.CarvedSide.TOP, Voxel.CarvedSide.BOTTOM]:
 			var dir: Vector3i = BlastCalculatorClass.carved_side_to_base_dir(cell, side, view, base_size)
 			var base_xy: Vector2i = PerspectiveMapperClass.cell_to_base(cell, view, base_size)
@@ -2124,10 +2128,10 @@ func test_carved_side_survives_rotation() -> void:
 		cell, Voxel.CarvedSide.LEFT, "N", base_size)
 	var base_cell: Vector2i = PerspectiveMapperClass.cell_to_base(cell, "N", base_size)
 	var seen_from_s: int = BlastCalculatorClass.carved_side_from_base(base_cell, recorded, "S", base_size)
-	if seen_from_s == Voxel.CarvedSide.RIGHT:
-		_pass("a hole carved screen-LEFT in view N reads screen-RIGHT from view S (180°)")
+	if seen_from_s == Voxel.CarvedSide.FACE_NE:
+		_pass("a hole on the +y face (LEFT) in layout N is the -y face (FACE_NE) in a layout turned 180°")
 	else:
-		_fail("expected RIGHT from view S after a LEFT carve in view N, got %d" % seen_from_s)
+		_fail("expected FACE_NE after a LEFT carve read in a layout turned to S, got %d" % seen_from_s)
 
 	## 3. Vertical carves are rotation-invariant — a ceiling's underside is its
 	## underside from every compass direction.

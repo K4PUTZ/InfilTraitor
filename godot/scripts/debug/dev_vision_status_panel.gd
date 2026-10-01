@@ -75,7 +75,7 @@ func _update_display() -> void:
 	var lines: Array[String] = []
 	
 	# ── MAP & PERSPECTIVE ──────────────────────────────────────────────────────
-	lines.append("MAP: %s | VIEW: %s" % [_room.map_id, _room._active_perspective])
+	lines.append("MAP: %s | VIEW: %s" % [_room.map_id, _room.view_direction()])
 	
 	# ── VISION SYSTEMS ─────────────────────────────────────────────────────────
 	var dev_str = "+" if _vision_controller.dev_vision else "·"

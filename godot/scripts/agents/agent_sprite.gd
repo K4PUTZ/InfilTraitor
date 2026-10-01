@@ -955,7 +955,7 @@ func _load_anchor(dir: String) -> Dictionary:
 func _inverse_perspective() -> String:
 	if room == null:
 		return "N"
-	return String(room._active_perspective)
+	return String(room.view_direction())
 
 
 ## `a` rotated by `sign * b`, cyclically, as frame names. §4.6 defines what
@@ -1409,7 +1409,9 @@ func _update_light_uniform() -> void:
 	var base_light_cell: Vector2i = room._cell_to_base(best_light.cell, room._active_perspective, base_size)
 	var base_agent_cell: Vector2i = room._cell_to_base(agent_cell, room._active_perspective, base_size)
 	var grid_delta: Vector2i = base_light_cell - base_agent_cell
-	var light_dir_world := Vector3(float(grid_delta.x), 0.0, float(grid_delta.y)).normalized()
+	## The baked basis below is the N camera's; the live camera is yawed by the view, so the world direction is turned back.
+	var light_dir_world := Vector3(float(grid_delta.x), 0.0, float(grid_delta.y)).normalized() \
+			.rotated(Vector3.UP, -deg_to_rad(room.view_yaw_deg()))
 	if grid_delta == Vector2i.ZERO:
 		light_dir_world = _cam_toward_viewer
 

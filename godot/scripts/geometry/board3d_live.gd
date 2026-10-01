@@ -2026,10 +2026,11 @@ func _glass_plane_dim(dir: int, w: int, h: int) -> float:
 	return VoxelBoard.GLASS_DIM_SIDE if w <= GLASS_CAP_VOXELS else 1.0
 
 
-## Voxel.CarvedSide (VIEW space, view N) → the face it carved: LEFT is the SW face, RIGHT the SE face,
-## TOP the top. BOTTOM (a roof's underside) is never seen from above and keeps the flat mesh.
+## Voxel.CarvedSide (a BASE-grid face) → the face it carved: LEFT is the SW face, RIGHT the SE face, FACE_NW the -x
+## face, FACE_NE the -y face, TOP the top. BOTTOM (a roof's underside) is never seen from above and keeps the flat mesh.
 const DENT_DIR_OF_CARVED_SIDE: Dictionary = {
 	Voxel.CarvedSide.TOP: Dir.TOP, Voxel.CarvedSide.LEFT: Dir.SW, Voxel.CarvedSide.RIGHT: Dir.SE,
+	Voxel.CarvedSide.FACE_NW: Dir.NW, Voxel.CarvedSide.FACE_NE: Dir.NE,
 }
 ## The recess: a frame this wide is left on the face, and the floor of the pit sits this deep.
 const DENT_MARGIN: float = 0.2
@@ -2131,7 +2132,7 @@ func _decal_faces(material_id: String, damage: int, blast: bool, carved: int, va
 				for dir: int in dirs:
 					out_dirs.append(dir)
 					out_layers.append(layer)
-		elif carved_dir == Dir.SW or carved_dir == Dir.SE:
+		elif carved_dir == Dir.SW or carved_dir == Dir.SE or carved_dir == Dir.NW or carved_dir == Dir.NE:
 			var bullet: int = int(_decal_layer.get("bullet|%s|%d" % [base, v], -1))
 			if bullet != -1:
 				out_dirs.append(carved_dir)

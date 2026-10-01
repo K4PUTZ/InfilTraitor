@@ -325,6 +325,11 @@ var room: Node = null
 ## The agent's facing in BASE space — see note 3. Starts N, which is what the
 ## placeholder implicitly was.
 var _base_facing: String = "N"
+## R3D-ACTORS step 3 — the same decisions, kept in the shape a live mesh needs (`mesh_state()`): the facing as the BASE
+## grid step it came from, the walk's unquantised progress, and the head's raw grid angle.
+var _facing_step: Vector2i = Vector2i.ZERO
+var _walk_progress: float = -1.0
+var _head_grid_deg: float = 0.0
 var _posture: String = "standing"
 var _dev_vision: bool = false
 ## Keyed by the dev flag: the normal and yellow-joint cycles load independently,
@@ -421,6 +426,9 @@ func setup(p_room: Node) -> bool:
 		return false
 	if not _derive_frame_by_step():
 		return false
+	for step: Vector2i in _frame_by_step:
+		if String(_frame_by_step[step]) == _base_facing:
+			_facing_step = step
 	if not _derive_grid_yaw_mapping():
 		return false
 	if not _resolve_layers():
@@ -614,6 +622,7 @@ func face_direction(dir: Vector2i) -> void:
 func face_step(step: Vector2i) -> void:
 	if not _frame_by_step.has(step):
 		return
+	_facing_step = step
 	_base_facing = _compose(String(_frame_by_step[step]), _inverse_perspective(), 1.0)
 	_refresh()
 
@@ -991,6 +1000,7 @@ func set_walk_phase_quantise(n: int) -> void:
 func set_walk_phase(progress01: float) -> void:
 	if _posture != "standing":
 		return
+	_walk_progress = fposmod(progress01, 1.0)
 	if not _ensure_walk(_dev_vision):
 		return
 	var buckets: int = _walk_phases if _walk_quantise <= 0 else _walk_quantise
@@ -1004,6 +1014,7 @@ func set_walk_phase(progress01: float) -> void:
 
 ## Back to the posture's idle frame. Called when a move finishes.
 func stop_walking() -> void:
+	_walk_progress = -1.0
 	if _walk_phase == -1:
 		return
 	_walk_phase = -1
@@ -1287,6 +1298,7 @@ func _head_view_yaw() -> float:
 ## Stored in BASE space like the facing, so a perspective flip leaves the guard
 ## looking at the same wall.
 func set_head_yaw_grid_deg(grid_deg: float) -> void:
+	_head_grid_deg = grid_deg
 	_base_head_yaw_deg = _grid_yaw_origin + _grid_yaw_sign * grid_deg \
 		+ float(YAW_BY_DIRECTION.get(_inverse_perspective(), 0.0))
 	_has_head_yaw = true
@@ -1369,6 +1381,27 @@ func _apply_layers() -> void:
 		node.texture = frame["color"]
 		node.offset = -anchor + (frame["origin"] as Vector2) + delta
 		(_layer_materials[layer] as ShaderMaterial).set_shader_parameter("normal_tex", frame["normal"])
+
+
+## R3D-ACTORS step 3 — what this figure is doing, for `ActorMesh3D`: the same decisions `_refresh()` draws, read rather
+## than re-made, so D44's four facings and D47's snap stay this node's (the facing is the BASE grid step it was set
+## from; the walk progress is unquantised; the throw's `u` already carries the cancel's reversal).
+func mesh_state() -> Dictionary:
+	var throw_u: float = -1.0
+	if _throw_seq != "":
+		throw_u = clampf(_throw_t / _throw_seconds, 0.0, 1.0)
+		if _throw_reversed:
+			throw_u = 1.0 - throw_u
+	return {
+		"step": _facing_step,
+		"posture": _posture,
+		"grip": grip,
+		"weapon": weapon,
+		"walk": _walk_progress if _posture == "standing" else -1.0,
+		"throw": _throw_seq,
+		"throw_u": throw_u,
+		"head": _head_grid_deg if _has_head_yaw else NAN,
+	}
 
 
 func _process(delta: float) -> void:

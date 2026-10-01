@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**267 scripts · 84830 lines total** (under `godot/scripts/`)
+**268 scripts · 85010 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
+- **geometry/** — actor_billboard3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -96,7 +96,7 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1454 lines
+`class_name AgentSprite` · extends `Sprite2D` · 1487 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
@@ -156,6 +156,7 @@
 - `func head_offset_px() -> Vector2:`
 - `func set_head_yaw_grid_deg(grid_deg: float) -> void:`
 - `func clear_head_yaw() -> void:`
+- `func mesh_state() -> Dictionary:`
 
 ---
 
@@ -492,17 +493,45 @@ extends `ConfirmationDialog` · 64 lines
 
 ---
 
+### `actor_head_turn3d.gd`
+
+`class_name ActorHeadTurn3D` · extends `SkeletonModifier3D` · 34 lines
+
+`godot/scripts/geometry/actor_head_turn3d.gd`
+
+> ActorHeadTurn3D — turns a live rig's head about the vertical, on top of whatever action is playing (R3D-ACTORS, the mesh half of `AgentSprite`'s head layer). A `SkeletonModifier3D` because it has to run AFTER the AnimationPlayer has posed the skeleton this frame; a bone pose written from `_process` would be overwritten by the next seek. `yaw` is relative to the body (`ActorMesh3D` clamps it to `AgentSprite.HEAD_YAW_LIMIT_DEG`), about the skeleton's up axis, so a crouched figure whose neck is pitched still turns its head around the vertical rather than around its own tilted neck.
+
+**Constants / tuning**
+- `HEAD_BONE` = `"head"`
+
+**Public vars**
+- `var yaw: float = 0.0`
+
+---
+
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 86 lines
+`class_name ActorMesh3D` · extends `Node3D` · 200 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
-> ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64). Step 1 promoted what R3D-SPIKE-3D measured (`Spike3D`, deleted here): the rig exported by `tools/asset_generation/r3d_live_rig_export.py` (one joined mesh, the rig, the walk as the `walk` action), every surface lit the board's way by `actor_mesh3d.gdshader` (no Godot light, one cell-plane fetch; Moto: 9 walking rigs +1.0 ms), its materials kept in sync by `Board3DLive.register_prop_light_material()` exactly as a prop's are. Placed in BASE world coordinates (one GU is one world unit, the ground's top is Y = 0, the same point `Board3DLive.ground_point()` hands a billboard), so a camera yaw turns it with the board for free. Nothing drives it from gameplay yet: facing, posture and the walk/stop decisions are step 3's bridge from `AgentSprite`.
+> ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64). THE MESH SHOWS, `AgentSprite` DECIDES (step 3, the bridge). The same contract `ActorBillboard3D` kept: the sprite still owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress, the throw and the head's grid angle — and this node reads them each frame through `AgentSprite.mesh_state()` and turns them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it. THE RIG is `tools/asset_generation/r3d_live_rig_export.py`'s: one skinned mesh, every motion a keyed action (`<posture>_<weapon>_<grip>`, `walk_<weapon>`, `throw_raise_<weapon>`, `throw_release_<weapon>`), the weapons on `hand_R` and the grenade on `hand_L` as `BoneAttachment3D`s. An action is never PLAYED: it is SEEKED to the fraction the sprite is at, so the walk stays locked to the step's progress (one cycle per GU, D61) and the throw to the sprite's own clock, which is what fires `throw_released`. LIT the board's way (`actor_mesh3d.gdshader`: no Godot light, one cell-plane fetch; Moto: 9 walking rigs +1.0 ms), its materials kept in sync by `Board3DLive.register_prop_light_material()` exactly as a prop's are. PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free.
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
-- `AGENT_GLB` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/agent_live_walk.glb"`
+- `HeadTurnRef` = `preload("res://godot/scripts/geometry/actor_head_turn3d.gd")`
+- `RIG_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"`
+- `RIG_BY_FAMILY` = `{ "": "agent_live.glb", "_enemy_white": "agent_live_enemy_white.glb", }`
+- `WEAPON_BY_SUFFIX` = `{"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}`
+- `METRES_TO_UNITS` = `1.0 / 1.6`
+- `HEAD_YAW_LIMIT_DEG` = `60.0`
+- `THROW_RELEASE_FRACTION` = `0.5`
+
+**Public vars**
+- `var reveal_behind_walls: bool = false`
+
+**Public API**
+- `func setup_actor(board: Node3D, source: AgentSprite) -> bool:`
 
 ---
 
@@ -5754,7 +5783,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11184 lines
+extends `Node2D` · 11183 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5793,8 +5822,8 @@ extends `Node2D` · 11184 lines
 - `ViewContextClass` = `preload("res://godot/scripts/systems/view_context.gd")`
 - `ScenarioRunnerClass` = `preload("res://godot/scripts/systems/scenario_runner.gd")`
 - `Board3DLiveClass` = `preload("res://godot/scripts/geometry/board3d_live.gd")`
-- `ActorMesh3DRef` = `preload("res://godot/scripts/geometry/actor_mesh3d.gd")`
 - `ActorBillboard3DClass` = `preload("res://godot/scripts/geometry/actor_billboard3d.gd")`
+- `ActorMesh3DClass` = `preload("res://godot/scripts/geometry/actor_mesh3d.gd")`
 - `VisionCone3DClass` = `preload("res://godot/scripts/geometry/vision_cone3d.gd")`
 - `PropBillboard3DClass` = `preload("res://godot/scripts/geometry/prop_billboard3d.gd")`
 - `GrenadePropRef` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`

@@ -47,8 +47,8 @@ const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
 ## RENDER3D R3D-3 step 1 — moved out of spikes/, the 3D board is production code now.
 const Board3DLiveClass = preload("res://godot/scripts/geometry/board3d_live.gd")
-const ActorMesh3DRef = preload("res://godot/scripts/geometry/actor_mesh3d.gd")
 const ActorBillboard3DClass = preload("res://godot/scripts/geometry/actor_billboard3d.gd")
+const ActorMesh3DClass = preload("res://godot/scripts/geometry/actor_mesh3d.gd")
 const VisionCone3DClass = preload("res://godot/scripts/geometry/vision_cone3d.gd")
 const PropBillboard3DClass = preload("res://godot/scripts/geometry/prop_billboard3d.gd")
 const GrenadePropRef = preload("res://godot/scripts/overlays/grenade_prop.gd")
@@ -2961,17 +2961,6 @@ func _start_board3d_live() -> void:
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	_attach_actor_billboards(live)
-	## R3D-ACTORS step 1 — one live agent rig one GU east of the agent, walking in place, dev-only (the same shape as
-	## PROPS_MESH_DEMO): it shows the promoted mesh path until step 3's bridge drives a real actor with it. The yaw is a GRID
-	## facing: the rig's front is its local -Z (where its toes and knee pole point), and 90° turns it to -X, the way the
-	## agent's billboard faces at boot. An off-grid yaw such as 45° points the body straight at the D26 camera, a view the
-	## game never shows, and reads as a wrong perspective (Director, 2026-10-01).
-	if _dev_flag_on("ACTOR_MESH_DEMO") and agent != null:
-		var actor_mesh: Node3D = ActorMesh3DRef.new()
-		actor_mesh.name = "ActorMeshDemo"
-		live.add_child(actor_mesh)
-		if actor_mesh.setup(live, agent.cell + Vector2i(1, 0), 90.0):
-			actor_mesh.play_walk()
 	_attach_vfx_to_board(live)
 	_attach_ground_overlays(live)
 	if _dev_flag("PICK_CHECK", "0") == "1":
@@ -3112,10 +3101,20 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 		var existing: Variant = source.get_meta("billboard3d") if source.has_meta("billboard3d") else null
 		if is_instance_valid(existing) and (existing as Node).get_parent() == live:
 			continue  ## already on this board (its cone, if any, came with it)
-		var billboard: Node3D = ActorBillboard3DClass.new()
-		live.add_child(billboard)
-		billboard.setup(live, source, lift)
-		source.set_meta("billboard3d", billboard)
+		## R3D-ACTORS step 3: the live mesh draws the actor. `ACTORS_BILLBOARD=1` keeps the baked billboard for the
+		## step's A/B against it on the Moto; both go through the same meta, so the reveal and a reload treat them alike.
+		var figure: Node3D
+		if _dev_flag_on("ACTORS_BILLBOARD"):
+			figure = ActorBillboard3DClass.new()
+			live.add_child(figure)
+			figure.setup(live, source, lift)
+		else:
+			figure = ActorMesh3DClass.new()
+			live.add_child(figure)
+			if not figure.setup_actor(live, source):
+				figure.queue_free()
+				continue
+		source.set_meta("billboard3d", figure)
 		if actor.has_signal("vision_smooth_ready"):
 			var cone: MeshInstance3D = VisionCone3DClass.new()
 			live.add_child(cone)
@@ -5809,7 +5808,7 @@ func _apply_guard_reveal() -> void:
 			continue
 		var billboard: Variant = guard.sprite.get_meta("billboard3d")
 		if is_instance_valid(billboard):
-			(billboard as ActorBillboard3D).reveal_behind_walls = on and _guard_revealed_by_gameplay(guard)
+			(billboard as Node).set("reveal_behind_walls", on and _guard_revealed_by_gameplay(guard))
 
 
 ## Scenario step `place_guard`: put guard `index` on `cell` (position and cell, nothing else) and refresh what

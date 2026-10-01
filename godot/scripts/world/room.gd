@@ -2962,12 +2962,15 @@ func _start_board3d_live() -> void:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	_attach_actor_billboards(live)
 	## R3D-ACTORS step 1 — one live agent rig one GU east of the agent, walking in place, dev-only (the same shape as
-	## PROPS_MESH_DEMO): it shows the promoted mesh path until step 3's bridge drives a real actor with it.
+	## PROPS_MESH_DEMO): it shows the promoted mesh path until step 3's bridge drives a real actor with it. The yaw is a GRID
+	## facing: the rig's front is its local -Z (where its toes and knee pole point), and 90° turns it to -X, the way the
+	## agent's billboard faces at boot. An off-grid yaw such as 45° points the body straight at the D26 camera, a view the
+	## game never shows, and reads as a wrong perspective (Director, 2026-10-01).
 	if _dev_flag_on("ACTOR_MESH_DEMO") and agent != null:
 		var actor_mesh: Node3D = ActorMesh3DRef.new()
 		actor_mesh.name = "ActorMeshDemo"
 		live.add_child(actor_mesh)
-		if actor_mesh.setup(live, agent.cell + Vector2i(1, 0), 45.0):
+		if actor_mesh.setup(live, agent.cell + Vector2i(1, 0), 90.0):
 			actor_mesh.play_walk()
 	_attach_vfx_to_board(live)
 	_attach_ground_overlays(live)

@@ -1,7 +1,8 @@
 // R3D-ACTORS (`ACTOR` D64) — an actor's live skinned mesh lit the BOARD's way: no Godot light, only the cell planes the board's
 // faces read (`mesh_planes.gdshaderinc`, shared with the props). Promoted from R3D-SPIKE-3D's spike_mesh_planes.gdshader at
-// step 1 with its behaviour unchanged: the light bucket of the floor cell under each pixel times a fixed key on the normal.
-// Soot on an actor is step 4's, not read here.
+// step 1: the light bucket of the floor cell under each pixel times a fixed key on the normal. Step 4 adds the soot: the
+// same reading a mesh prop takes (the top ring of the floor cell's soot code, or the charred tone), so a figure standing
+// in a scorched room darkens with it.
 shader_type spatial;
 render_mode unshaded, cull_back;
 
@@ -20,11 +21,12 @@ void fragment() {
 	ivec3 cell;
 	vec4 t = plane_texel(v_world, inside, cell);
 	float lum = inside ? plane_lum(t) : 1.0;
+	float soot = inside ? plane_soot(t, cell) : 1.0;
 	float key = plane_key(v_normal);
 	vec3 base = albedo.rgb;
 	if (has_tex > 0.5) {
 		base *= texture(albedo_tex, UV).rgb;
 	}
 	// the ladder is an sRGB multiplier (the board multiplies in sRGB); the albedo is already linear
-	ALBEDO = base * pow(vec3(lum * key), vec3(2.2));
+	ALBEDO = base * pow(vec3(lum * key * soot), vec3(2.2));
 }

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**268 scripts · 85010 lines total** (under `godot/scripts/`)
+**268 scripts · 85035 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -511,7 +511,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 200 lines
+`class_name ActorMesh3D` · extends `Node3D` · 225 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -519,6 +519,8 @@ extends `ConfirmationDialog` · 64 lines
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
+- `SILHOUETTE_SHADER_PATH` = `"res://godot/shaders/actor_mesh_silhouette3d.gdshader"`
+- `SILHOUETTE_PRIORITY` = `20`
 - `HeadTurnRef` = `preload("res://godot/scripts/geometry/actor_head_turn3d.gd")`
 - `RIG_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"`
 - `RIG_BY_FAMILY` = `{ "": "agent_live.glb", "_enemy_white": "agent_live_enemy_white.glb", }`
@@ -528,7 +530,8 @@ extends `ConfirmationDialog` · 64 lines
 - `THROW_RELEASE_FRACTION` = `0.5`
 
 **Public vars**
-- `var reveal_behind_walls: bool = false`
+- `var reveal_behind_walls: bool = false:`
+- `var silhouette_phase: float = 0.0:`
 
 **Public API**
 - `func setup_actor(board: Node3D, source: AgentSprite) -> bool:`

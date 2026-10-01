@@ -20,6 +20,9 @@ class_name ActorMesh3D
 extends Node3D
 
 const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
+const SILHOUETTE_SHADER_PATH := "res://godot/shaders/actor_mesh_silhouette3d.gdshader"
+## After the world's opaque geometry and the cutaway fill (10), before the cutaway lines (127): the billboard's slot.
+const SILHOUETTE_PRIORITY := 20
 const HeadTurnRef = preload("res://godot/scripts/geometry/actor_head_turn3d.gd")
 const RIG_DIR := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"
 ## `AgentSprite.frame_family` -> the rig exported from that model. A family with no rig of its own falls back to the
@@ -47,8 +50,20 @@ var _head: SkeletonModifier3D = null
 var _weapons: Dictionary = {}       ## weapon name -> Node3D under hand_R
 var _grenade: Node3D = null
 var _action: String = ""
-## Gameplay decides WHO is revealed; this draws it (the `ActorBillboard3D` property of the same name, step 4).
-var reveal_behind_walls: bool = false
+## Gameplay decides WHO is revealed (vision, skills and progress are gameplay, not physics); this only draws it: every
+## part of the mesh an opaque wall covers becomes a striped silhouette (`actor_mesh_silhouette3d.gdshader`, chained as
+## the `next_pass` of each board-lit surface). Off, nothing extra is drawn or allocated.
+var reveal_behind_walls: bool = false:
+	set(value):
+		reveal_behind_walls = value
+		_apply_reveal()
+## Added to the silhouette's stripe scroll, in stripes (the billboard's knob of the same name).
+var silhouette_phase: float = 0.0:
+	set(value):
+		silhouette_phase = value
+		if _silhouette != null:
+			_silhouette.set_shader_parameter("phase", value)
+var _silhouette: ShaderMaterial = null
 static var _warned_family: Dictionary = {}
 
 
@@ -189,6 +204,16 @@ func _apply_board_light(body: Node) -> void:
 				_materials.append(sm)
 				_board.call("register_prop_light_material", sm)
 			m.set_surface_override_material(s, converted[src])
+
+
+func _apply_reveal() -> void:
+	if reveal_behind_walls and _silhouette == null:
+		_silhouette = ShaderMaterial.new()
+		_silhouette.shader = load(SILHOUETTE_SHADER_PATH)
+		_silhouette.render_priority = SILHOUETTE_PRIORITY
+		_silhouette.set_shader_parameter("phase", silhouette_phase)
+	for m: ShaderMaterial in _materials:
+		m.next_pass = _silhouette if reveal_behind_walls else null
 
 
 func _exit_tree() -> void:

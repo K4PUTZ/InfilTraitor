@@ -2588,6 +2588,36 @@ func view_direction() -> String:
 	return _view_direction
 
 
+## R3D-ROT — the DEV overlays (light, shadow, exposure, tile risk, height, temporal, elite exposure, the occlusion debug view,
+## the tile labels, the voxel ruler) still draw in the N lattice's 2D canvas. Under a turned camera each takes the affine
+## that carries the N ground plane onto the screen the camera shows now (the 2D -> ground map, then the live camera's
+## projection, both affine), so whatever an overlay draws ON THE GROUND lands under the cell it names in every view. A label
+## or a lamp drawn lifted above the ground is turned with the plane and is only approximate. Dev-only; identity in N.
+func _dev_view_overlays() -> Array:
+	var out: Array = [tile_labels_overlay, _occlusion_overlay]
+	if _vision_controller != null:
+		for key: String in ["_light_overlay", "_shadow_overlay", "_exposure_overlay", "_tile_risk_overlay",
+				"_height_overlay", "_temporal_overlay", "_elite_exposure_overlay"]:
+			out.append(_vision_controller.get(key))
+	if _debug_tools_controller != null:
+		out.append(_debug_tools_controller.get("_voxel_ruler_overlay"))
+	return out
+
+
+func _sync_dev_overlay_view() -> void:
+	var live: Node = board3d()
+	var turned: bool = _view_direction != "N" and live != null
+	var xf := Transform2D.IDENTITY
+	if turned:
+		var o: Vector2 = live.canvas_point(live.ground_point(Vector2.ZERO), self)
+		var ax: Vector2 = live.canvas_point(live.ground_point(Vector2(256.0, 0.0)), self) - o
+		var ay: Vector2 = live.canvas_point(live.ground_point(Vector2(0.0, 256.0)), self) - o
+		xf = Transform2D(ax / 256.0, ay / 256.0, o)
+	for node: Variant in _dev_view_overlays():
+		if node is Node2D and is_instance_valid(node) and (node as Node2D).visible:
+			(node as Node2D).transform = xf
+
+
 ## The camera's yaw about the map for the current view, degrees (what `Board3DLive.VIEW_YAW_DEG` holds), for the baked
 ## actors' light maths, whose basis is the N camera's.
 func view_yaw_deg() -> float:
@@ -6168,6 +6198,7 @@ func _telemetry_view_tick() -> void:
 
 
 func _process(_delta: float) -> void:
+	_sync_dev_overlay_view()
 	if _frame_probe:
 		var t_now: int = Time.get_ticks_usec()
 		if not _frame_probe_armed:

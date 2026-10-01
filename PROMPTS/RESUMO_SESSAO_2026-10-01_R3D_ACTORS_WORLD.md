@@ -34,8 +34,15 @@ Turn to E / S / W 206-212 ms main thread (all `_recompute_occlusion()`: the per-
 background re-mesh 1.47 s per view. Steady state in E equals N. Recorded in `RENDER3D_MASTER_PLAN` R3D-ROT; not changed.
 Step 5's deletions landed late (`3f063916`): a `git stash` round-trip had unstaged them before `27a7ed50`.
 
+## Review pass and the closing ruling
+`96e138a9`: a committed temporary diagnostic removed, ActorMesh3D / WorldCanvas3D loose ends tied, `actor_decisions_selftest`
+(23 checks, red-before-green). Director, closing: ONE truth turned by the camera alone, EVERY face meshed up front (higher
+initial cost accepted; blast damage will be calibrated down later), guard noise untouched except its orientation; model look
+ignored (placeholder). Recorded in `RENDER3D_MASTER_PLAN` R3D-ROT ("DIRECTOR RULING" + "NEXT SESSION"). Next session starts
+there: item 2 (mesh every face) and item 1 (occlusion for every view, built once).
+
 ## Not done / open
-- The Director's look call on the mesh (joint bands / spheres, the mesh slightly lighter than the old billboard).
+- ~~The Director's look call on the mesh~~: ignored by the Director, the model is a placeholder.
 - R3D-ROT proper: the dead `_active_perspective` conversions, `layout_with_perspective` fixtures, rotation cost on the Moto.
 - Still 2D: the explosion flash (full-screen, by nature), the DEV overlays, the never-shown noise indicator; grenade /
   collectible billboards are R3D-PROPS'.

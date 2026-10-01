@@ -64,6 +64,10 @@ Director asked whether the OPEN THREADS evaluation item (is the store redundant 
 **2026-09-27 (planning) — the 24 masterplans audited and reorganized (Director: "quero finalizar ou reorganizar os masterplans... um caminho mais simples e eficiente até o fechamento das funções básicas da engine").**
 - **Archived to `PROMPTS/DONE/` (fully closed, nothing left open):** `ASSET_TREE_REFORM`, `BURN_THROUGH_MASTER_PLAN`, `FIRE_REBUILD_MASTER_PLAN`, `DETONATION_PERFORMANCE_MASTER_PLAN`, `DETONATION_PRESENTATION_MASTER_PLAN`, `EXPLOSION_REBUILD_MASTER_PLAN`, `PREDICTION_MASTER_PLAN`, `RENDER_ORDER_MASTER_PLAN`, `TARGETING_MASTER_PLAN`, `SOOT_MASTER_PLAN`. `docs/README.md`, `docs/DESIGN_MASTER_PLAN.md`, `docs/production/current_state.md`, `docs/production/technical_debt.md` and this file's own `CLAUDE.md` reference-map entries repointed; the historical `PROMPTS/RESUMO_SESSAO_*.md` logs were left citing the old `PLANNING/` path on purpose (they describe the repo as it stood that day).
 - **The remaining 13 non-R3D plans** (`ACTOR`, `CHARACTER`, `MOVEMENT`, `MATERIALS`, `GLASS`, `OCCLUSION`, `TOP_TEXTURE`, `DESTRUCTION`, `PERFORMANCE`, `VOXEL_LIGHT`, `DEVICE_DIAGNOSTICS`, `INTERFACE`, `WEAPON` — decision registers and measurement logs; `SOOT_STORAGE_REFORM` archived 2026-09-27, see below) **stay in `PLANNING/`**, each carrying its own closed/open sections already; every live thread left in any of them now routes through one of this plan's own R3D-* tracks below, so this file is the one place to read for "what is still open in the engine."
+- **2026-10-01 — R3D-ACTORS (steps 1-5) and R3D-WORLD BUILT** (branch `claude/r3d-actors-y5r8hs`; record
+  `PROMPTS/RESUMO_SESSAO_2026-10-01_R3D_ACTORS_WORLD.md`). Actors are live meshes, the gameplay frame bake is retired, VFX and
+  lifted overlays are world state. **Next: R3D-ROT under the Director's closing ruling — one truth, turned by the camera alone,
+  every face meshed up front** (R3D-ROT's "DIRECTOR RULING" and "NEXT SESSION" blocks).
 - **The closing sequence for "engine basics" (Director-ratified order, replaces the flat "Director's call, none is a blocker" list below): `R3D-PROPS` → `R3D-ACTORS` → `R3D-ROT` + `R3D-WORLD` → `R3D-SURFACES` → `R3D-LOOK` → `R3D-CLAIMS` / `R3D-BUFFER`.** Reasoning: PROPS and ACTORS are gameplay/content blockers (nothing destructible or alive renders right today without them); ROT is the Director's own standing request (rotation returns) and is the prerequisite for testing every later stage in all four views; WORLD rides the same pass (world-space overlays/VFX, R3D-4's rule, before rotation exists to test against); SURFACES only needs closing (prototype already built, 2026-09-27); LOOK is cosmetic polish (already graded 9/10); CLAIMS/BUFFER are memory/scale housekeeping that do not block content and can trail. Once these six close, the engine-basics phase is done and the repo opens to content/subsystem work without consulting the other 23 plans.
 - **OPEN THREADS — every loose end outside the R3D-* tracks below, consolidated here instead of scattered across plans:**
   1. ~~**BUG (reported 2026-09-27, Director):** switching maps left the PREVIOUS map's occlusion active on screen.~~ **FIXED same day (`80afbaac`):** `_recompute_occlusion()`'s own header claimed it ran from "exactly three places: map load (seed), agent step, and view change", but the map-load call was never actually in `load_map()` — the fresh `Board3DLive` node it creates was never handed an occlusion set built from the NEW map's registries. Fixed by calling `_recompute_occlusion()` right after `_start_board3d_live()` in `load_map()`, mirroring the identical call already proven on view rotation. `verify.py smoke` PASSED; no dedicated visual A/B capture of the map-switch case was done (flagged, not claimed).
@@ -3630,12 +3634,23 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
     `Room._recompute_occlusion()`** (desktop 33-36 ms in E vs 1.5 ms in N): `OcclusionSet`'s per-view edge geometry cache
     (`_geom_view`) is rebuilt on a view change; a step inside E costs what one in N does (`occ_bench`: 0.15 ms per phase in
     both). Candidates: build the four views' geometry once, or make the turned path as cheap as N's. Not changed.
+  - **DIRECTOR RULING, 2026-10-01 (closing the session): ONE TRUTH, TURNED BY THE CAMERA ALONE, WITH EVERY FACE BUILT UP FRONT.**
+    *"o ideal é já ter todas as faces, um custo inicial maior, mas depois ficamos totalmente livres pra fazer qualquer coisa
+    [...] Queremos que o mundo inteiro tenha uma única verdade e seja rotacionado só pela camera. Quando isso estiver funcionando
+    a gente se preocupa com o resto."* So: the board meshes ALL lateral faces once (no per-view re-mesh, no "faces of the view"
+    subset), the shader decides from the view uniform which side a face is on screen (tone, soot digit), and a view change is
+    the camera's yaw plus uniforms, nothing rebuilt; the occlusion set likewise holds what every view needs, built once. A
+    higher boot / memory cost is ACCEPTED; reducing the total load is later work (the Director names calibrating blast damage
+    down: ordinary grenades will be far less destructive). Guards are placeholders: their NOISE is not touched, except that
+    its ORIENTATION must be right under the camera turn. This ruling answers items 1 and 2 below.
   - **NEXT SESSION — what is left to close R3D-ROT (planned 2026-10-01, after R3D-ACTORS / R3D-WORLD; props and actors are not
     in it).** Ordered by what blocks a clean rotation first:
-    1. **The 210 ms turn (Moto).** `OcclusionSet`'s per-view edge geometry cache rebuilds on a view change. Build the four
-       views once (memory to measure) or make the turned path as cheap as N's; gate = `occ_canonical_gate.py` + the Moto row.
-    2. **The 1.47 s re-mesh (Moto) shows the OLD view's faces** for that long. DESIGN CALL: hold the turn until the new faces
-       are in (a short stall), turn at once and accept the stale faces, or keep the three other views meshed (memory x4).
+    1. **The 210 ms turn (Moto).** `OcclusionSet`'s per-view edge geometry cache rebuilds on a view change. **RULED: build what
+       every view needs once** (memory to measure); gate = `occ_canonical_gate.py` + the Moto row.
+    2. **The 1.47 s re-mesh (Moto) shows the OLD view's faces** for that long. **RULED: mesh every face once, at build**; the
+       per-view face set (`VIEW_DIRS`, the background re-mesh in `set_view()`) goes, the shader picks each face's screen side
+       from the view (`face_x_slot` / `face_z_slot` become per-face arithmetic on a view uniform). Measure the boot, the memory
+       and the GPU (more faces drawn, half of them back-facing: `cull_back` on the opaque faces is the first lever) on the Moto.
     3. **The dead conversions** (the correction below): ~77 `_active_perspective` sites that are the identity, the
        `layout_with_perspective()` fixtures of 5 selftests, the per-prop `reposition_for_perspective()`; a scripted pass + a
        Godot warnings check.
@@ -3643,8 +3658,9 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
        tile labels, voxel ruler, circle gate, shadow): wrong under yaw, dev-only. Route the ground ones through
        `GroundCanvas3D` (mechanical); the golden shafts are R3D-LOOK's.
     5. **The guard noise indicator never shows** (`GuardCoordinator` calls `Room._emit_guard_noise_indicator`, which does not
-       exist). DESIGN CALL before wiring it: what it shows and where; once decided it is HUD, anchored with
-       `Room.screen_of_lifted()`.
+       exist). **RULED: noise is not touched now (guards are placeholders), except its ORIENTATION under the camera turn**: the
+       indicator's direction is computed from N-screen deltas, so when it is wired it must take the view's axes
+       (`WorldCanvas3D.screen_axes()`) and anchor with `Room.screen_of_lifted()`.
     6. The gate: the four views agree (`occlusion_view_selftest`, captures), the Moto cost of a turn recorded again.
   - **CORRECTION to the delete list below (2026-10-01, found while trying to execute it):** the base-coord records (`_base_damage`, `_base_debris`, `_base_shattered_props`, the pile and crack records) are NOT rotation-only. `scenario_save_restore` / `SaveState` reapply them after `load_map()`, i.e. they are the CHECKPOINT persistence, so they go only when `SaveState` serialises the `VoxelStore` itself (a stage of its own, not built). What IS rotation-only and now inert: every `PerspectiveMapper` conversion keyed on `Room._active_perspective` (it is "N" for the life of a map, so ~64 sites in `room.gd` and 13 elsewhere are the identity), `layout_with_perspective()` (5 selftests still use it to make turned fixtures: floor_zone_bake, slice_geometry, voxel_persist, roof_entity, roof_bake) and the per-prop `reposition_for_perspective()`. Deleting those is a mechanical pass that needs a scripted argument parser, a Godot warnings check (the lint tool does not list warnings) and the five fixtures rewritten; do it as its own step.
   - **Delete list, added 2026-09-29:** the base-coord workarounds R3D-PROPS had to add for the re-layout — `Room._base_shattered_props`, `_base_debris`, `_respawn_base_debris()`, `_reapply_base_shattered_props()`, `_voxel_point_to_base/_from_base()`, the `PropBlock` loop in `_reapply_base_damage()`. With one world and state recorded once none of them exists.

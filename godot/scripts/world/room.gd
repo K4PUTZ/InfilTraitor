@@ -1463,6 +1463,9 @@ var _is_desktop_viewport: bool = false
 var _pending_auto_end_turn: bool = false
 var _selected_cell: Vector2i = INVALID_CELL
 var _active_perspective: String = "N"
+## R3D-ROT — the camera's side. `_active_perspective` (the layout's orientation, what the conversions below turn through) no
+## longer changes after a map loads, so those conversions are the identity until they are deleted.
+var _view_direction: String = "N"
 var _alert_meter: int = 0
 
 var _alert_max: int = 100
@@ -2617,197 +2620,40 @@ func _ready() -> void:
 		_run_auto_screenshot_capture()
 
 
+## The side the camera looks from ("N"/"E"/"S"/"W"): what a presentation asks.
+func view_direction() -> String:
+	return _view_direction
+
+
+## R3D-ROT — a rotation turns the CAMERA over one fixed world. The map is never re-laid-out and no Voxel is rebuilt: the
+## store, the damage, the soot and every record stay in base coordinates, so there is nothing to replay. The board yaws and
+## re-meshes the faces the new side shows (`Board3DLive.set_view()`); the 2D lattice, the actors' billboards and the lifted
+## overlays are placed through the N lattice and land on the same world point from every side.
 func _set_perspective(direction: String) -> void:
 	if not PerspectiveMapperClass.is_valid_direction(direction):
 		return
-	if _active_perspective == direction:
+	if _view_direction == direction:
 		_update_perspective_button_state()
 		return
-
-	Telemetry.event("view.perspective", {"from": _active_perspective, "to": direction})
-	## A prop's voxel fragments still falling are run to their end first, so the pile is recorded before the board is rebuilt.
-	_finish_running_prop_fragments()
-	var prev_direction := _active_perspective
-	var base_agent := _cell_to_base(agent.cell, prev_direction)
-	var has_selected := _selected_cell != INVALID_CELL
-	var base_selected := _cell_to_base(_selected_cell, prev_direction) if has_selected else INVALID_CELL
-
-	## §13.2 — a rotation re-projects every cell, so both the keys AND the Voxel
-	## objects behind them change. The index cannot survive it.
-	_active_perspective = direction
-	## §2.4 lists the active perspective as a real input: carved sides and every
-	## other screen-space read resolve differently after a rotation, and the
-	## rotation rebuilds every Voxel besides.
-	bump_world_revision()
-	if not _base_layout.is_empty():
-		var view_layout := _room_builder.layout_with_perspective(_base_layout, _active_perspective)
-		var room_size: Vector2i = view_layout.get("size", _room_size)
-		VoxelStore.active = null
-		_room_builder.build_from_layout(view_layout, room_size)
-		_rebuild_voxel_store("perspective %s" % direction)
-		_room_size = room_size
-		_assert_geometry_registered()
-		_refresh_gu_grid_overlay()
-		_agent_start_cell = view_layout.get("agent_start_cell", _agent_start_cell)
-		
-		# Update cache data from builder
-		_blocked_cells = _room_builder.get_blocked_cells()
-		_prop_heights = _room_builder.get_prop_heights()
-		_exit_cells = _room_builder.get_exit_cells()
-		_current_light_sources = _room_builder.get_light_sources()
-		
-		# Update tile semantics and shadow heights for new layout (LIGHT-FIX-03)
-		# Now delegated to LightingController
-		
-		_spawn_guards(view_layout.get("enemy_defs", []))
-		movement_overlay.set_blocked_cells(_build_navigation_blocked_cells())
-		var blocked_edges: Array[Dictionary] = []
-		for e in view_layout.get("blocked_edges", []):
-			blocked_edges.append(e)
-		_current_blocked_edges = blocked_edges.duplicate(true)
-		movement_overlay.set_blocked_edge_keys(_movement_edge_set())
-		
-		## Sync new game state to TurnController after perspective change
-		if _turn_controller != null:
-			_turn_controller.set_game_state(_guards, _blocked_cells, _current_blocked_edges, _room_size)
-
-		tile_labels_overlay.room_w = _room_size.x
-		tile_labels_overlay.room_h = _room_size.y
-
-		var next_agent := PerspectiveMapperClass.cell_from_base(base_agent, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
-		if not _is_cell_inside_room(next_agent):
-			next_agent = _agent_start_cell
-		agent.set_cell(next_agent)
-		## The cell made the base-space round trip; so must the FACING, or the
-		## figure turns 90 degrees every time the view rotates. AgentSprite stores
-		## it in base space, so this only has to ask for a recompose.
-		agent.on_perspective_changed()
-
-		if has_selected:
-			var next_selected := PerspectiveMapperClass.cell_from_base(base_selected, _active_perspective, _base_layout.get("size", Vector2i.ZERO))
-			_selected_cell = next_selected if _is_selectable_cell(next_selected) else next_agent
-		else:
-			_selected_cell = next_agent
-		selection_overlay.set_selected(_selected_cell)
-
-		## PERSPECTIVE-01: runtime-instantiated props outside _base_layout
-		## (test-zone grenades) don't get rebuilt by build_from_layout() above —
-		## reposition them explicitly, same pattern as the agent/selection block.
-		if _test_zone_controller != null:
-			_test_zone_controller.reposition_for_perspective(_active_perspective)
-		for pickup in _collectibles:
-			if pickup != null and is_instance_valid(pickup):
-				pickup.reposition_for_perspective(_active_perspective)
-		if _weapon_bench_controller != null:
-			_weapon_bench_controller.reposition_for_perspective(_active_perspective)
-
-		_fow_controller.initialize_fog(VISUAL_GRID_OFFSET, _room_size)
-		_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
-		_update_guard_los_data()
-		_center_camera(agent.cell)
-
-		## VL-D3: capture which floor columns are under structure from the INTACT
-		## geometry (build just rendered everything unbroken) — before reapply
-		## damage punches holes, so it reflects the ORIGINAL cover.
-		_under_structure = _voxel_board.columns_with_structure()
-		## CRACK-02 S-3 — drop the OLD view's crack sprites before anything
-		## rebuilds: their transforms are in the old view's screen space, the same
-		## reason the ember/smoke/debris overlays are cleared below.
-		## `_respawn_base_cracks()` puts them back, after the damage is stamped.
-		_voxel_board.clear_glass_cracks()
-		## VL-PERSIST: stamp recorded destruction back onto the freshly rebuilt
-		## geometry BEFORE the lighting rebuild, so the repaint sees the holes and
-		## soot in this view (build_from_layout rebuilt every Voxel intact).
-		## CRACK-04 — claim every recorded hole's OPENING first, because the line
-		## below ends in a `process_dirty()` whose flush shapes the rims. Without
-		## this the replay's own erases arrive at `refresh_glass_rims()` unclaimed
-		## and every hole is re-cut with the DEFAULT opening at a centroid. See
-		## `_claim_base_openings()` for the measurement.
-		_claim_base_openings()
-		_reapply_base_damage()
-		_reapply_base_shattered_props()
-		_release_destroyed_prop_cells()
-		## CRACK-04 — and the shard rims around any recorded hole the flush above
-		## did not reach. AFTER the stamp, because the walk reads the tilemap.
-		_respawn_base_openings()
-		## CRACK-02 S-3 — and the webs, from the base-coord registry, on the
-		## geometry the line above just finished stamping.
-		_respawn_base_cracks()
-		## G-D35 B-2 — and the blast craze FIELDS, same registry pattern. ⚠️ Only
-		## reachable at all since §16.6: a panel pane did not move with the map, so
-		## every one of these would have reported "no pane voxel" and healed.
-		_respawn_base_crazes()
-		## G6 — and the glass on the floor.
-		_voxel_board.clear_floor_shards()
-		_respawn_base_shards()
-		## G4-2 — and the glass still stuck to the frames. AFTER the openings, so a
-		## pane that has both a hole and remnants has its rim cut before the
-		## remnants are stamped: the opening walk skips any cell whose source is
-		## already a cut atom, so the other order would let the rim swap silently
-		## lose to a remnant that was there first.
-		_respawn_base_remnants()
-		## CRACK-06 — and the shards clinging to the torn glass edge, same pattern.
-		_respawn_base_rim_shards()
-		## B-4b — the fields' hole masks, after the openings above have been
-		## re-applied (that is what refills the polygon log the mask reads).
-		_voxel_board.refresh_craze_opening_masks()
-
-		## Re-derive the per-cell overlays for the rotated layout so they follow the scenery:
-		## numbers redraw, lighting (lights/semantics/shadows/exposure) rebuilds from the rotated
-		## cells and emits lighting_rebuilt → VisionController refreshes its analysis overlays.
-		tile_labels_overlay.queue_redraw()
-		_lighting_controller.rebuild_all()
-		_ceiling_overlay.set_lights(_current_light_sources)
-		## Dev agent trail cells are now stale under the rotation — clear it.
-		_agent_trail.clear()
-		if _trail_overlay != null:
-			_trail_overlay.queue_redraw()
-		## VL-D4: an in-flight ember's stored world position is in the OLD
-		## view's screen space — carrying it into the rotated frame would show
-		## a glow floating over the wrong voxel instead of just fading away.
-		if _ember_overlay != null:
-			_ember_overlay.clear()
-		if _smoke_spark_overlay != null:
-			_smoke_spark_overlay.clear()
-		if _debris_overlay != null:
-			_debris_overlay.clear()
-		if _shrapnel_overlay != null:
-			_shrapnel_overlay.clear()
-		if _aim_bubble_overlay != null:
-			_aim_bubble_overlay.clear()
-		if _throw_perimeter_overlay != null:
-			_throw_perimeter_overlay.clear()
-		if _throw_arc_overlay != null:
-			_throw_arc_overlay.clear()
-		if _shrapnel_preview_overlay != null:
-			_shrapnel_preview_overlay.clear()
-		if _target_cursor_overlay != null:
-			_target_cursor_overlay.clear()
-		if _explosion_flash_overlay != null:
-			## E-FLASH-01: the fireball is anchored in the OLD view's screen
-			## space, exactly like the ember glow above it.
-			_explosion_flash_overlay.clear()
-		if _camera_controller != null:
-			_camera_controller.stop_shake()
-
-		## A rotation re-lays the whole map out and rebuilds the store, so the 3D board's meshes and
-		## planes describe the OLD view: rebuild it from the new store, after the damage, glass and
-		## light above are stamped, and before the occlusion below hands it the new set.
-		if board3d() != null:
-			_start_board3d_live()
-			_respawn_base_debris()
-			_respawn_base_prop_piles()
-
-		## OCC-01: Recompute occlusion set on perspective change
-		_recompute_occlusion()
-
-		_refresh_tactical_state()
+	Telemetry.event("view.perspective", {"from": _view_direction, "to": direction})
+	var t0: int = Time.get_ticks_usec()
+	_view_direction = direction
+	var live: Node = board3d()
+	if live != null:
+		live.set_view(direction)
+	if _camera_controller != null:
+		_camera_controller.stop_shake()
+	for overlay in [_ember_overlay, _smoke_spark_overlay, _debris_overlay, _shrapnel_overlay]:
+		if overlay != null:
+			overlay.clear()
+	_recompute_occlusion()
 	_update_perspective_button_state()
+	print("[ROT] view %s in %.1f ms" % [direction, float(Time.get_ticks_usec() - t0) / 1000.0])
 
 
 func _update_perspective_button_state() -> void:
 	if _hud_controller:
-		_hud_controller.set_perspective_active(_active_perspective)
+		_hud_controller.set_perspective_active(_view_direction)
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
@@ -3484,6 +3330,8 @@ func scenario_save_restore() -> bool:
 	load_map(map_id)
 	if not SaveState.restore(self, data):
 		return false
+	## A recorded hole's opening is claimed BEFORE the replay flushes, or every hole is cut with the default opening.
+	_claim_base_openings()
 	_reapply_base_damage()
 	_reapply_base_shattered_props()
 	_release_destroyed_prop_cells()
@@ -3508,7 +3356,7 @@ func scenario_perspective(direction: String) -> bool:
 	_set_perspective(direction)
 	for _f in range(10):
 		await get_tree().process_frame
-	return _active_perspective == direction
+	return _view_direction == direction
 
 
 ## R3D-13 — the map-wide light repaint on the world as it stands: the reset, the full apply and
@@ -6196,6 +6044,13 @@ func _assert_geometry_registered() -> void:
 ## split-brain pain, and the copy that was missing at boot is what left the set empty.
 func _recompute_occlusion() -> void:
 	if _occlusion_set == null:
+		return
+	## OPEN (R3D-ROT): the cutaway is computed in the N view's screen space (depth x + y, silhouette overlap), so from any
+	## other side it is off until it is derived from the camera itself.
+	if _view_direction != "N":
+		var turned_board: Node = board3d()
+		if turned_board != null:
+			turned_board.on_occlusion(OcclusionSetClass.new())
 		return
 	## OCC-26 capture instrument: INFILTRAITOR_OCC_DISABLE=1 forces an empty
 	## occlusion set, so a capture pair (same agent cell, occlusion on/off)

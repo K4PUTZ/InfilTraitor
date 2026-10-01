@@ -104,6 +104,10 @@ func handle_input(event: InputEvent) -> bool:
 			_drag_started = true
 		if _drag_started:
 			var delta := (mm.position - _drag_start_mouse) / _camera.zoom.x
+			## Under a yawed view a screen drag is not a move along the 2D lattice's own axes: ask the board.
+			var live: Node = _room.board3d() if _room.has_method("board3d") else null
+			if live != null and live.has_method("lattice_delta") and _room.view_direction() != "N":
+				delta = live.lattice_delta(mm.position - _drag_start_mouse)
 			_camera.global_position = _get_leashed_pos(_drag_start_cam - delta)
 			get_viewport().set_input_as_handled()
 			return true

@@ -3561,6 +3561,13 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
     - **ROT-3** — `Room._set_perspective()` camera-only (set the view, yaw, re-mesh, refresh the 2D layer), actors' D44 facing relative to the yaw,
       the screen-space VFX / overlays that cache screen positions re-derive (the WORLD part this needs), then the delete list below.
     - **DIRECTOR REVERSAL, 2026-09-30: the hybrid is WRONG ("rotating native 3D objects beats keeping 2D elements and converting them").** The ratified order stands: R3D-ACTORS -> R3D-WORLD -> R3D-ROT, with actors and overlays 3D so a rotation is the camera's yaw and nothing else. The Room-side bridge below (`_set_view_camera_only`, `_view_direction`, `INFILTRAITOR_CAMERA_ROT`) was REMOVED the same day; `Board3DLive.set_view()` (yaw, per-view faces, face slots, composed ground map) and `GroundGrid`'s view math stay as the board's half, and `GroundGrid`'s view state goes when the last 2D consumer does.
+    - **THE WORLD TURNS (2026-09-30, Director: "tudo precisa girar junto"; 3D-native, no 2D bridge).** `Room._set_perspective()` is now ONLY `Board3DLive.set_view()`
+      (camera yaw, the three faces of the view re-meshed in the background, face slots, glass tones): 0.6 ms on the main thread, no store rebuild, no replay.
+      The 2D lattice is the N lattice for every view, so billboards, lifted ground overlays and VFX anchors land on the same world point from every side;
+      camera pan follows the screen under yaw (`Board3DLive.lattice_delta`). `GroundGrid` / `PerspectiveMapper` are back to their pre-ROT state. Captured GLASS in N/E/S/W.
+      **Open:** the cutaway is OFF outside N (`_recompute_occlusion`), dents / decals on the -x / -z faces (no CarvedSide), the dead conversions (`_active_perspective`
+      is "N" forever) and the `_base_*` replay to delete, sprite frames still read the layout orientation, guard cones, line widths of lifted overlays under yaw,
+      the Moto cost. `glass_crack_selftest` now checks the SAVE-RESTORE replay order, and `scenario_save_restore` claims the openings first (it did not).
     - **ROT-2 / ROT-3 FIRST CUT BUILT (2026-09-30), behind `INFILTRAITOR_CAMERA_ROT=1` (default OFF until parity):** `Board3DLive.set_view()` (camera yaw, 5-face
       mesher with the 3 faces of the view, shader face slots, `_to_gu` composed with the continuous turn, background re-mesh) and `Room._set_view_camera_only()`
       (layout stays "N", `_view_direction` is the presentation's). Measured PLAYGROUND E: 1.3 s vs 1.9 s for the re-layout. **Open vs the control capture:**

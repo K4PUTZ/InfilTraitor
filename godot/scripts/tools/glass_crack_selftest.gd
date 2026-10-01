@@ -1612,10 +1612,10 @@ func test_an_unclaimed_hole_is_reshaped_and_the_replay_claims_first() -> void:
 	if src == "":
 		_fail("could not read room.gd to check the replay order")
 		return
-	var claim_at: int = src.find("\n\t\t_claim_base_openings()")
-	var reapply_at: int = src.find("\n\t\t_reapply_base_damage()")
+	var claim_at: int = src.find("\n\t_claim_base_openings()")
+	var reapply_at: int = src.find("\n\t_reapply_base_damage()")
 	if claim_at >= 0 and reapply_at >= 0 and claim_at < reapply_at:
-		_pass("room.gd: _claim_base_openings() precedes _reapply_base_damage() in the perspective rebuild")
+		_pass("room.gd: _claim_base_openings() precedes _reapply_base_damage() in the save-restore replay (the rotation no longer replays anything)")
 	else:
 		_fail("room.gd: claim at %d, reapply at %d — the replay flushes before it claims, so every hole takes '%s'"
 			% [claim_at, reapply_at, default_id])

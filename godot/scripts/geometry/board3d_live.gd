@@ -555,6 +555,17 @@ func cell_screen_center(cell: Vector2i) -> Vector2:
 	return _camera.unproject_position(Vector3(float(cell.x) + 0.5, 0.0, float(cell.y) + 0.5))
 
 
+## R3D-ROT — a screen displacement (viewport pixels) as the displacement it is on the 2D lattice the camera follows: two
+## camera rays against the ground, carried back through the lattice map. Equals `delta / zoom` in the N view.
+func lattice_delta(screen_delta: Vector2) -> Vector2:
+	var centre: Vector2 = get_viewport().get_visible_rect().size * 0.5
+	var a: Vector3 = pick_ground(centre)
+	var b: Vector3 = pick_ground(centre + screen_delta)
+	if not (is_finite(a.x) and is_finite(b.x)):
+		return screen_delta
+	return _to_gu.affine_inverse().basis_xform(Vector2(b.x - a.x, b.z - a.z))
+
+
 func camera_basis() -> Basis:
 	return _camera.global_transform.basis
 
@@ -2194,6 +2205,10 @@ func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material:
 		var y0: float = float(start.y) - ground
 		var y1: float = float(start.y + h) - ground
 		corners = [Vector3(x0, y0, z), Vector3(x0, y1, z), Vector3(x1, y1, z), Vector3(x1, y0, z)]
+	## The corners above are wound for a +x / +z normal; a face on the OTHER side of its voxel (-x, -z) is the same quad
+	## reversed, or a `cull_back` material (glass) draws its back and loses it.
+	if dir == Dir.NW or dir == Dir.NE:
+		corners.reverse()
 	var face_uvs: Array[Vector2] = []
 	for corner: Vector3 in corners:
 		var uv: Vector2
@@ -2305,27 +2320,21 @@ func _make_camera() -> void:
 	_measure_ground_map()
 
 
-## The 2D ground plane as an affine map of GU centres, measured from Room itself, composed with the view's turn
-## (R3D-ROT-2): `_to_gu` takes a 2D point to the BASE cell coordinate under it whatever the view, which is what the board's
-## world (always base) wants. The lattice is measured raw (`GroundGrid.lattice_local`), plus the room's own offset.
+## The 2D ground plane as an affine map of GU centres, measured from Room itself. It is the N lattice and stays so under
+## every view: the world is ONE grid in base coordinates, a view is only the camera's yaw (R3D-ROT), so whatever is still
+## placed through this map (billboards, lifted ground overlays) lands on the same world point from every side.
 func _measure_ground_map() -> void:
-	var offset: Vector2 = Vector2(_cell_to_world.call(Vector2i.ZERO)) - GroundGrid.map_to_local(Vector2i.ZERO)
-	_origin_2d = GroundGrid.lattice_local(Vector2i.ZERO) + offset
-	var ex: Vector2 = GroundGrid.lattice_local(Vector2i(1, 0)) - GroundGrid.lattice_local(Vector2i.ZERO)
-	var ez: Vector2 = GroundGrid.lattice_local(Vector2i(0, 1)) - GroundGrid.lattice_local(Vector2i.ZERO)
-	var lattice_gu: Transform2D = Transform2D(ex, ez, Vector2.ZERO).affine_inverse()
-	var half := Vector2(0.5, 0.5)
-	var at_zero: Vector2 = GroundGrid.base_point(lattice_gu * Vector2.ZERO + half) - half
-	var at_x: Vector2 = GroundGrid.base_point(lattice_gu * Vector2(1.0, 0.0) + half) - half
-	var at_y: Vector2 = GroundGrid.base_point(lattice_gu * Vector2(0.0, 1.0) + half) - half
-	_to_gu = Transform2D(at_x - at_zero, at_y - at_zero, at_zero)
+	_origin_2d = _cell_to_world.call(Vector2i.ZERO)
+	var ex: Vector2 = Vector2(_cell_to_world.call(Vector2i(1, 0))) - _origin_2d
+	var ez: Vector2 = Vector2(_cell_to_world.call(Vector2i(0, 1))) - _origin_2d
+	_to_gu = Transform2D(ex, ez, Vector2.ZERO).affine_inverse()
 	## One GU step along grid x crosses cos(45°) camera units horizontally.
 	_px_per_unit = absf(ex.x) / cos(deg_to_rad(45.0))
 
 
 ## R3D-ROT-2 — turn the board to `direction` ("N"/"E"/"S"/"W"): the camera yaws a quarter turn per view, the 2D -> ground
-## map follows, the shaders learn which face is which side, and every chunk is re-meshed for the three faces the new view
-## sees (in the background task, from the unchanged base store). `GroundGrid` must already hold the same view.
+## map is untouched, the shaders learn which face is which side, and every chunk is re-meshed for the three faces the new view
+## sees (in the background task, from the unchanged base store). The world, the store and the 2D -> ground map never change.
 func set_view(direction: String) -> void:
 	if not VIEW_DIRS.has(direction) or direction == _view:
 		return
@@ -2333,7 +2342,6 @@ func set_view(direction: String) -> void:
 	_view_dirs = VIEW_DIRS[direction]
 	if _camera != null:
 		_camera.rotation_degrees = Vector3(-30.0, 45.0 + float(VIEW_YAW_DEG[_view]), 0.0)
-		_measure_ground_map()
 	var slots: Vector2i = VIEW_FACE_SLOTS[direction]
 	var swap: bool = slots.x == 2
 	for i: int in range(_shader_materials.size()):
@@ -2343,10 +2351,12 @@ func set_view(direction: String) -> void:
 			## that turns them over swaps the two, and the sheen / frost flow along the turned ground axes.
 			m.set_shader_parameter("face_se", 0.966 if swap else 0.982)
 			m.set_shader_parameter("face_sw", 0.982 if swap else 0.966)
-			var turned: Vector2 = GroundGrid.view_point(Vector2(1.0, 0.0)) - GroundGrid.view_point(Vector2.ZERO)
-			var turned_z: Vector2 = GroundGrid.view_point(Vector2(0.0, 1.0)) - GroundGrid.view_point(Vector2.ZERO)
-			m.set_shader_parameter("px_per_gu_x", Vector2(signf(turned.x - turned.y) * 112.0, signf(turned.x + turned.y) * 64.0))
-			m.set_shader_parameter("px_per_gu_z", Vector2(signf(turned_z.x - turned_z.y) * 112.0, signf(turned_z.x + turned_z.y) * 64.0))
+			## Screen pixels per world unit along +x and +z, from the camera itself (flat ground, so its right/down axes).
+			var yaw: float = deg_to_rad(float(VIEW_YAW_DEG[_view]))
+			var gx := Vector2(cos(yaw), sin(yaw))
+			var gz := Vector2(-sin(yaw), cos(yaw))
+			m.set_shader_parameter("px_per_gu_x", Vector2(112.0 * (gx.x - gx.y), 64.0 * (gx.x + gx.y)))
+			m.set_shader_parameter("px_per_gu_z", Vector2(112.0 * (gz.x - gz.y), 64.0 * (gz.x + gz.y)))
 		else:
 			m.set_shader_parameter("face_x_slot", slots.x)
 			m.set_shader_parameter("face_z_slot", slots.y)

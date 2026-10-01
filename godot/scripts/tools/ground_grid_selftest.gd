@@ -28,7 +28,6 @@ func _init() -> void:
 	test_map_to_local_matches_the_tilemap()
 	test_cell_containing_matches_the_room_pick()
 	test_cell_center_round_trips()
-	test_view_is_a_quarter_turn_of_the_base_grid()
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
 	print("=".repeat(70) + "\n")
@@ -107,37 +106,3 @@ func test_cell_center_round_trips() -> void:
 			if GroundGridRef.cell_containing_with_offset(GroundGridRef.cell_center(c, OFFSET), OFFSET) != c:
 				bad += 1
 	_check(bad == 0, "%d cell centres do not round-trip" % bad)
-
-
-## R3D-ROT-1 — a view is a quarter turn of the BASE grid: the lattice under "E" puts base cell `c` where the
-## N lattice puts `PerspectiveMapper.cell_from_base(c)`, the pick undoes it, and "N" (and the state after
-## the test) is the identity every other test in this file ran under.
-func test_view_is_a_quarter_turn_of_the_base_grid() -> void:
-	print("[4] a view turns the base grid; the pick returns base cells")
-	var size := Vector2i(44, 22)
-	var bad_place: int = 0
-	var bad_pick: int = 0
-	var bad_inv: int = 0
-	var n: int = 0
-	for dir: String in ["N", "E", "S", "W"]:
-		GroundGridRef.set_view("N", Vector2i.ZERO)
-		var north_of: Dictionary = {}
-		for x: int in range(-3, size.x + 3):
-			for y: int in range(-3, size.y + 3):
-				north_of[Vector2i(x, y)] = GroundGridRef.map_to_local(PerspectiveMapper.turn_from_base(Vector2i(x, y), dir, size))
-		GroundGridRef.set_view(dir, size)
-		for x: int in range(-3, size.x + 3):
-			for y: int in range(-3, size.y + 3):
-				var c := Vector2i(x, y)
-				n += 1
-				if GroundGridRef.map_to_local(c) != north_of[c]:
-					bad_place += 1
-				if GroundGridRef.cell_containing(GroundGridRef.map_to_local(c) + Vector2(0.0, GroundGridRef.HALF_H)) != c:
-					bad_pick += 1
-				if GroundGridRef.base_cell(GroundGridRef.view_cell(c)) != c:
-					bad_inv += 1
-	GroundGridRef.set_view("N", Vector2i.ZERO)
-	_check(bad_place == 0, "%d of %d (cell, view) placements differ from the N lattice of the turned cell" % [bad_place, n])
-	_check(bad_pick == 0, "%d of %d picks did not return the base cell" % [bad_pick, n])
-	_check(bad_inv == 0, "%d of %d view_cell/base_cell round trips failed" % [bad_inv, n])
-	_check(GroundGridRef.view_direction() == "N" and GroundGridRef.map_to_local(Vector2i(2, 5)) == _layer.map_to_local(Vector2i(2, 5)), "the state is back to the identity")

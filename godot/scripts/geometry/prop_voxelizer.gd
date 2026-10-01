@@ -1,8 +1,10 @@
 ## PropVoxelizer — turns any fitted model (`PropModelFit`) into board-size voxels, keeping its SHAPE.
 ##
-## PROPS_TIER4_PLAN P1 / `ACTOR` D67. A voxel here is exactly one board voxel (1/8 GU, `VOXELS_PER_UNIT_AXIS` per axis), on the
-## board's own lattice: local X/Z = 0 is a voxel boundary (a cell's centre is 4 voxels in) and local Y = 0 is a level boundary, so
-## a cell index is the offset from the prop's cell centre / floor and adds straight onto the board's voxel coordinates.
+## PROPS_TIER4_PLAN P1 / `ACTOR` D67. A voxel here is one board voxel (1/8 GU, `VOXELS_PER_UNIT_AXIS` per axis) divided by `division`
+## (1, 2 or 4): the FRAGMENT lattice. A prop that is about to be destroyed does not have to obey the world's voxel size, so a thin table
+## top and thin legs are rasterised on a finer lattice (division 4 = 1/32 GU = 5 cm) and still read as the table they were (Director,
+## 2026-09-30). The lattice is the board's own, only subdivided: local X/Z = 0 is a voxel boundary at any division (a cell's centre is
+## 4 x division voxels in) and local Y = 0 is a level boundary, so a cell index is the offset from the prop's cell centre / floor.
 ##
 ## METHOD. Every triangle marks each voxel whose box it overlaps (Akenine-Moller's separating-axis test, conservative: a leg thinner
 ## than a voxel is still a column). A table keeps its top plate and its legs because SURFACES are rasterised, not the bounding box.
@@ -17,20 +19,66 @@ class_name PropVoxelizer
 ## also mark the voxel on the other side of it.
 const TOUCH_EPS: float = 1.0e-4
 
+## The finest lattice a fragment may use, and how many fragments a prop may become. The budget is the handset's: every fragment costs
+## a few GDScript operations per simulated step and a row of the instance buffer per frame (measured: 808 fragments = 0.17 ms of
+## simulation + 0.27 ms of upload per step on the desktop).
+const MAX_DIVISION: int = 4
+const FRAGMENT_BUDGET: int = 900
+## Cells a surface of area A (GU^2) marks at voxel v, as a fraction of A / v^2 (measured on a real table: 0.52 to 0.75).
+const CELLS_PER_AREA: float = 0.8
+
 static var _cache: Dictionary = {}
 
 
-## Cached per model key (the same key `PropModelFit` uses). {"cells": Array[Vector3i], "zones": PackedInt32Array, "voxel": float}.
-static func for_model(path: String, rotation_deg: Vector3, fit_size: Vector3) -> Dictionary:
-	var key := "%s|%s|%s" % [path, rotation_deg, fit_size]
+## Cached per model key (the same key `PropModelFit` uses) and requested division. `division` 0 = the finest lattice that keeps the prop
+## within `FRAGMENT_BUDGET` fragments (a small prop gets 5 cm cubes, a big one falls back toward the board's own voxel); 1, 2 or 4 = that one.
+## {"cells": Array[Vector3i], "zones": PackedInt32Array, "voxel": float, "division": int}.
+static func for_model(path: String, rotation_deg: Vector3, fit_size: Vector3, division: int = 0) -> Dictionary:
+	var key := "%s|%s|%s|%d" % [path, rotation_deg, fit_size, division]
 	if _cache.has(key):
 		return _cache[key]
-	var out: Dictionary = {"cells": [], "zones": PackedInt32Array(), "voxel": voxel_size()}
+	var out: Dictionary = {"cells": [], "zones": PackedInt32Array(), "voxel": voxel_size(), "division": 1}
 	var model: Dictionary = PropModelFit.fit(path, rotation_deg, fit_size) if path != "" else PropModelFit.box(fit_size)
 	if bool(model["ok"]):
-		out = voxelize(model["parts"])
+		out = fragment_voxelize(model["parts"], division)
 	_cache[key] = out
 	return out
+
+
+## `voxelize()` at the division asked for, or (0) at the finest one that fits the budget. An estimate from the surface area rules out a
+## division that would obviously overflow, so a big model never pays for a voxelization it will throw away.
+static func fragment_voxelize(parts: Array, division: int = 0) -> Dictionary:
+	if division > 0:
+		return voxelize(parts, voxel_size() / float(clampi(division, 1, MAX_DIVISION)))
+	var area: float = surface_area(parts)
+	var d: int = MAX_DIVISION
+	while d > 1:
+		var v: float = voxel_size() / float(d)
+		if CELLS_PER_AREA * area / (v * v) <= 2.0 * float(FRAGMENT_BUDGET):
+			var r: Dictionary = voxelize(parts, v)
+			if (r["cells"] as Array).size() <= FRAGMENT_BUDGET:
+				return r
+		d = int(d / 2.0)
+	return voxelize(parts, voxel_size())
+
+
+## Total triangle area of the parts, in GU^2 (both sides of a closed mesh count: it is an estimate for a budget, not a measurement).
+static func surface_area(parts: Array) -> float:
+	var area: float = 0.0
+	for part: Dictionary in parts:
+		var mesh: Mesh = part["mesh"]
+		var xf: Transform3D = part["xf"]
+		for s in range(mesh.get_surface_count()):
+			var arrays: Array = mesh.surface_get_arrays(s)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			var tri_count: int = int(idx.size() / 3.0) if idx.size() > 0 else int(verts.size() / 3.0)
+			for t in range(tri_count):
+				var p0: Vector3 = xf * verts[idx[t * 3] if idx.size() > 0 else t * 3]
+				var p1: Vector3 = xf * verts[idx[t * 3 + 1] if idx.size() > 0 else t * 3 + 1]
+				var p2: Vector3 = xf * verts[idx[t * 3 + 2] if idx.size() > 0 else t * 3 + 2]
+				area += (p1 - p0).cross(p2 - p0).length() * 0.5
+	return area
 
 
 static func clear_cache() -> void:
@@ -41,7 +89,7 @@ static func voxel_size() -> float:
 	return 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 
 
-## `parts`: Array of {"mesh": Mesh, "xf": Transform3D}. Returns {"cells", "zones", "voxel"}; `zones[i]` is the zone of `cells[i]`.
+## `parts`: Array of {"mesh": Mesh, "xf": Transform3D}. Returns {"cells", "zones", "voxel", "division"}; `zones[i]` is the zone of `cells[i]`.
 static func voxelize(parts: Array, voxel: float = -1.0) -> Dictionary:
 	var v: float = voxel if voxel > 0.0 else voxel_size()
 	var half := Vector3.ONE * (v * 0.5 - TOUCH_EPS)
@@ -83,7 +131,7 @@ static func voxelize(parts: Array, voxel: float = -1.0) -> Dictionary:
 	zones.resize(cells.size())
 	for i in range(cells.size()):
 		zones[i] = int(zone_of[cells[i]])
-	return {"cells": cells, "zones": zones, "voxel": v}
+	return {"cells": cells, "zones": zones, "voxel": v, "division": maxi(int(round(voxel_size() / v)), 1)}
 
 
 static func _mark_triangle(a: Vector3, b: Vector3, c: Vector3, v: float, half: Vector3, zone: int, zone_of: Dictionary,

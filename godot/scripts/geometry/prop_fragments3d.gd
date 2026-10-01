@@ -4,7 +4,7 @@
 ## it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a rotation rebuilds the
 ## board and drops every node, so the pile is laid back from `Room._base_prop_piles`).
 ##
-## ONE MultiMesh of a board-size cube (1/8 GU), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its
+## ONE MultiMesh of a cube of the FRAGMENT lattice (the board voxel, 1/8 GU, divided by the prop's `division`; the sim says which), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its
 ## base mesh, so without it every cube away from the node origin is culled). The material is the board's prop shader with
 ## `use_color`: the cell planes give it light and soot, the per-instance colour gives it the prop's material colour, each cube's small
 ## brightness variation and its charring. The colour is handed over in linear (vertex colour is linear, the shader's `albedo` is sRGB).
@@ -31,6 +31,7 @@ var _buf: PackedFloat32Array = PackedFloat32Array()
 var _voxel: float = 0.125
 var _y0: float = 0.0
 var _finished: bool = false
+var _settled_at: PackedByteArray = PackedByteArray()   ## per fragment: 1 once its row holds its FINAL value (landed or gone, charring done)
 
 
 ## A live one: steps `sim` every frame until it is done. `zone_materials[zone]` is the material id of each zone of the sim.
@@ -45,10 +46,11 @@ func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array) -> void:
 	set_process(true)
 
 
-## A static pile from records. `y0` is the floor's world height under it.
-static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: Array) -> PropFragments3D:
+## A static pile from records. `y0` is the floor's world height under it; `division` is the lattice the records' columns are in.
+static func make_pile(board: Node3D, records: Array, y0: float, zone_materials: Array, division: int = 1) -> PropFragments3D:
 	var node := PropFragments3D.new()
 	node._board = board
+	node._voxel = 0.125 / float(maxi(division, 1))
 	var zones := PackedInt32Array()
 	for r: Dictionary in records:
 		zones.append(int(r.get("zone", 0)))
@@ -74,6 +76,11 @@ func is_finished() -> bool:
 ## The world height of the floor the cubes stand on.
 func floor_y() -> float:
 	return _y0
+
+
+## The edge of one cube, in world units (GU).
+func voxel_size() -> float:
+	return _voxel
 
 
 ## Runs a live simulation to its end NOW (a rotation is about to rebuild the board: the pile has to be recorded first).
@@ -113,6 +120,8 @@ func _build(n: int) -> void:
 	_mm.instance_count = n
 	_buf = PackedFloat32Array()
 	_buf.resize(n * FLOATS_PER_INSTANCE)
+	_settled_at = PackedByteArray()
+	_settled_at.resize(n)
 	_mat = ShaderMaterial.new()
 	_mat.shader = BoardLook.graded_shader(SHADER_PATH)
 	_mat.set_shader_parameter("albedo", Color.WHITE)
@@ -185,14 +194,23 @@ func _write(i: int, xf: Transform3D, c: Color) -> void:
 	_buf[o + 15] = c.a
 
 
+## Writes every fragment that can still change; a gone one, or a landed one whose charring has finished, was written once and is left
+## alone (a pile of hundreds of cubes is static for most of the half second).
 func _upload() -> void:
 	var sim: PropFragmentSim = _sim
+	var charred: bool = sim.char_finished()
 	for i in range(sim.count):
-		if sim.state[i] == PropFragmentSim.State.GONE:
+		if _settled_at[i] == 1:
+			continue
+		var st: int = sim.state[i]
+		if st == PropFragmentSim.State.GONE:
 			_write(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ZERO), sim.pos[i]), Color(0.0, 0.0, 0.0, 1.0))
+			_settled_at[i] = 1
 			continue
 		var mult: float = sim.jitter[i] * lerpf(1.0, sim.tone[i], sim.char_amount(i))
 		_write(i, Transform3D(sim.rotation_of(i), sim.pos[i]), _colour(mult, sim.zone[i]))
+		if st == PropFragmentSim.State.LANDED and charred:
+			_settled_at[i] = 1
 	_mm.buffer = _buf
 
 

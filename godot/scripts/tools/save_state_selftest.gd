@@ -210,9 +210,16 @@ func _test_props_round_trip() -> void:
 	## P2: a charred pile of fragments (base GU -> floor height, material, cubes).
 	a._base_prop_piles[Vector2i(6, 6)] = {"y0": 0.0, "zone_materials": ["wood", "metal"], "records": [
 		{"col": Vector2i(49, 50), "level": 0, "mult": 0.25, "zone": 0}, {"col": Vector2i(49, 50), "level": 1, "mult": 0.125, "zone": 1}]}
+	## A pile on the 4x finer fragment lattice carries its division; a pile with none (an older save) is read as 1.
+	a._base_prop_piles[Vector2i(8, 8)] = {"y0": 0.0, "zone_materials": ["wood"], "div": 4, "records": [
+		{"col": Vector2i(197, 201), "level": 3, "mult": 0.25, "zone": 0}]}
 	var b := RoomStub.new()
 	_check(SaveState.restore(b, SaveState.capture(a)), "props: restore() accepts what capture() produced")
+	var fine: Dictionary = b._base_prop_piles.get(Vector2i(8, 8), {})
+	_check(not fine.is_empty() and int(fine.get("div", 0)) == 4 and fine["records"][0]["col"] == Vector2i(197, 201),
+		"props: a pile on the fragment lattice keeps its division and its fine columns")
 	var pile: Dictionary = b._base_prop_piles.get(Vector2i(6, 6), {})
+	_check(int(pile.get("div", 0)) == 1, "props: a pile saved without a division reads as the board's voxel (1)")
 	_check(not pile.is_empty() and pile["zone_materials"] == ["wood", "metal"] and is_equal_approx(float(pile["y0"]), 0.0) \
 		and pile["records"].size() == 2 and pile["records"][1]["col"] == Vector2i(49, 50) \
 		and int(pile["records"][1]["level"]) == 1 and int(pile["records"][1]["zone"]) == 1 \

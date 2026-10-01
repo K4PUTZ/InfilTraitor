@@ -14,6 +14,7 @@ func _init() -> void:
 	_test_table_keeps_top_and_legs()
 	_test_zones_and_determinism()
 	_test_box_fit_placeholder()
+	_test_fragment_lattice()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -141,7 +142,7 @@ func _test_zones_and_determinism() -> void:
 ## A prop with no model voxelizes from its box: the slot's generic is a box of fragments.
 func _test_box_fit_placeholder() -> void:
 	print("[4] the placeholder box")
-	var r: Dictionary = PropVoxelizer.for_model("", Vector3.ZERO, Vector3(0.5, 0.25, 0.375))
+	var r: Dictionary = PropVoxelizer.for_model("", Vector3.ZERO, Vector3(0.5, 0.25, 0.375), 1)
 	var maxx: int = -99
 	var minx: int = 99
 	var maxy: int = 0
@@ -155,3 +156,50 @@ func _test_box_fit_placeholder() -> void:
 	else:
 		_fail("box voxelization wrong: %d cells, x %d..%d, top y %d" % [r["cells"].size(), minx, maxx, maxy])
 	print("")
+
+
+## The fragment lattice (Director, 2026-09-30: the cubes of a table were too thick): a destroyed prop is rasterised on a lattice FINER
+## than the board's, so a thin top stays thin. `division` 1/2/4 forces it; 0 picks the finest one within the fragment budget.
+func _test_fragment_lattice() -> void:
+	print("[5] the fragment lattice")
+	var plate: Array = [_box_part(Vector3(0.6, 0.03, 0.4), Vector3(0.0, 0.2, 0.0))]
+	var thick: Dictionary = {}
+	for d in [1, 2, 4]:
+		var r: Dictionary = PropVoxelizer.fragment_voxelize(plate, d)
+		var lo: int = 999
+		var hi: int = -999
+		for c: Vector3i in r["cells"]:
+			lo = mini(lo, c.y)
+			hi = maxi(hi, c.y)
+		thick[d] = float(hi - lo + 1) * float(r["voxel"])
+		if int(r["division"]) != d or not is_equal_approx(float(r["voxel"]), PropVoxelizer.voxel_size() / float(d)):
+			_fail("division %d reported as %s, voxel %s" % [d, r["division"], r["voxel"]])
+	if float(thick[4]) < float(thick[2]) + 1.0e-6 and float(thick[2]) < float(thick[1]) + 1.0e-6 and float(thick[4]) <= 0.07:
+		_pass("a 0.03 GU plate is %.4f GU thick at 1/8, %.4f at 1/16, %.4f at 1/32" % [thick[1], thick[2], thick[4]])
+	else:
+		_fail("the plate does not thin out with the division: %s" % [thick])
+	## Automatic: a small prop takes the finest lattice, a big one backs off until it fits the budget.
+	var small: Dictionary = PropVoxelizer.fragment_voxelize(plate, 0)
+	var big_parts: Array = [_box_part(Vector3(3.0, 2.0, 3.0), Vector3(0.0, 1.0, 0.0))]
+	var big: Dictionary = PropVoxelizer.fragment_voxelize(big_parts, 0)
+	var big_cells: int = (big["cells"] as Array).size()
+	if int(small["division"]) == PropVoxelizer.MAX_DIVISION and (big["division"] == 1 or big_cells <= PropVoxelizer.FRAGMENT_BUDGET) \
+			and int(big["division"]) < int(small["division"]):
+		_pass("automatic: the plate gets division %d, a 3 x 2 x 3 GU box falls back to %d (%d cells, budget %d)"
+			% [small["division"], big["division"], big_cells, PropVoxelizer.FRAGMENT_BUDGET])
+	else:
+		_fail("automatic division: small %s, big %s with %d cells" % [small["division"], big["division"], big_cells])
+	## A finer lattice is still the board's own: a cell index at division 4 sits on the same grid, so the plate's footprint is unchanged.
+	var fine: Dictionary = PropVoxelizer.fragment_voxelize(plate, 4)
+	var minx: int = 9999
+	var maxx: int = -9999
+	for c: Vector3i in fine["cells"]:
+		minx = mini(minx, c.x)
+		maxx = maxi(maxx, c.x)
+	var width: float = float(maxx - minx + 1) * float(fine["voxel"])
+	if absf(width - 0.6) <= 2.0 * float(fine["voxel"]):
+		_pass("the footprint is unchanged (%.3f GU wide for a 0.6 plate)" % width)
+	else:
+		_fail("footprint width %.3f for a 0.6 plate" % width)
+	print("")
+

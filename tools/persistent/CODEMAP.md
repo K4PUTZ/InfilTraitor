@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**266 scripts · 84589 lines total** (under `godot/scripts/`)
+**266 scripts · 84843 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2277 lines
+extends `Node3D` · 2280 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -761,7 +761,7 @@ extends `Node3D` · 2277 lines
 
 ### `mesh_prop_instance.gd`
 
-`class_name MeshPropInstance` · 34 lines
+`class_name MeshPropInstance` · 35 lines
 
 `godot/scripts/geometry/mesh_prop_instance.gd`
 
@@ -777,6 +777,7 @@ extends `Node3D` · 2277 lines
 - `var surface_materials: Dictionary = {}`
 - `var model_path: String = ""`
 - `var model_rotation_deg: Vector3 = Vector3.ZERO`
+- `var fragment_division: int = 0`
 - `var shattered: bool = false`
 
 ---
@@ -865,7 +866,7 @@ extends `Node3D` · 2277 lines
 
 ### `prop_fragment_sim.gd`
 
-`class_name PropFragmentSim` · extends `RefCounted` · 328 lines
+`class_name PropFragmentSim` · extends `RefCounted` · 360 lines
 
 `godot/scripts/geometry/prop_fragment_sim.gd`
 
@@ -880,6 +881,17 @@ extends `Node3D` · 2277 lines
 - `PUSH_SPEED` = `1.3`
 - `PUSH_UP` = `1.2`
 - `CHAR_TIME` = `0.30`
+- `P_TONE` = `1`
+- `P_JIT` = `2`
+- `P_DESTROY` = `3`
+- `P_VANISH` = `4`
+- `P_DIR` = `5`
+- `P_SPEED` = `6`
+- `P_UP` = `7`
+- `P_SX` = `8`
+- `P_SY` = `9`
+- `P_SZ` = `10`
+- `P_SLUMP` = `100`
 
 **Public vars**
 - `var count: int = 0`
@@ -907,17 +919,18 @@ extends `Node3D` · 2277 lines
 - `func pile_records() -> Array:`
 - `func vanished_count() -> int:`
 - `func char_amount(i: int) -> float:`
+- `func char_finished() -> bool:`
 - `func rotation_of(i: int) -> Basis:`
 
 ---
 
 ### `prop_fragments3d.gd`
 
-`class_name PropFragments3D` · extends `Node3D` · 218 lines
+`class_name PropFragments3D` · extends `Node3D` · 236 lines
 
 `godot/scripts/geometry/prop_fragments3d.gd`
 
-> PropFragments3D — the voxel fragments of one broken prop, in ONE draw call, depth-tested, lit by the board's planes. PROPS_TIER4_PLAN P2 / `ACTOR` D67. While a `PropFragmentSim` runs, this node moves the cubes every frame; when the sim is done it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a rotation rebuilds the board and drops every node, so the pile is laid back from `Room._base_prop_piles`). ONE MultiMesh of a board-size cube (1/8 GU), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its base mesh, so without it every cube away from the node origin is culled). The material is the board's prop shader with `use_color`: the cell planes give it light and soot, the per-instance colour gives it the prop's material colour, each cube's small brightness variation and its charring. The colour is handed over in linear (vertex colour is linear, the shader's `albedo` is sRGB). COLOUR COMES FROM THE MATERIAL REGISTRY (`ACTOR` D66): each fragment carries the zone of the surface it came from, and a zone is a material id (`zone_materials[zone]`, resolved through the fallback chain). The node draws with the facade of the material most of its cubes are made of (one draw call, one texture): the others keep their own colour under that detail.
+> PropFragments3D — the voxel fragments of one broken prop, in ONE draw call, depth-tested, lit by the board's planes. PROPS_TIER4_PLAN P2 / `ACTOR` D67. While a `PropFragmentSim` runs, this node moves the cubes every frame; when the sim is done it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a rotation rebuilds the board and drops every node, so the pile is laid back from `Room._base_prop_piles`). ONE MultiMesh of a cube of the FRAGMENT lattice (the board voxel, 1/8 GU, divided by the prop's `division`; the sim says which), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its base mesh, so without it every cube away from the node origin is culled). The material is the board's prop shader with `use_color`: the cell planes give it light and soot, the per-instance colour gives it the prop's material colour, each cube's small brightness variation and its charring. The colour is handed over in linear (vertex colour is linear, the shader's `albedo` is sRGB). COLOUR COMES FROM THE MATERIAL REGISTRY (`ACTOR` D66): each fragment carries the zone of the surface it came from, and a zone is a material id (`zone_materials[zone]`, resolved through the fallback chain). The node draws with the facade of the material most of its cubes are made of (one draw call, one texture): the others keep their own colour under that detail.
 
 **Signals**
 - `signal settled(records: Array)`
@@ -930,6 +943,7 @@ extends `Node3D` · 2277 lines
 - `func setup(board: Node3D, sim: PropFragmentSim, zone_materials: Array) -> void:`
 - `func is_finished() -> bool:`
 - `func floor_y() -> float:`
+- `func voxel_size() -> float:`
 - `func finish_now() -> void:`
 
 ---
@@ -963,7 +977,7 @@ extends `Node3D` · 2277 lines
 
 ### `prop_shadow.gd`
 
-`class_name PropShadow` · 140 lines
+`class_name PropShadow` · 141 lines
 
 `godot/scripts/geometry/prop_shadow.gd`
 
@@ -979,14 +993,17 @@ extends `Node3D` · 2277 lines
 
 ### `prop_voxelizer.gd`
 
-`class_name PropVoxelizer` · 164 lines
+`class_name PropVoxelizer` · 212 lines
 
 `godot/scripts/geometry/prop_voxelizer.gd`
 
-> PropVoxelizer — turns any fitted model (`PropModelFit`) into board-size voxels, keeping its SHAPE. PROPS_TIER4_PLAN P1 / `ACTOR` D67. A voxel here is exactly one board voxel (1/8 GU, `VOXELS_PER_UNIT_AXIS` per axis), on the board's own lattice: local X/Z = 0 is a voxel boundary (a cell's centre is 4 voxels in) and local Y = 0 is a level boundary, so a cell index is the offset from the prop's cell centre / floor and adds straight onto the board's voxel coordinates. METHOD. Every triangle marks each voxel whose box it overlaps (Akenine-Moller's separating-axis test, conservative: a leg thinner than a voxel is still a column). A table keeps its top plate and its legs because SURFACES are rasterised, not the bounding box. A cell takes the zone (the surface index across the model's parts) of the first triangle that marked it. The output is sorted (y, z, x), so the same model always gives the same bytes. Generic on purpose: it knows nothing about tables. Whatever a `mesh_tier 4` prop is, this is what its fragments are made from; a box (the placeholder, or a slot's generic) voxelizes to a box.
+> PropVoxelizer — turns any fitted model (`PropModelFit`) into board-size voxels, keeping its SHAPE. PROPS_TIER4_PLAN P1 / `ACTOR` D67. A voxel here is one board voxel (1/8 GU, `VOXELS_PER_UNIT_AXIS` per axis) divided by `division` (1, 2 or 4): the FRAGMENT lattice. A prop that is about to be destroyed does not have to obey the world's voxel size, so a thin table top and thin legs are rasterised on a finer lattice (division 4 = 1/32 GU = 5 cm) and still read as the table they were (Director, 2026-09-30). The lattice is the board's own, only subdivided: local X/Z = 0 is a voxel boundary at any division (a cell's centre is 4 x division voxels in) and local Y = 0 is a level boundary, so a cell index is the offset from the prop's cell centre / floor. METHOD. Every triangle marks each voxel whose box it overlaps (Akenine-Moller's separating-axis test, conservative: a leg thinner than a voxel is still a column). A table keeps its top plate and its legs because SURFACES are rasterised, not the bounding box. A cell takes the zone (the surface index across the model's parts) of the first triangle that marked it. The output is sorted (y, z, x), so the same model always gives the same bytes. Generic on purpose: it knows nothing about tables. Whatever a `mesh_tier 4` prop is, this is what its fragments are made from; a box (the placeholder, or a slot's generic) voxelizes to a box.
 
 **Constants / tuning**
 - `TOUCH_EPS` = `1.0e-4`
+- `MAX_DIVISION` = `4`
+- `FRAGMENT_BUDGET` = `900`
+- `CELLS_PER_AREA` = `0.8`
 
 ---
 
@@ -1182,7 +1199,7 @@ extends `Node3D` · 2277 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2456 lines
+`class_name VoxelBoard` · extends `Node2D` · 2457 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -3146,7 +3163,7 @@ extends `Node` · 231 lines
 
 ### `prop_def.gd`
 
-`class_name PropDef` · 79 lines
+`class_name PropDef` · 83 lines
 
 `godot/scripts/systems/prop_def.gd`
 
@@ -3168,6 +3185,7 @@ extends `Node` · 231 lines
 - `var vox_materials: Dictionary = {}`
 - `var surface_materials: Dictionary = {}`
 - `var model_rotation_deg: Vector3 = Vector3.ZERO`
+- `var fragment_division: int = 0`
 - `var hollow_shell: int = 0`
 
 ---
@@ -4605,7 +4623,7 @@ extends `Node` · 331 lines
 
 ### `prop_fragment_sim_selftest.gd`
 
-extends `SceneTree` · 181 lines
+extends `SceneTree` · 250 lines
 
 `godot/scripts/tools/prop_fragment_sim_selftest.gd`
 
@@ -4619,7 +4637,7 @@ extends `SceneTree` · 181 lines
 
 ### `prop_shadow_selftest.gd`
 
-extends `SceneTree` · 89 lines
+extends `SceneTree` · 108 lines
 
 `godot/scripts/tools/prop_shadow_selftest.gd`
 
@@ -4650,7 +4668,7 @@ extends `SceneTree` · 156 lines
 
 ### `prop_voxelizer_selftest.gd`
 
-extends `SceneTree` · 157 lines
+extends `SceneTree` · 205 lines
 
 `godot/scripts/tools/prop_voxelizer_selftest.gd`
 
@@ -4826,7 +4844,7 @@ extends `SceneTree` · 127 lines
 
 ### `save_state_selftest.gd`
 
-extends `SceneTree` · 256 lines
+extends `SceneTree` · 263 lines
 
 `godot/scripts/tools/save_state_selftest.gd`
 
@@ -5721,7 +5739,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11297 lines
+extends `Node2D` · 11300 lines
 
 `godot/scripts/world/room.gd`
 

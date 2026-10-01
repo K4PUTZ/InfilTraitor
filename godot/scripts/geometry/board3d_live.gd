@@ -1274,7 +1274,7 @@ func _build_mesh_props() -> void:
 		var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
 		## A Tier 4 prop will be voxelized when it breaks: do it now, once per model (cached), so the blast's frame does not pay for it.
 		if inst.mesh_tier == 4:
-			PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size)
+			PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size, inst.fragment_division)
 		var node := PropMesh3D.new()
 		node.name = inst.id
 		_geometry_root.add_child(node)
@@ -1318,13 +1318,15 @@ func _build_prop_shadows() -> void:
 		if inst.shattered or not _mesh_prop_nodes.has(inst.id):
 			continue
 		var node: Node3D = _mesh_prop_nodes[inst.id]
-		var vox: Dictionary = PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size)
-		var ox: int = int(round(node.position.x * float(per)))
-		var oz: int = int(round(node.position.z * float(per)))
+		var vox: Dictionary = PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size, inst.fragment_division)
+		## The cells are on the fragment lattice (the board voxel divided by `division`): so is the offset, and so is the shadow's unit.
+		var division: int = int(vox["division"])
+		var ox: int = int(round(node.position.x * float(per * division)))
+		var oz: int = int(round(node.position.z * float(per * division)))
 		var cells: Array = []
 		for c: Vector3i in vox["cells"]:
 			cells.append(Vector3i(ox + c.x, c.y, oz + c.z))
-		_set_prop_shadow("mesh:" + inst.id, cells, node.position.y)
+		_set_prop_shadow("mesh:" + inst.id, cells, node.position.y, float(vox["voxel"]))
 	refresh_prop_shadows(true)
 
 
@@ -1366,17 +1368,18 @@ func refresh_prop_shadows(force: bool = false, only_gus: Dictionary = {}) -> voi
 		_set_prop_shadow(key, cells, float(int(entry["floor"]) - _ground_level) * unit)
 
 
-func _add_pile_shadow(pile_name: String, records: Array, y0: float) -> void:
+func _add_pile_shadow(pile_name: String, records: Array, y0: float, unit: float) -> void:
 	var cells: Array = []
 	for r: Dictionary in records:
 		var col: Vector2i = r["column"]
 		cells.append(Vector3i(col.x, int(r["level"]), col.y))
-	_set_prop_shadow("pile:" + String(pile_name), cells, y0)
+	_set_prop_shadow("pile:" + String(pile_name), cells, y0, unit)
 
 
-func _set_prop_shadow(key: String, cells: Array, floor_y: float) -> void:
+## `unit`: the edge of one cell in world units (the board voxel, 1/8, unless the cells are a fragment lattice).
+func _set_prop_shadow(key: String, cells: Array, floor_y: float, unit: float = 0.125) -> void:
 	_drop_prop_shadow(key)
-	var node: MeshInstance3D = PropShadow.make(cells, floor_y)
+	var node: MeshInstance3D = PropShadow.make(cells, floor_y, unit)
 	if node == null:
 		return
 	_geometry_root.add_child(node)
@@ -1407,16 +1410,16 @@ func spawn_prop_fragments(sim: PropFragmentSim, zone_materials: Array) -> PropFr
 	node.setup(self, sim, zone_materials)
 	_fragment_nodes.append(node)
 	## When the cubes have landed, the pile throws its own (small) shadow.
-	node.settled.connect(func(records: Array) -> void: _add_pile_shadow(node.name, records, node.floor_y()))
+	node.settled.connect(func(records: Array) -> void: _add_pile_shadow(node.name, records, node.floor_y(), node.voxel_size()))
 	return node
 
 
 ## A pile laid back from records (after a rotation rebuilt the board, or a restore).
-func spawn_prop_pile(records: Array, y0: float, zone_materials: Array) -> PropFragments3D:
-	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, zone_materials)
+func spawn_prop_pile(records: Array, y0: float, zone_materials: Array, division: int = 1) -> PropFragments3D:
+	var node: PropFragments3D = PropFragments3D.make_pile(self, records, y0, zone_materials, division)
 	_geometry_root.add_child(node)
 	_fragment_nodes.append(node)
-	_add_pile_shadow(node.name, records, y0)
+	_add_pile_shadow(node.name, records, y0, node.voxel_size())
 	return node
 
 

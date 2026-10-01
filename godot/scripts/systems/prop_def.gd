@@ -36,6 +36,9 @@ var vox_materials: Dictionary = {}
 ## `material_zones["default"]`; a material id the registry does not have resolves through its fallback chain.
 var surface_materials: Dictionary = {}
 var model_rotation_deg: Vector3 = Vector3.ZERO
+## Tier 4 only: the lattice its fragments fall on is the board's voxel divided by this (1, 2 or 4). 0 = automatic: the finest one that
+## keeps the prop within `PropVoxelizer.FRAGMENT_BUDGET` fragments. A destroyed prop need not obey the world's voxel size.
+var fragment_division: int = 0
 ## Native voxel props only: 0 = solid fill; N > 0 = a hollow box with an N-voxel shell (a crate is a container, not a
 ## block of wood). The interior is simply no voxels — what it CONTAINS is a later, separate thing.
 var hollow_shell: int = 0
@@ -73,6 +76,7 @@ static func from_json(data: Dictionary) -> PropDef:
 	def.vox_scale = int(data.get("vox_scale", 1))
 	def.vox_materials = data.get("vox_materials", {})
 	def.surface_materials = data.get("surface_materials", {})
+	def.fragment_division = int(data.get("fragment_division", 0))
 	var mr = data.get("model_rotation_deg", [0.0, 0.0, 0.0])
 	def.model_rotation_deg = Vector3(float(mr[0]), float(mr[1]), float(mr[2]))
 

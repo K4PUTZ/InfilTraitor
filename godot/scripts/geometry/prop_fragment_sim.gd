@@ -14,7 +14,7 @@
 class_name PropFragmentSim
 extends RefCounted
 
-## GU per second squared: 9.8 m/s^2 at ~1.2 m per GU.
+## GU per second squared. Tuned by eye (the fall reads right at this value): at the canon's 1.60 m per GU, real gravity would be 6.1.
 const GRAVITY: float = 8.0
 const STEP: float = 1.0 / 60.0
 const MAX_STEPS_PER_ADVANCE: int = 8
@@ -27,6 +27,19 @@ const PUSH_UP: float = 1.2
 ## The charred tone of a fragment: a multiplier on its colour, `BoardLook.char_mult(h)` = `lerp(MIN, MAX, h*h)` (mostly dark, some lighter; D-P5).
 ## Seconds over which a fragment goes from its own colour to its charred tone, starting at the wave.
 const CHAR_TIME: float = 0.30
+
+## Purpose codes of the rolls (any distinct integers; `P_SLUMP + height` is one roll per stack height).
+const P_TONE: int = 1
+const P_JIT: int = 2
+const P_DESTROY: int = 3
+const P_VANISH: int = 4
+const P_DIR: int = 5
+const P_SPEED: int = 6
+const P_UP: int = 7
+const P_SX: int = 8
+const P_SY: int = 9
+const P_SZ: int = 10
+const P_SLUMP: int = 100
 
 enum State { FALLING, SLIDING, LANDED, GONE }
 
@@ -54,7 +67,8 @@ var _stack: Dictionary = {}      ## Vector2i column -> number of landed cubes
 var _slide_from: PackedVector3Array = PackedVector3Array()
 var _slide_to: PackedVector3Array = PackedVector3Array()
 var _slide_t: PackedFloat32Array = PackedFloat32Array()
-var _seed: String = ""
+var _seed: int = 0               ## the blast's seed, hashed once
+var _frag_hash: PackedInt64Array = PackedInt64Array()   ## one hash per fragment, mixed with a purpose for every roll
 var _can_cross: Callable = Callable()
 var _acc: float = 0.0
 var _done: bool = false
@@ -70,7 +84,7 @@ func _init(p: Dictionary) -> void:
 	voxel = float(p.get("voxel", voxel))
 	weight = clampf(float(p["weight"]), 0.0, 1.0)
 	wave_time = float(p.get("wave_delay", wave_time))
-	_seed = String(p.get("seed", ""))
+	_seed = FacadeSampler._fnv1a_hash(String(p.get("seed", "")))
 	_can_cross = p.get("can_cross", Callable())
 	var blast: Vector2 = p["blast"]
 	count = cells.size()
@@ -88,6 +102,9 @@ func _init(p: Dictionary) -> void:
 	_slide_to.resize(count)
 	_slide_t.resize(count)
 	column.resize(count)
+	_frag_hash.resize(count)
+	for i in range(count):
+		_frag_hash[i] = _mix(_seed, i)
 	var centres: PackedVector2Array = PackedVector2Array()
 	centres.resize(count)
 	var far: float = 0.001
@@ -99,28 +116,28 @@ func _init(p: Dictionary) -> void:
 		far = maxf(far, centres[i].distance_to(blast))
 		state[i] = State.FALLING
 		vanish_at[i] = -1.0
-		tone[i] = BoardLook.char_mult(_h01(i, "tone"))
-		jitter[i] = 0.94 + 0.12 * _h01(i, "jit")
+		tone[i] = BoardLook.char_mult(_h01(i, P_TONE))
+		jitter[i] = 0.94 + 0.12 * _h01(i, P_JIT)
 	## The blast carves away the fragments nearest it: rank by (a hash nudged by distance), the first `round(weight * count)` go.
 	var order: Array = range(count)
 	var score: PackedFloat32Array = PackedFloat32Array()
 	score.resize(count)
 	for i in range(count):
-		score[i] = _h01(i, "destroy") + 0.6 * (centres[i].distance_to(blast) / far)
+		score[i] = _h01(i, P_DESTROY) + 0.6 * (centres[i].distance_to(blast) / far)
 	order.sort_custom(func(a: int, b: int) -> bool:
 		return score[a] < score[b] or (score[a] == score[b] and a < b))
 	var destroyed: int = int(round(weight * float(count)))
 	for k in range(destroyed):
 		var i: int = order[k]
-		vanish_at[i] = wave_time + 0.06 * _h01(i, "vanish")
+		vanish_at[i] = wave_time + 0.06 * _h01(i, P_VANISH)
 	## Every fragment is pushed from the blast and falls; the push scales with the weight and with how close it was.
 	for i in range(count):
 		var away: Vector2 = centres[i] - blast
-		var dir: Vector2 = away.normalized() if away.length() > 0.001 else Vector2.from_angle(_h01(i, "dir") * TAU)
+		var dir: Vector2 = away.normalized() if away.length() > 0.001 else Vector2.from_angle(_h01(i, P_DIR) * TAU)
 		var near: float = 1.0 - 0.5 * (away.length() / far)
-		var speed: float = PUSH_SPEED * weight * near * (0.55 + 0.45 * _h01(i, "speed"))
-		vel[i] = Vector3(dir.x * speed, PUSH_UP * weight * near * (0.3 + 0.7 * _h01(i, "up")), dir.y * speed)
-		spin[i] = Vector3(_h01(i, "sx") - 0.5, _h01(i, "sy") - 0.5, _h01(i, "sz") - 0.5) * (14.0 * weight)
+		var speed: float = PUSH_SPEED * weight * near * (0.55 + 0.45 * _h01(i, P_SPEED))
+		vel[i] = Vector3(dir.x * speed, PUSH_UP * weight * near * (0.3 + 0.7 * _h01(i, P_UP)), dir.y * speed)
+		spin[i] = Vector3(_h01(i, P_SX) - 0.5, _h01(i, P_SY) - 0.5, _h01(i, P_SZ) - 0.5) * (14.0 * weight)
 
 
 func is_done() -> bool:
@@ -196,6 +213,12 @@ func char_amount(i: int) -> float:
 	return ramp * clampf(weight * 1.15, 0.0, 1.0)
 
 
+## True once the charring ramp has run its course. Every carved fragment has vanished by then (`vanish_at` is within 0.06 s of the wave),
+## so a landed fragment can no longer be moved by one vanishing under it: its row is final.
+func char_finished() -> bool:
+	return time - wave_time >= CHAR_TIME
+
+
 func rotation_of(i: int) -> Basis:
 	return Basis.from_euler(euler[i])
 
@@ -250,7 +273,7 @@ func _slump(i: int) -> void:
 			continue
 		if _can_cross.is_valid() and not _same_gu(col, n) and not bool(_can_cross.call(_gu_of(col), _gu_of(n))):
 			continue
-		if nh < best_h or (nh == best_h and best.x != 999999 and _h01(i, "slump%d" % h) < 0.5):
+		if nh < best_h or (nh == best_h and best.x != 999999 and _h01(i, P_SLUMP + h) < 0.5):
 			best = n
 			best_h = nh
 	if best.x == 999999:
@@ -323,6 +346,15 @@ func _same_gu(a: Vector2i, b: Vector2i) -> bool:
 	return _gu_of(a) == _gu_of(b)
 
 
-## A deterministic number in [0, 1) for (fragment, purpose) under this blast's seed.
-func _h01(i: int, what: String) -> float:
-	return float(FacadeSampler._fnv1a_hash("%s:%d:%s" % [_seed, i, what]) % 100003) / 100003.0
+## A deterministic number in [0, 1) for (fragment, purpose) under this blast's seed. Integer mixing of the fragment's hash and a purpose
+## code: a string hash per roll cost ~10 ms for 800 fragments, on the frame of the blast.
+func _h01(i: int, purpose: int) -> float:
+	return float(_mix(_frag_hash[i], purpose) % 100003) / 100003.0
+
+
+## A 32-bit integer mix (a multiply-xorshift finaliser): two inputs in, one well-spread number out. Products stay under 2^59.
+static func _mix(a: int, b: int) -> int:
+	var x: int = (a ^ ((b + 1) * 0x9E3779B1)) & 0xFFFFFFFF
+	x = ((x ^ (x >> 16)) * 0x45D9F3B) & 0xFFFFFFFF
+	x = ((x ^ (x >> 16)) * 0x45D9F3B) & 0xFFFFFFFF
+	return x ^ (x >> 16)

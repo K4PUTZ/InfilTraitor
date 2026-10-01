@@ -12,6 +12,7 @@ func _init() -> void:
 	_test_direction_and_extent()
 	_test_shape_keeps_legs()
 	_test_empty_and_determinism()
+	_test_cell_unit()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -87,3 +88,21 @@ func _test_empty_and_determinism() -> void:
 		maximum = maxi(maximum, int(v))
 	_check(maximum > 200, "the core of the shadow is solid (max texel %d) and its edge is soft" % maximum)
 	print("")
+
+
+## The same cells are a quarter the size on a lattice 4x finer (fragment cubes are smaller than the board's voxel): the quad follows `unit`.
+func _test_cell_unit() -> void:
+	print("[4] the cell unit: a finer lattice casts a proportionally smaller shadow")
+	var cells: Array = [Vector3i(40, 0, 40), Vector3i(40, 1, 40), Vector3i(41, 0, 40)]
+	var board: MeshInstance3D = PropShadow.make(cells, 0.0)
+	var fine: MeshInstance3D = PropShadow.make(cells, 0.0, 0.125 / 4.0)
+	var wb: float = board.mesh.get_aabb().size.x
+	var wf: float = fine.mesh.get_aabb().size.x
+	_check(board != null and fine != null and absf(wb / wf - 4.0) < 1.0e-4, "the quad is %.3f GU wide at 1/8 and %.3f at 1/32 (ratio %.2f)" % [wb, wf, wb / wf])
+	var xb: float = board.mesh.get_aabb().position.x
+	var xf: float = fine.mesh.get_aabb().position.x
+	_check(absf(xb / xf - 4.0) < 1.0e-4, "and it starts at %.3f vs %.3f GU: the same cells, scaled about the origin" % [xb, xf])
+	board.free()
+	fine.free()
+	print("")
+

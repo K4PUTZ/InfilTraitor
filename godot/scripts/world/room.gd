@@ -4935,8 +4935,9 @@ func _start_prop_fragments(inst: MeshPropInstance, weight: float, ring: int, sou
 	var live: Node = board3d()
 	if live == null:
 		return false
-	var vox: Dictionary = PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size)
+	var vox: Dictionary = PropVoxelizer.for_model(inst.model_path, inst.model_rotation_deg, inst.mesh_size, inst.fragment_division)
 	var cells: Array = vox["cells"]
+	var division: int = int(vox["division"])
 	var at: Variant = live.call("mesh_prop_position", inst.id)
 	if cells.is_empty() or at == null:
 		return false
@@ -4961,21 +4962,22 @@ func _start_prop_fragments(inst: MeshPropInstance, weight: float, ring: int, sou
 	var node: PropFragments3D = live.call("spawn_prop_fragments", sim, zone_materials)
 	var base_gu: Vector2i = PerspectiveMapperClass.cell_to_base(inst.cell, _active_perspective,
 		_base_layout.get("size", Vector2i.ZERO))
-	node.settled.connect(_on_prop_fragments_settled.bind(base_gu, origin.y, zone_materials))
+	node.settled.connect(_on_prop_fragments_settled.bind(base_gu, origin.y, zone_materials, division))
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
-		print("[PROP-DEBUG] %s -> %d fragments (%s), weight %.2f, ring %d, blast %s"
-			% [inst.id, cells.size(), "model" if inst.model_path != "" else "box", weight, ring, blast])
+		print("[PROP-DEBUG] %s -> %d fragments of 1/%d GU (%s), weight %.2f, ring %d, blast %s"
+			% [inst.id, cells.size(), 8 * division, "model" if inst.model_path != "" else "box", weight, ring, blast])
 	return true
 
 
-## The fragments have landed: the pile goes into the base-coordinate record (what a rotation or a restore replays).
-func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zone_materials: Array) -> void:
-	var size := _base_voxel_size()
+## The fragments have landed: the pile goes into the base-coordinate record (what a rotation or a restore replays). Its columns are in
+## the fragment lattice (`division` per board voxel), so the grid they rotate in is that much finer.
+func _on_prop_fragments_settled(records: Array, base_gu: Vector2i, y0: float, zone_materials: Array, division: int) -> void:
+	var size := _base_voxel_size() * division
 	var base_records: Array = []
 	for r: Dictionary in records:
 		base_records.append({"col": PerspectiveMapperClass.cell_to_base(r["column"], _active_perspective, size),
 			"level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
-	_base_prop_piles[base_gu] = {"y0": y0, "zone_materials": zone_materials, "records": base_records}
+	_base_prop_piles[base_gu] = {"y0": y0, "zone_materials": zone_materials, "records": base_records, "div": division}
 	if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 		print("[PROP-DEBUG] pile at base GU %s: %d cubes, y0 %.3f" % [base_gu, base_records.size(), y0])
 
@@ -4994,14 +4996,15 @@ func _respawn_base_prop_piles() -> void:
 	var live: Node = board3d()
 	if live == null:
 		return
-	var size := _base_voxel_size()
 	for base_gu: Vector2i in _base_prop_piles:
 		var pile: Dictionary = _base_prop_piles[base_gu]
+		var division: int = int(pile.get("div", 1))
+		var size := _base_voxel_size() * division
 		var records: Array = []
 		for r: Dictionary in pile["records"]:
 			records.append({"column": PerspectiveMapperClass.cell_from_base(r["col"], _active_perspective, size),
 				"level": int(r["level"]), "mult": float(r["mult"]), "zone": int(r.get("zone", 0))})
-		live.call("spawn_prop_pile", records, float(pile["y0"]), pile["zone_materials"])
+		live.call("spawn_prop_pile", records, float(pile["y0"]), pile["zone_materials"], division)
 		if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 			print("[PROP-DEBUG] pile of base GU %s laid back: %d cubes (view %s)" % [base_gu, records.size(), _active_perspective])
 

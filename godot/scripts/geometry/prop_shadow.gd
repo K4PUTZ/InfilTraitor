@@ -26,16 +26,17 @@ static func shift_per_voxel() -> Vector2:
 	return Vector2(-k.x, -k.z) / k.y
 
 
-## `cells`: Array of Vector3i (x, y = UP level above the floor, z) in absolute board voxels; `floor_y` the floor's world height.
-## Returns a MeshInstance3D holding the quad, or null when there is nothing to shade.
-static func make(cells: Array, floor_y: float) -> MeshInstance3D:
+## `cells`: Array of Vector3i (x, y = UP level above the floor, z) in absolute voxels of `unit` world units (the board's 1/8, or a finer
+## fragment lattice); `floor_y` the floor's world height. Returns a MeshInstance3D holding the quad, or null when there is nothing to shade.
+static func make(cells: Array, floor_y: float, unit: float = -1.0) -> MeshInstance3D:
 	var built: Dictionary = build_image(cells)
 	if built.is_empty():
 		return null
 	var image: Image = built["image"]
 	var origin: Vector2 = built["origin"]   ## voxels (x, z) of the image's top-left texel corner
 	var size: Vector2 = built["size"]       ## voxels
-	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	if unit <= 0.0:
+		unit = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var x0: float = origin.x * unit
 	var z0: float = origin.y * unit
 	var x1: float = (origin.x + size.x) * unit

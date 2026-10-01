@@ -2421,6 +2421,7 @@ func register_mesh_prop(gu_cell: Vector2i, start_storey: int, prop_def) -> void:
 	inst.model_path = prop_def.model_path
 	inst.surface_materials = prop_def.surface_materials
 	inst.model_rotation_deg = prop_def.model_rotation_deg
+	inst.fragment_division = prop_def.fragment_division
 	_mesh_props.append(inst)
 
 

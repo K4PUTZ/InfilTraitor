@@ -6,6 +6,8 @@ var passed: int = 0
 var failed: int = 0
 var _cells: Array = []
 var _zones: PackedInt32Array = PackedInt32Array()
+var _voxel: float = 0.125
+var _division: int = 1
 
 
 func _init() -> void:
@@ -18,6 +20,7 @@ func _init() -> void:
 	_test_piling_invariants()
 	_test_fixed_step_time()
 	_test_walls_hold_fragments()
+	_test_fine_lattice()
 	print("\nRESULT: %d PASS, %d FAIL" % [passed, failed])
 	quit(1 if failed > 0 else 0)
 
@@ -38,19 +41,21 @@ func _box_part(size: Vector3, centre: Vector3) -> Dictionary:
 	return {"mesh": mesh, "xf": Transform3D(Basis.IDENTITY, centre)}
 
 
-func _fixture() -> void:
+func _fixture(division: int = 1) -> void:
 	var parts: Array = [_box_part(Vector3(0.95, 0.03, 0.59), Vector3(0.0, 0.68, 0.0))]
 	for lx in [-0.42, 0.42]:
 		for lz in [-0.24, 0.24]:
 			parts.append(_box_part(Vector3(0.05, 0.6, 0.05), Vector3(lx, 0.3, lz)))
-	var r: Dictionary = PropVoxelizer.voxelize(parts)
+	var r: Dictionary = PropVoxelizer.fragment_voxelize(parts, division)
 	_cells = r["cells"]
 	_zones = r["zones"]
+	_voxel = float(r["voxel"])
+	_division = int(r["division"])
 
 
 func _sim(weight: float, seed_text: String = "T1", can_cross: Callable = Callable()) -> PropFragmentSim:
 	var p := {"cells": _cells, "zones": _zones, "origin": Vector3(0.5, 0.0, 0.5), "blast": Vector2(2.5, 0.5),
-		"weight": weight, "seed": seed_text}
+		"weight": weight, "seed": seed_text, "voxel": _voxel}
 	if can_cross.is_valid():
 		p["can_cross"] = can_cross
 	return PropFragmentSim.new(p)
@@ -172,10 +177,74 @@ func _test_walls_hold_fragments() -> void:
 	var beyond: int = 0
 	for r: Dictionary in s.pile_records():
 		var c: Vector2i = r["column"]
-		if c.x >= 8:   ## board voxel x = 8 is GU x = 1
+		if c.x >= 8 * _division:   ## board voxel x = 8 is GU x = 1
 			beyond += 1
 	if beyond == 0 and s.pile_records().size() > 0:
 		_pass("no fragment ended beyond the wall (%d in the pile)" % s.pile_records().size())
 	else:
 		_fail("%d fragments crossed the wall" % beyond)
 	print("")
+
+
+## The same laws on the fragment lattice (1/32 GU): a finer cube changes the count, never the rules.
+func _test_fine_lattice() -> void:
+	print("[6] the fragment lattice 4x finer: same laws, more and smaller cubes")
+	var coarse_count: int = _cells.size()
+	_fixture(4)
+	if _division == 4 and _cells.size() > coarse_count * 3:
+		_pass("%d cubes of 1/32 GU where the board's voxel gave %d" % [_cells.size(), coarse_count])
+	else:
+		_fail("division %d, %d cubes (was %d)" % [_division, _cells.size(), coarse_count])
+	var a := _sim(0.85)
+	var b := _sim(0.85)
+	_run(a)
+	_run(b)
+	if a.pile_records() == b.pile_records() and a.pile_records().size() > 0:
+		_pass("deterministic (%d cubes in the pile)" % a.pile_records().size())
+	else:
+		_fail("two runs differ or the pile is empty")
+	var n: int = _cells.size()
+	if a.vanished_count() == int(round(0.85 * float(n))) and a.vanished_count() + a.pile_records().size() == n:
+		_pass("the weight carves %d of %d; carved + piled = all" % [a.vanished_count(), n])
+	else:
+		_fail("carving wrong: vanished %d, piled %d, n %d" % [a.vanished_count(), a.pile_records().size(), n])
+	var by_col: Dictionary = {}
+	for r: Dictionary in a.pile_records():
+		var c: Vector2i = r["column"]
+		if not by_col.has(c):
+			by_col[c] = []
+		by_col[c].append(int(r["level"]))
+	var contiguous: bool = true
+	for c in by_col:
+		var lv: Array = by_col[c]
+		lv.sort()
+		for k in range(lv.size()):
+			if int(lv[k]) != k:
+				contiguous = false
+	var on_lattice: bool = true
+	for i in range(a.count):
+		if a.state[i] == PropFragmentSim.State.LANDED:
+			if absf(a.pos[i].y - (float(a.level[i]) + 0.5) * a.voxel) > 1.0e-4:
+				on_lattice = false
+	if contiguous and on_lattice:
+		_pass("the columns are contiguous and every cube sits on the fine lattice")
+	else:
+		_fail("fine pile invalid: contiguous=%s on_lattice=%s" % [contiguous, on_lattice])
+	## Time stays simulated time: the same half second at any frame rate.
+	var c60 := _sim(0.85)
+	var c30 := _sim(0.85)
+	for _i in range(40):
+		c60.advance(1.0 / 60.0)
+	for _i in range(20):
+		c30.advance(1.0 / 30.0)
+	var same: bool = absf(c60.time - c30.time) < 1.0e-6
+	for i in range(c60.count):
+		if c60.state[i] != c30.state[i] or c60.pos[i].distance_to(c30.pos[i]) > 1.0e-5:
+			same = false
+	if same:
+		_pass("60 fps and 30 fps give the same state")
+	else:
+		_fail("the frame rate changed the fine simulation")
+	_fixture(1)
+	print("")
+

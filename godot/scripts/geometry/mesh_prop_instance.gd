@@ -15,6 +15,7 @@ var mesh_size: Vector3      ## world units (1.0 = 1 GU), the box the mesh occupi
 var surface_materials: Dictionary = {}   ## model surface (authored material name) -> registry material id
 var model_path: String = ""            ## a real model to draw instead of the box (see PropDef.model_path)
 var model_rotation_deg: Vector3 = Vector3.ZERO
+var fragment_division: int = 0          ## Tier 4: the fragment lattice's subdivision (0 = automatic, see PropDef.fragment_division)
 var shattered: bool = false ## Tier 4 only: true once spawn_prop_shatter() has fired for it
 
 

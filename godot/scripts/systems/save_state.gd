@@ -87,7 +87,7 @@ static func capture(room) -> Dictionary:
 		var tint: Color = d["tint"]
 		debris.append([String(did), bp.x, bp.y, int(d["level"]), String(d["material"]), int(d["variant"]),
 			tint.r, tint.g, tint.b, tint.a, float(d["rot"])])
-	## P2: the piles of charred fragments ([base_gu_x, base_gu_y, y0, [material per zone], [[col_x, col_y, level, mult, zone], ...]]). Still-falling
+	## P2: the piles of charred fragments ([base_gu_x, base_gu_y, y0, [material per zone], [[col_x, col_y, level, mult, zone], ...], division]; the columns are in the fragment lattice, `division` per board voxel, 1 in an old save). Still-falling
 	## fragments are run to their end first so their pile is in the record.
 	if room.has_method("_finish_running_prop_fragments"):
 		room._finish_running_prop_fragments()
@@ -98,7 +98,7 @@ static func capture(room) -> Dictionary:
 		for r: Dictionary in pile["records"]:
 			var cc: Vector2i = r["col"]
 			recs.append([cc.x, cc.y, int(r["level"]), float(r["mult"]), int(r.get("zone", 0))])
-		prop_piles.append([gk.x, gk.y, float(pile["y0"]), pile["zone_materials"], recs])
+		prop_piles.append([gk.x, gk.y, float(pile["y0"]), pile["zone_materials"], recs, int(pile.get("div", 1))])
 	return {
 		"version": FORMAT_VERSION,
 		## The map a save belongs to. A loader that restores damage into the WRONG
@@ -225,7 +225,7 @@ static func restore(room, data: Dictionary) -> bool:
 		for zm in pp[3]:
 			zone_materials.append(String(zm))
 		room._base_prop_piles[Vector2i(int(pp[0]), int(pp[1]))] = {"y0": float(pp[2]), "zone_materials": zone_materials,
-			"records": pile_records}
+			"records": pile_records, "div": int(pp[5]) if pp.size() > 5 else 1}
 	room._base_debris.clear()
 	for dd in data.get("debris", []):
 		room._base_debris[String(dd[0])] = {"base": Vector2(float(dd[1]), float(dd[2])), "level": int(dd[3]),

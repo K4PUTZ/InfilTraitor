@@ -1462,12 +1462,7 @@ const WORLD_TILE_PX      := 128.0  ## horizontal px per isometric tile step (use
 var _is_desktop_viewport: bool = false
 var _pending_auto_end_turn: bool = false
 var _selected_cell: Vector2i = INVALID_CELL
-## The LAYOUT's orientation: what `PerspectiveMapper` converts between view cells and base cells. With the camera-only
-## rotation (R3D-ROT) it stays "N" for the life of the map, so every one of those conversions is the identity.
 var _active_perspective: String = "N"
-## R3D-ROT-3 — the VIEW: which side the camera looks from. Equal to `_active_perspective` under the legacy re-layout
-## (`INFILTRAITOR_CAMERA_ROT=0`), independent of it otherwise. Presentation (sprite frames, the camera yaw) reads this one.
-var _view_direction: String = "N"
 var _alert_meter: int = 0
 
 var _alert_max: int = 100
@@ -2622,73 +2617,8 @@ func _ready() -> void:
 		_run_auto_screenshot_capture()
 
 
-## The side the camera looks from ("N"/"E"/"S"/"W"): what a presentation asks, never `_active_perspective`.
-func view_direction() -> String:
-	return _view_direction
-
-
-## R3D-ROT — a rotation turns the camera over ONE fixed world instead of re-laying the map out (default since the
-## camera-only rotation landed; `INFILTRAITOR_CAMERA_ROT=0` is the old re-layout, kept as the control until it is deleted).
-func _camera_rot_on() -> bool:
-	return _dev_flag("CAMERA_ROT", "0") != "0"
-
-
-## R3D-ROT-3 — the camera-only rotation. The store, the board's state, the gameplay and every record stay exactly as they
-## are (base coordinates, layout "N"); the view is `GroundGrid`'s turn, the 3D camera's yaw and the re-mesh of the faces the
-## new side shows. Everything 2D that cached a screen position is placed again.
-func _set_view_camera_only(direction: String) -> void:
-	if agent.is_moving or turn_manager.is_enemy_phase or _actor_end_pause_active:
-		return
-	Telemetry.event("view.perspective", {"from": _view_direction, "to": direction, "camera_only": true})
-	var t0: int = Time.get_ticks_usec()
-	_view_direction = direction
-	GroundGridRef.set_view(direction, _base_layout.get("size", _room_size))
-	var live: Node = board3d()
-	if live != null:
-		live.set_view(direction)
-	agent.set_cell(agent.cell)
-	agent.on_perspective_changed()
-	for guard in _get_all_guards():
-		guard.reposition_for_view()
-	selection_overlay.set_selected(_selected_cell)
-	if _test_zone_controller != null:
-		_test_zone_controller.reposition_for_perspective(_active_perspective)
-	for pickup in _collectibles:
-		if pickup != null and is_instance_valid(pickup):
-			pickup.reposition_for_perspective(_active_perspective)
-	if _weapon_bench_controller != null:
-		_weapon_bench_controller.reposition_for_perspective(_active_perspective)
-	_fow_controller.initialize_fog(VISUAL_GRID_OFFSET, _room_size)
-	_fow_controller.reveal_around(agent.cell, FOW_REVEAL_RADIUS + vision_bonus_tiles)
-	_center_camera(agent.cell)
-	## Screen-space effects in flight are anchored in the OLD view's pixels (the same reason the legacy path clears them).
-	for overlay in [_ember_overlay, _smoke_spark_overlay, _debris_overlay, _shrapnel_overlay, _aim_bubble_overlay,
-			_throw_perimeter_overlay, _throw_arc_overlay, _shrapnel_preview_overlay, _target_cursor_overlay,
-			_explosion_flash_overlay]:
-		if overlay != null:
-			overlay.clear()
-	if _camera_controller != null:
-		_camera_controller.stop_shake()
-	_agent_trail.clear()
-	for child in get_children():
-		if child is CanvasItem:
-			(child as CanvasItem).queue_redraw()
-	_update_guard_los_data()
-	_lighting_controller.rebuild_all()
-	_recompute_occlusion()
-	_refresh_tactical_state()
-	_update_perspective_button_state()
-	print("[ROT] camera-only view %s in %.1f ms" % [direction, float(Time.get_ticks_usec() - t0) / 1000.0])
-
-
 func _set_perspective(direction: String) -> void:
 	if not PerspectiveMapperClass.is_valid_direction(direction):
-		return
-	if _camera_rot_on():
-		if _view_direction == direction:
-			_update_perspective_button_state()
-			return
-		_set_view_camera_only(direction)
 		return
 	if _active_perspective == direction:
 		_update_perspective_button_state()
@@ -2705,7 +2635,6 @@ func _set_perspective(direction: String) -> void:
 	## §13.2 — a rotation re-projects every cell, so both the keys AND the Voxel
 	## objects behind them change. The index cannot survive it.
 	_active_perspective = direction
-	_view_direction = direction
 	## §2.4 lists the active perspective as a real input: carved sides and every
 	## other screen-space read resolve differently after a rotation, and the
 	## rotation rebuilds every Voxel besides.
@@ -2878,7 +2807,7 @@ func _set_perspective(direction: String) -> void:
 
 func _update_perspective_button_state() -> void:
 	if _hud_controller:
-		_hud_controller.set_perspective_active(_view_direction)
+		_hud_controller.set_perspective_active(_active_perspective)
 
 
 func _center_camera(focus_cell: Vector2i) -> void:
@@ -3579,7 +3508,7 @@ func scenario_perspective(direction: String) -> bool:
 	_set_perspective(direction)
 	for _f in range(10):
 		await get_tree().process_frame
-	return _view_direction == direction
+	return _active_perspective == direction
 
 
 ## R3D-13 — the map-wide light repaint on the world as it stands: the reset, the full apply and

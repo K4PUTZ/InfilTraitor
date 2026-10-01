@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**266 scripts · 85125 lines total** (under `godot/scripts/`)
+**266 scripts · 85043 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -183,7 +183,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1323 lines
+`class_name GuardEnemy` · extends `Node2D` · 1312 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -5742,7 +5742,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11371 lines
+extends `Node2D` · 11300 lines
 
 `godot/scripts/world/room.gd`
 

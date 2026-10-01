@@ -1,4 +1,5 @@
-"""R3D-SPIKE-3D S2 — the agent as ONE skinned mesh with the real walk as an animation.
+"""R3D-ACTORS (ACTOR D64) — the production rig export: the agent as ONE skinned mesh, with the real walk
+as an animation. Born as R3D-SPIKE-3D S2; promoted at R3D-ACTORS step 1.
 
 The bake pipeline poses the rig once per phase and exports a STATIC mesh per phase
 (`p2_grip_spike.export_posed`, skins off). This does the same posing — the very
@@ -7,8 +8,10 @@ writes each phase as a KEYFRAME on the armature, joins the 62 body meshes into o
 (they are all bound by an Armature modifier with vertex groups, so the join keeps
 the skin) and exports a single rigged GLB with a looping `walk` action.
 
-A SPIKE ASSET: the weapon mesh is left out (the hands hold the grip in the air), and
-nothing in the game reads this file except `Spike3D` behind `ACTOR_MESH`.
+The game reads the output through `ActorMesh3D` (`godot/scripts/geometry/actor_mesh3d.gd`), lit by
+`actor_mesh3d.gdshader`. Still left out until later R3D-ACTORS steps: the weapon mesh (the hands hold
+the grip in the air; step 4 attaches it to a bone) and every action but `walk` (step 2). The output
+sits under the git-ignored `source_assets/`, so a fresh clone has to run this once.
 
 Run:
   /Applications/Blender.app/Contents/MacOS/Blender --background \\

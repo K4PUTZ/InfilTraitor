@@ -47,6 +47,7 @@ const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
 ## RENDER3D R3D-3 step 1 — moved out of spikes/, the 3D board is production code now.
 const Board3DLiveClass = preload("res://godot/scripts/geometry/board3d_live.gd")
+const ActorMesh3DRef = preload("res://godot/scripts/geometry/actor_mesh3d.gd")
 const ActorBillboard3DClass = preload("res://godot/scripts/geometry/actor_billboard3d.gd")
 const VisionCone3DClass = preload("res://godot/scripts/geometry/vision_cone3d.gd")
 const PropBillboard3DClass = preload("res://godot/scripts/geometry/prop_billboard3d.gd")
@@ -2957,15 +2958,17 @@ func _start_board3d_live() -> void:
 	var live: Node3D = Board3DLiveClass.new()
 	live.name = "Board3DLive"
 	add_child(live)
-	## R3D-SPIKE-3D (spike only): LIGHT3D lights the board with real 3D lamps, ACTOR_MESH adds live rigs.
-	var spike_light: String = _dev_flag("LIGHT3D", "")
-	Board3DLiveClass.LIT3D = spike_light != ""
 	live.build(self, func(cell: Vector2i) -> Vector2:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
-	var spike_meshes: int = int(_dev_flag("ACTOR_MESH", "0"))
-	if spike_light != "" or spike_meshes > 0 or int(_dev_flag("PROP_MESH", "0")) > 0:
-		Spike3D.apply(self, live, spike_light, spike_meshes)
 	_attach_actor_billboards(live)
+	## R3D-ACTORS step 1 — one live agent rig one GU east of the agent, walking in place, dev-only (the same shape as
+	## PROPS_MESH_DEMO): it shows the promoted mesh path until step 3's bridge drives a real actor with it.
+	if _dev_flag_on("ACTOR_MESH_DEMO") and agent != null:
+		var actor_mesh: Node3D = ActorMesh3DRef.new()
+		actor_mesh.name = "ActorMeshDemo"
+		live.add_child(actor_mesh)
+		if actor_mesh.setup(live, agent.cell + Vector2i(1, 0), 45.0):
+			actor_mesh.play_walk()
 	_attach_vfx_to_board(live)
 	_attach_ground_overlays(live)
 	if _dev_flag("PICK_CHECK", "0") == "1":

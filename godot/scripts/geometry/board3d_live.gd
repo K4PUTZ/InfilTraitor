@@ -266,13 +266,6 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 }
 """, DECAL_TAIL)
 
-## R3D-SPIKE-3D S1 (`LIGHT3D`, spike only) — the opaque faces lit by real 3D lights: not unshaded, and the CPU
-## light bucket leaves the product (face tone, soot and depth dim stay). Set before `build()`.
-static var LIT3D: bool = false
-static var LIT_SHADER: String = OPAQUE_SHADER \
-	.replace("render_mode unshaded, cull_disabled;", "render_mode cull_disabled, specular_disabled;") \
-	.replace("float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];", "float f = face_tone[face];")
-
 ## One material's geometry for one chunk. The Packed arrays are MEMBERS on purpose:
 ## a Packed array is a value type, so `(dict["v"] as PackedVector3Array).append()`
 ## appends to a copy — measured on the first run: every surface came out empty and
@@ -2240,7 +2233,7 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
 	if GlassMaterials.is_glass(material_id):
 		return _make_glass_material(material_id)
-	shader.code = BoardLook.apply_grade(LIT_SHADER if LIT3D else OPAQUE_SHADER)
+	shader.code = BoardLook.apply_grade(OPAQUE_SHADER)
 	shader_material.shader = shader
 	shader_material.set_shader_parameter("base_color", Vector3(colour.r, colour.g, colour.b))
 	var facade_tex: Texture2D = material_facade_texture(material_id)

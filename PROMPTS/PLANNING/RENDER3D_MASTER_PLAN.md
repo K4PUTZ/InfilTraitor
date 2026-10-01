@@ -3482,6 +3482,15 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
   1. **Promote the spike:** `spike_mesh_planes.gdshader` becomes the actor/prop shader (named at build time) and reads the
      light ladder from R3D-9's neutral owner; `r3d_live_rig_export.py` becomes the rig export. `Spike3D`, `Board3DLive.LIT3D`
      and the spike flags are deleted.
+     - **BUILT 2026-10-01.** The cell-plane half (uniforms, light, soot, key) is ONE include, `mesh_planes.gdshaderinc`, read by
+       `actor_mesh3d.gdshader` (the spike's behaviour unchanged: light x key, no soot — soot on an actor is item 4) and by
+       `prop_mesh3d.gdshader` (same maths, now through the include). `ActorMesh3D` (`godot/scripts/geometry/actor_mesh3d.gd`)
+       is the spike's production half: loads `agent_live_walk.glb`, swaps every surface for a board-lit material (graded by
+       `BoardLook`, which the spike's were not), registers them through `register_prop_light_material()`, plays `walk` at D61's
+       speed; placed in BASE world coordinates, so the camera yaw turns it. Dev demo `ACTOR_MESH_DEMO=1` (one rig one GU east
+       of the agent). The export's docstring now names it production; it was NOT re-run (the GLB on disk is the 2026-09-23 one,
+       git-ignored like all of `source_assets/`). Deleted: `Spike3D`, `spike_mesh_planes.gdshader`, `Board3DLive.LIT3D` /
+       `LIT_SHADER`, flags `LIGHT3D`, `ACTOR_MESH`, `PROP_MESH`, `PROP_KIND`, `PROP_NOLAMPS`, `MESH_PLANES`. Not measured on the Moto.
   2. **Motion as actions:** every motion the game plays (walk, turn, postures, raise, throw, shoot, idle) keyed from the p3
      scripts the way the walk was — no `.blend` holds an action today; D61's 0.56 s per GU drives the walk speed.
   3. **The bridge:** `AgentSprite`'s decisions (facing, posture, walk and throw frame, grip, head layer) drive the mesh's

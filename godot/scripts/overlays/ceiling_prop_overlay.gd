@@ -17,6 +17,21 @@ const TILE_CENTER_OFFSET := Vector2(0.0, 64.0)
 var _visual_offset: Vector2 = Vector2.ZERO   ## received, never hardcoded (rule #2)
 var _ceiling_lift: float = 0.0                ## px to raise props to ceiling height
 var _lights: Array = []                       ## active light_sources dicts {x,y,radius,intensity}
+## R3D-WORLD: on the 3D board each lamp is world geometry (`WorldCanvas3D`) at ceiling height over its cell, so it
+## hangs over the same floor from every view and a wall in front of it hides it.
+var _world: RefCounted = null  ## WorldCanvas3D
+const WorldCanvas3DRef = preload("res://godot/scripts/geometry/world_canvas3d.gd")
+
+
+func set_board3d(board: Node3D) -> void:
+	if _world != null:
+		_world.detach()
+		_world = null
+	if board != null:
+		_world = WorldCanvas3DRef.new()
+		_world.attach(board, self, 4)
+	queue_redraw()
+
 
 func setup(visual_offset: Vector2, ceiling_lift: float) -> void:
 	_visual_offset = visual_offset
@@ -28,6 +43,19 @@ func set_lights(light_sources: Array) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	if _world != null:
+		_world.begin()
+		for light in _lights:
+			var cell := Vector2i(int(light.get("x", 0)), int(light.get("y", 0)))
+			var floor_2d: Vector2 = GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset
+			var p: Vector2 = floor_2d - Vector2(0.0, _ceiling_lift)
+			var bulb: Vector3 = _world.lift(p, floor_2d)
+			_world.line(bulb + _world.up(20.0), bulb + _world.up(40.0),
+				Color(0.26, 0.26, 0.28, 1.0), 4.0)
+			_world.disc(bulb, 20.0, Color(1.0, 0.90, 0.52, clampf(0.7 + 0.3 * float(light.get("intensity", 1.0)), 0.0, 1.0)))
+			_world.ring(bulb, 20.0, Color(0.14, 0.12, 0.08, 1.0), 3.5)
+		_world.end()
+		return
 	for light in _lights:
 		var cell := Vector2i(int(light.get("x", 0)), int(light.get("y", 0)))
 		var pos: Vector2 = GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset

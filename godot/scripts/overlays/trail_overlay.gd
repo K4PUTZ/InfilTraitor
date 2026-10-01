@@ -12,7 +12,34 @@ func setup(room_ref: Node2D, visual_offset: Vector2) -> void:
 	z_index = 150  ## Well above movement_overlay (~100)
 
 
+## R3D-WORLD — on the 3D board the trail goes to a `GroundCanvas3D` (same shape as `PathPreview`).
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 7, 0.02, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_draw_into(self)
+		return
+	_ground.begin(self)
+	_draw_into(_ground)
+	_ground.end()
+
+
+func _draw_into(c: Object) -> void:
 	if _room_ref == null or not _room_ref._vision_controller.dev_vision:
 		return
 
@@ -35,7 +62,7 @@ func _draw() -> void:
 			center + Vector2(0.0,   22.0),
 			center + Vector2(-32.0, 0.0),
 		])
-		draw_colored_polygon(diamond, color)
+		c.draw_colored_polygon(diamond, color)
 
 
 func _world_center_for_cell(cell: Vector2i) -> Vector2:

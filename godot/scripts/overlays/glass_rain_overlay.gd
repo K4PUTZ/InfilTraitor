@@ -219,7 +219,7 @@ func _process(_delta: float) -> void:
 	var ppu: float = 1.0
 	if f3 != null:
 		f3.begin_on_board(_shards.size())
-		cam = _board.call("camera_basis")
+		cam = _board.call("lattice_basis")  ## R3D-WORLD: a 2D displacement is a world one through the BASE view
 		ppu = _board.call("px_per_unit")
 	else:
 		_ensure_field().begin(_shards.size())

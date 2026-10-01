@@ -1229,14 +1229,21 @@ func attach_sprite(p_room: Node) -> bool:
 	return true
 
 
+## The contact shadow's half-extents (2D canvas pixels); `ActorMesh3D` carries it on the ground and turns
+## `draw_ground_shadow` off (R3D-WORLD, see agent.gd).
+var ground_shadow_half_px := Vector2(26.0, 10.0)
+var draw_ground_shadow: bool = true
+
+
 func _draw() -> void:
-	var shadow := PackedVector2Array([
-		Vector2(0.0, -10.0),
-		Vector2(26.0, 0.0),
-		Vector2(0.0, 10.0),
-		Vector2(-26.0, 0.0),
-	])
-	draw_colored_polygon(shadow, COLOR_SHADOW)
+	if draw_ground_shadow:
+		var shadow := PackedVector2Array([
+			Vector2(0.0, -ground_shadow_half_px.y),
+			Vector2(ground_shadow_half_px.x, 0.0),
+			Vector2(0.0, ground_shadow_half_px.y),
+			Vector2(-ground_shadow_half_px.x, 0.0),
+		])
+		draw_colored_polygon(shadow, COLOR_SHADOW)
 
 	## The red diamond and its head circle are GONE when the baked figure is
 	## present — the same swap agent.gd took for Part 2 §10. They stay as the

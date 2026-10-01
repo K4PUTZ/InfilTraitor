@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**268 scripts · 85035 lines total** (under `godot/scripts/`)
+**269 scripts · 85691 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd
+- **geometry/** — actor_billboard3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 494 lines
+`class_name DebugAgent` · extends `Node2D` · 502 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -73,6 +73,8 @@
 - `var cover_state: CoverType = CoverType.NONE`
 - `var cover_direction: Vector2i = Vector2i.ZERO`
 - `var step_duration: float = 0.56`
+- `var ground_shadow_half_px := Vector2(28.0, 10.0)`
+- `var draw_ground_shadow: bool = true`
 
 **Public API**
 - `func throw_origin() -> Vector2:`
@@ -183,7 +185,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1312 lines
+`class_name GuardEnemy` · extends `Node2D` · 1319 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -511,7 +513,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 225 lines
+`class_name ActorMesh3D` · extends `Node3D` · 267 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -521,6 +523,8 @@ extends `ConfirmationDialog` · 64 lines
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
 - `SILHOUETTE_SHADER_PATH` = `"res://godot/shaders/actor_mesh_silhouette3d.gdshader"`
 - `SILHOUETTE_PRIORITY` = `20`
+- `SHADOW_SHADER` = `"res://godot/shaders/ground_overlay3d.gdshader"`
+- `SHADOW_LIFT` = `0.005`
 - `HeadTurnRef` = `preload("res://godot/scripts/geometry/actor_head_turn3d.gd")`
 - `RIG_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"`
 - `RIG_BY_FAMILY` = `{ "": "agent_live.glb", "_enemy_white": "agent_live_enemy_white.glb", }`
@@ -540,11 +544,14 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2363 lines
+extends `Node3D` · 2392 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
 > Board3DLive — THE board: the voxel world as depth-tested 3D meshes under the 2D game. DIAG-21 (DEVICE_DIAGNOSTICS_MASTER_PLAN §15.7–§15.10) built this as a spike under `spikes/`; RENDER3D R3D-3 (2026-09-17) moved it here. Since R3D-END (2026-09-24/25) it is the ONLY board: the 2D `TileMapLayer` board was deleted (the last commit that builds it is `34881f81`) and `VoxelBoard` — the class that used to render it — holds only the state this file draws. It is built after a real map load. Actors, props, fog, the overlays and the HUD still draw in 2D, on top of it, until R3D-ACTORS / R3D-PROPS. WHAT IT READS: the `VoxelStore` (visible claims, glass state, decal state) and the registries the real load built (every Slice with its half thickness and material bands, every junction corner column, every floor, deep-floor and roof Slab), plus the light and soot cell planes `VoxelBoard` keeps. It reads, it never writes game state — and it never writes a tile (the R8 hook keeps it so). THE LOOK, and how it maps from the 2D lattice: - voxel (grid x, level, grid y) → world (x/8, (level − ground plane)/8, y/8), so a GU is one world unit and a storey one unit tall (the 30° camera's cube); - only the three faces the camera can see are emitted — top (+Y), SE (+X) and SW (+Z) — the same three `VoxelLightField.surface_factor()` names; - a material is `base_color × facade luminance` (MULTIPLY), sampled in world space at 16 texels per voxel with mirrored repeat; - LIGHT AND SOOT ARE PER CELL, NOT PER VERTEX. The fragment finds its own voxel from its world position and reads bucket and soot code from a `Texture2DArray` holding the cell planes, one layer per level, so faces merge by MATERIAL only and a soot or light change is a layer upload instead of a remesh (a remesh for colour changes cost ~240 ms on the Moto, §15.9); - the terms are applied in a fixed order: face tone × bucket luminance × per-face soot × floor depth dim, all in sRGB, the product decoded once (`BoardLook` owns the constants). ⚠️ NOT A PARITY CLAIM against the deleted 2D board: facade continuity is world-space (not per wall run), a true cube projects 19.6 px per level where the 2D sprites expect 20, and R3D-LOOK owns whatever else differs. Compare against the 2D board only from a worktree of `34881f81`.
+
+**Signals**
+- `signal view_changed(direction: String)`
 
 **Constants / tuning**
 - `PickMathRef` = `preload("res://godot/scripts/geometry/pick_math.gd")`
@@ -831,11 +838,11 @@ extends `Node3D` · 2363 lines
 
 ### `particle_math.gd`
 
-`class_name ParticleMath` · extends `RefCounted` · 79 lines
+`class_name ParticleMath` · extends `RefCounted` · 83 lines
 
 `godot/scripts/geometry/particle_math.gd`
 
-> ParticleMath — the one place a 2D particle's screen displacement becomes a world displacement. RENDER3D R3D-4e-1. Every VFX overlay simulates in 2D canvas pixels, and folds a particle's height into screen y (smoke "rises" by decreasing y). That is fine on a 2D board and wrong on a 3D one: with no world position a particle cannot be depth-tested, so it draws over a wall it is behind. The fix does NOT rewrite the simulation. A particle keeps its 2D state; it also remembers the 3D point it was emitted from (its ANCHOR) and the 2D point that anchor projects to. Its world position is then the anchor plus its 2D displacement carried across EXACTLY: - horizontal screen displacement → along the camera's right axis, ÷ px-per-unit; - vertical screen displacement   → straight UP in the world, ÷ (px-per-unit × cos 30°), because a vertical extent projects to cos(elevation) of its length on screen. Projected back through the camera the particle lands on the pixel the 2D path would have drawn, so the look is unchanged and only the DEPTH is new: a puff at the foot of a wall is behind the wall, and a plume that climbs above its top is in front of what is behind it.
+> ParticleMath — the one place a 2D particle's screen displacement becomes a world displacement. RENDER3D R3D-4e-1. Every VFX overlay simulates in 2D canvas pixels, and folds a particle's height into screen y (smoke "rises" by decreasing y). That is fine on a 2D board and wrong on a 3D one: with no world position a particle cannot be depth-tested, so it draws over a wall it is behind. R3D-WORLD: the POSITION basis is the BASE view's (`Board3DLive.lattice_basis()`), because the 2D simulation runs in the N lattice in every view; the SHAPE basis (a disc, a chip) is the live camera's, so it faces the eye. In view N the two are the same basis. The fix does NOT rewrite the simulation. A particle keeps its 2D state; it also remembers the 3D point it was emitted from (its ANCHOR) and the 2D point that anchor projects to. Its world position is then the anchor plus its 2D displacement carried across EXACTLY: - horizontal screen displacement → along the camera's right axis, ÷ px-per-unit; - vertical screen displacement   → straight UP in the world, ÷ (px-per-unit × cos 30°), because a vertical extent projects to cos(elevation) of its length on screen. Projected back through the camera the particle lands on the pixel the 2D path would have drawn, so the look is unchanged and only the DEPTH is new: a puff at the foot of a wall is behind the wall, and a plume that climbs above its top is in front of what is behind it.
 
 **Constants / tuning**
 - `COS_ELEVATION` = `0.8660254`
@@ -1056,7 +1063,7 @@ extends `Node3D` · 2363 lines
 
 ### `quad_field3d.gd`
 
-`class_name QuadField3D` · extends `RefCounted` · 147 lines
+`class_name QuadField3D` · extends `RefCounted` · 151 lines
 
 `godot/scripts/geometry/quad_field3d.gd`
 
@@ -1069,7 +1076,7 @@ extends `Node3D` · 2363 lines
 
 **Public API**
 - `func attach_rect(parent: Node3D, priority: int = 0) -> void:`
-- `func begin(capacity: int, cam: Basis, px_per_unit: float) -> void:`
+- `func begin(capacity: int, cam: Basis, px_per_unit: float, lattice: Variant = null) -> void:`
 - `func begin_on_board(capacity: int) -> void:`
 - `func push_axes(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2, ax_2d: Vector2, ay_2d: Vector2, color: Color) -> void:`
 - `func push_line(anchor_3d: Vector3, anchor_2d: Vector2, p0_2d: Vector2, p1_2d: Vector2, width_px: float, color: Color) -> void:`
@@ -1296,6 +1303,35 @@ extends `Node3D` · 2363 lines
 
 ---
 
+### `world_canvas3d.gd`
+
+`class_name WorldCanvas3D` · extends `RefCounted` · 234 lines
+
+`godot/scripts/geometry/world_canvas3d.gd`
+
+> WorldCanvas3D — a 2D overlay's drawing that has HEIGHT (a tracer, a throw arc, a lamp), as world geometry on the 3D board. R3D-WORLD. `GroundCanvas3D` lifts what lies on the floor; it cannot place a point above it, because a 2D canvas point folds height into screen y and the floor beneath it is lost. The overlays that draw in the air already know that floor (a muzzle is above the agent's feet, an arc sample above the lerp of its two ground ends), so they hand this canvas the pair and it asks the board for the world point: `Board3DLive.particle_origin()`, the VFX's own rule, through the BASE view's basis (`lattice_basis()`), so the point is world state and stays put when the view turns. LINES are ribbons `width_px` wide (2D canvas pixels, as the 2D call took them) turned to face the LIVE camera; they are rebuilt when the view changes (`Board3DLive.view_changed` asks the owner to redraw). Depth-tested by default, so a wall hides what is behind it; `on_top` draws over everything, the way the 2D overlay did.
+
+**Constants / tuning**
+- `SHADER` = `"res://godot/shaders/ground_overlay3d.gdshader"`
+- `CIRCLE_SEGMENTS` = `24`
+
+**Public API**
+- `func attach(board: Node3D, owner: CanvasItem, priority: int = 0, on_top: bool = false) -> void:`
+- `func detach() -> void:`
+- `func begin() -> void:`
+- `func end() -> void:`
+- `func clear() -> void:`
+- `func begin_empty() -> void:`
+- `func lift(point_2d: Vector2, floor_2d: Vector2) -> Vector3:`
+- `func line(a: Vector3, b: Vector3, color: Color, width_px: float) -> void:`
+- `func polyline(points: PackedVector3Array, color: Color, width_px: float) -> void:`
+- `func disc(centre: Vector3, radius_px: float, color: Color) -> void:`
+- `func polygon(points: PackedVector3Array, color: Color) -> void:`
+- `func ring(centre: Vector3, radius_px: float, color: Color, width_px: float) -> void:`
+- `func up(px: float) -> Vector3:`
+
+---
+
 ## navigation/
 
 ### `guard_pathfinder.gd`
@@ -1390,7 +1426,7 @@ extends `Node3D` · 2363 lines
 
 ### `aim_bubble_overlay.gd`
 
-`class_name AimBubbleOverlay` · extends `Node2D` · 768 lines
+`class_name AimBubbleOverlay` · extends `Node2D` · 820 lines
 
 `godot/scripts/overlays/aim_bubble_overlay.gd`
 
@@ -1402,6 +1438,7 @@ extends `Node3D` · 2363 lines
 - `SEG_SPAN_MAX` = `3`
 - `SEG_Z_MIN` = `4`
 - `SEG_Z_MAX` = `5`
+- `WorldCanvas3DRef` = `preload("res://godot/scripts/geometry/world_canvas3d.gd")`
 
 **Public vars**
 - `var dome_color: Color = Color(1.0, 0.66, 0.30, 1.0)`
@@ -1431,13 +1468,14 @@ extends `Node3D` · 2363 lines
 - `var patch_visibility_samples: int = 12`
 
 **Public API**
+- `func set_board3d(board: Node3D) -> void:`
 - `func show_dome(center: Vector2, radius_gu: float, center_gu: Vector2i, wall_height_edges: Dictionary) -> void:`
 
 ---
 
 ### `blast_wireframe_overlay.gd`
 
-`class_name BlastWireframeOverlay` · extends `Node2D` · 120 lines
+`class_name BlastWireframeOverlay` · extends `Node2D` · 148 lines
 
 `godot/scripts/overlays/blast_wireframe_overlay.gd`
 
@@ -1446,6 +1484,7 @@ extends `Node3D` · 2363 lines
 - `LINE_COLOR` = `Color(1.0, 0.15, 0.15, 0.9)`
 - `LINE_WIDTH` = `3.0`
 - `PERIMETER_INSET_DISTANCE` = `6.0`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var ring_fill_alphas: PackedFloat32Array = PackedFloat32Array([0.34, 0.22, 0.13])`
@@ -1454,20 +1493,23 @@ extends `Node3D` · 2363 lines
 - `func setup(visual_grid_offset: Vector2) -> void:`
 - `func show_footprint(cells, ring_by_cell: Dictionary = {}) -> void:`
 - `func clear() -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
 ### `ceiling_prop_overlay.gd`
 
-`class_name CeilingPropOverlay` · extends `Node2D` · 42 lines
+`class_name CeilingPropOverlay` · extends `Node2D` · 70 lines
 
 `godot/scripts/overlays/ceiling_prop_overlay.gd`
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
+- `WorldCanvas3DRef` = `preload("res://godot/scripts/geometry/world_canvas3d.gd")`
 
 **Public API**
+- `func set_board3d(board: Node3D) -> void:`
 - `func setup(visual_offset: Vector2, ceiling_lift: float) -> void:`
 - `func set_lights(light_sources: Array) -> void:`
 
@@ -1987,13 +2029,14 @@ extends `Node2D` · 85 lines
 
 ### `shrapnel_preview_overlay.gd`
 
-`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 228 lines
+`class_name ShrapnelPreviewOverlay` · extends `Node2D` · 270 lines
 
 `godot/scripts/overlays/shrapnel_preview_overlay.gd`
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
+- `WorldCanvas3DRef` = `preload("res://godot/scripts/geometry/world_canvas3d.gd")`
 
 **Public vars**
 - `var ray_color: Color = Color(1.0, 0.42, 0.14, 1.0)`
@@ -2008,6 +2051,7 @@ extends `Node2D` · 85 lines
 - `var spread_rad: float = 0.26`
 
 **Public API**
+- `func set_board3d(board: Node3D) -> void:`
 - `func setup(visual_offset: Vector2) -> void:`
 - `func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:`
 - `func clear() -> void:`
@@ -2024,7 +2068,7 @@ extends `Node2D` · 85 lines
 
 ### `target_cursor_overlay.gd`
 
-`class_name TargetCursorOverlay` · extends `Node2D` · 79 lines
+`class_name TargetCursorOverlay` · extends `Node2D` · 106 lines
 
 `godot/scripts/overlays/target_cursor_overlay.gd`
 
@@ -2040,6 +2084,7 @@ extends `Node2D` · 85 lines
 
 **Public API**
 - `func show_at(center: Vector2, direction: String) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -2078,7 +2123,7 @@ extends `Node2D` · 252 lines
 
 ### `throw_arc_overlay.gd`
 
-`class_name ThrowArcOverlay` · extends `Node2D` · 198 lines
+`class_name ThrowArcOverlay` · extends `Node2D` · 224 lines
 
 `godot/scripts/overlays/throw_arc_overlay.gd`
 
@@ -2167,7 +2212,7 @@ extends `Node2D` · 104 lines
 
 ### `tracer_overlay.gd`
 
-`class_name TracerOverlay` · extends `Node2D` · 142 lines
+`class_name TracerOverlay` · extends `Node2D` · 186 lines
 
 `godot/scripts/overlays/tracer_overlay.gd`
 
@@ -2181,15 +2226,17 @@ extends `Node2D` · 104 lines
 
 ### `trail_overlay.gd`
 
-extends `Node2D` · 42 lines
+extends `Node2D` · 69 lines
 
 `godot/scripts/overlays/trail_overlay.gd`
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public API**
 - `func setup(room_ref: Node2D, visual_offset: Vector2) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -5786,7 +5833,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11183 lines
+extends `Node2D` · 11237 lines
 
 `godot/scripts/world/room.gd`
 

@@ -21,4 +21,4 @@ func attach(parent: Node3D, additive: bool, feather: float = 0.0, priority: int 
 ## projects to); `pos_2d` and `radius_px` are its ordinary 2D simulation state. No allocation.
 func push(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2, radius_px: float, color: Color) -> void:
 	_write(ParticleMathRef.disc_basis(_cam, radius_px, _ppu),
-		ParticleMathRef.to_world(anchor_3d, anchor_2d, pos_2d, _cam, _ppu), color)
+		ParticleMathRef.to_world(anchor_3d, anchor_2d, pos_2d, _lat, _ppu), color)

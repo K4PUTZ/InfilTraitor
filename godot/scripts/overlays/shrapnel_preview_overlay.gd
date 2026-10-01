@@ -107,6 +107,26 @@ var _visual_offset: Vector2 = Vector2.ZERO
 var _ray_froms: PackedVector2Array = PackedVector2Array()
 var _ray_tos: PackedVector2Array = PackedVector2Array()
 var _ray_alphas: PackedFloat32Array = PackedFloat32Array()
+## R3D-WORLD — on the 3D board the star is drawn by a `WorldCanvas3D` in SCREEN mode over the grenade's floor point, its
+## directions taken with the VIEW's grid axes (`_ax`, `_ay`; `IsoProjection.AXIS_X` / `AXIS_Y` in view N), so every
+## ray still points at the cell it stands for when the view turns. The star is rebuilt from the last call's arguments on
+## each redraw (a view change redraws). Drawn over the walls, as the 2D star was.
+var _world: RefCounted = null  ## WorldCanvas3D
+var _ax: Vector2 = IsoProjection.AXIS_X
+var _ay: Vector2 = IsoProjection.AXIS_Y
+var _source_gu: Vector2i = Vector2i.ZERO
+var _gu_rings: Dictionary = {}
+const WorldCanvas3DRef = preload("res://godot/scripts/geometry/world_canvas3d.gd")
+
+
+func set_board3d(board: Node3D) -> void:
+	if _world != null:
+		_world.detach()
+		_world = null
+	if board != null:
+		_world = WorldCanvas3DRef.new()
+		_world.attach(board, self, 5, true)
+	queue_redraw()
 
 
 func setup(visual_offset: Vector2) -> void:
@@ -119,6 +139,14 @@ func setup(visual_offset: Vector2) -> void:
 
 ## gu_rings: BlastCalculator.flood_gu_rings()' own output, {Vector2i -> ring int}.
 func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
+	_source_gu = source_gu
+	_gu_rings = gu_rings
+	_build_rays(source_gu, gu_rings)
+	visible = not _ray_froms.is_empty()
+	queue_redraw()
+
+
+func _build_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 	_ray_froms.clear()
 	_ray_tos.clear()
 	_ray_alphas.clear()
@@ -151,7 +179,8 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 
 		## Undo the isometric squash so the fan of DIRECTIONS is even on screen —
 		## without this the same angular spread reads twice as wide as it is tall.
-		var delta: Vector2 = _cell_to_screen(cell) - ground
+		var d: Vector2 = Vector2(cell - source_gu)
+		var delta: Vector2 = _ax * d.x + _ay * d.y
 		var out := Vector2(delta.x, delta.y * y_scale)
 		if out.length_squared() < 1.0:
 			continue
@@ -174,11 +203,24 @@ func show_rays(source_gu: Vector2i, gu_rings: Dictionary) -> void:
 			_ray_tos.append(origin + aimed * reach)
 			_ray_alphas.append(alpha)
 
-	visible = not _ray_froms.is_empty()
-	queue_redraw()
-
 
 func _draw() -> void:
+	if _world != null:
+		if _ray_froms.is_empty():
+			_world.clear()
+			return
+		var axes: Array[Vector2] = _world.screen_axes()
+		_ax = axes[0]
+		_ay = axes[1]
+		_build_rays(_source_gu, _gu_rings)
+		var ground: Vector2 = _cell_to_screen(_source_gu)
+		_world.begin_screen(_world.lift(ground, ground), ground)
+		for i: int in _ray_froms.size():
+			_world.draw_line(_ray_froms[i], _ray_tos[i], Color(ray_color.r, ray_color.g, ray_color.b, _ray_alphas[i]), line_width)
+		_world.end()
+		return
+	_ax = IsoProjection.AXIS_X
+	_ay = IsoProjection.AXIS_Y
 	var c := ray_color
 	for i: int in _ray_froms.size():
 		draw_line(_ray_froms[i], _ray_tos[i],

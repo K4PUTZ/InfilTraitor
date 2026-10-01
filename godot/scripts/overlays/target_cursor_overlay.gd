@@ -71,8 +71,35 @@ func show_at(center: Vector2, direction: String) -> void:
 		push_warning("[TargetCursorOverlay] no grenade frame baked for view '%s'" % direction)
 		return
 	_sprite.texture = _frames[direction]
+	_center = center
 	_sprite.position = center
+	_follow_board()
 	visible = true
+
+
+## R3D-WORLD — on the 3D board the virtual grenade stays a screen-space sprite (its hatched look is a canvas shader) but
+## stands where its floor point appears in the LIVE view (`Board3DLive.canvas_point()`), re-placed every frame it is
+## shown, since a pan or a view change moves that point on screen. In view N it is where the 2D lattice put it.
+var _board: Node3D = null
+var _center: Vector2 = Vector2.ZERO
+
+
+func set_board3d(board: Node3D) -> void:
+	_board = board
+	set_process(board != null)
+	_follow_board()
+
+
+func _process(_delta: float) -> void:
+	if visible:
+		_follow_board()
+
+
+func _follow_board() -> void:
+	if _board == null or not is_instance_valid(_board) or _sprite == null:
+		return
+	var canvas: Vector2 = _board.call("canvas_point", _board.call("ground_point", _center), self)
+	_sprite.position = get_global_transform().affine_inverse() * canvas
 
 
 func clear() -> void:

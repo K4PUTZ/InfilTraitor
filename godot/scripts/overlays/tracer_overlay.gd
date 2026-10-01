@@ -85,6 +85,10 @@ const HEAD_COLOR := Color(1.0, 0.97, 0.86, 1.0)
 ## Each entry: {"from": Vector2, "to": Vector2, "frames": int}. World space, the
 ## same space the overlay's own transform is in.
 var _streaks: Array = []
+## R3D-WORLD: on the 3D board the streak is world geometry (`WorldCanvas3D`), from the muzzle's world point to the
+## impact's, so it stays where the round went when the view turns. Null on the 2D path.
+var _world: RefCounted = null  ## WorldCanvas3D
+const WorldCanvas3DRef = preload("res://godot/scripts/geometry/world_canvas3d.gd")
 
 
 func _ready() -> void:
@@ -94,10 +98,14 @@ func _ready() -> void:
 
 ## Draw one round. `from` and `to` are world-space points; the caller owns both,
 ## because the caller is the only scope that knows the muzzle AND the impact.
-func add_tracer(from: Vector2, to: Vector2) -> void:
+## `from_floor` / `to_floor` are the 2D points of the floor under each end (the agent's feet under the muzzle); omitted,
+## the end is on the floor itself.
+func add_tracer(from: Vector2, to: Vector2, from_floor: Vector2 = Vector2.INF, to_floor: Vector2 = Vector2.INF) -> void:
 	if from == to:
 		return
-	_streaks.append({"from": from, "to": to, "frames": 0})
+	_streaks.append({"from": from, "to": to, "frames": 0,
+		"from_floor": from if from_floor == Vector2.INF else from_floor,
+		"to_floor": to if to_floor == Vector2.INF else to_floor})
 	set_process(true)
 	queue_redraw()
 
@@ -114,7 +122,21 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 
+## R3D-WORLD — draw on the 3D board instead (null: back to the 2D canvas).
+func set_board3d(board: Node3D) -> void:
+	if _world != null:
+		_world.detach()
+		_world = null
+	if board != null:
+		_world = WorldCanvas3DRef.new()
+		_world.attach(board, self, 4)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _world != null:
+		_draw_world()
+		return
 	for s in _streaks:
 		var frames: int = int(s["frames"])
 		## Alpha holds, then ramps down. Explicit float conversion throughout —
@@ -140,3 +162,25 @@ func _draw() -> void:
 		## one should read as going away.
 		draw_circle(head, HEAD_RADIUS_PX * maxf(alpha, 0.35),
 			Color(HEAD_COLOR, HEAD_COLOR.a * alpha))
+
+
+## The same streak as `_draw()`, in the world: each end lifted from its floor point, so the head travels the real line
+## from the muzzle to the impact.
+func _draw_world() -> void:
+	_world.begin()
+	for s in _streaks:
+		var frames: int = int(s["frames"])
+		var alpha: float = 1.0
+		if frames > HOLD_FRAMES:
+			alpha = clampf(1.0 - float(frames - HOLD_FRAMES) / float(FADE_FRAMES), 0.0, 1.0)
+		var from3: Vector3 = _world.lift(s["from"], s["from_floor"])
+		var to3: Vector3 = _world.lift(s["to"], s["to_floor"])
+		var travel: float = clampf(float(frames) / float(HOLD_FRAMES), 0.0, 1.0)
+		var head: Vector3 = from3.lerp(to3, travel)
+		var tail: Vector3 = from3.lerp(to3, maxf(travel - STREAK_FRACTION, 0.0))
+		if head.is_equal_approx(tail):
+			continue
+		_world.line(tail, head, Color(TAIL_COLOR, TAIL_COLOR.a * alpha), TAIL_WIDTH_PX)
+		_world.line(tail, head, Color(CORE_COLOR, CORE_COLOR.a * alpha), CORE_WIDTH_PX)
+		_world.disc(head, HEAD_RADIUS_PX * maxf(alpha, 0.35), Color(HEAD_COLOR, HEAD_COLOR.a * alpha))
+	_world.end()

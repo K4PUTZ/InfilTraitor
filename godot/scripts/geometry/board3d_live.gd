@@ -30,6 +30,9 @@
 ## board only from a worktree of `34881f81`.
 extends Node3D
 
+## R3D-WORLD — the view turned (`set_view()`): what is drawn as a camera-facing ribbon (`WorldCanvas3D`) is rebuilt.
+signal view_changed(direction: String)
+
 ## RENDER3D R3D-3 step 3 — 16 vs 32, chosen by measurement on the Moto (DevFlags
 ## `RENDER3D_CHUNK`, read at `build()`, before any chunk math runs). 16 wins: initial
 ## load is a wash (collect/mesh ~1013-1056 ms either way — dominated by the store walk,
@@ -445,7 +448,7 @@ func ground_point(point_2d: Vector2) -> Vector3:
 ## point of the ground beneath it (the detonation calls carry both); the difference is the height.
 func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:
 	return ParticleMathRef.origin_from_floor(
-		ground_point(floor_pos), floor_pos, world_pos, camera_basis(), _px_per_unit)
+		ground_point(floor_pos), floor_pos, world_pos, lattice_basis(), _px_per_unit)
 
 
 ## RENDER3D R3D-5b — the 2D→ground map itself, for a `GroundCanvas3D` that carries thousands of vertices
@@ -561,6 +564,31 @@ func lattice_delta(screen_delta: Vector2) -> Vector2:
 
 func camera_basis() -> Basis:
 	return _camera.global_transform.basis
+
+
+## R3D-WORLD — the viewport pixel `world` is drawn at in the live view.
+func screen_of(world: Vector3) -> Vector2:
+	return _camera.unproject_position(world) if _camera != null else Vector2.ZERO
+
+
+## R3D-WORLD — where `world` appears on screen in the live view, in `item`'s CANVAS coordinates (the 2D camera's world
+## space): for a 2D element that stays a screen-space drawing (a UI marker) but has to stand over a world point. In view
+## N it is the 2D lattice point of that world point.
+func canvas_point(world: Vector3, item: CanvasItem) -> Vector2:
+	if _camera == null:
+		return Vector2.ZERO
+	return item.get_canvas_transform().affine_inverse() * _camera.unproject_position(world)
+
+
+## R3D-WORLD — the camera basis of the BASE view (N): what a 2D-lattice displacement means in the world.
+##
+## The 2D lattice is the N lattice in every view (R3D-ROT), so a 2D simulation (every VFX overlay, R3D-4e) runs in the N
+## view's screen plane whatever the camera shows. Carried into the world through THIS basis — not the live camera's — a
+## particle's path is world state: it stays put when the view turns, and the camera merely sees it from another side.
+## Only a particle's SHAPE (a disc, a chip) is turned to face the live camera (`camera_basis()`). Identical to
+## `camera_basis()` in view N, so nothing changes there.
+func lattice_basis() -> Basis:
+	return Basis.from_euler(Vector3(deg_to_rad(-30.0), deg_to_rad(45.0), 0.0))
 
 
 ## Screen pixels per world unit at 2D zoom 1: the scale every baked actor frame was drawn at.
@@ -2361,3 +2389,4 @@ func set_view(direction: String) -> void:
 		_remesh(all, "view %s" % direction, 0, 0.0)
 	if _room != null:
 		on_occlusion(_room._occlusion_set)
+	view_changed.emit(direction)

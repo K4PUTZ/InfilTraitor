@@ -2667,9 +2667,9 @@ func _set_perspective(direction: String) -> void:
 			pickup.reposition_for_perspective(_active_perspective)
 	if _weapon_bench_controller != null:
 		_weapon_bench_controller.reposition_for_perspective(_active_perspective)
-	for overlay in [_ember_overlay, _smoke_spark_overlay, _debris_overlay, _shrapnel_overlay]:
-		if overlay != null:
-			overlay.clear()
+	## R3D-WORLD: the VFX in flight are NOT cleared any more. Their positions are world state (the 2D simulation runs in
+	## the base view's lattice and reaches the world through `Board3DLive.lattice_basis()`), so a blast keeps burning in
+	## the same place while the camera turns around it.
 	_recompute_occlusion()
 	_update_perspective_button_state()
 	print("[ROT] view %s in %.1f ms" % [direction, float(Time.get_ticks_usec() - t0) / 1000.0])
@@ -2962,6 +2962,8 @@ func _start_board3d_live() -> void:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	_attach_actor_billboards(live)
 	_attach_vfx_to_board(live)
+	if OS.get_environment("INFILTRAITOR_DIAG_CANVAS") == "1":  ## TEMP-DIAG, not committed
+		_diag_canvas.call_deferred()
 	_attach_ground_overlays(live)
 	if _dev_flag("PICK_CHECK", "0") == "1":
 		_pick_check.call_deferred()
@@ -3019,8 +3021,12 @@ func _pick_check() -> void:
 ## RENDER3D R3D-5b — the ground-plane gameplay overlays draw on the 3D board's ground (depth-tested), not
 ## over everything: a wall hides the tiles behind it, and an actor standing on a tile covers it.
 func _attach_ground_overlays(live: Node3D) -> void:
+	## R3D-WORLD added the blast footprint and the trail (ground) and the overlays that draw in the air or around a world
+	## point: the tracer, the throw arc, the ceiling lamps, the aim dome and the shrapnel star (`WorldCanvas3D`).
 	for overlay in [movement_overlay, path_preview, selection_overlay, _throw_perimeter_overlay,
-			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game, fog_of_war]:
+			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game, fog_of_war,
+			_blast_wireframe_overlay, _trail_overlay, _tracer_overlay, _throw_arc_overlay, _ceiling_overlay,
+			_aim_bubble_overlay, _shrapnel_preview_overlay, _target_cursor_overlay]:
 		if overlay != null and is_instance_valid(overlay) and overlay.has_method("set_board3d"):
 			overlay.set_board3d(live)
 	_set_dev_ground(live)
@@ -6025,6 +6031,16 @@ func _tile_to_screen_center(cell: Vector2i) -> Vector2:
 	return _tile_to_screen_center_2d(cell)
 
 
+## R3D-WORLD — the SCREEN point of a 2D world point that stands `point_2d - floor_2d` above its floor (a menu anchor
+## over a guard's head, over a grenade): through the 3D board's camera when it is up, so a HUD element anchored to the
+## world stays over the thing it names in every view; the 2D canvas transform otherwise.
+func screen_of_lifted(point_2d: Vector2, floor_2d: Vector2) -> Vector2:
+	var live: Node = board3d()
+	if live != null:
+		return live.call("screen_of", live.call("particle_origin", point_2d, floor_2d))
+	return get_viewport().get_canvas_transform() * point_2d
+
+
 ## The 2D inverse of `_screen_to_tile_2d()`. See `_tile_to_screen_center()`.
 func _tile_to_screen_center_2d(cell: Vector2i) -> Vector2:
 	var local_center: Vector2 = GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET
@@ -8622,6 +8638,12 @@ func _capture_shot_filmstrip() -> void:
 		Input.parse_input_event(wk_up)
 		await get_tree().process_frame
 
+	## INFILTRAITOR_CAPTURE_VIEW (R3D-WORLD): film the shot from that side.
+	var shot_view_env := OS.get_environment("INFILTRAITOR_CAPTURE_VIEW")
+	if shot_view_env in ["N", "E", "S", "W"]:
+		_set_perspective(shot_view_env)
+		for _v in range(20):
+			await get_tree().process_frame
 	var frames_env := OS.get_environment("INFILTRAITOR_SHOT_FILM_FRAMES")
 	var count: int = frames_env.to_int() if frames_env.is_valid_int() else 40
 	var save_images: bool = OS.get_environment("INFILTRAITOR_SHOT_FILM_SAVE") == "1"
@@ -8737,6 +8759,12 @@ func _capture_throw_filmstrip() -> void:
 				existing.remove(f)
 
 	_seed_dev_grenades_if_empty("THROW-FILM")
+	## INFILTRAITOR_CAPTURE_VIEW (R3D-WORLD): film the aim and the throw from that side.
+	var view_env := OS.get_environment("INFILTRAITOR_CAPTURE_VIEW")
+	if view_env in ["N", "E", "S", "W"]:
+		_set_perspective(view_env)
+		for _v in range(20):
+			await get_tree().process_frame
 	if _camera_controller != null and agent != null:
 		_camera_controller.focus_on(agent._cell_to_world(agent.cell))
 	var zoom_env := OS.get_environment("INFILTRAITOR_SHOT_ZOOM")
@@ -11181,3 +11209,29 @@ func _initialize_debug_views() -> void:
 	var theme_matrix = theme_matrix_class.new()
 	add_child(theme_matrix)
 	print("[DEBUG] F5: Theme Matrix viewer initialized")
+
+
+func _diag_canvas() -> void:  ## TEMP-DIAG, not committed
+	for _i in range(90):
+		await get_tree().process_frame
+	for n in find_children("*", "CanvasItem", true, false):
+		var ci := n as CanvasItem
+		if not ci.is_visible_in_tree():
+			continue
+		var p: Node = ci
+		var in_layer := false
+		while p != null:
+			if p is CanvasLayer:
+				in_layer = true
+				break
+			p = p.get_parent()
+		if in_layer:
+			continue
+		var draws: bool = ci.get_script() != null and (ci.get_script() as Script).source_code.contains("func _draw")
+		var kind: String = ci.get_class()
+		if ci is Sprite2D and (ci as Sprite2D).texture != null:
+			draws = true
+		if ci is Line2D or ci is Polygon2D or ci is Label or ci is TileMapLayer:
+			draws = true
+		if draws:
+			print("[DIAG-CANVAS] %s [%s] script=%s" % [get_path_to(ci), kind, ci.get_script().resource_path.get_file() if ci.get_script() != null else ""])

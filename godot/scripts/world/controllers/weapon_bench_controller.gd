@@ -91,7 +91,7 @@ func _sprite_global_rect(weapon: Dictionary) -> Rect2:
 func _top_screen_pos(weapon: Dictionary) -> Vector2:
 	var rect := _sprite_global_rect(weapon)
 	var world_top := rect.position + Vector2(rect.size.x / 2.0, 0.0)
-	return room.get_viewport().get_canvas_transform() * world_top
+	return room.screen_of_lifted(world_top, weapon["sprite"].global_position)
 
 
 ## Index of the weapon standing on the clicked GU cell, or -1. Director

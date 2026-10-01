@@ -812,7 +812,7 @@ func _draw_tracer(muzzle_world: Vector2, pick: Dictionary) -> void:
 	if impact_world == Vector2.ZERO:
 		push_warning("[AgentShotController] tracer skipped — GU %s has no world position" % pick["gu"])
 		return
-	room._tracer_overlay.add_tracer(muzzle_world, impact_world)
+	room._tracer_overlay.add_tracer(muzzle_world, impact_world, room.agent.position, _gu_centre_world(pick["gu"], 0))
 
 
 ## Screen position above the guard, for the menu anchor. Uses the guard's own GU
@@ -820,7 +820,7 @@ func _draw_tracer(muzzle_world: Vector2, pick: Dictionary) -> void:
 ## anchoring to it would drift the menu by posture.
 func _top_screen_pos(guard) -> Vector2:
 	var world: Vector2 = guard.position + Vector2(0.0, -GUARD_TOP_PX)
-	return room.get_viewport().get_canvas_transform() * world
+	return room.screen_of_lifted(world, guard.position)
 
 
 func _index_voxel(cell_to_voxel: Dictionary, v: Voxel) -> void:
@@ -1149,11 +1149,11 @@ func _flatten_glass_passthrough(picks: Array) -> Array:
 
 ## World position of a GU cell's centre at chest height — the same
 ## GU→voxel→world chain the bench's muzzle flash uses.
-func _gu_centre_world(gu: Vector2i) -> Vector2:
+## `levels_up` 0 is the floor under that point (R3D-WORLD: what a lifted overlay needs to place it in the world).
+func _gu_centre_world(gu: Vector2i, levels_up: int = MUZZLE_LEVELS_ABOVE_GROUND) -> Vector2:
 	if room._voxel_board == null:
 		return Vector2.ZERO
 	var half: int = int(float(GeometryCoords.VOXELS_PER_UNIT_AXIS) / 2.0)
 	var centre: Vector2i = GeometryCoords.gu_to_voxel_origin(gu) + Vector2i(half, half)
 	var renderer: VoxelBoard = room._voxel_board
-	return renderer.voxel_world_position(centre,
-		renderer.ground_plane_level() + MUZZLE_LEVELS_ABOVE_GROUND)
+	return renderer.voxel_world_position(centre, renderer.ground_plane_level() + levels_up)

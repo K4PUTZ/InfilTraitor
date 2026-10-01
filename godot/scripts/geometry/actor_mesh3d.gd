@@ -23,6 +23,9 @@ const SHADER_PATH := "res://godot/shaders/actor_mesh3d.gdshader"
 const SILHOUETTE_SHADER_PATH := "res://godot/shaders/actor_mesh_silhouette3d.gdshader"
 ## After the world's opaque geometry and the cutaway fill (10), before the cutaway lines (127): the billboard's slot.
 const SILHOUETTE_PRIORITY := 20
+const SHADOW_SHADER := "res://godot/shaders/ground_overlay3d.gdshader"
+## Above the floor, under every ground overlay's lift (0.01+).
+const SHADOW_LIFT: float = 0.005
 const HeadTurnRef = preload("res://godot/scripts/geometry/actor_head_turn3d.gd")
 const RIG_DIR := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"
 ## `AgentSprite.frame_family` -> the rig exported from that model. A family with no rig of its own falls back to the
@@ -79,6 +82,7 @@ func setup_actor(board: Node3D, source: AgentSprite) -> bool:
 	if not _load_rig(board, RIG_DIR + file):
 		return false
 	_source = source
+	_build_contact_shadow(source.get_parent())
 	source.visible = false  ## the 2D sprite keeps deciding (and processing); it no longer draws
 	name = "Mesh_%s" % (source.get_parent().name if source.get_parent() != null else source.name)
 	process_priority = 100  ## after the actor has moved and the sprite has decided, this frame
@@ -131,10 +135,10 @@ func _sync() -> void:
 	position = _board.call("ground_point", _source.global_position)
 	var state: Dictionary = _source.mesh_state()
 	var step: Vector2i = state["step"]
-	var body_yaw: float = rotation.y
+	var body_yaw: float = _body.rotation.y
 	if step != Vector2i.ZERO:
 		body_yaw = yaw_for_direction(Vector2(step))
-		rotation.y = body_yaw
+		_body.rotation.y = body_yaw
 	var weapon: String = String(WEAPON_BY_SUFFIX.get(String(state["weapon"]), "shotgun"))
 	for held: String in _weapons:
 		(_weapons[held] as Node3D).visible = held == weapon
@@ -206,6 +210,40 @@ func _apply_board_light(body: Node) -> void:
 			m.set_surface_override_material(s, converted[src])
 
 
+## R3D-WORLD — the actor's contact shadow, on the ground under the feet: the 2D diamond the actor drew
+## (`ground_shadow_half_px`, `COLOR_SHADOW`), carried through the board's 2D -> ground map, so it is the same shape on the
+## same floor in view N and stays under the feet in every other view. The 2D one is switched off.
+func _build_contact_shadow(actor: Node) -> void:
+	if actor == null or not ("ground_shadow_half_px" in actor):
+		return
+	var half: Vector2 = actor.get("ground_shadow_half_px")
+	var to_gu: Transform2D = _board.call("ground_affine")
+	var colour: Color = actor.get("COLOR_SHADOW") if "COLOR_SHADOW" in actor else Color(0.0, 0.0, 0.0, 0.28)
+	var verts := PackedVector3Array()
+	var cols := PackedColorArray()
+	for p: Vector2 in [Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(0.0, half.y), Vector2(-half.x, 0.0)]:
+		var g: Vector2 = to_gu.basis_xform(p)
+		verts.append(Vector3(g.x, SHADOW_LIFT, g.y))
+		cols.append(colour)
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = cols
+	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var node := MeshInstance3D.new()
+	node.name = "ContactShadow"
+	node.mesh = mesh
+	var mat := ShaderMaterial.new()
+	mat.shader = load(SHADOW_SHADER)
+	node.material_override = mat
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
+	actor.set("draw_ground_shadow", false)
+	(actor as CanvasItem).queue_redraw()
+
+
 func _apply_reveal() -> void:
 	if reveal_behind_walls and _silhouette == null:
 		_silhouette = ShaderMaterial.new()
@@ -220,6 +258,10 @@ func _exit_tree() -> void:
 	## Only if this mesh still owns the sprite: on a reload the NEW board's figure has already hidden it.
 	if is_instance_valid(_source) and _source.has_meta("billboard3d") and _source.get_meta("billboard3d") == self:
 		_source.visible = true
+		var actor: Node = _source.get_parent()
+		if actor != null and "draw_ground_shadow" in actor:
+			actor.set("draw_ground_shadow", true)
+			(actor as CanvasItem).queue_redraw()
 	if is_instance_valid(_board):
 		for m in _materials:
 			_board.call("unregister_prop_light_material", m)

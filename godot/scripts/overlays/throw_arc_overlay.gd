@@ -92,6 +92,20 @@ var _from: Vector2 = Vector2.ZERO
 var _to: Vector2 = Vector2.ZERO
 var _launch_px: float = 0.0
 var _visible: bool = false
+## R3D-WORLD: on the 3D board the preview curve is world geometry (`WorldCanvas3D`), each sample lifted from the floor
+## point under it, so the arc stays over the ground it crosses when the view turns. Drawn over the walls, as the 2D one was.
+var _world: RefCounted = null  ## WorldCanvas3D
+const WorldCanvas3DRef = preload("res://godot/scripts/geometry/world_canvas3d.gd")
+
+
+func set_board3d(board: Node3D) -> void:
+	if _world != null:
+		_world.detach()
+		_world = null
+	if board != null:
+		_world = WorldCanvas3DRef.new()
+		_world.attach(board, self, 4, true)
+	queue_redraw()
 
 
 ## Apex height above the LANDING plane, in pixels, for a throw between two screen
@@ -186,6 +200,16 @@ func _draw() -> void:
 	if not _visible:
 		return
 	var apex: float = arc_height_for(_from, _to, arc_height_ratio, _launch_px)
+	if _world != null:
+		var ground_from := _from + Vector2(0.0, _launch_px)
+		var pts3 := PackedVector3Array()
+		_world.begin()
+		for i: int in range(arc_segments + 1):
+			var t: float = float(i) / float(arc_segments)
+			pts3.append(_world.lift(arc_point(_from, _to, t, apex, _launch_px), ground_from.lerp(_to, t)))
+		_world.polyline(pts3, arc_color, line_width)
+		_world.end()
+		return
 	var points := PackedVector2Array()
 	for i: int in range(arc_segments + 1):
 		points.append(arc_point(_from, _to, float(i) / float(arc_segments), apex, _launch_px))
@@ -195,4 +219,6 @@ func _draw() -> void:
 func clear() -> void:
 	_visible = false
 	visible = false
+	if _world != null:
+		_world.clear()
 	queue_redraw()

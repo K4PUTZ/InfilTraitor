@@ -23,6 +23,7 @@ var _mm: MultiMesh = null
 var _buf: PackedFloat32Array = PackedFloat32Array()
 var _count: int = 0
 var _cam: Basis = Basis.IDENTITY
+var _lat: Basis = Basis.IDENTITY
 var _ppu: float = 1.0
 
 
@@ -57,10 +58,13 @@ func _attach_shader(parent: Node3D, shader_path: String, feather: float, priorit
 	parent.add_child(_node)
 
 
-## Start a frame. `cam` and `px_per_unit` are the board camera's, read once here rather than per quad.
-func begin(capacity: int, cam: Basis, px_per_unit: float) -> void:
+## Start a frame. `cam` and `px_per_unit` are the board camera's, read once here rather than per quad. `lattice` is the
+## basis a 2D displacement becomes a world one through (`Board3DLive.lattice_basis()`, R3D-WORLD); `cam` only turns each
+## quad's shape to face the eye. Omitted, it is `cam` (one basis for both, as before R3D-WORLD).
+func begin(capacity: int, cam: Basis, px_per_unit: float, lattice: Variant = null) -> void:
 	_count = 0
 	_cam = cam
+	_lat = cam if lattice == null else (lattice as Basis)
 	_ppu = px_per_unit
 	var need: int = capacity * FLOATS_PER_INSTANCE
 	if _buf.size() < need:
@@ -69,7 +73,7 @@ func begin(capacity: int, cam: Basis, px_per_unit: float) -> void:
 
 ## Start a frame on the board this field was attached to.
 func begin_on_board(capacity: int) -> void:
-	begin(capacity, _board.call("camera_basis"), _board.call("px_per_unit"))
+	begin(capacity, _board.call("camera_basis"), _board.call("px_per_unit"), _board.call("lattice_basis"))
 
 
 ## One rectangle centred at the particle position `pos_2d`, with half-extents `ax_2d` and `ay_2d` (2D
@@ -77,7 +81,7 @@ func begin_on_board(capacity: int) -> void:
 func push_axes(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2,
 		ax_2d: Vector2, ay_2d: Vector2, color: Color) -> void:
 	_write(ParticleMathRef.quad_basis(ax_2d, ay_2d, _cam, _ppu),
-		ParticleMathRef.to_world(anchor_3d, anchor_2d, pos_2d, _cam, _ppu), color)
+		ParticleMathRef.to_world(anchor_3d, anchor_2d, pos_2d, _lat, _ppu), color)
 
 
 ## A straight line of `width_px` from `p0_2d` to `p1_2d` — the 2D `draw_line`, as a thin rectangle.

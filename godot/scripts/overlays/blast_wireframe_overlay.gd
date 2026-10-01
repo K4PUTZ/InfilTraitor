@@ -71,7 +71,35 @@ func clear() -> void:
 	queue_redraw()
 
 
+## R3D-WORLD — on the 3D board the footprint goes to a `GroundCanvas3D` (the same calls, on the ground plane,
+## depth-tested), so it stays on the cells it marks when the view turns. Same shape as `PathPreview`.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 6, 0.018, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_draw_into(self)
+		return
+	_ground.begin(self)
+	_draw_into(_ground)
+	_ground.end()
+
+
+func _draw_into(c: Object) -> void:
 	if _footprint.is_empty():
 		return
 	## Fills first, so the perimeter still reads as the boundary on top of them —
@@ -82,17 +110,17 @@ func _draw() -> void:
 			continue
 		var fill := LINE_COLOR
 		fill.a = ring_fill_alphas[ring]
-		draw_colored_polygon(_diamond_points(cell), fill)
+		c.draw_colored_polygon(_diamond_points(cell), fill)
 	for cell in _footprint.keys():
 		var diamond := _diamond_points_inset(cell)
 		if not _footprint.has(cell + Vector2i.UP):
-			draw_line(diamond[0], diamond[1], LINE_COLOR, LINE_WIDTH, true)
+			c.draw_line(diamond[0], diamond[1], LINE_COLOR, LINE_WIDTH, true)
 		if not _footprint.has(cell + Vector2i.RIGHT):
-			draw_line(diamond[1], diamond[2], LINE_COLOR, LINE_WIDTH, true)
+			c.draw_line(diamond[1], diamond[2], LINE_COLOR, LINE_WIDTH, true)
 		if not _footprint.has(cell + Vector2i.DOWN):
-			draw_line(diamond[2], diamond[3], LINE_COLOR, LINE_WIDTH, true)
+			c.draw_line(diamond[2], diamond[3], LINE_COLOR, LINE_WIDTH, true)
 		if not _footprint.has(cell + Vector2i.LEFT):
-			draw_line(diamond[3], diamond[0], LINE_COLOR, LINE_WIDTH, true)
+			c.draw_line(diamond[3], diamond[0], LINE_COLOR, LINE_WIDTH, true)
 
 
 ## The cell's full diamond, un-inset — the fill has to meet its neighbours or

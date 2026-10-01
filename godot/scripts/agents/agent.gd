@@ -459,14 +459,22 @@ func _cell_to_world(map_cell: Vector2i) -> Vector2:
 ##    invisible-ish over a flat green diamond and is a white box around a
 ##    character. §10 says the placeholder is gone; a stroke that was part of it
 ##    does not get to stay on screen by being useful.
+## The contact shadow's half-extents, in 2D canvas pixels. R3D-WORLD: when a live mesh draws the agent it carries this
+## shadow on the ground itself (`ActorMesh3D`) and turns `draw_ground_shadow` off, so the 2D one does not paint over the
+## board from where the N lattice puts it.
+var ground_shadow_half_px := Vector2(28.0, 10.0)
+var draw_ground_shadow: bool = true
+
+
 func _draw() -> void:
-	var shadow := PackedVector2Array([
-		Vector2(0.0, -10.0),
-		Vector2(28.0, 0.0),
-		Vector2(0.0, 10.0),
-		Vector2(-28.0, 0.0),
-	])
-	draw_colored_polygon(shadow, COLOR_SHADOW)
+	if draw_ground_shadow:
+		var shadow := PackedVector2Array([
+			Vector2(0.0, -ground_shadow_half_px.y),
+			Vector2(ground_shadow_half_px.x, 0.0),
+			Vector2(0.0, ground_shadow_half_px.y),
+			Vector2(-ground_shadow_half_px.x, 0.0),
+		])
+		draw_colored_polygon(shadow, COLOR_SHADOW)
 
 	if not dev_vision:
 		return

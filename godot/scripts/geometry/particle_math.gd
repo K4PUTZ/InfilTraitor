@@ -4,6 +4,10 @@
 ## into screen y (smoke "rises" by decreasing y). That is fine on a 2D board and wrong on a 3D one:
 ## with no world position a particle cannot be depth-tested, so it draws over a wall it is behind.
 ##
+## R3D-WORLD: the POSITION basis is the BASE view's (`Board3DLive.lattice_basis()`), because the 2D simulation runs in
+## the N lattice in every view; the SHAPE basis (a disc, a chip) is the live camera's, so it faces the eye. In view N the
+## two are the same basis.
+##
 ## The fix does NOT rewrite the simulation. A particle keeps its 2D state; it also remembers the 3D
 ## point it was emitted from (its ANCHOR) and the 2D point that anchor projects to. Its world position
 ## is then the anchor plus its 2D displacement carried across EXACTLY:
@@ -76,4 +80,4 @@ static func anchor(board: Node3D, pos: Vector2, floor_pos: Vector2 = NO_FLOOR,
 static func world_of(board: Node3D, anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2) -> Vector3:
 	if board == null:
 		return Vector3.ZERO
-	return to_world(anchor_3d, anchor_2d, pos_2d, board.call("camera_basis"), board.call("px_per_unit"))
+	return to_world(anchor_3d, anchor_2d, pos_2d, board.call("lattice_basis"), board.call("px_per_unit"))

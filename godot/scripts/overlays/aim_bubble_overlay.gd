@@ -168,6 +168,40 @@ var _center_gu: Vector2i = Vector2i.ZERO
 var _radius_gu: float = 0.0
 var _wall_height_edges: Dictionary = {}
 var _visible: bool = false
+## R3D-WORLD — on the 3D board the dome is drawn by a `WorldCanvas3D` in SCREEN mode: the same 2D drawing, placed on the
+## live camera's plane over the dome's floor point, and its 3D points projected with the VIEW's grid axes (`_ax`, `_ay`)
+## rather than `IsoProjection`'s N axes, so the walls cut the dome on the side they really stand on from every view.
+## In view N the axes ARE `IsoProjection.AXIS_X` / `AXIS_Y`. Drawn over the walls, as the 2D dome was.
+var _world: RefCounted = null  ## WorldCanvas3D
+var _c: Object = self
+var _ax: Vector2 = IsoProjection.AXIS_X
+var _ay: Vector2 = IsoProjection.AXIS_Y
+const WorldCanvas3DRef = preload("res://godot/scripts/geometry/world_canvas3d.gd")
+
+
+func set_board3d(board: Node3D) -> void:
+	if _world != null:
+		_world.detach()
+		_world = null
+	if board != null:
+		_world = WorldCanvas3DRef.new()
+		_world.attach(board, self, 5, true)
+	queue_redraw()
+
+
+func _proj(gu_xyz: Vector3) -> Vector2:
+	return _ax * gu_xyz.x + _ay * gu_xyz.y + IsoProjection.AXIS_Z * gu_xyz.z
+
+
+## `IsoProjection.silhouette_basis()` for the view's axes: the great circle perpendicular to the projection's null
+## direction.
+func _silhouette_basis() -> Array[Vector3]:
+	var row_x := Vector3(_ax.x, _ay.x, IsoProjection.AXIS_Z.x)
+	var row_y := Vector3(_ax.y, _ay.y, IsoProjection.AXIS_Z.y)
+	var k: Vector3 = row_x.cross(row_y).normalized()
+	var seed := Vector3.UP if absf(k.dot(Vector3.UP)) < 0.9 else Vector3.RIGHT
+	var e1: Vector3 = k.cross(seed).normalized()
+	return [e1, k.cross(e1).normalized()]
 
 
 func _ready() -> void:
@@ -195,7 +229,25 @@ func show_dome(center: Vector2, radius_gu: float, center_gu: Vector2i,
 
 func _draw() -> void:
 	if not _visible or _radius_gu < 0.001:
+		if _world != null:
+			_world.clear()
 		return
+	if _world != null:
+		var axes: Array[Vector2] = _world.screen_axes()
+		_ax = axes[0]
+		_ay = axes[1]
+		_world.begin_screen(_world.lift(_center, _center), _center)
+		_c = _world
+		_draw_dome()
+		_world.end()
+		return
+	_ax = IsoProjection.AXIS_X
+	_ay = IsoProjection.AXIS_Y
+	_c = self
+	_draw_dome()
+
+
+func _draw_dome() -> void:
 
 	var segments: PackedFloat32Array = _nearby_wall_segments()
 
@@ -208,11 +260,11 @@ func _draw() -> void:
 	var outline: PackedVector2Array = _sectioned_outline(segments, disc)
 	if outline.size() < 3:
 		return
-	draw_colored_polygon(outline, _tinted(fill_alpha))
+	_c.draw_colored_polygon(outline, _tinted(fill_alpha))
 
 	if disc.size() >= 3:
-		draw_colored_polygon(disc, _tinted(floor_fill_alpha))
-		draw_polyline(_closed(disc), _tinted(floor_line_alpha), line_width)
+		_c.draw_colored_polygon(disc, _tinted(floor_fill_alpha))
+		_c.draw_polyline(_closed(disc), _tinted(floor_line_alpha), line_width)
 
 	## The sphere's own grid: undistorted, and simply absent where a wall stops
 	## it. Over the fills, under the rim so the silhouette stays the crispest
@@ -223,7 +275,7 @@ func _draw() -> void:
 	## of the volume it replaced.
 	_draw_wall_patches(segments)
 
-	draw_polyline(_closed(outline), _tinted(rim_alpha), line_width)
+	_c.draw_polyline(_closed(outline), _tinted(rim_alpha), line_width)
 
 
 ## Wall segments near the dome, in GU relative to `_center_gu`, packed flat (see
@@ -343,7 +395,7 @@ static func _direction(theta: float, phi: float) -> Vector3:
 ## Where the dome's surface really is along one direction: the sphere, or the
 ## first wall in the way, whichever comes first.
 func _surface_offset(dir: Vector3, segments: PackedFloat32Array) -> Vector2:
-	return IsoProjection.project_point(
+	return _proj(
 		dir * minf(_radius_gu, _wall_hit_distance(dir, segments)))
 
 
@@ -366,7 +418,7 @@ func _surface_offset(dir: Vector3, segments: PackedFloat32Array) -> Vector2:
 ## The fix is to sample the curves the true boundary is actually MADE of, so
 ## every bucket sees the real extreme instead of a lattice approximation:
 ##
-##   · the sphere's silhouette great circle (IsoProjection.silhouette_basis()),
+##   · the sphere's silhouette great circle (_silhouette_basis()),
 ##     kept only where no wall has taken it away;
 ##   · each wall patch's own boundary — that IS the cut curve;
 ##   · the floor section, which is the boundary all along the bottom.
@@ -382,14 +434,14 @@ func _sectioned_outline(segments: PackedFloat32Array,
 	best_r.fill(0.0)
 	best_a.fill(0.0)
 
-	var basis: Array[Vector3] = IsoProjection.silhouette_basis()
+	var basis: Array[Vector3] = _silhouette_basis()
 	for i: int in range(silhouette_ellipse_steps):
 		var u: float = TAU * float(i) / float(silhouette_ellipse_steps)
 		var point: Vector3 = (basis[0] * cos(u) + basis[1] * sin(u)) * _radius_gu
 		## The lower half of that great circle is under the floor, and this is a
 		## hemisphere — the floor section owns the boundary down there.
 		if point.z >= 0.0 and _is_visible(point, segments):
-			_offer(best_r, best_a, IsoProjection.project_point(point))
+			_offer(best_r, best_a, _proj(point))
 
 	var i_seg: int = 0
 	while i_seg < segments.size():
@@ -444,20 +496,20 @@ func _offer_patch_curves(best_r: PackedFloat32Array, best_a: PackedFloat32Array,
 		var to_uv: Vector2 = boundary[(i + 1) % boundary.size()]
 		var outward: Vector2 = _edge_outward(from_uv, to_uv, u_min, u_max, v_max)
 		var steps: int = clampi(int(ceil(
-			IsoProjection.project_point(_wall_point(axis_x, pos, from_uv)).distance_to(
-				IsoProjection.project_point(_wall_point(axis_x, pos, to_uv)))
+			_proj(_wall_point(axis_x, pos, from_uv)).distance_to(
+				_proj(_wall_point(axis_x, pos, to_uv)))
 			/ patch_edge_sample_px)), 1, 256)
 		for s: int in range(steps):
 			var uv: Vector2 = from_uv.lerp(to_uv, float(s) / float(steps))
 			var point: Vector3 = _wall_point(axis_x, pos, uv)
 			if _is_visible(point, segments):
-				_offer(best_r, best_a, IsoProjection.project_point(point))
+				_offer(best_r, best_a, _proj(point))
 			if outward == Vector2.ZERO:
 				continue
 			var past: Vector3 = _wall_point(axis_x, pos, uv + outward * edge_shadow_nudge_gu)
 			var direction: Vector3 = past.normalized()
 			if _wall_hit_distance(direction, segments) >= _radius_gu - 0.001:
-				_offer(best_r, best_a, IsoProjection.project_point(direction * _radius_gu))
+				_offer(best_r, best_a, _proj(direction * _radius_gu))
 
 
 ## Which way is "off the wall" for one edge of a patch, in that wall's own
@@ -559,13 +611,13 @@ func _extend_or_flush(run: PackedVector2Array, dir: Vector3,
 	if _wall_hit_distance(dir, segments) < _radius_gu:
 		_flush_grid_run(run)
 		return PackedVector2Array()
-	run.append(_center + IsoProjection.project_point(dir * _radius_gu))
+	run.append(_center + _proj(dir * _radius_gu))
 	return run
 
 
 func _flush_grid_run(run: PackedVector2Array) -> void:
 	if run.size() >= 2:
-		draw_polyline(run, _tinted(grid_alpha), grid_line_width)
+		_c.draw_polyline(run, _tinted(grid_alpha), grid_line_width)
 
 
 ## Every wall face the sphere reaches, wearing the patch the sphere covers it
@@ -614,7 +666,7 @@ func _draw_one_wall_patch(axis_x: bool, pos: float, u_min: float, u_max: float,
 		var point: Vector3 = _wall_point(axis_x, pos, uv)
 		if _is_visible(point, segments):
 			visible += 1
-		screen.append(_center + IsoProjection.project_point(point))
+		screen.append(_center + _proj(point))
 	if visible == 0:
 		return
 	## The fill is one flat polygon and cannot be broken up the way a line can,
@@ -622,7 +674,7 @@ func _draw_one_wall_patch(axis_x: bool, pos: float, u_min: float, u_max: float,
 	## keeps its grid and its outline and loses the tint — legible, and never a
 	## fill claiming ground it does not have.
 	if visible == boundary.size():
-		draw_colored_polygon(screen, _tinted(wall_fill_alpha))
+		_c.draw_colored_polygon(screen, _tinted(wall_fill_alpha))
 
 	_draw_wall_patch_grid(axis_x, pos, _cut_radius(pos), u_min, u_max, v_min, v_max, segments)
 
@@ -652,12 +704,12 @@ func _draw_patch_polyline(axis_x: bool, pos: float, uv_points: PackedVector2Arra
 		var point: Vector3 = _wall_point(axis_x, pos, uv)
 		if not _is_visible(point, segments):
 			if run.size() >= 2:
-				draw_polyline(run, color, width)
+				_c.draw_polyline(run, color, width)
 			run = PackedVector2Array()
 			continue
-		run.append(_center + IsoProjection.project_point(point))
+		run.append(_center + _proj(point))
 	if run.size() >= 2:
-		draw_polyline(run, color, width)
+		_c.draw_polyline(run, color, width)
 
 
 ## A point on the wall plane, from that wall's own (u, v) surface coordinates

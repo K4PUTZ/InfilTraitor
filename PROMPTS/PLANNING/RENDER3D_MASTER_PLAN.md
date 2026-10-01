@@ -3547,6 +3547,21 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
   They become world-space state before rotation (R3D-4's rule for new VFX, applied to the old ones).
 - **R3D-ROT — rotation returns (was R3D-9). Design CLOSED 2026-09-27 (Director): four fixed views, camera-only — see the
   top-of-file ruling.**
+  - **Built as a HYBRID, steps (Director, 2026-09-30, who took R3D-ROT ahead of R3D-ACTORS / R3D-WORLD and chose "hybrid" and "re-mesh per view"):**
+    the world is ONE grid in BASE coordinates (store, board, gameplay, records) built once from the north layout and never re-laid-out; a view is a
+    quarter turn applied at the PRESENTATION edge only. Actors, 2D overlays and VFX stay 2D until ACTORS / WORLD, so they follow the view through one
+    seam, `GroundGrid` (every `map_to_local` / `cell_containing` already goes through it: ~45 call sites) — N is the identity.
+    The old re-layout stays as the CONTROL until parity, behind the flag, then is deleted with the `_base_*` workarounds.
+    - **ROT-1 DONE** — `GroundGrid.set_view(direction, base_size)`: `map_to_local()` places a base cell where the N lattice puts its turned cell,
+      `cell_containing()` returns base cells, `view_cell()` / `base_cell()` are the two halves; `PerspectiveMapper.turn_*()` is the sentinel-free
+      arithmetic (a real off-map (-1, -1) is not INVALID_CELL). `ground_grid_selftest` [4].
+    - **ROT-2** — `Board3DLive` yaws: the camera, the ground affine / pick, and **the mesher emits the three faces the VIEW sees** (today it emits
+      TOP/SE/SW only: `_collect_chunk_faces_store`), re-meshed per view in the background chunk task from the unchanged base store; the shader maps
+      view face -> world face for the soot / light plane codes and the face tone; occlusion, dents, decals and glass follow. Memory unchanged.
+    - **ROT-3** — `Room._set_perspective()` camera-only (set the view, yaw, re-mesh, refresh the 2D layer), actors' D44 facing relative to the yaw,
+      the screen-space VFX / overlays that cache screen positions re-derive (the WORLD part this needs), then the delete list below.
+    - **Gate:** the new path against the old re-layout as the control, four views, pixel identity on the 2D layer and the board_probe dumps; the
+      Moto cost of a rotation recorded.
   - **Delete list, added 2026-09-29:** the base-coord workarounds R3D-PROPS had to add for the re-layout — `Room._base_shattered_props`, `_base_debris`, `_respawn_base_debris()`, `_reapply_base_shattered_props()`, `_voxel_point_to_base/_from_base()`, the `PropBlock` loop in `_reapply_base_damage()`. With one world and state recorded once none of them exists.
   - A 90° camera yaw replaces `_set_perspective()`'s full re-layout for drawing.
   - **The gameplay layout no longer re-rotates with the view** (ruled 2026-09-27) — `MAP_MASTER_PLAN`'s

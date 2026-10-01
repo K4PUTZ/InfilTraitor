@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**266 scripts · 84843 lines total** (under `godot/scripts/`)
+**266 scripts · 84923 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -737,7 +737,7 @@ extends `Node3D` · 2280 lines
 
 ### `ground_grid.gd`
 
-`class_name GroundGrid` · extends `RefCounted` · 52 lines
+`class_name GroundGrid` · extends `RefCounted` · 87 lines
 
 `godot/scripts/geometry/ground_grid.gd`
 
@@ -4238,7 +4238,7 @@ extends `SceneTree` · 205 lines
 
 ### `ground_grid_selftest.gd`
 
-extends `SceneTree` · 108 lines
+extends `SceneTree` · 143 lines
 
 `godot/scripts/tools/ground_grid_selftest.gd`
 
@@ -4257,6 +4257,7 @@ extends `SceneTree` · 108 lines
 - `func test_map_to_local_matches_the_tilemap() -> void:`
 - `func test_cell_containing_matches_the_room_pick() -> void:`
 - `func test_cell_center_round_trips() -> void:`
+- `func test_view_is_a_quarter_turn_of_the_base_grid() -> void:`
 
 ---
 
@@ -5889,7 +5890,7 @@ extends `Node2D` · 11300 lines
 
 ### `perspective_mapper.gd`
 
-`class_name PerspectiveMapper` · 304 lines
+`class_name PerspectiveMapper` · 314 lines
 
 `godot/scripts/world/utilities/perspective_mapper.gd`
 

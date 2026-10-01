@@ -23,7 +23,12 @@ const SUFFIX_MAP := {
 static func cell_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i) -> Vector2i:
 	if view_cell == Vector2i(-1, -1):  # INVALID_CELL
 		return Vector2i(-1, -1)
-	
+	return turn_to_base(view_cell, direction, base_size)
+
+
+## `cell_to_base()` without the INVALID_CELL sentinel: pure arithmetic, so a REAL off-map cell that happens to be
+## (-1, -1) (a corner neighbour of cell (0, 0)) turns like any other. `GroundGrid` asks this one.
+static func turn_to_base(view_cell: Vector2i, direction: String, base_size: Vector2i) -> Vector2i:
 	var w := base_size.x
 	var h := base_size.y
 	
@@ -115,6 +120,11 @@ static func rotated_size(base_size: Vector2i, direction: String) -> Vector2i:
 static func cell_from_base(base_cell: Vector2i, direction: String, base_size: Vector2i) -> Vector2i:
 	if base_cell == Vector2i(-1, -1):
 		return Vector2i(-1, -1)
+	return turn_from_base(base_cell, direction, base_size)
+
+
+## `cell_from_base()` without the sentinel (see `turn_to_base()`).
+static func turn_from_base(base_cell: Vector2i, direction: String, base_size: Vector2i) -> Vector2i:
 	var w := base_size.x
 	var h := base_size.y
 	match direction:

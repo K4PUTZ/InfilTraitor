@@ -3560,6 +3560,12 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
       view face -> world face for the soot / light plane codes and the face tone; occlusion, dents, decals and glass follow. Memory unchanged.
     - **ROT-3** — `Room._set_perspective()` camera-only (set the view, yaw, re-mesh, refresh the 2D layer), actors' D44 facing relative to the yaw,
       the screen-space VFX / overlays that cache screen positions re-derive (the WORLD part this needs), then the delete list below.
+    - **ROT-2 / ROT-3 FIRST CUT BUILT (2026-09-30), behind `INFILTRAITOR_CAMERA_ROT=1` (default OFF until parity):** `Board3DLive.set_view()` (camera yaw, 5-face
+      mesher with the 3 faces of the view, shader face slots, `_to_gu` composed with the continuous turn, background re-mesh) and `Room._set_view_camera_only()`
+      (layout stays "N", `_view_direction` is the presentation's). Measured PLAYGROUND E: 1.3 s vs 1.9 s for the re-layout. **Open vs the control capture:**
+      guard vision cones missing, glass panes drawn as thin lines (a pane has two sides, the view meshes one), guard positions differ, the occlusion set
+      is still in view space, dents/decals on the two newly visible faces (CarvedSide has no -x / -z), sprite frames still read `_active_perspective`
+      (use `view_direction()`), `rebuild_all()` is probably unnecessary. Capture script: scratchpad `rot_cap.sh <0|1> <map> <tag>`.
     - **Gate:** the new path against the old re-layout as the control, four views, pixel identity on the 2D layer and the board_probe dumps; the
       Moto cost of a rotation recorded.
   - **Delete list, added 2026-09-29:** the base-coord workarounds R3D-PROPS had to add for the re-layout — `Room._base_shattered_props`, `_base_debris`, `_respawn_base_debris()`, `_reapply_base_shattered_props()`, `_voxel_point_to_base/_from_base()`, the `PropBlock` loop in `_reapply_base_damage()`. With one world and state recorded once none of them exists.

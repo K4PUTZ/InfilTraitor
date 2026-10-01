@@ -65,9 +65,24 @@ static var VSCALE_MARKER: bool = false
 ## Facade texels per voxel is ART_SPECIFICATIONS' TEX_AUTHORING_N (16), so a
 ## 1024×512 facade spans 64×32 voxels.
 const FACADE_SPAN_VOXELS: Vector2 = Vector2(64.0, 32.0)
-enum Dir { TOP, SE, SW }
-const DIR_STEP: Array[Vector3i] = [Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]
-const DIR_NORMAL: Array[Vector3] = [Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]
+## The five faces a voxel can show. TOP, SE (+x) and SW (+z) are the three the N view sees; NW (-x) and NE (-z) are the
+## two the other views turn toward the camera (R3D-ROT-2). Names are base-grid faces, never screen sides.
+enum Dir { TOP, SE, SW, NW, NE }
+const DIR_STEP: Array[Vector3i] = [Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(-1, 0, 0), Vector3i(0, 0, -1)]
+const DIR_NORMAL: Array[Vector3] = [Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]
+## R3D-ROT-2 — the three faces each VIEW meshes (TOP, then the view's SE side, then its SW side), in base-grid faces: the
+## camera yaws a quarter turn per view, so the faces turned toward it are a different pair. N keeps the old order.
+const VIEW_DIRS: Dictionary = {
+	"N": [Dir.TOP, Dir.SE, Dir.SW], "E": [Dir.TOP, Dir.NE, Dir.SE],
+	"S": [Dir.TOP, Dir.NW, Dir.NE], "W": [Dir.TOP, Dir.SW, Dir.NW],
+}
+## The shader's face SLOT (1 = the view's SE side, 2 = its SW side) of an x-facing and of a z-facing face, per view: the
+## tone and the soot digit are the screen side's, never the world face's, so a wall keeps its tone through a rotation.
+const VIEW_FACE_SLOTS: Dictionary = {
+	"N": Vector2i(1, 2), "E": Vector2i(2, 1), "S": Vector2i(1, 2), "W": Vector2i(2, 1),
+}
+## The camera's yaw about the map per view, degrees added to D26's 45.
+const VIEW_YAW_DEG: Dictionary = {"N": 0.0, "E": 90.0, "S": 180.0, "W": 270.0}
 ## ⚠️ THE MATHS HAPPENS IN sRGB, AND ONLY THE PRODUCT IS LINEARISED. The 2D path
 ## multiplies on sRGB-encoded values because a 2D canvas never converts; a spatial
 ## shader's ALBEDO is linear. Measured on the first desktop capture: fed raw, the board
@@ -102,6 +117,9 @@ uniform float bucket_lum[12];
 uniform vec4 soot_mult = vec4(0.38, 0.60, 0.76, 0.90);
 uniform vec2 soot_char_range = vec2(0.10, 0.30);
 uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
+// R3D-ROT-2 — which face slot (1 = the view's SE side, 2 = its SW side) an x-facing and a z-facing face is, set per view.
+uniform int face_x_slot = 1;
+uniform int face_z_slot = 2;
 uniform float depth_dim[5];
 varying vec3 v_world;
 varying vec3 v_normal;
@@ -187,7 +205,7 @@ void fragment() {
 		code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 215.0);
 		bucket = int(floor(t.g * 255.0 + 0.5));
 	}
-	int face = v_normal.y > 0.5 ? 0 : (v_normal.x > 0.5 ? 1 : 2);
+	int face = v_normal.y > 0.5 ? 0 : (abs(v_normal.x) > 0.5 ? face_x_slot : face_z_slot);
 	float ring = face == 0 ? floor(code / 36.0)
 			: (face == 1 ? floor(mod(code, 36.0) / 6.0) : mod(code, 6.0));
 	float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];
@@ -212,7 +230,7 @@ void fragment() {
 		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
 	}
 	if (ghost) {
-		float tone = v_normal.y > 0.5 ? 1.0 : (v_normal.x > 0.5 ? 0.80 : 0.60);
+		float tone = face == 0 ? 1.0 : (face == 1 ? 0.80 : 0.60);
 		ALBEDO = srgb_to_linear(vec3(0.62, 0.67, 1.0) * tone * 0.85);
 	}
 }
@@ -242,7 +260,7 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
 	}
 	if (ghost) {
-		float tone = v_normal.y > 0.5 ? 1.0 : (v_normal.x > 0.5 ? 0.80 : 0.60);
+		float tone = face == 0 ? 1.0 : (face == 1 ? 0.80 : 0.60);
 		ALBEDO = srgb_to_linear(vec3(0.62, 0.67, 1.0) * tone * 0.85);
 	}
 }
@@ -326,6 +344,9 @@ var _mesh_prop_nodes: Dictionary = {}
 var _fragment_nodes: Array = []   ## PropFragments3D: the voxel fragments / piles of broken Tier 4 props
 var _tone: Array[float] = []
 var _px_per_unit: float = 1.0
+## R3D-ROT-2 — the view the board is turned to and the three faces it meshes for it.
+var _view: String = "N"
+var _view_dirs: Array = [Dir.TOP, Dir.SE, Dir.SW]
 var _origin_2d: Vector2 = Vector2.ZERO
 var _to_gu: Transform2D = Transform2D.IDENTITY
 var _plane: Texture2DArray = null
@@ -1583,17 +1604,18 @@ func _start_remesh_task(chunks: Dictionary, reason: String, voxels: int, fold_ms
 		"t0": Time.get_ticks_usec()}
 	_remesh_result = []
 	var chunk_list: Array = chunks.keys()
+	var dirs: Array = _view_dirs  ## the view the task meshes for, whatever `set_view()` does while it runs
 	_remesh_task_id = WorkerThreadPool.add_task(
-		func() -> void: _remesh_task_body(chunk_list))
+		func() -> void: _remesh_task_body(chunk_list, dirs))
 
 
 ## Runs OFF the main thread. Writes into `_remesh_result` (this `Board3DLive` instance
 ## isn't touched by anything else while a task is in flight — `_remesh_task_id != -1`
 ## blocks a second task, and nothing else in this turn-based model mutates the store mid-
 ## remesh) and never touches the scene tree or a `RenderingServer` resource.
-func _remesh_task_body(chunk_list: Array) -> void:
+func _remesh_task_body(chunk_list: Array, dirs: Array) -> void:
 	for chunk: Vector2i in chunk_list:
-		var collected: Dictionary = _collect_and_merge_chunk(chunk)
+		var collected: Dictionary = _collect_and_merge_chunk(chunk, dirs)
 		_remesh_result.append({"chunk": chunk, "surfaces": collected["surfaces"],
 			"faces": collected["faces"], "quads": collected["quads"],
 			"collect_us": collected["collect_us"], "merge_us": collected["merge_us"]})
@@ -1795,18 +1817,20 @@ func _build_chunk(chunk: Vector2i) -> Vector2i:
 ## `Resource`, so building it off the main thread is safe). No `ArrayMesh`, no
 ## `MeshInstance3D`, no scene-tree touch — those need the main thread and live in
 ## `_commit_chunk_mesh()`.
-func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
+func _collect_and_merge_chunk(chunk: Vector2i, dirs: Array = []) -> Dictionary:
+	if dirs.is_empty():
+		dirs = _view_dirs
 	var t0: int = Time.get_ticks_usec()
 	var planes: Dictionary = {}  ## Vector2i(dir, plane) → {Vector2i(u, v): material}
 	var faces: int = 0
 	var dents: Array = []  ## [dir, x, y, level, material] — faces emitted as a recess, unmerged
 	var decals: Array = []  ## [dir, x, y, level, layer, on_recess] — damage marks, unmerged
 	if _store != null:
-		faces = _collect_chunk_faces_store(chunk, planes, dents, decals)
+		faces = _collect_chunk_faces_store(chunk, planes, dents, decals, dirs)
 	for key: Vector3i in ({} if _store != null else (_by_chunk.get(chunk, {}) as Dictionary)):
 		var material: int = _occ[key]
 		var glass: bool = _material_glass[material]
-		for dir: int in range(3):
+		for dir: int in dirs:
 			var neighbour: int = _occ.get(key + DIR_STEP[dir], -1)
 			## Hidden by a neighbour, unless that neighbour is glass and this is not.
 			if neighbour != -1 and not (_material_glass[neighbour] and not glass):
@@ -1816,7 +1840,7 @@ func _collect_and_merge_chunk(chunk: Vector2i) -> Dictionary:
 			if dir == Dir.TOP:
 				plane_key = Vector2i(dir, key.y)
 				uv = Vector2i(key.x, key.z)
-			elif dir == Dir.SE:
+			elif dir == Dir.SE or dir == Dir.NW:
 				plane_key = Vector2i(dir, key.x)
 				uv = Vector2i(key.z, key.y)
 			else:
@@ -1875,7 +1899,9 @@ func _commit_chunk_mesh(chunk: Vector2i, surfaces: Dictionary) -> void:
 ## glass and this is not), and materials map through `_store_material`. Returns the faces
 ## added to `planes`, in `_build_chunk()`'s (dir, plane) → {uv: material} shape.
 func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Array = [],
-		decals: Array = []) -> int:
+		decals: Array = [], dirs: Array = []) -> int:
+	if dirs.is_empty():
+		dirs = _view_dirs
 	var cidx: int = (chunk.y - _chunk_y0) * _chunk_cols + (chunk.x - _chunk_x0)
 	if chunk.x < _chunk_x0 or chunk.y < _chunk_y0 or chunk.x - _chunk_x0 >= _chunk_cols \
 			or chunk.y - _chunk_y0 >= _chunk_rows:
@@ -1886,7 +1912,7 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 	var occ: PackedByteArray = store.occ
 	var owner: PackedInt32Array = store.owner
 	var mat: PackedByteArray = store.mat
-	var steps: PackedInt32Array = [store.plane, 1, store.w]
+	var steps: PackedInt32Array = [store.plane, 1, store.w, -1, -store.w]
 	var faces: int = 0
 	for i in range(_chunk_start[cidx], _chunk_start[cidx + 1]):
 		var claim: int = _chunk_claims[i]
@@ -1911,8 +1937,8 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 			var damage: int = (state[claim] >> 1) & 3
 			if damage == Voxel.DamageState.CRACKED or damage == Voxel.DamageState.DENTED:
 				_decal_faces(store.material_ids[mat[claim]], damage, ((state[claim] >> 3) & 1) == 1,
-					(state[claim] >> 4) & 7, store.aux[claim] & 15, decal_dirs, decal_layers)
-		for dir: int in range(3):
+					(state[claim] >> 4) & 7, store.aux[claim] & 15, decal_dirs, decal_layers, dirs)
+		for dir: int in dirs:
 			var n: int = cell + steps[dir]
 			if occ[n]:
 				## Hidden by a neighbour, unless that neighbour is glass and this is not.
@@ -1930,7 +1956,7 @@ func _collect_chunk_faces_store(chunk: Vector2i, planes: Dictionary, dents: Arra
 			if dir == Dir.TOP:
 				plane_key = Vector2i(dir, level)
 				uv = Vector2i(x, y)
-			elif dir == Dir.SE:
+			elif dir == Dir.SE or dir == Dir.NW:
 				plane_key = Vector2i(dir, x)
 				uv = Vector2i(y, level)
 			else:
@@ -2016,13 +2042,13 @@ func _emit_dent(dir: int, x: int, y: int, level: int, material: int, surfaces: D
 	if dir == Dir.TOP:
 		tu = Vector3(1, 0, 0)
 		tv = Vector3(0, 0, 1)
-	elif dir == Dir.SE:
+	elif dir == Dir.SE or dir == Dir.NW:
 		tu = Vector3(0, 0, 1)
 		tv = Vector3(0, 1, 0)
 	else:
 		tu = Vector3(1, 0, 0)
 		tv = Vector3(0, 1, 0)
-	var face_at: Vector3 = origin + normal  ## the voxel's corner on the carved face
+	var face_at: Vector3 = origin + _face_offset(normal)  ## the voxel's corner on the carved face
 	var m: float = DENT_MARGIN
 	var d: float = DENT_DEPTH
 	var quads: int = 0
@@ -2046,6 +2072,11 @@ func _emit_dent(dir: int, x: int, y: int, level: int, material: int, surfaces: D
 	_dent_quad(surface, unit, [c00, c01, c01 + up, c00 + up], tu)
 	_dent_quad(surface, unit, [c10, c11, c11 + up, c10 + up], -tu)
 	return quads + 4
+
+
+## Where a face's plane sits from the voxel's min corner: one voxel along a positive normal, on the corner for a negative one.
+static func _face_offset(normal: Vector3) -> Vector3:
+	return Vector3(maxf(normal.x, 0.0), maxf(normal.y, 0.0), maxf(normal.z, 0.0))
 
 
 ## A quad wound so its front faces `normal`, with the facade UVs of the axis it faces.
@@ -2073,7 +2104,7 @@ func _dent_quad(surface: SurfaceData, unit: float, corners: Array, normal: Vecto
 ## bullet's mark is the ONE lateral face it struck; a DENTED voxel marks its carved face. LEFT is the
 ## SW face and RIGHT the SE face in view N. The variant is the one chosen at damage time.
 func _decal_faces(material_id: String, damage: int, blast: bool, carved: int, variant: int,
-		out_dirs: Array, out_layers: Array) -> void:
+		out_dirs: Array, out_layers: Array, dirs: Array) -> void:
 	var v: int = posmod(variant, VoxelBoard.IMPACT_DECAL_VARIANTS)
 	var base: String = material_id
 	var carved_dir: int = int(DENT_DIR_OF_CARVED_SIDE.get(carved, -1))
@@ -2086,7 +2117,7 @@ func _decal_faces(material_id: String, damage: int, blast: bool, carved: int, va
 		if blast:
 			var layer: int = int(_decal_layer.get("crack|%s|%d" % [base, v], -1))
 			if layer != -1:
-				for dir: int in range(3):
+				for dir: int in dirs:
 					out_dirs.append(dir)
 					out_layers.append(layer)
 		elif carved_dir == Dir.SW or carved_dir == Dir.SE:
@@ -2115,12 +2146,12 @@ func _emit_decal(dir: int, x: int, y: int, level: int, layer: int, on_recess: bo
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var origin: Vector3 = Vector3(float(x), float(level) - float(_ground_level), float(y))
 	var normal: Vector3 = DIR_NORMAL[dir]
-	var tu: Vector3 = Vector3(0, 0, 1) if dir == Dir.SE else Vector3(1, 0, 0)
+	var tu: Vector3 = Vector3(0, 0, 1) if (dir == Dir.SE or dir == Dir.NW) else Vector3(1, 0, 0)
 	var tv: Vector3 = Vector3(0, 0, 1) if dir == Dir.TOP else Vector3(0, 1, 0)
 	var lo: float = DENT_MARGIN if on_recess else 0.0
 	var hi: float = 1.0 - lo
 	var depth: float = (DENT_DEPTH - DECAL_LIFT_VOXELS) if on_recess else -DECAL_LIFT_VOXELS
-	var at: Vector3 = origin + normal - normal * depth
+	var at: Vector3 = origin + _face_offset(normal) - normal * depth
 	var corners: Array[Vector3] = [at + tu * lo + tv * lo, at + tu * hi + tv * lo,
 		at + tu * hi + tv * hi, at + tu * lo + tv * hi]
 	var uvs: Array[Vector2] = [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)]
@@ -2149,15 +2180,15 @@ func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material:
 		var z0: float = float(start.y)
 		var z1: float = float(start.y + h)
 		corners = [Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)]
-	elif dir == Dir.SE:
-		var x: float = float(plane) + 1.0
+	elif dir == Dir.SE or dir == Dir.NW:
+		var x: float = float(plane) + (1.0 if dir == Dir.SE else 0.0)
 		var z0: float = float(start.x)
 		var z1: float = float(start.x + w)
 		var y0: float = float(start.y) - ground
 		var y1: float = float(start.y + h) - ground
 		corners = [Vector3(x, y0, z0), Vector3(x, y0, z1), Vector3(x, y1, z1), Vector3(x, y1, z0)]
 	else:
-		var z: float = float(plane) + 1.0
+		var z: float = float(plane) + (1.0 if dir == Dir.SW else 0.0)
 		var x0: float = float(start.x)
 		var x1: float = float(start.x + w)
 		var y0: float = float(start.y) - ground
@@ -2168,7 +2199,7 @@ func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material:
 		var uv: Vector2
 		if dir == Dir.TOP:
 			uv = Vector2(corner.x, corner.z)
-		elif dir == Dir.SE:
+		elif dir == Dir.SE or dir == Dir.NW:
 			uv = Vector2(corner.z, -corner.y)
 		else:
 			uv = Vector2(corner.x, -corner.y)
@@ -2265,16 +2296,64 @@ func _make_camera() -> void:
 	_camera.name = "Board3DCamera"
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	_camera.keep_aspect = Camera3D.KEEP_HEIGHT
-	## D26's 30° down / 45° around — the angle every character bake is taken at.
-	_camera.rotation_degrees = Vector3(-30.0, 45.0, 0.0)
+	## D26's 30° down / 45° around — the angle every character bake is taken at — plus the view's quarter turns.
+	_camera.rotation_degrees = Vector3(-30.0, 45.0 + float(VIEW_YAW_DEG[_view]), 0.0)
 	_camera.near = 0.05
 	_camera.far = 500.0
 	add_child(_camera)
 	_camera.make_current()
-	## The 2D ground plane as an affine map of GU centres, measured from Room itself.
-	_origin_2d = _cell_to_world.call(Vector2i.ZERO)
-	var ex: Vector2 = Vector2(_cell_to_world.call(Vector2i(1, 0))) - _origin_2d
-	var ez: Vector2 = Vector2(_cell_to_world.call(Vector2i(0, 1))) - _origin_2d
-	_to_gu = Transform2D(ex, ez, Vector2.ZERO).affine_inverse()
+	_measure_ground_map()
+
+
+## The 2D ground plane as an affine map of GU centres, measured from Room itself, composed with the view's turn
+## (R3D-ROT-2): `_to_gu` takes a 2D point to the BASE cell coordinate under it whatever the view, which is what the board's
+## world (always base) wants. The lattice is measured raw (`GroundGrid.lattice_local`), plus the room's own offset.
+func _measure_ground_map() -> void:
+	var offset: Vector2 = Vector2(_cell_to_world.call(Vector2i.ZERO)) - GroundGrid.map_to_local(Vector2i.ZERO)
+	_origin_2d = GroundGrid.lattice_local(Vector2i.ZERO) + offset
+	var ex: Vector2 = GroundGrid.lattice_local(Vector2i(1, 0)) - GroundGrid.lattice_local(Vector2i.ZERO)
+	var ez: Vector2 = GroundGrid.lattice_local(Vector2i(0, 1)) - GroundGrid.lattice_local(Vector2i.ZERO)
+	var lattice_gu: Transform2D = Transform2D(ex, ez, Vector2.ZERO).affine_inverse()
+	var half := Vector2(0.5, 0.5)
+	var at_zero: Vector2 = GroundGrid.base_point(lattice_gu * Vector2.ZERO + half) - half
+	var at_x: Vector2 = GroundGrid.base_point(lattice_gu * Vector2(1.0, 0.0) + half) - half
+	var at_y: Vector2 = GroundGrid.base_point(lattice_gu * Vector2(0.0, 1.0) + half) - half
+	_to_gu = Transform2D(at_x - at_zero, at_y - at_zero, at_zero)
 	## One GU step along grid x crosses cos(45°) camera units horizontally.
 	_px_per_unit = absf(ex.x) / cos(deg_to_rad(45.0))
+
+
+## R3D-ROT-2 — turn the board to `direction` ("N"/"E"/"S"/"W"): the camera yaws a quarter turn per view, the 2D -> ground
+## map follows, the shaders learn which face is which side, and every chunk is re-meshed for the three faces the new view
+## sees (in the background task, from the unchanged base store). `GroundGrid` must already hold the same view.
+func set_view(direction: String) -> void:
+	if not VIEW_DIRS.has(direction) or direction == _view:
+		return
+	_view = direction
+	_view_dirs = VIEW_DIRS[direction]
+	if _camera != null:
+		_camera.rotation_degrees = Vector3(-30.0, 45.0 + float(VIEW_YAW_DEG[_view]), 0.0)
+		_measure_ground_map()
+	var slots: Vector2i = VIEW_FACE_SLOTS[direction]
+	var swap: bool = slots.x == 2
+	for i: int in range(_shader_materials.size()):
+		var m: ShaderMaterial = _shader_materials[i]
+		if _material_glass[i]:
+			## The glass shader keeps its own tones: the x-facing face is `face_se` and the z-facing `face_sw`, so a view
+			## that turns them over swaps the two, and the sheen / frost flow along the turned ground axes.
+			m.set_shader_parameter("face_se", 0.966 if swap else 0.982)
+			m.set_shader_parameter("face_sw", 0.982 if swap else 0.966)
+			var turned: Vector2 = GroundGrid.view_point(Vector2(1.0, 0.0)) - GroundGrid.view_point(Vector2.ZERO)
+			var turned_z: Vector2 = GroundGrid.view_point(Vector2(0.0, 1.0)) - GroundGrid.view_point(Vector2.ZERO)
+			m.set_shader_parameter("px_per_gu_x", Vector2(signf(turned.x - turned.y) * 112.0, signf(turned.x + turned.y) * 64.0))
+			m.set_shader_parameter("px_per_gu_z", Vector2(signf(turned_z.x - turned_z.y) * 112.0, signf(turned_z.x + turned_z.y) * 64.0))
+		else:
+			m.set_shader_parameter("face_x_slot", slots.x)
+			m.set_shader_parameter("face_z_slot", slots.y)
+	if _store != null and _geometry_root != null:
+		var all: Dictionary = {}
+		for chunk: Vector2i in _store_chunks():
+			all[chunk] = true
+		_remesh(all, "view %s" % direction, 0, 0.0)
+	if _room != null:
+		on_occlusion(_room._occlusion_set)

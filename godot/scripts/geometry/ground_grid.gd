@@ -55,8 +55,49 @@ static func base_cell(view: Vector2i) -> Vector2i:
 
 ## Where the tilemap puts cell `cell`: identical to `TileMapLayer.map_to_local(cell)` of its VIEW cell.
 static func map_to_local(cell: Vector2i) -> Vector2:
-	var c: Vector2i = view_cell(cell)
-	return Vector2(float(c.x - c.y) * HALF_W + HALF_W, float(c.x + c.y) * HALF_H + HALF_H)
+	return lattice_local(view_cell(cell))
+
+
+## The raw N lattice: `map_to_local()` of a VIEW cell, no turn. What a view-independent measurement (the 3D board's
+## 2D -> ground affine) asks, because it composes the turn itself, in continuous coordinates.
+static func lattice_local(view: Vector2i) -> Vector2:
+	return Vector2(float(view.x - view.y) * HALF_W + HALF_W, float(view.x + view.y) * HALF_H + HALF_H)
+
+
+## The turn on CONTINUOUS board coordinates (a cell `c` spans `[c, c + 1)`, its centre `c + 0.5`): a base point to the
+## point the view lattice sees it at. The integer turn is `c -> turn(c)`, so a continuous point turns about the cell
+## CENTRES, never about the integer corners (which would land half a cell off along one axis).
+static func view_point(base: Vector2) -> Vector2:
+	if _view_direction == "N":
+		return base
+	var q: Vector2 = base - Vector2(0.5, 0.5)
+	var w: float = float(_view_base_size.x)
+	var h: float = float(_view_base_size.y)
+	match _view_direction:
+		"E":
+			return Vector2(h - 1.0 - q.y, q.x) + Vector2(0.5, 0.5)
+		"S":
+			return Vector2(w - 1.0 - q.x, h - 1.0 - q.y) + Vector2(0.5, 0.5)
+		"W":
+			return Vector2(q.y, w - 1.0 - q.x) + Vector2(0.5, 0.5)
+	return base
+
+
+## The inverse of `view_point()`.
+static func base_point(view: Vector2) -> Vector2:
+	if _view_direction == "N":
+		return view
+	var q: Vector2 = view - Vector2(0.5, 0.5)
+	var w: float = float(_view_base_size.x)
+	var h: float = float(_view_base_size.y)
+	match _view_direction:
+		"E":
+			return Vector2(q.y, h - 1.0 - q.x) + Vector2(0.5, 0.5)
+		"S":
+			return Vector2(w - 1.0 - q.x, h - 1.0 - q.y) + Vector2(0.5, 0.5)
+		"W":
+			return Vector2(w - 1.0 - q.y, q.x) + Vector2(0.5, 0.5)
+	return view
 
 
 ## The cell whose diamond CONTAINS `local` — the cell centre is `map_to_local(cell) + (0, HALF_H)` in the

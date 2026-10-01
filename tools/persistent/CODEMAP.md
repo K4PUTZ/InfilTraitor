@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**266 scripts · 84923 lines total** (under `godot/scripts/`)
+**266 scripts · 85125 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -183,7 +183,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1312 lines
+`class_name GuardEnemy` · extends `Node2D` · 1323 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -495,7 +495,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2280 lines
+extends `Node3D` · 2359 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -506,8 +506,10 @@ extends `Node3D` · 2280 lines
 - `ParticleMathRef` = `preload("res://godot/scripts/geometry/particle_math.gd")`
 - `VERTICAL_SCALE_MATCHED` = `158.0 / 156.8`
 - `FACADE_SPAN_VOXELS` = `Vector2(64.0, 32.0)`
-- `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1)]`
-- `DIR_NORMAL` = `[Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1)]`
+- `DIR_STEP` = `[Vector3i(0, 1, 0), Vector3i(1, 0, 0), Vector3i(0, 0, 1), Vector3i(-1, 0, 0), Vector3i(0, 0, -1)]`
+- `DIR_NORMAL` = `[Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]`
+- `VIEW_FACE_SLOTS` = `{ "N": Vector2i(1, 2), "E": Vector2i(2, 1), "S": Vector2i(1, 2), "W": Vector2i(2, 1), }`
+- `VIEW_YAW_DEG` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": 270.0}`
 - `OPAQUE_SHADER` = `"""`
 
 ---
@@ -737,7 +739,7 @@ extends `Node3D` · 2280 lines
 
 ### `ground_grid.gd`
 
-`class_name GroundGrid` · extends `RefCounted` · 87 lines
+`class_name GroundGrid` · extends `RefCounted` · 128 lines
 
 `godot/scripts/geometry/ground_grid.gd`
 
@@ -5740,7 +5742,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11300 lines
+extends `Node2D` · 11371 lines
 
 `godot/scripts/world/room.gd`
 

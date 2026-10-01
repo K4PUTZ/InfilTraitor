@@ -369,6 +369,17 @@ func setup(
 	queue_redraw()
 
 
+## R3D-ROT — the view turned: the cell is the same BASE cell, the screen position is not. Placed again (a guard never
+## moves mid-rotation: `Room` refuses a rotation during the enemy phase).
+func reposition_for_view() -> void:
+	position = _cell_to_world(cell)
+	queue_redraw()
+	if _vision_tiles_node:
+		_vision_tiles_node.queue_redraw()
+	if _vision_smooth_node:
+		_vision_smooth_node.queue_redraw()
+
+
 func reset_to_route_start() -> void:
 	if patrol_route.is_empty():
 		return

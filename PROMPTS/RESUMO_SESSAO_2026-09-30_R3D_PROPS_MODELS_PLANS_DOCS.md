@@ -90,3 +90,9 @@ One grenade at view GU (8,3), `probe load; detonate 0; frames 30; probe g0` thro
 5. Re-measure the DORM blast per material after the resize (the table in the session record is for the old sizes).
 6. Moto: measure 808-fragment cost and the load-time voxelization (21 ms desktop per model at 5 cm); the side-by-side capture of 1/8 vs 1/32 with a clean frame.
 7. Open from before: PP2/PP3/PP5-PP7, window/small items/rug in the DORM, the PLAYGROUND rotation soot red (task chip), a grade value (`INFILTRAITOR_GRADE`) when the Director picks one, upholstery 0.55 vs 0.8.
+
+## Addendum 3 — the scale reference, as the Director stated it (supersedes the "1 GU = 1.60 m" rows above)
+- **The reference is the AGENT: 1.75-1.80 m real, ~1.6-1.8 GU tall (to be re-measured on the live mesh).** So **1 GU is about 1.0-1.1 m, a voxel ~0.13 m, and a storey (8 levels = 1 GU of height) ~1.1 m.** (The "~1.2 m per GU" I retracted earlier was nearer the truth than D61's "1.60 m GU", which came from the walking-speed row and is not a scene-scale rule.)
+- **A normal room is 2 GU tall (two storeys stacked), a high-ceilinged one 3 GU, a church 4 GU.** Storeys are not playable floors: they only add vertical stacking.
+- Consequences for the next steps: furniture is authored from real size / ~1.05 m per GU (a 2 m bed is ~1.9 GU long, a 1.8 m locker ~1.7 GU = ~14 levels, so the 8-level height cap on voxel props must rise to a room's height, 16 levels or more); the DORM's ceiling and walls should be 2 GU; the throw/walk tuning that cites 1.60 m (gravity comment, D61's 12 m/s note) is re-derived from this.
+- Step 1 of the ordered list becomes: measure the agent in GU, write the canon (QUICK_REFERENCE, ART_SPECIFICATIONS, ACTOR D61 note), and only then re-author furniture.

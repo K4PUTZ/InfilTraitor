@@ -68,6 +68,10 @@ Director asked whether the OPEN THREADS evaluation item (is the store redundant 
   `PROMPTS/RESUMO_SESSAO_2026-10-01_R3D_ACTORS_WORLD.md`). Actors are live meshes, the gameplay frame bake is retired, VFX and
   lifted overlays are world state. **Next: R3D-ROT under the Director's closing ruling — one truth, turned by the camera alone,
   every face meshed up front** (R3D-ROT's "DIRECTOR RULING" and "NEXT SESSION" blocks).
+- **2026-10-01 (later) — R3D-ROT built under that ruling:** every face meshed once (no re-mesh on a turn), every view's
+  occlusion geometry built once, the dead perspective conversions removed, DEV overlays follow the turn. Moto: a turn
+  203-213 ms -> 9.5-14 ms, the 1.47 s re-mesh gone, boot +~0.55 s, memory and idle GPU unchanged (R3D-ROT's "BUILT" block).
+  Open for the Director: the five turned-layout selftest fixtures (kept), the merge.
 - **The closing sequence for "engine basics" (Director-ratified order, replaces the flat "Director's call, none is a blocker" list below): `R3D-PROPS` → `R3D-ACTORS` → `R3D-ROT` + `R3D-WORLD` → `R3D-SURFACES` → `R3D-LOOK` → `R3D-CLAIMS` / `R3D-BUFFER`.** Reasoning: PROPS and ACTORS are gameplay/content blockers (nothing destructible or alive renders right today without them); ROT is the Director's own standing request (rotation returns) and is the prerequisite for testing every later stage in all four views; WORLD rides the same pass (world-space overlays/VFX, R3D-4's rule, before rotation exists to test against); SURFACES only needs closing (prototype already built, 2026-09-27); LOOK is cosmetic polish (already graded 9/10); CLAIMS/BUFFER are memory/scale housekeeping that do not block content and can trail. Once these six close, the engine-basics phase is done and the repo opens to content/subsystem work without consulting the other 23 plans.
 - **OPEN THREADS — every loose end outside the R3D-* tracks below, consolidated here instead of scattered across plans:**
   1. ~~**BUG (reported 2026-09-27, Director):** switching maps left the PREVIOUS map's occlusion active on screen.~~ **FIXED same day (`80afbaac`):** `_recompute_occlusion()`'s own header claimed it ran from "exactly three places: map load (seed), agent step, and view change", but the map-load call was never actually in `load_map()` — the fresh `Board3DLive` node it creates was never handed an occlusion set built from the NEW map's registries. Fixed by calling `_recompute_occlusion()` right after `_start_board3d_live()` in `load_map()`, mirroring the identical call already proven on view rotation. `verify.py smoke` PASSED; no dedicated visual A/B capture of the map-switch case was done (flagged, not claimed).
@@ -3643,6 +3647,43 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
     higher boot / memory cost is ACCEPTED; reducing the total load is later work (the Director names calibrating blast damage
     down: ordinary grenades will be far less destructive). Guards are placeholders: their NOISE is not touched, except that
     its ORIENTATION must be right under the camera turn. This ruling answers items 1 and 2 below.
+  - **BUILT 2026-10-01 (later), under the ruling above** (`33ca2989`, `3c6188eb`; Moto logs `docs/measurements/device_2026-10-01_moto_rot_allfaces_{old,new}_{1,2}.log`, local):
+    - **Every face meshed once.** `Board3DLive` emits all five faces at build (`ALL_DIRS`; `VIEW_DIRS` and the per-view re-mesh are
+      gone); `set_view()` is the camera yaw plus the face-slot / glass-tone uniforms. The opaque and decal shaders are `cull_back`
+      (needed for the LOOK, not only the GPU: with `cull_disabled` the far side of a ghosted wall shows through the cutaway's
+      discarded pixels); dent and decal quads are re-wound like `_emit_quad()` (Godot's front face is clockwise seen from the
+      normal side), or the cull drops them. PLAYGROUND after a blast: 0 px above 8/255 against the old path in N and S.
+    - **Every view's occlusion geometry built once.** `OcclusionSet` keeps the view-independent bounds once and each view's
+      turned geometry beside them; `Room._recompute_occlusion()` prewarms all four views the first time a set of slices is seen.
+      `occlusion_view_selftest` gained the prewarmed-set check (N -> E -> S -> W -> N equals a fresh set; red with a view-blind
+      cache: 4 FAIL).
+    - **The dead conversions are gone** (item 3): `_active_perspective` and its 46 identity conversions, the per-perspective
+      claim-tag cache, `layout_with_perspective()` at load, `reposition_for_perspective()` (now `on_view_changed()`, which keeps
+      the baked frame re-pick it also did), the perspective in `PredictionCache.blast_signature()`, `register_vox_prop()`'s turned
+      path and its `vox_model_selftest` section, the unused helpers / preloads. The OCC-FIX-02 capture loop no longer turns its
+      focus cell (under the camera-only rotation it framed the wrong place in E / S / W). **Kept on purpose:**
+      `PerspectiveMapper.layout_with_perspective()` and the five selftests that build turned fixtures with it (floor_zone_bake,
+      slice_geometry, voxel_persist, roof_entity, roof_bake): they test the builders on any orientation, are not a runtime path,
+      and deleting them would delete coverage — the Director's call. `BlastCalculator.carved_side_*` are called with "N" (a
+      classification, not an identity).
+    - **DEV overlays** (item 4): instead of moving each to `GroundCanvas3D` (they use `draw_string` / `draw_rect` /
+      `draw_set_transform`, which it does not have), each takes, under a turned view, the affine carrying the N ground plane onto
+      the live screen (`Room._sync_dev_overlay_view()`): ground drawing lands under its cell in every view; labels and lifted
+      lamps turn with the plane (approximate, dev-only). Identity in N (measured).
+    - **Item 5 (noise indicator): nothing to orient.** `GuardNoiseIndicator` has no producer (`_emit_guard_noise_indicator` still
+      does not exist), so there is no direction computation to fix; the ruling stands for whenever it is wired.
+    - **Moto g04s, PLAYGROUND portrait, zoom 0.75, the same scenario, two boots per build (old = `f3cc2a4d`):**
+      | | old | new |
+      |---|---|---|
+      | turn to E / S / W (main thread) | 203-213 ms | **9.5-14.1 ms** |
+      | turn back to N | 12.2-15.3 ms | 12.1-12.7 ms |
+      | background re-mesh per turn (old faces shown meanwhile) | 1.46-1.50 s | **none** |
+      | board build at boot (mesh) | 1553-1594 ms (739 quads) | 1914-1982 ms (930 quads) |
+      | occlusion prewarm at boot (once) | — | 191-208 ms |
+      | peak PSS / GL mtrack | 1.106-1.123 GB / 311-328 MB | 1.120-1.152 GB / 301-317 MB |
+      | idle GPU (median of the last 20 probes) | 18.6-18.8 ms | 18.8 ms |
+      The accepted initial cost is ~+0.55 s of boot; memory and idle GPU are inside boot-to-boot noise (`cull_back` keeps the
+      back faces off the GPU).
   - **NEXT SESSION — what is left to close R3D-ROT (planned 2026-10-01, after R3D-ACTORS / R3D-WORLD; props and actors are not
     in it).** Ordered by what blocks a clean rotation first:
     1. **The 210 ms turn (Moto).** `OcclusionSet`'s per-view edge geometry cache rebuilds on a view change. **RULED: build what

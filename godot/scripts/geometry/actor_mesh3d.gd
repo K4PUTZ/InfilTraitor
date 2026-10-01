@@ -1,6 +1,6 @@
 ## ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64).
 ##
-## THE MESH SHOWS, `AgentSprite` DECIDES (step 3, the bridge). The same contract `ActorBillboard3D` kept: the sprite still
+## THE MESH SHOWS, `AgentSprite` DECIDES (step 3, the bridge). The contract the retired `ActorBillboard3D` kept: the sprite still
 ## owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress,
 ## the throw and the head's grid angle — and this node reads them each frame through `AgentSprite.mesh_state()` and turns
 ## them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it.
@@ -53,6 +53,8 @@ var _head: SkeletonModifier3D = null
 var _weapons: Dictionary = {}       ## weapon name -> Node3D under hand_R
 var _grenade: Node3D = null
 var _action: String = ""
+var _skeleton: Skeleton3D = null
+var _head_bone: int = -1
 ## Gameplay decides WHO is revealed (vision, skills and progress are gameplay, not physics); this only draws it: every
 ## part of the mesh an opaque wall covers becomes a striped silhouette (`actor_mesh_silhouette3d.gdshader`, chained as
 ## the `next_pass` of each board-lit surface). Off, nothing extra is drawn or allocated.
@@ -108,6 +110,8 @@ func _load_rig(board: Node3D, path: String) -> bool:
 	_player.speed_scale = 0.0  ## seeked, never played
 	var skeletons := _body.find_children("*", "Skeleton3D", true, false)
 	if not skeletons.is_empty():
+		_skeleton = skeletons[0] as Skeleton3D
+		_head_bone = _skeleton.find_bone("head")
 		_head = HeadTurnRef.new()
 		(skeletons[0] as Skeleton3D).add_child(_head)
 	for attachment in _body.find_children("*", "BoneAttachment3D", true, false):
@@ -166,6 +170,20 @@ func _sync() -> void:
 			var rad: float = deg_to_rad(head)
 			var want: float = yaw_for_direction(Vector2(sin(rad), -cos(rad)))
 			_head.set("yaw", clampf(wrapf(want - body_yaw, -PI, PI), -deg_to_rad(HEAD_YAW_LIMIT_DEG), deg_to_rad(HEAD_YAW_LIMIT_DEG)))
+
+
+## Where the head is above the feet in 2D canvas pixels on the N lattice (what `AgentSprite.head_offset_px()` answers,
+## and the agent's muzzle and throw origin are built on): the rig's `head` bone in its current pose, carried onto the
+## lattice through the BASE view's basis, so it does not change when the camera turns. Standing, it reads about -165 px
+## where the bake's head socket read -168.6 (the bone's head is the base of the skull, the socket a little above it).
+func head_offset_px() -> Vector2:
+	if _skeleton == null or _head_bone < 0:
+		return Vector2.ZERO
+	var head: Vector3 = (_skeleton.global_transform * _skeleton.get_bone_global_pose(_head_bone)).origin
+	var d: Vector3 = head - global_position
+	var lattice: Basis = _board.call("lattice_basis")
+	var ppu: float = _board.call("px_per_unit")
+	return Vector2(d.dot(lattice.x), -d.dot(lattice.y)) * ppu
 
 
 ## The yaw that turns the rig's front (its local -Z: the toes and the knee pole) toward a BASE grid direction. Grid x is
@@ -256,7 +274,7 @@ func _apply_reveal() -> void:
 
 func _exit_tree() -> void:
 	## Only if this mesh still owns the sprite: on a reload the NEW board's figure has already hidden it.
-	if is_instance_valid(_source) and _source.has_meta("billboard3d") and _source.get_meta("billboard3d") == self:
+	if is_instance_valid(_source) and _source.has_meta("figure3d") and _source.get_meta("figure3d") == self:
 		_source.visible = true
 		var actor: Node = _source.get_parent()
 		if actor != null and "draw_ground_shadow" in actor:

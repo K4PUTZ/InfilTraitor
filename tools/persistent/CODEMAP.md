@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**269 scripts · 85691 lines total** (under `godot/scripts/`)
+**268 scripts · 84221 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_billboard3d.gd, actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -98,67 +98,43 @@
 
 ### `agent_sprite.gd`
 
-`class_name AgentSprite` · extends `Sprite2D` · 1487 lines
+`class_name AgentSprite` · extends `Sprite2D` · 231 lines
 
 `godot/scripts/agents/agent_sprite.gd`
 
-> CHARACTER_MASTER_PLAN Part 2 §10 — the baked figure ON the playable agent. This is the node that closes Part 2. `AgentProbeProp` put the figure in the room to be LOOKED at; this one puts it on the thing the player moves, which is the difference §10 draws between "the pipeline works" and done. It is a child of `DebugAgent` rather than a replacement for it, because the agent is a Node2D that owns grid state, tweening and signals, and none of that wants to become a Sprite2D. The agent keeps position; this keeps appearance. --- FOUR THINGS IT DOES THAT THE PROBE DOES NOT --- 1. THREE POSTURES, EACH ITS OWN BAKE WITH ITS OWN ANCHOR. The placeholder it replaces drew three shapes; a single standing sprite would have been a regression, not a swap. The anchors are NOT shared: the bake recentres each model on its own AABB, so the pixel its feet land on differs per posture (standing 227.99, crouch 184.00, prone 156.74 — measured, and read from each posture's own anchor.json rather than transcribed). 2. FACING, SNAPPED AT THE GU BOUNDARY (D47). Ordinary movement changes facing with no transition frames — the Director judged that blind on 2026-08-15, and it is the row that keeps the art budget at 744 body sets instead of 4608. So the facing is set once per step, from the step's own direction, and nothing interpolates. 3. FACING IS STORED IN BASE SPACE, NOT VIEW SPACE. A perspective flip rotates the room; an agent facing a wall must still face that wall afterwards. The cell round-trip through `_cell_to_base` already exists for exactly this reason and the facing has to make the same trip, or the figure would silently turn 90 degrees every time the Director rotated the view. 4. POSTURE FRAME SETS LOAD ON FIRST USE. D42 names RAM, not CPU, as this character's binding constraint. A session where the agent never goes prone should not pay for the prone bake. Everything else — the relight shader, the perspective-aware light mapping (D22), the ground-contact anchoring, the raw-PNG loader — is `AgentProbeProp`'s behaviour, and the duplication between the two files is real and known. The probe stays the single-pose bracket rig it was built as; this is the shipping path.
+> AgentSprite — WHAT an actor's figure is doing: its facing, posture, grip, weapon, walk, throw and head. It draws nothing; `ActorMesh3D` draws it (RENDER3D R3D-ACTORS, `ACTOR` D64). R3D-ACTORS step 5 (2026-10-01) RETIRED THE GAMEPLAY FRAME BAKE from this node: the colour/normal frame sets, the head and hat layers, the per-posture anchors and D17's normal-map relight are gone, and with them every texture this file loaded (D42's RAM was the atlases'). What stayed is the half both renderers shared, unchanged in meaning: - FACING, SNAPPED AT THE GU BOUNDARY (D47), one of FOUR (D44, kept for gameplay at step 2: the mesh could turn to any yaw, but whether movement keeps four facings is a design question, and keeping it changes nothing). Stored as the BASE grid step it came from, so it survives a camera turn by construction. - THE POSTURE, THE GRIP, THE WEAPON. Each is now a name the live rig has an action for (`tools/asset_generation/r3d_live_rig_export.py`); a name it does not have is refused loudly and the previous one kept. - THE WALK, read straight off the step's progress (one cycle per GU, D61): no accumulator to drift. Standing only, as before: a crouched or prone figure slides. - THE THROW: raise (held for the aim), release, and the cancel as the raise played backwards (the Director's own reuse rule). `throw_released` fires when the release crosses THROW_RELEASE_FRACTION — the fraction of the key list p3_throw_export.py releases at — and at the latest when the release ends, because `execute_grenade_throw()` awaits it. Standing only, as the bake was. - THE HEAD'S GRID ANGLE (a guard looking where its cone points), clamped to HEAD_YAW_LIMIT_DEG off the body by the mesh. The class keeps its name and its `Sprite2D` base so every caller (agent, guards, controllers) is untouched; the node is hidden by the mesh that draws it and is only ever a holder of state.
+
+**Signals**
+- `signal throw_released`
 
 **Constants / tuning**
-- `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
-- `DEV_ONLY_MILESTONE` = `false`
-- `FRAMES_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
-- `FRAMES_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
-- `WALK_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk/"`
-- `WALK_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_walk_dev/"`
-- `THROW_ROOT` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_throw/"`
-- `THROW_ROOT_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_throw_dev/"`
 - `THROW_RAISE` = `"raise"`
 - `THROW_RELEASE` = `"release"`
-- `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
-- `DIRECTIONS` = `["N", "E", "S", "W"]`
-- `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
-- `POSTURE_DIRS` = `{"standing": "standing", "crouch": "crouch", "prone": "prone"}`
-- `LAYER_ROOTS` = `{ "head": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_head", "hat": "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_hat", }`
-- `LAYERS_BY_FAMILY` = `{ "": ["head", "hat"], "_dev": ["head", "hat"], "_enemy": ["head"], "_enemy_white": ["head"], }`
-- `LAYERS_DEFAULT` = `["head"]`
-- `HEAD_YAW_LIMIT_DEG` = `60.0`
-- `SCREEN_COMPASS_BY_FRAME` = `{"N": "NE", "E": "NW", "S": "SW", "W": "SE"}`
-- `COMPASS_SCREEN` = `{ "NE": Vector2(0.894, -0.447), "SE": Vector2(0.894, 0.447), "SW": Vector2(-0.894, 0.447), "NW": Vector2(-0.894, -0.447), }`
-- `STEPS` = `[Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]`
-- `SPRITE_SCALE` = `1.0`
-- `SPECULAR_STRENGTH` = `0.0`
-- `AMBIENT` = `0.42`
-- `SATURATION` = `1.25`
-- `CONTRAST` = `1.12`
-- `LIGHT_INTENSITY_SCALE` = `0.60`
-- `LIGHT_INTENSITY_MAX` = `1.30`
-- `LIGHT_RESPONSE_OVERRIDE` = `{ ## 0.75 is the Director's pick from the WHITE-AMBIENT-01 bracket (2026-08-17), ## and the pick is the THIRD step, not the brightest: *"vamos ficar com o ## terceiro, pra não correr o risco de ficar estourado em algumas telas."* ## Measured on PLAYGROUND — floor around the guard spans luma 85 (shadow side) ## to 146 (lit side); 0.75 puts the suit at 174, clear of the whole range by ## +28, while 0.90 reached 212 and visibly flattened the folds. Headroom ## against an over-bright display was the deciding factor, not contrast. "_test_white": {"scale": 1.00, "max": 2.20, "ambient": 0.75}, ## UPDATE 2026-08-18: enemy_white uses the same white blazer, so inherits the ## same light response values. Without this, ambient 0.42 makes the 0.92 albedo ## render as 0.386 in unlit areas — DARKER than PLAYGROUND's floor (~0.55-0.65), ## the "branco virou cinza igual ao chão" issue. "_enemy_white": {"scale": 1.00, "max": 2.20, "ambient": 0.75}, }`
-- `ELEVATION_DEG` = `30.0`
-- `AZIMUTH_DEG` = `45.0`
 - `THROW_RELEASE_FRACTION` = `0.5`
+- `HEAD_YAW_LIMIT_DEG` = `60.0`
+- `POSTURES` = `["standing", "crouch", "prone"]`
+- `GRIPS` = `["", "_aimed"]`
+- `WEAPONS` = `["", "_pistol"]`
+- `STEPS` = `[Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]`
+- `START_STEP` = `Vector2i(0, -1)`
 
 **Public vars**
 - `var frame_family: String = ""`
+- `var grip: String = ""`
 - `var weapon: String = ""`
+- `var room: Node = null`
 
 **Public API**
-- `func set_weapon_bake(name: String) -> bool:`
-- `func preload_grip(name: String) -> bool:`
-- `func set_posture_name(name: String) -> void:`
-- `func face_direction(dir: Vector2i) -> void:`
+- `func setup(p_room: Node) -> bool:`
 - `func face_step(step: Vector2i) -> void:`
-- `func set_dev_vision(enabled: bool) -> void:`
-- `func update_for_cell() -> void:`
-- `func play_throw(sequence: String, seconds: float, hold: bool = false, reversed_playback: bool = false) -> bool:`
-- `func stop_throw() -> void:`
-- `func set_walk_phase_quantise(n: int) -> void:`
+- `func face_direction(dir: Vector2i) -> void:`
+- `func set_posture_name(name: String) -> void:`
+- `func set_grip(name: String) -> void:`
+- `func preload_grip(name: String) -> bool:`
+- `func set_weapon_bake(name: String) -> bool:`
+- `func set_walk_phase_quantise(_n: int) -> void:`
 - `func set_walk_phase(progress01: float) -> void:`
 - `func stop_walking() -> void:`
-- `func head_offset_px() -> Vector2:`
-- `func set_head_yaw_grid_deg(grid_deg: float) -> void:`
-- `func clear_head_yaw() -> void:`
-- `func mesh_state() -> Dictionary:`
 
 ---
 
@@ -472,29 +448,6 @@ extends `ConfirmationDialog` · 64 lines
 
 ## geometry/
 
-### `actor_billboard3d.gd`
-
-`class_name ActorBillboard3D` · extends `Node3D` · 223 lines
-
-`godot/scripts/geometry/actor_billboard3d.gd`
-
-> ActorBillboard3D — one AgentSprite, drawn as depth-tested billboards in the 3D board. RENDER3D R3D-4b. R3D-4a (2026-09-18) measured the billboard against a depth-composited 2D sprite and the Director ratified the billboard: on the Moto g04s it costs +0.4 ms against +9.9 ms, and it is the only one of the two that lets glass tint an actor standing behind it. A MIRROR, NOT A REWRITE. `AgentSprite` keeps deciding WHAT is shown — facing, posture, walk and throw frame, head layer, grip, and the light uniforms the room's lights drive. This node only changes WHERE THE PIXELS LAND: each frame it reads the body `Sprite2D` and every layer child, and places one quad per visible one. Nothing in the 2D actor's logic knows this exists, which is what keeps D44's four facings and D47's GU-boundary snap intact: they are decisions of the source, and the quad is placed from the source's own resolved offset and anchor. PLACEMENT. The source's `global_position` is the actor's FEET (the sprite's offset is `-anchor`). That 2D point becomes a 3D ground point through the board's own 2D→GU map, and every quad is offset from it in the CAMERA's plane by its pixel distance from the feet, so the figure keeps the bake's exact pixel geometry at every zoom (the camera's ortho size already carries it). DEPTH — A VERTICAL PLANE, NOT A CAMERA-PARALLEL ONE. R3D-4a measured a quad parallel to the camera, whose depth is the feet's at every height. It fails in two ways the first live capture showed: a glass pane BEHIND the actor tints his hat (at head height the pane is nearer the camera than his feet plane), and the tilted floor cuts his shoes off (below the anchor row the floor is nearer than the quad). So each quad stands in the world — vertical, facing the camera's azimuth — and is stretched by 1/cos(30°) so its pixels stay 1:1 on screen; depth is then correct at every height, the head nearer than the feet by height × sin(30°), as a body's is. FEET LIFT. A vertical plane still puts the sole a few pixels BELOW the anchor row under the floor (the shoes reach forward). The quad is slid toward the camera along the view axis, which moves it in depth and not at all on screen; the slope of the view raises it by lift × sin(30°). Default 0.15 units, `ACTORS3D_BIAS` to tune. Too much and legs show through a wall the actor stands behind (R3D-4a: 0.5 did). Layers (head, hat, weapon) sit a hair in front of the body in index order, because Godot draws a child after its parent and a coplanar alpha-scissor quad would z-fight instead. The 2D source is hidden (`visible = false` on the AgentSprite ONLY) and keeps processing: it still owns the frame state. Its parent's visibility is honoured here, so a guard the fog hides in 2D is hidden in 3D too.
-
-**Constants / tuning**
-- `SHADER_PATH` = `"res://godot/shaders/actor_billboard3d.gdshader"`
-- `SILHOUETTE_SHADER_PATH` = `"res://godot/shaders/actor_silhouette3d.gdshader"`
-- `SILHOUETTE_OUTLINE_SHADER_PATH` = `"res://godot/shaders/actor_silhouette3d_outline.gdshader"`
-- `SILHOUETTE_FILL_PRIORITY` = `20`
-- `SILHOUETTE_OUTLINE_PRIORITY` = `30`
-- `LAYER_EPSILON` = `0.002`
-- `MIRRORED_PARAMS` = `[ "light_dir", "light_intensity", "ambient", "specular_strength", "saturation", "contrast", ]`
-- `COS_ELEVATION` = `0.8660254`
-
-**Public vars**
-- `var reveal_behind_walls: bool = false:`
-
----
-
 ### `actor_head_turn3d.gd`
 
 `class_name ActorHeadTurn3D` · extends `SkeletonModifier3D` · 34 lines
@@ -513,11 +466,11 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 267 lines
+`class_name ActorMesh3D` · extends `Node3D` · 285 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
-> ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64). THE MESH SHOWS, `AgentSprite` DECIDES (step 3, the bridge). The same contract `ActorBillboard3D` kept: the sprite still owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress, the throw and the head's grid angle — and this node reads them each frame through `AgentSprite.mesh_state()` and turns them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it. THE RIG is `tools/asset_generation/r3d_live_rig_export.py`'s: one skinned mesh, every motion a keyed action (`<posture>_<weapon>_<grip>`, `walk_<weapon>`, `throw_raise_<weapon>`, `throw_release_<weapon>`), the weapons on `hand_R` and the grenade on `hand_L` as `BoneAttachment3D`s. An action is never PLAYED: it is SEEKED to the fraction the sprite is at, so the walk stays locked to the step's progress (one cycle per GU, D61) and the throw to the sprite's own clock, which is what fires `throw_released`. LIT the board's way (`actor_mesh3d.gdshader`: no Godot light, one cell-plane fetch; Moto: 9 walking rigs +1.0 ms), its materials kept in sync by `Board3DLive.register_prop_light_material()` exactly as a prop's are. PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free.
+> ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64). THE MESH SHOWS, `AgentSprite` DECIDES (step 3, the bridge). The contract the retired `ActorBillboard3D` kept: the sprite still owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress, the throw and the head's grid angle — and this node reads them each frame through `AgentSprite.mesh_state()` and turns them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it. THE RIG is `tools/asset_generation/r3d_live_rig_export.py`'s: one skinned mesh, every motion a keyed action (`<posture>_<weapon>_<grip>`, `walk_<weapon>`, `throw_raise_<weapon>`, `throw_release_<weapon>`), the weapons on `hand_R` and the grenade on `hand_L` as `BoneAttachment3D`s. An action is never PLAYED: it is SEEKED to the fraction the sprite is at, so the walk stays locked to the step's progress (one cycle per GU, D61) and the throw to the sprite's own clock, which is what fires `throw_released`. LIT the board's way (`actor_mesh3d.gdshader`: no Godot light, one cell-plane fetch; Moto: 9 walking rigs +1.0 ms), its materials kept in sync by `Board3DLive.register_prop_light_material()` exactly as a prop's are. PLACED in BASE world coordinates: the feet are the sprite's 2D position through `Board3DLive.ground_point()` (the N lattice in every view), the yaw is the base grid step's, so a camera yaw turns the figure with the board for free.
 
 **Constants / tuning**
 - `SHADER_PATH` = `"res://godot/shaders/actor_mesh3d.gdshader"`
@@ -539,6 +492,7 @@ extends `ConfirmationDialog` · 64 lines
 
 **Public API**
 - `func setup_actor(board: Node3D, source: AgentSprite) -> bool:`
+- `func head_offset_px() -> Vector2:`
 
 ---
 
@@ -877,7 +831,7 @@ extends `Node3D` · 2392 lines
 
 `godot/scripts/geometry/prop_billboard3d.gd`
 
-> PropBillboard3D — a 2D prop's sprites (a body and, optionally, its ground shadow), drawn in the 3D board. The source is a `Sprite2D` (the grenade, the probe) or a `Node2D` whose children are the sprites (the floating collectible). RENDER3D R3D-4d. The sibling of `ActorBillboard3D` for objects that are not a standing figure: the thrown grenade, which tumbles in the screen plane and flies above its ground point, and the showcase props. A MIRROR again — the prop's own script keeps deciding what is shown and where. THE TWO KINDS OF QUAD, chosen per sprite by the shader its own material uses: - a BODY is a quad PARALLEL TO THE CAMERA. An actor is tall and needs true depth at every height (ActorBillboard3D); a grenade is small, and what it does is rotate in the screen plane, which a camera-parallel quad does exactly. Its centre sits above its ground point by the flight height, so it passes walls by real depth. - a SHADOW is a quad ON THE GROUND. It is a sprite using `object_ground_shadow.gdshader`, or one the prop marks with the `ground_shadow` meta (the collectible's baked shadows: a black `modulate`, no material — its alpha is the strength). The ground plane maps to the screen affinely, so the shadow's three screen corners become three ground points and the quad is exact, squash and all; walls cover it, and it never needs a lift over the floor. HIDING THE 2D. Not `visible = false`: the game uses a prop's `visible` as logic (the throw code hides a detonated grenade with it), so it must keep meaning that. Each sprite's material is swapped for `hidden_2d.gdshader` (its original is kept, and read here for the light uniforms) and put back when this leaves the tree — but only if no newer billboard has taken the sprite over.
+> PropBillboard3D — a 2D prop's sprites (a body and, optionally, its ground shadow), drawn in the 3D board. The source is a `Sprite2D` (the grenade, the probe) or a `Node2D` whose children are the sprites (the floating collectible). RENDER3D R3D-4d. The sibling of the (retired, R3D-ACTORS step 5) `ActorBillboard3D` for objects that are not a standing figure: the thrown grenade, which tumbles in the screen plane and flies above its ground point, and the showcase props. A MIRROR again — the prop's own script keeps deciding what is shown and where. THE TWO KINDS OF QUAD, chosen per sprite by the shader its own material uses: - a BODY is a quad PARALLEL TO THE CAMERA. An actor is tall and needs true depth at every height (ActorBillboard3D); a grenade is small, and what it does is rotate in the screen plane, which a camera-parallel quad does exactly. Its centre sits above its ground point by the flight height, so it passes walls by real depth. - a SHADOW is a quad ON THE GROUND. It is a sprite using `object_ground_shadow.gdshader`, or one the prop marks with the `ground_shadow` meta (the collectible's baked shadows: a black `modulate`, no material — its alpha is the strength). The ground plane maps to the screen affinely, so the shadow's three screen corners become three ground points and the quad is exact, squash and all; walls cover it, and it never needs a lift over the floor. HIDING THE 2D. Not `visible = false`: the game uses a prop's `visible` as logic (the throw code hides a detonated grenade with it), so it must keep meaning that. Each sprite's material is swapped for `hidden_2d.gdshader` (its original is kept, and read here for the light uniforms) and put back when this leaves the tree — but only if no newer billboard has taken the sprite over.
 
 **Constants / tuning**
 - `BODY_SHADER` = `"res://godot/shaders/actor_billboard3d.gdshader"`
@@ -5833,7 +5787,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11237 lines
+extends `Node2D` · 11228 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5872,7 +5826,6 @@ extends `Node2D` · 11237 lines
 - `ViewContextClass` = `preload("res://godot/scripts/systems/view_context.gd")`
 - `ScenarioRunnerClass` = `preload("res://godot/scripts/systems/scenario_runner.gd")`
 - `Board3DLiveClass` = `preload("res://godot/scripts/geometry/board3d_live.gd")`
-- `ActorBillboard3DClass` = `preload("res://godot/scripts/geometry/actor_billboard3d.gd")`
 - `ActorMesh3DClass` = `preload("res://godot/scripts/geometry/actor_mesh3d.gd")`
 - `VisionCone3DClass` = `preload("res://godot/scripts/geometry/vision_cone3d.gd")`
 - `PropBillboard3DClass` = `preload("res://godot/scripts/geometry/prop_billboard3d.gd")`

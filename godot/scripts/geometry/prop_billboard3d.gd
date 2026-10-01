@@ -2,7 +2,7 @@
 ## board. The source is a `Sprite2D` (the grenade, the probe) or a `Node2D` whose children are the
 ## sprites (the floating collectible).
 ##
-## RENDER3D R3D-4d. The sibling of `ActorBillboard3D` for objects that are not a standing figure: the
+## RENDER3D R3D-4d. The sibling of the (retired, R3D-ACTORS step 5) `ActorBillboard3D` for objects that are not a standing figure: the
 ## thrown grenade, which tumbles in the screen plane and flies above its ground point, and the
 ## showcase props. A MIRROR again — the prop's own script keeps deciding what is shown and where.
 ##

@@ -47,7 +47,6 @@ const ViewContextClass = preload("res://godot/scripts/systems/view_context.gd")
 const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner.gd")
 ## RENDER3D R3D-3 step 1 — moved out of spikes/, the 3D board is production code now.
 const Board3DLiveClass = preload("res://godot/scripts/geometry/board3d_live.gd")
-const ActorBillboard3DClass = preload("res://godot/scripts/geometry/actor_billboard3d.gd")
 const ActorMesh3DClass = preload("res://godot/scripts/geometry/actor_mesh3d.gd")
 const VisionCone3DClass = preload("res://godot/scripts/geometry/vision_cone3d.gd")
 const PropBillboard3DClass = preload("res://godot/scripts/geometry/prop_billboard3d.gd")
@@ -3092,7 +3091,6 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 	var live: Node3D = board if board != null else board3d()
 	if live == null:
 		return
-	var lift: float = float(_dev_flag("ACTORS3D_BIAS", "0.15"))
 	var actors: Array = []
 	if agent != null:
 		actors.append(agent)
@@ -3104,23 +3102,16 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 		if source == null:
 			push_warning("[Room] the 3D board is up but '%s' has no baked sprite — it stays 2D" % actor.name)
 			continue
-		var existing: Variant = source.get_meta("billboard3d") if source.has_meta("billboard3d") else null
+		var existing: Variant = source.get_meta("figure3d") if source.has_meta("figure3d") else null
 		if is_instance_valid(existing) and (existing as Node).get_parent() == live:
 			continue  ## already on this board (its cone, if any, came with it)
-		## R3D-ACTORS step 3: the live mesh draws the actor. `ACTORS_BILLBOARD=1` keeps the baked billboard for the
-		## step's A/B against it on the Moto; both go through the same meta, so the reveal and a reload treat them alike.
-		var figure: Node3D
-		if _dev_flag_on("ACTORS_BILLBOARD"):
-			figure = ActorBillboard3DClass.new()
-			live.add_child(figure)
-			figure.setup(live, source, lift)
-		else:
-			figure = ActorMesh3DClass.new()
-			live.add_child(figure)
-			if not figure.setup_actor(live, source):
-				figure.queue_free()
-				continue
-		source.set_meta("billboard3d", figure)
+		## R3D-ACTORS: the live mesh draws the actor (the baked billboard retired at step 5).
+		var figure: Node3D = ActorMesh3DClass.new()
+		live.add_child(figure)
+		if not figure.setup_actor(live, source):
+			figure.queue_free()
+			continue
+		source.set_meta("figure3d", figure)
 		if actor.has_signal("vision_smooth_ready"):
 			var cone: MeshInstance3D = VisionCone3DClass.new()
 			live.add_child(cone)
@@ -5806,13 +5797,13 @@ func _guard_revealed_by_gameplay(guard: Node) -> bool:
 
 
 ## R3D-7 — a guard gameplay reveals is drawn through the walls that cover it (a striped silhouette, see
-## `ActorBillboard3D.reveal_behind_walls`). OFF until gameplay asks for it: `GUARD_REVEAL=1`.
+## `ActorMesh3D.reveal_behind_walls`). OFF until gameplay asks for it: `GUARD_REVEAL=1`.
 func _apply_guard_reveal() -> void:
 	var on: bool = _dev_flag_on("GUARD_REVEAL")
 	for guard in _guards:
-		if not is_instance_valid(guard) or guard.sprite == null or not guard.sprite.has_meta("billboard3d"):
+		if not is_instance_valid(guard) or guard.sprite == null or not guard.sprite.has_meta("figure3d"):
 			continue
-		var billboard: Variant = guard.sprite.get_meta("billboard3d")
+		var billboard: Variant = guard.sprite.get_meta("figure3d")
 		if is_instance_valid(billboard):
 			(billboard as Node).set("reveal_behind_walls", on and _guard_revealed_by_gameplay(guard))
 

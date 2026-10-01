@@ -6045,13 +6045,9 @@ func _assert_geometry_registered() -> void:
 func _recompute_occlusion() -> void:
 	if _occlusion_set == null:
 		return
-	## OPEN (R3D-ROT): the cutaway is computed in the N view's screen space (depth x + y, silhouette overlap), so from any
-	## other side it is off until it is derived from the camera itself.
-	if _view_direction != "N":
-		var turned_board: Node = board3d()
-		if turned_board != null:
-			turned_board.on_occlusion(OcclusionSetClass.new())
-		return
+	_occlusion_set.view = _view_direction
+	_occlusion_set.base_voxel_size = _base_voxel_size()
+	_occlusion_set.base_gu_size = _base_layout.get("size", _room_size)
 	## OCC-26 capture instrument: INFILTRAITOR_OCC_DISABLE=1 forces an empty
 	## occlusion set, so a capture pair (same agent cell, occlusion on/off)
 	## isolates exactly the erased pixels — the erased-silhouette boundary is the

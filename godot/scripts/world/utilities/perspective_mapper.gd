@@ -38,6 +38,22 @@ static func cell_to_base(view_cell: Vector2i, direction: String, base_size: Vect
 			return view_cell
 
 
+## `cell_from_base()` without the INVALID_CELL sentinel: pure arithmetic, so a REAL cell at (-1, -1) (the map's buffer puts
+## voxel columns at negative coordinates) turns like any other. For code that turns coordinates it did not get from `Room`.
+static func turn_from_base(base_cell: Vector2i, direction: String, base_size: Vector2i) -> Vector2i:
+	var w := base_size.x
+	var h := base_size.y
+	match direction:
+		"E":
+			return Vector2i(h - 1 - base_cell.y, base_cell.x)
+		"S":
+			return Vector2i(w - 1 - base_cell.x, h - 1 - base_cell.y)
+		"W":
+			return Vector2i(base_cell.y, w - 1 - base_cell.x)
+		_:
+			return base_cell
+
+
 ## Remap tile suffix from base (N) to target direction.
 ## Parses tile_name as "base_SUFFIX" and replaces SUFFIX per SUFFIX_MAP[direction].
 ## Returns unchanged name if not recognized.

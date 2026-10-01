@@ -3565,7 +3565,7 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
       (camera yaw, the three faces of the view re-meshed in the background, face slots, glass tones): 0.6 ms on the main thread, no store rebuild, no replay.
       The 2D lattice is the N lattice for every view, so billboards, lifted ground overlays and VFX anchors land on the same world point from every side;
       camera pan follows the screen under yaw (`Board3DLive.lattice_delta`). `GroundGrid` / `PerspectiveMapper` are back to their pre-ROT state. Captured GLASS in N/E/S/W.
-      **Open:** the cutaway is OFF outside N (`_recompute_occlusion`), dents / decals on the -x / -z faces (no CarvedSide), the dead conversions (`_active_perspective`
+      **Cutaway BUILT (2026-10-01):** `OcclusionSet` stays keyed in base coordinates and takes `view` + base sizes; only the screen arithmetic (trigger geometry, agent, roof stripes, the wireframe near side) reads turned coordinates. Gate `occlusion_view_selftest`: view X over the world == view N over the turned world, E/S/W, red-before-green proved (view ignored -> 5 FAIL). **Open:** dents / decals on the -x / -z faces (no CarvedSide), the dead conversions (`_active_perspective`
       is "N" forever) and the `_base_*` replay to delete, sprite frames still read the layout orientation, guard cones, line widths of lifted overlays under yaw,
       the Moto cost. `glass_crack_selftest` now checks the SAVE-RESTORE replay order, and `scenario_save_restore` claims the openings first (it did not).
     - **ROT-2 / ROT-3 FIRST CUT BUILT (2026-09-30), behind `INFILTRAITOR_CAMERA_ROT=1` (default OFF until parity):** `Board3DLive.set_view()` (camera yaw, 5-face

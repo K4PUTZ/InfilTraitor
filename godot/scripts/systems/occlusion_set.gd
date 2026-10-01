@@ -86,6 +86,13 @@ const SMALL_ROOF_MAX_STRIPES: int = 5
 ## A revealed 15x15 roof is 121 entries instead of 7 744, and everything that used to walk it (the change test, the
 ## exposure, the texture) walks GUs. `get_occluded_cells()` still returns the merged per-column dictionary, built on demand
 ## for the 2D board and the tests.
+## R3D-ROT — THE VIEW. The set is keyed in BASE coordinates (columns, GUs, edges), always. A view only changes the screen
+## arithmetic the rules are written in (depth x + y, the silhouette overlap, the roof stripes) and which wireframe side is the
+## near one: those read the coordinates turned into the view's lattice (`turn_voxel()` / `turn_gu()`), nothing else does.
+## `Room` sets all three before every `recompute()`; "N" is the identity.
+var view: String = "N"
+var base_voxel_size: Vector2i = Vector2i.ZERO
+var base_gu_size: Vector2i = Vector2i.ZERO
 var _column_entries: Dictionary = {}
 var _roof_gus: Dictionary = {}
 var _expanded: Dictionary = {}
@@ -116,6 +123,29 @@ var _recompute_count: int = 0
 ## BASE_VISIBLE_LEVELS) — a column key alone cannot tell
 ## the cutaway (`Board3DLive.on_occlusion()`) which of ITS levels are the always-visible
 ## base versus the ghosted rest, so the level floor has to travel with the cell.
+## A base voxel column in the view's lattice (the integer quarter turn of the layout, sentinel-free).
+func turn_voxel(p: Vector2i) -> Vector2i:
+	return PerspectiveMapper.turn_from_base(p, view, base_voxel_size)
+
+
+## A base GU in the view's lattice.
+func turn_gu(g: Vector2i) -> Vector2i:
+	return PerspectiveMapper.turn_from_base(g, view, base_gu_size)
+
+
+## The base-grid direction of the screen's near side along each axis: what x + y increases toward in the view.
+func near_dirs() -> Vector2i:
+	match view:
+		"E":
+			return Vector2i(1, -1)
+		"S":
+			return Vector2i(-1, -1)
+		"W":
+			return Vector2i(-1, 1)
+		_:
+			return Vector2i(1, 1)
+
+
 func get_occluded_cells() -> Dictionary:
 	return _expand().duplicate()
 
@@ -229,7 +259,7 @@ func recompute(agent_cells, slices: Array, room_size: Vector2i, junction_columns
 	## R3D-7 (Moto): the whole result is a pure function of these inputs (geometry is static between rebuilds), so
 	## the last few are kept — the hover cell and the agent come back to cells they have already been on.
 	var memo_key: Array = [origins.duplicate(), _group_key, _objects_key(ceiling_slabs), _objects_key(junction_columns),
-		room_size, silhouette_half_width_px, silhouette_height_px]
+		room_size, silhouette_half_width_px, silhouette_height_px, view]
 	if memo_enabled and _memo.has(memo_key):
 		var hit: Array = _memo[memo_key]
 		if hit[0] != _column_entries or hit[1] != _roof_gus:
@@ -550,7 +580,8 @@ func _build_wireframe_geometry(occluded: Dictionary, exposure: Dictionary, with_
 			else:
 				p1 = Vector2i(cx, cy); p2 = Vector2i(cx + 1, cy)
 
-			var near_facing: bool = (dir.x == 1 or dir.y == 1)  ## O5: +x/+y = nearer camera
+			var near: Vector2i = near_dirs()
+			var near_facing: bool = (dir.x == near.x or dir.y == near.y)  ## O5: the view's near side
 
 			for level in range(min_level, max_level + 1):
 				var is_top: bool = (level == max_level)
@@ -766,6 +797,7 @@ func _group_slices_by_edge(slices: Array) -> Dictionary:
 ## makes new ones). Keyed on the count and every slice's instance id.
 var _group_key: int = -1
 var _grouped: Dictionary = {}
+var _geom_view: String = "N"
 var _geom_source: Dictionary = {}
 var _geom_by_edge: Dictionary = {}
 var _geom_vertices: Dictionary = {}
@@ -818,7 +850,7 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 	const VOXEL_HALF_H := 8.0    ## GeometryCoords.VOXEL_TILE_SIZE.y * 0.5
 	
 	for agent_cell in agent_cells:
-		var agent_voxel := GeometryCoordsMod.gu_to_voxel_origin(agent_cell) + Vector2i(half_gu, half_gu)
+		var agent_voxel := turn_voxel(GeometryCoordsMod.gu_to_voxel_origin(agent_cell) + Vector2i(half_gu, half_gu))
 		var agent_depth := agent_voxel.x + agent_voxel.y
 		var agent_screen_x := float(agent_voxel.x - agent_voxel.y) * VOXEL_HALF_W
 		## The agent "stands" at level 0, reaching up by his own height in pixels — same
@@ -839,7 +871,7 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 	## very same Dictionary it was built from. A caller passing a fresh one (the selftests) recomputes.
 	var edge_geom: Dictionary = {}        ## edge_id -> geometry dict (see below)
 	var vertex_to_edges: Dictionary = {}  ## Vector2i vertex -> Array[String edge_id]
-	var reuse: bool = is_same(_geom_source, slices_by_edge) and not slices_by_edge.is_empty()
+	var reuse: bool = is_same(_geom_source, slices_by_edge) and not slices_by_edge.is_empty() and _geom_view == view
 	if reuse:
 		edge_geom = _geom_by_edge
 		vertex_to_edges = _geom_vertices
@@ -862,12 +894,20 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 				min_level = mini(min_level, voxel.level)
 				max_level = maxi(max_level, voxel.level)
 
-		var center_x := float(min_gx + max_gx) * 0.5
-		var center_y := float(min_gy + max_gy) * 0.5
+		## The footprint in the VIEW's lattice: the two extreme corners turned, then re-ordered (a quarter turn swaps which
+		## extreme is the minimum on an axis). The base corners stay as they were, for the adjacency below.
+		var turned_a: Vector2i = turn_voxel(Vector2i(min_gx, min_gy))
+		var turned_b: Vector2i = turn_voxel(Vector2i(max_gx, max_gy))
+		var view_min_x: int = mini(turned_a.x, turned_b.x)
+		var view_max_x: int = maxi(turned_a.x, turned_b.x)
+		var view_min_y: int = mini(turned_a.y, turned_b.y)
+		var view_max_y: int = maxi(turned_a.y, turned_b.y)
+		var center_x := float(view_min_x + view_max_x) * 0.5
+		var center_y := float(view_min_y + view_max_y) * 0.5
 		var center_depth := center_x + center_y
 
-		var corner_a_x := (float(min_gx) - float(min_gy)) * VOXEL_HALF_W
-		var corner_b_x := (float(max_gx) - float(max_gy)) * VOXEL_HALF_W
+		var corner_a_x := (float(view_min_x) - float(view_min_y)) * VOXEL_HALF_W
+		var corner_b_x := (float(view_max_x) - float(view_max_y)) * VOXEL_HALF_W
 		var screen_x := (corner_a_x + corner_b_x) * 0.5
 		var half_width := absf(corner_b_x - corner_a_x) * 0.5
 
@@ -909,6 +949,7 @@ func compute_edge_occlusion(agent_cells: Array, slices_by_edge: Dictionary, _roo
 			vertex_to_edges[v].append(edge_id)
 
 	if not reuse:
+		_geom_view = view
 		_geom_source = slices_by_edge
 		_geom_by_edge = edge_geom
 		_geom_vertices = vertex_to_edges
@@ -1141,13 +1182,15 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 
 	var origin_depths: Array[int] = []
 	for origin: Vector2i in origins:
-		origin_depths.append(origin.x + origin.y)
+		var turned_origin: Vector2i = turn_gu(origin)
+		origin_depths.append(turned_origin.x + turned_origin.y)
 
 	for idx in active.keys():
 		var members: Array = components[idx]
 		var stripe_depths: Dictionary = {}   ## depth sum -> true
 		for gu: Vector2i in members:
-			stripe_depths[gu.x + gu.y] = true
+			var turned_member: Vector2i = turn_gu(gu)
+			stripe_depths[turned_member.x + turned_member.y] = true
 		var is_small: bool = stripe_depths.size() <= SMALL_ROOF_MAX_STRIPES
 
 		## R3D-7 (Director, 2026-09-20): a roof an origin stands UNDER opens like a wall does, by ADJACENCY: the slab
@@ -1167,8 +1210,9 @@ func _compute_roof_occlusion(origins: Array, ceiling_slabs: Array, ring_by_edge_
 				revealed = true
 			if coupled.has(idx) or not contained.has(idx):
 				var stripe_ring: int = MAX_RING + 1
+				var turned_gu: Vector2i = turn_gu(gu)
 				for d in origin_depths:
-					stripe_ring = mini(stripe_ring, absi((gu.x + gu.y) - d))
+					stripe_ring = mini(stripe_ring, absi((turned_gu.x + turned_gu.y) - d))
 				if is_small:
 					stripe_ring = mini(stripe_ring, MAX_RING)
 				if stripe_ring <= MAX_RING:

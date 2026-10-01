@@ -3623,6 +3623,13 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
       (use `view_direction()`), `rebuild_all()` is probably unnecessary. Capture script: scratchpad `rot_cap.sh <0|1> <map> <tag>`.
     - **Gate:** the new path against the old re-layout as the control, four views, pixel identity on the 2D layer and the board_probe dumps; the
       Moto cost of a rotation recorded.
+  - **THE MOTO COST OF A ROTATION, measured 2026-10-01** (after R3D-ACTORS / R3D-WORLD; PLAYGROUND portrait, two boots,
+    `docs/measurements/device_2026-10-01_moto_rotation_*.log`, local): the turn to E / S / W costs **206-212 ms on the main thread**,
+    the turn back to N **12.7-12.8 ms**; the background re-mesh of a view is **1.46-1.48 s** (faces 1.14 s, merge 0.26 s, upload
+    0.03 s), during which the old view's faces show; idle after the turn 20.5-21 ms (19.7 in N). **The 210 ms is
+    `Room._recompute_occlusion()`** (desktop 33-36 ms in E vs 1.5 ms in N): `OcclusionSet`'s per-view edge geometry cache
+    (`_geom_view`) is rebuilt on a view change; a step inside E costs what one in N does (`occ_bench`: 0.15 ms per phase in
+    both). Candidates: build the four views' geometry once, or make the turned path as cheap as N's. Not changed.
   - **CORRECTION to the delete list below (2026-10-01, found while trying to execute it):** the base-coord records (`_base_damage`, `_base_debris`, `_base_shattered_props`, the pile and crack records) are NOT rotation-only. `scenario_save_restore` / `SaveState` reapply them after `load_map()`, i.e. they are the CHECKPOINT persistence, so they go only when `SaveState` serialises the `VoxelStore` itself (a stage of its own, not built). What IS rotation-only and now inert: every `PerspectiveMapper` conversion keyed on `Room._active_perspective` (it is "N" for the life of a map, so ~64 sites in `room.gd` and 13 elsewhere are the identity), `layout_with_perspective()` (5 selftests still use it to make turned fixtures: floor_zone_bake, slice_geometry, voxel_persist, roof_entity, roof_bake) and the per-prop `reposition_for_perspective()`. Deleting those is a mechanical pass that needs a scripted argument parser, a Godot warnings check (the lint tool does not list warnings) and the five fixtures rewritten; do it as its own step.
   - **Delete list, added 2026-09-29:** the base-coord workarounds R3D-PROPS had to add for the re-layout — `Room._base_shattered_props`, `_base_debris`, `_respawn_base_debris()`, `_reapply_base_shattered_props()`, `_voxel_point_to_base/_from_base()`, the `PropBlock` loop in `_reapply_base_damage()`. With one world and state recorded once none of them exists.
   - A 90° camera yaw replaces `_set_perspective()`'s full re-layout for drawing.

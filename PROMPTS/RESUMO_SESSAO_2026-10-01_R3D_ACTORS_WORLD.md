@@ -29,6 +29,11 @@ See `RENDER3D_MASTER_PLAN` R3D-ACTORS ("STEPS 2-5 BUILT") and R3D-WORLD ("BUILT 
   dome and star in N and E, tracer filmstrip N / E, blast mid-rotation vs started in E.
 - Moto g04s (logs local): mesh +0.7-1.2 ms/frame vs billboard; PSS saving of step 5 inside boot noise; touch run passed.
 
+## Rotation on the Moto (measured after the Director freed the handset)
+Turn to E / S / W 206-212 ms main thread (all `_recompute_occlusion()`: the per-view geometry cache rebuild), back to N 13 ms;
+background re-mesh 1.47 s per view. Steady state in E equals N. Recorded in `RENDER3D_MASTER_PLAN` R3D-ROT; not changed.
+Step 5's deletions landed late (`3f063916`): a `git stash` round-trip had unstaged them before `27a7ed50`.
+
 ## Not done / open
 - The Director's look call on the mesh (joint bands / spheres, the mesh slightly lighter than the old billboard).
 - R3D-ROT proper: the dead `_active_perspective` conversions, `layout_with_perspective` fixtures, rotation cost on the Moto.

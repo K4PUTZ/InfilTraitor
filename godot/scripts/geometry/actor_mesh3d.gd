@@ -39,10 +39,8 @@ const RIG_BY_FAMILY := {
 const WEAPON_BY_SUFFIX := {"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}
 ## D61: a GU is 1.60 m, and a GU is one world unit; the rig is authored in metres.
 const METRES_TO_UNITS: float = 1.0 / 1.6
-## `AgentSprite.HEAD_YAW_LIMIT_DEG`: how far the head turns off the body.
-const HEAD_YAW_LIMIT_DEG: float = 60.0
-## `AgentSprite.THROW_RELEASE_FRACTION`: the grenade leaves the hand half way through the release.
-const THROW_RELEASE_FRACTION: float = 0.5
+## The 2D contact shadow's colour when the actor's script declares none.
+const DEFAULT_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
 var _board: Node3D = null
 var _source: AgentSprite = null
@@ -70,6 +68,7 @@ var silhouette_phase: float = 0.0:
 			_silhouette.set_shader_parameter("phase", value)
 var _silhouette: ShaderMaterial = null
 static var _warned_family: Dictionary = {}
+static var _warned_action: Dictionary = {}
 
 
 ## Drive this mesh from `source`. Returns false (and logs) when the rig cannot be loaded, leaving nothing half-built.
@@ -97,15 +96,17 @@ func _load_rig(board: Node3D, path: String) -> bool:
 	if scene == null:
 		push_error("[ActorMesh3D] cannot load the rig %s (run tools/asset_generation/r3d_live_rig_export.py)" % path)
 		return false
+	var body := scene.instantiate() as Node3D
+	var players := body.find_children("*", "AnimationPlayer", true, false)
+	if players.is_empty():
+		push_error("[ActorMesh3D] %s has no AnimationPlayer — re-export the rig" % path)
+		body.free()
+		return false
 	_board = board
-	_body = scene.instantiate() as Node3D
+	_body = body
 	_body.scale = Vector3.ONE * METRES_TO_UNITS
 	add_child(_body)
 	_apply_board_light(_body)
-	var players := _body.find_children("*", "AnimationPlayer", true, false)
-	if players.is_empty():
-		push_error("[ActorMesh3D] %s has no AnimationPlayer — re-export the rig" % path)
-		return false
 	_player = players[0] as AnimationPlayer
 	_player.speed_scale = 0.0  ## seeked, never played
 	var skeletons := _body.find_children("*", "Skeleton3D", true, false)
@@ -158,8 +159,9 @@ func _sync() -> void:
 	else:
 		action = "%s_%s_%s" % [state["posture"], weapon, "aimed" if String(state["grip"]) == "_aimed" else "lowered"]
 	if _grenade != null:
-		_grenade.visible = throw_seq == "raise" or (throw_seq == "release" and u < THROW_RELEASE_FRACTION)
-	_show(action, u)
+		_grenade.visible = throw_seq == AgentSprite.THROW_RAISE \
+			or (throw_seq == AgentSprite.THROW_RELEASE and u < AgentSprite.THROW_RELEASE_FRACTION)
+	_show_or_fallback(action, u, weapon)
 	if _head != null:
 		var head: float = float(state["head"])
 		var posture: String = state["posture"]
@@ -169,7 +171,8 @@ func _sync() -> void:
 			## A grid angle: 0 = North (0, -1), +90 = East (1, 0), the guard's `vision_angle` convention.
 			var rad: float = deg_to_rad(head)
 			var want: float = yaw_for_direction(Vector2(sin(rad), -cos(rad)))
-			_head.set("yaw", clampf(wrapf(want - body_yaw, -PI, PI), -deg_to_rad(HEAD_YAW_LIMIT_DEG), deg_to_rad(HEAD_YAW_LIMIT_DEG)))
+			var limit: float = deg_to_rad(AgentSprite.HEAD_YAW_LIMIT_DEG)
+			_head.set("yaw", clampf(wrapf(want - body_yaw, -PI, PI), -limit, limit))
 
 
 ## Where the head is above the feet in 2D canvas pixels on the N lattice (what `AgentSprite.head_offset_px()` answers,
@@ -195,11 +198,25 @@ static func yaw_for_direction(dir: Vector2) -> float:
 func _show(action: String, u: float) -> void:
 	if action != _action:
 		if not _player.has_animation(action):
-			push_error("[ActorMesh3D] the rig has no '%s' action — re-export it" % action)
+			if not _warned_action.has("!" + action):
+				_warned_action["!" + action] = true
+				push_error("[ActorMesh3D] the rig has no '%s' action, not even the fallback — re-export it" % action)
 			return
 		_action = action
 		_player.play(action)
 	_player.seek(clampf(u, 0.0, 1.0) * _player.current_animation_length, true)
+
+
+## `_show()` for an action the rig may lack: a missing one is said ONCE (it would otherwise log every frame) and the
+## figure falls back to standing with the lowered grip, which every rig has.
+func _show_or_fallback(action: String, u: float, weapon: String) -> void:
+	if _player.has_animation(action):
+		_show(action, u)
+		return
+	if not _warned_action.has(action):
+		_warned_action[action] = true
+		push_warning("[ActorMesh3D] the rig has no '%s' action — showing standing; re-export it with r3d_live_rig_export.py" % action)
+	_show("standing_%s_lowered" % weapon, 0.0)
 
 
 ## Every surface becomes one board-lit material carrying the model's own albedo colour and texture (one per source
@@ -236,7 +253,8 @@ func _build_contact_shadow(actor: Node) -> void:
 		return
 	var half: Vector2 = actor.get("ground_shadow_half_px")
 	var to_gu: Transform2D = _board.call("ground_affine")
-	var colour: Color = actor.get("COLOR_SHADOW") if "COLOR_SHADOW" in actor else Color(0.0, 0.0, 0.0, 0.28)
+	var constants: Dictionary = actor.get_script().get_script_constant_map() if actor.get_script() != null else {}
+	var colour: Color = constants.get("COLOR_SHADOW", DEFAULT_SHADOW)
 	var verts := PackedVector3Array()
 	var cols := PackedColorArray()
 	for p: Vector2 in [Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(0.0, half.y), Vector2(-half.x, 0.0)]:

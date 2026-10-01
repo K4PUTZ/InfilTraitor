@@ -26,6 +26,8 @@ var _idx := PackedInt32Array()
 var _cam := Basis.IDENTITY
 var _ppu: float = 1.0
 var _xf := Transform2D.IDENTITY
+## The depth-test-free variant of SHADER, compiled once for every `on_top` canvas.
+static var _on_top_shader: Shader = null
 
 
 func attach(board: Node3D, owner: CanvasItem, priority: int = 0, on_top: bool = false) -> void:
@@ -36,9 +38,11 @@ func attach(board: Node3D, owner: CanvasItem, priority: int = 0, on_top: bool = 
 	var mat := ShaderMaterial.new()
 	var shader: Shader = load(SHADER)
 	if on_top:
-		shader = shader.duplicate()
-		shader.code = shader.code.replace("render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;",
-			"render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, blend_mix;")
+		if _on_top_shader == null:
+			_on_top_shader = Shader.new()
+			_on_top_shader.code = shader.code.replace("render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;",
+				"render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, blend_mix;")
+		shader = _on_top_shader
 	mat.shader = shader
 	mat.render_priority = priority
 	_mesh = ArrayMesh.new()
@@ -68,6 +72,10 @@ func _on_view_changed(_direction: String) -> void:
 
 
 func detach() -> void:
+	if is_instance_valid(_board) and _board.is_connected("view_changed", _on_view_changed):
+		_board.disconnect("view_changed", _on_view_changed)
+	if is_instance_valid(_owner) and _owner.visibility_changed.is_connected(_sync_visibility):
+		_owner.visibility_changed.disconnect(_sync_visibility)
 	if _node != null and is_instance_valid(_node):
 		_node.queue_free()
 	_node = null

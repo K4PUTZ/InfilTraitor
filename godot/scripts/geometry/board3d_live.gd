@@ -588,7 +588,7 @@ func canvas_point(world: Vector3, item: CanvasItem) -> Vector2:
 ## Only a particle's SHAPE (a disc, a chip) is turned to face the live camera (`camera_basis()`). Identical to
 ## `camera_basis()` in view N, so nothing changes there.
 func lattice_basis() -> Basis:
-	return Basis.from_euler(Vector3(deg_to_rad(-30.0), deg_to_rad(45.0), 0.0))
+	return ParticleMathRef.lattice_basis()
 
 
 ## Screen pixels per world unit at 2D zoom 1: the scale every baked actor frame was drawn at.

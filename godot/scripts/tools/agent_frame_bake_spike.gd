@@ -808,7 +808,8 @@ func _verify_layers(full_glb: String, height_m: float, body_dir: String,
 			if layer_img.load("%syaw_%03d_color.png" % [entry["dir"], tag]) != OK:
 				push_error("[AgentBake] cannot read %syaw_%03d_color.png" % [entry["dir"], tag])
 				return false
-			## The runtime's own three terms — see AgentSprite._apply_layers.
+			## The runtime's own three terms, as AgentSprite._apply_layers combined them before R3D-ACTORS step 5 retired the
+			## frame bake for gameplay (last in 64ca9708).
 			var origin := _json_vec2(frame["origin_px"])
 			var base_socket := _json_vec2((man["base_socket_px"] as Dictionary)[direction])
 			var socket: Vector2 = base_socket

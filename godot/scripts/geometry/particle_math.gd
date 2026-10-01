@@ -28,6 +28,12 @@ const NO_FLOOR: Vector2 = Vector2(INF, INF)
 const NO_ANCHOR: Vector3 = Vector3(INF, INF, INF)
 
 
+## The BASE view's (N) camera basis: the board's camera at rotation (-30, 45, 0) degrees (D26), the basis a 2D-lattice
+## displacement becomes a world one through (`Board3DLive.lattice_basis()`, R3D-WORLD).
+static func lattice_basis() -> Basis:
+	return Basis.from_euler(Vector3(deg_to_rad(-30.0), deg_to_rad(45.0), 0.0))
+
+
 ## World position of a particle whose 2D position is `pos_2d`, given the anchor pair.
 static func to_world(anchor_3d: Vector3, anchor_2d: Vector2, pos_2d: Vector2,
 		cam: Basis, px_per_unit: float) -> Vector3:

@@ -2961,8 +2961,6 @@ func _start_board3d_live() -> void:
 		return GroundGridRef.map_to_local(cell) + Vector2(0.0, 64.0) + VISUAL_GRID_OFFSET)
 	_attach_actor_billboards(live)
 	_attach_vfx_to_board(live)
-	if OS.get_environment("INFILTRAITOR_DIAG_CANVAS") == "1":  ## TEMP-DIAG, not committed
-		_diag_canvas.call_deferred()
 	_attach_ground_overlays(live)
 	if _dev_flag("PICK_CHECK", "0") == "1":
 		_pick_check.call_deferred()
@@ -11200,29 +11198,3 @@ func _initialize_debug_views() -> void:
 	var theme_matrix = theme_matrix_class.new()
 	add_child(theme_matrix)
 	print("[DEBUG] F5: Theme Matrix viewer initialized")
-
-
-func _diag_canvas() -> void:  ## TEMP-DIAG, not committed
-	for _i in range(90):
-		await get_tree().process_frame
-	for n in find_children("*", "CanvasItem", true, false):
-		var ci := n as CanvasItem
-		if not ci.is_visible_in_tree():
-			continue
-		var p: Node = ci
-		var in_layer := false
-		while p != null:
-			if p is CanvasLayer:
-				in_layer = true
-				break
-			p = p.get_parent()
-		if in_layer:
-			continue
-		var draws: bool = ci.get_script() != null and (ci.get_script() as Script).source_code.contains("func _draw")
-		var kind: String = ci.get_class()
-		if ci is Sprite2D and (ci as Sprite2D).texture != null:
-			draws = true
-		if ci is Line2D or ci is Polygon2D or ci is Label or ci is TileMapLayer:
-			draws = true
-		if draws:
-			print("[DIAG-CANVAS] %s [%s] script=%s" % [get_path_to(ci), kind, ci.get_script().resource_path.get_file() if ci.get_script() != null else ""])

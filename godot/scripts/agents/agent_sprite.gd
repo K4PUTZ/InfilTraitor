@@ -143,6 +143,8 @@ func clear_head_yaw() -> void:
 	_has_head_yaw = false
 
 
+## Kept for the DEV VISION toggle's call. The yellow-joint dev bake it used to swap in retired with the frame bake; the live
+## rig has one look, so the flag is only remembered.
 func set_dev_vision(enabled: bool) -> void:
 	_dev_vision = enabled
 

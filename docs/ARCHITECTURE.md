@@ -96,7 +96,7 @@ Room (room.gd, Node2D)                 orchestrator
 │     (`_start_board3d_live()`; a map reload removes and rebuilds it; `board3d()` answers with the live one)
 ├── VoxelBoard (VoxelBoard, Node2D, hidden)   NOT a renderer: the level registry, the cell planes' application, the dirty -> `voxel_destroyed` pass, glass crack/rim/shard records, prop containers
 ├── Camera2D · TurnManager · EnemyPhaseController
-├── Agent (DebugAgent) · Enemies (GuardEnemy*, spawned at runtime)       baked-frame actors, mirrored into 3D by ActorBillboard3D
+├── Agent (DebugAgent) · Enemies (GuardEnemy*, spawned at runtime)       actors drawn by ActorMesh3D (live rig, R3D-ACTORS); AgentSprite only decides
 ├── MovementOverlay · PathPreview · SelectionOverlay · TileLabelsOverlay · FogOfWarOverlay · VisionFogOverlay(FogRect)
 ├── StructureLayer (TileMapLayer, hidden while the 3D board is live: the one tile layer that survives, for the prop tiles and the TileSet `GroundGrid` was measured from)
 ├── HUD (hud.tscn)        reached ONLY through `HudController` (rule 11)

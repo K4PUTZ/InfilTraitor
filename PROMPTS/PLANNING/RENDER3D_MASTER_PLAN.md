@@ -3630,6 +3630,22 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
     `Room._recompute_occlusion()`** (desktop 33-36 ms in E vs 1.5 ms in N): `OcclusionSet`'s per-view edge geometry cache
     (`_geom_view`) is rebuilt on a view change; a step inside E costs what one in N does (`occ_bench`: 0.15 ms per phase in
     both). Candidates: build the four views' geometry once, or make the turned path as cheap as N's. Not changed.
+  - **NEXT SESSION — what is left to close R3D-ROT (planned 2026-10-01, after R3D-ACTORS / R3D-WORLD; props and actors are not
+    in it).** Ordered by what blocks a clean rotation first:
+    1. **The 210 ms turn (Moto).** `OcclusionSet`'s per-view edge geometry cache rebuilds on a view change. Build the four
+       views once (memory to measure) or make the turned path as cheap as N's; gate = `occ_canonical_gate.py` + the Moto row.
+    2. **The 1.47 s re-mesh (Moto) shows the OLD view's faces** for that long. DESIGN CALL: hold the turn until the new faces
+       are in (a short stall), turn at once and accept the stale faces, or keep the three other views meshed (memory x4).
+    3. **The dead conversions** (the correction below): ~77 `_active_perspective` sites that are the identity, the
+       `layout_with_perspective()` fixtures of 5 selftests, the per-prop `reposition_for_perspective()`; a scripted pass + a
+       Godot warnings check.
+    4. **The DEV overlays still draw in the N screen** (light, exposure, temporal, height, occlusion, tile risk, elite exposure,
+       tile labels, voxel ruler, circle gate, shadow): wrong under yaw, dev-only. Route the ground ones through
+       `GroundCanvas3D` (mechanical); the golden shafts are R3D-LOOK's.
+    5. **The guard noise indicator never shows** (`GuardCoordinator` calls `Room._emit_guard_noise_indicator`, which does not
+       exist). DESIGN CALL before wiring it: what it shows and where; once decided it is HUD, anchored with
+       `Room.screen_of_lifted()`.
+    6. The gate: the four views agree (`occlusion_view_selftest`, captures), the Moto cost of a turn recorded again.
   - **CORRECTION to the delete list below (2026-10-01, found while trying to execute it):** the base-coord records (`_base_damage`, `_base_debris`, `_base_shattered_props`, the pile and crack records) are NOT rotation-only. `scenario_save_restore` / `SaveState` reapply them after `load_map()`, i.e. they are the CHECKPOINT persistence, so they go only when `SaveState` serialises the `VoxelStore` itself (a stage of its own, not built). What IS rotation-only and now inert: every `PerspectiveMapper` conversion keyed on `Room._active_perspective` (it is "N" for the life of a map, so ~64 sites in `room.gd` and 13 elsewhere are the identity), `layout_with_perspective()` (5 selftests still use it to make turned fixtures: floor_zone_bake, slice_geometry, voxel_persist, roof_entity, roof_bake) and the per-prop `reposition_for_perspective()`. Deleting those is a mechanical pass that needs a scripted argument parser, a Godot warnings check (the lint tool does not list warnings) and the five fixtures rewritten; do it as its own step.
   - **Delete list, added 2026-09-29:** the base-coord workarounds R3D-PROPS had to add for the re-layout — `Room._base_shattered_props`, `_base_debris`, `_respawn_base_debris()`, `_reapply_base_shattered_props()`, `_voxel_point_to_base/_from_base()`, the `PropBlock` loop in `_reapply_base_damage()`. With one world and state recorded once none of them exists.
   - A 90° camera yaw replaces `_set_perspective()`'s full re-layout for drawing.

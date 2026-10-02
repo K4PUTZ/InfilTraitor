@@ -63,7 +63,7 @@ Look change to judge: a CHARRED cell no wave carried now turns black at the end 
 
 ## ROT item 4 — DEV-GROUND (2026-10-02, same day)
 - `verify.py full` PASSED (410 s) against a baseline taken at `cb1cc5c9`; the roundtrip, probe-gate and pixel-gate all green.
-- The dev overlays (light, shadow, exposure, tile risk, height, temporal, elite exposure, occlusion, tile labels, voxel ruler) draw through
+- The ten dev overlays (light, shadow, exposure, tile risk, height, temporal, elite exposure, occlusion, tile labels, voxel ruler) draw through
   `GroundCanvas3D` now: they were projected in the N screen and ignored the camera yaw. `circle_gate_probe` is a perf instrument, left 2D.
 - `GroundCanvas3D`: `draw_rect`, `draw_set_transform`, `draw_string` (billboarded `Label3D`, pooled). New scenario step `view_mode`.
 - Captured DORM / PLAYGROUND N/E/S/W (`Screenshots/dev_overlays/`, git-ignored): numbers, ruler and light rays follow the world.

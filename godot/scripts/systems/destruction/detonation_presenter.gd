@@ -432,8 +432,14 @@ func _finish_soot(voxel_board, tree: SceneTree, board3d: Node) -> void:
 			return
 		clock += tree.root.get_process_delta_time()
 		_soot_tick(clock, voxel_board)
-	if _soot_ramp.is_empty() and board3d != null and is_instance_valid(board3d):
-		board3d.on_blast_soot(_settle_soot())
+	if board3d != null and is_instance_valid(board3d):
+		if _soot_ramp.is_empty():
+			board3d.on_blast_soot(_settle_soot())
+		else:
+			## The ladder's last tick settles and uploads; this catches a fade with no tick at all (`soot_fade_frames` 1).
+			var moved: Dictionary = _settle_soot()
+			if not moved.is_empty():
+				board3d.on_blast_soot(moved)
 	print("[E-PRESENT] soot fade — %d cell(s) in %d step(s) from %.2fs, finished %.2fs after the channel (%.2f ms in the tail)" % [
 		_soot_ramp.size(), steps - 1, soot_start_s, maxf(clock - _channel_elapsed, 0.0), float(Time.get_ticks_usec() - t0) / 1000.0])
 

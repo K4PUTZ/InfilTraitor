@@ -27,6 +27,7 @@ func _init() -> void:
 	_test_code_round_trip()
 	_test_ball_reaches_exactly_its_radius()
 	_test_stamp_nearest_seed_wins()
+	_test_halo_tone()
 
 	print("")
 	if _fails == 0:
@@ -173,3 +174,31 @@ func _test_stamp_nearest_seed_wins() -> void:
 			zero_away += 1
 	_check(int(edge.get(Vector2i(21, 0), -1)) == 0 and zero_away == 0,
 		"tone 0 lands on a hole's neighbour and nowhere else (%d elsewhere)" % zero_away)
+
+
+## SOOT-HALO (shipped OFF, `SOOT_HALO_CHANCE` 0.0): off, the halo flag changes nothing; at 1.0 a cell that would be clean or
+## darker than tone 1 comes out tone 1, a lighter-than-tone-1 answer is never darkened past it, and tone 0 (touching a hole
+## by a face) is untouched. The rolls are deterministic. Pinned so the 0.5 the Director may reapply keeps working.
+func _test_halo_tone() -> void:
+	var saved: float = BlastCalculatorClass.SOOT_HALO_CHANCE
+	var cell := Vector2i(37, 11)
+	BlastCalculatorClass.SOOT_HALO_CHANCE = 0.0
+	var off_a: int = BlastCalculatorClass.soot_tone(cell, 80, 9, false, false)
+	var off_b: int = BlastCalculatorClass.soot_tone(cell, 80, 9, false, true)
+	_check(off_a == off_b and not BlastCalculatorClass.soot_halo_on(), "halo off: the flag changes nothing (tone %d)" % off_a)
+	BlastCalculatorClass.SOOT_HALO_CHANCE = 1.0
+	var clean_cell: int = BlastCalculatorClass.soot_tone(cell, 80, 9, false, true)
+	var near: int = BlastCalculatorClass.soot_tone(cell, 80, 0, false, true)
+	var face: int = BlastCalculatorClass.soot_tone(cell, 80, 0, true, true)
+	_check(BlastCalculatorClass.soot_halo_on() and clean_cell == 1, "halo 1.0: a cell past the bands takes tone 1 (got %d)" % clean_cell)
+	_check(near >= 1 and near <= 1, "halo 1.0: a cell that would be darker than tone 1 is still tone 1 (got %d)" % near)
+	_check(face == 0, "halo 1.0: a face neighbour of a hole stays tone 0 (got %d)" % face)
+	BlastCalculatorClass.SOOT_HALO_CHANCE = 0.5
+	var taken: int = 0
+	for x in range(200):
+		if BlastCalculatorClass.soot_tone(Vector2i(x, 3), 80, 9, false, true) == 1:
+			taken += 1
+	_check(taken > 70 and taken < 130, "halo 0.5: about half of 200 cells take it (%d), deterministically" % taken)
+	_check(BlastCalculatorClass.soot_tone(Vector2i(5, 3), 80, 9, false, true) == BlastCalculatorClass.soot_tone(Vector2i(5, 3), 80, 9, false, true),
+		"halo 0.5: the same cell rolls the same way")
+	BlastCalculatorClass.SOOT_HALO_CHANCE = saved

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**270 scripts · 85097 lines total** (under `godot/scripts/`)
+**270 scripts · 85132 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2392,7 +2392,7 @@ extends `Node2D` · 69 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 544 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 550 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -5018,7 +5018,7 @@ extends `SceneTree` · 256 lines
 
 ### `soot_stamp_selftest.gd`
 
-extends `SceneTree` · 175 lines
+extends `SceneTree` · 204 lines
 
 `godot/scripts/tools/soot_stamp_selftest.gd`
 

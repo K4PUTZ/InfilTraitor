@@ -1447,7 +1447,7 @@ real phones.
 - **Documentation:** the AI, perception, stealth, movement, noise, rendering, occlusion and lighting texts were reconciled with the code (`docs/systems/`), the README and ARCHITECTURE rewritten for the 3D board.
 
 ### What is ready to start (the Director's call)
-1. **R3D-LOOK** (look pass), **R3D-SURFACES** (photographic horizontal surfaces, prototype built), **R3D-CLAIMS** / **R3D-BUFFER** (memory and scale housekeeping).
+1. **R3D-LOOK** (look pass), **R3D-SURFACES** (photographic horizontal surfaces: per-role surfaces, `ground_decals` section and the mirror-art gate built 2026-10-02; art for more patch kinds open), **R3D-CLAIMS** / **R3D-BUFFER** (memory and scale housekeeping).
 2. **The noise track** (the indicator, and gunshots / explosions as noise sources) and **the `ACTOR` calibration** of the tile-risk zone against the guard's motion.
 3. **PP2/PP3** (`.iprop`, user-tier models).
 4. **The gameplay milestones** (GAMEPLAY-01, GAME-01 and the AI-02 timing) are the first that touch design; they need the Director's sign-off (`DESIGN_MASTER_PLAN`).

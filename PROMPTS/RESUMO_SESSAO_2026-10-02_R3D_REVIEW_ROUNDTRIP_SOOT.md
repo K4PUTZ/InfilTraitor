@@ -68,3 +68,9 @@ Look change to judge: a CHARRED cell no wave carried now turns black at the end 
 - `GroundCanvas3D`: `draw_rect`, `draw_set_transform`, `draw_string` (billboarded `Label3D`, pooled). New scenario step `view_mode`.
 - Captured DORM / PLAYGROUND N/E/S/W (`Screenshots/dev_overlays/`, git-ignored): numbers, ruler and light rays follow the world.
 - Not done: a gate for touch picking from E/S/W, roof reveal under yaw, the `S` overlays (still capture-only); text labels are not wall-occluded.
+
+## ROT gate — touch picking from N/E/S/W (2026-10-02)
+`pick_gate.py` + the `pick_check` scenario step: the centre of every on-screen cell goes through the real pick (`Room._screen_to_tile`)
+in each of the four views and must return that cell (a cell a standing prop hides picks the prop's cell, counted apart). DORM, GLASS,
+PLAYGROUND: 62-115 cells per view, 0 wrong, 4 of 4 views. Red-before-green: shifting the pick by one cell in x gives 57-60 wrong cells per
+view and `FAIL`. In `verify.py full` after `mirror`. Still without a gate: roof reveal under yaw, the `S` overlays.

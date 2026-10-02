@@ -2886,6 +2886,51 @@ func scenario_ground_check(label: String) -> bool:
 	return true
 
 
+## The `pick_check` scenario step: in the CURRENT view, every on-screen cell's centre goes through the real pick
+## (`_screen_to_tile()`, what a touch reaches) and must come back as that cell. A cell a standing prop covers on screen
+## picks the prop's cell instead (`pick_cell()` asks the prop boxes first, on purpose): counted apart, never a failure.
+## Prints `[PICK-CHECK] <name> view=<N|E|S|W> cells=<n> ok=<a> covered=<b> bad=<c> offscreen=<d>`.
+func scenario_pick_check(label: String) -> bool:
+	var live: Node = board3d()
+	if live == null or _voxel_board == null:
+		push_error("[Room] scenario_pick_check: no 3D board")
+		return false
+	var standing: Dictionary = {}
+	for block: PropBlock in _voxel_board.prop_blocks():
+		if not block.voxels.is_empty():
+			var first: Vector2i = block.voxels[0].grid_pos
+			standing[Vector2i(first.x >> 3, first.y >> 3)] = true
+	for inst: MeshPropInstance in _voxel_board.mesh_props():
+		if not inst.shattered:
+			standing[inst.cell] = true
+	var area: Rect2 = get_viewport().get_visible_rect().grow(-4.0)
+	var ok: int = 0
+	var covered: int = 0
+	var bad: int = 0
+	var offscreen: int = 0
+	var shown: int = 0
+	for x in range(_room_size.x):
+		for y in range(_room_size.y):
+			var cell := Vector2i(x, y)
+			var at: Vector2 = live.call("cell_screen_center", cell)
+			if not area.has_point(at):
+				offscreen += 1
+				continue
+			var picked: Vector2i = _screen_to_tile(at)
+			if picked == cell:
+				ok += 1
+			elif standing.has(picked):
+				covered += 1
+			else:
+				bad += 1
+				if shown < 5:
+					shown += 1
+					print("[PICK-CHECK] %s: cell %s at %s picked %s" % [label, cell, at, picked])
+	print("[PICK-CHECK] %s view=%s cells=%d ok=%d covered=%d bad=%d offscreen=%d"
+		% [label, _view_direction, _room_size.x * _room_size.y, ok, covered, bad, offscreen])
+	return true
+
+
 ## R3D-8 — the `mirror_check` scenario step: the 3D board's twins of what the 2D renderer creates. Cracks: one twin per
 ## live crack record. Piles: what the 3D board draws equals the live piles. `tools/persistent/mirror_gate.py` reads the line.
 func scenario_mirror_check(label: String) -> bool:

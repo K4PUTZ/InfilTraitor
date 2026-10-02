@@ -9,7 +9,7 @@
 ##   quick   ~1 min     project_lint, check_invariants, gen_codemap --check, run_selftests.
 ##   smoke   ~1.5 min   quick + a boot of PLAYGROUND and GLASS that rotates E then N (smoke_boot.py): no grenade, no shot. THE DEFAULT for
 ##                      any change under godot/: it catches the runtime wiring the linter cannot, and nothing else is repeated.
-##   full    ~7 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
+##   full    ~7 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), pick (1 boot per map: touch picking from N/E/S/W), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
 ##                      identity gates (`board_probe gate`, `pixel_gate`) held to a STORED BASELINE with ONE boot per case.
 ##                      For a change that touches the board, the state, the light, the ground, the geometry or the shaders.
 ##   docs    seconds    check_invariants + gen_codemap --check. Markdown / PROMPTS / docs only.
@@ -89,6 +89,7 @@ def steps_for(tier: str, have_baseline: bool):
         ("shot-3d", True, sh("shot_3d_gate.py")),
         ("occ-canonical", True, sh("occ_canonical_gate.py")),
         ("mirror", True, sh("mirror_gate.py", "--single")),
+        ("pick", True, sh("pick_gate.py")),
         ("roundtrip+shadow", True, sh("board_probe.py", "roundtrip", "--with-store")),
     ] + identity
 

@@ -1563,6 +1563,7 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		if OS.get_environment("INFILTRAITOR_HOLE_EQUIV") == "1":
 			_hole_equiv(s)
 	var todo: Array = s["soot_todo"]
+	var halo_on: bool = BlastCalculatorClass.soot_halo_on()
 	var soot_codes: Dictionary = s["soot_codes"]
 	var writes: Dictionary = (s["delta"] as WorldDelta).scorch_writes
 	var voxel_board: VoxelBoardClass = s["voxel_board"]
@@ -1573,8 +1574,9 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 		i += 1
 		var key: Vector3i = row[0]
 		var cell := Vector2i(key.x, key.y)
-		var tone: int = BlastCalculatorClass.soot_tone(cell, key.z, int(row[1]),
-			_touches_hole(s, key))
+		var touches: bool = _touches_hole(s, key)
+		var tone: int = BlastCalculatorClass.soot_tone(cell, key.z, int(row[1]), touches,
+			not touches and halo_on and _touches_hole_diag(s, key))
 		if tone >= 0 and int(soot_codes.get(key, 0)) != BlastCalculatorClass.FACE_SOOT_CHAR \
 				and (not soot_codes.has(key) or tone < int(soot_codes[key])):
 			var shown: int = -1 if voxel_board == null else \
@@ -1716,6 +1718,14 @@ static func _touches_hole(s: Dictionary, key: Vector3i) -> bool:
 				return true
 		return false
 	return _touches_hole_reference(s, key)
+
+
+## SOOT-HALO: does `key` touch a hole along an edge (a diagonal neighbour)? Only asked with the experiment on.
+static func _touches_hole_diag(s: Dictionary, key: Vector3i) -> bool:
+	for d: Vector3i in BlastCalculatorClass.SOOT_EDGE_DIAGONALS:
+		if _is_hole(s, key + d):
+			return true
+	return false
 
 
 ## The reference: ask the delta about the cell's voxel. `hole_cells` answers the same thing from a set built once.

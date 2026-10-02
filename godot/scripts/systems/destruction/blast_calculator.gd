@@ -1717,13 +1717,46 @@ static func soot_jitter(cell: Vector2i, level: int, ring: int) -> int:
 ## SOOT-EDGE (Director, 2026-09-22: "escurece só os voxels imediatamente vizinhos aos
 ## destruídos"): tone 0 is RESERVED for a voxel touching a destroyed one. Every other
 ## stamped cell takes `band` 0..2 as tones 1..3, jittered, never rolled down to 0.
-static func soot_tone(cell: Vector2i, level: int, band: int, touches_hole: bool) -> int:
+static func soot_tone(cell: Vector2i, level: int, band: int, touches_hole: bool, halo: bool = false) -> int:
 	if touches_hole:
 		return 0
-	if band < 0 or band > FACE_SOOT_CLEAN - 2:
-		return -1
-	var t: int = soot_jitter(cell, level, band + 1)
-	return maxi(t, 1) if t >= 0 else -1
+	var tone: int = -1
+	if band >= 0 and band <= FACE_SOOT_CLEAN - 2:
+		var t: int = soot_jitter(cell, level, band + 1)
+		tone = maxi(t, 1) if t >= 0 else -1
+	## SOOT-HALO (A/B experiment): a cell that touches a hole only along an edge (a diagonal neighbour) is at most tone 1,
+	## so the tone-0 ring of a narrow hole reads as a blob instead of a thin "+" / line.
+	if halo and (tone < 0 or tone > 1) and halo_roll(cell, level) < soot_halo_chance():
+		return 1
+	return tone
+
+
+## The halo's own deterministic roll, 0..1, independent of `soot_jitter()`'s (another salt): which diagonal cells take it.
+static func halo_roll(cell: Vector2i, level: int) -> float:
+	return float(hash(Vector3i(cell.x + 7919, cell.y + 7919, level)) & 0xFFFF) / 65536.0
+
+
+## SOOT-HALO (2026-10-02): OFF (0.0). The share of a hole's edge-diagonal cells that take tone 1, so the tone-0 ring of a
+## one-voxel hole or a narrow slit (a "+" or a thin line on a wall) reads as a stain. Director, 2026-10-02: the cross is a
+## legitimate consequence of "tone 0 only on the six face neighbours of a hole" and is kept as it is for now. A/B on
+## PLAYGROUND, DORM and PROPS (same seed and camera): 0.3 still shows the "+", **0.5 is the middle ground** (irregular
+## stain, rough edges kept), 1.0 is a smooth, stamp-like blob. To reapply, set 0.5. Rule 1: a `var`, tuning number.
+static var SOOT_HALO_CHANCE: float = 0.0
+
+
+static func soot_halo_on() -> bool:
+	return SOOT_HALO_CHANCE > 0.0
+
+
+static func soot_halo_chance() -> float:
+	return clampf(SOOT_HALO_CHANCE, 0.0, 1.0)
+
+
+## The twelve edge-diagonal neighbours (two axes move, one stays): what a hole's halo adds to its six face neighbours.
+const SOOT_EDGE_DIAGONALS: Array[Vector3i] = [
+	Vector3i(1, 1, 0), Vector3i(1, -1, 0), Vector3i(-1, 1, 0), Vector3i(-1, -1, 0),
+	Vector3i(1, 0, 1), Vector3i(1, 0, -1), Vector3i(-1, 0, 1), Vector3i(-1, 0, -1),
+	Vector3i(0, 1, 1), Vector3i(0, 1, -1), Vector3i(0, -1, 1), Vector3i(0, -1, -1)]
 
 
 static func soot_code(ring: int) -> int:
@@ -1789,7 +1822,13 @@ static func stamp_around(seeds: Array, radius: int, store: VoxelStore,
 			if holes.has(k + d):
 				touches = true
 				break
-		var ring: int = soot_tone(Vector2i(k.x, k.y), k.z, maxi(dist - 1, 0), touches)
+		var halo: bool = false
+		if not touches and soot_halo_on():
+			for d: Vector3i in SOOT_EDGE_DIAGONALS:
+				if holes.has(k + d):
+					halo = true
+					break
+		var ring: int = soot_tone(Vector2i(k.x, k.y), k.z, maxi(dist - 1, 0), touches, halo)
 		if ring < 0:
 			continue
 		if not out.has(k.z):

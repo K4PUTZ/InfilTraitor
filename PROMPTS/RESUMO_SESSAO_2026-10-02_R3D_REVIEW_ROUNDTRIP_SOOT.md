@@ -74,3 +74,11 @@ Look change to judge: a CHARRED cell no wave carried now turns black at the end 
 in each of the four views and must return that cell (a cell a standing prop hides picks the prop's cell, counted apart). DORM, GLASS,
 PLAYGROUND: 62-115 cells per view, 0 wrong, 4 of 4 views. Red-before-green: shifting the pick by one cell in x gives 57-60 wrong cells per
 view and `FAIL`. In `verify.py full` after `mirror`. Still without a gate: roof reveal under yaw, the `S` overlays.
+
+## ROT gate — roof reveal under yaw (2026-10-02)
+`roof_yaw_gate.py`: OCCLUSION_ROOM and HALL, camera N/E/S/W, the agent put INSIDE and OUTSIDE through the real occlusion path (`occ_bench`).
+The roof digest (new `[OCC-BENCH] canonical roof digest` line) is identical in the four inside runs (25 GUs open on ROOM, 121 on HALL) and in the
+four outside runs (0), the two differ, and inside vs outside differ by 127-177 thousand pixels in every view. Finding: the occluded SET and the
+cutaway geometry digests DO differ per view (the walls toward the camera are the ones cut), only the roof is view-independent, so
+`occ_canonical_gate` stays an N-view gate. Red-before-green: hashing the view into the roof digest gives four different digests per case and
+`FAIL`. In `verify.py full` after `pick`. Still without a gate: the `S` overlays (aim dome, throw arc, tracer).

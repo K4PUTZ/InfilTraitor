@@ -12,7 +12,7 @@
 ##   1. EVERY VIEW PRINTED — N, E, S and W, each with the view the Room reports (a step that silently did not turn
 ##      would print N four times);
 ##   2. IT SEES SOMETHING — ok >= MIN_OK in every view (assert identity, not absence: a pick that returned nothing
-##      for every cell would read bad=0 on a gate that only counted the wrong ones... here nothing counts as ok);
+##      for every cell would read bad=0 on a gate that only counted the wrong ones; here a miss does not count as ok);
 ##   3. NO WRONG CELL — bad == 0. `covered` is a cell a standing prop hides on screen: the pick answers the prop's
 ##      cell on purpose (`Board3DLive.pick_cell()` asks the prop boxes first), counted apart, never a failure.
 ##

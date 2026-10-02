@@ -3311,6 +3311,15 @@ func scenario_occ_bench(a: Vector2i, b: Vector2i, reps: int) -> void:
 		frames.append(step_ms + float(Time.get_ticks_usec() - frame_t0) / 1000.0)
 	print("[OCC-BENCH] occluded columns per step: min %d, max %d, digest %d, wireframe digest %d" % [cells.min(), cells.max(), digest, wire_digest])
 	print("[OCC-BENCH] canonical set digest %d" % canon_digest)
+	## The revealed roofs, view-independent by design (stored per GU, opened by slab adjacency): `roof_yaw_gate.py` holds this
+	## line equal across the four views.
+	var roof_gus: Dictionary = _occlusion_set.get_roof_gus()
+	var roof_rows: Array = []
+	for gu: Vector2i in roof_gus:
+		var entry: Dictionary = roof_gus[gu]
+		roof_rows.append([gu.x, gu.y, int(entry["min_level"]), int(entry["max_level"]), int(entry["ring"])])
+	roof_rows.sort()
+	print("[OCC-BENCH] canonical roof digest %d, %d roof GU(s) open" % [hash(roof_rows), roof_rows.size()])
 	var tail_names: PackedStringArray = ["roof borders + merge", "set compare", "(unused)", "exposure (per GU)", "wireframe lines"]
 	for k: int in range(5):
 		var tail_total: float = 0.0

@@ -1,16 +1,16 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-01 · **Branch:** claude/r3d-actors-y5r8hs
+**Version:** 0.9.107 · **Updated:** 2026-10-02 · **Branch:** main (work on main per Director, 2026-10-02)
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
 
-## Where the project stands — 2026-09-30 (newest; the sections below are kept as history)
+## Where the project stands — 2026-10-02 (newest; the sections below are kept as history)
 
-**Version 0.9.107 · R3D-PROPS continues: real models are in, and the next stretch is planned and ratified.** Record: `PROMPTS/RESUMO_SESSAO_2026-09-30_R3D_PROPS_MODELS_PLANS_DOCS.md`; the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.50).
+**Version 0.9.107 · R3D-PROPS, R3D-ACTORS, R3D-WORLD, R3D-ROT all BUILT; rotation is camera-only now (Moto turn 210→10 ms).** Records: `PROMPTS/RESUMO_SESSAO_2026-09-30_R3D_PROPS_MODELS_PLANS_DOCS.md`, `PROMPTS/RESUMO_SESSAO_2026-10-01_R3D_ACTORS_WORLD.md`, `PROMPTS/RESUMO_SESSAO_2026-10-01_R3D_ROT_CAMERA_ONLY.md`, `PROMPTS/RESUMO_SESSAO_2026-10-02_R3D_REVIEW_ROUNDTRIP_SOOT.md`; the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.50).
 - **Built today (`7cfc18dd..`):** a crate stops blocking its GU at >= 80% destroyed (wood needs two grenades, plywood one: 85%, `destroy_factor` 0.95); firearm rounds strike prop voxels; `board_probe` dumps props; `wood_table` and `pistol_prop` draw real CC0 models (Poly Haven, Quaternius; `props/MODEL_SOURCES.md`); the APK with the PROPS map ran on the Moto.
 - **Ratified by the Director (`ACTOR` D66-D69):** materials and colour come from OUR registry (families, flat `textured: false`, fallback own -> family generic -> `generic`, 8 materials to add); one `BoardLook.grade()` in the shaders, no full-screen LUT; Tier 4 props are replaced by 1/8 GU voxel fragments on a blast (~0.5 s) and leave a persistent, cosmetic, charred pile; wider charred tones; contact shadows AFTER the destruction; **models fill SLOTS** (gameplay from the slot), several models of one slot at once, local and cosmetic, an incompatible one falls to the generic, `.vox` models are free destructible containers, target scale the game's own. **First content: a dormitory scene** (`maps/DORM.map.json`), also the calibration room.
 - **Plans, built so far:** [`PROPS_TIER4_PLAN`](../../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md) v0.4: P1-P7 built (voxelizer + replacement, the persistent pile, charred variety, material zones, contact shadows, the calibration round with the scale canon 1 GU = 1.60 m and an identity `BoardLook.grade()`); [`PROP_PIPELINE_PLAN`](../../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md) v0.4: PP1 (slots, validator, fallback chain) and PP4 (`.vox` destructible props) built, the dormitory scene built; PP2 (`.iprop`), PP3 (user tier), PP5-PP7 still planned.
@@ -416,6 +416,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-09-30_R3D_PROPS_MODELS_PLANS_DOCS.md
 - RESUMO_SESSAO_2026-10-01_R3D_ACTORS_WORLD.md
 - RESUMO_SESSAO_2026-10-01_R3D_ROT_CAMERA_ONLY.md
+- RESUMO_SESSAO_2026-10-02_R3D_REVIEW_ROUNDTRIP_SOOT.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

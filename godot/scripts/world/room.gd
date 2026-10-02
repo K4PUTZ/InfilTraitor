@@ -5428,7 +5428,7 @@ func _perf_snapshot_alts() -> Dictionary:
 ## (`SOOT_STORAGE_REFORM` §5.4). Pixels cannot say whether those cells were ERASED
 ## and RE-PLACED or were never erased and only re-drawn, and two confident pixel
 ## readings of that same capture were already wrong that day. This reads the
-## TileMapLayer instead, which can only answer one way.
+## VoxelStore instead, which can only answer one way.
 ##
 ## `PERFORMANCE_MASTER_PLAN` §9.11 carries the claim this tests — *"a destroyed
 ## voxel must not be restorable"* — with the status "not reproduced".

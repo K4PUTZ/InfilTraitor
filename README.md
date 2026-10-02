@@ -1,20 +1,22 @@
 # INFILTRAITOR
 
 > Mobile turn-based stealth tactics game  
-> **Engine:** Godot 4 · **Rendering:** Isometric 2.5D · **Platform:** iOS / Android / HTML5
+> **Engine:** Godot 4.6 (GDScript) · **Rendering:** isometric 2.5D voxels on a Godot 3D board · **Platform:** iOS / Android, portrait
 
 ---
 
 ## Overview
 
-INFILTRAITOR is a turn-based stealth tactics game in the style of XCOM, with a Zelda-like room-to-room dungeon flow.
+INFILTRAITOR is a turn-based stealth tactics game in the style of XCOM, with a Zelda-like room-to-room flow.
 
-- **2 AP per turn** tactical movement
-- **Portrait orientation**, camera follows the agent
-- **Procedural dungeon generation** from handcrafted room templates
-- **Isometric 2.5D** — dimetric projection (45° horizontal, 26.57° elevation), square tile grid via Godot `TileMap`
+- **2 AP per turn** tactical movement, portrait orientation, camera follows the agent
+- **A Godot 3D board over a packed voxel store** (`VoxelStore` + `Board3DLive`): every wall, floor, roof and glass pane is voxels
+  (8 per grid unit axis, 8 levels per storey) that blasts, shots and fire destroy, scorch and char; destruction persists
+- **Camera-only rotation:** four fixed views (N/E/S/W) of one world; turning is the camera's yaw, nothing is rebuilt
+- **Live skinned-mesh actors** lit from the board's own light planes; props are real models (CC0) or destructible voxel objects
+- **Data-driven maps** (`maps/*.map.json`); procedural generation is designed (`docs/systems/MAP_MASTER_PLAN.md`), not built
 
-Visual direction: pre-rendered isometric 3D sprites (Emperor: Rise of the Middle Kingdom / StarCraft), readable tactical overlays (XCOM 2).
+Visual direction: readable tactical overlays (XCOM 2) over a voxel world that reacts to what the player does.
 
 ---
 
@@ -53,8 +55,10 @@ Run smoke test (CLAUDE.md § Verification Protocol)
 |-----------|-------------|----------|
 | **AI & Guard Behavior** | [docs/systems/AI_MASTER_PLAN.md](docs/systems/AI_MASTER_PLAN.md) | FSM, detection curves, communication, turn flow |
 | **Lighting & Visibility** | [docs/systems/LIGHT_MASTER_PLAN.md](docs/systems/LIGHT_MASTER_PLAN.md) | Visibility taxonomy, light sources, shadows, multipliers |
-| **Map System** | [docs/systems/MAP_MASTER_PLAN.md](docs/systems/MAP_MASTER_PLAN.md) | MapSpec, layout, wall storeys, perspective rotation |
-| **Voxel Wall Rendering** | [docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md](docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | Voxel geometry, placement, baking, dirty flag |
+| **Map System** | [docs/systems/MAP_MASTER_PLAN.md](docs/systems/MAP_MASTER_PLAN.md) | MapSpec, layout, wall storeys (rotation is the camera's yaw since R3D-ROT) |
+| **Voxel Geometry** | [docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md](docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md) | Voxel geometry (slices, slabs, junction columns), dirty flag |
+| **The 3D board and the engine** | [PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) | The migration, every stage built (LIGHT, PROPS, ACTORS, WORLD, ROT), the open threads and the gates |
+| **Actors, props, destruction, weapons** | [PROMPTS/PLANNING/](PROMPTS/PLANNING/) | `ACTOR`, `CHARACTER`, `MOVEMENT`, `PROPS_TIER4`, `PROP_PIPELINE`, `DESTRUCTION`, `WEAPON`, `GLASS`: decision registers and plans |
 | **Localization (i18n)** | [docs/technical/LOCALIZATION_REFERENCE.md](docs/technical/LOCALIZATION_REFERENCE.md) | TranslationServer, CSV format, key conventions |
 
 ### Level 3: System References (Detailed Documentation)
@@ -68,7 +72,7 @@ Run smoke test (CLAUDE.md § Verification Protocol)
 | **Visual Perception** | [docs/systems/perception.md](docs/systems/perception.md) | Detection cones, LOS, geometry |
 | **Audio System** | [docs/systems/noise.md](docs/systems/noise.md) | Noise propagation, hearing, audio detection |
 | **Movement** | [docs/systems/movement.md](docs/systems/movement.md) | Grid navigation, A*, AP economy |
-| **Rendering** | [docs/systems/rendering.md](docs/systems/rendering.md) | Overlay z-index, visual systems |
+| **Rendering** | [docs/systems/rendering.md](docs/systems/rendering.md) | Overlay layering (pre-R3D text, bannered; the live render is in `docs/ARCHITECTURE.md` §0) |
 
 ### Level 4: Production & Vision (Team Coordination)
 
@@ -85,119 +89,28 @@ Run smoke test (CLAUDE.md § Verification Protocol)
 
 ## Project status
 
-**Alpha Refactor Complete (2026-06-06)** — Refactor Sprint 04 + 5 bugfixes applied. Core systems consolidated: WallEdgeData unified, stats data-driven, angular FOV (8-dir), A* pathfinding with explicit data flow. Architecture stable for infinite scaling (Freelance mode, tier progression).
+**Engine track (RENDER3D): closed up to R3D-ROT (2026-10-02).** The 2D `TileMapLayer` board was deleted at R3D-END (2026-09-25; `34881f81`
+is the last commit that builds it). Built since: R3D-LIGHT (blast and shot frames inside the 100 ms budget on the target phones),
+R3D-PROPS, R3D-ACTORS, R3D-WORLD and R3D-ROT. `python3 tools/persistent/verify.py full` passes (selftests, boot, identity and
+rotation gates: ground, shot, occlusion, mirror, pick, roof-yaw, world, round trip, pixel).
 
-| Milestone | Status |
-|---|---|
-| M0 — Design & asset organization | ✅ Complete |
-| M1 — Godot prototype (one room, movement) | ✅ Complete (replaced by M1-rewrite) |
-| M1-rewrite — Stable interactive map foundation | ✅ Complete |
-| M1.5 — Tactical UI + Alpha Gameplay feel | ✅ Complete (refactored) |
-| M2 — Enemy visibility & guard detection | ⧖ In progress (M2-01 to M2-05 + quickfix deployed) |
-| M3 — Procedural floor builder | |
-| M4 — Vertical slice | |
-| M5 — Monetisation | |
-| M6 — Content expansion | |
-| M7 — Polish & launch | |
+- **Live status, what works and what does not:** [`docs/production/current_state.md`](docs/production/current_state.md)
+- **The engine plan and every open thread:** [`PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md`](PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md)
+- **Debt and known limits:** [`docs/production/technical_debt.md`](docs/production/technical_debt.md)
+- **Session records:** `PROMPTS/RESUMO_SESSAO_*.md` (the newest is where work stopped)
+- **June 2026 status log** (M2 sound, light vision, refactor sprint 04): [`docs/history/README_STATUS_2026-06.md`](docs/history/README_STATUS_2026-06.md)
 
-## Current status
+Not built yet (designed, in `docs/DESIGN_MASTER_PLAN.md`): confrontation and cover, the 3-layer resistance model, the equipment
+classes, enemy factions and hierarchy, segment map structure and Freelance escalation, the noise indicator, saves with slots.
 
-- Core isometric room builder and wall-autotile system are stable.
-- Movement, AP tracking, fog of war, tile selection, and camera controls are implemented.
-- Perspective controls are now available via a 2x2 HUD pad (N/E/S/W), with runtime layout rotation.
-- Enemy guard system with angular FOV detection (90°, 8 directions) and A* pathfinding.
-- **M2 Sound System:** Event-driven tics (edge-crossing), persistent noise grid with decay, audio detection with wall attenuation, organic patrol behavior (variable speed, pauses, look rotation), probabilistic colored cone visualization.
-- Architecture now supports infinite scaling: data-driven stats, no hardcoded ceilings, LLM-ready (structure/content separated).
-- Bake-cache composition now uses the actual referenced atom cells for sparse maps, reducing page size while preserving atlas content and passing the regression suite.
-- Next internal work is confrontation mechanics (4 cover states, flanking, peek).
+### How to check a change
 
-### M2 Alpha Sound System Deploy (Completed 2026-06-07)
+```
+python3 tools/persistent/verify.py            # picks docs / quick / smoke from what changed
+python3 tools/persistent/verify.py full       # only to close a stage; take --baseline at the start of the task
+```
 
-✅ **M2-01:** Event-driven tic detection — edge-crossing replaces turn-based evaluation  
-✅ **M2-02:** Colored cone visual system — tile-by-tile probability visualization with state-based appearance  
-✅ **M2-03:** Organic Patrol — variable patrol speed (0.6× to 3.0× multiplier), spontaneous pauses (20% chance, 1–2 turns), look rotation to 8 directions without movement  
-✅ **M2-04:** Noise System — persistent noise grid with per-turn decay (0.25 rate), emission at ~20% per agent step, 3-layer cyan cone visualization  
-✅ **M2-05:** Auditory Detection — audio detection independent of visual LOS, wall attenuation (0.6× per wall), distance falloff (2-tile hearing radius)  
-✅ **Quickfix:** Removed duplicate constants, added detection accumulation to audio reactions, immediate UI feedback  
-
-
-### Refactor Sprint 04 (Completed 2026-06-06)
-
-✅ **Refactor 01:** WallEdgeData consolidation — unified edge key generation  
-✅ **Refactor 02:** Data-driven stats — removed hardcoded maxima  
-✅ **Refactor 03:** Angular FOV — 90° smooth cone (8-direction support)  
-✅ **Refactor 04:** A* pathfinding — optimal guard navigation  
-
-✅ **Bugfixes Applied (2026-06-06):**
-- _path_index starts at 1 (guards skip start cell on pathfind)
-- move_to_cell_animated() uses GuardPathfinder (not greedy)
-- Removed dead code (_build_step_path_to, _orthogonal, _axis_projection)
-- Explicit types in guard_pathfinder.gd (nb: Vector2i)
-- Data flow explicit: no defaults, all parameters passed through chain
-
-
-### Alpha Dev Vision Foundation (Completed 2026-06-06)
-
-✅ **Dev 01:** DEV_VISION Mode — centralized V-key toggle for all debug overlays  
-✅ **Dev 02:** Guard Debug Label — state display panel (id, state, cell, facing, last_known)  
-✅ **Dev 03:** Tile Info on Hover — cyan label showing coordinates + blocked/guard/agent metadata  
-✅ **Dev 04:** Agent Trail Overlay — yellow diamond path history (last 5 tiles), opacity gradient  
-✅ **Dev 05:** Guard Detection Meter — arc meter above guard head showing state-based detection (0% → 100%)  
-✅ **Quickfixes:** Trail offset parameterized, hover label completed with full metadata  
-
-
-### Alpha Lighting Taxonomy & Vertical Depth Foundation (Completed 2026-06-14)
-
-✅ **L-DOC-01:** Lighting Taxonomy & Semantic Visibility Classes
-- 5 discrete visibility classes (FULL_LIT, DIM, PENUMBRA, SHADOW, DEEP_SHADOW)
-- Detection multiplier model (2.0× to 0.2× guards' baseline detection)
-- 7 light source types (Omni, Directional, Cone, Ambient, Intermittent, Emergency, Mobile)
-- Separated tactical (gameplay) from visual (rendering) lighting
-
-✅ **L-DOC-02:** Vertical Lighting Topology & Height Semantics
-- 4 semantic vertical layers (L0–L3): Subfloor, Playable, Structural, Overhead
-- 5 discrete height classes (0–4) for deterministic shadow casting
-- Shadow projection formula with 8-direction quantization
-- Shadow ownership matrix: walls cast shadows, guards/agents receive shadows
-- Runtime philosophy: grid-based, deterministic, low-overhead, gameplay-first
-
-📖 **See:** [docs/systems/lighting.md](docs/systems/lighting.md) for L-DOC-01 & L-DOC-02 (671 lines, pure semantic architecture)
-
-### Alpha Light Vision Mode & Overlay Refinement (Completed 2026-06-14)
-
-✅ **OVERLAY-SPLIT-01:** Separate DEV VISION (V) from LIGHT VISION (L)
-- Added `light_vision` toggle mode (L key)
-- V key → Mechanics overlays: guards, exposure/risk/elite layers, markers
-- L key → Light overlays: light sources, shadow topology, height semantics, temporal state
-- Both can be active simultaneously; FOW hidden if either enabled
-- Foundation for light system debugging independent of mechanics
-
-✅ **EXPOSURE-COLOR-FIX-01:** Realign overlays to 6-class enum
-- Updated `exposure_overlay.gd` to map all 6 visibility classes with named constants
-- Removed `tile_risk_overlay.gd` guard on OCCLUDED_VOID class (now draws when risk > 0)
-- Fixed integer mismatch: FULL_LIT(5) now renders yellow (not offset as FULL_LIT(4))
-- All overlays now use enum constants instead of magic numbers
-
-✅ **Status:** All 6 exposure classes (FULL_LIT, DIM, PENUMBRA, SHADOW, DEEP_SHADOW, OCCLUDED_VOID) properly displayed
-- 0 compilation errors
-- 0 shadowing warnings
-- Color mapping coherent with stealth risk
-
-### Next up (M2 continuation)
-
-- **M2-13:** Geometric shadow projection & baking — implement cone shadow casting, deterministic shadow grids per room
-- **M2-14:** Shadow system calibration & visual polish — threshold tuning, edge smoothing, per-guard detection customization (L-DOC-03)
-- **M2-15:** Advanced overlays & tactical visualization — movement preview (PRIO_MOVEMENT), noise heatmap, objective markers
-- Event-driven detection by tic (edge-crossing) — replace turn-based evaluation
-- Noise system — terrain cost, degradation, propagation radius
-- Confrontation system — 4 cover states, flanking, peek mechanic
-- Enemy state machine — complete FSM refinement (patrol → suspicious → alert → chase)
-- Communication system — whistle (local), radio (global), alarm (site-wide)
-- Character sprite (AnimatedSprite2D with Human_0 Idle/Run assets)
-- Contextual action menu on second tap — move / interact / wait choices
-- Enemy guard (patrol, vision cone, alert meter) — M2 start
-- Environment theme system (Phase 2): `EnvironmentTheme` resource, `GameContext` autoload, ambient/fog color per zone
-- Perspective transition polish: optional animated swap between N/E/S/W viewpoints
+The boot gates refuse to start while another Godot is alive (the editor included).
 
 ---
 
@@ -208,7 +121,9 @@ Run smoke test (CLAUDE.md § Verification Protocol)
 | [docs/README.md](docs/README.md) | Documentation index — start here |
 | [docs/production/milestones.md](docs/production/milestones.md) | The executable milestone list |
 | [docs/technical/ASSET_MAP.md](docs/technical/ASSET_MAP.md) | Tile catalogue and asset conventions |
-| [docs/technical/BAKE_SYSTEM_REFERENCE.md](docs/technical/BAKE_SYSTEM_REFERENCE.md) | The bake canon — read before touching the render |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | The layered runtime picture: content, load pipeline, state, simulation, render |
+| [docs/DIRECTION_GLOSSARY.md](docs/DIRECTION_GLOSSARY.md) | Directions, faces and the banned-terms list |
+| [docs/technical/BAKE_SYSTEM_REFERENCE.md](docs/technical/BAKE_SYSTEM_REFERENCE.md) | **Historical:** the atlas bake went at R3D-END; what survives is its logic (grayscale facades, FNV-1a, loud-fail) |
 
 ---
 
@@ -216,15 +131,14 @@ Run smoke test (CLAUDE.md § Verification Protocol)
 
 ```
 ASSETS/
-├── ISOMETRIC/          ← 8 Kenney isometric packs (blocks, terrain, city, etc.)
-├── CHARACTERS/humans/  ← 8 character variants × Idle / Run / Pickup animations
-├── UI/                 ← HUD panels, icons, medals
-├── FX/smoke/           ← particle sprites
-└── REFERENCE/          ← orthographic renders + alternate tilesets (not for gameplay)
+├── materials/<id>/     ← one folder per material: its grayscale facade and damage decals (what the 3D board reads)
+├── props/              ← CC0 models, slots and .vox voxel objects (props/MODEL_SOURCES.md has the licences)
+├── TEXTURES/           ← photographic surfaces and patches
+├── ANIMATIONS/ AUDIO/  ← rigs and sound
+├── ISOMETRIC/          ← the floor / structure TileSet sources only (the 3D board needs no tile atlas)
+└── ART_SPECIFICATIONS.md   ← read before authoring any texture or decal
 REFERENCES/             ← visual style screenshots (Emperor, StarCraft, XCOM)
 ```
-
-All isometric packs use the same dimetric projection — fully compatible with Godot's isometric TileMap mode.
 
 ---
 

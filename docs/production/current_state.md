@@ -1,21 +1,32 @@
 # INFILTRAITOR — Current Project State
 
 <!-- AUTO:BEGIN header -->
-**Version:** 0.9.107 · **Updated:** 2026-10-02 · **Branch:** main (work on main per Director, 2026-10-02)
+**Version:** 0.9.107 · **Updated:** 2026-10-02 · **Branch:** claude/r3d-actors-y5r8hs
 <!-- AUTO:END header -->
 
 > **Executive snapshot of the entire project. Where we are right now — with honesty about what works and what does not.**
 
 ---
 
-## Where the project stands — 2026-10-02 (newest; the sections below are kept as history)
+## Where the project stands — 2026-10-02 (close; the sections below are kept as history)
+
+**Version 0.9.107 · R3D-ROT is CLOSED: `verify.py full` passes (449 s) on the final code.** Records: `PROMPTS/RESUMO_SESSAO_2026-10-02_R3D_REVIEW_ROUNDTRIP_SOOT.md` (the day, in order) and the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
+- **Soot has one truth (SOOT-TRUTH):** `Room._soot_map` owns it (SaveState stores it) and the soot plane is its projection. Three writers had broken that: an erase that left the plane's tone, a commit that stamped cells it had just destroyed, and stamped cells no wave painted. The PLAYGROUND round trip reads 0 texels (it was 3-4, red since `6d21893d`); `soot_truth_selftest` pins each rule.
+- **Dev overlays follow the yaw:** ten dev overlays (light, shadow, exposure, tile risk, height, temporal, elite exposure, occlusion, tile labels, voxel ruler) draw through `GroundCanvas3D`; it gained `draw_rect`, `draw_set_transform` and `draw_string` (a billboarded `Label3D`).
+- **New gates in `verify.py full`, each earned by a mutation:** `pick_gate` (touch picking from N/E/S/W, 0 wrong cells on DORM, GLASS, PLAYGROUND), `roof_yaw_gate` (a roof opens and shuts the same from every side), `world_gate` (the air overlays' `lift()` and `screen_axes()` under yaw). New scenario steps: `view_mode`, `pick_check`, `world_check`.
+- **Calibration done with the Director:** the soot looks right on four maps in all four views; the "+" a one-voxel hole leaves on a wall is a legitimate consequence of "tone 0 on a hole's six face neighbours" and stays. A soft halo is built and shipped OFF (`BlastCalculator.SOOT_HALO_CHANCE`, 0.5 is the middle ground).
+- **Measured, not changed:** heat vision's tile-risk overlay builds 3 025 quads per frame (55x55 cells, ~9.5-10.5 ms of CPU on the desktop, 1.3 of it the risk lookups) even on a 126-cell map; the Director keeps it per frame and the zone-vs-guard-motion question is on the ACTORS plan.
+- **Still capture-only:** what each air overlay (aim dome, throw arc, tracer) draws with `lift()` and `screen_axes()`. **Not re-measured on the Moto:** the cost of a turn after R3D-ROT's closing gates (last row 10 ms).
+- **Next (the Director's call):** R3D-LOOK, R3D-SURFACES, R3D-CLAIMS / R3D-BUFFER, the noise track, PP2/PP3 (`.iprop`, user-tier models).
+
+## Where the project stood — 2026-10-02 (earlier that day; history)
 
 **Version 0.9.107 · R3D-PROPS, R3D-ACTORS, R3D-WORLD, R3D-ROT all BUILT; rotation is camera-only now (Moto turn 210→10 ms).** Records: `PROMPTS/RESUMO_SESSAO_2026-09-30_R3D_PROPS_MODELS_PLANS_DOCS.md`, `PROMPTS/RESUMO_SESSAO_2026-10-01_R3D_ACTORS_WORLD.md`, `PROMPTS/RESUMO_SESSAO_2026-10-01_R3D_ROT_CAMERA_ONLY.md`, `PROMPTS/RESUMO_SESSAO_2026-10-02_R3D_REVIEW_ROUNDTRIP_SOOT.md`; the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.50).
 - **Built today (`7cfc18dd..`):** a crate stops blocking its GU at >= 80% destroyed (wood needs two grenades, plywood one: 85%, `destroy_factor` 0.95); firearm rounds strike prop voxels; `board_probe` dumps props; `wood_table` and `pistol_prop` draw real CC0 models (Poly Haven, Quaternius; `props/MODEL_SOURCES.md`); the APK with the PROPS map ran on the Moto.
 - **Ratified by the Director (`ACTOR` D66-D69):** materials and colour come from OUR registry (families, flat `textured: false`, fallback own -> family generic -> `generic`, 8 materials to add); one `BoardLook.grade()` in the shaders, no full-screen LUT; Tier 4 props are replaced by 1/8 GU voxel fragments on a blast (~0.5 s) and leave a persistent, cosmetic, charred pile; wider charred tones; contact shadows AFTER the destruction; **models fill SLOTS** (gameplay from the slot), several models of one slot at once, local and cosmetic, an incompatible one falls to the generic, `.vox` models are free destructible containers, target scale the game's own. **First content: a dormitory scene** (`maps/DORM.map.json`), also the calibration room.
 - **Plans, built so far:** [`PROPS_TIER4_PLAN`](../../PROMPTS/PLANNING/PROPS_TIER4_PLAN.md) v0.4: P1-P7 built (voxelizer + replacement, the persistent pile, charred variety, material zones, contact shadows, the calibration round with the scale canon 1 GU = 1.60 m and an identity `BoardLook.grade()`); [`PROP_PIPELINE_PLAN`](../../PROMPTS/PLANNING/PROP_PIPELINE_PLAN.md) v0.4: PP1 (slots, validator, fallback chain) and PP4 (`.vox` destructible props) built, the dormitory scene built; PP2 (`.iprop`), PP3 (user tier), PP5-PP7 still planned.
 - **Documentation:** `docs/ARCHITECTURE.md` rewritten against the 3D board (§0 layered picture, §1, §15, §16); `repo_structure.md` and `developer_setup.md` refreshed; `ASSET_MAP`, `TEXTURE_CATALOG`, `rendering.md` bannered; the old texts are in `docs/history/`.
-- **Known red:** `verify.py full` — the PLAYGROUND rotation round trip differs by 2-4 soot texels at cell (216,24), bisected to `6d21893d`, separate task. The `ground_gate` PLAYGROUND digests were re-recorded (the map gained a crate, `086ddea2`).
+- **Known red (CLOSED later the same day, SOOT-TRUTH):** `verify.py full` — the PLAYGROUND rotation round trip differed by 2-4 soot texels at cell (216,24), bisected to `6d21893d`. The `ground_gate` PLAYGROUND digests were re-recorded (the map gained a crate, `086ddea2`).
 - **Next:** the Director's eye on the DORM capture (sizes, palette, a grade value if wanted); then PP2/PP3 (`.iprop`, user-tier models), the dormitory's window and small items, multi-GU voxel footprints.
 
 ## Where the project stood — 2026-09-26 (history; the 2026-09-25, 2026-09-24, 2026-09-21 and 2026-08-30 sections below are kept as history)
@@ -425,7 +436,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 **Code & Test Inventory**
 
 - GDScript modules: 196
-- Test scripts: 58
+- Test scripts: 59
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 28

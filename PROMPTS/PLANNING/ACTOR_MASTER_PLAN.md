@@ -5,6 +5,10 @@
 
 > ⏭️ **2026-09-30 — D66-D69 added (props):** a prop model conforms to a SLOT and its colour comes from the material registry (D66); Tier 4 is replaced by 1/8 GU voxel fragments on a blast and ends as a persistent cosmetic pile (D67); one colour grade in the board's shaders, contact shadows after the destruction (D68); content is local, forgiving, fallback to the generic (D69). The builds are [`PROPS_TIER4_PLAN`](PROPS_TIER4_PLAN.md) and [`PROP_PIPELINE_PLAN`](PROP_PIPELINE_PLAN.md).
 
+> ## ⏭️ 2026-10-02 — CALIBRATION TO DO (Director): the risk zone against the guard's motion
+>
+> Heat vision's tile-risk overlay (`tile_risk_overlay.gd`) recomputes and redraws its whole zone **every frame** (Director: keep it per frame for now). Measured 2026-10-02: 3 025 quads per frame (a fixed 55x55 window, every cell has risk > 0, so it also draws ~2 900 cells outside a 126-cell map), ~9.5-10.5 ms of CPU on the desktop, 1.3 ms of it the risk lookups; the shader is flat colour and cheap, the cost is building the quads and the mesh. **To calibrate when the guards are real models (D64):** a guard now walks freely as a mesh while its detection zone is a grid of uniform squares; moving the zone cell by cell with the guard's body can read as too detailed or as stutter. The Director's lean: a simpler, steadier zone (updated per step or per GU, not per frame) while the model moves freely. Levers, cheapest first: bound the loop to the map; draw only cells whose risk changed; update on the guard's step. Measure on the Moto before choosing (it is 3-4x the desktop). Logged in `technical_debt.md` ("Engine debt after R3D-ROT").
+
 > ## ⏭️ 2026-09-23 — actors become LIVE MESHES, static props become meshes (D64, D65)
 >
 > Measured on the Moto in `RENDER3D_MASTER_PLAN`'s R3D-SPIKE-3D and approved by the Director: the agent and

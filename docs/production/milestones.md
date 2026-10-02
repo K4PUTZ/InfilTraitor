@@ -1,5 +1,7 @@
 # INFILTRAITOR — Milestones
 
+> ⏭️ **2026-10-02 — read this with the engine track beside it.** The engine milestones (the 3D board, destruction, light, props, actors, rotation) were run as the `R3D-*` stages of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) and are closed up to R3D-ROT (2026-10-02); [`current_state.md`](current_state.md) holds the live status. The M-numbered gameplay list below carries the dates it was written on (June 2026) and was not re-audited in this pass.
+
 > **Executable list of milestones with status, dependencies, and blockers.**
 
 ---

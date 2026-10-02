@@ -18,7 +18,7 @@ docs describing a team, a process, and systems that never existed.
 | **[Design Philosophy](vision/design_philosophy.md)** | The principles that don't bend |
 | **[Design Pillars](vision/pillars.md)** | The seven pillars |
 | **[Design Master Plan](DESIGN_MASTER_PLAN.md)** | **Every ratified mechanic in one place** — turn/detection/noise canon, and the confrontation, resistance, equipment, enemy and progression design that is decided but unbuilt. Read before designing anything gameplay-facing. |
-| **[Architecture](ARCHITECTURE.md)** | How the engine is put together. ⚠️ Last fully reconciled 2026-07-03; its status tags were refreshed 2026-09-15, and its header lists the systems it does not cover |
+| **[Architecture](ARCHITECTURE.md)** | How the engine is put together. §0, §1, §15 and §16 were rewritten against the 3D board (2026-09-30) and its status table, perspective, picking and rotation text were refreshed on 2026-10-02 (R3D-ROT closed); §2-§14 are still the July reconciliation, and its header lists what it does not cover |
 | **[Retrospective, first eight weeks](production/RETROSPECTIVE_2026-07.md)** | Where we've been, with the numbers |
 
 ---
@@ -32,7 +32,7 @@ These are load-bearing. Contradicting them breaks something that is expensive to
   VOXEL_MASTER_PLAN's "1 voxel = 1 tile", RENDER_ORDER. The last commit that builds that board is `34881f81`.
 - **Carries over:** the geometry, the facades (B2), the FNV-1a determinism (B4), loud failure (B6), the light field and the
   cell planes. `CLAUDE.md` lists each surviving site.
-- **Verification is tiered** (`python3 tools/persistent/verify.py`: docs / quick / smoke, and `full` only on request).
+- **Verification is tiered** (`python3 tools/persistent/verify.py`: docs / quick / smoke, and `full` only on request). `full` (green 2026-10-02) runs the ground, shot-3d, occlusion-canonical, mirror, pick (touch picking from N/E/S/W), roof-yaw, world (the air overlays' maths under yaw) and round-trip gates and the baseline-held pixel and probe gates.
 
 | Doc | Owns |
 |---|---|
@@ -119,7 +119,8 @@ of docs rotted.
 
 ## History
 
-[design-concepts/](history/design-concepts/) — the original June 2026 concept docs.
+[design-concepts/](history/design-concepts/) — the original June 2026 concept docs.  
+[README_STATUS_2026-06.md](history/README_STATUS_2026-06.md) — the root README's status log as of June 2026 (the 2D board, M2 sound, light vision), archived 2026-10-02.
 **Their game design was recovered into [DESIGN_MASTER_PLAN.md](DESIGN_MASTER_PLAN.md)
 on 2026-08-06** — go there, not here. These files stay archived and unmodified as the
 provenance record; only their technical-state sections are genuinely obsolete, which is

@@ -4,6 +4,8 @@
 
 > ⏭️ **2026-09-25 — `RoomBuilder` no longer bakes or places voxel tiles (R3D-END):** it builds the registries and the store's input; `VoxelBoard.register_*()` only makes the levels exist. The `MapSpec` contract and Rule 7 are unchanged.
 
+> ⏭️ **2026-10-02 — rotation no longer re-lays-out (R3D-ROT closed).** The sections below on `_layout_with_perspective()` / "Perspective Rotation Coherence" describe the retired re-layout and are kept as history: the grid's orientation never changes, only the camera turns around one world (`_set_perspective()` is the camera's yaw), so `light_sources`, `exit_cells`, `enemy_defs` and every per-cell layer keep their base coordinates in every view. `layout_with_perspective()` remains only as the fixture of five selftests. See `docs/ARCHITECTURE.md` (§ Perspective) and `RENDER3D_MASTER_PLAN`.
+
 > **Canonical specification for the data-driven map pipeline, MapSpec contract, and compilation.**
 
 The map system is completely data-driven. `room.gd` is a renderer that consumes a `layout` dictionary; it does not know how the map was produced. Permanent (hardcoded) maps and future procedural generators share the same vocabulary and compiler.

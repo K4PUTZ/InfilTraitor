@@ -1,5 +1,7 @@
 # INFILTRAITOR — Roadmap
 
+> ⏭️ **2026-10-02 — status.** The visual/engine phase ran ahead of gameplay on purpose (Director: months of render, destruction and light work before the gameplay): the 3D board, destructible voxel world, light, props, live actors and camera-only rotation are built and gated (`RENDER3D_MASTER_PLAN`, [`current_state.md`](current_state.md)). The phases below were written in June 2026 and not re-audited in this pass; what remains designed-and-unbuilt is listed in `docs/DESIGN_MASTER_PLAN.md` §20.
+
 > **Macro-level development phases. Each phase has a clear exit criterion before advancing.**
 
 ---

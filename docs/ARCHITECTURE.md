@@ -42,7 +42,7 @@ an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. Acto
 		▼
  RENDER (3D, then 2D on top)       Board3DLive (Node3D under Room): meshes the VoxelStore in 16-voxel chunks, faces merged by MATERIAL, three visible faces; colour = material base_color x facade luminance sampled in world space at 16 texels per voxel;
 								   light and soot are read PER CELL from the planes (a Texture2DArray), so a light or soot change is a layer upload, not a remesh; `BoardLook` owns the look constants; glass panes read the screen behind them
-								   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each), ActorBillboard3D (2D sprite frames as depth-tested billboards), GroundCanvas3D, VisionCone3D
+								   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each), ActorMesh3D (live skinned meshes for the agent and the guards), GroundCanvas3D (ground overlays, incl. the dev aids; draw_rect / draw_set_transform / draw_string -> Label3D), WorldCanvas3D (air overlays), VisionCone3D
 								   2D on top: HUD (hud.tscn), FogOfWar, Selection/Movement/Path overlays, guards and the agent (baked frames)
 ```
 
@@ -92,7 +92,7 @@ The scene root is `room.gd` (`Node2D`, instantiated from `room.tscn`): the level
 
 ```
 Room (room.gd, Node2D)                 orchestrator
-├── Board3DLive (Node3D, built by code after every map load)   THE board: Camera3D (orthographic, 30/45), chunk meshes, glass, decals, prop meshes, VFX fields, actor billboards, ground overlays
+├── Board3DLive (Node3D, built by code after every map load)   THE board: Camera3D (orthographic, 30/45), chunk meshes, glass, decals, prop meshes, VFX fields, live actor meshes, ground and air overlays
 │     (`_start_board3d_live()`; a map reload removes and rebuilds it; `board3d()` answers with the live one)
 ├── VoxelBoard (VoxelBoard, Node2D, hidden)   NOT a renderer: the level registry, the cell planes' application, the dirty -> `voxel_destroyed` pass, glass crack/rim/shard records, prop containers
 ├── Camera2D · TurnManager · EnemyPhaseController
@@ -477,8 +477,8 @@ Two groups. **Analysis overlays** are owned by `VisionController` and gated by v
 
 - **Interaction:** left-drag pan with an 8px drag threshold, mouse-wheel zoom (`ZOOM_MIN 0.20 … ZOOM_MAX 1.20`, step 0.06), two-finger pinch-zoom.
 - **Leash:** agent-centered hard radius `CAMERA_MAX_BORDER_TILES = 4` tiles with a 2-tile quadratic soft-zone ease-out; fully released in `dev_vision`.
-- **Perspective:** four cardinal views (N/E/S/W). Switching re-lays-out the room (still the case on 2026-09-30: the ruling is camera-only rotation, built at R3D-ROT): `_layout_with_perspective` rotates every cell/edge/route — `wall_levels` (all storeys), `structure_tiles`, `blocked_cells/edges`, `enemy_defs`, **`exit_cells`, and `light_sources`** — and remaps tile-name suffixes via `_PERSPECTIVE_SUFFIX_MAP`. `_set_perspective` then rebuilds tilemaps, re-spawns guards, re-derives blocked sets, re-initializes fog, re-centers, **redraws the tile-number overlay, calls `LightingController.rebuild_all()` (lights/semantics/shadows/exposure follow the rotation, refreshing the analysis overlays via `lighting_rebuilt`), and clears the now-stale dev trail.** Agent/selection cells are round-tripped through a base-coordinate transform (`_cell_to_base` / `_cell_from_base`) so positions survive the rotation. Principle: every per-cell system is re-derived from the rotated layout, exactly as initial `_ready` setup does.
-- **Isometric picking:** `_screen_to_tile` does a 3×3 diamond-center search to resolve the clicked tile across all four diamond quadrants.
+- **Perspective:** four cardinal views (N/E/S/W) of ONE world (R3D-ROT, closed 2026-10-02). `_set_perspective()` is the camera's yaw plus the shader's view uniforms, the props' view re-pick and the occlusion recompute: no re-layout, no store rebuild, no replay, no relight (Moto turn 210 -> 10 ms). Every face is meshed once; the occluded set is yaw-dependent (the walls toward the camera are the ones cut) and is built for all four views once; a revealed roof (stored per GU) is not. `_layout_with_perspective` survives only as the fixture of five selftests. Gates: `ground_gate`, `occ_canonical_gate` (N view), `pick_gate`, `roof_yaw_gate`, `world_gate`.
+- **Picking:** `Room._screen_to_tile` asks `Board3DLive.pick_cell()`: a camera ray against the ground plane, with the standing props' boxes asked first (what the eye sees under the finger is what is picked; walls are not asked, their cut-away is what lets the player click past them). Held from every view by `pick_gate`.
 
 ---
 
@@ -512,7 +512,7 @@ All coordination operates directly on `room._guards`; the coordinator stores no 
 This section is descriptive, not aspirational. These are real properties of the code on 2026-09-30.
 
 ### 15.1 `room.gd` is a residual God Object (11 169 lines)
-Despite `MODULARIZE-01..06`, `room.gd` still owns: input routing, turn handlers, agent move callbacks, tic application and alert metering, busted/reset flows, the perspective re-layout and every base-record replay, the picking glue, the dev capture/scenario/benchmark entry points, the prop consequence code, and the reads of 38+ distinct dev flags (`_dev_flag("NAME")`). It grew (11 909 lines on 2026-09-15, 11 169 now after R3D-END's deletions) because each track added its seam here. **R3D-ROT deletes the replay half; the dev entry points are the next extraction** (they are not game logic).
+Despite `MODULARIZE-01..06`, `room.gd` still owns: input routing, turn handlers, agent move callbacks, tic application and alert metering, busted/reset flows, the base-record replay (checkpoint persistence), the picking glue, the dev capture/scenario/benchmark entry points, the prop consequence code, and the reads of 38+ distinct dev flags (`_dev_flag("NAME")`). It grew (11 909 lines on 2026-09-15, 11 169 now after R3D-END's deletions) because each track added its seam here. **R3D-ROT removed the rotation half of the replay (the `_base_*` records stay as checkpoint persistence until `SaveState` serialises the store); the dev entry points are the next extraction** (they are not game logic).
 
 ### 15.2 Other oversized files
 `DetonationPlanBuilder` 3 057 lines (one cook, 14 phases: cohesive but huge), `TestZoneController` 1 611 (it became the grenade and prop controller, the name is the placeholder it started as), `guard_enemy.gd` 1 312 (FSM + movement + detection + three `_draw` routines), `VoxelBoard` 2 404 (state, planes, glass records, prop containers), `Board3DLive` (the whole 3D board in one node).
@@ -523,8 +523,8 @@ Controllers hold `_room` back-references and read/write room's underscore member
 ### 15.4 Computed-but-unused lighting/exposure pipeline
 `ShadowProjector -> ExposureSystem` produces a graduated, stability-aware tactical map every build, but detection never consumes it (`TicSystem.evaluate`'s `exposure_system` argument is always null); the one consumer is `EliteExposureOverlay`.
 
-### 15.5 State that is not yet consistent across a rotation
-Until R3D-ROT, every mission consequence needs a base record + a replay (`_base_damage`, `_base_shattered_props`, `_base_debris`, ...); one soot round-trip diff is open on PLAYGROUND (2-4 texels at cell (216,24), bisected to `6d21893d`). A prop's blocked GU is erased in place (`_release_destroyed_prop_cells`) but the lamps' cached shadow map is not re-fed (same gap as a burnt wall).
+### 15.5 State across a rotation and a checkpoint
+Rotation is the camera's yaw, so no state is recorded or replayed for it any more. The `_base_*` records (`_base_damage`, `_base_shattered_props`, `_base_debris`, the pile and crack records) remain as the CHECKPOINT persistence that `SaveState` restores after `load_map()`. Soot has one truth since 2026-10-02 (SOOT-TRUTH): `Room._soot_map` owns it and the soot plane is its projection (a destroyed voxel's erase clears the plane too, `stamp_soot` ignores cells no voxel stands on, `settle_soot()` paints stamped cells no wave carried); `board_probe.py roundtrip --with-store` reads 0 texels on PLAYGROUND. A prop's blocked GU is erased in place (`_release_destroyed_prop_cells`) but the lamps' cached shadow map is not re-fed (same gap as a burnt wall).
 
 ### 15.6 Hardcoded / inferred data
 Tile semantics and heights are inferred from `blocked_cells`; lights are map-driven (omni only) without authoring tooling; `TestZoneController` still seeds dev grenades; material rows are calibrated by eye with the Director, not derived.
@@ -547,16 +547,16 @@ Tile semantics and heights are inferred from `blocked_cells`; lights are map-dri
 | Light (voxel buckets, cell planes) | Implemented | `VoxelLightField`; real 3D lamps rejected (+24 ms GPU on the Moto) |
 | Props Tier 1/2 (hollow voxel crates), Tier 3/4 (real CC0 models) | Implemented | R3D-PROPS; Tier 4 voxel replacement + the persistent charred pile built 2026-09-30 (`PropVoxelizer`, `PropFragmentSim`, `PropFragments3D`); prop colour from the material registry, the wider charred tones (P4/P5) and prop contact shadows (P6, `PropShadow`) built; the calibration round (P7) built: real-size furniture on the 1 GU = 1.60 m canon and `BoardLook.grade()`, identity by default, trialled with `INFILTRAITOR_GRADE` |
 | Model pipeline: slots, several models per slot, validator, fallback chain; `.vox` voxel models | Implemented (PP1, PP4, 2026-09-30) | `SlotDef`, `PropValidator`, `PropRegistry.resolve_placement`, `VoxModel`, `VoxPropBuilder`, `PropVoxLibrary`, `VoxelBoard.register_vox_prop`; `.iprop` and the user tier for models are planned (`PROP_PIPELINE_PLAN`); first content: 7 dormitory objects on the PROPS map, the scene itself next |
-| Actors (agent, guards) | Partial | baked 2D frames mirrored as billboards; live rigs at R3D-ACTORS (D64) |
-| Rotation | Partial | four views by full re-layout + base-record replay; camera-only is R3D-ROT |
+| Actors (agent, guards) | Implemented (placeholders) | live skinned meshes (`ActorMesh3D` from `agent_live*.glb`, R3D-ACTORS 2026-10-01); the model and the guards are placeholders; the frame bake is retired for gameplay |
+| Rotation | Implemented | camera-only since R3D-ROT (closed 2026-10-02); gates `pick_gate`, `roof_yaw_gate`, `world_gate` |
 | Guard AI (FSM), detection (visual/audio), noise | Implemented | `docs/systems/AI_MASTER_PLAN.md` |
 | Detection <-> exposure link | Partial | §15.4 |
 | Shadow / exposure / height semantics | Partial | overlay-only consumers; data inferred |
-| Fog of war, tactical overlays, camera, turns, coordination | Implemented | 2D on top of the 3D board |
+| Fog of war, tactical overlays, camera, turns, coordination | Implemented | ground overlays and the dev aids draw through `GroundCanvas3D` (depth-tested, on their cells under every yaw); air overlays through `WorldCanvas3D`; only the full-screen blast flash stays 2D |
 | Map files (`.map.json`), two-tier maps | Implemented | `MAPFILE_REFERENCE.md` |
 | Save (`SaveState`) | Partial | the plumbing; no slots/UI (`save model is checkpoint-scoped`) |
 | Device harness (APK, `DevFlags`, `Telemetry`, scenarios, video) | Implemented | `DEVICE_DIAGNOSTICS_MASTER_PLAN` |
-| Verification (`verify.py` tiers, selftests, identity gates) | Implemented | one known red in `full`: PLAYGROUND rotation soot (§15.5) |
+| Verification (`verify.py` tiers, selftests, identity and rotation gates) | Implemented | `full` green 2026-10-02 (449 s): ground, shot-3d, occ-canonical, mirror, pick, roof-yaw, world, roundtrip+shadow, probe, pixel |
 | Light/semantic authoring & serialization | Planned | specced (LIGHT-03), no runtime code path |
 
 ---

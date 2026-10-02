@@ -91,8 +91,18 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 - **Slots, several models per slot, the validator, the fallback chain and `.vox` voxel models are BUILT (PP1/PP4); no `.iprop` and no user tier for models yet** (`PROP_PIPELINE_PLAN` PP2/PP3). `PropMesh3D` still makes one material per surface per instance (sharing per zone and a `MultiMesh` for many instances are measured options). **A voxel model is one GU of footprint** (the `MapCompiler` blocks only the anchor cell; footprint-aware rotation is the known gap), and a MESH prop still does not turn with the view (its long axis stays put on a rotation; R3D-ROT fixes both).
 - **Material library is 14 rows with no `family`/fallback**; 8 materials are missing for everyday objects (`PROPS_TIER4_PLAN` §2b).
 - **Firearms on props:** the agent path only; the weapon bench is untouched by decision; no debris on a shot.
-- **Open since `6d21893d`:** the PLAYGROUND rotation round trip differs by 2-4 soot texels at (216,24) (`verify.py full` red); a task is open.
+- **Closed 2026-10-02 (SOOT-TRUTH):** the PLAYGROUND round trip soot divergence (`_soot_map` owns the scorch, the plane follows).
 - **Documentation:** `docs/ARCHITECTURE.md` §2-§14, `docs/systems/*.md`, `ASSET_MAP`, `TEXTURE_CATALOG` still describe July 2026 (bannered; `ARCHITECTURE.md` §15.7).
+
+## Engine debt after R3D-ROT (2026-10-02)
+- **Heat vision's tile-risk overlay is heavy per frame** (`tile_risk_overlay.gd`, dev only): it walks a fixed 55x55 window (3 025 cells) and draws a quad for every cell with risk > 0, which is all of them (3 025 quads on a 126-cell map), redrawing every frame: ~9.5-10.5 ms of CPU on the desktop (1.3 ms of it the risk lookups; the shader is flat colour and cheap, the cost is building the quads and the mesh), so ~30-40 ms on the Moto. The Director keeps it per frame; bounding the loop to the map (and a coarser, guard-driven update) is the cheap lever, and the zone-vs-guard-motion calibration is on the `ACTOR` plan.
+- **Dev text labels are billboards** (`GroundCanvas3D.draw_string` -> `Label3D`): not occluded by every wall; "numbers" on PLAYGROUND creates ~1 900 of them while on.
+- **Air overlays have a maths gate, no picture gate:** `world_gate` holds `WorldCanvas3D.lift()` and `screen_axes()` under yaw; what the aim dome, throw arc and tracer draw with them is judged on captures only.
+- **`_base_*` records** (damage, shattered props, debris, piles, cracks) are checkpoint persistence, not rotation workarounds; they go when `SaveState` serialises the `VoxelStore` (a stage of its own).
+- **`layout_with_perspective()`** remains as the fixture of five selftests (floor_zone_bake, slice_geometry, voxel_persist, roof_entity, roof_bake): coverage, not a runtime path. `circle_gate_probe.gd` is a perf instrument and stays 2D on purpose.
+- **Noise:** the guard noise indicator never shows (`GuardCoordinator` called a method that never existed; the call is a comment now); when wired its direction must use the view's axes (`WorldCanvas3D.screen_axes()`).
+- **Small, known:** the rifle has no grip (it holds the shotgun); crouched and prone throws do not exist; `agent_live*.glb` are git-ignored (a fresh clone runs `r3d_live_rig_export.py` twice); the new `soot_truth_selftest.gd` has no `.uid` yet (the editor writes it).
+- **Soot halo** (`BlastCalculator.SOOT_HALO_CHANCE`, 0.0) is built and off by the Director's choice; reapply at 0.5.
 
 ## Critical Debt 🔴 (Blocks future scalability)
 **Severity:** HIGH

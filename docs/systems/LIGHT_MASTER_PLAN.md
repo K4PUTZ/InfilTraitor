@@ -191,6 +191,8 @@ Combined with:
 
 ## Perspective Rotation Coherence
 
+> ⏭️ **2026-10-02 — historical.** Rotation is the camera's yaw since R3D-ROT: lights, shadows and exposure are derived once in base coordinates and are not re-derived or rotated on a view change (`_layout_with_perspective()` survives only as a selftest fixture). The text below describes the retired re-layout.
+
 On perspective change, lighting is re-derived:
 
 **Rotation rule:**

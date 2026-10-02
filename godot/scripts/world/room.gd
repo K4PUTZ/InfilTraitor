@@ -1880,6 +1880,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_exit_cells = _room_builder.get_exit_cells()
 	_current_light_sources = _room_builder.get_light_sources()
 	_soot_map.clear()           ## SOOT-STAMP: the soot map dies with the board
+	_soot_unsettled.clear()
 	_base_damage.clear()        ## VL-PERSIST: fresh map, no destruction yet
 	_base_damage_claims.clear()
 	_base_cracks.clear()        ## CRACK-02 S-3: and no glass has been crazed on it
@@ -3858,6 +3859,7 @@ func _reset_room_state() -> void:
 	## describes damage that no longer exists. The crater-floor soot goes with it
 	## for the same reason.
 	_soot_map.clear()   ## the scorch describes damage a reset undid
+	_soot_unsettled.clear()
 	## Zero the global alert
 	_alert_meter = 0
 
@@ -4093,12 +4095,21 @@ func _on_voxel_destroyed(grid_pos: Vector2i, level: int, material_id: String) ->
 ## `SOOT_STORAGE_REFORM` §5.3 measured this leak's other half as legitimate (a revealed crater
 ## floor is a DIFFERENT, still-INTACT voxel getting scorched, never THIS voxel), so clearing here
 ## only ever removes a mark for the exact voxel that just stopped existing.
+##
+## The map is the truth and the plane its projection, so the erase and the plane's clean write are ONE step: erasing
+## only the map left the old tone on the plane, and a SaveState restore (which projects the map) then differed from
+## the live board. A cell another claim still stands on (a box corner, a junction column) keeps its scorch: the cell
+## is the soot's key, and it is not orphaned while something stands there.
 func _clear_orphaned_soot(grid_pos: Vector2i, level: int) -> void:
 	var stored: Dictionary = _soot_map.get(level, {})
-	if stored.is_empty():
+	if stored.is_empty() or not stored.has(grid_pos):
 		return
-	var base_xy: Vector2i = grid_pos
-	stored.erase(base_xy)
+	var store: VoxelStore = VoxelStore.active
+	if store != null and store.has_solid(grid_pos.x, grid_pos.y, level):
+		return
+	stored.erase(grid_pos)
+	if _voxel_board != null:
+		_voxel_board._write_cell_soot(level, grid_pos, BlastCalculator.soot_code(BlastCalculator.FACE_SOOT_CLEAN))
 
 
 ## DIAGNOSTIC (2026-08-19). Counts voxel_destroyed dispatches so a capture can
@@ -5610,9 +5621,15 @@ func stamp_soot(writes: Dictionary) -> Dictionary:
 		var stored: Dictionary = _soot_map[level]
 		var level_writes: Dictionary = writes[level]
 		var out_level: Dictionary = {}
+		var store: VoxelStore = VoxelStore.active
 		for view_cell: Vector2i in level_writes:
 			var tone: int = int(level_writes[view_cell])
 			if tone < 0 or tone == BlastCalculator.FACE_SOOT_CLEAN or tone > BlastCalculator.FACE_SOOT_CHAR:
+				continue
+			## One truth: a cell no voxel stands on carries no soot (SOOT-ORPHAN-01). A blast commits its destruction
+			## BEFORE it stamps, so its ember CHARRED rows on the voxels it just burnt away used to land here and
+			## outlive them (the map held them, the plane never drew them, a restore replay erased them).
+			if store != null and not store.has_solid(view_cell.x, view_cell.y, int(level)):
 				continue
 			var base_xy := view_cell
 			var current: int = int(stored.get(base_xy, BlastCalculator.FACE_SOOT_CLEAN))
@@ -5632,6 +5649,10 @@ func stamp_soot(writes: Dictionary) -> Dictionary:
 ## animate, so its plane is written here and shows once something reveals it.
 func absorb_scorch(writes: Dictionary) -> void:
 	var changed: Dictionary = stamp_soot(writes)
+	for level in changed:
+		if not _soot_unsettled.has(level):
+			_soot_unsettled[level] = {}
+		(_soot_unsettled[level] as Dictionary).merge(changed[level])
 	var store: VoxelStore = VoxelStore.active
 	if _voxel_board == null or store == null:
 		return
@@ -5641,6 +5662,31 @@ func absorb_scorch(writes: Dictionary) -> void:
 			if not store.has_cell(view_cell.x, view_cell.y, int(level)):
 				_voxel_board._write_cell_soot(int(level), view_cell,
 					BlastCalculator.soot_code(int(level_cells[view_cell])))
+
+
+## Cells a blast stamped into the map whose plane the presenter may not have painted: `level -> {cell: tone}`.
+var _soot_unsettled: Dictionary = {}
+
+
+## The end of a blast's scorch: every cell it stamped gets the plane the MAP says, whether or not a wave carried it.
+## The presenter's waves animate the cells that have an entry; a stamped cell with none (a voxel an ember charred
+## that no destroy / dent / crack / soot entry named) kept a clean plane while the map held CHARRED, so the live
+## board and a SaveState restore (which projects the map) disagreed. One truth: the map; the plane follows it.
+## Idempotent (a plane already equal is not written). Returns the levels it moved, `level -> true`, which the caller
+## hands to the one upload it owes (a second upload in the same frame is what costs).
+func settle_soot() -> Dictionary:
+	var moved_levels: Dictionary = {}
+	if _voxel_board != null:
+		for level in _soot_unsettled:
+			var stored: Dictionary = _soot_map.get(level, {})
+			for cell: Vector2i in _soot_unsettled[level]:
+				var code: int = BlastCalculator.soot_code(int(stored.get(cell, BlastCalculator.FACE_SOOT_CLEAN)))
+				if _voxel_board.cell_soot_at(int(level), cell) == code:
+					continue
+				_voxel_board._write_cell_soot(int(level), cell, code)
+				moved_levels[level] = true
+	_soot_unsettled.clear()
+	return moved_levels
 
 
 ## `level -> {view_cell: tone}` into the soot plane, and the levels it touched up to

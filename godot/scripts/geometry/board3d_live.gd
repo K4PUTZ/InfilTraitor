@@ -1598,8 +1598,13 @@ func _commit_touched(touched: Array, reason: String, whole_stack: bool) -> void:
 
 
 ## After the soot fade: the same levels, re-uploaded with the settled scorch.
-func on_blast_soot() -> void:
-	_sync_levels(_blast_levels, "soot")
+func on_blast_soot(extra_levels: Dictionary = {}) -> void:
+	if extra_levels.is_empty():
+		_sync_levels(_blast_levels, "soot")
+		return
+	var levels: Dictionary = _blast_levels.duplicate()
+	levels.merge(extra_levels)
+	_sync_levels(levels, "soot")
 
 
 ## After the consequence light: the blast's levels plus every level holding a cell

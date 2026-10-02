@@ -23,6 +23,7 @@ class RoomStub extends RefCounted:
 	## SOOT-STAMP (2026-09-22) — the soot map, `level -> {base_cell: tone}`. Saved:
 	## soot is stamped once and cannot be re-derived from the damage any more.
 	var _soot_map: Dictionary = {}
+	var _soot_unsettled: Dictionary = {}   ## SOOT-TRUTH: the stamped cells a blast has yet to settle on the plane
 	## G6 (§7.1) — where broken glass came to rest, in BASE coords, with its pile
 	## depth. Same reasoning as the fields above: the stub models the real Room's
 	## persisted state, so a new one appears here the moment it exists.

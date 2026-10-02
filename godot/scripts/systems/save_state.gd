@@ -205,6 +205,7 @@ static func restore(room, data: Dictionary) -> bool:
 	for sh in data.get("glass_rim_shards", []):
 		room._base_rim_shards[Vector3i(int(sh[0]), int(sh[1]), int(sh[2]))] = true
 	room._soot_map.clear()
+	room._soot_unsettled.clear()
 	for c in data.get("soot", []):
 		var level: int = int(c[0])
 		if not room._soot_map.has(level):
@@ -282,6 +283,7 @@ static func clear_run_state(room) -> void:
 	## the previous level's crater — silently, and only on the second level anyone
 	## plays.
 	room._soot_map.clear()
+	room._soot_unsettled.clear()
 	## R3D-PROPS — a fresh mission must not inherit last level's shattered tables or the debris on its floor.
 	room._base_shattered_props.clear()
 	room._base_debris.clear()

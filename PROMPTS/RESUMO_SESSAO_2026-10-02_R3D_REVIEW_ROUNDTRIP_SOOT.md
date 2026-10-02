@@ -9,7 +9,7 @@
 - Full-tier gates run one by one (no baseline taken): `shot_3d_gate`, `occ_canonical_gate`, `mirror_gate --single`, `ground_gate` PASS. `pixel_gate` and `probe-gate` were not run.
 - The guard noise indicator call (`GuardCoordinator` -> `Room._emit_guard_noise_indicator`, a method that never existed) was replaced by a comment. Noise stays a later track; when wired its direction must use the view's axes (R3D-ROT item 5).
 
-## OPEN: `board_probe.py roundtrip --with-store` FAILS on PLAYGROUND (3-7 soot texels after a SaveState restore)
+## CLOSED (same day, SOOT-TRUTH — see the end of this file): `board_probe.py roundtrip --with-store` FAILED on PLAYGROUND (3-7 soot texels after a SaveState restore)
 Not caused by R3D-ROT: it fails identically at `96e138a9` (before it). The gate read 0 texels on 2026-09-24; the CHARRED tone (soot base 6) landed 2026-09-29, the likeliest source (hypothesis, not proven).
 
 Measured (temporary logs in `scenario_save_restore()`, removed):
@@ -42,3 +42,21 @@ Measured (temporary logs in `scenario_save_restore()`, removed):
 - Rifle has no grip (holds the shotgun); crouched / prone throws do not exist.
 - `agent_live*.glb` are git-ignored: a fresh clone runs `r3d_live_rig_export.py` twice.
 - `verify.py full` was not run as a whole and no baseline was taken.
+
+## RESOLUTION — SOOT-TRUTH (2026-10-02, Director: "uma unica verdade, que sobreviva a saves e checkpoints")
+Rule: `Room._soot_map` is the one truth (it is what SaveState stores); the soot plane is its projection and every writer follows it.
+Measured with temporary logs on the two diverging cells (216,24) and (303,24), removed afterwards. Three writers had broken the rule:
+1. **Erase without a plane clear.** `_clear_orphaned_soot()` erased the map entry of a destroyed voxel and left its tone on the plane;
+   a restore (which projects the map) then read clean where the live board read 215 / 0. The erase now clears the plane in the same
+   step, and keeps the scorch while another claim still stands on the cell (the cell is the key, so it is not orphaned).
+2. **Stamping cells that are already gone.** A blast commits its destruction BEFORE `absorb_scorch()` stamps, so the ember CHARRED rows of
+   the voxels it burnt away landed in the map and outlived them (a restore replay erased them, the live plane never drew them).
+   `stamp_soot()` now drops a write on a cell no voxel stands on (`VoxelStore.has_solid`).
+3. **Stamped cells no wave carried.** Standing voxels the map held CHARRED had no destroy / dent / crack / soot entry, so the plane stayed
+   clean live and went black after a restore. `Room.settle_soot()` (fed by `absorb_scorch()`'s changed cells) runs at the ladder's last
+   step and gives every stamped cell the map's tone, idempotently, inside the one upload the ladder already owes
+   (`Board3DLive.on_blast_soot(extra_levels)`).
+Evidence: `roundtrip --with-store` PLAYGROUND 3 runs, 3 texels before (4 after fix 1+2, deterministic), **0 texels in 3 runs after all three**;
+GLASS keeps its documented 1 light texel. `soot_truth_selftest` pins each rule (mutation of fixes 1 and 2: 3 checks fail). `verify.py smoke`
+PASSED (59 selftests). Not run: `verify.py full`, `pixel_gate`, a device run (the settle writes only cells whose plane differs).
+Look change to judge: a CHARRED cell no wave carried now turns black at the end of the fade instead of staying clean until a restore.

@@ -405,9 +405,19 @@ func _soot_tick(elapsed: float, voxel_board) -> void:
 	## R3D-6: the 3D board reads the plane when it is told to upload it; every step is one upload of the levels the blast touched.
 	var board3d: Node = _board3d()
 	if board3d != null:
-		board3d.on_blast_soot()
+		## The last step also settles the cells no entry carried, before the one upload.
+		board3d.on_blast_soot(_settle_soot() if _soot_next_k + 1 >= steps else {})
 	_soot_next_k += 1
 	_soot_next_t = elapsed + soot_step_s
+
+
+## The scorch's end: the plane takes the map's tone on every cell the blast stamped (`Room.settle_soot()`), so a cell no wave
+## carried does not stay clean while the map says CHARRED. Returns the levels it moved, for the upload. `NO_SOOT` is an
+## instrument that writes everything clean on purpose.
+func _settle_soot() -> Dictionary:
+	if consequence_room == null or _no_soot():
+		return {}
+	return consequence_room.settle_soot()
 
 
 ## Whatever the channel did not get to: the ladder finishes on its own clock. An empty ramp (nothing sooted, or `NO_SOOT`)
@@ -423,7 +433,7 @@ func _finish_soot(voxel_board, tree: SceneTree, board3d: Node) -> void:
 		clock += tree.root.get_process_delta_time()
 		_soot_tick(clock, voxel_board)
 	if _soot_ramp.is_empty() and board3d != null and is_instance_valid(board3d):
-		board3d.on_blast_soot()
+		board3d.on_blast_soot(_settle_soot())
 	print("[E-PRESENT] soot fade — %d cell(s) in %d step(s) from %.2fs, finished %.2fs after the channel (%.2f ms in the tail)" % [
 		_soot_ramp.size(), steps - 1, soot_start_s, maxf(clock - _channel_elapsed, 0.0), float(Time.get_ticks_usec() - t0) / 1000.0])
 

@@ -43,6 +43,7 @@
 ##   probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the
 ##                                        shadow `VoxelStore` (`VOXEL_STORE=1`)
 ##   shoot <guard index>                  R3D-1b gate: a shot through the menu entry points
+##                                        needs that guard to exist (GLASS has none: the step aborts the scenario)
 ##   reload                               R3D-1b gate: F2's `load_map()` on the current map
 ##   save_restore                         R3D-1b gate: SaveState capture → reload → restore
 ##   perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()`
@@ -122,7 +123,7 @@ static func parse(text: String) -> Dictionary:
 
 
 ## Run parsed steps against a Room. Returns when the last step has run, or at the
-## first step that cannot (reported loudly, and marked `scenario.abort`).
+## first step that cannot (reported loudly, marked `scenario.abort`, and on a desktop the process exits with code 1).
 func run(room: Node, steps: Array) -> void:
 	Telemetry.event("scenario.start", {"steps": steps.size()})
 	print("[SCENARIO] %d step(s)" % steps.size())
@@ -133,6 +134,12 @@ func run(room: Node, steps: Array) -> void:
 		var ok: bool = await _execute(room, step)
 		if not ok:
 			Telemetry.event("scenario.abort", {"i": i + 1})
+			## A desktop harness waits for the process to end, and an aborted scenario never reaches its `quit`: it sat there
+			## until the harness's own timeout (measured: `shoot 0` on GLASS, which has no guard, hung a capture for 120 s).
+			## So it ends with a non-zero code. A handset keeps running: the device harness reads the log and force-stops.
+			if not OS.has_feature("mobile"):
+				print("[SCENARIO] ABORT at step %d/%d — exiting with code 1" % [i + 1, steps.size()])
+				room.get_tree().quit(1)
 			return
 	Telemetry.event("scenario.end")
 

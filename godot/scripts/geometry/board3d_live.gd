@@ -251,10 +251,11 @@ const DECAL_TAIL: String = """
 	ALPHA = clamp(d.a * mix(1.0, bullet_alpha_gain, bullet), 0.0, 1.0);
 }
 """
-## Tuning (Director, 2026-10-02: a bullet decal "com um pouco mais de opacidade, ou talvez contraste"): the alpha is multiplied
-## and the colour darkened for the bullet family only. Rule 1: `var`, numbers.
-static var BULLET_DECAL_ALPHA_GAIN: float = 2.5
-static var BULLET_DECAL_DARKEN: float = 0.7
+## Tuning for the bullet family only (Rule 1: `var`, numbers). NEUTRAL (1.0 / 1.0) since 2026-10-02: ×2.5 / ×0.7 was tried for a
+## weak mark and the Director saw the struck voxel read LIGHTER than its neighbours, so the decal is back to its own art; the
+## knob stays for the day the art is redrawn to fill its voxel.
+static var BULLET_DECAL_ALPHA_GAIN: float = 1.0
+static var BULLET_DECAL_DARKEN: float = 1.0
 static var DECAL_SHADER: String = OPAQUE_SHADER \
 	.replace("render_mode unshaded, cull_back;", "render_mode unshaded, cull_back, depth_draw_never, blend_mix;") \
 	.replace("varying vec3 v_normal;", "varying vec3 v_normal;\nvarying float v_layer;\nuniform sampler2DArray decals : filter_linear_mipmap, repeat_disable;\nuniform float bullet_layers = 0.0;\nuniform float bullet_alpha_gain = 1.0;\nuniform float bullet_darken = 1.0;") \

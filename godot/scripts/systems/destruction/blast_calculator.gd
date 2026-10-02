@@ -1746,11 +1746,11 @@ static func halo_roll(cell: Vector2i, level: int) -> float:
 static var SOOT_HALO_CHANCE: float = 0.0
 
 
-## A SHOT's soot (Director, 2026-10-02): the cross of a one-voxel hole is softened with the halo at the middle ground
-## (0.5, the value the grenade's A/B picked), and the stain is one tone lighter ("um pouco menos de opacidade"): the cells
-## beside the hole read 0.60 instead of 0.38, and the faintest ring (tone 3) is not stamped at all. Grenades keep their own
-## `SOOT_HALO_CHANCE` (0.0 by the Director's choice) and their full tones. Rule 1: `var`, tuning numbers.
-static var SHOT_SOOT_HALO_CHANCE: float = 0.5
+## A SHOT's soot (Director, 2026-10-02): the stain is one tone lighter ("um pouco menos de opacidade"): the cells beside the
+## hole read 0.60 instead of 0.38, and the faintest ring (tone 3) is not stamped at all. The halo was tried at 0.5 for a shot
+## and dropped: the ladder stopped being centred on the hit and lighter voxels sat between two dark ones, "the previous system
+## was more objective". So it stays 0.0, the algorithm is the blast's. Rule 1: `var`, tuning numbers.
+static var SHOT_SOOT_HALO_CHANCE: float = 0.0
 static var SHOT_SOOT_LIGHTEN: int = 1
 
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**272 scripts · 85481 lines total** (under `godot/scripts/`)
+**272 scripts · 85482 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -499,7 +499,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2411 lines
+extends `Node3D` · 2412 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 

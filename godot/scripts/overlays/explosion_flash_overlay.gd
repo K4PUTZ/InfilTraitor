@@ -18,8 +18,8 @@ class_name ExplosionFlashOverlay
 ## can — it covers the frame the destruction lands on.
 ##
 ## PURELY VISUAL, same contract as EmberOverlay/SmokeSparkOverlay: nothing here
-## is gameplay state, so losing a flash in progress to a map reload or a
-## perspective rotation costs nothing but the effect itself.
+## is gameplay state, so losing a flash in progress to a map reload
+## costs nothing but the effect itself.
 ##
 ## Why the flash is drawn in WORLD space rather than as a CanvasLayer + ColorRect:
 ## room.tscn's two CanvasLayers (VisionFogOverlay, HUD) both sit at layer 0 and

@@ -8,7 +8,7 @@ class_name EmberOverlay
 ## gameplay detection"). The voxel's actual charred appearance already exists
 ## in the tile the instant the blast applies soot (VL-D1) — this only draws a
 ## bright, fading blob ON TOP of it for a few seconds, so losing an in-flight
-## glow to a perspective rotation or map reload costs nothing but the glow
+## glow to a map reload costs nothing but the glow
 ## itself; nothing here is state a reload needs to restore.
 ##
 ## Why an overlay and not a tile modulate: a light-bucket alternative's

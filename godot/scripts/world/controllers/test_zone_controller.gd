@@ -324,12 +324,9 @@ func set_agent_probes_dev_vision(enabled: bool) -> void:
 			probe.set_dev_vision(enabled)
 
 
-## PERSPECTIVE-01: called from room.gd::_set_perspective() alongside the
-## existing agent/selection-cursor reposition block. Every live (undetonated)
-## grenade's gu_cell and sprite world position are re-derived from its
-## base_cell for the new direction — the same cell_from_base() round-trip the
-## agent already uses, generalized to any runtime-instantiated prop that
-## isn't rebuilt fresh from _base_layout on rotation. GrenadeProp.update_cell()
+## Called from room.gd::_set_perspective(). R3D-ROT: the cells do not move (one world,
+## the camera turns), so this only re-runs the view-dependent part for every live
+## (undetonated) grenade and probe. GrenadeProp.update_cell()
 ## also swaps to the frame baked for the new compass direction (D22 fix).
 func on_view_changed() -> void:
 	## R3D-ROT: the camera turned over the one world, so no cell moves; the baked props re-pick the frame of the new view.

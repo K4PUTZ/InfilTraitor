@@ -222,10 +222,8 @@ func _sync_shadow_transform() -> void:
 ## Called by TestZoneController.on_view_changed() alongside the
 ## sprite's own position update — swaps to the frame baked for the new
 ## direction. base_cell never changes (perspective-independent anchor); only
-## gu_cell (view-space) does. Re-applies z_index too: _set_perspective()
-## rebuilds every voxel TileMapLayer from scratch (room_builder.gd's
-## build_from_layout), so a z_index cached before rotation could reference a
-## layer that no longer matches the new view's structure.
+## gu_cell never changes either now (R3D-ROT: one world, the camera turns).
+## Re-applies z_index too: it encodes height and the view's behind/in-front order.
 func update_cell(p_gu_cell: Vector2i) -> void:
 	gu_cell = p_gu_cell
 	_apply_direction(room.view_direction())

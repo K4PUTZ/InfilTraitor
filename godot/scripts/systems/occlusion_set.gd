@@ -3,10 +3,10 @@
 ## POLICY: O1 — Occlusion is VIEW, not STATE
 ## - _occluded_cells is owned solely by this module
 ## - Never writes Voxel.visible, never uses dirty flag, never persists
-## - NEVER reads _active_perspective (coordinates already rotated when entering)
+## - Coordinates enter in BASE space; each view's turned geometry is built once (R3D-ROT) and picked by `view`
 ##
 ## POLICY: O4′ — One view-space formula, no rotation applied
-## The map is rebuilt rotated; we compute in already-rotated coordinates.
+## The map never rotates (one world, the camera turns); each view's geometry is the base turned once, at first use.
 ##
 ## POLICY: O5 — Depth is (x + y) in view-space, never z_index
 ## Isometric diamond layout: screen-y ∝ (x + y). Greater sum = nearer camera.
@@ -228,7 +228,7 @@ func get_recompute_count() -> int:
 ## ============================================================================
 
 ## Recompute the occluded-cell set given current agent position(s) and geometry.
-## Called on: agent.step_finished signal, _set_perspective(), hover cell change
+## Called on: agent.step_finished signal, a view change, hover cell change
 ##
 ## Args:
 ##   agent_cells: Array[Vector2i] — one or more origin cells (gameplay grid cells).

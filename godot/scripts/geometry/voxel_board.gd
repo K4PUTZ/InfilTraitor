@@ -1768,7 +1768,7 @@ func clear_glass_cracks() -> void:
 
 ## A map reload (`Room.load_map()`) rebuilds every pane intact and clears the
 ## base-space damage records; the shaped-cell record is keyed in view space and would otherwise mark cells of a fresh
-## pane as already shaped. `_set_perspective()` rebuilds the rims from `_base_openings`; a reload has none to rebuild.
+## pane as already shaped. a checkpoint restore rebuilds the rims from `_base_openings`; a plain reload has none to rebuild.
 func clear_glass_rim_cells() -> void:
 	_glass_shaped_cells.clear()
 

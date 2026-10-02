@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**269 scripts · 84290 lines total** (under `godot/scripts/`)
+**269 scripts · 84279 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -29,7 +29,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 502 lines
+`class_name DebugAgent` · extends `Node2D` · 500 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -938,7 +938,7 @@ extends `Node3D` · 2381 lines
 
 `godot/scripts/geometry/prop_fragments3d.gd`
 
-> PropFragments3D — the voxel fragments of one broken prop, in ONE draw call, depth-tested, lit by the board's planes. PROPS_TIER4_PLAN P2 / `ACTOR` D67. While a `PropFragmentSim` runs, this node moves the cubes every frame; when the sim is done it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a rotation rebuilds the board and drops every node, so the pile is laid back from `Room._base_prop_piles`). ONE MultiMesh of a cube of the FRAGMENT lattice (the board voxel, 1/8 GU, divided by the prop's `division`; the sim says which), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its base mesh, so without it every cube away from the node origin is culled). The material is the board's prop shader with `use_color`: the cell planes give it light and soot, the per-instance colour gives it the prop's material colour, each cube's small brightness variation and its charring. The colour is handed over in linear (vertex colour is linear, the shader's `albedo` is sRGB). COLOUR COMES FROM THE MATERIAL REGISTRY (`ACTOR` D66): each fragment carries the zone of the surface it came from, and a zone is a material id (`zone_materials[zone]`, resolved through the fallback chain). The node draws with the facade of the material most of its cubes are made of (one draw call, one texture): the others keep their own colour under that detail.
+> PropFragments3D — the voxel fragments of one broken prop, in ONE draw call, depth-tested, lit by the board's planes. PROPS_TIER4_PLAN P2 / `ACTOR` D67. While a `PropFragmentSim` runs, this node moves the cubes every frame; when the sim is done it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a checkpoint restore rebuilds the board and drops every node, so the pile is laid back from `Room._base_prop_piles`). ONE MultiMesh of a cube of the FRAGMENT lattice (the board voxel, 1/8 GU, divided by the prop's `division`; the sim says which), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its base mesh, so without it every cube away from the node origin is culled). The material is the board's prop shader with `use_color`: the cell planes give it light and soot, the per-instance colour gives it the prop's material colour, each cube's small brightness variation and its charring. The colour is handed over in linear (vertex colour is linear, the shader's `albedo` is sRGB). COLOUR COMES FROM THE MATERIAL REGISTRY (`ACTOR` D66): each fragment carries the zone of the surface it came from, and a zone is a material id (`zone_materials[zone]`, resolved through the fallback chain). The node draws with the facade of the material most of its cubes are made of (one draw call, one texture): the others keep their own colour under that detail.
 
 **Signals**
 - `signal settled(records: Array)`
@@ -1635,7 +1635,7 @@ extends `Node2D` · 134 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 582 lines
+`class_name FloatingCollectible` · extends `Node2D` · 581 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
@@ -1688,7 +1688,7 @@ extends `Node2D` · 134 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 376 lines
+`class_name GrenadeProp` · extends `Sprite2D` · 374 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -3030,7 +3030,7 @@ extends `Node` · 231 lines
 
 `godot/scripts/systems/occlusion_set.gd`
 
-> Occlusion Module — Computes which geometry occludes the agent POLICY: O1 — Occlusion is VIEW, not STATE - _occluded_cells is owned solely by this module - Never writes Voxel.visible, never uses dirty flag, never persists - NEVER reads _active_perspective (coordinates already rotated when entering) POLICY: O4′ — One view-space formula, no rotation applied The map is rebuilt rotated; we compute in already-rotated coordinates. POLICY: O5 — Depth is (x + y) in view-space, never z_index Isometric diamond layout: screen-y ∝ (x + y). Greater sum = nearer camera. POLICY: O7 — Glass does not occlude (a see-through pane hides nothing). A slice whose base material is glass is filtered out in _group_slices_by_edge() — see that function's header.
+> Occlusion Module — Computes which geometry occludes the agent POLICY: O1 — Occlusion is VIEW, not STATE - _occluded_cells is owned solely by this module - Never writes Voxel.visible, never uses dirty flag, never persists - Coordinates enter in BASE space; each view's turned geometry is built once (R3D-ROT) and picked by `view` POLICY: O4′ — One view-space formula, no rotation applied The map never rotates (one world, the camera turns); each view's geometry is the base turned once, at first use. POLICY: O5 — Depth is (x + y) in view-space, never z_index Isometric diamond layout: screen-y ∝ (x + y). Greater sum = nearer camera. POLICY: O7 — Glass does not occlude (a see-through pane hides nothing). A slice whose base material is glass is filtered out in _group_slices_by_edge() — see that function's header.
 
 **Constants / tuning**
 - `GeometryCoordsMod` = `preload("res://godot/scripts/geometry/geometry_coords.gd")`
@@ -5527,7 +5527,7 @@ extends `Node2D` · 32 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1605 lines
+`class_name TestZoneController` · 1602 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5595,7 +5595,7 @@ extends `Node2D` · 32 lines
 
 ### `weapon_bench_controller.gd`
 
-`class_name WeaponBenchController` · 441 lines
+`class_name WeaponBenchController` · 440 lines
 
 `godot/scripts/world/controllers/weapon_bench_controller.gd`
 
@@ -5796,7 +5796,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11153 lines
+extends `Node2D` · 11151 lines
 
 `godot/scripts/world/room.gd`
 

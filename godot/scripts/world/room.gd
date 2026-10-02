@@ -179,10 +179,9 @@ var _voxel_light_field: VoxelLightField = null
 var _soot_map: Dictionary = {}
 
 ## VL-PERSIST: authoritative destruction state in BASE (N-frame) voxel coords, so
-## it survives a perspective rotation (which rebuilds every Voxel from the
-## MapSpec, dropping damage_state). Keyed Vector3i(base_vx, base_vy,
-## level). Recorded on detonate (view→base), re-applied after each rotation
-## rebuild (base→view). Cleared on map load. See VOXEL_LIGHT_MASTER_PLAN
+## it survives a CHECKPOINT restore (`load_map()` rebuilds every Voxel from the
+## MapSpec, dropping damage_state; since R3D-ROT a rotation no longer does). Keyed Vector3i(base_vx, base_vy,
+## level). Recorded on detonate, re-applied after the restore's load. Cleared on map load. See VOXEL_LIGHT_MASTER_PLAN
 ## VL-PERSIST — this is also the shared prerequisite for the deferred 4-view
 ## prebuild (which would apply this same registry to all 4 copies).
 ## SOOT-STAMP (2026-09-22): soot keeps its own base-keyed store, `_soot_map`.
@@ -213,7 +212,7 @@ var _base_damage: Dictionary = {}   ## base voxel key → Array[int] record (see
 var _base_damage_claims: Dictionary = {}
 
 ## R3D-PROPS (2026-09-29) — what a blast leaves of a PROP that is not a `VoxelStore` voxel, in BASE coords, for the
-## reason `_base_damage` is: a rotation rebuilds every prop from the map, so anything not recorded comes back whole.
+## reason `_base_damage` is: a checkpoint restore rebuilds every prop from the map, so anything not recorded comes back whole.
 ## `_base_shattered_props`: base GU of every Tier 4 mesh prop that shattered. `_base_debris`: every piece of ground
 ## debris (`place_debris_piece()`), id -> {"base": centre in BASE voxel units, "level", "material", "variant", "tint",
 ## "rot"}; replayed after the 3D board is rebuilt, because rebuilding it drops the piles.
@@ -323,7 +322,7 @@ var _pane_primed: Dictionary = {}
 
 ## D2 (EXPLOSION_REBUILD_MASTER_PLAN §4.4, Task 5/E-WAVE, 2026-08-07) — how
 ## many times a GU has been detonated on, base-coord keyed (Vector2i) for the
-## identical reason `_base_damage` is: it must survive a perspective rotation,
+## identical reason `_base_damage` is: it must survive a checkpoint restore,
 ## which rebuilds every Voxel from the MapSpec but never re-derives how many
 ## blasts a spot has already taken. First blast on a GU: `apply_crater_damage()`
 ## only cedes `FLOOR_TOP_LEVEL`. Second and later: `deep_layer_unlocked` flips
@@ -1297,7 +1296,7 @@ func _index_claim(index: Dictionary, v: Voxel) -> void:
 
 
 ## VL-PERSIST — re-apply the base-coord destruction registry to the freshly
-## rebuilt geometry after a perspective rotation. build_from_layout() rebuilt
+## rebuilt geometry after a checkpoint restore (no longer a rotation, R3D-ROT). build_from_layout() rebuilt
 ## every Voxel intact from the MapSpec; this stamps the recorded damage back
 ## on, converting each base key to the current view. Must run after the build
 ## (registries fresh) and before the light-field repaint (so it sees the holes).
@@ -1895,8 +1894,8 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	_base_rim_shards.clear()    ## CRACK-06: nor clinging to a torn glass edge
 	_gu_blast_count.clear()     ## D2: fresh map, no GU has been blasted yet
 	## The base-space RECORDS above are cleared; the VoxelBoard's own SPRITE
-	## decals for them are not touched by `build_from_layout()` (only `_set_perspective()`
-	## dropped them, and a reload stays in the same perspective). Without this an F2
+	## decals for them are not touched by `build_from_layout()` (a reload
+	## never dropped them; the old per-view rebuild did, and it is gone). Without this an F2
 	## reload leaves the previous mission's glass piles and crack webs on screen —
 	## Director, 2026-09-07: *"seeing past debris from previous explosions […] between
 	## map loads (F2)"*.
@@ -2262,10 +2261,10 @@ func _ready() -> void:
 	## Connect LightingController signal to VisionController for overlay updates
 	_lighting_controller.lighting_rebuilt.connect(_vision_controller.request_redraw)
 	## Geometric floor shadows are real-world elements → repaint the always-on
-	## world shadow layer whenever lighting rebuilds (e.g. perspective rotation).
+	## world shadow layer whenever lighting rebuilds (map load, light change).
 	_lighting_controller.lighting_rebuilt.connect(_world_markers_controller.repaint_world_shadows)
 	## VL-01: project tactical lighting onto voxel faces (6 buckets) whenever
-	## lighting rebuilds — map load, perspective rotation, light changes.
+	## lighting rebuilds — map load, light changes.
 	_lighting_controller.lighting_rebuilt.connect(_repaint_voxel_light_buckets)
 
 	## MODULARIZE-02: Initialize HudController (after nodes ready)
@@ -2489,7 +2488,7 @@ func _ready() -> void:
 
 	## OCC-FIX-02: seed the set for the map we just loaded.
 	##
-	## OCC-01 hooked recompute to agent step and _set_perspective only — and
+	## OCC-01 hooked recompute to agent step and the view change only — and
 	## _set_perspective returns early when the direction is unchanged. So on boot, in
 	## the starting view, the occluded set stayed EMPTY until the player took his first
 	## step: geometry standing in front of a motionless agent ghosted nothing. The
@@ -3351,7 +3350,7 @@ func scenario_save_restore() -> bool:
 	_reapply_base_damage()
 	_reapply_base_shattered_props()
 	_release_destroyed_prop_cells()
-	## A rotation relights after the same replay (`_set_perspective()`: `_lighting_controller.rebuild_all()`), and
+	## (A rotation no longer relights: R3D-ROT.) This restore relights after its replay, and
 	## `_reapply_base_damage()` says it must run BEFORE the light-field repaint. Without this the restored world was
 	## lit as the undamaged map: 560 intact floor voxels beside PLAYGROUND's two blasts read bucket 3 where the
 	## world they stand in gives 6-9 (R3D-13). A production load flow has to do the same.
@@ -3363,8 +3362,8 @@ func scenario_save_restore() -> bool:
 	return true
 
 
-## A perspective rotation, through `_set_perspective()` — the rebuild and base-damage
-## replay `_capture_all_four_views()` runs, without its captures into Screenshots/history.
+## A perspective rotation, through `_set_perspective()` — the camera's yaw
+## `_capture_all_four_views()` runs, without its captures into Screenshots/history.
 func scenario_perspective(direction: String) -> bool:
 	if not PerspectiveMapperClass.is_valid_direction(direction):
 		push_error("[Room] scenario_perspective: '%s' is not N, E, S or W" % direction)
@@ -5053,7 +5052,7 @@ func _vfx_smoke_color_for_material(material_id: String) -> Color:
 
 
 ## VL-01 — project the tactical lighting state onto voxel faces (6 buckets).
-## Connected to lighting_rebuilt: runs on map load, perspective rotation and
+## Connected to lighting_rebuilt: runs on map load and
 ## any light change. The field stays queryable on _voxel_light_field — the
 ## seam future vision modes (thermal / night / X-ray) will consume.
 ## PERF-03 — `geometry_only` is forwarded to VoxelLightField.build(); see its
@@ -7501,7 +7500,7 @@ func _capture_glass_crack_demo() -> void:
 			print("[CRACK-DEMO] G-D30 cut=%.2f -> %s" % [cut, name.get_file()])
 
 	## CRACK-02 S-3 — the flip proof. Rotate through the REAL `_set_perspective()`
-	## (which rebuilds every Voxel and re-stamps the damage), then photograph the
+	## (the camera's yaw; the damage is one truth in the store), then photograph the
 	## same crack in the new view. A crack that is still there and in the right
 	## place is the whole acceptance condition §13.2 gives this stage.
 	## Takes a COMMA LIST ("E,N"), and that is what makes it a proof rather than a
@@ -7694,8 +7693,8 @@ func _capture_glass_blast_demo() -> void:
 	## ── §6.2 / G-D35 B-1 — DOES THE CRAZE SURVIVE A ROTATION? ────────────────
 	##
 	## `INFILTRAITOR_GLASS_BLAST_FLIP=E` counts the CRACKED glass voxels, rotates
-	## through the real `_set_perspective()` (which rebuilds every Voxel from the
-	## MapSpec and re-stamps the recorded damage) and counts again.
+	## through the real `_set_perspective()` (the camera's yaw; nothing is rebuilt
+	## since R3D-ROT, so the count must not move) and counts again.
 	##
 	## ⚠️ A COUNT, NOT A PICTURE, AND IT HAS TO BE. CRACKED glass renders exactly
 	## like intact glass — the sheet is the whole visual and G-D35's is unbuilt —
@@ -7746,8 +7745,8 @@ func _capture_glass_blast_demo() -> void:
 	## ── A MAP RELOAD MUST WIPE THE GLASS DEBRIS ────────────────────────────────
 	##
 	## Director, 2026-09-07: *"seeing past debris from previous explosions […]
-	## between map loads (F2)"*. `_set_perspective()` drops the renderer's pile /
-	## crack / rim decals and rebuilds them from the base store; `load_map()` clears
+	## between map loads (F2)"*. the old per-view rebuild dropped the renderer's pile /
+	## crack / rim decals and rebuilt them from the base store; `load_map()` clears
 	## the base store but used to leave the decals on screen. This re-detonates,
 	## reloads the same map, and asserts every glass render store is back to zero.
 	if OS.get_environment("INFILTRAITOR_GLASS_BLAST_RELOAD") == "1":
@@ -9642,8 +9641,8 @@ func _capture_all_four_views() -> void:
 	## after it in the scenario-architecture milestone actually is.
 	##   INFILTRAITOR_CAPTURE_FOCUS=x,y   the GU to centre on (authored coords + buffer)
 	##   INFILTRAITOR_CAPTURE_ZOOM=<f>    smaller sees more
-	## Applied INSIDE the loop: `_set_perspective()` rebuilds the world and the
-	## camera with it, so a framing set once before the loop survives exactly one
+	## Applied INSIDE the loop: the camera is turned per view and
+	## may be re-framed with it, so a framing set once before the loop survives exactly one
 	## view — which reads as "three of the four captures ignored the setting".
 	var focus_env := OS.get_environment("INFILTRAITOR_CAPTURE_FOCUS")
 	var zoom_env := OS.get_environment("INFILTRAITOR_CAPTURE_ZOOM")
@@ -9870,9 +9869,8 @@ func _populate_test_zone_if_playground() -> void:
 
 
 ## GU-GRID-01: re-run whenever room_size can have changed — a real map load
-## (load_map()) or a perspective/rotation rebuild (_set_perspective()), both
-## of which call _room_builder.build_from_layout() with a possibly different
-## size. z_index 1 (not the F3 ruler's 100): see the creation comment in
+## (load_map()), which calls _room_builder.build_from_layout() with a possibly different
+## size (a rotation no longer rebuilds, R3D-ROT). z_index 1 (not the F3 ruler's 100): see the creation comment in
 ## _ready() for why this sits at the floor/shadow level instead of above
 ## everything.
 func _refresh_gu_grid_overlay() -> void:

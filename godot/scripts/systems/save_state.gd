@@ -14,7 +14,7 @@ class_name SaveState
 ##
 ##   · `base_damage`  — `Room._base_damage`, every damaged voxel in BASE space.
 ##     This is already the authoritative record (VL-PERSIST writes it on every
-##     committed damage so a perspective rotation can replay it), which makes it
+##     committed damage so a checkpoint restore can replay it), which makes it
 ##     the right thing to save and means no new bookkeeping had to be invented.
 ##   · `floor_shards` — G6: where broken glass came to rest, in BASE coords, with
 ##     its pile depth. Scenario state like the rest: it is what the level looks

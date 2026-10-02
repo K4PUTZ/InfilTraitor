@@ -1,7 +1,7 @@
 ## PropFragments3D — the voxel fragments of one broken prop, in ONE draw call, depth-tested, lit by the board's planes.
 ##
 ## PROPS_TIER4_PLAN P2 / `ACTOR` D67. While a `PropFragmentSim` runs, this node moves the cubes every frame; when the sim is done
-## it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a rotation rebuilds the
+## it keeps only the landed ones as a static pile. `make_pile()` builds the same thing from saved records (a checkpoint restore rebuilds the
 ## board and drops every node, so the pile is laid back from `Room._base_prop_piles`).
 ##
 ## ONE MultiMesh of a cube of the FRAGMENT lattice (the board voxel, 1/8 GU, divided by the prop's `division`; the sim says which), the `ShardField3D` precedent: `custom_aabb` set (a MultiMesh's bounds come from its

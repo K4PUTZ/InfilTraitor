@@ -347,10 +347,8 @@ func set_dev_vision(enabled: bool) -> void:
 	queue_redraw()
 
 
-## The room rotated. The agent's cell is re-derived by room.gd; its FACING has to
-## make the same trip, and does — AgentSprite stores the facing in base space and
-## recomposes it against the live perspective, so this only has to ask for a
-## refresh.
+## The camera turned (R3D-ROT: the cell never moves). AgentSprite stores the facing in base space and
+## recomposes it against the live view, so this only has to ask for a refresh.
 func on_perspective_changed() -> void:
 	if sprite != null:
 		sprite.update_for_cell()

@@ -315,8 +315,8 @@ func fire_active() -> void:
 	## neighbours only) — this is what actually fixes "desde o chão até o
 	## teto," not a parameter tweak on the old ring model.
 
-	## VL-PERSIST: record into base coords so the damage survives a perspective
-	## flip, which rebuilds every Voxel from the MapSpec.
+	## VL-PERSIST: record into base coords so the damage survives a checkpoint
+	## restore (SaveState replays it after load_map()).
 	for key in cell_to_voxel:
 		var av: Voxel = cell_to_voxel[key]
 		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,
@@ -407,8 +407,7 @@ func _blocked_edges_dict() -> Dictionary:
 ## both converted to world space through `VoxelBoard.voxel_world_position()`,
 ## and the barrel line is the vector between them. That is the same analytic
 ## route the cone preview already uses to decide where the shot goes, so the
-## flash can never point somewhere the shot does not — including after a
-## perspective rotation, since `_view_facing_delta()` is what supplies the step.
+## flash can never point somewhere the shot does not — in every view, since `_view_facing_delta()` is what supplies the step.
 ##
 ## Deliberately in the CONTROLLER and not on the sprite: the Director's own
 ## framing is that this is physics being made ready for an agent holding a

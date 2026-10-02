@@ -7,7 +7,7 @@ class_name SmokeSparkOverlay
 ##
 ## PURELY VISUAL, same contract as EmberOverlay (see that file's doc):
 ## nothing here is gameplay state, so losing an in-flight puff to a
-## perspective rotation or map reload costs nothing.
+## map reload costs nothing.
 ##
 ## Same idiom as EmberOverlay: one persistent Node2D, entries kept as plain
 ## Dictionaries in an Array, `_process()` ages/filters, `_draw()` renders,

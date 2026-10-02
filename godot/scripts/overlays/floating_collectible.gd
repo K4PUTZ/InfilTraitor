@@ -291,7 +291,7 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_frames_dir: String, p_sprite_sca
 	## a real world position, which setup() runs too early to have.
 
 
-## Called from room.gd::_set_perspective(). R3D-ROT: the camera turned over the one world, so the cell and the position
+## Called from room.gd::_set_perspective() (the camera's yaw). R3D-ROT: the camera turned over the one world, so the cell and the position
 ## stay; only the view-dependent frame and sort are re-picked.
 func on_view_changed() -> void:
 	## A static prop's frame encodes its aim in SCREEN space, so it has to be
@@ -374,8 +374,7 @@ func _displayable_frame_indices() -> Array:
 ## block two cells behind is drawn far enough up the screen to miss it entirely,
 ## and one two cells in front is drawn far enough down.
 ##
-## Re-applied on every rotation, not just at setup: _set_perspective() rebuilds
-## every voxel TileMapLayer from scratch AND changes which cells are behind.
+## Re-applied on every rotation, not just at setup: the camera's yaw changes which cells are behind.
 func _apply_z_index() -> void:
 	if room == null or room._voxel_board == null:
 		return

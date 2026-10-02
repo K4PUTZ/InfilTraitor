@@ -705,8 +705,8 @@ func fire_at_active() -> void:
 	## cached blast prediction is now stale.
 	room.bump_world_revision()
 
-	## VL-PERSIST: record into base coords so the damage survives a perspective
-	## flip, which rebuilds every Voxel from the MapSpec.
+	## VL-PERSIST: record into base coords so the damage survives a checkpoint
+	## restore (SaveState replays it after load_map()).
 	for key in cell_to_voxel:
 		var av: Voxel = cell_to_voxel[key]
 		room.record_voxel_damage_to_base(av.grid_pos, av.level, av.damage_state,

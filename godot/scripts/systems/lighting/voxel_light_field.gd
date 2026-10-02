@@ -145,7 +145,7 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 
 
 ## Rebuild the field from the current lighting state. Called from room on every
-## lighting_rebuilt (map load, perspective rotation, light change) — the cache
+## lighting_rebuilt (map load, light change) — the cache
 ## resets because any input may have moved.
 ## top_wall_level: the highest built voxel level (`VoxelBoard.top_wall_level()`)
 ## — where an OVERHEAD lamp hangs. NOT the ceiling-fixture height
@@ -160,7 +160,7 @@ var _static_factor_cache: Dictionary = {}  ## Vector3i(cell.x, cell.y, level) ->
 ## exactly a detonation (TestZoneController.detonate_active() repaints directly
 ## and never re-runs the shadow projector), and it is what lets this keep the
 ## caches instead of dropping them. Defaults FALSE, so every other caller —
-## map load, perspective rotation, real light changes — keeps the unconditional
+## map load, real light changes — keeps the unconditional
 ## clear it always had.
 ##
 ## Why it pays: measured on a real PLAYGROUND blast, the repaint walked 106,847

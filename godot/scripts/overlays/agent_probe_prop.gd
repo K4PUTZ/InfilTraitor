@@ -217,8 +217,8 @@ func _load_anchor() -> bool:
 
 
 ## Called on a perspective flip, alongside the position update — same contract
-## GrenadeProp.update_cell() has. z_index is re-applied because
-## _set_perspective() rebuilds every voxel layer from scratch.
+## GrenadeProp.update_cell() has. z_index is re-applied because the camera's yaw
+## changes which cells are behind.
 func update_cell(p_gu_cell: Vector2i) -> void:
 	gu_cell = p_gu_cell
 	_apply_direction(room.view_direction())

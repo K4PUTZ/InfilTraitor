@@ -80,6 +80,12 @@ class MaterialDef:
 	## family default where a material has no art of its own. A flat (untextured) material is simply `has_facade == false`: that
 	## field already means "draw the flat base colour", so the plan's separate `textured` flag would only have duplicated it.
 	var family: String = "generic"
+	## R3D-SURFACES S1 — what an UPWARD face of this material wears, per role: `"facade"` (the grayscale facade x `base_color`,
+	## or the flat colour when `has_facade` is false) or `"photo"` (the opaque `slab_<id>` plane, world-space, REPEAT). The floor role is
+	## the floor stack, the roof role every other upward face. A wall's side faces are always the facade: there is no `wall` key.
+	## Default is "facade"; organic ground (grass, dirt, gravel, sand) declares `"surfaces": {"floor": "photo", "roof": "photo"}`.
+	var surface_floor: String = "facade"
+	var surface_roof: String = "facade"
 
 	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm) -> void:
 		id = p_id
@@ -113,6 +119,18 @@ class MaterialDef:
 		def.burn_consumption = float(data.get("burn_consumption", 0.0))
 		def.has_facade = bool(data.get("has_facade", false))
 		def.family = String(data.get("family", "generic"))
+		var surfaces = data.get("surfaces", {})
+		if typeof(surfaces) == TYPE_DICTIONARY:
+			for role in surfaces:
+				var kind: String = String(surfaces[role])
+				if (role != "floor" and role != "roof") or (kind != "photo" and kind != "facade"):
+					push_error("[MaterialRegistry] %s: surfaces.%s = %s is not allowed (roles: floor, roof; kinds: photo, facade; a wall is always a facade)" % [def.id, role, kind])
+				elif role == "floor":
+					def.surface_floor = kind
+				else:
+					def.surface_roof = kind
+		else:
+			push_error("[MaterialRegistry] %s: `surfaces` must be an object" % def.id)
 		return def
 
 ## Material registry

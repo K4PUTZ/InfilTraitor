@@ -50,6 +50,7 @@ func _init() -> void:
 	test_every_registered_material_has_a_folder(registered, folders)
 	test_every_folder_is_a_registered_material(registered, folders)
 	test_facade_materials_have_their_facade(registry, registered)
+	test_photo_surfaces_have_their_plane(registry, registered)
 	test_decal_materials_have_a_complete_family()
 
 	print("\n" + "=".repeat(70))
@@ -168,6 +169,37 @@ func test_facade_materials_have_their_facade(registry, registered: Array) -> voi
 	else:
 		_fail("has_facade with no facade on disk: %s — TextureResolver returns Tier.NONE "
 			% ", ".join(missing) + "and the surface renders silently wrong")
+	print("")
+
+
+func test_photo_surfaces_have_their_plane(registry, registered: Array) -> void:
+	print("TEST: a material that declares a photographic surface has its slab plane (R3D-SURFACES S1)")
+	var missing: Array[String] = []
+	var photo := 0
+	for material in registered:
+		var def = registry.get_material(String(material))
+		if def == null or (def.surface_floor != "photo" and def.surface_roof != "photo"):
+			continue
+		photo += 1
+		if not _source_exists("%s/%s/slab_%s.png" % [MATERIALS_ROOT, material, material]):
+			missing.append(String(material))
+	if missing.is_empty():
+		_pass("%d material(s) declare a photo role, every slab plane is on disk" % photo)
+	else:
+		_fail("a photo role with no slab_<id>.png: %s — the role falls back to the flat look" % ", ".join(missing))
+	## The defaults keep what shipped, and the `surfaces` override reaches the right role only.
+	var grass = registry.get_material("grass")
+	var concrete = registry.get_material("concrete")
+	if grass != null and grass.surface_floor == "photo" and grass.surface_roof == "photo" \
+			and concrete != null and concrete.surface_floor == "facade" and concrete.surface_roof == "facade":
+		_pass("defaults: organic ground is photo, a facade material is facade")
+	else:
+		_fail("surface defaults moved (grass / concrete)")
+	var probe = load("res://godot/scripts/systems/material_registry.gd").MaterialDef.from_json({"id": "probe", "has_facade": true, "surfaces": {"floor": "photo"}})
+	if probe.surface_floor == "photo" and probe.surface_roof == "facade":
+		_pass("surfaces.floor overrides the floor role only")
+	else:
+		_fail("surfaces.floor leaked: floor=%s roof=%s" % [probe.surface_floor, probe.surface_roof])
 	print("")
 
 

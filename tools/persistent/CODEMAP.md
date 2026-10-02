@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**270 scripts · 85132 lines total** (under `godot/scripts/`)
+**270 scripts · 85191 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -499,7 +499,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2386 lines
+extends `Node3D` · 2395 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -2969,7 +2969,7 @@ extends `Node` · 231 lines
 
 ### `material_registry.gd`
 
-`class_name MaterialRegistry` · 212 lines
+`class_name MaterialRegistry` · 230 lines
 
 `godot/scripts/systems/material_registry.gd`
 
@@ -4467,7 +4467,7 @@ extends `SceneTree` · 179 lines
 
 ### `material_tree_selftest.gd`
 
-extends `SceneTree` · 202 lines
+extends `SceneTree` · 234 lines
 
 `godot/scripts/tools/material_tree_selftest.gd`
 
@@ -4487,6 +4487,7 @@ extends `SceneTree` · 202 lines
 - `func test_every_registered_material_has_a_folder(registered: Array, folders: Array[String]) -> void:`
 - `func test_every_folder_is_a_registered_material(registered: Array, folders: Array[String]) -> void:`
 - `func test_facade_materials_have_their_facade(registry, registered: Array) -> void:`
+- `func test_photo_surfaces_have_their_plane(registry, registered: Array) -> void:`
 - `func test_decal_materials_have_a_complete_family() -> void:`
 
 ---

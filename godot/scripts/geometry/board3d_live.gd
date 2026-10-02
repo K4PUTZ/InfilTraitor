@@ -98,9 +98,12 @@ uniform float has_facade = 0.0;
 // R3D-SURFACES — a photographic top-face plane for organic ground (has_facade == false, D34's other
 // branch), REPEAT-tiled in world space at one texel-density (`TEX_AUTHORING_N`) per 8 GU, no mirroring
 // (a mirrored tile hides seams a photograph cannot hide; a world-space plane only has to match at its
-// own two borders). Side faces of a has_surface material stay flat (D34: organic ground has no wall).
+// own two borders). Side faces of a photo-surface material stay flat (D34: organic ground has no wall).
 uniform sampler2D surface_tex : filter_linear_mipmap, repeat_enable;
-uniform float has_surface = 0.0;
+// One flag per ROLE of an upward face (R3D-SURFACES S1): `rel < 0` is the floor stack (FLOOR_TOP / FLOOR_DEEP), every
+// other upward face (a roof, a wall top, a crate top) is the roof role. A wall's side faces never read it: the wall is a facade.
+uniform float has_surface_floor = 0.0;
+uniform float has_surface_roof = 0.0;
 // R3D-SURFACES macro modulation — one small (~256^2), shared, synthetic (not photographed, so no CC0
 // sourcing question) low-frequency noise map that breaks up the plane's own repeat over a whole map: its
 // period (61 GU) is coprime-ish to the plane's 8 GU and larger than any authored map, so it reads as one
@@ -225,7 +228,7 @@ void fragment() {
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
-	if (has_surface > 0.5 && face == 0) {
+	if (face == 0 && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
 		vec3 macro_mult = vec3(mix(0.85, 1.15, macro_n.r), mix(0.85, 1.15, macro_n.g), mix(0.90, 1.05, macro_n.b));
 		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
@@ -255,7 +258,7 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
-	if (has_surface > 0.5 && face == 0) {
+	if (face == 0 && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
 		vec3 macro_mult = vec3(mix(0.85, 1.15, macro_n.r), mix(0.85, 1.15, macro_n.g), mix(0.90, 1.05, macro_n.b));
 		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
@@ -319,7 +322,7 @@ var _decal_layer: Dictionary = {}
 var _decal_array: Texture2DArray = null
 var _decal_material_index: int = -1
 ## R3D-SURFACES — one shared macro-modulation texture, lazily resolved and reused by every
-## `has_surface` material (it is not per-material art, see the shader uniform's comment).
+## photographic-surface material (it is not per-material art, see the shader uniform's comment).
 var _surface_macro_tex: ImageTexture = null
 var _surface_macro_tried: bool = false
 var _material_index: Dictionary = {}
@@ -2268,18 +2271,24 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	if facade_tex != null:
 		shader_material.set_shader_parameter("facade", facade_tex)
 		shader_material.set_shader_parameter("has_facade", 1.0)
-	else:
-		## R3D-SURFACES prototype — the has_facade == false branch (organic ground): a `slab_<id>`
-		## photographic plane if one resolves, else the flat base_color unchanged from before this stage.
+	## R3D-SURFACES S1 — a material declares its surface per ROLE of an upward face (`MaterialDef.surface_floor` /
+	## `surface_roof`: "photo" or "facade"); a wall is a facade always. "photo" reads the `slab_<id>` plane, and a plane that
+	## does not resolve leaves the role on the flat / facade look with one warning (`material_tree_selftest` fails it earlier).
+	var floor_photo: bool = definition != null and definition.surface_floor == "photo"
+	var roof_photo: bool = definition != null and definition.surface_roof == "photo"
+	if floor_photo or roof_photo:
 		var surface_resolved = TextureResolver.new().resolve("slab_%s" % material_id, material_id)
 		if surface_resolved != null and surface_resolved.image != null:
 			var simage: Image = (surface_resolved.image as Image).duplicate()
 			simage.generate_mipmaps()
 			shader_material.set_shader_parameter("surface_tex", ImageTexture.create_from_image(simage))
-			shader_material.set_shader_parameter("has_surface", 1.0)
+			shader_material.set_shader_parameter("has_surface_floor", 1.0 if floor_photo else 0.0)
+			shader_material.set_shader_parameter("has_surface_roof", 1.0 if roof_photo else 0.0)
 			var macro: ImageTexture = _get_surface_macro_tex()
 			if macro != null:
 				shader_material.set_shader_parameter("surface_macro", macro)
+		else:
+			push_warning("[Board3DLive] material %s declares a photographic surface but slab_%s does not resolve: flat look" % [material_id, material_id])
 	return shader_material
 
 

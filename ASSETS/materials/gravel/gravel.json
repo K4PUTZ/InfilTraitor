@@ -12,5 +12,6 @@
   ],
   "pattern_algorithm": "flat",
   "has_facade": false,
+  "surfaces": {"floor": "photo", "roof": "photo"},
   "smoke_chance": 0.4
 }

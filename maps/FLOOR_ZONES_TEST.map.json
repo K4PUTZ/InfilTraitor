@@ -137,6 +137,37 @@
         "sand",
         "dirt"
       ]
+    },
+    "ground_decals": {
+      "v": 1,
+      "items": [
+        {
+          "comment": "Corner of four GUs: a quarter of the leaf on grass, dirt and sand",
+          "at": [
+            6,
+            6
+          ],
+          "kind": "leaf"
+        },
+        {
+          "comment": "Middle of a GU, rotated",
+          "at": [
+            3.5,
+            3.5
+          ],
+          "kind": "leaf",
+          "rot": 0.6
+        },
+        {
+          "comment": "Middle of an edge",
+          "at": [
+            8,
+            3.5
+          ],
+          "kind": "leaf",
+          "variant": 0
+        }
+      ]
     }
   }
 }

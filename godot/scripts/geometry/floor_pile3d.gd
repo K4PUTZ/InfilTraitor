@@ -110,6 +110,12 @@ func place(id, center: Vector2, level: int, variant: int, alpha: float, tint: Co
 	_mark_dirty()
 
 
+## Drops one placement (a ground decal whose floor broke); the id is the one `place()` was given.
+func remove(id) -> void:
+	if _piles.erase(id):
+		_mark_dirty()
+
+
 func clear() -> void:
 	if _piles.is_empty():
 		return

@@ -5,6 +5,7 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.gd")
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
+const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const ShardField = preload("res://godot/scripts/overlays/shard_field.gd")
 const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overlay.gd")
@@ -141,6 +142,7 @@ var _slab_registry: SlabRegistry = null
 @warning_ignore("unused_private_class_variable")
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
+var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 
 
 ## tile_name → TileSet source_id
@@ -359,6 +361,10 @@ var _prediction_cache: PredictionCache = PredictionCache.new()
 func bump_world_revision() -> void:
 	_world_revision += 1
 	_prediction_cache.invalidate()
+	## R3D-SURFACES S2: a floor mark must not outlive the floor under it.
+	if _ground_decals != null and _ground_decals.count() > 0 and VoxelStore.active != null:
+		var store: VoxelStore = VoxelStore.active
+		_ground_decals.refresh(func(x: int, z: int) -> bool: return store.has_cell(x, z, GeometryCoords.FLOOR_TOP_LEVEL))
 
 ## VL-D3: floor columns (Vector2i x,y) that had a wall/block/roof above them in
 ## the INTACT layout. Recomputed each build from the freshly rendered geometry
@@ -3116,6 +3122,10 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 	if _voxel_board != null:
 		_voxel_board.set_pile_board3d(live)
 		_voxel_board.set_debris_pile_board3d(live)
+		## R3D-SURFACES S2 — the map's `ground_decals`, drawn from the base layout (the base grid is the only one now).
+		if _ground_decals == null:
+			_ground_decals = GroundDecals3DRef.new()
+		_ground_decals.attach(live, _base_layout.get("ground_decal_instances", []), GeometryCoords.FLOOR_TOP_LEVEL)
 		## R3D-SURFACES prototype — "one leaf-patch decal", dev-only, no map data (see VoxelBoard's
 		## own comment on `set_patch_board3d` / `place_patch_demo`).
 		if _dev_flag_on("SURFACE_PATCH_DEMO"):

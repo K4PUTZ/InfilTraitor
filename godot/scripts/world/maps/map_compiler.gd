@@ -187,6 +187,23 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"material": String(zone.get("material", "")),
 		})
 
+	## --- ground decals (R3D-SURFACES S2): `at` is GU on a half-GU lattice, shifted by the buffer like every other position ---
+	var ground_decal_instances: Array = []
+	for decal in spec.get("ground_decals", []):
+		var at_raw = decal.get("at", null)
+		var kind: String = String(decal.get("kind", ""))
+		if not (at_raw is Array) or at_raw.size() != 2 or kind.is_empty() \
+				or not is_equal_approx(float(at_raw[0]) * 2.0, round(float(at_raw[0]) * 2.0)) \
+				or not is_equal_approx(float(at_raw[1]) * 2.0, round(float(at_raw[1]) * 2.0)):
+			push_error("[MapCompiler] ground_decals: %s needs `at` [x, y] on the half-GU lattice and a `kind`; skipped" % str(decal))
+			continue
+		ground_decal_instances.append({
+			"at": Vector2(float(at_raw[0]), float(at_raw[1])) + Vector2(offset),
+			"kind": kind,
+			"variant": int(decal.get("variant", -1)),
+			"rot": float(decal.get("rot", 0.0)),
+		})
+
 	## --- damage_materials (D13): flat pass-through, no offset/rotation to apply ---
 	var damage_materials: Array[String] = []
 	for m in spec.get("damage_materials", []):
@@ -305,6 +322,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"roof_instances": roof_instances,  ## R3D-7: free-standing roofs (an entity of their own), offset-adjusted
 		"floor_zone_instances": floor_zone_instances,  ## Author-declared floor material rects, offset-adjusted (floor-zone bake)
 		"panel_instances":  panel_instances,   ## M3-2b: half-thickness elements, offset-adjusted
+		"ground_decal_instances": ground_decal_instances,  ## R3D-SURFACES S2: floor marks, offset-adjusted, base grid only (never rotated)
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,

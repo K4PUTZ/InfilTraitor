@@ -9,6 +9,7 @@ static func register_all(registry) -> void:
 	register_blocks(registry)
 	register_floor_zones(registry)
 	register_roofs(registry)
+	register_ground_decals(registry)
 	register_damage_materials(registry)
 	register_panels(registry)
 	register_props(registry)
@@ -135,6 +136,24 @@ static func register_roofs(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"roofs",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "items": fragment.get("items", []) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "items": raw.get("items", []) },
+		{},
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
+## ground_decals (R3D-SURFACES S2, 2026-10-02): GU-sized photographic marks on the floor. `{at, kind, variant?, rot?}` -- `at` is
+## [x, y] in GU on a HALF-GU lattice: an integer pair is the shared corner of four GUs (a quarter of the decal on each), `+ 0.5` on
+## one axis the middle of an edge, `+ 0.5` on both the middle of a GU. `kind` names `decal_patch_<kind>_<n>.png` in
+## `ASSETS/materials/_generic/decals/`; `variant` defaults to a stable pick of the position, `rot` is radians. Cosmetic: never saved.
+static func register_ground_decals(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"ground_decals",
 		1,
 		func(fragment: Dictionary) -> Dictionary:
 			return { "items": fragment.get("items", []) },

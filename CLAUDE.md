@@ -64,7 +64,7 @@ the cheap tier; the heavy one runs on request.
 | `docs` | invariants, codemap | seconds | Markdown / `PROMPTS/` / `docs/` only |
 | `quick` | lint, invariants, codemap, selftests (items 1, 5, 6 below) | ~1 min | tools, selftests, localisation |
 | `smoke` | `quick` + `smoke_boot.py`: PLAYGROUND and GLASS boot, rotate E then N, no grenade, no shot | ~1.5 min | **the default for any change under `godot/`** (`verify.py` picks it by itself) |
-| `full` | `smoke` + `ground_gate`, `shot_3d_gate`, `occ_canonical_gate`, `mirror_gate`, `pick_gate`, `roof_yaw_gate`, `roundtrip --with-store`, and the two identity gates held to a stored baseline | ~7 min | **ONLY when the Director asks, or to close a stage that rewires the board / the state / the light / the ground** (`verify.py` never picks it) |
+| `full` | `smoke` + `ground_gate`, `shot_3d_gate`, `occ_canonical_gate`, `mirror_gate`, `pick_gate`, `roof_yaw_gate`, `world_gate`, `roundtrip --with-store`, and the two identity gates held to a stored baseline | ~7 min | **ONLY when the Director asks, or to close a stage that rewires the board / the state / the light / the ground** (`verify.py` never picks it) |
 
 - `verify.py full` wants a baseline taken at the START of the task, on the code before your change: `verify.py --baseline`
   (two boots per case, ~3.5 min, git-ignored under `Screenshots/verify_baseline/`). Without one the identity gates fall back to

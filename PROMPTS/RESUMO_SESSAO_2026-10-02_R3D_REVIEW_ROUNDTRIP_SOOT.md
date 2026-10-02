@@ -82,3 +82,9 @@ four outside runs (0), the two differ, and inside vs outside differ by 127-177 t
 cutaway geometry digests DO differ per view (the walls toward the camera are the ones cut), only the roof is view-independent, so
 `occ_canonical_gate` stays an N-view gate. Red-before-green: hashing the view into the roof digest gives four different digests per case and
 `FAIL`. In `verify.py full` after `pick`. Still without a gate: the `S` overlays (aim dome, throw arc, tracer).
+
+## ROT gate — the air overlays' maths under yaw (2026-10-02)
+`world_gate.py` + the `world_check` scenario step: what the tracer, throw arc, aim dome, star and lamps (`WorldCanvas3D`) stand on, per view.
+`lift()` of five fixed points is one digest in N/E/S/W (world state); `screen_axes()` equals the camera's real step (cos 1.00000, zoom 0.5000 on
+both axes, every view); the four x axes are pairwise different (the camera did turn). Red-before-green: freezing `screen_axes()` at the N values
+fails it. What each overlay DRAWS with them (the dome's tilt, the star's rays) is still judged on a capture; no overlay-level gate exists.

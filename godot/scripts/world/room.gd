@@ -2886,6 +2886,38 @@ func scenario_ground_check(label: String) -> bool:
 	return true
 
 
+## The `world_check` scenario step: the two things every overlay that draws in the air stands on, measured in the CURRENT
+## view. (1) `WorldCanvas3D.lift()` of fixed cell points at a fixed height: world state, so its digest must be the same in
+## every view. (2) `screen_axes()`, the pixels one grid step moves by, against what the live camera really does to the
+## same step: direction (cosine) and scale (the viewport pixels per canvas pixel, i.e. the zoom) for each axis.
+## Prints `[WORLD-CHECK] <name> view=<V> lift=<digest> ax=<x,y> ay=<x,y> cos_x=<c> cos_y=<c> zoom_x=<z> zoom_y=<z>`.
+func scenario_world_check(label: String) -> bool:
+	var live: Node = board3d()
+	if live == null:
+		push_error("[Room] scenario_world_check: no 3D board")
+		return false
+	var canvas := WorldCanvas3D.new()
+	canvas.attach(live, self, 0)
+	canvas.begin()
+	var rows: Array = []
+	for cell: Vector2i in [Vector2i(3, 3), Vector2i(7, 4), Vector2i(12, 9), Vector2i(20, 5), Vector2i(2, 11)]:
+		var floor_2d: Vector2 = _world_center_for_cell(cell)
+		var p: Vector3 = canvas.lift(floor_2d + Vector2(0.0, -40.0), floor_2d)
+		rows.append([roundi(p.x * 1000.0), roundi(p.y * 1000.0), roundi(p.z * 1000.0)])
+	var axes: Array[Vector2] = canvas.screen_axes()
+	canvas.detach()
+	## What the camera does to one grid step along x and along y, from the cell (5, 5).
+	var origin: Vector2 = live.call("screen_of_world", Vector3(5.5, 0.0, 5.5))
+	var step_x: Vector2 = (live.call("screen_of_world", Vector3(6.5, 0.0, 5.5)) as Vector2) - origin
+	var step_y: Vector2 = (live.call("screen_of_world", Vector3(5.5, 0.0, 6.5)) as Vector2) - origin
+	var cos_x: float = axes[0].normalized().dot(step_x.normalized())
+	var cos_y: float = axes[1].normalized().dot(step_y.normalized())
+	print("[WORLD-CHECK] %s view=%s lift=%d ax=%.1f,%.1f ay=%.1f,%.1f cos_x=%.5f cos_y=%.5f zoom_x=%.4f zoom_y=%.4f"
+		% [label, _view_direction, hash(rows), axes[0].x, axes[0].y, axes[1].x, axes[1].y, cos_x, cos_y,
+			step_x.length() / maxf(axes[0].length(), 1e-6), step_y.length() / maxf(axes[1].length(), 1e-6)])
+	return true
+
+
 ## The `pick_check` scenario step: in the CURRENT view, every on-screen cell's centre goes through the real pick
 ## (`_screen_to_tile()`, what a touch reaches) and must come back as that cell. A cell a standing prop covers on screen
 ## picks the prop's cell instead (`pick_cell()` asks the prop boxes first, on purpose): counted apart, never a failure.

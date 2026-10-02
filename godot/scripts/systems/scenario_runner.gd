@@ -53,6 +53,10 @@
 ##                                        goes through the real pick (`_screen_to_tile`) and must come back as that
 ##                                        cell (or the standing prop that covers it); prints `[PICK-CHECK]`
 ##                                        (tools/persistent/pick_gate.py reads it)
+##   world_check <name>                   the maths the air overlays (tracer, throw arc, aim dome, lamps) stand on, in the
+##                                        CURRENT view: where `WorldCanvas3D.lift()` puts fixed points (world state, must
+##                                        not move with the view) and whether `screen_axes()` is what the camera really
+##                                        does to a grid step; prints `[WORLD-CHECK]` (tools/persistent/world_gate.py)
 ##   relight                              R3D-13: the map-wide light repaint on the CURRENT world,
 ##                                        in place — what a rotation or a restore runs, without
 ##                                        either (a probe before and after names what the
@@ -82,7 +86,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
-	"passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "occ_bench": 3, "place_guard": 2,
+	"passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2,
 }
 const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler"]
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
@@ -170,7 +174,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "passages", "mirror_check", "ground_check", "pick_check":
+		"capture", "probe", "probe_store", "passages", "mirror_check", "ground_check", "pick_check", "world_check":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -294,6 +298,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_ground_check()")
 			if not bool(room.call("scenario_ground_check", str(step["name"]))):
 				return _fail(step, "no ground check was made (see the error above)")
+		"world_check":
+			if not room.has_method("scenario_world_check"):
+				return _fail(step, "Room has no scenario_world_check()")
+			if not bool(room.call("scenario_world_check", str(step["name"]))):
+				return _fail(step, "the world check could not run (see the error above)")
 		"pick_check":
 			if not room.has_method("scenario_pick_check"):
 				return _fail(step, "Room has no scenario_pick_check()")

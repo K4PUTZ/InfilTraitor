@@ -244,13 +244,20 @@ void fragment() {
 ## its face, so the voxel lookup steps back 0.06 instead of 0.01 to stay in the voxel it decorates.
 const DECAL_TAIL: String = """
 	vec4 d = texture(decals, vec3(UV, v_layer));
-	ALBEDO = srgb_to_linear(d.rgb * f);
-	ALPHA = d.a;
+	// A bullet's mark (the first `bullet_layers` layers of the array) is stronger than a blast's: a DENTED or CRACKED
+	// voxel keeps its face, so this decal is the only thing that says a round landed.
+	float bullet = v_layer < bullet_layers ? 1.0 : 0.0;
+	ALBEDO = srgb_to_linear(d.rgb * mix(1.0, bullet_darken, bullet) * f);
+	ALPHA = clamp(d.a * mix(1.0, bullet_alpha_gain, bullet), 0.0, 1.0);
 }
 """
+## Tuning (Director, 2026-10-02: a bullet decal "com um pouco mais de opacidade, ou talvez contraste"): the alpha is multiplied
+## and the colour darkened for the bullet family only. Rule 1: `var`, numbers.
+static var BULLET_DECAL_ALPHA_GAIN: float = 2.5
+static var BULLET_DECAL_DARKEN: float = 0.7
 static var DECAL_SHADER: String = OPAQUE_SHADER \
 	.replace("render_mode unshaded, cull_back;", "render_mode unshaded, cull_back, depth_draw_never, blend_mix;") \
-	.replace("varying vec3 v_normal;", "varying vec3 v_normal;\nvarying float v_layer;\nuniform sampler2DArray decals : filter_linear_mipmap, repeat_disable;") \
+	.replace("varying vec3 v_normal;", "varying vec3 v_normal;\nvarying float v_layer;\nuniform sampler2DArray decals : filter_linear_mipmap, repeat_disable;\nuniform float bullet_layers = 0.0;\nuniform float bullet_alpha_gain = 1.0;\nuniform float bullet_darken = 1.0;") \
 	.replace("	v_normal = NORMAL;", "	v_normal = NORMAL;\n	v_layer = floor(COLOR.r * 255.0 + 0.5);") \
 	.replace("v_normal * 0.01", "v_normal * 0.06") \
 	.replace("	bool ghost = cs == 2; // GHOST_TOP\n", "	if (cs == 2) {\n		discard;\n	}\n") \
@@ -1166,9 +1173,15 @@ func _collect() -> Dictionary:
 ## that is not 256x256, or one that will not load, dropped the marks of every voxel whose hash landed on it with no message
 ## on either board. `check_decal.py` and `voxel_decal_selftest` catch it in the pipeline; this is the one that catches it
 ## on the board that ships.
+var _bullet_layer_count: int = 0
+
+
 func _build_decal_catalog() -> void:
 	var images: Array[Image] = []
+	_bullet_layer_count = 0
 	for family: String in ["bullet", "dent", "crack"]:
+		if family != "bullet" and _bullet_layer_count == 0:
+			_bullet_layer_count = images.size()   ## the bullet family is the first block of layers (the shader tells them apart by index)
 		for material_id: String in VoxelBoard.IMPACT_DECAL_MATERIALS + [VoxelBoard.IMPACT_FLOOR_MATERIAL]:
 			var loaded: int = 0
 			for variant: int in range(VoxelBoard.IMPACT_DECAL_VARIANTS):
@@ -2257,6 +2270,9 @@ func _make_material(material_id: String) -> ShaderMaterial:
 		decal_shader.code = BoardLook.apply_grade(DECAL_SHADER)
 		decal_material.shader = decal_shader
 		decal_material.set_shader_parameter("decals", _decal_array)
+		decal_material.set_shader_parameter("bullet_layers", float(_bullet_layer_count))
+		decal_material.set_shader_parameter("bullet_alpha_gain", BULLET_DECAL_ALPHA_GAIN)
+		decal_material.set_shader_parameter("bullet_darken", BULLET_DECAL_DARKEN)
 		return decal_material
 	var shader := Shader.new()
 	var shader_material := ShaderMaterial.new()

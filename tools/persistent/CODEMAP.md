@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**272 scripts · 85436 lines total** (under `godot/scripts/`)
+**272 scripts · 85481 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -499,7 +499,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2395 lines
+extends `Node3D` · 2411 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -2305,7 +2305,7 @@ extends `Node2D` · 69 lines
 
 ### `blast_calculator.gd`
 
-`class_name BlastCalculator` · 1837 lines
+`class_name BlastCalculator` · 1852 lines
 
 `godot/scripts/systems/destruction/blast_calculator.gd`
 
@@ -5057,7 +5057,7 @@ extends `SceneTree` · 256 lines
 
 ### `soot_stamp_selftest.gd`
 
-extends `SceneTree` · 204 lines
+extends `SceneTree` · 218 lines
 
 `godot/scripts/tools/soot_stamp_selftest.gd`
 

@@ -5865,7 +5865,7 @@ func apply_shot_soot(touched: Array, radius: int = -1) -> void:
 		return
 	var t0: int = Time.get_ticks_usec()
 	var changed: Dictionary = stamp_soot(BlastCalculator.stamp_around(
-		seeds, use_radius, VoxelStore.active, holes))
+		seeds, use_radius, VoxelStore.active, holes, true))
 	_paint_soot(changed, "shot soot")
 	var n: int = 0
 	for level in changed:

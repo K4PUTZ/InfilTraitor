@@ -174,6 +174,20 @@ func _test_stamp_nearest_seed_wins() -> void:
 			zero_away += 1
 	_check(int(edge.get(Vector2i(21, 0), -1)) == 0 and zero_away == 0,
 		"tone 0 lands on a hole's neighbour and nowhere else (%d elsewhere)" % zero_away)
+	## A SHOT's stamp (Director, 2026-10-02): one tone lighter (the hole's neighbour reads 1, never 0, and the faintest ring is
+	## dropped), with the halo at its own chance. A blast's stamp above is untouched.
+	var shot: Dictionary = BlastCalculatorClass.stamp_around([Vector3i(20, 0, level)], 3, null, holes, true).get(level, {})
+	var shot_zero: int = 0
+	var shot_darkest_not_adjacent: int = 0
+	for c3: Vector2i in shot:
+		if int(shot[c3]) <= 0:
+			shot_zero += 1
+		if int(shot[c3]) >= BlastCalculatorClass.FACE_SOOT_CLEAN:
+			shot_darkest_not_adjacent += 1
+	_check(shot_zero == 0 and shot_darkest_not_adjacent == 0 and int(shot.get(Vector2i(21, 0), -1)) == 1,
+		"a shot's stamp has no tone 0 and no tone past 3; the hole's neighbour reads 1 (%d zero, got %d)"
+			% [shot_zero, int(shot.get(Vector2i(21, 0), -1))])
+
 
 
 ## SOOT-HALO (shipped OFF, `SOOT_HALO_CHANCE` 0.0): off, the halo flag changes nothing; at 1.0 a cell that would be clean or

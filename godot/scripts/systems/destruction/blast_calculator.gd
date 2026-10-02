@@ -1717,7 +1717,8 @@ static func soot_jitter(cell: Vector2i, level: int, ring: int) -> int:
 ## SOOT-EDGE (Director, 2026-09-22: "escurece só os voxels imediatamente vizinhos aos
 ## destruídos"): tone 0 is RESERVED for a voxel touching a destroyed one. Every other
 ## stamped cell takes `band` 0..2 as tones 1..3, jittered, never rolled down to 0.
-static func soot_tone(cell: Vector2i, level: int, band: int, touches_hole: bool, halo: bool = false) -> int:
+static func soot_tone(cell: Vector2i, level: int, band: int, touches_hole: bool, halo: bool = false,
+		halo_chance: float = -1.0) -> int:
 	if touches_hole:
 		return 0
 	var tone: int = -1
@@ -1726,7 +1727,8 @@ static func soot_tone(cell: Vector2i, level: int, band: int, touches_hole: bool,
 		tone = maxi(t, 1) if t >= 0 else -1
 	## SOOT-HALO (A/B experiment): a cell that touches a hole only along an edge (a diagonal neighbour) is at most tone 1,
 	## so the tone-0 ring of a narrow hole reads as a blob instead of a thin "+" / line.
-	if halo and (tone < 0 or tone > 1) and halo_roll(cell, level) < soot_halo_chance():
+	var chance: float = soot_halo_chance() if halo_chance < 0.0 else halo_chance
+	if halo and (tone < 0 or tone > 1) and halo_roll(cell, level) < chance:
 		return 1
 	return tone
 
@@ -1742,6 +1744,14 @@ static func halo_roll(cell: Vector2i, level: int) -> float:
 ## PLAYGROUND, DORM and PROPS (same seed and camera): 0.3 still shows the "+", **0.5 is the middle ground** (irregular
 ## stain, rough edges kept), 1.0 is a smooth, stamp-like blob. To reapply, set 0.5. Rule 1: a `var`, tuning number.
 static var SOOT_HALO_CHANCE: float = 0.0
+
+
+## A SHOT's soot (Director, 2026-10-02): the cross of a one-voxel hole is softened with the halo at the middle ground
+## (0.5, the value the grenade's A/B picked), and the stain is one tone lighter ("um pouco menos de opacidade"): the cells
+## beside the hole read 0.60 instead of 0.38, and the faintest ring (tone 3) is not stamped at all. Grenades keep their own
+## `SOOT_HALO_CHANCE` (0.0 by the Director's choice) and their full tones. Rule 1: `var`, tuning numbers.
+static var SHOT_SOOT_HALO_CHANCE: float = 0.5
+static var SHOT_SOOT_LIGHTEN: int = 1
 
 
 static func soot_halo_on() -> bool:
@@ -1796,7 +1806,7 @@ static func soot_ball(radius: int) -> Array:
 ## solid voxel (`VoxelStore.has_solid()`, hidden ones included) are kept; with no
 ## store every cell is. Returns `level -> {cell: ring}`, jitter already applied.
 static func stamp_around(seeds: Array, radius: int, store: VoxelStore,
-		holes: Dictionary = {}) -> Dictionary:
+		holes: Dictionary = {}, shot: bool = false) -> Dictionary:
 	var best: Dictionary = {}
 	var ball: Array = soot_ball(radius)
 	for seed: Vector3i in seeds:
@@ -1822,15 +1832,20 @@ static func stamp_around(seeds: Array, radius: int, store: VoxelStore,
 			if holes.has(k + d):
 				touches = true
 				break
+		var halo_chance: float = SHOT_SOOT_HALO_CHANCE if shot else soot_halo_chance()
 		var halo: bool = false
-		if not touches and soot_halo_on():
+		if not touches and halo_chance > 0.0:
 			for d: Vector3i in SOOT_EDGE_DIAGONALS:
 				if holes.has(k + d):
 					halo = true
 					break
-		var ring: int = soot_tone(Vector2i(k.x, k.y), k.z, maxi(dist - 1, 0), touches, halo)
+		var ring: int = soot_tone(Vector2i(k.x, k.y), k.z, maxi(dist - 1, 0), touches, halo, halo_chance)
 		if ring < 0:
 			continue
+		if shot:
+			ring += SHOT_SOOT_LIGHTEN
+			if ring >= FACE_SOOT_CLEAN:
+				continue
 		if not out.has(k.z):
 			out[k.z] = {}
 		(out[k.z] as Dictionary)[Vector2i(k.x, k.y)] = ring

@@ -101,8 +101,8 @@ func _on_guard_emits_noise(guard: Object, guard_cell: Vector2i) -> void:
 		var noise_intensity: float = _room.GUARD_NOISE_INTENSITY_BY_STATE.get(guard.state, 0.5) as float
 		## Emit into the global noise system
 		_room._noise_system.emit(guard_cell, noise_intensity)
-		## Emit a sound indicator toward the agent
-		_room._emit_guard_noise_indicator(guard_cell, noise_intensity)
+		## Sound indicator toward the agent: not wired yet (noise is a later track; when it is, its
+		## direction must use the view axes, RENDER3D_MASTER_PLAN R3D-ROT item 5).
 		## Redraw overlays to update the visuals
 		if _room._noise_overlay != null:
 			_room._noise_overlay.queue_redraw()

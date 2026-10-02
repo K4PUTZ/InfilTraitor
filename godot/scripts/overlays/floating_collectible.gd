@@ -47,7 +47,7 @@
 ## fixed azimuth was always derived against a canonical N view, so feeding
 ## it a raw view-space delta from a rotated (E/S/W) perspective silently
 ## picked the wrong world direction. Same idea as
-## TestZoneController.reposition_for_perspective(): this object also now
+## TestZoneController.on_view_changed(): this object also now
 ## tracks its own base_cell and re-derives its view-space gu_cell on every
 ## perspective flip (see reposition_for_perspective() below), so gu_cell
 ## never goes stale the way it used to before this fix.

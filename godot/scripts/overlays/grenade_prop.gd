@@ -219,7 +219,7 @@ func _sync_shadow_transform() -> void:
 		lerpf(SHADOW_STRENGTH_AT_GROUND, SHADOW_STRENGTH_IN_FLIGHT, k))
 
 
-## Called by TestZoneController.reposition_for_perspective() alongside the
+## Called by TestZoneController.on_view_changed() alongside the
 ## sprite's own position update — swaps to the frame baked for the new
 ## direction. base_cell never changes (perspective-independent anchor); only
 ## gu_cell (view-space) does. Re-applies z_index too: _set_perspective()

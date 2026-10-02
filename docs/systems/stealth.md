@@ -2,6 +2,8 @@
 
 > **Fog of war, cover mechanics, and tactical positioning.**
 
+> ✅ **Reconciled against the code 2026-10-02.** **Built:** fog of war (shader-based), shadow and penumbra multipliers on detection, the detection meter with its thresholds and per-state decay, whistle / radio / alarm. **Design only (no code):** cover states, peek-and-lean beyond the one-AP wall peek, gadgets (smoke bomb, EMP, flashbang), traps, hacking and lock picking, Overwatch. Canonical numbers: [`AI_MASTER_PLAN.md`](AI_MASTER_PLAN.md).
+
 ---
 
 ## Overview
@@ -220,9 +222,9 @@ As detection meter increases:
 
 ```
 0.00–0.30  → Undetected (Agent safe)
-0.30–0.50  → Suspicious (Guard active, looking)
-0.50–0.70  → Alert (Guard on edge, may whistle)
-0.70–1.00  → Chase (Full detection, radio alarm, pursuit)
+0.30–0.60  → Suspicious (Guard active, looking)
+0.60–1.00  → Alert (Guard on edge, may whistle)
+≥ 1.00     → Chase (Full detection, radio alarm, pursuit)
 ```
 
 ### What Happens When Detected

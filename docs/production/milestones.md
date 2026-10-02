@@ -49,6 +49,30 @@ silently stuck on a 2026-06-18 condition nobody re-checked.
 
 ---
 
+## Status reconciliation — 2026-10-02
+
+> The M-numbered ledger below was written between June and September 2026. This table is the re-audit against the code and the plans on 2026-10-02; headings of the items that changed carry their new status, and the bodies are kept as the history they are.
+
+| Block | Status now | Where it lives |
+|---|---|---|
+| M1.0, M1.5 (foundation, navigation) | ✅ built; movement is 2 AP with 3 steps per AP | `docs/systems/movement.md` |
+| M2.0-M2.12 (sound, cones, patrol, audio, noise, attention, shadows, search, communication, camera, cover-hint removal) | ✅ built and re-verified against the code; the noise indicator never shows | `AI_MASTER_PLAN`, `noise.md` |
+| AI-01 (gradual detection) | ✅ built | `AI_MASTER_PLAN` |
+| VOX-BAKE-01, VOXEL-09, Bake System | ⛔ retired: the bake was deleted (R3D-END) | `BAKE_SYSTEM_REFERENCE` (historical) |
+| VOXEL-01..08 (wall voxels) | ✅ built; now a 3D board over `VoxelStore` | `RENDER3D_MASTER_PLAN` |
+| Occlusion | ✅ closed (3D cutaway, R3D-7) | `OCCLUSION_MASTER_PLAN` |
+| Destruction | ✅ closed; props added (R3D-PROPS) | `DESTRUCTION_MASTER_PLAN`, `PROPS_TIER4_PLAN` |
+| Voxel Light | ✅ built; the CPU buckets stay (real lamps rejected) | `VOXEL_LIGHT_MASTER_PLAN` |
+| Glass (M4) | ✅ physics closed | `GLASS_MASTER_PLAN` |
+| Materials (M1/M2/M5-props) | ✅ materials and props; family/fallback registry | `MATERIALS_MASTER_PLAN`, `PROP_PIPELINE_PLAN` |
+| Engine: 3D board, light budget, props, live actors, world-space overlays, camera-only rotation | ✅ R3D-END, LIGHT, PROPS, ACTORS, WORLD, ROT closed (`verify.py full` green 2026-10-02) | `RENDER3D_MASTER_PLAN`, `current_state.md` |
+| VIS-01 (overhead) | 🟡 partial: roofs and 3D ceiling lamps built; spot light type unbuilt | below |
+| ART-01 (materials and objects pipeline) | 🟡 the materials half and the props pipeline are built (PP1, PP4); `.iprop` / user tier (PP2/PP3) and the rest of ART-01 were not re-audited | `PROP_PIPELINE_PLAN` |
+| AI-02, AI-03, CONTENT-01 | ⏸️ deferred as written (AI track gate) | below |
+| M2.13 (merged into AI-01), M2.14 investigation | ⏳ M2.14 unbuilt | below |
+| GAMEPLAY-01 (non-combat turn), GAME-01 (combat), M3.05 | ⏳ unbuilt: confrontation, cover, resistance, equipment are designed only | `DESIGN_MASTER_PLAN` |
+| M4.* (campaign), M5.* (Freelance), MONET-01, M6.*, M7.* | ⏳ unbuilt, unscheduled | below |
+
 ## Completed Milestones
 
 ### ✅ M1.0 — Prototype Foundation
@@ -419,7 +443,9 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 
 ---
 
-### 🟡 VOX-BAKE-01 — Voxel Facade Baking System — PARTIALLY COMPLETE
+### ⛔ VOX-BAKE-01 — Voxel Facade Baking System — RETIRED at R3D-END (2026-09-25; was PARTIALLY COMPLETE)
+
+> The bake is deleted: the 3D board samples the facade through UVs (`TextureResolver`, `MaterialRegistry`), so "textured interiors" became an ordinary face (R3D-6). The text below is the 2026-07 plan, kept as history.
 
 **Objective:** Bake real facade textures onto voxel walls (side faces + tops)
 with correct isometric projection, replacing flat material-color rendering,
@@ -490,17 +516,19 @@ offsets, analytically derived positions (Transform Canon). Geometry module
 junction filling all shipped and selftested (`geometry_selftest.gd` 29/29).
 See `docs/technical/VOXEL_MASTER_PLAN/VOXEL_MASTER_PLAN.md`.
 
-### 🟡 VOXEL-09 — Secondary (per-HighWall) Baking — DEFERRED, not started
+### ⛔ VOXEL-09 — Secondary (per-HighWall) Baking — MOOT (the bake is gone; was DEFERRED, not started)
 Architectural framework in place (`high_wall.gd`); no implementation. Not
 blocking anything currently in flight.
 
-### ✅ Bake System (BAKE-FIX-01 through 14, BAKE-CACHE-01/PAGESIZE-01-b)
+### ⛔ Bake System (BAKE-FIX-01 through 14, BAKE-CACHE-01/PAGESIZE-01-b) — was ✅; DELETED at R3D-END END-4 (2026-09-25)
+**Surviving:** B2 grayscale facades, B4 FNV-1a determinism, B6 loud-fail (`CLAUDE.md`, `BAKE_SYSTEM_REFERENCE.md`, historical).
 **Status:** Complete for walls + tops (B1–B6 invariants closed, B3 with real
 pixel evidence). Warm boot ~32ms (budget ≤150ms cleared, was 730-770ms).
 Textured interiors (destruction reveal) is the one open item — see
 VOX-BAKE-01 above. See `docs/technical/BAKE_SYSTEM_REFERENCE.md`.
 
-### 🟡 Occlusion (`OCCLUSION_MASTER_PLAN.md`) — Parts 1–3 done, PAUSED 2026-07-21
+### ✅ Occlusion (`OCCLUSION_MASTER_PLAN.md`) — Parts 1–4 CLOSED (was: Parts 1–3 done, PAUSED 2026-07-21)
+> **Closed as R3D-7 (2026-09-21):** the interior cutaway is `Board3DLive.on_occlusion()` over the unchanged `OcclusionSet`; the 2D wireframe and tile erase were deleted at R3D-END. Only §7 (the X-ray silhouette) stays deferred. Since 2026-10-02 the occluded set is built for all four views once and a revealed roof is view-independent (`roof_yaw_gate.py`). The text below is the 2026-07 status.
 View occlusion (hiding structure from the player's camera so the agent stays
 visible under walls/roofs) — occlusion-set computation, wireframe visual, and
 agent-on-top rendering all shipped. Part 4 (interior cutaway) blocked on
@@ -509,7 +537,8 @@ Paused at the Director's call pending "a real map with placed objects to
 occlude against" — see the AI-track gate note above for why that trigger may
 now be satisfied.
 
-### 🟡 Destruction (`DESTRUCTION_MASTER_PLAN.md`) — Parts 0–3 done, UNBLOCKED 2026-07-26
+### ✅ Destruction (`DESTRUCTION_MASTER_PLAN.md`) — CLOSED (was: Parts 0–3 done, UNBLOCKED 2026-07-26)
+> **Closed 2026-08-13**; the render half was deleted at R3D-END and props joined the canon at R3D-PROPS (hollow voxel crates, Tier 4 replacement, firearm rounds on prop voxels). Soot has one truth since 2026-10-02 (`Room._soot_map`). The text below is the 2026-07 status.
 The dirty-flag/TIC destruction motor (built since the Voxel pivot, never
 switched on) now has a real trigger: a thrown grenade detonates, computes a
 wall-aware GU-ring blast via BFS, and marks real voxels destroyed through the
@@ -655,7 +684,8 @@ renderer); `.vox` models need palette curation + GU-scale normalization.
 
 ---
 
-### ⏳ VIS-01 — Overhead Visual Engine (ceiling + view occlusion)
+### 🟡 VIS-01 — Overhead Visual Engine (ceiling + view occlusion) — PARTIALLY BUILT (was ⏳)
+> **2026-10-02:** view occlusion is closed (see Occlusion above); a revealed roof is a map entity (`roofs` section, opened by slab adjacency); ceiling lamps and props draw in 3D (`WorldCanvas3D`, `CeilingPropOverlay`). **Still unbuilt:** the spot / directional light type (the runtime registers omni lights only) and ceiling content and tactical hooks (security cameras as detectors, flicker). Its stages below are the 2026-06 plan.
 **Objective:** Build the topmost (5th-floor) decorative/lighting layer AND the
 view-occlusion system that keeps the agent readable under walls/ceiling. The two
 are one system: ceiling props are the worst occluders, so they share the cutaway/
@@ -1405,3 +1435,22 @@ real phones.
    needs it.
 2. **The 2026-08-30 calls above are unchanged:** `SOOT_STORAGE_REFORM` §5.3 and the AI-02
    timing.
+
+
+## Next Steps — superseding update (2026-10-02)
+
+**Read this section, not the dated lists above.**
+
+### What closed since 2026-09-15
+- **R3D-END, R3D-LIGHT, R3D-PROPS, R3D-ACTORS, R3D-WORLD, R3D-ROT:** the 3D board over a packed voxel store is the only board, a blast and a shot fit the 100 ms budget on the target phones, props are hollow voxels or real models with Tier 4 replacement, actors are live skinned meshes, the overlays draw in world space and rotation is the camera's yaw. `verify.py full` is green (2026-10-02, 449 s) with the pick, roof-yaw and world gates.
+- **Soot:** one truth (`Room._soot_map`); the PLAYGROUND round trip reads 0 texels.
+- **Documentation:** the AI, perception, stealth, movement, noise, rendering, occlusion and lighting texts were reconciled with the code (`docs/systems/`), the README and ARCHITECTURE rewritten for the 3D board.
+
+### What is ready to start (the Director's call)
+1. **R3D-LOOK** (look pass), **R3D-SURFACES** (photographic horizontal surfaces, prototype built), **R3D-CLAIMS** / **R3D-BUFFER** (memory and scale housekeeping).
+2. **The noise track** (the indicator, and gunshots / explosions as noise sources) and **the `ACTOR` calibration** of the tile-risk zone against the guard's motion.
+3. **PP2/PP3** (`.iprop`, user-tier models).
+4. **The gameplay milestones** (GAMEPLAY-01, GAME-01 and the AI-02 timing) are the first that touch design; they need the Director's sign-off (`DESIGN_MASTER_PLAN`).
+
+### Owed to the handsets
+A Moto turn after the final code and the 100 ms blast frames with the soot settle (`DEVICE_DIAGNOSTICS_MASTER_PLAN`, top block).

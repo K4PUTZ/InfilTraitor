@@ -2,6 +2,10 @@
 
 > **Guard FSM, decision-making, communication, and distributed knowledge.**
 
+> ✅ **Reconciled against the code 2026-10-02.** The canonical, code-verified numbers are in [`AI_MASTER_PLAN.md`](AI_MASTER_PLAN.md); this file's June 2026 tables carried the first design values, which the code replaced (patrol 0.80× -> **0.55×**, suspicious 1.20× -> **1.60×**, alert 1.50× -> **2.00×**, chase 2.00× -> **2.80×**, search 0.60× -> **0.80×**), and are corrected below.
+> **Built:** the five-state FSM (`agents/guard_enemy.gd`, transitions through `_enter_state()`), the detection meter and its thresholds (`room.gd`), per-state detection decay, whistle (`WHISTLE_RADIUS` 3: guards in range enter SEARCH), radio, and a global alarm (every guard enters CHASE) in `controllers/guard_coordinator.gd`.
+> **Design only (no code):** the Operational and Loyalty/Status layers, distributed *knowledge* with SEEN/HEARD decay, bribery and intimidation, guard personality traits. Treat those sections as specification.
+
 ---
 
 ## Overview
@@ -30,11 +34,11 @@ SEARCH
 
 | State | Priority | Behavior | Detection | Duration |
 |-------|----------|----------|-----------|----------|
-| **PATROL** | Low | Walk assigned route, casual scanning | 0.8× | Indefinite |
-| **SUSPICIOUS** | Medium | Active search, investigate sounds/movement | 1.2× | 3–5 turns |
-| **ALERT** | High | Heightened awareness, ready to escalate | 1.5× | 1–3 turns |
-| **CHASE** | Highest | Pursue target, call for backup, aggressive | 2.0× | Until target lost/dead |
-| **SEARCH** | Medium | Systematic search of area, less focused | 0.6× | 2–4 turns |
+| **PATROL** | Low | Walk assigned route, casual scanning | 0.55× | Indefinite |
+| **SUSPICIOUS** | Medium | Active search, investigate sounds/movement | 1.60× | 3–5 turns |
+| **ALERT** | High | Heightened awareness, ready to escalate | 2.00× | 1–3 turns |
+| **CHASE** | Highest | Pursue target, call for backup, aggressive | 2.80× | Until target lost/dead |
+| **SEARCH** | Medium | Systematic search of area, less focused | 0.80× | 2–4 turns |
 
 ### State Transitions
 
@@ -428,29 +432,35 @@ const STATE_ALERT = "alert"
 const STATE_CHASE = "chase"
 const STATE_SEARCH = "search"
 
-# Transitions
-const SUSPICIOUS_THRESHOLD := 0.30
-const ALERT_THRESHOLD := 0.60
-const CHASE_THRESHOLD := 1.00
-const SUSPICIOUS_DECAY := 0.05  # per turn
-const ALERT_DECAY := 0.10  # per turn
+# Transitions (room.gd; the meter climbs by raw_chance * DETECTION_GAIN_PER_TIC)
+const DETECTION_THRESHOLD_SUSPICIOUS := 0.30
+const DETECTION_THRESHOLD_ALERT      := 0.60
+const DETECTION_THRESHOLD_CHASE      := 1.00
+const DETECTION_GAIN_PER_TIC := 0.4        # tic_system.gd
+# Detection decay per turn when the agent is not seen (turn_controller._get_detection_decay)
+#   patrol -0.15 · suspicious -0.06 · alert -0.04 · chase -0.01 · search (default) -0.10
+# State timers (guard_enemy.gd)
+const TIMER_ALERT_TO_CHASE := 3
+const TIMER_SUSPICIOUS_TO_PATROL := 4
+const TIMER_CHASE_TO_SEARCH := 3
+const TIMER_SEARCH_TO_SUSPICIOUS := 2
 
-# Detection multipliers (by state)
-const STATE_DETECTION_MULTIPLIER = {
-    "patrol": 0.80,
-    "suspicious": 1.20,
-    "alert": 1.50,
-    "chase": 2.00,
-    "search": 0.60,
+# Detection multipliers (by state) — tic_system.gd STATE_MULTIPLIER
+const STATE_MULTIPLIER = {
+    "patrol": 0.55,
+    "suspicious": 1.60,
+    "alert": 2.00,
+    "chase": 2.80,
+    "search": 0.80,
 }
 
 # Communication ranges
-const WHISTLE_RADIUS := 3
-const RADIO_RANGE := "global"
+const WHISTLE_RADIUS := 3     # room.gd
+# radio and alarm are global signals in guard_coordinator.gd (no range constant)
 
-# Knowledge decay
-const KNOWLEDGE_SEEN_DECAY := 3  # turns before downgrade to HEARD
-const KNOWLEDGE_HEARD_DECAY := 5  # turns before downgrade to NONE
+# Knowledge decay — DESIGN ONLY: no knowledge model exists in the code
+# const KNOWLEDGE_SEEN_DECAY := 3   (turns before downgrade to HEARD)
+# const KNOWLEDGE_HEARD_DECAY := 5  (turns before downgrade to NONE)
 ```
 
 ---
@@ -464,6 +474,5 @@ const KNOWLEDGE_HEARD_DECAY := 5  # turns before downgrade to NONE
 
 ---
 
-**Last Updated:** 2026-06-11  
-**Maintained By:** AI Programmer  
-**Status:** Active 🟢
+**Last Updated:** 2026-10-02 (reconciled against the code; see the banner)  
+**Status:** Active 🟢 for the built FSM, detection and communication; specification for the rest

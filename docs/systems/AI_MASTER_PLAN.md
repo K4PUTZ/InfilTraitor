@@ -2,6 +2,8 @@
 
 > **Canonical specification for guard FSM, detection, and communication.**
 
+> ✅ **Numbers re-verified against the code 2026-10-02:** state multipliers (0.55 / 1.60 / 0.80 / 2.00 / 2.80), `DETECTION_GAIN_PER_TIC` 0.4, thresholds 0.30 / 0.60 / 1.00, the four timers, `FOV_DISTANCE_CURVE`, `FOV_LATERAL_FALLOFF`, `WHISTLE_RADIUS` 3. Per-state detection decay (`turn_controller._get_detection_decay`): patrol -0.15, suspicious -0.06, alert -0.04, chase -0.01, search -0.10. `ai.md`, `perception.md` and `stealth.md` were brought in line with these the same day.
+
 > **Status (2026-09-15): a SPECIFICATION, partly built.**
 > - **In code:**
 >   - the five-state FSM in `agents/guard_enemy.gd` (`STATE_PATROL` / `STATE_SUSPICIOUS` /

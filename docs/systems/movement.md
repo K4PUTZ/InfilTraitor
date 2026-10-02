@@ -2,6 +2,8 @@
 
 > **Grid navigation, turn structure, and action point economy.**
 
+> ✅ **Reconciled against the code 2026-10-02.** **Built:** 2 AP per player turn (`TacticalTurnManager.max_ap`), **3 movement points per AP** (`move_points_per_ap`, each cell costs 1 point, so 3 cells per AP, 6 per full turn), the Dijkstra reach overlay over 4-directional cells with blocked cells and edges (`navigation/movement_overlay.gd`), the path preview, posture costs (`DebugAgent.POSTURE_MOVE_AP_COST`, `POSTURE_CHANGE_AP`), a wall peek (1 AP, reveals 3 tiles). **Spent on nothing yet:** shots and grenade throws are dev tools and cost no AP. **Design only:** the rough-terrain and water-current rows, gadgets and skills with AP costs, Interact, Overwatch. Map sizes vary (`PLAYGROUND` 44x22, `DORM` 14x9): there is no fixed room size.
+
 ---
 
 ## Overview
@@ -45,8 +47,7 @@ Player Phase → Enemy Phase → Loop
 # Movement to adjacent tile
 agent.move_to_cell(Vector2i(x+1, y))
 
-# Valid moves are bounded by room size
-const ROOM_SIZE: Vector2i = Vector2i(36, 36)  # max coordinates
+# Valid moves are bounded by the map (maps/*.map.json define the size)
 
 # Pathfinding via Dijkstra
 var path: Array[Vector2i] = pathfinder.find_path(start, goal, blocked_cells)
@@ -71,7 +72,7 @@ Each player turn, agent receives 2 AP. AP may be spent on:
 
 | Action | AP Cost | Notes |
 |--------|---------|-------|
-| **Move to adjacent tile** | 1 AP | Pathfinding preview shows cost |
+| **Move** | 1 AP per 3 cells | `ceil(path cost / 3)`; the preview shows the cost (built) |
 | **Gadget (standard)** | 1 AP | Most gadgets (smoke, EMP, etc.) |
 | **Gadget (powerful)** | 2 AP | Rare, high-impact abilities |
 | **Skill (standard)** | 1 AP | Combat moves, utility |
@@ -91,8 +92,8 @@ Each player turn, agent receives 2 AP. AP may be spent on:
 ### Movement Overlay (Dijkstra)
 When the agent is selected (or turn begins), a **Dijkstra pathfinding layer** shows all reachable tiles:
 
-- **1 AP zone** (blue outline) — tiles reachable with 1 move
-- **2 AP zone** (orange outline) — tiles reachable with full movement (2 AP)
+- **1 AP zone** (blue outline) — tiles reachable within 3 steps (one AP)
+- **2 AP zone** (orange outline) — tiles reachable within 6 steps (the full 2 AP)
 - **Path preview** — when hovering a tile, a highlight shows the exact path
 
 ### Cost Calculation
@@ -102,8 +103,8 @@ func get_movement_cost_in_ap(from: Vector2i, to: Vector2i) -> int:
     var path = find_path(from, to)
     var tile_count = path.size() - 1  # exclude start
     
-    # Base: 1 tile per AP
-    var ap_cost = ceil(float(tile_count) / 1.0)
+    # Base: 3 cells per AP (TacticalTurnManager.move_points_per_ap = 3, 1 point per cell)
+    var ap_cost = ceil(float(tile_count) / 3.0)
     
     # Terrain modifiers:
     for tile in path:

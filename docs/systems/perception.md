@@ -2,6 +2,8 @@
 
 > **Visual detection, audio detection, guard attention, and how enemies perceive the world.**
 
+> ✅ **Reconciled against the code 2026-10-02.** The code-verified numbers live in [`AI_MASTER_PLAN.md`](AI_MASTER_PLAN.md) (state table, FOV curve, thresholds); the per-state vision table and the decay figures below were the June design values and are corrected. **Built:** the visual cone (distance curve `FOV_DISTANCE_CURVE`, lateral falloff, shadow and penumbra multipliers `SHADOW_MULT` 0.30 / `PENUMBRA_MULT` 0.55 in `agents/guard_enemy.gd`), the detection meter, audio detection (`HEARING_RADIUS` 2, wall attenuation), `GuardAttention` (interest decays 0.65/s once its timer ends). **Design only:** memory of old information beyond the meter, and the noise sources that are not walking (see `noise.md`).
+
 **Related Documentation:**
 - [Occlusion Semantics & Structural Blocking](occlusion.md) — How structures affect vision (LIGHT-02)
 - [Lighting System](lighting.md) — How exposure affects detection (tactical visibility)
@@ -114,11 +116,13 @@ Base detection chance is modified by several factors:
 
 | Guard State | Vision Range | FOV | Detection Mult | Notes |
 |------------|--------------|-----|-----------------|-------|
-| PATROL | 8 tiles | 90° | 0.80× | Relaxed, scanning casually |
-| SUSPICIOUS | 8 tiles | 90° | 1.20× | Actively looking |
-| ALERT | 9 tiles | 120° | 1.50× | Heightened awareness |
-| CHASE | 10 tiles | 150° | 2.00× | Fully focused on threat |
-| SEARCH | 8 tiles | 90° | 0.60× | Distracted, investigating |
+| PATROL | 4 tiles | 70° | 0.55× | Relaxed, scanning casually |
+| SUSPICIOUS | 6 tiles | 90° | 1.60× | Actively looking |
+| SEARCH | 5 tiles | 120° | 0.80× | Wide, unfocused sweep |
+| ALERT | 7 tiles | 100° | 2.00× | Heightened awareness |
+| CHASE | 7 tiles | 110° | 2.80× | Fully focused on threat |
+
+(`VISION_RANGE` is 6 by default; the per-state range and FOV are in `AI_MASTER_PLAN.md`.)
 
 ### Shadow Multipliers
 
@@ -180,8 +184,7 @@ detection < 0.40   → STATE_PATROL (relaxed)
 ### Decay
 Detection meters decay when the agent is **not visible** and has **not made noise**:
 
-- **Per turn decay:** -0.05 when undetected and quiet
-- **Fast decay:** -0.15 if agent moves into shadow or out of sight
+- **Per turn decay by guard state** (`turn_controller._get_detection_decay`): patrol -0.15, suspicious -0.06, alert -0.04, chase -0.01, search -0.10: the more alerted the guard, the slower it forgets
 - **Minimum:** 0.0 (cannot go below zero)
 
 ---

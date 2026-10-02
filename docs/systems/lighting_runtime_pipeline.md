@@ -2,6 +2,8 @@
 
 > **Official specification of the lighting system runtime flow, ownership rules, and invalidation semantics. Stabilizes architecture before systemic integration and future AI extensions.**
 
+> ✅ **2026-10-02:** this is the *tactical* lighting pipeline (lights, shadow projection, exposure, invalidation) and it is unchanged. It is not the drawing of light: the board's brightness is the per-voxel 12-bucket field in cell planes (`VoxelLightField`, `VOXEL_LIGHT_MASTER_PLAN`). Rotation does not invalidate anything: a view change is the camera's yaw and does not call `rebuild_all()` (checked in `Room._set_perspective()`).
+
 **Related Documents:**
 - [Lighting System](lighting.md) — Tactical visibility and exposure
 - [Occlusion Semantics](occlusion.md) — Structural blocking model (LIGHT-02)

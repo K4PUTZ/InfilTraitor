@@ -1,6 +1,6 @@
 # INFILTRAITOR — Rendering & Overlay System
 
-> **⏭️ 2026-09-30 — the 3D board is live and is the only board** ([`ARCHITECTURE.md` §0](../ARCHITECTURE.md)): the `TileMapLayer` floor this document assumes is deleted; the tactical overlays below are still 2D nodes drawn over the 3D board (R3D-WORLD re-decides them), and VFX / ground overlays / props draw in 3D (`CircleField3D`, `QuadField3D`, `GroundCanvas3D`, `FloorPile3D`). The shadow/tile overlay text is the July 2026 design.
+> **⏭️ 2026-09-30 — the 3D board is live and is the only board** ([`ARCHITECTURE.md` §0](../ARCHITECTURE.md)): the `TileMapLayer` floor this document assumes is deleted; **2026-10-02 update:** the overlays are no longer 2D over the board. Ground overlays and every dev aid (light, shadow, exposure, tile risk, height, temporal, elite exposure, occlusion, tile labels, voxel ruler) draw through `GroundCanvas3D` (depth-tested, on their cells under every camera yaw; it supports polygons, lines, circles, `draw_rect`, `draw_set_transform` and `draw_string` as a billboarded `Label3D`); overlays with height (tracer, throw arc, aim dome, shrapnel star, ceiling lamps) through `WorldCanvas3D`; VFX through `CircleField3D` / `QuadField3D` / `ShardField3D`; only the full-screen blast flash stays 2D. The overlay layering, `z_index` and shadow/tile text below is the July 2026 design.
 
 > **⚠️ 2026-09-15 — a dated document, last touched 2026-07-12, whose subject is moving.**
 > - **What it describes:** the 2D overlay layer over a `TileMapLayer` floor.

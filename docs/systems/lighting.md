@@ -3,12 +3,14 @@
 > **Semantic taxonomy of illumination, visibility, and tactical stealth. Gameplay-first design with discrete, auditable visibility classes.**
 
 > ⚠️ **Current behavior (supersedes the hardcoded "test lights" examples below).** Lights are now
-> **map-driven**: each map's `MapSpec.lights` → `layout.light_sources` (rotated by perspective) →
+> **map-driven**: each map's `MapSpec.lights` → `layout.light_sources` (base coordinates in every view; rotation is the camera's yaw) →
 > `LightingController._setup_lights_from_layout()` registers one omni `LightSource` per entry. The
 > pipeline lives in `controllers/lighting_controller.gd` (not `room.gd`); `rebuild_all()` re-derives
-> lights + tile semantics + shadow projector inputs + exposure and emits `lighting_rebuilt`, and is
-> called on perspective change. The `_setup_debug_lights()` / hardcoded-test-light snippets in this
+> lights + tile semantics + shadow projector inputs + exposure and emits `lighting_rebuilt`; since R3D-ROT
+> (2026-10-02) a view change does not call it. The `_setup_debug_lights()` / hardcoded-test-light snippets in this
 > doc are **historical** (kept as design context). See `docs/ARCHITECTURE.md §8` for current behavior.
+
+> ⏭️ **2026-10-02 — what this file is, against the 3D board.** The *tactical* model here (visibility classes, detection multipliers, height classes, shadow projection on the grid) stands and is what the guards read. It is not what is drawn: the *visual* light is the per-voxel 12-bucket field in cell planes (`VoxelLightField`, [`VOXEL_LIGHT_MASTER_PLAN`](../../PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md)); real 3D lamps were measured and rejected (+24 ms of GPU on the Moto). "Shadows pre-baked per room on dedicated `TileMapLayer`s" (the *Baked Shadow System*) describes the deleted 2D board. The runtime registers **omni lights from the map only**; the temporal states (flicker, pulse, rotating spotlights), spot / directional light types and the authoring pipeline are specification, not code. `lighting_system.gd` and `SHADOW_LENGTH_MAX` named here were never built under those names.
 
 **Related Documentation:**
 - [Lighting Runtime Pipeline & Invalidation Rules](lighting_runtime_pipeline.md) — Official runtime flow, ownership rules, rebuild semantics (LIGHT-01)

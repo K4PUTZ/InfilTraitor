@@ -530,7 +530,7 @@ Rotation is the camera's yaw, so no state is recorded or replayed for it any mor
 Tile semantics and heights are inferred from `blocked_cells`; lights are map-driven (omni only) without authoring tooling; `TestZoneController` still seeds dev grenades; material rows are calibrated by eye with the Director, not derived.
 
 ### 15.7 Documentation debt
-`docs/systems/*.md` (ai, lighting, movement, noise, perception, rendering, stealth), `docs/technical/{ASSET_MAP,TEXTURE_CATALOG,repo_structure,developer_setup}.md` and §2-§14 above pre-date R3D and were reconciled to the code only as far as their banners say.
+`docs/systems/*.md` (ai, lighting, movement, noise, perception, rendering, stealth, occlusion) were re-audited against the code on 2026-10-02: their numbers are verified and each banner says what is built and what is specification. `docs/technical/{ASSET_MAP,TEXTURE_CATALOG}.md` and §2-§14 above still pre-date R3D and were reconciled only as far as their banners say.
 
 ---
 

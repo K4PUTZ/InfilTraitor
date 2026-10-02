@@ -17,6 +17,7 @@
 - **Calibration done with the Director:** the soot looks right on four maps in all four views; the "+" a one-voxel hole leaves on a wall is a legitimate consequence of "tone 0 on a hole's six face neighbours" and stays. A soft halo is built and shipped OFF (`BlastCalculator.SOOT_HALO_CHANCE`, 0.5 is the middle ground).
 - **Measured, not changed:** heat vision's tile-risk overlay builds 3 025 quads per frame (55x55 cells, ~9.5-10.5 ms of CPU on the desktop, 1.3 of it the risk lookups) even on a 126-cell map; the Director keeps it per frame and the zone-vs-guard-motion question is on the ACTORS plan.
 - **Still capture-only:** what each air overlay (aim dome, throw arc, tracer) draws with `lift()` and `screen_axes()`. **Not re-measured on the Moto:** the cost of a turn after R3D-ROT's closing gates (last row 10 ms).
+- **Documentation re-audit (same day):** `docs/systems/{ai,perception,stealth,movement,noise}.md` carried the June design numbers and are corrected against the code (state multipliers 0.55 / 1.60 / 0.80 / 2.00 / 2.80, thresholds 0.30 / 0.60 / 1.00, decay by state, 3 movement points per AP); noise has only two emitters today (the agent's steps and the guards' movement); `milestones.md` has a status table and `roadmap.md` a Phase 3 note.
 - **Next (the Director's call):** R3D-LOOK, R3D-SURFACES, R3D-CLAIMS / R3D-BUFFER, the noise track, PP2/PP3 (`.iprop`, user-tier models).
 
 ## Where the project stood — 2026-10-02 (earlier that day; history)

@@ -125,6 +125,8 @@ Architecture Pivot" for the full list, and `docs/production/current_state.md`
 for maintained per-domain status. None of that was in the original Phase 3
 scope; all of it is now largely done.
 
+**Status as of 2026-10-02:** the engine work this phase absorbed is built and gated (the 3D board, destructible voxel world, voxel light, props, live actors, camera-only rotation; `verify.py full` green). What the investor-demo experience still lacks is gameplay on top of it: confrontation and cover, equipment, enemy factions, the segment map structure (`docs/DESIGN_MASTER_PLAN.md`, designed and unbuilt), and a content scene beyond the dormitory and the test maps. The July status below is kept for the record.
+
 **Status as of 2026-07-26:**
 - Functional AI with correct (gradual) escalation ✅ — unchanged since 2026-06-14
 - Gradual visual detection implemented ✅
@@ -382,6 +384,7 @@ change triggers a 1-week assessment + timeline adjustment.
 
 | Date | Update |
 |------|--------|
+| 2026-10-02 | Status note added to Phase 3 after R3D-ROT closed; the phase estimates below were not re-estimated |
 | 2026-06-18 | Absorbed `estimated_timeline.md` (descope/contingency/post-release) and deleted it — single phase model; IDs migrated to `{DOMAIN}-{NN}` per METHODOLOGY.md |
 | 2026-06-12 | Roadmap rewritten: Investor Demo as the primary goal; post-investment phases rationalized; realistic estimates; critical blockers documented |
 | 2026-06-11 | Initial roadmap created from DEVELOPMENT/PROGRESS.md |

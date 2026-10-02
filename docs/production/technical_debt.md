@@ -92,7 +92,7 @@ elif guard.detection >= DETECTION_THRESHOLD_SUSPICIOUS:
 - **Material library is 14 rows with no `family`/fallback**; 8 materials are missing for everyday objects (`PROPS_TIER4_PLAN` §2b).
 - **Firearms on props:** the agent path only; the weapon bench is untouched by decision; no debris on a shot.
 - **Closed 2026-10-02 (SOOT-TRUTH):** the PLAYGROUND round trip soot divergence (`_soot_map` owns the scorch, the plane follows).
-- **Documentation:** `docs/ARCHITECTURE.md` §2-§14, `docs/systems/*.md`, `ASSET_MAP`, `TEXTURE_CATALOG` still describe July 2026 (bannered; `ARCHITECTURE.md` §15.7).
+- **Documentation:** `docs/systems/*.md` and the milestones / roadmap were re-audited against the code on 2026-10-02 (a status table in `milestones.md`, per-file banners of what is built and what is specification); `docs/ARCHITECTURE.md` §2-§14, `ASSET_MAP`, `TEXTURE_CATALOG` still describe July 2026 (bannered; `ARCHITECTURE.md` §15.7).
 
 ## Engine debt after R3D-ROT (2026-10-02)
 - **Heat vision's tile-risk overlay is heavy per frame** (`tile_risk_overlay.gd`, dev only): it walks a fixed 55x55 window (3 025 cells) and draws a quad for every cell with risk > 0, which is all of them (3 025 quads on a 126-cell map), redrawing every frame: ~9.5-10.5 ms of CPU on the desktop (1.3 ms of it the risk lookups; the shader is flat colour and cheap, the cost is building the quads and the mesh), so ~30-40 ms on the Moto. The Director keeps it per frame; bounding the loop to the map (and a coarser, guard-driven update) is the cheap lever, and the zone-vs-guard-motion calibration is on the `ACTOR` plan.

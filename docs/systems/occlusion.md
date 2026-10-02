@@ -3,7 +3,7 @@
 > **⏭️ 2026-09-25:** the structural and gameplay model here does not depend on rendering
 > and is unchanged: what blocks light, line of sight and sound. The "Visual Occlusion"
 > section describes the 2D board's mechanism, the OCC-21 erase and the OCC-27 wireframe, **deleted at R3D-END END-3**
-> (last commit that has them: `34881f81`); [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) R3D-7's 3D cutaway replaced them.
+> (last commit that has them: `34881f81`); [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) R3D-7's 3D cutaway replaced them. **2026-10-02:** with camera-only rotation the occluded set is yaw-dependent (the walls toward the camera are the ones cut) and is built for all four views once; a revealed roof (stored per GU, opened by slab adjacency) does not depend on the view (`roof_yaw_gate.py`). The file names under "Visual Occlusion" (`bake_*`, `occlusion_wireframe_overlay.gd`, the slice panel) are the deleted 2D mechanism.
 
 > **Formal specification of how structures block light and line of sight. Establishes semantic foundation for occlusion before advanced stealth, ballistics, and AI integration.**
 

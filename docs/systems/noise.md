@@ -2,6 +2,8 @@
 
 > **Sound propagation, noise decay, and audio perception mechanics.**
 
+> ✅ **Reconciled against the code 2026-10-02.** The numbers in the propagation and decay sections match `systems/noise_system.gd` and `tic_system.gd` (decay 0.25 per enemy phase, `NOISE_RADIUS` 2, `HEARING_RADIUS` 2, 0.6× per wall, walk 0.50 intensity at a 20% chance per step, the guards' per-state chance and intensity in `room.gd`). **Only two things emit noise today:** the agent's footsteps (`room.gd`) and the guards' own movement by state (`guard_coordinator.gd`). **Gunshots, explosions, gadgets, hacking, lock picking and melee emit none**: the "Emission Sources" rows for them are design. The guard noise *indicator* never shows (its call was dead and is now a comment); when wired its direction must use the view's axes (`WorldCanvas3D.screen_axes()`).
+
 ---
 
 ## Overview
@@ -47,8 +49,8 @@ Guards and the agent emit noise from various actions:
 
 | Action | Intensity | Notes |
 |--------|-----------|-------|
-| **Footsteps (movement)** | 0.40–0.50 | ~20% chance per step |
-| **Gadget use (smoke bomb)** | 1.0 | Very loud, immediate reaction |
+| **Footsteps (movement)** | 0.40–0.50 | ~20% chance per step (**built**: agent walk 0.50, run 1.00 "future") |
+| **Gadget use (smoke bomb)** | 1.0 | Very loud, immediate reaction (*design, not emitted*) |
 | **Gadget use (EMP)** | 0.90 | Loud beep/hum |
 | **Interaction (hacking)** | 0.70 | Sustained beeping |
 | **Interaction (lock picking)** | 0.60 | Scratching, clicking |

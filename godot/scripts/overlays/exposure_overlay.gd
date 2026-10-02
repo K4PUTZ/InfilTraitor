@@ -69,7 +69,39 @@ func set_dev_vision(enabled: bool) -> void:
 ## Visualization
 ## ============================================================================
 
+## RENDER3D R3D-5b, the dev overlays (2026-10-02): when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D`
+## (the same calls, on the ground plane, depth-tested) instead of the 2D canvas, so under a camera yaw it stays on its cells.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 7, 0.016, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if not exposure_system:
 		return
 	
@@ -98,7 +130,7 @@ func _draw_exposure_tile(cell: Vector2i, vis_class: int) -> void:
 		screen_pos + Vector2(-half_w, 0.0),
 		screen_pos + Vector2(0.0, -half_h),
 	])
-	draw_colored_polygon(points, color)
+	_c.draw_colored_polygon(points, color)
 	
 	# Optional: Draw label with semantic name
 	if _show_labels:
@@ -116,8 +148,8 @@ func _draw_label(cell: Vector2i, _vis_class: int) -> void:
 	var label_pos = screen_pos + tile_size / 4
 	
 	# Draw with outline for readability
-	draw_string(_label_font, label_pos + Vector2(1, 1), label_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 8, Color.BLACK)
-	draw_string(_label_font, label_pos, label_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 8, Color.WHITE)
+	_c.draw_string(_label_font, label_pos + Vector2(1, 1), label_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 8, Color.BLACK)
+	_c.draw_string(_label_font, label_pos, label_text, HORIZONTAL_ALIGNMENT_CENTER, -1, 8, Color.WHITE)
 
 ## Convert grid cell to screen position (dimetric projection).
 func _cell_to_screen(cell: Vector2i) -> Vector2:

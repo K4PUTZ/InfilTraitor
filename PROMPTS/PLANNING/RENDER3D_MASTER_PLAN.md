@@ -3697,7 +3697,7 @@ proposal. **R3D-ACTORS and R3D-PROPS (v1.20) touch actors and props, not the boa
     3. **The dead conversions** (the correction below): ~77 `_active_perspective` sites that are the identity, the
        `layout_with_perspective()` fixtures of 5 selftests, the per-prop `reposition_for_perspective()`; a scripted pass + a
        Godot warnings check.
-    4. **The DEV overlays still draw in the N screen** (light, exposure, temporal, height, occlusion, tile risk, elite exposure,
+    4. **DONE 2026-10-02 (DEV-GROUND):** the eleven dev overlays now draw through `GroundCanvas3D` (light, shadow, exposure, tile risk, height, temporal, elite exposure, occlusion, tile labels, voxel ruler; `circle_gate_probe` is a perf instrument and stays 2D on purpose). `GroundCanvas3D` gained `draw_rect`, `draw_set_transform` and `draw_string` (a billboarded `Label3D`), pinned by `ground_canvas3d_selftest` [7]; the scenario step `view_mode dev|light|heat|numbers|ruler` switches them on for a capture. Captured on DORM / PLAYGROUND in N/E/S/W: numbers, ruler and light rays stay on their cells (the agent's cell reads 7,7 in both N and E). Known: text labels are billboards, not occluded by every wall. Was: **The DEV overlays still draw in the N screen** (light, exposure, temporal, height, occlusion, tile risk, elite exposure,
        tile labels, voxel ruler, circle gate, shadow): wrong under yaw, dev-only. Route the ground ones through
        `GroundCanvas3D` (mechanical); the golden shafts are R3D-LOOK's.
     5. **The guard noise indicator never shows** (`GuardCoordinator` calls `Room._emit_guard_noise_indicator`, which does not

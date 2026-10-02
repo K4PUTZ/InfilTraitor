@@ -68,7 +68,39 @@ func load_exposure_system(sys) -> void:
 func _process(_delta: float) -> void:
 	queue_redraw()
 
+## RENDER3D R3D-5b, the dev overlays (2026-10-02): when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D`
+## (the same calls, on the ground plane, depth-tested) instead of the 2D canvas, so under a camera yaw it stays on its cells.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 10, 0.022, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if not visible or exposure_system == null:
 		return
 	
@@ -154,7 +186,7 @@ func _draw_risk_contours() -> void:
 				else:
 					contour_color = Color.GREEN  # Entering safety
 				
-				draw_line(screen_pos, neighbor_screen_pos, contour_color, 2.0)
+				_c.draw_line(screen_pos, neighbor_screen_pos, contour_color, 2.0)
 
 func _draw_safe_corridors() -> void:
 	# Highlight continuous zones of shadow/deep_shadow
@@ -172,7 +204,7 @@ func _draw_safe_corridors() -> void:
 		var color = Color.GREEN
 		color.a = 0.6
 		
-		draw_circle(screen_pos, 8.0, color)
+		_c.draw_circle(screen_pos, 8.0, color)
 
 func toggle_mode(mode: String) -> void:
 	match mode:
@@ -205,7 +237,7 @@ func _draw_tile_rect(cell: Vector2i, color: Color) -> void:
 		screen_pos + Vector2(0, -half_h),     # Top
 	])
 	
-	draw_colored_polygon(points, color)
+	_c.draw_colored_polygon(points, color)
 
 func debug_info() -> String:
 	var safe_count = exposure_system.get_structurally_hidden_tiles().size()

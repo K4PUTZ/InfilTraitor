@@ -46,6 +46,9 @@
 ##   reload                               R3D-1b gate: F2's `load_map()` on the current map
 ##   save_restore                         R3D-1b gate: SaveState capture → reload → restore
 ##   perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()`
+##   view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the
+##                                        F-keys reach (the dev overlays under a camera yaw need a scenario to
+##                                        switch them on; call it again to flip it back)
 ##   relight                              R3D-13: the map-wide light repaint on the CURRENT world,
 ##                                        in place — what a rotation or a restore runs, without
 ##                                        either (a probe before and after names what the
@@ -74,9 +77,10 @@ const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3,
-	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0,
+	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
 	"passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2,
 }
+const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler"]
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
 const BEAT_TOKEN_PATTERN: String = "^[A-Za-z0-9_]+$"
@@ -206,6 +210,10 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "shoot takes a guard index >= 0"
 			step["index"] = int(arg)
+		"view_mode":
+			if not VIEW_MODES.has(arg.to_lower()):
+				return "view_mode takes dev, light, heat, numbers or ruler"
+			step["mode"] = arg.to_lower()
 		"perspective":
 			if not ["N", "E", "S", "W"].has(arg.to_upper()):
 				return "perspective takes N, E, S or W"
@@ -292,7 +300,7 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_passages()")
 			if not bool(room.call("scenario_passages", str(step["name"]))):
 				return _fail(step, "no passages were computed (see the error above)")
-		"shoot", "reload", "save_restore", "perspective", "relight":
+		"shoot", "reload", "save_restore", "perspective", "relight", "view_mode":
 			var method: String = "scenario_" + str(step["op"])
 			if not room.has_method(method):
 				return _fail(step, "Room has no %s()" % method)
@@ -302,6 +310,8 @@ func _execute(room: Node, step: Dictionary) -> bool:
 					ok = await room.call(method, int(step["index"]))
 				"perspective":
 					ok = await room.call(method, str(step["direction"]))
+				"view_mode":
+					ok = await room.call(method, str(step["mode"]))
 				_:
 					ok = await room.call(method)
 			if not ok:

@@ -68,7 +68,39 @@ func _process(delta: float) -> void:
 	flicker_animation_phase += delta * 3.0  # Cycle flicker visualization every ~0.33s
 	queue_redraw()
 
+## RENDER3D R3D-5b, the dev overlays (2026-10-02): when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D`
+## (the same calls, on the ground plane, depth-tested) instead of the 2D canvas, so under a camera yaw it stays on its cells.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 8, 0.018, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if not visible or light_registry == null:
 		return
 	
@@ -109,7 +141,7 @@ func _draw_backplates() -> void:
 		var rect := Rect2(
 			min_x - pad, min_y - pad,
 			(max_x - min_x) + pad * 2.0, (max_y - min_y) + pad * 2.0)
-		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.8))
+		_c.draw_rect(rect, Color(0.0, 0.0, 0.0, 0.8))
 
 
 ## State label text shared by the backplate and the label pass
@@ -133,8 +165,8 @@ func _draw_light_states() -> void:
 		# Compact, readable knob: dark outline ring behind, state-color core on top.
 		# Fixed size (no longer scaled by light radius, which made it cover the lamp).
 		var core_radius: float = 7.0 * ui_scale
-		draw_circle(screen_pos, core_radius + 2.0 * ui_scale, Color(0.0, 0.0, 0.0, 0.85))
-		draw_circle(screen_pos, core_radius, color)
+		_c.draw_circle(screen_pos, core_radius + 2.0 * ui_scale, Color(0.0, 0.0, 0.0, 0.85))
+		_c.draw_circle(screen_pos, core_radius, color)
 
 		# Subtle animated ring for flicker / pulse states
 		if light.current_state == "flicker":
@@ -156,13 +188,13 @@ func _draw_energy_bars() -> void:
 		
 		# Background bar
 		var bar_rect: Rect2 = Rect2(screen_pos - Vector2(bar_width * 0.5, bar_height * 0.5) - Vector2(0, bar_y_offset), Vector2(bar_width, bar_height))
-		draw_rect(bar_rect, Color(0.1, 0.1, 0.1))
+		_c.draw_rect(bar_rect, Color(0.1, 0.1, 0.1))
 		
 		# Energy bar (filled)
 		var energy_fraction: float = light.energy_multiplier
 		var filled_width: float = bar_width * energy_fraction
 		var filled_rect: Rect2 = Rect2(screen_pos - Vector2(bar_width * 0.5, bar_height * 0.5) - Vector2(0, bar_y_offset), Vector2(filled_width, bar_height))
-		draw_rect(filled_rect, Color.WHITE)
+		_c.draw_rect(filled_rect, Color.WHITE)
 
 func _draw_rotations() -> void:
 	for light in all_lights:
@@ -175,15 +207,15 @@ func _draw_rotations() -> void:
 		var arrow_length: float = 25.0
 		var arrow_end: Vector2 = screen_pos + Vector2(cos(light.direction_angle), sin(light.direction_angle)) * arrow_length
 		
-		draw_line(screen_pos, arrow_end, Color.MAGENTA, 2.0)
+		_c.draw_line(screen_pos, arrow_end, Color.MAGENTA, 2.0)
 		
 		# Draw arrowhead
 		var arrow_tip_size: float = 5.0
 		var back_angle: float = light.direction_angle + PI
 		var left: Vector2 = arrow_end + Vector2(cos(back_angle - 0.3), sin(back_angle - 0.3)) * arrow_tip_size
 		var right: Vector2 = arrow_end + Vector2(cos(back_angle + 0.3), sin(back_angle + 0.3)) * arrow_tip_size
-		draw_line(arrow_end, left, Color.MAGENTA, 2.0)
-		draw_line(arrow_end, right, Color.MAGENTA, 2.0)
+		_c.draw_line(arrow_end, left, Color.MAGENTA, 2.0)
+		_c.draw_line(arrow_end, right, Color.MAGENTA, 2.0)
 
 func _draw_state_labels() -> void:
 	for light in all_lights:
@@ -196,7 +228,7 @@ func _draw_state_labels() -> void:
 		var state_text: String = _state_label_text(light)
 
 		var label_pos: Vector2 = screen_pos - Vector2(0, label_offset)
-		draw_string(ThemeDB.fallback_font, label_pos, state_text, HORIZONTAL_ALIGNMENT_CENTER, -1, int(round(10.0 * ui_scale)), Color.WHITE)
+		_c.draw_string(ThemeDB.fallback_font, label_pos, state_text, HORIZONTAL_ALIGNMENT_CENTER, -1, int(round(10.0 * ui_scale)), Color.WHITE)
 
 func _get_state_color(light) -> Color:
 	var base_color: Color = state_colors.get(light.current_state, Color.WHITE)
@@ -223,7 +255,7 @@ func _draw_circle_outline(pos: Vector2, radius: float, color: Color, width: floa
 	for i in range(1, segments + 1):
 		var angle: float = (float(i) / float(segments)) * TAU
 		var point: Vector2 = pos + Vector2(cos(angle), sin(angle)) * radius
-		draw_line(prev_point, point, color, width)
+		_c.draw_line(prev_point, point, color, width)
 		prev_point = point
 
 func debug_info() -> String:

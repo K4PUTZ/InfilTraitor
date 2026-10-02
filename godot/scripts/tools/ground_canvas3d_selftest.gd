@@ -68,6 +68,7 @@ func _init() -> void:
 	test_owner_transform_is_applied()
 	test_empty_draw_publishes_nothing()
 	test_per_vertex_colours_and_positions()
+	test_rect_transform_and_string()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -202,4 +203,44 @@ func test_per_vertex_colours_and_positions() -> void:
 	_check(mesh_cols.size() == 4 and absf(mesh_cols[3].a - 0.9) < 1e-6 and absf(mesh_cols[0].a) < 1e-6, "each vertex keeps its own alpha")
 	c.draw_polygon(pts, PackedColorArray([Color.WHITE]))
 	_check(c.vertices().size() == 4, "a colour array of the wrong size draws nothing (still 4 vertices)")
+	owner_node.queue_free()
+
+
+## [7] The calls the dev overlays added: `draw_rect` (filled quad / outline), `draw_set_transform` (the local transform
+## moves every later point) and `draw_string` (a label, not mesh).
+func test_rect_transform_and_string() -> void:
+	print("[7] draw_rect, draw_set_transform and draw_string")
+	var owner_node := Node2D.new()
+	root.add_child(owner_node)
+	var c: RefCounted = _canvas()
+	c.begin(owner_node)
+	c.draw_rect(Rect2(Vector2(10, 20), Vector2(30, 40)), Color.WHITE)
+	var filled: PackedVector3Array = c.vertices()
+	var worst: float = _worst_error(c, [Vector2(10, 20), Vector2(40, 20), Vector2(40, 60), Vector2(10, 60)])
+	_check(filled.size() == 4 and worst < EPS_PX, "a filled rect is its four corners (worst %.5f px off)" % worst)
+	c.begin(owner_node)
+	c.draw_rect(Rect2(Vector2(10, 20), Vector2(30, 40)), Color.WHITE, false, 2.0)
+	_check(c.vertices().size() == 16, "an outline rect is four line quads (16 vertices), got %d" % c.vertices().size())
+	c.begin(owner_node)
+	c.draw_set_transform(Vector2(100.0, 50.0), 0.0, Vector2(2.0, 2.0))
+	c.draw_colored_polygon(PackedVector2Array([Vector2(0, 0), Vector2(10, 0), Vector2(10, 10)]), Color.WHITE)
+	worst = _worst_error(c, [Vector2(100, 50), Vector2(120, 50), Vector2(120, 70)])
+	_check(worst < EPS_PX, "a local transform (move 100,50, scale 2) moves the points (worst %.5f px off)" % worst)
+	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	c.begin(owner_node)
+	c.draw_string(null, Vector2(30, 30), "H:3", 0, -1, 12, Color.WHITE)
+	c.end()
+	var labels: int = 0
+	for child in c._node.get_children():
+		if child is Label3D and (child as Label3D).visible:
+			labels += 1
+	_check(labels == 1, "a string is one visible Label3D (got %d)" % labels)
+	c.begin(owner_node)
+	c.end()
+	labels = 0
+	for child in c._node.get_children():
+		if child is Label3D and (child as Label3D).visible:
+			labels += 1
+	_check(labels == 0, "the next redraw without text hides the label (got %d visible)" % labels)
+	c.detach()
 	owner_node.queue_free()

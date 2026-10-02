@@ -38,7 +38,40 @@ func setup(visual_grid_offset: Vector2, room_size: Vector2i) -> void:
 	z_index = 100  ## Above walls, below HUD
 
 
+
+## RENDER3D R3D-5b, the dev overlays (2026-10-02): when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D`
+## (the same calls, on the ground plane, depth-tested) instead of the 2D canvas, so under a camera yaw it stays on its cells.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 14, 0.03, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if not visible_grid:
 		return
 
@@ -87,7 +120,7 @@ func _draw_gu_voxel_grid(gu_x: int, gu_y: int) -> void:
 		var color := GU_LINE_COLOR if is_gu_boundary else VOXEL_LINE_COLOR
 		var width := GU_LINE_WIDTH if is_gu_boundary else VOXEL_LINE_WIDTH
 
-		draw_line(p1, p2, color, width)
+		_c.draw_line(p1, p2, color, width)
 
 	## Draw constant-voxel_y lines (these go diagonally SE as voxel_x increases)
 	for vy in range(VOXELS_PER_AXIS + 1):
@@ -99,4 +132,4 @@ func _draw_gu_voxel_grid(gu_x: int, gu_y: int) -> void:
 		var color := GU_LINE_COLOR if is_gu_boundary else VOXEL_LINE_COLOR
 		var width := GU_LINE_WIDTH if is_gu_boundary else VOXEL_LINE_WIDTH
 
-		draw_line(p1, p2, color, width)
+		_c.draw_line(p1, p2, color, width)

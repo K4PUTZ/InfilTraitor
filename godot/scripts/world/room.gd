@@ -3016,9 +3016,17 @@ func _attach_ground_overlays(live: Node3D) -> void:
 	for overlay in [movement_overlay, path_preview, selection_overlay, _throw_perimeter_overlay,
 			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game, fog_of_war,
 			_blast_wireframe_overlay, _trail_overlay, _tracer_overlay, _throw_arc_overlay, _ceiling_overlay,
-			_aim_bubble_overlay, _shrapnel_preview_overlay, _target_cursor_overlay]:
+			_aim_bubble_overlay, _shrapnel_preview_overlay, _target_cursor_overlay,
+			tile_labels_overlay, _occlusion_overlay]:
 		if overlay != null and is_instance_valid(overlay) and overlay.has_method("set_board3d"):
 			overlay.set_board3d(live)
+	## The LIGHT_VISION / DEV aids (light, shadow, exposure, tile risk, height, temporal, elite exposure) belong to the
+	## `VisionController`; the voxel ruler to the debug tools. They draw on the ground too, so a camera yaw keeps them
+	## on their cells.
+	if _vision_controller != null:
+		_vision_controller.attach_board3d(live)
+	if _debug_tools_controller != null:
+		_debug_tools_controller.attach_board3d(live)
 	_set_dev_ground(live)
 
 
@@ -3358,6 +3366,24 @@ func scenario_save_restore() -> bool:
 	_lighting_controller.rebuild_all()
 	_respawn_base_debris()
 	_respawn_base_prop_piles()
+	for _f in range(10):
+		await get_tree().process_frame
+	return true
+
+
+## Scenario step `view_mode`: flip one analysis aid through the toggles the HUD and the F-keys reach. Ten frames
+## follow so the overlay has drawn when the next step captures.
+func scenario_view_mode(mode: String) -> bool:
+	match mode:
+		"numbers":
+			_on_hud_numbers_toggled()
+		"ruler":
+			_debug_tools_controller.toggle_voxel_ruler_overlay()
+		"dev", "light", "heat":
+			_set_view_mode(mode)
+		_:
+			push_error("[Room] scenario_view_mode: '%s' is not dev, light, heat, numbers or ruler" % mode)
+			return false
 	for _f in range(10):
 		await get_tree().process_frame
 	return true

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**270 scripts · 84496 lines total** (under `godot/scripts/`)
+**270 scripts · 84993 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -332,7 +332,7 @@ extends `Node` · 265 lines
 
 ### `vision_controller.gd`
 
-extends `Node2D` · 310 lines
+extends `Node2D` · 325 lines
 
 `godot/scripts/controllers/vision_controller.gd`
 
@@ -424,7 +424,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `voxel_ruler_overlay.gd`
 
-`class_name VoxelRulerOverlay` · extends `Node2D` · 102 lines
+`class_name VoxelRulerOverlay` · extends `Node2D` · 135 lines
 
 `godot/scripts/debug/voxel_ruler_overlay.gd`
 
@@ -437,12 +437,14 @@ extends `ConfirmationDialog` · 64 lines
 - `GU_LINE_COLOR` = `Color(0.0, 1.0, 1.0, 0.5)`
 - `VOXEL_LINE_WIDTH` = `0.5`
 - `GU_LINE_WIDTH` = `1.0`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var visible_grid: bool = false`
 
 **Public API**
 - `func setup(visual_grid_offset: Vector2, room_size: Vector2i) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -730,7 +732,7 @@ extends `Node3D` · 2386 lines
 
 ### `ground_canvas3d.gd`
 
-`class_name GroundCanvas3D` · extends `RefCounted` · 196 lines
+`class_name GroundCanvas3D` · extends `RefCounted` · 267 lines
 
 `godot/scripts/geometry/ground_canvas3d.gd`
 
@@ -1548,7 +1550,7 @@ extends `Node3D` · 2386 lines
 
 ### `elite_exposure_overlay.gd`
 
-extends `Node2D` · 225 lines
+extends `Node2D` · 257 lines
 
 `godot/scripts/overlays/elite_exposure_overlay.gd`
 
@@ -1556,6 +1558,7 @@ extends `Node2D` · 225 lines
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var depth_gradient: Dictionary = { 5: Color.RED,              # FULL_LIT (danger) 4: Color.ORANGE,           # DIM 3: Color.YELLOW,           # PENUMBRA 2: Color.GREEN,            # SHADOW 1: Color.CYAN,             # DEEP_SHADOW 0: Color.BLUE,             # OCCLUDED_VOID (extreme stealth) }`
@@ -1576,6 +1579,7 @@ extends `Node2D` · 225 lines
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func load_exposure_system(sys) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 - `func toggle_mode(mode: String) -> void:`
 - `func debug_info() -> String:`
 
@@ -1613,7 +1617,7 @@ extends `Node2D` · 225 lines
 
 ### `exposure_overlay.gd`
 
-extends `Node2D` · 134 lines
+extends `Node2D` · 166 lines
 
 `godot/scripts/overlays/exposure_overlay.gd`
 
@@ -1622,6 +1626,7 @@ extends `Node2D` · 134 lines
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `EXPOSURE_SYSTEM_CLASS` = `preload("res://godot/scripts/systems/lighting/exposure_system.gd")`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var exposure_system`
@@ -1630,6 +1635,7 @@ extends `Node2D` · 134 lines
 
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -1765,7 +1771,7 @@ extends `Node2D` · 63 lines
 
 ### `height_overlay.gd`
 
-extends `Node2D` · 252 lines
+extends `Node2D` · 284 lines
 
 `godot/scripts/overlays/height_overlay.gd`
 
@@ -1775,6 +1781,7 @@ extends `Node2D` · 252 lines
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TileSemanticsClass` = `preload("res://godot/scripts/world/tile_semantics.gd")`
 - `LightAnchorClass` = `preload("res://godot/scripts/systems/lighting/light_anchor.gd")`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var tile_semantics_map: Dictionary = {}`
@@ -1793,12 +1800,13 @@ extends `Node2D` · 252 lines
 - `func toggle_mode(mode: String) -> void:`
 - `func load_semantics(semantics_map: Dictionary) -> void:`
 - `func load_anchors(anchors: Array) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
 ### `light_overlay.gd`
 
-extends `Node2D` · 110 lines
+extends `Node2D` · 142 lines
 
 `godot/scripts/overlays/light_overlay.gd`
 
@@ -1807,6 +1815,7 @@ extends `Node2D` · 110 lines
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **@export**
 - `light_registry = null`
@@ -1815,6 +1824,7 @@ extends `Node2D` · 110 lines
 
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -1861,7 +1871,7 @@ extends `Node2D` · 86 lines
 
 ### `occlusion_overlay.gd`
 
-extends `Node2D` · 142 lines
+extends `Node2D` · 174 lines
 
 `godot/scripts/overlays/occlusion_overlay.gd`
 
@@ -1869,6 +1879,7 @@ extends `Node2D` · 142 lines
 
 **Constants / tuning**
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var occlusion_set: OcclusionSetClass = null`
@@ -1879,6 +1890,7 @@ extends `Node2D` · 142 lines
 **Public API**
 - `func set_occlusion_set(occ_set: OcclusionSetClass) -> void:`
 - `func set_voxel_board(renderer) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -1907,7 +1919,7 @@ extends `Node2D` · 150 lines
 
 ### `shadow_overlay.gd`
 
-extends `Node2D` · 85 lines
+extends `Node2D` · 117 lines
 
 `godot/scripts/overlays/shadow_overlay.gd`
 
@@ -1916,6 +1928,7 @@ extends `Node2D` · 85 lines
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **@export**
 - `shadow_projector = null`
@@ -1924,6 +1937,7 @@ extends `Node2D` · 85 lines
 
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -2043,7 +2057,7 @@ extends `Node2D` · 85 lines
 
 ### `temporal_overlay.gd`
 
-extends `Node2D` · 252 lines
+extends `Node2D` · 284 lines
 
 `godot/scripts/overlays/temporal_overlay.gd`
 
@@ -2052,6 +2066,7 @@ extends `Node2D` · 252 lines
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var state_colors: Dictionary = { "on": Color.WHITE,           # Fully on "off": Color(0.2, 0.2, 0.2), # Off/dark "flicker": Color.YELLOW,     # Flickering "pulse": Color.CYAN,         # Pulsing }`
@@ -2069,6 +2084,7 @@ extends `Node2D` · 252 lines
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
 - `func load_lights(registry) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 - `func debug_info() -> String:`
 
 ---
@@ -2143,7 +2159,7 @@ extends `Node2D` · 222 lines
 
 ### `tile_risk_overlay.gd`
 
-extends `Node2D` · 104 lines
+extends `Node2D` · 137 lines
 
 `godot/scripts/overlays/tile_risk_overlay.gd`
 
@@ -2151,6 +2167,7 @@ extends `Node2D` · 104 lines
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var exposure_system`
@@ -2159,6 +2176,7 @@ extends `Node2D` · 104 lines
 
 **Public API**
 - `func set_dev_vision(enabled: bool) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -3302,14 +3320,15 @@ extends `Node` · 156 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 468 lines
+extends `Node` · 478 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
-> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
+> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the F-keys reach (the dev overlays under a camera yaw need a scenario to switch them on; call it again to flip it back) relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "occ_bench": 3, "place_guard": 2, }`
+- `VIEW_MODES` = `["dev", "light", "heat", "numbers", "ruler"]`
 - `FRAMINGS` = `["portrait", "landscape", "desktop"]`
 - `ALLOC_KINDS` = `["objects", "packed", "bytes"]`
 - `BEAT_TOKEN_PATTERN` = `"^[A-Za-z0-9_]+$"`
@@ -4252,7 +4271,7 @@ extends `SceneTree` · 227 lines
 
 ### `ground_canvas3d_selftest.gd`
 
-extends `SceneTree` · 205 lines
+extends `SceneTree` · 246 lines
 
 `godot/scripts/tools/ground_canvas3d_selftest.gd`
 
@@ -4274,6 +4293,7 @@ extends `SceneTree` · 205 lines
 - `func test_owner_transform_is_applied() -> void:`
 - `func test_empty_draw_publishes_nothing() -> void:`
 - `func test_per_vertex_colours_and_positions() -> void:`
+- `func test_rect_transform_and_string() -> void:`
 
 ---
 
@@ -4913,7 +4933,7 @@ extends `SceneTree` · 264 lines
 
 ### `scenario_selftest.gd`
 
-extends `Node` · 137 lines
+extends `Node` · 138 lines
 
 `godot/scripts/tools/scenario_selftest.gd`
 
@@ -5364,7 +5384,7 @@ extends `Node2D` · 60 lines
 
 ### `tile_labels_overlay.gd`
 
-extends `Node2D` · 32 lines
+extends `Node2D` · 65 lines
 
 `godot/scripts/ui/tile_labels_overlay.gd`
 
@@ -5373,11 +5393,15 @@ extends `Node2D` · 32 lines
 - `FONT_SIZE` = `40`
 - `COLOR_LABEL` = `Color(0.0, 0.0, 0.0, 1.0)`
 - `COLOR_SHADOW` = `Color(1.0, 1.0, 1.0, 0.60)`
+- `GroundCanvas3DRef` = `preload("res://godot/scripts/geometry/ground_canvas3d.gd")`
 
 **Public vars**
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var room_w: int = 0`
 - `var room_h: int = 0`
+
+**Public API**
+- `func set_board3d(board: Node3D) -> void:`
 
 ---
 
@@ -5472,7 +5496,7 @@ extends `Node2D` · 32 lines
 
 ### `debug_tools_controller.gd`
 
-`class_name DebugToolsController` · 141 lines
+`class_name DebugToolsController` · 151 lines
 
 `godot/scripts/world/controllers/debug_tools_controller.gd`
 
@@ -5485,6 +5509,7 @@ extends `Node2D` · 32 lines
 - `func toggle_map_loader_panel() -> void:`
 - `func create_map_loader_button() -> void:`
 - `func create_grenade_button() -> void:`
+- `func attach_board3d(live: Node3D) -> void:`
 - `func toggle_voxel_ruler_overlay() -> void:`
 - `func toggle_nudge_mode() -> void:`
 - `func apply_nudge(delta: Vector2) -> void:`
@@ -5813,7 +5838,7 @@ extends `Node2D` · 32 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11197 lines
+extends `Node2D` · 11223 lines
 
 `godot/scripts/world/room.gd`
 

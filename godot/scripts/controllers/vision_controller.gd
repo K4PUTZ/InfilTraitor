@@ -93,6 +93,19 @@ func is_shadow_overlay_visible() -> bool:
 
 # ── Private ───────────────────────────────────────────────────────────────────
 
+## The 3D board the dev overlays draw on (R3D-5b, 2026-10-02): set by `Room._attach_ground_overlays()`, and applied to
+## overlays created later too (`_init_overlays()` runs before the board exists on some paths).
+var _board3d: Node3D = null
+
+
+func attach_board3d(live: Node3D) -> void:
+	_board3d = live
+	for overlay in [_light_overlay, _shadow_overlay, _exposure_overlay, _tile_risk_overlay, _height_overlay,
+			_temporal_overlay, _elite_exposure_overlay]:
+		if overlay != null and is_instance_valid(overlay) and overlay.has_method("set_board3d"):
+			overlay.set_board3d(live)
+
+
 func _init_overlays() -> void:
 	## Instantiates the overlays, adds them to the scene tree with the correct
 	## z-order, and runs the initial setup of each one.
@@ -103,6 +116,8 @@ func _init_overlays() -> void:
 	_setup_height_overlay()
 	_setup_temporal_overlay()
 	_setup_elite_exposure_overlay()
+	if _board3d != null:
+		attach_board3d(_board3d)
 
 func _apply_dev_vision() -> void:
 	## Toggle FOW when dev_vision, light_vision, or heat_vision is active

@@ -59,7 +59,39 @@ func _update_projections() -> void:
 		if result != null:
 			_current_results.append(result)
 
+## RENDER3D R3D-5b, the dev overlays (2026-10-02): when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D`
+## (the same calls, on the ground plane, depth-tested) instead of the 2D canvas, so under a camera yaw it stays on its cells.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 12, 0.026, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if not _dev_vision_enabled or _current_results.is_empty():
 		return
 
@@ -78,7 +110,7 @@ func _draw_result(result) -> void:
 		
 		for cell in tiles:
 			var world_pos = _cell_to_screen(cell)
-			draw_circle(world_pos, 4.0, color)
+			_c.draw_circle(world_pos, 4.0, color)
 
 ## Convert grid cell to screen isometric position (canonical — matches lamps & floor)
 func _cell_to_screen(cell: Vector2i) -> Vector2:

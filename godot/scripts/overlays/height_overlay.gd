@@ -87,7 +87,39 @@ func load_anchors(anchors: Array) -> void:
 ## Visualization
 ## ============================================================================
 
+## RENDER3D R3D-5b, the dev overlays (2026-10-02): when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D`
+## (the same calls, on the ground plane, depth-tested) instead of the 2D canvas, so under a camera yaw it stays on its cells.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 9, 0.02, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if tile_semantics_map.is_empty():
 		return
 	
@@ -129,12 +161,12 @@ func _draw_blockers() -> void:
 		if semantics.blocks_los:
 			# LOS blocker: red X in corner
 			var screen_pos = _cell_to_screen(cell)
-			draw_line(
+			_c.draw_line(
 				screen_pos,
 				screen_pos + Vector2(20, 20),
 				Color.RED, 2.0
 			)
-			draw_line(
+			_c.draw_line(
 				screen_pos + Vector2(20, 0),
 				screen_pos + Vector2(0, 20),
 				Color.RED, 2.0
@@ -143,15 +175,15 @@ func _draw_blockers() -> void:
 		if semantics.blocks_light:
 			# Light blocker: yellow border
 			var screen_pos = _cell_to_screen(cell)
-			draw_rect(
+			_c.draw_rect(
 				Rect2(screen_pos, tile_size),
 				Color.TRANSPARENT,
 				false,
 				3.0
 			)
-			draw_set_transform(screen_pos, 0.0, Vector2.ONE)
-			draw_rect(Rect2(Vector2.ZERO, tile_size), Color.TRANSPARENT, false, 3.0)
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			_c.draw_set_transform(screen_pos, 0.0, Vector2.ONE)
+			_c.draw_rect(Rect2(Vector2.ZERO, tile_size), Color.TRANSPARENT, false, 3.0)
+			_c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 ## Draw light anchor sockets
 func _draw_anchors() -> void:
@@ -163,28 +195,28 @@ func _draw_anchors() -> void:
 		match anchor.anchor_type:
 			LightAnchorClass.TYPE_CEILING:
 				# Circle at top
-				draw_circle(center - Vector2(0, tile_size.y * 0.3), 8.0, Color.YELLOW)
+				_c.draw_circle(center - Vector2(0, tile_size.y * 0.3), 8.0, Color.YELLOW)
 			
 			LightAnchorClass.TYPE_WALL:
 				# Square on side
-				draw_rect(Rect2(center - Vector2(10, 5), Vector2(20, 10)), Color.YELLOW)
+				_c.draw_rect(Rect2(center - Vector2(10, 5), Vector2(20, 10)), Color.YELLOW)
 			
 			LightAnchorClass.TYPE_FLOOR:
 				# Circle at bottom
-				draw_circle(center + Vector2(0, tile_size.y * 0.3), 8.0, Color.YELLOW)
+				_c.draw_circle(center + Vector2(0, tile_size.y * 0.3), 8.0, Color.YELLOW)
 			
 			LightAnchorClass.TYPE_COLUMN:
 				# Double circle
-				draw_circle(center, 10.0, Color.YELLOW)
-				draw_circle(center, 6.0, Color.YELLOW)
+				_c.draw_circle(center, 10.0, Color.YELLOW)
+				_c.draw_circle(center, 6.0, Color.YELLOW)
 			
 			LightAnchorClass.TYPE_SPOTLIGHT:
 				# Triangle (directional)
-				draw_circle(center, 8.0, Color.ORANGE)
+				_c.draw_circle(center, 8.0, Color.ORANGE)
 				_draw_direction_arrow(center, anchor.emission_direction, Color.ORANGE)
 		
 		# Draw radius indicator (faint circle)
-		draw_circle(center, float(anchor.light_radius) * 32.0, Color(1, 1, 0, 0.1))
+		_c.draw_circle(center, float(anchor.light_radius) * 32.0, Color(1, 1, 0, 0.1))
 
 ## ============================================================================
 ## Helper Drawing Methods
@@ -200,12 +232,12 @@ func _draw_tile_rect(cell: Vector2i, color: Color) -> void:
 		screen_pos + Vector2(-half_w, 0.0),
 		screen_pos + Vector2(0.0, -half_h),
 	])
-	draw_colored_polygon(points, color)
+	_c.draw_colored_polygon(points, color)
 
 func _draw_height_label(cell: Vector2i, height_class: int) -> void:
 	var screen_pos = _cell_to_screen(cell)
 	var label = TileSemanticsClass.HEIGHT_NAMES.get(height_class, "?")
-	draw_string(
+	_c.draw_string(
 		ThemeDB.fallback_font,
 		screen_pos,
 		label,
@@ -218,7 +250,7 @@ func _draw_height_label(cell: Vector2i, height_class: int) -> void:
 func _draw_struct_label(cell: Vector2i, struct_type: String) -> void:
 	var screen_pos = _cell_to_screen(cell)
 	var label = TileSemanticsClass.STRUCT_NAMES.get(struct_type, "?")
-	draw_string(
+	_c.draw_string(
 		ThemeDB.fallback_font,
 		screen_pos,
 		label,
@@ -231,7 +263,7 @@ func _draw_struct_label(cell: Vector2i, struct_type: String) -> void:
 func _draw_direction_arrow(center: Vector2, direction: Vector2i, color: Color) -> void:
 	var dir_vec = Vector2(direction)
 	var arrow_tip = center + dir_vec.normalized() * 20.0
-	draw_line(center, arrow_tip, color, 2.0)
+	_c.draw_line(center, arrow_tip, color, 2.0)
 
 ## ============================================================================
 ## Coordinate Conversion

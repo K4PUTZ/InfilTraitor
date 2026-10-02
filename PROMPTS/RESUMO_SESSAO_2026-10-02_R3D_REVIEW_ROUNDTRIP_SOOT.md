@@ -60,3 +60,11 @@ Evidence: `roundtrip --with-store` PLAYGROUND 3 runs, 3 texels before (4 after f
 GLASS keeps its documented 1 light texel. `soot_truth_selftest` pins each rule (mutation of fixes 1 and 2: 3 checks fail). `verify.py smoke`
 PASSED (59 selftests). Not run: `verify.py full`, `pixel_gate`, a device run (the settle writes only cells whose plane differs).
 Look change to judge: a CHARRED cell no wave carried now turns black at the end of the fade instead of staying clean until a restore.
+
+## ROT item 4 — DEV-GROUND (2026-10-02, same day)
+- `verify.py full` PASSED (410 s) against a baseline taken at `cb1cc5c9`; the roundtrip, probe-gate and pixel-gate all green.
+- The dev overlays (light, shadow, exposure, tile risk, height, temporal, elite exposure, occlusion, tile labels, voxel ruler) draw through
+  `GroundCanvas3D` now: they were projected in the N screen and ignored the camera yaw. `circle_gate_probe` is a perf instrument, left 2D.
+- `GroundCanvas3D`: `draw_rect`, `draw_set_transform`, `draw_string` (billboarded `Label3D`, pooled). New scenario step `view_mode`.
+- Captured DORM / PLAYGROUND N/E/S/W (`Screenshots/dev_overlays/`, git-ignored): numbers, ruler and light rays follow the world.
+- Not done: a gate for touch picking from E/S/W, roof reveal under yaw, the `S` overlays (still capture-only); text labels are not wall-occluded.

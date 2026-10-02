@@ -5,6 +5,7 @@ class_name DebugToolsController
 
 var room: Node
 var _voxel_ruler_overlay: Node2D = null
+var _board3d: Node3D = null   ## R3D-5b: the board the ruler draws on (it is created lazily, on F3)
 var _nudge_mode_active: bool = false
 var _map_loader_panel: Node = null
 
@@ -73,6 +74,13 @@ func _on_grenade_button_pressed() -> void:
 		room._on_grenade_mode_requested()
 
 
+## The 3D board: the voxel ruler draws on its ground (created now or later).
+func attach_board3d(live: Node3D) -> void:
+	_board3d = live
+	if _voxel_ruler_overlay != null:
+		_voxel_ruler_overlay.set_board3d(live)
+
+
 ## Toggle voxel ruler grid overlay (F3)
 func toggle_voxel_ruler_overlay() -> void:
 	if _voxel_ruler_overlay == null:
@@ -81,6 +89,8 @@ func toggle_voxel_ruler_overlay() -> void:
 		_voxel_ruler_overlay.set_script(VoxelRulerClass)
 		room.add_child(_voxel_ruler_overlay)
 		_voxel_ruler_overlay.setup(room.VISUAL_GRID_OFFSET, room._room_size)
+		if _board3d != null:
+			_voxel_ruler_overlay.set_board3d(_board3d)
 
 	_voxel_ruler_overlay.visible_grid = not _voxel_ruler_overlay.visible_grid
 	_voxel_ruler_overlay.queue_redraw()

@@ -45,7 +45,40 @@ func set_dev_vision(enabled: bool) -> void:
 ## Visualization
 ## ============================================================================
 
+
+## RENDER3D R3D-5b, the dev overlays (2026-10-02): when a 3D board is set this overlay's drawing goes to a `GroundCanvas3D`
+## (the same calls, on the ground plane, depth-tested) instead of the 2D canvas, so under a camera yaw it stays on its cells.
+const GroundCanvas3DRef = preload("res://godot/scripts/geometry/ground_canvas3d.gd")
+var _ground: RefCounted = null
+var _c: Object = self  ## where the draw calls go: this node, or `_ground` while a 3D board is set
+
+
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board == null:
+		queue_redraw()
+		return
+	_ground = GroundCanvas3DRef.new()
+	_ground.attach(board, 13, 0.028, false)
+	_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
 func _draw() -> void:
+	if _ground == null:
+		_c = self
+		_draw_into()
+		return
+	_c = _ground
+	_ground.begin(self)
+	_draw_into()
+	_ground.end()
+	_c = self
+
+
+func _draw_into() -> void:
 	if not exposure_system:
 		return
 	
@@ -71,7 +104,7 @@ func _draw_risk_tile(cell: Vector2i, risk: float) -> void:
 		screen_pos + Vector2(-half_w, 0.0),
 		screen_pos + Vector2(0.0, -half_h),
 	])
-	draw_colored_polygon(points, color)
+	_c.draw_colored_polygon(points, color)
 
 ## Get color from risk value (0.0-1.0).
 func _get_risk_color(risk: float) -> Color:

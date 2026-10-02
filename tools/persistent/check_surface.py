@@ -4,7 +4,7 @@
 ##
 ## WHY THIS EXISTS. A `slab_<id>.png` that violates the spec produces NO ERROR AT ALL, the same silent-failure
 ## shape `check_facade.py` was built to close: `TextureResolver` returns Tier.NONE on a wrong-size or unimported
-## file and the material just falls back to its flat `base_color` (has_surface stays 0) — it renders *something*,
+## file and the material just falls back to its flat `base_color` (no photo role is applied) — it renders *something*,
 ## so eyeballing it in the editor cannot catch the mistake either.
 ##
 ## R3D-SURFACES's own design note (RENDER3D_MASTER_PLAN) picked REPEAT over the 2D bake's MIRROR specifically
@@ -26,12 +26,18 @@
 ##                        hard visible seam every 8 GU. Reported as mean absolute channel difference; FAILs
 ##                        above a generous tolerance (this is a photograph, not a synthetic tile — some edge
 ##                        drift is normal, a hard mismatch is not).
+##   3b. not mirrored   — (S4, 2026-10-02) a plane that equals its own mirror image on both axes was authored for the
+##                        retired MIRROR compositor: its OUTER border matches by construction (check 3 passes it) while
+##                        a kaleidoscope seam sits at its centre and REPEATs every 8 GU. Measured on the eight slab files:
+##                        concrete / metal / wood differ from their mirror by 0.00-0.01 (mean channel, 0-255), the real
+##                        photographs by 5.8 (sand) to 34.9 (gravel). Fails under MIRROR_TOLERANCE = 1.0.
 ##   4. imported        — the .import sidecar's own dest_files exist on disk (same check as check_facade.py,
 ##                        same reason: an mtime comparison flags known-good art after a plain reimport).
 ##
 ## Usage:
 ##     python3 tools/persistent/check_surface.py <file.png> [<file.png> ...]
-##     python3 tools/persistent/check_surface.py --all
+##     python3 tools/persistent/check_surface.py --all        # every slab_*.png on disk
+##     python3 tools/persistent/check_surface.py --declared   # the planes a material's `surfaces` actually uses (verify.py runs this)
 
 import os
 import sys
@@ -56,15 +62,15 @@ SURFACE_H = 1024
 ## without failing plausible photographic noise. Revisit once the first accepted surface sets a real baseline.
 BORDER_TOLERANCE = 18.0
 
+## Mean absolute channel difference between a plane and its own mirror image (both axes) below which the art is a
+## mirror-authored tile. See check 3b.
+MIRROR_TOLERANCE = 1.0
 
-def _mean_abs_diff(row_a, row_b):
-    n = len(row_a)
-    if n == 0:
-        return 0.0
-    total = 0
-    for pa, pb in zip(row_a, row_b):
-        total += sum(abs(ca - cb) for ca, cb in zip(pa, pb))
-    return total / (n * 3.0)
+
+def _image_diff(a, b):
+    """Mean absolute channel difference of two same-size RGB images, 0-255."""
+    from PIL import ImageChops, ImageStat
+    return sum(ImageStat.Stat(ImageChops.difference(a, b)).mean) / 3.0
 
 
 def check(path):
@@ -101,12 +107,8 @@ def check(path):
     ## plane's own units).
     if (w, h) == (SURFACE_W, SURFACE_H):
         rgb = im.convert("RGB")
-        left = list(rgb.crop((0, 0, 1, h)).getdata())
-        right = list(rgb.crop((w - 1, 0, w, h)).getdata())
-        top = list(rgb.crop((0, 0, w, 1)).getdata())
-        bottom = list(rgb.crop((0, h - 1, w, h)).getdata())
-        lr_diff = _mean_abs_diff(left, right)
-        tb_diff = _mean_abs_diff(top, bottom)
+        lr_diff = _image_diff(rgb.crop((0, 0, 1, h)), rgb.crop((w - 1, 0, w, h)))
+        tb_diff = _image_diff(rgb.crop((0, 0, w, 1)), rgb.crop((0, h - 1, w, h)))
         worst = max(lr_diff, tb_diff)
         notes.append("border diff: left/right %.1f, top/bottom %.1f (tolerance %.1f)"
                      % (lr_diff, tb_diff, BORDER_TOLERANCE))
@@ -114,6 +116,17 @@ def check(path):
             ok = False
             notes.append("REPEAT will show a seam at this plane's own edge — re-author "
                          "or replace (this art may predate the REPEAT rule; see check_surface.py's header)")
+
+    ## 3b. Not mirror-authored.
+    if (w, h) == (SURFACE_W, SURFACE_H):
+        rgb = im.convert("RGB")
+        mirror_lr = _image_diff(rgb, rgb.transpose(Image.FLIP_LEFT_RIGHT))
+        mirror_tb = _image_diff(rgb, rgb.transpose(Image.FLIP_TOP_BOTTOM))
+        notes.append("mirror diff: left-right %.2f, top-bottom %.2f (tolerance %.2f)" % (mirror_lr, mirror_tb, MIRROR_TOLERANCE))
+        if mirror_lr < MIRROR_TOLERANCE and mirror_tb < MIRROR_TOLERANCE:
+            ok = False
+            notes.append("the plane is its own mirror image: authored for the retired MIRROR compositor, so REPEAT "
+                         "shows a kaleidoscope seam at its centre — replace it with a real seamless photograph")
 
     ## 4. Imported.
     imp = path + ".import"
@@ -141,6 +154,21 @@ def check(path):
 
     head = "%-28s %s  %dx%d %s" % (name, "PASS" if ok else "FAIL", w, h, im.mode)
     return ok, [head] + ["    - " + n for n in notes]
+
+
+def declared_paths():
+    """The `slab_<id>.png` of every material whose JSON declares a `photo` role (`surfaces`): the art the game draws. A slab
+    file no material declares is unused (the old mirror-era art for concrete / metal / stone / wood) and not this gate's business."""
+    import json
+    paths = []
+    for material in sorted(os.listdir(MATERIALS_ROOT)):
+        row = os.path.join(MATERIALS_ROOT, material, material + ".json")
+        if not os.path.isfile(row):
+            continue
+        surfaces = json.load(open(row, encoding="utf-8")).get("surfaces", {})
+        if "photo" in surfaces.values():
+            paths.append(os.path.join(MATERIALS_ROOT, material, "slab_%s.png" % material))
+    return paths
 
 
 def _usage_text():
@@ -171,7 +199,12 @@ def main():
         print(_usage_text())
         return 2
 
-    if args == ["--all"]:
+    if args == ["--declared"]:
+        paths = declared_paths()
+        if not paths:
+            print("[SURFACE] no material declares a photographic surface")
+            return 1
+    elif args == ["--all"]:
         paths = []
         for material in sorted(os.listdir(MATERIALS_ROOT)) if os.path.isdir(MATERIALS_ROOT) else []:
             mdir = os.path.join(MATERIALS_ROOT, material)

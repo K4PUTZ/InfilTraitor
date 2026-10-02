@@ -64,6 +64,7 @@ def steps_for(tier: str, have_baseline: bool):
         ("lint", False, sh("project_lint.py")),
         ("invariants", False, sh("check_invariants.py")),
         ("codemap", False, sh("gen_codemap.py", "--check")),
+        ("surfaces", False, sh("check_surface.py", "--declared")),
         ("selftests", False, sh("run_selftests.py")),
     ]
     if tier == "docs":

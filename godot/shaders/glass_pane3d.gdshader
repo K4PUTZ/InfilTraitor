@@ -7,6 +7,10 @@ shader_type spatial;
 // encoded on the way out, so doing it raw applied tint^(1/2.2) — measured 2026-09-19 as an
 // effective multiply of (0.81, 0.87, 0.96) where the parameters ask for (0.61, 0.72, 0.91).
 render_mode unshaded, cull_back, blend_mix, depth_draw_never;
+// Marks the pixels this pane covers (stencil 1) for the ground overlays drawn after it: they read it to draw softer where a pane is
+// in front of them. Glass cannot show them through its own tint (`glass_screen` is copied BEFORE the transparent pass, so an overlay
+// drawn earlier is covered by the pane), so the overlay is drawn after the glass and faded where this mark is set.
+stencil_mode write, compare_always, 1;
 
 uniform sampler2D glass_screen : hint_screen_texture, filter_linear;
 uniform vec3 glass_tint = vec3(0.47, 0.63, 0.90);

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 79723 lines total** (under `godot/scripts/`)
+**257 scripts · 79734 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -732,7 +732,7 @@ extends `Node3D` · 2412 lines
 
 ### `ground_canvas3d.gd`
 
-`class_name GroundCanvas3D` · extends `RefCounted` · 267 lines
+`class_name GroundCanvas3D` · extends `RefCounted` · 278 lines
 
 `godot/scripts/geometry/ground_canvas3d.gd`
 
@@ -741,6 +741,8 @@ extends `Node3D` · 2412 lines
 **Constants / tuning**
 - `SHADER_MIX` = `"res://godot/shaders/ground_overlay3d.gdshader"`
 - `SHADER_MUL` = `"res://godot/shaders/ground_overlay3d_mul.gdshader"`
+- `SHADER_BEHIND_GLASS` = `"res://godot/shaders/ground_overlay3d_behind_glass.gdshader"`
+- `GLASS_FADE` = `0.3`
 - `CIRCLE_SEGMENTS` = `48`
 
 ---

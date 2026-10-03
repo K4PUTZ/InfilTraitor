@@ -24,6 +24,9 @@ extends RefCounted
 
 const SHADER_MIX := "res://godot/shaders/ground_overlay3d.gdshader"
 const SHADER_MUL := "res://godot/shaders/ground_overlay3d_mul.gdshader"
+const SHADER_BEHIND_GLASS := "res://godot/shaders/ground_overlay3d_behind_glass.gdshader"
+## Strength of a ground overlay seen through a glass pane, as a fraction of its own.
+const GLASS_FADE: float = 0.3
 const CIRCLE_SEGMENTS: int = 48
 
 var _board: Node3D = null
@@ -44,7 +47,8 @@ var _labels: Array = []
 var _label_nodes: Array[Label3D] = []
 
 
-## `multiply` selects the MUL blend (TileOverlay's shadows and cones).
+## `multiply` selects the MUL blend (TileOverlay's shadows and cones), which is not faded behind glass.
+
 func attach(board: Node3D, priority: int, lift: float, multiply: bool = false) -> void:
 	if _node != null:
 		return
@@ -53,6 +57,13 @@ func attach(board: Node3D, priority: int, lift: float, multiply: bool = false) -
 	var mat := ShaderMaterial.new()
 	mat.shader = load(SHADER_MUL if multiply else SHADER_MIX)
 	mat.render_priority = priority
+	if not multiply:
+		## Behind a glass pane the overlay is drawn at `GLASS_FADE` of its strength (see `ground_overlay3d_behind_glass.gdshader`).
+		var behind := ShaderMaterial.new()
+		behind.shader = load(SHADER_BEHIND_GLASS)
+		behind.render_priority = priority
+		behind.set_shader_parameter("fade", GLASS_FADE)
+		mat.next_pass = behind
 	_mesh = ArrayMesh.new()
 	_node = MeshInstance3D.new()
 	_node.name = "GroundCanvas3D"

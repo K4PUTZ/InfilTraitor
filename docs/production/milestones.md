@@ -63,7 +63,7 @@ silently stuck on a 2026-06-18 condition nobody re-checked.
 | Occlusion | ✅ closed (3D cutaway, R3D-7) | `OCCLUSION_MASTER_PLAN` |
 | Destruction | ✅ closed; props added (R3D-PROPS) | `DESTRUCTION_MASTER_PLAN`, `PROPS_TIER4_PLAN` |
 | Voxel Light | ✅ built; the CPU buckets stay (real lamps rejected) | `VOXEL_LIGHT_MASTER_PLAN` |
-| Glass (M4) | ✅ physics closed | `GLASS_MASTER_PLAN` |
+| Glass (M4) | 🔓 physics closed; **reopened 2026-10-02 for structural collapse (a pane or roof that loses its support falls, also after the impact), real glass blocks, a shard that leaves the world**; planned, not started | `GLASS_MASTER_PLAN` (top block) |
 | Materials (M1/M2/M5-props) | ✅ materials and props; family/fallback registry | `MATERIALS_MASTER_PLAN`, `PROP_PIPELINE_PLAN` |
 | Engine: 3D board, light budget, props, live actors, world-space overlays, camera-only rotation | ✅ R3D-END, LIGHT, PROPS, ACTORS, WORLD, ROT closed (`verify.py full` green 2026-10-02) | `RENDER3D_MASTER_PLAN`, `current_state.md` |
 | VIS-01 (overhead) | 🟡 partial: roofs and 3D ceiling lamps built; spot light type unbuilt | below |

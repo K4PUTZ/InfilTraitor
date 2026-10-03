@@ -93,6 +93,12 @@ func build_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: V
 	return model
 
 
+## The light-contrast curve of every surface of this model (1.0 = the board's ladder as is; see `prop_mesh3d.gdshader`).
+func set_contrast(value: float) -> void:
+	for m in _extra_mats:
+		m.set_shader_parameter("contrast", value)
+
+
 ## Recolour every painted surface (`material@paint`) with paint `paint_id`: one shader parameter write each.
 func repaint(paint_id: String) -> void:
 	var colour: Color = PaintPalette.color_of(paint_id)

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 79734 lines total** (under `godot/scripts/`)
+**257 scripts · 79750 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -819,7 +819,7 @@ extends `Node3D` · 2412 lines
 
 ### `object_mesh3d.gd`
 
-`class_name ObjectMesh3D` · extends `Node3D` · 182 lines
+`class_name ObjectMesh3D` · extends `Node3D` · 188 lines
 
 `godot/scripts/geometry/object_mesh3d.gd`
 
@@ -975,7 +975,7 @@ extends `Node3D` · 2412 lines
 
 ### `prop_mesh3d.gd`
 
-`class_name PropMesh3D` · extends `Node3D` · 124 lines
+`class_name PropMesh3D` · extends `Node3D` · 130 lines
 
 `godot/scripts/geometry/prop_mesh3d.gd`
 
@@ -988,7 +988,6 @@ extends `Node3D` · 2412 lines
 - `func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color, mesh_half_height: float) -> void:`
 - `func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int, surface_materials: Dictionary = {}, default_material: String = "generic") -> void:`
 - `func build_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, surface_materials: Dictionary = {}, default_material: String = "generic") -> Dictionary:`
-- `func repaint(paint_id: String) -> void:`
 
 ---
 
@@ -1708,7 +1707,7 @@ extends `Node2D` · 166 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `ObjectMesh3D` · 83 lines
+`class_name GrenadeProp` · extends `ObjectMesh3D` · 87 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
@@ -1719,6 +1718,7 @@ extends `Node2D` · 166 lines
 - `FIT_SIZE` = `Vector3(0.2, 0.2, 0.2)`
 - `SURFACE_MATERIALS` = `{"Green": "painted_metal@olive_drab", "DarkGreen": "painted_metal@olive_drab", "DarkGrey": "steel_dark"}`
 - `SHADOW_HALF_GU` = `0.14`
+- `CONTRAST` = `1.8`
 - `SHADOW_HEIGHT_REF_PX` = `90.0`
 - `SHADOW_STRENGTH_AT_GROUND` = `0.55`
 - `SHADOW_STRENGTH_IN_FLIGHT` = `0.35`

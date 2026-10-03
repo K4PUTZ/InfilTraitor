@@ -27,6 +27,9 @@ const FIT_SIZE := Vector3(0.2, 0.2, 0.2)
 ## Surface (as authored in the model) -> OUR registry material.
 const SURFACE_MATERIALS := {"Green": "painted_metal@olive_drab", "DarkGreen": "painted_metal@olive_drab", "DarkGrey": "steel_dark"}
 const SHADOW_HALF_GU := 0.14
+## The board's light ladder reads flat on a small rounded body; > 1 deepens its shaded faces (Director, 2026-10-03: "um
+## pouquinho mais contraste na iluminação").
+const CONTRAST := 1.8
 const SHADOW_HEIGHT_REF_PX := 90.0
 const SHADOW_STRENGTH_AT_GROUND := 0.55
 const SHADOW_STRENGTH_IN_FLIGHT := 0.35
@@ -51,6 +54,7 @@ func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i, board: Node
 		return false
 	if not setup_object(board, MODEL_PATH, Vector3.ZERO, FIT_SIZE, SURFACE_MATERIALS, "metal", SHADOW_HALF_GU):
 		return false
+	set_contrast(CONTRAST)
 	_sync_shadow()
 	return true
 

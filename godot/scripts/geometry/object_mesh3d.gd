@@ -130,6 +130,12 @@ func set_shadow(strength: float, softness: float, scale: float) -> void:
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 
 
+## More (> 1) or less (< 1) contrast in how the board's light models this object; 1.0 leaves the ladder as it is.
+func set_contrast(value: float) -> void:
+	if _prop != null:
+		_prop.set_contrast(value)
+
+
 ## Recolour the painted surfaces (`material@paint` in the surface map) with paint `paint_id`.
 func repaint(paint_id: String) -> void:
 	if _prop != null:

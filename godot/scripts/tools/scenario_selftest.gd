@@ -48,14 +48,14 @@ func _test_ladder_parses() -> bool:
 		+ " centre 12,7; frames 3; window 360x806; capture shot_1; detonate 1;" \
 		+ " probe after_0; alloc objects 64; alloc bytes 1048576;" \
 		+ " capture_at soot_fade 2f fade_2; capture_at CONSEQUENCE 1.5s embers_15;" \
-		+ " probe_store s_0; shoot 1; reload; save_restore; perspective e; relight; view_mode LIGHT; quit;"
+		+ " probe_store s_0; shoot 1; reload; save_restore; perspective e; relight; view_mode LIGHT; throw 0 27,12; quit;"
 	var result: Dictionary = ScenarioRunnerClass.parse(text)
 	var steps: Array = result["steps"]
 	var ops: Array = steps.map(func(s: Dictionary) -> String: return str(s["op"]))
 	var expected_ops: Array = ["framing", "centre", "zoom", "wait", "mark", "centre",
 		"frames", "window", "capture", "detonate", "probe", "alloc", "alloc",
 		"capture_at", "capture_at", "probe_store", "shoot", "reload",
-		"save_restore", "perspective", "relight", "view_mode", "quit"]
+		"save_restore", "perspective", "relight", "view_mode", "throw", "quit"]
 	if not str(result["error"]).is_empty() or ops != expected_ops:
 		print("[TEST 1] ❌ ladder — error '%s', ops %s" % [result["error"], ops])
 		return false
@@ -73,11 +73,12 @@ func _test_ladder_parses() -> bool:
 		and is_equal_approx(steps[14]["seconds"], 1.5) and not steps[14].has("frames") \
 		and steps[14]["name"] == "embers_15" \
 		and steps[15]["name"] == "s_0" and steps[16]["index"] == 1 \
-		and steps[19]["direction"] == "E" and steps[21]["mode"] == "light"
+		and steps[19]["direction"] == "E" and steps[21]["mode"] == "light" \
+		and steps[22]["index"] == 0 and steps[22]["cell"] == Vector2i(27, 12)
 	if not typed:
 		print("[TEST 1] ❌ ladder arguments not typed as written: %s" % [steps])
 		return false
-	print("[TEST 1] ✅ a 23-step ladder parses in order with typed arguments")
+	print("[TEST 1] ✅ a 24-step ladder parses in order with typed arguments")
 	return true
 
 
@@ -108,6 +109,9 @@ func _test_each_argument_check() -> bool:
 		"mark": "mark takes a label",
 		"capture a.b": "capture takes a file name (letters, digits, _ or -)",
 		"detonate -1": "detonate takes a dev grenade index >= 0",
+		"throw 0": "'throw' takes 2 argument(s), got 1",
+		"throw -1 3,4": "throw takes a dev grenade index >= 0 and a GU as x,y",
+		"throw 0 3;4": "throw takes a dev grenade index >= 0 and a GU as x,y",
 		"drop2d": "unknown step 'drop2d'",
 		"probe": "'probe' takes 1 argument(s), got 0",
 		"probe a.b": "probe takes a file name (letters, digits, _ or -)",

@@ -23,19 +23,12 @@ class_name TestZoneController
 
 const BlastCalculatorClass = preload("res://godot/scripts/systems/destruction/blast_calculator.gd")
 const GrenadePropClass = preload("res://godot/scripts/overlays/grenade_prop.gd")
-const AgentProbePropClass = preload("res://godot/scripts/overlays/agent_probe_prop.gd")
 const DetonationPlanBuilderClass = preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")
 const DetonationPresenterClass = preload("res://godot/scripts/systems/destruction/detonation_presenter.gd")
 
 var room: Node
 var _grenades: Array[Dictionary] = []
 var _active_index: int = -1
-## CHARACTER_MASTER_PLAN Part 2 probe — baked agent figures standing on the
-## floor so the Director can judge proportion and lighting against real voxel
-## geometry. Kept in their own list, not in `_grenades`: they are not
-## detonatable, not throwable, and nothing here should ever iterate them as if
-## they were. See AgentProbeProp's header for what this deliberately is NOT.
-var _agent_probes: Array[Dictionary] = []
 
 ## T-MODE: targeting mode active (grenade selected, waiting for target)
 var _targeting_mode: bool = false
@@ -261,15 +254,10 @@ func _init(p_room: Node) -> void:
 
 func clear() -> void:
 	for g in _grenades:
-		var sprite: Sprite2D = g.get("sprite")
+		var sprite: Node3D = g.get("sprite")
 		if sprite != null and is_instance_valid(sprite):
 			sprite.queue_free()
 	_grenades.clear()
-	for p in _agent_probes:
-		var probe: Sprite2D = p.get("sprite")
-		if probe != null and is_instance_valid(probe):
-			probe.queue_free()
-	_agent_probes.clear()
 	_active_index = -1
 	## RUNTIME-GUARD-01 (2026-08-13): drop an in-flight blast too. This runs on
 	## map load (`_populate_test_zone_if_playground()`), and a sequence started
@@ -290,10 +278,16 @@ func clear() -> void:
 ## cell. Since R3D-ROT the two are the same cell: the map never re-lays out on a rotation.
 func add_grenade(gu_cell: Vector2i) -> void:
 	var base_cell: Vector2i = gu_cell
+	var board: Node3D = room.board3d()
 	var sprite := GrenadePropClass.new()
-	sprite.setup(room, gu_cell, base_cell)
-	sprite.position = room.agent._cell_to_world(gu_cell)
-	room.add_child(sprite)
+	if board == null:
+		push_error("[TestZoneController] add_grenade: there is no 3D board to put the grenade on")
+		return
+	board.add_child(sprite)
+	if not sprite.setup(room, gu_cell, base_cell, board):
+		sprite.queue_free()
+		return
+	sprite.screen_position = room.agent._cell_to_world(gu_cell)
 	_grenades.append({
 		"gu_cell": gu_cell,
 		"base_cell": base_cell,
@@ -302,32 +296,9 @@ func add_grenade(gu_cell: Vector2i) -> void:
 	})
 
 
-## CHARACTER_MASTER_PLAN Part 2 probe. Same perspective contract add_grenade()
-## uses — the view-space cell is stored converted to a base cell so rotation can
-## follow it — because a figure that drifts off its tile on a perspective flip
-## would corrupt the proportion judgement this probe exists for.
-func add_agent_probe(gu_cell: Vector2i, cfg: Dictionary = {}) -> void:
-	var base_cell: Vector2i = gu_cell
-	var sprite := AgentProbePropClass.new()
-	sprite.setup(room, gu_cell, base_cell, cfg)
-	sprite.position = room.agent._cell_to_world(gu_cell)
-	room.add_child(sprite)
-	_agent_probes.append({"gu_cell": gu_cell, "base_cell": base_cell, "sprite": sprite})
-
-
-## Follows room.gd's dev-vision toggle. The probes are the only props with a
-## second bake, so this stays here rather than becoming a general prop contract.
-func set_agent_probes_dev_vision(enabled: bool) -> void:
-	for p in _agent_probes:
-		var probe: AgentProbePropClass = p.get("sprite")
-		if probe != null and is_instance_valid(probe):
-			probe.set_dev_vision(enabled)
-
-
 ## Called from room.gd::_set_perspective(). R3D-ROT: the cells do not move (one world,
 ## the camera turns), so this only re-runs the view-dependent part for every live
-## (undetonated) grenade and probe. GrenadeProp.update_cell()
-## also swaps to the frame baked for the new compass direction (D22 fix).
+## (undetonated) grenade. There is no frame to swap: the mesh is in the one world.
 func on_view_changed() -> void:
 	## R3D-ROT: the camera turned over the one world, so no cell moves; the baked props re-pick the frame of the new view.
 	for g in _grenades:
@@ -336,25 +307,13 @@ func on_view_changed() -> void:
 		var sprite: GrenadePropClass = g["sprite"]
 		if sprite != null and is_instance_valid(sprite):
 			sprite.update_cell(g["gu_cell"])
-	for p in _agent_probes:
-		var probe: AgentProbePropClass = p["sprite"]
-		if probe != null and is_instance_valid(probe):
-			probe.update_cell(p["gu_cell"])
 
 
-## The sprite's own drawn rect, in world/global space — centered=false with a
-## custom offset, so this is exactly (global_position + offset, texture_size),
-## no reconstruction of the anchor math needed here.
-func _sprite_global_rect(grenade: Dictionary) -> Rect2:
-	var sprite: Sprite2D = grenade["sprite"]
-	return Rect2(sprite.global_position + sprite.offset, sprite.texture.get_size())
-
-
-## Screen-space top-center of the sprite — context menu anchor.
+## Screen-space top-center of the grenade — context menu anchor. The mesh's own top (`ObjectMesh3D.top_world_2d()`), lifted
+## off its floor point, through the board's camera.
 func _top_screen_pos(grenade: Dictionary) -> Vector2:
-	var rect := _sprite_global_rect(grenade)
-	var world_top := rect.position + Vector2(rect.size.x / 2.0, 0.0)
-	return room.screen_of_lifted(world_top, (grenade["sprite"] as Sprite2D).global_position)
+	var sprite: GrenadePropClass = grenade["sprite"]
+	return room.screen_of_lifted(sprite.top_world_2d(), sprite.screen_position + Vector2(0.0, sprite.flight_px))
 
 
 ## Index of the grenade standing on the clicked GU cell, or -1. Director
@@ -595,7 +554,7 @@ func _set_targeting_target(cell: Vector2i) -> void:
 	## as long as the throw is being aimed. The perspective goes with it — it is
 	## the real baked prop, so it has a per-view frame like the prop does.
 	if room._target_cursor_overlay != null:
-		room._target_cursor_overlay.show_at(target_pos, room.view_direction())
+		room._target_cursor_overlay.show_at(target_pos)
 	if room.selection_overlay != null:
 		room.selection_overlay.visible = false
 
@@ -846,7 +805,7 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	var ground_start: Vector2 = start_pos + Vector2(0.0, launch_px)
 	var travel: Vector2 = target_world - ground_start
 	var roll_dir: Vector2 = travel.normalized() if travel.length() > 0.001 else Vector2.RIGHT
-	var spin_visibility: float = roll_dir.x
+	sprite.set_roll_direction(roll_dir)
 
 	var origin_gu: Vector2i = room.agent.cell
 	var distance_gu: float = Vector2(target_gu - origin_gu).length()
@@ -885,7 +844,6 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 	## for the full reasoning and the measurement that found the bug (405 px
 	## of real apex height, z_index frozen at level 0 the whole flight).
 	## Restored to ground-level sorting once the landing bounce settles, below.
-	sprite.set_airborne(true)
 
 	var turns: float = 0.0
 	var elapsed: float = 0.0
@@ -894,12 +852,12 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 		var delta: float = room.get_process_delta_time()
 		elapsed += delta
 		var t: float = minf(elapsed / throw_duration_s, 1.0)
-		sprite.position = ThrowArcOverlay.arc_point(
+		sprite.screen_position = ThrowArcOverlay.arc_point(
 			start_pos, target_world, t, arc_height, launch_px)
 		turns += flight_rate * delta
-		sprite.rotation = turns * TAU * spin_visibility
-		sprite.set_flight_height_px(ground_start.lerp(target_world, t).y - sprite.position.y)
-	sprite.position = target_world
+		sprite.roll(turns * TAU)
+		sprite.set_flight_height_px(ground_start.lerp(target_world, t).y - sprite.screen_position.y)
+	sprite.screen_position = target_world
 	sprite.set_flight_height_px(0.0)
 	grenade["gu_cell"] = target_gu
 
@@ -913,15 +871,14 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 		bounced += delta
 		var bt: float = minf(bounced / arc.bounce_duration_s, 1.0)
 		var lift: float = ThrowArcOverlay.bounce_lift(bt, bounce_height)
-		sprite.position = target_world - Vector2(0.0, lift)
+		sprite.screen_position = target_world - Vector2(0.0, lift)
 		turns += lerpf(flight_rate, settle_rate, bt) * delta
-		sprite.rotation = turns * TAU * spin_visibility
+		sprite.roll(turns * TAU)
 		sprite.set_flight_height_px(lift)
-	sprite.position = target_world
+	sprite.screen_position = target_world
 	sprite.set_flight_height_px(0.0)
 	## Back on the ground for real — the post-bounce roll is real floor
 	## contact and belongs under D22-FOLLOWUP's ordinary level-0 sort again.
-	sprite.set_airborne(false)
 
 	## COOKING — Director: "antes de pausar para ficar 'cooking' por aprox. 1
 	## segundo." The grenade sits on the ground for a beat before it goes off.
@@ -962,8 +919,8 @@ func _start_grenade_throw_animation(target_gu: Vector2i, grenade: Dictionary) ->
 				- back_turns * smoothstep(0.0, 1.0, bt2)
 		else:
 			turns = turns_at_rest + forward_turns - back_turns
-		sprite.rotation = turns * TAU * spin_visibility
-		sprite.position = target_world \
+		sprite.roll(turns * TAU)
+		sprite.screen_position = target_world \
 			+ roll_dir * arc.roll_radius_px * TAU * (turns - turns_at_rest)
 
 	## Only if the prediction is STILL going does the fuse stretch, capped so a
@@ -1438,7 +1395,7 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		for i in range(pop_frames):
 			var t: float = float(i + 1) / float(pop_frames)
 			var eased: float = 1.0 - (1.0 - t) * (1.0 - t)
-			g_sprite.position.y -= blast_pop_height_px * (eased - prev_eased)
+			g_sprite.screen_position -= Vector2(0.0, blast_pop_height_px * (eased - prev_eased))
 			prev_eased = eased
 			await _pace(presenter)
 		g_sprite.visible = false
@@ -1527,16 +1484,15 @@ func _start_waves(delta, presenter: DetonationPresenter) -> void:
 		room.get_tree())
 
 
-## The point the fireball blooms from: the top-centre of the grenade sprite, in
+## The point the fireball blooms from: the top-centre of the grenade, in
 ## world space — the Director's "anchor point em cima da granada". Deliberately
 ## the same geometry _top_screen_pos() uses for the context menu, minus its
-## canvas-transform step, so the two never drift apart.
+## camera step, so the two never drift apart.
 func _blast_anchor(grenade: Dictionary) -> Vector2:
-	var sprite: Sprite2D = grenade["sprite"]
-	if sprite == null or not is_instance_valid(sprite) or sprite.texture == null:
+	var sprite: GrenadePropClass = grenade["sprite"]
+	if sprite == null or not is_instance_valid(sprite):
 		return room.agent._cell_to_world(grenade["gu_cell"])
-	var rect := _sprite_global_rect(grenade)
-	return rect.position + Vector2(rect.size.x / 2.0, 0.0)
+	return sprite.top_world_2d()
 
 
 ## The real ctx DetonationPlanBuilder.build_plan() needs, assembled from the

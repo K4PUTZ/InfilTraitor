@@ -1,105 +1,64 @@
-extends Node2D
+extends Node3D
 class_name TargetCursorOverlay
 
 ## TargetCursorOverlay — the "virtual grenade" that marks the throw's target cell.
 ##
-## Director, 2026-08-10: "o quadrado magenta que estamos usando para indicar a
-## GU selecionada pode sumir, e o cursor assume temporariamente o formato da
-## granada" — then, on the first version: "vamos modificar a silhueta da
-## granada-cursor para exibir o verdadeiro asset da granada, já que vamos ter
-## outros tipos de explosivos. Carregue dinamicamente o que quer que tenha sido
-## definido como granada."
+## Director, 2026-08-10: "o quadrado magenta que estamos usando para indicar a GU selecionada pode sumir, e o cursor assume
+## temporariamente o formato da granada" — then: "vamos modificar a silhueta da granada-cursor para exibir o verdadeiro asset da
+## granada, já que vamos ter outros tipos de explosivos. Carregue dinamicamente o que quer que tenha sido definido como granada."
 ##
-## So the drawn silhouette is gone and this shows GrenadeProp's OWN baked frames,
-## through GrenadeProp.load_color_frames() rather than a second path constant.
-## That is the whole point of the change: a hand-drawn icon beside a baked prop
-## is two definitions of one object, and the second explosive type is exactly
-## when they drift apart.
-##
-## It mirrors GrenadeProp's anchoring (`centered = false`, `offset = -ANCHOR_PX`,
-## `SPRITE_SCALE`) and its per-perspective frame swap, so the virtual grenade
-## stands exactly where the real one will land, in the same view. What separates
-## them is `virtual_grenade.gdshader` — 50% red overlay, 2 px stroke, 2 px
-## diagonal hatch — which says "planned", not "there".
+## RETIRE-2 of R3D-RETIRE-2D: it was a `Sprite2D` over the board showing the grenade's baked frame through a canvas shader. It is
+## now the grenade's own mesh (`GrenadeProp`, the same model, size and registry materials) standing on the target cell in the 3D
+## world, drawn with `virtual_object3d.gdshader` (50% red overlay, rim stroke, diagonal hatch: "planned", not "there"). Being a
+## node of the board it stands where the real one will land in every view, with no per-view frame and no re-placement per frame.
 
-const SHADER_PATH := "res://godot/shaders/virtual_grenade.gdshader"
+const SHADER_PATH := "res://godot/shaders/virtual_object3d.gdshader"
 
 ## Tuning — `var` per architecture Rule 1. Forwarded to the shader on setup.
 var mark_color: Color = Color(1.0, 0.0, 0.0, 1.0)
 var overlay_strength: float = 0.5
-var outline_px: float = 2.0
 var hatch_px: float = 2.0
-## Gap between hatch lines, in the same texture pixels the widths use. The
-## grenade's silhouette is only ~45 texels across, so a spacing near the line
-## width turns the whole asset into a red blob — measured on the first capture
-## at 9, where five lines and a 2 px stroke left nothing of the shape. 16 read as
-## too sparse next to it; 12 is the Director's "aumenta só um pouquinho".
-var hatch_spacing_px: float = 12.0
+## Gap between hatch lines, in screen pixels.
+var hatch_spacing_px: float = 8.0
 
-var _sprite: Sprite2D = null
-var _material: ShaderMaterial = null
-var _frames: Dictionary = {}
+var _board: Node3D = null
+var _ghost: ObjectMesh3D = null
 
 
-func _ready() -> void:
-	_frames = GrenadeProp.load_color_frames()
-
-	_material = ShaderMaterial.new()
-	_material.shader = load(SHADER_PATH)
-	_material.set_shader_parameter("mark_color", mark_color)
-	_material.set_shader_parameter("overlay_strength", overlay_strength)
-	_material.set_shader_parameter("outline_px", outline_px)
-	_material.set_shader_parameter("hatch_px", hatch_px)
-	_material.set_shader_parameter("hatch_spacing_px", hatch_spacing_px)
-
-	## Same anchoring the real prop uses, so the preview and the landing agree.
-	_sprite = Sprite2D.new()
-	_sprite.centered = false
-	_sprite.offset = -GrenadeProp.ANCHOR_PX
-	_sprite.scale = Vector2.ONE * GrenadeProp.SPRITE_SCALE
-	_sprite.material = _material
-	add_child(_sprite)
-
+## The board it lives on: the overlay joins it and builds the ghost then (the room creates the overlay before any board exists).
+func set_board3d(board: Node3D) -> void:
+	if _ghost != null and is_instance_valid(_ghost):
+		_ghost.queue_free()
+		_ghost = null
+	if get_parent() != null:
+		get_parent().remove_child(self)
+	_board = board
+	if board == null:
+		return
+	board.add_child(self)
+	_ghost = ObjectMesh3D.new()
+	add_child(_ghost)
+	if not _ghost.setup_object(board, GrenadeProp.MODEL_PATH, Vector3.ZERO, GrenadeProp.FIT_SIZE,
+			GrenadeProp.SURFACE_MATERIALS, "metal", 0.0):
+		_ghost.queue_free()
+		_ghost = null
+		return
+	var material := ShaderMaterial.new()
+	material.shader = load(SHADER_PATH)
+	material.set_shader_parameter("mark_color", mark_color)
+	material.set_shader_parameter("overlay_strength", overlay_strength)
+	material.set_shader_parameter("hatch_px", hatch_px)
+	material.set_shader_parameter("hatch_spacing_px", hatch_spacing_px)
+	_ghost.set_override_material(material)
 	visible = false
 
 
-## Stand the virtual grenade on a floor position, in the room's active view.
-func show_at(center: Vector2, direction: String) -> void:
-	if _sprite == null:
+## Stand the virtual grenade on a floor position (2D world pixels).
+func show_at(center: Vector2) -> void:
+	if _ghost == null:
 		return
-	if not _frames.has(direction):
-		push_warning("[TargetCursorOverlay] no grenade frame baked for view '%s'" % direction)
-		return
-	_sprite.texture = _frames[direction]
-	_center = center
-	_sprite.position = center
-	_follow_board()
+	_ghost.screen_position = center
 	visible = true
-
-
-## R3D-WORLD — on the 3D board the virtual grenade stays a screen-space sprite (its hatched look is a canvas shader) but
-## stands where its floor point appears in the LIVE view (`Board3DLive.canvas_point()`), re-placed every frame it is
-## shown, since a pan or a view change moves that point on screen. In view N it is where the 2D lattice put it.
-var _board: Node3D = null
-var _center: Vector2 = Vector2.ZERO
-
-
-func set_board3d(board: Node3D) -> void:
-	_board = board
-	set_process(board != null)
-	_follow_board()
-
-
-func _process(_delta: float) -> void:
-	if visible:
-		_follow_board()
-
-
-func _follow_board() -> void:
-	if _board == null or not is_instance_valid(_board) or _sprite == null:
-		return
-	var canvas: Vector2 = _board.call("canvas_point", _board.call("ground_point", _center), self)
-	_sprite.position = get_global_transform().affine_inverse() * canvas
 
 
 func clear() -> void:

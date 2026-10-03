@@ -20,6 +20,9 @@
 ##   window <W>x<H>                       desktop only: emulate a phone's aspect
 ##   detonate <index>                     dev grenade #index, camera on it, menu path;
 ##                                        waits for the blast to end (TEL-06b)
+##   throw <index> <x,y>                  RETIRE-2: dev grenade #index THROWN to the GU x,y through the real
+##                                        throw (the agent's release, the arc, the landing hop, the roll, the
+##                                        fuse, the blast); returns at once, so follow it with `frames`/`capture_at`
 ##   capture <name>                       the root viewport to captures/<name>.png
 ##                                        (the external files dir on Android)
 ##   capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the
@@ -85,7 +88,7 @@ extends Node
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
-	"probe": 1, "alloc": 2, "capture_at": 3,
+	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
 	"passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2,
 }
@@ -221,6 +224,13 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "detonate takes a dev grenade index >= 0"
 			step["index"] = int(arg)
+		"throw":
+			var target: PackedStringArray = tokens[2].split(",")
+			if not arg.is_valid_int() or int(arg) < 0 or target.size() != 2 or not target[0].is_valid_int() \
+					or not target[1].is_valid_int():
+				return "throw takes a dev grenade index >= 0 and a GU as x,y"
+			step["index"] = int(arg)
+			step["cell"] = Vector2i(int(target[0]), int(target[1]))
 		"shoot":
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "shoot takes a guard index >= 0"
@@ -341,6 +351,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 					ok = await room.call(method)
 			if not ok:
 				return _fail(step, "%s() did not complete (see the error above)" % method)
+		"throw":
+			if not room.has_method("scenario_throw"):
+				return _fail(step, "Room has no scenario_throw()")
+			if not bool(room.call("scenario_throw", int(step["index"]), step["cell"])):
+				return _fail(step, "the throw did not start (see the error above)")
 		"detonate":
 			if not room.has_signal("scenario_detonation_done") or not room.has_method("scenario_detonate"):
 				return _fail(step, "Room has no scenario_detonate()")

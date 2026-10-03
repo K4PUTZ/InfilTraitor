@@ -50,10 +50,6 @@ const ScenarioRunnerClass = preload("res://godot/scripts/systems/scenario_runner
 const Board3DLiveClass = preload("res://godot/scripts/geometry/board3d_live.gd")
 const ActorMesh3DClass = preload("res://godot/scripts/geometry/actor_mesh3d.gd")
 const VisionCone3DClass = preload("res://godot/scripts/geometry/vision_cone3d.gd")
-const PropBillboard3DClass = preload("res://godot/scripts/geometry/prop_billboard3d.gd")
-const GrenadePropRef = preload("res://godot/scripts/overlays/grenade_prop.gd")
-const AgentProbePropRef = preload("res://godot/scripts/overlays/agent_probe_prop.gd")
-const FloatingCollectibleRef = preload("res://godot/scripts/overlays/floating_collectible.gd")
 const BoardProbeClass = preload("res://godot/scripts/systems/board_probe.gd")
 const WorldRenderScaleClass = preload("res://godot/scripts/systems/world_render_scale.gd")
 const TargetCursorOverlayClass = preload("res://godot/scripts/overlays/target_cursor_overlay.gd")
@@ -1515,7 +1511,7 @@ var _aim_bubble_overlay: Node2D = null  ## E-BUBBLE — Phase B aim-bubble UI
 var _throw_perimeter_overlay: Node2D = null  ## T-MODE — throw range perimeter
 var _throw_arc_overlay: Node2D = null  ## T-ARC — parabolic throw arc
 var _shrapnel_preview_overlay: Node2D = null  ## T-FRAG — aiming shrapnel rays
-var _target_cursor_overlay: Node2D = null  ## T-CURSOR — virtual grenade marker
+var _target_cursor_overlay: TargetCursorOverlay = null  ## T-CURSOR — virtual grenade marker (a mesh on the 3D board)
 
 ## T-Z: the aiming stack's slots in the flat "UI above everything" z tier, whose
 ## first occupant is `_blast_wireframe_overlay` at 100. Bottom to top, and the
@@ -2215,8 +2211,7 @@ func _ready() -> void:
 
 	## T-CURSOR: the hatched grenade standing on the target cell, in place of
 	## SelectionOverlay's magenta diamond while a throw is being aimed.
-	_target_cursor_overlay = TargetCursorOverlayClass.new()
-	add_child(_target_cursor_overlay)
+	_target_cursor_overlay = TargetCursorOverlayClass.new()  ## joins the 3D board in `set_board3d()`
 
 	## VL-D4: ember glow overlay (blast VFX). z assigned in
 	## _apply_overhead_overlay_z() once the real wall-stack height is known.
@@ -2643,9 +2638,6 @@ func _set_perspective(direction: String) -> void:
 	agent.on_perspective_changed()
 	if _test_zone_controller != null:
 		_test_zone_controller.on_view_changed()
-	for pickup in _collectibles:
-		if pickup != null and is_instance_valid(pickup):
-			pickup.on_view_changed()
 	if _weapon_bench_controller != null:
 		_weapon_bench_controller.on_view_changed()
 	## R3D-WORLD: the VFX in flight are NOT cleared any more. Their positions are world state (the 2D simulation runs in
@@ -3022,12 +3014,6 @@ func _start_board3d_live() -> void:
 	_attach_ground_overlays(live)
 	if _dev_flag("PICK_CHECK", "0") == "1":
 		_pick_check.call_deferred()
-	## R3D-4d — props are created by the test-zone controller at any time, so they are caught as they
-	## enter the tree; the ones that already exist are caught here.
-	if not get_tree().node_added.is_connected(_on_tree_node_added):
-		get_tree().node_added.connect(_on_tree_node_added)
-	for existing_prop in find_children("*", "Node2D", true, false):
-		_on_tree_node_added(existing_prop)
 	if _dev_flag("SEED_GRENADES", "0") == "1":
 		_seed_dev_grenades_if_empty.call_deferred("R3D-4d")
 
@@ -3124,29 +3110,6 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 		## shatter" demo is real follow-on scope once a prop is actually wired to take damage.
 		if _dev_flag_on("PROP_SHATTER_DEMO"):
 			spawn_prop_shatter(Vector2i(36, 36), _voxel_board.ground_plane_level(), "wood", 12)
-
-
-## RENDER3D R3D-4d — a prop that joins the tree while the 3D board is up gets a `PropBillboard3D`.
-## Deferred: the prop's own `setup()` has run by the time it is in the tree, but its children
-## (a grenade's shadow) may still be added in the same frame.
-func _on_tree_node_added(node: Node) -> void:
-	if not (node is GrenadePropRef or node is AgentProbePropRef or node is FloatingCollectibleRef):
-		return
-	_attach_prop_billboard.call_deferred(node)
-
-
-func _attach_prop_billboard(prop: Node2D) -> void:
-	var live: Node3D = board3d()
-	if live == null or not is_instance_valid(prop) or not prop.is_inside_tree():
-		return
-	if prop.has_meta("prop_billboard3d") and is_instance_valid(prop.get_meta("prop_billboard3d")):
-		var current: Node = prop.get_meta("prop_billboard3d")
-		if current.get_parent() == live:
-			return
-	var billboard: Node3D = PropBillboard3DClass.new()
-	live.add_child(billboard)
-	billboard.setup(live, prop)
-	prop.set_meta("prop_billboard3d", billboard)
 
 
 ## RENDER3D R3D-4b/4c — every actor with a baked figure (the agent and each guard) as a depth-tested
@@ -3506,6 +3469,24 @@ signal blast_beat(beat: String)
 ## (`open_menu_for()` + `detonate_active()`, as the benchmark does), with the camera
 ## ON the grenade, returning once the blast has finished playing. DIAG-19 needs the
 ## blast on screen in the verdict framing; the benchmark's never was.
+## RETIRE-2 — `throw <index> <x,y>`: the dev grenade thrown to `target` through the real `execute_grenade_throw()`. True when the
+## throw started; the flight, the fuse and the blast then run on their own, as they do for a player.
+func scenario_throw(index: int, target: Vector2i) -> bool:
+	if _test_zone_controller == null:
+		push_error("[Room] scenario_throw: no TestZoneController — dev grenades exist on PLAYGROUND only")
+		return false
+	_seed_dev_grenades_if_empty("SCENARIO")
+	var grenades: Array = _test_zone_controller._grenades
+	if index < 0 or index >= grenades.size() or bool(grenades[index]["detonated"]):
+		push_error("[Room] scenario_throw: dev grenade #%d does not exist or is spent" % index)
+		return false
+	_test_zone_controller._targeting_mode = true
+	_test_zone_controller._targeting_grenade_index = index
+	_test_zone_controller._targeting_target_gu = target
+	_test_zone_controller.execute_grenade_throw()
+	return true
+
+
 func scenario_detonate(index: int) -> void:
 	if _test_zone_controller == null:
 		push_error("[Room] scenario_detonate: no TestZoneController — dev grenades exist on PLAYGROUND only")
@@ -3578,12 +3559,8 @@ func _set_view_mode(which: String) -> void:
 		_hud_controller.set_view_mode_active(which, enabled)
 	Telemetry.event("view.mode", {"mode": which, "on": enabled})
 
-	## The agent and the probes both carry a second bake whose joints are yellow —
-	## the same toggle drives both, so there is one dev switch rather than three.
 	if which == "dev":
 		agent.set_dev_vision(enabled)
-		if _test_zone_controller != null:
-			_test_zone_controller.set_agent_probes_dev_vision(enabled)
 
 	## T-DEV: the two red aiming diagnostics are gated on dev vision, so toggling
 	## it mid-aim has to rebuild the preview — otherwise the perimeter and the
@@ -4139,8 +4116,6 @@ func _apply_overhead_overlay_z(max_voxel_z_index: int) -> void:
 		_shrapnel_preview_overlay.z_index = AIM_Z_RAYS
 	if _throw_arc_overlay != null:
 		_throw_arc_overlay.z_index = AIM_Z_ARC
-	if _target_cursor_overlay != null:
-		_target_cursor_overlay.z_index = AIM_Z_GRENADE
 	if _ceiling_overlay != null:
 		_ceiling_overlay.z_index = max_voxel_z_index + 3
 	## VL-D4: the glow must draw above whichever voxel face it's decorating —
@@ -9847,72 +9822,6 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 	Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2)
 ]
 
-## CHARACTER_MASTER_PLAN Part 2 probe (2026-08-16) — the baked agent standing on
-## the PLAYGROUND floor so proportion and lighting can be judged against real
-## voxel geometry instead of against a Blender render. Two cells on purpose: one
-## in the OPEN, where nothing competes with the silhouette, and one right beside
-## the concrete wall, which is the only way to read the figure's height against
-## the 8-voxel SLICE it is supposed to stand slightly taller than (§4.7). One
-## alone would answer half the question.
-##
-## This does NOT replace `agent.gd`'s vector placeholder — see AgentProbeProp's
-## header for what the probe deliberately is not.
-## Director, 2026-08-16: *"coloca ele próximo do bloco de concreto, pra gente
-## comparar e ver se ele tem aprox. 10 voxels de altura em standing com chapéu."*
-## The concrete wall (gu 2,2 - 4,2) is one SLICE = 8 voxels tall, which makes it
-## the measuring stick: a 10-voxel figure beside it must stand exactly 1.25x its
-## height.
-##
-## Cell (2,5) rather than something adjacent, and the first attempt is why: at
-## (3,4) the block drew straight over his upper body. This prop sorts as level-0
-## geometry ON PURPOSE (AgentProbeProp: OCC-03's always-on-top rule is agent-only
-## and copying it onto a prop is the D22-FOLLOWUP mistake), so anything that
-## overlaps him on screen correctly hides him — which is right for the game and
-## useless for a height comparison. (2,5) is the same "2 GU south, clear of the
-## block instead of hugging it" standard the Director already set for
-## TEST_ZONE_GRENADE_GUS, and it puts both silhouettes whole in one frame, which
-## is what measuring needs.
-## THE SUIT BRACKET (Director, 2026-08-16: *"digamos que a gente queira que o
-## terno dele seja bem escuro, quase totalmente preto mas ainda distinguindo o
-## volume com a iluminação"*).
-##
-## The obstacle is arithmetic, not taste. `flat_normal_relight` computes
-## `lit = albedo * (ambient + light * N·L) + specular`, and the light term is
-## MULTIPLICATIVE: darkening the albedo does not move the range, it SHRINKS it.
-## At the shipped 0.26 suit the form spans roughly 28..115 in value; at 0.02 that
-## entire span collapses into 2..9, so volume dies of compression rather than of
-## darkness. This is D31 in reverse — there, no runtime light could manufacture a
-## hue that was never baked; here, no runtime light can restore modelling the
-## albedo has already crushed.
-##
-## What does NOT shrink with the albedo are the ADDITIVE terms: `specular`, which
-## is how a black object is legible in the real world (we read it almost entirely
-## by its highlights), and D28's constant-colour outline, which exists because
-## "a arma está muito escura em relação ao fundo" — the same sentence a near-black
-## suit invites. So the bracket varies two axes, and it is bracketed PAST the
-## breaking point on purpose: 0.02 is there to fail, so the limit shows up in the
-## picture instead of in an opinion.
-##
-## Row 6 = the current matte treatment. Row 8 = both additive levers pushed.
-## FOUR AGENTS, ONE PER FACING (Director, 2026-08-16: "coloca o boneco 4x na cena
-## para a gente avaliar todas as faces"). They differ only in the agent's OWN
-## facing — §4.6's `facing - perspective` — so one capture shows every side of
-## the figure under the same light instead of four captures showing the same
-## side. Spread two GU apart so no silhouette touches its neighbour.
-## RETIRED 2026-08-19, Director: *"Vamos tirar as cópias do agente e deixar só o
-## principal."* The four probes were a four-facing reference board from when the
-## baked figure was new and needed checking against itself; the playable agent
-## now shows every facing by walking, and four motionless duplicates of him
-## standing in the middle of the destruction test zone are scenery that gets in
-## the way of the thing being tested.
-##
-## The CONSTANT stays and the loop that reads it stays, both empty: the probe
-## machinery (TestZoneController.add_agent_probe, its dev-vision sync) is a
-## working instrument for exactly this kind of check, and deleting a tool because
-## today's board does not need it is how it has to be rebuilt from memory next
-## time. Put cells back here to bring the board back.
-const TEST_ZONE_AGENT_PROBE_BRACKET: Array[Dictionary] = []
-
 const BAKE_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
 
 ## Collectibles strip — OFF (Director, 2026-07-29: "os objetos coletáveis estão
@@ -9934,21 +9843,27 @@ const TEST_ZONE_COLLECTIBLES_ENABLED := false
 ## baked object: the grenade plus each bench weapon, since the same 120-frame
 ## bake serves both the frozen prop and the spinning pickup.
 const TEST_ZONE_COLLECTIBLE_ROW_Y := 15
+const GUNS_DIR := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_ultimate_guns_pack/extracted/"
+## Each pack surface (as authored) -> OUR registry material (D66).
+const GUN_SURFACES := {"Black": "rubber", "Black2": "rubber", "DarkMetal": "steel_dark", "Metal": "metal", "LightMetal": "metal",
+	"Grey": "metal", "Wood": "wood", "DarkWood": "wood", "Glass": "glass"}
+## `fit_size` is the model's longest side fitted in world units (a handheld at ~1.3x its real length; the pack's pistol is 0.25).
+## `rotation_deg` (90, 0, 0) lays a pack gun flat, as `props/pistol_prop.json` does.
 const TEST_ZONE_COLLECTIBLES: Array[Dictionary] = [
-	{"gu_x": 3, "frames_dir": BAKE_DIR + "grenade_collectible_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"gu_x": 6, "frames_dir": BAKE_DIR + "shotgun_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.5},
-	{"gu_x": 9, "frames_dir": BAKE_DIR + "pistol_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"gu_x": 12, "frames_dir": BAKE_DIR + "revolver_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"gu_x": 15, "frames_dir": BAKE_DIR + "smg_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"gu_x": 18, "frames_dir": BAKE_DIR + "assault_rifle_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
-	{"gu_x": 21, "frames_dir": BAKE_DIR + "sniper_rifle_frames/",
-		"sprite_scale": 1.15, "shadow_scale_factor": 2.0},
+	{"gu_x": 3, "model": GrenadeProp.MODEL_PATH, "rotation_deg": Vector3.ZERO, "fit_size": GrenadeProp.FIT_SIZE,
+		"surface_materials": GrenadeProp.SURFACE_MATERIALS, "default_material": "metal", "shadow_half_gu": 0.18},
+	{"gu_x": 6, "model": GUNS_DIR + "Shotgun.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
+		"fit_size": Vector3(0.79, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.36},
+	{"gu_x": 9, "model": GUNS_DIR + "Pistol.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
+		"fit_size": Vector3(0.25, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.22},
+	{"gu_x": 12, "model": GUNS_DIR + "Revolver.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
+		"fit_size": Vector3(0.27, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.22},
+	{"gu_x": 15, "model": GUNS_DIR + "Submachine Gun.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
+		"fit_size": Vector3(0.55, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.3},
+	{"gu_x": 18, "model": GUNS_DIR + "Assault Rifle.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
+		"fit_size": Vector3(0.74, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.36},
+	{"gu_x": 21, "model": GUNS_DIR + "Sniper Rifle.glb", "rotation_deg": Vector3(90.0, 0.0, 0.0),
+		"fit_size": Vector3(0.87, 0.3, 0.3), "surface_materials": GUN_SURFACES, "default_material": "metal", "shadow_half_gu": 0.4},
 ]
 
 
@@ -9975,15 +9890,6 @@ func _populate_test_zone_if_playground() -> void:
 	## TEST_ZONE_WALL_GU_X) rather than deleted: they carry real calibration
 	## history (§6b's shotgun row-distance derivation) other docs still cite.
 	if map_id == "PLAYGROUND":
-		for entry in TEST_ZONE_AGENT_PROBE_BRACKET:
-			var cfg: Dictionary = entry.duplicate()
-			cfg["frames_dir"] = "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/%s/" % entry["dir"]
-			_test_zone_controller.add_agent_probe(entry["cell"], cfg)
-		## Apply the CURRENT dev-vision state, not just future toggles. Dev vision
-		## is ON at boot, so a probe created here would otherwise sit in its normal
-		## bake until someone happened to toggle the button twice.
-		if _vision_controller != null:
-			_test_zone_controller.set_agent_probes_dev_vision(_vision_controller.dev_vision)
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 
 		## ACTOR_MASTER_PLAN D21 — the spinning pickups, one per baked object.
@@ -10000,14 +9906,15 @@ func _populate_test_zone_if_playground() -> void:
 		## produced the folder.
 		if TEST_ZONE_COLLECTIBLES_ENABLED:
 			for collectible in TEST_ZONE_COLLECTIBLES:
-				var pickup = FloatingCollectibleClass.new()
-				pickup.setup(
-					self, Vector2i(int(collectible["gu_x"]), TEST_ZONE_COLLECTIBLE_ROW_Y),
-					String(collectible["frames_dir"]),
-					float(collectible["sprite_scale"]),
-					float(collectible["shadow_scale_factor"]),
-				)
-				add_child(pickup)
+				var board: Node3D = board3d()
+				var pickup := FloatingCollectibleClass.new()
+				if board == null:
+					push_error("[TestZone] no 3D board to put the pickups on")
+					break
+				board.add_child(pickup)
+				if not pickup.setup(self, Vector2i(int(collectible["gu_x"]), TEST_ZONE_COLLECTIBLE_ROW_Y), collectible, board):
+					pickup.queue_free()
+					continue
 				_collectibles.append(pickup)
 			## The first pickup keeps the _floating_collectible alias the
 			## test_collectible capture action and _set_perspective already use.

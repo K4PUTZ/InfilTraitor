@@ -13,9 +13,7 @@
 ## being collected between accesses and REBUILT FROM DISK on the next call —
 ## measured on one real grenade throw: the bomb registry re-read `bombs/*.json`
 ## **4 times**, the material registry re-scanned `materials/*.json` **twice**.
-## They are strong refs now, which is what `_frame_cache` below already does for
-## exactly the same reason (FRAME-MEM-01, and it shipped without bringing the
-## shutdown crash back — the precedent is six lines down from the bug).
+## They are strong refs now.
 
 extends Node
 
@@ -23,7 +21,6 @@ const MaterialRegistryClass = preload("res://godot/scripts/systems/material_regi
 const PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
 const BombRegistryClass = preload("res://godot/scripts/systems/destruction/bomb_registry.gd")
 const WeaponRegistryClass = preload("res://godot/scripts/systems/destruction/weapon_registry.gd")
-const CollectibleFrameCacheClass = preload("res://godot/scripts/systems/collectible_frame_cache.gd")
 const FileMapSourceClass = preload("res://godot/scripts/world/maps/file_map_source.gd")
 
 ## REG-STRONG-01: strong, so a registry is read from disk ONCE per run. See the
@@ -36,7 +33,6 @@ var _weapon_registry = null
 ## the shared frame set be collected the moment no prop happened to hold it, and
 ## the next prop would re-read 480 PNGs from disk — the exact cost this cache
 ## exists to pay once.
-var _frame_cache = null
 var _file_map_source_ref: WeakRef = null
 
 
@@ -114,15 +110,6 @@ func ensure_weapon_registry() -> WeaponRegistryClass:
 ## Get weapon registry (ensure called first, or handle null)
 func get_weapon_registry() -> WeaponRegistryClass:
 	return ensure_weapon_registry()
-
-
-## FRAME-MEM-01: shared baked-frame textures — see CollectibleFrameCache for the
-## measured reason this is shared rather than per-instance.
-func get_frame_cache() -> CollectibleFrameCacheClass:
-	if _frame_cache == null:
-		_frame_cache = CollectibleFrameCacheClass.new()
-		print("[Registries] Collectible frame cache initialized")
-	return _frame_cache
 
 
 ## Ensure the file-backed map source exists and is initialized.

@@ -8,17 +8,17 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**270 scripts · 84876 lines total** (under `godot/scripts/`)
+**268 scripts · 83459 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — agent.gd, agent_sprite.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — circle_gate_probe.gd, dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_billboard3d.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
-- **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
-- **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
+- **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
+- **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
 - **tools/** — actor_decisions_selftest.gd, actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
@@ -815,6 +815,22 @@ extends `Node3D` · 2412 lines
 
 ---
 
+### `object_mesh3d.gd`
+
+`class_name ObjectMesh3D` · extends `Node3D` · 176 lines
+
+`godot/scripts/geometry/object_mesh3d.gd`
+
+> ObjectMesh3D — a free-moving object (a thrown grenade, a spinning pickup, a probe) as a real mesh on the 3D board. RETIRE-2 of R3D-RETIRE-2D. `ACTOR` D65: static props are meshes. This replaces the `Sprite2D` props that reached the board through `PropBillboard3D` from baked frames: the model brings the geometry, OUR material registry the colour (D66, through `PropMesh3D.build_model`), and the board's cell planes the light, so a prop is lit and sooted like the walls around it. THE 2D CONTRACT IS KEPT, THE 2D NODE IS NOT. The thrown grenade's flight is authored in 2D screen space (`ThrowArcOverlay`'s parabola, the landing hop, the roll) and is driven by the controller each frame. Those callers keep handing this node the same two numbers they handed the sprite: `screen_position` (where the object is drawn, lifted off the floor by its flight) and `flight_px` (how far above its own ground point that is). The ground point under it is `screen_position + (0, flight_px)`; `Board3DLive.particle_origin()` turns the pair into the world point, height included, so nothing in the flight is re-derived. The object stands on its base at that point. It is turned about its CENTRE (`set_tumble`) and about the vertical (`yaw`), and its contact shadow lies on the ground under it, sharper and smaller as it nears the floor.
+
+**Constants / tuning**
+- `SHADOW_SHADER` = `"res://godot/shaders/ground_overlay3d.gdshader"`
+- `SHADOW_LIFT` = `0.005`
+- `SHADOW_SEGMENTS` = `12`
+- `COS_ELEVATION` = `0.8660254`
+
+---
+
 ### `particle_math.gd`
 
 `class_name ParticleMath` · extends `RefCounted` · 89 lines
@@ -847,32 +863,6 @@ extends `Node3D` · 2412 lines
 `godot/scripts/geometry/pick_math.gd`
 
 > PickMath — the pure geometry of picking (kept out of `Board3DLive`, which needs the autoloads and so cannot be loaded headless by a selftest).
-
----
-
-### `prop_billboard3d.gd`
-
-`class_name PropBillboard3D` · extends `Node3D` · 223 lines
-
-`godot/scripts/geometry/prop_billboard3d.gd`
-
-> PropBillboard3D — a 2D prop's sprites (a body and, optionally, its ground shadow), drawn in the 3D board. The source is a `Sprite2D` (the grenade, the probe) or a `Node2D` whose children are the sprites (the floating collectible). RENDER3D R3D-4d. The sibling of the (retired, R3D-ACTORS step 5) `ActorBillboard3D` for objects that are not a standing figure: the thrown grenade, which tumbles in the screen plane and flies above its ground point, and the showcase props. A MIRROR again — the prop's own script keeps deciding what is shown and where. THE TWO KINDS OF QUAD, chosen per sprite by the shader its own material uses: - a BODY is a quad PARALLEL TO THE CAMERA. An actor is tall and needs true depth at every height (ActorBillboard3D); a grenade is small, and what it does is rotate in the screen plane, which a camera-parallel quad does exactly. Its centre sits above its ground point by the flight height, so it passes walls by real depth. - a SHADOW is a quad ON THE GROUND. It is a sprite using `object_ground_shadow.gdshader`, or one the prop marks with the `ground_shadow` meta (the collectible's baked shadows: a black `modulate`, no material — its alpha is the strength). The ground plane maps to the screen affinely, so the shadow's three screen corners become three ground points and the quad is exact, squash and all; walls cover it, and it never needs a lift over the floor. HIDING THE 2D. Not `visible = false`: the game uses a prop's `visible` as logic (the throw code hides a detonated grenade with it), so it must keep meaning that. Each sprite's material is swapped for `hidden_2d.gdshader` (its original is kept, and read here for the light uniforms) and put back when this leaves the tree — but only if no newer billboard has taken the sprite over.
-
-**Constants / tuning**
-- `BODY_SHADER` = `"res://godot/shaders/actor_billboard3d.gdshader"`
-- `OUTLINE_SHADER` = `"res://godot/shaders/actor_billboard3d_outline.gdshader"`
-- `SHADOW_SHADER` = `"res://godot/shaders/prop_shadow3d.gdshader"`
-- `HIDDEN_SHADER` = `"res://godot/shaders/hidden_2d.gdshader"`
-- `SHADOW_SHADER_ID` = `"object_ground_shadow"`
-- `COS_ELEVATION` = `0.8660254`
-- `BODY_LIFT` = `0.05`
-- `GROUND_LIFT` = `0.02`
-- `LAYER_EPSILON` = `0.002`
-- `MIRRORED_PARAMS` = `[ "light_dir", "light_intensity", "ambient", "specular_strength", "saturation", "contrast", ]`
-- `OUTLINE_PARAMS` = `["outline_color", "outline_width", "outline_threshold"]`
-
-**Public API**
-- `func setup(board: Node3D, source: Node2D) -> void:`
 
 ---
 
@@ -983,7 +973,7 @@ extends `Node3D` · 2412 lines
 
 ### `prop_mesh3d.gd`
 
-`class_name PropMesh3D` · extends `Node3D` · 102 lines
+`class_name PropMesh3D` · extends `Node3D` · 111 lines
 
 `godot/scripts/geometry/prop_mesh3d.gd`
 
@@ -995,6 +985,7 @@ extends `Node3D` · 2412 lines
 **Public API**
 - `func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color, mesh_half_height: float) -> void:`
 - `func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int, surface_materials: Dictionary = {}, default_material: String = "generic") -> void:`
+- `func build_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, surface_materials: Dictionary = {}, default_material: String = "generic") -> Dictionary:`
 
 ---
 
@@ -1384,24 +1375,6 @@ extends `Node3D` · 2412 lines
 
 ## overlays/
 
-### `agent_probe_prop.gd`
-
-`class_name AgentProbeProp` · extends `Sprite2D` · 318 lines
-
-`godot/scripts/overlays/agent_probe_prop.gd`
-
-> CHARACTER_MASTER_PLAN Part 2 — the agent, standing in the real room. WHAT THIS IS FOR, exactly: the Director asked whether the figure can be put in the scene yet to judge PROPORTIONS and LIGHTING. This is that probe and only that. It does not touch `agent.gd` — the playable agent is still its vector placeholder, and Part 2's definition of done (§10: the placeholder is GONE) is deliberately not claimed here. What this answers is whether the baked figure sits at the right size against real voxel geometry and takes the room's real light, which is the thing that has to be true before the swap is worth doing. A lean sibling of GrenadeProp: same four-frames-per-room-perspective contract, same `flat_normal_relight.gdshader`, same perspective-aware light mapping (ACTOR_MASTER_PLAN D22), same ground-contact anchoring. Three differences, all deliberate: 1. SPRITE_SCALE IS 1.0, AND THAT IS A DERIVATION RATHER THAN A SETTING. Every other prop in this project carries a hand-tuned sprite scale, which is right for a grenade and wrong here: the question being asked IS the figure's size, so a scale tuned until it looked right would answer itself. `agent_frame_bake_spike.gd` bakes at the game's own pixel scale and gates on it — a 0.20 m rise measured 20.000 px against VOXEL_STEP_PX's 20.0 — so one texel is already one world pixel and any scale but 1.0 would BREAK it. 2. THE ANCHOR IS READ FROM THE BAKE, NOT COPIED FROM IT. GrenadeProp hardcodes its `ANCHOR_PX` as a constant transcribed from the bake's printout. That is one number in two places, and it goes stale the first time the canvas size changes. The bake already writes `anchor.json`; this reads it. 3. NO GROUND SHADOW, ON PURPOSE. GrenadeProp fakes one by squashing the sprite's own silhouette on Y — a stated substitution that works because a grenade is a small round object. A 1.9 m standing figure squashed on Y is a long smear, not a footprint, and the bake's own header notes the honest version is a separate top-down pass (which `actor_frame_bake_spike.gd` does and this bake does not). Shipping a knowingly-wrong shadow into a probe about how the figure READS would corrupt the very judgement it exists for. The figure will look unmoored; that is the missing pass, not a placement bug.
-
-**Constants / tuning**
-- `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames/"`
-- `FRAMES_DIR_DEV` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/agent_frames_dev/"`
-- `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
-- `DIRECTIONS` = `["N", "E", "S", "W"]`
-- `YAW_BY_DIRECTION` = `{"N": 0.0, "E": 90.0, "S": 180.0, "W": -90.0}`
-- `SPRITE_SCALE` = `1.0`
-
----
-
 ### `aim_bubble_overlay.gd`
 
 `class_name AimBubbleOverlay` · extends `Node2D` · 820 lines
@@ -1664,15 +1637,30 @@ extends `Node2D` · 166 lines
 
 ### `floating_collectible.gd`
 
-`class_name FloatingCollectible` · extends `Node2D` · 581 lines
+`class_name FloatingCollectible` · extends `ObjectMesh3D` · 75 lines
 
 `godot/scripts/overlays/floating_collectible.gd`
 
-> ACTOR_MASTER_PLAN D21/D17/D14 — floating/rotating collectible, the reusable "simplification" display for any object (Part 6, still otherwise unspecified). First proven with the shotgun; STANDARDIZED (Director, 2026-07-28) to take its bake folder and visual scale per-instance via setup(), so every future collectible reuses this same class instead of a per-object copy. Cycles pre-rendered flat-color + normal-map frame pairs (produced by a bake tool following actor_frame_bake_spike.gd's template) through a per-pixel relighting shader (flat_normal_relight.gdshader) so the sprite shades directionally against the world's real light data — no voxel geometry, no live 3D scene at runtime, matching D16's "simplification" concept exactly. Floats with a vertical sine bob and spins continuously (Director, 2026-07-27). GROUND SHADOW (Director, 2026-07-28, re-tuned twice same day). Uses two dedicated frame_%02d_shadow_{sharp,soft}.png per frame instead of the oblique COLOR frame reused-and-squashed (that shears diagonal silhouettes and rotates their apparent angle) — a true top-down bake (actor_frame_bake_spike.gd), which has no directional foreshortening to shear when squashed. Pinned to floor height independent of the bob. Two Sprite2D layers crossfade by the object's CURRENT bob height (Director's corrected spec, replacing an earlier "wider at bottom" misread): near the floor (bottom of the bob) the shadow is small and SHARP at 80% opacity; at the top of the bob it's bigger and SOFT/diffuse at 50% opacity — real depth needs size AND focus to change together, not size alone. A fixed HOVER_HEIGHT_PX lift keeps a visible gap between object and shadow even at the bob's lowest point. Frame count and rotation speed come from CollectibleBakeConfig (godot/scripts/systems/collectible_bake_config.gd) — the bake tool that produced frames_dir MUST have used the exact same FRAME_COUNT/camera convention, or the frame index math and the light-direction math below both go wrong silently. Light-direction simplification, stated plainly rather than hidden: the game has no real 3D world space — gameplay is a 2D grid + an isometric screen projection. To relight a normal map baked from a fixed 3D camera, this maps grid-x -> bake-world-x and grid-y -> bake-world-z (an explicit, documented choice, not a derived one). PERSPECTIVE-AWARE FIX (Director, 2026-07-28, closes ACTOR_MASTER_PLAN open question #16 / D22): the grid delta between light and object is computed in the room's CURRENT view-space cells, then de-rotated back to base (North) orientation via PerspectiveMapper.cell_to_base() before the grid-x/grid-y -> world-x/world-z mapping is applied — the bake camera's fixed azimuth was always derived against a canonical N view, so feeding it a raw view-space delta from a rotated (E/S/W) perspective silently picked the wrong world direction. Same idea as TestZoneController.on_view_changed(): this object also now tracks its own base_cell and re-derives its view-space gu_cell on every perspective flip (see reposition_for_perspective() below), so gu_cell never goes stale the way it used to before this fix. STATIC FACING MODE (Director, 2026-07-29 — "colocar 4 shotguns estáticas [...] apontando para [os blocos]"). The bake already contains every facing: actor_frame_bake_spike.gd renders FRAME_COUNT yaws of a full turn, so a prop that must POINT somewhere instead of spinning is the same flipbook frozen on the matching frame — no second bake, no second class. Pass a compass edge to setup()'s optional p_static_facing and the object stops spinning, stops bobbing, and holds the frame whose muzzle runs along that edge; everything else (relighting, ground shadow, depth-aware z) is shared with the spinning path byte-for-byte. See FACING_YAW_DEG for how those yaws were measured.
+> A floating, spinning pickup — the reusable "simplification" display for any object (`ACTOR_MASTER_PLAN` D21/D17/D14) — as a real mesh (RETIRE-2 of R3D-RETIRE-2D; D65). It was a `Sprite2D` cycling 120 baked frame pairs (colour + normal map + two shadow layers, ~48 MB of VRAM per pickup) through a per-pixel relight shader and mirrored into the 3D board by `PropBillboard3D`. Now the model IS in the world: coloured by OUR material registry (D66), lit by the board's cell planes, turning about the vertical by real yaw (so there is no frame count, no frame cache and no per-view re-pick), and its ground shadow is one soft disc that follows the bob. Behaviour kept from the sprite (Director, 2026-07-27/28): it hovers `HOVER_HEIGHT_PX` above its floor point, bobs with a sine of `BOB_AMPLITUDE_PX` (raised from 6 because the shadow needs the separation to read) over `BOB_PERIOD_SEC`, and spins at `ROTATION_DEG_PER_SEC`. The ground shadow stays pinned to the floor ("deixar claro onde está posicionada a arma em relação ao chão"): small and sharp (alpha 0.55) at the bottom of the bob, bigger and softer (alpha 0.28) at the top. DROPPED WITH THE FRAMES: the static-facing mode ("4 shotguns pointing at the blocks"), which was a frame frozen on a compass yaw measured from the bake; nothing calls it (the weapon bench places no weapons), and a mesh yaw for a model's muzzle would be a new measurement, not a port. `outline_color` and the saturation/contrast grade belonged to the sprite shader.
 
 **Constants / tuning**
-- `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
-- `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
+- `ROTATION_DEG_PER_SEC` = `36.0`
+- `BOB_AMPLITUDE_PX` = `18.0`
+- `BOB_PERIOD_SEC` = `2.0`
+- `HOVER_HEIGHT_PX` = `60.0`
+- `SHADOW_STRENGTH_AT_BOTTOM` = `0.55`
+- `SHADOW_STRENGTH_AT_TOP` = `0.28`
+- `SHADOW_SOFTNESS_AT_TOP` = `0.6`
+- `SHADOW_SCALE_AT_TOP` = `1.00`
+- `SHADOW_SCALE_AT_BOTTOM` = `0.90`
+
+**Public vars**
+- `var room: Node = null`
+- `var gu_cell: Vector2i = Vector2i.ZERO`
+
+**Public API**
+- `func setup(p_room: Node, p_gu_cell: Vector2i, spec: Dictionary, board: Node3D) -> bool:`
+- `func billboard_height_px() -> float:`
 
 ---
 
@@ -1717,28 +1705,23 @@ extends `Node2D` · 166 lines
 
 ### `grenade_prop.gd`
 
-`class_name GrenadeProp` · extends `Sprite2D` · 374 lines
+`class_name GrenadeProp` · extends `ObjectMesh3D` · 83 lines
 
 `godot/scripts/overlays/grenade_prop.gd`
 
-> ACTOR_MASTER_PLAN objects track — grenade re-bake (2026-07-28). Replaces TestZoneController's old plain Sprite2D (a single frozen-angle bake, bake_voxel_sprite_3d.gd) with a relit prop driven by grenade_frame_bake_spike.gd's real per-direction 3D renders (one flat-color + one view-space-normal-map pair per N/E/S/W compass direction). Deliberately NOT a FloatingCollectible: this is a static ground prop, not a spinning pickup — no continuous rotation timer, no bob. The only thing that changes which of the 4 baked frames is shown is the room's active N/E/S/W perspective (the whole scene visually rotates on a perspective flip; this prop follows by swapping to the frame baked at the matching yaw, same PerspectiveMapper convention floating_collectible.gd's reposition_for_ perspective() uses). Per-pixel relighting (flat_normal_relight.gdshader) and its perspective-aware light-direction math are otherwise identical to FloatingCollectible's fixed version — see that file for the fuller rationale (ACTOR_MASTER_PLAN D22 / open question #16).
+> The grenade on the ground and in flight, as a real mesh (RETIRE-2 of R3D-RETIRE-2D; `ACTOR` D65). It was a `Sprite2D` showing one of four baked frames (`grenade_frames`, a colour + a normal map per compass direction), relit by a per-pixel shader and mirrored into the 3D board by `PropBillboard3D`. Now it IS a node of the 3D board: the Quaternius `Grenade.glb`, coloured by OUR material registry (D66) and lit by the board's cell planes like every prop, so a perspective change needs no frame swap (the camera turns over one world) and the light and soot come from the world, not from a per-prop light search. What the flight code (`TestZoneController`) still drives is unchanged in meaning: `screen_position` and `flight_px` (`ObjectMesh3D`), the roll (`roll()`, about the axis perpendicular to the travel `set_roll_direction()` was given — a roll across the screen shows the whole turn and one toward the camera shows none, now by geometry instead of by a `roll_dir.x` factor) and `visible`, which the throw code uses as logic (a detonated grenade is hidden). GROUND SHADOW (Director, 2026-08-10: *"durante o vôo da granada, a sombra precisa acompanhar no chão, aumentando e diminuindo a opacidade e a difusão, de acordo com a distância vertical. Quando a granada encosta no chão a sombra é muito bem definida e bem menor, por baixo do asset."*). One height drives size, strength and softness, so they cannot disagree about how high the grenade is. `SHADOW_HEIGHT_REF_PX` is where the flight look is fully reached: `ThrowArcOverlay.arc_height_for()` floors every apex at `launch_px * 1.4`, 89.6 px for a standing throw, so even the shortest throw reaches the full effect at its apex and longer ones hold it. The strengths are `FloatingCollectible`'s ratified ground alpha (0.55) and the flight alpha MEASURED on the old shadow (0.35: the softer one read too faint under a body that flies past 90 px).
 
 **Constants / tuning**
-- `FRAMES_DIR` = `"res://ASSETS/ISOMETRIC/source_assets/actor_bakes/grenade_frames/"`
-- `DIRECTIONS` = `["N", "E", "S", "W"]`
-- `SHADER_PATH` = `"res://godot/shaders/flat_normal_relight.gdshader"`
-- `SHADOW_SHADER_PATH` = `"res://godot/shaders/object_ground_shadow.gdshader"`
-- `CollectibleBakeConfig` = `preload("res://godot/scripts/systems/collectible_bake_config.gd")`
-- `ANCHOR_PX` = `Vector2(48.0, 73.15551)`
-- `SPRITE_SCALE` = `0.75`
-- `ELEVATION_DEG` = `30.0`
-- `AZIMUTH_DEG` = `45.0`
+- `MODEL_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/imported_models/quaternius_grenade/Grenade.glb"`
+- `FIT_SIZE` = `Vector3(0.2, 0.2, 0.2)`
+- `SURFACE_MATERIALS` = `{"Green": "painted_metal", "DarkGreen": "painted_metal", "DarkGrey": "steel_dark"}`
+- `SHADOW_HALF_GU` = `0.14`
 - `SHADOW_HEIGHT_REF_PX` = `90.0`
 - `SHADOW_STRENGTH_AT_GROUND` = `0.55`
 - `SHADOW_STRENGTH_IN_FLIGHT` = `0.35`
 - `SHADOW_SCALE_AT_GROUND` = `0.80`
 - `SHADOW_SCALE_IN_FLIGHT` = `1.05`
-- `SHADOW_BLUR_MAX_PX` = `5.0`
+- `SHADOW_SOFTNESS_IN_FLIGHT` = `0.7`
 
 **Public vars**
 - `var room: Node = null`
@@ -1746,11 +1729,12 @@ extends `Node2D` · 166 lines
 - `var base_cell: Vector2i = Vector2i.ZERO`
 
 **Public API**
-- `func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i) -> void:`
+- `func setup(p_room: Node, p_gu_cell: Vector2i, p_base_cell: Vector2i, board: Node3D) -> bool:`
+- `func set_roll_direction(screen_dir: Vector2) -> void:`
+- `func roll(angle: float) -> void:`
 - `func billboard_height_px() -> float:`
 - `func set_flight_height_px(px: float) -> void:`
 - `func update_cell(p_gu_cell: Vector2i) -> void:`
-- `func set_airborne(airborne: bool) -> void:`
 
 ---
 
@@ -2057,23 +2041,22 @@ extends `Node2D` · 117 lines
 
 ### `target_cursor_overlay.gd`
 
-`class_name TargetCursorOverlay` · extends `Node2D` · 106 lines
+`class_name TargetCursorOverlay` · extends `Node3D` · 65 lines
 
 `godot/scripts/overlays/target_cursor_overlay.gd`
 
 **Constants / tuning**
-- `SHADER_PATH` = `"res://godot/shaders/virtual_grenade.gdshader"`
+- `SHADER_PATH` = `"res://godot/shaders/virtual_object3d.gdshader"`
 
 **Public vars**
 - `var mark_color: Color = Color(1.0, 0.0, 0.0, 1.0)`
 - `var overlay_strength: float = 0.5`
-- `var outline_px: float = 2.0`
 - `var hatch_px: float = 2.0`
-- `var hatch_spacing_px: float = 12.0`
+- `var hatch_spacing_px: float = 8.0`
 
 **Public API**
-- `func show_at(center: Vector2, direction: String) -> void:`
 - `func set_board3d(board: Node3D) -> void:`
+- `func show_at(center: Vector2) -> void:`
 - `func clear() -> void:`
 
 ---
@@ -2282,24 +2265,6 @@ extends `Node2D` · 69 lines
 - `FRAME_COUNT` = `120`
 - `ROTATION_DEG_PER_SEC` = `36.0`
 - `FRAME_SWAP_HZ` = `ROTATION_DEG_PER_SEC * FRAME_COUNT / 360.0`
-
----
-
-### `collectible_frame_cache.gd`
-
-`class_name CollectibleFrameCache` · 92 lines
-
-`godot/scripts/systems/collectible_frame_cache.gd`
-
-> CollectibleFrameCache — one copy of a bake's frames, shared by every prop that displays it. FRAME-MEM-01 (2026-07-29). MEASURED problem, not a suspected one: one FloatingCollectible's 480 frame textures cost **48.2 MB of real VRAM** (windowed GPU measurement). Every instance loaded its own, so the four bench shotguns held four identical copies — 241 MB for the five props already in the test zone, and a projected **1447 MB** for the 6-weapons × 4-columns + 6-pickups layout being built next. On a mobile-first project that is not a tuning problem, it is a wall. Two levers, both here: 1. SHARE per bake folder — instances of the same weapon hold one set. 2. Load only the frames a prop can actually SHOW. A spinning collectible cycles all FRAME_COUNT of them; a static prop only ever displays four (one per N/E/S/W perspective), so it has no reason to pay for 120. Frames are cached sparsely and filled in on demand, so a static prop asking for 4 and a collectible later asking for all 120 share the 4 they overlap on. Lives in the Registries autoload rather than in a `static var` on FloatingCollectible: a GDScript static var is owned by the Script resource and is torn down during GDScriptLanguage::finish(), which is exactly the unsafe window FIX-SHUTDOWN-CRASH-01b moved MapCatalog's static state out of. Autoload Nodes are freed during normal SceneTree cleanup instead.
-
-**Constants / tuning**
-- `PASSES` = `["color", "normal", "shadow_sharp", "shadow_soft"]`
-
-**Public API**
-- `func request(frames_dir: String, indices: Array) -> Dictionary:`
-- `func extents_of(frames_dir: String) -> Dictionary:`
-- `func describe() -> String:`
 
 ---
 
@@ -3299,18 +3264,17 @@ extends `Node` · 231 lines
 
 ### `registries_autoload.gd`
 
-extends `Node` · 156 lines
+extends `Node` · 143 lines
 
 `godot/scripts/systems/registries_autoload.gd`
 
-> Registries — Global autoload for MaterialRegistry and PropRegistry Replaces Engine.set_meta() pseudo-singletons with real Godot autoload. This fixes the SIGABRT crash on quit (FIX-SHUTDOWN-CRASH-01) caused by Engine.set_meta()-stored GDScript instances being destroyed during Main::cleanup() after ScriptServer::finish_languages() has begun dismantling the script language. Strategy: the AUTOLOAD is what fixes the crash — a real Node with a real lifetime, torn down before the script language is dismantled. The weak references below were belt-and-braces on top of that. REG-STRONG-01 (2026-08-13, measured): the belt was costing real work every frame it was worn. Nothing else in the game holds a registry, so each one was being collected between accesses and REBUILT FROM DISK on the next call — measured on one real grenade throw: the bomb registry re-read `bombs/*.json` **4 times**, the material registry re-scanned `materials/*.json` **twice**. They are strong refs now, which is what `_frame_cache` below already does for exactly the same reason (FRAME-MEM-01, and it shipped without bringing the shutdown crash back — the precedent is six lines down from the bug).
+> Registries — Global autoload for MaterialRegistry and PropRegistry Replaces Engine.set_meta() pseudo-singletons with real Godot autoload. This fixes the SIGABRT crash on quit (FIX-SHUTDOWN-CRASH-01) caused by Engine.set_meta()-stored GDScript instances being destroyed during Main::cleanup() after ScriptServer::finish_languages() has begun dismantling the script language. Strategy: the AUTOLOAD is what fixes the crash — a real Node with a real lifetime, torn down before the script language is dismantled. The weak references below were belt-and-braces on top of that. REG-STRONG-01 (2026-08-13, measured): the belt was costing real work every frame it was worn. Nothing else in the game holds a registry, so each one was being collected between accesses and REBUILT FROM DISK on the next call — measured on one real grenade throw: the bomb registry re-read `bombs/*.json` **4 times**, the material registry re-scanned `materials/*.json` **twice**. They are strong refs now.
 
 **Constants / tuning**
 - `MaterialRegistryClass` = `preload("res://godot/scripts/systems/material_registry.gd")`
 - `PropRegistryClass` = `preload("res://godot/scripts/systems/prop_registry.gd")`
 - `BombRegistryClass` = `preload("res://godot/scripts/systems/destruction/bomb_registry.gd")`
 - `WeaponRegistryClass` = `preload("res://godot/scripts/systems/destruction/weapon_registry.gd")`
-- `CollectibleFrameCacheClass` = `preload("res://godot/scripts/systems/collectible_frame_cache.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 
 **Public vars**
@@ -3324,7 +3288,6 @@ extends `Node` · 156 lines
 - `func get_bomb_registry() -> BombRegistryClass:`
 - `func ensure_weapon_registry() -> WeaponRegistryClass:`
 - `func get_weapon_registry() -> WeaponRegistryClass:`
-- `func get_frame_cache() -> CollectibleFrameCacheClass:`
 - `func ensure_file_map_source() -> FileMapSourceClass:`
 
 ---
@@ -3343,14 +3306,14 @@ extends `Node` · 156 lines
 
 ### `scenario_runner.gd`
 
-extends `Node` · 503 lines
+extends `Node` · 518 lines
 
 `godot/scripts/systems/scenario_runner.gd`
 
-> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points needs that guard to exist (GLASS has none: the step aborts the scenario) reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the F-keys reach (the dev overlays under a camera yaw need a scenario to switch them on; call it again to flip it back) pick_check <name>                    touch picking in the CURRENT view: the centre of every on-screen cell goes through the real pick (`_screen_to_tile`) and must come back as that cell (or the standing prop that covers it); prints `[PICK-CHECK]` (tools/persistent/pick_gate.py reads it) world_check <name>                   the maths the air overlays (tracer, throw arc, aim dome, lamps) stand on, in the CURRENT view: where `WorldCanvas3D.lift()` puts fixed points (world state, must not move with the view) and whether `screen_axes()` is what the camera really does to a grid step; prints `[WORLD-CHECK]` (tools/persistent/world_gate.py) relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
+> ScenarioRunner — a measured session a finger does not have to perform. TEL-06a (DEVICE_DIAGNOSTICS_MASTER_PLAN §14). The benchmark detonates by calling `detonate_active()` directly, so it never ran the framing, zoom or pan a player does, and DIAG-16 (§10.16) showed those decide the board's cost more than the blast does. A scenario is a list of the steps a human would take, written as DATA and run through the same Room entry points the HUD and the camera gestures reach. FORMAT — one `DevFlags` value, `SCENARIO`, steps separated by `;` (or newlines): SCENARIO=framing portrait; centre agent; zoom 0.5; wait 20; mark z050; quit framing portrait|landscape|desktop   M portrait, M landscape (§13 Q5 (a)), or D zoom <z>                             through the camera's own clamp centre agent | centre <x>,<y>        camera onto the agent or a GU wait <seconds>                       real time frames <n>                           rendered frames mark <label>                         a `scenario.mark` boundary for the analyzer window <W>x<H>                       desktop only: emulate a phone's aspect detonate <index>                     dev grenade #index, camera on it, menu path; waits for the blast to end (TEL-06b) throw <index> <x,y>                  RETIRE-2: dev grenade #index THROWN to the GU x,y through the real throw (the agent's release, the arc, the landing hop, the roll, the fuse, the blast); returns at once, so follow it with `frames`/`capture_at` capture <name>                       the root viewport to captures/<name>.png (the external files dir on Android) capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the next blast — taken <offset> after the Room names <beat> (`Room.blast_beat`). The beat is written with `_` for a space (`SOOT_FADE`); the offset is frames (`2f`) or seconds of process delta (`1.5s`) — the clock the consequence channel and the embers age on, so a 2D and a 3D run at very different frame times photograph the same moment of the effect. Arm it BEFORE `detonate`, which returns only once the blast is over. probe <name>                         RENDER3D R3D-0: a `BoardProbe` dump of the voxel state to probes/<name>.txt (same dir as capture); compare with board_probe.py alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count> `Voxel` objects / packed int32 cells / bytes until quit, for --mem-poll to read probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the shadow `VoxelStore` (`VOXEL_STORE=1`) shoot <guard index>                  R3D-1b gate: a shot through the menu entry points needs that guard to exist (GLASS has none: the step aborts the scenario) reload                               R3D-1b gate: F2's `load_map()` on the current map save_restore                         R3D-1b gate: SaveState capture → reload → restore perspective N|E|S|W                  R3D-1b gate: a rotation through `_set_perspective()` view_mode dev|light|heat|numbers|ruler   flips one analysis aid, through the same toggles the HUD and the F-keys reach (the dev overlays under a camera yaw need a scenario to switch them on; call it again to flip it back) pick_check <name>                    touch picking in the CURRENT view: the centre of every on-screen cell goes through the real pick (`_screen_to_tile`) and must come back as that cell (or the standing prop that covers it); prints `[PICK-CHECK]` (tools/persistent/pick_gate.py reads it) world_check <name>                   the maths the air overlays (tracer, throw arc, aim dome, lamps) stand on, in the CURRENT view: where `WorldCanvas3D.lift()` puts fixed points (world state, must not move with the view) and whether `screen_axes()` is what the camera really does to a grid step; prints `[WORLD-CHECK]` (tools/persistent/world_gate.py) relight                              R3D-13: the map-wide light repaint on the CURRENT world, in place — what a rotation or a restore runs, without either (a probe before and after names what the incremental light left different from a full relight) passages <label>                     RENDER3D R3D-1c: every edge's passage class, as a count and a digest occ_bench <x,y> <x,y> <reps>         R3D-7 instrument: put the agent on the two cells in turn <reps> times through the real occlusion path (`_recompute_occlusion`), one frame apart, and print the set / 3D cutaway / total cost place_guard <i> <x,y>                R3D-7: guard <i> onto a cell (position only), vision refreshed quit                                end the process (the harness waits on it) EVERY STEP IS ON THE TIMELINE as `scenario.step`, which is what lets one analyzer cut windows out of a scripted run and a hand run the same way. ⚠️ LOUD ON A BAD SCENARIO. `parse()` rejects the WHOLE scenario on the first bad step rather than skipping it. A skipped `zoom` would leave every later window measuring the previous zoom under a mark that names a different one — a table that is wrong and looks right. TEL-06b adds the action steps (aim, confirm, end turn) once the analyzer exists.
 
 **Constants / tuning**
-- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, }`
+- `ARITY` = `{ "framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1, "mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0, "probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, }`
 - `VIEW_MODES` = `["dev", "light", "heat", "numbers", "ruler"]`
 - `FRAMINGS` = `["portrait", "landscape", "desktop"]`
 - `ALLOC_KINDS` = `["objects", "packed", "bytes"]`
@@ -4950,7 +4913,7 @@ extends `SceneTree` · 264 lines
 
 ### `scenario_selftest.gd`
 
-extends `Node` · 138 lines
+extends `Node` · 142 lines
 
 `godot/scripts/tools/scenario_selftest.gd`
 
@@ -5582,7 +5545,7 @@ extends `Node2D` · 65 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1602 lines
+`class_name TestZoneController` · 1558 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5591,7 +5554,6 @@ extends `Node2D` · 65 lines
 **Constants / tuning**
 - `BlastCalculatorClass` = `preload("res://godot/scripts/systems/destruction/blast_calculator.gd")`
 - `GrenadePropClass` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
-- `AgentProbePropClass` = `preload("res://godot/scripts/overlays/agent_probe_prop.gd")`
 - `DetonationPlanBuilderClass` = `preload("res://godot/scripts/systems/destruction/detonation_plan_builder.gd")`
 - `DetonationPresenterClass` = `preload("res://godot/scripts/systems/destruction/detonation_presenter.gd")`
 - `DEFAULT_TARGET_OFFSET` = `Vector2i(3, 0)`
@@ -5851,7 +5813,7 @@ extends `Node2D` · 65 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11296 lines
+extends `Node2D` · 11203 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5893,10 +5855,6 @@ extends `Node2D` · 11296 lines
 - `Board3DLiveClass` = `preload("res://godot/scripts/geometry/board3d_live.gd")`
 - `ActorMesh3DClass` = `preload("res://godot/scripts/geometry/actor_mesh3d.gd")`
 - `VisionCone3DClass` = `preload("res://godot/scripts/geometry/vision_cone3d.gd")`
-- `PropBillboard3DClass` = `preload("res://godot/scripts/geometry/prop_billboard3d.gd")`
-- `GrenadePropRef` = `preload("res://godot/scripts/overlays/grenade_prop.gd")`
-- `AgentProbePropRef` = `preload("res://godot/scripts/overlays/agent_probe_prop.gd")`
-- `FloatingCollectibleRef` = `preload("res://godot/scripts/overlays/floating_collectible.gd")`
 - `BoardProbeClass` = `preload("res://godot/scripts/systems/board_probe.gd")`
 - `WorldRenderScaleClass` = `preload("res://godot/scripts/systems/world_render_scale.gd")`
 - `TargetCursorOverlayClass` = `preload("res://godot/scripts/overlays/target_cursor_overlay.gd")`

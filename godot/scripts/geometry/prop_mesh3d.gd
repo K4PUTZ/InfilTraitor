@@ -53,12 +53,21 @@ func setup(board: Node3D, mesh: Mesh, cell: Vector2i, level: int, albedo: Color,
 ## the soot reach them exactly as they reach the box.
 func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3, cell: Vector2i, level: int,
 		surface_materials: Dictionary = {}, default_material: String = "generic") -> void:
-	_board = board
-	var model: Dictionary = PropModelFit.fit(path, rotation_deg, fit_size)
-	if not bool(model["ok"]):
+	if build_model(board, path, rotation_deg, fit_size, surface_materials, default_material).is_empty():
 		return
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var ground_level: int = board.call("ground_level")
+	position = Vector3((float(cell.x) + 0.5) * unit, float(level + 1 - ground_level) * unit, (float(cell.y) + 0.5) * unit)
+
+
+## The model's parts and board-lit materials, NOT placed: a node that moves freely (a thrown grenade, a spinning pickup) positions
+## itself. Returns the fitted model (`size`, standing on local Y = 0, centred on X/Z), or an empty dictionary when it did not load.
+func build_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: Vector3,
+		surface_materials: Dictionary = {}, default_material: String = "generic") -> Dictionary:
+	_board = board
+	var model: Dictionary = PropModelFit.fit(path, rotation_deg, fit_size)
+	if not bool(model["ok"]):
+		return {}
 	var surface_names: Array = model["surfaces"]
 	var surface_index: int = 0
 	for part: Dictionary in model["parts"]:
@@ -75,7 +84,7 @@ func setup_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: V
 			_extra_mats.append(m)
 			board.call("register_prop_light_material", m)
 		add_child(node)
-	position = Vector3((float(cell.x) + 0.5) * unit, float(level + 1 - ground_level) * unit, (float(cell.y) + 0.5) * unit)
+	return model
 
 
 ## One board-lit material for a registry material id (through its fallback chain): its colour, and its facade when it has one.

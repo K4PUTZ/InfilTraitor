@@ -130,6 +130,12 @@ func set_shadow(strength: float, softness: float, scale: float) -> void:
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 
 
+## Recolour the painted surfaces (`material@paint` in the surface map) with paint `paint_id`.
+func repaint(paint_id: String) -> void:
+	if _prop != null:
+		_prop.repaint(paint_id)
+
+
 ## Draw every surface with `material` instead of the registry materials (the virtual grenade's "planned" look).
 func set_override_material(material: Material) -> void:
 	if _prop == null:

@@ -25,7 +25,7 @@ const MODEL_PATH := "res://ASSETS/ISOMETRIC/source_assets/imported_models/quater
 ## The model fitted into this box (world units, uniform): a handheld at twice its real size reads (0.1 GU of grenade).
 const FIT_SIZE := Vector3(0.2, 0.2, 0.2)
 ## Surface (as authored in the model) -> OUR registry material.
-const SURFACE_MATERIALS := {"Green": "painted_metal", "DarkGreen": "painted_metal", "DarkGrey": "steel_dark"}
+const SURFACE_MATERIALS := {"Green": "painted_metal@olive_drab", "DarkGreen": "painted_metal@olive_drab", "DarkGrey": "steel_dark"}
 const SHADOW_HALF_GU := 0.14
 const SHADOW_HEIGHT_REF_PX := 90.0
 const SHADOW_STRENGTH_AT_GROUND := 0.55

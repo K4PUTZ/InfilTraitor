@@ -18,6 +18,8 @@ const SHADER_PATH := "res://godot/shaders/prop_mesh3d.gdshader"
 var _board: Node3D = null
 var _mat: ShaderMaterial = null
 var _extra_mats: Array[ShaderMaterial] = []
+## The materials whose surface was declared `material@paint`: the ones `repaint()` recolours.
+var _painted_mats: Array[ShaderMaterial] = []
 var _mesh_node: MeshInstance3D = null
 
 
@@ -79,12 +81,23 @@ func build_model(board: Node3D, path: String, rotation_deg: Vector3, fit_size: V
 		for s in range(mesh.get_surface_count()):
 			var authored: String = String(surface_names[surface_index]) if surface_index < surface_names.size() else ""
 			surface_index += 1
-			var m := _material_for(String(surface_materials.get(authored, default_material)))
+			var spec: Dictionary = PaintPalette.split_spec(String(surface_materials.get(authored, default_material)))
+			var m := _material_for(String(spec["material"]))
+			if not String(spec["paint"]).is_empty():
+				m.set_shader_parameter("albedo", PaintPalette.color_of(String(spec["paint"])))
+				_painted_mats.append(m)
 			node.set_surface_override_material(s, m)
 			_extra_mats.append(m)
 			board.call("register_prop_light_material", m)
 		add_child(node)
 	return model
+
+
+## Recolour every painted surface (`material@paint`) with paint `paint_id`: one shader parameter write each.
+func repaint(paint_id: String) -> void:
+	var colour: Color = PaintPalette.color_of(paint_id)
+	for m in _painted_mats:
+		m.set_shader_parameter("albedo", colour)
 
 
 ## One board-lit material for a registry material id (through its fallback chain): its colour, and its facade when it has one.

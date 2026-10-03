@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**272 scripts · 85482 lines total** (under `godot/scripts/`)
+**270 scripts · 84876 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -19,9 +19,9 @@
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — agent_probe_prop.gd, aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, circle_field.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, guard_noise_indicator.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shard_field.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — board_probe.gd, cell_plane_store.gd, collectible_bake_config.gd, collectible_frame_cache.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, build_tileset.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
+- **tools/** — actor_decisions_selftest.gd, actor_frame_bake_spike.gd, actor_part0_spike.gd, agent_frame_bake_spike.gd, bake_voxel_sprite_3d.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, grenade_collectible_bake_spike.gd, grenade_frame_bake_spike.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, s1_normal_compression_spike.gd, s2_resident_memory_probe.gd, save_state_selftest.gd, scenario_selftest.gd, shotgun_preview_spike.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd, weapon_frames_bake.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
-- **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_registry.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
+- **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, weapon_bench_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
 ---
 
@@ -303,7 +303,7 @@ extends `Node` · 285 lines
 
 ### `lighting_controller.gd`
 
-extends `Node` · 265 lines
+extends `Node` · 259 lines
 
 `godot/scripts/controllers/lighting_controller.gd`
 
@@ -774,7 +774,7 @@ extends `Node3D` · 2412 lines
 
 `godot/scripts/geometry/ground_grid.gd`
 
-> GroundGrid — the game's isometric cell lattice as closed-form maths, with no TileMapLayer in it. RENDER3D R3D-5a. Until now every "which cell is here" and "where is this cell" went through `floor_layer.map_to_local()` / `local_to_map()`: a floor TileMapLayer was being asked a question that has one answer, fixed by the TileSet's 256×128 diamond. That kept a 2D tilemap in the middle of INPUT and of every actor's placement, which is what R3D-5 exists to remove. This is the same lattice, measured rather than assumed (2026-09-18, `tileset_blocks.tres`, tile_shape ISOMETRIC, layout DIAMOND_DOWN): map_to_local(c) = ((c.x − c.y) · 128 + 128, (c.x + c.y) · 64 + 64) and `ground_grid_selftest` asserts it against a REAL TileMapLayer on the game's own TileSet, for a range of cells and for random points, so this can never quietly disagree with the tilemap it replaces. Coordinates here are FLOOR-LAYER-LOCAL, exactly as `map_to_local()` returns them; the caller applies the layer's transform and the room's `VISUAL_GRID_OFFSET`, as it always did.
+> GroundGrid — the game's isometric cell lattice as closed-form maths, with no TileMapLayer in it. RENDER3D R3D-5a. Until now every "which cell is here" and "where is this cell" went through `floor_layer.map_to_local()` / `local_to_map()`: a floor TileMapLayer was being asked a question that has one answer, fixed by the TileSet's 256×128 diamond. That kept a 2D tilemap in the middle of INPUT and of every actor's placement, which is what R3D-5 exists to remove. This is the same lattice, measured rather than assumed (2026-09-18, `tileset_blocks.tres` (deleted at R3D-RETIRE-2D), tile_shape ISOMETRIC, layout DIAMOND_DOWN): map_to_local(c) = ((c.x − c.y) · 128 + 128, (c.x + c.y) · 64 + 64) and `ground_grid_selftest` asserts it against a REAL TileMapLayer on the game's own TileSet, for a range of cells and for random points, so this can never quietly disagree with the tilemap it replaces. Coordinates here are FLOOR-LAYER-LOCAL, exactly as `map_to_local()` returns them; the caller applies the layer's transform and the room's `VISUAL_GRID_OFFSET`, as it always did.
 
 **Constants / tuning**
 - `HALF_W` = `128.0`
@@ -3838,7 +3838,7 @@ extends `SceneTree` · 2423 lines
 
 ### `blast_purity_selftest.gd`
 
-extends `SceneTree` · 681 lines
+extends `SceneTree` · 675 lines
 
 `godot/scripts/tools/blast_purity_selftest.gd`
 
@@ -3899,29 +3899,9 @@ extends `SceneTree` · 203 lines
 
 ---
 
-### `build_tileset.gd`
-
-extends `SceneTree` · 340 lines
-
-`godot/scripts/tools/build_tileset.gd`
-
-**Constants / tuning**
-- `SOURCE_PATH` = `"res://ASSETS/ISOMETRIC/source_assets/generated/"`
-- `TILESET_OUT` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
-- `REGISTRY_OUT` = `"res://godot/scripts/world/tile_registry.gd"`
-- `CELL_SIZE` = `Vector2i(256, 128)`
-- `SPRITE_OFFSET` = `Vector2i(0, -384)`
-- `EDGE_VISUAL_OFFSETS` = `{ "N": Vector2i(64, -32), "S": Vector2i(-64, 32), "E": Vector2i(64, 32), "W": Vector2i(-64, -32), ## Diagonal wall faces (NE/NW/SE/SW): straddle the boundary at half a ## diamond-step. Values calibrated in commit 924dbf0. "NE": Vector2i(-16, -8), "NW": Vector2i(-16,  8), "SE": Vector2i( 16, -8), "SW": Vector2i( 16,  8), }`
-- `CORNER_VISUAL_OFFSETS` = `{ "NE": Vector2i(-32, -8), "NW": Vector2i(  0, 16), "SE": Vector2i(  0,-16), "SW": Vector2i( 32, -8), }`
-- `TILE_PROPS` = `{ # Floor "floor":                  {walkable=true,  cover=false, interactive=false}, "floorHalf":              {walkable=true,  cover=false, interactive=false}, "floorQuarter":           {walkable=true,  cover=false, interactive=false}, # Solid blocks "block":                  {walkable=false, cover=true,  interactive=false}, "blockHalf":              {walkable=false, cover=true,  interactive=false}, "blockAngle":             {walkable=false, cover=true,  interactive=false}, "blockQuarter":           {walkable=false, cover=true,  interactive=false}, # Walls "wall":                   {walkable=false, cover=true,  interactive=false}, "wallHalf":               {walkable=false, cover=true,  interactive=false}, "wallCorner":             {walkable=false, cover=true,  interactive=false}, "wallCornerHalf":         {walkable=false, cover=true,  interactive=false}, "wallCurve":              {walkable=false, cover=true,  interactive=false}, "wallCurveHalf":          {walkable=false, cover=true,  interactive=false}, "wallBattlement":         {walkable=false, cover=true,  interactive=false}, # Windows "window":                 {walkable=false, cover=false, interactive=false}, "windowLeft":             {walkable=false, cover=false, interactive=false}, "windowMiddle":           {walkable=false, cover=false, interactive=false}, "windowRight":            {walkable=false, cover=false, interactive=false}, # Doors / passages "doorClosed":             {walkable=false, cover=false, interactive=true}, "doorOpen":               {walkable=true,  cover=false, interactive=true}, "doorway":                {walkable=true,  cover=false, interactive=false}, "doorwayBottom":          {walkable=true,  cover=false, interactive=false}, "doorwayCenter":          {walkable=true,  cover=false, interactive=false}, "doorwayLeft":            {walkable=true,  cover=false, interactive=false}, "doorwayLeftBottom":      {walkable=true,  cover=false, interactive=false}, "doorwayMiddle":          {walkable=true,  cover=false, interactive=false}, "doorwayMiddleBottom":    {walkable=true,  cover=false, interactive=false}, "doorwayRight":           {walkable=true,  cover=false, interactive=false}, "doorwayRightBottom":     {walkable=true,  cover=false, interactive=false}, # Cover props "crate":                  {walkable=false, cover=true,  interactive=true}, # Structural details "column":                 {walkable=false, cover=false, interactive=false}, "columnBlocks":           {walkable=false, cover=false, interactive=false}, "columnCorner":           {walkable=false, cover=false, interactive=false}, "pole":                   {walkable=false, cover=false, interactive=false}, "poleGroup":              {walkable=false, cover=false, interactive=false}, "fence":                  {walkable=false, cover=false, interactive=false}, # Slopes / ramps "slope":                  {walkable=true,  cover=false, interactive=false}, "slopeHalf":              {walkable=true,  cover=false, interactive=false}, "slopeQuarter":           {walkable=true,  cover=false, interactive=false}, "slopeSmall":             {walkable=true,  cover=false, interactive=false}, "sloperCornerInner":      {walkable=true,  cover=false, interactive=false}, "sloperCornerOuter":      {walkable=true,  cover=false, interactive=false}, # Stairs "stairs":                 {walkable=true,  cover=false, interactive=false}, "stairsCornerInner":      {walkable=true,  cover=false, interactive=false}, "stairsCornerOuter":      {walkable=true,  cover=false, interactive=false}, "stairsOpen":             {walkable=true,  cover=false, interactive=false}, "stairsOpenCornerInner":  {walkable=true,  cover=false, interactive=false}, "stairsOpenCornerOuter":  {walkable=true,  cover=false, interactive=false}, "steps":                  {walkable=true,  cover=false, interactive=false}, "ladder":                 {walkable=true,  cover=false, interactive=true}, # Slabs / platforms "slab":                   {walkable=true,  cover=false, interactive=false}, "slabHalf":               {walkable=true,  cover=false, interactive=false}, "slabAngle":              {walkable=true,  cover=false, interactive=false}, "slabQuarter":            {walkable=true,  cover=false, interactive=false}, # Switches / triggers "switchFloorOff":         {walkable=true,  cover=false, interactive=true}, "switchFloorOn":          {walkable=true,  cover=false, interactive=true}, "switchWallOff":          {walkable=false, cover=false, interactive=true}, "switchWallOn":           {walkable=false, cover=false, interactive=true}, # Direction markers "arrow":                  {walkable=true,  cover=false, interactive=false}, "arrowWall":              {walkable=false, cover=false, interactive=false}, }`
-- `EDGE_ALIGNED_PREFIXES` = `[ "arrowWall", "door", "fence", "switchWall", "wall", "window", ]`
-- `EDGE_ALIGNED_EXCLUSIONS` = `[ "wallCorner", "wallCornerHalf", "wallCurve", "wallCurveHalf", "wallBattlement", ]`
-
----
-
 ### `detonation_plan_selftest.gd`
 
-extends `SceneTree` · 1004 lines
+extends `SceneTree` · 998 lines
 
 `godot/scripts/tools/detonation_plan_selftest.gd`
 
@@ -4018,7 +3998,7 @@ extends `SceneTree` · 151 lines
 
 ### `floor_integration_selftest.gd`
 
-extends `SceneTree` · 245 lines
+extends `SceneTree` · 232 lines
 
 `godot/scripts/tools/floor_integration_selftest.gd`
 
@@ -4042,7 +4022,7 @@ extends `SceneTree` · 245 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 139 lines
+extends `SceneTree` · 133 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
@@ -4337,15 +4317,14 @@ extends `SceneTree` · 70 lines
 
 ### `ground_grid_selftest.gd`
 
-extends `SceneTree` · 108 lines
+extends `SceneTree` · 117 lines
 
 `godot/scripts/tools/ground_grid_selftest.gd`
 
-> GroundGrid selftest — RENDER3D R3D-5a. Run: python3 tools/persistent/run_selftests.py --only ground_grid_selftest The claim: `GroundGrid` IS the lattice the floor TileMapLayer gives, so replacing the layer's `map_to_local()` with it in input and in every actor's placement changes nothing. Asserted against a real TileMapLayer on the game's own TileSet — not against the formula's own output — for a range of cells (negative ones included) and for random points, including the exact algorithm `Room` uses to pick a tile under a click (`_screen_to_tile`).
+> GroundGrid selftest — RENDER3D R3D-5a. Run: python3 tools/persistent/run_selftests.py --only ground_grid_selftest The claim: `GroundGrid` IS the lattice the floor TileMapLayer gives, so replacing the layer's `map_to_local()` with it in input and in every actor's placement changes nothing. Asserted against a real TileMapLayer on a TileSet with the game's own lattice settings — not against the formula's own output — for a range of cells (negative ones included) and for random points, including the exact algorithm `Room` uses to pick a tile under a click (`_screen_to_tile`).
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
-- `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `OFFSET` = `Vector2(-37.0, 21.0)`
 
 **Public vars**
@@ -4426,14 +4405,13 @@ extends `SceneTree` · 273 lines
 
 ### `iso_projection_selftest.gd`
 
-extends `SceneTree` · 447 lines
+extends `SceneTree` · 445 lines
 
 `godot/scripts/tools/iso_projection_selftest.gd`
 
-> IsoProjection selftest — the aiming overlays' geometry, checked against the REAL TileSet instead of against itself. Run: python3 tools/persistent/run_selftests.py --only iso_projection_selftest Why this file exists. T-BUBBLE's first pass sized the aim bubble with `max_ring * 112.0 * 3.0`, drew it as a circle over a 2:1 perimeter ellipse, and clamped the cursor with a third shape again. Nothing was wrong in a way a compiler could see; it was wrong in a way only the screen showed. Every claim IsoProjection makes is therefore asserted here, and test [1] asserts the two horizontal basis vectors against `tileset_blocks.tres` itself — a self-comparison would pass no matter what the constants said.
+> IsoProjection selftest — the aiming overlays' geometry, checked against the REAL TileSet instead of against itself. Run: python3 tools/persistent/run_selftests.py --only iso_projection_selftest Why this file exists. T-BUBBLE's first pass sized the aim bubble with `max_ring * 112.0 * 3.0`, drew it as a circle over a 2:1 perimeter ellipse, and clamped the cursor with a third shape again. Nothing was wrong in a way a compiler could see; it was wrong in a way only the screen showed. Every claim IsoProjection makes is therefore asserted here, and test [1] asserts the two horizontal basis vectors against a real `TileSet` (isometric diamond-down, 256x128) itself — a self-comparison would pass no matter what the constants said.
 
 **Constants / tuning**
-- `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `EPS` = `0.0001`
 
 **Public vars**
@@ -4717,7 +4695,7 @@ extends `SceneTree` · 88 lines
 
 ### `prop_01_selftest.gd`
 
-extends `Node` · 331 lines
+extends `Node` · 318 lines
 
 `godot/scripts/tools/prop_01_selftest.gd`
 
@@ -4823,7 +4801,7 @@ extends `SceneTree` · 527 lines
 
 ### `roof_bake_selftest.gd`
 
-extends `SceneTree` · 135 lines
+extends `SceneTree` · 129 lines
 
 `godot/scripts/tools/roof_bake_selftest.gd`
 
@@ -4848,7 +4826,7 @@ extends `SceneTree` · 135 lines
 
 ### `roof_entity_selftest.gd`
 
-extends `SceneTree` · 158 lines
+extends `SceneTree` · 146 lines
 
 `godot/scripts/tools/roof_entity_selftest.gd`
 
@@ -4866,7 +4844,7 @@ extends `SceneTree` · 158 lines
 
 ### `roof_integration_selftest.gd`
 
-extends `SceneTree` · 275 lines
+extends `SceneTree` · 268 lines
 
 `godot/scripts/tools/roof_integration_selftest.gd`
 
@@ -5045,7 +5023,7 @@ extends `SceneTree` · 119 lines
 
 ### `slice_geometry_selftest.gd`
 
-extends `SceneTree` · 256 lines
+extends `SceneTree` · 210 lines
 
 `godot/scripts/tools/slice_geometry_selftest.gd`
 
@@ -5490,7 +5468,7 @@ extends `Node2D` · 65 lines
 
 ### `room_builder.gd`
 
-`class_name RoomBuilder` · 603 lines
+`class_name RoomBuilder` · 510 lines
 
 `godot/scripts/world/builders/room_builder.gd`
 
@@ -5501,16 +5479,12 @@ extends `Node2D` · 65 lines
 - `var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")`
 - `var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")`
 - `var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")`
-- `var structure_layer: TileMapLayer = null`
 
 **Public API**
-- `func setup(structure: TileMapLayer, wall_tileset: TileSet) -> void:`
 - `func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:`
 - `func get_blocked_cells() -> Dictionary:`
-- `func get_prop_heights() -> Dictionary:`
 - `func get_exit_cells() -> Array[Vector2i]:`
 - `func get_light_sources() -> Array:`
-- `func build_registry(ts: TileSet) -> void:`
 - `func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:`
 
 ---
@@ -5806,7 +5780,7 @@ extends `Node2D` · 65 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 459 lines
+`class_name MapCompiler` · extends `RefCounted` · 435 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -5877,7 +5851,7 @@ extends `Node2D` · 65 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11319 lines
+extends `Node2D` · 11296 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5942,25 +5916,11 @@ extends `Node2D` · 11319 lines
 - `VoxelBoardClass` = `preload("res://godot/scripts/geometry/voxel_board.gd")`
 - `OcclusionSetClass` = `preload("res://godot/scripts/systems/occlusion_set.gd")`
 - `OcclusionOverlayClass` = `preload("res://godot/scripts/overlays/occlusion_overlay.gd")`
-- `TILESET_PATH` = `"res://godot/resources/tilesets/tileset_blocks.tres"`
 - `INVALID_CELL` = `Vector2i(-9999, -9999)`
 - `VISUAL_GRID_OFFSET` = `Vector2(0.0, 512.0)`
 - `WALL_BASE_Z_INDEX` = `10`
 - `WALL_FLOOR_STEP_PX` = `158.0`
 - `VOXEL_STEP_PX` = `20.0`
-
----
-
-### `tile_registry.gd`
-
-`class_name TileRegistry` · extends `RefCounted` · 12 lines
-
-`godot/scripts/world/tile_registry.gd`
-
-> AUTO-GENERATED by godot/scripts/tools/build_tileset.gd Re-run the builder whenever tiles are added or renamed. Maps tile_name strings to TileSet source_ids.
-
-**Constants / tuning**
-- `TILES` = `{ "floor_NE": 0, "floor_NW": 1, "floor_SE": 2, "floor_SW": 3, }`
 
 ---
 

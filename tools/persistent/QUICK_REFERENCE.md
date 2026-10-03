@@ -122,7 +122,7 @@ not knowing them:
 | 5 / 6 / 7 | AP perimeter / path preview / selection |
 | 8 | dev cell-number labels |
 | 9 | occlusion wireframe panels (their level's z − 1) |
-| 10 + L | voxel level L — walls, blocks, roofs. Also `structure_layer`, `enemies_root` at 10 |
+| 10 + L | voxel level L — walls, blocks, roofs. Also `enemies_root` at 10 |
 | 24 / 25 / 27 / 28 | LIGHT-vision overlays: height / temporal / light / shadow |
 | `max_voxel_z` + 1 | agent (OCC-03; props must stay below this) |
 | +2 / +3 / +4 | light rays / ceiling props / embers |

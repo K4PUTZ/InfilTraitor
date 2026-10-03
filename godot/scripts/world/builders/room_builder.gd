@@ -10,34 +10,19 @@ var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
 
 var _room_size: Vector2i = Vector2i.ZERO
-var _wall_tileset: TileSet = null
-var _prop_stack_layers: Array[TileMapLayer] = []
 var _blocked_cells: Dictionary = {}
-var _prop_heights: Dictionary = {}
 var _prop_cover: Dictionary = {}
 var _exit_cells: Array[Vector2i] = []
 var _current_light_sources: Array = []
-var _tile_ids: Dictionary = {}
-
-# References to room layers
-var structure_layer: TileMapLayer = null
 
 
 func _init(p_room: Node) -> void:
 	room = p_room
 
 
-func setup(structure: TileMapLayer, wall_tileset: TileSet) -> void:
-	structure_layer = structure
-	_wall_tileset = wall_tileset
-
-
 func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	MemStage.mark("11 room build starts")
 	_room_size = room_size
-	## R3D-11: nothing reads the floor layer any more (gameplay asks `GroundGrid.has_cell`), so nothing writes it either.
-	structure_layer.clear()
-
 	## Voxel render plane: wall/block descriptors become stacked voxel presence.
 	## The old wall-storey layers remain as a fallback path, but the active render
 	## now comes from the edge seam's voxel geometry integration.
@@ -67,8 +52,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## can no longer happen.
 	room._slab_registry = SlabRegistry.new()
 
-	## room._voxel_board.clear() also moved here, unconditional, mirroring why
-	## structure_layer is cleared unconditionally above: a room that
+	## room._voxel_board.clear() also moved here, unconditional: a room that
 	## loses its edges on rebuild must not keep stale wall geometry from a
 	## previous build. register_geometry() below (walls) and register_slab() (floor, next)
 	## only ADD cells on top of a cleared renderer — neither touches state the
@@ -353,33 +337,11 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	for floor_gu in floor_slabs_by_gu:
 		room._voxel_board.register_slab(floor_slabs_by_gu[floor_gu])
 
-	## Props: base sprite on structure_layer; stacks render extra sprites on prop-stack
-	## layers offset up by the crate body step (visual stacking). The taller stack also
-	## drives a longer real shadow via _prop_heights (see _cache_blocked_cells).
-	var max_stack := 1
-	for structure_entry in layout.get("structure_tiles", []):
-		max_stack = maxi(max_stack, int(structure_entry.get("stack", 1)))
-	_clear_prop_stack_layers()
-	_ensure_prop_stack_layers(maxi(0, max_stack - 1))
-	for stack_layer in _prop_stack_layers:
-		stack_layer.clear()
-	for structure_entry in layout.get("structure_tiles", []):
-		var cell: Vector2i = structure_entry.get("cell", INVALID_CELL)
-		var tile_name := String(structure_entry.get("tile_name", ""))
-		_place(cell, tile_name, structure_layer)
-		var stack: int = maxi(1, int(structure_entry.get("stack", 1)))
-		for level in range(1, stack):
-			_place(cell, tile_name, _prop_stack_layers[level - 1])
-
 	_cache_blocked_cells(layout)
 
 
 func get_blocked_cells() -> Dictionary:
 	return _blocked_cells
-
-
-func get_prop_heights() -> Dictionary:
-	return _prop_heights
 
 
 func get_exit_cells() -> Array[Vector2i]:
@@ -388,18 +350,6 @@ func get_exit_cells() -> Array[Vector2i]:
 
 func get_light_sources() -> Array:
 	return _current_light_sources
-
-
-func build_registry(ts: TileSet) -> void:
-	for i in ts.get_source_count():
-		var sid := ts.get_source_id(i)
-		var src := ts.get_source(sid) as TileSetAtlasSource
-		if src == null:
-			continue
-		var td := src.get_tile_data(Vector2i(0, 0), 0)
-		if td:
-			_tile_ids[td.get_custom_data("tile_name")] = sid
-	print("[Room] %d tiles registered." % _tile_ids.size())
 
 
 func build_navigation_blocked_cells(guards: Array) -> Array[Vector2i]:
@@ -440,45 +390,6 @@ static func _apply_junction_overrides(junction_columns: Array, layout: Dictionar
 
 
 ## Private helpers
-
-## Place a named tile at cell. LOUD-FAILS on an unknown name (bake invariant B6).
-##
-## This used to be a silent no-op: `if sid != -1: set_cell(...)`, with the docstring
-## cheerfully calling it "silent no-op for unknown names". That is the same failure mode
-## as Image.blit_rect silently clipping an out-of-range source rect — the bug that cost a
-## week on the serrated junction columns. A tile that does not render, and says nothing
-## about it, is the most expensive kind of bug this project has met.
-##
-## It went from latent to live on 2026-07-12: the sprite purge cut tile_registry from 32
-## names to 8 (4 floors + 4 voxel atoms). Any map still asking for "crate_SE" or "wall_NW"
-## would have drawn nothing, in silence. Now it says so.
-func _place(cell: Vector2i, tile_name: String, layer: TileMapLayer) -> void:
-	var sid: int = _tile_ids.get(tile_name, -1)
-	if sid == -1:
-		push_error("[RoomBuilder] Unknown tile '%s' at %s — not in tile_registry.gd. Scenery is voxels now; only floor_* and voxel_* are sprites. See docs/technical/ASSET_MAP.md." % [tile_name, cell])
-		return
-	layer.set_cell(cell, sid, Vector2i(0, 0))
-
-
-func _clear_prop_stack_layers() -> void:
-	for layer in _prop_stack_layers:
-		if is_instance_valid(layer):
-			room.remove_child(layer)
-			layer.queue_free()
-	_prop_stack_layers.clear()
-
-
-func _ensure_prop_stack_layers(count: int) -> void:
-	while _prop_stack_layers.size() < count:
-		var level := _prop_stack_layers.size() + 1
-		var layer := TileMapLayer.new()
-		layer.tile_set = _wall_tileset
-		layer.y_sort_origin = 1
-		layer.position = Vector2(0.0, -WALL_FLOOR_STEP_PX * float(level))
-		layer.z_index = WALL_BASE_Z_INDEX + level
-		room.add_child(layer)
-		_prop_stack_layers.append(layer)
-
 
 ## SLICE-02: A-T2 — Render solid blocks at their correct storeys
 ## Fixed from G3: reads actual EdgeExtractor shape (gu_cell, storey, material)
@@ -587,10 +498,6 @@ func _cache_blocked_cells(layout: Dictionary) -> void:
 	_blocked_cells.clear()
 	for cell in layout.get("blocked_cells", []):
 		_blocked_cells[cell] = true
-	_prop_heights.clear()
-	for entry in layout.get("structure_tiles", []):
-		if entry is Dictionary and entry.has("height"):
-			_prop_heights[Vector2i(entry["cell"])] = int(entry["height"])
 	_prop_cover.clear()
 	_exit_cells.clear()
 	for raw in layout.get("exit_cells", []):

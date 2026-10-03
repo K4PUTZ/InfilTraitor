@@ -12,7 +12,7 @@ class_name IsoProjection
 ##
 ## THE BASIS. The two horizontal vectors were MEASURED against the real TileSet
 ## rather than reasoned from Godot's layout enum (2026-08-10, headless probe on
-## `tileset_blocks.tres` — tile_shape=1 ISOMETRIC, tile_layout=5 DIAMOND_DOWN,
+## `tileset_blocks.tres` (deleted at R3D-RETIRE-2D; the selftests rebuild the same settings in code) — tile_shape=1 ISOMETRIC, tile_layout=5 DIAMOND_DOWN,
 ## tile_size=(256,128)):
 ##
 ##     map_to_local(1, 0) - map_to_local(0, 0) = (128, 64)

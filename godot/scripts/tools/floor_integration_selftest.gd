@@ -85,25 +85,12 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	var room := MinimalRoom.new()
 	root.add_child(room)
 
-	## Same tileset room.gd's real _ready() loads (TILESET_PATH) before ever
-	## calling build_from_layout() — _place() needs structure_layer.tile_set to
-	## resolve tile names via tile_registry.gd, same as the real boot.
-	var floor_tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
-	var structure_layer := TileMapLayer.new()
-	structure_layer.tile_set = floor_tileset
-	room.add_child(structure_layer)
-
 	var voxel_board := VoxelBoardClass.new()
 	room.add_child(voxel_board)
 	voxel_board.setup(Vector2.ZERO)
 	room._voxel_board = voxel_board
 
 	var builder := RoomBuilderClass.new(room)
-	builder.setup(structure_layer, TileSet.new())
-	## Same call room.gd's real _ready() makes right after loading the
-	## tileset (room.gd:459) — populates _tile_ids from TileData custom_data,
-	## which _place() needs to resolve "floor_SE" and friends.
-	builder.build_registry(floor_tileset)
 
 	var t_start := Time.get_ticks_usec()
 	builder.build_from_layout(layout, room_size)

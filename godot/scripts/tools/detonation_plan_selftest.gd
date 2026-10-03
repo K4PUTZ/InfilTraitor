@@ -136,17 +136,11 @@ func _build_playground() -> Dictionary:
 
 	var room := MinimalRoom.new()
 	root.add_child(room)
-	var floor_tileset: TileSet = load("res://godot/resources/tilesets/tileset_blocks.tres")
-	var structure_layer := TileMapLayer.new()
-	structure_layer.tile_set = floor_tileset
-	room.add_child(structure_layer)
 	var voxel_board := VoxelBoardClass.new()
 	room.add_child(voxel_board)
 	voxel_board.setup(Vector2.ZERO)
 	room._voxel_board = voxel_board
 	var builder := RoomBuilderClass.new(room)
-	builder.setup(structure_layer, TileSet.new())
-	builder.build_registry(floor_tileset)
 	builder.build_from_layout(layout, layout.get("size", Vector2i.ZERO))
 	## The store every voxel's state lives in, built over the real registries exactly as `Room` builds it at load.
 	VoxelStore.active = VoxelStore.build(room._edge_registry, room._slab_registry, room._junction_columns)

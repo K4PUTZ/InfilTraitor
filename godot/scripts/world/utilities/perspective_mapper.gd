@@ -156,7 +156,7 @@ static func layout_with_perspective(layout: Dictionary, direction: String) -> Di
 	mapped["floor_tile_name"] = remap_tile_name(
 		String(layout.get("floor_tile_name", "floor_SE")), direction)
 
-	for key in ["wall_tiles", "structure_tiles"]:
+	for key in ["wall_tiles"]:
 		var src: Array = layout.get(key, [])
 		var dst: Array = []
 		for entry in src:
@@ -227,7 +227,7 @@ static func layout_with_perspective(layout: Dictionary, direction: String) -> Di
 
 	## ROOF-BAKE-02a: solid_block_instances and voxel_prop_instances used to
 	## pass through duplicate(true) UNROTATED while the walls they were
-	## expanded into (structure_tiles / wall_levels above) rotated — so
+	## expanded into (wall_levels above) rotated — so
 	## anything consuming instance positions per-view (the roof slabs, first
 	## visible casualty) landed on the WRONG structure in E/S/W views.
 	##

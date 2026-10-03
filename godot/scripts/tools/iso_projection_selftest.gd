@@ -7,12 +7,11 @@
 ## and clamped the cursor with a third shape again. Nothing was wrong in a way a
 ## compiler could see; it was wrong in a way only the screen showed. Every claim
 ## IsoProjection makes is therefore asserted here, and test [1] asserts the two
-## horizontal basis vectors against `tileset_blocks.tres` itself — a
+## horizontal basis vectors against a real `TileSet` (isometric diamond-down, 256x128) itself — a
 ## self-comparison would pass no matter what the constants said.
 
 extends SceneTree
 
-const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
 const EPS := 0.0001
 
 var passed: int = 0
@@ -61,11 +60,10 @@ func _fail(msg: String) -> void:
 ## does, not what Godot's layout enum is documented to do.
 func test_basis_matches_real_tileset() -> void:
 	print("[1] The horizontal basis is the real TileSet's, not a reasoned one\n")
-	var ts: TileSet = load(TILESET_PATH)
-	if ts == null:
-		_fail("could not load %s — nothing to check the basis against" % TILESET_PATH)
-		print("")
-		return
+	var ts := TileSet.new()  ## the game's lattice settings (the .tres that carried them was deleted at R3D-RETIRE-2D)
+	ts.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
+	ts.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
+	ts.tile_size = Vector2i(256, 128)
 	var layer := TileMapLayer.new()
 	layer.tile_set = ts
 	get_root().add_child(layer)

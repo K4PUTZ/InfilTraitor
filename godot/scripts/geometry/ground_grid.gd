@@ -4,7 +4,7 @@
 ## `floor_layer.map_to_local()` / `local_to_map()`: a floor TileMapLayer was being asked a question that
 ## has one answer, fixed by the TileSet's 256×128 diamond. That kept a 2D tilemap in the middle of INPUT and
 ## of every actor's placement, which is what R3D-5 exists to remove. This is the same lattice, measured
-## rather than assumed (2026-09-18, `tileset_blocks.tres`, tile_shape ISOMETRIC, layout DIAMOND_DOWN):
+## rather than assumed (2026-09-18, `tileset_blocks.tres` (deleted at R3D-RETIRE-2D), tile_shape ISOMETRIC, layout DIAMOND_DOWN):
 ##
 ##     map_to_local(c) = ((c.x − c.y) · 128 + 128, (c.x + c.y) · 64 + 64)
 ##

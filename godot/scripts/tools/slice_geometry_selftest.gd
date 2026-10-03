@@ -111,52 +111,6 @@ func _initialize() -> void:
 		else:
 			print_debug("  GU %s: ✓ cell space round-trip" % gu)
 
-	## ── Check 5: Floor Rosetta sanity ────────────────────────────────────
-	# tileset_blocks.tres accumulates unrelated sources (actor bakes, shotgun
-	# frames, voxel materials) ahead of the floor tiles, so source_id 0 is not
-	# a stable way to find "the floor tile" — it stopped being floor_NE at some
-	# point and nobody noticed because this whole selftest was hanging (see
-	# Test 2 above). Look the floor tile up by its "tile_name" custom data
-	# layer instead, the same pattern room_builder.gd:build_registry() uses.
-	print_debug("[SLICE-00] Check 5: Floor Rosetta (tileset_blocks)")
-	var tileset_path := "res://godot/resources/tilesets/tileset_blocks.tres"
-	var floor_tileset: TileSet = load(tileset_path)
-	checked += 1
-	if floor_tileset == null:
-		push_error("Failed to load tileset: %s" % tileset_path)
-		failures += 1
-	else:
-		var src: TileSetAtlasSource = null
-		for i in floor_tileset.get_source_count():
-			var sid := floor_tileset.get_source_id(i)
-			var candidate := floor_tileset.get_source(sid) as TileSetAtlasSource
-			if candidate == null:
-				continue
-			var candidate_td := candidate.get_tile_data(Vector2i(0, 0), 0)
-			if candidate_td != null and candidate_td.get_custom_data("tile_name") == "floor_NE":
-				src = candidate
-				break
-		if src == null:
-			push_error("No source with tile_name 'floor_NE' found in %s" % tileset_path)
-			failures += 1
-		else:
-			# Verify the atlas dimensions (should be 256x512)
-			if src.texture_region_size == Vector2i(256, 512):
-				print_debug("  Floor tileset region size: %s ✓" % src.texture_region_size)
-				checked += 1
-				# Check texture_origin of the floor tile (should be (0, -384))
-				var td: TileData = src.get_tile_data(Vector2i(0, 0), 0)
-				if td != null:
-					checked += 1
-					if td.texture_origin == Vector2i(0, -384):
-						print_debug("  Floor tile texture_origin: %s ✓" % td.texture_origin)
-					else:
-						push_error("Floor tile origin mismatch: expected (0, -384), got %s" % td.texture_origin)
-						failures += 1
-			else:
-				push_error("Floor tileset region size mismatch: expected (256, 512), got %s" % src.texture_region_size)
-				failures += 1
-
 	## ── Check N: PerspectiveMapper round-trip + parity (ENHANCE-04b) ────────
 	print_debug("[ENHANCE-04b] Perspective round-trip + rotation parity")
 	const PM = preload("res://godot/scripts/world/utilities/perspective_mapper.gd")

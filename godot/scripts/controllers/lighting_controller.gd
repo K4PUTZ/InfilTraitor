@@ -225,12 +225,6 @@ func _setup_tile_semantics() -> void:
 			if blocked.get("blocks_light", false):
 				semantics.blocks_light = true
 
-		## Per-prop shadow height (stacked crates → taller). _get_obstacle_heights prefers
-		## a known height_class > 0, so the projector casts a longer shadow with no change
-		## to the projector itself. Closes the VIS-01 TODO for per-prop heights.
-		if _room._prop_heights.has(cell):
-			semantics.height_class = int(_room._prop_heights[cell])
-
 		_tile_semantics_map[cell] = semantics
 	
 	# Find and register light anchor points from all registered lights

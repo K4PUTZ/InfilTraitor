@@ -17,8 +17,6 @@ extends RefCounted
 ##     "access_from_graph": bool,                  # pull doors from LevelGraph connections
 ##     "rooms":         Array[{"rect": Rect2i, "doors": Array}],  # optional inner rooms
 ##     "dividers":      Array[{"cells": Array[Vector2i]}],        # internal walls w/ gates
-##     "props":         Array[{"cell": Vector2i, "tile": String,    # crates / pillars
-##                        "stack"?, "height"?}],                     #   stacked sprites + shadow height
 ##     "light_tracks":  Array[{"id": String, "cells": Array[Vector2i]}], # rails (internal coords)
 ##     "lights":        Array[{                                          # one of {x,y} | {track,slot}
 ##                        "x","y" | "track","slot",                      #   placement
@@ -32,7 +30,7 @@ extends RefCounted
 ##   }
 ##
 ## Output layout dict (grid/raw coords) — identical contract to the old builder:
-##   {size, agent_start_cell, floor_tile_name, wall_tiles, structure_tiles,
+##   {size, agent_start_cell, floor_tile_name, wall_tiles,
 ##    blocked_cells, blocked_edges, enemy_defs, light_sources, exit_cells}
 
 const LevelGraphClass = preload("res://godot/scripts/world/level_graph.gd")
@@ -232,22 +230,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		})
 		blocked_map[cell] = true
 
-	## --- props (crates / pillars) -------------------------------------------
 	var agent_start_raw: Vector2i = Vector2i(spec.get("agent_start", Vector2i.ZERO)) + offset
-	var structure_tiles: Array[Dictionary] = []
-	for prop: Dictionary in spec.get("props", []):
-		var cell: Vector2i = Vector2i(prop["cell"]) + offset
-		if cell == agent_start_raw or blocked_map.has(cell):
-			continue
-		var stack: int = maxi(1, int(prop.get("stack", 1)))
-		## Shadow height class: explicit "height" wins, else derived from the stack
-		## (1 crate ≈ HUMAN, taller stacks → TALL). Single place so it stays tunable.
-		var height: int = clampi(int(prop.get("height", _prop_height_for_stack(stack))), 1, 4)
-		structure_tiles.append({
-			"cell": cell, "tile_name": String(prop.get("tile", "crate_SE")),
-			"stack": stack, "height": height,
-		})
-		blocked_map[cell] = true
 
 	## --- exits, lights, patrols ---------------------------------------------
 	var exit_cells: Array[Vector2i] = []
@@ -316,7 +299,6 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"wall_tiles":       wall_tiles,        ## == wall_levels[0] (back-compat)
 		"wall_levels":      wall_levels,        ## [floor] -> Array[{cell, tile_name}], floor 0 = ground
 		"max_floors":       ceiling_floors,    ## ceiling-fixture height (lamp / temporal knob), independent of physical wall storeys
-		"structure_tiles":  structure_tiles,
 		"voxel_prop_instances": voxel_prop_instances,  ## PropDef-driven voxel props (PROP-01)
 		"solid_block_instances": solid_block_instances,  ## Original per-GU block declarations, offset-adjusted (DESTRUCTION D1-ROOF)
 		"roof_instances": roof_instances,  ## R3D-7: free-standing roofs (an entity of their own), offset-adjusted
@@ -372,12 +354,6 @@ static func _compile_panel_bands(bands) -> Dictionary:
 		for lvl in range(mini(lo, hi), maxi(lo, hi) + 1):
 			out[lvl] = mat
 	return out
-
-
-## Shadow height class (1-4) for a prop stack of N sprites. Tunable single source:
-## 1 crate ≈ HUMAN(2), each extra crate adds a tier up to TALL/OVERHEAD(4).
-static func _prop_height_for_stack(stack: int) -> int:
-	return clampi(stack + 1, 1, 4)
 
 
 static func _resolve_access_points(spec: Dictionary, context: Dictionary) -> Array[Dictionary]:

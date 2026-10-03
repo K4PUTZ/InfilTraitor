@@ -165,10 +165,6 @@ func test_criterion_4_mapcompiler_voxel_props() -> void:
 		"agent_start": Vector2i(1, 1),
 		"voxel_props": [
 			{"def": "crate_full", "gu": [5, 5], "storey": 0, "vox_offset": [0, 0], "rot": 0}
-		],
-		"props": [
-			# Legacy sprite prop (should be independent)
-			{"cell": Vector2i(3, 3), "tile": "crate_SE", "stack": 1, "height": 2}
 		]
 	}
 	
@@ -191,17 +187,8 @@ func test_criterion_4_mapcompiler_voxel_props() -> void:
 		_fail("gu_cell not offset correctly: %s (expected [6,6] with buffer=1)" % vp["gu_cell"])
 		return
 	
-	# Verify legacy props path is NOT affected
-	if compiled["structure_tiles"].size() != 1:
-		_fail("Legacy sprite prop path broken: got %d tiles" % compiled["structure_tiles"].size())
-		return
-	
-	if compiled["structure_tiles"][0]["tile_name"] != "crate_SE":
-		_fail("Legacy prop tile_name wrong: %s" % compiled["structure_tiles"][0]["tile_name"])
-		return
-	
-	# Both paths should have blocked the cell
-	if compiled["blocked_cells"].size() < 2:
+	# The voxel prop's cell is blocked
+	if compiled["blocked_cells"].size() < 1:
 		_fail("Blocked cells not recorded: only %d cells" % compiled["blocked_cells"].size())
 		return
 	

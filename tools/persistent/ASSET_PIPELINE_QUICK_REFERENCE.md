@@ -6,8 +6,9 @@ Voxel art and TileSet generation workflow.
 > facades and damage decals as textures straight from disk (`TextureResolver`, `Board3DLive`'s decal catalogue). The voxel atoms
 > (32×36), the in-memory TileSet, the bake and the runtime decal compositing described in the historical sections below were the
 > 2D board's and were deleted (END-4 / END-6; the last commit that has them is `34881f81`). What still applies: the material folder
-> layout, facade rules (`check_facade.py`), decal rules (`check_decal.py`), `generate_voxel.py`, and the **one on-disk TileSet**,
-> `tileset_blocks.tres`, which only the structure layer (props) and `GroundGrid`'s geometry still use.
+> layout, facade rules (`check_facade.py`), decal rules (`check_decal.py`), `generate_voxel.py`. **2026-10-03 (R3D-RETIRE-1): the last
+> TileSet, `tileset_blocks.tres`, `build_tileset.gd` and `TileRegistry` were deleted with the structure layer; no TileSet is on disk.**
+> The sections below describing them are history.
 
 ---
 

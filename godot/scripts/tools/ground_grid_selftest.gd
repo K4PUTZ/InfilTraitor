@@ -3,14 +3,13 @@
 ##
 ## The claim: `GroundGrid` IS the lattice the floor TileMapLayer gives, so replacing the layer's
 ## `map_to_local()` with it in input and in every actor's placement changes nothing. Asserted against a
-## real TileMapLayer on the game's own TileSet — not against the formula's own output — for a range of
+## real TileMapLayer on a TileSet with the game's own lattice settings — not against the formula's own output — for a range of
 ## cells (negative ones included) and for random points, including the exact algorithm `Room` uses to
 ## pick a tile under a click (`_screen_to_tile`).
 
 extends SceneTree
 
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")
-const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
 const OFFSET := Vector2(-37.0, 21.0)  ## any offset: the room's VISUAL_GRID_OFFSET must not matter
 
 var passed: int = 0
@@ -23,7 +22,7 @@ func _init() -> void:
 	print("GROUND-GRID — the cell lattice, against the real tilemap SELFTEST")
 	print("=".repeat(70) + "\n")
 	_layer = TileMapLayer.new()
-	_layer.tile_set = load(TILESET_PATH)
+	_layer.tile_set = _lattice_tileset()
 	root.add_child(_layer)
 	test_map_to_local_matches_the_tilemap()
 	test_cell_containing_matches_the_room_pick()
@@ -32,6 +31,16 @@ func _init() -> void:
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
 	print("=".repeat(70) + "\n")
 	quit(0 if failed == 0 else 1)
+
+
+## The game's lattice as Godot's own TileSet math (the on-disk `tileset_blocks.tres` was deleted at R3D-RETIRE-2D, and it
+## carried exactly these three numbers: tile_shape 1 = ISOMETRIC, tile_layout 5 = DIAMOND_DOWN, tile_size 256x128).
+static func _lattice_tileset() -> TileSet:
+	var ts := TileSet.new()
+	ts.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
+	ts.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
+	ts.tile_size = Vector2i(256, 128)
+	return ts
 
 
 func _check(cond: bool, msg: String) -> void:

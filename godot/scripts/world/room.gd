@@ -82,7 +82,6 @@ const OcclusionOverlayClass = preload("res://godot/scripts/overlays/occlusion_ov
 @onready var enemies_root:         Node2D       = $Enemies
 @onready var movement_overlay:    MovementOverlay = $MovementOverlay
 @onready var path_preview:        PathPreview  = $PathPreview
-@onready var structure_layer:            TileMapLayer = $StructureLayer
 @onready var selection_overlay:   Node2D       = $SelectionOverlay
 @onready var agent:               DebugAgent   = $Agent
 @onready var tile_labels_overlay: Node2D       = $TileLabelsOverlay
@@ -93,7 +92,6 @@ const OcclusionOverlayClass = preload("res://godot/scripts/overlays/occlusion_ov
 @onready var fog_of_war:          Node2D          = $FogOfWarOverlay
 @onready var _fog_rect:           ColorRect       = $VisionFogOverlay/FogRect
 
-const TILESET_PATH := "res://godot/resources/tilesets/tileset_blocks.tres"
 const INVALID_CELL := Vector2i(-9999, -9999)
 
 ## The TileMap renders the current 512px-tall source tiles lower than the
@@ -114,7 +112,6 @@ const WALL_BASE_Z_INDEX := 10
 ## top-diamond 128 = 158 px (block_SE and wall_NE — sistema vértice-alinhado).
 ## Upper courses stack on this step so a cube seats exactly on the one below. Tunable.
 const WALL_FLOOR_STEP_PX := 158.0
-var _wall_tileset: TileSet = null
 
 ## Voxel render plane (VOXEL series): 1 storey = 8 voxel rows, each steps 20 px.
 ## 20 = 1.25 × VOXEL_TILE_SIZE.y (16). Must match generate_voxel.py SIDE_H.
@@ -145,11 +142,9 @@ var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
 
 
-## tile_name → TileSet source_id
 var _room_size: Vector2i = Vector2i.ZERO
 var _map_buffer: int = 0   ## Buffer offset from MapCompiler (SLICE-00)
 var _blocked_cells: Dictionary = {}
-var _prop_heights: Dictionary = {}  ## rotated cell → prop shadow height class (1-4)
 var _base_layout: Dictionary = {}
 var _current_blocked_edges: Array[Dictionary] = []
 ## edge_key (WallEdgeData) -> {"start_storey": int, "storey_count": int}, in
@@ -1882,7 +1877,6 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 
 	## Sync cached data from builder to room state
 	_blocked_cells = _room_builder.get_blocked_cells()
-	_prop_heights = _room_builder.get_prop_heights()
 	_exit_cells = _room_builder.get_exit_cells()
 	_current_light_sources = _room_builder.get_light_sources()
 	_soot_map.clear()           ## SOOT-STAMP: the soot map dies with the board
@@ -2120,19 +2114,8 @@ func _ready() -> void:
 	## Material registry is used by baking; ensure it's ready before map compilation.
 	Registries.ensure_material_registry()
 	
-	var ts: TileSet = load(TILESET_PATH)
-	if ts == null:
-		push_error("TileSet not found: " + TILESET_PATH)
-		return
-
-	structure_layer.tile_set = ts
-	structure_layer.z_index = 10
-	_wall_tileset = ts
-
 	## Initialize RoomBuilder (map construction orchestrator)
 	_room_builder = RoomBuilderClass.new(self)
-	_room_builder.setup(structure_layer, ts)
-	_room_builder.build_registry(ts)
 
 	## Initialize TurnController (turn phases, enemy AI, alert system)
 	_turn_controller = TurnControllerClass.new(self)
@@ -3029,7 +3012,6 @@ func _start_board3d_live() -> void:
 		remove_child(existing)
 		existing.queue_free()
 	_voxel_board.visible = false
-	structure_layer.visible = false
 	var live: Node3D = Board3DLiveClass.new()
 	live.name = "Board3DLive"
 	add_child(live)
@@ -11048,8 +11030,7 @@ func _dev_flag_num(flag_name: String, fallback: int) -> int:
 ##   HIDE_NON_VOXEL=1    hide every CanvasItem/CanvasLayer outside the voxel
 ##                       renderer, HUD included — the board's own cost alone.
 ##   NODE_CENSUS=1       print, per subtree, its CanvasItems (and how many are
-##                       visible), the cells of any TileMapLayer in it, and whether
-##                       it processes — the inventory HIDE_NODES bisects over.
+##                       visible), and whether it processes — the inventory HIDE_NODES bisects over.
 ##   HIDE_NODES=a,b*     hide every CanvasItem/CanvasLayer whose NAME matches (the
 ##                       `String.match` wildcards), anywhere in the tree. Measured
 ##                       2026-09-12 on the Moto g04s: HIDE_NON_VOXEL took the idle
@@ -11088,21 +11069,17 @@ func _apply_perf_ablations() -> void:
 				hits += 1
 		print("[PERF-DEV] HIDE_NODES — '%s' hid %d node(s)" % [pattern.strip_edges(), hits])
 	if _dev_flag_on("NODE_CENSUS"):
-		print("[NODE-CENSUS] name (class) · canvas items, visible · tile cells · process")
+		print("[NODE-CENSUS] name (class) · canvas items, visible · process")
 		_print_node_census(get_tree().root, 0)
 
 
-## x = CanvasItems in the subtree, y = those visible in the tree, z = used cells of
-## every TileMapLayer in it (a layer's drawn objects are its rendering quadrants,
-## which no node count can see — the cell count is the proxy).
-func _census_subtree(node: Node) -> Vector3i:
-	var out := Vector3i.ZERO
+## x = CanvasItems in the subtree, y = those visible in the tree.
+func _census_subtree(node: Node) -> Vector2i:
+	var out := Vector2i.ZERO
 	if node is CanvasItem:
 		out.x += 1
 		if (node as CanvasItem).is_visible_in_tree():
 			out.y += 1
-		if node is TileMapLayer:
-			out.z += (node as TileMapLayer).get_used_cells().size()
 	for child in node.get_children():
 		out += _census_subtree(child)
 	return out
@@ -11110,14 +11087,14 @@ func _census_subtree(node: Node) -> Vector3i:
 
 func _print_node_census(node: Node, depth: int) -> void:
 	for child in node.get_children():
-		var c: Vector3i = _census_subtree(child)
+		var c: Vector2i = _census_subtree(child)
 		if c.x == 0 and not (child is CanvasLayer):
 			continue
-		print("[NODE-CENSUS] %s%s (%s) · %d, %d visible · %d cell(s)%s"
-			% ["  ".repeat(depth), child.name, child.get_class(), c.x, c.y, c.z,
+		print("[NODE-CENSUS] %s%s (%s) · %d, %d visible%s"
+			% ["  ".repeat(depth), child.name, child.get_class(), c.x, c.y,
 			" · process" if child.is_processing() else ""])
 		## The voxel renderer's 48 layers are already priced by HIDE_VOXELS.
-		if depth < 4 and (c.x >= 4 or c.z > 0) and child != _voxel_board:
+		if depth < 4 and c.x >= 4 and child != _voxel_board:
 			_print_node_census(child, depth + 1)
 
 

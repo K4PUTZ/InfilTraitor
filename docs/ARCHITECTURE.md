@@ -98,7 +98,6 @@ Room (room.gd, Node2D)                 orchestrator
 ├── Camera2D · TurnManager · EnemyPhaseController
 ├── Agent (DebugAgent) · Enemies (GuardEnemy*, spawned at runtime)       actors drawn by ActorMesh3D (live rig, R3D-ACTORS); AgentSprite only decides
 ├── MovementOverlay · PathPreview · SelectionOverlay · TileLabelsOverlay · FogOfWarOverlay · VisionFogOverlay(FogRect)
-├── StructureLayer (TileMapLayer, hidden while the 3D board is live: the one tile layer that survives, for the prop tiles and the TileSet `GroundGrid` was measured from)
 ├── HUD (hud.tscn)        reached ONLY through `HudController` (rule 11)
 │
 │   controllers added in code: LightingController · VisionController · HudController · CameraController · FowController · GuardCoordinator · TurnController

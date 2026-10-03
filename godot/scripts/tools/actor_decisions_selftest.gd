@@ -1,10 +1,10 @@
-## actor_decisions_selftest — R3D-ACTORS: what `AgentSprite` decides for the live mesh, and how `ActorMesh3D` turns a
+## actor_decisions_selftest — R3D-ACTORS: what `ActorPose` decides for the live mesh, and how `ActorMesh3D` turns a
 ## facing into a yaw. The rendering is checked by capture; this pins the decisions a capture cannot see: the one-time
 ## `throw_released` (a release that never fires hangs `execute_grenade_throw()`), the cancel firing nothing, D44's
 ## reduction of a diagonal, the names the rig has no action for being refused, and the rig's front being its local -Z.
 extends SceneTree
 
-const AgentSpriteRef = preload("res://godot/scripts/agents/agent_sprite.gd")
+const ActorPoseRef = preload("res://godot/scripts/agents/actor_pose.gd")
 const ActorMesh3DRef = preload("res://godot/scripts/geometry/actor_mesh3d.gd")
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 
@@ -41,8 +41,8 @@ func _check(ok: bool, label: String) -> void:
 		_fails += 1
 
 
-func _sprite() -> AgentSprite:
-	var s: AgentSprite = AgentSpriteRef.new()
+func _sprite() -> ActorPose:
+	var s: ActorPose = ActorPoseRef.new()
 	s.setup(null)
 	return s
 
@@ -50,7 +50,7 @@ func _sprite() -> AgentSprite:
 func _test_defaults() -> void:
 	var s := _sprite()
 	var st: Dictionary = s.mesh_state()
-	_check(st["step"] == AgentSpriteRef.START_STEP and st["posture"] == "standing" and st["throw"] == ""
+	_check(st["step"] == ActorPoseRef.START_STEP and st["posture"] == "standing" and st["throw"] == ""
 		and float(st["walk"]) < 0.0 and is_nan(float(st["head"])),
 		"a new figure stands, idle, facing its start step, no head turn (%s)" % st)
 	s.free()
@@ -76,7 +76,7 @@ func _test_refusals() -> void:
 	s.set_grip("_aimed")
 	_check(s.grip == "_aimed", "the aimed grip is taken")
 	s.set_posture_name("crouch")
-	_check(not s.play_throw(AgentSpriteRef.THROW_RAISE, 0.2, true), "no crouched throw (standing only, as the bake was)")
+	_check(not s.play_throw(ActorPoseRef.THROW_RAISE, 0.2, true), "no crouched throw (standing only, as the bake was)")
 	s.free()
 
 
@@ -88,7 +88,7 @@ func _test_release_fires_once() -> void:
 	var s := _sprite()
 	_released = 0
 	s.throw_released.connect(_on_released)
-	_check(s.play_throw(AgentSpriteRef.THROW_RELEASE, 0.4), "a standing release starts")
+	_check(s.play_throw(ActorPoseRef.THROW_RELEASE, 0.4), "a standing release starts")
 	var fired_at: float = -1.0
 	var t: float = 0.0
 	for _i in range(6):
@@ -106,7 +106,7 @@ func _test_cancel_fires_nothing() -> void:
 	var s := _sprite()
 	_released = 0
 	s.throw_released.connect(_on_released)
-	s.play_throw(AgentSpriteRef.THROW_RAISE, 0.2, false, true)
+	s.play_throw(ActorPoseRef.THROW_RAISE, 0.2, false, true)
 	s._process(0.05)
 	var u: float = float(s.mesh_state()["throw_u"])
 	_check(absf(u - 0.75) < 0.001, "the cancel plays the raise backwards (u %.2f after a quarter)" % u)
@@ -131,7 +131,7 @@ func _test_walk() -> void:
 ## The rig's front is its local -Z (the toes and the knee pole, read from the GLB). The yaw for a grid step must turn
 ## that front onto the step's world direction: grid x is world +X, grid y world +Z.
 func _test_yaw_faces_the_step() -> void:
-	for step: Vector2i in AgentSpriteRef.STEPS:
+	for step: Vector2i in ActorPoseRef.STEPS:
 		var yaw: float = ActorMesh3DRef.yaw_for_direction(Vector2(step))
 		var front: Vector3 = Basis(Vector3.UP, yaw) * Vector3(0.0, 0.0, -1.0)
 		_check(front.is_equal_approx(Vector3(float(step.x), 0.0, float(step.y))),

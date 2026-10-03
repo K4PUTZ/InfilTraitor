@@ -1,4 +1,4 @@
-## AgentSprite — WHAT an actor's figure is doing: its facing, posture, grip, weapon, walk, throw and head. It draws
+## ActorPose — WHAT an actor's figure is doing: its facing, posture, grip, weapon, walk, throw and head. It draws
 ## nothing; `ActorMesh3D` draws it (RENDER3D R3D-ACTORS, `ACTOR` D64).
 ##
 ## R3D-ACTORS step 5 (2026-10-01) RETIRED THE GAMEPLAY FRAME BAKE from this node: the colour/normal frame sets, the head
@@ -18,10 +18,10 @@
 ##    it. Standing only, as the bake was.
 ##  - THE HEAD'S GRID ANGLE (a guard looking where its cone points), clamped to HEAD_YAW_LIMIT_DEG off the body by the mesh.
 ##
-## The class keeps its name and its `Sprite2D` base so every caller (agent, guards, controllers) is untouched; the node is
-## hidden by the mesh that draws it and is only ever a holder of state.
-class_name AgentSprite
-extends Sprite2D
+## It was `AgentSprite`, a `Sprite2D` that drew nothing; it is a plain `Node` now (RETIRE of R3D-RETIRE-2D). The members that
+## name it (`Agent.sprite`, `attach_sprite()`) keep their old names for the callers' sake.
+class_name ActorPose
+extends Node
 
 const THROW_RAISE := "raise"
 const THROW_RELEASE := "release"
@@ -87,14 +87,14 @@ func face_direction(dir: Vector2i) -> void:
 
 func set_posture_name(name: String) -> void:
 	if not POSTURES.has(name):
-		_warn_once("posture:" + name, "[AgentSprite] no posture '%s' in the live rig — keeping '%s'" % [name, _posture])
+		_warn_once("posture:" + name, "[ActorPose] no posture '%s' in the live rig — keeping '%s'" % [name, _posture])
 		return
 	_posture = name
 
 
 func set_grip(name: String) -> void:
 	if not GRIPS.has(name):
-		_warn_once("grip:" + name, "[AgentSprite] no '%s' grip in the live rig — keeping '%s'. Add it to p2_grip_spike.GRIPS and re-run r3d_live_rig_export.py."
+		_warn_once("grip:" + name, "[ActorPose] no '%s' grip in the live rig — keeping '%s'. Add it to p2_grip_spike.GRIPS and re-run r3d_live_rig_export.py."
 			% [name, grip if grip != "" else "lowered"])
 		return
 	grip = name
@@ -110,7 +110,7 @@ func preload_grip(name: String) -> bool:
 ## and the figure keeps the one it has.
 func set_weapon_bake(name: String) -> bool:
 	if not WEAPONS.has(name):
-		_warn_once("weapon:" + name, "[AgentSprite] the live rig holds no '%s' — the figure keeps the %s. Add its grip to p2_grip_spike.GRIPS and WEAPONS, and re-run r3d_live_rig_export.py."
+		_warn_once("weapon:" + name, "[ActorPose] the live rig holds no '%s' — the figure keeps the %s. Add its grip to p2_grip_spike.GRIPS and WEAPONS, and re-run r3d_live_rig_export.py."
 			% [name.trim_prefix("_"), weapon.trim_prefix("_") if weapon != "" else "shotgun"])
 		return false
 	weapon = name
@@ -169,7 +169,7 @@ func play_throw(sequence: String, seconds: float, hold: bool = false, reversed_p
 	if sequence != THROW_RAISE and sequence != THROW_RELEASE:
 		return false
 	if _posture != "standing":
-		_warn_once("throw:" + _posture, "[AgentSprite] no '%s' throw in the live rig (standing only, as the bake was)" % _posture)
+		_warn_once("throw:" + _posture, "[ActorPose] no '%s' throw in the live rig (standing only, as the bake was)" % _posture)
 		return false
 	_throw_seq = sequence
 	_throw_seconds = maxf(seconds, 0.001)

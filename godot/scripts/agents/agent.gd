@@ -5,7 +5,7 @@ const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ##
 ## animates step-by-step.
 ##
 ## CHARACTER_MASTER_PLAN Part 2 §10 CLOSED 2026-08-16 — the vector placeholder
-## that used to live in `_draw()` is gone, replaced by `AgentSprite`, the baked
+## that used to live in `_draw()` is gone, replaced by `ActorPose`, the baked
 ## figure at three postures and four facings under the room's real lighting. What
 ## remains of `_draw()` is DEV-ONLY and says so.
 ##
@@ -62,10 +62,10 @@ var dev_vision: bool = false
 ## The baked figure. Null until attach_sprite() succeeds, and every call site
 ## guards on it: a missing bake must degrade to an invisible agent that still
 ## plays, never to a crash in the middle of a turn.
-var sprite: AgentSprite = null
+var sprite: ActorPose = null
 
-## DebugAgent.Posture -> AgentSprite's directory name. The mapping lives here
-## rather than in AgentSprite so the dependency runs one way: the renderer knows
+## DebugAgent.Posture -> ActorPose's directory name. The mapping lives here
+## rather than in ActorPose so the dependency runs one way: the renderer knows
 ## nothing about the gameplay enum.
 const POSTURE_SPRITE_NAME: Dictionary = {
 	Posture.STANDING: "standing",
@@ -222,14 +222,14 @@ const THROW_CANCEL_SECONDS: float = 0.12
 func play_throw_raise() -> bool:
 	if sprite == null:
 		return false
-	return sprite.play_throw(AgentSprite.THROW_RAISE, THROW_RAISE_SECONDS, true)
+	return sprite.play_throw(ActorPose.THROW_RAISE, THROW_RAISE_SECONDS, true)
 
 
 ## Put it back down along the same path, quickly.
 func play_throw_cancel() -> bool:
 	if sprite == null:
 		return false
-	return sprite.play_throw(AgentSprite.THROW_RAISE, THROW_CANCEL_SECONDS,
+	return sprite.play_throw(ActorPose.THROW_RAISE, THROW_CANCEL_SECONDS,
 		false, true)
 
 
@@ -237,7 +237,7 @@ func play_throw_cancel() -> bool:
 func play_throw_release() -> bool:
 	if sprite == null:
 		return false
-	return sprite.play_throw(AgentSprite.THROW_RELEASE, THROW_RELEASE_SECONDS)
+	return sprite.play_throw(ActorPose.THROW_RELEASE, THROW_RELEASE_SECONDS)
 
 
 ## WEAPON_MASTER_PLAN §6c / B4 — raise or lower the held weapon.
@@ -302,11 +302,11 @@ func setup(offset: Vector2, start_cell: Vector2i) -> void:
 func attach_sprite(p_room: Node) -> bool:
 	if sprite != null:
 		return true
-	var s := AgentSprite.new()
-	s.name = "AgentSprite"
+	var s := ActorPose.new()
+	s.name = "ActorPose"
 	add_child(s)
 	if not s.setup(p_room):
-		## The bake is missing or unreadable. Loud-failed already by AgentSprite;
+		## The bake is missing or unreadable. Loud-failed already by ActorPose;
 		## drop the node rather than leave an invisible child that makes the agent
 		## silently vanish from the map.
 		s.queue_free()
@@ -347,7 +347,7 @@ func set_dev_vision(enabled: bool) -> void:
 	queue_redraw()
 
 
-## The camera turned (R3D-ROT: the cell never moves). AgentSprite stores the facing in base space and
+## The camera turned (R3D-ROT: the cell never moves). ActorPose stores the facing in base space and
 ## recomposes it against the live view, so this only has to ask for a refresh.
 func on_perspective_changed() -> void:
 	if sprite != null:
@@ -440,7 +440,7 @@ func _cell_to_world(map_cell: Vector2i) -> Vector2:
 
 
 ## PART 2 §10: the three posture diamonds and the head circle that used to be
-## drawn here are GONE. `AgentSprite`, a child node, draws the agent now.
+## drawn here are GONE. `ActorPose`, a child node, draws the agent now.
 ##
 ## Two things survive, and both are deliberate rather than leftovers:
 ##

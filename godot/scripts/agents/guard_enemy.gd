@@ -92,7 +92,7 @@ var facing: Vector2i = Vector2i.UP
 ## The baked figure. Null until attach_sprite() succeeds; every call site guards
 ## on it, and _draw() falls back to the vector diamond so a missing bake leaves a
 ## visible guard rather than an invisible one.
-var sprite: AgentSprite = null
+var sprite: ActorPose = null
 var state: String = STATE_PATROL
 var state_timer: int = 0
 var last_known_agent_cell: Vector2i = INVALID_CELL
@@ -293,12 +293,12 @@ func _process(delta: float) -> void:
 	## thing the simulation is doing, rather than a second animation that merely
 	## agrees with it most of the time.
 	##
-	## It is passed as a GRID angle, and `AgentSprite` keeps it in grid space all
+	## It is passed as a GRID angle, and `ActorPose` keeps it in grid space all
 	## the way to the frame index. CONE-ANGLE-01 was exactly this conversion done
 	## once, in the wrong direction, and the cost was a quarter-turn error nobody
 	## saw for months because the overlay and the body disagreed silently.
 	##
-	## No-ops until the head bake lands: with no layers on disk `AgentSprite`
+	## No-ops until the head bake lands: with no layers on disk `ActorPose`
 	## resolves an empty layer list and this costs one is_empty() per frame.
 	if sprite != null:
 		sprite.set_head_yaw_grid_deg(rad_to_deg(vision_angle))
@@ -1203,7 +1203,7 @@ func refresh_vision_smooth() -> void:
 func attach_sprite(p_room: Node) -> bool:
 	if sprite != null:
 		return true
-	var s := AgentSprite.new()
+	var s := ActorPose.new()
 	s.name = "EnemySprite"
 	## Alpha enemy variant (2026-08-19): white blazer with stylized facial features
 	## (hair, beard, eyes, nose) to differentiate front/back. Inherits light

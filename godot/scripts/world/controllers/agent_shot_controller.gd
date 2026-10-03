@@ -83,7 +83,7 @@ const GRIP_LOWERED: String = ""
 
 ## W-WEAPON-01 (Director, 2026-08-20): *"Vamos trocar a arma empunhada, conforme
 ## o número for selecionado."* Weapon id -> the bake-directory suffix
-## AgentSprite.weapon takes. The shotgun maps to "" because its posed GLBs are
+## ActorPose.weapon takes. The shotgun maps to "" because its posed GLBs are
 ## the ones that shipped and their directories carry no weapon segment — the
 ## same "the default earns no suffix" rule p3_posture_export.py applies to grips.
 ##

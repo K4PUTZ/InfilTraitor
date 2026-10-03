@@ -603,7 +603,7 @@ func cancel_targeting() -> void:
 	Telemetry.event("aim.cancel")
 	## Director: *"cancelar a granada [...] bem rapidinho, só pra não sumir de
 	## repente."* The arm comes back down along the same path it went up, because
-	## this IS the raise sequence played backwards — see AgentSprite's THROW_ROOT
+	## this IS the raise sequence played backwards — see ActorPose's THROW_ROOT
 	## note for why the cancel is not its own bake.
 	room.agent.play_throw_cancel()
 	_cleanup_grenade_targeting_ui()

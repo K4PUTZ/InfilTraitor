@@ -12,7 +12,6 @@ const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overla
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
 const GuardEnemyClass    = preload("res://godot/scripts/agents/guard_enemy.gd")
-const GuardNoiseIndicatorClass = preload("res://godot/scripts/overlays/guard_noise_indicator.gd")
 const CeilingPropOverlayClass = preload("res://godot/scripts/overlays/ceiling_prop_overlay.gd")
 const TileOverlayClass = preload("res://godot/scripts/overlays/tile_overlay.gd")
 const DebugToolsControllerClass = preload("res://godot/scripts/world/controllers/debug_tools_controller.gd")
@@ -27,7 +26,6 @@ const PerspectiveMapperClass = preload("res://godot/scripts/world/utilities/pers
 const GlassOpening = preload("res://godot/scripts/systems/destruction/glass_opening.gd")
 const SelectionControllerClass = preload("res://godot/scripts/world/controllers/selection_controller.gd")
 const TestZoneControllerClass = preload("res://godot/scripts/world/controllers/test_zone_controller.gd")
-const WeaponBenchControllerClass = preload("res://godot/scripts/world/controllers/weapon_bench_controller.gd")
 ## WEAPON_MASTER_PLAN §6c — the agent shoots. Separate from the bench controller
 ## above, which fires from a static prop; see agent_shot_controller.gd's header.
 const AgentShotControllerClass = preload("res://godot/scripts/world/controllers/agent_shot_controller.gd")
@@ -1456,10 +1454,6 @@ var _test_zone_controller: TestZoneControllerClass = null
 ## test_collectible capture action and _set_perspective already reference it.
 var _collectibles: Array[Node] = []
 var _floating_collectible: Node = null
-## TEST-ZONE weapons bench (2026-07-29): static, aimed, right-click-firable
-## weapon props. Its rows and props were retired with the PLAYGROUND reform (2026-08-17);
-## `WeaponBenchController` is what is left of it.
-var _weapon_bench_controller: WeaponBenchControllerClass = null
 ## §6c: right-click an ENEMY to open "Atirar" (B1, Director 2026-08-19 — the
 ## action lives on the target's menu, not the shooter's).
 var _agent_shot_controller: AgentShotControllerClass = null
@@ -1748,9 +1742,6 @@ var _noise_overlay: Node2D = null
 var _occlusion_set: OcclusionSetClass = null
 var _occlusion_overlay: Node2D = null
 
-## M2-14: Guard noise indicator — flutuante ao redor do agente
-var _guard_noise_indicator: Node2D = null
-
 ## MODULARIZE-01: VisionController to manage debug/analysis overlays
 var _vision_controller: Node2D = null
 
@@ -1954,8 +1945,7 @@ func load_map(new_map_id: String, new_seed: int = 0) -> void:
 	## false (having already push_error'd) if the bake is missing, and the agent
 	## stays playable but invisible rather than taking the room down with it.
 	if not agent.attach_sprite(self):
-		push_warning("[Room] the agent's baked figure is unavailable — run "
-			+ "p3_posture_export.py and agent_frame_bake_spike.gd")
+		push_warning("[Room] the agent's mesh is unavailable (see the error above)")
 	agent.set_dev_vision(_vision_controller.dev_vision)
 	## W-LOAD-02: the AIMED grip's frames, loaded here instead of on the click
 	## that opens the fire menu. Measured 2026-08-20: the first set_grip("_aimed")
@@ -2414,11 +2404,7 @@ func _ready() -> void:
 	## taught about the first. Which verb it shows, and what confirming it does,
 	## are now passed in per open (DetonateContextMenu.open_at).
 	_test_zone_controller = TestZoneControllerClass.new(self)
-	_weapon_bench_controller = WeaponBenchControllerClass.new(self)
-	## §6c: same shared menu instance, a third verb. The bench is retired from
-	## PLAYGROUND but its controller stays constructed — the menu contract is
-	## per-open (open_at), so an unused controller costs nothing and removing it
-	## would be an unrequested cleanup of code that still carries §6b's history.
+	## §6c: the same shared menu instance carries the agent's shot as a second verb.
 	_agent_shot_controller = AgentShotControllerClass.new(self)
 	_context_menu = DetonateContextMenuClass.new()
 	$HUD.add_child(_context_menu)
@@ -2487,11 +2473,6 @@ func _ready() -> void:
 	## M2-14 Quickfix: Z-index ordering — floor(0) < shadow(1) < fog(2) < structures(3) < sprites(4+)
 	## Ensure fog_of_war is properly layered above shadow overlay
 	fog_of_war.z_index = 2
-
-	## M2-14: Create and setup guard noise indicator — as child of agent so it orbits naturally
-	_guard_noise_indicator = GuardNoiseIndicatorClass.new()
-	agent.add_child(_guard_noise_indicator)
-	_guard_noise_indicator.setup(VISUAL_GRID_OFFSET)
 
 	## VIS-01 Slice 3: overhead ceiling layer (lights as placeholders for now),
 	## raised above the wall stack and drawn above the top storey.
@@ -2638,8 +2619,6 @@ func _set_perspective(direction: String) -> void:
 	agent.on_perspective_changed()
 	if _test_zone_controller != null:
 		_test_zone_controller.on_view_changed()
-	if _weapon_bench_controller != null:
-		_weapon_bench_controller.on_view_changed()
 	## R3D-WORLD: the VFX in flight are NOT cleared any more. Their positions are world state (the 2D simulation runs in
 	## the base view's lattice and reaches the world through `Board3DLive.lattice_basis()`), so a blast keeps burning in
 	## the same place while the camera turns around it.
@@ -3129,7 +3108,7 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 		if is_instance_valid(guard):
 			actors.append(guard)
 	for actor in actors:
-		var source: AgentSprite = actor.sprite
+		var source: ActorPose = actor.sprite
 		if source == null:
 			push_warning("[Room] the 3D board is up but '%s' has no baked sprite — it stays 2D" % actor.name)
 			continue
@@ -4053,10 +4032,7 @@ func _spawn_guards(enemy_defs: Array) -> void:
 		## Idempotent and non-fatal — a guard with no bake keeps its vector
 		## diamond rather than vanishing from the map mid-mission.
 		if not guard.attach_sprite(self):
-			push_warning("[Room] guard '%s' has no baked figure — run "
-				% guard.enemy_id
-				+ "p1_agent_model.py with P1_PALETTE=enemy, then "
-				+ "p3_posture_export.py and agent_frame_bake_spike.gd")
+			push_warning("[Room] guard '%s' has no mesh (see the error above)" % guard.enemy_id)
 		_guard_coordinator.register_guard(guard)
 		_guards.append(guard)
 
@@ -4457,7 +4433,7 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 ## pass the material because a `Voxel` does not carry one (it lives on the
 ## Slice/Slab), exactly as the destruction path's signal does.
 ##
-## PUBLIC because the caller is `WeaponBenchController.fire_active()`, which is
+## PUBLIC because the caller is `AgentShotController`, which is
 ## the only place that knows which voxels a shot just marked — the same shape as
 ## the blast, where the plan knows what it damaged and the choreographer plays
 ## it. No new signal: a signal would have to be emitted from the render pass,
@@ -7030,16 +7006,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			grenade_index = _test_zone_controller.hit_test(mb.position)
 		if grenade_index != -1:
 			_test_zone_controller.open_menu_for(grenade_index)
-			get_viewport().set_input_as_handled()
-			return
-		## WEAPON-FIRE-01: same pattern, second prop type. Checked AFTER the
-		## grenades because the bench sits behind them and a click that could
-		## plausibly be either should take the nearer, consumable one.
-		var weapon_index := -1
-		if _weapon_bench_controller != null:
-			weapon_index = _weapon_bench_controller.hit_test(mb.position)
-		if weapon_index != -1:
-			_weapon_bench_controller.open_menu_for(weapon_index)
 			get_viewport().set_input_as_handled()
 			return
 		## §6c / B1: right-click an ENEMY opens "Atirar" instead of walking the
@@ -9822,8 +9788,6 @@ const TEST_ZONE_GRENADE_GUS: Array[Vector2i] = [
 	Vector2i(18, 5),  ## wood wall (gu 17,2 - 19,2)
 ]
 
-const BAKE_DIR := "res://ASSETS/ISOMETRIC/source_assets/actor_bakes/"
-
 ## Collectibles strip — OFF (Director, 2026-07-29: "os objetos coletáveis estão
 ## ótimos, pode tirar eles do cenário por enquanto, já vimos que vai
 ## funcionar"). The pipeline is proven; the pickups were a demonstration, and a
@@ -9880,8 +9844,6 @@ func _populate_test_zone_if_playground() -> void:
 			pickup.queue_free()
 	_collectibles.clear()
 	_floating_collectible = null
-	if _weapon_bench_controller != null:
-		_weapon_bench_controller.clear()
 	## The weapons bench and the floor grenades were RETIRED here 2026-08-17
 	## (Director: "vamos fazer os testes com o agente mesmo, então não
 	## precisamos mais desse esquema") — firing now goes through the agent
@@ -9892,18 +9854,7 @@ func _populate_test_zone_if_playground() -> void:
 	if map_id == "PLAYGROUND":
 		var FloatingCollectibleClass = preload("res://godot/scripts/overlays/floating_collectible.gd")
 
-		## ACTOR_MASTER_PLAN D21 — the spinning pickups, one per baked object.
-		## Moved out of the bench (Director, 2026-07-29: collectibles get their
-		## own area so the wall row belongs to the guns). The same 120-frame bake
-		## feeds both roles — frozen on one frame for the aimed bench prop,
-		## cycled here — so a weapon costs one bake, not two.
-		##
-		## Bake folder + sprite scale + shadow_scale_factor are per-object;
-		## frame count, rotation speed and the camera convention come from
-		## CollectibleBakeConfig and must stay identical for every object, or the
-		## light-direction math breaks silently. shadow_scale_factor is
-		## (SHADOW_ORTHO/SHADOW_VIEWPORT.y)/(ORTHO/VIEWPORT.y) of whichever bake
-		## produced the folder.
+		## ACTOR_MASTER_PLAN D21 — the spinning pickups, one per model (`TEST_ZONE_COLLECTIBLES`: model, fit, materials).
 		if TEST_ZONE_COLLECTIBLES_ENABLED:
 			for collectible in TEST_ZONE_COLLECTIBLES:
 				var board: Node3D = board3d()
@@ -10178,91 +10129,6 @@ func _run_auto_screenshot_capture() -> void:
 		Input.parse_input_event(esc_up)
 		for _j in range(10):
 			await get_tree().process_frame
-	elif (capture_action == "weapon_menu" or capture_action == "weapon_fire") and _weapon_bench_controller != null:
-		## WEAPON-FIRE-01 dev capture action, mirroring test_zone_menu/
-		## test_zone_detonate exactly: "weapon_menu" drives _unhandled_input()
-		## with a synthetic right-click at the bench weapon's real hit-test
-		## position (so the cone WIREFRAME PREVIEW is what gets captured);
-		## "weapon_fire" additionally parses a real Enter InputEventKey, so the
-		## focused-Button keyboard route is exercised rather than assumed, and
-		## the capture shows the real damage.
-		## INFILTRAITOR_CAPTURE_WEAPON_INDEX picks which of the bench's weapons
-		## (default 0 = the concrete column); the 4 columns are one per wall
-		## material, which is the whole point of the bench.
-		## INFILTRAITOR_CAPTURE_PERSPECTIVE rotates the room first, so a capture
-		## can prove the cone follows rotation rather than only that the sprite
-		## does — the facing is stored in BASE space and rotated per view, which
-		## is exactly the kind of thing that fails silently (the muzzle keeps
-		## pointing where the target used to be).
-		var persp_env := OS.get_environment("INFILTRAITOR_CAPTURE_PERSPECTIVE")
-		if persp_env in ["N", "E", "S", "W"]:
-			_set_perspective(persp_env)
-			for _p in range(10):
-				await get_tree().process_frame
-		## The bench was retired from PLAYGROUND 2026-08-17 (see
-		## _populate_test_zone_if_playground()) — this capture action now has no
-		## weapons to index and must say so rather than index an empty array.
-		if _weapon_bench_controller._weapons.is_empty():
-			push_warning("[SCREENSHOT-HOOK-01] weapon_menu/weapon_fire: the bench is retired on PLAYGROUND, nothing to capture")
-			get_tree().quit(1)
-			return
-		var wi_env := OS.get_environment("INFILTRAITOR_CAPTURE_WEAPON_INDEX")
-		var wi := wi_env.to_int() if wi_env.is_valid_int() else 0
-		if wi < 0 or wi >= _weapon_bench_controller._weapons.size():
-			wi = 0
-		var w_cell: Vector2i = _weapon_bench_controller._weapons[wi]["gu_cell"]
-		## Frame the WALL the weapon is aimed at, not the weapon itself — the
-		## point of the capture is the damage arriving at its target.
-		## `w_cell.y - 2` alone was written when every bench weapon was the
-		## shotgun at y=6 (so y=4, right against the wall row). D30 put LINE
-		## weapons on the bench at y=9 and y=13, where the same offset frames
-		## empty floor and the impact falls off-screen entirely — observed on
-		## the first sniper capture. Taking whichever of the two is closer to
-		## the wall keeps the shotgun's original framing and fixes the rest.
-		var aim_center := Vector2i(w_cell.x, maxi(mini(w_cell.y - 2, 3), 0))
-		if _camera_controller != null and agent != null:
-			_camera_controller.focus_on(agent._cell_to_world(aim_center))
-		if _fow_controller != null:
-			_fow_controller.reveal_around(aim_center, 12)
-		for _c in range(5):
-			await get_tree().process_frame
-		## D22-INPUT-01: the hitbox is the GU floor cell, not the sprite — click
-		## there, not at _top_screen_pos() (that stays the MENU anchor, below).
-		var w_click := InputEventMouseButton.new()
-		w_click.button_index = MOUSE_BUTTON_RIGHT
-		w_click.pressed = true
-		w_click.position = _tile_to_screen_center(w_cell)
-		_unhandled_input(w_click)
-		for _j in range(10):
-			await get_tree().process_frame
-		if capture_action == "weapon_fire":
-			var w_key_down := InputEventKey.new()
-			w_key_down.keycode = KEY_ENTER
-			w_key_down.pressed = true
-			Input.parse_input_event(w_key_down)
-			var w_key_up := InputEventKey.new()
-			w_key_up.keycode = KEY_ENTER
-			w_key_up.pressed = false
-			Input.parse_input_event(w_key_up)
-			## E-SPARK-CAP (Director, 2026-08-13: *"não to conseguindo ver os
-			## efeitos… consegue tirar um print dos efeitos acontecendo?"*).
-			##
-			## The fixed 30 was why they could not. A spark lives 0.2-0.4 s
-			## (`SmokeSparkOverlay.spark_duration_min/max`), and this capture
-			## harness renders off-screen at a small fraction of real time — so
-			## by frame 30 every spark from that shot had died, several times
-			## over. The firearm VFX have been correct and effectively
-			## uncapturable for as long as this action has existed; no capture
-			## in the repo shows them.
-			##
-			## `INFILTRAITOR_CAPTURE_WEAPON_WAIT_FRAMES` mirrors
-			## INFILTRAITOR_CAPTURE_DETONATE_WAIT_FRAMES exactly, which the
-			## detonation side has had since the filmstrip work. Default
-			## unchanged, so every existing use of this action is untouched.
-			var w_wait_env := OS.get_environment("INFILTRAITOR_CAPTURE_WEAPON_WAIT_FRAMES")
-			var w_wait := w_wait_env.to_int() if w_wait_env.is_valid_int() else 30
-			for _j in range(maxi(w_wait, 0)):
-				await get_tree().process_frame
 	elif (capture_action == "test_zone_view" or capture_action == "test_zone_menu" or capture_action == "test_zone_detonate" or capture_action == "test_zone_escape") and _test_zone_controller != null:
 		## TEST-ZONE placeholder (2026-07-21) dev capture action, same
 		## standing-tool precedent as end_turn/busted above. "test_zone_view"
@@ -11172,8 +11038,6 @@ func _cancel_context_menu() -> void:
 ## §6c added the third: the agent's shot, armed from an ENEMY rather than a prop.
 func _cancel_prop_menus() -> void:
 	_test_zone_controller.cancel_active()
-	if _weapon_bench_controller != null:
-		_weapon_bench_controller.cancel_active()
 	if _agent_shot_controller != null:
 		_agent_shot_controller.cancel_active()
 

@@ -1,8 +1,8 @@
 ## ActorMesh3D — an actor as a live skinned mesh on the 3D board (RENDER3D R3D-ACTORS, `ACTOR` D64).
 ##
-## THE MESH SHOWS, `AgentSprite` DECIDES (step 3, the bridge). The contract the retired `ActorBillboard3D` kept: the sprite still
+## THE MESH SHOWS, `ActorPose` DECIDES (step 3, the bridge). The contract the retired `ActorBillboard3D` kept: the sprite still
 ## owns every decision — facing (D44's four, D47's snap at the GU boundary), posture, grip, weapon, the walk's progress,
-## the throw and the head's grid angle — and this node reads them each frame through `AgentSprite.mesh_state()` and turns
+## the throw and the head's grid angle — and this node reads them each frame through `ActorPose.mesh_state()` and turns
 ## them into a yaw, an action and a time. Nothing in the actor's logic knows which of the two draws it.
 ##
 ## THE RIG is `tools/asset_generation/r3d_live_rig_export.py`'s: one skinned mesh, every motion a keyed action
@@ -28,13 +28,13 @@ const SHADOW_SHADER := "res://godot/shaders/ground_overlay3d.gdshader"
 const SHADOW_LIFT: float = 0.005
 const HeadTurnRef = preload("res://godot/scripts/geometry/actor_head_turn3d.gd")
 const RIG_DIR := "res://ASSETS/ISOMETRIC/source_assets/imported_models/agent/"
-## `AgentSprite.frame_family` -> the rig exported from that model. A family with no rig of its own falls back to the
+## `ActorPose.frame_family` -> the rig exported from that model. A family with no rig of its own falls back to the
 ## agent's, loudly, once.
 const RIG_BY_FAMILY := {
 	"": "agent_live.glb",
 	"_enemy_white": "agent_live_enemy_white.glb",
 }
-## `AgentSprite.weapon` (a bake suffix) -> the rig's weapon name. The rifle has no grip in `p2_grip_spike.GRIPS`, so it
+## `ActorPose.weapon` (a bake suffix) -> the rig's weapon name. The rifle has no grip in `p2_grip_spike.GRIPS`, so it
 ## holds the shotgun, as the frame bake already does.
 const WEAPON_BY_SUFFIX := {"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}
 ## D61: a GU is 1.60 m, and a GU is one world unit; the rig is authored in metres.
@@ -43,7 +43,7 @@ const METRES_TO_UNITS: float = 1.0 / 1.6
 const DEFAULT_SHADOW := Color(0.0, 0.0, 0.0, 0.28)
 
 var _board: Node3D = null
-var _source: AgentSprite = null
+var _source: ActorPose = null
 var _body: Node3D = null
 var _materials: Array[ShaderMaterial] = []
 var _player: AnimationPlayer = null
@@ -72,7 +72,7 @@ static var _warned_action: Dictionary = {}
 
 
 ## Drive this mesh from `source`. Returns false (and logs) when the rig cannot be loaded, leaving nothing half-built.
-func setup_actor(board: Node3D, source: AgentSprite) -> bool:
+func setup_actor(board: Node3D, source: ActorPose) -> bool:
 	var family: String = source.frame_family
 	var file: String = String(RIG_BY_FAMILY.get(family, ""))
 	if file.is_empty():
@@ -84,7 +84,6 @@ func setup_actor(board: Node3D, source: AgentSprite) -> bool:
 		return false
 	_source = source
 	_build_contact_shadow(source.get_parent())
-	source.visible = false  ## the 2D sprite keeps deciding (and processing); it no longer draws
 	name = "Mesh_%s" % (source.get_parent().name if source.get_parent() != null else source.name)
 	process_priority = 100  ## after the actor has moved and the sprite has decided, this frame
 	_sync()
@@ -137,7 +136,8 @@ func _sync() -> void:
 	visible = parent == null or (parent is CanvasItem and (parent as CanvasItem).is_visible_in_tree())
 	if not visible:
 		return
-	position = _board.call("ground_point", _source.global_position)
+	## The pose node sits at its actor's origin, so the actor's 2D position IS where the feet are.
+	position = _board.call("ground_point", (parent as Node2D).global_position)
 	var state: Dictionary = _source.mesh_state()
 	var step: Vector2i = state["step"]
 	var body_yaw: float = _body.rotation.y
@@ -159,8 +159,8 @@ func _sync() -> void:
 	else:
 		action = "%s_%s_%s" % [state["posture"], weapon, "aimed" if String(state["grip"]) == "_aimed" else "lowered"]
 	if _grenade != null:
-		_grenade.visible = throw_seq == AgentSprite.THROW_RAISE \
-			or (throw_seq == AgentSprite.THROW_RELEASE and u < AgentSprite.THROW_RELEASE_FRACTION)
+		_grenade.visible = throw_seq == ActorPose.THROW_RAISE \
+			or (throw_seq == ActorPose.THROW_RELEASE and u < ActorPose.THROW_RELEASE_FRACTION)
 	_show_or_fallback(action, u, weapon)
 	if _head != null:
 		var head: float = float(state["head"])
@@ -171,11 +171,11 @@ func _sync() -> void:
 			## A grid angle: 0 = North (0, -1), +90 = East (1, 0), the guard's `vision_angle` convention.
 			var rad: float = deg_to_rad(head)
 			var want: float = yaw_for_direction(Vector2(sin(rad), -cos(rad)))
-			var limit: float = deg_to_rad(AgentSprite.HEAD_YAW_LIMIT_DEG)
+			var limit: float = deg_to_rad(ActorPose.HEAD_YAW_LIMIT_DEG)
 			_head.set("yaw", clampf(wrapf(want - body_yaw, -PI, PI), -limit, limit))
 
 
-## Where the head is above the feet in 2D canvas pixels on the N lattice (what `AgentSprite.head_offset_px()` answers,
+## Where the head is above the feet in 2D canvas pixels on the N lattice (what `ActorPose.head_offset_px()` answers,
 ## and the agent's muzzle and throw origin are built on): the rig's `head` bone in its current pose, carried onto the
 ## lattice through the BASE view's basis, so it does not change when the camera turns. Standing, it reads about -165 px
 ## where the bake's head socket read -168.6 (the bone's head is the base of the skull, the socket a little above it).
@@ -293,7 +293,6 @@ func _apply_reveal() -> void:
 func _exit_tree() -> void:
 	## Only if this mesh still owns the sprite: on a reload the NEW board's figure has already hidden it.
 	if is_instance_valid(_source) and _source.has_meta("figure3d") and _source.get_meta("figure3d") == self:
-		_source.visible = true
 		var actor: Node = _source.get_parent()
 		if actor != null and "draw_ground_shadow" in actor:
 			actor.set("draw_ground_shadow", true)

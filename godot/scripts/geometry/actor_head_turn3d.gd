@@ -1,8 +1,8 @@
 ## ActorHeadTurn3D — turns a live rig's head about the vertical, on top of whatever action is playing (R3D-ACTORS, the
-## mesh half of `AgentSprite`'s head layer). A `SkeletonModifier3D` because it has to run AFTER the AnimationPlayer has
+## mesh half of `ActorPose`'s head layer). A `SkeletonModifier3D` because it has to run AFTER the AnimationPlayer has
 ## posed the skeleton this frame; a bone pose written from `_process` would be overwritten by the next seek.
 ##
-## `yaw` is relative to the body (`ActorMesh3D` clamps it to `AgentSprite.HEAD_YAW_LIMIT_DEG`), about the skeleton's up
+## `yaw` is relative to the body (`ActorMesh3D` clamps it to `ActorPose.HEAD_YAW_LIMIT_DEG`), about the skeleton's up
 ## axis, so a crouched figure whose neck is pitched still turns its head around the vertical rather than around its own
 ## tilted neck.
 class_name ActorHeadTurn3D

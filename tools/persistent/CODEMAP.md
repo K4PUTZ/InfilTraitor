@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 79762 lines total** (under `godot/scripts/`)
+**257 scripts · 79752 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -161,7 +161,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1319 lines
+`class_name GuardEnemy` · extends `Node2D` · 1314 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -200,27 +200,10 @@
 - `TIMER_SEARCH_TO_SUSPICIOUS` = `2`
 - `TIMER_NOISE_SUSPICIOUS` = `3`
 - `TIMER_NOISE_SUSPICIOUS_MED` = `2`
-- `CONE_REDRAW_ANGLE_EPS` = `0.00001`
-- `TURN_SPEED` = `4.0`
 
 **Public vars**
 - `var visual_offset: Vector2 = Vector2.ZERO`
 - `var enemy_id: String = ""`
-- `var vision_3d: bool = false`
-- `var cell: Vector2i = Vector2i.ZERO`
-- `var patrol_route: Array[Vector2i] = []`
-- `var patrol_index: int = 0`
-- `var facing: Vector2i = Vector2i.UP`
-- `var sprite: ActorPose = null`
-- `var state: String = STATE_PATROL`
-- `var state_timer: int = 0`
-- `var last_known_agent_cell: Vector2i = INVALID_CELL`
-- `var is_moving: bool = false`
-- `var fov_degrees: float = 90.0`
-- `var fov_range: int = 8`
-- `var facing_angle_deg: float = 0.0`
-- `var body_angle: float   = 0.0`
-- `var vision_angle: float = 0.0`
 
 ---
 
@@ -1181,11 +1164,11 @@ extends `Node3D` · 2412 lines
 
 ### `vision_cone3d.gd`
 
-`class_name VisionCone3D` · extends `MeshInstance3D` · 78 lines
+`class_name VisionCone3D` · extends `MeshInstance3D` · 73 lines
 
 `godot/scripts/geometry/vision_cone3d.gd`
 
-> VisionCone3D — a guard's smooth vision cone, drawn on the 3D board's ground plane. RENDER3D R3D-4c. The 2D cone was painted at z −4 under everything the 2D board drew above it, so a wall covered it. The 2D canvas draws over the 3D board, so left in 2D the cone would paint across walls and over the actors. Here it is a triangle fan on the ground, a hair above it, depth-tested: geometry covers it, actors stand over it. ONE AUTHORITY. The polygon is the guard's own (`_draw_vision_smooth_body` — LOS cuts, fov, range, the fade to alpha 0 at the rim). The guard publishes it through `vision_smooth_ready` while `vision_3d` is on; this only re-expresses each 2D point on the ground.
+> VisionCone3D — a guard's smooth vision cone, drawn on the 3D board's ground plane. RENDER3D R3D-4c. The 2D cone was painted at z −4 under everything the 2D board drew above it, so a wall covered it. The 2D canvas draws over the 3D board, so left in 2D the cone would paint across walls and over the actors. Here it is a triangle fan on the ground, a hair above it, depth-tested: geometry covers it, actors stand over it. ONE AUTHORITY. The polygon is the guard's own (`_draw_vision_smooth_body` — LOS cuts, fov, range, the fade to alpha 0 at the rim). The guard publishes it through `vision_smooth_ready` while it is computed (on request, once per change, while the guard is visible); this only re-expresses each 2D point on the ground.
 
 **Constants / tuning**
 - `GROUND_LIFT` = `0.02`

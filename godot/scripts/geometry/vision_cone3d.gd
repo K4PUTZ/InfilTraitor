@@ -7,7 +7,7 @@
 ##
 ## ONE AUTHORITY. The polygon is the guard's own (`_draw_vision_smooth_body` — LOS cuts, fov, range,
 ## the fade to alpha 0 at the rim). The guard publishes it through `vision_smooth_ready` while
-## `vision_3d` is on; this only re-expresses each 2D point on the ground.
+## it is computed (on request, once per change, while the guard is visible); this only re-expresses each 2D point on the ground.
 class_name VisionCone3D
 extends MeshInstance3D
 
@@ -31,7 +31,6 @@ func setup(board: Node3D, guard: Node2D) -> void:
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material_override = mat
-	guard.vision_3d = true
 	guard.vision_smooth_ready.connect(_on_polygon)
 	guard.refresh_vision_smooth()
 
@@ -41,10 +40,6 @@ func _exit_tree() -> void:
 		return
 	if _guard.vision_smooth_ready.is_connected(_on_polygon):
 		_guard.vision_smooth_ready.disconnect(_on_polygon)
-	## A reload's NEW cone has already taken over the guard; only the current owner hands it back.
-	if _guard.has_meta("cone3d") and _guard.get_meta("cone3d") == self:
-		_guard.vision_3d = false
-		_guard.refresh_vision_smooth()
 
 
 ## Follows the guard's own visibility (the fog hides a guard, and his cone with him).

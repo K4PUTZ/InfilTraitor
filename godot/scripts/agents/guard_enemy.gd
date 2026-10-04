@@ -9,8 +9,9 @@ signal step_finished(cell: Vector2i)
 signal move_finished(cell: Vector2i)
 
 ## Emitted in _enter_state() at the right moments
-## RENDER3D R3D-4c — the smooth vision cone's polygon (guard-local 2D points, one colour each), handed
-## to a `VisionCone3D` instead of being drawn when `vision_3d` is on. Same maths, one authority.
+## RENDER3D R3D-4c — the smooth vision cone's polygon (guard-local 2D points, one colour each), handed to the `VisionCone3D` that
+## draws it. This guard computes it (LOS cuts, fov, range, the fade at the rim): ONE authority. R3D-RETIRE-2D: it is computed
+## here on request (`_cone_dirty`), no longer inside a 2D node's `_draw()`, so it does not depend on a canvas item being visible.
 signal vision_smooth_ready(points: PackedVector2Array, colors: PackedColorArray)
 signal whistled(origin_cell: Vector2i, last_known: Vector2i)
 signal radioed(origin_cell: Vector2i, last_known: Vector2i)
@@ -57,14 +58,13 @@ var visual_offset: Vector2 = Vector2.ZERO
 var enemy_id: String = ""
 
 var _vision_tiles_node: Node2D = null
-var _vision_smooth_node: Node2D = null
-## True while a `VisionCone3D` owns the smooth cone: the 2D node still computes it (so every existing
-## redraw trigger keeps working) but publishes the polygon instead of painting it.
-var vision_3d: bool = false
+## Set by every trigger that used to `queue_redraw()` the smooth cone; `_flush_cone()` computes and publishes it once, while the
+## guard is visible (a fogged guard's cone is not worked out).
+var _cone_dirty: bool = true
 
 ## PERF-DEV (2026-09-12) — the cone is redrawn only when what it draws changed.
 ## `_process()` used to `queue_redraw()` this guard and both cone nodes EVERY
-## frame, and `_draw_vision_smooth()` casts 33 rays through `can_see_cell()` each
+## frame, and `_compute_vision_smooth()` casts 33 rays through `can_see_cell()` each
 ## time — ~130 LOS walks per guard per frame on a board where nothing moves. On
 ## the Moto g04s the idle frame was measured process-bound (TIME_PROCESS ~42 ms
 ## against render gpu 19 ms), so a per-frame GDScript cost is exactly what paces
@@ -176,7 +176,7 @@ func set_dev_vision(enabled: bool) -> void:
 	if _vision_tiles_node:
 		_vision_tiles_node.visible = enabled
 		_vision_tiles_node.queue_redraw()
-	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+	_cone_dirty = true
 
 
 func set_los_data(blocked_cells: Dictionary, blocked_edges: Dictionary, room_size: Vector2i = Vector2i.ZERO, shadow_tiles: Dictionary = {}) -> void:
@@ -208,7 +208,7 @@ func _build_search_queue(origin: Vector2i, blocked_cells: Dictionary, room_size:
 	## Shuffle for a non-deterministic sweep
 	_search_queue.shuffle()
 	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
-	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+	_cone_dirty = true
 
 
 func _ready() -> void:
@@ -227,13 +227,6 @@ func _ready() -> void:
 	add_child(_vision_tiles_node)
 	_vision_tiles_node.draw.connect(_draw_vision_tiles)
 
-	_vision_smooth_node = Node2D.new()
-	_vision_smooth_node.name = "VisionSmooth"
-	_vision_smooth_node.show_behind_parent = true
-	_vision_smooth_node.z_index = -4
-	add_child(_vision_smooth_node)
-	_vision_smooth_node.draw.connect(_draw_vision_smooth)
-
 	var flags: Node = get_node_or_null("/root/DevFlags")
 	_cone_redraw_always = flags.on("CONE_REDRAW_ALWAYS") if flags != null \
 			else OS.get_environment("INFILTRAITOR_CONE_REDRAW_ALWAYS") == "1"
@@ -244,6 +237,7 @@ func _rotate_towards(current: float, target: float, speed: float, delta: float) 
 
 
 func _process(delta: float) -> void:
+	_flush_cone()
 	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	attention.update(delta)
 	if FrameSplit.enabled:
@@ -306,11 +300,11 @@ func _process(delta: float) -> void:
 	if not _cone_redraw_always and not _cone_inputs_changed():
 		return
 	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
-	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+	_cone_dirty = true
 	queue_redraw()
 
 
-## Everything `_draw()`, `_draw_vision_smooth()` and `_draw_vision_tiles()` read
+## Everything `_draw()`, `_compute_vision_smooth()` and `_draw_vision_tiles()` read
 ## that can change frame to frame. Explicit redraw requests elsewhere (dev vision,
 ## state entry, search queue) still call `queue_redraw()` themselves.
 func _cone_inputs_changed() -> bool:
@@ -529,7 +523,7 @@ func _step_next() -> void:
 	step_finished.emit(next_cell)
 	queue_redraw()
 	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
-	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+	_cone_dirty = true
 	_step_next()
 
 
@@ -628,7 +622,7 @@ func _update_facing_from_angle() -> void:
 	_sync_sprite_facing()  ## FACING-SYNC-01 — see _sync_sprite_facing()
 	queue_redraw()
 	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
-	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+	_cone_dirty = true
 
 
 ## Converts detection probability into a cone color (red → green)
@@ -822,7 +816,7 @@ func _enter_state(new_state: String) -> void:
 
 	queue_redraw()
 	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
-	if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+	_cone_dirty = true
 
 
 func receive_alert(known_cell: Vector2i, target_state: String) -> void:
@@ -848,7 +842,7 @@ func receive_alert(known_cell: Vector2i, target_state: String) -> void:
 		attention.focus(known_cell, 0.9, 0.5)
 
 		if _vision_tiles_node: _vision_tiles_node.queue_redraw()
-		if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+		_cone_dirty = true
 		_update_debug_label()
 
 
@@ -921,7 +915,7 @@ func hear_noise(noise_tile: Vector2i, perceived_intensity: float) -> void:
 	if dev_vision:
 		queue_redraw()
 		if _vision_tiles_node: _vision_tiles_node.queue_redraw()
-		if _vision_smooth_node: _vision_smooth_node.queue_redraw()
+		_cone_dirty = true
 
 
 func tick_state() -> void:
@@ -1119,14 +1113,19 @@ func _draw_vision_tiles_body() -> void:
 		_vision_tiles_node.draw_colored_polygon(diamond, color)
 
 
-func _draw_vision_smooth() -> void:
+## Computes and publishes the smooth cone when something asked for it (`_cone_dirty`) and the guard is visible. A fogged guard keeps
+## the request until he shows, as a canvas item kept its redraw until it was shown.
+func _flush_cone() -> void:
+	if not _cone_dirty or not is_visible_in_tree():
+		return
+	_cone_dirty = false
 	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
-	_draw_vision_smooth_body()
+	_compute_vision_smooth()
 	if FrameSplit.enabled:
-		FrameSplit.add("guard cone smooth draw", Time.get_ticks_usec() - _fs0)
+		FrameSplit.add("guard cone smooth", Time.get_ticks_usec() - _fs0)
 
 
-func _draw_vision_smooth_body() -> void:
+func _compute_vision_smooth() -> void:
 	var params: Dictionary = _get_cone_visual_params()
 	var v_fov: float  = params["fov"]
 	var visual_facing_deg := wrapf(rad_to_deg(vision_angle), 0.0, 360.0)  ## CONE-ANGLE-01
@@ -1177,16 +1176,12 @@ func _draw_vision_smooth_body() -> void:
 		edge_color.a = 0.0
 		colors.append(edge_color)
 
-	if vision_3d:
-		vision_smooth_ready.emit(points, colors)
-		return
-	_vision_smooth_node.draw_polygon(points, colors)
+	vision_smooth_ready.emit(points, colors)
 
 
 ## Asks the smooth cone to compute again, for a consumer that attaches after the last redraw.
 func refresh_vision_smooth() -> void:
-	if _vision_smooth_node != null:
-		_vision_smooth_node.queue_redraw()
+	_cone_dirty = true
 
 
 ## CHARACTER Part 7 — the enemy is the SAME figure in another faction's palette.

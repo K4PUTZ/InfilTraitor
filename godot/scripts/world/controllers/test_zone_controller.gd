@@ -1277,14 +1277,21 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## and Room.apply_prop_debris_fall() (Tier 1/2's own falling-voxel debris, same ring data).
 	var prop_bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 	if prop_bomb_def != null:
-		var prop_gu_rings := BlastCalculatorClass.flood_gu_rings(
-			gu, prop_bomb_def, _blocked_edges_dict(), room._blocked_cells)
-		## The SAME prop rule the plan's own flood got (`_phase_setup`): a prop diagonal to the blast, or sheltered
-		## by its neighbours, still takes a ring — else a Tier 4 table would stay whole beside a crate that broke.
-		BlastCalculatorClass.add_prop_boundary_rings(prop_gu_rings, room._voxel_board.prop_gus(),
-			_blocked_edges_dict(), room._blocked_cells, prop_bomb_def.ring_multipliers.size() - 1)
+		## The plan's own flood (`_phase_setup`: the wall-aware rings AND the prop rule — a prop diagonal to the blast, or sheltered
+		## by its neighbours, still takes a ring, else a Tier 4 table would stay whole beside a crate that broke). It is carried on
+		## the Delta: recomputing it here was 545 ms of the Moto's commit frame. A Delta without it (a selftest's) falls back to the
+		## recomputation.
+		var prop_gu_rings: Dictionary = job.delta.gu_rings
+		if prop_gu_rings.is_empty():
+			prop_gu_rings = BlastCalculatorClass.flood_gu_rings(
+				gu, prop_bomb_def, _blocked_edges_dict(), room._blocked_cells)
+			BlastCalculatorClass.add_prop_boundary_rings(prop_gu_rings, room._voxel_board.prop_gus(),
+				_blocked_edges_dict(), room._blocked_cells, prop_bomb_def.ring_multipliers.size() - 1)
+		_prof("PROP RINGS — flood_gu_rings + add_prop_boundary_rings")
 		room.apply_prop_proximity_effects(prop_gu_rings, prop_bomb_def)
+		_prof("PROP PROXIMITY — apply_prop_proximity_effects")
 		room.apply_prop_debris_fall(job.delta.touched_voxels, gu, prop_gu_rings, prop_bomb_def)
+		_prof("PROP DEBRIS FALL — apply_prop_debris_fall")
 	## The census and the passage report are diagnostics: 34 ms of the Moto's commit frame (2026-09-26, R3D-LIGHT), so a
 	## release build skips them unless `BLAST_REPORT=1` asks (the desktop, a debug build, keeps both).
 	var blast_report: bool = OS.is_debug_build() or room._dev_flag_on("BLAST_REPORT")

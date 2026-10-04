@@ -85,6 +85,11 @@ var waves: Dictionary = {
 ## `{"SURFACE|material": {destroy, dented, cracked, baked, live}}`
 var census: Dictionary = {}
 
+## The wall-aware GU ring flood this blast's plan used (`_phase_setup`: `flood_gu_rings` + the props' boundary rings), `{gu: ring}`.
+## The commit frame's Tier 4 prop effects read the SAME flood: recomputing it there cost 545 ms of the Moto's commit frame
+## (2026-10-04) for an answer the cook had already worked out for free.
+var gu_rings: Dictionary = {}
+
 ## §3.4 — every cell this Delta touches, as plain coordinates. Safe to keep
 ## after the Voxel references in `damage` have gone stale.
 var touched: Array[Vector3i] = []

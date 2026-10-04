@@ -444,6 +444,7 @@ static func _phase_setup(s: Dictionary) -> void:
 	var crater_max: float = float(n_rings) * float(GeometryCoords.VOXELS_PER_UNIT_AXIS) * CRATER_MAX_FACTOR
 
 	s["gu_rings"] = gu_rings
+	(s["delta"] as WorldDelta).gu_rings = gu_rings
 	s["affected"] = affected
 	s["epicenter"] = source_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS + Vector2i(half, half)
 	s["crater_max"] = crater_max

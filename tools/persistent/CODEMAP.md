@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 78826 lines total** (under `godot/scripts/`)
+**254 scripts · 78839 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2253,7 +2253,7 @@ extends `Node2D` · 68 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3070 lines
+`class_name DetonationPlanBuilder` · 3071 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -3071,7 +3071,7 @@ extends `Node` · 231 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 377 lines
+`class_name WorldDelta` · extends `RefCounted` · 382 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -3090,6 +3090,7 @@ extends `Node` · 231 lines
 - `var damage: Array = []`
 - `var waves: Dictionary = { "destroy": {}, "dented": {}, "cracked": {}, "smoke": {}, "ember": {}, "debris": {}, "soot": {}, }`
 - `var census: Dictionary = {}`
+- `var gu_rings: Dictionary = {}`
 - `var touched: Array[Vector3i] = []`
 - `var touched_voxels: Array = []`
 - `var reaped_voxels: Array = []`
@@ -5253,7 +5254,7 @@ extends `Node2D` · 63 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1558 lines
+`class_name TestZoneController` · 1565 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

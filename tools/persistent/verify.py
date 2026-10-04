@@ -28,6 +28,14 @@
 ## frame timing the gates depend on, and a hung boot used to burn a 600 s timeout before saying so. Every boot now times out at
 ## 180-300 s. The first failing step stops the run (`--keep-going` to see them all).
 ##
+## A BOOT GATE CAN HANG UNDER A REMOTE DESKTOP SESSION (2026-10-03). The gates open the game's window at `--position 4000,4000`,
+## off every monitor, and a gate's `capture` waits for a frame the window draws. While the Mac was reached through Chrome Remote
+## Desktop a boot hung at a capture about every other run (CPU spinning, no new log line, the 180 s timeout; the same boot took 34 s
+## on another try, and the unmodified code hung the same way). With the session closed, three runs in a row passed (two of the
+## one-boot form, 68-77 s, one of the two-boot form, 143 s). The likely cause is the OS not compositing a window on a virtual or
+## sleeping display, so it is a hypothesis, not a proof. If a boot gate times out: close the remote session and run it again before
+## suspecting the code; do not read a hang as a regression without a control run on the previous commit (`git stash`).
+##
 ## Usage:
 ##     python3 tools/persistent/verify.py                 # auto
 ##     python3 tools/persistent/verify.py quick|full|docs

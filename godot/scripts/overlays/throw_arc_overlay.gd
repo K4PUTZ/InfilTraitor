@@ -199,21 +199,17 @@ func set_launch_height(launch_px: float) -> void:
 func _draw() -> void:
 	if not _visible:
 		return
-	var apex: float = arc_height_for(_from, _to, arc_height_ratio, _launch_px)
-	if _world != null:
-		var ground_from := _from + Vector2(0.0, _launch_px)
-		var pts3 := PackedVector3Array()
-		_world.begin()
-		for i: int in range(arc_segments + 1):
-			var t: float = float(i) / float(arc_segments)
-			pts3.append(_world.lift(arc_point(_from, _to, t, apex, _launch_px), ground_from.lerp(_to, t)))
-		_world.polyline(pts3, arc_color, line_width)
-		_world.end()
+	if _world == null:
 		return
-	var points := PackedVector2Array()
+	var apex: float = arc_height_for(_from, _to, arc_height_ratio, _launch_px)
+	var ground_from := _from + Vector2(0.0, _launch_px)
+	var pts3 := PackedVector3Array()
+	_world.begin()
 	for i: int in range(arc_segments + 1):
-		points.append(arc_point(_from, _to, float(i) / float(arc_segments), apex, _launch_px))
-	draw_polyline(points, arc_color, line_width)
+		var t: float = float(i) / float(arc_segments)
+		pts3.append(_world.lift(arc_point(_from, _to, t, apex, _launch_px), ground_from.lerp(_to, t)))
+	_world.polyline(pts3, arc_color, line_width)
+	_world.end()
 
 
 func clear() -> void:

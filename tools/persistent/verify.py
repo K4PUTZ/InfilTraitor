@@ -9,7 +9,7 @@
 ##   quick   ~1 min     project_lint, check_invariants, gen_codemap --check, run_selftests.
 ##   smoke   ~1.5 min   quick + a boot of PLAYGROUND and GLASS that rotates E then N (smoke_boot.py): no grenade, no shot. THE DEFAULT for
 ##                      any change under godot/: it catches the runtime wiring the linter cannot, and nothing else is repeated.
-##   full    ~7 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), pick (1 boot per map: touch picking from N/E/S/W), roof-yaw (a roof opens and shuts the same from every side), world (the air overlays' lift and axes survive a turn), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
+##   full    ~7 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), pick (1 boot per map: touch picking from N/E/S/W), roof-yaw (a roof opens and shuts the same from every side), world (the air overlays' lift and axes survive a turn), canvas (no overlay paints the 2D canvas, in the aim / throw / blast / view-mode states), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
 ##                      identity gates (`board_probe gate`, `pixel_gate`) held to a STORED BASELINE with ONE boot per case.
 ##                      For a change that touches the board, the state, the light, the ground, the geometry or the shaders.
 ##   look    ~2.5 min   quick + the smoke boot + the PIXEL gate only (held to the stored baseline). For a change to how something LOOKS (a
@@ -116,6 +116,7 @@ def steps_for(tier: str, have_baseline: bool):
         ("pick", True, sh("pick_gate.py")),
         ("roof-yaw", True, sh("roof_yaw_gate.py")),
         ("world", True, sh("world_gate.py")),
+        ("canvas", True, sh("canvas_gate.py")),
         ("roundtrip+shadow", True, sh("board_probe.py", "roundtrip", "--with-store")),
     ] + identity
 

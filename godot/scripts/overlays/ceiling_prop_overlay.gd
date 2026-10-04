@@ -43,28 +43,16 @@ func set_lights(light_sources: Array) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	if _world != null:
-		_world.begin()
-		for light in _lights:
-			var cell := Vector2i(int(light.get("x", 0)), int(light.get("y", 0)))
-			var floor_2d: Vector2 = GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset
-			var p: Vector2 = floor_2d - Vector2(0.0, _ceiling_lift)
-			var bulb: Vector3 = _world.lift(p, floor_2d)
-			_world.line(bulb + _world.up(20.0), bulb + _world.up(40.0),
-				Color(0.26, 0.26, 0.28, 1.0), 4.0)
-			_world.disc(bulb, 20.0, Color(1.0, 0.90, 0.52, clampf(0.7 + 0.3 * float(light.get("intensity", 1.0)), 0.0, 1.0)))
-			_world.ring(bulb, 20.0, Color(0.14, 0.12, 0.08, 1.0), 3.5)
-		_world.end()
+	if _world == null:
 		return
+	_world.begin()
 	for light in _lights:
 		var cell := Vector2i(int(light.get("x", 0)), int(light.get("y", 0)))
-		var pos: Vector2 = GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset
-		pos.y -= _ceiling_lift
-		_draw_lamp(pos, float(light.get("intensity", 1.0)), float(light.get("radius", 6)))
-
-## Placeholder ceiling lamp: a bright bulb, a dark rim, and a mount stem.
-## The soft floor glow was removed — it added clutter without information.
-func _draw_lamp(p: Vector2, intensity: float, _radius: float) -> void:
-	draw_circle(p, 20.0, Color(1.0, 0.90, 0.52, clampf(0.7 + 0.3 * intensity, 0.0, 1.0)))
-	draw_arc(p, 20.0, 0.0, TAU, 28, Color(0.14, 0.12, 0.08, 1.0), 3.5)
-	draw_line(p + Vector2(0.0, -20.0), p + Vector2(0.0, -40.0), Color(0.26, 0.26, 0.28, 1.0), 4.0)
+		var floor_2d: Vector2 = GroundGridRef.map_to_local(cell) + TILE_CENTER_OFFSET + _visual_offset
+		var p: Vector2 = floor_2d - Vector2(0.0, _ceiling_lift)
+		var bulb: Vector3 = _world.lift(p, floor_2d)
+		_world.line(bulb + _world.up(20.0), bulb + _world.up(40.0),
+			Color(0.26, 0.26, 0.28, 1.0), 4.0)
+		_world.disc(bulb, 20.0, Color(1.0, 0.90, 0.52, clampf(0.7 + 0.3 * float(light.get("intensity", 1.0)), 0.0, 1.0)))
+		_world.ring(bulb, 20.0, Color(0.14, 0.12, 0.08, 1.0), 3.5)
+	_world.end()

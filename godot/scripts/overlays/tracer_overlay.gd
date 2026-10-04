@@ -122,7 +122,7 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 
-## R3D-WORLD — draw on the 3D board instead (null: back to the 2D canvas).
+## R3D-WORLD — draw on the 3D board (null: nothing to draw on; the 2D canvas fallback was removed in RETIRE-2D).
 func set_board3d(board: Node3D) -> void:
 	if _world != null:
 		_world.detach()
@@ -136,35 +136,9 @@ func set_board3d(board: Node3D) -> void:
 func _draw() -> void:
 	if _world != null:
 		_draw_world()
-		return
-	for s in _streaks:
-		var frames: int = int(s["frames"])
-		## Alpha holds, then ramps down. Explicit float conversion throughout —
-		## an INTEGER_DIVISION warning here would be a real bug in the ramp.
-		var alpha: float = 1.0
-		if frames > HOLD_FRAMES:
-			alpha = clampf(1.0 - float(frames - HOLD_FRAMES) / float(FADE_FRAMES),
-				0.0, 1.0)
-		var from: Vector2 = s["from"]
-		var to: Vector2 = s["to"]
-		## The streak travels: its trailing end walks from the muzzle to the
-		## impact across the hold, so the round reads as leaving the barrel
-		## rather than as a wire strung between two points for a moment.
-		var travel: float = clampf(float(frames) / float(HOLD_FRAMES), 0.0, 1.0)
-		var head: Vector2 = from.lerp(to, travel)
-		var tail: Vector2 = from.lerp(to, maxf(travel - STREAK_FRACTION, 0.0))
-		if head == tail:
-			continue
-		draw_line(tail, head, Color(TAIL_COLOR, TAIL_COLOR.a * alpha), TAIL_WIDTH_PX)
-		draw_line(tail, head, Color(CORE_COLOR, CORE_COLOR.a * alpha), CORE_WIDTH_PX)
-		## The head last, so nothing is drawn over it. It shrinks as the round
-		## fades instead of only dimming — a dot that dims stays a dot, and this
-		## one should read as going away.
-		draw_circle(head, HEAD_RADIUS_PX * maxf(alpha, 0.35),
-			Color(HEAD_COLOR, HEAD_COLOR.a * alpha))
 
 
-## The same streak as `_draw()`, in the world: each end lifted from its floor point, so the head travels the real line
+## The streak, in the world: each end lifted from its floor point, so the head travels the real line
 ## from the muzzle to the impact.
 func _draw_world() -> void:
 	_world.begin()

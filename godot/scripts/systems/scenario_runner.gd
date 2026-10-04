@@ -23,6 +23,10 @@
 ##   throw <index> <x,y>                  RETIRE-2: dev grenade #index THROWN to the GU x,y through the real
 ##                                        throw (the agent's release, the arc, the landing hop, the roll, the
 ##                                        fuse, the blast); returns at once, so follow it with `frames`/`capture_at`
+##   aim <x,y>                            RETIRE-2D: the grenade targeting preview on a GU (the perimeter, the dome, the arc, the shrapnel
+##                                        rays, the footprint and the virtual grenade), as a player aiming; stays open
+##   canvas_check <name>                  RETIRE-2D: prints `[CANVAS-CHECK] <name> examined=N canvas=M <names>`: how many overlays that
+##                                        have a 3D target there are, and which of them are painting the 2D canvas instead
 ##   capture <name>                       the root viewport to captures/<name>.png
 ##                                        (the external files dir on Android)
 ##   capture_at <beat> <offset> <name>    RENDER3D R3D-0: ARM a capture for INSIDE the
@@ -88,7 +92,7 @@ extends Node
 const ARITY: Dictionary = {
 	"framing": 1, "zoom": 1, "centre": 1, "wait": 1, "frames": 1,
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
-	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2,
+	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
 	"passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2,
 }
@@ -184,10 +188,15 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "passages", "mirror_check", "ground_check", "pick_check", "world_check":
+		"capture", "probe", "probe_store", "passages", "mirror_check", "ground_check", "pick_check", "world_check", "canvas_check":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
+		"aim":
+			var axy: PackedStringArray = arg.split(",")
+			if axy.size() != 2 or not axy[0].is_valid_int() or not axy[1].is_valid_int():
+				return "aim takes a GU as x,y"
+			step["cell"] = Vector2i(int(axy[0]), int(axy[1]))
 		"place_guard":
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "place_guard takes a guard index >= 0 and a cell x,y"
@@ -315,6 +324,15 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				return _fail(step, "Room has no scenario_ground_check()")
 			if not bool(room.call("scenario_ground_check", str(step["name"]))):
 				return _fail(step, "no ground check was made (see the error above)")
+		"aim":
+			if not room.has_method("scenario_aim"):
+				return _fail(step, "Room has no scenario_aim()")
+			if not bool(room.call("scenario_aim", step["cell"])):
+				return _fail(step, "the aim did not start (see the error above)")
+		"canvas_check":
+			if not room.has_method("scenario_canvas_check"):
+				return _fail(step, "Room has no scenario_canvas_check()")
+			room.call("scenario_canvas_check", str(step["name"]))
 		"world_check":
 			if not room.has_method("scenario_world_check"):
 				return _fail(step, "Room has no scenario_world_check()")

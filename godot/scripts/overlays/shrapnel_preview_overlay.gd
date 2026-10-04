@@ -219,12 +219,6 @@ func _draw() -> void:
 			_world.draw_line(_ray_froms[i], _ray_tos[i], Color(ray_color.r, ray_color.g, ray_color.b, _ray_alphas[i]), line_width)
 		_world.end()
 		return
-	_ax = IsoProjection.AXIS_X
-	_ay = IsoProjection.AXIS_Y
-	var c := ray_color
-	for i: int in _ray_froms.size():
-		draw_line(_ray_froms[i], _ray_tos[i],
-			Color(c.r, c.g, c.b, _ray_alphas[i]), line_width)
 
 
 ## Distance from the centre of an axis-aligned ellipse to its rim, along a UNIT

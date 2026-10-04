@@ -141,10 +141,6 @@ var _embers: Array = []
 
 var _smoke_overlay: SmokeSparkOverlay = null  ## optional — puff-on-extinguish target
 
-## PERF-P7b (§12.10) — two `draw_circle` per ember, 24.0% of the whole VFX
-## `_draw()` before the puffs moved and 64.3% after. Same `CircleField` the smoke
-## uses; opt IN with `INFILTRAITOR_P7B=1`.
-var _field: CircleField = null
 ## RENDER3D R3D-4e-2 — see SmokeSparkOverlay.set_board3d().
 const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
@@ -152,26 +148,11 @@ var _board: Node3D = null
 var _field3d: RefCounted = null
 
 
-func _ready() -> void:
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	material = mat
-	if SmokeSparkOverlay.P7B_MULTIMESH:
-		_field = CircleField.new()
-		## ADD, matching the material above. `behind` is not needed and is not
-		## passed: additive compositing is order-independent, so core-then-halo
-		## and halo-then-core produce the same pixels — which is also why the two
-		## can share ONE instance buffer instead of needing two passes.
-		_field.attach(self, CanvasItemMaterial.BLEND_MODE_ADD)
-
-
-## R3D-4e-2 — hand this overlay the 3D board (or null to go back to 2D). Embers then glow in world
+## R3D-4e-2 — hand this overlay the 3D board (null: nothing is drawn). Embers then glow in world
 ## space, so a wall in front of them hides them. ADD blend, as the 2D field.
 func set_board3d(board: Node3D) -> void:
 	_board = board
 	_field3d = null
-	if _field != null:
-		_field.clear()
 	if board == null:
 		return
 	_field3d = CircleField3DRef.new()
@@ -373,12 +354,10 @@ func _draw() -> void:
 	var submit: bool = not VfxDrawProbe.noop
 	var probe_t0: int = Time.get_ticks_usec() if probing else 0
 	var drawn: int = 0
-	var mm: CircleField = _field
 	var mm3: RefCounted = _field3d
-	if mm3 != null:
-		mm3.begin_on_board(_embers.size() * 2)
-	elif mm != null:
-		mm.begin(_embers.size() * 2)
+	if mm3 == null:
+		return  ## no 3D board: nothing to draw on (the 2D canvas fallback was removed in RETIRE-2D)
+	mm3.begin_on_board(_embers.size() * 2)
 	for e in _embers:
 		## E-EMBER-02: an ember still counting down its delay is not on fire yet
 		## and draws nothing at all.
@@ -396,19 +375,9 @@ func _draw() -> void:
 		halo.a *= alpha * halo_alpha_factor
 		drawn += 1
 		if submit:
-			if mm3 != null:
-				mm3.push(e["a3"], e["a2"], e["pos"], e["radius"], core)
-				mm3.push(e["a3"], e["a2"], e["pos"], e["radius"] * e["halo_scale"], halo)
-			elif mm != null:
-				mm.push(e["pos"], e["radius"], core)
-				mm.push(e["pos"], e["radius"] * e["halo_scale"], halo)
-			else:
-				draw_circle(e["pos"], e["radius"], core)
-				draw_circle(e["pos"], e["radius"] * e["halo_scale"], halo)
-	if mm3 != null:
-		mm3.flush()
-	elif mm != null:
-		mm.flush()
+			mm3.push(e["a3"], e["a2"], e["pos"], e["radius"], core)
+			mm3.push(e["a3"], e["a2"], e["pos"], e["radius"] * e["halo_scale"], halo)
+	mm3.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
 		## overlay's own row, so the split can never disagree with the total.
@@ -425,8 +394,6 @@ func _draw() -> void:
 func clear() -> void:
 	if _field3d != null:
 		_field3d.clear()
-	if _field != null:
-		_field.clear()
 	_embers.clear()
 	set_process(false)
 	queue_redraw()

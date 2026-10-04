@@ -17,57 +17,23 @@ class_name SmokeSparkOverlay
 ## here: CanvasItemMaterial.blend_mode is per-node, and smoke needs normal
 ## blend (additive smoke reads as glowing gas, not soot).
 
-## PERF-P7b (§12.10) — the puffs are 68.9% of the whole VFX `_draw()` and they are
-## `draw_circle`, so they go through `CircleField` (one MultiMesh, one draw call)
-## instead of one canvas command each. It was opt IN (`INFILTRAITOR_P7B=1`) while the
-## pixel gate was being earned — a one-binary A/B, which is stricter than stashing
-## the change and re-running (§5.5).
-## §12.13 — DEFAULT ON since 2026-08-26. Opt OUT with `INFILTRAITOR_P7B=0`.
-## Earned on the static `circle_gate`: 0 of 921 600 px differ between the two
-## paths. The opt-out stays for the same one-binary A/B reason P3's does.
 const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
 const QuadField3DRef = preload("res://godot/scripts/geometry/quad_field3d.gd")
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
-static var P7B_MULTIMESH: bool = OS.get_environment("INFILTRAITOR_P7B") != "0"
 
-var _puff_field: CircleField = null
-## RENDER3D R3D-4e-2 — while a 3D board is up the puffs are drawn by a depth-tested `CircleField3D`
-## (see ParticleMath) and the 2D field stays empty; puffs the 3D field does not carry (sparks) still
-## draw in 2D until R3D-4e-3.
+## RENDER3D R3D-4e-2/3 — the puffs are drawn by a depth-tested `CircleField3D` and the sparks by a `QuadField3D` (see ParticleMath);
+## with no 3D board nothing is drawn (the 2D `CircleField` and `draw_*` fallbacks were removed in RETIRE-2D).
 var _board: Node3D = null
 var _puff_field3d: RefCounted = null
 var _spark_field3d: RefCounted = null  ## R3D-4e-3: the streaks, as thin rectangles
 
 
-func _ready() -> void:
-	if P7B_MULTIMESH:
-		_puff_field = CircleField.new()
-		## MIX, not ADD: this overlay deliberately has no CanvasItemMaterial, and
-		## the class doc says why — "additive smoke reads as glowing gas, not
-		## soot". `behind` keeps the puffs under the sparks, where `_draw()` put
-		## them.
-		## ⛔ D-4 TRIED A SOFT RIM HERE AND IT WAS REVERTED, 2026-08-28. Two
-		## implementations, both unproven and both mine rather than asked for: a
-		## feathered MESH (vertex alpha never reaches the fragment on a MultiMesh2D —
-		## proved with an opaque-red rim and 0 red pixels) and then a UV+shader
-		## version. The second added `ARRAY_TEX_UV` to the SHARED unit circle, which
-		## is used by the plain CanvasItemMaterial path too, and smoke stopped
-		## drawing in BOTH modes. Reverted whole rather than debugged further: the
-		## Director asked for bigger, more present, rising smoke, and none of this
-		## was on the way there.
-		var feather_env := OS.get_environment("INFILTRAITOR_SMOKE_FEATHER")
-		var feather: float = feather_env.to_float() if feather_env.is_valid_float() else 0.75
-		_puff_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true, feather)
-
-
-## R3D-4e-2 — hand this overlay the 3D board (or null to go back to 2D). Puffs then draw in world
+## R3D-4e-2 — hand this overlay the 3D board (null: nothing is drawn). Puffs then draw in world
 ## space, so a wall in front of them hides them.
 func set_board3d(board: Node3D) -> void:
 	_board = board
 	_puff_field3d = null
 	_spark_field3d = null
-	if _puff_field != null:
-		_puff_field.clear()
 	if board == null:
 		return
 	_spark_field3d = QuadField3DRef.new()
@@ -292,12 +258,11 @@ func _draw() -> void:
 	var puff_us: int = 0
 	var puff_cmds: int = 0
 	var puff_t0: int = Time.get_ticks_usec() if probing else 0
-	var mm: CircleField = _puff_field
 	var mm3: RefCounted = _puff_field3d
-	if mm3 != null:
-		mm3.begin_on_board(_smoke.size())
-	elif mm != null:
-		mm.begin(_smoke.size())
+	var sf3: RefCounted = _spark_field3d
+	if mm3 == null or sf3 == null:
+		return  ## no 3D board: nothing to draw on
+	mm3.begin_on_board(_smoke.size())
 	for s in _smoke:
 		if float(s.get("delay", 0.0)) > 0.0:
 			continue
@@ -309,26 +274,16 @@ func _draw() -> void:
 		drawn += 1
 		cmds += 1
 		if submit:
-			if mm3 != null:
-				mm3.push(s["a3"], s["a2"], s["pos"], radius * smoke_3d_radius_scale, c)
-			elif mm != null:
-				mm.push(s["pos"], radius, c)
-			else:
-				draw_circle(s["pos"], radius, c)
+			mm3.push(s["a3"], s["a2"], s["pos"], radius * smoke_3d_radius_scale, c)
 	## ONE engine call for every puff pushed. Outside the loop by definition —
 	## flushing per particle would reintroduce exactly the per-particle cost this
 	## replaces, with a buffer upload instead of a canvas command.
-	if mm3 != null:
-		mm3.flush()
-	elif mm != null:
-		mm.flush()
+	mm3.flush()
 
 	if probing:
 		puff_us = Time.get_ticks_usec() - puff_t0
 		puff_cmds = cmds
-	var sf3: RefCounted = _spark_field3d
-	if sf3 != null:
-		sf3.begin_on_board(_sparks.size() * maxi(spark_trail_segments, 1))
+	sf3.begin_on_board(_sparks.size() * maxi(spark_trail_segments, 1))
 	for p in _sparks:
 		var t: float = p["elapsed"] / p["duration"]
 		var alpha: float = pow(1.0 - t, spark_fade_power)
@@ -339,10 +294,7 @@ func _draw() -> void:
 			drawn += 1
 			cmds += 1
 			if submit:
-				if sf3 != null:
-					sf3.push_line(p["a3"], p["a2"], p["pos"], p["pos"], spark_width, c)
-				else:
-					draw_line(p["pos"], p["pos"], c, spark_width)
+				sf3.push_line(p["a3"], p["a2"], p["pos"], p["pos"], spark_width, c)
 			continue
 		## E-SPARK-02: the streak is walked back from the head in segments, each
 		## dimmer and thinner than the last. Length follows SPEED, so a fast
@@ -361,14 +313,9 @@ func _draw() -> void:
 			var seg := c
 			seg.a = c.a * alpha * lerpf(1.0, spark_trail_tail_alpha, a0)
 			if submit:
-				if sf3 != null:
-					sf3.push_line(p["a3"], p["a2"], p["pos"] - dir * reach * a0,
-						p["pos"] - dir * reach * a1, spark_width * lerpf(1.0, 0.35, a0), seg)
-				else:
-					draw_line(p["pos"] - dir * reach * a0, p["pos"] - dir * reach * a1,
-						seg, spark_width * lerpf(1.0, 0.35, a0))
-	if sf3 != null:
-		sf3.flush()
+				sf3.push_line(p["a3"], p["a2"], p["pos"] - dir * reach * a0,
+					p["pos"] - dir * reach * a1, spark_width * lerpf(1.0, 0.35, a0), seg)
+	sf3.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
 		## overlay's own row, so the split can never disagree with the total.
@@ -395,8 +342,6 @@ func clear() -> void:
 		_spark_field3d.clear()
 	if _puff_field3d != null:
 		_puff_field3d.clear()
-	if _puff_field != null:
-		_puff_field.clear()
 	_smoke.clear()
 	_sparks.clear()
 	set_process(false)

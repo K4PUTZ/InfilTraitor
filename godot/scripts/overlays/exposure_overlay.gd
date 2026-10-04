@@ -91,9 +91,7 @@ func set_board3d(board: Node3D) -> void:
 
 func _draw() -> void:
 	if _ground == null:
-		_c = self
-		_draw_into()
-		return
+		return  ## no 3D board to draw on: nothing to paint (the 2D canvas fallback is gone)
 	_c = _ground
 	_ground.begin(self)
 	_draw_into()

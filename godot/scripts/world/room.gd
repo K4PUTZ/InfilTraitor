@@ -7,7 +7,6 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## before the global class cache exists in a headless lint run.
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
-const ShardField = preload("res://godot/scripts/overlays/shard_field.gd")
 const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overlay.gd")
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
 const LevelGraphClass    = preload("res://godot/scripts/world/level_graph.gd")
@@ -2497,6 +2496,18 @@ func _ready() -> void:
 	## VL-02a: both overhead overlays exist only now — load_map()'s own call ran
 	## before they were constructed, so assign their real z here too.
 	_apply_overhead_overlay_z(_voxel_board.get_max_voxel_z_index())
+	## RETIRE-2D: the same is true of the 3D board's attachment. `load_map()` above built the board and attached the overlays that
+	## existed THEN; the tracer, the trail, the noise overlay, the ceiling lamps and the occlusion overlay are built after it, so
+	## on the first boot they stayed unattached (painting the 2D canvas, with no depth test) until the first reload.
+	## `canvas_check` found it: 4 overlays with no 3D target, 0 after an F2.
+	var live_board: Node3D = board3d() as Node3D
+	if live_board != null:
+		for late_overlay in [_noise_overlay, _trail_overlay, _tracer_overlay, _ceiling_overlay, _occlusion_overlay]:
+			if late_overlay != null and late_overlay.has_method("set_board3d"):
+				late_overlay.set_board3d(live_board)
+		## The voxel ruler (F3) is created on demand by this controller: it needs to know the board before the first toggle.
+		if _debug_tools_controller != null:
+			_debug_tools_controller.attach_board3d(live_board)
 
 	## Dev 03: Create hover label for tile coordinates
 	_dev_hover_label = Label.new()
@@ -8185,116 +8196,6 @@ func _debug_hide_all_but_voxels(node: Node) -> void:
 		_debug_hide_all_but_voxels(child)
 
 
-## PERF-P7b §12.11 — DOES `CircleField` RASTERIZE LIKE `draw_circle`?
-##
-## `INFILTRAITOR_CAPTURE_ACTION=circle_gate`.
-##
-## §8.6 asks P7b for "0 differing pixels at --fixed-fps 60 against a same-binary
-## control", and ⚠️ **that gate is unreachable on a detonation, for a reason that
-## is not the conversion's fault.** The prediction cook is budgeted in
-## MILLISECONDS (`job.step(cook_budget_ms)`), so how many frames it takes depends
-## on the machine — 42, 43, 47 and 48 frames were all observed across boots of the
-## same binary. The blast therefore lands on a different frame index every run, and
-## tile N of one sheet is a different MOMENT than tile N of another. Measured: two
-## identical filmstrip boots differ by **219 234 px**, and `INFILTRAITOR_RNG_SEED`
-## does not help because the RNG was never the variable.
-##
-## So the gate moves to the question the conversion actually raises — does the
-## MultiMesh path put the same pixels on screen as `draw_circle`? — and asks it on
-## a STATIC scene where nothing can drift: the same fixed circles, no fire, no
-## cook, no randomness, both paths in one boot.
-func _capture_circle_gate() -> void:
-	print("[CIRCLE-GATE] ---- CircleField vs draw_circle, static scene ----")
-	_debug_hide_all_but_voxels(self)
-	_debug_hide_all_but_voxels(get_tree().root)
-	## ⚠️ A `CanvasLayer`, NOT a child of Room — and this is not tidiness.
-	##
-	## The first version added the probe under Room at local (50, 50). Room is in
-	## WORLD space and the capture camera sits near canvas origin (-2144, -2611),
-	## so every circle was drawn thousands of pixels off screen. The gate then
-	## compared two identical frames of empty floor and reported **0 differing
-	## pixels · VERDICT PASS** — a gate that passed because nothing was tested.
-	## A CanvasLayer draws in SCREEN space, where the viewport is.
-	var host := CanvasLayer.new()
-	add_child(host)
-	var probe := CircleGateProbe.new()
-	host.add_child(probe)
-	for _i in range(6):
-		await get_tree().process_frame
-
-	## THE SANITY FRAME, first: the probe hidden. Path A must differ from THIS by
-	## a lot, or the gate is measuring an empty scene against itself again.
-	probe.visible = false
-	for _i in range(4):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var img_none := get_viewport().get_texture().get_image()
-	probe.visible = true
-
-	## PATH A — one `draw_circle` per circle, exactly as the overlays did.
-	probe.use_field = false
-	probe.queue_redraw()
-	for _i in range(4):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var img_a := get_viewport().get_texture().get_image()
-
-	## PATH B — the same circles through `CircleField`.
-	probe.use_field = true
-	probe.queue_redraw()
-	for _i in range(4):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var img_b := get_viewport().get_texture().get_image()
-
-	if img_a == null or img_b == null:
-		push_error("[CIRCLE-GATE] null viewport image.")
-		host.queue_free()
-		return
-	var shot_dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
-	DirAccess.make_dir_recursive_absolute(shot_dir)
-	img_a.save_png("%s/circle_gate_draw.png" % shot_dir)
-	img_b.save_png("%s/circle_gate_multimesh.png" % shot_dir)
-
-	var w: int = img_a.get_width()
-	var h: int = img_a.get_height()
-	var differ: int = 0
-	var max_delta: int = 0
-	var lit: int = 0
-	for y in range(h):
-		for x in range(w):
-			var ca: Color = img_a.get_pixel(x, y)
-			var cb: Color = img_b.get_pixel(x, y)
-			if ca.r8 != 0 or ca.g8 != 0 or ca.b8 != 0:
-				lit += 1
-			var d: int = maxi(maxi(absi(ca.r8 - cb.r8), absi(ca.g8 - cb.g8)),
-				absi(ca.b8 - cb.b8))
-			if d != 0:
-				differ += 1
-				max_delta = maxi(max_delta, d)
-	## THE ANTI-VACUUM CHECK. Counted against the probe-hidden frame, so "the
-	## circles are on screen" is measured rather than assumed.
-	var painted: int = 0
-	if img_none != null:
-		for y2 in range(h):
-			for x2 in range(w):
-				if img_none.get_pixel(x2, y2) != img_a.get_pixel(x2, y2):
-					painted += 1
-	print("[CIRCLE-GATE] %d circle(s) · %d px painted by the probe (vs a hidden-probe frame)"
-		% [probe.circle_count(), painted])
-	if painted < 10000:
-		push_error("[CIRCLE-GATE] the probe painted %d px — it is not on screen, and a 0-pixel result here would mean NOTHING" % painted)
-		host.queue_free()
-		return
-	print("[CIRCLE-GATE] %d non-black px in path A" % lit)
-	print("[CIRCLE-GATE] %d of %d px differ (%.4f%%) · max channel delta %d"
-		% [differ, w * h, 100.0 * float(differ) / float(w * h), max_delta])
-	print("[CIRCLE-GATE] VERDICT: %s" % ["PASS — pixel-identical"
-		if differ == 0 else "FAIL — the two paths do not rasterize the same"])
-	print("[CIRCLE-GATE] captures: Screenshots/history/circle_gate_{draw,multimesh}.png")
-	host.queue_free()
-
-
 func _capture_light_burn_probe() -> void:
 	if _voxel_board == null or _edge_registry == null:
 		push_error("[BURN-PROBE] needs a voxel renderer and an edge registry.")
@@ -9583,93 +9484,6 @@ func _capture_glass_reap_demo() -> void:
 			% [int(reaped["reaped"]), before_store, after_store])
 
 
-## ── G6b-1 — THE SHARD FIELD, AND A GATE THAT CAN REACH ITS FAILURE ──────────
-##
-## `INFILTRAITOR_CAPTURE_ACTION=shard_field_demo`
-##
-## ⚠️ **IT RENDERS THE SAME FIELD TWICE AND THE SECOND RUN IS THE POINT.** P7b's
-## culling defect shipped under a green 0-pixel gate, because that gate drew its
-## circles near the node origin where nothing is ever culled — *a green gate that
-## cannot reach the failure is not evidence*. So this captures once with the real
-## `custom_aabb` and once with the DEGENERATE box the engine would derive from the
-## base mesh on its own, and prints both pixel counts. The first number means
-## nothing without the second.
-##
-## The shards are placed far from the field node's origin on purpose: that is the
-## only place the defect exists.
-func _capture_shard_field_demo() -> void:
-	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
-	DirAccess.make_dir_recursive_absolute(dir)
-	var host := Node2D.new()
-	host.name = "ShardFieldDemo"
-	add_child(host)
-	var field := ShardField.new()
-	field.attach(host)
-
-	## A grid of every member at a range of sizes, rotations and flips, centred on
-	## the agent so the camera has something to frame.
-	var centre: Vector2 = agent.position if agent != null else Vector2.ZERO
-	var ids: int = GlassShardShapes.ids().size()
-	var cols: int = 24
-	var rows: int = 12
-	field.begin(cols * rows)
-	var n: int = 0
-	for r in range(rows):
-		for c in range(cols):
-			var t: float = float(n)
-			var pos: Vector2 = centre + Vector2(
-				(float(c) - float(cols) * 0.5) * 34.0,
-				(float(r) - float(rows) * 0.5) * 26.0)
-			## G-D44's band in pixels: a voxel face is VOXEL_STEP_PX tall, so a
-			## piece is TARGET_MIN..TARGET_MAX of that.
-			var size_px: float = GeometryCoords.VOXEL_STEP_PX * lerpf(
-				GlassShardShapes.TARGET_MIN, GlassShardShapes.TARGET_MAX,
-				fposmod(t * 0.137, 1.0))
-			field.push(pos, size_px, fposmod(t * 0.61, TAU), n % ids,
-				Color(0.77, 0.91, 0.96, 1.0), (n % 2) == 0, (n % 3) == 0)
-			n += 1
-	field.flush()
-
-	if _camera_controller != null:
-		_camera_controller.set_zoom_for_capture(1.0)
-		_camera_controller.focus_on(centre)
-	for _f in range(20):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var shot_ok: Image = get_viewport().get_texture().get_image()
-	shot_ok.save_png("%s/glass_shard_field_2026-09-05.png" % dir)
-	var px_ok: int = _count_shard_pixels(shot_ok)
-
-	## ⛔ THE CONTROL. The box the engine derives on its own from a unit quad.
-	field._mm.custom_aabb = AABB(Vector3(-0.5, -0.5, -0.5), Vector3(1.0, 1.0, 1.0))
-	for _g in range(10):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var shot_bad: Image = get_viewport().get_texture().get_image()
-	shot_bad.save_png("%s/glass_shard_field_nobox_2026-09-05.png" % dir)
-	var px_bad: int = _count_shard_pixels(shot_bad)
-
-	print("[SHARD-FIELD] %d instance(s) pushed, %d live" % [n, field.live_count()])
-	print("[SHARD-FIELD] shard pixels WITH custom_aabb: %d" % px_ok)
-	print("[SHARD-FIELD] shard pixels WITHOUT it (control): %d" % px_bad)
-	if px_bad >= px_ok:
-		push_warning("[SHARD-FIELD] the control drew as much as the real run — this gate cannot see the culling defect it exists for")
-	host.queue_free()
-
-
-## Pixels close to the shard tint. Crude on purpose: the claim is "the field drew
-## / did not draw", and a count that a human can check against two PNGs beats a
-## similarity metric nobody can re-derive.
-func _count_shard_pixels(img: Image) -> int:
-	var n: int = 0
-	for y in range(img.get_height()):
-		for x in range(img.get_width()):
-			var c: Color = img.get_pixel(x, y)
-			if c.b > 0.80 and c.g > 0.75 and c.r > 0.60 and c.b > c.r + 0.06:
-				n += 1
-	return n
-
-
 func _capture_screenshot_to_file() -> void:
 	var image := get_viewport().get_texture().get_image()
 	if image == null:
@@ -10075,8 +9889,6 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "agent_shot" and _agent_shot_controller != null:
 		await _capture_agent_shot()
-	elif capture_action == "circle_gate":
-		await _capture_circle_gate()
 	elif capture_action == "light_burn_probe":
 		await _capture_light_burn_probe()
 		get_tree().quit(0)
@@ -10095,10 +9907,6 @@ func _run_auto_screenshot_capture() -> void:
 		return
 	elif capture_action == "glass_blast_demo":
 		await _capture_glass_blast_demo()
-		get_tree().quit(0)
-		return
-	elif capture_action == "shard_field_demo":
-		await _capture_shard_field_demo()
 		get_tree().quit(0)
 		return
 	elif capture_action == "glass_rain_demo":
@@ -10860,10 +10668,51 @@ func _census_subtree(node: Node) -> Vector2i:
 
 ## True for an overlay that has a `_draw()` and no 3D target (`_ground` / `_world` null) while visible: it is painting the 2D canvas
 ## itself, the fallback path an overlay takes only when no board mirrors it. Overlays that never had a 3D target are not flagged.
+## The members an overlay keeps its 3D target in (ground canvas, world canvas, the VFX particle fields).
+const OVERLAY_TARGET_KEYS: Array[String] = ["_ground", "_world", "_field3d", "_glow_field3d", "_trail_field3d", "_dust_field3d", "_chip_field3d", "_puff_field3d", "_spark_field3d"]
+
+
+## RETIRE-2D — `canvas_check <name>`: one line saying how many overlays that carry a 3D target (`_ground` / `_world`) exist (`examined`),
+## how many of those are visible now (`shown`), and which of them are painting the 2D canvas. `examined` and `shown` are the controls:
+## a check that looked at nothing, or at a state that showed nothing, would print canvas=0 forever.
+func scenario_canvas_check(label: String) -> void:
+	var examined: int = 0
+	var shown: int = 0
+	var drawing: Array[String] = []
+	for node in find_children("*", "CanvasItem", true, false):
+		if not node.has_method("_draw"):
+			continue
+		var has_target: bool = false
+		for key in OVERLAY_TARGET_KEYS:
+			if key in node:
+				has_target = true
+		if has_target:
+			examined += 1
+			if (node as CanvasItem).is_visible_in_tree():
+				shown += 1
+			if _draws_on_canvas(node):
+				drawing.append(String(node.name) + "(" + String(node.get_script().resource_path.get_file()) + ")")
+	print("[CANVAS-CHECK] %s examined=%d shown=%d canvas=%d %s" % [label, examined, shown, drawing.size(), " ".join(drawing)])
+
+
+## RETIRE-2D — `aim <x,y>`: the grenade targeting preview on a GU, as a player aiming (stays open).
+func scenario_aim(cell: Vector2i) -> bool:
+	if _test_zone_controller == null:
+		push_error("[Room] scenario_aim: no TestZoneController — dev grenades exist on PLAYGROUND only")
+		return false
+	_seed_dev_grenades_if_empty("SCENARIO")
+	_test_zone_controller.enter_grenade_mode()
+	if not _test_zone_controller.is_in_targeting_mode():
+		push_error("[Room] scenario_aim: targeting did not open")
+		return false
+	_test_zone_controller._set_targeting_target(cell)
+	return true
+
+
 func _draws_on_canvas(node: Node) -> bool:
 	if not (node is CanvasItem) or not node.has_method("_draw") or not (node as CanvasItem).is_visible_in_tree():
 		return false
-	for key in ["_ground", "_world"]:
+	for key in OVERLAY_TARGET_KEYS:
 		if key in node and node.get(key) == null:
 			return true
 	return false

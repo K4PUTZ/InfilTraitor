@@ -208,17 +208,8 @@ func _process(delta: float) -> void:
 	if VfxDrawProbe.enabled:
 		VfxDrawProbe.note_process(&"DebrisOverlay", Time.get_ticks_usec() - _pp0)
 
-## PERF-P7c (§12.12) — the dust SPECKS are `draw_circle` and are this overlay's
-## bulk (`cmds += specks.size()` against one command per chip), so they take the
-## same `CircleField` the puffs and embers took. The CHIPS stay on
-## `draw_colored_polygon`: a rotated quad is not a circle, and at one command each
-## they are not what costs.
-##
-## No `material` on this node, so MIX — and `behind` keeps the dust under the
-## chips, which is the order `_draw()` has always used.
-var _dust_field: CircleField = null
-## RENDER3D R3D-4e-2 — see SmokeSparkOverlay.set_board3d(). Only the dust specks (the CircleField
-## population) move to 3D here; the rotated chips are R3D-4e-3.
+## The dust specks and the chips are drawn by 3D board fields (`CircleField3D`, `QuadField3D`); with no board nothing is drawn
+## (the 2D `CircleField` and `draw_*` fallbacks were removed in RETIRE-2D).
 const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 var _board: Node3D = null
@@ -231,29 +222,12 @@ func set_board3d(board: Node3D) -> void:
 	_board = board
 	_dust_field3d = null
 	_chip_field3d = null
-	if _dust_field != null:
-		_dust_field.clear()
 	if board == null:
 		return
 	_chip_field3d = QuadField3DRef.new()
 	_chip_field3d.attach_rect(board, 1)
 	_dust_field3d = CircleField3DRef.new()
 	_dust_field3d.attach(board, false, 0.75, 0)
-
-
-func _ready() -> void:
-	if SmokeSparkOverlay.P7B_MULTIMESH:
-		_dust_field = CircleField.new()
-		## D-4 — the SAME soft rim the smoke puffs got, on the same primitive.
-		##
-		## ⚠️ An earlier version of this comment claimed the dust was "the most
-		## visually prominent thing in the crater". It is NOT, and the correction is
-		## worth keeping because it cost a probe to get: with dust forced BLUE and
-		## smoke forced GREEN on a real concrete blast, the dust peaked at **11
-		## sampled pixels** (noise, on a pre-blast frame) against the smoke's 162.
-		## `dust_speck_radius` is 2.6 px — the big dark discs in a crater were never
-		## dust, they are SMOKE. The feather here is consistency, not a fix.
-		_dust_field.attach(self, CanvasItemMaterial.BLEND_MODE_MIX, true, 0.75)
 
 
 func _draw() -> void:
@@ -265,18 +239,16 @@ func _draw() -> void:
 	var probe_t0: int = Time.get_ticks_usec() if probing else 0
 	var drawn: int = 0
 	var cmds: int = 0
-	var mm: CircleField = _dust_field
 	var mm3: RefCounted = _dust_field3d
-	if mm3 != null or mm != null:
-		## Upper bound: every dust entry's specks. Over-reserving costs one resize
-		## on the first big frame and nothing afterwards.
-		var cap: int = 0
-		for d0 in _dust:
-			cap += (d0["specks"] as Array).size()
-		if mm3 != null:
-			mm3.begin_on_board(cap)
-		else:
-			mm.begin(cap)
+	var cf3: RefCounted = _chip_field3d
+	if mm3 == null or cf3 == null:
+		return  ## no 3D board: nothing to draw on
+	## Upper bound: every dust entry's specks. Over-reserving costs one resize
+	## on the first big frame and nothing afterwards.
+	var cap: int = 0
+	for d0 in _dust:
+		cap += (d0["specks"] as Array).size()
+	mm3.begin_on_board(cap)
 	for d in _dust:
 		var elapsed: float = d["elapsed"]
 		var delay: float = d["delay"]
@@ -313,20 +285,10 @@ func _draw() -> void:
 		for offset in d["specks"]:
 			var p: Vector2 = pos + (offset as Vector2) * speck_scale
 			if submit:
-				if mm3 != null:
-					mm3.push(d["a3"], d["a2"], p, radius, c)
-				elif mm != null:
-					mm.push(p, radius, c)
-				else:
-					draw_circle(p, radius, c)
-	if mm3 != null:
-		mm3.flush()
-	elif mm != null:
-		mm.flush()
+				mm3.push(d["a3"], d["a2"], p, radius, c)
+	mm3.flush()
 
-	var cf3: RefCounted = _chip_field3d
-	if cf3 != null:
-		cf3.begin_on_board(_chips.size())
+	cf3.begin_on_board(_chips.size())
 	for chip in _chips:
 		var pos: Vector2 = chip["pos"]
 		var alpha: float = 1.0
@@ -335,25 +297,15 @@ func _draw() -> void:
 			alpha = pow(1.0 - st, chip_fade_power)
 		var c: Color = chip["color"]
 		c.a *= alpha
-		var points := PackedVector2Array()
 		var half_w: float = chip["half_w"]
 		var half_h: float = chip["half_h"]
 		var rot: float = chip["rotation"]
-		if cf3 != null:
-			drawn += 1
-			cmds += 1
-			if submit:
-				cf3.push_axes(chip["a3"], chip["a2"], pos,
-					Vector2(half_w, 0.0).rotated(rot), Vector2(0.0, half_h).rotated(rot), c)
-			continue
-		for corner in [Vector2(-half_w, -half_h), Vector2(half_w, -half_h), Vector2(half_w, half_h), Vector2(-half_w, half_h)]:
-			points.append(pos + corner.rotated(rot))
 		drawn += 1
 		cmds += 1
 		if submit:
-			draw_colored_polygon(points, c)
-	if cf3 != null:
-		cf3.flush()
+			cf3.push_axes(chip["a3"], chip["a2"], pos,
+				Vector2(half_w, 0.0).rotated(rot), Vector2(0.0, half_h).rotated(rot), c)
+	cf3.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
 		## overlay's own row, so the split can never disagree with the total.
@@ -371,8 +323,6 @@ func clear() -> void:
 		_chip_field3d.clear()
 	if _dust_field3d != null:
 		_dust_field3d.clear()
-	if _dust_field != null:
-		_dust_field.clear()
 	_dust.clear()
 	_chips.clear()
 	set_process(false)

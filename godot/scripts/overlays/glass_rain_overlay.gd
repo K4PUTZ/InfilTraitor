@@ -45,7 +45,6 @@ class_name GlassRainOverlay
 ## animation can be photographed at all (`glass_blast_demo` cannot: it rolls its
 ## embers with `randf_range`).
 
-const ShardFieldClass = preload("res://godot/scripts/overlays/shard_field.gd")
 const ShardField3DRef = preload("res://godot/scripts/geometry/shard_field3d.gd")
 const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 const ShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
@@ -98,9 +97,10 @@ func _apply_timing_overrides() -> void:
 		if k in self:
 			set(k, timing_overrides[k])
 
-var _field = null
-## RENDER3D R3D-4e-4 — while a 3D board is set the shards are drawn by a depth-tested `ShardField3D`
-## and the 2D field stays empty. One rain event, one overlay: the 3D field is freed with it.
+## RENDER3D R3D-4e-4 — the shards are drawn by a depth-tested `ShardField3D` (with no board nothing is drawn: the 2D `ShardField`
+## was removed in RETIRE-2D; a selftest still drives `spawn()` and `_process()` without one). One rain event, one overlay: the 3D
+## field is freed with it.
+var _live: int = 0                  ## the shards alive at the last `_process()`, board or not
 var _board: Node3D = null
 var _field3d: RefCounted = null
 var _shards: Array = []              ## [{from, to, arc, spin, size, shape, flip, flop, t0, fall}]
@@ -108,12 +108,6 @@ var _frame: int = 0
 var _span: int = 0                   ## the last frame any shard is still visible
 
 
-## ⚠️ LAZY, NOT `_ready()`-ONLY. The overlay has to be usable the instant it is
-## constructed — a selftest drives `spawn()` and `_process()` without waiting a
-## frame, and with the field built only in `_ready()` the first `_process` reached
-## a null and raised a SCRIPT ERROR that left the suite printing "0 FAIL". (The
-## runner caught it, which is the entire reason `run_selftests.py` is the arbiter
-## and a bare `godot --script` run is not.)
 ## Hand this event the 3D board BEFORE `spawn()` (the room creates one overlay per event).
 func set_board3d(board: Node3D) -> void:
 	_board = board
@@ -128,17 +122,6 @@ func _exit_tree() -> void:
 		_field3d = null
 
 
-func _ensure_field():
-	if _field == null:
-		_field = ShardFieldClass.new()
-		_field.attach(self)
-	return _field
-
-
-func _ready() -> void:
-	_ensure_field()
-
-
 ## Spawn one event's worth of rain.
 ##
 ## `flights` — `Array[{"from": Vector2, "to": Vector2, "key": Vector3i}]` in world
@@ -151,7 +134,6 @@ func _ready() -> void:
 ## LOW end of 1..max — fewer pieces means less overlap means less "massa só", and
 ## it keeps G-D44's range intact rather than lowering the ceiling.
 func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
-	_ensure_field()
 	_apply_timing_overrides()
 	for f in flights:
 		var key: Vector3i = f["key"]
@@ -221,8 +203,6 @@ func _process(_delta: float) -> void:
 		f3.begin_on_board(_shards.size())
 		cam = _board.call("lattice_basis")  ## R3D-WORLD: a 2D displacement is a world one through the BASE view
 		ppu = _board.call("px_per_unit")
-	else:
-		_ensure_field().begin(_shards.size())
 	var live: int = 0
 	for s in _shards:
 		var f: int = _frame - int(s["t0"])
@@ -269,14 +249,10 @@ func _process(_delta: float) -> void:
 		if f3 != null:
 			f3.push(base3 + Vector3.UP * (lift_px / (ppu * ParticleMathRef.COS_ELEVATION)),
 				float(s["size"]), rot, int(s["shape"]), c, bool(s["flip"]), bool(s["flop"]))
-		else:
-			_field.push(pos, float(s["size"]), rot, int(s["shape"]), c,
-				bool(s["flip"]), bool(s["flop"]))
 		live += 1
 	if f3 != null:
 		f3.flush()
-	else:
-		_field.flush()
+	_live = live
 	if _frame > _span and live == 0:
 		queue_free()
 
@@ -284,7 +260,7 @@ func _process(_delta: float) -> void:
 func live_count() -> int:
 	if _field3d != null:
 		return _field3d.live_count()
-	return 0 if _field == null else _field.live_count()
+	return _live
 
 
 ## How many frames until the last shard is gone. Capture tooling asks this rather

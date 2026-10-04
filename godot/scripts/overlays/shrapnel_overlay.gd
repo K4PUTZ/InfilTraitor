@@ -75,7 +75,7 @@ func _ready() -> void:
 ## Sample `frag_count` fragments from the damage cells and launch them.
 ## `blast_center` is the epicenter in world coords; `plan` is the
 ## DetonationPlan; `voxel_board` resolves cell→world coords.
-## RENDER3D R3D-4e-3 — hand this overlay the 3D board (or null to go back to 2D): fragments then fly in
+## RENDER3D R3D-4e-3 — hand this overlay the 3D board (null: nothing is drawn): fragments fly in
 ## world space, so a wall in front of them hides them.
 const CircleField3DRef = preload("res://godot/scripts/geometry/circle_field3d.gd")
 const QuadField3DRef = preload("res://godot/scripts/geometry/quad_field3d.gd")
@@ -168,9 +168,10 @@ func _draw() -> void:
 	var cmds: int = 0
 	var gf3: RefCounted = _glow_field3d
 	var tf3: RefCounted = _trail_field3d
-	if gf3 != null:
-		gf3.begin_on_board(_frags.size())
-		tf3.begin_on_board(_frags.size() * maxi(trail_segments, 1))
+	if gf3 == null:
+		return  ## no 3D board: nothing to draw on (the 2D canvas fallback was removed in RETIRE-2D)
+	gf3.begin_on_board(_frags.size())
+	tf3.begin_on_board(_frags.size() * maxi(trail_segments, 1))
 	for frag in _frags:
 		var t: float = frag["elapsed"] / frag["lifetime"]
 		var alpha: float = 1.0 - t  ## linear fade
@@ -179,10 +180,7 @@ func _draw() -> void:
 		drawn += 1
 		cmds += 1
 		if submit:
-			if gf3 != null:
-				gf3.push(frag["a3"], frag["a2"], frag["pos"], glow_radius, c)
-			else:
-				draw_circle(frag["pos"], glow_radius, c)
+			gf3.push(frag["a3"], frag["a2"], frag["pos"], glow_radius, c)
 		## E-FRAG-02 — the subtle trail. Drawn AFTER the head so the head stays
 		## the darkest point of the fragment, and skipped entirely once the
 		## fragment has slowed or nearly died, where a streak would read as a
@@ -201,16 +199,10 @@ func _draw() -> void:
 					var a1: float = float(i + 1) / float(trail_segments)
 					var seg := c
 					seg.a = c.a * lerpf(trail_head_alpha, trail_tail_alpha, a0)
-					if tf3 != null:
-						tf3.push_line(frag["a3"], frag["a2"], frag["pos"] - dir * reach * a0,
-							frag["pos"] - dir * reach * a1, trail_width * lerpf(1.0, 0.25, a0), seg)
-					else:
-						draw_line(frag["pos"] - dir * reach * a0,
-							frag["pos"] - dir * reach * a1,
-							seg, trail_width * lerpf(1.0, 0.25, a0))
-	if gf3 != null:
-		gf3.flush()
-		tf3.flush()
+					tf3.push_line(frag["a3"], frag["a2"], frag["pos"] - dir * reach * a0,
+						frag["pos"] - dir * reach * a1, trail_width * lerpf(1.0, 0.25, a0), seg)
+	gf3.flush()
+	tf3.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this
 		## overlay's own row, so the split can never disagree with the total.

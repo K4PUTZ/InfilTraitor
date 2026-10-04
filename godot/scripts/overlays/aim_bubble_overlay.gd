@@ -232,19 +232,15 @@ func _draw() -> void:
 		if _world != null:
 			_world.clear()
 		return
-	if _world != null:
-		var axes: Array[Vector2] = _world.screen_axes()
-		_ax = axes[0]
-		_ay = axes[1]
-		_world.begin_screen(_world.lift(_center, _center), _center)
-		_c = _world
-		_draw_dome()
-		_world.end()
+	if _world == null:
 		return
-	_ax = IsoProjection.AXIS_X
-	_ay = IsoProjection.AXIS_Y
-	_c = self
+	var axes: Array[Vector2] = _world.screen_axes()
+	_ax = axes[0]
+	_ay = axes[1]
+	_world.begin_screen(_world.lift(_center, _center), _center)
+	_c = _world
 	_draw_dome()
+	_world.end()
 
 
 func _draw_dome() -> void:

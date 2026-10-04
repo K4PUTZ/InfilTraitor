@@ -5,6 +5,8 @@
 **Source of truth:** `godot/scripts/` (251 scripts, ~81 700 lines; [`tools/persistent/CODEMAP.md`](../tools/persistent/CODEMAP.md) is the generated, always-current index of every class and signal)
 **Engine:** Godot 4.6, GDScript · **Main scene:** `res://godot/scenes/game/room.tscn` · **Targets:** Android/iOS handsets (portrait), desktop for development
 
+**2026-10-04 (R3D-RETIRE-2D): the 2D layer is retired as a RENDERER.** No tilemap, no sprite and no baked frame is drawn; the board, the actors, the grenade and the pickups are 3D, and every overlay mirrors onto the board (see §0.1, `RENDER3D_MASTER_PLAN` blocks RETIRE-1 to RETIRE-7). What remains 2D is the COORDINATE SPACE (`Camera2D` drives the 3D camera, `Node2D` positions are world state, `VISUAL_GRID_OFFSET`, the canvas transform), the HUD and the explosion flash. The "2D on top" sentences below that this note does not mention are history.
+
 **Reconciliation status (2026-09-30).** Rewritten against the code on this date: **§0 (the architecture today), §1 (runtime: load pipeline, node topology, control flow), §15 (debt), §16 (status matrix) and the Appendix**. The old "Voxel Render Plane" section (the deleted 2D `TileMapLayer` board, the bake, `VoxelLayer[]`) moved to
 [`history/ARCHITECTURE_PRE_R3D_2026-09-25.md`](history/ARCHITECTURE_PRE_R3D_2026-09-25.md) verbatim. **§2-§14 (controllers, AI, detection, noise, exposure, shadow, lighting, height, fog, overlays, camera, turns, coordination) were last reconciled with the code in 2026-07** and were only spot-checked on
 2026-09-30 (the perspective paragraph in §12 and the `FloorLayer` / `floor_layer` references in §2.7 and §11 were corrected; nothing else was re-audited): treat a claim there as "true in July", and confirm it in the code before building on it.
@@ -16,7 +18,7 @@ The rules that must not be broken are in [`CLAUDE.md`](../CLAUDE.md) ("Architect
 ## 0. The architecture today (2026-09-30)
 
 INFILTRAITOR is a turn-based tactical stealth game. **The board is drawn in Godot 3D, from a packed voxel store, under a 2D game** (ratified 2026-09-15, finished at R3D-END 2026-09-25, `RENDER3D_MASTER_PLAN`). Gameplay is 2D on a grid of **game units (GU)**; the world is **voxels, 8 per GU axis and 8 levels per storey**;
-an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. Actors, the HUD, fog, selection and the tactical overlays are still 2D nodes drawn on top (actors and some props move to 3D at R3D-ACTORS).
+an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. The actors, the props and the grenade are 3D meshes (R3D-ACTORS, R3D-PROPS, R3D-RETIRE-2D); the tactical overlays (fog, selection, movement, shadow, light, exposure...) are authored as 2D `_draw()` calls and mirrored onto the board's ground or into the air; only the HUD and the explosion flash are painted on the 2D canvas.
 
 ### 0.1 The layers, from data to pixels
 
@@ -37,13 +39,13 @@ an orthographic 3D camera (30 degrees down, 45 degrees around) looks at it. Acto
 		▼
  SIMULATION (pure -> commit)       DetonationPlanBuilder: a 14-phase, time-budgeted, resumable cook (SETUP, SLICES, JUNCTIONS, PROPS, ROOFS, FLOORS, WALK, BURN, SOOT, LIGHT, PACKAGE, EXPOSE, SOOTWAVE, SMOKE) that builds a WorldDelta: a DESCRIPTION of what would change
 								   PredictionCache keys it on (signature, world_revision); `delta.commit(room)` is the only writer; DetonationPresenter plays one frame that writes everything, then N frames of effects
-								   Firearms: AgentShotController / WeaponBench -> BlastCalculator.plan_point_impact (walls) or plan_prop_impact (prop voxels); WeaponDef + ShotPunchTable; Glass: GlassShatter / GlassCrack / GlassOpening
+								   Firearms: AgentShotController -> BlastCalculator.plan_point_impact (walls) or plan_prop_impact (prop voxels); WeaponDef + ShotPunchTable; Glass: GlassShatter / GlassCrack / GlassOpening
 								   Light: VoxelLightField (12 directional buckets per face) <- LightRegistry/ShadowProjector (tactical, GU resolution); visual brightness is not tactical visibility
 		▼
  RENDER (3D, then 2D on top)       Board3DLive (Node3D under Room): meshes the VoxelStore in 16-voxel chunks, faces merged by MATERIAL, three visible faces; colour = material base_color x facade luminance sampled in world space at 16 texels per voxel;
 								   light and soot are read PER CELL from the planes (a Texture2DArray), so a light or soot change is a layer upload, not a remesh; `BoardLook` owns the look constants; glass panes read the screen behind them
-								   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each), ActorMesh3D (live skinned meshes for the agent and the guards), GroundCanvas3D (ground overlays, incl. the dev aids; draw_rect / draw_set_transform / draw_string -> Label3D), WorldCanvas3D (air overlays), VisionCone3D
-								   2D on top: HUD (hud.tscn), FogOfWar, Selection/Movement/Path overlays, guards and the agent (baked frames)
+								   3D extras: PropMesh3D (mesh props, lit by the same planes), FloorPile3D (debris/shard decals), CircleField3D / QuadField3D / ShardField3D (VFX: one MultiMesh draw each; the 2D CircleField / ShardField are gone), ObjectMesh3D (a free-moving model: the thrown grenade, the pickups, the virtual grenade cursor), ActorMesh3D (live skinned meshes for the agent and the guards), GroundCanvas3D (ground overlays, incl. the dev aids; draw_rect / draw_set_transform / draw_string -> Label3D), WorldCanvas3D (air overlays), VisionCone3D
+								   2D on top: the HUD (hud.tscn) and the explosion flash. EVERY other overlay is a Node2D whose `_draw()` is only the authoring surface: a GroundCanvas3D / WorldCanvas3D mirrors it onto the board, depth-tested (`canvas_gate` proves none paints the 2D canvas); the actors, the grenade and the pickups are meshes
 ```
 
 ### 0.2 Five rules the whole architecture leans on
@@ -96,12 +98,12 @@ Room (room.gd, Node2D)                 orchestrator
 │     (`_start_board3d_live()`; a map reload removes and rebuilds it; `board3d()` answers with the live one)
 ├── VoxelBoard (VoxelBoard, Node2D, hidden)   NOT a renderer: the level registry, the cell planes' application, the dirty -> `voxel_destroyed` pass, glass crack/rim/shard records, prop containers
 ├── Camera2D · TurnManager · EnemyPhaseController
-├── Agent (DebugAgent) · Enemies (GuardEnemy*, spawned at runtime)       actors drawn by ActorMesh3D (live rig, R3D-ACTORS); AgentSprite only decides
+├── Agent (DebugAgent) · Enemies (GuardEnemy*, spawned at runtime)       actors drawn by ActorMesh3D (live rig, R3D-ACTORS); ActorPose (a plain Node, was AgentSprite) only decides
 ├── MovementOverlay · PathPreview · SelectionOverlay · TileLabelsOverlay · FogOfWarOverlay · VisionFogOverlay(FogRect)
 ├── HUD (hud.tscn)        reached ONLY through `HudController` (rule 11)
 │
 │   controllers added in code: LightingController · VisionController · HudController · CameraController · FowController · GuardCoordinator · TurnController
-│   world/controllers: InputController · SelectionController · AgentShotController · TestZoneController (grenades, props) · WeaponBenchController · DebugToolsController · WorldMarkersOverlayController
+│   world/controllers: InputController · SelectionController · AgentShotController · TestZoneController (grenades, props) · DebugToolsController · WorldMarkersOverlayController
 ```
 
 ### The load pipeline (`room.load_map(map_id)`)
@@ -347,7 +349,7 @@ A persistent grid of noise intensities with per-turn decay.
 - **Emission:** the agent rolls `NOISE_CHANCE_WALK = 0.20` per step (`NOISE_INTENSITY_WALK = 0.5`). Guards emit on move via `GuardCoordinator._on_guard_emits_noise`, with per-state chance/intensity tables (`GUARD_NOISE_CHANCE_BY_STATE`, `GUARD_NOISE_INTENSITY_BY_STATE`).
 - **Storage:** `Vector2i → {intensity, age}`; `emit` keeps the max; `decay_all` subtracts `NOISE_DECAY_PER_TURN = 0.25` at end of enemy phase and prunes zeros.
 - **Perception:** `TicSystem.evaluate_audio` attenuates by distance (`HEARING_RADIUS = 2`) and by walls (`pow(0.6, walls_crossed)` along a Bresenham path). `room._process_audio_detection` feeds the result to `guard.hear_noise`, which raises `detection` and can push PATROL→SUSPICIOUS.
-- **Feedback:** `NoiseOverlay` renders sound waves (gameplay-visible, not dev-only); `GuardNoiseIndicator` shows a fuzzy (±2 tile) directional cue around the agent when a guard makes noise.
+- **Feedback:** `NoiseOverlay` renders sound waves (gameplay-visible, not dev-only). (`GuardNoiseIndicator`, a directional cue that was never wired, was deleted in RETIRE-3.)
 
 ---
 
@@ -466,7 +468,7 @@ Two groups. **Analysis overlays** are owned by `VisionController` and gated by v
 
 ### Gameplay / utility overlays (room)
 
-`MovementOverlay`, `PathPreview`, `SelectionOverlay`, `TileLabelsOverlay`, `NoiseOverlay` (gameplay-visible), `GuardNoiseIndicator`, `TrailOverlay` (dev), and two `TileOverlay` instances (`_tile_shadow` MUL blend z=1, `_tile_game` MIX blend z=3) used for shadow tinting and markers. Each guard also draws its own vision cone (`_draw_vision_tiles` / `_draw_vision_smooth`) and dev debug label.
+`MovementOverlay`, `PathPreview`, `SelectionOverlay`, `TileLabelsOverlay`, `NoiseOverlay` (gameplay-visible), `TrailOverlay` (dev), and two `TileOverlay` instances (`_tile_shadow` MUL blend z=1, `_tile_game` MIX blend z=3) used for shadow tinting and markers. Each guard also draws its own vision cone (`_draw_vision_tiles` / `_draw_vision_smooth`) and dev debug label.
 
 ---
 

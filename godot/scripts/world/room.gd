@@ -3058,7 +3058,7 @@ func _attach_ground_overlays(live: Node3D) -> void:
 			_noise_overlay, _gu_grid_overlay, _shadow_boundary_overlay, _tile_shadow, _tile_game, fog_of_war,
 			_blast_wireframe_overlay, _trail_overlay, _tracer_overlay, _throw_arc_overlay, _ceiling_overlay,
 			_aim_bubble_overlay, _shrapnel_preview_overlay, _target_cursor_overlay,
-			tile_labels_overlay, _occlusion_overlay]:
+			tile_labels_overlay, _occlusion_overlay, _light_ray_overlay]:
 		if overlay != null and is_instance_valid(overlay) and overlay.has_method("set_board3d"):
 			overlay.set_board3d(live)
 	## The LIGHT_VISION / DEV aids (light, shadow, exposure, tile risk, height, temporal, elite exposure) belong to the
@@ -10669,7 +10669,7 @@ func _census_subtree(node: Node) -> Vector2i:
 ## True for an overlay that has a `_draw()` and no 3D target (`_ground` / `_world` null) while visible: it is painting the 2D canvas
 ## itself, the fallback path an overlay takes only when no board mirrors it. Overlays that never had a 3D target are not flagged.
 ## The members an overlay keeps its 3D target in (ground canvas, world canvas, the VFX particle fields).
-const OVERLAY_TARGET_KEYS: Array[String] = ["_ground", "_world", "_field3d", "_glow_field3d", "_trail_field3d", "_dust_field3d", "_chip_field3d", "_puff_field3d", "_spark_field3d"]
+const OVERLAY_TARGET_KEYS: Array[String] = ["_ground", "_tiles_ground", "_world", "_field3d", "_glow_field3d", "_trail_field3d", "_dust_field3d", "_chip_field3d", "_puff_field3d", "_spark_field3d"]
 
 
 ## RETIRE-2D — `canvas_check <name>`: one line saying how many overlays that carry a 3D target (`_ground` / `_world`) exist (`examined`),

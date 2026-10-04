@@ -27,7 +27,10 @@ var alpha_dim: float       = 1.0    ## line alpha for dim tiles
 var ceiling_lift: float    = 0.0
 
 ## Pre-computed draw data (reset on every refresh())
+const WorldCanvas3DRef = preload("res://godot/scripts/geometry/world_canvas3d.gd")
+var _world: WorldCanvas3D = null
 var _ray_froms:  PackedVector2Array = PackedVector2Array()
+var _ray_floors: PackedVector2Array = PackedVector2Array()  ## the floor point under each lamp (for the world lift)
 var _ray_tos:    PackedVector2Array = PackedVector2Array()
 var _ray_alphas: PackedFloat32Array = PackedFloat32Array()
 
@@ -35,15 +38,25 @@ var _ray_alphas: PackedFloat32Array = PackedFloat32Array()
 func setup(v_offset: Vector2, lift: float) -> void:
 	visual_offset = v_offset
 	ceiling_lift  = lift
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
-	material = mat
+
+
+## RETIRE-2D — the shafts are world lines on the 3D board, each from the lamp in the air to the centre of its tile on the floor,
+## depth-tested (a wall cuts a shaft). With no board nothing is drawn: the 2D canvas fallback is gone.
+func set_board3d(board: Node3D) -> void:
+	if _world != null:
+		_world.detach()
+		_world = null
+	if board != null:
+		_world = WorldCanvas3DRef.new()
+		_world.attach(board, self, 3)
+	queue_redraw()
 
 
 ## Rebuild ray geometry from the latest per-light ShadowResults.
 ## Call this whenever lighting_rebuilt fires (room._repaint_world_shadows does this).
 func refresh(shadow_results: Array) -> void:
 	_ray_froms.clear()
+	_ray_floors.clear()
 	_ray_tos.clear()
 	_ray_alphas.clear()
 
@@ -56,7 +69,8 @@ func refresh(shadow_results: Array) -> void:
 			continue
 
 		var energy_mult: float = clampf(light.get_effective_tactical_energy(), 0.0, 1.0)
-		var lamp_pos: Vector2  = _cell_to_screen(light.cell) - Vector2(0.0, ceiling_lift)
+		var lamp_floor: Vector2 = _cell_to_screen(light.cell)
+		var lamp_pos: Vector2  = lamp_floor - Vector2(0.0, ceiling_lift)
 
 		var a_full: float = alpha_full_lit * energy_mult
 		var a_dim:  float = alpha_dim      * energy_mult
@@ -72,6 +86,7 @@ func refresh(shadow_results: Array) -> void:
 
 		for cell: Vector2i in seen.keys():
 			_ray_froms.append(lamp_pos)
+			_ray_floors.append(lamp_floor)
 			_ray_tos.append(_cell_to_screen(cell))
 			_ray_alphas.append(seen[cell])
 
@@ -79,17 +94,20 @@ func refresh(shadow_results: Array) -> void:
 
 
 func _draw() -> void:
+	if _world == null:
+		return
+	_world.begin()
 	for i: int in _ray_froms.size():
-		_draw_ray(_ray_froms[i], _ray_tos[i], _ray_alphas[i])
+		_draw_ray(_ray_froms[i], _ray_floors[i], _ray_tos[i], _ray_alphas[i])
+	_world.end()
 
 
-
-## Draw one ray: sharp 2 px line at full alpha.
-func _draw_ray(from: Vector2, to: Vector2, alpha: float) -> void:
+## Draw one ray: a sharp 2 px line at full alpha, from the lamp (lifted off its floor point) to the tile centre.
+func _draw_ray(from: Vector2, from_floor: Vector2, to: Vector2, alpha: float) -> void:
 	if (to - from).length_squared() < 1.0:
 		return
 	var c := ray_color
-	draw_line(from, to, Color(c.r, c.g, c.b, alpha), 2.0)
+	_world.line(_world.lift(from, from_floor), _world.lift(to, to), Color(c.r, c.g, c.b, alpha), 2.0)
 
 
 func _cell_to_screen(cell: Vector2i) -> Vector2:

@@ -57,7 +57,9 @@ const TIMER_NOISE_SUSPICIOUS_MED := 2
 var visual_offset: Vector2 = Vector2.ZERO
 var enemy_id: String = ""
 
-var _vision_tiles_node: Node2D = null
+## The dev-vision per-tile cone: a ground canvas on the 3D board (see `set_board3d()`), redrawn when `_tiles_dirty` and the guard is visible.
+var _tiles_ground: GroundCanvas3D = null
+var _tiles_dirty: bool = true
 ## Set by every trigger that used to `queue_redraw()` the smooth cone; `_flush_cone()` computes and publishes it once, while the
 ## guard is visible (a fogged guard's cone is not worked out).
 var _cone_dirty: bool = true
@@ -173,9 +175,7 @@ func set_dev_vision(enabled: bool) -> void:
 	dev_vision = enabled
 	_update_debug_label()
 	queue_redraw()
-	if _vision_tiles_node:
-		_vision_tiles_node.visible = enabled
-		_vision_tiles_node.queue_redraw()
+	_tiles_dirty = true
 	_cone_dirty = true
 
 
@@ -207,7 +207,7 @@ func _build_search_queue(origin: Vector2i, blocked_cells: Dictionary, room_size:
 
 	## Shuffle for a non-deterministic sweep
 	_search_queue.shuffle()
-	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	_tiles_dirty = true
 	_cone_dirty = true
 
 
@@ -215,17 +215,6 @@ func _ready() -> void:
 	## Initialize visual angles
 	body_angle = deg_to_rad(facing_angle_deg)
 	vision_angle = body_angle
-
-	_vision_tiles_node = Node2D.new()
-	_vision_tiles_node.name = "VisionTiles"
-	_vision_tiles_node.show_behind_parent = true
-	_vision_tiles_node.z_index = -5
-	var mat_mix := CanvasItemMaterial.new()
-	mat_mix.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
-	_vision_tiles_node.material = mat_mix
-	_vision_tiles_node.visible = dev_vision
-	add_child(_vision_tiles_node)
-	_vision_tiles_node.draw.connect(_draw_vision_tiles)
 
 	var flags: Node = get_node_or_null("/root/DevFlags")
 	_cone_redraw_always = flags.on("CONE_REDRAW_ALWAYS") if flags != null \
@@ -238,6 +227,7 @@ func _rotate_towards(current: float, target: float, speed: float, delta: float) 
 
 func _process(delta: float) -> void:
 	_flush_cone()
+	_flush_tiles()
 	_update_detection_label()
 	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	attention.update(delta)
@@ -300,12 +290,12 @@ func _process(delta: float) -> void:
 
 	if not _cone_redraw_always and not _cone_inputs_changed():
 		return
-	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	_tiles_dirty = true
 	_cone_dirty = true
 	queue_redraw()
 
 
-## Everything `_draw()`, `_compute_vision_smooth()` and `_draw_vision_tiles()` read
+## Everything `_draw()`, `_compute_vision_smooth()` and `_draw_vision_tiles_body()` read
 ## that can change frame to frame. Explicit redraw requests elsewhere (dev vision,
 ## state entry, search queue) still call `queue_redraw()` themselves.
 func _cone_inputs_changed() -> bool:
@@ -523,7 +513,7 @@ func _step_next() -> void:
 	await tween.finished
 	step_finished.emit(next_cell)
 	queue_redraw()
-	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	_tiles_dirty = true
 	_cone_dirty = true
 	_step_next()
 
@@ -622,7 +612,7 @@ func _update_facing_from_angle() -> void:
 			facing = Vector2i(-1, -1)
 	_sync_sprite_facing()  ## FACING-SYNC-01 — see _sync_sprite_facing()
 	queue_redraw()
-	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	_tiles_dirty = true
 	_cone_dirty = true
 
 
@@ -816,7 +806,7 @@ func _enter_state(new_state: String) -> void:
 		radioed.emit(cell, last_known_agent_cell)
 
 	queue_redraw()
-	if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+	_tiles_dirty = true
 	_cone_dirty = true
 
 
@@ -842,7 +832,7 @@ func receive_alert(known_cell: Vector2i, target_state: String) -> void:
 		## React immediately (external vision/AI may override later)
 		attention.focus(known_cell, 0.9, 0.5)
 
-		if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+		_tiles_dirty = true
 		_cone_dirty = true
 		_update_debug_label()
 
@@ -915,7 +905,7 @@ func hear_noise(noise_tile: Vector2i, perceived_intensity: float) -> void:
 	_update_debug_label()
 	if dev_vision:
 		queue_redraw()
-		if _vision_tiles_node: _vision_tiles_node.queue_redraw()
+		_tiles_dirty = true
 		_cone_dirty = true
 
 
@@ -1069,9 +1059,18 @@ func _step_toward(
 
 
 
-func _draw_vision_tiles() -> void:
+## Draws the per-tile cone (dev vision) when something asked for it and the guard is visible; clears it with dev vision off.
+func _flush_tiles() -> void:
+	if not _tiles_dirty or not is_visible_in_tree() or _tiles_ground == null:
+		return
+	_tiles_dirty = false
+	if not dev_vision:
+		_tiles_ground.clear()
+		return
 	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
+	_tiles_ground.begin(self)
 	_draw_vision_tiles_body()
+	_tiles_ground.end()
 	if FrameSplit.enabled:
 		FrameSplit.add("guard cone tiles draw", Time.get_ticks_usec() - _fs0)
 
@@ -1111,7 +1110,7 @@ func _draw_vision_tiles_body() -> void:
 
 		var color := _prob_to_color(prob, alpha_mult)
 		## M2-05: If in multiply mode, drop the debug outline and paint the full color
-		_vision_tiles_node.draw_colored_polygon(diamond, color)
+		_tiles_ground.draw_colored_polygon(diamond, color)
 
 
 ## Computes and publishes the smooth cone when something asked for it (`_cone_dirty`) and the guard is visible. A fogged guard keeps
@@ -1242,11 +1241,18 @@ func set_board3d(board: Node3D) -> void:
 	if _ground != null:
 		_ground.detach()
 		_ground = null
+	if _tiles_ground != null:
+		_tiles_ground.detach()
+		_tiles_ground = null
 	if is_instance_valid(_detection_label):
 		_detection_label.queue_free()
 	_detection_label = null
 	_board = board
 	if board != null:
+		_tiles_ground = GroundCanvas3D.new()
+		_tiles_ground.attach(board, 3, 0.012, false)
+		_tiles_ground.follow_visibility_of(self)
+		_tiles_dirty = true
 		_ground = GroundCanvas3D.new()
 		_ground.attach(board, 8, 0.03, false)
 		_ground.follow_visibility_of(self)
@@ -1285,6 +1291,9 @@ func _update_detection_label() -> void:
 
 
 func _exit_tree() -> void:
+	if _tiles_ground != null:
+		_tiles_ground.detach()
+		_tiles_ground = null
 	if _ground != null:
 		_ground.detach()
 		_ground = null

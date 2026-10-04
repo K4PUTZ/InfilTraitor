@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 78799 lines total** (under `godot/scripts/`)
+**254 scripts · 78826 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -158,7 +158,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1310 lines
+`class_name GuardEnemy` · extends `Node2D` · 1319 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -1765,13 +1765,14 @@ extends `Node2D` · 140 lines
 
 ### `light_ray_overlay.gd`
 
-extends `Node2D` · 96 lines
+extends `Node2D` · 114 lines
 
 `godot/scripts/overlays/light_ray_overlay.gd`
 
 **Constants / tuning**
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `TILE_CENTER_OFFSET` = `Vector2(0.0, 64.0)`
+- `WorldCanvas3DRef` = `preload("res://godot/scripts/geometry/world_canvas3d.gd")`
 
 **@export**
 - `visual_offset: Vector2 = Vector2.ZERO`
@@ -1784,6 +1785,7 @@ extends `Node2D` · 96 lines
 
 **Public API**
 - `func setup(v_offset: Vector2, lift: float) -> void:`
+- `func set_board3d(board: Node3D) -> void:`
 - `func refresh(shadow_results: Array) -> void:`
 
 ---

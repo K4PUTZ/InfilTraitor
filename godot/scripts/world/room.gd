@@ -10858,14 +10858,26 @@ func _census_subtree(node: Node) -> Vector2i:
 	return out
 
 
+## True for an overlay that has a `_draw()` and no 3D target (`_ground` / `_world` null) while visible: it is painting the 2D canvas
+## itself, the fallback path an overlay takes only when no board mirrors it. Overlays that never had a 3D target are not flagged.
+func _draws_on_canvas(node: Node) -> bool:
+	if not (node is CanvasItem) or not node.has_method("_draw") or not (node as CanvasItem).is_visible_in_tree():
+		return false
+	for key in ["_ground", "_world"]:
+		if key in node and node.get(key) == null:
+			return true
+	return false
+
+
 func _print_node_census(node: Node, depth: int) -> void:
 	for child in node.get_children():
 		var c: Vector2i = _census_subtree(child)
 		if c.x == 0 and not (child is CanvasLayer):
 			continue
-		print("[NODE-CENSUS] %s%s (%s) · %d, %d visible%s"
+		print("[NODE-CENSUS] %s%s (%s) · %d, %d visible%s%s"
 			% ["  ".repeat(depth), child.name, child.get_class(), c.x, c.y,
-			" · process" if child.is_processing() else ""])
+			" · process" if child.is_processing() else "",
+			" · DRAWS ON THE 2D CANVAS" if _draws_on_canvas(child) else ""])
 		## The voxel renderer's 48 layers are already priced by HIDE_VOXELS.
 		if depth < 4 and c.x >= 4 and child != _voxel_board:
 			_print_node_census(child, depth + 1)

@@ -12,6 +12,10 @@
 ##   full    ~7 min     quick + the boot gates: ground, shot_3d, occ_canonical, mirror (1 boot), pick (1 boot per map: touch picking from N/E/S/W), roof-yaw (a roof opens and shuts the same from every side), world (the air overlays' lift and axes survive a turn), roundtrip + shadow (ONE boot per map, `--with-store`), and the two
 ##                      identity gates (`board_probe gate`, `pixel_gate`) held to a STORED BASELINE with ONE boot per case.
 ##                      For a change that touches the board, the state, the light, the ground, the geometry or the shaders.
+##   look    ~2.5 min   quick + the smoke boot + the PIXEL gate only (held to the stored baseline). For a change to how something LOOKS (a
+##                      colour, a contrast, a fade, a shader): the pictures are what changed, so the pictures are what is checked. If
+##                      the change is intended, take a new baseline first (`--baseline`) and say so; a look change that moves
+##                      pixels is the one case where the pixel gate is SUPPOSED to fail against an old baseline.
 ##   docs    seconds    check_invariants + gen_codemap --check. Markdown / PROMPTS / docs only.
 ##   auto    (default)  picks docs / quick / smoke from the files you changed (`git status`, or the last commit if the tree is clean).
 ##                      It NEVER picks `full`: the identity gates replay the same explosions and shots, so they run only when asked
@@ -36,9 +40,15 @@
 ## sleeping display, so it is a hypothesis, not a proof. If a boot gate times out: close the remote session and run it again before
 ## suspecting the code; do not read a hang as a regression without a control run on the previous commit (`git stash`).
 ##
+## THE RUNNER HELPS WITH THE HANG (2026-10-03). A boot step that dies with a `TimeoutExpired` is run ONCE more and reported as
+## retried: a real hang hangs twice and still fails, a flaky one costs a minute instead of a manual rerun. A retry is printed in the
+## summary, never hidden. It does NOT try to detect a remote session: Chrome Remote Desktop's host (`remoting_me2me_host`, its
+## launchd service and broker) runs all the time once installed, with or without a session, so a process check is true on every
+## run. The sure sign is the on-screen "being shared" banner; when it is up, expect the hang.
+##
 ## Usage:
 ##     python3 tools/persistent/verify.py                 # auto
-##     python3 tools/persistent/verify.py quick|full|docs
+##     python3 tools/persistent/verify.py quick|look|full|docs
 ##     python3 tools/persistent/verify.py --baseline      # take the reference set (two boots per case)
 ##     python3 tools/persistent/verify.py full --only ground,mirror --keep-going
 ##     python3 tools/persistent/verify.py --list          # the steps of a tier, without running
@@ -81,6 +91,11 @@ def steps_for(tier: str, have_baseline: bool):
         return quick
     if tier == "smoke":
         return quick + [("smoke-boot", False, sh("smoke_boot.py"))]
+    if tier == "look":
+        pixel = (sh("pixel_gate.py", "--single", "--against", str(BASELINE / "pixels")) if have_baseline
+                 else sh("pixel_gate.py"))
+        return quick + [("smoke-boot", False, sh("smoke_boot.py")),
+                        ("pixel-gate" if have_baseline else "pixel-gate (2 boots, NO BASELINE)", True, pixel)]
     identity = []
     if have_baseline:
         identity = [
@@ -114,6 +129,23 @@ def other_godots():
         if m and "Godot.app/Contents/MacOS/Godot" in m.group(3):
             found.append((m.group(1), m.group(2), m.group(3)[:110]))
     return found
+
+
+def run_step(cmd, boots):
+    """Run one step, echoing its output as it comes. A boot step that dies with a TimeoutExpired is run once more.
+    Returns (rc, retried)."""
+    for attempt in (1, 2):
+        proc = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+        text = []
+        for line in proc.stdout:
+            print(line, end="", flush=True)
+            text.append(line)
+        rc = proc.wait()
+        if rc != 0 and boots and attempt == 1 and "TimeoutExpired" in "".join(text[-40:]):
+            print("[verify] the boot timed out; running the step once more (a real hang hangs twice)", flush=True)
+            continue
+        return rc, attempt == 2
+    return rc, True
 
 
 def changed_files():
@@ -169,7 +201,7 @@ def take_baseline() -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Tiered, fail-fast verification (see the header).")
-    ap.add_argument("tier", nargs="?", default="auto", choices=["auto", "docs", "quick", "smoke", "full"])
+    ap.add_argument("tier", nargs="?", default="auto", choices=["auto", "docs", "quick", "smoke", "look", "full"])
     ap.add_argument("--baseline", action="store_true", help="take the reference set (two boots per case) and stop")
     ap.add_argument("--keep-going", action="store_true", help="run every step even after a failure")
     ap.add_argument("--only", default="", help="comma list: run only the steps whose name contains one of these")
@@ -195,16 +227,16 @@ def main() -> int:
             print("[verify] REFUSED: another Godot is alive — pid %s, up %s (%s)." % godots[0])
             print("[verify] The boot gates need the machine to themselves (the editor included); close it and run again.")
             return 2
-        if tier == "full" and base is None:
+        if tier in ("full", "look") and base is None:
             print("[verify] ⚠ no baseline: the identity gates run in their two-boot form (slower, proves less). "
                   "Take one at the start of a task with `verify.py --baseline`.")
     results = []
     failed = False
-    for name, _, cmd in steps:
+    for name, boots, cmd in steps:
         t0 = time.time()
         print("\n[verify] ── %s ──" % name, flush=True)
-        rc = subprocess.run(cmd, cwd=ROOT).returncode
-        results.append((name, rc, time.time() - t0))
+        rc, retried = run_step(cmd, boots)
+        results.append((name + (" (retried after a timeout)" if retried else ""), rc, time.time() - t0))
         if rc != 0:
             failed = True
             if not args.keep_going:

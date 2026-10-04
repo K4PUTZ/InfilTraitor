@@ -44,7 +44,7 @@ ROOT = Path(__file__).resolve().parents[2]
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 CAPTURES = Path.home() / "Library/Application Support/Godot/app_userdata/INFILTRAITOR/captures"
 TAG = "[PIXEL-GATE]"
-BOOT_TIMEOUT_S = 180  ## a boot is 15-45 s; a hung one (another Godot alive, an open editor) must fail fast, not after 10 minutes
+BOOT_TIMEOUT_S = 120  ## a boot is 35-40 s (measured 2026-10-03); a hung one (another Godot alive, an open editor, a remote-desktop session) must fail fast, not after 10 minutes
 NOISE = 8  ## per-channel step below which two pixels count as equal (0 = strict; reported both ways)
 BRICK_RX = 22 + 2
 ## PLAYGROUND's first two boots differed by 28 906 px in ONE region only: the agent's movement-range overlay

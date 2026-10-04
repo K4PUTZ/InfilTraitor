@@ -13,7 +13,7 @@
 **Version 0.9.107 · R3D-RETIRE-2D BUILT, `verify.py full` PASSED (467-470 s).** Record: `PROMPTS/RESUMO_SESSAO_2026-10-04_R3D_RETIRE_2D.md`; the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.61).
 - **What is left of the 2D:** the coordinate space, the HUD, the explosion flash, `VfxDrawProbe` (kept on purpose) and two items to close: `light_ray_overlay` and `guard_noise_indicator`.
 - **Ordered with the Director (2026-10-04):** close the engine first — round 0 housekeeping and handset closure, 1 the last 2D, 2 R3D-BUFFER (simplified, empty border), 3 R3D-CLAIMS, 4 R3D-LOOK and R3D-SURFACES art, then gameplay (the stealth loop first). The full table and the three open calls are in [`roadmap.md`](roadmap.md)'s top block.
-- **Not yet measured on the handsets with the final code:** the Galaxy A16; the Moto's camera turn and PSS against END-8.
+- **Round 0 done (2026-10-04):** the Moto's camera turn and PSS with the final code are measured and show no regression (steady windows 19.5-21.2 ms, PSS peak 1.07-1.09 GB; row in `DEVICE_DIAGNOSTICS_MASTER_PLAN`'s top block). **Still owed:** the Galaxy A16 (not connected today); `Library INFILTRAITOR alias` (a macOS alias from 2026-09-09) sits untracked in the repo root and was left alone.
 
 ## Where the project stands — 2026-10-02 (close; the sections below are kept as history)
 

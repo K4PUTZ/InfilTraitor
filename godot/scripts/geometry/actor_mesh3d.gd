@@ -247,7 +247,8 @@ func _apply_board_light(body: Node) -> void:
 
 ## R3D-WORLD — the actor's contact shadow, on the ground under the feet: the 2D diamond the actor drew
 ## (`ground_shadow_half_px`, `COLOR_SHADOW`), carried through the board's 2D -> ground map, so it is the same shape on the
-## same floor in view N and stays under the feet in every other view. The 2D one is switched off.
+## same floor in view N and stays under the feet in every other view. The actor's own 2D shadow is gone (RETIRE-2D); the actor
+## is also handed the board for its dev-vision draws.
 func _build_contact_shadow(actor: Node) -> void:
 	if actor == null or not ("ground_shadow_half_px" in actor):
 		return
@@ -276,8 +277,8 @@ func _build_contact_shadow(actor: Node) -> void:
 	node.material_override = mat
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(node)
-	actor.set("draw_ground_shadow", false)
-	(actor as CanvasItem).queue_redraw()
+	if actor.has_method("set_board3d"):
+		actor.call("set_board3d", _board)
 
 
 func _apply_reveal() -> void:
@@ -294,9 +295,8 @@ func _exit_tree() -> void:
 	## Only if this mesh still owns the sprite: on a reload the NEW board's figure has already hidden it.
 	if is_instance_valid(_source) and _source.has_meta("figure3d") and _source.get_meta("figure3d") == self:
 		var actor: Node = _source.get_parent()
-		if actor != null and "draw_ground_shadow" in actor:
-			actor.set("draw_ground_shadow", true)
-			(actor as CanvasItem).queue_redraw()
+		if actor != null and actor.has_method("set_board3d"):
+			actor.call("set_board3d", null)
 	if is_instance_valid(_board):
 		for m in _materials:
 			_board.call("unregister_prop_light_material", m)

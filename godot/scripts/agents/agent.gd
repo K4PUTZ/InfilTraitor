@@ -274,10 +274,6 @@ func throw_launch_height() -> float:
 ## dependency-free geometry module) with a comment saying to re-sync by hand when
 ## the agent's on-screen size changes. This is that change, and it is re-synced
 ## there in the same commit.
-const SILHOUETTE_WIDTH := 104.0   ## left-right span of standing character
-const SILHOUETTE_HEIGHT := 222.0  ## top-bottom span of standing character
-const SILHOUETTE_OUTLINE_COLOR := Color(1.0, 1.0, 1.0, 0.3)  ## semi-transparent white
-const SILHOUETTE_OUTLINE_WIDTH := 1.5
 
 var _path_queue: Array[Vector2i] = []
 
@@ -439,62 +435,48 @@ func _cell_to_world(map_cell: Vector2i) -> Vector2:
 	return GroundGridRef.map_to_local(map_cell) + TILE_CENTER_OFFSET + visual_offset
 
 
-## PART 2 §10: the three posture diamonds and the head circle that used to be
-## drawn here are GONE. `ActorPose`, a child node, draws the agent now.
-##
-## Two things survive, and both are deliberate rather than leftovers:
-##
-## 1. THE GROUND SHADOW STAYS, and it is the one place this file still draws the
-##    character. AgentProbeProp ships without one on purpose — it fakes a shadow
-##    the way GrenadeProp does, by squashing the sprite's own silhouette on Y,
-##    which on a 2 m standing figure is a long smear rather than a footprint. A
-##    DRAWN contact ellipse is not that substitution: it does not pretend to be
-##    the figure's shape, it just says where the feet are, which is exactly what
-##    the probe's header names as missing. The honest lit version is still a
-##    separate top-down pass, and still unbuilt.
-##
-## 2. THE DEBUG RECT IS NOW DEV-ONLY. It used to draw unconditionally, which was
-##    invisible-ish over a flat green diamond and is a white box around a
-##    character. §10 says the placeholder is gone; a stroke that was part of it
-##    does not get to stay on screen by being useful.
-## The contact shadow's half-extents, in 2D canvas pixels. R3D-WORLD: when a live mesh draws the agent it carries this
-## shadow on the ground itself (`ActorMesh3D`) and turns `draw_ground_shadow` off, so the 2D one does not paint over the
-## board from where the N lattice puts it.
+## PART 2 §10: the three posture diamonds and the head circle that used to be drawn here are GONE, and (RETIRE-2D) so are the 2D contact
+## shadow, the 104 x 222 silhouette stroke and the 2D cover ring: `ActorMesh3D` draws the figure and its shadow, and the cover ring is a
+## ground canvas on the 3D board (below). With no board nothing is drawn.
+## The contact shadow's half-extents, in 2D canvas pixels: `ActorMesh3D` reads them and draws the shadow on the ground itself.
 var ground_shadow_half_px := Vector2(28.0, 10.0)
-var draw_ground_shadow: bool = true
+const COVER_RING_RADIUS_PX := 30.0
+const COVER_RING_SEGMENTS := 32
+var _ground: GroundCanvas3D = null
+
+
+## The 3D board: the dev-vision cover ring draws on its ground (called when the actor's mesh is attached).
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if board != null:
+		_ground = GroundCanvas3D.new()
+		_ground.attach(board, 8, 0.03, false)
+		_ground.follow_visibility_of(self)
+	queue_redraw()
+
+
+func _exit_tree() -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
 
 
 func _draw() -> void:
-	if draw_ground_shadow:
-		var shadow := PackedVector2Array([
-			Vector2(0.0, -ground_shadow_half_px.y),
-			Vector2(ground_shadow_half_px.x, 0.0),
-			Vector2(0.0, ground_shadow_half_px.y),
-			Vector2(-ground_shadow_half_px.x, 0.0),
-		])
-		draw_colored_polygon(shadow, COLOR_SHADOW)
-
-	if not dev_vision:
+	if _ground == null:
 		return
-
-	_draw_silhouette_placeholder()
-
-	## Ring around the agent colored by cover level
+	_ground.begin(self)
+	## Dev vision: a ring around the agent coloured by cover level.
 	var ring_color := Color.TRANSPARENT
-	match cover_state:
-		CoverType.PARTIAL: ring_color = Color(0.2, 0.6, 1.0, 0.6)
-		CoverType.FULL:    ring_color = Color(0.1, 0.4, 0.9, 0.9)
+	if dev_vision:
+		match cover_state:
+			CoverType.PARTIAL: ring_color = Color(0.2, 0.6, 1.0, 0.6)
+			CoverType.FULL:    ring_color = Color(0.1, 0.4, 0.9, 0.9)
 	if ring_color.a > 0.0:
-		draw_arc(Vector2.ZERO, 30.0, 0.0, TAU, 32, ring_color, 2.5)
-
-## The agent's on-screen extent, as a dev overlay. OCC-04 renders a stroke within
-## this rect, masked to the occluded-cell region.
-func _draw_silhouette_placeholder() -> void:
-	var half_w := SILHOUETTE_WIDTH * 0.5
-	var points := PackedVector2Array([
-		Vector2(-half_w, -SILHOUETTE_HEIGHT),
-		Vector2( half_w, -SILHOUETTE_HEIGHT),
-		Vector2( half_w,  0.0),
-		Vector2(-half_w,  0.0),
-	])
-	draw_polyline(points + PackedVector2Array([points[0]]), SILHOUETTE_OUTLINE_COLOR, SILHOUETTE_OUTLINE_WIDTH)
+		var ring := PackedVector2Array()
+		for i in range(COVER_RING_SEGMENTS + 1):
+			var a: float = TAU * float(i) / float(COVER_RING_SEGMENTS)
+			ring.append(Vector2(cos(a), sin(a)) * COVER_RING_RADIUS_PX)
+		_ground.draw_polyline(ring, ring_color, 2.5)
+	_ground.end()

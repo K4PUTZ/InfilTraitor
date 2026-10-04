@@ -238,6 +238,7 @@ func _rotate_towards(current: float, target: float, speed: float, delta: float) 
 
 func _process(delta: float) -> void:
 	_flush_cone()
+	_update_detection_label()
 	var _fs0: int = Time.get_ticks_usec() if FrameSplit.enabled else 0
 	attention.update(delta)
 	if FrameSplit.enabled:
@@ -1224,91 +1225,86 @@ func attach_sprite(p_room: Node) -> bool:
 	return true
 
 
-## The contact shadow's half-extents (2D canvas pixels); `ActorMesh3D` carries it on the ground and turns
-## `draw_ground_shadow` off (R3D-WORLD, see agent.gd).
+## The contact shadow's half-extents (2D canvas pixels): `ActorMesh3D` reads them and draws the shadow on the ground itself. The
+## 2D shadow, the fallback diamond and the 2D dev-vision draws are gone (RETIRE-2D): the patrol route is a ground canvas on the 3D board
+## and the detection meter is a `Label3D` above the head. With no board nothing is drawn.
 var ground_shadow_half_px := Vector2(26.0, 10.0)
-var draw_ground_shadow: bool = true
+const PATROL_DASH_PX := 8.0
+const DETECTION_LABEL_HEIGHT_PX := 82.0
+var _ground: GroundCanvas3D = null
+var _board: Node3D = null
+var _detection_label: Label3D = null
+
+
+## The 3D board (called when the actor's mesh is attached; null when it leaves): the dev-vision patrol route draws on its ground and the
+## detection meter floats above the head.
+func set_board3d(board: Node3D) -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if is_instance_valid(_detection_label):
+		_detection_label.queue_free()
+	_detection_label = null
+	_board = board
+	if board != null:
+		_ground = GroundCanvas3D.new()
+		_ground.attach(board, 8, 0.03, false)
+		_ground.follow_visibility_of(self)
+		_detection_label = Label3D.new()
+		_detection_label.name = "Detection_%s" % name
+		_detection_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_detection_label.fixed_size = true
+		_detection_label.pixel_size = 0.0007
+		_detection_label.font_size = 40
+		_detection_label.outline_size = 10
+		_detection_label.no_depth_test = false
+		_detection_label.visible = false
+		board.add_child(_detection_label)
+	queue_redraw()
+
+
+## Dev vision: the detection percentage above the head, coloured by how alarmed the guard is (the arc it replaces used the same
+## three colours). Hidden at 0, with dev vision off, or while the guard is hidden.
+func _update_detection_label() -> void:
+	if not is_instance_valid(_detection_label) or not is_instance_valid(_board):
+		return
+	var show: bool = dev_vision and detection > 0.0 and is_visible_in_tree()
+	_detection_label.visible = show
+	if not show:
+		return
+	var fill: Color
+	if detection <= 0.35:
+		fill = Color(1.0, 0.7, 0.1)
+	elif detection <= 0.65:
+		fill = Color(1.0, 0.5, 0.1)
+	else:
+		fill = Color(1.0, 0.2, 0.2)
+	_detection_label.modulate = fill
+	_detection_label.text = "%d%%" % roundi(detection * 100.0)
+	_detection_label.position = _board.call("particle_origin", global_position - Vector2(0.0, DETECTION_LABEL_HEIGHT_PX), global_position)
+
+
+func _exit_tree() -> void:
+	if _ground != null:
+		_ground.detach()
+		_ground = null
+	if is_instance_valid(_detection_label):
+		_detection_label.queue_free()
 
 
 func _draw() -> void:
-	if draw_ground_shadow:
-		var shadow := PackedVector2Array([
-			Vector2(0.0, -ground_shadow_half_px.y),
-			Vector2(ground_shadow_half_px.x, 0.0),
-			Vector2(0.0, ground_shadow_half_px.y),
-			Vector2(-ground_shadow_half_px.x, 0.0),
-		])
-		draw_colored_polygon(shadow, COLOR_SHADOW)
-
-	## The red diamond and its head circle are GONE when the baked figure is
-	## present — the same swap agent.gd took for Part 2 §10. They stay as the
-	## fallback for a missing bake so a guard is never invisible on the map.
-	if sprite == null:
-		var body := PackedVector2Array([
-			Vector2(0.0, -54.0),
-			Vector2(20.0, -30.0),
-			Vector2(0.0, -8.0),
-			Vector2(-20.0, -30.0),
-		])
-		draw_colored_polygon(body, COLOR_BODY)
-		draw_polyline(body + PackedVector2Array([body[0]]), COLOR_BODY_DARK, 3.0)
-		draw_circle(Vector2(0.0, -62.0), 9.0, COLOR_HEAD)
-
-	if not dev_vision:
+	if _ground == null or not dev_vision or patrol_route.size() < 2:
 		return
-
-	var p1 := Vector2(0.0, -82.0)
-	var fang := deg_to_rad(facing_angle_deg)
-	var fdx  := sin(fang)
-	var fdy  := -cos(fang)
-	var iso  := Vector2((fdx - fdy) * 128.0, (fdx + fdy) * 64.0).normalized()
-	var p2   := p1 + iso * 22.0
-	draw_line(p1, p2, Color(1.0, 0.9, 0.5, 0.95), 3.0)
-
-	## DEV_VISION extras — only visible when dev_vision mode is active
-	if not dev_vision:
-		return
-
-	## Draw patrol route as dashed line connecting waypoints
-	if patrol_route.size() >= 2:
-		for i in range(patrol_route.size()):
-			var a := _cell_to_world(patrol_route[i]) - position
-			var b := _cell_to_world(patrol_route[(i + 1) % patrol_route.size()]) - position
-			draw_dashed_line(a, b, Color(0.4, 0.8, 1.0, 0.6), 2.0, 8.0)
-			draw_circle(a, 5.0, Color(0.4, 0.8, 1.0, 0.8))
-
-	## Dev 05: detection meter arc
-	var arc_center := Vector2(0.0, -82.0)
-	var arc_radius := 18.0
-	var arc_start := PI * 1.1        ## ~200° — opens at bottom
-	var arc_end := PI * 1.9          ## ~340° — closes at bottom
-	var arc_steps := 24
-
-	## Gray background arc
-	draw_arc(arc_center, arc_radius, arc_start, arc_end, arc_steps,
-		 Color(0.2, 0.2, 0.2, 0.7), 4.0, true)
-
-	## Colored detection fill proportional to detection value
-	if detection > 0.0:
-		var filled_end := arc_start + (arc_end - arc_start) * detection
-		var fill_color: Color
-		if detection <= 0.35:
-			fill_color = Color(1.0, 0.7, 0.1, 0.85)  ## Orange for suspicious
-		elif detection <= 0.65:
-			fill_color = Color(1.0, 0.5, 0.1, 0.85)  ## Orange-red for alert
-		else:
-			fill_color = Color(1.0, 0.2, 0.2, 0.85)  ## Red for chase
-		draw_arc(arc_center, arc_radius, arc_start, filled_end, arc_steps,
-			fill_color, 4.0, true)
-
-		## Percentage text
-		var pct_text := "%d%%" % roundi(detection * 100.0)
-		draw_string(
-			ThemeDB.fallback_font,
-			arc_center + Vector2(-12.0, 8.0),
-			pct_text,
-			HORIZONTAL_ALIGNMENT_CENTER,
-			-1,
-			10,
-			Color(1.0, 1.0, 1.0, 0.95)
-		)
+	_ground.begin(self)
+	## The patrol route as a dashed line connecting the waypoints.
+	for i in range(patrol_route.size()):
+		var a := _cell_to_world(patrol_route[i]) - position
+		var b := _cell_to_world(patrol_route[(i + 1) % patrol_route.size()]) - position
+		var length: float = a.distance_to(b)
+		var dir: Vector2 = (b - a) / maxf(length, 0.001)
+		var at: float = 0.0
+		while at < length:
+			_ground.draw_line(a + dir * at, a + dir * minf(at + PATROL_DASH_PX, length), Color(0.4, 0.8, 1.0, 0.6), 2.0)
+			at += PATROL_DASH_PX * 2.0
+		_ground.draw_circle(a, 5.0, Color(0.4, 0.8, 1.0, 0.8))
+	_ground.end()

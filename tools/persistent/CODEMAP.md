@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 78821 lines total** (under `godot/scripts/`)
+**254 scripts · 78799 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -71,7 +71,7 @@
 
 ### `agent.gd`
 
-`class_name DebugAgent` · extends `Node2D` · 500 lines
+`class_name DebugAgent` · extends `Node2D` · 482 lines
 
 `godot/scripts/agents/agent.gd`
 
@@ -98,10 +98,8 @@
 - `THROW_RAISE_SECONDS` = `0.18`
 - `THROW_RELEASE_SECONDS` = `0.40`
 - `THROW_CANCEL_SECONDS` = `0.12`
-- `SILHOUETTE_WIDTH` = `104.0`
-- `SILHOUETTE_HEIGHT` = `222.0`
-- `SILHOUETTE_OUTLINE_COLOR` = `Color(1.0, 1.0, 1.0, 0.3)`
-- `SILHOUETTE_OUTLINE_WIDTH` = `1.5`
+- `COVER_RING_RADIUS_PX` = `30.0`
+- `COVER_RING_SEGMENTS` = `32`
 
 **Public vars**
 - `var posture: Posture = Posture.STANDING`
@@ -116,7 +114,6 @@
 - `var cover_direction: Vector2i = Vector2i.ZERO`
 - `var step_duration: float = 0.56`
 - `var ground_shadow_half_px := Vector2(28.0, 10.0)`
-- `var draw_ground_shadow: bool = true`
 
 **Public API**
 - `func throw_origin() -> Vector2:`
@@ -161,7 +158,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1314 lines
+`class_name GuardEnemy` · extends `Node2D` · 1310 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 

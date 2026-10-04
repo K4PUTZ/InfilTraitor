@@ -3121,7 +3121,7 @@ func _attach_actor_billboards(board: Node3D = null) -> void:
 	for actor in actors:
 		var source: ActorPose = actor.sprite
 		if source == null:
-			push_warning("[Room] the 3D board is up but '%s' has no baked sprite — it stays 2D" % actor.name)
+			push_warning("[Room] the 3D board is up but '%s' has no pose node — it is not drawn" % actor.name)
 			continue
 		var existing: Variant = source.get_meta("figure3d") if source.has_meta("figure3d") else null
 		if is_instance_valid(existing) and (existing as Node).get_parent() == live:

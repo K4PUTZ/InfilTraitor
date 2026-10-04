@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 78839 lines total** (under `godot/scripts/`)
+**254 scripts · 78865 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2253,7 +2253,7 @@ extends `Node2D` · 68 lines
 
 ### `detonation_plan_builder.gd`
 
-`class_name DetonationPlanBuilder` · 3071 lines
+`class_name DetonationPlanBuilder` · 3089 lines
 
 `godot/scripts/systems/destruction/detonation_plan_builder.gd`
 
@@ -2342,7 +2342,7 @@ extends `Node2D` · 68 lines
 
 ### `glass_fall.gd`
 
-`class_name GlassFall` · 291 lines
+`class_name GlassFall` · 299 lines
 
 `godot/scripts/systems/destruction/glass_fall.gd`
 

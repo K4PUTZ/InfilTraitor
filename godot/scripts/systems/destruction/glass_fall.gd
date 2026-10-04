@@ -182,20 +182,28 @@ static func landing_level(grid_pos: Vector2i, from_level: int, surface_index: Di
 static func plan_landings(destroyed: Array, slabs: Array, impulse: Dictionary = {}) -> Array:
 	if destroyed.is_empty():
 		return []
-
-	## Pass 1 — scatter every shard's landing column, and collect the columns the
-	## surface index has to cover (the SCATTERED ones, not the originals).
-	var scattered: Array = []
 	var columns: Dictionary = {}
+	var scattered: Array = scatter_all(destroyed, impulse, columns)
+	return landings_from_index(scattered, build_surface_index(slabs, columns))
+
+
+## Pass 1 of `plan_landings`: scatter every shard's landing column, adding the SCATTERED columns (not the originals) to `columns`,
+## the set the surface index has to cover. Split out so a blast with several panes can scatter ALL of them first and build the
+## index ONCE for the union of their columns: the index walks every cell of every slab, and that walk was ~60 ms per pane on the
+## desktop (~5x that on the Moto: a 1.1 s step in the cook).
+static func scatter_all(destroyed: Array, impulse: Dictionary, columns: Dictionary) -> Array:
+	var scattered: Array = []
 	for d in destroyed:
 		var src: Vector2i = d["grid_pos"]
 		var from_level: int = int(d["level"])
 		var target: Vector2i = scatter_target(src, from_level, impulse)
 		scattered.append({"src": src, "from_level": from_level, "target": target})
 		columns[target] = true
-	var index: Dictionary = build_surface_index(slabs, columns)
+	return scattered
 
-	## Pass 2 — drop each shard down its SCATTERED column.
+
+## Pass 2 of `plan_landings`: drop each shard down its SCATTERED column of `index` (a `build_surface_index()` that covers them).
+static func landings_from_index(scattered: Array, index: Dictionary) -> Array:
 	var out: Array = []
 	for sc in scattered:
 		var landed: int = landing_level(sc["target"], int(sc["from_level"]), index)

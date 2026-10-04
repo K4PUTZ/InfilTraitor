@@ -652,6 +652,7 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			% [source_gu, epicenter, glass_max,
 			GlassShatter.GLASS_SHOCKWAVE_FALLOFF, GlassShatter.GLASS_CRAZE_FALLOFF])
 	var pane_min_ring: Dictionary = {}   ## pane_id -> nearest ring
+	var pending_landings: Array = []     ## one per shattered pane, landed together after the loop (`_land_shards`)
 	for sid in affected:
 		var slc: Slice = edge_registry.get_slice(sid)
 		if not _is_glass_pane_slice(slc):
@@ -826,23 +827,40 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			## WHOLE break — `plan_pane_craze()` returns the survivors, which is
 			## empty when there are none — so no branch is needed for that case.
 			_craze_pane(s, pid, pane_slices, ring, epicenter)
-			var landings: Array = GlassFall.plan_landings(fallen, slab_registry.all_slabs(), impulse)
-			var piles: Dictionary = GlassFall.pile_by_cell(landings)
-			var deepest: int = 0
-			for c in piles.values():
-				deepest = maxi(deepest, int(c))
-			## G6 — the piles ride the Delta and the ROOM draws them. This builder
-			## is PURE (PREDICTION_MASTER_PLAN), so it proposes and never writes:
-			## a pile made here would land on the floor of every GU the cursor
-			## hovered over, exactly as an opening claimed here would.
-			for pk in piles:
-				delta.glass_shard_piles[pk] = int(delta.glass_shard_piles.get(pk, 0)) \
-					+ int(piles[pk])
-			## G6b-2 — and the FLIGHTS, so the rain knows where each shard started.
-			## Proposed like everything else here; the room spawns the overlay.
-			delta.glass_shard_flights.append_array(landings)
-			print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
-				% [landings.size(), entries.size(), piles.size(), deepest, entries.size() - landings.size()])
+			## The landings are worked out AFTER the loop, once for every shattered pane (`_land_shards`): the surface index walks
+			## every cell of every slab, ~60 ms a pane on the desktop and a 1.1 s step in the Moto's cook.
+			pending_landings.append({"fallen": fallen, "impulse": impulse, "shards": entries.size()})
+	_land_shards(s, pending_landings)
+
+
+## G-D16a / G6 / G6b-2 — where the shards of every pane this blast shattered come to rest, as PROPOSALS on the Delta (this builder is
+## PURE: a pile made here would land on the floor of every GU the cursor hovered over, exactly as an opening claimed here would).
+## Every pane's shards are scattered first and the surface index is built ONCE for the union of their columns; each pane's landings
+## are the same rows `GlassFall.plan_landings()` would have returned for it alone (a column's surface levels do not depend on which
+## other columns the index covers).
+static func _land_shards(s: Dictionary, pending: Array) -> void:
+	if pending.is_empty():
+		return
+	var delta: WorldDelta = s["delta"]
+	var slab_registry: SlabRegistry = s["slab_registry"]
+	var columns: Dictionary = {}
+	var scattered: Array = []
+	for p in pending:
+		scattered.append(GlassFall.scatter_all(p["fallen"], p["impulse"], columns))
+	var index: Dictionary = GlassFall.build_surface_index(slab_registry.all_slabs(), columns)
+	for i in range(pending.size()):
+		var landings: Array = GlassFall.landings_from_index(scattered[i], index)
+		var piles: Dictionary = GlassFall.pile_by_cell(landings)
+		var deepest: int = 0
+		for c in piles.values():
+			deepest = maxi(deepest, int(c))
+		for pk in piles:
+			delta.glass_shard_piles[pk] = int(delta.glass_shard_piles.get(pk, 0)) + int(piles[pk])
+		## G6b-2 — and the FLIGHTS, so the rain knows where each shard started. The room spawns the overlay.
+		delta.glass_shard_flights.append_array(landings)
+		var shards: int = int(pending[i]["shards"])
+		print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
+			% [landings.size(), shards, piles.size(), deepest, shards - landings.size()])
 
 
 ## §6.2 / G-D35 B-1 — mark one surviving pane CRACKED and record the attribution.

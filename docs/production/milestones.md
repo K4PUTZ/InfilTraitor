@@ -3,7 +3,7 @@
 > ⏭️ **2026-10-02 — read this with the engine track beside it.** The engine milestones (the 3D board, destruction, light, props, actors, rotation) were run as the `R3D-*` stages of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) and are closed up to R3D-ROT (2026-10-02); [`current_state.md`](current_state.md) holds the live status. The M-numbered gameplay list below carries the dates it was written on (June 2026) and was not re-audited in this pass.
 
 > ⏭️ **2026-10-04 — THE ORDER OF THE NEXT ROUNDS (Director-ratified; this block is the single source, the other documents point here).**
-> **Rule: close the engine before starting gameplay** (Director: *"vale a pena fechar a engine antes de começar a trabalhar com gameplay, principalmente o item 2D sobrando"*). R3D-LIGHT closed R3D by the 2026-09-26 rule; the rounds below are the finish the Director wants anyway, tracked as **R3D-FINISH** in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
+> **Rule: close the engine before starting gameplay** (Director: *"vale a pena fechar a engine antes de começar a trabalhar com gameplay, principalmente o item 2D sobrando"*). R3D was closed by the Director on 2026-10-04; the rounds below are the engine finish he wants before gameplay, a track AFTER that close, tracked as **R3D-FINISH** in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
 >
 > | Round | Content |
 > |---|---|

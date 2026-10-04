@@ -1,6 +1,8 @@
 # INTERFACE_MASTER_PLAN
 ## Input Modularization, Panel Foundation & Menu-Ready Architecture — v1.2
 
+> 🧭 **2026-10-04 — order of the next rounds.** See [`docs/production/roadmap.md`](../../docs/production/roadmap.md)'s top block (single source) and `RENDER3D_MASTER_PLAN` v1.61 (R3D-FINISH). **Open Director call:** whether JAMES resumes (the suspension read "until the performance milestone closes"; nobody has declared it closed). Phase 4's UI work starts only after the stealth loop.
+
 > 🧭 **2026-09-27 — reorganization pointer, updated same day.** Wave 3 built. **The pause menu's missing RESUME button is FIXED** (`80afbaac`): `MainMenuPanel` gets a `_btn_resume`, first in the list and default-focused, wired to `request_close()`. JAMES (the design branch) is suspended until the performance milestone closes (CLAUDE.md); Claude owns UI solo meanwhile.
 
 > **⏸ 2026-09-14 — JAMES is suspended until the performance milestone closes.** Director:

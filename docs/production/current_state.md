@@ -8,6 +8,13 @@
 
 ---
 
+## Where the project stands — 2026-10-04 (R3D closed; the engine finish is ordered)
+
+**Version 0.9.107 · R3D-RETIRE-2D BUILT, `verify.py full` PASSED (467-470 s).** Record: `PROMPTS/RESUMO_SESSAO_2026-10-04_R3D_RETIRE_2D.md`; the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (v1.61).
+- **What is left of the 2D:** the coordinate space, the HUD, the explosion flash, `VfxDrawProbe` (kept on purpose) and two items to close: `light_ray_overlay` and `guard_noise_indicator`.
+- **Ordered with the Director (2026-10-04):** close the engine first — round 0 housekeeping and handset closure, 1 the last 2D, 2 R3D-BUFFER (simplified, empty border), 3 R3D-CLAIMS, 4 R3D-LOOK and R3D-SURFACES art, then gameplay (the stealth loop first). The full table and the three open calls are in [`roadmap.md`](roadmap.md)'s top block.
+- **Not yet measured on the handsets with the final code:** the Galaxy A16; the Moto's camera turn and PSS against END-8.
+
 ## Where the project stands — 2026-10-02 (close; the sections below are kept as history)
 
 **Version 0.9.107 · R3D-ROT is CLOSED: `verify.py full` passes (449 s) on the final code.** Records: `PROMPTS/RESUMO_SESSAO_2026-10-02_R3D_REVIEW_ROUNDTRIP_SOOT.md` (the day, in order) and the top block of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
@@ -431,6 +438,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-01_R3D_ROT_CAMERA_ONLY.md
 - RESUMO_SESSAO_2026-10-02_R3D_REVIEW_ROUNDTRIP_SOOT.md
 - RESUMO_SESSAO_2026-10-02_R3D_SURFACES_LOOK_RETIRE2D.md
+- RESUMO_SESSAO_2026-10-04_R3D_RETIRE_2D.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

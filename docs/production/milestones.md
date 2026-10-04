@@ -2,6 +2,20 @@
 
 > ⏭️ **2026-10-02 — read this with the engine track beside it.** The engine milestones (the 3D board, destruction, light, props, actors, rotation) were run as the `R3D-*` stages of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) and are closed up to R3D-ROT (2026-10-02); [`current_state.md`](current_state.md) holds the live status. The M-numbered gameplay list below carries the dates it was written on (June 2026) and was not re-audited in this pass.
 
+> ⏭️ **2026-10-04 — THE ORDER OF THE NEXT ROUNDS (Director-ratified; this block is the single source, the other documents point here).**
+> **Rule: close the engine before starting gameplay** (Director: *"vale a pena fechar a engine antes de começar a trabalhar com gameplay, principalmente o item 2D sobrando"*). R3D-LIGHT closed R3D by the 2026-09-26 rule; the rounds below are the finish the Director wants anyway, tracked as **R3D-FINISH** in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
+>
+> | Round | Content |
+> |---|---|
+> | **0** | Housekeeping and handset closure: the Galaxy A16 with the final code; on the Moto a camera turn and PSS against END-8; the stray modification in `current_state.md` committed; `export/retire2d.apk` removed; these documents reordered. |
+> | **1** | **The last 2D:** `light_ray_overlay` (the golden shafts, R3D-LOOK L6) becomes 3D; `guard_noise_indicator` (never shown, its emitter `Room._emit_guard_noise_indicator` does not exist) is wired or deleted. Kept 2D on purpose: the HUD, the explosion flash, `VfxDrawProbe`. |
+> | **2** | **R3D-BUFFER, simplified:** the border strata become real `VoxelStore` geometry (~4-5 GU, the camera locks that far from the edge), closing v1.16's 116 416 light texels. The border is filled with the SAME ground, extended (assumed; the Director has not ruled between that and a distinct neutral block), no objects. **Rule 7 holds: the buffer is applied only in `MapCompiler`.** Cars, trees and the rest populate it in the procedural-maps milestone, with a hook left for it. **The Moto number after this round is an EMPTY-border number and is optimistic: label it so, never read it as the final cost.** |
+> | **3** | **R3D-CLAIMS:** the `Voxel` wrappers go (~100 MB on the Moto); the plan and the `WorldDelta` are keyed by claim. Before content, because it changes keys that new content would inherit. |
+> | **4** | **R3D-LOOK L1-L5 and R3D-SURFACES art** (more patch kinds): the Director's eye, graded 9/10 against captures, so they come last. |
+> | **5+** | Gameplay: **the stealth loop** (AI-02 / AI-03, more noise emitters, M2.14 investigation, the non-combat turn) with **the agent's movement** (keyed actions on the live rig: crouch, prone, sneak) in parallel; then **minimal confrontation** (DESIGN §8-10, needs scope sign-off); then **the materials milestone** (glass reopened: structural collapse G-S1, glass blocks, the second grenade's 648-769 ms COMMIT on the Moto, the 8 library materials); then **content scale** (PP2/PP3 `.iprop` and user-tier models, the dormitory); then **Phase 4**. |
+>
+> **Open Director calls, not decided here:** (1) resume the interface track (JAMES) — the suspension read "until the performance milestone closes" and nobody has declared that milestone closed; (2) archive the closed plans (`PERFORMANCE`, `TOP_TEXTURE`, `OCCLUSION`, `DESTRUCTION`) to `PROMPTS/DONE/` — the archive is the Director's curation; (3) the border's look (above). **Resuming the AI track is part of this order (the 2026-06-18 gate, "occlusion and shadows done", is met).**
+
 > **Executable list of milestones with status, dependencies, and blockers.**
 
 ---

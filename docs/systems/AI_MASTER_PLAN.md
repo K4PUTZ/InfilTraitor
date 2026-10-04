@@ -1,5 +1,7 @@
 # INFILTRAITOR — AI & Guard Behavior Master Plan
 
+> 🧭 **2026-10-04 — the AI track resumes after R3D-FINISH.** The 2026-06-18 deferral gate (view occlusion and floor shadows) is met; AI-02 / AI-03, more noise emitters and M2.14 are the first gameplay round. See [`docs/production/roadmap.md`](../production/roadmap.md)'s top block.
+
 > **Canonical specification for guard FSM, detection, and communication.**
 
 > ✅ **Numbers re-verified against the code 2026-10-02:** state multipliers (0.55 / 1.60 / 0.80 / 2.00 / 2.80), `DETECTION_GAIN_PER_TIC` 0.4, thresholds 0.30 / 0.60 / 1.00, the four timers, `FOV_DISTANCE_CURVE`, `FOV_LATERAL_FALLOFF`, `WHISTLE_RADIUS` 3. Per-state detection decay (`turn_controller._get_detection_decay`): patrol -0.15, suspicious -0.06, alert -0.04, chase -0.01, search -0.10. `ai.md`, `perception.md` and `stealth.md` were brought in line with these the same day.

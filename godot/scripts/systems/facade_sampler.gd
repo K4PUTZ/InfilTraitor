@@ -14,11 +14,18 @@ class_name FacadeSampler
 ## earth_variant_selftest.gd) remain valid: GDScript allows calling a static func
 ## through an instance reference.
 static func _fnv1a_hash(input: String) -> int:
-	var hash_val: int = 2166136261  # FNV offset basis
+	return _fnv1a_continue(2166136261, input)  # FNV offset basis
+
+
+## FNV-1a is sequential, so `_fnv1a_continue(_fnv1a_continue(basis, A), B) == _fnv1a_hash(A + B)`: a caller that hashes many strings
+## sharing a prefix (the glass rain: 14 hashes per shard, all starting `rain|x,y,z|`) hashes the prefix ONCE and continues from its
+## state. The same algorithm, the same owner (B4): the values are exactly `_fnv1a_hash`'s.
+static func _fnv1a_continue(state: int, input: String) -> int:
+	var hash_val: int = state
 	var fnv_prime: int = 16777619
-	
+
 	for byte_val in input.to_ascii_buffer():
 		hash_val ^= byte_val
 		hash_val = (hash_val * fnv_prime) & 0xFFFFFFFF  # Keep 32-bit
-	
+
 	return hash_val

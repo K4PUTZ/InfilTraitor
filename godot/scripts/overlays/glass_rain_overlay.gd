@@ -137,6 +137,8 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 	_apply_timing_overrides()
 	for f in flights:
 		var key: Vector3i = f["key"]
+		## The state after the prefix every hash of this flight shares (`rain|x,y,z|`), hashed once.
+		var base: int = FacadeSamplerClass._fnv1a_continue(2166136261, "rain|%d,%d,%d|" % [key.x, key.y, key.z])
 		var from: Vector2 = f["from"]
 		var to: Vector2 = f["to"]
 		## R3D-4e-4 — the two real 3D ends of the fall: the pane's voxel and the landing.
@@ -146,38 +148,38 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 		## floor hides it (measured: to3.y = -0.1276, 20 px under the floor surface).
 		var to_top: Vector2 = to - Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
 		var to3: Vector3 = ParticleMathRef.anchor(_board, to_top, f.get("to_floor", ParticleMathRef.NO_FLOOR))
-		var n: int = 1 + int(pow(_hash_unit(key, "count"), pieces_low_bias) \
+		var n: int = 1 + int(pow(_unit(base, "count"), pieces_low_bias) \
 			* float(maxi(pieces_per_voxel_max, 1)) * 0.999)
 		for p in range(n):
 			if _shards.size() >= max_shards:
 				break
 			var salt := "%d" % p
 			var target: float = lerpf(ShardShapes.TARGET_MIN, ShardShapes.TARGET_MAX,
-				_hash_unit(key, "size" + salt))
+				_unit(base, "size" + salt))
 			var fall: int = int(lerpf(float(fall_frames_min), float(fall_frames_max),
-				_hash_unit(key, "fall" + salt)))
-			var t0: int = int(_hash_unit(key, "t0" + salt) * float(stagger_frames))
+				_unit(base, "fall" + salt)))
+			var t0: int = int(_unit(base, "t0" + salt) * float(stagger_frames))
 			## The pieces of one voxel do not all land on the same pixel: a small
 			## sub-cell offset, hashed, so a pile reads as a scatter and not as a
 			## stack. ⚠️ It moves only where the shard DRAWS, never the landing CELL
 			## the G6 pile was recorded at — that one is state.
 			var jitter := Vector2(
-				(_hash_unit(key, "jx" + salt) - 0.5) * 22.0,
-				(_hash_unit(key, "jy" + salt) - 0.5) * 11.0)
+				(_unit(base, "jx" + salt) - 0.5) * 22.0,
+				(_unit(base, "jy" + salt) - 0.5) * 11.0)
 			_shards.append({
 				"from": from,
 				"from3": from3,
 				"to3": to3,
 				"jitter": jitter,
 				"to": to + jitter,
-				"arc": lerpf(arc_px_min, arc_px_max, _hash_unit(key, "arc" + salt)),
-				"spin": lerpf(spin_min, spin_max, _hash_unit(key, "spin" + salt)),
+				"arc": lerpf(arc_px_min, arc_px_max, _unit(base, "arc" + salt)),
+				"spin": lerpf(spin_min, spin_max, _unit(base, "spin" + salt)),
 				"size": GeometryCoords.VOXEL_STEP_PX * target,
-				"shape": int(_hash_unit(key, "shape" + salt) * float(ShardShapes.ids().size()) * 0.999),
-				"flip": _hash_unit(key, "flip" + salt) < 0.5,
-				"flop": _hash_unit(key, "flop" + salt) < 0.5,
-				"rot0": _hash_unit(key, "rot" + salt) * TAU,
-				"avar": lerpf(alpha_var_min, 1.0, _hash_unit(key, "avar" + salt)),
+				"shape": int(_unit(base, "shape" + salt) * float(ShardShapes.ids().size()) * 0.999),
+				"flip": _unit(base, "flip" + salt) < 0.5,
+				"flop": _unit(base, "flop" + salt) < 0.5,
+				"rot0": _unit(base, "rot" + salt) * TAU,
+				"avar": lerpf(alpha_var_min, 1.0, _unit(base, "avar" + salt)),
 				"t0": t0,
 				"fall": maxi(fall, 1),
 			})
@@ -192,6 +194,11 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 func _hash_unit(key: Vector3i, what: String) -> float:
 	return float(FacadeSamplerClass._fnv1a_hash(
 		"rain|%d,%d,%d|%s" % [key.x, key.y, key.z, what]) % 100000) / 100000.0
+
+
+## `_hash_unit(key, what)` continued from the prefix state `base` (see `spawn()`): the same value, without re-hashing the prefix.
+func _unit(base: int, what: String) -> float:
+	return float(FacadeSamplerClass._fnv1a_continue(base, what) % 100000) / 100000.0
 
 
 func _process(_delta: float) -> void:

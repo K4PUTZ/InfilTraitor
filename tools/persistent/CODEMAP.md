@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 78865 lines total** (under `godot/scripts/`)
+**254 scripts · 78879 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1613,7 +1613,7 @@ extends `Node2D` · 164 lines
 
 ### `glass_rain_overlay.gd`
 
-`class_name GlassRainOverlay` · extends `Node2D` · 269 lines
+`class_name GlassRainOverlay` · extends `Node2D` · 276 lines
 
 `godot/scripts/overlays/glass_rain_overlay.gd`
 
@@ -2552,7 +2552,7 @@ extends `Node` · 231 lines
 
 ### `facade_sampler.gd`
 
-`class_name FacadeSampler` · 24 lines
+`class_name FacadeSampler` · 31 lines
 
 `godot/scripts/systems/facade_sampler.gd`
 

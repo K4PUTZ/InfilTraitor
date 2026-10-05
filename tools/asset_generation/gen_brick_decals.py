@@ -75,8 +75,67 @@ def shade(rng: np.random.Generator, mix_noise: np.ndarray, grain: float) -> np.n
     return np.clip(col + g[..., None], 0, 255)
 
 
+PHOTO_ROOT = ROOT / "ASSETS/photo_src"
+## The photographic fill of each brick mark (CC0 ambientCG, see docs/PHOTO_SOURCES.md): the mark's COLOUR and TEXTURE come from a crop of
+## one of these photos; its SHAPE and alpha stay procedural. (relative path, target mean luminance 0..1 the crop is graded to: the
+## decal must be LIGHTER than the wall, 0.21 mean, or it vanishes; see the header.)
+PHOTO_FILL = {
+    ## Ground111 (brick rubble and dust) for both: a crop of an INTACT brick wall (Bricks097) tried first read as a sticker of a wall
+    ## inside the hole; a damaged brick shows its core and its dust, not its courses.
+    "bullet": [("brick/Ground111/Ground111_2K-JPG_Color.jpg", 0.62)],
+    "dent": [("brick/Ground111/Ground111_2K-JPG_Color.jpg", 0.58)],
+    "crack": [("shared/Plaster007/Plaster007_2K-JPG_Color.jpg", 0.66)],
+}
+_PHOTOS: dict[str, Image.Image] = {}
+
+
+def photo_fill(rng: np.random.Generator, kind: str, variant_seed: int) -> np.ndarray | None:
+    """(N, N, 3) 0..255 from a crop of a photo of `kind`, graded to its target luminance; None when the photo is not on disk."""
+    sources = PHOTO_FILL[kind]
+    rel, target = sources[variant_seed % len(sources)]
+    path = PHOTO_ROOT / rel
+    if not path.exists():
+        print("  (no photo %s: procedural fill)" % rel)
+        return None
+    if rel not in _PHOTOS:
+        _PHOTOS[rel] = Image.open(path).convert("RGB")
+    im = _PHOTOS[rel]
+    side = int(rng.integers(420, 760))  ## the crop is ~2-3x the decal's size: a downsample keeps the grain crisp
+    x0 = int(rng.integers(0, im.width - side))
+    y0 = int(rng.integers(0, im.height - side))
+    crop = np.asarray(im.crop((x0, y0, x0 + side, y0 + side)).resize((N, N), Image.LANCZOS), dtype=float)
+    lum = crop @ np.array([0.2126, 0.7152, 0.0722]) / 255.0
+    gain = target / max(float(lum.mean()), 1e-3)
+    crop = np.clip((crop - crop.mean()) * 1.15 + crop.mean(), 0, 255) * gain  ## a touch more contrast, then to the target
+    return np.clip(crop, 0, 255)
+
+
+def edge_report(name: str, alpha: np.ndarray) -> None:
+    """The alpha calibration: the mark must stay clear of the canvas border (a neighbour voxel is not damaged) and fade out softly."""
+    border = np.concatenate([alpha[:2].ravel(), alpha[-2:].ravel(), alpha[:, :2].ravel(), alpha[:, -2:].ravel()])
+    gy, gx = np.gradient(alpha)
+    grad = np.hypot(gx, gy)
+    soft = (alpha > 0.02) & (alpha < 0.9)
+    print("  alpha: border max %.3f (must be < 0.012), steepest soft edge %.3f /px, soft-edge px %d"
+          % (border.max(), grad[soft].max() if soft.any() else 0.0, int(soft.sum())))
+    assert border.max() < 0.012, "%s touches the canvas border" % name
+
+
+EDGE_FADE = 0.10  ## canvas fraction over which every mark fades to nothing at the border
+
+
+def edge_window() -> np.ndarray:
+    """1 inside, a smoothstep down to 0 at the canvas border: a mark never reaches the voxel's edge (its neighbour is not damaged)."""
+    c = (np.arange(N) + 0.5) / N
+    d = np.minimum(c, 1.0 - c)
+    t = np.clip(d / EDGE_FADE, 0.0, 1.0)
+    w = t * t * (3.0 - 2.0 * t)
+    return np.minimum.outer(w, w)
+
+
 def compose(rgb: np.ndarray, alpha: np.ndarray) -> Image.Image:
-    out = np.dstack([np.clip(rgb, 0, 255), np.clip(alpha, 0, 1) * 255.0]).astype(np.uint8)
+    alpha = np.clip(alpha, 0, 1) * edge_window()
+    out = np.dstack([np.clip(rgb, 0, 255), alpha * 255.0]).astype(np.uint8)
     return Image.fromarray(out, "RGBA")
 
 
@@ -85,7 +144,9 @@ def bullet(seed: int, radius: float, stretch: tuple[float, float], angle: float)
     crater = radial_blob(rng, radius, stretch, 0.35, angle)
     halo = radial_blob(rng, radius * 1.22, stretch, 0.45, angle)
     body = fbm(rng, N, 5, 5)
-    rgb = shade(rng, body, 26.0)
+    rgb = photo_fill(rng, "bullet", seed)
+    if rgb is None:
+        rgb = shade(rng, body, 26.0)
     ## Hole: dark, ragged, off-centre a little; a shaded rim fakes depth.
     hole = radial_blob(rng, radius * 0.38, (1.0, 0.9), 0.4, angle)
     rim = radial_blob(rng, radius * 0.55, (1.0, 0.9), 0.4, angle)
@@ -155,7 +216,9 @@ def crack(seed: int, branches: int, spread: float, palette: dict | None = None) 
     lip = np.asarray(m8.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.GaussianBlur(1.0)), dtype=float) / 255.0
     lip = np.clip(lip - mask * 0.9, 0, 1)
     if palette is None:
-        rgb = shade(rng, fbm(rng, N, 4, 6), 24.0)
+        rgb = photo_fill(rng, "crack", seed)
+        if rgb is None:
+            rgb = shade(rng, fbm(rng, N, 4, 6), 24.0)
         rgb = rgb * (1.0 - core[..., None]) + DARK * core[..., None]
         alpha = np.maximum.reduce([core * 0.97, lip * 0.9, np.clip(haze * 1.8, 0, 1) * spread])
         return compose(rgb, alpha)
@@ -173,9 +236,11 @@ def crack(seed: int, branches: int, spread: float, palette: dict | None = None) 
 def dent(seed: int, radius: float, stretch: tuple[float, float], angle: float) -> Image.Image:
     """A spall scar on a cut plane: broad, pale, pulverised, with dark pits."""
     rng = np.random.default_rng(seed)
-    scar = radial_blob(rng, radius, stretch, 0.30, angle)
+    scar = radial_blob(rng, radius, stretch, 0.22, angle)
     body = fbm(rng, N, 6, 4)
-    rgb = shade(rng, np.clip(body * 1.2, 0, 1), 34.0)
+    rgb = photo_fill(rng, "dent", seed)
+    if rgb is None:
+        rgb = shade(rng, np.clip(body * 1.2, 0, 1), 34.0)
     pits_field = fbm(rng, N, 5, 7)
     pits = np.clip((pits_field - 0.66) / 0.06, 0, 1) * feather(scar, 0.08)
     rgb = rgb * (1.0 - pits[..., None] * 0.8) + DARK * pits[..., None] * 0.8
@@ -199,9 +264,9 @@ SPECS = {
         lambda: crack(23, 6, 0.38),
     ],
     "dent": [
-        lambda: dent(31, 0.36, (1.2, 0.8), 0.5),
-        lambda: dent(32, 0.40, (1.0, 0.9), -0.6),
-        lambda: dent(33, 0.42, (1.3, 0.75), 1.2),
+        lambda: dent(31, 0.27, (1.2, 0.8), 0.5),
+        lambda: dent(32, 0.30, (1.0, 0.9), -0.6),
+        lambda: dent(33, 0.28, (1.3, 0.75), 1.2),
     ],
 }
 
@@ -219,6 +284,7 @@ def main() -> int:
             path = out / ("decal_%s_brick_%d.png" % (family, variant))
             img.save(path, "PNG")
             print("%s  coverage %.0f %%  peak alpha %d" % (path.name, float((a > 13).mean()) * 100.0, int(a.max())))
+            edge_report(path.name, a.astype(float) / 255.0)
     return 0
 
 

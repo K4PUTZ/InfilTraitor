@@ -115,7 +115,7 @@ def bullet(seed: int, radius: float, stretch: tuple[float, float], angle: float)
     return compose(rgb, alpha)
 
 
-def crack(seed: int, branches: int, spread: float) -> Image.Image:
+def crack(seed: int, branches: int, spread: float, palette: dict | None = None) -> Image.Image:
     """Fracture lines: they favour the courses (near-horizontal runs) and the joints (near-vertical), but wander in between,
     taper towards their tips and stay inside the canvas (a mark never reaches its voxel's border: neighbours are not cracked)."""
     rng = np.random.default_rng(seed)
@@ -154,8 +154,18 @@ def crack(seed: int, branches: int, spread: float) -> Image.Image:
     haze = np.asarray(m8.filter(ImageFilter.GaussianBlur(8)), dtype=float) / 255.0
     lip = np.asarray(m8.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.GaussianBlur(1.0)), dtype=float) / 255.0
     lip = np.clip(lip - mask * 0.9, 0, 1)
-    rgb = shade(rng, fbm(rng, N, 4, 6), 24.0)
-    rgb = rgb * (1.0 - core[..., None]) + DARK * core[..., None]
+    if palette is None:
+        rgb = shade(rng, fbm(rng, N, 4, 6), 24.0)
+        rgb = rgb * (1.0 - core[..., None]) + DARK * core[..., None]
+        alpha = np.maximum.reduce([core * 0.97, lip * 0.9, np.clip(haze * 1.8, 0, 1) * spread])
+        return compose(rgb, alpha)
+    ## A light wall (concrete, stone): the line is dark, its chipped lip catches the light, and the haze is a SHADOW, not dust.
+    dark, lip_col, haze_col = (np.array(palette[k], dtype=float) for k in ("dark", "lip", "haze"))
+    grain = (rng.random((N, N)) - 0.5) * 18.0
+    rgb = np.zeros((N, N, 3)) + haze_col + grain[..., None]
+    lip_w = (lip / np.maximum(lip + haze, 1e-6))[..., None]
+    rgb = rgb * (1.0 - lip_w) + lip_col * lip_w
+    rgb = rgb * (1.0 - core[..., None]) + dark * core[..., None]
     alpha = np.maximum.reduce([core * 0.97, lip * 0.9, np.clip(haze * 1.8, 0, 1) * spread])
     return compose(rgb, alpha)
 

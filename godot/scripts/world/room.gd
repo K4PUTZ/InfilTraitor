@@ -3377,6 +3377,44 @@ func scenario_shoot(index: int) -> bool:
 	return waited < 1800
 
 
+## Scenario step `decal_wall <material> <gx,gy>` (R3D-LOOK L1): every damage decal of a material shown at once on one
+## wall, for a static look judgement. Writes the real damage tuples through the store (no round, no blast, no soot) and
+## hands the touched voxels to the board, so the marks are drawn by the shipped shader. Rows, from the bottom: a round's
+## CRACKED mark, a round's DENTED recess, a blast's CRACKED, a blast's DENTED; columns: the three variants. A mark is one
+## voxel big, so the twelve sit two voxels apart inside the GU's column, on the SW face (+y) of the outermost wall layer.
+func scenario_decal_wall(material_id: String, gu: Vector2i) -> bool:
+	var store: VoxelStore = VoxelStore.active
+	var live: Node = board3d()
+	if store == null or live == null or _voxel_board == null:
+		push_error("[Room] scenario_decal_wall: no active store or no 3D board")
+		return false
+	var base_level: int = _voxel_board.ground_plane_level()
+	var face_y: int = -1  ## the largest y holding an intact, visible voxel of the material with an open SW face
+	for x: int in range(gu.x * 8, gu.x * 8 + 8):
+		for y: int in range(gu.y * 8 - 4, gu.y * 8 + 12):
+			var claim: int = store.owner[store.cell_index(x, y, base_level)]
+			if claim >= 0 and y > face_y and not store.has_cell(x, y + 1, base_level) \
+					and store.material_ids[store.mat[claim]] == material_id:
+				face_y = y
+	if face_y == -1:
+		push_error("[Room] scenario_decal_wall: no %s wall face in the GU column of %s" % [material_id, gu])
+		return false
+	var rows: Array = [
+		[Voxel.DamageState.CRACKED, false], [Voxel.DamageState.DENTED, false],
+		[Voxel.DamageState.CRACKED, true], [Voxel.DamageState.DENTED, true]]
+	var touched: Array = []
+	for r: int in range(rows.size()):
+		for v: int in range(3):
+			var claim: int = store.owner[store.cell_index(gu.x * 8 + 1 + v * 2, face_y, base_level + r * 2)]
+			if claim >= 0 and store.set_damage(claim, int(rows[r][0]), bool(rows[r][1]), Voxel.CarvedSide.LEFT, v, 0):
+				touched.append(store.voxel_of(claim))
+	print("[DECAL-WALL] %s: %d marks on y=%d" % [material_id, touched.size(), face_y])
+	live.call("on_shot_commit", touched)
+	for _f in range(20):
+		await get_tree().process_frame
+	return not touched.is_empty()
+
+
 ## F2's map reload: the same `load_map()` the debug panel calls, on the current map.
 func scenario_reload() -> bool:
 	load_map(map_id)

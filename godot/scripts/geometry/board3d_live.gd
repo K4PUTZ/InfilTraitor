@@ -2070,13 +2070,19 @@ const DENT_DIR_OF_CARVED_SIDE: Dictionary = {
 	Voxel.CarvedSide.FACE_NW: Dir.NW, Voxel.CarvedSide.FACE_NE: Dir.NE,
 }
 ## The recess: a frame this wide is left on the face, and the floor of the pit sits this deep.
-const DENT_MARGIN: float = 0.2
+const DENT_MARGIN: float = 0.12
 const DENT_DEPTH: float = 0.3
+## The pit is a BOWL, not a box (R3D-LOOK L1, Director: "fica bem quadradinha a borda do buraco"): an octagon whose rim sits ON the
+## face plane and whose floor is reached through intermediate rings, so the wall appears to have sunk. Each entry is (scale of the
+## rim octagon about the voxel's centre, how far down it sits, as a fraction of DENT_DEPTH): a smoothstep profile, flat at the rim
+## and at the floor, steepest between.
+const DENT_RINGS: Array = [[1.0, 0.0], [0.78, 0.16], [0.55, 0.56], [0.34, 0.92]]
+## How square the octagon's rim is: 2 is a circle, large is a square (a superellipse exponent).
+const DENT_SQUARENESS: float = 3.0
 
 
-## One DENTED voxel's carved face as geometry: four frame strips on the face plane, the recessed
-## floor, and the four walls joining them. Unmerged (a merged plane cannot hold a fractional
-## depth) and never on glass. Returns the quads emitted.
+## One DENTED voxel's carved face as geometry: the face plane around the pit (a fan out to the voxel's border), the bowl's
+## rings, and its floor. Unmerged (a merged plane cannot hold a fractional depth) and never on glass. Returns the quads emitted.
 func _emit_dent(dir: int, x: int, y: int, level: int, material: int, surfaces: Dictionary) -> int:
 	if not surfaces.has(material):
 		surfaces[material] = SurfaceData.new()
@@ -2098,29 +2104,54 @@ func _emit_dent(dir: int, x: int, y: int, level: int, material: int, surfaces: D
 		tu = Vector3(1, 0, 0)
 		tv = Vector3(0, 1, 0)
 	var face_at: Vector3 = origin + _face_offset(normal)  ## the voxel's corner on the carved face
-	var m: float = DENT_MARGIN
-	var d: float = DENT_DEPTH
+	var half: float = 0.5 - DENT_MARGIN
+	## The rim: eight points of a superellipse, the first at angle 0, so the four at 45 degrees ride the voxel's diagonals and the
+	## fan to the border has a vertex on every corner.
+	var rim: Array[Vector2] = []
+	for k: int in range(8):
+		var t: float = float(k) * TAU / 8.0
+		var cu: float = cos(t)
+		var cv: float = sin(t)
+		rim.append(Vector2(signf(cu) * pow(absf(cu), 2.0 / DENT_SQUARENESS), signf(cv) * pow(absf(cv), 2.0 / DENT_SQUARENESS)) * half)
 	var quads: int = 0
-	# (u0, v0, u1, v1) rectangles on the face plane, and the pit floor.
-	var frame: Array = [[0.0, 0.0, 1.0, m], [0.0, 1.0 - m, 1.0, 1.0], [0.0, m, m, 1.0 - m], [1.0 - m, m, 1.0, 1.0 - m]]
-	for r: Array in frame:
-		_dent_quad(surface, unit, [face_at + tu * r[0] + tv * r[1], face_at + tu * r[2] + tv * r[1],
-			face_at + tu * r[2] + tv * r[3], face_at + tu * r[0] + tv * r[3]], normal)
+	# The face plane around the rim: rim[k], rim[k+1] to the border points on the same rays (the corners are the 45-degree rays').
+	var border: Array[Vector2] = []
+	for k: int in range(8):
+		border.append(rim[k] * (0.5 / maxf(absf(rim[k].x), absf(rim[k].y))))
+	for k: int in range(8):
+		var n: int = (k + 1) % 8
+		_dent_quad(surface, unit, [_dent_point(face_at, tu, tv, normal, rim[k], 0.0), _dent_point(face_at, tu, tv, normal, rim[n], 0.0),
+			_dent_point(face_at, tu, tv, normal, border[n], 0.0), _dent_point(face_at, tu, tv, normal, border[k], 0.0)], normal, normal)
 		quads += 1
-	var fl: Vector3 = face_at - normal * d
-	var c00: Vector3 = fl + tu * m + tv * m
-	var c10: Vector3 = fl + tu * (1.0 - m) + tv * m
-	var c11: Vector3 = fl + tu * (1.0 - m) + tv * (1.0 - m)
-	var c01: Vector3 = fl + tu * m + tv * (1.0 - m)
-	_dent_quad(surface, unit, [c00, c10, c11, c01], normal)
-	quads += 1
-	# Walls: each joins a floor edge to the same edge on the face plane, facing the pit's centre.
-	var up: Vector3 = normal * d
-	_dent_quad(surface, unit, [c00, c10, c10 + up, c00 + up], tv)    ## the u-low... edge at v = m faces +v
-	_dent_quad(surface, unit, [c01, c11, c11 + up, c01 + up], -tv)
-	_dent_quad(surface, unit, [c00, c01, c01 + up, c00 + up], tu)
-	_dent_quad(surface, unit, [c10, c11, c11 + up, c10 + up], -tu)
-	return quads + 4
+	# The bowl: ring to ring, each quad with the normal of its own slope (the shader tones it by that normal).
+	for r: int in range(DENT_RINGS.size() - 1):
+		var s0: float = DENT_RINGS[r][0]
+		var s1: float = DENT_RINGS[r + 1][0]
+		var d0: float = DENT_DEPTH * float(DENT_RINGS[r][1])
+		var d1: float = DENT_DEPTH * float(DENT_RINGS[r + 1][1])
+		for k: int in range(8):
+			var n: int = (k + 1) % 8
+			var c: Array = [_dent_point(face_at, tu, tv, normal, rim[k] * s0, d0), _dent_point(face_at, tu, tv, normal, rim[n] * s0, d0),
+				_dent_point(face_at, tu, tv, normal, rim[n] * s1, d1), _dent_point(face_at, tu, tv, normal, rim[k] * s1, d1)]
+			var slope: Vector3 = (c[1] - c[0]).cross(c[3] - c[0])
+			if slope.dot(normal) < 0.0:
+				slope = -slope
+			_dent_quad(surface, unit, c, slope.normalized(), normal)
+			quads += 1
+	# The floor: the innermost ring, as a fan of quads around the centre.
+	var fs: float = DENT_RINGS[DENT_RINGS.size() - 1][0]
+	var fd: float = DENT_DEPTH * float(DENT_RINGS[DENT_RINGS.size() - 1][1])
+	var centre: Vector3 = _dent_point(face_at, tu, tv, normal, Vector2.ZERO, fd)
+	for k: int in range(0, 8, 2):
+		_dent_quad(surface, unit, [centre, _dent_point(face_at, tu, tv, normal, rim[k] * fs, fd),
+			_dent_point(face_at, tu, tv, normal, rim[(k + 1) % 8] * fs, fd), _dent_point(face_at, tu, tv, normal, rim[(k + 2) % 8] * fs, fd)], normal, normal)
+		quads += 1
+	return quads
+
+
+## A point of the pit: `offset` from the voxel face's centre along the face's tangents, `depth` voxels into the wall.
+func _dent_point(face_at: Vector3, tu: Vector3, tv: Vector3, normal: Vector3, offset: Vector2, depth: float) -> Vector3:
+	return face_at + tu * (0.5 + offset.x) + tv * (0.5 + offset.y) - normal * depth
 
 
 ## Where a face's plane sits from the voxel's min corner: one voxel along a positive normal, on the corner for a negative one.
@@ -2130,13 +2161,13 @@ static func _face_offset(normal: Vector3) -> Vector3:
 
 ## A quad wound so its front faces `normal` (Godot's front face is clockwise seen from the normal side, cross . normal < 0,
 ## as `_emit_quad()` winds; it matters since the board is `cull_back`), with the facade UVs of the axis it faces.
-func _dent_quad(surface: SurfaceData, unit: float, corners: Array, normal: Vector3) -> void:
+func _dent_quad(surface: SurfaceData, unit: float, corners: Array, normal: Vector3, uv_normal: Vector3) -> void:
 	var c: Array[Vector3] = []
 	c.assign(corners)
 	if (c[1] - c[0]).cross(c[2] - c[0]).dot(normal) > 0.0:
 		c = [c[0], c[3], c[2], c[1]]
 	var uvs: Array[Vector2] = []
-	var ax: Vector3 = normal.abs()
+	var ax: Vector3 = uv_normal.abs()
 	for p: Vector3 in c:
 		var uv: Vector2
 		if ax.y > 0.5:
@@ -2200,7 +2231,7 @@ func _emit_decal(dir: int, x: int, y: int, level: int, layer: int, on_recess: bo
 	var tv: Vector3 = Vector3(0, 0, 1) if dir == Dir.TOP else Vector3(0, 1, 0)
 	var lo: float = DENT_MARGIN if on_recess else 0.0
 	var hi: float = 1.0 - lo
-	var depth: float = (DENT_DEPTH - DECAL_LIFT_VOXELS) if on_recess else -DECAL_LIFT_VOXELS
+	var depth: float = (DENT_DEPTH * float(DENT_RINGS[1][1]) - DECAL_LIFT_VOXELS) if on_recess else -DECAL_LIFT_VOXELS
 	var at: Vector3 = origin + _face_offset(normal) - normal * depth
 	var corners: Array[Vector3] = [at + tu * lo + tv * lo, at + tu * hi + tv * lo,
 		at + tu * hi + tv * hi, at + tu * lo + tv * hi]

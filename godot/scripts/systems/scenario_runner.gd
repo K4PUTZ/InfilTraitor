@@ -96,7 +96,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
-	"container_stats": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2,
+	"container_stats": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2,
 }
 const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler"]
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
@@ -235,6 +235,12 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "detonate takes a dev grenade index >= 0"
 			step["index"] = int(arg)
+		"decal_wall":
+			var wall_gu: PackedStringArray = tokens[2].split(",")
+			if not arg.is_valid_identifier() or wall_gu.size() != 2 or not wall_gu[0].is_valid_int() or not wall_gu[1].is_valid_int():
+				return "decal_wall takes a material id and a GU as x,y"
+			step["material"] = arg
+			step["cell"] = Vector2i(int(wall_gu[0]), int(wall_gu[1]))
 		"throw":
 			var target: PackedStringArray = tokens[2].split(",")
 			if not arg.is_valid_int() or int(arg) < 0 or target.size() != 2 or not target[0].is_valid_int() \
@@ -381,6 +387,11 @@ func _execute(room: Node, step: Dictionary) -> bool:
 					ok = await room.call(method)
 			if not ok:
 				return _fail(step, "%s() did not complete (see the error above)" % method)
+		"decal_wall":
+			if not room.has_method("scenario_decal_wall"):
+				return _fail(step, "Room has no scenario_decal_wall()")
+			if not bool(await room.call("scenario_decal_wall", str(step["material"]), step["cell"])):
+				return _fail(step, "no decal display was built (see the error above)")
 		"throw":
 			if not room.has_method("scenario_throw"):
 				return _fail(step, "Room has no scenario_throw()")

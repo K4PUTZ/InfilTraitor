@@ -50,6 +50,15 @@ CONFIGS = {
         },
         "crack_palette": {"dark": (26, 26, 28), "lip": (228, 228, 224), "haze": (84, 84, 86)},
     },
+    "metal": {
+        "dark": (14, 15, 18), "rim": (40, 42, 48), "core": (176, 182, 190), "dust": (214, 218, 224), "seed": 300, "desat": 0.0, "tint": (1.0, 1.0, 1.0),
+        "photo": {
+            "bullet": [("metal/Metal053C/Metal053C_2K-JPG_Color.jpg", 0.66)],
+            "dent": [("metal/Metal053C/Metal053C_2K-JPG_Color.jpg", 0.60)],
+            "crack": [("metal/Metal053C/Metal053C_2K-JPG_Color.jpg", 0.60)],
+        },
+        "crack_palette": {"dark": (20, 21, 24), "lip": (220, 224, 230), "haze": (70, 74, 82)},
+    },
     "stone": {
         "dark": (16, 17, 22), "rim": (48, 50, 58), "core": (168, 170, 178), "dust": (204, 206, 212), "seed": 200, "desat": 1.0, "tint": (0.96, 0.98, 1.04),
         "photo": {

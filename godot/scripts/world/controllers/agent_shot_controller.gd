@@ -627,7 +627,7 @@ func fire_at_active() -> void:
 			if pv.damage_state != Voxel.DamageState.DESTROYED:
 				if not _impact_vfx_done.has(pkey):
 					_impact_vfx_done[pkey] = true
-					room.dispatch_impact_vfx(pv.grid_pos, pv.level, hit_material, pv.damage_carved_side)
+					room.dispatch_impact_vfx(pv.grid_pos, pv.level, hit_material, pv.damage_carved_side, origin_gu)
 			elif prop_hit:
 				## A prop's voxels never reach `process_dirty()` (no registry holds them), so the destruction
 				## notice a wall's voxel gets from it is sent here.

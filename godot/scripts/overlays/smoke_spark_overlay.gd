@@ -185,10 +185,14 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 func add_sparks(pos: Vector2, count: int, color: Color,
 		speed_scale: float = 1.0, duration_scale: float = 1.0,
 		floor_pos: Vector2 = ParticleMathRef.NO_FLOOR,
-		anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR) -> void:
+		anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR,
+		cone_dir: Vector2 = Vector2.ZERO, cone_half_angle: float = 0.0) -> void:
 	var a3: Vector3 = ParticleMathRef.anchor(_board, pos, floor_pos, anchor_3d)
 	for i in range(count):
-		var angle: float = randf_range(0.0, TAU)
+		## A zero `cone_dir` is the old burst in every direction; otherwise the spark leaves inside a cone around `cone_dir` (a round
+		## striking a wall throws its sparks BACK out of the wall, toward the shooter: Director, 2026-10-05).
+		var angle: float = randf_range(0.0, TAU) if cone_dir == Vector2.ZERO \
+				else cone_dir.angle() + randf_range(-cone_half_angle, cone_half_angle)
 		var speed: float = randf_range(spark_speed_min, spark_speed_max) * speed_scale
 		_sparks.append({
 			"pos": pos,

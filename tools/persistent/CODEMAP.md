@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 79845 lines total** (under `godot/scripts/`)
+**257 scripts · 79884 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1952,7 +1952,7 @@ extends `Node2D` · 115 lines
 
 ### `smoke_spark_overlay.gd`
 
-`class_name SmokeSparkOverlay` · extends `Node2D` · 348 lines
+`class_name SmokeSparkOverlay` · extends `Node2D` · 352 lines
 
 `godot/scripts/overlays/smoke_spark_overlay.gd`
 
@@ -5559,7 +5559,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10975 lines
+extends `Node2D` · 11010 lines
 
 `godot/scripts/world/room.gd`
 

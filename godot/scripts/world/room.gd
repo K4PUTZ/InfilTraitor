@@ -1596,6 +1596,8 @@ var vfx_impact_spark_jitter: float = 0.35
 ## leaves its voxel SOLID (dented), and the 3D VFX are depth-tested, so an emission at the voxel's centre was
 ## inside the wall and culled. Smoke discs are camera-facing and wider than the voxel, so this is a tuning value.
 var vfx_impact_face_offset_gu: float = 0.25
+## Half-angle of the cone a struck wall throws its sparks in, around the direction back toward the shooter (R3D-LOOK item 2).
+var vfx_impact_spray_cone_deg: float = 38.0
 ## E-SPARK-04 (Director): a spark thrown off a struck SURFACE flies out and is
 ## gone faster than the muzzle's own, which stays as it is. Per-call overrides on
 ## add_sparks(), never edits to the shared spark tunables — see that function.
@@ -4498,7 +4500,7 @@ func spawn_muzzle_flash(muzzle_pos: Vector2, direction: Vector2) -> void:
 ## which re-renders dirty voxels for reasons that have nothing to do with being
 ## freshly shot.
 func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
-		carved_side: int = Voxel.CarvedSide.NONE) -> void:
+		carved_side: int = Voxel.CarvedSide.NONE, shooter_gu: Vector2i = NO_SHOOTER) -> void:
 	if _voxel_board == null or _smoke_spark_overlay == null or _debris_overlay == null:
 		return
 	var profile: Dictionary = vfx_impact_profiles.get(material_id, {})
@@ -4519,7 +4521,8 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 			1.0 - vfx_impact_spark_jitter, 1.0 + vfx_impact_spark_jitter))))
 		_smoke_spark_overlay.add_sparks(origin, jittered,
 			vfx_metal_spark_color if material_id == "metal" else vfx_stone_spark_color,
-			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale, floor_pos, anchor_3d)
+			vfx_surface_spark_speed_scale, vfx_surface_spark_duration_scale, floor_pos, anchor_3d,
+			_impact_spray_dir(grid_pos, level, carved_side, shooter_gu), deg_to_rad(vfx_impact_spray_cone_deg))
 	if bool(profile.get("smoke", false)):
 		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
 			1.0, 1.0, 0, 1.0, 0.0, floor_pos, anchor_3d)
@@ -4529,6 +4532,38 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 	if chips > 0:
 		_debris_overlay.add_chips(origin, floor_pos, chips,
 			_vfx_material_base_color(material_id))
+
+
+const NO_SHOOTER: Vector2i = Vector2i(-99999, -99999)
+
+
+## The direction (in the 2D particle space) a round's sparks leave a wall in: from the struck face back toward the shooter, the
+## opposite of the bullet's travel. Vector2.ZERO (the old all-directions burst) when the shooter or the struck side is unknown.
+func _impact_spray_dir(grid_pos: Vector2i, level: int, carved_side: int, shooter_gu: Vector2i) -> Vector2:
+	if shooter_gu == NO_SHOOTER or _voxel_board == null:
+		return Vector2.ZERO
+	var normal := Vector2.ZERO  ## the struck face's outward normal in voxel grid space
+	match carved_side:
+		Voxel.CarvedSide.LEFT:
+			normal = Vector2(0.0, 1.0)
+		Voxel.CarvedSide.RIGHT:
+			normal = Vector2(1.0, 0.0)
+		Voxel.CarvedSide.FACE_NW:
+			normal = Vector2(-1.0, 0.0)
+		Voxel.CarvedSide.FACE_NE:
+			normal = Vector2(0.0, -1.0)
+		_:
+			return Vector2.ZERO
+	var toward: Vector2 = (Vector2(shooter_gu) * 8.0 + Vector2(4.0, 4.0)) - Vector2(grid_pos)
+	if toward.length() < 0.001:
+		return Vector2.ZERO
+	toward = toward.normalized()
+	if toward.dot(normal) < 0.2:
+		toward = normal  ## a grazing or behind-the-face line never throws sparks into the wall
+	var step := Vector2i(roundi(toward.x * 8.0), roundi(toward.y * 8.0))
+	var from: Vector2 = _voxel_board.voxel_world_position(grid_pos, level)
+	var to: Vector2 = _voxel_board.voxel_world_position(grid_pos + step, level)
+	return (to - from).normalized()
 
 
 ## The 3D point in front of the face a round struck, or NO_ANCHOR (no 3D board, or the face is unknown).

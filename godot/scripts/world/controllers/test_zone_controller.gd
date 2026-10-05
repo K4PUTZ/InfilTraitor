@@ -1132,6 +1132,18 @@ func _prof(label: String) -> void:
 		int(Engine.get_process_frames()) - _prof_f0, label])
 
 
+## A clock line of the throw timeline that is NOT a beat: it never reaches `event_probe_beat()`, so it cannot rename the beat the
+## event frame probe charges the following frames to. Prints only under `THROW_PROFILE`. Added for the Galaxy's 300 ms frame in
+## the five flash frames after FRAG (DEVICE_DIAGNOSTICS round 0b).
+func _prof_clock(label: String, since_usec: int) -> void:
+	if room == null or not room._dev_flag_on("THROW_PROFILE"):
+		return
+	print("[T-PROF] +%6d ms  f=%3d  clock %s %.2f ms" % [
+		Time.get_ticks_msec() - _prof_t0_ms,
+		int(Engine.get_process_frames()) - _prof_f0, label,
+		float(Time.get_ticks_usec() - since_usec) / 1000.0])
+
+
 ## Called when the player backs out of the menu. The half-built prediction is
 ## KEPT, not cancelled: the cache is keyed on (action, world revision), so if the
 ## player reopens the same grenade with nothing changed in between, the work
@@ -1406,7 +1418,9 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			prev_eased = eased
 			await _pace(presenter)
 		g_sprite.visible = false
+	var burst0: int = Time.get_ticks_usec()
 	room.spawn_blast_burst(boom_anchor)
+	_prof_clock("spawn_blast_burst", burst0)
 	if room._camera_controller != null:
 		room._camera_controller.shake(SHAKE_SECONDS, SHAKE_AMPLITUDE_PX)
 
@@ -1431,22 +1445,32 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		## ONE approach frame instead of three: the metal is already in flight, so
 		## a long ramp only delays the bang it is supposed to be part of.
 		flash_overlay.strobe_negative_amount = 0.5
+		var hold_approach: int = Time.get_ticks_usec()
 		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
+		_prof_clock("flash hold_frame", hold_approach)
 		await _pace(presenter)
 		## Peak, on frame 2.
 		flash_overlay.strobe_negative_amount = 1.0
+		var hold_peak: int = Time.get_ticks_usec()
 		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
+		_prof_clock("flash hold_frame", hold_peak)
 		await _pace(presenter)
 		## The fade is UNCHANGED at three frames — it is what keeps the strobe
 		## from reading as a single dropped frame, and nothing asked for it to
 		## move.
 		for i in range(3):
 			flash_overlay.strobe_negative_amount = 1.0 - float(i + 1) / 3.0
+			var hold_i: int = Time.get_ticks_usec()
 			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
+			_prof_clock("flash hold_frame (fade)", hold_i)
 			await _pace(presenter)
+		var clear0: int = Time.get_ticks_usec()
 		flash_overlay.clear()
+		_prof_clock("flash clear", clear0)
 	## The first frame AFTER the flash: a broken Tier 4 prop's mesh is replaced by its board-size voxels, already falling.
+	var release0: int = Time.get_ticks_usec()
 	room.release_prop_breaks()
+	_prof_clock("release_prop_breaks", release0)
 	_prof("BEAT 2 ends — metal away, then 5 flash frames (was 7 flash frames, then metal)")
 	_prof("BEAT 3 — destruction starts%s" % ["" if job.warmed else " (NOT warmed — paying at playback)"])
 
@@ -1482,8 +1506,12 @@ func _make_presenter(delta) -> DetonationPresenter:
 
 ## One frame of a beat, with the presenter's ahead-of-time work (its soot ramp) taking its share first.
 func _pace(presenter: DetonationPresenter) -> void:
+	var t0: int = Time.get_ticks_usec()
 	presenter.prepare_step(room._voxel_board, prepare_budget_us)
+	_prof_clock("pace prepare_step", t0)
+	var t1: int = Time.get_ticks_usec()
 	await room.get_tree().process_frame
+	_prof_clock("pace frame (wall, to the next process_frame)", t1)
 
 
 func _start_waves(delta, presenter: DetonationPresenter) -> void:

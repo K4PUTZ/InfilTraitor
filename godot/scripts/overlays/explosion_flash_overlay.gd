@@ -116,7 +116,10 @@ var _holding: bool = false
 ## The NEGATIVE flash needs a ShaderMaterial reading the screen texture; the
 ## WHITE flash is a plain draw_rect on this node and needs none. Two canvases
 ## rather than one because a material is per-node.
+const KEEPALIVE_SECONDS := 2.0  ## see warm()
+
 var _negative_layer: Node2D = null
+var _warming: bool = false  ## warm() is in flight
 var _negative_material: ShaderMaterial = null
 
 
@@ -157,6 +160,12 @@ func _ready() -> void:
 	_negative_layer.material = _negative_material
 	_negative_layer.draw.connect(_draw_negative)
 	add_child(_negative_layer)
+	## The flash resource goes cold when it is not drawn for a while (see warm()): keep it hot.
+	var keepalive := Timer.new()
+	keepalive.wait_time = KEEPALIVE_SECONDS
+	keepalive.timeout.connect(warm)
+	add_child(keepalive)
+	keepalive.start()
 
 
 ## Holds ONE strobe frame of `mode` at full intensity. The caller is expected to
@@ -174,6 +183,28 @@ func hold_frame(mode: int) -> void:
 	flash_mode = mode
 	_holding = true
 	_redraw_all()
+
+
+## Keeps the NEGATIVE flash's screen copy hot. The shader reads `hint_screen_texture`; after the flash has not been drawn for a while
+## (measured: boot to the first blast is ~50 s; the second flash of a boot, ~8 s after the first, is already cheap) the first draw
+## costs ~190 ms more on the Galaxy A16 (1080x2340): the grenade-0 worst frame was 231-323 ms, and with a draw every 2 s the first
+## flash frame reads 65 ms and the worst frame of the blast 102-122 ms. A draw at boot alone did NOT hold, a draw at the fuse only moves
+## the hitch there (DEVICE_DIAGNOSTICS round 0b, 2026-10-04). The mechanism inside the engine is not proven; the A/B is.
+## The warm frame draws at `amount` 0: the shader returns the screen unchanged, so no pixel moves (captures and gates are unaffected).
+## Never over a real strobe: a held frame is not ours to clear.
+func warm() -> void:
+	if not is_inside_tree() or _negative_material == null or _warming or _holding:
+		return
+	_warming = true
+	var saved_amount: float = strobe_negative_amount
+	strobe_negative_amount = 0.0
+	hold_frame(FlashMode.NEGATIVE)
+	await get_tree().process_frame
+	## A real strobe may have started in that frame (its caller set `_holding` itself): leave it alone.
+	if strobe_negative_amount == 0.0:
+		clear()
+		strobe_negative_amount = saved_amount
+	_warming = false
 
 
 ## Both canvases redraw together — only the one matching `flash_mode` paints.
@@ -198,7 +229,7 @@ func _draw() -> void:
 func _draw_negative() -> void:
 	if not _holding or flash_mode != FlashMode.NEGATIVE or _negative_material == null:
 		return
-	if strobe_negative_amount <= 0.001:
+	if strobe_negative_amount <= 0.001 and not _warming:
 		return
 	_negative_material.set_shader_parameter("amount", strobe_negative_amount)
 	_negative_material.set_shader_parameter("desaturate", strobe_negative_desaturate)

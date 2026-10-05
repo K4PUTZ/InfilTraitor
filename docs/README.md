@@ -176,3 +176,4 @@ philosophy and calibration detail `CLAUDE.md` deliberately doesn't duplicate.
   neither reports an error. Both were earned against the shipped art before
   being trusted.
 - `tools/persistent/QUICK_REFERENCE.md` · `ASSET_PIPELINE_QUICK_REFERENCE.md`
+- [`PHOTO_SOURCES.md`](PHOTO_SOURCES.md) — attribution record (CC0, ambientCG) for the photographic fill of the damage decals; the photos live in `ASSETS/photo_src/`.

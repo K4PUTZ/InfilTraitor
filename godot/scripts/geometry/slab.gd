@@ -14,6 +14,7 @@
 ## every real Slab; a fixture that hands out voxels without their Slab has to
 ## anchor the Slab itself.
 class_name Slab
+extends VoxelContainer
 
 enum Role { FLOOR, CEILING, INTERIOR }
 
@@ -22,8 +23,6 @@ var gu_cell: Vector2i            ## the GU this slab belongs to
 var role: int                    ## Role.FLOOR / CEILING / INTERIOR
 var level: int                   ## the horizontal plane's level (D13: floor's destructible layer is 1 level, not a full storey)
 var material: String             ## material type
-var voxels: Array[Voxel] = []    ## all voxels in this slab (64 per level, VOXELS_PER_UNIT_AXIS²)
-var dirty_count: int = 0         ## sum of child Voxel dirty flags
 ## ROOF-BAKE-02c: fine-grid origin the baked roof/floor texture is anchored
 ## to — the NW-corner voxel of this slab's connected same-material component
 ## (roofed-GU component for CEILING, same-declared-zone-material component
@@ -47,26 +46,7 @@ func _init(p_id: String, p_gu_cell: Vector2i, p_role: int, p_level: int, p_mater
 
 ## Total voxel count (64 per level, one storey's worth of a GU footprint)
 func total_voxel_count() -> int:
-	return voxels.size()
-
-
-## Called by child Voxel when it becomes dirty
-func increment_dirty() -> void:
-	dirty_count += 1
-
-
-## Called by child Voxel when it clears dirty
-func decrement_dirty() -> void:
-	if dirty_count > 0:
-		dirty_count -= 1
-
-
-## Recursively clear all Voxel.dirty flags (TIC entry point from registry)
-func clear_all_dirty() -> void:
-	for voxel in voxels:
-		if voxel.dirty:
-			voxel.dirty = false
-	dirty_count = 0
+	return voxel_count()
 
 
 ## Canonical id builder — the single place the id format lives. FLOOR-DEPTH-01
@@ -92,5 +72,5 @@ static func role_name(r: int) -> String:
 
 func _to_string() -> String:
 	return "Slab{id='%s', gu=%s, role=%s, level=%d, voxel_count=%d, dirty=%d}" % [
-		id, gu_cell, role_name(role), level, voxels.size(), dirty_count
+		id, gu_cell, role_name(role), level, voxel_count(), dirty_count
 	]

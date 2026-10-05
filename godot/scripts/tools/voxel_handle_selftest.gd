@@ -12,6 +12,10 @@
 ##  3. Two handles of one claim share their dirty bit (it used to be per wrapper: that was the bug-in-waiting).
 ##  4. A claimless voxel (a detached fixture) keeps its own dirty flag and never touches the store's bits.
 ##  5. Mutation control: the check of (1) FAILS when a handle is built for the wrong claim.
+##  6. RELEASED containers (`VoxelStore.build(..., release_objects = true)`, C2): the persistent objects are gone, `voxel_at(i)` makes
+##     ONE handle per claim and keeps it, `voxels` converts the container back to full objects that REUSE the handles already made
+##     and match the cells the fixture was built with, `Stats` counts the conversion, and `clear_all_dirty()` clears the store's
+##     bits without making a handle.
 extends SceneTree
 
 var passed: int = 0
@@ -33,6 +37,8 @@ func _init() -> void:
 		test_handles_share_dirty(store)
 		test_claimless_voxel_keeps_its_own_flag(store)
 		test_mutation_control(store)
+	VoxelStore.active = null
+	test_released_containers()
 	VoxelStore.active = null
 	print("\nvoxel handle SELFTEST: %s (%d passed, %d failed)\n" % ["PASS" if failed == 0 else "FAIL", passed, failed])
 	quit(1 if failed > 0 else 0)
@@ -153,3 +159,54 @@ func test_claimless_voxel_keeps_its_own_flag(store: VoxelStore) -> void:
 func test_mutation_control(store: VoxelStore) -> void:
 	print("[TEST 5] the check fails for a handle of the WRONG claim\n")
 	_check(not _same(store, 3, store.voxel_of(4)), "a handle built for claim 4 is not claim 3's voxel (the comparison can fail)")
+
+
+func test_released_containers() -> void:
+	print("[TEST 6] released containers: handles made on request, one per claim\n")
+	var fixture: Dictionary = _build_fixture()
+	var expected: Dictionary = {}   ## container id -> Array of Vector3i, as the fixture built them
+	for key in ["slab", "roof", "row", "col", "column"]:
+		var c: Object = fixture[key]
+		var cells: Array = []
+		for v in c.voxels:
+			cells.append(Vector3i(v.grid_pos.x, v.grid_pos.y, v.level))
+		expected[key] = cells
+	var store: VoxelStore = VoxelStore.build(fixture["edge_registry"], fixture["slab_registry"], fixture["columns"], [], true)
+	VoxelStore.active = store
+	VoxelContainer.Stats.reset()
+	var row: Slice = fixture["row"]
+	_check(row.is_released() and row.voxel_count() == (expected["row"] as Array).size(), "the row slice is released and still counts its %d voxels without making any" % row.voxel_count())
+	_check(VoxelContainer.Stats.handles == 0, "no handle was made by counting")
+	var a: Voxel = row.voxel_at(3)
+	var b: Voxel = row.voxel_at(3)
+	var c: Voxel = store.voxel_of(row.claim_offset() + 3)
+	_check(a == b and a == c, "voxel_at(3) twice and voxel_of(claim) are ONE object (a Dictionary keyed by Voxel stays consistent)")
+	_check(VoxelContainer.Stats.handles == 1, "exactly one handle was made (%d)" % VoxelContainer.Stats.handles)
+	_check(Vector3i(a.grid_pos.x, a.grid_pos.y, a.level) == (expected["row"] as Array)[3], "the handle is the cell the fixture built at index 3")
+	a.set_damage(Voxel.DamageState.DESTROYED)
+	_check(row.dirty_count == 1 and store.dirty_bits[row.claim_offset() + 3] == 1, "a write through the handle counts once on the released container")
+	## Converting to full reuses the handle already made, and every voxel matches the fixture's cells.
+	var all: Array = row.voxels
+	_check(not row.is_released() and VoxelContainer.Stats.converted == 1, "reading `voxels` converts the container (Stats.converted = %d)" % VoxelContainer.Stats.converted)
+	var same_cells: bool = all.size() == (expected["row"] as Array).size()
+	for i in range(all.size()):
+		if Vector3i(all[i].grid_pos.x, all[i].grid_pos.y, all[i].level) != (expected["row"] as Array)[i]:
+			same_cells = false
+	_check(same_cells, "all %d voxels carry the cells the fixture built, in order" % all.size())
+	_check(all[3] == a, "the conversion reused the handle already made for index 3")
+	_check(all[3].damage_state == Voxel.DamageState.DESTROYED and all[3].dirty, "state and dirty survive the conversion (they are the store's)")
+	## clear_all_dirty on a released container does not make handles.
+	var slab: Slab = fixture["slab"]
+	slab.voxel_at(0).set_visible(false)
+	var made: int = VoxelContainer.Stats.handles
+	slab.clear_all_dirty()
+	_check(slab.dirty_count == 0 and store.dirty_bits[slab.claim_offset()] == 0 and VoxelContainer.Stats.handles == made, "clear_all_dirty() cleared the store's bits and made no handle")
+	## Every container of the store is released, and they all count their voxels.
+	var total: int = 0
+	var all_released: bool = true
+	for container in store.containers:
+		if container is VoxelContainer:
+			total += (container as VoxelContainer).voxel_count()
+			if not (container as VoxelContainer).is_released() and container != row:
+				all_released = false
+	_check(all_released and total == store.claims, "every other container is released and the counts add up to the store's %d claims" % store.claims)

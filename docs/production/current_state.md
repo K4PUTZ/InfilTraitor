@@ -448,7 +448,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 **Code & Test Inventory**
 
 - GDScript modules: 189
-- Test scripts: 61
+- Test scripts: 62
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 28

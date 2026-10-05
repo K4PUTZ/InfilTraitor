@@ -6,11 +6,10 @@
 ## v1 scope matches `PropDef`'s own doc ("whole-storey granularity only"): one fixed
 ## material, a solid box, no per-voxel bitmask (PROP-01 Item 0-A defers that).
 class_name PropBlock
+extends VoxelContainer
 
 var id: String
 var material: String
-var voxels: Array[Voxel] = []
-var dirty_count: int = 0
 ## The floor level the prop stands on (the vertical reference of a blast ring); -1 = use the block's own lowest voxel.
 var floor_level: int = -1
 
@@ -20,16 +19,7 @@ func _init(p_id: String, p_material: String):
 	material = p_material
 
 
-func increment_dirty() -> void:
-	dirty_count += 1
-
-
-func decrement_dirty() -> void:
-	if dirty_count > 0:
-		dirty_count -= 1
-
-
 func _to_string() -> String:
 	return "PropBlock{id='%s', material='%s', voxel_count=%d, dirty=%d}" % [
-		id, material, voxels.size(), dirty_count
+		id, material, voxel_count(), dirty_count
 	]

@@ -23,7 +23,7 @@ class_name JunctionResolver
 
 
 ## Container for a corner column at a V-junction.
-class JunctionColumn:
+class JunctionColumn extends VoxelContainer:
 	var id: String                ## E-JUNCTION-01: "JCOL_%d_%d" % gu_cell — one column per
 	                               ## diagonal GU (resolve()'s own cells_seen guarantees that),
 	                               ## so this is unique without a counter. The destruction
@@ -40,13 +40,6 @@ class JunctionColumn:
 	var face_b: int               ## face of second edge — BAKE-FIX-06: for mirroring neighbor lookup
 	var edge_a_id: String         ## first edge's ID — BAKE-FIX-06: for neighbor voxel resolution
 	var edge_b_id: String         ## second edge's ID — BAKE-FIX-06: for neighbor voxel resolution
-	var voxels: Array[Voxel]      ## the voxel objects
-	var dirty_count: int = 0      ## E-JUNCTION-01: sum of child Voxel dirty flags — Voxel's own
-	                               ## contract (see voxel.gd's _parent_container_id doc) needs
-	                               ## increment_dirty()/decrement_dirty() on whatever owns it,
-	                               ## the same as Slice/Slab already provide. LEAK-CYCLE-01: the
-	                               ## voxels point back by instance id, so this column must stay
-	                               ## alive (room._junction_columns holds it) while they are used.
 
 	func _init(p_gu: Vector2i, p_voxel_pos: Vector2i, p_storey_count: int, p_start_storey: int = 0, p_material: String = "concrete", p_facade_enabled: bool = true, p_override_material: String = "", p_face_a: int = 0, p_face_b: int = 1, p_edge_a_id: String = "", p_edge_b_id: String = ""):
 		id = "JCOL_%d_%d" % [p_gu.x, p_gu.y]
@@ -72,13 +65,6 @@ class JunctionColumn:
 		for level_offset in range(storey_count * GeometryCoords.LEVELS_PER_STOREY):
 			var level: int = GeometryCoords.storey_level_base(start_storey) + level_offset
 			voxels.append(Voxel.new(voxel_pos, level, self))
-
-	func increment_dirty() -> void:
-		dirty_count += 1
-
-	func decrement_dirty() -> void:
-		if dirty_count > 0:
-			dirty_count -= 1
 
 	func _to_string() -> String:
 		var facade_str = " (no facade)" if not facade_enabled else ""

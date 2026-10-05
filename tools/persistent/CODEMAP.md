@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**255 scripts · 79279 lines total** (under `godot/scripts/`)
+**256 scripts · 79445 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — board_probe.gd, cell_plane_store.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -750,7 +750,7 @@ extends `Node3D` · 2412 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 196 lines
+`class_name JunctionResolver` · 182 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -834,7 +834,7 @@ extends `Node3D` · 2412 lines
 
 ### `prop_block.gd`
 
-`class_name PropBlock` · 35 lines
+`class_name PropBlock` · extends `VoxelContainer` · 25 lines
 
 `godot/scripts/geometry/prop_block.gd`
 
@@ -843,13 +843,7 @@ extends `Node3D` · 2412 lines
 **Public vars**
 - `var id: String`
 - `var material: String`
-- `var voxels: Array[Voxel] = []`
-- `var dirty_count: int = 0`
 - `var floor_level: int = -1`
-
-**Public API**
-- `func increment_dirty() -> void:`
-- `func decrement_dirty() -> void:`
 
 ---
 
@@ -1050,7 +1044,7 @@ extends `Node3D` · 2412 lines
 
 ### `slab.gd`
 
-`class_name Slab` · 96 lines
+`class_name Slab` · extends `VoxelContainer` · 76 lines
 
 `godot/scripts/geometry/slab.gd`
 
@@ -1062,8 +1056,6 @@ extends `Node3D` · 2412 lines
 - `var role: int`
 - `var level: int`
 - `var material: String`
-- `var voxels: Array[Voxel] = []`
-- `var dirty_count: int = 0`
 - `var texture_anchor: Vector2i = Vector2i.ZERO`
 
 ---
@@ -1101,7 +1093,7 @@ extends `Node3D` · 2412 lines
 
 ### `slice.gd`
 
-`class_name Slice` · 86 lines
+`class_name Slice` · extends `VoxelContainer` · 66 lines
 
 `godot/scripts/geometry/slice.gd`
 
@@ -1116,8 +1108,6 @@ extends `Node3D` · 2412 lines
 - `var start_storey: int`
 - `var material: String`
 - `var facade_id: String = ""`
-- `var voxels: Array[Voxel] = []`
-- `var dirty_count: int = 0`
 - `var baked: bool = false`
 - `var pane_id: String = ""`
 - `var material_bands: Dictionary = {}`
@@ -1127,9 +1117,6 @@ extends `Node3D` · 2412 lines
 - `func has_material_bands() -> bool:`
 - `func material_at(rel_level: int) -> String:`
 - `func total_voxel_count() -> int:`
-- `func increment_dirty() -> void:`
-- `func decrement_dirty() -> void:`
-- `func clear_all_dirty() -> void:`
 
 ---
 
@@ -1235,6 +1222,31 @@ extends `Node3D` · 2412 lines
 - `func floor_shard_pile_count() -> int:`
 - `func floor_shard_pile3d_count() -> int:`
 - `func set_glass_cracks_visible(v: bool) -> void:`
+
+---
+
+### `voxel_container.gd`
+
+`class_name VoxelContainer` · extends `RefCounted` · 152 lines
+
+`godot/scripts/geometry/voxel_container.gd`
+
+> Geometry Module — VoxelContainer: what `Slice`, `Slab`, `JunctionColumn` and `PropBlock` share, the voxels and their dirty count. R3D-CLAIMS C2. A container used to OWN every `Voxel` object it generated, for the life of the board: ~296 000 of them on PLAYGROUND, ~990 B each on the Moto (~270 MB of a 1.30 GB peak). Since R3D-1d a `Voxel` holds no state (its fields are read and written through `VoxelStore`, by `claim`), so the object is only a handle, and a handle can be made again when someone asks for it. A container therefore has two modes: FULL (the default, and every fixture): `_voxels` holds the objects, exactly as before. A selftest that builds a container with `container.voxels.append(Voxel.new(...))` is in this mode and never leaves it. RELEASED (a live board, after `VoxelStore.build(..., release_objects = true)`): the objects are gone; `_sparse` has one slot per claim, null until `voxel_at(i)` makes the handle (cached, so a claim keeps ONE object: a Dictionary keyed by `Voxel` stays consistent). `voxels` converts the container to FULL, reusing the handles it already made, for the readers that walk a whole container; `Stats` counts those, so a reader that walks the whole board shows up as a number, not as ~270 MB. A reader that wants one claim asks `voxel_at(i)`; one that wants a count asks `voxel_count()`; one that wants the whole container (a blast over an affected slice) reads `voxels`, as it always did.
+
+**Public vars**
+- `var dirty_count: int = 0`
+- `var voxels: Array[Voxel]:`
+
+**Public API**
+- `func voxel_count() -> int:`
+- `func voxel_at(i: int) -> Voxel:`
+- `func is_released() -> bool:`
+- `func claim_offset() -> int:`
+- `func release_voxels(offset: int, ordinal: int) -> void:`
+- `func bind_claims(offset: int, ordinal: int) -> void:`
+- `func increment_dirty() -> void:`
+- `func decrement_dirty() -> void:`
+- `func clear_all_dirty() -> void:`
 
 ---
 
@@ -3429,7 +3441,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 804 lines
+`class_name VoxelStore` · extends `RefCounted` · 825 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3474,6 +3486,19 @@ extends `Node` · 54 lines
 - `var build_ms: float = 0.0`
 
 **Public API**
+- `func voxel_of(claim: int) -> Voxel:`
+- `func mark_dirty(claim: int) -> bool:`
+- `func unmark_dirty(claim: int) -> bool:`
+- `func cell_index(x: int, y: int, level: int) -> int:`
+- `func has_cell(x: int, y: int, level: int) -> bool:`
+- `func has_solid(x: int, y: int, level: int) -> bool:`
+- `func claim_of(v: Voxel) -> int:`
+- `func mirror(v: Voxel) -> void:`
+- `func set_visible(claim: int, v: bool) -> bool:`
+- `func set_damage(claim: int, new_state: int, from_blast: bool, carved_side: int, variant: int, substrate: int) -> bool:`
+- `func grid_mismatches() -> int:`
+- `func occupancy_dict(predict_destroyed: Dictionary = {}) -> Dictionary:`
+- `func occupancy_live(changes: Array[Vector3i]) -> Dictionary:`
 - `func occupancy_live_erasing(predict: Dictionary, changes: Array[Vector3i], erased: Array[Vector3i]) -> Dictionary:`
 
 ---
@@ -4836,11 +4861,11 @@ extends `SceneTree` · 247 lines
 
 ### `voxel_handle_selftest.gd`
 
-extends `SceneTree` · 155 lines
+extends `SceneTree` · 212 lines
 
 `godot/scripts/tools/voxel_handle_selftest.gd`
 
-> R3D-CLAIMS C1 Test: a claim reached WITHOUT its persistent object. `VoxelStore.voxel_of(claim)` builds a transient `Voxel` from the store's own arrays. R3D-CLAIMS removes the ~296 000 persistent wrappers (~990 B each on the Moto), so everything that today holds one has to be able to ask for it again, and the new one has to be INTERCHANGEABLE with the old: same cell, level, container, state, and the same dirty bit. What this pins, against the persistent objects of a real fixture (a banded slice, a slice sharing a corner cell, slabs, a junction column): 1. EVERY claim: `voxel_of()` answers the persistent voxel's grid_pos, level, claim, container id and state, and `container_of()` is the container that holds it. 2. A write through a HANDLE is the persistent voxel's: damage, visibility, and the dirty bit (the container's `dirty_count` moves once), and a clear through the PERSISTENT voxel clears the handle's. 3. Two handles of one claim share their dirty bit (it used to be per wrapper: that was the bug-in-waiting). 4. A claimless voxel (a detached fixture) keeps its own dirty flag and never touches the store's bits. 5. Mutation control: the check of (1) FAILS when a handle is built for the wrong claim.
+> R3D-CLAIMS C1 Test: a claim reached WITHOUT its persistent object. `VoxelStore.voxel_of(claim)` builds a transient `Voxel` from the store's own arrays. R3D-CLAIMS removes the ~296 000 persistent wrappers (~990 B each on the Moto), so everything that today holds one has to be able to ask for it again, and the new one has to be INTERCHANGEABLE with the old: same cell, level, container, state, and the same dirty bit. What this pins, against the persistent objects of a real fixture (a banded slice, a slice sharing a corner cell, slabs, a junction column): 1. EVERY claim: `voxel_of()` answers the persistent voxel's grid_pos, level, claim, container id and state, and `container_of()` is the container that holds it. 2. A write through a HANDLE is the persistent voxel's: damage, visibility, and the dirty bit (the container's `dirty_count` moves once), and a clear through the PERSISTENT voxel clears the handle's. 3. Two handles of one claim share their dirty bit (it used to be per wrapper: that was the bug-in-waiting). 4. A claimless voxel (a detached fixture) keeps its own dirty flag and never touches the store's bits. 5. Mutation control: the check of (1) FAILS when a handle is built for the wrong claim. 6. RELEASED containers (`VoxelStore.build(..., release_objects = true)`, C2): the persistent objects are gone, `voxel_at(i)` makes ONE handle per claim and keeps it, `voxels` converts the container back to full objects that REUSE the handles already made and match the cells the fixture was built with, `Stats` counts the conversion, and `clear_all_dirty()` clears the store's bits without making a handle.
 
 **Public vars**
 - `var passed: int = 0`
@@ -4852,6 +4877,7 @@ extends `SceneTree` · 155 lines
 - `func test_handles_share_dirty(store: VoxelStore) -> void:`
 - `func test_claimless_voxel_keeps_its_own_flag(store: VoxelStore) -> void:`
 - `func test_mutation_control(store: VoxelStore) -> void:`
+- `func test_released_containers() -> void:`
 
 ---
 

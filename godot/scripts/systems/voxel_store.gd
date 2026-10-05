@@ -139,8 +139,11 @@ static func containers_of(edge_registry: EdgeRegistry, slab_registry: SlabRegist
 
 
 ## Builds a store from the three registries plus any prop blocks, or returns null after a `push_error`.
+##
+## R3D-CLAIMS C2: `release_objects` makes every container drop its persistent `Voxel` objects once the claims are assigned (see
+## `VoxelContainer`): from then on a voxel is a handle made on request. Off by default, so every fixture keeps its objects.
 static func build(edge_registry: EdgeRegistry, slab_registry: SlabRegistry,
-		junction_columns: Array, prop_blocks: Array = []) -> VoxelStore:
+		junction_columns: Array, prop_blocks: Array = [], release_objects: bool = false) -> VoxelStore:
 	if edge_registry == null or slab_registry == null:
 		push_error("[VoxelStore] build: a registry is missing (edges %s, slabs %s)"
 			% [edge_registry != null, slab_registry != null])
@@ -150,6 +153,14 @@ static func build(edge_registry: EdgeRegistry, slab_registry: SlabRegistry,
 	var containers: Array = containers_of(edge_registry, slab_registry, junction_columns, prop_blocks)
 	if not store._fill(containers):
 		return null
+	for ci in range(containers.size()):
+		var container: Object = containers[ci][0]
+		if container is VoxelContainer:
+			var offset: int = store._geom[ci * GEOM_STRIDE]
+			if release_objects:
+				(container as VoxelContainer).release_voxels(offset, ci)
+			else:
+				(container as VoxelContainer).bind_claims(offset, ci)
 	store.build_ms = float(Time.get_ticks_usec() - t0) / 1000.0
 	return store
 
@@ -330,19 +341,29 @@ func _resolve_cell(cell: int) -> void:
 	owner[cell] = first_visible if first_visible >= 0 else list[0]
 
 
+## R3D-CLAIMS C2 — a NEW `Voxel` for a claim, not cached: what a container makes (once) when asked for the voxel at an index.
+func make_voxel(claim: int, container: Object) -> Voxel:
+	var k: int = claim * 3
+	var v := Voxel.new(Vector2i(xyz[k], xyz[k + 1]), xyz[k + 2], container)
+	v.claim = claim
+	return v
+
+
 ## R3D-CLAIMS C1 — a claim without its object. The container it belongs to.
 func container_of(claim: int) -> Object:
 	return containers[claim_container[claim]]
 
 
-## R3D-CLAIMS C1 — a TRANSIENT `Voxel` for a claim: the same grid_pos, level, container and claim a persistent voxel carries, and
-## because every field of a claimed `Voxel` is read and written through this store, the two are interchangeable. Creating one costs
-## ~4.3 us on the Moto (a GDScript object): for a handful of claims, never for a walk over all of them.
+## R3D-CLAIMS C1/C2 — THE voxel of a claim: its container's own (the persistent object while the container holds them, else the
+## handle it made once and keeps), so a claim has one object and a Dictionary keyed by `Voxel` stays consistent. The handle carries
+## the same grid_pos, level, container and claim a persistent voxel does, and because every field of a claimed `Voxel` is read and
+## written through this store, the two are interchangeable. Making one costs ~4.3 us on the Moto (a GDScript object): for a handful
+## of claims, never for a walk over all of them.
 func voxel_of(claim: int) -> Voxel:
-	var k: int = claim * 3
-	var v := Voxel.new(Vector2i(xyz[k], xyz[k + 1]), xyz[k + 2], containers[claim_container[claim]])
-	v.claim = claim
-	return v
+	var container: Object = containers[claim_container[claim]]
+	if container is VoxelContainer:
+		return (container as VoxelContainer).voxel_at(claim - (container as VoxelContainer).claim_offset())
+	return make_voxel(claim, container)
 
 
 ## R3D-CLAIMS C1 — the dirty bit of a claim (it lived on each `Voxel`). Returns true when the bit CHANGED, so the caller keeps its

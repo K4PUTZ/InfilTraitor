@@ -1587,11 +1587,15 @@ var vfx_impact_profiles: Dictionary = {
 	"metal":    {"sparks": 16, "smoke": false, "dust": false, "chips": 0},
 	"stone":    {"sparks": 7,  "smoke": false, "dust": true,  "chips": 0},
 	"concrete": {"sparks": 2,  "smoke": true,  "dust": true,  "chips": 0},
+	## Brick follows stone, a little more fragile (Director 2026-10-05): fewer sparks.
+	"brick":    {"sparks": 5,  "smoke": false, "dust": true,  "chips": 0},
 	"wood":     {"sparks": 0,  "smoke": true,  "dust": false, "chips": 2},
 }
 ## Per-impact spark count jitter, so 24 pellets do not all throw the identical
 ## fan. Multiplies the profile's own count.
 var vfx_impact_spark_jitter: float = 0.35
+## A round's sand trickle (concrete, stone, brick): one per impact now that only the struck voxel emits, so it is certain.
+var vfx_impact_dust_chance: float = 1.0
 ## RENDER3D: how far in front of the struck face (grid units) a wall impact's smoke and sparks are born. A shot
 ## leaves its voxel SOLID (dented), and the 3D VFX are depth-tested, so an emission at the voxel's centre was
 ## inside the wall and culled. Smoke discs are camera-facing and wider than the voxel, so this is a tuning value.
@@ -4531,8 +4535,8 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 	if bool(profile.get("smoke", false)):
 		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
 			1.0, 1.0, 0, 1.0, 0.0, floor_pos, anchor_3d)
-	if bool(profile.get("dust", false)) and randf() < vfx_dust_chance:
-		_debris_overlay.add_dust(origin, floor_pos, _vfx_material_base_color(material_id))
+	if bool(profile.get("dust", false)) and randf() < vfx_impact_dust_chance:
+		_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(material_id).lerp(Color.WHITE, 0.3))
 	var chips: int = int(profile.get("chips", 0))
 	if chips > 0:
 		_debris_overlay.add_chips(origin, floor_pos, chips,

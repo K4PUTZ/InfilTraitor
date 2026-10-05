@@ -83,6 +83,22 @@ var chip_rotation_speed_min: float = -10.0  ## rad/sec while airborne
 var chip_rotation_speed_max: float = 10.0
 var chip_fade_power: float = 1.3
 
+## --- Sand trickle (R3D-LOOK item 2, Director 2026-10-05) ---
+## What a round leaves running down a concrete / stone / brick wall: a THIN thread of single grains that start one after another, fall
+## slowly down the face to the floor beneath, and lie there a moment before they fade. (`add_dust` is the blast's puff of a dozen
+## specks falling together; this is not it.)
+var trickle_count_min: int = 16
+var trickle_count_max: int = 24
+var trickle_span_min: float = 0.9          ## seconds over which the grains are released, one after another
+var trickle_span_max: float = 1.5
+var trickle_fall_min: float = 0.7          ## each grain's own fall, slower than the puff's 0.45-0.75
+var trickle_fall_max: float = 1.0
+var trickle_rest_min: float = 0.6          ## seconds a grain lies on the floor, fading
+var trickle_rest_max: float = 1.1
+var trickle_sway: float = 1.1              ## px, how far a grain wanders sideways: a thread, not a cloud
+var trickle_pile_spread: float = 3.2       ## px, how far along the floor the grains lie
+var trickle_speck_radius: float = 1.4
+var _trickles: Array = []
 var _dust: Array = []
 ## [{"origin","target","color","delay","fall_duration","settle_duration",
 ##   "elapsed","specks":[Vector2 offsets]}]
@@ -111,6 +127,23 @@ func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:
 		"elapsed": 0.0,
 		"specks": specks,
 	})
+	set_process(true)
+
+
+## Queue a trickle of sand from `origin` (the struck point) down to `target` (the floor beneath it).
+func add_sand_trickle(origin: Vector2, target: Vector2, color: Color) -> void:
+	var grains: Array = []
+	var span: float = randf_range(trickle_span_min, trickle_span_max)
+	for i in range(randi_range(trickle_count_min, trickle_count_max)):
+		grains.append({
+			"t0": span * pow(randf(), 1.3),  ## released a little more densely at the start, then thinning out
+			"fall": randf_range(trickle_fall_min, trickle_fall_max),
+			"rest": randf_range(trickle_rest_min, trickle_rest_max),
+			"sway": randf_range(-trickle_sway, trickle_sway),
+			"lie": Vector2(randf_range(-trickle_pile_spread, trickle_pile_spread), randf_range(-0.4 * trickle_pile_spread, 0.4 * trickle_pile_spread)),
+		})
+	_trickles.append({"a2": origin, "a3": ParticleMathRef.anchor(_board, origin, target), "origin": origin, "target": target,
+		"color": color, "elapsed": 0.0, "grains": grains})
 	set_process(true)
 
 
@@ -173,7 +206,7 @@ func add_chips(origin: Vector2, target: Vector2, count: int, color: Color) -> vo
 func _process(delta: float) -> void:
 	## §12.12 — this overlay's per-frame aging walk, priced.
 	var _pp0: int = Time.get_ticks_usec() if VfxDrawProbe.enabled else 0
-	if _dust.is_empty() and _chips.is_empty():
+	if _dust.is_empty() and _chips.is_empty() and _trickles.is_empty():
 		set_process(false)
 		return
 
@@ -189,6 +222,16 @@ func _process(delta: float) -> void:
 		if d["elapsed"] < total:
 			alive_dust.append(d)
 	_dust = alive_dust
+
+	var alive_trickles: Array = []
+	for t in _trickles:
+		t["elapsed"] += delta
+		var ends: float = 0.0
+		for g in t["grains"]:
+			ends = maxf(ends, float(g["t0"]) + float(g["fall"]) + float(g["rest"]))
+		if t["elapsed"] < ends:
+			alive_trickles.append(t)
+	_trickles = alive_trickles
 
 	var alive_chips: Array = []
 	for c in _chips:
@@ -248,6 +291,8 @@ func _draw() -> void:
 	var cap: int = 0
 	for d0 in _dust:
 		cap += (d0["specks"] as Array).size()
+	for t0 in _trickles:
+		cap += (t0["grains"] as Array).size()
 	mm3.begin_on_board(cap)
 	for d in _dust:
 		var elapsed: float = d["elapsed"]
@@ -286,6 +331,27 @@ func _draw() -> void:
 			var p: Vector2 = pos + (offset as Vector2) * speck_scale
 			if submit:
 				mm3.push(d["a3"], d["a2"], p, radius, c)
+	for t in _trickles:
+		var base: Color = t["color"]
+		for g in t["grains"]:
+			var age: float = float(t["elapsed"]) - float(g["t0"])
+			if age < 0.0:
+				continue
+			var fall: float = g["fall"]
+			var p: Vector2
+			var a: float = 1.0
+			if age < fall:
+				var u: float = age / fall
+				p = (t["origin"] as Vector2).lerp(t["target"] as Vector2, pow(u, 1.5)) + Vector2(float(g["sway"]) * sin(u * PI), 0.0)
+			else:
+				p = (t["target"] as Vector2) + (g["lie"] as Vector2)
+				a = pow(1.0 - (age - fall) / float(g["rest"]), dust_fade_power)
+			var c: Color = base
+			c.a = minf(c.a * a * dust_alpha_gain, 1.0)
+			drawn += 1
+			cmds += 1
+			if submit:
+				mm3.push(t["a3"], t["a2"], p, trickle_speck_radius, c)
 	mm3.flush()
 
 	cf3.begin_on_board(_chips.size())
@@ -324,6 +390,7 @@ func clear() -> void:
 	if _dust_field3d != null:
 		_dust_field3d.clear()
 	_dust.clear()
+	_trickles.clear()
 	_chips.clear()
 	set_process(false)
 	queue_redraw()

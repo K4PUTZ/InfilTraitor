@@ -226,7 +226,9 @@ void fragment() {
 	}
 	vec2 fr = mod(UV, 2.0);
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
-	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
+	// A side face BELOW the ground plane (a crater's walls, the map's cut) is the material's flat colour: the facade pattern
+	// (brick courses, planks) belongs to what you walk on and to standing walls, not to the inside of a pit (Director 2026-10-05).
+	float lum = (has_facade > 0.5 && !(rel < 0 && face != 0)) ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
 	if (face == 0 && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
@@ -247,7 +249,10 @@ const DECAL_TAIL: String = """
 	// A bullet's mark (the first `bullet_layers` layers of the array) is stronger than a blast's: a DENTED or CRACKED
 	// voxel keeps its face, so this decal is the only thing that says a round landed.
 	float bullet = v_layer < bullet_layers ? 1.0 : 0.0;
-	ALBEDO = srgb_to_linear(d.rgb * mix(1.0, bullet_darken, bullet) * f);
+	// A blast's mark on the FLOOR (a top-face decal) is burnt, whatever material the art was drawn for: pale clay or concrete
+	// dust on a scorched floor read as another material (Director 2026-10-05). One rule, no per-material art.
+	vec3 mark = d.rgb * mix(1.0, floor_char, v_burnt);
+	ALBEDO = srgb_to_linear(mark * mix(1.0, bullet_darken, bullet) * f);
 	ALPHA = clamp(d.a * mix(1.0, bullet_alpha_gain, bullet), 0.0, 1.0);
 }
 """
@@ -258,13 +263,15 @@ static var BULLET_DECAL_ALPHA_GAIN: float = 1.0
 static var BULLET_DECAL_DARKEN: float = 1.0
 static var DECAL_SHADER: String = OPAQUE_SHADER \
 	.replace("render_mode unshaded, cull_back;", "render_mode unshaded, cull_back, depth_draw_never, blend_mix;") \
-	.replace("varying vec3 v_normal;", "varying vec3 v_normal;\nvarying float v_layer;\nuniform sampler2DArray decals : filter_linear_mipmap, repeat_disable;\nuniform float bullet_layers = 0.0;\nuniform float bullet_alpha_gain = 1.0;\nuniform float bullet_darken = 1.0;") \
-	.replace("	v_normal = NORMAL;", "	v_normal = NORMAL;\n	v_layer = floor(COLOR.r * 255.0 + 0.5);") \
+	.replace("varying vec3 v_normal;", "varying vec3 v_normal;\nvarying float v_layer;\nvarying float v_burnt;\nuniform float floor_char = 0.30;\nuniform sampler2DArray decals : filter_linear_mipmap, repeat_disable;\nuniform float bullet_layers = 0.0;\nuniform float bullet_alpha_gain = 1.0;\nuniform float bullet_darken = 1.0;") \
+	.replace("	v_normal = NORMAL;", "	v_normal = NORMAL;\n	v_layer = floor(COLOR.r * 255.0 + 0.5);\n	v_burnt = 1.0 - COLOR.g;") \
 	.replace("v_normal * 0.01", "v_normal * 0.06") \
 	.replace("	bool ghost = cs == 2; // GHOST_TOP\n", "	if (cs == 2) {\n		discard;\n	}\n") \
 	.replace("""	vec2 fr = mod(UV, 2.0);
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
-	float lum = has_facade > 0.5 ? texture(facade, mirrored).r : 1.0;
+	// A side face BELOW the ground plane (a crater's walls, the map's cut) is the material's flat colour: the facade pattern
+	// (brick courses, planks) belongs to what you walk on and to standing walls, not to the inside of a pit (Director 2026-10-05).
+	float lum = (has_facade > 0.5 && !(rel < 0 && face != 0)) ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
 	if (face == 0 && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
@@ -291,14 +298,14 @@ class SurfaceData:
 	var indices := PackedInt32Array()
 
 	func add_quad(corners: Array[Vector3], unit: float, normal: Vector3,
-			face_uvs: Array[Vector2], dim: float = -1.0) -> void:
+			face_uvs: Array[Vector2], dim: float = -1.0, burnt: bool = false) -> void:
 		var base_index: int = vertices.size()
 		for i: int in range(4):
 			vertices.append(corners[i] * unit)
 			normals.append(normal)
 			uvs.append(face_uvs[i])
 			if dim >= 0.0:
-				colors.append(Color(dim, 1.0, 1.0, 1.0))
+				colors.append(Color(dim, 0.0 if burnt else 1.0, 1.0, 1.0))  ## g = 0: a decal the shader chars (a blast's floor mark)
 		for offset: int in [0, 1, 2, 0, 2, 3]:
 			indices.append(base_index + offset)
 
@@ -2241,7 +2248,7 @@ func _emit_decal(dir: int, x: int, y: int, level: int, layer: int, on_recess: bo
 	if (corners[1] - corners[0]).cross(corners[2] - corners[0]).dot(normal) > 0.0:
 		corners = [corners[0], corners[3], corners[2], corners[1]]
 		uvs = [uvs[0], uvs[3], uvs[2], uvs[1]]
-	surface.add_quad(corners, unit, normal, uvs, float(layer) / 255.0)
+	surface.add_quad(corners, unit, normal, uvs, float(layer) / 255.0, dir == Dir.TOP)
 
 
 func _emit_quad(dir: int, plane: int, start: Vector2i, w: int, h: int, material: int,

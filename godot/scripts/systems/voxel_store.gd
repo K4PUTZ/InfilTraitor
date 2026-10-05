@@ -182,6 +182,10 @@ func _fill(containers: Array) -> bool:
 	var max_x: int = -(1 << 30)
 	var max_y: int = -(1 << 30)
 	var max_l: int = -(1 << 30)
+	## R3D-CLAIMS C4: every container's cells as x, y, level triples. A container in CELLS mode hands over its own array (no
+	## object was ever made for it); one that holds objects builds the array from them.
+	var all_cells: Array = []
+	all_cells.resize(containers.size())
 	for ci in range(containers.size()):
 		var bx: int = 1 << 30
 		var by: int = 1 << 30
@@ -189,13 +193,16 @@ func _fill(containers: Array) -> bool:
 		var ex: int = -(1 << 30)
 		var ey: int = -(1 << 30)
 		var el: int = -(1 << 30)
-		for v: Voxel in containers[ci][0].voxels:
-			var gp: Vector2i = v.grid_pos
-			var lv: int = v.level
-			if gp.x < bx: bx = gp.x
-			if gp.x > ex: ex = gp.x
-			if gp.y < by: by = gp.y
-			if gp.y > ey: ey = gp.y
+		var cells: PackedInt32Array = _cells_of(containers[ci][0])
+		all_cells[ci] = cells
+		for k in range(0, cells.size(), 3):
+			var gx: int = cells[k]
+			var gy: int = cells[k + 1]
+			var lv: int = cells[k + 2]
+			if gx < bx: bx = gx
+			if gx > ex: ex = gx
+			if gy < by: by = gy
+			if gy > ey: ey = gy
 			if lv < bl: bl = lv
 			if lv > el: el = lv
 			total += 1
@@ -238,8 +245,12 @@ func _fill(containers: Array) -> bool:
 	var claim: int = 0
 	for ci in range(containers.size()):
 		var container: Object = containers[ci][0]
-		var voxels: Array = container.voxels
-		var n: int = voxels.size()
+		var cells: PackedInt32Array = all_cells[ci]
+		var n: int = cells.size() / 3
+		## A container that still holds objects (a fixture, a prop block) gets its claims assigned on them below.
+		var objects: Array = []
+		if not (container is VoxelContainer and (container as VoxelContainer).has_cells_only()):
+			objects = container.voxels
 		container_ids.append(str(container.get("id")))
 		container_kinds.append(containers[ci][1])
 		self.containers.append(container)
@@ -264,7 +275,7 @@ func _fill(containers: Array) -> bool:
 			banded = container
 			band_base = GeometryCoords.storey_level_base(banded.start_storey)
 		elif n > 0:
-			var fixed_id: String = _voxel_material(container, voxels[0])
+			var fixed_id: String = _voxel_material(container, cells[2])
 			fixed_material = _material(fixed_id)
 			if GlassMaterials.is_glass(fixed_id):
 				if container is Slice:
@@ -272,9 +283,8 @@ func _fill(containers: Array) -> bool:
 				elif container is Slab and (container as Slab).role == Slab.Role.INTERIOR:
 					fixed_pane = Face.NW + 1
 		for i in range(n):
-			var v: Voxel = voxels[i]
-			var gp: Vector2i = v.grid_pos
-			var lv: int = v.level
+			var gp := Vector2i(cells[i * 3], cells[i * 3 + 1])
+			var lv: int = cells[i * 3 + 2]
 			if regular and ((lv - bl) * ny + (gp.y - by)) * nx + (gp.x - bx) != i:
 				regular = false
 			## RENDER3D R3D-1d: this container's voxels are freshly generated here, every
@@ -287,7 +297,8 @@ func _fill(containers: Array) -> bool:
 			state[claim] = visible | (Voxel.DamageState.INTACT << 1)
 			aux[claim] = 0
 			claim_container[claim] = ci
-			v.claim = claim
+			if not objects.is_empty():
+				(objects[i] as Voxel).claim = claim
 			if banded == null:
 				mat[claim] = fixed_material
 				if fixed_pane != 0:
@@ -319,8 +330,7 @@ func _fill(containers: Array) -> bool:
 		if not regular:
 			var table: Dictionary = {}
 			for i in range(n):
-				var v2: Voxel = voxels[i]
-				table[Vector3i(v2.grid_pos.x, v2.grid_pos.y, v2.level)] = _geom[ci * GEOM_STRIDE] + i
+				table[Vector3i(cells[i * 3], cells[i * 3 + 1], cells[i * 3 + 2])] = _geom[ci * GEOM_STRIDE] + i
 			_irregular[ci] = table
 	if _material_index.size() > 256:
 		push_error("[VoxelStore] build: %d materials — a byte holds 256" % _material_index.size())
@@ -328,6 +338,22 @@ func _fill(containers: Array) -> bool:
 	for cell: int in _multi:
 		_resolve_cell(cell)
 	return true
+
+
+## A container's cells as x, y, level triples: its own array in CELLS mode, built from its objects otherwise (a container that is
+## not a `VoxelContainer` is read through its `voxels`, as every container was before R3D-CLAIMS).
+static func _cells_of(container: Object) -> PackedInt32Array:
+	if container is VoxelContainer:
+		return (container as VoxelContainer).cells_packed()
+	var voxels: Array = container.voxels
+	var out := PackedInt32Array()
+	out.resize(voxels.size() * 3)
+	for i in range(voxels.size()):
+		var v: Voxel = voxels[i]
+		out[i * 3] = v.grid_pos.x
+		out[i * 3 + 1] = v.grid_pos.y
+		out[i * 3 + 2] = v.level
+	return out
 
 
 func _resolve_cell(cell: int) -> void:
@@ -837,10 +863,10 @@ func _material(material_id: String) -> int:
 
 
 ## A claim's material, the way `BoardProbe` and the mesher resolve it.
-static func _voxel_material(container: Object, v: Voxel) -> String:
+static func _voxel_material(container: Object, level: int) -> String:
 	if container is Slice:
 		var slice: Slice = container
-		return slice.material_at(v.level - GeometryCoords.storey_level_base(slice.start_storey))
+		return slice.material_at(level - GeometryCoords.storey_level_base(slice.start_storey))
 	if container is JunctionResolver.JunctionColumn:
 		var column: JunctionResolver.JunctionColumn = container
 		return column.override_material if column.override_material != "" else column.material

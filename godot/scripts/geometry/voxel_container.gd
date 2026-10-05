@@ -12,6 +12,13 @@
 ##     stays consistent). `voxels` converts the container to FULL, reusing the handles it already made, for the readers that
 ##     walk a whole container; `Stats` counts those, so a reader that walks the whole board shows up as a number, not as ~270 MB.
 ##
+## R3D-CLAIMS C4 adds a third mode BEFORE the store exists, so the generators make no object at all:
+##
+##   CELLS (what `SliceGenerator`, `SlabGenerator` and `JunctionColumn` fill, through `add_cell()`): `_cells` holds x, y, level per
+##     voxel, 12 B each instead of an object (~4.3 us to make, ~990 B to keep on the Moto). `VoxelStore._fill()` reads them and the
+##     container goes straight to RELEASED. A reader that asks for `voxels` BEFORE the store is built converts the container to FULL
+##     (the objects it always had) and `Stats.from_cells` counts it, so a build-time reader that walks the board shows as a number.
+##
 ## A reader that wants one claim asks `voxel_at(i)`; one that wants a count asks `voxel_count()`; one that wants the whole
 ## container (a blast over an affected slice) reads `voxels`, as it always did.
 class_name VoxelContainer
@@ -25,6 +32,9 @@ class Stats:
 	static var handles: int = 0
 	static var converted_ids: Dictionary = {}   ## container id -> true, for the first 64 only
 	static var callers: Dictionary = {}         ## "file:line function" of whoever converted -> [containers, voxels]; debug builds only
+	static var from_cells: int = 0              ## containers a reader turned from CELLS into full objects before the store was built
+	static var from_cells_voxels: int = 0
+	static var from_cells_callers: Dictionary = {}  ## same shape as `callers`
 
 	static func reset() -> void:
 		converted = 0
@@ -32,6 +42,9 @@ class Stats:
 		handles = 0
 		converted_ids = {}
 		callers = {}
+		from_cells = 0
+		from_cells_voxels = 0
+		from_cells_callers = {}
 
 
 ## Sum of the children's dirty flags (a container with 0 is skipped by the TIC, which is the point of keeping it).
@@ -39,6 +52,8 @@ var dirty_count: int = 0
 
 var _voxels: Array[Voxel] = []
 var _sparse: Array = []
+var _cells := PackedInt32Array()   ## CELLS mode: x, y, level per voxel
+var _has_cells: bool = false
 var _released: bool = false
 ## Where this container sits in the active store: its first claim, and its ordinal among the store's containers.
 var _claim_offset: int = -1
@@ -50,20 +65,59 @@ var voxels: Array[Voxel]:
 	get:
 		if _released:
 			_convert_to_full()
+		elif _has_cells:
+			_cells_to_objects()
 		return _voxels
 	set(value):
 		_voxels = value
 		_released = false
 		_sparse = []
+		_cells = PackedInt32Array()
+		_has_cells = false
+
+
+## CELLS mode: one voxel, by cell. The generators call this instead of `Voxel.new()` + `voxels.append()`.
+func add_cell(x: int, y: int, level: int) -> void:
+	_cells.append(x)
+	_cells.append(y)
+	_cells.append(level)
+	_has_cells = true
 
 
 func voxel_count() -> int:
-	return _sparse.size() if _released else _voxels.size()
+	if _released:
+		return _sparse.size()
+	if _has_cells:
+		return _cells.size() / 3
+	return _voxels.size()
+
+
+## Every voxel's cell as x, y, level triples, WITHOUT making a `Voxel` when the container is in CELLS mode (no copy: the array is
+## shared, never write to it). A FULL container builds it from its objects. What `VoxelStore._fill()` reads.
+func cells_packed() -> PackedInt32Array:
+	if _has_cells or _released:
+		return _cells
+	var n: int = _voxels.size()
+	var out := PackedInt32Array()
+	out.resize(n * 3)
+	for i in range(n):
+		var v: Voxel = _voxels[i]
+		out[i * 3] = v.grid_pos.x
+		out[i * 3 + 1] = v.grid_pos.y
+		out[i * 3 + 2] = v.level
+	return out
+
+
+## True when the container holds NO objects (CELLS or RELEASED): its cells are the truth and `voxels` would have to make them.
+func has_cells_only() -> bool:
+	return _has_cells or _released
 
 
 ## One voxel, by its index in this container's order (the order of its claims). FULL mode answers the persistent object;
 ## RELEASED mode makes the handle once and keeps it.
 func voxel_at(i: int) -> Voxel:
+	if _has_cells:
+		_cells_to_objects()
 	if not _released:
 		return _voxels[i]
 	var v = _sparse[i]
@@ -81,12 +135,10 @@ func voxel_at(i: int) -> Voxel:
 ## The cell of voxel `i` (x, y, level) WITHOUT making a `Voxel` when the container is released: the store holds it. A reader that
 ## walks a whole container for its cells (the cutaway's geometry, the roof footprints) asks this, not `voxels`.
 func cell_at(i: int) -> Vector3i:
-	if not _released:
-		var v: Voxel = _voxels[i]
-		return Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
-	var xyz: PackedInt32Array = VoxelStore.active.xyz
-	var k: int = (_claim_offset + i) * 3
-	return Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
+	if _has_cells or _released:
+		return Vector3i(_cells[i * 3], _cells[i * 3 + 1], _cells[i * 3 + 2])
+	var v: Voxel = _voxels[i]
+	return Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
 
 
 func is_released() -> bool:
@@ -101,12 +153,13 @@ func claim_offset() -> int:
 func release_voxels(offset: int, ordinal: int) -> void:
 	_claim_offset = offset
 	_ordinal = ordinal
-	if _released:
-		return
-	var n: int = _voxels.size()
+	if not _has_cells and not _released:
+		_cells = cells_packed()   ## from the objects about to go: the container keeps its cells (12 B a voxel) for good
+	var n: int = voxel_count()
 	_sparse = []
 	_sparse.resize(n)
 	_voxels = []
+	_has_cells = false
 	_released = true
 
 
@@ -114,6 +167,32 @@ func release_voxels(offset: int, ordinal: int) -> void:
 func bind_claims(offset: int, ordinal: int) -> void:
 	_claim_offset = offset
 	_ordinal = ordinal
+
+
+## CELLS -> FULL, before a store exists: the objects the generators used to make, with no claim yet (`_fill()` assigns it).
+func _cells_to_objects() -> void:
+	var n: int = _cells.size() / 3
+	var out: Array[Voxel] = []
+	out.resize(n)
+	## A store may already have bound this container (`bind_claims()`, without releasing it): its claims are `offset + i`, so the
+	## objects made now are those claims, not claimless voxels.
+	var bound: bool = _claim_offset >= 0
+	for i in range(n):
+		var v := Voxel.new(Vector2i(_cells[i * 3], _cells[i * 3 + 1]), _cells[i * 3 + 2], self)
+		if bound:
+			v.claim = _claim_offset + i
+		out[i] = v
+	_voxels = out
+	_cells = PackedInt32Array()
+	_has_cells = false
+	Stats.from_cells += 1
+	Stats.from_cells_voxels += n
+	for frame in get_stack():
+		if not str(frame.get("source", "")).ends_with("voxel_container.gd"):
+			var who: String = "%s:%d %s" % [str(frame.get("source", "")).get_file(), int(frame.get("line", 0)), str(frame.get("function", ""))]
+			var entry: Array = Stats.from_cells_callers.get(who, [0, 0])
+			Stats.from_cells_callers[who] = [int(entry[0]) + 1, int(entry[1]) + n]
+			break
 
 
 func _convert_to_full() -> void:
@@ -131,6 +210,7 @@ func _convert_to_full() -> void:
 		out[i] = v
 	_voxels = out
 	_sparse = []
+	_cells = PackedInt32Array()
 	_released = false
 	Stats.converted += 1
 	Stats.converted_voxels += n

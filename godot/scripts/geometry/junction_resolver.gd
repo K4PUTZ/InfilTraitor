@@ -61,10 +61,9 @@ class JunctionColumn extends VoxelContainer:
 		## real Voxel per level, mirroring SliceGenerator._create_slice()'s
 		## own loop (a Slice gets 8 positions per level; a column is one
 		## position, stacked).
-		voxels = []
 		for level_offset in range(storey_count * GeometryCoords.LEVELS_PER_STOREY):
 			var level: int = GeometryCoords.storey_level_base(start_storey) + level_offset
-			voxels.append(Voxel.new(voxel_pos, level, self))
+			add_cell(voxel_pos.x, voxel_pos.y, level)   ## R3D-CLAIMS C4: the cell, not an object
 
 	func _to_string() -> String:
 		var facade_str = " (no facade)" if not facade_enabled else ""

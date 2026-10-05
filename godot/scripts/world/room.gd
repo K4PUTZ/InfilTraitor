@@ -3153,6 +3153,11 @@ func _rebuild_voxel_store(reason: String) -> void:
 	## of them on PLAYGROUND); a voxel is a handle made on request. `RELEASE_VOXELS=0` keeps the objects (the A/B control).
 	## `verify.py full` PASSED with the release on against a baseline taken with it off: pixels and probe dumps identical.
 	var store: VoxelStore = VoxelStore.build(_edge_registry, _slab_registry, _junction_columns, prop_blocks, _dev_flag("RELEASE_VOXELS", "1") != "0")
+	## R3D-CLAIMS C4: how many containers a build-time reader turned back into objects BEFORE the store existed (0 is the goal).
+	print("[VOXEL-CONTAINERS] %s — %d container(s) (%d voxels) were turned into objects before the store was built"
+		% [reason, VoxelContainer.Stats.from_cells, VoxelContainer.Stats.from_cells_voxels])
+	for who in VoxelContainer.Stats.from_cells_callers:
+		print("[VOXEL-CONTAINERS]   %-60s %5d container(s) %8d voxel(s)" % [who, VoxelContainer.Stats.from_cells_callers[who][0], VoxelContainer.Stats.from_cells_callers[who][1]])
 	VoxelContainer.Stats.reset()
 	if store == null:
 		push_error("[Room] the voxel store could not be built (%s) — the shadow is OFF for this board" % reason)

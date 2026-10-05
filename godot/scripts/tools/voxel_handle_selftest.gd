@@ -16,6 +16,9 @@
 ##     ONE handle per claim and keeps it, `voxels` converts the container back to full objects that REUSE the handles already made
 ##     and match the cells the fixture was built with, `Stats` counts the conversion, and `clear_all_dirty()` clears the store's
 ##     bits without making a handle.
+##  7. CELLS (C4): the generators fill `add_cell()` and make NO object; the store reads the cells; reading `voxels` before the store
+##     turns the container into objects and `Stats.from_cells` counts it; after a store has bound it the objects carry
+##     `claim = offset + i`; a released container keeps its cells, so a SECOND store built over it answers the same cells.
 extends SceneTree
 
 var passed: int = 0
@@ -39,6 +42,8 @@ func _init() -> void:
 		test_mutation_control(store)
 	VoxelStore.active = null
 	test_released_containers()
+	VoxelStore.active = null
+	test_cells_mode()
 	VoxelStore.active = null
 	print("\nvoxel handle SELFTEST: %s (%d passed, %d failed)\n" % ["PASS" if failed == 0 else "FAIL", passed, failed])
 	quit(1 if failed > 0 else 0)
@@ -210,3 +215,35 @@ func test_released_containers() -> void:
 			if not (container as VoxelContainer).is_released() and container != row:
 				all_released = false
 	_check(all_released and total == store.claims, "every other container is released and the counts add up to the store's %d claims" % store.claims)
+
+
+func test_cells_mode() -> void:
+	print("[TEST 7] cells mode: generators make no object\n")
+	var registry := SlabRegistry.new()
+	var slab: Slab = SlabGenerator.generate(Vector2i(2, 3), Slab.Role.FLOOR, 79, "concrete", registry)
+	var origin: Vector2i = GeometryCoords.gu_to_voxel_origin(Vector2i(2, 3))
+	_check(slab.has_cells_only() and slab.voxel_count() == 64, "a generated slab holds 64 cells and no object")
+	_check(slab.cell_at(0) == Vector3i(origin.x, origin.y, 79) and slab.cell_at(63) == Vector3i(origin.x + 7, origin.y + 7, 79), "the first and last cell are the GU's corners, in the generator's order")
+	var packed: PackedInt32Array = slab.cells_packed()
+	_check(packed.size() == 64 * 3, "cells_packed() has 3 ints a voxel (%d)" % packed.size())
+	VoxelContainer.Stats.reset()
+	var edge_registry := EdgeRegistry.new()
+	var store: VoxelStore = VoxelStore.build(edge_registry, registry, [])
+	VoxelStore.active = store
+	_check(store.claims == 64 and slab.claim_offset() == 0 and slab.has_cells_only(), "a store built over it reads the cells (64 claims) and the container still holds no object")
+	_check(VoxelContainer.Stats.from_cells == 0, "building the store turned nothing into objects")
+	var v: Voxel = slab.voxels[5]
+	_check(VoxelContainer.Stats.from_cells == 1, "reading `voxels` turned the container into objects (Stats.from_cells = 1)")
+	_check(v.claim == 5 and v.grid_pos == Vector2i(origin.x + 5, origin.y) and v.level == 79, "an object made after the store bound the container IS its claim (claim 5, the right cell)")
+	v.set_damage(Voxel.DamageState.DESTROYED)
+	_check(store.has_cell(origin.x + 5, origin.y, 79) == false, "and a write through it reaches the store's grid")
+	## A released container keeps its cells, so a second store over it reads the same cells.
+	var registry2 := SlabRegistry.new()
+	var slab2: Slab = SlabGenerator.generate(Vector2i(2, 3), Slab.Role.FLOOR, 79, "concrete", registry2)
+	var cells_before: PackedInt32Array = slab2.cells_packed().duplicate()
+	var store_a: VoxelStore = VoxelStore.build(EdgeRegistry.new(), registry2, [], [], true)
+	_check(slab2.is_released() and slab2.cells_packed() == cells_before, "released: no object, the cells are kept intact")
+	var store_b: VoxelStore = VoxelStore.build(EdgeRegistry.new(), registry2, [], [], true)
+	VoxelStore.active = store_b
+	_check(store_b.claims == 64 and store_a.claims == 64 and slab2.voxel_at(7).grid_pos == Vector2i(origin.x + 7, origin.y),
+		"a second store built over the released container reads the same 64 cells, and its handles are the right cells")

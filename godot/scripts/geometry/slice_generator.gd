@@ -61,11 +61,11 @@ static func _create_slice(edge: Edge, is_side_a: bool, _registry: EdgeRegistry) 
 	
 	# Create voxels: each position × each storey level (use actual storey range)
 	# FIX-VOXEL-HEIGHT-01: multiply storey_count by LEVELS_PER_STOREY to expand to level-space
+	# R3D-CLAIMS C4: the cells, not the objects: the store reads them and a voxel is a handle made on request.
 	for level_offset in range(edge.storey_count * GeometryCoords.LEVELS_PER_STOREY):
 		var level := GeometryCoords.storey_level_base(edge.start_storey) + level_offset
 		for voxel_pos in voxel_positions:
-			var voxel := Voxel.new(voxel_pos, level, slice)
-			slice.voxels.append(voxel)
+			slice.add_cell(voxel_pos.x, voxel_pos.y, level)
 	
 	return slice
 

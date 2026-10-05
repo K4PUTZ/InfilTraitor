@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 79573 lines total** (under `godot/scripts/`)
+**257 scripts · 79717 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -750,7 +750,7 @@ extends `Node3D` · 2412 lines
 
 ### `junction_resolver.gd`
 
-`class_name JunctionResolver` · 182 lines
+`class_name JunctionResolver` · 181 lines
 
 `godot/scripts/geometry/junction_resolver.gd`
 
@@ -1062,7 +1062,7 @@ extends `Node3D` · 2412 lines
 
 ### `slab_generator.gd`
 
-`class_name SlabGenerator` · 62 lines
+`class_name SlabGenerator` · 60 lines
 
 `godot/scripts/geometry/slab_generator.gd`
 
@@ -1176,7 +1176,7 @@ extends `Node3D` · 2412 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2448 lines
+`class_name VoxelBoard` · extends `Node2D` · 2447 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -1227,18 +1227,21 @@ extends `Node3D` · 2412 lines
 
 ### `voxel_container.gd`
 
-`class_name VoxelContainer` · extends `RefCounted` · 172 lines
+`class_name VoxelContainer` · extends `RefCounted` · 252 lines
 
 `godot/scripts/geometry/voxel_container.gd`
 
-> Geometry Module — VoxelContainer: what `Slice`, `Slab`, `JunctionColumn` and `PropBlock` share, the voxels and their dirty count. R3D-CLAIMS C2. A container used to OWN every `Voxel` object it generated, for the life of the board: ~296 000 of them on PLAYGROUND, ~990 B each on the Moto (~270 MB of a 1.30 GB peak). Since R3D-1d a `Voxel` holds no state (its fields are read and written through `VoxelStore`, by `claim`), so the object is only a handle, and a handle can be made again when someone asks for it. A container therefore has two modes: FULL (the default, and every fixture): `_voxels` holds the objects, exactly as before. A selftest that builds a container with `container.voxels.append(Voxel.new(...))` is in this mode and never leaves it. RELEASED (a live board, after `VoxelStore.build(..., release_objects = true)`): the objects are gone; `_sparse` has one slot per claim, null until `voxel_at(i)` makes the handle (cached, so a claim keeps ONE object: a Dictionary keyed by `Voxel` stays consistent). `voxels` converts the container to FULL, reusing the handles it already made, for the readers that walk a whole container; `Stats` counts those, so a reader that walks the whole board shows up as a number, not as ~270 MB. A reader that wants one claim asks `voxel_at(i)`; one that wants a count asks `voxel_count()`; one that wants the whole container (a blast over an affected slice) reads `voxels`, as it always did.
+> Geometry Module — VoxelContainer: what `Slice`, `Slab`, `JunctionColumn` and `PropBlock` share, the voxels and their dirty count. R3D-CLAIMS C2. A container used to OWN every `Voxel` object it generated, for the life of the board: ~296 000 of them on PLAYGROUND, ~990 B each on the Moto (~270 MB of a 1.30 GB peak). Since R3D-1d a `Voxel` holds no state (its fields are read and written through `VoxelStore`, by `claim`), so the object is only a handle, and a handle can be made again when someone asks for it. A container therefore has two modes: FULL (the default, and every fixture): `_voxels` holds the objects, exactly as before. A selftest that builds a container with `container.voxels.append(Voxel.new(...))` is in this mode and never leaves it. RELEASED (a live board, after `VoxelStore.build(..., release_objects = true)`): the objects are gone; `_sparse` has one slot per claim, null until `voxel_at(i)` makes the handle (cached, so a claim keeps ONE object: a Dictionary keyed by `Voxel` stays consistent). `voxels` converts the container to FULL, reusing the handles it already made, for the readers that walk a whole container; `Stats` counts those, so a reader that walks the whole board shows up as a number, not as ~270 MB. R3D-CLAIMS C4 adds a third mode BEFORE the store exists, so the generators make no object at all: CELLS (what `SliceGenerator`, `SlabGenerator` and `JunctionColumn` fill, through `add_cell()`): `_cells` holds x, y, level per voxel, 12 B each instead of an object (~4.3 us to make, ~990 B to keep on the Moto). `VoxelStore._fill()` reads them and the container goes straight to RELEASED. A reader that asks for `voxels` BEFORE the store is built converts the container to FULL (the objects it always had) and `Stats.from_cells` counts it, so a build-time reader that walks the board shows as a number. A reader that wants one claim asks `voxel_at(i)`; one that wants a count asks `voxel_count()`; one that wants the whole container (a blast over an affected slice) reads `voxels`, as it always did.
 
 **Public vars**
 - `var dirty_count: int = 0`
 - `var voxels: Array[Voxel]:`
 
 **Public API**
+- `func add_cell(x: int, y: int, level: int) -> void:`
 - `func voxel_count() -> int:`
+- `func cells_packed() -> PackedInt32Array:`
+- `func has_cells_only() -> bool:`
 - `func voxel_at(i: int) -> Voxel:`
 
 ---
@@ -3447,7 +3450,7 @@ extends `Node` · 54 lines
 
 ### `voxel_store.gd`
 
-`class_name VoxelStore` · extends `RefCounted` · 847 lines
+`class_name VoxelStore` · extends `RefCounted` · 873 lines
 
 `godot/scripts/systems/voxel_store.gd`
 
@@ -3492,6 +3495,10 @@ extends `Node` · 54 lines
 - `var build_ms: float = 0.0`
 
 **Public API**
+- `func last_claim_at(x: int, y: int, level: int) -> int:`
+- `func distinct_cells() -> int:`
+- `func make_voxel(claim: int, container: Object) -> Voxel:`
+- `func container_of(claim: int) -> Object:`
 - `func voxel_of(claim: int) -> Voxel:`
 - `func mark_dirty(claim: int) -> bool:`
 - `func unmark_dirty(claim: int) -> bool:`
@@ -4867,11 +4874,11 @@ extends `SceneTree` · 247 lines
 
 ### `voxel_handle_selftest.gd`
 
-extends `SceneTree` · 212 lines
+extends `SceneTree` · 249 lines
 
 `godot/scripts/tools/voxel_handle_selftest.gd`
 
-> R3D-CLAIMS C1 Test: a claim reached WITHOUT its persistent object. `VoxelStore.voxel_of(claim)` builds a transient `Voxel` from the store's own arrays. R3D-CLAIMS removes the ~296 000 persistent wrappers (~990 B each on the Moto), so everything that today holds one has to be able to ask for it again, and the new one has to be INTERCHANGEABLE with the old: same cell, level, container, state, and the same dirty bit. What this pins, against the persistent objects of a real fixture (a banded slice, a slice sharing a corner cell, slabs, a junction column): 1. EVERY claim: `voxel_of()` answers the persistent voxel's grid_pos, level, claim, container id and state, and `container_of()` is the container that holds it. 2. A write through a HANDLE is the persistent voxel's: damage, visibility, and the dirty bit (the container's `dirty_count` moves once), and a clear through the PERSISTENT voxel clears the handle's. 3. Two handles of one claim share their dirty bit (it used to be per wrapper: that was the bug-in-waiting). 4. A claimless voxel (a detached fixture) keeps its own dirty flag and never touches the store's bits. 5. Mutation control: the check of (1) FAILS when a handle is built for the wrong claim. 6. RELEASED containers (`VoxelStore.build(..., release_objects = true)`, C2): the persistent objects are gone, `voxel_at(i)` makes ONE handle per claim and keeps it, `voxels` converts the container back to full objects that REUSE the handles already made and match the cells the fixture was built with, `Stats` counts the conversion, and `clear_all_dirty()` clears the store's bits without making a handle.
+> R3D-CLAIMS C1 Test: a claim reached WITHOUT its persistent object. `VoxelStore.voxel_of(claim)` builds a transient `Voxel` from the store's own arrays. R3D-CLAIMS removes the ~296 000 persistent wrappers (~990 B each on the Moto), so everything that today holds one has to be able to ask for it again, and the new one has to be INTERCHANGEABLE with the old: same cell, level, container, state, and the same dirty bit. What this pins, against the persistent objects of a real fixture (a banded slice, a slice sharing a corner cell, slabs, a junction column): 1. EVERY claim: `voxel_of()` answers the persistent voxel's grid_pos, level, claim, container id and state, and `container_of()` is the container that holds it. 2. A write through a HANDLE is the persistent voxel's: damage, visibility, and the dirty bit (the container's `dirty_count` moves once), and a clear through the PERSISTENT voxel clears the handle's. 3. Two handles of one claim share their dirty bit (it used to be per wrapper: that was the bug-in-waiting). 4. A claimless voxel (a detached fixture) keeps its own dirty flag and never touches the store's bits. 5. Mutation control: the check of (1) FAILS when a handle is built for the wrong claim. 6. RELEASED containers (`VoxelStore.build(..., release_objects = true)`, C2): the persistent objects are gone, `voxel_at(i)` makes ONE handle per claim and keeps it, `voxels` converts the container back to full objects that REUSE the handles already made and match the cells the fixture was built with, `Stats` counts the conversion, and `clear_all_dirty()` clears the store's bits without making a handle. 7. CELLS (C4): the generators fill `add_cell()` and make NO object; the store reads the cells; reading `voxels` before the store turns the container into objects and `Stats.from_cells` counts it; after a store has bound it the objects carry `claim = offset + i`; a released container keeps its cells, so a SECOND store built over it answers the same cells.
 
 **Public vars**
 - `var passed: int = 0`
@@ -4884,6 +4891,7 @@ extends `SceneTree` · 212 lines
 - `func test_claimless_voxel_keeps_its_own_flag(store: VoxelStore) -> void:`
 - `func test_mutation_control(store: VoxelStore) -> void:`
 - `func test_released_containers() -> void:`
+- `func test_cells_mode() -> void:`
 
 ---
 
@@ -5551,7 +5559,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 10932 lines
+extends `Node2D` · 10937 lines
 
 `godot/scripts/world/room.gd`
 

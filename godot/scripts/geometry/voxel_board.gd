@@ -397,10 +397,9 @@ func _register_slice(slice: Slice) -> void:
 			slice.pane_id if slice.pane_id != "" else "<none>",
 			slice.material_bands if slice.has_material_bands() else "{}"])
 
-	## R3D-END: the 3D board draws every slice from the store; the pass only counts what it walked.
-	for voxel in slice.voxels:
-		if voxel.visible:
-			_diag_skipped_cells += 1
+	## R3D-END: the 3D board draws every slice from the store; the pass only counts what it walked. R3D-CLAIMS C4: at registration
+	## every voxel is visible (a fresh board), so the count is the container's, and no `Voxel` is made to ask.
+	_diag_skipped_cells += slice.voxel_count()
 
 
 ## GLASS G-D9 — true when this slice renders any glass at all (base material, or
@@ -2244,7 +2243,7 @@ func erase_glass_cell(level: int, cell: Vector2i) -> bool:
 ## currently visible voxel (`grid_pos`, `level`, and the tile-less placeholder ids) and is empty when `apply` is true.
 func register_slab(slab: Slab, apply: bool = true) -> Array:
 	var resolved: Array = []
-	if slab.voxels.is_empty():
+	if slab.voxel_count() == 0:
 		return resolved
 	## The level always exists afterwards, whatever `apply` says: the exposure plan and the readers of `level_origin()` ask for it.
 	_ensure_level(slab.level)
@@ -2285,7 +2284,7 @@ func reveal_floor_slab(slab: Slab, apply: bool = true) -> Array:
 ## Slab/Voxel container so every level is independently dirty-tracked
 ## (unlike a wall block, and unlike the floor's fixed-bedrock levels).
 func register_slab_solid(slab: Slab) -> void:
-	if slab.voxels.is_empty():
+	if slab.voxel_count() == 0:
 		return
 	_ensure_level(slab.level)
 

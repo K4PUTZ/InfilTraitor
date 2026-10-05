@@ -15,8 +15,7 @@ static func generate(gu_cell: Vector2i, role: int, level: int, material: String,
 	var slab := Slab.new(slab_id, gu_cell, role, level, material)
 
 	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
-		var voxel := Voxel.new(voxel_pos, level, slab)
-		slab.voxels.append(voxel)
+		slab.add_cell(voxel_pos.x, voxel_pos.y, level)   ## R3D-CLAIMS C4: the cell, not an object
 
 	registry.register_slab(slab)
 	return slab
@@ -55,8 +54,7 @@ static func generate_with_border(
 
 	for y in range(y_start, y_end):
 		for x in range(x_start, x_end):
-			var voxel := Voxel.new(Vector2i(x, y), level, slab)
-			slab.voxels.append(voxel)
+			slab.add_cell(x, y, level)   ## R3D-CLAIMS C4: the cell, not an object
 
 	registry.register_slab(slab)
 	return slab

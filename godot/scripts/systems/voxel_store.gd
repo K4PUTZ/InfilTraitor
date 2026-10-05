@@ -92,6 +92,12 @@ var owner := PackedInt32Array()
 
 ## Containers, in claim order.
 var container_ids := PackedStringArray()
+## R3D-CLAIMS C1 — what a claim needs to be reached WITHOUT a persistent `Voxel` object: the container it belongs to (the objects
+## themselves, by ordinal: the registries hold them anyway, so the store adds no ownership), the container of every claim, and the
+## dirty bit that used to live on each wrapper. `voxel_of()` builds a transient handle from these.
+var containers: Array = []
+var claim_container := PackedInt32Array()
+var dirty_bits := PackedByteArray()
 var container_kinds := PackedByteArray()
 var _geom := PackedInt32Array()
 var _by_instance: Dictionary = {}       ## container instance id -> container ordinal
@@ -197,6 +203,8 @@ func _fill(containers: Array) -> bool:
 			min_l = mini(min_l, bl)
 			max_l = maxi(max_l, el)
 	claims = total
+	claim_container.resize(total)
+	dirty_bits.resize(total)
 	state.resize(total)
 	aux.resize(total)
 	mat.resize(total)
@@ -223,6 +231,7 @@ func _fill(containers: Array) -> bool:
 		var n: int = voxels.size()
 		container_ids.append(str(container.get("id")))
 		container_kinds.append(containers[ci][1])
+		self.containers.append(container)
 		_by_instance[container.get_instance_id()] = ci
 		var g: int = ci * 6
 		var bx: int = boxes[g]
@@ -266,6 +275,7 @@ func _fill(containers: Array) -> bool:
 			var visible: int = 1
 			state[claim] = visible | (Voxel.DamageState.INTACT << 1)
 			aux[claim] = 0
+			claim_container[claim] = ci
 			v.claim = claim
 			if banded == null:
 				mat[claim] = fixed_material
@@ -318,6 +328,37 @@ func _resolve_cell(cell: int) -> void:
 			break
 	occ[cell] = 1 if first_visible >= 0 else 0
 	owner[cell] = first_visible if first_visible >= 0 else list[0]
+
+
+## R3D-CLAIMS C1 — a claim without its object. The container it belongs to.
+func container_of(claim: int) -> Object:
+	return containers[claim_container[claim]]
+
+
+## R3D-CLAIMS C1 — a TRANSIENT `Voxel` for a claim: the same grid_pos, level, container and claim a persistent voxel carries, and
+## because every field of a claimed `Voxel` is read and written through this store, the two are interchangeable. Creating one costs
+## ~4.3 us on the Moto (a GDScript object): for a handful of claims, never for a walk over all of them.
+func voxel_of(claim: int) -> Voxel:
+	var k: int = claim * 3
+	var v := Voxel.new(Vector2i(xyz[k], xyz[k + 1]), xyz[k + 2], containers[claim_container[claim]])
+	v.claim = claim
+	return v
+
+
+## R3D-CLAIMS C1 — the dirty bit of a claim (it lived on each `Voxel`). Returns true when the bit CHANGED, so the caller keeps its
+## container's `dirty_count` in step exactly as the wrapper did.
+func mark_dirty(claim: int) -> bool:
+	if dirty_bits[claim] != 0:
+		return false
+	dirty_bits[claim] = 1
+	return true
+
+
+func unmark_dirty(claim: int) -> bool:
+	if dirty_bits[claim] == 0:
+		return false
+	dirty_bits[claim] = 0
+	return true
 
 
 func cell_index(x: int, y: int, level: int) -> int:

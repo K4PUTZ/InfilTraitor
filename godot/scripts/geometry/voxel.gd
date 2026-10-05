@@ -19,7 +19,22 @@ enum CarvedSide { NONE = 0, TOP = 1, BOTTOM = 2, LEFT = 3, RIGHT = 4, FACE_NW = 
 
 var grid_pos: Vector2i           ## voxel cell coordinate — addressing, not state
 var level: int                   ## vertical storey index — addressing, not state
-var dirty: bool = false          ## marked for TIC processing; per-wrapper, not store state
+## Marked for TIC processing. R3D-CLAIMS C1: a claimed voxel's bit lives in the store (`VoxelStore.dirty_bits`), so a transient
+## handle and the persistent object of one claim answer alike; a claimless voxel (before the store is built, a detached fixture, a
+## `WorldDelta` projection) keeps its own flag.
+var dirty: bool:
+	get:
+		var store: VoxelStore = VoxelStore.active
+		if store != null and claim >= 0:
+			return store.dirty_bits[claim] != 0
+		return _dirty_local
+	set(v):
+		var store: VoxelStore = VoxelStore.active
+		if store != null and claim >= 0:
+			store.dirty_bits[claim] = 1 if v else 0
+		else:
+			_dirty_local = v
+var _dirty_local: bool = false
 
 ## The claim this wrapper resolves to in `VoxelStore.active`, or -1 before the store is
 ## built (assigned once, by `VoxelStore._fill()`, right after this wrapper's container is

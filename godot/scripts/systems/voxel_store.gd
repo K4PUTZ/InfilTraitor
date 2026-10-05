@@ -70,7 +70,7 @@ var pane := PackedByteArray()
 var material_ids := PackedStringArray()
 
 ## R3D-LIGHT — what the detonation plan's WALK derives from geometry alone, kept for the store's lifetime instead of rebuilt per
-## grenade (~950 ms of the cook's ~1.9 s on the Moto): `cell_to_voxel` (Vector3i -> Voxel), `flammable` and `burn` (Vector3i ->
+## grenade (~950 ms of the cook's ~1.9 s on the Moto): `flammable` and `burn` (Vector3i ->
 ## float), and `sig`, the first voxel's instance id of every container (a cook whose containers are not these gets a cold walk).
 ## Empty until a cook's walk completes. SHARED and read-only: a cook that holds these must never empty or write them.
 var walk_cache: Dictionary = {}
@@ -339,6 +339,28 @@ func _resolve_cell(cell: int) -> void:
 			break
 	occ[cell] = 1 if first_visible >= 0 else 0
 	owner[cell] = first_visible if first_visible >= 0 else list[0]
+
+
+## R3D-CLAIMS C2 — the LAST claim of a cell (the one that comes last in claim order), or -1 when no claim holds it. What the
+## detonation WALK's `cell_to_voxel[key] = v` kept when it assigned in claim order: a cell two claims hold answers for the second.
+## Needs no table: a cell no more than one claim holds is its `owner`, and `_multi` lists a shared cell's claims in order.
+func last_claim_at(x: int, y: int, level: int) -> int:
+	if x < x0 or y < y0 or level < l0 or x >= x0 + w or y >= y0 + h or level >= l0 + nl:
+		return -1
+	var cell: int = ((level - l0) * h + (y - y0)) * w + (x - x0)
+	if _multi.has(cell):
+		var list: PackedInt32Array = _multi[cell]
+		return list[list.size() - 1]
+	return owner[cell]
+
+
+## How many distinct cells hold at least one claim: what `cell_to_voxel.size()` was. Every claim is a cell, less the extra claims
+## of the cells more than one claim holds.
+func distinct_cells() -> int:
+	var extra: int = 0
+	for cell in _multi:
+		extra += (_multi[cell] as PackedInt32Array).size() - 1
+	return claims - extra
 
 
 ## R3D-CLAIMS C2 — a NEW `Voxel` for a claim, not cached: what a container makes (once) when asked for the voxel at an index.

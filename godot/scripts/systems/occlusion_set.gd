@@ -731,7 +731,7 @@ func _merge_columns_into_rects(cells: Array) -> Array:
 func _group_slices_by_edge(slices: Array) -> Dictionary:
 	var by_edge: Dictionary = {}
 	for slice in slices:
-		if slice.voxels.is_empty():
+		if slice.voxel_count() == 0:
 			continue
 		if GlassMaterials.is_glass(slice.material):
 			continue
@@ -832,8 +832,10 @@ func _edge_columns(edge_id: String, slices_by_edge: Dictionary) -> Array:
 	if not _columns_by_edge.has(edge_id):
 		var seen: Dictionary = {}
 		for slice in slices_by_edge.get(edge_id, []):
-			for voxel in slice.voxels:
-				seen[voxel.grid_pos] = true
+			## R3D-CLAIMS C2: the cells, from the store (a released slice makes no `Voxel` for this).
+			for i in range(slice.voxel_count()):
+				var cell: Vector3i = slice.cell_at(i)
+				seen[Vector2i(cell.x, cell.y)] = true
 		_columns_by_edge[edge_id] = seen.keys()
 	return _columns_by_edge[edge_id]
 
@@ -999,7 +1001,7 @@ func _build_roof_geometry(ceiling_slabs: Array) -> Dictionary:
 	## levels: real voxel cells, real footprint bounds, real level span.
 	var gu_info: Dictionary = {}   ## gu -> {min_level, max_level, rect_min, rect_max, cells: Array[Vector2i]}
 	for slab in ceiling_slabs:
-		if slab.role != SlabMod.Role.CEILING or slab.voxels.is_empty():
+		if slab.role != SlabMod.Role.CEILING or slab.voxel_count() == 0:
 			continue
 		var info: Dictionary
 		if gu_info.has(slab.gu_cell):
@@ -1009,16 +1011,16 @@ func _build_roof_geometry(ceiling_slabs: Array) -> Dictionary:
 		else:
 			info = {
 				"min_level": slab.level, "max_level": slab.level,
-				"rect_min": slab.voxels[0].grid_pos, "rect_max": slab.voxels[0].grid_pos,
+				"rect_min": Vector2i(slab.cell_at(0).x, slab.cell_at(0).y), "rect_max": Vector2i(slab.cell_at(0).x, slab.cell_at(0).y),
 				"cells": {},
 			}
 			gu_info[slab.gu_cell] = info
-		for voxel in slab.voxels:
-			info["cells"][voxel.grid_pos] = true
-			info["rect_min"] = Vector2i(
-				mini(info["rect_min"].x, voxel.grid_pos.x), mini(info["rect_min"].y, voxel.grid_pos.y))
-			info["rect_max"] = Vector2i(
-				maxi(info["rect_max"].x, voxel.grid_pos.x), maxi(info["rect_max"].y, voxel.grid_pos.y))
+		for i in range(slab.voxel_count()):
+			var cell: Vector3i = slab.cell_at(i)
+			var cell_xy := Vector2i(cell.x, cell.y)
+			info["cells"][cell_xy] = true
+			info["rect_min"] = Vector2i(mini(info["rect_min"].x, cell.x), mini(info["rect_min"].y, cell.y))
+			info["rect_max"] = Vector2i(maxi(info["rect_max"].x, cell.x), maxi(info["rect_max"].y, cell.y))
 
 	## Connected components over roofed GUs (4-adjacency, level- and
 	## material-blind — contiguous roofs read as one surface, the same rule
@@ -1227,20 +1229,22 @@ func _edge_geometry(slices_by_edge: Dictionary, for_view: String) -> Array:
 		_geom_by_view = {}
 		for edge_id in slices_by_edge.keys():
 			var edge_slices: Array = slices_by_edge[edge_id]
-			var min_gx: int = edge_slices[0].voxels[0].grid_pos.x
+			var first_cell: Vector3i = edge_slices[0].cell_at(0)
+			var min_gx: int = first_cell.x
 			var max_gx: int = min_gx
-			var min_gy: int = edge_slices[0].voxels[0].grid_pos.y
+			var min_gy: int = first_cell.y
 			var max_gy: int = min_gy
-			var min_level: int = edge_slices[0].voxels[0].level
+			var min_level: int = first_cell.z
 			var max_level: int = min_level
 			for slice in edge_slices:
-				for voxel in slice.voxels:
-					min_gx = mini(min_gx, voxel.grid_pos.x)
-					max_gx = maxi(max_gx, voxel.grid_pos.x)
-					min_gy = mini(min_gy, voxel.grid_pos.y)
-					max_gy = maxi(max_gy, voxel.grid_pos.y)
-					min_level = mini(min_level, voxel.level)
-					max_level = maxi(max_level, voxel.level)
+				for i in range(slice.voxel_count()):
+					var cell: Vector3i = slice.cell_at(i)
+					min_gx = mini(min_gx, cell.x)
+					max_gx = maxi(max_gx, cell.x)
+					min_gy = mini(min_gy, cell.y)
+					max_gy = maxi(max_gy, cell.y)
+					min_level = mini(min_level, cell.z)
+					max_level = maxi(max_level, cell.z)
 			_base_bounds[edge_id] = [min_gx, max_gx, min_gy, max_gy, min_level, max_level]
 	if not _geom_by_view.has(for_view):
 		_geom_by_view[for_view] = _build_view_geometry(slices_by_edge, for_view)

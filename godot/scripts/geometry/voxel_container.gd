@@ -24,12 +24,14 @@ class Stats:
 	static var converted_voxels: int = 0
 	static var handles: int = 0
 	static var converted_ids: Dictionary = {}   ## container id -> true, for the first 64 only
+	static var callers: Dictionary = {}         ## "file:line function" of whoever converted -> [containers, voxels]; debug builds only
 
 	static func reset() -> void:
 		converted = 0
 		converted_voxels = 0
 		handles = 0
 		converted_ids = {}
+		callers = {}
 
 
 ## Sum of the children's dirty flags (a container with 0 is skipped by the TIC, which is the point of keeping it).
@@ -74,6 +76,17 @@ func voxel_at(i: int) -> Voxel:
 		_sparse[i] = v
 		Stats.handles += 1
 	return v
+
+
+## The cell of voxel `i` (x, y, level) WITHOUT making a `Voxel` when the container is released: the store holds it. A reader that
+## walks a whole container for its cells (the cutaway's geometry, the roof footprints) asks this, not `voxels`.
+func cell_at(i: int) -> Vector3i:
+	if not _released:
+		var v: Voxel = _voxels[i]
+		return Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
+	var xyz: PackedInt32Array = VoxelStore.active.xyz
+	var k: int = (_claim_offset + i) * 3
+	return Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
 
 
 func is_released() -> bool:
@@ -121,6 +134,13 @@ func _convert_to_full() -> void:
 	_released = false
 	Stats.converted += 1
 	Stats.converted_voxels += n
+	## Who asked for the whole container: the first frame outside this file (`get_stack()` is empty in a release build).
+	for frame in get_stack():
+		if not str(frame.get("source", "")).ends_with("voxel_container.gd"):
+			var who: String = "%s:%d %s" % [str(frame.get("source", "")).get_file(), int(frame.get("line", 0)), str(frame.get("function", ""))]
+			var entry: Array = Stats.callers.get(who, [0, 0])
+			Stats.callers[who] = [int(entry[0]) + 1, int(entry[1]) + n]
+			break
 	if Stats.converted_ids.size() < 64:
 		Stats.converted_ids[str(get("id"))] = true
 

@@ -489,7 +489,7 @@ static func _phase_setup(s: Dictionary) -> void:
 	s["ring_of"] = {}
 	s["container_of"] = {}
 	s["exposed_by_ring"] = {}
-	s["cell_to_voxel"] = {}
+	s["cell_to_voxel"] = ClaimGrid.empty()   ## R3D-CLAIMS C2: the store walk swaps in the store-backed one
 	## E-EMBER-01: `{Vector3i: flammability}`, filled only for voxels whose
 	## container's material actually catches — one table lookup per CONTAINER in
 	## the walk, and a dictionary write only for the combustible ones. The
@@ -1152,7 +1152,7 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 		return
 	var containers: Array = s["walk_containers"]
 	var delta: WorldDelta = s["delta"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var blast_cells: Array = s["blast_cells"]
 	var weapon_cells: Array = s["weapon_cells"]
 	var occupancy: Dictionary = s["occupancy"]
@@ -1190,7 +1190,7 @@ static func _phase_walk(s: Dictionary, deadline: int) -> void:
 			## (a) the hole index (absent -> blast/weapon by provenance), classified
 			## through the projection; the LIGHT phase reads it as predicted occupancy.
 			var key := Vector3i(v.grid_pos.x, v.grid_pos.y, v.level)
-			cell_to_voxel[key] = v
+			cell_to_voxel.put(key, v)
 			if flammability > 0.0:
 				flammable_cells[key] = flammability
 				if consumption > 0.0:
@@ -1240,7 +1240,7 @@ static func _walk_store_for(containers: Array) -> VoxelStore:
 		for ci in range(containers.size()):
 			var container: Object = containers[ci][0]
 			if store.container_ids[ci] != str(container.get("id")) \
-					or store.container_claims(ci).y != (container.voxels as Array).size():
+					or store.container_claims(ci).y != (container as VoxelContainer).voxel_count():
 				matches = false
 				break
 	if not matches:
@@ -1265,7 +1265,11 @@ static func _walk_store_for(containers: Array) -> VoxelStore:
 static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -> void:
 	var containers: Array = s["walk_containers"]
 	var delta: WorldDelta = s["delta"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	## R3D-CLAIMS C2: the store answers "which voxel is at this cell" from its grid, so nothing is built for it and the walk makes
+	## no `Voxel` at all.
+	if not (s["cell_to_voxel"] as ClaimGrid).is_store_backed():
+		s["cell_to_voxel"] = ClaimGrid.of_store(store)
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var blast_cells: Array = s["blast_cells"]
 	var weapon_cells: Array = s["weapon_cells"]
 	var under_structure: Dictionary = s["under_structure"]
@@ -1294,16 +1298,15 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 
 	while ci < containers.size():
 		var entry: Array = containers[ci]
-		var voxels: Array = entry[0].voxels
+		var voxel_count: int = (entry[0] as VoxelContainer).voxel_count()
 		var is_slice: bool = bool(entry[1])
 		var offset: int = store.container_claims(ci).x
 		var flammability: float = MaterialResistanceTable.flammability(
 			_material_name(entry[0]))
 		var consumption: float = MaterialResistanceTable.burn_consumption(
 			_material_name(entry[0]))
-		while vi < voxels.size():
+		while vi < voxel_count:
 			var claim: int = offset + vi
-			var v: Voxel = voxels[vi]
 			vi += 1
 			var real: int = state[claim]
 			if ((real >> 1) & 3) == Voxel.DamageState.DESTROYED:
@@ -1315,7 +1318,6 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 
 			var k: int = claim * 3
 			var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
-			cell_to_voxel[key] = v
 			if flammability > 0.0:
 				flammable_cells[key] = flammability
 				if consumption > 0.0:
@@ -1345,7 +1347,7 @@ static func _phase_walk_store(s: Dictionary, deadline: int, store: VoxelStore) -
 	s["real_destroyed"] = real_destroyed
 	if not derive_us:
 		store.walk_cache = {
-			"cell_to_voxel": cell_to_voxel, "flammable": flammable_cells, "burn": burn_cells,
+			"flammable": flammable_cells, "burn": burn_cells,
 			"sig": _walk_signature(containers),
 		}
 		s["walk_shared"] = true
@@ -1358,8 +1360,8 @@ static func _walk_signature(containers: Array) -> PackedInt64Array:
 	var sig := PackedInt64Array()
 	sig.resize(containers.size())
 	for ci in range(containers.size()):
-		var voxels: Array = containers[ci][0].voxels
-		sig[ci] = (voxels[0] as Object).get_instance_id() if not voxels.is_empty() else 0
+		## R3D-CLAIMS C2: the container's own id (it was the first voxel's, an object a released container does not hold).
+		sig[ci] = (containers[ci][0] as Object).get_instance_id()
 	return sig
 
 
@@ -1388,7 +1390,9 @@ static func _phase_walk_warm(s: Dictionary, deadline: int, store: VoxelStore) ->
 	var xyz: PackedInt32Array = store.xyz
 	if not s.has("walk_scan"):
 		var cache: Dictionary = store.walk_cache
-		s["cell_to_voxel"] = cache["cell_to_voxel"]
+		## R3D-CLAIMS C2: the store-backed grid is NOT in the cache: it holds the store, the store holds the cache, and a RefCounted cycle
+		## is never freed ("resources still in use at exit"). It costs nothing to make, one per cook.
+		s["cell_to_voxel"] = ClaimGrid.of_store(store)
 		s["flammable_cells"] = cache["flammable"]
 		s["burn_cells"] = cache["burn"]
 		s["walk_shared"] = true
@@ -1447,7 +1451,6 @@ static func _phase_walk_warm(s: Dictionary, deadline: int, store: VoxelStore) ->
 static func warm_walk_step(job: Dictionary, deadline: int) -> bool:
 	var store: VoxelStore = job["store"]
 	var containers: Array = job["containers"]
-	var c2v: Dictionary = job["c2v"]
 	var flammable: Dictionary = job["flam"]
 	var burn: Dictionary = job["burn"]
 	var xyz: PackedInt32Array = store.xyz
@@ -1456,14 +1459,13 @@ static func warm_walk_step(job: Dictionary, deadline: int) -> bool:
 	var since_check: int = 0
 	while ci < containers.size():
 		var entry: Array = containers[ci]
-		var voxels: Array = entry[0].voxels
+		var voxel_count: int = (entry[0] as VoxelContainer).voxel_count()
 		var offset: int = store.container_claims(ci).x
 		var flammability: float = MaterialResistanceTable.flammability(_material_name(entry[0]))
 		var consumption: float = MaterialResistanceTable.burn_consumption(_material_name(entry[0]))
-		while vi < voxels.size():
+		while vi < voxel_count:
 			var k: int = (offset + vi) * 3
 			var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
-			c2v[key] = voxels[vi]
 			vi += 1
 			if flammability > 0.0:
 				flammable[key] = flammability
@@ -1497,11 +1499,11 @@ static func _walk_equiv(s: Dictionary, store: VoxelStore) -> void:
 	var fresh_burn: Dictionary = {}
 	for ci in range(containers.size()):
 		var entry: Array = containers[ci]
-		var voxels: Array = entry[0].voxels
+		var voxel_count: int = (entry[0] as VoxelContainer).voxel_count()
 		var offset: int = store.container_claims(ci).x
 		var flam: float = MaterialResistanceTable.flammability(_material_name(entry[0]))
 		var cons: float = MaterialResistanceTable.burn_consumption(_material_name(entry[0]))
-		for vi in range(voxels.size()):
+		for vi in range(voxel_count):
 			var claim: int = offset + vi
 			var real: int = state[claim]
 			var p: Array = by_claim.get(claim, [])
@@ -1510,7 +1512,7 @@ static func _walk_equiv(s: Dictionary, store: VoxelStore) -> void:
 			var vis: bool = bool(p[WorldDelta.P_VISIBLE]) if touched else (real & 1) == 1
 			var k: int = claim * 3
 			var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
-			fresh[key] = voxels[vi]
+			fresh[key] = claim   ## the LAST claim of a cell wins, as the Dictionary of Voxels did
 			if flam > 0.0:
 				fresh_flam[key] = flam
 				if cons > 0.0:
@@ -1524,12 +1526,12 @@ static func _walk_equiv(s: Dictionary, store: VoxelStore) -> void:
 	if blast != s["blast_cells"] or weapon != s["weapon_cells"]:
 		bad += 1
 	var cache: Dictionary = store.walk_cache
-	if fresh.size() != (cache["cell_to_voxel"] as Dictionary).size() or fresh_flam != cache["flammable"] \
+	if fresh.size() != (s["cell_to_voxel"] as ClaimGrid).size() or fresh_flam != cache["flammable"] \
 			or fresh_burn != cache["burn"]:
 		bad += 1
 	else:
 		for key in fresh:
-			if (cache["cell_to_voxel"] as Dictionary).get(key) != fresh[key]:
+			if (s["cell_to_voxel"] as ClaimGrid).claim_at(key) != fresh[key]:
 				bad += 1
 				break
 	if bad > 0:
@@ -1618,7 +1620,7 @@ static func _phase_soot(s: Dictionary, deadline: int) -> void:
 ## cells, and the burnt cells' neighbours. Built once, at the phase's first visit.
 static func _soot_todo(s: Dictionary) -> Array:
 	var delta: WorldDelta = s["delta"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var ring_of: Dictionary = s["ring_of"]
 	var todo: Array = []
 	for key: Vector3i in ring_of:
@@ -1642,7 +1644,7 @@ static func _soot_todo(s: Dictionary) -> Array:
 static func _is_hole(s: Dictionary, key: Vector3i) -> bool:
 	if s.has("hole_cells"):
 		return (s["hole_cells"] as Dictionary).has(key)
-	var v: Voxel = (s["cell_to_voxel"] as Dictionary).get(key)
+	var v: Voxel = (s["cell_to_voxel"] as ClaimGrid).voxel_at(key)
 	return v != null and (s["delta"] as WorldDelta).state_of(v) == Voxel.DamageState.DESTROYED
 
 
@@ -1653,7 +1655,7 @@ static func _hole_equiv(s: Dictionary) -> void:
 		print("[HOLE-EQUIV] no set (the WALK did not run on the store)")
 		return
 	var delta: WorldDelta = s["delta"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var holes: Dictionary = s["hole_cells"]
 	var asked: int = 0
 	var bad: int = 0
@@ -1666,7 +1668,7 @@ static func _hole_equiv(s: Dictionary) -> void:
 	for key in holes:
 		seen[key] = true
 	for key in seen:
-		var v: Voxel = cell_to_voxel.get(key)
+		var v: Voxel = cell_to_voxel.voxel_at(key)
 		var want: bool = v != null and delta.state_of(v) == Voxel.DamageState.DESTROYED
 		asked += 1
 		if want != holes.has(key):
@@ -1702,14 +1704,14 @@ static func _hole_cells(s: Dictionary) -> Dictionary:
 	var store: VoxelStore = s.get("walk_store")
 	if store == null or not s.has("real_destroyed"):
 		return {}
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var xyz: PackedInt32Array = store.xyz
 	var holes: Dictionary = {"": true}
 	holes.clear()
 	for claim: int in (s["real_destroyed"] as PackedInt32Array):
 		var k: int = claim * 3
 		var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
-		var v: Voxel = cell_to_voxel.get(key)
+		var v: Voxel = cell_to_voxel.voxel_at(key)
 		if v != null and store.claim_of(v) == claim:
 			holes[key] = true
 	var projections: Dictionary = (s["delta"] as WorldDelta).projections()
@@ -1719,7 +1721,7 @@ static func _hole_cells(s: Dictionary) -> Dictionary:
 			continue
 		var k: int = claim * 3
 		var key := Vector3i(xyz[k], xyz[k + 1], xyz[k + 2])
-		if cell_to_voxel.get(key) != voxel:
+		if cell_to_voxel.voxel_at(key) != voxel:
 			continue
 		if int((projections[voxel] as Array)[WorldDelta.P_STATE]) == Voxel.DamageState.DESTROYED:
 			holes[key] = true
@@ -1750,9 +1752,9 @@ static func _touches_hole_diag(s: Dictionary, key: Vector3i) -> bool:
 ## The reference: ask the delta about the cell's voxel. `hole_cells` answers the same thing from a set built once.
 static func _touches_hole_reference(s: Dictionary, key: Vector3i) -> bool:
 	var delta: WorldDelta = s["delta"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	for d: Vector3i in EMBER_NEIGHBOURS:
-		var nv: Voxel = cell_to_voxel.get(key + d)
+		var nv: Voxel = cell_to_voxel.voxel_at(key + d)
 		if nv != null and delta.state_of(nv) == Voxel.DamageState.DESTROYED:
 			return true
 	return false
@@ -1852,7 +1854,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 	var keys: Array = s["ring_keys"]
 	var delta: WorldDelta = s["delta"]
 	var waves: Dictionary = s["waves"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var ring_of: Dictionary = s["ring_of"]
 	var container_of: Dictionary = s["container_of"]
 	var touched_this_blast: Dictionary = s["touched_this_blast"]
@@ -1869,7 +1871,7 @@ static func _phase_package(s: Dictionary, deadline: int) -> void:
 	while i < keys.size():
 		var key = keys[i]
 		i += 1
-		var voxel: Voxel = cell_to_voxel.get(key)
+		var voxel: Voxel = cell_to_voxel.voxel_at(key)
 		if voxel != null:
 			var ring: int = ring_of[key]
 			var container = container_of.get(key)
@@ -2045,10 +2047,10 @@ static func _phase_soot_wave(s: Dictionary, deadline: int) -> void:
 ## levels -2..+1) of a voxel this blast destroys.
 static func _hole_neighbourhood(s: Dictionary) -> Array:
 	var delta: WorldDelta = s["delta"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var out: Dictionary = {}
 	for key: Vector3i in s["touched_this_blast"]:
-		var v: Voxel = cell_to_voxel.get(key)
+		var v: Voxel = cell_to_voxel.voxel_at(key)
 		if v == null or delta.state_of(v) != Voxel.DamageState.DESTROYED:
 			continue
 		for dz in range(-2, 2):
@@ -2272,14 +2274,14 @@ static func _commit_burn_to_delta(s: Dictionary) -> void:
 	if burnt.is_empty():
 		return
 	var delta: WorldDelta = s["delta"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var occupancy: Dictionary = s["occupancy"]
 	var blast_cells: Array = s["blast_cells"]
 	var ring_of: Dictionary = s["ring_of"]
 	var container_of: Dictionary = s["container_of"]
 	var entries: Array = []
 	for key: Vector3i in burnt.keys():
-		var voxel: Voxel = cell_to_voxel.get(key)
+		var voxel: Voxel = cell_to_voxel.voxel_at(key)
 		if voxel == null:
 			continue
 		## from_blast TRUE: the fire is the blast's own consequence, and D24
@@ -2304,7 +2306,7 @@ static func _build_ember_wave(s: Dictionary) -> void:
 	var flammable_cells: Dictionary = s["flammable_cells"]
 	if flammable_cells.is_empty():
 		return
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var delta: WorldDelta = s["delta"]
 	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var epicenter: Vector2i = s["epicenter"]
@@ -2312,7 +2314,7 @@ static func _build_ember_wave(s: Dictionary) -> void:
 	var ring_of: Dictionary = s["ring_of"]
 	var seen: Dictionary = {}
 	for origin_key: Vector3i in ring_of.keys():
-		var hole_voxel: Voxel = cell_to_voxel.get(origin_key)
+		var hole_voxel: Voxel = cell_to_voxel.voxel_at(origin_key)
 		if hole_voxel == null or delta.state_of(hole_voxel) != Voxel.DamageState.DESTROYED:
 			continue
 		var ring: int = int(ring_of[origin_key])
@@ -2323,7 +2325,7 @@ static func _build_ember_wave(s: Dictionary) -> void:
 			var flammability: float = float(flammable_cells.get(ncell, 0.0))
 			if flammability <= 0.0:
 				continue
-			var neighbour: Voxel = cell_to_voxel.get(ncell)
+			var neighbour: Voxel = cell_to_voxel.voxel_at(ncell)
 			if neighbour == null:
 				continue
 			## PROJECTED, not live. The real Voxel still reads INTACT/visible
@@ -2396,7 +2398,7 @@ static func _mark_charred(s: Dictionary, voxel: Voxel) -> void:
 static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 		seen: Dictionary, ember_by_ring: Dictionary) -> void:
 	var flammable_cells: Dictionary = s["flammable_cells"]
-	var cell_to_voxel: Dictionary = s["cell_to_voxel"]
+	var cell_to_voxel: ClaimGrid = s["cell_to_voxel"]
 	var delta: WorldDelta = s["delta"]
 	var voxel_board: VoxelBoardClass = s["voxel_board"]
 	var epicenter: Vector2i = s["epicenter"]
@@ -2408,7 +2410,7 @@ static func _climb_from(origin: Vector3i, ring: int, s: Dictionary,
 		var flammability: float = float(flammable_cells.get(up, 0.0))
 		if flammability <= 0.0:
 			return
-		var voxel: Voxel = cell_to_voxel.get(up)
+		var voxel: Voxel = cell_to_voxel.voxel_at(up)
 		if voxel == null:
 			return
 		var p: Array = delta.projection_of(voxel)

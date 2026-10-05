@@ -47,6 +47,8 @@
 ##   alloc objects|packed|bytes <count>   RENDER3D R3D-0 instrument: hold <count>
 ##                                        `Voxel` objects / packed int32 cells / bytes
 ##                                        until quit, for --mem-poll to read
+##   container_stats <name>               R3D-CLAIMS C2: prints how many released containers were converted back to full
+##                                        `Voxel` objects and how many single handles were made (`VoxelContainer.Stats`)
 ##   probe_store <name>                   RENDER3D R3D-1b: the same dump, read from the
 ##                                        shadow `VoxelStore` (`VOXEL_STORE=1`)
 ##   shoot <guard index>                  R3D-1b gate: a shot through the menu entry points
@@ -94,7 +96,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
-	"passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2,
+	"container_stats": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2,
 }
 const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler"]
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
@@ -188,7 +190,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "passages", "mirror_check", "ground_check", "pick_check", "world_check", "canvas_check":
+		"capture", "probe", "probe_store", "container_stats", "passages", "mirror_check", "ground_check", "pick_check", "world_check", "canvas_check":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -283,6 +285,16 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				await room.get_tree().process_frame
 		"mark":
 			Telemetry.event("scenario.mark", {"label": step["label"]})
+		"container_stats":
+			## R3D-CLAIMS C2: how many released containers had to be converted back to full objects, how many single handles were
+			## made, and which containers (the first 64) — what reads the board whole shows here as a number, not as ~270 MB.
+			var cstats = VoxelContainer.Stats
+			print("[CONTAINER-STATS] %s — converted %d container(s) (%d voxels), %d single handle(s), first converted: %s" % [
+				step["name"], cstats.converted, cstats.converted_voxels, cstats.handles, ", ".join(PackedStringArray(cstats.converted_ids.keys())).left(400)])
+			var ranked: Array = cstats.callers.keys()
+			ranked.sort_custom(func(a, b): return int(cstats.callers[a][1]) > int(cstats.callers[b][1]))
+			for who in ranked.slice(0, 12):
+				print("[CONTAINER-STATS]   %-62s %5d container(s) %8d voxel(s)" % [who, cstats.callers[who][0], cstats.callers[who][1]])
 		"window":
 			if OS.has_feature("mobile") or DisplayServer.is_touchscreen_available():
 				## The OS window IS the screen on a handheld; there is nothing to resize.

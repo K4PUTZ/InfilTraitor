@@ -16,7 +16,7 @@ static var _armed: bool = false
 
 
 static func begin(store: VoxelStore, containers: Array) -> void:
-	_job = {"store": store, "containers": containers, "ci": 0, "vi": 0, "c2v": {}, "flam": {}, "burn": {}}
+	_job = {"store": store, "containers": containers, "ci": 0, "vi": 0, "flam": {}, "burn": {}}
 	if _armed:
 		return
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
@@ -37,7 +37,7 @@ static func _tick() -> void:
 		return
 	var store: VoxelStore = job["store"]
 	store.walk_cache = {
-		"cell_to_voxel": job["c2v"], "flammable": job["flam"], "burn": job["burn"],
+		"flammable": job["flam"], "burn": job["burn"],
 		"sig": DetonationPlanBuilder._walk_signature(job["containers"]),
 	}
 	print("[WALK-WARM] %d claim(s) indexed in idle frames" % store.claims)

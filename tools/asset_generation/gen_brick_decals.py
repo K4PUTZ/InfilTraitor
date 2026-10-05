@@ -32,6 +32,46 @@ SS = 2  ## supersample for the line work
 CORE = np.array([214.0, 150.0, 122.0])   ## the struck brick's exposed core
 DUST = np.array([206.0, 192.0, 178.0])   ## pulverised mortar / brick dust
 DARK = np.array([22.0, 11.0, 9.0])       ## the hole and the pits
+RIM = np.array([70.0, 30.0, 22.0])       ## the shaded lip of the hole
+TINT = np.ones(3)                        ## a multiplier applied after the desaturation (stone: a cool grey)
+DESAT = 0.0                              ## 0..1: how much of the photo's colour is taken out (stone: Rock063 is covered in moss)
+SEED_OFFSET = 0                          ## so two materials never share a pattern
+CRACK_PALETTE = None                     ## None: the brick (dark-wall) look; a dict: the light-wall look of gen_crack_decals
+
+## Per-material configuration (the module globals above and PHOTO_FILL below are set from it by `use()`).
+CONFIGS = {
+    "brick": {},
+    "concrete": {
+        "dark": (18, 18, 20), "rim": (52, 52, 54), "core": (176, 174, 168), "dust": (206, 205, 200), "seed": 100, "desat": 0.0, "tint": (1.0, 1.0, 1.0),
+        "photo": {
+            "bullet": [("concrete/Concrete036/Concrete036_2K-JPG_Color.jpg", 0.74), ("concrete/Concrete044D/Concrete044D_2K-JPG_Color.jpg", 0.62)],
+            "dent": [("concrete/Concrete036/Concrete036_2K-JPG_Color.jpg", 0.70), ("shared/Plaster007/Plaster007_2K-JPG_Color.jpg", 0.76)],
+            "crack": [("concrete/Concrete036/Concrete036_2K-JPG_Color.jpg", 0.74)],
+        },
+        "crack_palette": {"dark": (26, 26, 28), "lip": (228, 228, 224), "haze": (84, 84, 86)},
+    },
+    "stone": {
+        "dark": (16, 17, 22), "rim": (48, 50, 58), "core": (168, 170, 178), "dust": (204, 206, 212), "seed": 200, "desat": 1.0, "tint": (0.96, 0.98, 1.04),
+        "photo": {
+            "bullet": [("stone/Rock063/Rock063_2K-JPG_Color.jpg", 0.72)],
+            "dent": [("stone/Rock063/Rock063_2K-JPG_Color.jpg", 0.68), ("concrete/Concrete036/Concrete036_2K-JPG_Color.jpg", 0.74)],
+            "crack": [("concrete/Concrete036/Concrete036_2K-JPG_Color.jpg", 0.74)],
+        },
+        "crack_palette": {"dark": (22, 23, 28), "lip": (222, 224, 230), "haze": (78, 80, 88)},
+    },
+}
+
+
+def use(material: str) -> None:
+    """Point the module at one material's configuration (brick keeps the module defaults)."""
+    global CORE, DUST, DARK, RIM, TINT, DESAT, SEED_OFFSET, PHOTO_FILL, CRACK_PALETTE
+    cfg = CONFIGS[material]
+    if not cfg:
+        return
+    CORE, DUST, DARK, RIM = (np.array(cfg[k], dtype=float) for k in ("core", "dust", "dark", "rim"))
+    DESAT, SEED_OFFSET, TINT = float(cfg["desat"]), int(cfg["seed"]), np.array(cfg["tint"], dtype=float)
+    PHOTO_FILL = cfg["photo"]
+    CRACK_PALETTE = cfg["crack_palette"]
 
 
 def fbm(rng: np.random.Generator, size: int, octaves: int = 5, base: int = 4) -> np.ndarray:
@@ -104,7 +144,9 @@ def photo_fill(rng: np.random.Generator, kind: str, variant_seed: int) -> np.nda
     x0 = int(rng.integers(0, im.width - side))
     y0 = int(rng.integers(0, im.height - side))
     crop = np.asarray(im.crop((x0, y0, x0 + side, y0 + side)).resize((N, N), Image.LANCZOS), dtype=float)
-    lum = crop @ np.array([0.2126, 0.7152, 0.0722]) / 255.0
+    grey = (crop @ np.array([0.2126, 0.7152, 0.0722]))[..., None]
+    crop = (crop * (1.0 - DESAT) + grey * DESAT) * TINT
+    lum = grey[..., 0] / 255.0
     gain = target / max(float(lum.mean()), 1e-3)
     crop = np.clip((crop - crop.mean()) * 1.15 + crop.mean(), 0, 255) * gain  ## a touch more contrast, then to the target
     return np.clip(crop, 0, 255)
@@ -140,6 +182,7 @@ def compose(rgb: np.ndarray, alpha: np.ndarray) -> Image.Image:
 
 
 def bullet(seed: int, radius: float, stretch: tuple[float, float], angle: float) -> Image.Image:
+    seed += SEED_OFFSET
     rng = np.random.default_rng(seed)
     crater = radial_blob(rng, radius, stretch, 0.35, angle)
     halo = radial_blob(rng, radius * 1.22, stretch, 0.45, angle)
@@ -151,7 +194,7 @@ def bullet(seed: int, radius: float, stretch: tuple[float, float], angle: float)
     hole = radial_blob(rng, radius * 0.38, (1.0, 0.9), 0.4, angle)
     rim = radial_blob(rng, radius * 0.55, (1.0, 0.9), 0.4, angle)
     rim_a = feather(rim, 0.03) * (1.0 - feather(hole, 0.012))
-    rgb = rgb * (1.0 - rim_a[..., None] * 0.7) + np.array([70.0, 30.0, 22.0]) * rim_a[..., None] * 0.7
+    rgb = rgb * (1.0 - rim_a[..., None] * 0.7) + RIM * rim_a[..., None] * 0.7
     hole_a = feather(hole, 0.012)
     rgb = rgb * (1.0 - hole_a[..., None]) + DARK * hole_a[..., None]
     ## Chipped facets: a few darker radial fracture lines out of the hole.
@@ -177,8 +220,10 @@ def bullet(seed: int, radius: float, stretch: tuple[float, float], angle: float)
 
 
 def crack(seed: int, branches: int, spread: float, palette: dict | None = None) -> Image.Image:
+    palette = palette if palette is not None else CRACK_PALETTE
     """Fracture lines: they favour the courses (near-horizontal runs) and the joints (near-vertical), but wander in between,
     taper towards their tips and stay inside the canvas (a mark never reaches its voxel's border: neighbours are not cracked)."""
+    seed += SEED_OFFSET
     rng = np.random.default_rng(seed)
     r = random.Random(seed)
     course = N * SS / 8.0
@@ -235,6 +280,7 @@ def crack(seed: int, branches: int, spread: float, palette: dict | None = None) 
 
 def dent(seed: int, radius: float, stretch: tuple[float, float], angle: float) -> Image.Image:
     """A spall scar on a cut plane: broad, pale, pulverised, with dark pits."""
+    seed += SEED_OFFSET
     rng = np.random.default_rng(seed)
     scar = radial_blob(rng, radius, stretch, 0.22, angle)
     body = fbm(rng, N, 6, 4)
@@ -273,15 +319,17 @@ SPECS = {
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="R3D-LOOK L1: write the nine brick damage decals (see the header)")
-    parser.add_argument("--out", default=str(OUT))
+    parser.add_argument("--material", default="brick", choices=sorted(CONFIGS))
+    parser.add_argument("--out", default=None)
     args = parser.parse_args()
-    out = Path(args.out)
+    use(args.material)
+    out = Path(args.out) if args.out else ROOT / "ASSETS/materials" / args.material / "decals"
     out.mkdir(parents=True, exist_ok=True)
     for family, makers in SPECS.items():
         for variant, make in enumerate(makers):
             img = make()
             a = np.asarray(img)[..., 3]
-            path = out / ("decal_%s_brick_%d.png" % (family, variant))
+            path = out / ("decal_%s_%s_%d.png" % (family, args.material, variant))
             img.save(path, "PNG")
             print("%s  coverage %.0f %%  peak alpha %d" % (path.name, float((a > 13).mean()) * 100.0, int(a.max())))
             edge_report(path.name, a.astype(float) / 255.0)

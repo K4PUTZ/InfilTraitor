@@ -125,6 +125,8 @@ uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform int face_x_slot = 1;
 uniform int face_z_slot = 2;
 uniform float depth_dim[5];
+uniform float soot_smooth = 1.0;  // 1: a top face blends the soot tone of its 4 nearest cells (no square edges); 0: one cell, hard
+uniform float pit_dark = 0.60;     // the inside of a crater (side faces and the tops below the walkable floor) is darkened by this
 varying vec3 v_world;
 varying vec3 v_normal;
 // R3D-7 — the cutaway, driven by the OcclusionSet: one texel per grid
@@ -183,6 +185,27 @@ float char_hash(ivec3 c) {
 	x = x ^ (x >> 16u);
 	return float(x & 65535u) / 65536.0;
 }
+// The tone one cell's soot code gives a face: a ring of the ladder, or a charred voxel's own tone.
+float soot_tone(float code, int face, ivec3 vv) {
+	float ring = face == 0 ? floor(code / 36.0)
+			: (face == 1 ? floor(mod(code, 36.0) / 6.0) : mod(code, 6.0));
+	if (ring < 3.5) {
+		return soot_mult[int(ring)];
+	}
+	if (ring > 4.5) {
+		// charred: a tone per voxel (the hash runs only here, never on a clean or lightly sooted fragment)
+		float ch = char_hash(vv);
+		return mix(soot_char_range.x, soot_char_range.y, ch * ch);
+	}
+	return 1.0;
+}
+float soot_code_at(ivec2 cell, int layer) {
+	ivec2 q = cell + plane_origin;
+	if (layer < 0 || layer >= level_count || q.x < 0 || q.y < 0 || q.x >= plane_size || q.y >= plane_size) {
+		return 172.0;
+	}
+	return clamp(floor(texelFetch(cell_plane, ivec3(q, layer), 0).r * 255.0 + 0.5), 0.0, 215.0);
+}
 vec3 srgb_to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
 }
@@ -210,16 +233,22 @@ void fragment() {
 		bucket = int(floor(t.g * 255.0 + 0.5));
 	}
 	int face = v_normal.y > 0.5 ? 0 : (abs(v_normal.x) > 0.5 ? face_x_slot : face_z_slot);
-	float ring = face == 0 ? floor(code / 36.0)
-			: (face == 1 ? floor(mod(code, 36.0) / 6.0) : mod(code, 6.0));
 	float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];
-	if (ring < 3.5) {
-		f *= soot_mult[int(ring)];
-	} else if (ring > 4.5) {
-		// charred: a tone per voxel (the hash runs only here, never on a clean or lightly sooted fragment)
-		float ch = char_hash(ivec3(v.x, v.y, v.z));
-		f *= mix(soot_char_range.x, soot_char_range.y, ch * ch);
+	float tone = soot_tone(code, face, v);
+	if (face == 0 && soot_smooth > 0.5) {
+		// The soot is one value per cell, so a scorch on a floor is a field of squares. Blend the four nearest cells' tones (a
+		// smoothstep of the position inside the cell) so its edge is a gradient (Director 2026-10-05).
+		vec2 sp = v_world.xz * 8.0 - 0.5;
+		ivec2 sb = ivec2(floor(sp));
+		vec2 sw = fract(sp);
+		sw = sw * sw * (3.0 - 2.0 * sw);
+		float t00 = soot_tone(soot_code_at(sb, layer), 0, ivec3(sb.x, v.y, sb.y));
+		float t10 = soot_tone(soot_code_at(sb + ivec2(1, 0), layer), 0, ivec3(sb.x + 1, v.y, sb.y));
+		float t01 = soot_tone(soot_code_at(sb + ivec2(0, 1), layer), 0, ivec3(sb.x, v.y, sb.y + 1));
+		float t11 = soot_tone(soot_code_at(sb + ivec2(1, 1), layer), 0, ivec3(sb.x + 1, v.y, sb.y + 1));
+		tone = mix(mix(t00, t10, sw.x), mix(t01, t11, sw.x), sw.y);
 	}
+	f *= tone;
 	int rel = level + rel_offset;
 	if (rel < 0) {
 		f *= depth_dim[min(-rel - 1, 4)];
@@ -232,6 +261,9 @@ void fragment() {
 	// second floor of the same material under the first.
 	bool flat_pit = rel < -1 || (rel < 0 && face != 0);
 	float lum = (has_facade > 0.5 && !flat_pit) ? texture(facade, mirrored).r : 1.0;
+	if (flat_pit) {
+		f *= pit_dark;
+	}
 	ALBEDO = srgb_to_linear(base_color * lum * f);
 	if (face == 0 && !flat_pit && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
@@ -278,6 +310,9 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 	// second floor of the same material under the first.
 	bool flat_pit = rel < -1 || (rel < 0 && face != 0);
 	float lum = (has_facade > 0.5 && !flat_pit) ? texture(facade, mirrored).r : 1.0;
+	if (flat_pit) {
+		f *= pit_dark;
+	}
 	ALBEDO = srgb_to_linear(base_color * lum * f);
 	if (face == 0 && !flat_pit && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;

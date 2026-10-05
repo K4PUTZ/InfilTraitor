@@ -23,6 +23,14 @@ All eight are from [ambientCG](https://ambientcg.com), released under **CC0 1.0*
 | Concrete044D | [Concrete 044 D](https://ambientcg.com/a/Concrete044D) | 2023-04-05 | 44, concrete, damaged | concrete | `ASSETS/photo_src/concrete/Concrete044D/` |
 | Concrete036 | [Concrete 036](https://ambientcg.com/a/Concrete036) | 2021-05-16 | 36, concrete, dark, grey, old, plaster | concrete | `ASSETS/photo_src/concrete/Concrete036/` |
 
+## Free, not CC0 (royalty-free licences, read on the site 2026-10-05)
+
+| File | Source | Licence as stated by the site | Used for |
+|---|---|---|---|
+| `ASSETS/photo_src/wood/EveryTexture_00144/everytexture.com-stock-wood-texture-00144.jpg` (2448x3264, 3.5 MB) | [EveryTexture, "Wood splintered wood with chipping paint"](https://everytexture.com/everytexture-com-stock-wood-texture-00144/) | free for commercial or personal use, royalty free, no attribution; **redistribution of the image itself without written permission is prohibited** (so the photo stays out of git; a decal derived from it ships inside the game) | wood: splintered edge, chipped paint |
+
+**Pending, blocked for tooling:** Texturecan "Imperfection and Decal of Bullet Holes" (<https://www.texturecan.com/details/217/>, stated CC0, 1K/2K/4K/SBSAR zips) answers a scripted download with HTTP 406 (Mod_Security); the Director downloads it by hand into `ASSETS/photo_src/metal/` and it is listed here then.
+
 ## Not CC0
 
 Nothing non-CC0 is stored. A reference image from elsewhere is not downloaded by tooling; the Director supplies those by hand. Keep any such

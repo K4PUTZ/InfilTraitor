@@ -118,23 +118,27 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 	## not "the registry contains nothing else."
 	var all_slabs: Array = room._slab_registry.all_slabs()
 	var floor_slabs: Array = all_slabs.filter(func(s: Slab) -> bool: return s.role == Slab.Role.FLOOR)
+	## R3D-FINISH F2 (2026-10-04): the buffer ring (`layout.buffer` GU per edge) is ground nobody digs and gets its top slab ONLY; the
+	## deep plane is built for the PLAYABLE area. So: one top slab per GU of the room, one deep slab per GU of the playable area.
+	var ring: int = int(layout.get("buffer", 0))
 	var expected_gu_count: int = room_size.x * room_size.y
-	var expected_floor_slabs: int = expected_gu_count * 2
+	var expected_deep_count: int = maxi(room_size.x - 2 * ring, 0) * maxi(room_size.y - 2 * ring, 0)
+	var expected_floor_slabs: int = expected_gu_count + expected_deep_count
 	if floor_slabs.size() == expected_floor_slabs:
-		_pass("SlabRegistry has exactly %d FLOOR Slabs — two per GU (room_size %s)" % [floor_slabs.size(), room_size])
+		_pass("SlabRegistry has exactly %d FLOOR Slabs — a top slab per GU (%d) and a deep slab per playable GU (%d); room_size %s, ring %d" % [floor_slabs.size(), expected_gu_count, expected_deep_count, room_size, ring])
 	else:
-		_fail("SlabRegistry has %d FLOOR Slabs, expected %d (room_size %s)" % [floor_slabs.size(), expected_floor_slabs, room_size])
+		_fail("SlabRegistry has %d FLOOR Slabs, expected %d (room_size %s, ring %d)" % [floor_slabs.size(), expected_floor_slabs, room_size, ring])
 
 	var level_counts: Dictionary = {}
 	for slab in floor_slabs:
 		level_counts[slab.level] = int(level_counts.get(slab.level, 0)) + 1
 	var expected_levels: Dictionary = {
 		GeometryCoordsClass.FLOOR_TOP_LEVEL: expected_gu_count,
-		GeometryCoordsClass.FLOOR_DEEP_LEVEL: expected_gu_count,
+		GeometryCoordsClass.FLOOR_DEEP_LEVEL: expected_deep_count,
 	}
 	if level_counts == expected_levels:
-		_pass("FLOOR Slabs sit only at levels %d and %d, %d of each (one per GU)" % [
-			GeometryCoordsClass.FLOOR_TOP_LEVEL, GeometryCoordsClass.FLOOR_DEEP_LEVEL, expected_gu_count,
+		_pass("FLOOR Slabs sit only at levels %d and %d, %d top and %d deep" % [
+			GeometryCoordsClass.FLOOR_TOP_LEVEL, GeometryCoordsClass.FLOOR_DEEP_LEVEL, expected_gu_count, expected_deep_count,
 		])
 	else:
 		_fail("FLOOR Slab level distribution is %s, expected %s" % [level_counts, expected_levels])
@@ -216,6 +220,17 @@ func test_real_playground_map_gets_a_real_floor() -> void:
 		])
 	else:
 		_fail("Deep plane missing at GU %s: slab=%s (expected a 64-voxel Slab)" % [deep_gu, deep_slab])
+
+	## Criterion 4c (R3D-FINISH F2): a RING GU has its top slab and NO deep slab; the first playable GU has both.
+	var ring_gu := Vector2i(0, 0)
+	var first_playable := Vector2i(ring, ring)
+	var ring_top: Slab = room._slab_registry.get_slab(Slab.make_id(ring_gu, Slab.Role.FLOOR, GeometryCoordsClass.FLOOR_TOP_LEVEL))
+	var ring_deep: Slab = room._slab_registry.get_slab(Slab.make_id(ring_gu, Slab.Role.FLOOR, GeometryCoordsClass.FLOOR_DEEP_LEVEL))
+	var playable_deep: Slab = room._slab_registry.get_slab(Slab.make_id(first_playable, Slab.Role.FLOOR, GeometryCoordsClass.FLOOR_DEEP_LEVEL))
+	if ring > 0 and ring_top != null and ring_deep == null and playable_deep != null:
+		_pass("Ring GU %s has a top slab and no deep slab; the first playable GU %s has a deep slab" % [ring_gu, first_playable])
+	else:
+		_fail("ring/deep split wrong: ring=%d, ring top=%s, ring deep=%s, first playable deep=%s" % [ring, ring_top, ring_deep, playable_deep])
 
 	## Criterion 5: the existing wall pipeline is unaffected — walls still
 	## exist on positive levels if PLAYGROUND has any, and junction columns

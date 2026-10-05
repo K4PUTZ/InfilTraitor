@@ -129,6 +129,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 	## VoxelBoard.reveal_floor_slab().
 	const FLOOR_TOP_LEVEL := GeometryCoords.FLOOR_TOP_LEVEL
 	var floor_slabs_by_gu: Dictionary = {}
+	var ring: int = int(layout.get("buffer", 0))  ## the map's buffer ring width, in GU (MapCompiler)
 	for fx in range(0, _room_size.x):
 		for fy in range(0, _room_size.y):
 			var floor_gu := Vector2i(fx, fy)
@@ -144,10 +145,17 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			var floor_material: String = floor_zone_by_gu.get(floor_gu, "earth")
 			var floor_anchor: Vector2i = floor_anchor_by_gu.get(floor_gu, Vector2i.ZERO)
 			var floor_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, FLOOR_TOP_LEVEL, floor_material, room._slab_registry)
-			var deep_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, floor_material, room._slab_registry)
+			## R3D-FINISH F2 (2026-10-04): the buffer ring is dark ground nobody digs, so it gets NO deep plane. Each deep slab is 64
+			## `Voxel` objects (~990 B each on the Moto) for a second storey that no one reaches; a crater that eats a ring cell's top
+			## now opens onto the void. Every reader already skips a missing deep slab (`reveal_floor_slab` callers, the plan's FLOORS
+			## walk iterates the registry).
+			var in_ring: bool = fx < ring or fx >= _room_size.x - ring or fy < ring or fy >= _room_size.y - ring
 			if floor_material != "earth":
 				floor_slab.texture_anchor = floor_anchor
-				deep_slab.texture_anchor = floor_anchor
+			if not in_ring:
+				var deep_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, floor_material, room._slab_registry)
+				if floor_material != "earth":
+					deep_slab.texture_anchor = floor_anchor
 			floor_slabs_by_gu[floor_gu] = floor_slab
 
 	## D18 amendment (Director, 2026-07-16), dev-only: the map's outer edge

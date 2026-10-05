@@ -28,8 +28,9 @@ All eight are from [ambientCG](https://ambientcg.com), released under **CC0 1.0*
 | File | Source | Licence as stated by the site | Used for |
 |---|---|---|---|
 | `ASSETS/photo_src/wood/EveryTexture_00144/everytexture.com-stock-wood-texture-00144.jpg` (2448x3264, 3.5 MB) | [EveryTexture, "Wood splintered wood with chipping paint"](https://everytexture.com/everytexture-com-stock-wood-texture-00144/) | free for commercial or personal use, royalty free, no attribution; **redistribution of the image itself without written permission is prohibited** (so the photo stays out of git; a decal derived from it ships inside the game) | wood: splintered edge, chipped paint |
+| `ASSETS/photo_src/metal/OGA_bullet_decal/bullet_hole_0.png` (512x512 RGBA, 334 KB) and `bulletholepriv_0.png` (1011x588 RGBA, 940 KB, looks like the author's preview) | [OpenGameArt, "Bullet Decal"](https://opengameart.org/content/bullet-decal) by musdasch, 2020-11-07 | **CC0** (stated on the page) | metal (and any wall): a painted bullet hole with soot and a bright rim; reference for the hole's shape and falloff |
 
-**Pending, blocked for tooling:** Texturecan "Imperfection and Decal of Bullet Holes" (<https://www.texturecan.com/details/217/>, stated CC0, 1K/2K/4K/SBSAR zips) answers a scripted download with HTTP 406 (Mod_Security); the Director downloads it by hand into `ASSETS/photo_src/metal/` and it is listed here then.
+**Not fetched, blocked for tooling (2026-10-05):** Texturecan "Imperfection and Decal of Bullet Holes" (<https://www.texturecan.com/details/217/>, stated CC0, 1K/2K/4K/SBSAR zips) answers a scripted download with HTTP 406 (Mod_Security); the Director's own manual download also failed, so OpenGameArt's CC0 bullet decal replaced it.
 
 ## Not CC0
 

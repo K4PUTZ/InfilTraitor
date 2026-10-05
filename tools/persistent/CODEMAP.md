@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 79884 lines total** (under `godot/scripts/`)
+**257 scripts · 79950 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -463,7 +463,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2491 lines
+extends `Node3D` · 2510 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -5230,7 +5230,7 @@ extends `Node2D` · 63 lines
 
 ### `agent_shot_controller.gd`
 
-`class_name AgentShotController` · 1159 lines
+`class_name AgentShotController` · 1201 lines
 
 `godot/scripts/world/controllers/agent_shot_controller.gd`
 
@@ -5559,7 +5559,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11010 lines
+extends `Node2D` · 11015 lines
 
 `godot/scripts/world/room.gd`
 

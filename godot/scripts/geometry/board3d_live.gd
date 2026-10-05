@@ -500,6 +500,25 @@ func ground_point(point_2d: Vector2) -> Vector3:
 	return Vector3(gu.x + 0.5, 0.0, gu.y + 0.5)
 
 
+## The world point at the CENTRE of one face of a voxel (`normal`: the face's outward direction, base coordinates). The one place a
+## shot's tracer, sparks, chips and dent decal take their impact point from, so the three can never land on different spots
+## (Director, 2026-10-05: "o traçante, a faísca e o decal estão batendo em 3 pontos diferentes").
+func voxel_face_point(grid_pos: Vector2i, level: int, normal: Vector3) -> Vector3:
+	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+	var centre := Vector3((float(grid_pos.x) + 0.5) * unit, (float(level - _ground_level) + 0.5) * unit * VERTICAL_SCALE,
+		(float(grid_pos.y) + 0.5) * unit)
+	return centre + Vector3(normal.x, normal.y * VERTICAL_SCALE, normal.z) * (0.5 * unit)
+
+
+## The 2D particle pair (`pos`, `floor`) that `particle_origin()` turns back into `world_point`: the inverse of that map, for a caller
+## whose emitters take 2D positions (the tracer, the debris and smoke overlays). `ground_point()` is (gu + 0.5), the height is the
+## 2D vertical offset over `px_per_unit * cos 30`.
+func particle_pair(world_point: Vector3) -> Array[Vector2]:
+	var floor_2d: Vector2 = _origin_2d + _to_gu.affine_inverse() * Vector2(world_point.x - 0.5, world_point.z - 0.5)
+	var pos_2d: Vector2 = floor_2d + Vector2(0.0, -world_point.y * _px_per_unit * ParticleMathRef.COS_ELEVATION)
+	return [pos_2d, floor_2d]
+
+
 ## RENDER3D R3D-4e-1 — the 3D point a VFX emission at `world_pos` (2D) comes from. `floor_pos` is the 2D
 ## point of the ground beneath it (the detonation calls carry both); the difference is the height.
 func particle_origin(world_pos: Vector2, floor_pos: Vector2) -> Vector3:

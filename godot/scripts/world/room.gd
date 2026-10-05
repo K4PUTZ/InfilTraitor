@@ -1595,7 +1595,7 @@ var vfx_impact_spark_jitter: float = 0.35
 ## RENDER3D: how far in front of the struck face (grid units) a wall impact's smoke and sparks are born. A shot
 ## leaves its voxel SOLID (dented), and the 3D VFX are depth-tested, so an emission at the voxel's centre was
 ## inside the wall and culled. Smoke discs are camera-facing and wider than the voxel, so this is a tuning value.
-var vfx_impact_face_offset_gu: float = 0.25
+var vfx_impact_face_offset_gu: float = 0.03
 ## Half-angle of the cone a struck wall throws its sparks in, around the direction back toward the shooter (R3D-LOOK item 2).
 var vfx_impact_spray_cone_deg: float = 38.0
 ## E-SPARK-04 (Director): a spark thrown off a struck SURFACE flies out and is
@@ -4511,9 +4511,14 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
 
-	## On the 3D board the emission is anchored in FRONT of the struck face; the 2D simulation (rise, drift,
-	## per-material profile) is unchanged, so the look is the 2D one. NO_ANCHOR keeps the old derivation.
-	var anchor_3d: Vector3 = _impact_anchor_3d(origin, floor_pos, carved_side)
+	## On the 3D board EVERY emitter (sparks, smoke, dust, chips) takes the centre of the struck face as its origin, the same point the
+	## tracer ends on and the dent decal is drawn at (`voxel_face_point()`); the 2D simulation (rise, drift, per-material profile) is
+	## unchanged. NO_ANCHOR (an unknown face) keeps the voxel's own 2D position.
+	var anchor_3d: Vector3 = _impact_anchor_3d(grid_pos, level, carved_side)
+	if anchor_3d != ParticleMath.NO_ANCHOR:
+		var pair: Array[Vector2] = (board3d() as Node).call("particle_pair", anchor_3d)
+		origin = pair[0]
+		floor_pos = pair[1]
 
 	var spark_count: int = int(profile.get("sparks", 0))
 	if spark_count > 0:
@@ -4568,7 +4573,7 @@ func _impact_spray_dir(grid_pos: Vector2i, level: int, carved_side: int, shooter
 
 ## The 3D point in front of the face a round struck, or NO_ANCHOR (no 3D board, or the face is unknown).
 ## LEFT is the SW face (+grid y = +z), RIGHT the SE face (+grid x), FACE_NW the -x face, FACE_NE the -y face, TOP is up.
-func _impact_anchor_3d(origin: Vector2, floor_pos: Vector2, carved_side: int) -> Vector3:
+func _impact_anchor_3d(grid_pos: Vector2i, level: int, carved_side: int) -> Vector3:
 	var board: Node = board3d()
 	if board == null:
 		return ParticleMath.NO_ANCHOR
@@ -4586,7 +4591,7 @@ func _impact_anchor_3d(origin: Vector2, floor_pos: Vector2, carved_side: int) ->
 			normal = Vector3.UP
 		_:
 			return ParticleMath.NO_ANCHOR
-	return (board.particle_origin(origin, floor_pos) as Vector3) + normal * vfx_impact_face_offset_gu
+	return (board.call("voxel_face_point", grid_pos, level, normal) as Vector3) + normal * vfx_impact_face_offset_gu
 
 
 func _dispatch_destruction_vfx(grid_pos: Vector2i, level: int, material_id: String) -> void:

@@ -550,7 +550,7 @@ func fire_at_active() -> void:
 			if resolved.is_empty():
 				continue
 		resolved_picks.append({"index": i, "resolved": resolved})
-		_draw_tracer(muzzle_world, pellet_picks[i])
+		_draw_tracer(muzzle_world, pellet_picks[i], resolved, origin_gu)
 
 	## NOTE THE NAME. This is RESOLVE only — the apply loop runs after the flight
 	## and was silently outside every earlier measurement, which is how ~250 ms of
@@ -625,7 +625,7 @@ func fire_at_active() -> void:
 			_index_voxel(cell_to_voxel, pv)
 			cell_to_material[pkey] = hit_material
 			if pv.damage_state != Voxel.DamageState.DESTROYED:
-				if not _impact_vfx_done.has(pkey):
+				if not _impact_vfx_done.has(pkey) and _is_struck_voxel(pv, slice, resolved, prop_hit):
 					_impact_vfx_done[pkey] = true
 					room.dispatch_impact_vfx(pv.grid_pos, pv.level, hit_material, pv.damage_carved_side, origin_gu)
 			elif prop_hit:
@@ -801,12 +801,18 @@ func _nearest_axis(aim: Vector2) -> Vector2i:
 ## endpoint is the pick's own resolved GU, so the streak can never point
 ## somewhere the shot did not go — including after a perspective rotation, since
 ## the GU→world conversion is what supplies the point.
-func _draw_tracer(muzzle_world: Vector2, pick: Dictionary) -> void:
+func _draw_tracer(muzzle_world: Vector2, pick: Dictionary, resolved: Dictionary = {}, shooter_gu: Vector2i = Vector2i.ZERO) -> void:
 	if room._tracer_overlay == null:
 		return
 	## GLASS G7 — a pass-through crossing is not where the round stopped; the
 	## tracer runs to the terminal hit only.
 	if pick.has("pane_id"):
+		return
+	## The round ends where its mark is drawn: the centre of the struck face of the struck voxel (the same point the sparks and the
+	## dent decal use, `Board3DLive.voxel_face_point()`), not the centre of the GU it stopped in at muzzle height.
+	var face_end: Array[Vector2] = _impact_face_pair(resolved, shooter_gu)
+	if face_end.size() == 2:
+		room._tracer_overlay.add_tracer(muzzle_world, face_end[0], room.agent.position, face_end[1])
 		return
 	var impact_world: Vector2 = _gu_centre_world(pick["gu"])
 	if impact_world == Vector2.ZERO:
@@ -815,12 +821,48 @@ func _draw_tracer(muzzle_world: Vector2, pick: Dictionary) -> void:
 	room._tracer_overlay.add_tracer(muzzle_world, impact_world, room.agent.position, _gu_centre_world(pick["gu"], 0))
 
 
+## The 2D particle pair (position, floor) of the centre of the face a wall round struck, or [] (a prop, glass, no 3D board, an unknown face).
+func _impact_face_pair(resolved: Dictionary, shooter_gu: Vector2i) -> Array[Vector2]:
+	var none: Array[Vector2] = []
+	var board: Node = room.board3d()
+	if board == null or resolved.is_empty() or resolved.has("block") or not resolved.has("slice"):
+		return none
+	var hit_slice: Slice = resolved["slice"]
+	var hv: Voxel = hit_slice.voxel_at(int(resolved["voxel_index"]))
+	if hv == null:
+		return none
+	var side: int = BlastCalculatorClass.carved_side_for(hv.grid_pos, false, shooter_gu * GeometryCoords.VOXELS_PER_UNIT_AXIS \
+		+ Vector2i.ONE * (GeometryCoords.VOXELS_PER_UNIT_AXIS >> 1))
+	var normal := Vector3.ZERO
+	match side:
+		Voxel.CarvedSide.LEFT:
+			normal = Vector3(0.0, 0.0, 1.0)
+		Voxel.CarvedSide.RIGHT:
+			normal = Vector3(1.0, 0.0, 0.0)
+		Voxel.CarvedSide.FACE_NW:
+			normal = Vector3(-1.0, 0.0, 0.0)
+		Voxel.CarvedSide.FACE_NE:
+			normal = Vector3(0.0, 0.0, -1.0)
+		_:
+			return none
+	return board.call("particle_pair", board.call("voxel_face_point", hv.grid_pos, hv.level, normal))
+
+
 ## Screen position above the guard, for the menu anchor. Uses the guard's own GU
 ## cell centre rather than its sprite rect: the sprite overhangs its cell and
 ## anchoring to it would drift the menu by posture.
 func _top_screen_pos(guard) -> Vector2:
 	var world: Vector2 = guard.position + Vector2(0.0, -GUARD_TOP_PX)
 	return room.screen_of_lifted(world, guard.position)
+
+
+## True for the voxel the round actually struck (its mark's centre), or for any voxel of a prop hit. The other voxels the plan dents
+## around it get their decals but no VFX of their own: one impact, one burst, at one point.
+func _is_struck_voxel(pv: Voxel, hit_slice: Slice, resolved: Dictionary, prop_hit: bool) -> bool:
+	if prop_hit or hit_slice == null:
+		return true
+	var struck: Voxel = hit_slice.voxel_at(int(resolved["voxel_index"]))
+	return struck == null or (struck.grid_pos == pv.grid_pos and struck.level == pv.level)
 
 
 func _index_voxel(cell_to_voxel: Dictionary, v: Voxel) -> void:

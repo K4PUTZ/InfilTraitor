@@ -23,6 +23,12 @@
 ## The recorded values were taken on the code of commit `b21252d4` and reproduced after the per-GU roof
 ## representation (`15fbdc52`), on the desktop and on the Moto g04s. A fixture change (a map edited) changes its
 ## digests: re-record with --update and say so in the commit.
+##
+## RE-RECORDED 2026-10-04 (R3D-FINISH F2: every map's buffer grew from 1 to 5, so every raw cell moved +4 per axis and the agent
+## cells below moved with it; the digests carry raw positions). Verified not to hide a change in the SET: OCCLUSION_ROOM at buffer 1
+## (cells 12,12 / 13,12) and at buffer 5 (cells 16,16 / 17,16) both report 1 764 occluded columns and 25 open roof GUs; the old digest
+## reproduced exactly at buffer 1 (2201133523). PLAYGROUND's digests are those of an EMPTY set (it has no roof): that case never saw
+## anything, and still does not. SIGMA_01 already ran at buffer 5 and kept its digests.
 
 import argparse
 import re
@@ -35,13 +41,13 @@ GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 
 ## (label, map id, agent cell A, agent cell B, canonical set digest, canonical cutaway geometry digest)
 CASES = [
-    ("ROOM (5x5 ring + roof, agent inside)", "OCCLUSION_ROOM", "12,12", "13,12", 2201133523, 3573030843),
-    ("HALL (floating 15x15 roof)", "OCCLUSION_HALL", "12,12", "13,12", 3470714229, 4185238883),
-    ("NEST (three nested volumes)", "OCCLUSION_NEST", "4,4", "4,6", 1707281572, 3233347217),
-    ("GLASS", "GLASS", "16,15", "13,13", 243118410, 3887353741),
-    ("PLAYGROUND", "PLAYGROUND", "27,9", "13,5", 2691998715, 163057982),
+    ("ROOM (5x5 ring + roof, agent inside)", "OCCLUSION_ROOM", "16,16", "17,16", 2281665223, 2707279558),
+    ("HALL (floating 15x15 roof)", "OCCLUSION_HALL", "16,16", "17,16", 165414134, 2930668353),
+    ("NEST (three nested volumes)", "OCCLUSION_NEST", "8,8", "8,10", 331712424, 1614825779),
+    ("GLASS", "GLASS", "20,19", "17,17", 3834045110, 1746791528),
+    ("PLAYGROUND", "PLAYGROUND", "31,13", "17,9", 2691998715, 163057982),
     ("SIGMA_01 (a real level)", "SIGMA_01", "9,34", "5,32", 2010404612, 3597628886),
-    ("ROOM, second pair of cells", "OCCLUSION_ROOM", "12,12", "11,11", 3552638026, 1722610149),
+    ("ROOM, second pair of cells", "OCCLUSION_ROOM", "16,16", "15,15", 1501394400, 1196143088),
 ]
 
 

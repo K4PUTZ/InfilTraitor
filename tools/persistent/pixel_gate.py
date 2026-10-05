@@ -46,7 +46,9 @@ CAPTURES = Path.home() / "Library/Application Support/Godot/app_userdata/INFILTR
 TAG = "[PIXEL-GATE]"
 BOOT_TIMEOUT_S = 120  ## a boot is 35-40 s (measured 2026-10-03); a hung one (another Godot alive, an open editor, a remote-desktop session) must fail fast, not after 10 minutes
 NOISE = 8  ## per-channel step below which two pixels count as equal (0 = strict; reported both ways)
-BRICK_RX = 22 + 2
+## Raw cells: the gate was written at buffer 1, every cell is +4 per axis at buffer 5 (R3D-FINISH F2, 2026-10-04).
+SHIFT = 4
+BRICK_RX = 22 + 2 + SHIFT
 ## PLAYGROUND's first two boots differed by 28 906 px in ONE region only: the agent's movement-range overlay
 ## (orange AP zone under its feet, y >= 727), drawn in one boot and not the other. Its zone follows `_hovered_cell`,
 ## which the game takes from the REAL mouse, so the harness inherits an input the scenario does not script. That
@@ -61,15 +63,15 @@ CURSOR_RGB = (229, 25, 114)
 
 def case_env(case: str, settle: int, tag: str):
     if case == "PLAYGROUND":
-        scenario = ("framing portrait; frames 60; centre %d,3; zoom 2.2; frames %d; capture %s_load; detonate 0; "
-                    "frames %d; capture %s_g0; shoot 0; centre %d,3; frames %d; capture %s_shot; quit"
-                    % (BRICK_RX, settle, tag, settle, tag, BRICK_RX, settle, tag))
-        env = {"INFILTRAITOR_SHOT_WEAPON": "pistol", "INFILTRAITOR_SHOT_AGENT_CELL": "%d,11" % BRICK_RX,
-               "INFILTRAITOR_SHOT_GUARD_CELL": "%d,6" % BRICK_RX}
+        scenario = ("framing portrait; frames 60; centre %d,%d; zoom 2.2; frames %d; capture %s_load; detonate 0; "
+                    "frames %d; capture %s_g0; shoot 0; centre %d,%d; frames %d; capture %s_shot; quit"
+                    % (BRICK_RX, 3 + SHIFT, settle, tag, settle, tag, BRICK_RX, 3 + SHIFT, settle, tag))
+        env = {"INFILTRAITOR_SHOT_WEAPON": "pistol", "INFILTRAITOR_SHOT_AGENT_CELL": "%d,%d" % (BRICK_RX, 11 + SHIFT),
+               "INFILTRAITOR_SHOT_GUARD_CELL": "%d,%d" % (BRICK_RX, 6 + SHIFT)}
         return scenario, env, ["load", "g0", "shot"]
     scenario = ("framing portrait; frames %d; capture %s_load; detonate 0; frames %d; capture %s_g0; detonate 1; "
                 "frames %d; capture %s_g1; quit" % (settle, tag, settle, tag, settle, tag))
-    return scenario, {"INFILTRAITOR_GRENADE_GUS": "14,12;5,12"}, ["load", "g0", "g1"]
+    return scenario, {"INFILTRAITOR_GRENADE_GUS": "18,16;9,16"}, ["load", "g0", "g1"]
 
 
 def boot(case: str, settle: int, tag: str):

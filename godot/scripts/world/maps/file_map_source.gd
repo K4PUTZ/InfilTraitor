@@ -74,7 +74,7 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	# --- Native translation (board, actors): these map cleanly today ---
 	var board = sections.get("board", {})
 	runtime["inner_size"] = Vector2i(board.get("inner_size", [28, 18])[0], board.get("inner_size", [28, 18])[1])
-	runtime["buffer"] = int(board.get("buffer", 1))
+	runtime["buffer"] = int(board.get("buffer", 5))  ## R3D-FINISH F2: 5 is the standard ring; a map that omits it gets it
 	runtime["floor_tile"] = String(board.get("floor_tile", "floor_SE"))
 
 	var actors = sections.get("actors", {})

@@ -184,6 +184,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"size": zone_size,
 			"material": String(zone.get("material", "")),
 		})
+	floor_zone_instances.append_array(_buffer_floor_zones(spec.get("floor_zones", []), inner_size, buffer))
 
 	## --- ground decals (R3D-SURFACES S2): `at` is GU on a half-GU lattice, shifted by the buffer like every other position ---
 	var ground_decal_instances: Array = []
@@ -421,6 +422,49 @@ static func _validate(spec: Dictionary) -> bool:
 ## BAKE-FIX-02: Compile junction overrides from MapSpec
 ## Each entry in spec["junction_overrides"] contains:
 ##   {"gu": Vector2i (inner coords), "material"?: String, "facade_enabled"?: bool}
+## R3D-FINISH F2 (2026-10-04, Director: "mesmo chão estendido"): the buffer ring is ground too, and it is the SAME ground as the
+## playable edge it continues. Each ring cell takes the floor-zone material of the nearest playable cell (the zones are in INNER
+## coordinates, last rect wins, as `RoomBuilder` expands them); a ring cell whose nearest playable cell declares no zone stays
+## undeclared (the "earth" sentinel, as every undeclared GU). The result is returned as rects in RAW coordinates (buffer applied,
+## here, like every other position), one per run of equal material along a row: `RoomBuilder` joins them to the playable zone by
+## 4-adjacency, so the ring shares that zone's texture anchor and the ground reads as one surface. No objects: populating the
+## ring is the procedural-maps milestone's.
+static func _buffer_floor_zones(zones: Array, inner_size: Vector2i, buffer: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if buffer <= 0:
+		return out
+	var inner_material: Dictionary = {}  ## inner Vector2i -> material
+	for zone: Dictionary in zones:
+		var zone_gu: Vector2i = Vector2i(zone.get("gu", Vector2i.ZERO))
+		var size_raw = zone.get("size", [1, 1])
+		var zone_size: Vector2i = size_raw if size_raw is Vector2i else Vector2i(int(size_raw[0]), int(size_raw[1]))
+		var material: String = String(zone.get("material", ""))
+		if material == "":
+			continue
+		for zx: int in range(zone_size.x):
+			for zy: int in range(zone_size.y):
+				inner_material[zone_gu + Vector2i(zx, zy)] = material
+	var map_size: Vector2i = inner_size + Vector2i(buffer, buffer) * 2
+	for by: int in range(map_size.y):
+		var run_start: int = -1
+		var run_material: String = ""
+		for bx: int in range(map_size.x + 1):
+			var material: String = ""
+			var in_ring: bool = false
+			if bx < map_size.x:
+				in_ring = bx < buffer or bx >= map_size.x - buffer or by < buffer or by >= map_size.y - buffer
+				if in_ring:
+					var nearest := Vector2i(clampi(bx - buffer, 0, inner_size.x - 1), clampi(by - buffer, 0, inner_size.y - 1))
+					material = String(inner_material.get(nearest, ""))
+			if run_start >= 0 and (material != run_material or not in_ring):
+				out.append({"gu_cell": Vector2i(run_start, by), "size": Vector2i(bx - run_start, 1), "material": run_material})
+				run_start = -1
+			if material != "" and run_start < 0:
+				run_start = bx
+				run_material = material
+	return out
+
+
 ## Returns array with gu_cell converted to raw coords (with buffer applied)
 static func _compile_junction_overrides(spec: Dictionary, offset: Vector2i) -> Array:
 	var result: Array = []

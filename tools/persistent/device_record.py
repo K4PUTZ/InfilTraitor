@@ -45,8 +45,8 @@ FLAGS_REMOTE = "/sdcard/Android/data/%s/files/dev_flags.cfg" % PACKAGE
 REMOTE = "/sdcard/device_record.mp4"
 
 PRESETS = {
-    "blast": "framing portrait; zoom 0.5; centre 3,5; frames 30; wait 1; mark rec; wait 3; detonate 0; wait 3; quit",
-    "blast100": "framing portrait; zoom 1.0; centre 3,5; frames 30; wait 1; mark rec; wait 3; detonate 0; wait 3; quit",
+    "blast": "framing portrait; zoom 0.5; centre 7,9; frames 30; wait 1; mark rec; wait 3; detonate 0; wait 3; quit",
+    "blast100": "framing portrait; zoom 1.0; centre 7,9; frames 30; wait 1; mark rec; wait 3; detonate 0; wait 3; quit",
 }
 
 

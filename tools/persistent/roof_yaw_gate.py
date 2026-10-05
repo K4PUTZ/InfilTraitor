@@ -32,7 +32,8 @@ GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 TAG = "[ROOF-YAW-GATE]"
 MIN_PIXELS = 3000
 ## (map, a cell inside the roof, a cell far outside it, where the camera looks)
-CASES = [("OCCLUSION_ROOM", "12,12", "2,2", "12,12"), ("OCCLUSION_HALL", "12,12", "2,2", "12,12")]
+## Raw cells, buffer 5 (R3D-FINISH F2, 2026-10-04): the cells the gate was written with at buffer 1 are +4 on each axis.
+CASES = [("OCCLUSION_ROOM", "16,16", "6,6", "16,16"), ("OCCLUSION_HALL", "16,16", "6,6", "16,16")]
 LINE = re.compile(r"\[OCC-BENCH\] canonical roof digest (\d+), (\d+) roof GU\(s\) open")
 CAPTURES = os.path.expanduser("~/Library/Application Support/Godot/app_userdata")
 

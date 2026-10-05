@@ -6,6 +6,7 @@
 ## contract:
 ##   5. ROTATION: building the E view puts a zone's Slab material at the
 ##      correctly-rotated GU, exactly like roof's block rotation
+##   6. BUFFER RING (R3D-FINISH F2): the ring around the playable area is the SAME ground as the playable edge it continues
 ##
 ## The expectation is re-derived locally (own rotation math), never read back from the code under test.
 
@@ -42,6 +43,7 @@ func _init() -> void:
 	print("=".repeat(70) + "\n")
 
 	test_5_rotated_view_zones_follow_declared_material()
+	test_6_buffer_ring_continues_the_edge_ground()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -131,3 +133,64 @@ func test_5_rotated_view_zones_follow_declared_material() -> void:
 		_fail("E view: %d rotated zone-GUs missing a FLOOR Slab, %d with wrong material" % [missing, wrong_material])
 
 	room.queue_free()
+
+
+## R3D-FINISH F2 (Director, 2026-10-04: "mesmo chão estendido"). Every cell of the compiled map, expanded from
+## `floor_zone_instances`, must carry: inside the playable area the material the spec declared; in the ring the material of the
+## NEAREST playable cell; and nothing where that cell declares nothing (it stays the undeclared "earth" sentinel). The
+## expectation is re-derived here from the spec, with its own clamp, never read back from the compiler.
+func test_6_buffer_ring_continues_the_edge_ground() -> void:
+	print("[TEST 6] the buffer ring continues the ground of the playable edge\n")
+	var file_source := FileMapSourceClass.new()
+	var spec: Dictionary = file_source.get_runtime_spec("FLOOR_ZONES_TEST")
+	if spec.is_empty():
+		_fail("FileMapSource.get_runtime_spec('FLOOR_ZONES_TEST') returned empty")
+		return
+	var inner: Vector2i = spec.get("inner_size", Vector2i.ZERO)
+	var half_x: int = int(inner.x / 2)
+	var half_y: int = int(inner.y / 2)
+	## Left half concrete (full height); right half metal on its top half; the right-bottom quarter declares nothing.
+	spec["floor_zones"] = [
+		{"gu": Vector2i(0, 0), "size": Vector2i(half_x, inner.y), "material": "concrete"},
+		{"gu": Vector2i(half_x, 0), "size": Vector2i(inner.x - half_x, half_y), "material": "metal"}]
+	var ring: int = 3
+	spec["buffer"] = ring
+	var layout: Dictionary = MapCompilerClass.compile(spec)
+	var covered: Dictionary = {}
+	for zone: Dictionary in layout.get("floor_zone_instances", []):
+		var base: Vector2i = zone.get("gu_cell", Vector2i.ZERO)
+		var size: Vector2i = zone.get("size", Vector2i.ONE)
+		for zx: int in range(size.x):
+			for zy: int in range(size.y):
+				covered[base + Vector2i(zx, zy)] = String(zone.get("material", ""))
+	var size_all: Vector2i = inner + Vector2i(ring, ring) * 2
+	var wrong: int = 0
+	var ring_cells: int = 0
+	var ring_declared: int = 0
+	for bx: int in range(size_all.x):
+		for by: int in range(size_all.y):
+			var ix: int = clampi(bx - ring, 0, inner.x - 1)
+			var iy: int = clampi(by - ring, 0, inner.y - 1)
+			var want: String = ""
+			if ix < half_x:
+				want = "concrete"
+			elif iy < half_y:
+				want = "metal"
+			var in_ring: bool = bx < ring or bx >= size_all.x - ring or by < ring or by >= size_all.y - ring
+			if in_ring:
+				ring_cells += 1
+				if want != "":
+					ring_declared += 1
+			if String(covered.get(Vector2i(bx, by), "")) != want:
+				wrong += 1
+	if wrong == 0 and ring_declared > 0 and ring_declared < ring_cells:
+		_pass("all %d cells carry the expected ground (%d ring cells, %d of them declared, the rest undeclared)" % [size_all.x * size_all.y, ring_cells, ring_declared])
+	else:
+		_fail("%d of %d cells carry the wrong ground (ring cells %d, declared %d)" % [wrong, size_all.x * size_all.y, ring_cells, ring_declared])
+	## A map with no buffer adds nothing.
+	spec["buffer"] = 0
+	var flat: Dictionary = MapCompilerClass.compile(spec)
+	if (flat.get("floor_zone_instances", []) as Array).size() == 2:
+		_pass("buffer 0 adds no ring zone (2 declared zones stay 2)")
+	else:
+		_fail("buffer 0 produced %d zone instance(s), expected 2" % (flat.get("floor_zone_instances", []) as Array).size())

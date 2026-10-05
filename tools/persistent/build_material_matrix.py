@@ -55,6 +55,12 @@ AGENT_ROWS_BELOW = 8
 GUARD_ROWS_BELOW = 3
 
 
+def map_buffer():
+    """The map's `board.buffer`: a map-internal cell is that much further in raw coordinates, on each axis. The rows-below constants
+    above were calibrated at buffer 1, so the Y offsets add `buffer - 1` (R3D-FINISH F2, 2026-10-04: the buffer is 5 now)."""
+    return int(json.load(open(MAP))["sections"]["board"].get("buffer", 1))
+
+
 def blocks_by_material():
     """{material: [gu, ...]} from the real map, in map-internal coords."""
     spec = json.load(open(MAP))
@@ -79,7 +85,7 @@ def _run(env_extra, quit_after):
 
 def grenade_row(material, gu):
     """One detonation in front of `material`'s block."""
-    cell = "%d,%d" % (gu[0] + 1, gu[1] + GRENADE_ROWS_BELOW)
+    cell = "%d,%d" % (gu[0] + map_buffer(), gu[1] + GRENADE_ROWS_BELOW + map_buffer() - 1)
     text = _run({
         "INFILTRAITOR_CAPTURE_ACTION": "test_zone_detonate",
         "INFILTRAITOR_GRENADE_GUS": cell,
@@ -107,11 +113,11 @@ def grenade_row(material, gu):
 
 def shot_row(material, gu):
     """One forced-miss shotgun burst into `material`'s block."""
-    x = gu[0] + 1
+    x = gu[0] + map_buffer()
     text = _run({
         "INFILTRAITOR_CAPTURE_ACTION": "agent_shot",
-        "INFILTRAITOR_SHOT_AGENT_CELL": "%d,%d" % (x, gu[1] + AGENT_ROWS_BELOW),
-        "INFILTRAITOR_SHOT_GUARD_CELL": "%d,%d" % (x, gu[1] + GUARD_ROWS_BELOW),
+        "INFILTRAITOR_SHOT_AGENT_CELL": "%d,%d" % (x, gu[1] + AGENT_ROWS_BELOW + map_buffer() - 1),
+        "INFILTRAITOR_SHOT_GUARD_CELL": "%d,%d" % (x, gu[1] + GUARD_ROWS_BELOW + map_buffer() - 1),
         "INFILTRAITOR_SHOT_TAG": "matrix_%s" % material,
     }, 600)
     rows = []

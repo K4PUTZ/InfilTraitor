@@ -33,10 +33,10 @@ SCENARIO = ("framing portrait; frames 90; ground_check n; perspective E; frames 
             "frames 30; ground_check s; perspective W; frames 30; ground_check w; quit")
 LINE = re.compile(r"\[GROUND-CHECK\] (\w) size \((\d+), (\d+)\) \| (walk .*)$")
 
-RECORDED = {  # map -> the one digest every view must give (the N digest of the R3D-END gate)
-    "GLASS": "walk 0b053874f39bf4fb6315611e57db33b8 select f3e7d9e337f02f0849cb67e02fa7a36b reach 69 fbf0374674e10b0a7e45b99a253e8ba9 paths 10 49448391fb6e8830df78e9a4e48a11f5 | view 86/560",
-    "PLAYGROUND": "walk 1eb876a5bfdb495f1746d1b26669adff select 1095de33d4998d807e204f20dade92eb reach 84 c46d752e7503cf4353a283949f73bd41 paths 12 e97045cdba41cfa2d4120d19163b9094 | view 95/1104",
-    "PLAYGROUND_2": "walk 793d35a7f40b1ab2704ed41036ddcc47 select 7dbae2d082261d7cdb9d7c9cd3665956 reach 71 7c5f83bb9db12c411836dbd8a246eff7 paths 11 22201d4163da25a05e1b3c3e923e8cf5 | view 70/800",
+RECORDED = {  # map -> the one digest every view must give (the N digest of the R3D-END gate). PLAYGROUND, GLASS and PLAYGROUND_2 re-recorded 2026-10-04 at buffer 5 (R3D-FINISH F2); their reach / paths counts are unchanged, SIGMA_01 (already buffer 5) kept its digest
+    "GLASS": "walk b6b5363ee219535d785b33571b6ff7f9 select 831481e658f20c479cda46c23d2b24a7 reach 69 c8d6d5233848362e0e59b32c1c918ff9 paths 10 a2b2472e536cd8b5945ea31364445423 | view 95/1008",
+    "PLAYGROUND": "walk 3b86473901f3bd5a7891fab2f3f0bf09 select be20cc67a4d78fc3147c871fe5eef74b reach 84 36cb5a0ccee9dc448e7b1464ef70970c paths 12 64a8ce123ed447561bfb17cdaff845fe | view 95/1728",
+    "PLAYGROUND_2": "walk a2620f80fce4bd1af02f09b9c4fb3259 select 6ea5cedd888b0737fd5cbc4d1f2b0da7 reach 71 e4aa0b80d1ed3e3a01a7ff227aa4d55e paths 11 e523665e541d6335efc84fe55505c02c | view 95/1392",
     "SIGMA_01": "walk fc8bb081d1af2f96fbc3d1c8c242fe3f select fbfa1b2c35d05c72f391613c48079784 reach 57 dd9bad12e38fe64b0ac4560d96b0d2eb paths 9 98caa4b463464191660302fef80fa3a7 | view 91/1288",
 }
 

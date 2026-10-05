@@ -84,7 +84,7 @@ GATE_LABELS = ["load", "g0", "g1"]
 ## (authored x 10..15, y 9), #1 at the small pane (authored 4, 9) beside the variant row.
 MAP_ENV = {
     "PLAYGROUND": {},
-    "GLASS": {"INFILTRAITOR_GRENADE_GUS": "14,12;5,12"},
+    "GLASS": {"INFILTRAITOR_GRENADE_GUS": "18,16;9,16"},
 }
 PROBE_LINE = re.compile(r"^\[BOARD-PROBE\] (\S+) .*→ (.+)$")
 ## Lines that mean the scenario itself went wrong, as opposed to boot noise.
@@ -107,8 +107,8 @@ SHADOW_STAGES = {
               ("restore", "save_restore"), ("reload", "reload")],
 }
 SHADOW_ENV = {
-    "PLAYGROUND": {"INFILTRAITOR_GRENADE_GUS": "25,2;37,2"},
-    "GLASS": {"INFILTRAITOR_GRENADE_GUS": "14,12;5,12"},
+    "PLAYGROUND": {"INFILTRAITOR_GRENADE_GUS": "29,6;41,6"},
+    "GLASS": {"INFILTRAITOR_GRENADE_GUS": "18,16;9,16"},
 }
 SHADOW_CONTROLS = {"PLAYGROUND": [("load", "g0"), ("g1", "shot")], "GLASS": [("load", "g0")]}
 STORE_LINE = re.compile(r"^\[VOXEL-STORE\] (s_\S+) — grid mismatches (\d+), writes mirrored (\d+), "

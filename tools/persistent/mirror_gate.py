@@ -32,7 +32,7 @@ LINE = re.compile(r"\[MIRROR-CHECK\] (\w+) cracks records=(-?\d+) twins=(-?\d+) 
 
 def boot() -> tuple[dict, str]:
     env = {**os.environ, "INFILTRAITOR_MAP": "GLASS", "INFILTRAITOR_RNG_SEED": "1",
-           "INFILTRAITOR_GRENADE_GUS": "14,12;5,12", "INFILTRAITOR_SCENARIO": SCENARIO}
+           "INFILTRAITOR_GRENADE_GUS": "18,16;9,16", "INFILTRAITOR_SCENARIO": SCENARIO}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--position", "4000,4000"], capture_output=True,
                          text=True, env=env, timeout=180)
     log = out.stdout + out.stderr

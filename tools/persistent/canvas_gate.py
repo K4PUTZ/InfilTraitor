@@ -30,8 +30,8 @@ TAG = "[CANVAS-GATE]"
 MIN_EXAMINED = 20
 STATES = ["idle", "aim", "flight", "landed", "blast", "after", "dev", "light", "heat", "numbers", "ruler"]
 LINE = re.compile(r"\[CANVAS-CHECK\] (\w+) examined=(\d+) shown=(\d+) canvas=(\d+) ?(.*)")
-SCENARIO = ("framing landscape; frames 60; centre agent; zoom 1.2; frames 30; canvas_check idle; aim 27,12; frames 15; canvas_check aim; "
-            "throw 0 27,12; frames 20; canvas_check flight; frames 70; canvas_check landed; frames 150; canvas_check blast; "
+SCENARIO = ("framing landscape; frames 60; centre agent; zoom 1.2; frames 30; canvas_check idle; aim 31,16; frames 15; canvas_check aim; "
+            "throw 0 31,16; frames 20; canvas_check flight; frames 70; canvas_check landed; frames 150; canvas_check blast; "
             "frames 200; canvas_check after; view_mode DEV; frames 10; canvas_check dev; view_mode LIGHT; frames 10; canvas_check light; "
             "view_mode HEAT; frames 10; canvas_check heat; view_mode NUMBERS; frames 10; canvas_check numbers; "
             "view_mode RULER; frames 10; canvas_check ruler; quit")
@@ -39,7 +39,7 @@ SCENARIO = ("framing landscape; frames 60; centre agent; zoom 1.2; frames 30; ca
 
 def main() -> int:
     env = {**os.environ, "INFILTRAITOR_MAP": "PLAYGROUND", "INFILTRAITOR_RNG_SEED": "1", "INFILTRAITOR_SCENARIO": SCENARIO,
-           "INFILTRAITOR_SEED_GRENADES": "1", "INFILTRAITOR_GRENADE_GUS": "24,10;27,9"}
+           "INFILTRAITOR_SEED_GRENADES": "1", "INFILTRAITOR_GRENADE_GUS": "28,14;31,13"}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--fixed-fps", "60", "--position", "4000,4000"], capture_output=True,
                          text=True, env=env, timeout=180)
     log = out.stdout + out.stderr

@@ -31,7 +31,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 CAPTURES = Path.home() / "Library/Application Support/Godot/app_userdata/INFILTRAITOR/captures"
-## PLAYGROUND's wall trios: authored x of the first block; the runtime column of the middle one is +2 (buffer 1).
+## PLAYGROUND's wall trios: authored x of the first block; the runtime column of the middle one is authored x + buffer + 1.
+## `BUFFER` is the map's `board.buffer`; the cells below were first calibrated at buffer 1, so each axis is shifted by BUFFER - 1.
+BUFFER = 5
+SHIFT = BUFFER - 1
 TRIO_X = {"concrete": 2, "metal": 7, "stone": 12, "wood": 17, "brick": 22,
           "cardboard": 26, "fabric": 30, "plywood": 34, "glass": 38}
 ## The wall band of a 390x844 portrait capture framed on the trio's south face, and the noise floor it was
@@ -51,13 +54,13 @@ def wall_band_changed(before: Path, after: Path) -> int:
 
 
 def shoot(material: str, weapon: str, fire: bool) -> tuple[str, int]:
-    rx = TRIO_X[material] + 2
+    rx = TRIO_X[material] + BUFFER + 1
     tag = "shot3dgate_%s_%s" % ("shot" if fire else "control", material)
-    scenario = ("framing portrait; frames 30; centre %d,3; zoom 2.2; frames 20; capture %s_before; %s"
-                "centre %d,3; frames 30; capture %s_after; quit") % (rx, tag, "shoot 0; " if fire else "", rx, tag)
+    scenario = ("framing portrait; frames 30; centre %d,%d; zoom 2.2; frames 20; capture %s_before; %s"
+                "centre %d,%d; frames 30; capture %s_after; quit") % (rx, 3 + SHIFT, tag, "shoot 0; " if fire else "", rx, 3 + SHIFT, tag)
     env = {**os.environ, "INFILTRAITOR_MAP": "PLAYGROUND", "INFILTRAITOR_RNG_SEED": "1",
            "INFILTRAITOR_SHOT_WEAPON": weapon,
-           "INFILTRAITOR_SHOT_AGENT_CELL": "%d,11" % rx, "INFILTRAITOR_SHOT_GUARD_CELL": "%d,6" % rx,
+           "INFILTRAITOR_SHOT_AGENT_CELL": "%d,%d" % (rx, 11 + SHIFT), "INFILTRAITOR_SHOT_GUARD_CELL": "%d,%d" % (rx, 6 + SHIFT),
            "INFILTRAITOR_SCENARIO": scenario}
     out = subprocess.run([GODOT, "--path", str(ROOT), "--position", "4000,4000"], capture_output=True,
                          text=True, env=env, timeout=180)

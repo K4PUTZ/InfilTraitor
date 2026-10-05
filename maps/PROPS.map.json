@@ -9,7 +9,7 @@
     "board": {
       "v": 1,
       "inner_size": [18, 12],
-      "buffer": 1,
+      "buffer": 5,
       "floor_tile": "floor_SE"
     },
     "actors": {

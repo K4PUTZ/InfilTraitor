@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 GODOT = "/Applications/Godot.app/Contents/MacOS/Godot"
 TAG = "[PICK-GATE]"
 MIN_OK = 20
-MAPS = {"DORM": "", "GLASS": "14,12;5,12", "PLAYGROUND": ""}
+MAPS = {"DORM": "", "GLASS": "18,16;9,16", "PLAYGROUND": ""}
 LINE = re.compile(r"\[PICK-CHECK\] (\w+) view=(\w) cells=(\d+) ok=(\d+) covered=(\d+) bad=(\d+) offscreen=(\d+)")
 
 

@@ -24,20 +24,20 @@ static func register_board(registry) -> void:
 		func(fragment: Dictionary) -> Dictionary:
 			return {
 				"inner_size": fragment.get("inner_size", [28, 18]),
-				"buffer": fragment.get("buffer", 1),
+				"buffer": fragment.get("buffer", 5),
 				"floor_tile": fragment.get("floor_tile", "floor_SE")
 			},
 		func(raw: Dictionary) -> Dictionary:
 			return {
 				"inner_size": raw.get("inner_size", [28, 18]),
-				"buffer": raw.get("buffer", 1),
+				"buffer": raw.get("buffer", 5),
 				"floor_tile": raw.get("floor_tile", "floor_SE")
 			},
 		{},
 		func() -> Dictionary:
 			return {
 				"inner_size": [28, 18],
-				"buffer": 1,
+				"buffer": 5,  ## R3D-FINISH F2: the ground ring around the playable area (every shipped map declares 5)
 				"floor_tile": "floor_SE"
 			}
 	))

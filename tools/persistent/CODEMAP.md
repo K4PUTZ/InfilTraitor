@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**254 scripts · 78938 lines total** (under `godot/scripts/`)
+**254 scripts · 79045 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3792,11 +3792,11 @@ extends `SceneTree` · 232 lines
 
 ### `floor_zone_bake_selftest.gd`
 
-extends `SceneTree` · 133 lines
+extends `SceneTree` · 196 lines
 
 `godot/scripts/tools/floor_zone_bake_selftest.gd`
 
-> FLOOR-BAKE-01 — floor-zone photographic ground bake selftest. Rodar: godot --headless --script res://godot/scripts/tools/floor_zone_bake_selftest.gd R3D-END END-4: the compositor and the baked lookup are gone, and with them criteria [1]-[3] (the shared page family, the resolved atoms, pixel continuity, isotropy and the full-colour modulate) and [4] (END-1). What survives is the data contract: 5. ROTATION: building the E view puts a zone's Slab material at the correctly-rotated GU, exactly like roof's block rotation The expectation is re-derived locally (own rotation math), never read back from the code under test.
+> FLOOR-BAKE-01 — floor-zone photographic ground bake selftest. Rodar: godot --headless --script res://godot/scripts/tools/floor_zone_bake_selftest.gd R3D-END END-4: the compositor and the baked lookup are gone, and with them criteria [1]-[3] (the shared page family, the resolved atoms, pixel continuity, isotropy and the full-colour modulate) and [4] (END-1). What survives is the data contract: 5. ROTATION: building the E view puts a zone's Slab material at the correctly-rotated GU, exactly like roof's block rotation 6. BUFFER RING (R3D-FINISH F2): the ring around the playable area is the SAME ground as the playable edge it continues The expectation is re-derived locally (own rotation math), never read back from the code under test.
 
 **Constants / tuning**
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
@@ -3812,6 +3812,7 @@ extends `SceneTree` · 133 lines
 
 **Public API**
 - `func test_5_rotated_view_zones_follow_declared_material() -> void:`
+- `func test_6_buffer_ring_continues_the_edge_ground() -> void:`
 
 ---
 
@@ -5423,7 +5424,7 @@ extends `Node2D` · 63 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 435 lines
+`class_name MapCompiler` · extends `RefCounted` · 479 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 

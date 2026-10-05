@@ -1,6 +1,6 @@
 # PROPOSAL — damage variants for metal and wood
 
-**Status:** proposal, 2026-10-05, for the Director's ruling. Nothing here is built. Part of R3D-LOOK L1.
+**Status (2026-10-05, later): CLOSED with option A as "keep the authored art".** A metal redraw (puncture / graze / flaked; buckle / crumple / bloom, `gen_metal_decals.py`) was built and judged worse than the original, so it was reverted (the files are in `ARCHIVE/metal_decals_2026-10-05_optionA/`); the wood originals already cover option A, so wood is untouched. Option B and the fire-tied charred variants were never ruled. The text below is the original proposal. Part of R3D-LOOK L1.
 **Asked by the Director (2026-10-05):** metal and wood do not crack like stone, "mas poderíamos ter outros tipos de variação".
 
 ## 1. What exists, and the rails any proposal runs on

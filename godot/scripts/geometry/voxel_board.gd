@@ -50,8 +50,8 @@ const IMPACT_FLOOR_MATERIAL: String = "earth"
 const IMPACT_CRACK_MATERIALS: Array[String] = ["concrete", "stone", "brick"]
 
 ## FLOOR-DEPTH-02: one tone step per level below the ground plane (index = depth - 1; the walkable top face is 1.0). Read by
-## `Board3DLive`; ramp chosen by measurement on a real detonation (2026-07-28), deeper entries are for the map's outer lateral cut.
-const FLOOR_DEPTH_DIM: Array[float] = [1.0, 0.70, 0.45, 0.34, 0.28]
+## `Board3DLive`; ramp chosen by measurement on a real detonation (2026-07-28), SOFTENED 2026-10-05 from [1.0, 0.70, 0.45, 0.34, 0.28] (Director: the first step read as a cliff), deeper entries are for the map's outer lateral cut.
+const FLOOR_DEPTH_DIM: Array[float] = [1.0, 0.82, 0.62, 0.46, 0.34]
 
 ## Light buckets, dark to full-lit. The ladder itself is `BoardLook`'s; the cell planes and the light field are built for this
 ## many. (R3D-END END-4: the alternative-tile mechanism that used to carry the bucket, and the debug knobs that A/B'd it, went.)

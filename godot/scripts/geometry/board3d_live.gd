@@ -228,9 +228,12 @@ void fragment() {
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	// A side face BELOW the ground plane (a crater's walls, the map's cut) is the material's flat colour: the facade pattern
 	// (brick courses, planks) belongs to what you walk on and to standing walls, not to the inside of a pit (Director 2026-10-05).
-	float lum = (has_facade > 0.5 && !(rel < 0 && face != 0)) ? texture(facade, mirrored).r : 1.0;
+	// The walkable floor (rel -1) keeps its top texture; everything deeper in a crater is flat, tops and sides alike, or the pit reads as a
+	// second floor of the same material under the first.
+	bool flat_pit = rel < -1 || (rel < 0 && face != 0);
+	float lum = (has_facade > 0.5 && !flat_pit) ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
-	if (face == 0 && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
+	if (face == 0 && !flat_pit && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
 		vec3 macro_mult = vec3(mix(0.85, 1.15, macro_n.r), mix(0.85, 1.15, macro_n.g), mix(0.90, 1.05, macro_n.b));
 		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);
@@ -271,9 +274,12 @@ static var DECAL_SHADER: String = OPAQUE_SHADER \
 	vec2 mirrored = mix(fr, 2.0 - fr, step(1.0, fr));
 	// A side face BELOW the ground plane (a crater's walls, the map's cut) is the material's flat colour: the facade pattern
 	// (brick courses, planks) belongs to what you walk on and to standing walls, not to the inside of a pit (Director 2026-10-05).
-	float lum = (has_facade > 0.5 && !(rel < 0 && face != 0)) ? texture(facade, mirrored).r : 1.0;
+	// The walkable floor (rel -1) keeps its top texture; everything deeper in a crater is flat, tops and sides alike, or the pit reads as a
+	// second floor of the same material under the first.
+	bool flat_pit = rel < -1 || (rel < 0 && face != 0);
+	float lum = (has_facade > 0.5 && !flat_pit) ? texture(facade, mirrored).r : 1.0;
 	ALBEDO = srgb_to_linear(base_color * lum * f);
-	if (face == 0 && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
+	if (face == 0 && !flat_pit && (rel < 0 ? has_surface_floor : has_surface_roof) > 0.5) {
 		vec3 macro_n = texture(surface_macro, v_world.xz / 61.0).rgb;
 		vec3 macro_mult = vec3(mix(0.85, 1.15, macro_n.r), mix(0.85, 1.15, macro_n.g), mix(0.90, 1.05, macro_n.b));
 		ALBEDO = srgb_to_linear(texture(surface_tex, v_world.xz / 8.0).rgb * macro_mult * f);

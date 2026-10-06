@@ -1,6 +1,6 @@
 # SURFACES_MASTER_PLAN — what lies on the floor
 
-**v1.3 — 2026-10-06 (DS-15: stamps become a load-time DERIVED cache; v1.2 below).** **v1.2 — 2026-10-06 (SM-2 scatter BUILT except its handset rows; v1.1: the Director's answers to §7, DS-11..DS-14).** Status: 🟢 floors, transitions, tags, colour and the art rooms are BUILT; 🟡 the floor-mark classes (marking, scatter,
+**v1.4 — 2026-10-06 (DS-16: the customisation vision; v1.3: DS-15, stamps are a load-time DERIVED cache).** **v1.2 — 2026-10-06 (SM-2 scatter BUILT except its handset rows; v1.1: the Director's answers to §7, DS-11..DS-14).** Status: 🟢 floors, transitions, tags, colour and the art rooms are BUILT; 🟡 the floor-mark classes (marking, scatter,
 stroke, dense layer) are RATIFIED IN PRINCIPLE (Director, 2026-10-06, "Perfeito") and NOT built; nothing in §5-§7 exists yet.
 
 This plan owns **everything that makes a floor look like a place**: the base materials (facade or photographic), the borders between them,
@@ -69,6 +69,7 @@ Not built, on purpose: hazard stripes as a floor (principle 4), the floor-gratin
 | DS-12 | 2026-10-06 | **Scatter is the first stage** (SM-2), before marking | it unlocks forest, yards and stains |
 | DS-13 | 2026-10-06 | **Blood and bodily marks are in** ("qualquer coisa pode ter"): spatter and pools are scatter, drag marks are strokes. Each such kind carries `"mature": true` in `rules.json` so a build or a setting can drop them without touching a map | a rating or a setting may need to switch them off |
 | DS-15 | 2026-10-06 | **The game is fully customisable, so a user supplies SINGLE decals, never clustered art. Cluster stamps are DERIVED at load by a regenerator** that composes the singles into the macro-patterns by a RECIPE (data), writes them to a cache and replaces the previous cache. The checked-in-by-script stamp PNGs of v1.2 are retired as a source of truth | the Director: a user cannot be asked for clustered art; also a clean clone has no stamps today (the PNGs are git-ignored) |
+| DS-16 | 2026-10-06 | **The product is fully customisable: an OPEN folder tree of art that the player may overwrite (the game asks for a photo of wood, stone, ...). The folders are always open; what the game DISPLAYS is limited by what the player has earned: the permission to override each TYPE of texture is unlocked through gameplay (merit).** The game therefore ships a **default pack** (the PNGs, produced by the dev-time generators) and the **regenerators** for what derives from user art (DS-15); user art wins only where the permission is held | the Director. Consequences (§11): the access check is ONE gate in the resolvers, never scattered; user content is data only (images, never a resource that can carry a script); the validators of `check_facade.py` / `check_surface.py` have to exist IN the engine, because Python does not ship with the game |
 | DS-14 | 2026-10-06 | **Liquids are a parked track** (no liquid materials yet). Under a grating, for now, only a STEAM VENT effect that rises through it, to see the place; water and lava wait for the liquid materials | the Director |
 
 ## 4. The four classes of floor mark (DS-7)
@@ -146,3 +147,19 @@ scatter determinism gate (SM-2).
 
 2026-10-06: transitions, tags, voxel lattice, the corporate and industrial floors, the carpet set and its palette, `facade_from`,
 `material_tints`, the two art rooms; see the commits in §2. Chat record: the Director's rulings in §3 are quoted from that session.
+
+## 11. Customisation: the open tree, the merit gate, the ingestion of a photo (DS-16; designed, NOT built)
+
+**What already exists.** `TextureResolver` resolves a texture through a chain: `user://textures/<folder>/` first, then the shipped `res://ASSETS/materials/<folder>/`, then `Tier.NONE` (a facade, a slab plane and the macro map go through it; `MaterialRegistry` and `PropRegistry` are two-tier the same way, user wins). The decals (`ART_DIR`), `surfaces/rules.json` and the stamp recipes are `res://` only.
+
+**What DS-16 adds.**
+1. **The tree.** `user://textures/<category>/<id>/...` for facades and photo planes (exists), `user://decals/<kind>/...` for the single decals, `user://surfaces/rules.json` merged over the shipped rules. All always present on disk, never hidden by the game.
+2. **The gate.** ONE call, `CustomisationGate.allows(category) -> bool`, asked by the resolvers when they reach the user tier: a closed category is skipped and the SHIPPED default draws, silently and correctly (the default pack always renders; user art replaces it only where the permission is held). The permission set comes from the player's profile (progression), never from a file the player can edit. A category is a group of the catalog (`SURFACES_CATALOG`: e.g. natural grounds, corporate floors, industrial floors, scatter marks, `mature` marks), not a single material.
+3. **The shipped default pack.** The procedural generators (`tools/asset_generation/gen_*`) are DEV-TIME producers of the pack that ships; a clean build must run them (an asset step in the build, since the PNGs are git-ignored today). The runtime regenerators are only for what derives from user art (the stamps of DS-15).
+4. **Photo ingestion** ("send us a photo of wood"): a player photo is not a valid facade. The engine must NORMALISE it: for a FACADE, grayscale, resample to 1024 x 512, match mean and contrast to a target, enforce the mirror symmetry the shader assumes (mirror-tile the crop); for a PHOTO PLANE, make it seamless (offset-and-blend, or mirror-repeat when the Director accepts the symmetry) at 1024 x 1024. Then VALIDATE with the same rules as `check_facade.py` / `check_surface.py`, ported into the engine, and compute `facade_mean` itself (a player never writes a JSON row).
+5. **Safety.** Images only, loaded with `Image.load_from_file`, never `ResourceLoader` (a `.tres` / `.res` can carry a script; ACTOR D69); a size and dimension cap; the photo-plane cap (8 per map, ~3 MB VRAM each) enforced at ingestion, not left to the artist.
+
+**Order.** SM-2b (the regenerator + tile culling) first: it makes the resolver user-aware for the singles and cuts the measured cost. Then the gate (a small seam with no unlock content yet, so everything is allowed until the progression exists), then ingestion as its own stage, `SM-9`.
+
+**Open decisions (Director).** (a) Unlock granularity: per catalog CATEGORY (proposed) or per material / kind? (b) A map that needs a locked override: the shipped default renders (proposed), or the thing is hidden? (c) Ingestion: normalise IN the game from a photo (proposed, it is the point of "ask for a photo"), or require grayscale files made to `ART_SPECIFICATIONS`? (d) Does a locked category still list in the player's folder tree (visible, greyed) or not at all?
+

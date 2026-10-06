@@ -11,7 +11,7 @@
    "v": 1,
    "inner_size": [
     44,
-    24
+    34
    ],
    "buffer": 5,
    "floor_tile": "floor_SE"
@@ -19,8 +19,8 @@
   "actors": {
    "v": 1,
    "agent_start": [
-    1,
-    1
+    6,
+    29
    ],
    "guards": []
   },
@@ -80,6 +80,71 @@
       3
      ],
      "material": "sand",
+     "storeys": 1,
+     "size": [
+      2,
+      2
+     ]
+    },
+    {
+     "comment": "carpet block",
+     "gu": [
+      7,
+      27
+     ],
+     "material": "carpet",
+     "storeys": 1,
+     "size": [
+      2,
+      2
+     ]
+    },
+    {
+     "comment": "parquet block",
+     "gu": [
+      15,
+      27
+     ],
+     "material": "parquet",
+     "storeys": 1,
+     "size": [
+      2,
+      2
+     ]
+    },
+    {
+     "comment": "tile block",
+     "gu": [
+      23,
+      27
+     ],
+     "material": "tile",
+     "storeys": 1,
+     "size": [
+      2,
+      2
+     ]
+    },
+    {
+     "comment": "concrete block",
+     "gu": [
+      31,
+      27
+     ],
+     "material": "concrete",
+     "storeys": 1,
+     "size": [
+      2,
+      2
+     ]
+    },
+    {
+     "comment": "stone block",
+     "gu": [
+      39,
+      27
+     ],
+     "material": "stone",
      "storeys": 1,
      "size": [
       2,
@@ -1086,6 +1151,66 @@
       1
      ],
      "material": "gravel"
+    },
+    {
+     "comment": "human floor carpet",
+     "gu": [
+      2,
+      25
+     ],
+     "size": [
+      8,
+      8
+     ],
+     "material": "carpet"
+    },
+    {
+     "comment": "human floor parquet",
+     "gu": [
+      10,
+      25
+     ],
+     "size": [
+      8,
+      8
+     ],
+     "material": "parquet"
+    },
+    {
+     "comment": "human floor tile",
+     "gu": [
+      18,
+      25
+     ],
+     "size": [
+      8,
+      8
+     ],
+     "material": "tile"
+    },
+    {
+     "comment": "human floor concrete",
+     "gu": [
+      26,
+      25
+     ],
+     "size": [
+      8,
+      8
+     ],
+     "material": "concrete"
+    },
+    {
+     "comment": "human floor stone",
+     "gu": [
+      34,
+      25
+     ],
+     "size": [
+      8,
+      8
+     ],
+     "material": "stone"
     }
    ]
   },
@@ -1095,7 +1220,12 @@
     "grass",
     "dirt",
     "gravel",
-    "sand"
+    "sand",
+    "carpet",
+    "parquet",
+    "tile",
+    "concrete",
+    "stone"
    ]
   },
   "ground_decals": {

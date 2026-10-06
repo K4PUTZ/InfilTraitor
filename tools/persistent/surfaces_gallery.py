@@ -44,6 +44,14 @@ def scenario(tag: str, zoom: float) -> tuple[str, list[str]]:
         steps += ["centre %d,%d" % (x0 + gen.PAD_W / 2.0 + BUFFER, gen.PAD_Y0 + gen.PAD_H / 2.0 + BUFFER), "zoom %.2f" % (zoom * 0.8),
                   "frames 30", "capture %s_pad_%s" % (tag, name)]
         names.append("pad_" + name)
+    hy = gen.HUMAN_Y0 + gen.HUMAN_H / 2.0
+    steps += ["centre %d,%d" % (gen.COLUMN_X0 + 20 + BUFFER, hy + BUFFER), "zoom 0.3", "frames 30", "capture %s_human_wide" % tag]
+    names.append("human_wide")
+    for i, mat in enumerate(gen.HUMAN):
+        steps += ["centre %d,%d" % (gen.COLUMN_X0 + i * 8 + 4 + BUFFER, hy + BUFFER), "zoom %.2f" % zoom, "frames 30", "capture %s_human_%s" % (tag, mat)]
+        names.append("human_" + mat)
+    steps += ["centre agent", "zoom 1.6", "frames 30", "capture %s_agent_scale" % tag]
+    names.append("agent_scale")
     steps += ["centre %d,%d" % (mid_x + BUFFER, mid_y + BUFFER), "zoom 0.12", "perspective E", "frames 40", "capture %s_overview_E" % tag]
     names.append("overview_E")
     steps.append("quit")
@@ -88,7 +96,7 @@ def main() -> int:
         images.append(im)
     if images:
         w, h = images[0].size
-        cols = 2
+        cols = 3
         rows = (len(images) + cols - 1) // cols
         sheet = Image.new("RGB", (w * cols, h * rows))
         for i, im in enumerate(images):

@@ -1,0 +1,21 @@
+{
+  "id": "parquet",
+  "family": "wood",
+  "tags": [
+    "wood",
+    "indoor"
+  ],
+  "destroy_factor": 0.75,
+  "dent_factor": 0.2,
+  "crack_factor": 0.0,
+  "flammability": 1.4,
+  "base_color": [
+    0.8,
+    0.58,
+    0.38
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": true,
+  "burn_consumption": 0.2,
+  "smoke_chance": 0.3
+}

@@ -141,7 +141,133 @@ def oil(rng: np.random.Generator, n: int) -> Image.Image:
     return Image.fromarray((out * 255).astype(np.uint8), "RGBA")
 
 
-STAMPS = {"leaf_litter": leaf_litter, "pebbles": pebbles, "dirt": dirt, "oil": oil}
+# ── SINGLES: one mark each, 256 px, three variants; small (0.3-0.8 GU) so they mix with the stamps and break up their repetition ──
+SS = 256
+
+
+def _single_canvas() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    yy, xx = np.mgrid[0:SS, 0:SS].astype(float)
+    return xx, yy, np.zeros((SS, SS, 4))
+
+
+def _to_image(arr: np.ndarray) -> Image.Image:
+    return Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8), "RGBA")
+
+
+def _one_leaf(n: int) -> Image.Image:
+    """One leaf of the leaf art: the art is a PAIR, so the connected parts of its alpha are separated and one of them (n mod parts) is
+    cut out."""
+    from scipy.ndimage import label
+    art = Image.open(DECALS / "decal_patch_leaf_0.png").convert("RGBA")
+    alpha = np.array(art)[..., 3]
+    labels, count = label(alpha > 24)
+    if count < 2:
+        return art.crop(art.getbbox())
+    sizes = [(labels == i).sum() for i in range(1, count + 1)]
+    keep = [i + 1 for i in sorted(range(count), key=lambda k: -sizes[k])[:2]]
+    part = keep[n % len(keep)]
+    arr = np.array(art)
+    arr[..., 3] = np.where(labels == part, arr[..., 3], 0)
+    one = Image.fromarray(arr, "RGBA")
+    return one.crop(one.getbbox())
+
+
+def leaf_single(rng: np.random.Generator, n: int) -> Image.Image:
+    """ONE leaf (the leaf art, tinted and turned), filling most of its quad."""
+    leaf = _one_leaf(n)
+    scale = 0.86 * SS / max(leaf.size)
+    im = leaf.resize((max(2, int(leaf.width * scale)), max(2, int(leaf.height * scale))), Image.LANCZOS)
+    im = im.rotate(float(rng.uniform(0, 360)), expand=True, resample=Image.BICUBIC)
+    tint = [(1.0, 1.0, 1.0), (1.2, 0.95, 0.5), (1.0, 0.62, 0.3)][n % 3]
+    arr = np.array(im).astype(float)
+    arr[..., :3] = np.clip(arr[..., :3] * np.array(tint), 0, 255)
+    im = Image.fromarray(arr.astype(np.uint8), "RGBA")
+    canvas = Image.new("RGBA", (SS, SS), (0, 0, 0, 0))
+    im.thumbnail((SS - 8, SS - 8))
+    canvas.alpha_composite(im, ((SS - im.width) // 2, (SS - im.height) // 2))
+    return canvas
+
+
+def pebble(rng: np.random.Generator, n: int) -> Image.Image:
+    """ONE stone, lit from the top left, with a short shadow."""
+    xx, yy, out = _single_canvas()
+    a, b = rng.uniform(70, 100), rng.uniform(55, 85)
+    ang = rng.uniform(0, np.pi)
+    dx, dy = xx - SS / 2.0, yy - SS / 2.0
+    u = dx * np.cos(ang) + dy * np.sin(ang)
+    v = -dx * np.sin(ang) + dy * np.cos(ang)
+    d = (u / a) ** 2 + (v / b) ** 2
+    h = np.sqrt(np.clip(1.0 - d, 0, 1))
+    light = np.clip(0.62 + 0.5 * (-(dx * 0.6 + dy * 0.8) / (max(a, b) * 1.2)) * h + 0.25 * h, 0.25, 1.25)
+    col = np.array([(0.52, 0.50, 0.47), (0.40, 0.38, 0.36), (0.60, 0.55, 0.48)][n % 3]) * rng.uniform(0.9, 1.1)
+    grain = 1.0 + 0.06 * norm(gaussian_filter(rng.normal(size=(SS, SS)), 1.2))
+    inside = d < 1.0
+    sd = ((u - 8.0) / (a * 1.12)) ** 2 + ((v - 10.0) / (b * 1.12)) ** 2
+    shadow = np.clip(1.2 - sd, 0, 1) * 0.45
+    out[..., :3] = np.where(inside[..., None], col[None, None, :] * (light * grain)[..., None], 0.04)
+    out[..., 3] = np.clip(np.maximum(inside.astype(float), shadow * (~inside)), 0, 1)
+    return _to_image(out)
+
+
+def twig(rng: np.random.Generator, n: int) -> Image.Image:
+    """A thin dry twig with a fork: a bent stroke, darker at the edge, lit from above."""
+    xx, yy, out = _single_canvas()
+    alpha = np.zeros((SS, SS))
+    ang0 = rng.uniform(0, 2 * np.pi)
+
+    def stroke(x0, y0, ang, length, width, bend):
+        a = ang
+        x, y = x0, y0
+        for t in range(int(length)):
+            a += bend * rng.normal(0, 0.012)
+            x += np.cos(a)
+            y += np.sin(a)
+            w = width * (1.0 - 0.55 * t / length)
+            d = np.hypot(xx - x, yy - y)
+            alpha[:] = np.maximum(alpha, np.clip((w - d) * 1.4, 0, 1))
+        return x, y, a
+    ex, ey, ea = stroke(SS / 2.0 - np.cos(ang0) * 90, SS / 2.0 - np.sin(ang0) * 90, ang0, 185, 6.5, 1.0)
+    mx = SS / 2.0 - np.cos(ang0) * 20
+    my = SS / 2.0 - np.sin(ang0) * 20
+    stroke(mx, my, ang0 + rng.choice([-0.6, 0.6]), 62, 3.8, 1.4)
+    grain = norm(gaussian_filter(rng.normal(size=(SS, SS)), 1.0))
+    base = np.array([0.30, 0.21, 0.13])
+    out[..., :3] = np.clip(base[None, None, :] * (1.0 + 0.2 * grain[..., None]), 0, 1)
+    out[..., 3] = alpha
+    return _to_image(out)
+
+
+def dirt_spot(rng: np.random.Generator, n: int) -> Image.Image:
+    """A small soft patch of bare dirt."""
+    xx, yy, out = _single_canvas()
+    r = np.hypot(xx - SS / 2.0, yy - SS / 2.0) / (SS / 2.0)
+    shape = norm(gaussian_filter(rng.normal(size=(SS, SS)), 16)) * 0.3
+    mask = np.clip((0.85 - r) * 2.6 + shape, 0, 1)
+    mask = mask * mask * (3 - 2 * mask) * np.clip((0.96 - r) * 6.0, 0, 1)
+    mott = norm(gaussian_filter(rng.normal(size=(SS, SS)), 4))
+    out[..., :3] = np.clip(np.array([0.36, 0.26, 0.17])[None, None, :] * (1.0 + 0.16 * mott[..., None]), 0, 1)
+    out[..., 3] = mask * 0.85
+    return _to_image(out)
+
+
+def oil_drop(rng: np.random.Generator, n: int) -> Image.Image:
+    """One or two small glossy oil drops."""
+    xx, yy, out = _single_canvas()
+    alpha = np.zeros((SS, SS))
+    for _ in range(int(rng.integers(1, 3))):
+        cx, cy = SS / 2.0 + rng.uniform(-50, 50), SS / 2.0 + rng.uniform(-50, 50)
+        rad = rng.uniform(34, 62)
+        ang = np.arctan2(yy - cy, xx - cx)
+        warp = 1.0 + 0.18 * np.sin(3 * ang + rng.uniform(0, 6)) + 0.1 * np.sin(5 * ang + rng.uniform(0, 6))
+        alpha = np.maximum(alpha, np.clip((1.0 - np.hypot(xx - cx, yy - cy) / (rad * warp)) * 5.0, 0, 1))
+    spec = np.clip(norm(gaussian_filter(rng.normal(size=(SS, SS)), 5)) * 0.5 - 0.7, 0, 1)
+    out[..., :3] = np.clip(np.array([0.045, 0.045, 0.05])[None, None, :] + 0.4 * spec[..., None], 0, 1)
+    out[..., 3] = alpha * 0.88
+    return _to_image(out)
+
+
+STAMPS = {"leaf_litter": leaf_litter, "pebbles": pebbles, "dirt": dirt, "oil": oil,
+          "leaf_single": leaf_single, "pebble": pebble, "twig": twig, "dirt_spot": dirt_spot, "oil_drop": oil_drop}
 
 
 def main() -> int:

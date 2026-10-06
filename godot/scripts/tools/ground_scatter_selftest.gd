@@ -19,6 +19,12 @@ func _check(ok: bool, label: String) -> void:
 		_failures += 1
 
 
+func spec_for_mix() -> Dictionary:
+	var base: Dictionary = FileMapSourceClass.new().get_runtime_spec("SURFACES_SCATTER").duplicate(true)
+	base["ground_scatter"] = [{"zone": [1, 1, 4, 4], "kinds": [["leaf", 0.0], ["pebble", 1.0]]}, {"zone": [1, 1, 4, 4], "kinds": [["pebbles", 1], ["pebble", 4]], "density": 0.5}]
+	return base
+
+
 func _init() -> void:
 	print("\n== GROUND SCATTER SELFTEST ==\n")
 	var zone := Rect2(10.0, 20.0, 20.0, 20.0)
@@ -68,6 +74,21 @@ func _init() -> void:
 	for inst: Dictionary in around["instances"]:
 		under_wall += 1 if wall.has_point(inst["at"]) else 0
 	_check(under_wall == 0 and int(around["stats"]["leaf_litter"]["blocked"]) > 0, "nothing lies under a standing thing: %d under the wall, %d refused" % [under_wall, int(around["stats"]["leaf_litter"]["blocked"])])
+
+	## A weighted MIX of a stamp and a single: the cells draw their kind by weight, deterministically, and each kind keeps its own rules.
+	var mix_item := {"zone": zone, "kinds": [["leaf_litter", 1.0], ["leaf_single", 3.0]], "seed": 9, "density": 1.0}
+	var mixed: Dictionary = GroundScatterClass.expand([mix_item], no_tags, no_block)
+	var stamps_n: int = int(mixed["stats"]["leaf_litter"]["placed"])
+	var singles_n: int = int(mixed["stats"]["leaf_single"]["placed"])
+	var share: float = float(singles_n) / float(maxi(stamps_n + singles_n, 1))
+	_check(stamps_n > 0 and singles_n > stamps_n and share > 0.62 and share < 0.88, "a 1:3 mix places about 75%% singles (%d stamps, %d singles, %.0f%%)" % [stamps_n, singles_n, share * 100.0])
+	_check(str(mixed["instances"]) == str(GroundScatterClass.expand([mix_item], no_tags, no_block)["instances"]), "a mix is deterministic too")
+	var mixed_arid: Dictionary = GroundScatterClass.expand([mix_item], arid, no_block)
+	_check((mixed_arid["instances"] as Array).is_empty(), "a mix is barred on an arid floor kind by kind (no stamp, no single)")
+	var bad_mix: Dictionary = GroundScatterClass.expand([{"zone": zone, "kinds": [["leaf_litter", 1.0], ["no_such_kind", 1.0]], "seed": 1, "density": 0.5}], no_tags, no_block)
+	_check((bad_mix["instances"] as Array).is_empty(), "a mix with an unknown kind places nothing (loudly)")
+	var mix_spec: Dictionary = spec_for_mix()
+	_check((MapCompilerClass.compile(mix_spec).get("ground_scatter_items", []) as Array).size() == 1, "a mix with a zero weight is refused by the compiler (loudly), a good one stays")
 
 	var none: Dictionary = GroundScatterClass.expand([{"zone": zone, "kind": "no_such_kind", "seed": 1}], no_tags, no_block)
 	_check((none["instances"] as Array).is_empty(), "a kind that is not in the rules places nothing (loudly)")

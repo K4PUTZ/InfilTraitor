@@ -89,6 +89,84 @@
         "sterile",
         "tile"
       ]
+    },
+    "leaf_single": {
+      "class": "scatter",
+      "size": 0.5,
+      "scale": [
+        0.7,
+        1.3
+      ],
+      "density": 0.9,
+      "priority": 4,
+      "requires": [],
+      "forbids": [
+        "arid",
+        "sterile",
+        "indoor",
+        "metal"
+      ]
+    },
+    "pebble": {
+      "class": "scatter",
+      "size": 0.3,
+      "scale": [
+        0.6,
+        1.5
+      ],
+      "density": 1.2,
+      "priority": 1,
+      "requires": [],
+      "forbids": [
+        "sterile"
+      ]
+    },
+    "twig": {
+      "class": "scatter",
+      "size": 0.8,
+      "scale": [
+        0.7,
+        1.3
+      ],
+      "density": 0.25,
+      "priority": 3,
+      "requires": [],
+      "forbids": [
+        "arid",
+        "sterile",
+        "indoor",
+        "metal"
+      ]
+    },
+    "dirt_spot": {
+      "class": "scatter",
+      "size": 0.6,
+      "scale": [
+        0.7,
+        1.4
+      ],
+      "density": 0.4,
+      "priority": 0,
+      "requires": [],
+      "forbids": [
+        "sterile"
+      ]
+    },
+    "oil_drop": {
+      "class": "scatter",
+      "size": 0.4,
+      "scale": [
+        0.7,
+        1.5
+      ],
+      "density": 0.2,
+      "priority": 4,
+      "requires": [],
+      "forbids": [
+        "organic",
+        "sterile",
+        "tile"
+      ]
     }
   }
 }

@@ -169,7 +169,8 @@ static func register_ground_decals(registry) -> void:
 ## ground_scatter (R3D-SURFACES SM-2, 2026-10-06): organic floor marks generated per ZONE. `{zone: [x, y, w, h], kind, density?, seed, scale?}` --
 ## `zone` in GU (inner coordinates), `kind` a scatter stamp of `surfaces/rules.json` (several decals baked into one image), `density`
 ## stamps per GU^2 (the kind's default when absent), `seed` an int, `scale` [min, max] (the kind's when absent). The expansion is
-## deterministic (`GroundScatter`); cosmetic: never saved.
+## deterministic (`GroundScatter`); cosmetic: never saved. An item may carry `kinds: [[kind, weight], ...]` instead of `kind`: a weighted MIX of
+## stamps and small singles drawn per grid cell.
 static func register_ground_scatter(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(

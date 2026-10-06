@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**263 scripts · 80984 lines total** (under `godot/scripts/`)
+**263 scripts · 81058 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -753,7 +753,7 @@ extends `Node3D` · 2573 lines
 
 ### `ground_scatter.gd`
 
-`class_name GroundScatter` · extends `RefCounted` · 79 lines
+`class_name GroundScatter` · extends `RefCounted` · 114 lines
 
 `godot/scripts/geometry/ground_scatter.gd`
 
@@ -4183,7 +4183,7 @@ extends `SceneTree` · 117 lines
 
 ### `ground_scatter_selftest.gd`
 
-extends `SceneTree` · 85 lines
+extends `SceneTree` · 106 lines
 
 `godot/scripts/tools/ground_scatter_selftest.gd`
 
@@ -4194,6 +4194,9 @@ extends `SceneTree` · 85 lines
 - `SurfaceRulesClass` = `preload("res://godot/scripts/systems/surface_rules.gd")`
 - `FileMapSourceClass` = `preload("res://godot/scripts/world/maps/file_map_source.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`
+
+**Public API**
+- `func spec_for_mix() -> Dictionary:`
 
 ---
 
@@ -5603,7 +5606,7 @@ extends `Node2D` · 63 lines
 
 ### `map_compiler.gd`
 
-`class_name MapCompiler` · extends `RefCounted` · 519 lines
+`class_name MapCompiler` · extends `RefCounted` · 530 lines
 
 `godot/scripts/world/maps/map_compiler.gd`
 
@@ -5664,7 +5667,7 @@ extends `Node2D` · 63 lines
 
 ### `map_sections_v1.gd`
 
-`class_name MapSectionsV1` · extends `RefCounted` · 326 lines
+`class_name MapSectionsV1` · extends `RefCounted` · 327 lines
 
 `godot/scripts/world/maps/persistence/map_sections_v1.gd`
 
@@ -5674,7 +5677,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11094 lines
+extends `Node2D` · 11100 lines
 
 `godot/scripts/world/room.gd`
 

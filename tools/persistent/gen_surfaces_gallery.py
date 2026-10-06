@@ -145,9 +145,12 @@ def pad_zones() -> list[dict]:
     return zones
 
 
+GALLERY_ROWS = ["leaf"]   # the plain single decals of 1 GU the gallery's patch rows show on every base
+
+
 def single_decal_kinds() -> list[str]:
-    """The kinds the gallery's patch rows show: single decals of 1 GU. A cluster STAMP (`size` > 1 in rules.json) is judged in SURFACES_SCATTER."""
-    return [k for k in kinds_with_art() if float(RULES["patches"].get(k, {}).get("size", 1.0)) <= 1.0]
+    """The kinds the gallery's patch rows show (`GALLERY_ROWS`, when their art exists). Stamps and the small singles are judged in SURFACES_SCATTER."""
+    return [k for k in GALLERY_ROWS if k in kinds_with_art()]
 
 
 def build(map_id: str = "SURFACES_GALLERY") -> dict:
@@ -216,16 +219,20 @@ def build_scatter() -> dict:
         {"comment": "yard block", "gu": [yx + 4, yy + 4], "material": "concrete", "storeys": 1, "size": [2, 2]},
         {"comment": "office block", "gu": [ox + 5, oy + 4], "material": "concrete", "storeys": 1, "size": [2, 2]},
     ]
+    # Each room mixes a few cluster STAMPS with many small SINGLES in one weighted item (`kinds`): the singles break up the stamps' repetition.
     scatter = []
     seed = 0
-    for zone, kind, density in [((fx, fy, fw, fh), "leaf_litter", 0.0), ((fx, fy, fw, fh), "dirt", 0.04), ((fx, fy, fw, fh), "pebbles", 0.03),
-                                ((yx, yy, yw, yh), "pebbles", 0.12), ((yx, yy, yw, yh), "dirt", 0.06), ((yx, yy, yw, yh), "oil", 0.03),
-                                ((ox, oy, ow, oh), "leaf_litter", 0.0), ((ox, oy, ow, oh), "dirt", 0.05)]:
+    for zone, kinds, density in [
+            ((fx, fy, fw, fh), [["leaf_litter", 1], ["leaf_single", 6], ["twig", 1]], 1.1),
+            ((fx, fy, fw, fh), [["dirt", 1], ["dirt_spot", 3]], 0.2),
+            ((fx, fy, fw, fh), [["pebbles", 1], ["pebble", 6]], 0.35),
+            ((yx, yy, yw, yh), [["pebbles", 1], ["pebble", 8]], 0.9),
+            ((yx, yy, yw, yh), [["dirt", 1], ["dirt_spot", 3]], 0.3),
+            ((yx, yy, yw, yh), [["oil", 1], ["oil_drop", 3]], 0.12),
+            ((ox, oy, ow, oh), [["leaf_litter", 1], ["leaf_single", 6]], 1.0),     # forbidden on carpet: places NOTHING
+            ((ox, oy, ow, oh), [["dirt", 1], ["dirt_spot", 4]], 0.25)]:
         seed += 1
-        item = {"zone": list(zone), "kind": kind, "seed": seed}
-        if density:
-            item["density"] = density
-        scatter.append(item)
+        scatter.append({"zone": list(zone), "kinds": kinds, "seed": seed, "density": density})
     for (x, y, w, h, density) in SCATTER_LADDER:
         seed += 1
         scatter.append({"zone": [x, y, w, h], "kind": "leaf_litter", "seed": seed, "density": density})

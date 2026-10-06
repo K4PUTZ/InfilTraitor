@@ -183,8 +183,22 @@
       14,
       12
      ],
-     "kind": "leaf_litter",
-     "seed": 1
+     "kinds": [
+      [
+       "leaf_litter",
+       1
+      ],
+      [
+       "leaf_single",
+       6
+      ],
+      [
+       "twig",
+       1
+      ]
+     ],
+     "seed": 1,
+     "density": 1.1
     },
     {
      "zone": [
@@ -193,9 +207,18 @@
       14,
       12
      ],
-     "kind": "dirt",
+     "kinds": [
+      [
+       "dirt",
+       1
+      ],
+      [
+       "dirt_spot",
+       3
+      ]
+     ],
      "seed": 2,
-     "density": 0.04
+     "density": 0.2
     },
     {
      "zone": [
@@ -204,9 +227,18 @@
       14,
       12
      ],
-     "kind": "pebbles",
+     "kinds": [
+      [
+       "pebbles",
+       1
+      ],
+      [
+       "pebble",
+       6
+      ]
+     ],
      "seed": 3,
-     "density": 0.03
+     "density": 0.35
     },
     {
      "zone": [
@@ -215,31 +247,78 @@
       14,
       12
      ],
-     "kind": "pebbles",
+     "kinds": [
+      [
+       "pebbles",
+       1
+      ],
+      [
+       "pebble",
+       8
+      ]
+     ],
      "seed": 4,
+     "density": 0.9
+    },
+    {
+     "zone": [
+      16,
+      2,
+      14,
+      12
+     ],
+     "kinds": [
+      [
+       "dirt",
+       1
+      ],
+      [
+       "dirt_spot",
+       3
+      ]
+     ],
+     "seed": 5,
+     "density": 0.3
+    },
+    {
+     "zone": [
+      16,
+      2,
+      14,
+      12
+     ],
+     "kinds": [
+      [
+       "oil",
+       1
+      ],
+      [
+       "oil_drop",
+       3
+      ]
+     ],
+     "seed": 6,
      "density": 0.12
     },
     {
      "zone": [
-      16,
+      30,
       2,
-      14,
+      13,
       12
      ],
-     "kind": "dirt",
-     "seed": 5,
-     "density": 0.06
-    },
-    {
-     "zone": [
-      16,
-      2,
-      14,
-      12
+     "kinds": [
+      [
+       "leaf_litter",
+       1
+      ],
+      [
+       "leaf_single",
+       6
+      ]
      ],
-     "kind": "oil",
-     "seed": 6,
-     "density": 0.03
+     "seed": 7,
+     "density": 1.0
     },
     {
      "zone": [
@@ -248,19 +327,18 @@
       13,
       12
      ],
-     "kind": "leaf_litter",
-     "seed": 7
-    },
-    {
-     "zone": [
-      30,
-      2,
-      13,
-      12
+     "kinds": [
+      [
+       "dirt",
+       1
+      ],
+      [
+       "dirt_spot",
+       4
+      ]
      ],
-     "kind": "dirt",
      "seed": 8,
-     "density": 0.05
+     "density": 0.25
     },
     {
      "zone": [

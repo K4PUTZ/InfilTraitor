@@ -208,12 +208,18 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 	for item in spec.get("ground_scatter", []):
 		var zone_raw = item.get("zone", null)
 		var scatter_kind: String = String(item.get("kind", ""))
+		var kinds_raw = item.get("kinds", null)
+		var kinds_ok: bool = kinds_raw == null
+		if kinds_raw is Array and kinds_raw.size() > 0:
+			kinds_ok = true
+			for k in kinds_raw:
+				kinds_ok = kinds_ok and k is Array and k.size() == 2 and k[0] is String and (k[1] is float or k[1] is int) and float(k[1]) > 0.0
 		var ok_zone: bool = zone_raw is Array and zone_raw.size() == 4
 		if ok_zone:
 			for v in zone_raw:
 				ok_zone = ok_zone and (v is float or v is int)
-		if not ok_zone or scatter_kind.is_empty() or float(zone_raw[2]) <= 0.0 or float(zone_raw[3]) <= 0.0:
-			push_error("[MapCompiler] ground_scatter: %s needs `zone` [x, y, w, h] (w, h > 0) and a `kind`; skipped" % str(item))
+		if not ok_zone or not kinds_ok or (scatter_kind.is_empty() and kinds_raw == null) or float(zone_raw[2]) <= 0.0 or float(zone_raw[3]) <= 0.0:
+			push_error("[MapCompiler] ground_scatter: %s needs `zone` [x, y, w, h] (w, h > 0) and a `kind` or `kinds` [[kind, weight], ...]; skipped" % str(item))
 			continue
 		var entry: Dictionary = {
 			"zone": Rect2(Vector2(float(zone_raw[0]), float(zone_raw[1])) + Vector2(offset), Vector2(float(zone_raw[2]), float(zone_raw[3]))),
@@ -221,6 +227,11 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"seed": int(item.get("seed", 0)),
 			"density": float(item.get("density", 0.0)),
 		}
+		if kinds_raw is Array:
+			var mix: Array = []
+			for k in kinds_raw:
+				mix.append([String(k[0]), float(k[1])])
+			entry["kinds"] = mix
 		var scale_raw = item.get("scale", null)
 		if scale_raw is Array and scale_raw.size() == 2:
 			entry["scale"] = Vector2(float(scale_raw[0]), float(scale_raw[1]))

@@ -3139,7 +3139,13 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 					var copy: Dictionary = entry.duplicate()
 					var base_density: float = float(entry.get("density", 0.0))
 					if base_density <= 0.0:
-						base_density = SurfaceRulesRef.kind_density(String(entry.get("kind", "")))
+						var mix_kinds: Array = entry.get("kinds", [[String(entry.get("kind", "")), 1.0]])
+						var weighted: float = 0.0
+						var total_w: float = 0.0
+						for mk: Array in mix_kinds:
+							weighted += SurfaceRulesRef.kind_density(String(mk[0])) * float(mk[1])
+							total_w += float(mk[1])
+						base_density = weighted / total_w
 					copy["density"] = base_density * density_x
 					scaled.append(copy)
 				scatter_items = scaled

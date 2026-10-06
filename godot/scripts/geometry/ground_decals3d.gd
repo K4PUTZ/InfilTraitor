@@ -55,7 +55,13 @@ func attach(board: Node3D, instances: Array, level: int, floor_tags_of: Callable
 	var next_id: int = 0
 	for inst in instances:
 		var kind: String = String(inst.get("kind", ""))
-		if floor_tags_of.is_valid() and _forbidden(kind, inst["at"], floor_tags_of):
+		## A per-kind SIZE (1 GU for a plain decal, 2-3 for a scatter stamp) and a per-instance SCALE (scatter jitter), both from the
+		## rules file / the instance; `scatter` instances had their tag rules checked by the expander, quietly, one by one.
+		var size: float = SurfaceRulesRef.kind_size(kind)
+		var priority: int = SurfaceRulesRef.kind_priority(kind)
+		var scale: float = float(inst.get("scale", 1.0))
+		var scattered: bool = bool(inst.get("scatter", false))
+		if not scattered and floor_tags_of.is_valid() and _forbidden(kind, inst["at"], size * scale, floor_tags_of):
 			continue
 		if not _piles.has(kind):
 			var paths: Array = art_paths(kind)
@@ -67,7 +73,7 @@ func attach(board: Node3D, instances: Array, level: int, floor_tags_of: Callable
 				for path in paths:
 					textures.append(load(path) as Texture2D)
 				var pile = FloorPileRef.new()
-				pile.attach(board, textures, PRIORITY, LIFT, 0.5)
+				pile.attach(board, textures, PRIORITY + priority, LIFT + float(priority) * 0.0004, size * 0.5)
 				_piles[kind] = pile
 		var pile_for_kind = _piles[kind]
 		if pile_for_kind == null:
@@ -77,16 +83,29 @@ func attach(board: Node3D, instances: Array, level: int, floor_tags_of: Callable
 		var id: int = next_id
 		next_id += 1
 		pile_for_kind.place(id, at, level, pick_variant(kind, at, int(inst.get("variant", -1)), count), 1.0, Color.WHITE,
-				float(inst.get("rot", 0.0)))
-		_items[id] = {"kind": kind,
-			"xmin": int(floor((at.x - 0.5) / unit)), "xmax": int(ceil((at.x + 0.5) / unit)) - 1,
-			"zmin": int(floor((at.y - 0.5) / unit)), "zmax": int(ceil((at.y + 0.5) / unit)) - 1}
+				float(inst.get("rot", 0.0)), scale)
+		var half: float = size * scale * 0.5
+		if scattered:
+			## A stamp is big and there are many: the floor under it is sampled (its centre and eight points around, over the circle
+			## that holds the rotated quad), not walked cell by cell. One crater under any sample ends the stamp.
+			var radius: float = half * 1.4143 * 0.7
+			var samples: Array = []
+			for off: Vector2 in [Vector2.ZERO, Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1),
+					Vector2(0.7071, 0.7071), Vector2(-0.7071, 0.7071), Vector2(0.7071, -0.7071), Vector2(-0.7071, -0.7071)]:
+				var p: Vector2 = at + off * radius
+				samples.append(Vector2i(int(floor(p.x / unit)), int(floor(p.y / unit))))
+			_items[id] = {"kind": kind, "samples": samples}
+		else:
+			_items[id] = {"kind": kind,
+				"xmin": int(floor((at.x - half) / unit)), "xmax": int(ceil((at.x + half) / unit)) - 1,
+				"zmin": int(floor((at.y - half) / unit)), "zmax": int(ceil((at.y + half) / unit)) - 1}
 
 
-## True (after a loud error) when `kind` may not lie on a floor under the 1 GU quad centred on `at`.
-static func _forbidden(kind: String, at: Vector2, floor_tags_of: Callable) -> bool:
+## True (after a loud error) when `kind` may not lie on a floor under the quad of side `extent` (GU) centred on `at`.
+static func _forbidden(kind: String, at: Vector2, extent: float, floor_tags_of: Callable) -> bool:
 	var seen: Dictionary = {}
-	for corner: Vector2 in [Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(-0.5, 0.5), Vector2(0.5, 0.5)]:
+	var h: float = extent * 0.5
+	for corner: Vector2 in [Vector2(-h, -h), Vector2(h, -h), Vector2(-h, h), Vector2(h, h), Vector2.ZERO]:
 		## the GU under each corner, nudged inward so a corner exactly on a GU line does not reach into the next one
 		var probe: Vector2 = at + corner * 0.999
 		var gu := Vector2i(int(floor(probe.x)), int(floor(probe.y)))
@@ -123,13 +142,19 @@ func refresh(has_floor: Callable) -> void:
 	for id in _items:
 		var it: Dictionary = _items[id]
 		var whole: bool = true
-		for x in range(int(it["xmin"]), int(it["xmax"]) + 1):
-			for z in range(int(it["zmin"]), int(it["zmax"]) + 1):
-				if not has_floor.call(x, z):
+		if it.has("samples"):
+			for cell: Vector2i in it["samples"]:
+				if not has_floor.call(cell.x, cell.y):
 					whole = false
 					break
-			if not whole:
-				break
+		else:
+			for x in range(int(it["xmin"]), int(it["xmax"]) + 1):
+				for z in range(int(it["zmin"]), int(it["zmax"]) + 1):
+					if not has_floor.call(x, z):
+						whole = false
+						break
+				if not whole:
+					break
 		if not whole:
 			gone.append(id)
 	for id in gone:

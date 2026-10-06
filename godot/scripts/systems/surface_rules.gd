@@ -57,6 +57,49 @@ static func checked_tags(owner: String, tags: Array) -> PackedStringArray:
 	return out
 
 
+## Per-kind facts from the rules file (R3D-SURFACES scatter): `class` ("marking" | "scatter" | "stroke" | "layer"; "marking" when absent),
+## `size` (the quad's side in GU, 1 when absent), `priority` (draw order among stacked kinds), `scale` ([min, max] jitter), `density`
+## (instances per GU^2 in a scatter zone unless the zone says otherwise) and `mature` (blood and bodily marks, DS-13).
+static func kind_class(kind: String) -> String:
+	_load()
+	return String((_patches.get(kind, {}) as Dictionary).get("class", "marking"))
+
+
+static func kind_size(kind: String) -> float:
+	_load()
+	return float((_patches.get(kind, {}) as Dictionary).get("size", 1.0))
+
+
+static func kind_priority(kind: String) -> int:
+	_load()
+	return int((_patches.get(kind, {}) as Dictionary).get("priority", 0))
+
+
+static func kind_scale(kind: String) -> Vector2:
+	_load()
+	var s: Array = (_patches.get(kind, {}) as Dictionary).get("scale", [1.0, 1.0])
+	return Vector2(float(s[0]), float(s[1]))
+
+
+static func kind_density(kind: String) -> float:
+	_load()
+	return float((_patches.get(kind, {}) as Dictionary).get("density", 0.0))
+
+
+static func kind_mature(kind: String) -> bool:
+	_load()
+	return bool((_patches.get(kind, {}) as Dictionary).get("mature", false))
+
+
+static func kinds_of_class(cls: String) -> PackedStringArray:
+	_load()
+	var out := PackedStringArray()
+	for kind: String in _patches:
+		if kind_class(kind) == cls:
+			out.append(kind)
+	return out
+
+
 ## "" when `kind` may lie on a floor with these tags, else why not (one short sentence). A kind with no rule is never allowed.
 static func reason_against(kind: String, floor_tags: PackedStringArray) -> String:
 	_load()

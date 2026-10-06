@@ -130,6 +130,11 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	if ground_decals_section.get("items", []).size() > 0:
 		runtime["ground_decals"] = ground_decals_section["items"]
 
+	# --- Ground scatter (R3D-SURFACES SM-2): organic floor marks per zone -------------------------
+	var ground_scatter_section = sections.get("ground_scatter", {})
+	if ground_scatter_section.get("items", []).size() > 0:
+		runtime["ground_scatter"] = ground_scatter_section["items"]
+
 	# --- Material tints (R3D-SURFACES): per-map colour of a material, a target albedo -------------
 	var material_tints_section = sections.get("material_tints", {})
 	if (material_tints_section.get("tints", {}) as Dictionary).size() > 0:

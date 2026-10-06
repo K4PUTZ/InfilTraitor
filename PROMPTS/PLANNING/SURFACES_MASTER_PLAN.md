@@ -1,6 +1,6 @@
 # SURFACES_MASTER_PLAN — what lies on the floor
 
-**v1.1 — 2026-10-06 (the Director's answers to §7 folded in: DS-11..DS-14).** Status: 🟢 floors, transitions, tags, colour and the art rooms are BUILT; 🟡 the floor-mark classes (marking, scatter,
+**v1.2 — 2026-10-06 (SM-2 scatter BUILT except its handset rows; v1.1: the Director's answers to §7, DS-11..DS-14).** Status: 🟢 floors, transitions, tags, colour and the art rooms are BUILT; 🟡 the floor-mark classes (marking, scatter,
 stroke, dense layer) are RATIFIED IN PRINCIPLE (Director, 2026-10-06, "Perfeito") and NOT built; nothing in §5-§7 exists yet.
 
 This plan owns **everything that makes a floor look like a place**: the base materials (facade or photographic), the borders between them,
@@ -43,6 +43,10 @@ mechanism; the content inventory is [`docs/systems/SURFACES_CATALOG.md`](../../d
 | **Industrial floors**: `steel_plate` (grey, dark, rust, green), `grating` (grey, dark, rust, yellow) | `gen_industrial_floors.py` | `e927ea9d` |
 | **Per-map colour**: `material_tints` (target albedo, compensated by `facade_mean`) | section, `MapCompiler`, `Board3DLive._make_material`, `material_tints_selftest` | `29262a6e` |
 | **Art rooms** `SURFACES_GALLERY` and `SURFACES_LAB`, generated, judged by a harness that fails on any engine ERROR | `gen_surfaces_gallery.py`, `surfaces_gallery.py`, `maps/SURFACES_*.map.json` | `ff7cb900` ... `29262a6e` |
+
+| **SM-2 Scatter** (engine) | `ground_scatter` section, `GroundScatter` (deterministic jittered grid, FNV-1a, voxel lattice, scale and rotation jitter, floor-tag rules and the avoid mask applied quietly and counted), per-kind `size` / `priority` / `class` in `surfaces/rules.json`, per-instance `scale` in `FloorPile3D`, sampled `refresh` for stamps, a loud (not refusing) budget warning at 600 stamps; dev flags `GROUND_SCATTER=0` and `GROUND_SCATTER_X=<n>` (a density multiplier) | `ground_scatter_selftest` (determinism, zone, lattice, scale range, density, desert, sterile, wall, bad kind, compiler: 17 checks) |
+| **Cluster stamps** (art): `leaf_litter` (built from the leaf art), `pebbles`, `dirt`, `oil`, three macro-patterns each, 512 px, zero alpha at every edge | `tools/asset_generation/gen_scatter_stamps.py` (procedural, seeded; PLACEHOLDER art, to be judged and redrawn by the Director) | |
+| **`SURFACES_SCATTER` room**: forest, yard, office (the leaf rule places NOTHING on the carpet), a density ladder 0.06 / 0.16 / 0.40 | `gen_surfaces_gallery.py`, `surfaces_gallery.py` (retries once on an engine hang and says so) | harness PASSED, 41 captures |
 
 Not built, on purpose: hazard stripes as a floor (principle 4), the floor-grating underlay (§7), human transitions (§7), per-cell colour.
 
@@ -104,7 +108,7 @@ rewires the board.
 | Stage | Content | Gate |
 |---|---|---|
 | **SM-1 Marking** (after SM-2) | `class` in `rules.json`; marking enforcement; `gen_markings.py` (procedural, seeded): hazard stripe, road lines, crosswalk, arrows, chevrons, bay + numbers; a gallery band | a selftest per rule (off-grid / bad rot refused); the harness PASSED; **Galaxy + Moto idle row** |
-| **SM-2 Scatter** (FIRST, DS-12) | `ground_scatter` section; the cluster STAMPS (`gen_scatter_stamps.py`, procedural and seeded: `leaf_litter`, `pebbles`, `dirt`, `oil`, three macro-patterns each, 2-3 GU); `size`, `class` per kind in `rules.json`; per-item `scale`; the avoid mask (nothing under a wall, block or prop); batching per kind; a `SURFACES_SCATTER` room (forest, yard, office) | determinism (the same expansion twice), avoid and tag rules in a selftest; the harness PASSED; **handset rows at 50 / 200 / 800 instances, which set the per-map QUAD BUDGET (a loud warning, not a cap)** |
+| **SM-2 Scatter** (FIRST, DS-12; ✅ BUILT 2026-10-06, handset rows OWED) | `ground_scatter` section; the cluster STAMPS (`gen_scatter_stamps.py`, procedural and seeded: `leaf_litter`, `pebbles`, `dirt`, `oil`, three macro-patterns each, 2-3 GU); `size`, `class` per kind in `rules.json`; per-item `scale`; the avoid mask (nothing under a wall, block or prop); batching per kind; a `SURFACES_SCATTER` room (forest, yard, office) | determinism (the same expansion twice), avoid and tag rules in a selftest; the harness PASSED; **handset rows at 50 / 200 / 800 instances, which set the per-map QUAD BUDGET (a loud warning, not a cap)** |
 | **SM-3 Stroke** | `ground_strokes`; tyre marks, footprints, cables | selftest + capture; handset row |
 | **SM-4 Dense layer** | `ground_layers`; litter, snow, sand | per-pixel cost A/B on the Moto |
 | **SM-5 Human transitions** | the regular right-angled border (the same mechanism with no noise) and an optional threshold strip; the ONE-SIDED spill (organic onto human, not the reverse) | capture + A/B |
@@ -115,10 +119,13 @@ rewires the board.
 
 ## 7. Open decisions (for the Director)
 
+0. **Handset rows for SM-2 (owed; no device was connected):** `GROUND_SCATTER=0` against `GROUND_SCATTER_X=1 / 4 / 8` (about 170 / 700 / 1400 stamps) on `SURFACES_SCATTER`, both handsets, FRAME_PROBE; they set the quad budget (the warning is a placeholder 600).
 1. **Per-cell tint (C)** (Director: "precisamos pensar nos diferentes cenários"). Scenarios that would need it, to be weighed when the procedural-maps milestone arrives: (a) a level with colour-coded zones of ONE pattern (red wing, blue open office): covered by fixed rows (A) while the palette is finite; (b) procedural maps picking a colour per room from a finite palette: covered by A; (c) the player customising a hideout; (d) factions or teams painting zones at runtime; (e) a colour that changes during play. Only (c)-(e), or a palette that must be unbounded, need C. Undecided.
 2. The unverified delivery of `surfaces/rules.json` inside the APK (`FileAccess` on `res://`, like `props/*.json`): to be proven on the next handset run.
 
 ## 8. Known limits and debts
+
+- **Intermittent engine hang (2026-10-06):** twice in about twelve desktop boots the process sat at ~100 % CPU after the scenario's `quit` and never exited (once on SURFACES_SCATTER, once inside the harness); eight reruns did not reproduce it, and I did not find the cause. The harness retries once and warns. If it ever shows on a handset or in `verify.py`, it needs a real investigation.
 
 - Facade mirror (principle 4); the map-size limit (principle 8); organic transitions only between two `photo` floors.
 - `material_tints` reaches walls, floors and roofs of a material, NOT props or voxel fragments made of the same material.

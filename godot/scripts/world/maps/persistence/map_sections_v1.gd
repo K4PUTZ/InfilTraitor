@@ -11,6 +11,7 @@ static func register_all(registry) -> void:
 	register_roofs(registry)
 	register_ground_decals(registry)
 	register_material_tints(registry)
+	register_ground_scatter(registry)
 	register_damage_materials(registry)
 	register_panels(registry)
 	register_props(registry)
@@ -155,6 +156,24 @@ static func register_ground_decals(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"ground_decals",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "items": fragment.get("items", []) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "items": raw.get("items", []) },
+		{},
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
+## ground_scatter (R3D-SURFACES SM-2, 2026-10-06): organic floor marks generated per ZONE. `{zone: [x, y, w, h], kind, density?, seed, scale?}` --
+## `zone` in GU (inner coordinates), `kind` a scatter stamp of `surfaces/rules.json` (several decals baked into one image), `density`
+## stamps per GU^2 (the kind's default when absent), `seed` an int, `scale` [min, max] (the kind's when absent). The expansion is
+## deterministic (`GroundScatter`); cosmetic: never saved.
+static func register_ground_scatter(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"ground_scatter",
 		1,
 		func(fragment: Dictionary) -> Dictionary:
 			return { "items": fragment.get("items", []) },

@@ -40,7 +40,7 @@ def scenario_gallery(tag: str, zoom: float) -> tuple[str, list[str]]:
     mid_x = gen.COLUMN_X0 + gen.COLUMN_W * len(gen.BASES) / 2.0
     mid_y = gen.COLUMN_Y0 + gen.INNER_GALLERY[1] / 2.0 - 2.0
     shot("overview", mid_x, mid_y, 0.12)
-    rows_y = gen.ROW_Y0 + (max(len(gen.kinds_with_art()), 1) - 1) * gen.ROW_STEP / 2.0
+    rows_y = gen.ROW_Y0 + (max(len(gen.single_decal_kinds()), 1) - 1) * gen.ROW_STEP / 2.0
     for c, base in enumerate(gen.BASES):
         shot(base, gen.COLUMN_X0 + c * gen.COLUMN_W + gen.COLUMN_W / 2.0, rows_y, zoom)
     for name, (x0, _fn) in gen.PAD_SHAPES.items():
@@ -73,14 +73,42 @@ def scenario_lab(tag: str) -> tuple[str, list[str]]:
     return "; ".join(steps), names
 
 
+def scenario_scatter(tag: str) -> tuple[str, list[str]]:
+    steps = ["framing desktop", "frames 40"]
+    names = []
+
+    def shot(name: str, cx: float, cy: float, z: float) -> None:
+        steps.extend(["centre %d,%d" % (cx + BUFFER, cy + BUFFER), "zoom %.2f" % z, "frames 30", "capture %s_%s" % (tag, name)])
+        names.append(name)
+    shot("sc_overview", 22, 14, 0.15)
+    for name, (x, y, w, h) in gen.SCATTER_ROOMS.items():
+        shot("sc_" + name, x + w / 2.0, y + h / 2.0, 0.34)
+    for i, (x, y, w, h, density) in enumerate(gen.SCATTER_LADDER):
+        shot("sc_ladder_%d" % i, x + w / 2.0, y + h / 2.0, 0.34)
+    steps.extend(["perspective E", "frames 40", "capture %s_sc_overview_E" % tag, "quit"])
+    names.append("sc_overview_E")
+    return "; ".join(steps), names
+
+
 def run_map(map_id: str, scen: str, names: list[str], tag: str, problems: list[str]) -> list:
     from PIL import Image
     for n in names:
         (CAPTURES / ("%s_%s.png" % (tag, n))).unlink(missing_ok=True)
     env = {**os.environ, "INFILTRAITOR_MAP": map_id, "INFILTRAITOR_RNG_SEED": "1", "INFILTRAITOR_SCENARIO": scen}
-    out = subprocess.run([GODOT, "--path", str(ROOT), "--fixed-fps", "60", "--position", "4000,4000"],
-                         capture_output=True, text=True, env=env, timeout=300)
-    log = out.stdout + out.stderr
+    log = ""
+    for attempt in (1, 2):
+        try:
+            out = subprocess.run([GODOT, "--path", str(ROOT), "--fixed-fps", "60", "--position", "4000,4000"],
+                                 capture_output=True, text=True, env=env, timeout=150)
+            log = out.stdout + out.stderr
+            break
+        except subprocess.TimeoutExpired:
+            ## An intermittent engine hang, seen twice in about twelve boots (2026-10-06): the process sits at ~100 % CPU after the
+            ## scenario's `quit` and never exits; eight reruns did not reproduce it. Said out loud, retried once, never hidden.
+            subprocess.run(["pkill", "-9", "-f", "MacOS/Godot"])
+            print("%s WARNING: %s hung (no exit in 150 s) on attempt %d%s" % (TAG, map_id, attempt, ", retrying once" if attempt == 1 else ""))
+            if attempt == 2:
+                problems.append("%s: the engine hung twice (no exit in 150 s)" % map_id)
     if "SCRIPT ERROR" in log:
         problems.append("%s: a SCRIPT ERROR in the log" % map_id)
     for line in log.splitlines():
@@ -116,7 +144,8 @@ def main() -> int:
     problems: list[str] = []
     images = []
     all_names = []
-    for map_id, (scen, names) in (("SURFACES_GALLERY", scenario_gallery(args.tag, args.zoom)), ("SURFACES_LAB", scenario_lab(args.tag))):
+    for map_id, (scen, names) in (("SURFACES_GALLERY", scenario_gallery(args.tag, args.zoom)), ("SURFACES_LAB", scenario_lab(args.tag)),
+                                  ("SURFACES_SCATTER", scenario_scatter(args.tag))):
         images += run_map(map_id, scen, names, args.tag, problems)
         all_names += names
     if images:

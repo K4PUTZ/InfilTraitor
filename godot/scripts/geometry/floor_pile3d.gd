@@ -102,11 +102,11 @@ func set_pile(key: Vector3i, variant: int, alpha: float, tint: Color = Color.WHI
 ## voxel-cell edge, the same way a ground/leaf patch is meant to break up the grid rather than sit
 ## squarely inside it). `rot` (radians) rotates the quad in the ground plane for organic variety —
 ## 0.0 for every caller that does not ask for it.
-func place(id, center: Vector2, level: int, variant: int, alpha: float, tint: Color = Color.WHITE, rot: float = 0.0) -> void:
+func place(id, center: Vector2, level: int, variant: int, alpha: float, tint: Color = Color.WHITE, rot: float = 0.0, scale: float = 1.0) -> void:
 	if _nodes.is_empty():
 		return
 	_piles[id] = {"variant": variant % _nodes.size(), "alpha": alpha, "tint": tint,
-		"center": center, "level": level, "rot": rot}
+		"center": center, "level": level, "rot": rot, "scale": scale}
 	_mark_dirty()
 
 
@@ -146,13 +146,13 @@ func _rebuild() -> void:
 		uvs.append(PackedVector2Array())
 		cols.append(PackedColorArray())
 	var lift := Vector3.UP * _lift
-	var h: float = _half_gu
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var ground_level: int = _board.call("ground_level")
 	for id in _piles:
 		var p: Dictionary = _piles[id]
 		var v: int = int(p["variant"])
 		var rot: float = float(p.get("rot", 0.0))
+		var h: float = _half_gu * float(p.get("scale", 1.0))   ## a scattered stamp varies in size (R3D-SURFACES scatter)
 		## True world-space quad corners (optionally rotated) — the same flat-on-the-ground
 		## convention every other piece of floor geometry uses, so this shears under the camera
 		## exactly like the floor tile it sits on, instead of staying screen-square.

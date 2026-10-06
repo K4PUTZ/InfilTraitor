@@ -203,6 +203,29 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"rot": float(decal.get("rot", 0.0)),
 		})
 
+	## --- ground_scatter (R3D-SURFACES SM-2): zones in raw GU (the buffer applied, like every position); expanded later, in `GroundScatter` ---
+	var ground_scatter_items: Array = []
+	for item in spec.get("ground_scatter", []):
+		var zone_raw = item.get("zone", null)
+		var scatter_kind: String = String(item.get("kind", ""))
+		var ok_zone: bool = zone_raw is Array and zone_raw.size() == 4
+		if ok_zone:
+			for v in zone_raw:
+				ok_zone = ok_zone and (v is float or v is int)
+		if not ok_zone or scatter_kind.is_empty() or float(zone_raw[2]) <= 0.0 or float(zone_raw[3]) <= 0.0:
+			push_error("[MapCompiler] ground_scatter: %s needs `zone` [x, y, w, h] (w, h > 0) and a `kind`; skipped" % str(item))
+			continue
+		var entry: Dictionary = {
+			"zone": Rect2(Vector2(float(zone_raw[0]), float(zone_raw[1])) + Vector2(offset), Vector2(float(zone_raw[2]), float(zone_raw[3]))),
+			"kind": scatter_kind,
+			"seed": int(item.get("seed", 0)),
+			"density": float(item.get("density", 0.0)),
+		}
+		var scale_raw = item.get("scale", null)
+		if scale_raw is Array and scale_raw.size() == 2:
+			entry["scale"] = Vector2(float(scale_raw[0]), float(scale_raw[1]))
+		ground_scatter_items.append(entry)
+
 	## --- material_tints (R3D-SURFACES): material id -> Color (a target albedo), validated here, never shifted or rotated ---
 	var material_tints: Dictionary = {}
 	var tints_raw = spec.get("material_tints", {})
@@ -322,6 +345,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"panel_instances":  panel_instances,   ## M3-2b: half-thickness elements, offset-adjusted
 		"ground_decal_instances": ground_decal_instances,  ## R3D-SURFACES S2: floor marks, offset-adjusted, base grid only (never rotated)
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
+		"ground_scatter_items": ground_scatter_items,  ## R3D-SURFACES SM-2: scatter zones (raw GU), expanded by GroundScatter at attach
 		"material_tints":   material_tints,    ## R3D-SURFACES: material id -> Color, the colour it reads as in this map (cosmetic)
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,

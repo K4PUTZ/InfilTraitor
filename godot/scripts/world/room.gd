@@ -6,6 +6,8 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
+const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
+const GroundScatterRef = preload("res://godot/scripts/geometry/ground_scatter.gd")  ## R3D-SURFACES SM-2: scatter zones -> placed stamps
 const GroundTransitions3DRef = preload("res://godot/scripts/geometry/ground_transitions3d.gd")  ## R3D-SURFACES: feathered borders between organic grounds
 const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overlay.gd")
@@ -134,6 +136,8 @@ var _slab_registry: SlabRegistry = null
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
+## SM-2 — a scatter map passing this many stamps gets a loud warning (not a refusal). A placeholder until the handset rows set it.
+const GROUND_SCATTER_QUAD_BUDGET: int = 600
 var _ground_transitions: RefCounted = null  ## R3D-SURFACES: the feathered border between two organic floor materials (cosmetic, derived from the floor zones)
 
 
@@ -3111,10 +3115,41 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 		## decides which kinds may lie on which floor (tags), and says so loudly when a placement breaks it.
 		if _ground_decals == null:
 			_ground_decals = GroundDecals3DRef.new()
-		_ground_decals.attach(live, _base_layout.get("ground_decal_instances", []), GeometryCoords.FLOOR_TOP_LEVEL,
-				func(gu: Vector2i) -> PackedStringArray:
-					var definition = Registries.get_material_registry().get_material(String(gu_material.get(gu, "")))
-					return definition.tags if definition != null else PackedStringArray())
+		var floor_tags_of := func(gu: Vector2i) -> PackedStringArray:
+			var definition = Registries.get_material_registry().get_material(String(gu_material.get(gu, "")))
+			return definition.tags if definition != null else PackedStringArray()
+		var decal_instances: Array = (_base_layout.get("ground_decal_instances", []) as Array).duplicate()
+		var scatter_items: Array = _base_layout.get("ground_scatter_items", []) if str(_dev_flag("GROUND_SCATTER", "1")) != "0" else []  ## dev A/B: 0 = no scatter
+		if scatter_items.size() > 0 and VoxelStore.active != null:
+			## SM-2: the scatter zones become stamps (deterministic), nothing under a wall / block / prop, the floor rules respected.
+			var scatter_store: VoxelStore = VoxelStore.active
+			var unit_gu: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
+			var blocked := func(at: Vector2, half: float) -> bool:
+				for off: Vector2 in [Vector2.ZERO, Vector2(half * 0.5, 0), Vector2(-half * 0.5, 0), Vector2(0, half * 0.5), Vector2(0, -half * 0.5)]:
+					var p: Vector2 = at + off
+					if scatter_store.has_cell(int(floor(p.x / unit_gu)), int(floor(p.y / unit_gu)), GeometryCoords.PLAYABLE_LEVEL):
+						return true
+				return false
+			var t0: int = Time.get_ticks_usec()
+			## Dev: GROUND_SCATTER_X multiplies every zone's density, to measure the handsets at several stamp counts (SM-2's budget).
+			var density_x: float = float(_dev_flag("GROUND_SCATTER_X", "1"))
+			if not is_equal_approx(density_x, 1.0):
+				var scaled: Array = []
+				for entry: Dictionary in scatter_items:
+					var copy: Dictionary = entry.duplicate()
+					var base_density: float = float(entry.get("density", 0.0))
+					if base_density <= 0.0:
+						base_density = SurfaceRulesRef.kind_density(String(entry.get("kind", "")))
+					copy["density"] = base_density * density_x
+					scaled.append(copy)
+				scatter_items = scaled
+			var expanded: Dictionary = GroundScatterRef.expand(scatter_items, floor_tags_of, blocked)
+			decal_instances.append_array(expanded["instances"])
+			print("[GroundScatter] %d stamp(s) in %.1f ms: %s" % [(expanded["instances"] as Array).size(), float(Time.get_ticks_usec() - t0) / 1000.0, str(expanded["stats"])])
+			if (expanded["instances"] as Array).size() > GROUND_SCATTER_QUAD_BUDGET:
+				push_warning("[GroundScatter] %d stamps pass the quad budget of %d (a loud warning, not a cap: measure it on the handsets, SURFACES_MASTER_PLAN SM-2)"
+						% [(expanded["instances"] as Array).size(), GROUND_SCATTER_QUAD_BUDGET])
+		_ground_decals.attach(live, decal_instances, GeometryCoords.FLOOR_TOP_LEVEL, floor_tags_of)
 		## R3D-SURFACES transitions — a feathered overlay where two organic grounds (a `photo` floor) meet.
 		if _ground_transitions == null:
 			_ground_transitions = GroundTransitions3DRef.new()

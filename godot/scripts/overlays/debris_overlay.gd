@@ -99,6 +99,8 @@ var trickle_rest_max: float = 0.5
 var trickle_sway: float = 1.1              ## px, how far a grain wanders sideways: a thread, not a cloud
 var trickle_pile_spread: float = 3.2       ## px, how far along the floor the grains lie
 var trickle_speck_radius: float = 1.0
+var trickle_origin_shift: Vector2 = Vector2(2.0, -3.0)  ## px: the thread's source sits a little up and to the right of the struck point
+var trickle_start_radii: Vector2 = Vector2(3.0, 3.6)     ## px: each grain is born at a random point of this ellipse, not all at one spot
 var _trickles: Array = []
 var _dust: Array = []
 ## [{"origin","target","color","delay","fall_duration","settle_duration",
@@ -131,6 +133,13 @@ func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:
 	set_process(true)
 
 
+## A uniformly random point inside the ellipse of half-axes `radii`.
+func _random_in_ellipse(radii: Vector2) -> Vector2:
+	var a: float = randf() * TAU
+	var r: float = sqrt(randf())
+	return Vector2(cos(a) * r * radii.x, sin(a) * r * radii.y)
+
+
 ## Queue a trickle of sand from `origin` (the struck point) down to `target` (the floor beneath it).
 func add_sand_trickle(origin: Vector2, target: Vector2, color: Color) -> void:
 	var grains: Array = []
@@ -140,6 +149,7 @@ func add_sand_trickle(origin: Vector2, target: Vector2, color: Color) -> void:
 			"t0": trickle_delay + span * pow(randf(), 1.3),  ## released a little more densely at the start, then thinning out
 			"fall": randf_range(trickle_fall_min, trickle_fall_max),
 			"rest": randf_range(trickle_rest_min, trickle_rest_max),
+			"start": _random_in_ellipse(trickle_start_radii) + trickle_origin_shift,
 			"sway": randf_range(-trickle_sway, trickle_sway),
 			"lie": Vector2(randf_range(-trickle_pile_spread, trickle_pile_spread), randf_range(-0.4 * trickle_pile_spread, 0.4 * trickle_pile_spread)),
 		})
@@ -343,9 +353,12 @@ func _draw() -> void:
 			var a: float = 1.0
 			if age < fall:
 				var u: float = age / fall
-				p = (t["origin"] as Vector2).lerp(t["target"] as Vector2, pow(u, 1.5)) + Vector2(float(g["sway"]) * sin(u * PI), 0.0)
+				## Falls straight down from its own start point, so the grains keep the column they were born in.
+				var start: Vector2 = (t["origin"] as Vector2) + (g["start"] as Vector2)
+				var land: Vector2 = (t["target"] as Vector2) + Vector2((g["start"] as Vector2).x, 0.0)
+				p = start.lerp(land, pow(u, 1.5)) + Vector2(float(g["sway"]) * sin(u * PI), 0.0)
 			else:
-				p = (t["target"] as Vector2) + (g["lie"] as Vector2)
+				p = (t["target"] as Vector2) + Vector2((g["start"] as Vector2).x, 0.0) + (g["lie"] as Vector2)
 				a = pow(1.0 - (age - fall) / float(g["rest"]), dust_fade_power)
 			var c: Color = base
 			c.a = minf(c.a * a * dust_alpha_gain, 1.0)

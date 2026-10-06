@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 80022 lines total** (under `godot/scripts/`)
+**257 scripts · 80035 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1442,7 +1442,7 @@ extends `Node3D` · 2510 lines
 
 ### `debris_overlay.gd`
 
-`class_name DebrisOverlay` · extends `Node2D` · 397 lines
+`class_name DebrisOverlay` · extends `Node2D` · 410 lines
 
 `godot/scripts/overlays/debris_overlay.gd`
 
@@ -1501,6 +1501,8 @@ extends `Node3D` · 2510 lines
 - `var trickle_sway: float = 1.1`
 - `var trickle_pile_spread: float = 3.2`
 - `var trickle_speck_radius: float = 1.0`
+- `var trickle_origin_shift: Vector2 = Vector2(2.0, -3.0)`
+- `var trickle_start_radii: Vector2 = Vector2(3.0, 3.6)`
 
 **Public API**
 - `func add_dust(origin: Vector2, target: Vector2, color: Color) -> void:`

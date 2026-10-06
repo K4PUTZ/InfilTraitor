@@ -452,7 +452,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 **Code & Test Inventory**
 
 - GDScript modules: 193
-- Test scripts: 63
+- Test scripts: 64
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 28

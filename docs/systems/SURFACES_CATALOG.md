@@ -1,5 +1,7 @@
 # Surfaces catalog — the floors and floor marks the game will need
 
+The PLAN (decisions, classes, stages) is [`SURFACES_MASTER_PLAN`](../../PROMPTS/PLANNING/SURFACES_MASTER_PLAN.md); this file is the content inventory.
+
 Status: **proposal, 2026-10-06** (nothing here is built unless marked *have*). Written for the Director to cut, reorder and rule on;
 the mechanism it leans on is R3D-SURFACES in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) (S1-S5, the ground
 transitions) and the gallery that judges it (`maps/SURFACES_GALLERY.map.json`, `tools/persistent/surfaces_gallery.py`).

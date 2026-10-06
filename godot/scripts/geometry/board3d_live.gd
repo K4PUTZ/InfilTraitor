@@ -112,7 +112,7 @@ uniform float has_surface_roof = 0.0;
 // slow brightness/hue drift, never a second visible tile. R/G channels modulate brightness together,
 // B modulates a faint warm/cool drift independently (see ASSETS/materials/_generic/macro_ground.png).
 uniform sampler2D surface_macro : filter_linear_mipmap, repeat_enable;
-uniform sampler2DArray cell_plane : filter_nearest, repeat_disable;
+uniform sampler2DArray cell_plane : filter_linear, repeat_disable;  // texelFetch ignores the filter; only the soot blur reads it bilinear (B)
 uniform int level_base = 0;
 uniform int level_count = 1;
 uniform int mesh_ground_level = 80;
@@ -127,8 +127,7 @@ uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform int face_x_slot = 1;
 uniform int face_z_slot = 2;
 uniform float depth_dim[5];
-uniform float soot_tone_tab[6];  // a floor top's soot tone by ring: the four ladder tones, clean (1.0), and the charred mean
-uniform float soot_smooth = 1.0;  // 1: a floor top leans toward its two nearest neighbours soot tone (no square edges); 0: one cell, hard
+uniform float soot_smooth = 1.0;  // 1: a floor top's soot tone is the cell plane's B channel read bilinear (no square edges); 0: one cell, hard
 uniform float pit_dark = 0.60;     // the inside of a crater (side faces and the tops below the walkable floor) is darkened by this
 varying vec3 v_world;
 varying vec3 v_normal;
@@ -202,13 +201,6 @@ float soot_tone(float code, int face, ivec3 vv) {
 	}
 	return 1.0;
 }
-float soot_code_at(ivec2 cell, int layer) {
-	ivec2 q = cell + plane_origin;
-	if (layer < 0 || layer >= level_count || q.x < 0 || q.y < 0 || q.x >= plane_size || q.y >= plane_size) {
-		return 172.0;
-	}
-	return clamp(floor(texelFetch(cell_plane, ivec3(q, layer), 0).r * 255.0 + 0.5), 0.0, 215.0);
-}
 vec3 srgb_to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
 }
@@ -229,25 +221,29 @@ void fragment() {
 	int layer = level - level_base;
 	float code = 172.0;
 	int bucket = 255;
+	float own_tone = 1.0;  // the plane's B: this cell's floor-top tone
+	bool in_plane = false;
 	if (layer >= 0 && layer < level_count && pc.x >= 0 && pc.y >= 0
 			&& pc.x < plane_size && pc.y < plane_size) {
 		vec4 t = texelFetch(cell_plane, ivec3(pc, layer), 0);
 		code = clamp(floor(t.r * 255.0 + 0.5), 0.0, 215.0);
 		bucket = int(floor(t.g * 255.0 + 0.5));
+		own_tone = t.b;
+		in_plane = true;
 	}
 	int face = v_normal.y > 0.5 ? 0 : (abs(v_normal.x) > 0.5 ? face_x_slot : face_z_slot);
 	float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];
 	float tone = soot_tone(code, face, v);
 	if (face == 0 && soot_smooth > 0.5) {
-		// The soot is one value per cell, so a scorch on a floor is a field of squares. Lean this cell's tone toward the neighbour on the
-		// side of the cell this pixel is nearest to, on each axis (Director 2026-10-05: no square edges). At a cell edge the weight is
-		// 0.5 on both sides, so the tone is continuous across it. Two extra fetches, not four (the first version blended the four
-		// nearest cells: +5.8 ms of GPU on the Moto at idle).
-		vec2 d = fract(v_world.xz * 8.0) - 0.5;
-		vec2 w = smoothstep(0.0, 1.0, abs(d) * 2.0) * 0.5;
-		float tx = soot_tone_tab[clamp(int(floor(soot_code_at(ivec2(v.x + (d.x < 0.0 ? -1 : 1), v.z), layer) / 36.0)), 0, 5)];
-		float tz = soot_tone_tab[clamp(int(floor(soot_code_at(ivec2(v.x, v.z + (d.y < 0.0 ? -1 : 1)), layer) / 36.0)), 0, 5)];
-		tone = tone + (tx - tone) * w.x + (tz - tone) * w.y;
+		// The soot is one value per cell, so a scorch on a floor is a field of squares. The plane's B channel holds each cell's
+		// floor-top tone, and ONE bilinear fetch at the pixel's own position blends it with the neighbours (Director 2026-10-05: no
+		// square edges). The cell's own tone is swapped for the blend, so a charred voxel keeps its hashed variety. At a cell edge the
+		// weight is 0.5 on each side, so the tone is continuous across it. (Two integer fetches of the neighbours' codes cost +3.6 ms
+		// on the Moto at idle, four cost +5.8 ms; the tone is baked into the plane at write time instead.)
+		if (in_plane) {
+			float blur = texture(cell_plane, vec3((v_world.xz * 8.0 + vec2(plane_origin)) / float(plane_size), float(layer))).b;
+			tone += blur - own_tone;
+		}
 	}
 	f *= tone;
 	int rel = level + rel_offset;
@@ -1356,8 +1352,6 @@ func _build_plane() -> void:
 		m.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
 		m.set_shader_parameter("depth_dim", dims)
 		m.set_shader_parameter("soot_smooth", 1.0 if SOOT_SMOOTH else 0.0)
-		m.set_shader_parameter("soot_tone_tab", PackedFloat32Array([_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3], 1.0,
-			lerpf(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX, 1.0 / 3.0)]))
 	for pm: ShaderMaterial in _prop_materials:
 		pm.set_shader_parameter("cell_plane", _plane)
 		pm.set_shader_parameter("level_base", _level_min)
@@ -1591,8 +1585,8 @@ func _plane_image(level: int) -> Image:
 	if image != null:
 		return image
 	var blank := Image.create(VoxelBoard.SOOT_TEX_SIZE, VoxelBoard.SOOT_TEX_SIZE,
-		false, Image.FORMAT_RG8)
-	blank.fill(Color8(VoxelBoard.FACE_SOOT_CODE_CLEAN, VoxelBoard.BUCKET_UNWRITTEN, 0, 255))
+		false, Image.FORMAT_RGB8)
+	blank.fill(Color8(VoxelBoard.FACE_SOOT_CODE_CLEAN, VoxelBoard.BUCKET_UNWRITTEN, 255, 255))
 	return blank
 
 

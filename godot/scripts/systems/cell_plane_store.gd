@@ -25,8 +25,8 @@ const SOOT_PLANE_ORIGIN: Vector2i = Vector2i(64, 64)
 ## 512 covers a 64x64 GU board; PLAYGROUND is 46x24 with its buffer.
 const SOOT_TEX_SIZE: int = 512
 
-## PERF-P3: FORMAT_RG8 — R = the per-face soot code (0..215, base 6), G = the light
-## bucket (0..11). One texel per cell, one texture per level. Both writers do a
+## PERF-P3: FORMAT_RGB8 — R = the per-face soot code (0..215, base 6), G = the light
+## bucket (0..11), B = the floor-top tone of R's ring (R3D-LOOK, derived from R in `write_soot`, never written alone). One texel per cell, one texture per level. Both writers do a
 ## read-modify-write so neither channel can erase the other.
 ## RENDER3D R3D-2 — this store is domain-agnostic (it knows nothing of "soot" or
 ## "light bucket" as concepts): its OWNER supplies the R-channel's clean fill value
@@ -36,22 +36,30 @@ const SOOT_TEX_SIZE: int = 512
 var _clean_r: int
 var _max_r: int      ## the largest valid soot code (CLEAN is not the largest since the charred tone, R3D-PROPS)
 var _max_bucket: int
+var _tone_bytes: PackedByteArray  ## B channel by soot ring (code / 36): the floor-top tone, 0..255, the shader's bilinear fetch blurs it
 var _images: Dictionary = {}     ## level -> Image (FORMAT_RG8)
 var _textures: Dictionary = {}   ## level -> ImageTexture
 var _dirty: Dictionary = {}      ## level -> true, cleared by flush()
 var _out_of_range_reported: bool = false
 
 
-func _init(clean_r: int, max_bucket: int, max_r: int = -1) -> void:
+func _init(clean_r: int, max_bucket: int, max_r: int = -1, tone_bytes: PackedByteArray = PackedByteArray()) -> void:
+	_tone_bytes = tone_bytes
 	_clean_r = clean_r
 	_max_r = max_r if max_r >= 0 else clean_r
 	_max_bucket = max_bucket
 
 
+## The B byte of a soot code: the tone of the floor top that code gives (255 when the owner gave no table).
+func _tone_byte(code: int) -> int:
+	var ring: int = code / 36
+	return _tone_bytes[ring] if ring < _tone_bytes.size() else 255
+
+
 func _image_for(level: int) -> Image:
 	if _images.has(level):
 		return _images[level]
-	var img := Image.create(SOOT_TEX_SIZE, SOOT_TEX_SIZE, false, Image.FORMAT_RG8)
+	var img := Image.create(SOOT_TEX_SIZE, SOOT_TEX_SIZE, false, Image.FORMAT_RGB8)
 	## R = CLEAN, not zero: zero soot is "ring 0 on all three faces", the darkest
 	## scorch there is, so an unvisited cell would come up black.
 	##
@@ -61,7 +69,7 @@ func _image_for(level: int) -> Image:
 	## a missing value onto a legitimate one. The shader still CLAMPS 255 down to
 	## 11, so the picture is unchanged — but the plane, and debug paint mode 3, can
 	## now tell them apart.
-	img.fill(Color8(_clean_r, BUCKET_UNWRITTEN, 0, 255))
+	img.fill(Color8(_clean_r, BUCKET_UNWRITTEN, _tone_byte(_clean_r), 255))
 	_images[level] = img
 	_textures[level] = ImageTexture.create_from_image(img)
 	return img
@@ -84,7 +92,7 @@ func write_soot(level: int, cell: Vector2i, code: int) -> void:
 	## PERF-P3: G is the light bucket and belongs to `write_bucket()` — carried
 	## through unchanged rather than rewritten, so a soot pass cannot silently
 	## relight a cell.
-	img.set_pixel(p.x, p.y, Color8(c, was.g8, 0, 255))
+	img.set_pixel(p.x, p.y, Color8(c, was.g8, _tone_byte(c), 255))
 	_dirty[level] = true
 
 
@@ -103,7 +111,7 @@ func write_bucket(level: int, cell: Vector2i, bucket: int) -> int:
 	var was: Color = img.get_pixel(p.x, p.y)
 	if was.g8 == b:
 		return b
-	img.set_pixel(p.x, p.y, Color8(was.r8, b, 0, 255))
+	img.set_pixel(p.x, p.y, Color8(was.r8, b, was.b8, 255))
 	_dirty[level] = true
 	return was.g8
 
@@ -180,5 +188,5 @@ func ensure_level(level: int) -> void:
 ## light apply writes soot, so nothing else would clear a stale view's scorch.
 func reset_all() -> void:
 	for level in _images:
-		(_images[level] as Image).fill(Color8(_clean_r, BUCKET_UNWRITTEN, 0, 255))
+		(_images[level] as Image).fill(Color8(_clean_r, BUCKET_UNWRITTEN, _tone_byte(_clean_r), 255))
 		_dirty[level] = true

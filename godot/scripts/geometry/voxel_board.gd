@@ -933,7 +933,14 @@ const _CellPlaneStoreScript: GDScript = preload("res://godot/scripts/systems/cel
 const BUCKET_UNWRITTEN: int = _CellPlaneStoreScript.BUCKET_UNWRITTEN
 const SOOT_PLANE_ORIGIN: Vector2i = _CellPlaneStoreScript.SOOT_PLANE_ORIGIN
 const SOOT_TEX_SIZE: int = _CellPlaneStoreScript.SOOT_TEX_SIZE
-var _cell_planes = _CellPlaneStoreScript.new(FACE_SOOT_CODE_CLEAN, LIGHT_BUCKET_COUNT - 1, FACE_SOOT_CODE_COUNT - 1)
+static func _top_tone_bytes() -> PackedByteArray:
+	var out := PackedByteArray()
+	for tone: float in BoardLook.top_tone_table():
+		out.append(int(roundf(tone * 255.0)))
+	return out
+
+
+var _cell_planes = _CellPlaneStoreScript.new(FACE_SOOT_CODE_CLEAN, LIGHT_BUCKET_COUNT - 1, FACE_SOOT_CODE_COUNT - 1, _top_tone_bytes())
 
 
 ## Record one cell's soot code. Thin forwarder — see `CellPlaneStore.write_soot()`.

@@ -71,8 +71,8 @@ GODOT_CANDIDATES = ["/Applications/Godot.app/Contents/MacOS/Godot", "godot"]
 FORMAT_VERSION = "1"
 DAMAGE = ["INTACT", "CRACKED", "DESTROYED", "DENTED"]
 CARVED = ["NONE", "TOP", "BOTTOM", "LEFT", "RIGHT", "5", "6", "7"]
-## Bytes per texel -> channel names. RG8 is the only plane format today.
-PLANE_CHANNELS = {2: ["soot(R)", "light(G)"]}
+## Bytes per texel -> channel names. RGB8 since R3D-LOOK (B = the floor-top tone derived from R); RG8 dumps still read.
+PLANE_CHANNELS = {2: ["soot(R)", "light(G)"], 3: ["soot(R)", "light(G)", "tone(B)"]}
 TAG = "[BOARD-PROBE-DIFF]"
 GATE_TAG = "[BOARD-PROBE-GATE]"
 

@@ -11,6 +11,13 @@ extends RefCounted
 ## Soot ring 0..3 (0 = the darkest), multiplied into a face's colour. SOOT-STAMP 2026-09-22 (lighter, softer).
 const SOOT_FACE_MULT: Array[float] = [0.38, 0.60, 0.76, 0.90]
 
+## A floor top's soot tone by ring (code / 36): the four ladder tones, clean, and the charred mean. The cell plane's B channel
+## stores it per cell so the shader blurs a scorch with ONE bilinear fetch instead of reading the neighbours' codes.
+static func top_tone_table() -> PackedFloat32Array:
+	return PackedFloat32Array([SOOT_FACE_MULT[0], SOOT_FACE_MULT[1], SOOT_FACE_MULT[2], SOOT_FACE_MULT[3], 1.0,
+		lerpf(SOOT_CHAR_MIN, SOOT_CHAR_MAX, 1.0 / 3.0)])
+
+
 ## A CHARRED face (`BlastCalculator.FACE_SOOT_CHAR`): what fire and embers leave. Far below soot tone 0 (0.38): dark, with the
 ## material's texture still reading through (0.03 was solid black). A RANGE since 2026-09-30 (Director: they were all too dark, a
 ## wider scale with slightly lighter tones, randomised): each voxel takes `lerp(MIN, MAX, h * h)` for a hash `h` in [0, 1), so most

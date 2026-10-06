@@ -8,14 +8,14 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 80098 lines total** (under `godot/scripts/`)
+**258 scripts · 80379 lines total** (under `godot/scripts/`)
 
 ## Index
 
 - **agents/** — actor_pose.gd, agent.gd, guard_attention.gd, guard_enemy.gd
 - **controllers/** — camera_controller.gd, fow_controller.gd, guard_coordinator.gd, hud_controller.gd, lighting_controller.gd, vision_controller.gd
 - **debug/** — dev_vision_status_panel.gd, map_loader_panel.gd, theme_matrix_debug_view.gd, vfx_draw_probe.gd, voxel_ruler_overlay.gd
-- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
+- **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd
 - **systems/** — board_probe.gd, cell_plane_store.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
@@ -465,7 +465,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `board3d_live.gd`
 
-extends `Node3D` · 2511 lines
+extends `Node3D` · 2565 lines
 
 `godot/scripts/geometry/board3d_live.gd`
 
@@ -747,6 +747,30 @@ extends `Node3D` · 2511 lines
 **Constants / tuning**
 - `HALF_W` = `128.0`
 - `HALF_H` = `64.0`
+
+---
+
+### `ground_transitions3d.gd`
+
+`class_name GroundTransitions3D` · extends `RefCounted` · 205 lines
+
+`godot/scripts/geometry/ground_transitions3d.gd`
+
+> GroundTransitions3D — the feathered border between two organic ground materials (R3D-SURFACES transitions, 2026-10-06). The floor of a map is a grid of GUs, and each GU wears one material, so where grass meets dirt the eye sees a ruler-straight line. For every floor GU that touches (edge or corner) a GU of a DIFFERENT organic ground, this puts one flat quad over it that wears the neighbour's photographic plane with an alpha feathered by `ground_transition3d.gdshader`: 0.5 on the shared edge, 0 one band-width away, the iso-line moved in and out by a world-space noise. The neighbour does the same with this GU's photo, so both sides show the same mix at the edge and no priority between materials is needed. WHICH pairs: both materials declare a `photo` floor (`MaterialDef.surface_floor`), i.e. organic ground. A human material (concrete, tile) keeps today's hard GU edge; a regular, right-angled transition for those is the same mechanism with no noise and is not built yet. An undeclared GU (the "earth" sentinel) is not a target. COSMETIC, like `GroundDecals3D`: the map declares it, nothing saves it, and a quad whose GU lost any floor-top voxel ends (`refresh()`, from `Room.bump_world_revision()`), so a crater never wears a feather floating over it.
+
+**Constants / tuning**
+- `SHADER_PATH` = `"res://godot/shaders/ground_transition3d.gdshader"`
+- `LIFT` = `0.012`
+- `PRIORITY` = `1`
+- `NOISE_SIZE` = `256`
+- `NOISE_SEED` = `7`
+- `NEIGHBOURS` = `[ [Vector2i(-1, 0), 1], [Vector2i(1, 0), 2], [Vector2i(0, -1), 4], [Vector2i(0, 1), 8], [Vector2i(-1, -1), 16], [Vector2i(1, -1), 32], [Vector2i(-1, 1), 64], [Vector2i(1, 1), 128], ]`
+
+**Public API**
+- `func attach(board: Node3D, gu_material: Dictionary, is_organic: Callable, level: int) -> void:`
+- `func detach() -> void:`
+- `func count() -> int:`
+- `func refresh(has_floor: Callable) -> void:`
 
 ---
 
@@ -5577,7 +5601,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11027 lines
+extends `Node2D` · 11049 lines
 
 `godot/scripts/world/room.gd`
 
@@ -5585,6 +5609,7 @@ extends `Node2D` · 11027 lines
 - `GroundGridRef` = `preload("res://godot/scripts/geometry/ground_grid.gd")`
 - `MapCatalogClass` = `preload("res://godot/scripts/world/maps/map_catalog.gd")`
 - `GroundDecals3DRef` = `preload("res://godot/scripts/geometry/ground_decals3d.gd")`
+- `GroundTransitions3DRef` = `preload("res://godot/scripts/geometry/ground_transitions3d.gd")`
 - `GlassShardShapes` = `preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")`
 - `GlassRainOverlay` = `preload("res://godot/scripts/overlays/glass_rain_overlay.gd")`
 - `MapCompilerClass` = `preload("res://godot/scripts/world/maps/map_compiler.gd")`

@@ -1362,6 +1362,8 @@ func _build_plane() -> void:
 		pm.set_shader_parameter("bucket_lum", ladder)
 		pm.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 		pm.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
+	for om: ShaderMaterial in _overlay_materials:
+		_apply_overlay_uniforms(om)
 
 
 ## R3D-PROPS: a prop mesh's `ShaderMaterial` (`prop_mesh3d.gdshader`) asks to be kept lit by every
@@ -1381,6 +1383,37 @@ func register_prop_light_material(mat: ShaderMaterial) -> void:
 		mat.set_shader_parameter("bucket_lum", PackedFloat32Array(_light_ladder))
 		mat.set_shader_parameter("soot_mult", Vector4(_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3]))
 		mat.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
+
+
+## R3D-SURFACES — a flat overlay lying on the floor (the ground transitions, `GroundTransitions3D`) is lit and sooted from the same
+## cell planes as the floor under it, so it joins every future plane rebuild like the board's own materials. Applies the current
+## plane at once.
+var _overlay_materials: Array[ShaderMaterial] = []
+
+
+func register_overlay_material(mat: ShaderMaterial) -> void:
+	if _overlay_materials.has(mat):
+		return
+	_overlay_materials.append(mat)
+	if _plane != null:
+		_apply_overlay_uniforms(mat)
+
+
+func unregister_overlay_material(mat: ShaderMaterial) -> void:
+	_overlay_materials.erase(mat)
+
+
+func _apply_overlay_uniforms(mat: ShaderMaterial) -> void:
+	mat.set_shader_parameter("cell_plane", _plane)
+	mat.set_shader_parameter("level_base", _level_min)
+	mat.set_shader_parameter("level_count", _level_max - _level_min + 1)
+	mat.set_shader_parameter("mesh_ground_level", _ground_level)
+	mat.set_shader_parameter("rel_offset", (_room._voxel_board as VoxelBoard).relative_level(_ground_level) - _ground_level)
+	mat.set_shader_parameter("plane_origin", VoxelBoard.SOOT_PLANE_ORIGIN)
+	mat.set_shader_parameter("plane_size", VoxelBoard.SOOT_TEX_SIZE)
+	mat.set_shader_parameter("bucket_lum", PackedFloat32Array(_light_ladder))
+	mat.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
+	mat.set_shader_parameter("depth_dim", PackedFloat32Array(VoxelBoard.FLOOR_DEPTH_DIM))
 
 
 func unregister_prop_light_material(mat: ShaderMaterial) -> void:
@@ -2393,11 +2426,9 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	var floor_photo: bool = definition != null and definition.surface_floor == "photo"
 	var roof_photo: bool = definition != null and definition.surface_roof == "photo"
 	if floor_photo or roof_photo:
-		var surface_resolved = TextureResolver.new().resolve("slab_%s" % material_id, material_id)
-		if surface_resolved != null and surface_resolved.image != null:
-			var simage: Image = (surface_resolved.image as Image).duplicate()
-			simage.generate_mipmaps()
-			shader_material.set_shader_parameter("surface_tex", ImageTexture.create_from_image(simage))
+		var surface_tex: Texture2D = material_surface_texture(material_id)
+		if surface_tex != null:
+			shader_material.set_shader_parameter("surface_tex", surface_tex)
 			shader_material.set_shader_parameter("has_surface_floor", 1.0 if floor_photo else 0.0)
 			shader_material.set_shader_parameter("has_surface_roof", 1.0 if roof_photo else 0.0)
 			var macro: ImageTexture = _get_surface_macro_tex()
@@ -2424,6 +2455,29 @@ func material_facade_texture(material_id: String) -> Texture2D:
 		tex = ImageTexture.create_from_image(image)
 	_facade_textures[material_id] = tex
 	return tex
+
+
+## A material's photographic surface plane (`slab_<id>`, mipmapped), built ONCE per board and shared by the material's own faces and by
+## the ground transitions that borrow it (R3D-SURFACES): one VRAM copy per photo. Null when it does not resolve.
+var _surface_textures: Dictionary = {}
+
+
+func material_surface_texture(material_id: String) -> Texture2D:
+	if _surface_textures.has(material_id):
+		return _surface_textures[material_id]
+	var tex: Texture2D = null
+	var resolved = TextureResolver.new().resolve("slab_%s" % material_id, material_id)
+	if resolved != null and resolved.image != null:
+		var image: Image = (resolved.image as Image).duplicate()
+		image.generate_mipmaps()
+		tex = ImageTexture.create_from_image(image)
+	_surface_textures[material_id] = tex
+	return tex
+
+
+## The shared macro modulation map (see `_get_surface_macro_tex`), for the ground transitions' own material.
+func surface_macro_texture() -> Texture2D:
+	return _get_surface_macro_tex()
 
 
 ## R3D-SURFACES — resolves `ASSETS/materials/_generic/macro_ground.png` once (`_generic` is where the decal

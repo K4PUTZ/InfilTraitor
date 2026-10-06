@@ -6,6 +6,7 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## G4-3 — preloaded rather than used by `class_name`: this file is parsed
 ## before the global class cache exists in a headless lint run.
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
+const GroundTransitions3DRef = preload("res://godot/scripts/geometry/ground_transitions3d.gd")  ## R3D-SURFACES: feathered borders between organic grounds
 const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
 const GlassRainOverlay = preload("res://godot/scripts/overlays/glass_rain_overlay.gd")
 const MapCompilerClass   = preload("res://godot/scripts/world/maps/map_compiler.gd")
@@ -133,6 +134,7 @@ var _slab_registry: SlabRegistry = null
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
+var _ground_transitions: RefCounted = null  ## R3D-SURFACES: the feathered border between two organic floor materials (cosmetic, derived from the floor zones)
 
 
 var _room_size: Vector2i = Vector2i.ZERO
@@ -353,6 +355,9 @@ func bump_world_revision() -> void:
 	if _ground_decals != null and _ground_decals.count() > 0 and VoxelStore.active != null:
 		var store: VoxelStore = VoxelStore.active
 		_ground_decals.refresh(func(x: int, z: int) -> bool: return store.has_cell(x, z, GeometryCoords.FLOOR_TOP_LEVEL))
+	if _ground_transitions != null and _ground_transitions.count() > 0 and VoxelStore.active != null:
+		var floor_store: VoxelStore = VoxelStore.active
+		_ground_transitions.refresh(func(x: int, z: int) -> bool: return floor_store.has_cell(x, z, GeometryCoords.FLOOR_TOP_LEVEL))
 
 ## VL-D3: floor columns (Vector2i x,y) that had a wall/block/roof above them in
 ## the INTACT layout. Recomputed each build from the freshly rendered geometry
@@ -3090,6 +3095,23 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 		if _ground_decals == null:
 			_ground_decals = GroundDecals3DRef.new()
 		_ground_decals.attach(live, _base_layout.get("ground_decal_instances", []), GeometryCoords.FLOOR_TOP_LEVEL)
+		## R3D-SURFACES transitions — the floor material of every declared GU (the same expansion `RoomBuilder` does: last rect wins),
+		## and a feathered overlay where two organic grounds (a `photo` floor) meet.
+		if _ground_transitions == null:
+			_ground_transitions = GroundTransitions3DRef.new()
+		var gu_material: Dictionary = {}
+		for zone: Dictionary in _base_layout.get("floor_zone_instances", []):
+			var zone_origin: Vector2i = zone.get("gu_cell", Vector2i.ZERO)
+			var zone_size: Vector2i = zone.get("size", Vector2i.ONE)
+			var zone_material: String = String(zone.get("material", ""))
+			if zone_material == "":
+				continue
+			for zx in range(zone_size.x):
+				for zy in range(zone_size.y):
+					gu_material[zone_origin + Vector2i(zx, zy)] = zone_material
+		_ground_transitions.attach(live, gu_material, func(material_id: String) -> bool:
+			var definition = Registries.get_material_registry().get_material(material_id)
+			return definition != null and definition.surface_floor == "photo", GeometryCoords.FLOOR_TOP_LEVEL)
 		## R3D-SURFACES prototype — "one leaf-patch decal", dev-only, no map data (see VoxelBoard's
 		## own comment on `set_patch_board3d` / `place_patch_demo`).
 		if _dev_flag_on("SURFACE_PATCH_DEMO"):

@@ -1,6 +1,6 @@
 # SURFACES_MASTER_PLAN — what lies on the floor
 
-**v1.0 — 2026-10-06.** Status: 🟢 floors, transitions, tags, colour and the art rooms are BUILT; 🟡 the floor-mark classes (marking, scatter,
+**v1.1 — 2026-10-06 (the Director's answers to §7 folded in: DS-11..DS-14).** Status: 🟢 floors, transitions, tags, colour and the art rooms are BUILT; 🟡 the floor-mark classes (marking, scatter,
 stroke, dense layer) are RATIFIED IN PRINCIPLE (Director, 2026-10-06, "Perfeito") and NOT built; nothing in §5-§7 exists yet.
 
 This plan owns **everything that makes a floor look like a place**: the base materials (facade or photographic), the borders between them,
@@ -60,23 +60,27 @@ Not built, on purpose: hazard stripes as a floor (principle 4), the floor-gratin
 | DS-8 | 2026-10-06 | The art rooms are **two maps** and the harness fails on any `ERROR: [` | the cell-plane limit (principle 8) was found by accident |
 | DS-9 | 2026-10-06 | Hazard stripes are a **marking**, not a floor | the facade mirror (principle 4) |
 | DS-10 | 2026-10-06 | The Director redraws the leaf art himself (it is too large); the engine treats it as a placeholder | |
+| DS-11 | 2026-10-06 | **No hard scatter cap. Scatter places CLUSTERS**: a few (about three per kind) MACRO-PATTERNS, each several decals composited into ONE stamp, instanced many times at varied positions, rotations and scales | the cost of a scatter is quads and alpha overdraw; a stamp of 8 leaves is 1 quad, so the budget is spent where it is seen; and a stamp is authored, so the look is controlled. A per-map BUDGET in quads is reported and warns loudly (measured on the handsets, SM-2); it is not a limit on the author |
+| DS-12 | 2026-10-06 | **Scatter is the first stage** (SM-2), before marking | it unlocks forest, yards and stains |
+| DS-13 | 2026-10-06 | **Blood and bodily marks are in** ("qualquer coisa pode ter"): spatter and pools are scatter, drag marks are strokes. Each such kind carries `"mature": true` in `rules.json` so a build or a setting can drop them without touching a map | a rating or a setting may need to switch them off |
+| DS-14 | 2026-10-06 | **Liquids are a parked track** (no liquid materials yet). Under a grating, for now, only a STEAM VENT effect that rises through it, to see the place; water and lava wait for the liquid materials | the Director |
 
 ## 4. The four classes of floor mark (DS-7)
 
 | Class | Placement | Rules | Examples | Rendering |
 |---|---|---|---|---|
 | **MARKING** (human-made, on the grid) | GU-exact, size in whole GUs, rotation in 90 degree steps, authored one by one; never random, never stacked on another marking | `ground_decals` item with `class: marking` kinds; a free `rot`, a fractional size or an off-grid `at` is an error | hazard stripe, road line (solid / dashed), crosswalk, parking bay + number, arrow, chevron, helipad H, fire-lane, floor tape, doorway threshold, manhole and drain cover, doormat, rectangular rug and runner, expansion joint, cable cover | `FloorPile3D` quads as today (crisp edges, full alpha) |
-| **SCATTER** (organic, free) | any voxel, any rotation, scale jitter (~0.6-1.4), several per GU, may STACK (priority orders them); generated per ZONE from a density and a seed, never typed item by item | `class: scatter` kinds; tag rules apply per placed item; never under a wall, block or prop footprint | leaves, pine needles, grass tufts, moss, flowers, weeds in cracks, mud, puddle, snow patch, ice, sand drift, pebbles, twigs, mushrooms, dirt, dust, ash, oil / rust / grease stain, paint splash, paper, can, cigarette butt, crack, chip, pothole, coffee / liquid stain, cobweb | batched per kind (one mesh per kind), z-ordered by a small LIFT per priority |
+| **SCATTER** (organic, free) | any voxel, any rotation, scale jitter (~0.6-1.4), several per GU, may STACK (priority orders them); generated per ZONE from a density and a seed, never typed item by item; the unit is a CLUSTER STAMP (DS-11): several decals baked into one image, so one quad is a handful of leaves | `class: scatter` kinds; tag rules apply per placed item; never under a wall, block or prop footprint | leaves, pine needles, grass tufts, moss, flowers, weeds in cracks, mud, puddle, snow patch, ice, sand drift, pebbles, twigs, mushrooms, dirt, dust, ash, oil / rust / grease stain, paint splash, paper, can, cigarette butt, crack, chip, pothole, coffee / liquid stain, cobweb | batched per kind (one mesh per kind), z-ordered by a small LIFT per priority |
 | **STROKE** (a line with width) | a polyline with a width; the texture runs along it | `class: stroke` kinds; `ground_strokes` items `{points, width, kind}` | tyre marks, skid marks, footprints, drag marks, cables on the floor, worn paths, rivulets | a strip mesh per stroke, UV along the length |
 | **DENSE LAYER** (fills a zone) | not items: a world-space alpha texture masked by noise over a zone | `ground_layers` `{zone, kind, coverage, seed}` | forest litter, uneven snow, wind-blown sand | one quad per zone, per-pixel cost not per-leaf cost |
 
-**Why the dense layer exists.** A thousand leaves as separate items is a thousand alpha quads, and the Moto is GPU-bound. Scatter is sized for
-hundreds per map; above that the layer pays per pixel. **Both limits are to be MEASURED on the handsets before they are promised** (§6, SM-2).
+**Why stamps and the dense layer.** A thousand leaves as separate items is a thousand alpha quads, and the Moto is GPU-bound. A stamp makes a quad worth a
+handful of leaves; the dense layer pays per pixel for a whole forest floor. **The budgets are MEASURED on the handsets before they are promised** (§6, SM-2).
 
 ## 5. Schemas and algorithms (proposed, not built)
 
 **`surfaces/rules.json`** gains, per patch kind: `"class": "marking" | "scatter" | "stroke" | "layer"`, and for scatter `"stack": true`,
-`"scale": [min, max]`, `"density": <per GU>` (a default the zone may override), `"priority": <int>` (draw order among stacked kinds).
+`"scale": [min, max]`, `"density": <per GU>` (a default the zone may override), `"priority": <int>` (draw order among stacked kinds), `"size": <GU>` (the quad's side; 1 for a plain decal, 2-3 for a cluster stamp), `"mature": true` on blood and bodily marks (DS-13).
 
 **`ground_scatter`** (new map section, v1):
 ```json
@@ -84,7 +88,7 @@ hundreds per map; above that the layer pays per pixel. **Both limits are to be M
 ```
 Positions come from a deterministic jittered grid (FNV-1a of `kind|seed|cell`, B4: the same in every run and on every machine), at the
 voxel lattice; an item is dropped when the tags forbid it on the floor under it, when it would lie under a wall / block / prop footprint
-(read from the store's occupancy), or when the zone's per-map cap is reached (loud, once). A scatter item's footprint is its quad's
+(read from the store's occupancy), or when the map's quad budget is passed (a loud warning, once, not a refusal). A scatter item's footprint is its quad's
 floor-top voxels; `refresh()` ends an item whose footprint lost any, like `GroundDecals3D` does.
 
 **`ground_strokes`**: `{points: [[x, y], ...], width, kind}`; **`ground_layers`**: `{zone, kind, coverage, seed}`. Both after scatter.
@@ -99,24 +103,20 @@ rewires the board.
 
 | Stage | Content | Gate |
 |---|---|---|
-| **SM-1 Marking** | `class` in `rules.json`; marking enforcement; `gen_markings.py` (procedural, seeded): hazard stripe, road lines, crosswalk, arrows, chevrons, bay + numbers; a gallery band | a selftest per rule (off-grid / bad rot refused); the harness PASSED; **Galaxy + Moto idle row** |
-| **SM-2 Scatter** | `ground_scatter` section and generator; avoid mask from the store; per-kind batching; art: leaf (placeholder), pebbles, dirt, dust, oil, rust, puddle, mud; a forest / yard / office room in the gallery | determinism gate (two boots, same positions); a stacking capture; **handset rows at 100 / 400 / 1000 items, which SETS the per-map cap** (until measured, proposed default **400**) |
+| **SM-1 Marking** (after SM-2) | `class` in `rules.json`; marking enforcement; `gen_markings.py` (procedural, seeded): hazard stripe, road lines, crosswalk, arrows, chevrons, bay + numbers; a gallery band | a selftest per rule (off-grid / bad rot refused); the harness PASSED; **Galaxy + Moto idle row** |
+| **SM-2 Scatter** (FIRST, DS-12) | `ground_scatter` section; the cluster STAMPS (`gen_scatter_stamps.py`, procedural and seeded: `leaf_litter`, `pebbles`, `dirt`, `oil`, three macro-patterns each, 2-3 GU); `size`, `class` per kind in `rules.json`; per-item `scale`; the avoid mask (nothing under a wall, block or prop); batching per kind; a `SURFACES_SCATTER` room (forest, yard, office) | determinism (the same expansion twice), avoid and tag rules in a selftest; the harness PASSED; **handset rows at 50 / 200 / 800 instances, which set the per-map QUAD BUDGET (a loud warning, not a cap)** |
 | **SM-3 Stroke** | `ground_strokes`; tyre marks, footprints, cables | selftest + capture; handset row |
 | **SM-4 Dense layer** | `ground_layers`; litter, snow, sand | per-pixel cost A/B on the Moto |
 | **SM-5 Human transitions** | the regular right-angled border (the same mechanism with no noise) and an optional threshold strip; the ONE-SIDED spill (organic onto human, not the reverse) | capture + A/B |
-| **SM-6 Grating underlay** | see-through holes and a plane below (water, lava, steam): a shader decision, ruled by the Director BEFORE it is built | |
+| **SM-6 Grating** | first (DS-14): a STEAM VENT effect rising through a grating (a world-space VFX emitter, `ground_vents` / a prop, existing VFX path); later, with the liquid materials: see-through holes and a plane below (water, lava), a shader decision ruled BEFORE it is built | the Director's eye; a handset row for the emitter |
 | **SM-7 Natural photo floors** | mud, dry clay, forest floor, snow, rock (CC0, `PHOTO_SOURCES.md`, `check_surface.py`) with their patch groups; <= 8 per map | `check_surface.py` PASS; a transition capture per new pair |
 | **SM-8 Themes** | laboratory, spaceship, domestic floor sets (SURFACES_CATALOG §2.5-2.7), recolour with A + B | gallery rows |
 | **E-1 Experiment** | hide the cell grid beyond the agent's perimeter (Director's idea): does it play better or worse? An interface experiment, not a surface stage | the Director's eye |
 
 ## 7. Open decisions (for the Director)
 
-1. **Scatter cap** per map: start at 400 until the handsets say otherwise, or none for now?
-2. **Which stage first**: scatter (unlocks forest, puddles, stains) or marking (unlocks hazard stripes and roads)?
-3. **Blood and bodily marks**: in or out of the catalog? (Left out of §4 for lack of a ruling.)
-4. **Per-cell tint (C)**: the trigger is a map needing many colours of one pattern at once, or player customisation. Agreed that nothing else triggers it?
-5. **SM-6** (what lies below a grating): water, lava, steam are a shader and a plane; wanted for the MVP, or later?
-6. The unverified delivery of `surfaces/rules.json` inside the APK (`FileAccess` on `res://`, like `props/*.json`): to be proven on the next handset run.
+1. **Per-cell tint (C)** (Director: "precisamos pensar nos diferentes cenários"). Scenarios that would need it, to be weighed when the procedural-maps milestone arrives: (a) a level with colour-coded zones of ONE pattern (red wing, blue open office): covered by fixed rows (A) while the palette is finite; (b) procedural maps picking a colour per room from a finite palette: covered by A; (c) the player customising a hideout; (d) factions or teams painting zones at runtime; (e) a colour that changes during play. Only (c)-(e), or a palette that must be unbounded, need C. Undecided.
+2. The unverified delivery of `surfaces/rules.json` inside the APK (`FileAccess` on `res://`, like `props/*.json`): to be proven on the next handset run.
 
 ## 8. Known limits and debts
 

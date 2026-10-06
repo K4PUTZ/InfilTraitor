@@ -67,6 +67,19 @@ var silhouette_phase: float = 0.0:
 		if _silhouette != null:
 			_silhouette.set_shader_parameter("phase", value)
 var _silhouette: ShaderMaterial = null
+## R3D-LOOK item 7 (Director, 2026-10-05): the reveal silhouette takes its colour from the actor's FACTION, so a revealed guard and a
+## revealed agent never read alike. Per faction: the two stripe colours and the outline. Unknown ids keep the shader's own lilac.
+const REVEAL_PALETTES: Dictionary = {
+	&"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)},
+	&"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)},
+	&"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)},
+	&"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)},
+	&"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)},
+}
+var reveal_faction: StringName = &"":
+	set(value):
+		reveal_faction = value
+		_apply_reveal_palette()
 static var _warned_family: Dictionary = {}
 static var _warned_action: Dictionary = {}
 
@@ -287,8 +300,18 @@ func _apply_reveal() -> void:
 		_silhouette.shader = load(SILHOUETTE_SHADER_PATH)
 		_silhouette.render_priority = SILHOUETTE_PRIORITY
 		_silhouette.set_shader_parameter("phase", silhouette_phase)
+		_apply_reveal_palette()
 	for m: ShaderMaterial in _materials:
 		m.next_pass = _silhouette if reveal_behind_walls else null
+
+
+func _apply_reveal_palette() -> void:
+	if _silhouette == null:
+		return
+	var palette: Dictionary = REVEAL_PALETTES.get(reveal_faction, {})
+	for key: String in ["stripe_a", "stripe_b", "outline_color"]:
+		if palette.has(key):
+			_silhouette.set_shader_parameter(key, palette[key])
 
 
 func _exit_tree() -> void:

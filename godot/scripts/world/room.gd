@@ -5959,14 +5959,22 @@ func _guard_revealed_by_gameplay(guard: Node) -> bool:
 
 
 ## R3D-7 — a guard gameplay reveals is drawn through the walls that cover it (a striped silhouette, see
-## `ActorMesh3D.reveal_behind_walls`). OFF until gameplay asks for it: `GUARD_REVEAL=1`.
+## `ActorMesh3D.reveal_behind_walls`). ON by default (Director, 2026-10-05: the agent must see where a guard is, with no
+## modifier or gadget; vision radius decides WHO); `GUARD_REVEAL=0` switches it off. The colour is the guard's faction's.
+## `GUARD_FACTIONS=agency,militia,...` (a dev aid) deals those factions to the guards in turn, to see every palette at once.
 func _apply_guard_reveal() -> void:
-	var on: bool = _dev_flag_on("GUARD_REVEAL")
+	var on: bool = _dev_flag("GUARD_REVEAL", "1") != "0"
+	var dealt: PackedStringArray = _dev_flag("GUARD_FACTIONS", "").split(",", false)
+	var n: int = 0
 	for guard in _guards:
 		if not is_instance_valid(guard) or guard.sprite == null or not guard.sprite.has_meta("figure3d"):
 			continue
+		if not dealt.is_empty():
+			guard.faction = StringName(dealt[n % dealt.size()].strip_edges())
+			n += 1
 		var billboard: Variant = guard.sprite.get_meta("figure3d")
 		if is_instance_valid(billboard):
+			(billboard as Node).set("reveal_faction", guard.faction)
 			(billboard as Node).set("reveal_behind_walls", on and _guard_revealed_by_gameplay(guard))
 
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**257 scripts · 80041 lines total** (under `godot/scripts/`)
+**257 scripts · 80075 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -158,7 +158,7 @@
 
 ### `guard_enemy.gd`
 
-`class_name GuardEnemy` · extends `Node2D` · 1319 lines
+`class_name GuardEnemy` · extends `Node2D` · 1322 lines
 
 `godot/scripts/agents/guard_enemy.gd`
 
@@ -432,7 +432,7 @@ extends `ConfirmationDialog` · 64 lines
 
 ### `actor_mesh3d.gd`
 
-`class_name ActorMesh3D` · extends `Node3D` · 302 lines
+`class_name ActorMesh3D` · extends `Node3D` · 325 lines
 
 `godot/scripts/geometry/actor_mesh3d.gd`
 
@@ -450,10 +450,12 @@ extends `ConfirmationDialog` · 64 lines
 - `WEAPON_BY_SUFFIX` = `{"": "shotgun", "_pistol": "pistol", "_rifle": "shotgun"}`
 - `METRES_TO_UNITS` = `1.0 / 1.6`
 - `DEFAULT_SHADOW` = `Color(0.0, 0.0, 0.0, 0.28)`
+- `REVEAL_PALETTES` = `{ &"agent": {"stripe_a": Color(0.86, 0.96, 1.0), "stripe_b": Color(0.16, 0.28, 0.38), "outline_color": Color(1.0, 1.0, 1.0)}, &"agency": {"stripe_a": Color(0.46, 0.64, 1.0), "stripe_b": Color(0.08, 0.14, 0.40), "outline_color": Color(0.30, 0.56, 1.0)}, &"militia": {"stripe_a": Color(1.0, 0.52, 0.36), "stripe_b": Color(0.40, 0.10, 0.06), "outline_color": Color(1.0, 0.34, 0.18)}, &"corporation": {"stripe_a": Color(1.0, 0.84, 0.30), "stripe_b": Color(0.38, 0.28, 0.04), "outline_color": Color(1.0, 0.74, 0.12)}, &"network": {"stripe_a": Color(0.46, 0.96, 0.62), "stripe_b": Color(0.06, 0.30, 0.14), "outline_color": Color(0.28, 0.90, 0.46)}, }`
 
 **Public vars**
 - `var reveal_behind_walls: bool = false:`
 - `var silhouette_phase: float = 0.0:`
+- `var reveal_faction: StringName = &"":`
 
 **Public API**
 - `func setup_actor(board: Node3D, source: ActorPose) -> bool:`
@@ -5575,7 +5577,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11019 lines
+extends `Node2D` · 11027 lines
 
 `godot/scripts/world/room.gd`
 

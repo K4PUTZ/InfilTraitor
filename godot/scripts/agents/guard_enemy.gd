@@ -87,6 +87,9 @@ var _cone_drawn_los: Vector3i = Vector3i(-1, -1, -1)
 ## case a caller mutates the same dictionaries in place instead of passing new ones.
 var _los_revision: int = 0
 
+## Which faction this guard serves (DESIGN_MASTER_PLAN 11.1: agency, militia, corporation). One archetype ships, and it is the Agency's;
+## the id picks the colour of its reveal silhouette (`ActorMesh3D.REVEAL_PALETTES`).
+var faction: StringName = &"agency"
 var cell: Vector2i = Vector2i.ZERO
 var patrol_route: Array[Vector2i] = []
 var patrol_index: int = 0

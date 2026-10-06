@@ -30,7 +30,7 @@ MAP_PATH = ROOT / "maps" / "SURFACES_GALLERY.map.json"
 DECALS = ROOT / "ASSETS" / "materials" / "_generic" / "decals"
 
 BASES = ["grass", "dirt", "gravel", "sand"]
-INNER = (44, 53)
+INNER = (44, 66)
 COLUMN_W = 10
 COLUMN_X0 = 2
 COLUMN_Y0 = 2
@@ -95,7 +95,7 @@ AGENT_START = [6, 29]
 ## The CARPET MATRIX (y 34 to 51): one column per pattern, one row per colour (`gen_corporate_floors.py`'s CARPET_PATTERNS x CARPET_COLOURS),
 ## every cell 8 GU wide and 3 tall. The plain `carpet` is not in it (it is the old fine weave).
 CARPET_PATTERNS = {"plain": "blue", "stripe": "red", "basket": "navy", "diamond": "green", "check": "tan"}   # pattern -> default colour
-CARPET_COLOURS = ["red", "blue", "navy", "grey", "green", "tan"]
+CARPET_COLOURS = ["red", "blue", "navy", "grey", "green", "tan", "yellow", "orange", "purple", "black"]   # = gen_corporate_floors.CARPET_COLOURS
 LAB_Y0 = 34
 LAB_ROW_H = 3
 LAB_W = 8

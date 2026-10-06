@@ -11,7 +11,7 @@
    "v": 1,
    "inner_size": [
     44,
-    53
+    66
    ],
    "buffer": 5,
    "floor_tile": "floor_SE"
@@ -1225,6 +1225,54 @@
      "material": "carpet_plain_tan"
     },
     {
+     "comment": "carpet plain yellow",
+     "gu": [
+      2,
+      52
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_plain_yellow"
+    },
+    {
+     "comment": "carpet plain orange",
+     "gu": [
+      2,
+      55
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_plain_orange"
+    },
+    {
+     "comment": "carpet plain purple",
+     "gu": [
+      2,
+      58
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_plain_purple"
+    },
+    {
+     "comment": "carpet plain black",
+     "gu": [
+      2,
+      61
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_plain_black"
+    },
+    {
      "comment": "carpet stripe red",
      "gu": [
       10,
@@ -1295,6 +1343,54 @@
       3
      ],
      "material": "carpet_stripe_tan"
+    },
+    {
+     "comment": "carpet stripe yellow",
+     "gu": [
+      10,
+      52
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_yellow"
+    },
+    {
+     "comment": "carpet stripe orange",
+     "gu": [
+      10,
+      55
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_orange"
+    },
+    {
+     "comment": "carpet stripe purple",
+     "gu": [
+      10,
+      58
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_purple"
+    },
+    {
+     "comment": "carpet stripe black",
+     "gu": [
+      10,
+      61
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_black"
     },
     {
      "comment": "carpet basket red",
@@ -1369,6 +1465,54 @@
      "material": "carpet_basket_tan"
     },
     {
+     "comment": "carpet basket yellow",
+     "gu": [
+      18,
+      52
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_basket_yellow"
+    },
+    {
+     "comment": "carpet basket orange",
+     "gu": [
+      18,
+      55
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_basket_orange"
+    },
+    {
+     "comment": "carpet basket purple",
+     "gu": [
+      18,
+      58
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_basket_purple"
+    },
+    {
+     "comment": "carpet basket black",
+     "gu": [
+      18,
+      61
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_basket_black"
+    },
+    {
      "comment": "carpet diamond red",
      "gu": [
       26,
@@ -1441,6 +1585,54 @@
      "material": "carpet_diamond_tan"
     },
     {
+     "comment": "carpet diamond yellow",
+     "gu": [
+      26,
+      52
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_diamond_yellow"
+    },
+    {
+     "comment": "carpet diamond orange",
+     "gu": [
+      26,
+      55
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_diamond_orange"
+    },
+    {
+     "comment": "carpet diamond purple",
+     "gu": [
+      26,
+      58
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_diamond_purple"
+    },
+    {
+     "comment": "carpet diamond black",
+     "gu": [
+      26,
+      61
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_diamond_black"
+    },
+    {
      "comment": "carpet check red",
      "gu": [
       34,
@@ -1511,6 +1703,54 @@
       3
      ],
      "material": "carpet_check"
+    },
+    {
+     "comment": "carpet check yellow",
+     "gu": [
+      34,
+      52
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_check_yellow"
+    },
+    {
+     "comment": "carpet check orange",
+     "gu": [
+      34,
+      55
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_check_orange"
+    },
+    {
+     "comment": "carpet check purple",
+     "gu": [
+      34,
+      58
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_check_purple"
+    },
+    {
+     "comment": "carpet check black",
+     "gu": [
+      34,
+      61
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_check_black"
     },
     {
      "comment": "human floor carpet",

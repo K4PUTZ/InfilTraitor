@@ -75,6 +75,23 @@ static func expand(items: Array, floor_tags_of: Callable, blocked: Callable) -> 
 	return {"instances": instances, "stats": stats}
 
 
+## How many LAYERS of floor the expanded stamps cover inside their scatter zones: the sum of every quad's area over the area of the DISTINCT
+## zones. The cost of a scatter on a handset is paid per blended pixel, so this, not a stamp COUNT, is the budget's unit: measured on the Moto,
+## about 2.4 ms per layer over a full screen of zone (SURFACES_MASTER_PLAN §7.0).
+static func coverage_layers(instances: Array, items: Array) -> float:
+	var quad_area: float = 0.0
+	for inst: Dictionary in instances:
+		quad_area += pow(SurfaceRulesRef.kind_size(String(inst["kind"])) * float(inst["scale"]), 2.0)
+	var zone_area: float = 0.0
+	var seen: Dictionary = {}
+	for item: Dictionary in items:
+		var zone: Rect2 = item["zone"]
+		if not seen.has(zone):
+			seen[zone] = true
+			zone_area += zone.size.x * zone.size.y
+	return quad_area / zone_area if zone_area > 0.0 else 0.0
+
+
 ## The item's kinds as `[[kind, weight], ...]` (one entry for a plain `kind`); empty, with a loud error, when any is not a scatter kind.
 static func _mix_of(item: Dictionary) -> Array:
 	var mix: Array = []

@@ -203,6 +203,18 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"rot": float(decal.get("rot", 0.0)),
 		})
 
+	## --- ground_vents (R3D-SURFACES SM-6): `at` in GU on the voxel lattice, shifted by the buffer; the kind is checked by `VentEmitter` ---
+	var ground_vent_instances: Array = []
+	for vent in spec.get("ground_vents", []):
+		var vent_at = vent.get("at", null)
+		var vent_kind: String = String(vent.get("kind", ""))
+		if not (vent_at is Array) or vent_at.size() != 2 or vent_kind.is_empty() \
+				or not is_equal_approx(float(vent_at[0]) * 8.0, round(float(vent_at[0]) * 8.0)) \
+				or not is_equal_approx(float(vent_at[1]) * 8.0, round(float(vent_at[1]) * 8.0)):
+			push_error("[MapCompiler] ground_vents: %s needs `at` [x, y] on the voxel lattice and a `kind`; skipped" % str(vent))
+			continue
+		ground_vent_instances.append({"at": Vector2(float(vent_at[0]), float(vent_at[1])) + Vector2(offset), "kind": vent_kind})
+
 	## --- ground_scatter (R3D-SURFACES SM-2): zones in raw GU (the buffer applied, like every position); expanded later, in `GroundScatter` ---
 	var ground_scatter_items: Array = []
 	for item in spec.get("ground_scatter", []):
@@ -356,6 +368,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"panel_instances":  panel_instances,   ## M3-2b: half-thickness elements, offset-adjusted
 		"ground_decal_instances": ground_decal_instances,  ## R3D-SURFACES S2: floor marks, offset-adjusted, base grid only (never rotated)
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
+		"ground_vent_instances": ground_vent_instances,  ## R3D-SURFACES SM-6: floor vents (raw GU), a cosmetic plume each
 		"ground_scatter_items": ground_scatter_items,  ## R3D-SURFACES SM-2: scatter zones (raw GU), expanded by GroundScatter at attach
 		"material_tints":   material_tints,    ## R3D-SURFACES: material id -> Color, the colour it reads as in this map (cosmetic)
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),

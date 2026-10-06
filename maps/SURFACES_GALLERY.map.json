@@ -1473,6 +1473,43 @@
     }
    ]
   },
+  "ground_vents": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "steam through the grating",
+     "at": [
+      24.5,
+      39.0
+     ],
+     "kind": "steam"
+    },
+    {
+     "comment": "steam through the grating_dark",
+     "at": [
+      29.5,
+      39.0
+     ],
+     "kind": "steam"
+    },
+    {
+     "comment": "steam through the grating_rust",
+     "at": [
+      34.5,
+      39.0
+     ],
+     "kind": "steam"
+    },
+    {
+     "comment": "steam through the grating_yellow",
+     "at": [
+      39.5,
+      39.0
+     ],
+     "kind": "steam"
+    }
+   ]
+  },
   "material_tints": {
    "v": 1,
    "tints": {

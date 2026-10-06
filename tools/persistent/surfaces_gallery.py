@@ -53,6 +53,10 @@ def scenario_gallery(tag: str, zoom: float) -> tuple[str, list[str]]:
     shot("ind_wide", gen.COLUMN_X0 + gen.IND_W * len(gen.INDUSTRIAL) / 2.0, iy, 0.3)
     for i, mat in enumerate(gen.INDUSTRIAL):
         shot("ind_" + mat, gen.COLUMN_X0 + i * gen.IND_W + gen.IND_W / 2.0, iy, zoom * 1.4)
+    ## the steam vents over the gratings: let the plumes build up (120 fixed frames = 2 s) before the capture
+    steps.extend(["centre %d,%d" % (gen.COLUMN_X0 + gen.IND_W * 6.0 + BUFFER, iy + BUFFER), "zoom %.2f" % (zoom * 0.9), "frames 150",
+                  "capture %s_ind_steam" % tag])
+    names.append("ind_steam")
     steps.extend(["centre agent", "zoom 1.6", "frames 30", "capture %s_agent_scale" % tag])
     names.append("agent_scale")
     steps.extend(["centre %d,%d" % (mid_x + BUFFER, mid_y + BUFFER), "zoom 0.12", "perspective E", "frames 40",

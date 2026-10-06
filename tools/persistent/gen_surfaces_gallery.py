@@ -177,6 +177,10 @@ def build(map_id: str = "SURFACES_GALLERY") -> dict:
                     item["rot"] = rot
                 decals.append(item)
     zones += pad_zones()
+    vents = []
+    for i, mat in enumerate(INDUSTRIAL):
+        if mat.startswith("grating"):
+            vents.append({"comment": "steam through the %s" % mat, "at": [COLUMN_X0 + i * IND_W + IND_W / 2.0, IND_Y0 + IND_H / 2.0], "kind": "steam"})
     for i, mat in enumerate(INDUSTRIAL):
         zones.append({"comment": "industrial %s" % mat, "gu": [COLUMN_X0 + i * IND_W, IND_Y0], "size": [IND_W, IND_H], "material": mat})
     for i, mat in enumerate(HUMAN):
@@ -196,6 +200,7 @@ def build(map_id: str = "SURFACES_GALLERY") -> dict:
             "floor_zones": {"v": 2, "items": zones},
             "damage_materials": {"v": 1, "materials": list(BASES) + HUMAN + INDUSTRIAL},
             "ground_decals": {"v": 1, "items": decals},
+            "ground_vents": {"v": 1, "items": vents},
             "material_tints": {"v": 1, "tints": TINTS},
         },
     }

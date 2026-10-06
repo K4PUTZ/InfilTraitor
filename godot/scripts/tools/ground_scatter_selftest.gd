@@ -58,6 +58,10 @@ func _init() -> void:
 	var dense: Dictionary = GroundScatterClass.expand([{"zone": zone, "kind": "leaf_litter", "seed": 4, "density": 0.40}], no_tags, no_block)
 	_check((dense["instances"] as Array).size() > ia.size() * 2, "more density, more stamps (%d vs %d)" % [(dense["instances"] as Array).size(), ia.size()])
 
+	## The budget's unit: layers of floor covered. 64 stamps of 2.5 GU on 400 GU^2 at scale about 1.0 is about one layer.
+	var layers: float = GroundScatterClass.coverage_layers(ia, [item])
+	_check(layers > 0.8 and layers < 1.4, "coverage_layers of the 0.16 zone is about one layer (%.2f)" % layers)
+	_check(GroundScatterClass.coverage_layers(dense["instances"], [item]) > layers * 2.0, "and grows with density")
 	var arid := func(_gu: Vector2i) -> PackedStringArray: return PackedStringArray(["soil", "arid", "outdoor"])
 	var desert: Dictionary = GroundScatterClass.expand([item], arid, no_block)
 	_check((desert["instances"] as Array).is_empty() and int(desert["stats"]["leaf_litter"]["tags"]) > 30, "no leaf in the desert: an arid floor places none, and counts what it refused (%s)" % str(desert["stats"]))

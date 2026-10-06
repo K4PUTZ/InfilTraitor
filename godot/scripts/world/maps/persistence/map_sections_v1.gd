@@ -12,6 +12,7 @@ static func register_all(registry) -> void:
 	register_ground_decals(registry)
 	register_material_tints(registry)
 	register_ground_scatter(registry)
+	register_ground_vents(registry)
 	register_damage_materials(registry)
 	register_panels(registry)
 	register_props(registry)
@@ -156,6 +157,22 @@ static func register_ground_decals(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"ground_decals",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "items": fragment.get("items", []) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "items": raw.get("items", []) },
+		{},
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
+## ground_vents (R3D-SURFACES SM-6, 2026-10-06): a plume rising from the floor (steam through a grating, for now). `{at: [x, y], kind}` -- `at`
+## in GU on the voxel lattice, `kind` one of `VentEmitter.KINDS` (`steam`). Cosmetic: never saved, not gameplay.
+static func register_ground_vents(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"ground_vents",
 		1,
 		func(fragment: Dictionary) -> Dictionary:
 			return { "items": fragment.get("items", []) },

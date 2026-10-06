@@ -7,6 +7,7 @@ const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.g
 ## before the global class cache exists in a headless lint run.
 const GroundDecals3DRef = preload("res://godot/scripts/geometry/ground_decals3d.gd")  ## R3D-SURFACES S2: the map's floor marks
 const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: floor tags and patch rules
+const VentEmitterRef = preload("res://godot/scripts/overlays/vent_emitter.gd")  ## R3D-SURFACES SM-6: a plume rising from a floor vent
 const GroundScatterRef = preload("res://godot/scripts/geometry/ground_scatter.gd")  ## R3D-SURFACES SM-2: scatter zones -> placed stamps
 const GroundTransitions3DRef = preload("res://godot/scripts/geometry/ground_transitions3d.gd")  ## R3D-SURFACES: feathered borders between organic grounds
 const GlassShardShapes = preload("res://godot/scripts/systems/destruction/glass_shard_shapes.gd")
@@ -136,8 +137,9 @@ var _slab_registry: SlabRegistry = null
 var _junction_columns: Array = []             ## Array of JunctionResolver.JunctionColumn
 var _voxel_board: VoxelBoard = null     ## Voxel rendering engine
 var _ground_decals: RefCounted = null     ## R3D-SURFACES S2: `ground_decals` drawn on the floor (cosmetic, from the map, never saved)
-## SM-2 — a scatter map passing this many stamps gets a loud warning (not a refusal). A placeholder until the handset rows set it.
-const GROUND_SCATTER_QUAD_BUDGET: int = 600
+## SM-2 — a scatter covering more than this many LAYERS of its zones gets a loud warning (not a refusal). Moto: ~2.4 ms per layer over a full screen of zone.
+const GROUND_SCATTER_LAYER_BUDGET: float = 1.5
+var _vent_emitter: Node = null          ## R3D-SURFACES SM-6: the map's `ground_vents`, a steady cosmetic plume each
 var _ground_transitions: RefCounted = null  ## R3D-SURFACES: the feathered border between two organic floor materials (cosmetic, derived from the floor zones)
 
 
@@ -2998,6 +3000,19 @@ func scenario_board_probe(path: String, label: String) -> Dictionary:
 	return summary
 
 
+## R3D-SURFACES SM-6 — one puff of a vent's plume: the existing world-space smoke, emitted at the vent's floor point.
+func _emit_vent_puff(at: Vector2, _kind: String, params: Dictionary) -> void:
+	if _voxel_board == null or _smoke_spark_overlay == null:
+		return
+	var cell := Vector2i(int(floor(at.x * 8.0)), int(floor(at.y * 8.0)))
+	var origin: Vector2 = _voxel_board.voxel_world_position(cell, GeometryCoords.FLOOR_TOP_LEVEL)
+	var floor_pos: Vector2 = _voxel_board.voxel_world_position(cell, _voxel_board.ground_plane_level())
+	if floor_pos == Vector2.ZERO:
+		floor_pos = origin
+	_smoke_spark_overlay.add_smoke(origin, params["color"], float(params["scale"]), float(params["duration_scale"]),
+			int(params["blobs"]), float(params["drift_scale"]), 0.0, floor_pos)
+
+
 ## R3D-SURFACES — the map's `material_tints` (material id -> Color, a target albedo), read by `Board3DLive` when it makes a material.
 func material_tints() -> Dictionary:
 	return _base_layout.get("material_tints", {})
@@ -3118,6 +3133,10 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 		var floor_tags_of := func(gu: Vector2i) -> PackedStringArray:
 			var definition = Registries.get_material_registry().get_material(String(gu_material.get(gu, "")))
 			return definition.tags if definition != null else PackedStringArray()
+		if _vent_emitter == null:
+			_vent_emitter = VentEmitterRef.new()
+			add_child(_vent_emitter)
+		_vent_emitter.setup(_base_layout.get("ground_vent_instances", []), _emit_vent_puff)
 		var decal_instances: Array = (_base_layout.get("ground_decal_instances", []) as Array).duplicate()
 		var scatter_items: Array = _base_layout.get("ground_scatter_items", []) if str(_dev_flag("GROUND_SCATTER", "1")) != "0" else []  ## dev A/B: 0 = no scatter
 		if scatter_items.size() > 0 and VoxelStore.active != null:
@@ -3151,10 +3170,12 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 				scatter_items = scaled
 			var expanded: Dictionary = GroundScatterRef.expand(scatter_items, floor_tags_of, blocked)
 			decal_instances.append_array(expanded["instances"])
-			print("[GroundScatter] %d stamp(s) in %.1f ms: %s" % [(expanded["instances"] as Array).size(), float(Time.get_ticks_usec() - t0) / 1000.0, str(expanded["stats"])])
-			if (expanded["instances"] as Array).size() > GROUND_SCATTER_QUAD_BUDGET:
-				push_warning("[GroundScatter] %d stamps pass the quad budget of %d (a loud warning, not a cap: measure it on the handsets, SURFACES_MASTER_PLAN SM-2)"
-						% [(expanded["instances"] as Array).size(), GROUND_SCATTER_QUAD_BUDGET])
+			var layers: float = GroundScatterRef.coverage_layers(expanded["instances"], scatter_items)
+			print("[GroundScatter] %d stamp(s) covering %.2f layer(s) of their zones in %.1f ms: %s" % [(expanded["instances"] as Array).size(), layers,
+					float(Time.get_ticks_usec() - t0) / 1000.0, str(expanded["stats"])])
+			if layers > GROUND_SCATTER_LAYER_BUDGET:
+				push_warning("[GroundScatter] the scatter covers %.2f layers of its zones, past the budget of %.1f (about %.1f ms per layer over a full screen on the Moto; a warning, not a cap, SURFACES_MASTER_PLAN §7.0)"
+						% [layers, GROUND_SCATTER_LAYER_BUDGET, 2.4])
 		_ground_decals.attach(live, decal_instances, GeometryCoords.FLOOR_TOP_LEVEL, floor_tags_of)
 		## R3D-SURFACES transitions — a feathered overlay where two organic grounds (a `photo` floor) meet.
 		if _ground_transitions == null:

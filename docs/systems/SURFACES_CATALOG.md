@@ -88,6 +88,7 @@ placed on the half-GU lattice today. Kinds, grouped by what they need to exist:
 | Marking | hazard stripe, road line, bay number, arrow | `concrete`, `asphalt`, `metal` | `organic`, `soil` |
 | Emissive / tech | light strip, hazard glow, vent grille | `sci-fi`, `industrial`, `lab` | `organic` |
 | Debris (already exist) | wood, plywood debris; glass shards | wherever the thing broke | |
+| Blood / bodily (DS-13, `mature`) | spatter, pool, smear (scatter), drag mark (stroke) | any non-`sterile` floor; a rule may allow it anywhere | |
 
 **The rule, stated once.** Every floor material declares **tags** (`soil`, `organic`, `arid`, `wet`, `stone`, `concrete`, `tile`,
 `metal`, `wood`, `fabric`, `indoor`, `outdoor`, `sterile`, `industrial`, `sci-fi`); every patch kind declares `requires` and `forbids`

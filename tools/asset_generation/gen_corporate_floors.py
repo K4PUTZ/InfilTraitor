@@ -236,6 +236,7 @@ def write_carpet_row(material: str, mean: float, target: tuple, facade_from: str
     order = ["id", "family", "tags", "destroy_factor", "dent_factor", "crack_factor", "flammability", "base_color",
              "pattern_algorithm", "has_facade", "burn_consumption", "smoke_chance"]
     out = {k: row[k] for k in order}
+    out["facade_mean"] = round(mean, 1)
     if facade_from:
         out["facade_from"] = facade_from
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,6 +251,14 @@ ROWS = {
     "tile": {"family": "ceramic", "tags": ["tile", "indoor"], "destroy_factor": 0.9, "dent_factor": 0.0, "crack_factor": 0.0,
              "flammability": 0.0, "base_color": [0.93, 0.92, 0.88], "burn_consumption": 0.0, "smoke_chance": 0.05},
 }
+
+
+def set_facade_mean(material: str, mean: float) -> None:
+    """Record the facade's mean (0..255) in the material's row: `MaterialDef.base_color_for_albedo` and the map's `material_tints` use it."""
+    path = MATERIALS / material / ("%s.json" % material)
+    row = json.loads(path.read_text())
+    row["facade_mean"] = round(mean, 1)
+    path.write_text(json.dumps(row, indent=2) + "\n")
 
 
 def write_row(material: str) -> None:
@@ -278,14 +287,16 @@ def main() -> int:
         img = fn(np.random.default_rng(1000 + seed))
         save(name, img)
         write_row(name)
+        mean = float(np.clip(img, 0, 255).mean())
+        set_facade_mean(name, mean)
         if name == "tile":
-            mean = float(np.clip(img, 0, 255).mean())
             for colour, target in TILE_COLOURS.items():
                 path = MATERIALS / ("tile_%s" % colour) / ("tile_%s.json" % colour)
                 row = json.loads((MATERIALS / "tile" / "tile.json").read_text())
                 row["id"] = "tile_%s" % colour
                 row["base_color"] = [round(min(1.0, t / (mean / 255.0)), 2) for t in target]
                 row["facade_from"] = "tile"
+                row["facade_mean"] = round(mean, 1)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(json.dumps(row, indent=2) + "\n")
                 print("[CORPORATE] tile_%s base_color %s" % (colour, row["base_color"]))

@@ -17,5 +17,6 @@
   "pattern_algorithm": "flat",
   "has_facade": true,
   "smoke_chance": 0.15,
+  "facade_mean": 146.5,
   "facade_from": "steel_plate"
 }

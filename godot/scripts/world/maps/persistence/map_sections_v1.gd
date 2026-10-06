@@ -10,6 +10,7 @@ static func register_all(registry) -> void:
 	register_floor_zones(registry)
 	register_roofs(registry)
 	register_ground_decals(registry)
+	register_material_tints(registry)
 	register_damage_materials(registry)
 	register_panels(registry)
 	register_props(registry)
@@ -147,8 +148,8 @@ static func register_roofs(registry) -> void:
 	))
 
 ## ground_decals (R3D-SURFACES S2, 2026-10-02): GU-sized photographic marks on the floor. `{at, kind, variant?, rot?}` -- `at` is
-## [x, y] in GU on a HALF-GU lattice: an integer pair is the shared corner of four GUs (a quarter of the decal on each), `+ 0.5` on
-## one axis the middle of an edge, `+ 0.5` on both the middle of a GU. `kind` names `decal_patch_<kind>_<n>.png` in
+## [x, y] in GU on the VOXEL lattice (any multiple of 1/8 GU; half-GU until 2026-10-06): an integer pair is the shared corner of four GUs,
+## `+ 0.5` on one axis the middle of an edge, any other 1/8 position a place inside a GU. `kind` names `decal_patch_<kind>_<n>.png` in
 ## `ASSETS/materials/_generic/decals/`; `variant` defaults to a stable pick of the position, `rot` is radians. Cosmetic: never saved.
 static func register_ground_decals(registry) -> void:
 	var SectionOwner = registry.SectionOwner
@@ -162,6 +163,24 @@ static func register_ground_decals(registry) -> void:
 		{},
 		func() -> Dictionary:
 			return { "items": [] }
+	))
+
+## material_tints (R3D-SURFACES, 2026-10-06): `{"tints": {"<material id>": [r, g, b]}}` -- the colour a material's surfaces READ AS in this map
+## (a target albedo, 0..1 per channel), replacing its own `base_color` for this map only. Brightness is compensated by the facade's mean
+## (`MaterialDef.facade_mean`), so a tint lands at the same brightness whatever the pattern. One material, one colour per map; two
+## colours of one pattern in the same map are two materials (`carpet_stripe_blue`, a `facade_from` row). Cosmetic: nothing saves it.
+static func register_material_tints(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"material_tints",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "tints": fragment.get("tints", {}) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "tints": raw.get("tints", {}) },
+		{},
+		func() -> Dictionary:
+			return { "tints": {} }
 	))
 
 ## damage_materials (D13, EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): the

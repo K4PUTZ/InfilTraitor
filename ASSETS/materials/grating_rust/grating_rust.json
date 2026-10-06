@@ -17,5 +17,6 @@
   "pattern_algorithm": "flat",
   "has_facade": true,
   "smoke_chance": 0.15,
+  "facade_mean": 90.4,
   "facade_from": "grating"
 }

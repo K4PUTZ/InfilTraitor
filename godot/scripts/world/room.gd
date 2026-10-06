@@ -2994,6 +2994,11 @@ func scenario_board_probe(path: String, label: String) -> Dictionary:
 	return summary
 
 
+## R3D-SURFACES — the map's `material_tints` (material id -> Color, a target albedo), read by `Board3DLive` when it makes a material.
+func material_tints() -> Dictionary:
+	return _base_layout.get("material_tints", {})
+
+
 ## DIAG-21 — the 3D board over the real registries. The 2D board is hidden, not
 ## removed: every 2D system keeps running, so only its drawing leaves the frame.
 func _start_board3d_live() -> void:

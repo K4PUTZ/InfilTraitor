@@ -93,6 +93,15 @@ class MaterialDef:
 	## R3D-SURFACES — a COLOUR VARIANT of another material's pattern (`carpet_stripe_blue` of `carpet_stripe`) draws that material's
 	## facade instead of owning a copy: one PNG, one texture in VRAM, any number of `base_color` rows. "" = the material's own facade.
 	var facade_from: String = ""
+	## The mean of the facade's grayscale (0..255), written by the generators; 0 = unknown. `base_color_for_albedo()` divides by it so a
+	## colour lands at the same brightness whatever the pattern (a dark weave and a light tile need different `base_color`s).
+	var facade_mean: float = 0.0
+
+	## The `base_color` that makes this material READ AS `albedo` under full light: the albedo over the facade's mean, clipped to 1.
+	## A material with no known mean (a flat one) takes the albedo as is.
+	func base_color_for_albedo(albedo: Color) -> Color:
+		var gain: float = 255.0 / facade_mean if facade_mean > 1.0 and has_facade else 1.0
+		return Color(minf(albedo.r * gain, 1.0), minf(albedo.g * gain, 1.0), minf(albedo.b * gain, 1.0))
 
 	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm) -> void:
 		id = p_id
@@ -128,6 +137,7 @@ class MaterialDef:
 		def.family = String(data.get("family", "generic"))
 		def.tags = SurfaceRulesRef.checked_tags(def.id, data.get("tags", []))
 		def.facade_from = String(data.get("facade_from", ""))
+		def.facade_mean = float(data.get("facade_mean", 0.0))
 		var surfaces = data.get("surfaces", {})
 		if typeof(surfaces) == TYPE_DICTIONARY:
 			for role in surfaces:

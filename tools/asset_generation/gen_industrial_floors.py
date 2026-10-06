@@ -105,7 +105,7 @@ def write_row(material: str, mean: float, colour: str, overrides: dict, facade_f
     base = [round(min(1.0, t / (mean / 255.0)), 2) for t in COLOURS[colour]]
     row = {"id": material, "family": "metal", "tags": ["metal", "industrial"], "destroy_factor": METAL["destroy_factor"],
            "dent_factor": METAL["dent_factor"], "crack_factor": METAL["crack_factor"], "flammability": 0.0, "base_color": base,
-           "pattern_algorithm": "flat", "has_facade": True, "smoke_chance": METAL["smoke_chance"]}
+           "pattern_algorithm": "flat", "has_facade": True, "smoke_chance": METAL["smoke_chance"], "facade_mean": round(mean, 1)}
     row.update(overrides)
     if facade_from:
         row["facade_from"] = facade_from

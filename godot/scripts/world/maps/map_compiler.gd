@@ -203,6 +203,21 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"rot": float(decal.get("rot", 0.0)),
 		})
 
+	## --- material_tints (R3D-SURFACES): material id -> Color (a target albedo), validated here, never shifted or rotated ---
+	var material_tints: Dictionary = {}
+	var tints_raw = spec.get("material_tints", {})
+	if tints_raw is Dictionary:
+		for material_id in tints_raw:
+			var rgb = tints_raw[material_id]
+			var ok: bool = rgb is Array and rgb.size() == 3
+			if ok:
+				for channel in rgb:
+					ok = ok and (channel is float or channel is int) and float(channel) >= 0.0 and float(channel) <= 1.0
+			if not ok:
+				push_error("[MapCompiler] material_tints: '%s' needs [r, g, b] with each channel 0..1 (got %s); skipped" % [material_id, str(rgb)])
+				continue
+			material_tints[String(material_id)] = Color(float(rgb[0]), float(rgb[1]), float(rgb[2]))
+
 	## --- damage_materials (D13): flat pass-through, no offset/rotation to apply ---
 	var damage_materials: Array[String] = []
 	for m in spec.get("damage_materials", []):
@@ -307,6 +322,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"panel_instances":  panel_instances,   ## M3-2b: half-thickness elements, offset-adjusted
 		"ground_decal_instances": ground_decal_instances,  ## R3D-SURFACES S2: floor marks, offset-adjusted, base grid only (never rotated)
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
+		"material_tints":   material_tints,    ## R3D-SURFACES: material id -> Color, the colour it reads as in this map (cosmetic)
 		"blocked_cells":    _dict_keys_to_vec2i_array(blocked_map),
 		"blocked_edges":    blocked_edges,
 		"enemy_defs":       enemy_defs,

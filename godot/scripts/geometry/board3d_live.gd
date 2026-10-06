@@ -2411,6 +2411,10 @@ func _make_material(material_id: String) -> ShaderMaterial:
 	var shader_material := ShaderMaterial.new()
 	var definition = Registries.get_material_registry().get_material(material_id)
 	var colour: Color = definition.base_color if definition != null else Color(0.6, 0.6, 0.6)
+	## R3D-SURFACES — this map's own colour for the material (`material_tints`, a target albedo): the surface reads as that colour.
+	var tints: Dictionary = _room.call("material_tints") if _room != null and _room.has_method("material_tints") else {}
+	if definition != null and tints.has(material_id):
+		colour = definition.base_color_for_albedo(tints[material_id])
 	if GlassMaterials.is_glass(material_id):
 		return _make_glass_material(material_id)
 	shader.code = BoardLook.apply_grade(OPAQUE_SHADER)

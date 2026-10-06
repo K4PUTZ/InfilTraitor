@@ -17,5 +17,6 @@
   "pattern_algorithm": "flat",
   "has_facade": true,
   "burn_consumption": 0.2,
-  "smoke_chance": 0.3
+  "smoke_chance": 0.3,
+  "facade_mean": 140.6
 }

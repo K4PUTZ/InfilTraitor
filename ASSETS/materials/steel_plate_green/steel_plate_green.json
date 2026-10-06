@@ -1,0 +1,21 @@
+{
+  "id": "steel_plate_green",
+  "family": "metal",
+  "tags": [
+    "metal",
+    "industrial"
+  ],
+  "destroy_factor": 0.03,
+  "dent_factor": 0.35,
+  "crack_factor": 0.0,
+  "flammability": 0.0,
+  "base_color": [
+    0.26,
+    0.52,
+    0.35
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": true,
+  "smoke_chance": 0.15,
+  "facade_from": "steel_plate"
+}

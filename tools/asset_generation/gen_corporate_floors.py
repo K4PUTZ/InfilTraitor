@@ -266,10 +266,29 @@ def write_row(material: str) -> None:
     print("[CORPORATE] wrote %s" % path.relative_to(ROOT))
 
 
+# Colour variants of `tile`: a row with `facade_from`, no PNG (same rule as the carpets). Target albedos, like CARPET_COLOURS.
+TILE_COLOURS = {
+    "beige": (0.72, 0.64, 0.50),
+    "grey": (0.50, 0.51, 0.53),
+}
+
+
 def main() -> int:
     for seed, (name, fn) in enumerate([("carpet", carpet), ("tile", tile), ("parquet", parquet)]):
-        save(name, fn(np.random.default_rng(1000 + seed)))
+        img = fn(np.random.default_rng(1000 + seed))
+        save(name, img)
         write_row(name)
+        if name == "tile":
+            mean = float(np.clip(img, 0, 255).mean())
+            for colour, target in TILE_COLOURS.items():
+                path = MATERIALS / ("tile_%s" % colour) / ("tile_%s.json" % colour)
+                row = json.loads((MATERIALS / "tile" / "tile.json").read_text())
+                row["id"] = "tile_%s" % colour
+                row["base_color"] = [round(min(1.0, t / (mean / 255.0)), 2) for t in target]
+                row["facade_from"] = "tile"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(row, indent=2) + "\n")
+                print("[CORPORATE] tile_%s base_color %s" % (colour, row["base_color"]))
     for seed, (name, (fn, default_colour)) in enumerate(CARPET_PATTERNS.items()):
         img = fn(np.random.default_rng(2000 + seed))
         save(name, img)

@@ -1,0 +1,22 @@
+{
+  "id": "tile_grey",
+  "family": "ceramic",
+  "tags": [
+    "tile",
+    "indoor"
+  ],
+  "destroy_factor": 0.9,
+  "dent_factor": 0.0,
+  "crack_factor": 0.0,
+  "flammability": 0.0,
+  "base_color": [
+    0.67,
+    0.68,
+    0.71
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": true,
+  "burn_consumption": 0.0,
+  "smoke_chance": 0.05,
+  "facade_from": "tile"
+}

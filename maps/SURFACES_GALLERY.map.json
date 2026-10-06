@@ -11,7 +11,7 @@
    "v": 1,
    "inner_size": [
     44,
-    66
+    76
    ],
    "buffer": 5,
    "floor_tile": "floor_SE"
@@ -89,7 +89,7 @@
     {
      "comment": "carpet block",
      "gu": [
-      7,
+      5,
       27
      ],
      "material": "carpet",
@@ -102,7 +102,7 @@
     {
      "comment": "parquet block",
      "gu": [
-      15,
+      11,
       27
      ],
      "material": "parquet",
@@ -115,7 +115,7 @@
     {
      "comment": "tile block",
      "gu": [
-      23,
+      17,
       27
      ],
      "material": "tile",
@@ -126,9 +126,35 @@
      ]
     },
     {
+     "comment": "tile_beige block",
+     "gu": [
+      23,
+      27
+     ],
+     "material": "tile_beige",
+     "storeys": 1,
+     "size": [
+      2,
+      2
+     ]
+    },
+    {
+     "comment": "tile_grey block",
+     "gu": [
+      29,
+      27
+     ],
+     "material": "tile_grey",
+     "storeys": 1,
+     "size": [
+      2,
+      2
+     ]
+    },
+    {
      "comment": "concrete block",
      "gu": [
-      31,
+      35,
       27
      ],
      "material": "concrete",
@@ -141,7 +167,7 @@
     {
      "comment": "stone block",
      "gu": [
-      39,
+      41,
       27
      ],
      "material": "stone",
@@ -1753,13 +1779,109 @@
      "material": "carpet_check_black"
     },
     {
+     "comment": "industrial steel_plate",
+     "gu": [
+      2,
+      67
+     ],
+     "size": [
+      5,
+      8
+     ],
+     "material": "steel_plate"
+    },
+    {
+     "comment": "industrial steel_plate_dark",
+     "gu": [
+      7,
+      67
+     ],
+     "size": [
+      5,
+      8
+     ],
+     "material": "steel_plate_dark"
+    },
+    {
+     "comment": "industrial steel_plate_rust",
+     "gu": [
+      12,
+      67
+     ],
+     "size": [
+      5,
+      8
+     ],
+     "material": "steel_plate_rust"
+    },
+    {
+     "comment": "industrial steel_plate_green",
+     "gu": [
+      17,
+      67
+     ],
+     "size": [
+      5,
+      8
+     ],
+     "material": "steel_plate_green"
+    },
+    {
+     "comment": "industrial grating",
+     "gu": [
+      22,
+      67
+     ],
+     "size": [
+      5,
+      8
+     ],
+     "material": "grating"
+    },
+    {
+     "comment": "industrial grating_dark",
+     "gu": [
+      27,
+      67
+     ],
+     "size": [
+      5,
+      8
+     ],
+     "material": "grating_dark"
+    },
+    {
+     "comment": "industrial grating_rust",
+     "gu": [
+      32,
+      67
+     ],
+     "size": [
+      5,
+      8
+     ],
+     "material": "grating_rust"
+    },
+    {
+     "comment": "industrial grating_yellow",
+     "gu": [
+      37,
+      67
+     ],
+     "size": [
+      5,
+      8
+     ],
+     "material": "grating_yellow"
+    },
+    {
      "comment": "human floor carpet",
      "gu": [
       2,
       25
      ],
      "size": [
-      8,
+      6,
       8
      ],
      "material": "carpet"
@@ -1767,11 +1889,11 @@
     {
      "comment": "human floor parquet",
      "gu": [
-      10,
+      8,
       25
      ],
      "size": [
-      8,
+      6,
       8
      ],
      "material": "parquet"
@@ -1779,23 +1901,47 @@
     {
      "comment": "human floor tile",
      "gu": [
-      18,
+      14,
       25
      ],
      "size": [
-      8,
+      6,
       8
      ],
      "material": "tile"
     },
     {
-     "comment": "human floor concrete",
+     "comment": "human floor tile_beige",
+     "gu": [
+      20,
+      25
+     ],
+     "size": [
+      6,
+      8
+     ],
+     "material": "tile_beige"
+    },
+    {
+     "comment": "human floor tile_grey",
      "gu": [
       26,
       25
      ],
      "size": [
-      8,
+      6,
+      8
+     ],
+     "material": "tile_grey"
+    },
+    {
+     "comment": "human floor concrete",
+     "gu": [
+      32,
+      25
+     ],
+     "size": [
+      6,
       8
      ],
      "material": "concrete"
@@ -1803,11 +1949,11 @@
     {
      "comment": "human floor stone",
      "gu": [
-      34,
+      38,
       25
      ],
      "size": [
-      8,
+      6,
       8
      ],
      "material": "stone"
@@ -1824,8 +1970,18 @@
     "carpet",
     "parquet",
     "tile",
+    "tile_beige",
+    "tile_grey",
     "concrete",
-    "stone"
+    "stone",
+    "steel_plate",
+    "steel_plate_dark",
+    "steel_plate_rust",
+    "steel_plate_green",
+    "grating",
+    "grating_dark",
+    "grating_rust",
+    "grating_yellow"
    ]
   },
   "ground_decals": {

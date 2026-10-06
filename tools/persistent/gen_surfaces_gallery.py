@@ -30,7 +30,7 @@ MAP_PATH = ROOT / "maps" / "SURFACES_GALLERY.map.json"
 DECALS = ROOT / "ASSETS" / "materials" / "_generic" / "decals"
 
 BASES = ["grass", "dirt", "gravel", "sand"]
-INNER = (44, 66)
+INNER = (44, 76)
 COLUMN_W = 10
 COLUMN_X0 = 2
 COLUMN_Y0 = 2
@@ -88,7 +88,8 @@ PAD_W, PAD_H = 8, 8
 ## The HUMAN-FLOOR band below the transition pad (y 25 to 32): one 8-GU band per man-made floor, hard edges between them (a human <->
 ## human border is today's GU edge), each with a 2 x 2 GU one-storey block of its own material (the same facade on a wall, a top and a
 ## floor), and the agent standing in the first band as the scale reference (~1.75 m).
-HUMAN = ["carpet", "parquet", "tile", "concrete", "stone"]
+HUMAN = ["carpet", "parquet", "tile", "tile_beige", "tile_grey", "concrete", "stone"]
+HUMAN_W = 6
 HUMAN_Y0 = 25
 HUMAN_H = 8
 AGENT_START = [6, 29]
@@ -96,6 +97,12 @@ AGENT_START = [6, 29]
 ## every cell 8 GU wide and 3 tall. The plain `carpet` is not in it (it is the old fine weave).
 CARPET_PATTERNS = {"plain": "blue", "stripe": "red", "basket": "navy", "diamond": "green", "check": "tan"}   # pattern -> default colour
 CARPET_COLOURS = ["red", "blue", "navy", "grey", "green", "tan", "yellow", "orange", "purple", "black"]   # = gen_corporate_floors.CARPET_COLOURS
+## The INDUSTRIAL band (y 67 to 74), 4 GU per material: tread plate in four colours, grating in four.
+INDUSTRIAL = ["steel_plate", "steel_plate_dark", "steel_plate_rust", "steel_plate_green", "grating", "grating_dark", "grating_rust",
+              "grating_yellow"]
+IND_Y0 = 67
+IND_H = 8
+IND_W = 5
 LAB_Y0 = 34
 LAB_ROW_H = 3
 LAB_W = 8
@@ -146,10 +153,12 @@ def build() -> dict:
         for j, colour in enumerate(CARPET_COLOURS):
             zones.append({"comment": "carpet %s %s" % (pattern, colour), "gu": [COLUMN_X0 + i * LAB_W, LAB_Y0 + j * LAB_ROW_H],
                           "size": [LAB_W, LAB_ROW_H], "material": carpet_id(pattern, colour)})
+    for i, mat in enumerate(INDUSTRIAL):
+        zones.append({"comment": "industrial %s" % mat, "gu": [COLUMN_X0 + i * IND_W, IND_Y0], "size": [IND_W, IND_H], "material": mat})
     for i, mat in enumerate(HUMAN):
-        x0 = COLUMN_X0 + i * 8
-        zones.append({"comment": "human floor %s" % mat, "gu": [x0, HUMAN_Y0], "size": [8, HUMAN_H], "material": mat})
-        blocks.append({"comment": "%s block" % mat, "gu": [x0 + 5, HUMAN_Y0 + 2], "material": mat, "storeys": 1, "size": [2, 2]})
+        x0 = COLUMN_X0 + i * HUMAN_W
+        zones.append({"comment": "human floor %s" % mat, "gu": [x0, HUMAN_Y0], "size": [HUMAN_W, HUMAN_H], "material": mat})
+        blocks.append({"comment": "%s block" % mat, "gu": [x0 + 3, HUMAN_Y0 + 2], "material": mat, "storeys": 1, "size": [2, 2]})
     return {
         "format": "infiltraitor-map", "schema_version": 3, "id": "SURFACES_GALLERY",
         "meta": {"title": "Surfaces Gallery",
@@ -161,7 +170,7 @@ def build() -> dict:
             "legacy_compiler": {"v": 1, "wall_height": 1, "access_points": [], "dividers": [], "lights": []},
             "blocks": {"v": 2, "items": blocks},
             "floor_zones": {"v": 2, "items": zones},
-            "damage_materials": {"v": 1, "materials": list(BASES) + HUMAN},
+            "damage_materials": {"v": 1, "materials": list(BASES) + HUMAN + INDUSTRIAL},
             "ground_decals": {"v": 1, "items": decals},
         },
     }

@@ -45,11 +45,17 @@ def scenario(tag: str, zoom: float) -> tuple[str, list[str]]:
                   "frames 30", "capture %s_pad_%s" % (tag, name)]
         names.append("pad_" + name)
     hy = gen.HUMAN_Y0 + gen.HUMAN_H / 2.0
-    steps += ["centre %d,%d" % (gen.COLUMN_X0 + 20 + BUFFER, hy + BUFFER), "zoom 0.3", "frames 30", "capture %s_human_wide" % tag]
+    steps += ["centre %d,%d" % (gen.COLUMN_X0 + gen.HUMAN_W * len(gen.HUMAN) / 2.0 + BUFFER, hy + BUFFER), "zoom 0.3", "frames 30", "capture %s_human_wide" % tag]
     names.append("human_wide")
     for i, mat in enumerate(gen.HUMAN):
-        steps += ["centre %d,%d" % (gen.COLUMN_X0 + i * 8 + 4 + BUFFER, hy + BUFFER), "zoom %.2f" % zoom, "frames 30", "capture %s_human_%s" % (tag, mat)]
+        steps += ["centre %d,%d" % (gen.COLUMN_X0 + i * gen.HUMAN_W + gen.HUMAN_W / 2.0 + BUFFER, hy + BUFFER), "zoom %.2f" % zoom, "frames 30", "capture %s_human_%s" % (tag, mat)]
         names.append("human_" + mat)
+    iy = gen.IND_Y0 + gen.IND_H / 2.0
+    steps += ["centre %d,%d" % (gen.COLUMN_X0 + gen.IND_W * len(gen.INDUSTRIAL) / 2.0 + BUFFER, iy + BUFFER), "zoom 0.3", "frames 30", "capture %s_ind_wide" % tag]
+    names.append("ind_wide")
+    for i, mat in enumerate(gen.INDUSTRIAL):
+        steps += ["centre %d,%d" % (gen.COLUMN_X0 + i * gen.IND_W + gen.IND_W / 2.0 + BUFFER, iy + BUFFER), "zoom %.2f" % (zoom * 1.4), "frames 30", "capture %s_ind_%s" % (tag, mat)]
+        names.append("ind_" + mat)
     ly = gen.LAB_Y0 + len(gen.CARPET_COLOURS) * gen.LAB_ROW_H / 2.0
     for i, mat in enumerate(gen.LAB):
         steps += ["centre %d,%d" % (gen.COLUMN_X0 + i * gen.LAB_W + gen.LAB_W / 2.0 + BUFFER, ly + BUFFER), "zoom 0.26",

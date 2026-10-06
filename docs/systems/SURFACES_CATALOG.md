@@ -52,6 +52,8 @@ rough concrete (F have), diamond-plate steel (F new pattern), floor grating (F n
 transparent route**), painted metal with hazard stripes (F + patch), oil-stained concrete (concrete + stain patches), rust metal (F
 variant), gravel yard (P have), packed earth (P have), wooden pallet floor (F `wood`), drain covers (patch / prop).
 
+**BUILT 2026-10-06 (`tools/asset_generation/gen_industrial_floors.py`):** `steel_plate` (tread plate; grey, dark, rust, green) and `grating` (grey, dark, rust, yellow). Grating is COSMETIC (Director: one storey, nobody below, nothing passes through it): its holes are dark; a grenade may take it out (`destroy_factor` 0.7); showing water, lava or steam BELOW it needs see-through holes and an underlay, not built (it is for vents on pavements and roofs). **Hazard stripes are NOT a floor:** the shader mirrors the facade, so a 45 degree stripe turns into concentric rings (measured in the gallery); they are a MARKING patch (section 3). Also built: `tile_beige`, `tile_grey` (colour variants of `tile`).
+
 ### 2.5 Laboratory (Chapter 3)
 white tile (F `ceramic`), epoxy resin floor (F, near-flat, glossy-looking by value only), vinyl (F), perforated metal (F new pattern),
 cleanroom grating (F), glass floor panel (the glass family), antistatic dark tile (F).

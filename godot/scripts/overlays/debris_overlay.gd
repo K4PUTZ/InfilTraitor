@@ -98,7 +98,8 @@ var trickle_rest_min: float = 0.3          ## seconds a grain lies on the floor,
 var trickle_rest_max: float = 0.5
 var trickle_sway: float = 1.1              ## px, how far a grain wanders sideways: a thread, not a cloud
 var trickle_pile_spread: float = 3.2       ## px, how far along the floor the grains lie
-var trickle_speck_radius: float = 1.0
+var trickle_dash_half: Vector2 = Vector2(0.5, 2.0)   ## px: a falling grain is a dash 1 px wide and 4 px long; lying down it turns on its side
+var trickle_opacity: float = 0.5
 var trickle_origin_shift: Vector2 = Vector2(2.0, -3.0)  ## px: the thread's source sits a little up and to the right of the struck point
 var trickle_start_radii: Vector2 = Vector2(3.0, 3.6)     ## px: each grain is born at a random point of this ellipse, not all at one spot
 var _trickles: Array = []
@@ -302,8 +303,6 @@ func _draw() -> void:
 	var cap: int = 0
 	for d0 in _dust:
 		cap += (d0["specks"] as Array).size()
-	for t0 in _trickles:
-		cap += (t0["grains"] as Array).size()
 	mm3.begin_on_board(cap)
 	for d in _dust:
 		var elapsed: float = d["elapsed"]
@@ -342,33 +341,12 @@ func _draw() -> void:
 			var p: Vector2 = pos + (offset as Vector2) * speck_scale
 			if submit:
 				mm3.push(d["a3"], d["a2"], p, radius, c)
-	for t in _trickles:
-		var base: Color = t["color"]
-		for g in t["grains"]:
-			var age: float = float(t["elapsed"]) - float(g["t0"])
-			if age < 0.0:
-				continue
-			var fall: float = g["fall"]
-			var p: Vector2
-			var a: float = 1.0
-			if age < fall:
-				var u: float = age / fall
-				## Falls straight down from its own start point, so the grains keep the column they were born in.
-				var start: Vector2 = (t["origin"] as Vector2) + (g["start"] as Vector2)
-				var land: Vector2 = (t["target"] as Vector2) + Vector2((g["start"] as Vector2).x, 0.0)
-				p = start.lerp(land, pow(u, 1.5)) + Vector2(float(g["sway"]) * sin(u * PI), 0.0)
-			else:
-				p = (t["target"] as Vector2) + Vector2((g["start"] as Vector2).x, 0.0) + (g["lie"] as Vector2)
-				a = pow(1.0 - (age - fall) / float(g["rest"]), dust_fade_power)
-			var c: Color = base
-			c.a = minf(c.a * a * dust_alpha_gain, 1.0)
-			drawn += 1
-			cmds += 1
-			if submit:
-				mm3.push(t["a3"], t["a2"], p, trickle_speck_radius, c)
 	mm3.flush()
 
-	cf3.begin_on_board(_chips.size())
+	var trickle_cap: int = 0
+	for t0 in _trickles:
+		trickle_cap += (t0["grains"] as Array).size()
+	cf3.begin_on_board(_chips.size() + trickle_cap)
 	for chip in _chips:
 		var pos: Vector2 = chip["pos"]
 		var alpha: float = 1.0
@@ -385,6 +363,34 @@ func _draw() -> void:
 		if submit:
 			cf3.push_axes(chip["a3"], chip["a2"], pos,
 				Vector2(half_w, 0.0).rotated(rot), Vector2(0.0, half_h).rotated(rot), c)
+	## The sand trickle: each grain a short DASH (a falling streak, a lying one), half-transparent (Director, 2026-10-05).
+	for t in _trickles:
+		var base: Color = t["color"]
+		for g in t["grains"]:
+			var age: float = float(t["elapsed"]) - float(g["t0"])
+			if age < 0.0:
+				continue
+			var fall: float = g["fall"]
+			var p: Vector2
+			var a: float = 1.0
+			var lying: bool = age >= fall
+			var sx: float = (g["start"] as Vector2).x
+			if not lying:
+				var u: float = age / fall
+				## Falls straight down from its own start point, so the grains keep the column they were born in.
+				var start: Vector2 = (t["origin"] as Vector2) + (g["start"] as Vector2)
+				var land: Vector2 = (t["target"] as Vector2) + Vector2(sx, 0.0)
+				p = start.lerp(land, pow(u, 1.5)) + Vector2(float(g["sway"]) * sin(u * PI), 0.0)
+			else:
+				p = (t["target"] as Vector2) + Vector2(sx, 0.0) + (g["lie"] as Vector2)
+				a = pow(1.0 - (age - fall) / float(g["rest"]), dust_fade_power)
+			var c: Color = base
+			c.a = minf(c.a * a * trickle_opacity, 1.0)
+			var half: Vector2 = Vector2(trickle_dash_half.y, trickle_dash_half.x) if lying else trickle_dash_half
+			drawn += 1
+			cmds += 1
+			if submit:
+				cf3.push_axes(t["a3"], t["a2"], p, Vector2(half.x, 0.0), Vector2(0.0, half.y), c)
 	cf3.flush()
 	if probing:
 		## §12.10 — timed ONCE and folded into both the global counters and this

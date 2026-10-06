@@ -1,6 +1,7 @@
 {
   "id": "painted_metal",
   "family": "metal",
+  "tags": ["metal", "industrial"],
   "destroy_factor": 0.05,
   "dent_factor": 0.35,
   "crack_factor": 0.0,

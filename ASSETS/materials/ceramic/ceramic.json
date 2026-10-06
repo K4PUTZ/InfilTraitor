@@ -1,6 +1,7 @@
 {
   "id": "ceramic",
   "family": "ceramic",
+  "tags": ["tile", "indoor"],
   "destroy_factor": 0.9,
   "dent_factor": 0.0,
   "crack_factor": 0.0,

@@ -42,6 +42,28 @@ MAX_VARIANTS = 3
 SLOTS = [(1.5, 0.0), (4.5, 0.6), (7.5, 0.0)]
 
 
+RULES = json.loads((ROOT / "surfaces" / "rules.json").read_text())
+
+
+def floor_tags(base: str) -> list[str]:
+    return json.loads((ROOT / "ASSETS" / "materials" / base / ("%s.json" % base)).read_text()).get("tags", [])
+
+
+def forbidden(kind: str, base: str) -> str:
+    """Why `kind` may not lie on `base` (the same rule `SurfaceRules` applies in the engine), or ''."""
+    rule = RULES["patches"].get(kind)
+    if rule is None:
+        return "no rule for %s in surfaces/rules.json" % kind
+    tags = floor_tags(base)
+    for t in rule.get("requires", []):
+        if t not in tags:
+            return "%s needs %s" % (kind, t)
+    for t in rule.get("forbids", []):
+        if t in tags:
+            return "%s forbidden on %s" % (kind, t)
+    return ""
+
+
 def kinds_with_art() -> list[str]:
     """Every kind that has `decal_patch_<kind>_0.png`, in alphabetical order."""
     kinds = sorted({p.name[len("decal_patch_"):-len("_0.png")] for p in DECALS.glob("decal_patch_*_0.png")})
@@ -92,6 +114,8 @@ def build() -> dict:
                        "material": base, "storeys": 1, "size": [2, 2]})
         for r, kind in enumerate(kinds):
             count = variants_of(kind)
+            if forbidden(kind, base):
+                continue   # the rule says no (e.g. no leaf in the desert): the cell stays bare, which is what the gallery should show
             for s, (dx, rot) in enumerate(SLOTS):
                 item = {"comment": "%s on %s, variant %d" % (kind, base, s % count),
                         "at": [x0 + dx, ROW_Y0 + r * ROW_STEP], "kind": kind, "variant": s % count}

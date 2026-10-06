@@ -1,6 +1,7 @@
 {
   "id": "wood",
   "family": "wood",
+  "tags": ["wood", "indoor"],
   "destroy_factor": 0.75,
   "dent_factor": 0.2,
   "crack_factor": 0.0,

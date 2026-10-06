@@ -1,0 +1,7 @@
+{
+  "comment": "R3D-SURFACES floor tags and patch rules (docs/systems/SURFACES_CATALOG.md section 3). A floor material declares `tags` (ASSETS/materials/<id>/<id>.json) out of this vocabulary; a patch kind lists what the floor under it must have (`requires`: ALL of these) and must not have (`forbids`: ANY of these). Unknown tags and a kind with art but no rule here are loud errors.",
+  "vocabulary": ["soil", "organic", "arid", "wet", "stone", "concrete", "tile", "metal", "wood", "fabric", "indoor", "outdoor", "sterile", "industrial", "scifi"],
+  "patches": {
+    "leaf": {"requires": [], "forbids": ["arid", "sterile", "indoor", "metal"]}
+  }
+}

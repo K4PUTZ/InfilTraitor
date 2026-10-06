@@ -3091,15 +3091,7 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 	if _voxel_board != null:
 		_voxel_board.set_pile_board3d(live)
 		_voxel_board.set_debris_pile_board3d(live)
-		## R3D-SURFACES S2 — the map's `ground_decals`, drawn from the base layout (the base grid is the only one now).
-		if _ground_decals == null:
-			_ground_decals = GroundDecals3DRef.new()
-		_ground_decals.attach(live, _base_layout.get("ground_decal_instances", []), GeometryCoords.FLOOR_TOP_LEVEL)
-		## R3D-SURFACES transitions — the floor material of every declared GU (the same expansion `RoomBuilder` does: last rect wins),
-		## and a feathered overlay where two organic grounds (a `photo` floor) meet.
-		if _ground_transitions == null:
-			_ground_transitions = GroundTransitions3DRef.new()
-		var transitions_on: bool = str(_dev_flag("GROUND_TRANSITIONS", "1")) != "0"  ## dev A/B: 0 = hard GU edges
+		## The floor material of every declared GU (the same expansion `RoomBuilder` does: last rect wins).
 		var gu_material: Dictionary = {}
 		for zone: Dictionary in _base_layout.get("floor_zone_instances", []):
 			var zone_origin: Vector2i = zone.get("gu_cell", Vector2i.ZERO)
@@ -3110,6 +3102,18 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 			for zx in range(zone_size.x):
 				for zy in range(zone_size.y):
 					gu_material[zone_origin + Vector2i(zx, zy)] = zone_material
+		## R3D-SURFACES S2 — the map's `ground_decals`, drawn from the base layout (the base grid is the only one now). `SurfaceRules`
+		## decides which kinds may lie on which floor (tags), and says so loudly when a placement breaks it.
+		if _ground_decals == null:
+			_ground_decals = GroundDecals3DRef.new()
+		_ground_decals.attach(live, _base_layout.get("ground_decal_instances", []), GeometryCoords.FLOOR_TOP_LEVEL,
+				func(gu: Vector2i) -> PackedStringArray:
+					var definition = Registries.get_material_registry().get_material(String(gu_material.get(gu, "")))
+					return definition.tags if definition != null else PackedStringArray())
+		## R3D-SURFACES transitions — a feathered overlay where two organic grounds (a `photo` floor) meet.
+		if _ground_transitions == null:
+			_ground_transitions = GroundTransitions3DRef.new()
+		var transitions_on: bool = str(_dev_flag("GROUND_TRANSITIONS", "1")) != "0"  ## dev A/B: 0 = hard GU edges
 		_ground_transitions.attach(live, gu_material if transitions_on else {}, func(material_id: String) -> bool:
 			var definition = Registries.get_material_registry().get_material(material_id)
 			return definition != null and definition.surface_floor == "photo", GeometryCoords.FLOOR_TOP_LEVEL)

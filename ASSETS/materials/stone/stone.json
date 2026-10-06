@@ -1,6 +1,7 @@
 {
   "id": "stone",
   "family": "stone",
+  "tags": ["stone"],
   "destroy_factor": 0.2,
   "dent_factor": 0.2,
   "crack_factor": 0.1,

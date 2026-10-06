@@ -1,6 +1,7 @@
 {
   "id": "steel_dark",
   "family": "metal",
+  "tags": ["metal", "industrial"],
   "destroy_factor": 0.02,
   "dent_factor": 0.3,
   "crack_factor": 0.0,

@@ -1,6 +1,7 @@
 {
   "id": "plywood",
   "family": "wood",
+  "tags": ["wood", "indoor"],
   "destroy_factor": 0.95,
   "dent_factor": 0.0,
   "crack_factor": 0.0,

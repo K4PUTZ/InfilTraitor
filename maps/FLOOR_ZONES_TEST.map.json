@@ -142,10 +142,10 @@
       "v": 1,
       "items": [
         {
-          "comment": "Corner of four GUs: a quarter of the leaf on grass, dirt and sand",
+          "comment": "Corner of four GUs: a quarter of the leaf on grass and dirt (sand is arid: SurfaceRules forbids a leaf there)",
           "at": [
             6,
-            6
+            4
           ],
           "kind": "leaf"
         },

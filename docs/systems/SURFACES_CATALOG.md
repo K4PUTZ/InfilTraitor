@@ -87,7 +87,7 @@ placed on the half-GU lattice today. Kinds, grouped by what they need to exist:
 over those tags. A patch may sit on a floor iff all `requires` hold and no `forbids` does. **Co-existence** (leaf and mud together) is
 the default; **exclusivity** is a `forbids` entry (no leaf in the desert: `leaf` forbids `arid`; no mud in the desert: `mud` forbids `arid`).
 The check lives in `MapCompiler` (a placement the rule forbids is a loud `push_error`, never silently dropped) and a scatter tool
-reads the same tags to choose kinds per zone. **Not built**; see section 5.
+reads the same tags to choose kinds per zone. **BUILT 2026-10-06 (tags, vocabulary, the check; the scatter tool is not):** `surfaces/rules.json` (closed vocabulary + one rule per kind), `MaterialDef.tags` (15 materials tagged), `SurfaceRules`, the check in `GroundDecals3D.attach` (loud, per GU the quad covers), `surface_rules_selftest`, and the gallery generator leaves a forbidden cell bare.
 
 ## 4. Transitions by pair class
 
@@ -102,8 +102,8 @@ reads the same tags to choose kinds per zone. **Not built**; see section 5.
 
 For the Director:
 1. **Tags** as the single mechanism for coexistence / exclusivity (section 3), checked in `MapCompiler`. Yes or a different shape?
-2. **Free placement of patches** (any position, any rotation) needs a schema change: `ground_decals` accepts only the half-GU lattice today.
-   Proposed: a second item form `{at: [x, y] (float), rot, kind}` plus a scatter section that fills a zone by density and tags.
+2. **Free placement of patches: BUILT 2026-10-06.** `ground_decals` `at` is on the voxel lattice (any multiple of 1/8 GU), `rot` free.
+   Still proposed: a scatter section that fills a zone by density and tags.
 3. **Order of art**, proposed by what the MVP chapters need first: (a) facade patterns for corporate, industrial and lab floors
    (carpet, parquet, tile grout, diamond plate, grating, epoxy), because the MVP is man-made; (b) the human <-> human threshold and the
    one-sided spill; (c) the natural photo floors beyond today's four (mud, snow, forest floor, dry clay), with their patch groups; (d)

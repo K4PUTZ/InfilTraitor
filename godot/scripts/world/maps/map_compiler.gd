@@ -186,15 +186,15 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		})
 	floor_zone_instances.append_array(_buffer_floor_zones(spec.get("floor_zones", []), inner_size, buffer))
 
-	## --- ground decals (R3D-SURFACES S2): `at` is GU on a half-GU lattice, shifted by the buffer like every other position ---
+	## --- ground decals (R3D-SURFACES S2): `at` is GU on the voxel lattice (multiples of 1/8 GU), shifted by the buffer like every other position ---
 	var ground_decal_instances: Array = []
 	for decal in spec.get("ground_decals", []):
 		var at_raw = decal.get("at", null)
 		var kind: String = String(decal.get("kind", ""))
 		if not (at_raw is Array) or at_raw.size() != 2 or kind.is_empty() \
-				or not is_equal_approx(float(at_raw[0]) * 2.0, round(float(at_raw[0]) * 2.0)) \
-				or not is_equal_approx(float(at_raw[1]) * 2.0, round(float(at_raw[1]) * 2.0)):
-			push_error("[MapCompiler] ground_decals: %s needs `at` [x, y] on the half-GU lattice and a `kind`; skipped" % str(decal))
+				or not is_equal_approx(float(at_raw[0]) * 8.0, round(float(at_raw[0]) * 8.0)) \
+				or not is_equal_approx(float(at_raw[1]) * 8.0, round(float(at_raw[1]) * 8.0)):
+			push_error("[MapCompiler] ground_decals: %s needs `at` [x, y] on the voxel lattice (multiples of 1/8 GU) and a `kind`; skipped" % str(decal))
 			continue
 		ground_decal_instances.append({
 			"at": Vector2(float(at_raw[0]), float(at_raw[1])) + Vector2(offset),

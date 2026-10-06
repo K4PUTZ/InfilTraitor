@@ -1184,34 +1184,6 @@
      ],
      "kind": "leaf",
      "variant": 0
-    },
-    {
-     "comment": "leaf on sand, variant 0",
-     "at": [
-      33.5,
-      7.5
-     ],
-     "kind": "leaf",
-     "variant": 0
-    },
-    {
-     "comment": "leaf on sand, variant 0",
-     "at": [
-      36.5,
-      7.5
-     ],
-     "kind": "leaf",
-     "variant": 0,
-     "rot": 0.6
-    },
-    {
-     "comment": "leaf on sand, variant 0",
-     "at": [
-      39.5,
-      7.5
-     ],
-     "kind": "leaf",
-     "variant": 0
     }
    ]
   }

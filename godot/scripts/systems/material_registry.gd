@@ -23,6 +23,7 @@ class_name MaterialRegistry
 const StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")
 const WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")
 const MetalPatternClass = preload("res://godot/scripts/systems/metal_pattern.gd")
+const SurfaceRulesRef = preload("res://godot/scripts/systems/surface_rules.gd")  ## R3D-SURFACES: the closed tag vocabulary
 
 const RES_MATERIALS_DIR := "res://ASSETS/materials"
 const USER_MATERIALS_DIR := "user://materials"
@@ -86,6 +87,9 @@ class MaterialDef:
 	## Default is "facade"; organic ground (grass, dirt, gravel, sand) declares `"surfaces": {"floor": "photo", "roof": "photo"}`.
 	var surface_floor: String = "facade"
 	var surface_roof: String = "facade"
+	## R3D-SURFACES — what this material IS, out of the closed vocabulary of `res://surfaces/rules.json` (`soil`, `arid`, `indoor`...). A
+	## patch kind (a floor mark) asks these to know whether it may lie here (`SurfaceRules.reason_against`). Empty = untagged.
+	var tags: PackedStringArray = PackedStringArray()
 
 	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm) -> void:
 		id = p_id
@@ -119,6 +123,7 @@ class MaterialDef:
 		def.burn_consumption = float(data.get("burn_consumption", 0.0))
 		def.has_facade = bool(data.get("has_facade", false))
 		def.family = String(data.get("family", "generic"))
+		def.tags = SurfaceRulesRef.checked_tags(def.id, data.get("tags", []))
 		var surfaces = data.get("surfaces", {})
 		if typeof(surfaces) == TYPE_DICTIONARY:
 			for role in surfaces:

@@ -1,5 +1,5 @@
 ## R3D-SURFACES S2 — the `ground_decals` section, end to end on the real FLOOR_ZONES_TEST map: FileMapSource reads it,
-## MapCompiler forwards `ground_decal_instances` shifted by the buffer, the half-GU lattice holds, a variant is a stable pick,
+## MapCompiler forwards `ground_decal_instances` shifted by the buffer, the voxel lattice (1/8 GU) holds, a variant is a stable pick,
 ## and a decal ends with the floor-top voxel under its footprint (and only then).
 extends SceneTree
 
@@ -33,7 +33,7 @@ func _init() -> void:
 	var offset := Vector2(layout.get("playable_rect", Rect2i()).position)
 	_check(offset != Vector2.ZERO, "the board buffer is not zero (%s), so the shift is observable" % str(offset))
 	if inst.size() == 3:
-		_check(inst[0]["at"] == Vector2(6, 6) + offset, "corner decal [6,6] lands at %s" % str(Vector2(6, 6) + offset))
+		_check(inst[0]["at"] == Vector2(6, 4) + offset, "corner decal [6,4] lands at %s" % str(Vector2(6, 4) + offset))
 		_check(inst[1]["at"] == Vector2(3.5, 3.5) + offset and is_equal_approx(inst[1]["rot"], 0.6), "centre decal keeps its half-GU and rot")
 		_check(int(inst[2]["variant"]) == 0 and int(inst[0]["variant"]) == -1, "an author's variant is kept, none means -1")
 	_check(GroundDecals3DClass.art_paths("leaf").size() >= 1, "the `leaf` kind has art on disk")
@@ -41,6 +41,16 @@ func _init() -> void:
 	var a: int = GroundDecals3DClass.pick_variant("leaf", Vector2(6, 6), -1, 3)
 	_check(a == GroundDecals3DClass.pick_variant("leaf", Vector2(6, 6), -1, 3) and a >= 0 and a < 3, "a variant is a stable pick of the position (B4)")
 	_check(GroundDecals3DClass.pick_variant("leaf", Vector2(6, 6), 7, 3) == 1, "an author's variant wraps onto the art that exists")
+
+	## The voxel lattice (2026-10-06): a decal may sit on any 1/8 GU, and neighbouring voxels pick their variants independently.
+	var voxel_spec: Dictionary = spec.duplicate(true)
+	voxel_spec["ground_decals"] = [{"at": [3.125, 4.875], "kind": "leaf", "rot": 1.0}]
+	var voxel_inst: Array = MapCompilerClass.compile(voxel_spec).get("ground_decal_instances", [])
+	_check(voxel_inst.size() == 1 and voxel_inst[0]["at"] == Vector2(3.125, 4.875) + offset, "a decal at [3.125, 4.875] (1/8 GU) is accepted and shifted")
+	var picks: Dictionary = {}
+	for i in range(8):
+		picks[GroundDecals3DClass.pick_variant("leaf", Vector2(6.0 + float(i) * 0.125, 6.0), -1, 3)] = true
+	_check(picks.size() > 1, "eight neighbouring voxels do not all pick the same variant (%d distinct)" % picks.size())
 
 	var board := StubBoard.new()
 	root.add_child(board)

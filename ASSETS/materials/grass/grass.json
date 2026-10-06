@@ -1,6 +1,7 @@
 {
   "id": "grass",
   "family": "organic",
+  "tags": ["organic", "soil", "outdoor"],
   "destroy_factor": 0.5,
   "dent_factor": 0.35,
   "crack_factor": 0.0,

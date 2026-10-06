@@ -1,6 +1,7 @@
 {
   "id": "gravel",
   "family": "soil",
+  "tags": ["soil", "stone", "outdoor"],
   "destroy_factor": 0.5,
   "dent_factor": 0.3,
   "crack_factor": 0.0,

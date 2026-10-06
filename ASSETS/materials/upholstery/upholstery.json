@@ -1,6 +1,7 @@
 {
   "id": "upholstery",
   "family": "fabric",
+  "tags": ["fabric", "indoor"],
   "destroy_factor": 0.55,
   "dent_factor": 0.2,
   "crack_factor": 0.0,

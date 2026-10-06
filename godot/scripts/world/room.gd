@@ -3099,6 +3099,7 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 		## and a feathered overlay where two organic grounds (a `photo` floor) meet.
 		if _ground_transitions == null:
 			_ground_transitions = GroundTransitions3DRef.new()
+		var transitions_on: bool = str(_dev_flag("GROUND_TRANSITIONS", "1")) != "0"  ## dev A/B: 0 = hard GU edges
 		var gu_material: Dictionary = {}
 		for zone: Dictionary in _base_layout.get("floor_zone_instances", []):
 			var zone_origin: Vector2i = zone.get("gu_cell", Vector2i.ZERO)
@@ -3109,7 +3110,7 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 			for zx in range(zone_size.x):
 				for zy in range(zone_size.y):
 					gu_material[zone_origin + Vector2i(zx, zy)] = zone_material
-		_ground_transitions.attach(live, gu_material, func(material_id: String) -> bool:
+		_ground_transitions.attach(live, gu_material if transitions_on else {}, func(material_id: String) -> bool:
 			var definition = Registries.get_material_registry().get_material(material_id)
 			return definition != null and definition.surface_floor == "photo", GeometryCoords.FLOOR_TOP_LEVEL)
 		## R3D-SURFACES prototype — "one leaf-patch decal", dev-only, no map data (see VoxelBoard's

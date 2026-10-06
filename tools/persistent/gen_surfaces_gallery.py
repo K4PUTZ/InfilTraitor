@@ -30,7 +30,7 @@ MAP_PATH = ROOT / "maps" / "SURFACES_GALLERY.map.json"
 DECALS = ROOT / "ASSETS" / "materials" / "_generic" / "decals"
 
 BASES = ["grass", "dirt", "gravel", "sand"]
-INNER = (44, 34)
+INNER = (44, 42)
 COLUMN_W = 10
 COLUMN_X0 = 2
 COLUMN_Y0 = 2
@@ -92,6 +92,11 @@ HUMAN = ["carpet", "parquet", "tile", "concrete", "stone"]
 HUMAN_Y0 = 25
 HUMAN_H = 8
 AGENT_START = [6, 29]
+## The CARPET LAB band (y 34 to 40): the plain `carpet` and the six variants of `gen_corporate_floors.py` side by side, 6 GU each.
+LAB = ["carpet", "carpet_plain", "carpet_stripe", "carpet_basket", "carpet_diamond", "carpet_fleck", "carpet_check"]
+LAB_Y0 = 34
+LAB_H = 7
+LAB_W = 6
 
 
 def pad_zones() -> list[dict]:
@@ -130,6 +135,8 @@ def build() -> dict:
                     item["rot"] = rot
                 decals.append(item)
     zones += pad_zones()
+    for i, mat in enumerate(LAB):
+        zones.append({"comment": "carpet lab %s" % mat, "gu": [COLUMN_X0 + i * LAB_W, LAB_Y0], "size": [LAB_W, LAB_H], "material": mat})
     for i, mat in enumerate(HUMAN):
         x0 = COLUMN_X0 + i * 8
         zones.append({"comment": "human floor %s" % mat, "gu": [x0, HUMAN_Y0], "size": [8, HUMAN_H], "material": mat})
@@ -145,7 +152,7 @@ def build() -> dict:
             "legacy_compiler": {"v": 1, "wall_height": 1, "access_points": [], "dividers": [], "lights": []},
             "blocks": {"v": 2, "items": blocks},
             "floor_zones": {"v": 2, "items": zones},
-            "damage_materials": {"v": 1, "materials": list(BASES) + HUMAN},
+            "damage_materials": {"v": 1, "materials": list(BASES) + HUMAN + LAB[1:]},
             "ground_decals": {"v": 1, "items": decals},
         },
     }

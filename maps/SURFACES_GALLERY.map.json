@@ -11,7 +11,7 @@
    "v": 1,
    "inner_size": [
     44,
-    34
+    42
    ],
    "buffer": 5,
    "floor_tile": "floor_SE"
@@ -1153,6 +1153,90 @@
      "material": "gravel"
     },
     {
+     "comment": "carpet lab carpet",
+     "gu": [
+      2,
+      34
+     ],
+     "size": [
+      6,
+      7
+     ],
+     "material": "carpet"
+    },
+    {
+     "comment": "carpet lab carpet_plain",
+     "gu": [
+      8,
+      34
+     ],
+     "size": [
+      6,
+      7
+     ],
+     "material": "carpet_plain"
+    },
+    {
+     "comment": "carpet lab carpet_stripe",
+     "gu": [
+      14,
+      34
+     ],
+     "size": [
+      6,
+      7
+     ],
+     "material": "carpet_stripe"
+    },
+    {
+     "comment": "carpet lab carpet_basket",
+     "gu": [
+      20,
+      34
+     ],
+     "size": [
+      6,
+      7
+     ],
+     "material": "carpet_basket"
+    },
+    {
+     "comment": "carpet lab carpet_diamond",
+     "gu": [
+      26,
+      34
+     ],
+     "size": [
+      6,
+      7
+     ],
+     "material": "carpet_diamond"
+    },
+    {
+     "comment": "carpet lab carpet_fleck",
+     "gu": [
+      32,
+      34
+     ],
+     "size": [
+      6,
+      7
+     ],
+     "material": "carpet_fleck"
+    },
+    {
+     "comment": "carpet lab carpet_check",
+     "gu": [
+      38,
+      34
+     ],
+     "size": [
+      6,
+      7
+     ],
+     "material": "carpet_check"
+    },
+    {
      "comment": "human floor carpet",
      "gu": [
       2,
@@ -1225,7 +1309,13 @@
     "parquet",
     "tile",
     "concrete",
-    "stone"
+    "stone",
+    "carpet_plain",
+    "carpet_stripe",
+    "carpet_basket",
+    "carpet_diamond",
+    "carpet_fleck",
+    "carpet_check"
    ]
   },
   "ground_decals": {

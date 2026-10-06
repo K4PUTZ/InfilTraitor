@@ -1,0 +1,21 @@
+{
+  "id": "carpet_fleck",
+  "family": "fabric",
+  "tags": [
+    "fabric",
+    "indoor"
+  ],
+  "destroy_factor": 0.95,
+  "dent_factor": 0.0,
+  "crack_factor": 0.0,
+  "flammability": 0.6,
+  "base_color": [
+    0.79,
+    0.74,
+    0.67
+  ],
+  "pattern_algorithm": "flat",
+  "has_facade": true,
+  "burn_consumption": 1.0,
+  "smoke_chance": 0.1
+}

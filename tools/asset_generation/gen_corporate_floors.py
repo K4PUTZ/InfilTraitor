@@ -138,6 +138,101 @@ def parquet(rng: np.random.Generator) -> np.ndarray:
     return img
 
 
+# ── carpet LAB (2026-10-06): patterns at the scale that reads in play (a voxel is ~12 px on screen at zoom 1, so a feature has to be
+# 16 px or more; the 7 px weave of `carpet` vanishes). Each has its own facade and colour; the Director keeps what he likes. ──
+
+def _weave(rng: np.random.Generator, amp: float = 5.0) -> np.ndarray:
+    return amp * norm(gaussian_filter(rng.normal(size=(H, W)), 0.8))
+
+
+def carpet_plain(rng):
+    """Plain loop pile: a bolder mottle and a clear tone step between the 64 px tiles."""
+    img = 150.0 + _weave(rng) + 9.0 * norm(gaussian_filter(rng.normal(size=(H, W)), 20))
+    for ty in range(H // 64):
+        for tx in range(W // 64):
+            img[ty * 64:(ty + 1) * 64, tx * 64:(tx + 1) * 64] += rng.choice([-11.0, -4.0, 4.0, 11.0])
+    return _seams(img)
+
+
+def _seams(img: np.ndarray, depth: float = 22.0) -> np.ndarray:
+    seam = np.zeros((H, W))
+    seam[:, ::64] = 1.0
+    seam[::64, :] = 1.0
+    seam[:, 1::64] = np.maximum(seam[:, 1::64], 0.5)
+    seam[1::64, :] = np.maximum(seam[1::64, :], 0.5)
+    return img - depth * seam
+
+
+def carpet_stripe(rng):
+    """Ribs 16 px (one voxel) wide, every 64 px tile turned a quarter from its neighbour (the 'monolithic' carpet-tile look)."""
+    yy, xx = np.mgrid[0:H, 0:W]
+    img = np.full((H, W), 150.0) + _weave(rng, 4.0)
+    for ty in range(H // 64):
+        for tx in range(W // 64):
+            sl = (slice(ty * 64, (ty + 1) * 64), slice(tx * 64, (tx + 1) * 64))
+            across = (xx[sl] if (tx + ty) % 2 == 0 else yy[sl])
+            img[sl] += np.where((across // 16) % 2 == 0, 16.0, -16.0) + rng.normal(0.0, 3.0)
+    return _seams(img)
+
+
+def carpet_basket(rng):
+    """Basket weave: 32 px blocks of 8 px ribs, alternating direction — fine at a distance, a texture up close."""
+    yy, xx = np.mgrid[0:H, 0:W]
+    block = ((xx // 32) + (yy // 32)) % 2 == 0
+    ribs = np.where(block, (xx // 8) % 2, (yy // 8) % 2).astype(float) - 0.5
+    img = 150.0 + 20.0 * ribs + 10.0 * (block.astype(float) - 0.5) + _weave(rng, 4.0) + 6.0 * norm(gaussian_filter(rng.normal(size=(H, W)), 18))
+    return _seams(img, 14.0)
+
+
+def carpet_diamond(rng):
+    """A jacquard lattice: lighter diamonds, 64 px across, on a darker field — the corporate lobby look."""
+    yy, xx = np.mgrid[0:H, 0:W]
+    dx = np.abs((xx % 64) - 32).astype(float)
+    dy = np.abs((yy % 64) - 32).astype(float)
+    d = dx + dy
+    motif = np.clip((26.0 - d) / 6.0, 0.0, 1.0)                    # the big diamond
+    small = np.clip((8.0 - np.abs(((xx + 32) % 64) - 32) - np.abs(((yy + 32) % 64) - 32)) / 3.0, 0.0, 1.0)  # a dot where four meet
+    img = 138.0 + 26.0 * motif + 14.0 * small + _weave(rng, 4.5) + 5.0 * norm(gaussian_filter(rng.normal(size=(H, W)), 16))
+    return img
+
+
+def carpet_fleck(rng):
+    """Speckled commercial carpet: sparse light and dark flecks of 2-4 px on a mid field, no tile seams."""
+    n = norm(gaussian_filter(rng.normal(size=(H, W)), 1.8))
+    flecks = np.where(n > 1.15, 1.0, 0.0) - np.where(n < -1.15, 1.0, 0.0)
+    return 152.0 + 22.0 * flecks + _weave(rng, 5.0) + 7.0 * norm(gaussian_filter(rng.normal(size=(H, W)), 26))
+
+
+def carpet_check(rng):
+    """Two-tone checker of 32 px squares inside 64 px tiles: a calm geometric field."""
+    yy, xx = np.mgrid[0:H, 0:W]
+    chk = (((xx // 32) + (yy // 32)) % 2).astype(float) - 0.5
+    img = 150.0 + 24.0 * chk + _weave(rng, 4.5) + 5.0 * norm(gaussian_filter(rng.normal(size=(H, W)), 20))
+    return _seams(img, 12.0)
+
+
+# material id -> (facade function, target albedo: the colour the floor should read as, which fixes `base_color` from the facade's mean)
+CARPET_LAB = {
+    "carpet_plain": (carpet_plain, (0.30, 0.36, 0.46)),     # slate blue
+    "carpet_stripe": (carpet_stripe, (0.42, 0.11, 0.13)),   # burgundy
+    "carpet_basket": (carpet_basket, (0.18, 0.22, 0.36)),   # navy
+    "carpet_diamond": (carpet_diamond, (0.15, 0.30, 0.22)), # forest green
+    "carpet_fleck": (carpet_fleck, (0.47, 0.44, 0.40)),     # warm grey
+    "carpet_check": (carpet_check, (0.52, 0.44, 0.31)),     # tan
+}
+
+
+def write_lab_row(material: str, mean: float, target: tuple) -> None:
+    path = MATERIALS / material / ("%s.json" % material)
+    base = [round(min(1.0, t / (mean / 255.0)), 2) for t in target]
+    row = {"id": material, **ROWS["carpet"], "base_color": base, "pattern_algorithm": "flat", "has_facade": True}
+    order = ["id", "family", "tags", "destroy_factor", "dent_factor", "crack_factor", "flammability", "base_color",
+             "pattern_algorithm", "has_facade", "burn_consumption", "smoke_chance"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({k: row[k] for k in order}, indent=2) + "\n")
+    print("[CORPORATE] %s base_color %s (albedo target %s, facade mean %.0f)" % (material, base, target, mean))
+
+
 ROWS = {
     "carpet": {"family": "fabric", "tags": ["fabric", "indoor"], "destroy_factor": 0.95, "dent_factor": 0.0, "crack_factor": 0.0,
                "flammability": 0.6, "base_color": [0.46, 0.52, 0.62], "burn_consumption": 1.0, "smoke_chance": 0.1},
@@ -166,6 +261,10 @@ def main() -> int:
     for seed, (name, fn) in enumerate([("carpet", carpet), ("tile", tile), ("parquet", parquet)]):
         save(name, fn(np.random.default_rng(1000 + seed)))
         write_row(name)
+    for seed, (name, (fn, target)) in enumerate(CARPET_LAB.items()):
+        img = fn(np.random.default_rng(2000 + seed))
+        save(name, img)
+        write_lab_row(name, float(np.clip(img, 0, 255).mean()), target)
     return 0
 
 

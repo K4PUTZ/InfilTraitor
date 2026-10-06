@@ -4536,7 +4536,7 @@ func dispatch_impact_vfx(grid_pos: Vector2i, level: int, material_id: String,
 		_smoke_spark_overlay.add_smoke(origin, _vfx_smoke_color_for_material(material_id),
 			1.0, 1.0, 0, 1.0, 0.0, floor_pos, anchor_3d)
 	if bool(profile.get("dust", false)) and randf() < vfx_impact_dust_chance:
-		_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(material_id).lerp(Color.WHITE, 0.3))
+		_debris_overlay.add_sand_trickle(origin, floor_pos, _vfx_material_base_color(material_id).lerp(Color.WHITE, 0.15))
 	var chips: int = int(profile.get("chips", 0))
 	if chips > 0:
 		_debris_overlay.add_chips(origin, floor_pos, chips,

@@ -87,17 +87,18 @@ var chip_fade_power: float = 1.3
 ## What a round leaves running down a concrete / stone / brick wall: a THIN thread of single grains that start one after another, fall
 ## slowly down the face to the floor beneath, and lie there a moment before they fade. (`add_dust` is the blast's puff of a dozen
 ## specks falling together; this is not it.)
-var trickle_count_min: int = 16
-var trickle_count_max: int = 24
-var trickle_span_min: float = 0.9          ## seconds over which the grains are released, one after another
-var trickle_span_max: float = 1.5
-var trickle_fall_min: float = 0.7          ## each grain's own fall, slower than the puff's 0.45-0.75
-var trickle_fall_max: float = 1.0
-var trickle_rest_min: float = 0.6          ## seconds a grain lies on the floor, fading
-var trickle_rest_max: float = 1.1
+var trickle_count_min: int = 9
+var trickle_count_max: int = 13
+var trickle_delay: float = 0.5             ## seconds of stillness after the round, then it starts
+var trickle_span_min: float = 0.35         ## seconds over which the grains are released, one after another
+var trickle_span_max: float = 0.6
+var trickle_fall_min: float = 0.45         ## each grain's own fall
+var trickle_fall_max: float = 0.65
+var trickle_rest_min: float = 0.3          ## seconds a grain lies on the floor, fading
+var trickle_rest_max: float = 0.5
 var trickle_sway: float = 1.1              ## px, how far a grain wanders sideways: a thread, not a cloud
 var trickle_pile_spread: float = 3.2       ## px, how far along the floor the grains lie
-var trickle_speck_radius: float = 1.4
+var trickle_speck_radius: float = 1.0
 var _trickles: Array = []
 var _dust: Array = []
 ## [{"origin","target","color","delay","fall_duration","settle_duration",
@@ -136,7 +137,7 @@ func add_sand_trickle(origin: Vector2, target: Vector2, color: Color) -> void:
 	var span: float = randf_range(trickle_span_min, trickle_span_max)
 	for i in range(randi_range(trickle_count_min, trickle_count_max)):
 		grains.append({
-			"t0": span * pow(randf(), 1.3),  ## released a little more densely at the start, then thinning out
+			"t0": trickle_delay + span * pow(randf(), 1.3),  ## released a little more densely at the start, then thinning out
 			"fall": randf_range(trickle_fall_min, trickle_fall_max),
 			"rest": randf_range(trickle_rest_min, trickle_rest_max),
 			"sway": randf_range(-trickle_sway, trickle_sway),

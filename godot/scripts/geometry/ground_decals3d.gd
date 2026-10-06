@@ -73,7 +73,15 @@ func attach(board: Node3D, instances: Array, level: int, floor_tags_of: Callable
 				for path in paths:
 					textures.append(load(path) as Texture2D)
 				var pile = FloorPileRef.new()
-				pile.attach(board, textures, PRIORITY + priority, LIFT + float(priority) * 0.0004, size * 0.5)
+				var mask_t0: int = Time.get_ticks_usec()
+				## A scatter stamp is blended whole whatever its alpha: build its mesh from the tiles that hold alpha only (tile culling).
+				var cull: bool = SurfaceRulesRef.kind_class(kind) == "scatter"
+				pile.attach(board, textures, PRIORITY + priority, LIFT + float(priority) * 0.0004, size * 0.5, cull)
+				if cull:
+					var kept: Array = []
+					for m: PackedByteArray in pile._masks:
+						kept.append("%.0f%%" % (FloorPileRef.kept_fraction(m) * 100.0))
+					print("[GroundDecals3D] %s: tiles kept per variant %s (masks in %.0f ms)" % [kind, str(kept), float(Time.get_ticks_usec() - mask_t0) / 1000.0])
 				_piles[kind] = pile
 		var pile_for_kind = _piles[kind]
 		if pile_for_kind == null:

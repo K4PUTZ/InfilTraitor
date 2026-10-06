@@ -5,7 +5,9 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
 
-uniform sampler2D decal : filter_linear, source_color;
+// `filter_linear_mipmap`: a 512 px stamp is ~80 px on a zoomed-out handset screen, and without mipmaps each pixel strides ~6 texels (a texture
+// cache miss every fetch, and aliasing). A texture with no mipmaps falls back to its base level, so every older user is unchanged.
+uniform sampler2D decal : filter_linear_mipmap, source_color;
 
 void fragment() {
 	vec4 texel = texture(decal, UV);

@@ -44,15 +44,78 @@ var _lift: float = 0.004
 ## World-space half-side of one decal quad (1.0 = 1 GU). Defaults to one voxel cell's old footprint;
 ## a caller placing a different-scaled decal (a shard, a GU-sized patch) passes its own.
 var _half_gu: float = -1.0
+## TILE CULLING (R3D-SURFACES, 2026-10-06): the quad of a stamp is blended whole whatever its alpha, and on the Moto that cost ~5 ms per full-screen
+## layer of scatter (SURFACES_MASTER_PLAN §7.0). With `cull_tiles` each variant's mesh is built from only the tiles of a TILE_GRID x TILE_GRID grid
+## that hold any alpha (runs of tiles on a row are one quad), so transparent pixels are never rasterised. `_masks[variant]` is 1 where a tile is kept.
+const TILE_GRID: int = 8
+var _cull_tiles: bool = false
+var _masks: Array = []
 
 
-func attach(board: Node3D, textures: Array, priority: int, lift: float, half_gu: float = -1.0) -> void:
+## The tiles of `tex` (a TILE_GRID x TILE_GRID grid, row-major) that hold any pixel of alpha above `threshold` (0..1), dilated by 2 texels so
+## the linear filter never samples a culled neighbour's edge. An unreadable texture keeps every tile (nothing is culled blind).
+static func tile_mask(tex: Texture2D, threshold: float = 0.03) -> PackedByteArray:
+	var mask := PackedByteArray()
+	mask.resize(TILE_GRID * TILE_GRID)
+	var image: Image = tex.get_image() if tex != null else null
+	if image == null or image.is_empty():
+		mask.fill(1)
+		return mask
+	if image.is_compressed():
+		image.decompress()
+	var w: int = image.get_width()
+	var h: int = image.get_height()
+	var tw: int = maxi(1, w / TILE_GRID)
+	var th: int = maxi(1, h / TILE_GRID)
+	for ty in range(TILE_GRID):
+		for tx in range(TILE_GRID):
+			var found: bool = false
+			for y in range(maxi(0, ty * th - 2), mini(h, (ty + 1) * th + 2)):
+				for x in range(maxi(0, tx * tw - 2), mini(w, (tx + 1) * tw + 2)):
+					if image.get_pixel(x, y).a > threshold:
+						found = true
+						break
+				if found:
+					break
+			mask[ty * TILE_GRID + tx] = 1 if found else 0
+	return mask
+
+
+## `tex` with a full mipmap chain: itself when it is not readable (nothing is changed blind), a new `ImageTexture` otherwise.
+static func _with_mipmaps(tex: Texture2D) -> Texture2D:
+	var image: Image = tex.get_image() if tex != null else null
+	if image == null or image.is_empty():
+		return tex
+	if image.is_compressed():
+		image.decompress()
+	image.generate_mipmaps()
+	return ImageTexture.create_from_image(image)
+
+
+## The fraction of tiles a mask keeps (for the log: how much of a stamp's quad is still rasterised).
+static func kept_fraction(mask: PackedByteArray) -> float:
+	var kept: int = 0
+	for b in mask:
+		kept += int(b)
+	return float(kept) / float(maxi(mask.size(), 1))
+
+
+func attach(board: Node3D, textures: Array, priority: int, lift: float, half_gu: float = -1.0, cull_tiles: bool = false) -> void:
 	if not _nodes.is_empty():
 		return
 	_board = board
 	_lift = lift
 	_half_gu = half_gu if half_gu > 0.0 else DEFAULT_HALF_GU
+	_cull_tiles = cull_tiles
+	var sources: Array = textures
+	if cull_tiles:
+		## A scatter stamp is minified hard: give it mipmaps (generated once, from the image; the plain decals keep theirs as imported).
+		sources = []
+		for tex: Texture2D in textures:
+			sources.append(_with_mipmaps(tex))
+		textures = sources
 	for i in range(textures.size()):
+		_masks.append(tile_mask(textures[i]) if cull_tiles else PackedByteArray())
 		var mat := ShaderMaterial.new()
 		mat.shader = load(SHADER_PATH)
 		mat.set_shader_parameter("decal", textures[i])
@@ -76,6 +139,7 @@ func detach() -> void:
 			n.queue_free()
 	_nodes.clear()
 	_meshes.clear()
+	_masks.clear()
 	_piles.clear()
 	_board = null
 
@@ -171,10 +235,44 @@ func _rebuild() -> void:
 		var e: Vector3 = centre + Vector3(oe.x, 0.0, oe.y)
 		var tint: Color = p.get("tint", Color.WHITE)
 		var col := Color(tint.r, tint.g, tint.b, float(p["alpha"]))
-		verts[v].append_array(PackedVector3Array([a, b, d, a, d, e]))
-		uvs[v].append_array(PackedVector2Array([
-			Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 0), Vector2(1, 1), Vector2(0, 1)]))
-		cols[v].append_array(PackedColorArray([col, col, col, col, col, col]))
+		if _cull_tiles and not (_masks[v] as PackedByteArray).is_empty():
+			## Only the tiles that hold alpha: one quad per RUN of kept tiles on a row, its corners rotated about the centre like the whole quad's.
+			var mask: PackedByteArray = _masks[v]
+			var step: float = 1.0 / float(TILE_GRID)
+			for ty in range(TILE_GRID):
+				var tx: int = 0
+				while tx < TILE_GRID:
+					if mask[ty * TILE_GRID + tx] == 0:
+						tx += 1
+						continue
+					var run_end: int = tx
+					while run_end + 1 < TILE_GRID and mask[ty * TILE_GRID + run_end + 1] == 1:
+						run_end += 1
+					var u0: float = float(tx) * step
+					var u1: float = float(run_end + 1) * step
+					var v0: float = float(ty) * step
+					var v1: float = float(ty + 1) * step
+					var lx0: float = -h + u0 * 2.0 * h
+					var lx1: float = -h + u1 * 2.0 * h
+					var ly0: float = -h + v0 * 2.0 * h
+					var ly1: float = -h + v1 * 2.0 * h
+					var ra: Vector2 = Vector2(lx0, ly0).rotated(rot)
+					var rb: Vector2 = Vector2(lx1, ly0).rotated(rot)
+					var rd: Vector2 = Vector2(lx1, ly1).rotated(rot)
+					var re: Vector2 = Vector2(lx0, ly1).rotated(rot)
+					var ta: Vector3 = centre + Vector3(ra.x, 0.0, ra.y)
+					var tb: Vector3 = centre + Vector3(rb.x, 0.0, rb.y)
+					var td: Vector3 = centre + Vector3(rd.x, 0.0, rd.y)
+					var te: Vector3 = centre + Vector3(re.x, 0.0, re.y)
+					verts[v].append_array(PackedVector3Array([ta, tb, td, ta, td, te]))
+					uvs[v].append_array(PackedVector2Array([Vector2(u0, v0), Vector2(u1, v0), Vector2(u1, v1), Vector2(u0, v0), Vector2(u1, v1), Vector2(u0, v1)]))
+					cols[v].append_array(PackedColorArray([col, col, col, col, col, col]))
+					tx = run_end + 1
+		else:
+			verts[v].append_array(PackedVector3Array([a, b, d, a, d, e]))
+			uvs[v].append_array(PackedVector2Array([
+				Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 0), Vector2(1, 1), Vector2(0, 1)]))
+			cols[v].append_array(PackedColorArray([col, col, col, col, col, col]))
 	for i in range(_nodes.size()):
 		var mesh: ArrayMesh = _meshes[i]
 		mesh.clear_surfaces()

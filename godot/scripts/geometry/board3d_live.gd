@@ -60,6 +60,8 @@ const ParticleMathRef = preload("res://godot/scripts/geometry/particle_math.gd")
 ## `RENDER3D_VSCALE`, read at `build()`. A Director look-call, not a code decision — see
 ## `RENDER3D_MASTER_PLAN` R3D-3 step 2.
 static var VERTICAL_SCALE: float = 1.0
+## Whether a floor top blends the soot tone of its four nearest cells (4 cell-plane fetches per fragment) or reads one cell.
+static var SOOT_SMOOTH: bool = true
 const VERTICAL_SCALE_MATCHED: float = 158.0 / 156.8
 ## Dev-only, off by default (DevFlags `RENDER3D_VSCALE_MARKER`) — a bright box spanning
 ## exactly one storey (8 levels) at a fixed cell, so the look-call has a fixed reference
@@ -125,7 +127,8 @@ uniform vec3 face_tone = vec3(1.0, 0.975, 0.945);
 uniform int face_x_slot = 1;
 uniform int face_z_slot = 2;
 uniform float depth_dim[5];
-uniform float soot_smooth = 1.0;  // 1: a top face blends the soot tone of its 4 nearest cells (no square edges); 0: one cell, hard
+uniform float soot_tone_tab[6];  // a floor top's soot tone by ring: the four ladder tones, clean (1.0), and the charred mean
+uniform float soot_smooth = 1.0;  // 1: a floor top leans toward its two nearest neighbours soot tone (no square edges); 0: one cell, hard
 uniform float pit_dark = 0.60;     // the inside of a crater (side faces and the tops below the walkable floor) is darkened by this
 varying vec3 v_world;
 varying vec3 v_normal;
@@ -236,17 +239,15 @@ void fragment() {
 	float f = face_tone[face] * bucket_lum[clamp(bucket, 0, 11)];
 	float tone = soot_tone(code, face, v);
 	if (face == 0 && soot_smooth > 0.5) {
-		// The soot is one value per cell, so a scorch on a floor is a field of squares. Blend the four nearest cells' tones (a
-		// smoothstep of the position inside the cell) so its edge is a gradient (Director 2026-10-05).
-		vec2 sp = v_world.xz * 8.0 - 0.5;
-		ivec2 sb = ivec2(floor(sp));
-		vec2 sw = fract(sp);
-		sw = sw * sw * (3.0 - 2.0 * sw);
-		float t00 = soot_tone(soot_code_at(sb, layer), 0, ivec3(sb.x, v.y, sb.y));
-		float t10 = soot_tone(soot_code_at(sb + ivec2(1, 0), layer), 0, ivec3(sb.x + 1, v.y, sb.y));
-		float t01 = soot_tone(soot_code_at(sb + ivec2(0, 1), layer), 0, ivec3(sb.x, v.y, sb.y + 1));
-		float t11 = soot_tone(soot_code_at(sb + ivec2(1, 1), layer), 0, ivec3(sb.x + 1, v.y, sb.y + 1));
-		tone = mix(mix(t00, t10, sw.x), mix(t01, t11, sw.x), sw.y);
+		// The soot is one value per cell, so a scorch on a floor is a field of squares. Lean this cell's tone toward the neighbour on the
+		// side of the cell this pixel is nearest to, on each axis (Director 2026-10-05: no square edges). At a cell edge the weight is
+		// 0.5 on both sides, so the tone is continuous across it. Two extra fetches, not four (the first version blended the four
+		// nearest cells: +5.8 ms of GPU on the Moto at idle).
+		vec2 d = fract(v_world.xz * 8.0) - 0.5;
+		vec2 w = smoothstep(0.0, 1.0, abs(d) * 2.0) * 0.5;
+		float tx = soot_tone_tab[clamp(int(floor(soot_code_at(ivec2(v.x + (d.x < 0.0 ? -1 : 1), v.z), layer) / 36.0)), 0, 5)];
+		float tz = soot_tone_tab[clamp(int(floor(soot_code_at(ivec2(v.x, v.z + (d.y < 0.0 ? -1 : 1)), layer) / 36.0)), 0, 5)];
+		tone = tone + (tx - tone) * w.x + (tz - tone) * w.y;
 	}
 	f *= tone;
 	int rel = level + rel_offset;
@@ -446,6 +447,9 @@ func build(room: Node, cell_to_world: Callable) -> void:
 	CHUNK_VOXELS = int(str(room.call("_dev_flag", "RENDER3D_CHUNK", "16")))
 	VERTICAL_SCALE = _read_vertical_scale(room)
 	VSCALE_MARKER = str(room.call("_dev_flag", "RENDER3D_VSCALE_MARKER", "0")) != "0"
+	## Instruments (R3D-LOOK handset A/B, 2026-10-05): the floor's soot smoothing and the crater darkening, switchable on a release APK
+	## through `dev_flags.cfg`. Defaults are the shipped look.
+	SOOT_SMOOTH = str(room.call("_dev_flag", "SOOT_SMOOTH", "1")) != "0"
 	_geometry_root = Node3D.new()
 	_geometry_root.name = "Geometry"
 	_geometry_root.scale.y = VERTICAL_SCALE
@@ -1351,6 +1355,9 @@ func _build_plane() -> void:
 		m.set_shader_parameter("soot_char_range", Vector2(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX))
 		m.set_shader_parameter("face_tone", Vector3(_tone[0], _tone[1], _tone[2]))
 		m.set_shader_parameter("depth_dim", dims)
+		m.set_shader_parameter("soot_smooth", 1.0 if SOOT_SMOOTH else 0.0)
+		m.set_shader_parameter("soot_tone_tab", PackedFloat32Array([_soot_mult[0], _soot_mult[1], _soot_mult[2], _soot_mult[3], 1.0,
+			lerpf(BoardLook.SOOT_CHAR_MIN, BoardLook.SOOT_CHAR_MAX, 1.0 / 3.0)]))
 	for pm: ShaderMaterial in _prop_materials:
 		pm.set_shader_parameter("cell_plane", _plane)
 		pm.set_shader_parameter("level_base", _level_min)

@@ -23,5 +23,8 @@ A crater capture (`INFILTRAITOR_GRENADE_GUS` + `detonate 0` + `place_guard` the 
 - Two commits went out with a stale CODEMAP (the pre-commit hook regenerates it and leaves the working tree modified): read `verify.py`'s result BEFORE committing.
 - A pixel gate cannot see any of this (all of it is look); the checks were captures, videos and measured contrast.
 
+## Handset cost (measured at the very end)
+See the F4 handset-cost entry in `RENDER3D_MASTER_PLAN`: the soot smoothing is the one expensive piece (+5.8 ms GPU as first written, +3.6 ms after the 2-fetch rework, first grenade 32.9 ms of 33.3). Closing R3D-LOOK before measuring was a mistake; the decision on the smoothing (keep, default off, or bake into the plane) is open.
+
 ## Open
 Handset cost of the dent bowl and of the soot smoothing (unmeasured on the Moto and the Galaxy); metal / wood option B; the dent pits are vector blobs; R3D-SURFACES art; JAMES stays unused.

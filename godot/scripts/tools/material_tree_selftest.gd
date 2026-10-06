@@ -161,7 +161,16 @@ func test_facade_materials_have_their_facade(registry, registered: Array) -> voi
 		if def == null or not def.has_facade:
 			continue
 		checked += 1
-		var path := "%s/%s/facade_%s.png" % [MATERIALS_ROOT, material, material]
+		## A colour variant (`facade_from`) owns no facade: its pattern material's file must exist, and that material must not itself
+		## borrow one (no chains: one hop keeps the cache key and the check trivial).
+		var source: String = String(material)
+		if def.facade_from != "":
+			var source_def = registry.get_material(def.facade_from)
+			if source_def == null or source_def.facade_from != "":
+				missing.append("%s (facade_from '%s' is not a material that owns its facade)" % [material, def.facade_from])
+				continue
+			source = def.facade_from
+		var path := "%s/%s/facade_%s.png" % [MATERIALS_ROOT, source, source]
 		if not _source_exists(path):
 			missing.append(String(material))
 	if missing.is_empty():

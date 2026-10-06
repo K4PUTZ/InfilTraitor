@@ -30,7 +30,7 @@ MAP_PATH = ROOT / "maps" / "SURFACES_GALLERY.map.json"
 DECALS = ROOT / "ASSETS" / "materials" / "_generic" / "decals"
 
 BASES = ["grass", "dirt", "gravel", "sand"]
-INNER = (44, 42)
+INNER = (44, 53)
 COLUMN_W = 10
 COLUMN_X0 = 2
 COLUMN_Y0 = 2
@@ -92,11 +92,18 @@ HUMAN = ["carpet", "parquet", "tile", "concrete", "stone"]
 HUMAN_Y0 = 25
 HUMAN_H = 8
 AGENT_START = [6, 29]
-## The CARPET LAB band (y 34 to 40): the plain `carpet` and the six variants of `gen_corporate_floors.py` side by side, 6 GU each.
-LAB = ["carpet", "carpet_plain", "carpet_stripe", "carpet_basket", "carpet_diamond", "carpet_fleck", "carpet_check"]
+## The CARPET MATRIX (y 34 to 51): one column per pattern, one row per colour (`gen_corporate_floors.py`'s CARPET_PATTERNS x CARPET_COLOURS),
+## every cell 8 GU wide and 3 tall. The plain `carpet` is not in it (it is the old fine weave).
+CARPET_PATTERNS = {"plain": "blue", "stripe": "red", "basket": "navy", "diamond": "green", "check": "tan"}   # pattern -> default colour
+CARPET_COLOURS = ["red", "blue", "navy", "grey", "green", "tan"]
 LAB_Y0 = 34
-LAB_H = 7
-LAB_W = 6
+LAB_ROW_H = 3
+LAB_W = 8
+LAB = ["carpet_%s" % p for p in CARPET_PATTERNS]       # the columns' pattern materials (a column's capture is named after them)
+
+
+def carpet_id(pattern: str, colour: str) -> str:
+    return "carpet_%s" % pattern if CARPET_PATTERNS[pattern] == colour else "carpet_%s_%s" % (pattern, colour)
 
 
 def pad_zones() -> list[dict]:
@@ -135,8 +142,10 @@ def build() -> dict:
                     item["rot"] = rot
                 decals.append(item)
     zones += pad_zones()
-    for i, mat in enumerate(LAB):
-        zones.append({"comment": "carpet lab %s" % mat, "gu": [COLUMN_X0 + i * LAB_W, LAB_Y0], "size": [LAB_W, LAB_H], "material": mat})
+    for i, pattern in enumerate(CARPET_PATTERNS):
+        for j, colour in enumerate(CARPET_COLOURS):
+            zones.append({"comment": "carpet %s %s" % (pattern, colour), "gu": [COLUMN_X0 + i * LAB_W, LAB_Y0 + j * LAB_ROW_H],
+                          "size": [LAB_W, LAB_ROW_H], "material": carpet_id(pattern, colour)})
     for i, mat in enumerate(HUMAN):
         x0 = COLUMN_X0 + i * 8
         zones.append({"comment": "human floor %s" % mat, "gu": [x0, HUMAN_Y0], "size": [8, HUMAN_H], "material": mat})
@@ -152,7 +161,7 @@ def build() -> dict:
             "legacy_compiler": {"v": 1, "wall_height": 1, "access_points": [], "dividers": [], "lights": []},
             "blocks": {"v": 2, "items": blocks},
             "floor_zones": {"v": 2, "items": zones},
-            "damage_materials": {"v": 1, "materials": list(BASES) + HUMAN + LAB[1:]},
+            "damage_materials": {"v": 1, "materials": list(BASES) + HUMAN},
             "ground_decals": {"v": 1, "items": decals},
         },
     }

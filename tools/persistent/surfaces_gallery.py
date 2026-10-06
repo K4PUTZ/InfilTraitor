@@ -50,9 +50,9 @@ def scenario(tag: str, zoom: float) -> tuple[str, list[str]]:
     for i, mat in enumerate(gen.HUMAN):
         steps += ["centre %d,%d" % (gen.COLUMN_X0 + i * 8 + 4 + BUFFER, hy + BUFFER), "zoom %.2f" % zoom, "frames 30", "capture %s_human_%s" % (tag, mat)]
         names.append("human_" + mat)
-    ly = gen.LAB_Y0 + gen.LAB_H / 2.0
+    ly = gen.LAB_Y0 + len(gen.CARPET_COLOURS) * gen.LAB_ROW_H / 2.0
     for i, mat in enumerate(gen.LAB):
-        steps += ["centre %d,%d" % (gen.COLUMN_X0 + i * gen.LAB_W + gen.LAB_W / 2.0 + BUFFER, ly + BUFFER), "zoom %.2f" % (zoom * 1.3),
+        steps += ["centre %d,%d" % (gen.COLUMN_X0 + i * gen.LAB_W + gen.LAB_W / 2.0 + BUFFER, ly + BUFFER), "zoom 0.42",
                   "frames 30", "capture %s_lab_%s" % (tag, mat)]
         names.append("lab_" + mat)
     steps += ["centre agent", "zoom 1.6", "frames 30", "capture %s_agent_scale" % tag]

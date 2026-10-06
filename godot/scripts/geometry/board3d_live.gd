@@ -2445,6 +2445,10 @@ var _facade_textures: Dictionary = {}
 
 
 func material_facade_texture(material_id: String) -> Texture2D:
+	## A colour variant (`MaterialDef.facade_from`) wears its pattern material's facade, loaded once for all of them.
+	var definition = Registries.get_material_registry().get_material(material_id)
+	if definition != null and definition.facade_from != "":
+		material_id = definition.facade_from
 	if _facade_textures.has(material_id):
 		return _facade_textures[material_id]
 	var tex: Texture2D = null

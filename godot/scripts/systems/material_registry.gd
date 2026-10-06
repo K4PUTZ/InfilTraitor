@@ -90,6 +90,9 @@ class MaterialDef:
 	## R3D-SURFACES — what this material IS, out of the closed vocabulary of `res://surfaces/rules.json` (`soil`, `arid`, `indoor`...). A
 	## patch kind (a floor mark) asks these to know whether it may lie here (`SurfaceRules.reason_against`). Empty = untagged.
 	var tags: PackedStringArray = PackedStringArray()
+	## R3D-SURFACES — a COLOUR VARIANT of another material's pattern (`carpet_stripe_blue` of `carpet_stripe`) draws that material's
+	## facade instead of owning a copy: one PNG, one texture in VRAM, any number of `base_color` rows. "" = the material's own facade.
+	var facade_from: String = ""
 
 	func _init(p_id: String, p_color: Color, p_algo: PatternAlgorithm) -> void:
 		id = p_id
@@ -124,6 +127,7 @@ class MaterialDef:
 		def.has_facade = bool(data.get("has_facade", false))
 		def.family = String(data.get("family", "generic"))
 		def.tags = SurfaceRulesRef.checked_tags(def.id, data.get("tags", []))
+		def.facade_from = String(data.get("facade_from", ""))
 		var surfaces = data.get("surfaces", {})
 		if typeof(surfaces) == TYPE_DICTIONARY:
 			for role in surfaces:

@@ -196,13 +196,6 @@ def carpet_diamond(rng):
     return img
 
 
-def carpet_fleck(rng):
-    """Speckled commercial carpet: sparse light and dark flecks of 2-4 px on a mid field, no tile seams."""
-    n = norm(gaussian_filter(rng.normal(size=(H, W)), 1.8))
-    flecks = np.where(n > 1.15, 1.0, 0.0) - np.where(n < -1.15, 1.0, 0.0)
-    return 152.0 + 22.0 * flecks + _weave(rng, 5.0) + 7.0 * norm(gaussian_filter(rng.normal(size=(H, W)), 26))
-
-
 def carpet_check(rng):
     """Two-tone checker of 32 px squares inside 64 px tiles: a calm geometric field."""
     yy, xx = np.mgrid[0:H, 0:W]
@@ -211,26 +204,38 @@ def carpet_check(rng):
     return _seams(img, 12.0)
 
 
-# material id -> (facade function, target albedo: the colour the floor should read as, which fixes `base_color` from the facade's mean)
-CARPET_LAB = {
-    "carpet_plain": (carpet_plain, (0.30, 0.36, 0.46)),     # slate blue
-    "carpet_stripe": (carpet_stripe, (0.42, 0.11, 0.13)),   # burgundy
-    "carpet_basket": (carpet_basket, (0.18, 0.22, 0.36)),   # navy
-    "carpet_diamond": (carpet_diamond, (0.15, 0.30, 0.22)), # forest green
-    "carpet_fleck": (carpet_fleck, (0.47, 0.44, 0.40)),     # warm grey
-    "carpet_check": (carpet_check, (0.52, 0.44, 0.31)),     # tan
+# The patterns (each owns ONE facade) and the colours they come in. A colour is a target ALBEDO (what the floor should read as); the
+# row's `base_color` is that divided by the facade's mean, so every pattern in every colour lands on the same brightness. A pattern's
+# own material (`carpet_stripe`) wears its default colour; the others are `carpet_<pattern>_<colour>`, a JSON row with `facade_from`
+# and no PNG of its own.
+CARPET_PATTERNS = {            # id -> (facade function, default colour)
+    "carpet_plain": (carpet_plain, "blue"),
+    "carpet_stripe": (carpet_stripe, "red"),
+    "carpet_basket": (carpet_basket, "navy"),
+    "carpet_diamond": (carpet_diamond, "green"),
+    "carpet_check": (carpet_check, "tan"),
+}
+CARPET_COLOURS = {
+    "red": (0.42, 0.11, 0.13),     # burgundy
+    "blue": (0.30, 0.36, 0.46),    # slate blue
+    "navy": (0.18, 0.22, 0.36),
+    "grey": (0.40, 0.40, 0.42),
+    "green": (0.15, 0.30, 0.22),   # forest
+    "tan": (0.52, 0.44, 0.31),
 }
 
 
-def write_lab_row(material: str, mean: float, target: tuple) -> None:
+def write_carpet_row(material: str, mean: float, target: tuple, facade_from: str = "") -> None:
     path = MATERIALS / material / ("%s.json" % material)
     base = [round(min(1.0, t / (mean / 255.0)), 2) for t in target]
     row = {"id": material, **ROWS["carpet"], "base_color": base, "pattern_algorithm": "flat", "has_facade": True}
     order = ["id", "family", "tags", "destroy_factor", "dent_factor", "crack_factor", "flammability", "base_color",
              "pattern_algorithm", "has_facade", "burn_consumption", "smoke_chance"]
+    out = {k: row[k] for k in order}
+    if facade_from:
+        out["facade_from"] = facade_from
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({k: row[k] for k in order}, indent=2) + "\n")
-    print("[CORPORATE] %s base_color %s (albedo target %s, facade mean %.0f)" % (material, base, target, mean))
+    path.write_text(json.dumps(out, indent=2) + "\n")
 
 
 ROWS = {
@@ -261,10 +266,16 @@ def main() -> int:
     for seed, (name, fn) in enumerate([("carpet", carpet), ("tile", tile), ("parquet", parquet)]):
         save(name, fn(np.random.default_rng(1000 + seed)))
         write_row(name)
-    for seed, (name, (fn, target)) in enumerate(CARPET_LAB.items()):
+    for seed, (name, (fn, default_colour)) in enumerate(CARPET_PATTERNS.items()):
         img = fn(np.random.default_rng(2000 + seed))
         save(name, img)
-        write_lab_row(name, float(np.clip(img, 0, 255).mean()), target)
+        mean = float(np.clip(img, 0, 255).mean())
+        for colour, target in CARPET_COLOURS.items():
+            if colour == default_colour:
+                write_carpet_row(name, mean, target)
+            else:
+                write_carpet_row("%s_%s" % (name, colour), mean, target, facade_from=name)
+        print("[CORPORATE] %s: facade mean %.0f, default colour %s, %d colour variant(s)" % (name, mean, default_colour, len(CARPET_COLOURS) - 1))
     return 0
 
 

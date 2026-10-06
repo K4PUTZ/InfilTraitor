@@ -11,7 +11,7 @@
    "v": 1,
    "inner_size": [
     44,
-    42
+    53
    ],
    "buffer": 5,
    "floor_tile": "floor_SE"
@@ -1153,86 +1153,362 @@
      "material": "gravel"
     },
     {
-     "comment": "carpet lab carpet",
+     "comment": "carpet plain red",
      "gu": [
       2,
       34
      ],
      "size": [
-      6,
-      7
+      8,
+      3
      ],
-     "material": "carpet"
+     "material": "carpet_plain_red"
     },
     {
-     "comment": "carpet lab carpet_plain",
+     "comment": "carpet plain blue",
      "gu": [
-      8,
-      34
+      2,
+      37
      ],
      "size": [
-      6,
-      7
+      8,
+      3
      ],
      "material": "carpet_plain"
     },
     {
-     "comment": "carpet lab carpet_stripe",
+     "comment": "carpet plain navy",
      "gu": [
-      14,
+      2,
+      40
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_plain_navy"
+    },
+    {
+     "comment": "carpet plain grey",
+     "gu": [
+      2,
+      43
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_plain_grey"
+    },
+    {
+     "comment": "carpet plain green",
+     "gu": [
+      2,
+      46
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_plain_green"
+    },
+    {
+     "comment": "carpet plain tan",
+     "gu": [
+      2,
+      49
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_plain_tan"
+    },
+    {
+     "comment": "carpet stripe red",
+     "gu": [
+      10,
       34
      ],
      "size": [
-      6,
-      7
+      8,
+      3
      ],
      "material": "carpet_stripe"
     },
     {
-     "comment": "carpet lab carpet_basket",
+     "comment": "carpet stripe blue",
      "gu": [
-      20,
+      10,
+      37
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_blue"
+    },
+    {
+     "comment": "carpet stripe navy",
+     "gu": [
+      10,
+      40
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_navy"
+    },
+    {
+     "comment": "carpet stripe grey",
+     "gu": [
+      10,
+      43
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_grey"
+    },
+    {
+     "comment": "carpet stripe green",
+     "gu": [
+      10,
+      46
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_green"
+    },
+    {
+     "comment": "carpet stripe tan",
+     "gu": [
+      10,
+      49
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_stripe_tan"
+    },
+    {
+     "comment": "carpet basket red",
+     "gu": [
+      18,
       34
      ],
      "size": [
-      6,
-      7
+      8,
+      3
+     ],
+     "material": "carpet_basket_red"
+    },
+    {
+     "comment": "carpet basket blue",
+     "gu": [
+      18,
+      37
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_basket_blue"
+    },
+    {
+     "comment": "carpet basket navy",
+     "gu": [
+      18,
+      40
+     ],
+     "size": [
+      8,
+      3
      ],
      "material": "carpet_basket"
     },
     {
-     "comment": "carpet lab carpet_diamond",
+     "comment": "carpet basket grey",
+     "gu": [
+      18,
+      43
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_basket_grey"
+    },
+    {
+     "comment": "carpet basket green",
+     "gu": [
+      18,
+      46
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_basket_green"
+    },
+    {
+     "comment": "carpet basket tan",
+     "gu": [
+      18,
+      49
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_basket_tan"
+    },
+    {
+     "comment": "carpet diamond red",
      "gu": [
       26,
       34
      ],
      "size": [
-      6,
-      7
+      8,
+      3
+     ],
+     "material": "carpet_diamond_red"
+    },
+    {
+     "comment": "carpet diamond blue",
+     "gu": [
+      26,
+      37
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_diamond_blue"
+    },
+    {
+     "comment": "carpet diamond navy",
+     "gu": [
+      26,
+      40
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_diamond_navy"
+    },
+    {
+     "comment": "carpet diamond grey",
+     "gu": [
+      26,
+      43
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_diamond_grey"
+    },
+    {
+     "comment": "carpet diamond green",
+     "gu": [
+      26,
+      46
+     ],
+     "size": [
+      8,
+      3
      ],
      "material": "carpet_diamond"
     },
     {
-     "comment": "carpet lab carpet_fleck",
+     "comment": "carpet diamond tan",
      "gu": [
-      32,
-      34
+      26,
+      49
      ],
      "size": [
-      6,
-      7
+      8,
+      3
      ],
-     "material": "carpet_fleck"
+     "material": "carpet_diamond_tan"
     },
     {
-     "comment": "carpet lab carpet_check",
+     "comment": "carpet check red",
      "gu": [
-      38,
+      34,
       34
      ],
      "size": [
-      6,
-      7
+      8,
+      3
+     ],
+     "material": "carpet_check_red"
+    },
+    {
+     "comment": "carpet check blue",
+     "gu": [
+      34,
+      37
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_check_blue"
+    },
+    {
+     "comment": "carpet check navy",
+     "gu": [
+      34,
+      40
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_check_navy"
+    },
+    {
+     "comment": "carpet check grey",
+     "gu": [
+      34,
+      43
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_check_grey"
+    },
+    {
+     "comment": "carpet check green",
+     "gu": [
+      34,
+      46
+     ],
+     "size": [
+      8,
+      3
+     ],
+     "material": "carpet_check_green"
+    },
+    {
+     "comment": "carpet check tan",
+     "gu": [
+      34,
+      49
+     ],
+     "size": [
+      8,
+      3
      ],
      "material": "carpet_check"
     },
@@ -1309,13 +1585,7 @@
     "parquet",
     "tile",
     "concrete",
-    "stone",
-    "carpet_plain",
-    "carpet_stripe",
-    "carpet_basket",
-    "carpet_diamond",
-    "carpet_fleck",
-    "carpet_check"
+    "stone"
    ]
   },
   "ground_decals": {

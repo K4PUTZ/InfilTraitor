@@ -13,6 +13,7 @@ static func register_all(registry) -> void:
 	register_material_tints(registry)
 	register_ground_scatter(registry)
 	register_ground_vents(registry)
+	register_floor_openings(registry)
 	register_damage_materials(registry)
 	register_panels(registry)
 	register_props(registry)
@@ -157,6 +158,23 @@ static func register_ground_decals(registry) -> void:
 	var SectionOwner = registry.SectionOwner
 	registry.register(SectionOwner.new(
 		"ground_decals",
+		1,
+		func(fragment: Dictionary) -> Dictionary:
+			return { "items": fragment.get("items", []) },
+		func(raw: Dictionary) -> Dictionary:
+			return { "items": raw.get("items", []) },
+		{},
+		func() -> Dictionary:
+			return { "items": [] }
+	))
+
+## floor_openings (R3D-SURFACES SM-6b, 2026-10-06, DS-18): a REAL opening through the floor stack, in whole GUs. `{gu: [x, y], size: [w, h], pattern, axis?, pitch?,
+## material?}` -- `pattern` is `slats` (1-voxel bars along `axis` every `pitch` voxels inside a 1-voxel frame, of `material`, default steel_dark: a grating)
+## or `open` (a bare shaft). `FloorOpenings` says which cells go; `SlabGenerator` skips them on both floor levels. Walkable by default.
+static func register_floor_openings(registry) -> void:
+	var SectionOwner = registry.SectionOwner
+	registry.register(SectionOwner.new(
+		"floor_openings",
 		1,
 		func(fragment: Dictionary) -> Dictionary:
 			return { "items": fragment.get("items", []) },

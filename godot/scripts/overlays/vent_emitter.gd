@@ -12,7 +12,8 @@ extends Node
 ## Per kind: the puff's colour, size, rise and how often the vent releases one. `steam` is the only kind (water, lava and the liquid
 ## materials are a parked track, DS-14).
 static var KINDS: Dictionary = {
-	"steam": {"color": Color(0.94, 0.96, 0.98, 0.55), "scale": 2.4, "duration_scale": 2.4, "blobs": 2, "drift_scale": 0.9, "interval": 0.17},
+	"steam": {"color": Color(0.94, 0.96, 0.98, 0.5), "scale": 2.4, "duration_scale": 3.2, "blobs": 2, "drift_scale": 1.0, "interval": 0.26,
+			"style": {"growth": 4.2, "wind": Vector2(-30.0, 0.0), "damp": 0.92, "fade": 1.0}},
 }
 
 var _vents: Array = []        ## {"at": Vector2 (GU), "kind": String, "next": float}
@@ -20,7 +21,8 @@ var _clock: float = 0.0
 var _emit: Callable = Callable()
 
 
-## `instances`: the compiler's `ground_vent_instances` (`at` in raw GU). `emit`: `Callable(at: Vector2, kind: String, params: Dictionary)`.
+## `instances`: the compiler's `ground_vent_instances` (`at` in raw GU, `depth` "floor" or "shaft": where the plume is born, at the floor top or at the
+## bottom of a `floor_openings` shaft, so the bars hide it and release it by depth). `emit`: `Callable(at: Vector2, kind: String, params: Dictionary, depth: String)`.
 func setup(instances: Array, emit: Callable) -> void:
 	_emit = emit
 	_vents.clear()
@@ -32,7 +34,7 @@ func setup(instances: Array, emit: Callable) -> void:
 			continue
 		var at: Vector2 = inst["at"]
 		var interval: float = float(KINDS[kind]["interval"])
-		_vents.append({"at": at, "kind": kind, "next": _phase(kind, at) * interval})
+		_vents.append({"at": at, "kind": kind, "depth": String(inst.get("depth", "floor")), "next": _phase(kind, at) * interval})
 	set_process(not _vents.is_empty())
 
 
@@ -48,7 +50,7 @@ func clear() -> void:
 func _process(delta: float) -> void:
 	for emission: Dictionary in step(delta):
 		if _emit.is_valid():
-			_emit.call(emission["at"], emission["kind"], KINDS[emission["kind"]])
+			_emit.call(emission["at"], emission["kind"], KINDS[emission["kind"]], emission["depth"])
 
 
 ## Advances the clock by `delta` seconds and returns the puffs released in it: `[{"at", "kind"}]`. A long `delta` (a hitch) releases a vent's
@@ -60,7 +62,7 @@ func step(delta: float) -> Array:
 		var interval: float = float(KINDS[vent["kind"]]["interval"])
 		var guard: int = 0
 		while float(vent["next"]) <= _clock and guard < 4:
-			out.append({"at": vent["at"], "kind": vent["kind"]})
+			out.append({"at": vent["at"], "kind": vent["kind"], "depth": vent["depth"]})
 			vent["next"] = float(vent["next"]) + interval
 			guard += 1
 		if guard == 4:

@@ -10,11 +10,14 @@ class_name SlabGenerator
 ## bedrock level below it — not one 8x2x8 Slab; each level is its own
 ## container so the bedrock level can never be marked dirty (nothing ever
 ## calls set_visible/set_damage on voxels in a Slab destruction never touches).
-static func generate(gu_cell: Vector2i, role: int, level: int, material: String, registry: SlabRegistry) -> Slab:
+## `skip` (R3D-SURFACES floor openings): a set of voxel cells (x, y) this slab does NOT have, so a shaft can run through the floor.
+static func generate(gu_cell: Vector2i, role: int, level: int, material: String, registry: SlabRegistry, skip: Dictionary = {}) -> Slab:
 	var slab_id := Slab.make_id(gu_cell, role, level)
 	var slab := Slab.new(slab_id, gu_cell, role, level, material)
 
 	for voxel_pos in GeometryCoords.gu_voxels(gu_cell):
+		if skip.has(voxel_pos):
+			continue
 		slab.add_cell(voxel_pos.x, voxel_pos.y, level)   ## R3D-CLAIMS C4: the cell, not an object
 
 	registry.register_slab(slab)

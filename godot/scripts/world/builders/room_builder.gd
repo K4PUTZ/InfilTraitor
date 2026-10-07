@@ -8,6 +8,7 @@ var room: Node
 var MapCompilerClass = preload("res://godot/scripts/world/maps/map_compiler.gd")
 var PropDefClass = preload("res://godot/scripts/systems/prop_def.gd")
 var PropRegistryClass = preload("res://godot/scripts/systems/prop_registry.gd")
+const FloorOpeningsRef = preload("res://godot/scripts/geometry/floor_openings.gd")  ## R3D-SURFACES SM-6b: a real opening through the floor
 
 var _room_size: Vector2i = Vector2i.ZERO
 var _blocked_cells: Dictionary = {}
@@ -74,6 +75,20 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 		for zx in range(zone_size.x):
 			for zy in range(zone_size.y):
 				floor_zone_by_gu[zone_gu_base + Vector2i(zx, zy)] = zone_material
+
+	## R3D-SURFACES SM-6b (DS-18): REAL openings through the floor. The opening's GUs wear its bar material (so the zone flood-fill below gives
+	## them one texture anchor) and each GU gets the set of voxel cells its floor Slabs will NOT have (both levels), see `FloorOpenings`.
+	var opening_by_gu: Dictionary = {}
+	for raw_opening: Dictionary in layout.get("floor_opening_instances", []):
+		var opening: Dictionary = FloorOpeningsRef.normalise(raw_opening)
+		if opening.is_empty():
+			continue
+		var opening_rect: Rect2i = opening["rect"]
+		for ox in range(opening_rect.size.x):
+			for oy in range(opening_rect.size.y):
+				var opening_gu: Vector2i = opening_rect.position + Vector2i(ox, oy)
+				opening_by_gu[opening_gu] = opening
+				floor_zone_by_gu[opening_gu] = String(opening["material"])
 
 	## Same connected-component flood-fill as the roof texture_anchor pass
 	## below, substituting "same declared zone material" for "both roofed" as
@@ -144,7 +159,8 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 				push_warning("[RoomBuilder] floor_zone at GU %s declares 'earth', which is the sentinel for an UNDECLARED floor — the zone is ignored and this GU renders via EarthVariantSelector. Baked earth ground needs the sentinel split (D35 scope note); earth on walls/blocks/roofs works today." % floor_gu)
 			var floor_material: String = floor_zone_by_gu.get(floor_gu, "earth")
 			var floor_anchor: Vector2i = floor_anchor_by_gu.get(floor_gu, Vector2i.ZERO)
-			var floor_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, FLOOR_TOP_LEVEL, floor_material, room._slab_registry)
+			var carved: Dictionary = FloorOpeningsRef.carved_cells(opening_by_gu[floor_gu], floor_gu) if opening_by_gu.has(floor_gu) else {}
+			var floor_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, FLOOR_TOP_LEVEL, floor_material, room._slab_registry, carved)
 			## R3D-FINISH F2 (2026-10-04): the buffer ring is dark ground nobody digs, so it gets NO deep plane. Each deep slab is 64
 			## `Voxel` objects (~990 B each on the Moto) for a second storey that no one reaches; a crater that eats a ring cell's top
 			## now opens onto the void. Every reader already skips a missing deep slab (`reveal_floor_slab` callers, the plan's FLOORS
@@ -153,7 +169,7 @@ func build_from_layout(layout: Dictionary, room_size: Vector2i) -> void:
 			if floor_material != "earth":
 				floor_slab.texture_anchor = floor_anchor
 			if not in_ring:
-				var deep_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, floor_material, room._slab_registry)
+				var deep_slab := SlabGenerator.generate(floor_gu, Slab.Role.FLOOR, GeometryCoords.FLOOR_DEEP_LEVEL, floor_material, room._slab_registry, carved)
 				if floor_material != "earth":
 					deep_slab.texture_anchor = floor_anchor
 			floor_slabs_by_gu[floor_gu] = floor_slab

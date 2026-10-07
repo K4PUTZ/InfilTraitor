@@ -177,10 +177,17 @@ def build(map_id: str = "SURFACES_GALLERY") -> dict:
                     item["rot"] = rot
                 decals.append(item)
     zones += pad_zones()
+    # REAL openings through the floor (DS-18), set into the four steel-plate bands: slats along x, slats along z, a bare shaft, and wider-spaced slats.
+    # Each has a steam vent born at the BOTTOM of its shaft (`depth: shaft`), so the bars hide the plume and release it by depth.
     vents = []
-    for i, mat in enumerate(INDUSTRIAL):
-        if mat.startswith("grating"):
-            vents.append({"comment": "steam through the %s" % mat, "at": [COLUMN_X0 + i * IND_W + IND_W / 2.0, IND_Y0 + IND_H / 2.0], "kind": "steam"})
+    openings = []
+    for i, (size, pattern, axis, pitch) in enumerate([((3, 3), "slats", "x", 2), ((3, 3), "slats", "z", 2), ((3, 2), "open", "x", 2), ((3, 3), "slats", "x", 3)]):
+        gx, gy = COLUMN_X0 + i * IND_W + 1, IND_Y0 + 1
+        item = {"comment": "opening %d: %s" % (i, pattern), "gu": [gx, gy], "size": list(size), "pattern": pattern}
+        if pattern == "slats":
+            item.update({"axis": axis, "pitch": pitch})
+        openings.append(item)
+        vents.append({"comment": "steam from the shaft of opening %d" % i, "at": [gx + size[0] / 2.0, gy + size[1] / 2.0], "kind": "steam", "depth": "shaft"})
     for i, mat in enumerate(INDUSTRIAL):
         zones.append({"comment": "industrial %s" % mat, "gu": [COLUMN_X0 + i * IND_W, IND_Y0], "size": [IND_W, IND_H], "material": mat})
     for i, mat in enumerate(HUMAN):
@@ -200,6 +207,7 @@ def build(map_id: str = "SURFACES_GALLERY") -> dict:
             "floor_zones": {"v": 2, "items": zones},
             "damage_materials": {"v": 1, "materials": list(BASES) + HUMAN + INDUSTRIAL},
             "ground_decals": {"v": 1, "items": decals},
+            "floor_openings": {"v": 1, "items": openings},
             "ground_vents": {"v": 1, "items": vents},
             "material_tints": {"v": 1, "tints": TINTS},
         },

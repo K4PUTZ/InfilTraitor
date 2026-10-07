@@ -35,6 +35,7 @@ extends RefCounted
 
 const LevelGraphClass = preload("res://godot/scripts/world/level_graph.gd")
 const MapGeometryClass = preload("res://godot/scripts/world/maps/map_geometry.gd")
+const FloorOpeningsRef = preload("res://godot/scripts/geometry/floor_openings.gd")  ## R3D-SURFACES SM-6b: a real opening through the floor
 ## Legacy geometry computation integrated into EdgeExtractor (SLICE-02 refactor)
 
 const REQUIRED_KEYS: Array[String] = ["inner_size", "agent_start"]
@@ -203,6 +204,22 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 			"rot": float(decal.get("rot", 0.0)),
 		})
 
+	## --- floor_openings (R3D-SURFACES SM-6b): whole-GU rectangles, shifted by the buffer; `FloorOpenings.normalise` validates the rest ---
+	var floor_opening_instances: Array = []
+	for opening in spec.get("floor_openings", []):
+		var o_gu = opening.get("gu", null)
+		var o_size = opening.get("size", [1, 1])
+		if not (o_gu is Array) or o_gu.size() != 2 or not (o_size is Array) or o_size.size() != 2:
+			push_error("[MapCompiler] floor_openings: %s needs `gu` [x, y] and `size` [w, h] in whole GU; skipped" % str(opening))
+			continue
+		var normalised: Dictionary = FloorOpeningsRef.normalise({
+			"gu_cell": Vector2i(int(o_gu[0]), int(o_gu[1])) + offset, "size": Vector2i(int(o_size[0]), int(o_size[1])),
+			"pattern": opening.get("pattern", "slats"), "axis": opening.get("axis", "x"), "pitch": opening.get("pitch", FloorOpeningsRef.DEFAULT_PITCH),
+			"material": opening.get("material", FloorOpeningsRef.DEFAULT_MATERIAL)})
+		if not normalised.is_empty():
+			floor_opening_instances.append({"gu_cell": Vector2i(int(o_gu[0]), int(o_gu[1])) + offset, "size": Vector2i(int(o_size[0]), int(o_size[1])),
+				"pattern": normalised["pattern"], "axis": normalised["axis"], "pitch": normalised["pitch"], "material": normalised["material"]})
+
 	## --- ground_vents (R3D-SURFACES SM-6): `at` in GU on the voxel lattice, shifted by the buffer; the kind is checked by `VentEmitter` ---
 	var ground_vent_instances: Array = []
 	for vent in spec.get("ground_vents", []):
@@ -213,7 +230,8 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 				or not is_equal_approx(float(vent_at[1]) * 8.0, round(float(vent_at[1]) * 8.0)):
 			push_error("[MapCompiler] ground_vents: %s needs `at` [x, y] on the voxel lattice and a `kind`; skipped" % str(vent))
 			continue
-		ground_vent_instances.append({"at": Vector2(float(vent_at[0]), float(vent_at[1])) + Vector2(offset), "kind": vent_kind})
+		ground_vent_instances.append({"at": Vector2(float(vent_at[0]), float(vent_at[1])) + Vector2(offset), "kind": vent_kind,
+			"depth": "shaft" if String(vent.get("depth", "floor")) == "shaft" else "floor"})
 
 	## --- ground_scatter (R3D-SURFACES SM-2): zones in raw GU (the buffer applied, like every position); expanded later, in `GroundScatter` ---
 	var ground_scatter_items: Array = []
@@ -368,6 +386,7 @@ static func compile(spec: Dictionary, context: Dictionary = {}) -> Dictionary:
 		"panel_instances":  panel_instances,   ## M3-2b: half-thickness elements, offset-adjusted
 		"ground_decal_instances": ground_decal_instances,  ## R3D-SURFACES S2: floor marks, offset-adjusted, base grid only (never rotated)
 		"damage_materials":  damage_materials,  ## D13: map's declared damage-atom-bake material list
+		"floor_opening_instances": floor_opening_instances,  ## R3D-SURFACES SM-6b: real openings through the floor (raw GU), carved by SlabGenerator
 		"ground_vent_instances": ground_vent_instances,  ## R3D-SURFACES SM-6: floor vents (raw GU), a cosmetic plume each
 		"ground_scatter_items": ground_scatter_items,  ## R3D-SURFACES SM-2: scatter zones (raw GU), expanded by GroundScatter at attach
 		"material_tints":   material_tints,    ## R3D-SURFACES: material id -> Color, the colour it reads as in this map (cosmetic)

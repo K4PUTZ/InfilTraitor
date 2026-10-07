@@ -130,6 +130,11 @@ func _translate_to_runtime_spec(file_spec: Dictionary) -> Dictionary:
 	if ground_decals_section.get("items", []).size() > 0:
 		runtime["ground_decals"] = ground_decals_section["items"]
 
+	# --- Floor openings (R3D-SURFACES SM-6b): a real hole through the floor stack, in whole GUs ----------
+	var floor_openings_section = sections.get("floor_openings", {})
+	if floor_openings_section.get("items", []).size() > 0:
+		runtime["floor_openings"] = floor_openings_section["items"]
+
 	# --- Ground vents (R3D-SURFACES SM-6): a plume rising from the floor --------------------------
 	var ground_vents_section = sections.get("ground_vents", {})
 	if ground_vents_section.get("items", []).size() > 0:

@@ -149,7 +149,7 @@ var _sparks: Array = [] ## [{"pos","vel","elapsed","duration","color"}]
 func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: float = 1.0,
 		blob_count_override: int = 0, drift_scale: float = 1.0,
 		delay: float = 0.0, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR,
-		anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR) -> void:
+		anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR, style: Dictionary = {}) -> void:
 	var blob_count: int = blob_count_override if blob_count_override > 0 \
 		else randi_range(smoke_blob_count_min, smoke_blob_count_max)
 	## R3D-4e-2 — the emission's 3D anchor: where the particle is in the world when it is born.
@@ -169,8 +169,17 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 			"duration": randf_range(smoke_duration_min, smoke_duration_max) * duration_scale,
 			"color": color,
 			"start_radius": smoke_start_radius * scale * randf_range(0.85, 1.15),
-			"end_radius": smoke_end_radius * scale * randf_range(0.85, 1.15),
+			"end_radius": smoke_end_radius * scale * randf_range(0.85, 1.15) * float(style.get("growth", 1.0)),
 		})
+		## An optional STYLE (the steam vent's billow, R3D-SURFACES SM-6b): a sideways `wind` (px/s) added to the puff's velocity, its own drift
+		## `damp` (per second, instead of the global 0.78: a plume keeps climbing) and `fade` power. A puff without a style behaves exactly as before.
+		if not style.is_empty():
+			var last: Dictionary = _smoke[_smoke.size() - 1]
+			last["vel"] = (last["vel"] as Vector2) + (style.get("wind", Vector2.ZERO) as Vector2)
+			if style.has("damp"):
+				last["damp"] = float(style["damp"])
+			if style.has("fade"):
+				last["fade"] = float(style["fade"])
 	set_process(true)
 
 
@@ -226,7 +235,7 @@ func _process(delta: float) -> void:
 			continue
 		s["elapsed"] += delta
 		s["pos"] += s["vel"] * delta
-		s["vel"] *= damping
+		s["vel"] *= (pow(float(s["damp"]), delta) if s.has("damp") else damping)
 		if s["elapsed"] < s["duration"]:
 			alive_smoke.append(s)
 	_smoke = alive_smoke
@@ -271,7 +280,7 @@ func _draw() -> void:
 		if float(s.get("delay", 0.0)) > 0.0:
 			continue
 		var t: float = s["elapsed"] / s["duration"]
-		var alpha: float = pow(1.0 - t, smoke_fade_power)
+		var alpha: float = pow(1.0 - t, float(s["fade"]) if s.has("fade") else smoke_fade_power)
 		var c: Color = s["color"]
 		c.a *= alpha
 		var radius: float = lerp(float(s["start_radius"]), float(s["end_radius"]), t)

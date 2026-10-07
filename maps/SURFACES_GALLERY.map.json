@@ -1473,40 +1473,103 @@
     }
    ]
   },
+  "floor_openings": {
+   "v": 1,
+   "items": [
+    {
+     "comment": "opening 0: slats",
+     "gu": [
+      3,
+      36
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "pattern": "slats",
+     "axis": "x",
+     "pitch": 2
+    },
+    {
+     "comment": "opening 1: slats",
+     "gu": [
+      8,
+      36
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "pattern": "slats",
+     "axis": "z",
+     "pitch": 2
+    },
+    {
+     "comment": "opening 2: open",
+     "gu": [
+      13,
+      36
+     ],
+     "size": [
+      3,
+      2
+     ],
+     "pattern": "open"
+    },
+    {
+     "comment": "opening 3: slats",
+     "gu": [
+      18,
+      36
+     ],
+     "size": [
+      3,
+      3
+     ],
+     "pattern": "slats",
+     "axis": "x",
+     "pitch": 3
+    }
+   ]
+  },
   "ground_vents": {
    "v": 1,
    "items": [
     {
-     "comment": "steam through the grating",
+     "comment": "steam from the shaft of opening 0",
      "at": [
-      24.5,
-      39.0
+      4.5,
+      37.5
      ],
-     "kind": "steam"
+     "kind": "steam",
+     "depth": "shaft"
     },
     {
-     "comment": "steam through the grating_dark",
+     "comment": "steam from the shaft of opening 1",
      "at": [
-      29.5,
-      39.0
+      9.5,
+      37.5
      ],
-     "kind": "steam"
+     "kind": "steam",
+     "depth": "shaft"
     },
     {
-     "comment": "steam through the grating_rust",
+     "comment": "steam from the shaft of opening 2",
      "at": [
-      34.5,
-      39.0
+      14.5,
+      37.0
      ],
-     "kind": "steam"
+     "kind": "steam",
+     "depth": "shaft"
     },
     {
-     "comment": "steam through the grating_yellow",
+     "comment": "steam from the shaft of opening 3",
      "at": [
-      39.5,
-      39.0
+      19.5,
+      37.5
      ],
-     "kind": "steam"
+     "kind": "steam",
+     "depth": "shaft"
     }
    ]
   },

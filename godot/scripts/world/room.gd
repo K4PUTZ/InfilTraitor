@@ -3005,16 +3005,23 @@ func scenario_board_probe(path: String, label: String) -> Dictionary:
 
 
 ## R3D-SURFACES SM-6 — one puff of a vent's plume: the existing world-space smoke, emitted at the vent's floor point.
-func _emit_vent_puff(at: Vector2, _kind: String, params: Dictionary) -> void:
+func _emit_vent_puff(at: Vector2, _kind: String, params: Dictionary, depth: String = "floor") -> void:
 	if _voxel_board == null or _smoke_spark_overlay == null:
 		return
 	var cell := Vector2i(int(floor(at.x * 8.0)), int(floor(at.y * 8.0)))
-	var origin: Vector2 = _voxel_board.voxel_world_position(cell, GeometryCoords.FLOOR_TOP_LEVEL)
+	## A `shaft` vent is born at the BOTTOM of a floor opening (the deep plane's base), so the bars above hide the plume and release it by depth;
+	## a `floor` vent at the floor top. The 3D anchor is given outright (world X/Z are GU, Y a level's base over the ground plane).
+	var level: int = GeometryCoords.FLOOR_DEEP_LEVEL if depth == "shaft" else GeometryCoords.FLOOR_TOP_LEVEL
+	var origin: Vector2 = _voxel_board.voxel_world_position(cell, level)
 	var floor_pos: Vector2 = _voxel_board.voxel_world_position(cell, _voxel_board.ground_plane_level())
 	if floor_pos == Vector2.ZERO:
 		floor_pos = origin
+	var board3d: Node = board3d()
+	var anchor := Vector3(INF, INF, INF)
+	if board3d != null:
+		anchor = Vector3(at.x, float(level - int(board3d.call("ground_level"))) / 8.0, at.y)
 	_smoke_spark_overlay.add_smoke(origin, params["color"], float(params["scale"]), float(params["duration_scale"]),
-			int(params["blobs"]), float(params["drift_scale"]), 0.0, floor_pos)
+			int(params["blobs"]), float(params["drift_scale"]), 0.0, floor_pos, anchor, params.get("style", {}))
 
 
 ## R3D-SURFACES — the map's `material_tints` (material id -> Color, a target albedo), read by `Board3DLive` when it makes a material.

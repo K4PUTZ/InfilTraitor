@@ -457,7 +457,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - Test scripts: 70
 - Known maps: 3
 - Shipped facade files: 0
-- Archived prompts: 28
+- Archived prompts: 32
 <!-- AUTO:END inventory -->
 
 ### Version History

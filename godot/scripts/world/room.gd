@@ -3020,7 +3020,7 @@ func _emit_vent_puff(at: Vector2, _kind: String, params: Dictionary, depth: Stri
 	var anchor := Vector3(INF, INF, INF)
 	if board3d != null:
 		anchor = Vector3(at.x, float(level - int(board3d.call("ground_level"))) / 8.0 - (float(params.get("born_below", 0.0)) if depth == "shaft" else 0.0), at.y)
-	_smoke_spark_overlay.add_smoke(origin, params["color"], float(params["scale"]), float(params["duration_scale"]),
+	_smoke_spark_overlay.add_smoke(origin, params["color"], float(params["scale"]) * float(_dev_flag("VENT_STEAM_SIZE", "1")), float(params["duration_scale"]),
 			int(params["blobs"]), float(params["drift_scale"]), 0.0, floor_pos, anchor, params.get("style", {}))
 
 
@@ -3147,7 +3147,17 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 		if _vent_emitter == null:
 			_vent_emitter = VentEmitterRef.new()
 			add_child(_vent_emitter)
-		_vent_emitter.setup(_base_layout.get("ground_vent_instances", []), _emit_vent_puff)
+		## dev A/B for the handsets: VENT_STEAM=0 switches the plumes off, VENT_STEAM_SIZE=<x> multiplies the puffs' size (area goes as x squared)
+		var vent_instances: Array = _base_layout.get("ground_vent_instances", []) if str(_dev_flag("VENT_STEAM", "1")) != "0" else []
+		var forced_kind: String = str(_dev_flag("VENT_STEAM_KIND", ""))   ## dev A/B: every vent takes this kind (`steam`, `steam_big`)
+		if forced_kind != "":
+			var retyped: Array = []
+			for vent: Dictionary in vent_instances:
+				var copy: Dictionary = vent.duplicate()
+				copy["kind"] = forced_kind
+				retyped.append(copy)
+			vent_instances = retyped
+		_vent_emitter.setup(vent_instances, _emit_vent_puff)
 		var decal_instances: Array = (_base_layout.get("ground_decal_instances", []) as Array).duplicate()
 		var scatter_items: Array = _base_layout.get("ground_scatter_items", []) if str(_dev_flag("GROUND_SCATTER", "1")) != "0" else []  ## dev A/B: 0 = no scatter
 		if scatter_items.size() > 0 and VoxelStore.active != null:

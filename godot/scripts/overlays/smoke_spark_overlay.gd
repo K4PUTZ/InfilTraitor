@@ -182,6 +182,9 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 				last["fade"] = float(style["fade"])
 			if style.has("fade_in"):
 				last["fade_in"] = float(style["fade_in"])
+			## `spread` (px/s): a random sideways kick at birth, so the plume opens into a cone instead of drifting as one column.
+			if style.has("spread"):
+				last["vel"] = (last["vel"] as Vector2) + Vector2(randf_range(-float(style["spread"]), float(style["spread"])), 0.0)
 	set_process(true)
 
 

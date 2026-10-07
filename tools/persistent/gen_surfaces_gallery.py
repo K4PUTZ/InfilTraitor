@@ -187,7 +187,8 @@ def build(map_id: str = "SURFACES_GALLERY") -> dict:
         if pattern == "slats":
             item.update({"axis": axis, "pitch": pitch})
         openings.append(item)
-        vents.append({"comment": "steam from the shaft of opening %d" % i, "at": [gx + size[0] / 2.0, gy + size[1] / 2.0], "kind": "steam", "depth": "shaft"})
+        vents.append({"comment": "steam from the shaft of opening %d" % i, "at": [gx + size[0] / 2.0, gy + size[1] / 2.0],
+                      "kind": "steam" if i < 2 else "steam_big", "depth": "shaft"})   # the first two keep the small steam, the last two the BIG one, to compare
     for i, mat in enumerate(INDUSTRIAL):
         zones.append({"comment": "industrial %s" % mat, "gu": [COLUMN_X0 + i * IND_W, IND_Y0], "size": [IND_W, IND_H], "material": mat})
     for i, mat in enumerate(HUMAN):

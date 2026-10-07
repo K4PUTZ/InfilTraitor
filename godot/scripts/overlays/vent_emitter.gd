@@ -15,6 +15,12 @@ static var KINDS: Dictionary = {
 	"steam": {"color": Color(0.94, 0.96, 0.98, 0.26), "scale": 1.8, "duration_scale": 3.0, "blobs": 2, "drift_scale": 1.0, "interval": 0.16,
 			"born_below": 1.0,   ## GU under the floor top where a `shaft` puff is born, deep in the void, out of sight
 			"style": {"growth": 3.2, "wind": Vector2(-14.0, 0.0), "damp": 0.92, "fade": 1.0, "fade_in": 0.3}},
+	## The BIG steam (the Director: "ampliar o efeito na medida do possível, é um charme visual"): FEWER, much BIGGER, more translucent puffs that
+	## spread sideways. What a plume costs is its live puffs (rate x lifetime: the GDScript that ages each one every frame, ~94 per vent for `steam`)
+	## and the area they blend; a handful of large soft discs covers more floor than ninety small ones for a fraction of the CPU.
+	"steam_big": {"color": Color(0.94, 0.96, 0.98, 0.3), "scale": 2.4, "duration_scale": 3.0, "blobs": 1, "drift_scale": 1.1, "interval": 0.2,
+			"born_below": 1.0,
+			"style": {"growth": 3.6, "wind": Vector2(-22.0, 0.0), "spread": 36.0, "damp": 0.93, "fade": 1.0, "fade_in": 0.3}},
 }
 
 var _vents: Array = []        ## {"at": Vector2 (GU), "kind": String, "next": float}

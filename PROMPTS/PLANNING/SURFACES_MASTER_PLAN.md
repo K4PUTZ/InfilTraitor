@@ -131,6 +131,27 @@ rewires the board.
 1. **Per-cell tint (C)** (Director: "precisamos pensar nos diferentes cenários"). Scenarios that would need it, to be weighed when the procedural-maps milestone arrives: (a) a level with colour-coded zones of ONE pattern (red wing, blue open office): covered by fixed rows (A) while the palette is finite; (b) procedural maps picking a colour per room from a finite palette: covered by A; (c) the player customising a hideout; (d) factions or teams painting zones at runtime; (e) a colour that changes during play. Only (c)-(e), or a palette that must be unbounded, need C. Undecided.
 2. The unverified delivery of `surfaces/rules.json` inside the APK (`FileAccess` on `res://`, like `props/*.json`): to be proven on the next handset run.
 
+## 7.1 The steam vent: cost and benefit (2026-10-06, the Director: "avalie o custo benefício", "é mais um charme visual, se custar muito simplificamos")
+
+**Benefit:** a set-piece (a street drain, a roof outlet); looks judged by the Director on video ("excelente"). Nothing in the game depends on it.
+**Cost, MEASURED, release APK, `SURFACES_GALLERY`, two boots per row (+ a warm-up):** a plume costs fill, so it grows with the SQUARE of the zoom: the first
+measurement at zoom 0.34 (two vents, tiny on screen) said ~1.2 ms per vent and was WRONG for play; at gameplay zoom 1.0 with ONE vent in view the Moto paid
+**+5.2 ms (small steam) and +6.8 ms (big)**, most of the frame's slack. Three changes, none visible (pixel diff of the shader change 0 px, of the octagon <= 218 px above
+8/255, all on the 1-pixel slat-cut edge):
+
+| Moto g04s, 1 vent in view, zoom 1.0 | small `steam` | big `steam_big` |
+|---|---|---|
+| before | +5.2 ms | +6.8 ms |
+| `particle_disc3d` fragment: no `discard`, colour to linear once per vertex instead of 3 `pow` per fragment (**all smoke and embers**) | +3.4 | +4.2 |
+| the disc mesh is an OCTAGON of the visible radius (`CircleField3D.visible_radius`), 25 % less area | +2.8 | +3.7 |
+| big steam with puffs spaced 1.3x (`interval` 0.26, now the default) | | **+3.0** |
+
+**Verdict:** ship `steam_big` (interval 0.26) at about +3 ms per vent IN VIEW on the Moto (0 when none is); keep `steam` (+2.8) for secondary vents; **at most one big vent in view at a time**
+(a second one, or a grenade burst in the same frame, exceeds 33.3 ms in a heavy scene). The Galaxy A16 is not conclusive: its OFF baseline is bimodal (11.3 or 15.2 ms
+depending on the boot), so only the Moto rows are cited. Not built, in the order of what they would save: a distance LOD (small steam for far vents), a cap on emitting
+vents, one noise-shader billboard per vent (a cloud for ~1 layer of the cloud's own area, instead of tens of overlapping discs).
+**Lessons:** (1) measure a localised effect at the zoom of PLAY; (2) a VFX shared by everything (the disc shader) is where a per-fragment saving pays most.
+
 ## 8. Known limits and debts
 
 - **Intermittent engine hang (2026-10-06), a probable cause and a defensive fix, NOT a proven cause:** four times a desktop boot sat at ~100 % CPU and never reached its next scenario step (SURFACES_SCATTER, the gallery harness, a `verify.py --baseline` boot, a GLASS capture). A `sample` of a hung process showed ordinary `SceneTree::process` work, `DisplayServerMacOS::can_any_window_draw()` being asked and no drawing symbol: the engine was running frames and not drawing, so `await RenderingServer.frame_post_draw` (the scenario's `capture`, and 29 other waits) never returned; the harness window sits off-screen (`--position 4000,4000`) and macOS may treat it as occluded. `ScenarioDraw.next_drawn_frame` now waits for the draw but, after 20 process frames without one, warns and calls `RenderingServer.force_draw`. **Before: ~3 hangs in ~6 runs of one scenario; after: 14 of 14 clean; but the fallback was never seen firing and a minimised window still draws, so the condition could not be forced and the cause stays an inference.** If a hang appears with this in place, it is something else.

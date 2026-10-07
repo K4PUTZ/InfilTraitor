@@ -14,7 +14,24 @@ const SHADER_ADD := "res://godot/shaders/particle_disc3d_add.gdshader"
 
 
 func attach(parent: Node3D, additive: bool, feather: float = 0.0, priority: int = 0) -> void:
+	_disc_apothem = visible_radius(feather)
 	_attach_shader(parent, SHADER_ADD if additive else SHADER_MIX, feather, priority)
+
+
+## The radius (of the unit disc) beyond which the shader's alpha, `1 - smoothstep(1 - f, 1, d)`, is under 1.5 %: nothing visible is lost by not
+## rasterising past it. A hard edge (f = 0) keeps the whole disc.
+static func visible_radius(feather: float) -> float:
+	var f: float = clampf(feather, 0.0, 1.0)
+	if f < 0.05:
+		return 1.0
+	var d: float = 1.0
+	while d > 1.0 - f:
+		var t: float = (d - (1.0 - f)) / f
+		var alpha: float = 1.0 - t * t * (3.0 - 2.0 * t)
+		if alpha >= 0.015:
+			return minf(d + 0.01, 1.0)
+		d -= 0.01
+	return 1.0
 
 
 ## One disc. `anchor_3d`/`anchor_2d` are where the particle was emitted (3D, and the 2D point that

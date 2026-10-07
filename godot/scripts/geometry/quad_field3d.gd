@@ -25,6 +25,9 @@ var _count: int = 0
 var _cam: Basis = Basis.IDENTITY
 var _lat: Basis = Basis.IDENTITY
 var _ppu: float = 1.0
+## > 0: the instance mesh is a regular OCTAGON whose inscribed radius is this (in the quad's half-extent units) instead of the full square, a disc's
+## visible part being a circle (a subclass sets it before `_attach_shader`). 0: the square QuadMesh.
+var _disc_apothem: float = 0.0
 
 
 ## Solid rectangles.
@@ -37,8 +40,7 @@ func _attach_shader(parent: Node3D, shader_path: String, feather: float, priorit
 	if _node != null:
 		return
 	_board = parent
-	var quad := QuadMesh.new()
-	quad.size = Vector2(2.0, 2.0)  ## half-extents 1: an instance's basis IS its half-extents
+	var quad: Mesh = _octagon_mesh(_disc_apothem) if _disc_apothem > 0.0 else _square_mesh()
 	_mm = MultiMesh.new()
 	_mm.transform_format = MultiMesh.TRANSFORM_3D
 	_mm.use_colors = true
@@ -56,6 +58,38 @@ func _attach_shader(parent: Node3D, shader_path: String, feather: float, priorit
 	_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_node.visible = false  ## shown by the first flush() that has something to draw
 	parent.add_child(_node)
+
+
+func _square_mesh() -> Mesh:
+	var quad := QuadMesh.new()
+	quad.size = Vector2(2.0, 2.0)  ## half-extents 1: an instance's basis IS its half-extents
+	return quad
+
+
+## A regular octagon whose INSCRIBED circle has radius `apothem` (the quad's half-extent is 1): the UV is still `xy * 0.5 + 0.5`, so a fragment shader
+## that reads `length(UV * 2 - 1)` is unchanged. A blended disc is paid per rasterised pixel and a square wastes the corners (and, with a soft rim, the
+## near-transparent ring): the octagon is ~17-29 % less area than the square.
+static func _octagon_mesh(apothem: float) -> Mesh:
+	var circum: float = apothem / cos(PI / 8.0)
+	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	verts.append(Vector3.ZERO)
+	uvs.append(Vector2(0.5, 0.5))
+	for i in range(8):
+		var a: float = (float(i) + 0.5) * TAU / 8.0
+		verts.append(Vector3(cos(a) * circum, sin(a) * circum, 0.0))
+		uvs.append(Vector2(cos(a) * circum * 0.5 + 0.5, sin(a) * circum * 0.5 + 0.5))
+	var indices := PackedInt32Array()
+	for i in range(8):
+		indices.append_array(PackedInt32Array([0, 1 + i, 1 + (i + 1) % 8]))
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
 
 
 ## Start a frame. `cam` and `px_per_unit` are the board camera's, read once here rather than per quad. `lattice` is the

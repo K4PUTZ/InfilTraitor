@@ -19,7 +19,7 @@ static var KINDS: Dictionary = {
 	## more per vent for each 0.3 of extra scale, so 3.3 is ~1.4 ms per vent there (about 3 vents in view fit the frame). (The Director: "ampliar o efeito na medida do possível, é um charme visual"): FEWER, much BIGGER, more translucent puffs that
 	## spread sideways. What a plume costs is its live puffs (rate x lifetime: the GDScript that ages each one every frame, ~94 per vent for `steam`)
 	## and the area they blend; a handful of large soft discs covers more floor than ninety small ones for a fraction of the CPU.
-	"steam_big": {"color": Color(0.94, 0.96, 0.98, 0.3), "scale": 3.3, "duration_scale": 3.0, "blobs": 1, "drift_scale": 1.1, "interval": 0.2,
+	"steam_big": {"color": Color(0.94, 0.96, 0.98, 0.3), "scale": 3.3, "duration_scale": 3.0, "blobs": 1, "drift_scale": 1.1, "interval": 0.26,
 			"born_below": 1.0,
 			"style": {"growth": 3.6, "wind": Vector2(-22.0, 0.0), "spread": 36.0, "damp": 0.93, "fade": 1.0, "fade_in": 0.3}},
 }
@@ -41,8 +41,8 @@ func setup(instances: Array, emit: Callable) -> void:
 			push_error("[VentEmitter] vent kind '%s' is not one of %s: skipped" % [kind, KINDS.keys()])
 			continue
 		var at: Vector2 = inst["at"]
-		var interval: float = float(KINDS[kind]["interval"])
-		_vents.append({"at": at, "kind": kind, "depth": String(inst.get("depth", "floor")), "next": _phase(kind, at) * interval})
+		var interval: float = float(KINDS[kind]["interval"]) * float(inst.get("interval_scale", 1.0))
+		_vents.append({"at": at, "kind": kind, "depth": String(inst.get("depth", "floor")), "interval": interval, "next": _phase(kind, at) * interval})
 	set_process(not _vents.is_empty())
 
 
@@ -67,7 +67,7 @@ func step(delta: float) -> Array:
 	var out: Array = []
 	_clock += delta
 	for vent: Dictionary in _vents:
-		var interval: float = float(KINDS[vent["kind"]]["interval"])
+		var interval: float = float(vent["interval"])
 		var guard: int = 0
 		while float(vent["next"]) <= _clock and guard < 4:
 			out.append({"at": vent["at"], "kind": vent["kind"], "depth": vent["depth"]})

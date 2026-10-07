@@ -3150,11 +3150,14 @@ func _attach_vfx_to_board(live: Node3D) -> void:
 		## dev A/B for the handsets: VENT_STEAM=0 switches the plumes off, VENT_STEAM_SIZE=<x> multiplies the puffs' size (area goes as x squared)
 		var vent_instances: Array = _base_layout.get("ground_vent_instances", []) if str(_dev_flag("VENT_STEAM", "1")) != "0" else []
 		var forced_kind: String = str(_dev_flag("VENT_STEAM_KIND", ""))   ## dev A/B: every vent takes this kind (`steam`, `steam_big`)
-		if forced_kind != "":
+		var rate_scale: float = float(_dev_flag("VENT_STEAM_RATE", "1"))   ## dev A/B: > 1 spaces the puffs out (fewer live puffs, less fill)
+		if forced_kind != "" or not is_equal_approx(rate_scale, 1.0):
 			var retyped: Array = []
 			for vent: Dictionary in vent_instances:
 				var copy: Dictionary = vent.duplicate()
-				copy["kind"] = forced_kind
+				if forced_kind != "":
+					copy["kind"] = forced_kind
+				copy["interval_scale"] = rate_scale
 				retyped.append(copy)
 			vent_instances = retyped
 		_vent_emitter.setup(vent_instances, _emit_vent_puff)

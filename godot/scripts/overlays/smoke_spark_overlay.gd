@@ -151,7 +151,7 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 		delay: float = 0.0, floor_pos: Vector2 = ParticleMathRef.NO_FLOOR,
 		anchor_3d: Vector3 = ParticleMathRef.NO_ANCHOR, style: Dictionary = {}) -> void:
 	var blob_count: int = blob_count_override if blob_count_override > 0 \
-		else randi_range(smoke_blob_count_min, smoke_blob_count_max)
+		else randi_range(CosmeticDensity.scaled(smoke_blob_count_min), CosmeticDensity.scaled(smoke_blob_count_max))
 	## R3D-4e-2 — the emission's 3D anchor: where the particle is in the world when it is born.
 	var a3: Vector3 = ParticleMathRef.anchor(_board, pos, floor_pos, anchor_3d)
 	for i in range(blob_count):

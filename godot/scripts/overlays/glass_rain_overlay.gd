@@ -149,9 +149,9 @@ func spawn(flights: Array, pieces_per_voxel_max: int = 4) -> int:
 		var to_top: Vector2 = to - Vector2(0.0, GeometryCoords.VOXEL_STEP_PX)
 		var to3: Vector3 = ParticleMathRef.anchor(_board, to_top, f.get("to_floor", ParticleMathRef.NO_FLOOR))
 		var n: int = 1 + int(pow(_unit(base, "count"), pieces_low_bias) \
-			* float(maxi(pieces_per_voxel_max, 1)) * 0.999)
+			* float(maxi(CosmeticDensity.scaled(pieces_per_voxel_max), 1)) * 0.999)
 		for p in range(n):
-			if _shards.size() >= max_shards:
+			if _shards.size() >= CosmeticDensity.scaled(max_shards):
 				break
 			var salt := "%d" % p
 			var target: float = lerpf(ShardShapes.TARGET_MIN, ShardShapes.TARGET_MAX,

@@ -85,6 +85,8 @@ func _ready() -> void:
 	var smoke_chance: float = real("SMOKE_CHANCE", -1.0)
 	if smoke_chance >= 0.0:
 		MaterialResistanceTable._smoke_chance_override = smoke_chance
+	## Roadmap A1 — decorative particle density per device; gameplay is never scaled.
+	CosmeticDensity.factor = CosmeticDensity.parse(value("COSMETIC_DENSITY", ""))
 	MemStage.mark("00 boot — flags resolved")
 	if _overrides.is_empty():
 		## Deliberately quiet-but-present: a device log that says nothing about

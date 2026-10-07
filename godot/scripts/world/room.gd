@@ -4415,7 +4415,7 @@ func spawn_blast_burst(world_pos: Vector2) -> void:
 			and blast_burst_ember_speed_max / maxf(blast_burst_ember_drag, 0.001)
 				>= blast_burst_ember_spread_px,
 			"[Room] blast burst reach (speed/drag) no longer straddles blast_burst_ember_spread_px — see P-FIRE")
-		for i in range(blast_burst_ember_count):
+		for i in range(CosmeticDensity.scaled(blast_burst_ember_count)):
 			## Golden-angle stepping rather than i/count around a circle: at
 			## these counts an even sweep visibly reads as spokes once the
 			## embers start travelling outward along their own angle, because
@@ -4786,7 +4786,8 @@ func spawn_prop_shatter(cell: Vector2i, level: int, material_id: String, fragmen
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	var base_center := Vector2((float(cell.x) + 0.5) * unit, (float(cell.y) + 0.5) * unit)
 	var ground_level: int = _voxel_board.ground_plane_level()
-	var piece_count: int = clampi(fragment_count / 3, vfx_debris_pile_min_pieces, vfx_debris_pile_max_pieces)
+	var piece_count: int = CosmeticDensity.scaled(
+		clampi(fragment_count / 3, vfx_debris_pile_min_pieces, vfx_debris_pile_max_pieces))
 	for i in range(piece_count):
 		var jitter := Vector2(randf_range(-vfx_debris_pile_spread, vfx_debris_pile_spread),
 			randf_range(-vfx_debris_pile_spread, vfx_debris_pile_spread))

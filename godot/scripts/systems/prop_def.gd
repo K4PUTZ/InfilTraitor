@@ -4,6 +4,8 @@
 
 class_name PropDef
 
+const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+
 var id: String
 var size_vox: Vector3i                      # authoring-forward; not consumed by v1 renderer
 var layers: Array                           # authoring-forward; not consumed by v1 renderer
@@ -45,7 +47,8 @@ var hollow_shell: int = 0
 
 
 ## Factory: parse PropDef from a JSON dict (file format).
-static func from_json(data: Dictionary) -> PropDef:
+## `errors` collects every field that had the wrong shape (`JsonFile`): the field takes its default and the row still loads whole.
+static func from_json(data: Dictionary, errors: Array = []) -> PropDef:
 	var def := PropDef.new()
 	def.id = String(data.get("id", ""))
 	
@@ -58,7 +61,7 @@ static func from_json(data: Dictionary) -> PropDef:
 	
 	def.footprint_gus = []
 	for fp in data.get("footprint_gus", [[0, 0]]):
-		def.footprint_gus.append(Vector2i(int(fp[0]), int(fp[1])))
+		def.footprint_gus.append(JsonFileRef.vector2i(fp, Vector2i.ZERO, "prop '%s' footprint_gus" % def.id, errors))
 	
 	def.storeys = int(data.get("storeys", 1))
 	def.gameplay = data.get("gameplay", {"cover": "none", "destructible": false})
@@ -68,8 +71,7 @@ static func from_json(data: Dictionary) -> PropDef:
 		def.tags.append(String(tag))
 
 	def.mesh_tier = int(data.get("mesh_tier", 0))
-	var ms = data.get("mesh_size", [1.0, 1.0, 1.0])
-	def.mesh_size = Vector3(float(ms[0]), float(ms[1]), float(ms[2]))
+	def.mesh_size = JsonFileRef.vector3(data.get("mesh_size", [1.0, 1.0, 1.0]), Vector3.ONE, "prop '%s' mesh_size" % def.id, errors)
 	def.model_path = String(data.get("model", ""))
 	def.slot = String(data.get("slot", ""))
 	def.vox_model = String(data.get("vox_model", ""))
@@ -77,7 +79,7 @@ static func from_json(data: Dictionary) -> PropDef:
 	def.vox_materials = data.get("vox_materials", {})
 	def.surface_materials = data.get("surface_materials", {})
 	def.fragment_division = int(data.get("fragment_division", 0))
-	var mr = data.get("model_rotation_deg", [0.0, 0.0, 0.0])
-	def.model_rotation_deg = Vector3(float(mr[0]), float(mr[1]), float(mr[2]))
+	def.model_rotation_deg = JsonFileRef.vector3(data.get("model_rotation_deg", [0.0, 0.0, 0.0]), Vector3.ZERO,
+		"prop '%s' model_rotation_deg" % def.id, errors)
 
 	return def

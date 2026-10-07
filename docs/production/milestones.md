@@ -1,5 +1,7 @@
 # INFILTRAITOR — Milestones
 
+> 🧭 **2026-10-07 — THE ORDER OF ACTIVITIES CHANGED: read `roadmap.md`'s 2026-10-07 top block (single source).** It supersedes the 2026-10-04 round order below (kept as the record of rounds 0-4). Next: **A1** engine tools (cosmetic density per device, the strongest grenade's hit-stop under the flash, the combined stress scenario, the map-size study tooling, first-load art + export audit) → **A2** the stealth loop (AI-02 / AI-03, noise emitters, M2.14, the non-combat turn with the end-turn indicator B) with the agent's movement → **B** one handset round on both phones → **C** minimal confrontation → **D** the materials milestone (glass) → **E** content. Same day: performance review (`DEVICE_DIAGNOSTICS_MASTER_PLAN` top block), a code audit and an error-prevention round (`technical_debt.md`, "Code audit (2026-10-07)"); PERFORMANCE / TOP_TEXTURE / OCCLUSION / DESTRUCTION plans archived to `PROMPTS/DONE/`.
+
 > ⏭️ **2026-10-02 — read this with the engine track beside it.** The engine milestones (the 3D board, destruction, light, props, actors, rotation) were run as the `R3D-*` stages of [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md) and are closed up to R3D-ROT (2026-10-02); [`current_state.md`](current_state.md) holds the live status. The M-numbered gameplay list below carries the dates it was written on (June 2026) and was not re-audited in this pass.
 
 > ⏭️ **2026-10-04 — THE ORDER OF THE NEXT ROUNDS (Director-ratified; this block is the single source, the other documents point here).**

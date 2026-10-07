@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**273 scripts · 81997 lines total** (under `godot/scripts/`)
+**275 scripts · 82169 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -18,8 +18,8 @@
 - **geometry/** — actor_head_turn3d.gd, actor_mesh3d.gd, board3d_live.gd, board_look.gd, circle_field3d.gd, edge.gd, edge_extractor.gd, edge_registry.gd, face.gd, floor_openings.gd, floor_pile3d.gd, geometry_coords.gd, glass_crack_mirror3d.gd, glass_pane_grouper.gd, ground_canvas3d.gd, ground_decals3d.gd, ground_grid.gd, ground_scatter.gd, ground_transitions3d.gd, junction_resolver.gd, mesh_prop_instance.gd, object_mesh3d.gd, particle_math.gd, passage_query.gd, pick_math.gd, prop_block.gd, prop_fragment_sim.gd, prop_fragments3d.gd, prop_mesh3d.gd, prop_model_fit.gd, prop_shadow.gd, prop_voxelizer.gd, quad_field3d.gd, shard_field3d.gd, slab.gd, slab_generator.gd, slab_registry.gd, slice.gd, slice_generator.gd, vision_cone3d.gd, voxel.gd, voxel_board.gd, voxel_container.gd, world_canvas3d.gd
 - **navigation/** — guard_pathfinder.gd, movement_overlay.gd, path_preview.gd
 - **overlays/** — aim_bubble_overlay.gd, blast_wireframe_overlay.gd, ceiling_prop_overlay.gd, debris_overlay.gd, elite_exposure_overlay.gd, ember_overlay.gd, explosion_flash_overlay.gd, exposure_overlay.gd, floating_collectible.gd, glass_rain_overlay.gd, grenade_prop.gd, gu_grid_overlay.gd, height_overlay.gd, light_overlay.gd, light_ray_overlay.gd, noise_overlay.gd, occlusion_overlay.gd, shadow_boundary_overlay.gd, shadow_overlay.gd, shrapnel_overlay.gd, shrapnel_preview_overlay.gd, smoke_spark_overlay.gd, target_cursor_overlay.gd, temporal_overlay.gd, throw_arc_overlay.gd, throw_perimeter_overlay.gd, tile_overlay.gd, tile_risk_overlay.gd, tracer_overlay.gd, trail_overlay.gd, vent_emitter.gd
-- **systems/** — board_probe.gd, cell_plane_store.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
-- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, circle_field_octagon_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
+- **systems/** — board_probe.gd, cell_plane_store.gd, blast_calculator.gd, bomb_def.gd, bomb_registry.gd, detonation_entry_writer.gd, detonation_plan_builder.gd, detonation_presenter.gd, glass_crack.gd, glass_crack_params.gd, glass_fall.gd, glass_opening.gd, glass_shard_shapes.gd, glass_shatter.gd, material_resistance_table.gd, shot_hit_roll.gd, shot_punch_table.gd, weapon_def.gd, weapon_registry.gd, dev_flags.gd, earth_variant_selector.gd, enemy_phase_controller.gd, facade_sampler.gd, frame_split.gd, glass_materials.gd, image_source.gd, json_file.gd, exposure_system.gd, light_anchor.gd, light_registry.gd, light_source.gd, shadow_projector.gd, shadow_result.gd, voxel_light_field.gd, localization_manager.gd, material_registry.gd, mem_stage.gd, metal_pattern.gd, noise_system.gd, occlusion_set.gd, paint_palette.gd, claim_grid.gd, detonation_prediction.gd, prediction_cache.gd, prediction_reaper.gd, walk_warmer.gd, world_delta.gd, prop_def.gd, prop_registry.gd, prop_validator.gd, prop_vox_library.gd, registries_autoload.gd, save_state.gd, scenario_draw.gd, scenario_runner.gd, slot_def.gd, stone_pattern.gd, surface_rules.gd, telemetry.gd, texture_resolver.gd, tic_system.gd, turn_manager.gd, version_info.gd, view_context.gd, vox_model.gd, vox_prop_builder.gd, voxel_store.gd, wood_pattern.gd, world_render_scale.gd
+- **tools/** — actor_decisions_selftest.gd, blast_calculator_selftest.gd, blast_purity_selftest.gd, board_look_selftest.gd, board_probe_selftest.gd, circle_field_octagon_selftest.gd, detonation_plan_selftest.gd, dev_flags_selftest.gd, dump_glass_openings.gd, earth_variant_selftest.gd, fixed_floor_selftest.gd, floor_integration_selftest.gd, floor_openings_selftest.gd, floor_pile_tiles_selftest.gd, floor_zone_bake_selftest.gd, geometry_selftest.gd, glass_crack_selftest.gd, glass_fall_selftest.gd, glass_shard_shapes_capture.gd, glass_shard_shapes_selftest.gd, glass_shatter_selftest.gd, glass_transparency_selftest.gd, ground_canvas3d_selftest.gd, ground_decals_selftest.gd, ground_grid_selftest.gd, ground_scatter_selftest.gd, half_thickness_selftest.gd, hud_seam_selftest.gd, input_controller_selftest.gd, iso_projection_selftest.gd, map_lint.gd, mapfile_roundtrip_selftest.gd, material_reform_selftest.gd, material_tints_selftest.gd, material_tree_selftest.gd, negative_storey_selftest.gd, neon_flicker_selftest.gd, occlusion_set_selftest.gd, occlusion_view_selftest.gd, paint_palette_selftest.gd, panel_base_selftest.gd, particle_space_selftest.gd, passage_query_selftest.gd, project_lint_validator.gd, prop_01_selftest.gd, prop_fragment_sim_selftest.gd, prop_model_path_selftest.gd, prop_shadow_selftest.gd, prop_slot_selftest.gd, prop_voxelizer_selftest.gd, registry_load_errors_selftest.gd, resolver_hardening_selftest.gd, roof_bake_selftest.gd, roof_entity_selftest.gd, roof_integration_selftest.gd, roof_occlusion_selftest.gd, roof_slab_selftest.gd, save_state_file_selftest.gd, save_state_selftest.gd, scenario_draw_selftest.gd, scenario_selftest.gd, slab_geometry_selftest.gd, slab_render_selftest.gd, slice_geometry_selftest.gd, soot_stamp_selftest.gd, soot_truth_selftest.gd, surface_rules_selftest.gd, telemetry_selftest.gd, texture_resolver_selftest.gd, vent_emitter_selftest.gd, version_info_selftest.gd, vox_model_selftest.gd, voxel_decal_selftest.gd, voxel_handle_selftest.gd, voxel_light_incremental_selftest.gd, voxel_persist_selftest.gd, voxel_store_selftest.gd
 - **ui/** — controls_panel.gd, detonate_context_menu.gd, enemy_banner_panel.gd, fog_of_war_overlay.gd, main_menu_panel.gd, modal_stack.gd, panel_base.gd, selection_overlay.gd, showcase_panel.gd, tile_labels_overlay.gd, top_bar_panel.gd, window_base.gd
 - **world/** — room_builder.gd, agent_shot_controller.gd, debug_tools_controller.gd, input_controller.gd, selection_controller.gd, test_zone_controller.gd, turn_controller.gd, world_markers_overlay_controller.gd, level_graph.gd, playground_map.gd, procedural_map.gd, sigma_01_map.gd, file_map_source.gd, map_catalog.gd, map_compiler.gd, map_geometry.gd, map_file_service.gd, map_section_registry.gd, map_sections_v1.gd, room.gd, tile_semantics.gd, iso_projection.gd, perspective_mapper.gd, wall_edge_data.gd
 
@@ -2264,7 +2264,7 @@ extends `Node2D` · 68 lines
 
 ### `bomb_def.gd`
 
-`class_name BombDef` · 84 lines
+`class_name BombDef` · 101 lines
 
 `godot/scripts/systems/destruction/bomb_def.gd`
 
@@ -2285,18 +2285,20 @@ extends `Node2D` · 68 lines
 
 ### `bomb_registry.gd`
 
-`class_name BombRegistry` · 78 lines
+`class_name BombRegistry` · 77 lines
 
 `godot/scripts/systems/destruction/bomb_registry.gd`
 
 > BombRegistry — Bomb definitions catalog (two-tier: res:// + user://). Line-for-line the PropRegistry pattern (godot/scripts/systems/prop_registry.gd): user-tier bombs override res:// bombs on id collision.
 
 **Constants / tuning**
+- `JsonFileRef` = `preload("res://godot/scripts/systems/json_file.gd")`
 - `RES_BOMBS_DIR` = `"res://bombs"`
 - `USER_BOMBS_DIR` = `"user://bombs"`
 
 **Public vars**
 - `var registry: Dictionary = {}`
+- `var load_errors: Array[String] = []`
 
 **Public API**
 - `func register(bomb_def) -> void:`
@@ -2503,13 +2505,14 @@ extends `Node2D` · 68 lines
 
 ### `material_resistance_table.gd`
 
-`class_name MaterialResistanceTable` · 264 lines
+`class_name MaterialResistanceTable` · 267 lines
 
 `godot/scripts/systems/destruction/material_resistance_table.gd`
 
 > MaterialResistanceTable — DESTRUCTION_MASTER_PLAN Part 3, extended by D22. How much of a ring-group's voxels convert to DESTROYED vs DENTED vs CRACKED for a given wall/roof/floor material. D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled — the old `const TABLE` literal is gone. Data now lives in `res://materials/*.json` (+ `user://materials/*.json`, user wins on collision), the same files `MaterialRegistry` reads for render properties — one row per material, one file per material, no duplication between the two readers. This file keeps its original static-accessor API (`destroy_factor`/`dent_factor`/ `crack_factor(material_id) -> float`, same defaults) so every existing call site (BlastCalculator, selftests) is untouched — only the data source changed, lazily loaded and cached on first access. Ordering (resistance to destruction, most -> least), per Director (2026-07-30 session): metal > stone > concrete > wood. Values are first-pass placeholders — a balancing lever (D6), not researched constants; expect these to be retuned once real captures show the effect.
 
 **Constants / tuning**
+- `JsonFileRef` = `preload("res://godot/scripts/systems/json_file.gd")`
 - `RES_MATERIALS_DIR` = `"res://ASSETS/materials"`
 - `USER_MATERIALS_DIR` = `"user://materials"`
 
@@ -2561,18 +2564,20 @@ extends `Node2D` · 68 lines
 
 ### `weapon_registry.gd`
 
-`class_name WeaponRegistry` · 57 lines
+`class_name WeaponRegistry` · 56 lines
 
 `godot/scripts/systems/destruction/weapon_registry.gd`
 
 > WeaponRegistry — Weapon definitions catalog (two-tier: res:// + user://). WEAPON_MASTER_PLAN Part 1 (D7). Line-for-line the BombRegistry pattern (which is itself line-for-line PropRegistry): user-tier weapons override res:// weapons on id collision, and a new weapons/*.json needs ZERO code changes to appear.
 
 **Constants / tuning**
+- `JsonFileRef` = `preload("res://godot/scripts/systems/json_file.gd")`
 - `RES_WEAPONS_DIR` = `"res://weapons"`
 - `USER_WEAPONS_DIR` = `"user://weapons"`
 
 **Public vars**
 - `var registry: Dictionary = {}`
+- `var load_errors: Array[String] = []`
 
 **Public API**
 - `func register(weapon_def) -> void:`
@@ -2584,7 +2589,7 @@ extends `Node2D` · 68 lines
 
 ### `dev_flags.gd`
 
-extends `Node` · 231 lines
+extends `Node` · 234 lines
 
 `godot/scripts/systems/dev_flags.gd`
 
@@ -2676,6 +2681,16 @@ extends `Node` · 231 lines
 `godot/scripts/systems/image_source.gd`
 
 > ImageSource — the one way runtime code reads a PNG as pixels. Two sources, chosen per path: - The raw file, when it is on disk: editor runs and `--script` CLI runs (selftests, bakes). CLI-baked PNGs have never been through the editor's import scan, so `load()` fails with "No loader found" for them. - The imported resource, when the raw file is NOT on disk: every exported build (web, Android). An export ships only the imported `.ctex`, never the source PNG, so a raw `Image.load()` fails there — grey walls with no facade, an invisible grenade, silently. Every PNG in this project imports with `compress/mode=0` (lossless), so the imported pixels equal the source pixels — B2 (grayscale) and B3 (alpha from canon) hold on both paths.
+
+---
+
+### `json_file.gd`
+
+`class_name JsonFile` · 64 lines
+
+`godot/scripts/systems/json_file.gd`
+
+> JsonFile — the one way a catalogue reads a JSON row from disk, loudly (B6). AUDIT 2026-10-07: the five catalogues (`MaterialRegistry`, `MaterialResistanceTable`, `PropRegistry` props and slots, `BombRegistry`, `WeaponRegistry`) dropped a row that did not parse or had no `id` without saying which file: Godot's own `Parse JSON failed. Error at line 0` names no path, and an id-less row said nothing at all. A typo in `bombs/frag_grenade.json` made the grenade vanish; a broken material row fell to the generic look, silently wrong. Every failure here is `push_error`'d WITH the path and appended to the caller's `errors`, so a selftest (`registry_load_errors_selftest`) and a future mod validator can read it. The same goes for the vector fields a row carries: `[1.0]` where three numbers are expected used to abort `from_json()` half-way with a SCRIPT ERROR (the rest of the row unread); `vector3()` / `vector2i()` fall back to the default and say so.
 
 ---
 
@@ -2942,6 +2957,7 @@ extends `Node` · 231 lines
 > MaterialRegistry — Material definitions, pattern algorithms, and resistance (destroy/dent/crack) — D21 (EXPLOSION_REBUILD_MASTER_PLAN, 2026-08-06): material properties are registered dynamic data, never hardcoded and never map-coupled. Two-tier disk load (res:// then user://, user wins on collision), same pattern as BombRegistry/PropRegistry/WeaponRegistry. D19/D20: one row per material, surface-independent for behavior (this file). Texture identity is a SEPARATE axis (derived from the material id and `has_facade`; `BakePolicy.texture_for_material()` owned it until R3D-END). D34/E-SEAM-01 (Director, 2026-08-08): that axis is no longer surface-keyed either. A `has_facade` material renders EVERY surface — wall, roof and floor — from `facade_<id>`, tinted by `base_color` under MULTIPLY, so the three read as one material; only `has_facade == false` (organic ground) keeps the photographic `slab_<id>` source at WHITE. The WHITE-vs-tinted modulate was decided by the texture id's own prefix at bake time (the 2D bake's `_modulate_for_mode`, deleted at R3D-END), never by a field on this class — what changed is which ids reach it.
 
 **Constants / tuning**
+- `JsonFileRef` = `preload("res://godot/scripts/systems/json_file.gd")`
 - `StonePatternClass` = `preload("res://godot/scripts/systems/stone_pattern.gd")`
 - `WoodPatternClass` = `preload("res://godot/scripts/systems/wood_pattern.gd")`
 - `MetalPatternClass` = `preload("res://godot/scripts/systems/metal_pattern.gd")`
@@ -2951,6 +2967,7 @@ extends `Node` · 231 lines
 
 **Public vars**
 - `var registry: Dictionary = {}`
+- `var load_errors: Array[String] = []`
 
 **Public API**
 - `func register(material: MaterialDef) -> void:`
@@ -3202,11 +3219,14 @@ extends `Node` · 231 lines
 
 ### `prop_def.gd`
 
-`class_name PropDef` · 83 lines
+`class_name PropDef` · 85 lines
 
 `godot/scripts/systems/prop_def.gd`
 
 > PropDef — Prop definition resource Describes a voxel prop (crate, pillar, container, etc.) Schema mirrors the file format and supports future destruction phase per-voxel granularity.
+
+**Constants / tuning**
+- `JsonFileRef` = `preload("res://godot/scripts/systems/json_file.gd")`
 
 **Public vars**
 - `var id: String`
@@ -3231,13 +3251,14 @@ extends `Node` · 231 lines
 
 ### `prop_registry.gd`
 
-`class_name PropRegistry` · 220 lines
+`class_name PropRegistry` · 215 lines
 
 `godot/scripts/systems/prop_registry.gd`
 
 > PropRegistry — Prop definitions catalog (two-tier: res:// + user://) User-tier props override res:// props on id collision, same pattern as MaterialRegistry and TextureResolver. SLOTS (PROP_PIPELINE_PLAN PP1, `ACTOR` D66): `props/slots/*.json` (two tiers) are `SlotDef`s; a `PropDef` with `slot` is one MODEL of that slot and several models of one slot coexist. `resolve_placement()` turns what a map names (a prop id, or a slot id) into a prop that FITS, walking the fallback chain when it does not: the model -> the slot's default model -> the slot's GENERIC (a plain box of the slot's size in the `generic` material) -> the generic box of the prop's own size. A rejection is one `push_warning` per prop id.
 
 **Constants / tuning**
+- `JsonFileRef` = `preload("res://godot/scripts/systems/json_file.gd")`
 - `RES_PROPS_DIR` = `"res://props"`
 - `USER_PROPS_DIR` = `"user://props"`
 - `RES_SLOTS_DIR` = `"res://props/slots"`
@@ -3245,6 +3266,7 @@ extends `Node` · 231 lines
 
 **Public vars**
 - `var registry: Dictionary = {}`
+- `var load_errors: Array[String] = []`
 - `var slots: Dictionary = {}`
 
 ---
@@ -3301,7 +3323,7 @@ extends `Node` · 143 lines
 
 ### `save_state.gd`
 
-`class_name SaveState` · extends `RefCounted` · 306 lines
+`class_name SaveState` · extends `RefCounted` · 308 lines
 
 `godot/scripts/systems/save_state.gd`
 
@@ -3347,11 +3369,14 @@ extends `Node` · 560 lines
 
 ### `slot_def.gd`
 
-`class_name SlotDef` · 49 lines
+`class_name SlotDef` · 51 lines
 
 `godot/scripts/systems/slot_def.gd`
 
 > SlotDef — a SLOT: the visual container a prop model has to fit (`ACTOR` D66, PROP_PIPELINE_PLAN §1). A model does not define gameplay, a slot does: the footprint, the box it may fill, the cover it gives, how it breaks (its mesh tier), the budgets it must respect and which kinds of material it may be made of. Any number of models fill one slot (`PropDef.slot`); a map may place "the slot" (the registry picks a model) or one model by id. `props/slots/<id>.json`, two tiers like every registry.
+
+**Constants / tuning**
+- `JsonFileRef` = `preload("res://godot/scripts/systems/json_file.gd")`
 
 **Public vars**
 - `var id: String = ""`
@@ -4759,6 +4784,16 @@ extends `SceneTree` · 205 lines
 **Public vars**
 - `var passed: int = 0`
 - `var failed: int = 0`
+
+---
+
+### `registry_load_errors_selftest.gd`
+
+extends `SceneTree` · 86 lines
+
+`godot/scripts/tools/registry_load_errors_selftest.gd`
+
+> AUDIT 2026-10-07 — the catalogues read their rows through `JsonFile`: a row that does not parse, has no `id`, or carries a vector field of the wrong shape is reported WITH its path (push_error + the registry's `load_errors`), never dropped in silence; a bomb past `BombDef.MAX_RING` is cut, loudly. Red before this: a broken `user://bombs/*.json` printed only Godot's path-less "Parse JSON failed. Error at line 0", and an id-less row printed nothing. (1) the SHIPPED data loads with zero errors in every catalogue; (2) broken user-tier rows are each reported and the good rows survive.
 
 ---
 

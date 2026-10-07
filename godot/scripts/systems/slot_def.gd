@@ -5,6 +5,8 @@
 ## map may place "the slot" (the registry picks a model) or one model by id. `props/slots/<id>.json`, two tiers like every registry.
 class_name SlotDef
 
+const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+
 var id: String = ""
 var footprint_gus: Array[Vector2i] = [Vector2i.ZERO]
 ## The box (world units, 1.0 = 1 GU) a model's fitted size may not exceed.
@@ -26,14 +28,14 @@ var max_materials: int = 4
 var allowed_families: Array[String] = []
 
 
-static func from_json(data: Dictionary) -> SlotDef:
+## `errors` collects every field that had the wrong shape (`JsonFile`): the field takes its default and the row still loads whole.
+static func from_json(data: Dictionary, errors: Array = []) -> SlotDef:
 	var slot := SlotDef.new()
 	slot.id = String(data.get("id", ""))
 	slot.footprint_gus = []
 	for fp in data.get("footprint_gus", [[0, 0]]):
-		slot.footprint_gus.append(Vector2i(int(fp[0]), int(fp[1])))
-	var ms = data.get("max_size", [1.0, 1.0, 1.0])
-	slot.max_size = Vector3(float(ms[0]), float(ms[1]), float(ms[2]))
+		slot.footprint_gus.append(JsonFileRef.vector2i(fp, Vector2i.ZERO, "slot '%s' footprint_gus" % slot.id, errors))
+	slot.max_size = JsonFileRef.vector3(data.get("max_size", [1.0, 1.0, 1.0]), Vector3.ONE, "slot '%s' max_size" % slot.id, errors)
 	slot.mesh_tier = int(data.get("mesh_tier", 4))
 	slot.gameplay = data.get("gameplay", {"cover": "none", "destructible": false})
 	slot.default_model = String(data.get("default_model", ""))

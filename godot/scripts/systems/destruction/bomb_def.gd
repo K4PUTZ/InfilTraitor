@@ -47,7 +47,14 @@ var tags: Array[String] = []
 
 ## Factory: parse BombDef from a JSON dict (file format) — same contract as
 ## PropDef.from_json().
-static func from_json(data: Dictionary) -> BombDef:
+## The widest a bomb may reach, in GU rings (0 = its own GU). `flood_gu_rings()` and every per-ring table grow with it, so a row asking
+## for more (a typo, or a user-tier bomb) is cut here, loudly, instead of flooding the map (AUDIT 2026-10-07). The shipped frag grenade
+## uses rings 0..3. A var, not a const (rule 1: tuning values stay scalable).
+static var MAX_RING: int = 16
+
+
+## `errors` collects a per-ring table cut to `MAX_RING` (`JsonFile` style: loud, and the row still loads).
+static func from_json(data: Dictionary, errors: Array = []) -> BombDef:
 	var def := BombDef.new()
 	def.id = String(data.get("id", ""))
 
@@ -80,5 +87,15 @@ static func from_json(data: Dictionary) -> BombDef:
 	def.tags = []
 	for tag in data.get("tags", []):
 		def.tags.append(String(tag))
+
+	for key: String in ["ring_multipliers", "destroy_ring_weights", "dent_ring_weights", "crack_ring_weights",
+			"soot_ring_tones", "smoke_ring_weights"]:
+		var table: Array = def.get(key)
+		if table.size() > MAX_RING + 1:
+			var message := "[BombDef] bomb '%s' %s has %d rings, past MAX_RING %d: cut to %d" % [
+				def.id, key, table.size() - 1, MAX_RING, MAX_RING]
+			push_error(message)
+			errors.append(message)
+			table.resize(MAX_RING + 1)
 
 	return def

@@ -9,12 +9,16 @@
 
 class_name PropRegistry
 
+const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+
 const RES_PROPS_DIR := "res://props"
 const USER_PROPS_DIR := "user://props"
 const RES_SLOTS_DIR := "res://props/slots"
 const USER_SLOTS_DIR := "user://props/slots"
 
 var registry: Dictionary = {}  # id → PropDef (stored as Dict due to class_name limitations)
+## Every row (prop or slot) that could not be read, loudly (`JsonFile`, AUDIT 2026-10-07).
+var load_errors: Array[String] = []
 var slots: Dictionary = {}     # id → SlotDef
 ## Callable(material_id) -> family String. Set by the `Registries` autoload (the material registry's fallback chain); a test sets its own.
 var family_of: Callable = Callable()
@@ -69,14 +73,10 @@ func _scan_slots(dir_path: String) -> void:
 	var fname = dir.get_next()
 	while fname != "":
 		if fname.ends_with(".json"):
-			var file = FileAccess.open(dir_path.path_join(fname), FileAccess.READ)
-			if file:
-				var parsed = JSON.parse_string(file.get_as_text())
-				file.close()
-				if typeof(parsed) == TYPE_DICTIONARY:
-					var slot := SlotDef.from_json(parsed)
-					if not slot.id.is_empty():
-						register_slot(slot)
+			var path: String = dir_path.path_join(fname)
+			var parsed: Dictionary = JsonFileRef.read_object(path, "PropRegistry", load_errors)
+			if not parsed.is_empty() and not JsonFileRef.require_id(parsed, path, "PropRegistry", load_errors).is_empty():
+				register_slot(SlotDef.from_json(parsed, load_errors))
 		fname = dir.get_next()
 
 
@@ -206,15 +206,10 @@ func _scan_dir(dir_path: String) -> void:
 	var fname = dir.get_next()
 	while fname != "":
 		if fname.ends_with(".json"):
-			var file = FileAccess.open(dir_path.path_join(fname), FileAccess.READ)
-			if file:
-				var text = file.get_as_text()
-				file.close()
-				var parsed = JSON.parse_string(text)
-				if typeof(parsed) == TYPE_DICTIONARY:
-					var PropDefClass = load("res://godot/scripts/systems/prop_def.gd")
-					var prop_def = PropDefClass.from_json(parsed)
-					if not prop_def.id.is_empty():
-						register(prop_def)
+			var path: String = dir_path.path_join(fname)
+			var parsed: Dictionary = JsonFileRef.read_object(path, "PropRegistry", load_errors)
+			if not parsed.is_empty() and not JsonFileRef.require_id(parsed, path, "PropRegistry", load_errors).is_empty():
+				var PropDefClass = load("res://godot/scripts/systems/prop_def.gd")
+				register(PropDefClass.from_json(parsed, load_errors))
 		fname = dir.get_next()
 

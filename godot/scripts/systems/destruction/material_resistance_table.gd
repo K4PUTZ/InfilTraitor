@@ -19,6 +19,8 @@
 ## constants; expect these to be retuned once real captures show the effect.
 class_name MaterialResistanceTable
 
+const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+
 const RES_MATERIALS_DIR := "res://ASSETS/materials"
 const USER_MATERIALS_DIR := "user://materials"
 
@@ -155,6 +157,8 @@ const DEFAULT_SMOKE_CHANCE := 1.0
 ## a `const` here would be exactly the violation this rewrite closes.
 static var _table: Dictionary = {}
 static var _loaded: bool = false
+## Every material row that could not be read, loudly (`JsonFile`, AUDIT 2026-10-07).
+static var load_errors: Array[String] = []
 
 
 static func destroy_factor(material: String) -> float:
@@ -231,34 +235,33 @@ static func _scan_dir(dir_path: String) -> void:
 	var entry := dir.get_next()
 	while entry != "":
 		if dir.current_is_dir() and not entry.begins_with("."):
-			var file := FileAccess.open(dir_path.path_join(entry).path_join(entry + ".json"), FileAccess.READ)
-			if file:
-				var text := file.get_as_text()
-				file.close()
-				var parsed = JSON.parse_string(text)
-				if typeof(parsed) == TYPE_DICTIONARY:
-					var id := String(parsed.get("id", ""))
-					if not id.is_empty():
-						## ⚠️ THIS DICT IS AN EXPLICIT WHITELIST, not a copy of the
-						## row, and adding a column to the JSON without adding it
-						## HERE makes the new column read as its default with no
-						## error anywhere. Cost of learning that: M3-3's first
-						## real run reported `[E-BURN] 0` on every material,
-						## including fabric at burn_consumption 1.0 — the exact
-						## shape of CLAUDE.md's floor-dent case, and the reason
-						## that print exists at all.
-						_table[id] = {
-							"destroy_factor": float(parsed.get("destroy_factor", DEFAULT_DESTROY_FACTOR)),
-							"dent_factor": float(parsed.get("dent_factor", DEFAULT_DENT_FACTOR)),
-							"crack_factor": float(parsed.get("crack_factor", DEFAULT_CRACK_FACTOR)),
-							"flammability": float(parsed.get("flammability", DEFAULT_FLAMMABILITY)),
-							"burn_consumption": float(parsed.get("burn_consumption", DEFAULT_BURN_CONSUMPTION)),
-							## ⚠️ A KEY MISSING FROM THIS LIST IS NOT A COMPILE ERROR AND NOT
-							## A WARNING — the row simply never carries it and every lookup
-							## silently returns the default. This dictionary is the schema, not
-							## the JSON, and that is exactly CLAUDE.md's floor-dent case
-							## (69 dents on a fixture, ZERO on the real map, because only one
-							## material had the row).
-							"smoke_chance": float(parsed.get("smoke_chance", DEFAULT_SMOKE_CHANCE)),
-						}
+			var row_path := dir_path.path_join(entry).path_join(entry + ".json")
+			## A folder with no row of its own (`_generic/`, art only) is normal; a row that exists must read (`JsonFile`).
+			var parsed: Dictionary = JsonFileRef.read_object(row_path, "MaterialResistanceTable", load_errors) \
+				if FileAccess.file_exists(row_path) else {}
+			if not parsed.is_empty():
+				var id := JsonFileRef.require_id(parsed, row_path, "MaterialResistanceTable", load_errors)
+				if not id.is_empty():
+					## ⚠️ THIS DICT IS AN EXPLICIT WHITELIST, not a copy of the
+					## row, and adding a column to the JSON without adding it
+					## HERE makes the new column read as its default with no
+					## error anywhere. Cost of learning that: M3-3's first
+					## real run reported `[E-BURN] 0` on every material,
+					## including fabric at burn_consumption 1.0 — the exact
+					## shape of CLAUDE.md's floor-dent case, and the reason
+					## that print exists at all.
+					_table[id] = {
+						"destroy_factor": float(parsed.get("destroy_factor", DEFAULT_DESTROY_FACTOR)),
+						"dent_factor": float(parsed.get("dent_factor", DEFAULT_DENT_FACTOR)),
+						"crack_factor": float(parsed.get("crack_factor", DEFAULT_CRACK_FACTOR)),
+						"flammability": float(parsed.get("flammability", DEFAULT_FLAMMABILITY)),
+						"burn_consumption": float(parsed.get("burn_consumption", DEFAULT_BURN_CONSUMPTION)),
+						## ⚠️ A KEY MISSING FROM THIS LIST IS NOT A COMPILE ERROR AND NOT
+						## A WARNING — the row simply never carries it and every lookup
+						## silently returns the default. This dictionary is the schema, not
+						## the JSON, and that is exactly CLAUDE.md's floor-dent case
+						## (69 dents on a fixture, ZERO on the real map, because only one
+						## material had the row).
+						"smoke_chance": float(parsed.get("smoke_chance", DEFAULT_SMOKE_CHANCE)),
+					}
 		entry = dir.get_next()

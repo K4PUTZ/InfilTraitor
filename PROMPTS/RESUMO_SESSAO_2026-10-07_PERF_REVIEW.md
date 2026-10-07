@@ -45,3 +45,13 @@ or pinned by a new selftest: a player prop in `user://props/` could run code thr
 glTF/GLB; `prop_model_path_selftest`, red proven: the payload ran); the save write is atomic (`SaveState.write_text_atomic`,
 `save_state_file_selftest`). Open, needs the Director: `DevFlags` live in the store build, the debug-keystore signing, no checkpoint wired,
 user-tier schema validation, `room.gd` size, 254 runtime `print()`. `verify.py smoke` PASSED (76 s).
+
+## Error-prevention round (closing the session)
+Fixed with `registry_load_errors_selftest` (red reproduced first: a broken `user://bombs/*.json` printed only Godot's path-less
+"line 0" message, an id-less row printed nothing): the five catalogues read rows through the new `JsonFile` helper (loud, path-named,
+collected in `load_errors`); `PropDef` / `SlotDef` vector fields fall back instead of aborting the row; `BombDef.MAX_RING` (16) caps a
+bomb's reach. The shipped data loads with zero errors (90 materials, 12 props, 7 weapons, the grenade). Attention markers in
+`DevFlags._candidate_paths()` and `SaveState.save_to_file()`. CLAUDE.md's error-handling contract gained the `JsonFile` line.
+Updated: `technical_debt.md`, `milestones.md`, `PROP_PIPELINE_PLAN`, `DEVICE_DIAGNOSTICS_MASTER_PLAN`. `verify.py smoke` PASSED (77 s).
+
+**Session closed. Resume at roadmap step A1.**

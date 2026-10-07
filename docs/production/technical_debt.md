@@ -32,6 +32,25 @@ committed secrets, saves, `print`/`printerr`, hard-coded strings, per-frame redr
 - 🟠 **A checkpoint could be lost to a kill mid-write (FIXED).** `SaveState.save_to_file()` opened the save with `WRITE`, which truncates
   first; it now writes a sibling `.tmp` and renames it over the old file (`SaveState.write_text_atomic()`, `save_state_file_selftest`).
 
+**Error-prevention round (same day, after the audit), each with a selftest:**
+- 🟠 **Every catalogue dropped a bad row in silence (FIXED).** `MaterialRegistry`, `MaterialResistanceTable`, `PropRegistry` (props and
+  slots), `BombRegistry` and `WeaponRegistry` skipped a row that did not parse (Godot's own message names no file and says "line 0") or
+  had no `id` (no message at all; red reproduced with a broken and an id-less `user://bombs/*.json`). They now read through
+  `JsonFile.read_object()` / `require_id()`: a loud `push_error` WITH the path, and the line in the registry's `load_errors`.
+  A material folder with no row of its own (`_generic/`) stays quiet on purpose.
+- 🟠 **A malformed vector field aborted a row half-way (FIXED).** `PropDef` / `SlotDef` indexed `mesh_size`, `model_rotation_deg`,
+  `footprint_gus`, `max_size` raw: `[90.0]` raised a SCRIPT ERROR and left the rest of the row unread. `JsonFile.vector3()` /
+  `vector2i()` fall back to the default and report it; the row loads whole.
+- 🟠 **A bomb could ask for any reach (FIXED).** `BombDef.MAX_RING` (16, a var by rule 1) cuts every per-ring table, loudly; the
+  frag grenade uses 0..3.
+- `registry_load_errors_selftest` also pins that the SHIPPED data loads with **zero** errors in all five catalogues (90 materials,
+  12 props, 7 weapons, the grenade), so a future broken row fails the suite instead of vanishing.
+- ⚠️ Attention markers left in the code where a decision is pending: `DevFlags._candidate_paths()` (item 1 below) and
+  `SaveState.save_to_file()` (item 3).
+- Tooling lesson: a NEW `class_name` is not visible to a headless `--script` run until the editor rebuilds the global class cache
+  (`Identifier "JsonFile" not declared`), and a selftest whose `_init()` dies before `quit()` never exits; consumers `preload()` the
+  helper, the project's usual pattern.
+
 **Needs attention (documented, not changed):**
 1. 🔴 **`DevFlags` is live in the store build.** A release APK reads `dev_flags.cfg` from its external files directory, which the device
    owner can write (adb or a file manager on some devices): `SCENARIO` steps, `MAP`, `GRENADE_GUS`, `GUARD_REVEAL`, every diagnostic.
@@ -43,7 +62,7 @@ committed secrets, saves, `print`/`printerr`, hard-coded strings, per-frame redr
 3. 🟠 **No save is wired into gameplay.** `SaveState.save_to_file()` / `load_from_file()` have no caller outside the class; the
    checkpoint model the Director ratified (2026-10-07: if the app is killed, only the checkpoint survives) has nothing writing a checkpoint
    yet. Belongs to roadmap A2 / the save work.
-4. 🟠 **The `user://` content tier is validated at the top level only.** Every registry checks that a file is a JSON object, but fields are
+4. 🟠 **The `user://` content tier is validated at the top level only** (*partly closed by the error-prevention round below the list: rows, ids, vector fields and bomb reach are now checked; the remaining per-field schema is still owed*). Every registry checks that a file is a JSON object, but fields are
    read raw (`PropDef.from_json` indexes `model_rotation_deg[0..2]`; a `BombDef` may declare any number of rings, so a user bomb can make
    `flood_gu_rings` arbitrarily large). Harmless to anyone but the player who wrote the file, but a schema check per registry is owed before
    PP2/PP3 open user content (`PROP_PIPELINE_PLAN`). The `.vox` parser is already defensive (size caps, bounds, chunk guard): the model to follow.

@@ -5,10 +5,14 @@
 ## changes to appear.
 class_name WeaponRegistry
 
+const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+
 const RES_WEAPONS_DIR := "res://weapons"
 const USER_WEAPONS_DIR := "user://weapons"
 
 var registry: Dictionary = {}  # id → WeaponDef
+## Every row that could not be read, loudly (`JsonFile`, AUDIT 2026-10-07).
+var load_errors: Array[String] = []
 
 
 ## Register a weapon definition
@@ -44,14 +48,9 @@ func _scan_dir(dir_path: String) -> void:
 	var fname = dir.get_next()
 	while fname != "":
 		if fname.ends_with(".json"):
-			var file = FileAccess.open(dir_path.path_join(fname), FileAccess.READ)
-			if file:
-				var text = file.get_as_text()
-				file.close()
-				var parsed = JSON.parse_string(text)
-				if typeof(parsed) == TYPE_DICTIONARY:
-					var WeaponDefClass = load("res://godot/scripts/systems/destruction/weapon_def.gd")
-					var weapon_def = WeaponDefClass.from_json(parsed)
-					if not weapon_def.id.is_empty():
-						register(weapon_def)
+			var path: String = dir_path.path_join(fname)
+			var parsed: Dictionary = JsonFileRef.read_object(path, "WeaponRegistry", load_errors)
+			if not parsed.is_empty() and not JsonFileRef.require_id(parsed, path, "WeaponRegistry", load_errors).is_empty():
+				var WeaponDefClass = load("res://godot/scripts/systems/destruction/weapon_def.gd")
+				register(WeaponDefClass.from_json(parsed))
 		fname = dir.get_next()

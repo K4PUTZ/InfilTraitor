@@ -173,6 +173,9 @@ func external_files_dir() -> String:
 
 
 ## Every location an overrides file is accepted from, most specific first.
+## ⚠️ ATTENTION (AUDIT 2026-10-07, `technical_debt.md` "Code audit"): this is read in EVERY build, the store build included, so whoever
+## holds the phone can switch the map, the scenario and every diagnostic. Before a public build: a `dev_flags` feature tag on the
+## MEASUREMENT export preset only, and no file read unless `OS.has_feature("dev_flags")`. Awaiting the Director's sign-off.
 func _candidate_paths() -> PackedStringArray:
 	var paths: PackedStringArray = PackedStringArray()
 	var external: String = external_files_dir()

@@ -239,6 +239,8 @@ static func restore(room, data: Dictionary) -> bool:
 
 ## Convenience: the whole thing to disk and back. `user://` rather than `res://`
 ## because a shipped build cannot write into its own package.
+## ⚠️ ATTENTION (AUDIT 2026-10-07): nothing in the game calls this yet. The checkpoint is the only state that survives the app being
+## killed (Director, 2026-10-07), so wiring a checkpoint write is owed with the stealth loop (roadmap A2).
 static func save_to_file(room, path: String = "user://save_01.json") -> bool:
 	return write_text_atomic(path, JSON.stringify(capture(room), "\t"))
 

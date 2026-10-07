@@ -19,6 +19,8 @@
 
 class_name MaterialRegistry
 
+const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+
 # Import constants
 const StonePatternClass = preload("res://godot/scripts/systems/stone_pattern.gd")
 const WoodPatternClass = preload("res://godot/scripts/systems/wood_pattern.gd")
@@ -154,6 +156,8 @@ class MaterialDef:
 
 ## Material registry
 var registry: Dictionary = {}  # id → MaterialDef
+## Every row that could not be read, loudly (`JsonFile`, AUDIT 2026-10-07).
+var load_errors: Array[String] = []
 
 func _init() -> void:
 	pass
@@ -237,13 +241,9 @@ func _scan_dir(dir_path: String) -> void:
 	while entry != "":
 		if dir.current_is_dir() and not entry.begins_with("."):
 			var row_path := dir_path.path_join(entry).path_join(entry + ".json")
-			var file := FileAccess.open(row_path, FileAccess.READ)
-			if file:
-				var text := file.get_as_text()
-				file.close()
-				var parsed = JSON.parse_string(text)
-				if typeof(parsed) == TYPE_DICTIONARY:
-					var material_def := MaterialDef.from_json(parsed)
-					if not material_def.id.is_empty():
-						register(material_def)
+			## A folder with no row of its own (`_generic/`, art only) is normal; a row that exists must read.
+			if FileAccess.file_exists(row_path):
+				var parsed: Dictionary = JsonFileRef.read_object(row_path, "MaterialRegistry", load_errors)
+				if not parsed.is_empty() and not JsonFileRef.require_id(parsed, row_path, "MaterialRegistry", load_errors).is_empty():
+					register(MaterialDef.from_json(parsed))
 		entry = dir.get_next()

@@ -110,6 +110,10 @@ The numbered list below is what the tiers run and what each step means:
 - `print_debug(...)` for debug output. `printerr` is banned.
 - `assert(condition)` for debug-only invariant checks (stripped in
   release).
+- A catalogue row (material, prop, slot, bomb, weapon) is read through
+  `JsonFile` (`read_object`, `require_id`, `vector3` / `vector2i`): a bad
+  row is reported with its path and lands in the registry's
+  `load_errors`, never dropped in silence (AUDIT 2026-10-07).
 
 ## Evidence & reporting discipline
 

@@ -3,10 +3,14 @@
 ## user-tier bombs override res:// bombs on id collision.
 class_name BombRegistry
 
+const JsonFileRef = preload("res://godot/scripts/systems/json_file.gd")
+
 const RES_BOMBS_DIR := "res://bombs"
 const USER_BOMBS_DIR := "user://bombs"
 
 var registry: Dictionary = {}  # id → BombDef
+## Every row that could not be read, loudly (`JsonFile`, AUDIT 2026-10-07).
+var load_errors: Array[String] = []
 
 
 ## Register a bomb definition
@@ -43,16 +47,11 @@ func _scan_dir(dir_path: String) -> void:
 	var fname = dir.get_next()
 	while fname != "":
 		if fname.ends_with(".json"):
-			var file = FileAccess.open(dir_path.path_join(fname), FileAccess.READ)
-			if file:
-				var text = file.get_as_text()
-				file.close()
-				var parsed = JSON.parse_string(text)
-				if typeof(parsed) == TYPE_DICTIONARY:
-					var BombDefClass = load("res://godot/scripts/systems/destruction/bomb_def.gd")
-					var bomb_def = BombDefClass.from_json(parsed)
-					if not bomb_def.id.is_empty():
-						register(bomb_def)
+			var path: String = dir_path.path_join(fname)
+			var parsed: Dictionary = JsonFileRef.read_object(path, "BombRegistry", load_errors)
+			if not parsed.is_empty() and not JsonFileRef.require_id(parsed, path, "BombRegistry", load_errors).is_empty():
+				var BombDefClass = load("res://godot/scripts/systems/destruction/bomb_def.gd")
+				register(BombDefClass.from_json(parsed, load_errors))
 		fname = dir.get_next()
 
 

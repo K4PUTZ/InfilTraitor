@@ -1502,6 +1502,9 @@ var _dev_hover_label: Label = null
 ## them the red playable-area line and the dark spawn diamond, which are DEV VISION drawings of the same kind.
 var _dev_panels_on: bool = false
 var _hovered_cell: Vector2i = Vector2i(-1, -1)
+## A scripted run (`INFILTRAITOR_SCENARIO`, a harness or a dev capture) ignores the REAL mouse: the pointer is wherever the person's hand left it, the
+## hover outline it draws changed 10 px of a `pixel_gate` capture between two boots of the same code (2026-10-06), and nothing in a scenario needs it.
+var _scripted_run: bool = OS.get_environment("INFILTRAITOR_SCENARIO") != ""
 
 ## DEV-HUD-01: dev vision status panel
 var _dev_vision_status_panel: Control = null
@@ -7099,7 +7102,7 @@ func _input(event: InputEvent) -> void:
 	## Mouse motion: preview path on hover
 	if event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
-		var new_hover := _screen_to_tile(mm.position)
+		var new_hover := INVALID_CELL if _scripted_run else _screen_to_tile(mm.position)
 		if new_hover != _hovered_cell:
 			## OCC-HOVER-01: Cache previous hover to detect reachability zone changes
 			var old_hover := _hovered_cell

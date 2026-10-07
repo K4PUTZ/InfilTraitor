@@ -98,6 +98,7 @@ const ARITY: Dictionary = {
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
 	"container_stats": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2,
 }
+const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd")  ## waits for a drawn frame, never forever (an occluded harness window draws nothing)
 const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler"]
 const FRAMINGS: PackedStringArray = ["portrait", "landscape", "desktop"]
 const ALLOC_KINDS: PackedStringArray = ["objects", "packed", "bytes"]
@@ -309,7 +310,7 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				DisplayServer.window_set_size(step["size"])
 				await room.get_tree().process_frame
 		"capture":
-			await RenderingServer.frame_post_draw
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			var problem: String = _save_capture(room, str(step["name"]))
 			if not problem.is_empty():
 				return _fail(step, problem)
@@ -472,7 +473,7 @@ func _take_armed(room: Node, arm: Dictionary) -> void:
 			await tree.process_frame
 			frames += 1
 			elapsed += tree.root.get_process_delta_time()
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	if not is_instance_valid(room):
 		arm["state"] = "failed"
 		push_error("[ScenarioRunner] '%s': the Room went away before the capture" % step["text"])

@@ -1,5 +1,6 @@
 extends Node2D
 const GroundGridRef = preload("res://godot/scripts/geometry/ground_grid.gd")  ## R3D-5a: the cell lattice, no TileMapLayer
+const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd")  ## waits for a drawn frame, never forever (an occluded harness window draws nothing)
 ## Tactical room controller: input, UI wiring, agent turns and scene setup.
 
 const MapCatalogClass    = preload("res://godot/scripts/world/maps/map_catalog.gd")
@@ -7356,7 +7357,7 @@ func _capture_walk_filmstrip() -> void:
 
 	agent.move_along_path(path)
 	for i in range(frame_count):
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		var img := get_viewport().get_texture().get_image()
 		if img == null:
 			push_error("[P3-WALK] null viewport image at frame %d" % i)
@@ -7524,7 +7525,7 @@ func _capture_glass_crack_demo() -> void:
 		_fow_controller.reveal_around(focus_gu, 30)
 	for _c in range(30):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 
 	var dir := ProjectSettings.globalize_path("res://") + "Screenshots/history"
 	DirAccess.make_dir_recursive_absolute(dir)
@@ -7640,7 +7641,7 @@ func _capture_glass_crack_demo() -> void:
 	await _voxel_board.process_dirty_async(_edge_registry)
 	for _c in range(10):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_after.png" % [dir, tag])
 	print("[CRACK-DEMO] wrote glass_crack_demo_%s_{before,after}.png" % tag)
 	## ⚠️ THE BOARD, NOT THE COUNTER. `refresh_glass_rims()` reporting "12 cells
@@ -7715,7 +7716,7 @@ func _capture_glass_crack_demo() -> void:
 			var dwait: int = dwait_env.to_int() if dwait_env.is_valid_int() else 10
 			for _c in range(dwait):
 				await get_tree().process_frame
-			await RenderingServer.frame_post_draw
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			get_viewport().get_texture().get_image().save_png("%s/glass_crack_demo_%s_destroyed.png" % [dir, tag])
 			print("[CRACK-DEMO] destroyed GU %s through the dirty pass: %d slice + %d slab voxel(s) -> glass_crack_demo_%s_destroyed.png"
 				% [dgu, killed_slice, killed_slab, tag])
@@ -7732,7 +7733,7 @@ func _capture_glass_crack_demo() -> void:
 			_voxel_board.set_glass_cracks_visible(shown)
 			for _f in range(6):
 				await get_tree().process_frame
-			await RenderingServer.frame_post_draw
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			var aname := "%s/glass_crack_align_%s_%s.png" % [dir, tag, "web" if shown else "hole"]
 			get_viewport().get_texture().get_image().save_png(aname)
 			print("[CRACK-DEMO] alignment frame (%s) -> %s"
@@ -7768,7 +7769,7 @@ func _capture_glass_crack_demo() -> void:
 				continue
 			for _f in range(8):
 				await get_tree().process_frame
-			await RenderingServer.frame_post_draw
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			var sname := "%s/glass_crack_span_%s_%02d.png" % [dir, tag, int(round(sw))]
 			get_viewport().get_texture().get_image().save_png(sname)
 			print("[CRACK-DEMO] span %.1f x %.1f voxels -> %s" % [sw, sw * 0.5, sname.get_file()])
@@ -7779,7 +7780,7 @@ func _capture_glass_crack_demo() -> void:
 			_voxel_board.set_glass_opening_void(on)
 			for _f in range(6):
 				await get_tree().process_frame
-			await RenderingServer.frame_post_draw
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			var vname := "%s/glass_crack_void_%s_%s.png" % [dir, tag, "on" if on else "off"]
 			get_viewport().get_texture().get_image().save_png(vname)
 			print("[CRACK-DEMO] G-D34 opening void %s -> %s" % ["ON" if on else "OFF", vname.get_file()])
@@ -7789,7 +7790,7 @@ func _capture_glass_crack_demo() -> void:
 			_voxel_board.set_glass_crack_hole_cut(cut)
 			for _f in range(6):
 				await get_tree().process_frame
-			await RenderingServer.frame_post_draw
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			var name := "%s/glass_crack_cut_%s_%02d.png" % [dir, tag, int(cut * 100.0)]
 			get_viewport().get_texture().get_image().save_png(name)
 			print("[CRACK-DEMO] G-D30 cut=%.2f -> %s" % [cut, name.get_file()])
@@ -7818,7 +7819,7 @@ func _capture_glass_crack_demo() -> void:
 					_fow_controller.reveal_around(Vector2i(flipped.x >> 3, flipped.y >> 3), 30)
 			for _f in range(40):
 				await get_tree().process_frame
-			await RenderingServer.frame_post_draw
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			get_viewport().get_texture().get_image().save_png(
 				"%s/glass_crack_flip_%s_%s.png" % [dir, tag, flip_to])
 			## ⚠️ THE SHARD BOARD, NOT ONLY THE SPRITE — CRACK-04, GLASS §16.13.
@@ -7925,7 +7926,7 @@ func _capture_glass_blast_demo() -> void:
 		_fow_controller.reveal_around(pane_gu, 30)
 	for _s in range(60):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	get_viewport().get_texture().get_image().save_png("%s/glass_blast_demo_before.png" % dir)
 
 	## The same close-then-detonate order P-FILM documents: the menu must be gone
@@ -7939,7 +7940,7 @@ func _capture_glass_blast_demo() -> void:
 
 	for _f in range(240):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	get_viewport().get_texture().get_image().save_png("%s/glass_blast_demo_after.png" % dir)
 
 	## ⚠️ THE BOARD, NOT THE COUNTER — CRACK-04's lesson, and the only reading that
@@ -8034,7 +8035,7 @@ func _capture_glass_blast_demo() -> void:
 			print("[GLASS-BLAST] craze identity: %s -> %s (%s)"
 				% [craze_id_before, _last_craze_identity,
 				"KEPT" if craze_id_before == _last_craze_identity else "CHANGED"])
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		var flip_img: Image = get_viewport().get_texture().get_image()
 		flip_img.save_png("%s/glass_blast_demo_flip_%s.png" % [dir, flip_to])
 	## ── A MAP RELOAD MUST WIPE THE GLASS DEBRIS ────────────────────────────────
@@ -8053,7 +8054,7 @@ func _capture_glass_blast_demo() -> void:
 		load_map(map_id)
 		for _f in range(60):
 			await get_tree().process_frame
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		var piles_after: int = _voxel_board.floor_shard_pile_count()
 		var cracks_after: int = _voxel_board.count_glass_shards()
 		var crazes_after: int = _voxel_board.glass_craze_count()
@@ -8675,7 +8676,7 @@ func _burn_probe_report(label: String, base: Dictionary, now: Dictionary) -> voi
 
 
 func _save_shot_frame(dir_path: String, file_name: String) -> void:
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	var img := get_viewport().get_texture().get_image()
 	if img == null:
 		push_error("[AGENT-SHOT-CAPTURE] null viewport image for %s" % file_name)
@@ -8804,7 +8805,7 @@ func _capture_shot_filmstrip() -> void:
 			_agent_shot_controller.open_menu_for(guard_idx)
 		if i == fire_at or i == fire2_at:
 			_agent_shot_controller.fire_at_active()
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		var now_us: int = Time.get_ticks_usec()
 		var ms: float = float(now_us - last_us) / 1000.0
 		last_us = now_us
@@ -8919,7 +8920,7 @@ func _capture_throw_filmstrip() -> void:
 		## aim (which is what the player stares at) and then shows the release.
 		if i == int(float(count) / 3.0):
 			_test_zone_controller.execute_grenade_throw()
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		var img := get_viewport().get_texture().get_image()
 		if img != null:
 			img.save_png("%s/throw_%02d.png" % [out_dir, shot])
@@ -9061,7 +9062,7 @@ func _capture_throw_event_filmstrip() -> void:
 		if i == maxi(throw_at, 0) and not threw:
 			threw = true
 			_test_zone_controller.execute_grenade_throw()
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		if not no_strip:
 			var img := get_viewport().get_texture().get_image()
 			if img != null:
@@ -9091,7 +9092,7 @@ func _capture_throw_event_filmstrip() -> void:
 				opened.size(), _blast_wall_height_edges().size()])
 			for _s2 in range(30):
 				await get_tree().process_frame
-			await RenderingServer.frame_post_draw
+			await ScenarioDrawRef.next_drawn_frame(get_tree())
 			get_viewport().get_texture().get_image().save_png("%s/ev_second_aim.png" % out_dir)
 			print("[EVENT-FILM] wrote ev_second_aim.png")
 
@@ -9203,7 +9204,7 @@ func _capture_detonation_filmstrip() -> void:
 			else:
 				push_warning("[P-FILM] second grenade index %d out of range (%d placed)" % [
 					second_index, _test_zone_controller._grenades.size()])
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		## CELL-PROBE — sampled HERE and not in the idle pass, so probe frame N is
 		## image frame N. A restoration this reports on f124 is the f124 the
 		## filmstrip saved, which is the whole reason the probe is worth having.
@@ -9282,7 +9283,7 @@ func _capture_glass_rain_demo() -> void:
 			r.free()
 	for _g in range(6):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	var settled: Image = get_viewport().get_texture().get_image()
 	settled.save_png("%s/glass_rain_settled_2026-09-05.png" % dir)
 
@@ -9310,7 +9311,7 @@ func _capture_glass_rain_demo() -> void:
 	for step in range(FILMSTRIP_FRAMES):
 		for _k in range(FILMSTRIP_STRIDE):
 			await get_tree().process_frame
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		var shot: Image = get_viewport().get_texture().get_image()
 		if step == FILMSTRIP_MIDAIR_STEP:
 			midair = shot
@@ -9335,7 +9336,7 @@ func _capture_glass_rain_demo() -> void:
 			r2.free()
 	for _i in range(4):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	var after: Image = get_viewport().get_texture().get_image()
 	after.save_png("%s/glass_rain_after_kill_2026-09-05.png" % dir)
 
@@ -9548,7 +9549,7 @@ func _capture_glass_rain_timings() -> void:
 	record_glass_shards(GlassFall.pile_by_cell(landings))
 	for _g in range(8):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 
 	## ── the rain, at ONE preset ────────────────────────────────────────────
 	GlassRainOverlay.timing_overrides = RAIN_TIMING_PRESETS[preset_name]
@@ -9574,7 +9575,7 @@ func _capture_glass_rain_timings() -> void:
 			crop = Rect2i(p[0].to_int(), p[1].to_int(), p[2].to_int(), p[3].to_int())
 
 	for i in range(frame_count):
-		await RenderingServer.frame_post_draw
+		await ScenarioDrawRef.next_drawn_frame(get_tree())
 		var img := get_viewport().get_texture().get_image()
 		if img == null:
 			continue
@@ -9642,7 +9643,7 @@ func _capture_glass_reap_demo() -> void:
 	var before_store: int = _base_remnants.size()
 	for _f in range(8):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	get_viewport().get_texture().get_image().save_png("%s/glass_reap_before_2026-09-06.png" % dir)
 
 	## ── 3. destroy the pane's own frame (the brick jambs) ──────────────────
@@ -9664,7 +9665,7 @@ func _capture_glass_reap_demo() -> void:
 	var reaped: Dictionary = reap_orphaned_remnants()
 	for _g in range(10):
 		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
+	await ScenarioDrawRef.next_drawn_frame(get_tree())
 	get_viewport().get_texture().get_image().save_png("%s/glass_reap_after_2026-09-06.png" % dir)
 
 	var after_store: int = _base_remnants.size()

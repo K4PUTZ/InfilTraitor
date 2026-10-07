@@ -22,7 +22,7 @@ No standard-scenario blast row exists on the current code.
   the materials milestone (`GLASS_MASTER_PLAN`, `MAP_MASTER_PLAN`).
 - End-turn progress indicator: **concept B** (ring segmented per acting faction) chosen, planned for round 5 (`INTERFACE_MASTER_PLAN`, roadmap).
 
-## Open (proposals, not ratified)
+## Open at the time (the first four were RATIFIED in the consolidation below)
 - Memory ceiling PSS <= 1.2 GB on the Galaxy.
 - For the strongest grenade: unlimited pre-cook; one designed hit-stop under the flash with a ceiling; 100 ms elsewhere; memory a hard limit;
   cosmetic density scaled per device, gameplay identical.

@@ -3019,7 +3019,7 @@ func _emit_vent_puff(at: Vector2, _kind: String, params: Dictionary, depth: Stri
 	var board3d: Node = board3d()
 	var anchor := Vector3(INF, INF, INF)
 	if board3d != null:
-		anchor = Vector3(at.x, float(level - int(board3d.call("ground_level"))) / 8.0, at.y)
+		anchor = Vector3(at.x, float(level - int(board3d.call("ground_level"))) / 8.0 - (float(params.get("born_below", 0.0)) if depth == "shaft" else 0.0), at.y)
 	_smoke_spark_overlay.add_smoke(origin, params["color"], float(params["scale"]), float(params["duration_scale"]),
 			int(params["blobs"]), float(params["drift_scale"]), 0.0, floor_pos, anchor, params.get("style", {}))
 

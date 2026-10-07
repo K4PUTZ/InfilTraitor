@@ -12,8 +12,9 @@ extends Node
 ## Per kind: the puff's colour, size, rise and how often the vent releases one. `steam` is the only kind (water, lava and the liquid
 ## materials are a parked track, DS-14).
 static var KINDS: Dictionary = {
-	"steam": {"color": Color(0.94, 0.96, 0.98, 0.5), "scale": 2.4, "duration_scale": 3.2, "blobs": 2, "drift_scale": 1.0, "interval": 0.26,
-			"style": {"growth": 4.2, "wind": Vector2(-30.0, 0.0), "damp": 0.92, "fade": 1.0}},
+	"steam": {"color": Color(0.94, 0.96, 0.98, 0.26), "scale": 1.8, "duration_scale": 3.0, "blobs": 2, "drift_scale": 1.0, "interval": 0.16,
+			"born_below": 1.0,   ## GU under the floor top where a `shaft` puff is born, deep in the void, out of sight
+			"style": {"growth": 3.2, "wind": Vector2(-14.0, 0.0), "damp": 0.92, "fade": 1.0, "fade_in": 0.3}},
 }
 
 var _vents: Array = []        ## {"at": Vector2 (GU), "kind": String, "next": float}

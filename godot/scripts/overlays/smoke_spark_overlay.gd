@@ -180,6 +180,8 @@ func add_smoke(pos: Vector2, color: Color, scale: float = 1.0, duration_scale: f
 				last["damp"] = float(style["damp"])
 			if style.has("fade"):
 				last["fade"] = float(style["fade"])
+			if style.has("fade_in"):
+				last["fade_in"] = float(style["fade_in"])
 	set_process(true)
 
 
@@ -281,6 +283,10 @@ func _draw() -> void:
 			continue
 		var t: float = s["elapsed"] / s["duration"]
 		var alpha: float = pow(1.0 - t, float(s["fade"]) if s.has("fade") else smoke_fade_power)
+		## A puff born deep in a shaft (the steam vent) fades IN over the first `fade_in` of its life: it is invisible down there and shows only as it
+		## rises through the gaps, like vapour coming out of the dark.
+		if s.has("fade_in"):
+			alpha *= smoothstep(0.0, float(s["fade_in"]), t)
 		var c: Color = s["color"]
 		c.a *= alpha
 		var radius: float = lerp(float(s["start_radius"]), float(s["end_radius"]), t)

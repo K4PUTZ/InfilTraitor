@@ -61,8 +61,19 @@ static func clear_cache() -> void:
 	_cache.clear()
 
 
+## Only a SHIPPED glTF/GLB is a model. `load()` + `instantiate()` runs any script a scene carries, and `PropRegistry` also reads prop
+## JSON from `user://props/`, so a player's prop naming a `user://` scene ran code before this check (AUDIT 2026-10-07,
+## `prop_model_path_selftest`). A player's model reaches the game through the data-only `.iprop` route (PROP_PIPELINE_PLAN), never here.
+static func is_allowed_model_path(path: String) -> bool:
+	var ext := path.get_extension().to_lower()
+	return path.begins_with("res://") and (ext == "glb" or ext == "gltf")
+
+
 static func _load_fit(path: String, rotation_deg: Vector3, fit_size: Vector3) -> Dictionary:
 	var failed := {"ok": false, "parts": [], "size": Vector3.ZERO, "surfaces": []}
+	if not is_allowed_model_path(path):
+		push_error("[PropModelFit] '%s' is not a shipped res:// glTF/GLB model: refused, the prop draws as its placeholder" % path)
+		return failed
 	var scene: PackedScene = load(path)
 	if scene == null:
 		push_error("[PropModelFit] cannot load '%s'" % path)

@@ -17,6 +17,49 @@
 
 ---
 
+## 🔎 Code audit (2026-10-07)
+
+Targeted scans over `godot/scripts/` (271 files, ~82 k lines) and `tools/`: content loading from `user://`, release-build switches,
+committed secrets, saves, `print`/`printerr`, hard-coded strings, per-frame redraws, Python subprocess use. Record:
+`PROMPTS/RESUMO_SESSAO_2026-10-07_PERF_REVIEW.md`.
+
+**Fixed in the audit (each with a selftest):**
+- 🔴 **Code execution through a player prop (FIXED).** `PropRegistry` reads prop JSON from `user://props/` and `PropModelFit` did
+  `load()` + `instantiate()` on whatever `model` named: a `user://` `.tscn` with an embedded GDScript RAN (red proven by
+  `prop_model_path_selftest`: the payload flag was set by `PropModelFit.fit()`). `PropModelFit.is_allowed_model_path()` now admits only a
+  shipped `res://` `.glb` / `.gltf`, refused BEFORE loading, loudly. Every model route (props, grenade, pickups, the target cursor) goes
+  through this one loader.
+- 🟠 **A checkpoint could be lost to a kill mid-write (FIXED).** `SaveState.save_to_file()` opened the save with `WRITE`, which truncates
+  first; it now writes a sibling `.tmp` and renames it over the old file (`SaveState.write_text_atomic()`, `save_state_file_selftest`).
+
+**Needs attention (documented, not changed):**
+1. 🔴 **`DevFlags` is live in the store build.** A release APK reads `dev_flags.cfg` from its external files directory, which the device
+   owner can write (adb or a file manager on some devices): `SCENARIO` steps, `MAP`, `GRENADE_GUS`, `GUARD_REVEAL`, every diagnostic.
+   Not remote, but a cheat / tamper surface and a support risk. Fix before any public build: a `dev_flags` custom feature tag in a
+   MEASUREMENT export preset only, and `DevFlags` ignores the file unless `OS.has_feature("dev_flags")` (the measured APK stays a release
+   template). Needs the export pipeline change and the Director's sign-off.
+2. 🔴 **The release is signed with the DEBUG keystore** (`export_android.py`, documented there): not publishable. A real release keystore,
+   kept outside the repo (env vars, as today), before any store upload.
+3. 🟠 **No save is wired into gameplay.** `SaveState.save_to_file()` / `load_from_file()` have no caller outside the class; the
+   checkpoint model the Director ratified (2026-10-07: if the app is killed, only the checkpoint survives) has nothing writing a checkpoint
+   yet. Belongs to roadmap A2 / the save work.
+4. 🟠 **The `user://` content tier is validated at the top level only.** Every registry checks that a file is a JSON object, but fields are
+   read raw (`PropDef.from_json` indexes `model_rotation_deg[0..2]`; a `BombDef` may declare any number of rings, so a user bomb can make
+   `flood_gu_rings` arbitrarily large). Harmless to anyone but the player who wrote the file, but a schema check per registry is owed before
+   PP2/PP3 open user content (`PROP_PIPELINE_PLAN`). The `.vox` parser is already defensive (size caps, bounds, chunk guard): the model to follow.
+5. 🟡 **`room.gd` is 11 145 lines** (then `detonation_plan_builder.gd` 3 091, `board3d_live.gd` 2 573, `voxel_board.gd` 2 454). Not a
+   defect today, but every gameplay task lands in it; the controllers pattern (`world/controllers/`) is the extraction route, one system at a
+   time, when the stealth loop touches it.
+6. 🟡 **254 `print()` calls in runtime code** (160 in `room.gd`), against the contract's `print_debug()` for debug output. Most sit behind
+   flags; the unconditional ones still write to logcat on every device. One pass to gate or convert them, measured on the Moto, in the
+   optimisation milestone.
+7. 🟢 **Player-facing tooltips are English literals in `hud.tscn`** ("End turn", the auto-end hint); the labels themselves go through
+   `tr()`. Tooltips do not show on touch, so this only matters on desktop.
+
+**Clean:** no committed secrets or keystores (`export_presets.cfg` holds no credentials); no `printerr`; no `str_to_var` / `bytes_to_var`,
+`Expression`, `OS.execute` or network calls in runtime code; no `shell=True`, `eval`, `pickle` in `tools/`; every per-frame overlay redraw
+either stops its `_process` when empty, or is a hidden dev overlay (`temporal`, `elite_exposure`) whose `_draw` Godot skips while it is invisible.
+
 ## 📋 Reconciliation Note (2026-06-14)
 
 A code audit confirmed that the AI's visual detection is **gradual with thresholds**, not binary. Item #1 ("Detection Escalation is Binary") was marked RESOLVED. Documentation updated to reflect the real state of the code.

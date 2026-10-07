@@ -38,3 +38,10 @@ checkpoint-only lifecycle; procedural art generated at first load and cached; th
 ## Resume point (next session)
 Step **A1** of the roadmap order: engine tools on the desktop (cosmetic density per device, the hit-stop under the flash, the combined
 stress scenario, the map-size study tooling, first-load art + export audit). No handset run until step B.
+
+## Code audit (end of session)
+Findings and the follow-up list are in `docs/production/technical_debt.md`, block "Code audit (2026-10-07)". Fixed, each red-before-green
+or pinned by a new selftest: a player prop in `user://props/` could run code through `PropModelFit`'s `load()` (now only shipped `res://`
+glTF/GLB; `prop_model_path_selftest`, red proven: the payload ran); the save write is atomic (`SaveState.write_text_atomic`,
+`save_state_file_selftest`). Open, needs the Director: `DevFlags` live in the store build, the debug-keystore signing, no checkpoint wired,
+user-tier schema validation, `room.gd` size, 254 runtime `print()`. `verify.py smoke` PASSED (76 s).

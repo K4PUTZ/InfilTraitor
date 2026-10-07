@@ -240,13 +240,29 @@ static func restore(room, data: Dictionary) -> bool:
 ## Convenience: the whole thing to disk and back. `user://` rather than `res://`
 ## because a shipped build cannot write into its own package.
 static func save_to_file(room, path: String = "user://save_01.json") -> bool:
-	var f := FileAccess.open(path, FileAccess.WRITE)
+	return write_text_atomic(path, JSON.stringify(capture(room), "\t"))
+
+
+## The checkpoint is the only save that survives the app being killed (Director, 2026-10-07), so a write must never leave it
+## half-written: `FileAccess.WRITE` truncates the old file first, and a kill mid-write lost BOTH saves. Write a sibling `.tmp`,
+## then rename it over the old one (a rename within one directory is atomic). AUDIT 2026-10-07, `save_state_file_selftest`.
+static func write_text_atomic(path: String, text: String) -> bool:
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
-		push_error("[SaveState] cannot open %s for writing: %d"
-			% [path, FileAccess.get_open_error()])
+		push_error("[SaveState] cannot open %s for writing: %d" % [tmp, FileAccess.get_open_error()])
 		return false
-	f.store_string(JSON.stringify(capture(room), "\t"))
+	f.store_string(text)
+	var write_err := f.get_error()
 	f.close()
+	if write_err != OK:
+		push_error("[SaveState] writing %s failed: %d; the previous save is untouched" % [tmp, write_err])
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+		return false
+	var err := DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(path))
+	if err != OK:
+		push_error("[SaveState] cannot move %s over %s: %d; the previous save is untouched" % [tmp, path, err])
+		return false
 	return true
 
 

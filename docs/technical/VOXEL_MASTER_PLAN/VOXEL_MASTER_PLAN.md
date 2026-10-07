@@ -28,8 +28,8 @@
 > | Topic | Canonical doc |
 > |---|---|
 > | **Baking** (historical: the atlas went at R3D-END; B2, B4, B6 survive) | `docs/technical/BAKE_SYSTEM_REFERENCE.md` |
-> | **Destruction** (damage states, Slab, dirty flag + TIC) | `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` |
-> | **Occlusion** (view ghosting, agent silhouette, cutaway) | `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md` |
+> | **Destruction** (damage states, Slab, dirty flag + TIC) | `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` |
+> | **Occlusion** (view ghosting, agent silhouette, cutaway) | `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md` |
 > | **Directions** (NW/NE/SE/SW, banned terms) | `docs/DIRECTION_GLOSSARY.md` |
 >
 > ⚠️ **§13 (implementation order) and §14 (files to update) are a historical record of a

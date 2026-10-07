@@ -7,7 +7,7 @@
 CODEMAP ✅ · cell recovery **100.000% PASS** ✅ · circle gate **0 / 921 600 px PASS** ✅ ·
 soot gate **0 disagreements** ✅.
 **VERSION:** unchanged at 0.9.107 (no tag requested).
-**Plan:** `PROMPTS/PLANNING/PERFORMANCE_MASTER_PLAN.md` §12 and §13 are this session.
+**Plan:** `PROMPTS/DONE/PERFORMANCE_MASTER_PLAN.md` §12 and §13 are this session.
 
 ---
 

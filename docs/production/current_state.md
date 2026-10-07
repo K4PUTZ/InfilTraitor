@@ -795,7 +795,7 @@ canon above, full writeup in `PROMPTS/PLANNING/VOXEL_LIGHT_MASTER_PLAN.md`:**
   caching — independent of the above, found while investigating flicker cost
 
 ✅ **Firearm Destruction (D30/D31, 2026-08-02) — "Alpha Firearm Destruction",
-full writeup in `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
+full writeup in `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` D30/D31 and
 `WEAPON_MASTER_PLAN.md` Part 3b:**
 - **3 of 4 delivery shapes now real** — `RADIAL`, `CONE` and `LINE`
   (`NONE` is by definition no-op). `LINE` was the last unbuilt one: five
@@ -1505,7 +1505,7 @@ checklist, not a schedule.**
 | **x/y-varying wall orientation fix** | ✅ Fixed RENAME-01b | Beta |
 | **Corner fill (triangular gap cover)** | ✅ CONTAINER-04 complete | Alpha |
 | **Dirty Flag + TIC updates** | ✅ Shipped as VOXEL-07 (see that section above) — the "Planned CONTAINER-05" this row used to claim was superseded | Beta |
-| **View occlusion (wall cutaway)** | ⏸️ Parts 1–3 closed, paused 2026-07-21 — `occlusion_set.gd`, `occlusion_overlay.gd`, wireframe + slice panel all exist. [`OCCLUSION_MASTER_PLAN`](../../PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md) is the arbiter | Alpha |
+| **View occlusion (wall cutaway)** | ⏸️ Parts 1–3 closed, paused 2026-07-21 — `occlusion_set.gd`, `occlusion_overlay.gd`, wireframe + slice panel all exist. [`OCCLUSION_MASTER_PLAN`](../../PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md) is the arbiter | Alpha |
 
 ---
 

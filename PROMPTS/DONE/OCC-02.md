@@ -1,6 +1,6 @@
 # OCC-02 — Ghost rings: paint the occluded set
 
-**Master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`, Part 2 (O6).
+**Master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`, Part 2 (O6).
 **Baseline:** commit `3fc4360` (VERSION 0.9.4). **Pull first.**
 **Wave 2. Consumes Part 1, which is closed and verified.**
 **SCREENSHOT SESSION: ON.**

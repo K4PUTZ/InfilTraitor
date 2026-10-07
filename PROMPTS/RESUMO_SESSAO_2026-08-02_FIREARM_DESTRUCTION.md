@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-08-02 (ALPHA FIREARM DESTRUCTION, SESSION CLOSE)
 
-**Active master plans:** `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` (D30,
+**Active master plans:** `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` (D30,
 D30-CAL, D31 landed) and `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md` (Part 3b
 closed — `LINE` was the last unbuilt delivery shape of the three that carry
 destruction).

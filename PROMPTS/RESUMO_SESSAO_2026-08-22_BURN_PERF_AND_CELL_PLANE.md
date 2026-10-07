@@ -13,7 +13,7 @@ invariants ✅ · CODEMAP ✅ · real boot, 0 ERROR.
 **The burn went from 17 seconds to ~4.1**, and the reason it was 17 was one call.
 **Soot no longer touches the TileSet** — a burn mints 150 alternatives instead of
 2 175. **A new master plan is open**
-([`PERFORMANCE_MASTER_PLAN`](PLANNING/PERFORMANCE_MASTER_PLAN.md), v1.1) and its
+([`PERFORMANCE_MASTER_PLAN`](DONE/PERFORMANCE_MASTER_PLAN.md), v1.1) and its
 **P3 was attempted and reverted**; §3.1 there is the resume point and says
 exactly what was ruled out.
 

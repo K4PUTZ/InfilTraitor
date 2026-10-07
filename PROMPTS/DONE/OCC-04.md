@@ -6,7 +6,7 @@
 
 # OCC-04 — The silhouette stroke, only where he is actually hidden
 
-**Master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`, Part 3 (O7) — **second half.**
+**Master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`, Part 3 (O7) — **second half.**
 **Baseline:** commit `3fc4360` (VERSION 0.9.4). **Pull first.**
 **Wave 2. Consumes Part 1. Independent of OCC-02 — the two may run in either order.**
 **SCREENSHOT SESSION: ON.**

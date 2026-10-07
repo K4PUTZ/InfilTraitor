@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-07-18 (ROOF OCCLUSION + WIREFRAME/SCREENSHOT FIXES)
 
-**Active master plan:** `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` —
+**Active master plan:** `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` —
 still **PAUSED at Alpha Horizontal Bake Foundation** (this session was the
 Director's roof-occlusion feature request plus two reported bugs).
 **VERSION at session start:** 0.9.59

@@ -1,6 +1,9 @@
 # OCCLUSION_MASTER_PLAN
 ## Seeing the Agent — View Occlusion, Agent Silhouette, Interior Cutaway — v1.0
 
+> 🗄️ **ARCHIVED 2026-10-07 (Director: "vamos arquivar, mas também dar uma reformada, atualizar as propostas").** Parts 1-4 closed; the 2D cutaway was deleted at R3D-END END-3 and `OcclusionSet` (policies O1-O7, its geometry) is canon and unchanged, now view-independent (R3D-ROT). **Carried forward to roadmap round 5 (gameplay vision modes):** §7, the X-ray silhouette of an actor behind a wall — the guard half shipped as the reveal silhouette (`ActorMesh3D`, R3D-LOOK item 7, by faction); the AGENT's own silhouette behind a wall is not built, and §7.5's look call (redundant with the cutaway?) is still the Director's. §8's open questions are 2D history.
+
+
 > 🧭 **2026-09-27 — reorganization pointer, updated same day.** Parts 1-4 are closed/done; §7 (X-ray silhouette) stays deliberately deferred (waits on gameplay vision modes). **A reported bug where switching maps left the PREVIOUS map's occlusion active on screen was found and FIXED same day** (`80afbaac`; `load_map()` never called `_recompute_occlusion()` after building a fresh `Board3DLive` node) — see `RENDER3D_MASTER_PLAN`'s OPEN THREADS for the record.
 
 > ⏭️ **2026-09-25 — R3D-END deleted the 2D cutaway (END-3).** `VoxelBoard.apply_occlusion()`, `_ghosted_cells`, OCC-21's tile erase, OCC-27's wireframe overlay and slice panel are gone; the `OcclusionSet` (policies O1-O7, its geometry) is unchanged and `Board3DLive.on_occlusion()` draws the cutaway. `INFILTRAITOR_OCC_DISABLE=1` now sends the 3D board an empty set. Read the 2D mechanism below as history (last commit that has it: `34881f81`).
@@ -29,7 +32,7 @@
 
 ⏭️ **2026-09-15 — "renderer v2" now exists as a plan.** The resume trigger below waits on
 `MATERIALS` M5, which is "blocked on renderer v2". That renderer is
-[`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md), and its R3D-7:
+[`RENDER3D_MASTER_PLAN`](../PLANNING/RENDER3D_MASTER_PLAN.md), and its R3D-7:
 - replaces OCC-21's cell erase and OCC-27's wireframe, both 2D-board mechanisms, with a 3D
   cutaway;
 - resumes Part 4 on the 3D board;

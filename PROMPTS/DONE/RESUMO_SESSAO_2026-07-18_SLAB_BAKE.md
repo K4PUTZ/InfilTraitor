@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-07-17/18 (ALPHA SLAB BAKE FIX)
 
-**Active master plan:** `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` —
+**Active master plan:** `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` —
 still **PAUSED at Alpha Horizontal Bake Foundation** (this session was a
 Director-reported visual bug wave on the slab/junction bake, not plan work).
 **VERSION at session start:** 0.9.52

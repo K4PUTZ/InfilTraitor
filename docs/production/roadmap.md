@@ -1,5 +1,22 @@
 # INFILTRAITOR — Roadmap
 
+> 🧭 **2026-10-07 — CONSOLIDATED DECISIONS AND THE ORDER OF ACTIVITIES (Director-ratified; SUPERSEDES the round order of the 2026-10-04 block below, which stays as the record of rounds 0-4).** Session record: `PROMPTS/RESUMO_SESSAO_2026-10-07_PERF_REVIEW.md`.
+>
+> **Decisions:** (1) the frag grenade is the stress case and ships as a late-game acquisition; budgets are judged on it (`DESTRUCTION`, `WEAPON`). (2) No all-glass rooms in INFILTRAITOR 1 (`GLASS`, `MAP`). (3) End-turn indicator, concept B (`INTERFACE_MASTER_PLAN`). (4) App killed in the background: **checkpoint only**, no suspend snapshot. (5) Package size: **procedural art is generated at first load and cached in `user://`** (the seeded facade / stamp generators are ported from `tools/asset_generation/` into the game); CC0 photos stay in the package; the export is audited for dead content (`assets/.godot/imported/BAKING`, a 4.9 MB `Black…` file) and gets a size check; release APK today 123 MB (166 MB unpacked, 66 MB of it the engine). (6) Performance, ratified on Claude's evaluation at the Director's request ("podemos gastar mais esforço agora; depois não vamos ter fartura"): **PSS peak <= 1.2 GB on the Galaxy A16** as a hard limit; **the strongest grenade** gets an unlimited pre-cook, ONE designed hit-stop under the flash with a ceiling (~150-200 ms) and the 100 ms line everywhere else; **cosmetic density (shards, debris, smoke) scales per device, gameplay never does**; **a combined stress scenario** (simultaneous events, dense content, many guards). (7) JAMES stays suspended; Claude owns the UI (rule 11 binding). (8) `PERFORMANCE`, `TOP_TEXTURE`, `OCCLUSION` and `DESTRUCTION` plans archived to `PROMPTS/DONE/` with a reform header each (what stays canon, where each open item went). (9) Planning gaps (block below): audio = future debt; iOS assumed stronger than the Android targets; no sustained/thermal run (short sessions); no extra devices; content rating follows the Play Store; field crash reporting in the optimisation milestone; maximum map size by a scaling study.
+>
+> **Order (Director: "vamos preparar todos os códigos antes de testar nos aparelhos"):**
+>
+> | Step | Content |
+> |---|---|
+> | **A1 — engine tools (desktop)** | Cosmetic density per device (a `DevFlags`/settings tier read by the shard rain, debris and smoke); the strongest grenade's hit-stop: move the glass COMMIT work under the flash frames with a ceiling; the combined stress scenario (a scenario script + map); the map-size scaling study's tooling (generated maps of growing size, same probes); first-load art generation + `user://` cache + export audit and size check. |
+> | **A2 — the stealth loop (desktop)** | AI-02 / AI-03, more noise emitters, M2.14 investigation, the non-combat turn **with the end-turn indicator B**; the agent's movement on the live rig (crouch, prone, sneak) in parallel. |
+> | **B — ONE handset round** | Moto g04s + Galaxy A16, current code, **standard coordinates `29,6;41,6`**: idle, turn, both grenades, shot, PSS (vs 1.2 GB), the combined stress scenario, the map-size study (Moto), the first-load time and package size. |
+> | **C** | Minimal confrontation (DESIGN §8-10, scope sign-off first). |
+> | **D** | Materials milestone: glass (G-S1, blocks, the COMMIT; target = the strongest grenade beside the largest shipped glass surface), the 8 library materials. |
+> | **E** | Content scale (PP2/PP3 `.iprop`, user-tier models, the dormitory), then Phase 4. |
+>
+> **Parked, no step:** SURFACES SM-1 (when a map asks for it); audio; iOS; crash reporting (optimisation milestone); the content-rating check (when the content exists). **Risk accepted with this order:** regressions found only at B (the 2026-09-28 prop flood regression surfaced a week late); mitigation: every A step keeps `verify.py` green and the desktop `FRAME_PROBE` / `EVENT_FRAMES` rows of the standard scenario as a proxy.
+
 > ⏭️ **2026-10-04 — THE ORDER OF THE NEXT ROUNDS (Director-ratified; this block is the single source, the other documents point here).**
 > **Rule: close the engine before starting gameplay** (Director: *"vale a pena fechar a engine antes de começar a trabalhar com gameplay, principalmente o item 2D sobrando"*). R3D was closed by the Director on 2026-10-04; the rounds below are the engine finish he wants before gameplay, a track AFTER that close, tracked as **R3D-FINISH** in [`RENDER3D_MASTER_PLAN`](../../PROMPTS/PLANNING/RENDER3D_MASTER_PLAN.md).
 >

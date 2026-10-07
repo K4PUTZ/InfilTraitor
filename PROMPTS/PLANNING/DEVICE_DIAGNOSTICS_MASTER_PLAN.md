@@ -181,7 +181,7 @@ describe one feature, delete a claim instead of reconciling).
 | Plan | Owns |
 |---|---|
 | [`DETONATION_PERFORMANCE_MASTER_PLAN`](DETONATION_PERFORMANCE_MASTER_PLAN.md) | The post-detonation stall and how it was closed. The measurements and the method stand. |
-| [`PERFORMANCE_MASTER_PLAN`](PERFORMANCE_MASTER_PLAN.md) | Per-cell state leaving the TileSet; the standing engine perf architecture. |
+| [`PERFORMANCE_MASTER_PLAN`](../DONE/PERFORMANCE_MASTER_PLAN.md) | Per-cell state leaving the TileSet; the standing engine perf architecture. |
 | **This plan** | **Getting a trustworthy number off a physical Android device, reproducibly and without a human finger.** Nothing else. |
 
 When this harness produces a number that says the blast is too expensive, the

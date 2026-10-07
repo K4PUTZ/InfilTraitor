@@ -1,10 +1,13 @@
 # TOP_TEXTURE_MASTER_PLAN
 ## Horizontal Facades, Textured Interiors & Bake Persistence — Master Plan v1.0
 
+> 🗄️ **ARCHIVED 2026-10-07 (Director: "vamos arquivar, mas também dar uma reformada, atualizar as propostas").** Parts 1-2 closed; Part 3 (textured interiors) was absorbed by `RENDER3D_MASTER_PLAN` R3D-6 (an interior face is a UV-sampled facade) and is built. The bake persistence it describes was deleted at R3D-END END-4. **Live:** horizontal and floor surfaces are `SURFACES_MASTER_PLAN`. Nothing open is carried.
+
+
 > 🧭 **2026-09-27 — reorganization pointer.** Parts 1-2 closed. Part 3 (textured interiors) is unblocked but unscheduled, and is now conceptually absorbed by `RENDER3D_MASTER_PLAN`'s R3D-6 (interior = UV-sampled facade face) — read there for current status.
 
 ⏭️ **2026-09-15:** Part 3 (textured interiors) is absorbed by
-[`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md) R3D-6.
+[`RENDER3D_MASTER_PLAN`](../PLANNING/RENDER3D_MASTER_PLAN.md) R3D-6.
 - **Why:** in the 3D board an interior is a face that samples its facade through UVs.
   Building Part 3 on the 2D atlas now would mean building it twice.
 - **What stays authoritative:** Parts 1–2's as-built bake canon, for as long as the 2D
@@ -221,4 +224,4 @@ report appended to the prompt file with per-criterion verdicts including
 NOT MET; numbers must satisfy their criteria arithmetically.
 
 *Adopted 2026-07-10. Parts 1–2 closed 2026-07-11. Lives at
-`PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` — stays open at Part 3.*
+`PROMPTS/DONE/TOP_TEXTURE_MASTER_PLAN.md` — stays open at Part 3.*

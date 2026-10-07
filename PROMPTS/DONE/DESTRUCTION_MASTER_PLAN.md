@@ -1,6 +1,9 @@
 # DESTRUCTION_MASTER_PLAN
 ## Destructible Voxels, Voxel Floors & Slabs, Solid Texturing — v1.1
 
+> 🗄️ **ARCHIVED 2026-10-07 (Director: "vamos arquivar, mas também dar uma reformada, atualizar as propostas").** Core mechanics closed 2026-08-13; the 2D render half deleted at R3D-END. **Canon that stays binding (cite it from here):** the plan is the sole writer of `Voxel.visible`; the dirty-flag / TIC machinery (rule 5) now feeding `VoxelStore`; the decision register (D1-D30+); the 2026-10-07 stress-case ruling below (also in `WEAPON_MASTER_PLAN`). **Carried forward:** the segment-reset / rewind design is the checkpoint model (the Director ruled 2026-10-07: if the app is killed, only the checkpoint survives) and goes with the save work; the deferred gameplay layer (cover rule, noise on digging, rubble as terrain, breach as clue) goes to roadmap round 5 / minimal confrontation; the materials reopening is `MATERIALS_MASTER_PLAN` and `GLASS_MASTER_PLAN`.
+
+
 > ⏭️ **2026-10-07 — THE FRAG GRENADE IS THE STRESS CASE, AND IT SHIPS (Director).** `bombs/frag_grenade.json` + `CRATER_MAX_FACTOR` 0.40 are deliberately far stronger than a real fragmentation grenade (it digs the floor and makes craters): all the engine work so far (shots, VFX, bombs, fire, smoke, soot) is the stress layer, so everyday play has headroom. **This grenade stays in the game as one of the player's last acquisitions**; a reduced everyday bomb (crater, reach, damage) comes at finalisation. **Budgets are judged ON this grenade; never weaken it to meet one.** Measured 2026-10-07 (real PLAYGROUND plan, `blast_purity_selftest` at GU 29,6 / 41,6, damaged voxels 617 / 1 664): x0.8 on `destroy_ring_weights` alone -2 % / -2 % (the floor crater, radius-driven, does most of the destroying), x0.8 on all three tier weights -12 % / -4 %, plus the crater radius x0.8 -27 % / -9 %: **cost is not proportional to damage**, so the fixed parts (glass per pane, flash, light, cook walk) stay in the final game. Record: `PROMPTS/RESUMO_SESSAO_2026-10-07_PERF_REVIEW.md`.
 
 > 🧭 **2026-09-27 — reorganization pointer.** Core mechanics closed 2026-08-13; the 2D render half was deleted at R3D-END. The dirty-flag/TIC machinery stays canon (rule 5), feeding `VoxelStore` directly. No open thread of its own — materials reopening lives in `MATERIALS_MASTER_PLAN`.
@@ -13,7 +16,7 @@
 >
 > - **"On-device GPU cost of many TileMapLayers"** was measured
 >   (`DEVICE_DIAGNOSTICS_MASTER_PLAN` §10–§15) and answered by a decision: the board moves
->   to Godot 3D ([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).
+>   to Godot 3D ([`RENDER3D_MASTER_PLAN`](../PLANNING/RENDER3D_MASTER_PLAN.md)).
 > - **"Sole writer of `Voxel.visible`"** carries over as the sole writer of the packed voxel
 >   store that replaces the `Voxel` objects (R3D-1).
 >
@@ -41,7 +44,7 @@
 > The section below reopened this plan for the destructive materials. That work
 > has since become its own milestone — six ordered parts, of which this section
 > anticipated two — and it is owned by
-> [`MATERIALS_MASTER_PLAN.md`](MATERIALS_MASTER_PLAN.md). **Read this for the
+> [`MATERIALS_MASTER_PLAN.md`](../PLANNING/MATERIALS_MASTER_PLAN.md). **Read this for the
 > reasoning; read that for what to do next.**
 >
 > Two things it said are now superseded by the Director rather than by drift:
@@ -950,7 +953,7 @@ VL-PERSIST / dirty-repaint chain downstream needed **zero changes**.
 1.0, so every grenade call site is byte-for-byte unaffected) to carry the
 weapon's calibre. 6 new selftests in `blast_calculator_selftest.gd`, 27/27 PASS.
 Driven for real from `WeaponBenchController` — see
-[`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md) Parts 1–3 for the captures.
+[`WEAPON_MASTER_PLAN.md`](../PLANNING/WEAPON_MASTER_PLAN.md) Parts 1–3 for the captures.
 **`LINE` remains unbuilt**, and open question #3 below (does a bullet stop where
 a footstep stops?) is still unanswered — `CONE` currently reuses
 `blocked_edges`, the movement gate, because consistency with the existing flood
@@ -961,7 +964,7 @@ beat inventing a second occlusion rule on no evidence.
 **The stub `docs/production/roadmap.md` has been asking for since 2026-07-26**
 ("shot-based wall destruction... needs its own Part in
 `DESTRUCTION_MASTER_PLAN.md`). Now scoped, because the catalog that defines the
-shapes exists: [`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md), D1.
+shapes exists: [`WEAPON_MASTER_PLAN.md`](../PLANNING/WEAPON_MASTER_PLAN.md), D1.
 
 Every destructive input this engine has ever had is **omnidirectional**:
 `flood_gu_rings()` takes a source GU and expands outward. A fired weapon takes a
@@ -1015,7 +1018,7 @@ anything consumes it; Part 3 must not be bundled with it.
 
 0. **✅ ANSWERED 2026-07-29 — destruction rewinds with the segment, and commits
    at two points.** *(Director; surfaced by the weapons work — see
-   [`WEAPON_MASTER_PLAN.md`](WEAPON_MASTER_PLAN.md) D24 / S10. Full run-state
+   [`WEAPON_MASTER_PLAN.md`](../PLANNING/WEAPON_MASTER_PLAN.md) D24 / S10. Full run-state
    model in [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §1.)*
 
    > *"Sim precisa de reset para o segmento todo, incluindo buracos e destruição.

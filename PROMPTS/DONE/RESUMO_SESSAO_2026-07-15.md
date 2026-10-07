@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-07-15
 
-**Active master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md` — **PAUSED at Alpha Foundation milestone.**
+**Active master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md` — **PAUSED at Alpha Foundation milestone.**
 **VERSION at session start:** 0.9.21 (OCC-21d)
 **VERSION at session end:** 0.9.31 (OCC-HOVER-01)
 **Mode:** Overlord direct implementation, continued from 2026-07-14 session.

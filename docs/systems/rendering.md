@@ -303,7 +303,7 @@ Topmost ceiling layer + **view occlusion**.
 - **Ceiling layer** — `CeilingPropLayer` above wall storey N renders sprites/scenes
   (lamps, chandeliers, holofotes/spots, conduits, pipes, vents). Authored via a new
   `MapSpec.ceiling` key, perspective-rotated like every other layer.
-- **View occlusion** — canonical spec: **`PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`**.
+- **View occlusion** — canonical spec: **`PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`**.
 
 > ### ⚠️ Occlusion is VIEW, not STATE
 >

@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-07-22 (ALPHA GRENADE FOUNDATION, SESSION CLOSE)
 
-**Active master plan:** `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` — Part
+**Active master plan:** `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` — Part
 3 ("the trigger") landed this session, plan **⏸️ PAUSED again** at close
 (Director's call: lighting is the next real blocker, not more destruction
 mechanics — see Part 3's own status block for why).

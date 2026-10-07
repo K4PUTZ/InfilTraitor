@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-07-16 (ART SPEC + VISUAL BUGS)
 
-**Active master plan:** `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` —
+**Active master plan:** `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` —
 still **PAUSED at Alpha Horizontal Bake Foundation** (unchanged; this
 session was documentation + a Director-reported visual bug wave, not plan
 work).

@@ -1,6 +1,6 @@
 # OCC-01 — The occluded-cell set
 
-**Master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`, Part 1 (O3, O4′, O5).
+**Master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`, Part 1 (O3, O4′, O5).
 **Baseline:** tag `verified/v0.9.0` (= HEAD).
 **Wave 1 of the occlusion plan. This is the novel geometric piece and it lands alone.**
 **SCREENSHOT SESSION: ON for this phase** — run

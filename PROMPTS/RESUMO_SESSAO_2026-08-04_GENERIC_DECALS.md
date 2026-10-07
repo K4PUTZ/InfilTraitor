@@ -176,7 +176,7 @@ pistol/metal 0→1, pistol/stone 0→1).
 - `PROMPTS/D33_RUNTIME_DECAL_COMPOSITING.md` — full execution record, kept
   current through every part, including both wrong turns (§9/§10) and this
   session's real bugs.
-- `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` — D33 and D24 ledger rows
+- `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` — D33 and D24 ledger rows
   extended with the full arc.
 - `PROMPTS/PLANNING/WEAPON_MASTER_PLAN.md` — D17's soot note extended with
   D33-SOOT-01.

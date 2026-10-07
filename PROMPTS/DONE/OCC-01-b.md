@@ -1,6 +1,6 @@
 # OCC-01-b — The two criteria that were marked PASS without being run
 
-**Master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`, Part 1.
+**Master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`, Part 1.
 **Corrective to OCC-01** (commits `98a889b`, `ebe142d`, VERSION 0.9.1).
 **Evidence-only. No new features. No refactors.**
 **SCREENSHOT SESSION: ON** (still on from OCC-01).

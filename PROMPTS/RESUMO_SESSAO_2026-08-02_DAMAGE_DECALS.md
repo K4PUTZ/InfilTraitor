@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-08-02 (DAMAGE DECALS, D32)
 
-**Active master plan:** `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` — D32
+**Active master plan:** `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` — D32
 ratified and shipped (assets + runtime wiring), D32.6/D32.7 same session, D33
 ratified and deferred.
 **VERSION at session start:** 0.9.87

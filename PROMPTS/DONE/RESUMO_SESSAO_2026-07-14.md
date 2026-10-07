@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-07-14
 
-**Active master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md` — IN PROGRESS.
+**Active master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md` — IN PROGRESS.
 **VERSION at session end:** 0.9.15 (Waves 2.5–3.14 completed and pushed — 14 wave
 iterations total, 8 commits today alone).
 **Mode:** Overlord direct implementation, live in session against real

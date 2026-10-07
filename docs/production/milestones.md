@@ -475,7 +475,7 @@ registry.
 blocker is now resolved (`DESTRUCTION_MASTER_PLAN.md` Parts 0–3 shipped,
 2026-07-22; see "The Voxel Architecture Pivot" below), but Part 3 of this
 plan (textured interiors specifically) has not itself been picked up. Tracked
-in `PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
+in `PROMPTS/DONE/TOP_TEXTURE_MASTER_PLAN.md` (Part 3).
 
 **Deliverables (done):**
 - Continuous-plane facade model: wall side-faces render real material
@@ -727,7 +727,7 @@ fade machine.
 3. **Spot / directional light type** — extend `LightSource` (omni-only today) to
    support cone/spot for holofotes pointing at the floor; feeds `LightingController`.
 4. **View occlusion** — superseded in full by
-   **`PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`** (Parts 1–4). See the boxed warning
+   **`PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`** (Parts 1–4). See the boxed warning
    below: the old "cutaway by deletion" staging is retired, not merely reworded.
 5. **Ceiling content + tactical hooks (optional, own follow-up milestones)** —
    populate maps (lamps, conduits, pipes, vents); defer gameplay hooks (security
@@ -744,7 +744,7 @@ fade machine.
 
 **Occlusion model and architecture:**
 
-Canonical spec: **`PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`** (ratified 2026-07-12).
+Canonical spec: **`PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`** (ratified 2026-07-12).
 
 The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\*,
 `blocked_edges`, TicSystem) vs fine geometry/render grid — but the fine plane is
@@ -770,7 +770,7 @@ The two-plane model still holds — coarse gameplay grid (`256×128`: guards, A\
 > Occlusion is **VIEW**: its own `_occluded_cells` set, never persisted, painted with
 > TileSet alternative tiles (per-alternative `modulate`, same atlas region → zero extra
 > memory). See `OCCLUSION_MASTER_PLAN.md` §2 for the single-writer table, and
-> `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` for the destruction side.
+> `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` for the destruction side.
 
 **Progress:**
 

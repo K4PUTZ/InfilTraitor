@@ -1,6 +1,9 @@
 # PERFORMANCE_MASTER_PLAN
 ## Per-cell visual state leaves the TileSet — v1.0
 
+> 🗄️ **ARCHIVED 2026-10-07 (Director: "vamos arquivar, mas também dar uma reformada, atualizar as propostas").** Everything it set out to fix is closed or moot: per-cell visual state left the TileSet (P3, the cell plane, lives on in `CellPlaneStore` and feeds the 3D board); P4 (alternative-id encoding, mint cache) and P6 (stale floor cells) died with the 2D board at R3D-END; the `HIDE_VOXELS` re-measure and the base-occupancy cache were overtaken by R3D-LIGHT's incremental occupancy. **What stays canon:** the lessons (measure frame time not function CPU, expensive vs expensive-once, submission not particles). **Live performance work:** `DEVICE_DIAGNOSTICS_MASTER_PLAN` (budget §0.5, handset rows) and `RENDER3D_MASTER_PLAN` (R3D-LIGHT, R3D-CLAIMS). Nothing open is carried.
+
+
 > 🧭 **2026-09-27 — reorganization pointer.** P4/P6 are moot (2D board deleted at R3D-END); P3 (cell plane) survives and feeds `RENDER3D_MASTER_PLAN` directly. Current performance work lives in R3D-LIGHT (closed) and R3D-CLAIMS — read there for status.
 
 > ⏭️ **2026-09-23 — per-cell state keeps paying off in 3D:** real Godot lamps cost +24 ms of GPU on the Moto, so the board, the
@@ -19,7 +22,7 @@
 
 **Status:** ⏭️ **v2.5 — 2026-09-15: the render architecture decision moves this plan's
 open items.** The Director ratified the 3D render path
-([`RENDER3D_MASTER_PLAN`](RENDER3D_MASTER_PLAN.md)).
+([`RENDER3D_MASTER_PLAN`](../PLANNING/RENDER3D_MASTER_PLAN.md)).
 - **P4 and P6 are properties of the 2D `TileMapLayer` board — MOOT since 2026-09-25 (R3D-END deleted that board; END-4 took the
   alternative ids and the mint cache, END-5 the floor layer).**
   - P4: retire the alternative-id encoding and the mint cache. *(moot)*
@@ -3406,7 +3409,7 @@ on playback frames, `DEVICE_DIAGNOSTICS_MASTER_PLAN` §0.5) is a budget for **ou
 code on a **clean** device; SYS-CHECK-01 exists to make sure the device IS clean
 when we judge ourselves against it, and to be honest with the player when it is
 not. Full harness and device facts:
-[`DEVICE_DIAGNOSTICS_MASTER_PLAN`](DEVICE_DIAGNOSTICS_MASTER_PLAN.md).
+[`DEVICE_DIAGNOSTICS_MASTER_PLAN`](../PLANNING/DEVICE_DIAGNOSTICS_MASTER_PLAN.md).
 
 **Open, all of it:** when it runs (first launch only, or every launch behind a
 threshold), whether it is a blocking screen or a dismissible notice, how a player

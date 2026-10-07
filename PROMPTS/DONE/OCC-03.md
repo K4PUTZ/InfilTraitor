@@ -1,6 +1,6 @@
 # OCC-03 — The agent draws on top
 
-**Master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`, Part 3 (O7) — **first half.**
+**Master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`, Part 3 (O7) — **first half.**
 **Baseline:** tag `verified/v0.9.0` (= HEAD).
 **Wave 1. Independent of OCC-01 and OCC-02 — may run in parallel.**
 **SCREENSHOT SESSION: ON for this phase** (already turned on by OCC-01; if you

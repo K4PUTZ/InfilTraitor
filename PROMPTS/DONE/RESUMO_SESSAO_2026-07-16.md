@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-07-16
 
-**Active master plan:** `PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` —
+**Active master plan:** `PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` —
 **PAUSED at Alpha Ceiling Foundation** (end of this session).
 **VERSION at session start:** 0.9.31
 **VERSION at session end:** 0.9.44

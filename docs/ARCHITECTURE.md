@@ -197,7 +197,7 @@ every segment's environment while leaving the character intact.
    pass can cover it.
 
 Full reasoning and the open half live in
-[`DESTRUCTION_MASTER_PLAN.md`](../PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md) §7
+[`DESTRUCTION_MASTER_PLAN.md`](../PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md) §7
 question 0. This model deserves its own system doc once someone builds it; it is
 recorded here because nothing else in the docs states it and it decides what has
 to be serialisable.

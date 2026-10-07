@@ -1,7 +1,7 @@
 # RESUMO_SESSAO — 2026-07-28 (TEXTURE ORGANIZATION + FLOOR-ZONE BAKE, SESSION CLOSE)
 
 **Active master plan:** none formally reopened; closes one open item from
-`PROMPTS/PLANNING/DESTRUCTION_MASTER_PLAN.md` Part 4 ("legacy floor assets
+`PROMPTS/DONE/DESTRUCTION_MASTER_PLAN.md` Part 4 ("legacy floor assets
 retired") and delivers a new mechanism (`FLOOR-ZONE-BAKE`, documented in
 `docs/technical/BAKE_SYSTEM_REFERENCE.md`) not previously planned in any
 master plan — a same-session Director request, not a resumed wave.

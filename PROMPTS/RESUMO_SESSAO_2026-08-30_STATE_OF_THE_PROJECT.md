@@ -113,9 +113,9 @@ themselves were accurate; the *pointers* rotted.
 `docs/production/current_state.md` (new §"Where the project stands — 2026-08-30",
 global status table, explosion banner, animation/narrative/infrastructure rows) ·
 `docs/production/milestones.md` (Next Steps — superseding update 2026-08-30) ·
-`docs/README.md` (five index rows) · `PROMPTS/PLANNING/PERFORMANCE_MASTER_PLAN.md`
+`docs/README.md` (five index rows) · `PROMPTS/DONE/PERFORMANCE_MASTER_PLAN.md`
 · `PROMPTS/PLANNING/MATERIALS_MASTER_PLAN.md` ·
 `PROMPTS/PLANNING/SOOT_STORAGE_REFORM.md` ·
-`PROMPTS/PLANNING/TOP_TEXTURE_MASTER_PLAN.md` ·
-`PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md` ·
+`PROMPTS/DONE/TOP_TEXTURE_MASTER_PLAN.md` ·
+`PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md` ·
 `PROMPTS/PLANNING/DETONATION_PRESENTATION_MASTER_PLAN.md` · this file.

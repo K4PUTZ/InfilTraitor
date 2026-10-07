@@ -1,6 +1,6 @@
 # OCC-03-b — Your screenshots have no wall in them
 
-**Master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md`, Part 3.
+**Master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md`, Part 3.
 **Corrective to OCC-03** (commits `4446d5f`, `5eb5bed`, VERSION 0.9.2).
 **Evidence-only. The code is correct — do not change it.**
 **SCREENSHOT SESSION: ON.**

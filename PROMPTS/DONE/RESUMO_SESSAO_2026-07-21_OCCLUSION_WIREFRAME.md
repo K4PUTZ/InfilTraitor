@@ -1,6 +1,6 @@
 # RESUMO_SESSAO — 2026-07-21 (OCCLUSION WIREFRAME REDESIGN, SESSION CLOSE)
 
-**Active master plan:** `PROMPTS/PLANNING/OCCLUSION_MASTER_PLAN.md` — was
+**Active master plan:** `PROMPTS/DONE/OCCLUSION_MASTER_PLAN.md` — was
 **IN PROGRESS**, now **⏸️ PAUSED** as of this session's close (Director's
 call: resume once a real map has objects to occlude against; not scheduled).
 **VERSION at session start:** 0.9.63

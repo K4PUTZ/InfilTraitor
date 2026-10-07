@@ -29,3 +29,12 @@ No standard-scenario blast row exists on the current code.
 - A combined stress scenario (simultaneous events, dense content, many guards).
 - One handset round on both phones, standard coordinates, current code.
 - Housekeeping: `export/` holds 47 throwaway APKs (6.0 GB); ~115 untracked files in `Screenshots/history/`.
+
+## Consolidation (later the same day)
+All debates closed; the decisions and the ordered activities are the 2026-10-07 top block of `docs/production/roadmap.md` (single source):
+checkpoint-only lifecycle; procedural art generated at first load and cached; the four performance proposals ratified; JAMES suspended;
+`PERFORMANCE`, `TOP_TEXTURE`, `OCCLUSION`, `DESTRUCTION` archived to `PROMPTS/DONE/` with reform headers (33 files relinked).
+
+## Resume point (next session)
+Step **A1** of the roadmap order: engine tools on the desktop (cosmetic density per device, the hit-stop under the flash, the combined
+stress scenario, the map-size study tooling, first-load art + export audit). No handset run until step B.

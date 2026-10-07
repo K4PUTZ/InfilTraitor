@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**270 scripts · 81765 lines total** (under `godot/scripts/`)
+**270 scripts · 81766 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2206,7 +2206,7 @@ extends `Node2D` · 68 lines
 
 ### `vent_emitter.gd`
 
-`class_name VentEmitter` · extends `Node` · 82 lines
+`class_name VentEmitter` · extends `Node` · 83 lines
 
 `godot/scripts/overlays/vent_emitter.gd`
 

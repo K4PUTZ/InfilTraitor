@@ -1454,12 +1454,17 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 		var hold_peak: int = Time.get_ticks_usec()
 		flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 		_prof_clock("flash hold_frame", hold_peak)
+		## A1 hit-stop: the world changes under the inverted screen, on the peak frame.
+		if presenter.hit_stop:
+			_prof("HIT-STOP commit %.2f ms (under the flash peak)" % presenter.commit_under_flash(waves, room._voxel_board))
 		await _pace(presenter)
 		## The fade is UNCHANGED at three frames — it is what keeps the strobe
 		## from reading as a single dropped frame, and nothing asked for it to
 		## move.
 		for i in range(3):
 			flash_overlay.strobe_negative_amount = 1.0 - float(i + 1) / 3.0
+			if i == 0 and presenter.hit_stop:
+				_prof("HIT-STOP glass tail %.2f ms (flash frame after the peak)" % presenter.run_hit_stop_tail(room._voxel_board))
 			var hold_i: int = Time.get_ticks_usec()
 			flash_overlay.hold_frame(ExplosionFlashOverlay.FlashMode.NEGATIVE)
 			_prof_clock("flash hold_frame (fade)", hold_i)
@@ -1492,6 +1497,9 @@ func _make_presenter(delta) -> DetonationPresenter:
 		room.event_probe_report("detonation")
 		_active_presenter = null)
 	presenter.consequence_room = room
+	## A1 — the strongest grenade commits under its flash (BombDef tag); `HIT_STOP=0` is the ablation for A/B timing.
+	var bomb = Registries.get_bomb_registry().get_bomb(BOMB_ID)
+	presenter.hit_stop = bomb != null and bomb.tags.has("hit_stop") and DevFlags.value("HIT_STOP", "1") != "0"
 	## D-7 (§7.4) — the Delta carries the cook's light field inputs; the presenter
 	## hands them to `Room.play_consequence_light()` so it skips the map-wide
 	## re-derivation.

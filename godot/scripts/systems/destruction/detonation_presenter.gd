@@ -87,19 +87,16 @@ func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {},
 
 func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> void:
 	_t0_ms = Time.get_ticks_msec()
-	## §7.1 — the scorch rides in the commit. The FADE (below) is what arrives
-	## afterwards, and it is a plane walk, not a second set of cell writes.
-	_writer.soot_clean = false
-	var ramp: Array = _collect_soot_ramp(plan, voxel_board)
-	_commit_frame(plan, voxel_board)
+	## A hit-stop blast has already committed under the flash (`commit_under_flash()`); every other blast commits here.
+	if not _committed:
+		commit_under_flash(plan, voxel_board)
+	var ramp: Array = _ramp
+	_committed = false
 	## The crater is drawn NOW (Director, 2026-09-26: the crater two frames late looked wrong). R3D-LIGHT: the glass flush (crack
 	## re-cut, shard rims, craze masks: ~46 ms on the Moto for a blast that breaks glass) is the channel's SECOND frame's
 	## (`_run_tail()`), followed by a second remesh when the rims shaped any glass, because the glass mesh reads the shaped
 	## cells they record: the pane is gone in the crater frame and its shards arrive a frame later.
-	_tail_pending = true
 	var board3d: Node = _board3d()
-	if board3d != null and consequence_delta != null:
-		board3d.on_blast_commit(consequence_delta)
 	## Director, 2026-09-21 (a video of the blast on the Moto): the scorch was arriving BEFORE the crater and the smoke read.
 	## It now arrives AFTER the crater is drawn, in steps: the ramp is armed here, `_run_consequence` steps it from `soot_start_s`
 	## (0 = right after the commit), and whatever is left after the channel is finished by `_finish_soot`.
@@ -153,6 +150,51 @@ func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> voi
 		if board3d != null and is_instance_valid(board3d):
 			board3d.on_blast_light(consequence_delta)
 	finished.emit()
+
+
+## Roadmap A1 (Director, 2026-10-07) — THE DESIGNED HIT-STOP. The strongest grenade (BombDef tag `hit_stop`) commits UNDER its own
+## negative flash instead of after it: the heavy frames (cell writes, the crater remesh, then the glass flush and its second remesh)
+## land while the screen is inverted, so the hitch reads as the blast's weight. The work is split in two frames on purpose (the
+## commit, then `run_hit_stop_tail()`), each held to `hit_stop_ceiling_ms`: a frame past it is reported, never silently accepted.
+## Every other blast is unchanged: it commits at `start()`, held to the 100 ms line by the budgets.
+var hit_stop: bool = false
+var hit_stop_ceiling_ms: float = 200.0
+var _committed: bool = false
+var _ramp: Array = []
+
+
+## Beat 2, the commit frame, callable early. Idempotent: `start()` calls it itself when nobody did. Returns the frame's cost in ms.
+func commit_under_flash(plan: Dictionary, voxel_board) -> float:
+	if _committed:
+		return 0.0
+	var t0: int = Time.get_ticks_usec()
+	## §7.1 — the scorch rides in the commit. The FADE is what arrives afterwards, and it is a plane walk, not a second set of
+	## cell writes.
+	_writer.soot_clean = false
+	_ramp = _collect_soot_ramp(plan, voxel_board)
+	_commit_frame(plan, voxel_board)
+	_tail_pending = true
+	var board3d: Node = _board3d()
+	if board3d != null and consequence_delta != null:
+		board3d.on_blast_commit(consequence_delta)
+	_committed = true
+	return _report_hit_stop("commit", t0)
+
+
+## The glass flush owed by the commit (crack re-cut, shard rims, craze masks, the second remesh), on the flash's next frame.
+func run_hit_stop_tail(voxel_board) -> float:
+	var t0: int = Time.get_ticks_usec()
+	_run_tail(voxel_board)
+	return _report_hit_stop("glass tail", t0)
+
+
+func _report_hit_stop(label: String, since_usec: int) -> float:
+	var ms: float = float(Time.get_ticks_usec() - since_usec) / 1000.0
+	if hit_stop:
+		print("[E-PRESENT] hit-stop %s frame %.2f ms (ceiling %.0f)" % [label, ms, hit_stop_ceiling_ms])
+		if ms > hit_stop_ceiling_ms:
+			push_warning("[DetonationPresenter] hit-stop %s took %.1f ms, past its %.0f ms ceiling" % [label, ms, hit_stop_ceiling_ms])
+	return ms
 
 
 ## How many stray puffs may still be on screen before the light runs — the last

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**277 scripts · 82246 lines total** (under `godot/scripts/`)
+**277 scripts · 82296 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2376,7 +2376,7 @@ extends `Node2D` · 68 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 550 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 592 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2392,6 +2392,8 @@ extends `Node2D` · 68 lines
 - `var storey_bias_s: float = 0.020`
 - `var jitter_s: float = 0.060`
 - `var consequence_max_seconds: float = 0.75`
+- `var hit_stop: bool = false`
+- `var hit_stop_ceiling_ms: float = 200.0`
 - `var light_smoke_slack: int = 4`
 - `var light_smoke_max_s: float = 3.5`
 - `var soot_fade_frames: int = 5`
@@ -2401,6 +2403,8 @@ extends `Node2D` · 68 lines
 **Public API**
 - `func set_vfx_targets(ember_overlay: EmberOverlay, smoke_tints: Dictionary = {}, debris_overlay: DebrisOverlay = null, debris_colors: Dictionary = {}) -> void:`
 - `func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> void:`
+- `func commit_under_flash(plan: Dictionary, voxel_board) -> float:`
+- `func run_hit_stop_tail(voxel_board) -> float:`
 
 ---
 
@@ -5635,7 +5639,7 @@ extends `Node2D` · 63 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1593 lines
+`class_name TestZoneController` · 1601 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 

@@ -505,3 +505,17 @@ Overlay Performance was already re-scoped to LOW on 2026-07-15), Low Priority
 Issues 4 → 2. Numbering gaps in Critical Debt (no items 1–2) and Medium/Low
 Priority sections are pre-existing from earlier resolved-item migrations, not
 touched here — a full renumbering is out of scope for a consistency pass.
+
+
+## Stress scenario findings (2026-10-07, roadmap A1)
+Found by `tools/persistent/stress_scenario.py` (desktop, `maps/STRESS.map.json`); none fixed, each needs a decision.
+1. **Overlapping blasts share one `_active_presenter`.** A second grenade thrown while the first blast's consequence still plays replaces the
+   reference; the log then shows ONE "smoke cleared" / "light landed" / `WAVES end` for two blasts, and the process exits with
+   "1 resources still in use". Reachable in play only once a second throw can start after the action lock lifts (dev grenades today).
+   The control (`--mode sequential`) logs two of each and no leak. Needs: a list of live presenters, or a refusal to start a blast
+   while one is in its light/smoke tail.
+2. **A throw builds its plan inside the throw frame** (`[P-COOK] ... pre-production was short by 168 ms`; an `aim` first does not warm
+   it): the glass-hall blast's BEAT 0 frame is ~490-520 ms on the desktop (census 340 ms), against 205 ms for PLAYGROUND's glass box.
+   This is plan cost, not the hit-stop (commit 19 ms, glass tail 14 ms). Whether the real aim path hands its prediction to the
+   throw on a handset is the question for step B.
+3. The pane grouper rejects a pane wider than 8 GU x 4 storeys (G-D23, loud `ERROR`): the generator keeps panes at 8.

@@ -453,8 +453,8 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 <!-- AUTO:BEGIN inventory -->
 **Code & Test Inventory**
 
-- GDScript modules: 198
-- Test scripts: 73
+- GDScript modules: 199
+- Test scripts: 74
 - Known maps: 3
 - Shipped facade files: 0
 - Archived prompts: 32

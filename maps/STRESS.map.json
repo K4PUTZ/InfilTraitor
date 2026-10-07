@@ -1,0 +1,2532 @@
+{
+ "format": "infiltraitor-map",
+ "schema_version": 3,
+ "id": "STRESS",
+ "meta": {
+  "title": "Combined Stress Scenario",
+  "description": "Roadmap A1 (2026-10-07). A 3x3 grid of eight-material rooms with a glass hall (centre-east), 24 guards, 60 props, 14 lights. Written by tools/persistent/gen_stress_map.py; played by tools/persistent/stress_scenario.py."
+ },
+ "description": "Roadmap A1 (2026-10-07). A 3x3 grid of eight-material rooms with a glass hall (centre-east), 24 guards, 60 props, 14 lights. Written by tools/persistent/gen_stress_map.py; played by tools/persistent/stress_scenario.py.",
+ "sections": {
+  "board": {
+   "inner_size": [
+    44,
+    40
+   ],
+   "buffer": 5,
+   "floor_tile": "floor_SE",
+   "v": 1
+  },
+  "actors": {
+   "agent_start": [
+    22,
+    20
+   ],
+   "guards": [
+    [
+     [
+      3,
+      3
+     ],
+     [
+      4,
+      3
+     ]
+    ],
+    [
+     [
+      7,
+      6
+     ],
+     [
+      8,
+      6
+     ]
+    ],
+    [
+     [
+      11,
+      9
+     ],
+     [
+      12,
+      9
+     ]
+    ],
+    [
+     [
+      17,
+      4
+     ],
+     [
+      18,
+      4
+     ]
+    ],
+    [
+     [
+      21,
+      7
+     ],
+     [
+      22,
+      7
+     ]
+    ],
+    [
+     [
+      25,
+      3
+     ],
+     [
+      26,
+      3
+     ]
+    ],
+    [
+     [
+      32,
+      5
+     ],
+     [
+      33,
+      5
+     ]
+    ],
+    [
+     [
+      36,
+      8
+     ],
+     [
+      37,
+      8
+     ]
+    ],
+    [
+     [
+      40,
+      4
+     ],
+     [
+      41,
+      4
+     ]
+    ],
+    [
+     [
+      3,
+      16
+     ],
+     [
+      4,
+      16
+     ]
+    ],
+    [
+     [
+      7,
+      19
+     ],
+     [
+      8,
+      19
+     ]
+    ],
+    [
+     [
+      11,
+      22
+     ],
+     [
+      12,
+      22
+     ]
+    ],
+    [
+     [
+      21,
+      20
+     ],
+     [
+      22,
+      20
+     ]
+    ],
+    [
+     [
+      25,
+      16
+     ],
+     [
+      26,
+      16
+     ]
+    ],
+    [
+     [
+      32,
+      18
+     ],
+     [
+      33,
+      18
+     ]
+    ],
+    [
+     [
+      40,
+      17
+     ],
+     [
+      41,
+      17
+     ]
+    ],
+    [
+     [
+      3,
+      29
+     ],
+     [
+      4,
+      29
+     ]
+    ],
+    [
+     [
+      7,
+      32
+     ],
+     [
+      8,
+      32
+     ]
+    ],
+    [
+     [
+      11,
+      35
+     ],
+     [
+      12,
+      35
+     ]
+    ],
+    [
+     [
+      21,
+      33
+     ],
+     [
+      22,
+      33
+     ]
+    ],
+    [
+     [
+      25,
+      36
+     ],
+     [
+      26,
+      36
+     ]
+    ],
+    [
+     [
+      32,
+      31
+     ],
+     [
+      33,
+      31
+     ]
+    ],
+    [
+     [
+      36,
+      34
+     ],
+     [
+      37,
+      34
+     ]
+    ],
+    [
+     [
+      40,
+      29
+     ],
+     [
+      41,
+      29
+     ]
+    ]
+   ],
+   "v": 1
+  },
+  "blocks": {
+   "items": [
+    {
+     "gu": [
+      14,
+      0
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      1
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      2
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      3
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      4
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      7
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      8
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      9
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      10
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      11
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      12
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      13
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      14
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      15
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      16
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      17
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      20
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      21
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      22
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      23
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      24
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      25
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      26
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      27
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      28
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      29
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      30
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      31
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      34
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      35
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      36
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      37
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      38
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      39
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      0
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      1
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      2
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      3
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      4
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      7
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      8
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      9
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      10
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      11
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      12
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      13
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      14
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      15
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      16
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      17
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      20
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      21
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      22
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      23
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      24
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      25
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      26
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      27
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      28
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      29
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      30
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      31
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      34
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      35
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      36
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      37
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      38
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      39
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      13
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      1,
+      13
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      2,
+      13
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      3,
+      13
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      4,
+      13
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      5,
+      13
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      13
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      9,
+      13
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      13
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      11,
+      13
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      12,
+      13
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      13,
+      13
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      13
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      15,
+      13
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      16,
+      13
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      17,
+      13
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      18,
+      13
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      19,
+      13
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      22,
+      13
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      13
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      24,
+      13
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      25,
+      13
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      26,
+      13
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      27,
+      13
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      28,
+      13
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      13
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      30,
+      13
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      31,
+      13
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      32,
+      13
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      33,
+      13
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      34,
+      13
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      37,
+      13
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      38,
+      13
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      39,
+      13
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      40,
+      13
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      41,
+      13
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      42,
+      13
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      43,
+      13
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      0,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      1,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      2,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      3,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      4,
+      26
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      5,
+      26
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      8,
+      26
+     ],
+     "material": "fabric",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      9,
+      26
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      10,
+      26
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      11,
+      26
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      12,
+      26
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      13,
+      26
+     ],
+     "material": "metal",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      14,
+      26
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      15,
+      26
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      16,
+      26
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      17,
+      26
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      18,
+      26
+     ],
+     "material": "brick",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      19,
+      26
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      22,
+      26
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      23,
+      26
+     ],
+     "material": "concrete",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      24,
+      26
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      25,
+      26
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      26,
+      26
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      27,
+      26
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      28,
+      26
+     ],
+     "material": "wood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      29,
+      26
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      30,
+      26
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      31,
+      26
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      32,
+      26
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      33,
+      26
+     ],
+     "material": "plywood",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      34,
+      26
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      37,
+      26
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      38,
+      26
+     ],
+     "material": "cardboard",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      39,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      40,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      41,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      42,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    },
+    {
+     "gu": [
+      43,
+      26
+     ],
+     "material": "stone",
+     "storeys": 2
+    }
+   ],
+   "v": 1
+  },
+  "props": {
+   "items": [
+    {
+     "def": "crate_full",
+     "gu": [
+      2,
+      2
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "crate_plywood",
+     "gu": [
+      5,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "wood_table",
+     "gu": [
+      8,
+      3
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "desk",
+     "gu": [
+      11,
+      8
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "locker",
+     "gu": [
+      4,
+      4
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "bookshelf",
+     "gu": [
+      7,
+      9
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "bin",
+     "gu": [
+      10,
+      5
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "chair",
+     "gu": [
+      16,
+      4
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "crate_full",
+     "gu": [
+      19,
+      9
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "crate_plywood",
+     "gu": [
+      22,
+      5
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "wood_table",
+     "gu": [
+      25,
+      10
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "desk",
+     "gu": [
+      17,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "locker",
+     "gu": [
+      20,
+      2
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "bookshelf",
+     "gu": [
+      23,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "bin",
+     "gu": [
+      31,
+      6
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "chair",
+     "gu": [
+      34,
+      2
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "crate_full",
+     "gu": [
+      37,
+      7
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "crate_plywood",
+     "gu": [
+      40,
+      3
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "wood_table",
+     "gu": [
+      32,
+      8
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "desk",
+     "gu": [
+      35,
+      4
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "locker",
+     "gu": [
+      38,
+      9
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "bookshelf",
+     "gu": [
+      3,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "bin",
+     "gu": [
+      6,
+      20
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "chair",
+     "gu": [
+      9,
+      16
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "crate_full",
+     "gu": [
+      2,
+      21
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "crate_plywood",
+     "gu": [
+      5,
+      17
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "wood_table",
+     "gu": [
+      8,
+      22
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "desk",
+     "gu": [
+      11,
+      18
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "locker",
+     "gu": [
+      17,
+      17
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "bookshelf",
+     "gu": [
+      20,
+      22
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "bin",
+     "gu": [
+      23,
+      18
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "chair",
+     "gu": [
+      26,
+      23
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "crate_full",
+     "gu": [
+      18,
+      19
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "crate_plywood",
+     "gu": [
+      21,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "wood_table",
+     "gu": [
+      24,
+      20
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "desk",
+     "gu": [
+      32,
+      19
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "locker",
+     "gu": [
+      35,
+      15
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "bookshelf",
+     "gu": [
+      38,
+      20
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "bin",
+     "gu": [
+      41,
+      16
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "chair",
+     "gu": [
+      39,
+      22
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "crate_full",
+     "gu": [
+      4,
+      28
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "crate_plywood",
+     "gu": [
+      7,
+      33
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "wood_table",
+     "gu": [
+      10,
+      28
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "desk",
+     "gu": [
+      3,
+      33
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "locker",
+     "gu": [
+      6,
+      28
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "bookshelf",
+     "gu": [
+      9,
+      33
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "bin",
+     "gu": [
+      2,
+      28
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "chair",
+     "gu": [
+      18,
+      30
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "crate_full",
+     "gu": [
+      21,
+      35
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "crate_plywood",
+     "gu": [
+      24,
+      30
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "wood_table",
+     "gu": [
+      16,
+      35
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "desk",
+     "gu": [
+      19,
+      30
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "locker",
+     "gu": [
+      22,
+      35
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "bookshelf",
+     "gu": [
+      25,
+      30
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "bin",
+     "gu": [
+      33,
+      32
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "chair",
+     "gu": [
+      36,
+      37
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    },
+    {
+     "def": "crate_full",
+     "gu": [
+      39,
+      32
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 0
+    },
+    {
+     "def": "crate_plywood",
+     "gu": [
+      31,
+      37
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 90
+    },
+    {
+     "def": "wood_table",
+     "gu": [
+      34,
+      32
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 180
+    },
+    {
+     "def": "desk",
+     "gu": [
+      37,
+      37
+     ],
+     "storey": 0,
+     "vox_offset": [
+      0,
+      0
+     ],
+     "rot": 270
+    }
+   ],
+   "v": 1
+  },
+  "floor_zones": {
+   "items": [
+    {
+     "gu": [
+      0,
+      0
+     ],
+     "size": [
+      44,
+      40
+     ],
+     "material": "concrete"
+    }
+   ],
+   "v": 2
+  },
+  "damage_materials": {
+   "materials": [
+    "concrete",
+    "metal",
+    "stone",
+    "wood",
+    "brick",
+    "cardboard",
+    "fabric",
+    "plywood",
+    "glass"
+   ],
+   "v": 1
+  },
+  "legacy_compiler": {
+   "wall_height": 1,
+   "access_points": [],
+   "dividers": [],
+   "v": 1,
+   "lights": [
+    {
+     "x": 6,
+     "y": 6,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 20,
+     "y": 6,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 35,
+     "y": 6,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 6,
+     "y": 19,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 20,
+     "y": 19,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 35,
+     "y": 19,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 6,
+     "y": 32,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 20,
+     "y": 32,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 35,
+     "y": 32,
+     "height_class": 4,
+     "radius": 9,
+     "intensity": 1.0
+    },
+    {
+     "x": 22,
+     "y": 13,
+     "height_class": 3,
+     "radius": 8,
+     "intensity": 0.9
+    },
+    {
+     "x": 22,
+     "y": 26,
+     "height_class": 3,
+     "radius": 8,
+     "intensity": 0.9
+    },
+    {
+     "x": 14,
+     "y": 20,
+     "height_class": 3,
+     "radius": 8,
+     "intensity": 0.9
+    },
+    {
+     "x": 36,
+     "y": 20,
+     "height_class": 3,
+     "radius": 10,
+     "intensity": 1.2
+    },
+    {
+     "x": 36,
+     "y": 30,
+     "height_class": 3,
+     "radius": 8,
+     "intensity": 0.9
+    }
+   ]
+  },
+  "panels": {
+   "items": [
+    {
+     "gu": [
+      31,
+      17
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      32,
+      17
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      33,
+      17
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      34,
+      17
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      35,
+      17
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      36,
+      17
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      37,
+      17
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      38,
+      17
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      31,
+      21
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      32,
+      21
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      33,
+      21
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      34,
+      21
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      35,
+      21
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      36,
+      21
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      37,
+      21
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    },
+    {
+     "gu": [
+      38,
+      21
+     ],
+     "face": "SW",
+     "material": "glass",
+     "storeys": 2,
+     "comment": "the glass hall"
+    }
+   ],
+   "v": 1
+  },
+  "roofs": {
+   "v": 1,
+   "items": [
+    {
+     "gu": [
+      30,
+      14
+     ],
+     "size": [
+      13,
+      11
+     ],
+     "storeys": 2,
+     "material": "glass",
+     "kind": "flat",
+     "comment": "the glass hall's roof"
+    }
+   ]
+  }
+ }
+}

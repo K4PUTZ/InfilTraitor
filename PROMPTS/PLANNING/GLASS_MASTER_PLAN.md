@@ -1,5 +1,7 @@
 # GLASS MASTER PLAN — the physics of glass
 
+> ⏭️ **2026-10-07 — NO ALL-GLASS ROOMS IN INFILTRAITOR 1 (Director: "seria legal, mas fica pro Infiltraitor 2").** PLAYGROUND's glass box (8 edges, 2 storeys, glass roof) is harsher than any shipped map: it is what makes the second grenade's COMMIT 632-641 ms on the Moto / 294-331 ms on the Galaxy and its Moto mean 42.8 ms. It stays the standard scenario's known worst case. When the glass work resumes (materials milestone, plenty of margin to cut), the realistic target is the strongest grenade next to the LARGEST glass surface a shipped map holds (a window wall), which should become a level-design limit. A weaker blast can switch a pane from shatter to craze, which has its own cost (`claim_glass_craze` 73 ms desktop). Record: `PROMPTS/RESUMO_SESSAO_2026-10-07_PERF_REVIEW.md`.
+
 > 🧭 **2026-10-04 — order of the next rounds.** See [`docs/production/roadmap.md`](../../docs/production/roadmap.md)'s top block (single source) and `RENDER3D_MASTER_PLAN` v1.61 (R3D-FINISH). Glass (G-S1, blocks, the COMMIT spread) sits in the **materials milestone**, after the stealth loop and minimal confrontation, not in R3D-FINISH.
 
 > 🔓 **2026-10-02 — GLASS REOPENED, PLANNED FOR THE MATERIALS MILESTONE (Director: "isso faz parte da milestone de materiais, podemos reabrir o vidro e deixar planejado pra depois").** Nothing is built from this block. The R3D close comes first.

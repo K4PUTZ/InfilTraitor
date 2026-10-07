@@ -444,6 +444,7 @@ number. If a total is ever quoted as current, it has to be re-measured first.
 - RESUMO_SESSAO_2026-10-04_R3D_RETIRE_2D.md
 - RESUMO_SESSAO_2026-10-05_R3D_FINISH.md
 - RESUMO_SESSAO_2026-10-05_R3D_LOOK.md
+- RESUMO_SESSAO_2026-10-06_SURFACES.md
 <!-- AUTO:END pending_prompts -->
 
 ### Inventory

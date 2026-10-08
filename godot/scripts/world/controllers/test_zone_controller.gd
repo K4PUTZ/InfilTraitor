@@ -1051,10 +1051,22 @@ func _begin_preproduction(gu: Vector2i) -> void:
 	var bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
 	if bomb_def == null or room._edge_registry == null or room._slab_registry == null:
 		return
+	var t0: int = Time.get_ticks_usec()
 	var ctx := _build_detonation_ctx(gu)
-	_pump_prediction(room._prediction_cache.request(
+	var t1: int = Time.get_ticks_usec()
+	var job: DetonationPrediction = room._prediction_cache.request(
 		PredictionCache.blast_signature(BOMB_ID, gu),
-		room._world_revision, bomb_def, gu, ctx))
+		room._world_revision, bomb_def, gu, ctx)
+	## The synchronous part of the throw's first frame: the ctx build and the cache request (`begin()`); everything after is the sliced pump.
+	_prof("PRE-PRODUCTION start — ctx %.1f ms, request %.1f ms" % [float(t1 - t0) / 1000.0, float(Time.get_ticks_usec() - t1) / 1000.0])
+	if room._dev_flag_on("OPENED_EDGES_CHECK"):
+		var fast: Dictionary = room._blast_opened_edge_keys()
+		var full: Dictionary = room.opened_edge_keys_full()
+		var same: bool = fast.size() == full.size()
+		for key in full:
+			same = same and fast.has(key)
+		print("[OPENED-EDGES] fast %d vs full %d key(s) — %s" % [fast.size(), full.size(), "SAME" if same else "MISMATCH"])
+	_pump_prediction(job)
 
 
 ## Advances the cache's in-flight prediction one budget per frame until it
@@ -1083,6 +1095,11 @@ func _pump_prediction(job: DetonationPrediction = null) -> void:
 	_prof("PUMP ends — %d frame(s) pumped, %.1f ms of real work at a %.1f ms budget (%s)" % [
 		pumped, float(pump_work_us) / 1000.0, predict_budget_ms,
 		"prediction finished" if finished else "interrupted"])
+	## The per-phase evidence the budget gate needs: which phase owns the worst single step (a step stops only at a chunk boundary).
+	if job != null:
+		_prof("PUMP worst step %.1f ms in phase %s over %d step(s)" % [job.worst_step_ms, job.worst_step_phase, job.steps])
+		for line in job.profile_lines():
+			_prof("PUMP phase " + line)
 	if finished and job != null:
 		_warm_prediction(job)
 	_pumping = false

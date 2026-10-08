@@ -4060,11 +4060,40 @@ func _movement_edge_set() -> Dictionary:
 ## CRACKED as present); only a real opening is listed. Recomputed on demand (the
 ## aim dome rebuilds on hover): it walks a handful of edges, and `build_plan()`'s
 ## revision counter is the wrong granularity for a per-hover overlay.
+##
+## A1 (2026-10-08): the full walk visits EVERY edge of the registry, ~220 ms on the Galaxy A16 for STRESS, and the throw's first frame paid it twice per
+## grenade (`_blocked_edges_dict()`) besides every aim hover. An edge can only be open if one of its voxels is GONE, and the store already indexes
+## those (`VoxelStore.gone_claims`, pinned by `voxel_store_selftest`), so only the edges owning a gone claim are asked. Same answer as the full walk
+## (`opened_edge_keys_full()`, which the selftest compares); with no store (a synthetic fixture) it falls back to that walk.
 func _blast_opened_edge_keys() -> Dictionary:
-	var opened: Dictionary = {}
 	if _edge_registry == null:
-		return opened
-	for edge in _edge_registry.all_edges():
+		return {}
+	var store: VoxelStore = VoxelStore.active
+	if store == null or store.claims == 0:
+		return opened_edge_keys_full()
+	var edge_ids: Dictionary = {}
+	for claim in store.gone_claims:
+		var container: Object = store.containers[store.claim_container[claim]]
+		if container is Slice:
+			edge_ids[(container as Slice).edge_id] = true
+	var candidates: Array = []
+	for id in edge_ids:
+		var edge: Edge = _edge_registry.get_edge(id)
+		if edge != null:
+			candidates.append(edge)
+	return _opened_keys_of(candidates)
+
+
+## The walk over EVERY edge: the reference `_blast_opened_edge_keys()` is held to, and its fallback.
+func opened_edge_keys_full() -> Dictionary:
+	if _edge_registry == null:
+		return {}
+	return _opened_keys_of(_edge_registry.all_edges())
+
+
+func _opened_keys_of(edges: Array) -> Dictionary:
+	var opened: Dictionary = {}
+	for edge in edges:
 		if PassageQuery.passage_class(edge, _edge_registry) != PassageQuery.PassageClass.NONE:
 			opened[WallEdgeData.edge_key(edge.gu_a, edge.gu_b)] = true
 	return opened
@@ -5212,7 +5241,7 @@ func begin_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 ## Phases: 0 scatter every material's shards and open ONE surface index for the union of their columns (the walk over the map's slabs
 ## is the expensive part: it used to run once per material); 5 warm each material's debris pile; 1 walk the index in slices; 2 per material, the landings off that index + the rain;
 ## 3 per material, the debris piles. Landings are the same rows `GlassFall.plan_landings()` returns for each material alone (a column's
-## surface levels do not depend on which other columns the index covers; `DetonationPlanBuilder._land_shards` relies on the same fact).
+## surface levels do not depend on which other columns the index covers; `DetonationPlanBuilder._glass_step` relies on the same fact).
 func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 	if bool(job["done"]):
 		return true

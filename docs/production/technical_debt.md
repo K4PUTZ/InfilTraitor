@@ -558,3 +558,20 @@ Desktop result, STRESS: worst frame of the glass grenade ~540 -> **119-127 ms** 
 overlapped and sequential, 0 ERROR lines, both lights land, no exit leak; `verify.py smoke` green. **Predicted for the Moto, to be tested:**
 the index walk is the ~850 ms piece; sliced at 110 ms per flash frame + 8 ms per consequence frame it should disappear from the flash and finish
 in ~1 s of consequence frames. The stage-0 world commit (~110 ms desktop, 425 on the Moto) is the largest piece left and is NOT split further.
+
+## A1 Galaxy A16 round (2026-10-08, STRESS, `stress_scenario.py --mode sequential --device R5CY8122K7D`): the throw's first frame and the glass stage
+First handset run of the A1 rework (the Galaxy; the Moto was offline). Hit-stop within its ceiling from the start (commit frame 53-80 ms, glass tail
+6-24 ms, ceiling 200; no `past its ceiling`). The worst frame of the first blast was NOT the hit-stop: it was the SECOND grenade's throw landing in
+the first blast's tail (356 ms; the timeline label `RELEASE` is `throw starts, pre-production starts`). Two causes, found with `PUMP worst step`
+(per-phase worst visit, newly logged) and `PRE-PRODUCTION start` (ctx / request ms, newly logged):
+1. **`_build_detonation_ctx` was 236-249 ms on every throw's first frame** — `_blocked_edges_dict()` -> `Room._blast_opened_edge_keys()` asked
+   `PassageQuery.passage_class` of EVERY edge in the registry (a walk over the whole map) for 168 blocked edges. Now only the edges owning a
+   `VoxelStore.gone_claims` claim are asked (an edge cannot be open without a gone voxel); `Room.opened_edge_keys_full()` is the reference walk.
+   Real path, flag `OPENED_EDGES_CHECK=1`: fast == full (0 = 0 after a brick blast; 6 = 6 after the glass hall blast). **ctx 242/234 -> 1.5/3.1 ms.**
+2. **`_shatter_glass_panes` + `_land_shards` ran unsliced at the end of PHASE_SLICES** (one 309 ms visit for the second grenade). Now
+   `_glass_begin` / `_glass_step`: four stages with a cursor (panes, scatter, the resumable surface index, landings). Worst SLICES visit 309 -> 52-66 ms;
+   `_shatter_glass_panes(s)` stays as the one-shot wrapper for the selftests.
+Result: worst frame per blast 356 / 151 (hit-stop run before) -> **145 / 140 ms**; the control (`--no-hit-stop`) was 366 / 641. What is left in those
+frames is the hit-stop's own stages 2-3 (118-130 / 110 ms, the 110 ms frame budget). Mean frame 31-33 ms; GPU 25-29 ms of it (the Galaxy is GPU-bound here).
+**Open:** the second prediction still stretches the fuse by ~1 s (SLICES 525 ms of work at the 4 ms `predict_budget_ms`, about 100 frames at 33 ms
+because the first blast's tail is playing); a larger budget while the fuse is waiting trades frame time for latency, a design call, not changed.

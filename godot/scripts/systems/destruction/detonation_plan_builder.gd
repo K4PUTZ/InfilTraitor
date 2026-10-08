@@ -576,7 +576,13 @@ static func _phase_slices(s: Dictionary, deadline: int) -> void:
 			break
 	s["cursor"] = i
 	if i >= ids.size():
-		_shatter_glass_panes(s)
+		## The glass stage is resumable: `s["glass"]` holds its stages and cursors, `{}` means no pane to shatter or craze.
+		if not s.has("glass"):
+			s["glass"] = _glass_begin(s)
+		var g: Dictionary = s["glass"]
+		if not g.is_empty() and not _glass_step(s, g, deadline):
+			return
+		s.erase("glass")
 		_enter_phase(s, PHASE_JUNCTIONS)
 
 
@@ -603,7 +609,7 @@ static func _is_glass_pane_slice(slice: Slice) -> bool:
 ## (plan_pane_shatter, with the G-D13 frame-ring remnants) into the Delta as
 ## blast-sourced DESTROYED entries. Deterministic: the roll and the remnant
 ## pattern hash off (source_gu, pane_id), so a replay matches.
-static func _shatter_glass_panes(s: Dictionary) -> void:
+static func _glass_begin(s: Dictionary) -> Dictionary:
 	var edge_registry: EdgeRegistry = s["edge_registry"]
 	var slab_registry: SlabRegistry = s["slab_registry"]
 	var bomb_def = s["bomb_def"]
@@ -626,7 +632,7 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			has_glass_pane = true
 			break
 	if not has_glass_pane:
-		return
+		return {}
 
 	## ── G-D48 — THE GLASS-ONLY SHOCKWAVE RE-FLOOD ───────────────────────────
 	##
@@ -652,7 +658,6 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 			% [source_gu, epicenter, glass_max,
 			GlassShatter.GLASS_SHOCKWAVE_FALLOFF, GlassShatter.GLASS_CRAZE_FALLOFF])
 	var pane_min_ring: Dictionary = {}   ## pane_id -> nearest ring
-	var pending_landings: Array = []     ## one per shattered pane, landed together after the loop (`_land_shards`)
 	for sid in affected:
 		var slc: Slice = edge_registry.get_slice(sid)
 		if not _is_glass_pane_slice(slc):
@@ -663,7 +668,7 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 		if not pane_min_ring.has(slc.pane_id) or r < int(pane_min_ring[slc.pane_id]):
 			pane_min_ring[slc.pane_id] = r
 	if pane_min_ring.is_empty():
-		return
+		return {}
 
 	var slices_by_pane: Dictionary = {}
 	for slc2 in all_slices:
@@ -672,184 +677,226 @@ static func _shatter_glass_panes(s: Dictionary) -> void:
 				slices_by_pane[slc2.pane_id] = []
 			slices_by_pane[slc2.pane_id].append(slc2)
 
-	for pid in pane_min_ring:
-		var ring: int = int(pane_min_ring[pid])
-		var pane_slices: Array = slices_by_pane.get(pid, [])
-		if pane_slices.is_empty():
-			continue
-		var pane_material: String = pane_slices[0].material
-		var salt := "BLAST_%d_%d_%s" % [source_gu.x, source_gu.y, pid]
-		## G-D49 — a pane already substantially crazed (a prior blast's whole-pane
-		## craze, or repeated fire) is structurally spent: this event skips the
-		## roll and floods a region from the impact instead of crazing again.
-		var recrack: bool = ring < GlassShatter.GLASS_CRAZE_FALLOFF.size() \
-			and GlassShatter.crazed_fraction(pane_slices) >= GlassShatter.GLASS_RECRACK_COLLAPSE_FRAC
-		var won: bool = recrack or GlassShatter.shockwave_rolls_shatter(ring, pane_material, salt)
-		if _rdiag:
-			print("[GLASS-RING-DIAG] pane=%s ring=%d p=%.3f crazed_frac=%.2f recrack=%s won=%s"
-				% [pid, ring, GlassShatter.shockwave_strength(ring),
-				GlassShatter.crazed_fraction(pane_slices), recrack, won])
-		if not won:
-			## ── §6.2 / G-D35 B-1 — THE PANE STANDS, AND IT CRAZES ────────────────
-			##
-			## Two cases arrive here and they are ONE event: the pane inside the
-			## shockwave zone whose roll was lost, and the pane past it (out to
-			## `GLASS_CRAZE_FALLOFF`'s end, +2 GU further, G-D48) that was never at
-			## risk — *"perto de uma explosão, mas não dentro da área de dano"*.
-			##
-			## The WHOLE pane goes CRACKED (G-D2, G-D35): the intensity axis is
-			## granularity, not area.
-			_craze_pane(s, pid, pane_slices, ring, epicenter)
-			continue
-		## G-D48 — the shockwave ramp scales the region radius; a G-D49 re-crack
-		## past the shockwave's own reach still takes a minimum patch from the hit.
-		var sw_radius: int = maxi(GlassShatter.shockwave_region_radius(ring),
-			GlassShatter.SHOCKWAVE_REGION_MIN if recrack else 0)
-		## Flood origin = the pane voxel nearest the epicenter.
-		var face: int = pane_slices[0].face
-		var origin_v: Voxel = null
-		var best_d: float = INF
-		for ps in pane_slices:
-			var cells: PackedInt32Array = VoxelStore.cells_of(ps)
-			for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
-				var st: int = cells[o + 3]
-				if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
-					continue
-				var d: float = Vector2(Vector2i(cells[o], cells[o + 1]) - epicenter).length()
-				if d < best_d:
-					best_d = d
-					origin_v = ps.voxels[o >> 2]
-		if origin_v == null:
-			continue
-		## G-D13b — same anchor rule as the shot path: remnants only where the pane
-		## touches non-glass material. `all_slices` is the registry-wide list this
-		## function already walked to group the panes.
-		var anchors: Dictionary = GlassShatter.collect_anchor_positions(
-			pane_slices, face, all_slices)
-		var result: Dictionary = GlassShatter.plan_pane_shatter(pane_slices, face,
-			origin_v.grid_pos, origin_v.level, 0.0, salt, anchors, sw_radius)
-		var plan: Array = result["destroyed"]
-		## G4-2 — the survivors. PROPOSED, never claimed: stamping a cut atom is a
-		## write and `build_plan()` runs on every cursor move, so a remnant claimed
-		## here would stick jagged glass to every window the cursor passed over.
-		for r in result["remnants"]:
-			var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
-			delta.glass_remnants.append({"cell": rv.grid_pos, "level": rv.level})
-		## CRACK-06 — the shards clinging to the torn glass edge. Same proposal
-		## discipline; their own Delta list and claim path (`rim_shard_anchor_mask`).
-		for r in result.get("rim_shards", []):
-			var sv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
-			delta.glass_rim_shards.append({"cell": sv.grid_pos, "level": sv.level})
-		var entries: Array = []
-		var fallen: Array = []
-		## ── G-D48 — THE EXTENDED RINGS MUST JOIN `ring_of`, NOT JUST THE DELTA ────
-		##
-		## `_phase_slices` only walks the slices in the BOMB's own narrow `affected`,
-		## and `ring_of` is what PHASE_PACKAGE iterates. A pane the shockwave takes in
-		## an extended ring was therefore marked DESTROYED on the Delta and never
-		## packaged: no `waves["destroy"]` entry, so `DetonationEntryWriter` never ran
-		## `erase_glass_cell()` on it. Director, 2026-09-07: *"uma parte das vidraças é
-		## destruída […] mas permanece uma parte da vidraça azul"* — glass that is gone
-		## in the data and still painted on screen, which a rotation then "fixed" by
-		## rebuilding from `_base_damage`.
-		##
-		## Registering the voxel here is what makes PACKAGE own it end to end — the
-		## erase, the census, `touched_voxels`/VL-PERSIST — instead of three parallel
-		## top-ups that can each be forgotten separately. `cell_to_voxel` already has
-		## it (PHASE_WALK is map-wide). Smoke/debris weights read the ring through a
-		## bounds-checked table, so an outer ring simply contributes none.
-		## `.get` with a throwaway default: a synthetic selftest caller hands in
-		## `affected` directly and has no packaging state to join.
-		var ring_of: Dictionary = s.get("ring_of", {})
-		var container_of: Dictionary = s.get("container_of", {})
-		for e in plan:
-			var pv: Voxel = e["slice"].voxels[int(e["voxel_index"])]
-			if VoxelStore.damage_of(pv) == Voxel.DamageState.DESTROYED:
-				continue
-			entries.append(BlastCalculatorClass.damage_entry(pv, Voxel.DamageState.DESTROYED, true))
-			fallen.append({"grid_pos": pv.grid_pos, "level": pv.level})
-			var pkey := Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)
-			if not ring_of.has(pkey):
-				ring_of[pkey] = ring
-				container_of[pkey] = e["slice"]
-		if not entries.is_empty():
-			delta.add_damage(entries)
-			## CRACK-05 / G-D34 — PROPOSE THIS HOLE'S OPENING. `origin_v` is the
-			## pane voxel nearest the epicenter and is therefore this fracture's
-			## impact, the one thing the renderer cannot work out afterwards: for an
-			## asymmetric member the impact is not the centroid of what came out
-			## (§14.4), so an unclaimed blast hole is default-shaped AND misplaced.
-			##
-			## ⚠️ PROPOSED, NEVER CLAIMED HERE. `build_plan()` is pure and runs on
-			## every cursor move; the claim is a write and belongs to `commit()`.
-			##
-			## `wide` is true because a grenade is not a pistol — G-D14 splits the
-			## size class by hole width, and every blast that wins this roll takes
-			## at least `region_radius()`'s 3-voxel Chebyshev disc, which is already
-			## past anything the SMALL pool is drawn for.
-			delta.glass_openings.append({
-				"cell": origin_v.grid_pos, "level": origin_v.level, "wide": true,
-			})
-			print_debug("[GLASS-SHATTER-BLAST] pane=%s ring=%d radius=%d recrack=%s flooded=%d voxel(s)"
-				% [pid, ring, sw_radius, recrack, entries.size()])
-			## G-D16a — the same landing report the shot path makes. Both paths or
-			## neither: a pane shattered by a grenade producing no shard state while a
-			## shot one does is exactly the asymmetry that gets found months later.
-			##
-			## G4-4 / G-D42 — the shockwave push on the falling shards. `from` is the
-			## epicenter itself, so every shard takes its OWN bearing off the bomb
-			## (radial, diagonal at the corners) instead of the pane sharing one
-			## vector. `strength` is the SAME glass shockwave ramp that decided the
-			## break (G-D48's `GLASS_SHOCKWAVE_FALLOFF`) — one air wave, seen here as
-			## the push and above as the fracture. It is > 0 wherever a pane can
-			## shatter, so a break in the outer ramp is never thrown at strength
-			## zero; a G-D49 re-crack past the ramp's end falls straight down.
-			## `lift` stays 0.0: a skylight would set it, and G-D16c/d is unbuilt.
-			var impulse: Dictionary = {
-				"from": Vector2(epicenter),
-				"strength": clampf(GlassShatter.shockwave_strength(ring), 0.0, 1.0),
-				"lift": 0.0,
-			}
-			## ── G-D47 — WHAT SURVIVES A PARTIAL BREAK IS CRACKED, NEVER INTACT ──
-			##
-			## (Director, 2026-09-06: *"quando a bomba destroi uma vidraça
-			## parcialmente, o que sobrar da mesma superfície precisa ficar rachado.
-			## Só pra não ficar o vidro intacto do lado da zona destruída."*)
-			##
-			## `region_radius()` scales with the punch (G-D12), so a won roll at the
-			## fringe takes a REGION and not the pane — and until now the glass
-			## beside that hole stood pristine, which is the one thing a shockwave
-			## that just removed its neighbour cannot leave behind.
-			##
-			## ⚠️ IT IS THE SAME `_craze_pane()` THE LOST ROLL USES, deliberately: a
-			## second crazing path would be a second authority on what a blast does
-			## to standing glass, and the two would drift. It is self-limiting for a
-			## WHOLE break — `plan_pane_craze()` returns the survivors, which is
-			## empty when there are none — so no branch is needed for that case.
-			_craze_pane(s, pid, pane_slices, ring, epicenter)
-			## The landings are worked out AFTER the loop, once for every shattered pane (`_land_shards`): the surface index walks
-			## every cell of every slab, ~60 ms a pane on the desktop and a 1.1 s step in the Moto's cook.
-			pending_landings.append({"fallen": fallen, "impulse": impulse, "shards": entries.size()})
-	_land_shards(s, pending_landings)
+	return {"stage": 0, "cursor": 0, "pane_ids": pane_min_ring.keys(), "pane_min_ring": pane_min_ring, "slices_by_pane": slices_by_pane,
+		"all_slices": all_slices, "rdiag": _rdiag, "pending": [], "columns": {}, "scattered": [], "index_state": {}, "index": {}}
 
 
-## G-D16a / G6 / G6b-2 — where the shards of every pane this blast shattered come to rest, as PROPOSALS on the Delta (this builder is
-## PURE: a pile made here would land on the floor of every GU the cursor hovered over, exactly as an opening claimed here would).
-## Every pane's shards are scattered first and the surface index is built ONCE for the union of their columns; each pane's landings
-## are the same rows `GlassFall.plan_landings()` would have returned for it alone (a column's surface levels do not depend on which
-## other columns the index covers).
-static func _land_shards(s: Dictionary, pending: Array) -> void:
-	if pending.is_empty():
-		return
+## One pane of `_glass_step()`'s first stage: the roll, then the craze or the shatter with its Delta proposals. Appends the pane's landing request to
+## `g["pending"]` when it shattered.
+static func _glass_pane(s: Dictionary, g: Dictionary, pid) -> void:
+	var edge_registry: EdgeRegistry = s["edge_registry"]
+	var bomb_def = s["bomb_def"]
 	var delta: WorldDelta = s["delta"]
-	var slab_registry: SlabRegistry = s["slab_registry"]
-	var columns: Dictionary = {}
-	var scattered: Array = []
-	for p in pending:
-		scattered.append(GlassFall.scatter_all(p["fallen"], p["impulse"], columns))
-	var index: Dictionary = GlassFall.build_surface_index(slab_registry.all_slabs(), columns)
-	for i in range(pending.size()):
-		var landings: Array = GlassFall.landings_from_index(scattered[i], index)
+	var epicenter: Vector2i = s["epicenter"]
+	var source_gu: Vector2i = s["source_gu"]
+	var pane_min_ring: Dictionary = g["pane_min_ring"]
+	var slices_by_pane: Dictionary = g["slices_by_pane"]
+	var all_slices: Array = g["all_slices"]
+	var _rdiag: bool = g["rdiag"]
+	var ring: int = int(pane_min_ring[pid])
+	var pane_slices: Array = slices_by_pane.get(pid, [])
+	if pane_slices.is_empty():
+		return
+	var pane_material: String = pane_slices[0].material
+	var salt := "BLAST_%d_%d_%s" % [source_gu.x, source_gu.y, pid]
+	## G-D49 — a pane already substantially crazed (a prior blast's whole-pane
+	## craze, or repeated fire) is structurally spent: this event skips the
+	## roll and floods a region from the impact instead of crazing again.
+	var recrack: bool = ring < GlassShatter.GLASS_CRAZE_FALLOFF.size() \
+		and GlassShatter.crazed_fraction(pane_slices) >= GlassShatter.GLASS_RECRACK_COLLAPSE_FRAC
+	var won: bool = recrack or GlassShatter.shockwave_rolls_shatter(ring, pane_material, salt)
+	if _rdiag:
+		print("[GLASS-RING-DIAG] pane=%s ring=%d p=%.3f crazed_frac=%.2f recrack=%s won=%s"
+			% [pid, ring, GlassShatter.shockwave_strength(ring),
+			GlassShatter.crazed_fraction(pane_slices), recrack, won])
+	if not won:
+		## ── §6.2 / G-D35 B-1 — THE PANE STANDS, AND IT CRAZES ────────────────
+		##
+		## Two cases arrive here and they are ONE event: the pane inside the
+		## shockwave zone whose roll was lost, and the pane past it (out to
+		## `GLASS_CRAZE_FALLOFF`'s end, +2 GU further, G-D48) that was never at
+		## risk — *"perto de uma explosão, mas não dentro da área de dano"*.
+		##
+		## The WHOLE pane goes CRACKED (G-D2, G-D35): the intensity axis is
+		## granularity, not area.
+		_craze_pane(s, pid, pane_slices, ring, epicenter)
+		return
+	## G-D48 — the shockwave ramp scales the region radius; a G-D49 re-crack
+	## past the shockwave's own reach still takes a minimum patch from the hit.
+	var sw_radius: int = maxi(GlassShatter.shockwave_region_radius(ring),
+		GlassShatter.SHOCKWAVE_REGION_MIN if recrack else 0)
+	## Flood origin = the pane voxel nearest the epicenter.
+	var face: int = pane_slices[0].face
+	var origin_v: Voxel = null
+	var best_d: float = INF
+	for ps in pane_slices:
+		var cells: PackedInt32Array = VoxelStore.cells_of(ps)
+		for o in range(0, cells.size(), VoxelStore.CELL_STRIDE):
+			var st: int = cells[o + 3]
+			if (st & 1) == 0 or ((st >> 1) & 3) == Voxel.DamageState.DESTROYED:
+				continue
+			var d: float = Vector2(Vector2i(cells[o], cells[o + 1]) - epicenter).length()
+			if d < best_d:
+				best_d = d
+				origin_v = ps.voxels[o >> 2]
+	if origin_v == null:
+		return
+	## G-D13b — same anchor rule as the shot path: remnants only where the pane
+	## touches non-glass material. `all_slices` is the registry-wide list this
+	## function already walked to group the panes.
+	var anchors: Dictionary = GlassShatter.collect_anchor_positions(
+		pane_slices, face, all_slices)
+	var result: Dictionary = GlassShatter.plan_pane_shatter(pane_slices, face,
+		origin_v.grid_pos, origin_v.level, 0.0, salt, anchors, sw_radius)
+	var plan: Array = result["destroyed"]
+	## G4-2 — the survivors. PROPOSED, never claimed: stamping a cut atom is a
+	## write and `build_plan()` runs on every cursor move, so a remnant claimed
+	## here would stick jagged glass to every window the cursor passed over.
+	for r in result["remnants"]:
+		var rv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+		delta.glass_remnants.append({"cell": rv.grid_pos, "level": rv.level})
+	## CRACK-06 — the shards clinging to the torn glass edge. Same proposal
+	## discipline; their own Delta list and claim path (`rim_shard_anchor_mask`).
+	for r in result.get("rim_shards", []):
+		var sv: Voxel = r["slice"].voxels[int(r["voxel_index"])]
+		delta.glass_rim_shards.append({"cell": sv.grid_pos, "level": sv.level})
+	var entries: Array = []
+	var fallen: Array = []
+	## ── G-D48 — THE EXTENDED RINGS MUST JOIN `ring_of`, NOT JUST THE DELTA ────
+	##
+	## `_phase_slices` only walks the slices in the BOMB's own narrow `affected`,
+	## and `ring_of` is what PHASE_PACKAGE iterates. A pane the shockwave takes in
+	## an extended ring was therefore marked DESTROYED on the Delta and never
+	## packaged: no `waves["destroy"]` entry, so `DetonationEntryWriter` never ran
+	## `erase_glass_cell()` on it. Director, 2026-09-07: *"uma parte das vidraças é
+	## destruída […] mas permanece uma parte da vidraça azul"* — glass that is gone
+	## in the data and still painted on screen, which a rotation then "fixed" by
+	## rebuilding from `_base_damage`.
+	##
+	## Registering the voxel here is what makes PACKAGE own it end to end — the
+	## erase, the census, `touched_voxels`/VL-PERSIST — instead of three parallel
+	## top-ups that can each be forgotten separately. `cell_to_voxel` already has
+	## it (PHASE_WALK is map-wide). Smoke/debris weights read the ring through a
+	## bounds-checked table, so an outer ring simply contributes none.
+	## `.get` with a throwaway default: a synthetic selftest caller hands in
+	## `affected` directly and has no packaging state to join.
+	var ring_of: Dictionary = s.get("ring_of", {})
+	var container_of: Dictionary = s.get("container_of", {})
+	for e in plan:
+		var pv: Voxel = e["slice"].voxels[int(e["voxel_index"])]
+		if VoxelStore.damage_of(pv) == Voxel.DamageState.DESTROYED:
+			continue
+		entries.append(BlastCalculatorClass.damage_entry(pv, Voxel.DamageState.DESTROYED, true))
+		fallen.append({"grid_pos": pv.grid_pos, "level": pv.level})
+		var pkey := Vector3i(pv.grid_pos.x, pv.grid_pos.y, pv.level)
+		if not ring_of.has(pkey):
+			ring_of[pkey] = ring
+			container_of[pkey] = e["slice"]
+	if not entries.is_empty():
+		delta.add_damage(entries)
+		## CRACK-05 / G-D34 — PROPOSE THIS HOLE'S OPENING. `origin_v` is the
+		## pane voxel nearest the epicenter and is therefore this fracture's
+		## impact, the one thing the renderer cannot work out afterwards: for an
+		## asymmetric member the impact is not the centroid of what came out
+		## (§14.4), so an unclaimed blast hole is default-shaped AND misplaced.
+		##
+		## ⚠️ PROPOSED, NEVER CLAIMED HERE. `build_plan()` is pure and runs on
+		## every cursor move; the claim is a write and belongs to `commit()`.
+		##
+		## `wide` is true because a grenade is not a pistol — G-D14 splits the
+		## size class by hole width, and every blast that wins this roll takes
+		## at least `region_radius()`'s 3-voxel Chebyshev disc, which is already
+		## past anything the SMALL pool is drawn for.
+		delta.glass_openings.append({
+			"cell": origin_v.grid_pos, "level": origin_v.level, "wide": true,
+		})
+		print_debug("[GLASS-SHATTER-BLAST] pane=%s ring=%d radius=%d recrack=%s flooded=%d voxel(s)"
+			% [pid, ring, sw_radius, recrack, entries.size()])
+		## G-D16a — the same landing report the shot path makes. Both paths or
+		## neither: a pane shattered by a grenade producing no shard state while a
+		## shot one does is exactly the asymmetry that gets found months later.
+		##
+		## G4-4 / G-D42 — the shockwave push on the falling shards. `from` is the
+		## epicenter itself, so every shard takes its OWN bearing off the bomb
+		## (radial, diagonal at the corners) instead of the pane sharing one
+		## vector. `strength` is the SAME glass shockwave ramp that decided the
+		## break (G-D48's `GLASS_SHOCKWAVE_FALLOFF`) — one air wave, seen here as
+		## the push and above as the fracture. It is > 0 wherever a pane can
+		## shatter, so a break in the outer ramp is never thrown at strength
+		## zero; a G-D49 re-crack past the ramp's end falls straight down.
+		## `lift` stays 0.0: a skylight would set it, and G-D16c/d is unbuilt.
+		var impulse: Dictionary = {
+			"from": Vector2(epicenter),
+			"strength": clampf(GlassShatter.shockwave_strength(ring), 0.0, 1.0),
+			"lift": 0.0,
+		}
+		## ── G-D47 — WHAT SURVIVES A PARTIAL BREAK IS CRACKED, NEVER INTACT ──
+		##
+		## (Director, 2026-09-06: *"quando a bomba destroi uma vidraça
+		## parcialmente, o que sobrar da mesma superfície precisa ficar rachado.
+		## Só pra não ficar o vidro intacto do lado da zona destruída."*)
+		##
+		## `region_radius()` scales with the punch (G-D12), so a won roll at the
+		## fringe takes a REGION and not the pane — and until now the glass
+		## beside that hole stood pristine, which is the one thing a shockwave
+		## that just removed its neighbour cannot leave behind.
+		##
+		## ⚠️ IT IS THE SAME `_craze_pane()` THE LOST ROLL USES, deliberately: a
+		## second crazing path would be a second authority on what a blast does
+		## to standing glass, and the two would drift. It is self-limiting for a
+		## WHOLE break — `plan_pane_craze()` returns the survivors, which is
+		## empty when there are none — so no branch is needed for that case.
+		_craze_pane(s, pid, pane_slices, ring, epicenter)
+		## The landings are worked out AFTER the loop, once for every shattered pane (`_glass_step` stages 1-3): the surface index walks
+		## every cell of every slab, ~60 ms a pane on the desktop and a 1.1 s step in the Moto's cook.
+		g["pending"].append({"fallen": fallen, "impulse": impulse, "shards": entries.size()})
+
+
+## The resumable glass stage of PHASE_SLICES (A1, 2026-10-08): the Galaxy A16 measured the unsliced `_shatter_glass_panes()` + `_land_shards()` as ONE
+## 309 ms visit (the second grenade of the STRESS pair; 20 ms for the first), the frame that stretched the fuse. Four stages with a cursor, each
+## stopping at a unit boundary: 0 the panes (roll, craze / shatter flood), 1 the shard scatter per shattered pane, 2 the surface index (the
+## resumable `GlassFall.index_step`), 3 the landings per pane (G-D16a / G6 / G6b-2: where each pane's shards come to rest, as PROPOSALS on the Delta,
+## because this builder is PURE). Same rows, same order as the one-shot. True when finished.
+static func _glass_step(s: Dictionary, g: Dictionary, deadline: int) -> bool:
+	var delta: WorldDelta = s["delta"]
+	if int(g["stage"]) == 0:
+		var ids: Array = g["pane_ids"]
+		var i: int = int(g["cursor"])
+		while i < ids.size():
+			_glass_pane(s, g, ids[i])
+			i += 1
+			if _out_of_time(deadline):
+				break
+		g["cursor"] = i
+		if i < ids.size():
+			return false
+		g["stage"] = 1
+		g["cursor"] = 0
+	var pending: Array = g["pending"]
+	if int(g["stage"]) == 1:
+		var scattered: Array = g["scattered"]
+		while scattered.size() < pending.size():
+			var p: Dictionary = pending[scattered.size()]
+			scattered.append(GlassFall.scatter_all(p["fallen"], p["impulse"], g["columns"]))
+			if _out_of_time(deadline) and scattered.size() < pending.size():
+				return false
+		if pending.is_empty():
+			return true
+		var slab_registry: SlabRegistry = s["slab_registry"]
+		g["index_state"] = GlassFall.index_begin(slab_registry.all_slabs(), g["columns"])
+		g["stage"] = 2
+	if int(g["stage"]) == 2:
+		if not GlassFall.index_step(g["index_state"], deadline):
+			return false
+		g["index"] = GlassFall.index_finish(g["index_state"])
+		g["index_state"] = {}
+		g["stage"] = 3
+		g["cursor"] = 0
+	var index: Dictionary = g["index"]
+	var scattered3: Array = g["scattered"]
+	var k: int = int(g["cursor"])
+	while k < pending.size():
+		var landings: Array = GlassFall.landings_from_index(scattered3[k], index)
 		var piles: Dictionary = GlassFall.pile_by_cell(landings)
 		var deepest: int = 0
 		for c in piles.values():
@@ -858,9 +905,22 @@ static func _land_shards(s: Dictionary, pending: Array) -> void:
 			delta.glass_shard_piles[pk] = int(delta.glass_shard_piles.get(pk, 0)) + int(piles[pk])
 		## G6b-2 — and the FLIGHTS, so the rain knows where each shard started. The room spawns the overlay.
 		delta.glass_shard_flights.append_array(landings)
-		var shards: int = int(pending[i]["shards"])
+		var shards: int = int(pending[k]["shards"])
 		print_debug("[GLASS-FALL] %d of %d shard(s) landed, on %d cell(s), deepest pile %d (%d fell out of the world)"
 			% [landings.size(), shards, piles.size(), deepest, shards - landings.size()])
+		k += 1
+		if _out_of_time(deadline) and k < pending.size():
+			g["cursor"] = k
+			return false
+	g["cursor"] = k
+	return true
+
+
+## The one-shot form (the selftests, `deadline = 0`): the same stages run to the end.
+static func _shatter_glass_panes(s: Dictionary) -> void:
+	var g: Dictionary = _glass_begin(s)
+	if not g.is_empty():
+		_glass_step(s, g, 0)
 
 
 ## §6.2 / G-D35 B-1 — mark one surviving pane CRACKED and record the attribution.

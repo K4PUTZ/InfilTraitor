@@ -10991,6 +10991,12 @@ func _dev_flag_num(flag_name: String, fallback: int) -> int:
 ##                       so the next question is WHICH of the non-voxel nodes —
 ##                       answerable by name, without a rebuild per candidate.
 func _apply_perf_ablations() -> void:
+	## PERFORMANCE_BUDGET (Director, 2026-10-08): `MAX_FPS=<n>` caps the frame rate (0 = uncapped, the default), for the
+	## 60 / 30 / 24 / 18 / 15 comparison on the handset.
+	var fps_raw: String = _dev_flag("MAX_FPS", "")
+	if fps_raw.is_valid_int():
+		Engine.max_fps = int(fps_raw)
+		print("[PERF-DEV] MAX_FPS — Engine.max_fps = %d" % Engine.max_fps)
 	if _dev_flag_on("STRETCH_VIEWPORT"):
 		get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		_apply_world_render_scale()

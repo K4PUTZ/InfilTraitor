@@ -63,6 +63,27 @@ is drawn, which is why every `MemStage` mark during the load prints 0).
    `framing` resize, render scale, duplicate shaders (20 vs 12 distinct). Next: bisect PLAYGROUND's content (glass,
    actors' skinned meshes, props) against that gap.
 
+5. **Moto g04s (the floor device) after the cuts, PLAYGROUND, two boots:** engine video 140.8 MiB, GL mtrack 238-263 MiB
+   (the 256 MiB block never opens), **TOTAL PSS peak 890-914 MiB: inside the 1.0 GiB ceiling**, against 945-1 304 MB in
+   the earlier rounds.
+
+**Frame-rate cap study (Director, 2026-10-08; Moto g04s, PLAYGROUND, zoom 0.2, grenade 0 centred; `MAX_FPS=<n>` flag;
+videos `videos/fps_z02_<n>.mp4`, local):**
+
+| cap | idle ms/frame (fps) | idle GPU ms | blast frames | blast wall clock | blast mean / worst ms |
+|---|---|---|---|---|---|
+| 60 | 33.3 (30.0) | 22.9 | 212 | 7.07 s | 33.3 / 66.1 |
+| 30 | 33.3 (30.0) | 22.9 | 207 | 6.92 s | 33.4 / 70.3 |
+| 24 | 44.7 (22.4) | 23.1 | 171 | 7.63 s | 44.6 / 65.8 |
+| 18 | 55.9 (17.9) | 23.8 | 148 | 8.22 s | 55.5 / 77.3 |
+| 15 | 66.7 (15.0) | 27.9 | 140 | 9.28 s | 66.3 / 97.1 |
+
+Read: on the Moto **60 and 30 are the same run** (a frame costs ~23 ms of GPU, past 16.7, so vsync already holds 30).
+Below 30 the cost PER FRAME does not fall (GPU ~23-28 ms, worst frame unchanged): only the work per second does
+(battery, heat). And **the blast stretches in wall time** (6.9 -> 9.3 s at 15) because its effects age in drawn frames
+(the "animate in frames" rule): a cap under 30 is a slow-motion explosion, not a cheaper one. A 30 cap costs nothing on
+the floor device and saves power and heat on faster phones (the Galaxy throttled at 30 C); it is the Director's call.
+
 ## 1. The principle: ONE content, N profiles
 
 Every multi-device game ships quality tiers; the cost is acceptable when a tier is a DERIVATION (texture size, density, particle counts, LOD set at import / export / boot from the same authored content) and unacceptable when it is a second hand-authored version. Authoring rule that follows: content is authored once, at the fidelity of the pipeline already canon (facade 1024×512 grayscale, props through slots and their budgets, 16 texels per voxel), and every per-device reduction lives in a profile.

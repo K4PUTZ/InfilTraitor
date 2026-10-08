@@ -40,6 +40,29 @@
 
 **iOS against the Mali floor (the Director's question, 2026-10-08).** GPU and CPU: an A12 is several times faster than a Mali-G57 MP1 / Unisoc T606, so a frame that holds 30 fps on the Moto has wide margin on any iPhone iOS still supports. **Memory is NOT implied by the Moto:** iOS has no swap to page to (the Galaxy carried 317 MiB of swap PSS at the peak) and kills a foreground app at a hard per-device limit (jetsam) that Apple does not publish. A developer report reads `ActiveHard 2098 MB` on a 4 GB iPhone 12 ([Apple forums](https://developer.apple.com/forums/thread/688973)); a 3 GB XR is lower. The same 1.0 GiB ceiling probably fits, but on iOS it must be read from a real device's JetsamEvent log, and the Godot iOS export (Metal) has never been built for this project. Until then iOS is a provisional floor, not a measured one.
 
+## 0c. PB-2 findings (2026-10-08, Galaxy A16 + desktop; IN PROGRESS)
+
+Instrument: scenario op `gfx_census <name>` (`GfxCensus`: engine VRAM counters, textures and meshes by owner, cached imports,
+distinct shaders) and `gpu_alloc <MiB>` (a known GPU allocation); `device_run.py --mem-poll` now also prints `Graphics:` and
+`EGL mtrack`. **The engine's VRAM counters DO read on the Android release build** (they read 0 only before the first frame
+is drawn, which is why every `MemStage` mark during the load prints 0).
+
+1. **Android `Graphics` (= `GL mtrack` + `EGL mtrack` ~33 MiB) counts the Vulkan allocator's RESERVED BLOCKS, not the use.**
+   Proven with `gpu_alloc` on OCCLUSION_ROOM: the first 20 MiB moved GL mtrack 288 -> 544 MiB (+256), six more (120 MiB of
+   real use) moved nothing; in 4 MiB steps the block opened at ~215-219 MiB of engine `video`. Blocks grow 32 / 64 / 128 /
+   256 MiB, which is the +64 / +128 / +255 step of the load timeline.
+2. **About 55 bytes per PHYSICAL screen pixel** of render buffers: ~133-140 MiB of textures on the Galaxy (1080×2340),
+   ~60 expected on the Moto (720×1612), ~12 on a 390×844 desktop window. `RENDER_SCALE` 0.5 did not move it (the world
+   SubViewport is not where it lives). Not yet attributed buffer by buffer.
+3. **Two cuts, no look change (`verify.py look` 0 px strict, commit `6b2a6608`):** facades stored as L8 (every sampler reads
+   `.r`; ~16 MiB) and `CellPlaneStore`'s per-level `ImageTexture`s deleted (unread since R3D-END; ~1 MiB per level, ~32 MiB).
+   Galaxy PLAYGROUND engine video **247 -> 193.5 MiB**; PSS 1 198-1 257 -> **1 118-1 164 MiB**.
+4. **⚠️ OPEN: GL mtrack did NOT fall with it** (~500-540 MiB). It jumps 69 -> 505 MiB inside ONE 4 s poll during the
+   load, and OCCLUSION_ROOM at the same engine video (190) reads GL 286: PLAYGROUND holds **~215 MiB of driver memory no
+   engine counter sees**. Ruled out by measurement: the staging buffer (`max_size_mb` 16: no change, twice), the
+   `framing` resize, render scale, duplicate shaders (20 vs 12 distinct). Next: bisect PLAYGROUND's content (glass,
+   actors' skinned meshes, props) against that gap.
+
 ## 1. The principle: ONE content, N profiles
 
 Every multi-device game ships quality tiers; the cost is acceptable when a tier is a DERIVATION (texture size, density, particle counts, LOD set at import / export / boot from the same authored content) and unacceptable when it is a second hand-authored version. Authoring rule that follows: content is authored once, at the fidelity of the pipeline already canon (facade 1024×512 grayscale, props through slots and their budgets, 16 texels per voxel), and every per-device reduction lives in a profile.
@@ -63,7 +86,7 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 |---|---|---|---|
 | **PB-0** ✅ | **Decide the floor device** (RAM, GPU class), **the ceiling's unit** (GiB or decimal GB; plans say "1.2 GB" without saying) and **which number is the ceiling** (PSS or RSS+swap). Recommendation: a Moto g04s class floor (about 4 GB), ceiling 1.0-1.2 GB with margin. | Director, next session | a signed line in this plan + `DEVICE_DIAGNOSTICS` §0.5 |
 | **PB-1** ✅ | **The estimate of a segment's content** — done TOGETHER with the Director, from the design docs: rooms, props by tier (1-4), guards by type, lights, glass panes, roofs, materials in use, destructible area, objectives; three specs: LOW / TYPICAL / HEAVY (the heavy one carries the frag grenade). Read first: `DESIGN_MASTER_PLAN` §14, §8.7, `MAP_MASTER_PLAN`, the dormitory in `PROP_PIPELINE_PLAN` §8, STRESS as the upper bound. Confirm the segment's size in GU (Q2). | **NEXT SESSION**, with the Director | `segment_spec` table (this plan, §5) |
-| **PB-2** | **Attribute Graphics on the desktop**, per load stage: textures vs buffers vs render targets, by category (facades, decals, board meshes, cell planes, actors, props). `RenderingServer` info works on the desktop; the handset confirms only the total (`GL mtrack`). The `MEM_STAGES=1` markers exist (`mem_stage.gd`). | Claude, desktop | a table: who owns the +255 MiB and the 590 MiB plateau |
+| **PB-2** 🟡 | **Attribute Graphics on the desktop**, per load stage: textures vs buffers vs render targets, by category (facades, decals, board meshes, cell planes, actors, props). `RenderingServer` info works on the desktop; the handset confirms only the total (`GL mtrack`). The `MEM_STAGES=1` markers exist (`mem_stage.gd`). | Claude, desktop | a table: who owns the +255 MiB and the 590 MiB plateau |
 | **PB-3** | **Marginal-cost table** on the Galaxy and the Moto: extend `scale_study.py` to read PSS / RSS / load time and vary ONE thing at a time on segment-shaped synthetic maps (18×36 footprint): props (0 / 30 / 60 / 120, per tier), guards (0 / 6 / 12 / 24), lights, materials in use, glass panes, roofs. | Claude, handsets | "+10 props = X MiB, Y ms load" per kind |
 | **PB-4** | **The segment cycle**: load and unload N segments in a row (scenario `reload` / `load_map`), PSS and RSS must stay FLAT, plus the load time and the transient native peak per segment on both handsets (the 6 s load above is the number to beat or hide). The game unloads and reloads segments for the whole run, so a leak or fragmentation that a single load never shows is a bug here. | Claude, handsets | a flat-or-not verdict + load seconds per device |
 | **PB-5** | **The verdict**: PB-1's specs × PB-3's marginal costs, against PB-0's ceiling and the fixed cost. Fits / fits with a profile / does not fit. | Claude with the Director | one table, one decision |

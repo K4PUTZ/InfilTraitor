@@ -88,6 +88,7 @@ static func report(root: Node, label: String) -> void:
 	for i in mini(25, top.size()):
 		print("[GFX-CENSUS] top %2d %7.2f MiB %s" % [i + 1, float(top[i][0]) / MIB, top[i][1]])
 	_print_cached_textures()
+	_print_shaders(nodes)
 	## Pipelines compiled so far, by source: a pipeline costs driver memory (the shader binary) that no counter above sees.
 	print("[GFX-CENSUS] pipelines compiled: canvas %d · mesh %d · surface %d · draw %d · specialization %d" % [
 		int(Performance.get_monitor(Performance.PIPELINE_COMPILATIONS_CANVAS)),
@@ -285,3 +286,28 @@ static func _walk(dir_path: String, out: PackedStringArray) -> void:
 			var full: String = dir_path.path_join(name)
 			if not out.has(full):
 				out.append(full)
+
+
+## Distinct Shader resources in use, and how many share one source text: every distinct Shader is compiled on its own
+## (pipelines and driver binaries a texture counter never sees), even when its code is identical to another's.
+static func _print_shaders(nodes: Array[Node]) -> void:
+	var by_rid: Dictionary = {}
+	var by_code: Dictionary = {}
+	for node: Node in nodes:
+		var mats: Array[Material] = []
+		if node is GeometryInstance3D and (node as GeometryInstance3D).material_override != null:
+			mats.append((node as GeometryInstance3D).material_override)
+		if node is CanvasItem and (node as CanvasItem).material != null:
+			mats.append((node as CanvasItem).material)
+		for mesh: Mesh in _meshes_of(node):
+			for s in mesh.get_surface_count():
+				if mesh.surface_get_material(s) != null:
+					mats.append(mesh.surface_get_material(s))
+		for m: Material in mats:
+			if m is ShaderMaterial and (m as ShaderMaterial).shader != null:
+				var sh: Shader = (m as ShaderMaterial).shader
+				by_rid[sh.get_rid().get_id()] = true
+				var h: int = sh.code.hash()
+				by_code[h] = int(by_code.get(h, 0)) + (0 if by_rid.has(-sh.get_rid().get_id()) else 1)
+				by_rid[-sh.get_rid().get_id()] = true
+	print("[GFX-CENSUS] shaders: %d distinct Shader resources, %d distinct source texts" % [by_rid.size() / 2, by_code.size()])

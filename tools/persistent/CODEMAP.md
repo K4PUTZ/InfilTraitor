@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**278 scripts · 83141 lines total** (under `godot/scripts/`)
+**278 scripts · 83167 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -2690,7 +2690,7 @@ extends `Node` · 236 lines
 
 ### `gfx_census.gd`
 
-`class_name GfxCensus` · extends `RefCounted` · 287 lines
+`class_name GfxCensus` · extends `RefCounted` · 313 lines
 
 `godot/scripts/systems/gfx_census.gd`
 

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**277 scripts · 82406 lines total** (under `godot/scripts/`)
+**277 scripts · 82415 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -3153,7 +3153,7 @@ extends `Node` · 236 lines
 
 ### `prediction_cache.gd`
 
-`class_name PredictionCache` · extends `RefCounted` · 207 lines
+`class_name PredictionCache` · extends `RefCounted` · 216 lines
 
 `godot/scripts/systems/prediction/prediction_cache.gd`
 
@@ -3172,12 +3172,6 @@ extends `Node` · 236 lines
 
 **Public API**
 - `func request(signature: String, revision: int, bomb_def, source_gu: Vector2i, ctx: Dictionary) -> DetonationPrediction:`
-- `func peek(signature: String, revision: int) -> WorldDelta:`
-- `func pump(budget_ms: float) -> bool:`
-- `func is_busy() -> bool:`
-- `func invalidate() -> void:`
-- `func size() -> int:`
-- `func stats_line() -> String:`
 
 ---
 

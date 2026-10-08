@@ -1034,10 +1034,10 @@ func detonate_active() -> void:
 ## menu path was bypassed (the capture harness calls `detonate_active()`
 ## directly). Never waits.
 func _take_prediction(bomb_def, gu: Vector2i) -> DetonationPrediction:
-	var ctx := _build_detonation_ctx(gu)
-	return room._prediction_cache.request(
-		PredictionCache.blast_signature(BOMB_ID, gu),
-		room._world_revision, bomb_def, gu, ctx)
+	var signature: String = PredictionCache.blast_signature(BOMB_ID, gu)
+	## A hit (the aim already started this job) never reads the ctx; only a miss needs it built.
+	var ctx: Dictionary = {} if room._prediction_cache.has_live(signature, room._world_revision) else _build_detonation_ctx(gu)
+	return room._prediction_cache.request(signature, room._world_revision, bomb_def, gu, ctx)
 
 
 ## §4.2's pre-production, started when the player picks a target.

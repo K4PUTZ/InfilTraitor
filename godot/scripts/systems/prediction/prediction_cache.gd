@@ -105,6 +105,15 @@ func request(signature: String, revision: int, bomb_def, source_gu: Vector2i,
 	return job
 
 
+## True when `request()` for this key at this revision would be a HIT: a live (not cancelled) job exists. A hit never reads the ctx, so a
+## caller may skip building it (A1: the throw's `_take_prediction` spent 89-142 ms rebuilding a ctx that a hit discarded).
+func has_live(signature: String, revision: int) -> bool:
+	if revision != _revision:
+		return false
+	var existing: DetonationPrediction = _entries.get(signature)
+	return existing != null and not existing.is_cancelled()
+
+
 ## The finished Delta for this key, or null. Never starts work and never
 ## cancels anything — safe to call from a draw or a UI poll.
 func peek(signature: String, revision: int) -> WorldDelta:

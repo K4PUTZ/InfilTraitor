@@ -2459,6 +2459,11 @@ func material_facade_texture(material_id: String) -> Texture2D:
 	var resolved = TextureResolver.new().resolve("facade_%s" % material_id, material_id)
 	if resolved != null and resolved.image != null:
 		var image: Image = (resolved.image as Image).duplicate()
+		## PERFORMANCE_BUDGET PB-6 (2026-10-08): a facade is grayscale (B2) and every shader that samples it reads `.r` only
+		## (the board's opaque shader, `prop_mesh3d`), so it is stored as L8: one byte a texel instead of four, the same value
+		## sampled. 2.67 -> 0.67 MiB per facade with mipmaps. A facade file's alpha is dropped: no sampler reads it (a shader
+		## that starts to read `.a` or `.g` of `facade` must change this line first).
+		image.convert(Image.FORMAT_L8)
 		image.generate_mipmaps()
 		tex = ImageTexture.create_from_image(image)
 	_facade_textures[material_id] = tex

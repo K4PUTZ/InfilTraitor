@@ -55,6 +55,12 @@ static var _stage_n: int = 0
 static func mark(label: String) -> void:
 	if not enabled:
 		return
+	## PERFORMANCE_BUDGET PB-2 (2026-10-08): the engine's own VRAM counters DO read on the Android release build now
+	## (Galaxy A16: video 247 MiB, texture 203 MiB at PLAYGROUND), so every stage prints them beside the process numbers.
+	print("[MEM-STAGE] %-34s vram: texture %.1f · buffer %.1f · video %.1f MiB" % [label,
+		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0,
+		Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1048576.0,
+		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
 	var stats: Dictionary = _read_proc_self_status()
 	if stats.is_empty():
 		## ⚠️ ANDROID CANNOT USE THE PER-PROCESS READER, measured 2026-09-12:

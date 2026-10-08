@@ -96,7 +96,7 @@ const ARITY: Dictionary = {
 	"mark": -1, "window": 1, "capture": 1, "detonate": 1, "quit": 0,
 	"probe": 1, "alloc": 2, "capture_at": 3, "throw": 2, "aim": 1, "canvas_check": 1,
 	"probe_store": 1, "shoot": 1, "reload": 0, "save_restore": 0, "perspective": 1, "relight": 0, "view_mode": 1,
-	"container_stats": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2,
+	"container_stats": 1, "gfx_census": 1, "gpu_alloc": 1, "passages": 1, "mirror_check": 1, "ground_check": 1, "pick_check": 1, "world_check": 1, "occ_bench": 3, "place_guard": 2, "decal_wall": 2,
 }
 const ScenarioDrawRef = preload("res://godot/scripts/systems/scenario_draw.gd")  ## waits for a drawn frame, never forever (an occluded harness window draws nothing)
 const VIEW_MODES: PackedStringArray = ["dev", "light", "heat", "numbers", "ruler"]
@@ -177,6 +177,10 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 			if not arg.is_valid_float() or float(arg) < 0.0:
 				return "wait takes a number of seconds >= 0"
 			step["seconds"] = float(arg)
+		"gpu_alloc":
+			if not arg.is_valid_int() or int(arg) <= 0:
+				return "gpu_alloc takes a whole number of MiB > 0"
+			step["mib"] = int(arg)
 		"frames":
 			if not arg.is_valid_int() or int(arg) < 0:
 				return "frames takes a whole number >= 0"
@@ -191,7 +195,7 @@ static func _parse_args(op: String, arg: String, tokens: PackedStringArray,
 					or int(size[0]) <= 0 or int(size[1]) <= 0:
 				return "window takes WxH in pixels"
 			step["size"] = Vector2i(int(size[0]), int(size[1]))
-		"capture", "probe", "probe_store", "container_stats", "passages", "mirror_check", "ground_check", "pick_check", "world_check", "canvas_check":
+		"capture", "probe", "probe_store", "container_stats", "gfx_census", "passages", "mirror_check", "ground_check", "pick_check", "world_check", "canvas_check":
 			if not arg.is_valid_filename() or arg.contains("."):
 				return "%s takes a file name (letters, digits, _ or -)" % op
 			step["name"] = arg
@@ -292,6 +296,12 @@ func _execute(room: Node, step: Dictionary) -> bool:
 				await room.get_tree().process_frame
 		"mark":
 			Telemetry.event("scenario.mark", {"label": step["label"]})
+		"gpu_alloc":
+			## PB-2: a known GPU allocation, to read the driver's total against it.
+			GfxCensus.gpu_alloc(int(step["mib"]))
+		"gfx_census":
+			## PERFORMANCE_BUDGET PB-2: who owns the graphics memory (textures, meshes, render targets by category).
+			GfxCensus.report(room.get_tree().root, str(step["name"]))
 		"container_stats":
 			## R3D-CLAIMS C2: how many released containers had to be converted back to full objects, how many single handles were
 			## made, and which containers (the first 64) — what reads the board whole shows here as a number, not as ~270 MB.

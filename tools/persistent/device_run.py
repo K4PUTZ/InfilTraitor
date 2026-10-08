@@ -202,7 +202,7 @@ def _launch(adb) -> bool:
 ## three detonations. A boot stage that allocates only GPU-side moves VmRSS
 ## hardly at all. A stage invisible to BOTH instruments is genuinely not where
 ## the memory went; a stage visible to only one names which half it is in.
-MEMINFO_KEYS = ("TOTAL PSS", "TOTAL RSS", "TOTAL SWAP", "GL mtrack", "Native Heap")
+MEMINFO_KEYS = ("TOTAL PSS", "TOTAL RSS", "TOTAL SWAP", "GL mtrack", "EGL mtrack", "Graphics:", "Native Heap")
 
 
 def _poll_meminfo(adb, serial: str) -> str:

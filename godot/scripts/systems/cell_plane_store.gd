@@ -38,7 +38,6 @@ var _max_r: int      ## the largest valid soot code (CLEAN is not the largest si
 var _max_bucket: int
 var _tone_bytes: PackedByteArray  ## B channel by soot ring (code / 36): the floor-top tone, 0..255, the shader's bilinear fetch blurs it
 var _images: Dictionary = {}     ## level -> Image (FORMAT_RG8)
-var _textures: Dictionary = {}   ## level -> ImageTexture
 var _dirty: Dictionary = {}      ## level -> true, cleared by flush()
 var _out_of_range_reported: bool = false
 
@@ -71,7 +70,6 @@ func _image_for(level: int) -> Image:
 	## now tell them apart.
 	img.fill(Color8(_clean_r, BUCKET_UNWRITTEN, _tone_byte(_clean_r), 255))
 	_images[level] = img
-	_textures[level] = ImageTexture.create_from_image(img)
 	return img
 
 
@@ -155,24 +153,13 @@ func plane_levels() -> Array:
 	return out
 
 
-## Upload whatever changed. Returns how many levels were re-uploaded — one
-## upload per level per repaint, never one per cell. `skip_writes` (DIAG-21 2c): no 2D board draws these
-## textures while it is set, so the images stay written but nothing uploads. Always true since R3D-END (the 3D board
-## reads the images); the textures go at END-4.
-func flush(skip_writes: bool) -> int:
-	if skip_writes:
-		_dirty.clear()
-		return 0
-	if _dirty.is_empty():
-		return 0
-	var n: int = 0
-	for level in _dirty.keys():
-		var tex = _textures.get(level)
-		if tex != null:
-			(tex as ImageTexture).update(_images[level])
-			n += 1
+## Forget what changed; returns how many levels were re-uploaded, always 0. The per-level `ImageTexture`s this used to
+## upload were the 2D board's and nothing has read them since R3D-END (the 3D board copies the IMAGES into its own
+## Texture2DArray); PERFORMANCE_BUDGET PB-6 (2026-10-08) deleted them: ~1 MiB of GPU memory per level (RGB8 is stored as
+## RGBA8), ~26 MiB on PLAYGROUND. `skip_writes` is kept for the callers' signature; there is nothing left to upload.
+func flush(_skip_writes: bool) -> int:
 	_dirty.clear()
-	return n
+	return 0
 
 
 ## Lazily create the level's image/texture without writing any cell — the 3D board's plane array needs a real layer for every

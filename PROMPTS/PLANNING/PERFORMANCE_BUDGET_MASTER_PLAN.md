@@ -62,7 +62,7 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 | Step | What | Who / when | Output |
 |---|---|---|---|
 | **PB-0** ✅ | **Decide the floor device** (RAM, GPU class), **the ceiling's unit** (GiB or decimal GB; plans say "1.2 GB" without saying) and **which number is the ceiling** (PSS or RSS+swap). Recommendation: a Moto g04s class floor (about 4 GB), ceiling 1.0-1.2 GB with margin. | Director, next session | a signed line in this plan + `DEVICE_DIAGNOSTICS` §0.5 |
-| **PB-1** | **The estimate of a segment's content** — done TOGETHER with the Director, from the design docs: rooms, props by tier (1-4), guards by type, lights, glass panes, roofs, materials in use, destructible area, objectives; three specs: LOW / TYPICAL / HEAVY (the heavy one carries the frag grenade). Read first: `DESIGN_MASTER_PLAN` §14, §8.7, `MAP_MASTER_PLAN`, the dormitory in `PROP_PIPELINE_PLAN` §8, STRESS as the upper bound. Confirm the segment's size in GU (Q2). | **NEXT SESSION**, with the Director | `segment_spec` table (this plan, §5) |
+| **PB-1** ✅ | **The estimate of a segment's content** — done TOGETHER with the Director, from the design docs: rooms, props by tier (1-4), guards by type, lights, glass panes, roofs, materials in use, destructible area, objectives; three specs: LOW / TYPICAL / HEAVY (the heavy one carries the frag grenade). Read first: `DESIGN_MASTER_PLAN` §14, §8.7, `MAP_MASTER_PLAN`, the dormitory in `PROP_PIPELINE_PLAN` §8, STRESS as the upper bound. Confirm the segment's size in GU (Q2). | **NEXT SESSION**, with the Director | `segment_spec` table (this plan, §5) |
 | **PB-2** | **Attribute Graphics on the desktop**, per load stage: textures vs buffers vs render targets, by category (facades, decals, board meshes, cell planes, actors, props). `RenderingServer` info works on the desktop; the handset confirms only the total (`GL mtrack`). The `MEM_STAGES=1` markers exist (`mem_stage.gd`). | Claude, desktop | a table: who owns the +255 MiB and the 590 MiB plateau |
 | **PB-3** | **Marginal-cost table** on the Galaxy and the Moto: extend `scale_study.py` to read PSS / RSS / load time and vary ONE thing at a time on segment-shaped synthetic maps (18×36 footprint): props (0 / 30 / 60 / 120, per tier), guards (0 / 6 / 12 / 24), lights, materials in use, glass panes, roofs. | Claude, handsets | "+10 props = X MiB, Y ms load" per kind |
 | **PB-4** | **The segment cycle**: load and unload N segments in a row (scenario `reload` / `load_map`), PSS and RSS must stay FLAT, plus the load time and the transient native peak per segment on both handsets (the 6 s load above is the number to beat or hide). The game unloads and reloads segments for the whole run, so a leak or fragmentation that a single load never shows is a bug here. | Claude, handsets | a flat-or-not verdict + load seconds per device |
@@ -80,19 +80,24 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 - Do not author a second, lighter version of any content for phones.
 - Do not widen the content before PB-1 and PB-3 exist: that is how the estimate becomes a guess again.
 
-## 5. `segment_spec` (to fill in PB-1)
+## 5. `segment_spec` (PB-1, ratified with the Director 2026-10-08)
+
+**Rule: the estimate is CONSERVATIVE on purpose** (Director: compute on the generous side, trim later). The specs are the content PB-3's synthetic maps are built from and PB-5's verdict is judged against. STRESS (24 guards, 60 props, 14 lights) stays the ceiling test, above HEAVY.
 
 | Kind | LOW | TYPICAL | HEAVY (frag grenade) | Notes |
 |---|---|---|---|---|
-| Footprint (GU) | 18×36 | 18×36 | 18×36 | Q2 answered: 18×36 default, smaller if a level uses more segments |
-| Rooms | | | | |
-| Props tier 1 / 2 / 3 / 4 | | | | |
-| Guards (by type) | | | | "does not hold many enemies" |
-| Lights | | | | |
-| Glass panes (largest) | | | | no all-glass rooms in INFILTRAITOR 1 |
-| Materials in use | | | | |
-| Roofs / storeys | | | | |
-| Destructible area at once | | | | the blast's cost bends with this |
+| Footprint (GU) | 18×36 | 18×36 | 18×36 | Q2: default; a level may use more, smaller segments |
+| Rooms | 3 | 5 | 8 | every room carries an encounter / puzzle / objective / reward (`DESIGN` §14.2) |
+| Props (tiers 1-4, total) | 15 | 30 | 60 | the tier split is measured per tier in PB-3 |
+| Guards | **4** | **6** | **10** (2 types) | Director raised the draft's 2 / 4 / 8 |
+| Cameras / drones | 0 | 2 | 4 | |
+| Lights | 3 | 6 | 10 | |
+| Glass (GU of pane, total) | **4** | **8** | **12** | **ordinary windows and meeting-room sides: low and narrow panes, never GLASS's giant ones** (GLASS is the deliberate extreme). The glass cost may be revisited: the Director sees fat left to trim (the COMMIT frame, 650-770 ms on the Moto, is the known item) |
+| Materials in use | 4 | 6 | 9 | |
+| Roofs | 1 | 2 | 3 | one playable storey |
+| Destroyed at once | 1 grenade | 1 grenade | 2 grenades in a row, near glass | |
+| **Small interactive / decorative content** | yes | yes | yes | switches, alarms, pickups, pictures, banners (decals), stamps: NOT counted in the 30 props; PB-3 must measure them as their own kind |
+| **Overlay cost on top** | — | — | — | the HUD and the planned VISUAL SOUND interface ride on every segment: budget them as a fixed cost, not per content |
 
 ## 6. Open questions (the Director's)
 

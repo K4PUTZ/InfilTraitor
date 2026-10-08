@@ -331,7 +331,10 @@ func state_of(voxel) -> int:
 ## inside would be a silent extra invalidation of every cached prediction on a
 ## path where performance is the standing priority. The requirement is that a
 ## committed mutation is followed by a bump, not that it performs one.
-func commit(room = null) -> void:
+## `defer_rain` (A1, 2026-10-07): leave the glass rain (757 flights = 60 ms of the desktop's 128 ms glass commit, the single biggest
+## piece) for `commit_glass_rain()`, which the hit-stop runs a flash frame later. Nothing else reads the flights; everything the glass
+## flush and the remesh consume (openings, crazes, piles, remnants, rim shards, the reaped voxels) is still committed here.
+func commit(room = null, defer_rain: bool = false) -> void:
 	BlastCalculatorClass.commit_damage(damage)
 	if room != null and not scorch_writes.is_empty():
 		room.absorb_scorch(scorch_writes)
@@ -369,13 +372,19 @@ func commit(room = null) -> void:
 			room.claim_glass_rim_shards(glass_rim_shards)
 		## G6b-2 — and the rain, LAST of all: the pile decals above are already on
 		## the floor, which is what makes the fall safe to interrupt (G-D43).
-		if not glass_shard_flights.is_empty():
+		if not glass_shard_flights.is_empty() and not defer_rain:
 			room.spawn_glass_rain(glass_shard_flights)
 		## G-D45 — a remnant this blast orphaned (its frame destroyed) falls with
 		## it. Unconditional: the frame that held an OLD remnant can be brick this
 		## delta broke with no glass of its own, so it is not gated on the glass
 		## fields above. Early-returns when nothing is stuck to a frame.
 		reaped_voxels = room.reap_orphaned_remnants().get("voxels", [])
+
+
+## The rain `commit(room, true)` left out. Idempotent per call site: the caller runs it once.
+func commit_glass_rain(room) -> void:
+	if room != null and not glass_shard_flights.is_empty():
+		room.spawn_glass_rain(glass_shard_flights)
 
 
 func is_empty() -> bool:

@@ -130,19 +130,61 @@ static func scatter_max_cells() -> int:
 ## `columns` restricts the walk to the columns a shatter actually touched, so this
 ## stays proportional to the break rather than to the map.
 static func build_surface_index(slabs: Array, columns: Dictionary) -> Dictionary:
-	var index: Dictionary = {}   ## Vector2i grid_pos -> Array[int] levels, ascending
+	var state: Dictionary = index_begin(slabs, columns)
+	index_step(state, 0)
+	return index_finish(state)
+
+
+## The same walk as a RESUMABLE job (A1, 2026-10-07). The walk visits every cell of every non-glass slab whatever the break was (the
+## `columns` test is inside the loop), so it is proportional to the MAP: ~125 ms on the desktop for STRESS, ~850 ms on the Moto, and the
+## prop-debris job used to pay it once per material. `index_step()` runs until `deadline_usec` (absolute, `Time.get_ticks_usec()`
+## scale; 0 = to the end) and answers true when the walk is complete; `index_finish()` sorts. Same rows, same order as the one-shot.
+static func index_begin(slabs: Array, columns: Dictionary) -> Dictionary:
+	var surfaces: Array = []
 	for slab in slabs:
-		if GlassMaterials.is_glass(slab.material):
-			continue
-		var packed: PackedInt32Array = VoxelStore.cells_of(slab)
-		for o in range(0, packed.size(), VoxelStore.CELL_STRIDE):
-			if (packed[o + 3] & 1) == 0 or ((packed[o + 3] >> 1) & 3) == Voxel.DamageState.DESTROYED:
-				continue
-			if not columns.has(Vector2i(packed[o], packed[o + 1])):
-				continue
-			if not index.has(Vector2i(packed[o], packed[o + 1])):
-				index[Vector2i(packed[o], packed[o + 1])] = []
-			index[Vector2i(packed[o], packed[o + 1])].append(packed[o + 2])
+		if not GlassMaterials.is_glass(slab.material):
+			surfaces.append(slab)
+	return {"slabs": surfaces, "si": 0, "o": 0, "packed": PackedInt32Array(), "loaded": false, "columns": columns, "index": {}}
+
+
+const INDEX_STEP_CELLS: int = 2048   ## cells between two clock reads
+
+static func index_step(state: Dictionary, deadline_usec: int) -> bool:
+	var slabs: Array = state["slabs"]
+	var columns: Dictionary = state["columns"]
+	var index: Dictionary = state["index"]
+	var stride: int = VoxelStore.CELL_STRIDE
+	while int(state["si"]) < slabs.size():
+		if not bool(state["loaded"]):
+			state["packed"] = VoxelStore.cells_of(slabs[int(state["si"])])
+			state["o"] = 0
+			state["loaded"] = true
+		var packed: PackedInt32Array = state["packed"]
+		var o: int = int(state["o"])
+		var limit: int = packed.size()
+		while o < limit:
+			var stop: int = mini(o + INDEX_STEP_CELLS * stride, limit)
+			while o < stop:
+				if (packed[o + 3] & 1) != 0 and ((packed[o + 3] >> 1) & 3) != Voxel.DamageState.DESTROYED:
+					var column := Vector2i(packed[o], packed[o + 1])
+					if columns.has(column):
+						if not index.has(column):
+							index[column] = []
+						index[column].append(packed[o + 2])
+				o += stride
+			if deadline_usec > 0 and o < limit and Time.get_ticks_usec() >= deadline_usec:
+				state["o"] = o
+				return false
+		state["si"] = int(state["si"]) + 1
+		state["loaded"] = false
+		state["packed"] = PackedInt32Array()
+		if deadline_usec > 0 and Time.get_ticks_usec() >= deadline_usec and int(state["si"]) < slabs.size():
+			return false
+	return true
+
+
+static func index_finish(state: Dictionary) -> Dictionary:
+	var index: Dictionary = state["index"]
 	for key in index:
 		index[key].sort()
 	return index

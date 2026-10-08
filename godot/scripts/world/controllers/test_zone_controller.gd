@@ -1284,17 +1284,17 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 	## does — `waves` alone used to carry it through, D-7 needs the whole Delta for `play_consequence_light()`.
 	var delta: WorldDelta = job.delta
 	var waves: Dictionary = delta.waves
-	var stage := {"delta": delta, "gu": gu, "job": job, "debris": {"done": true}}
+	var hit_stop: bool = _hit_stop_enabled()
+	var stage := {"delta": delta, "gu": gu, "job": job, "debris": {"done": true}, "defer_rain": hit_stop}
 	## A1 (Director, 2026-10-07): the strongest grenade does this work UNDER ITS FLASH, spread over the flash frames, instead of in
 	## one frame at the end of the fuse (230 ms PLAYGROUND, ~540 ms on a crowded map, on the desktop). Meshes are rebuilt only at
 	## `on_blast_commit`, and the fuse shows none of this, so the picture does not change; every other blast keeps the one frame.
-	var hit_stop: bool = _hit_stop_enabled()
 	if not hit_stop:
 		_stage_commit(stage)
 		_stage_props_begin(stage)
 		_stage_props_finish(stage, 0)
 		_stage_census(stage)
-		_stage_persist(stage)
+		_stage_persist(stage)   # (rain was not deferred here: this blast is not a hit-stop blast)
 
 	## The rest of beat 1: however much fire-only lead is still owed. Cooking
 	## already spent frames here, so a long fuse does not additionally delay the
@@ -1393,9 +1393,13 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 			_stage_commit(stage)
 		for rest in range(int(stage.get("next", 1)), 4):
 			_hit_stop_fade_stage(rest, stage, presenter, waves)
-		_stage_props_finish(stage, 0)
-		## The census and the passage report are desktop diagnostics (a release build skips them): after the flash, outside the ceiling.
-		_stage_census(stage)
+		## The prop rings and proximity QUEUE the broken props `release_prop_breaks()` (just below) releases: they cannot wait.
+		if not bool(stage.get("props_begun", false)):
+			_stage_props_begin(stage)
+			_hit_stop_queue(stage).pop_front()
+		## What the flash could not finish (a slow device) is handed to the presenter, a few ms per consequence frame.
+		if not _hit_stop_queue(stage).is_empty():
+			presenter.background_step = func(budget: int) -> bool: return _run_hit_stop_queue(stage, budget)
 	## The first frame AFTER the flash: a broken Tier 4 prop's mesh is replaced by its board-size voxels, already falling.
 	var release0: int = Time.get_ticks_usec()
 	room.release_prop_breaks()
@@ -1410,11 +1414,59 @@ func _start_detonation_sequence(job: DetonationPrediction, gu: Vector2i,
 ## --- The world commit, as stages (A1, 2026-10-07) -----------------------------------------------------------------
 ## One blast's logical commit is five pieces of work. A normal blast runs them back to back (the old single frame); the strongest
 ## grenade (`_hit_stop_enabled()`) spreads them over the flash: 0 the world commit (peak frame), 1 the presenter's commit + remesh,
-## 2 the glass flush + prop rings/proximity + a first slice of the prop debris, 3 the rest of the debris + persist (the desktop-only census follows the flash).
+## 2 the glass flush, then the queue below until the frame budget is spent, 3 the queue again; the rest goes to the presenter.
 ## Each stage is timed against the presenter's ceiling in the log. ORDER is load-bearing: everything after 0 reads what 0 wrote.
 
-## Prop debris is a budgeted job inside the flash (microseconds per stage); whatever is left runs unbudgeted before the flash ends.
-var hit_stop_debris_budget_us: int = 60000
+## Everything after the crater and the glass flush is a QUEUE (A1): the prop rings and proximity, the prop debris (a resumable job), the glass
+## rain, the persistence, the desktop census. Each flash frame runs queue tasks until it has spent `hit_stop_frame_budget_us` (a task is
+## atomic, so one may overshoot it: keep it below the ceiling by about the largest task). What the flash could not reach is handed to the
+## presenter, which steps it a few ms per consequence frame and finishes it before the blast ends. The crater and the glass (stages 1 and
+## 2's tail) are the only visual-critical pieces and always run inside the flash.
+var hit_stop_frame_budget_us: int = 110000
+
+
+## A task is a Callable `(budget_usec) -> bool` answering true when it is finished.
+func _hit_stop_queue(stage: Dictionary) -> Array:
+	if not stage.has("queue"):
+		stage["queue"] = [
+			func(_b: int) -> bool:
+				_stage_props_begin(stage)
+				return true,
+			func(b: int) -> bool: return _stage_props_finish(stage, b),
+			func(_b: int) -> bool:
+				delta_rain(stage)
+				return true,
+			func(_b: int) -> bool:
+				_stage_persist(stage)
+				return true,
+			func(_b: int) -> bool:
+				_stage_census(stage)
+				return true,
+		]
+	return stage["queue"]
+
+
+## Runs the queue for `budget_usec` (0 = to the end); answers true when it is empty.
+func _run_hit_stop_queue(stage: Dictionary, budget_usec: int) -> bool:
+	var queue: Array = _hit_stop_queue(stage)
+	var t0: int = Time.get_ticks_usec()
+	while not queue.is_empty():
+		var left: int = 0
+		if budget_usec > 0:
+			left = budget_usec - (Time.get_ticks_usec() - t0)
+			if left <= 0:
+				return false
+		if bool(queue[0].call(left)):
+			queue.pop_front()
+		elif budget_usec > 0:
+			return false
+	return true
+
+
+## The glass rain the world commit left out (stage 0), spawned with the glass flush.
+func delta_rain(stage: Dictionary) -> void:
+	var delta: WorldDelta = stage["delta"]
+	delta.commit_glass_rain(room)
 
 
 func _hit_stop_enabled() -> bool:
@@ -1433,11 +1485,9 @@ func _hit_stop_fade_stage(n: int, stage: Dictionary, presenter: DetonationPresen
 			presenter.commit_under_flash(waves, room._voxel_board)
 		2:
 			presenter.run_hit_stop_tail(room._voxel_board)
-			_stage_props_begin(stage)
-			_stage_props_finish(stage, hit_stop_debris_budget_us)
+			_run_hit_stop_queue(stage, hit_stop_frame_budget_us)
 		3:
-			_stage_props_finish(stage, hit_stop_debris_budget_us)
-			_stage_persist(stage)
+			_run_hit_stop_queue(stage, hit_stop_frame_budget_us)
 	var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
 	_prof("HIT-STOP stage %d %.2f ms (flash fade frame)" % [n, ms])
 	if ms > presenter.hit_stop_ceiling_ms:
@@ -1450,7 +1500,7 @@ func _stage_commit(stage: Dictionary) -> void:
 	var delta: WorldDelta = stage["delta"]
 	var commit_t0: int = Time.get_ticks_usec()
 	stage["committed"] = true
-	delta.commit(room)
+	delta.commit(room, bool(stage.get("defer_rain", false)))
 	_prof("COMMIT — %.1f ms, %d voxel(s) written" % [
 		float(Time.get_ticks_usec() - commit_t0) / 1000.0, delta.touched_voxels.size()])
 
@@ -1460,6 +1510,7 @@ func _stage_commit(stage: Dictionary) -> void:
 ## and Room.begin_prop_debris_fall() (Tier 1/2's own falling-voxel debris, same ring data). The debris is a job (`stage["debris"]`),
 ## finished by `_stage_props_finish()`.
 func _stage_props_begin(stage: Dictionary) -> void:
+	stage["props_begun"] = true
 	var delta: WorldDelta = stage["delta"]
 	var gu: Vector2i = stage["gu"]
 	var prop_bomb_def = Registries.get_bomb_registry().get_bomb(BOMB_ID)
@@ -1481,14 +1532,15 @@ func _stage_props_begin(stage: Dictionary) -> void:
 
 
 ## Runs the prop debris job for `budget_usec` (0 = to the end).
-func _stage_props_finish(stage: Dictionary, budget_usec: int) -> void:
+func _stage_props_finish(stage: Dictionary, budget_usec: int) -> bool:
 	var job: Dictionary = stage["debris"]
 	if bool(job["done"]):
-		return
+		return true
 	var t0: int = Time.get_ticks_usec()
 	var finished: bool = room.step_prop_debris_fall(job, budget_usec)
 	if finished:
 		_prof("PROP DEBRIS FALL — %.1f ms this slice, finished" % (float(Time.get_ticks_usec() - t0) / 1000.0))
+	return finished
 
 
 ## The census and the passage report are diagnostics: 34 ms of the Moto's commit frame (2026-09-26, R3D-LIGHT), so a release build

@@ -8,7 +8,7 @@
 > Design rationale and the inviolable rules live in `CLAUDE.md`
 > (hand-authored). This file is the mechanical mirror of the code.
 
-**277 scripts · 82415 lines total** (under `godot/scripts/`)
+**277 scripts · 82602 lines total** (under `godot/scripts/`)
 
 ## Index
 
@@ -1218,7 +1218,7 @@ extends `Node3D` · 2573 lines
 
 ### `voxel_board.gd`
 
-`class_name VoxelBoard` · extends `Node2D` · 2454 lines
+`class_name VoxelBoard` · extends `Node2D` · 2460 lines
 
 `godot/scripts/geometry/voxel_board.gd`
 
@@ -2376,7 +2376,7 @@ extends `Node2D` · 68 lines
 
 ### `detonation_presenter.gd`
 
-`class_name DetonationPresenter` · extends `RefCounted` · 597 lines
+`class_name DetonationPresenter` · extends `RefCounted` · 616 lines
 
 `godot/scripts/systems/destruction/detonation_presenter.gd`
 
@@ -2387,6 +2387,8 @@ extends `Node2D` · 68 lines
 
 **Public vars**
 - `var is_done: bool = false`
+- `var background_step: Callable = Callable()`
+- `var background_budget_us: int = 8000`
 - `var consequence_room = null`
 - `var consequence_delta = null`
 - `var ring_step_s: float = 0.055`
@@ -2449,7 +2451,7 @@ extends `Node2D` · 68 lines
 
 ### `glass_fall.gd`
 
-`class_name GlassFall` · 299 lines
+`class_name GlassFall` · 341 lines
 
 `godot/scripts/systems/destruction/glass_fall.gd`
 
@@ -3201,7 +3203,7 @@ extends `Node` · 236 lines
 
 ### `world_delta.gd`
 
-`class_name WorldDelta` · extends `RefCounted` · 382 lines
+`class_name WorldDelta` · extends `RefCounted` · 391 lines
 
 `godot/scripts/systems/prediction/world_delta.gd`
 
@@ -4109,7 +4111,7 @@ extends `SceneTree` · 1683 lines
 
 ### `glass_fall_selftest.gd`
 
-extends `SceneTree` · 425 lines
+extends `SceneTree` · 454 lines
 
 `godot/scripts/tools/glass_fall_selftest.gd`
 
@@ -4134,6 +4136,7 @@ extends `SceneTree` · 425 lines
 - `func test_lift_widens_the_scatter() -> void:`
 - `func test_determinism() -> void:`
 - `func test_the_shockwave_is_radial_not_parallel() -> void:`
+- `func test_the_sliced_index_is_the_one_shot_index() -> void:`
 
 ---
 
@@ -5634,7 +5637,7 @@ extends `Node2D` · 63 lines
 
 ### `test_zone_controller.gd`
 
-`class_name TestZoneController` · 1659 lines
+`class_name TestZoneController` · 1711 lines
 
 `godot/scripts/world/controllers/test_zone_controller.gd`
 
@@ -5873,7 +5876,7 @@ extends `Node2D` · 63 lines
 
 ### `room.gd`
 
-extends `Node2D` · 11193 lines
+extends `Node2D` · 11223 lines
 
 `godot/scripts/world/room.gd`
 

@@ -5201,6 +5201,7 @@ func begin_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 	job["materials"] = by_material.keys()
 	job["m"] = 0
 	job["impulse"] = {"from": Vector2(epicenter_vx), "strength": strength, "lift": 0.0}
+	job["phase"] = 0
 	job["piles"] = {}      ## the current material's piles, once its landings are planned
 	job["pile_keys"] = []
 	job["pile_i"] = 0
@@ -5208,30 +5209,51 @@ func begin_prop_debris_fall(touched_voxels: Array, source_gu: Vector2i, gu_rings
 	return job
 
 
+## Phases: 0 scatter every material's shards and open ONE surface index for the union of their columns (the walk over the map's slabs
+## is the expensive part: it used to run once per material); 5 warm each material's debris pile; 1 walk the index in slices; 2 per material, the landings off that index + the rain;
+## 3 per material, the debris piles. Landings are the same rows `GlassFall.plan_landings()` returns for each material alone (a column's
+## surface levels do not depend on which other columns the index covers; `DetonationPlanBuilder._land_shards` relies on the same fact).
 func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 	if bool(job["done"]):
 		return true
 	var t0: int = Time.get_ticks_usec()
+	var deadline: int = t0 + budget_usec if budget_usec > 0 else 0
 	var unit: float = 1.0 / float(GeometryCoords.VOXELS_PER_UNIT_AXIS)
 	while true:
 		var materials: Array = job["materials"]
-		if int(job["m"]) >= materials.size():
-			job["done"] = true
-			return true
-		var material_id = materials[int(job["m"])]
-		var keys: Array = job["pile_keys"]
-		if int(job["pile_i"]) >= keys.size():
-			## the next material's landings (this one's piles are all placed, or it has none yet)
-			if bool(job.get("planned", false)):
-				job["m"] = int(job["m"]) + 1
-				job["planned"] = false
-				job["pile_keys"] = []
-				job["pile_i"] = 0
-			else:
-				job["planned"] = true
-				var landings: Array = GlassFall.plan_landings(
-					(job["by_material"] as Dictionary)[material_id], _slab_registry.all_slabs(), job["impulse"])
-				if not landings.is_empty():
+		match int(job.get("phase", 0)):
+			0:
+				var columns: Dictionary = {}
+				var scattered: Dictionary = {}
+				for material_id in materials:
+					scattered[material_id] = GlassFall.scatter_all((job["by_material"] as Dictionary)[material_id], job["impulse"], columns)
+				job["scattered"] = scattered
+				job["index_state"] = GlassFall.index_begin(_slab_registry.all_slabs(), columns)
+				job["warm_i"] = 0
+				job["phase"] = 5
+			5:
+				## one material's pile per step: the first piece of a material would otherwise load its three textures inside a pile step
+				var warm_i: int = int(job["warm_i"])
+				if warm_i < materials.size():
+					_voxel_board.warm_debris_pile(String(materials[warm_i]))
+					job["warm_i"] = warm_i + 1
+				else:
+					job["phase"] = 1
+			1:
+				if GlassFall.index_step(job["index_state"], deadline):
+					job["index"] = GlassFall.index_finish(job["index_state"])
+					job["index_state"] = {}
+					job["phase"] = 2
+					job["m"] = 0
+			2:
+				if int(job["m"]) >= materials.size():
+					job["done"] = true
+					return true
+				var material_id = materials[int(job["m"])]
+				var landings: Array = GlassFall.landings_from_index((job["scattered"] as Dictionary)[material_id], job["index"])
+				if landings.is_empty():
+					job["m"] = int(job["m"]) + 1
+				else:
 					for li in range(landings.size()):
 						var l: Dictionary = landings[li]
 						var src: Vector2i = l["origin_pos"]
@@ -5245,7 +5267,9 @@ func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 					var piles: Dictionary = GlassFall.pile_by_cell(landings)
 					job["piles"] = piles
 					job["pile_keys"] = piles.keys()
+					job["pile_i"] = 0
 					job["tint"] = tint
+					job["phase"] = 3
 					if OS.get_environment("INFILTRAITOR_PROP_DEBUG") == "1":
 						var first: Vector3i = piles.keys()[0] if not piles.is_empty() else Vector3i.ZERO
 						print("[PROP-DEBUG] debris soot-tone histogram so far: %s (4 = clean)" % [_debris_tone_hist])
@@ -5253,20 +5277,26 @@ func step_prop_debris_fall(job: Dictionary, budget_usec: int) -> bool:
 						print("[PROP-DEBUG] debris %s: %d landing(s) -> %d pile cell(s), tint=%s, first cell=%s ground=%d, pile node: %s"
 							% [material_id, landings.size(), piles.size(), tint, first, _voxel_board.ground_plane_level(),
 							"NONE" if dbg_pile == null else "%d stored, %d mesh(es) attached" % [dbg_pile.pile_count(), dbg_pile._nodes.size()]])
-		else:
-			var i: int = int(job["pile_i"])
-			var k: Vector3i = keys[i]
-			var piles: Dictionary = job["piles"]
-			var center := Vector2((float(k.x) + 0.5) * unit, (float(k.y) + 0.5) * unit)
-			## A dense cell (under the object) gets several pieces, jittered inside it.
-			var pieces: int = clampi(int(piles[k]), 1, 8)
-			for j in range(pieces):
-				var jitter := Vector2(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5)) * unit if j > 0 else Vector2.ZERO
-				_place_debris_piece("%s_%d_%d_%d_%d" % [material_id, k.x, k.y, k.z, j],
-					center + jitter, k.z, material_id, (i + j) % 3, job["tint"], randf_range(0.0, TAU))
-			job["pile_i"] = i + 1
-		if budget_usec > 0 and Time.get_ticks_usec() - t0 >= budget_usec:
-			return false
+			3:
+				var material_id = materials[int(job["m"])]
+				var keys: Array = job["pile_keys"]
+				var i: int = int(job["pile_i"])
+				if i >= keys.size():
+					job["m"] = int(job["m"]) + 1
+					job["phase"] = 2
+				else:
+					var k: Vector3i = keys[i]
+					var piles: Dictionary = job["piles"]
+					var center := Vector2((float(k.x) + 0.5) * unit, (float(k.y) + 0.5) * unit)
+					## A dense cell (under the object) gets several pieces, jittered inside it.
+					var pieces: int = clampi(int(piles[k]), 1, 8)
+					for j in range(pieces):
+						var jitter := Vector2(randf_range(-0.5, 0.5), randf_range(-0.5, 0.5)) * unit if j > 0 else Vector2.ZERO
+						_place_debris_piece("%s_%d_%d_%d_%d" % [material_id, k.x, k.y, k.z, j],
+							center + jitter, k.z, material_id, (i + j) % 3, job["tint"], randf_range(0.0, TAU))
+					job["pile_i"] = i + 1
+		if deadline > 0 and Time.get_ticks_usec() >= deadline:
+			return bool(job["done"])
 	return false
 
 

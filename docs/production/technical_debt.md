@@ -526,9 +526,35 @@ Found by `tools/persistent/stress_scenario.py` (desktop, `maps/STRESS.map.json`)
 3. The pane grouper rejects a pane wider than 8 GU x 4 storeys (G-D23, loud `ERROR`): the generator keeps panes at 8.
 
 ## First Moto numbers for the A1 work (2026-10-07, STRESS, release APK 62 MB, `device_run.py` + `stress_scenario.py --mode sequential`)
-The first handset look at the hit-stop and the stress map; one run each, desktop-built code, NOT the step-B round. Moto g04s, STRESS (24 guards, 60 props):
-- **The staged hit-stop beats the single frame but does not hold its 200 ms ceiling on the device.** Glass grenade: stages 475 / 207 / 740 / 803 ms, worst probe frame 907 ms; `HIT_STOP=0` (everything in one frame) worst 1 869 ms (commit 425 + prop debris 1 221 + persist 145). Grenade 0 (brick rooms): stage 2 = 865 ms for 446 voxels. Desktop stage 2 was 145 ms, so the step is ~6x on the device, not the ~3-4x assumed: **`step_prop_debris_fall` steps are too coarse** (one material's `plan_landings` + `spawn_glass_rain` is one step) and the 60 ms slice budget cannot hold.
-- **`PROP DEBRIS FALL` is the hot spot, with or without hit-stop:** 851 ms on 446 voxels (grenade 0), 1 221 ms on 2 749 (grenade 1). Next: find which half (the landing plan or the rain spawn) costs, subdivide it, and spread the debris over more frames.
-- **`_take_prediction` still costs 567-571 ms on the SECOND throw** (0.04-0.10 ms on the first): the cache is missed there (the first blast's commit moved the world revision while the second was being pumped), so the ctx is built in the throw frame after all. Needs the revision handling looked at.
-- The world commit alone is 425-445 ms on the device against 119 on the desktop (x3.7).
-- Idle 27 ms/frame (GPU 25.4 ms) with the STRESS map; PSS and the rest of the table belong to step B.
+The first handset look at the hit-stop and the stress map; one run each, NOT the step-B round. Moto g04s, STRESS (24 guards, 60 props). **These
+numbers are of the code BEFORE the 2026-10-08 desktop round below; they are the baseline that round was written against.**
+- Glass grenade, staged hit-stop: stages 475 / 207 / 740 / 803 ms, worst probe frame 907 ms; `HIT_STOP=0` (one frame) worst 1 869 ms (commit 425 +
+  prop debris 1 221 + persist 145). Grenade 0 (brick rooms): stage 2 = 865 ms for 446 voxels (desktop 145: ~6x, not the ~3-4x assumed).
+- `_take_prediction` 567-571 ms on the SECOND throw: **a scenario artifact, not a cache bug** — the scenario fired `shoot 0` six frames after
+  the second throw, the shot bumped the world revision and the throw rebuilt a stale prediction. The action lock forbids that order in play;
+  `stress_scenario.py` now shoots after the second blast (no `P-COOK`, `TAKE` 0.04 ms on the desktop).
+- The world commit alone: 425-445 ms on the device against 119 on the desktop (x3.7). Idle 27 ms/frame (GPU 25.4 ms) on the STRESS map.
+
+## A1 desktop round (2026-10-08): what the Moto numbers above led to (for the NEXT handset run)
+Root cause found by timing inside the prop-debris step: `GlassFall.build_surface_index` walks EVERY cell of EVERY non-glass slab for each call
+(the `columns` test is inside the loop, so it is proportional to the MAP, not to the break: ~125 ms desktop on STRESS, ~850 ms on the Moto)
+and the prop-debris job paid it once per material. Built, all on the desktop, each pinned or compared:
+1. **One surface index per blast, in slices.** `GlassFall.index_begin/index_step/index_finish` (the one-shot `build_surface_index` is now a
+   loop over them); `Room.step_prop_debris_fall` scatters every material first and walks the index once for the union of their columns (the
+   same fact `DetonationPlanBuilder._land_shards` relies on). `glass_fall_selftest` [12]: the sliced index equals the one-shot one (256
+   columns, 73 slices). Real path: the final 10 MB board probe of two blasts is byte-identical to the pre-change code, and the landing /
+   pile counts per material are identical.
+2. **Debris piles are warmed in a step of their own** (`VoxelBoard.warm_debris_pile`: three texture loads, 34-72 ms desktop).
+3. **The glass rain is deferred out of the world commit** (`WorldDelta.commit(room, defer_rain)` + `commit_glass_rain`): 757 flights = 60 ms
+   of the desktop's 128 ms glass commit.
+4. **A task queue after the crater** (`TestZoneController._run_hit_stop_queue`, `hit_stop_frame_budget_us` 110 ms per flash frame): prop rings
+   and proximity, the debris job, the rain, the persistence, the desktop census. The crater (stage 1) and the glass flush (stage 2's tail) are
+   the only visual-critical pieces and always run in the flash. What the flash could not reach goes to `DetonationPresenter.background_step`
+   (8 ms per consequence frame) and is drained before the blast ends, so nothing outlives it and the action lock lifts after it.
+5. `stress_scenario.py --device <serial>` runs the same scenario on a handset (pushes the flags, `device_run.py`, the same summary, removes
+   the flags); `--no-hit-stop` is the A/B control. **Not exercised on a device yet** (the Moto went offline before the run; only its
+   "device not attached" message was seen).
+Desktop result, STRESS: worst frame of the glass grenade ~540 -> **119-127 ms** (stages 12-113 / 23-28 / 115-123 / 77-95 ms); two blasts
+overlapped and sequential, 0 ERROR lines, both lights land, no exit leak; `verify.py smoke` green. **Predicted for the Moto, to be tested:**
+the index walk is the ~850 ms piece; sliced at 110 ms per flash frame + 8 ms per consequence frame it should disappear from the flash and finish
+in ~1 s of consequence frames. The stage-0 world commit (~110 ms desktop, 425 on the Moto) is the largest piece left and is NOT split further.

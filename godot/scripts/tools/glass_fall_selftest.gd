@@ -43,6 +43,7 @@ func _init() -> void:
 	test_lift_widens_the_scatter()
 	test_determinism()
 	test_the_shockwave_is_radial_not_parallel()
+	test_the_sliced_index_is_the_one_shot_index()
 
 	print("\n" + "=".repeat(70))
 	print("RESULT: %d PASS, %d FAIL" % [passed, failed])
@@ -422,4 +423,32 @@ func test_the_shockwave_is_radial_not_parallel() -> void:
 		_pass("a shard ON the epicenter takes the symmetric draw only — no division by zero")
 	else:
 		_fail("a shard on the epicenter was pushed to %s (symmetric draw is %s)" % [same, flat])
+	print("")
+
+
+## A1 (2026-10-07): the surface index as a resumable job (`index_begin/step/finish`) must give EXACTLY the rows of the one-shot walk,
+## whatever slice it is stepped in: a deadline already in the past forces one stop per slab / per 2048 cells.
+func test_the_sliced_index_is_the_one_shot_index() -> void:
+	print("[12] the sliced surface index equals the one-shot index\n")
+	var ground: int = GeometryCoords.FLOOR_TOP_LEVEL
+	var base: int = GeometryCoords.storey_level_base(0)
+	var slabs := _surfaces(Vector2i(5, 5), ground, "concrete", Slab.Role.FLOOR, 3)
+	slabs.append_array(_surfaces(Vector2i(5, 5), base + 4, "wood", Slab.Role.CEILING, 2))
+	slabs.append_array(_surfaces(Vector2i(5, 5), base + 8, "glass", Slab.Role.INTERIOR, 2))
+	var columns: Dictionary = {}
+	for x in range(36, 52):
+		for y in range(36, 52):
+			columns[Vector2i(x, y)] = true
+	var whole: Dictionary = GlassFallClass.build_surface_index(slabs, columns)
+	var state: Dictionary = GlassFallClass.index_begin(slabs, columns)
+	var slices: int = 0
+	while not GlassFallClass.index_step(state, Time.get_ticks_usec() - 1):
+		slices += 1
+		if slices > 100000:
+			break
+	var sliced: Dictionary = GlassFallClass.index_finish(state)
+	if not whole.is_empty() and whole == sliced and slices > 1:
+		_pass("%d columns identical, in %d slices (glass left out, levels ascending)" % [whole.size(), slices])
+	else:
+		_fail("sliced index differs from the one-shot one (%d vs %d columns, %d slices)" % [sliced.size(), whole.size(), slices])
 	print("")

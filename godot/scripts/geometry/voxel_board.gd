@@ -1561,6 +1561,12 @@ func set_debris_pile_board3d(board: Node3D) -> void:
 const DEBRIS_ART_FALLBACK: String = "wood"
 
 
+## Creates the material's debris pile now (three textures read from disk: 34-72 ms on the desktop, several hundred on a handset) so the
+## first piece placed does not pay it. A step of its own for the prop-debris job (`Room.step_prop_debris_fall`).
+func warm_debris_pile(material_id: String) -> void:
+	_debris_pile_for(material_id)
+
+
 func _debris_pile_for(material_id: String) -> RefCounted:
 	if _debris_piles.has(material_id):
 		return _debris_piles[material_id]

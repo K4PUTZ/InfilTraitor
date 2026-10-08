@@ -40,6 +40,23 @@ signal finished()
 ## callback would be a reference cycle).
 var is_done: bool = false
 
+## A1 (2026-10-07) — work the owner could not finish inside the flash, stepped a few ms per frame of the consequence channel instead
+## (the prop debris on a slow device: the surface-index walk alone is ~850 ms on the Moto). `background_step.call(budget_usec)` answers true
+## when it is finished; whatever is left is run to the end before the soot settles, so nothing outlives the blast.
+var background_step: Callable = Callable()
+var background_budget_us: int = 8000
+
+
+func _background_tick() -> void:
+	if background_step.is_valid() and bool(background_step.call(background_budget_us)):
+		background_step = Callable()
+
+
+func _background_drain() -> void:
+	while background_step.is_valid():
+		if bool(background_step.call(0)):
+			background_step = Callable()
+
 
 ## §13.3 — the Room that owns the consequence beat and the light. Null keeps this
 ## usable headless (no light beat), which is what a selftest wants.
@@ -106,6 +123,7 @@ func start(plan: Dictionary, voxel_board, smoke_overlay, tree: SceneTree) -> voi
 	## (0 = right after the commit), and whatever is left after the channel is finished by `_finish_soot`.
 	_soot_begin(ramp)
 	await _run_consequence(plan, voxel_board, smoke_overlay, tree)
+	_background_drain()
 	_run_tail(voxel_board)   ## a channel with nothing scheduled (or shorter than two frames) still owes it
 	await _finish_soot(voxel_board, tree, board3d)
 	## D-6 — the smoke is all instanced and rising, so the world may resume
@@ -536,6 +554,7 @@ func _run_consequence(plan: Dictionary, voxel_board, smoke_overlay,
 		elapsed += tree.root.get_process_delta_time()
 		if not ran_tail:
 			_soot_tick(elapsed, voxel_board)
+			_background_tick()
 		_channel_elapsed = elapsed
 		var _disp0: int = Time.get_ticks_usec()
 		while next < scheduled.size() and float(scheduled[next][0]) <= elapsed:

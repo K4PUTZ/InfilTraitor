@@ -84,7 +84,7 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 
 | Kind | LOW | TYPICAL | HEAVY (frag grenade) | Notes |
 |---|---|---|---|---|
-| Footprint (GU) | | | | confirm 18×36 (Q2) |
+| Footprint (GU) | 18×36 | 18×36 | 18×36 | Q2 answered: 18×36 default, smaller if a level uses more segments |
 | Rooms | | | | |
 | Props tier 1 / 2 / 3 / 4 | | | | |
 | Guards (by type) | | | | "does not hold many enemies" |
@@ -97,7 +97,7 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 ## 6. Open questions (the Director's)
 
 1. ~~**Q1 (PB-0)**~~ — ANSWERED 2026-10-08, §0b: 4 GB / Mali-G57 MP1 (Moto g04s), 1.0 GiB PSS.
-2. **Q2 (PB-1)** — is a segment 18×36 in GU today, and is the 7×25 "playable interior" a second, smaller number the build should respect? PLAYGROUND (44×22) is larger than either.
+2. ~~**Q2 (PB-1)**~~ — ANSWERED 2026-10-08 (Director): **a segment is 18×36 GU; the 7×25 interior is a design guide only, not an engine limit.** A 3×3 level (9 segments) is the default because it is easy to read; the numbers stay revisable: a level may have more, smaller segments (e.g. 12) when a case calls for it. Consequence for the budget: the segment's GU footprint is a parameter of PB-3's synthetic maps, not a constant, and a smaller segment buys memory headroom.
 3. **Q3** — a typical versus a heavy segment: is the heavy one the only place the frag grenade appears?
 4. **Q4 (A1b)** — do the guards share the agent's rig and mesh (instancing), or are they separate models?
 5. **Q5** — is a load of a few seconds (about 6 s on the Galaxy at PLAYGROUND's size: stage `11` to `40`, 16:48:12 -> 16:48:18) acceptable between segments, or should the next segment be prepared while the player is still in the current one? (This changes PB-4's target and the transient peak.)

@@ -284,6 +284,19 @@ as the idle is frames on that sprite. If an idle is ever built any other way (a 
 does not change the sprite's texture), the silhouette will NOT follow it, and that is the thing to check. Two knobs
 exist for driving it: `ActorMesh3D.silhouette_phase` (stripes; the billboard's retired at R3D-ACTORS step 5) and the shader's `scroll_px_per_s`. On the live mesh the silhouette is the mesh itself, so it follows any animation.
 
+### 6.5 Equip, aim, fire, return — and the CANCEL of everything — Director, 2026-10-08
+
+Recorded as the brief for a LATER detailed plan (the Director: *"vamos depois fazer um planejamento mais detalhado, catalogando todas as situações possíveis. Depois planejado e depois pode continuar"*). Nothing here is built; the grenade is the only case that exists, and its cancel is the first owed item.
+
+**The rule: every change of weapon or accessory animates BOTH ways — the draw AND the return** (the cancel / holster / stow). The grenade's cancel today is the raise sequence played backwards (`play_throw_cancel`) and its fuse spark is cut at once (`cancel_targeting()`); the owed piece is the spark dying down while the agent stows the grenade on the back pack (`technical_debt.md`, "Fuse FX"). The same two-way rule holds for weapon A / B / C and for any accessory.
+
+**The flow the Director described (a shot):**
+1. **Select** weapon A, B or C. The interface has its own time to show the handling of the objects: the draw animation plays here.
+2. **Click an enemy**: the agent raises the weapon further and AIMS (the aim pose).
+3. **The hit chances (percentages) appear.** From here on every datum to execute the shot exists, so **the consequences can be computed while the player has not decided**, under a LOOPING animation so the scene is not frozen. (This is the prediction pipeline: `build_plan()` is pure and sliced, see `PREDICTION_MASTER_PLAN`; the question of doing it without disturbing the animation is §7 item 6.)
+4. **The player decides and clicks "fire"**: the agent shoots with recoil, then returns to the belt, or to the ALERT position pointing UP (in cover), while waiting for the next action.
+5. **The resting/alert position depends on the situation**: moving in a hurry, the weapon points DOWN, held with both hands, the head looking around; stealthy, another pose; and so on. The catalogue of every situation (posture × weapon × tempo × cover × stealth × the transition between each pair) is the planning work to do BEFORE authoring (see §3, which this extends).
+
 ## 7. Open questions
 
 1. **Does the shipped walk survive M1?** It is upright and level-headed; M1 is
@@ -299,3 +312,4 @@ exist for driving it: `ActorMesh3D.silhouette_phase` (stripes; the billboard's r
 5. **Can baked sprites carry secondary motion at all** (§5), or does "organic"
    have a hard ceiling in this rendering model? The most consequential one, and
    the reason R1 is a survey rather than a formality.
+6. **Can the numbers be computed without disturbing the animation?** (Director, 2026-10-08.) Today the prediction runs on the main thread in budgeted slices (`predict_budget_ms`, 4 ms a frame), which keeps an animation moving but makes the answer arrive over many frames (a second grenade's prediction took ~100 frames on the Galaxy). Real parallelism needs a worker thread, and the pure pipeline is a candidate (it writes only to its own Delta) but it reads live `Voxel` / store state that is not thread-safe, so it would need a snapshot or a read-only discipline first. To be answered with a measurement before the planning, not by reasoning.

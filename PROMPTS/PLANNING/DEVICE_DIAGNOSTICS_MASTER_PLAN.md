@@ -205,6 +205,8 @@ FIX belongs in one of the two plans above, and is cited there — not here.
 | **target** | **30** | **33.3** |
 | floor ("no lucro") | 24–25 | 40–41.7 |
 
+**Floor device and memory ceiling (Director, 2026-10-08, `PERFORMANCE_BUDGET_MASTER_PLAN` §0b):** Android 4 GB, Mali-G57 MP1 class (the Moto g04s); 1.0 GiB TOTAL PSS at the peak, load included.
+
 **The budget applies to the detonation's PLAYBACK frames only.** Game load, map
 load and the pre-cook are explicitly allowed to be slow. This is not a loophole
 — it is a scoping instruction the instrument can honour exactly, because

@@ -1,7 +1,7 @@
 # PERFORMANCE_BUDGET_MASTER_PLAN
 ## One content, many phones: the memory and time budget a segment has to fit — v0.1 (PLANNED, NOT BUILT)
 
-> **Status: 🟡 v0.1, 2026-10-08.** Opened by the Director on the Galaxy A16 round of 2026-10-08 (PSS at the 1.2 GB ceiling with ONE map and little content, while the game is going to gain many more props, walls, roofs, guard AI, skills and accessories). **Nothing here is built; the steps are planned and the first (the estimate of what a segment holds) is the next session, done with the Director.**
+> **Status: 🟡 v0.2, 2026-10-08 — PB-0 ratified (§0b).** v0.1: Opened by the Director on the Galaxy A16 round of 2026-10-08 (PSS at the 1.2 GB ceiling with ONE map and little content, while the game is going to gain many more props, walls, roofs, guard AI, skills and accessories). **Nothing here is built; the steps are planned and the first (the estimate of what a segment holds) is the next session, done with the Director.**
 >
 > **Where this lives.** The Director asked for this to go into the performance plan and to "move it forward". `PERFORMANCE_MASTER_PLAN` (in `PROMPTS/DONE/`) was ARCHIVED on 2026-10-07 at the Director's own request (3 400 lines of 2D-board history, "nothing open is carried"); resurrecting it would bury this under dead text, so this is its successor and the old file carries a pointer. The handset rows and the budget table stay in `DEVICE_DIAGNOSTICS_MASTER_PLAN` (§0.5: 30 fps / 33.3 ms); this plan owns the question "does the CONTENT we are going to author fit?". Overrule the placement and it moves in one commit.
 >
@@ -21,6 +21,24 @@
 | The frag grenade is the stress case and ships late-game; budgets are judged on it. | roadmap, 2026-10-07 decisions | The budget is "the strongest blast beside the densest segment". |
 
 **Handset facts of 2026-10-08 (Galaxy A16, PLAYGROUND, release APK):** peak TOTAL PSS 1 257 MiB (other runs 1 198-1 230); at the peak Graphics 620 · System 301 · native heap 248 · code 43 (swap PSS 317). Load timeline: Graphics 0 -> 119 (boot) -> +64 (room build) -> +128 -> **+255 at the map-loaded submission**, then a ~590 MiB plateau that blasts do not raise; native heap peaks at ~450 MiB DURING the load. `COSMETIC_DENSITY` does not move the PSS. What owns the Graphics plateau is NOT attributed (`RenderingServer.get_rendering_info` reads nothing on Android release).
+
+## 0b. PB-0 RATIFIED (Director, 2026-10-08): the floor device and the ceiling
+
+| Decision | Value |
+|---|---|
+| **Android floor** | **4 GB RAM, GPU of the Mali-G57 MP1 class (Unisoc T606), Vulkan / GLES3: the Moto g04s `ZF524T5TG5` IS the floor device.** The Galaxy A16 is the mid reference |
+| **Ceiling** | **1.0 GiB TOTAL PSS at the peak, the load's transient included** (GiB, because `dumpsys meminfo` reports MiB). RSS + swap is watched alongside it: it is closer to what gets the app killed |
+| **Minimum quality at the floor** | 30 fps on play frames (§0.5 of `DEVICE_DIAGNOSTICS`); facades one mip level down (512×256) through a device profile (PB-8); the frag grenade in the heavy segment with the event-frame tolerance already ratified. 6 GB and up get full fidelity from the SAME content (§1) |
+| **iOS floor (provisional, not measured)** | A12 / 3 GB (iPhone XR class). Its memory ceiling is a separate measurement (below) |
+
+⚠️ **The ceiling is already broken:** the Galaxy A16 peaks at 1 198-1 257 MiB with ONE map larger than a segment, the Moto at 945-1 304 MB. PB-2 (attribute Graphics) is therefore the first technical step after PB-1, not an optional one.
+
+**Device population (web research, 2026-10-08; order of magnitude, not a citation-grade figure).** Neither Google nor Apple publishes a clean count:
+- Active Android devices: 3.3-3.9 billion (third-party estimates). Active iPhones: more than 1 billion; Counterpoint puts the iPhone at about 1 in 4 active smartphones (~1.2-1.5 billion). Apple's 2.35-2.5 billion counts every Apple device.
+- Android by RAM: no authoritative public split was found. One unsourced market page gives 8 GB 38.5 %, 6 GB 25.3 %, 4 GB 16.3 %, 12 GB 13 % (it reads like NEW sales, not the installed base, and it omits <= 3 GB). Our estimate of the INSTALLED base, which lags sales by 2-4 years: <= 3 GB ~20-25 %, 4 GB ~25 %, >= 6 GB ~50 %. **A 4 GB floor reaches roughly 70-80 % of active Android.** The authoritative figure is the RAM section of Google Play Console's device catalog / distribution data once the game has a Play listing: replace this estimate with it then.
+- Sources: [Android distribution dashboard](https://developer.android.com/about/dashboards), [market.us Android statistics](https://scoop.market.us/android-phones-statistics/), [Counterpoint via telecoms.com](https://www.telecoms.com/mobile-devices/iphones-make-up-nearly-one-in-four-active-smartphones), [Apple 2.35 B devices](https://mezha.ua/en/2025/01/31/apple-has-more-than-2-35-billion-active-devices-worldwide/).
+
+**iOS against the Mali floor (the Director's question, 2026-10-08).** GPU and CPU: an A12 is several times faster than a Mali-G57 MP1 / Unisoc T606, so a frame that holds 30 fps on the Moto has wide margin on any iPhone iOS still supports. **Memory is NOT implied by the Moto:** iOS has no swap to page to (the Galaxy carried 317 MiB of swap PSS at the peak) and kills a foreground app at a hard per-device limit (jetsam) that Apple does not publish. A developer report reads `ActiveHard 2098 MB` on a 4 GB iPhone 12 ([Apple forums](https://developer.apple.com/forums/thread/688973)); a 3 GB XR is lower. The same 1.0 GiB ceiling probably fits, but on iOS it must be read from a real device's JetsamEvent log, and the Godot iOS export (Metal) has never been built for this project. Until then iOS is a provisional floor, not a measured one.
 
 ## 1. The principle: ONE content, N profiles
 
@@ -43,7 +61,7 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 
 | Step | What | Who / when | Output |
 |---|---|---|---|
-| **PB-0** | **Decide the floor device** (RAM, GPU class), **the ceiling's unit** (GiB or decimal GB; plans say "1.2 GB" without saying) and **which number is the ceiling** (PSS or RSS+swap). Recommendation: a Moto g04s class floor (about 4 GB), ceiling 1.0-1.2 GB with margin. | Director, next session | a signed line in this plan + `DEVICE_DIAGNOSTICS` §0.5 |
+| **PB-0** ✅ | **Decide the floor device** (RAM, GPU class), **the ceiling's unit** (GiB or decimal GB; plans say "1.2 GB" without saying) and **which number is the ceiling** (PSS or RSS+swap). Recommendation: a Moto g04s class floor (about 4 GB), ceiling 1.0-1.2 GB with margin. | Director, next session | a signed line in this plan + `DEVICE_DIAGNOSTICS` §0.5 |
 | **PB-1** | **The estimate of a segment's content** — done TOGETHER with the Director, from the design docs: rooms, props by tier (1-4), guards by type, lights, glass panes, roofs, materials in use, destructible area, objectives; three specs: LOW / TYPICAL / HEAVY (the heavy one carries the frag grenade). Read first: `DESIGN_MASTER_PLAN` §14, §8.7, `MAP_MASTER_PLAN`, the dormitory in `PROP_PIPELINE_PLAN` §8, STRESS as the upper bound. Confirm the segment's size in GU (Q2). | **NEXT SESSION**, with the Director | `segment_spec` table (this plan, §5) |
 | **PB-2** | **Attribute Graphics on the desktop**, per load stage: textures vs buffers vs render targets, by category (facades, decals, board meshes, cell planes, actors, props). `RenderingServer` info works on the desktop; the handset confirms only the total (`GL mtrack`). The `MEM_STAGES=1` markers exist (`mem_stage.gd`). | Claude, desktop | a table: who owns the +255 MiB and the 590 MiB plateau |
 | **PB-3** | **Marginal-cost table** on the Galaxy and the Moto: extend `scale_study.py` to read PSS / RSS / load time and vary ONE thing at a time on segment-shaped synthetic maps (18×36 footprint): props (0 / 30 / 60 / 120, per tier), guards (0 / 6 / 12 / 24), lights, materials in use, glass panes, roofs. | Claude, handsets | "+10 props = X MiB, Y ms load" per kind |
@@ -78,7 +96,7 @@ A rule of thumb used only to frame the Director's choice, NOT a measurement: a f
 
 ## 6. Open questions (the Director's)
 
-1. **Q1 (PB-0)** — the floor device and the ceiling's unit and number.
+1. ~~**Q1 (PB-0)**~~ — ANSWERED 2026-10-08, §0b: 4 GB / Mali-G57 MP1 (Moto g04s), 1.0 GiB PSS.
 2. **Q2 (PB-1)** — is a segment 18×36 in GU today, and is the 7×25 "playable interior" a second, smaller number the build should respect? PLAYGROUND (44×22) is larger than either.
 3. **Q3** — a typical versus a heavy segment: is the heavy one the only place the frag grenade appears?
 4. **Q4 (A1b)** — do the guards share the agent's rig and mesh (instancing), or are they separate models?

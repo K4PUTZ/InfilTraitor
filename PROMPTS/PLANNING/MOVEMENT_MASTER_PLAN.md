@@ -196,6 +196,10 @@ and the quality bar, and it belongs in R1's findings, not in a guess here.
 
 ---
 
+### 6.0 🔒 PREREQUISITE — the final 3D model of the agent is locked FIRST (Director, 2026-10-08)
+
+Nothing in this plan is authored until the model the demo ships with is decided: *"a gente precisa cravar qual vai ser o modelo 3D final do agente (pelo menos pro demo), antes de fazer o movimento, pra não correr o risco de dar problema depois."* Reason: an action is keyed on one rig (D64, `r3d_live_rig_export.py`); a change of skeleton, proportion or attachment points after the poses exist is a re-keying of all of them. This is roadmap step **A1b**. The decision list (model, skeleton and bone names, proportions, mobile budget, silhouette classes and faction palette, whether the guards share the rig) and the done-criterion are in the roadmap row; the choice is the Director's. Until it is signed, sections 6.1-6.5 are design only.
+
 ## 6. ⛔ Sequencing — five items come FIRST
 
 Director, 2026-08-16: *"Entretanto, antes de entrar na milestone de movimento,

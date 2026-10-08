@@ -109,6 +109,9 @@ EXPORT_TIMEOUT_SECONDS = 900
 # at least one entry.
 FORBIDDEN_PATTERNS = [
     ("source textures", re.compile(r"_diffuse_2048\.jpg")),
+    ## A1 (2026-10-07, apk_audit.py): the retired frame-bake models (agent_posed_*, walk_NN, the agent_base/hifi/sculpt test rigs) were 56 MB
+    ## of a 128 MB APK; only agent_live*.glb is loaded (ActorMesh3D.RIG_DIR). The preset's exclude_filter holds them out.
+    ("retired agent bake models", re.compile(r"imported/(agent_posed|walk_\d|agent_base|agent_hifi|agent_sculpt)")),
 ]
 REQUIRED_PATTERNS = [
     ("map JSON", re.compile(r"(^|/)maps/[^/]+\.map\.json$")),
